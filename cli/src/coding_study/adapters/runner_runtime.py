@@ -5,7 +5,9 @@ Gradle, uv and Node write next to what they build, and the runners bundled with 
 installed package, which must stay read-only. Each workspace therefore builds against a copy in
 `.cs/runtime/runners/`, kept in step with the content by a digest of the copied sources:
 changed files are rewritten, removed ones deleted, unchanged ones keep their timestamps (Gradle's
-up-to-date checks stay cheap) and build output in the copy survives.
+up-to-date checks stay cheap) and build output in the copy survives. The runtime also holds the
+IntelliJ open-file launcher (`adapters/ide/launcher.py`), so whatever restores the runtime on a
+fresh clone restores the launcher too.
 """
 
 import hashlib
@@ -15,6 +17,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import cast
 
+from coding_study.adapters.ide.launcher import IdeLauncher
 from coding_study.domain.errors import RunnerStartError
 
 RUNTIME_DIRECTORY = ".cs/runtime"
@@ -44,18 +47,21 @@ class RunnerRuntime:
         """`runners` is the content root's `runners/`, `workspace` the workspace root."""
         self._runners = runners
         self._workspace = workspace
+        self._launcher = IdeLauncher(workspace / RUNTIME_DIRECTORY)
 
     @property
     def directory(self) -> Path:
         return self._workspace / RUNTIME_RUNNERS
 
     def is_current(self) -> bool:
-        return self._stamp() == self._digest(self._sources())
+        return self._stamp() == self._digest(self._sources()) and self._launcher.is_current()
 
     def ensure(self) -> Path:
-        """Brings the copy in step with the content; returns its directory."""
+        """Brings the copy and the IDE launcher in step with the content; returns the copy's
+        directory."""
         sources = self._sources()
         digest = self._digest(sources)
+        self._launcher.install()
         if self._stamp() == digest:
             return self.directory
         for relative, source in sources.items():
