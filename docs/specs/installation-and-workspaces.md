@@ -61,9 +61,11 @@ created_with = "0.1.0"
 ```text
 <workspace>/
   .cs/workspace.toml      # marker (tracked)
-  .cs/runtime/            # materialized runners (ignored, per machine)
+  .cs/ide.json            # digests of the IDE files cstudy wrote (tracked)
+  .cs/runtime/            # materialized runners and the IntelliJ launcher (ignored, per machine)
   .cs/                    # index, cases, calibration, build, runs caches (ignored)
   .gitignore, README.md
+  .vscode/, .idea/        # IDE project files: tasks, run and debug configurations, SDK settings
   python/                 # pyproject.toml, uv.lock, practice/<snake_slug>.py
   typescript/             # package.json, pnpm-lock.yaml, tsconfig.json, support.ts, practice/<slug>.ts
   jvm/                    # Gradle wrapper, settings.gradle.kts, java/ and kotlin/ subprojects
@@ -79,7 +81,7 @@ Every path `cstudy` prints for a workspace file is relative to the workspace roo
 ## cstudy init
 
 ```text
-cstudy init [PATH] [--git] [--force]
+cstudy init [PATH] [--git] [--force] [--ide vscode|idea]... [--no-ide]
 ```
 
 Creates a workspace in `PATH` (default: `--workspace`, then `CSTUDY_WORKSPACE`, then the current directory), creating the directory when needed.
@@ -89,12 +91,13 @@ Creates a workspace in `PATH` (default: `--workspace`, then `CSTUDY_WORKSPACE`, 
 | Refusals (exit 3) | `PATH` already holds a marker (`cstudy doctor --fix` repairs a workspace); `PATH` is inside another workspace; `PATH` is at or below a content checkout (a directory with `problems/` and `schemas/`) unless `--force` |
 | Files | Copies the template: the three practice projects, `notes/` and `problems/` (each with `.gitkeep`), `README.md` and `.gitignore`; makes `jvm/gradlew` executable; writes the marker. An existing file is never overwritten, so `cstudy init` can adopt a directory that already has files (for example a cloned repository) |
 | Runtime | Materializes the runners into `.cs/runtime/` ([below](#runner-runtime)), so an IDE can import the projects right away |
+| IDE files | Writes the [IDE files](#ide-files) of VS Code and IntelliJ IDEA, as `cstudy ide` does; `--ide vscode` or `--ide idea` (repeatable) writes only those, `--no-ide` none, and both together exit 3 |
 | `--git` | Runs `git init` in `PATH`; `cstudy` never commits |
-| Output | `created workspace <path>`, the number of files written and skipped, then the next steps: `cd <path>`, `cstudy doctor --fix`, `cstudy start two-sum` |
+| Output | `created workspace <path>`, the number of files written and skipped, the IDE files line of [`cstudy ide`](cli.md#cstudy-ide), then the next steps: `cd <path>`, `cstudy doctor --fix`, `cstudy start two-sum` |
 
 `cstudy init` installs nothing: `cstudy doctor --fix` runs `uv sync`, `pnpm install` and the Gradle warm-up.
 
-The workspace `.gitignore` ignores `/.cs/*` except `/.cs/workspace.toml`, `/.statements/`, `progress.db*`, `node_modules/`, `.venv/`, `build/`, `.gradle/`, `.kotlin/`, `__pycache__/` and `.ruff_cache/`. Practice files, notes, `.archive/` and your problems stay tracked, and you commit them when you choose ([PRD Q3](../prd.md#8-open-questions)).
+The workspace `.gitignore` ignores `/.cs/*` except `/.cs/workspace.toml` and `/.cs/ide.json`, `/.statements/`, `progress.db*`, `node_modules/`, `.venv/`, `build/`, `.gradle/`, `.kotlin/`, `__pycache__/`, `.ruff_cache/`, and IntelliJ's per-user files (`.idea/workspace.xml`, `tasks.xml`, `usage.statistics.xml`, `dictionaries/`, `shelf/`, `libraries/`, `modules.xml`, `dataSources*`, `contentModel.xml`, `*.iml`). Practice files, notes, `.archive/`, your problems and the IDE files stay tracked, and you commit them when you choose ([PRD Q3](../prd.md#8-open-questions)).
 
 ## Runner runtime
 
@@ -106,8 +109,44 @@ The practice projects build and run against the runners, and Gradle, uv and Node
 | Stamp | `.cs/runtime/stamp.json`: a SHA-256 over the relative path and bytes of every copied source file |
 | Refresh | Before the first runner prepares in a command, and in `cstudy doctor`, `cstudy doctor --fix` and `cstudy init`: when the stamp differs from the content's digest, changed files are rewritten, removed files deleted, unchanged files keep their timestamps, and build output (`build/`, `.gradle/`, `node_modules/`, `.kotlin/`, `__pycache__/`) stays |
 | Wiring | Relative paths in the tracked project files: `python/pyproject.toml` depends on `../.cs/runtime/runners/python` (editable), `typescript/support.ts` re-exports `../.cs/runtime/runners/typescript/support.ts`, `jvm/settings.gradle.kts` includes `../.cs/runtime/runners/jvm`, and the reference build in `.cs/build/jvm` includes `../../runtime/runners/jvm` |
+| IDE launcher | `.cs/runtime/ide/cstudy-launcher.jar`, a copy of the jar shipped in the package ([IDE files](#ide-files)); installed whenever the runtime is refreshed, even when the stamp matches, and by `cstudy ide`. A missing or different copy makes the runtime stale |
 
-Because the wiring is relative, a workspace keeps working when it moves or is cloned on another machine; there `cstudy doctor --fix` recreates `.cs/runtime/`, the venv, `node_modules` and the Gradle build. Editors open `python/` (pyright and ruff find `.venv`), `typescript/` (tsserver finds `node_modules`) and `jvm/` (IntelliJ imports it as one Gradle project).
+Because the wiring is relative, a workspace keeps working when it moves or is cloned on another machine; there `cstudy doctor --fix` recreates `.cs/runtime/` (with the launcher), the venv, `node_modules` and the Gradle build. Editors open the workspace root with its [IDE files](#ide-files), or each project on its own: `python/` (pyright and ruff find `.venv`), `typescript/` (tsserver finds `node_modules`) and `jvm/` (IntelliJ imports it as one Gradle project).
+
+## IDE files
+
+`cstudy init` and [`cstudy ide`](cli.md#cstudy-ide) write project files so that the workspace root opens in VS Code or IntelliJ IDEA with every `cstudy` action ready to run and debug ([ADR 0010](../decisions/0010-ide-integration.md)). `cstudy` stays the judge: the IDE runs `cstudy` commands, and debugging attaches to the runner that `cstudy test --debug` starts.
+
+| Action | Current file (the solution in the editor is the target) | Active attempt (no target) |
+|--------|-------------------------------|----------------|
+| `test`, `test --perf`, `test --typecheck` (TypeScript), `bench`, `hint` | yes | yes |
+| `done --rating=ok\|easy\|hard`, `done --gave-up` | yes | yes |
+| `solution`, `show`, `start --no-open` | yes | no: the target is required |
+| `test --debug` (VS Code), `test --debug --debug-connect` (IntelliJ, Java and Kotlin) | yes | yes |
+| `next`, `stats`, `doctor` | workspace commands, no target | |
+
+One catalog (`coding_study/domain/ide_actions.py`) lists these actions, and both IDEs' files are generated from it; the tests parse every command line with the real `cstudy` command line.
+
+| File | Holds |
+|------|-------|
+| `.vscode/tasks.json` | A `process` task per action and scope (`cstudy test (current file)` runs `cstudy test ${file}` in `${workspaceFolder}`); `done` asks for the outcome through a `pickString` input. The `cstudy test --debug` tasks are background tasks whose problem matcher ends at `cstudy: waiting for debugger on 127.0.0.1:<port>` |
+| `.vscode/launch.json` | `Debug current file (<language>)` and `Debug active attempt (<language>)` for Python (`debugpy` attach, port 5678), TypeScript (`node` attach, 9229) and Java (`java` attach, 5005), each starting its `cstudy test --debug` task first; all on 127.0.0.1. None for Kotlin: VS Code's Java debugger never binds Kotlin breakpoints ([vscode-java-debug#241](https://github.com/microsoft/vscode-java-debug/issues/241)) |
+| `.vscode/settings.json` | `python.defaultInterpreterPath` `${workspaceFolder}/python/.venv/bin/python`, `typescript.tsdk` `typescript/node_modules/typescript/lib`, `java.import.gradle.enabled`, watcher and search exclusions for build output; no JDK path |
+| `.vscode/extensions.json` | Recommends `ms-python.python`, `ms-python.debugpy`, `vscjava.vscode-java-pack`, `vscjava.vscode-gradle` |
+| `.idea/misc.xml` | The project JDK `21` (`JavaSDK`, language level `JDK_21`): the toolchain of the practice projects |
+| `.idea/gradle.xml` | `jvm/` linked as a Gradle project with its `java` and `kotlin` modules, run with the project JDK (`#USE_PROJECT_JDK`) |
+| `.idea/runConfigurations/*.xml` | Shared run configurations in the folders `cstudy: current file` (JAR Application configurations that start the launcher with `"$FilePath$"`), `cstudy: active attempt` and `cstudy: workspace` (Shell Script configurations run in the terminal), and `cstudy: debug`: **Debug JVM (listen)**, a Remote JVM Debug configuration listening on port 5005 that restarts after each session, and the compounds `Debug current file (Java, Kotlin)` and `Debug active attempt (Java, Kotlin)`, each starting the listener and `cstudy test --debug --debug-connect`. Each file is named after its configuration as IntelliJ names it (`cstudy test (current file)` is `cstudy_test__current_file_.xml`) |
+
+| Rule | Detail |
+|------|--------|
+| Launcher | IntelliJ expands macros such as `$FilePath$` in JAR Application configurations but not in Shell Script ones, so current-file configurations run `.cs/runtime/ide/cstudy-launcher.jar` ([runtime](#runner-runtime)). It runs `cstudy <arguments>` with the same standard streams and exits with its exit code; it finds `cstudy` through `-Dcstudy.executable`, `CSTUDY_EXECUTABLE`, `PATH`, `UV_TOOL_BIN_DIR`, `XDG_BIN_HOME` and `~/.local/bin`, and exits 127 naming `CSTUDY_EXECUTABLE` when it finds none. Built reproducibly from `tools/ide-launcher/` (javac 21, Java 17 bytecode) and shipped as package data; a test rebuilds it and compares the bytes |
+| No editor focused | IntelliJ passes the project directory as `$FilePath$`; [a directory target](cli.md#solution-file-targets) exits 3 with `open a solution file in the editor first` |
+| Manifest | `.cs/ide.json`: `{"format": 1, "files": {<path>: <SHA-256 of what cstudy wrote>}}`, sorted, tracked with the IDE files so a clone knows which files are still as cstudy wrote them |
+| Rewriting | A missing file is written; a file still matching its recorded digest is overwritten; a file already holding the new content is left as it is (and recorded); any other file at a generated path, edited since or never written by cstudy, is kept with a warning until `cstudy ide --force`. Files cstudy does not generate are never touched |
+| Removal | A recorded file this `cstudy` no longer generates is deleted while it matches its digest; once edited, it is kept and forgotten |
+| Stable output | JSON with two-space indents in a fixed key order; XML from ElementTree in IntelliJ's layout; every file ends with a newline, so generating again changes no byte |
+
+Not set from project files, because IDEs keep them per user or need a plugin: the JDK definition behind the name `21` (IntelliJ offers to set up the missing SDK), the first **Load Gradle Project** in IntelliJ, a Python SDK in IntelliJ (Python plugin), a JDK for VS Code's Java extension, Python and Node debugging in IntelliJ (Python plugin; Node attach is IntelliJ IDEA Ultimate only), and Kotlin debugging in VS Code. The workspace README lists them.
 
 ## cstudy doctor in a workspace
 
@@ -116,7 +155,7 @@ Because the wiring is relative, a workspace keeps working when it moves or is cl
 | `content` | Path, `bundled` or `checkout` | FAIL when the content root cannot be found |
 | `workspace` | Path and `created with cstudy <version>` (with the running version when it differs) | WARN when there is no workspace (`fix: cstudy init`); FAIL for an unreadable marker or a newer schema |
 | `workspace files` | Every template file exists | FAIL listing up to 5 missing files, `fix: cstudy doctor --fix` |
-| `runner runtime` | The stamp matches the content | FAIL when missing or stale, `fix: cstudy doctor --fix` |
+| `runner runtime` | The stamp matches the content and the IDE launcher is the shipped one | FAIL when missing or stale, `fix: cstudy doctor --fix` |
 | `jvm/gradlew`, `python/.venv`, `typescript/node_modules` and `runner <lang>` | As in [cli](cli.md#cstudy-doctor) | As in [cli](cli.md#cstudy-doctor) |
 
 `cstudy doctor --fix` first writes every missing template file (never overwriting one, so practice files are never touched), refreshes the runner runtime, then runs `uv sync` in `python/`, `pnpm install` in `typescript/` (and in the content checkout's `runners/typescript` when the content is a checkout), and the Gradle warm-up in `jvm/`. Outside a workspace it exits 3.

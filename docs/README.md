@@ -23,7 +23,7 @@ coding-study is a local, IDE-first interview-prep system: original problems stor
 | [catalog](specs/catalog.md) | Binding manifest of every item: ids, slugs, titles, patterns, difficulty, kind, batch, owner stream | Writing content in a stream, or adding to the catalog |
 | [versioning](specs/versioning.md) | Commit types and version bumps, the version workflow, `CHANGELOG.md`, `cstudy --version` | Committing, or changing how releases are versioned |
 | [authoring](specs/authoring.md) | Authoring workflow, `problem.md` and `explanation.md` formats, ready criteria, every `cstudy verify` check | Writing or reviewing a problem |
-| [installation-and-workspaces](specs/installation-and-workspaces.md) | Packaging, content and workspace resolution, `cstudy init`, the runner runtime, your own problems | Installing `cstudy`, setting up a workspace, or changing where files live |
+| [installation-and-workspaces](specs/installation-and-workspaces.md) | Packaging, content and workspace resolution, `cstudy init`, the runner runtime, IDE files, your own problems | Installing `cstudy`, setting up a workspace, or changing where files live |
 
 ## Decisions
 
@@ -38,6 +38,7 @@ coding-study is a local, IDE-first interview-prep system: original problems stor
 | [0007](decisions/0007-no-persistent-jvm-runner.md) | No persistent JVM runner in v1: the warm Java and Kotlin `cstudy test` meets NFR-1 through the Gradle daemon and a fresh JVM |
 | [0008](decisions/0008-installable-tool-and-separate-workspaces.md) | `cstudy` is installed with its content bundled, and you practice in a separate workspace created by `cstudy init` |
 | [0009](decisions/0009-ladder-calibration.md) | The ladder check tolerates drift and fixed costs, needs super-polynomial evidence for exponential growth, and treats sublinear classes as one band |
+| [0010](decisions/0010-ide-integration.md) | Workspaces ship VS Code and IntelliJ project files that run `cstudy` and attach debuggers to its runner; `cstudy` stays the judge |
 
 ## Conventions
 

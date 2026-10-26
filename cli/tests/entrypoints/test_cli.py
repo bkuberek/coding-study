@@ -25,7 +25,7 @@ PHASE_0_COMMANDS = ("doctor", "start", "test", "list", "show", "solution", "done
 PHASE_1_COMMANDS = ("next", "hint", "new")
 PHASE_2_COMMANDS = ("bench",)
 PHASE_7_COMMANDS = ("stats", "export", "import", "mock")
-WORKSPACE_COMMANDS = ("init",)
+WORKSPACE_COMMANDS = ("init", "ide")
 
 
 def registered_commands() -> set[str | None]:

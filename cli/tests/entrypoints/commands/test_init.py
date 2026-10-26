@@ -22,6 +22,8 @@ PRACTICE_PROJECT_FILES = (
     "jvm/gradlew",
     "jvm/gradle/wrapper/gradle-wrapper.jar",
 )
+VSCODE_TASKS = ".vscode/tasks.json"
+IDEA_MISC = ".idea/misc.xml"
 
 
 def init(*arguments: str):
@@ -167,3 +169,57 @@ def test_git_commits_nothing(target):
 def test_without_git_there_is_no_repository(target):
     init(str(target))
     assert not (target / ".git").exists()
+
+
+@pytest.mark.parametrize("relative", [VSCODE_TASKS, IDEA_MISC, ".cs/ide.json"])
+def test_init_writes_the_ide_files_of_both_ides(target, relative):
+    init(str(target))
+    assert (target / relative).is_file()
+
+
+def test_init_installs_the_intellij_launcher(target):
+    init(str(target))
+    assert (target / ".cs" / "runtime" / "ide" / "cstudy-launcher.jar").is_file()
+
+
+def test_init_reports_the_ide_files(target):
+    assert "ide      vscode, idea" in init(str(target)).output
+
+
+@pytest.mark.parametrize("directory", [".vscode", ".idea"])
+def test_no_ide_writes_no_ide_files(target, directory):
+    init(str(target), "--no-ide")
+    assert not (target / directory).exists()
+
+
+def test_ide_writes_only_the_named_ides(target):
+    init(str(target), "--ide", "idea")
+    assert ((target / IDEA_MISC).is_file(), (target / ".vscode").exists()) == (True, False)
+
+
+def test_ide_repeats(target):
+    init(str(target), "--ide", "idea", "--ide", "vscode")
+    assert ((target / IDEA_MISC).is_file(), (target / VSCODE_TASKS).is_file()) == (True, True)
+
+
+def test_ide_and_no_ide_together_are_a_usage_error(target):
+    result = init(str(target), "--ide", "idea", "--no-ide")
+    assert result.exit_code == ExitCode.USAGE_ERROR
+
+
+def test_init_keeps_an_ide_file_of_your_own(target):
+    (target / ".vscode").mkdir(parents=True)
+    (target / ".vscode" / "settings.json").write_text("{}\n")
+    init(str(target))
+    assert (target / ".vscode" / "settings.json").read_text() == "{}\n"
+
+
+def test_init_names_an_ide_file_it_kept(target):
+    (target / ".vscode").mkdir(parents=True)
+    (target / ".vscode" / "settings.json").write_text("{}\n")
+    assert "kept .vscode/settings.json" in init(str(target)).output
+
+
+def test_the_workspace_tracks_the_ide_manifest(target):
+    init(str(target))
+    assert "!/.cs/ide.json" in (target / ".gitignore").read_text().splitlines()
