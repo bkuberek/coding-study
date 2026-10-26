@@ -110,3 +110,26 @@ def test_a_slug_an_id_or_nothing_is_left_as_it_is(environment, text):
 def test_a_slug_stays_a_slug_when_a_file_of_that_name_exists(environment):
     (environment.root / "two-sum").write_text("not a solution")
     assert resolve(environment, "two-sum") == Target("two-sum", None)
+
+
+@pytest.fixture
+def practice_directory(environment) -> str:
+    directory = "python/practice"
+    (environment.root / directory).mkdir(parents=True)
+    return directory
+
+
+def test_the_workspace_root_asks_for_a_solution_file_in_the_editor(environment):
+    with pytest.raises(UsageError, match=r"open a solution file in the editor first \(got a"):
+        resolve(environment, f"{environment.root}/.")
+
+
+def test_a_directory_asks_for_a_solution_file_in_the_editor(environment, practice_directory):
+    absolute = str(environment.root / practice_directory)
+    with pytest.raises(UsageError, match=r"open a solution file in the editor first \(got a"):
+        resolve(environment, absolute)
+
+
+def test_the_directory_message_names_the_directory(environment, practice_directory):
+    with pytest.raises(UsageError, match=r"got a directory: python/practice\)"):
+        resolve(environment, practice_directory)

@@ -37,6 +37,7 @@
 | Problem | The slug is the problem whose file name the path carries (`two_sum` is `two-sum`); a path that names no problem exits 3 |
 | Language | The path's language is the language of the run. `--lang` may repeat it; naming another language exits 3 with both. `hint`, `done` and `show` have no `--lang`: they act on the problem, as with its slug |
 | Not a solution file | A path outside the workspace, or inside it but not at one of those locations, exits 3 with `not a solution file in this workspace: <path>` |
+| Directory | A directory exits 3 with `open a solution file in the editor first (got a directory: <path>)`: IntelliJ passes the project directory as the current file when no editor has focus |
 
 ## Exit codes
 

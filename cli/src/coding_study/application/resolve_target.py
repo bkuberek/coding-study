@@ -39,8 +39,8 @@ def resolve_target(environment: Environment, target: Target, cwd: Path) -> Targe
 def resolve_problem(environment: Environment, target: ProblemTarget, cwd: Path) -> ProblemTarget:
     """`target` with a path replaced by its problem's slug and its language.
 
-    Anything that is not a path comes back unchanged. Raises UsageError for a path that is not a
-    solution file of a problem in the workspace, or that contradicts the language.
+    Anything that is not a path comes back unchanged. Raises UsageError for a directory, for a path
+    that is not a solution file of a problem in the workspace, or that contradicts the language.
     """
     if not is_path_target(target.slug):
         return target
@@ -54,6 +54,8 @@ def resolve_problem(environment: Environment, target: ProblemTarget, cwd: Path) 
 
 def _solution_file(environment: Environment, text: str, cwd: Path) -> SolutionFile:
     absolute = Path(os.path.normpath(cwd / text)).resolve()
+    if absolute.is_dir():
+        raise UsageError(_directory(text))
     try:
         relative = absolute.relative_to(environment.root.resolve())
     except ValueError:
@@ -73,3 +75,8 @@ def _slug_of(environment: Environment, solution: SolutionFile, text: str) -> str
 
 def _not_a_solution_file(text: str) -> str:
     return f"not a solution file in this workspace: {text}"
+
+
+def _directory(text: str) -> str:
+    """An IDE passes the project directory for the current file when no editor has focus."""
+    return f"open a solution file in the editor first (got a directory: {text})"
