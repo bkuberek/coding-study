@@ -35,7 +35,8 @@ def javac_feature_release() -> str | None:
 def run_launcher(arguments: list[str], environment: dict[str, str], tmp_path: Path):
     jar = tmp_path / "cstudy-launcher.jar"
     jar.write_bytes(launcher_jar())
-    command = ["java", "-jar", str(jar), *arguments]
+    # The JVM takes user.home from the password database on macOS, not from HOME.
+    command = ["java", f"-Duser.home={environment['HOME']}", "-jar", str(jar), *arguments]
     return subprocess.run(command, env=environment, capture_output=True, text=True, check=False)
 
 
