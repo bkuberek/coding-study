@@ -164,7 +164,7 @@ next       answer in the notes, then cstudy solution url-shortener
 ```text
 cstudy test [<slug|file>] [--lang L] [--watch] [--case ID]... [--all] [--level N]
         [--time-limit[=VALUE] | --no-time-limit] [--perf] [--typecheck] [--stress N] [--seed S]
-        [--json]
+        [--json] [--debug [--debug-port N] [--debug-connect]]
 ```
 
 | Flag | Effect |
@@ -179,7 +179,10 @@ cstudy test [<slug|file>] [--lang L] [--watch] [--case ID]... [--all] [--level N
 | `--typecheck` | TypeScript: also run `pnpm exec tsc --noEmit` (type stripping does not type-check) |
 | `--stress N` | 1 to 100. Concurrent problems: run every stress case N times per variant instead of `concurrency.runs` (default 3). Function and design problems: also run N [oracle inputs](#oracle-inputs), generated inputs checked against the oracle approach; progressive problems, and problems without `generator.py` or a Python oracle, exit 3 |
 | `--seed S` | Concurrent problems: base seed of every selected stress case instead of its `seed`; run `r` uses `S + r`. In the `async` model this reproduces a reported failing run exactly (`--case s1 --seed 1007 --stress 1`). Other problems: the first oracle input's seed (default 1), so `--stress 1 --seed 17` reruns `oracle-17`; without `--stress` it exits 3 |
-| `--json` | One [JSON document](#json-output) on standard output instead of the report; with `--watch` or `--perf` it is a usage error |
+| `--json` | One [JSON document](#json-output) on standard output instead of the report; with `--watch`, `--perf` or `--debug` it is a usage error |
+| `--debug` | Start the runner under the language's debug agent and wait for an IDE to attach to it, with every time limit off ([Debugging](#debugging)) |
+| `--debug-port N` | With `--debug`: the agent's port, 1 to 65535. Defaults: Python 5678, TypeScript 9229, Java and Kotlin 5005 |
+| `--debug-connect` | With `--debug`, Java and Kotlin only: connect to an IDE that is already listening on the port instead of listening for it |
 
 Output rules: visible cases are always listed; passing hidden cases collapse into a count unless `--all`; failing hidden cases show input, expected and actual (PRD Q10); a `TLE` line shows the measured time, the limit and its basis instead. Statuses: `PASS`, `FAIL`, `ERROR`, `TIMEOUT` (hang guard), `TLE` (time limit), `INVALID` (output not serializable as the declared type), `STALLED` (concurrent stress run still unfinished at its deadline), `NOT RUN`.
 
@@ -200,7 +203,7 @@ PASS     10 hidden cases
 12/14 passed · 1 failed · 1 tle · total 2.6s
 ```
 
-On a full pass the summary adds `all passed. Next: cstudy done --rating easy|ok|hard`. Every run is stored in `test_runs`. Exit codes: 0, 1, 2, 3, 4.
+On a full pass the summary adds `all passed. Next: cstudy done --rating easy|ok|hard`. Every run is stored in `test_runs`, except a [debug run](#debugging). Exit codes: 0, 1, 2, 3, 4.
 
 #### Concurrent problems
 
@@ -272,6 +275,37 @@ PASS     19 oracle inputs
 ```
 
 `cstudy test --stress 1 --seed 14` reruns the first one alone.
+
+#### Debugging
+
+`cstudy test <file> --debug` runs the normal judged run with the runner waiting for an IDE debugger ([debug mode](runners.md#debug-mode) has the agents, ports and markers): breakpoints in your file stop the real runner, and the verdict comes when the run ends.
+
+| Language | Agent | Default port | `--debug-connect` |
+|----------|-------|--------------|-------------------|
+| Python | debugpy (`python/.venv`) | 5678 | usage error |
+| TypeScript | Node inspector, `--inspect-wait` | 9229 | usage error |
+| Java, Kotlin | JDWP, `suspend=y` | 5005 | the JVM connects to an IDE that is listening |
+
+The ready line is a stable contract: IDE tasks and run configurations match it. It is printed once, to **standard error**, as plain text on a line of its own, after the agent is bound (so the IDE can attach at once), or, with `--debug-connect`, as the JVM is started:
+
+```text
+cstudy: waiting for debugger on 127.0.0.1:5678 (python)
+cstudy: waiting for debugger on 127.0.0.1:9229 (typescript)
+cstudy: waiting for debugger on 127.0.0.1:5005 (java)
+cstudy: connecting to debugger at 127.0.0.1:5005 (kotlin)
+```
+
+`cstudy: waiting for debugger on` and `cstudy: connecting to debugger at` start the two forms; the port and the language are the last fields. Every other notice of a debug run (`warming Gradle daemon`, `computing expected values`) goes to standard error too, and the report goes to standard output when the run ends.
+
+| Rule | Detail |
+|------|--------|
+| One language | The language of the file, `--lang` or the active attempt, as for any run |
+| Excluded | `--watch`, `--perf`, `--json`, `--stress`, `--seed` and `--time-limit` exit 3 (`--debug excludes --watch, --perf`); `--no-time-limit` is accepted. `--debug-port` and `--debug-connect` without `--debug` exit 3, as does `--debug-connect` for Python and TypeScript |
+| No limits | No hello timeout, hang guard or time limit; the runner is never restarted. A concurrent problem runs its sequential cases only (`stress runs are skipped while debugging`) |
+| Report | The header names the run (`two-sum · python · debug · 16 cases ...`); no durations, no `total`, no `TLE`, since pauses at breakpoints would be part of them. A pass ends with `all passed (debug run: not recorded; cstudy test records the run)` |
+| Not recorded | A debug run is not stored in `test_runs`, never counts as the first pass and unlocks no level; run `cstudy test` again to record it |
+| Interrupted | Ctrl-C exits 130, SIGTERM 143 and SIGHUP 129; each kills the runner's process group, so the port is free again |
+| Environment errors (exit 4) | `debugpy` missing from `python/.venv` (the message gives the fix, `uv add --dev debugpy --directory python`); a port in use (`cannot debug python: port 5678 on 127.0.0.1 is already in use; stop the other debug session or choose another port with --debug-port`); no IDE listening with `--debug-connect` after 10 s (`no debugger listening on 127.0.0.1:5005; start the IDE's 'Debug JVM (listen)' configuration first`); a runner that ends before it starts the run (`the debug session ended before the run started`, with the runner's last output lines) |
 
 #### JSON output
 

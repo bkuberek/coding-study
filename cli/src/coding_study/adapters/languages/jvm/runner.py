@@ -2,6 +2,9 @@
 
 `prepare` compiles one problem's package through the Gradle daemon (`csClasspath` with
 `-Pcs.only=<snake_slug>`), then launches a fresh `java` process on the classpath Gradle wrote.
+
+Under `cstudy test --debug` the JVM also gets a JDWP agent that suspends it until the IDE attaches:
+listening for the IDE, or, with `--debug-connect`, connecting to an IDE that listens already.
 """
 
 import os
@@ -9,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from coding_study.adapters.languages.context import LanguageContext
+from coding_study.adapters.languages.debug_port import require_free_port
 from coding_study.adapters.languages.jvm.gradle import (
     GradleBuild,
     GradleOutcome,
@@ -20,6 +24,7 @@ from coding_study.application.ports import (
     BenchCode,
     BuildFailed,
     BuildScope,
+    DebugLaunch,
     Prepared,
     PrepareResult,
     ProgressNotice,
@@ -28,6 +33,7 @@ from coding_study.application.ports import (
     RunnerLaunch,
     UserCode,
 )
+from coding_study.domain.debugging import DebugSession
 from coding_study.domain.errors import ContentError, ContentIssue, RunnerStartError
 from coding_study.domain.layout import JVM_PROJECT, reference_build_path, watch_path
 from coding_study.domain.problem import Language, ProblemMeta
@@ -39,6 +45,10 @@ RUNNERS_BUILD = "jvm"
 MAIN_CLASS = "cs.runner.Main"
 JAVA_EXECUTABLE = "java"
 JVM_FLAGS = ("-XX:+UseSerialGC", "-Xshare:auto")
+JDWP_LISTENING_MARKER = "Listening for transport dt_socket"
+"""JDWP prints this to standard output once it listens for the IDE."""
+JDWP_REFUSED_MARKER = "transport error 202: connect failed"
+"""JDWP prints this to standard error, then the JVM exits, when no IDE listens to connect to."""
 GRADLE_FLAGS = ("-q", "--console=plain")
 CLASSPATH_TASK = "csClasspath"
 ONLY_PROPERTY = "cs.only"
@@ -78,12 +88,17 @@ class JvmRunner:
     def prepare(self, scope: BuildScope, notify: ProgressNotice) -> PrepareResult:
         match scope:
             case UserCode():
-                return self._prepared(self._compile(self._user_project(scope.meta), notify))
+                return self._prepare_user_code(scope, notify)
             case References():
                 project = self._reference_project(scope.meta, scope.sources)
                 return self._prepared(self._compile(project, notify))
             case BenchCode():
                 return self._prepare_bench(scope, notify)
+
+    def _prepare_user_code(self, scope: UserCode, notify: ProgressNotice) -> PrepareResult:
+        """A debug port in use is reported before the build, not after it."""
+        debug = _debug_launch(scope.debug, notify)
+        return self._prepared(self._compile(self._user_project(scope.meta), notify), debug)
 
     def _prepare_bench(self, scope: BenchCode, notify: ProgressNotice) -> PrepareResult:
         """Both builds on one classpath (`practice.*` and `ref.*` never collide). A reference
@@ -126,13 +141,17 @@ class JvmRunner:
         note = WARM_BUILD_NOTE if warm else COLD_BUILD_NOTE
         return _Compiled(self._classpath(project), project.meta, note)
 
-    def _prepared(self, compiled: "_Compiled | BuildFailed") -> PrepareResult:
+    def _prepared(
+        self, compiled: "_Compiled | BuildFailed", debug: DebugLaunch | None = None
+    ) -> PrepareResult:
         if isinstance(compiled, BuildFailed):
             return compiled
+        agent = () if debug is None else (_jdwp_agent(debug.session),)
         launch = RunnerLaunch(
-            (JAVA_EXECUTABLE, *JVM_FLAGS, "-cp", compiled.classpath, MAIN_CLASS),
+            (JAVA_EXECUTABLE, *JVM_FLAGS, *agent, "-cp", compiled.classpath, MAIN_CLASS),
             self._workspace,
             HELLO_TIMEOUT_MS[self._language],
+            debug,
         )
         return Prepared(launch, compiled.build_note)
 
@@ -142,6 +161,21 @@ class JvmRunner:
             return path.read_text(encoding="utf-8").strip()
         except OSError as error:
             raise RunnerStartError(f"gradle did not write the runtime classpath {path}") from error
+
+
+def _debug_launch(session: DebugSession | None, notify: ProgressNotice) -> DebugLaunch | None:
+    if session is None:
+        return None
+    require_free_port(session)
+    return DebugLaunch(
+        session, notify, ready_marker=JDWP_LISTENING_MARKER, refused_marker=JDWP_REFUSED_MARKER
+    )
+
+
+def _jdwp_agent(session: DebugSession) -> str:
+    """Suspended at start until the IDE attaches (`server=y`) or accepts the connection."""
+    server = "n" if session.connect else "y"
+    return f"-agentlib:jdwp=transport=dt_socket,server={server},suspend=y,address={session.address}"
 
 
 def _build_failure(outcome: GradleOutcome, sources: str) -> BuildFailed:

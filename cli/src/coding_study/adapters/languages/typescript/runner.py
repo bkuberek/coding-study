@@ -4,19 +4,25 @@ Node runs the runners' `typescript/runner.ts` directly through type stripping, s
 no build; `cstudy test --typecheck` adds a `tsc --noEmit` pass over the workspace's `typescript/`
 project. References are copied into `.cs/build/typescript/`, a project that maps `#support` like
 the workspace.
+
+`cstudy test --debug` starts Node with `--inspect-wait` on the loopback interface: the runner script
+begins only once the IDE attached, and Node keeps the line and column of the `.ts` file.
 """
 
 import json
 import os
 import shutil
 import subprocess
+from dataclasses import replace
 from pathlib import Path, PurePosixPath
 from typing import Protocol
 
+from coding_study.adapters.languages.debug_port import require_free_port
 from coding_study.application.ports import (
     BenchCode,
     BuildFailed,
     BuildScope,
+    DebugLaunch,
     Prepared,
     PrepareResult,
     ProbeResult,
@@ -26,6 +32,7 @@ from coding_study.application.ports import (
     RunnerLaunch,
     UserCode,
 )
+from coding_study.domain.debugging import DebugSession
 from coding_study.domain.errors import ContentError, ContentIssue, RunnerStartError
 from coding_study.domain.layout import (
     BUILD_DIRECTORY,
@@ -38,6 +45,8 @@ from coding_study.domain.runs import HELLO_TIMEOUT_MS
 
 NODE = "node"
 EXPOSE_GC_FLAG = "--expose-gc"
+INSPECTOR_MARKER = "Debugger listening on"
+"""What Node prints to standard error once the inspector listens."""
 RUNNER_SCRIPT = "typescript/runner.ts"
 SUPPORT_MODULE = "typescript/support.ts"
 """Relative to the runners directory."""
@@ -97,7 +106,7 @@ class TypeScriptRunner:
             case BenchCode():
                 return self._prepare_bench(scope)
             case UserCode():
-                return self._prepare_user_code(scope)
+                return self._prepare_user_code(scope, notify)
 
     def _prepare_bench(self, scope: BenchCode) -> PrepareResult:
         """References and user code in one Node process with `gc()` exposed for memory figures."""
@@ -105,11 +114,15 @@ class TypeScriptRunner:
         project = BUILD_PROJECT if scope.references_only else WORKSPACE_PROJECT
         return Prepared(self._launch(self._root / project, EXPOSE_GC_FLAG))
 
-    def _prepare_user_code(self, scope: UserCode) -> PrepareResult:
+    def _prepare_user_code(self, scope: UserCode, notify: ProgressNotice) -> PrepareResult:
         workspace = self._root / WORKSPACE_PROJECT
         if not (workspace / PACKAGE_FILE).is_file():
             raise RunnerStartError(f"{WORKSPACE_PROJECT}/{PACKAGE_FILE} is missing")
-        launch = self._launch(workspace)
+        launch = (
+            self._launch(workspace)
+            if scope.debug is None
+            else self._debug_launch(workspace, scope.debug, notify)
+        )
         if not scope.typecheck:
             return Prepared(launch)
         user_file = PurePosixPath(stub_path(scope.meta, Language.TYPESCRIPT))
@@ -137,6 +150,13 @@ class TypeScriptRunner:
         for source in sources:
             relative = reference_build_path(meta, source.approach_id, Language.TYPESCRIPT)
             _copy_reference(self._root / source.path, self._root / relative)
+
+    def _debug_launch(
+        self, workspace: Path, session: DebugSession, notify: ProgressNotice
+    ) -> RunnerLaunch:
+        require_free_port(session)
+        launch = self._launch(workspace, f"--inspect-wait={session.address}")
+        return replace(launch, debug=DebugLaunch(session, notify, ready_marker=INSPECTOR_MARKER))
 
     def _launch(self, cwd: Path, *node_flags: str) -> RunnerLaunch:
         script = self._runners / RUNNER_SCRIPT

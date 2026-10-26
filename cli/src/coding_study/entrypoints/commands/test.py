@@ -5,10 +5,14 @@ failing hidden cases show input, expected and actual (PRD Q10). Progressive prob
 levels a run covered and the level it unlocked. Concurrent problems print one line per stress
 case and variant, with up to 3 failing runs. Oracle inputs (`--stress N` on other problems) show
 their 3 smallest failures and collapse the rest into counts.
+
+`--debug` runs the same judged run with the runner waiting for an IDE debugger. Its ready line goes
+to standard error as plain text, like every notice of a `--json` run, so IDE tasks can match it; the
+report shows no durations, because pauses at breakpoints would be part of them.
 """
 
 import json
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
@@ -32,6 +36,7 @@ from coding_study.application.run_bench import (
 from coding_study.application.time_limits import TimeLimitFlags
 from coding_study.domain import layout
 from coding_study.domain.cases import FunctionInput
+from coding_study.domain.debugging import DebugRequest
 from coding_study.domain.errors import UsageError
 from coding_study.domain.generated_cases import OracleInput
 from coding_study.domain.judging import CaseStatus, CaseVerdict, RunnableCase, outcome_summary
@@ -80,8 +85,10 @@ MAX_STRESS_RUNS = 100
 SHOWN_ORACLE_FAILURES = 3
 TIMES = "\N{MULTIPLICATION SIGN}"
 SUBSET_PASSED = "all selected cases passed"
+DEBUG_PASSED = "all passed (debug run: not recorded; cstudy test records the run)"
 STATEMENT_LABEL = "statement  "
 MILLISECONDS_PER_SECOND = 1000
+MAX_PORT = 65535
 TIME_LIMIT_OPTION = "--time-limit"
 SECONDS_PER_MINUTE = 60
 _STATUS_STYLES = {
@@ -176,9 +183,46 @@ def run_tests(
     as_json: Annotated[
         bool, typer.Option("--json", help="One JSON document instead of the report.")
     ] = False,
+    debug: Annotated[
+        bool,
+        typer.Option(
+            "--debug",
+            help="Wait for an IDE debugger to attach to the runner (docs/specs/runners.md).",
+        ),
+    ] = False,
+    debug_port: Annotated[
+        int | None,
+        typer.Option(
+            "--debug-port",
+            metavar="N",
+            min=1,
+            max=MAX_PORT,
+            help="With --debug: the agent's port (python 5678, typescript 9229, java/kotlin 5005).",
+        ),
+    ] = None,
+    debug_connect: Annotated[
+        bool,
+        typer.Option(
+            "--debug-connect",
+            help="With --debug, java and kotlin: connect to an IDE that is already listening.",
+        ),
+    ] = False,
 ) -> None:
     """Run the user's code against the cases."""
-    options = _Options(show_all, perf, as_json)
+    options = _Options(show_all, perf, as_json, debug)
+    debug_request = _debug_request(
+        _DebugOptions(debug, debug_port, debug_connect),
+        _given(
+            {
+                "--watch": watch,
+                "--perf": perf,
+                "--json": as_json,
+                "--stress": stress is not None,
+                "--seed": seed is not None,
+                "--time-limit": time_limit is not None,
+            }
+        ),
+    )
     _require_text_for(options, watch)
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     target = resolve_target(environment, Target(slug, language), Path.cwd())
@@ -190,12 +234,11 @@ def run_tests(
         _time_limit_flags(time_limit, no_time_limit),
         level,
         StressSelection(stress, seed),
+        debug_request,
     )
     session = _Session(environment, request, console(context), options)
-    if not watch:
-        raise typer.Exit(session.run())
     try:
-        raise typer.Exit(session.watch())
+        raise typer.Exit(session.watch() if watch else session.run())
     except KeyboardInterrupt:
         raise typer.Exit(ExitCode.INTERRUPTED) from None
 
@@ -223,6 +266,34 @@ class _Options:
     """`--perf`: after a full pass, a short bench and its verdict line."""
     as_json: bool = False
     """`--json`: the run as one JSON document; notices go to standard error."""
+    debug: bool = False
+    """`--debug`: notices go to standard error too, where the ready line must be."""
+
+
+@dataclass(frozen=True, slots=True)
+class _DebugOptions:
+    debug: bool
+    port: int | None
+    connect: bool
+
+
+def _given(options: Mapping[str, bool]) -> tuple[str, ...]:
+    """The options of this run that `--debug` cannot go with, as the user typed them: a paused
+    runner would fail time limits and stress deadlines, a rerun would restart the debug session,
+    and a JSON document or a bench has no use for a debugger."""
+    return tuple(option for option, used in options.items() if used)
+
+
+def _debug_request(options: _DebugOptions, excluded: tuple[str, ...]) -> DebugRequest | None:
+    if not options.debug:
+        needs = (("--debug-port", options.port is not None), ("--debug-connect", options.connect))
+        for option, given in needs:
+            if given:
+                raise UsageError(f"{option} needs --debug")
+        return None
+    if excluded:
+        raise UsageError(f"--debug excludes {', '.join(excluded)}")
+    return DebugRequest(options.port, options.connect)
 
 
 def _require_text_for(options: _Options, watch: bool) -> None:
@@ -290,7 +361,7 @@ class _Session:
             return ERROR_EXIT_CODES[type(error)]
 
     def _notice(self, line: str) -> None:
-        if self._options.as_json:
+        if self._options.as_json or self._options.debug:
             typer.echo(line, err=True)
             return
         self._output.print(Text(line, style="dim"))
@@ -327,6 +398,9 @@ class _Report:
             yield from self._passed()
 
     def _passed(self) -> Iterator[Text]:
+        if self._result.debug is not None:
+            yield Text(DEBUG_PASSED, style="green")
+            return
         if self._result.stress_plan:
             yield Text(STRESS_EVIDENCE, style="dim")
         levels = self._result.levels
@@ -347,6 +421,8 @@ class _Report:
         hidden = len(cases) - visible - generated
         noun = "case" if len(cases) == 1 else "cases"
         parts = [self._result.meta.slug, self._result.language]
+        if self._result.debug is not None:
+            parts.append("debug")
         levels = self._result.levels
         if levels is not None:
             parts.append(_levels_text(levels.ran_up_to, levels.progress.last))
@@ -458,7 +534,8 @@ class _Report:
     def _case_label(self, verdict: CaseVerdict) -> str:
         parts = [] if verdict.case.visible else ["hidden"]
         duration = verdict.duration_ns
-        if verdict.status is CaseStatus.PASS and duration is not None:
+        shows_durations = self._result.debug is None
+        if verdict.status is CaseStatus.PASS and duration is not None and shows_durations:
             parts.append(_duration(duration))
         if verdict.time_limit is not None and duration is not None:
             parts.append(f"{_duration(duration)} > limit {_limit_text(verdict.time_limit)}")
@@ -489,7 +566,9 @@ class _Report:
                 for status, singular, plural in _SUMMARY_LABELS
                 if (count := judgement.count(status))
             ]
-        parts = [f"{passed}/{total} passed", *counts, f"total {result.duration_seconds:.1f}s"]
+        parts = [f"{passed}/{total} passed", *counts]
+        if result.debug is None:
+            parts.append(f"total {result.duration_seconds:.1f}s")
         return " · ".join(parts)
 
     def _is_subset(self) -> bool:

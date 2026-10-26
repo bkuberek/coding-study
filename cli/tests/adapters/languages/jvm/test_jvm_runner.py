@@ -1,4 +1,5 @@
 import os
+import socket
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -16,6 +17,8 @@ from coding_study.adapters.languages.jvm.gradle import (
 )
 from coding_study.adapters.languages.jvm.runner import (
     COLD_DAEMON_NOTICE,
+    JDWP_LISTENING_MARKER,
+    JDWP_REFUSED_MARKER,
     JVM_FLAGS,
     MAIN_CLASS,
     JvmRunner,
@@ -28,6 +31,7 @@ from coding_study.application.ports import (
     ReferenceSource,
     UserCode,
 )
+from coding_study.domain.debugging import DebugSession
 from coding_study.domain.errors import RunnerStartError
 from coding_study.domain.layout import reference_build_path
 from coding_study.domain.problem import Language
@@ -363,3 +367,111 @@ def test_daemon_log_of_an_ended_process_is_not_running(tmp_path):
 
 def test_no_daemon_directory_means_no_daemon(tmp_path):
     assert not DaemonRegistry(tmp_path, "9.8.2").daemon_running()
+
+
+# `cstudy test --debug`: the JVM starts with a JDWP agent (docs/specs/runners.md#debug-mode).
+
+JDWP = "-agentlib:jdwp=transport=dt_socket,server={server},suspend=y,address=127.0.0.1:{port}"
+
+
+def debugging(
+    root: Path, language: Language, session: DebugSession, notices: list[str] | None = None
+) -> tuple[Prepared, FakeGradle]:
+    gradle = FakeGradle(root)
+    runner = JvmRunner(LanguageContext(root, root / "runners"), language, gradle)
+    notify = (notices if notices is not None else []).append
+    return prepared(runner.prepare(UserCode(TWO_SUM, debug=session), notify)), gradle
+
+
+def test_the_jvm_listens_for_the_ide_when_it_waits_for_it(root):
+    session = DebugSession(Language.JAVA, 5005)
+    launch = debugging(root, Language.JAVA, session)[0].launch
+    agent = JDWP.format(server="y", port=5005)
+    assert launch.command == ("java", *JVM_FLAGS, agent, "-cp", CLASSPATH, MAIN_CLASS)
+
+
+def test_the_jvm_connects_to_the_ide_in_connect_mode(root):
+    session = DebugSession(Language.JAVA, 5005, connect=True)
+    command = debugging(root, Language.JAVA, session)[0].launch.command
+    assert JDWP.format(server="n", port=5005) in command
+
+
+def test_kotlin_uses_the_same_agent(root):
+    session = DebugSession(Language.KOTLIN, 6006)
+    command = debugging(root, Language.KOTLIN, session)[0].launch.command
+    assert JDWP.format(server="y", port=6006) in command
+
+
+def test_the_jvm_stays_suspended_until_the_ide_resumes_it(root):
+    session = DebugSession(Language.JAVA, 5005)
+    command = debugging(root, Language.JAVA, session)[0].launch.command
+    assert any("suspend=y" in argument for argument in command)
+
+
+def test_the_launch_asks_for_the_markers_the_agent_prints(root):
+    session = DebugSession(Language.JAVA, 5005)
+    debug = debugging(root, Language.JAVA, session)[0].launch.debug
+    assert debug is not None
+    assert (debug.ready_marker, debug.refused_marker) == (
+        JDWP_LISTENING_MARKER,
+        JDWP_REFUSED_MARKER,
+    )
+
+
+def test_the_markers_are_what_jdwp_prints():
+    assert (JDWP_LISTENING_MARKER, JDWP_REFUSED_MARKER) == (
+        "Listening for transport dt_socket",
+        "transport error 202: connect failed",
+    )
+
+
+def test_the_launch_announces_through_the_notice(root):
+    notices: list[str] = []
+    debug = debugging(root, Language.JAVA, DebugSession(Language.JAVA, 5005), notices)[
+        0
+    ].launch.debug
+    assert debug is not None
+    debug.announce("a line")
+    assert notices == ["a line"]
+
+
+def test_the_launch_carries_the_session(root):
+    session = DebugSession(Language.JAVA, 5005, connect=True)
+    debug = debugging(root, Language.JAVA, session)[0].launch.debug
+    assert debug is not None
+    assert debug.session == session
+
+
+def test_a_normal_launch_has_no_agent(root):
+    result, _ = prepare(
+        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, FakeGradle(root)),
+        UserCode(TWO_SUM),
+    )
+    assert prepared(result).launch.debug is None
+
+
+def test_a_debug_run_is_built_like_any_other(root):
+    _, gradle = debugging(root, Language.JAVA, DebugSession(Language.JAVA, 5005))
+    assert gradle.builds == [("-q", "--console=plain", ":java:csClasspath", "-Pcs.only=two_sum")]
+
+
+def test_a_port_in_use_is_reported_before_building(root):
+    with socket.socket() as listener:
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        busy = DebugSession(Language.JAVA, listener.getsockname()[1])
+        gradle = FakeGradle(root)
+        runner = JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, gradle)
+        with pytest.raises(RunnerStartError, match="--debug-port"):
+            runner.prepare(UserCode(TWO_SUM, debug=busy), lambda _line: None)
+    assert gradle.builds == []
+
+
+def test_connecting_expects_the_ides_port_to_be_in_use(root):
+    with socket.socket() as listener:
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        ide = DebugSession(Language.JAVA, listener.getsockname()[1], connect=True)
+        assert debugging(root, Language.JAVA, ide)[0].launch.debug is not None

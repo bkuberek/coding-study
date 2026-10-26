@@ -142,7 +142,41 @@ The CLI watches the event file:
 | Any other gap between events after `hello` (for example loading user code) | 10000 | As above, reported on the next case not run yet |
 | `case_start` to `case_result` of a concurrent stress run | `deadline_ms + 5000` | As for other cases |
 
-After 3 restarts in one run, remaining cases are reported `not_run`. The hang guard is always on and is independent of optional time limits ([performance-analysis](performance-analysis.md#time-limits)).
+After 3 restarts in one run, remaining cases are reported `not_run`. The hang guard is always on, except in [debug mode](#debug-mode), and is independent of optional time limits ([performance-analysis](performance-analysis.md#time-limits)).
+
+## Debug mode
+
+`cstudy test --debug` ([cli](cli.md#cstudy-test)) starts the runner under its language's debug agent, so an IDE can attach to the real runner that judges the code and stop at breakpoints in the user's file. The request, the events and the verdicts are the normal ones; only the way the runner starts and the watchdog change. The agents listen on `127.0.0.1` only.
+
+| Runner | Agent (default port) | Added to the [invocation](#invocation) | Ready when it prints |
+|--------|----------------------|----------------------------------------|----------------------|
+| Python | debugpy from the workspace venv (5678) | `python -X frozen_modules=off -c <bootstrap> <port> --request R --out O`. The bootstrap runs `debugpy.listen(("127.0.0.1", port))`, prints `cstudy-debug-agent-listening` to standard error, calls `debugpy.wait_for_client()`, then runs `cs_runner` through `runpy` as `-m cs_runner` would | `cstudy-debug-agent-listening` on standard error |
+| TypeScript | Node inspector (9229) | `node --inspect-wait=127.0.0.1:<port> runner.ts ...`; Node keeps the line and column of the `.ts` file | `Debugger listening on` on standard error |
+| Java, Kotlin | JDWP (5005) | `java ... -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:<port> -cp ...` | `Listening for transport dt_socket` on standard output |
+
+| Item | Rule |
+|------|------|
+| Waiting | Every agent holds the runner before it reads the request, so no `hello` comes until the IDE attached and resumed it. Cases run on the thread named `cs-runner-cases` (Python, JVM) |
+| Watchdog | None: no hello timeout, no hang guard, no idle limit. A runner paused at a breakpoint is not hung, and runners join the case thread without a timeout in test mode. `duration_ns` includes the time spent paused, so `cstudy test --debug` shows no durations and applies no time limit |
+| Restarts | None. A crash, including an IDE that ends the session, is reported on the case in progress as usual and the remaining cases are `not_run` (`the runner ended during the debug session; it is not restarted`). A runner that ends before `hello` is an environment error (exit 4) that shows the runner's last output lines |
+| Output | Standard output is kept next to standard error in `.cs/runs/<run_id>/stdout-<n>.txt`, because the JVM agent announces itself there. Normal runs send it to `/dev/null` |
+| Ready line | `cstudy` reports the [ready line](cli.md#debugging) once, after it saw the ready text above in the runner's output, so the agent is bound when the IDE sees it. A runner that finishes without ever listening (Node continues without its inspector when the port is taken) is an environment error |
+| Port | Before building, `cstudy` binds the port on `127.0.0.1` and releases it again to see that it is free; it never connects to it, since an IDE could take the connection for its debuggee. A port in use is an environment error that names the port and `--debug-port` |
+| Python agent | `debugpy` missing from `python/.venv` is an environment error with the fix `uv add --dev debugpy --directory python` (the workspace template lists it, so `cstudy doctor --fix` installs it in new workspaces; `cstudy doctor` warns when it is missing) |
+| Stopping | Ctrl-C, SIGTERM and SIGHUP (what an IDE sends when its task is stopped) kill the runner's process group, so a stopped run never leaves the debug port held |
+| Scope | One language per run, the one of the attempt. Not with `--watch`, `--perf`, `--stress`, `--seed`, `--json` or `--time-limit`. A concurrent problem runs its sequential cases only: stress runs have deadlines that a paused runner would fail. A debug run is judged and shown but not stored |
+
+### Connecting to the IDE (JVM)
+
+`--debug-connect` replaces `server=y` with `server=n`: the JVM connects to an IDE that already listens on the port (IntelliJ's "Remote JVM Debug" in "Listen to remote JVM" mode) instead of listening for it. `cstudy` prints its ready line as it starts the JVM, because nothing binds a port on its side.
+
+| Item | Rule |
+|------|------|
+| Nobody listening | The JVM exits with code 2 and prints `transport error 202: connect failed` on standard error (and `AGENT_ERROR_TRANSPORT_INIT(197)`). `cstudy` recognizes the first text, whatever the exit code, and launches the JVM again |
+| Retries | After 0.2 s, then doubling up to 1 s between launches, for up to 10 s from the first launch; each launch rewrites the files of the same attempt and the ready line is not repeated |
+| Giving up | Exit 4: `no debugger listening on 127.0.0.1:<port>; start the IDE's 'Debug JVM (listen)' configuration first` |
+| Port check | None: the IDE is expected to hold the port |
+| Any other end | A JVM that exits before `hello` for another reason is not launched again: an environment error with its last output lines |
 
 ## Bench mode
 

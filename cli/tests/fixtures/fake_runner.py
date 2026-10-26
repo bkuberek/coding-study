@@ -8,9 +8,18 @@ Each case input holds one `step` that says what the "user code" does:
     {"do": "hang"}                 sleeps after case_start
     {"do": "stall"}                sleeps before case_start
     {"do": "crash", "exit_code": N} writes "crashed" to stderr and exits after case_start
+    {"do": "sleep", "seconds": S}  sleeps S seconds after case_start, then case_result ok with 0
+    {"do": "stall", "seconds": S}  sleeps S seconds before case_start, then returns 0
 
 A job whose target path ends in "missing.py" gets a load_error. `--startup` misbehaves before
 any job runs: silent, exit-before-hello, bad-request, garbage, protocol-2, unknown-job, skip-cases.
+
+Debug agents are imitated by three more startups, each logging one line to `--launch-log` and
+talking about `--ready-line` and `--refused-line` (on `--ready-stream`):
+
+    debug-wait    prints the ready line, then waits for the `--release` file to exist
+    debug-refuse  prints the refused line to stderr and exits 2 until the `--release` file exists
+    debug-exit    prints "address already in use" to stderr and exits 1
 """
 
 import argparse
@@ -20,6 +29,8 @@ import time
 from pathlib import Path
 
 FOREVER_SECONDS = 3600
+RELEASE_PATIENCE_SECONDS = 10
+RELEASE_POLL_SECONDS = 0.01
 
 
 def main() -> int:
@@ -27,21 +38,55 @@ def main() -> int:
     parser.add_argument("--request", required=True)
     parser.add_argument("--out", required=True)
     parser.add_argument("--startup", default="normal")
+    parser.add_argument("--ready-line", default="agent listening")
+    parser.add_argument("--ready-stream", default="stdout")
+    parser.add_argument("--refused-line", default="connect refused")
+    parser.add_argument("--release", default="")
+    parser.add_argument("--launch-log", default="")
     arguments = parser.parse_args()
     with Path(arguments.out).open("w", encoding="utf-8") as out:
-        return Runner(out, arguments.startup).run(arguments.request)
+        return Runner(out, arguments).run(arguments.request)
 
 
 class Runner:
-    def __init__(self, out, startup):
+    def __init__(self, out, arguments):
         self.out = out
-        self.startup = startup
+        self.startup = arguments.startup
+        self.arguments = arguments
+
+    def debug_startup(self):
+        """Returns an exit code when the imitated agent ends the process, else None."""
+        arguments = self.arguments
+        if arguments.launch_log:
+            with Path(arguments.launch_log).open("a", encoding="utf-8") as log:
+                log.write("launched\n")
+        release = Path(arguments.release)
+        if self.startup == "debug-exit":
+            print("address already in use", file=sys.stderr, flush=True)
+            return 1
+        if self.startup == "debug-refuse" and not release.exists():
+            print(arguments.refused_line, file=sys.stderr, flush=True)
+            return 2
+        if self.startup == "debug-wait":
+            stream = sys.stderr if arguments.ready_stream == "stderr" else sys.stdout
+            print(arguments.ready_line, file=stream, flush=True)
+            deadline = time.monotonic() + RELEASE_PATIENCE_SECONDS
+            while not release.exists():
+                if time.monotonic() > deadline:
+                    print("never released", file=sys.stderr, flush=True)
+                    return 1
+                time.sleep(RELEASE_POLL_SECONDS)
+        return None
 
     def emit(self, **event):
         self.out.write(json.dumps(event) + "\n")
         self.out.flush()
 
     def run(self, request_path):
+        if self.startup.startswith("debug-"):
+            exit_code = self.debug_startup()
+            if exit_code is not None:
+                return exit_code
         if self.startup == "silent":
             time.sleep(FOREVER_SECONDS)
         if self.startup == "exit-before-hello":
@@ -77,7 +122,9 @@ class Runner:
     def run_case(self, job_id, case_id, step):
         action = step["do"]
         if action == "stall":
-            time.sleep(FOREVER_SECONDS)
+            time.sleep(step.get("seconds", FOREVER_SECONDS))
+            if "seconds" in step:
+                action, step = "return", {"value": 0}
         self.emit(event="case_start", job_id=job_id, case_id=case_id)
         ids = {"job_id": job_id, "case_id": case_id, "duration_ns": 1000, "stdout": ""}
         if action == "return":
@@ -89,6 +136,9 @@ class Runner:
             self.emit(event="case_result", status="invalid_output", reason="cyclic", **ids)
         elif action == "hang":
             time.sleep(FOREVER_SECONDS)
+        elif action == "sleep":
+            time.sleep(step["seconds"])
+            self.emit(event="case_result", status="ok", output=0, **ids)
         elif action == "crash":
             print("crashed", file=sys.stderr, flush=True)
             sys.exit(step["exit_code"])

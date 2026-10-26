@@ -27,6 +27,7 @@ from coding_study.application.time_limits import (
 from coding_study.domain import layout
 from coding_study.domain.attempts import Attempt, RunRecord
 from coding_study.domain.comparators import Comparator
+from coding_study.domain.debugging import DebugRequest, DebugSession, debug_session
 from coding_study.domain.errors import UsageError
 from coding_study.domain.generated_cases import OracleInput, oracle_approach, oracle_inputs
 from coding_study.domain.judging import (
@@ -48,6 +49,7 @@ from coding_study.domain.time_limits import TimeLimits
 
 MILLISECONDS_PER_SECOND = 1000
 DEFAULT_ORACLE_SEED = 1
+STRESS_SKIPPED_NOTICE = "stress runs are skipped while debugging"
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +64,10 @@ class RunTestsRequest:
     """Progressive problems: run levels 1 to `level`; None runs every unlocked level."""
     stress: StressSelection = field(default_factory=StressSelection)
     """`--stress N` and `--seed S`: stress runs of a concurrent problem, else oracle inputs."""
+    debug: DebugRequest | None = None
+    """`--debug`: judge the run under an IDE debugger (`debugging.py`). Time limits are off, a
+    concurrent problem's stress runs are skipped, and the run is not recorded: pauses would
+    distort its timings, and it leaves stress runs out."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,6 +93,8 @@ class RunTestsResult:
     """Concurrent problems: every planned (stress case, variant, run)."""
     oracle: "OracleStress | None" = None
     """Other problems with `--stress N`: the generated inputs checked against the oracle."""
+    debug: DebugSession | None = None
+    """Set for a debug run, which is not recorded."""
 
     @property
     def build_failure(self) -> BuildFailed | None:
@@ -157,6 +165,7 @@ def run_tests(
     started = clock.monotonic()
     attempt = find_attempt(environment.progress, request.slug, request.language)
     language = autograded_language(attempt)
+    debug = _debug_session(request.debug, language)
     problem = environment.problems.load(attempt.slug)
     meta = problem.meta
     oracle = _oracle_stress(environment, problem, request.stress)
@@ -166,17 +175,18 @@ def run_tests(
     materializer = CaseMaterializer(environment, notify)
     cases = materializer.runnable_cases(without_stress(selected))
     oracle_cases = materializer.oracle_cases(meta, oracle.approach, oracle.inputs) if oracle else ()
-    stress_plan = plan_runs(selected, language, request.stress)
+    planned = plan_runs(selected, language, request.stress)
+    stress_plan = planned if debug is None else _skipped_stress_runs(planned, notify)
     comparator = problem_comparator(environment, meta)
     run = LanguageRun(environment, meta, language)
     job = run.user_job((*cases, *oracle_cases), stress_plan)
-    code_run = run.run(UserCode(meta, request.typecheck), [job], notify)
+    code_run = run.run(UserCode(meta, request.typecheck, debug), [job], notify)
     judgement: Judgement | None = None
     limits: TimeLimits | None = None
     if code_run.report is not None:
         report = code_run.report.job(meta.slug)
         judgement = judge(cases, report, comparator)
-        if judgement.load_error is None:
+        if judgement.load_error is None and debug is None:
             limit_request = TimeLimitRequest(
                 without_stress(problem),
                 language,
@@ -206,11 +216,31 @@ def run_tests(
         levels=levels,
         stress_plan=stress_plan,
         oracle=oracle,
+        debug=debug,
     )
+    if debug is not None:
+        return result
     result = replace(result, attempt=_record(environment, result))
     if request.case_ids:
         return result
     return _unlock(environment, problem, result)
+
+
+def _debug_session(request: DebugRequest | None, language: Language) -> DebugSession | None:
+    if request is None:
+        return None
+    try:
+        return debug_session(request, language)
+    except ValueError as error:
+        raise UsageError(str(error)) from None
+
+
+def _skipped_stress_runs(plan: tuple[PlannedRun, ...], notify: ProgressNotice) -> tuple[()]:
+    """A runner paused at a breakpoint would fail the deadlines of stress runs: none run while
+    debugging."""
+    if plan:
+        notify(STRESS_SKIPPED_NOTICE)
+    return ()
 
 
 def _oracle_stress(

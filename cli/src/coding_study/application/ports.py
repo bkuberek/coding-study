@@ -13,6 +13,7 @@ from coding_study.domain.bench_verdict import PastRun
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.comparators import Checker
 from coding_study.domain.config import Config
+from coding_study.domain.debugging import DebugSession
 from coding_study.domain.generated_cases import GeneratedCase
 from coding_study.domain.invariants import StressChecker
 from coding_study.domain.items import ItemMeta
@@ -174,6 +175,8 @@ class UserCode:
     meta: ProblemMeta
     typecheck: bool = False
     """TypeScript only (`cstudy test --typecheck`): also run `tsc --noEmit`; others ignore it."""
+    debug: DebugSession | None = None
+    """`cstudy test --debug`: launch the runner under the language's debug agent."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,6 +208,28 @@ class BenchCode:
 type BuildScope = UserCode | References | BenchCode
 
 
+type ProgressNotice = Callable[[str], None]
+"""Prints a line before slow work starts, e.g. "warming Gradle daemon (first run)"."""
+
+
+@dataclass(frozen=True, slots=True)
+class DebugLaunch:
+    """A runner whose command starts a debug agent (docs/specs/runners.md#debug-mode).
+
+    `RunnerProcess` waits for the debugger with every time limit off, never restarts the runner,
+    and calls `announce` with the session's ready line: once the agent listens, or as the runner
+    starts when the session connects to the IDE.
+    """
+
+    session: DebugSession
+    announce: ProgressNotice
+    ready_marker: str = ""
+    """Text the runner prints, on standard output or error, once its agent listens."""
+    refused_marker: str = ""
+    """Text the runner prints when it finds no debugger to connect to, then exits; the session
+    connects again for a while."""
+
+
 @dataclass(frozen=True, slots=True)
 class RunnerLaunch:
     """How to start a runner; `RunnerProcess` appends `--request R --out O`."""
@@ -213,6 +238,7 @@ class RunnerLaunch:
     cwd: Path
     hello_timeout_ms: int
     """`coding_study.domain.runs.HELLO_TIMEOUT_MS` for the language."""
+    debug: DebugLaunch | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -232,9 +258,6 @@ class BuildFailed:
 
 type PrepareResult = Prepared | BuildFailed
 
-type ProgressNotice = Callable[[str], None]
-"""Prints a line before slow work starts, e.g. "warming Gradle daemon (first run)"."""
-
 
 class LanguageRunner(Protocol):
     """One per language: everything language-specific about running code (runners.md)."""
@@ -252,6 +275,8 @@ class RunnerProcess(Protocol):
 
     def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
         """One outcome per requested case, including timeouts, crashes and cases not run.
+
+        A launch with a `DebugLaunch` waits for the debugger without time limits or restarts.
 
         Raises RunnerStartError (exit 4) when the runner does not start and RunnerProtocolError
         (exit 70) when it breaks the protocol.
