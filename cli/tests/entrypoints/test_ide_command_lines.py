@@ -25,10 +25,6 @@ from coding_study.domain.ide_actions import (
 from coding_study.entrypoints import cli
 
 SOLUTION_FILE = "/home/me/my workspace/python/practice/two_sum.py"
-DEBUGGER_OPTIONS = frozenset({"--debug", "--debug-connect"})
-"""`cstudy test --debug [--debug-connect]` come with the debugger support built alongside the IDE
-files (feature task T2, whose option contract the debug actions follow); parsing leaves out just
-these two tokens until both are merged, so every other token of a debug command line is checked."""
 INPUT = re.compile(r"\$\{input:([^}]+)\}")
 
 
@@ -36,12 +32,11 @@ def parse(arguments: Sequence[str]) -> None:
     """Parses `cstudy <arguments>` as a run would, without running it; raises a usage error."""
     group = get_command(cli.app)
     assert isinstance(group, TyperGroup)
-    supported = [argument for argument in arguments if argument not in DEBUGGER_OPTIONS]
-    context = group.make_context(EXECUTABLE, supported)
-    command = group.get_command(context, supported[0])
+    context = group.make_context(EXECUTABLE, list(arguments))
+    command = group.get_command(context, arguments[0])
     if command is None:
-        raise typer.BadParameter(f"no command {supported[0]}")
-    command.make_context(supported[0], supported[1:], parent=context)
+        raise typer.BadParameter(f"no command {arguments[0]}")
+    command.make_context(arguments[0], list(arguments[1:]), parent=context)
 
 
 def catalog_command_lines() -> Iterator[tuple[str, ...]]:

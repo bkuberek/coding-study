@@ -10,6 +10,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 
+from coding_study.domain.debugging import DEFAULT_DEBUG_PORTS
 from coding_study.domain.layout import JVM_LANGUAGES
 from coding_study.domain.problem import ALL_LANGUAGES, Language
 
@@ -21,9 +22,8 @@ LANGUAGE_NAMES: Mapping[Language, str] = {
     Language.KOTLIN: "Kotlin",
 }
 JVM = tuple(language for language in ALL_LANGUAGES if language in JVM_LANGUAGES)
-DEBUGPY_PORT = 5678
-NODE_INSPECTOR_PORT = 9229
-JDWP_PORT = 5005
+JDWP_PORT = DEFAULT_DEBUG_PORTS[Language.JAVA]
+"""The JVM listener IntelliJ's "Debug JVM (listen)" waits on; Java and Kotlin share it."""
 
 
 class Scope(StrEnum):
@@ -113,7 +113,7 @@ class WorkspaceAction:
 class DebugAttach:
     language: Language
     port: int
-    """Where `cstudy test --debug` waits for the debugger, or connects to it, on 127.0.0.1."""
+    """Where `cstudy test --debug` waits for the debugger, or connects to it, on loopback."""
 
 
 def language_names(languages: tuple[Language, ...]) -> str:
@@ -154,9 +154,4 @@ DEBUG_LISTEN = ProblemAction(("test", "--debug"))
 """The runner waits on its language's port until a debugger attaches."""
 DEBUG_CONNECT = ProblemAction(("test", "--debug", "--debug-connect"), languages=JVM)
 """The JVM connects to a debugger that is already listening (IntelliJ's listen mode)."""
-DEBUG_ATTACH = (
-    DebugAttach(Language.PYTHON, DEBUGPY_PORT),
-    DebugAttach(Language.TYPESCRIPT, NODE_INSPECTOR_PORT),
-    DebugAttach(Language.JAVA, JDWP_PORT),
-    DebugAttach(Language.KOTLIN, JDWP_PORT),
-)
+DEBUG_ATTACH = tuple(DebugAttach(language, port) for language, port in DEFAULT_DEBUG_PORTS.items())

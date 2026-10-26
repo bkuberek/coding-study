@@ -156,6 +156,7 @@ coding-study/
     src/coding_study/{domain,application,adapters,entrypoints}/
     src/coding_study/adapters/templates/            # `cstudy new` templates
     src/coding_study/adapters/workspace_template/   # what `cstudy init` copies
+    src/coding_study/adapters/ide/                  # VS Code and IntelliJ renderers, generated-file store, launcher jar
     tests/
   runners/
     python/                 # uv project: cs_runner, cs_support
@@ -163,6 +164,7 @@ coding-study/
     jvm/                    # Gradle included build: support + runner (Java)
     conformance/            # fixture problems for every DSL type and error path, expectations.json
   schemas/                  # meta, tests and item JSON Schemas
+  tools/ide-launcher/       # source and reproducible build of the IntelliJ open-file launcher (its jar ships in adapters/ide/)
   problems/<id>-<slug>/     # autograded content (format: specs/problem-format.md)
   tracks/                   # non-autograded content (system design, code review, behavioral)
 ```

@@ -14,7 +14,7 @@ import pytest
 
 from coding_study.adapters import subprocess_runner
 from coding_study.adapters.debug_process import terminated_like_interrupt
-from coding_study.adapters.subprocess_runner import SubprocessRunner
+from coding_study.adapters.subprocess_runner import SubprocessRunner, _Attempt
 from coding_study.application.ports import DebugLaunch, RunnerLaunch
 from coding_study.domain.cases import FunctionInput, JsonValue
 from coding_study.domain.debugging import DebugSession
@@ -236,6 +236,16 @@ def test_nothing_is_announced_for_a_run_that_never_listened(runner, debugging):
     with pytest.raises(RunnerStartError):
         run(runner, debugging.launch("normal"), case("a", "return", value=1))
     assert debugging.announced == []
+
+
+def test_a_ready_marker_that_lands_with_bye_after_the_last_check_is_no_failure(
+    monkeypatch, runner, debugging
+):
+    """The marker is printed after the poll's check for it and `bye` arrives in the same poll."""
+    monkeypatch.setattr(_Attempt, "_announce_when_listening", lambda _attempt: None)
+    debugging.release.touch()
+    outcome = run(runner, debugging.launch("debug-wait"), case("a", "return", value=1))
+    assert outcome == [Returned(1, 1000)]
 
 
 # Connecting to an IDE that listens (JVM): the runner exits at once when nobody listens yet.

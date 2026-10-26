@@ -552,9 +552,10 @@ class _Attempt:
 
     def _require_agent_to_have_listened(self) -> None:
         """A runner that finished a debug run never listened (Node starts without its inspector
-        when the port is taken): nobody could have debugged it."""
+        when the port is taken): nobody could have debugged it. The output is read once more,
+        because the marker and `bye` may both have landed since the poll's last check."""
         debug, output = self._launch.debug, self._output
-        if debug is None or output is None or self._announced:
+        if debug is None or output is None or self._announced or output.agent_listens():
             return
         session = debug.session
         raise RunnerStartError(
