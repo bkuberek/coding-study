@@ -20,6 +20,7 @@ SOURCES = {
     "conformance/9001-x/meta.yaml": "id: '9001'\n",
 }
 OLD_NS = 1_000_000_000
+LAUNCHER = ".cs/runtime/ide/cstudy-launcher.jar"
 
 
 @pytest.fixture
@@ -122,3 +123,21 @@ def test_a_current_runtime_is_left_alone(runtime, workspace):
 def test_a_missing_runners_directory_is_a_start_error(workspace, tmp_path):
     with pytest.raises(RunnerStartError, match="runners"):
         RunnerRuntime(tmp_path / "nowhere", workspace).ensure()
+
+
+def test_ensure_installs_the_ide_launcher(runtime, workspace):
+    runtime.ensure()
+    assert (workspace / LAUNCHER).is_file()
+
+
+def test_a_missing_ide_launcher_makes_it_stale(runtime, workspace):
+    runtime.ensure()
+    (workspace / LAUNCHER).unlink()
+    assert runtime.is_current() is False
+
+
+def test_ensure_restores_the_ide_launcher_of_an_up_to_date_copy(runtime, workspace):
+    runtime.ensure()
+    (workspace / LAUNCHER).unlink()
+    runtime.ensure()
+    assert (workspace / LAUNCHER).is_file()

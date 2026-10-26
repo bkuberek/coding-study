@@ -10,6 +10,7 @@ from coding_study.entrypoints.commands import (
     done,
     export,
     hint,
+    ide,
     import_progress,
     init,
     list_problems,
@@ -27,6 +28,7 @@ from coding_study.entrypoints.commands import (
 COMMAND_REGISTRATIONS: tuple[Callable[[typer.Typer], None], ...] = (
     init.register,
     doctor.register,
+    ide.register,
     start.register,
     test.register,
     list_problems.register,

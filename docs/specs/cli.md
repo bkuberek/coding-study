@@ -8,6 +8,7 @@
 |---------|---------|-------|
 | [`cstudy init`](installation-and-workspaces.md#cstudy-init) | Create a workspace | W1 |
 | [`cstudy doctor`](#cstudy-doctor) | Check and set up toolchains | 0 |
+| [`cstudy ide`](#cstudy-ide) | Write or refresh the VS Code and IntelliJ project files | W1 |
 | [`cstudy start`](#cstudy-start) | Create or reopen a stub, open the statement, begin an attempt | 0 |
 | [`cstudy test`](#cstudy-test) | Run the user's code against the cases | 0 |
 | [`cstudy solution`](#cstudy-solution) | Show reference code with its explanation | 0 |
@@ -24,7 +25,7 @@
 | [`cstudy export`](#cstudy-export) | Back up progress as JSON | 7 |
 | [`cstudy import`](#cstudy-import) | Restore an export into an empty `progress.db` | 7 |
 
-`<file>` is a [solution file path](#solution-file-targets). Commands that take an optional `<slug>` default to the active attempt: the most recent attempt with status `in_progress`. If none exists, they exit 3. Every command but `cstudy init`, `cstudy doctor`, `cstudy list` and `cstudy show` needs a workspace and exits 3 without one, pointing at `cstudy init`.
+`<file>` is a [solution file path](#solution-file-targets). Commands that take an optional `<slug>` default to the active attempt: the most recent attempt with status `in_progress`. If none exists, they exit 3. Every command but `cstudy init`, `cstudy doctor`, `cstudy list` and `cstudy show` needs a workspace and exits 3 without one, pointing at `cstudy init`. The [IDE files](installation-and-workspaces.md#ide-files) run these commands on the file in the editor or on the active attempt.
 
 ## Solution file targets
 
@@ -37,6 +38,7 @@
 | Problem | The slug is the problem whose file name the path carries (`two_sum` is `two-sum`); a path that names no problem exits 3 |
 | Language | The path's language is the language of the run. `--lang` may repeat it; naming another language exits 3 with both. `hint`, `done` and `show` have no `--lang`: they act on the problem, as with its slug |
 | Not a solution file | A path outside the workspace, or inside it but not at one of those locations, exits 3 with `not a solution file in this workspace: <path>` |
+| Directory | A directory exits 3 with `open a solution file in the editor first (got a directory: <path>)`: IntelliJ passes the project directory as the current file when no editor has focus |
 
 ## Exit codes
 
@@ -127,6 +129,28 @@ ok    runner kotlin answers hello: jvm 21.0.2, protocol 1
 ```
 
 Exit 0 when no check reports `FAIL` (and, with `--fix`, every setup command succeeded), else 4.
+
+## cstudy ide
+
+```text
+cstudy ide [vscode|idea|all] [--force]
+```
+
+Writes or refreshes the workspace's [IDE files](installation-and-workspaces.md#ide-files) (`.vscode/`, `.idea/`) for the named IDE (default: `all`), and installs the IntelliJ launcher into `.cs/runtime/ide/`. `cstudy init` does the same unless `--no-ide`; `--ide vscode` or `--ide idea` (repeatable) limits it to those.
+
+| Rule | Detail |
+|------|--------|
+| Rewrites | Only files that are missing or still as cstudy wrote them, by the digests in `.cs/ide.json`; a file you edited, or one at a generated path that cstudy never wrote, is kept and named in a warning |
+| `--force` | Overwrites kept files too; files cstudy does not generate, such as a run configuration of your own, are never touched |
+| Removed | A file an older `cstudy` generated and this one no longer does is deleted while unchanged |
+| Output | `ide      vscode, idea · 3 created · 1 updated · 1 kept`, or `no changes`, then `warning  kept <path>: edited, or not written by cstudy (cstudy ide --force overwrites it)` per kept file |
+
+Exit 0, also when files are kept; 3 outside a workspace or for another IDE name.
+
+```text
+ide      vscode, idea · 1 updated · 1 kept
+warning  kept .vscode/tasks.json: edited, or not written by cstudy (cstudy ide --force overwrites it)
+```
 
 ## cstudy start
 
