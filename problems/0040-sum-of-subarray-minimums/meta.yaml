@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0040"
+slug: sum-of-subarray-minimums
+title: Sum of Subarray Minimums
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [monotonic-stack, dp-1d]
+signature:
+  function:
+    name: sumSubarrayMins
+    params:
+      - {name: arr, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Extend every start with a running minimum, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: contribution, name: Count the subarrays where each element is the minimum, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: stack-dp, name: Sum of minimums ending at each index from the previous smaller element, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n
+  size_ladder: [1000, 2000, 5000, 10000]
+  expected_from: contribution
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 907, url: "https://leetcode.com/problems/sum-of-subarray-minimums/"}
+related: [largest-rectangle-histogram, daily-temperatures]
+order: 4
+estimate_minutes: 30

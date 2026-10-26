@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0071"
+slug: diameter-binary-tree
+title: Diameter of a Binary Tree
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [trees]
+signature:
+  function:
+    name: diameterOfBinaryTree
+    params:
+      - {name: root, type: TreeNode}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: height-per-node, name: Recompute both heights at every node, role: brute, time: "O(n * h)", space: "O(h)", time_class: "n log n", space_class: "log n", oracle: true}
+  - {id: postorder-heights, name: One post-order pass returning heights, role: optimal, time: "O(n)", space: "O(h)", time_class: "n", space_class: "log n"}
+perf:
+  size_param: number of nodes
+  size_ladder: [1000, 10000, 100000]
+  expected_from: postorder-heights
+references:
+  leetcode: {number: 543, url: "https://leetcode.com/problems/diameter-of-binary-tree/"}
+related: [max-depth-binary-tree, max-path-sum, balanced-binary-tree]
+order: 5
+estimate_minutes: 15

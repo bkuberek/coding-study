@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0162"
+slug: swim-rising-water
+title: Swim in Rising Water
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [advanced-graphs, heap, binary-search]
+signature:
+  function:
+    name: swimInWater
+    params:
+      - {name: grid, type: "int[][]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: binary-search-bfs, name: Binary search on the time with a reachability search, role: optimal, time: "O(n^2·log n)", space: "O(n^2)", time_class: "n log n", space_class: "n", oracle: true}
+  - {id: min-heap, name: Dijkstra-style search on the highest cell so far, role: optimal, time: "O(n^2·log n)", space: "O(n^2)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: number of cells (n·n)
+  size_ladder: [100, 900, 2500]
+  expected_from: min-heap
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 778, url: "https://leetcode.com/problems/swim-in-rising-water/"}
+related: [network-delay-time, min-obstacle-removal, pacific-atlantic-water-flow]
+order: 5
+estimate_minutes: 35

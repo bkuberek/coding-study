@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+
+id: "9019"
+slug: conformance-stress-leak
+title: "Conformance: a worker that ignores the interrupt makes the runner ask for a restart"
+status: ready
+difficulty: easy
+track: concurrency
+kind: concurrent
+languages: [java, kotlin, python]
+signature:
+  class:
+    name: StressLeak
+    constructor: {params: []}
+    methods:
+      - {name: spin, params: [], returns: {type: void}}
+      - {name: fail, params: [], returns: {type: void}}
+      - {name: noop, params: [], returns: {type: void}}
+comparator: {type: ops}
+concurrency:
+  model: threads
+  jvm_threads: [platform, virtual]
+approaches:
+  - {id: ignores-interrupt, name: Spin forever and ignore the interrupt, role: optimal, time: "O(1)", space: "O(1)"}

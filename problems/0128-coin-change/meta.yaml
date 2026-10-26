@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0128"
+slug: coin-change
+title: Coin Change
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-1d]
+signature:
+  function:
+    name: coinChange
+    params:
+      - {name: coins, type: "int[]"}
+      - {name: amount, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Top-down fewest coins per remainder, role: intermediate, time: "O(a * k)", space: "O(a)", time_class: "n", space_class: "n"}
+  - {id: tabulation, name: Bottom-up table over amounts, role: optimal, time: "O(a * k)", space: "O(a)", time_class: "n", space_class: "n", oracle: true}
+  - {id: bfs, name: Breadth-first search over remainders, role: optimal, time: "O(a * k)", space: "O(a)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n, the amount, with at most 12 coin values
+  size_ladder: [100, 300, 1000, 2000]
+  expected_from: tabulation
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 322, url: "https://leetcode.com/problems/coin-change/"}
+related: [climbing-stairs, partition-equal-subset-sum, word-break]
+order: 3
+estimate_minutes: 25

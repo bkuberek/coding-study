@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study non-autograded item.yaml",
+  "description": "Metadata of one system design or code review item in tracks/<track>/<slug>/. Spec: docs/specs/content.md#non-autograded-item-format",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["slug", "title", "track", "difficulty", "estimate_minutes", "status"],
+  "properties": {
+    "slug": {
+      "description": "Stable key in progress.db; must equal the directory name and be unique across problems/ and tracks/",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "track": {
+      "description": "Must equal the directory under tracks/ that holds the item",
+      "enum": ["system-design", "code-review"]
+    },
+    "difficulty": { "enum": ["easy", "medium", "hard"] },
+    "estimate_minutes": { "description": "Expected interview time", "type": "integer", "minimum": 1 },
+    "status": { "description": "ready requirements: docs/specs/authoring.md#items", "enum": ["draft", "ready"] },
+    "order": { "description": "Curriculum order within the track (default 1000)", "type": "integer" },
+    "references": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "study_guides": {
+          "description": "Study-guide paths relative to the user's study-guides root (config study_guides.root), optionally with a #section anchor; referenced, never copied",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^(?![/~])(?!(?:.*/)?\\.\\.(?:[/#]|$))\\S+$" }
+        },
+        "links": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "format": "uri", "pattern": "^https?://\\S+$" }
+        }
+      }
+    },
+    "related": {
+      "description": "Slugs of related problems or items",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" }
+    }
+  }
+}

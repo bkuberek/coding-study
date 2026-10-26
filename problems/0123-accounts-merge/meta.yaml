@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0123"
+slug: accounts-merge
+title: Accounts Merge
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [union-find, graphs]
+signature:
+  function:
+    name: accountsMerge
+    params:
+      - {name: accounts, type: "list<list<string>>"}
+    returns: {type: "list<list<string>>"}
+comparator: {type: unordered}
+approaches:
+  - {id: quick-union, name: Naive union-find over accounts that links roots without balancing or compression, role: brute, time: "O(E * A + E log E)", space: "O(E)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: union-find, name: Union by size with path compression over accounts, role: optimal, time: "O(E log E)", space: "O(E)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: A = accounts.length, with about 2.5A addresses
+  size_ladder: [125, 250, 500, 1000]
+  expected_from: union-find
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 721, url: "https://leetcode.com/problems/accounts-merge/"}
+related: [count-connected-components, smallest-string-with-swaps]
+order: 3
+estimate_minutes: 30

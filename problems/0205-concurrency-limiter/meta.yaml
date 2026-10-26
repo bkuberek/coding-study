@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0205"
+slug: concurrency-limiter
+title: Concurrency Limiter
+status: ready
+difficulty: medium
+track: concurrency
+kind: concurrent
+languages: [java, kotlin, python, typescript]
+signature:
+  class:
+    name: ConcurrencyLimiter
+    constructor: {params: [{name: limit, type: int}]}
+    methods:
+      - {name: acquire, blocking: true, params: [], returns: {type: void}}
+      - {name: tryAcquire, params: [], returns: {type: bool}}
+      - {name: release, params: [], returns: {type: void}}
+      - {name: available, params: [], returns: {type: int}}
+comparator: {type: ops}
+concurrency:
+  model: {java: threads, kotlin: threads, python: async, typescript: async}
+  jvm_threads: [platform, virtual]
+  runs: 3
+  deadline_ms: 5000
+  broken:
+    - id: if-not-while
+      name: Wait guarded by if
+      bug: Release wakes every waiter and a woken waiter takes a permit without re-checking, so more than limit workers hold one
+      caught_by: [s1, s2]
+    - id: no-hand-off
+      name: Release without a waiter hand-off
+      bug: Release returns the permit to the pool and wakes a waiter, so a newcomer takes the permit first and the waiter takes it again
+      languages: [python]
+      caught_by: [s1, s2]
+approaches:
+  - {id: hand-off, name: FIFO waiter queue with direct hand-off, role: optimal, time: "O(1) per op", space: "O(waiters)"}
+  - {id: fair-semaphore, name: Fair semaphore from the standard library, role: optimal, time: "O(1) per op", space: "O(waiters)"}
+related: [bounded-blocking-queue, read-write-lock]
+estimate_minutes: 30

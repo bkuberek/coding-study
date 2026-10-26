@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0175"
+slug: fast-power
+title: Fast Power
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [math-geometry]
+signature:
+  function:
+    name: myPow
+    params:
+      - {name: x, type: double}
+      - {name: n, type: int}
+    returns: {type: double}
+comparator: {type: float, tolerance: 1.0e-6}
+approaches:
+  - {id: repeated-multiplication, name: Multiply |n| times with early stops, role: brute, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1", oracle: true}
+  - {id: binary-exponentiation, name: Square the base and halve the exponent, role: optimal, time: "O(log n)", space: "O(1)", time_class: "log n", space_class: "1"}
+perf:
+  size_param: bound on the absolute value of the exponent, which is drawn between n/2 and n
+  size_ladder: [64, 128, 256, 512, 1024, 2048, 4096]
+  expected_from: binary-exponentiation
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 50, url: "https://leetcode.com/problems/powx-n/"}
+related: [multiply-strings]
+order: 4
+estimate_minutes: 20

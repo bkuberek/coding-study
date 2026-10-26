@@ -1,0 +1,68 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true,
+     "ops": ["Bank", "transfer", "balance", "balance", "transfer", "total"],
+     "args": [[[100, 50, 0]], [0, 2, 30], [0], [2], [1, 0, 80], []],
+     "expected": [null, true, 70, 30, false, 150]},
+    {"id": "ex2", "visible": true,
+     "ops": ["Bank", "transfer", "transfer", "balance", "balance", "total"],
+     "args": [[[10, 20]], [1, 0, 20], [0, 1, 5], [0], [1], []],
+     "expected": [null, true, true, 25, 5, 30]},
+    {"id": "h1", "note": "invalid accounts are rejected and change nothing",
+     "ops": ["Bank", "transfer", "transfer", "transfer", "balance", "balance", "total"],
+     "args": [[[5, 5]], [0, 2, 1], [-1, 0, 1], [3, 7, 1], [9], [-1], []],
+     "expected": [null, false, false, false, -1, -1, 10]},
+    {"id": "h2", "note": "a transfer of the whole balance empties the account",
+     "ops": ["Bank", "transfer", "balance", "transfer", "balance"],
+     "args": [[[40, 0]], [0, 1, 40], [0], [0, 1, 1], [1]],
+     "expected": [null, true, 0, false, 40]},
+    {"id": "h3", "note": "a transfer to the same account succeeds when covered and changes nothing",
+     "ops": ["Bank", "transfer", "transfer", "balance", "total"],
+     "args": [[[25, 5]], [0, 0, 25], [1, 1, 6], [0], []],
+     "expected": [null, true, false, 25, 30]},
+    {"id": "h4", "note": "a single account",
+     "ops": ["Bank", "balance", "transfer", "total"],
+     "args": [[[7]], [0], [0, 0, 7], []],
+     "expected": [null, 7, true, 7]},
+    {"id": "h5", "note": "large balances use the long range",
+     "ops": ["Bank", "transfer", "balance", "total"],
+     "args": [[[4000000000000, 1]], [0, 1, 3999999999999], [1], []],
+     "expected": [null, true, 4000000000000, 4000000000001]},
+    {"id": "h6", "note": "money moves around a cycle and the total never changes",
+     "ops": ["Bank", "transfer", "transfer", "transfer", "balance", "balance", "balance", "total"],
+     "args": [[[9, 0, 0]], [0, 1, 9], [1, 2, 9], [2, 0, 4], [0], [1], [2], []],
+     "expected": [null, true, true, true, 4, 0, 5, 9]},
+    {"id": "s1", "note": "6 workers move random amounts between 4 accounts while an auditor sums them",
+     "stress": {
+       "seed": 1000,
+       "setup": {"ops": ["Bank"], "args": [[[1000, 1000, 1000, 1000]]]},
+       "workers": [
+         {"group": "teller", "count": 6, "repeat": {"default": 1500, "python": 400},
+          "steps": [{"op": "transfer", "args": [{"$rand": [0, 3]}, {"$rand": [0, 3]}, {"$rand": [1, 120]}]}]},
+         {"group": "auditor", "count": 1, "repeat": {"default": 1500, "python": 400},
+          "steps": [{"op": "total", "args": []}, {"op": "@pause", "args": [1]}]}
+       ],
+       "final": {"ops": ["total", "balance", "balance", "balance", "balance"], "args": [[], [0], [1], [2], [3]]},
+       "invariants": [
+         {"type": "bounds", "values": {"op": "total"}, "min": 4000, "max": 4000},
+         {"type": "bounds", "values": {"op": "balance", "scope": "final"}, "min": 0},
+         {"type": "sum", "values": {"op": "balance", "scope": "final"}, "min": 4000, "max": 4000}
+       ]
+     }},
+    {"id": "s2", "note": "3 workers move money one way and 3 the other way between the same 2 accounts",
+     "stress": {
+       "seed": 2000,
+       "deadline_ms": 2000,
+       "setup": {"ops": ["Bank"], "args": [[[1000000, 1000000]]]},
+       "workers": [
+         {"group": "forward", "count": 3, "repeat": {"default": 1500, "python": 400},
+          "steps": [{"op": "transfer", "args": [0, 1, 1]}]},
+         {"group": "backward", "count": 3, "repeat": {"default": 1500, "python": 400},
+          "steps": [{"op": "transfer", "args": [1, 0, 1]}]}
+       ],
+       "final": {"ops": ["total", "balance", "balance"], "args": [[], [0], [1]], "expected": [2000000, 1000000, 1000000]}
+     }}
+  ]
+}

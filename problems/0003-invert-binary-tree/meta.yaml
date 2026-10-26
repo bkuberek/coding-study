@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0003"
+slug: invert-binary-tree
+title: Invert Binary Tree
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [trees]
+signature:
+  function:
+    name: invertTree
+    params:
+      - {name: root, type: TreeNode}
+    returns: {type: TreeNode}
+comparator: {type: exact}
+approaches:
+  - {id: recursive, name: Recursive swap, role: optimal, time: "O(n)", space: "O(h)", time_class: "n", space_class: "log n", oracle: true}
+  - {id: iterative-bfs, name: Level-order swap with a queue, role: optimal, time: "O(n)", space: "O(w)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of nodes
+  size_ladder: [1000, 10000, 100000]
+  expected_from: recursive
+references:
+  leetcode: {number: 226, url: "https://leetcode.com/problems/invert-binary-tree/"}
+related: [same-tree]
+estimate_minutes: 10

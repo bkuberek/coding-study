@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"pattern": "rat", "text": "smartly"}, "expected": true},
+    {"id": "ex2", "visible": true, "input": {"pattern": "dog", "text": "goodness"}, "expected": false},
+    {"id": "h1", "input": {"pattern": "a", "text": "a"}, "expected": true, "note": "one letter each, equal"},
+    {"id": "h2", "input": {"pattern": "a", "text": "b"}, "expected": false, "note": "one letter each, different"},
+    {"id": "h3", "input": {"pattern": "ab", "text": "a"}, "expected": false, "note": "pattern longer than text"},
+    {"id": "h4", "input": {"pattern": "abc", "text": "cba"}, "expected": true, "note": "the whole text is a permutation"},
+    {"id": "h5", "input": {"pattern": "aab", "text": "abab"}, "expected": true, "note": "repeated letters in the pattern"},
+    {"id": "h6", "input": {"pattern": "aab", "text": "abbab"}, "expected": false, "note": "right letters, wrong counts"},
+    {"id": "h7", "input": {"pattern": "xyz", "text": "xxyyzz"}, "expected": false, "note": "every letter present, never together"},
+    {"id": "h8", "input": {"pattern": "hello", "text": "ooolleoooolleh"}, "expected": true, "note": "near misses before a match at the end"},
+    {"id": "h9", "input": {"pattern": "ab", "text": "bacccc"}, "expected": true, "note": "the match is at the start"},
+    {"id": "h10", "input": {"pattern": "ab", "text": "ccccba"}, "expected": true, "note": "the match is at the end"},
+    {"id": "h11", "input": {"pattern": "zz", "text": "zaz"}, "expected": false, "note": "the letters are split by another"},
+    {"id": "h12", "input": {"pattern": "abcdefghijklmnopqrstuvwxyz", "text": "qqzyxwvutsrqponmlkjihgfedcbaqq"}, "expected": true, "note": "all 26 letters, reversed in the middle"},
+    {"id": "h13", "input": {"pattern": "abcdefghijklmnopqrstuvwxyz", "text": "abcdefghijklmnopqrstuvwxyaabcdefghijklmnopqrstuvwxyz"}, "expected": true, "note": "a window missing one letter before the real match"},
+    {"id": "h14", "input": {"pattern": "abc", "text": "bbbca"}, "expected": true, "note": "the match overlaps a run of one letter"},
+    {"id": "h15", "input": {"pattern": "aaaa", "text": "aaabaaab"}, "expected": false, "note": "a run that is one letter short, twice"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 5}, "hang_guard_ms": 30000, "note": "large input, no match: sorting every window is about 10^8 steps here"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 2}, "hang_guard_ms": 30000, "note": "large input with a late match"}
+  ]
+}

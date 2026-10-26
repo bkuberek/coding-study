@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0056"
+slug: reorder-list
+title: Reorder List
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [linked-list, two-pointers]
+signature:
+  function:
+    name: reorderList
+    params:
+      - {name: head, type: ListNode}
+    returns: {type: void, output_from: head}
+comparator: {type: exact}
+approaches:
+  - {id: tail-walk, name: Walk to the tail for every move, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1"}
+  - {id: node-array, name: "Index the nodes, then relink from both ends", role: intermediate, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: split-reverse-merge, name: "Split at the middle, reverse the back half, interleave", role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: number of nodes
+  size_ladder: [100, 1000, 10000]
+  expected_from: split-reverse-merge
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 143, url: "https://leetcode.com/problems/reorder-list/"}
+related: [reverse-linked-list, linked-list-cycle, merge-two-sorted-lists]
+order: 4
+estimate_minutes: 25

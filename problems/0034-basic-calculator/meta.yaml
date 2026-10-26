@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0034"
+slug: basic-calculator
+title: Basic Calculator
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [stack]
+signature:
+  function:
+    name: calculate
+    params:
+      - {name: s, type: string}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: reduce-and-splice, name: Reduce the leftmost operator of each precedence level, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: stack, name: Stack of signed terms, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: running-term, name: Running total and pending term, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: number of operands
+  size_ladder: [100, 1000, 10000]
+  expected_from: running-term
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 227, url: "https://leetcode.com/problems/basic-calculator-ii/"}
+related: [evaluate-rpn, decode-string]
+estimate_minutes: 25

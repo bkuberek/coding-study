@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0140"
+slug: edit-distance
+title: Edit Distance
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-2d]
+signature:
+  function:
+    name: minDistance
+    params:
+      - {name: word1, type: string}
+      - {name: word2, type: string}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Recursion over suffix pairs with a memo table, role: intermediate, time: "O(m * n)", space: "O(m * n)", time_class: "n^2", space_class: "n^2", oracle: true}
+  - {id: tabulation, name: Fill the table of prefix distances, role: optimal, time: "O(m * n)", space: "O(m * n)", time_class: "n^2", space_class: "n^2"}
+  - {id: rolling-array, name: Two rows along the shorter word, role: optimal, time: "O(m * n)", space: "O(min(m, n))", time_class: "n^2", space_class: "n"}
+perf:
+  size_param: total length of both words, split at random
+  size_ladder: [100, 200, 500, 1000]
+  expected_from: rolling-array
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 72, url: "https://leetcode.com/problems/edit-distance/"}
+related: [longest-common-subsequence, distinct-subsequences, regex-matching]
+order: 3
+estimate_minutes: 30

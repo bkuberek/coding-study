@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0086"
+slug: word-search-ii
+title: Word Search II
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [tries, backtracking]
+signature:
+  function:
+    name: findWords
+    params:
+      - {name: board, type: "char[][]"}
+      - {name: words, type: "string[]"}
+    returns: {type: "list<string>"}
+comparator: {type: unordered}
+approaches:
+  - {id: per-word-search, name: Backtracking search for each word separately, role: brute, time: "O(W * r * c * 3^L)", space: "O(L)", time_class: "n", space_class: "1", oracle: true}
+  - {id: trie-backtracking, name: One backtracking pass guided by a trie of all words, role: optimal, time: "O(S + r * c * 3^L)", space: "O(26 * S)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of words, on a board of 8 to 12 rows and columns
+  size_ladder: [100, 1000, 10000]
+  expected_from: trie-backtracking
+references:
+  leetcode: {number: 212, url: "https://leetcode.com/problems/word-search-ii/"}
+related: [implement-trie, wildcard-word-dictionary]
+order: 4
+estimate_minutes: 35

@@ -1,0 +1,8 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "ops": ["StressLog", "append", "append"], "args": [[], [7], [8]], "expected": [null, 1, 2]},
+    {"id": "s1", "note": "3 workers append to one log", "stress": {"seed": 100, "perturb": {"yield_probability": 0.3}, "setup": {"ops": ["StressLog"], "args": [[]]}, "workers": [{"group": "writer", "count": 3, "repeat": 20, "steps": [{"op": "append", "args": [{"$seq": {"start": 0, "worker_stride": 1000}}]}]}], "invariants": [{"type": "distinct", "values": {"op": "append"}}]}}
+  ]
+}

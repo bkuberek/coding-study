@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0164"
+slug: critical-connections
+title: Critical Connections
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [advanced-graphs, graphs]
+signature:
+  function:
+    name: criticalConnections
+    params:
+      - {name: n, type: int}
+      - {name: connections, type: "int[][]"}
+    returns: {type: "list<list<int>>"}
+comparator: {type: unordered-nested}
+approaches:
+  - {id: remove-each-edge, name: Remove each connection and test whether the network splits, role: brute, time: "O(E·(V + E))", space: "O(V + E)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: tarjan-low-link, name: "Tarjan's bridge finding with discovery times and low links", role: optimal, time: "O(V + E)", space: "O(V + E)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of servers V, with E about 1.5V
+  size_ladder: [100, 500, 2000]
+  expected_from: tarjan-low-link
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1192, url: "https://leetcode.com/problems/critical-connections-in-a-network/"}
+related: [clone-graph, min-cost-connect-points, reconstruct-itinerary]
+order: 7
+estimate_minutes: 40

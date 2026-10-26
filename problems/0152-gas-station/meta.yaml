@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0152"
+slug: gas-station
+title: Gas Station
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [greedy]
+signature:
+  function:
+    name: canCompleteCircuit
+    params:
+      - {name: gas, type: "int[]"}
+      - {name: cost, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Simulate the trip from every station, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: reset-on-deficit, name: One pass that restarts after every empty tank, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+  - {id: lowest-prefix, name: Start right after the lowest running balance, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n, the number of stations
+  size_ladder: [100, 300, 1000, 3000]
+  expected_from: reset-on-deficit
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 134, url: "https://leetcode.com/problems/gas-station/"}
+related: [jump-game, maximum-subarray]
+order: 3
+estimate_minutes: 25

@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0172"
+slug: rotate-image
+title: Rotate Image
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [math-geometry]
+signature:
+  function:
+    name: rotate
+    params:
+      - {name: matrix, type: "int[][]"}
+    returns: {type: void, output_from: matrix}
+comparator: {type: exact}
+approaches:
+  - {id: copy-rotated, name: Build the rotated copy and write it back, role: brute, time: "O(n^2)", space: "O(n^2)", time_class: "n^2", space_class: "n^2", oracle: true}
+  - {id: transpose-reverse, name: Transpose then reverse every row, role: optimal, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1"}
+  - {id: four-way-swap, name: "Cycle four cells at a time, layer by layer", role: optimal, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1"}
+perf:
+  size_param: side length n of the n x n matrix
+  size_ladder: [30, 100, 300, 500]
+  expected_from: transpose-reverse
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 48, url: "https://leetcode.com/problems/rotate-image/"}
+related: [spiral-matrix, set-matrix-zeroes]
+order: 1
+estimate_minutes: 15

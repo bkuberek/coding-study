@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "ops": ["RandomizedSet", "insert", "insert", "insert", "remove", "getRandom", "remove"], "args": [[], [8], [3], [8], [3], [], [5]], "expected": [null, true, true, false, true, 8, false]},
+    {"id": "ex2", "visible": true, "ops": ["RandomizedSet", "remove", "insert", "getRandom", "remove", "insert", "getRandom"], "args": [[], [1], [1], [], [1], [2], []], "expected": [null, false, true, 1, true, true, 2]},
+    {"id": "h1", "ops": ["RandomizedSet", "insert", "remove", "remove", "insert", "getRandom"], "args": [[], [5], [5], [5], [5], []], "expected": [null, true, true, false, true, 5], "note": "remove twice, then insert again"},
+    {"id": "h2", "ops": ["RandomizedSet", "remove", "insert", "getRandom"], "args": [[], [0], [0], []], "expected": [null, false, true, 0], "note": "remove from an empty set; zero is a valid value"},
+    {"id": "h3", "ops": ["RandomizedSet", "insert", "insert", "insert", "getRandom"], "args": [[], [7], [7], [7], []], "expected": [null, true, false, false, 7], "note": "repeated inserts of one value"},
+    {"id": "h4", "ops": ["RandomizedSet", "insert", "insert", "remove", "getRandom"], "args": [[], [-2147483648], [2147483647], [2147483647], []], "expected": [null, true, true, true, -2147483648], "note": "extreme 32-bit values"},
+    {"id": "h5", "ops": ["RandomizedSet", "insert", "insert", "insert", "remove", "remove", "getRandom", "remove", "remove"], "args": [[], [1], [2], [3], [1], [3], [], [2], [2]], "expected": [null, true, true, true, true, true, 2, true, false], "note": "removing the first value moves the last one into its slot; that value must stay removable"},
+    {"id": "h6", "ops": ["RandomizedSet", "insert", "insert", "remove", "getRandom", "insert", "remove", "getRandom"], "args": [[], [4], [9], [9], [], [9], [4], []], "expected": [null, true, true, true, 4, true, true, 9], "note": "removing the last value needs no move"},
+    {"id": "h7", "ops": ["RandomizedSet", "insert", "insert", "insert", "insert", "remove", "remove", "remove", "getRandom", "insert", "remove", "remove", "insert", "getRandom"], "args": [[], [10], [20], [30], [40], [10], [20], [30], [], [10], [40], [10], [50], []], "expected": [null, true, true, true, true, true, true, true, 40, true, true, true, true, 50], "note": "grow, shrink to one value, grow and shrink again"},
+    {"id": "h8", "ops": ["RandomizedSet", "insert", "insert", "remove", "getRandom", "remove", "insert", "getRandom"], "args": [[], [0], [-1], [0], [], [-1], [-1], []], "expected": [null, true, true, true, -1, true, true, -1], "note": "zero and a negative value"},
+    {"id": "h9", "ops": ["RandomizedSet", "insert", "remove", "getRandom"], "args": [[], [3], [4], []], "expected": [null, true, false, 3], "note": "removing an absent value leaves the set unchanged"},
+    {"id": "h10", "ops": ["RandomizedSet", "insert", "getRandom", "remove", "insert", "getRandom", "remove", "insert", "getRandom", "remove", "remove"], "args": [[], [6], [], [6], [6], [], [6], [6], [], [6], [6]], "expected": [null, true, 6, true, true, 6, true, true, 6, true, false], "note": "the same value inserted and removed repeatedly"},
+    {"id": "h11", "ops": ["RandomizedSet", "insert", "insert", "insert", "insert", "insert", "remove", "remove", "remove", "remove", "getRandom"], "args": [[], [1], [2], [3], [4], [5], [1], [2], [5], [4], []], "expected": [null, true, true, true, true, true, true, true, true, true, 3], "note": "a value moved twice by earlier removals is still found"},
+    {"id": "h12", "ops": ["RandomizedSet", "insert", "getRandom", "getRandom", "insert", "getRandom"], "args": [[], [42], [], [], [42], []], "expected": [null, true, 42, 42, false, 42], "note": "getRandom does not change the set"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 1}, "hang_guard_ms": 30000, "note": "100000 calls on a set of about 5000 values: a linear search per call is slow here"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 6}}
+  ]
+}

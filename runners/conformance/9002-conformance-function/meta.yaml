@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9002"
+slug: conformance-function
+title: "Conformance: function kind with several parameters"
+status: ready
+difficulty: easy
+track: practical
+kind: function
+signature:
+  function:
+    name: echoHTTPCodes
+    params:
+      - {name: firstValue, type: "int[]"}
+      - {name: secondValue, type: string}
+      - {name: thirdFlag, type: bool}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: identity, name: "Return firstValue unchanged", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

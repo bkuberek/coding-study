@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0210"
+slug: debug-mutable-default-argument
+title: "Debug: Mutable Default Argument"
+status: ready
+difficulty: easy
+track: debugging
+kind: function
+languages: [python]
+stub: buggy
+signature:
+  function:
+    name: leafValues
+    params:
+      - {name: root, type: TreeNode}
+    returns: {type: "list<int>"}
+comparator: {type: exact}
+approaches:
+  - {id: none-sentinel, name: None sentinel for the accumulator, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+related: [debug-recursion-base-case, max-depth-binary-tree]
+estimate_minutes: 10

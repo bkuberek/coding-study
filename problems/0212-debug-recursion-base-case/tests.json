@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"root": [5, 4, 8, 11, null, 13, 4, 7, 2, null, null, null, 1], "target": 22}, "expected": true},
+    {"id": "ex2", "visible": true, "input": {"root": [1, 2], "target": 1}, "expected": false},
+    {"id": "h1", "input": {"root": [], "target": 0}, "expected": false, "note": "empty tree, target 0: there is no path at all"},
+    {"id": "h2", "input": {"root": [], "target": 5}, "expected": false, "note": "empty tree"},
+    {"id": "h3", "input": {"root": [7], "target": 7}, "expected": true, "note": "single leaf matches"},
+    {"id": "h4", "input": {"root": [7], "target": 0}, "expected": false, "note": "single leaf does not match"},
+    {"id": "h5", "input": {"root": [1, 2, 3], "target": 4}, "expected": true, "note": "right leaf matches"},
+    {"id": "h6", "input": {"root": [1, 2, 3], "target": 1}, "expected": false, "note": "root value alone, both children present"},
+    {"id": "h7", "input": {"root": [1, 2, null, 3], "target": 3}, "expected": false, "note": "prefix ends at a node with only a left child"},
+    {"id": "h8", "input": {"root": [1, 2, null, 3], "target": 6}, "expected": true, "note": "full chain to the only leaf"},
+    {"id": "h9", "input": {"root": [-2, null, -3], "target": -2}, "expected": false, "note": "negative values, prefix stops at a node with only a right child"},
+    {"id": "h10", "input": {"root": [-2, null, -3], "target": -5}, "expected": true, "note": "negative values, full path"},
+    {"id": "h11", "input": {"root": [1, -1], "target": 0}, "expected": true, "note": "path sums to zero"},
+    {"id": "h12", "input": {"root": [10, 5, -3, 3, 2, null, 11, 3, -2, null, 1], "target": 18}, "expected": true, "note": "two paths reach 18"},
+    {"id": "h13", "input": {"root": [10, 5, -3, 3, 2, null, 11, 3, -2, null, 1], "target": 7}, "expected": false, "note": "7 is only a prefix (10 + -3)"},
+    {"id": "h14", "input": {"root": [5, 4, 8, 11, null, 13, 4, 7, 2, null, null, null, 1], "target": 26}, "expected": true, "note": "path through the right subtree"},
+    {"id": "h15", "input": {"root": [5, 4, 8, 11, null, 13, 4, 7, 2, null, null, null, 1], "target": 9}, "expected": false, "note": "9 is only a prefix (5 + 4)"}
+  ]
+}

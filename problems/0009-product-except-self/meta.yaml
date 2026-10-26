@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0009"
+slug: product-except-self
+title: Product Except Self
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [arrays-hashing, prefix-sum]
+signature:
+  function:
+    name: productExceptSelf
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Multiply all other elements for each position, role: brute, time: "O(n^2)", space: "O(1) besides the output", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: prefix-suffix-arrays, name: Prefix and suffix product arrays, role: intermediate, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: running-products, name: Prefix products in the output and a running suffix, role: optimal, time: "O(n)", space: "O(1) besides the output", time_class: "n", space_class: "1"}
+perf:
+  size_param: n
+  size_ladder: [100, 1000, 10000]
+  expected_from: running-products
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 238, url: "https://leetcode.com/problems/product-of-array-except-self/"}
+related: [first-missing-positive]
+estimate_minutes: 20

@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0039"
+slug: stock-span
+title: Stock Span
+status: ready
+difficulty: medium
+track: dsa
+kind: design
+patterns: [monotonic-stack]
+signature:
+  class:
+    name: StockSpanner
+    constructor: {params: []}
+    methods:
+      - {name: span, params: [{name: price, type: int}], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: scan-back, name: Keep every price and walk back on each call, role: brute, time: "O(n) per call", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: monotonic-stack, name: Stack of prices with the spans they absorbed, role: optimal, time: "O(1) amortized per call", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of calls, a third to two thirds of them in a rising run
+  size_ladder: [1000, 2000, 5000, 10000]
+  expected_from: monotonic-stack
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 901, url: "https://leetcode.com/problems/online-stock-span/"}
+related: [daily-temperatures, min-stack]
+order: 3
+estimate_minutes: 20

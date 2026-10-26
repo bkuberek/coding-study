@@ -1,0 +1,88 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true,
+     "ops": ["ReadWriteLock", "acquireRead", "tryAcquireRead", "tryAcquireWrite", "releaseRead", "releaseRead", "tryAcquireWrite"],
+     "args": [[], [], [], [], [], [], []],
+     "expected": [null, null, true, false, null, null, true]},
+    {"id": "ex2", "visible": true,
+     "ops": ["ReadWriteLock", "acquireWrite", "tryAcquireRead", "tryAcquireWrite", "releaseWrite", "tryAcquireRead"],
+     "args": [[], [], [], [], [], []],
+     "expected": [null, null, false, false, null, true]},
+    {"id": "h1", "note": "a new lock is free for a writer",
+     "ops": ["ReadWriteLock", "tryAcquireWrite", "releaseWrite", "tryAcquireRead"],
+     "args": [[], [], [], []],
+     "expected": [null, true, null, true]},
+    {"id": "h2", "note": "a writer may enter only after the last of several readers left",
+     "ops": ["ReadWriteLock", "acquireRead", "acquireRead", "acquireRead", "releaseRead", "tryAcquireWrite", "releaseRead", "tryAcquireWrite", "releaseRead", "tryAcquireWrite"],
+     "args": [[], [], [], [], [], [], [], [], [], []],
+     "expected": [null, null, null, null, null, false, null, false, null, true]},
+    {"id": "h3", "note": "alternating writers and readers",
+     "ops": ["ReadWriteLock", "acquireWrite", "releaseWrite", "acquireRead", "releaseRead", "acquireWrite", "releaseWrite", "acquireRead", "tryAcquireRead", "releaseRead", "releaseRead"],
+     "args": [[], [], [], [], [], [], [], [], [], [], []],
+     "expected": [null, null, null, null, null, null, null, null, true, null, null]},
+    {"id": "h4", "note": "failed attempts change nothing",
+     "ops": ["ReadWriteLock", "tryAcquireWrite", "tryAcquireWrite", "tryAcquireRead", "releaseWrite", "tryAcquireWrite", "releaseWrite", "acquireRead", "releaseRead", "tryAcquireWrite"],
+     "args": [[], [], [], [], [], [], [], [], [], []],
+     "expected": [null, true, false, false, null, true, null, null, null, true]},
+    {"id": "h5", "note": "many readers at once",
+     "ops": ["ReadWriteLock", "tryAcquireRead", "tryAcquireRead", "tryAcquireRead", "tryAcquireRead", "tryAcquireWrite", "releaseRead", "releaseRead", "releaseRead", "releaseRead", "acquireWrite", "tryAcquireRead"],
+     "args": [[], [], [], [], [], [], [], [], [], [], [], []],
+     "expected": [null, true, true, true, true, false, null, null, null, null, null, false]},
+    {"id": "h6", "note": "a writer releases and immediately enters again",
+     "ops": ["ReadWriteLock", "acquireWrite", "releaseWrite", "acquireWrite", "tryAcquireRead", "releaseWrite", "acquireRead", "tryAcquireWrite"],
+     "args": [[], [], [], [], [], [], [], []],
+     "expected": [null, null, null, null, false, null, null, false]},
+    {"id": "s1", "note": "4 readers and 2 writers come and go, with pauses between their visits",
+     "stress": {
+       "seed": 1000,
+       "deadline_ms": 3000,
+       "perturb": {"yield_probability": 0.3},
+       "setup": {"ops": ["ReadWriteLock"], "args": [[]]},
+       "workers": [
+         {"group": "reader", "count": 4, "repeat": 550,
+          "steps": [{"op": "acquireRead", "args": []},
+                    {"op": "@enter", "args": ["data", "shared"]},
+                    {"op": "@pause", "args": [1]},
+                    {"op": "@exit", "args": ["data"]},
+                    {"op": "releaseRead", "args": []},
+                    {"op": "@pause", "args": [2]}]},
+         {"group": "writer", "count": 2, "repeat": 550,
+          "steps": [{"op": "acquireWrite", "args": []},
+                    {"op": "@enter", "args": ["data", "exclusive"]},
+                    {"op": "@pause", "args": [1]},
+                    {"op": "@exit", "args": ["data"]},
+                    {"op": "releaseWrite", "args": []},
+                    {"op": "@pause", "args": [2]}]}
+       ],
+       "final": {"ops": ["tryAcquireWrite", "releaseWrite", "tryAcquireRead"], "args": [[], [], []], "expected": [true, null, true]},
+       "invariants": [
+         {"type": "section", "name": "data", "max_violations": 0, "min_occupancy": 2}
+       ]
+     }},
+    {"id": "s2", "note": "4 writers compete while 2 readers wait their turn",
+     "stress": {
+       "seed": 2000,
+       "setup": {"ops": ["ReadWriteLock"], "args": [[]]},
+       "workers": [
+         {"group": "writer", "count": 4, "repeat": 300,
+          "steps": [{"op": "acquireWrite", "args": []},
+                    {"op": "@enter", "args": ["data", "exclusive"]},
+                    {"op": "@pause", "args": [1]},
+                    {"op": "@exit", "args": ["data"]},
+                    {"op": "releaseWrite", "args": []}]},
+         {"group": "reader", "count": 2, "repeat": 300,
+          "steps": [{"op": "acquireRead", "args": []},
+                    {"op": "@enter", "args": ["data", "shared"]},
+                    {"op": "@pause", "args": [1]},
+                    {"op": "@exit", "args": ["data"]},
+                    {"op": "releaseRead", "args": []}]}
+       ],
+       "final": {"ops": ["tryAcquireWrite", "releaseWrite"], "args": [[], []], "expected": [true, null]},
+       "invariants": [
+         {"type": "section", "name": "data", "max_violations": 0}
+       ]
+     }}
+  ]
+}

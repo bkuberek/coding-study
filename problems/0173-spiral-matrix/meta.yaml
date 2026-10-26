@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0173"
+slug: spiral-matrix
+title: Spiral Matrix
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [math-geometry]
+signature:
+  function:
+    name: spiralOrder
+    params:
+      - {name: matrix, type: "int[][]"}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: visited-walk, name: Walk and turn right at walls or visited cells, role: brute, time: "O(m * n)", space: "O(m * n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: shrinking-bounds, name: Peel the outer ring while shrinking four bounds, role: optimal, time: "O(m * n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: number of cells m * n
+  size_ladder: [1000, 3000, 10000, 30000, 90000]
+  expected_from: shrinking-bounds
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 54, url: "https://leetcode.com/problems/spiral-matrix/"}
+related: [rotate-image, set-matrix-zeroes]
+order: 2
+estimate_minutes: 20

@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"head": [5, 1, 9, 3, 7], "n": 2}, "expected": [5, 1, 9, 7]},
+    {"id": "ex2", "visible": true, "input": {"head": [4], "n": 1}, "expected": []},
+    {"id": "h1", "input": {"head": [3, 8], "n": 2}, "expected": [8], "note": "remove the head of a two-node list"},
+    {"id": "h2", "input": {"head": [3, 8], "n": 1}, "expected": [3], "note": "remove the tail of a two-node list"},
+    {"id": "h3", "input": {"head": [8, 8, 8], "n": 2}, "expected": [8, 8], "note": "all values equal"},
+    {"id": "h4", "input": {"head": [10, 20, 30, 40, 50, 60], "n": 6}, "expected": [20, 30, 40, 50, 60], "note": "n equals the length: the head goes"},
+    {"id": "h5", "input": {"head": [10, 20, 30, 40, 50, 60], "n": 1}, "expected": [10, 20, 30, 40, 50], "note": "n is 1: the tail goes"},
+    {"id": "h6", "input": {"head": [-3, 0, 4], "n": 3}, "expected": [0, 4], "note": "negative head removed"},
+    {"id": "h7", "input": {"head": [-10000, 10000, 0, 7], "n": 3}, "expected": [-10000, 0, 7], "note": "extreme values"},
+    {"id": "h8", "input": {"head": [1, 2, 3, 4, 5, 6, 7, 8, 9], "n": 5}, "expected": [1, 2, 3, 4, 6, 7, 8, 9], "note": "the exact middle of an odd-length list"},
+    {"id": "h9", "input": {"head": [0, 0], "n": 1}, "expected": [0], "note": "two zeros"},
+    {"id": "h10", "input": {"head": [6, 2, 6, 2, 6], "n": 4}, "expected": [6, 6, 2, 6], "note": "repeated values: remove by position, not by value"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 3}, "note": "large list"},
+    {"id": "g2", "generate": {"n": 100000, "seed": 10}, "note": "large list, another position"},
+    {"id": "g3", "generate": {"n": 1000, "seed": 6}},
+    {"id": "g4", "generate": {"n": 10000, "seed": 7}, "note": "the largest size of the ladder"}
+  ]
+}

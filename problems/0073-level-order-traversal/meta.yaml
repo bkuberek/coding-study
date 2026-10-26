@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0073"
+slug: level-order-traversal
+title: Level Order Traversal
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [trees]
+signature:
+  function:
+    name: levelOrder
+    params:
+      - {name: root, type: TreeNode}
+    returns: {type: "list<list<int>>"}
+comparator: {type: exact}
+approaches:
+  - {id: queue-levels, name: Queue drained one level at a time, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: dfs-depth, name: Depth-first walk that appends by depth, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of nodes
+  size_ladder: [1000, 10000, 100000]
+  expected_from: queue-levels
+references:
+  leetcode: {number: 102, url: "https://leetcode.com/problems/binary-tree-level-order-traversal/"}
+related: [right-side-view, vertical-order-traversal, max-depth-binary-tree]
+order: 7
+estimate_minutes: 15

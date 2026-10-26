@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0092"
+slug: single-threaded-cpu
+title: Single-Threaded CPU
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [heap]
+signature:
+  function:
+    name: getOrder
+    params:
+      - {name: tasks, type: "int[][]"}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: scan, name: Scan every waiting task before each pick, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: sort-and-heap, name: "Sort by arrival, pick from a min-heap of arrived tasks", role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: number of tasks
+  size_ladder: [100, 300, 1000, 3000, 10000]
+  expected_from: sort-and-heap
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1834, url: "https://leetcode.com/problems/single-threaded-cpu/"}
+related: [task-scheduler, maximize-capital]
+order: 6
+estimate_minutes: 30

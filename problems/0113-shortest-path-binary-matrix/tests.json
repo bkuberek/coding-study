@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"grid": [[0, 1, 0, 0], [0, 1, 0, 1], [0, 0, 1, 0], [1, 1, 0, 0]]}, "expected": 5},
+    {"id": "ex2", "visible": true, "input": {"grid": [[1, 0], [0, 0]]}, "expected": -1},
+    {"id": "h1", "input": {"grid": [[0]]}, "expected": 1, "note": "one open cell is both start and end"},
+    {"id": "h2", "input": {"grid": [[1]]}, "expected": -1, "note": "one blocked cell"},
+    {"id": "h3", "input": {"grid": [[0, 0], [0, 1]]}, "expected": -1, "note": "the end cell is blocked"},
+    {"id": "h4", "input": {"grid": [[0, 1], [1, 0]]}, "expected": 2, "note": "a diagonal step between two blocked cells"},
+    {"id": "h5", "input": {"grid": [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]}, "expected": 5, "note": "all open: the diagonal is shortest"},
+    {"id": "h6", "input": {"grid": [[0, 0, 0], [1, 1, 1], [0, 0, 0]]}, "expected": -1, "note": "a full wall cuts the grid in two"},
+    {"id": "h7", "input": {"grid": [[0, 0, 0, 0, 0], [1, 1, 1, 1, 0], [0, 0, 0, 0, 0], [0, 1, 1, 1, 1], [0, 0, 0, 0, 0]]}, "expected": 13, "note": "walls force a zigzag route"},
+    {"id": "h8", "input": {"grid": [[0, 1, 1, 1], [1, 0, 1, 1], [1, 1, 0, 1], [1, 1, 1, 0]]}, "expected": 4, "note": "only the main diagonal is open"},
+    {"id": "h9", "input": {"grid": [[0, 0, 0, 1], [1, 1, 0, 1], [1, 1, 0, 1], [1, 0, 0, 0]]}, "expected": 5, "note": "the only route squeezes through the open middle column"},
+    {"id": "h10", "input": {"grid": [[0, 1, 0], [0, 1, 0], [0, 0, 0]]}, "expected": 4, "note": "go around a short wall"},
+    {"id": "h11", "input": {"grid": [[0, 0, 0, 0, 0, 0, 0], [0, 1, 1, 1, 1, 1, 0], [0, 1, 0, 0, 0, 1, 0], [0, 1, 0, 1, 0, 1, 0], [0, 1, 0, 0, 0, 1, 0], [0, 1, 1, 1, 1, 1, 0], [0, 0, 0, 0, 0, 0, 0]]}, "expected": 12, "note": "a ring of walls: the route follows the outer edge"},
+    {"id": "h12", "input": {"grid": [[0, 0], [0, 0]]}, "expected": 2, "note": "the smallest grid with a diagonal"},
+    {"id": "g1", "generate": {"n": 2500, "seed": 13}, "note": "50 by 50 sawtooth corridor: the shortest path visits 866 cells"},
+    {"id": "g2", "generate": {"n": 99, "seed": 2}, "note": "9 by 9 random grid where the end cannot be reached"},
+    {"id": "g3", "generate": {"n": 1600, "seed": 3}}
+  ]
+}

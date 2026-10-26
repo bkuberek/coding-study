@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=../../../schemas/item.schema.json
+slug: review-pagination-api
+title: "Review: Pagination API"
+track: code-review
+difficulty: medium
+estimate_minutes: 30
+status: ready
+order: 3
+references:
+  links:
+    - https://use-the-index-luke.com/no-offset
+    - https://www.rfc-editor.org/rfc/rfc9457
+related: [news-feed, review-report-query]

@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../../schemas/item.schema.json
+slug: news-feed
+title: News Feed
+track: system-design
+difficulty: hard
+estimate_minutes: 60
+status: draft

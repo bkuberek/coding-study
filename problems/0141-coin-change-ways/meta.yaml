@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0141"
+slug: coin-change-ways
+title: Coin Change Combinations
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-2d]
+signature:
+  function:
+    name: change
+    params:
+      - {name: amount, type: int}
+      - {name: coins, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Recursion over coin index and remaining amount with a memo table, role: intermediate, time: "O(k * amount)", space: "O(k * amount)", time_class: "n", space_class: "n", oracle: true}
+  - {id: tabulation, name: Table of counts by coin prefix and amount, role: optimal, time: "O(k * amount)", space: "O(k * amount)", time_class: "n", space_class: "n"}
+  - {id: rolling-array, name: One array of counts with coins in the outer loop, role: optimal, time: "O(k * amount)", space: "O(amount)", time_class: "n", space_class: "n"}
+perf:
+  size_param: amount n, with 5 to 25 coin values
+  size_ladder: [250, 500, 1000, 2000]
+  expected_from: rolling-array
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 518, url: "https://leetcode.com/problems/coin-change-ii/"}
+related: [target-sum, unique-paths]
+order: 4
+estimate_minutes: 25

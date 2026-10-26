@@ -1,0 +1,8 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "finite", "input": {"value": 1.5, "factor": 2.0}, "expected": 3.0},
+    {"id": "overflow", "input": {"value": 1e+308, "factor": 10.0}, "expected": 0.0}
+  ]
+}

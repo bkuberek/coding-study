@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0091"
+slug: design-twitter
+title: Mini Twitter
+status: ready
+difficulty: medium
+track: dsa
+kind: design
+patterns: [heap, arrays-hashing]
+signature:
+  class:
+    name: Twitter
+    constructor: {params: []}
+    methods:
+      - {name: postTweet, params: [{name: userId, type: int}, {name: tweetId, type: int}], returns: {type: void}}
+      - {name: getNewsFeed, params: [{name: userId, type: int}], returns: {type: "list<int>"}}
+      - {name: follow, params: [{name: followerId, type: int}, {name: followeeId, type: int}], returns: {type: void}}
+      - {name: unfollow, params: [{name: followerId, type: int}, {name: followeeId, type: int}], returns: {type: void}}
+comparator: {type: ops}
+approaches:
+  - {id: global-scan, name: "One global timeline, scanned from the newest tweet", role: brute, time: "O(T) per getNewsFeed, O(1) otherwise", space: "O(T + F)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: heap-merge, name: Per-user timelines merged with a max-heap, role: optimal, time: "O(f + 10 log f) per getNewsFeed, O(1) otherwise", space: "O(T + F)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of calls
+  size_ladder: [1000, 10000, 30000]
+  expected_from: heap-merge
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 355, url: "https://leetcode.com/problems/design-twitter/"}
+related: [merge-k-sorted-lists, lru-cache]
+order: 5
+estimate_minutes: 35

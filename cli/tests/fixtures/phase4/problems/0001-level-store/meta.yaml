@@ -1,0 +1,25 @@
+id: "0001"
+slug: level-store
+title: Level Store
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+levels:
+  - {level: 1, title: Put and get}
+  - {level: 2, title: Remove and size}
+  - {level: 3, title: Prefix scans}
+signature:
+  class:
+    name: LevelStore
+    constructor: {params: []}
+    methods:
+      - {name: put, level: 1, params: [{name: key, type: string}, {name: value, type: string}], returns: {type: void}}
+      - {name: get, level: 1, params: [{name: key, type: string}], returns: {type: string}}
+      - {name: remove, level: 2, params: [{name: key, type: string}], returns: {type: bool}}
+      - {name: size, level: 2, params: [], returns: {type: int}}
+      - {name: keysWithPrefix, level: 3, params: [{name: prefix, type: string}], returns: {type: "string[]"}}
+comparator: {type: ops}
+approaches:
+  - {id: hash-map, name: Hash map, role: optimal, time: "O(1) per put, get, remove and size; O(n log n) per scan", space: "O(n)", time_class: "n", space_class: "n"}
+estimate_minutes: 30

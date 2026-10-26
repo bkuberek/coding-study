@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=../../../schemas/item.schema.json
+slug: review-auth-endpoint
+title: "Review: Login Endpoint"
+track: code-review
+difficulty: medium
+estimate_minutes: 30
+status: ready
+order: 2
+references:
+  links:
+    - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+    - https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+    - https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
+related: [distributed-rate-limiter, review-concurrent-counter]

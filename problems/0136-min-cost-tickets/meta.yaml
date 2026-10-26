@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0136"
+slug: min-cost-tickets
+title: Minimum Cost for Tickets
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-1d]
+signature:
+  function:
+    name: mincostTickets
+    params:
+      - {name: days, type: "int[]"}
+      - {name: costs, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Top-down cheapest cover from each travel day, role: intermediate, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: calendar-table, name: Bottom-up table over calendar days, role: intermediate, time: "O(W)", space: "O(W)", time_class: "n", space_class: "n", oracle: true}
+  - {id: rolling-window, name: Calendar days with a 30-day ring buffer, role: optimal, time: "O(W)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n, the number of travel days, with the last day W between n and 2n (at most 365)
+  size_ladder: [30, 100, 200, 365]
+  expected_from: rolling-window
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 983, url: "https://leetcode.com/problems/minimum-cost-for-tickets/"}
+related: [coin-change, job-scheduling-max-profit]
+order: 11
+estimate_minutes: 30

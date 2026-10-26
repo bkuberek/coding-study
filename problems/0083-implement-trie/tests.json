@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "ops": ["Trie", "insert", "search", "search", "startsWith", "insert", "search"], "args": [[], ["cat"], ["cat"], ["ca"], ["ca"], ["ca"], ["ca"]], "expected": [null, null, true, false, true, null, true]},
+    {"id": "ex2", "visible": true, "ops": ["Trie", "insert", "startsWith", "startsWith", "search", "startsWith"], "args": [[], ["dog"], ["dot"], ["do"], ["dogs"], ["dogs"]], "expected": [null, null, false, true, false, false]},
+    {"id": "h1", "ops": ["Trie", "search", "startsWith"], "args": [[], ["a"], ["a"]], "expected": [null, false, false], "note": "queries on an empty trie"},
+    {"id": "h2", "ops": ["Trie", "insert", "startsWith", "search", "startsWith"], "args": [[], ["apple"], ["apple"], ["apple"], ["apples"]], "expected": [null, null, true, true, false], "note": "a word is a prefix of itself"},
+    {"id": "h3", "ops": ["Trie", "insert", "search", "startsWith", "search", "startsWith"], "args": [[], ["a"], ["a"], ["a"], ["b"], ["ab"]], "expected": [null, null, true, true, false, false], "note": "single letters"},
+    {"id": "h4", "ops": ["Trie", "insert", "insert", "search", "startsWith"], "args": [[], ["car"], ["car"], ["car"], ["c"]], "expected": [null, null, null, true, true], "note": "duplicate insert changes nothing"},
+    {"id": "h5", "ops": ["Trie", "insert", "insert", "insert", "search", "startsWith", "search", "search", "startsWith"], "args": [[], ["team"], ["tea"], ["ten"], ["te"], ["te"], ["tea"], ["teams"], ["tem"]], "expected": [null, null, null, null, false, true, true, false, false], "note": "words sharing a prefix"},
+    {"id": "h6", "ops": ["Trie", "insert", "startsWith", "search", "search"], "args": [[], ["abcdefghijklmnopqrst"], ["abcdefghijklmnopqrs"], ["abcdefghijklmnopqrs"], ["abcdefghijklmnopqrst"]], "expected": [null, null, true, false, true], "note": "20-letter word"},
+    {"id": "h7", "ops": ["Trie", "insert", "startsWith", "search", "insert", "search", "startsWith"], "args": [[], ["zz"], ["z"], ["z"], ["z"], ["z"], ["zzz"]], "expected": [null, null, true, false, null, true, false], "note": "the last letter of the alphabet; a prefix stored later"},
+    {"id": "h8", "ops": ["Trie", "insert", "insert", "insert", "search", "startsWith", "startsWith", "search"], "args": [[], ["b"], ["ba"], ["bab"], ["ab"], ["a"], ["bab"], ["baba"]], "expected": [null, null, null, null, false, false, true, false], "note": "every prefix of a word stored"},
+    {"id": "h9", "ops": ["Trie", "insert", "startsWith", "insert", "startsWith", "search", "startsWith"], "args": [[], ["xylophone"], ["xylo"], ["xylem"], ["xyle"], ["xyl"], ["y"]], "expected": [null, null, true, null, true, false, false], "note": "branch in the middle of a word"},
+    {"id": "h10", "ops": ["Trie", "insert", "search", "startsWith", "search", "startsWith", "search", "startsWith"], "args": [[], ["same"], ["same"], ["sam"], ["same"], ["sam"], ["same"], ["sam"]], "expected": [null, null, true, true, true, true, true, true], "note": "repeated queries"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "10000 calls: scanning every word per prefix query is slow here"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 2}, "hang_guard_ms": 30000},
+    {"id": "g3", "generate": {"n": 1000, "seed": 3}}
+  ]
+}

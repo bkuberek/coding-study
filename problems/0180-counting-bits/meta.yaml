@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0180"
+slug: counting-bits
+title: Counting Bits
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [bit-manipulation, dp-1d]
+signature:
+  function:
+    name: countBits
+    params:
+      - {name: n, type: int}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: count-each, name: Count the bits of every number separately, role: brute, time: "O(n log n)", space: "O(1)", time_class: "n log n", space_class: "1", oracle: true}
+  - {id: half-plus-low-bit, name: Reuse the count of i / 2 and add the lowest bit, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n, so the output has n + 1 entries
+  size_ladder: [1000, 10000, 100000, 1000000]
+  expected_from: half-plus-low-bit
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 338, url: "https://leetcode.com/problems/counting-bits/"}
+related: [count-set-bits]
+order: 3
+estimate_minutes: 15

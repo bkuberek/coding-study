@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0184"
+slug: count-smaller-after-self
+title: Count Smaller Numbers After Self
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [segment-tree-fenwick, binary-search]
+signature:
+  function:
+    name: countSmaller
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: compare-every-pair, name: Compare each value with everything to its right, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: fenwick-ranks, name: "Fenwick tree over value ranks, scanning from the right", role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+  - {id: merge-sort-counts, name: Merge sort that counts the smaller values crossing over, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: length of nums
+  size_ladder: [100, 300, 1000, 3000, 5000]
+  expected_from: fenwick-ranks
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 315, url: "https://leetcode.com/problems/count-of-smaller-numbers-after-self/"}
+related: [range-sum-mutable, range-module]
+order: 2
+estimate_minutes: 40

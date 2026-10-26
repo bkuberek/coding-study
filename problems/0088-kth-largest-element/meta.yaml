@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0088"
+slug: kth-largest-element
+title: Kth Largest Element
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [heap]
+signature:
+  function:
+    name: findKthLargest
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: k, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: sorting, name: Sort and index from the end, role: brute, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n", oracle: true}
+  - {id: min-heap, name: Min-heap of the k largest values seen, role: optimal, time: "O(n log k)", space: "O(k)", time_class: "n log n", space_class: "n"}
+  - {id: quickselect, name: Quickselect with a random pivot and three-way partition, role: optimal, time: "O(n) average, O(n^2) worst", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n, with k = n/2
+  size_ladder: [1000, 10000, 100000]
+  expected_from: quickselect
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 215, url: "https://leetcode.com/problems/kth-largest-element-in-an-array/"}
+related: [last-stone-weight, k-closest-points, top-k-frequent-elements]
+order: 2
+estimate_minutes: 20

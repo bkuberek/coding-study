@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"tickets": [["SFO", "LAX"], ["JFK", "SFO"], ["LAX", "JFK"], ["JFK", "ATL"]]}, "expected": ["JFK", "SFO", "LAX", "JFK", "ATL"]},
+    {"id": "ex2", "visible": true, "input": {"tickets": [["JFK", "BOS"], ["JFK", "AUS"], ["AUS", "JFK"]]}, "expected": ["JFK", "AUS", "JFK", "BOS"]},
+    {"id": "h1", "input": {"tickets": [["JFK", "ORD"]]}, "expected": ["JFK", "ORD"], "note": "a single ticket"},
+    {"id": "h2", "input": {"tickets": [["JFK", "MIA"], ["MIA", "JFK"], ["JFK", "MIA"], ["MIA", "JFK"]]}, "expected": ["JFK", "MIA", "JFK", "MIA", "JFK"], "note": "the same ticket twice in each direction"},
+    {"id": "h3", "input": {"tickets": [["DEN", "SEA"], ["JFK", "DEN"], ["SEA", "PDX"], ["PDX", "BOI"]]}, "expected": ["JFK", "DEN", "SEA", "PDX", "BOI"], "note": "a single chain with no choices"},
+    {"id": "h4", "input": {"tickets": [["JFK", "AAA"], ["AAA", "JFK"], ["JFK", "BBB"], ["BBB", "JFK"], ["JFK", "CCC"], ["CCC", "JFK"]]}, "expected": ["JFK", "AAA", "JFK", "BBB", "JFK", "CCC", "JFK"], "note": "three loops through JFK, taken in letter order"},
+    {"id": "h5", "input": {"tickets": [["JFK", "KUL"], ["JFK", "NRT"], ["NRT", "JFK"]]}, "expected": ["JFK", "NRT", "JFK", "KUL"], "note": "the smaller first destination is a dead end"},
+    {"id": "h6", "input": {"tickets": [["JFK", "AXA"], ["AXA", "BXB"], ["BXB", "AXA"], ["AXA", "CXC"], ["JFK", "DXD"], ["CXC", "JFK"]]}, "expected": ["JFK", "AXA", "BXB", "AXA", "CXC", "JFK", "DXD"], "note": "a dead end two levels deep"},
+    {"id": "h7", "input": {"tickets": [["JFK", "LHR"], ["LHR", "CDG"], ["CDG", "LHR"], ["LHR", "JFK"], ["JFK", "CDG"], ["CDG", "JFK"]]}, "expected": ["JFK", "CDG", "JFK", "LHR", "CDG", "LHR", "JFK"], "note": "several ways to use every ticket"},
+    {"id": "h8", "input": {"tickets": [["ZZZ", "JFK"], ["JFK", "ZZZ"], ["JFK", "AAA"], ["AAA", "JFK"]]}, "expected": ["JFK", "AAA", "JFK", "ZZZ", "JFK"], "note": "the trip ends where it started"},
+    {"id": "h9", "input": {"tickets": [["JFK", "YYZ"], ["YYZ", "JFK"], ["JFK", "YYZ"], ["YYZ", "YUL"], ["YUL", "YYZ"]]}, "expected": ["JFK", "YYZ", "JFK", "YYZ", "YUL", "YYZ"], "note": "a loop away from JFK"},
+    {"id": "h10", "input": {"tickets": [["JFK", "ABA"], ["JFK", "ABB"], ["JFK", "ABC"], ["JFK", "ABD"], ["JFK", "ABE"], ["ABA", "JFK"], ["ABB", "JFK"], ["ABC", "JFK"], ["ABD", "JFK"]]}, "expected": ["JFK", "ABA", "JFK", "ABB", "JFK", "ABC", "JFK", "ABD", "JFK", "ABE"], "note": "five destinations from JFK; the last one is where the trip ends"},
+    {"id": "h11", "input": {"tickets": [["JFK", "SIN"], ["SIN", "HKG"], ["HKG", "SIN"], ["SIN", "JFK"], ["JFK", "HKG"], ["HKG", "JFK"], ["JFK", "SIN"]]}, "expected": ["JFK", "HKG", "JFK", "SIN", "HKG", "SIN", "JFK", "SIN"], "note": "tickets between three airports in every direction"},
+    {"id": "h12", "input": {"tickets": [["JFK", "ABC"], ["ABC", "ABD"], ["ABD", "ABC"], ["ABC", "ABD"]]}, "expected": ["JFK", "ABC", "ABD", "ABC", "ABD"], "note": "similar codes that differ in the last letter"},
+    {"id": "g1", "generate": {"n": 1000, "seed": 1}, "note": "1000 tickets over about 30 airports"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 4}, "note": "1000 tickets, another pile"},
+    {"id": "g3", "generate": {"n": 300, "seed": 2}}
+  ]
+}

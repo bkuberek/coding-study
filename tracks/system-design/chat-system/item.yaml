@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=../../../schemas/item.schema.json
+slug: chat-system
+title: Chat System
+track: system-design
+difficulty: hard
+estimate_minutes: 60
+status: ready
+order: 5
+references:
+  study_guides:
+    - "distributed-systems-study-guide.md#4-consistency-models"
+    - "distributed-systems-study-guide.md#1-load-balancing"
+    - "distributed-systems-study-guide.md#3-nosql--wide-column"
+    - "distributed-systems-study-guide.md#1-message-queues"
+    - "distributed-systems-study-guide.md#6-common-patterns"
+related: [news-feed, event-bus, notification-service]

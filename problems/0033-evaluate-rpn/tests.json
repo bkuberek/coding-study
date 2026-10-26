@@ -1,0 +1,24 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"tokens": ["3", "8", "+", "2", "*"]}, "expected": 22},
+    {"id": "ex2", "visible": true, "input": {"tokens": ["20", "-6", "/", "1", "-"]}, "expected": -4},
+    {"id": "h1", "input": {"tokens": ["7"]}, "expected": 7, "note": "a single number"},
+    {"id": "h2", "input": {"tokens": ["-200"]}, "expected": -200, "note": "a single negative number"},
+    {"id": "h3", "input": {"tokens": ["3", "-4", "-"]}, "expected": 7, "note": "a negative operand and the minus operator"},
+    {"id": "h4", "input": {"tokens": ["7", "-2", "/"]}, "expected": -3, "note": "truncation toward zero, not floor"},
+    {"id": "h5", "input": {"tokens": ["-7", "2", "/"]}, "expected": -3, "note": "truncation with a negative dividend"},
+    {"id": "h6", "input": {"tokens": ["1", "3", "/"]}, "expected": 0, "note": "a quotient below one"},
+    {"id": "h7", "input": {"tokens": ["-6", "-3", "/"]}, "expected": 2, "note": "two negative operands"},
+    {"id": "h8", "input": {"tokens": ["0", "5", "/"]}, "expected": 0, "note": "zero divided by a number"},
+    {"id": "h9", "input": {"tokens": ["6", "2", "3", "+", "5", "*", "+", "4", "-"]}, "expected": 27, "note": "mixed operators"},
+    {"id": "h10", "input": {"tokens": ["1", "2", "3", "4", "5", "6", "+", "+", "+", "+", "+"]}, "expected": 21, "note": "all numbers first, then all operators"},
+    {"id": "h11", "input": {"tokens": ["10", "2", "-", "3", "-", "4", "-"]}, "expected": 1, "note": "a left-leaning chain of subtractions"},
+    {"id": "h12", "input": {"tokens": ["200", "200", "*", "200", "*", "200", "*"]}, "expected": 1600000000, "note": "a product close to the 32-bit limit"},
+    {"id": "h13", "input": {"tokens": ["9", "-3", "*", "4", "/"]}, "expected": -6, "note": "a negative product divided"},
+    {"id": "h14", "input": {"tokens": ["5", "5", "-", "8", "*"]}, "expected": 0, "note": "an intermediate zero"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 7}, "note": "large input: thousands of pending operands make rescanning slow"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 3}}
+  ]
+}

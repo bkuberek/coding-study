@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0046"
+slug: koko-eating-bananas
+title: Koko Eating Bananas
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [binary-search]
+signature:
+  function:
+    name: minEatingSpeed
+    params:
+      - {name: piles, type: "int[]"}
+      - {name: h, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: try-every-speed, name: "Try speeds 1, 2, 3 and so on", role: brute, time: "O(n * k)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: search-the-speed, name: Binary search on the answer, role: optimal, time: "O(n log m)", space: "O(1)", time_class: "n log n", space_class: "1"}
+perf:
+  size_param: number of piles (the answer grows with n/20 to n/10)
+  size_ladder: [100, 300, 1000, 3000, 10000]
+  expected_from: search-the-speed
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 875, url: "https://leetcode.com/problems/koko-eating-bananas/"}
+related: [split-array-largest-sum, binary-search]
+order: 4
+estimate_minutes: 25

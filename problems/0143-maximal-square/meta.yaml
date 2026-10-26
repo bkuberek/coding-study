@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0143"
+slug: maximal-square
+title: Maximal Square
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-2d]
+signature:
+  function:
+    name: maximalSquare
+    params:
+      - {name: matrix, type: "char[][]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Recursion on the square starting at each cell with a memo table, role: intermediate, time: "O(m * n)", space: "O(m * n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: tabulation, name: Table of the largest square ending at each cell, role: optimal, time: "O(m * n)", space: "O(m * n)", time_class: "n", space_class: "n"}
+  - {id: rolling-array, name: One row of square sides plus the diagonal value, role: optimal, time: "O(m * n)", space: "O(n)", time_class: "n", space_class: "sqrt n"}
+perf:
+  size_param: number of cells m * n (rows and columns about sqrt(n) each)
+  size_ladder: [1000, 10000, 40000, 90000]
+  expected_from: rolling-array
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 221, url: "https://leetcode.com/problems/maximal-square/"}
+related: [maximal-rectangle, unique-paths]
+order: 6
+estimate_minutes: 25

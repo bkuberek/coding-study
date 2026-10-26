@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0139"
+slug: longest-common-subsequence
+title: Longest Common Subsequence
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-2d]
+signature:
+  function:
+    name: longestCommonSubsequence
+    params:
+      - {name: text1, type: string}
+      - {name: text2, type: string}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Recursion over suffix pairs with a memo table, role: intermediate, time: "O(m * n)", space: "O(m * n)", time_class: "n^2", space_class: "n^2", oracle: true}
+  - {id: tabulation, name: Fill the table of prefix answers, role: optimal, time: "O(m * n)", space: "O(m * n)", time_class: "n^2", space_class: "n^2"}
+  - {id: rolling-array, name: Two rows along the shorter string, role: optimal, time: "O(m * n)", space: "O(min(m, n))", time_class: "n^2", space_class: "n"}
+perf:
+  size_param: total length of both strings, split at random
+  size_ladder: [200, 500, 1000, 2000]
+  expected_from: rolling-array
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1143, url: "https://leetcode.com/problems/longest-common-subsequence/"}
+related: [edit-distance, distinct-subsequences, interleaving-string]
+order: 2
+estimate_minutes: 25

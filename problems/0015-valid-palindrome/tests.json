@@ -1,0 +1,27 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"s": "Was it a car or a cat I saw?"}, "expected": true},
+    {"id": "ex2", "visible": true, "input": {"s": "Never odd or even 1"}, "expected": false},
+    {"id": "ex3", "visible": true, "input": {"s": " ;-) "}, "expected": true},
+    {"id": "h1", "input": {"s": "q"}, "expected": true, "note": "single letter"},
+    {"id": "h2", "input": {"s": "#"}, "expected": true, "note": "single ignored character"},
+    {"id": "h3", "input": {"s": "Xx"}, "expected": true, "note": "same letter in both cases"},
+    {"id": "h4", "input": {"s": "xy"}, "expected": false, "note": "two different letters"},
+    {"id": "h5", "input": {"s": "1Q"}, "expected": false, "note": "a digit and a letter 32 code points apart are not equal"},
+    {"id": "h6", "input": {"s": "/:@[`{"}, "expected": true, "note": "only the characters next to the digit and letter ranges"},
+    {"id": "h7", "input": {"s": "z{Z"}, "expected": true, "note": "an ignored character between equal letters"},
+    {"id": "h8", "input": {"s": "      "}, "expected": true, "note": "spaces only"},
+    {"id": "h9", "input": {"s": "4096 9 0 4"}, "expected": true, "note": "digits only, separated by spaces"},
+    {"id": "h10", "input": {"s": "8 a 0 A 8"}, "expected": true, "note": "digits and letters mixed"},
+    {"id": "h11", "input": {"s": "Step on, no pets!!"}, "expected": true, "note": "palindrome with trailing punctuation"},
+    {"id": "h12", "input": {"s": "...abcdba..."}, "expected": false, "note": "mismatch in the middle"},
+    {"id": "h13", "input": {"s": "Ab,c!dcB.a?"}, "expected": true, "note": "even-length palindrome with mixed case"},
+    {"id": "h14", "input": {"s": "racecars"}, "expected": false, "note": "an extra character at one end"},
+    {"id": "h15", "input": {"s": "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!a"}, "expected": true, "note": "the only kept character is last"},
+    {"id": "h16", "input": {"s": "~a~b~c~d~e~e~d~c~b~a~"}, "expected": true, "note": "ignored characters between every pair"},
+    {"id": "g1", "generate": {"n": 200000, "seed": 1}, "note": "maximum length near-palindrome"},
+    {"id": "g2", "generate": {"n": 200000, "seed": 2}, "note": "maximum length near-palindrome"}
+  ]
+}

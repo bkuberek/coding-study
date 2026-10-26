@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9012"
+slug: conformance-output-from
+title: "Conformance: output_from serializes a parameter after the call"
+status: ready
+difficulty: easy
+track: practical
+kind: function
+signature:
+  function:
+    name: sortValues
+    params:
+      - {name: values, type: "int[]"}
+    returns: {type: void, output_from: values}
+comparator: {type: exact}
+approaches:
+  - {id: sorts, name: "Sort values ascending in place", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

@@ -1,0 +1,24 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [-4, 0, 3, 8, 15, 21], "target": 8}, "expected": 3},
+    {"id": "ex2", "visible": true, "input": {"nums": [2, 6, 9, 13], "target": 7}, "expected": -1},
+    {"id": "h1", "input": {"nums": [5], "target": 5}, "expected": 0, "note": "single element, present"},
+    {"id": "h2", "input": {"nums": [5], "target": 4}, "expected": -1, "note": "single element, target smaller"},
+    {"id": "h3", "input": {"nums": [5], "target": 6}, "expected": -1, "note": "single element, target larger"},
+    {"id": "h4", "input": {"nums": [1, 3], "target": 1}, "expected": 0, "note": "two elements, target first"},
+    {"id": "h5", "input": {"nums": [1, 3], "target": 3}, "expected": 1, "note": "two elements, target last"},
+    {"id": "h6", "input": {"nums": [1, 3], "target": 2}, "expected": -1, "note": "two elements, target in the gap"},
+    {"id": "h7", "input": {"nums": [-30, -20, -10, 0, 10, 20, 30], "target": -30}, "expected": 0, "note": "odd length, target at the left end"},
+    {"id": "h8", "input": {"nums": [-30, -20, -10, 0, 10, 20, 30], "target": 30}, "expected": 6, "note": "odd length, target at the right end"},
+    {"id": "h9", "input": {"nums": [-30, -20, -10, 0, 10, 20, 30], "target": 0}, "expected": 3, "note": "target exactly in the middle"},
+    {"id": "h10", "input": {"nums": [4, 8, 15, 16, 23, 42], "target": 1}, "expected": -1, "note": "target below every element"},
+    {"id": "h11", "input": {"nums": [4, 8, 15, 16, 23, 42], "target": 99}, "expected": -1, "note": "target above every element"},
+    {"id": "h12", "input": {"nums": [-1000000000, -1, 1000000000], "target": 1000000000}, "expected": 2, "note": "extreme values"},
+    {"id": "h13", "input": {"nums": [-1000000000, 1000000000], "target": -999999999}, "expected": -1, "note": "absent value next to an extreme"},
+    {"id": "h14", "input": {"nums": [-9, -7, -5, -3, -2], "target": -3}, "expected": 3, "note": "all negative, even shift from the middle"},
+    {"id": "h15", "input": {"nums": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], "target": 14}, "expected": 14, "note": "power-of-two length, target near the end"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 7}, "note": "large input: a linear scan reads at least half of the array"}
+  ]
+}

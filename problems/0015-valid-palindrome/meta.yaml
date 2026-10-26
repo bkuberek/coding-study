@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0015"
+slug: valid-palindrome
+title: Valid Palindrome
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [two-pointers]
+signature:
+  function:
+    name: isPalindrome
+    params:
+      - {name: s, type: string}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: filter-reverse, name: Clean copy compared with its reverse, role: brute, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: two-pointers, name: Converging pointers that skip ignored characters, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: length of s
+  size_ladder: [1000, 10000, 100000, 200000]
+  expected_from: two-pointers
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 125, url: "https://leetcode.com/problems/valid-palindrome/"}
+related: [almost-palindrome, two-sum-sorted]
+order: 1
+estimate_minutes: 10

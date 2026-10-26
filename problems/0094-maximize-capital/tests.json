@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"k": 2, "w": 1, "profits": [5, 2, 8], "capital": [1, 0, 6]}, "expected": 14},
+    {"id": "ex2", "visible": true, "input": {"k": 3, "w": 0, "profits": [4, 1, 7], "capital": [1, 0, 5]}, "expected": 12},
+    {"id": "h1", "input": {"k": 1, "w": 0, "profits": [5], "capital": [1]}, "expected": 0, "note": "nothing is affordable"},
+    {"id": "h2", "input": {"k": 5, "w": 10, "profits": [1, 2], "capital": [0, 0]}, "expected": 13, "note": "k is larger than the number of projects"},
+    {"id": "h3", "input": {"k": 2, "w": 3, "profits": [0, 0, 4], "capital": [0, 3, 10]}, "expected": 3, "note": "only zero-profit projects are affordable"},
+    {"id": "h4", "input": {"k": 2, "w": 1000000000, "profits": [10000, 9999, 1], "capital": [1000000000, 0, 5]}, "expected": 1000019999, "note": "a huge starting capital affords everything"},
+    {"id": "h5", "input": {"k": 1, "w": 5, "profits": [1, 9, 3], "capital": [0, 5, 2]}, "expected": 14, "note": "pick the largest profit, not the cheapest project"},
+    {"id": "h6", "input": {"k": 3, "w": 1, "profits": [1, 2, 4, 100], "capital": [1, 2, 4, 8]}, "expected": 8, "note": "each pick unlocks the next; the best project stays out of reach"},
+    {"id": "h7", "input": {"k": 2, "w": 2, "profits": [3, 3, 3], "capital": [2, 2, 2]}, "expected": 8, "note": "identical projects"},
+    {"id": "h8", "input": {"k": 3, "w": 0, "profits": [10000, 10000, 10000], "capital": [0, 10000, 20000]}, "expected": 30000, "note": "maximum profits, unlocked one by one"},
+    {"id": "h9", "input": {"k": 4, "w": 0, "profits": [2, 50], "capital": [0, 3]}, "expected": 2, "note": "stuck after one pick: the remaining rounds are wasted"},
+    {"id": "h10", "input": {"k": 2, "w": 7, "profits": [6, 1, 5, 4], "capital": [8, 7, 3, 12]}, "expected": 18, "note": "the first pick makes a better project affordable"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "note": "10^4 projects and 1000 picks"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 2}, "hang_guard_ms": 30000, "note": "10^4 projects and 1000 picks, another seed: scanning every project in every round is slow here"},
+    {"id": "g3", "generate": {"n": 500, "seed": 3}}
+  ]
+}

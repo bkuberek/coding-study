@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0084"
+slug: wildcard-word-dictionary
+title: Word Dictionary With Wildcards
+status: ready
+difficulty: medium
+track: dsa
+kind: design
+patterns: [tries, backtracking]
+signature:
+  class:
+    name: WordDictionary
+    constructor: {params: []}
+    methods:
+      - {name: addWord, params: [{name: word, type: string}], returns: {type: void}}
+      - {name: search, params: [{name: word, type: string}], returns: {type: bool}}
+comparator: {type: ops}
+approaches:
+  - {id: scan-words, name: Compare the pattern with every stored word of its length, role: brute, time: "O(L) addWord, O(S) search", space: "O(S)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: trie-dfs, name: Trie searched depth-first with a branch at every dot, role: optimal, time: "O(L) addWord, O(26^k * L) search", space: "O(26 * S)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of calls
+  size_ladder: [300, 1000, 3000, 10000]
+  expected_from: trie-dfs
+references:
+  leetcode: {number: 211, url: "https://leetcode.com/problems/design-add-and-search-words-data-structure/"}
+related: [implement-trie, word-search-ii]
+order: 2
+estimate_minutes: 25

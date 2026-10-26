@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"s": "banana split"}, "expected": 8},
+    {"id": "ex2", "visible": true, "input": {"s": "zzzz"}, "expected": 1},
+    {"id": "ex3", "visible": true, "input": {"s": "abcbdea"}, "expected": 5},
+    {"id": "h1", "input": {"s": ""}, "expected": 0, "note": "empty string"},
+    {"id": "h2", "input": {"s": "q"}, "expected": 1, "note": "single character"},
+    {"id": "h3", "input": {"s": "  "}, "expected": 1, "note": "two spaces repeat"},
+    {"id": "h4", "input": {"s": "abcdef"}, "expected": 6, "note": "no repeats at all"},
+    {"id": "h5", "input": {"s": "abba"}, "expected": 2, "note": "the repeat lies before the window start: the left edge must not move back"},
+    {"id": "h6", "input": {"s": "dvdf"}, "expected": 3, "note": "restarting after the first repeat is too late"},
+    {"id": "h7", "input": {"s": "aA"}, "expected": 2, "note": "letter case matters"},
+    {"id": "h8", "input": {"s": "a1!a1!b"}, "expected": 4, "note": "digits and symbols count as characters"},
+    {"id": "h9", "input": {"s": "xyzxyzxyzw"}, "expected": 4, "note": "the best window is at the end"},
+    {"id": "h10", "input": {"s": "wxyzaaaa"}, "expected": 5, "note": "the best window is at the start"},
+    {"id": "h11", "input": {"s": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"}, "expected": 95, "note": "all 95 printable characters once"},
+    {"id": "h12", "input": {"s": " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~~}|{zyxwvutsrqponmlkjihgfedcba`_^]\\[ZYXWVUTSRQPONMLKJIHGFEDCBA@?>=<;:9876543210/.-,+*)('&%$#\"! "}, "expected": 95, "note": "all printable characters, then the same in reverse"},
+    {"id": "h13", "input": {"s": "ababababab"}, "expected": 2, "note": "two alternating characters"},
+    {"id": "h14", "input": {"s": "pwwkep"}, "expected": 4, "note": "two adjacent equal characters split the string"},
+    {"id": "g1", "generate": {"n": 50000, "seed": 9}, "note": "maximum length, all printable characters"},
+    {"id": "g2", "generate": {"n": 50000, "seed": 5}, "note": "maximum length, lowercase alphabet"}
+  ]
+}

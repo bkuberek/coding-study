@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0045"
+slug: min-in-rotated-array
+title: Minimum in Rotated Sorted Array
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [binary-search]
+signature:
+  function:
+    name: findMin
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: linear-scan, name: Scan for the smallest value, role: brute, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1", oracle: true}
+  - {id: compare-with-right, name: Binary search against the right end, role: optimal, time: "O(log n)", space: "O(1)", time_class: "log n", space_class: "1"}
+perf:
+  size_param: n
+  size_ladder: [100, 1000, 10000, 100000]
+  expected_from: compare-with-right
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 153, url: "https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/"}
+related: [search-rotated-array, binary-search]
+order: 3
+estimate_minutes: 20

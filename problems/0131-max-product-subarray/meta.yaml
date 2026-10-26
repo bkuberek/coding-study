@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0131"
+slug: max-product-subarray
+title: Maximum Product Subarray
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-1d]
+signature:
+  function:
+    name: maxProduct
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Extend a product from every start, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: track-min-max, name: Largest and smallest product ending at each index, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+  - {id: prefix-suffix, name: Best running product from the left and from the right, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n
+  size_ladder: [100, 300, 1000, 3000]
+  expected_from: track-min-max
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 152, url: "https://leetcode.com/problems/maximum-product-subarray/"}
+related: [maximum-subarray, product-except-self]
+order: 6
+estimate_minutes: 25

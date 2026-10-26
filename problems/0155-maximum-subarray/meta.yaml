@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0155"
+slug: maximum-subarray
+title: Maximum Subarray
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [greedy, dp-1d]
+signature:
+  function:
+    name: maxSubArray
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Extend a sum from every start, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: divide-and-conquer, name: "Best of the left half, the right half and the crossing sum", role: intermediate, time: "O(n log n)", space: "O(log n)", time_class: "n log n", space_class: "log n"}
+  - {id: kadane, name: "Kadane's running best sum", role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n
+  size_ladder: [100, 300, 1000, 3000]
+  expected_from: kadane
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 53, url: "https://leetcode.com/problems/maximum-subarray/"}
+related: [best-time-to-buy-sell-stock, max-product-subarray, gas-station]
+order: 6
+estimate_minutes: 15

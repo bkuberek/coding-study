@@ -1,0 +1,8 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "ops": ["StressMutex", "lock", "unlock", "lock", "unlock"], "args": [[], [], [], [], []], "expected": [null, null, null, null, null]},
+    {"id": "s1", "note": "4 workers enter one exclusive section", "stress": {"seed": 1000, "setup": {"ops": ["StressMutex"], "args": [[]]}, "workers": [{"group": "worker", "count": 4, "repeat": 200, "steps": [{"op": "lock", "args": []}, {"op": "@enter", "args": ["data", "exclusive"]}, {"op": "@pause", "args": [2]}, {"op": "@exit", "args": ["data"]}, {"op": "unlock", "args": []}]}], "invariants": [{"type": "section", "name": "data", "max_violations": 0}]}}
+  ]
+}

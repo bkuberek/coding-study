@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0089"
+slug: task-scheduler
+title: Task Scheduler
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [heap, greedy]
+signature:
+  function:
+    name: leastInterval
+    params:
+      - {name: tasks, type: "char[]"}
+      - {name: cooldown, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: heap-simulation, name: "Simulate: run the most frequent available task, park the rest in a cooldown queue", role: intermediate, time: "O(n log 26)", space: "O(26)", time_class: "n", space_class: "1", oracle: true}
+  - {id: frame-formula, name: Count frames around the most frequent task, role: optimal, time: "O(n)", space: "O(26)", time_class: "n", space_class: "1"}
+perf:
+  size_param: number of tasks
+  size_ladder: [100, 1000, 10000]
+  expected_from: frame-formula
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 621, url: "https://leetcode.com/problems/task-scheduler/"}
+related: [last-stone-weight, single-threaded-cpu]
+order: 3
+estimate_minutes: 25

@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0190"
+slug: transactional-kv-store
+title: Transactional Key-Value Store
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+levels:
+  - {level: 1, title: Keys and value counts}
+  - {level: 2, title: Begin and rollback}
+  - {level: 3, title: Nested transactions}
+  - {level: 4, title: Commits and snapshots}
+signature:
+  class:
+    name: TransactionalStore
+    constructor: {params: []}
+    methods:
+      - {name: set, level: 1, params: [{name: timestamp, type: long}, {name: key, type: string}, {name: value, type: string}], returns: {type: void}}
+      - {name: get, level: 1, params: [{name: timestamp, type: long}, {name: key, type: string}], returns: {type: string}}
+      - {name: remove, level: 1, params: [{name: timestamp, type: long}, {name: key, type: string}], returns: {type: bool}}
+      - {name: count, level: 1, params: [{name: timestamp, type: long}, {name: value, type: string}], returns: {type: int}}
+      - {name: begin, level: 2, params: [{name: timestamp, type: long}], returns: {type: void}}
+      - {name: rollback, level: 2, params: [{name: timestamp, type: long}], returns: {type: bool}}
+      - {name: depth, level: 3, params: [{name: timestamp, type: long}], returns: {type: int}}
+      - {name: commit, level: 4, params: [{name: timestamp, type: long}], returns: {type: int}}
+      - {name: getSnapshot, level: 4, params: [{name: timestamp, type: long}, {name: version, type: int}, {name: key, type: string}], returns: {type: string}}
+comparator: {type: ops}
+approaches:
+  - {id: undo-log, name: Live map with an undo log per transaction, role: optimal, time: "O(1) per read, write and count; O(c) per rollback or commit; O(log h) per snapshot read", space: "O(n + u + h)", time_class: "n", space_class: "n"}
+related: [in-memory-database]
+estimate_minutes: 60

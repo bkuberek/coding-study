@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0022"
+slug: trapping-rain-water
+title: Trapping Rain Water
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [two-pointers, monotonic-stack, dp-1d]
+signature:
+  function:
+    name: trap
+    params:
+      - {name: height, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Scan both sides of every bar, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: prefix-max, name: Precompute the tallest bar on each side, role: intermediate, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: monotonic-stack, name: Fill basins with a stack of falling bars, role: intermediate, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: two-pointers, name: Settle the side with the lower wall, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: number of bars
+  size_ladder: [1000, 2000, 5000, 10000]
+  expected_from: two-pointers
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 42, url: "https://leetcode.com/problems/trapping-rain-water/"}
+related: [container-with-most-water]
+order: 8
+estimate_minutes: 35

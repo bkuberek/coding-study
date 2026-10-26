@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9010"
+slug: conformance-ref-of-list
+title: "Conformance: ref_of into a list and as index"
+status: ready
+difficulty: easy
+track: practical
+kind: function
+signature:
+  function:
+    name: pickNode
+    params:
+      - {name: head, type: ListNode}
+      - {name: node, type: ListNode, ref_of: head}
+    returns: {type: ListNode, as: index, of: head}
+comparator: {type: exact}
+approaches:
+  - {id: identity, name: "Return node unchanged", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: new-node, name: "Return a new node with the same value", role: brute, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0194"
+slug: cache-service
+title: Cache Service
+status: ready
+difficulty: medium
+track: lld
+kind: design
+signature:
+  class:
+    name: CacheService
+    constructor: {params: [{name: capacity, type: int}, {name: policy, type: string}]}
+    methods:
+      - {name: put, params: [{name: timestamp, type: long}, {name: key, type: string}, {name: value, type: string}, {name: ttl, type: long}], returns: {type: void}}
+      - {name: get, params: [{name: timestamp, type: long}, {name: key, type: string}], returns: {type: string}}
+      - {name: remove, params: [{name: timestamp, type: long}, {name: key, type: string}], returns: {type: bool}}
+      - {name: size, params: [{name: timestamp, type: long}], returns: {type: int}}
+      - {name: stats, params: [], returns: {type: "int[]"}}
+comparator: {type: ops}
+approaches:
+  - {id: policy-seam, name: Cache core with pluggable eviction policies and an expiry heap, role: optimal, time: "O(1) per get and remove; O(log n) amortized per put and size", space: "O(n + w)", time_class: "n log n", space_class: "n"}
+related: [lru-cache]
+estimate_minutes: 45

@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+
+id: "9017"
+slug: conformance-stress-sections
+title: "Conformance: probe sections count entries that a missing mutex lets overlap"
+status: ready
+difficulty: easy
+track: concurrency
+kind: concurrent
+signature:
+  class:
+    name: StressMutex
+    constructor: {params: []}
+    methods:
+      - {name: lock, blocking: true, params: [], returns: {type: void}}
+      - {name: unlock, params: [], returns: {type: void}}
+comparator: {type: ops}
+concurrency:
+  model: {java: threads, kotlin: threads, python: threads, typescript: async}
+  jvm_threads: [platform, virtual]
+approaches:
+  - {id: locked, name: A real mutex, role: optimal, time: "O(1) per op", space: "O(n)"}
+  - {id: unlocked, name: Lock and unlock do nothing, role: optimal, time: "O(1) per op", space: "O(1)"}

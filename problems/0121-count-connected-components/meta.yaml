@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0121"
+slug: count-connected-components
+title: Count Connected Components
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [union-find, graphs]
+signature:
+  function:
+    name: countComponents
+    params:
+      - {name: n, type: int}
+      - {name: edges, type: "int[][]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: quick-union, name: Naive union-find that links roots without balancing or compression, role: brute, time: "O(V + E * V)", space: "O(V)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: dfs, name: Count the depth-first searches needed to cover every node, role: optimal, time: "O(V + E)", space: "O(V + E)", time_class: "n", space_class: "n"}
+  - {id: union-find, name: Union by size with path compression, role: optimal, time: "O(V + E * α(V))", space: "O(V)", time_class: "n", space_class: "n"}
+perf:
+  size_param: V = n nodes, with about 1.5V edges
+  size_ladder: [250, 500, 1000, 2000]
+  expected_from: union-find
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 323, url: "https://leetcode.com/problems/number-of-connected-components-in-an-undirected-graph/"}
+related: [redundant-connection, accounts-merge, number-of-islands-ii]
+order: 1
+estimate_minutes: 20

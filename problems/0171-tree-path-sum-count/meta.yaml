@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0171"
+slug: tree-path-sum-count
+title: Count Downward Path Sums
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [prefix-sum, trees]
+signature:
+  function:
+    name: pathSum
+    params:
+      - {name: root, type: TreeNode}
+      - {name: targetSum, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: every-start, name: Walk down from every node, role: brute, time: "O(n * h)", space: "O(h)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: prefix-backtracking, name: Prefix sums along the root path with backtracking, role: optimal, time: "O(n)", space: "O(h)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of nodes, with height about n / 2
+  size_ladder: [100, 300, 1000, 3000]
+  expected_from: prefix-backtracking
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 437, url: "https://leetcode.com/problems/path-sum-iii/"}
+related: [subarray-sum-equals-k, invert-binary-tree]
+order: 6
+estimate_minutes: 25

@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study problem tests.json",
+  "description": "Language-neutral test cases of one autograded problem. Spec: docs/specs/problem-format.md#testsjson",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "cases"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+    "cases": { "type": "array", "items": { "$ref": "#/$defs/case" } }
+  },
+  "$defs": {
+    "case": {
+      "description": "Exactly one of input (function kind), ops with args (class kinds), generate or stress (concurrent problems)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "description": "Unique; convention ex1 (visible), h1 (hidden), g1 (generated)",
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "visible": { "description": "Visible cases are the statement's examples (default false)", "type": "boolean" },
+        "input": {
+          "description": "Arguments keyed by canonical parameter name",
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z][A-Za-z0-9]*$" }
+        },
+        "ops": {
+          "description": "ops[0] is the class name (constructor), then method names",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*$" }
+        },
+        "args": {
+          "description": "args[i] are the arguments of ops[i]",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "array" }
+        },
+        "expected": {
+          "description": "Required except for generate cases and checker problems"
+        },
+        "generate": {
+          "description": "Input from generator.py; expected computed by perf.expected_from; always hidden",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["n", "seed"],
+          "properties": {
+            "n": { "type": "integer", "minimum": 1 },
+            "seed": { "type": "integer" }
+          }
+        },
+        "stress": { "$ref": "#/$defs/stress" },
+        "level": { "description": "Progressive problems only", "type": "integer", "minimum": 1 },
+        "hang_guard_ms": { "type": "integer", "minimum": 1 },
+        "note": { "description": "Author note shown on failure", "type": "string" }
+      },
+      "oneOf": [
+        { "required": ["input"] },
+        { "required": ["ops", "args"] },
+        { "required": ["generate"] },
+        { "required": ["stress"] }
+      ],
+      "dependentRequired": { "ops": ["args"], "args": ["ops"] },
+      "if": { "anyOf": [{ "required": ["generate"] }, { "required": ["stress"] }] },
+      "then": {
+        "properties": { "visible": { "const": false } },
+        "not": { "required": ["expected"] }
+      }
+    },
+    "memberName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+    "groupName": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "sequence": {
+      "description": "ops and args as in operation sequences",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ops", "args"],
+      "properties": {
+        "ops": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*$" } },
+        "args": { "type": "array", "minItems": 1, "items": { "type": "array" } }
+      }
+    },
+    "stress": {
+      "description": "A concurrent scenario (docs/specs/problem-format.md#stress-cases)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["setup", "workers"],
+      "properties": {
+        "seed": { "description": "Run r uses seed + r (default 1)", "type": "integer" },
+        "deadline_ms": { "description": "Overrides concurrency.deadline_ms", "type": "integer", "minimum": 100, "maximum": 30000 },
+        "setup": { "description": "Single-threaded before the gate opens; ops[0] is the constructor", "$ref": "#/$defs/sequence" },
+        "workers": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/workerGroup" } },
+        "final": {
+          "description": "Single-threaded after every worker finished; no constructor",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ops", "args"],
+          "properties": {
+            "ops": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/memberName" } },
+            "args": { "type": "array", "minItems": 1, "items": { "type": "array" } },
+            "expected": { "description": "Compared with the ops comparator", "type": "array" }
+          }
+        },
+        "invariants": { "type": "array", "items": { "$ref": "#/$defs/invariant" } },
+        "perturb": {
+          "description": "Overrides concurrency.perturb field by field",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "yield_probability": { "type": "number", "minimum": 0, "maximum": 1 },
+            "max_yields": { "type": "integer", "minimum": 1, "maximum": 100 },
+            "python_granularity": { "enum": ["line", "instruction", "none"] }
+          }
+        }
+      },
+      "anyOf": [
+        { "required": ["invariants"] },
+        { "required": ["final"], "properties": { "final": { "required": ["expected"] } } }
+      ]
+    },
+    "workerGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["group", "count", "repeat"],
+      "properties": {
+        "group": { "description": "Unique within the case", "$ref": "#/$defs/groupName" },
+        "count": { "description": "Workers in the group", "type": "integer", "minimum": 1 },
+        "repeat": {
+          "description": "Iterations per worker, optionally per language",
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["default"],
+              "properties": {
+                "default": { "type": "integer", "minimum": 1 },
+                "python": { "type": "integer", "minimum": 1 },
+                "typescript": { "type": "integer", "minimum": 1 },
+                "java": { "type": "integer", "minimum": 1 },
+                "kotlin": { "type": "integer", "minimum": 1 }
+              }
+            }
+          ]
+        },
+        "steps": { "description": "Every iteration runs all steps in order", "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/step" } },
+        "mix": {
+          "description": "Every iteration runs one step chosen by weight",
+          "type": "array",
+          "minItems": 1,
+          "items": { "allOf": [{ "$ref": "#/$defs/step" }, { "required": ["weight"] }] }
+        }
+      },
+      "oneOf": [{ "required": ["steps"] }, { "required": ["mix"] }]
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op", "args"],
+      "properties": {
+        "op": { "description": "A method of the class or a harness op", "type": "string", "pattern": "^(@(enter|exit|pause)|[a-z][A-Za-z0-9]*)$" },
+        "args": { "type": "array", "items": { "$ref": "#/$defs/argument" } },
+        "weight": { "description": "Inside a mix only", "type": "integer", "minimum": 1 }
+      }
+    },
+    "argument": {
+      "description": "A literal value, or a template ($seq, $rand, $pick) that replaces the whole argument",
+      "if": { "type": "object", "minProperties": 1, "propertyNames": { "pattern": "^\\$" } },
+      "then": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["$seq"],
+            "properties": {
+              "$seq": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["start"],
+                "properties": {
+                  "start": { "type": "integer" },
+                  "worker_stride": { "description": "Default 0", "type": "integer" },
+                  "step": { "description": "Default 1", "type": "integer" }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["$rand"],
+            "properties": {
+              "$rand": { "type": "array", "prefixItems": [{ "type": "integer" }, { "type": "integer" }], "minItems": 2, "maxItems": 2 }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["$pick"],
+            "properties": { "$pick": { "type": "array", "minItems": 1 } }
+          }
+        ]
+      }
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op"],
+      "properties": {
+        "op": { "$ref": "#/$defs/memberName" },
+        "of": { "description": "output (default), or arg0, arg1, ...", "type": "string", "pattern": "^(output|arg[0-9]+)$" },
+        "group": { "$ref": "#/$defs/groupName" },
+        "scope": { "enum": ["setup", "workers", "final", "all"] }
+      }
+    },
+    "invariant": {
+      "type": "object",
+      "required": ["type"],
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "required": ["type", "left", "right"],
+          "properties": { "type": { "const": "equal_multisets" }, "left": { "$ref": "#/$defs/selector" }, "right": { "$ref": "#/$defs/selector" } }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["type", "values"],
+          "properties": { "type": { "const": "distinct" }, "values": { "$ref": "#/$defs/selector" } }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["type", "values"],
+          "properties": { "type": { "enum": ["bounds", "sum"] }, "values": { "$ref": "#/$defs/selector" }, "min": { "type": "number" }, "max": { "type": "number" } },
+          "anyOf": [{ "required": ["min"] }, { "required": ["max"] }]
+        },
+        {
+          "additionalProperties": false,
+          "required": ["type", "values"],
+          "properties": {
+            "type": { "const": "count" },
+            "values": { "$ref": "#/$defs/selector" },
+            "equals": { "type": "integer", "minimum": 0 },
+            "min": { "type": "integer", "minimum": 0 },
+            "max": { "type": "integer", "minimum": 0 }
+          },
+          "anyOf": [{ "required": ["equals"] }, { "required": ["min"] }, { "required": ["max"] }]
+        },
+        {
+          "additionalProperties": false,
+          "required": ["type", "values", "stride"],
+          "properties": { "type": { "const": "source_order" }, "values": { "$ref": "#/$defs/selector" }, "stride": { "type": "integer", "minimum": 1 } }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["type", "name"],
+          "properties": {
+            "type": { "const": "section" },
+            "name": { "type": "string", "minLength": 1 },
+            "max_violations": { "description": "Default 0", "type": "integer", "minimum": 0 },
+            "min_occupancy": { "type": "integer", "minimum": 0 },
+            "max_occupancy": { "type": "integer", "minimum": 0 }
+          }
+        },
+        {
+          "additionalProperties": false,
+          "required": ["type", "name"],
+          "properties": { "type": { "const": "checker" }, "name": { "description": "Passed to stress_checker.py check()", "type": "string", "minLength": 1 } }
+        }
+      ]
+    }
+  }
+}

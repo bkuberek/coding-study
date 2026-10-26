@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0031"
+slug: valid-parentheses
+title: Valid Parentheses
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [stack]
+signature:
+  function:
+    name: isValid
+    params:
+      - {name: s, type: string}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: pair-removal, name: Delete adjacent matching pairs until none remain, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: stack, name: Stack of open brackets, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: length of s
+  size_ladder: [1000, 3000, 10000, 30000, 100000]
+  expected_from: stack
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 20, url: "https://leetcode.com/problems/valid-parentheses/"}
+related: [min-remove-to-balance, decode-string, basic-calculator]
+estimate_minutes: 10

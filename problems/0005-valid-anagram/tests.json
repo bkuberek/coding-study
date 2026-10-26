@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"s": "night", "t": "thing"}, "expected": true},
+    {"id": "ex2", "visible": true, "input": {"s": "paper", "t": "apple"}, "expected": false},
+    {"id": "h1", "input": {"s": "q", "t": "q"}, "expected": true, "note": "single equal letters"},
+    {"id": "h2", "input": {"s": "q", "t": "w"}, "expected": false, "note": "single different letters"},
+    {"id": "h3", "input": {"s": "ab", "t": "a"}, "expected": false, "note": "t is shorter"},
+    {"id": "h4", "input": {"s": "abc", "t": "abcd"}, "expected": false, "note": "t is longer and starts with s"},
+    {"id": "h5", "input": {"s": "aab", "t": "abb"}, "expected": false, "note": "same letters, different counts"},
+    {"id": "h6", "input": {"s": "zzzz", "t": "zzzz"}, "expected": true, "note": "all letters equal"},
+    {"id": "h7", "input": {"s": "abcdefghijklmnopqrstuvwxyz", "t": "zyxwvutsrqponmlkjihgfedcba"}, "expected": true, "note": "the whole alphabet, reversed"},
+    {"id": "h8", "input": {"s": "stressed", "t": "desserts"}, "expected": true, "note": "repeated letters in a different order"},
+    {"id": "h9", "input": {"s": "mississippi", "t": "ppiissssiim"}, "expected": true, "note": "several letters with counts above one"},
+    {"id": "h10", "input": {"s": "kayak", "t": "kayak"}, "expected": true, "note": "a string is an anagram of itself"},
+    {"id": "h11", "input": {"s": "hello", "t": "hallo"}, "expected": false, "note": "one substituted letter"},
+    {"id": "h12", "input": {"s": "aaaaaaaaab", "t": "baaaaaaaaa"}, "expected": true, "note": "the odd letter moves from last to first"},
+    {"id": "h13", "input": {"s": "aaaaaaaaab", "t": "aaaaaaaaaa"}, "expected": false, "note": "the only differing letter is the last one"},
+    {"id": "g1", "generate": {"n": 30000, "seed": 2}, "hang_guard_ms": 30000, "note": "large input: striking out letters scans about 4.5 * 10^8 slots here"},
+    {"id": "g2", "generate": {"n": 3000, "seed": 7}}
+  ]
+}

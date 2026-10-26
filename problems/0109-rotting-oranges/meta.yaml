@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0109"
+slug: rotting-oranges
+title: Rotting Oranges
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [graphs]
+signature:
+  function:
+    name: orangesRotting
+    params:
+      - {name: grid, type: "int[][]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: simulate-minutes, name: Rescan the whole grid once per minute, role: brute, time: "O((m·n)^2)", space: "O(m·n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: multi-source-bfs, name: Breadth-first search from all rotten oranges at once, role: optimal, time: "O(m·n)", space: "O(m·n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of cells (m·n)
+  size_ladder: [100, 400, 900, 1600, 2500]
+  expected_from: multi-source-bfs
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 994, url: "https://leetcode.com/problems/rotting-oranges/"}
+related: [shortest-path-binary-matrix, number-of-islands, pacific-atlantic-water-flow]
+order: 5
+estimate_minutes: 20

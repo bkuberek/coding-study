@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"s": "tops", "pairs": [[0, 3], [1, 2]]}, "expected": "sopt"},
+    {"id": "ex2", "visible": true, "input": {"s": "dcba", "pairs": [[0, 1], [1, 2]]}, "expected": "bcda"},
+    {"id": "h1", "input": {"s": "q", "pairs": []}, "expected": "q", "note": "one letter, no pairs"},
+    {"id": "h2", "input": {"s": "zebra", "pairs": []}, "expected": "zebra", "note": "no pairs: nothing can move"},
+    {"id": "h3", "input": {"s": "zyxwv", "pairs": [[0, 1], [1, 2], [2, 3], [3, 4]]}, "expected": "vwxyz", "note": "a chain over every position: fully sorted"},
+    {"id": "h4", "input": {"s": "ba", "pairs": [[0, 1], [0, 1], [1, 0]]}, "expected": "ab", "note": "a pair repeated in both orientations"},
+    {"id": "h5", "input": {"s": "cab", "pairs": [[1, 1], [2, 2]]}, "expected": "cab", "note": "pairs that join a position to itself change nothing"},
+    {"id": "h6", "input": {"s": "hgfedcba", "pairs": [[0, 2], [2, 4], [4, 6], [1, 3], [3, 5], [5, 7]]}, "expected": "badcfehg", "note": "even and odd positions form two groups"},
+    {"id": "h7", "input": {"s": "aaaa", "pairs": [[0, 3], [1, 2]]}, "expected": "aaaa", "note": "all letters equal"},
+    {"id": "h8", "input": {"s": "abcde", "pairs": [[4, 0], [3, 1]]}, "expected": "abcde", "note": "already smallest within each group"},
+    {"id": "h9", "input": {"s": "mississippi", "pairs": [[0, 10], [10, 4], [2, 7], [7, 9], [1, 3]]}, "expected": "iiisissppsm", "note": "repeated letters in groups spread across the string"},
+    {"id": "h10", "input": {"s": "dcbaxyz", "pairs": [[0, 6], [6, 3], [5, 1]]}, "expected": "acbdxyz", "note": "groups joined through far-apart positions"},
+    {"id": "g1", "generate": {"n": 4000, "seed": 124}, "note": "star-shaped groups at the largest size"}
+  ]
+}

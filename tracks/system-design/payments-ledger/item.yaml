@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../../../schemas/item.schema.json
+slug: payments-ledger
+title: Payments Ledger
+track: system-design
+difficulty: hard
+estimate_minutes: 60
+status: ready
+order: 8
+references:
+  study_guides:
+    - "distributed-systems-study-guide.md#6-common-patterns"
+    - "distributed-systems-study-guide.md#4-consistency-models"
+    - "distributed-systems-study-guide.md#1-relational-databases-sql"
+    - "distributed-systems-study-guide.md#2-event-streaming-kafka"
+    - "distributed-systems-study-guide.md#example-1-e-commerce-order-processing"
+  links:
+    - https://stripe.com/blog/idempotency
+    - https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/
+related: [banking-system, bank-transfers, review-payment-retry, transactional-kv-store]

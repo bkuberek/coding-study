@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [9, 8, 7, 1, 2], "k": 3}, "expected": 24},
+    {"id": "ex2", "visible": true, "input": {"nums": [1, 5, 4, 2, 9, 9, 9], "k": 3}, "expected": 15},
+    {"id": "h1", "input": {"nums": [3, 7, 2], "k": 1}, "expected": 7, "note": "k = 1: every window is distinct"},
+    {"id": "h2", "input": {"nums": [4, 1, 6], "k": 3}, "expected": 11, "note": "k equals the length"},
+    {"id": "h3", "input": {"nums": [4, 1, 4], "k": 3}, "expected": 0, "note": "k equals the length, with a duplicate"},
+    {"id": "h4", "input": {"nums": [5, 5, 5, 5], "k": 2}, "expected": 0, "note": "all equal: no valid window"},
+    {"id": "h5", "input": {"nums": [1, 2, 3, 3, 9], "k": 3}, "expected": 6, "note": "a window with a duplicate must not count"},
+    {"id": "h6", "input": {"nums": [1, 1, 1, 7, 8, 9], "k": 3}, "expected": 24, "note": "best window at the end"},
+    {"id": "h7", "input": {"nums": [1, 2, 1, 2, 1, 2], "k": 2}, "expected": 3, "note": "values keep coming back, no count reaches zero"},
+    {"id": "h8", "input": {"nums": [2, 2], "k": 2}, "expected": 0, "note": "no valid window"},
+    {"id": "h9", "input": {"nums": [10], "k": 1}, "expected": 10, "note": "single element"},
+    {"id": "h10", "input": {"nums": [3, 3, 5, 6, 7, 8, 8, 1, 2, 3], "k": 4}, "expected": 26, "note": "valid windows in the middle and at the end"},
+    {"id": "h11", "input": {"nums": [10000, 9999, 10000, 9999], "k": 2}, "expected": 19999, "note": "largest values"},
+    {"id": "h12", "input": {"nums": [4, 2, 4, 5, 6], "k": 3}, "expected": 15, "note": "the duplicate leaves the window, then the best window starts"}
+  ]
+}

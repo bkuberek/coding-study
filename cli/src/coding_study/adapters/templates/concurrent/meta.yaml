@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "{{id}}"
+slug: {{slug}}
+title: {{title_yaml}}
+status: draft
+difficulty: {{difficulty}}
+track: {{track}}
+kind: concurrent
+{{patterns}}
+languages: [java, kotlin, python]
+signature:
+  class:
+    name: {{class_name}}
+    constructor: {params: [{name: permits, type: int}]}
+    methods:
+      - {name: acquire, blocking: true, params: [], returns: {type: void}}
+      - {name: release, params: [], returns: {type: void}}
+comparator: {type: ops}
+concurrency:
+  model: threads
+  jvm_threads: [platform, virtual]
+  broken:
+    - {id: no-wait, name: Acquire without waiting, bug: "TODO: the bug class in one line", caught_by: [s1]}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "O(1) per op", space: "O(1)"}

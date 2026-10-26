@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0182"
+slug: sum-without-plus
+title: Sum Without Arithmetic Operators
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [bit-manipulation]
+signature:
+  function:
+    name: getSum
+    params:
+      - {name: a, type: int}
+      - {name: b, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: ripple-carry, name: Add bit by bit with a full adder, role: brute, time: "O(32)", space: "O(1)", time_class: "1", space_class: "1", oracle: true}
+  - {id: xor-and-carry, name: Add without carries and repeat with the carries, role: optimal, time: "O(32)", space: "O(1)", time_class: "1", space_class: "1"}
+perf:
+  size_param: "unused: the inputs are two 32-bit words, drawn the same way at every size"
+  size_ladder: [1, 2, 4, 8, 16, 32, 64, 128, 256]
+  expected_from: xor-and-carry
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 371, url: "https://leetcode.com/problems/sum-of-two-integers/"}
+related: [count-set-bits, multiply-strings]
+order: 5
+estimate_minutes: 20

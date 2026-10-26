@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0054"
+slug: merge-two-sorted-lists
+title: Merge Two Sorted Lists
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [linked-list]
+signature:
+  function:
+    name: mergeTwoLists
+    params:
+      - {name: list1, type: ListNode}
+      - {name: list2, type: ListNode}
+    returns: {type: ListNode}
+comparator: {type: exact}
+approaches:
+  - {id: collect-sort, name: "Collect every value, sort, build a new list", role: brute, time: "O((m + n) log(m + n))", space: "O(m + n)", time_class: "n log n", space_class: "n", oracle: true}
+  - {id: iterative, name: Splice behind a dummy head, role: optimal, time: "O(m + n)", space: "O(1)", time_class: "n", space_class: "1"}
+  - {id: recursive, name: "Keep the smaller head, merge the rest recursively", role: optimal, time: "O(m + n)", space: "O(m + n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: total number of nodes in both lists
+  size_ladder: [300, 1000, 3000]
+  expected_from: iterative
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 21, url: "https://leetcode.com/problems/merge-two-sorted-lists/"}
+related: [merge-k-sorted-lists, sort-linked-list, reverse-linked-list]
+order: 2
+estimate_minutes: 15

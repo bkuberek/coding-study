@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"tasks": ["A", "B", "A", "C", "A", "B"], "cooldown": 2}, "expected": 7},
+    {"id": "ex2", "visible": true, "input": {"tasks": ["X", "X", "Y", "Y"], "cooldown": 0}, "expected": 4},
+    {"id": "h1", "input": {"tasks": ["A"], "cooldown": 100}, "expected": 1, "note": "a single task never waits"},
+    {"id": "h2", "input": {"tasks": ["A", "A"], "cooldown": 3}, "expected": 5, "note": "one task type twice: idle for the whole cooldown"},
+    {"id": "h3", "input": {"tasks": ["P", "Q", "P", "Q", "P", "Q"], "cooldown": 4}, "expected": 12, "note": "two task types tie for the highest count"},
+    {"id": "h4", "input": {"tasks": ["A", "B", "C", "D", "E", "F"], "cooldown": 2}, "expected": 6, "note": "all tasks distinct"},
+    {"id": "h5", "input": {"tasks": ["A", "A", "A", "A", "B", "C", "D", "E", "F", "G", "H"], "cooldown": 1}, "expected": 11, "note": "enough other tasks to fill every gap"},
+    {"id": "h6", "input": {"tasks": ["Z", "Z", "Z", "Z", "Z"], "cooldown": 0}, "expected": 5, "note": "no cooldown"},
+    {"id": "h7", "input": {"tasks": ["M", "M", "M", "M"], "cooldown": 100}, "expected": 304, "note": "the largest cooldown"},
+    {"id": "h8", "input": {"tasks": ["A", "B", "C", "A", "B", "C"], "cooldown": 2}, "expected": 6, "note": "three types fill each frame exactly"},
+    {"id": "h9", "input": {"tasks": ["A", "A", "B", "B", "C", "C", "D", "D"], "cooldown": 1}, "expected": 8, "note": "more types than a frame needs"},
+    {"id": "h10", "input": {"tasks": ["A", "A", "A", "B", "B", "C"], "cooldown": 4}, "expected": 11, "note": "idle slots remain in every frame"},
+    {"id": "h11", "input": {"tasks": ["C", "A", "C", "B", "C", "A"], "cooldown": 1}, "expected": 6, "note": "input order does not matter"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "note": "10^4 tasks of five types, one of them dominant, cooldown 1"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 2}, "note": "10^4 tasks of two types, cooldown 2"},
+    {"id": "g3", "generate": {"n": 10000, "seed": 3}, "note": "10^4 tasks of eight types, cooldown 61: long idle stretches"},
+    {"id": "g4", "generate": {"n": 100, "seed": 4}}
+  ]
+}

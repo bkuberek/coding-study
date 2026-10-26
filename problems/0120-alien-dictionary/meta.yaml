@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0120"
+slug: alien-dictionary
+title: Alien Dictionary
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [topological-sort, graphs]
+signature:
+  function:
+    name: alienOrder
+    params:
+      - {name: words, type: "string[]"}
+    returns: {type: string}
+comparator: {type: checker}
+approaches:
+  - {id: kahn, name: "Read one rule per neighboring pair, then sort the letters by in-degree", role: optimal, time: "O(C + U^2)", space: "O(U^2)", time_class: "n", space_class: "1", oracle: true}
+  - {id: dfs-postorder, name: Depth-first search that emits a letter after everything it must precede, role: optimal, time: "O(C + U^2)", space: "O(U^2)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n = words.length, up to 20 letters each
+  size_ladder: [100, 300, 1000]
+  expected_from: kahn
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 269, url: "https://leetcode.com/problems/alien-dictionary/"}
+related: [course-schedule, parallel-courses]
+order: 4
+estimate_minutes: 35

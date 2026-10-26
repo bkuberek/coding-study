@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0115"
+slug: word-ladder
+title: Word Ladder
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [graphs]
+signature:
+  function:
+    name: ladderLength
+    params:
+      - {name: beginWord, type: string}
+      - {name: endWord, type: string}
+      - {name: wordList, type: "string[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: bfs-scan-list, name: Breadth-first search that compares against every unvisited word, role: brute, time: "O(N^2·L)", space: "O(N·L)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: bfs-letter-swaps, name: Breadth-first search that tries every one-letter change, role: optimal, time: "O(N·L^2·26)", space: "O(N·L)", time_class: "n", space_class: "n"}
+  - {id: bidirectional-bfs, name: Letter-change searches from both ends that meet in the middle, role: optimal, time: "O(N·L^2·26)", space: "O(N·L)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of words N, with L = 5
+  size_ladder: [100, 300, 1000, 3000]
+  expected_from: bfs-letter-swaps
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 127, url: "https://leetcode.com/problems/word-ladder/"}
+related: [open-the-lock, shortest-path-binary-matrix]
+order: 11
+estimate_minutes: 35

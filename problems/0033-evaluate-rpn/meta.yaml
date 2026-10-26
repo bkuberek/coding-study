@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0033"
+slug: evaluate-rpn
+title: Evaluate Reverse Polish Notation
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [stack]
+signature:
+  function:
+    name: evalRPN
+    params:
+      - {name: tokens, type: "string[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: rescan, name: Reduce the leftmost operator and rescan, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: stack, name: Stack of operands, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of tokens
+  size_ladder: [100, 1000, 10000]
+  expected_from: stack
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 150, url: "https://leetcode.com/problems/evaluate-reverse-polish-notation/"}
+related: [basic-calculator, valid-parentheses]
+estimate_minutes: 15

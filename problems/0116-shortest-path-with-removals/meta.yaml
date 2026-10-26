@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0116"
+slug: shortest-path-with-removals
+title: Shortest Path With Obstacle Removals
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [graphs]
+signature:
+  function:
+    name: shortestPath
+    params:
+      - {name: grid, type: "int[][]"}
+      - {name: k, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: state-bfs, name: "Breadth-first search over (cell, removals used) states", role: optimal, time: "O(m·n·K)", space: "O(m·n·K)", time_class: "n", space_class: "n", oracle: true}
+  - {id: best-remaining-bfs, name: Breadth-first search that keeps the most removals left per cell, role: optimal, time: "O(m·n·K)", space: "O(m·n·K)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of cells (m·n), with k = 5
+  size_ladder: [100, 400, 1600]
+  expected_from: best-remaining-bfs
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1293, url: "https://leetcode.com/problems/shortest-path-in-a-grid-with-obstacles-elimination/"}
+related: [shortest-path-binary-matrix, min-obstacle-removal, open-the-lock]
+order: 12
+estimate_minutes: 40

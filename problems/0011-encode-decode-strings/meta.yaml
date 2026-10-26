@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0011"
+slug: encode-decode-strings
+title: Encode and Decode Strings
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [arrays-hashing]
+signature:
+  function:
+    name: encodeDecode
+    params:
+      - {name: strs, type: "string[]"}
+    returns: {type: "string[]"}
+comparator: {type: exact}
+approaches:
+  - {id: length-prefix, name: Length-prefixed chunks, role: optimal, time: "O(n + L)", space: "O(n + L)", time_class: "n", space_class: "n", oracle: true}
+  - {id: escaping, name: Escaped terminators, role: optimal, time: "O(n + L)", space: "O(n + L)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of strings, each at most 12 characters
+  size_ladder: [100, 1000, 10000, 100000]
+  expected_from: length-prefix
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 271, url: "https://leetcode.com/problems/encode-and-decode-strings/"}
+related: [group-anagrams, decode-string]
+estimate_minutes: 20

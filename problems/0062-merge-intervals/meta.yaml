@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0062"
+slug: merge-intervals
+title: Merge Intervals
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [intervals]
+signature:
+  function:
+    name: merge
+    params:
+      - {name: intervals, type: "int[][]"}
+    returns: {type: "int[][]"}
+comparator: {type: unordered}
+approaches:
+  - {id: absorb, name: Absorb each interval into the merged set, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: sort-and-sweep, name: Sort by start and sweep once, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: number of intervals (merging into about n/4 groups)
+  size_ladder: [100, 300, 1000, 3000, 10000]
+  expected_from: sort-and-sweep
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 56, url: "https://leetcode.com/problems/merge-intervals/"}
+related: [insert-interval, non-overlapping-intervals, interval-list-intersections]
+order: 1
+estimate_minutes: 20

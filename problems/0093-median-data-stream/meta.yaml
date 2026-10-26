@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0093"
+slug: median-data-stream
+title: Median of a Data Stream
+status: ready
+difficulty: hard
+track: dsa
+kind: design
+patterns: [heap]
+signature:
+  class:
+    name: MedianFinder
+    constructor: {params: []}
+    methods:
+      - {name: addNum, params: [{name: num, type: int}], returns: {type: void}}
+      - {name: findMedian, params: [], returns: {type: double}}
+comparator: {type: ops, per_method: {findMedian: float}}
+approaches:
+  - {id: sorted-array, name: Keep a sorted array and binary-insert each number, role: brute, time: "O(n) addNum, O(1) findMedian", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: two-heaps, name: "Max-heap of the lower half, min-heap of the upper half", role: optimal, time: "O(log n) addNum, O(1) findMedian", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: number of calls
+  size_ladder: [1000, 10000, 100000]
+  expected_from: two-heaps
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 295, url: "https://leetcode.com/problems/find-median-from-data-stream/"}
+related: [kth-largest-element, k-closest-points, last-stone-weight]
+order: 7
+estimate_minutes: 30

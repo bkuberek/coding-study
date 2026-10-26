@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "ops": ["TimeMap", "set", "get", "get", "set", "get", "get"], "args": [[], ["mood", "calm", 2], ["mood", 2], ["mood", 5], ["mood", "busy", 6], ["mood", 5], ["mood", 9]], "expected": [null, null, "calm", "calm", null, "calm", "busy"]},
+    {"id": "ex2", "visible": true, "ops": ["TimeMap", "set", "get", "get", "set", "get"], "args": [[], ["door", "open", 10], ["door", 9], ["window", 10], ["window", "shut", 12], ["door", 12]], "expected": [null, null, "", "", null, "open"]},
+    {"id": "h1", "ops": ["TimeMap", "get", "get"], "args": [[], ["anything", 1], ["anything", 10000000]], "expected": [null, "", ""], "note": "reads on an empty store"},
+    {"id": "h2", "ops": ["TimeMap", "set", "get", "get", "get"], "args": [[], ["k", "a", 5], ["k", 5], ["k", 4], ["k", 6]], "expected": [null, null, "a", "", "a"], "note": "read exactly at, just before and just after a write"},
+    {"id": "h3", "ops": ["TimeMap", "set", "set", "set", "set", "get", "get", "get", "get"], "args": [[], ["x", "x1", 1], ["y", "y1", 2], ["x", "x2", 3], ["y", "y2", 4], ["x", 4], ["y", 3], ["x", 2], ["y", 1]], "expected": [null, null, null, null, null, "x2", "y1", "x1", ""], "note": "two keys with interleaved writes"},
+    {"id": "h4", "ops": ["TimeMap", "set", "set", "set", "set", "set", "get", "get", "get", "get", "get"], "args": [[], ["t", "v10", 10], ["t", "v20", 20], ["t", "v30", 30], ["t", "v40", 40], ["t", "v50", 50], ["t", 35], ["t", 49], ["t", 10], ["t", 9], ["t", 1000]], "expected": [null, null, null, null, null, null, "v30", "v40", "v10", "", "v50"], "note": "many versions, reads between them"},
+    {"id": "h5", "ops": ["TimeMap", "set", "set", "get", "get", "get"], "args": [[], ["edge", "first", 1], ["edge", "last", 10000000], ["edge", 1], ["edge", 9999999], ["edge", 10000000]], "expected": [null, null, null, "first", "first", "last"], "note": "smallest and largest timestamps"},
+    {"id": "h6", "ops": ["TimeMap", "set", "set", "set", "get", "get", "get"], "args": [[], ["same", "v", 3], ["same", "v", 7], ["same", "w", 8], ["same", 7], ["same", 8], ["same", 2]], "expected": [null, null, null, null, "v", "w", ""], "note": "the same value written twice"},
+    {"id": "h7", "ops": ["TimeMap", "set", "set", "get", "get", "get"], "args": [[], ["ab", "short", 1], ["abc", "long", 2], ["ab", 5], ["abc", 5], ["a", 5]], "expected": [null, null, null, "short", "long", ""], "note": "keys that are prefixes of each other"},
+    {"id": "h8", "ops": ["TimeMap", "set", "get", "get"], "args": [[], ["abcdefghij0123456789", "zzzzzzzzzz9999999999", 42], ["abcdefghij0123456789", 42], ["abcdefghij012345678", 42]], "expected": [null, null, "zzzzzzzzzz9999999999", ""], "note": "maximum-length key and value"},
+    {"id": "h9", "ops": ["TimeMap", "set", "set", "get", "get"], "args": [[], ["a", "b", 1], ["b", "a", 2], ["a", 2], ["b", 2]], "expected": [null, null, null, "b", "a"], "note": "a value equal to another key's name"},
+    {"id": "h10", "ops": ["TimeMap", "get", "set", "get", "get"], "args": [[], ["late", 5], ["late", "now", 6], ["late", 5], ["late", 6]], "expected": [null, "", null, "", "now"], "note": "a read before the first write stays empty afterwards"},
+    {"id": "h11", "ops": ["TimeMap", "set", "set", "set", "get", "get", "get", "get"], "args": [[], ["n0", "zero", 100], ["n1", "one", 200], ["n0", "zeroagain", 300], ["n0", 250], ["n1", 250], ["n0", 300], ["n1", 199]], "expected": [null, null, null, null, "zero", "one", "zeroagain", ""], "note": "a newer write to another key does not affect this key"},
+    {"id": "g1", "generate": {"n": 20000, "seed": 23}, "note": "large input: about 10^4 reads over histories of thousands of writes"}
+  ]
+}

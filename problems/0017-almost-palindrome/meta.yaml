@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0017"
+slug: almost-palindrome
+title: Palindrome With One Deletion
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [two-pointers, greedy]
+signature:
+  function:
+    name: validPalindrome
+    params:
+      - {name: s, type: string}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: try-each-deletion, name: Test every single deletion, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: two-pointers, name: Branch once at the first mismatch, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: length of s
+  size_ladder: [1000, 3000, 10000, 30000]
+  expected_from: two-pointers
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 680, url: "https://leetcode.com/problems/valid-palindrome-ii/"}
+related: [valid-palindrome]
+order: 3
+estimate_minutes: 15

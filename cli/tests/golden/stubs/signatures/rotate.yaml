@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=../../../../../schemas/meta.schema.json
+# An in-place function: void return with output_from.
+id: "0105"
+slug: rotate-array
+title: Rotate Array
+status: draft
+difficulty: medium
+track: dsa
+kind: function
+patterns: [two-pointers]
+signature:
+  function:
+    name: rotate
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: k, type: int}
+    returns: {type: void, output_from: nums}
+comparator: {type: exact}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

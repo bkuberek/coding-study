@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "ops": ["NumArray", "sumRange", "sumRange", "sumRange"], "args": [[[3, -1, 4, 1, -5, 9]], [0, 2], [2, 5], [4, 4]], "expected": [null, 6, 9, -5]},
+    {"id": "ex2", "visible": true, "ops": ["NumArray", "sumRange", "sumRange", "sumRange"], "args": [[[5, 2, 6, 7]], [1, 2], [0, 3], [1, 2]], "expected": [null, 8, 20, 8]},
+    {"id": "h1", "ops": ["NumArray", "sumRange"], "args": [[[-7]], [0, 0]], "expected": [null, -7], "note": "single negative element"},
+    {"id": "h2", "ops": ["NumArray", "sumRange", "sumRange", "sumRange", "sumRange"], "args": [[[2, 4, 6, 8, 10]], [0, 4], [0, 0], [4, 4], [1, 3]], "expected": [null, 30, 2, 10, 18], "note": "whole array, first and last position"},
+    {"id": "h3", "ops": ["NumArray", "sumRange", "sumRange"], "args": [[[0, 0, 0, 0]], [0, 3], [1, 2]], "expected": [null, 0, 0], "note": "all zeros"},
+    {"id": "h4", "ops": ["NumArray", "sumRange", "sumRange", "sumRange"], "args": [[[5, -5, 5, -5, 5, -5]], [0, 5], [0, 4], [1, 4]], "expected": [null, 0, 5, 0], "note": "alternating signs cancel out"},
+    {"id": "h5", "ops": ["NumArray", "sumRange", "sumRange", "sumRange"], "args": [[[100000, -100000, 100000, 100000]], [0, 3], [1, 1], [2, 3]], "expected": [null, 200000, -100000, 200000], "note": "extreme values"},
+    {"id": "h6", "ops": ["NumArray", "sumRange", "sumRange", "sumRange"], "args": [[[-1, -2, -3, -4, -5]], [0, 4], [2, 4], [3, 3]], "expected": [null, -15, -12, -4], "note": "negative values only"},
+    {"id": "h7", "ops": ["NumArray", "sumRange", "sumRange", "sumRange", "sumRange", "sumRange", "sumRange", "sumRange", "sumRange", "sumRange", "sumRange"], "args": [[[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]], [0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6], [0, 7], [0, 8], [0, 9]], "expected": [null, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55], "note": "every prefix, in growing order"},
+    {"id": "h8", "ops": ["NumArray", "sumRange", "sumRange", "sumRange"], "args": [[[100000, 100000]], [0, 1], [1, 1], [0, 0]], "expected": [null, 200000, 100000, 100000], "note": "two elements"},
+    {"id": "h9", "ops": ["NumArray", "sumRange", "sumRange", "sumRange"], "args": [[[9, 7, 5, 3, 1]], [0, 4], [1, 3], [2, 2]], "expected": [null, 25, 15, 5], "note": "sorted descending, nested ranges"},
+    {"id": "h10", "ops": ["NumArray", "sumRange", "sumRange", "sumRange"], "args": [[[3, 1, -4, 2, 2, -4]], [0, 2], [3, 5], [1, 4]], "expected": [null, 0, 0, 1], "note": "ranges that add up to zero"},
+    {"id": "g1", "generate": {"n": 30000, "seed": 1}, "note": "large input: adding up every range is about 3 * 10^8 additions here"},
+    {"id": "g2", "generate": {"n": 30000, "seed": 14}, "note": "large input of extreme values only: range sums pass 2^31"},
+    {"id": "g3", "generate": {"n": 1000, "seed": 3}}
+  ]
+}

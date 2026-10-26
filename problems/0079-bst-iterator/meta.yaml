@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0079"
+slug: bst-iterator
+title: BST Iterator
+status: ready
+difficulty: medium
+track: dsa
+kind: design
+patterns: [trees, stack]
+signature:
+  class:
+    name: BSTIterator
+    constructor: {params: [{name: root, type: TreeNode}]}
+    methods:
+      - {name: next, params: [], returns: {type: int}}
+      - {name: hasNext, params: [], returns: {type: bool}}
+comparator: {type: ops}
+approaches:
+  - {id: flatten, name: Flatten the in-order sequence up front, role: brute, time: "O(n) to build, O(1) per call", space: "O(n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: controlled-stack, name: Stack of the pending left spine, role: optimal, time: "O(1) amortized per call", space: "O(h)", time_class: "n", space_class: "log n"}
+perf:
+  size_param: number of nodes; about 1.5 calls per node
+  size_ladder: [1000, 10000, 100000]
+  expected_from: controlled-stack
+references:
+  leetcode: {number: 173, url: "https://leetcode.com/problems/binary-search-tree-iterator/"}
+related: [kth-smallest-in-bst, validate-bst]
+order: 13
+estimate_minutes: 20

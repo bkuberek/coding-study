@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "ops": ["NumMatrix", "sumRegion", "sumRegion", "sumRegion"], "args": [[[[2, 0, -1, 4], [1, 3, 5, -2], [-3, 1, 0, 2]]], [0, 1, 1, 2], [1, 0, 2, 3], [2, 0, 2, 0]], "expected": [null, 7, 7, -3]},
+    {"id": "ex2", "visible": true, "ops": ["NumMatrix", "sumRegion", "sumRegion"], "args": [[[[2, 4, 6, 8, 10]]], [0, 1, 0, 3], [0, 0, 0, 4]], "expected": [null, 18, 30]},
+    {"id": "h1", "ops": ["NumMatrix", "sumRegion"], "args": [[[[-9]]], [0, 0, 0, 0]], "expected": [null, -9], "note": "single cell"},
+    {"id": "h2", "ops": ["NumMatrix", "sumRegion", "sumRegion", "sumRegion"], "args": [[[[1], [2], [3], [4]]], [0, 0, 3, 0], [1, 0, 2, 0], [3, 0, 3, 0]], "expected": [null, 10, 5, 4], "note": "a single column"},
+    {"id": "h3", "ops": ["NumMatrix", "sumRegion", "sumRegion", "sumRegion", "sumRegion", "sumRegion"], "args": [[[[1, 2, 3], [4, 5, 6], [7, 8, 9]]], [0, 0, 2, 2], [1, 1, 1, 1], [0, 2, 2, 2], [2, 0, 2, 2], [1, 1, 2, 2]], "expected": [null, 45, 5, 18, 24, 28], "note": "whole grid, centre cell, last column, last row, bottom-right block"},
+    {"id": "h4", "ops": ["NumMatrix", "sumRegion", "sumRegion"], "args": [[[[0, 0], [0, 0]]], [0, 0, 1, 1], [1, 0, 1, 1]], "expected": [null, 0, 0], "note": "all zeros"},
+    {"id": "h5", "ops": ["NumMatrix", "sumRegion", "sumRegion", "sumRegion", "sumRegion"], "args": [[[[10000, -10000], [-10000, 10000]]], [0, 0, 1, 1], [0, 0, 0, 0], [0, 1, 1, 1], [1, 0, 1, 1]], "expected": [null, 0, 10000, 0, 0], "note": "extreme values that cancel"},
+    {"id": "h6", "ops": ["NumMatrix", "sumRegion", "sumRegion"], "args": [[[[10000, 10000, 10000, 10000], [10000, 10000, 10000, 10000], [10000, 10000, 10000, 10000]]], [0, 0, 2, 3], [1, 1, 2, 2]], "expected": [null, 120000, 40000], "note": "every cell at the maximum"},
+    {"id": "h7", "ops": ["NumMatrix", "sumRegion", "sumRegion", "sumRegion"], "args": [[[[-1, -2, -3], [-4, -5, -6]]], [0, 0, 1, 2], [0, 1, 1, 1], [1, 2, 1, 2]], "expected": [null, -21, -7, -6], "note": "negative values only"},
+    {"id": "h8", "ops": ["NumMatrix", "sumRegion", "sumRegion", "sumRegion", "sumRegion", "sumRegion"], "args": [[[[2, 0, -1, 4], [1, 3, 5, -2], [-3, 1, 0, 2]]], [0, 0, 0, 0], [0, 3, 0, 3], [2, 3, 2, 3], [2, 0, 2, 0], [0, 0, 2, 3]], "expected": [null, 2, 4, 2, -3, 12], "note": "the four corners and the whole grid"},
+    {"id": "h9", "ops": ["NumMatrix", "sumRegion", "sumRegion", "sumRegion"], "args": [[[[5, 1, 0, 2, 7]]], [0, 2, 0, 2], [0, 0, 0, 4], [0, 1, 0, 3]], "expected": [null, 0, 15, 3], "note": "one row, including a zero cell"},
+    {"id": "h10", "ops": ["NumMatrix", "sumRegion", "sumRegion", "sumRegion", "sumRegion"], "args": [[[[3, -2, 4], [-1, 6, -5], [2, 0, 1], [7, -3, -4]]], [1, 1, 3, 2], [0, 0, 3, 0], [1, 0, 2, 1], [1, 1, 3, 2]], "expected": [null, -5, 11, 7, -5], "note": "a rectangle off the edges, asked twice"},
+    {"id": "g1", "generate": {"n": 40000, "seed": 1}, "note": "large input: a 200 x 200 grid with 10^4 queries, about 4 * 10^7 cell visits for the brute force"},
+    {"id": "g2", "generate": {"n": 3000, "seed": 7}, "note": "rectangular grid"}
+  ]
+}

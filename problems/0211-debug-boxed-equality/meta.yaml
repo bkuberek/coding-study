@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0211"
+slug: debug-boxed-equality
+title: "Debug: Boxed Integer Equality"
+status: ready
+difficulty: medium
+track: debugging
+kind: function
+languages: [java, kotlin]
+stub: buggy
+signature:
+  function:
+    name: changedSkus
+    params:
+      - {name: before, type: "list<int>"}
+      - {name: after, type: "list<int>"}
+    returns: {type: "list<int>"}
+comparator: {type: exact}
+approaches:
+  - {id: value-equality, name: "Compare values, not references", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+related: [debug-running-total-overflow]
+estimate_minutes: 15

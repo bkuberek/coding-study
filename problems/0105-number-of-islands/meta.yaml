@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0105"
+slug: number-of-islands
+title: Number of Islands
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [graphs]
+signature:
+  function:
+    name: numIslands
+    params:
+      - {name: grid, type: "char[][]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: dfs, name: Flood fill with an explicit stack, role: optimal, time: "O(m·n)", space: "O(m·n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: bfs, name: Flood fill with a queue, role: optimal, time: "O(m·n)", space: "O(m·n)", time_class: "n", space_class: "n"}
+  - {id: union-find, name: Union-find over land squares, role: optimal, time: "O(m·n·α(m·n))", space: "O(m·n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of cells (m·n)
+  size_ladder: [1000, 10000, 90000]
+  expected_from: bfs
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 200, url: "https://leetcode.com/problems/number-of-islands/"}
+related: [max-area-of-island, surrounded-regions, pacific-atlantic-water-flow]
+order: 1
+estimate_minutes: 20

@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [1, 4, 4, 8, 3], "k": 6}, "expected": true},
+    {"id": "ex2", "visible": true, "input": {"nums": [2, 7, 3, 3], "k": 7}, "expected": false},
+    {"id": "h1", "input": {"nums": [6], "k": 6}, "expected": false, "note": "a single multiple of k does not count"},
+    {"id": "h2", "input": {"nums": [0], "k": 1}, "expected": false, "note": "single zero"},
+    {"id": "h3", "input": {"nums": [0, 0], "k": 5}, "expected": true, "note": "two zeros add up to 0, a multiple of every k"},
+    {"id": "h4", "input": {"nums": [3, 5], "k": 1}, "expected": true, "note": "k = 1 divides every sum"},
+    {"id": "h5", "input": {"nums": [6, 1, 6], "k": 6}, "expected": false, "note": "multiples of k separated by a non-multiple"},
+    {"id": "h6", "input": {"nums": [5, 0, 5, 7], "k": 10}, "expected": true, "note": "a zero inside the qualifying run"},
+    {"id": "h7", "input": {"nums": [1, 2, 3], "k": 2147483647}, "expected": false, "note": "k larger than every sum"},
+    {"id": "h8", "input": {"nums": [1000000000, 1000000000, 1000000000, 1000000000, 294967294], "k": 2147483647}, "expected": true, "note": "the remainder plus the next value passes 2^31 - 1"},
+    {"id": "h9", "input": {"nums": [1000000000, 1000000000], "k": 2000000000}, "expected": true, "note": "extreme values adding up to exactly k"},
+    {"id": "h10", "input": {"nums": [1000000000, 1000000000, 1000000000], "k": 1000000007}, "expected": false, "note": "large values, no qualifying run"},
+    {"id": "h11", "input": {"nums": [4, 1, 2, 1, 1], "k": 9}, "expected": true, "note": "the only answer is the whole array"},
+    {"id": "h12", "input": {"nums": [7, 7, 7], "k": 3}, "expected": true, "note": "all values equal; the run of three qualifies"},
+    {"id": "h13", "input": {"nums": [1, 1, 1, 1], "k": 5}, "expected": false, "note": "no run reaches a multiple"},
+    {"id": "h14", "input": {"nums": [3, 0, 3], "k": 3}, "expected": true, "note": "the remainder repeats one position apart: keep its first position"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "large input: trying every run is 5 * 10^7 checks here"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 2}, "hang_guard_ms": 30000, "note": "large input"},
+    {"id": "g3", "generate": {"n": 1000, "seed": 4}}
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "ex1",
+      "visible": true,
+      "level": 1,
+      "ops": ["{{class_name}}", "put", "put"],
+      "args": [[], [1, "a", "x"], [2, "a", "y"]],
+      "expected": [null, "", "x"]
+    },
+    {
+      "id": "ex2",
+      "visible": true,
+      "level": 2,
+      "ops": ["{{class_name}}", "put", "get", "get"],
+      "args": [[], [1, "a", "x"], [2, "a"], [3, "b"]],
+      "expected": [null, "", "x", ""]
+    },
+    {
+      "id": "ex3",
+      "visible": true,
+      "level": 3,
+      "ops": ["{{class_name}}", "put", "remove", "remove", "get"],
+      "args": [[], [1, "a", "x"], [2, "a"], [3, "a"], [4, "a"]],
+      "expected": [null, "", true, false, ""]
+    },
+    {
+      "id": "ex4",
+      "visible": true,
+      "level": 4,
+      "ops": ["{{class_name}}", "put", "put", "remove", "size"],
+      "args": [[], [1, "a", "x"], [2, "b", "y"], [3, "a"], [4]],
+      "expected": [null, "", "", true, 1]
+    }
+  ]
+}

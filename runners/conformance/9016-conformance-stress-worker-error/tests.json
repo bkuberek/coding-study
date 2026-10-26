@@ -1,0 +1,8 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "ops": ["StressFailer", "step"], "args": [[], [1]], "expected": [null, 1]},
+    {"id": "s1", "note": "2 workers step through 0 to 199", "stress": {"seed": 1, "setup": {"ops": ["StressFailer"], "args": [[]]}, "workers": [{"group": "stepper", "count": 2, "repeat": 200, "steps": [{"op": "step", "args": [{"$seq": {"start": 0}}]}]}], "invariants": [{"type": "count", "values": {"op": "step"}, "equals": 400}]}}
+  ]
+}

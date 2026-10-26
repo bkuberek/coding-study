@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0096"
+slug: permutations
+title: Permutations
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [backtracking]
+signature:
+  function:
+    name: permute
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: "list<list<int>>"}
+comparator: {type: unordered}
+approaches:
+  - {id: used-flags, name: Fill slots left to right with a used flag per value, role: optimal, time: "O(n * n!)", space: "O(n * n!)", time_class: "n!", space_class: "n!", oracle: true}
+  - {id: swap-in-place, name: Swap each candidate into the next slot, role: optimal, time: "O(n * n!)", space: "O(n * n!)", time_class: "n!", space_class: "n!"}
+perf:
+  size_param: n = nums.length
+  size_ladder: [4, 5, 6]
+  expected_from: swap-in-place
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 46, url: "https://leetcode.com/problems/permutations/"}
+related: [subsets, n-queens, generate-parentheses]
+order: 2
+estimate_minutes: 15

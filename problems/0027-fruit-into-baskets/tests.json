@@ -1,0 +1,24 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"fruits": [2, 0, 2, 1, 1, 2, 1]}, "expected": 5},
+    {"id": "ex2", "visible": true, "input": {"fruits": [0, 1, 2, 3]}, "expected": 2},
+    {"id": "h1", "input": {"fruits": [0]}, "expected": 1, "note": "a single tree"},
+    {"id": "h2", "input": {"fruits": [1, 1]}, "expected": 2, "note": "one type only"},
+    {"id": "h3", "input": {"fruits": [0, 1]}, "expected": 2, "note": "two trees of different types"},
+    {"id": "h4", "input": {"fruits": [0, 1, 2]}, "expected": 2, "note": "three types, one each"},
+    {"id": "h5", "input": {"fruits": [1, 2, 1, 2, 1, 2]}, "expected": 6, "note": "two alternating types fill both baskets"},
+    {"id": "h6", "input": {"fruits": [0, 1, 2, 2, 2, 1, 0]}, "expected": 5, "note": "the best window is in the middle"},
+    {"id": "h7", "input": {"fruits": [3, 3, 3, 1, 2, 1, 1, 2, 0]}, "expected": 5, "note": "a long first run loses to a later mix"},
+    {"id": "h8", "input": {"fruits": [0, 1, 0, 2, 0, 2, 0, 3]}, "expected": 5, "note": "a shared type links two pairs"},
+    {"id": "h9", "input": {"fruits": [4, 3, 2, 1, 0]}, "expected": 2, "note": "all types distinct"},
+    {"id": "h10", "input": {"fruits": [2, 2, 2, 2, 2]}, "expected": 5, "note": "all the same type"},
+    {"id": "h11", "input": {"fruits": [1, 0, 1, 4, 1, 4, 1, 2, 3]}, "expected": 5, "note": "the window must restart at the last run of the kept type"},
+    {"id": "h12", "input": {"fruits": [0, 0, 1, 1, 1, 2, 2, 0]}, "expected": 5, "note": "the new window starts where the last run of 1s began"},
+    {"id": "h13", "input": {"fruits": [5, 6, 5, 6, 5, 6, 7, 6, 7, 6, 7, 6, 7, 6]}, "expected": 9, "note": "a third type extends from the last run, not from the start"},
+    {"id": "h14", "input": {"fruits": [0, 1, 1, 0, 0, 2, 0, 0, 1]}, "expected": 5, "note": "the shared type's last run is longer than one tree"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "large input: walking from every tree is about 10^7 steps here"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 2}, "hang_guard_ms": 30000, "note": "large input"}
+  ]
+}

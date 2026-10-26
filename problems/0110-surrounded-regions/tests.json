@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"board": [["X", "X", "X", "X", "X"], ["X", "O", "O", "X", "X"], ["X", "X", "O", "X", "O"], ["X", "O", "X", "X", "O"], ["X", "X", "X", "X", "X"]]}, "expected": [["X", "X", "X", "X", "X"], ["X", "X", "X", "X", "X"], ["X", "X", "X", "X", "O"], ["X", "X", "X", "X", "O"], ["X", "X", "X", "X", "X"]]},
+    {"id": "ex2", "visible": true, "input": {"board": [["O", "X", "X"], ["X", "O", "X"], ["X", "X", "O"]]}, "expected": [["O", "X", "X"], ["X", "X", "X"], ["X", "X", "O"]]},
+    {"id": "h1", "input": {"board": [["X"]]}, "expected": [["X"]], "note": "a single wall cell"},
+    {"id": "h2", "input": {"board": [["O"]]}, "expected": [["O"]], "note": "a single open cell lies on the edge"},
+    {"id": "h3", "input": {"board": [["O", "O", "O"], ["O", "O", "O"], ["O", "O", "O"]]}, "expected": [["O", "O", "O"], ["O", "O", "O"], ["O", "O", "O"]], "note": "all open: one region touching the edge"},
+    {"id": "h4", "input": {"board": [["X", "X", "X", "X"], ["X", "X", "X", "X"]]}, "expected": [["X", "X", "X", "X"], ["X", "X", "X", "X"]], "note": "no open cells"},
+    {"id": "h5", "input": {"board": [["O", "X", "O", "X", "O"]]}, "expected": [["O", "X", "O", "X", "O"]], "note": "a single row: every cell is on the edge"},
+    {"id": "h6", "input": {"board": [["O"], ["X"], ["O"]]}, "expected": [["O"], ["X"], ["O"]], "note": "a single column"},
+    {"id": "h7", "input": {"board": [["X", "X", "X", "X"], ["X", "O", "O", "X"], ["X", "O", "O", "X"], ["X", "X", "X", "X"]]}, "expected": [["X", "X", "X", "X"], ["X", "X", "X", "X"], ["X", "X", "X", "X"], ["X", "X", "X", "X"]], "note": "a fully enclosed block"},
+    {"id": "h8", "input": {"board": [["X", "X", "X", "X", "X"], ["X", "O", "O", "O", "X"], ["X", "O", "X", "O", "X"], ["X", "O", "O", "O", "O"], ["X", "X", "X", "X", "X"]]}, "expected": [["X", "X", "X", "X", "X"], ["X", "O", "O", "O", "X"], ["X", "O", "X", "O", "X"], ["X", "O", "O", "O", "O"], ["X", "X", "X", "X", "X"]], "note": "a winding region escapes through one edge cell"},
+    {"id": "h9", "input": {"board": [["X", "X", "X", "X", "X", "X", "X"], ["X", "O", "O", "O", "O", "O", "X"], ["X", "O", "X", "X", "X", "O", "X"], ["X", "O", "X", "O", "X", "O", "X"], ["X", "O", "X", "X", "X", "O", "X"], ["X", "O", "O", "O", "O", "O", "X"], ["X", "X", "X", "X", "X", "X", "X"]]}, "expected": [["X", "X", "X", "X", "X", "X", "X"], ["X", "X", "X", "X", "X", "X", "X"], ["X", "X", "X", "X", "X", "X", "X"], ["X", "X", "X", "X", "X", "X", "X"], ["X", "X", "X", "X", "X", "X", "X"], ["X", "X", "X", "X", "X", "X", "X"], ["X", "X", "X", "X", "X", "X", "X"]], "note": "a ring region with another region enclosed inside it"},
+    {"id": "h10", "input": {"board": [["O", "O", "O", "O", "O"], ["O", "X", "X", "X", "O"], ["O", "X", "O", "X", "O"], ["O", "X", "X", "X", "O"], ["O", "O", "O", "O", "O"]]}, "expected": [["O", "O", "O", "O", "O"], ["O", "X", "X", "X", "O"], ["O", "X", "X", "X", "O"], ["O", "X", "X", "X", "O"], ["O", "O", "O", "O", "O"]], "note": "the edge region surrounds a walled pocket"},
+    {"id": "h11", "input": {"board": [["X", "O", "X"], ["X", "O", "X"], ["X", "O", "X"], ["X", "X", "X"]]}, "expected": [["X", "O", "X"], ["X", "O", "X"], ["X", "O", "X"], ["X", "X", "X"]], "note": "a corridor that reaches the top edge"},
+    {"id": "h12", "input": {"board": [["X", "X", "X", "X", "X", "X"], ["X", "O", "X", "O", "X", "X"], ["X", "X", "O", "X", "O", "X"], ["X", "O", "X", "O", "X", "X"], ["X", "X", "X", "X", "X", "X"]]}, "expected": [["X", "X", "X", "X", "X", "X"], ["X", "X", "X", "X", "X", "X"], ["X", "X", "X", "X", "X", "X"], ["X", "X", "X", "X", "X", "X"], ["X", "X", "X", "X", "X", "X"]], "note": "enclosed cells that touch only diagonally"},
+    {"id": "h13", "input": {"board": [["X", "X", "O", "X", "X"], ["X", "X", "O", "X", "X"], ["O", "O", "O", "O", "O"], ["X", "X", "O", "X", "X"], ["X", "X", "O", "X", "X"]]}, "expected": [["X", "X", "O", "X", "X"], ["X", "X", "O", "X", "X"], ["O", "O", "O", "O", "O"], ["X", "X", "O", "X", "X"], ["X", "X", "O", "X", "X"]], "note": "a cross touching all four edges"},
+    {"id": "g1", "generate": {"n": 40000, "seed": 19}, "note": "full 200 by 200 board"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 6}}
+  ]
+}

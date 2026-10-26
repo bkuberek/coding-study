@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"names": ["ana", "ben", "cy", "dee"], "scores": [30, 50, 50, 10]}, "expected": ["ben", "cy", "ana", "dee"]},
+    {"id": "ex2", "visible": true, "input": {"names": ["zoe", "amy", "max"], "scores": [7, 7, 7]}, "expected": ["amy", "max", "zoe"]},
+    {"id": "h1", "input": {"names": ["solo"], "scores": [0]}, "expected": ["solo"], "note": "one player"},
+    {"id": "h2", "input": {"names": ["kim", "lee"], "scores": [41, 42]}, "expected": ["lee", "kim"], "note": "scores one point apart"},
+    {"id": "h3", "input": {"names": ["kim", "lee"], "scores": [40, 42]}, "expected": ["lee", "kim"], "note": "scores two points apart"},
+    {"id": "h4", "input": {"names": ["a", "b", "c"], "scores": [3, 4, 5]}, "expected": ["c", "b", "a"], "note": "chain of one-point gaps, names against the scores"},
+    {"id": "h5", "input": {"names": ["p", "q", "r"], "scores": [-5, 0, -12]}, "expected": ["q", "p", "r"], "note": "negative scores"},
+    {"id": "h6", "input": {"names": ["low", "high"], "scores": [-2000000000, 2000000000]}, "expected": ["high", "low"], "note": "difference overflows 32 bits"},
+    {"id": "h7", "input": {"names": ["max", "min", "mid"], "scores": [2147483647, -2147483648, 0]}, "expected": ["max", "mid", "min"], "note": "int extremes"},
+    {"id": "h8", "input": {"names": ["a", "b", "c"], "scores": [5, 4, 3]}, "expected": ["a", "b", "c"], "note": "one-point gaps that happen to agree with name order"},
+    {"id": "h9", "input": {"names": ["eve", "bob", "dan", "amy", "cat", "fay", "gus", "hal"], "scores": [10, 11, 11, 9, 50, 49, 0, 10]}, "expected": ["cat", "fay", "bob", "dan", "eve", "hal", "amy", "gus"], "note": "ties and near-ties mixed"},
+    {"id": "h10", "input": {"names": ["x", "y"], "scores": [0, 0]}, "expected": ["x", "y"], "note": "tied at zero"},
+    {"id": "h11", "input": {"names": ["big", "small"], "scores": [1000000000, -1000000000]}, "expected": ["big", "small"], "note": "large difference that still fits 32 bits"},
+    {"id": "h12", "input": {"names": ["jo", "al", "bo", "cy", "di", "ed", "fi", "gil", "hu", "ivy"], "scores": [8, 40, 2, 22, 16, 30, 4, 12, 36, 26]}, "expected": ["al", "hu", "ed", "ivy", "cy", "di", "gil", "jo", "fi", "bo"], "note": "distinct scores at least two apart"}
+  ]
+}

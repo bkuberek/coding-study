@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0028"
+slug: max-ones-with-flips
+title: Max Consecutive Ones With K Flips
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [sliding-window]
+signature:
+  function:
+    name: longestOnes
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: k, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Extend from every start while flips remain, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: sliding-window, name: Shrink when the window holds too many zeros, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+  - {id: steady-window, name: A window that never shrinks, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: length of nums, with k zeros fitting in a window of n/16 to n/8
+  size_ladder: [1000, 2000, 5000, 10000]
+  expected_from: sliding-window
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1004, url: "https://leetcode.com/problems/max-consecutive-ones-iii/"}
+related: [longest-repeating-replacement, fruit-into-baskets, min-size-subarray-sum]
+order: 6
+estimate_minutes: 15

@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"grid": [[1, 1, 0, 0, 0], [1, 0, 0, 1, 1], [0, 0, 0, 1, 1], [0, 1, 0, 0, 1]]}, "expected": 5},
+    {"id": "ex2", "visible": true, "input": {"grid": [[0, 0, 0], [0, 0, 0]]}, "expected": 0},
+    {"id": "h1", "input": {"grid": [[1]]}, "expected": 1, "note": "one land square"},
+    {"id": "h2", "input": {"grid": [[0]]}, "expected": 0, "note": "one water square"},
+    {"id": "h3", "input": {"grid": [[1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1]]}, "expected": 20, "note": "the whole map is one island"},
+    {"id": "h4", "input": {"grid": [[1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1]]}, "expected": 4, "note": "a single row"},
+    {"id": "h5", "input": {"grid": [[1], [1], [1], [0], [1]]}, "expected": 3, "note": "a single column"},
+    {"id": "h6", "input": {"grid": [[1, 0, 1, 0], [0, 1, 0, 1], [1, 0, 1, 0]]}, "expected": 1, "note": "checkerboard: corners do not connect"},
+    {"id": "h7", "input": {"grid": [[1, 1, 0, 1, 1], [1, 1, 0, 1, 1], [0, 0, 0, 0, 0], [1, 1, 0, 1, 1], [1, 1, 0, 1, 1]]}, "expected": 4, "note": "four islands of the same size"},
+    {"id": "h8", "input": {"grid": [[1, 1, 1, 1], [1, 0, 0, 1], [1, 0, 0, 1], [1, 1, 1, 1]]}, "expected": 12, "note": "a ring around a lake counts only land squares"},
+    {"id": "h9", "input": {"grid": [[1, 1, 1, 1, 1], [0, 0, 0, 0, 1], [1, 1, 1, 1, 1], [1, 0, 0, 0, 0], [1, 1, 1, 1, 1]]}, "expected": 17, "note": "a snake that winds across the map"},
+    {"id": "h10", "input": {"grid": [[1, 0, 0, 0, 0, 0, 1], [0, 0, 0, 0, 0, 0, 0], [0, 0, 1, 1, 1, 0, 0], [0, 0, 1, 1, 1, 0, 0], [0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0, 1]]}, "expected": 6, "note": "the largest island sits in the middle, small ones at the corners"},
+    {"id": "h11", "input": {"grid": [[1, 1, 1, 0, 0, 0, 1, 1, 1], [1, 0, 0, 0, 0, 0, 0, 0, 1], [1, 0, 0, 1, 1, 1, 0, 0, 1]]}, "expected": 5, "note": "two islands tie for the largest"},
+    {"id": "h12", "input": {"grid": [[0, 1, 1, 0], [1, 1, 1, 1], [0, 1, 1, 0], [0, 0, 1, 0], [0, 1, 1, 1]]}, "expected": 12, "note": "one irregular island reaching every row"},
+    {"id": "g1", "generate": {"n": 90000, "seed": 2}, "note": "full 300 by 300 map with one sprawling island of about 51000 squares"},
+    {"id": "g3", "generate": {"n": 90000, "seed": 6}, "note": "full map below the percolation threshold: many small islands"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 8}}
+  ]
+}

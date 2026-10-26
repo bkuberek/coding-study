@@ -1,0 +1,1129 @@
+# Spec: Problem Format
+
+Every autograded problem is a directory of data plus reference code. Tests are language-neutral JSON, signatures are declared once in a type DSL, and correctness is judged by executing the user's code and comparing its output.
+
+## Correctness model
+
+Correctness is behavioral, never textual.
+
+1. The CLI sends the case inputs (never the expected values) to the language runner.
+2. The runner executes the user's function or class and serializes what it returns.
+3. The CLI core compares that output with the expected value using the problem's comparator.
+
+Reference solutions are never diffed, parsed or otherwise compared with user code. Any output the comparator accepts passes; problems with several valid answers use a `checker` comparator, which validates the answer itself. Concurrent problems add stress cases, judged by invariants over the recorded results of many concurrent runs ([Concurrent problems](#concurrent-problems)).
+
+## Directory layout
+
+```text
+problems/0001-two-sum/
+  problem.md          # full description (required sections: authoring.md)
+  meta.yaml           # metadata, signature, comparator, approaches, perf
+  tests.json          # cases
+  generator.py        # seeded input generator (required for `ready` dsa problems)
+  checker.py          # only when comparator.type == checker
+  stress_checker.py   # only when a concurrent stress case has a checker invariant
+  buggy/              # only when stub == buggy (debugging track): solution.<ext> per language
+  rubric.md           # required for track lld: design criteria and reference design (authoring.md)
+  solutions/
+    explanation.md    # one section per approach (format: authoring.md)
+    broken/           # concurrent only: <broken-id>.<ext>, deliberately wrong references
+    brute-force.py    # <approach-id>.<ext>
+    hash-map.py
+    hash-map.ts
+    hash-map.java
+    hash-map.kt
+```
+
+| Rule | Detail |
+|------|--------|
+| Directory name | `<id>-<slug>` |
+| `id` | 4-digit zero-padded string, unique, assigned by `cstudy new` (max + 1); display and ordering only |
+| `slug` | `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, unique; the stable key in `progress.db`; immutable once merged |
+| `snake_slug` | `slug` with `-` replaced by `_`; used for Python modules and JVM packages |
+| Reference files | `solutions/<approach-id>.<ext>`, ext in `py`, `ts`, `java`, `kt`; every file maps to a declared approach |
+
+## meta.yaml
+
+Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-language-server: $schema=../../schemas/meta.schema.json` for editor completion.
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `id` | string | yes | Matches directory prefix |
+| `slug` | string | yes | Matches directory suffix |
+| `title` | string | yes | Original title (common names such as "Two Sum" are allowed) |
+| `status` | `draft` or `ready` | yes | `ready` requirements: [authoring](authoring.md#ready-criteria) |
+| `difficulty` | `easy`, `medium`, `hard` | yes | |
+| `track` | `dsa`, `practical`, `lld`, `concurrency`, `debugging` | yes | Non-autograded tracks live in `tracks/` ([content](content.md)) |
+| `kind` | `function`, `design`, `progressive`, `concurrent` | yes | |
+| `patterns` | list of pattern ids | yes for `dsa` | First entry is the primary pattern; ids from [content](content.md#pattern-taxonomy) |
+| `languages` | subset of `python`, `typescript`, `java`, `kotlin` | no | Default all 4; a subset is allowed only for `concurrency` and `debugging` |
+| `signature` | object | yes | See [Signatures](#signatures) |
+| `comparator` | object | yes | See [Comparators](#comparators) |
+| `stub` | `generated` or `buggy` | no | Default `generated`; `buggy` copies `buggy/solution.<ext>` instead of codegen. Buggy files follow the reference file conventions (no JVM `package` line) ([authoring](authoring.md#debugging-problems)) |
+| `levels` | list | `progressive` only | See [Progressive problems](#progressive-problems) |
+| `approaches` | list | yes, at least 1 | See [Approaches](#approaches-and-complexity) |
+| `perf` | object | no | See [Performance block](#performance-block) |
+| `limits.hang_guard_ms` | int | no | Overrides the per-case hang guard (default 10000) |
+| `concurrency` | object | `concurrent` only | See [Concurrent problems](#concurrent-problems) |
+| `references` | object | no | `leetcode: {number, url}`, `links: [url]` |
+| `related` | list of slugs | no | |
+| `order` | int | no | Curriculum order within the primary pattern (default 1000) |
+| `estimate_minutes` | int | no | Expected interview solve time |
+
+Hints are not in `meta.yaml`; they are the `## Hints` section of `problem.md`, so there is one source.
+
+## Signatures
+
+### Function
+
+```yaml
+signature:
+  function:
+    name: twoSum                 # lowerCamelCase canonical name
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: target, type: int}
+    returns: {type: "int[]"}
+```
+
+### Class (design, progressive, concurrent)
+
+```yaml
+signature:
+  class:
+    name: LRUCache               # PascalCase
+    constructor:
+      params: [{name: capacity, type: int}]
+    methods:
+      - name: get
+        params: [{name: key, type: int}]
+        returns: {type: int}
+      - name: put
+        params: [{name: key, type: int}, {name: value, type: int}]
+        returns: {type: void}
+```
+
+### Modifiers
+
+| Modifier | On | Meaning |
+|----------|----|---------|
+| `output_from: <param>` | `returns` with `type: void` | In-place problems: the runner serializes that parameter after the call |
+| `ref_of: <param>` | a node-typed param | The JSON value is a node value; the runner passes the first node (traversal order) in `<param>` whose `val` equals it. Values must be unique in `<param>` |
+| `as: value` | node-typed `returns` | Serialize only the returned node's `val` (`null` when null) |
+| `as: index`, `of: <param>` | node-typed `returns` | Serialize the returned node's position in `<param>` traversal order (`-1` when null; a node outside `<param>` is `invalid_output`); for duplicate-valued structures. Traversal order: [runners](runners.md#node-modifiers) |
+| `no_alias_with: <param>` | node-typed `returns` | Fail with `invalid_output` if any returned node object is also reachable from `<param>` (deep-copy problems) |
+| `level: <n>` | method | Progressive level that introduces the method |
+| `blocking: true` | method | `concurrent` only: the method may wait for another worker. Async model: generated as an async method; threads model: Java adds `throws InterruptedException` ([Concurrent problems](#stubs-for-concurrent-problems)) |
+
+Loading a problem rejects (content error) a modifier that names a parameter missing from its own function, constructor or method, or that sits on the wrong type: `ref_of` and `of` must name a parameter of the same node type, `output_from` needs a `void` return, `as` a node-typed return, and `blocking` a method of a `concurrent` problem.
+
+### Naming rules
+
+| Item | Canonical form | Python | TypeScript | Java | Kotlin |
+|------|----------------|--------|------------|------|--------|
+| Function | `twoSum` | `two_sum` (module-level) | `twoSum` (named export) | `Solution.twoSum` | `Solution.twoSum` |
+| Class | `LRUCache` | `LRUCache` | `LRUCache` (named export) | `LRUCache` | `LRUCache` |
+| Method | `getRandom` | `get_random` | `getRandom` | `getRandom` | `getRandom` |
+| Param | `maxValue` | `max_value` | `maxValue` | `maxValue` | `maxValue` |
+
+- Canonical names match `^[a-z][A-Za-z0-9]*$` (classes `^[A-Z][A-Za-z0-9]*$`).
+- snake_case conversion: insert `_` before an uppercase letter that follows a lowercase letter or digit, or that precedes a lowercase letter after another uppercase letter; then lowercase (`getHTTPCode` becomes `get_http_code`).
+- After conversion, no name may equal a reserved word in any language: Python `keyword.kwlist`, Java reserved keywords and literals, Kotlin hard keywords, TypeScript reserved words. `cstudy verify` errors on a match and warns on shadowed Python builtins (`list`, `sum`, `id`, ...).
+- Python uses module-level functions (idiomatic) rather than LeetCode's `class Solution`; Java and Kotlin use `class Solution` (Java requires a class; Kotlin matches so both share one JVM runner).
+
+## Type DSL
+
+### Grammar
+
+```text
+type     := scalar | array | list | node | node "[]"
+scalar   := "int" | "long" | "double" | "bool" | "string" | "char"
+array    := scalar "[]" | scalar "[][]"
+list     := "list<" elem ">"
+elem     := scalar | scalar "[]" | list | node
+node     := "ListNode" | "TreeNode" | "GraphNode"
+return   := type | "void"
+```
+
+Maximum nesting depth is 3 (`list<list<list<int>>>`). Maps, sets, tuples and user-defined records are not in v1; problems use arrays or lists instead (for example `int[][]` for pairs).
+
+### Type mapping
+
+This table is normative for stub generation, runner deserialization and output serialization.
+
+| DSL | JSON encoding | Python | TypeScript | Java | Kotlin |
+|-----|---------------|--------|------------|------|--------|
+| `int` | integer in [-2^31, 2^31-1] | `int` | `number` | `int` | `Int` |
+| `long` | integer, abs value at most 2^53-1 | `int` | `number` | `long` | `Long` |
+| `double` | finite number | `float` | `number` | `double` | `Double` |
+| `bool` | `true` / `false` | `bool` | `boolean` | `boolean` | `Boolean` |
+| `string` | string | `str` | `string` | `String` | `String` |
+| `char` | string of length 1 (BMP) | `str` | `string` | `char` | `Char` |
+| `int[]` | array | `list[int]` | `number[]` | `int[]` | `IntArray` |
+| `long[]` | array | `list[int]` | `number[]` | `long[]` | `LongArray` |
+| `double[]` | array | `list[float]` | `number[]` | `double[]` | `DoubleArray` |
+| `bool[]` | array | `list[bool]` | `boolean[]` | `boolean[]` | `BooleanArray` |
+| `char[]` | array of 1-char strings | `list[str]` | `string[]` | `char[]` | `CharArray` |
+| `string[]` | array | `list[str]` | `string[]` | `String[]` | `Array<String>` |
+| `int[][]` | array of arrays | `list[list[int]]` | `number[][]` | `int[][]` | `Array<IntArray>` |
+| `long[][]` | array of arrays | `list[list[int]]` | `number[][]` | `long[][]` | `Array<LongArray>` |
+| `double[][]` | array of arrays | `list[list[float]]` | `number[][]` | `double[][]` | `Array<DoubleArray>` |
+| `bool[][]` | array of arrays | `list[list[bool]]` | `boolean[][]` | `boolean[][]` | `Array<BooleanArray>` |
+| `char[][]` | array of arrays of 1-char strings | `list[list[str]]` | `string[][]` | `char[][]` | `Array<CharArray>` |
+| `string[][]` | array of arrays | `list[list[str]]` | `string[][]` | `String[][]` | `Array<Array<String>>` |
+| `list<int>` | array | `list[int]` | `number[]` | `List<Integer>` | `List<Int>` |
+| `list<long>` | array | `list[int]` | `number[]` | `List<Long>` | `List<Long>` |
+| `list<double>` | array | `list[float]` | `number[]` | `List<Double>` | `List<Double>` |
+| `list<bool>` | array | `list[bool]` | `boolean[]` | `List<Boolean>` | `List<Boolean>` |
+| `list<char>` | array of 1-char strings | `list[str]` | `string[]` | `List<Character>` | `List<Char>` |
+| `list<string>` | array | `list[str]` | `string[]` | `List<String>` | `List<String>` |
+| `list<int[]>` | array of arrays | `list[list[int]]` | `number[][]` | `List<int[]>` | `List<IntArray>` |
+| `list<list<int>>` | array of arrays | `list[list[int]]` | `number[][]` | `List<List<Integer>>` | `List<List<Int>>` |
+| `list<list<string>>` | array of arrays | `list[list[str]]` | `string[][]` | `List<List<String>>` | `List<List<String>>` |
+| `ListNode` | [ListNode encoding](#listnode) | `ListNode \| None` | `ListNode \| null` | `ListNode` | `ListNode?` |
+| `TreeNode` | [TreeNode encoding](#treenode) | `TreeNode \| None` | `TreeNode \| null` | `TreeNode` | `TreeNode?` |
+| `GraphNode` | [GraphNode encoding](#graphnode) | `GraphNode \| None` | `GraphNode \| null` | `GraphNode` | `GraphNode?` |
+| `ListNode[]` | array of ListNode encodings | `list[ListNode \| None]` | `(ListNode \| null)[]` | `ListNode[]` | `Array<ListNode?>` |
+| `list<TreeNode>` | array of TreeNode encodings | `list[TreeNode \| None]` | `(TreeNode \| null)[]` | `List<TreeNode>` | `List<TreeNode?>` |
+| `void` (return) | `null` unless `output_from` | `None` | `void` | `void` | `Unit` |
+
+General rules for rows not listed: `list<X>` maps element-wise using the `X` row; nested `list<list<X>>` nests the element mapping. Node types are always nullable.
+
+**JVM erasure property.** Every Kotlin type in the table erases to the same JVM type as the Java column (`IntArray` is `int[]`, `Array<IntArray>` is `int[][]`, non-null `Int` parameters are `int`, `List<Int>` is `java.util.List`, `Unit` returns are `void`). One JVM runner therefore serves both languages through Java reflection. Any future mapping must preserve this property or extend the JVM runner.
+
+**Content rules that keep languages equivalent.** Test values must fit the declared type; expected outputs must not depend on integer overflow; `long` values stay within 2^53-1 (TypeScript `number`); recursion depth implied by inputs stays at or under 3000 (Node's default stack).
+
+### Support classes
+
+| Language | Import in stubs | Definitions |
+|----------|-----------------|-------------|
+| Python | `from cs_support import ListNode, TreeNode, GraphNode` | dataclass-like classes with `val`, `next` / `left`, `right` / `neighbors` |
+| TypeScript | `import { ListNode } from "#support";` | classes with `val`, `next` / `left`, `right` / `neighbors`; constructors with default args, no parameter properties |
+| Java | `import cs.support.*;` | public mutable fields `val`, `next`, `left`, `right`, `neighbors` (`List<GraphNode>`); constructors `()`, `(val)`, `(val, ...)` |
+| Kotlin | `import cs.support.*` | Same Java classes (platform types); field `val` is accessed as `` node.`val` ``, as on LeetCode |
+
+Stubs import support classes only when the signature uses them. Java stubs always add `import java.util.*;`.
+
+## Serialization of linked structures
+
+### ListNode
+
+| Value | JSON |
+|-------|------|
+| null | `[]` |
+| 1 -> 2 -> 3 | `[1, 2, 3]` |
+| Cycle (input only): tail links to index 1 | `{"values": [3, 2, 0, -4], "cycle_at": 1}` |
+
+Output serialization walks `next` and stops at 100,000 nodes with `invalid_output` ("list too long or cyclic").
+
+### TreeNode
+
+Level order with `null` for missing children; trailing `null`s trimmed; `[]` is null.
+
+```text
+    3
+   / \          [3, 9, 20, null, null, 15, 7]
+  9  20
+     / \
+    15  7
+```
+
+### GraphNode
+
+1-indexed adjacency list where node `i` has `val == i`. `[]` is null; `[[]]` is one node with no neighbors.
+
+```json
+[[2, 4], [1, 3], [2, 4], [1, 3]]
+```
+
+Output serialization: BFS from the returned node, collect reachable nodes, require vals to be exactly `1..k` (else `invalid_output`), emit neighbor lists in each node's `neighbors` order.
+
+## tests.json
+
+Validated against `schemas/tests.schema.json`.
+
+```json
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": []
+}
+```
+
+| Case field | Type | Required | Notes |
+|------------|------|----------|-------|
+| `id` | string `^[a-z0-9-]+$` | yes | Unique; convention `ex1` (visible), `h1` (hidden), `g1` (generated) |
+| `visible` | bool | no | Default `false`; visible cases are the statement's examples |
+| `input` | object | `function` kind | Keys are canonical param names; values use the JSON encoding of the param type |
+| `ops`, `args` | arrays | class kinds | [Operation sequences](#operation-sequences-design-problems) |
+| `stress` | object | `concurrent` only | A concurrent scenario instead of `ops`/`args` ([Stress cases](#stress-cases)); always hidden |
+| `expected` | any | yes, except `generate`, `stress` and `checker` cases | Checker problems may include one valid answer for display |
+| `generate` | `{n, seed}` | no | Input from `generator.py`; expected computed by `perf.expected_from`; always hidden |
+| `level` | int | `progressive` only | |
+| `hang_guard_ms` | int | no | Per-case override |
+| `note` | string | no | Author note shown on failure |
+
+`cstudy verify --static` type-checks every input and expected value against the signature (ranges, char length, node encodings, op names and arities).
+
+## Comparators
+
+All comparison happens in the CLI core on canonical JSON values. Equality is type-strict for booleans (`true` never equals `1`); integers and floats compare by numeric value.
+
+| `comparator.type` | Passes when | Typical use |
+|-------------------|-------------|-------------|
+| `exact` | Deep equality | Most problems |
+| `unordered` | Top-level arrays are equal as multisets; elements compared with `exact` | Two Sum indices, permutations |
+| `unordered-nested` | Top level is a multiset of inner arrays, each inner array also compared as a multiset (depth 2) | 3Sum, Group Anagrams, Subsets |
+| `float` | Every number satisfies `abs(a - e) <= tol * max(1, abs(e))`; structure otherwise exact | Averages, probabilities, geometry; `tolerance` default `1e-6` |
+| `checker` | `checker.py` returns `None` | Any valid topological order, any valid path, any valid partition |
+| `ops` | Per-operation outputs equal; `per_method` overrides a method's comparator (`exact`, `unordered`, `unordered-nested`, `float`) | Design and progressive problems |
+
+```yaml
+comparator: {type: float, tolerance: 1.0e-5}
+comparator: {type: ops, per_method: {topK: unordered}}
+```
+
+`checker.py` contract (stdlib only):
+
+```python
+def check(case_input: dict, output: object, expected: object | None) -> str | None:
+    """Return None when output is a valid answer, else a one-line reason."""
+```
+
+Failure reports show input, expected and actual (each truncated to 200 characters) and, for arrays, the first differing index.
+
+## Operation sequences (design problems)
+
+LeetCode-compatible. `ops[0]` is the class name (constructor) and `args[i]` are the arguments of `ops[i]`. `expected[i]` is the return value of `ops[i]`; constructors and `void` methods expect `null`.
+
+```json
+{
+  "id": "ex1",
+  "visible": true,
+  "ops": ["LRUCache", "put", "put", "get", "put", "get", "get"],
+  "args": [[2], [1, 1], [2, 2], [1], [3, 3], [2], [3]],
+  "expected": [null, null, null, 1, null, -1, 3]
+}
+```
+
+Content rules: design APIs report absence with sentinel values (for example `-1`), not exceptions; time-dependent behavior takes timestamps as explicit arguments and never reads a clock.
+
+If op `k` throws, the case fails at op `k`; the report shows the ops prefix and the partial outputs.
+
+## Progressive problems
+
+A progressive problem is one class whose API grows across levels, as in multi-level practical assessments (for example an in-memory database: records, then scans, then TTL, then history).
+
+```yaml
+kind: progressive
+levels:
+  - {level: 1, title: Set and get}
+  - {level: 2, title: Prefix scans}
+  - {level: 3, title: TTL}
+  - {level: 4, title: Point-in-time history}
+signature:
+  class:
+    name: InMemoryDb
+    constructor: {params: []}
+    methods:
+      - {name: set, level: 1, params: [{name: timestamp, type: long}, {name: key, type: string}, {name: field, type: string}, {name: value, type: string}], returns: {type: void}}
+      - {name: get, level: 1, params: [{name: timestamp, type: long}, {name: key, type: string}, {name: field, type: string}], returns: {type: string}}
+comparator: {type: ops}
+```
+
+| Rule | Detail |
+|------|--------|
+| Cases | Each case has `level`; a level-`L` case uses only methods with `level <= L`. Every level has cases; a `generate` case sits at the last level, because `generator.py` may call every method |
+| Stub | Contains every method, each marked with a `Level <n>` comment and throwing "not implemented". Method names of later levels are therefore visible in the stub; their rules are not |
+| Statement | `problem.md` has one `## Level <n>: <title>` section per level, in order, holding that level's operations, rules and `### Example` subsections; the example marker of a level-`L` visible case sits in the `## Level L` section. `## Statement`, `## Input`, `## Output` and `## Constraints` show at every level, so they describe only what holds for all levels (the class, absence values, timestamps) |
+| Rendering | The rendered statement shows levels 1 to the unlocked level; one notice line replaces the locked levels, whose titles stay hidden; the metadata line ends with `level <unlocked> of <last>` |
+| Unlock | `cstudy start` opens level 1 on a new attempt (`attempts.level_unlocked`); a resumed attempt keeps its level, a `--fresh` or review attempt starts again at level 1. `cstudy test` runs the cases of levels 1 to the unlocked level. A run of every one of those cases (no `--case`, no lower `--level`) that passes them all unlocks the next level and rewrites the statement; one run unlocks at most one level |
+| Full pass | Only a run that passes the cases of every level is a full pass (`first_pass_at`, `cstudy done --rating`) |
+| Missing values | Methods return `""` (string) or `-1` (number) for absence, stated in the level text |
+
+## Concurrent problems
+
+A concurrent problem (`kind: concurrent`, `track: concurrency`) is a class whose methods several workers call at the same time. Decision record: [ADR 0006](../decisions/0006-concurrency-stress-testing.md).
+
+| Case type | Runs | Passes when |
+|-----------|------|-------------|
+| Sequential (`ops`, `args`) | Once, single-threaded, exactly like a [design problem](#operation-sequences-design-problems) | The `ops` comparator matches `expected` |
+| Stress (`stress`) | N runs per [variant](#models-and-language-support); each run executes worker scripts concurrently, then an optional single-threaded final sequence | Every run ends without error, invalid output or stall, and satisfies every invariant |
+
+| Decision | Choice | Rejected alternative |
+|----------|--------|----------------------|
+| What a stress run checks | Invariants over all recorded op inputs and outputs, probe counters and a quiescent final sequence | Linearizability checking: NP-complete in general, needs per-op timestamps from 3 runtimes, and its counterexamples are hard to read |
+| Who expands and judges | CLI core expands templates into explicit per-worker scripts and evaluates invariants; runners only execute and record | Scenario logic in each runner: 3 implementations of templates and invariants |
+| Verdict over N runs | A case passes only if every run passes | Majority or threshold: a correct implementation satisfies every invariant on every schedule, so one failing run is a real bug |
+| Proof that a scenario can catch bugs | Deliberately broken references that must fail in at least 9 of 10 runs (`cstudy verify` D7) | Trusting scenario design: a scenario that never interleaves passes everything |
+| Strength of a pass | Evidence, not proof: the statement says so | Claiming thread safety from a green run |
+
+### Models and language support
+
+| Model | Workers are | Interleaving happens | Repeatability |
+|-------|-------------|----------------------|---------------|
+| `threads` | OS-scheduled threads released together by a start gate | JVM: anywhere, with true parallelism. Python: at GIL switch points, widened by [injected yields](#observable-races-in-python) | None: the same seed gives different schedules |
+| `async` | Coroutines on one event loop (Python `asyncio` tasks, Node promise chains) started together | Only at `await` points | Deterministic: the same code and seed give the same schedule |
+
+| Language | Model | Variants (each a separate verdict) | Notes |
+|----------|-------|------------------------------------|-------|
+| Java | `threads` | `platform`, `virtual` (from `concurrency.jvm_threads`) | `synchronized`, `volatile`, `java.util.concurrent`. On JDK 21 a virtual thread pins its carrier inside `synchronized` and `Object.wait`: still correct, only slower |
+| Kotlin | `threads` | `platform`, `virtual` | Same JVM runner and JDK APIs (`@Volatile`, `synchronized(lock) {}`, `ReentrantLock.withLock`). Coroutines are not autograded in v1 (PRD Q5); every Kotlin concurrent problem has a coroutine paragraph in its explanation's `### Language notes` |
+| Python | `threads` or `async`, one per problem | `thread` or `async` | CPython 3.13 with the GIL; which races a test can observe: [below](#observable-races-in-python) |
+| TypeScript | `async` only | `async` | Node 24, one event loop; `worker_threads` is not supported (objects cannot be shared between isolates, only `SharedArrayBuffer`). Synchronous methods are atomic, so a problem whose race needs shared-memory threads omits `typescript` from `languages` |
+
+`concurrency.model` must give every language in `languages` a model from this table; anything else is a content error.
+
+### Observable races in Python
+
+With the GIL, a thread switch happens only between bytecode instructions at points where the interpreter checks for a pending switch. During a stress run the Python runner sets `sys.setswitchinterval(1e-5)` and, through `sys.monitoring`, yields with `time.sleep(0)` before a random fraction of the user file's lines (or instructions) executed by worker threads ([runners](runners.md#perturbation)).
+
+| Bug pattern | Observable with `python_granularity: line` (default) | With `instruction` |
+|-------------|------------------------------------------------------|--------------------|
+| Check-then-act across lines (`if len(q) < cap:` then `q.append(x)`) | yes | yes |
+| Read-modify-write across lines (`v = self.n`, then `self.n = v + 1`) | yes | yes |
+| Read-modify-write on one line (`self.n += 1`, `d[k] += 1`) | no | yes |
+| `if` instead of `while` around `Condition.wait` with 2 or more waiters | yes | yes |
+| Deadlock: lock-order inversion, `notify` waking the wrong waiter | yes, as `stalled` | yes |
+| One C-level operation on a builtin (`list.append`, `deque.popleft`, `dict.pop`) | no: atomic under the GIL | no |
+| Missing memory visibility (`volatile`) | no: Python has no such bug | no |
+
+Content rule: a Python broken reference must target a pattern marked observable for its granularity; `python_granularity: instruction` costs roughly 10 times more per op, so scenarios that need it keep Python iterations low through a per-language `repeat`.
+
+### concurrency block in meta.yaml
+
+```yaml
+kind: concurrent
+track: concurrency
+languages: [java, kotlin, python, typescript]
+concurrency:
+  model: {java: threads, kotlin: threads, python: threads, typescript: async}   # or one string for all
+  jvm_threads: [platform, virtual]
+  runs: 3
+  deadline_ms: 5000
+  perturb: {yield_probability: 0.05, max_yields: 3, python_granularity: line}
+  broken:
+    - {id: no-lock, name: No lock, bug: "...", languages: [java, kotlin, python], caught_by: [s1]}
+```
+
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `model` | `threads`, `async`, or a map from language to model | required | Constraints: [language table](#models-and-language-support) |
+| `jvm_threads` | non-empty subset of `platform`, `virtual` | `[platform]` | Each entry is a separate variant of every stress case for Java and Kotlin |
+| `runs` | int, 1 to 100 | 3 | Runs per stress case and variant in plain `cstudy test`; `cstudy test --stress N` overrides; `cstudy verify` always uses 10 unless `--stress N` |
+| `deadline_ms` | int, 100 to 30000 | 5000 | Per run, from gate open until every worker finished; a stress case may override |
+| `perturb.yield_probability` | number, 0 to 1 | 0.05 | Chance of a yield before each worker op, and before each injection point in Python threads |
+| `perturb.max_yields` | int, 1 to 100 | 3 | A yield is 1 to `max_yields` scheduler yields, uniformly chosen |
+| `perturb.python_granularity` | `line`, `instruction`, `none` | `line` | Python `threads` model only: injection points inside the user file |
+| `broken` | list | required for `ready` | [Broken references](#broken-references) |
+
+Other `meta.yaml` rules for `concurrent` problems:
+
+| Field | Rule |
+|-------|------|
+| `comparator` | Must be `ops` (with optional `per_method`); used by sequential cases and `final.expected` |
+| `signature` | `class` only; `blocking: true` marks methods that may wait |
+| `approaches` | `id`, `name`, `role`, `time`, `space` as usual; `time_class`, `space_class` and `oracle` are not allowed |
+| `perf`, `generator.py` | Not allowed: no bench, ladder, time limits or oracle for concurrent problems in v1 |
+
+### Stress cases
+
+```json
+{
+  "id": "s1",
+  "note": "4 producers, 4 consumers, 1 observer on capacity 4",
+  "stress": {
+    "seed": 1000,
+    "deadline_ms": 5000,
+    "setup": {"ops": ["BoundedBlockingQueue"], "args": [[4]]},
+    "workers": [
+      {"group": "producer", "count": 4, "repeat": 500,
+       "steps": [{"op": "put", "args": [{"$seq": {"start": 0, "worker_stride": 1000000, "step": 1}}]}]},
+      {"group": "consumer", "count": 4, "repeat": 500, "steps": [{"op": "take", "args": []}]}
+    ],
+    "final": {"ops": ["size"], "args": [[]], "expected": [0]},
+    "invariants": [
+      {"type": "equal_multisets", "left": {"op": "put", "of": "arg0"}, "right": {"op": "take"}}
+    ]
+  }
+}
+```
+
+| `stress` field | Required | Notes |
+|----------------|----------|-------|
+| `seed` | no (default 1) | Run `r` (0-based) uses seed `seed + r` for template expansion and runner perturbation |
+| `deadline_ms` | no | Overrides `concurrency.deadline_ms` |
+| `setup` | yes | `ops` and `args` as in operation sequences; `ops[0]` is the constructor; may prefill; runs single-threaded before the gate opens |
+| `workers` | yes | One or more worker groups, at least 2 workers in total |
+| `final` | no | `ops` and `args` (no constructor) run single-threaded on the same instance after every worker finished; optional `expected`, compared with the `ops` comparator |
+| `invariants` | yes, unless `final.expected` is given | Checked in order after the run |
+| `perturb` | no | Overrides `concurrency.perturb` field by field |
+
+| Worker group field | Required | Notes |
+|--------------------|----------|-------|
+| `group` | yes | `^[a-z][a-z0-9-]*$`, unique within the case |
+| `count` | yes | Workers in the group, at least 1 |
+| `repeat` | yes | Iterations per worker: an int, or `{"default": 2000, "python": 300}` with per-language overrides |
+| `steps` | exactly one of `steps`, `mix` | Every iteration runs all steps in order |
+| `mix` | exactly one of `steps`, `mix` | Every iteration runs one step chosen by its `weight` (positive int) |
+
+A step is `{"op": <method or harness op>, "args": [<value or template>, ...]}`, plus `weight` inside `mix`. Methods must exist in the signature with matching arity, and the constructor is not allowed in steps.
+
+#### Templates
+
+A template replaces one whole argument; templates do not nest inside arrays. The CLI expands them per run before sending the request, so runners only ever see literal values.
+
+| Template | Value for worker `w` (index within its group) at iteration `i` |
+|----------|---------------------------------------------------------------|
+| `{"$seq": {"start": s, "worker_stride": k, "step": d}}` | `s + w * k + i * d` (`start` required, `step` default 1, `worker_stride` default 0) |
+| `{"$rand": [lo, hi]}` | Uniform integer in `[lo, hi]` |
+| `{"$pick": [v1, v2, ...]}` | One of the listed JSON values, uniformly |
+| any other JSON value | Itself |
+
+Randomness comes from one `random.Random(f"{seed + r}:{group}:{w}")` stream per worker, consumed in iteration order: in a `mix`, `rng.choices(steps, weights=...)` first, then the step's templates left to right. Expansion is therefore reproducible (NFR-4). `cstudy verify --static` checks every template's full value range against the parameter type, for example `start + (count - 1) * worker_stride + (repeat - 1) * step` against the `int` range.
+
+#### Harness ops
+
+Ops starting with `@` are implemented by the runner, not the user's class. Their output is `null`.
+
+| Op | Args | Effect |
+|----|------|--------|
+| `@enter` | `[section, mode]`: a string name and `"exclusive"` or `"shared"` | Enter a probe section. Exclusive entry while anyone is inside, or shared entry while an exclusive holder is inside, counts one violation |
+| `@exit` | `[section]` | Leave the section this worker entered last under that name |
+| `@pause` | `[n]`, 1 to 1000 | Yield to the scheduler `n` times, to widen race windows ([runners](runners.md#harness-ops)) |
+
+Within every iteration of a worker, `@enter` and `@exit` must be balanced and properly nested (static check). Probes measure the user's lock, not shared data, for example a read-write lock:
+
+```json
+{"group": "reader", "count": 6, "repeat": 400,
+ "steps": [{"op": "acquireRead", "args": []}, {"op": "@enter", "args": ["data", "shared"]},
+           {"op": "@pause", "args": [2]}, {"op": "@exit", "args": ["data"]}, {"op": "releaseRead", "args": []}]}
+```
+
+#### Run record
+
+The CLI joins the expanded scripts with the runner's outputs into one record per run. Invariants and `stress_checker.py` read only this record.
+
+```json
+{
+  "run": 0, "seed": 1000, "variant": "platform",
+  "setup": [{"op": "BoundedBlockingQueue", "args": [4], "output": null}],
+  "workers": [
+    {"group": "producer", "index": 0, "ops": [{"op": "put", "args": [0], "output": null}]},
+    {"group": "consumer", "index": 0, "ops": [{"op": "take", "args": [], "output": 2000001}]}
+  ],
+  "final": [{"op": "size", "args": [], "output": 0}],
+  "sections": {"data": {"entries": 2400, "violations": 0, "max_occupancy": 6}}
+}
+```
+
+#### Selectors
+
+| Field | Default | Meaning |
+|-------|---------|---------|
+| `op` | required | Method name |
+| `of` | `output` | `output`, or `arg0`, `arg1`, ... for an argument; a `void` method has no output to select (static error) |
+| `group` | every group | Restrict to one worker group (setup and final belong to no group, so a `group` selector excludes them) |
+| `scope` | `all` | `setup`, `workers`, `final` or `all` |
+
+Values are collected in record order: setup, then workers (group declaration order, worker index, op order), then final. For `source_order`, each worker's values form one sequence, and setup and final are one sequence each.
+
+#### Invariants
+
+| `type` | Fields | Passes when | Typical bug caught |
+|--------|--------|-------------|--------------------|
+| `equal_multisets` | `left`, `right` (selectors) | Both select the same multiset | Lost or duplicated elements |
+| `distinct` | `values` | No value occurs twice | Double delivery |
+| `bounds` | `values`, `min` and/or `max` | Every value is within the bounds | Capacity overflow, negative balance |
+| `count` | `values`, optional `equals`, `min` and/or `max` | The number of values (equal to `equals` when given) is within the bounds | A limiter granting too many permits |
+| `sum` | `values`, `min` and/or `max` | The sum is within the bounds | Money or tokens not conserved |
+| `source_order` | `values`, `stride` | In each sequence, values with the same `floor(v / stride)` strictly increase | FIFO order violated |
+| `section` | `name`, `max_violations` (default 0), optional `min_occupancy`, `max_occupancy` | The probe counters are within the bounds | Mutual exclusion broken; a semaphore admitting too many or serializing everything |
+| `checker` | `name` | `stress_checker.py` returns `None` for that name | Anything else, for example cached values matching their keys |
+
+Values compare as canonical JSON, with the same type-strict equality as the comparators. `min` and `max` are inclusive.
+
+Content rule: every invariant must hold on every schedule of a correct implementation. The only allowed exception is `min_occupancy` (it asserts that concurrency actually happened), and only when its section contains a `@pause` and the correct references pass it 10 of 10 times in `cstudy verify`.
+
+`stress_checker.py` contract (stdlib only):
+
+```python
+def check(name: str, scenario: dict, run: dict) -> str | None:
+    """Return None when the run record satisfies invariant `name`, else a one-line reason."""
+```
+
+`scenario` is the case's `stress` object as written in `tests.json`; `run` is the run record.
+
+#### Evaluating a run and a case
+
+1. Runner status: `error`, `invalid_output`, `stalled` (deadline passed) or `timeout` (hang guard) fails the run with that status.
+2. `final.expected`, when present, is compared with the `ops` comparator.
+3. Invariants are evaluated in order; every failing invariant contributes a reason (the first 3 are shown).
+
+A stress case has one verdict per variant: `PASS` when all N runs pass, otherwise the status of the first failing run (`FAIL` for an expected value or invariant, `ERROR`, `INVALID`, `STALLED`, `TIMEOUT`) with `k/N runs passed` and up to 3 failing runs, each with its seed and reason. A problem passes when every sequential case and every (stress case, variant) passes.
+
+In the `async` model a failing seed reproduces exactly: `cstudy test --case s1 --seed 1007 --stress 1`. In the `threads` model it does not; more runs (`--stress 20`) raise the chance of seeing it again.
+
+### Broken references
+
+Deliberately wrong references prove that each scenario can catch the bugs it was written for. They live in `solutions/broken/<id>.<ext>` and are declared in `concurrency.broken`.
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `id` | yes | `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, unique across approach and broken ids; approach ids of concurrent problems must not start with `broken-` (materialized names would collide) |
+| `name` | yes | Short display name |
+| `bug` | yes | One line naming the bug class |
+| `languages` | no | Subset of `languages`; default all |
+| `caught_by` | yes | Stress case ids that must catch it |
+
+| Rule | Detail |
+|------|--------|
+| Sequentially correct | A broken reference passes every sequential case, so the bug is a concurrency bug and not a logic error (`cstudy verify` D7) |
+| Detection | It fails each `caught_by` case in at least 9 of 10 runs, per language and variant (D7); this is the Phase 5 exit criterion, checked for every problem |
+| Correct references | Pass every stress case 10 of 10 times per variant (D6) |
+| Coverage | `ready` requires at least one broken reference for every language in `languages` |
+| Explanation | `## Broken: <id> (<name>)` section in `explanation.md` ([authoring](authoring.md#explanationmd)) |
+| Display | `cstudy solution --broken [ID]` shows the code with its explanation section, as a "spot the bug" exercise |
+
+### Stubs for concurrent problems
+
+| Language | `threads` model | `async` model |
+|----------|-----------------|---------------|
+| Python | Plain methods | `blocking` methods are `async def`; others plain |
+| TypeScript | not allowed | `blocking` methods are `async name(...): Promise<T>`; others plain |
+| Java | `blocking` methods declare `throws InterruptedException`; imports add `java.util.concurrent.*` and `java.util.concurrent.locks.*` | not allowed |
+| Kotlin | Plain methods (no checked exceptions) | not allowed |
+
+The stub header gains one line naming the model, for example `Concurrency: threads (platform and virtual)`. In the `async` model the runner awaits a method's return value whenever it is awaitable, declared `blocking` or not.
+
+### Limits
+
+| Limit | Value |
+|-------|-------|
+| Workers per run | 2 to 64 |
+| Ops per run after expansion (setup, workers and final) | at most 20,000, which keeps a request with every run of every case under about 30 MB |
+| Stress cases per problem | at most 6 (`ready`: at least 2) |
+| Time limits | Never apply to stress cases; sequential cases follow the normal rules |
+| Hang guard per stress run | `deadline_ms + 5000` ([runners](runners.md#concurrent-jobs)) |
+
+### Worked example: bounded-blocking-queue
+
+`problems/0190-bounded-blocking-queue/meta.yaml` (the id is whatever `cstudy new` assigns):
+
+```yaml
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0190"
+slug: bounded-blocking-queue
+title: Bounded Blocking Queue
+status: ready
+difficulty: medium
+track: concurrency
+kind: concurrent
+languages: [java, kotlin, python, typescript]
+signature:
+  class:
+    name: BoundedBlockingQueue
+    constructor: {params: [{name: capacity, type: int}]}
+    methods:
+      - {name: put, blocking: true, params: [{name: value, type: int}], returns: {type: void}}
+      - {name: take, blocking: true, params: [], returns: {type: int}}
+      - {name: size, params: [], returns: {type: int}}
+comparator: {type: ops}
+concurrency:
+  model: {java: threads, kotlin: threads, python: threads, typescript: async}
+  jvm_threads: [platform, virtual]
+  runs: 3
+  deadline_ms: 5000
+  broken:
+    - id: no-lock
+      name: Deque without a lock
+      bug: Spin-waits on the size, then mutates a shared deque with no mutual exclusion
+      languages: [java, kotlin, python]
+      caught_by: [s1]
+    - id: if-not-while
+      name: Wait guarded by if
+      bug: A woken worker does not re-check its condition, so another worker can invalidate it first
+      caught_by: [s2]
+approaches:
+  - {id: monitor, name: One lock with two conditions, role: optimal, time: "O(1) per op", space: "O(capacity)"}
+  - {id: semaphores, name: Two counting semaphores and a mutex, role: optimal, time: "O(1) per op", space: "O(capacity)"}
+references:
+  leetcode: {number: 1188, url: "https://leetcode.com/problems/design-bounded-blocking-queue/"}
+related: [concurrency-limiter, read-write-lock]
+estimate_minutes: 30
+```
+
+Reference files: `solutions/monitor.{py,ts,java,kt}`, `solutions/semaphores.{py,java,kt}` (`semaphores` has no TypeScript file, which is allowed because `monitor` covers every language), `solutions/broken/no-lock.{py,java,kt}`, `solutions/broken/if-not-while.{py,ts,java,kt}`. In TypeScript, `monitor` keeps FIFO queues of pending resolvers for takers and putters.
+
+`tests.json`:
+
+```json
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true,
+     "ops": ["BoundedBlockingQueue", "put", "put", "size", "take", "take", "size"],
+     "args": [[2], [5], [7], [], [], [], []],
+     "expected": [null, null, null, 2, 5, 7, 0]},
+    {"id": "ex2", "visible": true,
+     "ops": ["BoundedBlockingQueue", "put", "take", "put", "size", "take"],
+     "args": [[1], [3], [], [4], [], []],
+     "expected": [null, null, 3, null, 1, 4]},
+    {"id": "h1", "note": "interleaved fill and drain keeps FIFO order",
+     "ops": ["BoundedBlockingQueue", "put", "put", "take", "put", "put", "size", "take", "take", "take", "size"],
+     "args": [[3], [1], [2], [], [3], [4], [], [], [], [], []],
+     "expected": [null, null, null, 1, null, null, 3, 2, 3, 4, 0]},
+    {"id": "h2", "note": "zero and negative values",
+     "ops": ["BoundedBlockingQueue", "put", "put", "take", "take"],
+     "args": [[2], [0], [-5], [], []],
+     "expected": [null, null, null, 0, -5]},
+    {"id": "h3", "note": "duplicate values",
+     "ops": ["BoundedBlockingQueue", "put", "put", "put", "size", "take", "take", "take"],
+     "args": [[4], [9], [9], [9], [], [], [], []],
+     "expected": [null, null, null, null, 3, 9, 9, 9]},
+    {"id": "h4", "note": "filled exactly to capacity",
+     "ops": ["BoundedBlockingQueue", "put", "put", "put", "size", "take", "take", "take", "size"],
+     "args": [[3], [1], [2], [3], [], [], [], [], []],
+     "expected": [null, null, null, null, 3, 1, 2, 3, 0]},
+    {"id": "s1", "note": "4 producers, 4 consumers and a size observer on capacity 4",
+     "stress": {
+       "seed": 1000,
+       "setup": {"ops": ["BoundedBlockingQueue"], "args": [[4]]},
+       "workers": [
+         {"group": "producer", "count": 4, "repeat": 500,
+          "steps": [{"op": "put", "args": [{"$seq": {"start": 0, "worker_stride": 1000000}}]}]},
+         {"group": "consumer", "count": 4, "repeat": 500,
+          "steps": [{"op": "take", "args": []}]},
+         {"group": "observer", "count": 1, "repeat": 500,
+          "steps": [{"op": "size", "args": []}, {"op": "@pause", "args": [1]}]}
+       ],
+       "final": {"ops": ["size"], "args": [[]], "expected": [0]},
+       "invariants": [
+         {"type": "equal_multisets", "left": {"op": "put", "of": "arg0"}, "right": {"op": "take"}},
+         {"type": "distinct", "values": {"op": "take"}},
+         {"type": "source_order", "values": {"op": "take"}, "stride": 1000000},
+         {"type": "bounds", "values": {"op": "size"}, "min": 0, "max": 4}
+       ]
+     }},
+    {"id": "s2", "note": "capacity 1 forces a hand-off on every op",
+     "stress": {
+       "seed": 2000,
+       "setup": {"ops": ["BoundedBlockingQueue"], "args": [[1]]},
+       "workers": [
+         {"group": "producer", "count": 3, "repeat": {"default": 1000, "python": 400},
+          "steps": [{"op": "put", "args": [{"$seq": {"start": 1, "worker_stride": 1000000}}]}]},
+         {"group": "consumer", "count": 3, "repeat": {"default": 1000, "python": 400},
+          "steps": [{"op": "take", "args": []}]}
+       ],
+       "final": {"ops": ["size"], "args": [[]], "expected": [0]},
+       "invariants": [
+         {"type": "equal_multisets", "left": {"op": "put", "of": "arg0"}, "right": {"op": "take"}},
+         {"type": "source_order", "values": {"op": "take"}, "stride": 1000000}
+       ]
+     }}
+  ]
+}
+```
+
+Why these cases catch the broken references:
+
+| Broken | Language | Expected failure |
+|--------|----------|------------------|
+| `no-lock` | Java, Kotlin | Concurrent `ArrayDeque` mutation loses or duplicates elements (`equal_multisets`, `distinct`), returns `null` to an `int` (`ERROR`), or the JIT hoists the non-volatile size read out of the spin loop (`STALLED`) |
+| `no-lock` | Python | Two consumers pass `while not self._items` before either calls `popleft` (line injection between them): `IndexError`, so `ERROR` |
+| `if-not-while` | Java, Kotlin, Python | `notifyAll` / `notify_all` wakes several takers for one element; the second removes from an empty deque: `ERROR` |
+| `if-not-while` | TypeScript | A resumed taker shifts after another taker emptied the array: `undefined` for `int`, so `INVALID` (deterministic for a given seed) |
+
+Measured on the fixture copy of this problem (`cli/tests/fixtures/concurrency/`, `monitor` only), `cstudy verify --require-ready` with 10 runs per variant on 2026-10-25 at a load average of 2.5 on 11 cores:
+
+| Reference | Java platform | Java virtual | Kotlin platform | Kotlin virtual | Python thread | TypeScript async |
+|-----------|---------------|--------------|-----------------|----------------|---------------|------------------|
+| `no-lock` on `s1` | 10/10 failed (`ERROR`) | 10/10 (`ERROR`) | 10/10 (`ERROR`) | 10/10 (`ERROR`) | 10/10 (`ERROR`) | not listed |
+| `if-not-while` on `s2` | 10/10 (`ERROR`) | 10/10 (`ERROR`) | 10/10 (`ERROR`) | 10/10 (`ERROR`) | 10/10 (`ERROR`) | 10/10 (`INVALID`) |
+| `monitor`, every stress case | 10/10 passed | 10/10 | 10/10 | 10/10 | 10/10 | 10/10 |
+
+The slowest correct run took 76 ms (Python `s1`), 1.5% of the 5000 ms deadline; `cstudy verify` took 3 to 4 s per language with a warm Gradle daemon.
+
+Generated stubs:
+
+```python
+# python/practice/bounded_blocking_queue.py
+"""Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md. Run: cstudy test bounded-blocking-queue
+
+Concurrency: threads
+"""
+
+
+class BoundedBlockingQueue:
+    def __init__(self, capacity: int) -> None:
+        pass
+
+    def put(self, value: int) -> None:
+        raise NotImplementedError
+
+    def take(self) -> int:
+        raise NotImplementedError
+
+    def size(self) -> int:
+        raise NotImplementedError
+```
+
+```typescript
+// typescript/practice/bounded-blocking-queue.ts
+// Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md. Run: cstudy test bounded-blocking-queue
+// Concurrency: async
+export class BoundedBlockingQueue {
+  constructor(capacity: number) {}
+
+  async put(value: number): Promise<void> {
+    throw new Error("Not implemented");
+  }
+
+  async take(): Promise<number> {
+    throw new Error("Not implemented");
+  }
+
+  size(): number {
+    throw new Error("Not implemented");
+  }
+}
+```
+
+```java
+// jvm/java/src/main/java/practice/bounded_blocking_queue/BoundedBlockingQueue.java
+// Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md. Run: cstudy test bounded-blocking-queue
+// Concurrency: threads (platform and virtual)
+
+package practice.bounded_blocking_queue;
+
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.*;
+
+public class BoundedBlockingQueue {
+    public BoundedBlockingQueue(int capacity) {
+    }
+
+    public void put(int value) throws InterruptedException {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    public int take() throws InterruptedException {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    public int size() {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+}
+```
+
+```kotlin
+// jvm/kotlin/src/main/kotlin/practice/bounded_blocking_queue/BoundedBlockingQueue.kt
+// Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md. Run: cstudy test bounded-blocking-queue
+// Concurrency: threads (platform and virtual)
+
+package practice.bounded_blocking_queue
+
+class BoundedBlockingQueue(capacity: Int) {
+    fun put(value: Int) {
+        TODO("Not implemented")
+    }
+
+    fun take(): Int {
+        TODO("Not implemented")
+    }
+
+    fun size(): Int {
+        TODO("Not implemented")
+    }
+}
+```
+
+A Python problem with `model: async` generates `async def put(self, value: int) -> None:` and `async def take(self) -> int:` instead.
+
+## Generated cases and generator.py
+
+```python
+import random
+
+def generate(rng: random.Random, n: int) -> dict:
+    """Return one input. function kind: {param: value}. class kinds: {"ops": [...], "args": [...]}."""
+
+def validate(case_input: dict) -> None:  # optional
+    """Raise AssertionError if the input violates the problem's constraints."""
+```
+
+| Rule | Detail |
+|------|--------|
+| Dependencies | Python stdlib only; all randomness from `rng` |
+| Determinism | Same `(seed, n)` yields identical output; `cstudy verify` checks by calling twice |
+| Size meaning | `n` is the size parameter named in `perf.size_param`; the generator maps it to all dimensions |
+| Users | Generated test cases, oracle cross-check (`cstudy verify --oracle`), oracle inputs of `cstudy test --stress N` ([cli](cli.md#oracle-inputs)), bench size ladder |
+| Expected values | For `generate` cases: output of `perf.expected_from` (a Python approach) via the Python runner, cached in `.cs/cases/`; for `cstudy test --stress` oracle inputs: output of the `oracle` approach, cached the same way under its own key |
+
+## Approaches and complexity
+
+`solutions/` holds several reference approaches (for example brute force, better, optimal). Together they form the problem's complexity ladder ([performance-analysis](performance-analysis.md)).
+
+```yaml
+approaches:
+  - id: brute-force             # matches solutions/brute-force.<ext>
+    name: Check every pair
+    role: brute                 # brute | intermediate | optimal
+    time: "O(n^2)"              # human notation, may use several variables
+    space: "O(1)"
+    time_class: "n^2"           # growth in the size-ladder parameter n
+    space_class: "1"
+    oracle: true                # at most one; must exist in Python
+  - id: hash-map
+    name: One-pass hash map
+    role: optimal
+    time: "O(n)"
+    space: "O(n)"
+    time_class: "n"
+    space_class: "n"
+```
+
+Complexity classes, ordered: `1`, `log n`, `sqrt n`, `n`, `n log n`, `n^2`, `n^2 log n`, `n^3`, `2^n`, `n!`. At least one approach has `role: optimal`; several may (for example heap and quickselect).
+
+## Performance block
+
+```yaml
+perf:
+  size_param: n                         # what n means, for display
+  size_ladder: [100, 1000, 10000, 100000, 1000000]   # never above the stated constraints
+  budget_ms: 2000                       # one run above this stops the ladder for that target
+  expected_from: hash-map               # Python approach that computes expected for generated cases
+  time_limit: {factor: 5}               # suggestion when time limits are enabled; or {ms: 1500}
+```
+
+| Field | Default |
+|-------|---------|
+| `size_ladder` | `[100, 1000, 10000, 100000]` |
+| `budget_ms` | `2000` |
+| `expected_from` | first `optimal` approach with a Python file |
+| `time_limit` | none; the built-in default applies (see [performance-analysis](performance-analysis.md#time-limits)) |
+
+`meta.yaml` can only suggest a time-limit value. Time limits are off unless enabled by flag or user config ([cli](cli.md#configuration)).
+
+## Worked example: two-sum
+
+`problems/0001-two-sum/meta.yaml`:
+
+```yaml
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0001"
+slug: two-sum
+title: Two Sum
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [arrays-hashing]
+signature:
+  function:
+    name: twoSum
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: target, type: int}
+    returns: {type: "int[]"}
+comparator: {type: unordered}
+approaches:
+  - {id: brute-force, name: Check every pair, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: hash-map, name: One-pass hash map, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n
+  size_ladder: [100, 1000, 10000, 100000]
+  expected_from: hash-map
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1, url: "https://leetcode.com/problems/two-sum/"}
+related: [three-sum]
+estimate_minutes: 15
+```
+
+`tests.json` (excerpt):
+
+```json
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [4, 9, 2, 8], "target": 11}, "expected": [1, 2]},
+    {"id": "ex2", "visible": true, "input": {"nums": [5, 5], "target": 10}, "expected": [0, 1]},
+    {"id": "h1", "input": {"nums": [-3, 8, 0, 3], "target": 0}, "expected": [0, 3]},
+    {"id": "g1", "generate": {"n": 100000, "seed": 1}}
+  ]
+}
+```
+
+`generator.py`:
+
+```python
+import random
+
+def generate(rng: random.Random, n: int) -> dict:
+    # n - 1 distinct even numbers plus one odd number; an odd target forces the
+    # unique answer to be (odd, chosen even), matching the statement's guarantee.
+    nums = [2 * v for v in rng.sample(range(-4 * 10**8, 4 * 10**8), n - 1)]
+    odd = 2 * rng.randrange(-10**8, 10**8) + 1
+    target = odd + rng.choice(nums)
+    nums.insert(rng.randrange(n), odd)
+    return {"nums": nums, "target": target}
+```
+
+The statement guarantees exactly one answer, so `unordered` suffices. A generator that cannot guarantee uniqueness must be paired with a `checker` comparator instead.
+
+Generated stubs:
+
+```python
+# python/practice/two_sum.py
+"""Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum"""
+
+
+def two_sum(nums: list[int], target: int) -> list[int]:
+    raise NotImplementedError
+```
+
+```typescript
+// typescript/practice/two-sum.ts
+// Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum
+export function twoSum(nums: number[], target: number): number[] {
+  throw new Error("Not implemented");
+}
+```
+
+```java
+// jvm/java/src/main/java/practice/two_sum/Solution.java
+// Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum
+
+package practice.two_sum;
+
+import java.util.*;
+
+public class Solution {
+    public int[] twoSum(int[] nums, int target) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+}
+```
+
+```kotlin
+// jvm/kotlin/src/main/kotlin/practice/two_sum/Solution.kt
+// Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum
+
+package practice.two_sum
+
+class Solution {
+    fun twoSum(nums: IntArray, target: Int): IntArray {
+        TODO("Not implemented")
+    }
+}
+```
+
+## Worked example: lru-cache
+
+```yaml
+id: "0002"
+slug: lru-cache
+title: LRU Cache
+status: ready
+difficulty: medium
+track: dsa
+kind: design
+patterns: [linked-list, arrays-hashing]
+signature:
+  class:
+    name: LRUCache
+    constructor: {params: [{name: capacity, type: int}]}
+    methods:
+      - {name: get, params: [{name: key, type: int}], returns: {type: int}}
+      - {name: put, params: [{name: key, type: int}, {name: value, type: int}], returns: {type: void}}
+comparator: {type: ops}
+approaches:
+  - {id: ordered-scan, name: List with linear scan, role: brute, time: "O(capacity) per op", space: "O(capacity)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: hash-map-dll, name: Hash map plus doubly linked list, role: optimal, time: "O(1) per op", space: "O(capacity)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of operations, capacity n/10
+  size_ladder: [1000, 10000, 100000]
+  expected_from: hash-map-dll
+references:
+  leetcode: {number: 146, url: "https://leetcode.com/problems/lru-cache/"}
+```
+
+For design problems `time_class` describes the whole generated op sequence of length `n`, which is why the brute force is `n^2`.
+
+Stubs (constructors never throw, so the first failing op points at an unimplemented method):
+
+```python
+# python/practice/lru_cache.py
+"""LRU Cache. Statement: .statements/lru-cache.md. Run: cstudy test lru-cache"""
+
+
+class LRUCache:
+    def __init__(self, capacity: int) -> None:
+        pass
+
+    def get(self, key: int) -> int:
+        raise NotImplementedError
+
+    def put(self, key: int, value: int) -> None:
+        raise NotImplementedError
+```
+
+```typescript
+// typescript/practice/lru-cache.ts
+// LRU Cache. Statement: .statements/lru-cache.md. Run: cstudy test lru-cache
+export class LRUCache {
+  constructor(capacity: number) {}
+
+  get(key: number): number {
+    throw new Error("Not implemented");
+  }
+
+  put(key: number, value: number): void {
+    throw new Error("Not implemented");
+  }
+}
+```
+
+```java
+// jvm/java/src/main/java/practice/lru_cache/LRUCache.java
+// LRU Cache. Statement: .statements/lru-cache.md. Run: cstudy test lru-cache
+
+package practice.lru_cache;
+
+import java.util.*;
+
+public class LRUCache {
+    public LRUCache(int capacity) {
+    }
+
+    public int get(int key) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    public void put(int key, int value) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+}
+```
+
+```kotlin
+// jvm/kotlin/src/main/kotlin/practice/lru_cache/LRUCache.kt
+// LRU Cache. Statement: .statements/lru-cache.md. Run: cstudy test lru-cache
+
+package practice.lru_cache
+
+class LRUCache(capacity: Int) {
+    fun get(key: Int): Int {
+        TODO("Not implemented")
+    }
+
+    fun put(key: Int, value: Int) {
+        TODO("Not implemented")
+    }
+}
+```

@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0137"
+slug: job-scheduling-max-profit
+title: Job Scheduling for Maximum Profit
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [dp-1d, binary-search]
+signature:
+  function:
+    name: jobScheduling
+    params:
+      - {name: startTime, type: "int[]"}
+      - {name: endTime, type: "int[]"}
+      - {name: profit, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: quadratic-dp, name: Sort by end and scan back for the last compatible job, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: memoization, name: Top-down take-or-skip over jobs sorted by start, role: intermediate, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+  - {id: binary-search-dp, name: Bottom-up over end times with binary search, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: n, the number of jobs
+  size_ladder: [100, 300, 1000, 2000]
+  expected_from: binary-search-dp
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1235, url: "https://leetcode.com/problems/maximum-profit-in-job-scheduling/"}
+related: [house-robber, longest-increasing-subsequence, non-overlapping-intervals]
+order: 12
+estimate_minutes: 40

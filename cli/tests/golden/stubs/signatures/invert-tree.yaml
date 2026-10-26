@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../../../../../schemas/meta.schema.json
+# A function that imports only TreeNode.
+id: "0103"
+slug: invert-binary-tree
+title: Invert Binary Tree
+status: draft
+difficulty: easy
+track: dsa
+kind: function
+patterns: [trees]
+signature:
+  function:
+    name: invertTree
+    params:
+      - {name: root, type: TreeNode}
+    returns: {type: TreeNode}
+comparator: {type: exact}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

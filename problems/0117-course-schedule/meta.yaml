@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0117"
+slug: course-schedule
+title: Course Schedule
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [topological-sort, graphs]
+signature:
+  function:
+    name: canFinish
+    params:
+      - {name: numCourses, type: int}
+      - {name: prerequisites, type: "int[][]"}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: repeated-scan, name: Repeatedly scan for a course whose prerequisites are all done, role: brute, time: "O(V * (V + E))", space: "O(V + E)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: kahn, name: Queue the courses whose remaining prerequisite count drops to zero, role: optimal, time: "O(V + E)", space: "O(V + E)", time_class: "n", space_class: "n"}
+  - {id: three-color-dfs, name: Depth-first search that detects a path looping back on itself, role: optimal, time: "O(V + E)", space: "O(V + E)", time_class: "n", space_class: "n"}
+perf:
+  size_param: V = numCourses, with about 2V prerequisite pairs
+  size_ladder: [125, 250, 500, 1000]
+  expected_from: kahn
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 207, url: "https://leetcode.com/problems/course-schedule/"}
+related: [parallel-courses, all-possible-recipes, alien-dictionary]
+order: 1
+estimate_minutes: 25

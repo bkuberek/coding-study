@@ -1,0 +1,24 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"s": "2[xy]z"}, "expected": "xyxyz"},
+    {"id": "ex2", "visible": true, "input": {"s": "3[k2[m]]"}, "expected": "kmmkmmkmm"},
+    {"id": "h1", "input": {"s": "a"}, "expected": "a", "note": "a single letter"},
+    {"id": "h2", "input": {"s": "1[x]"}, "expected": "x", "note": "a count of one"},
+    {"id": "h3", "input": {"s": "12[ab]"}, "expected": "abababababababababababab", "note": "a two-digit count"},
+    {"id": "h4", "input": {"s": "2[a2[b]]c"}, "expected": "abbabbc", "note": "nested group followed by a letter"},
+    {"id": "h5", "input": {"s": "x3[]y"}, "expected": "xy", "note": "a group with empty content"},
+    {"id": "h6", "input": {"s": "3[z]2[2[y]]"}, "expected": "zzzyyyy", "note": "groups side by side"},
+    {"id": "h7", "input": {"s": "2[2[2[2[q]]]]"}, "expected": "qqqqqqqqqqqqqqqq", "note": "four levels of nesting"},
+    {"id": "h8", "input": {"s": "abc"}, "expected": "abc", "note": "no groups at all"},
+    {"id": "h9", "input": {"s": "300[k]"}, "expected": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk", "note": "the largest count"},
+    {"id": "h10", "input": {"s": "2[ab3[c]]d4[e]"}, "expected": "abcccabcccdeeee", "note": "letters before and after an inner group"},
+    {"id": "h11", "input": {"s": "10[a]"}, "expected": "aaaaaaaaaa", "note": "a count containing a zero digit"},
+    {"id": "h12", "input": {"s": "x1[1[1[y]]]z"}, "expected": "xyz", "note": "nested counts of one"},
+    {"id": "h13", "input": {"s": "2[mn]3[o]p"}, "expected": "mnmnooop", "note": "several groups and a trailing letter"},
+    {"id": "h14", "input": {"s": "20[2[ab]c]"}, "expected": "ababcababcababcababcababcababcababcababcababcababcababcababcababcababcababcababcababcababcababcababc", "note": "a two-digit count around a nested group"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 1}, "note": "large input: about 10^4 groups decoding to 10^5 characters"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 4}}
+  ]
+}

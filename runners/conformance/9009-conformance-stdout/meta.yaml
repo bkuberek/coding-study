@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9009"
+slug: conformance-stdout
+title: "Conformance: user output is captured per case"
+status: ready
+difficulty: easy
+track: practical
+kind: function
+signature:
+  function:
+    name: shout
+    params:
+      - {name: text, type: string}
+    returns: {type: string}
+comparator: {type: exact}
+approaches:
+  - {id: prints, name: "Print text on its own line, then return it", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

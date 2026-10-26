@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0158"
+slug: network-delay-time
+title: Network Delay Time
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [advanced-graphs, heap]
+signature:
+  function:
+    name: networkDelayTime
+    params:
+      - {name: times, type: "int[][]"}
+      - {name: n, type: int}
+      - {name: k, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: bellman-ford, name: Relax every edge until no arrival time improves, role: brute, time: "O(V·E)", space: "O(V)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: dijkstra-array, name: Dijkstra that scans for the closest unsettled node, role: intermediate, time: "O(V^2 + E)", space: "O(V + E)", time_class: "n^2", space_class: "n"}
+  - {id: dijkstra-heap, name: Dijkstra with a binary min-heap, role: optimal, time: "O((V + E)·log V)", space: "O(V + E)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: number of nodes V, with E about 5V
+  size_ladder: [100, 300, 1000, 2000]
+  expected_from: dijkstra-heap
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 743, url: "https://leetcode.com/problems/network-delay-time/"}
+related: [cheapest-flights-k-stops, city-fewest-neighbors, swim-rising-water, min-obstacle-removal]
+order: 1
+estimate_minutes: 25

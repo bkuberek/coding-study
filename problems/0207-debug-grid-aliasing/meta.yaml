@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0207"
+slug: debug-grid-aliasing
+title: "Debug: Grid Aliasing"
+status: ready
+difficulty: medium
+track: debugging
+kind: function
+stub: buggy
+signature:
+  function:
+    name: burnTimes
+    params:
+      - {name: grid, type: "int[][]"}
+    returns: {type: "int[][]"}
+comparator: {type: exact}
+approaches:
+  - {id: snapshot-copy, name: Minute-by-minute snapshots with real copies, role: intermediate, time: "O((mn)^2)", space: "O(mn)", time_class: "n^2", space_class: "n"}
+  - {id: multi-source-bfs, name: Multi-source BFS, role: optimal, time: "O(mn)", space: "O(mn)", time_class: "n", space_class: "n"}
+related: [rotting-oranges, number-of-islands]
+estimate_minutes: 25

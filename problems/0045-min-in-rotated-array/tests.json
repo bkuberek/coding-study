@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [27, 31, 40, 2, 9, 14]}, "expected": 2},
+    {"id": "ex2", "visible": true, "input": {"nums": [5, 8, 12, 19]}, "expected": 5},
+    {"id": "h1", "input": {"nums": [7]}, "expected": 7, "note": "single element"},
+    {"id": "h2", "input": {"nums": [2, 1]}, "expected": 1, "note": "two elements, rotated"},
+    {"id": "h3", "input": {"nums": [1, 2]}, "expected": 1, "note": "two elements, not rotated"},
+    {"id": "h4", "input": {"nums": [4, 6, 8, 10, 1]}, "expected": 1, "note": "minimum is the last element"},
+    {"id": "h5", "input": {"nums": [10, 1, 4, 6, 8]}, "expected": 1, "note": "minimum right after the first element"},
+    {"id": "h6", "input": {"nums": [6, 8, 10, 1, 4]}, "expected": 1, "note": "minimum in the middle, odd length"},
+    {"id": "h7", "input": {"nums": [50, 60, 70, 80, 10, 20, 30, 40]}, "expected": 10, "note": "even length, rotated by half"},
+    {"id": "h8", "input": {"nums": [-3, -1, 0, -12, -8, -5]}, "expected": -12, "note": "negative values"},
+    {"id": "h9", "input": {"nums": [1000000000, -1000000000]}, "expected": -1000000000, "note": "extreme values"},
+    {"id": "h10", "input": {"nums": [-1000000000, 0, 1000000000]}, "expected": -1000000000, "note": "extremes, not rotated"},
+    {"id": "h11", "input": {"nums": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 0, 1, 2]}, "expected": 0, "note": "long first run, zero as minimum"},
+    {"id": "h12", "input": {"nums": [21, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]}, "expected": 1, "note": "first run of length one"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 13}, "note": "large input: a scan reads every element"}
+  ]
+}

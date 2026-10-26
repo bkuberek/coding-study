@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9004"
+slug: conformance-op-error
+title: "Conformance: an operation that throws"
+status: ready
+difficulty: easy
+track: practical
+kind: design
+signature:
+  class:
+    name: Counter
+    constructor: {params: []}
+    methods:
+      - {name: increment, params: [], returns: {type: int}}
+      - {name: fail, params: [], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: counts, name: "increment returns the new count; fail throws", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

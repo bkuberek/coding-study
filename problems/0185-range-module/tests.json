@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "ops": ["RangeModule", "addRange", "addRange", "queryRange", "removeRange", "queryRange", "queryRange", "queryRange"], "args": [[], [2, 6], [6, 9], [4, 8], [5, 7], [2, 5], [4, 8], [5, 7]], "expected": [null, null, null, true, null, true, false, false]},
+    {"id": "ex2", "visible": true, "ops": ["RangeModule", "queryRange", "addRange", "removeRange", "queryRange", "queryRange"], "args": [[], [1, 2], [1, 100], [1, 50], [60, 100], [49, 51]], "expected": [null, false, null, null, true, false]},
+    {"id": "h1", "ops": ["RangeModule", "queryRange", "removeRange", "queryRange"], "args": [[], [5, 6], [1, 10], [1, 10]], "expected": [null, false, null, false], "note": "queries and removals on an empty module"},
+    {"id": "h2", "ops": ["RangeModule", "addRange", "queryRange", "queryRange", "removeRange", "queryRange", "queryRange", "queryRange"], "args": [[], [1, 1000000000], [1, 1000000000], [999999999, 1000000000], [500000000, 500000001], [1, 1000000000], [1, 500000000], [500000001, 1000000000]], "expected": [null, null, true, true, null, false, true, true], "note": "the whole line, then a one-unit hole in the middle"},
+    {"id": "h3", "ops": ["RangeModule", "addRange", "addRange", "queryRange", "queryRange"], "args": [[], [10, 20], [20, 30], [10, 30], [19, 21]], "expected": [null, null, null, true, true], "note": "touching ranges merge"},
+    {"id": "h4", "ops": ["RangeModule", "addRange", "addRange", "queryRange", "queryRange", "queryRange"], "args": [[], [10, 20], [21, 30], [10, 30], [19, 21], [20, 21]], "expected": [null, null, null, false, false, false], "note": "a one-unit gap between ranges"},
+    {"id": "h5", "ops": ["RangeModule", "addRange", "addRange", "removeRange", "queryRange", "addRange", "queryRange"], "args": [[], [5, 8], [5, 8], [5, 8], [5, 6], [5, 8], [5, 8]], "expected": [null, null, null, null, false, null, true], "note": "the same range added twice, removed once, added again"},
+    {"id": "h6", "ops": ["RangeModule", "addRange", "addRange", "addRange", "addRange", "queryRange", "removeRange", "queryRange", "queryRange", "queryRange"], "args": [[], [1, 10], [20, 30], [40, 50], [5, 45], [1, 50], [9, 41], [1, 9], [41, 50], [8, 10]], "expected": [null, null, null, null, null, true, null, true, true, false], "note": "one addition merges three ranges; one removal splits them again"},
+    {"id": "h7", "ops": ["RangeModule", "addRange", "removeRange", "queryRange", "queryRange", "removeRange", "queryRange", "queryRange"], "args": [[], [100, 200], [150, 300], [100, 150], [100, 151], [50, 120], [120, 150], [119, 121]], "expected": [null, null, null, true, false, null, true, false], "note": "removals that overlap one end"},
+    {"id": "h8", "ops": ["RangeModule", "addRange", "addRange", "addRange", "addRange", "addRange", "queryRange", "removeRange", "queryRange", "queryRange", "queryRange"], "args": [[], [1, 2], [3, 4], [5, 6], [2, 3], [4, 5], [1, 6], [3, 4], [1, 3], [4, 6], [2, 5]], "expected": [null, null, null, null, null, null, true, null, true, true, false], "note": "unit ranges filling gaps"},
+    {"id": "h9", "ops": ["RangeModule", "addRange", "removeRange", "queryRange", "removeRange", "queryRange", "removeRange", "queryRange", "queryRange"], "args": [[], [30, 40], [10, 20], [30, 40], [40, 50], [30, 40], [29, 31], [31, 40], [30, 31]], "expected": [null, null, null, true, null, true, null, true, false], "note": "removals that miss, touch and overlap"},
+    {"id": "h10", "ops": ["RangeModule", "addRange", "removeRange", "queryRange", "queryRange", "queryRange", "addRange", "queryRange", "queryRange"], "args": [[], [1, 1000], [2, 999], [1, 2], [999, 1000], [1, 1000], [500, 600], [500, 600], [499, 601]], "expected": [null, null, null, true, true, false, null, true, false], "note": "only the two ends remain, then a middle part returns"},
+    {"id": "g1", "generate": {"n": 30000, "seed": 1}, "hang_guard_ms": 30000, "note": "largest input: about 10^4 stored intervals for the list to scan"},
+    {"id": "g2", "generate": {"n": 5000, "seed": 2}},
+    {"id": "g3", "generate": {"n": 300, "seed": 3}}
+  ]
+}

@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0147"
+slug: longest-increasing-path-matrix
+title: Longest Increasing Path in a Matrix
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [dp-2d, graphs, topological-sort]
+signature:
+  function:
+    name: longestIncreasingPath
+    params:
+      - {name: matrix, type: "int[][]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Depth-first search from every cell with a memo table, role: optimal, time: "O(m * n)", space: "O(m * n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: sorted-cells, name: Tabulate the cells in decreasing order of value, role: intermediate, time: "O(m * n * log(m * n))", space: "O(m * n)", time_class: "n log n", space_class: "n"}
+  - {id: topological-sort, name: Peel layers of local maxima with Kahn's algorithm, role: optimal, time: "O(m * n)", space: "O(m * n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of cells m * n (rows and columns about sqrt(n) each)
+  size_ladder: [2500, 10000, 22500, 40000]
+  expected_from: topological-sort
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 329, url: "https://leetcode.com/problems/longest-increasing-path-in-a-matrix/"}
+related: [maximal-square, unique-paths]
+order: 10
+estimate_minutes: 40

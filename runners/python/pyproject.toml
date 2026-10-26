@@ -1,0 +1,42 @@
+# The Python runner (cs_runner) and the support classes (cs_support) in one distribution.
+# A workspace's python/ project depends on its copy in .cs/runtime as an editable path
+# dependency, so the workspace venv can both import cs_support in user code and start the runner
+# with `python -m cs_runner`.
+[project]
+name = "cs-support"
+version = "0.1.0"
+description = "coding-study Python runner (cs_runner) and support classes (cs_support)"
+requires-python = ">=3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.414",
+    "pytest>=9.1",
+    "ruff>=0.17",
+]
+
+[build-system]
+requires = ["uv_build>=0.10,<0.11"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = ["cs_support", "cs_runner"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--strict-markers", "--import-mode=importlib"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "N", "RUF", "C4", "RET", "PT", "PTH"]
+
+[tool.pyright]
+include = ["src", "tests"]
+pythonVersion = "3.13"
+typeCheckingMode = "standard"
+strict = ["src"]

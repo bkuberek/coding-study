@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"n": 4}, "expected": 5},
+    {"id": "ex2", "visible": true, "input": {"n": 6}, "expected": 13},
+    {"id": "h1", "input": {"n": 1}, "expected": 1, "note": "minimum size: a single step"},
+    {"id": "h2", "input": {"n": 2}, "expected": 2, "note": "two steps: 1+1 or 2"},
+    {"id": "h3", "input": {"n": 3}, "expected": 3, "note": "smallest staircase where the order of moves matters"},
+    {"id": "h4", "input": {"n": 5}, "expected": 8},
+    {"id": "h5", "input": {"n": 10}, "expected": 89},
+    {"id": "h6", "input": {"n": 19}, "expected": 6765},
+    {"id": "h7", "input": {"n": 30}, "expected": 1346269, "note": "plain recursion without a memo makes about 2.7 million calls here"},
+    {"id": "h8", "input": {"n": 44}, "expected": 1134903170},
+    {"id": "h9", "input": {"n": 45}, "expected": 1836311903, "note": "maximum n: the answer is close to the 32-bit limit"},
+    {"id": "h10", "input": {"n": 7}, "expected": 21},
+    {"id": "g1", "generate": {"n": 45, "seed": 1}, "note": "largest staircase"},
+    {"id": "g2", "generate": {"n": 30, "seed": 2}}
+  ]
+}

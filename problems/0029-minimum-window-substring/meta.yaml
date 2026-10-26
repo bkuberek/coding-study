@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0029"
+slug: minimum-window-substring
+title: Minimum Window Substring
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [sliding-window, arrays-hashing]
+signature:
+  function:
+    name: minWindow
+    params:
+      - {name: s, type: string}
+      - {name: t, type: string}
+    returns: {type: string}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Extend from every start until t is covered, role: brute, time: "O(n^2 + m)", space: "O(a)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: sliding-window, name: Expand to cover and shrink to the minimum, role: optimal, time: "O(n + m)", space: "O(a)", time_class: "n", space_class: "1"}
+  - {id: filtered-window, name: Slide over the positions of useful letters only, role: optimal, time: "O(n + m)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: length of s, with t of 1 to 9 letters including a rare one
+  size_ladder: [1000, 2000, 5000, 10000]
+  expected_from: sliding-window
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 76, url: "https://leetcode.com/problems/minimum-window-substring/"}
+related: [permutation-in-string, longest-substring-without-repeats, min-size-subarray-sum]
+order: 7
+estimate_minutes: 40

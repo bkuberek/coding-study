@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../../schemas/item.schema.json
+slug: distributed-kv-store
+title: Distributed Key-Value Store
+track: system-design
+difficulty: hard
+estimate_minutes: 60
+status: ready
+order: 6
+references:
+  study_guides:
+    - "distributed-systems-study-guide.md#3-cap-theorem"
+    - "distributed-systems-study-guide.md#4-consistency-models"
+    - "distributed-systems-study-guide.md#5-scaling-patterns"
+    - "distributed-systems-study-guide.md#2-nosql--key-value--document"
+    - "distributed-systems-study-guide.md#3-nosql--wide-column"
+  links:
+    - https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf
+related: [transactional-kv-store, time-based-kv-store, lru-cache, url-shortener]

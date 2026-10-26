@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [2, 1, 1], "target": 2}, "expected": 2},
+    {"id": "ex2", "visible": true, "input": {"nums": [3, 4], "target": 2}, "expected": 0},
+    {"id": "h1", "input": {"nums": [0], "target": 0}, "expected": 2, "note": "+0 and -0 are different assignments"},
+    {"id": "h2", "input": {"nums": [0, 0, 0], "target": 0}, "expected": 8, "note": "every zero doubles the count"},
+    {"id": "h3", "input": {"nums": [1], "target": 1}, "expected": 1, "note": "a single number"},
+    {"id": "h4", "input": {"nums": [1], "target": 2}, "expected": 0, "note": "a single number that cannot reach the target"},
+    {"id": "h5", "input": {"nums": [1000], "target": -1000}, "expected": 1, "note": "extreme value and negative target"},
+    {"id": "h6", "input": {"nums": [1, 1, 1, 1, 1], "target": 3}, "expected": 5, "note": "choose which one of five ones is negative"},
+    {"id": "h7", "input": {"nums": [1, 2, 3], "target": 7}, "expected": 0, "note": "target beyond the total"},
+    {"id": "h8", "input": {"nums": [1, 2, 3], "target": 1}, "expected": 0, "note": "parity rules the target out"},
+    {"id": "h9", "input": {"nums": [1, 2, 3], "target": 0}, "expected": 2, "note": "two different splits reach zero"},
+    {"id": "h10", "input": {"nums": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "target": 0}, "expected": 1048576, "note": "largest count: 2^20"},
+    {"id": "h11", "input": {"nums": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], "target": 0}, "expected": 184756, "note": "twenty ones, half of them negative"},
+    {"id": "h12", "input": {"nums": [0, 1, 0, 2], "target": 1}, "expected": 4, "note": "zeros mixed with other values"},
+    {"id": "h13", "input": {"nums": [4, 3, 2, 1], "target": -2}, "expected": 2, "note": "negative target"},
+    {"id": "h14", "input": {"nums": [50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50], "target": -1000}, "expected": 1, "note": "every sign negative"},
+    {"id": "g1", "generate": {"n": 20, "seed": 1}, "note": "twenty numbers: 2^20 sign assignments"},
+    {"id": "g2", "generate": {"n": 20, "seed": 2}, "note": "twenty numbers"},
+    {"id": "g3", "generate": {"n": 12, "seed": 3}}
+  ]
+}

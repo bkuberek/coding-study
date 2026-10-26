@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"s": "XXYXXZX", "k": 1}, "expected": 5},
+    {"id": "ex2", "visible": true, "input": {"s": "XYZXYZ", "k": 2}, "expected": 4},
+    {"id": "h1", "input": {"s": "Q", "k": 0}, "expected": 1, "note": "single letter, no budget"},
+    {"id": "h2", "input": {"s": "Q", "k": 1}, "expected": 1, "note": "single letter, unused budget"},
+    {"id": "h3", "input": {"s": "ABCDE", "k": 0}, "expected": 1, "note": "no budget, no repeats"},
+    {"id": "h4", "input": {"s": "AABBBCCCCD", "k": 0}, "expected": 4, "note": "no budget: the longest run wins"},
+    {"id": "h5", "input": {"s": "ABCD", "k": 4}, "expected": 4, "note": "budget equals the length"},
+    {"id": "h6", "input": {"s": "ZZZZZZ", "k": 2}, "expected": 6, "note": "all letters equal"},
+    {"id": "h7", "input": {"s": "ABABABAB", "k": 2}, "expected": 5, "note": "alternating letters"},
+    {"id": "h8", "input": {"s": "AAAABBBBA", "k": 1}, "expected": 5, "note": "the best window uses the budget at its edge"},
+    {"id": "h9", "input": {"s": "BAAAB", "k": 2}, "expected": 5, "note": "replacing both ends of a run"},
+    {"id": "h10", "input": {"s": "ABBBCDDDDDE", "k": 2}, "expected": 7, "note": "two candidate runs; the later one wins"},
+    {"id": "h11", "input": {"s": "AABABBA", "k": 1}, "expected": 4, "note": "the most common letter changes as the window moves"},
+    {"id": "h12", "input": {"s": "KRKRRKKRKK", "k": 3}, "expected": 8, "note": "a window ending at the last letter"},
+    {"id": "h13", "input": {"s": "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "k": 5}, "expected": 6, "note": "all 26 letters once"},
+    {"id": "h14", "input": {"s": "CCCCABABABCCCC", "k": 6}, "expected": 14, "note": "the budget bridges two runs of the same letter"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "large input: extending from every start is about 10^7 steps here"}
+  ]
+}

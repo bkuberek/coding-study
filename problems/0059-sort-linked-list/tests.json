@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"head": [5, 2, 8, 1, 9]}, "expected": [1, 2, 5, 8, 9]},
+    {"id": "ex2", "visible": true, "input": {"head": [3, -1, 3, 0]}, "expected": [-1, 0, 3, 3]},
+    {"id": "h1", "input": {"head": []}, "expected": [], "note": "empty list"},
+    {"id": "h2", "input": {"head": [42]}, "expected": [42], "note": "single node"},
+    {"id": "h3", "input": {"head": [2, 1]}, "expected": [1, 2], "note": "two nodes out of order"},
+    {"id": "h4", "input": {"head": [1, 2, 3, 4, 5, 6]}, "expected": [1, 2, 3, 4, 5, 6], "note": "already sorted"},
+    {"id": "h5", "input": {"head": [9, 7, 5, 3, 1, -1]}, "expected": [-1, 1, 3, 5, 7, 9], "note": "sorted descending"},
+    {"id": "h6", "input": {"head": [4, 4, 4, 4]}, "expected": [4, 4, 4, 4], "note": "all values equal"},
+    {"id": "h7", "input": {"head": [-100000, 100000, 0, -100000, 100000]}, "expected": [-100000, -100000, 0, 100000, 100000], "note": "extreme values, repeated"},
+    {"id": "h8", "input": {"head": [3, 1, 2, 3, 1, 2, 3, 1, 2]}, "expected": [1, 1, 1, 2, 2, 2, 3, 3, 3], "note": "a repeating pattern of three values"},
+    {"id": "h9", "input": {"head": [10, -10, 9, -9, 8, -8, 7]}, "expected": [-10, -9, -8, 7, 8, 9, 10], "note": "alternating signs, odd length"},
+    {"id": "h10", "input": {"head": [0, 0, -1, 1]}, "expected": [-1, 0, 0, 1], "note": "zeros and their neighbours"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "10^4 values in random order: insertion sort takes about 2.5 * 10^7 steps here"},
+    {"id": "g2", "generate": {"n": 99, "seed": 5}, "note": "99 values with only a few distinct ones"},
+    {"id": "g3", "generate": {"n": 99, "seed": 2}, "note": "99 values in descending order"},
+    {"id": "g4", "generate": {"n": 1000, "seed": 3}}
+  ]
+}

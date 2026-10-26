@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"firstList": [[1, 4], [6, 9], [12, 15]], "secondList": [[3, 7], [9, 13]]}, "expected": [[3, 4], [6, 7], [9, 9], [12, 13]]},
+    {"id": "ex2", "visible": true, "input": {"firstList": [[2, 5]], "secondList": []}, "expected": []},
+    {"id": "h1", "input": {"firstList": [], "secondList": []}, "expected": [], "note": "both lists empty"},
+    {"id": "h2", "input": {"firstList": [], "secondList": [[1, 2], [5, 9]]}, "expected": [], "note": "first list empty"},
+    {"id": "h3", "input": {"firstList": [[1, 3], [6, 8]], "secondList": [[1, 3], [6, 8]]}, "expected": [[1, 3], [6, 8]], "note": "identical lists"},
+    {"id": "h4", "input": {"firstList": [[1, 2], [7, 8]], "secondList": [[3, 4], [9, 10]]}, "expected": [], "note": "no common time"},
+    {"id": "h5", "input": {"firstList": [[0, 100]], "secondList": [[5, 10], [20, 30], [99, 100]]}, "expected": [[5, 10], [20, 30], [99, 100]], "note": "one interval covers the whole other list"},
+    {"id": "h6", "input": {"firstList": [[1, 5], [10, 15]], "secondList": [[5, 10], [15, 20]]}, "expected": [[5, 5], [10, 10], [15, 15]], "note": "touching endpoints give single points"},
+    {"id": "h7", "input": {"firstList": [[3, 3], [7, 7]], "secondList": [[1, 5], [6, 6], [7, 9]]}, "expected": [[3, 3], [7, 7]], "note": "point intervals"},
+    {"id": "h8", "input": {"firstList": [[0, 0], [1000000000, 1000000000]], "secondList": [[0, 1000000000]]}, "expected": [[0, 0], [1000000000, 1000000000]], "note": "extreme endpoints"},
+    {"id": "h9", "input": {"firstList": [[4, 9]], "secondList": [[1, 4]]}, "expected": [[4, 4]], "note": "single intervals touching at one point"},
+    {"id": "h10", "input": {"firstList": [[1, 10], [12, 20]], "secondList": [[2, 3], [5, 13], [15, 16], [19, 25]]}, "expected": [[2, 3], [5, 10], [12, 13], [15, 16], [19, 20]], "note": "one interval of the second list meets two of the first"},
+    {"id": "h11", "input": {"firstList": [[5, 6]], "secondList": [[1, 2], [3, 4], [5, 6], [7, 8]]}, "expected": [[5, 6]], "note": "very different lengths"},
+    {"id": "h12", "input": {"firstList": [[1, 2], [4, 6], [8, 12]], "secondList": [[0, 1], [2, 4], [6, 8], [12, 13]]}, "expected": [[1, 1], [2, 2], [4, 4], [6, 6], [8, 8], [12, 12]], "note": "every intersection is a single point"},
+    {"id": "h13", "input": {"firstList": [[10, 20], [30, 40], [50, 60]], "secondList": [[15, 35], [38, 55]]}, "expected": [[15, 20], [30, 35], [38, 40], [50, 55]], "note": "partial overlaps in a chain"},
+    {"id": "g1", "generate": {"n": 5000, "seed": 61}, "note": "large input: up to 6.25 * 10^6 pairs for the brute force"}
+  ]
+}

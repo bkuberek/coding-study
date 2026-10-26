@@ -1,0 +1,8 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "counts", "ops": ["Counter", "increment", "increment"], "args": [[], [], []], "expected": [null, 1, 2]},
+    {"id": "fails", "ops": ["Counter", "increment", "increment", "fail", "increment"], "args": [[], [], [], [], []], "expected": [null, 1, 2, 0, 3]}
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"m": 3, "n": 3, "positions": [[0, 0], [0, 1], [1, 2], [2, 1], [1, 1]]}, "expected": [1, 1, 2, 3, 1]},
+    {"id": "ex2", "visible": true, "input": {"m": 2, "n": 2, "positions": [[0, 0], [1, 1], [0, 0], [0, 1]]}, "expected": [1, 2, 2, 1]},
+    {"id": "h1", "input": {"m": 1, "n": 1, "positions": [[0, 0]]}, "expected": [1], "note": "one cell"},
+    {"id": "h2", "input": {"m": 1, "n": 1, "positions": [[0, 0], [0, 0], [0, 0]]}, "expected": [1, 1, 1], "note": "the same cell raised three times"},
+    {"id": "h3", "input": {"m": 3, "n": 3, "positions": [[0, 1], [1, 0], [1, 2], [2, 1], [1, 1]]}, "expected": [1, 2, 3, 4, 1], "note": "the center joins four islands at once"},
+    {"id": "h4", "input": {"m": 1, "n": 7, "positions": [[0, 0], [0, 2], [0, 4], [0, 6], [0, 1], [0, 5], [0, 3]]}, "expected": [1, 2, 3, 4, 3, 2, 1], "note": "a single row filled in a scattered order"},
+    {"id": "h5", "input": {"m": 6, "n": 1, "positions": [[5, 0], [0, 0], [3, 0], [4, 0], [1, 0], [2, 0]]}, "expected": [1, 2, 3, 2, 2, 1], "note": "a single column"},
+    {"id": "h6", "input": {"m": 3, "n": 3, "positions": [[0, 0], [2, 2], [0, 2], [2, 0], [1, 1]]}, "expected": [1, 2, 3, 4, 5], "note": "only diagonal contacts: five islands"},
+    {"id": "h7", "input": {"m": 2, "n": 3, "positions": [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2]]}, "expected": [1, 1, 1, 1, 1, 1], "note": "the whole grid becomes one island"},
+    {"id": "h8", "input": {"m": 4, "n": 4, "positions": [[0, 0], [0, 1], [3, 3], [1, 1], [0, 1], [3, 2], [2, 2], [1, 2]]}, "expected": [1, 1, 2, 2, 2, 2, 2, 1], "note": "two islands grow toward each other; a repeated cell in between"},
+    {"id": "h9", "input": {"m": 3, "n": 5, "positions": [[1, 0], [1, 1], [1, 2], [1, 3], [1, 4], [0, 0], [2, 1], [0, 2], [2, 3], [0, 4]]}, "expected": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1], "note": "a comb: a spine and teeth on both sides"},
+    {"id": "h10", "input": {"m": 100, "n": 100, "positions": [[99, 99], [0, 0], [50, 50], [99, 98]]}, "expected": [1, 2, 3, 3], "note": "a large grid with far-apart cells"},
+    {"id": "g1", "generate": {"n": 1600, "seed": 125}, "note": "a comb at the largest size"},
+    {"id": "g2", "generate": {"n": 99, "seed": 3}, "note": "random cells with repeats, below the ladder sizes"}
+  ]
+}

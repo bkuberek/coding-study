@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"heights": [[4, 3, 2, 5], [3, 1, 1, 6], [2, 2, 4, 7]]}, "expected": [[0, 0], [0, 3], [1, 0], [1, 3], [2, 0], [2, 1], [2, 2], [2, 3]]},
+    {"id": "ex2", "visible": true, "input": {"heights": [[1, 2], [2, 1]]}, "expected": [[0, 1], [1, 0]]},
+    {"id": "h1", "input": {"heights": [[7]]}, "expected": [[0, 0]], "note": "a single cell touches both oceans"},
+    {"id": "h2", "input": {"heights": [[3, 1, 4, 1, 5]]}, "expected": [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4]], "note": "a single row: every cell touches both oceans"},
+    {"id": "h3", "input": {"heights": [[2], [9], [0], [4]]}, "expected": [[0, 0], [1, 0], [2, 0], [3, 0]], "note": "a single column"},
+    {"id": "h4", "input": {"heights": [[5, 5, 5], [5, 5, 5], [5, 5, 5]]}, "expected": [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [1, 2], [2, 0], [2, 1], [2, 2]], "note": "flat map: water runs everywhere"},
+    {"id": "h5", "input": {"heights": [[9, 9, 9, 9], [9, 1, 1, 9], [9, 1, 1, 9], [9, 9, 9, 9]]}, "expected": [[0, 0], [0, 1], [0, 2], [0, 3], [1, 0], [1, 3], [2, 0], [2, 3], [3, 0], [3, 1], [3, 2], [3, 3]], "note": "a bowl: the rim drains both ways, the low center reaches nothing"},
+    {"id": "h6", "input": {"heights": [[1, 1, 9, 1, 1], [1, 1, 9, 1, 1], [1, 1, 9, 1, 1]]}, "expected": [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [1, 0], [1, 1], [1, 2], [1, 3], [1, 4], [2, 0], [2, 1], [2, 2], [2, 3], [2, 4]], "note": "a ridge down the middle column"},
+    {"id": "h7", "input": {"heights": [[0, 1, 2], [1, 2, 3], [2, 3, 4]]}, "expected": [[0, 2], [1, 2], [2, 0], [2, 1], [2, 2]], "note": "rising toward the Atlantic corner"},
+    {"id": "h8", "input": {"heights": [[4, 3, 2], [3, 2, 1], [2, 1, 0]]}, "expected": [[0, 0], [0, 1], [0, 2], [1, 0], [2, 0]], "note": "falling toward the Atlantic corner"},
+    {"id": "h9", "input": {"heights": [[100000, 0, 100000], [0, 100000, 0], [100000, 0, 100000]]}, "expected": [[0, 2], [1, 1], [2, 0]], "note": "extreme heights in a checkerboard"},
+    {"id": "h10", "input": {"heights": [[3, 3, 3, 3, 0], [0, 0, 0, 3, 0], [0, 3, 3, 3, 0], [0, 3, 0, 0, 0], [0, 3, 3, 3, 3]]}, "expected": [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [1, 0], [1, 1], [1, 2], [1, 3], [1, 4], [2, 0], [2, 1], [2, 2], [2, 3], [2, 4], [3, 0], [3, 1], [3, 2], [3, 3], [3, 4], [4, 0], [4, 1], [4, 2], [4, 3], [4, 4]], "note": "a winding plateau links the two coasts"},
+    {"id": "h11", "input": {"heights": [[6, 5, 4], [7, 8, 3], [8, 9, 2], [9, 10, 1]]}, "expected": [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1], [2, 0], [2, 1], [3, 0], [3, 1]], "note": "taller than wide, with a high inland column"},
+    {"id": "h12", "input": {"heights": [[2, 2, 2, 2], [2, 3, 3, 2], [2, 3, 3, 2]]}, "expected": [[0, 0], [0, 1], [0, 2], [0, 3], [1, 0], [1, 1], [1, 2], [1, 3], [2, 0], [2, 1], [2, 2], [2, 3]], "note": "a raised block touching the Atlantic edges"},
+    {"id": "g1", "generate": {"n": 1600, "seed": 17}, "note": "a 40 by 40 bowl: water from every inner cell fills the rings inside it"},
+    {"id": "g2", "generate": {"n": 90, "seed": 4}, "note": "rolling terrain with plateaus"}
+  ]
+}

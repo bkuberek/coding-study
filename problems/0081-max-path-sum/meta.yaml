@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0081"
+slug: max-path-sum
+title: Binary Tree Maximum Path Sum
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [trees]
+signature:
+  function:
+    name: maxPathSum
+    params:
+      - {name: root, type: TreeNode}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: gain-per-node, name: Recompute the best downward gains at every node, role: brute, time: "O(n * h)", space: "O(h)", time_class: "n log n", space_class: "log n", oracle: true}
+  - {id: postorder-gain, name: One post-order pass returning downward gains, role: optimal, time: "O(n)", space: "O(h)", time_class: "n", space_class: "log n"}
+perf:
+  size_param: number of nodes
+  size_ladder: [1000, 10000, 100000]
+  expected_from: postorder-gain
+references:
+  leetcode: {number: 124, url: "https://leetcode.com/problems/binary-tree-maximum-path-sum/"}
+related: [diameter-binary-tree, max-depth-binary-tree]
+order: 15
+estimate_minutes: 30

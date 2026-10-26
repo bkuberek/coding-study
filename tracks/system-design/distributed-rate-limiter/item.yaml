@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../../schemas/item.schema.json
+slug: distributed-rate-limiter
+title: Distributed Rate Limiter
+track: system-design
+difficulty: medium
+estimate_minutes: 45
+status: ready
+order: 2
+references:
+  study_guides:
+    - "distributed-systems-study-guide.md#4-in-memory--caching"
+    - "distributed-systems-study-guide.md#4-api-gateway"
+    - "distributed-systems-study-guide.md#3-cap-theorem"
+    - "distributed-systems-study-guide.md#6-common-patterns"
+  links:
+    - https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/
+    - https://brandur.org/rate-limiting
+related: [token-bucket-limiter, api-gateway, url-shortener]

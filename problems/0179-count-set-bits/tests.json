@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"n": 44}, "expected": 3},
+    {"id": "ex2", "visible": true, "input": {"n": 4294967295}, "expected": 32},
+    {"id": "h1", "input": {"n": 0}, "expected": 0, "note": "no bits set"},
+    {"id": "h2", "input": {"n": 1}, "expected": 1, "note": "only the lowest bit"},
+    {"id": "h3", "input": {"n": 2147483648}, "expected": 1, "note": "only the highest bit: negative as a signed 32-bit int"},
+    {"id": "h4", "input": {"n": 2147483647}, "expected": 31, "note": "every bit but the highest"},
+    {"id": "h5", "input": {"n": 2863311530}, "expected": 16, "note": "alternating bits starting at the top"},
+    {"id": "h6", "input": {"n": 1431655765}, "expected": 16, "note": "alternating bits starting at the bottom"},
+    {"id": "h7", "input": {"n": 2147483649}, "expected": 2, "note": "highest and lowest bits only"},
+    {"id": "h8", "input": {"n": 1048576}, "expected": 1, "note": "a power of two"},
+    {"id": "h9", "input": {"n": 4294901760}, "expected": 16, "note": "upper half set"},
+    {"id": "h10", "input": {"n": 65535}, "expected": 16, "note": "lower half set"},
+    {"id": "h11", "input": {"n": 3000000000}, "expected": 12, "note": "an ordinary value above 2^31"},
+    {"id": "g1", "generate": {"n": 1000, "seed": 1}, "note": "a word with 16 set bits"},
+    {"id": "g2", "generate": {"n": 20, "seed": 2}, "note": "a word with a random number of set bits"}
+  ]
+}

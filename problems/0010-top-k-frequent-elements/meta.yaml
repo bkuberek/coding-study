@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0010"
+slug: top-k-frequent-elements
+title: Top K Frequent Elements
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [arrays-hashing, heap]
+signature:
+  function:
+    name: topKFrequent
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: k, type: int}
+    returns: {type: "int[]"}
+comparator: {type: unordered}
+approaches:
+  - {id: sorting, name: "Count, then sort the distinct values by count", role: intermediate, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n", oracle: true}
+  - {id: heap, name: "Count, then keep the k most frequent in a min-heap", role: optimal, time: "O(n log k)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: bucket, name: "Count, then bucket the values by count", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n, with k at most 10
+  size_ladder: [100, 1000, 10000, 100000]
+  expected_from: bucket
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 347, url: "https://leetcode.com/problems/top-k-frequent-elements/"}
+related: [majority-element, group-anagrams]
+estimate_minutes: 20

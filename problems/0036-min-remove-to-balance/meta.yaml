@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0036"
+slug: min-remove-to-balance
+title: Minimum Removals to Balance Parentheses
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [stack]
+signature:
+  function:
+    name: minRemoveToMakeValid
+    params:
+      - {name: s, type: string}
+    returns: {type: string}
+comparator: {type: checker}
+approaches:
+  - {id: rescan-delete, name: Delete the first offending parenthesis and rescan, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: stack, name: Stack of unmatched opening positions, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: two-pass, name: Two passes with an open counter, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: length of s
+  size_ladder: [1000, 3000, 10000]
+  expected_from: stack
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1249, url: "https://leetcode.com/problems/minimum-remove-to-make-valid-parentheses/"}
+related: [valid-parentheses, decode-string]
+estimate_minutes: 20

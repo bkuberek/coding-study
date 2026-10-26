@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0148"
+slug: regex-matching
+title: Regular Expression Matching
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [dp-2d]
+signature:
+  function:
+    name: isMatch
+    params:
+      - {name: s, type: string}
+      - {name: p, type: string}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Recursion over string and pattern positions with a memo table, role: intermediate, time: "O(m * n)", space: "O(m * n)", time_class: "n^2", space_class: "n^2", oracle: true}
+  - {id: tabulation, name: Table of prefix matches, role: optimal, time: "O(m * n)", space: "O(m * n)", time_class: "n^2", space_class: "n^2"}
+  - {id: rolling-array, name: Two rows over the pattern, role: optimal, time: "O(m * n)", space: "O(n)", time_class: "n^2", space_class: "n"}
+perf:
+  size_param: length of s, with a pattern about as long
+  size_ladder: [125, 250, 500, 1000]
+  expected_from: rolling-array
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 10, url: "https://leetcode.com/problems/regular-expression-matching/"}
+related: [edit-distance, interleaving-string]
+order: 11
+estimate_minutes: 45

@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0112"
+slug: evaluate-division
+title: Evaluate Division
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [graphs, union-find]
+signature:
+  function:
+    name: calcEquation
+    params:
+      - {name: equations, type: "string[][]"}
+      - {name: values, type: "double[]"}
+      - {name: queries, type: "string[][]"}
+    returns: {type: "double[]"}
+comparator: {type: float, tolerance: 1.0e-5}
+approaches:
+  - {id: bfs-per-query, name: Search the ratio graph once per query, role: brute, time: "O(Q·(V + E))", space: "O(V + E)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: weighted-union-find, name: Union-find that stores each variable's ratio to its root, role: optimal, time: "O((E + Q)·α(V))", space: "O(V)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of equations E, with Q = E queries
+  size_ladder: [100, 300, 1000]
+  expected_from: weighted-union-find
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 399, url: "https://leetcode.com/problems/evaluate-division/"}
+related: [bipartite-graph, clone-graph]
+order: 8
+estimate_minutes: 30

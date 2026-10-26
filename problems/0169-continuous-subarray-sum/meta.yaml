@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0169"
+slug: continuous-subarray-sum
+title: Continuous Subarray Sum
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [prefix-sum, arrays-hashing]
+signature:
+  function:
+    name: checkSubarraySum
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: k, type: int}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: every-pair, name: Try every subarray of length two or more, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: remainder-index, name: First index of every prefix remainder, role: optimal, time: "O(n)", space: "O(min(n, k))", time_class: "n", space_class: "n"}
+perf:
+  size_param: length of nums
+  size_ladder: [100, 300, 1000, 3000, 10000]
+  expected_from: remainder-index
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 523, url: "https://leetcode.com/problems/continuous-subarray-sum/"}
+related: [subarray-sum-equals-k, range-sum-immutable]
+order: 4
+estimate_minutes: 20

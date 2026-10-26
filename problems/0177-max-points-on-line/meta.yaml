@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0177"
+slug: max-points-on-line
+title: Max Points on a Line
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [math-geometry, arrays-hashing]
+signature:
+  function:
+    name: maxPoints
+    params:
+      - {name: points, type: "int[][]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: check-every-line, name: Count the points on the line through every pair, role: brute, time: "O(n^3)", space: "O(1)", time_class: "n^3", space_class: "1", oracle: true}
+  - {id: slope-hashing, name: Group the other points by reduced direction from each anchor, role: optimal, time: "O(n^2 log C)", space: "O(n)", time_class: "n^2", space_class: "n"}
+perf:
+  size_param: number of points
+  size_ladder: [25, 50, 75, 100]
+  expected_from: slope-hashing
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 149, url: "https://leetcode.com/problems/max-points-on-a-line/"}
+related: [two-sum, rotate-image]
+order: 6
+estimate_minutes: 35

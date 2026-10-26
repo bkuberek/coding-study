@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0030"
+slug: sliding-window-maximum
+title: Sliding Window Maximum
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [sliding-window, monotonic-stack]
+signature:
+  function:
+    name: maxSlidingWindow
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: k, type: int}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Scan every window, role: brute, time: "O(n * k)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: heap, name: Max-heap with lazy removal, role: intermediate, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+  - {id: monotonic-deque, name: Deque of decreasing candidates, role: optimal, time: "O(n)", space: "O(k)", time_class: "n", space_class: "n"}
+perf:
+  size_param: length of nums, with k between n/8 and n/2
+  size_ladder: [1000, 3000, 10000, 30000]
+  expected_from: monotonic-deque
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 239, url: "https://leetcode.com/problems/sliding-window-maximum/"}
+related: [min-size-subarray-sum, trapping-rain-water]
+order: 8
+estimate_minutes: 35

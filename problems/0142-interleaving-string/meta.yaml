@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0142"
+slug: interleaving-string
+title: Interleaving String
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-2d]
+signature:
+  function:
+    name: isInterleave
+    params:
+      - {name: s1, type: string}
+      - {name: s2, type: string}
+      - {name: s3, type: string}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Recursion over how much of each string is used with a memo table, role: intermediate, time: "O(m * n)", space: "O(m * n)", time_class: "n^2", space_class: "n^2", oracle: true}
+  - {id: tabulation, name: Table of reachable prefix pairs, role: optimal, time: "O(m * n)", space: "O(m * n)", time_class: "n^2", space_class: "n^2"}
+  - {id: rolling-array, name: One row of reachable prefixes along the shorter string, role: optimal, time: "O(m * n)", space: "O(min(m, n))", time_class: "n^2", space_class: "n"}
+perf:
+  size_param: total length of s1 and s2, split at random
+  size_ladder: [250, 500, 1000, 2000]
+  expected_from: rolling-array
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 97, url: "https://leetcode.com/problems/interleaving-string/"}
+related: [longest-common-subsequence, edit-distance]
+order: 5
+estimate_minutes: 30

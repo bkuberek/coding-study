@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0161"
+slug: city-fewest-neighbors
+title: City With Fewest Reachable Neighbors
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [advanced-graphs]
+signature:
+  function:
+    name: findTheCity
+    params:
+      - {name: n, type: int}
+      - {name: edges, type: "int[][]"}
+      - {name: distanceThreshold, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: floyd-warshall, name: All-pairs distances with Floyd-Warshall, role: intermediate, time: "O(n^3)", space: "O(n^2)", time_class: "n^3", space_class: "n^2", oracle: true}
+  - {id: dijkstra-from-each, name: Dijkstra with a heap from every city, role: optimal, time: "O(n·(n + E)·log n)", space: "O(n + E)", time_class: "n^2 log n", space_class: "n"}
+perf:
+  size_param: number of cities n, with E about 3n
+  size_ladder: [25, 50, 100]
+  expected_from: dijkstra-from-each
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1334, url: "https://leetcode.com/problems/find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance/"}
+related: [network-delay-time, cheapest-flights-k-stops]
+order: 4
+estimate_minutes: 25

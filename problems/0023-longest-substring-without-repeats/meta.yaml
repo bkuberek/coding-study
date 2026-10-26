@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0023"
+slug: longest-substring-without-repeats
+title: Longest Substring Without Repeats
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [sliding-window, arrays-hashing]
+signature:
+  function:
+    name: lengthOfLongestSubstring
+    params:
+      - {name: s, type: string}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Grow a window from every start, role: brute, time: "O(n * min(n, a))", space: "O(min(n, a))", time_class: "n", space_class: "1", oracle: true}
+  - {id: sliding-set, name: Shrink the window one character at a time, role: optimal, time: "O(n)", space: "O(min(n, a))", time_class: "n", space_class: "1"}
+  - {id: last-index, name: Jump the window past the last occurrence, role: optimal, time: "O(n)", space: "O(a)", time_class: "n", space_class: "1"}
+perf:
+  size_param: length of s
+  size_ladder: [1000, 10000, 50000]
+  expected_from: last-index
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 3, url: "https://leetcode.com/problems/longest-substring-without-repeating-characters/"}
+related: [longest-repeating-replacement, fruit-into-baskets, minimum-window-substring]
+order: 1
+estimate_minutes: 20

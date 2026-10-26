@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"tasks": [[2, 4], [3, 3], [3, 1], [4, 2]]}, "expected": [0, 2, 3, 1]},
+    {"id": "ex2", "visible": true, "input": {"tasks": [[5, 2], [5, 2], [5, 2]]}, "expected": [0, 1, 2]},
+    {"id": "h1", "input": {"tasks": [[1, 1]]}, "expected": [0], "note": "a single task"},
+    {"id": "h2", "input": {"tasks": [[10, 1], [1, 1]]}, "expected": [1, 0], "note": "the later index arrives first"},
+    {"id": "h3", "input": {"tasks": [[1, 2], [100, 1], [50, 5]]}, "expected": [0, 2, 1], "note": "the CPU idles between arrivals"},
+    {"id": "h4", "input": {"tasks": [[1, 10], [2, 1], [3, 5]]}, "expected": [0, 1, 2], "note": "a running task is never interrupted by a shorter one"},
+    {"id": "h5", "input": {"tasks": [[1, 5], [3, 2], [2, 2]]}, "expected": [0, 1, 2], "note": "equal processing times: the smaller index wins, not the earlier arrival"},
+    {"id": "h6", "input": {"tasks": [[1000000000, 1000000000], [1000000000, 1000000000], [1, 1000000000]]}, "expected": [2, 0, 1], "note": "the clock passes 2^31"},
+    {"id": "h7", "input": {"tasks": [[6, 4], [6, 1], [6, 3], [6, 2]]}, "expected": [1, 3, 2, 0], "note": "everything arrives at once: shortest job first"},
+    {"id": "h8", "input": {"tasks": [[5, 1], [4, 1], [3, 1], [2, 1], [1, 1]]}, "expected": [4, 3, 2, 1, 0], "note": "arrivals in reverse index order"},
+    {"id": "h9", "input": {"tasks": [[1, 1], [1, 1], [2, 1], [2, 1]]}, "expected": [0, 1, 2, 3], "note": "a queue of equal tasks drains in index order"},
+    {"id": "h10", "input": {"tasks": [[1, 1000000000], [2, 1], [1000000000, 1]]}, "expected": [0, 1, 2], "note": "a long first task lets a far-future task join the queue"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "10^4 tasks arriving almost together: scanning the queue before every pick is slow here"},
+    {"id": "g2", "generate": {"n": 99, "seed": 5}, "note": "99 tasks with tiny times: ties everywhere"},
+    {"id": "g3", "generate": {"n": 99, "seed": 7}, "note": "99 tasks spread far apart: the CPU idles often"},
+    {"id": "g4", "generate": {"n": 1000, "seed": 2}}
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"beginWord": "cold", "endWord": "warm", "wordList": ["cord", "card", "ward", "warm", "worm", "word", "wold"]}, "expected": 5},
+    {"id": "ex2", "visible": true, "input": {"beginWord": "lead", "endWord": "gold", "wordList": ["load", "goad", "goal"]}, "expected": 0},
+    {"id": "h1", "input": {"beginWord": "ab", "endWord": "ac", "wordList": ["ac"]}, "expected": 2, "note": "one rung: two words"},
+    {"id": "h2", "input": {"beginWord": "a", "endWord": "c", "wordList": ["a", "b", "c"]}, "expected": 2, "note": "single letters: any letter is one change away"},
+    {"id": "h3", "input": {"beginWord": "cat", "endWord": "dog", "wordList": ["cot", "cog", "dot", "dog", "fog"]}, "expected": 4, "note": "beginWord is not in the dictionary"},
+    {"id": "h4", "input": {"beginWord": "cat", "endWord": "dog", "wordList": ["cat", "cot", "cog", "dog"]}, "expected": 4, "note": "beginWord is in the dictionary too"},
+    {"id": "h5", "input": {"beginWord": "abc", "endWord": "xyz", "wordList": ["abd", "xyz", "xyd"]}, "expected": 0, "note": "endWord exists but no ladder reaches it"},
+    {"id": "h6", "input": {"beginWord": "aaaaaaaa", "endWord": "aaaabbbb", "wordList": ["aaaabbbb", "aaabbbbb", "aabbbbbb", "abbbbbbb", "bbbbbbbb", "bbbbbbba", "bbbbbbaa", "bbbbbaaa", "bbbbaaaa", "bbbaaaaa", "bbaaaaaa", "baaaaaaa"]}, "expected": 13, "note": "a ladder of thirteen words with no shortcut"},
+    {"id": "h7", "input": {"beginWord": "hit", "endWord": "hog", "wordList": ["hot", "hog", "dot", "dog", "lot", "log"]}, "expected": 3, "note": "a short ladder next to longer ones"},
+    {"id": "h8", "input": {"beginWord": "game", "endWord": "pros", "wordList": ["gate", "date", "dote", "dots", "pots", "pros", "pose", "posh", "gave", "pave", "pace", "proe"]}, "expected": 0, "note": "several branches, only one reaches the goal"},
+    {"id": "h9", "input": {"beginWord": "abcdefghij", "endWord": "abcdefghik", "wordList": ["abcdefghik", "zbcdefghij"]}, "expected": 2, "note": "the longest allowed words"},
+    {"id": "h10", "input": {"beginWord": "aa", "endWord": "bb", "wordList": ["ab", "ba", "bb"]}, "expected": 3, "note": "two routes of the same length"},
+    {"id": "h11", "input": {"beginWord": "ttt", "endWord": "uuu", "wordList": ["ttu", "tuu", "uuu", "utt", "uut"]}, "expected": 4, "note": "the goal is three changes away"},
+    {"id": "h12", "input": {"beginWord": "same", "endWord": "sane", "wordList": ["sane", "same"]}, "expected": 2, "note": "the dictionary holds both ends"},
+    {"id": "h13", "input": {"beginWord": "bat", "endWord": "cot", "wordList": ["bot", "cat", "bit"]}, "expected": 0, "note": "the goal is missing although its neighbors are there"},
+    {"id": "g1", "generate": {"n": 3000, "seed": 5}, "note": "3000 words in two halves that no one-letter change joins: the brute force compares most pairs"},
+    {"id": "g2", "generate": {"n": 99, "seed": 7}, "note": "99 random words around a random walk"},
+    {"id": "g3", "generate": {"n": 1000, "seed": 3}}
+  ]
+}

@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0051"
+slug: median-of-two-sorted-arrays
+title: Median of Two Sorted Arrays
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [binary-search]
+signature:
+  function:
+    name: findMedianSortedArrays
+    params:
+      - {name: nums1, type: "int[]"}
+      - {name: nums2, type: "int[]"}
+    returns: {type: double}
+comparator: {type: float}
+approaches:
+  - {id: merge-and-sort, name: Concatenate and sort, role: brute, time: "O((m + n) log(m + n))", space: "O(m + n)", time_class: "n log n", space_class: "n", oracle: true}
+  - {id: merge-to-middle, name: Two-pointer merge up to the middle, role: intermediate, time: "O(m + n)", space: "O(1)", time_class: "n", space_class: "1"}
+  - {id: partition-search, name: Binary search for the balanced partition, role: optimal, time: "O(log(min(m, n)))", space: "O(1)", time_class: "log n", space_class: "1"}
+perf:
+  size_param: total length m + n, split at random between the two arrays
+  size_ladder: [100, 1000, 10000, 100000]
+  expected_from: partition-search
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 4, url: "https://leetcode.com/problems/median-of-two-sorted-arrays/"}
+related: [split-array-largest-sum, binary-search]
+order: 9
+estimate_minutes: 45

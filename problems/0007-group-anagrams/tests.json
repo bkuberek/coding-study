@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"strs": ["night", "elbow", "thing", "below", "study", "dusty", "bowel"]}, "expected": [["night", "thing"], ["elbow", "below", "bowel"], ["study", "dusty"]]},
+    {"id": "ex2", "visible": true, "input": {"strs": ["", "b", ""]}, "expected": [["", ""], ["b"]]},
+    {"id": "h1", "input": {"strs": [""]}, "expected": [[""]], "note": "a single empty word"},
+    {"id": "h2", "input": {"strs": ["a"]}, "expected": [["a"]], "note": "a single one-letter word"},
+    {"id": "h3", "input": {"strs": ["ab", "ba", "ab"]}, "expected": [["ab", "ba", "ab"]], "note": "a repeated word stays in the group twice"},
+    {"id": "h4", "input": {"strs": ["abc", "def", "ghi"]}, "expected": [["abc"], ["def"], ["ghi"]], "note": "no two words are anagrams"},
+    {"id": "h5", "input": {"strs": ["aab", "aba", "abb", "bab", "baa"]}, "expected": [["aab", "aba", "baa"], ["abb", "bab"]], "note": "same letters with different counts"},
+    {"id": "h6", "input": {"strs": ["x", "y", "x", "z", "y", "x"]}, "expected": [["x", "x", "x"], ["y", "y"], ["z"]], "note": "one-letter words with repeats"},
+    {"id": "h7", "input": {"strs": ["", "a", "aa", "aaa"]}, "expected": [[""], ["a"], ["aa"], ["aaa"]], "note": "one letter repeated a different number of times"},
+    {"id": "h8", "input": {"strs": ["abcdefghijklmnopqrstuvwxyz", "zyxwvutsrqponmlkjihgfedcba", "a"]}, "expected": [["abcdefghijklmnopqrstuvwxyz", "zyxwvutsrqponmlkjihgfedcba"], ["a"]], "note": "the whole alphabet in two orders"},
+    {"id": "h9", "input": {"strs": ["qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr", "qrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqr", "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"]}, "expected": [["qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr", "qrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqrqr"], ["qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"]], "note": "maximum-length words"},
+    {"id": "h10", "input": {"strs": ["post", "stop", "tops", "spot", "opts", "pots"]}, "expected": [["post", "stop", "tops", "spot", "opts", "pots"]], "note": "every word in one group"},
+    {"id": "h11", "input": {"strs": ["ab", "abc", "cab", "ba", "bca", "c"]}, "expected": [["ab", "ba"], ["abc", "cab", "bca"], ["c"]], "note": "a word that is a prefix of another is not its anagram"},
+    {"id": "h12", "input": {"strs": ["", "", "", "z", ""]}, "expected": [["", "", "", ""], ["z"]], "note": "several empty words"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 3}, "note": "large input: about 5000 groups to search linearly"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 8}}
+  ]
+}

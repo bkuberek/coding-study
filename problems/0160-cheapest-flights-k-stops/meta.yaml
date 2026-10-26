@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0160"
+slug: cheapest-flights-k-stops
+title: Cheapest Flights Within K Stops
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [advanced-graphs, dp-2d]
+signature:
+  function:
+    name: findCheapestPrice
+    params:
+      - {name: n, type: int}
+      - {name: flights, type: "int[][]"}
+      - {name: src, type: int}
+      - {name: dst, type: int}
+      - {name: k, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: bellman-ford, name: "Bellman-Ford limited to k + 1 rounds", role: optimal, time: "O(k·E)", space: "O(n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: dijkstra-stops, name: "Dijkstra over (city, flights taken) states", role: intermediate, time: "O(k·E·log(k·E))", space: "O(k·E)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: number of flights E, with n = E/10 cities and k = 8
+  size_ladder: [100, 1000, 10000]
+  expected_from: bellman-ford
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 787, url: "https://leetcode.com/problems/cheapest-flights-within-k-stops/"}
+related: [network-delay-time, city-fewest-neighbors]
+order: 3
+estimate_minutes: 30

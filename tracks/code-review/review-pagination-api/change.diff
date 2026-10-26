@@ -1,0 +1,151 @@
+diff --git a/src/routes/orders.ts b/src/routes/orders.ts
+--- a/src/routes/orders.ts
++++ b/src/routes/orders.ts
+@@ -5,6 +5,9 @@
+ import { sendError } from "../http/errors";
+ 
+ export const ordersRouter = Router();
++
++const DEFAULT_PAGE_SIZE = 20;
++const MAX_PAGE_SIZE = 100;
+ 
+ interface OrderRow {
+   id: string;
+@@ -15,19 +18,36 @@
+ }
+ 
+ ordersRouter.get("/v1/orders", requireAuth, async (req, res) => {
++  const page = parseInt(req.query.page as string) || 1;
++  const pageSize = parseInt(req.query.pageSize as string) || DEFAULT_PAGE_SIZE;
++  if (pageSize > MAX_PAGE_SIZE) {
++    return res.status(400).send(`pageSize must be at most ${MAX_PAGE_SIZE}`);
++  }
++  // Support tooling passes customerId to look up a customer's orders.
++  const customerId = (req.query.customerId as string) ?? req.user.customerId;
++
+   try {
+-    const orders = await db.query<OrderRow>(
+-      `SELECT id, status, total_cents, currency, created_at
+-         FROM orders
+-        WHERE customer_id = $1
+-        ORDER BY created_at DESC
+-        LIMIT 500`,
+-      [req.user.customerId],
+-    );
+-    res.json(orders.rows.map(toOrderDto));
++    const [orders, count] = await Promise.all([
++      db.query<OrderRow>(
++        `SELECT id, status, total_cents, currency, created_at
++           FROM orders
++          WHERE customer_id = $1
++          ORDER BY created_at DESC
++          LIMIT $2 OFFSET $3`,
++        [customerId, pageSize, (page - 1) * pageSize],
++      ),
++      db.query<{ count: string }>("SELECT COUNT(*) FROM orders WHERE customer_id = $1", [
++        customerId,
++      ]),
++    ]);
++    res.json({
++      data: orders.rows.map(toOrderDto),
++      page,
++      pageSize,
++      total: Number(count.rows[0].count),
++    });
+   } catch (err) {
+-    req.log.error({ err }, "listing orders failed");
+-    sendError(res, 500, "internal_error", "Something went wrong");
++    res.status(500).json({ message: (err as Error).message });
+   }
+ });
+ 
+diff --git a/test/orders.test.ts b/test/orders.test.ts
+--- a/test/orders.test.ts
++++ b/test/orders.test.ts
+@@ -11,7 +11,17 @@
+     const res = await request(app).get("/v1/orders").set(customer.headers);
+ 
+     expect(res.status).toBe(200);
+-    expect(res.body).toHaveLength(3);
++    expect(res.body.data).toHaveLength(3);
+     expect(res.body).toMatchSnapshot();
+   });
++
++  it("returns the second page", async () => {
++    const customer = await loginAs("customer-1");
++    await createOrders("customer-1", 30);
++
++    const res = await request(app).get("/v1/orders?page=2&pageSize=20").set(customer.headers);
++
++    expect(res.body.data).toHaveLength(10);
++    expect(res.body.total).toBe(30);
++  });
+ });
+diff --git a/test/__snapshots__/orders.test.ts.snap b/test/__snapshots__/orders.test.ts.snap
+--- a/test/__snapshots__/orders.test.ts.snap
++++ b/test/__snapshots__/orders.test.ts.snap
+@@ -1,33 +1,38 @@
+ // Jest Snapshot v1, https://goo.gl/fbAQLP
+ 
+ exports[`GET /v1/orders lists the caller's orders, newest first 1`] = `
+-[
+-  {
+-    "created_at": "2026-01-03T00:00:00.000Z",
+-    "id": "ord_3",
+-    "status": "paid",
+-    "total": {
+-      "amount_cents": 3000,
+-      "currency": "USD",
++{
++  "data": [
++    {
++      "created_at": "2026-01-03T00:00:00.000Z",
++      "id": "ord_3",
++      "status": "paid",
++      "total": {
++        "amount_cents": 3000,
++        "currency": "USD",
++      },
+     },
+-  },
+-  {
+-    "created_at": "2026-01-02T00:00:00.000Z",
+-    "id": "ord_2",
+-    "status": "paid",
+-    "total": {
+-      "amount_cents": 2000,
+-      "currency": "USD",
++    {
++      "created_at": "2026-01-02T00:00:00.000Z",
++      "id": "ord_2",
++      "status": "paid",
++      "total": {
++        "amount_cents": 2000,
++        "currency": "USD",
++      },
+     },
+-  },
+-  {
+-    "created_at": "2026-01-01T00:00:00.000Z",
+-    "id": "ord_1",
+-    "status": "paid",
+-    "total": {
+-      "amount_cents": 1000,
+-      "currency": "USD",
++    {
++      "created_at": "2026-01-01T00:00:00.000Z",
++      "id": "ord_1",
++      "status": "paid",
++      "total": {
++        "amount_cents": 1000,
++        "currency": "USD",
++      },
+     },
+-  },
+-]
++  ],
++  "page": 1,
++  "pageSize": 20,
++  "total": 3,
++}
+ `;

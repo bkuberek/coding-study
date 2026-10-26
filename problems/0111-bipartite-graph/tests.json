@@ -1,0 +1,24 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"graph": [[1, 4], [0, 2], [1, 3], [2, 4], [3, 0]]}, "expected": false},
+    {"id": "ex2", "visible": true, "input": {"graph": [[1], [0, 2], [1], [], [5], [4]]}, "expected": true},
+    {"id": "h1", "input": {"graph": [[]]}, "expected": true, "note": "a single node"},
+    {"id": "h2", "input": {"graph": [[1], [0]]}, "expected": true, "note": "one edge"},
+    {"id": "h3", "input": {"graph": [[1, 2], [0, 2], [1, 0]]}, "expected": false, "note": "a triangle"},
+    {"id": "h4", "input": {"graph": [[1, 5], [0, 2], [1, 3], [2, 4], [3, 5], [4, 0]]}, "expected": true, "note": "an even ring"},
+    {"id": "h5", "input": {"graph": [[1, 6], [0, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 0]]}, "expected": false, "note": "an odd ring of seven"},
+    {"id": "h6", "input": {"graph": [[1, 3], [0, 2], [1, 3], [2, 0], [5, 6], [4, 6], [5, 4]]}, "expected": false, "note": "the odd ring is in the second piece"},
+    {"id": "h7", "input": {"graph": [[3, 4, 5], [3, 4, 5], [3, 4, 5], [0, 1, 2], [0, 1, 2], [0, 1, 2]]}, "expected": true, "note": "complete bipartite graph with three nodes on each side"},
+    {"id": "h8", "input": {"graph": [[1, 2, 3], [0, 2, 3], [0, 1, 3], [0, 1, 2]]}, "expected": false, "note": "every pair of four nodes linked"},
+    {"id": "h9", "input": {"graph": [[1, 2], [0, 3, 4], [0, 5], [1], [1, 6], [2], [4, 7], [6]]}, "expected": true, "note": "a tree is always bipartite"},
+    {"id": "h10", "input": {"graph": [[], [], [], []]}, "expected": true, "note": "no edges at all"},
+    {"id": "h11", "input": {"graph": [[5, 1], [0, 2, 4], [1, 3], [2, 4], [3, 5, 1], [0, 4]]}, "expected": true, "note": "an even ring with a chord between opposite nodes"},
+    {"id": "h12", "input": {"graph": [[5, 1], [0, 2, 3], [1, 3], [2, 4, 1], [3, 5], [0, 4]]}, "expected": false, "note": "an even ring with a chord that closes a triangle"},
+    {"id": "h13", "input": {"graph": [[1], [0], [], [], [], [], [7, 8], [8, 6], [7, 6]]}, "expected": false, "note": "the odd ring uses the highest node numbers"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "note": "10^4 nodes, one large piece plus loners"},
+    {"id": "g2", "generate": {"n": 99, "seed": 3}, "note": "99 nodes with an odd cycle in the large piece"},
+    {"id": "g3", "generate": {"n": 1000, "seed": 6}}
+  ]
+}

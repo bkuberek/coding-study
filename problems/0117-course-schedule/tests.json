@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"numCourses": 4, "prerequisites": [[2, 0], [3, 2], [1, 0]]}, "expected": true},
+    {"id": "ex2", "visible": true, "input": {"numCourses": 3, "prerequisites": [[0, 1], [1, 2], [2, 0]]}, "expected": false},
+    {"id": "h1", "input": {"numCourses": 1, "prerequisites": []}, "expected": true, "note": "one course, no prerequisites"},
+    {"id": "h2", "input": {"numCourses": 5, "prerequisites": []}, "expected": true, "note": "several courses, no prerequisites"},
+    {"id": "h3", "input": {"numCourses": 2, "prerequisites": [[0, 1], [1, 0]]}, "expected": false, "note": "two courses that need each other"},
+    {"id": "h4", "input": {"numCourses": 5, "prerequisites": [[1, 0], [2, 1], [3, 2], [4, 3]]}, "expected": true, "note": "one long chain"},
+    {"id": "h5", "input": {"numCourses": 5, "prerequisites": [[0, 4], [4, 3], [3, 2], [2, 1], [1, 0]]}, "expected": false, "note": "a cycle through every course"},
+    {"id": "h6", "input": {"numCourses": 4, "prerequisites": [[1, 0], [2, 0], [3, 1], [3, 2]]}, "expected": true, "note": "a diamond: two paths into the same course"},
+    {"id": "h7", "input": {"numCourses": 6, "prerequisites": [[1, 0], [2, 1], [4, 3], [5, 4], [3, 5]]}, "expected": false, "note": "a valid component next to a cyclic one"},
+    {"id": "h8", "input": {"numCourses": 6, "prerequisites": [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5]]}, "expected": true, "note": "one course needs all the others"},
+    {"id": "h9", "input": {"numCourses": 5, "prerequisites": [[1, 0], [2, 1], [3, 2], [1, 3], [4, 0]]}, "expected": false, "note": "a cycle reachable from a free course"},
+    {"id": "h10", "input": {"numCourses": 7, "prerequisites": [[3, 0], [3, 1], [4, 1], [4, 2], [5, 3], [5, 4], [6, 5], [6, 0]]}, "expected": true, "note": "layered prerequisites with shortcuts"},
+    {"id": "h11", "input": {"numCourses": 3, "prerequisites": [[2, 0], [2, 1], [0, 2]]}, "expected": false, "note": "a course required by the course it requires, plus a free course"},
+    {"id": "g1", "generate": {"n": 1000, "seed": 117}, "note": "long chains at the largest size"}
+  ]
+}

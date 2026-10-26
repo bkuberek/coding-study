@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"products": ["peach", "pear", "pea", "plum", "pecan"], "searchWord": "pear"}, "expected": [["pea", "peach", "pear"], ["pea", "peach", "pear"], ["pea", "peach", "pear"], ["pear"]]},
+    {"id": "ex2", "visible": true, "input": {"products": ["sun", "star", "sky"], "searchWord": "sea"}, "expected": [["sky", "star", "sun"], [], []]},
+    {"id": "h1", "input": {"products": ["kiwi"], "searchWord": "kiwi"}, "expected": [["kiwi"], ["kiwi"], ["kiwi"], ["kiwi"]], "note": "single product typed in full"},
+    {"id": "h2", "input": {"products": ["lime", "lemon"], "searchWord": "x"}, "expected": [[]], "note": "no product matches the first letter"},
+    {"id": "h3", "input": {"products": ["bb", "ba", "bd", "bc", "be"], "searchWord": "b"}, "expected": [["ba", "bb", "bc"]], "note": "more than three matches: the three smallest"},
+    {"id": "h4", "input": {"products": ["apple", "apps", "app", "apply"], "searchWord": "apples"}, "expected": [["app", "apple", "apply"], ["app", "apple", "apply"], ["app", "apple", "apply"], ["apple", "apply"], ["apple"], []], "note": "a word comes before its extensions; typing past the longest match"},
+    {"id": "h5", "input": {"products": ["b", "ba", "bab", "baba", "a"], "searchWord": "baba"}, "expected": [["b", "ba", "bab"], ["ba", "bab", "baba"], ["bab", "baba"], ["baba"]], "note": "products that are prefixes of each other"},
+    {"id": "h6", "input": {"products": ["zebra", "zz", "zulu", "zoo"], "searchWord": "zz"}, "expected": [["zebra", "zoo", "zulu"], ["zz"]], "note": "the last letter of the alphabet"},
+    {"id": "h7", "input": {"products": ["abcdefghijklmnopqrst", "abcdefghijklmnopqrsa"], "searchWord": "abcdefghijklmnopqrst"}, "expected": [["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrsa", "abcdefghijklmnopqrst"], ["abcdefghijklmnopqrst"]], "note": "20-letter names that differ in the last letter"},
+    {"id": "h8", "input": {"products": ["tea", "ten", "tan", "to", "tomato", "ton"], "searchWord": "tom"}, "expected": [["tan", "tea", "ten"], ["to", "tomato", "ton"], ["tomato"]], "note": "the suggestions shrink letter by letter"},
+    {"id": "h9", "input": {"products": ["car", "cart", "carbon"], "searchWord": "cat"}, "expected": [["car", "carbon", "cart"], ["car", "carbon", "cart"], []], "note": "matches stop at the third letter"},
+    {"id": "h10", "input": {"products": ["m", "n", "o"], "searchWord": "mn"}, "expected": [["m"], []], "note": "single-letter products"},
+    {"id": "h11", "input": {"products": ["dog", "deer", "deal"], "searchWord": "de"}, "expected": [["deal", "deer", "dog"], ["deal", "deer"]], "note": "fewer than three matches"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "note": "10000 products"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 2}, "note": "10000 products"},
+    {"id": "g3", "generate": {"n": 1000, "seed": 3}}
+  ]
+}

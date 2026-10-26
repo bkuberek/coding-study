@@ -1,0 +1,16 @@
+{
+  "name": "coding-study-typescript-runner",
+  "private": true,
+  "description": "The TypeScript runner (docs/specs/runners.md); Node runs it through type stripping",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "~24.19.2",
+    "typescript": "~6.0.3"
+  }
+}

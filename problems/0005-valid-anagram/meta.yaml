@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0005"
+slug: valid-anagram
+title: Valid Anagram
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [arrays-hashing]
+signature:
+  function:
+    name: isAnagram
+    params:
+      - {name: s, type: string}
+      - {name: t, type: string}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: strike-out, name: Strike out matching letters, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: sorting, name: Sort both strings, role: intermediate, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+  - {id: counting, name: Letter counts in a fixed array, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: length of each string
+  size_ladder: [1000, 3000, 10000, 30000]
+  expected_from: counting
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 242, url: "https://leetcode.com/problems/valid-anagram/"}
+related: [group-anagrams, contains-duplicate]
+estimate_minutes: 10

@@ -1,0 +1,95 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true,
+     "ops": ["LRUCache", "put", "put", "get", "put", "get", "get", "get", "size"],
+     "args": [[2], [4, 40], [9, 90], [4], [6, 60], [9], [6], [4], []],
+     "expected": [null, null, null, 40, null, -1, 60, 40, 2]},
+    {"id": "ex2", "visible": true,
+     "ops": ["LRUCache", "put", "put", "put", "put", "get", "get", "size"],
+     "args": [[2], [7, 1], [8, 2], [7, 3], [9, 4], [8], [7], []],
+     "expected": [null, null, null, null, null, -1, 3, 2]},
+    {"id": "h1", "note": "capacity 1 keeps only the newest key",
+     "ops": ["LRUCache", "put", "put", "get", "get", "size"],
+     "args": [[1], [1, 10], [2, 20], [1], [2], []],
+     "expected": [null, null, null, -1, 20, 1]},
+    {"id": "h2", "note": "a miss changes nothing",
+     "ops": ["LRUCache", "get", "put", "put", "get", "put", "get", "get", "get"],
+     "args": [[2], [5], [1, 1], [2, 2], [3], [4, 4], [1], [2], [4]],
+     "expected": [null, -1, null, null, -1, null, -1, 2, 4]},
+    {"id": "h3", "note": "updating a key does not evict anything",
+     "ops": ["LRUCache", "put", "put", "put", "put", "size", "get", "get"],
+     "args": [[2], [1, 1], [2, 2], [1, 10], [2, 20], [], [1], [2]],
+     "expected": [null, null, null, null, null, 2, 10, 20]},
+    {"id": "h4", "note": "key and value zero",
+     "ops": ["LRUCache", "put", "get", "put", "get"],
+     "args": [[3], [0, 0], [0], [0, 5], [0]],
+     "expected": [null, null, 0, null, 5]},
+    {"id": "h5", "note": "a new cache is empty",
+     "ops": ["LRUCache", "size", "get"],
+     "args": [[3], [], [1]],
+     "expected": [null, 0, -1]},
+    {"id": "h6", "note": "reads decide the eviction order",
+     "ops": ["LRUCache", "put", "put", "put", "get", "get", "put", "get", "get", "get", "get"],
+     "args": [[3], [1, 1], [2, 2], [3, 3], [1], [2], [4, 4], [3], [1], [2], [4]],
+     "expected": [null, null, null, null, 1, 2, null, -1, 1, 2, 4]},
+    {"id": "s1", "note": "6 workers mix gets and puts over 8 keys in a cache of 4, while an observer reads the size",
+     "stress": {
+       "seed": 1000,
+       "setup": {"ops": ["LRUCache"], "args": [[4]]},
+       "workers": [
+         {"group": "client", "count": 6, "repeat": {"default": 1500, "python": 500},
+          "mix": [{"op": "get", "args": [{"$rand": [0, 7]}], "weight": 8},
+                  {"op": "put", "args": [0, {"$seq": {"start": 0, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [1, {"$seq": {"start": 1000000, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [2, {"$seq": {"start": 2000000, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [3, {"$seq": {"start": 3000000, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [4, {"$seq": {"start": 4000000, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [5, {"$seq": {"start": 5000000, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [6, {"$seq": {"start": 6000000, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [7, {"$seq": {"start": 7000000, "worker_stride": 10000}}], "weight": 1}]},
+         {"group": "observer", "count": 1, "repeat": {"default": 1500, "python": 500},
+          "steps": [{"op": "size", "args": []}, {"op": "@pause", "args": [1]}]}
+       ],
+       "final": {
+         "ops": ["put", "put", "put", "put", "size", "get", "get", "get", "get"],
+         "args": [[100, 100000000], [101, 101000000], [102, 102000000], [103, 103000000], [], [100], [101], [102], [103]],
+         "expected": [null, null, null, null, 4, 100000000, 101000000, 102000000, 103000000]},
+       "invariants": [
+         {"type": "bounds", "values": {"op": "size"}, "min": 0, "max": 4},
+         {"type": "checker", "name": "values-match-keys"}
+       ]
+     }},
+    {"id": "s2", "note": "6 readers hit 8 cached keys while 2 writers refresh them and add 2 more",
+     "stress": {
+       "seed": 2000,
+       "setup": {
+         "ops": ["LRUCache", "put", "put", "put", "put", "put", "put", "put", "put"],
+         "args": [[8], [0, 0], [1, 1000000], [2, 2000000], [3, 3000000], [4, 4000000], [5, 5000000], [6, 6000000], [7, 7000000]]},
+       "workers": [
+         {"group": "reader", "count": 6, "repeat": {"default": 1500, "python": 500},
+          "steps": [{"op": "get", "args": [{"$rand": [0, 7]}]}]},
+         {"group": "writer", "count": 2, "repeat": {"default": 1500, "python": 500},
+          "mix": [{"op": "put", "args": [0, {"$seq": {"start": 0, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [1, {"$seq": {"start": 1000000, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [2, {"$seq": {"start": 2000000, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [3, {"$seq": {"start": 3000000, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [4, {"$seq": {"start": 4000000, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [5, {"$seq": {"start": 5000000, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [6, {"$seq": {"start": 6000000, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [7, {"$seq": {"start": 7000000, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [8, {"$seq": {"start": 8000000, "worker_stride": 10000}}], "weight": 1},
+                  {"op": "put", "args": [9, {"$seq": {"start": 9000000, "worker_stride": 10000}}], "weight": 1}]}
+       ],
+       "final": {
+         "ops": ["put", "put", "put", "put", "put", "put", "put", "put", "size", "get", "get", "get", "get", "get", "get", "get", "get"],
+         "args": [[100, 100000000], [101, 101000000], [102, 102000000], [103, 103000000], [104, 104000000], [105, 105000000], [106, 106000000], [107, 107000000],
+                  [], [100], [101], [102], [103], [104], [105], [106], [107]],
+         "expected": [null, null, null, null, null, null, null, null, 8, 100000000, 101000000, 102000000, 103000000, 104000000, 105000000, 106000000, 107000000]},
+       "invariants": [
+         {"type": "checker", "name": "values-match-keys"}
+       ]
+     }}
+  ]
+}

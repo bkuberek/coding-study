@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../../../../../schemas/meta.schema.json
+# A function that imports only GraphNode, with no_alias_with on the return.
+id: "0107"
+slug: clone-graph
+title: Clone Graph
+status: draft
+difficulty: medium
+track: dsa
+kind: function
+patterns: [graphs]
+signature:
+  function:
+    name: cloneGraph
+    params:
+      - {name: node, type: GraphNode}
+    returns: {type: GraphNode, no_alias_with: node}
+comparator: {type: exact}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0102"
+slug: phone-letter-combinations
+title: Phone Letter Combinations
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [backtracking]
+signature:
+  function:
+    name: letterCombinations
+    params:
+      - {name: digits, type: string}
+    returns: {type: "list<string>"}
+comparator: {type: unordered}
+approaches:
+  - {id: extend-level-by-level, name: Extend every partial word by each letter of the next digit, role: optimal, time: "O(n * 4^n)", space: "O(n * 4^n)", time_class: "2^n", space_class: "2^n", oracle: true}
+  - {id: backtracking, name: Fill one letter per digit depth-first, role: optimal, time: "O(n * 4^n)", space: "O(n * 4^n)", time_class: "2^n", space_class: "2^n"}
+perf:
+  size_param: n = digits.length
+  size_ladder: [2, 4, 6]
+  expected_from: backtracking
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 17, url: "https://leetcode.com/problems/letter-combinations-of-a-phone-number/"}
+related: [subsets, generate-parentheses]
+order: 8
+estimate_minutes: 15

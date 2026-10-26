@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0186"
+slug: in-memory-database
+title: In-Memory Database
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+levels:
+  - {level: 1, title: Records and fields}
+  - {level: 2, title: Field scans}
+  - {level: 3, title: Expiring fields}
+  - {level: 4, title: Point-in-time reads}
+signature:
+  class:
+    name: InMemoryDatabase
+    constructor: {params: []}
+    methods:
+      - {name: set, level: 1, params: [{name: timestamp, type: long}, {name: key, type: string}, {name: field, type: string}, {name: value, type: string}], returns: {type: void}}
+      - {name: get, level: 1, params: [{name: timestamp, type: long}, {name: key, type: string}, {name: field, type: string}], returns: {type: string}}
+      - {name: remove, level: 1, params: [{name: timestamp, type: long}, {name: key, type: string}, {name: field, type: string}], returns: {type: bool}}
+      - {name: scan, level: 2, params: [{name: timestamp, type: long}, {name: key, type: string}], returns: {type: "list<string>"}}
+      - {name: scanByPrefix, level: 2, params: [{name: timestamp, type: long}, {name: key, type: string}, {name: prefix, type: string}], returns: {type: "list<string>"}}
+      - {name: setWithTtl, level: 3, params: [{name: timestamp, type: long}, {name: key, type: string}, {name: field, type: string}, {name: value, type: string}, {name: ttl, type: long}], returns: {type: void}}
+      - {name: getAt, level: 4, params: [{name: timestamp, type: long}, {name: key, type: string}, {name: field, type: string}, {name: atTimestamp, type: long}], returns: {type: string}}
+      - {name: scanAt, level: 4, params: [{name: timestamp, type: long}, {name: key, type: string}, {name: atTimestamp, type: long}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: versioned-fields, name: Per-field version history, role: optimal, time: "O(log v) per field operation; O(f log f + f log v) per scan", space: "O(w)", time_class: "n log n", space_class: "n"}
+related: [transactional-kv-store]
+estimate_minutes: 90

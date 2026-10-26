@@ -1,0 +1,26 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"s": "4 + 6 * 2"}, "expected": 16},
+    {"id": "ex2", "visible": true, "input": {"s": "20 / 6 - 3 * 2 + 1"}, "expected": -2},
+    {"id": "h1", "input": {"s": "42"}, "expected": 42, "note": "a single number"},
+    {"id": "h2", "input": {"s": "  7  "}, "expected": 7, "note": "spaces around a single number"},
+    {"id": "h3", "input": {"s": "1-1+1"}, "expected": 1, "note": "additive operators apply left to right, no spaces"},
+    {"id": "h4", "input": {"s": "8/3*3"}, "expected": 6, "note": "multiplicative operators apply left to right"},
+    {"id": "h5", "input": {"s": "2+3*4-5"}, "expected": 9, "note": "precedence in the middle of the expression"},
+    {"id": "h6", "input": {"s": "100 - 2 * 50"}, "expected": 0, "note": "a zero result"},
+    {"id": "h7", "input": {"s": "7 - 9"}, "expected": -2, "note": "a negative result"},
+    {"id": "h8", "input": {"s": "2147483647"}, "expected": 2147483647, "note": "the largest number"},
+    {"id": "h9", "input": {"s": "0*12345+6"}, "expected": 6, "note": "a zero factor"},
+    {"id": "h10", "input": {"s": "14/3/2"}, "expected": 2, "note": "chained divisions truncate at each step"},
+    {"id": "h11", "input": {"s": "1 + 2 * 3 / 4 - 5 * 6 / 7 + 8"}, "expected": 6, "note": "several mixed terms"},
+    {"id": "h12", "input": {"s": "1000000000 - 1000000000 + 2147483647"}, "expected": 2147483647, "note": "large partial sums"},
+    {"id": "h13", "input": {"s": "12 * 0 / 5"}, "expected": 0, "note": "zero divided by a number"},
+    {"id": "h14", "input": {"s": "999/1000"}, "expected": 0, "note": "a quotient below one"},
+    {"id": "h15", "input": {"s": "5 - 7 / 2"}, "expected": 2, "note": "a subtracted quotient: 7 / 2 truncates to 3"},
+    {"id": "h16", "input": {"s": " 3 *4- 10/ 3  +0 "}, "expected": 9, "note": "irregular spacing"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 5}, "note": "large input: 10000 operands, about half joined by * or /"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 2}}
+  ]
+}

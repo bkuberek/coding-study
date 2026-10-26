@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"piles": [4, 11, 7, 9], "h": 7}, "expected": 6},
+    {"id": "ex2", "visible": true, "input": {"piles": [30, 12, 25], "h": 3}, "expected": 30},
+    {"id": "h1", "input": {"piles": [6], "h": 1}, "expected": 6, "note": "one pile, one hour"},
+    {"id": "h2", "input": {"piles": [6], "h": 10}, "expected": 1, "note": "one pile, more hours than bananas"},
+    {"id": "h3", "input": {"piles": [3, 8, 2, 5], "h": 4}, "expected": 8, "note": "h equals the number of piles: the largest pile sets the speed"},
+    {"id": "h4", "input": {"piles": [3, 8, 2, 5], "h": 1000000000}, "expected": 1, "note": "plenty of time: speed 1"},
+    {"id": "h5", "input": {"piles": [7, 7, 7, 7], "h": 8}, "expected": 4, "note": "all piles equal"},
+    {"id": "h6", "input": {"piles": [1000000000, 1000000000, 1000000000, 1000000000, 1000000000, 1000000000, 1000000000, 1000000000, 1000000000, 1000000000], "h": 1000000000}, "expected": 10, "note": "hours at slow speeds exceed the 32-bit range"},
+    {"id": "h7", "input": {"piles": [1, 1, 1, 100], "h": 5}, "expected": 50, "note": "one large pile among small ones"},
+    {"id": "h8", "input": {"piles": [10, 20, 30], "h": 6}, "expected": 10, "note": "speed divides every pile exactly"},
+    {"id": "h9", "input": {"piles": [9, 9, 10], "h": 4}, "expected": 9, "note": "answer just below the largest pile"},
+    {"id": "h10", "input": {"piles": [1000000000], "h": 1000000000}, "expected": 1, "note": "largest pile with the most hours: speed 1"},
+    {"id": "h11", "input": {"piles": [312884470], "h": 312884469}, "expected": 2, "note": "one hour short of eating one banana per hour"},
+    {"id": "h12", "input": {"piles": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], "h": 12}, "expected": 1, "note": "all piles of one banana"},
+    {"id": "h13", "input": {"piles": [37, 80, 5, 61, 12, 94, 29], "h": 14}, "expected": 31, "note": "mixed sizes"},
+    {"id": "h14", "input": {"piles": [2, 2], "h": 3}, "expected": 2, "note": "one pile can take two hours"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 17}, "note": "large input: trying every speed does about 5 * 10^6 to 10^7 pile divisions"}
+  ]
+}

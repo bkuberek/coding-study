@@ -1,0 +1,129 @@
+diff --git a/app/main.py b/app/main.py
+--- a/app/main.py
++++ b/app/main.py
+@@ -1,6 +1,7 @@
+ from fastapi import FastAPI
+ 
+ from app.accounts.routes import router as accounts_router
++from app.auth.login import router as auth_router
+ from app.billing.routes import router as billing_router
+ from app.logging_config import configure_logging
+ 
+@@ -8,6 +9,7 @@
+ 
+ app = FastAPI(title="Accounts API")
+ app.include_router(accounts_router, prefix="/v1/accounts")
++app.include_router(auth_router, prefix="/v1/auth")
+ app.include_router(billing_router, prefix="/v1/billing")
+ 
+ 
+diff --git a/app/auth/login.py b/app/auth/login.py
+new file mode 100644
+--- /dev/null
++++ b/app/auth/login.py
+@@ -0,0 +1,65 @@
++import hashlib
++import logging
++import secrets
++from datetime import datetime, timezone
++
++from fastapi import APIRouter, Depends, Header, HTTPException, Response
++from pydantic import BaseModel
++
++from app.db import get_connection
++from app.settings import settings
++
++logger = logging.getLogger(__name__)
++router = APIRouter()
++
++
++class LoginRequest(BaseModel):
++    email: str
++    password: str
++
++
++def hash_password(password: str, salt: str) -> str:
++    return hashlib.sha256((salt + password).encode()).hexdigest()
++
++
++@router.post("/login")
++def login(body: LoginRequest, response: Response, conn=Depends(get_connection)):
++    logger.info("login attempt: %s", body.model_dump())
++
++    cursor = conn.cursor()
++    cursor.execute(
++        "SELECT id, password_hash, salt, is_active FROM users WHERE email = '"
++        + body.email.lower()
++        + "'"
++    )
++    row = cursor.fetchone()
++    if row is None:
++        raise HTTPException(status_code=404, detail="No account with this email")
++
++    user_id, password_hash, salt, is_active = row
++    if hash_password(body.password, salt) != password_hash:
++        raise HTTPException(status_code=401, detail="Wrong password")
++
++    token = secrets.token_urlsafe(32)
++    cursor.execute(
++        "INSERT INTO sessions (token, user_id, created_at) VALUES (%s, %s, %s)",
++        (token, user_id, datetime.now(timezone.utc)),
++    )
++    conn.commit()
++
++    logger.info("user %s logged in with session %s", user_id, token)
++    response.set_cookie("session", token)
++    return {"user_id": user_id}
++
++
++def require_service_key(x_service_key: str = Header(...)) -> None:
++    if x_service_key != settings.internal_service_key:
++        raise HTTPException(status_code=403, detail="Invalid service key")
++
++
++@router.post("/internal/revoke-sessions", dependencies=[Depends(require_service_key)])
++def revoke_sessions(user_id: int, conn=Depends(get_connection)):
++    cursor = conn.cursor()
++    cursor.execute("DELETE FROM sessions WHERE user_id = " + str(user_id))
++    conn.commit()
++    return {"revoked": cursor.rowcount}
+diff --git a/tests/auth/test_login.py b/tests/auth/test_login.py
+new file mode 100644
+--- /dev/null
++++ b/tests/auth/test_login.py
+@@ -0,0 +1,35 @@
++from fastapi.testclient import TestClient
++
++from app.auth.login import hash_password
++from app.main import app
++
++client = TestClient(app)
++
++
++def create_user(db, email, password, salt="pepper"):
++    db.execute(
++        "INSERT INTO users (email, password_hash, salt, is_active) VALUES (%s, %s, %s, true)",
++        (email, hash_password(password, salt), salt),
++    )
++
++
++def test_login_succeeds(db):
++    create_user(db, "ada@example.com", "correct horse")
++
++    response = client.post(
++        "/v1/auth/login", json={"email": "ada@example.com", "password": "correct horse"}
++    )
++
++    assert response.status_code == 200
++    assert "session" in response.cookies
++
++
++def test_login_rejects_wrong_password(db):
++    create_user(db, "ada@example.com", "correct horse")
++
++    response = client.post(
++        "/v1/auth/login", json={"email": "ada@example.com", "password": "battery staple"}
++    )
++
++    assert response.status_code == 401
++    assert response.json()["detail"] == "Wrong password"

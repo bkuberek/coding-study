@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"points": [[3, 4], [1, -1], [-2, 2], [0, 5]], "k": 2}, "expected": [[1, -1], [-2, 2]]},
+    {"id": "ex2", "visible": true, "input": {"points": [[2, 2], [-3, 1]], "k": 1}, "expected": [[2, 2]]},
+    {"id": "h1", "input": {"points": [[7, -7]], "k": 1}, "expected": [[7, -7]], "note": "a single point"},
+    {"id": "h2", "input": {"points": [[0, 0], [1, 1], [2, 2]], "k": 3}, "expected": [[0, 0], [1, 1], [2, 2]], "note": "k equals the number of points"},
+    {"id": "h3", "input": {"points": [[5, 0], [0, 5], [1, 1]], "k": 1}, "expected": [[1, 1]], "note": "the closest point is last"},
+    {"id": "h4", "input": {"points": [[1, 2], [1, 2], [3, 3]], "k": 2}, "expected": [[1, 2], [1, 2]], "note": "a repeated point inside the answer"},
+    {"id": "h5", "input": {"points": [[1, 0], [0, 1], [-1, 0], [0, -1], [2, 2]], "k": 4}, "expected": [[1, 0], [0, 1], [-1, 0], [0, -1]], "note": "four points tie at distance 1, all inside the answer"},
+    {"id": "h6", "input": {"points": [[10000, 10000], [-10000, -10000], [0, 1]], "k": 1}, "expected": [[0, 1]], "note": "extreme coordinates"},
+    {"id": "h7", "input": {"points": [[-1, -1], [-2, -3], [-4, 0]], "k": 2}, "expected": [[-1, -1], [-2, -3]], "note": "negative coordinates"},
+    {"id": "h8", "input": {"points": [[0, 0], [9, 9], [1, 0]], "k": 2}, "expected": [[0, 0], [1, 0]], "note": "the origin itself"},
+    {"id": "h9", "input": {"points": [[3, 4], [4, 3], [5, 0], [1, 1], [6, 8]], "k": 4}, "expected": [[1, 1], [3, 4], [4, 3], [5, 0]], "note": "three different points at the same distance"},
+    {"id": "h10", "input": {"points": [[2, -1], [-1, 2], [0, 3], [10, 0]], "k": 3}, "expected": [[2, -1], [-1, 2], [0, 3]], "note": "only the farthest point is dropped"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 2}, "note": "10^5 points over the full range"},
+    {"id": "g2", "generate": {"n": 100000, "seed": 1}, "note": "10^5 points in a 7 by 7 box: many repeated points and equal distances"},
+    {"id": "g3", "generate": {"n": 1000, "seed": 3}}
+  ]
+}

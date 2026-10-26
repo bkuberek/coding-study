@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0174"
+slug: set-matrix-zeroes
+title: Set Matrix Zeroes
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [math-geometry]
+signature:
+  function:
+    name: setZeroes
+    params:
+      - {name: matrix, type: "int[][]"}
+    returns: {type: void, output_from: matrix}
+comparator: {type: exact}
+approaches:
+  - {id: zero-sets, name: Record the zero rows and columns in two sets, role: brute, time: "O(m * n)", space: "O(m + n)", time_class: "n", space_class: "sqrt n", oracle: true}
+  - {id: in-place-markers, name: Use the first row and column as markers, role: optimal, time: "O(m * n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: number of cells m * n
+  size_ladder: [1000, 3000, 10000, 30000, 90000]
+  expected_from: in-place-markers
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 73, url: "https://leetcode.com/problems/set-matrix-zeroes/"}
+related: [rotate-image, spiral-matrix]
+order: 3
+estimate_minutes: 20

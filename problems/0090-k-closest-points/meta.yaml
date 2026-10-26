@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0090"
+slug: k-closest-points
+title: K Closest Points to Origin
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [heap]
+signature:
+  function:
+    name: kClosest
+    params:
+      - {name: points, type: "int[][]"}
+      - {name: k, type: int}
+    returns: {type: "int[][]"}
+comparator: {type: unordered}
+approaches:
+  - {id: sorting, name: Sort by squared distance and keep the first k, role: brute, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n", oracle: true}
+  - {id: max-heap, name: Max-heap of the k closest points seen, role: optimal, time: "O(n log k)", space: "O(k)", time_class: "n log n", space_class: "n"}
+  - {id: quickselect, name: Quickselect on squared distances, role: optimal, time: "O(n) average, O(n^2) worst", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n, with k uniform among the ranks that give a unique answer
+  size_ladder: [1000, 10000, 100000]
+  expected_from: quickselect
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 973, url: "https://leetcode.com/problems/k-closest-points-to-origin/"}
+related: [kth-largest-element, top-k-frequent-elements, median-data-stream]
+order: 4
+estimate_minutes: 20

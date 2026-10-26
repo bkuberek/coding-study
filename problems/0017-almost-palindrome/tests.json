@@ -1,0 +1,29 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"s": "kayaks"}, "expected": true},
+    {"id": "ex2", "visible": true, "input": {"s": "cuppucu"}, "expected": true},
+    {"id": "ex3", "visible": true, "input": {"s": "tebbem"}, "expected": false},
+    {"id": "h1", "input": {"s": "z"}, "expected": true, "note": "single character"},
+    {"id": "h2", "input": {"s": "zy"}, "expected": true, "note": "two different characters: delete either"},
+    {"id": "h3", "input": {"s": "deified"}, "expected": true, "note": "already a palindrome: no deletion needed"},
+    {"id": "h4", "input": {"s": "abc"}, "expected": false, "note": "needs two deletions"},
+    {"id": "h5", "input": {"s": "aab"}, "expected": true, "note": "only deleting on the right works"},
+    {"id": "h6", "input": {"s": "baa"}, "expected": true, "note": "only deleting on the left works"},
+    {"id": "h7", "input": {"s": "ucuppuc"}, "expected": true, "note": "mirror of example 2: only deleting on the left works"},
+    {"id": "h8", "input": {"s": "abbxa"}, "expected": true, "note": "the mismatch is inside, not at the ends"},
+    {"id": "h9", "input": {"s": "abxcdcyba"}, "expected": false, "note": "two separate defects"},
+    {"id": "h10", "input": {"s": "aaaaaaaaab"}, "expected": true, "note": "the extra character is last"},
+    {"id": "h11", "input": {"s": "baaaaaaaaa"}, "expected": true, "note": "the extra character is first"},
+    {"id": "h12", "input": {"s": "aaaa"}, "expected": true, "note": "all characters equal"},
+    {"id": "h13", "input": {"s": "abcabc"}, "expected": false, "note": "a repeated block is not a palindrome"},
+    {"id": "h14", "input": {"s": "abczba"}, "expected": true, "note": "the defect sits next to the middle"},
+    {"id": "h15", "input": {"s": "ababbabab"}, "expected": true, "note": "deleting the left end matches for three steps, then fails; only the right deletion works"},
+    {"id": "h16", "input": {"s": "ababaabab"}, "expected": true, "note": "deleting the right end matches for three steps, then fails; only the left deletion works"},
+    {"id": "h17", "input": {"s": "ababcabab"}, "expected": false, "note": "both deletions at the first mismatch match for three steps, then fail"},
+    {"id": "h18", "input": {"s": "abccbxca"}, "expected": false, "note": "both deletions fail right after the first mismatch"},
+    {"id": "g1", "generate": {"n": 30000, "seed": 1}, "hang_guard_ms": 30000, "note": "large input: trying every deletion rebuilds the string tens of thousands of times"},
+    {"id": "g2", "generate": {"n": 30000, "seed": 2}, "hang_guard_ms": 30000, "note": "large input"}
+  ]
+}

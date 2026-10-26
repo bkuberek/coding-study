@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9001"
+slug: conformance-types
+title: "Conformance: every DSL type round-trips"
+status: ready
+difficulty: easy
+track: practical
+kind: design
+signature:
+  class:
+    name: TypeEcho
+    constructor: {params: [{name: label, type: string}]}
+    methods:
+      - {name: echoInt, params: [{name: value, type: "int"}], returns: {type: "int"}}
+      - {name: echoLong, params: [{name: value, type: "long"}], returns: {type: "long"}}
+      - {name: echoDouble, params: [{name: value, type: "double"}], returns: {type: "double"}}
+      - {name: echoBool, params: [{name: value, type: "bool"}], returns: {type: "bool"}}
+      - {name: echoString, params: [{name: value, type: "string"}], returns: {type: "string"}}
+      - {name: echoChar, params: [{name: value, type: "char"}], returns: {type: "char"}}
+      - {name: echoIntArray, params: [{name: value, type: "int[]"}], returns: {type: "int[]"}}
+      - {name: echoLongArray, params: [{name: value, type: "long[]"}], returns: {type: "long[]"}}
+      - {name: echoDoubleArray, params: [{name: value, type: "double[]"}], returns: {type: "double[]"}}
+      - {name: echoBoolArray, params: [{name: value, type: "bool[]"}], returns: {type: "bool[]"}}
+      - {name: echoCharArray, params: [{name: value, type: "char[]"}], returns: {type: "char[]"}}
+      - {name: echoStringArray, params: [{name: value, type: "string[]"}], returns: {type: "string[]"}}
+      - {name: echoIntMatrix, params: [{name: value, type: "int[][]"}], returns: {type: "int[][]"}}
+      - {name: echoLongMatrix, params: [{name: value, type: "long[][]"}], returns: {type: "long[][]"}}
+      - {name: echoDoubleMatrix, params: [{name: value, type: "double[][]"}], returns: {type: "double[][]"}}
+      - {name: echoBoolMatrix, params: [{name: value, type: "bool[][]"}], returns: {type: "bool[][]"}}
+      - {name: echoCharMatrix, params: [{name: value, type: "char[][]"}], returns: {type: "char[][]"}}
+      - {name: echoStringMatrix, params: [{name: value, type: "string[][]"}], returns: {type: "string[][]"}}
+      - {name: echoIntList, params: [{name: value, type: "list<int>"}], returns: {type: "list<int>"}}
+      - {name: echoLongList, params: [{name: value, type: "list<long>"}], returns: {type: "list<long>"}}
+      - {name: echoDoubleList, params: [{name: value, type: "list<double>"}], returns: {type: "list<double>"}}
+      - {name: echoBoolList, params: [{name: value, type: "list<bool>"}], returns: {type: "list<bool>"}}
+      - {name: echoCharList, params: [{name: value, type: "list<char>"}], returns: {type: "list<char>"}}
+      - {name: echoStringList, params: [{name: value, type: "list<string>"}], returns: {type: "list<string>"}}
+      - {name: echoIntArrayList, params: [{name: value, type: "list<int[]>"}], returns: {type: "list<int[]>"}}
+      - {name: echoIntListList, params: [{name: value, type: "list<list<int>>"}], returns: {type: "list<list<int>>"}}
+      - {name: echoStringListList, params: [{name: value, type: "list<list<string>>"}], returns: {type: "list<list<string>>"}}
+      - {name: echoIntListListList, params: [{name: value, type: "list<list<list<int>>>"}], returns: {type: "list<list<list<int>>>"}}
+      - {name: echoListNode, params: [{name: value, type: "ListNode"}], returns: {type: "ListNode"}}
+      - {name: echoTreeNode, params: [{name: value, type: "TreeNode"}], returns: {type: "TreeNode"}}
+      - {name: echoGraphNode, params: [{name: value, type: "GraphNode"}], returns: {type: "GraphNode"}}
+      - {name: echoListNodeArray, params: [{name: value, type: "ListNode[]"}], returns: {type: "ListNode[]"}}
+      - {name: echoTreeNodeList, params: [{name: value, type: "list<TreeNode>"}], returns: {type: "list<TreeNode>"}}
+      - {name: noop, params: [{name: value, type: int}], returns: {type: void}}
+comparator: {type: ops}
+approaches:
+  - {id: identity, name: "Return the argument unchanged", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0168"
+slug: subarray-sum-equals-k
+title: Subarray Sum Equals K
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [prefix-sum, arrays-hashing]
+signature:
+  function:
+    name: subarraySum
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: k, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: every-start, name: Extend a running sum from every start, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: prefix-count, name: Count earlier prefix sums in a hash map, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: length of nums
+  size_ladder: [500, 1000, 3000, 10000]
+  expected_from: prefix-count
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 560, url: "https://leetcode.com/problems/subarray-sum-equals-k/"}
+related: [continuous-subarray-sum, tree-path-sum-count, two-sum, range-sum-immutable]
+order: 3
+estimate_minutes: 20

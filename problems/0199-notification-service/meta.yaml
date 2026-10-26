@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0199"
+slug: notification-service
+title: Notification Service
+status: ready
+difficulty: medium
+track: lld
+kind: design
+signature:
+  class:
+    name: NotificationService
+    constructor: {params: []}
+    methods:
+      - {name: addContact, params: [{name: userId, type: string}, {name: channel, type: string}, {name: address, type: string}], returns: {type: bool}}
+      - {name: setPreference, params: [{name: userId, type: string}, {name: channel, type: string}, {name: enabled, type: bool}], returns: {type: bool}}
+      - {name: addTemplate, params: [{name: templateId, type: string}, {name: body, type: string}], returns: {type: bool}}
+      - {name: setRateLimit, params: [{name: channel, type: string}, {name: limit, type: int}, {name: windowMs, type: long}], returns: {type: bool}}
+      - {name: setOutage, params: [{name: channel, type: string}, {name: start, type: long}, {name: end, type: long}], returns: {type: bool}}
+      - {name: send, params: [{name: timestamp, type: long}, {name: userId, type: string}, {name: templateId, type: string}, {name: params, type: "list<string>"}], returns: {type: int}}
+      - {name: delivered, params: [{name: timestamp, type: long}, {name: userId, type: string}, {name: channel, type: string}], returns: {type: "list<string>"}}
+      - {name: stats, params: [{name: timestamp, type: long}, {name: channel, type: string}], returns: {type: "int[]"}}
+comparator: {type: ops}
+approaches:
+  - {id: channel-pipeline, name: Channel strategies with a rate-limit and retry pipeline, role: optimal, time: "O(b) per send to render; O(log r) per scheduled retry", space: "O(u + d + r)", time_class: "n log n", space_class: "n"}
+related: [event-bus, api-gateway]
+estimate_minutes: 50

@@ -1,0 +1,42 @@
+[importlinter]
+root_package = coding_study
+include_external_packages = True
+
+[importlinter:contract:layers]
+name = Dependencies point inward (entrypoints > adapters > application > domain)
+type = layers
+layers =
+    coding_study.entrypoints
+    coding_study.adapters
+    coding_study.application
+    coding_study.domain
+
+[importlinter:contract:domain]
+name = Domain uses the standard library only, without I/O modules
+type = forbidden
+source_modules =
+    coding_study.domain
+forbidden_modules =
+    jsonschema
+    yaml
+    rich
+    typer
+    os
+    pathlib
+    shutil
+    sqlite3
+    subprocess
+
+[importlinter:contract:application]
+name = Application depends on ports, not on libraries or process and database I/O
+type = forbidden
+source_modules =
+    coding_study.application
+forbidden_modules =
+    jsonschema
+    yaml
+    rich
+    typer
+    shutil
+    sqlite3
+    subprocess

@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"num": "4372", "k": 2}, "expected": "32"},
+    {"id": "ex2", "visible": true, "input": {"num": "30051", "k": 1}, "expected": "51"},
+    {"id": "h1", "input": {"num": "9", "k": 1}, "expected": "0", "note": "deleting the only digit leaves zero"},
+    {"id": "h2", "input": {"num": "12345", "k": 2}, "expected": "123", "note": "ascending digits: delete from the end"},
+    {"id": "h3", "input": {"num": "54321", "k": 2}, "expected": "321", "note": "descending digits: delete from the front"},
+    {"id": "h4", "input": {"num": "1111", "k": 2}, "expected": "11", "note": "all digits equal"},
+    {"id": "h5", "input": {"num": "10", "k": 2}, "expected": "0", "note": "k equals the length"},
+    {"id": "h6", "input": {"num": "100200", "k": 1}, "expected": "200", "note": "several leading zeros appear"},
+    {"id": "h7", "input": {"num": "123", "k": 0}, "expected": "123", "note": "no deletion"},
+    {"id": "h8", "input": {"num": "2817946", "k": 3}, "expected": "1746", "note": "peaks at different depths"},
+    {"id": "h9", "input": {"num": "10001", "k": 1}, "expected": "1", "note": "only zeros and a final 1 remain"},
+    {"id": "h10", "input": {"num": "998877", "k": 3}, "expected": "877", "note": "pairs of equal digits, falling"},
+    {"id": "h11", "input": {"num": "0", "k": 0}, "expected": "0", "note": "the number zero"},
+    {"id": "h12", "input": {"num": "5337", "k": 2}, "expected": "33", "note": "a deletion at the end after one at the front"},
+    {"id": "h13", "input": {"num": "112", "k": 1}, "expected": "11", "note": "non-decreasing: the last digit goes"},
+    {"id": "h14", "input": {"num": "1020304", "k": 3}, "expected": "4", "note": "every deletion exposes more zeros"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "large input: rescanning from the start after each deletion is quadratic here"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 3}, "hang_guard_ms": 30000, "note": "large input"},
+    {"id": "g3", "generate": {"n": 1000, "seed": 2}}
+  ]
+}

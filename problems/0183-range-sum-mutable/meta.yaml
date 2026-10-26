@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0183"
+slug: range-sum-mutable
+title: Range Sum Query With Updates
+status: ready
+difficulty: medium
+track: dsa
+kind: design
+patterns: [segment-tree-fenwick, prefix-sum]
+signature:
+  class:
+    name: NumArray
+    constructor:
+      params: [{name: nums, type: "int[]"}]
+    methods:
+      - {name: update, params: [{name: index, type: int}, {name: value, type: int}], returns: {type: void}}
+      - {name: sumRange, params: [{name: left, type: int}, {name: right, type: int}], returns: {type: long}}
+comparator: {type: ops}
+approaches:
+  - {id: direct-scan, name: Store the array and add up each range, role: brute, time: "O(1) per update, O(n) per sumRange", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: fenwick-tree, name: Fenwick tree of partial sums, role: optimal, time: "O(log n) per call", space: "O(n)", time_class: "n log n", space_class: "n"}
+  - {id: segment-tree, name: Iterative segment tree, role: optimal, time: "O(log n) per call", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: length of nums, with as many calls (half updates, half sumRange)
+  size_ladder: [300, 1000, 3000, 10000, 30000]
+  expected_from: fenwick-tree
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 307, url: "https://leetcode.com/problems/range-sum-query-mutable/"}
+related: [range-sum-immutable, count-smaller-after-self, range-module]
+order: 1
+estimate_minutes: 30

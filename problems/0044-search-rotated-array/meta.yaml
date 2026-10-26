@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0044"
+slug: search-rotated-array
+title: Search in Rotated Sorted Array
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [binary-search]
+signature:
+  function:
+    name: search
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: target, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: linear-scan, name: Scan every position, role: brute, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1", oracle: true}
+  - {id: pivot-then-search, name: "Find the rotation point, then search one sorted run", role: optimal, time: "O(log n)", space: "O(1)", time_class: "log n", space_class: "1"}
+  - {id: one-pass, name: One binary search that keeps the sorted half in view, role: optimal, time: "O(log n)", space: "O(1)", time_class: "log n", space_class: "1"}
+perf:
+  size_param: n
+  size_ladder: [100, 1000, 10000, 100000]
+  expected_from: one-pass
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 33, url: "https://leetcode.com/problems/search-in-rotated-sorted-array/"}
+related: [binary-search, min-in-rotated-array]
+order: 2
+estimate_minutes: 25

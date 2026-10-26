@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0189"
+slug: job-scheduler
+title: Rate-Limited Job Scheduler
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+levels:
+  - {level: 1, title: Priority queue of jobs}
+  - {level: 2, title: Per-tenant rate limits}
+  - {level: 3, title: Completion and retries}
+  - {level: 4, title: Dependencies and cancellation}
+signature:
+  class:
+    name: JobScheduler
+    constructor: {params: []}
+    methods:
+      - {name: submit, level: 1, params: [{name: timestamp, type: long}, {name: jobId, type: string}, {name: tenant, type: string}, {name: priority, type: int}], returns: {type: bool}}
+      - {name: runNext, level: 1, params: [{name: timestamp, type: long}], returns: {type: string}}
+      - {name: status, level: 1, params: [{name: timestamp, type: long}, {name: jobId, type: string}], returns: {type: string}}
+      - {name: queued, level: 1, params: [{name: timestamp, type: long}], returns: {type: int}}
+      - {name: setRateLimit, level: 2, params: [{name: timestamp, type: long}, {name: tenant, type: string}, {name: limit, type: int}, {name: windowMs, type: long}], returns: {type: void}}
+      - {name: setRetryPolicy, level: 3, params: [{name: timestamp, type: long}, {name: tenant, type: string}, {name: maxRetries, type: int}, {name: baseDelayMs, type: long}], returns: {type: void}}
+      - {name: complete, level: 3, params: [{name: timestamp, type: long}, {name: jobId, type: string}], returns: {type: bool}}
+      - {name: fail, level: 3, params: [{name: timestamp, type: long}, {name: jobId, type: string}], returns: {type: long}}
+      - {name: submitAfter, level: 4, params: [{name: timestamp, type: long}, {name: jobId, type: string}, {name: tenant, type: string}, {name: priority, type: int}, {name: dependsOn, type: "list<string>"}], returns: {type: bool}}
+      - {name: cancel, level: 4, params: [{name: timestamp, type: long}, {name: jobId, type: string}], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: ordered-queue, name: Ordered queue scanned for the first eligible job, role: optimal, time: "O(q (d + log s)) per runNext; O(q) per submit, retry or cancel", space: "O(j + s)", time_class: "n^2", space_class: "n"}
+estimate_minutes: 90

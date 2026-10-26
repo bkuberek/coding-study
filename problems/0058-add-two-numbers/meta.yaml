@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0058"
+slug: add-two-numbers
+title: Add Two Numbers
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [linked-list, math-geometry]
+signature:
+  function:
+    name: addTwoNumbers
+    params:
+      - {name: l1, type: ListNode}
+      - {name: l2, type: ListNode}
+    returns: {type: ListNode}
+comparator: {type: exact}
+approaches:
+  - {id: big-integer, name: "Convert to arbitrary-precision integers, add, convert back", role: brute, time: "O((m + n)^2)", space: "O(m + n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: digit-carry, name: Grade-school addition with a carry, role: optimal, time: "O(max(m, n))", space: "O(max(m, n))", time_class: "n", space_class: "n"}
+perf:
+  size_param: digits in the longer number
+  size_ladder: [100, 300, 1000, 3000, 10000]
+  expected_from: digit-carry
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 2, url: "https://leetcode.com/problems/add-two-numbers/"}
+related: [merge-two-sorted-lists, reverse-linked-list]
+order: 6
+estimate_minutes: 20

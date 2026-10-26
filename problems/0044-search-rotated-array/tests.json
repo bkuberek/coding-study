@@ -1,0 +1,24 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [15, 18, 22, 3, 7, 11], "target": 7}, "expected": 4},
+    {"id": "ex2", "visible": true, "input": {"nums": [40, 50, 10, 20, 30], "target": 35}, "expected": -1},
+    {"id": "h1", "input": {"nums": [6], "target": 6}, "expected": 0, "note": "single element, present"},
+    {"id": "h2", "input": {"nums": [6], "target": 2}, "expected": -1, "note": "single element, absent"},
+    {"id": "h3", "input": {"nums": [2, 5], "target": 5}, "expected": 1, "note": "two elements, no rotation"},
+    {"id": "h4", "input": {"nums": [5, 2], "target": 2}, "expected": 1, "note": "two elements, rotated by one"},
+    {"id": "h5", "input": {"nums": [5, 2], "target": 5}, "expected": 0, "note": "two elements, target before the break"},
+    {"id": "h6", "input": {"nums": [1, 3, 5, 7, 9, 11, 13], "target": 11}, "expected": 5, "note": "rotation by zero: fully sorted"},
+    {"id": "h7", "input": {"nums": [3, 5, 7, 9, 11, 13, 1], "target": 1}, "expected": 6, "note": "the smallest value is last"},
+    {"id": "h8", "input": {"nums": [13, 1, 3, 5, 7, 9, 11], "target": 13}, "expected": 0, "note": "the largest value is first"},
+    {"id": "h9", "input": {"nums": [9, 11, 13, 1, 3, 5, 7], "target": 1}, "expected": 3, "note": "target is the rotation point"},
+    {"id": "h10", "input": {"nums": [9, 11, 13, 1, 3, 5, 7], "target": 13}, "expected": 2, "note": "target is just before the break"},
+    {"id": "h11", "input": {"nums": [9, 11, 13, 1, 3, 5, 7], "target": 8}, "expected": -1, "note": "absent, between the two runs"},
+    {"id": "h12", "input": {"nums": [9, 11, 13, 1, 3, 5, 7], "target": 0}, "expected": -1, "note": "absent, below every value"},
+    {"id": "h13", "input": {"nums": [-2, 0, 4, -40, -25, -9], "target": -25}, "expected": 4, "note": "negative values on both sides of the break"},
+    {"id": "h14", "input": {"nums": [999999999, 1000000000, -1000000000, 0], "target": -1000000000}, "expected": 2, "note": "extreme values"},
+    {"id": "h15", "input": {"nums": [30, 40, 50, 60, 70, 80, 90, 10, 20], "target": 20}, "expected": 8, "note": "long first run, target at the end"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 11}, "note": "large input: a linear scan reads at least half of the array"}
+  ]
+}

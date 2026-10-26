@@ -1,0 +1,94 @@
+diff --git a/billing/renewals.py b/billing/renewals.py
+--- a/billing/renewals.py
++++ b/billing/renewals.py
+@@ -16,6 +16,8 @@
+         now = now or datetime.now()
+         renewed = set()
+         for sub in self.subscriptions.due(now):
++            if sub.status == "paused":
++                continue
+             result = self.charger.charge(sub.customer_id, sub.price_cents)
+             if result.ok:
+                 sub.renews_at += RENEWAL_PERIOD
+diff --git a/tests/billing/test_renewals.py b/tests/billing/test_renewals.py
+new file mode 100644
+--- /dev/null
++++ b/tests/billing/test_renewals.py
+@@ -0,0 +1,62 @@
++import time
++from datetime import datetime, timedelta
++from unittest import mock
++
++import pytest
++
++from billing import store
++from billing.models import Subscription
++from billing.renewals import RenewalService
++
++
++@pytest.fixture(scope="module")
++def subscriptions():
++    soon = datetime.now() + timedelta(seconds=1)
++    subs = [
++        Subscription(id="sub-1", customer_id="cus-1", price_cents=999, renews_at=soon, status="active"),
++        Subscription(id="sub-2", customer_id="cus-2", price_cents=1999, renews_at=soon, status="active"),
++        Subscription(id="sub-3", customer_id="cus-3", price_cents=999, renews_at=soon, status="paused"),
++    ]
++    for sub in subs:
++        store.add(sub)
++    return subs
++
++
++def test_renews_due_subscriptions(subscriptions):
++    charger = mock.Mock()
++    time.sleep(1)
++
++    renewed = RenewalService(charger).renew_due()
++
++    assert list(renewed) == ["sub-1", "sub-2"]
++    assert charger.charge.call_count == 2
++
++
++def test_renewal_moves_the_next_renewal_date():
++    sub = store.get("sub-1")
++
++    assert sub.renews_at > datetime.now() + timedelta(days=29)
++
++
++@mock.patch("billing.email.send_receipt")
++def test_failed_charge_marks_past_due_without_receipt(send_receipt, subscriptions):
++    charger = mock.Mock()
++    charger.charge.return_value.ok = False
++    sub = subscriptions[0]
++    sub.renews_at = datetime.now() - timedelta(minutes=1)
++
++    RenewalService(charger).renew_due()
++
++    assert sub.status == "past_due"
++    send_receipt.assert_not_called()
++
++
++def test_paused_subscriptions_are_not_charged(subscriptions):
++    charger = mock.Mock()
++    paused = subscriptions[2]
++    paused.renews_at = datetime.now() - timedelta(minutes=1)
++
++    RenewalService(charger).renew_due()
++
++    charger.charge.assert_not_called
++    assert paused.status == "paused"
+diff --git a/pyproject.toml b/pyproject.toml
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -11,9 +11,10 @@
+ dev = [
+     "pytest>=8.2",
+     "pytest-randomly>=3.15",
++    "pytest-rerunfailures>=14.0",
+     "pytest-xdist>=3.6",
+ ]
+ 
+ [tool.pytest.ini_options]
+ testpaths = ["tests"]
+-addopts = "-n auto"
++addopts = "-n auto --reruns 3"

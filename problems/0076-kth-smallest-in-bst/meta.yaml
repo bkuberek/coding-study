@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0076"
+slug: kth-smallest-in-bst
+title: Kth Smallest in a BST
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [trees]
+signature:
+  function:
+    name: kthSmallest
+    params:
+      - {name: root, type: TreeNode}
+      - {name: k, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: sort-values, name: Collect every value and sort, role: brute, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n", oracle: true}
+  - {id: inorder-stack, name: In-order walk that stops at the kth node, role: optimal, time: "O(h + k)", space: "O(h)", time_class: "n", space_class: "log n"}
+perf:
+  size_param: number of nodes
+  size_ladder: [1000, 10000, 100000]
+  expected_from: inorder-stack
+references:
+  leetcode: {number: 230, url: "https://leetcode.com/problems/kth-smallest-element-in-a-bst/"}
+related: [validate-bst, bst-iterator]
+order: 10
+estimate_minutes: 15

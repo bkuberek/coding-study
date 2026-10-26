@@ -1,0 +1,18 @@
+id: "0002"
+slug: lru-cache
+title: LRU Cache
+status: draft
+difficulty: medium
+track: dsa
+kind: design
+patterns: [linked-list]
+signature:
+  class:
+    name: LRUCache
+    constructor: {params: [{name: capacity, type: int}]}
+    methods:
+      - {name: get, params: [{name: key, type: int}], returns: {type: int}}
+      - {name: put, params: [{name: key, type: int}, {name: value, type: int}], returns: {type: void}}
+comparator: {type: ops}
+approaches:
+  - {id: ordered-dict, name: Ordered dictionary, role: optimal, time: "O(1) per op", space: "O(capacity)", time_class: "n", space_class: "n", oracle: true}

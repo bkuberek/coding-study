@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"s": "{[()]}()"}, "expected": true},
+    {"id": "ex2", "visible": true, "input": {"s": "[(])"}, "expected": false},
+    {"id": "h1", "input": {"s": "("}, "expected": false, "note": "a single opening bracket"},
+    {"id": "h2", "input": {"s": ")"}, "expected": false, "note": "a single closing bracket"},
+    {"id": "h3", "input": {"s": "[]"}, "expected": true, "note": "the shortest balanced string"},
+    {"id": "h4", "input": {"s": "{[}]"}, "expected": false, "note": "interleaved pairs"},
+    {"id": "h5", "input": {"s": "(((((((((("}, "expected": false, "note": "only opening brackets, even length"},
+    {"id": "h6", "input": {"s": "))))(((("}, "expected": false, "note": "equal counts, closers first"},
+    {"id": "h7", "input": {"s": "{[()()]}"}, "expected": true, "note": "siblings inside nested pairs"},
+    {"id": "h8", "input": {"s": "([]{})[]"}, "expected": true, "note": "several groups side by side"},
+    {"id": "h9", "input": {"s": "(((([[[[{{{{}}}}]]]]))))"}, "expected": true, "note": "deep nesting"},
+    {"id": "h10", "input": {"s": "[)"}, "expected": false, "note": "a closer of the wrong kind"},
+    {"id": "h11", "input": {"s": "()[]{}("}, "expected": false, "note": "a trailing unmatched opener"},
+    {"id": "h12", "input": {"s": "}{"}, "expected": false, "note": "a closer before its opener"},
+    {"id": "h13", "input": {"s": "[(({})}]"}, "expected": false, "note": "the mismatch is deep inside"},
+    {"id": "h14", "input": {"s": "([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])([{}])()"}, "expected": true, "note": "a long balanced string"},
+    {"id": "h15", "input": {"s": "(((((((((((((((((((((((((((((((((((((((((((((((((()))))))))))))))))))))))))))))))))))))))))))))))))]"}, "expected": false, "note": "the last closer has the wrong kind"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 2}, "hang_guard_ms": 30000, "note": "large input with a deep nest: pair removal needs thousands of passes"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 9}}
+  ]
+}

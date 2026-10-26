@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../../../../schemas/meta.schema.json
+id: "0002"
+slug: lru-cache
+title: LRU Cache
+status: ready
+difficulty: medium
+track: dsa
+kind: design
+patterns: [linked-list, arrays-hashing]
+signature:
+  class:
+    name: LRUCache
+    constructor: {params: [{name: capacity, type: int}]}
+    methods:
+      - {name: get, params: [{name: key, type: int}], returns: {type: int}}
+      - {name: put, params: [{name: key, type: int}, {name: value, type: int}], returns: {type: void}}
+comparator: {type: ops}
+approaches:
+  - {id: ordered-scan, name: List with linear scan, role: brute, time: "O(capacity) per op", space: "O(capacity)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: hash-map-dll, name: Hash map plus doubly linked list, role: optimal, time: "O(1) per op", space: "O(capacity)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of operations, capacity n/10
+  size_ladder: [1000, 10000, 100000]
+  expected_from: hash-map-dll
+references:
+  leetcode: {number: 146, url: "https://leetcode.com/problems/lru-cache/"}

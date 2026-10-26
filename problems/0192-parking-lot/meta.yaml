@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0192"
+slug: parking-lot
+title: Parking Lot
+status: ready
+difficulty: medium
+track: lld
+kind: design
+signature:
+  class:
+    name: ParkingLot
+    constructor: {params: [{name: levels, type: "list<string>"}]}
+    methods:
+      - {name: park, params: [{name: timestamp, type: long}, {name: plate, type: string}, {name: vehicleType, type: string}], returns: {type: string}}
+      - {name: leave, params: [{name: timestamp, type: long}, {name: ticketId, type: string}], returns: {type: long}}
+      - {name: locate, params: [{name: plate, type: string}], returns: {type: string}}
+      - {name: freeSpots, params: [{name: vehicleType, type: string}], returns: {type: int}}
+      - {name: setPricing, params: [{name: scheme, type: string}], returns: {type: bool}}
+comparator: {type: ops}
+approaches:
+  - {id: strategy-allocator, name: Spot allocator with pricing strategies, role: optimal, time: "O(log s) per park and leave; O(1) per lookup", space: "O(s + v)", time_class: "n log n", space_class: "n"}
+related: [vending-machine]
+estimate_minutes: 45

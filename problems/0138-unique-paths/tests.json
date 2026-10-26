@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"m": 3, "n": 4}, "expected": 10},
+    {"id": "ex2", "visible": true, "input": {"m": 1, "n": 6}, "expected": 1},
+    {"id": "h1", "input": {"m": 1, "n": 1}, "expected": 1, "note": "start and goal are the same cell"},
+    {"id": "h2", "input": {"m": 2, "n": 2}, "expected": 2, "note": "smallest grid with a choice"},
+    {"id": "h3", "input": {"m": 6, "n": 1}, "expected": 1, "note": "a single column"},
+    {"id": "h4", "input": {"m": 2, "n": 5}, "expected": 5, "note": "two rows: choose where to step down"},
+    {"id": "h5", "input": {"m": 3, "n": 3}, "expected": 6, "note": "square grid"},
+    {"id": "h6", "input": {"m": 10, "n": 10}, "expected": 48620, "note": "medium square grid"},
+    {"id": "h7", "input": {"m": 17, "n": 18}, "expected": 166803103, "note": "the count 1166803110 exceeds the modulus"},
+    {"id": "h8", "input": {"m": 18, "n": 17}, "expected": 166803103, "note": "transposed grid, same count"},
+    {"id": "h9", "input": {"m": 16, "n": 16}, "expected": 155117520, "note": "large count below the modulus"},
+    {"id": "h10", "input": {"m": 7, "n": 3}, "expected": 28, "note": "tall grid"},
+    {"id": "h11", "input": {"m": 1000, "n": 1}, "expected": 1, "note": "longest single column"},
+    {"id": "h12", "input": {"m": 1, "n": 1000}, "expected": 1, "note": "longest single row"},
+    {"id": "h13", "input": {"m": 500, "n": 700}, "expected": 112309126, "note": "large rectangle"},
+    {"id": "h14", "input": {"m": 1000, "n": 1000}, "expected": 965601742, "note": "largest grid"},
+    {"id": "g1", "generate": {"n": 1000000, "seed": 1}, "note": "about 10^6 cells"},
+    {"id": "g2", "generate": {"n": 1000000, "seed": 2}, "note": "about 10^6 cells"},
+    {"id": "g3", "generate": {"n": 10000, "seed": 3}}
+  ]
+}

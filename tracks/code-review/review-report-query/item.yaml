@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=../../../schemas/item.schema.json
+slug: review-report-query
+title: "Review: Report Query"
+track: code-review
+difficulty: medium
+estimate_minutes: 30
+status: ready
+order: 4
+references:
+  study_guides:
+    - "distributed-systems-study-guide.md#1-relational-databases-sql"
+  links:
+    - https://vladmihalcea.com/n-plus-1-query-problem/
+    - https://use-the-index-luke.com/
+related: [review-pagination-api, payments-ledger]

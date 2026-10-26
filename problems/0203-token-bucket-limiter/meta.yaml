@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0203"
+slug: token-bucket-limiter
+title: Token Bucket Limiter
+status: ready
+difficulty: medium
+track: concurrency
+kind: concurrent
+languages: [java, kotlin, python]
+signature:
+  class:
+    name: TokenBucket
+    constructor: {params: [{name: capacity, type: long}, {name: refillPerSecond, type: long}]}
+    methods:
+      - {name: tryAcquire, params: [{name: timestamp, type: long}, {name: tokens, type: long}], returns: {type: bool}}
+      - {name: available, params: [{name: timestamp, type: long}], returns: {type: long}}
+comparator: {type: ops}
+concurrency:
+  model: threads
+  jvm_threads: [platform, virtual]
+  runs: 3
+  deadline_ms: 5000
+  broken:
+    - id: no-lock
+      name: Refill and take without a lock
+      bug: Refills and takes tokens with no mutual exclusion, so two workers count the same elapsed time twice or overwrite each other's update
+      caught_by: [s1]
+    - id: unlocked-refill
+      name: Refill outside the lock
+      bug: Takes tokens under a lock but refills before taking it, so a refill races with other refills and with the locked take
+      caught_by: [s1]
+approaches:
+  - {id: locked, name: Lazy refill and take under one lock, role: optimal, time: "O(1) per op", space: "O(1)"}
+  - {id: cas-state, name: Compare-and-set on an immutable state, role: optimal, time: "O(1) per op, amortized under contention", space: "O(1)"}
+related: [concurrency-limiter, bank-transfers]
+estimate_minutes: 30

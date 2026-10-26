@@ -1,0 +1,17 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"root": [1, 2, 3, 4, 5]}, "expected": [4, 5, 3]},
+    {"id": "ex2", "visible": true, "input": {"root": [7]}, "expected": [7]},
+    {"id": "h1", "input": {"root": []}, "expected": [], "note": "empty tree"},
+    {"id": "h2", "input": {"root": [1, 2, null, 3]}, "expected": [3], "note": "left chain: one leaf at the bottom"},
+    {"id": "h3", "input": {"root": [1, null, 2, null, 3]}, "expected": [3], "note": "right chain"},
+    {"id": "h4", "input": {"root": [1, 2, 3, 4, 5, 6, 7]}, "expected": [4, 5, 6, 7], "note": "perfect tree"},
+    {"id": "h5", "input": {"root": [0, -1, 1]}, "expected": [-1, 1], "note": "zero and negative values"},
+    {"id": "h6", "input": {"root": [5, 5, 5, 5]}, "expected": [5, 5], "note": "duplicate values"},
+    {"id": "h7", "input": {"root": [1, 2, 3, null, 4, 5, null, null, null, 6]}, "expected": [4, 6], "note": "leaves at different depths"},
+    {"id": "h8", "input": {"root": [10, null, 20, 30]}, "expected": [30], "note": "zigzag"},
+    {"id": "h9", "input": {"root": [-1000, 1000]}, "expected": [1000], "note": "extreme values"}
+  ]
+}

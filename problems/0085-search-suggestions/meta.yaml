@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0085"
+slug: search-suggestions
+title: Search Suggestions
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [tries, binary-search]
+signature:
+  function:
+    name: suggestedProducts
+    params:
+      - {name: products, type: "string[]"}
+      - {name: searchWord, type: string}
+    returns: {type: "list<list<string>>"}
+comparator: {type: exact}
+approaches:
+  - {id: filter-each-prefix, name: Filter and sort the products for every typed prefix, role: brute, time: "O(L * m * n log n)", space: "O(n)", time_class: "n log n", space_class: "n", oracle: true}
+  - {id: binary-search, name: Sort once and binary-search each prefix, role: optimal, time: "O(m * n log n + L^2 log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+  - {id: trie-top-three, name: Trie whose nodes keep their three smallest products, role: optimal, time: "O(m * n log n + S)", space: "O(26 * S)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: number of products
+  size_ladder: [100, 1000, 10000]
+  expected_from: binary-search
+references:
+  leetcode: {number: 1268, url: "https://leetcode.com/problems/search-suggestions-system/"}
+related: [implement-trie, wildcard-word-dictionary]
+order: 3
+estimate_minutes: 25

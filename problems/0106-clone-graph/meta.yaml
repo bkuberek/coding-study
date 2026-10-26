@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0106"
+slug: clone-graph
+title: Clone Graph
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [graphs, arrays-hashing]
+signature:
+  function:
+    name: cloneGraph
+    params:
+      - {name: node, type: GraphNode}
+    returns: {type: GraphNode, no_alias_with: node}
+comparator: {type: exact}
+approaches:
+  - {id: dfs, name: Recursive copy with a map of clones, role: optimal, time: "O(V + E)", space: "O(V)", time_class: "n", space_class: "n", oracle: true}
+  - {id: bfs, name: Breadth-first copy with a map of clones, role: optimal, time: "O(V + E)", space: "O(V)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of nodes V, with E below 3V
+  size_ladder: [100, 1000, 2000]
+  expected_from: bfs
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 133, url: "https://leetcode.com/problems/clone-graph/"}
+related: [number-of-islands, critical-connections]
+order: 2
+estimate_minutes: 20

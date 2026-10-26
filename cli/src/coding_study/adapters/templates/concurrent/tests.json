@@ -1,0 +1,34 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "ex1",
+      "visible": true,
+      "ops": ["{{class_name}}", "acquire", "release", "acquire", "release"],
+      "args": [[1], [], [], [], []],
+      "expected": [null, null, null, null, null]
+    },
+    {
+      "id": "s1",
+      "note": "TODO: what the workers contend for",
+      "stress": {
+        "seed": 1000,
+        "setup": {"ops": ["{{class_name}}"], "args": [[1]]},
+        "workers": [
+          {"group": "worker", "count": 4, "repeat": 200,
+           "steps": [
+             {"op": "acquire", "args": []},
+             {"op": "@enter", "args": ["permit", "exclusive"]},
+             {"op": "@pause", "args": [2]},
+             {"op": "@exit", "args": ["permit"]},
+             {"op": "release", "args": []}
+           ]}
+        ],
+        "invariants": [
+          {"type": "section", "name": "permit", "max_violations": 0}
+        ]
+      }
+    }
+  ]
+}

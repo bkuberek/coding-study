@@ -1,0 +1,18 @@
+# coding-study workspace: commit your practice files, notes, .archive/ and problems/.
+# Everything below is generated per machine; `cstudy doctor --fix` recreates it.
+/.cs/*
+!/.cs/workspace.toml
+/.statements/
+progress.db
+progress.db-wal
+progress.db-shm
+
+# Toolchains and build output
+node_modules/
+.venv/
+build/
+.gradle/
+.kotlin/
+__pycache__/
+.ruff_cache/
+.DS_Store

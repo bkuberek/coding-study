@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0104"
+slug: n-queens
+title: N-Queens
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [backtracking]
+signature:
+  function:
+    name: solveNQueens
+    params:
+      - {name: n, type: int}
+    returns: {type: "list<list<string>>"}
+comparator: {type: checker}
+approaches:
+  - {id: scan-board, name: "Place queens row by row, scanning earlier rows for conflicts", role: brute, time: "O(n^2 * n!)", space: "O(n^2 * S)", time_class: "n!", space_class: "n!", oracle: true}
+  - {id: attacked-lines, name: Track used columns and diagonals in sets, role: optimal, time: "O(n * n!)", space: "O(n^2 * S)", time_class: "n!", space_class: "n!"}
+  - {id: bitmask, name: Keep the attacked squares of the next row as bits, role: optimal, time: "O(n!)", space: "O(n^2 * S)", time_class: "n!", space_class: "n!"}
+perf:
+  size_param: n (generated inputs stop at 8; hand-written cases cover 9 and 10)
+  size_ladder: [6, 7, 8]
+  expected_from: bitmask
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 51, url: "https://leetcode.com/problems/n-queens/"}
+related: [permutations, valid-sudoku, generate-parentheses]
+order: 10
+estimate_minutes: 35

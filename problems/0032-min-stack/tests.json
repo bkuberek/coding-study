@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "ops": ["MinStack", "push", "push", "push", "getMin", "top", "pop", "pop", "getMin", "top"], "args": [[], [6], [2], [9], [], [], [], [], [], []], "expected": [null, null, null, null, 2, 9, null, null, 6, 6]},
+    {"id": "ex2", "visible": true, "ops": ["MinStack", "push", "push", "push", "getMin", "pop", "getMin", "pop", "getMin"], "args": [[], [-4], [7], [-4], [], [], [], [], []], "expected": [null, null, null, null, -4, null, -4, null, -4]},
+    {"id": "h1", "ops": ["MinStack", "push", "top", "getMin"], "args": [[], [5], [], []], "expected": [null, null, 5, 5], "note": "a single element is both top and minimum"},
+    {"id": "h2", "ops": ["MinStack", "push", "push", "push", "pop", "pop", "getMin"], "args": [[], [2], [2], [3], [], [], []], "expected": [null, null, null, null, null, null, 2], "note": "popping one copy of the minimum keeps the other"},
+    {"id": "h3", "ops": ["MinStack", "push", "push", "push", "push", "push", "getMin", "pop", "getMin", "pop", "getMin", "pop", "getMin"], "args": [[], [5], [4], [3], [2], [1], [], [], [], [], [], [], []], "expected": [null, null, null, null, null, null, 1, null, 2, null, 3, null, 4], "note": "decreasing pushes: every pop raises the minimum"},
+    {"id": "h4", "ops": ["MinStack", "push", "push", "push", "getMin", "pop", "pop", "getMin", "top"], "args": [[], [1], [2], [3], [], [], [], [], []], "expected": [null, null, null, null, 1, null, null, 1, 1], "note": "increasing pushes: the minimum stays at the bottom"},
+    {"id": "h5", "ops": ["MinStack", "push", "push", "getMin", "pop", "getMin", "top"], "args": [[], [2147483647], [-2147483648], [], [], [], []], "expected": [null, null, null, -2147483648, null, 2147483647, 2147483647], "note": "extreme 32-bit values"},
+    {"id": "h6", "ops": ["MinStack", "push", "push", "push", "getMin", "pop", "top", "getMin", "pop", "getMin"], "args": [[], [0], [-1], [0], [], [], [], [], [], []], "expected": [null, null, null, null, -1, null, -1, -1, null, 0], "note": "zero and a negative value"},
+    {"id": "h7", "ops": ["MinStack", "push", "pop", "push", "getMin", "top"], "args": [[], [3], [], [7], [], []], "expected": [null, null, null, null, 7, 7], "note": "the stack empties and is reused"},
+    {"id": "h8", "ops": ["MinStack", "push", "push", "push", "push", "pop", "getMin", "pop", "getMin", "pop", "getMin"], "args": [[], [4], [1], [6], [1], [], [], [], [], [], []], "expected": [null, null, null, null, null, null, 1, null, 1, null, 4], "note": "the minimum appears twice with a larger value between"},
+    {"id": "h9", "ops": ["MinStack", "push", "push", "push", "push", "pop", "pop", "pop", "getMin", "top"], "args": [[], [9], [9], [9], [9], [], [], [], [], []], "expected": [null, null, null, null, null, null, null, null, 9, 9], "note": "all values equal"},
+    {"id": "h10", "ops": ["MinStack", "push", "push", "top", "getMin"], "args": [[], [-3], [8], [], []], "expected": [null, null, null, 8, -3], "note": "top and minimum differ"},
+    {"id": "h11", "ops": ["MinStack", "push", "getMin", "getMin", "top", "top", "getMin"], "args": [[], [10], [], [], [], [], []], "expected": [null, null, 10, 10, 10, 10, 10], "note": "queries do not change the stack"},
+    {"id": "h12", "ops": ["MinStack", "push", "push", "pop", "push", "getMin", "push", "getMin", "pop", "getMin", "pop", "push", "getMin", "top"], "args": [[], [50], [40], [], [60], [], [30], [], [], [], [], [20], [], []], "expected": [null, null, null, null, null, 50, null, 30, null, 50, null, null, 20, 20], "note": "pushes and pops interleaved"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 3}, "hang_guard_ms": 30000, "note": "100000 calls on a stack of up to about 30000 values: scanning on every getMin is slow here"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 12}}
+  ]
+}

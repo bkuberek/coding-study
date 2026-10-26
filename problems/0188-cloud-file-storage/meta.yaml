@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0188"
+slug: cloud-file-storage
+title: Cloud File Storage
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+levels:
+  - {level: 1, title: Files}
+  - {level: 2, title: Largest files by prefix}
+  - {level: 3, title: Users and quotas}
+  - {level: 4, title: Backup and restore}
+signature:
+  class:
+    name: CloudStorage
+    constructor: {params: []}
+    methods:
+      - {name: addFile, level: 1, params: [{name: timestamp, type: long}, {name: name, type: string}, {name: size, type: long}], returns: {type: bool}}
+      - {name: getFileSize, level: 1, params: [{name: timestamp, type: long}, {name: name, type: string}], returns: {type: long}}
+      - {name: deleteFile, level: 1, params: [{name: timestamp, type: long}, {name: name, type: string}], returns: {type: long}}
+      - {name: listLargest, level: 2, params: [{name: timestamp, type: long}, {name: prefix, type: string}, {name: limit, type: int}], returns: {type: "list<string>"}}
+      - {name: addUser, level: 3, params: [{name: timestamp, type: long}, {name: userId, type: string}, {name: capacity, type: long}], returns: {type: bool}}
+      - {name: addFileBy, level: 3, params: [{name: timestamp, type: long}, {name: userId, type: string}, {name: name, type: string}, {name: size, type: long}], returns: {type: long}}
+      - {name: updateCapacity, level: 3, params: [{name: timestamp, type: long}, {name: userId, type: string}, {name: capacity, type: long}], returns: {type: int}}
+      - {name: backupUser, level: 4, params: [{name: timestamp, type: long}, {name: userId, type: string}], returns: {type: int}}
+      - {name: restoreUser, level: 4, params: [{name: timestamp, type: long}, {name: userId, type: string}], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: owned-files, name: File map with per-user ownership, role: optimal, time: "O(1) per file operation; O(m log m) per listing, quota change, backup or restore", space: "O(n + b)", time_class: "n log n", space_class: "n"}
+related: [in-memory-database]
+estimate_minutes: 60

@@ -1,0 +1,24 @@
+id: "0001"
+slug: two-sum
+title: Two Sum
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [arrays-hashing]
+signature:
+  function:
+    name: twoSum
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: target, type: int}
+    returns: {type: "int[]"}
+comparator: {type: unordered}
+approaches:
+  - {id: brute-force, name: Check every pair, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: hash-map, name: One-pass hash map, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n
+  size_ladder: [10, 100]
+  expected_from: hash-map
+estimate_minutes: 15

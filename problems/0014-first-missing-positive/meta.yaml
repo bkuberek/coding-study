@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0014"
+slug: first-missing-positive
+title: First Missing Positive
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [arrays-hashing]
+signature:
+  function:
+    name: firstMissingPositive
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: "Try 1, 2, 3 and so on with linear searches", role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: hash-set, name: Hash set of the values, role: intermediate, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: cyclic-sort, name: Swap every value to its own index, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n
+  size_ladder: [1000, 3000, 10000, 30000]
+  expected_from: cyclic-sort
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 41, url: "https://leetcode.com/problems/first-missing-positive/"}
+related: [longest-consecutive-sequence, contains-duplicate]
+estimate_minutes: 30

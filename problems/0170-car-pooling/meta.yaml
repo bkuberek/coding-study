@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0170"
+slug: car-pooling
+title: Car Pooling
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [prefix-sum]
+signature:
+  function:
+    name: carPooling
+    params:
+      - {name: trips, type: "int[][]"}
+      - {name: capacity, type: int}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: load-at-pickups, name: Count the riders at every pickup point, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: sorted-events, name: Sweep pickups and drop-offs in location order, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+  - {id: difference-array, name: Difference array over locations, role: optimal, time: "O(n + L)", space: "O(L)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of trips, with locations up to 4n
+  size_ladder: [100, 300, 1000, 3000, 5000]
+  expected_from: difference-array
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1094, url: "https://leetcode.com/problems/car-pooling/"}
+related: [min-meeting-rooms, range-sum-immutable]
+order: 5
+estimate_minutes: 20

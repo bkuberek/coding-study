@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=../../../../../../schemas/meta.schema.json
+id: "0001"
+slug: bounded-blocking-queue
+title: Bounded Blocking Queue
+status: ready
+difficulty: medium
+track: concurrency
+kind: concurrent
+languages: [java, kotlin, python, typescript]
+signature:
+  class:
+    name: BoundedBlockingQueue
+    constructor: {params: [{name: capacity, type: int}]}
+    methods:
+      - {name: put, blocking: true, params: [{name: value, type: int}], returns: {type: void}}
+      - {name: take, blocking: true, params: [], returns: {type: int}}
+      - {name: size, params: [], returns: {type: int}}
+comparator: {type: ops}
+concurrency:
+  model: {java: threads, kotlin: threads, python: threads, typescript: async}
+  jvm_threads: [platform, virtual]
+  runs: 3
+  deadline_ms: 5000
+  broken:
+    - id: no-lock
+      name: Deque without a lock
+      bug: Spin-waits on the size, then mutates a shared deque with no mutual exclusion
+      languages: [java, kotlin, python]
+      caught_by: [s1]
+    - id: if-not-while
+      name: Wait guarded by if
+      bug: A woken worker does not re-check its condition, so another worker can invalidate it first
+      caught_by: [s2]
+approaches:
+  - {id: monitor, name: One lock with two conditions, role: optimal, time: "O(1) per op", space: "O(capacity)"}
+references:
+  leetcode: {number: 1188, url: "https://leetcode.com/problems/design-bounded-blocking-queue/"}
+estimate_minutes: 30

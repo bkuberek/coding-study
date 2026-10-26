@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0133"
+slug: word-break
+title: Word Break
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-1d]
+signature:
+  function:
+    name: wordBreak
+    params:
+      - {name: s, type: string}
+      - {name: wordDict, type: "string[]"}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Top-down try every word at each position, role: intermediate, time: "O(n * m * L)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: tabulation, name: Bottom-up reachable prefixes with a word set, role: optimal, time: "O(n * L^2)", space: "O(n + D)", time_class: "n", space_class: "n", oracle: true}
+  - {id: trie, name: Walk a trie of the words from each reachable position, role: optimal, time: "O(n * L + D)", space: "O(n + D)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n, the length of s, with at most 40 dictionary words of at most 8 letters
+  size_ladder: [100, 300, 1000, 2000]
+  expected_from: trie
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 139, url: "https://leetcode.com/problems/word-break/"}
+related: [decode-ways, coin-change]
+order: 8
+estimate_minutes: 25

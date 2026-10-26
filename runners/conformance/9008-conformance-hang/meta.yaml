@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9008"
+slug: conformance-hang
+title: "Conformance: an infinite loop times out and later cases still run"
+status: ready
+difficulty: easy
+track: practical
+kind: function
+signature:
+  function:
+    name: waitFor
+    params:
+      - {name: value, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: spins, name: "Loop forever when value is negative, else return value", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

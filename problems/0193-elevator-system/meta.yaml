@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0193"
+slug: elevator-system
+title: Elevator System
+status: ready
+difficulty: hard
+track: lld
+kind: design
+signature:
+  class:
+    name: ElevatorSystem
+    constructor: {params: [{name: cars, type: int}, {name: floors, type: int}]}
+    methods:
+      - {name: call, params: [{name: floor, type: int}, {name: direction, type: string}], returns: {type: int}}
+      - {name: select, params: [{name: car, type: int}, {name: floor, type: int}], returns: {type: bool}}
+      - {name: step, params: [{name: ticks, type: int}], returns: {type: void}}
+      - {name: status, params: [{name: car, type: int}], returns: {type: string}}
+      - {name: stops, params: [{name: car, type: int}], returns: {type: "list<int>"}}
+      - {name: setStrategy, params: [{name: name, type: string}], returns: {type: bool}}
+comparator: {type: ops}
+approaches:
+  - {id: look-dispatch, name: LOOK cars with a pluggable dispatch strategy, role: optimal, time: "O(c s) per call; O(c s) per tick", space: "O(c s)", time_class: "n", space_class: "n"}
+estimate_minutes: 60

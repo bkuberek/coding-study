@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0111"
+slug: bipartite-graph
+title: Is the Graph Bipartite
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [graphs, union-find]
+signature:
+  function:
+    name: isBipartite
+    params:
+      - {name: graph, type: "int[][]"}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: bfs-coloring, name: Two-color each component breadth-first, role: optimal, time: "O(V + E)", space: "O(V)", time_class: "n", space_class: "n", oracle: true}
+  - {id: union-find, name: Merge each node's neighbors into one group, role: optimal, time: "O((V + E)·α(V))", space: "O(V)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of nodes V, with E below 3V
+  size_ladder: [100, 1000, 10000]
+  expected_from: bfs-coloring
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 785, url: "https://leetcode.com/problems/is-graph-bipartite/"}
+related: [evaluate-division, clone-graph, number-of-islands]
+order: 7
+estimate_minutes: 20

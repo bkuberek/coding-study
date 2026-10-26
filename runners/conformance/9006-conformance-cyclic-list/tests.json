@@ -1,0 +1,9 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "acyclic", "input": {"head": [1, 2, 3]}, "expected": [1, 2, 3]},
+    {"id": "empty", "input": {"head": []}, "expected": []},
+    {"id": "cyclic", "input": {"head": {"values": [3, 2, 0, -4], "cycle_at": 1}}, "expected": null}
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"n": 4, "flights": [[0, 1, 50], [1, 3, 50], [0, 2, 20], [2, 1, 10], [0, 3, 200]], "src": 0, "dst": 3, "k": 1}, "expected": 100},
+    {"id": "ex2", "visible": true, "input": {"n": 4, "flights": [[0, 1, 50], [1, 3, 50], [0, 2, 20], [2, 1, 10], [0, 3, 200]], "src": 0, "dst": 3, "k": 2}, "expected": 80},
+    {"id": "h1", "input": {"n": 4, "flights": [[0, 1, 50], [1, 3, 50], [0, 2, 20], [2, 1, 10], [0, 3, 200]], "src": 0, "dst": 3, "k": 0}, "expected": 200, "note": "no stops: only the direct flight"},
+    {"id": "h2", "input": {"n": 3, "flights": [[0, 1, 5]], "src": 0, "dst": 2, "k": 2}, "expected": -1, "note": "no flight reaches the destination"},
+    {"id": "h3", "input": {"n": 3, "flights": [[0, 1, 5], [1, 2, 5]], "src": 0, "dst": 2, "k": 0}, "expected": -1, "note": "the only trip needs one stop"},
+    {"id": "h4", "input": {"n": 2, "flights": [], "src": 1, "dst": 0, "k": 1}, "expected": -1, "note": "no flights at all"},
+    {"id": "h5", "input": {"n": 10, "flights": [[0, 1, 1], [1, 2, 1], [2, 3, 1], [3, 4, 1], [4, 5, 1], [5, 6, 1], [6, 7, 1], [7, 8, 1], [8, 9, 1], [0, 9, 1000], [0, 5, 300]], "src": 0, "dst": 9, "k": 8}, "expected": 9, "note": "eight stops allowed: the cheap chain"},
+    {"id": "h6", "input": {"n": 10, "flights": [[0, 1, 1], [1, 2, 1], [2, 3, 1], [3, 4, 1], [4, 5, 1], [5, 6, 1], [6, 7, 1], [7, 8, 1], [8, 9, 1], [0, 9, 1000], [0, 5, 300]], "src": 0, "dst": 9, "k": 7}, "expected": 304, "note": "seven stops: the shortcut to city 5, then four cheap legs"},
+    {"id": "h7", "input": {"n": 10, "flights": [[0, 1, 1], [1, 2, 1], [2, 3, 1], [3, 4, 1], [4, 5, 1], [5, 6, 1], [6, 7, 1], [7, 8, 1], [8, 9, 1], [0, 9, 1000], [0, 5, 300]], "src": 0, "dst": 9, "k": 3}, "expected": 1000, "note": "three stops: back to the expensive direct flight"},
+    {"id": "h8", "input": {"n": 10, "flights": [[0, 1, 1], [1, 2, 1], [2, 3, 1], [3, 4, 1], [4, 5, 1], [5, 6, 1], [6, 7, 1], [7, 8, 1], [8, 9, 1], [0, 9, 1000], [0, 5, 300]], "src": 0, "dst": 9, "k": 4}, "expected": 304, "note": "exactly enough stops for the shortcut route"},
+    {"id": "h9", "input": {"n": 3, "flights": [[0, 1, 1], [1, 0, 1], [1, 2, 100], [0, 2, 500]], "src": 0, "dst": 2, "k": 2}, "expected": 101, "note": "a cycle between the first two cities does not help"},
+    {"id": "h10", "input": {"n": 4, "flights": [[1, 2, 3], [2, 3, 3], [3, 1, 3]], "src": 0, "dst": 3, "k": 3}, "expected": -1, "note": "the start city has no outgoing flights"},
+    {"id": "h11", "input": {"n": 5, "flights": [[0, 1, 10000], [1, 2, 10000], [2, 3, 10000], [3, 4, 10000]], "src": 0, "dst": 4, "k": 4}, "expected": 40000, "note": "maximum prices"},
+    {"id": "h12", "input": {"n": 5, "flights": [[0, 1, 3], [0, 2, 1], [2, 1, 1], [1, 4, 5], [2, 3, 1], [3, 4, 9]], "src": 0, "dst": 4, "k": 1}, "expected": 8, "note": "city 1 is cheaper through city 2, but that route has no stop left for the last flight"},
+    {"id": "h13", "input": {"n": 3, "flights": [[0, 2, 7], [2, 0, 1], [0, 1, 1], [1, 2, 1]], "src": 2, "dst": 1, "k": 1}, "expected": 2, "note": "the trip starts at a city other than 0"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "note": "10^4 flights over 1000 cities"},
+    {"id": "g2", "generate": {"n": 99, "seed": 5}, "note": "99 flights over 9 cities with a random k"},
+    {"id": "g3", "generate": {"n": 1000, "seed": 2}}
+  ]
+}

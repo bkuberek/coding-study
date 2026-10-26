@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0113"
+slug: shortest-path-binary-matrix
+title: Shortest Path in a Binary Grid
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [graphs]
+signature:
+  function:
+    name: shortestPathBinaryMatrix
+    params:
+      - {name: grid, type: "int[][]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: relaxation-sweeps, name: Relax every cell until no distance improves, role: brute, time: "O(n^4)", space: "O(n^2)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: bfs, name: Breadth-first search over eight directions, role: optimal, time: "O(n^2)", space: "O(n^2)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of cells (n·n)
+  size_ladder: [100, 400, 900, 1600, 2500]
+  expected_from: bfs
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1091, url: "https://leetcode.com/problems/shortest-path-in-binary-matrix/"}
+related: [rotting-oranges, shortest-path-with-removals, min-obstacle-removal]
+order: 9
+estimate_minutes: 20

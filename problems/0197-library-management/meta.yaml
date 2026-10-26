@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0197"
+slug: library-management
+title: Library Management
+status: ready
+difficulty: medium
+track: lld
+kind: design
+signature:
+  class:
+    name: Library
+    constructor: {params: [{name: loanDays, type: int}, {name: finePerDay, type: int}]}
+    methods:
+      - {name: addBook, params: [{name: isbn, type: string}, {name: copies, type: int}], returns: {type: int}}
+      - {name: addMember, params: [{name: memberId, type: string}, {name: maxLoans, type: int}], returns: {type: bool}}
+      - {name: checkout, params: [{name: day, type: long}, {name: memberId, type: string}, {name: isbn, type: string}], returns: {type: long}}
+      - {name: returnBook, params: [{name: day, type: long}, {name: memberId, type: string}, {name: isbn, type: string}], returns: {type: long}}
+      - {name: placeHold, params: [{name: day, type: long}, {name: memberId, type: string}, {name: isbn, type: string}], returns: {type: int}}
+      - {name: cancelHold, params: [{name: day, type: long}, {name: memberId, type: string}, {name: isbn, type: string}], returns: {type: bool}}
+      - {name: renew, params: [{name: day, type: long}, {name: memberId, type: string}, {name: isbn, type: string}], returns: {type: long}}
+      - {name: fines, params: [{name: day, type: long}, {name: memberId, type: string}], returns: {type: long}}
+      - {name: payFine, params: [{name: day, type: long}, {name: memberId, type: string}, {name: amount, type: long}], returns: {type: long}}
+      - {name: available, params: [{name: day, type: long}, {name: isbn, type: string}], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: holds-queue, name: Titles with reservations and a waiting queue, role: optimal, time: "O(1) per operation; O(h) per hold placement or cancellation", space: "O(t + m + l + h)", time_class: "n", space_class: "n"}
+estimate_minutes: 45

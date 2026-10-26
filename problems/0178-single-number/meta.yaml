@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0178"
+slug: single-number
+title: Single Number
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [bit-manipulation]
+signature:
+  function:
+    name: singleNumber
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: count-occurrences, name: Count every value in a hash map, role: brute, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: xor-fold, name: XOR all the values together, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: length of nums
+  size_ladder: [1000, 10000, 100000, 300000]
+  expected_from: xor-fold
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 136, url: "https://leetcode.com/problems/single-number/"}
+related: [missing-number, majority-element]
+order: 1
+estimate_minutes: 10

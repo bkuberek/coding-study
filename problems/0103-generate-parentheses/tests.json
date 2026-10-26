@@ -1,0 +1,17 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"n": 3}, "expected": ["((()))", "(()())", "(())()", "()(())", "()()()"]},
+    {"id": "ex2", "visible": true, "input": {"n": 1}, "expected": ["()"]},
+    {"id": "h1", "input": {"n": 2}, "expected": ["(())", "()()"], "note": "two pairs: side by side or nested"},
+    {"id": "h2", "input": {"n": 4}, "expected": ["(((())))", "((()()))", "((())())", "((()))()", "(()(()))", "(()()())", "(()())()", "(())(())", "(())()()", "()((()))", "()(()())", "()(())()", "()()(())", "()()()()"], "note": "14 strings"},
+    {"id": "h3", "input": {"n": 5}, "note": "42 strings"},
+    {"id": "h4", "input": {"n": 6}, "note": "132 strings"},
+    {"id": "h5", "input": {"n": 7}, "note": "429 strings"},
+    {"id": "h6", "input": {"n": 8}, "note": "1430 strings"},
+    {"id": "h7", "input": {"n": 9}, "note": "4862 strings"},
+    {"id": "h8", "input": {"n": 10}, "note": "maximum: 16796 strings"},
+    {"id": "g1", "generate": {"n": 8, "seed": 103}, "note": "largest generated size"}
+  ]
+}

@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0048"
+slug: time-based-kv-store
+title: Time-Based Key-Value Store
+status: ready
+difficulty: medium
+track: dsa
+kind: design
+patterns: [binary-search, arrays-hashing]
+signature:
+  class:
+    name: TimeMap
+    constructor: {params: []}
+    methods:
+      - {name: set, params: [{name: key, type: string}, {name: value, type: string}, {name: timestamp, type: int}], returns: {type: void}}
+      - {name: get, params: [{name: key, type: string}, {name: timestamp, type: int}], returns: {type: string}}
+comparator: {type: ops}
+approaches:
+  - {id: scan-history, name: Scan the key's history from the newest entry, role: brute, time: "O(k) per get", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: binary-search-history, name: Binary search in the key's history, role: optimal, time: "O(log k) per get", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: number of calls (at most 4 keys, so each history grows with n)
+  size_ladder: [1000, 3000, 10000, 20000]
+  expected_from: binary-search-history
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 981, url: "https://leetcode.com/problems/time-based-key-value-store/"}
+related: [binary-search, first-last-position]
+order: 6
+estimate_minutes: 25

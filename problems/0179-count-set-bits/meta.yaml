@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0179"
+slug: count-set-bits
+title: Count Set Bits
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [bit-manipulation]
+signature:
+  function:
+    name: hammingWeight
+    params:
+      - {name: n, type: long}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: check-every-bit, name: Test each of the 32 bit positions, role: brute, time: "O(32)", space: "O(1)", time_class: "1", space_class: "1", oracle: true}
+  - {id: clear-lowest-bit, name: Clear the lowest set bit until none is left, role: optimal, time: "O(k)", space: "O(1)", time_class: "1", space_class: "1"}
+perf:
+  size_param: "unused: the input is one 32-bit word; above 32, every size draws a word with 16 set bits"
+  size_ladder: [33, 50, 75, 100, 150, 200, 300, 500, 1000]
+  expected_from: clear-lowest-bit
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 191, url: "https://leetcode.com/problems/number-of-1-bits/"}
+related: [counting-bits, single-number]
+order: 2
+estimate_minutes: 10

@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0135"
+slug: stock-with-cooldown
+title: Stock Trading With Cooldown
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-1d]
+signature:
+  function:
+    name: maxProfit
+    params:
+      - {name: prices, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Top-down over day and holding state, role: intermediate, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: tabulation, name: Bottom-up table of three daily states, role: intermediate, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: state-machine, name: "Rolling hold, sold and rest totals", role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n, the number of days
+  size_ladder: [100, 300, 1000, 2000]
+  expected_from: state-machine
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 309, url: "https://leetcode.com/problems/best-time-to-buy-and-sell-stock-with-cooldown/"}
+related: [best-time-to-buy-sell-stock, house-robber]
+order: 10
+estimate_minutes: 30

@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0004"
+slug: contains-duplicate
+title: Contains Duplicate
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [arrays-hashing]
+signature:
+  function:
+    name: containsDuplicate
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Compare every pair, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: sorting, name: Sort a copy and compare neighbors, role: intermediate, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+  - {id: hash-set, name: Hash set of values seen so far, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n
+  size_ladder: [1000, 3000, 10000, 30000]
+  expected_from: hash-set
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 217, url: "https://leetcode.com/problems/contains-duplicate/"}
+related: [valid-anagram, two-sum, longest-consecutive-sequence]
+estimate_minutes: 10

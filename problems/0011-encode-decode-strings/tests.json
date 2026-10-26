@@ -1,0 +1,24 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"strs": ["red", "green", "blue"]}, "expected": ["red", "green", "blue"]},
+    {"id": "ex2", "visible": true, "input": {"strs": ["2#x", "", "a,b\\c"]}, "expected": ["2#x", "", "a,b\\c"]},
+    {"id": "h1", "input": {"strs": []}, "expected": [], "note": "empty list"},
+    {"id": "h2", "input": {"strs": [""]}, "expected": [""], "note": "one empty string, which must differ from an empty list"},
+    {"id": "h3", "input": {"strs": ["", "", ""]}, "expected": ["", "", ""], "note": "only empty strings"},
+    {"id": "h4", "input": {"strs": ["#"]}, "expected": ["#"], "note": "the length marker alone"},
+    {"id": "h5", "input": {"strs": ["3#abc", "#3"]}, "expected": ["3#abc", "#3"], "note": "strings that look like length prefixes"},
+    {"id": "h6", "input": {"strs": ["\\", "\\\\", "\\,"]}, "expected": ["\\", "\\\\", "\\,"], "note": "backslashes, alone and before a comma"},
+    {"id": "h7", "input": {"strs": ["a,b", ",", ",,"]}, "expected": ["a,b", ",", ",,"], "note": "commas everywhere"},
+    {"id": "h8", "input": {"strs": ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]}, "expected": ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"], "note": "maximum string length"},
+    {"id": "h9", "input": {"strs": ["12", "#12#", "0#", "00"]}, "expected": ["12", "#12#", "0#", "00"], "note": "digits around the marker"},
+    {"id": "h10", "input": {"strs": ["line\nbreak", "tab\there", " "]}, "expected": ["line\nbreak", "tab\there", " "], "note": "newline, tab and a single space"},
+    {"id": "h11", "input": {"strs": ["{\"key\": [1, 2]}", "'single'", "\"\""]}, "expected": ["{\"key\": [1, 2]}", "'single'", "\"\""], "note": "quotes and JSON-looking text"},
+    {"id": "h12", "input": {"strs": ["1", "22", "333", "4444", "55555", "666666", "7777777", "88888888", "999999999", "10101010101"]}, "expected": ["1", "22", "333", "4444", "55555", "666666", "7777777", "88888888", "999999999", "10101010101"], "note": "lengths with two digits"},
+    {"id": "h13", "input": {"strs": ["", "#", "", "##", ""]}, "expected": ["", "#", "", "##", ""], "note": "empty strings around markers"},
+    {"id": "h14", "input": {"strs": ["######################################################################################################################################################~", "~,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,"]}, "expected": ["######################################################################################################################################################~", "~,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,"], "note": "long runs of separator characters"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 2}, "note": "large input: about 6 * 10^5 characters"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 4}}
+  ]
+}

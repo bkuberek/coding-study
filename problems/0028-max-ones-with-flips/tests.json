@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1], "k": 2}, "expected": 7},
+    {"id": "ex2", "visible": true, "input": {"nums": [0, 0, 1, 0], "k": 0}, "expected": 1},
+    {"id": "h1", "input": {"nums": [1], "k": 0}, "expected": 1, "note": "a single one"},
+    {"id": "h2", "input": {"nums": [0], "k": 0}, "expected": 0, "note": "a single zero, no flips"},
+    {"id": "h3", "input": {"nums": [0], "k": 1}, "expected": 1, "note": "a single zero, one flip"},
+    {"id": "h4", "input": {"nums": [0, 0, 0], "k": 0}, "expected": 0, "note": "all zeros, no flips: the answer is 0"},
+    {"id": "h5", "input": {"nums": [0, 0, 0], "k": 2}, "expected": 2, "note": "all zeros, fewer flips than zeros"},
+    {"id": "h6", "input": {"nums": [1, 1, 1], "k": 0}, "expected": 3, "note": "all ones"},
+    {"id": "h7", "input": {"nums": [1, 0, 1, 0, 1], "k": 5}, "expected": 5, "note": "more flips than zeros"},
+    {"id": "h8", "input": {"nums": [1, 1, 0, 1, 1, 0, 1, 1, 1], "k": 1}, "expected": 6, "note": "the later zero is the better flip"},
+    {"id": "h9", "input": {"nums": [0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0], "k": 2}, "expected": 9, "note": "flips at the edges of the window"},
+    {"id": "h10", "input": {"nums": [1, 0, 0, 1, 0, 0, 1], "k": 0}, "expected": 1, "note": "no flips: isolated ones"},
+    {"id": "h11", "input": {"nums": [0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1], "k": 3}, "expected": 9, "note": "the window ends at the last element"},
+    {"id": "h12", "input": {"nums": [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1], "k": 3}, "expected": 7, "note": "alternating bits"},
+    {"id": "h13", "input": {"nums": [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1], "k": 2}, "expected": 7, "note": "a block of zeros before a block of ones"},
+    {"id": "h14", "input": {"nums": [1, 0, 0, 0, 1], "k": 5}, "expected": 5, "note": "the budget equals the length"},
+    {"id": "h15", "input": {"nums": [1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1], "k": 1}, "expected": 7, "note": "the window must give up the first zero before using its flip again"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "large input: extending from every start is about 10^7 steps here"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 3}, "hang_guard_ms": 30000, "note": "large input"}
+  ]
+}

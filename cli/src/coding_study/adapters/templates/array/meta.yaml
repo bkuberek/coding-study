@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "{{id}}"
+slug: {{slug}}
+title: {{title_yaml}}
+status: draft
+difficulty: {{difficulty}}
+track: {{track}}
+kind: function
+{{patterns}}
+signature:
+  function:
+    name: {{function_name}}
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: k, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1", oracle: true}

@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0077"
+slug: tree-from-preorder-inorder
+title: Tree From Preorder and Inorder
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [trees, arrays-hashing]
+signature:
+  function:
+    name: buildTree
+    params:
+      - {name: preorder, type: "int[]"}
+      - {name: inorder, type: "int[]"}
+    returns: {type: TreeNode}
+comparator: {type: exact}
+approaches:
+  - {id: linear-search, name: Recursive split with a linear search for each root, role: brute, time: "O(n * h)", space: "O(h)", time_class: "n log n", space_class: "log n", oracle: true}
+  - {id: index-map, name: Value-to-position map and a pre-order cursor, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of nodes
+  size_ladder: [1000, 10000, 100000]
+  expected_from: index-map
+references:
+  leetcode: {number: 105, url: "https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/"}
+related: [serialize-binary-tree, level-order-traversal]
+order: 11
+estimate_minutes: 25

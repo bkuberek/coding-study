@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0047"
+slug: search-2d-matrix
+title: Search a Sorted Matrix
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [binary-search]
+signature:
+  function:
+    name: searchMatrix
+    params:
+      - {name: matrix, type: "int[][]"}
+      - {name: target, type: int}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: full-scan, name: Check every cell, role: brute, time: "O(m * n)", space: "O(1)", time_class: "n", space_class: "1", oracle: true}
+  - {id: staircase, name: Walk from the top-right corner, role: intermediate, time: "O(m + n)", space: "O(1)", time_class: "sqrt n", space_class: "1"}
+  - {id: flattened, name: Binary search over the row-major order, role: optimal, time: "O(log(m * n))", space: "O(1)", time_class: "log n", space_class: "1"}
+perf:
+  size_param: number of cells (rows and columns about sqrt(n) each)
+  size_ladder: [1000, 3000, 10000, 30000, 100000]
+  expected_from: flattened
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 74, url: "https://leetcode.com/problems/search-a-2d-matrix/"}
+related: [binary-search]
+order: 5
+estimate_minutes: 20

@@ -1,0 +1,190 @@
+diff --git a/cmd/api/main.go b/cmd/api/main.go
+--- a/cmd/api/main.go
++++ b/cmd/api/main.go
+@@ -6,17 +6,20 @@
+ 
+ 	"example.com/platform/internal/config"
+ 	"example.com/platform/internal/handlers"
++	"example.com/platform/internal/metering"
+ 	"example.com/platform/internal/storage"
+ )
+ 
+ func main() {
+ 	cfg := config.MustLoad()
+ 	db := storage.MustOpen(cfg.DatabaseURL)
++	usage := metering.NewCounter(storage.NewUsageStore(db))
+ 
+ 	mux := http.NewServeMux()
+ 	mux.Handle("/v1/", handlers.API(db))
+ 	mux.Handle("/healthz", handlers.Health(db))
++	mux.Handle("/internal/usage", metering.UsageHandler(usage))
+ 
+-	server := &http.Server{Addr: cfg.Addr, Handler: mux}
++	server := &http.Server{Addr: cfg.Addr, Handler: metering.Middleware(usage, mux)}
+ 	log.Fatal(server.ListenAndServe())
+ }
+diff --git a/internal/metering/counter.go b/internal/metering/counter.go
+new file mode 100644
+--- /dev/null
++++ b/internal/metering/counter.go
+@@ -0,0 +1,86 @@
++package metering
++
++import (
++	"context"
++	"log"
++	"sync"
++	"time"
++)
++
++// UsageStore persists billable usage.
++type UsageStore interface {
++	EnsureTenant(ctx context.Context, tenant string) error
++	AddUsage(ctx context.Context, tenant string, units int64) error
++}
++
++// Counter accumulates billable API calls per tenant in memory and
++// flushes them to the store every 10 seconds.
++type Counter struct {
++	mu     sync.RWMutex
++	counts map[string]int64
++	store  UsageStore
++}
++
++func NewCounter(store UsageStore) *Counter {
++	c := &Counter{counts: make(map[string]int64), store: store}
++	go c.flushLoop()
++	return c
++}
++
++// Record adds n billable units for tenant. It runs on every API request.
++func (c *Counter) Record(ctx context.Context, tenant string, n int64) error {
++	c.mu.RLock()
++	_, known := c.counts[tenant]
++	c.mu.RUnlock()
++
++	if !known {
++		if err := c.store.EnsureTenant(ctx, tenant); err != nil {
++			return err
++		}
++		c.mu.Lock()
++		c.counts[tenant] = 0
++		c.mu.Unlock()
++	}
++
++	c.counts[tenant] += n
++	return nil
++}
++
++// Pending returns the units recorded for tenant since the last flush.
++func (c Counter) Pending(tenant string) int64 {
++	c.mu.RLock()
++	defer c.mu.RUnlock()
++	return c.counts[tenant]
++}
++
++// Snapshot returns the pending units of every tenant.
++func (c *Counter) Snapshot() map[string]int64 {
++	c.mu.RLock()
++	defer c.mu.RUnlock()
++	return c.counts
++}
++
++func (c *Counter) flushLoop() {
++	for range time.Tick(10 * time.Second) {
++		if err := c.Flush(context.Background()); err != nil {
++			log.Printf("usage flush failed: %v", err)
++		}
++	}
++}
++
++// Flush writes pending units to the store and resets them.
++func (c *Counter) Flush(ctx context.Context) error {
++	c.mu.Lock()
++	defer c.mu.Unlock()
++
++	for tenant, n := range c.counts {
++		if n == 0 {
++			continue
++		}
++		if err := c.store.AddUsage(ctx, tenant, n); err != nil {
++			return err
++		}
++		c.counts[tenant] = 0
++	}
++	return nil
++}
+diff --git a/internal/metering/http.go b/internal/metering/http.go
+new file mode 100644
+--- /dev/null
++++ b/internal/metering/http.go
+@@ -0,0 +1,29 @@
++package metering
++
++import (
++	"encoding/json"
++	"net/http"
++)
++
++// Middleware records one billable unit for the calling tenant on every request.
++func Middleware(c *Counter, next http.Handler) http.Handler {
++	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		tenant := r.Header.Get("X-Tenant-ID")
++		if err := c.Record(r.Context(), tenant, 1); err != nil {
++			http.Error(w, "metering unavailable", http.StatusInternalServerError)
++			return
++		}
++		next.ServeHTTP(w, r)
++	})
++}
++
++// UsageHandler serves pending usage to the support dashboard.
++func UsageHandler(c *Counter) http.Handler {
++	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		if tenant := r.URL.Query().Get("tenant"); tenant != "" {
++			json.NewEncoder(w).Encode(map[string]int64{tenant: c.Pending(tenant)})
++			return
++		}
++		json.NewEncoder(w).Encode(c.Snapshot())
++	})
++}
+diff --git a/internal/metering/counter_test.go b/internal/metering/counter_test.go
+new file mode 100644
+--- /dev/null
++++ b/internal/metering/counter_test.go
+@@ -0,0 +1,35 @@
++package metering
++
++import (
++	"context"
++	"testing"
++	"time"
++)
++
++type fakeStore struct {
++	usage map[string]int64
++}
++
++func (f *fakeStore) EnsureTenant(ctx context.Context, tenant string) error { return nil }
++
++func (f *fakeStore) AddUsage(ctx context.Context, tenant string, units int64) error {
++	f.usage[tenant] += units
++	return nil
++}
++
++func TestRecordAndFlush(t *testing.T) {
++	store := &fakeStore{usage: map[string]int64{}}
++	c := NewCounter(store)
++
++	for i := 0; i < 100; i++ {
++		if err := c.Record(context.Background(), "acme", 1); err != nil {
++			t.Fatal(err)
++		}
++	}
++
++	time.Sleep(11 * time.Second)
++
++	if got := store.usage["acme"]; got != 100 {
++		t.Fatalf("usage = %d, want 100", got)
++	}
++}

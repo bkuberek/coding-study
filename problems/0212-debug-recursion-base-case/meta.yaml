@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0212"
+slug: debug-recursion-base-case
+title: "Debug: Recursion Base Case"
+status: ready
+difficulty: medium
+track: debugging
+kind: function
+stub: buggy
+signature:
+  function:
+    name: hasPathSum
+    params:
+      - {name: root, type: TreeNode}
+      - {name: target, type: int}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: leaf-base-case, name: Leaf as the base case, role: optimal, time: "O(n)", space: "O(h)", time_class: "n", space_class: "n"}
+related: [max-depth-binary-tree, debug-mutable-default-argument]
+estimate_minutes: 15

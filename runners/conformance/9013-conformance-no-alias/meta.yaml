@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9013"
+slug: conformance-no-alias
+title: "Conformance: no_alias_with rejects returning the input"
+status: ready
+difficulty: easy
+track: practical
+kind: function
+signature:
+  function:
+    name: copyList
+    params:
+      - {name: head, type: ListNode}
+    returns: {type: ListNode, no_alias_with: head}
+comparator: {type: exact}
+approaches:
+  - {id: deep-copy, name: "Build a new list with the same values", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: returns-input, name: "Return head unchanged", role: brute, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

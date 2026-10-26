@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0018"
+slug: three-sum
+title: Three Sum
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [two-pointers, arrays-hashing]
+signature:
+  function:
+    name: threeSum
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: "list<list<int>>"}
+comparator: {type: unordered-nested}
+approaches:
+  - {id: brute-force, name: Check every triple of distinct values, role: brute, time: "O(n^3)", space: "O(n)", time_class: "n^3", space_class: "n", oracle: true}
+  - {id: hash-set, name: Fix one value and run two-sum with a hash set, role: intermediate, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n"}
+  - {id: two-pointers, name: Sort and close in from both ends, role: optimal, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n"}
+perf:
+  size_param: length of nums
+  size_ladder: [100, 200, 500, 1000]
+  expected_from: two-pointers
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 15, url: "https://leetcode.com/problems/3sum/"}
+related: [two-sum, two-sum-sorted, container-with-most-water]
+order: 4
+estimate_minutes: 30

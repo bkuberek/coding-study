@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0134"
+slug: longest-palindromic-substring
+title: Longest Palindromic Substring
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-1d, two-pointers]
+signature:
+  function:
+    name: longestPalindrome
+    params:
+      - {name: s, type: string}
+    returns: {type: string}
+comparator: {type: checker}
+approaches:
+  - {id: interval-table, name: Table of palindromic intervals by length, role: intermediate, time: "O(n^2)", space: "O(n^2)", time_class: "n^2", space_class: "n^2", oracle: true}
+  - {id: expand-around-center, name: Expand from every center, role: optimal, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1"}
+  - {id: manacher, name: "Manacher's algorithm", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n, the length of s
+  size_ladder: [100, 200, 500, 1000]
+  expected_from: manacher
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 5, url: "https://leetcode.com/problems/longest-palindromic-substring/"}
+related: [valid-palindrome, almost-palindrome]
+order: 9
+estimate_minutes: 30

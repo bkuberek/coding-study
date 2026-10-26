@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [2, 3, -1, 3, 5], "k": 5}, "expected": 3},
+    {"id": "ex2", "visible": true, "input": {"nums": [0, 4, 0], "k": 4}, "expected": 4},
+    {"id": "h1", "input": {"nums": [7], "k": 7}, "expected": 1, "note": "single element equal to k"},
+    {"id": "h2", "input": {"nums": [7], "k": -7}, "expected": 0, "note": "single element, no answer"},
+    {"id": "h3", "input": {"nums": [0, 0, 0, 0, 0], "k": 0}, "expected": 15, "note": "all zeros: every subarray counts"},
+    {"id": "h4", "input": {"nums": [1, -1, 1, -1], "k": 0}, "expected": 4, "note": "k = 0 with cancelling values"},
+    {"id": "h5", "input": {"nums": [-2, -3, 4, -1], "k": -5}, "expected": 1, "note": "negative k"},
+    {"id": "h6", "input": {"nums": [1, 2, 3], "k": 100}, "expected": 0, "note": "no subarray reaches k"},
+    {"id": "h7", "input": {"nums": [1000, 1000, -1000, 1000], "k": 2000}, "expected": 2, "note": "extreme values"},
+    {"id": "h8", "input": {"nums": [3, 3, 3, 3], "k": 6}, "expected": 3, "note": "all values equal"},
+    {"id": "h9", "input": {"nums": [1, 2, 3, 4, 5], "k": 15}, "expected": 1, "note": "only the whole array"},
+    {"id": "h10", "input": {"nums": [5, -5, 5, -5, 5], "k": 5}, "expected": 6, "note": "the same prefix sum repeats"},
+    {"id": "h11", "input": {"nums": [-1000, -1000, -1000], "k": -3000}, "expected": 1, "note": "negative values only"},
+    {"id": "h12", "input": {"nums": [4, 1, 2, 3, 0, 5], "k": 5}, "expected": 5, "note": "matches of several lengths, including one after a zero"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "large input: extending from every start is 5 * 10^7 steps here"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 5}, "hang_guard_ms": 30000, "note": "large input"},
+    {"id": "g3", "generate": {"n": 1000, "seed": 2}}
+  ]
+}

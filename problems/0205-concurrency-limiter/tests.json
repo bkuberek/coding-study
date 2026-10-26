@@ -1,0 +1,79 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true,
+     "ops": ["ConcurrencyLimiter", "acquire", "available", "acquire", "available", "tryAcquire", "release", "available"],
+     "args": [[2], [], [], [], [], [], [], []],
+     "expected": [null, null, 1, null, 0, false, null, 1]},
+    {"id": "ex2", "visible": true,
+     "ops": ["ConcurrencyLimiter", "tryAcquire", "tryAcquire", "release", "tryAcquire", "release", "available"],
+     "args": [[1], [], [], [], [], [], []],
+     "expected": [null, true, false, null, true, null, 1]},
+    {"id": "h1", "note": "a new limiter has every permit free",
+     "ops": ["ConcurrencyLimiter", "available"],
+     "args": [[3], []],
+     "expected": [null, 3]},
+    {"id": "h2", "note": "take every permit, then return them all",
+     "ops": ["ConcurrencyLimiter", "acquire", "acquire", "acquire", "available", "release", "release", "release", "available"],
+     "args": [[3], [], [], [], [], [], [], [], []],
+     "expected": [null, null, null, null, 0, null, null, null, 3]},
+    {"id": "h3", "note": "tryAcquire succeeds up to the limit, then fails",
+     "ops": ["ConcurrencyLimiter", "tryAcquire", "tryAcquire", "tryAcquire", "available"],
+     "args": [[2], [], [], [], []],
+     "expected": [null, true, true, false, 0]},
+    {"id": "h4", "note": "acquire and tryAcquire share the same permits",
+     "ops": ["ConcurrencyLimiter", "acquire", "tryAcquire", "release", "tryAcquire", "release", "acquire", "available"],
+     "args": [[1], [], [], [], [], [], [], []],
+     "expected": [null, null, false, null, true, null, null, 0]},
+    {"id": "h5", "note": "large limit",
+     "ops": ["ConcurrencyLimiter", "available", "acquire", "tryAcquire", "available"],
+     "args": [[1000], [], [], [], []],
+     "expected": [null, 1000, null, true, 998]},
+    {"id": "h6", "note": "a failed tryAcquire changes nothing",
+     "ops": ["ConcurrencyLimiter", "acquire", "tryAcquire", "tryAcquire", "available", "release", "available"],
+     "args": [[1], [], [], [], [], [], []],
+     "expected": [null, null, false, false, 0, null, 1]},
+    {"id": "s1", "note": "12 workers share 3 permits while an observer reads the free count",
+     "stress": {
+       "seed": 1000,
+       "deadline_ms": 20000,
+       "perturb": {"yield_probability": 0.3},
+       "setup": {"ops": ["ConcurrencyLimiter"], "args": [[3]]},
+       "workers": [
+         {"group": "worker", "count": 12, "repeat": 300,
+          "steps": [{"op": "acquire", "args": []},
+                    {"op": "@enter", "args": ["slot", "shared"]},
+                    {"op": "@pause", "args": [30]},
+                    {"op": "@exit", "args": ["slot"]},
+                    {"op": "release", "args": []}]},
+         {"group": "observer", "count": 1, "repeat": 300,
+          "steps": [{"op": "available", "args": []}, {"op": "@pause", "args": [1]}]}
+       ],
+       "final": {"ops": ["available"], "args": [[]], "expected": [3]},
+       "invariants": [
+         {"type": "section", "name": "slot", "max_occupancy": 3, "min_occupancy": 3},
+         {"type": "bounds", "values": {"op": "available"}, "min": 0, "max": 3}
+       ]
+     }},
+    {"id": "s2", "note": "limit 1 makes the limiter a mutex for 6 workers",
+     "stress": {
+       "seed": 2000,
+       "deadline_ms": 10000,
+       "perturb": {"yield_probability": 0.3},
+       "setup": {"ops": ["ConcurrencyLimiter"], "args": [[1]]},
+       "workers": [
+         {"group": "worker", "count": 6, "repeat": 400,
+          "steps": [{"op": "acquire", "args": []},
+                    {"op": "@enter", "args": ["slot", "exclusive"]},
+                    {"op": "@pause", "args": [10]},
+                    {"op": "@exit", "args": ["slot"]},
+                    {"op": "release", "args": []}]}
+       ],
+       "final": {"ops": ["available"], "args": [[]], "expected": [1]},
+       "invariants": [
+         {"type": "section", "name": "slot", "max_violations": 0, "max_occupancy": 1}
+       ]
+     }}
+  ]
+}

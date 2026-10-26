@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0025"
+slug: permutation-in-string
+title: Permutation in String
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [sliding-window, arrays-hashing]
+signature:
+  function:
+    name: checkInclusion
+    params:
+      - {name: pattern, type: string}
+      - {name: text, type: string}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: sort-windows, name: Sort every window and compare, role: brute, time: "O(n * m log m)", space: "O(m)", time_class: "n^2 log n", space_class: "n", oracle: true}
+  - {id: window-counts, name: Slide a window and compare letter counts, role: intermediate, time: "O(a * n + m)", space: "O(a)", time_class: "n", space_class: "1"}
+  - {id: match-count, name: Slide a window and track balanced letters, role: optimal, time: "O(n + m)", space: "O(a)", time_class: "n", space_class: "1"}
+perf:
+  size_param: length of text, with the pattern between n/8 and n/4 letters
+  size_ladder: [1000, 2000, 5000, 10000]
+  expected_from: match-count
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 567, url: "https://leetcode.com/problems/permutation-in-string/"}
+related: [minimum-window-substring, longest-substring-without-repeats]
+order: 3
+estimate_minutes: 25

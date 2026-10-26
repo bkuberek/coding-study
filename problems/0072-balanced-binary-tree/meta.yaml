@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0072"
+slug: balanced-binary-tree
+title: Balanced Binary Tree
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [trees]
+signature:
+  function:
+    name: isBalanced
+    params:
+      - {name: root, type: TreeNode}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: top-down, name: Compare subtree heights at every node, role: brute, time: "O(n * h)", space: "O(h)", time_class: "n log n", space_class: "log n", oracle: true}
+  - {id: bottom-up, name: Post-order heights with an early exit, role: optimal, time: "O(n)", space: "O(h)", time_class: "n", space_class: "log n"}
+perf:
+  size_param: number of nodes
+  size_ladder: [1000, 10000, 100000]
+  expected_from: bottom-up
+references:
+  leetcode: {number: 110, url: "https://leetcode.com/problems/balanced-binary-tree/"}
+related: [max-depth-binary-tree, diameter-binary-tree]
+order: 6
+estimate_minutes: 15

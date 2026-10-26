@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0165"
+slug: min-obstacle-removal
+title: Minimum Obstacle Removal
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [advanced-graphs, graphs]
+signature:
+  function:
+    name: minimumObstacles
+    params:
+      - {name: grid, type: "int[][]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: dijkstra, name: Dijkstra with a binary heap on removals, role: intermediate, time: "O(m·n·log(m·n))", space: "O(m·n)", time_class: "n log n", space_class: "n", oracle: true}
+  - {id: zero-one-bfs, name: "0-1 breadth-first search with a deque", role: optimal, time: "O(m·n)", space: "O(m·n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of cells (m·n)
+  size_ladder: [1000, 10000, 100000]
+  expected_from: zero-one-bfs
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 2290, url: "https://leetcode.com/problems/minimum-obstacle-removal-to-reach-corner/"}
+related: [shortest-path-with-removals, swim-rising-water, network-delay-time]
+order: 8
+estimate_minutes: 30

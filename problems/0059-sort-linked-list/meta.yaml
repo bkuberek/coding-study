@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0059"
+slug: sort-linked-list
+title: Sort a Linked List
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [linked-list, two-pointers]
+signature:
+  function:
+    name: sortList
+    params:
+      - {name: head, type: ListNode}
+    returns: {type: ListNode}
+comparator: {type: exact}
+approaches:
+  - {id: insertion-sort, name: Insert each node into a sorted prefix, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1"}
+  - {id: array-sort, name: "Copy the values out, sort them, write them back", role: intermediate, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n", oracle: true}
+  - {id: top-down-merge, name: "Merge sort: split at the middle, sort halves recursively", role: optimal, time: "O(n log n)", space: "O(log n)", time_class: "n log n", space_class: "log n"}
+  - {id: bottom-up-merge, name: "Merge sort: merge runs of doubling width", role: optimal, time: "O(n log n)", space: "O(1)", time_class: "n log n", space_class: "1"}
+perf:
+  size_param: number of nodes
+  size_ladder: [100, 1000, 10000]
+  expected_from: top-down-merge
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 148, url: "https://leetcode.com/problems/sort-list/"}
+related: [merge-two-sorted-lists, merge-k-sorted-lists, reorder-list]
+order: 7
+estimate_minutes: 30

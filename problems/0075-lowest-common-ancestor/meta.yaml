@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0075"
+slug: lowest-common-ancestor
+title: Lowest Common Ancestor
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [trees]
+signature:
+  function:
+    name: lowestCommonAncestor
+    params:
+      - {name: root, type: TreeNode}
+      - {name: p, type: TreeNode, ref_of: root}
+      - {name: q, type: TreeNode, ref_of: root}
+    returns: {type: TreeNode, as: value}
+comparator: {type: exact}
+approaches:
+  - {id: parent-map, name: Parent links and the set of ancestors of p, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: recursive, name: Post-order search that reports what each subtree contains, role: optimal, time: "O(n)", space: "O(h)", time_class: "n", space_class: "log n", oracle: true}
+perf:
+  size_param: number of nodes
+  size_ladder: [1000, 10000, 100000]
+  expected_from: recursive
+references:
+  leetcode: {number: 236, url: "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/"}
+related: [validate-bst, tree-from-preorder-inorder]
+order: 9
+estimate_minutes: 20

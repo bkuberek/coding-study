@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9007"
+slug: conformance-missing-symbol
+title: "Conformance: the target function is missing"
+status: ready
+difficulty: easy
+track: practical
+kind: function
+signature:
+  function:
+    name: echoNumber
+    params:
+      - {name: value, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: misnamed, name: "Define echoNumberTypo instead of echoNumber", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

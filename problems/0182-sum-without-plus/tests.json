@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"a": 5, "b": 6}, "expected": 11},
+    {"id": "ex2", "visible": true, "input": {"a": -8, "b": 3}, "expected": -5},
+    {"id": "h1", "input": {"a": 0, "b": 0}, "expected": 0, "note": "both zero"},
+    {"id": "h2", "input": {"a": 0, "b": -17}, "expected": -17, "note": "adding to zero"},
+    {"id": "h3", "input": {"a": 1, "b": -1}, "expected": 0, "note": "the carry runs through all 32 bits and falls off"},
+    {"id": "h4", "input": {"a": -1, "b": -1}, "expected": -2, "note": "two negatives"},
+    {"id": "h5", "input": {"a": 2147483647, "b": -2147483648}, "expected": -1, "note": "the extremes cancel to -1"},
+    {"id": "h6", "input": {"a": 2147483642, "b": 5}, "expected": 2147483647, "note": "the sum reaches the largest int"},
+    {"id": "h7", "input": {"a": -2147483639, "b": -9}, "expected": -2147483648, "note": "the sum reaches the smallest int"},
+    {"id": "h8", "input": {"a": 2147418112, "b": 65535}, "expected": 2147483647, "note": "no overlapping bits: a single XOR"},
+    {"id": "h9", "input": {"a": 1431655765, "b": 715827882}, "expected": 2147483647, "note": "alternating bits that fill the word"},
+    {"id": "h10", "input": {"a": 1073741823, "b": 1}, "expected": 1073741824, "note": "a carry chain of 30 bits"},
+    {"id": "h11", "input": {"a": -1000000000, "b": 999999999}, "expected": -1, "note": "large values of opposite sign"},
+    {"id": "h12", "input": {"a": 123456789, "b": 987654321}, "expected": 1111111110, "note": "ordinary positive values"},
+    {"id": "g1", "generate": {"n": 256, "seed": 1}, "note": "random 32-bit operands"},
+    {"id": "g2", "generate": {"n": 10, "seed": 2}}
+  ]
+}

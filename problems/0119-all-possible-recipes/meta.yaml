@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0119"
+slug: all-possible-recipes
+title: All Possible Recipes
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [topological-sort, graphs]
+signature:
+  function:
+    name: findAllRecipes
+    params:
+      - {name: recipes, type: "string[]"}
+      - {name: ingredients, type: "list<list<string>>"}
+      - {name: supplies, type: "string[]"}
+    returns: {type: "list<string>"}
+comparator: {type: unordered}
+approaches:
+  - {id: sweep-until-stable, name: Sweep over the recipes until a sweep prepares nothing new, role: brute, time: "O(R * I + S)", space: "O(R + I + S)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: kahn, name: Queue available items and count each recipe's missing ingredients, role: optimal, time: "O(R + I + S)", space: "O(R + I + S)", time_class: "n", space_class: "n"}
+  - {id: memo-dfs, name: Memoized depth-first search that treats a loop as impossible, role: optimal, time: "O(R + I + S)", space: "O(R + I + S)", time_class: "n", space_class: "n"}
+perf:
+  size_param: R = recipes.length, with chained ingredients
+  size_ladder: [125, 250, 500, 1000]
+  expected_from: kahn
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 2115, url: "https://leetcode.com/problems/find-all-possible-recipes-from-given-supplies/"}
+related: [course-schedule, parallel-courses]
+order: 3
+estimate_minutes: 25

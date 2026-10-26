@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0082"
+slug: serialize-binary-tree
+title: Serialize and Deserialize a Binary Tree
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [trees]
+signature:
+  function:
+    name: serializeDeserialize
+    params:
+      - {name: root, type: TreeNode}
+    returns: {type: TreeNode, no_alias_with: root}
+comparator: {type: exact}
+approaches:
+  - {id: preorder-markers, name: Pre-order values with a marker for every missing child, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: level-order, name: Breadth-first values with a marker for every missing child, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of nodes
+  size_ladder: [1000, 10000, 100000]
+  expected_from: preorder-markers
+references:
+  leetcode: {number: 297, url: "https://leetcode.com/problems/serialize-and-deserialize-binary-tree/"}
+related: [tree-from-preorder-inorder, subtree-of-another-tree, encode-decode-strings]
+order: 16
+estimate_minutes: 30

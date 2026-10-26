@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0191"
+slug: api-gateway
+title: API Gateway
+status: ready
+difficulty: hard
+track: practical
+kind: progressive
+levels:
+  - {level: 1, title: Route matching}
+  - {level: 2, title: Fixed-window client limits}
+  - {level: 3, title: Sliding windows and quotas}
+  - {level: 4, title: Circuit breakers}
+signature:
+  class:
+    name: ApiGateway
+    constructor: {params: []}
+    methods:
+      - {name: addRoute, level: 1, params: [{name: timestamp, type: long}, {name: method, type: string}, {name: pattern, type: string}, {name: upstream, type: string}], returns: {type: bool}}
+      - {name: removeRoute, level: 1, params: [{name: timestamp, type: long}, {name: method, type: string}, {name: pattern, type: string}], returns: {type: bool}}
+      - {name: route, level: 1, params: [{name: timestamp, type: long}, {name: clientId, type: string}, {name: method, type: string}, {name: path, type: string}], returns: {type: string}}
+      - {name: setClientLimit, level: 2, params: [{name: timestamp, type: long}, {name: clientId, type: string}, {name: limit, type: int}, {name: windowMs, type: long}], returns: {type: void}}
+      - {name: setClientSlidingLimit, level: 3, params: [{name: timestamp, type: long}, {name: clientId, type: string}, {name: limit, type: int}, {name: windowMs, type: long}], returns: {type: void}}
+      - {name: setClientQuota, level: 3, params: [{name: timestamp, type: long}, {name: clientId, type: string}, {name: quota, type: long}], returns: {type: void}}
+      - {name: remainingQuota, level: 3, params: [{name: timestamp, type: long}, {name: clientId, type: string}], returns: {type: long}}
+      - {name: setBreaker, level: 4, params: [{name: timestamp, type: long}, {name: upstream, type: string}, {name: failureThreshold, type: int}, {name: cooldownMs, type: long}], returns: {type: void}}
+      - {name: reportResult, level: 4, params: [{name: timestamp, type: long}, {name: upstream, type: string}, {name: success, type: bool}], returns: {type: string}}
+      - {name: breakerState, level: 4, params: [{name: timestamp, type: long}, {name: upstream, type: string}], returns: {type: string}}
+comparator: {type: ops}
+approaches:
+  - {id: route-trie, name: Route trie with per-client limiters and per-upstream breakers, role: optimal, time: "O(L) per route registration; O(2^L) worst case and O(L) typical per request; amortized O(1) per limit check", space: "O(R L + A)", time_class: "n", space_class: "n"}
+related: [job-scheduler]
+estimate_minutes: 90

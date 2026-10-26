@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../../../../../schemas/meta.schema.json
+# A ListNode array parameter; mergeKLists -> merge_k_lists.
+id: "0104"
+slug: merge-k-sorted-lists
+title: Merge k Sorted Lists
+status: draft
+difficulty: hard
+track: dsa
+kind: function
+patterns: [heap]
+signature:
+  function:
+    name: mergeKLists
+    params:
+      - {name: lists, type: "ListNode[]"}
+    returns: {type: ListNode}
+comparator: {type: exact}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

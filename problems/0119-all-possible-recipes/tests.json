@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"recipes": ["sandwich", "toast"], "ingredients": [["toast", "cheese"], ["bread"]], "supplies": ["bread", "cheese"]}, "expected": ["toast", "sandwich"]},
+    {"id": "ex2", "visible": true, "input": {"recipes": ["crust", "tart", "glaze"], "ingredients": [["flour", "water"], ["crust", "fruit"], ["sugar", "fruit"]], "supplies": ["flour", "water", "fruit"]}, "expected": ["crust", "tart"]},
+    {"id": "h1", "input": {"recipes": ["soup"], "ingredients": [["water", "salt"]], "supplies": ["salt", "water"]}, "expected": ["soup"], "note": "one recipe made from supplies"},
+    {"id": "h2", "input": {"recipes": ["soup"], "ingredients": [["water", "salt"]], "supplies": ["water"]}, "expected": [], "note": "one missing ingredient blocks the only recipe"},
+    {"id": "h3", "input": {"recipes": ["loop"], "ingredients": [["loop", "rice"]], "supplies": ["rice"]}, "expected": [], "note": "a recipe that needs itself"},
+    {"id": "h4", "input": {"recipes": ["egg", "hen"], "ingredients": [["hen"], ["egg"]], "supplies": ["corn"]}, "expected": [], "note": "two recipes that need each other"},
+    {"id": "h5", "input": {"recipes": ["egg", "hen", "salad"], "ingredients": [["hen", "corn"], ["egg", "corn"], ["leaf"]], "supplies": ["corn", "leaf"]}, "expected": ["salad"], "note": "a loop next to an independent recipe"},
+    {"id": "h6", "input": {"recipes": ["e", "d", "c", "b", "a"], "ingredients": [["d"], ["c"], ["b"], ["a"], ["x"]], "supplies": ["x"]}, "expected": ["a", "b", "c", "d", "e"], "note": "a chain listed from its last recipe to its first"},
+    {"id": "h7", "input": {"recipes": ["pasta", "sauce", "dish"], "ingredients": [["flour", "egg"], ["tomato", "basil"], ["pasta", "sauce"]], "supplies": ["flour", "egg", "tomato"]}, "expected": ["pasta"], "note": "a recipe needs two recipes and one of them is blocked"},
+    {"id": "h8", "input": {"recipes": ["a", "b", "c"], "ingredients": [["z"], ["a", "z"], ["a", "b", "z"]], "supplies": ["z", "y", "w", "v", "u"]}, "expected": ["a", "b", "c"], "note": "single-letter names and unused supplies"},
+    {"id": "h9", "input": {"recipes": ["cake", "frosting", "batter"], "ingredients": [["batter", "frosting"], ["butter", "sugarcane"], ["flour", "butter", "milk"]], "supplies": ["flour", "butter", "milk", "sugarcane"]}, "expected": ["batter", "frosting", "cake"], "note": "every recipe works once the others are made"},
+    {"id": "h10", "input": {"recipes": ["abcdefghij", "jihgfedcba"], "ingredients": [["jihgfedcba"], ["klmnopqrst"]], "supplies": ["klmnopqrst"]}, "expected": ["jihgfedcba", "abcdefghij"], "note": "ten-letter names"},
+    {"id": "h11", "input": {"recipes": ["p", "q", "r", "s"], "ingredients": [["q"], ["r"], ["s"], ["p"]], "supplies": ["t"]}, "expected": [], "note": "a loop through every recipe"},
+    {"id": "g1", "generate": {"n": 1000, "seed": 119}, "note": "long recipe chains at the largest size"}
+  ]
+}

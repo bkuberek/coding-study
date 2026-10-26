@@ -1,0 +1,9 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "ops": ["StressLeak", "noop"], "args": [[], []], "expected": [null, null]},
+    {"id": "s1", "note": "one worker spins forever, the other throws", "stress": {"seed": 1, "setup": {"ops": ["StressLeak"], "args": [[]]}, "workers": [{"group": "spinner", "count": 1, "repeat": 1, "steps": [{"op": "spin", "args": []}]}, {"group": "failer", "count": 1, "repeat": 1, "steps": [{"op": "fail", "args": []}]}], "invariants": [{"type": "section", "name": "unused"}]}},
+    {"id": "s2", "note": "runs on a restarted runner", "stress": {"seed": 1, "setup": {"ops": ["StressLeak"], "args": [[]]}, "workers": [{"group": "worker", "count": 2, "repeat": 1, "steps": [{"op": "noop", "args": []}]}], "final": {"ops": ["noop"], "args": [[]], "expected": [null]}}}
+  ]
+}

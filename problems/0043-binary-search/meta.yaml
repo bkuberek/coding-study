@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0043"
+slug: binary-search
+title: Binary Search
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [binary-search]
+signature:
+  function:
+    name: search
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: target, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: linear-scan, name: Scan every position, role: brute, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1", oracle: true}
+  - {id: closed-range, name: Binary search on a closed range, role: optimal, time: "O(log n)", space: "O(1)", time_class: "log n", space_class: "1"}
+  - {id: lower-bound, name: Lower-bound search on a half-open range, role: optimal, time: "O(log n)", space: "O(1)", time_class: "log n", space_class: "1"}
+perf:
+  size_param: n
+  size_ladder: [100, 1000, 10000, 100000]
+  expected_from: closed-range
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 704, url: "https://leetcode.com/problems/binary-search/"}
+related: [first-last-position, search-rotated-array, search-2d-matrix]
+order: 1
+estimate_minutes: 10

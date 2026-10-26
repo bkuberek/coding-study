@@ -1,0 +1,19 @@
+{
+  "name": "coding-study-typescript-workspace",
+  "private": true,
+  "description": "TypeScript practice files: cstudy start writes stubs to practice/<slug>.ts",
+  "type": "module",
+  "imports": {
+    "#support": "./support.ts"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "~24.19.2",
+    "typescript": "~6.0.3"
+  }
+}

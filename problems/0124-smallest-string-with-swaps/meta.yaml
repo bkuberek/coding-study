@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0124"
+slug: smallest-string-with-swaps
+title: Smallest String With Swaps
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [union-find, graphs]
+signature:
+  function:
+    name: smallestStringWithSwaps
+    params:
+      - {name: s, type: string}
+      - {name: pairs, type: "int[][]"}
+    returns: {type: string}
+comparator: {type: exact}
+approaches:
+  - {id: quick-union, name: "Naive union-find over positions, then sort each group", role: brute, time: "O(p * n + n log n)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: union-find, name: "Union by size with path compression, then sort each group", role: optimal, time: "O(n log n + p * α(n))", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: n = s.length, with about 1.5n pairs
+  size_ladder: [500, 1000, 2000, 4000]
+  expected_from: union-find
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1202, url: "https://leetcode.com/problems/smallest-string-with-swaps/"}
+related: [count-connected-components, accounts-merge]
+order: 4
+estimate_minutes: 25

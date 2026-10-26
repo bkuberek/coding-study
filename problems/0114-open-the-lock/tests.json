@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"deadends": ["1000", "0100", "0010", "0001"], "target": "0011"}, "expected": 4},
+    {"id": "ex2", "visible": true, "input": {"deadends": ["1000", "9000", "0100", "0900", "0010", "0090", "0001", "0009"], "target": "5555"}, "expected": -1},
+    {"id": "h1", "input": {"deadends": ["1234"], "target": "0000"}, "expected": 0, "note": "the target is the start"},
+    {"id": "h2", "input": {"deadends": ["0000"], "target": "1111"}, "expected": -1, "note": "the start is a dead end"},
+    {"id": "h3", "input": {"deadends": ["5555"], "target": "0009"}, "expected": 1, "note": "one move down wraps from 0 to 9"},
+    {"id": "h4", "input": {"deadends": ["1111"], "target": "5555"}, "expected": 20, "note": "the farthest setting, with an irrelevant dead end"},
+    {"id": "h5", "input": {"deadends": ["3468", "1468", "2568", "2368", "2478", "2458", "2469", "2467"], "target": "2468"}, "expected": -1, "note": "the target is boxed in by dead ends"},
+    {"id": "h6", "input": {"deadends": ["8888"], "target": "9999"}, "expected": 4, "note": "every wheel wraps once"},
+    {"id": "h7", "input": {"deadends": ["0001", "0009"], "target": "0002"}, "expected": 4, "note": "the last wheel cannot move first, so the detour uses another wheel"},
+    {"id": "h8", "input": {"deadends": ["1000", "9000", "0100", "0900", "0010", "0090", "0001"], "target": "0009"}, "expected": 1, "note": "seven of eight first moves are blocked, the open one is the answer"},
+    {"id": "h9", "input": {"deadends": ["1000", "9000", "0100", "0010", "0090", "0001", "0009"], "target": "3000"}, "expected": 5, "note": "only one first move is open and it points away from the target"},
+    {"id": "h10", "input": {"deadends": ["0005", "0050", "0500", "5000"], "target": "5555"}, "expected": 20, "note": "dead ends on the obvious routes do not change the distance"},
+    {"id": "h11", "input": {"deadends": ["0008", "0017", "0026", "0035", "0044", "0053", "0062", "0071", "0080", "0107", "0116", "0125", "0134", "0143", "0152", "0161", "0170", "0206", "0215", "0224", "0233", "0242", "0251", "0260", "0305", "0314", "0323", "0332", "0341", "0350", "0404", "0413", "0422", "0431", "0440", "0503", "0512", "0521", "0530", "0602", "0611", "0620", "0701", "0710", "0800", "1007", "1016", "1025", "1034", "1043", "1052", "1061", "1070", "1106", "1115", "1124", "1133", "1142", "1151", "1160", "1205", "1214", "1223", "1232", "1241", "1250", "1304", "1313", "1322", "1331", "1340", "1403", "1412", "1421", "1430", "1502", "1511", "1520", "1601", "1610", "1700", "2006", "2015", "2024", "2033", "2042", "2051", "2060", "2105", "2114", "2123", "2132", "2141", "2150", "2204", "2213", "2222", "2231", "2240", "2303", "2312", "2321", "2330", "2402", "2411", "2420", "2501", "2510", "2600", "3005", "3014", "3023", "3032", "3041", "3050", "3104", "3113", "3122", "3131", "3140", "3203", "3212", "3221", "3230", "3302", "3311", "3320", "3401", "3410", "3500", "4004", "4013", "4022", "4031", "4040", "4103", "4112", "4121", "4130", "4202", "4211", "4220", "4301", "4310", "4400", "5003", "5012", "5021", "5030", "5102", "5111", "5120", "5201", "5210", "5300", "6002", "6011", "6020", "6101", "6110", "6200", "7001", "7010", "7100", "8000"], "target": "9999"}, "expected": 4, "note": "a wall of all settings whose digits sum to 8"},
+    {"id": "h12", "input": {"deadends": ["0102", "0201", "1002", "2001"], "target": "0202"}, "expected": 6, "note": "every four-move route passes a dead end, so the answer jumps to six"},
+    {"id": "g1", "generate": {"n": 5000, "seed": 12}, "note": "5000 dead ends force a 13-move detour"},
+    {"id": "g3", "generate": {"n": 5000, "seed": 2}, "note": "5000 dead ends and no way through"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 10}}
+  ]
+}

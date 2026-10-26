@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0067"
+slug: min-interval-per-query
+title: Smallest Interval per Query
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [intervals, heap]
+signature:
+  function:
+    name: minInterval
+    params:
+      - {name: intervals, type: "int[][]"}
+      - {name: queries, type: "int[]"}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: scan-all, name: Scan every interval for every query, role: brute, time: "O(n * q)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: sweep-with-heap, name: Sweep sorted queries with a min-heap of sizes, role: optimal, time: "O((n + q) log(n + q))", space: "O(n + q)", time_class: "n log n", space_class: "n"}
+  - {id: paint-smallest-first, name: Paint queries from the smallest interval up with union-find, role: optimal, time: "O(n log n + q log q)", space: "O(n + q)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: number of intervals, with as many queries
+  size_ladder: [100, 300, 1000, 3000, 5000]
+  expected_from: sweep-with-heap
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1851, url: "https://leetcode.com/problems/minimum-interval-to-include-each-query/"}
+related: [min-meeting-rooms, merge-intervals]
+order: 6
+estimate_minutes: 45

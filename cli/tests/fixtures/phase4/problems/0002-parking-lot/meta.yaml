@@ -1,0 +1,19 @@
+id: "0002"
+slug: parking-lot
+title: Parking Lot
+status: ready
+difficulty: easy
+track: lld
+kind: design
+signature:
+  class:
+    name: ParkingLot
+    constructor: {params: [{name: spots, type: int}]}
+    methods:
+      - {name: park, params: [{name: plate, type: string}], returns: {type: int}}
+      - {name: leave, params: [{name: plate, type: string}], returns: {type: bool}}
+      - {name: available, params: [], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: scan, name: Occupancy array with a plate map, role: optimal, time: "O(spots) per park, O(1) per leave", space: "O(spots)", time_class: "n^2", space_class: "n"}
+estimate_minutes: 25

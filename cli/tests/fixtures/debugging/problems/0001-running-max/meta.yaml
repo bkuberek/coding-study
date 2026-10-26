@@ -1,0 +1,21 @@
+id: "0001"
+slug: running-max
+title: Running Maximum
+status: ready
+difficulty: easy
+track: debugging
+kind: function
+stub: buggy
+signature:
+  function:
+    name: runningMax
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: single-pass, name: Single pass, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n
+  size_ladder: [10, 100]
+estimate_minutes: 10

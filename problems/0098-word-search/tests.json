@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"board": [["s", "n", "o", "w"], ["t", "a", "r", "e"], ["o", "p", "e", "n"]], "word": "snare"}, "expected": true},
+    {"id": "ex2", "visible": true, "input": {"board": [["a", "b"], ["c", "d"]], "word": "abdca"}, "expected": false},
+    {"id": "h1", "input": {"board": [["q"]], "word": "q"}, "expected": true, "note": "one cell, one matching letter"},
+    {"id": "h2", "input": {"board": [["q"]], "word": "k"}, "expected": false, "note": "one cell, wrong letter"},
+    {"id": "h3", "input": {"board": [["m"]], "word": "mm"}, "expected": false, "note": "a one-cell board cannot spell a doubled letter"},
+    {"id": "h4", "input": {"board": [["s", "n", "o", "w"], ["t", "a", "r", "e"], ["o", "p", "e", "n"]], "word": "pane"}, "expected": false, "note": "every letter is on the board, but n and e are never neighbors after p and a"},
+    {"id": "h5", "input": {"board": [["a", "b", "c"], ["d", "e", "f"], ["g", "h", "i"]], "word": "aei"}, "expected": false, "note": "diagonal steps are not allowed"},
+    {"id": "h6", "input": {"board": [["a", "b", "c"], ["f", "e", "d"], ["g", "h", "i"]], "word": "abcdefghi"}, "expected": true, "note": "a snake through every cell"},
+    {"id": "h7", "input": {"board": [["x", "y"], ["y", "x"]], "word": "xyxyx"}, "expected": false, "note": "longer than the board has cells"},
+    {"id": "h8", "input": {"board": [["k", "a", "y", "a", "k"]], "word": "kayak"}, "expected": true, "note": "one row; the word is a palindrome"},
+    {"id": "h9", "input": {"board": [["r"], ["o"], ["t"], ["o"], ["r"]], "word": "tor"}, "expected": true, "note": "one column; two walks spell it"},
+    {"id": "h10", "input": {"board": [["a", "a", "a", "a"], ["a", "a", "a", "a"], ["a", "a", "a", "a"], ["a", "a", "a", "b"]], "word": "baaaaaaaaaaaaaa"}, "expected": true, "note": "one rare letter at the start of the word"},
+    {"id": "h11", "input": {"board": [["a", "a", "a", "a", "a"], ["a", "a", "a", "a", "a"], ["a", "a", "a", "a", "a"], ["a", "a", "a", "a", "a"], ["a", "a", "a", "a", "a"]], "word": "aaaaaaaab"}, "expected": false, "note": "the last letter is missing: many walks fail only at the end"},
+    {"id": "h12", "input": {"board": [["c", "a", "b"], ["a", "a", "a"], ["b", "a", "c"]], "word": "cabac"}, "expected": true, "note": "many a cells branch from each c, but only the border walks reach the far c"},
+    {"id": "h13", "input": {"board": [["z", "z"], ["z", "q"]], "word": "zzzz"}, "expected": false, "note": "the board holds only three z"},
+    {"id": "g1", "generate": {"n": 15, "seed": 98}, "note": "random board at the maximum word length"}
+  ]
+}

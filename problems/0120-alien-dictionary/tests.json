@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"words": ["tea", "tab", "eat", "bat"]}, "expected": "teab"},
+    {"id": "ex2", "visible": true, "input": {"words": ["ca", "ab", "cb"]}, "expected": ""},
+    {"id": "h1", "input": {"words": ["z"]}, "expected": "z", "note": "one word of one letter"},
+    {"id": "h2", "input": {"words": ["hello"]}, "expected": "helo", "note": "one word: no rules, any order of its four letters"},
+    {"id": "h3", "input": {"words": ["abc", "abc"]}, "expected": "abc", "note": "equal neighbors give no rule"},
+    {"id": "h4", "input": {"words": ["ab", "abc"]}, "expected": "abc", "note": "a prefix before its extension is fine"},
+    {"id": "h5", "input": {"words": ["abc", "ab"]}, "expected": "", "note": "a word before its own prefix: no alphabet works"},
+    {"id": "h6", "input": {"words": ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "a", "s", "d", "f", "g", "h", "j", "k", "l", "z", "x", "c", "v", "b", "n", "m"]}, "expected": "qwertyuiopasdfghjklzxcvbnm", "note": "all 26 letters in a forced order"},
+    {"id": "h7", "input": {"words": ["ab", "cd"]}, "expected": "abdc", "note": "only the first difference counts: b and d are free"},
+    {"id": "h8", "input": {"words": ["ba", "bc", "ac", "cab"]}, "expected": "bac", "note": "rules that chain transitively"},
+    {"id": "h9", "input": {"words": ["xa", "ya", "za", "xb"]}, "expected": "", "note": "a cycle through three letters"},
+    {"id": "h10", "input": {"words": ["mm", "mn", "nm", "nn", "o"]}, "expected": "mno", "note": "repeated letters inside words"},
+    {"id": "h11", "input": {"words": ["dog", "cat", "cow", "cub", "ant"]}, "expected": "dgtwbncaou", "note": "several rules from one list, one letter order forced in part"},
+    {"id": "h12", "input": {"words": ["aaa", "aab", "aa"]}, "expected": "", "note": "a valid rule followed by a prefix violation"},
+    {"id": "g1", "generate": {"n": 1000, "seed": 120}, "note": "random sorted dictionary at the largest size"}
+  ]
+}

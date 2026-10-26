@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0202"
+slug: bank-transfers
+title: Bank Transfers
+status: ready
+difficulty: medium
+track: concurrency
+kind: concurrent
+languages: [java, kotlin, python]
+signature:
+  class:
+    name: Bank
+    constructor: {params: [{name: balances, type: "long[]"}]}
+    methods:
+      - name: transfer
+        params: [{name: fromAccount, type: int}, {name: toAccount, type: int}, {name: amount, type: long}]
+        returns: {type: bool}
+      - {name: balance, params: [{name: account, type: int}], returns: {type: long}}
+      - {name: total, params: [], returns: {type: long}}
+comparator: {type: ops}
+concurrency:
+  model: threads
+  jvm_threads: [platform, virtual]
+  runs: 3
+  deadline_ms: 5000
+  broken:
+    - id: no-lock
+      name: Balances without a lock
+      bug: Reads and writes balances without mutual exclusion, so concurrent transfers lose updates and an auditor sees money in flight
+      caught_by: [s1]
+    - id: argument-order
+      name: Locks taken in argument order
+      bug: Locks the source account, then the destination, so two opposite transfers each hold one lock and wait forever for the other
+      caught_by: [s2]
+approaches:
+  - {id: global-lock, name: One lock for the whole bank, role: brute, time: "O(1) per transfer, O(n) per total", space: "O(n)"}
+  - {id: ordered-locks, name: One lock per account taken in index order, role: optimal, time: "O(1) per transfer, O(n) per total", space: "O(n)"}
+references:
+  leetcode: {number: 2043, url: "https://leetcode.com/problems/simple-bank-system/"}
+related: [thread-safe-lru-cache, token-bucket-limiter]
+estimate_minutes: 35

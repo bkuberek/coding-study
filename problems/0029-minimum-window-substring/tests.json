@@ -1,0 +1,26 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"s": "rotatingbaton", "t": "tab"}, "expected": "bat"},
+    {"id": "ex2", "visible": true, "input": {"s": "banana", "t": "nnn"}, "expected": ""},
+    {"id": "ex3", "visible": true, "input": {"s": "abxba", "t": "ab"}, "expected": "ab"},
+    {"id": "h1", "input": {"s": "a", "t": "a"}, "expected": "a", "note": "one letter each, equal"},
+    {"id": "h2", "input": {"s": "a", "t": "b"}, "expected": "", "note": "one letter each, different"},
+    {"id": "h3", "input": {"s": "a", "t": "aa"}, "expected": "", "note": "t needs a letter twice"},
+    {"id": "h4", "input": {"s": "ab", "t": "b"}, "expected": "b", "note": "the window is the last letter"},
+    {"id": "h5", "input": {"s": "aA", "t": "A"}, "expected": "A", "note": "letter case matters"},
+    {"id": "h6", "input": {"s": "abc", "t": "abcd"}, "expected": "", "note": "t longer than s"},
+    {"id": "h7", "input": {"s": "xaybzcabc", "t": "abc"}, "expected": "cab", "note": "two shortest windows: the leftmost one wins"},
+    {"id": "h8", "input": {"s": "bbaac", "t": "aab"}, "expected": "baa", "note": "duplicate letters in t"},
+    {"id": "h9", "input": {"s": "aaaaab", "t": "aaab"}, "expected": "aaab", "note": "extra copies at the start must be trimmed"},
+    {"id": "h10", "input": {"s": "abcdefg", "t": "ga"}, "expected": "abcdefg", "note": "the whole string is the only window"},
+    {"id": "h11", "input": {"s": "cabwefgewcwaefgcf", "t": "cae"}, "expected": "cwae", "note": "a later window is shorter than the first one found"},
+    {"id": "h12", "input": {"s": "zzzz", "t": "z"}, "expected": "z", "note": "every single letter is a window"},
+    {"id": "h13", "input": {"s": "KkQqKkQq", "t": "QK"}, "expected": "KkQ", "note": "uppercase and lowercase interleaved"},
+    {"id": "h14", "input": {"s": "acbbaca", "t": "aba"}, "expected": "baca", "note": "the window must keep two copies of a"},
+    {"id": "h15", "input": {"s": "xyzxyzxyzA", "t": "Azx"}, "expected": "xyzA", "note": "the required uppercase letter is last"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 3}, "hang_guard_ms": 30000, "note": "large input: extending from every start is about 10^7 steps here"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "large input with a short answer"}
+  ]
+}

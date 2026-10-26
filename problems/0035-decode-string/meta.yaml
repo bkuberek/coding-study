@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0035"
+slug: decode-string
+title: Decode String
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [stack]
+signature:
+  function:
+    name: decodeString
+    params:
+      - {name: s, type: string}
+    returns: {type: string}
+comparator: {type: exact}
+approaches:
+  - {id: innermost-first, name: Expand the innermost group and rebuild the string, role: brute, time: "O(g (n + m))", space: "O(n + m)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: recursive, name: Recursive descent over the groups, role: optimal, time: "O(n + d m)", space: "O(n + m)", time_class: "n", space_class: "n"}
+  - {id: two-stacks, name: Stacks of counts and partial strings, role: optimal, time: "O(n + d m)", space: "O(n + m)", time_class: "n", space_class: "n"}
+perf:
+  size_param: decoded length, nesting depth at most 3
+  size_ladder: [1000, 3000, 10000, 30000, 100000]
+  expected_from: two-stacks
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 394, url: "https://leetcode.com/problems/decode-string/"}
+related: [valid-parentheses, basic-calculator, encode-decode-strings]
+estimate_minutes: 25

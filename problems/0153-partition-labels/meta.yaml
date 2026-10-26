@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0153"
+slug: partition-labels
+title: Partition Labels
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [greedy, two-pointers]
+signature:
+  function:
+    name: partitionLabels
+    params:
+      - {name: s, type: string}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Grow each part by searching for last occurrences, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: last-occurrence, name: One pass with a table of last positions, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+  - {id: merge-intervals, name: Merge the span of each letter, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n, the length of s
+  size_ladder: [300, 1000, 3000, 10000]
+  expected_from: last-occurrence
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 763, url: "https://leetcode.com/problems/partition-labels/"}
+related: [merge-intervals, jump-game]
+order: 4
+estimate_minutes: 20

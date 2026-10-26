@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0159"
+slug: min-cost-connect-points
+title: Minimum Cost to Connect Points
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [advanced-graphs, union-find]
+signature:
+  function:
+    name: minCostConnectPoints
+    params:
+      - {name: points, type: "int[][]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: kruskal, name: Kruskal over all sorted pairs with union-find, role: intermediate, time: "O(n^2·log n)", space: "O(n^2)", time_class: "n^2 log n", space_class: "n^2", oracle: true}
+  - {id: prim-dense, name: Prim with an array of cheapest connections, role: optimal, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n"}
+perf:
+  size_param: number of points n
+  size_ladder: [100, 300, 1000]
+  expected_from: prim-dense
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1584, url: "https://leetcode.com/problems/min-cost-to-connect-all-points/"}
+related: [network-delay-time, critical-connections]
+order: 2
+estimate_minutes: 25

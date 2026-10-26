@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=../../../schemas/item.schema.json
+slug: review-concurrent-counter
+title: "Review: Concurrent Counter Service"
+track: code-review
+difficulty: medium
+estimate_minutes: 30
+status: ready
+order: 1
+references:
+  links:
+    - https://go.dev/ref/mem
+    - https://go.dev/doc/articles/race_detector
+related: [thread-safe-lru-cache, read-write-lock, distributed-rate-limiter]

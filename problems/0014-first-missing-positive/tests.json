@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [4, 2, 0, 1]}, "expected": 3},
+    {"id": "ex2", "visible": true, "input": {"nums": [3, 1, 2]}, "expected": 4},
+    {"id": "h1", "input": {"nums": [1]}, "expected": 2, "note": "single element 1"},
+    {"id": "h2", "input": {"nums": [2]}, "expected": 1, "note": "single element without 1"},
+    {"id": "h3", "input": {"nums": [-5]}, "expected": 1, "note": "single negative element"},
+    {"id": "h4", "input": {"nums": [0]}, "expected": 1, "note": "zero is not positive"},
+    {"id": "h5", "input": {"nums": [1, 1, 1]}, "expected": 2, "note": "all values equal"},
+    {"id": "h6", "input": {"nums": [5, 4, 3, 2, 1]}, "expected": 6, "note": "a reversed permutation of 1..n"},
+    {"id": "h7", "input": {"nums": [1, 2, 3, 4, 5]}, "expected": 6, "note": "sorted permutation of 1..n"},
+    {"id": "h8", "input": {"nums": [2147483647, -2147483648, 1]}, "expected": 2, "note": "extreme 32-bit values"},
+    {"id": "h9", "input": {"nums": [6, 9, 10, 12, 15]}, "expected": 1, "note": "every value is larger than n"},
+    {"id": "h10", "input": {"nums": [2, 3, 2, 3, 1, 1]}, "expected": 4, "note": "repeats fill positions that 4 to 6 would need"},
+    {"id": "h11", "input": {"nums": [4, 1, 2, 4]}, "expected": 3, "note": "a repeated value equal to n"},
+    {"id": "h12", "input": {"nums": [0, -1, -2, -3]}, "expected": 1, "note": "no positive values"},
+    {"id": "h13", "input": {"nums": [2, 6, 1, 5, 2, 3]}, "expected": 4, "note": "gap in the middle with a repeat"},
+    {"id": "h14", "input": {"nums": [100000]}, "expected": 1, "note": "a large lone value"},
+    {"id": "h15", "input": {"nums": [7, 3, 1, 6, 2, 5, 8, 4]}, "expected": 9, "note": "a shuffled permutation of 1..n"},
+    {"id": "g1", "generate": {"n": 30000, "seed": 2}, "hang_guard_ms": 30000, "note": "large input: trying candidates one by one compares about 10^8 values or more here"},
+    {"id": "g2", "generate": {"n": 3000, "seed": 10}}
+  ]
+}

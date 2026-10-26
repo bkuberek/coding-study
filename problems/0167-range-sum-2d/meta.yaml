@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0167"
+slug: range-sum-2d
+title: Range Sum Query 2D
+status: ready
+difficulty: medium
+track: dsa
+kind: design
+patterns: [prefix-sum]
+signature:
+  class:
+    name: NumMatrix
+    constructor:
+      params: [{name: matrix, type: "int[][]"}]
+    methods:
+      - name: sumRegion
+        params:
+          - {name: row1, type: int}
+          - {name: col1, type: int}
+          - {name: row2, type: int}
+          - {name: col2, type: int}
+        returns: {type: int}
+comparator: {type: ops}
+approaches:
+  - {id: scan-region, name: Visit every cell of the rectangle, role: brute, time: "O(m * n) per sumRegion", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: prefix-2d, name: Two-dimensional prefix sums with inclusion-exclusion, role: optimal, time: "O(1) per sumRegion, O(m * n) to build", space: "O(m * n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of cells m * n, with m * n / 4 sumRegion calls
+  size_ladder: [2000, 5000, 15000, 40000]
+  expected_from: prefix-2d
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 304, url: "https://leetcode.com/problems/range-sum-query-2d-immutable/"}
+related: [range-sum-immutable, range-sum-mutable]
+order: 2
+estimate_minutes: 20

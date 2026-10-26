@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0041"
+slug: remove-k-digits
+title: Remove K Digits
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [monotonic-stack, greedy]
+signature:
+  function:
+    name: removeKDigits
+    params:
+      - {name: num, type: string}
+      - {name: k, type: int}
+    returns: {type: string}
+comparator: {type: exact}
+approaches:
+  - {id: repeated-peak-removal, name: Remove the first peak digit k times, role: brute, time: "O(n * k)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: monotonic-stack, name: Keep a non-decreasing stack of digits, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of digits n, with k between n/4 and n/2
+  size_ladder: [1000, 2000, 5000, 10000]
+  expected_from: monotonic-stack
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 402, url: "https://leetcode.com/problems/remove-k-digits/"}
+related: [daily-temperatures, sum-of-subarray-minimums]
+order: 5
+estimate_minutes: 25

@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"grid": [[0, 1, 0, 0], [1, 1, 1, 0], [0, 0, 1, 0]]}, "expected": 1},
+    {"id": "ex2", "visible": true, "input": {"grid": [[0, 0, 1], [1, 0, 0]]}, "expected": 0},
+    {"id": "h1", "input": {"grid": [[0, 0]]}, "expected": 0, "note": "two cells, nothing in the way"},
+    {"id": "h2", "input": {"grid": [[0], [1], [1], [0]]}, "expected": 2, "note": "a column: both middle obstacles must go"},
+    {"id": "h3", "input": {"grid": [[0, 1, 1, 1, 1, 1, 0]]}, "expected": 5, "note": "a row: every obstacle is in the way"},
+    {"id": "h4", "input": {"grid": [[0, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 0]]}, "expected": 5, "note": "all obstacles: a shortest route pays for each of its cells"},
+    {"id": "h5", "input": {"grid": [[0, 0, 0, 0, 0], [1, 1, 1, 1, 0], [0, 0, 0, 0, 0], [0, 1, 1, 1, 1], [0, 0, 0, 0, 0]]}, "expected": 0, "note": "a long zigzag without removals beats a short cut"},
+    {"id": "h6", "input": {"grid": [[0, 1, 0, 0, 0], [0, 1, 0, 1, 0], [0, 1, 0, 1, 0], [0, 0, 0, 1, 0]]}, "expected": 0, "note": "a detour that winds back up"},
+    {"id": "h7", "input": {"grid": [[0, 1, 1], [1, 1, 1], [1, 1, 0]]}, "expected": 3, "note": "three removals on every route"},
+    {"id": "h8", "input": {"grid": [[0, 1, 1, 0], [1, 0, 0, 1], [1, 0, 0, 1], [0, 1, 1, 0]]}, "expected": 2, "note": "the free middle helps only if you can get into it"},
+    {"id": "h9", "input": {"grid": [[0, 1, 0, 1, 0, 1, 0], [1, 0, 1, 0, 1, 0, 1], [0, 1, 0, 1, 0, 1, 0]]}, "expected": 4, "note": "a checkerboard"},
+    {"id": "h10", "input": {"grid": [[0, 0, 0, 0, 0], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [0, 0, 0, 0, 0]]}, "expected": 2, "note": "a thick wall must be cut through"},
+    {"id": "h11", "input": {"grid": [[0], [0]]}, "expected": 0, "note": "two cells in a column"},
+    {"id": "h12", "input": {"grid": [[0, 0, 1, 1, 1, 0, 0], [1, 1, 1, 0, 1, 1, 1], [0, 0, 0, 0, 0, 1, 0]]}, "expected": 2, "note": "free stretches separated by single obstacles"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 1}, "note": "10^5 cells"},
+    {"id": "g2", "generate": {"n": 100000, "seed": 3}, "note": "10^5 cells, another layout"},
+    {"id": "g3", "generate": {"n": 10000, "seed": 2}}
+  ]
+}

@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0101"
+slug: palindrome-partitioning
+title: Palindrome Partitioning
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [backtracking]
+signature:
+  function:
+    name: partition
+    params:
+      - {name: s, type: string}
+    returns: {type: "list<list<string>>"}
+comparator: {type: unordered}
+approaches:
+  - {id: check-each-piece, name: Backtrack over cut positions and test each piece with two pointers, role: intermediate, time: "O(n^2 * 2^n)", space: "O(n * 2^n)", time_class: "2^n", space_class: "2^n", oracle: true}
+  - {id: palindrome-table, name: "Precompute every palindromic substring, then backtrack", role: optimal, time: "O(n * 2^n)", space: "O(n * 2^n)", time_class: "2^n", space_class: "2^n"}
+perf:
+  size_param: n = s.length
+  size_ladder: [6, 9, 12]
+  expected_from: palindrome-table
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 131, url: "https://leetcode.com/problems/palindrome-partitioning/"}
+related: [subsets, word-search, valid-palindrome]
+order: 7
+estimate_minutes: 25

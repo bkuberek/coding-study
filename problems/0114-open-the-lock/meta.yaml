@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0114"
+slug: open-the-lock
+title: Open the Lock
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [graphs]
+signature:
+  function:
+    name: openLock
+    params:
+      - {name: deadends, type: "string[]"}
+      - {name: target, type: string}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: bfs, name: Breadth-first search over lock settings, role: optimal, time: "O(S·W + d)", space: "O(S + d)", time_class: "1", space_class: "1", oracle: true}
+  - {id: bidirectional-bfs, name: Grow searches from both ends and meet in the middle, role: optimal, time: "O(S·W + d)", space: "O(S + d)", time_class: "1", space_class: "1"}
+perf:
+  size_param: number of dead ends d (the S = 10^4 settings are fixed)
+  size_ladder: [10, 100, 1000, 5000]
+  expected_from: bfs
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 752, url: "https://leetcode.com/problems/open-the-lock/"}
+related: [word-ladder, shortest-path-binary-matrix]
+order: 10
+estimate_minutes: 25

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "ops": ["ParkingLot", "park", "park", "park", "leave", "park", "available"], "args": [[2], ["A1"], ["B2"], ["C3"], ["A1"], ["C3"], []], "expected": [null, 0, 1, -1, true, 0, 0]},
+    {"id": "ex2", "visible": true, "ops": ["ParkingLot", "park", "park", "leave", "leave", "available"], "args": [[3], ["X"], ["X"], ["Y"], ["X"], []], "expected": [null, 0, -1, false, true, 3]},
+    {"id": "h1", "ops": ["ParkingLot", "available"], "args": [[5], []], "expected": [null, 5]},
+    {"id": "h2", "ops": ["ParkingLot", "park", "park"], "args": [[1], ["A"], ["B"]], "expected": [null, 0, -1]},
+    {"id": "h3", "ops": ["ParkingLot", "leave"], "args": [[1], ["Z"]], "expected": [null, false]},
+    {"id": "h4", "ops": ["ParkingLot", "park", "park", "park", "leave", "leave", "park", "park"], "args": [[3], ["A"], ["B"], ["C"], ["C"], ["A"], ["D"], ["E"]], "expected": [null, 0, 1, 2, true, true, 0, 2]},
+    {"id": "h5", "ops": ["ParkingLot", "park", "leave", "leave"], "args": [[2], ["A"], ["A"], ["A"]], "expected": [null, 0, true, false]},
+    {"id": "h6", "ops": ["ParkingLot", "park", "leave", "park", "available"], "args": [[2], ["A"], ["A"], ["A"], []], "expected": [null, 0, true, 0, 1]},
+    {"id": "h7", "ops": ["ParkingLot", "park", "park", "available"], "args": [[2], ["A"], ["B"], []], "expected": [null, 0, 1, 0]},
+    {"id": "h8", "ops": ["ParkingLot", "park", "park", "park", "park", "leave", "park"], "args": [[4], ["A"], ["B"], ["C"], ["D"], ["B"], ["E"]], "expected": [null, 0, 1, 2, 3, true, 1]}
+  ]
+}

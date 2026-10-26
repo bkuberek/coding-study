@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0068"
+slug: max-depth-binary-tree
+title: Maximum Depth of a Binary Tree
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [trees]
+signature:
+  function:
+    name: maxDepth
+    params:
+      - {name: root, type: TreeNode}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: recursive, name: Recursive depth, role: optimal, time: "O(n)", space: "O(h)", time_class: "n", space_class: "log n", oracle: true}
+  - {id: level-count, name: Count levels with a queue, role: optimal, time: "O(n)", space: "O(w)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of nodes
+  size_ladder: [1000, 10000, 100000]
+  expected_from: recursive
+references:
+  leetcode: {number: 104, url: "https://leetcode.com/problems/maximum-depth-of-binary-tree/"}
+related: [balanced-binary-tree, diameter-binary-tree, level-order-traversal]
+order: 2
+estimate_minutes: 10

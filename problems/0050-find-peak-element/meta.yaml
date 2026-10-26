@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0050"
+slug: find-peak-element
+title: Find a Peak Element
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [binary-search]
+signature:
+  function:
+    name: findPeakElement
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: int}
+comparator: {type: checker}
+approaches:
+  - {id: first-descent, name: Scan for the first descent, role: brute, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1", oracle: true}
+  - {id: climb-the-slope, name: Binary search toward the rising neighbor, role: optimal, time: "O(log n)", space: "O(1)", time_class: "log n", space_class: "1"}
+perf:
+  size_param: n
+  size_ladder: [100, 1000, 10000, 100000]
+  expected_from: climb-the-slope
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 162, url: "https://leetcode.com/problems/find-peak-element/"}
+related: [min-in-rotated-array, binary-search]
+order: 8
+estimate_minutes: 20

@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0060"
+slug: merge-k-sorted-lists
+title: Merge K Sorted Lists
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [linked-list, heap]
+signature:
+  function:
+    name: mergeKLists
+    params:
+      - {name: lists, type: "ListNode[]"}
+    returns: {type: ListNode}
+comparator: {type: exact}
+approaches:
+  - {id: one-by-one, name: Merge the lists into the result one at a time, role: brute, time: "O(k N)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: min-heap, name: Min-heap of the k front nodes, role: optimal, time: "O(N log k)", space: "O(k)", time_class: "n log n", space_class: "n"}
+  - {id: pairwise, name: Merge neighbouring lists in rounds, role: optimal, time: "O(N log k)", space: "O(k)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: "total nodes N, with k = N/10 lists"
+  size_ladder: [100, 1000, 10000]
+  expected_from: min-heap
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 23, url: "https://leetcode.com/problems/merge-k-sorted-lists/"}
+related: [merge-two-sorted-lists, sort-linked-list, kth-largest-element]
+order: 8
+estimate_minutes: 30

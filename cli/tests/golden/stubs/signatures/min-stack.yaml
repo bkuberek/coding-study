@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../../../../schemas/meta.schema.json
+# A design class with an empty constructor, parameterless methods and void methods.
+id: "0106"
+slug: min-stack
+title: Min Stack
+status: draft
+difficulty: medium
+track: dsa
+kind: design
+patterns: [stack]
+signature:
+  class:
+    name: MinStack
+    constructor: {params: []}
+    methods:
+      - {name: push, params: [{name: value, type: int}], returns: {type: void}}
+      - {name: pop, params: [], returns: {type: void}}
+      - {name: top, params: [], returns: {type: int}}
+      - {name: getMin, params: [], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

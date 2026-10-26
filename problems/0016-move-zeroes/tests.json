@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [0, 7, 0, -3, 12]}, "expected": [7, -3, 12, 0, 0]},
+    {"id": "ex2", "visible": true, "input": {"nums": [0, 0, 4]}, "expected": [4, 0, 0]},
+    {"id": "h1", "input": {"nums": [0]}, "expected": [0], "note": "a single zero"},
+    {"id": "h2", "input": {"nums": [9]}, "expected": [9], "note": "a single non-zero value"},
+    {"id": "h3", "input": {"nums": [0, 0, 0, 0]}, "expected": [0, 0, 0, 0], "note": "all zeros"},
+    {"id": "h4", "input": {"nums": [6, 2, 8]}, "expected": [6, 2, 8], "note": "no zeros: nothing moves"},
+    {"id": "h5", "input": {"nums": [3, 0, 3, 0, 3]}, "expected": [3, 3, 3, 0, 0], "note": "duplicate non-zero values keep their count"},
+    {"id": "h6", "input": {"nums": [-1, 0, -2, 0, 0, -3]}, "expected": [-1, -2, -3, 0, 0, 0], "note": "negative values keep their order"},
+    {"id": "h7", "input": {"nums": [0, 0, 0, 2147483647, -2147483648]}, "expected": [2147483647, -2147483648, 0, 0, 0], "note": "extreme values behind a block of zeros"},
+    {"id": "h8", "input": {"nums": [4, 5, 0, 0]}, "expected": [4, 5, 0, 0], "note": "zeros already at the end"},
+    {"id": "h9", "input": {"nums": [0, 1]}, "expected": [1, 0], "note": "two elements, zero first"},
+    {"id": "h10", "input": {"nums": [1, 0, 0, 0, 0, 0, 2]}, "expected": [1, 2, 0, 0, 0, 0, 0], "note": "a long run of zeros in the middle"},
+    {"id": "h11", "input": {"nums": [0, 3, 0, 0, 8, 0, 6, 0, 0, 1]}, "expected": [3, 8, 6, 1, 0, 0, 0, 0, 0, 0], "note": "zeros and values interleaved"},
+    {"id": "h12", "input": {"nums": [-5, 0, 5, 0, -5]}, "expected": [-5, 5, -5, 0, 0], "note": "values that cancel out are not zeros"},
+    {"id": "h13", "input": {"nums": [10, 9, 8, 7, 0, 6, 5, 4, 3, 2, 1]}, "expected": [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0], "note": "descending values with one zero"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 1}, "note": "maximum length, about half zeros"},
+    {"id": "g2", "generate": {"n": 100000, "seed": 5}, "note": "maximum length, about half zeros, another seed"}
+  ]
+}

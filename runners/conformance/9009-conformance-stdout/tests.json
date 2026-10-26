@@ -1,0 +1,7 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "line", "input": {"text": "conformance output"}, "expected": "conformance output"}
+  ]
+}

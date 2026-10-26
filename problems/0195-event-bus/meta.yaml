@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0195"
+slug: event-bus
+title: Event Bus
+status: ready
+difficulty: medium
+track: lld
+kind: design
+signature:
+  class:
+    name: EventBus
+    constructor: {params: []}
+    methods:
+      - {name: subscribe, params: [{name: subscriberId, type: string}, {name: pattern, type: string}], returns: {type: bool}}
+      - {name: unsubscribe, params: [{name: subscriberId, type: string}, {name: pattern, type: string}], returns: {type: bool}}
+      - {name: publish, params: [{name: topic, type: string}, {name: payload, type: string}], returns: {type: int}}
+      - {name: poll, params: [{name: subscriberId, type: string}, {name: maxEvents, type: int}], returns: {type: "list<string>"}}
+      - {name: pending, params: [{name: subscriberId, type: string}], returns: {type: int}}
+      - {name: setInboxLimit, params: [{name: subscriberId, type: string}, {name: limit, type: int}], returns: {type: bool}}
+      - {name: deadLetters, params: [{name: maxEvents, type: int}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: topic-matcher, name: Subscribers with compiled patterns and bounded inboxes, role: optimal, time: "O(s p k^2) per publish; O(m) per poll or drain", space: "O(s p + e)", time_class: "n", space_class: "n"}
+estimate_minutes: 45

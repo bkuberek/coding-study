@@ -1,0 +1,49 @@
+name: Version
+
+# Versions the code and nothing else: python-semantic-release reads the Conventional Commits
+# since the last tag, and when one warrants a bump it updates pyproject.toml, uv.lock and
+# CHANGELOG.md, commits "chore(release): vX.Y.Z [skip ci]" and tags vX.Y.Z. It publishes no
+# package and creates no GitHub release. Configuration: [tool.semantic_release] in
+# pyproject.toml. Rules: docs/specs/versioning.md.
+#
+# The push uses GITHUB_TOKEN, never a personal access token. Events caused by GITHUB_TOKEN do
+# not start new workflow runs (workflow_dispatch and repository_dispatch excepted), so the bot
+# commit and the tag do not retrigger this workflow, and no loop is possible:
+# https://docs.github.com/en/actions/concepts/security/github_token
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Release runs queue instead of cancelling each other, so two pushes never race on the tag.
+concurrency:
+  group: version-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref_name }}
+
+      # The branch may have moved while this run waited in the queue; version exactly the
+      # commit that triggered it, so no unevaluated change is released.
+      - name: Pin the branch to the triggering commit
+        run: git reset --hard "$GITHUB_SHA"
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+
+      # Only `main` is a release branch: on any other ref (a manual run from a feature branch)
+      # semantic-release makes no release and exits 0, as it does when no commit since the last
+      # tag warrants a bump.
+      - name: Bump version, update the changelog, commit and tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: uv run --locked semantic-release version --no-vcs-release

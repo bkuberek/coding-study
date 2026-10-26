@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0198"
+slug: chess-move-validator
+title: Chess Move Validator
+status: ready
+difficulty: hard
+track: lld
+kind: design
+signature:
+  class:
+    name: ChessGame
+    constructor: {params: [{name: fen, type: string}]}
+    methods:
+      - {name: move, params: [{name: source, type: string}, {name: target, type: string}], returns: {type: string}}
+      - {name: pieceAt, params: [{name: square, type: string}], returns: {type: string}}
+      - {name: turn, params: [], returns: {type: string}}
+      - {name: legalMoves, params: [{name: square, type: string}], returns: {type: "list<string>"}}
+      - {name: inCheck, params: [], returns: {type: bool}}
+comparator: {type: ops}
+approaches:
+  - {id: rule-per-piece, name: Immutable positions with one move rule per piece, role: optimal, time: "O(m) per legality check; O(p m) per move to classify the result", space: "O(1) per position", time_class: "n", space_class: "n"}
+estimate_minutes: 90

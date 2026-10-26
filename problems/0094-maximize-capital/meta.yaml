@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0094"
+slug: maximize-capital
+title: Maximize Capital
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [heap, greedy]
+signature:
+  function:
+    name: findMaximizedCapital
+    params:
+      - {name: k, type: int}
+      - {name: w, type: int}
+      - {name: profits, type: "int[]"}
+      - {name: capital, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: scan, name: Scan for the most profitable affordable project in every round, role: brute, time: "O(k n)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: sort-and-heap, name: "Sort by required capital, pick from a max-heap of affordable profits", role: optimal, time: "O(n log n + k log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: "number of projects n, with k = n/10"
+  size_ladder: [100, 1000, 10000]
+  expected_from: sort-and-heap
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 502, url: "https://leetcode.com/problems/ipo/"}
+related: [single-threaded-cpu, task-scheduler, kth-largest-element]
+order: 8
+estimate_minutes: 30

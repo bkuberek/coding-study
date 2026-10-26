@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9005"
+slug: conformance-non-finite
+title: "Conformance: a non-finite double is invalid output"
+status: ready
+difficulty: easy
+track: practical
+kind: function
+signature:
+  function:
+    name: scale
+    params:
+      - {name: value, type: double}
+      - {name: factor, type: double}
+    returns: {type: double}
+comparator: {type: float}
+approaches:
+  - {id: multiplies, name: "Return value times factor", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

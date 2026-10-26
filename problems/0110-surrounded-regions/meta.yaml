@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0110"
+slug: surrounded-regions
+title: Surrounded Regions
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [graphs]
+signature:
+  function:
+    name: solve
+    params:
+      - {name: board, type: "char[][]"}
+    returns: {type: void, output_from: board}
+comparator: {type: exact}
+approaches:
+  - {id: border-flood, name: Flood fill from the border to find safe cells, role: optimal, time: "O(m·n)", space: "O(m·n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: union-find, name: Union-find with a virtual border node, role: optimal, time: "O(m·n·α(m·n))", space: "O(m·n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of cells (m·n)
+  size_ladder: [1000, 10000, 40000]
+  expected_from: border-flood
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 130, url: "https://leetcode.com/problems/surrounded-regions/"}
+related: [number-of-islands, pacific-atlantic-water-flow, max-area-of-island]
+order: 6
+estimate_minutes: 25

@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0185"
+slug: range-module
+title: Range Module
+status: ready
+difficulty: hard
+track: dsa
+kind: design
+patterns: [segment-tree-fenwick, intervals]
+signature:
+  class:
+    name: RangeModule
+    constructor: {params: []}
+    methods:
+      - {name: addRange, params: [{name: left, type: int}, {name: right, type: int}], returns: {type: void}}
+      - {name: queryRange, params: [{name: left, type: int}, {name: right, type: int}], returns: {type: bool}}
+      - {name: removeRange, params: [{name: left, type: int}, {name: right, type: int}], returns: {type: void}}
+comparator: {type: ops}
+approaches:
+  - {id: interval-list, name: Sorted list of disjoint intervals rebuilt on every change, role: brute, time: "O(k) per call", space: "O(k)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: dynamic-segment-tree, name: Segment tree over the coordinates with lazy assignment, role: optimal, time: "O(log C) per call", space: "O(n log C)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of calls (about 40% addRange, 20% removeRange, 40% queryRange)
+  size_ladder: [3000, 5000, 10000, 20000, 30000]
+  expected_from: dynamic-segment-tree
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 715, url: "https://leetcode.com/problems/range-module/"}
+related: [merge-intervals, insert-interval, range-sum-mutable]
+order: 3
+estimate_minutes: 45

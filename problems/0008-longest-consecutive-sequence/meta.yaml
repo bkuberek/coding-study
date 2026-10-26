@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0008"
+slug: longest-consecutive-sequence
+title: Longest Consecutive Run
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [arrays-hashing]
+signature:
+  function:
+    name: longestConsecutive
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: linear-search, name: Run starts with linear membership checks, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: sorting, name: Sort a copy and count runs, role: intermediate, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+  - {id: hash-set, name: Hash set with run starts, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n
+  size_ladder: [1000, 3000, 10000]
+  expected_from: hash-set
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 128, url: "https://leetcode.com/problems/longest-consecutive-sequence/"}
+related: [contains-duplicate, first-missing-positive]
+estimate_minutes: 25

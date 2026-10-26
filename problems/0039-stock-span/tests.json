@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "ops": ["StockSpanner", "span", "span", "span", "span", "span", "span", "span"], "args": [[], [31], [25], [27], [27], [40], [22], [35]], "expected": [null, 1, 1, 2, 3, 5, 1, 2]},
+    {"id": "ex2", "visible": true, "ops": ["StockSpanner", "span", "span", "span", "span"], "args": [[], [50], [40], [30], [60]], "expected": [null, 1, 1, 1, 4]},
+    {"id": "h1", "ops": ["StockSpanner", "span"], "args": [[], [7]], "expected": [null, 1], "note": "a single day spans itself"},
+    {"id": "h2", "ops": ["StockSpanner", "span", "span", "span", "span"], "args": [[], [5], [5], [5], [5]], "expected": [null, 1, 2, 3, 4], "note": "equal prices extend the span"},
+    {"id": "h3", "ops": ["StockSpanner", "span", "span", "span", "span", "span"], "args": [[], [1], [2], [3], [4], [5]], "expected": [null, 1, 2, 3, 4, 5], "note": "strictly rising"},
+    {"id": "h4", "ops": ["StockSpanner", "span", "span", "span"], "args": [[], [9], [8], [7]], "expected": [null, 1, 1, 1], "note": "strictly falling"},
+    {"id": "h5", "ops": ["StockSpanner", "span", "span", "span"], "args": [[], [100000], [1], [100000]], "expected": [null, 1, 1, 3], "note": "extreme prices"},
+    {"id": "h6", "ops": ["StockSpanner", "span", "span", "span", "span", "span"], "args": [[], [10], [4], [5], [6], [10]], "expected": [null, 1, 1, 2, 3, 5], "note": "a dip and a full recovery"},
+    {"id": "h7", "ops": ["StockSpanner", "span", "span", "span", "span"], "args": [[], [1], [1], [2], [1]], "expected": [null, 1, 2, 3, 1], "note": "the minimum price repeated"},
+    {"id": "h8", "ops": ["StockSpanner", "span", "span", "span", "span", "span"], "args": [[], [3], [1], [3], [1], [3]], "expected": [null, 1, 1, 3, 1, 5], "note": "sawtooth with equal peaks"},
+    {"id": "h9", "ops": ["StockSpanner", "span", "span", "span", "span", "span", "span"], "args": [[], [6], [2], [3], [1], [4], [5]], "expected": [null, 1, 1, 2, 1, 4, 5], "note": "one call absorbs several earlier spans"},
+    {"id": "h10", "ops": ["StockSpanner", "span", "span", "span", "span"], "args": [[], [2], [7], [1], [8]], "expected": [null, 1, 2, 1, 4], "note": "a new high covers everything"},
+    {"id": "h11", "ops": ["StockSpanner", "span", "span", "span", "span", "span", "span"], "args": [[], [5], [4], [3], [2], [1], [6]], "expected": [null, 1, 1, 1, 1, 1, 6], "note": "a long fall, then a jump above the start"},
+    {"id": "h12", "ops": ["StockSpanner", "span", "span", "span", "span", "span"], "args": [[], [8], [6], [8], [7], [9]], "expected": [null, 1, 1, 3, 1, 5], "note": "an equal earlier peak does not stop the walk"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "large input with a long rally: walking back on every call is quadratic here"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 4}, "hang_guard_ms": 30000, "note": "large input with a long rally"},
+    {"id": "g3", "generate": {"n": 1000, "seed": 2}}
+  ]
+}

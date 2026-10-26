@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0181"
+slug: missing-number
+title: Missing Number
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [bit-manipulation, math-geometry]
+signature:
+  function:
+    name: missingNumber
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: sort-and-scan, name: Sort and find the first gap, role: brute, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n", oracle: true}
+  - {id: expected-sum, name: Subtract the sum from the sum of 0 to n, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+  - {id: xor-indices, name: XOR every index and value together, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: length of nums
+  size_ladder: [1000, 3000, 10000, 30000, 100000]
+  expected_from: xor-indices
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 268, url: "https://leetcode.com/problems/missing-number/"}
+related: [single-number, first-missing-positive]
+order: 4
+estimate_minutes: 10

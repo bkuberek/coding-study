@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"lists": [[2, 6, 9], [1, 7], [3, 4, 8]]}, "expected": [1, 2, 3, 4, 6, 7, 8, 9]},
+    {"id": "ex2", "visible": true, "input": {"lists": [[], [5], []]}, "expected": [5]},
+    {"id": "h1", "input": {"lists": []}, "expected": [], "note": "no lists at all"},
+    {"id": "h2", "input": {"lists": [[]]}, "expected": [], "note": "one empty list"},
+    {"id": "h3", "input": {"lists": [[1, 2, 3]]}, "expected": [1, 2, 3], "note": "a single list is already merged"},
+    {"id": "h4", "input": {"lists": [[4], [4], [4]]}, "expected": [4, 4, 4], "note": "all values equal"},
+    {"id": "h5", "input": {"lists": [[-10000, 0], [-10000, 10000], [5]]}, "expected": [-10000, -10000, 0, 5, 10000], "note": "extreme values tied across lists"},
+    {"id": "h6", "input": {"lists": [[1, 5, 9], [2, 6], [3, 7], [4, 8]]}, "expected": [1, 2, 3, 4, 5, 6, 7, 8, 9], "note": "four lists interleaved round-robin"},
+    {"id": "h7", "input": {"lists": [[10, 20], [1, 2, 3, 4, 5]]}, "expected": [1, 2, 3, 4, 5, 10, 20], "note": "one list lies entirely before the other"},
+    {"id": "h8", "input": {"lists": [[10], [9], [8], [7], [6], [5], [4], [3], [2], [1]]}, "expected": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "note": "ten single-node lists in descending order"},
+    {"id": "h9", "input": {"lists": [[], [], []]}, "expected": [], "note": "only empty lists"},
+    {"id": "h10", "input": {"lists": [[-3, -3, -1], [-2, -2], [-3, 0]]}, "expected": [-3, -3, -3, -2, -2, -1, 0], "note": "negative duplicates within and across lists"},
+    {"id": "h11", "input": {"lists": [[0, 1, 2, 3, 4, 5, 6, 7], [], [3], [], [-1, 8]]}, "expected": [-1, 0, 1, 2, 3, 3, 4, 5, 6, 7, 8], "note": "lists of very different lengths, with empty ones between"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "note": "10^4 nodes in 1000 lists with values in [-10, 10]: merging one list at a time takes about 5 * 10^6 steps"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 3}, "note": "10^4 nodes in 1000 lists with values over the full range"},
+    {"id": "g3", "generate": {"n": 60, "seed": 4}}
+  ]
+}

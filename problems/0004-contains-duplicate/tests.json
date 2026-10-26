@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [2, 8, 5, 8, 1]}, "expected": true},
+    {"id": "ex2", "visible": true, "input": {"nums": [6, -2, 9, 0]}, "expected": false},
+    {"id": "h1", "input": {"nums": [7]}, "expected": false, "note": "a single element cannot repeat"},
+    {"id": "h2", "input": {"nums": [3, 3]}, "expected": true, "note": "smallest array with a duplicate"},
+    {"id": "h3", "input": {"nums": [-5, 0, 5, -5]}, "expected": true, "note": "negative duplicate at both ends"},
+    {"id": "h4", "input": {"nums": [4, -4, 0, 1, -1]}, "expected": false, "note": "opposite values are not duplicates"},
+    {"id": "h5", "input": {"nums": [9, 9, 9, 9, 9]}, "expected": true, "note": "all values equal"},
+    {"id": "h6", "input": {"nums": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}, "expected": false, "note": "sorted ascending, distinct"},
+    {"id": "h7", "input": {"nums": [50, 40, 30, 30, 20, 10]}, "expected": true, "note": "sorted descending, adjacent duplicate"},
+    {"id": "h8", "input": {"nums": [1000000000, -1000000000, 999999999, -999999999]}, "expected": false, "note": "extreme values, distinct"},
+    {"id": "h9", "input": {"nums": [-1000000000, 1000000000, -1000000000]}, "expected": true, "note": "extreme value repeated"},
+    {"id": "h10", "input": {"nums": [12, 5, 8, 3, 14, 6, 1, 11, 12]}, "expected": true, "note": "duplicate at the first and last positions"},
+    {"id": "h11", "input": {"nums": [0, 0]}, "expected": true, "note": "zero repeated"},
+    {"id": "h12", "input": {"nums": [17, -3, 25, 8, -11, 30, 5, 19, -26, 2, 41, -7, 16, 23, 0, -1]}, "expected": false, "note": "longer array, all distinct"},
+    {"id": "g1", "generate": {"n": 30000, "seed": 4}, "hang_guard_ms": 30000, "note": "large input: comparing every pair checks about 4.5 * 10^8 pairs here"},
+    {"id": "g2", "generate": {"n": 3000, "seed": 11}}
+  ]
+}

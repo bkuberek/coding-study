@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [8, -2, 5, 8, -2]}, "expected": 5},
+    {"id": "ex2", "visible": true, "input": {"nums": [17]}, "expected": 17},
+    {"id": "h1", "input": {"nums": [0, 3, 3]}, "expected": 0, "note": "the lonely value is 0"},
+    {"id": "h2", "input": {"nums": [-7, 4, 4]}, "expected": -7, "note": "negative lonely value"},
+    {"id": "h3", "input": {"nums": [-2147483648, 1, 1]}, "expected": -2147483648, "note": "the lonely value is the smallest int"},
+    {"id": "h4", "input": {"nums": [-2147483648, 2147483647, -2147483648]}, "expected": 2147483647, "note": "the largest int between two copies of the smallest"},
+    {"id": "h5", "input": {"nums": [-1, -1, 0]}, "expected": 0, "note": "-1 has every bit set"},
+    {"id": "h6", "input": {"nums": [1, 2, 3, 4, 5, 4, 3, 2, 1]}, "expected": 5, "note": "pairs mirrored around the lonely value"},
+    {"id": "h7", "input": {"nums": [6, 6, 9, 9, 2]}, "expected": 2, "note": "lonely value at the end"},
+    {"id": "h8", "input": {"nums": [2, 6, 6, 9, 9]}, "expected": 2, "note": "lonely value at the start"},
+    {"id": "h9", "input": {"nums": [1, 2, 4, 1, 2]}, "expected": 4, "note": "values that share no bits with each other"},
+    {"id": "h10", "input": {"nums": [3, 6, 5, 6, 3]}, "expected": 5, "note": "the lonely value equals the XOR of the two paired values (3 ^ 6 = 5)"},
+    {"id": "g1", "generate": {"n": 300000, "seed": 1}, "note": "largest input"},
+    {"id": "g2", "generate": {"n": 1001, "seed": 2}}
+  ]
+}

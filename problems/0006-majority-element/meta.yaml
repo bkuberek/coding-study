@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0006"
+slug: majority-element
+title: Majority Element
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [arrays-hashing]
+signature:
+  function:
+    name: majorityElement
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Count every candidate, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: sorting, name: Sort a copy and take the middle, role: intermediate, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+  - {id: hash-map, name: Count occurrences in a hash map, role: intermediate, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: boyer-moore, name: Boyer-Moore majority vote, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n
+  size_ladder: [1000, 3000, 10000, 30000]
+  expected_from: boyer-moore
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 169, url: "https://leetcode.com/problems/majority-element/"}
+related: [top-k-frequent-elements, contains-duplicate]
+estimate_minutes: 10

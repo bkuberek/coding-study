@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9006"
+slug: conformance-cyclic-list
+title: "Conformance: cyclic ListNode input"
+status: ready
+difficulty: easy
+track: practical
+kind: function
+signature:
+  function:
+    name: echoList
+    params:
+      - {name: head, type: ListNode}
+    returns: {type: ListNode}
+comparator: {type: exact}
+approaches:
+  - {id: identity, name: "Return head unchanged", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

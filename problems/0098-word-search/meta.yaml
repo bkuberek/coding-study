@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0098"
+slug: word-search
+title: Word Search
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [backtracking]
+signature:
+  function:
+    name: exist
+    params:
+      - {name: board, type: "char[][]"}
+      - {name: word, type: string}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: visited-grid, name: Depth-first search from every cell with a visited grid, role: intermediate, time: "O(r * c * 3^L)", space: "O(r * c + L)", time_class: "2^n", space_class: "n", oracle: true}
+  - {id: pruned-in-place, name: "Count letters, search from the rarer end, mark cells in place", role: optimal, time: "O(r * c * 3^L)", space: "O(L)", time_class: "2^n", space_class: "n"}
+perf:
+  size_param: n = word.length, on boards of up to 6 by 6
+  size_ladder: [5, 10, 15]
+  expected_from: pruned-in-place
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 79, url: "https://leetcode.com/problems/word-search/"}
+related: [subsets, palindrome-partitioning]
+order: 4
+estimate_minutes: 25

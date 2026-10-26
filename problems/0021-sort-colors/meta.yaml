@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0021"
+slug: sort-colors
+title: Sort Colors
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [two-pointers]
+signature:
+  function:
+    name: sortColors
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: void, output_from: nums}
+comparator: {type: exact}
+approaches:
+  - {id: counting, name: Count each color then overwrite, role: intermediate, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1", oracle: true}
+  - {id: dutch-flag, name: One pass with three regions, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: length of nums
+  size_ladder: [1000, 10000, 100000]
+  expected_from: dutch-flag
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 75, url: "https://leetcode.com/problems/sort-colors/"}
+related: [move-zeroes]
+order: 7
+estimate_minutes: 20

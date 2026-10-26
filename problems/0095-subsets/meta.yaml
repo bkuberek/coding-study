@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0095"
+slug: subsets
+title: Subsets
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [backtracking]
+signature:
+  function:
+    name: subsets
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: "list<list<int>>"}
+comparator: {type: unordered-nested}
+approaches:
+  - {id: bitmask, name: Read each subset from the bits of a counter, role: optimal, time: "O(n * 2^n)", space: "O(n * 2^n)", time_class: "2^n", space_class: "2^n", oracle: true}
+  - {id: backtracking, name: Choose or skip each value, role: optimal, time: "O(n * 2^n)", space: "O(n * 2^n)", time_class: "2^n", space_class: "2^n"}
+perf:
+  size_param: n = nums.length
+  size_ladder: [6, 8, 10]
+  expected_from: backtracking
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 78, url: "https://leetcode.com/problems/subsets/"}
+related: [subsets-with-duplicates, permutations, combination-sum]
+order: 1
+estimate_minutes: 15

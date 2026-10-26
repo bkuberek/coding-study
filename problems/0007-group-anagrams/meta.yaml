@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0007"
+slug: group-anagrams
+title: Group Anagrams
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [arrays-hashing]
+signature:
+  function:
+    name: groupAnagrams
+    params:
+      - {name: strs, type: "string[]"}
+    returns: {type: "list<list<string>>"}
+comparator: {type: unordered-nested}
+approaches:
+  - {id: linear-search, name: Sorted keys with a linear search over groups, role: brute, time: "O(n^2 k)", space: "O(n k)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: sorted-key, name: Hash map keyed by the sorted word, role: optimal, time: "O(n k log k)", space: "O(n k)", time_class: "n", space_class: "n"}
+  - {id: count-key, name: Hash map keyed by letter counts, role: optimal, time: "O(n k)", space: "O(n k)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of words, each at most 8 letters
+  size_ladder: [300, 1000, 3000, 10000]
+  expected_from: sorted-key
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 49, url: "https://leetcode.com/problems/group-anagrams/"}
+related: [valid-anagram, top-k-frequent-elements]
+estimate_minutes: 20

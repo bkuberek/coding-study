@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0209"
+slug: debug-sort-comparator
+title: "Debug: Leaderboard Comparator"
+status: ready
+difficulty: medium
+track: debugging
+kind: function
+stub: buggy
+signature:
+  function:
+    name: rankPlayers
+    params:
+      - {name: names, type: "string[]"}
+      - {name: scores, type: "int[]"}
+    returns: {type: "string[]"}
+comparator: {type: exact}
+approaches:
+  - {id: key-ordering, name: Lexicographic key comparison, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+related: [debug-running-total-overflow]
+estimate_minutes: 20

@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"s": "f(o(o)b)a)r"}, "expected": "f(o(o)b)ar"},
+    {"id": "ex2", "visible": true, "input": {"s": ")(z("}, "expected": "z"},
+    {"id": "h1", "input": {"s": "a"}, "expected": "a", "note": "a single letter"},
+    {"id": "h2", "input": {"s": "("}, "expected": "", "note": "a single opener"},
+    {"id": "h3", "input": {"s": ")"}, "expected": "", "note": "a single closer"},
+    {"id": "h4", "input": {"s": ")("}, "expected": "", "note": "closer before opener"},
+    {"id": "h5", "input": {"s": "()"}, "expected": "()", "note": "already balanced"},
+    {"id": "h6", "input": {"s": "((x)"}, "expected": "(x)", "note": "one extra opener at the front"},
+    {"id": "h7", "input": {"s": "x))y((z"}, "expected": "xyz", "note": "every parenthesis must go"},
+    {"id": "h8", "input": {"s": "(a(b)c"}, "expected": "a(b)c", "note": "several minimal answers exist"},
+    {"id": "h9", "input": {"s": "))))(((("}, "expected": "", "note": "only unmatched parentheses"},
+    {"id": "h10", "input": {"s": "abc"}, "expected": "abc", "note": "letters only"},
+    {"id": "h11", "input": {"s": "(((a)))"}, "expected": "(((a)))", "note": "deep but balanced"},
+    {"id": "h12", "input": {"s": "(()))(()"}, "expected": "(())()", "note": "an extra closer in the middle and an extra opener later"},
+    {"id": "h13", "input": {"s": ")a(b)c("}, "expected": "a(b)c", "note": "unmatched parentheses at both ends"},
+    {"id": "h14", "input": {"s": "((((((((((((((((((((((((((((((((((((((((((((((((((x))))))))))))))))))))))))))))))"}, "expected": "((((((((((((((((((((((((((((((x))))))))))))))))))))))))))))))", "note": "twenty more openers than closers"},
+    {"id": "h15", "input": {"s": "q(w)e)r(t(y)u"}, "expected": "q(w)ert(y)u", "note": "one extra closer and one extra opener among letters"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 3}, "note": "large input with 500 to 1000 parentheses to delete"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 6}}
+  ]
+}

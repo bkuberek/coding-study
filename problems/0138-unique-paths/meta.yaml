@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0138"
+slug: unique-paths
+title: Unique Paths
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-2d]
+signature:
+  function:
+    name: uniquePaths
+    params:
+      - {name: m, type: int}
+      - {name: n, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Recursion from each cell with a memo table, role: intermediate, time: "O(m * n)", space: "O(m * n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: tabulation, name: Fill the table of path counts row by row, role: intermediate, time: "O(m * n)", space: "O(m * n)", time_class: "n", space_class: "n"}
+  - {id: rolling-array, name: One row of path counts updated in place, role: intermediate, time: "O(m * n)", space: "O(min(m, n))", time_class: "n", space_class: "sqrt n"}
+  - {id: binomial, name: Choose which moves go down with a modular inverse, role: optimal, time: "O(min(m, n) + log p)", space: "O(1)", time_class: "sqrt n", space_class: "1"}
+perf:
+  size_param: number of cells m * n (rows and columns about sqrt(n) each)
+  size_ladder: [1000, 10000, 100000, 1000000]
+  expected_from: binomial
+  time_limit: {ms: 3000}
+references:
+  leetcode: {number: 62, url: "https://leetcode.com/problems/unique-paths/"}
+related: [longest-common-subsequence, maximal-square]
+order: 1
+estimate_minutes: 20

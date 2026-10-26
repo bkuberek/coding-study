@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "level": 1, "ops": ["LevelStore", "put", "get", "get", "put", "get"], "args": [[], ["a", "1"], ["a"], ["b"], ["a", "2"], ["a"]], "expected": [null, null, "1", "", null, "2"]},
+    {"id": "h1", "level": 1, "ops": ["LevelStore", "get"], "args": [[], ["x"]], "expected": [null, ""]},
+    {"id": "h2", "level": 1, "ops": ["LevelStore", "put", "put", "get", "get"], "args": [[], ["k1", "v1"], ["k2", "v2"], ["k2"], ["k1"]], "expected": [null, null, null, "v2", "v1"]},
+    {"id": "h3", "level": 1, "ops": ["LevelStore", "put", "put", "put", "get"], "args": [[], ["z", "1"], ["z", "2"], ["z", "3"], ["z"]], "expected": [null, null, null, null, "3"]},
+    {"id": "ex2", "visible": true, "level": 2, "ops": ["LevelStore", "put", "put", "size", "remove", "remove", "get", "size"], "args": [[], ["a", "1"], ["b", "2"], [], ["a"], ["a"], ["a"], []], "expected": [null, null, null, 2, true, false, "", 1]},
+    {"id": "h4", "level": 2, "ops": ["LevelStore", "size"], "args": [[], []], "expected": [null, 0]},
+    {"id": "h5", "level": 2, "ops": ["LevelStore", "remove", "size"], "args": [[], ["q"], []], "expected": [null, false, 0]},
+    {"id": "h6", "level": 2, "ops": ["LevelStore", "put", "put", "size", "remove", "put", "size", "get"], "args": [[], ["a", "1"], ["a", "2"], [], ["a"], ["a", "3"], [], ["a"]], "expected": [null, null, null, 1, true, null, 1, "3"]},
+    {"id": "ex3", "visible": true, "level": 3, "ops": ["LevelStore", "put", "put", "put", "keysWithPrefix", "keysWithPrefix"], "args": [[], ["apple", "1"], ["apricot", "2"], ["banana", "3"], ["ap"], ["c"]], "expected": [null, null, null, null, ["apple", "apricot"], []]},
+    {"id": "h7", "level": 3, "ops": ["LevelStore", "put", "put", "put", "keysWithPrefix"], "args": [[], ["b", "1"], ["a", "2"], ["c", "3"], [""]], "expected": [null, null, null, null, ["a", "b", "c"]]},
+    {"id": "h8", "level": 3, "ops": ["LevelStore", "put", "put", "remove", "keysWithPrefix"], "args": [[], ["ab", "1"], ["ac", "2"], ["ab"], ["a"]], "expected": [null, null, null, true, ["ac"]]},
+    {"id": "h9", "level": 3, "ops": ["LevelStore", "put", "put", "put", "keysWithPrefix"], "args": [[], ["a", "1"], ["ab", "2"], ["abc", "3"], ["ab"]], "expected": [null, null, null, null, ["ab", "abc"]]}
+  ]
+}

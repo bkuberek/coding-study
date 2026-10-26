@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0144"
+slug: target-sum
+title: Target Sum
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-2d, backtracking]
+signature:
+  function:
+    name: findTargetSumWays
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: target, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: backtracking, name: Try both signs for every number, role: brute, time: "O(2^n)", space: "O(n)", time_class: "2^n", space_class: "n", oracle: true}
+  - {id: memoization, name: Recursion over index and running sum with a memo table, role: intermediate, time: "O(n * s)", space: "O(n * s)", time_class: "n^2", space_class: "n^2"}
+  - {id: tabulation, name: Table of counts by prefix and running sum, role: optimal, time: "O(n * s)", space: "O(n * s)", time_class: "n^2", space_class: "n^2"}
+  - {id: subset-sum, name: Count subsets with the positive sum in one rolling array, role: optimal, time: "O(n * s)", space: "O(s)", time_class: "n^2", space_class: "n"}
+perf:
+  size_param: "number of values n; generated values at most 10, so the total s grows with n"
+  size_ladder: [5, 10, 15, 20]
+  expected_from: subset-sum
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 494, url: "https://leetcode.com/problems/target-sum/"}
+related: [coin-change-ways, distinct-subsequences]
+order: 7
+estimate_minutes: 25

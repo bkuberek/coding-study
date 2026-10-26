@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "ops": ["WordDictionary", "addWord", "addWord", "search", "search", "search", "search"], "args": [[], ["map"], ["mop"], ["m.p"], [".ap"], ["m.."], ["ma"]], "expected": [null, null, null, true, true, true, false]},
+    {"id": "ex2", "visible": true, "ops": ["WordDictionary", "addWord", "search", "search", "addWord", "search"], "args": [[], ["sun"], ["..."], ["...."], ["suns"], ["s.n."]], "expected": [null, null, true, false, null, true]},
+    {"id": "h1", "ops": ["WordDictionary", "search", "search"], "args": [[], ["a"], ["."]], "expected": [null, false, false], "note": "searches on an empty dictionary"},
+    {"id": "h2", "ops": ["WordDictionary", "addWord", "search", "search", "search", "search"], "args": [[], ["a"], ["."], ["a"], ["b"], [".."]], "expected": [null, null, true, true, false, false], "note": "single letters"},
+    {"id": "h3", "ops": ["WordDictionary", "addWord", "search", "search", "search", "search"], "args": [[], ["cats"], ["ca."], ["cat"], ["ca.."], ["c..s"]], "expected": [null, null, false, false, true, true], "note": "a match must end where the pattern ends"},
+    {"id": "h4", "ops": ["WordDictionary", "addWord", "addWord", "addWord", "search", "search", "search", "search", "search"], "args": [[], ["bad"], ["dad"], ["mad"], ["pad"], ["bad"], [".ad"], ["b.."], ["..e"]], "expected": [null, null, null, null, false, true, true, true, false], "note": "letters and dots against several words"},
+    {"id": "h5", "ops": ["WordDictionary", "addWord", "addWord", "search", "search", "search", "search", "search"], "args": [[], ["abc"], ["abd"], ["ab."], ["a.d"], [".bd"], ["..c"], ["..."]], "expected": [null, null, null, true, true, true, true, true], "note": "a dot that only one branch satisfies"},
+    {"id": "h6", "ops": ["WordDictionary", "addWord", "search", "search", "search", "search"], "args": [[], ["zzzz"], ["z..z"], ["...."], [".z.y"], ["zzzzz"]], "expected": [null, null, true, true, false, false], "note": "last letter of the alphabet"},
+    {"id": "h7", "ops": ["WordDictionary", "addWord", "addWord", "search", "search", "search"], "args": [[], ["word"], ["word"], ["word"], ["w.rd"], ["wor"]], "expected": [null, null, null, true, true, false], "note": "duplicate add changes nothing"},
+    {"id": "h8", "ops": ["WordDictionary", "addWord", "search", "search", "search"], "args": [[], ["abcdefghijklmnopqrst"], ["abcdefghij.lmnopq.st"], [".bcdefghijklmnopqrs."], ["abcdefghijklmnopqrs"]], "expected": [null, null, true, true, false], "note": "20-letter word"},
+    {"id": "h9", "ops": ["WordDictionary", "addWord", "addWord", "search", "search", "search", "search", "search"], "args": [[], ["ab"], ["ba"], [".."], ["a."], [".a"], ["c."], ["..."]], "expected": [null, null, null, true, true, true, false, false], "note": "two-letter words and patterns"},
+    {"id": "h10", "ops": ["WordDictionary", "addWord", "search", "addWord", "search", "search", "search", "search"], "args": [[], ["trie"], ["t..e"], ["tree"], ["tr.e"], ["t.ie"], ["t.ee"], ["t.ea"]], "expected": [null, null, true, null, true, true, true, false], "note": "words added between searches"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "10000 calls: scanning every word of a length per dotted search is slow here"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 2}, "hang_guard_ms": 30000},
+    {"id": "g3", "generate": {"n": 1000, "seed": 3}}
+  ]
+}

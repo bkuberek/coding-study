@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0145"
+slug: distinct-subsequences
+title: Distinct Subsequences
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [dp-2d]
+signature:
+  function:
+    name: numDistinct
+    params:
+      - {name: s, type: string}
+      - {name: t, type: string}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Recursion over suffix pairs with a memo table, role: intermediate, time: "O(m * n)", space: "O(m * n)", time_class: "n^2", space_class: "n^2", oracle: true}
+  - {id: tabulation, name: Table of occurrence counts for prefix pairs, role: optimal, time: "O(m * n)", space: "O(m * n)", time_class: "n^2", space_class: "n^2"}
+  - {id: rolling-array, name: One array over t updated from right to left, role: optimal, time: "O(m * n)", space: "O(n)", time_class: "n^2", space_class: "n"}
+perf:
+  size_param: length of s, with t a tenth to a quarter as long
+  size_ladder: [125, 250, 500, 1000]
+  expected_from: rolling-array
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 115, url: "https://leetcode.com/problems/distinct-subsequences/"}
+related: [longest-common-subsequence, edit-distance, coin-change-ways]
+order: 8
+estimate_minutes: 35

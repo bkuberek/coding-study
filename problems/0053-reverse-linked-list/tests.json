@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"head": [3, 8, 1, 6]}, "expected": [6, 1, 8, 3]},
+    {"id": "ex2", "visible": true, "input": {"head": [10, 20]}, "expected": [20, 10]},
+    {"id": "h1", "input": {"head": []}, "expected": [], "note": "empty list"},
+    {"id": "h2", "input": {"head": [7]}, "expected": [7], "note": "single node"},
+    {"id": "h3", "input": {"head": [4, 4]}, "expected": [4, 4], "note": "two equal values"},
+    {"id": "h4", "input": {"head": [-2, 0, -9]}, "expected": [-9, 0, -2], "note": "negatives and zero"},
+    {"id": "h5", "input": {"head": [1, 2, 3, 4, 5, 6]}, "expected": [6, 5, 4, 3, 2, 1], "note": "sorted ascending becomes descending"},
+    {"id": "h6", "input": {"head": [50, 40, 30, 20, 10]}, "expected": [10, 20, 30, 40, 50], "note": "sorted descending becomes ascending"},
+    {"id": "h7", "input": {"head": [-5000, 5000, 0]}, "expected": [0, 5000, -5000], "note": "extreme values"},
+    {"id": "h8", "input": {"head": [1, 2, 3, 2, 1]}, "expected": [1, 2, 3, 2, 1], "note": "a palindrome is its own reverse"},
+    {"id": "h9", "input": {"head": [9, 9, 9, 9]}, "expected": [9, 9, 9, 9], "note": "all values equal"},
+    {"id": "h10", "input": {"head": [5, -1, 12, 0, 33, -40, 7, 18, -2, 6, 11]}, "expected": [11, 6, -2, 18, 7, -40, 33, 0, 12, -1, 5], "note": "odd length with mixed signs"},
+    {"id": "g1", "generate": {"n": 3000, "seed": 1}, "note": "longest allowed list"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 7}}
+  ]
+}

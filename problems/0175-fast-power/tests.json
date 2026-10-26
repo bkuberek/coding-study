@@ -1,0 +1,26 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"x": 1.5, "n": 4}, "expected": 5.0625},
+    {"id": "ex2", "visible": true, "input": {"x": 4.0, "n": -3}, "expected": 0.015625},
+    {"id": "h1", "input": {"x": 3.0, "n": 0}, "expected": 1.0, "note": "exponent 0"},
+    {"id": "h2", "input": {"x": 7.25, "n": 1}, "expected": 7.25, "note": "exponent 1"},
+    {"id": "h3", "input": {"x": -3.0, "n": 5}, "expected": -243.0, "note": "negative base, odd exponent"},
+    {"id": "h4", "input": {"x": -2.0, "n": -4}, "expected": 0.0625, "note": "negative base, negative even exponent"},
+    {"id": "h5", "input": {"x": 1.0, "n": 2147483647}, "expected": 1.0, "note": "largest exponent with base 1"},
+    {"id": "h6", "input": {"x": -1.0, "n": -2147483648}, "expected": 1.0, "note": "smallest exponent: -n does not fit in 32 bits"},
+    {"id": "h7", "input": {"x": -1.0, "n": 2147483647}, "expected": -1.0, "note": "base -1, odd exponent"},
+    {"id": "h8", "input": {"x": 2.0, "n": -2147483648}, "expected": 0.0, "note": "the result underflows to 0"},
+    {"id": "h9", "input": {"x": 0.5, "n": 2147483647}, "expected": 0.0, "note": "a base below 1 and a huge exponent"},
+    {"id": "h10", "input": {"x": 0.0, "n": 9}, "expected": 0.0, "note": "zero base"},
+    {"id": "h11", "input": {"x": 1.0001, "n": 50000}, "expected": 148.37606292299293, "note": "base just above 1: rounding errors must not pile up"},
+    {"id": "h12", "input": {"x": -0.9, "n": 7}, "expected": -0.4782969000000001, "note": "negative fraction"},
+    {"id": "h13", "input": {"x": 99.9, "n": 2}, "expected": 9980.010000000002, "note": "near the largest base"},
+    {"id": "h14", "input": {"x": 10.0, "n": -4}, "expected": 0.0001, "note": "small result"},
+    {"id": "g1", "generate": {"n": 4096, "seed": 1}, "note": "largest ladder size"},
+    {"id": "g4", "generate": {"n": 100000, "seed": 4}, "note": "exponent around 10^5"},
+    {"id": "g2", "generate": {"n": 1000000, "seed": 2}, "note": "exponent around 10^6"},
+    {"id": "g3", "generate": {"n": 1000, "seed": 3}}
+  ]
+}

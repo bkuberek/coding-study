@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../../../schemas/item.schema.json
+slug: url-shortener
+title: URL Shortener
+track: system-design
+difficulty: medium
+estimate_minutes: 45
+status: ready
+order: 1
+references:
+  study_guides:
+    - "distributed-systems-study-guide.md#2-nosql--key-value--document"
+    - "distributed-systems-study-guide.md#4-in-memory--caching"
+    - "distributed-systems-study-guide.md#2-cdn-content-delivery-network"
+    - "distributed-systems-study-guide.md#2-event-streaming-kafka"
+  links:
+    - https://www.rfc-editor.org/rfc/rfc9110
+related: [distributed-kv-store, distributed-rate-limiter]

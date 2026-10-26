@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"points": [[0, 1], [3, 0], [2, 2], [5, 5], [4, 3], [-2, 0]]}, "expected": 4},
+    {"id": "ex2", "visible": true, "input": {"points": [[3, -1], [1, 4], [3, 2], [0, 0], [3, 7]]}, "expected": 3},
+    {"id": "h1", "input": {"points": [[5, 5]]}, "expected": 1, "note": "single point"},
+    {"id": "h2", "input": {"points": [[0, 0], [7, -3]]}, "expected": 2, "note": "two points always share a line"},
+    {"id": "h3", "input": {"points": [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]]}, "expected": 5, "note": "all points on one diagonal"},
+    {"id": "h4", "input": {"points": [[-4, 2], [0, 2], [9, 2], [1, 3], [2, 5]]}, "expected": 3, "note": "horizontal line"},
+    {"id": "h5", "input": {"points": [[0, 0], [1, 2], [2, 4], [1, 0], [3, 6], [5, 1]]}, "expected": 4, "note": "slope 2 with directions in both senses from an anchor"},
+    {"id": "h6", "input": {"points": [[0, 0], [3, 1], [6, 2], [1, 3], [2, 6]]}, "expected": 3, "note": "slopes 1/3 and 3 must not be confused"},
+    {"id": "h7", "input": {"points": [[0, 0], [2, 4], [-2, -4], [1, 3], [3, 1]]}, "expected": 3, "note": "opposite directions are the same line"},
+    {"id": "h8", "input": {"points": [[-10000, -10000], [10000, 10000], [0, 0], [10000, -10000], [-10000, 10000]]}, "expected": 3, "note": "extreme coordinates on both diagonals"},
+    {"id": "h9", "input": {"points": [[0, 0], [1, 1], [0, 1], [1, 0]]}, "expected": 2, "note": "a square: no three collinear"},
+    {"id": "h10", "input": {"points": [[9999, 10000], [10000, 9999], [0, 1], [1, 0]]}, "expected": 2, "note": "two parallel lines: a slope alone does not identify a line"},
+    {"id": "h11", "input": {"points": [[0, 0], [10000, 9999], [-10000, -9999], [1, 1]]}, "expected": 3, "note": "a large reduced direction"},
+    {"id": "h12", "input": {"points": [[1, 1], [2, 3], [3, 5], [4, 7], [2, 2], [3, 3]]}, "expected": 4, "note": "two lines through one point; the longer wins"},
+    {"id": "g1", "generate": {"n": 100, "seed": 1}, "note": "largest ladder size"},
+    {"id": "g2", "generate": {"n": 300, "seed": 2}, "hang_guard_ms": 30000, "note": "the maximum number of points: the brute force does about 1.3 * 10^7 tests here"},
+    {"id": "g3", "generate": {"n": 60, "seed": 3}}
+  ]
+}

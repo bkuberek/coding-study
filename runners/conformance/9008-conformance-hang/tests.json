@@ -1,0 +1,9 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "before", "input": {"value": 1}, "expected": 1},
+    {"id": "hang", "input": {"value": -1}, "expected": -1, "hang_guard_ms": 500},
+    {"id": "after", "input": {"value": 2}, "expected": 2}
+  ]
+}

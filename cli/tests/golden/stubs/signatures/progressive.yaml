@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../../../../schemas/meta.schema.json
+# Progressive kind: every method emitted, each preceded by a Level <n> comment.
+id: "0102"
+slug: in-memory-db
+title: In-Memory Database
+status: draft
+difficulty: medium
+track: practical
+kind: progressive
+levels:
+  - {level: 1, title: Set and get}
+  - {level: 2, title: Prefix scans}
+signature:
+  class:
+    name: InMemoryDb
+    constructor: {params: []}
+    methods:
+      - {name: set, level: 1, params: [{name: timestamp, type: long}, {name: key, type: string}, {name: field, type: string}, {name: value, type: string}], returns: {type: void}}
+      - {name: get, level: 1, params: [{name: timestamp, type: long}, {name: key, type: string}, {name: field, type: string}], returns: {type: string}}
+      - {name: scanByPrefix, level: 2, params: [{name: timestamp, type: long}, {name: key, type: string}, {name: prefix, type: string}], returns: {type: "string[]"}}
+comparator: {type: ops}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

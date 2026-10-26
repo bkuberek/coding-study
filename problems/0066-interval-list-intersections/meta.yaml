@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0066"
+slug: interval-list-intersections
+title: Interval List Intersections
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [intervals, two-pointers]
+signature:
+  function:
+    name: intervalIntersection
+    params:
+      - {name: firstList, type: "int[][]"}
+      - {name: secondList, type: "int[][]"}
+    returns: {type: "int[][]"}
+comparator: {type: exact}
+approaches:
+  - {id: all-pairs, name: Intersect every pair, role: brute, time: "O(m * n)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: search-partners, name: Binary search the partners of each interval, role: intermediate, time: "O(m log n + k)", space: "O(1)", time_class: "n log n", space_class: "1"}
+  - {id: two-pointers, name: Walk both lists with two pointers, role: optimal, time: "O(m + n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: total length m + n, split at random between the lists
+  size_ladder: [100, 300, 1000, 3000, 5000]
+  expected_from: two-pointers
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 986, url: "https://leetcode.com/problems/interval-list-intersections/"}
+related: [merge-intervals, insert-interval]
+order: 5
+estimate_minutes: 20

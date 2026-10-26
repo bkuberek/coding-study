@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "ops": ["MedianFinder", "addNum", "addNum", "findMedian", "addNum", "findMedian"], "args": [[], [4], [10], [], [1], []], "expected": [null, null, null, 7.0, null, 4.0]},
+    {"id": "ex2", "visible": true, "ops": ["MedianFinder", "addNum", "findMedian", "addNum", "findMedian", "addNum", "findMedian", "addNum", "findMedian"], "args": [[], [-3], [], [-8], [], [6], [], [0], []], "expected": [null, null, -3.0, null, -5.5, null, -3.0, null, -1.5]},
+    {"id": "h1", "ops": ["MedianFinder", "addNum", "findMedian"], "args": [[], [42], []], "expected": [null, null, 42.0], "note": "a single number is its own median"},
+    {"id": "h2", "ops": ["MedianFinder", "addNum", "addNum", "addNum", "addNum", "findMedian"], "args": [[], [7], [7], [7], [7], []], "expected": [null, null, null, null, null, 7.0], "note": "all values equal"},
+    {"id": "h3", "ops": ["MedianFinder", "addNum", "addNum", "addNum", "addNum", "addNum", "findMedian", "addNum", "findMedian"], "args": [[], [1], [2], [3], [4], [5], [], [6], []], "expected": [null, null, null, null, null, null, 3.0, null, 3.5], "note": "ascending stream"},
+    {"id": "h4", "ops": ["MedianFinder", "addNum", "addNum", "addNum", "addNum", "addNum", "findMedian", "addNum", "findMedian"], "args": [[], [50], [40], [30], [20], [10], [], [0], []], "expected": [null, null, null, null, null, null, 30.0, null, 25.0], "note": "descending stream"},
+    {"id": "h5", "ops": ["MedianFinder", "addNum", "addNum", "findMedian"], "args": [[], [-100000], [100000], []], "expected": [null, null, null, 0.0], "note": "extreme values average to zero"},
+    {"id": "h6", "ops": ["MedianFinder", "addNum", "addNum", "addNum", "findMedian", "findMedian", "findMedian"], "args": [[], [9], [1], [5], [], [], []], "expected": [null, null, null, null, 5.0, 5.0, 5.0], "note": "repeated queries change nothing"},
+    {"id": "h7", "ops": ["MedianFinder", "addNum", "addNum", "addNum", "addNum", "findMedian", "addNum", "findMedian"], "args": [[], [3], [3], [8], [3], [], [8], []], "expected": [null, null, null, null, null, 3.0, null, 3.0], "note": "duplicates around the median"},
+    {"id": "h8", "ops": ["MedianFinder", "addNum", "findMedian", "addNum", "findMedian", "addNum", "findMedian", "addNum", "findMedian", "addNum", "findMedian"], "args": [[], [5], [], [15], [], [1], [], [3], [], [100], []], "expected": [null, null, 5.0, null, 10.0, null, 5.0, null, 4.0, null, 5.0], "note": "the median moves on every add"},
+    {"id": "h9", "ops": ["MedianFinder", "addNum", "addNum", "addNum", "findMedian"], "args": [[], [0], [0], [-1], []], "expected": [null, null, null, null, 0.0], "note": "zeros and a negative"},
+    {"id": "h10", "ops": ["MedianFinder", "addNum", "addNum", "findMedian", "addNum", "addNum", "findMedian"], "args": [[], [2], [3], [], [-7], [-8], []], "expected": [null, null, null, 2.5, null, null, -2.5], "note": "an even count whose middle values have an odd sum"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 1}, "note": "10^5 calls on a random stream"},
+    {"id": "g2", "generate": {"n": 100000, "seed": 9}, "hang_guard_ms": 30000, "note": "10^5 calls on a descending stream: every insertion into a sorted array shifts all of it"},
+    {"id": "g3", "generate": {"n": 10000, "seed": 5}, "note": "10^4 calls with values in [-2, 2]: many ties at the median"},
+    {"id": "g4", "generate": {"n": 1000, "seed": 7}, "note": "ascending stream"}
+  ]
+}

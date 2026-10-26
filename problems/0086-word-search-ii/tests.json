@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"board": [["c", "a", "t"], ["o", "r", "e"], ["d", "o", "g"]], "words": ["cat", "core", "dog", "rat", "code", "toe"]}, "expected": ["cat", "core", "dog", "rat"]},
+    {"id": "ex2", "visible": true, "input": {"board": [["a", "b"], ["c", "d"]], "words": ["abdc", "abcd", "aa"]}, "expected": ["abdc"]},
+    {"id": "h1", "input": {"board": [["q"]], "words": ["q", "qq", "a"]}, "expected": ["q"], "note": "single cell: a cell cannot be used twice"},
+    {"id": "h2", "input": {"board": [["a", "b"], ["c", "d"]], "words": ["xyz", "ad", "bc"]}, "expected": [], "note": "no word is on the board"},
+    {"id": "h3", "input": {"board": [["a", "a", "a"], ["a", "a", "a"], ["a", "a", "a"]], "words": ["aaaa", "aaaaaaaaa", "aaaaaaaaaa"]}, "expected": ["aaaa", "aaaaaaaaa"], "note": "all cells equal: nine letters fit, ten do not"},
+    {"id": "h4", "input": {"board": [["o", "a", "t", "h"], ["x", "a", "x", "x"], ["x", "t", "x", "x"]], "words": ["oat", "oath", "oaths", "oatt"]}, "expected": ["oat", "oath"], "note": "words that extend each other"},
+    {"id": "h5", "input": {"board": [["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]], "words": ["abcdefghij", "jihgfedcba", "abd", "fgh"]}, "expected": ["abcdefghij", "jihgfedcba", "fgh"], "note": "single row, both directions"},
+    {"id": "h6", "input": {"board": [["s"], ["t"], ["a"], ["r"]], "words": ["star", "rats", "tar", "sat"]}, "expected": ["star", "rats", "tar"], "note": "single column"},
+    {"id": "h7", "input": {"board": [["a", "b", "a"], ["b", "a", "b"], ["a", "b", "a"]], "words": ["abab", "aaa", "bab", "ababababa"]}, "expected": ["abab", "bab", "ababababa"], "note": "checkerboard: only alternating words fit"},
+    {"id": "h8", "input": {"board": [["a", "a", "a", "a"], ["a", "a", "a", "a"], ["a", "a", "a", "a"], ["a", "a", "a", "a"]], "words": ["aaaaaaaaab", "aaaaaaaaaa"]}, "expected": ["aaaaaaaaaa"], "note": "many walks of equal letters: a dead end after nine steps"},
+    {"id": "h9", "input": {"board": [["e", "a", "t"], ["t", "e", "a"], ["a", "t", "e"]], "words": ["eat", "tea", "ate", "eta", "tae", "eatea", "teatea"]}, "expected": ["eat", "tea", "ate", "eta", "tae"], "note": "several words over the same cells"},
+    {"id": "h10", "input": {"board": [["z", "y"], ["x", "w"]], "words": ["zywx", "zxwy", "wxzy", "zw"]}, "expected": ["zywx", "zxwy", "wxzy"], "note": "closing the cycle versus a diagonal"},
+    {"id": "h11", "input": {"board": [["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"], ["b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "a"], ["c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "a", "b"], ["d", "e", "f", "g", "h", "i", "j", "k", "l", "a", "b", "c"], ["e", "f", "g", "h", "i", "j", "k", "l", "a", "b", "c", "d"], ["f", "g", "h", "i", "j", "k", "l", "a", "b", "c", "d", "e"], ["g", "h", "i", "j", "k", "l", "a", "b", "c", "d", "e", "f"], ["h", "i", "j", "k", "l", "a", "b", "c", "d", "e", "f", "g"], ["i", "j", "k", "l", "a", "b", "c", "d", "e", "f", "g", "h"], ["j", "k", "l", "a", "b", "c", "d", "e", "f", "g", "h", "i"], ["k", "l", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j"], ["l", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"]], "words": ["abcdefghijkl", "lkjihgfedcba", "aaaa", "abab", "bcba", "klkl"]}, "expected": ["abcdefghijkl", "lkjihgfedcba", "abab", "bcba", "klkl"], "note": "12 x 12 board"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "10000 words on a large board"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 2}, "hang_guard_ms": 30000, "note": "10000 words on a large board"},
+    {"id": "g3", "generate": {"n": 1000, "seed": 3}}
+  ]
+}

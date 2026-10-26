@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0057"
+slug: remove-nth-from-end
+title: Remove Nth Node From End
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [linked-list, two-pointers]
+signature:
+  function:
+    name: removeNthFromEnd
+    params:
+      - {name: head, type: ListNode}
+      - {name: n, type: int}
+    returns: {type: ListNode}
+comparator: {type: exact}
+approaches:
+  - {id: node-array, name: Index every node in an array, role: brute, time: "O(L)", space: "O(L)", time_class: "n", space_class: "n"}
+  - {id: two-pass, name: "Count the length, then walk to the predecessor", role: optimal, time: "O(L)", space: "O(1)", time_class: "n", space_class: "1", oracle: true}
+  - {id: one-pass-gap, name: Two pointers n nodes apart, role: optimal, time: "O(L)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: number of nodes L
+  size_ladder: [1000, 3000, 10000]
+  expected_from: one-pass-gap
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 19, url: "https://leetcode.com/problems/remove-nth-node-from-end-of-list/"}
+related: [linked-list-cycle, reorder-list, reverse-nodes-in-k-group]
+order: 5
+estimate_minutes: 15

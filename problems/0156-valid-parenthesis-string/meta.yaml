@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0156"
+slug: valid-parenthesis-string
+title: Parentheses With Wildcards
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [greedy, stack]
+signature:
+  function:
+    name: checkValidString
+    params:
+      - {name: s, type: string}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: possible-balances, name: Track every possible open count, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: two-stacks, name: Match closers against open and wildcard positions, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: balance-range, name: Keep the lowest and highest possible open count, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n, the length of s
+  size_ladder: [100, 300, 1000, 3000]
+  expected_from: balance-range
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 678, url: "https://leetcode.com/problems/valid-parenthesis-string/"}
+related: [valid-parentheses, min-remove-to-balance, partition-labels]
+order: 7
+estimate_minutes: 25

@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9003"
+slug: conformance-exception
+title: "Conformance: an exception from user code"
+status: ready
+difficulty: easy
+track: practical
+kind: function
+signature:
+  function:
+    name: failWith
+    params:
+      - {name: message, type: string}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: raises, name: "Throw an error whose message is the argument", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0074"
+slug: validate-bst
+title: Validate a Binary Search Tree
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [trees]
+signature:
+  function:
+    name: isValidBST
+    params:
+      - {name: root, type: TreeNode}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: subtree-extremes, name: Compare every node with the extremes of its subtrees, role: brute, time: "O(n * h)", space: "O(h)", time_class: "n log n", space_class: "log n", oracle: true}
+  - {id: bounds, name: Pass down the open interval each node must lie in, role: optimal, time: "O(n)", space: "O(h)", time_class: "n", space_class: "log n"}
+  - {id: inorder, name: In-order walk that must strictly increase, role: optimal, time: "O(n)", space: "O(h)", time_class: "n", space_class: "log n"}
+perf:
+  size_param: number of nodes
+  size_ladder: [1000, 10000, 100000]
+  expected_from: bounds
+references:
+  leetcode: {number: 98, url: "https://leetcode.com/problems/validate-binary-search-tree/"}
+related: [kth-smallest-in-bst, bst-iterator, lowest-common-ancestor]
+order: 8
+estimate_minutes: 20

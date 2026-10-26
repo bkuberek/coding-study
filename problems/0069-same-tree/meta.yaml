@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0069"
+slug: same-tree
+title: Same Tree
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [trees]
+signature:
+  function:
+    name: isSameTree
+    params:
+      - {name: p, type: TreeNode}
+      - {name: q, type: TreeNode}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: recursive, name: Compare roots then both subtrees, role: optimal, time: "O(n)", space: "O(h)", time_class: "n", space_class: "log n", oracle: true}
+  - {id: pair-stack, name: Explicit stack of node pairs, role: optimal, time: "O(n)", space: "O(h)", time_class: "n", space_class: "log n"}
+perf:
+  size_param: number of nodes in each tree
+  size_ladder: [1000, 10000, 100000]
+  expected_from: recursive
+references:
+  leetcode: {number: 100, url: "https://leetcode.com/problems/same-tree/"}
+related: [subtree-of-another-tree, invert-binary-tree, serialize-binary-tree]
+order: 3
+estimate_minutes: 10

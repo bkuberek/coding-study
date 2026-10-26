@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0061"
+slug: reverse-nodes-in-k-group
+title: Reverse Nodes in K-Groups
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [linked-list]
+signature:
+  function:
+    name: reverseKGroup
+    params:
+      - {name: head, type: ListNode}
+      - {name: k, type: int}
+    returns: {type: ListNode}
+comparator: {type: exact}
+approaches:
+  - {id: value-array, name: "Copy the values, reverse each full chunk, write them back", role: brute, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: node-stack, name: Pop each group of k nodes off a stack, role: intermediate, time: "O(n)", space: "O(k)", time_class: "n", space_class: "n"}
+  - {id: in-place, name: Reverse each full group between two anchors, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: number of nodes
+  size_ladder: [1000, 10000, 100000]
+  expected_from: in-place
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 25, url: "https://leetcode.com/problems/reverse-nodes-in-k-group/"}
+related: [reverse-linked-list, remove-nth-from-end]
+order: 9
+estimate_minutes: 35

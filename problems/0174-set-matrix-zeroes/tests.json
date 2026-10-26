@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"matrix": [[6, 2, 9, 4], [3, 8, 0, 1], [7, 5, 2, 6]]}, "expected": [[6, 2, 0, 4], [0, 0, 0, 0], [7, 5, 0, 6]]},
+    {"id": "ex2", "visible": true, "input": {"matrix": [[0, 3, 5], [2, 4, 6], [8, 1, 0]]}, "expected": [[0, 0, 0], [0, 4, 0], [0, 0, 0]]},
+    {"id": "h1", "input": {"matrix": [[0]]}, "expected": [[0]], "note": "single zero cell"},
+    {"id": "h2", "input": {"matrix": [[9]]}, "expected": [[9]], "note": "single non-zero cell"},
+    {"id": "h3", "input": {"matrix": [[1, 2], [3, 4]]}, "expected": [[1, 2], [3, 4]], "note": "no zeros: unchanged"},
+    {"id": "h4", "input": {"matrix": [[5, 0, 7, 1]]}, "expected": [[0, 0, 0, 0]], "note": "single row"},
+    {"id": "h5", "input": {"matrix": [[5], [0], [7]]}, "expected": [[0], [0], [0]], "note": "single column"},
+    {"id": "h6", "input": {"matrix": [[0, 1, 2], [3, 4, 5], [6, 7, 8]]}, "expected": [[0, 0, 0], [0, 4, 5], [0, 7, 8]], "note": "zero at the top-left corner clears the first row and column"},
+    {"id": "h7", "input": {"matrix": [[1, 2, 0], [3, 4, 5], [6, 7, 8]]}, "expected": [[0, 0, 0], [3, 4, 0], [6, 7, 0]], "note": "zero in the first row only"},
+    {"id": "h8", "input": {"matrix": [[1, 2, 3], [0, 4, 5], [6, 7, 8]]}, "expected": [[0, 2, 3], [0, 0, 0], [0, 7, 8]], "note": "zero in the first column only"},
+    {"id": "h9", "input": {"matrix": [[-2147483648, 2147483647, 1], [2147483647, 0, -2147483648], [-1, -2147483648, 2147483647]]}, "expected": [[-2147483648, 0, 1], [0, 0, 0], [-1, 0, 2147483647]], "note": "extreme values around a zero"},
+    {"id": "h10", "input": {"matrix": [[0, 0], [0, 0]]}, "expected": [[0, 0], [0, 0]], "note": "all zeros"},
+    {"id": "h11", "input": {"matrix": [[1, 2, 3, 4], [5, 0, 6, 7], [8, 9, 0, 1], [2, 3, 4, 5]]}, "expected": [[1, 0, 0, 4], [0, 0, 0, 0], [0, 0, 0, 0], [2, 0, 0, 5]], "note": "two zeros on a diagonal: new zeros must not spread"},
+    {"id": "h12", "input": {"matrix": [[1, 1, 1], [1, 1, 1], [1, 1, 0]]}, "expected": [[1, 1, 0], [1, 1, 0], [0, 0, 0]], "note": "zero in the last cell"},
+    {"id": "g1", "generate": {"n": 90000, "seed": 1}, "note": "largest input: a 300 x 300 matrix"},
+    {"id": "g2", "generate": {"n": 5000, "seed": 2}, "note": "random aspect ratio"}
+  ]
+}

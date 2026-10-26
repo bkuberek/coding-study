@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0132"
+slug: decode-ways
+title: Decode Ways
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-1d]
+signature:
+  function:
+    name: numDecodings
+    params:
+      - {name: s, type: string}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Top-down count of suffix decodings, role: intermediate, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: tabulation, name: Bottom-up table of prefix decodings, role: intermediate, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: two-variables, name: Rolling counts of the last two prefixes, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n, the length of s
+  size_ladder: [100, 300, 1000, 2000]
+  expected_from: two-variables
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 91, url: "https://leetcode.com/problems/decode-ways/"}
+related: [climbing-stairs, word-break]
+order: 7
+estimate_minutes: 25

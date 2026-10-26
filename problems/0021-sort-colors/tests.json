@@ -1,0 +1,25 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [2, 0, 1, 2, 1, 0]}, "expected": [0, 0, 1, 1, 2, 2]},
+    {"id": "ex2", "visible": true, "input": {"nums": [1, 2, 2, 1]}, "expected": [1, 1, 2, 2]},
+    {"id": "h1", "input": {"nums": [0]}, "expected": [0], "note": "a single 0"},
+    {"id": "h2", "input": {"nums": [2]}, "expected": [2], "note": "a single 2"},
+    {"id": "h3", "input": {"nums": [1, 1, 1]}, "expected": [1, 1, 1], "note": "one color only"},
+    {"id": "h4", "input": {"nums": [2, 2, 0, 0]}, "expected": [0, 0, 2, 2], "note": "no 1s"},
+    {"id": "h5", "input": {"nums": [2, 1, 0]}, "expected": [0, 1, 2], "note": "reverse order"},
+    {"id": "h6", "input": {"nums": [0, 1, 2]}, "expected": [0, 1, 2], "note": "already sorted"},
+    {"id": "h7", "input": {"nums": [1, 0]}, "expected": [0, 1], "note": "two elements out of order"},
+    {"id": "h8", "input": {"nums": [2, 0, 2, 1, 1, 0, 0, 2, 1]}, "expected": [0, 0, 0, 1, 1, 1, 2, 2, 2], "note": "all colors interleaved"},
+    {"id": "h9", "input": {"nums": [2, 2, 2, 2, 2, 0]}, "expected": [0, 2, 2, 2, 2, 2], "note": "a 0 behind a block of 2s"},
+    {"id": "h10", "input": {"nums": [1, 2, 1, 2, 1, 2]}, "expected": [1, 1, 1, 2, 2, 2], "note": "no 0s, alternating"},
+    {"id": "h11", "input": {"nums": [0, 0, 0, 1]}, "expected": [0, 0, 0, 1], "note": "sorted with a block of 0s"},
+    {"id": "h12", "input": {"nums": [2, 1, 1, 1, 1, 0]}, "expected": [0, 1, 1, 1, 1, 2], "note": "the extremes swapped around a block of 1s"},
+    {"id": "h13", "input": {"nums": [1, 0, 2, 0, 1, 2, 2, 1, 0, 0]}, "expected": [0, 0, 0, 0, 1, 1, 1, 2, 2, 2], "note": "mixed, ten elements"},
+    {"id": "h14", "input": {"nums": [1, 2, 0]}, "expected": [0, 1, 2], "note": "a 0 swapped in from the back must be examined before moving on"},
+    {"id": "h15", "input": {"nums": [2, 0]}, "expected": [0, 2], "note": "two elements, extremes reversed"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 1}, "note": "maximum length, no 1s"},
+    {"id": "g2", "generate": {"n": 100000, "seed": 3}, "note": "maximum length, all three colors"}
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [14, 3, 12, 5, 13, 2, 4, 30]}, "expected": 4},
+    {"id": "ex2", "visible": true, "input": {"nums": [8, 8, 9, 6]}, "expected": 2},
+    {"id": "h1", "input": {"nums": []}, "expected": 0, "note": "empty array"},
+    {"id": "h2", "input": {"nums": [5]}, "expected": 1, "note": "single element"},
+    {"id": "h3", "input": {"nums": [7, 7, 7]}, "expected": 1, "note": "all values equal"},
+    {"id": "h4", "input": {"nums": [1, 2, 2, 3]}, "expected": 3, "note": "a repeat inside a run"},
+    {"id": "h5", "input": {"nums": [2, -2, 0, -1, 1]}, "expected": 5, "note": "negatives and zero"},
+    {"id": "h6", "input": {"nums": [10, 8, 6, 4]}, "expected": 1, "note": "gaps of two everywhere"},
+    {"id": "h7", "input": {"nums": [9, 8, 7, 6, 5, 4]}, "expected": 6, "note": "sorted descending"},
+    {"id": "h8", "input": {"nums": [1000000000, 999999999, -1000000000, -999999999]}, "expected": 2, "note": "runs at both extremes"},
+    {"id": "h9", "input": {"nums": [3, 100, 4, 101, 5, 102, 6]}, "expected": 4, "note": "two interleaved runs"},
+    {"id": "h10", "input": {"nums": [0, -1]}, "expected": 2, "note": "run across zero"},
+    {"id": "h11", "input": {"nums": [20, 1, 21, 2, 22, 3, 23, 24]}, "expected": 5, "note": "the later run is longer"},
+    {"id": "h12", "input": {"nums": [-1000000000, 1000000000]}, "expected": 1, "note": "extreme values far apart"},
+    {"id": "h13", "input": {"nums": [5, 1, 3, 2, 4, 10, 12, 11, 1, 5]}, "expected": 5, "note": "repeats at the ends of a run"},
+    {"id": "h14", "input": {"nums": [4, 4, 4, 5, 5, 5]}, "expected": 2, "note": "many repeats of a short run"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 6}, "hang_guard_ms": 30000, "note": "large input: linear membership checks scan about 10^8 elements here"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 2}}
+  ]
+}

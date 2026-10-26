@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"matrix": [[5, 1, 8], [2, 0, 7], [6, 3, 4]]}, "expected": [[6, 2, 5], [3, 0, 1], [4, 7, 8]]},
+    {"id": "ex2", "visible": true, "input": {"matrix": [[9, 4], [-3, 0]]}, "expected": [[-3, 9], [0, 4]]},
+    {"id": "h1", "input": {"matrix": [[42]]}, "expected": [[42]], "note": "1 x 1: nothing moves"},
+    {"id": "h2", "input": {"matrix": [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]]}, "expected": [[13, 9, 5, 1], [14, 10, 6, 2], [15, 11, 7, 3], [16, 12, 8, 4]], "note": "even side: two layers, no centre"},
+    {"id": "h3", "input": {"matrix": [[0, 1, 2, 3, 4], [5, 6, 7, 8, 9], [10, 11, 12, 13, 14], [15, 16, 17, 18, 19], [20, 21, 22, 23, 24]]}, "expected": [[20, 15, 10, 5, 0], [21, 16, 11, 6, 1], [22, 17, 12, 7, 2], [23, 18, 13, 8, 3], [24, 19, 14, 9, 4]], "note": "odd side 5: two layers around a fixed centre"},
+    {"id": "h4", "input": {"matrix": [[7, 7, 7], [7, 7, 7], [7, 7, 7]]}, "expected": [[7, 7, 7], [7, 7, 7], [7, 7, 7]], "note": "all values equal"},
+    {"id": "h5", "input": {"matrix": [[-1000, 1000], [1000, -1000]]}, "expected": [[1000, -1000], [-1000, 1000]], "note": "extreme values"},
+    {"id": "h6", "input": {"matrix": [[1, 0, 0], [0, 1, 0], [0, 0, 1]]}, "expected": [[0, 0, 1], [0, 1, 0], [1, 0, 0]], "note": "the identity becomes the anti-diagonal"},
+    {"id": "h7", "input": {"matrix": [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [3, 0, 0, 0]]}, "expected": [[3, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], "note": "a single marked corner moves to the top-left"},
+    {"id": "h8", "input": {"matrix": [[-5, -4], [-3, -2]]}, "expected": [[-3, -5], [-2, -4]], "note": "negative values only"},
+    {"id": "h9", "input": {"matrix": [[-5, -2, 1, 4, -4, -1], [2, 5, -3, 0, 3, -5], [-2, 1, 4, -4, -1, 2], [5, -3, 0, 3, -5, -2], [1, 4, -4, -1, 2, 5], [-3, 0, 3, -5, -2, 1]]}, "expected": [[-3, 1, 5, -2, 2, -5], [0, 4, -3, 1, 5, -2], [3, -4, 0, 4, -3, 1], [-5, -1, 3, -4, 0, 4], [-2, 2, -5, -1, 3, -4], [1, 5, -2, 2, -5, -1]], "note": "side 6, three layers"},
+    {"id": "h10", "input": {"matrix": [[1, 2, 1], [2, 0, 2], [1, 2, 1]]}, "expected": [[1, 2, 1], [2, 0, 2], [1, 2, 1]], "note": "symmetric under rotation"},
+    {"id": "g1", "generate": {"n": 500, "seed": 1}, "note": "largest side: 250000 cells"},
+    {"id": "g2", "generate": {"n": 77, "seed": 2}, "note": "odd side"}
+  ]
+}

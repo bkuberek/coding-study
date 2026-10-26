@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0200"
+slug: thread-safe-lru-cache
+title: Thread-Safe LRU Cache
+status: ready
+difficulty: hard
+track: concurrency
+kind: concurrent
+languages: [java, kotlin, python]
+signature:
+  class:
+    name: LRUCache
+    constructor: {params: [{name: capacity, type: int}]}
+    methods:
+      - {name: get, params: [{name: key, type: int}], returns: {type: int}}
+      - {name: put, params: [{name: key, type: int}, {name: value, type: int}], returns: {type: void}}
+      - {name: size, params: [], returns: {type: int}}
+comparator: {type: ops}
+concurrency:
+  model: threads
+  jvm_threads: [platform, virtual]
+  runs: 3
+  deadline_ms: 5000
+  broken:
+    - id: no-lock
+      name: No lock
+      bug: The hash map and the recency list are updated with no mutual exclusion, so concurrent calls corrupt the list and double-evict entries
+      caught_by: [s1]
+    - id: unlocked-get
+      name: Get treated as a read
+      bug: Put takes the lock but get does not, although every hit moves its entry in the recency list
+      caught_by: [s2]
+approaches:
+  - {id: locked-dll, name: Hash map and doubly linked list under one lock, role: optimal, time: "O(1) per op", space: "O(capacity)"}
+  - {id: locked-linked-map, name: Access-ordered map from the standard library under one lock, role: optimal, time: "O(1) per op", space: "O(capacity)"}
+references:
+  leetcode: {number: 146, url: "https://leetcode.com/problems/lru-cache/"}
+related: [lru-cache, cache-service, read-write-lock]
+estimate_minutes: 40

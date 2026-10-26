@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0055"
+slug: linked-list-cycle
+title: Linked List Cycle
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [linked-list, two-pointers]
+signature:
+  function:
+    name: hasCycle
+    params:
+      - {name: head, type: ListNode}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: visited-set, name: Remember every node you have visited, role: brute, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: fast-slow, name: "Fast and slow pointers (Floyd)", role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: number of nodes
+  size_ladder: [1000, 3000, 10000]
+  expected_from: fast-slow
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 141, url: "https://leetcode.com/problems/linked-list-cycle/"}
+related: [reorder-list, remove-nth-from-end]
+order: 3
+estimate_minutes: 10

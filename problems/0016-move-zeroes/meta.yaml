@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0016"
+slug: move-zeroes
+title: Move Zeroes
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [two-pointers]
+signature:
+  function:
+    name: moveZeroes
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: void, output_from: nums}
+comparator: {type: exact}
+approaches:
+  - {id: buffer, name: Copy the non-zeros into a buffer, role: brute, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: write-index, name: Compact forward then fill with zeros, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+  - {id: swap, name: Swap each non-zero into the next free slot, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: length of nums
+  size_ladder: [1000, 10000, 100000]
+  expected_from: write-index
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 283, url: "https://leetcode.com/problems/move-zeroes/"}
+related: [sort-colors, valid-palindrome]
+order: 2
+estimate_minutes: 10

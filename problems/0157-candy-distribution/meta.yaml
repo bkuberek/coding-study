@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0157"
+slug: candy-distribution
+title: Candy Distribution
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [greedy]
+signature:
+  function:
+    name: candy
+    params:
+      - {name: ratings, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: relaxation, name: Repeat passes that fix violated neighbors until nothing changes, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: two-pass, name: Satisfy left neighbors then right neighbors, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: slope-counting, name: One pass over rising and falling runs, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n, the number of children
+  size_ladder: [100, 300, 1000, 2000]
+  expected_from: two-pass
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 135, url: "https://leetcode.com/problems/candy/"}
+related: [gas-station, trapping-rain-water, product-except-self]
+order: 8
+estimate_minutes: 35

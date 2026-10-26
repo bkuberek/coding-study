@@ -1,0 +1,10 @@
+{
+  "$schema": "../../../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [4, 9, 2, 8], "target": 11}, "expected": [1, 2]},
+    {"id": "ex2", "visible": true, "input": {"nums": [5, 5], "target": 10}, "expected": [0, 1]},
+    {"id": "h1", "input": {"nums": [-3, 8, 0, 3], "target": 0}, "expected": [0, 3], "note": "negatives and zero"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 1}}
+  ]
+}

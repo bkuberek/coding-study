@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0064"
+slug: non-overlapping-intervals
+title: Non-Overlapping Intervals
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [intervals, greedy]
+signature:
+  function:
+    name: eraseOverlapIntervals
+    params:
+      - {name: intervals, type: "int[][]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: chain-dp, name: Longest compatible chain by dynamic programming, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: earliest-end, name: Greedy by earliest end, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+  - {id: drop-longer-end, name: Sort by start and drop the later-ending interval, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: number of intervals
+  size_ladder: [100, 300, 1000, 3000, 5000]
+  expected_from: earliest-end
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 435, url: "https://leetcode.com/problems/non-overlapping-intervals/"}
+related: [merge-intervals, min-meeting-rooms]
+order: 3
+estimate_minutes: 25

@@ -1,0 +1,26 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"word1": "planet", "word2": "plants"}, "expected": 2},
+    {"id": "ex2", "visible": true, "input": {"word1": "", "word2": "abc"}, "expected": 3},
+    {"id": "h1", "input": {"word1": "", "word2": ""}, "expected": 0, "note": "both words empty"},
+    {"id": "h2", "input": {"word1": "same", "word2": "same"}, "expected": 0, "note": "identical words"},
+    {"id": "h3", "input": {"word1": "cat", "word2": "cut"}, "expected": 1, "note": "one replacement"},
+    {"id": "h4", "input": {"word1": "abc", "word2": "xyz"}, "expected": 3, "note": "no letter in common, same length"},
+    {"id": "h5", "input": {"word1": "ab", "word2": "ba"}, "expected": 2, "note": "a swap costs two operations"},
+    {"id": "h6", "input": {"word1": "pre", "word2": "prefix"}, "expected": 3, "note": "one word is a prefix of the other"},
+    {"id": "h7", "input": {"word1": "winter", "word2": "water"}, "expected": 2, "note": "replace and delete"},
+    {"id": "h8", "input": {"word1": "abcdef", "word2": "azced"}, "expected": 3, "note": "all three kinds of operation"},
+    {"id": "h9", "input": {"word1": "a", "word2": ""}, "expected": 1, "note": "the second word is empty"},
+    {"id": "h10", "input": {"word1": "aaaa", "word2": "aaab"}, "expected": 1, "note": "repeated letters"},
+    {"id": "h11", "input": {"word1": "mississippi", "word2": "missouri"}, "expected": 6, "note": "different lengths with repeats"},
+    {"id": "h12", "input": {"word1": "kitten", "word2": "knitting"}, "expected": 3, "note": "inserts in the middle"},
+    {"id": "h13", "input": {"word1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "word2": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}, "expected": 500, "note": "maximum lengths, every letter replaced"},
+    {"id": "h14", "input": {"word1": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "word2": ""}, "expected": 500, "note": "maximum length against an empty word"},
+    {"id": "h15", "input": {"word1": "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab", "word2": "babababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababa"}, "expected": 2, "note": "a shift: delete the first letter, append it at the end"},
+    {"id": "g1", "generate": {"n": 1000, "seed": 1}, "note": "two words of about 500 letters"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 2}, "note": "two words of about 500 letters"},
+    {"id": "g3", "generate": {"n": 200, "seed": 3}}
+  ]
+}

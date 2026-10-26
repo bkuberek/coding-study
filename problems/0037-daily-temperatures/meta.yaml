@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0037"
+slug: daily-temperatures
+title: Daily Temperatures
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [monotonic-stack]
+signature:
+  function:
+    name: dailyTemperatures
+    params:
+      - {name: temperatures, type: "int[]"}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Scan ahead for a warmer day, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: monotonic-stack, name: Stack of days still waiting for a warmer one, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of days, a third to two thirds of them in a cold spell
+  size_ladder: [1000, 2000, 5000, 10000]
+  expected_from: monotonic-stack
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 739, url: "https://leetcode.com/problems/daily-temperatures/"}
+related: [stock-span, largest-rectangle-histogram, trapping-rain-water]
+order: 1
+estimate_minutes: 20

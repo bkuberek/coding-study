@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"num1": "46", "num2": "7"}, "expected": "322"},
+    {"id": "ex2", "visible": true, "input": {"num1": "999", "num2": "12"}, "expected": "11988"},
+    {"id": "h1", "input": {"num1": "0", "num2": "0"}, "expected": "0", "note": "both zero"},
+    {"id": "h2", "input": {"num1": "0", "num2": "98765"}, "expected": "0", "note": "zero times a large number"},
+    {"id": "h3", "input": {"num1": "31415", "num2": "0"}, "expected": "0", "note": "a large number times zero"},
+    {"id": "h4", "input": {"num1": "1", "num2": "777"}, "expected": "777", "note": "multiplying by 1"},
+    {"id": "h5", "input": {"num1": "9", "num2": "9"}, "expected": "81", "note": "single digits with a carry"},
+    {"id": "h6", "input": {"num1": "2", "num2": "3"}, "expected": "6", "note": "single digits without a carry"},
+    {"id": "h7", "input": {"num1": "9999999999999999999999999999999999999999", "num2": "99999999999999999999999999999999999"}, "expected": "999999999999999999999999999999999989999900000000000000000000000000000000001", "note": "all nines: the product has m + n digits"},
+    {"id": "h8", "input": {"num1": "1000000000000000000000000000000", "num2": "10000000000000000000000000"}, "expected": "10000000000000000000000000000000000000000000000000000000", "note": "powers of ten: the product has m + n - 1 digits"},
+    {"id": "h9", "input": {"num1": "100200300", "num2": "4005"}, "expected": "401302201500", "note": "zeros inside the factors"},
+    {"id": "h10", "input": {"num1": "123456789123456789", "num2": "987654321987654321"}, "expected": "121932631356500531347203169112635269", "note": "beyond 64-bit integers"},
+    {"id": "h11", "input": {"num1": "25", "num2": "4"}, "expected": "100", "note": "the product ends in zeros"},
+    {"id": "h12", "input": {"num1": "5", "num2": "22222222222222222222222222222222222222222222222222"}, "expected": "111111111111111111111111111111111111111111111111110", "note": "one short factor, one long"},
+    {"id": "g1", "generate": {"n": 2000, "seed": 1}, "hang_guard_ms": 30000, "note": "largest input: about 3 * 10^6 digit products"},
+    {"id": "g2", "generate": {"n": 300, "seed": 2}}
+  ]
+}

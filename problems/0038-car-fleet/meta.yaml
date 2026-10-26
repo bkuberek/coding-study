@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0038"
+slug: car-fleet
+title: Car Fleet
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [monotonic-stack]
+signature:
+  function:
+    name: carFleet
+    params:
+      - {name: target, type: int}
+      - {name: position, type: "int[]"}
+      - {name: speed, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Compare each car with the slowest car ahead of it, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: sort-and-stack, name: "Sort by position, then stack the fleet arrival times", role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: number of cars
+  size_ladder: [500, 1000, 2000, 5000]
+  expected_from: sort-and-stack
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 853, url: "https://leetcode.com/problems/car-fleet/"}
+related: [daily-temperatures, merge-intervals]
+order: 2
+estimate_minutes: 25

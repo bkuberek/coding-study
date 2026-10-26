@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"head": [11, 12, 13, 14, 15, 16, 17], "k": 3}, "expected": [13, 12, 11, 16, 15, 14, 17]},
+    {"id": "ex2", "visible": true, "input": {"head": [4, 8, 15, 16], "k": 2}, "expected": [8, 4, 16, 15]},
+    {"id": "h1", "input": {"head": [5], "k": 1}, "expected": [5], "note": "single node"},
+    {"id": "h2", "input": {"head": [1, 2, 3], "k": 1}, "expected": [1, 2, 3], "note": "groups of one leave the list unchanged"},
+    {"id": "h3", "input": {"head": [1, 2, 3], "k": 3}, "expected": [3, 2, 1], "note": "k equals the length: reverse everything"},
+    {"id": "h4", "input": {"head": [1, 2, 3, 4, 5, 6], "k": 3}, "expected": [3, 2, 1, 6, 5, 4], "note": "the length is a multiple of k"},
+    {"id": "h5", "input": {"head": [1, 2, 3, 4, 5], "k": 4}, "expected": [4, 3, 2, 1, 5], "note": "one full group and a one-node tail"},
+    {"id": "h6", "input": {"head": [7, 7, 7, 7, 7], "k": 2}, "expected": [7, 7, 7, 7, 7], "note": "all values equal"},
+    {"id": "h7", "input": {"head": [-1000, 1000, 0, -5], "k": 2}, "expected": [1000, -1000, -5, 0], "note": "extreme values"},
+    {"id": "h8", "input": {"head": [9, 8, 7, 6, 5, 4, 3, 2, 1, 0], "k": 5}, "expected": [5, 6, 7, 8, 9, 0, 1, 2, 3, 4], "note": "two groups of five in a descending list"},
+    {"id": "h9", "input": {"head": [1, 2], "k": 2}, "expected": [2, 1], "note": "two nodes swapped"},
+    {"id": "h10", "input": {"head": [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5], "k": 4}, "expected": [1, 4, 1, 3, 6, 2, 9, 5, 5, 3, 5], "note": "a three-node tail stays in order"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 4}, "note": "10^5 nodes in groups of 3"},
+    {"id": "g2", "generate": {"n": 100000, "seed": 17}, "note": "10^5 nodes, one large group and a long tail"},
+    {"id": "g3", "generate": {"n": 100000, "seed": 1}, "note": "10^5 nodes, k equals the length"},
+    {"id": "g4", "generate": {"n": 100000, "seed": 21}, "note": "10^5 nodes, four large groups and a tail"},
+    {"id": "g5", "generate": {"n": 37, "seed": 5}}
+  ]
+}

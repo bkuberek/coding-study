@@ -1,0 +1,26 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"grid": [[0, 1, 0, 0], [0, 1, 1, 0], [0, 0, 1, 0], [1, 1, 1, 0]], "k": 1}, "expected": 6},
+    {"id": "ex2", "visible": true, "input": {"grid": [[0, 1, 0, 0], [0, 1, 1, 0], [0, 0, 1, 0], [1, 1, 1, 0]], "k": 0}, "expected": -1},
+    {"id": "h1", "input": {"grid": [[0]], "k": 0}, "expected": 0, "note": "one cell: no moves needed"},
+    {"id": "h2", "input": {"grid": [[0, 1, 1, 1, 0]], "k": 2}, "expected": -1, "note": "a row with three obstacles and only two removals"},
+    {"id": "h3", "input": {"grid": [[0, 1, 1, 1, 0]], "k": 3}, "expected": 4, "note": "exactly enough removals"},
+    {"id": "h4", "input": {"grid": [[0], [1], [1], [0]], "k": 4}, "expected": 3, "note": "a column, with far more removals than needed"},
+    {"id": "h5", "input": {"grid": [[0, 0, 0, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1, 0], [0, 0, 0, 0, 0, 0, 0], [0, 1, 1, 1, 1, 1, 1], [0, 0, 0, 0, 0, 0, 0]], "k": 0}, "expected": 22, "note": "no removals: walk the whole zigzag"},
+    {"id": "h6", "input": {"grid": [[0, 0, 0, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1, 0], [1, 1, 1, 1, 1, 1, 0], [0, 0, 0, 0, 0, 0, 0], [0, 1, 1, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1, 1], [0, 0, 0, 0, 0, 0, 0]], "k": 1}, "expected": 24, "note": "one removal cannot cut through a wall two cells thick"},
+    {"id": "h7", "input": {"grid": [[0, 0, 0, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1, 0], [1, 1, 1, 1, 1, 1, 0], [0, 0, 0, 0, 0, 0, 0], [0, 1, 1, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1, 1], [0, 0, 0, 0, 0, 0, 0]], "k": 2}, "expected": 12, "note": "two removals cut straight down the left edge"},
+    {"id": "h14", "input": {"grid": [[0, 0, 0, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1, 0], [0, 0, 0, 0, 0, 0, 0], [0, 1, 1, 1, 1, 1, 1], [0, 0, 0, 0, 0, 0, 0]], "k": 1}, "expected": 10, "note": "one removal turns the zigzag into a straight route"},
+    {"id": "h8", "input": {"grid": [[0, 0, 0], [0, 0, 0], [0, 0, 0]], "k": 0}, "expected": 4, "note": "no obstacles at all"},
+    {"id": "h9", "input": {"grid": [[0, 1, 1], [1, 1, 1], [1, 1, 0]], "k": 2}, "expected": -1, "note": "every route crosses three obstacles"},
+    {"id": "h10", "input": {"grid": [[0, 1, 1], [1, 1, 1], [1, 1, 0]], "k": 3}, "expected": 4, "note": "exactly m + n - 3 removals"},
+    {"id": "h11", "input": {"grid": [[0, 0, 0, 0, 0], [1, 1, 1, 1, 0], [0, 0, 0, 0, 0], [0, 1, 1, 1, 1], [0, 0, 0, 0, 0]], "k": 25}, "expected": 8, "note": "k as large as the grid"},
+    {"id": "h12", "input": {"grid": [[0, 0, 1, 1], [1, 0, 0, 1], [1, 1, 0, 0], [1, 1, 1, 0]], "k": 0}, "expected": 6, "note": "a staircase of empty cells needs no removals"},
+    {"id": "h13", "input": {"grid": [[0, 1], [1, 0]], "k": 1}, "expected": 2, "note": "the smallest grid where a removal is needed"},
+    {"id": "g1", "generate": {"n": 1600, "seed": 18}, "note": "40 by 40 grid with a wall every six rows and five removals"},
+    {"id": "g2", "generate": {"n": 99, "seed": 17}, "note": "11 by 9 grid with walls and two removals"},
+    {"id": "g3", "generate": {"n": 99, "seed": 10}, "note": "12 by 8 grid with k far above m + n - 3"},
+    {"id": "g4", "generate": {"n": 400, "seed": 1}}
+  ]
+}

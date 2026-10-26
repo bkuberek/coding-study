@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0163"
+slug: reconstruct-itinerary
+title: Reconstruct Itinerary
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [advanced-graphs]
+signature:
+  function:
+    name: findItinerary
+    params:
+      - {name: tickets, type: "string[][]"}
+    returns: {type: "list<string>"}
+comparator: {type: exact}
+approaches:
+  - {id: backtracking, name: Try destinations in order and backtrack from dead ends, role: brute, time: "O(E^d)", space: "O(E)", time_class: "n log n", space_class: "n", oracle: true}
+  - {id: hierholzer, name: "Hierholzer's algorithm with sorted destinations", role: optimal, time: "O(E·log E)", space: "O(E)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: number of tickets E
+  size_ladder: [100, 300, 1000]
+  expected_from: hierholzer
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 332, url: "https://leetcode.com/problems/reconstruct-itinerary/"}
+related: [critical-connections, network-delay-time]
+order: 6
+estimate_minutes: 35

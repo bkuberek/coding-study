@@ -1,0 +1,66 @@
+{
+  "$schema": "../../../../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true,
+     "ops": ["BoundedBlockingQueue", "put", "put", "size", "take", "take", "size"],
+     "args": [[2], [5], [7], [], [], [], []],
+     "expected": [null, null, null, 2, 5, 7, 0]},
+    {"id": "ex2", "visible": true,
+     "ops": ["BoundedBlockingQueue", "put", "take", "put", "size", "take"],
+     "args": [[1], [3], [], [4], [], []],
+     "expected": [null, null, 3, null, 1, 4]},
+    {"id": "h1", "note": "interleaved fill and drain keeps FIFO order",
+     "ops": ["BoundedBlockingQueue", "put", "put", "take", "put", "put", "size", "take", "take", "take", "size"],
+     "args": [[3], [1], [2], [], [3], [4], [], [], [], [], []],
+     "expected": [null, null, null, 1, null, null, 3, 2, 3, 4, 0]},
+    {"id": "h2", "note": "zero and negative values",
+     "ops": ["BoundedBlockingQueue", "put", "put", "take", "take"],
+     "args": [[2], [0], [-5], [], []],
+     "expected": [null, null, null, 0, -5]},
+    {"id": "h3", "note": "duplicate values",
+     "ops": ["BoundedBlockingQueue", "put", "put", "put", "size", "take", "take", "take"],
+     "args": [[4], [9], [9], [9], [], [], [], []],
+     "expected": [null, null, null, null, 3, 9, 9, 9]},
+    {"id": "h4", "note": "filled exactly to capacity",
+     "ops": ["BoundedBlockingQueue", "put", "put", "put", "size", "take", "take", "take", "size"],
+     "args": [[3], [1], [2], [3], [], [], [], [], []],
+     "expected": [null, null, null, null, 3, 1, 2, 3, 0]},
+    {"id": "s1", "note": "4 producers, 4 consumers and a size observer on capacity 4",
+     "stress": {
+       "seed": 1000,
+       "setup": {"ops": ["BoundedBlockingQueue"], "args": [[4]]},
+       "workers": [
+         {"group": "producer", "count": 4, "repeat": 500,
+          "steps": [{"op": "put", "args": [{"$seq": {"start": 0, "worker_stride": 1000000}}]}]},
+         {"group": "consumer", "count": 4, "repeat": 500,
+          "steps": [{"op": "take", "args": []}]},
+         {"group": "observer", "count": 1, "repeat": 500,
+          "steps": [{"op": "size", "args": []}, {"op": "@pause", "args": [1]}]}
+       ],
+       "final": {"ops": ["size"], "args": [[]], "expected": [0]},
+       "invariants": [
+         {"type": "equal_multisets", "left": {"op": "put", "of": "arg0"}, "right": {"op": "take"}},
+         {"type": "distinct", "values": {"op": "take"}},
+         {"type": "source_order", "values": {"op": "take"}, "stride": 1000000},
+         {"type": "bounds", "values": {"op": "size"}, "min": 0, "max": 4}
+       ]
+     }},
+    {"id": "s2", "note": "capacity 1 forces a hand-off on every op",
+     "stress": {
+       "seed": 2000,
+       "setup": {"ops": ["BoundedBlockingQueue"], "args": [[1]]},
+       "workers": [
+         {"group": "producer", "count": 3, "repeat": {"default": 1000, "python": 400},
+          "steps": [{"op": "put", "args": [{"$seq": {"start": 1, "worker_stride": 1000000}}]}]},
+         {"group": "consumer", "count": 3, "repeat": {"default": 1000, "python": 400},
+          "steps": [{"op": "take", "args": []}]}
+       ],
+       "final": {"ops": ["size"], "args": [[]], "expected": [0]},
+       "invariants": [
+         {"type": "equal_multisets", "left": {"op": "put", "of": "arg0"}, "right": {"op": "take"}},
+         {"type": "source_order", "values": {"op": "take"}, "stride": 1000000}
+       ]
+     }}
+  ]
+}

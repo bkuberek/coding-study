@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0130"
+slug: partition-equal-subset-sum
+title: Partition Equal Subset Sum
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-1d]
+signature:
+  function:
+    name: canPartition
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Top-down take-or-skip on the remaining target, role: intermediate, time: "O(n * t)", space: "O(n * t)", time_class: "n^2", space_class: "n^2"}
+  - {id: tabulation, name: Table of reachable sums per prefix, role: intermediate, time: "O(n * t)", space: "O(n * t)", time_class: "n^2", space_class: "n^2", oracle: true}
+  - {id: one-row, name: Single row of reachable sums updated right to left, role: optimal, time: "O(n * t)", space: "O(t)", time_class: "n^2", space_class: "n"}
+perf:
+  size_param: n, with values up to 100 (so the target t grows with n)
+  size_ladder: [25, 50, 100, 200]
+  expected_from: one-row
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 416, url: "https://leetcode.com/problems/partition-equal-subset-sum/"}
+related: [coin-change, house-robber]
+order: 5
+estimate_minutes: 25

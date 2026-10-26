@@ -1,0 +1,24 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"grid": [[2, 1, 1, 0], [0, 1, 0, 1], [1, 1, 1, 2]]}, "expected": 3},
+    {"id": "ex2", "visible": true, "input": {"grid": [[2, 1, 0], [0, 0, 1]]}, "expected": -1},
+    {"id": "h1", "input": {"grid": [[0]]}, "expected": 0, "note": "no oranges at all"},
+    {"id": "h2", "input": {"grid": [[2]]}, "expected": 0, "note": "only a rotten orange"},
+    {"id": "h3", "input": {"grid": [[1]]}, "expected": -1, "note": "a fresh orange with no rot anywhere"},
+    {"id": "h4", "input": {"grid": [[2, 1]]}, "expected": 1, "note": "one minute is enough"},
+    {"id": "h5", "input": {"grid": [[0, 0, 0, 0], [0, 2, 0, 0], [0, 0, 0, 0]]}, "expected": 0, "note": "no fresh orange to begin with"},
+    {"id": "h6", "input": {"grid": [[2, 1, 1], [1, 1, 1], [1, 1, 1]]}, "expected": 4, "note": "rot spreads from a corner to the far corner"},
+    {"id": "h7", "input": {"grid": [[2, 1, 1, 1, 1, 1, 2]]}, "expected": 3, "note": "two sources meet in the middle of a row"},
+    {"id": "h8", "input": {"grid": [[1], [1], [2], [1], [1], [1]]}, "expected": 3, "note": "a column with the source off-center"},
+    {"id": "h9", "input": {"grid": [[2, 1, 1, 1, 1], [0, 0, 0, 0, 1], [1, 1, 1, 1, 1], [1, 0, 0, 0, 0], [1, 1, 1, 1, 1]]}, "expected": 16, "note": "a winding path makes the rot travel a long way"},
+    {"id": "h10", "input": {"grid": [[1, 1, 1], [1, 0, 1], [1, 1, 1], [0, 0, 0], [1, 2, 1]]}, "expected": -1, "note": "a separate group of fresh oranges with no rot"},
+    {"id": "h11", "input": {"grid": [[2, 0, 0, 2], [0, 1, 1, 0], [0, 1, 1, 0], [2, 0, 0, 2]]}, "expected": -1, "note": "the center block touches the sources only at corners"},
+    {"id": "h12", "input": {"grid": [[1, 1, 1, 1], [1, 2, 1, 1], [1, 1, 2, 1], [1, 1, 1, 1]]}, "expected": 3, "note": "two sources in the middle"},
+    {"id": "h13", "input": {"grid": [[2, 2, 2, 2], [2, 2, 2, 2]]}, "expected": 0, "note": "every orange already rotten"},
+    {"id": "g1", "generate": {"n": 2500, "seed": 3}, "note": "50 by 50 winding chain from one rotten end: the rot needs 1274 minutes"},
+    {"id": "g3", "generate": {"n": 99, "seed": 8}, "note": "random crate with oranges the rot never reaches"},
+    {"id": "g2", "generate": {"n": 99, "seed": 1}, "note": "random crate"}
+  ]
+}

@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0083"
+slug: implement-trie
+title: Implement a Trie
+status: ready
+difficulty: medium
+track: dsa
+kind: design
+patterns: [tries]
+signature:
+  class:
+    name: Trie
+    constructor: {params: []}
+    methods:
+      - {name: insert, params: [{name: word, type: string}], returns: {type: void}}
+      - {name: search, params: [{name: word, type: string}], returns: {type: bool}}
+      - {name: startsWith, params: [{name: prefix, type: string}], returns: {type: bool}}
+comparator: {type: ops}
+approaches:
+  - {id: word-set, name: A set of words scanned for prefixes, role: brute, time: "O(L) insert and search, O(S) startsWith", space: "O(S)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: array-trie, name: Trie with one child slot per letter, role: optimal, time: "O(L) per operation", space: "O(26 * S)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of calls
+  size_ladder: [100, 1000, 10000]
+  expected_from: array-trie
+references:
+  leetcode: {number: 208, url: "https://leetcode.com/problems/implement-trie-prefix-tree/"}
+related: [wildcard-word-dictionary, search-suggestions, word-search-ii]
+order: 1
+estimate_minutes: 20

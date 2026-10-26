@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"l1": [4, 0, 7], "l2": [8, 5]}, "expected": [2, 6, 7]},
+    {"id": "ex2", "visible": true, "input": {"l1": [9, 9, 9], "l2": [1]}, "expected": [0, 0, 0, 1]},
+    {"id": "h1", "input": {"l1": [0], "l2": [0]}, "expected": [0], "note": "zero plus zero"},
+    {"id": "h2", "input": {"l1": [0], "l2": [5, 3]}, "expected": [5, 3], "note": "adding zero"},
+    {"id": "h3", "input": {"l1": [5], "l2": [5]}, "expected": [0, 1], "note": "single digits whose sum needs a second digit"},
+    {"id": "h4", "input": {"l1": [1, 2, 3], "l2": [4, 5, 6]}, "expected": [5, 7, 9], "note": "no carries at all"},
+    {"id": "h5", "input": {"l1": [9, 9, 9, 9, 9, 9], "l2": [9, 9, 9]}, "expected": [8, 9, 9, 0, 0, 0, 1], "note": "carries run past the end of the shorter number"},
+    {"id": "h6", "input": {"l1": [1], "l2": [9, 9, 9, 9]}, "expected": [0, 0, 0, 0, 1], "note": "the first number is the shorter one"},
+    {"id": "h7", "input": {"l1": [3, 1, 8], "l2": [7, 8, 1]}, "expected": [0, 0, 0, 1], "note": "equal lengths, a carry at every digit and a final carry"},
+    {"id": "h8", "input": {"l1": [6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], "l2": [4]}, "expected": [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], "note": "a 21-digit number does not fit in a 64-bit integer"},
+    {"id": "h9", "input": {"l1": [8, 3], "l2": [0, 0, 0, 2]}, "expected": [8, 3, 0, 2], "note": "zeros inside a number"},
+    {"id": "h10", "input": {"l1": [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9], "l2": [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]}, "expected": [8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 1], "note": "two 25-digit numbers of nines"},
+    {"id": "h11", "input": {"l1": [2, 7, 4, 1], "l2": [8, 1, 3, 5]}, "expected": [0, 9, 7, 6], "note": "a carry out of the first digit only"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "note": "numbers with 10^4 and 5000 digits"},
+    {"id": "g2", "generate": {"n": 10000, "seed": 2}, "note": "numbers with 10^4 and 5000 digits, another seed"},
+    {"id": "g3", "generate": {"n": 100, "seed": 3}}
+  ]
+}

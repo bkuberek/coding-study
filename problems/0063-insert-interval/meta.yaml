@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0063"
+slug: insert-interval
+title: Insert Interval
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [intervals]
+signature:
+  function:
+    name: insert
+    params:
+      - {name: intervals, type: "int[][]"}
+      - {name: newInterval, type: "int[]"}
+    returns: {type: "int[][]"}
+comparator: {type: exact}
+approaches:
+  - {id: append-and-merge, name: "Append, sort and merge again", role: brute, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n", oracle: true}
+  - {id: three-phase-scan, name: "One pass: before, overlapping, after", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: bound-search, name: Binary search the overlapping window, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: n
+  size_ladder: [100, 1000, 10000, 100000]
+  expected_from: three-phase-scan
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 57, url: "https://leetcode.com/problems/insert-interval/"}
+related: [merge-intervals, interval-list-intersections]
+order: 2
+estimate_minutes: 20

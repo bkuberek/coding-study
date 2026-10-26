@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0078"
+slug: right-side-view
+title: Right Side View
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [trees]
+signature:
+  function:
+    name: rightSideView
+    params:
+      - {name: root, type: TreeNode}
+    returns: {type: "list<int>"}
+comparator: {type: exact}
+approaches:
+  - {id: last-per-level, name: Breadth-first walk keeping the last node of each level, role: optimal, time: "O(n)", space: "O(w)", time_class: "n", space_class: "n", oracle: true}
+  - {id: right-first-dfs, name: Depth-first walk that visits the right child first, role: optimal, time: "O(n)", space: "O(h)", time_class: "n", space_class: "log n"}
+perf:
+  size_param: number of nodes
+  size_ladder: [1000, 10000, 100000]
+  expected_from: last-per-level
+references:
+  leetcode: {number: 199, url: "https://leetcode.com/problems/binary-tree-right-side-view/"}
+related: [level-order-traversal, vertical-order-traversal]
+order: 12
+estimate_minutes: 15

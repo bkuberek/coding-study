@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../../schemas/item.schema.json
+slug: ride-hailing
+title: Ride Hailing
+track: system-design
+difficulty: hard
+estimate_minutes: 60
+status: ready
+order: 10
+references:
+  study_guides:
+    - "distributed-systems-study-guide.md#4-in-memory--caching"
+    - "distributed-systems-study-guide.md#2-event-streaming-kafka"
+    - "distributed-systems-study-guide.md#4-consistency-models"
+    - "distributed-systems-study-guide.md#6-common-patterns"
+    - "distributed-systems-study-guide.md#example-3-global-multi-region-application"
+  links:
+    - https://h3geo.org/docs/
+related: [k-closest-points, payments-ledger, chat-system]

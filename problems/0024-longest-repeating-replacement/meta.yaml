@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0024"
+slug: longest-repeating-replacement
+title: Longest Repeating Replacement
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [sliding-window, arrays-hashing]
+signature:
+  function:
+    name: characterReplacement
+    params:
+      - {name: s, type: string}
+      - {name: k, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Extend a window from every start, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: per-letter, name: One window per letter that is kept, role: intermediate, time: "O(a * n)", space: "O(a)", time_class: "n", space_class: "1"}
+  - {id: sliding-window, name: One window with a never-decreasing top count, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: length of s, with k between n/16 and n/8
+  size_ladder: [1000, 2000, 5000, 10000]
+  expected_from: sliding-window
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 424, url: "https://leetcode.com/problems/longest-repeating-character-replacement/"}
+related: [max-ones-with-flips, longest-substring-without-repeats]
+order: 2
+estimate_minutes: 25

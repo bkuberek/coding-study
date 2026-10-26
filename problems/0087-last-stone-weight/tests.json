@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"stones": [3, 7, 2, 2, 5]}, "expected": 1},
+    {"id": "ex2", "visible": true, "input": {"stones": [6, 6]}, "expected": 0},
+    {"id": "h1", "input": {"stones": [9]}, "expected": 9, "note": "a single stone is never smashed"},
+    {"id": "h2", "input": {"stones": [4, 1]}, "expected": 3, "note": "two different stones"},
+    {"id": "h3", "input": {"stones": [5, 5, 5]}, "expected": 5, "note": "odd count of equal stones"},
+    {"id": "h4", "input": {"stones": [1000, 1, 1]}, "expected": 998, "note": "one heavy stone survives two smashes"},
+    {"id": "h5", "input": {"stones": [2, 4, 8, 16]}, "expected": 2, "note": "powers of two, ascending"},
+    {"id": "h6", "input": {"stones": [10, 10, 10, 10]}, "expected": 0, "note": "even count of equal stones: nothing is left"},
+    {"id": "h7", "input": {"stones": [1, 1, 1, 1, 1, 1, 1]}, "expected": 1, "note": "the lightest weight only"},
+    {"id": "h8", "input": {"stones": [7, 6, 5, 4, 3, 2, 1]}, "expected": 0, "note": "descending weights"},
+    {"id": "h9", "input": {"stones": [1000, 1000, 999]}, "expected": 999, "note": "the two heaviest destroy each other first"},
+    {"id": "h10", "input": {"stones": [31, 26, 33, 21, 40]}, "expected": 9, "note": "new stones re-enter the middle of the order"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "10^4 stones: re-sorting before each of up to 10^4 smashes is slow here"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 2}}
+  ]
+}

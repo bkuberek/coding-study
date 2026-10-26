@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0213"
+slug: debug-window-shrink
+title: "Debug: Window Shrink"
+status: ready
+difficulty: medium
+track: debugging
+kind: function
+stub: buggy
+signature:
+  function:
+    name: maxDistinctWindowSum
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: k, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: counted-window, name: Sliding window with exact counts, role: optimal, time: "O(n)", space: "O(k)", time_class: "n", space_class: "n"}
+related: [longest-substring-without-repeats, fruit-into-baskets]
+estimate_minutes: 20

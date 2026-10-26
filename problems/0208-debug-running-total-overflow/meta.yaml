@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0208"
+slug: debug-running-total-overflow
+title: "Debug: Running Total Overflow"
+status: ready
+difficulty: medium
+track: debugging
+kind: function
+languages: [java, kotlin]
+stub: buggy
+signature:
+  function:
+    name: invoiceTotal
+    params:
+      - {name: unitPrices, type: "int[]"}
+      - {name: quantities, type: "int[]"}
+    returns: {type: long}
+comparator: {type: exact}
+approaches:
+  - {id: long-accumulator, name: Widen before multiplying, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+related: [debug-boxed-equality]
+estimate_minutes: 15

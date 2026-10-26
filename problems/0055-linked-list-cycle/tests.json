@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"head": {"values": [4, 7, 1, 9], "cycle_at": 1}}, "expected": true},
+    {"id": "ex2", "visible": true, "input": {"head": [2, 5, 8]}, "expected": false},
+    {"id": "h1", "input": {"head": []}, "expected": false, "note": "empty list"},
+    {"id": "h2", "input": {"head": [3]}, "expected": false, "note": "single node without a loop"},
+    {"id": "h3", "input": {"head": {"values": [3], "cycle_at": 0}}, "expected": true, "note": "single node linked to itself"},
+    {"id": "h4", "input": {"head": {"values": [1, 2], "cycle_at": 0}}, "expected": true, "note": "two nodes linked to each other"},
+    {"id": "h5", "input": {"head": {"values": [6, 6, 6, 6], "cycle_at": 3}}, "expected": true, "note": "the tail links to itself"},
+    {"id": "h6", "input": {"head": [6, 6, 6, 6]}, "expected": false, "note": "repeated values without a loop: compare nodes, not values"},
+    {"id": "h7", "input": {"head": {"values": [10, 20, 30, 40, 50, 60, 70], "cycle_at": 0}}, "expected": true, "note": "the whole list is one loop"},
+    {"id": "h8", "input": {"head": [1, 2]}, "expected": false, "note": "two nodes without a loop"},
+    {"id": "h9", "input": {"head": {"values": [-100000, 0, 100000, 5, 9], "cycle_at": 2}}, "expected": true, "note": "extreme values, loop starts in the middle"},
+    {"id": "h10", "input": {"head": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}, "expected": false, "note": "odd length without a loop: the fast pointer stops on the tail"},
+    {"id": "h11", "input": {"head": {"values": [0, -1, 0, -1, 0, -1], "cycle_at": 4}}, "expected": true, "note": "short loop after a long lead-in of alternating values"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 2}, "note": "large list with a loop and mostly distinct values"},
+    {"id": "g2", "generate": {"n": 100000, "seed": 1}, "note": "large list without a loop, only a few distinct values"},
+    {"id": "g3", "generate": {"n": 100000, "seed": 4}, "note": "large list with a loop, only a few distinct values"},
+    {"id": "g4", "generate": {"n": 10000, "seed": 3}, "note": "the largest size of the ladder"}
+  ]
+}

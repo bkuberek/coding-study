@@ -1,0 +1,8 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "ops": ["StressGate"], "args": [[]], "expected": [null]},
+    {"id": "s1", "note": "2 workers wait forever", "stress": {"seed": 1, "deadline_ms": 200, "setup": {"ops": ["StressGate"], "args": [[]]}, "workers": [{"group": "waiter", "count": 2, "repeat": 1, "steps": [{"op": "enter", "args": []}]}], "invariants": [{"type": "section", "name": "unused"}]}}
+  ]
+}

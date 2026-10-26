@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0052"
+slug: split-array-largest-sum
+title: Split Array Largest Sum
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [binary-search, greedy]
+signature:
+  function:
+    name: splitArray
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: k, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: prefix-dp, name: Dynamic programming over prefixes and part counts, role: brute, time: "O(k * n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: search-the-limit, name: Binary search on the largest sum with a greedy check, role: optimal, time: "O(n log s)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n (k between 5 and 10 once n reaches 10)
+  size_ladder: [100, 200, 500, 1000]
+  expected_from: search-the-limit
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 410, url: "https://leetcode.com/problems/split-array-largest-sum/"}
+related: [koko-eating-bananas, median-of-two-sorted-arrays]
+order: 10
+estimate_minutes: 40

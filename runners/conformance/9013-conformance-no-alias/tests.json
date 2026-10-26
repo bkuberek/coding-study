@@ -1,0 +1,8 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "values", "input": {"head": [1, 2, 3]}, "expected": [1, 2, 3]},
+    {"id": "empty", "input": {"head": []}, "expected": []}
+  ]
+}

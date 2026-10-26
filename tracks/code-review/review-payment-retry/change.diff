@@ -1,0 +1,134 @@
+diff --git a/src/main/java/com/example/payments/gateway/PspClient.java b/src/main/java/com/example/payments/gateway/PspClient.java
+--- a/src/main/java/com/example/payments/gateway/PspClient.java
++++ b/src/main/java/com/example/payments/gateway/PspClient.java
+@@ -1,6 +1,5 @@
+ package com.example.payments.gateway;
+ 
+-import java.io.IOException;
+ import java.net.URI;
+ import java.net.http.HttpClient;
+ import java.net.http.HttpRequest;
+@@ -19,7 +18,7 @@
+     private final JsonCodec json;
+ 
+     public PspClient(URI baseUri, String apiKey, JsonCodec json) {
+-        this(HttpClient.newHttpClient(), baseUri, apiKey, json);
++        this(HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).build(), baseUri, apiKey, json);
+     }
+ 
+     PspClient(HttpClient httpClient, URI baseUri, String apiKey, JsonCodec json) {
+@@ -30,21 +29,22 @@
+     }
+ 
+     public ChargeResult charge(ChargeRequest request) throws PspException {
+-        return send(post("/v1/charges", request), ChargeResult.class);
++        return sendWithRetry(post("/v1/charges", request), ChargeResult.class);
+     }
+ 
+     public RefundResult refund(RefundRequest request) throws PspException {
+-        return send(post("/v1/refunds", request), RefundResult.class);
++        return sendWithRetry(post("/v1/refunds", request), RefundResult.class);
+     }
+ 
+     public ChargeResult getCharge(String chargeId) throws PspException {
+-        return send(get("/v1/charges/" + chargeId), ChargeResult.class);
++        return sendWithRetry(get("/v1/charges/" + chargeId), ChargeResult.class);
+     }
+ 
+     private HttpRequest post(String path, Object body) {
+         return HttpRequest.newBuilder(baseUri.resolve(path))
+                 .header("Authorization", "Bearer " + apiKey)
+                 .header("Content-Type", "application/json")
++                .header("User-Agent", "checkout-service")
+                 .POST(HttpRequest.BodyPublishers.ofString(json.encode(body)))
+                 .build();
+     }
+@@ -52,23 +52,29 @@
+     private HttpRequest get(String path) {
+         return HttpRequest.newBuilder(baseUri.resolve(path))
+                 .header("Authorization", "Bearer " + apiKey)
++                .header("User-Agent", "checkout-service")
+                 .GET()
+                 .build();
+     }
+ 
+-    private <T> T send(HttpRequest request, Class<T> type) throws PspException {
+-        try {
+-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+-            if (response.statusCode() / 100 != 2) {
+-                log.info("PSP returned {} for {}", response.statusCode(), request.uri().getPath());
+-                throw PspException.fromResponse(response.statusCode(), response.body());
++    /** Sends the request, retrying until the PSP answers successfully. */
++    private <T> T sendWithRetry(HttpRequest request, Class<T> type) {
++        int attempt = 0;
++        while (true) {
++            attempt++;
++            try {
++                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
++                if (response.statusCode() == 200) {
++                    return json.decode(response.body(), type);
++                }
++                log.warn("PSP returned {} on attempt {}, retrying", response.statusCode(), attempt);
++            } catch (Exception e) {
++                log.warn("PSP call failed on attempt {}, retrying", attempt);
+             }
+-            return json.decode(response.body(), type);
+-        } catch (IOException e) {
+-            throw new PspException("PSP call failed", e);
+-        } catch (InterruptedException e) {
+-            Thread.currentThread().interrupt();
+-            throw new PspException("Interrupted while calling the PSP", e);
++            try {
++                Thread.sleep(1000L * attempt);
++            } catch (InterruptedException ignored) {
++            }
+         }
+     }
+ }
+diff --git a/src/test/java/com/example/payments/gateway/PspClientTest.java b/src/test/java/com/example/payments/gateway/PspClientTest.java
+new file mode 100644
+--- /dev/null
++++ b/src/test/java/com/example/payments/gateway/PspClientTest.java
+@@ -0,0 +1,42 @@
++package com.example.payments.gateway;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.Mockito.mock;
++import static org.mockito.Mockito.times;
++import static org.mockito.Mockito.verify;
++import static org.mockito.Mockito.when;
++
++import java.net.URI;
++import java.net.http.HttpClient;
++import java.net.http.HttpRequest;
++import java.net.http.HttpResponse;
++
++import org.junit.jupiter.api.Test;
++
++class PspClientTest {
++    private final HttpClient httpClient = mock(HttpClient.class);
++    private final PspClient client =
++            new PspClient(httpClient, URI.create("https://psp.test"), "test-key", new JacksonCodec());
++
++    @Test
++    void retriesUntilTheChargeSucceeds() throws Exception {
++        HttpResponse<String> unavailable = response(503, "");
++        HttpResponse<String> ok = response(200, "{\"id\":\"ch_1\",\"status\":\"succeeded\"}");
++        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
++                .thenReturn(unavailable, unavailable, ok);
++
++        ChargeResult result = client.charge(new ChargeRequest("pay_42", 1999, "USD", "tok_visa"));
++
++        assertThat(result.id()).isEqualTo("ch_1");
++        verify(httpClient, times(3)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
++    }
++
++    @SuppressWarnings("unchecked")
++    private static HttpResponse<String> response(int status, String body) {
++        HttpResponse<String> response = mock(HttpResponse.class);
++        when(response.statusCode()).thenReturn(status);
++        when(response.body()).thenReturn(body);
++        return response;
++    }
++}

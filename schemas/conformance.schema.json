@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study runner conformance expectations",
+  "description": "The outcome every runner must produce for each conformance fixture and approach. Spec: docs/specs/runners.md#conformance-suite",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "expectations"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+    "expectations": { "type": "array", "items": { "$ref": "#/$defs/expectation" } }
+  },
+  "$defs": {
+    "expectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["problem", "approach", "outcome"],
+      "properties": {
+        "problem": { "description": "Fixture slug under runners/conformance/", "type": "string" },
+        "approach": { "description": "Approach id declared in the fixture's meta.yaml", "type": "string" },
+        "outcome": { "description": "Expected for every case unless cases overrides it", "$ref": "#/$defs/outcome" },
+        "cases": {
+          "description": "Per-case overrides, keyed by case id",
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/outcome" }
+        }
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "description": "pass: runner status ok and the problem's comparator accepts the output; load_error applies to the whole job; fail and stalled: stress cases only",
+          "enum": ["pass", "error", "invalid_output", "timeout", "load_error", "fail", "stalled"]
+        },
+        "message": { "description": "error: the exact exception message", "type": "string" },
+        "op_index": { "description": "error in a class kind: the failing operation", "type": "integer", "minimum": 0 },
+        "partial_output": { "description": "error in a class kind: outputs before the failing operation", "type": "array" },
+        "stdout": { "description": "pass: the exact captured standard output", "type": "string" },
+        "runs": { "description": "Stress cases: runs per variant (default 10)", "type": "integer", "minimum": 1, "maximum": 100 },
+        "min_failed": { "description": "Stress cases: at least this many runs fail with status (default: every run)", "type": "integer", "minimum": 0 },
+        "max_failed": { "description": "Stress cases: at most this many runs fail (default 0 with pass)", "type": "integer", "minimum": 0 },
+        "phase": { "description": "Stress error: the failing phase", "enum": ["setup", "worker", "final"] },
+        "deterministic": { "description": "Stress cases: a repeated seed gives an identical run record, and different seeds give at least two distinct records", "type": "boolean" },
+        "restart_requested": { "description": "Stress cases: the runner asked to be restarted after a run of the case", "type": "boolean" }
+      }
+    }
+  }
+}

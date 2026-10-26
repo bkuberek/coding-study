@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0097"
+slug: combination-sum
+title: Combination Sum
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [backtracking]
+signature:
+  function:
+    name: combinationSum
+    params:
+      - {name: candidates, type: "int[]"}
+      - {name: target, type: int}
+    returns: {type: "list<list<int>>"}
+comparator: {type: unordered-nested}
+approaches:
+  - {id: include-or-skip, name: Use the current candidate again or move past it, role: intermediate, time: "O(2^(n + t/m))", space: "O(n + t/m)", time_class: "2^n", space_class: "n", oracle: true}
+  - {id: sorted-pruning, name: Loop over sorted candidates and stop at the first that overshoots, role: optimal, time: "O(n^(t/m + 1))", space: "O(n + t/m)", time_class: "2^n", space_class: "n"}
+perf:
+  size_param: n = target; the odd targets of the ladder face only even candidates
+  size_ladder: [15, 23, 31, 39]
+  expected_from: sorted-pruning
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 39, url: "https://leetcode.com/problems/combination-sum/"}
+related: [combination-sum-no-reuse, subsets, permutations]
+order: 3
+estimate_minutes: 20

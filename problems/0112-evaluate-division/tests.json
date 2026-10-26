@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"equations": [["x1", "x2"], ["x2", "x3"], ["x4", "x5"]], "values": [4.0, 0.25, 2.5], "queries": [["x1", "x3"], ["x3", "x2"], ["x5", "x4"], ["x1", "x4"], ["x2", "x2"], ["x6", "x6"]]}, "expected": [1.0, 4.0, 0.4, -1.0, 1.0, -1.0]},
+    {"id": "ex2", "visible": true, "input": {"equations": [["a", "b"]], "values": [0.5], "queries": [["b", "a"], ["a", "c"]]}, "expected": [2.0, -1.0]},
+    {"id": "h1", "input": {"equations": [["m", "n"]], "values": [3.0], "queries": [["m", "n"]]}, "expected": [3.0], "note": "the question is an equation"},
+    {"id": "h2", "input": {"equations": [["m", "n"]], "values": [3.0], "queries": [["zz", "m"], ["m", "zz"], ["zz", "zz"]]}, "expected": [-1.0, -1.0, -1.0], "note": "unknown variables, including over itself"},
+    {"id": "h3", "input": {"equations": [["v0", "v1"], ["v1", "v2"], ["v2", "v3"], ["v3", "v4"], ["v4", "v5"], ["v5", "v6"], ["v6", "v7"], ["v7", "v8"], ["v8", "v9"], ["v9", "v10"], ["v10", "v11"], ["v11", "v12"], ["v12", "v13"], ["v13", "v14"], ["v14", "v15"], ["v15", "v16"], ["v16", "v17"], ["v17", "v18"], ["v18", "v19"], ["v19", "v20"], ["v20", "v21"], ["v21", "v22"], ["v22", "v23"], ["v23", "v24"], ["v24", "v25"], ["v25", "v26"], ["v26", "v27"], ["v27", "v28"], ["v28", "v29"], ["v29", "v30"]], "values": [2.0, 0.5, 2.0, 0.5, 2.0, 0.5, 2.0, 0.5, 2.0, 0.5, 2.0, 0.5, 2.0, 0.5, 2.0, 0.5, 2.0, 0.5, 2.0, 0.5, 2.0, 0.5, 2.0, 0.5, 2.0, 0.5, 2.0, 0.5, 2.0, 0.5], "queries": [["v0", "v30"], ["v30", "v1"], ["v7", "v8"]]}, "expected": [1.0, 2.0, 0.5], "note": "a chain of thirty equations"},
+    {"id": "h4", "input": {"equations": [["hub", "s0"], ["hub", "s1"], ["hub", "s2"], ["hub", "s3"], ["hub", "s4"], ["hub", "s5"], ["hub", "s6"], ["hub", "s7"]], "values": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0], "queries": [["s0", "s7"], ["s7", "s3"], ["hub", "s5"]]}, "expected": [8.0, 0.5, 6.0], "note": "many variables tied to one hub"},
+    {"id": "h5", "input": {"equations": [["p", "q"], ["q", "r"], ["r", "p"]], "values": [2.0, 3.0, 0.16666666666666666], "queries": [["p", "r"], ["r", "q"]]}, "expected": [6.0, 0.3333333333333333], "note": "a consistent cycle of equations"},
+    {"id": "h6", "input": {"equations": [["p", "q"], ["p", "q"], ["q", "p"]], "values": [4.0, 4.0, 0.25], "queries": [["q", "p"]]}, "expected": [0.25], "note": "the same equation stated several times"},
+    {"id": "h7", "input": {"equations": [["a", "b"], ["c", "d"], ["e", "f"]], "values": [2.0, 3.0, 4.0], "queries": [["a", "d"], ["f", "c"], ["b", "a"], ["e", "f"]]}, "expected": [-1.0, -1.0, 0.5, 4.0], "note": "separate groups never mix"},
+    {"id": "h8", "input": {"equations": [["big", "small"], ["small", "tiny"]], "values": [20.0, 20.0], "queries": [["big", "tiny"], ["tiny", "big"]]}, "expected": [400.0, 0.0025], "note": "values at the top of the range multiply"},
+    {"id": "h9", "input": {"equations": [["u1", "u2"], ["u3", "u2"]], "values": [0.05, 0.05], "queries": [["u1", "u3"], ["u3", "u1"]]}, "expected": [1.0, 1.0], "note": "a path that uses one equation backwards"},
+    {"id": "h10", "input": {"equations": [["ab12c", "z"], ["z", "q9"]], "values": [1.5, 4.0], "queries": [["q9", "ab12c"], ["ab12c", "ab12c"]]}, "expected": [0.16666666666666666, 1.0], "note": "names with letters and digits"},
+    {"id": "h11", "input": {"equations": [["a", "b"], ["b", "c"], ["c", "d"], ["a", "e"]], "values": [2.0, 2.0, 2.0, 10.0], "queries": [["d", "e"], ["e", "d"], ["e", "e"]]}, "expected": [1.25, 0.8, 1.0], "note": "the path goes through the start of a branch"},
+    {"id": "h12", "input": {"equations": [["b", "a"]], "values": [5.0], "queries": [["a", "b"], ["b", "a"], ["a", "a"]]}, "expected": [0.2, 5.0, 1.0], "note": "the question reverses the only equation"},
+    {"id": "g1", "generate": {"n": 1000, "seed": 3}, "note": "1000 equations with long chains and 1000 questions"},
+    {"id": "g2", "generate": {"n": 300, "seed": 7}}
+  ]
+}

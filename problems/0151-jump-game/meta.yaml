@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0151"
+slug: jump-game
+title: Jump Game
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [greedy]
+signature:
+  function:
+    name: canJump
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: mark-reachable, name: Mark every index a reachable index can jump to, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: farthest-reach, name: Track the farthest reachable index, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+  - {id: leftmost-good, name: Move the goal backwards, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: n
+  size_ladder: [100, 300, 1000, 3000]
+  expected_from: farthest-reach
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 55, url: "https://leetcode.com/problems/jump-game/"}
+related: [gas-station, climbing-stairs]
+order: 2
+estimate_minutes: 20

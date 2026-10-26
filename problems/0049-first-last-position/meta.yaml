@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0049"
+slug: first-last-position
+title: First and Last Position
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [binary-search]
+signature:
+  function:
+    name: searchRange
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: target, type: int}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: linear-scan, name: Scan the whole array, role: brute, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1", oracle: true}
+  - {id: find-then-expand, name: Binary search one occurrence and walk outwards, role: intermediate, time: "O(log n + k)", space: "O(1)", time_class: "n", space_class: "1"}
+  - {id: two-bounds, name: Lower-bound and upper-bound searches, role: optimal, time: "O(log n)", space: "O(1)", time_class: "log n", space_class: "1"}
+perf:
+  size_param: n (the target fills between n/4 and n/2 positions)
+  size_ladder: [100, 1000, 10000, 100000]
+  expected_from: two-bounds
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 34, url: "https://leetcode.com/problems/find-first-and-last-position-of-element-in-sorted-array/"}
+related: [binary-search, time-based-kv-store]
+order: 7
+estimate_minutes: 20

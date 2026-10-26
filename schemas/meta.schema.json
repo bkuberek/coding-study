@@ -1,0 +1,394 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study problem meta.yaml",
+  "description": "Metadata, signature, comparator, approaches and performance settings of one autograded problem. Spec: docs/specs/problem-format.md#metayaml",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "slug", "title", "status", "difficulty", "track", "kind", "signature", "comparator", "approaches"],
+  "properties": {
+    "id": {
+      "description": "4-digit zero-padded id; must match the directory prefix",
+      "type": "string",
+      "pattern": "^[0-9]{4}$"
+    },
+    "slug": {
+      "description": "Stable key in progress.db; must match the directory suffix",
+      "$ref": "#/$defs/slug"
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["draft", "ready"] },
+    "difficulty": { "enum": ["easy", "medium", "hard"] },
+    "track": { "enum": ["dsa", "practical", "lld", "concurrency", "debugging"] },
+    "kind": { "enum": ["function", "design", "progressive", "concurrent"] },
+    "patterns": {
+      "description": "The first entry is the primary pattern",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/pattern" }
+    },
+    "languages": {
+      "description": "Default all 4; a subset is allowed only for the concurrency and debugging tracks",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["python", "typescript", "java", "kotlin"] }
+    },
+    "signature": { "$ref": "#/$defs/signature" },
+    "comparator": { "$ref": "#/$defs/comparator" },
+    "stub": { "enum": ["generated", "buggy"] },
+    "levels": {
+      "description": "Progressive problems only",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["level", "title"],
+        "properties": {
+          "level": { "type": "integer", "minimum": 1 },
+          "title": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "approaches": {
+      "description": "Reference approaches; at least one optimal, at most one oracle",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/approach" },
+      "allOf": [
+        { "contains": { "type": "object", "required": ["role"], "properties": { "role": { "const": "optimal" } } } },
+        {
+          "contains": { "type": "object", "required": ["oracle"], "properties": { "oracle": { "const": true } } },
+          "minContains": 0,
+          "maxContains": 1
+        }
+      ]
+    },
+    "perf": { "$ref": "#/$defs/perf" },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hang_guard_ms": { "description": "Overrides the per-case hang guard (default 10000)", "$ref": "#/$defs/positiveInteger" }
+      }
+    },
+    "references": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "leetcode": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["number", "url"],
+          "properties": {
+            "number": { "$ref": "#/$defs/positiveInteger" },
+            "url": { "type": "string", "format": "uri" }
+          }
+        },
+        "links": { "type": "array", "items": { "type": "string", "format": "uri" } }
+      }
+    },
+    "related": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/slug" } },
+    "order": { "description": "Curriculum order within the primary pattern (default 1000)", "type": "integer" },
+    "estimate_minutes": { "$ref": "#/$defs/positiveInteger" },
+    "concurrency": { "$ref": "#/$defs/concurrency" }
+  },
+  "allOf": [
+    {
+      "if": { "required": ["track"], "properties": { "track": { "const": "dsa" } } },
+      "then": { "required": ["patterns"] }
+    },
+    {
+      "if": { "required": ["kind"], "properties": { "kind": { "const": "progressive" } } },
+      "then": { "required": ["levels"] },
+      "else": { "not": { "required": ["levels"] } }
+    },
+    {
+      "if": { "required": ["kind"], "properties": { "kind": { "const": "function" } } },
+      "then": { "properties": { "signature": { "required": ["function"] } } },
+      "else": { "properties": { "signature": { "required": ["class"] } } }
+    },
+    {
+      "if": { "required": ["track"], "properties": { "track": { "enum": ["concurrency", "debugging"] } } },
+      "else": { "properties": { "languages": { "minItems": 4 } } }
+    },
+    {
+      "description": "Concurrent problems: a concurrency block, the ops comparator, no perf block and no complexity classes or oracle; every other kind declares complexity classes",
+      "if": { "required": ["kind"], "properties": { "kind": { "const": "concurrent" } } },
+      "then": {
+        "required": ["concurrency"],
+        "not": { "required": ["perf"] },
+        "properties": {
+          "comparator": { "properties": { "type": { "const": "ops" } } },
+          "approaches": {
+            "items": {
+              "not": { "anyOf": [{ "required": ["time_class"] }, { "required": ["space_class"] }, { "required": ["oracle"] }] },
+              "properties": { "id": { "not": { "pattern": "^broken-" } } }
+            }
+          }
+        }
+      },
+      "else": {
+        "not": { "required": ["concurrency"] },
+        "properties": { "approaches": { "items": { "required": ["time_class", "space_class"] } } }
+      }
+    }
+  ],
+  "$defs": {
+    "slug": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$" },
+    "memberName": {
+      "description": "lowerCamelCase canonical name",
+      "type": "string",
+      "pattern": "^[a-z][A-Za-z0-9]*$"
+    },
+    "className": {
+      "description": "PascalCase canonical class name",
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]*$"
+    },
+    "positiveInteger": { "type": "integer", "minimum": 1 },
+    "pattern": {
+      "enum": [
+        "arrays-hashing", "two-pointers", "sliding-window", "stack", "monotonic-stack",
+        "binary-search", "linked-list", "trees", "tries", "heap", "backtracking", "graphs",
+        "topological-sort", "advanced-graphs", "union-find", "dp-1d", "dp-2d", "greedy",
+        "intervals", "prefix-sum", "math-geometry", "bit-manipulation", "segment-tree-fenwick"
+      ]
+    },
+    "valueType": {
+      "description": "Type DSL (docs/specs/problem-format.md#type-dsl); the CLI parser reports syntax errors with positions",
+      "type": "string",
+      "minLength": 1,
+      "examples": [
+        "int", "long", "double", "bool", "string", "char",
+        "int[]", "string[]", "int[][]", "char[][]",
+        "list<int>", "list<string>", "list<int[]>", "list<list<int>>",
+        "ListNode", "TreeNode", "GraphNode", "ListNode[]", "list<TreeNode>"
+      ]
+    },
+    "returnType": {
+      "description": "Type DSL or void",
+      "type": "string",
+      "minLength": 1,
+      "examples": ["void", "int", "int[]", "bool", "string", "list<list<int>>", "ListNode", "TreeNode"]
+    },
+    "param": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type"],
+      "properties": {
+        "name": { "$ref": "#/$defs/memberName" },
+        "type": { "$ref": "#/$defs/valueType" },
+        "ref_of": {
+          "description": "The JSON value is a node value; the runner passes the first node in <param> whose val equals it",
+          "$ref": "#/$defs/memberName"
+        }
+      }
+    },
+    "params": { "type": "array", "items": { "$ref": "#/$defs/param" } },
+    "returns": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "$ref": "#/$defs/returnType" },
+        "output_from": { "description": "With type void: serialize this parameter after the call", "$ref": "#/$defs/memberName" },
+        "as": { "description": "Node-typed returns: serialize the node's value or its index", "enum": ["value", "index"] },
+        "of": { "description": "With as: index, the parameter whose traversal order gives the index", "$ref": "#/$defs/memberName" },
+        "no_alias_with": { "description": "Fail if a returned node is reachable from this parameter", "$ref": "#/$defs/memberName" }
+      },
+      "dependentRequired": { "of": ["as"] },
+      "if": { "required": ["as"], "properties": { "as": { "const": "index" } } },
+      "then": { "required": ["of"] }
+    },
+    "signature": {
+      "description": "Exactly one of function or class",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 1,
+      "properties": {
+        "function": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "params", "returns"],
+          "properties": {
+            "name": { "$ref": "#/$defs/memberName" },
+            "params": { "$ref": "#/$defs/params" },
+            "returns": { "$ref": "#/$defs/returns" }
+          }
+        },
+        "class": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "constructor", "methods"],
+          "properties": {
+            "name": { "$ref": "#/$defs/className" },
+            "constructor": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["params"],
+              "properties": { "params": { "$ref": "#/$defs/params" } }
+            },
+            "methods": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "params", "returns"],
+                "properties": {
+                  "name": { "$ref": "#/$defs/memberName" },
+                  "params": { "$ref": "#/$defs/params" },
+                  "returns": { "$ref": "#/$defs/returns" },
+                  "level": { "description": "Progressive level that introduces the method", "$ref": "#/$defs/positiveInteger" },
+                  "blocking": { "description": "Concurrent problems: the method may wait for another worker", "type": "boolean" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "comparator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["exact", "unordered", "unordered-nested", "float", "checker", "ops"] },
+        "tolerance": { "description": "Relative tolerance for float comparison (default 1e-6)", "type": "number", "exclusiveMinimum": 0 },
+        "per_method": {
+          "description": "ops only: a comparator per method name",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/memberName" },
+          "additionalProperties": { "enum": ["exact", "unordered", "unordered-nested", "float"] }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["tolerance"] },
+          "then": { "properties": { "type": { "enum": ["float", "ops"] } } }
+        },
+        {
+          "if": { "required": ["per_method"] },
+          "then": { "properties": { "type": { "const": "ops" } } }
+        }
+      ]
+    },
+    "complexityClass": {
+      "enum": ["1", "log n", "sqrt n", "n", "n log n", "n^2", "n^2 log n", "n^3", "2^n", "n!"]
+    },
+    "approach": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "role", "time", "space"],
+      "properties": {
+        "id": { "description": "Matches solutions/<id>.<ext>", "$ref": "#/$defs/slug" },
+        "name": { "type": "string", "minLength": 1 },
+        "role": { "enum": ["brute", "intermediate", "optimal"] },
+        "time": { "description": "Human notation, for example O(n log n)", "type": "string", "minLength": 1 },
+        "space": { "type": "string", "minLength": 1 },
+        "time_class": { "description": "Required, except in concurrent problems", "$ref": "#/$defs/complexityClass" },
+        "space_class": { "description": "Required, except in concurrent problems", "$ref": "#/$defs/complexityClass" },
+        "oracle": { "description": "At most one; must exist in Python", "type": "boolean" }
+      }
+    },
+    "language": { "enum": ["python", "typescript", "java", "kotlin"] },
+    "concurrencyModel": { "enum": ["threads", "async"] },
+    "perturb": {
+      "description": "Interleaving widening; a stress case's perturb overrides it field by field",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "yield_probability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "max_yields": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "python_granularity": { "enum": ["line", "instruction", "none"] }
+      }
+    },
+    "concurrency": {
+      "description": "Concurrent problems only (docs/specs/problem-format.md#concurrency-block-in-metayaml)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model"],
+      "properties": {
+        "model": {
+          "description": "One model for every language, or a model per language",
+          "oneOf": [
+            { "$ref": "#/$defs/concurrencyModel" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "minProperties": 1,
+              "properties": {
+                "python": { "$ref": "#/$defs/concurrencyModel" },
+                "typescript": { "$ref": "#/$defs/concurrencyModel" },
+                "java": { "$ref": "#/$defs/concurrencyModel" },
+                "kotlin": { "$ref": "#/$defs/concurrencyModel" }
+              }
+            }
+          ]
+        },
+        "jvm_threads": {
+          "description": "Each entry is a separate variant of every stress case for Java and Kotlin (default [platform])",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["platform", "virtual"] }
+        },
+        "runs": { "description": "Runs per stress case and variant in cstudy test (default 3)", "type": "integer", "minimum": 1, "maximum": 100 },
+        "deadline_ms": { "description": "Per run, from gate open (default 5000)", "type": "integer", "minimum": 100, "maximum": 30000 },
+        "perturb": { "$ref": "#/$defs/perturb" },
+        "broken": {
+          "description": "Deliberately wrong references in solutions/broken/<id>.<ext>; required for ready",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name", "bug", "caught_by"],
+            "properties": {
+              "id": { "$ref": "#/$defs/slug" },
+              "name": { "type": "string", "minLength": 1 },
+              "bug": { "type": "string", "minLength": 1 },
+              "languages": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/language" } },
+              "caught_by": {
+                "description": "Stress case ids that must catch it",
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "type": "string", "pattern": "^[a-z0-9-]+$" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "perf": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "size_param": { "description": "What n means, for display", "type": "string", "minLength": 1 },
+        "size_ladder": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/positiveInteger" } },
+        "budget_ms": { "$ref": "#/$defs/positiveInteger" },
+        "expected_from": { "description": "Python approach that computes expected values for generated cases", "$ref": "#/$defs/slug" },
+        "time_limit": {
+          "description": "Suggested time limit when limits are enabled",
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["factor"],
+              "properties": { "factor": { "type": "number", "exclusiveMinimum": 0 } }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["ms"],
+              "properties": { "ms": { "type": "number", "exclusiveMinimum": 0 } }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

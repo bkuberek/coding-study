@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0032"
+slug: min-stack
+title: Min Stack
+status: ready
+difficulty: medium
+track: dsa
+kind: design
+patterns: [stack]
+signature:
+  class:
+    name: MinStack
+    constructor: {params: []}
+    methods:
+      - {name: push, params: [{name: value, type: int}], returns: {type: void}}
+      - {name: pop, params: [], returns: {type: void}}
+      - {name: top, params: [], returns: {type: int}}
+      - {name: getMin, params: [], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: scan-min, name: Plain stack with a scan for the minimum, role: brute, time: "O(1) push, pop and top, O(n) getMin", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: pair-stack, name: Each entry stores the minimum at or below it, role: optimal, time: "O(1) per op", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: two-stacks, name: A second stack of minimums, role: optimal, time: "O(1) per op", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of operations
+  size_ladder: [1000, 10000, 100000]
+  expected_from: pair-stack
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 155, url: "https://leetcode.com/problems/min-stack/"}
+related: [valid-parentheses, randomized-set]
+estimate_minutes: 20

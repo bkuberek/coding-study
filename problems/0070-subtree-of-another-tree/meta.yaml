@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0070"
+slug: subtree-of-another-tree
+title: Subtree of Another Tree
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [trees]
+signature:
+  function:
+    name: isSubtree
+    params:
+      - {name: root, type: TreeNode}
+      - {name: subRoot, type: TreeNode}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Same-tree check at every node, role: brute, time: "O(n * m)", space: "O(h)", time_class: "n", space_class: "log n", oracle: true}
+  - {id: serialize-kmp, name: Pre-order tokens matched with KMP, role: optimal, time: "O(n + m)", space: "O(n + m)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of nodes in root
+  size_ladder: [1000, 10000, 100000]
+  expected_from: serialize-kmp
+references:
+  leetcode: {number: 572, url: "https://leetcode.com/problems/subtree-of-another-tree/"}
+related: [same-tree, serialize-binary-tree]
+order: 4
+estimate_minutes: 15

@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0012"
+slug: valid-sudoku
+title: Valid Sudoku
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [arrays-hashing]
+signature:
+  function:
+    name: isValidSudoku
+    params:
+      - {name: board, type: "char[][]"}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: "Scan the row, column and box of every filled cell", role: brute, time: "O(N^3)", space: "O(1)", time_class: "n", space_class: "1", oracle: true}
+  - {id: hash-sets, name: "One pass with a set per row, column and box", role: optimal, time: "O(N^2)", space: "O(N^2)", time_class: "n", space_class: "1"}
+  - {id: bitmask, name: "One pass with a bit mask per row, column and box", role: optimal, time: "O(N^2)", space: "O(N)", time_class: "n", space_class: "1"}
+perf:
+  size_param: filled cells; the board is always 9 x 9
+  size_ladder: [20, 40, 81]
+  expected_from: hash-sets
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 36, url: "https://leetcode.com/problems/valid-sudoku/"}
+related: [contains-duplicate]
+estimate_minutes: 20

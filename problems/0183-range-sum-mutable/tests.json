@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "ops": ["NumArray", "sumRange", "update", "sumRange", "sumRange"], "args": [[[1, 2, -4, 6, 3]], [1, 3], [2, 5], [1, 3], [0, 4]], "expected": [null, 4, null, 13, 17]},
+    {"id": "ex2", "visible": true, "ops": ["NumArray", "update", "sumRange", "update", "update", "sumRange"], "args": [[[7, 7, 7]], [1, 7], [0, 2], [0, 1], [0, -3], [0, 1]], "expected": [null, null, 21, null, null, 4]},
+    {"id": "h1", "ops": ["NumArray", "sumRange", "update", "sumRange"], "args": [[[4]], [0, 0], [0, -9], [0, 0]], "expected": [null, 4, null, -9], "note": "single element"},
+    {"id": "h2", "ops": ["NumArray", "sumRange", "sumRange", "sumRange"], "args": [[[1, 2, 3, 4]], [0, 3], [0, 0], [3, 3]], "expected": [null, 10, 1, 4], "note": "queries only"},
+    {"id": "h3", "ops": ["NumArray", "update", "update", "update", "sumRange", "sumRange", "sumRange"], "args": [[[0, 0, 0, 0, 0]], [0, 1], [4, 2], [2, 3], [0, 4], [1, 3], [4, 4]], "expected": [null, null, null, null, 6, 3, 2], "note": "updates at both ends and the middle"},
+    {"id": "h4", "ops": ["NumArray", "sumRange", "update", "update", "sumRange", "sumRange"], "args": [[[100000, -100000, 100000, -100000]], [0, 3], [1, 100000], [3, 100000], [0, 3], [1, 2]], "expected": [null, 0, null, null, 400000, 200000], "note": "extreme values"},
+    {"id": "h5", "ops": ["NumArray", "update", "update", "update", "update", "update", "update", "update", "update", "sumRange", "sumRange"], "args": [[[5, 5, 5, 5, 5, 5, 5, 5]], [0, -5], [1, -5], [2, -5], [3, -5], [4, -5], [5, -5], [6, -5], [7, -5], [0, 7], [2, 5]], "expected": [null, null, null, null, null, null, null, null, null, -40, -20], "note": "every position overwritten"},
+    {"id": "h6", "ops": ["NumArray", "sumRange", "sumRange", "sumRange", "sumRange", "sumRange", "sumRange", "sumRange"], "args": [[[3, 1, 4, 1, 5, 9, 2]], [0, 0], [1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6]], "expected": [null, 3, 1, 4, 1, 5, 9, 2], "note": "single-position ranges match the values"},
+    {"id": "h7", "ops": ["NumArray", "update", "sumRange", "update", "sumRange", "update", "sumRange"], "args": [[[2, 4, 6]], [1, 4], [0, 2], [1, 0], [0, 2], [1, 4], [0, 2]], "expected": [null, null, 12, null, 8, null, 12], "note": "the same position changed back and forth"},
+    {"id": "h8", "ops": ["NumArray", "update", "sumRange", "sumRange", "update", "sumRange", "sumRange"], "args": [[[1, 2, 3, 4, 5, 6, 7, 8, 9]], [6, 0], [0, 8], [4, 7], [0, 100], [0, 0], [0, 6]], "expected": [null, null, 38, 19, null, 100, 120], "note": "length 9, not a power of two"},
+    {"id": "h9", "ops": ["NumArray", "sumRange", "update", "sumRange"], "args": [[[-1, -2, -3]], [0, 2], [2, 3], [1, 2]], "expected": [null, -6, null, 1], "note": "negative values"},
+    {"id": "h10", "ops": ["NumArray", "update", "sumRange", "update", "sumRange", "sumRange"], "args": [[[10, 20]], [1, -20], [0, 1], [0, -10], [0, 1], [1, 1]], "expected": [null, null, -10, null, -30, -20], "note": "two elements that cancel"},
+    {"id": "g1", "generate": {"n": 30000, "seed": 1}, "note": "largest ladder size: adding up the ranges is about 1.5 * 10^8 additions here"},
+    {"id": "g2", "generate": {"n": 30000, "seed": 14}, "note": "large input of extreme values: range sums pass 2^31"},
+    {"id": "g3", "generate": {"n": 1000, "seed": 3}}
+  ]
+}

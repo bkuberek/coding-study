@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=../../../schemas/item.schema.json
+slug: news-feed
+title: News Feed
+track: system-design
+difficulty: hard
+estimate_minutes: 60
+status: ready
+order: 4
+references:
+  study_guides:
+    - "distributed-systems-study-guide.md#5-scaling-patterns"
+    - "distributed-systems-study-guide.md#4-in-memory--caching"
+    - "distributed-systems-study-guide.md#3-nosql--wide-column"
+    - "distributed-systems-study-guide.md#2-event-streaming-kafka"
+related: [design-twitter, chat-system, merge-k-sorted-lists]

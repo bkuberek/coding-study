@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0146"
+slug: burst-balloons
+title: Burst Balloons
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [dp-2d]
+signature:
+  function:
+    name: maxCoins
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Recursion on the balloon burst last in each interval with a memo table, role: intermediate, time: "O(n^3)", space: "O(n^2)", time_class: "n^3", space_class: "n^2", oracle: true}
+  - {id: tabulation, name: Fill the interval table by increasing length, role: optimal, time: "O(n^3)", space: "O(n^2)", time_class: "n^3", space_class: "n^2"}
+perf:
+  size_param: number of balloons
+  size_ladder: [50, 100, 200, 300]
+  expected_from: tabulation
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 312, url: "https://leetcode.com/problems/burst-balloons/"}
+related: [maximal-square, target-sum]
+order: 9
+estimate_minutes: 45

@@ -1,0 +1,17 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"n": 4}, "expected": [[".Q..", "...Q", "Q...", "..Q."], ["..Q.", "Q...", "...Q", ".Q.."]]},
+    {"id": "ex2", "visible": true, "input": {"n": 1}, "expected": [["Q"]]},
+    {"id": "h1", "input": {"n": 2}, "expected": [], "note": "two queens on a 2 by 2 board always attack: no placement"},
+    {"id": "h2", "input": {"n": 3}, "expected": [], "note": "no placement on a 3 by 3 board either"},
+    {"id": "h3", "input": {"n": 5}, "expected": [["Q....", "..Q..", "....Q", ".Q...", "...Q."], ["Q....", "...Q.", ".Q...", "....Q", "..Q.."], [".Q...", "...Q.", "Q....", "..Q..", "....Q"], [".Q...", "....Q", "..Q..", "Q....", "...Q."], ["..Q..", "Q....", "...Q.", ".Q...", "....Q"], ["..Q..", "....Q", ".Q...", "...Q.", "Q...."], ["...Q.", "Q....", "..Q..", "....Q", ".Q..."], ["...Q.", ".Q...", "....Q", "..Q..", "Q...."], ["....Q", ".Q...", "...Q.", "Q....", "..Q.."], ["....Q", "..Q..", "Q....", "...Q.", ".Q..."]], "note": "10 placements"},
+    {"id": "h4", "input": {"n": 6}, "expected": [[".Q....", "...Q..", ".....Q", "Q.....", "..Q...", "....Q."], ["..Q...", ".....Q", ".Q....", "....Q.", "Q.....", "...Q.."], ["...Q..", "Q.....", "....Q.", ".Q....", ".....Q", "..Q..."], ["....Q.", "..Q...", "Q.....", ".....Q", "...Q..", ".Q...."]], "note": "only 4 placements, fewer than for 5"},
+    {"id": "h5", "input": {"n": 7}, "note": "40 placements"},
+    {"id": "h6", "input": {"n": 8}, "note": "the classic board: 92 placements"},
+    {"id": "h7", "input": {"n": 9}, "note": "352 placements"},
+    {"id": "h8", "input": {"n": 10}, "note": "maximum size: 724 placements"},
+    {"id": "g1", "generate": {"n": 8, "seed": 104}, "note": "largest generated size"}
+  ]
+}

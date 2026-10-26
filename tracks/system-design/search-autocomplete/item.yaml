@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../../../schemas/item.schema.json
+slug: search-autocomplete
+title: Search Autocomplete
+track: system-design
+difficulty: medium
+estimate_minutes: 45
+status: ready
+order: 3
+references:
+  study_guides:
+    - "distributed-systems-study-guide.md#5-search"
+    - "distributed-systems-study-guide.md#4-in-memory--caching"
+    - "distributed-systems-study-guide.md#2-cdn-content-delivery-network"
+    - "distributed-systems-study-guide.md#h-data-processing--analytics"
+  links:
+    - https://blog.burntsushi.net/transducers/
+related: [implement-trie, search-suggestions, top-k-frequent-elements]

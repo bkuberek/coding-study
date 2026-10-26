@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0013"
+slug: randomized-set
+title: Randomized Set
+status: ready
+difficulty: medium
+track: dsa
+kind: design
+patterns: [arrays-hashing]
+signature:
+  class:
+    name: RandomizedSet
+    constructor: {params: []}
+    methods:
+      - {name: insert, params: [{name: value, type: int}], returns: {type: bool}}
+      - {name: remove, params: [{name: value, type: int}], returns: {type: bool}}
+      - {name: getRandom, params: [], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: list-scan, name: Dynamic array with linear search, role: brute, time: "O(n) per op", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: hash-set, name: Hash set with a walk for getRandom, role: intermediate, time: "O(1) insert and remove, O(n) getRandom", space: "O(n)", time_class: "n", space_class: "n"}
+  - {id: array-and-index-map, name: Array plus a map from value to index, role: optimal, time: "O(1) per op", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of operations, values from a pool of n/10
+  size_ladder: [1000, 10000, 100000]
+  expected_from: array-and-index-map
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 380, url: "https://leetcode.com/problems/insert-delete-getrandom-o1/"}
+related: [contains-duplicate, min-stack]
+estimate_minutes: 25

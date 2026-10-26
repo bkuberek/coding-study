@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0196"
+slug: vending-machine
+title: Vending Machine
+status: ready
+difficulty: medium
+track: lld
+kind: design
+signature:
+  class:
+    name: VendingMachine
+    constructor: {params: [{name: denominations, type: "int[]"}]}
+    methods:
+      - {name: service, params: [{name: enabled, type: bool}], returns: {type: bool}}
+      - {name: stock, params: [{name: slot, type: string}, {name: price, type: int}, {name: count, type: int}], returns: {type: bool}}
+      - {name: loadCoins, params: [{name: coin, type: int}, {name: count, type: int}], returns: {type: bool}}
+      - {name: insert, params: [{name: coin, type: int}], returns: {type: int}}
+      - {name: select, params: [{name: slot, type: string}], returns: {type: string}}
+      - {name: refund, params: [], returns: {type: int}}
+      - {name: collect, params: [], returns: {type: "list<int>"}}
+      - {name: state, params: [], returns: {type: string}}
+      - {name: stockOf, params: [{name: slot, type: string}], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: state-machine, name: Explicit states with a change-making coin box, role: optimal, time: "O(d a c) per sale or refund; O(1) per other operation", space: "O(d a + s)", time_class: "n", space_class: "n"}
+related: [parking-lot]
+estimate_minutes: 50

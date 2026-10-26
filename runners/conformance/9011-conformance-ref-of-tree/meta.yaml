@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9011"
+slug: conformance-ref-of-tree
+title: "Conformance: ref_of into a tree and as value"
+status: ready
+difficulty: easy
+track: practical
+kind: function
+signature:
+  function:
+    name: pickTreeNode
+    params:
+      - {name: root, type: TreeNode}
+      - {name: node, type: TreeNode, ref_of: root}
+    returns: {type: TreeNode, as: value}
+comparator: {type: exact}
+approaches:
+  - {id: identity, name: "Return node unchanged", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"accounts": [["Ada", "ada@home.net", "ada.l@work.org"], ["Bo", "bo@mail.com"], ["Ada", "ada.l@work.org", "lovelace@lab.io"], ["Ada", "ada99@mail.com"]]}, "expected": [["Ada", "ada.l@work.org", "ada@home.net", "lovelace@lab.io"], ["Bo", "bo@mail.com"], ["Ada", "ada99@mail.com"]]},
+    {"id": "ex2", "visible": true, "input": {"accounts": [["Kim", "k1@a.com", "k2@a.com"], ["Kim", "k3@a.com"], ["Kim", "k3@a.com", "k2@a.com"]]}, "expected": [["Kim", "k1@a.com", "k2@a.com", "k3@a.com"]]},
+    {"id": "h1", "input": {"accounts": [["Zed", "z@z.io"]]}, "expected": [["Zed", "z@z.io"]], "note": "one account with one address"},
+    {"id": "h2", "input": {"accounts": [["Lu", "lu@x.org", "lu@x.org", "a@x.org"]]}, "expected": [["Lu", "a@x.org", "lu@x.org"]], "note": "an address listed twice in one account appears once"},
+    {"id": "h3", "input": {"accounts": [["Max", "m1@x.com"], ["Max", "m2@x.com"]]}, "expected": [["Max", "m1@x.com"], ["Max", "m2@x.com"]], "note": "same name, no shared address: two people"},
+    {"id": "h4", "input": {"accounts": [["Ann", "b@x.com", "a@x.com"], ["Ann", "c@x.com", "b@x.com"]]}, "expected": [["Ann", "a@x.com", "b@x.com", "c@x.com"]], "note": "one shared address merges two accounts"},
+    {"id": "h5", "input": {"accounts": [["Rex", "r1@q.io"], ["Sam", "s1@q.io"], ["Tia", "t1@q.io"]]}, "expected": [["Rex", "r1@q.io"], ["Sam", "s1@q.io"], ["Tia", "t1@q.io"]], "note": "different names, nothing to merge"},
+    {"id": "h6", "input": {"accounts": [["Ola", "o@p.net", "p1@p.net"], ["Ola", "o@p.net", "p2@p.net"], ["Ola", "o@p.net", "p3@p.net"], ["Ola", "o@p.net"]]}, "expected": [["Ola", "o@p.net", "p1@p.net", "p2@p.net", "p3@p.net"]], "note": "one address in every account"},
+    {"id": "h7", "input": {"accounts": [["Ed", "b@x.com", "a1@x.com", "a@x.com", "a@w.com", "0@x.com"]]}, "expected": [["Ed", "0@x.com", "a1@x.com", "a@w.com", "a@x.com", "b@x.com"]], "note": "sorting by character codes: digits before letters, and '1' before '@'"},
+    {"id": "h8", "input": {"accounts": [["Vi", "v1@m.io", "v2@m.io", "v3@m.io", "v4@m.io", "v5@m.io", "v6@m.io", "v7@m.io", "v8@m.io", "v9@m.io"]]}, "expected": [["Vi", "v1@m.io", "v2@m.io", "v3@m.io", "v4@m.io", "v5@m.io", "v6@m.io", "v7@m.io", "v8@m.io", "v9@m.io"]], "note": "the longest account: nine addresses"},
+    {"id": "h9", "input": {"accounts": [["Al", "e4@d.com"], ["Al", "e3@d.com", "e4@d.com"], ["Al", "e2@d.com", "e3@d.com"], ["Al", "e1@d.com", "e2@d.com"]]}, "expected": [["Al", "e1@d.com", "e2@d.com", "e3@d.com", "e4@d.com"]], "note": "a chain of accounts, each sharing one address with the previous one"},
+    {"id": "h10", "input": {"accounts": [["Mo", "m@a.com", "n@a.com"], ["Jo", "j@a.com"], ["Mo", "x@a.com"], ["Mo", "n@a.com", "x@a.com"], ["Jo", "j@a.com", "k@a.com"]]}, "expected": [["Mo", "m@a.com", "n@a.com", "x@a.com"], ["Jo", "j@a.com", "k@a.com"]], "note": "two people merging separately, interleaved"},
+    {"id": "g1", "generate": {"n": 1000, "seed": 123}, "note": "one prolific person among many at the largest size"}
+  ]
+}

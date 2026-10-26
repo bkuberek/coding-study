@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [2, 3, 1, 5]}, "expected": [15, 10, 30, 6]},
+    {"id": "ex2", "visible": true, "input": {"nums": [-2, 0, 4, 1]}, "expected": [0, -8, 0, 0]},
+    {"id": "h1", "input": {"nums": [3, 4]}, "expected": [4, 3], "note": "minimum length"},
+    {"id": "h2", "input": {"nums": [0, 5]}, "expected": [5, 0], "note": "minimum length with a zero"},
+    {"id": "h3", "input": {"nums": [0, 0]}, "expected": [0, 0], "note": "two zeros only"},
+    {"id": "h4", "input": {"nums": [2, 0, 3, 0]}, "expected": [0, 0, 0, 0], "note": "two zeros make every product zero"},
+    {"id": "h5", "input": {"nums": [2, 0, 3, 4]}, "expected": [0, 24, 0, 0], "note": "one zero: only its own position is non-zero"},
+    {"id": "h6", "input": {"nums": [-1, -1, -1, -1]}, "expected": [-1, -1, -1, -1], "note": "all values equal and negative"},
+    {"id": "h7", "input": {"nums": [1, 1, 1, 1, 1]}, "expected": [1, 1, 1, 1, 1], "note": "all ones"},
+    {"id": "h8", "input": {"nums": [-30, 30, -30, 30, 2]}, "expected": [-54000, 54000, -54000, 54000, 810000], "note": "extreme magnitudes"},
+    {"id": "h9", "input": {"nums": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, -1]}, "expected": [-536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, -536870912, 1073741824], "note": "products reach 2^30 in magnitude"},
+    {"id": "h10", "input": {"nums": [30, 30, 30, 30, 30, 30, -2]}, "expected": [-48600000, -48600000, -48600000, -48600000, -48600000, -48600000, 729000000], "note": "products close to the 32-bit limit"},
+    {"id": "h11", "input": {"nums": [5, -3, 0]}, "expected": [0, 0, -15], "note": "zero in the last position"},
+    {"id": "h12", "input": {"nums": [1, 2, 3, 4, 5, 6]}, "expected": [720, 360, 240, 180, 144, 120], "note": "sorted ascending"},
+    {"id": "h13", "input": {"nums": [-7, 1, -1, 7]}, "expected": [-7, 49, -49, 7], "note": "signs cancel differently per position"},
+    {"id": "g1", "generate": {"n": 10000, "seed": 1}, "hang_guard_ms": 30000, "note": "large input: the brute force multiplies about 10^8 times here"},
+    {"id": "g2", "generate": {"n": 1000, "seed": 5}}
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"before": [5, 0, 12], "after": [3, 0, 12]}, "expected": [0]},
+    {"id": "ex2", "visible": true, "input": {"before": [100, 7], "after": [100, 9, 4]}, "expected": [1, 2]},
+    {"id": "h1", "input": {"before": [], "after": []}, "expected": [], "note": "no SKUs"},
+    {"id": "h2", "input": {"before": [], "after": [1]}, "expected": [0], "note": "one new SKU"},
+    {"id": "h3", "input": {"before": [127], "after": [127]}, "expected": [], "note": "unchanged at the top of the Integer cache"},
+    {"id": "h4", "input": {"before": [128], "after": [128]}, "expected": [], "note": "unchanged just above the Integer cache"},
+    {"id": "h5", "input": {"before": [-128], "after": [-128]}, "expected": [], "note": "unchanged at the bottom of the Integer cache"},
+    {"id": "h6", "input": {"before": [-129], "after": [-129]}, "expected": [], "note": "unchanged just below the Integer cache"},
+    {"id": "h7", "input": {"before": [1500, 20, 980, 0], "after": [1500, 21, 975, 0]}, "expected": [1, 2], "note": "realistic counts, mixed"},
+    {"id": "h8", "input": {"before": [250], "after": [250, 250]}, "expected": [1], "note": "large unchanged count plus a new SKU"},
+    {"id": "h9", "input": {"before": [1000, 2000], "after": [1001, 2000]}, "expected": [0], "note": "large counts, one changed"},
+    {"id": "h10", "input": {"before": [2147483647, -2147483648], "after": [2147483647, -2147483648]}, "expected": [], "note": "int extremes, unchanged"},
+    {"id": "h11", "input": {"before": [1, 2, 3], "after": [3, 2, 1]}, "expected": [0, 2], "note": "small counts, swapped"},
+    {"id": "h12", "input": {"before": [0, 0, 0], "after": [0, 0, 0, 0]}, "expected": [3], "note": "new SKU starting at zero still counts as changed"}
+  ]
+}

@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0103"
+slug: generate-parentheses
+title: Generate Parentheses
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [backtracking, stack]
+signature:
+  function:
+    name: generateParenthesis
+    params:
+      - {name: n, type: int}
+    returns: {type: "list<string>"}
+comparator: {type: checker}
+approaches:
+  - {id: filter-arrangements, name: "Write every arrangement of n opening and n closing brackets, keep the balanced ones", role: brute, time: "O(sqrt(n) * 4^n)", space: "O(4^n / sqrt(n))", time_class: "2^n", space_class: "2^n", oracle: true}
+  - {id: count-open-close, name: Add a bracket only while the prefix can still be completed, role: optimal, time: "O(4^n / sqrt(n))", space: "O(4^n / sqrt(n))", time_class: "2^n", space_class: "2^n"}
+perf:
+  size_param: n pairs (generated inputs stop at 8; hand-written cases cover 9 and 10)
+  size_ladder: [4, 6, 8]
+  expected_from: count-open-close
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 22, url: "https://leetcode.com/problems/generate-parentheses/"}
+related: [valid-parentheses, phone-letter-combinations, permutations]
+order: 9
+estimate_minutes: 20

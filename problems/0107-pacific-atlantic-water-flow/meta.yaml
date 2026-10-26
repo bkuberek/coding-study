@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0107"
+slug: pacific-atlantic-water-flow
+title: Pacific Atlantic Water Flow
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [graphs]
+signature:
+  function:
+    name: pacificAtlantic
+    params:
+      - {name: heights, type: "int[][]"}
+    returns: {type: "int[][]"}
+comparator: {type: unordered}
+approaches:
+  - {id: per-cell-search, name: Follow the water downhill from every cell, role: brute, time: "O((m·n)^2)", space: "O(m·n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: ocean-bfs, name: Climb uphill from both coasts, role: optimal, time: "O(m·n)", space: "O(m·n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of cells (m·n)
+  size_ladder: [100, 225, 400, 900, 1600]
+  expected_from: ocean-bfs
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 417, url: "https://leetcode.com/problems/pacific-atlantic-water-flow/"}
+related: [number-of-islands, surrounded-regions, rotting-oranges]
+order: 3
+estimate_minutes: 30

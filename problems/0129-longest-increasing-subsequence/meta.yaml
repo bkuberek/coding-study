@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0129"
+slug: longest-increasing-subsequence
+title: Longest Increasing Subsequence
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [dp-1d, binary-search]
+signature:
+  function:
+    name: lengthOfLIS
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: memoization, name: Top-down longest run starting at each index, role: intermediate, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n"}
+  - {id: tabulation, name: Quadratic table of runs ending at each index, role: intermediate, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: patience-sorting, name: Smallest tails with binary search, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: n
+  size_ladder: [100, 300, 1000, 2500]
+  expected_from: patience-sorting
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 300, url: "https://leetcode.com/problems/longest-increasing-subsequence/"}
+related: [job-scheduling-max-profit, binary-search, longest-consecutive-sequence]
+order: 4
+estimate_minutes: 25

@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0154"
+slug: hand-of-straights
+title: Hand of Straights
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [greedy, arrays-hashing]
+signature:
+  function:
+    name: isNStraightHand
+    params:
+      - {name: hand, type: "int[]"}
+      - {name: groupSize, type: int}
+    returns: {type: bool}
+comparator: {type: exact}
+approaches:
+  - {id: brute-force, name: Repeatedly remove the straight that starts at the smallest card, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: sorted-counts, name: Count the cards and consume straights from the smallest value, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+  - {id: open-straights, name: Sweep the distinct values tracking open straights, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: n, the number of cards
+  size_ladder: [300, 1000, 3000, 10000]
+  expected_from: sorted-counts
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 846, url: "https://leetcode.com/problems/hand-of-straights/"}
+related: [partition-labels, contains-duplicate, longest-consecutive-sequence]
+order: 5
+estimate_minutes: 25

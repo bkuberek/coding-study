@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0176"
+slug: multiply-strings
+title: Multiply Strings
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [math-geometry]
+signature:
+  function:
+    name: multiply
+    params:
+      - {name: num1, type: string}
+      - {name: num2, type: string}
+    returns: {type: string}
+comparator: {type: exact}
+approaches:
+  - {id: add-partial-products, name: Add one shifted partial product per digit, role: brute, time: "O(n * (m + n))", space: "O(m + n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: digit-grid, name: Accumulate every digit product at position i + j, role: optimal, time: "O(m * n)", space: "O(m + n)", time_class: "n^2", space_class: "n"}
+perf:
+  size_param: number of digits of the longer number (the other has between n/2 and n)
+  size_ladder: [100, 200, 500, 1000, 2000]
+  expected_from: digit-grid
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 43, url: "https://leetcode.com/problems/multiply-strings/"}
+related: [fast-power, sum-without-plus]
+order: 5
+estimate_minutes: 25
