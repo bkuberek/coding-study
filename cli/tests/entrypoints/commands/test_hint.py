@@ -49,3 +49,8 @@ def test_exhausted_hints_still_exit_0(environment):
 
 def test_without_an_attempt_exits_3(environment):
     assert invoke("lru-cache").exit_code == ExitCode.USAGE_ERROR
+
+
+def test_a_solution_file_path_selects_its_problem(environment):
+    result = invoke(str(environment.root / "python/practice/two_sum.py"))
+    assert result.output.splitlines()[0] == "two-sum · hint 1 of 2"

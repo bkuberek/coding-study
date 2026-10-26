@@ -13,6 +13,7 @@ import typer
 from rich.text import Text
 
 from coding_study.adapters.environment_factory import load_environment
+from coding_study.application.resolve_target import Target, resolve_target
 from coding_study.application.run_bench import (
     BenchOptions,
     BenchResult,
@@ -28,7 +29,13 @@ from coding_study.domain.bench_stats import (
 from coding_study.domain.bench_verdict import GrowthVerdict, History, SpaceVerdict
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Language
-from coding_study.entrypoints.shared import ExitCode, add_command, command_environ, console
+from coding_study.entrypoints.shared import (
+    OPTIONAL_TARGET_HELP,
+    ExitCode,
+    add_command,
+    command_environ,
+    console,
+)
 
 NAME = "bench"
 USER_LABEL = "you"
@@ -48,7 +55,8 @@ def register(app: typer.Typer) -> None:
 def bench(
     context: typer.Context,
     slug: Annotated[
-        str | None, typer.Argument(help="The problem; default: the active attempt.")
+        str | None,
+        typer.Argument(help=OPTIONAL_TARGET_HELP),
     ] = None,
     language: Annotated[
         Language | None, typer.Option("--lang", help="Language; default: the attempt's.")
@@ -69,8 +77,9 @@ def bench(
 ) -> None:
     """Complexity ladder and memory analysis."""
     options = BenchOptions(parse_sizes(sizes), reps, False if no_memory else None)
-    request = RunBenchRequest(slug, language, options, refs_only)
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
+    target = resolve_target(environment, Target(slug, language), Path.cwd())
+    request = RunBenchRequest(target.slug, target.language, options, refs_only)
     output = console(context)
     result = run_bench(environment, request, lambda line: output.print(Text(line, style="dim")))
     for line in BenchReportLines(result).lines():

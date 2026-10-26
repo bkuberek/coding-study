@@ -38,11 +38,23 @@ def stub_path(meta: ProblemMeta, language: Language) -> str:
     """The user's file for `meta` in `language`."""
     match language:
         case Language.PYTHON:
-            return f"{PYTHON_PROJECT}/{USER_PACKAGE}/{meta.snake_slug}.py"
+            return f"{user_directory(language)}/{meta.snake_slug}.py"
         case Language.TYPESCRIPT:
-            return f"{TYPESCRIPT_PROJECT}/{USER_PACKAGE}/{meta.slug}.ts"
+            return f"{user_directory(language)}/{meta.slug}.ts"
         case _:
             return f"{_user_package_directory(meta, language)}/{_jvm_file_name(meta, language)}"
+
+
+def user_directory(language: Language) -> str:
+    """Where the user's files for `language` live: the files themselves, or on the JVM the
+    problems' package directories."""
+    match language:
+        case Language.PYTHON:
+            return f"{PYTHON_PROJECT}/{USER_PACKAGE}"
+        case Language.TYPESCRIPT:
+            return f"{TYPESCRIPT_PROJECT}/{USER_PACKAGE}"
+        case _:
+            return f"{_jvm_sources(JVM_PROJECT, language)}/{USER_PACKAGE}"
 
 
 def watch_path(meta: ProblemMeta, language: Language) -> str:
@@ -97,7 +109,7 @@ def language_of_extension(extension: str) -> Language | None:
 
 def reference_build_path(meta: ProblemMeta, approach_id: str, language: Language) -> str:
     """Where `cstudy verify` and `cstudy bench` materialize a reference before running it."""
-    approach = _snake(approach_id)
+    approach = snake_case(approach_id)
     match language:
         case Language.PYTHON:
             return f"{BUILD_DIRECTORY}/python/{REFERENCE_PACKAGE}/{meta.snake_slug}/{approach}.py"
@@ -119,11 +131,11 @@ def reference_target(
 
 def jvm_reference_package(meta: ProblemMeta, approach_id: str) -> str:
     """The package the materializer prepends to a JVM reference file."""
-    return f"{REFERENCE_PACKAGE}.{meta.snake_slug}.{_snake(approach_id)}"
+    return f"{REFERENCE_PACKAGE}.{meta.snake_slug}.{snake_case(approach_id)}"
 
 
 def _user_package_directory(meta: ProblemMeta, language: Language) -> str:
-    return f"{_jvm_sources(JVM_PROJECT, language)}/{USER_PACKAGE}/{meta.snake_slug}"
+    return f"{user_directory(language)}/{meta.snake_slug}"
 
 
 def _jvm_sources(project: str, language: Language) -> str:
@@ -134,5 +146,6 @@ def _jvm_file_name(meta: ProblemMeta, language: Language) -> str:
     return f"{jvm_class_name(meta)}.{SOURCE_EXTENSIONS[language]}"
 
 
-def _snake(identifier: str) -> str:
+def snake_case(identifier: str) -> str:
+    """`two-sum` as `two_sum`: how file and package names spell a slug or an approach id."""
     return identifier.replace("-", "_")

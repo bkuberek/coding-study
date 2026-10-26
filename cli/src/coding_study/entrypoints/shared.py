@@ -86,6 +86,10 @@ def console(context: typer.Context) -> Console:
     return Console(no_color=options.no_color, highlight=False, soft_wrap=True)
 
 
+PROBLEM_TARGET_HELP = "The problem, e.g. two-sum, or its solution file."
+OPTIONAL_TARGET_HELP = "The problem or its solution file; default: the active attempt."
+"""`cstudy <command> <file>` runs the command on the problem and language of a solution file."""
+
 END_OF_OPTIONS = "--"
 
 

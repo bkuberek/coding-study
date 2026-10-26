@@ -91,3 +91,10 @@ def test_yes_skips_the_question(environment):
     start_attempt(environment, StartRequest("two-sum"))
     result = invoke("two-sum", "--yes")
     assert (REVEAL_PROMPT in result.output, "seen: dict" in result.output) == (False, True)
+
+
+def test_a_solution_file_path_shows_its_problem_in_its_language(environment):
+    path = environment.root / "python/practice/two_sum.py"
+    assert (
+        invoke(str(path), "--yes").output == invoke("two-sum", "--lang", "python", "--yes").output
+    )

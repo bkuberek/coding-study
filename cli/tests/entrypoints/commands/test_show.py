@@ -48,3 +48,16 @@ def test_prints_an_item_prompt(tmp_path, monkeypatch):
     environment = make_environment(repository_root(tmp_path, PHASE4, FIXTURE_TRACKS))
     monkeypatch.setattr(show, "load_catalog_environment", lambda *_: environment)
     assert invoke("url-shortener").output.startswith("# URL Shortener\n\nmedium · system-design")
+
+
+def test_a_solution_file_path_shows_its_problem(environment):
+    path = environment.root / "python/practice/level_store.py"
+    assert invoke(str(path)).output == invoke("level-store").output
+
+
+def test_a_path_outside_the_layout_exits_3(environment):
+    path = environment.root / "notes/level-store.py"
+    assert (invoke(str(path)).exit_code, invoke(str(path)).stderr) == (
+        ExitCode.USAGE_ERROR,
+        f"error: not a solution file in this workspace: {path}\n",
+    )

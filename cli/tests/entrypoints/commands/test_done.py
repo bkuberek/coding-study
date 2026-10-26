@@ -76,3 +76,12 @@ def test_neither_rating_nor_gave_up_is_a_usage_error(environment):
 
 def test_explicit_slug(environment):
     assert invoke("two-sum", "--gave-up").exit_code == 0
+
+
+def test_a_solution_file_path_selects_its_problem(environment):
+    path = environment.root / "python/practice/lru_cache.py"
+    result = invoke(str(path), "--gave-up")
+    assert (result.exit_code, "no attempt in progress for lru-cache" in result.stderr) == (
+        ExitCode.USAGE_ERROR,
+        True,
+    )

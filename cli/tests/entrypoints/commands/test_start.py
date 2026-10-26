@@ -118,3 +118,11 @@ def test_outside_a_workspace_is_a_usage_error_pointing_at_cs_init(tmp_path, monk
     monkeypatch.chdir(tmp_path)
     result = invoke("two-sum")
     assert (result.exit_code, "run cstudy init" in result.stderr) == (ExitCode.USAGE_ERROR, True)
+
+
+def test_a_solution_file_path_starts_its_problem_in_its_language(environment):
+    result = invoke(str(environment.root / STUB), "--no-open")
+    assert (result.exit_code, result.output.splitlines()[0]) == (
+        0,
+        "two-sum · easy · arrays-hashing · python",
+    )

@@ -22,6 +22,7 @@ from coding_study.adapters.environment_factory import load_environment
 from coding_study.application import run_tests as use_case
 from coding_study.application.active_attempt import autograded_language, find_attempt
 from coding_study.application.environment import Environment
+from coding_study.application.resolve_target import Target, resolve_target
 from coding_study.application.run_bench import (
     PERF_REPS,
     BenchOptions,
@@ -59,6 +60,7 @@ from coding_study.entrypoints.commands.bench import bench_exit_code, perf_lines
 from coding_study.entrypoints.commands.run_document import operations_up_to, run_document
 from coding_study.entrypoints.shared import (
     ERROR_EXIT_CODES,
+    OPTIONAL_TARGET_HELP,
     ExitCode,
     add_command,
     command_environ,
@@ -111,7 +113,8 @@ def register(app: typer.Typer) -> None:
 def run_tests(
     context: typer.Context,
     slug: Annotated[
-        str | None, typer.Argument(help="The problem; default: the active attempt.")
+        str | None,
+        typer.Argument(help=OPTIONAL_TARGET_HELP),
     ] = None,
     language: Annotated[
         Language | None, typer.Option("--lang", help="Language; default: the attempt's.")
@@ -177,16 +180,17 @@ def run_tests(
     """Run the user's code against the cases."""
     options = _Options(show_all, perf, as_json)
     _require_text_for(options, watch)
+    environment = load_environment(Path.cwd(), command_environ(context), Path.home())
+    target = resolve_target(environment, Target(slug, language), Path.cwd())
     request = use_case.RunTestsRequest(
-        slug,
-        language,
+        target.slug,
+        target.language,
         tuple(case or ()),
         typecheck,
         _time_limit_flags(time_limit, no_time_limit),
         level,
         StressSelection(stress, seed),
     )
-    environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     session = _Session(environment, request, console(context), options)
     if not watch:
         raise typer.Exit(session.run())

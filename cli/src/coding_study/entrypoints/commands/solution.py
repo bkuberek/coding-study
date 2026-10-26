@@ -13,6 +13,7 @@ from rich.text import Text
 from coding_study.adapters.environment_factory import load_environment
 from coding_study.application.item_solution import ItemSolutionView, reveal_item_solution
 from coding_study.application.practice_catalog import is_item
+from coding_study.application.resolve_target import ProblemTarget, resolve_problem
 from coding_study.application.reveal_solution import (
     ApproachSolution,
     BrokenSolution,
@@ -27,6 +28,7 @@ from coding_study.domain.items import REFERENCE_FILE
 from coding_study.domain.problem import Language
 from coding_study.domain.problem_files import RUBRIC_FILE
 from coding_study.entrypoints.shared import (
+    PROBLEM_TARGET_HELP,
     add_command,
     command_environ,
     console,
@@ -54,7 +56,7 @@ def register(app: typer.Typer) -> None:
 
 def solution(
     context: typer.Context,
-    slug: Annotated[str, typer.Argument(help="The problem, e.g. two-sum.")],
+    slug: Annotated[str, typer.Argument(help=PROBLEM_TARGET_HELP)],
     language: Annotated[
         Language | None, typer.Option("--lang", help="Language of the reference code.")
     ] = None,
@@ -81,14 +83,17 @@ def solution(
 ) -> None:
     """Show reference code with its explanation."""
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
-    request = SolutionRequest(slug, language, approach, all_approaches, explanation_only, broken)
+    target = resolve_problem(environment, ProblemTarget(slug, language), Path.cwd())
+    request = SolutionRequest(
+        target.slug, target.language, approach, all_approaches, explanation_only, broken
+    )
     output = console(context)
-    if is_item(environment, slug):
+    if is_item(environment, target.slug):
         _require_item_options(request)
-        _page(output, list(_item_renderables(reveal_item_solution(environment, slug))))
+        _page(output, list(_item_renderables(reveal_item_solution(environment, target.slug))))
         return
     view = show_solution(environment, request)
-    attempt = attempt_to_mark(environment, slug)
+    attempt = attempt_to_mark(environment, target.slug)
     if attempt is not None:
         if not yes and not typer.confirm(REVEAL_QUESTION, default=False):
             output.print(NOT_REVEALED)

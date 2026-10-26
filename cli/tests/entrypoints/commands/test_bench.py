@@ -135,3 +135,8 @@ def test_without_an_attempt_bench_is_a_usage_error(tmp_path, monkeypatch):
     environment = make_environment(repository_root(tmp_path, PRACTICE), toolchains=toolchains)
     monkeypatch.setattr(bench_command, "load_environment", lambda *_: environment)
     assert invoke().exit_code == ExitCode.USAGE_ERROR
+
+
+def test_a_solution_file_path_benches_its_problem_in_its_language(environment):
+    path = environment.root / "python/practice/two_sum.py"
+    assert "two-sum · python · sizes" in invoke(str(path)).output

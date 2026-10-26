@@ -11,12 +11,18 @@ from rich.text import Text
 from coding_study.adapters.environment_factory import load_environment
 from coding_study.application.environment import Environment
 from coding_study.application.practice_catalog import is_item
+from coding_study.application.resolve_target import ProblemTarget, resolve_problem
 from coding_study.application.start_attempt import StartedAttempt, StartRequest, start_attempt
 from coding_study.application.start_item import ItemStartRequest, start_item_attempt
 from coding_study.domain.attempts import parse_timer
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Language
-from coding_study.entrypoints.shared import add_command, command_environ, console
+from coding_study.entrypoints.shared import (
+    PROBLEM_TARGET_HELP,
+    add_command,
+    command_environ,
+    console,
+)
 
 NAME = "start"
 LABEL_WIDTH = 11
@@ -32,7 +38,7 @@ def register(app: typer.Typer) -> None:
 
 def start(
     context: typer.Context,
-    slug: Annotated[str, typer.Argument(help="The problem, e.g. two-sum.")],
+    slug: Annotated[str, typer.Argument(help=PROBLEM_TARGET_HELP)],
     language: Annotated[
         Language | None, typer.Option("--lang", help="Language; default: config default_lang.")
     ] = None,
@@ -46,8 +52,9 @@ def start(
     no_open: Annotated[bool, typer.Option("--no-open", help="Do not launch the editor.")] = False,
 ) -> None:
     """Create or reopen a stub, open the statement, begin an attempt."""
-    request = StartRequest(slug, language, fresh, _timer_seconds(timer))
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
+    target = resolve_problem(environment, ProblemTarget(slug, language), Path.cwd())
+    request = StartRequest(target.slug, target.language, fresh, _timer_seconds(timer))
     output = console(context)
     files = start_and_report(output, environment, request)
     if not no_open and environment.config.open_on_start:

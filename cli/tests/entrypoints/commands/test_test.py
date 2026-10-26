@@ -276,3 +276,44 @@ def test_time_limit_and_no_time_limit_exclude_each_other(environment):
 def test_no_time_limit_runs_without_limits(environment):
     environment.workspace.write_text(STUB, SLOW_SOLUTION)
     assert invoke("--no-time-limit", "--case", "ex1").exit_code == ExitCode.SUCCESS
+
+
+def test_a_solution_file_path_targets_its_problem_and_language(environment):
+    solve(environment)
+    result = invoke(str(environment.root / STUB))
+    assert (result.exit_code, "two-sum · python · 4 cases" in result.output) == (0, True)
+
+
+def test_a_relative_solution_file_path_resolves_against_the_working_directory(
+    environment, monkeypatch
+):
+    solve(environment)
+    monkeypatch.chdir(environment.root / "python")
+    assert invoke("practice/two_sum.py").exit_code == 0
+
+
+def test_a_path_to_another_problem_targets_that_problem(environment):
+    result = invoke(str(environment.root / LRU_STUB))
+    assert (result.exit_code, result.stderr) == (
+        ExitCode.USAGE_ERROR,
+        "error: no attempt in progress for lru-cache in python; "
+        "start one with cstudy start lru-cache --lang python\n",
+    )
+
+
+def test_a_path_in_another_language_than_the_option_exits_3(environment):
+    path = str(environment.root / STUB)
+    result = invoke(path, "--lang", "kotlin")
+    assert (result.exit_code, result.stderr) == (
+        ExitCode.USAGE_ERROR,
+        f"error: {path} is a python file but --lang kotlin was given\n",
+    )
+
+
+def test_a_path_outside_the_workspace_exits_3(environment, tmp_path_factory):
+    outside = tmp_path_factory.mktemp("elsewhere") / STUB
+    result = invoke(str(outside))
+    assert (result.exit_code, "not a solution file in this workspace" in result.stderr) == (
+        ExitCode.USAGE_ERROR,
+        True,
+    )

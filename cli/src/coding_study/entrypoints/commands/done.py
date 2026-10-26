@@ -13,8 +13,14 @@ from coding_study.application.complete_attempt import (
     FinishedAttempt,
     complete_attempt,
 )
+from coding_study.application.resolve_target import Target, resolve_target
 from coding_study.domain.attempts import Rating
-from coding_study.entrypoints.shared import add_command, command_environ, console
+from coding_study.entrypoints.shared import (
+    OPTIONAL_TARGET_HELP,
+    add_command,
+    command_environ,
+    console,
+)
 
 NAME = "done"
 SECONDS_PER_MINUTE = 60
@@ -28,7 +34,8 @@ def register(app: typer.Typer) -> None:
 def done(
     context: typer.Context,
     slug: Annotated[
-        str | None, typer.Argument(help="The problem; default: the active attempt.")
+        str | None,
+        typer.Argument(help=OPTIONAL_TARGET_HELP),
     ] = None,
     rating: Annotated[
         Rating | None, typer.Option("--rating", help="How it went, after a full pass.")
@@ -40,7 +47,8 @@ def done(
 ) -> None:
     """Finish an attempt and schedule its review."""
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
-    finished = complete_attempt(environment, DoneRequest(slug, rating, gave_up, notes))
+    target = resolve_target(environment, Target(slug), Path.cwd())
+    finished = complete_attempt(environment, DoneRequest(target.slug, rating, gave_up, notes))
     output = console(context)
     output.print(Text(_summary(finished), style="bold"))
     output.print(Text(_next_review(finished)))

@@ -24,7 +24,19 @@
 | [`cstudy export`](#cstudy-export) | Back up progress as JSON | 7 |
 | [`cstudy import`](#cstudy-import) | Restore an export into an empty `progress.db` | 7 |
 
-Commands that take an optional `<slug>` default to the active attempt: the most recent attempt with status `in_progress`. If none exists, they exit 3. Every command but `cstudy init`, `cstudy doctor`, `cstudy list` and `cstudy show` needs a workspace and exits 3 without one, pointing at `cstudy init`.
+`<file>` is a [solution file path](#solution-file-targets). Commands that take an optional `<slug>` default to the active attempt: the most recent attempt with status `in_progress`. If none exists, they exit 3. Every command but `cstudy init`, `cstudy doctor`, `cstudy list` and `cstudy show` needs a workspace and exits 3 without one, pointing at `cstudy init`.
+
+## Solution file targets
+
+[`start`](#cstudy-start), [`test`](#cstudy-test), [`hint`](#cstudy-hint), [`solution`](#cstudy-solution), [`done`](#cstudy-done), [`show`](#cstudy-show) and [`bench`](#cstudy-bench) take the problem as `<slug>` or as the path of one of your solution files, so an IDE can run any command on the file in its editor: `cstudy test python/practice/two_sum.py` is `cstudy test two-sum --lang python`.
+
+| Rule | Detail |
+|------|--------|
+| Path or slug | An argument is a path when it contains `/` or `\`, or ends in `.py`, `.ts`, `.java` or `.kt`; anything else is a slug or an id, even when a file of that name exists. Relative paths resolve against the current directory, so an IDE passes the absolute path of the open file |
+| Files | The files [`cstudy start`](#cstudy-start) writes ([layout](../architecture.md#repository-layout)): `python/practice/<snake_slug>.py`, `typescript/practice/<slug>.ts`, and `jvm/<java\|kotlin>/src/main/<java\|kotlin>/practice/<snake_slug>/<File>.<java\|kt>`. On the JVM any source file directly in the problem's package counts, such as the declared class of a class-design problem or a helper class |
+| Problem | The slug is the problem whose file name the path carries (`two_sum` is `two-sum`); a path that names no problem exits 3 |
+| Language | The path's language is the language of the run. `--lang` may repeat it; naming another language exits 3 with both. `hint`, `done` and `show` have no `--lang`: they act on the problem, as with its slug |
+| Not a solution file | A path outside the workspace, or inside it but not at one of those locations, exits 3 with `not a solution file in this workspace: <path>` |
 
 ## Exit codes
 
@@ -119,7 +131,7 @@ Exit 0 when no check reports `FAIL` (and, with `--fix`, every setup command succ
 ## cstudy start
 
 ```text
-cstudy start <slug> [--lang L] [--fresh] [--timer DURATION] [--no-open]
+cstudy start <slug|file> [--lang L] [--fresh] [--timer DURATION] [--no-open]
 ```
 
 | Flag | Effect |
@@ -150,7 +162,7 @@ next       answer in the notes, then cstudy solution url-shortener
 ## cstudy test
 
 ```text
-cstudy test [<slug>] [--lang L] [--watch] [--case ID]... [--all] [--level N]
+cstudy test [<slug|file>] [--lang L] [--watch] [--case ID]... [--all] [--level N]
         [--time-limit[=VALUE] | --no-time-limit] [--perf] [--typecheck] [--stress N] [--seed S]
         [--json]
 ```
@@ -303,7 +315,7 @@ PASS     19 oracle inputs
 ## cstudy hint
 
 ```text
-cstudy hint [<slug>]
+cstudy hint [<slug|file>]
 ```
 
 Prints the next unrevealed `### Hint N` from `problem.md` and increments `hints_used` on the active attempt. Prints `no more hints` when exhausted (exit 0, `hints_used` unchanged). The next hint is number `hints_used + 1`, so hints are counted per attempt. Locked (exit 3) while a [mock interview](#cstudy-mock) runs.
@@ -316,7 +328,7 @@ For each value, which partner would complete the sum?
 ## cstudy solution
 
 ```text
-cstudy solution <slug> [--lang L] [--approach ID] [--all] [--broken[=ID]] [--explanation-only] [--yes]
+cstudy solution <slug|file> [--lang L] [--approach ID] [--all] [--broken[=ID]] [--explanation-only] [--yes]
 ```
 
 Shows, through `$PAGER`, the explanation's overview table, then for each selected approach its full explanation section followed by its code in the chosen language (syntax highlighted). Default approach: the first `optimal` in `meta.yaml`; `--all` shows every approach in ladder order. If the approach has no file in that language, the explanation is shown with `no <lang> reference; available: python, java`.
@@ -334,7 +346,7 @@ For a non-autograded item it shows the title, then `rubric.md`, then `reference.
 ## cstudy done
 
 ```text
-cstudy done [<slug>] (--rating easy|ok|hard | --gave-up) [--notes TEXT]
+cstudy done [<slug|file>] (--rating easy|ok|hard | --gave-up) [--notes TEXT]
 ```
 
 | Rule | Detail |
@@ -387,7 +399,7 @@ ID    SLUG              DIFF    PATTERN          STATUS    DUE         REFS
 ## cstudy show
 
 ```text
-cstudy show <slug> [--level N]
+cstudy show <slug|file> [--level N]
 ```
 
 Prints the rendered statement (title, metadata, sections, examples generated from visible cases, unlocked levels, and for concurrent problems the generated stress-case table; never hints). For a progressive problem the unlocked levels are those of the problem's attempt in progress, or level 1 without one; `--level N` shows levels 1 to N and follows the `cstudy test --level` rules. For a non-autograded item it prints the statement `cstudy start` would write (the prompt, the change under review and the located [study guides](content.md#study-guides)) without writing it; `--level` is a usage error.
@@ -450,7 +462,7 @@ Exit 0, 1, or 5 (static failures only).
 ## cstudy bench
 
 ```text
-cstudy bench [<slug>] [--lang L] [--sizes LIST] [--reps N] [--refs-only] [--no-memory]
+cstudy bench [<slug|file>] [--lang L] [--sizes LIST] [--reps N] [--refs-only] [--no-memory]
 ```
 
 Spec: [performance-analysis](performance-analysis.md).

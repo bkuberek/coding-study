@@ -7,8 +7,14 @@ import typer
 from rich.text import Text
 
 from coding_study.adapters.environment_factory import load_environment
+from coding_study.application.resolve_target import Target, resolve_target
 from coding_study.application.reveal_hint import reveal_hint
-from coding_study.entrypoints.shared import add_command, command_environ, console
+from coding_study.entrypoints.shared import (
+    OPTIONAL_TARGET_HELP,
+    add_command,
+    command_environ,
+    console,
+)
 
 NAME = "hint"
 NO_MORE_HINTS = "no more hints"
@@ -21,13 +27,14 @@ def register(app: typer.Typer) -> None:
 def hint(
     context: typer.Context,
     slug: Annotated[
-        str | None, typer.Argument(help="The problem; default: the active attempt.")
+        str | None,
+        typer.Argument(help=OPTIONAL_TARGET_HELP),
     ] = None,
 ) -> None:
     """Reveal the next hint."""
-    revealed = reveal_hint(
-        load_environment(Path.cwd(), command_environ(context), Path.home()), slug
-    )
+    environment = load_environment(Path.cwd(), command_environ(context), Path.home())
+    target = resolve_target(environment, Target(slug), Path.cwd())
+    revealed = reveal_hint(environment, target.slug)
     output = console(context)
     if revealed is None:
         output.print(NO_MORE_HINTS)
