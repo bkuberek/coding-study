@@ -11,6 +11,7 @@ import json
 from collections.abc import Iterator
 from typing import Any
 
+from coding_study.domain.debugging import DEBUG_HOST
 from coding_study.domain.ide import GeneratedFile, Ide
 from coding_study.domain.ide_actions import (
     BOTH_SCOPES,
@@ -33,7 +34,6 @@ JsonObject = dict[str, Any]
 DIRECTORY = Ide.VSCODE.directory
 CURRENT_FILE = "${file}"
 WORKSPACE_FOLDER = "${workspaceFolder}"
-LOOPBACK = "127.0.0.1"
 TASKS_VERSION = "2.0.0"
 LAUNCH_VERSION = "0.2.0"
 INDENT = 2
@@ -177,15 +177,15 @@ def _debugger(attach: DebugAttach) -> JsonObject:
         case Language.PYTHON:
             return {
                 "type": "debugpy",
-                "connect": {"host": LOOPBACK, "port": attach.port},
+                "connect": {"host": DEBUG_HOST, "port": attach.port},
                 "justMyCode": True,
             }
         case Language.TYPESCRIPT:
             return {
                 "type": "node",
-                "address": LOOPBACK,
+                "address": DEBUG_HOST,
                 "port": attach.port,
                 "skipFiles": ["<node_internals>/**"],
             }
         case _:
-            return {"type": "java", "hostName": LOOPBACK, "port": attach.port}
+            return {"type": "java", "hostName": DEBUG_HOST, "port": attach.port}
