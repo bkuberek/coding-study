@@ -34,6 +34,7 @@ from coding_study.domain.errors import (
     RunnerProtocolError,
     RunnerStartError,
 )
+from coding_study.domain.layout import PYTHON_INTERPRETER, PYTHON_PROJECT
 from coding_study.domain.problem import (
     ComparatorSpec,
     ComparatorType,
@@ -133,11 +134,15 @@ class _WorkspaceArtifact:
 FIX_COMMAND = "cstudy doctor --fix"
 INIT_COMMAND = "cstudy init"
 MISSING_FILES_SHOWN = 5
+PYTHON_VENV = _WorkspaceArtifact(PYTHON_PROJECT, ".venv", FIX_COMMAND)
 WORKSPACE_ARTIFACTS = (
     _WorkspaceArtifact("jvm", "gradlew", "gradle wrapper (in jvm)"),
-    _WorkspaceArtifact("python", ".venv", FIX_COMMAND),
+    PYTHON_VENV,
     _WorkspaceArtifact("typescript", "node_modules", FIX_COMMAND),
 )
+DEBUGPY_CHECK = "python debugpy"
+DEBUGPY_FIX = f"uv add --dev debugpy --directory {PYTHON_PROJECT}"
+"""Also right for a workspace created before debugpy joined the template's dependencies."""
 RUNNER_TYPESCRIPT = "runners/typescript"
 """In a content checkout, `--fix` also installs the TypeScript runner's own `tsc` and types."""
 HANDSHAKE_META = ProblemMeta(
@@ -369,6 +374,7 @@ def _workspace(environment: DoctorEnvironment, notify: ProgressNotice) -> list[C
         _workspace_files(workspace),
         _runtime(workspace),
         *(_workspace_artifact(files, artifact) for artifact in WORKSPACE_ARTIFACTS),
+        *_debugpy(environment.tools, files),
         *(_runner(workspace, language, notify) for language in Language),
     ]
 
@@ -398,6 +404,19 @@ def _workspace_artifact(repository: RepositoryFiles, artifact: _WorkspaceArtifac
     if repository.exists(artifact.path):
         return CheckResult(artifact.path, CheckStatus.OK)
     return CheckResult(artifact.path, CheckStatus.FAIL, "missing", fix=artifact.fix_command)
+
+
+def _debugpy(tools: ToolProbe, workspace_files: RepositoryFiles) -> list[CheckResult]:
+    """`cstudy test --debug` attaches through debugpy; practice without debugging never needs it,
+    so a missing one only warns. Nothing to check before the venv exists."""
+    if not workspace_files.exists(PYTHON_VENV.path):
+        return []
+    interpreter = workspace_files.root / PYTHON_PROJECT / PYTHON_INTERPRETER
+    found = tools.run((str(interpreter), "-c", "import debugpy"))
+    if found is not None and found.exit_code == 0:
+        return [CheckResult(DEBUGPY_CHECK, CheckStatus.OK, "installed (cstudy test --debug)")]
+    detail = "not installed (only cstudy test --debug needs it)"
+    return [CheckResult(DEBUGPY_CHECK, CheckStatus.WARN, detail, fix=DEBUGPY_FIX)]
 
 
 def _runner(

@@ -18,12 +18,11 @@ from coding_study.application.ports import (
     RunnerLaunch,
 )
 from coding_study.domain.errors import ContentError, ContentIssue, RunnerStartError
-from coding_study.domain.layout import PYTHON_PROJECT, reference_build_path
+from coding_study.domain.layout import PYTHON_INTERPRETER, PYTHON_PROJECT, reference_build_path
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
 
 WORKSPACE_DIRECTORY = PYTHON_PROJECT
-INTERPRETER = ".venv/bin/python"
 RUNNER_MODULE = "cs_runner"
 
 
@@ -41,11 +40,12 @@ class PythonRunner:
         return Prepared(launch)
 
     def _launch(self) -> RunnerLaunch:
-        interpreter = self._workspace / INTERPRETER
+        interpreter = self._workspace / PYTHON_INTERPRETER
         if not interpreter.exists():
             raise RunnerStartError(
-                f"the Python workspace is not set up ({WORKSPACE_DIRECTORY}/{INTERPRETER} is "
-                f"missing): run `uv sync --directory {WORKSPACE_DIRECTORY}`"
+                "the Python workspace is not set up "
+                f"({WORKSPACE_DIRECTORY}/{PYTHON_INTERPRETER} is missing): "
+                f"run `uv sync --directory {WORKSPACE_DIRECTORY}`"
             )
         command = (str(interpreter), "-m", RUNNER_MODULE)
         return RunnerLaunch(command, self._workspace, HELLO_TIMEOUT_MS[Language.PYTHON])

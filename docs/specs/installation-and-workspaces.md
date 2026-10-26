@@ -64,7 +64,7 @@ created_with = "0.1.0"
   .cs/runtime/            # materialized runners (ignored, per machine)
   .cs/                    # index, cases, calibration, build, runs caches (ignored)
   .gitignore, README.md
-  python/                 # pyproject.toml, uv.lock, practice/<snake_slug>.py
+  python/                 # pyproject.toml (dev tools: pyright, ruff, debugpy), uv.lock, practice/<snake_slug>.py
   typescript/             # package.json, pnpm-lock.yaml, tsconfig.json, support.ts, practice/<slug>.ts
   jvm/                    # Gradle wrapper, settings.gradle.kts, java/ and kotlin/ subprojects
   notes/                  # answers to non-autograded items
@@ -117,7 +117,7 @@ Because the wiring is relative, a workspace keeps working when it moves or is cl
 | `workspace` | Path and `created with cstudy <version>` (with the running version when it differs) | WARN when there is no workspace (`fix: cstudy init`); FAIL for an unreadable marker or a newer schema |
 | `workspace files` | Every template file exists | FAIL listing up to 5 missing files, `fix: cstudy doctor --fix` |
 | `runner runtime` | The stamp matches the content | FAIL when missing or stale, `fix: cstudy doctor --fix` |
-| `jvm/gradlew`, `python/.venv`, `typescript/node_modules` and `runner <lang>` | As in [cli](cli.md#cstudy-doctor) | As in [cli](cli.md#cstudy-doctor) |
+| `jvm/gradlew`, `python/.venv`, `python debugpy`, `typescript/node_modules` and `runner <lang>` | As in [cli](cli.md#cstudy-doctor) | As in [cli](cli.md#cstudy-doctor) |
 
 `cstudy doctor --fix` first writes every missing template file (never overwriting one, so practice files are never touched), refreshes the runner runtime, then runs `uv sync` in `python/`, `pnpm install` in `typescript/` (and in the content checkout's `runners/typescript` when the content is a checkout), and the Gradle warm-up in `jvm/`. Outside a workspace it exits 3.
 

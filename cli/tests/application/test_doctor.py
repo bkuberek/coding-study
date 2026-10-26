@@ -35,6 +35,8 @@ from tests.fakes import FakeLanguageRunner, FakeToolchains
 
 OK, WARN, FAIL = CheckStatus.OK, CheckStatus.WARN, CheckStatus.FAIL
 PYTHON_PATH = "/py/bin/python3.13"
+WORKSPACE_PYTHON = "/ws/python/.venv/bin/python"
+IMPORT_DEBUGPY = (WORKSPACE_PYTHON, "-c", "import debugpy")
 HEALTHY_TOOLS: dict[tuple[str, ...], ProbeResult] = {
     ("uv", "python", "find", "3.13"): ProbeResult(0, f"{PYTHON_PATH}\n"),
     (PYTHON_PATH, "--version"): ProbeResult(0, "Python 3.13.2\n"),
@@ -45,6 +47,7 @@ HEALTHY_TOOLS: dict[tuple[str, ...], ProbeResult] = {
         0, 'openjdk version "21.0.2" 2024-01-16\nOpenJDK Runtime Environment (build 21.0.2+13)\n'
     ),
     ("gradle", "--version"): ProbeResult(0, "\n------\nGradle 9.8.2\n------\n"),
+    IMPORT_DEBUGPY: ProbeResult(0, ""),
 }
 COMPLETE_WORKSPACE = {
     "jvm",
@@ -397,6 +400,30 @@ def test_missing_workspace_artifact_fails_with_the_fix_command(artifact):
     report = doctor(workspace=workspace_with(paths=COMPLETE_WORKSPACE - {artifact}))
     result = check(report, artifact)
     assert (result.status, result.detail, result.fix) == (FAIL, "missing", "cstudy doctor --fix")
+
+
+def test_debugpy_in_the_workspace_venv_passes():
+    assert summary(doctor(), "python debugpy") == (OK, "installed (cstudy test --debug)")
+
+
+@pytest.mark.parametrize("probe", [ProbeResult(1, "ModuleNotFoundError: debugpy"), None])
+def test_missing_debugpy_is_only_a_warning_with_the_fix(probe):
+    result = check(doctor(tools_with(IMPORT_DEBUGPY, probe)), "python debugpy")
+    assert (result.status, result.detail, result.fix) == (
+        WARN,
+        "not installed (only cstudy test --debug needs it)",
+        "uv add --dev debugpy --directory python",
+    )
+
+
+def test_missing_debugpy_does_not_fail_the_report():
+    probe = ProbeResult(1, "ModuleNotFoundError: debugpy")
+    assert doctor(tools_with(IMPORT_DEBUGPY, probe)).passed is True
+
+
+def test_debugpy_is_not_checked_before_the_venv_exists():
+    report = doctor(workspace=workspace_with(paths=COMPLETE_WORKSPACE - {"python/.venv"}))
+    assert "python debugpy" not in [result.name for result in report.results]
 
 
 def test_missing_gradle_wrapper_fails_with_how_to_generate_it():
