@@ -1,12 +1,16 @@
 """Case values against the signature: `cstudy verify` check S4 (docs/specs/authoring.md#static).
 
-Ranges, char length, node encodings (problem-format.md#serialization-of-linked-structures), op
-names and arities, and `long` at most 2^53-1. Inputs may encode a cyclic ListNode; expected
-outputs never do, and expected trees have their trailing nulls trimmed like serialized ones.
+Ranges, char length, `decimal` and `date` strings (problem-format.md#decimal-and-date), node
+encodings (problem-format.md#serialization-of-linked-structures), op names and arities, and
+`long` at most 2^53-1. Inputs may encode a cyclic ListNode; expected outputs never do, and
+expected trees have their trailing nulls trimmed like serialized ones. Inputs keep the scale of a
+decimal; expected decimals are written in canonical form, as the runners encode them.
 """
 
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import date
 
 from coding_study.domain.cases import Case, FunctionInput, JsonValue, OperationSequence
 from coding_study.domain.signature import (
@@ -33,6 +37,10 @@ INT_MIN = -(2**31)
 INT_MAX = 2**31 - 1
 MAX_SAFE_LONG = 2**53 - 1
 BMP_LIMIT = 0x10000
+MAX_DECIMAL_DIGITS = 28
+"""Python's default decimal context precision."""
+DECIMAL_PATTERN = re.compile(r"-?(0|[1-9][0-9]*)(\.[0-9]+)?")
+DATE_PATTERN = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 CYCLE_VALUES = "values"
 CYCLE_AT = "cycle_at"
 
@@ -67,7 +75,7 @@ class _Rules:
     def issues(self, value: JsonValue, value_type: ValueType, path: str) -> list[str]:
         match value_type:
             case ScalarType(scalar=scalar):
-                message = _scalar_problem(value, scalar)
+                message = _scalar_problem(value, scalar, self.output)
                 return [_issue(path, message)] if message else []
             case ArrayType(element=element) | ListType(element=element):
                 if not isinstance(value, list):
@@ -105,7 +113,7 @@ class _Rules:
         issues = [
             _issue(f"{path}[{index}]", _got("int or null", item))
             for index, item in enumerate(value)
-            if item is not None and _scalar_problem(item, Scalar.INT)
+            if item is not None and _integer_problem(item, Scalar.INT)
         ]
         if value and value[0] is None:
             issues.append(_issue(f"{path}[0]", "the root cannot be null (use [] for no tree)"))
@@ -114,7 +122,7 @@ class _Rules:
         return issues
 
 
-def _scalar_problem(value: JsonValue, scalar: Scalar) -> str | None:
+def _scalar_problem(value: JsonValue, scalar: Scalar, output: bool) -> str | None:
     match scalar:
         case Scalar.INT | Scalar.LONG:
             return _integer_problem(value, scalar)
@@ -127,6 +135,10 @@ def _scalar_problem(value: JsonValue, scalar: Scalar) -> str | None:
             return None if isinstance(value, str) else _got("string", value)
         case Scalar.CHAR:
             return _char_problem(value)
+        case Scalar.DECIMAL:
+            return _decimal_problem(value, output)
+        case Scalar.DATE:
+            return _date_problem(value)
 
 
 def _integer_problem(value: JsonValue, scalar: Scalar) -> str | None:
@@ -146,6 +158,47 @@ def _char_problem(value: JsonValue) -> str | None:
         return _got("one character", value)
     if ord(value) >= BMP_LIMIT:
         return f"{value_text(value)} is outside the BMP"
+    return None
+
+
+def _decimal_problem(value: JsonValue, output: bool) -> str | None:
+    if not isinstance(value, str):
+        return f"{_got('decimal', value)} (decimals are JSON strings)"
+    if DECIMAL_PATTERN.fullmatch(value) is None:
+        return (
+            f"{value_text(value)} is not a decimal (digits, an optional fraction, no leading zeros)"
+        )
+    if len(_decimal_digits(value)) > MAX_DECIMAL_DIGITS:
+        return f"{value_text(value)} has more than {MAX_DECIMAL_DIGITS} significant digits"
+    canonical = canonical_decimal(value)
+    if output and value != canonical:
+        return (
+            f'{value_text(value)} is not canonical (no trailing fractional zeros, no "-0"): '
+            f"write {value_text(canonical)}"
+        )
+    return None
+
+
+def canonical_decimal(text: str) -> str:
+    """The text a runner encodes the same number as: no trailing fractional zeros, no `-0`."""
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return "0" if text == "-0" else text
+
+
+def _decimal_digits(text: str) -> str:
+    return text.removeprefix("-").replace(".", "").lstrip("0")
+
+
+def _date_problem(value: JsonValue) -> str | None:
+    if not isinstance(value, str):
+        return _got("date", value)
+    if DATE_PATTERN.fullmatch(value) is None:
+        return f"{value_text(value)} is not a date (YYYY-MM-DD)"
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return f"{value_text(value)} is not a calendar day (years 0001 to 9999)"
     return None
 
 
@@ -222,7 +275,7 @@ def _argument_issues(params: tuple[Param, ...], arguments: Mapping[str, JsonValu
 def _ref_of_issues(param: Param, arguments: Mapping[str, JsonValue], path: str) -> list[str]:
     """A `ref_of` parameter holds the `val` of a node in the referenced parameter."""
     value = arguments[param.name]
-    problem = _scalar_problem(value, Scalar.INT)
+    problem = _integer_problem(value, Scalar.INT)
     if problem is not None:
         return [_issue(path, problem)]
     if param.ref_of is None or not isinstance(param.type, NodeType):
@@ -242,10 +295,10 @@ def _returns_issues(value: JsonValue, member: FunctionSignature | Method, path: 
         return [] if value is None else [_issue(path, "void returns expect null")]
     match returns.serialize_as:
         case NodeSerialization.VALUE:
-            valid = value is None or not _scalar_problem(value, Scalar.INT)
+            valid = value is None or not _integer_problem(value, Scalar.INT)
             return [] if valid else [_issue(path, _got("int or null", value))]
         case NodeSerialization.INDEX:
-            valid = not _scalar_problem(value, Scalar.INT)
+            valid = not _integer_problem(value, Scalar.INT)
             return [] if valid else [_issue(path, _got("an index", value))]
         case None:
             return _Rules(output=True).issues(value, returns.type, path)

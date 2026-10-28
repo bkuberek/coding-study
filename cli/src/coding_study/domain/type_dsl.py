@@ -3,7 +3,7 @@
 Grammar::
 
     type     := scalar | array | list | node | node "[]"
-    scalar   := "int" | "long" | "double" | "bool" | "string" | "char"
+    scalar   := "int" | "long" | "double" | "bool" | "string" | "char" | "decimal" | "date"
     array    := scalar "[]" | scalar "[][]"
     list     := "list<" elem ">"
     elem     := scalar | scalar "[]" | list | node
@@ -28,6 +28,8 @@ class Scalar(StrEnum):
     BOOL = "bool"
     STRING = "string"
     CHAR = "char"
+    DECIMAL = "decimal"
+    DATE = "date"
 
 
 class NodeKind(StrEnum):

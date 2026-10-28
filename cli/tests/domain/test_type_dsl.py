@@ -15,6 +15,8 @@ from coding_study.domain.type_dsl import (
 
 INT = ScalarType(Scalar.INT)
 STRING = ScalarType(Scalar.STRING)
+DECIMAL = ScalarType(Scalar.DECIMAL)
+DATE = ScalarType(Scalar.DATE)
 
 SPEC_TYPES = {
     "int": INT,
@@ -23,24 +25,32 @@ SPEC_TYPES = {
     "bool": ScalarType(Scalar.BOOL),
     "string": STRING,
     "char": ScalarType(Scalar.CHAR),
+    "decimal": DECIMAL,
+    "date": DATE,
     "int[]": ArrayType(INT),
     "long[]": ArrayType(ScalarType(Scalar.LONG)),
     "double[]": ArrayType(ScalarType(Scalar.DOUBLE)),
     "bool[]": ArrayType(ScalarType(Scalar.BOOL)),
     "char[]": ArrayType(ScalarType(Scalar.CHAR)),
     "string[]": ArrayType(STRING),
+    "decimal[]": ArrayType(DECIMAL),
+    "date[]": ArrayType(DATE),
     "int[][]": ArrayType(ArrayType(INT)),
     "long[][]": ArrayType(ArrayType(ScalarType(Scalar.LONG))),
     "double[][]": ArrayType(ArrayType(ScalarType(Scalar.DOUBLE))),
     "bool[][]": ArrayType(ArrayType(ScalarType(Scalar.BOOL))),
     "char[][]": ArrayType(ArrayType(ScalarType(Scalar.CHAR))),
     "string[][]": ArrayType(ArrayType(STRING)),
+    "decimal[][]": ArrayType(ArrayType(DECIMAL)),
+    "date[][]": ArrayType(ArrayType(DATE)),
     "list<int>": ListType(INT),
     "list<long>": ListType(ScalarType(Scalar.LONG)),
     "list<double>": ListType(ScalarType(Scalar.DOUBLE)),
     "list<bool>": ListType(ScalarType(Scalar.BOOL)),
     "list<char>": ListType(ScalarType(Scalar.CHAR)),
     "list<string>": ListType(STRING),
+    "list<decimal>": ListType(DECIMAL),
+    "list<date>": ListType(DATE),
     "list<int[]>": ListType(ArrayType(INT)),
     "list<list<int>>": ListType(ListType(INT)),
     "list<list<string>>": ListType(ListType(STRING)),
@@ -57,6 +67,8 @@ GRAMMAR_TYPES = {
     "list<ListNode>": ListType(NodeType(NodeKind.LIST_NODE)),
     "list<GraphNode>": ListType(NodeType(NodeKind.GRAPH_NODE)),
     "list<list<list<int>>>": ListType(ListType(ListType(INT))),
+    "list<list<decimal>>": ListType(ListType(DECIMAL)),
+    "list<date[]>": ListType(ArrayType(DATE)),
     "list<list<int[]>>": ListType(ListType(ArrayType(INT))),
     "list<list<TreeNode>>": ListType(ListType(NodeType(NodeKind.TREE_NODE))),
 }
@@ -113,6 +125,11 @@ def test_void_renders_as_void():
         ("list<int,int>", 8, 'expected ">"'),
         ("list<void>", 5, '"void" is only allowed as a return type'),
         ("list<int[][]>", 10, '"int[][]" is not allowed as a list element'),
+        ("list<decimal[][]>", 14, '"decimal[][]" is not allowed as a list element'),
+        ("decimal[][][]", 11, '"decimal[][][]" is not a valid type'),
+        ("date[][][]", 8, '"date[][][]" is not a valid type'),
+        ("Decimal", 0, 'unknown type "Decimal"'),
+        ("Date", 0, 'unknown type "Date"'),
         ("list<ListNode[]>", 13, '"ListNode[]" is not allowed as a list element'),
         ("list<list<list<list<int>>>>", 15, "nesting deeper than 3 levels"),
         ("list<list<list<int[]>>>", 18, "nesting deeper than 3 levels"),

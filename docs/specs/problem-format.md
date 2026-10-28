@@ -137,7 +137,7 @@ Loading a problem rejects (content error) a modifier that names a parameter miss
 
 ```text
 type     := scalar | array | list | node | node "[]"
-scalar   := "int" | "long" | "double" | "bool" | "string" | "char"
+scalar   := "int" | "long" | "double" | "bool" | "string" | "char" | "decimal" | "date"
 array    := scalar "[]" | scalar "[][]"
 list     := "list<" elem ">"
 elem     := scalar | scalar "[]" | list | node
@@ -145,7 +145,7 @@ node     := "ListNode" | "TreeNode" | "GraphNode"
 return   := type | "void"
 ```
 
-Maximum nesting depth is 3 (`list<list<list<int>>>`). Maps, sets, tuples and user-defined records are not in v1; problems use arrays or lists instead (for example `int[][]` for pairs).
+Maximum nesting depth is 3 (`list<list<list<int>>>`). Maps, sets, tuples and user-defined records are not in v1; problems use arrays or lists instead (for example `int[][]` for pairs). Money and calendar days are the scalars `decimal` and `date` ([Decimal and date](#decimal-and-date)).
 
 ### Type mapping
 
@@ -192,6 +192,19 @@ General rules for rows not listed: `list<X>` maps element-wise using the `X` row
 **JVM erasure property.** Every Kotlin type in the table erases to the same JVM type as the Java column (`IntArray` is `int[]`, `Array<IntArray>` is `int[][]`, non-null `Int` parameters are `int`, `List<Int>` is `java.util.List`, `Unit` returns are `void`). One JVM runner therefore serves both languages through Java reflection. Any future mapping must preserve this property or extend the JVM runner.
 
 **Content rules that keep languages equivalent.** Test values must fit the declared type; expected outputs must not depend on integer overflow; `long` values stay within 2^53-1 (TypeScript `number`); recursion depth implied by inputs stays at or under 3000 (Node's default stack).
+
+### Decimal and date
+
+`decimal` is exact base-10 arithmetic for money and rates; `date` is a calendar day. Both travel as JSON strings, never as numbers: a JSON number loses precision as a JavaScript number or a Python float.
+
+| Type | JSON encoding | Rules |
+|------|---------------|-------|
+| `decimal` | String matching `^-?(0\|[1-9][0-9]*)(\.[0-9]+)?$` | At most 28 significant digits (Python's default context precision). An input keeps its scale: `"2500.00"` reaches the solution with scale 2. An expected value is canonical: no trailing fractional zeros, no bare `.`, and no `-0` (`"2500"`, never `"2500.00"`) |
+| `date` | String `YYYY-MM-DD` matching `^[0-9]{4}-[0-9]{2}-[0-9]{2}$` | A real calendar day in years 0001 to 9999; `20240101`, `2024-1-1` and timestamps are rejected |
+
+**Equality is numeric.** Each runner writes a returned `decimal` in canonical form (it strips trailing fractional zeros and the dot, and writes `-0` as `0`), so `2500.00` and `2500` come back as the same text, the comparators stay type-blind, and a rounding mistake still fails because it changes the number. `cstudy verify --static` rejects a non-canonical expected value and suggests the canonical form. A problem states the scale and rounding mode of every decimal result, because the scale is not compared.
+
+**Generators** return `decimal` and `date` values as strings, because Python's `Decimal` and `date` objects are not JSON.
 
 ### Support classes
 
@@ -263,7 +276,7 @@ Validated against `schemas/tests.schema.json`.
 | `hang_guard_ms` | int | no | Per-case override |
 | `note` | string | no | Author note shown on failure |
 
-`cstudy verify --static` type-checks every input and expected value against the signature (ranges, char length, node encodings, op names and arities).
+`cstudy verify --static` type-checks every input and expected value against the signature (ranges, char length, `decimal` and `date` strings, node encodings, op names and arities).
 
 ## Comparators
 

@@ -39,6 +39,22 @@ def typed(text: str):
         ("int[]", [1, 2]),
         ("int[][]", [[1], []]),
         ("char[]", ["a", "b"]),
+        ("decimal", "0"),
+        ("decimal", "2500.00"),
+        ("decimal", "-0.50"),
+        ("decimal", "0.0"),
+        ("decimal", "-0"),
+        ("decimal", "9999999999999999999999999999"),
+        ("decimal", "0.0000000000000000000000000001"),
+        ("decimal[]", ["1", "2.50", "-3"]),
+        ("decimal[][]", [["1.5"], []]),
+        ("list<decimal>", ["10.00", "0.1"]),
+        ("date", "2024-02-29"),
+        ("date", "0001-01-01"),
+        ("date", "9999-12-31"),
+        ("date[]", ["2024-01-01", "2024-12-31"]),
+        ("date[][]", [["2024-01-01"], []]),
+        ("list<date>", ["2023-02-28"]),
         ("list<list<string>>", [["a"], []]),
         ("list<int[]>", [[1, 2]]),
         ("ListNode", []),
@@ -70,6 +86,35 @@ def test_valid_inputs(type_text, value):
         ("string", 3, "expected string"),
         ("char", "ab", "expected one character"),
         ("char", "😀", "outside the BMP"),
+        ("decimal", 2500, "expected decimal, got 2500"),
+        ("decimal", 2500.5, "expected decimal, got 2500.5"),
+        ("decimal", True, "expected decimal"),
+        ("decimal", None, "expected decimal, got null"),
+        ("decimal", "007", "not a decimal"),
+        ("decimal", "00.5", "not a decimal"),
+        ("decimal", "1e3", "not a decimal"),
+        ("decimal", ".5", "not a decimal"),
+        ("decimal", "5.", "not a decimal"),
+        ("decimal", "+5", "not a decimal"),
+        ("decimal", " 5", "not a decimal"),
+        ("decimal", "1,000", "not a decimal"),
+        ("decimal", "NaN", "not a decimal"),
+        ("decimal", "-", "not a decimal"),
+        ("decimal", "\uff11\uff12", "not a decimal"),
+        ("decimal", "1" * 29, "more than 28 significant digits"),
+        ("decimal", "0." + "1" * 29, "more than 28 significant digits"),
+        ("decimal[]", ["1", 2], "[1]: expected decimal, got 2"),
+        ("date", 20240101, "expected date, got 20240101"),
+        ("date", "20240101", "not a date"),
+        ("date", "2024-1-1", "not a date"),
+        ("date", "2024/01/01", "not a date"),
+        ("date", "2024-01-01T00:00:00", "not a date"),
+        ("date", "\uff12\uff10\uff12\uff14-01-01", "not a date"),
+        ("date", "2023-02-29", "not a calendar day"),
+        ("date", "2024-13-01", "not a calendar day"),
+        ("date", "2024-04-31", "not a calendar day"),
+        ("date", "0000-01-01", "not a calendar day"),
+        ("date[]", ["2024-01-01", "soon"], "[1]: "),
         ("int[]", 1, "expected an array"),
         ("int[]", [1, "2"], "[1]: expected int"),
         ("ListNode", [1, None], "[1]: expected int"),
@@ -84,6 +129,63 @@ def test_valid_inputs(type_text, value):
 def test_invalid_inputs(type_text, value, message):
     issues = input_value_issues(value, typed(type_text))
     assert any(message in issue for issue in issues), issues
+
+
+@pytest.mark.parametrize(
+    ("type_text", "value"),
+    [
+        ("decimal", "0"),
+        ("decimal", "2500"),
+        ("decimal", "-0.5"),
+        ("decimal", "1234.0625"),
+        ("decimal", "100"),
+        ("decimal[]", ["1", "2.5"]),
+        ("list<decimal>", ["0.01"]),
+        ("date", "2024-02-29"),
+        ("list<date>", ["2024-01-01"]),
+    ],
+)
+def test_canonical_expected_decimals_and_dates_are_valid(type_text, value):
+    assert output_value_issues(value, typed(type_text)) == []
+
+
+@pytest.mark.parametrize(
+    ("value", "canonical"),
+    [
+        ("2500.00", "2500"),
+        ("2500.50", "2500.5"),
+        ("0.0", "0"),
+        ("-0", "0"),
+        ("-0.00", "0"),
+        ("10.10", "10.1"),
+    ],
+)
+def test_expected_decimals_must_be_canonical_and_the_message_names_the_form(value, canonical):
+    assert output_value_issues(value, typed("decimal")) == [
+        f'"{value}" is not canonical (no trailing fractional zeros, no "-0"): write "{canonical}"'
+    ]
+
+
+def test_the_canonical_form_applies_to_every_decimal_in_an_expected_list():
+    issues = output_value_issues(["1", "2.0"], typed("list<decimal>"))
+    assert issues == [
+        '[1]: "2.0" is not canonical (no trailing fractional zeros, no "-0"): write "2"'
+    ]
+
+
+def test_inputs_keep_their_scale_so_a_non_canonical_input_is_valid():
+    assert input_value_issues("2500.00", typed("decimal")) == []
+
+
+def test_invalid_expected_decimals_report_the_shape_before_canonical_form():
+    assert output_value_issues(2500, typed("decimal")) == [
+        "expected decimal, got 2500 (decimals are JSON strings)"
+    ]
+
+
+def test_expected_dates_are_checked_like_input_dates():
+    issues = output_value_issues("2023-02-29", typed("date"))
+    assert issues == ['"2023-02-29" is not a calendar day (years 0001 to 9999)']
 
 
 def test_outputs_never_contain_cycles():
