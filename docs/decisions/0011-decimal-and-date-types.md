@@ -33,7 +33,7 @@ Four constraints shaped the answer:
 - Authors write expected decimals as `"2500"`, never `"2500.00"`. The `float` comparator applies to JSON numbers only, so it does nothing for a decimal.
 - The `Decimal` class is about 200 lines to maintain, and its API is not an industry API. It keeps big.js names so the habits transfer, and its unit tests pin the rounding to the results of Python's `decimal` and Java's `BigDecimal`.
 - A TypeScript `date` is a `string` in stubs, so the stub does not tell a date from other text. ISO strings sort like dates, and calendar arithmetic uses `Date.UTC`.
-- Statements and failure reports show decimals as quoted JSON strings.
+- Statements show decimals and dates without quotes, typed by the signature (`2500.50`, `2026-01-01`); failure reports show them as quoted JSON strings.
 - The `decimal` and `date` rows keep the JVM erasure property: `Array<BigDecimal>` erases to `BigDecimal[]`.
 
 ## Alternatives considered

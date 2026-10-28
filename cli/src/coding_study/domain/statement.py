@@ -8,12 +8,19 @@ hides the locked levels of progressive problems.
 import re
 from collections.abc import Iterator, Sequence
 
-from coding_study.domain.cases import Case, FunctionInput, OperationSequence
+from coding_study.domain.cases import Case, FunctionInput, JsonValue, OperationSequence
 from coding_study.domain.levels import LevelProgress, level_heading, level_progress
 from coding_study.domain.markdown import MarkdownDocument, MarkdownSection
 from coding_study.domain.problem import ComparatorType, Problem, ProblemMeta
+from coding_study.domain.signature import (
+    ClassSignature,
+    FunctionSignature,
+    Signature,
+    output_type,
+)
 from coding_study.domain.stress_statement import CONCURRENCY_SECTION, stress_table
-from coding_study.domain.value_text import json_text
+from coding_study.domain.type_dsl import ValueType
+from coding_study.domain.value_text import display_text, json_text
 
 HINTS_SECTION = "Hints"
 EXAMPLES_SECTION = "Examples"
@@ -141,19 +148,32 @@ def _line_range(section: MarkdownSection | None) -> range:
 
 
 def example_block(meta: ProblemMeta, case: Case) -> tuple[str, ...]:
-    """A fenced block with the case's input and expected output."""
-    return ("```text", *_input_lines(case), *_output_lines(meta, case), "```")
+    """A fenced block with the case's input and expected output.
+
+    Values print as JSON, except `decimal` and `date` values, which print unquoted by the types
+    the signature declares (`premium = 2500.50`, `[2026-01-01, 2026-07-01]`).
+    """
+    signature = meta.signature
+    return ("```text", *_input_lines(signature, case), *_output_lines(meta, case), "```")
 
 
-def _input_lines(case: Case) -> tuple[str, ...]:
+def _input_lines(signature: Signature, case: Case) -> tuple[str, ...]:
     match case.input:
         case FunctionInput(arguments=arguments):
-            listed = ", ".join(f"{name} = {json_text(value)}" for name, value in arguments.items())
+            types = _function_param_types(signature)
+            listed = ", ".join(
+                f"{name} = {display_text(value, types.get(name))}"
+                for name, value in arguments.items()
+            )
             return (f"Input:  {listed}",)
         case OperationSequence(ops=ops, args=args):
+            rows = (
+                _typed_list_text(arguments, _operation_param_types(signature, ops, index))
+                for index, arguments in enumerate(args)
+            )
             return (
                 f"Operations: {json_text(list(ops))}",
-                f"Arguments:  {json_text([list(arguments) for arguments in args])}",
+                f"Arguments:  [{', '.join(rows)}]",
             )
         case _:
             return ()
@@ -165,4 +185,49 @@ def _output_lines(meta: ProblemMeta, case: Case) -> tuple[str, ...]:
         return (f"{label}any valid answer",)
     is_checker = meta.comparator.type is ComparatorType.CHECKER
     suffix = "  (one valid answer)" if is_checker else ""
-    return (f"{label}{json_text(case.expected.value)}{suffix}",)
+    return (f"{label}{_expected_text(meta.signature, case, case.expected.value)}{suffix}",)
+
+
+def _expected_text(signature: Signature, case: Case, expected: JsonValue) -> str:
+    """Design cases expect one output per operation, typed by that method's return."""
+    sequence = case.input
+    if isinstance(signature, FunctionSignature) and isinstance(sequence, FunctionInput):
+        return display_text(expected, output_type(signature))
+    if not (
+        isinstance(signature, ClassSignature)
+        and isinstance(sequence, OperationSequence)
+        and isinstance(expected, list)
+    ):
+        return json_text(expected)
+    methods = {method.name: method for method in signature.methods}
+    types = [
+        output_type(methods[operation]) if index and operation in methods else None
+        for index, operation in enumerate(sequence.ops)
+    ]
+    return _typed_list_text(expected, types)
+
+
+def _function_param_types(signature: Signature) -> dict[str, ValueType]:
+    if isinstance(signature, ClassSignature):
+        return {}
+    return {param.name: param.type for param in signature.params}
+
+
+def _operation_param_types(signature: Signature, ops: Sequence[str], index: int) -> list[ValueType]:
+    """The parameter types of `ops[index]`: the constructor's first, then a method's."""
+    if not isinstance(signature, ClassSignature):
+        return []
+    if index == 0:
+        return [param.type for param in signature.constructor_params]
+    operation = ops[index] if index < len(ops) else None
+    found = next((method for method in signature.methods if method.name == operation), None)
+    return [param.type for param in found.params] if found else []
+
+
+def _typed_list_text(values: Sequence[JsonValue], types: Sequence[ValueType | None]) -> str:
+    """A JSON array whose item `i` is shown by `types[i]`, and as plain JSON past the types."""
+    shown = (
+        display_text(value, types[index] if index < len(types) else None)
+        for index, value in enumerate(values)
+    )
+    return f"[{', '.join(shown)}]"

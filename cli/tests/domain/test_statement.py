@@ -15,9 +15,15 @@ from coding_study.domain.problem import (
     ProblemMeta,
     Track,
 )
-from coding_study.domain.signature import ClassSignature, FunctionSignature, Param, Returns
+from coding_study.domain.signature import (
+    ClassSignature,
+    FunctionSignature,
+    Method,
+    Param,
+    Returns,
+)
 from coding_study.domain.statement import render_statement
-from coding_study.domain.type_dsl import Scalar, ScalarType
+from coding_study.domain.type_dsl import ArrayType, ListType, Scalar, ScalarType, VoidType
 
 INT = ScalarType(Scalar.INT)
 META = ProblemMeta(
@@ -136,6 +142,112 @@ def test_operation_sequences_show_operations_arguments_and_outputs():
     assert (
         'Operations: ["LRUCache", "get"]\nArguments:  [[2], [1]]\nOutput:     [null, -1]'
     ) in rendered(None, (case,))
+
+
+DECIMAL = ScalarType(Scalar.DECIMAL)
+DATE = ScalarType(Scalar.DATE)
+STRING = ScalarType(Scalar.STRING)
+PRORATE = replace(
+    META,
+    signature=FunctionSignature(
+        "prorate",
+        (
+            Param("premium", DECIMAL),
+            Param("start", DATE),
+            Param("holidays", ListType(DATE)),
+            Param("periods", ArrayType(ArrayType(DATE))),
+            Param("classCode", STRING),
+        ),
+        Returns(ArrayType(DECIMAL)),
+    ),
+)
+PRORATE_CASE = Case(
+    "ex1",
+    FunctionInput(
+        {
+            "premium": "2500.50",
+            "start": "2026-01-01",
+            "holidays": ["2026-01-01", "2026-12-25"],
+            "periods": [["2026-01-01", "2026-07-01"]],
+            "classCode": "A1",
+        }
+    ),
+    Expected(["1250.25", "0"]),
+    visible=True,
+)
+
+
+def test_decimal_and_date_arguments_show_unquoted():
+    assert "premium = 2500.50, start = 2026-01-01," in rendered(None, (PRORATE_CASE,), PRORATE)
+
+
+def test_decimal_and_date_elements_of_arrays_and_lists_show_unquoted():
+    assert "holidays = [2026-01-01, 2026-12-25], periods = [[2026-01-01, 2026-07-01]]," in rendered(
+        None, (PRORATE_CASE,), PRORATE
+    )
+
+
+def test_string_arguments_stay_quoted():
+    assert 'classCode = "A1"\n' in rendered(None, (PRORATE_CASE,), PRORATE)
+
+
+def test_decimal_outputs_show_unquoted():
+    assert "Output: [1250.25, 0]" in rendered(None, (PRORATE_CASE,), PRORATE)
+
+
+def test_arguments_outside_the_signature_show_as_json():
+    case = replace(PRORATE_CASE, input=FunctionInput({"premium": "1", "extra": "2026-01-01"}))
+    assert 'extra = "2026-01-01"' in rendered(None, (case,), PRORATE)
+
+
+RATE_TABLE = replace(
+    META,
+    kind=ProblemKind.DESIGN,
+    signature=ClassSignature(
+        "RateTable",
+        (Param("currency", STRING),),
+        (
+            Method(
+                "publish",
+                (Param("effective", DATE), Param("rates", ListType(DECIMAL))),
+                Returns(VoidType()),
+            ),
+            Method("rateAsOf", (Param("day", DATE), Param("classCode", STRING)), Returns(DECIMAL)),
+        ),
+    ),
+    comparator=ComparatorSpec(ComparatorType.OPS),
+)
+RATE_TABLE_CASE = Case(
+    "ex1",
+    OperationSequence(
+        ("RateTable", "publish", "rateAsOf", "unknown"),
+        (("USD",), ("2026-01-01", ["12.5", "0.75"]), ("2026-03-01", "A1"), ("2026-03-01",)),
+    ),
+    Expected([None, None, "12.5", "2026-03-01"]),
+    visible=True,
+)
+
+
+def test_operation_arguments_show_decimal_and_date_unquoted():
+    assert (
+        'Arguments:  [["USD"], [2026-01-01, [12.5, 0.75]], [2026-03-01, "A1"], ["2026-03-01"]]'
+        in rendered(None, (RATE_TABLE_CASE,), RATE_TABLE)
+    )
+
+
+def test_operation_outputs_show_decimal_and_date_by_each_method_return():
+    assert 'Output:     [null, null, 12.5, "2026-03-01"]' in rendered(
+        None, (RATE_TABLE_CASE,), RATE_TABLE
+    )
+
+
+def test_output_from_a_parameter_shows_by_the_parameter_type():
+    signature = FunctionSignature(
+        "sortDays", (Param("days", ArrayType(DATE)),), Returns(VoidType(), output_from="days")
+    )
+    case = Case("ex1", FunctionInput({"days": ["2026-02-01"]}), Expected(["2026-02-01"]), True)
+    meta = replace(META, signature=signature)
+    assert "Output: [2026-02-01]" in rendered(None, (case,), meta)
 
 
 def test_checker_problems_without_expected_accept_any_valid_answer():

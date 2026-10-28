@@ -56,6 +56,19 @@ class ClassSignature:
 type Signature = FunctionSignature | ClassSignature
 
 
+def output_type(member: FunctionSignature | Method) -> ValueType | None:
+    """The type of the value a call's expected output holds: the return type, or the type of the
+    `output_from` parameter. None for `void`, and for a node returned `as` a value or an index.
+    """
+    returns = member.returns
+    if returns.output_from is not None:
+        sources = (param.type for param in member.params if param.name == returns.output_from)
+        return next(sources, None)
+    if isinstance(returns.type, VoidType) or returns.serialize_as is not None:
+        return None
+    return returns.type
+
+
 @dataclass(frozen=True, slots=True)
 class SignatureIssue:
     """A modifier that the JSON Schema accepts but the signature cannot honor."""

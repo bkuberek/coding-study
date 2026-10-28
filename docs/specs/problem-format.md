@@ -214,6 +214,8 @@ General rules for rows not listed: `list<X>` maps element-wise using the `X` row
 
 **Generators** return `decimal` and `date` values as strings, because Python's `Decimal` and `date` objects are not JSON.
 
+**Statements** (`cstudy show`, `.statements/`) print `decimal` and `date` values without quotes, typed by the signature, in arguments, operation arguments and outputs alike: `premium = 2500.50, start = 2026-01-01` and `Output: [1250.25, 0]`. A `string` stays quoted. Failure reports still show the JSON text.
+
 ### Support classes
 
 | Language | Import in stubs | Definitions |
