@@ -34,7 +34,7 @@ export function ratePremium(
     return [];
   }
   // Dividing by 1000 only moves the decimal point, so it stays exact.
-  let running = new Decimal(payroll.unscaled, payroll.scale + 3).times(rate);
+  let running = payroll.movePointLeft(3).times(rate);
   const trail = [running];
   const factors = [bandFactors[band], experienceMod, new Decimal(1).minus(scheduleCredit)];
   for (const factor of factors) {

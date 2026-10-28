@@ -49,6 +49,6 @@ A linear scan of the class table needs no extra memory and is fine for at most 1
 ### Language notes
 
 - Python: `Decimal` arithmetic is exact within the default 28-digit context. `bisect_right(bounds, payroll) - 1` is the band index, and `quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)` rounds the final amount.
-- TypeScript: `Decimal` from `#support` has `times`, `minus` and `round(2, "HALF_UP")`. There is no standard binary search, so the loop is written out with `cmp`.
+- TypeScript: `Decimal` from `#support` has `times`, `minus` and `round(2, "HALF_UP")`, and `payroll.movePointLeft(3)` divides by 1000 exactly, as in Java. There is no standard binary search, so the loop is written out with `cmp`.
 - Java: use `compareTo`, never `equals`, which also compares the scale (`2.0` and `2.00` are not equal). `payroll.movePointLeft(3)` divides by 1000 exactly; `divide` without a scale throws for non-terminating results.
 - Kotlin: `BigDecimal / BigDecimal` is `divide(other, RoundingMode.HALF_EVEN)` and keeps the dividend's scale, so `BigDecimal("999999") / BigDecimal(1000)` is `1000`, not `999.999`. Use `movePointLeft(3)` (case `h2` catches the mistake). `maxOf` works because `BigDecimal` is `Comparable`.
