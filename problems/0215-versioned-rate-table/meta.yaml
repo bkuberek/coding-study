@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0215"
+slug: versioned-rate-table
+title: Versioned Rate Table
+status: ready
+difficulty: medium
+track: practical
+kind: design
+patterns: [binary-search]
+signature:
+  class:
+    name: RateTable
+    constructor: {params: []}
+    methods:
+      - {name: publish, params: [{name: effectiveDate, type: date}, {name: classCodes, type: "string[]"}, {name: rates, type: "decimal[]"}], returns: {type: void}}
+      - {name: rateAsOf, params: [{name: onDate, type: date}, {name: classCode, type: string}], returns: {type: decimal}}
+      - {name: versionAsOf, params: [{name: onDate, type: date}], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: sorted-versions, name: Keep versions sorted by effective date and binary-search each lookup, role: optimal, time: "O(V + k) per publish, O(log V) per lookup", space: "O(V + K)", time_class: "n^2", space_class: "n"}
+related: [time-based-kv-store, binary-search, premium-rating-breakdown]
+estimate_minutes: 25
