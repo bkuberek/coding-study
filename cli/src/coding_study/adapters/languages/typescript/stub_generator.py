@@ -11,7 +11,13 @@ from coding_study.domain.concurrency import model_text
 from coding_study.domain.layout import statement_path
 from coding_study.domain.naming import member_name
 from coding_study.domain.problem import Language, ProblemMeta
-from coding_study.domain.signature import ClassSignature, FunctionSignature, Method, Param
+from coding_study.domain.signature import (
+    ClassSignature,
+    FunctionSignature,
+    Method,
+    Param,
+    declared_types,
+)
 from coding_study.domain.type_dsl import (
     ArrayType,
     ListType,
@@ -22,6 +28,7 @@ from coding_study.domain.type_dsl import (
     ScalarType,
     ValueType,
     VoidType,
+    scalars_of,
 )
 
 INDENT = "  "
@@ -32,6 +39,8 @@ SUPPORT_CLASSES = (NodeKind.LIST_NODE, NodeKind.TREE_NODE, NodeKind.GRAPH_NODE)
 """Node classes in import order in stubs."""
 DECIMAL_CLASS = "Decimal"
 """Imported after the node classes when the signature uses `decimal`."""
+ISO_DATE_TYPE = "IsoDate"
+"""`type IsoDate = string`, imported last, type-only (`verbatimModuleSyntax`), for `date`."""
 
 _SCALAR_TYPES: Mapping[Scalar, str] = {
     Scalar.INT: "number",
@@ -41,7 +50,7 @@ _SCALAR_TYPES: Mapping[Scalar, str] = {
     Scalar.STRING: "string",
     Scalar.CHAR: "string",
     Scalar.DECIMAL: DECIMAL_CLASS,
-    Scalar.DATE: "string",
+    Scalar.DATE: ISO_DATE_TYPE,
 }
 
 
@@ -52,9 +61,9 @@ class TypeScriptStubGenerator:
         lines = [_header(meta)]
         if meta.concurrency is not None:
             lines.append(f"// Concurrency: {model_text(meta.concurrency, Language.TYPESCRIPT)}")
-        imports = _support_imports(meta)
-        if imports:
-            lines += [f'import {{ {", ".join(imports)} }} from "{SUPPORT_MODULE}";', ""]
+        import_line = _support_import(meta)
+        if import_line:
+            lines += [import_line, ""]
         if isinstance(meta.signature, ClassSignature):
             lines += _class(meta.signature)
         else:
@@ -84,25 +93,25 @@ def _header(meta: ProblemMeta) -> str:
     return f"// {meta.title}. Statement: {statement_path(meta.slug)}. Run: cstudy test {meta.slug}"
 
 
-def _support_imports(meta: ProblemMeta) -> list[str]:
-    declared_types = list(_declared_types(meta))
-    used = {kind for declared in declared_types for kind in _node_kinds(declared)}
-    imports = [kind.value for kind in SUPPORT_CLASSES if kind in used]
-    if any(_uses_decimal(declared) for declared in declared_types):
-        imports.append(DECIMAL_CLASS)
-    return imports
+def _support_import(meta: ProblemMeta) -> str | None:
+    """`import { ListNode, Decimal, type IsoDate } from "#support";`. A stub that needs only the
+    `IsoDate` type uses `import type`, which `verbatimModuleSyntax` erases completely.
+    """
+    declared = list(declared_types(meta.signature))
+    kinds = {kind for value_type in declared for kind in _node_kinds(value_type)}
+    scalars = {scalar for value_type in declared for scalar in scalars_of(value_type)}
+    classes = [kind.value for kind in SUPPORT_CLASSES if kind in kinds]
+    if Scalar.DECIMAL in scalars:
+        classes.append(DECIMAL_CLASS)
+    if Scalar.DATE not in scalars:
+        return _import_line("import", classes) if classes else None
+    if not classes:
+        return _import_line("import type", [ISO_DATE_TYPE])
+    return _import_line("import", [*classes, f"type {ISO_DATE_TYPE}"])
 
 
-def _declared_types(meta: ProblemMeta) -> Iterator[ReturnType]:
-    signature = meta.signature
-    if isinstance(signature, FunctionSignature):
-        yield from (param.type for param in signature.params)
-        yield signature.returns.type
-        return
-    yield from (param.type for param in signature.constructor_params)
-    for method in signature.methods:
-        yield from (param.type for param in method.params)
-        yield method.returns.type
+def _import_line(keyword: str, names: list[str]) -> str:
+    return f'{keyword} {{ {", ".join(names)} }} from "{SUPPORT_MODULE}";'
 
 
 def _node_kinds(declared: ReturnType) -> Iterator[NodeKind]:
@@ -113,16 +122,6 @@ def _node_kinds(declared: ReturnType) -> Iterator[NodeKind]:
             yield from _node_kinds(element)
         case _:
             pass
-
-
-def _uses_decimal(declared: ReturnType) -> bool:
-    match declared:
-        case ScalarType(scalar):
-            return scalar is Scalar.DECIMAL
-        case ArrayType(element) | ListType(element):
-            return _uses_decimal(element)
-        case _:
-            return False
 
 
 def _function(signature: FunctionSignature) -> list[str]:

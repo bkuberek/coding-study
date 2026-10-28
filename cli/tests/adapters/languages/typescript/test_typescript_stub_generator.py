@@ -56,8 +56,9 @@ def test_imports_only_the_support_classes_the_signature_uses():
 
 
 def test_imports_support_classes_in_spec_order():
-    assert 'import { ListNode, TreeNode, GraphNode, Decimal } from "#support";\n' in generate(
-        "conformance-types"
+    assert (
+        'import { ListNode, TreeNode, GraphNode, Decimal, type IsoDate } from "#support";\n'
+        in generate("conformance-types")
     )
 
 
@@ -107,14 +108,14 @@ def test_maps_bool_to_boolean():
     ("type_text", "expected"),
     [
         ("decimal", "Decimal"),
-        ("date", "string"),
+        ("date", "IsoDate"),
         ("decimal[]", "Decimal[]"),
-        ("date[][]", "string[][]"),
+        ("date[][]", "IsoDate[][]"),
         ("list<decimal>", "Decimal[]"),
-        ("list<date>", "string[]"),
+        ("list<date>", "IsoDate[]"),
     ],
 )
-def test_maps_decimal_to_the_support_class_and_date_to_an_iso_string(type_text, expected):
+def test_maps_decimal_to_the_support_class_and_date_to_the_iso_string_alias(type_text, expected):
     assert typescript_type(parse_return_type(type_text)) == expected
 
 
@@ -130,10 +131,16 @@ def test_imports_decimal_from_support_when_the_signature_uses_it():
     assert 'import { Decimal } from "#support";\n' in stub
 
 
-def test_a_date_needs_no_import():
-    assert "#support" not in function_stub(("day", "date"), returns="date[]")
+def test_imports_iso_date_as_a_type_only_import():
+    stub = function_stub(("day", "date"), returns="date[]")
+    assert 'import type { IsoDate } from "#support";\n' in stub
 
 
 def test_imports_decimal_after_the_node_classes():
     stub = function_stub(("head", "ListNode"), ("amount", "decimal"), returns="TreeNode")
     assert 'import { ListNode, TreeNode, Decimal } from "#support";\n' in stub
+
+
+def test_imports_iso_date_with_a_type_modifier_after_the_classes():
+    stub = function_stub(("amount", "decimal"), ("day", "date"), returns="int")
+    assert 'import { Decimal, type IsoDate } from "#support";\n' in stub

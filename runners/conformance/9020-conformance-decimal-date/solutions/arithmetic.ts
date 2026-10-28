@@ -1,8 +1,8 @@
-import { Decimal } from "#support";
+import { Decimal, type IsoDate } from "#support";
 
 const MILLIS_PER_DAY = 86_400_000;
 
-function utcMillis(day: string): number {
+function utcMillis(day: IsoDate): number {
   const [year, month, dayOfMonth] = day.split("-").map(Number);
   return Date.UTC(year, month - 1, dayOfMonth);
 }
@@ -34,12 +34,12 @@ export class DecimalDates {
       .div(new Decimal(totalDays), 2, "HALF_UP");
   }
 
-  addDays(day: string, days: number): string {
+  addDays(day: IsoDate, days: number): IsoDate {
     const moved = new Date(utcMillis(day) + days * MILLIS_PER_DAY);
     return moved.toISOString().slice(0, 10);
   }
 
-  daysBetween(start: string, end: string): number {
+  daysBetween(start: IsoDate, end: IsoDate): number {
     return Math.round((utcMillis(end) - utcMillis(start)) / MILLIS_PER_DAY);
   }
 }

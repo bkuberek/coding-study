@@ -39,6 +39,13 @@ export class GraphNode {
 }
 
 /**
+ * A `date`: a calendar day as `YYYY-MM-DD` (docs/specs/problem-format.md#decimal-and-date). It is
+ * a plain string, so days compare and sort chronologically as strings (`<`, `sort()`), and
+ * `Date.parse(day)` is that day's midnight in UTC. Import it as a type: `import type { IsoDate }`.
+ */
+export type IsoDate = string;
+
+/**
  * How `Decimal.div` and `Decimal.round` drop digits, named as in Java's `RoundingMode` (Python's
  * `ROUND_*` constants): `DOWN` toward zero, `UP` away from zero, `FLOOR` and `CEILING` toward
  * negative and positive infinity, and the `HALF_*` modes to the nearest neighbor, breaking a tie

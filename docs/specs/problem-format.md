@@ -160,7 +160,7 @@ This table is normative for stub generation, runner deserialization and output s
 | `string` | string | `str` | `string` | `String` | `String` |
 | `char` | string of length 1 (BMP) | `str` | `string` | `char` | `Char` |
 | `decimal` | string, canonical when expected ([Decimal and date](#decimal-and-date)) | `Decimal` | `Decimal` | `BigDecimal` | `BigDecimal` |
-| `date` | string `YYYY-MM-DD` | `date` | `string` | `LocalDate` | `LocalDate` |
+| `date` | string `YYYY-MM-DD` | `date` | `IsoDate` (a `string`) | `LocalDate` | `LocalDate` |
 | `int[]` | array | `list[int]` | `number[]` | `int[]` | `IntArray` |
 | `long[]` | array | `list[int]` | `number[]` | `long[]` | `LongArray` |
 | `double[]` | array | `list[float]` | `number[]` | `double[]` | `DoubleArray` |
@@ -168,7 +168,7 @@ This table is normative for stub generation, runner deserialization and output s
 | `char[]` | array of 1-char strings | `list[str]` | `string[]` | `char[]` | `CharArray` |
 | `string[]` | array | `list[str]` | `string[]` | `String[]` | `Array<String>` |
 | `decimal[]` | array of decimal strings | `list[Decimal]` | `Decimal[]` | `BigDecimal[]` | `Array<BigDecimal>` |
-| `date[]` | array of date strings | `list[date]` | `string[]` | `LocalDate[]` | `Array<LocalDate>` |
+| `date[]` | array of date strings | `list[date]` | `IsoDate[]` | `LocalDate[]` | `Array<LocalDate>` |
 | `int[][]` | array of arrays | `list[list[int]]` | `number[][]` | `int[][]` | `Array<IntArray>` |
 | `long[][]` | array of arrays | `list[list[int]]` | `number[][]` | `long[][]` | `Array<LongArray>` |
 | `double[][]` | array of arrays | `list[list[float]]` | `number[][]` | `double[][]` | `Array<DoubleArray>` |
@@ -176,7 +176,7 @@ This table is normative for stub generation, runner deserialization and output s
 | `char[][]` | array of arrays of 1-char strings | `list[list[str]]` | `string[][]` | `char[][]` | `Array<CharArray>` |
 | `string[][]` | array of arrays | `list[list[str]]` | `string[][]` | `String[][]` | `Array<Array<String>>` |
 | `decimal[][]` | array of arrays of decimal strings | `list[list[Decimal]]` | `Decimal[][]` | `BigDecimal[][]` | `Array<Array<BigDecimal>>` |
-| `date[][]` | array of arrays of date strings | `list[list[date]]` | `string[][]` | `LocalDate[][]` | `Array<Array<LocalDate>>` |
+| `date[][]` | array of arrays of date strings | `list[list[date]]` | `IsoDate[][]` | `LocalDate[][]` | `Array<Array<LocalDate>>` |
 | `list<int>` | array | `list[int]` | `number[]` | `List<Integer>` | `List<Int>` |
 | `list<long>` | array | `list[int]` | `number[]` | `List<Long>` | `List<Long>` |
 | `list<double>` | array | `list[float]` | `number[]` | `List<Double>` | `List<Double>` |
@@ -184,7 +184,7 @@ This table is normative for stub generation, runner deserialization and output s
 | `list<char>` | array of 1-char strings | `list[str]` | `string[]` | `List<Character>` | `List<Char>` |
 | `list<string>` | array | `list[str]` | `string[]` | `List<String>` | `List<String>` |
 | `list<decimal>` | array of decimal strings | `list[Decimal]` | `Decimal[]` | `List<BigDecimal>` | `List<BigDecimal>` |
-| `list<date>` | array of date strings | `list[date]` | `string[]` | `List<LocalDate>` | `List<LocalDate>` |
+| `list<date>` | array of date strings | `list[date]` | `IsoDate[]` | `List<LocalDate>` | `List<LocalDate>` |
 | `list<int[]>` | array of arrays | `list[list[int]]` | `number[][]` | `List<int[]>` | `List<IntArray>` |
 | `list<list<int>>` | array of arrays | `list[list[int]]` | `number[][]` | `List<List<Integer>>` | `List<List<Int>>` |
 | `list<list<string>>` | array of arrays | `list[list[str]]` | `string[][]` | `List<List<String>>` | `List<List<String>>` |
@@ -227,7 +227,7 @@ General rules for rows not listed: `list<X>` maps element-wise using the `X` row
 
 Stubs import support classes only when the signature uses them. Java stubs always add `import java.util.*;`.
 
-`decimal` and `date` need no support class except in TypeScript, where `Decimal` is a class of `#support` and a `date` is a plain `YYYY-MM-DD` string. A stub imports the standard library types it uses: Python `from datetime import date` and `from decimal import Decimal`, Java and Kotlin `java.math.BigDecimal` and `java.time.LocalDate`.
+`decimal` and `date` need no support class except in TypeScript, where `Decimal` is a class of `#support` and a `date` is an `IsoDate`: the `#support` alias `type IsoDate = string` for a plain `YYYY-MM-DD` string, which names the format in signatures. Because the workspace compiles with `verbatimModuleSyntax`, a stub imports it as a type: `import type { IsoDate } from "#support";` on its own, or `import { Decimal, type IsoDate } from "#support";` after the classes. A stub imports the standard library types it uses: Python `from datetime import date` and `from decimal import Decimal`, Java and Kotlin `java.math.BigDecimal` and `java.time.LocalDate`.
 
 **TypeScript `Decimal`** is immutable and exact (a `bigint` unscaled value with a non-negative `scale`, both public and read-only), with no dependency to install:
 
