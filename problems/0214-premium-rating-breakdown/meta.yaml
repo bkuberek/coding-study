@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0214"
+slug: premium-rating-breakdown
+title: Premium Rating Breakdown
+status: ready
+difficulty: medium
+track: practical
+kind: function
+patterns: [binary-search, arrays-hashing]
+signature:
+  function:
+    name: ratePremium
+    params:
+      - {name: classCode, type: string}
+      - {name: payroll, type: decimal}
+      - {name: experienceMod, type: decimal}
+      - {name: scheduleCredit, type: decimal}
+      - {name: classCodes, type: "string[]"}
+      - {name: baseRates, type: "decimal[]"}
+      - {name: bandLowerBounds, type: "decimal[]"}
+      - {name: bandFactors, type: "decimal[]"}
+      - {name: minimumPremium, type: decimal}
+    returns: {type: "list<decimal>"}
+comparator: {type: exact}
+approaches:
+  - {id: table-lookup, name: Index the class table and binary-search the size bands, role: optimal, time: "O(c + log b)", space: "O(c)", time_class: "n", space_class: "n"}
+related: [binary-search, versioned-rate-table, pro-rata-unearned-premium]
+estimate_minutes: 30
