@@ -44,6 +44,6 @@ A 365-day basis gives a different share to every day of a leap year, and a term-
 ### Language notes
 
 - Python: `(term_end - change_date).days` counts days between two `date` values; `quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)` rounds once.
-- TypeScript: a date is an ISO string, so strings compare chronologically. Date-only ISO strings parse as UTC, so `(Date.parse(b) - Date.parse(a)) / 86_400_000` is a whole number of days with no daylight-saving gaps. `div(other, 2, "HALF_UP")` divides and rounds in one call.
+- TypeScript: a date is an `IsoDate`, a plain ISO string, so dates compare chronologically. Date-only ISO strings parse as UTC, so `(Date.parse(b) - Date.parse(a)) / 86_400_000` is a whole number of days with no daylight-saving gaps. `div(other, 2, "HALF_UP")` divides and rounds in one call.
 - Java: `ChronoUnit.DAYS.between(a, b)` counts days; `divide(termDays, 2, RoundingMode.HALF_UP)` divides and rounds in one call.
 - Kotlin: `BigDecimal / BigDecimal` is `divide(other, RoundingMode.HALF_EVEN)` and keeps the dividend's scale, so it rounds half-even to the premium's own scale. Use `divide(termDays, 2, RoundingMode.HALF_UP)` (cases `h3` and `h4` catch the mistake).

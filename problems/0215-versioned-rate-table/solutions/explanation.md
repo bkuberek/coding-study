@@ -45,6 +45,6 @@ A balanced tree (Java and Kotlin `TreeMap.floorEntry`, with a list of versions p
 ### Language notes
 
 - Python: `bisect_right(dates, day)` is the upper bound and `list.insert` does the shifting. `date` objects compare chronologically.
-- TypeScript: a date is an ISO `YYYY-MM-DD` string, so `<=` on strings is chronological order. The upper bound is written out and `splice` inserts. Rates are kept in a `Map<string, Decimal>`.
+- TypeScript: a date is an `IsoDate`, a plain `YYYY-MM-DD` string, so `<=` on strings is chronological order. The upper bound is written out and `splice` inserts. Rates are kept in a `Map<string, Decimal>`.
 - Java: `Collections.binarySearch` may return any matching index when dates repeat, so the upper bound is written by hand with `compareTo`. A `record` holds the id and the rate map; `LocalDate` is comparable.
 - Kotlin: `List.binarySearch` has the same duplicate-key problem (cases `h3` and `h9` catch it), so the upper bound is written by hand. Parameters are named `onDate` because `when` is a keyword.

@@ -44,6 +44,6 @@ Marking every day of the window is simple but costs time proportional to the cal
 ### Language notes
 
 - Python: dates compare directly, and `sorted` on `(start, end)` tuples sorts by start. Dates are plain `date` values.
-- TypeScript: a date is an ISO string, so `<` and `>` compare chronologically; sort a copy with a comparator on the first element.
+- TypeScript: a date is an `IsoDate`, a plain ISO string, so `<` and `>` compare chronologically; sort a copy with a comparator on the first element.
 - Java: the result is `LocalDate[][]`; copy the input with `clone()`, sort with `Comparator.comparing(period -> period[0])`, and convert the gap list with `toArray(new LocalDate[0][])`.
 - Kotlin: `sortedBy { it[0] }` returns a sorted copy, `maxOf` works on `LocalDate`, and `toTypedArray()` converts the gap list to `Array<Array<LocalDate>>`.
