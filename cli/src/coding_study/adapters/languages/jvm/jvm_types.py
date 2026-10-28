@@ -26,6 +26,8 @@ _JAVA_SCALARS: Mapping[Scalar, str] = {
     Scalar.BOOL: "boolean",
     Scalar.STRING: "String",
     Scalar.CHAR: "char",
+    Scalar.DECIMAL: "BigDecimal",
+    Scalar.DATE: "LocalDate",
 }
 _JAVA_BOXED: Mapping[Scalar, str] = {
     Scalar.INT: "Integer",
@@ -34,6 +36,8 @@ _JAVA_BOXED: Mapping[Scalar, str] = {
     Scalar.BOOL: "Boolean",
     Scalar.STRING: "String",
     Scalar.CHAR: "Character",
+    Scalar.DECIMAL: "BigDecimal",
+    Scalar.DATE: "LocalDate",
 }
 _KOTLIN_SCALARS: Mapping[Scalar, str] = {
     Scalar.INT: "Int",
@@ -42,6 +46,8 @@ _KOTLIN_SCALARS: Mapping[Scalar, str] = {
     Scalar.BOOL: "Boolean",
     Scalar.STRING: "String",
     Scalar.CHAR: "Char",
+    Scalar.DECIMAL: "BigDecimal",
+    Scalar.DATE: "LocalDate",
 }
 _KOTLIN_PRIMITIVE_ARRAYS: Mapping[Scalar, str] = {
     Scalar.INT: "IntArray",

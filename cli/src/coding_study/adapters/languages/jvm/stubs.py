@@ -19,7 +19,15 @@ from coding_study.domain.layout import USER_PACKAGE, jvm_class_name, statement_p
 from coding_study.domain.naming import member_name
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.signature import ClassSignature, Param
-from coding_study.domain.type_dsl import ArrayType, ListType, NodeType, ReturnType, ValueType
+from coding_study.domain.type_dsl import (
+    ArrayType,
+    ListType,
+    NodeType,
+    ReturnType,
+    Scalar,
+    ScalarType,
+    ValueType,
+)
 
 INDENT = "    "
 JAVA_COLUMN_LIMIT = 100
@@ -34,6 +42,15 @@ JAVA_CONCURRENCY_IMPORTS = (
 JAVA_INTERRUPTIBLE = " throws InterruptedException"
 JAVA_SUPPORT_IMPORT = "import cs.support.*;"
 KOTLIN_SUPPORT_IMPORT = "import cs.support.*"
+JAVA_SCALAR_IMPORTS = (
+    (Scalar.DECIMAL, "import java.math.BigDecimal;"),
+    (Scalar.DATE, "import java.time.LocalDate;"),
+)
+KOTLIN_SCALAR_IMPORTS = (
+    (Scalar.DECIMAL, "import java.math.BigDecimal"),
+    (Scalar.DATE, "import java.time.LocalDate"),
+)
+"""Standard library imports of the scalar types that need one, in ASCII order after `cs.support`."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +76,8 @@ class _JvmStub:
     """None for function kinds, whose `Solution` class keeps the implicit constructor."""
     routines: tuple[_Routine, ...]
     uses_nodes: bool
+    scalars: frozenset[Scalar]
+    """The scalar types the declarations mention; `decimal` and `date` need an import."""
     concurrency: str | None = None
     """Concurrent problems: the model the header names, e.g. `threads (platform)`."""
 
@@ -93,10 +112,16 @@ class _JvmStub:
             constructor_params=constructor,
             routines=routines,
             uses_nodes=any(_mentions_node(declared) for declared in declared_types),
+            scalars=frozenset(
+                scalar for declared in declared_types for scalar in _mentioned_scalars(declared)
+            ),
             concurrency=(
                 model_text(meta.concurrency, language) if meta.concurrency is not None else None
             ),
         )
+
+    def scalar_imports(self, imports: tuple[tuple[Scalar, str], ...]) -> list[str]:
+        return [line for scalar, line in imports if scalar in self.scalars]
 
     def header_lines(self, column_limit: int) -> list[str]:
         concurrency = [] if self.concurrency is None else [f"// Concurrency: {self.concurrency}"]
@@ -108,7 +133,8 @@ class JavaStubGenerator:
 
     def generate(self, meta: ProblemMeta) -> str:
         stub = _JvmStub.of(meta, Language.JAVA)
-        imports = (JAVA_SUPPORT_IMPORT, *JAVA_IMPORTS) if stub.uses_nodes else JAVA_IMPORTS
+        support = (JAVA_SUPPORT_IMPORT,) if stub.uses_nodes else ()
+        imports = (*support, *stub.scalar_imports(JAVA_SCALAR_IMPORTS), *JAVA_IMPORTS)
         if stub.concurrency is not None:
             imports = (*imports, *JAVA_CONCURRENCY_IMPORTS)
         blocks = [*self._constructor(stub), *(self._method(routine) for routine in stub.routines)]
@@ -148,7 +174,10 @@ class KotlinStubGenerator:
 
     def generate(self, meta: ProblemMeta) -> str:
         stub = _JvmStub.of(meta, Language.KOTLIN)
-        imports = [KOTLIN_SUPPORT_IMPORT, ""] if stub.uses_nodes else []
+        support = [KOTLIN_SUPPORT_IMPORT] if stub.uses_nodes else []
+        imports = [*support, *stub.scalar_imports(KOTLIN_SCALAR_IMPORTS)]
+        if imports:
+            imports.append("")
         lines = [
             *stub.header_lines(KOTLIN_COLUMN_LIMIT),
             "",
@@ -204,6 +233,16 @@ def _mentions_node(declared_type: ReturnType) -> bool:
             return _mentions_node(element)
         case _:
             return False
+
+
+def _mentioned_scalars(declared_type: ReturnType) -> set[Scalar]:
+    match declared_type:
+        case ScalarType(scalar):
+            return {scalar}
+        case ArrayType(element) | ListType(element):
+            return _mentioned_scalars(element)
+        case _:
+            return set()
 
 
 def _java_params(params: Sequence[tuple[str, ValueType]]) -> list[str]:

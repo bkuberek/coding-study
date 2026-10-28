@@ -4,7 +4,8 @@ Types follow the Python column of docs/specs/problem-format.md#type-mapping and 
 `coding_study.domain.naming`. The text already matches `ruff format` with its default line
 length, so no formatter runs: a signature too long for one line moves its parameters to an
 indented line of their own, or to one line each with a trailing comma when that is still too
-long.
+long. Imports come in isort order: the standard library's `date` and `Decimal` first, then the
+support classes after a blank line.
 """
 
 from collections.abc import Iterator, Mapping
@@ -43,7 +44,14 @@ _SCALARS: Mapping[Scalar, str] = {
     Scalar.BOOL: "bool",
     Scalar.STRING: "str",
     Scalar.CHAR: "str",
+    Scalar.DECIMAL: "Decimal",
+    Scalar.DATE: "date",
 }
+_STDLIB_IMPORTS: tuple[tuple[Scalar, str], ...] = (
+    (Scalar.DATE, "from datetime import date"),
+    (Scalar.DECIMAL, "from decimal import Decimal"),
+)
+"""In isort order: sorted by module."""
 
 
 class PythonStubGenerator:
@@ -51,9 +59,9 @@ class PythonStubGenerator:
 
     def generate(self, meta: ProblemMeta) -> str:
         preamble = [_header(meta)]
-        support_import = _support_import(meta.signature)
-        if support_import:
-            preamble.append(support_import)
+        for import_block in (_stdlib_import(meta.signature), _support_import(meta.signature)):
+            if import_block:
+                preamble.append(import_block)
         definition = "\n".join(_definition(meta.signature, _is_async(meta)))
         return "\n\n".join(preamble) + "\n\n\n" + definition + "\n"
 
@@ -113,6 +121,12 @@ def _is_async(meta: ProblemMeta) -> bool:
     )
 
 
+def _stdlib_import(signature: Signature) -> str | None:
+    used = {scalar for value_type in _declared_types(signature) for scalar in _scalars(value_type)}
+    lines = [line for scalar, line in _STDLIB_IMPORTS if scalar in used]
+    return "\n".join(lines) if lines else None
+
+
 def _support_import(signature: Signature) -> str | None:
     kinds = {kind for value_type in _declared_types(signature) for kind in _node_kinds(value_type)}
     if not kinds:
@@ -137,6 +151,16 @@ def _node_kinds(value_type: ReturnType) -> set[NodeKind]:
             return {kind}
         case ArrayType(element) | ListType(element):
             return _node_kinds(element)
+        case _:
+            return set()
+
+
+def _scalars(value_type: ReturnType) -> set[Scalar]:
+    match value_type:
+        case ScalarType(scalar):
+            return {scalar}
+        case ArrayType(element) | ListType(element):
+            return _scalars(element)
         case _:
             return set()
 

@@ -33,6 +33,7 @@ Every approach is written once per language, in that language's idiomatic form f
 | Fixture | Approach | Behavior | Expected |
 |---------|----------|----------|----------|
 | `conformance-types` | `identity` | `TypeEcho(label)` ignores `label`; every `echo*` method returns its argument unchanged; `noop` returns nothing | pass |
+| `conformance-decimal-date` | `arithmetic` | `DecimalDates` adds and totals decimals of mixed scale, rounds to cents half up and half even, prorates a premium (half up), adds days to a date across leap days and counts the days between two dates; inputs keep their scale and outputs are canonical (`2500.00` comes back as `2500`) | pass |
 | `conformance-function` | `identity` | `echoHTTPCodes` returns `firstValue` unchanged | pass |
 | `conformance-exception` | `raises` | `failWith` throws with `message` as the exception message: Python `RuntimeError`, TypeScript `Error`, Java `IllegalStateException`, Kotlin `error(...)` | error with that message |
 | `conformance-op-error` | `counts` | `increment` adds 1 to a counter starting at 0 and returns it; `fail` throws with message `counter failure` | `fails` case: error at `op_index` 3 with `partial_output` `[null, 1, 2]` |

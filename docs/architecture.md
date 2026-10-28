@@ -8,7 +8,7 @@ The CLI is a hexagonal application: a pure domain core (problems, attempts, sche
 |-----------|------|----------|----------------|
 | CLI | `cli/` | Python 3.13, uv | Commands, domain core, adapters, codegen, comparators, scheduling, bench analysis |
 | Python runner | `runners/python/` | Python | Packages `cs_runner` (runner) and `cs_support` (`ListNode`, `TreeNode`, `GraphNode`) |
-| TypeScript runner | `runners/typescript/` | TypeScript on Node 24 | `runner.ts` and `support.ts`; erasable syntax only |
+| TypeScript runner | `runners/typescript/` | TypeScript on Node 24 | `runner.ts` and `support.ts` (the node classes and `Decimal`); erasable syntax only |
 | JVM runner | `runners/jvm/` | Java 21, Gradle included build | `cs.runner.Main` and `cs.support.*`; serves Java and Kotlin |
 | Content | `problems/`, `tracks/` | YAML, JSON, Markdown, code | Problems, tests, references, explanations, generators |
 | Schemas | `schemas/` | JSON Schema | `meta.schema.json`, `tests.schema.json`, `item.schema.json`, `conformance.schema.json`; hand-maintained source of truth for validation (`jsonschema`) and editor completion |

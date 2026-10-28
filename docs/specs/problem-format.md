@@ -159,24 +159,32 @@ This table is normative for stub generation, runner deserialization and output s
 | `bool` | `true` / `false` | `bool` | `boolean` | `boolean` | `Boolean` |
 | `string` | string | `str` | `string` | `String` | `String` |
 | `char` | string of length 1 (BMP) | `str` | `string` | `char` | `Char` |
+| `decimal` | string, canonical when expected ([Decimal and date](#decimal-and-date)) | `Decimal` | `Decimal` | `BigDecimal` | `BigDecimal` |
+| `date` | string `YYYY-MM-DD` | `date` | `string` | `LocalDate` | `LocalDate` |
 | `int[]` | array | `list[int]` | `number[]` | `int[]` | `IntArray` |
 | `long[]` | array | `list[int]` | `number[]` | `long[]` | `LongArray` |
 | `double[]` | array | `list[float]` | `number[]` | `double[]` | `DoubleArray` |
 | `bool[]` | array | `list[bool]` | `boolean[]` | `boolean[]` | `BooleanArray` |
 | `char[]` | array of 1-char strings | `list[str]` | `string[]` | `char[]` | `CharArray` |
 | `string[]` | array | `list[str]` | `string[]` | `String[]` | `Array<String>` |
+| `decimal[]` | array of decimal strings | `list[Decimal]` | `Decimal[]` | `BigDecimal[]` | `Array<BigDecimal>` |
+| `date[]` | array of date strings | `list[date]` | `string[]` | `LocalDate[]` | `Array<LocalDate>` |
 | `int[][]` | array of arrays | `list[list[int]]` | `number[][]` | `int[][]` | `Array<IntArray>` |
 | `long[][]` | array of arrays | `list[list[int]]` | `number[][]` | `long[][]` | `Array<LongArray>` |
 | `double[][]` | array of arrays | `list[list[float]]` | `number[][]` | `double[][]` | `Array<DoubleArray>` |
 | `bool[][]` | array of arrays | `list[list[bool]]` | `boolean[][]` | `boolean[][]` | `Array<BooleanArray>` |
 | `char[][]` | array of arrays of 1-char strings | `list[list[str]]` | `string[][]` | `char[][]` | `Array<CharArray>` |
 | `string[][]` | array of arrays | `list[list[str]]` | `string[][]` | `String[][]` | `Array<Array<String>>` |
+| `decimal[][]` | array of arrays of decimal strings | `list[list[Decimal]]` | `Decimal[][]` | `BigDecimal[][]` | `Array<Array<BigDecimal>>` |
+| `date[][]` | array of arrays of date strings | `list[list[date]]` | `string[][]` | `LocalDate[][]` | `Array<Array<LocalDate>>` |
 | `list<int>` | array | `list[int]` | `number[]` | `List<Integer>` | `List<Int>` |
 | `list<long>` | array | `list[int]` | `number[]` | `List<Long>` | `List<Long>` |
 | `list<double>` | array | `list[float]` | `number[]` | `List<Double>` | `List<Double>` |
 | `list<bool>` | array | `list[bool]` | `boolean[]` | `List<Boolean>` | `List<Boolean>` |
 | `list<char>` | array of 1-char strings | `list[str]` | `string[]` | `List<Character>` | `List<Char>` |
 | `list<string>` | array | `list[str]` | `string[]` | `List<String>` | `List<String>` |
+| `list<decimal>` | array of decimal strings | `list[Decimal]` | `Decimal[]` | `List<BigDecimal>` | `List<BigDecimal>` |
+| `list<date>` | array of date strings | `list[date]` | `string[]` | `List<LocalDate>` | `List<LocalDate>` |
 | `list<int[]>` | array of arrays | `list[list[int]]` | `number[][]` | `List<int[]>` | `List<IntArray>` |
 | `list<list<int>>` | array of arrays | `list[list[int]]` | `number[][]` | `List<List<Integer>>` | `List<List<Int>>` |
 | `list<list<string>>` | array of arrays | `list[list[str]]` | `string[][]` | `List<List<String>>` | `List<List<String>>` |
@@ -191,7 +199,7 @@ General rules for rows not listed: `list<X>` maps element-wise using the `X` row
 
 **JVM erasure property.** Every Kotlin type in the table erases to the same JVM type as the Java column (`IntArray` is `int[]`, `Array<IntArray>` is `int[][]`, non-null `Int` parameters are `int`, `List<Int>` is `java.util.List`, `Unit` returns are `void`). One JVM runner therefore serves both languages through Java reflection. Any future mapping must preserve this property or extend the JVM runner.
 
-**Content rules that keep languages equivalent.** Test values must fit the declared type; expected outputs must not depend on integer overflow; `long` values stay within 2^53-1 (TypeScript `number`); recursion depth implied by inputs stays at or under 3000 (Node's default stack).
+**Content rules that keep languages equivalent.** Test values must fit the declared type; expected outputs must not depend on integer overflow; `long` values stay within 2^53-1 (TypeScript `number`); `decimal` results state their scale and rounding mode ([Decimal and date](#decimal-and-date)); recursion depth implied by inputs stays at or under 3000 (Node's default stack).
 
 ### Decimal and date
 
@@ -216,6 +224,19 @@ General rules for rows not listed: `list<X>` maps element-wise using the `X` row
 | Kotlin | `import cs.support.*` | Same Java classes (platform types); field `val` is accessed as `` node.`val` ``, as on LeetCode |
 
 Stubs import support classes only when the signature uses them. Java stubs always add `import java.util.*;`.
+
+`decimal` and `date` need no support class except in TypeScript, where `Decimal` is a class of `#support` and a `date` is a plain `YYYY-MM-DD` string. A stub imports the standard library types it uses: Python `from datetime import date` and `from decimal import Decimal`, Java and Kotlin `java.math.BigDecimal` and `java.time.LocalDate`.
+
+**TypeScript `Decimal`** is immutable and exact (a `bigint` unscaled value with a non-negative `scale`, both public and read-only), with no dependency to install:
+
+| Member | Meaning |
+|--------|---------|
+| `new Decimal("2500.50")`, `new Decimal(42)`, `new Decimal(250050n, 2)` | From text (the scale is kept), from a safe integer, or from the unscaled value and scale; a non-integer `number` throws `RangeError` and malformed text `SyntaxError` |
+| `plus`, `minus`, `times` | Exact; the result scale is the larger scale for `plus` and `minus`, the sum of the scales for `times` |
+| `div(other, scale, mode)`, `round(scale, mode)` | The result has exactly `scale` digits after the point; `mode` is `"HALF_UP"` (ties away from zero) or `"HALF_EVEN"` (ties to the even digit), like Java's `setScale` and Python's `quantize`. `div` by zero throws `RangeError` |
+| `cmp`, `eq`, `lt`, `lte`, `gt`, `gte` | By value: `1.50` equals `1.5` |
+| `abs`, `neg` | |
+| `toFixed(scale?, mode?)`, `toString()` | Plain notation, never an exponent; `toString` keeps the scale (`"2500.50"`) and `toFixed` rounds first (`HALF_UP` by default) |
 
 ## Serialization of linked structures
 

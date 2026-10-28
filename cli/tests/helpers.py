@@ -71,6 +71,8 @@ MAPPING_TABLE_TYPES = frozenset(
         *("list<int>", "list<long>", "list<double>", "list<bool>", "list<char>", "list<string>"),
         *("list<int[]>", "list<list<int>>", "list<list<string>>"),
         *("ListNode", "TreeNode", "GraphNode", "ListNode[]", "list<TreeNode>"),
+        *("decimal", "date", "decimal[]", "date[]", "decimal[][]", "date[][]"),
+        *("list<decimal>", "list<date>"),
     }
 )
 """Every value type row of the mapping table in docs/specs/problem-format.md#type-mapping."""

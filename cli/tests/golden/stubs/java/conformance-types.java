@@ -4,6 +4,8 @@
 package practice.conformance_types;
 
 import cs.support.*;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.*;
 
 public class TypeEcho {
@@ -139,6 +141,38 @@ public class TypeEcho {
     }
 
     public List<TreeNode> echoTreeNodeList(List<TreeNode> value) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    public BigDecimal echoDecimal(BigDecimal value) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    public LocalDate echoDate(LocalDate value) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    public BigDecimal[] echoDecimalArray(BigDecimal[] value) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    public LocalDate[] echoDateArray(LocalDate[] value) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    public BigDecimal[][] echoDecimalMatrix(BigDecimal[][] value) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    public LocalDate[][] echoDateMatrix(LocalDate[][] value) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    public List<BigDecimal> echoDecimalList(List<BigDecimal> value) {
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    public List<LocalDate> echoDateList(List<LocalDate> value) {
         throw new UnsupportedOperationException("Not implemented");
     }
 

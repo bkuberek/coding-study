@@ -431,7 +431,7 @@ Added to `runners/conformance/` before any concurrent problem merges. `expectati
 | Destination | Python `python/practice/<snake_slug>.py`; TypeScript `typescript/practice/<slug>.ts`; Java and Kotlin `jvm/<lang>/src/main/<lang>/practice/<snake_slug>/<Solution or ClassName>.<ext>` |
 | Body | Python `raise NotImplementedError`; TypeScript `throw new Error("Not implemented")`; Java `throw new UnsupportedOperationException("Not implemented")`; Kotlin `TODO("Not implemented")`. Constructors are empty |
 | Header | Title, statement path, run command |
-| Imports | Support classes only when used; Java always `import java.util.*;` |
+| Imports | Support classes only when used (TypeScript `Decimal` for `decimal`); the standard library types of `decimal` and `date` only when used (Python `Decimal` and `date`, Java and Kotlin `BigDecimal` and `LocalDate`); Java always `import java.util.*;` |
 | Existing file | Kept unless `--fresh` or a review attempt; then archived to `.archive/<slug>/<attempt_id>-<lang>/` first |
 | `stub: buggy` | Copy `problems/<dir>/buggy/solution.<ext>` instead of generating; buggy files declare no `package`, so on the JVM `cstudy start` prepends `package practice.<snake_slug>` (with `;` for Java) |
 | Formatting | Generated text already matches ruff, Prettier defaults, Google Java style and ktlint defaults; no formatter runs |
@@ -454,6 +454,6 @@ For JVM bench the classpath joins the user's `practice.*` classes and the `ref.*
 
 ## Conformance suite
 
-`runners/conformance/` holds fixture problems in the normal problem format whose reference approaches are identity functions (return the argument unchanged) for every DSL type, plus fixtures for error paths: exception, `invalid_output`, missing symbol, hang, user printing to stdout, `ref_of`, `output_from`, `no_alias_with`, cyclic ListNode input. `cstudy verify --conformance` runs them in all 4 languages and also compiles every generated stub. It is a Phase 0 exit criterion and must pass before any runner change merges.
+`runners/conformance/` holds fixture problems in the normal problem format whose reference approaches are identity functions (return the argument unchanged) for every DSL type, plus fixtures for error paths: exception, `invalid_output`, missing symbol, hang, user printing to stdout, `ref_of`, `output_from`, `no_alias_with`, cyclic ListNode input, and decimal and date arithmetic (inputs that keep their scale, canonical outputs, rounding modes, days across leap years). `cstudy verify --conformance` runs them in all 4 languages and also compiles every generated stub. It is a Phase 0 exit criterion and must pass before any runner change merges.
 
 Fixtures live in `runners/conformance/<id>-<slug>/`; each language adds its reference files as `solutions/<approach>.<ext>`. `runners/conformance/expectations.json` (schema `schemas/conformance.schema.json`) gives the expected outcome per fixture and approach (`pass`, `error`, `invalid_output`, `timeout`, `load_error`) with per-case overrides, and `runners/conformance/README.md` states what every approach does in each language.

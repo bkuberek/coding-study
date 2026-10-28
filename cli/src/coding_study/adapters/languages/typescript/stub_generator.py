@@ -29,7 +29,9 @@ PRINT_WIDTH = 80
 NOT_IMPLEMENTED = 'throw new Error("Not implemented");'
 SUPPORT_MODULE = "#support"
 SUPPORT_CLASSES = (NodeKind.LIST_NODE, NodeKind.TREE_NODE, NodeKind.GRAPH_NODE)
-"""Import order in stubs."""
+"""Node classes in import order in stubs."""
+DECIMAL_CLASS = "Decimal"
+"""Imported after the node classes when the signature uses `decimal`."""
 
 _SCALAR_TYPES: Mapping[Scalar, str] = {
     Scalar.INT: "number",
@@ -38,6 +40,8 @@ _SCALAR_TYPES: Mapping[Scalar, str] = {
     Scalar.BOOL: "boolean",
     Scalar.STRING: "string",
     Scalar.CHAR: "string",
+    Scalar.DECIMAL: DECIMAL_CLASS,
+    Scalar.DATE: "string",
 }
 
 
@@ -81,8 +85,12 @@ def _header(meta: ProblemMeta) -> str:
 
 
 def _support_imports(meta: ProblemMeta) -> list[str]:
-    used = {kind for declared in _declared_types(meta) for kind in _node_kinds(declared)}
-    return [kind.value for kind in SUPPORT_CLASSES if kind in used]
+    declared_types = list(_declared_types(meta))
+    used = {kind for declared in declared_types for kind in _node_kinds(declared)}
+    imports = [kind.value for kind in SUPPORT_CLASSES if kind in used]
+    if any(_uses_decimal(declared) for declared in declared_types):
+        imports.append(DECIMAL_CLASS)
+    return imports
 
 
 def _declared_types(meta: ProblemMeta) -> Iterator[ReturnType]:
@@ -105,6 +113,16 @@ def _node_kinds(declared: ReturnType) -> Iterator[NodeKind]:
             yield from _node_kinds(element)
         case _:
             pass
+
+
+def _uses_decimal(declared: ReturnType) -> bool:
+    match declared:
+        case ScalarType(scalar):
+            return scalar is Scalar.DECIMAL
+        case ArrayType(element) | ListType(element):
+            return _uses_decimal(element)
+        case _:
+            return False
 
 
 def _function(signature: FunctionSignature) -> list[str]:

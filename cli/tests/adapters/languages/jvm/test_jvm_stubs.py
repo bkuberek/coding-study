@@ -82,6 +82,14 @@ MAPPING_TABLE = (
     ("bool[]", "boolean[]", "BooleanArray"),
     ("char[]", "char[]", "CharArray"),
     ("string[]", "String[]", "Array<String>"),
+    ("decimal", "BigDecimal", "BigDecimal"),
+    ("date", "LocalDate", "LocalDate"),
+    ("decimal[]", "BigDecimal[]", "Array<BigDecimal>"),
+    ("date[]", "LocalDate[]", "Array<LocalDate>"),
+    ("decimal[][]", "BigDecimal[][]", "Array<Array<BigDecimal>>"),
+    ("date[][]", "LocalDate[][]", "Array<Array<LocalDate>>"),
+    ("list<decimal>", "List<BigDecimal>", "List<BigDecimal>"),
+    ("list<date>", "List<LocalDate>", "List<LocalDate>"),
     ("int[][]", "int[][]", "Array<IntArray>"),
     ("long[][]", "long[][]", "Array<LongArray>"),
     ("double[][]", "double[][]", "Array<DoubleArray>"),
@@ -108,6 +116,12 @@ MAPPING_TABLE = (
 def generated(language: Language, case_name: str) -> str:
     generator = JAVA if language is Language.JAVA else KOTLIN
     return generator.generate(CASES[case_name].meta)
+
+
+def stub_of(generator, *params: tuple[str, str], returns: str) -> str:
+    declared = tuple(Param(name, parse_value_type(text)) for name, text in params)
+    signature = FunctionSignature("solve", declared, Returns(parse_value_type(returns)))
+    return generator.generate(replace(CASES["two-sum"].meta, signature=signature))
 
 
 def with_many_params(case: StubCase, count: int) -> StubCase:
@@ -157,6 +171,43 @@ def test_java_header_longer_than_the_column_limit_puts_the_run_command_on_its_ow
 
 def test_java_imports_support_classes_only_when_used():
     assert "import cs.support.*;\nimport java.util.*;\n" in generated(Language.JAVA, "clone-graph")
+
+
+def test_java_imports_big_decimal_and_local_date_between_support_and_util():
+    stub = stub_of(JAVA, ("head", "ListNode"), ("amount", "decimal"), returns="date[]")
+    imports = [line for line in stub.splitlines() if line.startswith("import ")]
+    assert imports == [
+        "import cs.support.*;",
+        "import java.math.BigDecimal;",
+        "import java.time.LocalDate;",
+        "import java.util.*;",
+    ]
+
+
+def test_java_imports_only_the_decimal_and_date_types_in_use():
+    only_decimal = stub_of(JAVA, ("amount", "list<decimal>"), returns="int")
+    only_date = stub_of(JAVA, ("day", "date"), returns="int")
+    assert "import java.math.BigDecimal;\nimport java.util.*;\n" in only_decimal
+    assert "import java.time.LocalDate;\nimport java.util.*;\n" in only_date
+    assert "LocalDate" not in only_decimal
+    assert "BigDecimal" not in only_date
+
+
+def test_kotlin_imports_big_decimal_and_local_date_after_support():
+    stub = stub_of(KOTLIN, ("head", "ListNode"), ("amount", "decimal"), returns="date")
+    imports = [line for line in stub.splitlines() if line.startswith("import ")]
+    assert imports == [
+        "import cs.support.*",
+        "import java.math.BigDecimal",
+        "import java.time.LocalDate",
+    ]
+
+
+def test_kotlin_imports_only_the_decimal_and_date_types_in_use():
+    only_decimal = stub_of(KOTLIN, ("amount", "decimal[]"), returns="int")
+    only_date = stub_of(KOTLIN, ("day", "date"), returns="int")
+    assert "\nimport java.math.BigDecimal\n\nclass" in only_decimal
+    assert "\nimport java.time.LocalDate\n\nclass" in only_date
 
 
 def test_java_omits_support_import_without_nodes():

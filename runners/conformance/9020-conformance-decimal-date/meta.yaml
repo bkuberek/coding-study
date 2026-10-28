@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9020"
+slug: conformance-decimal-date
+title: "Conformance: decimal and date arithmetic"
+status: ready
+difficulty: easy
+track: practical
+kind: design
+signature:
+  class:
+    name: DecimalDates
+    constructor: {params: []}
+    methods:
+      - {name: normalized, params: [{name: value, type: decimal}], returns: {type: decimal}}
+      - {name: add, params: [{name: left, type: decimal}, {name: right, type: decimal}], returns: {type: decimal}}
+      - {name: total, params: [{name: values, type: "decimal[]"}], returns: {type: decimal}}
+      - {name: roundHalfUp, params: [{name: value, type: decimal}], returns: {type: decimal}}
+      - {name: roundHalfEven, params: [{name: value, type: decimal}], returns: {type: decimal}}
+      - {name: prorate, params: [{name: premium, type: decimal}, {name: days, type: int}, {name: totalDays, type: int}], returns: {type: decimal}}
+      - {name: addDays, params: [{name: day, type: date}, {name: days, type: int}], returns: {type: date}}
+      - {name: daysBetween, params: [{name: start, type: date}, {name: end, type: date}], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: arithmetic, name: "Exact decimal arithmetic with explicit rounding, and calendar-day arithmetic", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

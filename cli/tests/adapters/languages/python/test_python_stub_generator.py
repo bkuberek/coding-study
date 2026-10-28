@@ -48,6 +48,12 @@ def test_python_stub_matches_its_golden(stub_case: StubCase):
         ("string", "str"),
         ("char", "str"),
         ("char[]", "list[str]"),
+        ("decimal", "Decimal"),
+        ("date", "date"),
+        ("decimal[]", "list[Decimal]"),
+        ("date[][]", "list[list[date]]"),
+        ("list<decimal>", "list[Decimal]"),
+        ("list<date>", "list[date]"),
         ("double[][]", "list[list[float]]"),
         ("list<long>", "list[int]"),
         ("list<int[]>", "list[list[int]]"),
@@ -88,6 +94,37 @@ def test_stub_without_node_types_imports_nothing():
 def test_imports_only_the_node_classes_in_use_sorted():
     meta = function_meta(("root", "TreeNode"), ("lists", "ListNode[]"), returns="TreeNode")
     assert "from cs_support import ListNode, TreeNode" in stub_lines(meta)
+
+
+def test_imports_the_decimal_and_date_types_in_use_from_the_standard_library():
+    meta = function_meta(("amounts", "list<decimal>"), ("day", "date"), returns="decimal")
+    assert stub_lines(meta)[2:6] == [
+        "from datetime import date",
+        "from decimal import Decimal",
+        "",
+        "",
+    ]
+
+
+def test_imports_only_decimal_when_only_decimal_is_used():
+    meta = function_meta(("amount", "decimal[][]"), returns="int")
+    assert stub_lines(meta)[2:5] == ["from decimal import Decimal", "", ""]
+
+
+def test_imports_only_date_when_only_date_is_used():
+    meta = function_meta(("day", "int"), returns="date[]")
+    assert stub_lines(meta)[2:5] == ["from datetime import date", "", ""]
+
+
+def test_standard_library_imports_come_before_the_support_import_in_their_own_block():
+    meta = function_meta(("amount", "decimal"), ("head", "ListNode"), returns="date")
+    assert stub_lines(meta)[2:7] == [
+        "from datetime import date",
+        "from decimal import Decimal",
+        "",
+        "from cs_support import ListNode",
+        "",
+    ]
 
 
 def test_function_names_and_parameters_are_snake_case():
