@@ -30,7 +30,7 @@ Four constraints shaped the answer:
 ## Consequences
 
 - Comparators, the oracle and generated cases need no change, and the existing problems and their stubs are untouched. Generators return decimals and dates as strings, because `Decimal` and `date` objects are not JSON.
-- Authors write expected decimals as `"2500"`, never `"2500.00"`. The `float` comparator applies to JSON numbers only, so it does nothing for a decimal.
+- Authors write expected decimals as `"2500"`, never `"2500.00"`. The `float` comparator applies to JSON numbers only, so it does nothing for a decimal, and check S8 rejects it where the compared outputs hold `decimal` and no `double`.
 - The `Decimal` class is about 200 lines to maintain, and its API is not an industry API. It keeps big.js names so the habits transfer, and its unit tests pin the rounding to the results of Python's `decimal` and Java's `BigDecimal`.
 - A TypeScript `date` is a `string` in stubs, so the stub does not tell a date from other text. ISO strings sort like dates, and calendar arithmetic uses `Date.UTC`.
 - Statements show decimals and dates without quotes, typed by the signature (`2500.50`, `2026-01-01`); failure reports show them as quoted JSON strings.

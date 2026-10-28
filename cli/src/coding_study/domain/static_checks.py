@@ -43,8 +43,9 @@ from coding_study.domain.problem_files import (
     solution_file,
 )
 from coding_study.domain.rubric import LLD_RUBRIC_SECTIONS, rubric_issues
-from coding_study.domain.signature import ClassSignature
+from coding_study.domain.signature import ClassSignature, FunctionSignature, Method, output_type
 from coding_study.domain.statement import example_marker
+from coding_study.domain.type_dsl import Scalar, scalars_of
 from coding_study.domain.value_checks import case_issues
 
 PROBLEM_SECTIONS = (
@@ -115,6 +116,7 @@ def static_checks(content: ProblemContent) -> StaticReport:
         _ExplanationChecks(issues, meta, Explanation(content.explanation)).check()
     _solution_files(issues, content)
     _companion_files(issues, content)
+    _float_comparator(issues, meta)
     _perf(issues, content)
     _levels(issues, content.problem)
     issues.errors += concurrency_issues(_concurrency_content(content))
@@ -214,6 +216,45 @@ def _companion_files(issues: _Issues, content: ProblemContent) -> None:
     if content.rubric is not None:
         for message in rubric_issues(content.rubric, LLD_RUBRIC_SECTIONS):
             issues.error(RUBRIC_FILE, message)
+
+
+def _float_comparator(issues: _Issues, meta: ProblemMeta) -> None:
+    """S8: `float` only where a double is compared, because decimals always compare exactly."""
+    signature, comparator = meta.signature, meta.comparator
+    members = signature.methods if isinstance(signature, ClassSignature) else (signature,)
+    if comparator.type is ComparatorType.FLOAT and _decimal_without_double(members):
+        issues.error(META_FILE, _float_on_decimal(signature), "comparator")
+    methods = {member.name: member for member in members if isinstance(member, Method)}
+    for name, comparator_type in comparator.per_method.items():
+        method = methods.get(name)
+        if (
+            comparator_type is ComparatorType.FLOAT
+            and method
+            and _decimal_without_double((method,))
+        ):
+            issues.error(META_FILE, _float_on_decimal(method), f"comparator.per_method.{name}")
+
+
+def _decimal_without_double(members: Iterable[FunctionSignature | Method]) -> bool:
+    scalars = {
+        scalar
+        for member in members
+        if (declared := output_type(member)) is not None
+        for scalar in scalars_of(declared)
+    }
+    return Scalar.DECIMAL in scalars and Scalar.DOUBLE not in scalars
+
+
+def _float_on_decimal(owner: FunctionSignature | ClassSignature | Method) -> str:
+    """`owner` is the function or method whose outputs `float` compares, or a whole class."""
+    if isinstance(owner, ClassSignature):
+        subject, fix = f"the methods of {owner.name} return", ComparatorType.OPS
+    else:
+        subject, fix = f"{owner.name} returns", ComparatorType.EXACT
+    return (
+        f'"{ComparatorType.FLOAT}" applies its tolerance to doubles only, and {subject} decimal '
+        f"and no double: decimals compare exactly by value, so use {fix}"
+    )
 
 
 def _perf(issues: _Issues, content: ProblemContent) -> None:

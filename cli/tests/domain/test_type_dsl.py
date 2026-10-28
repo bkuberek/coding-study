@@ -11,6 +11,7 @@ from coding_study.domain.type_dsl import (
     VoidType,
     parse_return_type,
     parse_value_type,
+    scalars_of,
 )
 
 INT = ScalarType(Scalar.INT)
@@ -156,3 +157,17 @@ def test_error_message_quotes_text_and_one_based_column():
 def test_syntax_error_is_a_value_error():
     with pytest.raises(ValueError, match="invalid type"):
         parse_value_type("map<int>")
+
+
+@pytest.mark.parametrize(
+    ("text", "scalars"),
+    [
+        ("decimal", {Scalar.DECIMAL}),
+        ("date[][]", {Scalar.DATE}),
+        ("list<list<double>>", {Scalar.DOUBLE}),
+        ("list<TreeNode>", set[Scalar]()),
+        ("void", set[Scalar]()),
+    ],
+)
+def test_scalars_of_a_type_are_the_scalars_it_is_built_from(text, scalars):
+    assert scalars_of(parse_return_type(text)) == scalars

@@ -14,13 +14,16 @@ from coding_study.domain.problem import (
     StubSource,
     Track,
 )
+from coding_study.domain.signature import Param, Returns
 from coding_study.domain.static_checks import ProblemContent, static_checks
+from coding_study.domain.type_dsl import VoidType, parse_return_type, parse_value_type
 from tests.fakes import repository_root
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 TWO_SUM = PRACTICE / "0001-two-sum"
 LRU = PRACTICE / "0002-lru-cache"
 META = "problems/0001-two-sum/meta.yaml"
+LRU_META = "problems/0002-lru-cache/meta.yaml"
 EXPLANATION = "problems/0001-two-sum/solutions/explanation.md"
 LRU_EXPLANATION = "problems/0002-lru-cache/solutions/explanation.md"
 
@@ -306,6 +309,93 @@ def test_checker_py_needs_the_checker_comparator(problems):
 def test_buggy_stub_needs_a_file_per_language(problems):
     problem = with_meta(problems, stub=StubSource.BUGGY)
     assert len(errors(content(problems, problem=problem))) == 4
+
+
+FLOAT = ComparatorSpec(ComparatorType.FLOAT)
+FLOAT_ON_DECIMAL = (
+    '"float" applies its tolerance to doubles only, and {subject} decimal and no double: '
+    "decimals compare exactly by value, so use {fix}"
+)
+
+
+def comparator_errors(content_: ProblemContent) -> list[str]:
+    return [issue for issue in errors(content_) if ": comparator" in issue]
+
+
+def returning(problems, declared: str, comparator: ComparatorSpec) -> ProblemContent:
+    signature = problems["two-sum"].meta.signature
+    returns = replace(signature.returns, type=parse_return_type(declared))
+    problem = with_meta(
+        problems, signature=replace(signature, returns=returns), comparator=comparator
+    )
+    return content(problems, problem=problem)
+
+
+def lru_returning(problems, get: str, put: str, comparator: ComparatorSpec) -> ProblemContent:
+    lru = problems["lru-cache"]
+    signature = lru.meta.signature
+    get_method, put_method = signature.methods
+    methods = (
+        replace(get_method, returns=Returns(parse_return_type(get))),
+        replace(put_method, returns=Returns(parse_return_type(put))),
+    )
+    meta = replace(lru.meta, signature=replace(signature, methods=methods), comparator=comparator)
+    return content(problems, "lru-cache", problem=replace(lru, meta=meta))
+
+
+def test_float_comparator_on_a_decimal_return_is_an_error(problems):
+    assert comparator_errors(returning(problems, "list<decimal>", FLOAT)) == [
+        f"{META}: comparator: " + FLOAT_ON_DECIMAL.format(subject="twoSum returns", fix="exact")
+    ]
+
+
+def test_float_comparator_on_a_double_return_is_fine(problems):
+    assert comparator_errors(returning(problems, "double[]", FLOAT)) == []
+
+
+def test_exact_comparator_on_a_decimal_return_is_fine(problems):
+    assert (
+        comparator_errors(returning(problems, "decimal", ComparatorSpec(ComparatorType.EXACT)))
+        == []
+    )
+
+
+def test_float_comparator_on_a_decimal_output_from_parameter_is_an_error(problems):
+    signature = problems["two-sum"].meta.signature
+    decimals = Param("amounts", parse_value_type("decimal[]"))
+    returns = Returns(VoidType(), output_from="amounts")
+    problem = with_meta(
+        problems,
+        signature=replace(signature, params=(decimals,), returns=returns),
+        comparator=FLOAT,
+    )
+    assert comparator_errors(content(problems, problem=problem)) == [
+        f"{META}: comparator: " + FLOAT_ON_DECIMAL.format(subject="twoSum returns", fix="exact")
+    ]
+
+
+def test_float_comparator_on_methods_returning_only_decimals_is_an_error(problems):
+    assert comparator_errors(lru_returning(problems, "decimal", "void", FLOAT)) == [
+        f"{LRU_META}: comparator: "
+        + FLOAT_ON_DECIMAL.format(subject="the methods of LRUCache return", fix="ops")
+    ]
+
+
+def test_float_comparator_on_methods_returning_a_double_too_is_fine(problems):
+    assert comparator_errors(lru_returning(problems, "decimal", "double", FLOAT)) == []
+
+
+def test_per_method_float_on_a_decimal_method_is_an_error(problems):
+    per_method = ComparatorSpec(ComparatorType.OPS, per_method={"get": ComparatorType.FLOAT})
+    assert comparator_errors(lru_returning(problems, "list<decimal>", "double", per_method)) == [
+        f"{LRU_META}: comparator.per_method.get: "
+        + FLOAT_ON_DECIMAL.format(subject="get returns", fix="exact")
+    ]
+
+
+def test_per_method_float_on_a_double_method_is_fine(problems):
+    per_method = ComparatorSpec(ComparatorType.OPS, per_method={"put": ComparatorType.FLOAT})
+    assert comparator_errors(lru_returning(problems, "decimal", "double", per_method)) == []
 
 
 def test_lld_problems_need_a_rubric(problems):

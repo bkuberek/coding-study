@@ -100,6 +100,17 @@ def parse_return_type(text: str) -> ReturnType:
     return parse_value_type(text)
 
 
+def scalars_of(declared: ReturnType) -> frozenset[Scalar]:
+    """The scalars `declared` is built from: `{decimal}` for `list<decimal[]>`, none for nodes."""
+    match declared:
+        case ScalarType(scalar):
+            return frozenset({scalar})
+        case ArrayType(element) | ListType(element):
+            return scalars_of(element)
+        case NodeType() | VoidType():
+            return frozenset()
+
+
 @dataclass(frozen=True, slots=True)
 class _Slot:
     """Where a type appears, which bounds the array dimensions allowed on it."""

@@ -329,7 +329,7 @@ def check(case_input: dict, output: object, expected: object | None) -> str | No
 
 Failure reports show input, expected and actual (each truncated to 200 characters) and, for arrays, the first differing index.
 
-`decimal` and `date` values are strings to every comparator. Runners write decimals in canonical form, so `exact` is numeric equality for them, and `unordered` keys work because equal numbers have equal text. `float` tolerance applies to JSON numbers only, so a decimal is never compared with a tolerance. A `checker.py` receives decimals and dates as strings and parses them itself (`Decimal(text)`, `date.fromisoformat(text)`).
+`decimal` and `date` values are strings to every comparator. Runners write decimals in canonical form, so `exact` is numeric equality for them, and `unordered` keys work because equal numbers have equal text. `float` tolerance applies to JSON numbers only, so a decimal is never compared with a tolerance; `cstudy verify --static` (S8) rejects `float`, as the comparator or a `per_method` entry, where the outputs it compares hold `decimal` and no `double`. A `checker.py` receives decimals and dates as strings and parses them itself (`Decimal(text)`, `date.fromisoformat(text)`).
 
 ## Operation sequences (design problems)
 
