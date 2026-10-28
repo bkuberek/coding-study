@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0218"
+slug: contractor-exposure-rollup
+title: Contractor Exposure Rollup
+status: ready
+difficulty: medium
+track: practical
+kind: function
+patterns: [graphs]
+signature:
+  function:
+    name: totalExposure
+    params:
+      - {name: edges, type: "string[][]"}
+      - {name: contractors, type: "string[]"}
+      - {name: exposures, type: "decimal[]"}
+      - {name: root, type: string}
+    returns: {type: decimal}
+comparator: {type: exact}
+approaches:
+  - {id: iterative-dfs, name: Iterative depth-first search with on-path and finished sets, role: optimal, time: "O(V + E)", space: "O(V + E)", time_class: "n", space_class: "n"}
+related: [course-schedule]
+estimate_minutes: 25
