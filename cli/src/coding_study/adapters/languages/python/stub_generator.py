@@ -8,14 +8,20 @@ long. Imports come in isort order: the standard library's `date` and `Decimal` f
 support classes after a blank line.
 """
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from coding_study.domain.concurrency import ConcurrencyModel, model_text
 from coding_study.domain.layout import statement_path
 from coding_study.domain.naming import member_name
 from coding_study.domain.problem import Language, ProblemMeta
-from coding_study.domain.signature import ClassSignature, FunctionSignature, Param, Signature
+from coding_study.domain.signature import (
+    ClassSignature,
+    FunctionSignature,
+    Param,
+    Signature,
+    declared_types,
+)
 from coding_study.domain.type_dsl import (
     ArrayType,
     ListType,
@@ -25,6 +31,7 @@ from coding_study.domain.type_dsl import (
     Scalar,
     ScalarType,
     VoidType,
+    scalars_of,
 )
 
 LINE_LENGTH = 88
@@ -122,27 +129,16 @@ def _is_async(meta: ProblemMeta) -> bool:
 
 
 def _stdlib_import(signature: Signature) -> str | None:
-    used = {scalar for value_type in _declared_types(signature) for scalar in _scalars(value_type)}
+    used = {scalar for value_type in declared_types(signature) for scalar in scalars_of(value_type)}
     lines = [line for scalar, line in _STDLIB_IMPORTS if scalar in used]
     return "\n".join(lines) if lines else None
 
 
 def _support_import(signature: Signature) -> str | None:
-    kinds = {kind for value_type in _declared_types(signature) for kind in _node_kinds(value_type)}
+    kinds = {kind for value_type in declared_types(signature) for kind in _node_kinds(value_type)}
     if not kinds:
         return None
     return f"from {SUPPORT_MODULE} import {', '.join(sorted(kinds))}"
-
-
-def _declared_types(signature: Signature) -> Iterator[ReturnType]:
-    if isinstance(signature, FunctionSignature):
-        yield from (param.type for param in signature.params)
-        yield signature.returns.type
-        return
-    yield from (param.type for param in signature.constructor_params)
-    for method in signature.methods:
-        yield from (param.type for param in method.params)
-        yield method.returns.type
 
 
 def _node_kinds(value_type: ReturnType) -> set[NodeKind]:
@@ -151,16 +147,6 @@ def _node_kinds(value_type: ReturnType) -> set[NodeKind]:
             return {kind}
         case ArrayType(element) | ListType(element):
             return _node_kinds(element)
-        case _:
-            return set()
-
-
-def _scalars(value_type: ReturnType) -> set[Scalar]:
-    match value_type:
-        case ScalarType(scalar):
-            return {scalar}
-        case ArrayType(element) | ListType(element):
-            return _scalars(element)
         case _:
             return set()
 

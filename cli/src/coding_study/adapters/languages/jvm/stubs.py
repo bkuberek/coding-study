@@ -25,8 +25,8 @@ from coding_study.domain.type_dsl import (
     NodeType,
     ReturnType,
     Scalar,
-    ScalarType,
     ValueType,
+    scalars_of,
 )
 
 INDENT = "    "
@@ -113,7 +113,7 @@ class _JvmStub:
             routines=routines,
             uses_nodes=any(_mentions_node(declared) for declared in declared_types),
             scalars=frozenset(
-                scalar for declared in declared_types for scalar in _mentioned_scalars(declared)
+                scalar for declared in declared_types for scalar in scalars_of(declared)
             ),
             concurrency=(
                 model_text(meta.concurrency, language) if meta.concurrency is not None else None
@@ -233,16 +233,6 @@ def _mentions_node(declared_type: ReturnType) -> bool:
             return _mentions_node(element)
         case _:
             return False
-
-
-def _mentioned_scalars(declared_type: ReturnType) -> set[Scalar]:
-    match declared_type:
-        case ScalarType(scalar):
-            return {scalar}
-        case ArrayType(element) | ListType(element):
-            return _mentioned_scalars(element)
-        case _:
-            return set()
 
 
 def _java_params(params: Sequence[tuple[str, ValueType]]) -> list[str]:
