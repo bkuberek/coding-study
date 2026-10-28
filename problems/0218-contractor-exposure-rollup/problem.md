@@ -14,8 +14,6 @@ A hierarchy that loops back on itself (a contractor that, through its subcontrac
 - `contractors`, `exposures`: `exposures[i]` is the exposure of `contractors[i]`
 - `root`: the contractor at the top of the rollup
 
-Decimals are shown as quoted strings in the examples, which is how the tests carry them.
-
 ## Output
 
 The sum of the exposures of `root` and every distinct contractor reachable from it by following the edges, or `-1` if a cycle is reachable from `root`. Decimals are compared by value, so `175.00` and `175` are the same answer.

@@ -26,7 +26,7 @@ The rating tables are passed in as parallel arrays, because the data belongs to 
 - `bandLowerBounds`, `bandFactors`: `bandFactors[i]` applies to payrolls from `bandLowerBounds[i]` up to (not including) `bandLowerBounds[i + 1]`; the last band has no upper limit
 - `minimumPremium`: the smallest premium the policy can be sold for
 
-Decimals are exact base-10 numbers. In the examples below they are shown as quoted strings, which is how the tests carry them.
+Decimals are exact base-10 numbers.
 
 ## Output
 

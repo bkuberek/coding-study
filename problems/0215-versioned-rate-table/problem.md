@@ -20,7 +20,7 @@ The version that governs a day is the one with the latest effective date that is
 - `rateAsOf(onDate, classCode)`: the day of the quote and the class being priced.
 - `versionAsOf(onDate)`: the day of the quote.
 
-Each test is a sequence of calls: the constructor first, then the other calls in order. Dates and decimals are shown as quoted strings in the examples, which is how the tests carry them.
+Each test is a sequence of calls: the constructor first, then the other calls in order.
 
 ## Output
 

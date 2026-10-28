@@ -15,8 +15,6 @@ If `changeDate` is before `termStart` or after `termEnd`, the change is outside 
 - `termEnd`: the day the coverage ends (not covered)
 - `changeDate`: the day the cancellation takes effect
 
-Dates and decimals are shown as quoted strings in the examples, which is how the tests carry them.
-
 ## Output
 
 The refund as a decimal, `>= 0`, rounded to cents, or `-1` when `changeDate` is outside `[termStart, termEnd]`. Decimals are compared by value, so `1200.00` and `1200` are the same answer.

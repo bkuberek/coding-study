@@ -13,8 +13,6 @@ Policies may be unsorted, overlap, nest inside each other, repeat, or lie partly
 - `periods`: the policy periods; `periods[i] = [start, end]` with `start < end`
 - `windowStart`, `windowEnd`: the project window `[windowStart, windowEnd)`
 
-Dates are shown as quoted strings in the examples, which is how the tests carry them.
-
 ## Output
 
 The uncovered stretches inside the window as `[start, end]` pairs, sorted by start. Each pair is a maximal gap, so no two returned gaps touch or overlap, and each lies within the window. Return an empty list when the window is fully covered, and the whole window when there are no periods.
