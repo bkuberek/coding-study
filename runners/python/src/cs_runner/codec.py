@@ -3,12 +3,16 @@
 
 Decoding trusts content validated by the CLI but still rejects a value of the wrong shape with
 CaseInputError. Encoding is strict: a value that does not fit its declared type is
-`invalid_output`, with the position of the offending element.
+`invalid_output`, with the position of the offending element. A `decimal` is encoded in canonical
+form (docs/specs/problem-format.md#decimal-and-date) so that the CLI compares it as plain text.
 """
 
 import math
+import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import date, datetime
+from decimal import Decimal
 from typing import TypeIs, cast
 
 from cs_runner.dsl import NodeType, Scalar, ScalarType, SequenceType, ValueType
@@ -20,6 +24,8 @@ INT_BITS = 31
 SAFE_INTEGER_BITS = 53
 """`long` values stay within 2^53 - 1 so TypeScript numbers represent them exactly."""
 MAX_BMP_CODE_POINT = 0xFFFF
+DECIMAL_PATTERN = re.compile(r"-?(0|[1-9][0-9]*)(\.[0-9]+)?")
+DATE_PATTERN = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 
 
 def decode(value: Json, value_type: ValueType) -> object:
@@ -142,6 +148,48 @@ def _char_mismatch(value: object) -> str:
     return _mismatch(Scalar.CHAR, value)
 
 
+def _decode_decimal(value: Json) -> Decimal:
+    if not isinstance(value, str) or DECIMAL_PATTERN.fullmatch(value) is None:
+        raise CaseInputError(_text_mismatch(Scalar.DECIMAL, value))
+    return Decimal(value)
+
+
+def _encode_decimal(value: object) -> str:
+    if not isinstance(value, Decimal):
+        raise InvalidOutputError(_mismatch(Scalar.DECIMAL, value))
+    if not value.is_finite():
+        raise InvalidOutputError(f"non-finite decimal: {value}")
+    return _canonical_decimal(format(value, "f"))
+
+
+def _canonical_decimal(text: str) -> str:
+    """No trailing fractional zeros and no `-0`, so equal numbers have equal text."""
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return "0" if text == "-0" else text
+
+
+def _decode_date(value: Json) -> date:
+    if not isinstance(value, str) or DATE_PATTERN.fullmatch(value) is None:
+        raise CaseInputError(_text_mismatch(Scalar.DATE, value))
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise CaseInputError(f"{value!r} is not a calendar day") from None
+
+
+def _encode_date(value: object) -> str:
+    if not isinstance(value, date) or isinstance(value, datetime):
+        raise InvalidOutputError(_mismatch(Scalar.DATE, value))
+    return value.isoformat()
+
+
+def _text_mismatch(expected: str, value: object) -> str:
+    if isinstance(value, str):
+        return f"expected {expected}, got the string {value!r}"
+    return _mismatch(expected, value)
+
+
 def _mismatch(expected: str, value: object) -> str:
     return f"expected {expected}, got {type_name(value)}"
 
@@ -157,6 +205,8 @@ _SCALAR_DECODERS: Mapping[Scalar, Callable[[Json], object]] = {
     Scalar.BOOL: _decode_bool,
     Scalar.STRING: _decode_string,
     Scalar.CHAR: _decode_char,
+    Scalar.DECIMAL: _decode_decimal,
+    Scalar.DATE: _decode_date,
 }
 _SCALAR_ENCODERS: Mapping[Scalar, Callable[[object], Json]] = {
     Scalar.INT: _INT.encode,
@@ -165,4 +215,6 @@ _SCALAR_ENCODERS: Mapping[Scalar, Callable[[object], Json]] = {
     Scalar.BOOL: _encode_bool,
     Scalar.STRING: _encode_string,
     Scalar.CHAR: _encode_char,
+    Scalar.DECIMAL: _encode_decimal,
+    Scalar.DATE: _encode_date,
 }

@@ -1,4 +1,6 @@
 import math
+from datetime import date, datetime
+from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
 
@@ -31,6 +33,21 @@ ROUND_TRIPS = [
     ("int[][]", [[1, 2], [], [3]]),
     ("double[][]", [[0.5], [1.5, 2.5]]),
     ("char[][]", [["a"], ["b", "c"]]),
+    ("decimal", "0"),
+    ("decimal", "2500"),
+    ("decimal", "-0.5"),
+    ("decimal", "1234.0625"),
+    ("decimal", "0.0000000000000000000000000001"),
+    ("decimal", "9999999999999999999999999999.5"),
+    ("decimal[]", ["1", "2.5", "-3"]),
+    ("decimal[][]", [["1"], [], ["0.01"]]),
+    ("list<decimal>", ["0.01"]),
+    ("date", "2024-02-29"),
+    ("date", "0001-01-01"),
+    ("date", "9999-12-31"),
+    ("date[]", ["2024-01-01", "2023-12-31"]),
+    ("date[][]", [["2024-01-01"], []]),
+    ("list<date>", ["2024-03-01"]),
     ("string[][]", [["x"], ["y", "z"]]),
     ("list<int>", [1, 2]),
     ("list<string>", ["a", "b"]),
@@ -73,6 +90,127 @@ def test_an_integer_double_output_is_written_as_a_float():
 
 def test_a_tuple_output_is_accepted_as_a_list():
     assert encoded((1, 2), "int[]") == [1, 2]
+
+
+def test_decimal_input_keeps_its_scale():
+    value = decoded("2500.00", "decimal")
+    assert (value, value.as_tuple().exponent) == (Decimal("2500"), -2)
+
+
+def test_decimal_input_is_a_decimal():
+    assert isinstance(decoded("2500.00", "decimal"), Decimal)
+
+
+def test_date_input_is_a_date():
+    assert decoded("2024-02-29", "date") == date(2024, 2, 29)
+
+
+def test_decimal_inputs_inside_a_list_are_decimals():
+    assert decoded(["1.50", "2"], "list<decimal>") == [Decimal("1.5"), Decimal(2)]
+
+
+@pytest.mark.parametrize(
+    ("value", "canonical"),
+    [
+        (Decimal("2500.00"), "2500"),
+        (Decimal("2500.50"), "2500.5"),
+        (Decimal("10.10"), "10.1"),
+        (Decimal("100"), "100"),
+        (Decimal("0.00"), "0"),
+        (Decimal("-0"), "0"),
+        (Decimal("-0.0"), "0"),
+        (Decimal("1E+3"), "1000"),
+        (Decimal("0E+3"), "0"),
+        (Decimal("1E-7"), "0.0000001"),
+        (Decimal("-1.50E+1"), "-15"),
+    ],
+)
+def test_a_decimal_output_is_written_in_canonical_form(value, canonical):
+    assert encoded(value, "decimal") == canonical
+
+
+def test_a_decimal_output_beyond_the_context_precision_stays_exact():
+    exact = "123456789012345678901234567890.123456789"
+    assert encoded(Decimal(exact), "decimal") == exact
+
+
+def test_decoding_then_encoding_a_non_canonical_decimal_gives_the_canonical_text():
+    assert encoded(decoded("2500.00", "decimal"), "decimal") == "2500"
+    assert encoded(decoded("-0.0", "decimal"), "decimal") == "0"
+
+
+@pytest.mark.parametrize(
+    ("value", "type_text"),
+    [
+        (2500, "decimal"),
+        (2500.5, "decimal"),
+        (True, "decimal"),
+        (None, "decimal"),
+        ("007", "decimal"),
+        ("1e3", "decimal"),
+        (".5", "decimal"),
+        ("5.", "decimal"),
+        ("+5", "decimal"),
+        (" 5", "decimal"),
+        ("NaN", "decimal"),
+        ("Infinity", "decimal"),
+        ("\uff11\uff12", "decimal"),
+        ("1.5", "date"),
+        (20240101, "date"),
+        ("20240101", "date"),
+        ("2024-1-1", "date"),
+        ("2024-01-01T00:00:00", "date"),
+        ("2023-02-29", "date"),
+        ("0000-01-01", "date"),
+        ("\uff12\uff10\uff12\uff14-01-01", "date"),
+        ("5", "decimal[]"),
+        ([5], "decimal[]"),
+    ],
+)
+def test_a_decimal_or_date_input_of_the_wrong_shape_is_a_case_input_error(value, type_text):
+    with pytest.raises(CaseInputError):
+        decoded(value, type_text)
+
+
+@pytest.mark.parametrize(
+    ("value", "type_text"),
+    [
+        (1.5, "decimal"),
+        (5, "decimal"),
+        (True, "decimal"),
+        (None, "decimal"),
+        ("5", "decimal"),
+        (date(2024, 1, 1), "decimal"),
+        (Decimal("NaN"), "decimal"),
+        (Decimal("sNaN"), "decimal"),
+        (Decimal("Infinity"), "decimal"),
+        (Decimal("-Infinity"), "decimal"),
+        ("2024-01-01", "date"),
+        (20240101, "date"),
+        (None, "date"),
+        (Decimal("1"), "date"),
+        (datetime(2024, 1, 1), "date"),
+        (datetime(2024, 1, 1, 12, 30), "date"),
+    ],
+)
+def test_a_value_that_is_not_a_decimal_or_date_is_invalid_output(value, type_text):
+    with pytest.raises(InvalidOutputError):
+        encoded(value, type_text)
+
+
+def test_a_float_decimal_output_names_the_python_type():
+    with pytest.raises(InvalidOutputError, match=r"\[1\]: expected decimal, got float"):
+        encoded([Decimal(1), 2.5], "list<decimal>")
+
+
+def test_a_non_finite_decimal_output_is_named():
+    with pytest.raises(InvalidOutputError, match="non-finite decimal: NaN"):
+        encoded(Decimal("NaN"), "decimal")
+
+
+def test_a_datetime_output_is_not_a_date():
+    with pytest.raises(InvalidOutputError, match="expected date, got datetime"):
+        encoded(datetime(2024, 1, 1), "date")
 
 
 def test_list_input_builds_list_nodes():

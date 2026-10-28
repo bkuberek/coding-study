@@ -1,12 +1,15 @@
 """Runs the cases of each job and reports them as events (docs/specs/runners.md).
 
-Inputs are decoded fresh for every case. `duration_ns` covers only the calls into user code:
-decoding inputs and encoding outputs are outside the timed region.
+Inputs are decoded fresh for every case, and every case starts with a fresh `decimal` context, so
+code that changes the precision or rounding cannot affect a later case. `duration_ns` covers only
+the calls into user code: decoding inputs and encoding outputs are outside the timed region.
 """
 
 import time
 from collections.abc import Callable, Sequence
+from contextlib import AbstractContextManager
 from dataclasses import dataclass, replace
+from decimal import Context, localcontext
 from functools import partial
 
 from cs_runner.calls import bind
@@ -83,6 +86,11 @@ def _call(target: Callable[..., object], arguments: Sequence[object]) -> _TimedC
     return _TimedCall(value, None, time.perf_counter_ns() - started)
 
 
+def _fresh_decimal_context() -> AbstractContextManager[Context]:
+    """The current thread's decimal context becomes a default one until the block ends."""
+    return localcontext(Context())
+
+
 def input_error(error: CaseInputError) -> UserError:
     return UserError(type(error).__name__, str(error))
 
@@ -110,7 +118,7 @@ class FunctionTarget:
             call = bind(self._job.function, case.values)
         except CaseInputError as error:
             return Raised(input_error(error), duration_ns=0)
-        with capture_output() as output:
+        with _fresh_decimal_context(), capture_output() as output:
             timed = _call(self._function, call.arguments)
         stdout = output.text()
         if timed.error is not None:
@@ -132,7 +140,7 @@ class ClassTarget:
 
     def run(self, case: BenchCase) -> SequentialOutcome:
         """One case as `cstudy test` runs it; raises CaseInputError for function arguments."""
-        with capture_output() as output:
+        with _fresh_decimal_context(), capture_output() as output:
             outcome = _OperationSequence(self._job, self._design).run(_operation_case(case))
         return replace(outcome, stdout=output.text())
 

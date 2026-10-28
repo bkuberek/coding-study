@@ -3,6 +3,8 @@ package cs.runner;
 import cs.support.GraphNode;
 import cs.support.ListNode;
 import cs.support.TreeNode;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 /** A type from the signature DSL (docs/specs/problem-format.md#type-dsl). */
@@ -38,7 +40,9 @@ sealed interface DslType permits DslType.Scalar, DslType.ArrayOf, DslType.ListOf
         DOUBLE("double", double.class),
         BOOL("bool", boolean.class),
         STRING("string", String.class),
-        CHAR("char", char.class);
+        CHAR("char", char.class),
+        DECIMAL("decimal", BigDecimal.class),
+        DATE("date", LocalDate.class);
 
         final String dslName;
         final Class<?> jvmClass;

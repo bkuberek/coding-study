@@ -7,7 +7,8 @@ build outputs, sharing its runner runtime.
 
 import shutil
 from collections.abc import Iterator
-from dataclasses import replace
+from contextlib import contextmanager
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import pytest
@@ -57,7 +58,7 @@ from coding_study.domain.runs import (
     TimedOut,
 )
 from coding_study.domain.signature import FunctionSignature, Param, Returns
-from coding_study.domain.type_dsl import Scalar, ScalarType
+from coding_study.domain.type_dsl import Scalar, ScalarType, parse_value_type
 from tests.helpers import REPOSITORY_ROOT, RUNNER_TRUNCATION_NOTICE, sequential_conformance_suite
 from tests.stub_contract import STUB_CASES
 from tests.workspaces import workspace_like
@@ -105,6 +106,40 @@ BROKEN_SOURCES = {
     Language.JAVA: "package practice.broken_build;\n\npublic class Solution {\n    int x = ;\n}\n",
     Language.KOTLIN: "package practice.broken_build\n\nclass Solution {\n    val x: Int = \n}\n",
 }
+
+
+@dataclass(frozen=True, slots=True)
+class Behavior:
+    """A one-parameter Java function of `type_text` whose body is `body`."""
+
+    slug: str
+    type_text: str
+    body: str
+
+    @property
+    def meta(self) -> ProblemMeta:
+        declared = parse_value_type(self.type_text)
+        signature = FunctionSignature("behave", (Param("value", declared),), Returns(declared))
+        return replace(TWO_SUM, slug=self.slug, signature=signature)
+
+    @property
+    def source(self) -> str:
+        package = self.slug.replace("-", "_")
+        java_type = {"decimal": "BigDecimal", "date": "LocalDate"}[self.type_text]
+        return (
+            f"package practice.{package};\n\n"
+            "import java.math.BigDecimal;\nimport java.time.LocalDate;\n\n"
+            f"public class Solution {{\n    public {java_type} behave({java_type} value) {{\n"
+            f"        {self.body}\n    }}\n}}\n"
+        )
+
+
+NULL_DECIMAL = Behavior("null-decimal", "decimal", "return null;")
+NULL_DATE = Behavior("null-date", "date", "return null;")
+FAR_FUTURE = Behavior("far-future", "date", "return LocalDate.of(10000, 1, 1);")
+YEAR_ZERO = Behavior("year-zero", "date", "return LocalDate.of(0, 1, 1);")
+PADDED_DECIMAL = Behavior("padded-decimal", "decimal", "return value.setScale(4);")
+EXPONENT_DECIMAL = Behavior("exponent-decimal", "decimal", 'return new BigDecimal("1E+2");')
 STUB_GENERATORS = {
     Language.JAVA: create_java_stub_generator(),
     Language.KOTLIN: create_kotlin_stub_generator(),
@@ -259,6 +294,53 @@ def test_cases_run_on_a_stack_deep_enough_for_heavy_recursion(root):
     outcome = report.job(DEEP_RECURSION.slug).cases[0].outcome
     output = outcome.output if isinstance(outcome, Returned) else outcome
     assert output == RECURSION_DEPTH
+
+
+@contextmanager
+def written(root: Path, behavior: Behavior) -> Iterator[None]:
+    path = root / stub_path(behavior.meta, Language.JAVA)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(behavior.source)
+    try:
+        yield
+    finally:
+        shutil.rmtree(path.parent)
+
+
+def behavior_outcome(root: Path, behavior: Behavior, value: str) -> CaseOutcome:
+    case = RunCase("c", FunctionInput({"value": value}), DEFAULT_HANG_GUARD_MS)
+    with written(root, behavior):
+        report = user_report(root, behavior.meta, Language.JAVA, case)
+    return report.job(behavior.slug).cases[0].outcome
+
+
+@pytest.mark.parametrize(
+    ("behavior", "value"),
+    [
+        (NULL_DECIMAL, "2500.00"),
+        (NULL_DATE, "2024-02-29"),
+        (FAR_FUTURE, "2024-02-29"),
+        (YEAR_ZERO, "2024-02-29"),
+    ],
+    ids=lambda item: item.slug if isinstance(item, Behavior) else "",
+)
+def test_a_decimal_or_date_the_runner_cannot_encode_is_invalid_output(root, behavior, value):
+    assert isinstance(behavior_outcome(root, behavior, value), InvalidOutput)
+
+
+@pytest.mark.parametrize(
+    ("behavior", "value", "canonical"),
+    [
+        (PADDED_DECIMAL, "2500.5", "2500.5"),
+        (PADDED_DECIMAL, "0.00", "0"),
+        (PADDED_DECIMAL, "-0", "0"),
+        (EXPONENT_DECIMAL, "1", "100"),
+    ],
+    ids=lambda item: item.slug if isinstance(item, Behavior) else "",
+)
+def test_a_decimal_output_is_written_in_canonical_form(root, behavior, value, canonical):
+    outcome = behavior_outcome(root, behavior, value)
+    assert (outcome.output if isinstance(outcome, Returned) else outcome) == canonical
 
 
 @pytest.fixture

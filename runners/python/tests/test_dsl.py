@@ -19,6 +19,19 @@ def test_parses_a_scalar():
     assert parse_value_type("double") == ScalarType(Scalar.DOUBLE)
 
 
+def test_parses_decimal_and_date_scalars():
+    assert parse_value_type("decimal") == ScalarType(Scalar.DECIMAL)
+    assert parse_value_type("date") == ScalarType(Scalar.DATE)
+
+
+def test_parses_arrays_and_lists_of_decimals_and_dates():
+    decimal, date = ScalarType(Scalar.DECIMAL), ScalarType(Scalar.DATE)
+    assert parse_value_type("decimal[]") == parse_value_type("list<decimal>")
+    assert parse_value_type("decimal[]") == SequenceType(decimal)
+    assert parse_value_type("date[][]") == SequenceType(SequenceType(date))
+    assert parse_value_type("list<date>") == SequenceType(date)
+
+
 def test_parses_a_node():
     assert parse_value_type("TreeNode") == NodeType(NodeKind.TREE_NODE)
 

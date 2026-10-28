@@ -21,6 +21,8 @@ class Scalar(StrEnum):
     BOOL = "bool"
     STRING = "string"
     CHAR = "char"
+    DECIMAL = "decimal"
+    DATE = "date"
 
 
 class NodeKind(StrEnum):

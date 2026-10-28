@@ -8,12 +8,22 @@ import cs.support.ListNode;
 import cs.support.TreeNode;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
+import java.time.DateTimeException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
-/** JSON values to JVM values and back, driven by the DSL type (the mapping table). */
+/**
+ * JSON values to JVM values and back, driven by the DSL type (the mapping table). A decimal is
+ * encoded in canonical form (docs/specs/problem-format.md#decimal-and-date), so the CLI compares
+ * it as plain text.
+ */
 final class Values {
+    private static final Pattern DECIMAL_TEXT = Pattern.compile("-?(0|[1-9][0-9]*)(\\.[0-9]+)?");
+    private static final Pattern DATE_TEXT = Pattern.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}");
+
     private Values() {
     }
 
@@ -59,7 +69,29 @@ final class Values {
                 }
                 yield text.charAt(0);
             }
+            case DECIMAL -> new BigDecimal(matching(DECIMAL_TEXT, string(type, json), type, json));
+            case DATE -> decodeDate(type, json);
         };
+    }
+
+    private static LocalDate decodeDate(DslType.Scalar type, JsonElement json) {
+        String text = matching(DATE_TEXT, string(type, json), type, json);
+        try {
+            LocalDate day = LocalDate.parse(text);
+            if (day.getYear() >= 1) {
+                return day;
+            }
+        } catch (DateTimeException error) {
+            // falls through to the malformed value below
+        }
+        throw malformed(type, json);
+    }
+
+    private static String matching(Pattern pattern, String text, DslType type, JsonElement json) {
+        if (!pattern.matcher(text).matches()) {
+            throw malformed(type, json);
+        }
+        return text;
     }
 
     private static Object decodeArray(DslType.ArrayOf type, JsonElement json) {
@@ -122,11 +154,27 @@ final class Values {
             case BOOL -> value instanceof Boolean flag ? new JsonPrimitive(flag) : null;
             case STRING -> value instanceof String text ? new JsonPrimitive(text) : null;
             case CHAR -> value instanceof Character character ? new JsonPrimitive(character) : null;
+            case DECIMAL -> value instanceof BigDecimal number ? canonical(number) : null;
+            case DATE -> value instanceof LocalDate day ? calendarDay(day) : null;
         };
         if (encoded == null) {
             throw mismatch(type, value);
         }
         return encoded;
+    }
+
+    private static JsonPrimitive canonical(BigDecimal number) {
+        if (number.signum() == 0) {
+            return new JsonPrimitive("0");
+        }
+        return new JsonPrimitive(number.stripTrailingZeros().toPlainString());
+    }
+
+    private static JsonPrimitive calendarDay(LocalDate day) throws InvalidOutputException {
+        if (day.getYear() < 1 || day.getYear() > 9999) {
+            throw new InvalidOutputException("date " + day + " is outside years 0001 to 9999");
+        }
+        return new JsonPrimitive(day.toString());
     }
 
     private static JsonPrimitive finite(double number) throws InvalidOutputException {

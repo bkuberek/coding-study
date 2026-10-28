@@ -1,15 +1,19 @@
 // JSON encodings of the type DSL (docs/specs/problem-format.md#type-mapping and
 // #serialization-of-linked-structures). Inputs are trusted (the CLI validates content); outputs
 // come from user code, so every encoder checks the value and throws InvalidOutput with a reason.
-// Node objects are duck-typed: any object with the right fields is accepted.
+// Node objects and Decimals are duck-typed: any object with the right fields is accepted. A
+// decimal is encoded in canonical form (#decimal-and-date) so the CLI compares it as plain text.
 
-import { GraphNode, ListNode, TreeNode } from "../support.ts";
+import { Decimal, GraphNode, ListNode, TreeNode } from "../support.ts";
 import type { NodeKind, Scalar, TypeSpec } from "./types.ts";
 
 export const MAX_LIST_NODES = 100_000;
 const INT_MIN = -(2 ** 31);
 const INT_MAX = 2 ** 31 - 1;
 const QUOTED_STRING_LIMIT = 40;
+const DECIMAL_INPUT = /^-?(0|[1-9][0-9]*)(\.[0-9]+)?$/;
+const DATE_TEXT = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/;
+const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 /** A return value that cannot be serialized as the declared type. */
 export class InvalidOutput extends Error {}
@@ -19,9 +23,16 @@ export class InvalidInput extends Error {}
 
 type NodeObject = Record<string, unknown>;
 
+interface DecimalFields {
+  readonly unscaled: bigint;
+  readonly scale: number;
+}
+
 interface ScalarRule {
   readonly accepts: (value: unknown) => boolean;
   readonly expected: string;
+  /** The JSON form of an accepted value, when it differs from the value itself. */
+  readonly toJson?: (value: unknown) => unknown;
 }
 
 const SCALAR_RULES: Readonly<Record<Scalar, ScalarRule>> = {
@@ -43,6 +54,15 @@ const SCALAR_RULES: Readonly<Record<Scalar, ScalarRule>> = {
     accepts: (value) => typeof value === "string" && value.length === 1,
     expected: "a char (string of length 1)",
   },
+  decimal: {
+    accepts: isDecimal,
+    expected: "a Decimal (import it from #support)",
+    toJson: (value) => canonicalDecimal(value as DecimalFields),
+  },
+  date: {
+    accepts: isCalendarDay,
+    expected: "a date (a YYYY-MM-DD string naming a real day)",
+  },
 };
 
 const NODE_FIELDS: Readonly<Record<NodeKind, readonly string[]>> = {
@@ -59,6 +79,8 @@ export function decode(json: unknown, spec: TypeSpec): unknown {
       );
     case "node":
       return NODE_DECODERS[spec.node](json);
+    case "scalar":
+      return spec.scalar === "decimal" ? decodeDecimal(json) : json;
     default:
       return json;
   }
@@ -198,7 +220,51 @@ function encodeScalar(value: unknown, scalar: Scalar, path: string): unknown {
   if (!rule.accepts(value)) {
     fail(`expected ${rule.expected}, got ${describe(value)}`, path);
   }
-  return value;
+  return rule.toJson === undefined ? value : rule.toJson(value);
+}
+
+function decodeDecimal(json: unknown): Decimal {
+  if (typeof json !== "string" || !DECIMAL_INPUT.test(json)) {
+    throw new InvalidInput(`expected a decimal string, got ${describe(json)}`);
+  }
+  return new Decimal(json);
+}
+
+function isDecimal(value: unknown): value is DecimalFields {
+  return (
+    isObject(value) &&
+    typeof value["unscaled"] === "bigint" &&
+    Number.isSafeInteger(value["scale"]) &&
+    (value["scale"] as number) >= 0
+  );
+}
+
+/** The decimal's plain text without trailing fractional zeros: `2500.00` is `2500`. */
+function canonicalDecimal(value: DecimalFields): string {
+  const text = new Decimal(value.unscaled, value.scale).toString();
+  return text.includes(".") ? text.replace(/\.?0+$/, "") : text;
+}
+
+function isCalendarDay(value: unknown): value is string {
+  const match = typeof value === "string" ? DATE_TEXT.exec(value) : null;
+  if (match === null) {
+    return false;
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  return (
+    year >= 1 &&
+    month >= 1 &&
+    month <= 12 &&
+    day >= 1 &&
+    day <= daysIn(year, month)
+  );
+}
+
+function daysIn(year: number, month: number): number {
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  return month === 2 && leap ? 29 : (DAYS_IN_MONTH[month - 1] as number);
 }
 
 function encodeArray(

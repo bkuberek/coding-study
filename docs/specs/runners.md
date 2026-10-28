@@ -93,6 +93,8 @@ How runners apply the node modifiers of [problem-format](problem-format.md#modif
 | Output limit | Standard output and standard error share one buffer that keeps the first 4096 bytes of UTF-8, never splitting a character; when anything was dropped, the runner appends exactly `\n[output truncated at 4 KiB]\n` | same | same |
 | Fresh inputs | deserialize per case (and per bench repetition) | same | same |
 | Node classes | duck-typed field access, never `instanceof` | same | `cs.support` classes |
+| Decimal and date output | `decimal` must be a finite `Decimal` and is written as `format(value, "f")` without trailing fractional zeros (`-0` as `0`); `date` must be a `date` that is not a `datetime`, written by `isoformat()`. Anything else, `float` and `int` included, is `invalid_output` | `decimal` must be a `Decimal` from `#support`, recognized by its `unscaled` and `scale` fields, written the same way; `date` must be a `YYYY-MM-DD` string naming a real day | `decimal` must be a `BigDecimal`, written by `stripTrailingZeros().toPlainString()` (`0` for zero); `date` must be a `LocalDate` in years 0001 to 9999. `null` and other classes are `invalid_output` |
+| Decimal context | every case starts with a fresh `decimal.Context()` (precision 28, `ROUND_HALF_EVEN`), so a solution that changes the context cannot affect a later case | none | none |
 | Exit from user code | `SystemExit` caught as case error | `process.exit` is replaced with a throwing stub | `System.exit` cannot be blocked on Java 21; the CLI reports the runner exit as a crash on the current case |
 
 ## Event stream (`--out`, JSON Lines)
@@ -113,7 +115,7 @@ Each line is flushed immediately so the CLI can follow progress.
 |----------------------|---------|
 | `ok` | Target returned; `output` holds the serialized value (class kinds: one entry per op) |
 | `error` | Target threw; `error` holds type, message and a trace filtered to user frames (max 10 lines). Class kinds add `op_index` and `partial_output` |
-| `invalid_output` | Return value cannot be serialized as the declared type (wrong type, cycle, too long, alias violation, non-finite double) with a `reason` |
+| `invalid_output` | Return value cannot be serialized as the declared type (wrong type, cycle, too long, alias violation, non-finite double, a `decimal` or `date` that is not one, see [Execution environment](#execution-environment)) with a `reason` |
 | `stalled` | Concurrent stress runs only: workers still unfinished at the run deadline ([Concurrent jobs](#events)) |
 
 Every `case_result` carries `duration_ns`; `stdout` and `error.trace` may be omitted when empty.

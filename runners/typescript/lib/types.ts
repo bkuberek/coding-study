@@ -1,7 +1,15 @@
 // The signature type DSL (docs/specs/problem-format.md#type-dsl), as far as the runner needs it.
 // Arrays and lists are both JavaScript arrays here, so `int[]` and `list<int>` parse alike.
 
-export type Scalar = "int" | "long" | "double" | "bool" | "string" | "char";
+export type Scalar =
+  | "int"
+  | "long"
+  | "double"
+  | "bool"
+  | "string"
+  | "char"
+  | "decimal"
+  | "date";
 export type NodeKind = "ListNode" | "TreeNode" | "GraphNode";
 
 export type TypeSpec =
@@ -21,6 +29,8 @@ const SCALARS: readonly string[] = [
   "bool",
   "string",
   "char",
+  "decimal",
+  "date",
 ];
 const NODE_KINDS: readonly string[] = ["ListNode", "TreeNode", "GraphNode"];
 const ARRAY_SUFFIX = "[]";

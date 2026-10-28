@@ -45,6 +45,7 @@ pytestmark = [
 ]
 
 RUNNER_SCRIPT = REPOSITORY_ROOT / "runners" / "typescript" / "runner.ts"
+SUPPORT_MODULE = REPOSITORY_ROOT / "runners" / "typescript" / "support.ts"
 HANG_GUARD_MS = 5_000
 STDOUT_LIMIT_BYTES = 4096
 
@@ -123,6 +124,65 @@ export class Fragile {
   }
 }
 """
+DECIMAL_BEHAVIORS = """\
+import { Decimal } from "__SUPPORT__";
+
+export function doubles(value: Decimal): Decimal {
+  return value.times(new Decimal(2));
+}
+
+export function sums(values: Decimal[]): Decimal {
+  return values.reduce((sum, value) => sum.plus(value), new Decimal(0));
+}
+
+export function lookalike(value: unknown): unknown {
+  return { unscaled: 250000n, scale: 2 };
+}
+
+export function negativeZero(value: unknown): unknown {
+  return { unscaled: 0n, scale: 3 };
+}
+
+export function floatForDecimal(value: unknown): unknown {
+  return 1.5;
+}
+
+export function bigintForDecimal(value: unknown): unknown {
+  return 5n;
+}
+
+export function stringForDecimal(value: unknown): unknown {
+  return "5";
+}
+
+export function negativeScale(value: unknown): unknown {
+  return { unscaled: 5n, scale: -1 };
+}
+
+export function echoesDate(value: string): string {
+  return value;
+}
+
+export function echoesDates(value: string[]): string[] {
+  return value;
+}
+
+export function nextLeapDay(value: string): string {
+  return "2023-02-29";
+}
+
+export function numberForDate(value: string): unknown {
+  return 20240101;
+}
+
+export function shortDate(value: string): string {
+  return "2024-1-1";
+}
+
+export function dateTime(value: string): string {
+  return "2024-01-01T00:00:00Z";
+}
+"""
 UNSUPPORTED_SYNTAX = "export enum Color {\n  Red,\n}\n"
 INVALID_SYNTAX = (
     "export function anything(value: number): number {\n  const x = ;\n  return x;\n}\n"
@@ -171,6 +231,27 @@ def class_job(target: Path, name: str, methods: tuple[Method, ...], ops: tuple[s
     return RunJob(name, ProblemKind.DESIGN, FileTarget(str(target)), names, signature, (case,))
 
 
+def decimal_jobs(decimals: Path) -> tuple[RunJob, ...]:
+    return (
+        function_job(decimals, "doubles", [{"value": "1.25"}], ("decimal", "decimal")),
+        function_job(
+            decimals, "sums", [{"value": ["1.10", "2.20", "3"]}], ("list<decimal>", "decimal")
+        ),
+        function_job(decimals, "lookalike", [{"value": "1"}], ("decimal", "decimal")),
+        function_job(decimals, "negativeZero", [{"value": "1"}], ("decimal", "decimal")),
+        function_job(decimals, "floatForDecimal", [{"value": "1"}], ("decimal", "decimal")),
+        function_job(decimals, "bigintForDecimal", [{"value": "1"}], ("decimal", "decimal")),
+        function_job(decimals, "stringForDecimal", [{"value": "1"}], ("decimal", "decimal")),
+        function_job(decimals, "negativeScale", [{"value": "1"}], ("decimal", "decimal")),
+        function_job(decimals, "echoesDate", [{"value": "2024-02-29"}], ("date", "date")),
+        function_job(decimals, "echoesDates", [{"value": ["2024-02-29"]}], ("date[]", "date[]")),
+        function_job(decimals, "nextLeapDay", [{"value": "2024-02-29"}], ("date", "date")),
+        function_job(decimals, "numberForDate", [{"value": "2024-02-29"}], ("date", "date")),
+        function_job(decimals, "shortDate", [{"value": "2024-02-29"}], ("date", "date")),
+        function_job(decimals, "dateTime", [{"value": "2024-02-29"}], ("date", "date")),
+    )
+
+
 def jobs(behaviors: Path, project: Path) -> tuple[RunJob, ...]:
     picks = FunctionSignature(
         "picks",
@@ -208,6 +289,7 @@ def jobs(behaviors: Path, project: Path) -> tuple[RunJob, ...]:
         function_job_for(project / "invalid.ts", anything, [{"value": 1}], job_id="invalid"),
         class_job(behaviors, "Stack", (push, pop), ("Stack", "push", "pop")),
         class_job(behaviors, "Fragile", (size,), ("Fragile", "size")),
+        *decimal_jobs(project / "decimals.ts"),
     )
 
 
@@ -216,6 +298,9 @@ def project(tmp_path_factory: pytest.TempPathFactory) -> Path:
     directory = tmp_path_factory.mktemp("typescript-project")
     (directory / "package.json").write_text('{"type": "module"}\n')
     (directory / "behaviors.ts").write_text(BEHAVIORS)
+    (directory / "decimals.ts").write_text(
+        DECIMAL_BEHAVIORS.replace("__SUPPORT__", str(SUPPORT_MODULE))
+    )
     (directory / "unsupported.ts").write_text(UNSUPPORTED_SYNTAX)
     (directory / "invalid.ts").write_text(INVALID_SYNTAX)
     return directory
@@ -372,3 +457,60 @@ def test_bad_request_exits_with_code_2(tmp_path):
     request.write_text(json.dumps({"protocol": 2, "mode": "test", "jobs": []}))
     command = ["node", str(RUNNER_SCRIPT), "--request", str(request), "--out", str(tmp_path / "o")]
     assert subprocess.run(command, capture_output=True, check=False).returncode == 2
+
+
+def test_a_decimal_input_arrives_as_a_decimal(report):
+    assert returned(report, "doubles").output == "2.5"
+
+
+def test_decimal_inputs_in_a_list_arrive_as_decimals(report):
+    assert returned(report, "sums").output == "6.3"
+
+
+def test_a_decimal_output_is_canonical_and_recognized_by_its_fields(report):
+    assert returned(report, "lookalike").output == "2500"
+
+
+def test_a_zero_decimal_output_with_a_scale_is_written_as_zero(report):
+    assert returned(report, "negativeZero").output == "0"
+
+
+def test_a_number_for_a_decimal_is_invalid_output(report):
+    reason = invalid_reason(report, "floatForDecimal")
+    assert reason == "expected a Decimal (import it from #support), got 1.5"
+
+
+def test_a_bigint_for_a_decimal_is_invalid_output(report):
+    assert "got 5n (a bigint)" in invalid_reason(report, "bigintForDecimal")
+
+
+def test_a_string_for_a_decimal_is_invalid_output(report):
+    assert 'got "5"' in invalid_reason(report, "stringForDecimal")
+
+
+def test_a_decimal_with_a_negative_scale_is_invalid_output(report):
+    assert "got an object" in invalid_reason(report, "negativeScale")
+
+
+def test_a_date_passes_through(report):
+    assert returned(report, "echoesDate").output == "2024-02-29"
+
+
+def test_dates_in_an_array_pass_through(report):
+    assert returned(report, "echoesDates").output == ["2024-02-29"]
+
+
+def test_a_date_that_is_not_a_calendar_day_is_invalid_output(report):
+    assert 'got "2023-02-29"' in invalid_reason(report, "nextLeapDay")
+
+
+def test_a_number_for_a_date_is_invalid_output(report):
+    assert "got 20240101" in invalid_reason(report, "numberForDate")
+
+
+def test_a_date_without_zero_padding_is_invalid_output(report):
+    assert 'got "2024-1-1"' in invalid_reason(report, "shortDate")
+
+
+def test_a_timestamp_is_not_a_date(report):
+    assert "expected a date" in invalid_reason(report, "dateTime")
