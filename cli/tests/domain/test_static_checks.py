@@ -102,6 +102,16 @@ def test_shadowed_python_builtins_are_warnings(problems):
     ]
 
 
+def test_names_that_shadow_an_imported_python_type_are_warnings(problems):
+    meta = problems["two-sum"].meta
+    day = Param("date", parse_value_type("date"))
+    signature = replace(meta.signature, params=(day, *meta.signature.params[1:]))
+    problem = with_meta(problems, signature=signature)
+    assert warnings(content(problems, problem=problem)) == [
+        f'{META}: signature: "date" shadows the type date that the Python stub imports'
+    ]
+
+
 # S4
 
 

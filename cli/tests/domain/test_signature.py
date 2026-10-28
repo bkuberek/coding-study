@@ -1,9 +1,11 @@
 from coding_study.domain.signature import (
+    ClassSignature,
     FunctionSignature,
     Method,
     NodeSerialization,
     Param,
     Returns,
+    declared_types,
     output_type,
 )
 from coding_study.domain.type_dsl import (
@@ -18,6 +20,17 @@ from coding_study.domain.type_dsl import (
 DECIMAL = ScalarType(Scalar.DECIMAL)
 DATES = ArrayType(ScalarType(Scalar.DATE))
 LIST_NODE = NodeType(NodeKind.LIST_NODE)
+
+
+def test_declared_types_of_a_function_are_its_params_then_its_return():
+    signature = FunctionSignature("total", (Param("days", DATES),), Returns(DECIMAL))
+    assert list(declared_types(signature)) == [DATES, DECIMAL]
+
+
+def test_declared_types_of_a_class_cover_the_constructor_and_every_method():
+    get = Method("get", (Param("day", DATES),), Returns(DECIMAL))
+    signature = ClassSignature("Table", (Param("head", LIST_NODE),), (get,))
+    assert list(declared_types(signature)) == [LIST_NODE, DATES, DECIMAL]
 
 
 def test_output_type_is_the_return_type():

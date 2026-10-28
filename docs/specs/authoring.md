@@ -235,7 +235,7 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 |----|-------|
 | S1 | `meta.yaml` valid against `schemas/meta.schema.json`; `tests.json` against `schemas/tests.schema.json`; `item.yaml` against `schemas/item.schema.json` ([items](#items)) |
 | S2 | Directory name equals `<id>-<slug>`; ids and slugs unique across `problems/` and `tracks/` |
-| S3 | Signature parses with the type DSL; names valid; no reserved words after per-language conversion |
+| S3 | Signature parses with the type DSL; names valid; no reserved words after per-language conversion. Warnings, not errors: a Python name that shadows a builtin (`sum`), or the type the Python stub imports for the signature (`date` where it uses `date`, `Decimal` where it uses `decimal`) ([naming rules](problem-format.md#naming-rules)) |
 | S4 | Every case input and expected value conforms to the signature (ranges, char length, node encodings, op names and arities, `long` at most 2^53-1, `decimal` and `date` strings; an expected `decimal` is canonical, [Decimal and date](problem-format.md#decimal-and-date)) |
 | S5 | `problem.md` required headings, example markers and hint numbering; progressive: no `## Examples`, one `## Level <n>: <title>` per level as in `meta.yaml`, in order, each with at least one example, and each example in its case's level section |
 | S6 | `explanation.md` sections and subsections per approach; complexity lines equal `meta.yaml`; overview table consistent |

@@ -8,6 +8,7 @@ from coding_study.domain.naming import (
     member_name,
     reserved_name_conflicts,
     shadowed_python_builtins,
+    shadowed_python_imports,
     snake_case,
     symbol_names,
 )
@@ -134,3 +135,34 @@ def test_shadowed_python_builtins_are_reported_once():
 
 def test_shadowing_uses_the_python_name():
     assert shadowed_python_builtins(function("maxValue", "nums")) == ()
+
+
+DATE = ScalarType(Scalar.DATE)
+DECIMAL = ScalarType(Scalar.DECIMAL)
+
+
+def test_a_parameter_named_date_shadows_the_imported_date_type():
+    signature = FunctionSignature("daysLeft", (Param("date", DATE),), Returns(INT))
+    assert shadowed_python_imports(signature) == ("date",)
+
+
+def test_a_method_named_date_shadows_the_imported_date_type():
+    method = Method("date", (), Returns(DATE))
+    signature = ClassSignature("Policy", (), (method,))
+    assert shadowed_python_imports(signature) == ("date",)
+
+
+def test_a_class_named_decimal_shadows_the_imported_decimal_type():
+    method = Method("total", (Param("amount", DECIMAL),), Returns(VoidType()))
+    signature = ClassSignature("Decimal", (), (method,))
+    assert shadowed_python_imports(signature) == ("Decimal",)
+
+
+def test_a_name_shadows_only_a_type_the_signature_uses():
+    signature = FunctionSignature("daysLeft", (Param("date", INT),), Returns(DECIMAL))
+    assert shadowed_python_imports(signature) == ()
+
+
+def test_shadowed_imports_are_reported_once():
+    params = (Param("date", DATE), Param("date", DATE))
+    assert shadowed_python_imports(FunctionSignature("date", params, Returns(DATE))) == ("date",)

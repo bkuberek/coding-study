@@ -1,5 +1,6 @@
 """Problem signatures (docs/specs/problem-format.md#signatures)."""
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -54,6 +55,18 @@ class ClassSignature:
 
 
 type Signature = FunctionSignature | ClassSignature
+
+
+def declared_types(signature: Signature) -> Iterator[ReturnType]:
+    """Every parameter and return type, in declaration order (constructor first for a class)."""
+    if isinstance(signature, FunctionSignature):
+        yield from (param.type for param in signature.params)
+        yield signature.returns.type
+        return
+    yield from (param.type for param in signature.constructor_params)
+    for method in signature.methods:
+        yield from (param.type for param in method.params)
+        yield method.returns.type
 
 
 def output_type(member: FunctionSignature | Method) -> ValueType | None:

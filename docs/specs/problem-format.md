@@ -128,7 +128,7 @@ Loading a problem rejects (content error) a modifier that names a parameter miss
 
 - Canonical names match `^[a-z][A-Za-z0-9]*$` (classes `^[A-Z][A-Za-z0-9]*$`).
 - snake_case conversion: insert `_` before an uppercase letter that follows a lowercase letter or digit, or that precedes a lowercase letter after another uppercase letter; then lowercase (`getHTTPCode` becomes `get_http_code`).
-- After conversion, no name may equal a reserved word in any language: Python `keyword.kwlist`, Java reserved keywords and literals, Kotlin hard keywords, TypeScript reserved words. `cstudy verify` errors on a match and warns on shadowed Python builtins (`list`, `sum`, `id`, ...).
+- After conversion, no name may equal a reserved word in any language: Python `keyword.kwlist`, Java reserved keywords and literals, Kotlin hard keywords, TypeScript reserved words. `cstudy verify` errors on a match and warns on shadowed Python builtins (`list`, `sum`, `id`, ...), and on a Python name equal to a type the stub imports: `date` in a signature that uses `date`, `Decimal` in one that uses `decimal`. A parameter `date: date` hides the type from the body, and a method named `date` hides it from the annotations after it.
 - Python uses module-level functions (idiomatic) rather than LeetCode's `class Solution`; Java and Kotlin use `class Solution` (Java requires a class; Kotlin matches so both share one JVM runner).
 
 ## Type DSL

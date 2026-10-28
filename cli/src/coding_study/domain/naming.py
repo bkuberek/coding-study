@@ -8,11 +8,18 @@ convert names: the CLI sends them in the request (docs/specs/runners.md#request-
 import builtins
 import keyword
 import re
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Set
 from dataclasses import dataclass
 
 from coding_study.domain.problem import Language
-from coding_study.domain.signature import ClassSignature, FunctionSignature, Param, Signature
+from coding_study.domain.signature import (
+    ClassSignature,
+    FunctionSignature,
+    Param,
+    Signature,
+    declared_types,
+)
+from coding_study.domain.type_dsl import Scalar, scalars_of
 
 _SNAKE_CASE_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
@@ -50,6 +57,8 @@ RESERVED_WORDS: Mapping[Language, frozenset[str]] = {
     Language.KOTLIN: _KOTLIN_HARD_KEYWORDS,
 }
 PYTHON_BUILTINS = frozenset(name for name in dir(builtins) if not name.startswith("_"))
+PYTHON_TYPE_IMPORTS: Mapping[Scalar, str] = {Scalar.DATE: "date", Scalar.DECIMAL: "Decimal"}
+"""The name a Python stub imports for each scalar that is not a builtin."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,8 +126,22 @@ def reserved_name_conflicts(signature: Signature) -> tuple[ReservedNameConflict,
 
 def shadowed_python_builtins(signature: Signature) -> tuple[str, ...]:
     """Python names that shadow a builtin such as `list` or `sum` (`cstudy verify` warns)."""
+    return _python_names_in(signature, PYTHON_BUILTINS)
+
+
+def shadowed_python_imports(signature: Signature) -> tuple[str, ...]:
+    """Python names equal to a type the stub imports for this signature: `date` where it uses
+    `date`, `Decimal` where it uses `decimal` (`cstudy verify` warns).
+    """
+    used = {scalar for declared in declared_types(signature) for scalar in scalars_of(declared)}
+    imported = {name for scalar, name in PYTHON_TYPE_IMPORTS.items() if scalar in used}
+    return _python_names_in(signature, imported)
+
+
+def _python_names_in(signature: Signature, names: Set[str]) -> tuple[str, ...]:
+    """The signature's Python names that are in `names`, each once, in declaration order."""
     python_names = (declared.symbol(Language.PYTHON) for declared in _declared_names(signature))
-    return tuple(dict.fromkeys(name for name in python_names if name in PYTHON_BUILTINS))
+    return tuple(dict.fromkeys(name for name in python_names if name in names))
 
 
 def _param_names(params: tuple[Param, ...], language: Language) -> dict[str, str]:

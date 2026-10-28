@@ -19,7 +19,11 @@ from coding_study.domain.generated_cases import expected_source
 from coding_study.domain.layout import SOURCE_EXTENSIONS, language_of_extension
 from coding_study.domain.levels import level_heading
 from coding_study.domain.markdown import MarkdownDocument, MarkdownSection
-from coding_study.domain.naming import reserved_name_conflicts, shadowed_python_builtins
+from coding_study.domain.naming import (
+    reserved_name_conflicts,
+    shadowed_python_builtins,
+    shadowed_python_imports,
+)
 from coding_study.domain.problem import (
     Approach,
     ApproachRole,
@@ -149,7 +153,9 @@ class _Issues:
 
 
 def _names(issues: _Issues, content: ProblemContent) -> None:
-    """S3: no reserved words after per-language conversion; warn on shadowed builtins."""
+    """S3: no reserved words after per-language conversion; warn on shadowed builtins and on
+    shadowed types that the Python stub imports.
+    """
     signature = content.problem.meta.signature
     for conflict in reserved_name_conflicts(signature):
         converted = f' (as "{conflict.symbol}")' if conflict.symbol != conflict.name else ""
@@ -157,6 +163,9 @@ def _names(issues: _Issues, content: ProblemContent) -> None:
         issues.error(META_FILE, message, "signature")
     for name in shadowed_python_builtins(signature):
         issues.warn(META_FILE, f'"{name}" shadows the Python builtin', "signature")
+    for name in shadowed_python_imports(signature):
+        message = f'"{name}" shadows the type {name} that the Python stub imports'
+        issues.warn(META_FILE, message, "signature")
 
 
 def _case_values(issues: _Issues, content: ProblemContent) -> None:
