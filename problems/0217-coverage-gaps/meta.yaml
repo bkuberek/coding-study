@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0217"
+slug: coverage-gaps
+title: Coverage Gaps
+status: ready
+difficulty: medium
+track: practical
+kind: function
+patterns: [intervals]
+signature:
+  function:
+    name: coverageGaps
+    params:
+      - {name: periods, type: "date[][]"}
+      - {name: windowStart, type: date}
+      - {name: windowEnd, type: date}
+    returns: {type: "date[][]"}
+comparator: {type: exact}
+approaches:
+  - {id: sort-and-sweep, name: Sort periods by start and sweep a coverage cursor, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+related: [merge-intervals, insert-interval, interval-list-intersections]
+estimate_minutes: 20

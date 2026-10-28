@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"periods": [["2026-01-01", "2026-03-01"], ["2026-02-01", "2026-04-01"], ["2026-05-01", "2026-07-01"]], "windowStart": "2026-01-01", "windowEnd": "2026-07-01"}, "expected": [["2026-04-01", "2026-05-01"]]},
+    {"id": "ex2", "visible": true, "input": {"periods": [["2026-01-01", "2026-03-01"], ["2026-02-01", "2026-04-01"], ["2026-05-01", "2026-07-01"]], "windowStart": "2026-01-01", "windowEnd": "2026-08-01"}, "expected": [["2026-04-01", "2026-05-01"], ["2026-07-01", "2026-08-01"]]},
+    {"id": "ex3", "visible": true, "input": {"periods": [], "windowStart": "2026-01-01", "windowEnd": "2026-02-01"}, "expected": [["2026-01-01", "2026-02-01"]]},
+    {"id": "h1", "input": {"periods": [["2025-06-01", "2027-06-01"]], "windowStart": "2026-01-01", "windowEnd": "2027-01-01"}, "expected": [], "note": "one period covers more than the window"},
+    {"id": "h2", "input": {"periods": [["2026-01-01", "2026-04-01"], ["2026-04-01", "2026-09-01"], ["2026-09-01", "2027-01-01"]], "windowStart": "2026-01-01", "windowEnd": "2027-01-01"}, "expected": [], "note": "touching periods leave no gap"},
+    {"id": "h3", "input": {"periods": [["2026-08-01", "2026-10-01"], ["2026-01-15", "2026-03-01"], ["2026-02-10", "2026-05-01"], ["2026-09-15", "2026-11-01"]], "windowStart": "2026-01-01", "windowEnd": "2027-01-01"}, "expected": [["2026-01-01", "2026-01-15"], ["2026-05-01", "2026-08-01"], ["2026-11-01", "2027-01-01"]], "note": "unsorted overlapping periods; gaps at start, middle and end"},
+    {"id": "h4", "input": {"periods": [["2025-01-01", "2025-06-01"], ["2027-02-01", "2027-03-01"]], "windowStart": "2026-01-01", "windowEnd": "2027-01-01"}, "expected": [["2026-01-01", "2027-01-01"]], "note": "periods entirely before and after the window"},
+    {"id": "h5", "input": {"periods": [["2026-01-01", "2026-12-01"], ["2026-03-01", "2026-04-01"], ["2026-05-01", "2026-05-02"]], "windowStart": "2026-01-01", "windowEnd": "2027-01-01"}, "expected": [["2026-12-01", "2027-01-01"]], "note": "periods nested inside a longer one"},
+    {"id": "h6", "input": {"periods": [["2026-01-01", "2026-03-01"], ["2026-03-02", "2027-01-01"]], "windowStart": "2026-01-01", "windowEnd": "2027-01-01"}, "expected": [["2026-03-01", "2026-03-02"]], "note": "a one-day gap"},
+    {"id": "h7", "input": {"periods": [["2025-11-01", "2026-02-01"], ["2026-11-01", "2027-03-01"]], "windowStart": "2026-01-01", "windowEnd": "2027-01-01"}, "expected": [["2026-02-01", "2026-11-01"]], "note": "periods crossing both window edges"},
+    {"id": "h8", "input": {"periods": [["2026-04-01", "2026-06-01"], ["2026-04-01", "2026-06-01"], ["2026-04-01", "2026-06-01"]], "windowStart": "2026-01-01", "windowEnd": "2026-07-01"}, "expected": [["2026-01-01", "2026-04-01"], ["2026-06-01", "2026-07-01"]], "note": "identical periods"},
+    {"id": "h9", "input": {"periods": [["2026-05-01", "2026-05-02"]], "windowStart": "2026-05-01", "windowEnd": "2026-05-02"}, "expected": [], "note": "one-day window, covered"},
+    {"id": "h10", "input": {"periods": [["2026-05-02", "2026-05-03"]], "windowStart": "2026-05-01", "windowEnd": "2026-05-02"}, "expected": [["2026-05-01", "2026-05-02"]], "note": "one-day window, period starts on the window's end"},
+    {"id": "h11", "input": {"periods": [["2028-01-01", "2028-02-29"], ["2028-03-01", "2028-12-01"]], "windowStart": "2028-01-01", "windowEnd": "2028-12-01"}, "expected": [["2028-02-29", "2028-03-01"]], "note": "the gap is the leap day"},
+    {"id": "h12", "input": {"periods": [["2026-01-01", "2026-02-01"], ["2026-01-20", "2026-03-01"], ["2026-02-15", "2026-04-01"], ["2026-03-31", "2026-05-01"]], "windowStart": "2026-01-01", "windowEnd": "2026-06-01"}, "expected": [["2026-05-01", "2026-06-01"]], "note": "a chain of overlaps, gap only at the end"}
+  ]
+}
