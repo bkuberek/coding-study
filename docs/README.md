@@ -39,6 +39,7 @@ coding-study is a local, IDE-first interview-prep system: original problems stor
 | [0008](decisions/0008-installable-tool-and-separate-workspaces.md) | `cstudy` is installed with its content bundled, and you practice in a separate workspace created by `cstudy init` |
 | [0009](decisions/0009-ladder-calibration.md) | The ladder check tolerates drift and fixed costs, needs super-polynomial evidence for exponential growth, and treats sublinear classes as one band |
 | [0010](decisions/0010-ide-integration.md) | Workspaces ship VS Code and IntelliJ project files that run `cstudy` and attach debuggers to its runner; `cstudy` stays the judge |
+| [0011](decisions/0011-decimal-and-date-types.md) | `decimal` and `date` are scalar types with string wire forms; runners write decimals in canonical form so the comparators stay type-blind |
 
 ## Conventions
 

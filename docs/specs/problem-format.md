@@ -326,6 +326,8 @@ def check(case_input: dict, output: object, expected: object | None) -> str | No
 
 Failure reports show input, expected and actual (each truncated to 200 characters) and, for arrays, the first differing index.
 
+`decimal` and `date` values are strings to every comparator. Runners write decimals in canonical form, so `exact` is numeric equality for them, and `unordered` keys work because equal numbers have equal text. `float` tolerance applies to JSON numbers only, so a decimal is never compared with a tolerance. A `checker.py` receives decimals and dates as strings and parses them itself (`Decimal(text)`, `date.fromisoformat(text)`).
+
 ## Operation sequences (design problems)
 
 LeetCode-compatible. `ops[0]` is the class name (constructor) and `args[i]` are the arguments of `ops[i]`. `expected[i]` is the return value of `ops[i]`; constructors and `void` methods expect `null`.
@@ -892,6 +894,7 @@ def validate(case_input: dict) -> None:  # optional
 | Rule | Detail |
 |------|--------|
 | Dependencies | Python stdlib only; all randomness from `rng` |
+| Value types | `decimal` and `date` values are strings, because `Decimal` and `date` objects are not JSON |
 | Determinism | Same `(seed, n)` yields identical output; `cstudy verify` checks by calling twice |
 | Size meaning | `n` is the size parameter named in `perf.size_param`; the generator maps it to all dimensions |
 | Users | Generated test cases, oracle cross-check (`cstudy verify --oracle`), oracle inputs of `cstudy test --stress N` ([cli](cli.md#oracle-inputs)), bench size ladder |
