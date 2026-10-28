@@ -233,7 +233,8 @@ Stubs import support classes only when the signature uses them. Java stubs alway
 |--------|---------|
 | `new Decimal("2500.50")`, `new Decimal(42)`, `new Decimal(250050n, 2)` | From text (the scale is kept), from a safe integer, or from the unscaled value and scale; a non-integer `number` throws `RangeError` and malformed text `SyntaxError` |
 | `plus`, `minus`, `times` | Exact; the result scale is the larger scale for `plus` and `minus`, the sum of the scales for `times` |
-| `div(other, scale, mode)`, `round(scale, mode)` | The result has exactly `scale` digits after the point; `mode` is `"HALF_UP"` (ties away from zero) or `"HALF_EVEN"` (ties to the even digit), like Java's `setScale` and Python's `quantize`. `div` by zero throws `RangeError` |
+| `div(other, scale, mode)`, `round(scale, mode)` | The result has exactly `scale` digits after the point, like Java's `setScale` and Python's `quantize`. `mode` is a `RoundingMode` with Java's names: `"DOWN"` (toward zero), `"UP"` (away from zero), `"FLOOR"`, `"CEILING"`, and the nearest neighbor with ties `"HALF_UP"` (away from zero), `"HALF_DOWN"` (toward zero) or `"HALF_EVEN"` (to the even digit). `div` by zero throws `RangeError` |
+| `movePointLeft(n)`, `movePointRight(n)` | Exact division or multiplication by `10^n`, never rounded: `new Decimal("2500.50").movePointLeft(3)` is `2.50050`. Left adds `n` to the scale; right subtracts it, but not below 0. A negative `n` moves the other way. big.js has no such method, so the names are Java's (Python's is `scaleb(-n)`): unlike `shiftLeft`, they say which way the point moves |
 | `cmp`, `eq`, `lt`, `lte`, `gt`, `gte` | By value: `1.50` equals `1.5` |
 | `abs`, `neg` | |
 | `toFixed(scale?, mode?)`, `toString()` | Plain notation, never an exponent; `toString` keeps the scale (`"2500.50"`) and `toFixed` rounds first (`HALF_UP` by default) |

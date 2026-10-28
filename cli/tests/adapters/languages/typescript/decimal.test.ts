@@ -4,7 +4,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { Decimal } from "../../../../../runners/typescript/support.ts";
+import {
+  Decimal,
+  type RoundingMode,
+} from "../../../../../runners/typescript/support.ts";
 
 function dec(text: string): Decimal {
   return new Decimal(text);
@@ -190,6 +193,87 @@ describe("rounding", () => {
     assert.equal(dec("1.005").toFixed(2, "HALF_EVEN"), "1.00");
     assert.equal(dec("1.5").toFixed(0), "2");
     assert.equal(dec("1.5").toFixed(), "1.5");
+  });
+});
+
+describe("rounding modes", () => {
+  // Expected values from Python's Decimal.quantize, which Java's BigDecimal.setScale matches
+  // (a negative zero prints as 0).
+  const modes: RoundingMode[] = ["DOWN", "UP", "FLOOR", "CEILING", "HALF_DOWN"];
+  const rounded: [string, string[]][] = [
+    ["2.661", ["2.66", "2.67", "2.66", "2.67", "2.66"]],
+    ["2.665", ["2.66", "2.67", "2.66", "2.67", "2.66"]],
+    ["2.669", ["2.66", "2.67", "2.66", "2.67", "2.67"]],
+    ["-2.661", ["-2.66", "-2.67", "-2.67", "-2.66", "-2.66"]],
+    ["-2.665", ["-2.66", "-2.67", "-2.67", "-2.66", "-2.66"]],
+    ["-2.669", ["-2.66", "-2.67", "-2.67", "-2.66", "-2.67"]],
+    ["2.66", ["2.66", "2.66", "2.66", "2.66", "2.66"]],
+    ["0.005", ["0.00", "0.01", "0.00", "0.01", "0.00"]],
+    ["-0.005", ["0.00", "-0.01", "-0.01", "0.00", "0.00"]],
+  ];
+  for (const [text, expected] of rounded) {
+    modes.forEach((mode, index) => {
+      it(`rounds ${text} to 2 places with ${mode}`, () => {
+        assert.equal(dec(text).round(2, mode).toString(), expected[index]);
+      });
+    });
+  }
+
+  const divided: [string, string, string[]][] = [
+    ["7", "2", ["3", "4", "3", "4", "3"]],
+    ["-7", "2", ["-3", "-4", "-4", "-3", "-3"]],
+    ["2", "3", ["0", "1", "0", "1", "1"]],
+    ["2", "-3", ["0", "-1", "-1", "0", "-1"]],
+    ["1", "3", ["0", "1", "0", "1", "0"]],
+  ];
+  for (const [dividend, divisor, expected] of divided) {
+    modes.forEach((mode, index) => {
+      it(`divides ${dividend} by ${divisor} with ${mode}`, () => {
+        const quotient = dec(dividend).div(dec(divisor), 0, mode);
+        assert.equal(quotient.toString(), expected[index]);
+      });
+    });
+  }
+
+  it("formats with toFixed in any mode", () => {
+    assert.equal(dec("1.009").toFixed(2, "DOWN"), "1.00");
+    assert.equal(dec("-1.001").toFixed(2, "FLOOR"), "-1.01");
+  });
+});
+
+describe("moving the point", () => {
+  it("divides by a power of ten exactly, growing the scale", () => {
+    const moved = dec("2500.50").movePointLeft(3);
+    assert.deepEqual([moved.toString(), moved.scale], ["2.50050", 5]);
+    assert.equal(dec("-0.5").movePointLeft(2).toString(), "-0.005");
+  });
+
+  it("multiplies by a power of ten, keeping a scale of at least 0", () => {
+    assert.equal(dec("2500.50").movePointRight(1).toString(), "25005.0");
+    assert.equal(dec("2500.50").movePointRight(2).toString(), "250050");
+    assert.equal(dec("2500.50").movePointRight(3).toString(), "2500500");
+  });
+
+  it("moves the other way for a negative count, like BigDecimal", () => {
+    assert.equal(dec("1.5").movePointLeft(-1).toString(), "15");
+    assert.equal(dec("1.5").movePointRight(-1).toString(), "0.15");
+  });
+
+  it("keeps the value for a count of 0", () => {
+    assert.equal(dec("1.50").movePointLeft(0).toString(), "1.50");
+  });
+
+  it("never rounds, however many digits it moves", () => {
+    const value = dec("123456789012345678901234567890.123456789");
+    assert.equal(
+      value.movePointLeft(30).toString(),
+      "0.123456789012345678901234567890123456789",
+    );
+  });
+
+  it("rejects a count that is not an integer", () => {
+    assert.throws(() => dec("1").movePointLeft(1.5), RangeError);
+    assert.throws(() => dec("1").movePointRight(Number.NaN), RangeError);
   });
 });
 

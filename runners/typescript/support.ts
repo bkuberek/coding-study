@@ -38,15 +38,28 @@ export class GraphNode {
   }
 }
 
-/** How `Decimal.div` and `Decimal.round` break a tie between two neighbors. */
-export type RoundingMode = "HALF_UP" | "HALF_EVEN";
+/**
+ * How `Decimal.div` and `Decimal.round` drop digits, named as in Java's `RoundingMode` (Python's
+ * `ROUND_*` constants): `DOWN` toward zero, `UP` away from zero, `FLOOR` and `CEILING` toward
+ * negative and positive infinity, and the `HALF_*` modes to the nearest neighbor, breaking a tie
+ * away from zero, toward zero, or to the even digit.
+ */
+export type RoundingMode =
+  | "DOWN"
+  | "UP"
+  | "FLOOR"
+  | "CEILING"
+  | "HALF_UP"
+  | "HALF_DOWN"
+  | "HALF_EVEN";
 
 const DECIMAL_TEXT = /^(-?)([0-9]+)(?:\.([0-9]+))?$/;
 
 /**
  * An exact decimal number, `unscaled / 10^scale`, for money (docs/specs/problem-format.md
  * #decimal-and-date). Immutable. `new Decimal("2500.50")` keeps its scale of 2, and `plus`,
- * `minus` and `times` are exact; `div` and `round` take the result scale and a rounding mode, as
+ * `minus`, `times` and `movePointLeft`/`movePointRight` (times a power of ten) are exact; `div`
+ * and `round` take the result scale and a rounding mode, as
  * Java's `BigDecimal.setScale` and Python's `Decimal.quantize` do. `eq` and the other
  * comparisons ignore the scale (`1.50` equals `1.5`); `toString` keeps it.
  */
@@ -111,6 +124,19 @@ export class Decimal {
     return new Decimal(divideRounded(this.unscaled, dropped, mode), scale);
   }
 
+  /** `this / 10^places`, exact: the scale grows by `places` (Java's `movePointLeft`). */
+  movePointLeft(places: number): Decimal {
+    return this.withScale(this.scale + requirePlaces(places));
+  }
+
+  /**
+   * `this * 10^places`, exact: the scale shrinks by `places`, but not below 0 (Java's
+   * `movePointRight`).
+   */
+  movePointRight(places: number): Decimal {
+    return this.withScale(this.scale - requirePlaces(places));
+  }
+
   neg(): Decimal {
     return new Decimal(-this.unscaled, this.scale);
   }
@@ -166,6 +192,14 @@ export class Decimal {
   private unscaledAt(scale: number): bigint {
     return this.unscaled * powerOfTen(scale - this.scale);
   }
+
+  /** The same unscaled digits at `scale`; a negative scale becomes trailing zeros at scale 0. */
+  private withScale(scale: number): Decimal {
+    if (scale >= 0) {
+      return new Decimal(this.unscaled, scale);
+    }
+    return new Decimal(this.unscaled * powerOfTen(-scale), 0);
+  }
 }
 
 function parseDecimal(text: string): [bigint, number] {
@@ -194,11 +228,18 @@ function requireScale(scale: number): number {
   return scale;
 }
 
+function requirePlaces(places: number): number {
+  if (!Number.isSafeInteger(places)) {
+    throw new RangeError(`places must be an integer, got ${places}`);
+  }
+  return places;
+}
+
 function powerOfTen(exponent: number): bigint {
   return 10n ** BigInt(exponent);
 }
 
-/** `numerator / denominator` rounded to an integer, ties by `mode`. */
+/** `numerator / denominator` rounded to an integer by `mode`. */
 function divideRounded(
   numerator: bigint,
   denominator: bigint,
@@ -207,12 +248,40 @@ function divideRounded(
   const negative = numerator < 0n !== denominator < 0n;
   const [n, d] = [abs(numerator), abs(denominator)];
   const quotient = n / d;
-  const twiceRemainder = (n % d) * 2n;
-  const roundsUp =
-    twiceRemainder > d ||
-    (twiceRemainder === d && (mode === "HALF_UP" || quotient % 2n === 1n));
-  const rounded = roundsUp ? quotient + 1n : quotient;
+  const remainder = n % d;
+  const away =
+    remainder !== 0n &&
+    roundsAwayFromZero(mode, negative, quotient % 2n === 1n, remainder * 2n - d);
+  const rounded = away ? quotient + 1n : quotient;
   return negative ? -rounded : rounded;
+}
+
+/**
+ * Whether an inexact quotient moves away from zero. `pastHalf` is `2 * remainder - divisor`:
+ * positive past the halfway point, 0n on a tie, negative before it.
+ */
+function roundsAwayFromZero(
+  mode: RoundingMode,
+  negative: boolean,
+  odd: boolean,
+  pastHalf: bigint,
+): boolean {
+  switch (mode) {
+    case "DOWN":
+      return false;
+    case "UP":
+      return true;
+    case "FLOOR":
+      return negative;
+    case "CEILING":
+      return !negative;
+    case "HALF_UP":
+      return pastHalf >= 0n;
+    case "HALF_DOWN":
+      return pastHalf > 0n;
+    case "HALF_EVEN":
+      return pastHalf > 0n || (pastHalf === 0n && odd);
+  }
 }
 
 function abs(value: bigint): bigint {
