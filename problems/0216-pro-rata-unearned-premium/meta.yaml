@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0216"
+slug: pro-rata-unearned-premium
+title: Pro-Rata Unearned Premium
+status: ready
+difficulty: easy
+track: practical
+kind: function
+signature:
+  function:
+    name: unearnedPremium
+    params:
+      - {name: termPremium, type: decimal}
+      - {name: termStart, type: date}
+      - {name: termEnd, type: date}
+      - {name: changeDate, type: date}
+    returns: {type: decimal}
+comparator: {type: exact}
+approaches:
+  - {id: day-count, name: Count days with the date library and round once, role: optimal, time: "O(1)", space: "O(1)", time_class: "1", space_class: "1"}
+related: [premium-rating-breakdown, coverage-gaps]
+estimate_minutes: 15

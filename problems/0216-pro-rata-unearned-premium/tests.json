@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"termPremium": "1200", "termStart": "2026-01-01", "termEnd": "2027-01-01", "changeDate": "2026-07-02"}, "expected": "601.64"},
+    {"id": "ex2", "visible": true, "input": {"termPremium": "1200", "termStart": "2026-01-01", "termEnd": "2027-01-01", "changeDate": "2027-01-01"}, "expected": "0"},
+    {"id": "ex3", "visible": true, "input": {"termPremium": "1200", "termStart": "2026-01-01", "termEnd": "2027-01-01", "changeDate": "2026-01-01"}, "expected": "1200"},
+    {"id": "h1", "input": {"termPremium": "1200", "termStart": "2028-01-01", "termEnd": "2029-01-01", "changeDate": "2028-07-02"}, "expected": "600", "note": "leap-year term of 366 days"},
+    {"id": "h2", "input": {"termPremium": "3650.00", "termStart": "2027-06-01", "termEnd": "2028-06-01", "changeDate": "2028-02-29"}, "expected": "927.46", "note": "term spans Feb 29; change on the leap day"},
+    {"id": "h3", "input": {"termPremium": "1.01", "termStart": "2026-01-01", "termEnd": "2026-07-20", "changeDate": "2026-04-11"}, "expected": "0.51", "note": "exact half cent rounds up (half-even would give 0.5)"},
+    {"id": "h4", "input": {"termPremium": "0.10", "termStart": "2026-03-01", "termEnd": "2026-03-05", "changeDate": "2026-03-04"}, "expected": "0.03", "note": "one day of a four-day term: 0.025 rounds to 0.03"},
+    {"id": "h5", "input": {"termPremium": "1200", "termStart": "2026-01-01", "termEnd": "2027-01-01", "changeDate": "2025-12-31"}, "expected": "-1", "note": "change the day before the term starts"},
+    {"id": "h6", "input": {"termPremium": "1200", "termStart": "2026-01-01", "termEnd": "2027-01-01", "changeDate": "2027-01-02"}, "expected": "-1", "note": "change the day after the term ends"},
+    {"id": "h7", "input": {"termPremium": "987.65", "termStart": "2026-02-01", "termEnd": "2026-05-02", "changeDate": "2026-03-15"}, "expected": "526.75", "note": "90-day term"},
+    {"id": "h8", "input": {"termPremium": "500", "termStart": "2026-05-10", "termEnd": "2026-05-11", "changeDate": "2026-05-10"}, "expected": "500", "note": "one-day term, change on its only day"},
+    {"id": "h9", "input": {"termPremium": "9999999.99", "termStart": "2026-01-01", "termEnd": "2029-01-01", "changeDate": "2027-08-15"}, "expected": "4607664.23", "note": "three-year term with a leap day (1096 days)"},
+    {"id": "h10", "input": {"termPremium": "0", "termStart": "2026-01-01", "termEnd": "2027-01-01", "changeDate": "2026-07-02"}, "expected": "0", "note": "zero premium"},
+    {"id": "h11", "input": {"termPremium": "1200", "termStart": "2026-01-01", "termEnd": "2027-01-01", "changeDate": "2026-12-31"}, "expected": "3.29", "note": "one day left"}
+  ]
+}
