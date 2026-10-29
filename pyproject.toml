@@ -3,7 +3,7 @@
 # in cli/ (ruff.toml, pyrightconfig.json, pytest.ini, .importlinter).
 [project]
 name = "coding-study"
-version = "0.4.0"
+version = "0.4.1"
 description = "Local, IDE-first interview practice: the cstudy command-line interface"
 readme = "README.md"
 license = "MIT"

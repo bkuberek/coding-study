@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v0.4.1 (2026-10-29)
+
+### Bug Fixes
+
+- **doctor**: Link each toolchain fix to its install guide
+  ([`23ceb49`](https://github.com/bkuberek/coding-study/commit/23ceb496a7782c532ff09e178f23ae67a698e53c))
+
+### Continuous Integration
+
+- **release**: Publish each release to GitHub and the Homebrew tap
+  ([`c56038e`](https://github.com/bkuberek/coding-study/commit/c56038efe6b6c64d02fcd1a0a308d3db164b4712))
+
+### Documentation
+
+- **install**: Install with Homebrew and a toolchains guide
+  ([`539aefb`](https://github.com/bkuberek/coding-study/commit/539aefb002d087e8d7eab4b9981d402cc8396ca1))
+
+
 ## v0.4.0 (2026-10-29)
 
 ### Bug Fixes
