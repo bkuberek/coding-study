@@ -46,6 +46,8 @@ Correct and minimal, which makes it the oracle; fine if `getMin` is rare. It fai
 - TypeScript: the reference loops instead of calling `Math.min(...values)`, because spreading 10^5 arguments into one call can exceed the engine's argument limit.
 - Java: `Collections.min(values)` scans and unboxes; `values.remove(values.size() - 1)` removes by position.
 - Kotlin: `minOf { it }` scans; `removeAt(lastIndex)` pops from an `ArrayList`.
+- Go: `slices.Min` (Go 1.21 and newer) scans the slice and panics on an empty one; the constraints guarantee a value on `GetMin`. Popping reslices (`values[:len(values)-1]`), which keeps the backing array.
+- Rust: `iter().min()` returns an `Option<&i32>`, so the reference unwraps and dereferences it. `Vec::pop` returns the removed value as an `Option`, which `Pop` ignores because the problem never pops an empty stack.
 
 ## Approach: pair-stack (Each entry stores the minimum at or below it)
 
@@ -84,6 +86,8 @@ The simplest O(1) design and the easiest to argue correct, so it is the usual in
 - TypeScript: two parallel arrays avoid allocating a small object per push; they always have the same length.
 - Java: an `ArrayDeque<int[]>` of two-element arrays; `push`, `pop` and `peek` work at the head of the deque.
 - Kotlin: a private `data class Entry` in a `kotlin.collections.ArrayDeque`; `lastOrNull()?.let { ... } ?: value` handles the empty stack in one expression.
+- Go: a small struct `entry{value, minimum}` in a slice stores both numbers inline, with no allocation per push beyond slice growth. The built-in `min` (Go 1.21 and newer) picks the smaller of two ints.
+- Rust: a `Vec<(i32, i32)>` of tuples; `last().map_or(value, |&(_, below)| value.min(below))` handles the empty stack in one expression, like Kotlin's `lastOrNull()?.let { ... } ?: value`.
 
 ## Approach: two-stacks (A second stack of minimums)
 
@@ -122,3 +126,5 @@ Same time as the pair stack, and less memory on typical inputs. The equal-values
 - TypeScript: `pop()` returns the removed value, compared with `===` against the last minimum.
 - Java: two `ArrayDeque<Integer>`; `int value = values.pop()` unboxes before the comparison with `minimums.peek()`.
 - Kotlin: `==` on `Int` compares values even when they are stored boxed in a generic `ArrayDeque<Int>`, so the Java pitfall does not apply.
+- Go: `==` on two `int` values compares numbers, so there is no boxing pitfall as in Java. `GetMin` reads the last element of `minimums`, and `Push` and `Pop` reuse it for their checks.
+- Rust: `self.values.pop() == self.minimums.last().copied()` compares two `Option<i32>` values by content, so one expression covers both the popped value and the current minimum. A `match` on `minimums.last()` decides whether the new value ties or beats the current minimum.
