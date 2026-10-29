@@ -45,6 +45,8 @@ It mirrors the definition and is easy to get right, but it recomputes heights. I
 - Python: `abs` and short-circuiting `and` keep the condition in one expression.
 - TypeScript and Java: `Math.abs` on the height difference; heights are small, so there is no overflow concern.
 - Kotlin: `abs` comes from `kotlin.math`, which needs an import.
+- Go: the standard library has no integer `abs` (`math.Abs` takes a `float64`), so the height gap is range-checked with `-1 <= gap && gap <= 1`.
+- Rust: `(left - right).abs()` is a method on `i32`; heights are small, so the subtraction cannot overflow.
 
 ## Approach: bottom-up (Post-order heights with an early exit)
 
@@ -85,3 +87,5 @@ One pass and no repeated work, with the same amount of code as the brute force. 
 - TypeScript: compare with `===` against the constant.
 - Java: a `private static final int` constant; all arithmetic stays in `int`.
 - Kotlin: the constant lives in a `companion object` as `const val`, and `abs` is imported from `kotlin.math`.
+- Go: a `const unbalanced = -1` plays the sentinel, and the gap check is written as two comparisons because there is no integer `abs`.
+- Rust: `Option<i32>` replaces the sentinel: `None` means unbalanced, and `?` returns it from the enclosing call at once, which is the early exit of the Python version, so no constant is needed.
