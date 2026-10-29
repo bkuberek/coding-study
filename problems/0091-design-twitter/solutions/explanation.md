@@ -46,6 +46,8 @@ Very little code and obviously correct, which makes it the oracle. Posting is as
 - TypeScript: `followees?.has(author)` handles a reader with no follow set.
 - Java: `Set.of()` is an immutable empty default for `getOrDefault`.
 - Kotlin: `following[userId].orEmpty()` turns a missing set into an empty one, and destructuring `val (author, tweetId)` reads a `Pair`.
+- Go: a missing user reads as a `nil` map, and Go allows lookups and `delete` on a nil map, so `GetNewsFeed` and `Unfollow` need no existence check; only `Follow` has to create the set, because writing to a nil map panics. The set is a `map[int]struct{}`. The feed is built with `make([]int, 0, feedSize)`, so an empty feed is an empty slice, not `nil`.
+- Rust: `self.following.get(&user_id)` returns an `Option<&HashSet<i32>>`, and `is_some_and(|set| set.contains(&author))` is the "reader follows this author" test. The feed is one lazy chain, `iter().rev().filter(..).take(FEED_SIZE)`, which stops scanning as soon as ten tweets match. `entry(..).or_default()` creates the follow set on first use.
 
 ## Approach: heap-merge (Per-user timelines merged with a max-heap)
 
@@ -87,3 +89,5 @@ Reading costs depend only on the reader's own connections, which is the property
 - TypeScript: no built-in priority queue, so the reference implements a small max-heap of cursor objects; object spread copies a tweet's fields into a new cursor.
 - Java: cursors are `int[] {time, tweetId, author, index}` in a `PriorityQueue` with a reversed comparator; `getNewsFeed` returns a `List<Integer>`, as the `list<int>` signature requires.
 - Kotlin: small private classes for tweets and cursors read better than arrays; `following[userId].orEmpty() + userId` builds the author set in one expression, and `compareByDescending { it.tweet.time }` makes the max-heap.
+- Go: `container/heap` needs a type that implements `heap.Interface`, so the reference declares `newestFirst []cursor` with `Less` comparing times with `>`; times are unique, so no tie-break is needed. `heap.Init` builds the heap from the initial cursors in linear time, and the `addNewest` closure collects one cursor per author, the reader included.
+- Rust: `BinaryHeap<(i32, i32, i32, usize)>` is already a max-heap, and tuples compare field by field, so the unique post time decides and the later fields are never reached. `Option::into_iter().flatten()` turns a missing follow set into an empty iterator, `chain([user_id])` adds the reader, and `filter_map` with `?` skips authors who have not posted.
