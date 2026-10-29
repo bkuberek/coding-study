@@ -205,7 +205,7 @@ cstudy test [<slug|file>] [--lang L] [--watch] [--case ID]... [--all] [--level N
 | `--seed S` | Concurrent problems: base seed of every selected stress case instead of its `seed`; run `r` uses `S + r`. In the `async` model this reproduces a reported failing run exactly (`--case s1 --seed 1007 --stress 1`). Other problems: the first oracle input's seed (default 1), so `--stress 1 --seed 17` reruns `oracle-17`; without `--stress` it exits 3 |
 | `--json` | One [JSON document](#json-output) on standard output instead of the report; with `--watch`, `--perf` or `--debug` it is a usage error |
 | `--debug` | Start the runner under the language's debug agent and wait for an IDE to attach to it, with every time limit off ([Debugging](#debugging)) |
-| `--debug-port N` | With `--debug`: the agent's port, 1 to 65535. Defaults: Python 5678, TypeScript 9229, Java and Kotlin 5005, Go 2345; Rust 12345 is reserved for its planned debug support (`--debug` with Rust exits 4: `rust debug mode is not set up yet`) |
+| `--debug-port N` | With `--debug`: the agent's port, 1 to 65535. Defaults: Python 5678, TypeScript 9229, Java and Kotlin 5005, Go 2345, Rust 12345 |
 | `--debug-connect` | With `--debug`, Java and Kotlin only: connect to an IDE that is already listening on the port instead of listening for it |
 
 Output rules: visible cases are always listed; passing hidden cases collapse into a count unless `--all`; failing hidden cases show input, expected and actual (PRD Q10); a `TLE` line shows the measured time, the limit and its basis instead. Statuses: `PASS`, `FAIL`, `ERROR`, `TIMEOUT` (hang guard), `TLE` (time limit), `INVALID` (output not serializable as the declared type), `STALLED` (concurrent stress run still unfinished at its deadline), `NOT RUN`.
@@ -310,6 +310,7 @@ PASS     19 oracle inputs
 | TypeScript | Node inspector, `--inspect-wait` | 9229 | usage error |
 | Java, Kotlin | JDWP, `suspend=y` | 5005 | the JVM connects to an IDE that is listening |
 | Go | Delve (`dlv exec --headless`), with a build without optimizations | 2345 | usage error |
+| Rust | `debugserver` (macOS) or `lldb-server gdbserver` (Linux), with the dev profile | 12345 | usage error |
 
 The ready line is a stable contract: IDE tasks and run configurations match it. It is printed once, to **standard error**, as plain text on a line of its own, after the agent is bound (so the IDE can attach at once), or, with `--debug-connect`, as the JVM is started:
 
@@ -318,6 +319,7 @@ cstudy: waiting for debugger on 127.0.0.1:5678 (python)
 cstudy: waiting for debugger on 127.0.0.1:9229 (typescript)
 cstudy: waiting for debugger on 127.0.0.1:5005 (java)
 cstudy: waiting for debugger on 127.0.0.1:2345 (go)
+cstudy: waiting for debugger on 127.0.0.1:12345 (rust)
 cstudy: connecting to debugger at 127.0.0.1:5005 (kotlin)
 ```
 
@@ -331,7 +333,7 @@ cstudy: connecting to debugger at 127.0.0.1:5005 (kotlin)
 | Report | The header names the run (`two-sum · python · debug · 16 cases ...`); no durations, no `total`, no `TLE`, since pauses at breakpoints would be part of them. A pass ends with `all passed (debug run: not recorded; cstudy test records the run)` |
 | Not recorded | A debug run is not stored in `test_runs`, never counts as the first pass and unlocks no level; run `cstudy test` again to record it |
 | Interrupted | Ctrl-C exits 130, SIGTERM 143 and SIGHUP 129; each kills the runner's process group, so the port is free again |
-| Environment errors (exit 4) | `debugpy` missing from `python/.venv` (the message gives the fix, `uv add --dev debugpy --directory python`); Delve missing (``cannot debug go: dlv was not found; run `go install github.com/go-delve/delve/cmd/dlv@v1.27.2` `` with a link to the [toolchains guide](../guides/toolchains.md#go)); a port in use (`cannot debug python: port 5678 on 127.0.0.1 is already in use; stop the other debug session or choose another port with --debug-port`); no IDE listening with `--debug-connect` after 10 s (`no debugger listening on 127.0.0.1:5005; start the IDE's 'Debug JVM (listen)' configuration first`); a runner that ends before it starts the run (`the debug session ended before the run started`, with the runner's last output lines) |
+| Environment errors (exit 4) | `debugpy` missing from `python/.venv` (the message gives the fix, `uv add --dev debugpy --directory python`); Delve missing (``cannot debug go: dlv was not found; run `go install github.com/go-delve/delve/cmd/dlv@v1.27.2` `` with a link to the [toolchains guide](../guides/toolchains.md#go)), or Rust's debug server (``cannot debug rust: debugserver was not found; run `xcode-select --install` ``, [toolchains guide](../guides/toolchains.md#rust)); a port in use (`cannot debug python: port 5678 on 127.0.0.1 is already in use; stop the other debug session or choose another port with --debug-port`); no IDE listening with `--debug-connect` after 10 s (`no debugger listening on 127.0.0.1:5005; start the IDE's 'Debug JVM (listen)' configuration first`); a runner that ends before it starts the run (`the debug session ended before the run started`, with the runner's last output lines) |
 
 #### JSON output
 

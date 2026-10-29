@@ -9,6 +9,11 @@ Compile errors in the user's or a reference file are a build failure (exit 2). E
 bridge mean a target does not define what the signature declares: the build is repeated with
 those targets left out of the bridge, and the runner reports a `load_error` for each of them
 with the compiler's message in the user's terms.
+
+`cstudy test --debug` builds with the dev profile and starts the binary under LLDB's debug server
+(`debugserver` on macOS, `lldb-server gdbserver` on Linux), which holds it at its entry point
+until the IDE connects with `gdb-remote` and continues it. The server prints nothing: it writes
+its port to the file `--named-pipe` names once it listens.
 """
 
 from dataclasses import dataclass, replace
@@ -21,6 +26,8 @@ from coding_study.adapters.languages.compiled_builds import (
     write_if_changed,
 )
 from coding_study.adapters.languages.context import LanguageContext
+from coding_study.adapters.languages.debug_port import require_free_port
+from coding_study.adapters.languages.debug_servers import require_installed
 from coding_study.adapters.languages.rust.bridge import (
     Bridge,
     BridgeTarget,
@@ -28,6 +35,7 @@ from coding_study.adapters.languages.rust.bridge import (
     bridge_source,
 )
 from coding_study.adapters.languages.rust.build_files import (
+    DEV,
     MANIFEST_FILE,
     CompilerError,
     compiler_errors,
@@ -44,6 +52,9 @@ from coding_study.application.ports import (
     BenchCode,
     BuildFailed,
     BuildScope,
+    DebugLaunch,
+    DebugServer,
+    DebugServers,
     Prepared,
     PrepareResult,
     ProgressNotice,
@@ -52,12 +63,8 @@ from coding_study.application.ports import (
     RunnerLaunch,
     UserCode,
 )
-from coding_study.domain.errors import (
-    ContentError,
-    ContentIssue,
-    LanguageNotSetUpError,
-    RunnerStartError,
-)
+from coding_study.domain.debugging import LLDB_SERVER, DebugSession
+from coding_study.domain.errors import ContentError, ContentIssue, RunnerStartError
 from coding_study.domain.layout import (
     BUILD_DIRECTORY,
     COMPILED_REFERENCE_PREFIX,
@@ -80,9 +87,16 @@ HOST_FILE = "host-target"
 LOCK_FILE = ".cstudy.lock"
 WARM_MARKER = ".warm"
 """Written after the first successful build: the runner crates are compiled."""
+DEBUG_WARM_MARKER = ".warm-debug"
+"""The same for the dev profile of `cstudy test --debug`."""
 USER_MODULE = "user"
 REFERENCE_MODULE_PREFIX = "ref_"
 COLD_NOTICE = "compiling the Rust runner (first run)"
+DEBUG_COLD_NOTICE = "compiling the Rust runner for debugging (first debug run)"
+READY_FILE = "debug-port"
+"""In the launch's scratch directory: the debug server writes its port there once it listens."""
+GDBSERVER_MODE = "gdbserver"
+"""`lldb-server`'s mode for a remote debugger; `debugserver` has only that one."""
 WARM_BUILD_NOTE = "rust, warm"
 COLD_BUILD_NOTE = "rust, cold"
 MAX_DIAGNOSTIC_LINES = 40
@@ -100,27 +114,36 @@ class _Build:
     meta: ProblemMeta
     user: bool
     sources: tuple[ReferenceSource, ...]
+    debug: bool = False
+    """With the dev profile, for `cstudy test --debug`."""
 
     @property
     def package(self) -> str:
         return f"{self.scope}_{self.meta.snake_slug}"
 
+    @property
+    def profile_options(self) -> tuple[str, ...]:
+        return ("--profile", DEV) if self.debug else ("--release",)
+
 
 class RustRunner:
     """`LanguageRunner` for Rust."""
 
-    def __init__(self, context: LanguageContext, toolchain: CargoToolchain) -> None:
+    def __init__(
+        self, context: LanguageContext, toolchain: CargoToolchain, debug_servers: DebugServers
+    ) -> None:
         self._root = context.workspace.resolve()
         self._runtime = context.runners.resolve() / RUNNER_DIRECTORY
         self._project = self._root / RUST_PROJECT
         self._build_directory = self._root / BUILD_PROJECT
         self._toolchain = toolchain
+        self._debug_servers = debug_servers
 
     def prepare(self, scope: BuildScope, notify: ProgressNotice) -> PrepareResult:
         match scope:
+            case UserCode(debug=DebugSession() as session):
+                return self._prepare_debug(scope.meta, session, notify)
             case UserCode():
-                if scope.debug is not None:
-                    raise LanguageNotSetUpError(Language.RUST, "debug mode")
                 build = _Build("test", scope.meta, True, ())
             case References():
                 build = _Build("verify", scope.meta, False, scope.sources)
@@ -128,16 +151,42 @@ class RustRunner:
                 build = _Build("bench", scope.meta, not scope.references_only, scope.sources)
         return self._prepare(build, notify)
 
+    def _prepare_debug(
+        self, meta: ProblemMeta, session: DebugSession, notify: ProgressNotice
+    ) -> PrepareResult:
+        """The debug server starts the runner binary and holds it until the IDE continues it;
+        the arguments `RunnerProcess` appends go to the runner, after `--`."""
+        server = self._debug_servers.lldb_server()
+        path = require_installed(server, Language.RUST)
+        require_free_port(session)
+        result = self._prepare(_Build("test", meta, True, (), debug=True), notify)
+        if isinstance(result, BuildFailed):
+            return result
+        launch = result.launch
+        assert launch.scratch is not None
+        ready_file = launch.scratch / READY_FILE
+        command = (
+            *_server_command(server, path),
+            "--named-pipe",
+            str(ready_file),
+            session.address,
+            "--",
+            *launch.command,
+        )
+        debug = DebugLaunch(session, notify, ready_file=ready_file)
+        return replace(result, launch=replace(launch, command=command, debug=debug))
+
     def _prepare(self, build: _Build, notify: ProgressNotice) -> PrepareResult:
+        warm_marker = self._build_directory / (DEBUG_WARM_MARKER if build.debug else WARM_MARKER)
         with exclusive_lock(self._build_directory / LOCK_FILE):
-            warm = (self._build_directory / WARM_MARKER).is_file()
+            warm = warm_marker.is_file()
             if not warm:
-                notify(COLD_NOTICE)
+                notify(DEBUG_COLD_NOTICE if build.debug else COLD_NOTICE)
             targets = self._targets(build)
             result = self._compile(build, targets)
             if isinstance(result, BuildFailed):
                 return result
-            (self._build_directory / WARM_MARKER).touch()
+            warm_marker.touch()
             binary = private_copy(result, self._build_directory)
         launch = RunnerLaunch(
             (str(binary),),
@@ -171,9 +220,9 @@ class RustRunner:
         compile; BuildFailed for errors in user code (and reference code, in verify)."""
         package = self._build_directory / build.scope / build.meta.snake_slug
         arguments = [
-            *("--offline", "--release", "--message-format=json"),
+            *("--offline", *build.profile_options, "--message-format=json"),
             *("--target", self._host(), "-p", build.package),
-            *profile_arguments(),
+            *(profile_arguments(DEV) if build.debug else profile_arguments()),
         ]
         environment = {"CARGO_TARGET_DIR": str(self._build_directory / TARGET_DIRECTORY)}
         for _ in range(BUILD_PASSES):
@@ -249,6 +298,10 @@ class RustRunner:
         if path.is_relative_to(self._root):
             return path.relative_to(self._root).as_posix()
         return str(path)
+
+
+def _server_command(server: DebugServer, path: Path) -> tuple[str, ...]:
+    return (str(path), GDBSERVER_MODE) if server.name == LLDB_SERVER else (str(path),)
 
 
 def _without_failing(

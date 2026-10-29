@@ -39,6 +39,19 @@ RELEASE_PROFILE: Mapping[str, str] = {
 tables give traces their lines, and the symbols and debug info stay in place so traces name
 their functions; panics unwind, so one case's panic is caught. The build passes these as
 `--config` too, which outranks a user's `config.toml`."""
+DEV_PROFILE: Mapping[str, str] = {
+    "opt-level": "0",
+    "debug": "true",
+    "overflow-checks": "true",
+    "panic": '"unwind"',
+    "strip": '"none"',
+    "split-debuginfo": SPLIT_DEBUGINFO,
+}
+"""`cstudy test --debug`: no optimizations and full debug info, so a debugger sees every line and
+variable; overflows and panics behave as in the release profile. Pinned the same way."""
+RELEASE = "release"
+DEV = "dev"
+PROFILES: Mapping[str, Mapping[str, str]] = {RELEASE: RELEASE_PROFILE, DEV: DEV_PROFILE}
 SYMBOL_CODES = frozenset({"E0412", "E0422", "E0425", "E0433", "E0583", "E0599", "E0603", "E0624"})
 """Errors that mean the target does not define a symbol the bridge calls (or keeps it private)."""
 PRIVATE_CODES = frozenset({"E0603", "E0624"})
@@ -96,10 +109,13 @@ def workspace_members(build_directory: Path) -> list[str]:
 
 def workspace_manifest(members: list[str]) -> str:
     listed = "".join(f'    "{member}",\n' for member in members)
-    profile = "".join(f"{key} = {value}\n" for key, value in RELEASE_PROFILE.items())
+    profiles = "".join(
+        f"\n[profile.{name}]\n" + "".join(f"{key} = {value}\n" for key, value in settings.items())
+        for name, settings in PROFILES.items()
+    )
     return (
         f'# {GENERATED_HEADER.removeprefix("// ")}\n[workspace]\nresolver = "2"\n'
-        f"members = [\n{listed}]\n\n[profile.release]\n{profile}"
+        f"members = [\n{listed}]\n{profiles}"
     )
 
 
@@ -115,11 +131,11 @@ def package_manifest(name: str, runtime: str) -> str:
     )
 
 
-def profile_arguments() -> list[str]:
+def profile_arguments(profile: str = RELEASE) -> list[str]:
     return [
         argument
-        for key, value in RELEASE_PROFILE.items()
-        for argument in ("--config", f"profile.release.{key}={value}")
+        for key, value in PROFILES[profile].items()
+        for argument in ("--config", f"profile.{profile}.{key}={value}")
     ]
 
 

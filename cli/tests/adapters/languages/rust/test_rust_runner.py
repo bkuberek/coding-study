@@ -3,19 +3,21 @@ the private binary. Failures replay Cargo output recorded from real builds (reco
 
 import json
 import os
+import socket
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import pytest
 
 from coding_study.adapters.languages.context import LanguageContext
-from coding_study.adapters.languages.rust.runner import COLD_NOTICE, RustRunner
+from coding_study.adapters.languages.rust.runner import COLD_NOTICE, DEBUG_COLD_NOTICE, RustRunner
 from coding_study.adapters.languages.rust.toolchain import CargoOutcome
 from coding_study.adapters.subprocess_runner import SubprocessRunner
 from coding_study.application.ports import (
     BenchCode,
     BuildFailed,
+    DebugServer,
     Prepared,
     PrepareResult,
     References,
@@ -23,9 +25,10 @@ from coding_study.application.ports import (
     UserCode,
 )
 from coding_study.domain.debugging import DebugSession
-from coding_study.domain.errors import ContentError, LanguageNotSetUpError, RunnerStartError
+from coding_study.domain.errors import ContentError, RunnerStartError
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.runs import RunRequest
+from tests.fakes import DEBUGSERVER, FakeDebugServers
 from tests.helpers import FAKE_RUNNER_PROGRAM
 from tests.stub_contract import STUB_CASES
 
@@ -61,7 +64,8 @@ class FakeCargo:
         if outcome.exit_code != 0:
             return outcome
         package = arguments[arguments.index("-p") + 1]
-        binary = Path(environment["CARGO_TARGET_DIR"]) / HOST / "release" / package
+        profile = "debug" if "--profile" in arguments else "release"
+        binary = Path(environment["CARGO_TARGET_DIR"]) / HOST / profile / package
         binary.parent.mkdir(parents=True, exist_ok=True)
         binary.write_text(self.program)
         binary.chmod(0o755)
@@ -83,8 +87,11 @@ def workspace(tmp_path: Path) -> Path:
     return root
 
 
-def runner(root: Path, cargo: FakeCargo) -> RustRunner:
-    return RustRunner(LanguageContext(root, root / ".cs/runtime/runners"), cargo)
+def runner(
+    root: Path, cargo: FakeCargo, debug_servers: FakeDebugServers | None = None
+) -> RustRunner:
+    context = LanguageContext(root, root / ".cs/runtime/runners")
+    return RustRunner(context, cargo, debug_servers or FakeDebugServers())
 
 
 def prepared(result: PrepareResult) -> Prepared:
@@ -256,7 +263,80 @@ def test_says_once_that_the_first_build_compiles_the_runner(workspace):
     assert notices == [COLD_NOTICE]
 
 
-def test_debug_mode_is_not_set_up_yet(workspace):
-    session = DebugSession(Language.RUST, 12345)
-    with pytest.raises(LanguageNotSetUpError, match="rust debug mode is not set up yet"):
-        runner(workspace, FakeCargo()).prepare(UserCode(TWO_SUM, debug=session), print)
+SESSION = DebugSession(Language.RUST, 12345)
+LLDB_SERVER = DebugServer("lldb-server", "install lldb", Path("/usr/bin/lldb-server"))
+
+
+def prepare_debug(
+    root: Path,
+    cargo: FakeCargo,
+    debug_servers: FakeDebugServers | None = None,
+    notices: list[str] | None = None,
+) -> PrepareResult:
+    debugging = runner(root, cargo, debug_servers or FakeDebugServers())
+    notify = (notices if notices is not None else []).append
+    return debugging.prepare(UserCode(TWO_SUM, debug=SESSION), notify)
+
+
+def test_debugserver_starts_the_runner_and_writes_its_port_to_the_ready_file(workspace):
+    launch = prepared(prepare_debug(workspace, FakeCargo())).launch
+    assert launch.scratch is not None
+    ready_file = launch.scratch / "debug-port"
+    assert launch.command == (
+        "/xcode/debugserver",
+        "--named-pipe",
+        str(ready_file),
+        "127.0.0.1:12345",
+        "--",
+        str(launch.scratch / "test_two_sum"),
+    )
+    assert launch.debug is not None
+    assert (launch.debug.session, launch.debug.ready_file) == (SESSION, ready_file)
+
+
+def test_lldb_server_runs_as_a_gdbserver(workspace):
+    linux = FakeDebugServers(lldb=LLDB_SERVER)
+    command = prepared(prepare_debug(workspace, FakeCargo(), linux)).launch.command
+    assert command[:3] == ("/usr/bin/lldb-server", "gdbserver", "--named-pipe")
+
+
+def test_the_debug_build_uses_the_pinned_dev_profile(workspace):
+    cargo = FakeCargo()
+    prepare_debug(workspace, cargo)
+    arguments = cargo.builds[0][0]
+    assert "--release" not in arguments
+    assert arguments[arguments.index("--profile") + 1] == "dev"
+    assert "profile.dev.opt-level=0" in arguments
+
+
+def test_a_missing_debug_server_is_an_environment_error_before_building(workspace):
+    cargo = FakeCargo()
+    missing = FakeDebugServers(lldb=replace(DEBUGSERVER, path=None))
+    with pytest.raises(RunnerStartError, match="cannot debug rust: debugserver was not found"):
+        prepare_debug(workspace, cargo, missing)
+    assert cargo.builds == []
+
+
+def test_a_port_in_use_is_an_environment_error_before_building(workspace):
+    cargo = FakeCargo()
+    with socket.socket() as taken:
+        taken.bind(("127.0.0.1", 0))
+        taken.listen()
+        busy = DebugSession(Language.RUST, taken.getsockname()[1])
+        debugging = runner(workspace, cargo, FakeDebugServers())
+        with pytest.raises(RunnerStartError, match="already in use"):
+            debugging.prepare(UserCode(TWO_SUM, debug=busy), lambda _: None)
+    assert cargo.builds == []
+
+
+def test_a_compile_error_while_debugging_is_a_build_failure(workspace):
+    cargo = FakeCargo([recorded("user-error", workspace)])
+    assert isinstance(prepare_debug(workspace, cargo), BuildFailed)
+
+
+def test_says_once_that_the_first_debug_build_compiles_the_runner(workspace):
+    notices: list[str] = []
+    prepare_user(workspace, FakeCargo())
+    for _ in range(2):
+        prepare_debug(workspace, FakeCargo(), notices=notices)
+    assert notices == [DEBUG_COLD_NOTICE]

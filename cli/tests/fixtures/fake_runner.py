@@ -14,16 +14,20 @@ Each case input holds one `step` that says what the "user code" does:
 A job whose target path ends in "missing.py" gets a load_error. `--startup` misbehaves before
 any job runs: silent, exit-before-hello, bad-request, garbage, protocol-2, unknown-job, skip-cases.
 
-Debug agents are imitated by three more startups, each logging one line to `--launch-log` and
+Debug agents are imitated by four more startups, each logging one line to `--launch-log` and
 talking about `--ready-line` and `--refused-line` (on `--ready-stream`):
 
-    debug-wait    prints the ready line, then waits for the `--release` file to exist
+    debug-wait    prints the ready line (or, given `--ready-file`, writes a port to that file,
+                  which must be empty), then waits for the `--release` file to exist
+    debug-detach  does what debug-wait does, then starts a process that sleeps, writes its pid
+                  to `--leftover-pid` and exits 0, as `debugserver` does when lldb detaches
     debug-refuse  prints the refused line to stderr and exits 2 until the `--release` file exists
     debug-exit    prints "address already in use" to stderr and exits 1
 """
 
 import argparse
 import json
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -43,6 +47,8 @@ def main() -> int:
     parser.add_argument("--refused-line", default="connect refused")
     parser.add_argument("--release", default="")
     parser.add_argument("--launch-log", default="")
+    parser.add_argument("--ready-file", default="")
+    parser.add_argument("--leftover-pid", default="")
     arguments = parser.parse_args()
     with Path(arguments.out).open("w", encoding="utf-8") as out:
         return Runner(out, arguments).run(arguments.request)
@@ -67,16 +73,37 @@ class Runner:
         if self.startup == "debug-refuse" and not release.exists():
             print(arguments.refused_line, file=sys.stderr, flush=True)
             return 2
-        if self.startup == "debug-wait":
-            stream = sys.stderr if arguments.ready_stream == "stderr" else sys.stdout
-            print(arguments.ready_line, file=stream, flush=True)
+        if self.startup in ("debug-wait", "debug-detach"):
+            if not self.say_ready():
+                return 1
             deadline = time.monotonic() + RELEASE_PATIENCE_SECONDS
             while not release.exists():
                 if time.monotonic() > deadline:
                     print("never released", file=sys.stderr, flush=True)
                     return 1
                 time.sleep(RELEASE_POLL_SECONDS)
+        if self.startup == "debug-detach":
+            leftover = subprocess.Popen(
+                [sys.executable, "-c", f"import time; time.sleep({FOREVER_SECONDS})"]
+            )
+            Path(arguments.leftover_pid).write_text(str(leftover.pid), encoding="utf-8")
+            return 0
         return None
+
+    def say_ready(self):
+        """False when the ready file is missing or still holds what an earlier launch wrote:
+        `debugserver` writes to an existing file only."""
+        arguments = self.arguments
+        if arguments.ready_file:
+            ready_file = Path(arguments.ready_file)
+            if not ready_file.is_file() or ready_file.read_bytes():
+                print("missing or stale ready file", file=sys.stderr, flush=True)
+                return False
+            ready_file.write_bytes(b"12345\0")
+            return True
+        stream = sys.stderr if arguments.ready_stream == "stderr" else sys.stdout
+        print(arguments.ready_line, file=stream, flush=True)
+        return True
 
     def emit(self, **event):
         self.out.write(json.dumps(event) + "\n")

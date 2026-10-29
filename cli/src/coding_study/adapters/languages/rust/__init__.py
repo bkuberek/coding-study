@@ -1,6 +1,7 @@
 """Rust adapters: the stub generator and the runner (docs/decisions/0012-go-and-rust.md)."""
 
 from coding_study.adapters.languages.context import LanguageContext
+from coding_study.adapters.languages.debug_servers import InstalledDebugServers, this_machine
 from coding_study.adapters.languages.rust.runner import RustRunner
 from coding_study.adapters.languages.rust.stub_generator import RustStubGenerator
 from coding_study.adapters.languages.rust.toolchain import SubprocessCargo
@@ -12,4 +13,4 @@ def create_stub_generator() -> StubGenerator:
 
 
 def create_runner(context: LanguageContext) -> LanguageRunner:
-    return RustRunner(context, SubprocessCargo())
+    return RustRunner(context, SubprocessCargo(), InstalledDebugServers(this_machine()))

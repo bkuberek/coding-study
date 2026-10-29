@@ -62,24 +62,32 @@ class Debugging:
     """A runner that imitates a debug agent, and what it announced."""
 
     def __init__(
-        self, tmp_path: Path, session: DebugSession = PYTHON_SESSION, stream: str = "stdout"
+        self,
+        tmp_path: Path,
+        session: DebugSession = PYTHON_SESSION,
+        stream: str = "stdout",
+        ready_file: Path | None = None,
     ) -> None:
         self.session = session
         self.stream = stream
+        self.ready_file = ready_file
+        """Instead of a ready line, the agent writes its port here, as `debugserver` does."""
         self.release = tmp_path / "released"
         self.launches = tmp_path / "launches.log"
+        self.leftover = tmp_path / "leftover.pid"
         self.announced: list[str] = []
         self.on_announce: Callable[[], None] = self.release.touch
         """What the "user" does on seeing the ready line: by default, attach."""
 
     def launch(self, startup: str, hello_timeout_ms: int = HELLO_TIMEOUT_MS) -> RunnerLaunch:
+        ready = "" if self.ready_file else READY
         command = (
             sys.executable,
             str(FAKE_RUNNER),
             "--startup",
             startup,
             "--ready-line",
-            READY,
+            ready,
             "--ready-stream",
             self.stream,
             "--refused-line",
@@ -88,8 +96,11 @@ class Debugging:
             str(self.release),
             "--launch-log",
             str(self.launches),
+            "--leftover-pid",
+            str(self.leftover),
+            *(("--ready-file", str(self.ready_file)) if self.ready_file else ()),
         )
-        debug = DebugLaunch(self.session, self._announce, READY, REFUSED)
+        debug = DebugLaunch(self.session, self._announce, ready, REFUSED, self.ready_file)
         return RunnerLaunch(command, FAKE_RUNNER.parent, hello_timeout_ms, debug)
 
     def launch_count(self) -> int:
@@ -236,6 +247,43 @@ def test_nothing_is_announced_for_a_run_that_never_listened(runner, debugging):
     with pytest.raises(RunnerStartError):
         run(runner, debugging.launch("normal"), case("a", "return", value=1))
     assert debugging.announced == []
+
+
+def test_an_agent_that_writes_its_ready_file_is_announced(runner, tmp_path):
+    debugging = Debugging(tmp_path, ready_file=tmp_path / "debug-port")
+    outcome = run(runner, debugging.launch("debug-wait"), case("a", "return", value=1))
+    assert (outcome, debugging.announced) == ([Returned(1, 1000)], [PYTHON_SESSION.ready_line])
+
+
+def test_the_ready_file_is_empty_when_the_agent_starts(runner, tmp_path):
+    """`debugserver` writes only to a file that exists, and a stale port would announce early."""
+    ready_file = tmp_path / "debug-port"
+    ready_file.write_bytes(b"5555\0")
+    debugging = Debugging(tmp_path, ready_file=ready_file)
+    outcome = run(runner, debugging.launch("debug-wait"), case("a", "return", value=1))
+    assert outcome == [Returned(1, 1000)]
+
+
+def ended(pid: int) -> bool:
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        time.sleep(0.02)
+    return False
+
+
+def test_a_runner_left_behind_by_an_agent_that_exited_is_killed(runner, debugging):
+    """lldb's `detach` ends `debugserver` and leaves the runner going, followed by nobody."""
+    with pytest.raises(RunnerStartError):
+        run(runner, debugging.launch("debug-detach"), case("a", "return", value=1))
+    leftover = int(debugging.leftover.read_text())
+    survived = not ended(leftover)
+    if survived:
+        os.kill(leftover, signal.SIGKILL)
+    assert not survived
 
 
 def test_a_ready_marker_that_lands_with_bye_after_the_last_check_is_no_failure(

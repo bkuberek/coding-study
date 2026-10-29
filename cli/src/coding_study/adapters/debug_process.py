@@ -50,7 +50,8 @@ class DebugOutput:
 
     def agent_listens(self) -> bool:
         marker = self._debug.ready_marker
-        return bool(marker) and any(marker in text for text in self._texts())
+        printed = bool(marker) and any(marker in text for text in self._texts())
+        return printed or _has_content(self._debug.ready_file)
 
     def refused_connection(self) -> bool:
         """The runner, which connects to the IDE, found nobody listening."""
@@ -65,6 +66,15 @@ class DebugOutput:
 
     def _texts(self) -> list[str]:
         return [stream.read() for stream in self._streams]
+
+
+def _has_content(path: Path | None) -> bool:
+    if path is None:
+        return False
+    try:
+        return path.stat().st_size > 0
+    except OSError:
+        return False
 
 
 @contextmanager

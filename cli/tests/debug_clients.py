@@ -114,6 +114,26 @@ def run_cdp_client(port: int, path: Path, line: int) -> str:
     return completed.stdout
 
 
+def run_lldb_client(port: int, path: Path, line: int) -> str:
+    """Rust's debug server: connect with `gdb-remote`, break at `path:line`, then run to the end;
+    returns what lldb printed."""
+    commands = (
+        f"gdb-remote {HOST}:{port}",
+        f"breakpoint set --file {path} --line {line}",
+        "continue",
+        "breakpoint delete --force",
+        "continue",
+    )
+    completed = subprocess.run(
+        ["lldb", "--batch", *(part for command in commands for part in ("-o", command))],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=CONNECT_TIMEOUT_SECONDS * 2,
+    )
+    return completed.stdout
+
+
 class JdwpClient:
     """The least a JVM started with `suspend=y` needs from a debugger: shake hands and resume."""
 

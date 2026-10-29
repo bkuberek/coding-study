@@ -228,6 +228,9 @@ class DebugLaunch:
     refused_marker: str = ""
     """Text the runner prints when it finds no debugger to connect to, then exits; the session
     connects again for a while."""
+    ready_file: Path | None = None
+    """For an agent that prints nothing (`debugserver`): a file it writes once it listens.
+    `RunnerProcess` creates it empty before each launch."""
 
 
 @dataclass(frozen=True, slots=True)

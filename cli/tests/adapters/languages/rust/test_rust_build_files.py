@@ -9,6 +9,7 @@ import pytest
 
 from coding_study.adapters.languages.rust.bridge import Unavailable
 from coding_study.adapters.languages.rust.build_files import (
+    DEV,
     RELEASE_PROFILE,
     CompilerError,
     compiler_errors,
@@ -141,6 +142,28 @@ def test_the_release_profile_keeps_the_symbols_and_debug_info_of_this_platform()
     arguments = profile_arguments()
     assert 'profile.release.strip="none"' in arguments
     assert f"profile.release.split-debuginfo={split_debuginfo}" in arguments
+
+
+@pytest.mark.parametrize(
+    ("setting", "value"),
+    [
+        ("opt-level", "0"),
+        ("debug", "true"),
+        ("overflow-checks", "true"),
+        ("panic", '"unwind"'),
+        ("strip", '"none"'),
+    ],
+)
+def test_the_dev_profile_for_debugging_is_pinned_on_the_command_line(setting, value):
+    assert f"profile.dev.{setting}={value}" in profile_arguments(DEV)
+
+
+def test_the_workspace_manifest_pins_the_dev_profile_too():
+    document = tomllib.loads(workspace_manifest([]))
+    assert (document["profile"]["dev"]["opt-level"], document["profile"]["dev"]["debug"]) == (
+        0,
+        True,
+    )
 
 
 @pytest.mark.parametrize("setting", sorted(RELEASE_PROFILE))

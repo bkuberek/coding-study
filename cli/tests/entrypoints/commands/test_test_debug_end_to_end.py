@@ -4,10 +4,10 @@ Marked `slow`: each test runs `cstudy test <file> --debug` as a real process in 
 session's practice workspace (the content is the Phase 4 fixture `level-store`, or `two-sum` for
 Go and Rust), waits for the ready line on standard error, checks that the run is still waiting
 after the language's normal hello timeout, attaches a client and lets the run finish with a
-verdict. Python attaches over DAP and stops at a breakpoint; Go too, through Delve; Node over the
-inspector protocol, also at a breakpoint; the JVM only gets the JDWP handshake and a resume (a
-breakpoint there is covered by hand with jdb, see docs/specs/runners.md#debug-mode). Every runner
-is killed when its test ends.
+verdict. Python attaches over DAP and stops at a breakpoint; Go too, through Delve; Rust with
+lldb in batch mode (`gdb-remote`), Node over the inspector protocol, both also at a breakpoint;
+the JVM only gets the JDWP handshake and a resume (a breakpoint there is covered by hand with
+jdb, see docs/specs/runners.md#debug-mode). Every runner is killed when its test ends.
 """
 
 import os
@@ -29,7 +29,7 @@ from coding_study.domain.layout import SOURCE_EXTENSIONS
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
 from coding_study.entrypoints import cli
-from tests.debug_clients import DapClient, JdwpClient, run_cdp_client
+from tests.debug_clients import DapClient, JdwpClient, run_cdp_client, run_lldb_client
 from tests.helpers import REPOSITORY_ROOT, SCHEMAS_DIRECTORY
 from tests.workspaces import workspace_like
 
@@ -61,6 +61,13 @@ TWO_SUM_BREAKPOINT_LINE = 6
 """The lookup in the loop of the hash-map references."""
 DEBUG_SERVERS = InstalledDebugServers(this_machine())
 NO_DELVE = DEBUG_SERVERS.delve().path is None or shutil.which("go") is None
+NO_LLDB = any(
+    (
+        DEBUG_SERVERS.lldb_server().path is None,
+        shutil.which("lldb") is None,
+        not shutil.which("cargo"),
+    )
+)
 LAUNCH = "from coding_study.entrypoints.launcher import main; main()"
 READY_TIMEOUT_SECONDS = 240
 EXIT_TIMEOUT_SECONDS = 120
@@ -286,6 +293,20 @@ def test_go_waits_for_delve_stops_at_a_breakpoint_and_gives_a_verdict(compiled):
     assert PASSED_LINE in run.stdout.splitlines()
 
 
+@pytest.mark.skipif(NO_LLDB, reason="cargo, lldb or its debug server is not installed")
+def test_rust_waits_for_the_lldb_server_stops_at_a_breakpoint_and_gives_a_verdict(compiled):
+    file = compiled.solved_two_sum(Language.RUST)
+    port = free_port()
+    run = compiled.start(file, "--debug-port", str(port))
+    run.wait_for_ready_line(DebugSession(Language.RUST, port).ready_line)
+    assert wait_longer_than_the_hello_timeout(Language.RUST, run)
+    printed = run_lldb_client(port, file, TWO_SUM_BREAKPOINT_LINE)
+    assert "name = 'cs-runner-cases', stop reason = breakpoint 1.1" in printed
+    assert f"at {file.name}:{TWO_SUM_BREAKPOINT_LINE}:" in printed
+    assert run.finish() == 0
+    assert PASSED_LINE in run.stdout.splitlines()
+
+
 @pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
 def test_the_jvm_waits_for_jdwp_and_runs_after_the_handshake_and_a_resume(debugged, language):
     file = debugged.solved(language)
@@ -324,12 +345,23 @@ def test_stopping_a_waiting_run_frees_the_debug_port(debugged):
         probe.bind(("127.0.0.1", port))
 
 
-@pytest.mark.skipif(NO_DELVE, reason="go or dlv is not installed")
-def test_stopping_a_go_run_that_waits_for_delve_frees_the_debug_port(compiled):
-    file = compiled.solved_two_sum(Language.GO)
+@pytest.mark.parametrize(
+    "language",
+    [
+        pytest.param(
+            Language.GO, marks=pytest.mark.skipif(NO_DELVE, reason="go or dlv is not installed")
+        ),
+        pytest.param(
+            Language.RUST,
+            marks=pytest.mark.skipif(NO_LLDB, reason="cargo, lldb or its debug server is missing"),
+        ),
+    ],
+)
+def test_stopping_a_compiled_run_that_waits_for_its_debug_server_frees_the_port(compiled, language):
+    file = compiled.solved_two_sum(language)
     port = free_port()
     run = compiled.start(file, "--debug-port", str(port))
-    run.wait_for_ready_line(DebugSession(Language.GO, port).ready_line)
+    run.wait_for_ready_line(DebugSession(language, port).ready_line)
     run.stop()
     assert run.finish() == 143
     with socket.socket() as probe:

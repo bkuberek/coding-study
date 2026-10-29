@@ -33,7 +33,7 @@ import subprocess
 import tempfile
 import time
 from collections import deque
-from contextlib import ExitStack
+from contextlib import ExitStack, suppress
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
@@ -488,13 +488,18 @@ class _Attempt:
                 self._follow(process, _EventLines(events))
             finally:
                 _kill_group(process)
+                if self._launch.debug is not None:
+                    _kill_left_behind(process)
 
     def _open_stdout(self, streams: ExitStack) -> IO[bytes] | int:
-        """Debug agents print their ready line to standard output or error: keep both."""
+        """Debug agents print their ready line to standard output or error: keep both. An agent
+        that writes a ready file instead finds it empty."""
         debug = self._launch.debug
         if debug is None:
             self._output = None
             return subprocess.DEVNULL
+        if debug.ready_file is not None:
+            debug.ready_file.write_bytes(b"")
         self._output = DebugOutput(debug, self._files.stdout, self._files.stderr)
         return streams.enter_context(self._files.stdout.open("wb"))
 
@@ -678,3 +683,11 @@ def _kill_group(process: subprocess.Popen[bytes]) -> None:
         if not _exited_within_grace(process):
             raise
     process.wait()
+
+
+def _kill_left_behind(process: subprocess.Popen[bytes]) -> None:
+    """A debug agent that detached and exited (`debugserver` after lldb's `detach`) leaves the
+    runner going in its group, followed by nobody. The group id stays ours while one of its
+    processes lives, and an empty group is gone."""
+    with suppress(ProcessLookupError, PermissionError):
+        os.killpg(process.pid, signal.SIGKILL)

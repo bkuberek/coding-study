@@ -12,10 +12,15 @@ REFUSED = "connect failed"
 
 
 def output_of(
-    tmp_path: Path, *, connect: bool = False, ready: str = READY, refused: str = REFUSED
+    tmp_path: Path,
+    *,
+    connect: bool = False,
+    ready: str = READY,
+    refused: str = REFUSED,
+    ready_file: Path | None = None,
 ) -> DebugOutput:
     session = DebugSession(Language.JAVA, 5005, connect)
-    debug = DebugLaunch(session, lambda _line: None, ready, refused)
+    debug = DebugLaunch(session, lambda _line: None, ready, refused, ready_file)
     return DebugOutput(debug, tmp_path / "stdout.txt", tmp_path / "stderr.txt")
 
 
@@ -46,6 +51,20 @@ def test_a_marker_that_arrives_in_two_pieces_is_found(tmp_path):
 def test_a_launch_without_a_ready_marker_never_listens(tmp_path):
     output = output_of(tmp_path, ready="")
     append(tmp_path / "stdout.txt", "anything\n")
+    assert output.agent_listens() is False
+
+
+def test_an_agent_listens_once_it_wrote_to_its_ready_file(tmp_path):
+    ready_file = tmp_path / "debug-port"
+    ready_file.write_bytes(b"")
+    output = output_of(tmp_path, ready="", ready_file=ready_file)
+    assert output.agent_listens() is False
+    ready_file.write_bytes(b"12345\0")
+    assert output.agent_listens() is True
+
+
+def test_a_ready_file_that_does_not_exist_means_nothing_listens(tmp_path):
+    output = output_of(tmp_path, ready="", ready_file=tmp_path / "removed")
     assert output.agent_listens() is False
 
 
