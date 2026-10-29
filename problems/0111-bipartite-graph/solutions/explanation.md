@@ -48,6 +48,8 @@ The standard answer, linear, and it produces useful by-products: the colors are 
 - TypeScript: an `Int8Array` filled with -1 stores the colors; the queue is an array with a moving head index.
 - Java: `ArrayDeque<Integer>` boxes the node numbers; with at most 10^4 nodes that cost is negligible.
 - Kotlin: `when (color[neighbor])` with the branch `color[node] -> return false` compares against a runtime value, which Kotlin allows in `when` branches.
+- Go: a slice serves as the queue (`queue[1:]` pops the front), and `color` is filled with the `uncolored` sentinel because `make` zeroes it, which would read as color 0.
+- Rust: the colors are `Vec<Option<bool>>`, so "not colored yet" is `None` instead of a sentinel number and the compiler forces every read to say what happens when a node is uncolored. Neighbors arrive as `i32` and are cast to `usize` for indexing. The match arm `shade if shade == node_color` catches a same-color neighbor before the `Some(_)` arm accepts a differently colored one.
 
 ## Approach: union-find (Merge each node's neighbors into one group)
 
@@ -87,3 +89,5 @@ Same asymptotic speed as the coloring and no queue, but it needs two passes and 
 - TypeScript: a small class over `Int32Array`s; the check is `graph.every(...)` with a nested `every`, which stops at the first conflict.
 - Java: a private static nested class with `int[]` arrays; the enhanced `for` over `int[]` avoids boxing.
 - Kotlin: `graph.withIndex().all { (node, neighbors) -> ... }` destructures each node with its neighbor array; the disjoint set is a private top-level class.
+- Go: `for i := 1; i < len(neighbors); i++` skips the first neighbor without slicing, since `neighbors[1:]` panics on an empty list and a node may have no neighbors.
+- Rust: `neighbors.iter().skip(1)` is the safe form of Python's `neighbors[1:]` and yields nothing for an empty list, and `neighbors[0]` is only evaluated inside the loop body, so a node without neighbors never reads it.
