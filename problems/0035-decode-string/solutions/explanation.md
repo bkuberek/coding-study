@@ -48,6 +48,8 @@ Short and easy to trust, so it serves as the oracle. It copies the entire string
 - TypeScript: `lastIndexOf("[", close)` searches backwards from `close`; `String.prototype.repeat` repeats.
 - Java: `String.repeat` (Java 11+) and `Integer.parseInt(s, start, open, 10)`, which parses the count in place.
 - Kotlin: `'[' in text` and `String.repeat`; strings are immutable, so each expansion builds a new one, as in the other languages.
+- Go: `strings.IndexByte`, `strings.LastIndexByte(s[:closing], '[')` and `strings.Repeat` do the searching and repeating, and `strconv.Atoi(s[start:opening])` parses the count. Slicing a string shares its memory, but the `+` that joins the three parts builds a new string each round.
+- Rust: `s.find(']')` and `s[..closing].rfind('[')` search forwards and backwards, `str::repeat` repeats, and `format!` builds the next string. Indexes are byte offsets, which equal character positions because the input is ASCII.
 
 ## Approach: recursive (Recursive descent over the groups)
 
@@ -88,6 +90,8 @@ It mirrors the grammar and is the most readable answer. Its stack depth equals t
 - TypeScript: a nested `decodeGroup` closure shares `position` with its recursive calls.
 - Java: the input and the position live in fields, reset by each `decodeString` call; a `StringBuilder` collects the text.
 - Kotlin: a local `fun decodeGroup()` captures the `position` variable; `buildString` collects the text, and `break` inside `when` leaves the loop.
+- Go: like Python, the helper returns the text and the next position. Assigning the call's result with `inner, position = decodeGroup(...)` needs `var inner string` first, because `:=` would declare a new `position` that shadows the outer one and the loop would never advance. A `strings.Builder` collects the text.
+- Rust: the helper works on the `&[u8]` bytes of the input and returns `(String, usize)`; the loop index is a `mut` parameter, so no shared state is needed. `String::push_str` and `str::repeat` build the text.
 
 ## Approach: two-stacks (Stacks of counts and partial strings)
 
@@ -129,3 +133,5 @@ Same cost as the recursion without a call-depth limit, and the version most inte
 - TypeScript: plain string concatenation; V8 represents concatenations as ropes, so repeated `+=` stays cheap.
 - Java: two `ArrayDeque`s, one of `Integer` and one of `StringBuilder`; `toString().repeat(count)` expands the group.
 - Kotlin: `kotlin.collections.ArrayDeque` with `addLast` and `removeLast`; `when` with conditions dispatches on the character kind.
+- Go: the stacks are `[]int` and `[][]byte`, and the current text is a `[]byte` that grows with `append`. A `strings.Builder` cannot be used here, because it must not be copied once it is in use. Closing a group appends the current text to the outer one `count` times with `for range counts[last]` (Go 1.22 and newer).
+- Rust: `std::mem::take(&mut current)` moves the current text onto the stack and leaves an empty `String` behind, so no clone is needed. When the group closes, `current.repeat(count)` is appended to the popped outer text, which becomes the current text.
