@@ -45,6 +45,8 @@ Correct at a glance and linear, but it allocates a second array, which the state
 - TypeScript: `Array.prototype.filter` builds the buffer; a plain index loop writes it back. Avoid `nums.splice(0, n, ...nonZero)`: spreading 10^5 arguments into one call can exceed the engine's argument limit.
 - Java: a new `int[]` starts filled with zeros, so copying the compacted buffer over `nums` with `System.arraycopy` also writes the trailing zeros.
 - Kotlin: `IntArray.filter` returns a boxed `List<Int>`; `fill(0, fromIndex)` zeroes the tail.
+- Go: the function has no result, so it edits the caller's slice in place: `copy(nums, nonZero)` writes the compacted prefix and the builtin `clear` zeroes the rest of the slice.
+- Rust: the result goes back through the `&mut Vec<i32>` parameter. The code collects the non-zero values, pads them with zeros to the original length and assigns the new vector with `*nums = buffer`, the counterpart of Python's `nums[:] = ...`.
 
 ## Approach: write-index (Compact forward then fill with zeros)
 
@@ -83,6 +85,8 @@ The simplest in-place version and the usual interview answer. It writes every no
 - TypeScript: `Array.prototype.fill(0, write)` zeroes the tail in one call.
 - Java: `Arrays.fill(nums, write, nums.length, 0)` zeroes the tail; the end index is exclusive.
 - Kotlin: `nums[write++] = value` uses the old value of `write`, as in Java, and `IntArray.fill(0, write)` zeroes the tail.
+- Go: `for _, value := range nums` reads each element when its iteration starts, so writing at the lagging `write` index behind it is safe; `clear(nums[write:])` zeroes the tail in one call.
+- Rust: a `for value in nums.iter()` loop would hold a shared borrow of the vector while the body writes to it, so the loop indexes by `read` instead; `nums[write..].fill(0)` zeroes the tail.
 
 ## Approach: swap (Swap each non-zero into the next free slot)
 
@@ -120,3 +124,5 @@ Same growth as `write-index` and no tail fill. When `write == read` (no zero see
 - TypeScript: destructuring `[nums[write], nums[read]] = [nums[read], nums[write]]` allocates a small array per swap; a temporary variable is faster in hot loops.
 - Java: an explicit temporary `int` is the idiom; there is no swap helper for `int[]` in the standard library.
 - Kotlin: `nums[write] = nums[read].also { nums[read] = nums[write] }` swaps in one expression: the right side is read before the `also` block overwrites `nums[read]`.
+- Go: the tuple assignment `nums[write], nums[read] = nums[read], nums[write]` swaps without a temporary; when `write == read` it swaps a slot with itself, which does nothing.
+- Rust: `Vec::swap(write, read)` exchanges two slots by index and accepts equal indexes; the standard library's `swap` avoids the two overlapping mutable borrows that `std::mem::swap(&mut nums[a], &mut nums[b])` would need.
