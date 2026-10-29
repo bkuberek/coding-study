@@ -48,6 +48,8 @@ Needs no alphabet assumptions and no string building, but it compares every pair
 - TypeScript: one level is processed at a time; `if (first[i] !== second[i] && ++differences > 1)` counts and tests in one expression.
 - Java: an `ArrayDeque` queue with an explicit level size; comparisons use `charAt` rather than building arrays.
 - Kotlin: `partition` splits the unvisited words into neighbors and the rest in one call.
+- Go: `slices.Contains` (Go 1.21 and newer) is the linear `end_word in word_list` test, and `oneApart` compares the strings byte by byte, which is exact for the lowercase ASCII words. The unvisited list is rebuilt into a fresh slice on every dequeue, like the Python `remaining` list.
+- Rust: `one_apart` zips `first.bytes()` with `second.bytes()` and stops at the second difference. `for candidate in unvisited` consumes the list, so each word moves either into the queue or into `remaining`, and `unvisited = remaining` hands the survivors to the next round without cloning a string.
 
 ## Approach: bfs-letter-swaps (Breadth-first search that tries every one-letter change)
 
@@ -87,6 +89,8 @@ The standard answer: the cost per word no longer depends on N. It assumes a smal
 - TypeScript: `Set.delete` returns whether the word was present, which tests and removes in one call.
 - Java: a `char[]` is changed in place and copied into a new `String` for each lookup; `HashSet.remove` returns a `boolean`.
 - Kotlin: `for (letter in 'a'..'z')` walks the alphabet; `repeat(queue.size)` processes one level, and `return words` inside it returns from the function because `repeat` is inline.
+- Go: strings are immutable, so a `[]byte` copy of the word is changed one position at a time and converted back with `string(letters)` for each lookup; the original byte is restored after the 26 letters. Deleting from the `map[string]bool` while the queue grows is safe because the map is never ranged over.
+- Rust: `word.into_bytes()` takes the word's buffer without copying, and `std::str::from_utf8(&letters)` borrows it as a `&str` for each lookup, so a probe that misses allocates nothing. `HashSet::take` removes the word and hands back the owned `String` that goes into the queue, which tests and removes in one call.
 
 ## Approach: bidirectional-bfs (Letter-change searches from both ends that meet in the middle)
 
@@ -126,3 +130,5 @@ Usually several times faster than the one-sided search on large dictionaries, fo
 - TypeScript: `[near, far] = [far, near]` swaps the frontiers; `available.delete` reports whether a candidate was available.
 - Java: `HashSet` frontiers swapped through a temporary variable; candidates come from an in-place `char[]`.
 - Kotlin: `near = far.also { far = near }` swaps the frontiers in one statement.
+- Go: the frontiers are `map[string]bool` sets swapped with `near, far = far, near`, and each lookup converts the changed `[]byte` back to a string. Deleting `endWord` and `beginWord` from `available` up front keeps the frontier words from being found as new candidates.
+- Rust: `std::mem::swap` exchanges the two frontier sets. Because `near` is borrowed while it is iterated, each word is cloned into a byte buffer first, and the next level is collected in a separate set and moved into `near` after the loop. `far.contains(candidate)` and `available.take(candidate)` both accept the borrowed `&str` directly.
