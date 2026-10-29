@@ -46,6 +46,8 @@ Trivially correct, so it is the oracle, but at n = 10,000 it already performs 10
 
 - Python: the reference multiplies `islice(nums, i)` and `islice(nums, i + 1, None)` with `math.prod`. Both run in C and copy nothing, so the memory stays O(1); slicing with `nums[:i]` would copy.
 - Kotlin: `IntArray(n) { i -> ... }` builds the output with an initializer lambda; the last expression of the lambda is the element.
+- Go: the two ranges `nums[:i]` and `nums[i+1:]` are subslice headers over the same array, so skipping position `i` copies nothing.
+- Rust: `nums[..i].iter().product::<i32>()` multiplies the prefix and `nums[i + 1..]` the suffix, again without copying. The cstudy build checks overflow; the constraints keep every product of a selection of elements inside `i32`.
 
 ## Approach: prefix-suffix-arrays (Prefix and suffix product arrays)
 
@@ -82,6 +84,8 @@ The clearest linear solution, and the one to present first. It allocates two ext
 - Python: `[1] * n` creates the arrays; the final `zip` pairs `left` with `right`.
 - TypeScript: `new Array<number>(n).fill(1)`, then `left.map((before, i) => before * right[i])`.
 - Kotlin: `IntArray(n) { 1 }` fills with ones; `downTo` writes the backward loop.
+- Go: `make([]int, n)` is zero-filled, so the arrays of ones come from `slices.Repeat([]int{1}, n)`, the counterpart of Python's `[1] * n`.
+- Rust: `vec![1; n]` starts both arrays at one. The backward loop runs `(0..n.saturating_sub(1)).rev()`, because `n - 1` would underflow `usize` for an empty `nums`; `zip` pairs the two arrays into the answer.
 
 ## Approach: running-products (Prefix products in the output and a running suffix)
 
@@ -123,3 +127,5 @@ Same time as the two-array version with no extra memory, which is what the follo
 - TypeScript: `number` is a double; every product here is below 2^31, far inside the exactly representable range of 2^53.
 - Java: `new int[n]` is zero-filled, hence the explicit `answer[0] = 1`; `answer[i] *= after` is ordinary `int` arithmetic, safe because every subset product fits in 32 bits.
 - Kotlin: `IntArray(n) { 1 }` starts with ones, so the first pass can begin at index 1 with no extra assignment.
+- Go: the output slice doubles as the prefix-product array, so the only extra memory is the single `after` variable; `slices.Repeat([]int{1}, n)` fills it with ones.
+- Rust: `vec![1; n]` is the output and the prefix array at once. The backward loop is `(0..n).rev()`, because a `usize` counter cannot count down to zero with `>= 0`.
