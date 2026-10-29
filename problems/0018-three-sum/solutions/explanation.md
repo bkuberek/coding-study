@@ -50,6 +50,8 @@ It is short and its deduplication rule is the same one the optimal solution uses
 - TypeScript: `[...nums].sort((a, b) => a - b)` sorts a copy numerically. The default `sort()` compares strings and puts `-5` after `-10`.
 - Java: `nums.clone()` then `Arrays.sort` sorts primitives without boxing; `List.of(a, b, c)` builds an immutable triple.
 - Kotlin: `sortedArray()` returns a sorted `IntArray` copy; `(j + 1 until n).any { ... }` stops at the first match.
+- Go: `slices.Clone` then `slices.Sort` sort a copy, and `slices.Contains(values[j+1:], third)` scans the suffix through a slice header, without copying it. A nil `triples` slice encodes as `[]`.
+- Rust: `nums` is owned, so `sort_unstable` sorts it in place after a rename to `values`. `values[j + 1..].contains(&third)` scans the suffix through a borrowed subslice, and `n.saturating_sub(2)` keeps the loop bound from underflowing `usize`.
 
 ## Approach: hash-set (Fix one value and run two-sum with a hash set)
 
@@ -90,6 +92,8 @@ Quadratic like the optimal solution, and natural if you already know Two Sum. Ha
 - TypeScript: `Set<number>` and `number | undefined` for the sentinel.
 - Java: `HashSet<Integer>` boxes every value. A primitive sentinel needs a separate `appended` flag, because no `int` value is free to mean "none".
 - Kotlin: `HashSet<Int>` and `Int?` for the sentinel; `values[j] != lastLargest` compares an `Int` with an `Int?` safely.
+- Go: a `map[int]bool` is the per-`i` set, and a missing key reads as `false`. No `int` value is free to mean "none", so the last appended value travels with an `appended` flag, as in Java.
+- Rust: `Option<i32>` is the "none" sentinel, and `last_largest != Some(values[j])` compares an `i32` with the option directly; the `HashSet` type is inferred from the later `contains` and `insert` calls.
 
 ## Approach: two-pointers (Sort and close in from both ends)
 
@@ -134,3 +138,5 @@ Same growth as `hash-set`, smaller constants, no hashing, and deduplication fall
 - TypeScript: always pass a comparator to `sort`; the loop condition `values[i] <= 0` folds the early exit into the `for` header.
 - Java: `Arrays.sort(int[])` is a dual-pivot quicksort on primitives (no boxing). Return `List<List<Integer>>`, built with `List.of`, to match the generated stub.
 - Kotlin: `when` with conditions keeps the three branches together; `listOf` builds each triple and the result is a `MutableList<List<Int>>` returned as `List<List<Int>>`.
+- Go: a `switch` with no subject keeps the three sign cases flat, and the sorted copy keeps the caller's slice intact.
+- Rust: `total.cmp(&0)` with a `match` on `Ordering` covers the three cases exhaustively. After a hit both pointers have already moved, so `right - 1` cannot underflow: `right` stays above `left`.
