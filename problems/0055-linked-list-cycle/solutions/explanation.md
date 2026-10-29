@@ -46,6 +46,8 @@ Simple and robust, which makes it the oracle, and it extends naturally to findin
 - Python: `ListNode` keeps the default identity-based `__hash__` and `__eq__`, so a `set[ListNode]` compares nodes, not values. A class that defined `__eq__` without `__hash__` would become unhashable.
 - TypeScript: `Set<ListNode>` uses reference equality (SameValueZero) for objects.
 - Java and Kotlin: `ListNode` does not override `equals` or `hashCode`, so `HashSet` falls back to identity. `add` returns `false` for an element already present, which combines the check and the insertion.
+- Go: a pointer compares by address, so `map[*ListNode]struct{}` keys nodes by identity and two nodes with equal values stay distinct. An empty `struct{}` value makes the map a set.
+- Rust: there is no reference for this problem, and `rust` is not in the problem's `languages`. A list is `Option<Box<ListNode>>` and a `Box` has exactly one owner, so a tail cannot point back at an earlier node: a cyclic list cannot be built or even passed in safe Rust (static check S13).
 
 ## Approach: fast-slow (Fast and slow pointers (Floyd))
 
@@ -88,3 +90,4 @@ Constant memory and no modification of the list, which is the classic interview 
 - TypeScript: under `strict`, `slow` is typed `ListNode | null`; it is never null while `fast` is not, which the `slow!` assertion records.
 - Java: `==` on object references is an identity comparison, which is exactly what is needed.
 - Kotlin: `===` is referential equality; `==` calls `equals`, which happens to be identity for `ListNode` but would not be for a data class. `while (fast?.next != null)` also smart-casts `fast` to non-null inside the loop.
+- Go: `slow == fast` on two `*ListNode` values compares addresses, which is the identity test the algorithm needs.
