@@ -49,6 +49,7 @@ It is the shortest correct solution and the one interviewers expect first. Its w
 - TypeScript: Node's default stack holds several thousand simple frames, which is why test trees stay at or below 3000 levels. Compare with `=== null`.
 - Java: the runner gives each case a thread with a 256 MiB stack. A plain `main` thread (often 512 KiB to 1 MiB) is much smaller.
 - Kotlin: `root.left` is a platform type (`TreeNode!`) because `TreeNode` is a Java class. Declaring the function with `TreeNode?` keeps null checks explicit. The early `if (root == null) return null` smart-casts `root` to non-null for the rest of the body.
+- Rust: a tree is `Option<Rc<RefCell<TreeNode>>>`. `node.borrow_mut()` gives mutable access, and `node.left.take()` moves each child out, leaving `None`, so the recursive calls own their subtrees. The runner gives each case a thread with a 256 MiB stack, far more than 3000 levels need; a stack overflow in Rust aborts the process instead of panicking, so it shows as a crash.
 
 ## Approach: iterative-bfs (Level-order swap with a queue)
 
@@ -90,3 +91,4 @@ It handles any height, including a 10^5-node path, because it uses heap memory i
 - TypeScript: there is no built-in queue, and `Array.prototype.shift()` is O(n) on large arrays. The reference keeps a read index into an array that only grows. Destructuring `[node.left, node.right] = [node.right, node.left]` swaps without a temporary.
 - Java: `ArrayDeque` is the standard queue (`add`, `poll`) and is faster than `LinkedList`, but it throws on `null` elements, so check children before adding them.
 - Kotlin: `kotlin.collections.ArrayDeque` is the idiomatic queue (`addLast`, `removeFirst`). `node.left = node.right.also { node.right = node.left }` is the Kotlin swap idiom, and `node.left?.let(pending::addLast)` enqueues only real children.
+- Rust: `VecDeque` is the queue (`pop_front`, `extend`). Swapping `node.left` and `node.right` through a `RefMut` needs one plain `&mut TreeNode` first (`let node = &mut *guard;`), because each field access through the guard borrows the whole guard, and `std::mem::swap` needs two of them at once. Cloning an `Rc` into the queue only bumps a counter.
