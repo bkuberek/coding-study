@@ -42,6 +42,8 @@ It is trivially correct and works on unsorted data, which is why it serves as th
 - Python: `nums.index(target)` does the same scan in C but raises `ValueError` when the value is missing.
 - TypeScript: `nums.indexOf(target)` already returns `-1` when absent.
 - Java and Kotlin: a plain index loop over `int[]` / `IntArray` avoids boxing; Kotlin's `nums.indexOf(target)` is the one-line equivalent.
+- Go: a `range` loop returns the first matching index; `slices.Index(nums, target)` (Go 1.21 and newer) is the one-line equivalent and also returns `-1` when the value is absent.
+- Rust: `iter().position(..)` returns an `Option<usize>`, which a `match` turns into the index or `-1`.
 
 ## Approach: closed-range (Binary search on a closed range)
 
@@ -83,6 +85,8 @@ This is the classic answer and the clearest for an exact-match lookup, since it 
 - Python: integers do not overflow, so `(low + high) // 2` is safe. Use `//`, not `/`, which produces a float.
 - TypeScript: numbers are doubles, so `(high - low) >> 1` truncates to an integer; plain `/ 2` would produce `2.5` and an `undefined` element.
 - Java and Kotlin: integer division truncates toward zero, which is what the midpoint needs since both bounds are non-negative. Kotlin's `when` with conditions replaces the `if` chain.
+- Go: `low + (high-low)/2` is the overflow-safe midpoint; Go's `int` is 64 bits here, so `(low+high)/2` would also be safe, but the safe form is the habit worth keeping. A `switch` with no tag reads like the three-way `if` chain. `slices.BinarySearch` returns the lower bound and a found flag.
+- Rust: the bounds are `i32`, not `usize`: `high = middle - 1` reaches -1 when the target is smaller than every element, and an unsigned subtraction would panic (cstudy builds with overflow checks). A `match` on `nums[middle as usize].cmp(&target)` handles the three outcomes; the standard `slice::binary_search` returns `Result<usize, usize>` instead.
 
 ## Approach: lower-bound (Lower-bound search on a half-open range)
 
@@ -123,3 +127,5 @@ It always runs the full log2(n) iterations, while the closed-range version may s
 - TypeScript: there is no standard library binary search; `(low + high) >>> 1` is an unsigned shift that floors the midpoint and cannot go negative.
 - Java: `Arrays.binarySearch(nums, target)` returns the index when found and `-(insertionPoint) - 1` otherwise; it does not promise the first index when values repeat. `>>> 1` avoids overflow of `low + high`.
 - Kotlin: `nums.binarySearch(target)` mirrors Java's contract; `ushr 1` is the unsigned shift.
+- Go: `sort.SearchInts(nums, target)` is exactly this loop and returns the first index whose value is not smaller than `target`; the reference writes it out because the interview usually expects that.
+- Rust: `nums.partition_point(|&value| value < target)` is this loop. Because the range is half-open, `high = middle` never subtracts, so `low`, `high` and `middle` can be `usize` with no underflow.
