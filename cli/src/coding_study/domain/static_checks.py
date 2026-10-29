@@ -16,14 +16,15 @@ from coding_study.domain.concurrency_checks import ConcurrencyContent, concurren
 from coding_study.domain.errors import ContentIssue
 from coding_study.domain.explanation import ApproachSection, Explanation
 from coding_study.domain.generated_cases import expected_source
+from coding_study.domain.ide_actions import LANGUAGE_NAMES
 from coding_study.domain.language_limits import language_limits
 from coding_study.domain.layout import SOURCE_EXTENSIONS, language_of_extension
 from coding_study.domain.levels import level_heading
 from coding_study.domain.markdown import MarkdownDocument, MarkdownSection
 from coding_study.domain.naming import (
     reserved_name_conflicts,
+    shadowed_imports,
     shadowed_python_builtins,
-    shadowed_python_imports,
 )
 from coding_study.domain.problem import (
     Approach,
@@ -155,8 +156,9 @@ class _Issues:
 
 
 def _names(issues: _Issues, content: ProblemContent) -> None:
-    """S3: no reserved words after per-language conversion; warn on shadowed builtins and on
-    shadowed types that the Python stub imports.
+    """S3: no reserved words after per-language conversion, and no function or class named after
+    a Go package or Rust type its stub imports; warn on shadowed builtins and other shadowed
+    imports.
     """
     signature = content.problem.meta.signature
     for conflict in reserved_name_conflicts(signature, content.problem.meta.languages):
@@ -165,9 +167,17 @@ def _names(issues: _Issues, content: ProblemContent) -> None:
         issues.error(META_FILE, message, "signature")
     for name in shadowed_python_builtins(signature):
         issues.warn(META_FILE, f'"{name}" shadows the Python builtin', "signature")
-    for name in shadowed_python_imports(signature):
-        message = f'"{name}" shadows the type {name} that the Python stub imports'
-        issues.warn(META_FILE, message, "signature")
+    for shadow in shadowed_imports(signature, content.problem.meta.languages):
+        imported = f"the {shadow.imported.kind} {shadow.imported.name}"
+        language = LANGUAGE_NAMES[shadow.language]
+        if shadow.breaks_stub:
+            message = (
+                f'"{shadow.symbol}" conflicts with {imported} that the {language} stub imports'
+            )
+            issues.error(META_FILE, message, "signature")
+        else:
+            message = f'"{shadow.symbol}" shadows {imported} that the {language} stub imports'
+            issues.warn(META_FILE, message, "signature")
 
 
 def _case_values(issues: _Issues, content: ProblemContent) -> None:

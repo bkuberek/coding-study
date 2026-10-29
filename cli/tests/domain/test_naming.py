@@ -8,8 +8,8 @@ from coding_study.domain.naming import (
     is_reserved,
     member_name,
     reserved_name_conflicts,
+    shadowed_imports,
     shadowed_python_builtins,
-    shadowed_python_imports,
     snake_case,
     symbol_names,
 )
@@ -20,6 +20,7 @@ from coding_study.domain.signature import (
     Method,
     Param,
     Returns,
+    Signature,
 )
 from coding_study.domain.type_dsl import Scalar, ScalarType, VoidType
 
@@ -192,31 +193,69 @@ DATE = ScalarType(Scalar.DATE)
 DECIMAL = ScalarType(Scalar.DECIMAL)
 
 
+def shadowed(signature: Signature, language: Language) -> tuple[tuple[str, bool], ...]:
+    """(symbol, breaks_stub) of each name that shadows an import of `language`'s stub."""
+    return tuple((s.symbol, s.breaks_stub) for s in shadowed_imports(signature, (language,)))
+
+
 def test_a_parameter_named_date_shadows_the_imported_date_type():
     signature = FunctionSignature("daysLeft", (Param("date", DATE),), Returns(INT))
-    assert shadowed_python_imports(signature) == ("date",)
+    assert shadowed(signature, Language.PYTHON) == (("date", False),)
 
 
 def test_a_method_named_date_shadows_the_imported_date_type():
     method = Method("date", (), Returns(DATE))
     signature = ClassSignature("Policy", (), (method,))
-    assert shadowed_python_imports(signature) == ("date",)
+    assert shadowed(signature, Language.PYTHON) == (("date", False),)
 
 
 def test_a_class_named_decimal_shadows_the_imported_decimal_type():
     method = Method("total", (Param("amount", DECIMAL),), Returns(VoidType()))
     signature = ClassSignature("Decimal", (), (method,))
-    assert shadowed_python_imports(signature) == ("Decimal",)
+    assert shadowed(signature, Language.PYTHON) == (("Decimal", False),)
 
 
 def test_a_name_shadows_only_a_type_the_signature_uses():
     signature = FunctionSignature("daysLeft", (Param("date", INT),), Returns(DECIMAL))
-    assert shadowed_python_imports(signature) == ()
+    assert shadowed(signature, Language.PYTHON) == ()
 
 
 def test_shadowed_imports_are_reported_once():
     params = (Param("date", DATE), Param("date", DATE))
-    assert shadowed_python_imports(FunctionSignature("date", params, Returns(DATE))) == ("date",)
+    signature = FunctionSignature("date", params, Returns(DATE))
+    assert shadowed(signature, Language.PYTHON) == (("date", False),)
+
+
+def test_a_go_parameter_named_after_a_package_hides_it_from_the_body():
+    signature = FunctionSignature("nextDay", (Param("time", DATE),), Returns(DATE))
+    assert shadowed(signature, Language.GO) == (("time", False),)
+
+
+def test_a_go_function_named_after_a_package_breaks_the_stub():
+    signature = FunctionSignature("decimal", (Param("decimal", DECIMAL),), Returns(DECIMAL))
+    assert shadowed(signature, Language.GO) == (("decimal", True),)
+
+
+def test_go_methods_are_exported_so_they_never_clash_with_a_package():
+    method = Method("time", (), Returns(DATE))
+    assert shadowed(ClassSignature("Clock", (), (method,)), Language.GO) == ()
+
+
+def test_a_rust_class_named_after_an_imported_type_breaks_the_stub():
+    method = Method("total", (Param("amount", DECIMAL),), Returns(DATE))
+    signature = ClassSignature("NaiveDate", (), (method,))
+    assert shadowed(signature, Language.RUST) == (("NaiveDate", True),)
+
+
+def test_rust_names_are_snake_case_so_they_never_clash_with_a_crate_type():
+    signature = FunctionSignature("decimal", (Param("chrono", DATE),), Returns(DECIMAL))
+    assert shadowed(signature, Language.RUST) == ()
+
+
+def test_shadowing_considers_only_the_listed_languages():
+    signature = FunctionSignature("decimal", (Param("date", DECIMAL),), Returns(DATE))
+    shadows = shadowed_imports(signature, (Language.PYTHON, Language.JAVA))
+    assert [(s.symbol, s.language) for s in shadows] == [("date", Language.PYTHON)]
 
 
 def test_conflicts_only_consider_the_listed_languages():

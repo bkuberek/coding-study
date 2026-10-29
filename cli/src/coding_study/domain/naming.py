@@ -76,8 +76,40 @@ RESERVED_WORDS: Mapping[Language, frozenset[str]] = {
     Language.RUST: _RUST_KEYWORDS,
 }
 PYTHON_BUILTINS = frozenset(name for name in dir(builtins) if not name.startswith("_"))
-PYTHON_TYPE_IMPORTS: Mapping[Scalar, str] = {Scalar.DATE: "date", Scalar.DECIMAL: "Decimal"}
-"""The name a Python stub imports for each scalar that is not a builtin."""
+
+
+@dataclass(frozen=True, slots=True)
+class StubImport:
+    """A name a stub imports for a scalar that is not built into the language."""
+
+    name: str
+    kind: str
+    """`type` or `package`, for messages."""
+
+
+STUB_IMPORTS: Mapping[Language, Mapping[Scalar, StubImport]] = {
+    Language.PYTHON: {
+        Scalar.DATE: StubImport("date", "type"),
+        Scalar.DECIMAL: StubImport("Decimal", "type"),
+    },
+    Language.TYPESCRIPT: {},
+    Language.JAVA: {},
+    Language.KOTLIN: {},
+    Language.GO: {
+        Scalar.DATE: StubImport("time", "package"),
+        Scalar.DECIMAL: StubImport("decimal", "package"),
+    },
+    Language.RUST: {
+        Scalar.DATE: StubImport("NaiveDate", "type"),
+        Scalar.DECIMAL: StubImport("Decimal", "type"),
+    },
+}
+"""The names a stub imports for `date` and `decimal` that a signature's names can collide with.
+TypeScript, Java and Kotlin are not checked."""
+DECLARED_BESIDE_IMPORTS = frozenset({Language.GO, Language.RUST})
+"""Languages where the stub's function or class is declared in the scope of its imports, so one
+with an imported name does not compile (Go: `time already declared through import`, Rust:
+E0255). A Python definition only rebinds the name."""
 
 
 class NameRole(StrEnum):
@@ -107,6 +139,17 @@ class ClassNames:
 
 
 type SymbolNames = FunctionNames | ClassNames
+
+
+@dataclass(frozen=True, slots=True)
+class ShadowedImport:
+    language: Language
+    symbol: str
+    """The name in `language`, equal to the import's."""
+    imported: StubImport
+    breaks_stub: bool
+    """The function or the class has the name, in a language that declares it beside the
+    import; otherwise a parameter or method only hides the import from the code after it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,13 +229,32 @@ def shadowed_python_builtins(signature: Signature) -> tuple[str, ...]:
     return _python_names_in(signature, PYTHON_BUILTINS)
 
 
-def shadowed_python_imports(signature: Signature) -> tuple[str, ...]:
-    """Python names equal to a type the stub imports for this signature: `date` where it uses
-    `date`, `Decimal` where it uses `decimal` (`cstudy verify` warns).
-    """
+def shadowed_imports(
+    signature: Signature, languages: Iterable[Language]
+) -> tuple[ShadowedImport, ...]:
+    """Names equal to a name the stub of one of `languages` imports for this signature: Python
+    `date` where it uses `date`, Go `time`, Rust `Decimal` where it uses `decimal` (`cstudy
+    verify` S3). Each name once per language, in declaration order."""
     used = {scalar for declared in declared_types(signature) for scalar in scalars_of(declared)}
-    imported = {name for scalar, name in PYTHON_TYPE_IMPORTS.items() if scalar in used}
-    return _python_names_in(signature, imported)
+    shadows: list[ShadowedImport] = []
+    for language in languages:
+        imports = {
+            stub_import.name: stub_import
+            for scalar, stub_import in STUB_IMPORTS[language].items()
+            if scalar in used
+        }
+        breaks: dict[str, bool] = {}
+        for declared in _declared_names(signature):
+            symbol = declared.symbol(language)
+            if symbol in imports:
+                top_level = declared.role in (None, NameRole.FUNCTION)
+                breaks[symbol] = breaks.get(symbol, False) or top_level
+        beside = language in DECLARED_BESIDE_IMPORTS
+        shadows += [
+            ShadowedImport(language, symbol, imports[symbol], beside and top_level)
+            for symbol, top_level in breaks.items()
+        ]
+    return tuple(shadows)
 
 
 def _python_names_in(signature: Signature, names: Set[str]) -> tuple[str, ...]:

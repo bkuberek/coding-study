@@ -113,6 +113,26 @@ def test_names_that_shadow_an_imported_python_type_are_warnings(problems):
     ]
 
 
+def test_a_go_parameter_that_shadows_an_imported_package_is_a_warning(problems):
+    meta = problems["two-sum"].meta
+    day = Param("time", parse_value_type("date"))
+    signature = replace(meta.signature, params=(day, *meta.signature.params[1:]))
+    problem = with_meta(problems, signature=signature, languages=(*meta.languages, Language.GO))
+    assert warnings(content(problems, problem=problem)) == [
+        f'{META}: signature: "time" shadows the package time that the Go stub imports'
+    ]
+
+
+def test_a_go_function_named_after_an_imported_package_is_an_error(problems):
+    meta = problems["two-sum"].meta
+    signature = replace(
+        meta.signature, name="decimal", returns=Returns(parse_return_type("decimal"))
+    )
+    problem = with_meta(problems, signature=signature, languages=(*meta.languages, Language.GO))
+    conflict = '"decimal" conflicts with the package decimal that the Go stub imports'
+    assert f"{META}: signature: {conflict}" in errors(content(problems, problem=problem))
+
+
 # S4
 
 
