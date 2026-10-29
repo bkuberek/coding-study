@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0236"
+slug: search-insert-position
+title: Search Insert Position
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [binary-search]
+signature:
+  function:
+    name: searchInsert
+    params:
+      - {name: nums, type: "int[]"}
+      - {name: target, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: count-smaller, name: Count the values smaller than the target, role: brute, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1", oracle: true}
+  - {id: lower-bound, name: Binary search for the first value not below the target, role: optimal, time: "O(log n)", space: "O(1)", time_class: "log n", space_class: "1"}
+perf:
+  size_param: n
+  size_ladder: [100, 1000, 10000, 100000]
+  expected_from: lower-bound
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 35, url: "https://leetcode.com/problems/search-insert-position/"}
+related: [binary-search, first-last-position, search-2d-matrix]
+order: 11
+estimate_minutes: 10

@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [-4, 0, 7, 12, 30], "target": 7}, "expected": 2},
+    {"id": "ex2", "visible": true, "input": {"nums": [-4, 0, 7, 12, 30], "target": 9}, "expected": 3},
+    {"id": "h1", "input": {"nums": [5], "target": 5}, "expected": 0, "note": "one value, found"},
+    {"id": "h2", "input": {"nums": [5], "target": 2}, "expected": 0, "note": "one value, target below it"},
+    {"id": "h3", "input": {"nums": [5], "target": 8}, "expected": 1, "note": "one value, target above it"},
+    {"id": "h4", "input": {"nums": [2, 4, 6, 8], "target": 1}, "expected": 0, "note": "below every value"},
+    {"id": "h5", "input": {"nums": [2, 4, 6, 8], "target": 9}, "expected": 4, "note": "above every value"},
+    {"id": "h6", "input": {"nums": [-1000000000, 1000000000], "target": 0}, "expected": 1, "note": "extreme values, target between"},
+    {"id": "h7", "input": {"nums": [-1000000000, 1000000000], "target": 1000000000}, "expected": 1, "note": "extreme values, target is the last"},
+    {"id": "h8", "input": {"nums": [-9, -5, -3, -1], "target": -4}, "expected": 2, "note": "negative values"},
+    {"id": "h9", "input": {"nums": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "target": 10}, "expected": 9, "note": "target is the last value"},
+    {"id": "h10", "input": {"nums": [10, 20, 30, 40, 50, 60, 70], "target": 10}, "expected": 0, "note": "target is the first value"},
+    {"id": "h11", "input": {"nums": [0, 3], "target": 1}, "expected": 1, "note": "between two values"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 236}, "note": "large input: 10^5 values"}
+  ]
+}
