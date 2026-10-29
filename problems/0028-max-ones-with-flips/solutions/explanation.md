@@ -43,6 +43,8 @@ Direct and obviously correct, hence the oracle. Consecutive starts share almost 
 ### Language notes
 
 - Python, TypeScript, Java, Kotlin: two nested loops over the array with an early exit; no allocation.
+- Go: plain `int` counters and the builtin `max`; the inner loop stops at the first zero that would need one flip too many.
+- Rust: `zeros` is compared with `k` as `i32`, while the run length `end - start` is a `usize` that converts to `i32` once at the return.
 
 ## Approach: sliding-window (Shrink when the window holds too many zeros)
 
@@ -81,6 +83,8 @@ The standard "longest window with at most k bad elements" template, also used by
 - TypeScript: `nums[left++] === 0` tests the leaving element and advances the edge in one expression.
 - Java: same idiom with `int[]`.
 - Kotlin: `nums[left++]` works on `IntArray` as in Java.
+- Go: a counter of zeros in the window, with the left edge advancing while it exceeds `k`.
+- Rust: `zeros` and `k` are both `i32`, and the window size is written `right + 1 - left` because the shrink loop can step `left` one past `right` (an empty window when `k` is 0), where `right - left + 1` would underflow `usize` first.
 
 ## Approach: steady-window (A window that never shrinks)
 
@@ -119,3 +123,5 @@ Shortest code and one comparison per step. The window is not always valid (it ma
 - TypeScript: `for (const value of nums)` and `nums[left++]` keep the loop short.
 - Java: the slide condition and the leaving element combine into `if (flipsLeft < 0 && nums[left++] == 0)`; `&&` short-circuits, so `left` moves only when sliding.
 - Kotlin: the same short-circuit expression works with `&&`.
+- Go: the window never shrinks; `left` advances only when the flip budget goes negative, and the answer is whatever distance remains to the end of the slice.
+- Rust: `flips_left` is an `i32` that dips to -1 and comes back, so it must be signed. Because `left` moves at most once per step, `nums.len() - left` cannot underflow `usize`.
