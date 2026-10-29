@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"dictionary": ["sun", "moon", "star"], "sentence": "sunflowers bloom under moonlight and starfish sleep"}, "expected": "sun bloom under moon and star sleep"},
+    {"id": "ex2", "visible": true, "input": {"dictionary": ["pre", "prefix", "p"], "sentence": "prefix prepare apple"}, "expected": "p p apple"},
+    {"id": "h1", "input": {"dictionary": ["a"], "sentence": "a"}, "expected": "a", "note": "the word is a root"},
+    {"id": "h2", "input": {"dictionary": ["xyz"], "sentence": "abc def"}, "expected": "abc def", "note": "no word starts with a root"},
+    {"id": "h3", "input": {"dictionary": ["in", "inter", "internal"], "sentence": "internal internet into"}, "expected": "in in in", "note": "nested roots"},
+    {"id": "h4", "input": {"dictionary": ["go", "gone"], "sentence": "go gone goes g"}, "expected": "go go go g", "note": "a word shorter than every root"},
+    {"id": "h5", "input": {"dictionary": ["k"], "sentence": "kite kangaroo knot lake"}, "expected": "k k k lake", "note": "a one-letter root"},
+    {"id": "h6", "input": {"dictionary": ["ab", "abc", "b"], "sentence": "abc bca cab ab"}, "expected": "ab b cab ab", "note": "a root in the middle of a word does not count"},
+    {"id": "h7", "input": {"dictionary": ["re"], "sentence": "redo redo redo"}, "expected": "re re re", "note": "repeated words"},
+    {"id": "h8", "input": {"dictionary": ["abcdef"], "sentence": "abc abcdefgh"}, "expected": "abc abcdef", "note": "a word that is a prefix of a root"},
+    {"id": "h9", "input": {"dictionary": ["q", "w"], "sentence": "q w e r"}, "expected": "q w e r", "note": "one-letter words"},
+    {"id": "h10", "input": {"dictionary": ["tree", "trie", "try"], "sentence": "tr trees tried trying trident"}, "expected": "tr tree trie try trident", "note": "roots that share a prefix"},
+    {"id": "g1", "generate": {"n": 5000, "seed": 238}, "note": "large input: 5000 words against 1250 roots"}
+  ]
+}

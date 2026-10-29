@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0238"
+slug: replace-words
+title: Replace Words with Roots
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [tries, arrays-hashing]
+signature:
+  function:
+    name: replaceWords
+    params:
+      - {name: dictionary, type: "string[]"}
+      - {name: sentence, type: string}
+    returns: {type: string}
+comparator: {type: exact}
+approaches:
+  - {id: scan-roots, name: Check every root against every word, role: brute, time: "O(W * D * L)", space: "O(S)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: trie, name: Trie of the roots walked once per word, role: optimal, time: "O(C + S)", space: "O(C + S)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of words in the sentence, with about n/4 roots
+  size_ladder: [50, 150, 500, 1500, 5000]
+  expected_from: trie
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 648, url: "https://leetcode.com/problems/replace-words/"}
+related: [implement-trie, search-suggestions, wildcard-word-dictionary]
+order: 5
+estimate_minutes: 20
