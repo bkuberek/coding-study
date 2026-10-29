@@ -2,6 +2,84 @@
 
 <!-- version list -->
 
+## v0.4.0 (2026-10-29)
+
+### Bug Fixes
+
+- **problems**: Treat year 0000 as an invalid date in 0226 payroll-report-validation
+  ([`ae217f5`](https://github.com/bkuberek/coding-study/commit/ae217f5df9eea9533203cfc898b5b303cf5e0f17))
+
+### Features
+
+- **problems**: Add 0219 installment-schedule
+  ([`7988091`](https://github.com/bkuberek/coding-study/commit/7988091c1f878db3cf3fcb8e53156e7c2ffb8bf7))
+
+- **problems**: Add 0220 tiered-bond-premium
+  ([`94f8915`](https://github.com/bkuberek/coding-study/commit/94f8915bd16347d0e3fdac9e9674a8d644abdc53))
+
+- **problems**: Add 0221 earned-premium-as-of
+  ([`2230980`](https://github.com/bkuberek/coding-study/commit/2230980496c8c2d9102741124ed8c5ee5f26bf23))
+
+- **problems**: Add 0222 endorsement-replay
+  ([`eeeb544`](https://github.com/bkuberek/coding-study/commit/eeeb544ce2479efb39da19ddf9afff1a10f44f40))
+
+- **problems**: Add 0223 certificate-expiry-alerts
+  ([`ba3ba43`](https://github.com/bkuberek/coding-study/commit/ba3ba43762990c36e7d67a9533335d83709267f9))
+
+- **problems**: Add 0224 loss-ratio-by-period
+  ([`836786e`](https://github.com/bkuberek/coding-study/commit/836786e0e96814ce50dedacbc663d77d8a77abae))
+
+- **problems**: Add 0225 rate-change-impact
+  ([`87a237b`](https://github.com/bkuberek/coding-study/commit/87a237b5540bd43b1fe42a8cb2646349bb2556a6))
+
+- **problems**: Add 0226 payroll-report-validation
+  ([`6401c09`](https://github.com/bkuberek/coding-study/commit/6401c09d81547ac60f3e5b104eae46c73430c83d))
+
+- **problems**: Add 0227 duplicate-contractor-records
+  ([`9d98b0e`](https://github.com/bkuberek/coding-study/commit/9d98b0ea4781ece6e4ec9a9f8d8835f5f5e372df))
+
+- **problems**: Add 0228 effective-dated-history
+  ([`a5a13ca`](https://github.com/bkuberek/coding-study/commit/a5a13cae0cddbe6d6580014ee1744603b574a31f))
+
+- **problems**: Add 0229 can-attend-meetings
+  ([`3153dfb`](https://github.com/bkuberek/coding-study/commit/3153dfb24a65c9616a5b0a489970b056361200ee))
+
+- **problems**: Add 0230 employee-free-time
+  ([`4344f13`](https://github.com/bkuberek/coding-study/commit/4344f134931c59101a07d39baf6fd22587f397b4))
+
+- **problems**: Add 0231 remove-covered-intervals
+  ([`6523b3b`](https://github.com/bkuberek/coding-study/commit/6523b3b75ee2baca91728be01ca61f849e84586d))
+
+- **problems**: Add 0232 snapshot-array
+  ([`a27a8a6`](https://github.com/bkuberek/coding-study/commit/a27a8a664c9a15447269cd34ea7c3292dec27aa5))
+
+- **problems**: Add 0233 employee-importance
+  ([`f263d50`](https://github.com/bkuberek/coding-study/commit/f263d506b6e1cc2d755e2eef116e025ba602509e))
+
+- **problems**: Add 0234 course-schedule-ii
+  ([`d2644fa`](https://github.com/bkuberek/coding-study/commit/d2644fa6a45be1e689e5b5aacf95d3ac4fa5853b))
+
+- **problems**: Add 0235 time-to-inform-employees
+  ([`7364e53`](https://github.com/bkuberek/coding-study/commit/7364e531218ca73c58f1218571441315d1e485b7))
+
+- **problems**: Add 0236 search-insert-position
+  ([`4205cdb`](https://github.com/bkuberek/coding-study/commit/4205cdb3ac45614e5c39733d502b0e53e1cc1a04))
+
+- **problems**: Add 0237 tax-brackets
+  ([`8e78293`](https://github.com/bkuberek/coding-study/commit/8e782934487269929679cdb3d5e7e7c5afce3579))
+
+- **problems**: Add 0238 replace-words
+  ([`baea147`](https://github.com/bkuberek/coding-study/commit/baea1474912d1d0a23781aa5c9d7cf1a24afc4b3))
+
+- **problems**: Add 0239 sorted-insertion-cost
+  ([`9d22421`](https://github.com/bkuberek/coding-study/commit/9d224214eef9420f536f756f923e70e82cf4c9d9))
+
+### Refactoring
+
+- **stubs**: Reuse the domain type helpers in the Python and JVM stub generators
+  ([`164e81d`](https://github.com/bkuberek/coding-study/commit/164e81d25165c81be03ca8e810b4e370063e2725))
+
+
 ## v0.3.0 (2026-10-28)
 
 ### Documentation
