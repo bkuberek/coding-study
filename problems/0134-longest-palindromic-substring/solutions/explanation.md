@@ -48,6 +48,8 @@ The clearest dynamic-programming formulation, so it is the oracle, and it answer
 - Python: a list of independent lists from a comprehension; `[[False] * n] * n` would share one row.
 - TypeScript: `Array.from` with a factory for independent rows.
 - Java and Kotlin: `new boolean[n][n]` and `Array(n) { BooleanArray(n) }`; one megabyte for `n = 1000`.
+- Go: a `[][]bool` has no 2D constructor, so each row is its own `make([]bool, n)`; a row left unallocated would be a nil slice. Indexing a `string` gives a `byte`, which is a character here because the input is ASCII.
+- Rust: `vec![vec![false; n]; n]` clones the inner vector, so the rows are independent. A `String` cannot be indexed by position, so the reference reads `s.as_bytes()`; slicing `s[a..b]` at the end is safe because every offset of an ASCII string is a character boundary.
 
 ## Approach: expand-around-center (Expand from every center)
 
@@ -86,6 +88,8 @@ The standard answer: short, no table, and fast in practice because most expansio
 - Python: `center // 2` and `(center + 1) // 2` give the two starting positions.
 - TypeScript: `>> 1` halves the non-negative center index.
 - Java and Kotlin: integer division; `substring(start, end)` excludes `end`.
+- Go: `left` goes down to `-1`, and `left >= 0` is tested before `s[left]`, so the short-circuit keeps the index valid. The result is a slice of `s` that shares its bytes, which is free.
+- Rust: a `usize` cannot hold `-1`, so the loop keeps `left` one past the next character to compare (`bytes[left - 1]`) and tests `left > 0`. `bytes[left..right]` is then the palindrome found so far, and its length is `right - left` with no correction.
 
 ## Approach: manacher (Manacher's algorithm)
 
@@ -126,3 +130,5 @@ The only linear-time answer, and worth knowing by name. It is easy to get the mi
 - TypeScript: `s.split("").join("|")` interleaves; the best center is tracked in the loop.
 - Java: a `char[]` filled with `|`, with the characters of `s` at the odd positions.
 - Kotlin: `CharArray(size) { ... }` builds the interleaved array in one expression.
+- Go: a `[]byte` filled with `'|'`, with the characters of `s` copied to the odd positions; the built-in `min` (Go 1.21) picks the mirrored radius.
+- Rust: `i - radius[i] - 1 >= 0` would underflow a `usize`, so the loop tests `radius[i] < i`, which says the same thing. `vec![b'|'; 2 * n + 1]` is the separator row, and `(right - i).min(radius[...])` is the mirrored radius.
