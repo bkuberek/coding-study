@@ -46,6 +46,8 @@ It separates the two ideas of the problem (downward gains and turning nodes) cle
 - TypeScript: `Math.max(0, ...)` likewise; the root is non-null by the constraints, asserted with `!`.
 - Java: `Math.max` takes two arguments, so three-way maxima are nested. Sums stay within ±10^8, far from `int` overflow.
 - Kotlin: `maxOf` has a three-argument overload; `requireNotNull` documents the non-empty guarantee.
+- Go: the builtin `max` takes three arguments, so `max(0, gain(left), gain(right))` is one call.
+- Rust: `i32::max` takes two values, so the gains are chained with `.max(..)`. `best_path` returns `Option<i32>`, `None` for an empty subtree, and `fold(turning_here, i32::max)` combines the two children's best paths with the one turning here.
 
 ## Approach: postorder-gain (One post-order pass returning downward gains)
 
@@ -84,3 +86,5 @@ Linear and short; this is the expected answer for this hard problem. The subtle 
 - TypeScript: an arrow function closes over `let best`.
 - Java: an instance field holds `best`, reset at the start of each call.
 - Kotlin: a local `fun gain` captures `var best`.
+- Go: the closure `gain` updates the captured `best`, and is declared with `var` first because a function literal cannot call itself by name.
+- Rust: a closure cannot recurse, so `gain` is a function and `best` is a `&mut i32` parameter. It starts at `i32::MIN` instead of the root's value, since the first node visited always raises it.
