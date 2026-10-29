@@ -6,7 +6,7 @@ status: ready
 difficulty: hard
 track: concurrency
 kind: concurrent
-languages: [java, kotlin, python]
+languages: [java, kotlin, python, go, rust]
 signature:
   class:
     name: LRUCache
@@ -25,11 +25,18 @@ concurrency:
     - id: no-lock
       name: No lock
       bug: The hash map and the recency list are updated with no mutual exclusion, so concurrent calls corrupt the list and double-evict entries
+      languages: [java, kotlin, python, go]
       caught_by: [s1]
     - id: unlocked-get
       name: Get treated as a read
       bug: Put takes the lock but get does not, although every hit moves its entry in the recency list
+      languages: [java, kotlin, python, go]
       caught_by: [s2]
+    - id: split-locks
+      name: Map and list behind separate locks
+      bug: Looks a key up under the map's lock and moves its slot under the list's lock, so another worker can evict the key and reuse the slot in between
+      languages: [rust]
+      caught_by: [s1]
 approaches:
   - {id: locked-dll, name: Hash map and doubly linked list under one lock, role: optimal, time: "O(1) per op", space: "O(capacity)"}
   - {id: locked-linked-map, name: Access-ordered map from the standard library under one lock, role: optimal, time: "O(1) per op", space: "O(capacity)"}

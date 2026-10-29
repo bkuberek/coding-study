@@ -54,6 +54,8 @@ In an interview, write the single-lock version, then discuss these trade-offs; c
 - Java: a `ReentrantLock` with `try`/`finally`. On JDK 21, `synchronized` methods would pin a virtual thread to its carrier while it holds the monitor; with such short critical sections this is harmless, but `ReentrantLock` avoids it entirely. `ConcurrentHashMap` alone does not help, because the map and the list must change together.
 - Kotlin: the same JDK lock with `lock.withLock { }`, whose inline lambda allows the early `return -1`. With coroutines the same design uses a `kotlinx.coroutines.sync.Mutex`; holding it never blocks a thread, but it must not be held across a suspending call such as loading a missing value. Coroutines are not autograded here.
 - Python: one `threading.Lock` around each method. Single operations on a `dict` are atomic under the GIL, but the five pointer updates of a move are separate statements, and a thread can be switched out between any two of them.
+- Go: a `sync.Mutex` with `defer c.mu.Unlock()` around the sequential cache's map of `*node` and sentinel list. A plain map must never be written by one goroutine while another reads or writes it: the runtime detects that and ends the process with `fatal error: concurrent map writes`, which `recover` cannot catch.
+- Rust: the sequential cache (nodes in a `Vec` linked by slot index, and a `HashMap` from key to slot) inside a `Mutex`, so `get`, `put` and `size` take `&self` and lock it. The compiler insists that the shared cache be `Sync`, which rules out data races; it cannot tell whether the lock covers the right steps (see `split-locks`).
 
 ## Approach: locked-linked-map (Access-ordered map from the standard library under one lock)
 
@@ -93,12 +95,15 @@ Less code and fewer places to get the pointer updates wrong, at the cost of show
 - Java: an anonymous subclass of `LinkedHashMap` overriding `removeEldestEntry`, guarded by a `ReentrantLock`.
 - Kotlin: the same JDK class via `object : LinkedHashMap<Int, Int>(16, 0.75f, true)`; with coroutines a `Mutex` replaces the lock.
 - Python: `collections.OrderedDict` with `move_to_end` and `popitem(last=False)`; `functools.lru_cache` is thread-safe but caches function results, not a key-value API.
+- Go and Rust have no access-ordered map in their standard libraries, so this approach has no Go or Rust reference; Go's `container/list` with a map is the `locked-dll` design.
 
 ## Broken: no-lock (No lock)
 
 ### Bug
 
 Nothing is synchronized, so threads interleave inside the multi-step updates of the map and the list. Two `put` calls can evict the same eldest node: in Python the second `del` raises `KeyError` (`ERROR`), on the JVM the map silently grows past `capacity` (`bounds` on `size`). Two moves to the tail at once lose a node from the list while it stays in the map, so it is never evicted; the final flush of fresh keys then finds an old key still in place of a new one (`final.expected`), or an eviction reaches the sentinel and fails (`ERROR`).
+
+The Go version keeps its index in a `sync.Map`, because two goroutines writing a plain map end the whole process instead of failing one run. Each map call is then safe, but nothing makes the map, the list and the size change together: the list breaks into a nil pointer dereference (`ERROR`), or the unguarded size passes `capacity` (`bounds`). Safe Rust cannot express this bug: the methods take `&self`, and changing a map or a list through a shared reference needs a lock; its broken reference is `split-locks`.
 
 ### Failing interleaving
 
@@ -117,6 +122,8 @@ Hold one lock for the whole of every public method, as in the `locked-dll` appro
 
 `put` and `size` take the lock, but `get` does not, on the reasoning that it only reads. A hit in an LRU cache is a write: it unlinks the node and appends it at the tail. Two concurrent hits both read the same `tail.prev` and both append after it, so one node falls out of the list while staying in the map; a hit racing with a locked `put` rewires pointers in the middle of an eviction. The broken list shows up in the final flush (`final.expected`), as a growing `size`, or as an exception when an eviction reaches a sentinel.
 
+In Go the same reasoning produces a `sync.RWMutex` whose read lock guards `Get`: concurrent hits share it and relink the list together. Rust rejects this bug at compile time, since an `RwLock` read guard gives only a shared reference, through which the list cannot be relinked.
+
 ### Failing interleaving
 
 1. Readers A and B call `get(1)` and `get(2)` on a full cache.
@@ -127,3 +134,20 @@ Hold one lock for the whole of every public method, as in the `locked-dll` appro
 ### Fix
 
 Take the same lock in `get` as in `put`, as in the `locked-dll` approach: every method that changes the recency order is a writer.
+
+## Broken: split-locks (Map and list behind separate locks)
+
+### Bug
+
+Each field has a `Mutex` of its own. That satisfies the compiler: the cache is `Send + Sync`, and no data race is possible. But `get` and the update branch of `put` look the key up under the map's lock, release it, and only then take the list's lock to move or overwrite the slot. In between, another worker can evict that key and reuse its slot for a different key, so a `get` returns another key's value and an update writes a value into another key's entry (`values-match-keys`). A `put` of a new key checks the map before it takes both locks, so two `put` calls of the same key both insert it; the extra node belongs to no key, and once it is evicted `size` grows past `capacity` (`bounds`, `final.expected`). Rust rules out data races, not race conditions.
+
+### Failing interleaving
+
+1. The cache is full and holds key 3, its least recently used entry, in slot 5. A calls `get(3)` and B calls `put(7, 7000001)`.
+2. A finds slot 5 under the map's lock and releases it.
+3. B takes the list's lock, evicts key 3, removes it from the map and reuses slot 5 for key 7.
+4. A takes the list's lock and returns slot 5's value, 7000001, for key 3.
+
+### Fix
+
+Keep the map and the list under one lock, as in the `locked-dll` approach: the lookup and the move must be one critical section.

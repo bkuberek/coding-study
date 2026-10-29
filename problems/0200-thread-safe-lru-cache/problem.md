@@ -61,7 +61,7 @@ Storing 7 a second time replaces its value and counts as a use, so when 9 arrive
 - `size` never reports more than `capacity`.
 - When the workers are done, the cache must still be a valid LRU cache: the stress tests then store `capacity` fresh keys and expect to read all of them back, with `size` equal to `capacity`. A recency list that lost or duplicated an entry fails this check.
 
-Java and Kotlin run on platform threads and on virtual threads, and Python on threads. A passing stress run is evidence of thread safety, not proof.
+Java and Kotlin run on platform threads and on virtual threads, Python and Rust on threads, and Go on goroutines. In Rust the threads share one cache, so its methods take `&self`. A passing stress run is evidence of thread safety, not proof.
 
 ## Follow-ups
 
