@@ -1,4 +1,4 @@
-"""`cstudy verify --static` checks S3 to S12 on one problem (docs/specs/authoring.md#static).
+"""`cstudy verify --static` checks S3 to S13 on one problem (docs/specs/authoring.md#static).
 
 S1 (schemas) and S2 (directory name) fail while loading the problem; uniqueness across problems
 needs every problem and is checked by the caller.
@@ -16,6 +16,7 @@ from coding_study.domain.concurrency_checks import ConcurrencyContent, concurren
 from coding_study.domain.errors import ContentIssue
 from coding_study.domain.explanation import ApproachSection, Explanation
 from coding_study.domain.generated_cases import expected_source
+from coding_study.domain.language_limits import language_limits
 from coding_study.domain.layout import SOURCE_EXTENSIONS, language_of_extension
 from coding_study.domain.levels import level_heading
 from coding_study.domain.markdown import MarkdownDocument, MarkdownSection
@@ -108,6 +109,7 @@ def static_checks(content: ProblemContent) -> StaticReport:
     meta = content.problem.meta
     _names(issues, content)
     _case_values(issues, content)
+    _language_limits(issues, content)
     if content.problem_markdown is None:
         issues.error(PROBLEM_FILE, "missing")
     else:
@@ -174,6 +176,14 @@ def _case_values(issues: _Issues, content: ProblemContent) -> None:
     for index, case in enumerate(content.problem.cases):
         for issue in case_issues(signature, case):
             issues.error(TESTS_FILE, issue, f"cases[{index}] {case.id}")
+
+
+def _language_limits(issues: _Issues, content: ProblemContent) -> None:
+    """S13: every listed language can express the signature and the case inputs."""
+    problem = content.problem
+    for language in problem.meta.languages:
+        for reason in language_limits(problem.meta.signature, problem.cases, language):
+            issues.error(META_FILE, f"cannot list {language}: {reason}", "languages")
 
 
 def _solution_files(issues: _Issues, content: ProblemContent) -> None:

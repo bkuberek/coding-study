@@ -6,7 +6,7 @@ status: ready
 difficulty: easy
 track: practical
 kind: function
-languages: [python, typescript, java, kotlin, go]
+languages: [python, typescript, java, kotlin, go, rust]
 signature:
   function:
     name: sortValues

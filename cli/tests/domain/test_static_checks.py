@@ -8,6 +8,7 @@ from coding_study.domain.cases import Case, Expected, FunctionInput, OperationSe
 from coding_study.domain.problem import (
     ComparatorSpec,
     ComparatorType,
+    Language,
     Level,
     Perf,
     ProblemKind,
@@ -487,3 +488,30 @@ def test_progressive_levels_are_contiguous(problems):
 
 def test_valid_progressive_problem(problems):
     assert errors(progressive(problems, case_level=2)) == []
+
+
+# S13
+
+
+def list_problem(problems, case_input):
+    meta = problems["two-sum"].meta
+    head = Param("head", parse_value_type("ListNode"))
+    signature = replace(meta.signature, params=(head,), returns=Returns(parse_return_type("int")))
+    languages = (*meta.languages, Language.RUST)
+    case = Case("c1", FunctionInput({"head": case_input}), Expected(1))
+    problem = replace(problems["two-sum"], cases=(case,))
+    return replace(problem, meta=replace(meta, signature=signature, languages=languages))
+
+
+def test_rust_cannot_be_listed_with_a_cyclic_list_input(problems):
+    problem = list_problem(problems, {"values": [1, 2], "cycle_at": 0})
+    assert (
+        f"{META}: languages: cannot list rust: a cyclic ListNode input cannot be built in Rust: "
+        "an Option<Box<ListNode>> cannot point back"
+    ) in errors(content(problems, problem=problem))
+
+
+def test_rust_can_be_listed_with_an_acyclic_list_input(problems):
+    problem = list_problem(problems, [1, 2])
+    issues = errors(content(problems, problem=problem))
+    assert [issue for issue in issues if "cannot list" in issue] == []

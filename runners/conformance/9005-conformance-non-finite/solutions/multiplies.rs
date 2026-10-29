@@ -1,0 +1,3 @@
+pub fn scale(value: f64, factor: f64) -> f64 {
+    value * factor
+}

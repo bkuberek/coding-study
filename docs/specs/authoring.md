@@ -245,6 +245,7 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 | S10 | Progressive: levels contiguous from 1; every level has cases; every case `level` valid and using only methods introduced at or below it; `generate` cases at the last level |
 | S11 | Concurrent: `kind: concurrent` if and only if `track: concurrency`; `concurrency.model` valid for every listed language; comparator `ops`; no `perf`, `oracle`, `time_class` or `generator.py`; `blocking` only on methods; `## Concurrency` section present |
 | S12 | Concurrent stress cases: steps name signature methods (not the constructor) or harness ops with valid arity; template ranges fit the parameter types; `@enter`/`@exit` balanced and nested per iteration; selectors name existing ops and argument indexes; 2 to 64 workers and at most 20,000 ops per run after expansion; `stress_checker.py` present if and only if a `checker` invariant exists; every broken file maps to a declared broken id and every `caught_by` id is a stress case; `## Broken` sections match `concurrency.broken` |
+| S13 | Every language in `languages` can express the problem. Rust cannot when a `ref_of` points into a `ListNode` (or `ListNode[]`), when an `as: index` result is a `ListNode` or indexes one, or when a case input holds a cyclic list (`cycle_at`): an `Option<Box<ListNode>>` has one owner per node ([mapping](problem-format.md#go-and-rust-mapping)). `no_alias_with` on a list is fine |
 
 ### Dynamic
 
