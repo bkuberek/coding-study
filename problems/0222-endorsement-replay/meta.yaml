@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0222"
+slug: endorsement-replay
+title: Endorsement Replay
+status: ready
+difficulty: medium
+track: practical
+kind: design
+patterns: [binary-search]
+signature:
+  class:
+    name: EndorsedPolicy
+    constructor: {params: [{name: termStart, type: date}, {name: termEnd, type: date}, {name: fullTermPremium, type: decimal}]}
+    methods:
+      - {name: endorse, params: [{name: effectiveDate, type: date}, {name: fullTermPremium, type: decimal}], returns: {type: bool}}
+      - {name: premiumOn, params: [{name: onDate, type: date}], returns: {type: decimal}}
+      - {name: writtenPremium, params: [], returns: {type: decimal}}
+      - {name: earnedPremium, params: [{name: asOfDate, type: date}], returns: {type: decimal}}
+comparator: {type: ops}
+approaches:
+  - {id: sorted-endorsements, name: Keep endorsements sorted by effective date and sum the segments, role: optimal, time: "O(k) per endorse or premium total, O(log k) per premiumOn", space: "O(k)", time_class: "n^2", space_class: "n"}
+related: [versioned-rate-table, pro-rata-unearned-premium, earned-premium-as-of, time-based-kv-store]
+estimate_minutes: 40
