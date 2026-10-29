@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"names": ["Acme Builders, Inc.", "ACME BUILDERS LLC", "Summit Roofing", "Acme-Builders"], "taxIds": ["", "", "98-7654321", ""]}, "expected": [[0, 1, 3]]},
+    {"id": "ex2", "visible": true, "input": {"names": ["North Ridge Framing", "Ridge Electric Co", "North Ridge Framing Corp", "Valley Paving"], "taxIds": ["12-3456789", "", "", "123456789"]}, "expected": [[0, 2, 3]]},
+    {"id": "ex3", "visible": true, "input": {"names": ["Summit Roofing", "Summit Roofing West", "Valley Paving"], "taxIds": ["11-1111111", "22-2222222", ""]}, "expected": []},
+    {"id": "h1", "input": {"names": [], "taxIds": []}, "expected": [], "note": "no records"},
+    {"id": "h2", "input": {"names": ["Inc.", "LLC", "  ", "Co"], "taxIds": ["", "n/a", "12345678", "1234567890"]}, "expected": [], "note": "names that normalize to nothing and unusable tax ids match nothing"},
+    {"id": "h3", "input": {"names": ["Alpha Paving", "Beta Concrete", "Gamma Steel", "Delta Glass", "Epsilon Tile"], "taxIds": ["12-3456789", "123 45 6789", "123456789", "AB1234567", "12345678"]}, "expected": [[0, 1, 2]], "note": "tax ids compare by their nine digits; others are ignored"},
+    {"id": "h4", "input": {"names": ["Co Builders", "Builders", "Acme Co Inc", "Acme", "Acme Company"], "taxIds": ["", "", "", "", ""]}, "expected": [[2, 3, 4]], "note": "legal-form words are dropped only at the end"},
+    {"id": "h5", "input": {"names": ["Pine Electric", "Oak Plumbing", "OAK plumbing llc", "Birch Masonry", "Birch Masonry Ltd", "pine electric inc"], "taxIds": ["", "", "", "", "", ""]}, "expected": [[0, 5], [1, 2], [3, 4]], "note": "groups ordered by their smallest index"},
+    {"id": "h6", "input": {"names": ["A1 Excavation", "Stone Works", "Stone Works LLC", "Hill Crane"], "taxIds": ["55-5555555", "66-6666666", "55-5555555", "666666666"]}, "expected": [[0, 1, 2, 3]], "note": "name and tax-id links join everything"},
+    {"id": "h7", "input": {"names": ["Studio 54 LLC", "studio-54", "Studio 5 4", "Studio-5-4 Corp"], "taxIds": ["", "", "", ""]}, "expected": [[0, 1], [2, 3]], "note": "digits are kept and separators split tokens"},
+    {"id": "h8", "input": {"names": ["Same Name", "Same Name", "Same Name"], "taxIds": ["10-0000001", "10-0000001", "10-0000001"]}, "expected": [[0, 1, 2]], "note": "identical records"},
+    {"id": "h9", "input": {"names": ["West Grading", "West Grading LLC", "East Grading", "East Grading Co", "West Grading Corp", "Hill Crane"], "taxIds": ["", "", "", "88-8888888", "888888888", ""]}, "expected": [[0, 1, 2, 3, 4]], "note": "one record links two existing groups by name and by tax id; a lone record stays out"},
+    {"id": "h10", "input": {"names": ["&&&", "...", "Ridge Drywall", "ridge drywall"], "taxIds": ["", "", "", ""]}, "expected": [[2, 3]], "note": "empty normalized names never match each other"},
+    {"id": "h11", "input": {"names": ["123456789", "Other Builders", "123-456-789 Inc"], "taxIds": ["", "123456789", ""]}, "expected": [], "note": "a name and a tax id with the same text are different keys"}
+  ]
+}

@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0227"
+slug: duplicate-contractor-records
+title: Duplicate Contractor Records
+status: ready
+difficulty: medium
+track: practical
+kind: function
+patterns: [union-find, arrays-hashing]
+signature:
+  function:
+    name: duplicateGroups
+    params:
+      - {name: names, type: "string[]"}
+      - {name: taxIds, type: "string[]"}
+    returns: {type: "list<list<int>>"}
+comparator: {type: exact}
+approaches:
+  - {id: union-find, name: Union records that share a normalized name or tax id, role: optimal, time: "O(L + n log n)", space: "O(n + L)", time_class: "n log n", space_class: "n"}
+related: [accounts-merge, count-connected-components, payroll-report-validation]
+estimate_minutes: 35
