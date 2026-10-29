@@ -47,6 +47,8 @@ It follows the definition directly and is easy to argue about, but it recomputes
 - TypeScript: `Math.max` takes any number of arguments, so the three candidates fit in one call.
 - Java: `Math.max` takes two arguments, so the reference combines the two subtree diameters first.
 - Kotlin: `maxOf` has a three-argument overload.
+- Go: the builtin `max` (Go 1.21) takes any number of arguments, so the three candidates fit in one call.
+- Rust: `i32::max` takes two values, so the candidates are chained: `turning_here.max(left).max(right)`.
 
 ## Approach: postorder-heights (One post-order pass returning heights)
 
@@ -85,3 +87,5 @@ Linear time with the same short structure as a height function; this is the expe
 - TypeScript: an arrow function closes over `let best`.
 - Java: there are no closures over mutable locals, so the reference uses an instance field (an `int[]` holder is a common alternative).
 - Kotlin: a local `fun` can read and write the enclosing `var best` directly.
+- Go: a function literal cannot refer to its own name, so `height` is declared with `var` first and assigned afterwards; it updates the captured `best` directly.
+- Rust: a closure cannot call itself, so `height` is a function and `best` is passed down as `&mut i32`.
