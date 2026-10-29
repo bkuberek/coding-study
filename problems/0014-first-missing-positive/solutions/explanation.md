@@ -46,6 +46,8 @@ Correct, read-only and memory-free, which makes it the oracle. At n = 30,000 it 
 - TypeScript: `includes` is a linear scan.
 - Java: a small `contains` helper loops over the `int[]` without boxing.
 - Kotlin: `candidate in nums` calls `IntArray.contains`, also a primitive linear scan.
+- Go: `slices.Contains(nums, candidate)` is the linear scan over the `[]int`, with no boxing.
+- Rust: `nums.contains(&candidate)` scans the `Vec<i32>`. The candidate never exceeds `nums.len() + 1`, so it stays inside `i32`.
 
 ## Approach: hash-set (Hash set of the values)
 
@@ -81,6 +83,8 @@ Linear time and read-only, but O(n) memory, which the statement rules out. It is
 - Python: `set(nums)` is built in C.
 - Java: `HashSet<Integer>` boxes every value; `contains(candidate)` boxes the argument.
 - Kotlin: `nums.toHashSet()` converts the `IntArray` into a `HashSet<Int>`.
+- Go: a `map[int]bool` is the set, and a missing key reads as `false`, so `present[candidate]` needs no comma-ok.
+- Rust: `collect()` builds a `HashSet<i32>` from the owned `Vec`; the values span the whole `i32` range, so the set is keyed by `i32`, not by an index.
 
 ## Approach: cyclic-sort (Swap every value to its own index)
 
@@ -120,3 +124,5 @@ Meets both requirements of the statement, at the cost of reordering the caller's
 - TypeScript: destructuring `[nums[i], nums[home]] = [nums[home], nums[i]]` swaps; `home` is again computed first.
 - Java: a classic three-step swap through a temporary.
 - Kotlin: `nums[i] in 1..n` expresses the range test; the swap uses a temporary for clarity (the `a = b.also { b = a }` idiom works too, but is harder to read).
+- Go: `int` is 64-bit, so `nums[i] <= n` compares without any overflow concern, and the swap is the tuple assignment `nums[i], nums[home] = nums[home], nums[i]`. The function reorders the caller's slice, as the other languages do.
+- Rust: the values are `i32` and can be negative, so `home_index` converts with `usize::try_from` (which rejects negatives) before the range test, and `Vec::swap` exchanges the two slots. `nums` is an owned `Vec<i32>`, so reordering it affects no one else.
