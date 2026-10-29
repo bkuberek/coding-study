@@ -50,6 +50,8 @@ The most direct form of the recurrence and the oracle here. It may skip parts of
 - TypeScript: `Int16Array` rows (distances are at most 500); `Math.min` takes three arguments.
 - Java: fields hold the words and the cache; `Math.min` takes two arguments, so it is nested. The local variable `delete` is allowed in Java, although it would be a reserved word in TypeScript.
 - Kotlin: a local `fun` and `minOf` with three arguments.
+- Go: the built-in `min` takes three arguments (Go 1.21), and the recursion is a closure declared with `var` first.
+- Rust: `Ord::min` takes two, so the three candidates chain as `a.min(b).min(c)`. `word2.len() - j` cannot underflow, because `j` never exceeds the length; the distance is cast with `as i32`. The recursion is a private function over byte slices and an `Option<i32>` table.
 
 ## Approach: tabulation (Fill the table of prefix distances)
 
@@ -87,6 +89,8 @@ Tight loops and no recursion, and the full table lets you walk back from `cost[m
 - TypeScript: `Int32Array` rows.
 - Java: nested `Math.min`.
 - Kotlin: the row initializer sets row 0 to `0..n` directly (`IntArray(n + 1) { j -> ... }`).
+- Go: the first column is set while the rows are allocated, and `range cost[0]` sets the first row.
+- Rust: `iter_mut().enumerate()` fills the first column and the first row without an index loop.
 
 ## Approach: rolling-array (Two rows along the shorter word)
 
@@ -124,3 +128,5 @@ The memory-lean standard answer. It cannot list the operations without extra wor
 - TypeScript: `Int32Array.from({ length }, (_, j) => j)` builds the first row; a destructuring swap reuses the two arrays.
 - Java: an explicit swap of two `int[]`.
 - Kotlin: `IntArray(size) { it }` builds the first row, and `previous = current.also { current = previous }` swaps.
+- Go: `previous, current = current, previous` swaps the slice headers without copying; `current[0] = i` is set at the top of every row, and every other cell is overwritten.
+- Rust: `(0..=n as i32).collect()` builds the first row and `std::mem::swap` swaps the two vectors. `enumerate()` is zero-based, so the row number is `i + 1`, and the cells are written at `j + 1`.
