@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0228"
+slug: effective-dated-history
+title: Effective-Dated History
+status: ready
+difficulty: medium
+track: practical
+kind: progressive
+patterns: [binary-search]
+levels:
+  - {level: 1, title: Effective-dated values}
+  - {level: 2, title: As known at a time}
+signature:
+  class:
+    name: RecordHistory
+    constructor: {params: []}
+    methods:
+      - {name: setValue, level: 1, params: [{name: timestamp, type: long}, {name: recordId, type: string}, {name: field, type: string}, {name: effectiveDate, type: date}, {name: value, type: string}], returns: {type: void}}
+      - {name: getValue, level: 1, params: [{name: timestamp, type: long}, {name: recordId, type: string}, {name: field, type: string}, {name: onDate, type: date}], returns: {type: string}}
+      - {name: snapshot, level: 1, params: [{name: timestamp, type: long}, {name: recordId, type: string}, {name: onDate, type: date}], returns: {type: "list<string>"}}
+      - {name: getValueAsKnown, level: 2, params: [{name: timestamp, type: long}, {name: recordId, type: string}, {name: field, type: string}, {name: onDate, type: date}, {name: knownAt, type: long}], returns: {type: string}}
+      - {name: snapshotAsKnown, level: 2, params: [{name: timestamp, type: long}, {name: recordId, type: string}, {name: onDate, type: date}, {name: knownAt, type: long}], returns: {type: "list<string>"}}
+comparator: {type: ops}
+approaches:
+  - {id: write-log-and-view, name: Per-field write log plus a sorted current view, role: optimal, time: "O(w) per setValue or getValueAsKnown, O(log w) per getValue, O(f log f + W) per snapshot", space: "O(W)", time_class: "n^2", space_class: "n"}
+related: [time-based-kv-store, in-memory-database, versioned-rate-table, endorsement-replay]
+estimate_minutes: 45
