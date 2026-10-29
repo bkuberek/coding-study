@@ -29,7 +29,7 @@ Upgrade with `uv tool upgrade coding-study` (or `pipx upgrade coding-study`). Ke
 
 ## Install the language toolchains
 
-`cstudy` runs your solutions with the real toolchain of each language, which you install yourself. uv and Python are required; Node.js and the JDK are needed only for the languages that use them. The recommended install on macOS:
+`cstudy` runs your solutions with the real toolchain of each language, which you install yourself. uv and Python are required; Node.js, the JDK, Go and Rust are needed only for the languages that use them. The recommended install on macOS:
 
 | Tool | Version | Needed for | Install on macOS |
 |------|---------|------------|------------------|
@@ -38,6 +38,8 @@ Upgrade with `uv tool upgrade coding-study` (or `pipx upgrade coding-study`). Ke
 | [Node.js](https://nodejs.org/) | 24 or newer | Optional: TypeScript | `brew install fnm`, then `fnm install 24` |
 | [pnpm](https://pnpm.io/) | 9 or newer | Optional: TypeScript | `corepack enable pnpm` |
 | JDK | 21 exactly | Optional: Java and Kotlin (the workspace's Gradle wrapper downloads Gradle and the Kotlin compiler) | [SDKMAN!](https://sdkman.io): `sdk install java` with a Temurin 21 identifier from `sdk list java` |
+| [Go](https://go.dev/) | 1.24 or newer | Optional: Go (`--lang go`) | `brew install go` |
+| [Rust](https://www.rust-lang.org/) | 1.80 or newer | Optional: Rust (`--lang rust`) | `brew install rustup`, then `rustup-init` |
 | git | any | Optional: versioning your workspace | `xcode-select --install` |
 
 [Install the language toolchains](docs/guides/toolchains.md) has the full steps, Linux, and the check for each. Then run `cstudy doctor`: it checks each tool and prints a fix for anything missing. In a workspace, `cstudy doctor --fix` also sets up the practice projects.
@@ -69,7 +71,7 @@ You practice in a **workspace**: a directory of your own for your solutions, not
    cstudy done --rating ok            # easy, ok, or hard; --gave-up if it never passed
    ```
 
-`cstudy done` schedules the next review, and `cstudy next` brings the problem back when it is due. A missing optional toolchain shows as `FAIL` in `cstudy doctor`; the other languages still work.
+`cstudy done` schedules the next review, and `cstudy next` brings the problem back when it is due. A missing Node.js, pnpm or JDK shows as `FAIL` in `cstudy doctor` and a missing Go or Rust as `WARN`; the other languages still work.
 
 ## Your workspace is your repository
 

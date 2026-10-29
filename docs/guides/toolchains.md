@@ -7,9 +7,11 @@
 | [uv and Python](#python-and-uv) | uv (any version; 0.10 or newer recommended), Python 3.13 found by `uv python find 3.13` | Required: `cstudy` and the Python practice project |
 | [Node.js and pnpm](#nodejs-and-pnpm) | Node 24 or newer, any pnpm (9 or newer recommended) | TypeScript |
 | [JDK 21](#jdk-21) | Exactly major version 21 | Java and Kotlin |
+| [Go](#go) | Go 1.24 or newer | Optional: `--lang go` |
+| [Rust](#rust) | `rustc` 1.80 or newer and `cargo`, through rustup | Optional: `--lang rust` |
 | [git](#git) | Any | Optional: versioning your workspace |
 
-You need only the toolchains of the languages you practice. `cstudy doctor` still reports a missing one as `FAIL`, and exits 4, when you do not use that language.
+You need only the toolchains of the languages you practice. `cstudy doctor` still reports a missing one as `FAIL`, and exits 4, when you do not use that language, except Go and Rust: they are optional languages, so a missing or too old one is a `WARN` ("needed for `--lang go`") and the exit code stays 0.
 
 ## Python and uv
 
@@ -110,13 +112,70 @@ Nothing else is needed for Java or Kotlin:
 
 Alternatives to SDKMAN: on macOS, `brew install openjdk@21`, then follow its caveats to put it on `PATH`; on Debian and Ubuntu, `sudo apt install openjdk-21-jdk`; on Fedora, `sudo dnf install java-21-openjdk-devel`.
 
+## Go
+
+Go is optional: only `--lang go` builds with it, and `cstudy doctor` warns, without failing, when it is missing. The workspace's Go project (`go/`) is a module that needs Go 1.24 or newer, the first release whose `go build -json` output `cstudy` parses. The standard installers all work: Homebrew on macOS, or the installer or archive from [go.dev/dl](https://go.dev/dl/) on macOS and Linux (follow [go.dev/doc/install](https://go.dev/doc/install) for the archive).
+
+```bash
+brew install go   # macOS
+```
+
+On Linux, prefer the go.dev archive: the Go package of a distribution is often older than 1.24.
+
+Check it:
+
+```bash
+go version   # go version go1.24.0 or newer
+```
+
+Nothing else is needed: the runner uses only the standard library, so `cstudy` never downloads a module, and `cstudy doctor --fix` has no Go step.
+
+- **`GOTOOLCHAIN=local`**: since Go 1.21 the `go` command downloads the toolchain a `go.mod` asks for, and `go/go.mod` says `go 1.24`. `cstudy` builds with `GOTOOLCHAIN=local` and never downloads one, so with an older Go it stops with an error instead. Export `GOTOOLCHAIN=local` in your shell as well if you want your own `go` commands, and your editor, to behave the same way.
+- **Your Go settings**: `cstudy` pins its own build environment (`GOENV=off`, `GOFLAGS=-mod=readonly`, `GOPROXY=off`, and your `GOOS`, `GOARCH` and `GOWORK` removed), so `go env -w` values and shell variables never change how it builds. They still apply to the `go` commands you run yourself. The Go build cache is kept, so the standard library compiles once per machine.
+- **Editor**: the `go.work` file at the workspace root lets gopls find the module in `go/`, so open the workspace root.
+- **Debugging**: debugger setup arrives with `--debug` support for Go; `cstudy test --debug` exits 4 for Go until then.
+
+## Rust
+
+Rust is optional: only `--lang rust` builds with it, and `cstudy doctor` warns, without failing, when `rustc` or `cargo` is missing or `rustc` is older than 1.80. Install it with [rustup](https://rustup.rs), which manages toolchains and components. Do not use Homebrew's `rust` formula: it has no `rust-src` and no toolchain management, so rust-analyzer cannot show the standard library and you cannot pick a version.
+
+```bash
+brew install rustup   # macOS
+rustup-init           # installs the stable toolchain and puts cargo on PATH
+```
+
+or, on macOS and Linux, the script from rustup.rs:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+Open a new terminal afterwards, so `~/.cargo/bin` is on `PATH`. For rust-analyzer in your editor, add the standard library sources:
+
+```bash
+rustup component add rust-src
+```
+
+Check it:
+
+```bash
+rustc --version   # rustc 1.80.0 or newer
+cargo --version
+```
+
+Nothing else is needed: the runner crates use only the standard library, so builds run with `cargo --offline` and `cstudy doctor --fix` has no Rust step.
+
+- **Your Cargo setup**: `cstudy` ignores your Cargo configuration for its builds. `RUSTFLAGS`, rustc wrappers such as `sccache`, `CARGO_TARGET_DIR`, `CARGO_BUILD_*` and `CARGO_PROFILE_*` do not reach them, so none can break a build or change what it measures. They still apply to the `cargo` commands you run yourself. Builds go to `.cs/build/rust` in the workspace.
+- **Editor**: `rust/Cargo.toml` lists each problem you start, so rust-analyzer checks every file; open the workspace root, or `rust/`.
+- **Debugging**: debugger setup arrives with `--debug` support for Rust; `cstudy test --debug` exits 4 for Rust until then.
+
 ## git
 
 git is optional: `cstudy init --git` runs `git init` in the new workspace, and `cstudy` never commits. macOS provides git with the Xcode Command Line Tools (`xcode-select --install`) or `brew install git`; on Linux, install your distribution's `git` package.
 
 ## Check everything
 
-Run `cstudy doctor` to check the toolchains. In a workspace, `cstudy doctor --fix` then sets up each project: `uv sync` in `python/`, `pnpm install` in `typescript/`, and a first Gradle build in `jvm/`.
+Run `cstudy doctor` to check the toolchains. In a workspace, `cstudy doctor --fix` then sets up each project: `uv sync` in `python/`, `pnpm install` in `typescript/`, and a first Gradle build in `jvm/`. It also writes the template files a workspace from an older `cstudy` lacks, such as the `go/` and `rust/` projects, which `cstudy doctor` reports as a `WARN` until then. Go and Rust need no setup command.
 
 ```bash
 cstudy doctor
