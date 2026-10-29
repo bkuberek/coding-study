@@ -43,6 +43,7 @@ Easy to reason about, but it pays O(L) memory for random access the problem does
 ### Language notes
 
 - Kotlin: `generateSequence(head) { it.next }.toList()` collects the nodes; `nodes[0].next` reads a Java field of platform type and may be null, which is fine as a `ListNode?` return.
+- Rust: a `Box` list has one owner per node, so the array holds the detached nodes (`rest = node.next.take()` in a loop), `Vec::remove` drops the target, and a reverse pass relinks the rest. `Vec::remove` shifts the tail, which is still O(L) in total.
 
 ## Approach: two-pass (Count the length, then walk to the predecessor)
 
@@ -79,6 +80,7 @@ Constant memory and very hard to get wrong, which makes it the oracle. It walks 
 
 - TypeScript: `before.next!` asserts what the counting guarantees: fewer than `L` steps never run off the list.
 - Kotlin: `repeat(length - n) { ... }` reads as "walk this many steps"; `before` is a `var` captured by the lambda, which is fine because it is typed as non-null `ListNode`.
+- Rust: the dummy is a plain `ListNode` on the stack, and `before` is a `&mut ListNode` that advances with `before.next.as_deref_mut()`. `before.next.take()` hands over the removed node, whose own `next` is spliced back in.
 
 ## Approach: one-pass-gap (Two pointers n nodes apart)
 
@@ -116,3 +118,4 @@ A single pass, which matters when the list is a stream you can only read once or
 - TypeScript: `lead!.next` in the first loop is safe because `n + 1 <= L + 1` steps from the dummy stay within the list or land on the final null.
 - Kotlin: `for (step in 0..n)` runs `n + 1` times. A plain loop keeps `lead` a local that smart-casts in `while (lead != null)`; capturing it in a `repeat` lambda would disable the smart cast.
 - Java: the same pointer arithmetic; `trail.next.next` may be null when the tail is removed, which is the correct new `next`.
+- Rust: two pointers n nodes apart would be a shared and a `&mut` reference into one list, which the borrow checker refuses. `lead` stays a shared cursor (`as_deref`), the loop counts how far `trail` would have moved, and one `&mut` walk replays those steps. The work is the same as the Python version; truly lock-step pointers need `unsafe` or `Rc<RefCell<ListNode>>` nodes.
