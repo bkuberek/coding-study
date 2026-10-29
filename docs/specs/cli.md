@@ -34,7 +34,7 @@
 | Rule | Detail |
 |------|--------|
 | Path or slug | An argument is a path when it contains `/` or `\`, or ends in `.py`, `.ts`, `.java` or `.kt`; anything else is a slug or an id, even when a file of that name exists. Relative paths resolve against the current directory, so an IDE passes the absolute path of the open file |
-| Files | The files [`cstudy start`](#cstudy-start) writes ([layout](../architecture.md#repository-layout)): `python/practice/<snake_slug>.py`, `typescript/practice/<slug>.ts`, `jvm/<java\|kotlin>/src/main/<java\|kotlin>/practice/<snake_slug>/<File>.<java\|kt>`, `go/practice/<snake_slug>/<File>.go` and `rust/practice/<snake_slug>.rs`. On the JVM and in Go any source file directly in the problem's package counts, such as the declared class of a class-design problem or a helper class. The Go and Rust paths are recognized, but their runners are planned ([ADR 0012](../decisions/0012-go-and-rust.md)) |
+| Files | The files [`cstudy start`](#cstudy-start) writes ([layout](../architecture.md#repository-layout)): `python/practice/<snake_slug>.py`, `typescript/practice/<slug>.ts`, `jvm/<java\|kotlin>/src/main/<java\|kotlin>/practice/<snake_slug>/<File>.<java\|kt>`, `go/practice/<snake_slug>/<File>.go` and `rust/practice/<snake_slug>.rs`. On the JVM and in Go any source file directly in the problem's package counts, such as the declared class of a class-design problem or a helper class. The Rust path is recognized, but its runner is planned ([ADR 0012](../decisions/0012-go-and-rust.md)) |
 | Problem | The slug is the problem whose file name the path carries (`two_sum` is `two-sum`); a path that names no problem exits 3 |
 | Language | The path's language is the language of the run. `--lang` may repeat it; naming another language exits 3 with both. `hint`, `done` and `show` have no `--lang`: they act on the problem, as with its slug |
 | Not a solution file | A path outside the workspace, or inside it but not at one of those locations, exits 3 with `not a solution file in this workspace: <path>` |
@@ -69,7 +69,7 @@
 One user-level file: `$XDG_CONFIG_HOME/coding-study/config.toml` (default `~/.config/coding-study/config.toml`); `CSTUDY_CONFIG` overrides the path. All keys are optional; defaults below. Precedence everywhere: CLI flag, then this file, then the problem's `meta.yaml`, then built-in defaults.
 
 ```toml
-default_lang = "python"          # python | typescript | java | kotlin | go | rust (go and rust: planned)
+default_lang = "python"          # python | typescript | java | kotlin | go | rust (rust: planned)
 open_on_start = true             # run $VISUAL or $EDITOR on cstudy start
 progress_db = "progress.db"      # relative to the workspace root
 
@@ -107,7 +107,7 @@ auto_commit = false              # reserved (PRD Q3)
 cstudy doctor [--fix]
 ```
 
-Checks Python 3.13, uv, Node 24 or newer, pnpm, JDK 21, Homebrew Gradle, the config file, the content root, the workspace ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), the Gradle wrapper, the workspace venv, `debugpy` in it, `node_modules`, and that the runner of each core language (`python`, `typescript`, `java`, `kotlin`; Go and Rust are not checked until their runners exist) answers `hello`: the runner is prepared for a problem with no files (`cs-doctor-handshake`, so the JVM build compiles no practice code) and started with no jobs. Outside a workspace only the toolchains, the config and the content are checked. `--fix` first writes every missing workspace template file (never overwriting one) and refreshes the runner runtime, then runs, in each workspace project that exists, `uv sync` in `python`, `pnpm install` in `typescript` (and, when the content is a checkout, in its `runners/typescript` for the runner's own `tsc` and Node types), and `./gradlew :java:classes :kotlin:classes -Pcs.only=cs_doctor_handshake` in `jvm` (builds the runner and support classes and warms the daemon without compiling practice files), printing one line per command and the last 10 output lines of a failed one. `--fix` outside a workspace exits 3.
+Checks Python 3.13, uv, Node 24 or newer, pnpm, JDK 21, Homebrew Gradle, the config file, the content root, the workspace ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), the Gradle wrapper, the workspace venv, `debugpy` in it, `node_modules`, and that the runner of each core language (`python`, `typescript`, `java`, `kotlin`; Go and Rust are not checked yet, so a machine without them passes) answers `hello`: the runner is prepared for a problem with no files (`cs-doctor-handshake`, so the JVM build compiles no practice code) and started with no jobs. Outside a workspace only the toolchains, the config and the content are checked. `--fix` first writes every missing workspace template file (never overwriting one) and refreshes the runner runtime, then runs, in each workspace project that exists, `uv sync` in `python`, `pnpm install` in `typescript` (and, when the content is a checkout, in its `runners/typescript` for the runner's own `tsc` and Node types), and `./gradlew :java:classes :kotlin:classes -Pcs.only=cs_doctor_handshake` in `jvm` (builds the runner and support classes and warms the daemon without compiling practice files), printing one line per command and the last 10 output lines of a failed one. `--fix` outside a workspace exits 3.
 
 | Status | Meaning |
 |--------|---------|
@@ -205,7 +205,7 @@ cstudy test [<slug|file>] [--lang L] [--watch] [--case ID]... [--all] [--level N
 | `--seed S` | Concurrent problems: base seed of every selected stress case instead of its `seed`; run `r` uses `S + r`. In the `async` model this reproduces a reported failing run exactly (`--case s1 --seed 1007 --stress 1`). Other problems: the first oracle input's seed (default 1), so `--stress 1 --seed 17` reruns `oracle-17`; without `--stress` it exits 3 |
 | `--json` | One [JSON document](#json-output) on standard output instead of the report; with `--watch`, `--perf` or `--debug` it is a usage error |
 | `--debug` | Start the runner under the language's debug agent and wait for an IDE to attach to it, with every time limit off ([Debugging](#debugging)) |
-| `--debug-port N` | With `--debug`: the agent's port, 1 to 65535. Defaults: Python 5678, TypeScript 9229, Java and Kotlin 5005; Go 2345 and Rust 12345 are reserved for their planned debug support |
+| `--debug-port N` | With `--debug`: the agent's port, 1 to 65535. Defaults: Python 5678, TypeScript 9229, Java and Kotlin 5005; Go 2345 and Rust 12345 are reserved for their planned debug support (`--debug` with Go exits 4: `go debug mode is not set up yet`) |
 | `--debug-connect` | With `--debug`, Java and Kotlin only: connect to an IDE that is already listening on the port instead of listening for it |
 
 Output rules: visible cases are always listed; passing hidden cases collapse into a count unless `--all`; failing hidden cases show input, expected and actual (PRD Q10); a `TLE` line shows the measured time, the limit and its basis instead. Statuses: `PASS`, `FAIL`, `ERROR`, `TIMEOUT` (hang guard), `TLE` (time limit), `INVALID` (output not serializable as the declared type), `STALLED` (concurrent stress run still unfinished at its deadline), `NOT RUN`.
@@ -333,7 +333,7 @@ cstudy: connecting to debugger at 127.0.0.1:5005 (kotlin)
 
 #### JSON output
 
-`cstudy test --json` prints one document per run and exits as the report would. Progress notices (`computing expected values ...`, `warming Gradle daemon ...`) go to standard error; an error that stops the run before it starts (no attempt, unknown case) prints `error: ...` and no document.
+`cstudy test --json` prints one document per run and exits as the report would. Progress notices (`computing expected values ...`, `warming Gradle daemon ...`, `compiling the Go runner and standard library (first run)`) go to standard error; an error that stops the run before it starts (no attempt, unknown case) prints `error: ...` and no document.
 
 ```json
 {

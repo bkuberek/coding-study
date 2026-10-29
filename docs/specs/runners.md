@@ -1,6 +1,6 @@
 # Spec: Runners and Stub Generation
 
-A runner is a small program per runtime that loads one target (the user's file or a reference approach), deserializes case inputs, invokes the target, and serializes outputs or measurements. It never sees expected values and never judges results. There are three runners: Python, TypeScript, and JVM (shared by Java and Kotlin). Go and Rust runners are planned ([ADR 0012](../decisions/0012-go-and-rust.md)); rows and fields below marked planned describe that design and nothing implements them yet.
+A runner is a small program per runtime that loads one target (the user's file or a reference approach), deserializes case inputs, invokes the target, and serializes outputs or measurements. It never sees expected values and never judges results. There are four runners: Python, TypeScript, JVM (shared by Java and Kotlin) and Go. A Rust runner is planned ([ADR 0012](../decisions/0012-go-and-rust.md)); rows and fields below marked planned describe that design and nothing implements them yet.
 
 ## Decisions
 
@@ -21,7 +21,7 @@ A runner is a small program per runtime that loads one target (the user's file o
 | TypeScript | none | `node .cs/runtime/runners/typescript/runner.ts --request R --out O` | `typescript` |
 | Java | `./gradlew -q --console=plain :java:csClasspath -Pcs.only=<snake_slug>` | `java -cp <classpath> cs.runner.Main --request R --out O` | `jvm` |
 | Kotlin | `./gradlew -q --console=plain :kotlin:csClasspath -Pcs.only=<snake_slug>` | same as Java | `jvm` |
-| Go (planned) | `go build -overlay <generated overlay> -o <binary> ./cmd/<snake_slug>` in `.cs/build/go`, with `GOTOOLCHAIN=local GOPROXY=off` | `.cs/build/go/bin/<snake_slug> --request R --out O` | `.cs/build/go` |
+| Go | `go build -json [-overlay gen/<snake_slug>/overlay.json] -o bin/<scope>/<snake_slug> ./cmd/<scope>/<snake_slug>` in `.cs/build/go` ([Go build details](#go-build-details)) | `.cs/build/go/run/<scope>/<snake_slug>/<pid>-<thread> --request R --out O`, a private copy of the binary | `.cs/build/go` |
 | Rust (planned) | `cargo build --offline --release -p <snake_slug>` in `.cs/build/rust`, with one shared `CARGO_TARGET_DIR` | `.cs/build/rust/target/release/<snake_slug> --request R --out O` | `.cs/build/rust` |
 
 Paths are relative to the workspace root. The runners themselves run from the workspace's [runner runtime](installation-and-workspaces.md#runner-runtime) in `.cs/runtime/runners/`, a copy of the content's `runners/` that `cstudy` refreshes before the first runner of a command when the content changed. `R` and `O` live in `.cs/runs/<run_id>/` as `request-<n>.json` and `events-<n>.jsonl`, one pair per restart `n`; the last 20 runs are kept. The process starts in its own process group.
@@ -40,6 +40,20 @@ Paths are relative to the workspace root. The runners themselves run from the wo
 | Per-run class copy | Under the lock, the build's class directories (the classpath entries below the subproject's `build/`) are copied into `.cs/build/jvm-runs/<pid>-<random>/`, and the JVM's `-cp` names the copy; jars, including the runner and support jars, keep their paths. A later build for another problem cannot take classes away from a JVM that loads them lazily. The runner process removes the copy when the run ends (completed, failed or interrupted); the next preparation removes copies whose process no longer exists (killed). |
 
 The lock and the copy protect against other `cstudy` processes. A Gradle build started by anything else on the same project (a script, an IDE build of `.cs/build/jvm`) does not take the lock and can still delete classes between the build and the copy.
+
+### Go build details
+
+| Item | Rule |
+|------|------|
+| Toolchain | Go 1.24 or newer (`go build -json`). Environment `GOTOOLCHAIN=local`, `GOPROXY=off`, `GOFLAGS=` (empty), `GO111MODULE=on` and `GOWORK=.cs/build/go/go.work`, so a build never downloads a toolchain or a module and ignores the user's `GOFLAGS`; the user's build cache is kept, so the standard library and the runner compile once per machine |
+| Build module | `.cs/build/go` is module `csbuild`; its `go.work` uses it and the workspace's `go/` (module `workspace`) and replaces the runner module `cstudy` with `.cs/runtime/runners/go` |
+| Binary | One per problem and scope (`test`, `verify`, `bench`): `cmd/<scope>/<snake_slug>/main.go` imports the user's package `workspace/practice/<snake_slug>` and each reference package `csbuild/ref/<snake_slug>/<approach_snake>`, and passes their registrations to `runner.Main` keyed by target id (`user`, `ref/<approach>`) |
+| Registration | Each package gets `zz_cs_targets.go`: `var CsTargets = map[string]any{"twoSum": twoSum}`, or the constructor (`NewLRUCache`) for class kinds, under the package clause read from its file. The user's enters through `go build -overlay` (the replacement file is `gen/<snake_slug>/user_targets.go`), so nothing is written to `go/practice` and compiler errors and breakpoints name the real file; a reference's is written next to its copy |
+| Compile errors | Diagnostics in the user's or a reference file: exit 2 with the compiler lines, paths relative to the workspace (at most 40); in a bench, a reference's are a content error. Diagnostics only in registration files: the build runs again without those registrations (a second compile in that case only), and the runner reports `load_error` `SymbolNotFound` with the compiler's message, such as `the package defines no function "twoSum": undefined: twoSum`. A failure with no diagnostics, or with diagnostics in the runner or the main package, is an environment error (exit 4) with the output tail |
+| Concurrent `cstudy` processes | Generation and build hold an exclusive `flock` on `.cs/build/go/.cstudy.lock`. The launched file is `run/<scope>/<snake_slug>/<pid>-<thread>`, a copy of the built binary that no other build overwrites; copies of processes that ended are removed at the next build |
+| Writes | Generated files are rewritten only when their content changes |
+| Cold start | Before the first build of a workspace the CLI prints `compiling the Go runner and standard library (first run)`; the build note is `go, cold`, then `go, warm` |
+| Not yet | `decimal` and `date` (the runner reports `load_error` `UnsupportedType`), concurrent jobs (`hello` has no `stress` feature, and a `concurrent` job is a bad request, exit 2), `--debug` (exit 4) |
 
 ## Request file
 
@@ -65,7 +79,7 @@ The lock and the copy protect against other `cstudy` processes. A Gradle build s
 | Field | Notes |
 |-------|-------|
 | `mode` | `test` or `bench` ([Bench mode](#bench-mode)) |
-| `target` | Python and TypeScript: `{"path": <abs file>}`. JVM: `{"class": "practice.two_sum.Solution"}` (classpath from the command line). Go and Rust (planned): `{"compiled": "user"}` or `{"compiled": "ref/<approach>"}`, the id of code built into the runner binary, since compiled code has no file or class to load. `cstudy` already encodes this form |
+| `target` | Python and TypeScript: `{"path": <abs file>}`. JVM: `{"class": "practice.two_sum.Solution"}` (classpath from the command line). Go (and Rust, planned): `{"compiled": "user"}` or `{"compiled": "ref/<approach>"}`, the id of code built into the runner binary, since compiled code has no file or class to load |
 | `names` | Language-specific symbol names computed by the CLI from the naming rules; runners do no name conversion. Class kinds: `{"class": "LRUCache", "methods": {"get": "get", "put": "put"}}`; Go and Rust add `"constructor"` (`NewLRUCache` and `new`), the function that creates an instance, with Go methods exported (`"get": "Get"`) |
 | `signature` | Canonical signature from `meta.yaml`, including modifiers; drives deserialization and serialization |
 | `cases` | Inputs only. Function kind: `input`. Class kinds: `ops`, `args` |
@@ -77,8 +91,9 @@ The lock and the copy protect against other `cstudy` processes. A Gradle build s
 | Python | `importlib.util.spec_from_file_location(<unique module name>, path)`, then `getattr(module, names.function)` | `getattr(module, names.class)` |
 | TypeScript | `await import(pathToFileURL(path).href)`, then the named export | named export class |
 | JVM | `Class.forName(target.class)`, new instance via no-arg constructor, then the public method with `names.function` and the arity from the signature, parameter types matched against the mapping table | constructor with matching arity and types; methods by name and arity |
+| Go | `names.function` in the target's generated registration; its `reflect` type must equal the [Go mapping](problem-format.md#go-and-rust-mapping) exactly | `names.constructor` in the registration, then each method by `MethodByName` on its result (exported names only), types checked the same way, when the job loads |
 
-A missing file, import or compile failure, missing symbol or arity mismatch produces a `load_error` event for the job.
+A missing file, import or compile failure, missing symbol or arity mismatch produces a `load_error` event for the job. In Go a missing symbol is a compile error of the generated registration; the CLI builds again without it and the runner reports it ([Go build details](#go-build-details)).
 
 ## Node modifiers
 
@@ -92,16 +107,16 @@ How runners apply the node modifiers of [problem-format](problem-format.md#modif
 
 ## Execution environment
 
-| Concern | Python | TypeScript | JVM |
-|---------|--------|------------|-----|
-| Deep recursion | cases run in a worker thread created after `threading.stack_size(256 MiB)`; `sys.setrecursionlimit(10**6)` | Node default stack; content keeps depth at or under 3000 | cases run in a `Thread` with 256 MiB stack size |
-| Output capture | `contextlib.redirect_stdout` / `redirect_stderr` per case | replace `console.log/info/warn/error` and wrap `process.stdout.write` per case | `System.setOut` / `System.setErr` per case |
-| Output limit | Standard output and standard error share one buffer that keeps the first 4096 bytes of UTF-8, never splitting a character; when anything was dropped, the runner appends exactly `\n[output truncated at 4 KiB]\n` | same | same |
-| Fresh inputs | deserialize per case (and per bench repetition) | same | same |
-| Node classes | duck-typed field access, never `instanceof` | same | `cs.support` classes |
-| Decimal and date output | `decimal` must be a finite `Decimal` and is written as `format(value, "f")` without trailing fractional zeros (`-0` as `0`); `date` must be a `date` that is not a `datetime`, written by `isoformat()`. Anything else, `float` and `int` included, is `invalid_output` | `decimal` must be a `Decimal` from `#support`, recognized by its `unscaled` and `scale` fields, written the same way; `date` must be a `YYYY-MM-DD` string naming a real day | `decimal` must be a `BigDecimal`, written by `stripTrailingZeros().toPlainString()` (`0` for zero); `date` must be a `LocalDate` in years 0001 to 9999. `null` and other classes are `invalid_output` |
-| Decimal context | every case starts with a fresh `decimal.Context()` (precision 28, `ROUND_HALF_EVEN`), so a solution that changes the context cannot affect a later case | none | none |
-| Exit from user code | `SystemExit` caught as case error | `process.exit` is replaced with a throwing stub | `System.exit` cannot be blocked on Java 21; the CLI reports the runner exit as a crash on the current case |
+| Concern | Python | TypeScript | JVM | Go |
+|---------|--------|------------|-----|----|
+| Deep recursion | cases run in a worker thread created after `threading.stack_size(256 MiB)`; `sys.setrecursionlimit(10**6)` | Node default stack; content keeps depth at or under 3000 | cases run in a `Thread` with 256 MiB stack size | cases run on the main goroutine, whose stack grows on demand up to Go's 1 GB limit |
+| Output capture | `contextlib.redirect_stdout` / `redirect_stderr` per case | replace `console.log/info/warn/error` and wrap `process.stdout.write` per case | `System.setOut` / `System.setErr` per case | file descriptors 1 and 2 are redirected to one pipe per case with `dup2`, because the `println` builtin writes to fd 2 directly; `debug.SetCrashOutput` (Go 1.23) still sends a fatal error to the real standard error |
+| Output limit | Standard output and standard error share one buffer that keeps the first 4096 bytes of UTF-8, never splitting a character; when anything was dropped, the runner appends exactly `\n[output truncated at 4 KiB]\n` | same | same | same |
+| Fresh inputs | deserialize per case (and per bench repetition) | same | same | same |
+| Node classes | duck-typed field access, never `instanceof` | same | `cs.support` classes | `cstudy/support` types (`*support.ListNode`, through the stubs' aliases): types must match exactly |
+| Decimal and date output | `decimal` must be a finite `Decimal` and is written as `format(value, "f")` without trailing fractional zeros (`-0` as `0`); `date` must be a `date` that is not a `datetime`, written by `isoformat()`. Anything else, `float` and `int` included, is `invalid_output` | `decimal` must be a `Decimal` from `#support`, recognized by its `unscaled` and `scale` fields, written the same way; `date` must be a `YYYY-MM-DD` string naming a real day | `decimal` must be a `BigDecimal`, written by `stripTrailingZeros().toPlainString()` (`0` for zero); `date` must be a `LocalDate` in years 0001 to 9999. `null` and other classes are `invalid_output` | not supported yet: `load_error` `UnsupportedType` |
+| Decimal context | every case starts with a fresh `decimal.Context()` (precision 28, `ROUND_HALF_EVEN`), so a solution that changes the context cannot affect a later case | none | none | none |
+| Exit from user code | `SystemExit` caught as case error | `process.exit` is replaced with a throwing stub | `System.exit` cannot be blocked on Java 21; the CLI reports the runner exit as a crash on the current case | `os.Exit` cannot be blocked: reported as a crash, as on the JVM |
 
 ## Event stream (`--out`, JSON Lines)
 
@@ -145,7 +160,7 @@ The CLI watches the event file:
 
 | Phase | Limit | On expiry |
 |-------|-------|-----------|
-| Until `hello` | 5 s (Python, TypeScript), 15 s (JVM) | Environment error, exit 4 |
+| Until `hello` | 5 s (Python, TypeScript, Go), 15 s (JVM) | Environment error, exit 4 |
 | `case_start` to `case_result` | config `hang_guard.ms` if set, else case `hang_guard_ms`, else meta `limits.hang_guard_ms`, else 10000 | Kill the process group; case status `timeout`; restart the runner with the remaining cases |
 | Any other gap between events after `hello` (for example loading user code) | 10000 | As above, reported on the next case not run yet |
 | `case_start` to `case_result` of a concurrent stress run | `deadline_ms + 5000` | As for other cases |
@@ -161,7 +176,7 @@ After 3 restarts in one run, remaining cases are reported `not_run`. The hang gu
 | Python | debugpy from the workspace venv (5678) | `python -X frozen_modules=off -c <bootstrap> <port> --request R --out O`. The bootstrap runs `debugpy.listen(("127.0.0.1", port))`, prints `cstudy-debug-agent-listening` to standard error, calls `debugpy.wait_for_client()`, then runs `cs_runner` through `runpy` as `-m cs_runner` would | `cstudy-debug-agent-listening` on standard error |
 | TypeScript | Node inspector (9229) | `node --inspect-wait=127.0.0.1:<port> runner.ts ...`; Node keeps the line and column of the `.ts` file | `Debugger listening on` on standard error |
 | Java, Kotlin | JDWP (5005) | `java ... -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:<port> -cp ...` | `Listening for transport dt_socket` on standard output |
-| Go (planned) | Delve (2345) | `dlv exec --headless --listen=127.0.0.1:<port> --api-version=2 <binary> -- --request R --out O` | `API server listening at:` on standard output |
+| Go (planned; `--debug` exits 4 for now) | Delve (2345) | `dlv exec --headless --listen=127.0.0.1:<port> --api-version=2 <binary> -- --request R --out O` | `API server listening at:` on standard output |
 | Rust (planned) | `debugserver` on macOS, `lldb-server gdbserver` on Linux (12345) | `debugserver --named-pipe <fifo> 127.0.0.1:<port> -- <binary> --request R --out O` | The port read from the named pipe: `debugserver` prints nothing. The ports of Go and Rust are already reserved in `cstudy`; `--debug` does not support them yet |
 
 | Item | Rule |
@@ -218,8 +233,8 @@ The request carries one job per problem with several targets, so all targets sha
 | Field | Meaning |
 |-------|---------|
 | `targets[].output` | Optional, default false: report the output of each size's check call (`bench_output`). The CLI sets it on the user's code and on the reference it compares the user's output with |
-| `inputs[].max_batch` | At most this many calls per timed sample. The CLI sends `min(100000, max(1, budget / elements))` with a budget of 10^6 input elements for Python and 10^7 for TypeScript and the JVM, which bounds the decoded copies held at once. `elements` counts what one decoded copy holds: list items and object values recursively, string characters, and 1 per other scalar (at least 1), so an input of one integer is not capped by its value |
-| `settings.warmup` | Warm up until the coefficient of variation of the latest 5 runs is at most `cv`, after at least `min` and at most `max` runs (the check call counts as the first), and stop early once the warmup has taken `budget_ms` of wall time (decoding and collection included), so slow calls and large inputs do not warm up for 20 runs. The CLI sends `{1, 1}` for Python, `{3, 20}` for TypeScript and `{5, 20}` for the JVM ([measurement](performance-analysis.md#measurement)) |
+| `inputs[].max_batch` | At most this many calls per timed sample. The CLI sends `min(100000, max(1, budget / elements))` with a budget of 10^6 input elements for Python and 10^7 for TypeScript, the JVM and Go, which bounds the decoded copies held at once. `elements` counts what one decoded copy holds: list items and object values recursively, string characters, and 1 per other scalar (at least 1), so an input of one integer is not capped by its value |
+| `settings.warmup` | Warm up until the coefficient of variation of the latest 5 runs is at most `cv`, after at least `min` and at most `max` runs (the check call counts as the first), and stop early once the warmup has taken `budget_ms` of wall time (decoding and collection included), so slow calls and large inputs do not warm up for 20 runs. The CLI sends `{1, 1}` for Python, `{3, 20}` for TypeScript, `{5, 20}` for the JVM and `{1, 3}` for Go ([measurement](performance-analysis.md#measurement)) |
 | `settings.min_sample_ns` | Calls shorter than this are batched: one sample makes `calls` back-to-back calls, each on its own freshly decoded input, so that it lasts at least this long. The CLI sends 20000000 (20 ms): shorter samples were too noisy on a busy machine |
 
 Per size, in request order:
@@ -436,13 +451,13 @@ Added to `runners/conformance/` before any concurrent problem merges. `expectati
 | Step | Rule |
 |------|------|
 | Source | `StubGenerator` for the language renders the signature with the mapping table and naming rules from [problem-format](problem-format.md#type-dsl) |
-| Destination | Python `python/practice/<snake_slug>.py`; TypeScript `typescript/practice/<slug>.ts`; Java and Kotlin `jvm/<lang>/src/main/<lang>/practice/<snake_slug>/<Solution or ClassName>.<ext>`; Go (planned) `go/practice/<snake_slug>/<snake_slug>.go`; Rust (planned) `rust/practice/<snake_slug>.rs` |
-| Body | Python `raise NotImplementedError`; TypeScript `throw new Error("Not implemented")`; Java `throw new UnsupportedOperationException("Not implemented")`; Kotlin `TODO("Not implemented")`. Constructors are empty |
+| Destination | Python `python/practice/<snake_slug>.py`; TypeScript `typescript/practice/<slug>.ts`; Java and Kotlin `jvm/<lang>/src/main/<lang>/practice/<snake_slug>/<Solution or ClassName>.<ext>`; Go `go/practice/<snake_slug>/<snake_slug>.go` in `package <snake_slug>`; Rust (planned) `rust/practice/<snake_slug>.rs` |
+| Body | Python `raise NotImplementedError`; TypeScript `throw new Error("Not implemented")`; Java `throw new UnsupportedOperationException("Not implemented")`; Kotlin `TODO("Not implemented")`; Go `panic("not implemented")`. Constructors are empty (Go: `return &LRUCache{}` from `NewLRUCache`) |
 | Header | Title, statement path, run command |
-| Imports | Support classes only when used (TypeScript `Decimal` for `decimal`, and the type `IsoDate` for `date`, imported with `import type` or an inline `type` specifier); the standard library types of `decimal` and `date` only when used (Python `Decimal` and `date`, Java and Kotlin `BigDecimal` and `LocalDate`); Java always `import java.util.*;` |
+| Imports | Support classes only when used (TypeScript `Decimal` for `decimal`, and the type `IsoDate` for `date`, imported with `import type` or an inline `type` specifier); the standard library types of `decimal` and `date` only when used (Python `Decimal` and `date`, Java and Kotlin `BigDecimal` and `LocalDate`); Java always `import java.util.*;`; Go `import "cstudy/support"` with `type ListNode = support.ListNode` per node type used, since Go rejects unused imports. Go does not support `decimal` and `date` yet: its stub generator exits 4 (`go support for decimal is not set up yet`) |
 | Existing file | Kept unless `--fresh` or a review attempt; then archived to `.archive/<slug>/<attempt_id>-<lang>/` first |
-| `stub: buggy` | Copy `problems/<dir>/buggy/solution.<ext>` instead of generating; buggy files declare no `package`, so on the JVM `cstudy start` prepends `package practice.<snake_slug>` (with `;` for Java) |
-| Formatting | Generated text already matches ruff, Prettier defaults, Google Java style and ktlint defaults; no formatter runs |
+| `stub: buggy` | Copy `problems/<dir>/buggy/solution.<ext>` instead of generating; buggy files declare no `package`, so on the JVM `cstudy start` prepends `package practice.<snake_slug>` (with `;` for Java). Go buggy files, like Go references, declare `package <snake_slug>` and are copied unchanged |
+| Formatting | Generated text already matches ruff, Prettier defaults, Google Java style, ktlint defaults and gofmt; no formatter runs |
 | Progressive | All methods emitted, each preceded by a `Level <n>` comment |
 | Concurrent | `blocking` methods become async methods (async model) or declare `throws InterruptedException` (Java); the header names the model ([problem-format](problem-format.md#stubs-for-concurrent-problems)) |
 
@@ -457,13 +472,13 @@ Every generated stub must compile or import unchanged; the conformance suite che
 | Python | `.cs/build/python/ref/<snake_slug>/<approach_snake>.py` | none; executed with the workspace venv interpreter |
 | TypeScript | `.cs/build/typescript/ref/<slug>/<approach>.ts` | `.cs/build/typescript/package.json` and `support.ts` mirror the workspace so `#support` resolves |
 | Java, Kotlin | `.cs/build/jvm/<lang>/src/main/<lang>/ref/<snake_slug>/<approach_snake>/<Solution or ClassName>.<ext>` | Reference files declare no `package`; the materializer prepends `package ref.<snake_slug>.<approach_snake>` (with `;` for Java). Built with `jvm/gradlew -p .cs/build/jvm`, which includes `.cs/runtime/runners/jvm` |
-| Go (planned) | `.cs/build/go/ref/<snake_slug>/<approach_snake>/<approach_snake>.go` | One package per approach, linked into the problem's binary next to the user's package |
+| Go | `.cs/build/go/ref/<snake_slug>/<approach_snake>/<approach_snake>.go` | None: reference files declare `package <snake_slug>` like the stub, so a file moves between `solutions/` and the practice directory unchanged. Each approach is its own package (import path `csbuild/ref/<snake_slug>/<approach_snake>`), linked into the problem's binary next to the user's package with a generated registration file beside it |
 | Rust (planned) | `.cs/build/rust/ref/<snake_slug>/<approach_snake>.rs` | Entered into the problem's crate as a `#[path]` module, so compiler errors name the real file |
 
 For JVM bench the classpath joins the user's `practice.*` classes and the `ref.*` classes; package names never collide.
 
 ## Conformance suite
 
-`runners/conformance/` holds fixture problems in the normal problem format whose reference approaches are identity functions (return the argument unchanged) for every DSL type, plus fixtures for error paths: exception, `invalid_output`, missing symbol, hang, user printing to stdout, `ref_of`, `output_from`, `no_alias_with`, cyclic ListNode input, and decimal and date arithmetic (inputs that keep their scale, canonical outputs, rounding modes, days across leap years). `cstudy verify --conformance` runs them in all 4 languages and also compiles every generated stub. It is a Phase 0 exit criterion and must pass before any runner change merges.
+`runners/conformance/` holds fixture problems in the normal problem format whose reference approaches are identity functions (return the argument unchanged) for every DSL type, plus fixtures for error paths: exception, `invalid_output`, missing symbol, hang, user printing to stdout, `ref_of`, `output_from`, `no_alias_with`, cyclic ListNode input, and decimal and date arithmetic (inputs that keep their scale, canonical outputs, rounding modes, days across leap years). `cstudy verify --conformance` runs each fixture in every language its `meta.yaml` lists and also compiles every generated stub; a runner that does not support a feature yet leaves the fixture's languages without it (Go lists 9001 to 9013). It is a Phase 0 exit criterion and must pass before any runner change merges.
 
 Fixtures live in `runners/conformance/<id>-<slug>/`; each language adds its reference files as `solutions/<approach>.<ext>`. `runners/conformance/expectations.json` (schema `schemas/conformance.schema.json`) gives the expected outcome per fixture and approach (`pass`, `error`, `invalid_output`, `timeout`, `load_error`) with per-case overrides, and `runners/conformance/README.md` states what every approach does in each language.

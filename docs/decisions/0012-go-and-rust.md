@@ -37,13 +37,24 @@ A spike (scratch code, not merged) built a Go runner and a Rust bridge for `two-
 
 ## Status
 
-This decision lands in steps. Implemented: the `Language` members, `CORE_LANGUAGES` and `OPTIONAL_LANGUAGES`, the schemas, layout and naming, the per-language tables, and the "not set up yet" error (exit 4) for a listed language without an adapter. Planned and not yet working: stub generators, runners, the workspace template, `doctor` checks, IDE files, `--debug`, concurrency and the references themselves. Until a step lands, the specs mark its Go and Rust rows as planned.
+This decision lands in steps. Implemented: the `Language` members, `CORE_LANGUAGES` and `OPTIONAL_LANGUAGES`, the schemas, layout and naming, the per-language tables, and the "not set up yet" error (exit 4) for a listed language without an adapter. Go: the stub generator, the runner for function, design and progressive problems in test and bench mode, the workspace's `go/` project, conformance fixtures 9001 to 9013, and references for `two-sum`, `lru-cache` and `invert-binary-tree`. Planned and not yet working: Go `decimal` and `date`, concurrency and `--debug`; Go and Rust `doctor` checks and IDE files; everything in Rust; the rest of the references. Until a step lands, the specs mark its rows as planned.
+
+## Amendments
+
+Settled while building the Go runner (2026-10-29):
+
+- **Go 1.24 or newer.** The build parses `go build -json`, which Go 1.24 introduced. The workspace's `go/go.mod` and the generated build module say `go 1.24`; the runner module itself needs only Go 1.22.
+- **Package clause.** Reference and buggy files declare `package <snake_slug>`, the stub's own clause, and are copied unchanged, so a file moves between `solutions/` and the practice directory as is. Unlike the JVM, nothing is rewritten: Go does not require a package's name to match its directory, each approach still gets a package of its own, and the generated registration repeats whatever clause the file declares.
+- **Support types live in the runner module.** `cstudy/support` is part of the runner module `cstudy`, which the workspace's `go.mod` replaces with `../.cs/runtime/runners/go`. A copy in the workspace module would give the runner and the solution two different `ListNode` types.
+- **A missing symbol keeps the compiler's reason.** The second build passes the failing registrations' messages to the runner, so the `load_error` says why, for example `undefined: twoSum` or `cannot use generic function twoSum without instantiation`.
+- **Concurrent `cstudy` processes.** The build holds an exclusive lock, and every process runs its own copy of the binary, so a build in one process never replaces the file another is about to start.
+- **Per-language conformance.** The `decimal` and `date` round trips moved out of `conformance-types` into `conformance-decimal-date-types` (9021). A fixture runs in the languages its `meta.yaml` lists, so Go lists the fixtures it supports and needs no skip list in `expectations.json`.
 
 ## Consequences
 
 - Existing problems, stubs and requests are unchanged: the four core languages produce byte-identical output, and every default that meant "all languages" now means the core four.
 - During the backfill, `cstudy list --lang go` and `cstudy next --lang go` show only the problems that have Go references, and verify coverage lines show Go and Rust once a problem lists them.
-- A language that is known but has no adapter fails with `go stub generator is not set up yet` (exit 4) wherever an adapter is needed, and with "not available in go" (exit 3) for a problem that does not list it. `doctor` does not mention Go or Rust until their runners exist.
+- A language that is known but has no adapter fails with `rust stub generator is not set up yet` (exit 4) wherever an adapter is needed, and with "not available in rust" (exit 3) for a problem that does not list it. `doctor` does not mention Go or Rust until their runners exist.
 - Full verify grows: Go adds roughly 0.5 to 1.5 s per problem and Rust 1.5 to 4 s, and Cargo's target-directory lock serializes parallel Rust builds. The oracle and ladder checks cost more per added language.
 - Go and Rust references written by agents need review at about twice the current reference volume.
 - A cyclic linked list cannot be expressed in Rust with `Box`, so identity-based list problems are Go-only unless a representation is found.

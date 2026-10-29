@@ -202,9 +202,9 @@ General rules for rows not listed: `list<X>` maps element-wise using the `X` row
 
 **JVM erasure property.** Every Kotlin type in the table erases to the same JVM type as the Java column (`IntArray` is `int[]`, `Array<IntArray>` is `int[][]`, non-null `Int` parameters are `int`, `List<Int>` is `java.util.List`, `Unit` returns are `void`). One JVM runner therefore serves both languages through Java reflection. Any future mapping must preserve this property or extend the JVM runner.
 
-### Go and Rust mapping (planned)
+### Go and Rust mapping
 
-The accepted design for the Go and Rust columns ([ADR 0012](../decisions/0012-go-and-rust.md)). No stub generator or runner implements it yet; the table becomes normative, like the one above, when they land. The JSON encoding is the one of the table above.
+The Go and Rust columns ([ADR 0012](../decisions/0012-go-and-rust.md)). The Go column is normative, like the table above, for its stub generator and runner, except `decimal` and `date`, which are planned with vendored libraries: the Go stub generator exits 4 for them and the runner reports `load_error` `UnsupportedType`. The Rust column is the accepted design; nothing implements it yet. The JSON encoding is the one of the table above. A Go runner requires the exact types: a named slice type or `[]int64` for `int[]` is a `load_error` `SignatureMismatch`.
 
 | DSL | Go | Rust |
 |-----|----|------|
@@ -215,8 +215,8 @@ The accepted design for the Go and Rust columns ([ADR 0012](../decisions/0012-go
 | `char` | `rune` | `char` |
 | `T[]`, `list<T>` | `[]T`; a nil slice encodes as `[]` | `Vec<T>` |
 | `T[][]`, `list<list<T>>` | `[][]T` | `Vec<Vec<T>>` |
-| `decimal` | `decimal.Decimal` (shopspring/decimal, vendored) | `rust_decimal::Decimal` (vendored) |
-| `date` | `time.Time` at UTC midnight; the encoder rejects anything else | `chrono::NaiveDate` (vendored) |
+| `decimal` | `decimal.Decimal` (shopspring/decimal, vendored; planned) | `rust_decimal::Decimal` (vendored) |
+| `date` | `time.Time` at UTC midnight; the encoder rejects anything else (planned) | `chrono::NaiveDate` (vendored) |
 | `ListNode` | `*ListNode` with `Val`, `Next` | `Option<Box<ListNode>>` |
 | `TreeNode` | `*TreeNode` | `Option<Rc<RefCell<TreeNode>>>` |
 | `GraphNode` | `*GraphNode` with `Neighbors []*GraphNode` | `Option<Rc<RefCell<GraphNode>>>` |
@@ -251,6 +251,7 @@ The accepted design for the Go and Rust columns ([ADR 0012](../decisions/0012-go
 | TypeScript | `import { ListNode } from "#support";` | classes with `val`, `next` / `left`, `right` / `neighbors`; constructors with default args, no parameter properties |
 | Java | `import cs.support.*;` | public mutable fields `val`, `next`, `left`, `right`, `neighbors` (`List<GraphNode>`); constructors `()`, `(val)`, `(val, ...)` |
 | Kotlin | `import cs.support.*` | Same Java classes (platform types); field `val` is accessed as `` node.`val` ``, as on LeetCode |
+| Go | `import "cstudy/support"`, then `type ListNode = support.ListNode` per node type used | structs with exported fields `Val`, `Next` / `Left`, `Right` / `Neighbors` (`[]*GraphNode`), in the runner module `cstudy`; build values with composite literals, `&ListNode{Val: 1}` |
 
 Stubs import support classes only when the signature uses them. Java stubs always add `import java.util.*;`.
 
@@ -437,7 +438,7 @@ A concurrent problem (`kind: concurrent`, `track: concurrency`) is a class whose
 | Kotlin | `threads` | `platform`, `virtual` | Same JVM runner and JDK APIs (`@Volatile`, `synchronized(lock) {}`, `ReentrantLock.withLock`). Coroutines are not autograded in v1 (PRD Q5); every Kotlin concurrent problem has a coroutine paragraph in its explanation's `### Language notes` |
 | Python | `threads` or `async`, one per problem | `thread` or `async` | CPython 3.13 with the GIL; which races a test can observe: [below](#observable-races-in-python) |
 | TypeScript | `async` only | `async` | Node 24, one event loop; `worker_threads` is not supported (objects cannot be shared between isolates, only `SharedArrayBuffer`). Synchronous methods are atomic, so a problem whose race needs shared-memory threads omits `typescript` from `languages` |
-| Go (planned) | `threads` only | `thread` | Goroutines released by a start gate; `sync` primitives, channels and atomics. No runner yet |
+| Go (planned) | `threads` only | `thread` | Goroutines released by a start gate; `sync` primitives, channels and atomics. The Go runner does not run concurrent jobs yet |
 | Rust (planned) | `threads` only | `thread` | `std::thread` workers over a shared `Arc<T>` (`T: Send + Sync`); a broken reference is a logic race, since safe Rust has no data races. No runner yet |
 
 `concurrency.model` must give every language in `languages` a model from this table; anything else is a content error.

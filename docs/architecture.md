@@ -75,7 +75,7 @@ An `import-linter` contract in `cli/.importlinter` enforces the table (NFR-8).
 
 `Language` has six members. `CORE_LANGUAGES` (Python, TypeScript, Java, Kotlin) is what a problem lists by default and what every "all languages" default, coverage line and IDE action means; `OPTIONAL_LANGUAGES` (Go, Rust) are added by listing them in a problem's `languages` ([ADR 0012](decisions/0012-go-and-rust.md)). Code that branches on a language uses an exhaustive `match` ending in `assert_never`, and `tests/test_language_tables.py` fails when a table keyed by `Language` lacks a row.
 
-The adapter registry holds one stub generator and one runner per language that has an adapter package. Asking it for the other languages raises `LanguageNotSetUpError`, which the CLI reports as `error: go stub generator is not set up yet` with exit code 4, after `cstudy start --lang go` has already rejected any problem that does not list Go with exit code 3. `cstudy doctor` checks the runners of the core languages only until the optional ones have adapters.
+The adapter registry holds one stub generator and one runner per language that has an adapter package. Asking it for the other languages raises `LanguageNotSetUpError`, which the CLI reports as `error: rust stub generator is not set up yet` with exit code 4, after `cstudy start --lang rust` has already rejected any problem that does not list Rust with exit code 3. Go has its adapters; Rust does not yet. `cstudy doctor` checks the runners of the core languages only until the optional ones have adapters.
 
 ### Use cases
 
@@ -196,10 +196,10 @@ The repository holds no workspace. A workspace, created by `cstudy init` anywher
 | TypeScript | `typescript/` | `practice/<slug>.ts` | `package.json` with `"type": "module"` and `"imports": {"#support": "./support.ts"}`; `support.ts` re-exports `../.cs/runtime/runners/typescript/support.ts`; `tsconfig.json` with `noEmit`, `allowImportingTsExtensions`, `erasableSyntaxOnly`, `verbatimModuleSyntax`, `strict`; dev deps `typescript`, `@types/node` via pnpm |
 | Java | `jvm/java/` | `src/main/java/practice/<snake_slug>/Solution.java` (or `<ClassName>.java`) | Gradle subproject; Java toolchain 21 |
 | Kotlin | `jvm/kotlin/` | `src/main/kotlin/practice/<snake_slug>/Solution.kt` (or `<ClassName>.kt`) | Gradle subproject; Kotlin JVM plugin, JVM target 21 |
-| Go (planned) | `go/` | `practice/<snake_slug>/<snake_slug>.go` | Not created yet. Go module with one package per problem, built offline ([ADR 0012](decisions/0012-go-and-rust.md)) |
+| Go | `go/` | `practice/<snake_slug>/<snake_slug>.go` | `go.mod` (module `workspace`, Go 1.24) with one package per problem; `replace cstudy => ../.cs/runtime/runners/go` provides `cstudy/support`. The root `go.work` uses `./go`. Built offline ([ADR 0012](decisions/0012-go-and-rust.md)) |
 | Rust (planned) | `rust/` | `practice/<snake_slug>.rs` | Not created yet. Cargo package with one library-crate example per problem, built offline ([ADR 0012](decisions/0012-go-and-rust.md)) |
 
-The paths of the Go and Rust rows are what `cstudy` already computes; the projects, stub generators and runners behind them are planned. Project roots are relative to the workspace. `jvm/settings.gradle.kts` uses `includeBuild("../.cs/runtime/runners/jvm")`; both subprojects depend on the runner and support artifacts. IntelliJ opens `jvm/` as one Gradle project. Every path into the runners is relative and points at the workspace's [runner runtime](specs/installation-and-workspaces.md#runner-runtime), so a workspace survives a move or a clone on another machine.
+The Rust row's paths are what `cstudy` already computes; its project, stub generator and runner are planned. Project roots are relative to the workspace. `jvm/settings.gradle.kts` uses `includeBuild("../.cs/runtime/runners/jvm")`; both subprojects depend on the runner and support artifacts. IntelliJ opens `jvm/` as one Gradle project. Every path into the runners is relative and points at the workspace's [runner runtime](specs/installation-and-workspaces.md#runner-runtime), so a workspace survives a move or a clone on another machine.
 
 ## Toolchain
 
@@ -225,9 +225,9 @@ The workspace's `.cs/` (ignored by its `.gitignore`, except the `workspace.toml`
 | `.cs/index.json` | Parsed and validated `meta.yaml` and `item.yaml` documents ([index](#index-cache)) | Per file: modification time (ns) and size of the file and of its schema |
 | `.cs/cases/<slug>/<hash>.json` | Generated cases with expected values | Hash of generator, tests, expected-source approach |
 | `.cs/calibration/<lang>/<slug>.json` | Reference per-case timings for time limits | Hash of reference file, tests, runtime version, machine id |
-| `.cs/build/<lang>/` | Materialized references for verify and bench | Rebuilt on change |
+| `.cs/build/<lang>/` | Materialized references for verify and bench; in Go also the generated build and its runner binaries ([runners](specs/runners.md#go-build-details)) | Rebuilt on change |
 | `.cs/runs/<run_id>/` | Request and result files | Keep last 20 |
-| `.cs/runtime/` | The runner runtime: a copy of the content's `runners/{python,typescript,jvm}` with its build output, and `stamp.json` | Digest of the copied sources; refreshed before the first runner of a command, by `cstudy init` and by `cstudy doctor --fix` |
+| `.cs/runtime/` | The runner runtime: a copy of the content's `runners/{python,typescript,jvm,go}` with its build output, and `stamp.json` | Digest of the copied sources; refreshed before the first runner of a command, by `cstudy init` and by `cstudy doctor --fix` |
 
 ### Index cache
 
