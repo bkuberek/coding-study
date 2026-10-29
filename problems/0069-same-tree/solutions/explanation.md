@@ -45,6 +45,8 @@ It is the clearest answer and almost certainly the one expected. The only cost i
 - TypeScript: `p === q` plays the same role; compare values with `===` too.
 - Java: `p == q` compares references, which is what the null check needs, and `p.val == q.val` compares `int` values.
 - Kotlin: `===` is reference equality, used for the null check; `` p.`val` `` needs backticks because `val` is a keyword.
+- Go: pointers compare with `==`, so `p == q` after the `nil` check is true only when both are `nil`: two distinct nodes are never the same pointer.
+- Rust: matching on the pair of references, `match (p, q)`, spells out the three cases (both empty, both present, one empty) and needs no identity test. Both guards are shared `borrow()`s, so passing the same tree twice would also work.
 
 ## Approach: pair-stack (Explicit stack of node pairs)
 
@@ -87,3 +89,5 @@ It is immune to deep trees and stops at the first difference like the recursion,
 - TypeScript: an array of tuples typed `[TreeNode | null, TreeNode | null][]`; `pop()!` asserts the stack is not empty.
 - Java: `ArrayDeque` rejects `null`, so the reference checks a pair's children before pushing and only pushes pairs of two real nodes, as `TreeNode[]` arrays.
 - Kotlin: `kotlin.collections.ArrayDeque` accepts nullable elements, so `Pair<TreeNode?, TreeNode?>` with `to` and destructuring keeps it close to the Python version.
+- Go: a slice of small `pair` structs is the stack; unlike Java's `ArrayDeque`, it accepts `nil` pointers, so pairs of missing children are pushed and skipped like in Python.
+- Rust: the stack is a `Vec<(Option<Rc<RefCell<TreeNode>>>, Option<Rc<RefCell<TreeNode>>>)>`. The children are cloned (a counter bump) before they are pushed, because the `Ref` guards that gave access to them end with the iteration.
