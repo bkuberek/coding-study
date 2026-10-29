@@ -46,6 +46,8 @@ It is short and has no recursion. Grouping by length and the dot-free shortcut h
 - TypeScript: a `Map<number, Set<string>>`; `includes(".")` picks the fast path.
 - Java: `computeIfAbsent` builds buckets and `getOrDefault(..., Set.of())` avoids null checks.
 - Kotlin: `getOrPut` builds buckets, and `?: return false` handles a missing length.
+- Go: `map[int]map[string]struct{}` is the bucket table. Reading a missing length gives a nil inner map, and Go allows lookups and `range` over a nil map, so `Search` needs no check for it; only `AddWord` has to create the bucket, because writing to a nil map panics. A pattern and a stored word have the same length, so `matches` indexes both strings by byte.
+- Rust: `entry(word.len()).or_default().insert(word)` creates the bucket on first use, and `let Some(candidates) = ... else { return false }` handles a missing length. `matches` zips the bytes of the two strings, which is safe because the bucket guarantees equal lengths.
 
 ## Approach: trie-dfs (Trie searched depth-first with a branch at every dot)
 
@@ -84,3 +86,5 @@ Searches cost only the paths the pattern allows, independent of how many words o
 - TypeScript: `children.some(...)` stops at the first success; `??=` creates missing children while inserting.
 - Java: a static helper receives the pattern and walks children with an enhanced `for` loop.
 - Kotlin: `children.any { ... }` short-circuits, and `?: return false` ends the walk when a letter has no child.
+- Go: `matchesFrom` walks the pattern letter by letter and, at a dot, recurses on `pattern[at+1:]`; slicing a string copies nothing, so the remaining pattern costs O(1) to pass down. `children` is a `[26]*node` array, so `range current.children` visits all 26 slots and `child != nil` skips the empty ones.
+- Rust: the pattern is a `&[u8]`, and `pattern[at + 1..]` is a borrowed sub-slice. `node.children.iter().flatten()` yields only the occupied slots (`Option` is iterable), and `any` stops at the first branch that matches. A missing child ends the loop through `match ... None => return false`.
