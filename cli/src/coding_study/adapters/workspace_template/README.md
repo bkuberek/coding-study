@@ -43,9 +43,9 @@ The files are yours to edit. After upgrading `cstudy`, run `cstudy ide` to bring
 ### VS Code
 
 - Run: **Tasks: Run Task**, then a `cstudy …` task.
-- Debug Python, TypeScript or Java: set a breakpoint, open the solution, and start **Debug current file (Python)** (or TypeScript, Java) from Run and Debug. Its task starts `cstudy test --debug`, and the debugger attaches once cstudy prints `waiting for debugger`.
-- Set up for you: the Python interpreter in `python/.venv`, TypeScript from `typescript/node_modules`, the Gradle import of `jvm/`, Go through `go.work` (tools run with `GOTOOLCHAIN=local`), the Rust project `rust/Cargo.toml` for rust-analyzer, and the recommended extensions (Python, Debugpy, Java, Gradle, Go, rust-analyzer).
-- Go and Rust run and test here from the same tasks; debugging them is not set up yet.
+- Debug Python, TypeScript, Java, Go or Rust: set a breakpoint, open the solution, and start **Debug current file (Python)** (or TypeScript, Java, Go, Rust) from Run and Debug. Its task starts `cstudy test --debug`, and the debugger attaches once cstudy prints `waiting for debugger`. Go needs Delve and Rust needs CodeLLDB and LLDB's debug server; `cstudy doctor` says what is missing.
+- Set up for you: the Python interpreter in `python/.venv`, TypeScript from `typescript/node_modules`, the Gradle import of `jvm/`, Go through `go.work` (tools run with `GOTOOLCHAIN=local`), the Rust project `rust/Cargo.toml` for rust-analyzer, and the recommended extensions (Python, Debugpy, Java, Gradle, Go, rust-analyzer, CodeLLDB).
+- Go and Rust run and test here from the same tasks as the other languages.
 - Kotlin runs and tests here but cannot be debugged: the Java debugger never binds Kotlin breakpoints ([vscode-java-debug#241](https://github.com/microsoft/vscode-java-debug/issues/241)). Debug Kotlin in IntelliJ IDEA.
 
 ### IntelliJ IDEA
