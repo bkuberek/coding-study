@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"premiums": ["1200", "3650"], "terms": [["2026-01-01", "2027-01-01"], ["2026-04-01", "2027-04-01"]], "valuationDate": "2026-07-02"}, "expected": "1518.36"},
+    {"id": "ex2", "visible": true, "input": {"premiums": ["1200", "3650"], "terms": [["2026-01-01", "2027-01-01"], ["2026-04-01", "2027-04-01"]], "valuationDate": "2025-12-01"}, "expected": "0"},
+    {"id": "ex3", "visible": true, "input": {"premiums": ["0.01", "0.01", "0.01"], "terms": [["2026-03-01", "2026-03-03"], ["2026-03-01", "2026-03-03"], ["2026-03-01", "2026-03-03"]], "valuationDate": "2026-03-02"}, "expected": "0.03"},
+    {"id": "h1", "input": {"premiums": [], "terms": [], "valuationDate": "2026-07-01"}, "expected": "0", "note": "empty book"},
+    {"id": "h2", "input": {"premiums": ["500", "800"], "terms": [["2026-07-01", "2027-07-01"], ["2025-07-01", "2026-07-01"]], "valuationDate": "2026-07-01"}, "expected": "800", "note": "valued on one policy's start (0) and another's end (all of it)"},
+    {"id": "h3", "input": {"premiums": ["1200", "99.99"], "terms": [["2024-01-01", "2025-01-01"], ["2025-03-01", "2025-09-01"]], "valuationDate": "2026-06-30"}, "expected": "1299.99", "note": "valued after every term has ended"},
+    {"id": "h4", "input": {"premiums": ["1200"], "terms": [["2028-01-01", "2029-01-01"]], "valuationDate": "2028-07-02"}, "expected": "600", "note": "leap-year term of 366 days"},
+    {"id": "h5", "input": {"premiums": ["3650.00"], "terms": [["2027-06-01", "2028-06-01"]], "valuationDate": "2028-03-01"}, "expected": "2732.51", "note": "term spans 29 February"},
+    {"id": "h6", "input": {"premiums": ["0", "250"], "terms": [["2026-01-01", "2027-01-01"], ["2026-01-01", "2026-02-01"]], "valuationDate": "2026-01-11"}, "expected": "80.65", "note": "a zero premium earns nothing"},
+    {"id": "h7", "input": {"premiums": ["500", "500"], "terms": [["2026-05-10", "2026-05-11"], ["2026-05-09", "2026-05-10"]], "valuationDate": "2026-05-10"}, "expected": "500", "note": "one-day terms valued on their start and on their end"},
+    {"id": "h8", "input": {"premiums": ["9999999.99"], "terms": [["2026-01-01", "2031-01-01"]], "valuationDate": "2028-02-29"}, "expected": "4320920.04", "note": "five-year term with a large premium"},
+    {"id": "h9", "input": {"premiums": ["1.01"], "terms": [["2026-01-01", "2026-07-20"]], "valuationDate": "2026-04-11"}, "expected": "0.51", "note": "0.505 rounds half up to 0.51"},
+    {"id": "h10", "input": {"premiums": ["1000", "2000", "3000", "4000.40", "5000"], "terms": [["2025-10-01", "2026-10-01"], ["2026-02-15", "2027-02-15"], ["2026-06-01", "2026-12-01"], ["2026-03-31", "2026-04-30"], ["2026-08-01", "2027-08-01"]], "valuationDate": "2026-04-15"}, "expected": "2860.48", "note": "a mixed book"},
+    {"id": "h11", "input": {"premiums": ["100.5", "0.10"], "terms": [["2026-01-01", "2026-01-04"], ["2026-01-01", "2026-01-04"]], "valuationDate": "2026-01-02"}, "expected": "33.53", "note": "inputs with different scales: 33.5 and 0.0333..."}
+  ]
+}
