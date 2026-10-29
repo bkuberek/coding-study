@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0219"
+slug: installment-schedule
+title: Installment Schedule
+status: ready
+difficulty: medium
+track: practical
+kind: function
+patterns: [math-geometry]
+signature:
+  function:
+    name: installmentSchedule
+    params:
+      - {name: premium, type: decimal}
+      - {name: installmentCount, type: int}
+      - {name: firstDueDate, type: date}
+    returns: {type: "string[][]"}
+comparator: {type: exact}
+approaches:
+  - {id: cent-split, name: Split the premium in whole cents and clamp each due date from the anchor day, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+related: [pro-rata-unearned-premium, premium-rating-breakdown]
+estimate_minutes: 30
