@@ -204,7 +204,7 @@ General rules for rows not listed: `list<X>` maps element-wise using the `X` row
 
 ### Go and Rust mapping
 
-The Go and Rust columns ([ADR 0012](../decisions/0012-go-and-rust.md)). The Go column is normative, like the table above, for its stub generator and runner, except `decimal` and `date`, which are planned with vendored libraries: the Go stub generator exits 4 for them and the runner reports `load_error` `UnsupportedType`. The Rust column is the accepted design; nothing implements it yet. The JSON encoding is the one of the table above. A Go runner requires the exact types: a named slice type or `[]int64` for `int[]` is a `load_error` `SignatureMismatch`.
+The Go and Rust columns ([ADR 0012](../decisions/0012-go-and-rust.md)). The Go column is normative, like the table above, for its stub generator and runner, except `decimal` and `date`, which are planned with vendored libraries: the Go stub generator exits 4 for them and the runner reports `load_error` `UnsupportedType`. The Rust column is normative for the Rust stub generator, with the same exception for `decimal` and `date`; the Rust runner is planned. The JSON encoding is the one of the table above. A Go runner requires the exact types: a named slice type or `[]int64` for `int[]` is a `load_error` `SignatureMismatch`.
 
 | DSL | Go | Rust |
 |-----|----|------|
@@ -1104,6 +1104,15 @@ func twoSum(nums []int, target int) []int {
 }
 ```
 
+```rust
+// rust/practice/two_sum.rs
+// Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum
+
+pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {
+    todo!()
+}
+```
+
 ## Worked example: lru-cache
 
 ```yaml
@@ -1227,5 +1236,26 @@ func (c *LRUCache) Get(key int) int {
 
 func (c *LRUCache) Put(key int, value int) {
 	panic("not implemented")
+}
+```
+
+```rust
+// rust/practice/lru_cache.rs
+// LRU Cache. Statement: .statements/lru-cache.md. Run: cstudy test lru-cache
+
+pub struct LRUCache {}
+
+impl LRUCache {
+    pub fn new(capacity: i32) -> Self {
+        LRUCache {}
+    }
+
+    pub fn get(&mut self, key: i32) -> i32 {
+        todo!()
+    }
+
+    pub fn put(&mut self, key: i32, value: i32) {
+        todo!()
+    }
 }
 ```

@@ -37,8 +37,9 @@ SPEC_STUB_LABELS = {
     "java": "// jvm/java/src/main/java/practice/{snake}/{class_name}.java",
     "kotlin": "// jvm/kotlin/src/main/kotlin/practice/{snake}/{class_name}.kt",
     "go": "// go/practice/{snake}/{snake}.go",
+    "rust": "// rust/practice/{snake}.rs",
 }
-SPEC_STUB_LANGUAGES = (*CORE_LANGUAGES, Language.GO)
+SPEC_STUB_LANGUAGES = (*CORE_LANGUAGES, Language.GO, Language.RUST)
 
 
 @pytest.mark.parametrize("language", SPEC_STUB_LANGUAGES)
