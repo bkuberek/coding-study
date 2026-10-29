@@ -106,7 +106,10 @@ def test_attempts_in_every_language_are_allowed(store, language):
 def database_before_go_and_rust(database: Path) -> None:
     """A progress database at schema version 3, with an attempt and its test run."""
     migrations = resources.files(MIGRATIONS_PACKAGE) / MIGRATIONS_DIRECTORY
-    scripts = sorted(entry for entry in migrations.iterdir() if entry.name.endswith(".sql"))
+    scripts = sorted(
+        (entry for entry in migrations.iterdir() if entry.name.endswith(".sql")),
+        key=lambda entry: entry.name,
+    )
     with sqlite3.connect(database) as connection:
         for script in scripts[:3]:
             connection.executescript(script.read_text(encoding="utf-8"))
