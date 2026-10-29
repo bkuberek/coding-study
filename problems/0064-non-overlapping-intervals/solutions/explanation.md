@@ -46,6 +46,8 @@ Slow, but it is the version that survives a change in the problem: with a value 
 - TypeScript: the comparator `a[0] - b[0] || a[1] - b[1]` breaks ties by end; differences of values within ±10^9 are exact doubles.
 - Java: `Comparator.<int[]>comparingInt(...).thenComparingInt(...)` needs the explicit type witness for the chained lambda.
 - Kotlin: `compareBy<IntArray>({ it[0] }, { it[1] })` builds the two-key comparator.
+- Rust: `(0..i).filter(..).map(..).max().unwrap_or(0)` is Python's generator with `default=0`; the final answer subtracts the largest chain from the interval count.
+- Go: the inner maximum is a plain loop with the builtin `max`.
 
 ## Approach: earliest-end (Greedy by earliest end)
 
@@ -85,6 +87,8 @@ This is the canonical answer (activity selection). It is a few lines, and the ex
 - TypeScript: `-Infinity` compares below every number.
 - Java: `lastEnd` is a `long` so that `Long.MIN_VALUE` is a safe sentinel against `int` starts.
 - Kotlin: the same `Long.MIN_VALUE` sentinel; an `Int` start compares with a `Long` directly in Kotlin, and `end.toLong()` widens for the assignment.
+- Go: `slices.SortStableFunc` with `cmp.Compare` on the end keeps equal ends in input order, like Python's stable `sorted`. `kept == 0` stands for "nothing kept yet", so no sentinel value is needed.
+- Rust: `sort_by_key(|interval| interval[1])` is stable, and `kept == 0` replaces Python's `None`.
 
 ## Approach: drop-longer-end (Sort by start and drop the later-ending interval)
 
@@ -124,3 +128,4 @@ Equivalent to the earliest-end greedy and equally fast. It is convenient when th
 - Python: `sorted(intervals)` orders by start and then end; the tie order does not affect the count.
 - Kotlin: `ordered.drop(1)` iterates everything after the first interval, with destructuring into `(start, end)`.
 - Java and TypeScript: an index loop from 1 skips the first interval without copying.
+- Go and Rust: `ordered[1:]` and `&intervals[1..]` skip the first interval as a view, without copying.
