@@ -45,6 +45,8 @@ Short and obviously correct, which makes it the oracle. It orders all n points a
 - TypeScript: the comparator recomputes both distances on every comparison; precomputing them would save time on large inputs.
 - Java: `Comparator.comparingInt(point -> ...)` with `Arrays.sort` on `int[][]` sorts the row references; `Arrays.copyOf(sorted, k)` keeps the first k rows.
 - Kotlin: `sortedBy { (x, y) -> ... }` destructures an `IntArray` with `component1()` and `component2()`; `toTypedArray()` converts back to `Array<IntArray>`.
+- Go: `slices.SortFunc` takes a three-way comparison, so `cmp.Compare` on the two squared distances is the whole comparator. Like the TypeScript version it recomputes both distances on every comparison, and `slices.Clone` copies only the outer slice of row headers, so the input order is kept and no row is copied.
+- Rust: `sort_unstable_by_key` computes the key from a borrowed `&Vec<i32>` row, which the helper takes as `&[i32]`; ties may land in any order, which the unique answer allows. The function owns `points`, so it sorts and `truncate`s that vector in place. Squared distances are at most 2 * 10^8, inside `i32`.
 
 ## Approach: max-heap (Max-heap of the k closest points seen)
 
@@ -83,6 +85,8 @@ Best when `k` is small relative to `n`, and the natural choice for a stream: mem
 - TypeScript: no built-in priority queue, so the reference implements a max-heap of `{distance, index}` entries.
 - Java: `PriorityQueue<int[]>` with `(a, b) -> Integer.compare(b[0], a[0])` keeps `{distance, index}` entries with the farthest at the head; iterating the queue at the end visits its entries in heap order, which is fine for an unordered answer.
 - Kotlin: the heap stores point indexes ordered by `compareByDescending(::squared)`, a reference to a local function; `heap.map { points[it] }` collects the answer.
+- Go: `container/heap` needs a type that implements `heap.Interface`, so the reference declares `farthestFirst []entry` with `Less` comparing distances with `>`. Replacing the root and calling `heap.Fix(&kept, 0)` is the single sift-down that Python spells `heapreplace`. Entries carry the input position, and the unique answer makes a tie-break on it unnecessary.
+- Rust: `BinaryHeap<(i32, usize)>` is a max-heap of `(distance, position)` tuples, which compare element by element, so the farthest point is the root. `peek_mut()` lets the loop overwrite the root, and dropping the guard sifts it down once. The rows are moved out of `points` with `std::mem::take` instead of cloned.
 
 ## Approach: quickselect (Quickselect on squared distances)
 
@@ -122,3 +126,5 @@ Linear on average and the answer to the follow-up. It is the longest of the thre
 - TypeScript: destructuring swaps (`[a[i], a[j]] = [a[j], a[i]]`) are concise; a temporary variable is faster in hot loops.
 - Java: primitive `int[]` arrays for distances and indexes avoid boxing; `ThreadLocalRandom` draws the pivot.
 - Kotlin: `IntArray(size) { ... }` builds both arrays, and a private `IntArray.swap` extension keeps the partition readable.
+- Go: `math/rand/v2` is randomly seeded, so `rand.IntN(high-low+1)` draws a pivot position with no setup. The final decision is an `if` chain rather than a `switch`, because a `break` inside a `switch` would only leave the switch and not the loop.
+- Rust: the standard library has no random number generator, so the reference carries a few lines of xorshift seeded from `RandomState`. `order.swap(i, j)` swaps two indexes in place, the partition is a `match` on `cmp`, and the answer rows are moved out of `points` with `std::mem::take`.
