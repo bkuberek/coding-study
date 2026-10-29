@@ -47,6 +47,8 @@ It is the natural first answer and makes the key insight explicit. The linear sc
 - TypeScript: a nested arrow function closes over both arrays; `new TreeNode(value)` uses the support class constructor.
 - Java: the arrays are passed down explicitly to a static helper.
 - Kotlin: a local `fun build` closes over the arrays, and `TreeNode(value).apply { left = ...; right = ... }` sets both children while returning the node.
+- Go: `slices.Index(inorder[inStart:inStart+size], value)` returns the offset inside the window, so `inStart +` turns it into a position. A function literal cannot call itself by name, so `build` is declared with `var` first.
+- Rust: slices are the windows. `split_first` peels the root off `preorder`, `position` finds it in `inorder`, and `[..split]` and `[split + 1..]` cut both arrays without index arithmetic or copies; the left subtree takes the next `split` values of the remaining pre-order.
 
 ## Approach: index-map (Value-to-position map and a pre-order cursor)
 
@@ -86,3 +88,5 @@ Linear time and the expected answer. The shared cursor is elegant but makes corr
 - TypeScript: a `Map<number, number>` for positions and a closure over `let nextRoot`; `preorder[nextRoot++]` reads and advances.
 - Java: there are no mutable closures, so the arrays, map and cursor are fields, set at the start of each call; the map is pre-sized to avoid rehashing.
 - Kotlin: a local `fun build` captures and increments `var nextRoot`; `getValue` returns a non-null `Int`.
+- Go: the recursive closure captures `nextRoot` and `position`.
+- Rust: the shared counter and the map travel as parameters (`next_root: &mut usize`, `position: &HashMap<i32, usize>`), because a closure cannot recurse. The tree is built in two statements (`node.left = ..; node.right = ..;`) before it is wrapped in `Rc::new(RefCell::new(node))`, so no borrow guard is needed.
