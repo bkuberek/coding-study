@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0239"
+slug: sorted-insertion-cost
+title: Sorted Insertion Cost
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [segment-tree-fenwick, binary-search]
+signature:
+  function:
+    name: createSortedArray
+    params:
+      - {name: instructions, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: sorted-list, name: Sorted list with binary-search counts and insertion, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: fenwick-tree, name: Fenwick tree of counts by value, role: optimal, time: "O(n log m)", space: "O(m)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: n values drawn uniformly from 1 to min(10^5, 4n)
+  size_ladder: [3000, 10000, 30000, 100000]
+  expected_from: fenwick-tree
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1649, url: "https://leetcode.com/problems/create-sorted-array-through-instructions/"}
+related: [range-sum-mutable, count-smaller-after-self, binary-search]
+order: 4
+estimate_minutes: 35
