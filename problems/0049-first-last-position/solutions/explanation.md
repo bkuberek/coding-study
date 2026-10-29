@@ -80,6 +80,8 @@ It is the answer many candidates give first, and it is fine when duplicates are 
 
 - Kotlin: `IntArray.binarySearch(target)` returns some matching index or a negative value; with duplicates it does not promise which match, which is fine because the walks fix that.
 - Java: `Arrays.binarySearch` has the same contract; the reference writes the loop out to keep the four languages aligned.
+- Go: the closed-range loop uses a tagless `switch`; an empty slice makes `high` -1, so the loop is skipped and `[-1, -1]` comes back.
+- Rust: the search bounds are `i32` because `len() - 1` would underflow a `usize` for an empty array (and `high = middle - 1` can reach -1). Once a match is found the indexes become `usize` for the two walks, and `last + 1 < nums.len()` avoids a subtraction.
 
 ## Approach: two-bounds (Lower-bound and upper-bound searches)
 
@@ -119,3 +121,5 @@ This is the expected answer. The same two bounds also give the number of occurre
 - TypeScript: the predicate is an arrow function; V8 inlines such small closures well, so the abstraction is nearly free.
 - Java: a boolean `strict` flag selects `>=` or `>` without allocating a lambda per call.
 - Kotlin: an `inline` function with a lambda parameter is compiled into each call site, so `firstIndex(nums) { it > target }` costs the same as a hand-written loop.
+- Go: the predicate is a `func(int) bool` closure; `sort.SearchInts(nums, target)` and `sort.SearchInts(nums, target+1)` are the two bounds in the standard library.
+- Rust: the helper takes `impl Fn(i32) -> bool`, which the compiler specializes for each call site, like Kotlin's `inline` function, so the abstraction costs nothing. `slice::partition_point` is the library form of the same search.
