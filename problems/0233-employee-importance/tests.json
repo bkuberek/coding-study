@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"employees": [[4, 6, 7, 9], [7, 2], [9, -1, 12], [12, 5]], "employeeId": 4}, "expected": 12},
+    {"id": "ex2", "visible": true, "input": {"employees": [[4, 6, 7, 9], [7, 2], [9, -1, 12], [12, 5]], "employeeId": 9}, "expected": 4},
+    {"id": "h1", "input": {"employees": [[1, -7]], "employeeId": 1}, "expected": -7, "note": "a single employee"},
+    {"id": "h2", "input": {"employees": [[5, 10, 6], [6, 20]], "employeeId": 6}, "expected": 20, "note": "the queried employee has no reports"},
+    {"id": "h3", "input": {"employees": [[1, 1, 2], [2, 1, 3], [3, 1, 4], [4, 1, 5], [5, 1]], "employeeId": 1}, "expected": 5, "note": "a chain"},
+    {"id": "h4", "input": {"employees": [[10, 0, 11, 12, 13, 14], [11, -100], [12, -100], [13, -100], [14, -100]], "employeeId": 10}, "expected": -400, "note": "a star of the lowest importance"},
+    {"id": "h5", "input": {"employees": [[1, 3, 2], [2, 4], [3, 50, 4], [4, 60]], "employeeId": 1}, "expected": 7, "note": "another hierarchy is ignored"},
+    {"id": "h6", "input": {"employees": [[100000, 100, 99999], [99999, 100, 1], [1, 100]], "employeeId": 100000}, "expected": 300, "note": "extreme ids and importance"},
+    {"id": "h7", "input": {"employees": [[3, 0, 1], [1, 0], [2, 8]], "employeeId": 3}, "expected": 0, "note": "zero importance"},
+    {"id": "h8", "input": {"employees": [[8, -2], [2, 5, 8, 3], [3, -4], [6, 9, 2]], "employeeId": 6}, "expected": 8, "note": "records listed before their leader's"},
+    {"id": "h9", "input": {"employees": [[1, 50, 2, 3], [2, -25], [3, -25]], "employeeId": 1}, "expected": 0, "note": "importance cancels out"},
+    {"id": "h10", "input": {"employees": [[20, 1, 21, 22], [21, 2, 23], [22, 4, 24, 25], [23, 8], [24, 16], [25, 32]], "employeeId": 22}, "expected": 52, "note": "a subtree in the middle"},
+    {"id": "g1", "generate": {"n": 5000, "seed": 233}, "note": "large input: finding each record by scanning costs about 1.25 * 10^7 steps"}
+  ]
+}

@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0233"
+slug: employee-importance
+title: Employee Importance
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [graphs, arrays-hashing]
+signature:
+  function:
+    name: getImportance
+    params:
+      - {name: employees, type: "int[][]"}
+      - {name: employeeId, type: int}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: lookup-by-scan, name: Find each employee's record by scanning the list, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: map-and-traverse, name: Index the records by id and walk the group with a stack, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of employees (the query is the top of one hierarchy holding all of them)
+  size_ladder: [50, 150, 500, 1500, 5000]
+  expected_from: map-and-traverse
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 690, url: "https://leetcode.com/problems/employee-importance/"}
+related: [contractor-exposure-rollup, clone-graph, max-depth-binary-tree]
+order: 13
+estimate_minutes: 15
