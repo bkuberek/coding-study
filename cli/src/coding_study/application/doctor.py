@@ -53,6 +53,9 @@ from coding_study.domain.type_dsl import VoidType
 PYTHON_VERSION = "3.13"
 MINIMUM_NODE_MAJOR = 24
 JAVA_MAJOR = 21
+TOOLCHAINS_GUIDE = "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md"
+INSTALL_UV = f"install uv: {TOOLCHAINS_GUIDE}#python-and-uv"
+INSTALL_PNPM = f"install pnpm: {TOOLCHAINS_GUIDE}#nodejs-and-pnpm"
 
 _DOTTED_VERSION = re.compile(r"(?P<version>\d+(?:\.\d+)+)")
 _JAVA_VERSION = re.compile(r'version "(?P<version>\d+(?:\.\d+)*)')
@@ -244,9 +247,9 @@ def run_doctor(environment: DoctorEnvironment, notify: ProgressNotice) -> Doctor
     tools = environment.tools
     results = [
         _python(tools),
-        _present_tool(tools, "uv", "install uv: https://docs.astral.sh/uv/"),
+        _present_tool(tools, "uv", INSTALL_UV),
         _node(tools),
-        _present_tool(tools, "pnpm", "install pnpm"),
+        _present_tool(tools, "pnpm", INSTALL_PNPM),
         _java(tools),
         _gradle(tools),
         _config(environment.config),
@@ -284,7 +287,10 @@ def _python(tools: ToolProbe) -> CheckResult:
     found = tools.run(("uv", "python", "find", PYTHON_VERSION))
     if found is None:
         return CheckResult(
-            "python", CheckStatus.FAIL, f"uv not found (uv provides Python {PYTHON_VERSION})"
+            "python",
+            CheckStatus.FAIL,
+            f"uv not found (uv provides Python {PYTHON_VERSION})",
+            fix=INSTALL_UV,
         )
     interpreters = found.output.strip().splitlines()
     if found.exit_code != 0 or not interpreters:
@@ -309,7 +315,7 @@ def _present_version(name: str, version: str | _Unavailable, fix: str | None) ->
 
 def _node(tools: ToolProbe) -> CheckResult:
     version = _version_of(tools, ("node", "--version"))
-    fix = f"install Node {MINIMUM_NODE_MAJOR} or newer"
+    fix = f"install Node {MINIMUM_NODE_MAJOR} or newer: {TOOLCHAINS_GUIDE}#nodejs-and-pnpm"
     if isinstance(version, _Unavailable):
         return CheckResult("node", CheckStatus.FAIL, version.reason, fix=fix)
     if _major(version) < MINIMUM_NODE_MAJOR:
@@ -320,7 +326,7 @@ def _node(tools: ToolProbe) -> CheckResult:
 
 def _java(tools: ToolProbe) -> CheckResult:
     version = _version_of(tools, ("java", "-version"), _JAVA_VERSION)
-    fix = f"install JDK {JAVA_MAJOR}"
+    fix = f"install JDK {JAVA_MAJOR}: {TOOLCHAINS_GUIDE}#jdk-{JAVA_MAJOR}"
     if isinstance(version, _Unavailable):
         return CheckResult("java", CheckStatus.FAIL, version.reason, fix=fix)
     if _major(version) != JAVA_MAJOR:

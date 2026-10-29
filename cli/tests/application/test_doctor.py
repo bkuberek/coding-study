@@ -58,6 +58,7 @@ COMPLETE_WORKSPACE = {
     "typescript/node_modules",
 }
 RUNNING_VERSION = "0.1.0"
+TOOLCHAINS_GUIDE = "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md"
 
 
 @dataclass
@@ -251,7 +252,32 @@ def test_java_must_be_21(output, expected):
 
 def test_missing_tool_fails_with_fix():
     result = check(doctor(tools_with(("pnpm", "--version"), None)), "pnpm")
-    assert (result.status, result.detail, result.fix) == (FAIL, "not found on PATH", "install pnpm")
+    assert (result.status, result.detail, result.fix) == (
+        FAIL,
+        "not found on PATH",
+        f"install pnpm: {TOOLCHAINS_GUIDE}#nodejs-and-pnpm",
+    )
+
+
+@pytest.mark.parametrize(
+    ("command", "name", "fix"),
+    [
+        (("uv", "--version"), "uv", f"install uv: {TOOLCHAINS_GUIDE}#python-and-uv"),
+        (
+            ("uv", "python", "find", "3.13"),
+            "python",
+            f"install uv: {TOOLCHAINS_GUIDE}#python-and-uv",
+        ),
+        (
+            ("node", "--version"),
+            "node",
+            f"install Node 24 or newer: {TOOLCHAINS_GUIDE}#nodejs-and-pnpm",
+        ),
+        (("java", "-version"), "java", f"install JDK 21: {TOOLCHAINS_GUIDE}#jdk-21"),
+    ],
+)
+def test_missing_toolchain_fix_links_its_install_guide(command, name, fix):
+    assert check(doctor(tools_with(command, None)), name).fix == fix
 
 
 def test_failing_version_command_fails():
