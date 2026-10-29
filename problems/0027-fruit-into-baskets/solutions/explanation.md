@@ -45,6 +45,8 @@ It is the statement turned into code, hence the oracle. Consecutive starts share
 
 - Python: `None` marks the empty basket; comparing an `int` with `None` is simply `False`.
 - TypeScript, Java, Kotlin: -1 marks the empty basket.
+- Go: the unused basket is the constant `empty = -1`, as in Java and Kotlin, which works because fruit types are never negative.
+- Rust: the second basket is an `Option<i32>` instead of a sentinel, so `Some(fruit) != second` and `second.is_some()` read as the Python `is not None` tests. The run length `end - start` is a `usize` and converts to `i32` once, at the return.
 
 ## Approach: sliding-window (Window with a count per fruit type)
 
@@ -82,6 +84,8 @@ The general "at most k distinct" sliding window: change the `2` to `k` and it so
 - TypeScript: `Map<number, number>`; `?? 0` handles a missing key, and `size` counts keys.
 - Java: `Map.merge(key, 1, Integer::sum)` increments; `merge(key, -1, Integer::sum)` returns the new count, which is boxed, so comparing it with `== 0` unboxes it safely.
 - Kotlin: `HashMap.merge(key, 1, Int::plus)` mirrors the Java idiom.
+- Go: `inWindow[fruit]++` needs no existence check, because a missing key reads as 0, and `delete` drops a type whose count reaches zero so that `len(inWindow)` counts the distinct types.
+- Rust: `entry(fruit).or_insert(0)` adds a type, `get_mut` lends the count for the decrement, and `remove` drops a type at zero; the borrow of the count has ended by the time `remove` runs, so the borrow checker accepts both calls on the same map. The window size is written `right + 1 - left` so it cannot underflow `usize`.
 
 ## Approach: last-run (Track the last two types and the final run)
 
@@ -123,3 +127,5 @@ No map, no inner loop, one pass: the leanest solution, and a nice demonstration 
 - TypeScript: a conditional expression sets `window` in one line; all values are small integers.
 - Java: the same single pass over an `int[]` with a ternary for `window`.
 - Kotlin: `if` is an expression, so `window = if (...) window + 1 else lastRun + 1`.
+- Go: five `int` variables and no map: the constant `empty = -1` stands for an unused basket, and `beforeLast, last = last, fruit` shifts the two types in one assignment.
+- Rust: the same five variables. The window is chosen with an `if` expression, and `before_last = last; last = fruit;` shifts the two types in two statements, because Rust has no tuple assignment to existing variables that reads as clearly.
