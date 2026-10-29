@@ -96,6 +96,9 @@ DEBUGGABLE = (Language.PYTHON, Language.TYPESCRIPT, Language.JAVA, Language.GO, 
 EMPTY_TARGET = 'target create ""'
 """CodeLLDB needs a target before it connects; an empty one takes the executable the debug server
 reports, since each run launches the runner from a directory of its own."""
+KILL_DEBUGGEE = "process kill"
+"""CodeLLDB detaches from an attached process when its session ends, and the debug server then exits
+and leaves the runner going. `preTerminateCommands` run just before that detach."""
 
 
 class VsCodeProject:
@@ -212,6 +215,7 @@ def _debugger(attach: DebugAttach) -> JsonObject:
                 "type": "lldb",
                 "targetCreateCommands": [EMPTY_TARGET],
                 "processCreateCommands": [f"gdb-remote {DEBUG_HOST}:{attach.port}"],
+                "preTerminateCommands": [KILL_DEBUGGEE],
                 "sourceLanguages": ["rust"],
             }
         case Language.KOTLIN:
