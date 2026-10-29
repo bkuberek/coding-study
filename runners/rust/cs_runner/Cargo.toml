@@ -1,0 +1,12 @@
+[package]
+name = "cs_runner"
+version = "0.1.0"
+edition = "2021"
+description = "The coding-study Rust runner: protocol, codec and harness under generated bridges"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+cs_support = { path = "../cs_support" }

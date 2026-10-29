@@ -7,6 +7,9 @@ __pycache__/
 .hypothesis/
 /dist/
 
+# Rust build output (cargo test in runners/rust)
+target/
+
 # This repository holds code and content only, never a workspace
 # (docs/specs/installation-and-workspaces.md#developing-coding-study). `cstudy init` refuses to
 # create one here; these rules keep practice files, progress and caches out if one appears anyway.
@@ -24,6 +27,7 @@ progress-export.json
 /jvm/
 /go/
 /go.work
+/rust/
 /notes/
 /.archive/
 

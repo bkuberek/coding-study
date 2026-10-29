@@ -1,0 +1,9 @@
+[package]
+name = "cs_support"
+version = "0.1.0"
+edition = "2021"
+description = "Node types shared by coding-study solutions and the Rust runner"
+publish = false
+
+[lib]
+path = "src/lib.rs"
