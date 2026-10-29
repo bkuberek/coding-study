@@ -47,6 +47,8 @@ It is the natural first correct solution and generalizes to cost functions that 
 - TypeScript: `Infinity` is a safe initial minimum because every candidate is a finite number.
 - Java: `Integer.MAX_VALUE` as the initial minimum is safe because the range of `cut` is never empty for `end >= pieces`.
 - Kotlin: `IntArray(n + 1) { end -> ... }` builds each row with an initializer, and `(pieces - 1 until end).minOf { ... }` expresses the minimum over cut points.
+- Go: `slices.Clone` copies the prefix sums into the first row, and `math.MaxInt` is the initial minimum; the built-in `min` and `max` (Go 1.21 and newer) keep the inner line short. Each pass allocates a fresh row, so the previous one stays intact while it is read.
+- Rust: `(pieces - 1..end).map(..).min().unwrap()` takes the minimum over the cut points; the range is never empty for `end >= pieces`, so the `unwrap` cannot fail. Prefix sums stay below 10^9, inside `i32`.
 
 ## Approach: search-the-limit (Binary search on the largest sum with a greedy check)
 
@@ -89,3 +91,5 @@ This is the expected answer: short, fast, and an instance of the same "binary se
 - TypeScript: one loop computes both bounds; `Math.floor((low + high) / 2)` is exact because the sum stays far below 2^53.
 - Java: `low + (high - low) / 2` avoids overflow when both bounds are near 10^9.
 - Kotlin: `nums.max()` and `nums.sum()` give the bounds; the midpoint uses the same overflow-safe form as Java.
+- Go: `slices.Max(nums)` gives the lower bound and a loop adds the upper bound; the midpoint is `low + (high-low)/2`, and `int` is 64 bits, so no sum can overflow.
+- Rust: `*nums.iter().max().unwrap()` and `nums.iter().sum::<i32>()` give the bounds; the sum is at most 10^9, inside `i32`, and the midpoint uses the overflow-safe form anyway.
