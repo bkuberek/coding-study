@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"intervals": [[2, 9], [3, 5], [6, 12], [10, 11]]}, "expected": 2},
+    {"id": "ex2", "visible": true, "input": {"intervals": [[1, 4], [2, 5], [3, 6]]}, "expected": 3},
+    {"id": "h1", "input": {"intervals": [[0, 1]]}, "expected": 1, "note": "a single interval"},
+    {"id": "h2", "input": {"intervals": [[1, 5], [1, 8], [1, 3]]}, "expected": 1, "note": "equal starts: the longest covers the rest"},
+    {"id": "h3", "input": {"intervals": [[2, 7], [4, 7], [6, 7]]}, "expected": 1, "note": "equal ends"},
+    {"id": "h4", "input": {"intervals": [[1, 2], [3, 4], [5, 6]]}, "expected": 3, "note": "disjoint"},
+    {"id": "h5", "input": {"intervals": [[0, 100000], [1, 99999], [5, 6], [0, 1]]}, "expected": 1, "note": "extreme values, one interval covers all"},
+    {"id": "h6", "input": {"intervals": [[1, 10], [2, 9], [3, 8], [4, 7], [5, 6]]}, "expected": 1, "note": "fully nested"},
+    {"id": "h7", "input": {"intervals": [[1, 4], [4, 8]]}, "expected": 2, "note": "touching intervals cover nothing"},
+    {"id": "h8", "input": {"intervals": [[3, 6], [1, 4], [2, 8], [5, 7]]}, "expected": 2, "note": "two covered by the same interval"},
+    {"id": "h9", "input": {"intervals": [[5, 9], [1, 3], [5, 7], [2, 3]]}, "expected": 2, "note": "covered by an equal start and by an equal end"},
+    {"id": "h10", "input": {"intervals": [[1, 6], [2, 6], [1, 5]]}, "expected": 1, "note": "the cover shares an endpoint with each covered interval"},
+    {"id": "g1", "generate": {"n": 5000, "seed": 231}, "note": "large input: the pairwise check makes about 10^7 comparisons"}
+  ]
+}

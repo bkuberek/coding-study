@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0231"
+slug: remove-covered-intervals
+title: Remove Covered Intervals
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [intervals]
+signature:
+  function:
+    name: removeCoveredIntervals
+    params:
+      - {name: intervals, type: "int[][]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: all-pairs, name: Check each interval against all the others, role: brute, time: "O(n^2)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: sort-and-sweep, name: Sort by start with longer intervals first and track the furthest end, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: number of intervals (about half of them covered)
+  size_ladder: [50, 150, 500, 1500, 5000]
+  expected_from: sort-and-sweep
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1288, url: "https://leetcode.com/problems/remove-covered-intervals/"}
+related: [merge-intervals, non-overlapping-intervals, insert-interval]
+order: 8
+estimate_minutes: 20
