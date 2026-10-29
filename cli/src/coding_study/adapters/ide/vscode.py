@@ -26,7 +26,7 @@ from coding_study.domain.ide_actions import (
     Scope,
     debug_name,
 )
-from coding_study.domain.layout import PYTHON_PROJECT, TYPESCRIPT_PROJECT
+from coding_study.domain.layout import PYTHON_PROJECT, RUST_PROJECT, TYPESCRIPT_PROJECT
 from coding_study.domain.problem import Language
 
 JsonObject = dict[str, Any]
@@ -52,12 +52,17 @@ SETTINGS: JsonObject = {
     "python.defaultInterpreterPath": f"{WORKSPACE_FOLDER}/{PYTHON_PROJECT}/.venv/bin/python",
     "typescript.tsdk": f"{TYPESCRIPT_PROJECT}/node_modules/typescript/lib",
     "java.import.gradle.enabled": True,
+    "go.toolsEnvVars": {"GOTOOLCHAIN": "local"},
+    "rust-analyzer.linkedProjects": [f"{RUST_PROJECT}/Cargo.toml"],
+    "rust-analyzer.check.allTargets": True,
+    "rust-analyzer.check.extraArgs": ["--keep-going"],
     "files.watcherExclude": {
         "**/.gradle/**": True,
         "**/.kotlin/**": True,
         "**/.venv/**": True,
         "**/build/**": True,
         "**/node_modules/**": True,
+        "**/target/**": True,
     },
     "search.exclude": {
         "**/.gradle": True,
@@ -65,17 +70,24 @@ SETTINGS: JsonObject = {
         "**/.venv": True,
         "**/build": True,
         "**/node_modules": True,
+        "**/target": True,
     },
 }
 """The interpreter and compiler of the workspace's own projects. The Java extension finds the
 Gradle project in `jvm/` itself; the JDK is left to the user's setup, since
-`java.jdt.ls.java.home` would pin a machine-specific path."""
+`java.jdt.ls.java.home` would pin a machine-specific path. gopls finds `go/` through the
+workspace's `go.work`; the Go tools run with `GOTOOLCHAIN=local`, as `cstudy` does, so they never
+download a toolchain. rust-analyzer needs the link because `Cargo.toml` is in `rust/`, checks every
+target because each problem is an `[[example]]`, and `--keep-going` keeps one broken problem from
+hiding the errors of the others."""
 EXTENSIONS: JsonObject = {
     "recommendations": [
         "ms-python.python",
         "ms-python.debugpy",
         "vscjava.vscode-java-pack",
         "vscjava.vscode-gradle",
+        "golang.go",
+        "rust-lang.rust-analyzer",
     ]
 }
 DEBUGGABLE = (Language.PYTHON, Language.TYPESCRIPT, Language.JAVA)

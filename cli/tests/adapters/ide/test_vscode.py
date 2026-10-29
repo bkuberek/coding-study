@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 from coding_study.adapters.ide.vscode import VsCodeProject
+from tests.helpers import WORKSPACE_TEMPLATE
 
 TASKS = ".vscode/tasks.json"
 LAUNCH = ".vscode/launch.json"
@@ -170,10 +171,37 @@ def test_the_settings_never_pin_a_jdk():
     assert "java.jdt.ls.java.home" not in document(SETTINGS)
 
 
-def test_the_extensions_for_python_and_the_jvm_are_recommended():
+def test_the_extensions_for_every_language_are_recommended():
     assert document(EXTENSIONS)["recommendations"] == [
         "ms-python.python",
         "ms-python.debugpy",
         "vscjava.vscode-java-pack",
         "vscjava.vscode-gradle",
+        "golang.go",
+        "rust-lang.rust-analyzer",
     ]
+
+
+def test_rust_analyzer_links_the_rust_project_of_the_template():
+    linked = document(SETTINGS)["rust-analyzer.linkedProjects"]
+    assert [(WORKSPACE_TEMPLATE / path).is_file() for path in linked] == [True]
+
+
+def test_rust_analyzer_checks_every_target_and_keeps_going_past_a_broken_problem():
+    settings = document(SETTINGS)
+    assert (
+        settings["rust-analyzer.check.allTargets"],
+        settings["rust-analyzer.check.extraArgs"],
+    ) == (True, ["--keep-going"])
+
+
+def test_the_go_tools_never_download_a_toolchain():
+    assert document(SETTINGS)["go.toolsEnvVars"] == {"GOTOOLCHAIN": "local"}
+
+
+@pytest.mark.parametrize(
+    ("setting", "pattern"),
+    [("files.watcherExclude", "**/target/**"), ("search.exclude", "**/target")],
+)
+def test_cargo_build_output_is_left_out_of_watching_and_search(setting, pattern):
+    assert document(SETTINGS)[setting][pattern] is True
