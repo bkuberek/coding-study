@@ -46,6 +46,7 @@ Simple, in place and stable in spirit, and linear on input that arrives in desce
 ### Language notes
 
 - Kotlin: the walk condition reads the Java field `spot.next` twice; it is a platform type, so the compiler accepts ``spot.next.`val` `` after the null check even though a field read cannot be smart-cast.
+- Rust: the insertion point is a `&mut Option<Box<ListNode>>` cursor over the sorted prefix, advanced with `spot = &mut spot.as_mut().expect(..).next` under an `is_some_and` guard, which reads the next value without holding a borrow into the next iteration. `node.next = spot.take()` then `*spot = Some(node)` splices the node in.
 
 ## Approach: array-sort (Copy the values out, sort them, write them back)
 
@@ -83,6 +84,8 @@ Fast in practice (library sorts are tuned and cache-friendly) and the simplest c
 - TypeScript: `Int32Array.from(values).sort()` sorts numerically with no comparator, because typed arrays compare their elements as numbers.
 - Java: `Arrays.sort(int[])` is a dual-pivot quicksort on primitives (no boxing); the list is walked once to size the array.
 - Kotlin: `IntArray(size) { ... }.apply { sort() }` builds and sorts a primitive array.
+- Go: `slices.Sort` sorts the `[]int` in place (pattern-defeating quicksort, O(n log n), not stable, which is irrelevant for plain integers).
+- Rust: `sort_unstable` on the `Vec<i32>`, then one `&mut` walk (`as_deref_mut`) writes the values back; the nodes stay in place, as in the other languages.
 
 ## Approach: top-down-merge (Merge sort: split at the middle, sort halves recursively)
 
@@ -121,6 +124,7 @@ The standard interview answer: it relinks the given nodes, is stable (ties take 
 - Python: recursion depth is only about log2 n here, far from any limit.
 - TypeScript: the explicit `ListNode | null` on `fast` keeps the type checker from narrowing it to non-null from its initializer.
 - Kotlin: `head?.next == null` covers both base cases; afterwards `head` smart-casts to non-null.
+- Rust: slow and fast pointers would be two `&mut` cursors into one list, so the split point comes from the length, counted once and passed down the recursion: the left half takes `length.div_ceil(2)` nodes, exactly where `fast = head.next` stops `slow`, and `next.take()` cuts the list. `merge` appends through `tail = tail.next.insert(node)`, which stores the node and returns a reference to it.
 
 ## Approach: bottom-up-merge (Merge sort: merge runs of doubling width)
 
@@ -160,3 +164,4 @@ Meets the strictest version of the problem: O(n log n) time with constant extra 
 - Python: helper functions with docstrings keep the three steps (cut, merge, advance tail) testable on their own.
 - TypeScript and Kotlin: `mergeOnto` reassigns a local copy of `tail` because parameters are read-only in Kotlin and reassigning them in TypeScript hides intent.
 - Java: the helpers are `static`, since they use no instance state.
+- Rust: a pass takes the whole list out of `list` and rebuilds it behind a dummy node. `cut_run` moves one node at a time out of `rest` into a new run, so the cut costs O(width) like the walk it replaces and no node is ever reachable twice. `merge_onto` returns the tail as a `&mut ListNode` borrowed from its argument, which lets the next merge continue from it.
