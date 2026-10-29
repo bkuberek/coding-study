@@ -46,6 +46,8 @@ Easy to get right, which makes it the oracle, but it misses the point of the exe
 - TypeScript: `values.pop()!` needs the non-null assertion because `pop` is typed `number | undefined`.
 - Java: an `ArrayDeque<Integer>` used as a stack (`push`, `pop`) returns the values last in, first out; it boxes every value.
 - Kotlin: `values.removeAt(values.lastIndex)` removes the last element; `removeLast()` would also work but resolves to a JDK 21 method on some toolchains, so the index form is the portable choice.
+- Go: the second pass counts an index down from the last value instead of popping, which does the same job without shrinking the slice. Nodes are `*ListNode` values, so writing `node.Val` changes the caller's list.
+- Rust: `Vec::pop` takes the values from the back in O(1). The first walk borrows the list immutably (`&head`), the second mutably (`&mut head`), and `head` itself is returned at the end, because only the values moved, not the nodes.
 
 ## Approach: iterative (Redirect every link in one pass)
 
@@ -86,6 +88,8 @@ Optimal in time and memory, short, and immune to stack overflow. This is the ans
 - Python: tuple assignment `previous, current = current, following` moves both references at once; the right side is evaluated before either name is rebound.
 - TypeScript: the explicit `ListNode | null` annotation on `following` keeps the narrowing of `current` from leaking into its type.
 - Kotlin: `current` is a local `var`, so the `while (current != null)` check smart-casts it inside the loop body; a property would not smart-cast.
+- Go: `previous, current = current, following` is the same simultaneous assignment as Python's, and `var previous *ListNode` starts as the empty list.
+- Rust: the list is owned, so each node is moved, never copied. `while let Some(mut node) = current` takes the node out of `current`, `node.next.take()` moves the rest of the list out and leaves `None` behind, and `node.next = previous` relinks it. No `unsafe` and no clone is needed.
 
 ## Approach: recursive (Reverse the rest, then hang the head at its end)
 
@@ -124,3 +128,5 @@ Elegant and a common follow-up question, but its stack depth equals the list len
 - Python: the default recursion limit is 1000 frames (`sys.getrecursionlimit()`); the runner raises it, but your own scripts would need `sys.setrecursionlimit`.
 - Kotlin: `head?.next == null` covers both base cases in one check, and afterwards the compiler knows `head` is not null.
 - Java and TypeScript: neither eliminates tail calls, and this recursion is not a tail call anyway, because work remains after the call returns.
+- Go: the code is the same as Python's; `head.Next.Next = head` works because `head.Next` still points at the old second node, now the tail of the reversed rest.
+- Rust: that line has no safe equivalent. The recursive call consumes the rest of the list (a `Box` has one owner), so afterwards there is no reference to its tail, and walking to the tail again would cost O(n) per level, O(n^2) in total. The reference passes the already-reversed part down instead, `reverse_onto(rest, reversed)`: one node moves per call, the depth is the list length, and time and stack stay O(n). It is the iterative loop written as recursion.
