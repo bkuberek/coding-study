@@ -45,6 +45,7 @@ It is the definition turned into code, which makes it the oracle. At the constra
 
 - Python: `min(..., default=-1)` returns `-1` for an empty generator without a separate check.
 - Kotlin: `filter` plus `minOfOrNull` returns `null` when no interval contains the point, and `?: -1` maps it to the sentinel. The filtered list is allocated per query, which is fine for an oracle.
+- Rust: `filter`, `map` and `min` over the intervals, then `unwrap_or(-1)` for a query no interval contains; no list is built.
 
 ## Approach: sweep-with-heap (Sweep sorted queries with a min-heap of sizes)
 
@@ -86,6 +87,8 @@ This is the standard solution, and its shape (sort events, sweep, heap of active
 - TypeScript: there is no built-in heap, so the reference carries a small binary heap over `[size, right]` pairs.
 - Java: `PriorityQueue<int[]>` with a two-key comparator; the query order is an `Integer[]` because `Arrays.sort` with a comparator does not accept `int[]`.
 - Kotlin: `queries.indices.sortedBy { queries[it] }` gives the order; `candidates.peek()?.let { ... }` handles the empty heap, since `peek` returns `null` then.
+- Go: `container/heap` over a `candidate{size, right}` struct whose `Less` compares size first, then right end, like Python's tuples. The query order comes from `slices.SortStableFunc` on an index slice.
+- Rust: `BinaryHeap<Reverse<(i32, i32)>>` gives a min-heap, and tuples compare lexicographically, so `(size, right)` orders by size first as in Python. `peek().is_some_and(..)` guards the pops, and `sort_by_key` on the index vector gives the query order.
 
 ## Approach: paint-smallest-first (Paint queries from the smallest interval up with union-find)
 
@@ -127,3 +130,5 @@ Same asymptotic cost as the sweep, and it closes each query point exactly once, 
 - TypeScript: `new Set(queries)` deduplicates; a `Map` from value to index answers the original queries.
 - Java: `Arrays.stream(queries).distinct().sorted().toArray()` builds the points, and `Arrays.binarySearch` maps each query back, since every query value is present.
 - Kotlin: a local function `firstOpen` closes over the `nextOpen` array; `binarySearch` returns `-(insertionPoint) - 1` on a miss, which the code converts to the first point at or after `left`.
+- Go: `slices.Sort` followed by `slices.Compact` builds the distinct points, `sort.SearchInts` is `bisect_left`, and `firstOpen` is a closure over `nextOpen` that compresses the path with a tuple assignment (`nextOpen[k], k = root, nextOpen[k]`).
+- Rust: `first_open` takes `&mut [usize]` instead of closing over `next_open`, since a closure that holds the mutable borrow would block the loop's own writes to `next_open`. `dedup` removes duplicate points from the sorted `Vec`, `partition_point` is `bisect_left`, and a `HashMap` maps each query back to its point.
