@@ -14,8 +14,8 @@ with the compiler's message in the user's terms.
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from coding_study.adapters.file_lock import exclusive_lock
 from coding_study.adapters.languages.compiled_builds import (
-    exclusive,
     private_copy,
     relative,
     write_if_changed,
@@ -129,7 +129,7 @@ class RustRunner:
         return self._prepare(build, notify)
 
     def _prepare(self, build: _Build, notify: ProgressNotice) -> PrepareResult:
-        with exclusive(self._build_directory / LOCK_FILE):
+        with exclusive_lock(self._build_directory / LOCK_FILE):
             warm = (self._build_directory / WARM_MARKER).is_file()
             if not warm:
                 notify(COLD_NOTICE)

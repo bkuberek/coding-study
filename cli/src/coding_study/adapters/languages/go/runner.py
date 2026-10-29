@@ -18,8 +18,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from coding_study.adapters.file_lock import exclusive_lock
 from coding_study.adapters.languages.compiled_builds import (
-    exclusive,
     private_copy,
     relative,
     write_if_changed,
@@ -128,7 +128,7 @@ class GoRunner:
 
     def _prepare(self, build: _Build, notify: ProgressNotice) -> PrepareResult:
         module = self._workspace_module()
-        with exclusive(self._build_directory / LOCK_FILE):
+        with exclusive_lock(self._build_directory / LOCK_FILE):
             warm = (self._build_directory / WARM_MARKER).is_file()
             if not warm:
                 notify(COLD_NOTICE)

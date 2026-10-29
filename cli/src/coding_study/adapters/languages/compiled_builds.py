@@ -2,30 +2,16 @@
 (docs/specs/runners.md#go-build-details, #rust-build-details).
 
 Two `cstudy` processes may build the same problem at once (a watcher and a verify), so the
-generation and the build hold an exclusive lock, and each process runs its own copy of the built
-binary, which no other build overwrites. Generated files are written only when their content
-changes: Cargo fingerprints sources by modification time, and editors and watchers notice writes.
+runners hold `exclusive_lock` (adapters/file_lock.py) around the generation and the build, and
+each process runs its own copy of the built binary, which no other build overwrites. Generated
+files are written only when their content changes: Cargo fingerprints sources by modification
+time, and editors and watchers notice writes.
 """
 
-import fcntl
 import os
 import shutil
 import threading
-from collections.abc import Generator
-from contextlib import contextmanager
 from pathlib import Path
-
-
-@contextmanager
-def exclusive(lock_file: Path) -> Generator[None]:
-    """Holds an exclusive lock on `lock_file` (created when missing)."""
-    lock_file.parent.mkdir(parents=True, exist_ok=True)
-    descriptor = os.open(lock_file, os.O_RDWR | os.O_CREAT, 0o644)
-    try:
-        fcntl.flock(descriptor, fcntl.LOCK_EX)
-        yield
-    finally:
-        os.close(descriptor)
 
 
 def write_if_changed(path: Path, text: str) -> None:
