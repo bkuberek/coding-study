@@ -44,6 +44,8 @@ Simplest correct in-place solution, hence the oracle. It reads the array twice a
 - TypeScript: `Array.prototype.fill(value, start, end)` writes each block; the end is exclusive.
 - Java: `Arrays.fill(nums, from, to, value)` writes each block; `to` is exclusive.
 - Kotlin: `IntArray.fill(element, fromIndex, toIndex)` mirrors the Java call.
+- Go: `var counts [3]int` is a zeroed array indexed by the color, and `for range count` (Go 1.22) repeats a block without a loop variable. The function edits the caller's slice in place.
+- Rust: the colors arrive as `i32`, so the count array is indexed with `color as usize`, and `nums[index..index + count].fill(color as i32)` writes each block in one call. The result goes back through the `&mut Vec<i32>` parameter.
 
 ## Approach: dutch-flag (One pass with three regions)
 
@@ -84,3 +86,5 @@ One pass, swaps instead of overwrites, so it also sorts records by a three-value
 - TypeScript: a small `swap` helper with a temporary is faster than destructuring, which allocates a two-element array per swap.
 - Java: `swap(nums, low++, mid++)` passes the old index values and advances both, which keeps the three branches one line each.
 - Kotlin: a private `IntArray.swap` extension uses the `also` idiom; `when (nums[mid])` with constant branches reads like the case analysis above.
+- Go: `switch nums[mid]` with constant cases reads like the case analysis above, and the tuple assignment swaps two slots without a temporary.
+- Rust: `match nums[mid]` on the three colors, with `Vec::swap` exchanging two slots. `high` is stored one past the unsorted region and decremented before a swap, so an empty vector cannot underflow `usize`.
