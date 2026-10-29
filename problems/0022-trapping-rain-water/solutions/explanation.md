@@ -50,6 +50,8 @@ The formula is the whole insight, and the brute force applies it literally, whic
 
 - Python: `max(height[:i + 1])` and `max(height[i:])` copy and scan slices in C. It is still O(n) per bar, about ten times faster than nested Python loops.
 - TypeScript, Java, Kotlin: two inner loops per bar with `Math.max`, `maxOf` or the like; no allocation.
+- Go: `slices.Max` returns the largest element of a non-empty slice, here `height[:i+1]` and `height[i:]`, which are slice headers over the same array; both always hold at least the bar itself. The builtin `min` picks the lower wall.
+- Rust: `iter().copied().max()` returns an `Option<i32>`, `unwrap_or(0)` supplies a default that the non-empty subslices never use, and `i32::min` picks the lower wall.
 
 ## Approach: prefix-max (Precompute the tallest bar on each side)
 
@@ -88,6 +90,8 @@ The easiest linear solution to explain and to get right, and the stepping stone 
 - TypeScript: `new Array<number>(n)` preallocates; filling with explicit loops avoids the overhead of `reduce`.
 - Java: `int[]` arrays start at zero; the loops overwrite every slot.
 - Kotlin: `IntArray(n)` for both maxima; `indices.sumOf { ... }` sums the water. Its result type follows the lambda, `Int` here.
+- Go: two explicit passes fill `leftMax` and `rightMax`, the second counting down with an index because Go has no reverse iterator; the builtin `max` and `min` need no helpers.
+- Rust: `Iterator::scan` carries the running maximum and builds each array as an iterator chain; the right-hand array is scanned over `rev()` and flipped with `reverse()`. One closure serves both scans, and `zip` walks the three arrays together.
 
 ## Approach: monotonic-stack (Fill basins with a stack of falling bars)
 
@@ -132,6 +136,8 @@ Same growth as `prefix-max`, but it processes bars strictly left to right, so it
 - TypeScript: arrays have `push` and `pop`; the reference uses `falling.pop()!` because the loop condition already guarantees a non-empty stack.
 - Java: `ArrayDeque<Integer>` is the recommended stack; `java.util.Stack` is synchronized and slower. `push`, `pop` and `peek` work on the head.
 - Kotlin: `kotlin.collections.ArrayDeque` with `addLast`, `removeLast` and `last()`; it boxes positions like the Java version.
+- Go: a plain `[]int` of positions is the stack, with `append` to push and `falling[:len(falling)-1]` to pop; there is no `ArrayDeque`-style type to reach for.
+- Rust: a `Vec<usize>` is the stack, with `push`, `pop` and `last`. `while let Some(&top) = falling.last()` reads the top, and `let Some(&left) = falling.last() else { break }` leaves the loop when the popped bar had no wall on its left.
 
 ## Approach: two-pointers (Settle the side with the lower wall)
 
@@ -175,3 +181,5 @@ Optimal in both time and memory, and short. It is the expected final answer in a
 - TypeScript: all arithmetic stays in small integers, which V8 keeps unboxed.
 - Java: `int` throughout; the total stays below 10^9, so no `long` is needed.
 - Kotlin: `maxOf` on `Int` compiles to `Math.max`; no boxing on `IntArray`.
+- Go: two indexes and two running maxima, all `int`; the total stays far below the 64-bit limit.
+- Rust: the total is at most `10^5 * 10^4`, inside `i32`, and cstudy builds with overflow checks; `saturating_sub(1)` starts `right` safely on an empty input.
