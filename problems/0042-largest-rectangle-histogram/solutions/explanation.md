@@ -44,6 +44,8 @@ Correct by construction, which makes it the oracle; at 5,000 bars it already tak
 ### Language notes
 
 - The four references are the same two nested loops; `Math.min`/`Math.max` in TypeScript and Java, `minOf`/`maxOf` in Kotlin, `min`/`max` in Python.
+- Go: the built-in `min` and `max` (Go 1.21 and newer) replace helper functions; areas stay below 10^9, well inside `int`.
+- Rust: `heights[left..].iter().enumerate()` yields each right bar with its offset, so the width is `offset + 1`. The largest area is 10^4 * 10^5 = 10^9, which fits `i32`.
 
 ## Approach: monotonic-stack (Stack of bars with increasing heights)
 
@@ -85,3 +87,5 @@ Linear, and the standard answer for this hard problem. A two-pass variant comput
 - TypeScript: an array with `push`/`pop`; `pop()!` is safe inside the non-empty loop.
 - Java: a primitive `int[]` with a size counter, sized `n + 1` for the sentinel step.
 - Kotlin: `ArrayDeque<Int>` with `lastOrNull() ?: -1` for the left boundary.
+- Go: the sentinel bar is a conditional (`height := 0; if index < len(heights) { ... }`), since Go has no conditional expression. The left boundary is `-1` when the stack is empty.
+- Rust: `heights.get(index).copied().unwrap_or(0)` supplies the sentinel bar. The rectangle starts one bar after the bar below `top` (or at 0), so with `usize` indexes no `-1` is needed.
