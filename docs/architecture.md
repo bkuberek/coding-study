@@ -75,7 +75,7 @@ An `import-linter` contract in `cli/.importlinter` enforces the table (NFR-8).
 
 `Language` has six members. `CORE_LANGUAGES` (Python, TypeScript, Java, Kotlin) is what a problem lists by default and what every "all languages" default, coverage line and IDE action means; `OPTIONAL_LANGUAGES` (Go, Rust) are added by listing them in a problem's `languages` ([ADR 0012](decisions/0012-go-and-rust.md)). Code that branches on a language uses an exhaustive `match` ending in `assert_never`, and `tests/test_language_tables.py` fails when a table keyed by `Language` lacks a row.
 
-The adapter registry holds one stub generator and one runner per language that has an adapter package. Every language has its adapters now. A language without them would raise `LanguageNotSetUpError`, which the CLI reports as `error: rust stub generator is not set up yet` with exit code 4, as it does for parts that are not built yet (`go debug mode is not set up yet`); `cstudy start --lang rust` has already rejected any problem that does not list Rust with exit code 3. `cstudy doctor` checks the runners of the core languages only, until its Go and Rust checks land.
+The adapter registry holds one stub generator and one runner per language that has an adapter package. Every language has its adapters now. A language without them would raise `LanguageNotSetUpError`, which the CLI reports as `error: rust stub generator is not set up yet` with exit code 4, as it does for any part that is not built yet; `cstudy start --lang rust` has already rejected any problem that does not list Rust with exit code 3. `cstudy doctor` handshakes the runners of the core languages only; for Go and Rust it checks the toolchains and debuggers and warns when one is missing.
 
 ### Use cases
 
