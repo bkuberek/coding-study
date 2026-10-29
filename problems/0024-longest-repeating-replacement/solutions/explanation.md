@@ -49,6 +49,8 @@ Straightforward and safe, so it is the oracle. It rebuilds the counts from scrat
 - TypeScript: `Int32Array(26)` per start; `++counts[letter]` returns the new count.
 - Java: `int[26]` and `s.charAt(end) - 'A'`; prefix increment inside `Math.max` is idiomatic here.
 - Kotlin: subtracting `'A'` from a `Char` gives an `Int` index.
+- Go: `var counts [26]int` is a zeroed array per start, and `s[end] - 'A'` is a `byte` that indexes it directly; the builtin `max` replaces the manual comparisons.
+- Rust: `[0usize; 26]` is rebuilt per start. `k` arrives as `i32` and is converted once to `usize`, so the comparison `end - start + 1 - most > k` stays in one type; `end - start + 1 - most` cannot underflow because `most` never exceeds the window length.
 
 ## Approach: per-letter (One window per letter that is kept)
 
@@ -88,6 +90,8 @@ Linear, with an invariant that is easy to state and prove, and it reuses a patte
 - TypeScript: `new Set(s)` iterates the distinct characters of the string.
 - Java: `s.indexOf(target) < 0` skips letters that do not occur.
 - Kotlin: `s.toSet()` gives the distinct characters.
+- Go: `strings.IndexByte(s, target) < 0` skips a letter that never occurs, the counterpart of Java's `s.indexOf(target) < 0`; looping over the `byte` range `'A'` to `'Z'` replaces Python's `set(s)`.
+- Rust: `b'A'..=b'Z'` iterates the letters and `bytes.contains(&target)` skips the absent ones. The window length is written `right + 1 - left`, not `right - left + 1`: the shrink loop can step `left` one past `right` (an empty window), and `right - left` would underflow `usize` first.
 
 ## Approach: sliding-window (One window with a never-decreasing top count)
 
@@ -134,3 +138,5 @@ Fastest and shortest, and the solution interviewers look for. Its correctness ar
 - TypeScript: `Int32Array(26)` and `charCodeAt` avoid string allocation per character.
 - Java: `int[26]` indexed by `s.charAt(i) - 'A'`.
 - Kotlin: `IntArray(26)` indexed by `s[i] - 'A'`; `++counts[...]` returns the updated count.
+- Go: one window, one `[26]int` array and a `most` that never decreases; the window shrinks by at most one position per step, so the `if` replaces an inner loop.
+- Rust: the same `[usize; 26]` array and a never-decreasing `most`. Every counter is `usize`, so the subtraction `right - left + 1 - most` relies on `most` being at most the window length, which holds because `most` counts letters inside a window that is never shorter than it.
