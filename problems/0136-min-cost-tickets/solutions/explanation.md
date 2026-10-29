@@ -48,6 +48,8 @@ Works on travel days only, so its cost does not depend on the calendar length: i
 - TypeScript: `Infinity` seeds the minimum.
 - Java: `Integer.MAX_VALUE` seeds the minimum; it is never added to, so it cannot overflow.
 - Kotlin: `DURATIONS.indices.minOf { ... }` computes the cheapest candidate in one expression.
+- Go: `cheapestFrom` is a closure declared with `var` first so that it can recurse; `math.MaxInt` seeds the minimum and is never added to.
+- Rust: closures cannot recurse, so `cheapest_from` and `first_uncovered` are private functions that receive the days, costs and memo. `DURATIONS.iter().zip(costs)` pairs each duration with its price, and `i32::MAX` seeds the minimum without ever being added to.
 
 ## Approach: calendar-table (Bottom-up table over calendar days)
 
@@ -83,6 +85,7 @@ The shortest code and the easiest recurrence to state, which makes it the oracle
 
 - Python and TypeScript: a set of travel days for membership tests.
 - Java and Kotlin: a boolean array indexed by day is cheaper than a hash set.
+- Go and Rust: a `[]bool` or `Vec<bool>` indexed by day, like the JVM. Rust's `d.saturating_sub(7)` is Python's `max(0, d - 7)` for a `usize`, which cannot go negative; Go's built-in `min` and `max` accept three arguments.
 
 ## Approach: rolling-window (Calendar days with a 30-day ring buffer)
 
@@ -119,3 +122,5 @@ Same speed as the table with constant memory, at the price of modular index arit
 
 - Python: `%` of a negative number is non-negative, so without the `d >= 7` guard `(d - 7) % 30` would quietly read another slot; the guards make the early-year case explicit.
 - TypeScript, Java and Kotlin: `%` keeps the sign of a negative operand, so `(d - 7) % 30` would be a negative index before day 7; the guards prevent it.
+- Go: `%` keeps the sign of a negative operand, so the guards matter as in Java. The ring buffer is a `[30]int` array value, which needs no allocation.
+- Rust: `d` is a `usize`, so `d - 7` before day 7 would panic on overflow rather than wrap or go negative; the `d >= 7` guard avoids it. The ring buffer is a `[i32; 30]` array on the stack.
