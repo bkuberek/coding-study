@@ -45,6 +45,7 @@ It is short, obviously correct and fast on typical inputs, which makes it the st
 - Python and TypeScript: short-circuiting `or` / `||` stops at the first matching candidate.
 - Java: `a == b` in the base case compares references and is only used when one side is null.
 - Kotlin: `===` is reference equality for the same null check; `` a.`val` `` needs backticks.
+- Rust: both helpers take `&Option<Rc<RefCell<TreeNode>>>`, so `contains(&node.left, sub_root)` descends without cloning, and `same(root, sub_root)` reuses the borrowed `sub_root` for every candidate.
 
 ## Approach: serialize-kmp (Pre-order tokens matched with KMP)
 
@@ -85,3 +86,5 @@ It is linear in the worst case, including inputs full of repeated values, at the
 - TypeScript: a numeric marker outside the value range keeps the array homogeneous; avoid `NaN`, which is not equal to itself.
 - Java: `ArrayDeque` rejects null, so missing children are pushed as a shared placeholder node and recognized by reference. Tokens are converted to `int[]` so the matching loop compares primitives, never boxed `Integer` objects with `==`.
 - Kotlin: `ArrayDeque<TreeNode?>` accepts nulls directly, and `toIntArray()` gives a primitive array for the scan; the marker lives in a `companion object` as a `const val`.
+- Go: there is no optional integer, so a token is a small `token{val, missing}` struct. Structs of comparable fields compare with `==`, which is all the KMP loops need.
+- Rust: `Vec<Option<i32>>` holds the tokens, with `None` for a missing child; `Option<i32>` implements `PartialEq`, so `pattern[i] != pattern[length]` compares markers and values alike.
