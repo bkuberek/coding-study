@@ -47,6 +47,8 @@ The standard answer: one search, no extra grid, and it never explores an enclose
 - TypeScript: the board is `string[][]`, so the marker is the one-character string `"S"`; cells on the stack are encoded as numbers.
 - Java: `char[][]` uses the char literals `'O'`, `'X'` and `'S'`; `ArrayDeque<int[]>` is the stack.
 - Kotlin: `Array<CharArray>`, a private top-level `const val SAFE = 'S'`, and `row.indices` for the final pass.
+- Go: a `[]rune` row holds the characters, so the cells compare against rune literals (`'O'`) and the board is changed in place through the slice. The rewrite pass assigns `row[c]` while ranging over `row`, which is safe because it only changes elements, never the length.
+- Rust: the signature takes `&mut Vec<Vec<char>>`, so `solve` changes the caller's board directly, and `iter_mut` hands out each cell as a `&mut char`. The edge scan marks cells while it collects them. The flood loop indexes `board[nr][nc]` instead, because the `iter_mut` borrow has ended by then.
 
 ## Approach: union-find (Union-find with a virtual border node)
 
@@ -85,3 +87,5 @@ More code than the flood fill and no faster on a single board. It suits a varian
 - TypeScript: a small class over an `Int32Array` of parents and a `Uint8Array` of ranks (ranks stay below 32).
 - Java: a private static nested class with `int[]` parents and `byte[]` ranks.
 - Kotlin: a private top-level class with `IntArray` and `ByteArray`; `rank[rootA]++` increments a `Byte` in place.
+- Go: the disjoint set holds `parent` and `rank` slices with one extra slot for the virtual edge node, and `rootA, rootB = rootB, rootA` swaps the roots.
+- Rust: `std::mem::swap` exchanges the roots and `find` takes `&mut self` because it compresses paths. The final pass iterates the board with `iter_mut`, while `set` is a separate value, so asking the set for a root and writing a cell never borrow the same data.
