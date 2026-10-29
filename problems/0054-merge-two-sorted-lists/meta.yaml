@@ -6,6 +6,7 @@ status: ready
 difficulty: easy
 track: dsa
 kind: function
+languages: [python, typescript, java, kotlin, go, rust]
 patterns: [linked-list]
 signature:
   function:

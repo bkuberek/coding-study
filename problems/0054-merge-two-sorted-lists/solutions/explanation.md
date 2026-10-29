@@ -45,6 +45,8 @@ Obviously correct, which is why it is the oracle, but it throws away the one fac
 - TypeScript: `Array.prototype.sort` compares elements as strings unless given a comparator, so `(a, b) => a - b` is required.
 - Java: `Collections.sort` on a `List<Integer>` sorts boxed values with a stable merge sort (TimSort).
 - Kotlin: `ArrayList<Int>.sort()` is the in-place standard-library sort; `sorted()` would return a copy.
+- Go: `slices.Sort` sorts the ints, and ranging over `[]*ListNode{list1, list2}` walks both lists with one loop. Each new node is a fresh `&ListNode{Val: value}`.
+- Rust: the new list is built from its last node to its first (`values.iter().rev()`), so each new `Box` can own the list built so far through `next: merged` and no tail cursor is needed. `sort_unstable` sorts the `i32` values.
 
 ## Approach: iterative (Splice behind a dummy head)
 
@@ -86,6 +88,8 @@ Linear time and constant extra memory, with no recursion depth to worry about. I
 - Python: tuple assignment `tail.next, list1 = list1, list1.next` evaluates the right side first, so `list1.next` is read before `list1` moves.
 - TypeScript: `first ?? second` picks the non-null leftover; `||` would also work for objects but `??` states the intent.
 - Kotlin: the parameters are read-only, so the reference copies them into local `var`s; `first ?: second` attaches the leftover.
+- Go: `tail.Next, list1 = list1, list1.Next` is a simultaneous assignment that reads `list1.Next` before `list1` moves, as in Python. There is no `??` operator, so the leftover is attached with an `if`/`else`.
+- Rust: the borrow checker needs the splice in small steps. The comparison borrows both heads, then `smaller.take().unwrap()` detaches the smaller head from its list, `*smaller = node.next.take()` puts the rest back, and `tail` (a `&mut Box<ListNode>`) advances through `tail.next.as_mut().unwrap()`. `list1.or(list2)` attaches whichever list still has nodes.
 
 ## Approach: recursive (Keep the smaller head, merge the rest recursively)
 
@@ -122,3 +126,5 @@ The shortest correct code, and easy to reason about by induction. The stack dept
 - Python: each call is a full interpreter frame; the runner raises the recursion limit, but at the default limit of 1000 frames a 3000-node merge would raise `RecursionError`.
 - Kotlin: `if` is an expression, so each branch links the rest and yields the chosen head as the function's result.
 - Java and TypeScript: no tail-call elimination, and the call is not in tail position anyway, because its result is stored into `next` afterwards.
+- Go: the same two-branch code as Python; the call depth is the number of nodes, at most 3000.
+- Rust: `match (list1, list2)` with the or-pattern `(None, rest) | (rest, None)` covers both base cases. `first.next.take()` moves the tail out of the chosen node so it can be passed by value, and the result is stored back into `next`. The depth is at most 3000 frames, well inside the runner's thread stack.
