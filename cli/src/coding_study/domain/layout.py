@@ -40,6 +40,8 @@ JVM_PROJECT = "jvm"
 GO_PROJECT = "go"
 RUST_PROJECT = "rust"
 """The practice projects at the workspace root."""
+GO_WORK_FILE = "go.work"
+"""At the workspace root, next to the projects: it lets gopls find `GO_PROJECT`."""
 COMPILED_USER_TARGET = "user"
 COMPILED_REFERENCE_PREFIX = "ref"
 """Go and Rust build the user's code and every reference into one binary (docs/specs/runners.md

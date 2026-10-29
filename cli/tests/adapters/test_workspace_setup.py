@@ -1,5 +1,6 @@
 """The workspace template on disk (docs/specs/installation-and-workspaces.md#cstudy-init)."""
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -46,3 +47,25 @@ def test_a_deleted_template_file_is_missing(setup, tmp_path):
     setup.write_missing(workspace)
     (workspace / "jvm" / "gradlew").unlink()
     assert setup.missing_files(workspace) == ("jvm/gradlew",)
+
+
+def test_a_workspace_from_before_go_and_rust_is_missing_only_their_files(tmp_path):
+    setup = FsWorkspaceSetup(tmp_path / "runners", "0.1.0")
+    workspace = tmp_path / "ws"
+    setup.write_missing(workspace)
+    (workspace / "go.work").unlink()
+    shutil.rmtree(workspace / "go")
+    shutil.rmtree(workspace / "rust")
+    missing = setup.missing_files(workspace)
+    assert {path.split("/")[0] for path in missing} == {"go.work", "go", "rust"}
+
+
+def test_writing_the_missing_files_restores_go_and_rust(tmp_path):
+    setup = FsWorkspaceSetup(tmp_path / "runners", "0.1.0")
+    workspace = tmp_path / "ws"
+    setup.write_missing(workspace)
+    shutil.rmtree(workspace / "go")
+    shutil.rmtree(workspace / "rust")
+    setup.write_missing(workspace)
+    assert setup.missing_files(workspace) == ()
+    assert (workspace / "rust" / "Cargo.toml").is_file()

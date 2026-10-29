@@ -475,6 +475,43 @@ def test_missing_template_files_fail_with_the_fix_command():
     )
 
 
+GO_RUST_FILES = ("go.work", "go/go.mod", "go/practice/.gitkeep", "rust/Cargo.toml", "rust/lib.rs")
+
+
+def test_missing_go_and_rust_files_do_not_fail_the_files_check():
+    setup = FakeSetup(missing=GO_RUST_FILES)
+    report = doctor(workspace=workspace_with(setup=setup))
+    assert summary(report, "workspace files") == (OK, "")
+    assert report.passed is True
+
+
+def test_missing_go_and_rust_files_warn_with_the_fix_command():
+    setup = FakeSetup(missing=GO_RUST_FILES)
+    result = check(doctor(workspace=workspace_with(setup=setup)), "go and rust files")
+    assert (result.status, result.detail, result.fix) == (
+        WARN,
+        "5 missing: go.work, go/go.mod, go/practice/.gitkeep, rust/Cargo.toml, rust/lib.rs",
+        "cstudy doctor --fix",
+    )
+
+
+def test_a_workspace_with_the_go_and_rust_files_passes_their_check():
+    assert summary(doctor(), "go and rust files") == (OK, "")
+
+
+def test_core_files_still_fail_when_go_and_rust_files_are_missing_too():
+    setup = FakeSetup(
+        missing=("go.work", "jvm/gradlew", "rust/Cargo.toml", "python/pyproject.toml")
+    )
+    report = doctor(workspace=workspace_with(setup=setup))
+    assert summary(report, "workspace files") == (
+        FAIL,
+        "2 missing: jvm/gradlew, python/pyproject.toml",
+    )
+    assert summary(report, "go and rust files")[0] is WARN
+    assert report.passed is False
+
+
 def test_many_missing_files_are_summarized():
     setup = FakeSetup(missing=tuple(f"f{index}" for index in range(7)))
     detail = check(doctor(workspace=workspace_with(setup=setup)), "workspace files").detail

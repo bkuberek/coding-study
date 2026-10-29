@@ -35,7 +35,14 @@ from coding_study.domain.errors import (
     RunnerProtocolError,
     RunnerStartError,
 )
-from coding_study.domain.layout import PYTHON_INTERPRETER, PYTHON_PROJECT, PYTHON_VENV
+from coding_study.domain.layout import (
+    GO_PROJECT,
+    GO_WORK_FILE,
+    PYTHON_INTERPRETER,
+    PYTHON_PROJECT,
+    PYTHON_VENV,
+    RUST_PROJECT,
+)
 from coding_study.domain.problem import (
     CORE_LANGUAGES,
     ComparatorSpec,
@@ -145,6 +152,8 @@ class _WorkspaceArtifact:
 FIX_COMMAND = "cstudy doctor --fix"
 INIT_COMMAND = "cstudy init"
 MISSING_FILES_SHOWN = 5
+OPTIONAL_LANGUAGE_FILES = "go and rust files"
+OPTIONAL_PROJECTS = frozenset({GO_PROJECT, RUST_PROJECT})
 PYTHON_VENV_ARTIFACT = _WorkspaceArtifact(PYTHON_PROJECT, PYTHON_VENV, FIX_COMMAND)
 WORKSPACE_ARTIFACTS = (
     _WorkspaceArtifact("jvm", "gradlew", "gradle wrapper (in jvm)"),
@@ -427,7 +436,7 @@ def _workspace(environment: DoctorEnvironment, notify: ProgressNotice) -> list[C
         created += f", running {environment.version}"
     return [
         CheckResult("workspace", CheckStatus.OK, f"{files.root} ({created})"),
-        _workspace_files(workspace),
+        *_workspace_files(workspace),
         _runtime(workspace),
         *(_workspace_artifact(files, artifact) for artifact in WORKSPACE_ARTIFACTS),
         *_debugpy(environment.tools, files),
@@ -435,14 +444,29 @@ def _workspace(environment: DoctorEnvironment, notify: ProgressNotice) -> list[C
     ]
 
 
-def _workspace_files(workspace: PracticeWorkspace) -> CheckResult:
+def _workspace_files(workspace: PracticeWorkspace) -> list[CheckResult]:
+    """Workspaces from before Go and Rust lack their files, which `--fix` writes, so those only
+    warn; any other missing file blocks practice."""
     missing = workspace.setup.missing_files(workspace.files.root)
+    optional = tuple(path for path in missing if _is_optional_language_file(path))
+    core = tuple(path for path in missing if path not in optional)
+    return [
+        _missing_files("workspace files", core, CheckStatus.FAIL),
+        _missing_files(OPTIONAL_LANGUAGE_FILES, optional, CheckStatus.WARN),
+    ]
+
+
+def _is_optional_language_file(path: str) -> bool:
+    return path == GO_WORK_FILE or path.split("/")[0] in OPTIONAL_PROJECTS
+
+
+def _missing_files(name: str, missing: tuple[str, ...], status: CheckStatus) -> CheckResult:
     if not missing:
-        return CheckResult("workspace files", CheckStatus.OK)
+        return CheckResult(name, CheckStatus.OK)
     shown = ", ".join(missing[:MISSING_FILES_SHOWN])
     more = len(missing) - MISSING_FILES_SHOWN
     detail = f"{len(missing)} missing: {shown}" + (f" and {more} more" if more > 0 else "")
-    return CheckResult("workspace files", CheckStatus.FAIL, detail, fix=FIX_COMMAND)
+    return CheckResult(name, status, detail, fix=FIX_COMMAND)
 
 
 def _runtime(workspace: PracticeWorkspace) -> CheckResult:
