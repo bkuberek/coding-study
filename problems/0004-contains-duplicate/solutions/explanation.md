@@ -46,6 +46,8 @@ It is the only approach that needs no extra memory and leaves the input untouche
 - Python: the reference uses `nums.index(value, i + 1)`, which scans the rest of the list in C and raises `ValueError` when the value is absent. It is still one comparison per later element, so still O(n^2), but each comparison costs about 6 ns instead of about 50 ns for a hand-written inner `for` loop. Constant factors change; the growth does not.
 - TypeScript: compare with `===`. Plain index loops are the fastest form in V8.
 - Java and Kotlin: nested loops over `int[]` (Kotlin `IntArray`) compare primitives, with no boxing.
+- Go: `nums[i+1:]` is a slice header over the same array, not a copy, so ranging over the rest of the slice allocates nothing.
+- Rust: `nums[i + 1..].contains(value)` is the same linear scan over a borrowed subslice; when `i` is the last index the range is empty, not out of bounds.
 
 ## Approach: sorting (Sort a copy and compare neighbors)
 
@@ -84,6 +86,8 @@ Slower than the hash set by a log factor, but its memory is a flat array of prim
 - TypeScript: `Int32Array.from(nums).sort()` copies into a typed array, which sorts numerically by default. The values fit in 32 bits by the constraints.
 - Java: `nums.clone()` copies the primitive array; `Arrays.sort(int[])` is a dual-pivot quicksort with no boxing.
 - Kotlin: `nums.sortedArray()` returns a sorted copy of the `IntArray`; `nums.sort()` would sort in place.
+- Go: `slices.Clone` copies the slice and `slices.Sort` sorts the copy in place (pattern-defeating quicksort, no boxing); sorting `nums` itself would reorder the caller's slice.
+- Rust: `nums` is an owned `Vec<i32>`, so the function sorts its own argument with `sort_unstable` and needs no copy; equal `i32`s are indistinguishable, so the unstable sort loses nothing. `windows(2)` yields the adjacent pairs.
 
 ## Approach: hash-set (Hash set of values seen so far)
 
@@ -123,3 +127,5 @@ Linear time for linear memory, which is the expected interview answer. It stops 
 - TypeScript: `Set<number>` compares numbers by value (SameValueZero), so `has` works as expected. Do not use a plain object as a set: its keys become strings and it inherits prototype keys.
 - Java: `HashSet<Integer>` boxes each value. `Set.add` returns `false` when the value is already present, which fuses the check and the insert into one call.
 - Kotlin: `HashSet<Int>` is `java.util.HashSet<Integer>`, so it boxes too. `add` returns `false` for a value already present, as in Java.
+- Go: there is no set type; `map[int]struct{}` is the idiom, and the empty struct takes no memory for the value. The comma-ok lookup `_, ok := seen[value]` is the membership test.
+- Rust: `HashSet::insert` returns `false` when the value was already present, so `any(|value| !seen.insert(value))` checks and inserts in one call and stops at the first duplicate.
