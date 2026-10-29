@@ -46,6 +46,8 @@ Simple, obviously correct, and fast when reads mostly ask about recent times (th
 - TypeScript: `Map<string, ...>` rather than an object, so keys such as `constructor` cannot collide with inherited properties.
 - Java: a `record Entry(int timestamp, String value)` keeps the pair immutable; `computeIfAbsent` creates the list on first use.
 - Kotlin: `lastOrNull { it.timestamp <= timestamp }` scans from the end of the list, which is this approach in one call.
+- Go: reading a missing key from a map returns a nil slice, and `append` on a nil slice allocates it, so `m.history[key] = append(m.history[key], e)` needs no "create on first use" step. A small struct `entry` holds the pair, and a backwards index loop replaces `reversed`.
+- Rust: `history.entry(key).or_default().push(..)` creates the list on first use, and `entries.iter().rev()` walks backwards without copying. `get` returns an owned `String`, so the stored value is cloned.
 
 ## Approach: binary-search-history (Binary search in the key's history)
 
@@ -85,3 +87,5 @@ It is the expected answer and costs nothing extra over the brute force at write 
 - TypeScript: there is no standard binary search, so the loop is written out; `>>> 1` floors the midpoint.
 - Java: timestamps live in a growable `int[]` to avoid boxing every value into an `Integer`; `TreeMap<Integer, String>.floorEntry(t)` is the shortest correct alternative at O(log k) per call, with a larger constant and allocation per entry.
 - Kotlin: `List<Int>.binarySearch(t)` returns the index on a hit and `-(insertionPoint) - 1` on a miss; timestamps are distinct, so a hit's index plus one is the count, and a miss's insertion point is the count.
+- Go: `sort.Search(n, f)` returns the first index where `f` is true; with `f` meaning "written after `timestamp`" that index is the number of writes at or before it, the upper bound. The history is a slice of `entry` structs, so the closure reads `entries[i].timestamp` directly and no parallel slice is needed.
+- Rust: `partition_point` is the upper bound. It takes a predicate on each element, so one `Vec<(i32, String)>` sorted by timestamp is enough; the closure looks at the timestamp only and never compares the strings.
