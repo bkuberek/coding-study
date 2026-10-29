@@ -1,6 +1,6 @@
 # Spec: Runners and Stub Generation
 
-A runner is a small program per runtime that loads one target (the user's file or a reference approach), deserializes case inputs, invokes the target, and serializes outputs or measurements. It never sees expected values and never judges results. There are four runners: Python, TypeScript, JVM (shared by Java and Kotlin) and Go. A Rust runner is planned ([ADR 0012](../decisions/0012-go-and-rust.md)); rows and fields below marked planned describe that design and nothing implements them yet.
+A runner is a small program per runtime that loads one target (the user's file or a reference approach), deserializes case inputs, invokes the target, and serializes outputs or measurements. It never sees expected values and never judges results. There are five runners: Python, TypeScript, JVM (shared by Java and Kotlin), Go and Rust ([ADR 0012](../decisions/0012-go-and-rust.md)). Rows and fields below marked planned describe parts that nothing implements yet.
 
 ## Decisions
 
@@ -22,7 +22,7 @@ A runner is a small program per runtime that loads one target (the user's file o
 | Java | `./gradlew -q --console=plain :java:csClasspath -Pcs.only=<snake_slug>` | `java -cp <classpath> cs.runner.Main --request R --out O` | `jvm` |
 | Kotlin | `./gradlew -q --console=plain :kotlin:csClasspath -Pcs.only=<snake_slug>` | same as Java | `jvm` |
 | Go | `go build -json [-overlay gen/<snake_slug>/overlay.json] -o bin/<scope>/<snake_slug> ./cmd/<scope>/<snake_slug>` in `.cs/build/go` ([Go build details](#go-build-details)) | `.cs/build/go/run/<scope>/<snake_slug>/<pid>-<thread> --request R --out O`, a private copy of the binary | `.cs/build/go` |
-| Rust (planned) | `cargo build --offline --release -p <snake_slug>` in `.cs/build/rust`, with one shared `CARGO_TARGET_DIR` | `.cs/build/rust/target/release/<snake_slug> --request R --out O` | `.cs/build/rust` |
+| Rust | `cargo build --offline --release --message-format=json --target <host> -p <scope>_<snake_slug>` in `.cs/build/rust`, with one shared `CARGO_TARGET_DIR` ([Rust build details](#rust-build-details)) | `.cs/build/rust/run/<scope>/<snake_slug>/<pid>-<thread> --request R --out O`, a private copy of the binary | `.cs/build/rust` |
 
 Paths are relative to the workspace root. The runners themselves run from the workspace's [runner runtime](installation-and-workspaces.md#runner-runtime) in `.cs/runtime/runners/`, a copy of the content's `runners/` that `cstudy` refreshes before the first runner of a command when the content changed. `R` and `O` live in `.cs/runs/<run_id>/` as `request-<n>.json` and `events-<n>.jsonl`, one pair per restart `n`; the last 20 runs are kept. The process starts in its own process group.
 
@@ -55,6 +55,21 @@ The lock and the copy protect against other `cstudy` processes. A Gradle build s
 | Cold start | Before the first build of a workspace the CLI prints `compiling the Go runner and standard library (first run)`; the build note is `go, cold`, then `go, warm` |
 | Not yet | `decimal` and `date` (the runner reports `load_error` `UnsupportedType`), concurrent jobs (`hello` has no `stress` feature, and a `concurrent` job is a bad request, exit 2), `--debug` (exit 4) |
 
+### Rust build details
+
+| Item | Rule |
+|------|------|
+| Toolchain | Rust 1.80 or newer through rustup (`cargo` and `rustc` on PATH). The runner crates use the standard library only, so builds run with `--offline`, and without `--locked`, which fails whenever a harness package joins the workspace. The host target triple comes from `rustc -vV` once and is kept in `.cs/build/rust/host-target` |
+| Build workspace | `.cs/build/rust` is a Cargo workspace with one harness package per problem and scope (`test/<snake_slug>`, `verify/<snake_slug>`, `bench/<snake_slug>`, package `<scope>_<snake_slug>`), listed one by one because Cargo reads a glob that matches nothing as a path. Each package depends on `cs_runner` and `cs_support` in `.cs/runtime/runners/rust` by relative path; `CARGO_TARGET_DIR=.cs/build/rust/target` is shared, so the runner crates compile once per workspace |
+| Bridge | Each package's `main.rs` is generated from the signature. The user's file and each reference copy enter as `#[path = "<absolute file>"] mod user;` and `mod ref_<approach_snake>;`, so compiler errors, panics and breakpoints name the real file. Per target, the bridge decodes every argument with its declared Rust type, calls the function (`user::two_sum(arg_nums, arg_target)`), or for a class kind `LRUCache::new` and a `match` on the operation's canonical name, and boxes the result for encoding. Modifiers are generated too: a `ref_of` argument is looked up after the argument it points into, and `as: index` and `no_alias_with` take the parameter's node addresses before the call, which runs with freed memory retained so no new node can reuse an old node's address ([Node modifiers](#node-modifiers)) |
+| Release profile | `opt-level = 3`, `overflow-checks = true`, `debug = "line-tables-only"`, `panic = "unwind"`, in the workspace manifest and again as `--config profile.release.*`, which outranks a user's `config.toml`: `--perf` numbers are real, an `i32` overflow panics instead of wrapping, traces have line numbers, and a panic is caught per case |
+| The user's Cargo setup | Cannot break or redirect a build: `CARGO_ENCODED_RUSTFLAGS` is set empty (it outranks `RUSTFLAGS` and every `rustflags` setting), `RUSTC_WRAPPER` and `RUSTC_WORKSPACE_WRAPPER` are set empty (which turns off a configured wrapper such as sccache), `--target <host>` overrides a configured `build.target`, and the user's `RUSTFLAGS`, `CARGO_TARGET_DIR`, `CARGO_BUILD_*` and `CARGO_PROFILE_*` variables are removed |
+| Compile errors | Classified by the primary span of each error-level compiler message only: a call whose signature does not match also gets a child note "function defined here" in the user's file. Errors in the user's or a reference file: exit 2 with `path:line:column: error[<code>]: <message>`, the span's label and up to two `help` or `note` lines, paths relative to the workspace (at most 40 lines); in a bench, a reference's are a content error. Errors only in the bridge: the build runs again with those targets marked unavailable, keeping their `mod` so a hidden error in their file still fails the build, and the runner reports `load_error` with the compiler's message in the user's terms. `SymbolNotFound`: ``cannot find function `two_sum` in `two_sum.rs`; a function with a similar name exists: `twosum` ``, ``function `two_sum` is private; declare it pub``. `SignatureMismatch`: ``mismatched types: parameter `nums` is `&[i32]`, the signature declares `Vec<i32>` ``, ``mismatched types: the result is `Vec<usize>`, the signature declares `Vec<i32>` ``. A failure with no compiler error, or errors in the runner crates, is an environment error (exit 4) with the output tail |
+| Concurrent `cstudy` processes, writes, cold start | As in Go: generation and build hold an exclusive `flock` on `.cs/build/rust/.cstudy.lock`, every process runs its own copy of the binary, and generated files are rewritten only when their content changes (Cargo fingerprints sources by modification time, so rewriting identical bytes would rebuild). Before the first build of a workspace the CLI prints `compiling the Rust runner (first run)`; the build note is `rust, cold`, then `rust, warm` |
+| Editor project | `rust/Cargo.toml` lists each started problem as an `[[example]]` with `crate-type = ["lib"]` ([layout](installation-and-workspaces.md#layout)); the build never reads it |
+| Not yet | `decimal` and `date` (`load_error` `UnsupportedType`), concurrent jobs (`hello` has no `stress` feature), `--debug` (exit 4) |
+| Never | `ref_of` or `as: index` on a `ListNode` (`load_error` `UnsupportedType`) and cyclic list inputs (`InvalidInput`): an `Option<Box<ListNode>>` has one owner per node. [S13](authoring.md#static) keeps `rust` out of such problems |
+
 ## Request file
 
 ```json
@@ -79,8 +94,8 @@ The lock and the copy protect against other `cstudy` processes. A Gradle build s
 | Field | Notes |
 |-------|-------|
 | `mode` | `test` or `bench` ([Bench mode](#bench-mode)) |
-| `target` | Python and TypeScript: `{"path": <abs file>}`. JVM: `{"class": "practice.two_sum.Solution"}` (classpath from the command line). Go (and Rust, planned): `{"compiled": "user"}` or `{"compiled": "ref/<approach>"}`, the id of code built into the runner binary, since compiled code has no file or class to load |
-| `names` | Language-specific symbol names computed by the CLI from the naming rules; runners do no name conversion. Class kinds: `{"class": "LRUCache", "methods": {"get": "get", "put": "put"}}`; Go and Rust add `"constructor"` (`NewLRUCache` and `new`), the function that creates an instance, with Go methods exported (`"get": "Get"`) |
+| `target` | Python and TypeScript: `{"path": <abs file>}`. JVM: `{"class": "practice.two_sum.Solution"}` (classpath from the command line). Go and Rust: `{"compiled": "user"}` or `{"compiled": "ref/<approach>"}`, the id of code built into the runner binary, since compiled code has no file or class to load |
+| `names` | Language-specific symbol names computed by the CLI from the naming rules; runners do no name conversion. Class kinds: `{"class": "LRUCache", "methods": {"get": "get", "put": "put"}}`; Go and Rust add `"constructor"` (`NewLRUCache` and `new`), the function that creates an instance, with Go methods exported (`"get": "Get"`). The Rust runner reads neither `names` nor `signature`: its bridge was generated from them |
 | `signature` | Canonical signature from `meta.yaml`, including modifiers; drives deserialization and serialization |
 | `cases` | Inputs only. Function kind: `input`. Class kinds: `ops`, `args` |
 
@@ -92,8 +107,9 @@ The lock and the copy protect against other `cstudy` processes. A Gradle build s
 | TypeScript | `await import(pathToFileURL(path).href)`, then the named export | named export class |
 | JVM | `Class.forName(target.class)`, new instance via no-arg constructor, then the public method with `names.function` and the arity from the signature, parameter types matched against the mapping table | constructor with matching arity and types; methods by name and arity |
 | Go | `names.function` in the target's generated registration; its `reflect` type must equal the [Go mapping](problem-format.md#go-and-rust-mapping) exactly | `names.constructor` in the registration, then each method by `MethodByName` on its result (exported names only), types checked the same way, when the job loads |
+| Rust | The generated bridge calls `<module>::<function>` with every argument's type spelled, so the compiler checks the [Rust mapping](problem-format.md#go-and-rust-mapping) | `<module>::<Class>::new`, then each method through a `match` on the operation name in the bridge |
 
-A missing file, import or compile failure, missing symbol or arity mismatch produces a `load_error` event for the job. In Go a missing symbol is a compile error of the generated registration; the CLI builds again without it and the runner reports it ([Go build details](#go-build-details)).
+A missing file, import or compile failure, missing symbol or arity mismatch produces a `load_error` event for the job. In Go a missing symbol is a compile error of the generated registration, and in Rust a missing symbol or another signature is a compile error of the generated bridge; the CLI builds again without it and the runner reports it ([Go build details](#go-build-details), [Rust build details](#rust-build-details)).
 
 ## Node modifiers
 
@@ -104,19 +120,20 @@ How runners apply the node modifiers of [problem-format](problem-format.md#modif
 | Traversal order | Every node reachable from the parameter, each once (cycles allowed): `ListNode` in list order from the head; `TreeNode` in level order (breadth-first, left child before right, null children skipped); `GraphNode` breadth-first from the given node, neighbors in adjacency-list order |
 | `ref_of: <param>` | The first node of `<param>` in traversal order whose `val` equals the JSON value |
 | `as: index`, `of: <param>` | The traversal order of `<param>` is taken before the call; the result serializes as the returned node's position in it, compared by identity (`-1` for null). A returned node that is not a node of `<param>` (for example a newly built one) is `invalid_output` with reason `the returned node is not a node of "<param>"` |
+| Identity in Rust | A node's address: the `Rc` of a tree or graph node, the `Box` of a list node. `ref_of` hands the function a clone of the node's `Rc`, so it is defined for trees and graphs only. The call runs with freed memory retained, so a node created during the call never takes the address of one the parameter held, even one the function dropped |
 
 ## Execution environment
 
-| Concern | Python | TypeScript | JVM | Go |
-|---------|--------|------------|-----|----|
-| Deep recursion | cases run in a worker thread created after `threading.stack_size(256 MiB)`; `sys.setrecursionlimit(10**6)` | Node default stack; content keeps depth at or under 3000 | cases run in a `Thread` with 256 MiB stack size | cases run on the main goroutine, whose stack grows on demand up to Go's 1 GB limit |
-| Output capture | `contextlib.redirect_stdout` / `redirect_stderr` per case | replace `console.log/info/warn/error` and wrap `process.stdout.write` per case | `System.setOut` / `System.setErr` per case | file descriptors 1 and 2 are redirected to one pipe per case with `dup2`, because the `println` builtin writes to fd 2 directly; `debug.SetCrashOutput` (Go 1.23) still sends a fatal error to the real standard error |
-| Output limit | Standard output and standard error share one buffer that keeps the first 4096 bytes of UTF-8, never splitting a character; when anything was dropped, the runner appends exactly `\n[output truncated at 4 KiB]\n` | same | same | same |
-| Fresh inputs | deserialize per case (and per bench repetition) | same | same | same |
-| Node classes | duck-typed field access, never `instanceof` | same | `cs.support` classes | `cstudy/support` types (`*support.ListNode`, through the stubs' aliases): types must match exactly |
-| Decimal and date output | `decimal` must be a finite `Decimal` and is written as `format(value, "f")` without trailing fractional zeros (`-0` as `0`); `date` must be a `date` that is not a `datetime`, written by `isoformat()`. Anything else, `float` and `int` included, is `invalid_output` | `decimal` must be a `Decimal` from `#support`, recognized by its `unscaled` and `scale` fields, written the same way; `date` must be a `YYYY-MM-DD` string naming a real day | `decimal` must be a `BigDecimal`, written by `stripTrailingZeros().toPlainString()` (`0` for zero); `date` must be a `LocalDate` in years 0001 to 9999. `null` and other classes are `invalid_output` | not supported yet: `load_error` `UnsupportedType` |
-| Decimal context | every case starts with a fresh `decimal.Context()` (precision 28, `ROUND_HALF_EVEN`), so a solution that changes the context cannot affect a later case | none | none | none |
-| Exit from user code | `SystemExit` caught as case error | `process.exit` is replaced with a throwing stub | `System.exit` cannot be blocked on Java 21; the CLI reports the runner exit as a crash on the current case | `os.Exit` cannot be blocked: reported as a crash, as on the JVM |
+| Concern | Python | TypeScript | JVM | Go | Rust |
+|---------|--------|------------|-----|----|------|
+| Deep recursion | cases run in a worker thread created after `threading.stack_size(256 MiB)`; `sys.setrecursionlimit(10**6)` | Node default stack; content keeps depth at or under 3000 | cases run in a `Thread` with 256 MiB stack size | cases run on the main goroutine, whose stack grows on demand up to Go's 1 GB limit | cases run on a thread named `cs-runner-cases` with a 256 MiB stack; a stack overflow aborts the process (a crash) |
+| Output capture | `contextlib.redirect_stdout` / `redirect_stderr` per case | replace `console.log/info/warn/error` and wrap `process.stdout.write` per case | `System.setOut` / `System.setErr` per case | file descriptors 1 and 2 are redirected to one pipe per case with `dup2`, because the `println` builtin writes to fd 2 directly; `debug.SetCrashOutput` (Go 1.23) still sends a fatal error to the real standard error | file descriptors 1 and 2 are redirected to one pipe per case with `dup2`, and `io::stdout()` is flushed before they are restored, because `print!` is buffered and the standard library's capture is unstable |
+| Output limit | Standard output and standard error share one buffer that keeps the first 4096 bytes of UTF-8, never splitting a character; when anything was dropped, the runner appends exactly `\n[output truncated at 4 KiB]\n` | same | same | same | same |
+| Fresh inputs | deserialize per case (and per bench repetition) | same | same | same | same |
+| Node classes | duck-typed field access, never `instanceof` | same | `cs.support` classes | `cstudy/support` types (`*support.ListNode`, through the stubs' aliases): types must match exactly | `cs_support` types (`Option<Box<ListNode>>`, `Option<Rc<RefCell<TreeNode>>>`, `Option<Rc<RefCell<GraphNode>>>`), checked by the compiler in the bridge |
+| Decimal and date output | `decimal` must be a finite `Decimal` and is written as `format(value, "f")` without trailing fractional zeros (`-0` as `0`); `date` must be a `date` that is not a `datetime`, written by `isoformat()`. Anything else, `float` and `int` included, is `invalid_output` | `decimal` must be a `Decimal` from `#support`, recognized by its `unscaled` and `scale` fields, written the same way; `date` must be a `YYYY-MM-DD` string naming a real day | `decimal` must be a `BigDecimal`, written by `stripTrailingZeros().toPlainString()` (`0` for zero); `date` must be a `LocalDate` in years 0001 to 9999. `null` and other classes are `invalid_output` | not supported yet: `load_error` `UnsupportedType` | not supported yet: `load_error` `UnsupportedType` |
+| Decimal context | every case starts with a fresh `decimal.Context()` (precision 28, `ROUND_HALF_EVEN`), so a solution that changes the context cannot affect a later case | none | none | none | none |
+| Exit from user code | `SystemExit` caught as case error | `process.exit` is replaced with a throwing stub | `System.exit` cannot be blocked on Java 21; the CLI reports the runner exit as a crash on the current case | `os.Exit` cannot be blocked: reported as a crash, as on the JVM | `std::process::exit` cannot be blocked: reported as a crash |
 
 ## Event stream (`--out`, JSON Lines)
 
@@ -143,7 +160,7 @@ Every `case_result` carries `duration_ns`; `stdout` and `error.trace` may be omi
 
 `load_error` replaces all `case_*` events of a job: `{"event": "load_error", "job_id": ..., "error": {...}}`.
 
-`duration_ns` measures only the call (and serialization is excluded), using `time.perf_counter_ns`, `process.hrtime.bigint()` or `System.nanoTime()`.
+`duration_ns` measures only the call (and serialization is excluded), using `time.perf_counter_ns`, `process.hrtime.bigint()`, `System.nanoTime()` or `std::time::Instant`. Rust panics carry a message and no type, so their `error.type` is `panic`; the trace keeps the frames in the target's file, and in a release build the panic's own location stands in for a function inlined without one.
 
 ## Runner exit codes
 
@@ -160,7 +177,7 @@ The CLI watches the event file:
 
 | Phase | Limit | On expiry |
 |-------|-------|-----------|
-| Until `hello` | 5 s (Python, TypeScript, Go), 15 s (JVM) | Environment error, exit 4 |
+| Until `hello` | 5 s (Python, TypeScript, Go, Rust), 15 s (JVM) | Environment error, exit 4 |
 | `case_start` to `case_result` | config `hang_guard.ms` if set, else case `hang_guard_ms`, else meta `limits.hang_guard_ms`, else 10000 | Kill the process group; case status `timeout`; restart the runner with the remaining cases |
 | Any other gap between events after `hello` (for example loading user code) | 10000 | As above, reported on the next case not run yet |
 | `case_start` to `case_result` of a concurrent stress run | `deadline_ms + 5000` | As for other cases |
@@ -177,7 +194,7 @@ After 3 restarts in one run, remaining cases are reported `not_run`. The hang gu
 | TypeScript | Node inspector (9229) | `node --inspect-wait=127.0.0.1:<port> runner.ts ...`; Node keeps the line and column of the `.ts` file | `Debugger listening on` on standard error |
 | Java, Kotlin | JDWP (5005) | `java ... -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:<port> -cp ...` | `Listening for transport dt_socket` on standard output |
 | Go (planned; `--debug` exits 4 for now) | Delve (2345) | `dlv exec --headless --listen=127.0.0.1:<port> --api-version=2 <binary> -- --request R --out O` | `API server listening at:` on standard output |
-| Rust (planned) | `debugserver` on macOS, `lldb-server gdbserver` on Linux (12345) | `debugserver --named-pipe <fifo> 127.0.0.1:<port> -- <binary> --request R --out O` | The port read from the named pipe: `debugserver` prints nothing. The ports of Go and Rust are already reserved in `cstudy`; `--debug` does not support them yet |
+| Rust (planned; `--debug` exits 4 for now) | `debugserver` on macOS, `lldb-server gdbserver` on Linux (12345) | `debugserver --named-pipe <fifo> 127.0.0.1:<port> -- <binary> --request R --out O` | The port read from the named pipe: `debugserver` prints nothing. The ports of Go and Rust are already reserved in `cstudy`; `--debug` does not support them yet |
 
 | Item | Rule |
 |------|------|
@@ -233,8 +250,8 @@ The request carries one job per problem with several targets, so all targets sha
 | Field | Meaning |
 |-------|---------|
 | `targets[].output` | Optional, default false: report the output of each size's check call (`bench_output`). The CLI sets it on the user's code and on the reference it compares the user's output with |
-| `inputs[].max_batch` | At most this many calls per timed sample. The CLI sends `min(100000, max(1, budget / elements))` with a budget of 10^6 input elements for Python and 10^7 for TypeScript, the JVM and Go, which bounds the decoded copies held at once. `elements` counts what one decoded copy holds: list items and object values recursively, string characters, and 1 per other scalar (at least 1), so an input of one integer is not capped by its value |
-| `settings.warmup` | Warm up until the coefficient of variation of the latest 5 runs is at most `cv`, after at least `min` and at most `max` runs (the check call counts as the first), and stop early once the warmup has taken `budget_ms` of wall time (decoding and collection included), so slow calls and large inputs do not warm up for 20 runs. The CLI sends `{1, 1}` for Python, `{3, 20}` for TypeScript, `{5, 20}` for the JVM and `{1, 3}` for Go ([measurement](performance-analysis.md#measurement)) |
+| `inputs[].max_batch` | At most this many calls per timed sample. The CLI sends `min(100000, max(1, budget / elements))` with a budget of 10^6 input elements for Python and 10^7 for TypeScript, the JVM, Go and Rust, which bounds the decoded copies held at once. `elements` counts what one decoded copy holds: list items and object values recursively, string characters, and 1 per other scalar (at least 1), so an input of one integer is not capped by its value |
+| `settings.warmup` | Warm up until the coefficient of variation of the latest 5 runs is at most `cv`, after at least `min` and at most `max` runs (the check call counts as the first), and stop early once the warmup has taken `budget_ms` of wall time (decoding and collection included), so slow calls and large inputs do not warm up for 20 runs. The CLI sends `{1, 1}` for Python, `{3, 20}` for TypeScript, `{5, 20}` for the JVM and `{1, 3}` for Go and Rust ([measurement](performance-analysis.md#measurement)) |
 | `settings.min_sample_ns` | Calls shorter than this are batched: one sample makes `calls` back-to-back calls, each on its own freshly decoded input, so that it lasts at least this long. The CLI sends 20000000 (20 ms): shorter samples were too noisy on a busy machine |
 
 Per size, in request order:
@@ -473,12 +490,12 @@ Every generated stub must compile or import unchanged; the conformance suite che
 | TypeScript | `.cs/build/typescript/ref/<slug>/<approach>.ts` | `.cs/build/typescript/package.json` and `support.ts` mirror the workspace so `#support` resolves |
 | Java, Kotlin | `.cs/build/jvm/<lang>/src/main/<lang>/ref/<snake_slug>/<approach_snake>/<Solution or ClassName>.<ext>` | Reference files declare no `package`; the materializer prepends `package ref.<snake_slug>.<approach_snake>` (with `;` for Java). Built with `jvm/gradlew -p .cs/build/jvm`, which includes `.cs/runtime/runners/jvm` |
 | Go | `.cs/build/go/ref/<snake_slug>/<approach_snake>/<approach_snake>.go` | None: reference files declare `package <snake_slug>` like the stub, so a file moves between `solutions/` and the practice directory unchanged. Each approach is its own package (import path `csbuild/ref/<snake_slug>/<approach_snake>`), linked into the problem's binary next to the user's package with a generated registration file beside it |
-| Rust (planned) | `.cs/build/rust/ref/<snake_slug>/<approach_snake>.rs` | Entered into the problem's crate as a `#[path]` module, so compiler errors name the real file |
+| Rust | `.cs/build/rust/ref/<snake_slug>/<approach_snake>.rs` | None: reference files are written like the stub (`pub fn`, or `pub struct` with `impl`) and copied unchanged. Each enters the problem's harness crate as the `#[path]` module `ref_<approach_snake>`, so compiler errors name the copy |
 
 For JVM bench the classpath joins the user's `practice.*` classes and the `ref.*` classes; package names never collide.
 
 ## Conformance suite
 
-`runners/conformance/` holds fixture problems in the normal problem format whose reference approaches are identity functions (return the argument unchanged) for every DSL type, plus fixtures for error paths: exception, `invalid_output`, missing symbol, hang, user printing to stdout, `ref_of`, `output_from`, `no_alias_with`, cyclic ListNode input, and decimal and date arithmetic (inputs that keep their scale, canonical outputs, rounding modes, days across leap years). `cstudy verify --conformance` runs each fixture in every language its `meta.yaml` lists and also compiles every generated stub; a runner that does not support a feature yet leaves the fixture's languages without it (Go lists 9001 to 9013). It is a Phase 0 exit criterion and must pass before any runner change merges.
+`runners/conformance/` holds fixture problems in the normal problem format whose reference approaches are identity functions (return the argument unchanged) for every DSL type, plus fixtures for error paths: exception, `invalid_output`, missing symbol, hang, user printing to stdout, `ref_of`, `output_from`, `no_alias_with`, cyclic ListNode input, and decimal and date arithmetic (inputs that keep their scale, canonical outputs, rounding modes, days across leap years). `cstudy verify --conformance` runs each fixture in every language its `meta.yaml` lists and also compiles every generated stub; a runner that does not support a feature yet leaves the fixture's languages without it (Go lists 9001 to 9013, Rust the same except 9006 and 9010, which [S13](authoring.md#static) keeps out of Rust). It is a Phase 0 exit criterion and must pass before any runner change merges.
 
 Fixtures live in `runners/conformance/<id>-<slug>/`; each language adds its reference files as `solutions/<approach>.<ext>`. `runners/conformance/expectations.json` (schema `schemas/conformance.schema.json`) gives the expected outcome per fixture and approach (`pass`, `error`, `invalid_output`, `timeout`, `load_error`) with per-case overrides, and `runners/conformance/README.md` states what every approach does in each language.

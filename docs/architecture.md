@@ -75,7 +75,7 @@ An `import-linter` contract in `cli/.importlinter` enforces the table (NFR-8).
 
 `Language` has six members. `CORE_LANGUAGES` (Python, TypeScript, Java, Kotlin) is what a problem lists by default and what every "all languages" default, coverage line and IDE action means; `OPTIONAL_LANGUAGES` (Go, Rust) are added by listing them in a problem's `languages` ([ADR 0012](decisions/0012-go-and-rust.md)). Code that branches on a language uses an exhaustive `match` ending in `assert_never`, and `tests/test_language_tables.py` fails when a table keyed by `Language` lacks a row.
 
-The adapter registry holds one stub generator and one runner per language that has an adapter package. Asking it for the other languages raises `LanguageNotSetUpError`, which the CLI reports as `error: rust stub generator is not set up yet` with exit code 4, after `cstudy start --lang rust` has already rejected any problem that does not list Rust with exit code 3. Go has its adapters; Rust does not yet. `cstudy doctor` checks the runners of the core languages only until the optional ones have adapters.
+The adapter registry holds one stub generator and one runner per language that has an adapter package. Every language has its adapters now. A language without them would raise `LanguageNotSetUpError`, which the CLI reports as `error: rust stub generator is not set up yet` with exit code 4, as it does for parts that are not built yet (`go debug mode is not set up yet`); `cstudy start --lang rust` has already rejected any problem that does not list Rust with exit code 3. `cstudy doctor` checks the runners of the core languages only, until its Go and Rust checks land.
 
 ### Use cases
 
@@ -197,7 +197,7 @@ The repository holds no workspace. A workspace, created by `cstudy init` anywher
 | Java | `jvm/java/` | `src/main/java/practice/<snake_slug>/Solution.java` (or `<ClassName>.java`) | Gradle subproject; Java toolchain 21 |
 | Kotlin | `jvm/kotlin/` | `src/main/kotlin/practice/<snake_slug>/Solution.kt` (or `<ClassName>.kt`) | Gradle subproject; Kotlin JVM plugin, JVM target 21 |
 | Go | `go/` | `practice/<snake_slug>/<snake_slug>.go` | `go.mod` (module `workspace`, Go 1.24) with one package per problem; `replace cstudy => ../.cs/runtime/runners/go` provides `cstudy/support`. The root `go.work` uses `./go`. Built offline ([ADR 0012](decisions/0012-go-and-rust.md)) |
-| Rust (planned) | `rust/` | `practice/<snake_slug>.rs` | Not created yet. Cargo package with one library-crate example per problem, built offline ([ADR 0012](decisions/0012-go-and-rust.md)) |
+| Rust | `rust/` | `practice/<snake_slug>.rs` | `Cargo.toml` (package `practice`, edition 2021) with one `[[example]]` built as a library per started problem, which `cstudy start` adds, `cs_support` from `../.cs/runtime/runners/rust/cs_support` as a dev-dependency, and an empty `lib.rs`. For the editor only: `cstudy` builds solutions offline in `.cs/build/rust` ([ADR 0012](decisions/0012-go-and-rust.md)) |
 
 The Rust row's paths are what `cstudy` already computes; its project, stub generator and runner are planned. Project roots are relative to the workspace. `jvm/settings.gradle.kts` uses `includeBuild("../.cs/runtime/runners/jvm")`; both subprojects depend on the runner and support artifacts. IntelliJ opens `jvm/` as one Gradle project. Every path into the runners is relative and points at the workspace's [runner runtime](specs/installation-and-workspaces.md#runner-runtime), so a workspace survives a move or a clone on another machine.
 
@@ -225,7 +225,7 @@ The workspace's `.cs/` (ignored by its `.gitignore`, except the `workspace.toml`
 | `.cs/index.json` | Parsed and validated `meta.yaml` and `item.yaml` documents ([index](#index-cache)) | Per file: modification time (ns) and size of the file and of its schema |
 | `.cs/cases/<slug>/<hash>.json` | Generated cases with expected values | Hash of generator, tests, expected-source approach |
 | `.cs/calibration/<lang>/<slug>.json` | Reference per-case timings for time limits | Hash of reference file, tests, runtime version, machine id |
-| `.cs/build/<lang>/` | Materialized references for verify and bench; in Go also the generated build and its runner binaries ([runners](specs/runners.md#go-build-details)) | Rebuilt on change |
+| `.cs/build/<lang>/` | Materialized references for verify and bench; in Go and Rust also the generated build and its runner binaries ([Go](specs/runners.md#go-build-details), [Rust](specs/runners.md#rust-build-details)) | Rebuilt on change |
 | `.cs/runs/<run_id>/` | Request and result files | Keep last 20 |
 | `.cs/runtime/` | The runner runtime: a copy of the content's `runners/{python,typescript,jvm,go}` with its build output, and `stamp.json` | Digest of the copied sources; refreshed before the first runner of a command, by `cstudy init` and by `cstudy doctor --fix` |
 

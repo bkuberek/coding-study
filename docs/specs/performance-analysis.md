@@ -69,6 +69,7 @@ The problem file can only suggest a value; it never turns limits on. Config file
 | TypeScript (Node, started with `--expose-gc`) | `process.hrtime.bigint()` | `process.cpuUsage()` | `process.memoryUsage().heapUsed` delta of one separate memory call, from a post-`gc()` baseline to just after return | Until the coefficient of variation of the last 5 runs is at most 5%, min 3, max 20 | `gc()` before each sample |
 | JVM | `System.nanoTime()` | `ThreadMXBean.getCurrentThreadCpuTime()` | `com.sun.management.ThreadMXBean.getThreadAllocatedBytes(threadId)` delta of one separate memory call: allocation volume, not peak | Same rule as Node, min 5 | `System.gc()` hint before each sample |
 | Go | `time.Now()` (monotonic) | `getrusage(RUSAGE_SELF)` user plus system time: the whole process, the garbage collector's workers included | `runtime.MemStats.TotalAlloc` delta of one separate memory call (`total_alloc_delta`): allocation volume, not peak, like the JVM | Same rule as Node, min 1, max 3: compiled ahead of time, nothing to warm | `runtime.GC()` before each sample, collector left on |
+| Rust | `std::time::Instant` | `clock_gettime(CLOCK_THREAD_CPUTIME_ID)`: the case thread only | The peak of the bytes one separate memory call holds at once (`heap_peak`), counted by the runner's global allocator on the case thread, from zero at the call's start, so memory it frees that existed before lowers the count, like `tracemalloc` | Same rule as Node, min 1, max 3: compiled ahead of time, nothing to warm | None: no garbage collector |
 
 The first call of each target at each size is the check call ([runners](runners.md#bench-mode)); it counts as the first warmup run. Warmup also ends once it has taken `perf.budget_ms` of wall time per target and size (decoding and collection included): a call near the budget is warm after a few runs, and 20 of them would make the bench take minutes. Memory figures include the returned value. They are comparable only within one language against that language's references.
 
@@ -142,7 +143,7 @@ Space line: compare the user's memory band with the comparison reference's band,
 
 Fitted sizes and R^2 are the weaker of the user's and the comparison reference's (fewest sizes, lowest R^2); spread is the largest at the user's fitted sizes, as the table words it (a noisy reference shows in its own R^2). An `unknown` verdict has confidence `low`. Memory confidence uses the user's memory fit only (sizes and R^2; there is one figure per size, so no spread).
 
-Caps: Node memory verdicts are at most `low`; JVM memory verdicts at most `medium`. Environment warnings (on battery, 1-minute load average above half the core count) cap everything at `medium`. Every verdict line prints its confidence; percentiles are never printed.
+Caps: Node memory verdicts are at most `low`; JVM and Go memory verdicts at most `medium`. Environment warnings (on battery, 1-minute load average above half the core count) cap everything at `medium`. Every verdict line prints its confidence; percentiles are never printed.
 
 ### Environment record
 

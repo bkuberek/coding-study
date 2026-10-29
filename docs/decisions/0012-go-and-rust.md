@@ -37,7 +37,7 @@ A spike (scratch code, not merged) built a Go runner and a Rust bridge for `two-
 
 ## Status
 
-This decision lands in steps. Implemented: the `Language` members, `CORE_LANGUAGES` and `OPTIONAL_LANGUAGES`, the schemas, layout and naming, the per-language tables, and the "not set up yet" error (exit 4) for a listed language without an adapter. Go: the stub generator, the runner for function, design and progressive problems in test and bench mode, the workspace's `go/` project, conformance fixtures 9001 to 9013, and references for `two-sum`, `lru-cache` and `invert-binary-tree`. Planned and not yet working: Go `decimal` and `date`, concurrency and `--debug`; Go and Rust `doctor` checks and IDE files; everything in Rust; the rest of the references. Until a step lands, the specs mark its rows as planned.
+This decision lands in steps. Implemented: the `Language` members, `CORE_LANGUAGES` and `OPTIONAL_LANGUAGES`, the schemas, layout and naming, the per-language tables, and the "not set up yet" error (exit 4) for a listed language without an adapter. Go and Rust each: the stub generator, the runner for function, design and progressive problems in test and bench mode, the workspace's `go/` or `rust/` project, conformance fixtures 9001 to 9013 (Rust without 9006 and 9010, see below), and references for `two-sum`, `lru-cache` and `invert-binary-tree`. Planned and not yet working: `decimal` and `date`, concurrency and `--debug` in both; Go and Rust `doctor` checks and IDE files; the rest of the references. Until a step lands, the specs mark its rows as planned.
 
 ## Amendments
 
@@ -49,6 +49,18 @@ Settled while building the Go runner (2026-10-29):
 - **A missing symbol keeps the compiler's reason.** The second build passes the failing registrations' messages to the runner, so the `load_error` says why, for example `undefined: twoSum` or `cannot use generic function twoSum without instantiation`.
 - **Concurrent `cstudy` processes.** The build holds an exclusive lock, and every process runs its own copy of the binary, so a build in one process never replaces the file another is about to start.
 - **Per-language conformance.** The `decimal` and `date` round trips moved out of `conformance-types` into `conformance-decimal-date-types` (9021). A fixture runs in the languages its `meta.yaml` lists, so Go lists the fixtures it supports and needs no skip list in `expectations.json`.
+- **The user's Go settings stay out of builds.** The go command reads an empty `GOFLAGS` as unset and falls back to the file `go env -w` writes, where `GOFLAGS=-mod=mod` failed every build in workspace mode. Builds run with `GOENV=off` and `GOFLAGS=-mod=readonly`, without the user's `GOOS`, `GOARCH` and `GOWORK`.
+
+Settled while building the Rust runner (2026-10-29):
+
+- **One harness package per problem and scope.** `.cs/build/rust` holds `test/`, `verify/` and `bench/` packages named `<scope>_<snake_slug>`, like Go's binaries per scope, so a broken reference never blocks `cstudy test` and the user's file never blocks `verify`. The workspace lists its members one by one: Cargo reads a glob that matches nothing as a path.
+- **Edition 2021, Rust 1.80 or newer.** LeetCode's edition; the user's file compiles as a module of the harness crate, so the harness's edition is the user's. `rust/Cargo.toml` needs a target before the first problem starts, so it has an empty `lib.rs`.
+- **Errors in the user's terms.** The bridge's module `user` is the file's name in a `load_error`, rustc's similar-name hint is kept, a private function says to declare it `pub`, and for a type mismatch the message says which side is the user's: rustc's "expected" is the user's parameter type for an argument, but the declared type for the result.
+- **Identity is a node's address.** `no_alias_with` works on lists too: the call runs with freed memory retained (the runner's allocator skips frees during it), so a new node can never take the address of an input node the function dropped. `ref_of` and `as: index` on a list cannot work, since they need a second reference to a node a `Box` owns, and neither can a cyclic list input. Static check S13 keeps `rust` out of such problems: `0055-linked-list-cycle` and conformance fixtures 9006 and 9010.
+- **Memory is `heap_peak`, high confidence.** A counting global allocator in `cs_runner` counts the case thread's allocations during the separate memory call only, from zero at its start; elsewhere an allocation pays one thread-local read.
+- **The user's Cargo setup stays out of builds.** Builds run with empty `CARGO_ENCODED_RUSTFLAGS`, `RUSTC_WRAPPER` and `RUSTC_WORKSPACE_WRAPPER`, `--target <host>` and the release profile repeated as `--config`, without the user's `RUSTFLAGS`, `CARGO_TARGET_DIR`, `CARGO_BUILD_*` and `CARGO_PROFILE_*`, so a configured wrapper, rustflags, target or profile cannot break a build or change its semantics.
+- **Panics.** A panic's `error.type` is `panic` (Rust panics have no type). The trace keeps the backtrace frames in the target's file, and the panic's location (indexing, overflow and `unwrap` report the user's line) stands in for an innermost function the release build inlined without a location.
+- **Graph neighbors.** `GraphNode.neighbors` is `Vec<Rc<RefCell<GraphNode>>>`: a null neighbor is invalid, so the elements are not `Option`s.
 
 ## Consequences
 
@@ -57,7 +69,7 @@ Settled while building the Go runner (2026-10-29):
 - A language that is known but has no adapter fails with `rust stub generator is not set up yet` (exit 4) wherever an adapter is needed, and with "not available in rust" (exit 3) for a problem that does not list it. `doctor` does not mention Go or Rust until their runners exist.
 - Full verify grows: Go adds roughly 0.5 to 1.5 s per problem and Rust 1.5 to 4 s, and Cargo's target-directory lock serializes parallel Rust builds. The oracle and ladder checks cost more per added language.
 - Go and Rust references written by agents need review at about twice the current reference volume.
-- A cyclic linked list cannot be expressed in Rust with `Box`, so identity-based list problems are Go-only unless a representation is found.
+- A cyclic linked list cannot be expressed in Rust with `Box`, so cyclic-list and list `ref_of` problems are Go-only (S13); `no_alias_with` on a list works in Rust.
 
 ## Alternatives considered
 

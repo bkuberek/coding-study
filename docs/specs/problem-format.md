@@ -56,7 +56,7 @@ Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-l
 | `track` | `dsa`, `practical`, `lld`, `concurrency`, `debugging` | yes | Non-autograded tracks live in `tracks/` ([content](content.md)) |
 | `kind` | `function`, `design`, `progressive`, `concurrent` | yes | |
 | `patterns` | list of pattern ids | yes for `dsa` | First entry is the primary pattern; ids from [content](content.md#pattern-taxonomy) |
-| `languages` | list of `python`, `typescript`, `java`, `kotlin`, `go`, `rust` | no | Default the four core languages (`python`, `typescript`, `java`, `kotlin`), which every problem must list; `go` and `rust` are optional additions. A subset of the core languages is allowed only for `concurrency` and `debugging` ([ADR 0012](../decisions/0012-go-and-rust.md)). Go and Rust runners are planned: today a listed `go` or `rust` fails with `go stub generator is not set up yet` (exit 4) wherever a stub or runner is needed |
+| `languages` | list of `python`, `typescript`, `java`, `kotlin`, `go`, `rust` | no | Default the four core languages (`python`, `typescript`, `java`, `kotlin`), which every problem must list; `go` and `rust` are optional additions. A subset of the core languages is allowed only for `concurrency` and `debugging` ([ADR 0012](../decisions/0012-go-and-rust.md)). Go and Rust run function, design and progressive problems; their concurrency and their `decimal` and `date` types are planned. Rust cannot be listed where an `Option<Box<ListNode>>` cannot express the problem ([S13](authoring.md#static)) |
 | `signature` | object | yes | See [Signatures](#signatures) |
 | `comparator` | object | yes | See [Comparators](#comparators) |
 | `stub` | `generated` or `buggy` | no | Default `generated`; `buggy` copies `buggy/solution.<ext>` instead of codegen. Buggy files follow the reference file conventions (no JVM `package` line) ([authoring](authoring.md#debugging-problems)) |
@@ -127,7 +127,7 @@ Loading a problem rejects (content error) a modifier that names a parameter miss
 | Method | `getRandom` | `get_random` | `getRandom` | `getRandom` | `getRandom` | `GetRandom` | `get_random` |
 | Param | `maxValue` | `max_value` | `maxValue` | `maxValue` | `maxValue` | `maxValue` | `max_value` |
 
-`cstudy` computes the Go and Rust names today, but their stub generators and runners are planned ([ADR 0012](../decisions/0012-go-and-rust.md)). Go methods are exported because reflection only finds exported ones, and Go and Rust build an instance by calling a function, so the request names it in `names.constructor` ([runners](runners.md#request-file)).
+Go and Rust follow these names in their stubs and runners ([ADR 0012](../decisions/0012-go-and-rust.md)). Go methods are exported because reflection only finds exported ones, and Go and Rust build an instance by calling a function, so the request names it in `names.constructor` ([runners](runners.md#request-file)).
 
 - Canonical names match `^[a-z][A-Za-z0-9]*$` (classes `^[A-Z][A-Za-z0-9]*$`).
 - snake_case conversion: insert `_` before an uppercase letter that follows a lowercase letter or digit, or that precedes a lowercase letter after another uppercase letter; then lowercase (`getHTTPCode` becomes `get_http_code`).
@@ -204,7 +204,7 @@ General rules for rows not listed: `list<X>` maps element-wise using the `X` row
 
 ### Go and Rust mapping
 
-The Go and Rust columns ([ADR 0012](../decisions/0012-go-and-rust.md)). The Go column is normative, like the table above, for its stub generator and runner, except `decimal` and `date`, which are planned with vendored libraries: the Go stub generator exits 4 for them and the runner reports `load_error` `UnsupportedType`. The Rust column is normative for the Rust stub generator, with the same exception for `decimal` and `date`; the Rust runner is planned. The JSON encoding is the one of the table above. A Go runner requires the exact types: a named slice type or `[]int64` for `int[]` is a `load_error` `SignatureMismatch`.
+The Go and Rust columns ([ADR 0012](../decisions/0012-go-and-rust.md)). The Go column is normative, like the table above, for its stub generator and runner, except `decimal` and `date`, which are planned with vendored libraries: the Go stub generator exits 4 for them and the runner reports `load_error` `UnsupportedType`. The Rust column is normative too, for the Rust stub generator and the generated bridge, with the same exception for `decimal` and `date`; the bridge spells every type, so a solution with another type (`&[i32]` for `int[]`, `usize` for `int`) is a `load_error` `SignatureMismatch`. The JSON encoding is the one of the table above. A Go runner requires the exact types: a named slice type or `[]int64` for `int[]` is a `load_error` `SignatureMismatch`.
 
 | DSL | Go | Rust |
 |-----|----|------|
@@ -215,15 +215,15 @@ The Go and Rust columns ([ADR 0012](../decisions/0012-go-and-rust.md)). The Go c
 | `char` | `rune` | `char` |
 | `T[]`, `list<T>` | `[]T`; a nil slice encodes as `[]` | `Vec<T>` |
 | `T[][]`, `list<list<T>>` | `[][]T` | `Vec<Vec<T>>` |
-| `decimal` | `decimal.Decimal` (shopspring/decimal, vendored; planned) | `rust_decimal::Decimal` (vendored) |
-| `date` | `time.Time` at UTC midnight; the encoder rejects anything else (planned) | `chrono::NaiveDate` (vendored) |
+| `decimal` | `decimal.Decimal` (shopspring/decimal, vendored; planned) | `rust_decimal::Decimal` (vendored; planned) |
+| `date` | `time.Time` at UTC midnight; the encoder rejects anything else (planned) | `chrono::NaiveDate` (vendored; planned) |
 | `ListNode` | `*ListNode` with `Val`, `Next` | `Option<Box<ListNode>>` |
 | `TreeNode` | `*TreeNode` | `Option<Rc<RefCell<TreeNode>>>` |
-| `GraphNode` | `*GraphNode` with `Neighbors []*GraphNode` | `Option<Rc<RefCell<GraphNode>>>` |
+| `GraphNode` | `*GraphNode` with `Neighbors []*GraphNode` | `Option<Rc<RefCell<GraphNode>>>` with `neighbors: Vec<Rc<RefCell<GraphNode>>>` |
 | `ListNode[]` | `[]*ListNode` | `Vec<Option<Box<ListNode>>>` |
 | `void` (return) | no result | `()` |
 | `output_from` | the slice shares its backing array, so in-place changes are visible | the parameter becomes `&mut Vec<T>` |
-| `ref_of`, `as: index` | pointer identity | `Rc::ptr_eq` for trees and graphs; a `Box` list has no identity and cannot be cyclic, so a problem with cyclic list inputs omits `rust` from `languages` |
+| `ref_of`, `as: index` | pointer identity | node addresses: the `Rc` of a tree or graph node ([runners](runners.md#node-modifiers)). A `Box` list cannot be cyclic and `ref_of` or `as: index` cannot name its nodes, so a problem with cyclic list inputs or list identity omits `rust` from `languages` ([S13](authoring.md#static)); `no_alias_with` on a list works |
 | Design class | `type LRUCache struct{}`, `func NewLRUCache(capacity int) *LRUCache`, `func (c *LRUCache) Get(key int) int` | `pub struct LRUCache`, `pub fn new(capacity: i32) -> Self`, `&mut self` methods |
 
 **Content rules that keep languages equivalent.** Test values must fit the declared type; expected outputs must not depend on integer overflow; `long` values stay within 2^53-1 (TypeScript `number`); `decimal` results state their scale and rounding mode ([Decimal and date](#decimal-and-date)); recursion depth implied by inputs stays at or under 3000 (Node's default stack).
