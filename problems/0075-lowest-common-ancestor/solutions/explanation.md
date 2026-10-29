@@ -46,6 +46,8 @@ It is iterative, so tree height never matters, and the parent map can be reused:
 - TypeScript: `Map` and `Set` compare object keys by identity; `parent.get(node)!` asserts that every node on the walk is mapped.
 - Java: `TreeNode` keeps `Object`'s identity `equals` and `hashCode`; `HashMap` accepts the `null` parent of the root.
 - Kotlin: `generateSequence(p) { parent[it] }` lists a node and its ancestors and ends at the root's `null` parent; `first { it in ancestorsOfP }` finds the answer.
+- Go: pointers are comparable and hashable, so `map[*TreeNode]*TreeNode` and `map[*TreeNode]bool` key the nodes by identity directly.
+- Rust: `Rc<RefCell<TreeNode>>` does not implement `Hash`, and hashing by value would merge nodes that merely hold equal numbers. The maps are keyed by `Rc::as_ptr(&node)`, the address of the allocation, which is a plain `*const` pointer that is never dereferenced.
 
 ## Approach: recursive (Post-order search that reports what each subtree contains)
 
@@ -85,3 +87,5 @@ It is short, uses no extra structures and is the answer interviewers expect, but
 - TypeScript: `===` compares object identity, and `left ?? right` returns the non-null result.
 - Java: `==` on `TreeNode` references is identity, exactly what the base case needs.
 - Kotlin: `===` is reference equality, and `left ?: right` returns the non-null result; parameters are nullable to match the generated stub.
+- Go: `root == p` compares pointers, which is identity.
+- Rust: `Rc::ptr_eq(a, b)` is the identity test (`==` would compare the values inside). The answer is returned as `root.clone()`, a clone of the matched `Rc`, so the result is the same allocation with only a counter bumped.
