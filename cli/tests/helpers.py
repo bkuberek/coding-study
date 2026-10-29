@@ -1,5 +1,6 @@
 import json
 import shutil
+import sys
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,12 @@ FIXTURE_TRACKS = Path(__file__).resolve().parent / "fixtures" / "tracks"
 """Non-autograded fixture items: tracks/<track>/<slug>/."""
 CONCURRENCY_PROBLEMS = Path(__file__).resolve().parent / "fixtures" / "concurrency" / "problems"
 """A concurrent fixture problem with correct and broken references in every language."""
+FAKE_RUNNER_PROGRAM = (
+    f'#!/bin/sh\nexec "{sys.executable}" "{Path(__file__).resolve().parent}'
+    '/fixtures/fake_runner.py" "$@"\n'
+)
+"""The text of an executable that stands in for a compiled runner binary: it answers the runner
+protocol like fixtures/fake_runner.py."""
 RUNNER_TRUNCATION_NOTICE = "\n[output truncated at 4 KiB]\n"
 """What every runner appends to captured output over 4 KiB (docs/specs/runners.md)."""
 

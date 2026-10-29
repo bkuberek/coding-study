@@ -11,6 +11,7 @@ from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.go.build_files import REGISTRATION_FILE
 from coding_study.adapters.languages.go.runner import COLD_NOTICE, GoRunner
 from coding_study.adapters.languages.go.toolchain import GoOutcome
+from coding_study.adapters.subprocess_runner import SubprocessRunner
 from coding_study.application.ports import (
     BenchCode,
     BuildFailed,
@@ -23,6 +24,8 @@ from coding_study.application.ports import (
 from coding_study.domain.debugging import DebugSession
 from coding_study.domain.errors import ContentError, LanguageNotSetUpError, RunnerStartError
 from coding_study.domain.problem import Language, ProblemMeta
+from coding_study.domain.runs import RunRequest
+from tests.helpers import FAKE_RUNNER_PROGRAM
 from tests.stub_contract import STUB_CASES
 
 TWO_SUM = next(case.meta for case in STUB_CASES if case.name == "two-sum")
@@ -37,9 +40,11 @@ def build_output(path: str, message: str) -> str:
 
 @dataclass
 class FakeGo:
-    """Answers each `go build` with the next outcome; a success writes the `-o` binary."""
+    """Answers each `go build` with the next outcome; a success writes the `-o` binary, which
+    holds `program`."""
 
     outcomes: list[GoOutcome] = field(default_factory=list[GoOutcome])
+    program: str = "binary"
     builds: list[tuple[list[str], Path, dict[str, str]]] = field(
         default_factory=list[tuple[list[str], Path, dict[str, str]]]
     )
@@ -52,7 +57,8 @@ class FakeGo:
         if outcome.exit_code == 0:
             binary = Path(arguments[arguments.index("-o") + 1])
             binary.parent.mkdir(parents=True, exist_ok=True)
-            binary.write_text("binary")
+            binary.write_text(self.program)
+            binary.chmod(0o755)
         return outcome
 
 
@@ -122,17 +128,36 @@ def test_a_class_kind_registers_its_constructor(workspace):
 def test_launches_a_private_copy_of_the_binary(workspace):
     launch = prepared(prepare_user(workspace, FakeGo())).launch
     copy = Path(launch.command[0])
-    assert copy.parent == workspace / ".cs/build/go/run/test/two_sum"
-    assert copy.name.startswith(f"{os.getpid()}-")
-    assert copy.read_text() == "binary"
+    assert copy.parent.parent == workspace / ".cs/build/go/run"
+    assert copy.parent.name.startswith(f"{os.getpid()}-")
+    assert (copy.name, copy.read_text()) == ("two_sum", "binary")
+
+
+def test_the_private_copy_lies_in_the_launch_scratch_directory(workspace):
+    launch = prepared(prepare_user(workspace, FakeGo())).launch
+    assert Path(launch.command[0]).parent == launch.scratch
+
+
+def test_no_private_copy_remains_after_the_run(workspace, tmp_path):
+    launch = prepared(prepare_user(workspace, FakeGo(program=FAKE_RUNNER_PROGRAM))).launch
+    SubprocessRunner(tmp_path / "runs").run(launch, RunRequest(()))
+    assert list((workspace / ".cs/build/go/run").iterdir()) == []
 
 
 def test_removes_the_copies_of_processes_that_ended(workspace):
-    stale = workspace / ".cs/build/go/run/test/two_sum/999999999-1"
+    stale = workspace / ".cs/build/go/run/999999999-abc/test_two_sum"
     stale.parent.mkdir(parents=True)
     stale.write_text("old")
     prepare_user(workspace, FakeGo())
-    assert not stale.exists()
+    assert not stale.parent.exists()
+
+
+def test_keeps_the_copies_of_processes_that_still_run(workspace):
+    running = workspace / f".cs/build/go/run/{os.getpid()}-abc/test_two_sum"
+    running.parent.mkdir(parents=True)
+    running.write_text("in use")
+    prepare_user(workspace, FakeGo())
+    assert running.read_text() == "in use"
 
 
 def test_a_symbol_missing_from_the_package_is_built_again_without_it(workspace):

@@ -2,7 +2,7 @@
 
 `prepare` generates the build in `.cs/build/go` (a module joined to the workspace's `go/` module
 and the runner runtime by a `go.work`), compiles one runner binary for the problem with
-`go build -json`, and launches a copy of it that belongs to this process.
+`go build -json`, and launches a copy of it that belongs to this run.
 
 Compile errors in the user's or a reference file are a build failure (exit 2). Errors only in a
 generated registration file mean the package does not define the expected symbol: the build is
@@ -10,8 +10,8 @@ repeated without that registration, and the runner reports a `load_error` for th
 compiler's message.
 
 Two `cstudy` processes may build the same problem at once (a watcher and a verify), so the
-generation and the build hold an exclusive lock, and each process runs its own copy of the binary,
-which no other build overwrites.
+generation and the build hold an exclusive lock, and each run launches its own copy of the binary,
+which no other build overwrites and which `RunnerProcess` removes when the run ends.
 """
 
 import re
@@ -138,8 +138,13 @@ class GoRunner:
             if isinstance(result, BuildFailed):
                 return result
             (self._build_directory / WARM_MARKER).touch()
-            binary = self._private_copy(build, result)
-        launch = RunnerLaunch((str(binary),), self._build_directory, HELLO_TIMEOUT_MS[Language.GO])
+            binary = private_copy(result, self._build_directory)
+        launch = RunnerLaunch(
+            (str(binary),),
+            self._build_directory,
+            HELLO_TIMEOUT_MS[Language.GO],
+            scratch=binary.parent,
+        )
         return Prepared(launch, WARM_BUILD_NOTE if warm else COLD_BUILD_NOTE)
 
     def _workspace_module(self) -> str:
@@ -275,10 +280,6 @@ class GoRunner:
 
     def _binary(self, build: _Build) -> Path:
         return self._build_directory / "bin" / build.scope / build.meta.snake_slug
-
-    def _private_copy(self, build: _Build, binary: Path) -> Path:
-        directory = self._build_directory / "run" / build.scope / build.meta.snake_slug
-        return private_copy(binary, directory)
 
 
 def _registered_symbol(meta: ProblemMeta) -> str:

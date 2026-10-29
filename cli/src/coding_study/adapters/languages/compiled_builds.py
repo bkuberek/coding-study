@@ -3,15 +3,22 @@
 
 Two `cstudy` processes may build the same problem at once (a watcher and a verify), so the
 runners hold `exclusive_lock` (adapters/file_lock.py) around the generation and the build, and
-each process runs its own copy of the built binary, which no other build overwrites. Generated
+each run launches its own copy of the built binary, which no other build overwrites. Generated
 files are written only when their content changes: Cargo fingerprints sources by modification
 time, and editors and watchers notice writes.
 """
 
 import os
 import shutil
-import threading
+import tempfile
 from pathlib import Path
+
+from coding_study.adapters.process_liveness import is_alive
+
+RUNS_DIRECTORY = "run"
+"""Below a build directory; one `<pid>-<random>` directory per run holds that run's binary."""
+EXECUTABLE_MODE = 0o755
+_PID_SEPARATOR = "-"
 
 
 def write_if_changed(path: Path, text: str) -> None:
@@ -22,34 +29,31 @@ def write_if_changed(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def private_copy(binary: Path, directory: Path) -> Path:
-    """A copy of `binary` in `directory` that only this process (and thread) runs, so a later
-    build by another process can never replace the file this one is about to start. Copies of
-    processes that ended are removed."""
-    directory.mkdir(parents=True, exist_ok=True)
-    for stale in directory.iterdir():
-        if not _owner_alive(stale.name):
-            stale.unlink(missing_ok=True)
-    copy = directory / f"{os.getpid()}-{threading.get_ident()}"
-    temporary = copy.with_name(f".{copy.name}.tmp")
-    shutil.copyfile(binary, temporary)
-    temporary.chmod(0o755)
-    temporary.replace(copy)
+def private_copy(binary: Path, build_directory: Path) -> Path:
+    """A copy of `binary` in a directory of this run's own, so a later build by another process
+    can never replace the file this one is about to start.
+
+    The copy's directory is the launch's `scratch`: `RunnerProcess` removes it when the run ends.
+    Directories of processes that ended without cleaning up (killed, say) are removed here."""
+    runs = build_directory / RUNS_DIRECTORY
+    runs.mkdir(parents=True, exist_ok=True)
+    _remove_abandoned_runs(runs)
+    directory = Path(tempfile.mkdtemp(prefix=f"{os.getpid()}{_PID_SEPARATOR}", dir=runs))
+    copy = directory / binary.name
+    try:
+        shutil.copyfile(binary, copy)
+        copy.chmod(EXECUTABLE_MODE)
+    except BaseException:
+        shutil.rmtree(directory, ignore_errors=True)
+        raise
     return copy
 
 
-def _owner_alive(name: str) -> bool:
-    """Whether the process that owns a private copy `<pid>-<thread>` still runs."""
-    pid, _, _ = name.partition("-")
-    if not pid.isdigit():
-        return False
-    try:
-        os.kill(int(pid), 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
+def _remove_abandoned_runs(runs: Path) -> None:
+    for directory in runs.iterdir():
+        owner, separator, _ = directory.name.partition(_PID_SEPARATOR)
+        if separator and owner.isdigit() and not is_alive(int(owner)):
+            shutil.rmtree(directory, ignore_errors=True)
 
 
 def relative(path: Path, start: Path) -> str:

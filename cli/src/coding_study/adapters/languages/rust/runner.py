@@ -3,7 +3,7 @@
 `prepare` generates the build in `.cs/build/rust`, a Cargo workspace with one harness package per
 problem and scope whose `main.rs` is the generated bridge, compiles it with
 `cargo build --offline --release --message-format=json`, and launches a copy of the binary that
-belongs to this process.
+belongs to this run (`RunnerProcess` removes it when the run ends).
 
 Compile errors in the user's or a reference file are a build failure (exit 2). Errors only in the
 bridge mean a target does not define what the signature declares: the build is repeated with
@@ -138,10 +138,12 @@ class RustRunner:
             if isinstance(result, BuildFailed):
                 return result
             (self._build_directory / WARM_MARKER).touch()
-            run = self._build_directory / "run" / build.scope / build.meta.snake_slug
-            binary = private_copy(result, run)
+            binary = private_copy(result, self._build_directory)
         launch = RunnerLaunch(
-            (str(binary),), self._build_directory, HELLO_TIMEOUT_MS[Language.RUST]
+            (str(binary),),
+            self._build_directory,
+            HELLO_TIMEOUT_MS[Language.RUST],
+            scratch=binary.parent,
         )
         return Prepared(launch, WARM_BUILD_NOTE if warm else COLD_BUILD_NOTE)
 
