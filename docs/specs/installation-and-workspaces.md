@@ -140,11 +140,21 @@ One catalog (`coding_study/domain/ide_actions.py`) lists these actions, and both
 |------|-------|
 | `.vscode/tasks.json` | A `process` task per action and scope (`cstudy test (current file)` runs `cstudy test ${file}` in `${workspaceFolder}`); `done` asks for the outcome through a `pickString` input. The `cstudy test --debug` tasks are background tasks whose problem matcher ends at `cstudy: waiting for debugger on 127.0.0.1:<port>` |
 | `.vscode/launch.json` | `Debug current file (<language>)` and `Debug active attempt (<language>)` for Python (`debugpy` attach, port 5678), TypeScript (`node` attach, 9229) and Java (`java` attach, 5005), each starting its `cstudy test --debug` task first; all on 127.0.0.1. None for Kotlin: VS Code's Java debugger never binds Kotlin breakpoints ([vscode-java-debug#241](https://github.com/microsoft/vscode-java-debug/issues/241)) |
-| `.vscode/settings.json` | `python.defaultInterpreterPath` `${workspaceFolder}/python/.venv/bin/python`, `typescript.tsdk` `typescript/node_modules/typescript/lib`, `java.import.gradle.enabled`, watcher and search exclusions for build output; no JDK path |
-| `.vscode/extensions.json` | Recommends `ms-python.python`, `ms-python.debugpy`, `vscjava.vscode-java-pack`, `vscjava.vscode-gradle` |
+| `.vscode/settings.json` | `python.defaultInterpreterPath` `${workspaceFolder}/python/.venv/bin/python`, `typescript.tsdk` `typescript/node_modules/typescript/lib`, `java.import.gradle.enabled`, `go.toolsEnvVars` `{"GOTOOLCHAIN": "local"}`, `rust-analyzer.linkedProjects` `["rust/Cargo.toml"]` with `rust-analyzer.check.allTargets` and `rust-analyzer.check.extraArgs` `["--keep-going"]`, watcher and search exclusions for build output (`target` included); no JDK path |
+| `.vscode/extensions.json` | Recommends `ms-python.python`, `ms-python.debugpy`, `vscjava.vscode-java-pack`, `vscjava.vscode-gradle`, `golang.go`, `rust-lang.rust-analyzer` |
 | `.idea/misc.xml` | The project JDK `21` (`JavaSDK`, language level `JDK_21`): the toolchain of the practice projects |
 | `.idea/gradle.xml` | `jvm/` linked as a Gradle project with its `java` and `kotlin` modules, run with the project JDK (`#USE_PROJECT_JDK`) |
 | `.idea/runConfigurations/*.xml` | Shared run configurations in the folders `cstudy: current file` (JAR Application configurations that start the launcher with `"$FilePath$"`), `cstudy: active attempt` and `cstudy: workspace` (Shell Script configurations run in the terminal), and `cstudy: debug`: **Debug JVM (listen)**, a Remote JVM Debug configuration listening on port 5005 that restarts after each session, and the compounds `Debug current file (Java, Kotlin)` and `Debug active attempt (Java, Kotlin)`, each starting the listener and `cstudy test --debug --debug-connect`. Each file is named after its configuration as IntelliJ names it (`cstudy test (current file)` is `cstudy_test__current_file_.xml`) |
+
+Go and Rust need no tasks or run configurations of their own: every action is language-agnostic, so `cstudy test (current file)` runs `cstudy test ${file}` on a `.go` or `.rs` solution as it does on a `.py` one, and IntelliJ writes no Go or Rust project files. The settings are what the two editors need to analyse the practice files:
+
+| Setting | Why |
+|---------|-----|
+| `go.toolsEnvVars` `GOTOOLCHAIN=local` | The Go extension's tools (gopls) run as `cstudy` does and never download the toolchain `go/go.mod` asks for ([toolchains](../guides/toolchains.md#go)). gopls finds `go/` through the `go.work` at the workspace root; no setting is needed for that |
+| `rust-analyzer.linkedProjects` `rust/Cargo.toml` | The Cargo project is in `rust/`, not at the workspace root |
+| `rust-analyzer.check.allTargets`, `rust-analyzer.check.extraArgs` `--keep-going` | Each problem is an `[[example]]` built as a library crate ([ADR 0012](../decisions/0012-go-and-rust.md)); checking every target covers them, and `--keep-going` reports the errors of every problem when one is broken instead of stopping at the first |
+
+An existing workspace gets the new settings and extensions from `cstudy ide`, which follows the rewriting rule below: it updates `settings.json` and `extensions.json` while they are as `cstudy` wrote them, and keeps (with a warning) the ones you edited until `cstudy ide --force`, or until you copy the keys over. `cstudy doctor --fix` never writes IDE files. Debug configurations for Go and Rust are not generated yet.
 
 | Rule | Detail |
 |------|--------|

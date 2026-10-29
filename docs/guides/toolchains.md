@@ -132,7 +132,7 @@ Nothing else is needed: the runner uses only the standard library, so `cstudy` n
 
 - **`GOTOOLCHAIN=local`**: since Go 1.21 the `go` command downloads the toolchain a `go.mod` asks for, and `go/go.mod` says `go 1.24`. `cstudy` builds with `GOTOOLCHAIN=local` and never downloads one, so with an older Go it stops with an error instead. Export `GOTOOLCHAIN=local` in your shell as well if you want your own `go` commands, and your editor, to behave the same way.
 - **Your Go settings**: `cstudy` pins its own build environment (`GOENV=off`, `GOFLAGS=-mod=readonly`, `GOPROXY=off`, and your `GOOS`, `GOARCH` and `GOWORK` removed), so `go env -w` values and shell variables never change how it builds. They still apply to the `go` commands you run yourself. The Go build cache is kept, so the standard library compiles once per machine.
-- **Editor**: the `go.work` file at the workspace root lets gopls find the module in `go/`, so open the workspace root.
+- **Editor**: the `go.work` file at the workspace root lets gopls find the module in `go/`, so open the workspace root. The workspace's VS Code files recommend the Go extension (`golang.go`) and run its tools with `GOTOOLCHAIN=local`; `cstudy ide` adds them to a workspace created earlier.
 - **Debugging**: debugger setup arrives with `--debug` support for Go; `cstudy test --debug` exits 4 for Go until then.
 
 ## Rust
@@ -166,7 +166,7 @@ cargo --version
 Nothing else is needed: the runner crates use only the standard library, so builds run with `cargo --offline` and `cstudy doctor --fix` has no Rust step.
 
 - **Your Cargo setup**: `cstudy` ignores your Cargo configuration for its builds. `RUSTFLAGS`, rustc wrappers such as `sccache`, `CARGO_TARGET_DIR`, `CARGO_BUILD_*` and `CARGO_PROFILE_*` do not reach them, so none can break a build or change what it measures. They still apply to the `cargo` commands you run yourself. Builds go to `.cs/build/rust` in the workspace.
-- **Editor**: `rust/Cargo.toml` lists each problem you start, so rust-analyzer checks every file; open the workspace root, or `rust/`.
+- **Editor**: `rust/Cargo.toml` lists each problem you start, so rust-analyzer checks every file; open the workspace root, or `rust/`. The workspace's VS Code files recommend rust-analyzer (`rust-lang.rust-analyzer`), link `rust/Cargo.toml` and check with `--keep-going`; `cstudy ide` adds them to a workspace created earlier. The extension's rust-analyzer needs a recent stable toolchain: with an older one it reports an outdated toolchain and may flag standard macros such as `todo!` and `vec!`, which `rustup update` fixes.
 - **Debugging**: debugger setup arrives with `--debug` support for Rust; `cstudy test --debug` exits 4 for Rust until then.
 
 ## git

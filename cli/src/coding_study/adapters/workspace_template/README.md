@@ -44,7 +44,8 @@ The files are yours to edit. After upgrading `cstudy`, run `cstudy ide` to bring
 
 - Run: **Tasks: Run Task**, then a `cstudy …` task.
 - Debug Python, TypeScript or Java: set a breakpoint, open the solution, and start **Debug current file (Python)** (or TypeScript, Java) from Run and Debug. Its task starts `cstudy test --debug`, and the debugger attaches once cstudy prints `waiting for debugger`.
-- Set up for you: the Python interpreter in `python/.venv`, TypeScript from `typescript/node_modules`, the Gradle import of `jvm/`, and the recommended extensions (Python, Debugpy, Java, Gradle).
+- Set up for you: the Python interpreter in `python/.venv`, TypeScript from `typescript/node_modules`, the Gradle import of `jvm/`, Go through `go.work` (tools run with `GOTOOLCHAIN=local`), the Rust project `rust/Cargo.toml` for rust-analyzer, and the recommended extensions (Python, Debugpy, Java, Gradle, Go, rust-analyzer).
+- Go and Rust run and test here from the same tasks; debugging them is not set up yet.
 - Kotlin runs and tests here but cannot be debugged: the Java debugger never binds Kotlin breakpoints ([vscode-java-debug#241](https://github.com/microsoft/vscode-java-debug/issues/241)). Debug Kotlin in IntelliJ IDEA.
 
 ### IntelliJ IDEA
@@ -52,6 +53,7 @@ The files are yours to edit. After upgrading `cstudy`, run `cstudy ide` to bring
 - Run: pick a configuration in the folders `cstudy: current file`, `cstudy: active attempt`, `cstudy: workspace` and `cstudy: debug`. Current-file configurations start a small launcher, `.cs/runtime/ide/cstudy-launcher.jar`, because IntelliJ's shell configurations cannot pass the open file. With no editor focused, they stop with `open a solution file in the editor first`.
 - Debug Java or Kotlin: set a breakpoint, then **Debug** (not Run) **Debug current file (Java, Kotlin)**. It starts **Debug JVM (listen)**, which waits on port 5005, and `cstudy test --debug --debug-connect`, whose JVM connects to it. The listener restarts itself, so you can keep it running and debug again.
 - Set up for you: the project JDK `21` (`.idea/misc.xml`) and the Gradle project `jvm/`, run with that JDK (`.idea/gradle.xml`).
+- Go and Rust run here from the same run configurations; open the workspace root with the Go or Rust plugin (GoLand and RustRover include them); `cstudy` writes no IntelliJ project files for them.
 - Python and TypeScript run here, but debugging them is not set up: Python needs the Python plugin, and attaching to Node needs IntelliJ IDEA Ultimate. Debug them in VS Code.
 
 ### Once, by hand
