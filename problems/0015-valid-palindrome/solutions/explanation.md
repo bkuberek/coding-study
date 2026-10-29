@@ -45,6 +45,8 @@ It is the most readable version and maps one-to-one onto the definition, which i
 - TypeScript: lowercase first, then strip with the regular expression `/[^a-z0-9]/g`. Strings have no `reverse`, so spread into an array, reverse and join.
 - Java: `StringBuilder.reverse()` reverses in place, so take `toString()` of the forward version before calling it.
 - Kotlin: `String.filter`, `lowercase()` and `reversed()` chain naturally; `==` on strings compares content.
+- Go: strings are immutable byte sequences, so the code appends the kept bytes to a `[]byte` and builds the reverse with `slices.Clone` and `slices.Reverse`; `slices.Equal` compares them. The `unicode` package would also classify non-ASCII letters, so two small ASCII helpers do the filtering and the case folding.
+- Rust: `chars()` with `char::is_ascii_alphanumeric` keeps only ASCII letters and digits, `to_ascii_lowercase` folds the case, and `cleaned.iter().eq(cleaned.iter().rev())` compares the sequence with its reverse without building the reversed copy.
 
 ## Approach: two-pointers (Converging pointers that skip ignored characters)
 
@@ -88,3 +90,5 @@ Same linear time as the filter, but constant memory and an early exit on the fir
 - TypeScript: the reference compares UTF-16 code units from `charCodeAt` against the ASCII ranges and lowercases by adding 32, which avoids allocating a one-character string per step. `/[a-z0-9]/i.test(ch)` is a shorter but slower alternative.
 - Java: `Character.isLetterOrDigit` and `Character.toLowerCase` accept Unicode letters too; on printable ASCII they behave exactly like the ASCII-only checks. `charAt` avoids copying the string, unlike `toCharArray`.
 - Kotlin: `Char.isLetterOrDigit()` and `lowercaseChar()` mirror the Java calls; `when` with conditions and no subject keeps the four branches flat.
+- Go: indexing a string yields bytes, which are whole characters here because the input is printable ASCII. A `switch` with no subject keeps the four branches flat, and byte arithmetic (`character + ('a' - 'A')`) lowercases an uppercase letter.
+- Rust: `s.as_bytes()` borrows the bytes without copying, and `u8::is_ascii_alphanumeric` and `eq_ignore_ascii_case` are the ASCII-only tests. The right pointer is stored one past the byte it reads, so an empty string does not underflow `usize`.
