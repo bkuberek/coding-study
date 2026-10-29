@@ -25,6 +25,12 @@ coding-study is a local, IDE-first interview-prep system: original problems stor
 | [authoring](specs/authoring.md) | Authoring workflow, `problem.md` and `explanation.md` formats, ready criteria, every `cstudy verify` check | Writing or reviewing a problem |
 | [installation-and-workspaces](specs/installation-and-workspaces.md) | Packaging, content and workspace resolution, `cstudy init`, the runner runtime, IDE files, your own problems | Installing `cstudy`, setting up a workspace, or changing where files live |
 
+## Guides
+
+| Guide | Covers | Read when |
+|-------|--------|-----------|
+| [toolchains](guides/toolchains.md) | Installing and checking uv and Python 3.13, Node.js and pnpm, and JDK 21 on macOS and Linux | Setting up a machine, or when `cstudy doctor` reports a missing toolchain |
+
 ## Decisions
 
 | ADR | Decision |

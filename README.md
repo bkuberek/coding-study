@@ -7,29 +7,40 @@ coding-study is a local, IDE-first practice system for senior and staff software
 - **Optimality, not only correctness.** `cstudy bench` measures how your solution grows with input size and compares it with the reference approaches.
 - **Spaced repetition.** `cstudy next` brings back what is due and picks new problems from your weakest pattern.
 
-## Prerequisites
-
-uv and Python are required; Node.js and the JDK are needed only for the languages that use them. `cstudy doctor` checks each tool and prints a fix for anything missing.
-
-| Tool | Version | Needed for |
-|------|---------|------------|
-| [uv](https://docs.astral.sh/uv/) | 0.10 or newer | Required: installs `cstudy` and manages Python |
-| Python | 3.13 | Required: install it with `uv python install 3.13` |
-| [Node.js](https://nodejs.org/) and [pnpm](https://pnpm.io/) | Node 24 or newer, pnpm 9 or newer | Optional: TypeScript |
-| JDK | 21 | Optional: Java and Kotlin (the Gradle wrapper ships with the workspace) |
-| git | any | Optional: versioning your workspace |
-
 ## Install
 
-Install `cstudy` once; the problems, tracks and runners ship with it.
+Install `cstudy` once; the problems, tracks and runners ship with it. With Homebrew:
+
+```bash
+brew install bkuberek/tap/cstudy
+cstudy --version
+```
+
+Homebrew also installs the Python that `cstudy` runs on. Upgrade with `brew upgrade cstudy`. Each release reaches the tap automatically ([versioning](docs/specs/versioning.md#homebrew-tap)).
+
+Or with uv or pipx, from the repository:
 
 ```bash
 uv tool install git+https://github.com/bkuberek/coding-study
 # or: pipx install git+https://github.com/bkuberek/coding-study
-cstudy --version
 ```
 
-Upgrade with `uv tool upgrade coding-study` (or `pipx upgrade coding-study`).
+Upgrade with `uv tool upgrade coding-study` (or `pipx upgrade coding-study`). Keep one of these installs: when several exist, the `cstudy` whose directory comes first on `PATH` runs (`which -a cstudy` lists them).
+
+## Install the language toolchains
+
+`cstudy` runs your solutions with the real toolchain of each language, which you install yourself. uv and Python are required; Node.js and the JDK are needed only for the languages that use them. The recommended install on macOS:
+
+| Tool | Version | Needed for | Install on macOS |
+|------|---------|------------|------------------|
+| [uv](https://docs.astral.sh/uv/) | 0.10 or newer | Required: manages Python and the Python practice project | `brew install uv` |
+| Python | 3.13 | Required | `uv python install 3.13` |
+| [Node.js](https://nodejs.org/) | 24 or newer | Optional: TypeScript | `brew install fnm`, then `fnm install 24` |
+| [pnpm](https://pnpm.io/) | 9 or newer | Optional: TypeScript | `corepack enable pnpm` |
+| JDK | 21 exactly | Optional: Java and Kotlin (the workspace's Gradle wrapper downloads Gradle and the Kotlin compiler) | [SDKMAN!](https://sdkman.io): `sdk install java` with a Temurin 21 identifier from `sdk list java` |
+| git | any | Optional: versioning your workspace | `xcode-select --install` |
+
+[Install the language toolchains](docs/guides/toolchains.md) has the full steps, Linux, and the check for each. Then run `cstudy doctor`: it checks each tool and prints a fix for anything missing. In a workspace, `cstudy doctor --fix` also sets up the practice projects.
 
 ## Quickstart
 

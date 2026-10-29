@@ -5,16 +5,20 @@
 ## Install
 
 ```bash
+brew install bkuberek/tap/cstudy
 uv tool install git+https://github.com/bkuberek/coding-study
 pipx install git+https://github.com/bkuberek/coding-study
 ```
 
-Both build the project at the repository root. A content author works from a checkout instead: `uv run cstudy ...` in the checkout, or `uv tool install --editable .` to put that checkout's `cstudy` on `PATH`.
+Homebrew installs a release: its wheel from the GitHub release, into a virtual environment on Homebrew's Python 3.13, with the runtime dependencies pinned in `uv.lock` ([ADR 0013](../decisions/0013-homebrew-distribution.md), [Homebrew tap](versioning.md#homebrew-tap)). uv and pipx build the project at the repository root of the default branch. A content author works from a checkout instead: `uv run cstudy ...` in the checkout, or `uv tool install --editable .` to put that checkout's `cstudy` on `PATH`.
+
+When several installs exist, the first `cstudy` on `PATH` runs; Homebrew warns when an earlier `PATH` entry shadows its `cstudy`. No install method brings the language toolchains: [install the language toolchains](../guides/toolchains.md), then run `cstudy doctor`.
 
 | Item | Rule |
 |------|------|
 | Distribution | `coding-study`, defined by the root `pyproject.toml` (hatchling); the `cstudy` script |
 | Wheel | `coding_study/` from `cli/src/coding_study/`, plus `coding_study/content/{problems,tracks,runners,schemas}` from the repository root |
+| Release files | The wheel and `requirements.txt` (the runtime dependencies from `uv.lock`, with hashes), attached to the GitHub release of each version ([versioning](versioning.md#github-release)) |
 | sdist | The same top-level paths as the checkout (`cli/src`, `problems`, `tracks`, `runners`, `schemas`), so a wheel built from the sdist equals one built from the checkout |
 | Excluded | Build output and caches (`node_modules`, `build`, `.gradle`, `.kotlin`, `.venv`, `__pycache__`, `.pytest_cache`, `.ruff_cache`) and `runners/python/tests` |
 | Workspace templates | Package data in `coding_study/adapters/workspace_template/`: the three practice projects with the Gradle wrapper and lock files |
