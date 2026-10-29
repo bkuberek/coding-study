@@ -10,7 +10,7 @@ uv tool install git+https://github.com/bkuberek/coding-study
 pipx install git+https://github.com/bkuberek/coding-study
 ```
 
-Homebrew installs a release: its wheel from the GitHub release, into a virtual environment on Homebrew's Python 3.13, with the runtime dependencies pinned in `uv.lock` ([ADR 0013](../decisions/0013-homebrew-distribution.md), [Homebrew tap](versioning.md#homebrew-tap)). uv and pipx build the project at the repository root of the default branch. A content author works from a checkout instead: `uv run cstudy ...` in the checkout, or `uv tool install --editable .` to put that checkout's `cstudy` on `PATH`.
+Homebrew installs a release: its wheel from the GitHub release, into a virtual environment on Homebrew's Python 3.13, with the runtime dependencies pinned in `uv.lock` ([ADR 0013](../decisions/0013-homebrew-distribution.md), [Homebrew tap](versioning.md#homebrew-tap)). Installing by full name (`bkuberek/tap/cstudy`) works on a fresh machine; Homebrew 7 refuses other commands on the tap, such as `brew info cstudy`, until `brew trust bkuberek/tap` has been run once. uv and pipx build the project at the repository root of the default branch. A content author works from a checkout instead: `uv run cstudy ...` in the checkout, or `uv tool install --editable .` to put that checkout's `cstudy` on `PATH`.
 
 When several installs exist, the first `cstudy` on `PATH` runs; Homebrew warns when an earlier `PATH` entry shadows its `cstudy`. No install method brings the language toolchains: [install the language toolchains](../guides/toolchains.md), then run `cstudy doctor`.
 

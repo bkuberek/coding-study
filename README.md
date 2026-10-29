@@ -16,7 +16,7 @@ brew install bkuberek/tap/cstudy
 cstudy --version
 ```
 
-Homebrew also installs the Python that `cstudy` runs on. Upgrade with `brew upgrade cstudy`. Each release reaches the tap automatically ([versioning](docs/specs/versioning.md#homebrew-tap)).
+Homebrew also installs the Python that `cstudy` runs on. Upgrade with `brew upgrade cstudy`. Homebrew 7 asks you to trust a third-party tap before commands such as `brew info cstudy` read it: run `brew trust bkuberek/tap` once. Each release reaches the tap automatically ([versioning](docs/specs/versioning.md#homebrew-tap)).
 
 Or with uv or pipx, from the repository:
 
