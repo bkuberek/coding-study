@@ -56,7 +56,7 @@ Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-l
 | `track` | `dsa`, `practical`, `lld`, `concurrency`, `debugging` | yes | Non-autograded tracks live in `tracks/` ([content](content.md)) |
 | `kind` | `function`, `design`, `progressive`, `concurrent` | yes | |
 | `patterns` | list of pattern ids | yes for `dsa` | First entry is the primary pattern; ids from [content](content.md#pattern-taxonomy) |
-| `languages` | subset of `python`, `typescript`, `java`, `kotlin` | no | Default all 4; a subset is allowed only for `concurrency` and `debugging` |
+| `languages` | list of `python`, `typescript`, `java`, `kotlin`, `go`, `rust` | no | Default the four core languages (`python`, `typescript`, `java`, `kotlin`), which every problem must list; `go` and `rust` are optional additions. A subset of the core languages is allowed only for `concurrency` and `debugging` ([ADR 0012](../decisions/0012-go-and-rust.md)). Go and Rust runners are planned: today a listed `go` or `rust` fails with `go stub generator is not set up yet` (exit 4) wherever a stub or runner is needed |
 | `signature` | object | yes | See [Signatures](#signatures) |
 | `comparator` | object | yes | See [Comparators](#comparators) |
 | `stub` | `generated` or `buggy` | no | Default `generated`; `buggy` copies `buggy/solution.<ext>` instead of codegen. Buggy files follow the reference file conventions (no JVM `package` line) ([authoring](authoring.md#debugging-problems)) |
@@ -119,16 +119,19 @@ Loading a problem rejects (content error) a modifier that names a parameter miss
 
 ### Naming rules
 
-| Item | Canonical form | Python | TypeScript | Java | Kotlin |
-|------|----------------|--------|------------|------|--------|
-| Function | `twoSum` | `two_sum` (module-level) | `twoSum` (named export) | `Solution.twoSum` | `Solution.twoSum` |
-| Class | `LRUCache` | `LRUCache` | `LRUCache` (named export) | `LRUCache` | `LRUCache` |
-| Method | `getRandom` | `get_random` | `getRandom` | `getRandom` | `getRandom` |
-| Param | `maxValue` | `max_value` | `maxValue` | `maxValue` | `maxValue` |
+| Item | Canonical form | Python | TypeScript | Java | Kotlin | Go | Rust |
+|------|----------------|--------|------------|------|--------|----|------|
+| Function | `twoSum` | `two_sum` (module-level) | `twoSum` (named export) | `Solution.twoSum` | `Solution.twoSum` | `twoSum` | `two_sum` |
+| Class | `LRUCache` | `LRUCache` | `LRUCache` (named export) | `LRUCache` | `LRUCache` | `LRUCache` | `LRUCache` |
+| Constructor | `LRUCache` | `LRUCache(...)` | `new LRUCache(...)` | `new LRUCache(...)` | `LRUCache(...)` | `NewLRUCache` | `new` |
+| Method | `getRandom` | `get_random` | `getRandom` | `getRandom` | `getRandom` | `GetRandom` | `get_random` |
+| Param | `maxValue` | `max_value` | `maxValue` | `maxValue` | `maxValue` | `maxValue` | `max_value` |
+
+`cstudy` computes the Go and Rust names today, but their stub generators and runners are planned ([ADR 0012](../decisions/0012-go-and-rust.md)). Go methods are exported because reflection only finds exported ones, and Go and Rust build an instance by calling a function, so the request names it in `names.constructor` ([runners](runners.md#request-file)).
 
 - Canonical names match `^[a-z][A-Za-z0-9]*$` (classes `^[A-Z][A-Za-z0-9]*$`).
 - snake_case conversion: insert `_` before an uppercase letter that follows a lowercase letter or digit, or that precedes a lowercase letter after another uppercase letter; then lowercase (`getHTTPCode` becomes `get_http_code`).
-- After conversion, no name may equal a reserved word in any language: Python `keyword.kwlist`, Java reserved keywords and literals, Kotlin hard keywords, TypeScript reserved words. `cstudy verify` errors on a match and warns on shadowed Python builtins (`list`, `sum`, `id`, ...), and on a Python name equal to a type the stub imports: `date` in a signature that uses `date`, `Decimal` in one that uses `decimal`. A parameter `date: date` hides the type from the body, and a method named `date` hides it from the annotations after it.
+- After conversion, no name may equal a reserved word in any language the problem lists: Python `keyword.kwlist`, Java reserved keywords and literals, Kotlin hard keywords, TypeScript reserved words, Go keywords, Rust keywords (strict, reserved and `async`/`await`/`dyn`/`try`). A language the problem does not list is not checked, so a method named `move` conflicts only in a problem that lists `rust`. `cstudy verify` errors on a match and warns on shadowed Python builtins (`list`, `sum`, `id`, ...), and on a Python name equal to a type the stub imports: `date` in a signature that uses `date`, `Decimal` in one that uses `decimal`. A parameter `date: date` hides the type from the body, and a method named `date` hides it from the annotations after it.
 - Python uses module-level functions (idiomatic) rather than LeetCode's `class Solution`; Java and Kotlin use `class Solution` (Java requires a class; Kotlin matches so both share one JVM runner).
 
 ## Type DSL
@@ -198,6 +201,30 @@ This table is normative for stub generation, runner deserialization and output s
 General rules for rows not listed: `list<X>` maps element-wise using the `X` row; nested `list<list<X>>` nests the element mapping. Node types are always nullable.
 
 **JVM erasure property.** Every Kotlin type in the table erases to the same JVM type as the Java column (`IntArray` is `int[]`, `Array<IntArray>` is `int[][]`, non-null `Int` parameters are `int`, `List<Int>` is `java.util.List`, `Unit` returns are `void`). One JVM runner therefore serves both languages through Java reflection. Any future mapping must preserve this property or extend the JVM runner.
+
+### Go and Rust mapping (planned)
+
+The accepted design for the Go and Rust columns ([ADR 0012](../decisions/0012-go-and-rust.md)). No stub generator or runner implements it yet; the table becomes normative, like the one above, when they land. The JSON encoding is the one of the table above.
+
+| DSL | Go | Rust |
+|-----|----|------|
+| `int` | `int` (the encoder range-checks to 32 bits, otherwise `invalid_output`) | `i32` |
+| `long` | `int64` | `i64` |
+| `double` | `float64` (non-finite is `invalid_output`) | `f64` |
+| `bool` / `string` | `bool` / `string` | `bool` / `String` (owned parameters, as on LeetCode) |
+| `char` | `rune` | `char` |
+| `T[]`, `list<T>` | `[]T`; a nil slice encodes as `[]` | `Vec<T>` |
+| `T[][]`, `list<list<T>>` | `[][]T` | `Vec<Vec<T>>` |
+| `decimal` | `decimal.Decimal` (shopspring/decimal, vendored) | `rust_decimal::Decimal` (vendored) |
+| `date` | `time.Time` at UTC midnight; the encoder rejects anything else | `chrono::NaiveDate` (vendored) |
+| `ListNode` | `*ListNode` with `Val`, `Next` | `Option<Box<ListNode>>` |
+| `TreeNode` | `*TreeNode` | `Option<Rc<RefCell<TreeNode>>>` |
+| `GraphNode` | `*GraphNode` with `Neighbors []*GraphNode` | `Option<Rc<RefCell<GraphNode>>>` |
+| `ListNode[]` | `[]*ListNode` | `Vec<Option<Box<ListNode>>>` |
+| `void` (return) | no result | `()` |
+| `output_from` | the slice shares its backing array, so in-place changes are visible | the parameter becomes `&mut Vec<T>` |
+| `ref_of`, `as: index` | pointer identity | `Rc::ptr_eq` for trees and graphs; a `Box` list has no identity and cannot be cyclic, so a problem with cyclic list inputs omits `rust` from `languages` |
+| Design class | `type LRUCache struct{}`, `func NewLRUCache(capacity int) *LRUCache`, `func (c *LRUCache) Get(key int) int` | `pub struct LRUCache`, `pub fn new(capacity: i32) -> Self`, `&mut self` methods |
 
 **Content rules that keep languages equivalent.** Test values must fit the declared type; expected outputs must not depend on integer overflow; `long` values stay within 2^53-1 (TypeScript `number`); `decimal` results state their scale and rounding mode ([Decimal and date](#decimal-and-date)); recursion depth implied by inputs stays at or under 3000 (Node's default stack).
 
@@ -410,6 +437,8 @@ A concurrent problem (`kind: concurrent`, `track: concurrency`) is a class whose
 | Kotlin | `threads` | `platform`, `virtual` | Same JVM runner and JDK APIs (`@Volatile`, `synchronized(lock) {}`, `ReentrantLock.withLock`). Coroutines are not autograded in v1 (PRD Q5); every Kotlin concurrent problem has a coroutine paragraph in its explanation's `### Language notes` |
 | Python | `threads` or `async`, one per problem | `thread` or `async` | CPython 3.13 with the GIL; which races a test can observe: [below](#observable-races-in-python) |
 | TypeScript | `async` only | `async` | Node 24, one event loop; `worker_threads` is not supported (objects cannot be shared between isolates, only `SharedArrayBuffer`). Synchronous methods are atomic, so a problem whose race needs shared-memory threads omits `typescript` from `languages` |
+| Go (planned) | `threads` only | `thread` | Goroutines released by a start gate; `sync` primitives, channels and atomics. No runner yet |
+| Rust (planned) | `threads` only | `thread` | `std::thread` workers over a shared `Arc<T>` (`T: Send + Sync`); a broken reference is a logic race, since safe Rust has no data races. No runner yet |
 
 `concurrency.model` must give every language in `languages` a model from this table; anything else is a content error.
 

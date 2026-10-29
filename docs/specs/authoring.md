@@ -12,7 +12,7 @@ User-authored problems are first-class: the shipped catalog and your own problem
 | 4 | Add visible examples to `tests.json` and their explanations in `problem.md`; add hidden edge cases | `--static` |
 | 5 | Write the brute-force approach in Python with `oracle: true` | `cstudy verify <slug>` |
 | 6 | Write `generator.py` (and `validate`) | `cstudy verify <slug> --oracle` |
-| 7 | Write the optimal approach(es): Python first, then TypeScript, Java, Kotlin | `cstudy verify <slug> --oracle` |
+| 7 | Write the optimal approach(es): Python first, then TypeScript, Java, Kotlin (and Go and Rust when `languages` lists them, [ADR 0012](../decisions/0012-go-and-rust.md)) | `cstudy verify <slug> --oracle` |
 | 8 | Write `solutions/explanation.md`, one section per approach | `--static` |
 | 9 | Add the `perf` block and `generate` cases at the largest ladder size | `cstudy verify <slug> --ladder` (Phase 2 on) |
 | 10 | Set `status: ready` | `cstudy verify <slug> --oracle --ladder --require-ready` |
@@ -212,7 +212,7 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 | `problem.md` | `## Statement`, `## Input`, `## Output`, one `## Level <n>: <title>` per level (operations, rules, examples), `## Constraints` | The usual sections with `## Examples` |
 | `tests.json` | `level` on every case; per level at least 1 visible and 2 hidden cases | At least 2 visible and 8 hidden cases |
 | Extra file | none | `rubric.md` ([format](#rubricmd)) |
-| References | An `optimal` approach implementing every level, in all 4 languages | An `optimal` approach in all 4 languages |
+| References | An `optimal` approach implementing every level, in every language the problem lists (the 4 core languages by default) | An `optimal` approach in every language the problem lists |
 | Optional | `generator.py` (then `generate` cases at the last level, one at the largest ladder size), `patterns`, more approaches | Same |
 
 ## Ready criteria
@@ -220,7 +220,7 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 `status: ready` requires all of the following; `cstudy verify --require-ready` enforces them.
 
 - Every static and dynamic check below passes.
-- At least one `optimal` approach has a reference file in every language in `languages`.
+- At least one `optimal` approach has a reference file in every language in `languages`. `languages` defaults to the four core languages; listing `go` or `rust` makes this rule, the dynamic checks and the coverage lines apply to them too ([ADR 0012](../decisions/0012-go-and-rust.md)).
 - `dsa` problems: at least 2 approaches (a slower one, or an alternative optimal technique when no slower approach is meaningful), an `oracle` approach in Python, and `generator.py`.
 - `tests.json`: at least 2 visible cases, at least 8 hand-written hidden cases, and, for `dsa` problems and any problem with `generator.py`, at least 1 `generate` case at the largest ladder size.
 - `progressive` problems: at least 2 levels; every level has at least 1 visible case and at least 2 hand-written hidden cases.
@@ -235,7 +235,7 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 |----|-------|
 | S1 | `meta.yaml` valid against `schemas/meta.schema.json`; `tests.json` against `schemas/tests.schema.json`; `item.yaml` against `schemas/item.schema.json` ([items](#items)) |
 | S2 | Directory name equals `<id>-<slug>`; ids and slugs unique across `problems/` and `tracks/` |
-| S3 | Signature parses with the type DSL; names valid; no reserved words after per-language conversion. Warnings, not errors: a Python name that shadows a builtin (`sum`), or the type the Python stub imports for the signature (`date` where it uses `date`, `Decimal` where it uses `decimal`) ([naming rules](problem-format.md#naming-rules)) |
+| S3 | Signature parses with the type DSL; names valid; no reserved words after per-language conversion, in the languages the problem lists. Warnings, not errors: a Python name that shadows a builtin (`sum`), or the type the Python stub imports for the signature (`date` where it uses `date`, `Decimal` where it uses `decimal`) ([naming rules](problem-format.md#naming-rules)) |
 | S4 | Every case input and expected value conforms to the signature (ranges, char length, node encodings, op names and arities, `long` at most 2^53-1, `decimal` and `date` strings; an expected `decimal` is canonical, [Decimal and date](problem-format.md#decimal-and-date)) |
 | S5 | `problem.md` required headings, example markers and hint numbering; progressive: no `## Examples`, one `## Level <n>: <title>` per level as in `meta.yaml`, in order, each with at least one example, and each example in its case's level section |
 | S6 | `explanation.md` sections and subsections per approach; complexity lines equal `meta.yaml`; overview table consistent |

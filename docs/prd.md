@@ -7,7 +7,7 @@ A local, IDE-first interview-prep system for senior and staff engineer loops. Yo
 | Status | Implemented through Phase 7; open validation items in the [roadmap](roadmap.md#status) |
 | Users | One engineer per installation, practicing on their own machine |
 | Platform | macOS, local only |
-| Languages practiced | Python, TypeScript, Java, Kotlin |
+| Languages practiced | Python, TypeScript, Java, Kotlin; Go and Rust are being added as optional languages per problem ([ADR 0012](decisions/0012-go-and-rust.md)) |
 | Related | [Architecture](architecture.md), [Roadmap](roadmap.md), [Specs](README.md#specs) |
 
 ## 1. Executive summary
@@ -61,7 +61,7 @@ cstudy next  ->  cstudy start <slug> --lang kotlin  ->  edit in editor  ->  cstu
 - No textual or AST comparison of user code with reference code.
 - No AI grading of code, designs or behavioral answers.
 - No copying of LeetCode statements or test data ([ADR 0004](decisions/0004-original-problem-wording.md)).
-- No languages beyond Python, TypeScript, Java and Kotlin in v1.
+- No languages beyond Python, TypeScript, Java and Kotlin in v1, except Go and Rust, which are added after v1 ([ADR 0012](decisions/0012-go-and-rust.md)).
 - No Windows or Linux support commitment (macOS only; nothing deliberately prevents Linux).
 
 ## 3. AI system requirements
@@ -93,9 +93,9 @@ Not applicable. The product contains no AI features.
 
 | ID | Requirement | Measure |
 |----|-------------|---------|
-| NFR-1 | Fast feedback | `cstudy test` warm p50: Python and TypeScript 1.0 s, Java 3 s, Kotlin 5 s, for at most 50 cases of an O(n log n) solution. JVM cold start (first build after daemon stop) up to 60 s is accepted and printed as "warming Gradle daemon". |
+| NFR-1 | Fast feedback | `cstudy test` warm p50: Python and TypeScript 1.0 s, Java 3 s, Kotlin 5 s, and, once their runners exist, Go 1.0 s and Rust 2 s, for at most 50 cases of an O(n log n) solution. JVM cold start (first build after daemon stop) up to 60 s is accepted and printed as "warming Gradle daemon". |
 | NFR-2 | Fast CLI | `cstudy list`, `cstudy next`, `cstudy stats` complete in at most 500 ms with 250 problems (index cache). |
-| NFR-3 | Verify throughput | Full `cstudy verify` (no oracle, no ladder) over 200 problems in all 4 languages in at most 10 min; `cstudy verify <slug>` in at most 30 s warm. |
+| NFR-3 | Verify throughput | Full `cstudy verify` (no oracle, no ladder) over 200 problems in the 4 core languages in at most 10 min (Go and Rust are gated per batch with `cstudy verify --lang`, [ADR 0012](decisions/0012-go-and-rust.md)); `cstudy verify <slug>` in at most 30 s warm. |
 | NFR-4 | Determinism | Same inputs, database and seed produce the same `cstudy next` choice, generated cases and oracle cases. |
 | NFR-5 | Isolation | A crash, infinite loop or `System.exit` in user code never crashes the CLI; it is reported as a case or runner error. |
 | NFR-6 | Offline | All commands work offline after the one-time toolchain setup. |

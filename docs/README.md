@@ -46,6 +46,7 @@ coding-study is a local, IDE-first interview-prep system: original problems stor
 | [0009](decisions/0009-ladder-calibration.md) | The ladder check tolerates drift and fixed costs, needs super-polynomial evidence for exponential growth, and treats sublinear classes as one band |
 | [0010](decisions/0010-ide-integration.md) | Workspaces ship VS Code and IntelliJ project files that run `cstudy` and attach debuggers to its runner; `cstudy` stays the judge |
 | [0011](decisions/0011-decimal-and-date-types.md) | `decimal` and `date` are scalar types with string wire forms; runners write decimals in canonical form so the comparators stay type-blind |
+| [0012](decisions/0012-go-and-rust.md) | Go and Rust are optional per problem until the catalog is backfilled, then required; compiled runners, exhaustive language dispatch |
 | [0013](decisions/0013-homebrew-distribution.md) | Each release attaches the wheel and a hashed requirements file to a GitHub release, and the workflow points the `cstudy` formula in `bkuberek/homebrew-tap` at them |
 
 ## Conventions

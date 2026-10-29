@@ -1,6 +1,6 @@
 # Spec: Runners and Stub Generation
 
-A runner is a small program per runtime that loads one target (the user's file or a reference approach), deserializes case inputs, invokes the target, and serializes outputs or measurements. It never sees expected values and never judges results. There are three runners: Python, TypeScript, and JVM (shared by Java and Kotlin).
+A runner is a small program per runtime that loads one target (the user's file or a reference approach), deserializes case inputs, invokes the target, and serializes outputs or measurements. It never sees expected values and never judges results. There are three runners: Python, TypeScript, and JVM (shared by Java and Kotlin). Go and Rust runners are planned ([ADR 0012](../decisions/0012-go-and-rust.md)); rows and fields below marked planned describe that design and nothing implements them yet.
 
 ## Decisions
 
@@ -21,6 +21,8 @@ A runner is a small program per runtime that loads one target (the user's file o
 | TypeScript | none | `node .cs/runtime/runners/typescript/runner.ts --request R --out O` | `typescript` |
 | Java | `./gradlew -q --console=plain :java:csClasspath -Pcs.only=<snake_slug>` | `java -cp <classpath> cs.runner.Main --request R --out O` | `jvm` |
 | Kotlin | `./gradlew -q --console=plain :kotlin:csClasspath -Pcs.only=<snake_slug>` | same as Java | `jvm` |
+| Go (planned) | `go build -overlay <generated overlay> -o <binary> ./cmd/<snake_slug>` in `.cs/build/go`, with `GOTOOLCHAIN=local GOPROXY=off` | `.cs/build/go/bin/<snake_slug> --request R --out O` | `.cs/build/go` |
+| Rust (planned) | `cargo build --offline --release -p <snake_slug>` in `.cs/build/rust`, with one shared `CARGO_TARGET_DIR` | `.cs/build/rust/target/release/<snake_slug> --request R --out O` | `.cs/build/rust` |
 
 Paths are relative to the workspace root. The runners themselves run from the workspace's [runner runtime](installation-and-workspaces.md#runner-runtime) in `.cs/runtime/runners/`, a copy of the content's `runners/` that `cstudy` refreshes before the first runner of a command when the content changed. `R` and `O` live in `.cs/runs/<run_id>/` as `request-<n>.json` and `events-<n>.jsonl`, one pair per restart `n`; the last 20 runs are kept. The process starts in its own process group.
 
@@ -63,8 +65,8 @@ The lock and the copy protect against other `cstudy` processes. A Gradle build s
 | Field | Notes |
 |-------|-------|
 | `mode` | `test` or `bench` ([Bench mode](#bench-mode)) |
-| `target` | Python and TypeScript: `{"path": <abs file>}`. JVM: `{"class": "practice.two_sum.Solution"}` (classpath from the command line) |
-| `names` | Language-specific symbol names computed by the CLI from the naming rules; runners do no name conversion. Class kinds: `{"class": "LRUCache", "methods": {"get": "get", "put": "put"}}` |
+| `target` | Python and TypeScript: `{"path": <abs file>}`. JVM: `{"class": "practice.two_sum.Solution"}` (classpath from the command line). Go and Rust (planned): `{"compiled": "user"}` or `{"compiled": "ref/<approach>"}`, the id of code built into the runner binary, since compiled code has no file or class to load. `cstudy` already encodes this form |
+| `names` | Language-specific symbol names computed by the CLI from the naming rules; runners do no name conversion. Class kinds: `{"class": "LRUCache", "methods": {"get": "get", "put": "put"}}`; Go and Rust add `"constructor"` (`NewLRUCache` and `new`), the function that creates an instance, with Go methods exported (`"get": "Get"`) |
 | `signature` | Canonical signature from `meta.yaml`, including modifiers; drives deserialization and serialization |
 | `cases` | Inputs only. Function kind: `input`. Class kinds: `ops`, `args` |
 
@@ -159,6 +161,8 @@ After 3 restarts in one run, remaining cases are reported `not_run`. The hang gu
 | Python | debugpy from the workspace venv (5678) | `python -X frozen_modules=off -c <bootstrap> <port> --request R --out O`. The bootstrap runs `debugpy.listen(("127.0.0.1", port))`, prints `cstudy-debug-agent-listening` to standard error, calls `debugpy.wait_for_client()`, then runs `cs_runner` through `runpy` as `-m cs_runner` would | `cstudy-debug-agent-listening` on standard error |
 | TypeScript | Node inspector (9229) | `node --inspect-wait=127.0.0.1:<port> runner.ts ...`; Node keeps the line and column of the `.ts` file | `Debugger listening on` on standard error |
 | Java, Kotlin | JDWP (5005) | `java ... -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:<port> -cp ...` | `Listening for transport dt_socket` on standard output |
+| Go (planned) | Delve (2345) | `dlv exec --headless --listen=127.0.0.1:<port> --api-version=2 <binary> -- --request R --out O` | `API server listening at:` on standard output |
+| Rust (planned) | `debugserver` on macOS, `lldb-server gdbserver` on Linux (12345) | `debugserver --named-pipe <fifo> 127.0.0.1:<port> -- <binary> --request R --out O` | The port read from the named pipe: `debugserver` prints nothing. The ports of Go and Rust are already reserved in `cstudy`; `--debug` does not support them yet |
 
 | Item | Rule |
 |------|------|
@@ -432,7 +436,7 @@ Added to `runners/conformance/` before any concurrent problem merges. `expectati
 | Step | Rule |
 |------|------|
 | Source | `StubGenerator` for the language renders the signature with the mapping table and naming rules from [problem-format](problem-format.md#type-dsl) |
-| Destination | Python `python/practice/<snake_slug>.py`; TypeScript `typescript/practice/<slug>.ts`; Java and Kotlin `jvm/<lang>/src/main/<lang>/practice/<snake_slug>/<Solution or ClassName>.<ext>` |
+| Destination | Python `python/practice/<snake_slug>.py`; TypeScript `typescript/practice/<slug>.ts`; Java and Kotlin `jvm/<lang>/src/main/<lang>/practice/<snake_slug>/<Solution or ClassName>.<ext>`; Go (planned) `go/practice/<snake_slug>/<snake_slug>.go`; Rust (planned) `rust/practice/<snake_slug>.rs` |
 | Body | Python `raise NotImplementedError`; TypeScript `throw new Error("Not implemented")`; Java `throw new UnsupportedOperationException("Not implemented")`; Kotlin `TODO("Not implemented")`. Constructors are empty |
 | Header | Title, statement path, run command |
 | Imports | Support classes only when used (TypeScript `Decimal` for `decimal`, and the type `IsoDate` for `date`, imported with `import type` or an inline `type` specifier); the standard library types of `decimal` and `date` only when used (Python `Decimal` and `date`, Java and Kotlin `BigDecimal` and `LocalDate`); Java always `import java.util.*;` |
@@ -453,6 +457,8 @@ Every generated stub must compile or import unchanged; the conformance suite che
 | Python | `.cs/build/python/ref/<snake_slug>/<approach_snake>.py` | none; executed with the workspace venv interpreter |
 | TypeScript | `.cs/build/typescript/ref/<slug>/<approach>.ts` | `.cs/build/typescript/package.json` and `support.ts` mirror the workspace so `#support` resolves |
 | Java, Kotlin | `.cs/build/jvm/<lang>/src/main/<lang>/ref/<snake_slug>/<approach_snake>/<Solution or ClassName>.<ext>` | Reference files declare no `package`; the materializer prepends `package ref.<snake_slug>.<approach_snake>` (with `;` for Java). Built with `jvm/gradlew -p .cs/build/jvm`, which includes `.cs/runtime/runners/jvm` |
+| Go (planned) | `.cs/build/go/ref/<snake_slug>/<approach_snake>/<approach_snake>.go` | One package per approach, linked into the problem's binary next to the user's package |
+| Rust (planned) | `.cs/build/rust/ref/<snake_slug>/<approach_snake>.rs` | Entered into the problem's crate as a `#[path]` module, so compiler errors name the real file |
 
 For JVM bench the classpath joins the user's `practice.*` classes and the `ref.*` classes; package names never collide.
 
