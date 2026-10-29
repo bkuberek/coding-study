@@ -45,6 +45,8 @@ Very hard to get wrong, which makes it the oracle, but it breaks the rule that t
 - Python: slice assignment `values[a:b] = values[a:b][::-1]` reverses a chunk in place.
 - Java: `Collections.reverse(values.subList(start, start + k))` reverses a view of the list, which writes through to the list.
 - Kotlin: `chunked(k) { ... }` passes each chunk as a temporary window, so the reference copies the leftover chunk with `toList()` before the window is reused.
+- Go: `slices.Reverse(values[start : start+k])` reverses a sub-slice in place, because the sub-slice shares the backing array.
+- Rust: `chunks_exact_mut(k)` yields only full chunks and leaves the shorter remainder out, so "a short last chunk keeps its order" needs no extra code. A second walk with `as_deref_mut` writes the values back.
 
 ## Approach: node-stack (Pop each group of k nodes off a stack)
 
@@ -85,6 +87,8 @@ Relinks the nodes and is easy to explain, but uses O(k) memory, which is O(n) wh
 - TypeScript: `stack.pop()!` asserts non-empty inside the `length > 0` loop.
 - Java: `ArrayDeque` as a stack (`push`, `pop`) is preferred over the legacy synchronized `Stack` class.
 - Kotlin: `kotlin.collections.ArrayDeque` with `addLast` and `removeLast`.
+- Go: one slice with capacity `k` is reused for every group (`stack = stack[:0]`), which keeps the extra space at O(k).
+- Rust: the nodes are detached from the list with `take()` and pushed onto a `Vec<Box<ListNode>>`. Nothing keeps the original `rest` pointer for a short tail, so those nodes are appended again in their original order instead.
 
 ## Approach: in-place (Reverse each full group between two anchors)
 
@@ -126,3 +130,4 @@ Constant memory and true relinking: the answer interviewers are looking for. It 
 - TypeScript: `after` is `null` for a group that ends the list, so the reversal loop tests `current !== null` as well as `current !== after`; typing `current` as `ListNode | null` keeps that honest.
 - Kotlin: `before.next` is a platform type; annotating `first` as `ListNode` documents that a full group guarantees it is non-null, while `following` must stay `ListNode?` because the last node of the final group points at null.
 - Java: identity comparison `current != after` is exactly what the loop needs; no null special case is required, since `after` may be null and `current` reaches it.
+- Rust: `last`, `after` and `first` would all alias nodes of the list being relinked, which `Box` ownership rules out. The reference checks that k nodes remain with a shared walk, moves them one by one onto a `reversed` list, then walks k steps to the group's new last node and points it at the rest. That is two extra O(k) walks per group, so the total stays O(n) time and O(1) space.
