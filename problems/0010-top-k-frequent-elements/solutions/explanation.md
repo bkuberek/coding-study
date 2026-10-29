@@ -46,6 +46,8 @@ Short and obviously correct, which makes it the oracle. It orders all d values a
 - TypeScript: `[...counts.entries()].sort((a, b) => b[1] - a[1])` sorts `[value, count]` pairs numerically.
 - Java: `Comparator.comparingInt(...).reversed()` sorts the boxed keys by count; the explicit `(Integer value)` parameter type is needed so that `reversed()` can infer the comparator's type.
 - Kotlin: `nums.asIterable().groupingBy { it }.eachCount()` builds the count map in one call; `sortedByDescending`, `take` and `map` finish the job.
+- Go: `slices.SortFunc` takes a three-way comparator; `cmp.Compare(counts[b], counts[a])` with the arguments swapped sorts by count descending. `byCount[:k]` returns a prefix of the slice, which shares its array and needs no copy.
+- Rust: the counts become `(value, count)` pairs in a `Vec`, sorted with `sort_unstable_by_key` on `Reverse(count)` for a descending order. The unique-answer guarantee means ties past the k-th place never matter, so an unstable sort is safe.
 
 ## Approach: heap (Count, then keep the k most frequent in a min-heap)
 
@@ -86,6 +88,8 @@ Better than sorting when k is much smaller than d, and the natural choice when v
 - TypeScript: there is no built-in priority queue, so the reference implements a small binary heap with `push` (sift up) and `replaceRoot` (sift down). Sorting an array of k entries after every insertion would also be correct, at O(k log k) per update.
 - Java: `PriorityQueue` is a min-heap; the comparator `Comparator.comparingInt(counts::get)` orders values by their counts. `heap.stream().mapToInt(Integer::intValue).toArray()` unboxes the result.
 - Kotlin: the same `java.util.PriorityQueue`, built with `compareBy { counts.getValue(it) }`; `getValue` throws instead of returning null for a missing key, which keeps the comparator non-nullable.
+- Go: `container/heap` is not a heap type but a set of functions over your own `heap.Interface`, so the code defines `weakestFirst` with five methods. `heap.Fix(&kept, 0)` after overwriting the root is Python's `heapreplace`.
+- Rust: `BinaryHeap` is a max-heap; `Reverse` flips the order so the root is the weakest entry. `peek_mut()` lends the root, and assigning through the guard sifts the new entry down once when the guard drops, the same single step as `heapreplace`.
 
 ## Approach: bucket (Count, then bucket the values by count)
 
@@ -124,3 +128,5 @@ Linear and simple, the best answer for a fixed array. It allocates n + 1 buckets
 - TypeScript: `Array.from({ length: n + 1 }, () => [])` creates independent arrays for the same reason.
 - Java: a `List<List<Integer>>` of buckets; arrays of generic lists (`List<Integer>[]`) need an unchecked cast, so a list of lists is cleaner.
 - Kotlin: `Array(n + 1) { mutableListOf<Int>() }` calls the initializer once per bucket; destructuring `for ((value, count) in counts)` iterates map entries.
+- Go: `make([][]int, len(nums)+1)` creates the buckets as nil slices, and `append` allocates one only when a count lands in it; there is no per-bucket initializer to write.
+- Rust: `vec![Vec::new(); n + 1]` clones the empty vector into every slot, so each bucket is independent. The scan goes from `n` down to 1 with `(1..=n).rev()`.
