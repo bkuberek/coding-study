@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0230"
+slug: employee-free-time
+title: Employee Free Time
+status: ready
+difficulty: hard
+track: dsa
+kind: function
+patterns: [intervals, heap]
+signature:
+  function:
+    name: employeeFreeTime
+    params:
+      - {name: schedule, type: "list<list<int[]>>"}
+    returns: {type: "int[][]"}
+comparator: {type: exact}
+approaches:
+  - {id: elementary-segments, name: Test every gap between neighboring endpoints against every interval, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: flatten-and-sort, name: Sort all intervals by start and sweep the busy end, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+  - {id: heap-merge, name: Merge the employees' sorted lists with a min-heap, role: optimal, time: "O(n log k)", space: "O(k)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: total number of intervals n, over about n/10 employees
+  size_ladder: [40, 125, 400, 1250, 4000]
+  expected_from: flatten-and-sort
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 759, url: "https://leetcode.com/problems/employee-free-time/"}
+related: [merge-intervals, interval-list-intersections, merge-k-sorted-lists, coverage-gaps]
+order: 9
+estimate_minutes: 35
