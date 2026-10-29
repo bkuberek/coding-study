@@ -50,6 +50,7 @@ It is short and obviously correct, which makes it the oracle for random testing.
 - TypeScript: `findIndex`, then `splice(index, 1)` to remove and `push` to append. `shift()` removes the front and is O(n) as well.
 - Java: an `ArrayList` of a small `record Entry(int key, int value)`. `remove(int index)` removes by position; with a `List<Integer>`, `remove(key)` would pick the `remove(int index)` overload instead of `remove(Object)`, a classic boxing trap.
 - Kotlin: `mutableListOf<Entry>()` with `indexOfFirst { it.key == key }` and `removeAt(index)`. Kotlin names the positional removal `removeAt`, avoiding Java's overload trap.
+- Rust: a `Vec<(i32, i32)>` of pairs; `iter().position` finds the key, `remove(index)` shifts the tail left and `push` appends. `remove(0)` evicts the oldest, also O(capacity).
 
 ## Approach: hash-map-dll (Hash map plus doubly linked list)
 
@@ -93,6 +94,7 @@ This is the answer interviewers usually want, because it shows that you can comb
 - TypeScript: `Map<number, Entry>` for the index. Initializing `prev` and `next` to `this` keeps their type `Entry` instead of `Entry | null`, so no non-null assertions are needed. There are no parameter properties, so fields are declared and assigned explicitly.
 - Java: a `private static final class Node` avoids holding a reference to the outer cache. `HashMap<Integer, Node>` boxes keys; `nodes.get(key)` returns `null` on a miss.
 - Kotlin: `lateinit var prev: Node` and `next` avoid nullable links: a node's links are always set before use, thanks to the sentinels. `nodes[key] ?: return -1` handles the miss in one line.
+- Rust: nodes that point at each other would need `Rc<RefCell<Node>>` forward and `Weak` back, with a runtime borrow check on every step. The reference keeps the nodes in a `Vec` and links them by index instead, with the sentinels in slots 0 and 1, and an evicted node's slot is reused for the new key. `let Some(&slot) = self.slots.get(&key) else { return -1 };` handles the miss.
 
 ## Approach: ordered-map (Insertion-ordered map from the standard library)
 
@@ -135,3 +137,4 @@ It is the least code and the least risk, and it is what production code should u
 - TypeScript: `Map` iterates in insertion order, so `delete` then `set` moves a key to the end. Find the oldest key with one iterator kept for the cache's whole life, not a fresh `keys().next()` per eviction. In V8 a deleted entry stays a hole at the front of the table until the next compaction, and every fresh iterator walks those holes again: that version grew like n^1.5 in this benchmark. The long-lived iterator is correct because Map iteration is live: it skips deleted entries and reaches keys added after it was created. Every key it has passed was evicted or moved to the end, so its next key is always the least recently used. With it, the approach runs about 1.2 times slower than the hand-built list.
 - Java: `new LinkedHashMap<>(16, 0.75f, true)` with an anonymous subclass overriding `removeEldestEntry`. `getOrDefault` also counts as an access in access-order mode. Prefer composition (a private field) over `extends LinkedHashMap`, which would expose every map method on the cache.
 - Kotlin: the same `LinkedHashMap` through an `object :` expression. `entries[key] ?: -1` covers the miss, and the override's parameter type is `MutableMap.MutableEntry<Int, Int>?` because it comes from Java.
+- Rust: the standard library has no insertion-ordered map (`indexmap` and `lru` are crates). The reference stamps each use with a counter and keeps a `BTreeMap` from stamp to key next to the `HashMap`, so `pop_first` returns the least recently used key. That is O(log capacity) per operation, not O(1); within one benchmark it still grows like the other optimal approaches.
