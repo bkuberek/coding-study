@@ -6,14 +6,10 @@ import pytest
 
 from coding_study.adapters.languages.rust.stub_generator import RustStubGenerator
 from coding_study.adapters.languages.rust.types import rust_type
-from coding_study.domain.errors import LanguageNotSetUpError
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.signature import FunctionSignature, Param, Returns
 from coding_study.domain.type_dsl import parse_return_type, parse_value_type
 from tests.stub_contract import GOLDENS, STUB_CASES, StubCase, check_stub, stub_cases
-
-PENDING_DECIMAL_AND_DATE = frozenset({"conformance-decimal-date-types"})
-"""Rust supports `decimal` and `date` once their crates are vendored (ADR 0012)."""
 
 
 def stub_meta(case_name: str) -> ProblemMeta:
@@ -26,8 +22,6 @@ def generate(case_name: str) -> str:
 
 @stub_cases
 def test_rust_stub(stub_case: StubCase):
-    if stub_case.name in PENDING_DECIMAL_AND_DATE:
-        pytest.skip("decimal and date are not supported in Rust yet")
     check_stub(Language.RUST, stub_case, RustStubGenerator().generate(stub_case.meta))
 
 
@@ -47,6 +41,8 @@ def test_rust_stub(stub_case: StubCase):
         ("TreeNode", "Option<Rc<RefCell<TreeNode>>>"),
         ("list<TreeNode>", "Vec<Option<Rc<RefCell<TreeNode>>>>"),
         ("GraphNode", "Option<Rc<RefCell<GraphNode>>>"),
+        ("decimal", "Decimal"),
+        ("list<date>", "Vec<NaiveDate>"),
         ("void", ""),
     ],
 )
@@ -54,11 +50,19 @@ def test_rust_types_follow_the_mapping_table(dsl, expected):
     assert rust_type(parse_return_type(dsl)) == expected
 
 
-def test_decimal_and_date_are_not_set_up_yet():
-    with pytest.raises(
-        LanguageNotSetUpError, match="rust support for decimal and date is not set up yet"
-    ):
-        generate("conformance-decimal-date-types")
+def test_decimal_and_date_import_their_crates_types():
+    stub = generate("conformance-decimal-date-types")
+    assert "use chrono::NaiveDate;\nuse rust_decimal::Decimal;\n\npub struct TypeEcho" in stub
+    assert "pub fn echo_decimal(&mut self, value: Decimal) -> Decimal {" in stub
+
+
+def test_crate_imports_share_one_group_in_rustfmt_order():
+    meta = stub_meta("invert-tree")
+    assert isinstance(meta.signature, FunctionSignature)
+    param = Param("since", parse_value_type("date"))
+    dated = replace(meta, signature=replace(meta.signature, params=(*meta.signature.params, param)))
+    stub = RustStubGenerator().generate(dated)
+    assert "use std::rc::Rc;\n\nuse chrono::NaiveDate;\nuse cs_support::TreeNode;\n" in stub
 
 
 def test_imports_only_the_node_types_used_after_rc_and_refcell():

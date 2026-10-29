@@ -132,6 +132,14 @@ def test_builds_the_problems_harness_package_offline_for_the_host(workspace):
     assert "profile.release.overflow-checks=true" in arguments
 
 
+def test_crates_resolve_from_the_vendored_directory_of_the_runtime(workspace):
+    cargo = FakeCargo()
+    prepare_user(workspace, cargo)
+    arguments = cargo.builds[0][0]
+    vendor = workspace / ".cs/runtime/runners/rust/vendor"
+    assert f'source.cstudy-vendor.directory="{vendor}"' in arguments
+
+
 def test_the_bridge_brings_in_the_users_file_by_its_path(workspace):
     prepare_user(workspace, FakeCargo())
     assert f'#[path = "{workspace}/rust/practice/two_sum.rs"]\nmod user;' in bridge(workspace)

@@ -38,6 +38,7 @@ mod bench;
 mod capture;
 mod clock;
 mod codec;
+mod decimal_date;
 mod events;
 mod harness;
 pub mod json;

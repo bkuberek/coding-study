@@ -2,8 +2,9 @@
 
 `prepare` generates the build in `.cs/build/rust`, a Cargo workspace with one harness package per
 problem and scope whose `main.rs` is the generated bridge, compiles it with
-`cargo build --offline --release --message-format=json`, and launches a copy of the binary that
-belongs to this run (`RunnerProcess` removes it when the run ends).
+`cargo build --offline --release --message-format=json`, crates.io replaced by the runtime's
+vendored crates, and launches a copy of the binary that belongs to this run (`RunnerProcess`
+removes it when the run ends).
 
 Compile errors in the user's or a reference file are a build failure (exit 2). Errors only in the
 bridge mean a target does not define what the signature declares: the build is repeated with
@@ -37,6 +38,7 @@ from coding_study.adapters.languages.rust.bridge import (
 from coding_study.adapters.languages.rust.build_files import (
     DEV,
     MANIFEST_FILE,
+    VENDOR_DIRECTORY,
     CompilerError,
     compiler_errors,
     executable,
@@ -44,6 +46,7 @@ from coding_study.adapters.languages.rust.build_files import (
     output_text,
     package_manifest,
     profile_arguments,
+    vendored_source_arguments,
     workspace_manifest,
     workspace_members,
 )
@@ -223,6 +226,7 @@ class RustRunner:
             *("--offline", *build.profile_options, "--message-format=json"),
             *("--target", self._host(), "-p", build.package),
             *(profile_arguments(DEV) if build.debug else profile_arguments()),
+            *vendored_source_arguments(self._runtime / VENDOR_DIRECTORY),
         ]
         environment = {"CARGO_TARGET_DIR": str(self._build_directory / TARGET_DIRECTORY)}
         for _ in range(BUILD_PASSES):

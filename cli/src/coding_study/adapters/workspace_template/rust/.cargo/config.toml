@@ -1,0 +1,7 @@
+# The crates of decimal and date (rust_decimal, chrono) resolve from the vendored copies in the
+# workspace's runner runtime, offline. cstudy's builds in .cs/build/rust pass the same setting.
+[source.crates-io]
+replace-with = "cstudy-vendor"
+
+[source.cstudy-vendor]
+directory = "../.cs/runtime/runners/rust/vendor"

@@ -20,10 +20,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from coding_study.adapters.languages.rust.types import (
-    SUPPORT_CRATE,
+    crate_imports,
     node_kinds,
     rust_type,
-    unsupported_scalars,
 )
 from coding_study.domain.language_limits import LIST_IDENTITY, names_list_nodes
 from coding_study.domain.naming import NameRole, member_name
@@ -115,10 +114,7 @@ def bridge_source(
 
 
 def unsupported_reason(signature: Signature, kind: ProblemKind) -> str | None:
-    """Why no target of `signature` can run in Rust yet, or None."""
-    missing = unsupported_scalars(signature)
-    if missing:
-        return f"rust does not support {' and '.join(missing)} yet"
+    """Why no target of `signature` can run in Rust, or None."""
     if names_list_nodes(signature):
         return LIST_IDENTITY
     if kind is ProblemKind.CONCURRENT and node_kinds(signature):
@@ -164,17 +160,11 @@ class _Lines:
 
 
 def _imports(signature: Signature) -> list[str]:
-    kinds = node_kinds(signature)
-    if not kinds:
+    crates = crate_imports(signature)
+    if not crates:
         return []
-    names = ", ".join(sorted(str(kind) for kind in kinds))
-    return [
-        "use std::cell::RefCell;",
-        "use std::rc::Rc;",
-        "",
-        f"use {SUPPORT_CRATE}::{{{names}}};",
-        "",
-    ]
+    standard = ["use std::cell::RefCell;", "use std::rc::Rc;", ""] if node_kinds(signature) else []
+    return [*standard, *crates, ""]
 
 
 def _unavailable_entry(unavailable: Unavailable) -> str:

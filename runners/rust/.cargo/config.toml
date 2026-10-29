@@ -1,0 +1,7 @@
+# `cargo test` here resolves crates.io dependencies from the vendored copies, offline. cstudy's own
+# builds pass the same source replacement with `--config` (docs/specs/runners.md#rust-build-details).
+[source.crates-io]
+replace-with = "cstudy-vendor"
+
+[source.cstudy-vendor]
+directory = "vendor"

@@ -25,6 +25,7 @@ PRACTICE_PROJECT_FILES = (
     "go/practice/.gitkeep",
     "go.work",
     "rust/Cargo.toml",
+    "rust/.cargo/config.toml",
     "rust/lib.rs",
     "rust/practice/.gitkeep",
 )

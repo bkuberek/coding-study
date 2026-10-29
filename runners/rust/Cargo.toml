@@ -1,7 +1,8 @@
 # The Rust runner (docs/specs/runners.md#rust-build-details): `cs_runner`, the library every
 # generated bridge links, and `cs_support`, the node types that solutions and the runner share.
-# Both use the standard library only, so builds work offline. The workspace exists for
-# `cargo test` here; `cstudy` builds the crates as path dependencies of its own build workspace.
+# Their only dependencies are the vendored crates in vendor/, so builds work offline. The
+# workspace exists for `cargo test` here; `cstudy` builds the crates as path dependencies of its
+# own build workspace.
 [workspace]
 resolver = "2"
 members = ["cs_runner", "cs_support"]

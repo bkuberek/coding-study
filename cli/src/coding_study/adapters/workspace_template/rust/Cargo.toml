@@ -2,7 +2,9 @@
 # Each problem is practice/<snake_slug>.rs, an example built as a library crate of its own, so a
 # broken problem never blocks another and rust-analyzer checks each one. `cstudy start --lang rust`
 # writes the file and adds its [[example]] at the end of this file. cs_support (ListNode, TreeNode,
-# GraphNode) comes from the workspace's runner runtime, which `cstudy doctor --fix` restores.
+# GraphNode) comes from the workspace's runner runtime, which `cstudy doctor --fix` restores, and
+# so do the crates of decimal and date: .cargo/config.toml points crates.io at the runtime's
+# vendored copies, so nothing is downloaded.
 [package]
 name = "practice"
 version = "0.0.0"
@@ -18,3 +20,5 @@ path = "lib.rs"
 
 [dev-dependencies]
 cs_support = { path = "../.cs/runtime/runners/rust/cs_support" }
+chrono = { version = "=0.4.45", default-features = false, features = ["std"] }
+rust_decimal = { version = "=1.43.0", default-features = false, features = ["maths"] }

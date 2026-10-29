@@ -111,11 +111,12 @@ def test_identity_on_list_nodes_is_unsupported():
     assert 'error_type: "UnsupportedType"' in text(signature)
 
 
-def test_decimal_and_date_are_unsupported_yet():
-    reason = unsupported_reason(
-        stub_signature("conformance-decimal-date-types"), ProblemKind.DESIGN
-    )
-    assert reason == "rust does not support decimal and date yet"
+def test_decimal_and_date_are_spelled_with_their_crates_types():
+    signature = stub_signature("conformance-decimal-date-types")
+    assert unsupported_reason(signature, ProblemKind.DESIGN) is None
+    bridge = text(signature)
+    assert "use chrono::NaiveDate;\nuse rust_decimal::Decimal;\n" in bridge
+    assert 'let arg_value: Vec<NaiveDate> = args.at(0, "value")?;' in bridge
 
 
 def test_node_types_are_unsupported_in_concurrent_problems():

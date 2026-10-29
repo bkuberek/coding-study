@@ -48,3 +48,7 @@ Four constraints shaped the answer:
 | A `Date` at UTC midnight for a TypeScript date | `new Date(2024, 0, 1)` is not UTC midnight outside UTC, so a correct-looking solution would fail on the owner's machine, and `Date` is mutable |
 | A Temporal polyfill | A heavy dependency with the same resolution problem |
 | Money as an `int` of cents | The candidate never meets `Decimal`, `BigDecimal` or their rounding modes, which is what the practical problems exercise |
+
+## Amendments
+
+- **Go and Rust (2026-10-29).** [ADR 0012](0012-go-and-rust.md) maps `decimal` to shopspring/decimal's `decimal.Decimal` in Go and `rust_decimal::Decimal` in Rust, and `date` to a `time.Time` at midnight in `time.UTC` and chrono's `NaiveDate`. Both libraries are vendored, so the no-download property of the TypeScript runner holds. The encoders are strict and canonical as above: Go writes a decimal from its coefficient and exponent, because `String` follows package settings a solution may change, and every Go case starts with the library's default settings, like Python's fresh context; Rust writes `normalize()`. Neither library has the TypeScript `Decimal`'s method names; [problem-format](../specs/problem-format.md#decimal-and-date) maps each member and rounding mode to their calls.

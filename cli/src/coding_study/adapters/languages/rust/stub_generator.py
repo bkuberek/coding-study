@@ -3,21 +3,21 @@
 Types follow the Rust column of docs/specs/problem-format.md#go-and-rust-mapping, the way
 LeetCode writes them: owned parameters, `&mut` for an `output_from` parameter, `pub struct` with
 `pub fn new(...) -> Self` and `&mut self` methods (`&self` for concurrent problems, whose
-instance threads share). Node types come from the `cs_support` crate and are imported only when
-the signature uses them, after the `Rc` and `RefCell` imports that trees and graphs need. The
+instance threads share). Node types come from the `cs_support` crate, `decimal` is
+`rust_decimal::Decimal` and `date` is `chrono::NaiveDate`; each is imported only when the
+signature uses it, in one group after the `Rc` and `RefCell` imports that trees and graphs need.
+The
 text is already rustfmt-clean, including rustfmt's split of a signature longer than 100
 characters, so no formatter needs to run.
 """
 
 from coding_study.adapters.languages.rust.types import (
     SHARED_NODES,
-    SUPPORT_CRATE,
+    crate_imports,
     node_kinds,
     rust_type,
-    unsupported_scalars,
 )
 from coding_study.domain.concurrency import model_text
-from coding_study.domain.errors import LanguageNotSetUpError
 from coding_study.domain.layout import statement_path
 from coding_study.domain.naming import NameRole, member_name
 from coding_study.domain.problem import Language, ProblemMeta
@@ -35,10 +35,6 @@ class RustStubGenerator:
     """`StubGenerator` for `rust/practice/<snake_slug>.rs`."""
 
     def generate(self, meta: ProblemMeta) -> str:
-        """Raises LanguageNotSetUpError for a signature with `decimal` or `date`."""
-        missing = unsupported_scalars(meta.signature)
-        if missing:
-            raise LanguageNotSetUpError(Language.RUST, f"support for {' and '.join(missing)}")
         lines = [_header(meta)]
         if meta.concurrency is not None:
             lines.append(f"// Concurrency: {model_text(meta.concurrency, Language.RUST)}")
@@ -56,13 +52,11 @@ def _header(meta: ProblemMeta) -> str:
 
 
 def _imports(meta: ProblemMeta) -> list[str]:
-    kinds = node_kinds(meta.signature)
-    if not kinds:
+    crates = crate_imports(meta.signature)
+    if not crates:
         return []
-    lines = ["", *STD_IMPORTS] if kinds & SHARED_NODES else []
-    names = sorted(str(kind) for kind in kinds)
-    used = names[0] if len(names) == 1 else "{" + ", ".join(names) + "}"
-    return [*lines, "", f"use {SUPPORT_CRATE}::{used};"]
+    standard = ["", *STD_IMPORTS] if node_kinds(meta.signature) & SHARED_NODES else []
+    return [*standard, "", *crates]
 
 
 def _function(signature: FunctionSignature) -> list[str]:

@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from coding_study.adapters import workspace_setup
 from coding_study.adapters.languages.rust.bridge import Unavailable
 from coding_study.adapters.languages.rust.build_files import (
     DEV,
@@ -17,9 +18,12 @@ from coding_study.adapters.languages.rust.build_files import (
     load_error,
     package_manifest,
     profile_arguments,
+    vendored_source_arguments,
     workspace_manifest,
     workspace_members,
 )
+from coding_study.adapters.workspace_setup import TEMPLATE_DIRECTORY
+from tests.helpers import REPOSITORY_ROOT
 
 RECORDED = Path(__file__).parent / "recorded"
 ROOT = Path("/ws")
@@ -135,6 +139,43 @@ def test_a_harness_package_links_the_runner_crates_of_the_runtime():
     assert document["dependencies"]["cs_runner"] == {
         "path": "../../../runtime/runners/rust/cs_runner"
     }
+
+
+def test_a_harness_package_depends_on_the_crates_of_decimal_and_date_as_the_runner_does():
+    harness = tomllib.loads(package_manifest("test_two_sum", "../../../runtime/runners/rust"))
+    runner = tomllib.loads((REPOSITORY_ROOT / "runners/rust/cs_runner/Cargo.toml").read_text())
+    for crate in ("chrono", "rust_decimal"):
+        assert harness["dependencies"][crate] == runner["dependencies"][crate]
+
+
+def test_the_practice_project_resolves_the_same_crates_from_the_runtime():
+    template = Path(workspace_setup.__file__).parent / TEMPLATE_DIRECTORY / "rust"
+    practice = tomllib.loads((template / "Cargo.toml").read_text())
+    runner = tomllib.loads((REPOSITORY_ROOT / "runners/rust/cs_runner/Cargo.toml").read_text())
+    for crate in ("chrono", "rust_decimal"):
+        assert practice["dev-dependencies"][crate] == runner["dependencies"][crate]
+    config = tomllib.loads((template / ".cargo/config.toml").read_text())
+    assert config["source"]["crates-io"]["replace-with"] == "cstudy-vendor"
+    assert config["source"]["cstudy-vendor"]["directory"] == "../.cs/runtime/runners/rust/vendor"
+
+
+def test_crates_io_is_replaced_by_the_vendored_directory():
+    arguments = vendored_source_arguments(Path("/ws/.cs/runtime/runners/rust/vendor"))
+    assert arguments == [
+        "--config",
+        'source.crates-io.replace-with="cstudy-vendor"',
+        "--config",
+        'source.cstudy-vendor.directory="/ws/.cs/runtime/runners/rust/vendor"',
+    ]
+
+
+def test_every_locked_crate_is_vendored():
+    lock = tomllib.loads((REPOSITORY_ROOT / "runners/rust/Cargo.lock").read_text())
+    vendor = REPOSITORY_ROOT / "runners/rust/vendor"
+    for package in lock["package"]:
+        if "source" in package:
+            manifest = tomllib.loads((vendor / package["name"] / "Cargo.toml").read_text())
+            assert manifest["package"]["version"] == package["version"]
 
 
 def test_the_release_profile_keeps_the_symbols_and_debug_info_of_this_platform():

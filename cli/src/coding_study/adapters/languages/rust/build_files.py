@@ -52,6 +52,15 @@ variable; overflows and panics behave as in the release profile. Pinned the same
 RELEASE = "release"
 DEV = "dev"
 PROFILES: Mapping[str, Mapping[str, str]] = {RELEASE: RELEASE_PROFILE, DEV: DEV_PROFILE}
+VENDOR_DIRECTORY = "vendor"
+"""The vendored crates inside the runtime's `rust/` directory (runners/rust/vendor/README.md)."""
+VENDORED_SOURCE = "cstudy-vendor"
+DECIMAL_DATE_CRATES: Mapping[str, str] = {
+    "chrono": '{ version = "=0.4.45", default-features = false, features = ["std"] }',
+    "rust_decimal": '{ version = "=1.43.0", default-features = false, features = ["maths"] }',
+}
+"""The crates of `decimal` and `date`, declared as `cs_runner` declares them. A solution is a
+module of the harness crate, so the harness depends on them directly for its `use` lines."""
 SYMBOL_CODES = frozenset({"E0412", "E0422", "E0425", "E0433", "E0583", "E0599", "E0603", "E0624"})
 """Errors that mean the target does not define a symbol the bridge calls (or keeps it private)."""
 PRIVATE_CODES = frozenset({"E0603", "E0624"})
@@ -122,12 +131,13 @@ def workspace_manifest(members: list[str]) -> str:
 def package_manifest(name: str, runtime: str) -> str:
     """A harness package `name` whose `main.rs` is the bridge; `runtime` is the relative path to
     the runner runtime's `rust/` directory."""
+    crates = "".join(f"{crate} = {spec}\n" for crate, spec in DECIMAL_DATE_CRATES.items())
     return (
         f'# {GENERATED_HEADER.removeprefix("// ")}\n[package]\nname = "{name}"\n'
         f'version = "0.0.0"\nedition = "{EDITION}"\npublish = false\n\n'
         f'[[bin]]\nname = "{name}"\npath = "main.rs"\n\n[dependencies]\n'
         f'cs_runner = {{ path = "{runtime}/cs_runner" }}\n'
-        f'cs_support = {{ path = "{runtime}/cs_support" }}\n'
+        f'cs_support = {{ path = "{runtime}/cs_support" }}\n{crates}'
     )
 
 
@@ -136,6 +146,17 @@ def profile_arguments(profile: str = RELEASE) -> list[str]:
         argument
         for key, value in PROFILES[profile].items()
         for argument in ("--config", f"profile.{profile}.{key}={value}")
+    ]
+
+
+def vendored_source_arguments(vendor: Path) -> list[str]:
+    """Resolve crates.io from the vendored copies in `vendor`, offline; like the profile, these
+    outrank whatever source a user's `config.toml` sets."""
+    return [
+        "--config",
+        f'source.crates-io.replace-with="{VENDORED_SOURCE}"',
+        "--config",
+        f"source.{VENDORED_SOURCE}.directory={json.dumps(str(vendor))}",
     ]
 
 

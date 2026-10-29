@@ -10,3 +10,7 @@ path = "src/lib.rs"
 
 [dependencies]
 cs_support = { path = "../cs_support" }
+# The types of `decimal` and `date`, vendored in ../vendor (see its README.md). Exact versions,
+# no default features: those would pull serde, the system clock and their dependencies.
+chrono = { version = "=0.4.45", default-features = false, features = ["std"] }
+rust_decimal = { version = "=1.43.0", default-features = false, features = ["maths"] }
