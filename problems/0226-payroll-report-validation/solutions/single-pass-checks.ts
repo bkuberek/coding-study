@@ -32,8 +32,9 @@ function checkPeriodStart(value: string): string {
     return reason;
   }
   // Date.parse rolls 2026-02-30 over to 2 March, so a real day must survive a round trip.
+  // Year 0000 round-trips too, but it is not a real day (years run 0001 to 9999).
   const millis = Date.parse(value);
-  if (Number.isNaN(millis) || new Date(millis).toISOString().slice(0, 10) !== value) {
+  if (value.startsWith("0000") || Number.isNaN(millis) || new Date(millis).toISOString().slice(0, 10) !== value) {
     return "invalid";
   }
   return value >= FIRST_DAY && value <= LAST_DAY ? "" : "out-of-range";

@@ -54,6 +54,7 @@ class Solution {
         if (reason.isNotEmpty()) return reason
         // Strict parse: 2026-02-30 fails instead of rolling over.
         val day = runCatching { LocalDate.parse(value) }.getOrNull() ?: return "invalid"
+        if (day.year < 1) return "invalid" // LocalDate accepts year 0, but real days start in year 1
         return if (day < FIRST_DAY || day > LAST_DAY) "out-of-range" else ""
     }
 }

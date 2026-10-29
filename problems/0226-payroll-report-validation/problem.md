@@ -13,7 +13,7 @@ Rules, applied to every row:
 3. `contractorId` is 1 to 20 characters, each one of `a` to `z`, `0` to `9` or `-`; otherwise it is `invalid`.
 4. `classCode` is exactly four digits; otherwise it is `invalid`.
 5. `payroll` is one or more digits, optionally followed by a point and one or two digits; otherwise it is `invalid`. A well-formed payroll is `out-of-range` unless it is greater than 0 and at most 1,000,000,000.
-6. `periodStart` has the form `YYYY-MM-DD` (four, two and two digits) and names a real calendar day; otherwise it is `invalid`. A real day is `out-of-range` unless it lies between `2000-01-01` and `2099-12-31`.
+6. `periodStart` has the form `YYYY-MM-DD` (four, two and two digits) and names a real calendar day in the years 0001 to 9999; otherwise it is `invalid`. Year `0000` is therefore `invalid`. A real day is `out-of-range` unless it lies between `2000-01-01` and `2099-12-31`.
 7. A row is a `duplicate` when its `contractorId`, `classCode` and `periodStart` all passed their rules, and an earlier row whose same three fields passed has the same three values. Add `<row>:row:duplicate`. The payroll does not matter.
 
 ## Input

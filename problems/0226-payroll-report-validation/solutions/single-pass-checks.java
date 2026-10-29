@@ -72,6 +72,9 @@ public class Solution {
         } catch (DateTimeException e) {
             return "invalid";
         }
+        if (day.getYear() < 1) {
+            return "invalid"; // LocalDate accepts year 0, but real days start in year 1
+        }
         return day.isBefore(FIRST_DAY) || day.isAfter(LAST_DAY) ? "out-of-range" : "";
     }
 }
