@@ -51,6 +51,8 @@ It needs no memory and is easy to verify, which makes it a good oracle. It compa
 - TypeScript: `char[][]` arrives as `string[][]` of one-character strings; integer division needs `Math.floor`.
 - Java: `char[][]` cells compare with `==` as primitives.
 - Kotlin: `Array<CharArray>`; `Char` comparisons with `==` and `!=` work on values.
+- Go: a `char[][]` is `[][]rune`, and a rune compares with `==` against the rune constant `'.'`; the three-way test for the box cell is written out as `boxRow != row || boxColumn != column`, since Go has no tuple comparison.
+- Rust: the board is `Vec<Vec<char>>`, passed on as `&[Vec<char>]`; `(box_row, box_column) != (row, column)` compares the two coordinate tuples directly. The loops index with `usize`, so `row - row % BOX` cannot go negative.
 
 ## Approach: hash-sets (One pass with a set per row, column and box)
 
@@ -91,6 +93,8 @@ The standard interview answer: one pass, easy to explain, and it generalizes to 
 - TypeScript: `Array.from({ length: 9 }, () => new Set<string>())` for the same reason; `Math.floor` for the box index.
 - Java: lists of `HashSet<Character>`; the three `add` calls short-circuit, which is fine because any failure returns `false` immediately.
 - Kotlin: `List(9) { HashSet<Char>() }` calls the initializer once per set.
+- Go: an array of 9 maps, `[9]map[rune]bool`, holds the sets, but the maps start nil and writing to a nil map panics, so a loop creates each one first. Reading a missing key gives `false`, which doubles as the membership test.
+- Rust: `vec![HashSet::new(); SIDE]` clones an empty set into every slot, and `HashSet::insert` returns `false` for a digit already present, so one call checks and adds; the short-circuiting `||` may leave the later sets without the digit, which is fine because the function returns `false` right away.
 
 ## Approach: bitmask (One pass with a bit mask per row, column and box)
 
@@ -131,3 +135,5 @@ Fastest and smallest, with no allocation beyond three small arrays. Slightly les
 - TypeScript: `Number(cell)` converts the character; bitwise operators work on 32-bit integers, and an `Int32Array` keeps the masks unboxed.
 - Java: `cell - '1'` turns the character into a shift distance directly; parenthesize `(a & bit) != 0`, because `!=` binds tighter than `&` in Java.
 - Kotlin: bit operations are the infix functions `shl`, `or` and `and`; infix calls bind tighter than `!=`, but the reference parenthesizes the test for clarity.
+- Go: `1 << (digit - '1')` shifts by a `rune`, which Go allows for any integer type (a negative count would panic), and the untyped `1` takes the type `int` from the mask it is combined with. Unlike Java and C, `&` binds tighter than `!=` in Go, so `(...)&bit != 0` needs no parentheses around the `&` test.
+- Rust: the masks are `u16` arrays and `digit.to_digit(10)` converts the `char` to a `u32` shift count. `&` binds tighter than `!=` in Rust, too, so `(rows | columns | boxes) & bit != 0` needs no extra parentheses.
