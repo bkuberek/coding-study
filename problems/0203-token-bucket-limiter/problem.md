@@ -56,7 +56,7 @@ The bucket is emptied at second 1. Two seconds later it has earned 4 tokens; muc
 - The same elapsed time is never counted twice, so two workers that refill at the same moment add tokens once.
 - The bucket never holds a negative number of tokens, and no request is granted unless the bucket held its full cost at that moment.
 
-Java and Kotlin run on platform threads and on virtual threads, and Python on threads. A passing stress run is evidence of correct synchronization, not proof.
+Java and Kotlin run on platform threads and on virtual threads, Python and Rust on threads, and Go on goroutines. In Rust the threads share one bucket, so its methods take `&self`. A passing stress run is evidence of correct synchronization, not proof.
 
 ## Follow-ups
 

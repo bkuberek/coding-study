@@ -49,6 +49,8 @@ It is short, obviously correct and fast enough for nearly every service: an unco
 - Java: a `ReentrantLock` with `try`/`finally`, which does not pin virtual threads, unlike `synchronized` on JDK 21. The fields need no `volatile`: the lock's acquire and release order every access.
 - Kotlin: the same JDK lock with `withLock { }`. A coroutine version would guard the same two fields with a `kotlinx.coroutines.sync.Mutex`, or confine the bucket to one coroutine that serves requests from a `Channel`; coroutines are not autograded here.
 - Python: one `threading.Lock`. Each line of the refill is atomic under the GIL, but the sequence of lines is not: a thread can be switched out between updating `_stored` and `_last_refill`, so the lock is required.
+- Go: one `sync.Mutex` with `defer b.mu.Unlock()`; the refill is a helper that runs with the mutex held.
+- Rust: the two fields in a `Mutex`, and a refill helper that takes the guard's `&mut` state, so it can only run with the lock held. The threads share the bucket, so the methods take `&self`.
 
 ## Approach: cas-state (Compare-and-set on an immutable state)
 
@@ -89,12 +91,15 @@ No thread ever blocks, so a preempted worker cannot hold everyone up, and uncont
 - Java: a private `record State(long stored, long lastRefill)` in an `AtomicReference<State>`. The same pattern works on virtual threads, which never park in it.
 - Kotlin: a private class in an `AtomicReference`; `atomicfu` or `kotlin.concurrent.atomics` offer the same compare-and-set. In coroutines, a lock-free state like this needs no `Mutex` at all, since the compare-and-set loop never suspends.
 - Python has no reference for this approach: the standard library has no compare-and-set on object references.
+- Go and Rust have no reference for this approach. Go would keep a pointer to an immutable state in an `atomic.Pointer[state]` and loop on `CompareAndSwap`; Rust's standard library has no safe atomic swap of a heap value (`AtomicPtr` leaves freeing the replaced state to the caller), so the two fields would be packed into one `AtomicU64`, or kept behind a `Mutex`, which is the `locked` approach.
 
 ## Broken: no-lock (Refill and take without a lock)
 
 ### Bug
 
 Nothing is synchronized. Two workers that refill at about the same time both read the old `lastRefill` and both add the tokens for the same seconds; on the JVM, concurrent `stored -= tokens` updates also overwrite each other. Either way the bucket grants more than it earned, which breaks the `conserved` check: granted plus remaining exceeds capacity plus refills.
+
+In Go the fields are plain `int64`s that goroutines read and write at once. Safe Rust has no unsynchronized field to share, so its version keeps `stored` and `lastRefill` in two `AtomicI64`s: each load and store is atomic, but the refill and the take are still separate loads and stores, and they lose updates the same way.
 
 ### Failing interleaving
 
@@ -112,6 +117,8 @@ Hold one lock across the refill, the check and the take, as in the `locked` appr
 ### Bug
 
 The take is locked, but the refill runs before the lock is taken, on the reasoning that it "only does arithmetic on time". It still reads and writes `stored` and `lastRefill`, so refills race with each other (counting the same seconds twice) and with the locked take (a refill computed from a stale `stored` overwrites a take that happened in between, giving the tokens back). `volatile` makes the fields visible across threads, but does not make the read-compute-write sequence atomic. The `conserved` check fails.
+
+The Go version refills plain fields before `TryAcquire` locks its mutex. The Rust version has the same shape with atomics in place of `volatile`: the fields are `AtomicI64`s that the refill loads and stores outside the mutex, while the take loads, checks and stores them inside it.
 
 ### Failing interleaving
 
