@@ -22,6 +22,7 @@ from coding_study.domain.stress import (
     EqualMultisets,
     Pick,
     RandomInteger,
+    Repeat,
     Selector,
     StressScenario,
 )
@@ -83,6 +84,23 @@ def test_one_model_string_applies_to_every_language(root):
     edit_meta(root, threads_only)
     models = load(root).meta.concurrency.models  # type: ignore[union-attr]
     assert set(models.values()) == {ConcurrencyModel.THREADS}
+
+
+def test_go_and_rust_take_a_model_and_a_repeat_of_their_own(root):
+    def go_and_rust(meta: dict[str, Any]) -> None:
+        meta["languages"] = [*meta["languages"], "go", "rust"]
+        meta["concurrency"]["model"].update(go="threads", rust="threads")
+
+    def repeats(case: dict[str, Any]) -> None:
+        case["stress"]["workers"][0]["repeat"] = {"default": 500, "go": 300, "rust": 200}
+
+    edit_meta(root, go_and_rust)
+    edit_stress(root, repeats)
+    problem = load(root)
+    models = problem.meta.concurrency.models  # type: ignore[union-attr]
+    repeat = scenario(problem).workers[0].repeat
+    assert (models[Language.GO], models[Language.RUST]) == (ConcurrencyModel.THREADS,) * 2
+    assert repeat == Repeat(500, {Language.GO: 300, Language.RUST: 200})
 
 
 def test_jvm_threads_are_read(root):

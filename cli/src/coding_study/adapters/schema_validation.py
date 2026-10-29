@@ -3,7 +3,7 @@
 import json
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Self, cast
 
 from jsonschema import Draft202012Validator, ValidationError
 from jsonschema.protocols import Validator
@@ -43,7 +43,17 @@ class SchemaValidator:
 
 
 def _to_issue(error: ValidationError, source: str) -> ContentIssue:
-    return ContentIssue(source, _location(error.json_path), _truncate(error.message))
+    return ContentIssue(source, _location(error.json_path), _truncate(_message(error)))
+
+
+def _message(error: ValidationError) -> str:
+    """A `contains` of a single constant says which constant the list lacks."""
+    required = cast(object, error.validator_value)
+    if error.validator == "contains" and isinstance(required, dict):
+        constants = cast(dict[str, Any], required)
+        if list(constants) == ["const"]:
+            return f"must include {json.dumps(constants['const'])}"
+    return error.message
 
 
 def _location(json_path: str) -> str:

@@ -55,6 +55,7 @@ from coding_study.domain.judging import (
 from coding_study.domain.layout import SOURCE_EXTENSIONS
 from coding_study.domain.problem import (
     CORE_LANGUAGES,
+    OPTIONAL_LANGUAGES,
     Language,
     Problem,
     ProblemMeta,
@@ -252,8 +253,9 @@ def _duplicate_issues(environment: Environment) -> dict[str, tuple[str, ...]]:
 def _coverage(
     problems: Sequence[ProblemVerification], only: Language | None
 ) -> tuple[Coverage, ...]:
-    languages = (only,) if only else CORE_LANGUAGES
     loaded = [(problem, problem.meta) for problem in problems if problem.meta is not None]
+    listed_anywhere = {language for _, meta in loaded for language in meta.languages}
+    languages = (only,) if only else _coverage_languages(listed_anywhere)
     return tuple(
         Coverage(
             language,
@@ -262,6 +264,11 @@ def _coverage(
         )
         for language in languages
     )
+
+
+def _coverage_languages(listed: set[Language]) -> tuple[Language, ...]:
+    """The core languages, then each optional language that some problem lists."""
+    return (*CORE_LANGUAGES, *(language for language in OPTIONAL_LANGUAGES if language in listed))
 
 
 class _ProblemVerifier:

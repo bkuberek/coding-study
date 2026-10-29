@@ -41,6 +41,29 @@ def test_fixture_meta_is_valid(directory_name):
     assert validator_for_meta_file().violations(load_fixture_meta(directory_name), SOURCE) == []
 
 
+CORE = ["python", "typescript", "java", "kotlin"]
+
+
+@pytest.mark.parametrize(
+    "languages",
+    [CORE, [*CORE, "go"], [*CORE, "rust"], [*CORE, "go", "rust"], ["go", *CORE, "rust"]],
+    ids=["core", "go", "rust", "go and rust", "any order"],
+)
+def test_problems_list_the_core_languages_and_may_add_go_and_rust(languages):
+    meta = load_fixture_meta("0001-two-sum")
+    meta["languages"] = languages
+    assert validator_for_meta_file().violations(meta, SOURCE) == []
+
+
+def test_a_missing_core_language_is_named():
+    meta = load_fixture_meta("0001-two-sum")
+    meta["languages"] = ["python", "typescript", "java", "go"]
+    issues = validator_for_meta_file().violations(meta, SOURCE)
+    assert [(issue.location, issue.message) for issue in issues] == [
+        ("languages", 'must include "kotlin"')
+    ]
+
+
 @pytest.mark.parametrize("directory_name", ["0001-two-sum", "0002-lru-cache"])
 def test_fixture_tests_are_valid(directory_name):
     assert validator_for_tests_file().violations(load_fixture_tests(directory_name), SOURCE) == []
@@ -70,6 +93,18 @@ INVALID_META: dict[str, tuple[Mutation, str]] = {
     "language subset outside concurrency": (
         lambda meta: meta.update(languages=["python"]),
         "languages",
+    ),
+    "language subset missing a core language": (
+        lambda meta: meta.update(languages=["python", "typescript", "java", "go"]),
+        "languages",
+    ),
+    "optional languages alone": (
+        lambda meta: meta.update(languages=["go", "rust"]),
+        "languages",
+    ),
+    "unknown language": (
+        lambda meta: meta.update(languages=["python", "typescript", "java", "kotlin", "scala"]),
+        "languages[4]",
     ),
     "levels on a function problem": (
         lambda meta: meta.update(levels=[{"level": 1, "title": "Basics"}]),

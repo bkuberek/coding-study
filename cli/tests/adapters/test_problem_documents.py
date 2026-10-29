@@ -15,6 +15,7 @@ from coding_study.domain.problem import (
     ComparatorSpec,
     ComparatorType,
     ComplexityClass,
+    Language,
     LeetCodeReference,
     ProblemKind,
     StubSource,
@@ -121,6 +122,16 @@ def test_applies_spec_defaults_for_omitted_fields():
         (),
         1000,
         None,
+    )
+
+
+def test_listed_languages_keep_go_and_rust_in_document_order():
+    document = load_fixture_meta("0001-two-sum")
+    document["languages"] = ["python", "typescript", "java", "kotlin", "rust", "go"]
+    assert meta_from_document(document, META_SOURCE).languages == (
+        *CORE_LANGUAGES,
+        Language.RUST,
+        Language.GO,
     )
 
 

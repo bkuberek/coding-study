@@ -28,11 +28,11 @@
       "items": { "$ref": "#/$defs/pattern" }
     },
     "languages": {
-      "description": "Default all 4; a subset is allowed only for the concurrency and debugging tracks",
+      "description": "Default the core four (python, typescript, java, kotlin), which every problem must list; go and rust are optional. The concurrency and debugging tracks may list any subset",
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": { "enum": ["python", "typescript", "java", "kotlin"] }
+      "items": { "$ref": "#/$defs/language" }
     },
     "signature": { "$ref": "#/$defs/signature" },
     "comparator": { "$ref": "#/$defs/comparator" },
@@ -111,7 +111,18 @@
     },
     {
       "if": { "required": ["track"], "properties": { "track": { "enum": ["concurrency", "debugging"] } } },
-      "else": { "properties": { "languages": { "minItems": 4 } } }
+      "else": {
+        "properties": {
+          "languages": {
+            "allOf": [
+              { "contains": { "const": "python" } },
+              { "contains": { "const": "typescript" } },
+              { "contains": { "const": "java" } },
+              { "contains": { "const": "kotlin" } }
+            ]
+          }
+        }
+      }
     },
     {
       "description": "Concurrent problems: a concurrency block, the ops comparator, no perf block and no complexity classes or oracle; every other kind declares complexity classes",
@@ -294,7 +305,7 @@
         "oracle": { "description": "At most one; must exist in Python", "type": "boolean" }
       }
     },
-    "language": { "enum": ["python", "typescript", "java", "kotlin"] },
+    "language": { "enum": ["python", "typescript", "java", "kotlin", "go", "rust"] },
     "concurrencyModel": { "enum": ["threads", "async"] },
     "perturb": {
       "description": "Interleaving widening; a stress case's perturb overrides it field by field",
@@ -324,7 +335,9 @@
                 "python": { "$ref": "#/$defs/concurrencyModel" },
                 "typescript": { "$ref": "#/$defs/concurrencyModel" },
                 "java": { "$ref": "#/$defs/concurrencyModel" },
-                "kotlin": { "$ref": "#/$defs/concurrencyModel" }
+                "kotlin": { "$ref": "#/$defs/concurrencyModel" },
+                "go": { "$ref": "#/$defs/concurrencyModel" },
+                "rust": { "$ref": "#/$defs/concurrencyModel" }
               }
             }
           ]

@@ -141,7 +141,9 @@
                 "python": { "type": "integer", "minimum": 1 },
                 "typescript": { "type": "integer", "minimum": 1 },
                 "java": { "type": "integer", "minimum": 1 },
-                "kotlin": { "type": "integer", "minimum": 1 }
+                "kotlin": { "type": "integer", "minimum": 1 },
+                "go": { "type": "integer", "minimum": 1 },
+                "rust": { "type": "integer", "minimum": 1 }
               }
             }
           ]
