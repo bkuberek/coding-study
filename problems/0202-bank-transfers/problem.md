@@ -60,7 +60,7 @@ Every method is called concurrently by many workers. No method waits for a condi
 - Progress: transfers between the same accounts in opposite directions, run at the same time, must all finish. A schedule in which two transfers wait for each other forever is a bug, and the stress tests report it as `STALLED`.
 - Transfers between unrelated accounts should not wait for each other; a single lock for the whole bank is correct but serializes every transfer.
 
-Java and Kotlin run on platform threads and on virtual threads, and Python on threads. A passing stress run is evidence of correct synchronization, not proof; a deadlock that needs a rare schedule may not show up in a few runs.
+Java and Kotlin run on platform threads and on virtual threads, Python and Rust on threads, and Go on goroutines. In Rust the threads share one bank, so its methods take `&self`. A passing stress run is evidence of correct synchronization, not proof; a deadlock that needs a rare schedule may not show up in a few runs.
 
 ## Follow-ups
 

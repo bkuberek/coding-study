@@ -44,6 +44,8 @@ It is simple and cannot deadlock, because there is only one lock. It also serial
 - Java: `synchronized` methods on the bank; on JDK 21 a virtual thread inside `synchronized` pins its carrier, which is correct but limits parallelism.
 - Kotlin: `ReentrantLock.withLock { }`, which does not pin virtual threads. With coroutines the same design is one `Mutex` with `withLock`, whose waiting suspends instead of blocking.
 - Python: one `threading.Lock`. The GIL alone does not make `check, subtract, add` one step, so the lock is required.
+- Go: one `sync.Mutex` with `defer b.mu.Unlock()` in every method.
+- Rust: a `Mutex<Vec<i64>>`; the guard is the only way to reach the balances, so no method can forget the lock. The threads share the bank, so the methods take `&self`.
 
 ## Approach: ordered-locks (One lock per account taken in index order)
 
@@ -90,12 +92,16 @@ Ordering by `System.identityHashCode` or object address is the textbook alternat
 - Java: an array of `ReentrantLock`, with nested `try`/`finally` blocks. Virtual threads park on `ReentrantLock` without pinning their carrier, unlike `synchronized` on JDK 21. `tryLock` with a timeout is the alternative cure for deadlock: back off and retry instead of ordering.
 - Kotlin: the same JDK locks with nested `withLock { }`, which unlock on every path. With coroutines, one `Mutex` per account works the same way; ordering matters just as much, because a suspended coroutine holding a `Mutex` blocks others exactly like a thread. Coroutines are not autograded here.
 - Python: a list of `threading.Lock`, nested `with` blocks for the two accounts, and `contextlib.ExitStack` to hold every lock in `total`. Under the GIL only one thread runs Python code at a time, but a thread can be switched out between taking its first and its second lock, so the deadlock is real.
+- Go: a slice of `sync.Mutex` and `defer` for each unlock. A `sync.Mutex` is not reentrant, so a transfer from an account to itself must lock it once; locking it twice blocks the goroutine forever, where Java's `ReentrantLock` would just count the second lock.
+- Rust: a `Vec<Mutex<i64>>`, so each balance is reachable only through its own guard. A transfer to the same account locks it once, since a `Mutex` locked twice on one thread never returns; for two accounts it locks the lower index first and then sorts the two guards into source and target. `total` collects every guard before it reads any balance.
 
 ## Broken: no-lock (Balances without a lock)
 
 ### Bug
 
 Balances are read and written without any mutual exclusion. Two transfers out of the same account both read the old balance and both write back their own result, so one withdrawal is lost and money is created; an auditor adding up the balances between a transfer's withdrawal and its deposit sees money in flight. The stress test catches it through the auditor's `total` (`bounds`) and through the final balances, whose `sum` no longer equals the starting total.
+
+In Go the balances are a plain `[]int64` that goroutines read and write at once. Safe Rust has no unsynchronized `i64` to share, so its version makes each balance an `AtomicI64`: every load and store is atomic, but the transfer loads, checks and stores in separate steps, which loses updates exactly the same way.
 
 ### Failing interleaving
 
@@ -112,7 +118,7 @@ Make the check and both updates one atomic step under the locks of both accounts
 
 ### Bug
 
-The transfer locks `fromAccount` first and `toAccount` second. Two transfers in opposite directions between the same accounts take the same two locks in opposite orders, so each can end up holding one lock while waiting for the other. Neither can ever continue: a deadlock, which the stress test reports as `STALLED` when its deadline passes.
+The transfer locks `fromAccount` first and `toAccount` second. Two transfers in opposite directions between the same accounts take the same two locks in opposite orders, so each can end up holding one lock while waiting for the other. Neither can ever continue: a deadlock, which the stress test reports as `STALLED` when its deadline passes. Go and Rust deadlock the same way: a goroutine waiting in `sync.Mutex.Lock` and a thread waiting in `Mutex::lock` cannot be interrupted, so the runner asks for a restart after the stall.
 
 ### Failing interleaving
 
