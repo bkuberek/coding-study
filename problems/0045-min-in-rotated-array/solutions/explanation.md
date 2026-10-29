@@ -42,6 +42,8 @@ Correct for any input, including arrays that are not rotated-sorted at all, and 
 - Python: `min(nums)` is the idiomatic one-liner and runs in C; the reference spells out the loop to show the work.
 - TypeScript: `Math.min(...nums)` spreads every element into arguments and can throw `RangeError` for very long arrays; a loop is safe.
 - Kotlin: `nums.min()` (Kotlin 1.7+ returns non-null for non-empty arrays and throws on empty) is the idiomatic version.
+- Go: `slices.Min(nums)` (Go 1.21 and newer) is the one-liner; it panics on an empty slice, which the constraints exclude.
+- Rust: `nums.iter().min()` returns an `Option<&i32>`, so the one-liner needs an `unwrap`; the reference spells out the loop.
 
 ## Approach: compare-with-right (Binary search against the right end)
 
@@ -80,3 +82,5 @@ It is short, has no special case for the unrotated array, and is the building bl
 
 - Kotlin: `nums.lastIndex` is `nums.size - 1`; `ushr 1` is the unsigned shift that floors the midpoint.
 - TypeScript and Java: `>>> 1` does the same. In Python `//` is enough because integers do not overflow.
+- Go: the midpoint is `low + (high-low)/2`; `high = middle` and `low = middle + 1` keep the range non-empty.
+- Rust: the indexes can be `usize`: `high = middle` never subtracts, and `nums.len() - 1` is safe because the array is not empty.
