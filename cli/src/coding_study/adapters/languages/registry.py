@@ -4,7 +4,7 @@ is the only reason to edit this file."""
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
-from coding_study.adapters.languages import go, jvm, python, typescript
+from coding_study.adapters.languages import go, jvm, python, rust, typescript
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.application.ports import LanguageRunner, StubGenerator
 from coding_study.domain.errors import LanguageNotSetUpError
@@ -54,5 +54,6 @@ LANGUAGES = LanguageRegistry(
             jvm.create_kotlin_stub_generator, jvm.create_kotlin_runner
         ),
         Language.GO: LanguageFactories(go.create_stub_generator, go.create_runner),
+        Language.RUST: LanguageFactories(rust.create_stub_generator, rust.create_runner),
     }
 )

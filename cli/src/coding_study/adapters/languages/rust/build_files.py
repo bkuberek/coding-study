@@ -1,0 +1,255 @@
+"""The Cargo side of the Rust build (docs/specs/runners.md#rust-build-details): the generated
+manifests, the release profile, and what `cargo build --message-format=json` reports.
+
+Diagnostics are classified by the primary span of each error-level message only. A call whose
+signature does not match gets a child note "function defined here" in the user's file, but the
+error itself is in the bridge, and only the bridge's errors become `load_error`s.
+"""
+
+import json
+import re
+from collections.abc import Iterator, Mapping
+from dataclasses import dataclass
+from pathlib import Path
+from typing import cast
+
+from coding_study.adapters.languages.rust.bridge import (
+    ARGUMENT_PREFIX,
+    GENERATED_HEADER,
+    Unavailable,
+)
+
+EDITION = "2021"
+MANIFEST_FILE = "Cargo.toml"
+WORKSPACE_SCOPES = ("test", "verify", "bench")
+"""Each scope is a directory of harness packages, one per problem."""
+RELEASE_PROFILE: Mapping[str, str] = {
+    "opt-level": "3",
+    "overflow-checks": "true",
+    "debug": '"line-tables-only"',
+    "panic": '"unwind"',
+}
+"""Optimized, so `--perf` numbers are real; an `i32` overflow panics instead of wrapping; line
+tables give traces their lines; panics unwind, so one case's panic is caught. The build passes
+these as `--config` too, which outranks a user's `config.toml`."""
+SYMBOL_CODES = frozenset({"E0412", "E0422", "E0425", "E0433", "E0583", "E0599", "E0603", "E0624"})
+"""Errors that mean the target does not define a symbol the bridge calls (or keeps it private)."""
+PRIVATE_CODES = frozenset({"E0603", "E0624"})
+LABELLED_CODES = frozenset({"E0308"})
+"""Errors whose primary span's label says what the message does not: `expected i32, found
+i64`."""
+SYMBOL_NOT_FOUND = "SymbolNotFound"
+SIGNATURE_MISMATCH = "SignatureMismatch"
+MAX_NOTES = 2
+_ERROR = "error"
+_NOTE_LEVELS = frozenset({"help", "note"})
+_COMPILER_MESSAGE = "compiler-message"
+_ARTIFACT = "compiler-artifact"
+_EXTERNAL_FILE = re.compile(r"^(/rustc/|<)")
+_EXPECTED_FOUND = re.compile(r"expected `(?P<expected>.+)`, found `(?P<found>.+)`")
+_ARGUMENT = re.compile(rf"(?:&mut )?{ARGUMENT_PREFIX}(?P<name>\w+)")
+_HELP = "help: "
+
+
+@dataclass(frozen=True, slots=True)
+class CompilerError:
+    path: Path
+    """The primary span's file, resolved against the directory `cargo build` ran in."""
+    line: int
+    column: int
+    code: str
+    message: str
+    label: str
+    notes: tuple[str, ...]
+    """`help: ...` and `note: ...` lines from the error's children."""
+    snippet: str = ""
+    """The source text the primary span marks."""
+
+    def shown(self, path: str) -> tuple[str, ...]:
+        """The error's lines with the file shown as `path`."""
+        code = f"[{self.code}]" if self.code else ""
+        repeated = self.label in self.message
+        label = (f"    {self.label}",) if self.label and not repeated else ()
+        notes = tuple(f"    {note}" for note in self.notes)
+        return (f"{path}:{self.line}:{self.column}: error{code}: {self.message}", *label, *notes)
+
+
+def workspace_members(build_directory: Path) -> list[str]:
+    """Every harness package in the build directory, as `<scope>/<snake_slug>`. Cargo takes a
+    glob that matches nothing as a path, so the members are listed one by one."""
+    return sorted(
+        manifest.parent.relative_to(build_directory).as_posix()
+        for scope in WORKSPACE_SCOPES
+        for manifest in (build_directory / scope).glob(f"*/{MANIFEST_FILE}")
+    )
+
+
+def workspace_manifest(members: list[str]) -> str:
+    listed = "".join(f'    "{member}",\n' for member in members)
+    profile = "".join(f"{key} = {value}\n" for key, value in RELEASE_PROFILE.items())
+    return (
+        f'# {GENERATED_HEADER.removeprefix("// ")}\n[workspace]\nresolver = "2"\n'
+        f"members = [\n{listed}]\n\n[profile.release]\n{profile}"
+    )
+
+
+def package_manifest(name: str, runtime: str) -> str:
+    """A harness package `name` whose `main.rs` is the bridge; `runtime` is the relative path to
+    the runner runtime's `rust/` directory."""
+    return (
+        f'# {GENERATED_HEADER.removeprefix("// ")}\n[package]\nname = "{name}"\n'
+        f'version = "0.0.0"\nedition = "{EDITION}"\npublish = false\n\n'
+        f'[[bin]]\nname = "{name}"\npath = "main.rs"\n\n[dependencies]\n'
+        f'cs_runner = {{ path = "{runtime}/cs_runner" }}\n'
+        f'cs_support = {{ path = "{runtime}/cs_support" }}\n'
+    )
+
+
+def profile_arguments() -> list[str]:
+    return [
+        argument
+        for key, value in RELEASE_PROFILE.items()
+        for argument in ("--config", f"profile.release.{key}={value}")
+    ]
+
+
+def compiler_errors(stdout: str, cwd: Path) -> tuple[CompilerError, ...]:
+    """Every error-level compiler message with a primary span; summaries such as `aborting due
+    to 2 previous errors` have none."""
+    errors: list[CompilerError] = []
+    for message in _messages(stdout, _COMPILER_MESSAGE):
+        diagnostic = _object(message.get("message"))
+        if diagnostic.get("level") != _ERROR:
+            continue
+        span = _primary_span(diagnostic)
+        if span is None:
+            continue
+        code = _object(diagnostic.get("code")).get("code")
+        errors.append(
+            CompilerError(
+                path=(cwd / str(span.get("file_name"))).resolve(),
+                line=_integer(span.get("line_start")),
+                column=_integer(span.get("column_start")),
+                code=code if isinstance(code, str) else "",
+                message=str(diagnostic.get("message", "")),
+                label=str(span.get("label") or ""),
+                notes=_notes(diagnostic),
+                snippet=_snippet(span),
+            )
+        )
+    return tuple(errors)
+
+
+def executable(stdout: str, name: str) -> Path | None:
+    """The binary `cargo build` reported for the bin target `name`."""
+    for artifact in _messages(stdout, _ARTIFACT):
+        target = _object(artifact.get("target"))
+        path = artifact.get("executable")
+        if target.get("name") == name and isinstance(path, str):
+            return Path(path)
+    return None
+
+
+def output_text(stdout: str, stderr: str) -> tuple[str, ...]:
+    """What `cargo build` said, for a failure that is not a compiler error: the rendered
+    messages and its own standard error."""
+    rendered = [
+        str(_object(message.get("message")).get("rendered") or "")
+        for message in _messages(stdout, _COMPILER_MESSAGE)
+    ]
+    return (*(line for text in rendered for line in text.splitlines()), *stderr.splitlines())
+
+
+def load_error(error: CompilerError, module: str, file_name: str) -> Unavailable:
+    """The `load_error` of a target whose bridge code did not compile, in the user's terms: the
+    bridge's module `user` is the file `two_sum.rs`, and a type mismatch says which side is the
+    user's."""
+    symbol = error.code in SYMBOL_CODES
+    message = _mismatch(error) or error.message
+    if symbol:
+        helps = (note.removeprefix(_HELP) for note in error.notes if note.startswith(_HELP))
+        message = "; ".join([message, *helps])
+    if error.code in PRIVATE_CODES:
+        message += "; declare it pub"
+    message = (
+        message.replace(f"module `{module}`", f"`{file_name}`")
+        .replace(f"`{module}::", "`")
+        .replace(f"{module}::", "")
+    )
+    return Unavailable(SYMBOL_NOT_FOUND if symbol else SIGNATURE_MISMATCH, message)
+
+
+def _mismatch(error: CompilerError) -> str | None:
+    """`E0308` as the bridge sees it: for an argument, rustc expects the user's parameter type and
+    finds the declared one; for the result, the other way round."""
+    found = _EXPECTED_FOUND.fullmatch(error.label) if error.code in LABELLED_CODES else None
+    if found is None:
+        return None
+    expected, actual = found["expected"], found["found"]
+    argument = _ARGUMENT.fullmatch(error.snippet)
+    if argument:
+        parameter = argument["name"]
+        return (
+            f"mismatched types: parameter `{parameter}` is `{expected}`, "
+            f"the signature declares `{actual}`"
+        )
+    return f"mismatched types: the result is `{actual}`, the signature declares `{expected}`"
+
+
+def _messages(stdout: str, reason: str) -> Iterator[dict[str, object]]:
+    for line in stdout.splitlines():
+        if not line.startswith("{"):
+            continue
+        try:
+            message: object = json.loads(line)
+        except ValueError:
+            continue
+        fields = _object(message)
+        if fields.get("reason") == reason:
+            yield fields
+
+
+def _object(value: object) -> dict[str, object]:
+    return cast("dict[str, object]", value) if isinstance(value, dict) else {}
+
+
+def _list(value: object) -> list[object]:
+    return cast("list[object]", value) if isinstance(value, list) else []
+
+
+def _integer(value: object) -> int:
+    return value if isinstance(value, int) else 0
+
+
+def _primary_span(diagnostic: dict[str, object]) -> dict[str, object] | None:
+    """The first primary span, followed out of a standard library macro to where it was
+    called."""
+    spans = [_object(span) for span in _list(diagnostic.get("spans"))]
+    span = next((span for span in spans if span.get("is_primary") is True), None)
+    while span is not None and _EXTERNAL_FILE.match(str(span.get("file_name", ""))):
+        caller = _object(_object(span.get("expansion")).get("span"))
+        span = caller or None
+    return span
+
+
+def _snippet(span: dict[str, object]) -> str:
+    lines = [_object(line) for line in _list(span.get("text"))]
+    if not lines:
+        return ""
+    first = lines[0]
+    text = str(first.get("text", ""))
+    start, end = _integer(first.get("highlight_start")), _integer(first.get("highlight_end"))
+    return text[max(start - 1, 0) : max(end - 1, 0)]
+
+
+def _notes(diagnostic: dict[str, object]) -> tuple[str, ...]:
+    notes: list[str] = []
+    for child in map(_object, _list(diagnostic.get("children"))):
+        level, text = child.get("level"), child.get("message")
+        if level not in _NOTE_LEVELS or not isinstance(text, str) or not text:
+            continue
+        spans = map(_object, _list(child.get("spans")))
+        replacement = next((s.get("suggested_replacement") for s in spans), None)
+        suffix = f": `{replacement}`" if isinstance(replacement, str) and replacement else ""
+        notes.append(f"{level}: {text}{suffix}")
+    return tuple(notes[:MAX_NOTES])

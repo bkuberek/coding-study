@@ -1,0 +1,5 @@
+{"reason": "compiler-artifact", "target": {"name": "build-script-build", "kind": ["custom-build"]}, "executable": null, "fresh": true}
+{"reason": "compiler-artifact", "target": {"name": "cs_support", "kind": ["lib"]}, "executable": null, "fresh": true}
+{"reason": "compiler-artifact", "target": {"name": "cs_runner", "kind": ["lib"]}, "executable": null, "fresh": true}
+{"reason": "compiler-message", "message": {"message": "cannot find value `nil` in this scope", "code": {"code": "E0425"}, "level": "error", "spans": [{"file_name": "{root}/rust/practice/two_sum.rs", "line_start": 11, "column_start": 5, "is_primary": true, "label": "not found in this scope", "suggested_replacement": null, "expansion": null, "text": [{"text": "    nil", "highlight_start": 5, "highlight_end": 8}]}], "children": []}}
+{"reason": "build-finished", "success": false}

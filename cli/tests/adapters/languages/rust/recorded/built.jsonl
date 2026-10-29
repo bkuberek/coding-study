@@ -1,0 +1,5 @@
+{"reason": "compiler-artifact", "target": {"name": "build-script-build", "kind": ["custom-build"]}, "executable": null, "fresh": true}
+{"reason": "compiler-artifact", "target": {"name": "cs_support", "kind": ["lib"]}, "executable": null, "fresh": true}
+{"reason": "compiler-artifact", "target": {"name": "cs_runner", "kind": ["lib"]}, "executable": null, "fresh": true}
+{"reason": "compiler-artifact", "target": {"name": "test_two_sum", "kind": ["bin"]}, "executable": "{root}/.cs/build/rust/target/aarch64-apple-darwin/release/test_two_sum", "fresh": true}
+{"reason": "build-finished", "success": true}

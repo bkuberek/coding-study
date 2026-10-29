@@ -11,7 +11,7 @@ from coding_study.adapters.languages.registry import (
 )
 from coding_study.application.ports import BuildScope, PrepareResult, ProgressNotice
 from coding_study.domain.errors import LanguageNotSetUpError
-from coding_study.domain.problem import CORE_LANGUAGES, Language, ProblemMeta
+from coding_study.domain.problem import Language, ProblemMeta
 
 CONTEXT = LanguageContext(workspace=Path("/ws"), runners=Path("/content/runners"))
 
@@ -33,23 +33,13 @@ def fake_registry() -> LanguageRegistry:
     return LanguageRegistry({Language.PYTHON: LanguageFactories(FakeStubGenerator, FakeRunner)})
 
 
-def test_every_core_language_is_registered():
-    assert LANGUAGES.languages >= frozenset(CORE_LANGUAGES)
+def test_every_language_is_registered():
+    assert LANGUAGES.languages == frozenset(Language)
 
 
-UNREGISTERED = sorted(frozenset(Language) - LANGUAGES.languages)
-
-
-@pytest.mark.parametrize("language", UNREGISTERED)
-def test_a_language_without_an_adapter_has_no_stub_generator_yet(language):
-    with pytest.raises(LanguageNotSetUpError, match=f"{language} stub generator is not set up yet"):
-        LANGUAGES.stub_generator(language)
-
-
-@pytest.mark.parametrize("language", UNREGISTERED)
-def test_a_language_without_an_adapter_has_no_runner_yet(language):
-    with pytest.raises(LanguageNotSetUpError, match=f"{language} runner is not set up yet"):
-        LANGUAGES.runner(language, CONTEXT)
+def test_a_language_without_an_adapter_has_no_stub_generator_yet():
+    with pytest.raises(LanguageNotSetUpError, match="kotlin stub generator is not set up yet"):
+        fake_registry().stub_generator(Language.KOTLIN)
 
 
 def test_creates_the_registered_stub_generator():

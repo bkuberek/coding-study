@@ -1,10 +1,8 @@
 """Running the `go` command for the Go runner's build (docs/specs/runners.md#go-build-details)."""
 
-import fcntl
 import os
 import subprocess
-from collections.abc import Generator, Mapping, Sequence
-from contextlib import contextmanager
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -79,16 +77,3 @@ def build_environment(inherited: Mapping[str, str], build: Mapping[str, str]) ->
     workspace settings, then the fixed settings, then `build`'s."""
     kept = {name: value for name, value in inherited.items() if name not in USER_GO_SETTINGS}
     return {**kept, **GO_ENVIRONMENT, **build}
-
-
-@contextmanager
-def exclusive(lock_file: Path) -> Generator[None]:
-    """Holds an exclusive lock on `lock_file` (created when missing), so two `cstudy` processes
-    never write the same generated files or build output at once."""
-    lock_file.parent.mkdir(parents=True, exist_ok=True)
-    descriptor = os.open(lock_file, os.O_RDWR | os.O_CREAT, 0o644)
-    try:
-        fcntl.flock(descriptor, fcntl.LOCK_EX)
-        yield
-    finally:
-        os.close(descriptor)

@@ -14,13 +14,16 @@ generation and the build hold an exclusive lock, and each process runs its own c
 which no other build overwrites.
 """
 
-import os
 import re
-import shutil
-import threading
 from dataclasses import dataclass
 from pathlib import Path
 
+from coding_study.adapters.languages.compiled_builds import (
+    exclusive,
+    private_copy,
+    relative,
+    write_if_changed,
+)
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.go.build_files import (
     REGISTRATION_FILE,
@@ -33,7 +36,7 @@ from coding_study.adapters.languages.go.build_files import (
     package_clause,
     registration_source,
 )
-from coding_study.adapters.languages.go.toolchain import GoToolchain, exclusive
+from coding_study.adapters.languages.go.toolchain import GoToolchain
 from coding_study.application.ports import (
     BenchCode,
     BuildFailed,
@@ -150,13 +153,13 @@ class GoRunner:
         return match.group(1) if match else DEFAULT_WORKSPACE_MODULE
 
     def _write_module_files(self) -> None:
-        project = _relative(self._project, self._build_directory)
-        runners = _relative(self._runners, self._build_directory)
-        _write_if_changed(
+        project = relative(self._project, self._build_directory)
+        runners = relative(self._runners, self._build_directory)
+        write_if_changed(
             self._build_directory / MODULE_FILE,
             f"module {BUILD_MODULE}\n\ngo {GO_VERSION}\n\nrequire {RUNNER_MODULE} v0.0.0\n",
         )
-        _write_if_changed(
+        write_if_changed(
             self._build_directory / WORK_FILE,
             f"go {GO_VERSION}\n\nuse (\n\t.\n\t{project}\n)\n\n"
             f"replace {RUNNER_MODULE} => {runners}\n",
@@ -187,7 +190,7 @@ class GoRunner:
             raise ContentError([ContentIssue(str(source.path), "", "reference file not found")])
         text = source.path.read_text(encoding="utf-8")
         target = self._root / reference_build_path(meta, source.approach_id, Language.GO)
-        _write_if_changed(target, text)
+        write_if_changed(target, text)
         approach = snake_case(source.approach_id)
         return GoPackage(
             f"{COMPILED_REFERENCE_PREFIX}/{source.approach_id}",
@@ -228,16 +231,16 @@ class GoRunner:
         overlay: dict[Path, Path] = {}
         for package in packages:
             source = registration_source(package, package.target_id not in unavailable)
-            _write_if_changed(package.registration, source)
+            write_if_changed(package.registration, source)
             if package.target_id == COMPILED_USER_TARGET:
                 virtual = self._root / stub_path(build.meta, Language.GO)
                 overlay[virtual.parent / REGISTRATION_FILE] = package.registration
         main = self._build_directory / "cmd" / build.scope / build.meta.snake_slug / "main.go"
-        _write_if_changed(main, main_source(packages, unavailable))
+        write_if_changed(main, main_source(packages, unavailable))
         arguments = ["-json"]
         if overlay:
             overlay_file = self._generated(build.meta) / "overlay.json"
-            _write_if_changed(overlay_file, overlay_document(overlay))
+            write_if_changed(overlay_file, overlay_document(overlay))
             arguments.append(f"-overlay={overlay_file}")
         package_path = f"./{main.parent.relative_to(self._build_directory).as_posix()}"
         return [*arguments, "-o", str(self._binary(build)), package_path]
@@ -274,20 +277,8 @@ class GoRunner:
         return self._build_directory / "bin" / build.scope / build.meta.snake_slug
 
     def _private_copy(self, build: _Build, binary: Path) -> Path:
-        """A copy of `binary` that only this process (and thread) runs, so a later build by
-        another process can never replace the file this one is about to start. Copies of
-        processes that ended are removed."""
         directory = self._build_directory / "run" / build.scope / build.meta.snake_slug
-        directory.mkdir(parents=True, exist_ok=True)
-        for stale in directory.iterdir():
-            if not _owner_alive(stale.name):
-                stale.unlink(missing_ok=True)
-        copy = directory / f"{os.getpid()}-{threading.get_ident()}"
-        temporary = copy.with_name(f".{copy.name}.tmp")
-        shutil.copyfile(binary, temporary)
-        temporary.chmod(0o755)
-        temporary.replace(copy)
-        return copy
+        return private_copy(binary, directory)
 
 
 def _registered_symbol(meta: ProblemMeta) -> str:
@@ -300,35 +291,8 @@ def _registered_symbol(meta: ProblemMeta) -> str:
     return constructor
 
 
-def _owner_alive(name: str) -> bool:
-    """Whether the process that owns a private copy `<pid>-<thread>` still runs."""
-    pid, _, _ = name.partition("-")
-    if not pid.isdigit():
-        return False
-    try:
-        os.kill(int(pid), 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
-
-
 def _read(path: Path) -> str:
     try:
         return path.read_text(encoding="utf-8")
     except OSError:
         return ""
-
-
-def _relative(path: Path, start: Path) -> str:
-    return Path(os.path.relpath(path, start)).as_posix()
-
-
-def _write_if_changed(path: Path, text: str) -> None:
-    """Unchanged files keep their timestamps (Go's cache keys on content, but editors and
-    watchers notice writes)."""
-    if path.is_file() and path.read_text(encoding="utf-8") == text:
-        return
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
