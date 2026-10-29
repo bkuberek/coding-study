@@ -42,6 +42,8 @@ It works on any grid, which makes it the oracle, but it treats sorted data as un
 
 - Kotlin: `matrix.any { row -> row.any { it == target } }` short-circuits like the nested loops; `IntArray.any` does not box.
 - Python: `any(target in row for row in matrix)` is the idiomatic one-liner, with `in` scanning each row in C.
+- Go: two nested `range` loops with an early `return`; `slices.Contains(row, target)` is the compact form of the inner loop.
+- Rust: `matrix.iter().any(|row| row.contains(&target))` short-circuits like the nested loops and scans every cell in the worst case.
 
 ## Approach: staircase (Walk from the top-right corner)
 
@@ -80,6 +82,8 @@ Slower than the flattened binary search here, but it needs only "rows sorted and
 
 - Kotlin: `matrix[0].lastIndex` is the last column; `when` with conditions keeps the three branches together.
 - All languages: the walk only reads cells, so Java and Kotlin `int[][]` / `Array<IntArray>` rows are accessed without copying.
+- Go: a tagless `switch` keeps the three cases together; the column is an `int` that reaches -1 when the target is smaller than the first column.
+- Rust: the column is an `i32` because it reaches -1, while a `usize` would panic on that subtraction; the row stays a `usize`. A `match` on `.cmp(&target)` covers the three outcomes.
 
 ## Approach: flattened (Binary search over the row-major order)
 
@@ -120,3 +124,5 @@ The fastest option and the expected answer. An equivalent alternative is two bin
 - Python: `divmod(middle, columns)` returns row and column in one call.
 - TypeScript: `/` is floating-point division, so the row needs `Math.floor(middle / columns)`; `%` on non-negative integers is exact.
 - Java and Kotlin: integer `/` and `%` give row and column directly; `>>> 1` / `ushr 1` floors the midpoint.
+- Go: integer `/` and `%` turn the flat index into a row and a column, and the product `m * n` is at most 10^5, far inside `int`.
+- Rust: the bounds are `i32` because `high` reaches -1 when the target is smaller than every cell; `(middle / columns) as usize` and `(middle % columns) as usize` index the nested vectors.
