@@ -47,6 +47,8 @@ It is the clearest statement of the problem and a reliable oracle, but it filter
 - TypeScript: the default `sort()` compares UTF-16 code units, which is alphabetical for lowercase letters.
 - Java: `subList` is a view, so the reference copies it into its own `ArrayList`.
 - Kotlin: `filter`, `sorted` and `take(3)` express the definition in one chain.
+- Go: Python's `[:3]` forgives a short list and a slice expression does not, so the cut is `matches[:min(shown, len(matches))]` with the `min` builtin. `slices.Sort` orders strings byte by byte, which is alphabetical for lowercase letters, and a nil `matches` slices to nil, which the encoder writes as `[]`.
+- Rust: `.iter().filter(..).collect::<Vec<&String>>()` collects borrows, so only the first three are cloned into the answer; `sort()` on `Vec<&String>` compares the strings, not the addresses. `take(SHOWN)` is the forgiving `[:3]`.
 
 ## Approach: binary-search (Sort once and binary-search each prefix)
 
@@ -85,6 +87,8 @@ One sort and a few binary searches: fast, compact and the expected answer. It ne
 - TypeScript: `<` on strings compares code units; `(low + high) >>> 1` halves without floating point.
 - Java: `products.clone()` keeps the input intact before `Arrays.sort`; `compareTo` drives the lower bound.
 - Kotlin: `sorted()` returns a new list, and `<` on strings uses `compareTo`; `ushr` is the unsigned shift.
+- Go: `slices.BinarySearch(ordered[start:], prefix)` is the lower bound (it returns the first position whose element is not less than the target, plus a found flag), and the subslice stands in for Python's `lo=start`, so the offset is added back to `start`. `slices.Clone` sorts a copy and leaves the caller's slice in its order.
+- Rust: `ordered[start..].partition_point(|product| product.as_str() < prefix)` is the lower bound on a sorted slice, again relative to `start`. The function owns `products`, so it sorts that vector in place and needs no copy.
 
 ## Approach: trie-top-three (Trie whose nodes keep their three smallest products)
 
@@ -122,3 +126,5 @@ It answers each typed letter in constant time and handles new products without r
 - TypeScript: `??=` creates a missing child while walking; spreading `[...node.smallest]` copies.
 - Java: each node holds an `ArrayList<String>` with capacity 3, copied into the result.
 - Kotlin: `searchWord.map { ... }` builds one entry per letter, and `node?.children?.get(...)` stays null once the walk has left the trie.
+- Go: each node has `children [26]*node` and a `smallest []string` that grows to at most three with `append`; `slices.Clone` copies it into the answer (a nil slice stays nil and encodes as `[]`). The cursor is a `*node` that becomes `nil` when the walk leaves the trie, and stays `nil` after that.
+- Rust: `Node` derives `Default`, so `get_or_insert_with(Box::default)` makes a missing child. The cursor is an `Option<&Node>` that `and_then(|node| node.children[..].as_deref())` advances, and `map_or_else(Vec::new, ..)` yields the empty list once it is `None`. Sorting the owned `products` first is what makes each node's first three entries the smallest.
