@@ -47,6 +47,8 @@ Each step is easy to justify, which makes it a good oracle. It rediscovers the s
 - TypeScript: `slice` rebuilds the string, like Python.
 - Java: `StringBuilder.deleteCharAt` deletes in place by shifting the tail, still O(n) per deletion.
 - Kotlin: the same `StringBuilder.deleteCharAt`; `text.indices.reversed()` walks backwards.
+- Go: the text is a `[]byte`, and `slices.Delete(text, p, p+1)` removes one byte in place by shifting the tail, which is still O(n) per deletion. The input is ASCII, so bytes are characters.
+- Rust: the text is a `Vec<char>`; `Vec::remove` shifts the tail, O(n) per deletion, and `into_iter().collect::<String>()` rebuilds the string at the end. The helper takes `&[char]` and returns `Option<usize>` instead of -1.
 
 ## Approach: stack (Stack of unmatched opening positions)
 
@@ -87,6 +89,8 @@ Linear, simple, and its correctness argument is the cleanest. It stores up to n 
 - TypeScript: a boolean array of marks and one pass that appends kept characters.
 - Java: `ArrayDeque<Integer>` holds positions; iterating it at the end marks the leftovers, in any order.
 - Kotlin: `kotlin.collections.ArrayDeque<Int>` for positions; `filterIndexed` builds the result string in one call.
+- Go: a `[]bool` marks deleted positions and a `[]int` holds the open positions; `string(result)` converts the kept bytes at the end.
+- Rust: `open_positions.pop().is_none()` pops the matching opener and detects an unmatched closer in one expression. The result is `s.chars().zip(deleted).filter(..).map(..).collect()`, one pass with no index arithmetic.
 
 ## Approach: two-pass (Two passes with an open counter)
 
@@ -124,3 +128,5 @@ Same bounds as the stack with no positions to store, at the price of a slightly 
 - TypeScript: collect into an array, then `reverse().join("")`.
 - Java: `StringBuilder.reverse()` reverses the second pass's output in place.
 - Kotlin: `kept.indices.reversed()` walks backwards; `StringBuilder.reverse()` restores the order.
+- Go: `slices.Reverse` reverses the second pass's output in place.
+- Rust: a match guard (`')' if open_count == 0 => continue`) expresses the first pass's rule directly, and `result.iter().rev().collect::<String>()` restores the order while it builds the final string.
