@@ -46,6 +46,8 @@ It needs no insight beyond the definition, which makes it the oracle. At n = 3 *
 - TypeScript: `slice` plus `+` creates a rope that V8 flattens on the first `charCodeAt`, which is the O(n) copy. The check compares char codes without building a reversed copy.
 - Java: `substring` copies since Java 7, so each candidate costs O(n) memory and time; the check uses `charAt` without another copy.
 - Kotlin: `removeRange(index, index + 1)` builds the candidate; `indices.any { ... }` stops at the first success.
+- Go: `s[:index] + s[index+1:]` concatenates two substrings into a new string, so each candidate costs a real O(n) copy; the check indexes bytes, which are whole characters for lowercase ASCII.
+- Rust: `[&bytes[..index], &bytes[index + 1..]].concat()` builds each candidate as a new `Vec<u8>`, an O(n) copy per deletion, and `iter().eq(iter().rev())` compares a byte sequence with its reverse without allocating the reversed copy.
 
 ## Approach: two-pointers (Branch once at the first mismatch)
 
@@ -95,3 +97,5 @@ Linear time and constant memory, with one branch. It is the expected interview a
 - TypeScript: `charCodeAt` comparisons avoid creating one-character strings; `s[left] !== s[right]` also works and is slightly slower.
 - Java: a `private static` helper with `charAt` keeps everything in place; `s.charAt(left++)` advances while reading.
 - Kotlin: function parameters are read-only, so the helper copies `from` and `to` into `var`s before moving them.
+- Go: the helper takes a start and an end index into the same string, so the two retries after the first mismatch copy nothing; substrings in Go would share the backing bytes anyway, but indexes avoid even the slice headers.
+- Rust: the helper takes a `&[u8]` subslice, a borrowed view of the same bytes, so the two retries copy nothing. Both pointers use the half-open form `left + 1 < right`, which stays clear of `usize` underflow.
