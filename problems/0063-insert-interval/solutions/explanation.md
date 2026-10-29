@@ -44,6 +44,8 @@ It reuses a routine you may already have and is hard to get wrong, which makes i
 
 - Kotlin: `intervals + newInterval` creates a new `Array<IntArray>` with one more element; `sortedBy { it[0] }` returns a sorted list.
 - Java: `Arrays.copyOf(intervals, n + 1)` makes room for the new interval in a shallow copy.
+- Go: `append(intervals, newInterval)` may write into the caller's backing array when it has spare capacity, so the reference copies into a fresh slice of the right capacity first.
+- Rust: the owned `Vec` is simply pushed to and sorted, because `Vec<i32>` is `Ord`.
 
 ## Approach: three-phase-scan (One pass: before, overlapping, after)
 
@@ -82,6 +84,8 @@ This is the expected answer: one pass, no sorting, and three short loops whose c
 - Python: `result.extend(intervals[index:])` copies the last run in one call.
 - Kotlin: `takeWhile` and `takeLastWhile` peel off the untouched runs by their predicates, and `slice` gives the overlapping middle; this works because the runs are contiguous.
 - Java: an `ArrayList<int[]>` collects the result; `toArray(new int[0][])` converts it.
+- Go: `append(result, intervals[index:]...)` copies the last run in one call.
+- Rust: `into_iter().peekable()` plus `next_if(pred)` takes elements while a predicate holds without consuming the first one that fails, which is exactly phases 1 and 2; `result.extend(rest)` is phase 3, and the inner vectors move instead of being cloned.
 
 ## Approach: bound-search (Binary search the overlapping window)
 
@@ -121,3 +125,5 @@ Same asymptotic cost as the scan, because the output must be built. The search p
 - TypeScript: one generic `firstIndex` takes the predicate; spread syntax assembles the output.
 - Java: a `Predicate<int[]>` passes the condition; `System.arraycopy` copies the untouched runs into a pre-sized `int[][]`.
 - Kotlin: an `inline` search helper with a lambda costs nothing at runtime; `copyOfRange` and `+` assemble the output array.
+- Go: `sort.Search(n, pred)` returns the first index where `pred` holds, so both bounds search the intervals directly, with no auxiliary arrays of ends and starts. `slices.Concat` assembles the prefix, the merged interval and the suffix.
+- Rust: `partition_point` is the same search over the sorted `Vec`. The result is rebuilt with `split_off`, `truncate`, `push` and `extend`, which move the inner vectors instead of cloning them.
