@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0237"
+slug: tax-brackets
+title: Tax Owed Under Brackets
+status: ready
+difficulty: easy
+track: dsa
+kind: function
+patterns: [math-geometry]
+signature:
+  function:
+    name: calculateTax
+    params:
+      - {name: brackets, type: "int[][]"}
+      - {name: income, type: int}
+    returns: {type: decimal}
+comparator: {type: exact}
+approaches:
+  - {id: unit-by-unit, name: Tax each unit of income at its bracket's rate, role: brute, time: "O(n + income)", space: "O(1)", time_class: "n", space_class: "1", oracle: true}
+  - {id: bracket-slices, name: Tax each bracket's slice of the income at once, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: number of brackets (limits 1 to 10 units apart, income inside the last bracket)
+  size_ladder: [100, 1000, 10000, 100000]
+  expected_from: bracket-slices
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 2303, url: "https://leetcode.com/problems/calculate-amount-paid-in-taxes/"}
+related: [premium-rating-breakdown]
+order: 7
+estimate_minutes: 15

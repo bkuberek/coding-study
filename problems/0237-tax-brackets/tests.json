@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"brackets": [[4, 10], [10, 20], [25, 30]], "income": 15}, "expected": "3.1"},
+    {"id": "ex2", "visible": true, "input": {"brackets": [[5, 0], [20, 15]], "income": 3}, "expected": "0"},
+    {"id": "h1", "input": {"brackets": [[1, 100]], "income": 1}, "expected": "1", "note": "smallest bracket, full rate"},
+    {"id": "h2", "input": {"brackets": [[1000000, 100]], "income": 1000000}, "expected": "1000000", "note": "largest income, full rate"},
+    {"id": "h3", "input": {"brackets": [[10, 5]], "income": 0}, "expected": "0", "note": "no income"},
+    {"id": "h4", "input": {"brackets": [[2, 7], [3, 11], [9, 13]], "income": 9}, "expected": "1.03", "note": "income ends on the last limit"},
+    {"id": "h5", "input": {"brackets": [[5, 10], [10, 20], [15, 30]], "income": 10}, "expected": "1.5", "note": "income ends on a middle limit"},
+    {"id": "h6", "input": {"brackets": [[3, 90], [6, 40], [100, 1]], "income": 50}, "expected": "4.34", "note": "falling rates"},
+    {"id": "h7", "input": {"brackets": [[2, 0], [4, 0]], "income": 4}, "expected": "0", "note": "every rate is 0"},
+    {"id": "h8", "input": {"brackets": [[1, 1], [2, 2], [3, 3], [4, 4]], "income": 4}, "expected": "0.1", "note": "brackets one unit wide"},
+    {"id": "h9", "input": {"brackets": [[50, 33], [60, 70], [70, 99]], "income": 7}, "expected": "2.31", "note": "income inside the first of several brackets"},
+    {"id": "h10", "input": {"brackets": [[999999, 100], [1000000, 0]], "income": 1000000}, "expected": "999999", "note": "large whole result"},
+    {"id": "g1", "generate": {"n": 100000, "seed": 237}, "note": "large input: 10^5 brackets, income inside the last one"}
+  ]
+}
