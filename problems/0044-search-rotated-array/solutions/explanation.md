@@ -72,6 +72,8 @@ Both parts are standard searches that are easy to get right and to test separate
 
 - Kotlin: `target in nums[pivot]..nums[last]` expresses the inclusive range test directly.
 - TypeScript and Java: `>>> 1` floors the midpoint of two non-negative indices without overflow; Python needs only `//`.
+- Go: both helpers are plain package-level functions. The second search runs on `[0, pivot-1]`, and `pivot-1` is -1 when the pivot is at index 0; `binarySearch` returns `-1` at once because `low > high`.
+- Rust: `binary_search` takes signed bounds for that reason: with `usize`, `pivot - 1` would panic when the pivot is 0. `index_of_minimum` never subtracts from an index, so it keeps `usize`, and its result is converted once.
 
 ## Approach: one-pass (One binary search that keeps the sorted half in view)
 
@@ -110,4 +112,5 @@ One loop and the fewest probes, which makes it the expected answer. The price is
 ### Language notes
 
 - Kotlin: the reference computes which half is sorted and whether `target` falls in it as two booleans, then keeps the left half exactly when they agree; it is the same decision table as the `if` chain in the other languages.
-- All four languages compare `int` values directly; no value arithmetic happens, so overflow is impossible.
+- Every language compares `int` values directly; no value arithmetic happens, so overflow is impossible.
+- Rust: the bounds are `i32` because `high = middle - 1` can reach -1, and the closure `at(index)` converts a signed index to `nums[index as usize]`. `(at(low)..at(middle)).contains(&target)` is the half-open test for the sorted left half, and an `else if` merges the right-half cases.
