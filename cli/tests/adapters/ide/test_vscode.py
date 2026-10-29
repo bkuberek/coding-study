@@ -116,33 +116,58 @@ def test_the_debug_task_starts_active():
     assert background["activeOnStart"] is True
 
 
+def attached_address(configuration: dict[str, Any]) -> str:
+    """Where a configuration attaches: the host and port of each debugger's own fields."""
+    for command in configuration.get("processCreateCommands", []):
+        if command.startswith("gdb-remote "):
+            return command.removeprefix("gdb-remote ")
+    connect = configuration.get("connect", configuration)
+    host = connect.get("host") or configuration.get("address") or configuration.get("hostName")
+    return f"{host}:{connect.get('port')}"
+
+
 @pytest.mark.parametrize(
     ("name", "debugger", "port"),
     [
         ("Debug current file (Python)", "debugpy", 5678),
         ("Debug current file (TypeScript)", "node", 9229),
         ("Debug current file (Java)", "java", 5005),
+        ("Debug current file (Go)", "go", 2345),
+        ("Debug current file (Rust)", "lldb", 12345),
         ("Debug active attempt (Python)", "debugpy", 5678),
+        ("Debug active attempt (Rust)", "lldb", 12345),
     ],
 )
 def test_each_language_attaches_its_debugger_on_its_port(name, debugger, port):
     configuration = launch_configurations()[name]
-    attached = configuration.get("connect", configuration).get("port")
-    assert (configuration["type"], configuration["request"], attached) == (
+    assert (configuration["type"], configuration["request"], attached_address(configuration)) == (
         debugger,
         "attach",
-        port,
+        f"127.0.0.1:{port}",
     )
 
 
 def test_debuggers_attach_on_loopback():
     hosts = {
-        configuration.get("connect", {}).get("host")
-        or configuration.get("address")
-        or configuration.get("hostName")
+        attached_address(configuration).split(":")[0]
         for configuration in launch_configurations().values()
     }
     assert hosts == {"127.0.0.1"}
+
+
+def test_go_attaches_to_the_headless_delve_in_remote_mode():
+    assert launch_configurations()["Debug current file (Go)"]["mode"] == "remote"
+
+
+def test_rust_connects_an_empty_target_to_the_debug_server():
+    """The runner binary lies in a directory of its own run, so the target takes the executable
+    that the debug server reports when lldb connects."""
+    configuration = launch_configurations()["Debug current file (Rust)"]
+    assert (
+        configuration["targetCreateCommands"],
+        configuration["processCreateCommands"],
+        configuration["sourceLanguages"],
+    ) == (['target create ""'], ["gdb-remote 127.0.0.1:12345"], ["rust"])
 
 
 def test_kotlin_cannot_be_debugged_in_vscode():
@@ -179,6 +204,7 @@ def test_the_extensions_for_every_language_are_recommended():
         "vscjava.vscode-gradle",
         "golang.go",
         "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb",
     ]
 
 

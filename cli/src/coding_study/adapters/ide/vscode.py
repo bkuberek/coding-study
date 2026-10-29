@@ -88,10 +88,14 @@ EXTENSIONS: JsonObject = {
         "vscjava.vscode-gradle",
         "golang.go",
         "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb",
     ]
 }
-DEBUGGABLE = (Language.PYTHON, Language.TYPESCRIPT, Language.JAVA)
+DEBUGGABLE = (Language.PYTHON, Language.TYPESCRIPT, Language.JAVA, Language.GO, Language.RUST)
 """The languages VS Code attaches to; Kotlin breakpoints never bind (vscode-java-debug#241)."""
+EMPTY_TARGET = 'target create ""'
+"""CodeLLDB needs a target before it connects; an empty one takes the executable the debug server
+reports, since each run launches the runner from a directory of its own."""
 
 
 class VsCodeProject:
@@ -201,7 +205,16 @@ def _debugger(attach: DebugAttach) -> JsonObject:
             }
         case Language.JAVA:
             return {"type": "java", "hostName": DEBUG_HOST, "port": attach.port}
-        case Language.KOTLIN | Language.GO | Language.RUST:
+        case Language.GO:
+            return {"type": "go", "mode": "remote", "host": DEBUG_HOST, "port": attach.port}
+        case Language.RUST:
+            return {
+                "type": "lldb",
+                "targetCreateCommands": [EMPTY_TARGET],
+                "processCreateCommands": [f"gdb-remote {DEBUG_HOST}:{attach.port}"],
+                "sourceLanguages": ["rust"],
+            }
+        case Language.KOTLIN:
             raise ValueError(f"no VS Code attach configuration for {attach.language} (DEBUGGABLE)")
         case _:
             assert_never(attach.language)
