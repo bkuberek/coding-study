@@ -49,6 +49,8 @@ It follows the definition and is easy to check, which suits an oracle. Most of i
 - TypeScript: `findIndex` locates the first operator and `splice(p - 2, 3, result)` replaces the items. `Math.trunc(left / right)` truncates toward zero.
 - Java: a `List<Object>` holds both `String` operators and boxed `Integer` numbers; `subList(...).clear()` followed by `add` performs the replacement.
 - Kotlin: a `List<Any>` with smart casts (`as Int`, `is String`); `indexOfFirst` finds the operator.
+- Go: there are no sum types, so the reference keeps a small struct `item{operator, value}` where an empty `operator` marks a number. `slices.IndexFunc` finds the first operator and `slices.Replace(items, p-2, p+1, result)` swaps three entries for one, shifting the tail in place. `strconv.Atoi` accepts negative tokens such as `"-3"`.
+- Rust: `enum Item<'a> { Number(i32), Operator(&'a str) }` types the mixed list, and one `match` on the three entries around the operator destructures both operands and the operator. `Vec::splice(p - 2..=p, [Item::Number(result)])` replaces the three entries in one step, shifting the tail like Python's slice assignment.
 
 ## Approach: stack (Stack of operands)
 
@@ -89,3 +91,5 @@ Linear and single-pass, and the reason postfix notation exists: it needs no prec
 - TypeScript: `Math.trunc(left / right)` truncates toward zero; every operand is far below 2^53, so the floating-point division is exact enough for the truncation.
 - Java: `ArrayDeque<Integer>` as the stack; `int` division already truncates toward zero. The `switch` over strings sends the four operators to one branch and everything else to `Integer.parseInt`.
 - Kotlin: `kotlin.collections.ArrayDeque<Int>` with `addLast` and `removeLast`; `Int` division truncates toward zero, and `toInt()` parses negative numbers such as `"-3"`.
+- Go: `/` on `int` truncates toward zero, as in Java. The two operands come off the slice by reslicing (`operands[:len(operands)-2]`) and the result is appended onto it; `strconv.Atoi` accepts negative tokens.
+- Rust: `/` on `i32` truncates toward zero, and `i32::MIN / -1` would panic, which the constraints exclude. A `match` on `token.as_str()` sends the four operators to one arm and any other token to `str::parse`, which accepts negative numbers.
