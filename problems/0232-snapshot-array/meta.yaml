@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0232"
+slug: snapshot-array
+title: Snapshot Array
+status: ready
+difficulty: medium
+track: dsa
+kind: design
+patterns: [binary-search, arrays-hashing]
+signature:
+  class:
+    name: SnapshotArray
+    constructor:
+      params: [{name: length, type: int}]
+    methods:
+      - {name: set, params: [{name: index, type: int}, {name: value, type: int}], returns: {type: void}}
+      - {name: snap, params: [], returns: {type: int}}
+      - {name: get, params: [{name: index, type: int}, {name: snapId, type: int}], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: scan-log, name: Append every write to a log and scan it backwards, role: brute, time: "O(1) set and snap, O(w) get", space: "O(w)", time_class: "n^2", space_class: "n", oracle: true}
+  - {id: history-binary-search, name: Per-position change history searched by snapshot id, role: optimal, time: "O(1) set and snap, O(log w) get", space: "O(length + w)", time_class: "n log n", space_class: "n"}
+perf:
+  size_param: length of the array, with as many calls (45% set, 15% snap, 40% get)
+  size_ladder: [200, 600, 2000, 6000, 20000]
+  expected_from: history-binary-search
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1146, url: "https://leetcode.com/problems/snapshot-array/"}
+related: [time-based-kv-store, binary-search, first-last-position]
+order: 12
+estimate_minutes: 25
