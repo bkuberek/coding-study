@@ -1,23 +1,34 @@
 name: Version
 
-# Versions the code and nothing else: python-semantic-release reads the Conventional Commits
-# since the last tag, and when one warrants a bump it updates pyproject.toml, uv.lock and
-# CHANGELOG.md, commits "chore(release): vX.Y.Z [skip ci]" and tags vX.Y.Z. It publishes no
-# package and creates no GitHub release. Configuration: [tool.semantic_release] in
-# pyproject.toml. Rules: docs/specs/versioning.md.
+# Versions the code and publishes each release. Rules: docs/specs/versioning.md.
+#
+# 1. version: python-semantic-release reads the Conventional Commits since the last tag, and when
+#    one warrants a bump it updates pyproject.toml, uv.lock and CHANGELOG.md, commits
+#    "chore(release): vX.Y.Z [skip ci]" and tags vX.Y.Z. Configuration: [tool.semantic_release]
+#    in pyproject.toml.
+# 2. release: builds the wheel and a hashed requirements file from the tag and attaches them to
+#    the GitHub release vX.Y.Z, whose notes are the tag's CHANGELOG.md section.
+# 3. homebrew: points Formula/cstudy.rb in bkuberek/homebrew-tap at those two files.
+#
+# Release and homebrew run for the tag this run created on main. A manual run on main publishes
+# the newest tag reachable from it instead, so it repairs a failed or missing publish. Both jobs
+# skip what is already done: a release that has its files keeps them, and an unchanged formula
+# is not committed. Nothing goes to PyPI.
 #
 # The push uses GITHUB_TOKEN, never a personal access token. Events caused by GITHUB_TOKEN do
 # not start new workflow runs (workflow_dispatch and repository_dispatch excepted), so the bot
 # commit and the tag do not retrigger this workflow, and no loop is possible:
 # https://docs.github.com/en/actions/concepts/security/github_token
+# For the same reason a workflow triggered by the tag or the release would never run, so
+# publishing is part of this workflow. Only the homebrew job holds HOMEBREW_TAP_GITHUB_TOKEN,
+# which can push to the tap.
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: write
+permissions: {}
 
 # Release runs queue instead of cancelling each other, so two pushes never race on the tag.
 concurrency:
@@ -27,6 +38,10 @@ concurrency:
 jobs:
   version:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.publish.outputs.tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -47,3 +62,115 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: uv run --locked semantic-release version --no-vcs-release
+
+      # HEAD is the release commit when semantic-release made one. An empty tag publishes
+      # nothing.
+      - name: Choose the tag to publish
+        id: publish
+        if: github.ref == 'refs/heads/main'
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ]; then
+            tag=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD 2>/dev/null || true)
+          else
+            tag=$(git tag --points-at HEAD --list 'v[0-9]*' --sort=-version:refname | head -n 1)
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Tag to publish: ${tag:-none}"
+
+  release:
+    needs: version
+    if: needs.version.outputs.tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ needs.version.outputs.tag }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      # The release tooling comes from the commit this run is for; the artifacts come from the
+      # tag, which may predate the tooling.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+          path: tagged
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+
+      - name: Attach the wheel and the requirements to the GitHub release
+        run: |
+          has_files='[.assets[].name] | any(endswith("-py3-none-any.whl")) and any(. == "requirements.txt")'
+          if complete=$(gh release view "$TAG" --json assets --jq "$has_files"); then
+            if [ "$complete" = true ]; then
+              echo "$TAG already has its files"
+              exit 0
+            fi
+            release_exists=true
+          fi
+
+          uv build --directory tagged --wheel --out-dir "$PWD/dist"
+          uv export --directory tagged --locked --no-dev --no-emit-project --no-header \
+            --format requirements.txt --output-file "$PWD/dist/requirements.txt" --quiet
+
+          if [ "${release_exists:-false}" = true ]; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            python3 packaging/release_notes.py tagged/CHANGELOG.md "$TAG" > notes.md
+            gh release create "$TAG" dist/* --verify-tag --title "$TAG" --notes-file notes.md
+          fi
+
+  homebrew:
+    needs: [version, release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ needs.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: bkuberek/homebrew-tap
+          ref: main
+          path: tap
+          token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+
+      # The formula hashes the files the release serves, not a rebuild of them.
+      - name: Download the release files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir assets \
+            --pattern '*-py3-none-any.whl' --pattern requirements.txt
+
+      - name: Render the formula
+        run: |
+          python3 packaging/homebrew/render_formula.py \
+            --base-url "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG" \
+            --wheel assets/*-py3-none-any.whl \
+            --requirements assets/requirements.txt \
+            --output tap/Formula/cstudy.rb
+          ruby -c tap/Formula/cstudy.rb
+
+      - name: Commit and push the formula to the tap
+        working-directory: tap
+        run: |
+          git add Formula/cstudy.rb
+          if git diff --cached --quiet; then
+            echo "Formula/cstudy.rb is already at $TAG"
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" \
+            -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit --message "cstudy ${TAG#v}"
+          git push origin HEAD:main

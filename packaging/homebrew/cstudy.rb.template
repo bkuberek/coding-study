@@ -1,0 +1,59 @@
+# Generated from packaging/homebrew/cstudy.rb.template in bkuberek/coding-study by its release
+# workflow (docs/specs/versioning.md#homebrew-tap). Change the template there, not this file.
+class Cstudy < Formula
+  include Language::Python::Virtualenv
+
+  desc "Local, IDE-first practice for coding interviews"
+  homepage "https://github.com/bkuberek/coding-study"
+  url "${wheel_url}"
+  sha256 "${wheel_sha256}"
+  license "MIT"
+
+  depends_on "python@3.13"
+
+  # Rewriting the @rpath install name of watchfiles' prebuilt extension to an absolute path
+  # fails: the wheel's Mach-O header has no room for it. Python loads an extension by its file
+  # path and never resolves that name, so keeping it is safe.
+  preserve_rpath
+
+  # The runtime dependencies pinned in uv.lock, each with the hashes of its published files.
+  resource "requirements" do
+    url "${requirements_url}"
+    sha256 "${requirements_sha256}"
+  end
+
+  def install
+    venv = virtualenv_create(libexec, python3, system_site_packages: false)
+    # Binary wheels from PyPI, each checked against its hash. Homebrew's std_pip_args would build
+    # every dependency from source, and rpds-py and watchfiles need a Rust toolchain for that.
+    resource("requirements").stage do
+      system python3, "-m", "pip", "--python=#{libexec}/bin/python", "install",
+             "--require-hashes", "--only-binary=:all:", "--no-deps", "--no-compile",
+             "--requirement", "requirements.txt"
+    end
+    venv.pip_install buildpath/"${wheel_name}"
+    bin.install_symlink libexec/"bin/cstudy"
+  end
+
+  def caveats
+    <<~EOS
+      Create a practice workspace and set up its toolchains:
+        cstudy init ~/cstudy-workspace
+        cd ~/cstudy-workspace
+        cstudy doctor --fix
+
+      cstudy doctor checks uv, Python 3.13, Node.js and pnpm, and JDK 21, and prints a fix
+      for anything missing. Install guide:
+        https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md
+
+      A cstudy installed with uv or pipx runs instead of this one when its directory
+      comes first on PATH; `which -a cstudy` lists every copy.
+    EOS
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/cstudy --version")
+    system bin/"cstudy", "init", testpath/"workspace"
+    assert_path_exists testpath/"workspace/.cs/workspace.toml"
+  end
+end
