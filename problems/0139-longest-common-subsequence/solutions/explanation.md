@@ -50,6 +50,8 @@ The clearest path from the definition to an efficient algorithm, and the oracle 
 - TypeScript: `Int16Array` rows (answers are at most 1000), and an arrow function for the recursion.
 - Java: the strings and the cache live in fields, since Java has no nested functions.
 - Kotlin: a local `fun` closes over the strings and the cache.
+- Go: a closure declared with `var solve func(i, j int) int` so it can recurse; `text1[i]` is a `byte`, which is a letter here because the input is ASCII.
+- Rust: closures cannot recurse, so `solve` is a private function over the two byte slices from `as_bytes()` and a table of `Option<i32>`, where `None` marks an unknown cell.
 
 ## Approach: tabulation (Fill the table of prefix answers)
 
@@ -86,6 +88,7 @@ Fast in practice (tight loops, no recursion) and the standard interview answer. 
 - Python: `[[0] * (n + 1) for _ in range(m + 1)]` creates independent rows.
 - TypeScript: `Int32Array` rows are zero-initialized.
 - Java and Kotlin: `new int[m + 1][n + 1]` and `Array(m + 1) { IntArray(n + 1) }` are zero-initialized.
+- Go: one `make([]int, columns+1)` per row, zeroed by `make`. Rust: `vec![vec![0; columns + 1]; rows + 1]`, with `as_bytes()` for constant-time character access.
 
 ## Approach: rolling-array (Two rows along the shorter string)
 
@@ -123,3 +126,5 @@ Same speed as the full table (often faster, thanks to cache locality) with a fra
 - TypeScript: destructuring swap `[previous, current] = [current, previous]` on two `Int32Array`s.
 - Java: an explicit three-line swap of the two arrays.
 - Kotlin: `previous = current.also { current = previous }` swaps without a temporary variable.
+- Go: `previous, current = current, previous` swaps the two slice headers without copying. The stale values left in `current` do no harm, because every cell from column 1 on is overwritten and cell 0 stays 0.
+- Rust: `std::mem::swap(&mut previous, &mut current)` swaps the two vectors without copying. The columns are written at `j + 1`, so the loop can walk `shorter.iter().enumerate()` and never subtract from a `usize`.
