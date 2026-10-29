@@ -47,6 +47,8 @@ It needs no queue and generalizes to any edge weights (it is Bellman-Ford with t
 - TypeScript: one loop index runs forward or backward over the flattened cells; `STEPS` is built once at module level with `flatMap`.
 - Java: the eight directions are a constant `int[][]`; `Arrays.fill` sets the unreached value row by row.
 - Kotlin: `STEPS` is a private top-level list of pairs, destructured in the loop as `(dr, dc)`.
+- Go: `slices.Reverse` (Go 1.21 and newer) flips the scan order in place, and the distance grid is allocated row by row with the `unreached` sentinel stored explicitly because `make` zeroes it.
+- Rust: the sentinel `n * n + 1` is cast to `i32` once, so the `dist[..] + 1` comparison stays in `i32` and cannot overflow, since no stored distance exceeds the sentinel. `Vec::reverse` flips the scan order in place, and the cell order is built once with `flat_map`.
 
 ## Approach: bfs (Breadth-first search over eight directions)
 
@@ -87,3 +89,5 @@ The standard answer: linear in the number of cells and short to write. A* with t
 - TypeScript: the distances live in one flat `Int32Array`, cells are encoded as `r * n + c`, and the queue is an array with a moving head.
 - Java: `ArrayDeque<int[]>` and an `int[][]` of distances, zero-initialized by the language.
 - Kotlin: `ArrayDeque<Int>` with encoded cells; `nr in 0 until n` keeps the bounds checks short.
+- Go: the eight steps are a package-level `[8][2]int` array, and `dist` doubles as the visited set because every reached cell holds a length of at least 1 while `make` leaves unreached cells at 0.
+- Rust: the eight steps are a `const` array of `(isize, isize)`, and `checked_add_signed` rejects a step off the top or left edge, so only the upper bound `n` needs a comparison. The queue is a `VecDeque` of `(usize, usize)`, and `(r, c) == (n - 1, n - 1)` compares the pair directly.
