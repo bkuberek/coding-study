@@ -43,6 +43,8 @@ One line in every language and very fast in practice, which makes it the oracle.
 
 - Kotlin: `IntArray.sortedArray()` returns a sorted copy of the primitive array.
 - Java: `Arrays.sort(int[])` is a dual-pivot quicksort on primitives; `clone()` keeps the input unchanged.
+- Go: `slices.Clone` plus `slices.Sort` sorts a copy of the `[]int`, and `sorted[len(sorted)-k]` is the answer, with the same index arithmetic as Python.
+- Rust: the function owns `nums`, so it sorts that vector in place. `sort_unstable` is the right call for plain integers, since equal values are indistinguishable and the unstable sort needs no scratch buffer.
 
 ## Approach: min-heap (Min-heap of the k largest values seen)
 
@@ -80,6 +82,8 @@ Excellent when `k` is small, and the only approach here that works on a stream w
 - TypeScript: no built-in priority queue, so the reference implements a binary min-heap with `push` and `replaceRoot`.
 - Java: `PriorityQueue<Integer>` defaults to a min-heap; values are boxed, and `peek()` unboxes when compared with an `int`.
 - Kotlin: the same `java.util.PriorityQueue<Int>`; `heap.peek()` is a platform type that unboxes on comparison.
+- Go: `container/heap` needs a type that implements `heap.Interface`, so the reference declares `minHeap []int` with `Less` as `<`. `heap.Init` heapifies the first `k` values in O(k), and `heap.Fix(&largest, 0)` after overwriting the root is `heapreplace`: one sift-down instead of a pop and a push.
+- Rust: `BinaryHeap` is a max-heap, so wrapping the values in `Reverse` turns it into the min-heap this approach needs. `collect()` heapifies in O(k), and `peek_mut()` hands out the root: assigning through it and dropping the guard sifts the new root down once, which is `heapreplace`.
 
 ## Approach: quickselect (Quickselect with a random pivot and three-way partition)
 
@@ -120,3 +124,5 @@ Linear on average and the classic answer to the follow-up. It is longer than the
 - TypeScript: `Math.floor(Math.random() * (high - low + 1))` draws a uniform index; destructuring swaps are concise but allocate a temporary array.
 - Java: `ThreadLocalRandom.current().nextInt(low, high + 1)` draws a pivot index without a shared `Random` instance.
 - Kotlin: `kotlin.random.Random.nextInt(from, until)` and a private `IntArray.swap` extension keep the partition readable; `when` with no subject chooses the branch.
+- Go: `math/rand/v2` is seeded randomly by default, so `rand.IntN(high-low+1)` needs no setup, and a tagless `switch` picks the partition branch. The function ends in a `for` loop with no condition, which Go accepts as the final statement without a trailing `return`.
+- Rust: the standard library has no random number generator, and the project builds with the standard library only. The reference uses a few lines of xorshift seeded from `RandomState`, whose keys are random per process, which is enough to make adversarial inputs unlikely to hit a bad pivot. `values.swap(i, j)` replaces the tuple swap, and the three-way partition is a `match` on `cmp`.
