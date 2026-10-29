@@ -50,6 +50,8 @@ Correct and simple, hence the oracle, but every start recounts letters the previ
 - TypeScript: `Int32Array(128).slice()` copies the table per start; `remaining[code]-- > 0` tests and decrements in one step.
 - Java: `int[128]` with `clone()` per start; a `char` indexes the array directly.
 - Kotlin: `IntArray.copyOf()` per start and `Char.code` as the index.
+- Go: `[128]int` is an array value, so `remaining := need` copies all 128 counts in one assignment; indexing a string yields bytes, which are whole letters here. The result is a substring of `s`, which shares its bytes and copies nothing.
+- Rust: `[i32; 128]` is `Copy`, so `let mut remaining = need;` copies the table. Counts for letters absent from `t` start at 0 and go negative, which never triggers `missing -= 1`. The answer is a byte-range slice of `s`, converted to an owned `String` once at the end.
 
 ## Approach: sliding-window (Expand to cover and shrink to the minimum)
 
@@ -91,6 +93,8 @@ The canonical "minimum window" template: expand until valid, shrink while valid.
 - TypeScript: `Int32Array(128)`; `deficit[code]-- > 0` and `++deficit[code] > 0` fold the check and the update into one expression each.
 - Java: the same idioms on an `int[128]`; `substring` once at the end.
 - Kotlin: `IntArray(128)` indexed by `Char.code`; postfix and prefix increments work on array elements as in Java.
+- Go: one `[128]int` table of deficits, indexed by the byte itself; `missing` counts the letters of `t` still uncovered, and the answer is the substring `s[bestStart : bestStart+bestLength]`.
+- Rust: the table is `[i32; 128]` because deficits go negative for surplus letters, while `missing` is a `usize` that only moves when a deficit crosses zero. `right + 1 - left` is the window length, and `to_string()` turns the final `&str` slice into the owned `String` the signature returns.
 
 ## Approach: filtered-window (Slide over the positions of useful letters only)
 
@@ -130,3 +134,5 @@ Same growth as `sliding-window` but often faster in practice when most of `s` is
 - TypeScript: a `number[]` of positions; the letter is re-read with `charCodeAt`.
 - Java: `List<Integer>` boxes the positions; an `int[]` of size n with a length counter avoids that if memory matters.
 - Kotlin: `s.indices.filter { ... }` builds a `List<Int>` of positions.
+- Go: a `[]int` of positions of letters that occur in `t`, built in one pass from the same deficit table; the loop ranges over those positions only, and `useful[left]` is the start of the window.
+- Rust: the positions come from an iterator chain (`enumerate`, `filter`, `map`, `collect`) over the bytes, and `for &right in &useful` borrows them. The `Vec<usize>` costs O(n) memory, which is the declared space of this approach.
