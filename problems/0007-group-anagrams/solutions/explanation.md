@@ -49,6 +49,8 @@ It already uses the canonical key, so it shows exactly what the hash map adds: f
 - TypeScript: `keys.indexOf(key)` compares strings by value with `===`.
 - Java: `List.indexOf` uses `equals`, which compares string contents; `==` would compare references.
 - Kotlin: `indexOf` uses structural equality (`==`), so string contents are compared.
+- Go: `slices.Index` compares the key against every earlier group key with `==`, which compares string contents; a string is built back from the sorted `[]byte` with `string(letters)`.
+- Rust: `Vec<u8>` keys compare by contents with `==`, and `iter().position` is the linear search. The sorted key is built from `as_bytes().to_vec()`, because `str` has no in-place sort.
 
 ## Approach: sorted-key (Hash map keyed by the sorted word)
 
@@ -86,6 +88,8 @@ Short, idiomatic in every language and alphabet-independent, which makes it the 
 - TypeScript: `[...word].sort().join("")`; a `Map<string, string[]>` compares string keys by value. Return `[...groups.values()]`, because `values()` is an iterator, not an array.
 - Java: sort the `char[]` from `toCharArray()` and wrap it in `new String(...)`; `computeIfAbsent` creates the group on first use. `new ArrayList<>(groups.values())` copies the view into a list.
 - Kotlin: `strs.groupBy { ... }` builds a `LinkedHashMap` from key to list in one call; `.values.toList()` returns the groups.
+- Go: strings are immutable, so the word is copied into a `[]byte`, sorted with `slices.Sort` and converted back to a string key. Map iteration order is random, which the `unordered-nested` comparator accepts.
+- Rust: a `HashMap<Vec<u8>, Vec<String>>` keys by the sorted bytes (`Vec<u8>` is `Hash` and `Eq`), `entry(key).or_default()` creates a missing group, and `into_values()` moves the groups out in arbitrary order.
 
 ## Approach: count-key (Hash map keyed by letter counts)
 
@@ -126,3 +130,5 @@ Asymptotically the best for a fixed alphabet. Each key costs 26 entries even for
 - TypeScript: `counts.join(",")` produces a separated string key; `Map` would treat two equal arrays as different keys.
 - Java: `Arrays.toString(counts)` gives `"[1, 0, ...]"`, an unambiguous string key. A `List<Integer>` key also works but boxes 26 values per word.
 - Kotlin: `counts.toList()` returns a `List<Int>`, whose `equals` and `hashCode` are structural, so it works directly as a `HashMap` key; `getOrPut` creates missing groups.
+- Go: an array such as `[26]int` is comparable, so it works directly as a map key, with no string conversion; a slice would not compile as a key.
+- Rust: `[u32; 26]` implements `Hash` and `Eq`, so it is the map key itself. `letter - b'a'` is a `u8` subtraction, which would panic on a non-lowercase byte in the cstudy build.
