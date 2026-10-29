@@ -8,11 +8,9 @@ type node struct {
 }
 
 type LRUCache struct {
-	capacity int
-	nodes    sync.Map
-	size     int
-	head     *node
-	tail     *node
+	capacity   int
+	nodes      sync.Map
+	head, tail *node
 }
 
 func NewLRUCache(capacity int) *LRUCache {
@@ -40,20 +38,23 @@ func (c *LRUCache) Put(key int, value int) {
 		c.pushBack(n)
 		return
 	}
-	if c.size == c.capacity {
+	if c.Size() >= c.capacity {
 		oldest := c.head.next
 		c.unlink(oldest)
 		c.nodes.Delete(oldest.key)
-		c.size--
 	}
 	n := &node{key: key, value: value}
 	c.nodes.Store(key, n)
-	c.size++
 	c.pushBack(n)
 }
 
 func (c *LRUCache) Size() int {
-	return c.size
+	size := 0
+	c.nodes.Range(func(_, _ any) bool {
+		size++
+		return true
+	})
+	return size
 }
 
 func (c *LRUCache) unlink(n *node) {
