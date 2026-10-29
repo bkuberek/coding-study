@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 from coding_study.domain.concurrency import ConcurrencyModel, model_text
 from coding_study.domain.layout import statement_path
-from coding_study.domain.naming import member_name
+from coding_study.domain.naming import NameRole, member_name
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.signature import (
     ClassSignature,
@@ -160,7 +160,7 @@ def _definition(signature: Signature, is_async: bool) -> list[str]:
 def _function(signature: FunctionSignature) -> list[str]:
     definition = _DefinitionLine(
         "",
-        _python_name(signature.name),
+        _python_name(signature.name, NameRole.FUNCTION),
         _parameters(signature.params),
         python_type(signature.returns.type),
     )
@@ -178,7 +178,7 @@ def _class(signature: ClassSignature, is_async: bool) -> list[str]:
             lines.append(f"{INDENT}# Level {method.level}")
         definition = _DefinitionLine(
             INDENT,
-            _python_name(method.name),
+            _python_name(method.name, NameRole.METHOD),
             (INSTANCE, *_parameters(method.params)),
             python_type(method.returns.type),
             is_async and method.blocking,
@@ -188,8 +188,11 @@ def _class(signature: ClassSignature, is_async: bool) -> list[str]:
 
 
 def _parameters(params: tuple[Param, ...]) -> tuple[str, ...]:
-    return tuple(f"{_python_name(param.name)}: {python_type(param.type)}" for param in params)
+    return tuple(
+        f"{_python_name(param.name, NameRole.PARAMETER)}: {python_type(param.type)}"
+        for param in params
+    )
 
 
-def _python_name(canonical: str) -> str:
-    return member_name(canonical, Language.PYTHON)
+def _python_name(canonical: str, role: NameRole) -> str:
+    return member_name(canonical, Language.PYTHON, role)

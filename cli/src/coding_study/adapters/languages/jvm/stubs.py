@@ -16,7 +16,7 @@ from coding_study.adapters.languages.jvm.jvm_types import (
 )
 from coding_study.domain.concurrency import model_text
 from coding_study.domain.layout import USER_PACKAGE, jvm_class_name, statement_path
-from coding_study.domain.naming import member_name
+from coding_study.domain.naming import NameRole, member_name
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.signature import ClassSignature, Param
 from coding_study.domain.type_dsl import (
@@ -88,7 +88,7 @@ class _JvmStub:
             constructor = _named(signature.constructor_params, language)
             routines = tuple(
                 _Routine(
-                    member_name(method.name, language),
+                    member_name(method.name, language, NameRole.METHOD),
                     _named(method.params, language),
                     method.returns.type,
                     method.level,
@@ -98,7 +98,7 @@ class _JvmStub:
             )
         else:
             constructor = None
-            name = member_name(signature.name, language)
+            name = member_name(signature.name, language, NameRole.FUNCTION)
             routines = (_Routine(name, _named(signature.params, language), signature.returns.type),)
         declared_types = [
             *(value_type for _, value_type in constructor or ()),
@@ -222,7 +222,9 @@ def _comment_lines(sentences: tuple[str, ...], column_limit: int) -> list[str]:
 
 
 def _named(params: Iterable[Param], language: Language) -> tuple[tuple[str, ValueType], ...]:
-    return tuple((member_name(param.name, language), param.type) for param in params)
+    return tuple(
+        (member_name(param.name, language, NameRole.PARAMETER), param.type) for param in params
+    )
 
 
 def _mentions_node(declared_type: ReturnType) -> bool:

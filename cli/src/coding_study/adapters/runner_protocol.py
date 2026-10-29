@@ -253,7 +253,10 @@ def _target(target: RunTarget) -> JsonObject:
 def _names(names: SymbolNames) -> JsonObject:
     if isinstance(names, FunctionNames):
         return {"function": names.function, "params": dict(names.params)}
-    return {"class": names.class_name, "methods": dict(names.methods)}
+    encoded: JsonObject = {"class": names.class_name, "methods": dict(names.methods)}
+    if names.constructor is not None:
+        encoded["constructor"] = names.constructor
+    return encoded
 
 
 def _signature(signature: Signature) -> JsonObject:

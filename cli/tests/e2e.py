@@ -23,7 +23,7 @@ from coding_study.application.ports import (
 )
 from coding_study.domain import layout
 from coding_study.domain.errors import LanguageNotSetUpError
-from coding_study.domain.naming import member_name
+from coding_study.domain.naming import NameRole, member_name
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.signature import FunctionSignature, Param
 from tests.fakes import make_environment
@@ -36,20 +36,22 @@ class SimplePythonStubGenerator:
     def generate(self, meta: ProblemMeta) -> str:
         signature = meta.signature
         if isinstance(signature, FunctionSignature):
-            name = member_name(signature.name, Language.PYTHON)
+            name = member_name(signature.name, Language.PYTHON, NameRole.FUNCTION)
             return f"def {name}({_params(signature.params)}):\n    raise NotImplementedError\n"
         lines = [f"class {signature.name}:"]
         constructor = _params(signature.constructor_params)
         lines += [f"    def __init__(self{_prefixed(constructor)}):", "        pass"]
         for method in signature.methods:
             parameters = _prefixed(_params(method.params))
-            name = member_name(method.name, Language.PYTHON)
+            name = member_name(method.name, Language.PYTHON, NameRole.METHOD)
             lines += ["", f"    def {name}(self{parameters}):", "        raise NotImplementedError"]
         return "\n".join(lines) + "\n"
 
 
 def _params(params: tuple[Param, ...]) -> str:
-    return ", ".join(member_name(param.name, Language.PYTHON) for param in params)
+    return ", ".join(
+        member_name(param.name, Language.PYTHON, NameRole.PARAMETER) for param in params
+    )
 
 
 def _prefixed(parameters: str) -> str:

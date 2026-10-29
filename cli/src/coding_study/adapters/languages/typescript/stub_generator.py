@@ -9,7 +9,7 @@ from collections.abc import Iterator, Mapping
 
 from coding_study.domain.concurrency import model_text
 from coding_study.domain.layout import statement_path
-from coding_study.domain.naming import member_name
+from coding_study.domain.naming import NameRole, member_name
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.signature import (
     ClassSignature,
@@ -125,7 +125,7 @@ def _node_kinds(declared: ReturnType) -> Iterator[NodeKind]:
 
 
 def _function(signature: FunctionSignature) -> list[str]:
-    name = member_name(signature.name, Language.TYPESCRIPT)
+    name = member_name(signature.name, Language.TYPESCRIPT, NameRole.FUNCTION)
     returns = typescript_type(signature.returns.type)
     head = _declaration(f"export function {name}", signature.params, f": {returns} {{", "")
     return [*head, f"{INDENT}{NOT_IMPLEMENTED}", "}"]
@@ -142,7 +142,7 @@ def _class(signature: ClassSignature) -> list[str]:
 def _method(method: Method) -> list[str]:
     """TypeScript concurrent problems use the async model: `blocking` methods are async."""
     level = [] if method.level is None else [f"{INDENT}// Level {method.level}"]
-    name = member_name(method.name, Language.TYPESCRIPT)
+    name = member_name(method.name, Language.TYPESCRIPT, NameRole.METHOD)
     returns = typescript_type(method.returns.type)
     if method.blocking:
         name, returns = f"async {name}", f"Promise<{returns}>"
@@ -164,4 +164,5 @@ def _declaration(prefix: str, params: tuple[Param, ...], suffix: str, indent: st
 
 
 def _param(param: Param) -> str:
-    return f"{member_name(param.name, Language.TYPESCRIPT)}: {typescript_type(param.type)}"
+    name = member_name(param.name, Language.TYPESCRIPT, NameRole.PARAMETER)
+    return f"{name}: {typescript_type(param.type)}"

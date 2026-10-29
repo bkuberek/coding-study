@@ -129,6 +129,15 @@ def test_encodes_a_compiled_target_by_its_id():
     assert encoded_job(job)["target"] == {"compiled": "ref/hash-map"}
 
 
+def test_encodes_the_constructor_name_when_the_language_names_one():
+    names = ClassNames("LRUCache", {"get": "Get", "put": "Put"}, constructor="NewLRUCache")
+    assert encoded_job(replace(LRU_JOB, names=names))["names"] == {
+        "class": "LRUCache",
+        "methods": {"get": "Get", "put": "Put"},
+        "constructor": "NewLRUCache",
+    }
+
+
 def test_encodes_class_signature_with_levels():
     assert encoded_job(LRU_JOB)["signature"] == {
         "class": {

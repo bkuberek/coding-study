@@ -1,8 +1,9 @@
 """Per-language symbol names (docs/specs/problem-format.md#naming-rules).
 
 Canonical names are lowerCamelCase (classes PascalCase). Python and Rust convert functions,
-methods and parameters to snake_case; TypeScript, Java, Kotlin and Go keep the canonical names.
-Runners never convert names: the CLI sends them in the request
+methods and parameters to snake_case; TypeScript, Java and Kotlin keep the canonical names. Go
+keeps them too, except that methods are exported (PascalCase) because reflection only finds
+exported ones. Runners never convert names: the CLI sends them in the request
 (docs/specs/runners.md#request-file).
 """
 
@@ -11,6 +12,7 @@ import keyword
 import re
 from collections.abc import Iterable, Iterator, Mapping, Set
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import assert_never
 
 from coding_study.domain.problem import Language
@@ -78,6 +80,14 @@ PYTHON_TYPE_IMPORTS: Mapping[Scalar, str] = {Scalar.DATE: "date", Scalar.DECIMAL
 """The name a Python stub imports for each scalar that is not a builtin."""
 
 
+class NameRole(StrEnum):
+    """What a name is for, where a language's naming rule depends on it."""
+
+    FUNCTION = "function"
+    METHOD = "method"
+    PARAMETER = "parameter"
+
+
 @dataclass(frozen=True, slots=True)
 class FunctionNames:
     """`names` of a function-kind request job: the function and each canonical parameter."""
@@ -92,6 +102,8 @@ class ClassNames:
 
     class_name: str
     methods: Mapping[str, str]
+    constructor: str | None = None
+    """Go and Rust build an instance by calling a function, not by naming the class."""
 
 
 type SymbolNames = FunctionNames | ClassNames
@@ -111,13 +123,29 @@ def snake_case(name: str) -> str:
     return _SNAKE_CASE_BOUNDARY.sub("_", name).lower()
 
 
-def member_name(canonical: str, language: Language) -> str:
+def member_name(canonical: str, language: Language, role: NameRole) -> str:
     """The name of a function, method or parameter in `language`."""
     match language:
         case Language.PYTHON | Language.RUST:
             return snake_case(canonical)
-        case Language.TYPESCRIPT | Language.JAVA | Language.KOTLIN | Language.GO:
+        case Language.TYPESCRIPT | Language.JAVA | Language.KOTLIN:
             return canonical
+        case Language.GO:
+            return canonical[:1].upper() + canonical[1:] if role is NameRole.METHOD else canonical
+        case _:
+            assert_never(language)
+
+
+def constructor_name(class_name: str, language: Language) -> str | None:
+    """The function that creates an instance in languages without constructors: Go's
+    `NewLRUCache` and Rust's `new`. None where the class itself is called."""
+    match language:
+        case Language.GO:
+            return f"New{class_name}"
+        case Language.RUST:
+            return "new"
+        case Language.PYTHON | Language.TYPESCRIPT | Language.JAVA | Language.KOTLIN:
+            return None
         case _:
             assert_never(language)
 
@@ -125,10 +153,14 @@ def member_name(canonical: str, language: Language) -> str:
 def symbol_names(signature: Signature, language: Language) -> SymbolNames:
     if isinstance(signature, FunctionSignature):
         return FunctionNames(
-            member_name(signature.name, language), _param_names(signature.params, language)
+            member_name(signature.name, language, NameRole.FUNCTION),
+            _param_names(signature.params, language),
         )
-    methods = {method.name: member_name(method.name, language) for method in signature.methods}
-    return ClassNames(signature.name, methods)
+    methods = {
+        method.name: member_name(method.name, language, NameRole.METHOD)
+        for method in signature.methods
+    }
+    return ClassNames(signature.name, methods, constructor_name(signature.name, language))
 
 
 def is_reserved(symbol: str, language: Language) -> bool:
@@ -170,29 +202,30 @@ def _python_names_in(signature: Signature, names: Set[str]) -> tuple[str, ...]:
 
 
 def _param_names(params: tuple[Param, ...], language: Language) -> dict[str, str]:
-    return {param.name: member_name(param.name, language) for param in params}
+    return {param.name: member_name(param.name, language, NameRole.PARAMETER) for param in params}
 
 
 @dataclass(frozen=True, slots=True)
 class _DeclaredName:
     name: str
-    is_class: bool
+    role: NameRole | None
+    """None for the class, which every language spells as declared."""
 
     def symbol(self, language: Language) -> str:
-        return self.name if self.is_class else member_name(self.name, language)
+        return self.name if self.role is None else member_name(self.name, language, self.role)
 
 
 def _declared_names(signature: Signature) -> Iterator[_DeclaredName]:
     if isinstance(signature, ClassSignature):
-        yield _DeclaredName(signature.name, is_class=True)
+        yield _DeclaredName(signature.name, role=None)
         yield from _param_declarations(signature.constructor_params)
         for method in signature.methods:
-            yield _DeclaredName(method.name, is_class=False)
+            yield _DeclaredName(method.name, NameRole.METHOD)
             yield from _param_declarations(method.params)
         return
-    yield _DeclaredName(signature.name, is_class=False)
+    yield _DeclaredName(signature.name, NameRole.FUNCTION)
     yield from _param_declarations(signature.params)
 
 
 def _param_declarations(params: tuple[Param, ...]) -> Iterator[_DeclaredName]:
-    return (_DeclaredName(param.name, is_class=False) for param in params)
+    return (_DeclaredName(param.name, NameRole.PARAMETER) for param in params)

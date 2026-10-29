@@ -3,6 +3,7 @@ import pytest
 from coding_study.domain.naming import (
     ClassNames,
     FunctionNames,
+    NameRole,
     ReservedNameConflict,
     is_reserved,
     member_name,
@@ -54,13 +55,25 @@ def test_snake_case_follows_the_spec_rule(canonical, converted):
     assert snake_case(canonical) == converted
 
 
-def test_python_members_are_snake_case():
-    assert member_name("twoSum", Language.PYTHON) == "two_sum"
+@pytest.mark.parametrize("role", list(NameRole))
+@pytest.mark.parametrize("language", [Language.PYTHON, Language.RUST])
+def test_python_and_rust_members_are_snake_case(language, role):
+    assert member_name("twoSum", language, role) == "two_sum"
 
 
+@pytest.mark.parametrize("role", list(NameRole))
 @pytest.mark.parametrize("language", [Language.TYPESCRIPT, Language.JAVA, Language.KOTLIN])
-def test_other_languages_keep_canonical_member_names(language):
-    assert member_name("twoSum", language) == "twoSum"
+def test_other_languages_keep_canonical_member_names(language, role):
+    assert member_name("twoSum", language, role) == "twoSum"
+
+
+@pytest.mark.parametrize("role", [NameRole.FUNCTION, NameRole.PARAMETER])
+def test_go_functions_and_parameters_keep_the_canonical_name(role):
+    assert member_name("twoSum", Language.GO, role) == "twoSum"
+
+
+def test_go_methods_are_exported_so_reflection_can_call_them():
+    assert member_name("getRandom", Language.GO, NameRole.METHOD) == "GetRandom"
 
 
 def test_python_function_names_convert_function_and_params():
@@ -76,6 +89,36 @@ def test_kotlin_function_names_are_canonical():
 def test_python_class_names_keep_the_class_and_convert_methods():
     names = symbol_names(design_class("LRUCache", "get", "getRandom"), Language.PYTHON)
     assert names == ClassNames("LRUCache", {"get": "get", "getRandom": "get_random"})
+
+
+def test_go_function_names_keep_the_canonical_names():
+    names = symbol_names(function("twoSum", "maxValue"), Language.GO)
+    assert names == FunctionNames("twoSum", {"maxValue": "maxValue"})
+
+
+def test_rust_function_names_are_snake_case():
+    names = symbol_names(function("twoSum", "maxValue"), Language.RUST)
+    assert names == FunctionNames("two_sum", {"maxValue": "max_value"})
+
+
+def test_go_class_names_export_methods_and_name_the_constructor():
+    names = symbol_names(design_class("LRUCache", "get", "getRandom"), Language.GO)
+    assert names == ClassNames(
+        "LRUCache", {"get": "Get", "getRandom": "GetRandom"}, constructor="NewLRUCache"
+    )
+
+
+def test_rust_class_names_are_snake_case_with_new_as_the_constructor():
+    names = symbol_names(design_class("LRUCache", "get", "getRandom"), Language.RUST)
+    assert names == ClassNames(
+        "LRUCache", {"get": "get", "getRandom": "get_random"}, constructor="new"
+    )
+
+
+@pytest.mark.parametrize("language", [Language.PYTHON, Language.TYPESCRIPT, Language.JAVA])
+def test_other_languages_name_no_constructor(language):
+    names = symbol_names(design_class("LRUCache", "get"), language)
+    assert names == ClassNames("LRUCache", {"get": "get"}, constructor=None)
 
 
 def test_typescript_class_names_are_canonical():
@@ -196,9 +239,6 @@ def test_go_conflicts_are_found_after_conversion():
     )
 
 
-def test_rust_names_are_snake_case():
-    assert member_name("twoSum", Language.RUST) == "two_sum"
-
-
-def test_go_functions_keep_the_canonical_name():
-    assert member_name("twoSum", Language.GO) == "twoSum"
+def test_go_methods_are_exported_so_keywords_do_not_conflict():
+    signature = ClassSignature("Box", (), (Method("range", (), Returns(VoidType())),))
+    assert reserved_name_conflicts(signature, (Language.GO,)) == ()
