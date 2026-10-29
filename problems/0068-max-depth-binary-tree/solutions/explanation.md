@@ -47,6 +47,8 @@ It is a one-line recurrence and the answer interviewers expect first. Its cost i
 - TypeScript: Node's default stack holds several thousand simple frames, which is why test trees stay at or below 3000 levels.
 - Java: the runner gives each case a thread with a 256 MiB stack; a plain `main` thread is much smaller.
 - Kotlin: `root.left` is a platform type because `TreeNode` is a Java class; declaring the parameter `TreeNode?` keeps the null check explicit, and `maxOf` reads like `Math.max`.
+- Go: goroutine stacks grow on demand (up to 1 GB by default), so a 3000-level recursion needs no special care, and the builtin `max` takes the two depths directly.
+- Rust: a tree is `Option<Rc<RefCell<TreeNode>>>`, and the helper takes `&Option<Rc<RefCell<TreeNode>>>` so the recursion borrows each link instead of cloning an `Rc`. `node.borrow()` returns a shared guard that is released at the end of the arm. The runner gives each case a thread with a 256 MiB stack, far more than 3000 levels need; a stack overflow in Rust aborts the process instead of panicking.
 
 ## Approach: level-count (Count levels with a queue)
 
@@ -87,3 +89,5 @@ It handles any height, including a 10^5-node path, because the queue lives on th
 - TypeScript: there is no built-in queue and `Array.prototype.shift()` is linear on large arrays, so the reference builds a fresh array for each level instead.
 - Java: `ArrayDeque` with `add` and `poll`, and a counter read before the inner loop.
 - Kotlin: `level.flatMap { listOfNotNull(it.left, it.right) }` builds the next level in one expression; `listOfNotNull` drops the missing children.
+- Go: `level = level[1:]` drops the front in O(1), with no shifting like JavaScript's `shift()`. When `append` runs out of capacity it copies only the live part into a new array, so memory stays O(w) amortized. `for range len(level)` evaluates the length once, before the loop body changes the slice.
+- Rust: `VecDeque` is the queue (`pop_front`, `extend`); `node.left.iter().cloned()` clones the `Rc` of an existing child, which only bumps a counter. `for _ in 0..level.len()` fixes the level's size before the loop starts.
