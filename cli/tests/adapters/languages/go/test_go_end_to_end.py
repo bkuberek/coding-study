@@ -85,6 +85,16 @@ def test_the_users_function_runs_and_returns(root):
     assert case.outcome.output == [0, 1]
 
 
+def test_the_users_go_settings_do_not_reach_the_build(root, tmp_path, monkeypatch):
+    settings = tmp_path / "go-env"
+    settings.write_text("GOFLAGS=-mod=mod\nGOOS=windows\n")
+    monkeypatch.setenv("GOENV", str(settings))
+    monkeypatch.setenv("GOARCH", "386")
+    write_solution(root, HASH_MAP)
+    (case,) = run(root, prepare(root)).cases
+    assert isinstance(case.outcome, Returned)
+
+
 def test_a_misnamed_function_is_a_load_error_with_the_compilers_reason(root):
     write_solution(root, HASH_MAP.replace("func twoSum(", "func twoSumm("))
     load_error = run(root, prepare(root)).load_error
