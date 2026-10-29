@@ -21,7 +21,7 @@ When several installs exist, the first `cstudy` on `PATH` runs; Homebrew warns w
 | Release files | The wheel and `requirements.txt` (the runtime dependencies from `uv.lock`, with hashes), attached to the GitHub release of each version ([versioning](versioning.md#github-release)) |
 | sdist | The same top-level paths as the checkout (`cli/src`, `problems`, `tracks`, `runners`, `schemas`), so a wheel built from the sdist equals one built from the checkout |
 | Excluded | Build output and caches (`node_modules`, `build`, `.gradle`, `.kotlin`, `.venv`, `__pycache__`, `.pytest_cache`, `.ruff_cache`) and `runners/python/tests` |
-| Workspace templates | Package data in `coding_study/adapters/workspace_template/`: the three practice projects with the Gradle wrapper and lock files |
+| Workspace templates | Package data in `coding_study/adapters/workspace_template/`: the four practice projects with the Gradle wrapper and lock files, and the root `go.work` |
 
 ## Content root
 
@@ -73,6 +73,8 @@ created_with = "0.1.0"
   python/                 # pyproject.toml (dev tools: pyright, ruff, debugpy), uv.lock, practice/<snake_slug>.py
   typescript/             # package.json, pnpm-lock.yaml, tsconfig.json, support.ts, practice/<slug>.ts
   jvm/                    # Gradle wrapper, settings.gradle.kts, java/ and kotlin/ subprojects
+  go/                     # go.mod (module workspace, Go 1.24), practice/<snake_slug>/<snake_slug>.go
+  go.work                 # use ./go, so gopls and the go command find go/ from the root
   notes/                  # answers to non-autograded items
   problems/               # your own problems, overlaid on the catalog
   .archive/               # previous attempts (tracked)
@@ -93,13 +95,13 @@ Creates a workspace in `PATH` (default: `--workspace`, then `CSTUDY_WORKSPACE`, 
 | Step | Rule |
 |------|------|
 | Refusals (exit 3) | `PATH` already holds a marker (`cstudy doctor --fix` repairs a workspace); `PATH` is inside another workspace; `PATH` is at or below a content checkout (a directory with `problems/` and `schemas/`) unless `--force` |
-| Files | Copies the template: the three practice projects, `notes/` and `problems/` (each with `.gitkeep`), `README.md` and `.gitignore`; makes `jvm/gradlew` executable; writes the marker. An existing file is never overwritten, so `cstudy init` can adopt a directory that already has files (for example a cloned repository) |
+| Files | Copies the template: the four practice projects and `go.work`, `notes/` and `problems/` (each with `.gitkeep`), `README.md` and `.gitignore`; makes `jvm/gradlew` executable; writes the marker. An existing file is never overwritten, so `cstudy init` can adopt a directory that already has files (for example a cloned repository) |
 | Runtime | Materializes the runners into `.cs/runtime/` ([below](#runner-runtime)), so an IDE can import the projects right away |
 | IDE files | Writes the [IDE files](#ide-files) of VS Code and IntelliJ IDEA, as `cstudy ide` does; `--ide vscode` or `--ide idea` (repeatable) writes only those, `--no-ide` none, and both together exit 3 |
 | `--git` | Runs `git init` in `PATH`; `cstudy` never commits |
 | Output | `created workspace <path>`, the number of files written and skipped, the IDE files line of [`cstudy ide`](cli.md#cstudy-ide), then the next steps: `cd <path>`, `cstudy doctor --fix`, `cstudy start two-sum` |
 
-`cstudy init` installs nothing: `cstudy doctor --fix` runs `uv sync`, `pnpm install` and the Gradle warm-up.
+`cstudy init` installs nothing: `cstudy doctor --fix` runs `uv sync`, `pnpm install` and the Gradle warm-up. Go is optional: neither command runs `go`, so a machine without it gets the same workspace, and only `--lang go` needs Go 1.24 or newer (without it, `cstudy test --lang go` exits 4 with `go was not found on PATH`). `cstudy doctor` does not check Go yet ([ADR 0012](../decisions/0012-go-and-rust.md)).
 
 The workspace `.gitignore` ignores `/.cs/*` except `/.cs/workspace.toml` and `/.cs/ide.json`, `/.statements/`, `progress.db*`, `node_modules/`, `.venv/`, `build/`, `.gradle/`, `.kotlin/`, `__pycache__/`, `.ruff_cache/`, and IntelliJ's per-user files (`.idea/workspace.xml`, `tasks.xml`, `usage.statistics.xml`, `dictionaries/`, `shelf/`, `libraries/`, `modules.xml`, `dataSources*`, `contentModel.xml`, `*.iml`). Practice files, notes, `.archive/`, your problems and the IDE files stay tracked, and you commit them when you choose ([PRD Q3](../prd.md#8-open-questions)).
 
@@ -109,13 +111,13 @@ The practice projects build and run against the runners, and Gradle, uv and Node
 
 | Item | Rule |
 |------|------|
-| Location | `.cs/runtime/runners/{python,typescript,jvm}`: the content root's `runners/<name>/` without `tests/` and build output |
+| Location | `.cs/runtime/runners/{python,typescript,jvm,go}`: the content root's `runners/<name>/` without `tests/` and build output |
 | Stamp | `.cs/runtime/stamp.json`: a SHA-256 over the relative path and bytes of every copied source file |
 | Refresh | Before the first runner prepares in a command, and in `cstudy doctor`, `cstudy doctor --fix` and `cstudy init`: when the stamp differs from the content's digest, changed files are rewritten, removed files deleted, unchanged files keep their timestamps, and build output (`build/`, `.gradle/`, `node_modules/`, `.kotlin/`, `__pycache__/`) stays |
-| Wiring | Relative paths in the tracked project files: `python/pyproject.toml` depends on `../.cs/runtime/runners/python` (editable), `typescript/support.ts` re-exports `../.cs/runtime/runners/typescript/support.ts`, `jvm/settings.gradle.kts` includes `../.cs/runtime/runners/jvm`, and the reference build in `.cs/build/jvm` includes `../../runtime/runners/jvm` |
+| Wiring | Relative paths in the tracked project files: `python/pyproject.toml` depends on `../.cs/runtime/runners/python` (editable), `typescript/support.ts` re-exports `../.cs/runtime/runners/typescript/support.ts`, `jvm/settings.gradle.kts` includes `../.cs/runtime/runners/jvm`, `go/go.mod` replaces the module `cstudy` (the runner and `cstudy/support`) with `../.cs/runtime/runners/go`, and the reference build in `.cs/build/jvm` includes `../../runtime/runners/jvm` while `.cs/build/go/go.work` replaces `cstudy` with `../../runtime/runners/go` |
 | IDE launcher | `.cs/runtime/ide/cstudy-launcher.jar`, a copy of the jar shipped in the package ([IDE files](#ide-files)); installed whenever the runtime is refreshed, even when the stamp matches, and by `cstudy ide`. A missing or different copy makes the runtime stale |
 
-Because the wiring is relative, a workspace keeps working when it moves or is cloned on another machine; there `cstudy doctor --fix` recreates `.cs/runtime/` (with the launcher), the venv, `node_modules` and the Gradle build. Editors open the workspace root with its [IDE files](#ide-files), or each project on its own: `python/` (pyright and ruff find `.venv`), `typescript/` (tsserver finds `node_modules`) and `jvm/` (IntelliJ imports it as one Gradle project).
+Because the wiring is relative, a workspace keeps working when it moves or is cloned on another machine; there `cstudy doctor --fix` recreates `.cs/runtime/` (with the launcher), the venv, `node_modules` and the Gradle build. Editors open the workspace root with its [IDE files](#ide-files), or each project on its own: `python/` (pyright and ruff find `.venv`), `typescript/` (tsserver finds `node_modules`), `jvm/` (IntelliJ imports it as one Gradle project) and `go/` (gopls reads `go.mod`).
 
 ## IDE files
 

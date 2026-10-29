@@ -21,6 +21,9 @@ PRACTICE_PROJECT_FILES = (
     "jvm/settings.gradle.kts",
     "jvm/gradlew",
     "jvm/gradle/wrapper/gradle-wrapper.jar",
+    "go/go.mod",
+    "go/practice/.gitkeep",
+    "go.work",
 )
 VSCODE_TASKS = ".vscode/tasks.json"
 IDEA_MISC = ".idea/misc.xml"

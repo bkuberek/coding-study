@@ -17,7 +17,7 @@ Run `cstudy` anywhere inside this directory, or from elsewhere with `cstudy --wo
 
 | Path | What it holds |
 |------|---------------|
-| `python/`, `typescript/`, `jvm/` | One practice project per runtime; open this directory, the workspace root, in your IDE ([below](#using-an-ide)) |
+| `python/`, `typescript/`, `jvm/`, `go/` | One practice project per runtime; open this directory, the workspace root, in your IDE ([below](#using-an-ide)). `go/` needs Go 1.24 or newer, only for `--lang go`; `go.work` lets gopls find it from the root |
 | `.vscode/`, `.idea/` | VS Code and IntelliJ IDEA project files written by `cstudy init` and `cstudy ide`; yours to edit |
 | `notes/` | Your answers to system design and code review items |
 | `problems/` | Problems you write yourself (`cstudy new <slug>`); they join the catalog |

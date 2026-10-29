@@ -1,0 +1,4 @@
+// Lets gopls and the go command find the go/ module from the workspace root.
+go 1.24
+
+use ./go

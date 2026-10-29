@@ -24,7 +24,7 @@ RUNTIME_DIRECTORY = ".cs/runtime"
 RUNTIME_RUNNERS = f"{RUNTIME_DIRECTORY}/runners"
 STAMP_FILE = f"{RUNTIME_DIRECTORY}/stamp.json"
 STAMP_FORMAT = 1
-RUNNER_NAMES = ("python", "typescript", "jvm")
+RUNNER_NAMES = ("python", "typescript", "jvm", "go")
 """The runners a workspace builds against; `conformance/` is content, read in place."""
 SKIPPED_DIRECTORIES = frozenset(
     {

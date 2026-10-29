@@ -22,6 +22,8 @@ progress-export.json
 /python/
 /typescript/
 /jvm/
+/go/
+/go.work
 /notes/
 /.archive/
 
