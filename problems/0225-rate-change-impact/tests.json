@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"oldCodes": ["5403", "5645", "8810"], "oldRates": ["12.50", "18.00", "0.45"], "newCodes": ["5403", "5645", "9102"], "newRates": ["13.10", "16.20", "7.75"]}, "expected": [["5403", "changed", "4.80"], ["5645", "changed", "-10.00"], ["9102", "added", ""], ["8810", "removed", ""]]},
+    {"id": "ex2", "visible": true, "input": {"oldCodes": ["5403", "5606", "5645"], "oldRates": ["12.50", "20", "8"], "newCodes": ["5645", "5606", "5403"], "newRates": ["8.40", "21", "12.5"]}, "expected": [["5606", "changed", "5.00"], ["5645", "changed", "5.00"]]},
+    {"id": "ex3", "visible": true, "input": {"oldCodes": [], "oldRates": [], "newCodes": ["9102", "5403"], "newRates": ["7.75", "12.50"]}, "expected": [["5403", "added", ""], ["9102", "added", ""]]},
+    {"id": "h1", "input": {"oldCodes": [], "oldRates": [], "newCodes": [], "newRates": []}, "expected": [], "note": "two empty tables"},
+    {"id": "h2", "input": {"oldCodes": ["5403", "5645"], "oldRates": ["12.50", "18.00"], "newCodes": ["5645", "5403"], "newRates": ["18", "12.5"]}, "expected": [], "note": "the same rates with different scales: no changes"},
+    {"id": "h3", "input": {"oldCodes": ["0001", "0002"], "oldRates": ["1000.01", "1000"], "newCodes": ["0001", "0002"], "newRates": ["1000", "1000.01"]}, "expected": [["0001", "changed", "0.00"], ["0002", "changed", "0.00"]], "note": "tiny changes in both directions round to 0.00, never -0.00"},
+    {"id": "h4", "input": {"oldCodes": ["1000", "2000"], "oldRates": ["200", "200"], "newCodes": ["1000", "2000"], "newRates": ["200.01", "199.99"]}, "expected": [["1000", "changed", "0.01"], ["2000", "changed", "-0.01"]], "note": "half-up ties on both signs: 0.01 and -0.01"},
+    {"id": "h5", "input": {"oldCodes": ["a1", "a2", "a3", "a4"], "oldRates": ["10", "10", "10", "10"], "newCodes": ["a1", "a2", "a3", "a4"], "newRates": ["11", "10.9", "9.75", "20"]}, "expected": [["a4", "changed", "100.00"], ["a1", "changed", "10.00"], ["a2", "changed", "9.00"], ["a3", "changed", "-2.50"]], "note": "numeric order of percents, not text order"},
+    {"id": "h6", "input": {"oldCodes": ["7380", "5403"], "oldRates": ["3.5", "12.50"], "newCodes": [], "newRates": []}, "expected": [["5403", "removed", ""], ["7380", "removed", ""]], "note": "every code removed"},
+    {"id": "h7", "input": {"oldCodes": ["5403"], "oldRates": ["0.0001"], "newCodes": ["5403"], "newRates": ["10000"]}, "expected": [["5403", "changed", "9999999900.00"]], "note": "largest increase"},
+    {"id": "h8", "input": {"oldCodes": ["5403"], "oldRates": ["10000"], "newCodes": ["5403"], "newRates": ["0.0001"]}, "expected": [["5403", "changed", "-100.00"]], "note": "largest decrease rounds to -100.00"},
+    {"id": "h9", "input": {"oldCodes": ["B", "10"], "oldRates": ["1", "1"], "newCodes": ["A1", "C9"], "newRates": ["1", "1"]}, "expected": [["A1", "added", ""], ["C9", "added", ""], ["10", "removed", ""], ["B", "removed", ""]], "note": "added and removed codes sort as text"},
+    {"id": "h10", "input": {"oldCodes": ["9999", "1111"], "oldRates": ["300", "3"], "newCodes": ["1111", "9999"], "newRates": ["3.1", "309.99"]}, "expected": [["1111", "changed", "3.33"], ["9999", "changed", "3.33"]], "note": "different exact changes that round to the same percent order by code"}
+  ]
+}
