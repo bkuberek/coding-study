@@ -48,6 +48,8 @@ The textbook answer and easy to argue about: the state is explicit and nothing c
 - TypeScript: each state is packed into one number, `(r * cols + c) * layers + used`, and the seen flags live in a flat `Uint8Array`.
 - Java: a `boolean[rows][cols][K + 1]` array and `int[]` triples in an `ArrayDeque`.
 - Kotlin: `Triple<Int, Int, Int>` states destructure as `val (r, c, used)`; `repeat(queue.size)` handles one level.
+- Go: the seen flags are a `[][][]bool` allocated layer by layer, and the built-in `min` and `max` (Go 1.21 and newer) clamp the budget. A small struct `state{row, col, used}` replaces the tuple, and `for moves := 0; len(queue) > 0; moves++` counts one level per pass.
+- Rust: the three-level `Vec<Vec<Vec<bool>>>` comes from nested `vec![...; n]` repetitions, which clone the inner vector for every cell. `(rows + cols).saturating_sub(3)` clamps at zero in `usize`, where a plain subtraction on a 1 x 1 grid would panic, and `grid[nr][nc] as usize` turns the 0 or 1 cell into the step cost.
 
 ## Approach: best-remaining-bfs (Breadth-first search that keeps the most removals left per cell)
 
@@ -87,3 +89,5 @@ Same worst case, less memory for the bookkeeping and typically far fewer states,
 - TypeScript: `best` is an `Int32Array` over flattened cells, and each level is an array of `[cell, left]` pairs.
 - Java: `int[][] best` filled with `Arrays.fill`; `int[]` triples in an `ArrayDeque`, processed one level at a time.
 - Kotlin: `Array(rows) { IntArray(cols) { -1 } }` for `best`; `Triple` states destructured in the loop.
+- Go: `best` is built row by row and filled with -1, since `make` zeroes it and 0 is a valid number of removals left. The queue holds a `visit{row, col, left}` struct, and the `if k >= rows+cols-3` shortcut uses signed `int` arithmetic.
+- Rust: the shortcut compares `k` with `span - 3` after both are converted to `i32`, because the `usize` difference would underflow on a 1 x 1 grid. The queue holds `(usize, usize, i32)` tuples, and `left - grid[nr][nc]` stays in `i32`, where -1 is an ordinary value that never beats the `best` initial -1.
