@@ -6,7 +6,7 @@ status: ready
 difficulty: medium
 track: concurrency
 kind: concurrent
-languages: [java, kotlin, python, typescript]
+languages: [java, kotlin, python, typescript, go, rust]
 signature:
   class:
     name: ConcurrencyLimiter
@@ -18,7 +18,7 @@ signature:
       - {name: available, params: [], returns: {type: int}}
 comparator: {type: ops}
 concurrency:
-  model: {java: threads, kotlin: threads, python: async, typescript: async}
+  model: {java: threads, kotlin: threads, python: async, typescript: async, go: threads, rust: threads}
   jvm_threads: [platform, virtual]
   runs: 3
   deadline_ms: 5000

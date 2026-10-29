@@ -51,6 +51,8 @@ Direct hand-off gives strict FIFO fairness and makes barging impossible, at the 
 - Kotlin: the same JDK classes with `lock.withLock { }`, which is inline, so `return` inside it returns from `acquire`. With coroutines the same design is `kotlinx.coroutines.sync.Semaphore(limit)`, which suspends instead of blocking and is FIFO; coroutines are not autograded here.
 - Python: the async model, where only an `await` can let another worker run, so no lock is needed. Each waiter is an `asyncio.Future`; `release` resolves the first one that is not already cancelled. A task cancelled after its future was resolved passes the permit on in its `except CancelledError` branch. `asyncio.Semaphore` is the library version and is FIFO since Python 3.11.1. In the threads model the same design needs a `threading.Lock` and one `threading.Condition` (or `Event`) per waiter.
 - TypeScript: one event loop and the async model: each waiter is the `resolve` function of a pending promise, kept in a FIFO array. Calling `resolve` does not run the waiter immediately; its continuation is queued, which is exactly why the permit must be handed over rather than made free.
+- Go: a `sync.Mutex`, the free count and a FIFO slice of channels, one per waiting goroutine. `Release` closes the oldest waiter's channel, which hands it the permit; the waiter blocks on receiving from its channel after it unlocked the mutex.
+- Rust: the free count and two ticket counters in a `Mutex`, with one `Condvar`. Waiters draw tickets in arrival order; `release` hands a permit to the oldest ticket by raising `granted_below` and wakes every waiter, and each one re-checks its own ticket. One condition variable per waiter would wake only the granted worker, but the queue would then have to hold a shared handle to each, such as an `Arc`; the tickets keep the queue implicit. The threads share the limiter, so the methods take `&self`.
 
 ## Approach: fair-semaphore (Fair semaphore from the standard library)
 
@@ -88,12 +90,14 @@ It is the code to write in production and shows that you know the library. In an
 - Java: `Semaphore(limit, true)`; virtual threads park on it without pinning their carrier.
 - Kotlin: the same JDK class; `tryAcquire(0, TimeUnit.SECONDS)` needs no `try`, because Kotlin has no checked exceptions. For coroutines, `kotlinx.coroutines.sync.Semaphore` with `withPermit { }` is the equivalent.
 - Python and TypeScript have no reference for this approach: Python's `asyncio.Semaphore` does not expose its free count publicly, and TypeScript has no built-in semaphore.
+- Go: a buffered channel of capacity `limit` is the standard library's counting semaphore. `Acquire` sends a token, `Release` receives one, `TryAcquire` sends in a `select` with a `default` branch, and `Available` is `cap` minus `len`. Goroutines blocked on a full channel queue first come, first served, and a receive moves the oldest one's token into the buffer at once, so the permit is handed over and a newcomer cannot barge. `golang.org/x/sync/semaphore` is FIFO too, but it is not in the standard library.
+- Rust's standard library has no semaphore, so this approach has no Rust reference; Tokio's `Semaphore` is fair but async.
 
 ## Broken: if-not-while (Wait guarded by if)
 
 ### Bug
 
-`release` increments the count and wakes every waiter (`notifyAll`, `signalAll`, or resolving every pending promise). Each woken waiter continues past its `if` and decrements the count without checking it again, so several waiters take the one released permit. More than `limit` workers are inside at once (`section` with `max_occupancy`, or an exclusive violation with limit 1), and the count goes negative (`bounds` on `available`).
+`release` increments the count and wakes every waiter (`notifyAll`, `signalAll`, or resolving every pending promise). Each woken waiter continues past its `if` and decrements the count without checking it again, so several waiters take the one released permit. More than `limit` workers are inside at once (`section` with `max_occupancy`, or an exclusive violation with limit 1), and the count goes negative (`bounds` on `available`). In Go the same bug is `if` around `sync.Cond.Wait` with `Broadcast`; in Rust it is `if` around `Condvar::wait` with `notify_all`, where a spurious wake-up can also let a waiter through with no release at all.
 
 ### Failing interleaving
 

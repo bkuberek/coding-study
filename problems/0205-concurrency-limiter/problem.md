@@ -58,7 +58,7 @@ With a single permit, the limiter behaves like a lock that can be tried: the sec
 - Waiting workers are served in the order they started waiting. A permit released while workers wait goes to the first of them, never to a worker that arrives later, and `tryAcquire` never takes a permit ahead of a waiting worker.
 - `available` never reports a number outside 0 to `limit`.
 
-Java and Kotlin run on platform threads and on virtual threads, where `acquire` blocks the thread. Python and TypeScript run as async workers on one event loop, where `acquire` is `async` and the other methods are plain. A passing stress run is evidence of correct synchronization, not proof; the stress tests check the limit and progress, while first-come, first-served order is part of the contract that they do not observe directly.
+Java and Kotlin run on platform threads and on virtual threads, Rust on threads and Go on goroutines, where `acquire` blocks; in Rust the threads share one limiter, so its methods take `&self`. Python and TypeScript run as async workers on one event loop, where `acquire` is `async` and the other methods are plain. A passing stress run is evidence of correct synchronization, not proof; the stress tests check the limit and progress, while first-come, first-served order is part of the contract that they do not observe directly.
 
 ## Follow-ups
 
