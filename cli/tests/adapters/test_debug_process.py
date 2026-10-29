@@ -1,8 +1,17 @@
+import signal
+import subprocess
+import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
-from coding_study.adapters.debug_process import TAIL_LINES, DebugOutput
+from coding_study.adapters import debug_process
+from coding_study.adapters.debug_process import (
+    TAIL_LINES,
+    DebugOutput,
+    kill_processes_started_from,
+)
 from coding_study.application.ports import DebugLaunch
 from coding_study.domain.debugging import DebugSession
 from coding_study.domain.problem import Language
@@ -95,3 +104,113 @@ def test_the_tail_keeps_the_last_lines_of_each_stream(tmp_path):
         f"line {TAIL_LINES + 4}",
         TAIL_LINES,
     )
+
+
+# Processes left behind by a debug server that let go of its runner.
+
+GRACE_SECONDS = 0.1
+"""Short: a killed child of this test stays a zombie until the test waits for it."""
+ENDED_BY_KILL = -signal.SIGKILL
+SLEEP_FOR_A_MINUTE = "import time; time.sleep(60)"
+
+
+@pytest.fixture
+def started() -> Iterator[list[subprocess.Popen[bytes]]]:
+    """Processes the test started, killed at the end whatever the test did."""
+    processes: list[subprocess.Popen[bytes]] = []
+    yield processes
+    for process in processes:
+        process.kill()
+        process.wait()
+
+
+def start_in(
+    directory: Path, processes: list[subprocess.Popen[bytes]], *extra: str
+) -> subprocess.Popen[bytes]:
+    """A process whose executable is a file of `directory`, in a session of its own as the
+    runner of `debugserver` is."""
+    directory.mkdir(parents=True, exist_ok=True)
+    binary = directory / "cs-runner"
+    if not binary.exists():
+        binary.symlink_to(sys.executable)
+    process = subprocess.Popen(
+        [str(binary), "-c", SLEEP_FOR_A_MINUTE, *extra], start_new_session=True
+    )
+    processes.append(process)
+    return process
+
+
+def is_running(process: subprocess.Popen[bytes]) -> bool:
+    try:
+        process.wait(timeout=GRACE_SECONDS)
+    except subprocess.TimeoutExpired:
+        return True
+    return False
+
+
+def test_a_process_started_from_the_directory_is_killed(tmp_path, started):
+    left_behind = start_in(tmp_path / "scratch", started)
+    kill_processes_started_from(tmp_path / "scratch", GRACE_SECONDS)
+    assert left_behind.wait(timeout=5) == ENDED_BY_KILL
+
+
+def test_every_process_started_from_the_directory_is_killed(tmp_path, started):
+    first = start_in(tmp_path / "scratch", started)
+    second = start_in(tmp_path / "scratch", started)
+    kill_processes_started_from(tmp_path / "scratch", GRACE_SECONDS)
+    assert (first.wait(timeout=5), second.wait(timeout=5)) == (ENDED_BY_KILL, ENDED_BY_KILL)
+
+
+def test_a_directory_with_a_space_in_its_name_is_matched(tmp_path, started):
+    left_behind = start_in(tmp_path / "my workspace" / "scratch", started)
+    kill_processes_started_from(tmp_path / "my workspace" / "scratch", GRACE_SECONDS)
+    assert left_behind.wait(timeout=5) == ENDED_BY_KILL
+
+
+def test_a_process_started_from_elsewhere_is_left_alone(tmp_path, started):
+    other = subprocess.Popen([sys.executable, "-c", SLEEP_FOR_A_MINUTE])
+    started.append(other)
+    start_in(tmp_path / "scratch", started)
+    kill_processes_started_from(tmp_path / "scratch", GRACE_SECONDS)
+    assert is_running(other)
+
+
+def test_a_sibling_directory_with_the_same_beginning_is_left_alone(tmp_path, started):
+    """`run/1-ab` is no prefix of the directory `run/1-abc`."""
+    neighbour = start_in(tmp_path / "run" / "1-abc", started)
+    start_in(tmp_path / "run" / "1-ab", started)
+    kill_processes_started_from(tmp_path / "run" / "1-ab", GRACE_SECONDS)
+    assert is_running(neighbour)
+
+
+def test_a_process_that_only_mentions_the_directory_is_left_alone(tmp_path, started):
+    """A viewer of a file in the directory does not run anything from it."""
+    mentioning = subprocess.Popen(
+        [sys.executable, "-c", SLEEP_FOR_A_MINUTE, str(tmp_path / "scratch" / "log.txt")]
+    )
+    started.append(mentioning)
+    start_in(tmp_path / "scratch", started)
+    kill_processes_started_from(tmp_path / "scratch", GRACE_SECONDS)
+    assert is_running(mentioning)
+
+
+def test_a_launch_without_a_scratch_directory_has_nothing_to_kill(tmp_path, started):
+    unrelated = start_in(tmp_path / "scratch", started)
+    kill_processes_started_from(None, GRACE_SECONDS)
+    assert is_running(unrelated)
+
+
+def test_a_directory_nothing_ran_from_is_no_error(tmp_path):
+    kill_processes_started_from(tmp_path / "never-created", GRACE_SECONDS)
+
+
+def test_a_machine_without_ps_leaves_the_processes_alone_without_failing(
+    monkeypatch, tmp_path, started
+):
+    def missing_ps(*_arguments, **_keywords):
+        raise FileNotFoundError("ps")
+
+    monkeypatch.setattr(debug_process.subprocess, "run", missing_ps)
+    left_behind = start_in(tmp_path / "scratch", started)
+    kill_processes_started_from(tmp_path / "scratch", GRACE_SECONDS)
+    assert is_running(left_behind)

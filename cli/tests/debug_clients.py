@@ -124,6 +124,17 @@ def run_lldb_client(port: int, path: Path, line: int) -> str:
         "breakpoint delete --force",
         "continue",
     )
+    return _run_lldb_in_batch_mode(commands)
+
+
+def end_lldb_session(port: int, ending: str) -> str:
+    """Rust's debug server: connect with `gdb-remote`, then end the session with `ending`
+    (`process detach`, which is how CodeLLDB ends an attach session, or `process kill`) while
+    the runner waits at its entry point; returns what lldb printed."""
+    return _run_lldb_in_batch_mode((f"gdb-remote {HOST}:{port}", ending))
+
+
+def _run_lldb_in_batch_mode(commands: tuple[str, ...]) -> str:
     completed = subprocess.run(
         ["lldb", "--batch", *(part for command in commands for part in ("-o", command))],
         capture_output=True,

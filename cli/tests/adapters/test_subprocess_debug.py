@@ -75,12 +75,15 @@ class Debugging:
         self.release = tmp_path / "released"
         self.launches = tmp_path / "launches.log"
         self.leftover = tmp_path / "leftover.pid"
+        self.scratch = tmp_path / "scratch"
+        """The launch's private directory, where `debugserver`'s runner binary would be."""
         self.announced: list[str] = []
         self.on_announce: Callable[[], None] = self.release.touch
         """What the "user" does on seeing the ready line: by default, attach."""
 
     def launch(self, startup: str, hello_timeout_ms: int = HELLO_TIMEOUT_MS) -> RunnerLaunch:
         ready = "" if self.ready_file else READY
+        runner_binary = self._private_runner_binary()
         command = (
             sys.executable,
             str(FAKE_RUNNER),
@@ -98,10 +101,20 @@ class Debugging:
             str(self.launches),
             "--leftover-pid",
             str(self.leftover),
+            "--leftover-binary",
+            str(runner_binary),
             *(("--ready-file", str(self.ready_file)) if self.ready_file else ()),
         )
         debug = DebugLaunch(self.session, self._announce, ready, REFUSED, self.ready_file)
-        return RunnerLaunch(command, FAKE_RUNNER.parent, hello_timeout_ms, debug)
+        return RunnerLaunch(command, FAKE_RUNNER.parent, hello_timeout_ms, debug, self.scratch)
+
+    def _private_runner_binary(self) -> Path:
+        """An executable in the scratch directory, which `rmtree` removes with the run."""
+        self.scratch.mkdir(exist_ok=True)
+        binary = self.scratch / "cs-runner"
+        if not binary.exists():
+            binary.symlink_to(sys.executable)
+        return binary
 
     def launch_count(self) -> int:
         return len(self.launches.read_text().splitlines()) if self.launches.exists() else 0
@@ -276,7 +289,8 @@ def ended(pid: int) -> bool:
 
 
 def test_a_runner_left_behind_by_an_agent_that_exited_is_killed(runner, debugging):
-    """lldb's `detach` ends `debugserver` and leaves the runner going, followed by nobody."""
+    """lldb's `detach` ends `debugserver` and leaves the runner going, in a process group of its
+    own and followed by nobody."""
     with pytest.raises(RunnerStartError):
         run(runner, debugging.launch("debug-detach"), case("a", "return", value=1))
     leftover = int(debugging.leftover.read_text())
@@ -284,6 +298,14 @@ def test_a_runner_left_behind_by_an_agent_that_exited_is_killed(runner, debuggin
     if survived:
         os.kill(leftover, signal.SIGKILL)
     assert not survived
+
+
+def test_a_group_is_never_signalled_once_its_leader_was_reaped(monkeypatch, runner, debugging):
+    """The id of a reaped leader may name an unrelated group by then."""
+    signalled: list[int] = []
+    monkeypatch.setattr(subprocess_runner.os, "killpg", lambda group, _: signalled.append(group))
+    run(runner, debugging.launch("debug-wait"), case("a", "return", value=1))
+    assert signalled == []
 
 
 def test_a_ready_marker_that_lands_with_bye_after_the_last_check_is_no_failure(

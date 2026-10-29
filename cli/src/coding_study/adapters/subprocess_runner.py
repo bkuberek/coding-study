@@ -23,7 +23,9 @@ A launch with a debug agent (docs/specs/runners.md#debug-mode) waits for the IDE
 limit, the runner is never restarted, and its standard output is kept, because the agent says there
 when it listens. The session's ready line goes to `DebugLaunch.announce` once the agent listens, or
 as the runner starts when it connects to an IDE that is already listening; that runner exits at once
-while nobody listens, so it is launched again for a while.
+while nobody listens, so it is launched again for a while. When a debug attempt ends, whatever it
+leaves running from the launch's `scratch` directory is killed: a debug server that lets go of its
+runner exits, and the runner (in a process group of its own) runs on.
 """
 
 import json
@@ -33,7 +35,7 @@ import subprocess
 import tempfile
 import time
 from collections import deque
-from contextlib import ExitStack, suppress
+from contextlib import ExitStack
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
@@ -41,7 +43,11 @@ from shutil import rmtree
 from typing import IO, Protocol
 
 from coding_study.adapters.bench_progress import BenchProgress
-from coding_study.adapters.debug_process import DebugOutput, terminated_like_interrupt
+from coding_study.adapters.debug_process import (
+    DebugOutput,
+    kill_processes_started_from,
+    terminated_like_interrupt,
+)
 from coding_study.adapters.runner_protocol import (
     Bye,
     CaseResult,
@@ -489,7 +495,7 @@ class _Attempt:
             finally:
                 _kill_group(process)
                 if self._launch.debug is not None:
-                    _kill_left_behind(process)
+                    kill_processes_started_from(self._launch.scratch, EXIT_GRACE_SECONDS)
 
     def _open_stdout(self, streams: ExitStack) -> IO[bytes] | int:
         """Debug agents print their ready line to standard output or error: keep both. An agent
@@ -683,11 +689,3 @@ def _kill_group(process: subprocess.Popen[bytes]) -> None:
         if not _exited_within_grace(process):
             raise
     process.wait()
-
-
-def _kill_left_behind(process: subprocess.Popen[bytes]) -> None:
-    """A debug agent that detached and exited (`debugserver` after lldb's `detach`) leaves the
-    runner going in its group, followed by nobody. The group id stays ours while one of its
-    processes lives, and an empty group is gone."""
-    with suppress(ProcessLookupError, PermissionError):
-        os.killpg(process.pid, signal.SIGKILL)

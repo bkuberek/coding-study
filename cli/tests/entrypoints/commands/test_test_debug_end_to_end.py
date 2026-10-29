@@ -18,6 +18,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Iterator
+from contextlib import suppress
 from pathlib import Path
 
 import pytest
@@ -29,7 +30,13 @@ from coding_study.domain.layout import SOURCE_EXTENSIONS
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
 from coding_study.entrypoints import cli
-from tests.debug_clients import DapClient, JdwpClient, run_cdp_client, run_lldb_client
+from tests.debug_clients import (
+    DapClient,
+    JdwpClient,
+    end_lldb_session,
+    run_cdp_client,
+    run_lldb_client,
+)
 from tests.helpers import REPOSITORY_ROOT, SCHEMAS_DIRECTORY
 from tests.workspaces import workspace_like
 
@@ -59,6 +66,13 @@ TWO_SUM_FILES = {
 }
 TWO_SUM_BREAKPOINT_LINE = 6
 """The lookup in the loop of the hash-map references."""
+RUST_NEVER_RETURNS = """pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {
+    let _ = (nums, target);
+    loop {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+}
+"""
 DEBUG_SERVERS = InstalledDebugServers(this_machine())
 NO_DELVE = DEBUG_SERVERS.delve().path is None or shutil.which("go") is None
 NO_LLDB = any(
@@ -237,6 +251,28 @@ def compiled(
     debugging.stop_everything()
 
 
+def processes_running_from(directory: Path) -> list[str]:
+    """The processes whose command line names `directory`: the runner started from a binary there,
+    and the debug server that was given its path."""
+    listing = subprocess.run(
+        ["ps", "-axww", "-o", "pid=,args="], capture_output=True, text=True, check=True
+    ).stdout
+    names = (str(directory), str(directory.resolve()))
+    return [line.strip() for line in listing.splitlines() if any(name in line for name in names)]
+
+
+def kill_going(processes: list[str]) -> None:
+    """Whatever a failing test left running would spin on for good."""
+    for process in processes:
+        with suppress(ProcessLookupError):
+            os.kill(int(process.split()[0]), signal.SIGKILL)
+
+
+def private_binaries(root: Path, language: Language) -> Path:
+    """Where each run of a compiled language starts its own copy of the runner."""
+    return root / ".cs" / "build" / language.value / "run"
+
+
 def hello_timeout_seconds(language: Language) -> float:
     return HELLO_TIMEOUT_MS[language] / 1000
 
@@ -345,18 +381,18 @@ def test_stopping_a_waiting_run_frees_the_debug_port(debugged):
         probe.bind(("127.0.0.1", port))
 
 
-@pytest.mark.parametrize(
-    "language",
-    [
-        pytest.param(
-            Language.GO, marks=pytest.mark.skipif(NO_DELVE, reason="go or dlv is not installed")
-        ),
-        pytest.param(
-            Language.RUST,
-            marks=pytest.mark.skipif(NO_LLDB, reason="cargo, lldb or its debug server is missing"),
-        ),
-    ],
-)
+COMPILED_LANGUAGES = [
+    pytest.param(
+        Language.GO, marks=pytest.mark.skipif(NO_DELVE, reason="go or dlv is not installed")
+    ),
+    pytest.param(
+        Language.RUST,
+        marks=pytest.mark.skipif(NO_LLDB, reason="cargo, lldb or its debug server is missing"),
+    ),
+]
+
+
+@pytest.mark.parametrize("language", COMPILED_LANGUAGES)
 def test_stopping_a_compiled_run_that_waits_for_its_debug_server_frees_the_port(compiled, language):
     file = compiled.solved_two_sum(language)
     port = free_port()
@@ -366,6 +402,40 @@ def test_stopping_a_compiled_run_that_waits_for_its_debug_server_frees_the_port(
     assert run.finish() == 143
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", port))
+
+
+@pytest.mark.parametrize("language", COMPILED_LANGUAGES)
+def test_stopping_a_compiled_run_that_waits_for_its_debug_server_leaves_nothing_going(
+    compiled, compiled_root, language
+):
+    file = compiled.solved_two_sum(language)
+    port = free_port()
+    run = compiled.start(file, "--debug-port", str(port))
+    run.wait_for_ready_line(DebugSession(language, port).ready_line)
+    run.stop()
+    run.finish()
+    going = processes_running_from(private_binaries(compiled_root, language))
+    kill_going(going)
+    assert going == []
+
+
+@pytest.mark.skipif(NO_LLDB, reason="cargo, lldb or its debug server is not installed")
+@pytest.mark.parametrize("ending", ["process detach", "process kill"])
+def test_a_rust_run_leaves_nothing_going_when_the_debugger_ends_the_session(
+    compiled, compiled_root, ending
+):
+    """`process detach` is how CodeLLDB ends an attach session: `debugserver` then exits, and
+    the runner, which has no time limit under a debugger, would run its loop for good."""
+    file = compiled.solved_two_sum(Language.RUST)
+    file.write_text(RUST_NEVER_RETURNS)
+    port = free_port()
+    run = compiled.start(file, "--debug-port", str(port))
+    run.wait_for_ready_line(DebugSession(Language.RUST, port).ready_line)
+    end_lldb_session(port, ending)
+    run.finish()
+    going = processes_running_from(private_binaries(compiled_root, Language.RUST))
+    kill_going(going)
+    assert going == []
 
 
 def test_a_port_in_use_is_reported_before_anything_starts(debugged):
