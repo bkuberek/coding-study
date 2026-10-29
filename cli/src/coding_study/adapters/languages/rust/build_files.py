@@ -61,9 +61,12 @@ class CompilerError:
     message: str
     label: str
     notes: tuple[str, ...]
-    """`help: ...` and `note: ...` lines from the error's children."""
+    """`help: ...` and `note: ...` lines from the error's children, those that suggest a
+    replacement first, at most `MAX_NOTES`."""
     snippet: str = ""
     """The source text the primary span marks."""
+    suggestions: tuple[str, ...] = ()
+    """The children's lines that suggest a replacement, such as an item with a similar name."""
 
     def shown(self, path: str) -> tuple[str, ...]:
         """The error's lines with the file shown as `path`."""
@@ -125,6 +128,7 @@ def compiler_errors(stdout: str, cwd: Path) -> tuple[CompilerError, ...]:
         if span is None:
             continue
         code = _object(diagnostic.get("code")).get("code")
+        notes = _notes(diagnostic)
         errors.append(
             CompilerError(
                 path=(cwd / str(span.get("file_name"))).resolve(),
@@ -133,8 +137,9 @@ def compiler_errors(stdout: str, cwd: Path) -> tuple[CompilerError, ...]:
                 code=code if isinstance(code, str) else "",
                 message=str(diagnostic.get("message", "")),
                 label=str(span.get("label") or ""),
-                notes=_notes(diagnostic),
+                notes=tuple(note.text for note in notes[:MAX_NOTES]),
                 snippet=_snippet(span),
+                suggestions=tuple(note.text for note in notes if note.suggests),
             )
         )
     return tuple(errors)
@@ -167,7 +172,8 @@ def load_error(error: CompilerError, module: str, file_name: str) -> Unavailable
     symbol = error.code in SYMBOL_CODES
     message = _mismatch(error) or error.message
     if symbol:
-        helps = (note.removeprefix(_HELP) for note in error.notes if note.startswith(_HELP))
+        notes = error.suggestions or error.notes
+        helps = (note.removeprefix(_HELP) for note in notes if note.startswith(_HELP))
         message = "; ".join([message, *helps])
     if error.code in PRIVATE_CODES:
         message += "; declare it pub"
@@ -242,14 +248,25 @@ def _snippet(span: dict[str, object]) -> str:
     return text[max(start - 1, 0) : max(end - 1, 0)]
 
 
-def _notes(diagnostic: dict[str, object]) -> tuple[str, ...]:
-    notes: list[str] = []
+@dataclass(frozen=True, slots=True)
+class _Note:
+    text: str
+    suggests: bool
+
+
+def _notes(diagnostic: dict[str, object]) -> list[_Note]:
+    """The `help` and `note` children, those that suggest a replacement first: rustc may list a
+    similarly named method after two notes about traits. A replacement the text already names is
+    not repeated."""
+    notes: list[_Note] = []
     for child in map(_object, _list(diagnostic.get("children"))):
         level, text = child.get("level"), child.get("message")
         if level not in _NOTE_LEVELS or not isinstance(text, str) or not text:
             continue
         spans = map(_object, _list(child.get("spans")))
         replacement = next((s.get("suggested_replacement") for s in spans), None)
-        suffix = f": `{replacement}`" if isinstance(replacement, str) and replacement else ""
-        notes.append(f"{level}: {text}{suffix}")
-    return tuple(notes[:MAX_NOTES])
+        suggests = isinstance(replacement, str) and bool(replacement)
+        named = suggests and f"`{replacement}`" in text
+        suffix = f": `{replacement}`" if suggests and not named else ""
+        notes.append(_Note(f"{level}: {text}{suffix}", suggests))
+    return sorted(notes, key=lambda note: not note.suggests)

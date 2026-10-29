@@ -68,6 +68,21 @@ def test_a_missing_function_is_symbol_not_found_with_the_compilers_hint():
     )
 
 
+def test_a_misnamed_method_keeps_the_compilers_similar_name_hint():
+    """rustc lists the similar name after two other notes about traits."""
+    error = only_error("misnamed-method")
+    assert load_error(error, "user", "lru_cache.rs") == Unavailable(
+        "SymbolNotFound",
+        "no method named `get` found for mutable reference `&mut LRUCache` in the current scope; "
+        "there is a method `gett` with a similar name",
+    )
+
+
+def test_a_similar_name_is_the_first_note_shown():
+    shown = only_error("misnamed-method").shown("main.rs")
+    assert shown[1] == "    help: there is a method `gett` with a similar name"
+
+
 def test_a_private_function_says_to_make_it_pub():
     assert user_load_error("private") == Unavailable(
         "SymbolNotFound", "function `two_sum` is private; declare it pub"
