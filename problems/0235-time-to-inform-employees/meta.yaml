@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0235"
+slug: time-to-inform-employees
+title: Time to Inform All Employees
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [graphs, trees]
+signature:
+  function:
+    name: numOfMinutes
+    params:
+      - {name: n, type: int}
+      - {name: headID, type: int}
+      - {name: manager, type: "int[]"}
+      - {name: informTime, type: "int[]"}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: walk-up, name: Walk up from every employee to the head, role: brute, time: "O(n * h)", space: "O(1)", time_class: "n^2", space_class: "1", oracle: true}
+  - {id: top-down, name: Traverse down from the head carrying the elapsed time, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+perf:
+  size_param: number of employees, half of them (at most 2000) in one management chain
+  size_ladder: [40, 125, 400, 1250, 4000]
+  expected_from: top-down
+  time_limit: {factor: 5}
+references:
+  leetcode: {number: 1376, url: "https://leetcode.com/problems/time-needed-to-inform-all-employees/"}
+related: [employee-importance, contractor-exposure-rollup, max-depth-binary-tree]
+order: 14
+estimate_minutes: 20

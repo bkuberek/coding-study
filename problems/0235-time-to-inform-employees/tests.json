@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"n": 5, "headID": 3, "manager": [3, 3, 1, -1, 1], "informTime": [0, 4, 0, 2, 0]}, "expected": 6},
+    {"id": "ex2", "visible": true, "input": {"n": 4, "headID": 0, "manager": [-1, 0, 1, 2], "informTime": [3, 5, 1, 0]}, "expected": 9},
+    {"id": "h1", "input": {"n": 1, "headID": 0, "manager": [-1], "informTime": [0]}, "expected": 0, "note": "only the head"},
+    {"id": "h2", "input": {"n": 5, "headID": 0, "manager": [-1, 0, 0, 0, 0], "informTime": [7, 0, 0, 0, 0]}, "expected": 7, "note": "everyone reports to the head"},
+    {"id": "h3", "input": {"n": 4, "headID": 2, "manager": [2, 0, -1, 1], "informTime": [0, 4, 3, 0]}, "expected": 7, "note": "a manager who passes the news on instantly"},
+    {"id": "h4", "input": {"n": 6, "headID": 0, "manager": [-1, 0, 0, 1, 2, 3], "informTime": [1, 1, 10, 1, 0, 0]}, "expected": 11, "note": "the longer chain is not the slower one"},
+    {"id": "h5", "input": {"n": 3, "headID": 1, "manager": [1, -1, 0], "informTime": [1000, 1000, 0]}, "expected": 2000, "note": "largest minutes"},
+    {"id": "h6", "input": {"n": 7, "headID": 4, "manager": [4, 0, 0, 4, -1, 3, 3], "informTime": [6, 0, 0, 2, 1, 0, 0]}, "expected": 7, "note": "head in the middle of the numbering"},
+    {"id": "h7", "input": {"n": 8, "headID": 7, "manager": [7, 0, 1, 7, 3, 3, 3, -1], "informTime": [2, 2, 0, 5, 0, 0, 0, 1]}, "expected": 6, "note": "a deep thin branch and a wide shallow one"},
+    {"id": "h8", "input": {"n": 50, "headID": 0, "manager": [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48], "informTime": [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 0]}, "expected": 49000, "note": "a chain of 50 at 1000 minutes each"},
+    {"id": "h9", "input": {"n": 2, "headID": 1, "manager": [1, -1], "informTime": [0, 0]}, "expected": 0, "note": "a manager who needs no time"},
+    {"id": "h10", "input": {"n": 6, "headID": 5, "manager": [5, 5, 5, 0, 1, -1], "informTime": [3, 9, 0, 0, 0, 4]}, "expected": 13, "note": "branches finish at different times"},
+    {"id": "g1", "generate": {"n": 4000, "seed": 235}, "note": "large input: walking up from everyone costs about 4 * 10^6 steps"}
+  ]
+}
