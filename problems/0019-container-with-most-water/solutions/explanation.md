@@ -45,6 +45,8 @@ No insight needed and no way to get it wrong, so it is the oracle. It does about
 - TypeScript: `Math.max` and `Math.min` on small integers are inlined by V8.
 - Java: `Math.max` and `Math.min` on `int` are intrinsics; no boxing occurs with `int[]`.
 - Kotlin: `maxOf` and `minOf` compile to the same JVM calls.
+- Go: `min` and `max` are builtins since Go 1.21, so no helper is needed, and `int` is 64-bit, so the area cannot overflow.
+- Rust: `i32::min` and `i32::max` are methods on the value. The widths are `usize` differences, converted with `as i32` before the multiplication; the area stays at or below `10^5 * 10^4`, inside `i32`, and cstudy builds Rust with overflow checks, so a wrong type would panic instead of wrapping.
 
 ## Approach: two-pointers (Move the shorter bar inward)
 
@@ -85,3 +87,5 @@ Linear time, constant memory, a few lines of code. The hard part is the argument
 - TypeScript: plain indices over a `number[]` keep the loop monomorphic and fast.
 - Java: the reference uses `int` throughout; the product cannot overflow under the constraints.
 - Kotlin: `IntArray` indexing does not box; `maxOf` is the idiomatic `Math.max`.
+- Go: a plain `for left < right` loop with the builtin `max`; both indexes are `int`, so the width needs no conversion.
+- Rust: the right pointer is stored one past the bar it stands for (`height[right - 1]`), the same trick that keeps an empty input from underflowing `usize`, and the width is converted to `i32` once per step.
