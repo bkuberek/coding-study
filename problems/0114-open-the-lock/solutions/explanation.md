@@ -48,6 +48,8 @@ The standard answer: simple, and fast because the state space is only 10^4. Gene
 - TypeScript: each level is an array; `Number(setting[wheel])` reads a digit, and string `slice` builds the neighbor.
 - Java: `Set.add` returns `false` for a setting already seen, which doubles as the visited check; neighbors are built by changing one char of a `char[]` and copying it into a new `String`.
 - Kotlin: a whole level is produced in one expression, `level.flatMap(::turns).filter(seen::add)`, where `seen::add` both checks and marks.
+- Go: `seen` is a `map[string]bool`, and a missing key reads as `false`, which is exactly "not visited yet", so no comma-ok form is needed. Strings are immutable, so a neighbor is built by copying the setting into a `[]byte`, changing one digit and converting back.
+- Rust: `HashSet::insert` returns `false` for a setting already present, so `if seen.insert(following.clone())` checks and marks in one call, as Java's `Set.add` does. The setting's bytes are indexed directly (`digit - b'0'`), which is safe because the settings are ASCII digits, and `String::from_utf8` turns the changed bytes back into a `String`.
 
 ## Approach: bidirectional-bfs (Grow searches from both ends and meet in the middle)
 
@@ -89,3 +91,5 @@ Same worst case, usually far less work, at the price of trickier bookkeeping: tw
 - TypeScript: `Set<string>` frontiers swapped with `[near, far] = [far, near]`; the target check uses `far.has(...)`.
 - Java: `HashSet` frontiers swapped through a temporary; `List.of` builds the initial sets.
 - Kotlin: `near = far.also { far = near }` swaps the two frontiers in one line; `seen.add(...)` returns whether the setting was new.
+- Go: the frontiers are `map[string]bool` sets, swapped with `near, far = far, near`, and ranging over a map visits settings in no fixed order, which does not matter here because the search only needs the level, not an order within it.
+- Rust: `std::mem::swap(&mut near, &mut far)` exchanges the two frontier sets without copying. Iterating `&near` borrows it while `following_level` is built separately, and the assignment `near = following_level` comes only after the loop has ended, so the borrow checker sees no overlap.
