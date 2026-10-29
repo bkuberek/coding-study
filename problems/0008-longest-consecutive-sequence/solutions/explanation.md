@@ -53,6 +53,8 @@ It needs no memory at all, which makes it a dependable oracle, but at n = 10,000
 - TypeScript: `includes` and `indexOf` are linear scans. They differ on `NaN`, which cannot occur here.
 - Java: the reference writes the scan as a small `indexOf` helper over `int[]`; `Arrays.asList(nums)` would not work, because it wraps the whole `int[]` as a single element.
 - Kotlin: `value in nums` calls `IntArray.contains`, a linear scan without boxing; `withIndex()` provides the position.
+- Go: `slices.Contains` is a linear scan over the `[]int`; `nums[:i]` is a subslice header, so checking for an earlier copy of the start allocates nothing. `max` is a builtin since Go 1.21.
+- Rust: `nums.contains(&(value - 1))` borrows the probe value and scans the `Vec<i32>`; `nums[..i].contains(&value)` checks only the earlier positions. `value + length` stays inside `i32` because the values are at most 10^9 in magnitude.
 
 ## Approach: sorting (Sort a copy and count runs)
 
@@ -95,6 +97,8 @@ Easy to get right and memory-friendly on the JVM (a primitive array instead of a
 - TypeScript: `Int32Array.from(nums).sort()` copies and sorts numerically; the default `Array.prototype.sort` compares as strings.
 - Java: `nums.clone()` and `Arrays.sort`. Kotlin: `nums.sortedArray()`.
 - Python: `sorted(nums)`, then `zip(ordered, ordered[1:])` walks adjacent pairs.
+- Go: `slices.Clone` and `slices.Sort` sort a copy, and the loop compares each element with its predecessor by index.
+- Rust: `nums` is owned, so `sort_unstable` sorts it in place with no copy, and `windows(2)` yields each predecessor and value pair.
 
 ## Approach: hash-set (Hash set with run starts)
 
@@ -137,3 +141,5 @@ Linear time, which is what the follow-up asks for. Hash sets of boxed integers a
 - TypeScript: `new Set(nums)` iterates in insertion order and `has` compares numbers by value.
 - Java: `HashSet<Integer>` boxes each value; `contains(value - 1)` autoboxes the `int` argument. With values up to 10^9 in magnitude, `value - 1` and `end++` stay inside `int`.
 - Kotlin: `nums.toHashSet()` converts the `IntArray` into a `HashSet<Int>`; `value - 1 in present` reads like the Python version.
+- Go: a `map[int]bool` is the set: a missing key reads as `false`, so `present[end]` is the membership test with no comma-ok. `for value := range present` visits each distinct value once in random order, which does not matter because every run is counted from its start.
+- Rust: `collect()` builds a `HashSet<i32>` from the owned `Vec`, which also removes duplicates; iterating `&present` visits each distinct value once in arbitrary order.
