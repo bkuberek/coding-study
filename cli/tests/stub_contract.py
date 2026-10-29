@@ -15,7 +15,7 @@ them, then review each one: the two-sum and lru-cache goldens must equal the stu
 docs/specs/problem-format.md (worked examples), and every golden must compile or import as is.
 
 The cases are meta.yaml documents in tests/golden/stubs/signatures/ plus the conformance type
-fixture, so together they cover every DSL type, void returns, modifiers, all class kinds,
+fixtures, so together they cover every DSL type, void returns, modifiers, all class kinds,
 support-class imports and the snake_case naming rules.
 """
 
@@ -33,9 +33,13 @@ from tests.helpers import REPOSITORY_ROOT
 
 GOLDEN_ROOT = Path(__file__).resolve().parent / "golden" / "stubs"
 SIGNATURES_DIRECTORY = GOLDEN_ROOT / "signatures"
-CONFORMANCE_TYPES_META = (
-    REPOSITORY_ROOT / "runners" / "conformance" / "9001-conformance-types" / "meta.yaml"
-)
+CONFORMANCE_DIRECTORY = REPOSITORY_ROOT / "runners" / "conformance"
+CONFORMANCE_TYPE_FIXTURES = {
+    "conformance-types": CONFORMANCE_DIRECTORY / "9001-conformance-types" / "meta.yaml",
+    "conformance-decimal-date-types": (
+        CONFORMANCE_DIRECTORY / "9021-conformance-decimal-date-types" / "meta.yaml"
+    ),
+}
 UPDATE_VARIABLE = "CSTUDY_UPDATE_GOLDENS"
 
 
@@ -68,7 +72,7 @@ class GoldenFiles:
 def stub_case_sources() -> dict[str, Path]:
     """Case name to the meta.yaml document that defines it."""
     sources = {path.stem: path for path in sorted(SIGNATURES_DIRECTORY.glob("*.yaml"))}
-    return {**sources, "conformance-types": CONFORMANCE_TYPES_META}
+    return {**sources, **CONFORMANCE_TYPE_FIXTURES}
 
 
 def load_stub_cases() -> tuple[StubCase, ...]:

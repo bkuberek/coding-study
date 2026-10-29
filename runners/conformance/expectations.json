@@ -18,6 +18,7 @@
     {"problem": "conformance-no-alias", "approach": "deep-copy", "outcome": {"status": "pass"}},
     {"problem": "conformance-no-alias", "approach": "returns-input", "outcome": {"status": "invalid_output"}, "cases": {"empty": {"status": "pass"}}},
     {"problem": "conformance-decimal-date", "approach": "arithmetic", "outcome": {"status": "pass"}},
+    {"problem": "conformance-decimal-date-types", "approach": "identity", "outcome": {"status": "pass"}},
     {"problem": "conformance-stress-counter", "approach": "atomic", "outcome": {"status": "pass"}, "cases": {"s1": {"status": "pass", "runs": 10}}},
     {"problem": "conformance-stress-counter", "approach": "racy", "outcome": {"status": "pass"}, "cases": {"s1": {"status": "fail", "runs": 10, "min_failed": 9}}},
     {"problem": "conformance-stress-stall", "approach": "never-opens", "outcome": {"status": "pass"}, "cases": {"s1": {"status": "stalled", "runs": 1}}},

@@ -4,8 +4,8 @@ import pytest
 
 from coding_study.adapters.languages.typescript import create_stub_generator
 from coding_study.adapters.languages.typescript.stub_generator import typescript_type
-from coding_study.domain.problem import Language
-from coding_study.domain.signature import FunctionSignature, Param, Returns
+from coding_study.domain.problem import Language, ProblemMeta
+from coding_study.domain.signature import ClassSignature, FunctionSignature, Param, Returns
 from coding_study.domain.type_dsl import parse_return_type, parse_value_type
 from tests.stub_contract import STUB_CASES, StubCase, check_stub, stub_cases
 
@@ -32,9 +32,12 @@ export class LRUCache {
 """
 
 
+def stub_meta(case_name: str) -> ProblemMeta:
+    return next(case for case in STUB_CASES if case.name == case_name).meta
+
+
 def generate(case_name: str) -> str:
-    case = next(case for case in STUB_CASES if case.name == case_name)
-    return create_stub_generator().generate(case.meta)
+    return create_stub_generator().generate(stub_meta(case_name))
 
 
 @stub_cases
@@ -56,9 +59,15 @@ def test_imports_only_the_support_classes_the_signature_uses():
 
 
 def test_imports_support_classes_in_spec_order():
+    types = stub_meta("conformance-types")
+    decimal_date = stub_meta("conformance-decimal-date-types")
+    assert isinstance(types.signature, ClassSignature)
+    assert isinstance(decimal_date.signature, ClassSignature)
+    methods = (*types.signature.methods, *decimal_date.signature.methods)
+    every_type = replace(types, signature=replace(types.signature, methods=methods))
     assert (
         'import { ListNode, TreeNode, GraphNode, Decimal, type IsoDate } from "#support";\n'
-        in generate("conformance-types")
+        in create_stub_generator().generate(every_type)
     )
 
 

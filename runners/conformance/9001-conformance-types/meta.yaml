@@ -44,14 +44,6 @@ signature:
       - {name: echoGraphNode, params: [{name: value, type: "GraphNode"}], returns: {type: "GraphNode"}}
       - {name: echoListNodeArray, params: [{name: value, type: "ListNode[]"}], returns: {type: "ListNode[]"}}
       - {name: echoTreeNodeList, params: [{name: value, type: "list<TreeNode>"}], returns: {type: "list<TreeNode>"}}
-      - {name: echoDecimal, params: [{name: value, type: "decimal"}], returns: {type: "decimal"}}
-      - {name: echoDate, params: [{name: value, type: "date"}], returns: {type: "date"}}
-      - {name: echoDecimalArray, params: [{name: value, type: "decimal[]"}], returns: {type: "decimal[]"}}
-      - {name: echoDateArray, params: [{name: value, type: "date[]"}], returns: {type: "date[]"}}
-      - {name: echoDecimalMatrix, params: [{name: value, type: "decimal[][]"}], returns: {type: "decimal[][]"}}
-      - {name: echoDateMatrix, params: [{name: value, type: "date[][]"}], returns: {type: "date[][]"}}
-      - {name: echoDecimalList, params: [{name: value, type: "list<decimal>"}], returns: {type: "list<decimal>"}}
-      - {name: echoDateList, params: [{name: value, type: "list<date>"}], returns: {type: "list<date>"}}
       - {name: noop, params: [{name: value, type: int}], returns: {type: void}}
 comparator: {type: ops}
 approaches:

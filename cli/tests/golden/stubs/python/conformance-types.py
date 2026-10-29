@@ -1,8 +1,5 @@
 """Conformance: every DSL type round-trips. Statement: .statements/conformance-types.md. Run: cstudy test conformance-types"""
 
-from datetime import date
-from decimal import Decimal
-
 from cs_support import GraphNode, ListNode, TreeNode
 
 
@@ -113,30 +110,6 @@ class TypeEcho:
     def echo_tree_node_list(
         self, value: list[TreeNode | None]
     ) -> list[TreeNode | None]:
-        raise NotImplementedError
-
-    def echo_decimal(self, value: Decimal) -> Decimal:
-        raise NotImplementedError
-
-    def echo_date(self, value: date) -> date:
-        raise NotImplementedError
-
-    def echo_decimal_array(self, value: list[Decimal]) -> list[Decimal]:
-        raise NotImplementedError
-
-    def echo_date_array(self, value: list[date]) -> list[date]:
-        raise NotImplementedError
-
-    def echo_decimal_matrix(self, value: list[list[Decimal]]) -> list[list[Decimal]]:
-        raise NotImplementedError
-
-    def echo_date_matrix(self, value: list[list[date]]) -> list[list[date]]:
-        raise NotImplementedError
-
-    def echo_decimal_list(self, value: list[Decimal]) -> list[Decimal]:
-        raise NotImplementedError
-
-    def echo_date_list(self, value: list[date]) -> list[date]:
         raise NotImplementedError
 
     def noop(self, value: int) -> None:

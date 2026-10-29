@@ -64,17 +64,32 @@ def test_case_overrides_name_existing_cases(expectation):
     assert set(expectation.case_outcomes) <= case_ids
 
 
-def test_types_fixture_covers_every_type_in_the_mapping_table():
-    signature = REPOSITORY.load("conformance-types").meta.signature
-    assert isinstance(signature, ClassSignature)
-    declared = {str(param.type) for method in signature.methods for param in method.params}
+TYPE_FIXTURES = ("conformance-types", "conformance-decimal-date-types")
+"""Echo every DSL type; `decimal` and `date` have a fixture of their own, so a runner can join
+the suite before it supports them."""
+
+
+def test_type_fixtures_cover_every_type_in_the_mapping_table():
+    declared: set[str] = set()
+    for slug in TYPE_FIXTURES:
+        signature = REPOSITORY.load(slug).meta.signature
+        assert isinstance(signature, ClassSignature)
+        declared |= {str(param.type) for method in signature.methods for param in method.params}
     assert declared == {*MAPPING_TABLE_TYPES, DEEPEST_LIST}
 
 
-def test_types_fixture_expects_every_argument_back():
+def test_the_types_fixture_leaves_decimal_and_date_to_their_own_fixture():
+    signature = REPOSITORY.load("conformance-types").meta.signature
+    assert isinstance(signature, ClassSignature)
+    declared = " ".join(str(param.type) for method in signature.methods for param in method.params)
+    assert ("decimal" in declared, "date" in declared) == (False, False)
+
+
+@pytest.mark.parametrize("slug", TYPE_FIXTURES)
+def test_type_fixtures_expect_every_argument_back(slug):
     mismatches = [
         case.id
-        for case in REPOSITORY.load("conformance-types").cases
+        for case in REPOSITORY.load(slug).cases
         if case.expected is None or case.expected.value != echoed_arguments(case.input)
     ]
     assert mismatches == []

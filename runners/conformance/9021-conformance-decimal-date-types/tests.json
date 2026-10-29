@@ -1,0 +1,14 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "decimal", "ops": ["TypeEcho", "echoDecimal", "echoDecimal", "echoDecimal", "echoDecimal", "echoDecimal", "echoDecimal"], "args": [["conformance"], ["0"], ["2500"], ["-0.5"], ["1234.0625"], ["-9999999999999999999999999999"], ["0.0000000000000000000000000001"]], "expected": [null, "0", "2500", "-0.5", "1234.0625", "-9999999999999999999999999999", "0.0000000000000000000000000001"]},
+    {"id": "date", "ops": ["TypeEcho", "echoDate", "echoDate", "echoDate"], "args": [["conformance"], ["2024-02-29"], ["0001-01-01"], ["9999-12-31"]], "expected": [null, "2024-02-29", "0001-01-01", "9999-12-31"]},
+    {"id": "decimal-array", "ops": ["TypeEcho", "echoDecimalArray", "echoDecimalArray"], "args": [["conformance"], [[]], [["1", "2.5", "-3"]]], "expected": [null, [], ["1", "2.5", "-3"]]},
+    {"id": "date-array", "ops": ["TypeEcho", "echoDateArray", "echoDateArray"], "args": [["conformance"], [[]], [["2024-01-01", "2023-12-31"]]], "expected": [null, [], ["2024-01-01", "2023-12-31"]]},
+    {"id": "decimal-matrix", "ops": ["TypeEcho", "echoDecimalMatrix", "echoDecimalMatrix"], "args": [["conformance"], [[]], [[["1"], [], ["0.01", "100"]]]], "expected": [null, [], [["1"], [], ["0.01", "100"]]]},
+    {"id": "date-matrix", "ops": ["TypeEcho", "echoDateMatrix"], "args": [["conformance"], [[["2024-01-01"], []]]], "expected": [null, [["2024-01-01"], []]]},
+    {"id": "decimal-list", "ops": ["TypeEcho", "echoDecimalList"], "args": [["conformance"], [["0.01", "10"]]], "expected": [null, ["0.01", "10"]]},
+    {"id": "date-list", "ops": ["TypeEcho", "echoDateList"], "args": [["conformance"], [["2024-03-01"]]], "expected": [null, ["2024-03-01"]]}
+  ]
+}

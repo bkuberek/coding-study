@@ -1,5 +1,5 @@
 // Conformance: every DSL type round-trips. Statement: .statements/conformance-types.md. Run: cstudy test conformance-types
-import { ListNode, TreeNode, GraphNode, Decimal, type IsoDate } from "#support";
+import { ListNode, TreeNode, GraphNode } from "#support";
 
 export class TypeEcho {
   constructor(label: string) {}
@@ -133,38 +133,6 @@ export class TypeEcho {
   }
 
   echoTreeNodeList(value: (TreeNode | null)[]): (TreeNode | null)[] {
-    throw new Error("Not implemented");
-  }
-
-  echoDecimal(value: Decimal): Decimal {
-    throw new Error("Not implemented");
-  }
-
-  echoDate(value: IsoDate): IsoDate {
-    throw new Error("Not implemented");
-  }
-
-  echoDecimalArray(value: Decimal[]): Decimal[] {
-    throw new Error("Not implemented");
-  }
-
-  echoDateArray(value: IsoDate[]): IsoDate[] {
-    throw new Error("Not implemented");
-  }
-
-  echoDecimalMatrix(value: Decimal[][]): Decimal[][] {
-    throw new Error("Not implemented");
-  }
-
-  echoDateMatrix(value: IsoDate[][]): IsoDate[][] {
-    throw new Error("Not implemented");
-  }
-
-  echoDecimalList(value: Decimal[]): Decimal[] {
-    throw new Error("Not implemented");
-  }
-
-  echoDateList(value: IsoDate[]): IsoDate[] {
     throw new Error("Not implemented");
   }
 

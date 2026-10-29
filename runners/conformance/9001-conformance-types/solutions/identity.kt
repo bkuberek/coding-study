@@ -1,6 +1,4 @@
 import cs.support.*
-import java.math.BigDecimal
-import java.time.LocalDate
 
 class TypeEcho(label: String) {
     fun echoInt(value: Int): Int = value
@@ -68,22 +66,6 @@ class TypeEcho(label: String) {
     fun echoListNodeArray(value: Array<ListNode?>): Array<ListNode?> = value
 
     fun echoTreeNodeList(value: List<TreeNode?>): List<TreeNode?> = value
-
-    fun echoDecimal(value: BigDecimal): BigDecimal = value
-
-    fun echoDate(value: LocalDate): LocalDate = value
-
-    fun echoDecimalArray(value: Array<BigDecimal>): Array<BigDecimal> = value
-
-    fun echoDateArray(value: Array<LocalDate>): Array<LocalDate> = value
-
-    fun echoDecimalMatrix(value: Array<Array<BigDecimal>>): Array<Array<BigDecimal>> = value
-
-    fun echoDateMatrix(value: Array<Array<LocalDate>>): Array<Array<LocalDate>> = value
-
-    fun echoDecimalList(value: List<BigDecimal>): List<BigDecimal> = value
-
-    fun echoDateList(value: List<LocalDate>): List<LocalDate> = value
 
     fun noop(value: Int) {
     }

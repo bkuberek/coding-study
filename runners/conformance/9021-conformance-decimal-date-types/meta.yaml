@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9021"
+slug: conformance-decimal-date-types
+title: "Conformance: decimal and date round-trip"
+status: ready
+difficulty: easy
+track: practical
+kind: design
+signature:
+  class:
+    name: TypeEcho
+    constructor: {params: [{name: label, type: string}]}
+    methods:
+      - {name: echoDecimal, params: [{name: value, type: "decimal"}], returns: {type: "decimal"}}
+      - {name: echoDate, params: [{name: value, type: "date"}], returns: {type: "date"}}
+      - {name: echoDecimalArray, params: [{name: value, type: "decimal[]"}], returns: {type: "decimal[]"}}
+      - {name: echoDateArray, params: [{name: value, type: "date[]"}], returns: {type: "date[]"}}
+      - {name: echoDecimalMatrix, params: [{name: value, type: "decimal[][]"}], returns: {type: "decimal[][]"}}
+      - {name: echoDateMatrix, params: [{name: value, type: "date[][]"}], returns: {type: "date[][]"}}
+      - {name: echoDecimalList, params: [{name: value, type: "list<decimal>"}], returns: {type: "list<decimal>"}}
+      - {name: echoDateList, params: [{name: value, type: "list<date>"}], returns: {type: "list<date>"}}
+comparator: {type: ops}
+approaches:
+  - {id: identity, name: "Return the argument unchanged", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}

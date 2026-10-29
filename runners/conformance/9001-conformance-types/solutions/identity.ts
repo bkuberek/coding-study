@@ -1,4 +1,4 @@
-import { Decimal, GraphNode, ListNode, TreeNode, type IsoDate } from "#support";
+import { GraphNode, ListNode, TreeNode } from "#support";
 
 export class TypeEcho {
   constructor(label: string) {}
@@ -132,38 +132,6 @@ export class TypeEcho {
   }
 
   echoTreeNodeList(value: (TreeNode | null)[]): (TreeNode | null)[] {
-    return value;
-  }
-
-  echoDecimal(value: Decimal): Decimal {
-    return value;
-  }
-
-  echoDate(value: IsoDate): IsoDate {
-    return value;
-  }
-
-  echoDecimalArray(value: Decimal[]): Decimal[] {
-    return value;
-  }
-
-  echoDateArray(value: IsoDate[]): IsoDate[] {
-    return value;
-  }
-
-  echoDecimalMatrix(value: Decimal[][]): Decimal[][] {
-    return value;
-  }
-
-  echoDateMatrix(value: IsoDate[][]): IsoDate[][] {
-    return value;
-  }
-
-  echoDecimalList(value: Decimal[]): Decimal[] {
-    return value;
-  }
-
-  echoDateList(value: IsoDate[]): IsoDate[] {
     return value;
   }
 
