@@ -36,10 +36,12 @@ SPEC_STUB_LABELS = {
     "typescript": "// typescript/practice/{slug}.ts",
     "java": "// jvm/java/src/main/java/practice/{snake}/{class_name}.java",
     "kotlin": "// jvm/kotlin/src/main/kotlin/practice/{snake}/{class_name}.kt",
+    "go": "// go/practice/{snake}/{snake}.go",
 }
+SPEC_STUB_LANGUAGES = (*CORE_LANGUAGES, Language.GO)
 
 
-@pytest.mark.parametrize("language", CORE_LANGUAGES)
+@pytest.mark.parametrize("language", SPEC_STUB_LANGUAGES)
 @pytest.mark.parametrize(
     ("slug", "class_name"), [("two-sum", "Solution"), ("lru-cache", "LRUCache")]
 )

@@ -1092,6 +1092,17 @@ class Solution {
 }
 ```
 
+```go
+// go/practice/two_sum/two_sum.go
+// Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum
+
+package two_sum
+
+func twoSum(nums []int, target int) []int {
+	panic("not implemented")
+}
+```
+
 ## Worked example: lru-cache
 
 ```yaml
@@ -1194,5 +1205,26 @@ class LRUCache(capacity: Int) {
     fun put(key: Int, value: Int) {
         TODO("Not implemented")
     }
+}
+```
+
+```go
+// go/practice/lru_cache/lru_cache.go
+// LRU Cache. Statement: .statements/lru-cache.md. Run: cstudy test lru-cache
+
+package lru_cache
+
+type LRUCache struct{}
+
+func NewLRUCache(capacity int) *LRUCache {
+	return &LRUCache{}
+}
+
+func (c *LRUCache) Get(key int) int {
+	panic("not implemented")
+}
+
+func (c *LRUCache) Put(key int, value int) {
+	panic("not implemented")
 }
 ```
