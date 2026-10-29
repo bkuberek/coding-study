@@ -49,6 +49,8 @@ The standard answer: a small change to island counting. A recursive flood fill i
 - TypeScript: cells are encoded as `r * cols + c`, so the stack holds plain numbers and `seen` is one flat `Uint8Array`.
 - Java: `ArrayDeque<int[]>` as the stack and `boolean[][]` for `seen`.
 - Kotlin: `ArrayDeque<Int>` with encoded cells; `maxOf` keeps the largest area.
+- Go: a slice of `[2]int` coordinate pairs is the stack (`append` to push, reslice to pop), and `seen` is allocated row by row, since `make` has no two-dimensional form. The built-in `max` (Go 1.21 and newer) keeps the largest area.
+- Rust: `Vec<(usize, usize)>` is the stack and `while let Some((r, c)) = stack.pop()` drains it. Coordinates are `usize`, so `checked_add_signed` turns a step off the top or left edge into `None` instead of an underflow panic, and the bounds test only needs the upper limits.
 
 ## Approach: union-find (Union-find with island sizes)
 
@@ -90,3 +92,5 @@ Same speed in practice and no stack at all. It shines when land appears over tim
 - TypeScript: the disjoint set is a small class over `Int32Array`s; `[rootA, rootB] = [rootB, rootA]` swaps the roots.
 - Java: a private static nested class keeps the helper next to `Solution`.
 - Kotlin: a private top-level class; `rootA = rootB.also { rootB = rootA }` swaps two variables in one line.
+- Go: the disjoint set is a struct of two slices with pointer-receiver methods, and `set.parent[cell], cell = root, set.parent[cell]` is a tuple assignment that reads the old `cell` before writing.
+- Rust: a struct with `&mut self` methods; `find` reads the next pointer into a local before it rewrites `parent[cell]`, the explicit form of Python's tuple assignment. `std::mem::swap` exchanges the two roots.
