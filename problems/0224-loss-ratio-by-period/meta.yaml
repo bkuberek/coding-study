@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0224"
+slug: loss-ratio-by-period
+title: Loss Ratio by Period
+status: ready
+difficulty: medium
+track: practical
+kind: function
+patterns: [arrays-hashing]
+signature:
+  function:
+    name: lossRatios
+    params:
+      - {name: earnedDates, type: "date[]"}
+      - {name: earnedAmounts, type: "decimal[]"}
+      - {name: lossDates, type: "date[]"}
+      - {name: lossAmounts, type: "decimal[]"}
+      - {name: fromDate, type: date}
+      - {name: toDate, type: date}
+      - {name: periodMonths, type: int}
+    returns: {type: "list<decimal>"}
+comparator: {type: exact}
+approaches:
+  - {id: period-buckets, name: Number the periods arithmetically and sum into buckets, role: optimal, time: "O(e + l + p)", space: "O(p)", time_class: "n", space_class: "n"}
+related: [earned-premium-as-of, pro-rata-unearned-premium]
+estimate_minutes: 30
