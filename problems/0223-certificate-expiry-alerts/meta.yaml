@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0223"
+slug: certificate-expiry-alerts
+title: Certificate Expiry Alerts
+status: ready
+difficulty: easy
+track: practical
+kind: function
+patterns: [arrays-hashing]
+signature:
+  function:
+    name: certificateAlerts
+    params:
+      - {name: contractorIds, type: "string[]"}
+      - {name: expiryDates, type: "date[]"}
+      - {name: asOfDate, type: date}
+      - {name: windowDays, type: int}
+    returns: {type: "string[][]"}
+comparator: {type: exact}
+approaches:
+  - {id: latest-per-contractor, name: Keep each contractor's latest expiry then filter and sort, role: optimal, time: "O(n + m log m)", space: "O(m)", time_class: "n log n", space_class: "n"}
+related: [coverage-gaps]
+estimate_minutes: 25
