@@ -48,6 +48,8 @@ The natural first answer and short to write. Each question repeats a search over
 - TypeScript: nested `Map<string, Map<string, number>>`; iterating a `Map` yields `[key, value]` pairs.
 - Java: `computeIfAbsent` creates inner maps; the weights are boxed `Double` values, which is fine at this size.
 - Kotlin: `getOrPut` creates inner maps, and `val (a, b) = equation` destructures a two-element array.
+- Go: the adjacency map holds a slice of `edge{to, value}` per variable instead of a nested map. A Go map iterates in random order, and a slice visits neighbors in the order the equations arrived, so the products come out the same on every run. A missing key reads as the zero value, so presence is checked with the comma-ok form.
+- Rust: `Graph<'a>` is a `HashMap<&str, Vec<(&str, f64)>>` whose keys borrow the names from `equations`, so building the graph copies no strings. `entry(a).or_default()` creates the neighbor list on first use, and `product[node]` indexes a `HashMap` by `&str` and panics on a missing key, which cannot happen for a node that was queued.
 
 ## Approach: weighted-union-find (Union-find that stores each variable's ratio to its root)
 
@@ -89,3 +91,5 @@ Answers each question in near-constant time and supports equations that arrive i
 - TypeScript: two `Map`s; `find` returns a `[root, ratio]` tuple.
 - Java: the maps are fields cleared at the start of each call, so `find` stays a small private method without extra parameters; after `find(x)`, `weight.get(x)` is `x / root`.
 - Kotlin: `find` is a local function over two `HashMap`s; `path.asReversed()` walks the path from the root side without copying it.
+- Go: two maps, `parent` and `weight`, with `find` returning `(root, name / root)`. The loop walks `path` from the end, which is the node nearest the root, and `set.weight[node] *= set.weight[set.parent[node]]` multiplies before `parent[node]` is rewritten.
+- Rust: `RatioSet<'a>` stores `&'a str` keys and values borrowed from the inputs. A `HashMap` has no `IndexMut`, so the product is updated through `get_mut` after reading the parent's weight into a local, which also keeps the two borrows apart. `find` takes `&mut self` because it compresses paths.
