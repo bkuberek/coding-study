@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"numCourses": 3, "prerequisites": [[2, 0], [2, 1]]}, "expected": [0, 1, 2]},
+    {"id": "ex2", "visible": true, "input": {"numCourses": 3, "prerequisites": [[0, 1], [1, 2], [2, 0]]}, "expected": []},
+    {"id": "h1", "input": {"numCourses": 1, "prerequisites": []}, "expected": [0], "note": "one course, no prerequisites"},
+    {"id": "h2", "input": {"numCourses": 4, "prerequisites": []}, "expected": [0, 1, 2, 3], "note": "no prerequisites: every order works"},
+    {"id": "h3", "input": {"numCourses": 2, "prerequisites": [[0, 1], [1, 0]]}, "expected": [], "note": "two courses that require each other"},
+    {"id": "h4", "input": {"numCourses": 5, "prerequisites": [[1, 0], [2, 1], [3, 2], [4, 3]]}, "expected": [0, 1, 2, 3, 4], "note": "a chain in number order"},
+    {"id": "h5", "input": {"numCourses": 5, "prerequisites": [[0, 1], [1, 2], [2, 3], [3, 4]]}, "expected": [4, 3, 2, 1, 0], "note": "a chain against number order"},
+    {"id": "h6", "input": {"numCourses": 6, "prerequisites": [[5, 4], [4, 3], [3, 5], [1, 0]]}, "expected": [], "note": "a cycle in one part only"},
+    {"id": "h7", "input": {"numCourses": 6, "prerequisites": [[1, 0], [2, 0], [3, 1], [3, 2], [4, 3]]}, "expected": [0, 5, 1, 2, 3, 4], "note": "a diamond plus a course with no links"},
+    {"id": "h8", "input": {"numCourses": 4, "prerequisites": [[3, 0], [3, 1], [3, 2]]}, "expected": [0, 1, 2, 3], "note": "one course needs all others"},
+    {"id": "h9", "input": {"numCourses": 7, "prerequisites": [[1, 0], [2, 1], [4, 3], [5, 4], [6, 5], [6, 2]]}, "expected": [0, 3, 1, 4, 2, 5, 6], "note": "two chains joined at the end"},
+    {"id": "h10", "input": {"numCourses": 4, "prerequisites": [[1, 0], [2, 1], [0, 2], [3, 0]]}, "expected": [], "note": "a cycle with a course hanging off it"},
+    {"id": "g1", "generate": {"n": 2000, "seed": 234}, "note": "large input: repeated scanning costs about 2 * 10^6 checks"}
+  ]
+}
