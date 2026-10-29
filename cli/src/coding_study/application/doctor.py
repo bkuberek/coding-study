@@ -54,9 +54,15 @@ from coding_study.domain.type_dsl import VoidType
 PYTHON_VERSION = "3.13"
 MINIMUM_NODE_MAJOR = 24
 JAVA_MAJOR = 21
+MINIMUM_GO = (1, 24)
+MINIMUM_RUSTC = (1, 80)
 TOOLCHAINS_GUIDE = "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md"
 INSTALL_UV = f"install uv: {TOOLCHAINS_GUIDE}#python-and-uv"
 INSTALL_PNPM = f"install pnpm: {TOOLCHAINS_GUIDE}#nodejs-and-pnpm"
+INSTALL_GO = f"needed for --lang go, install Go 1.24 or newer: {TOOLCHAINS_GUIDE}#go"
+INSTALL_RUST = (
+    f"needed for --lang rust, install Rust 1.80 or newer with rustup: {TOOLCHAINS_GUIDE}#rust"
+)
 
 _DOTTED_VERSION = re.compile(r"(?P<version>\d+(?:\.\d+)+)")
 _JAVA_VERSION = re.compile(r'version "(?P<version>\d+(?:\.\d+)*)')
@@ -253,6 +259,9 @@ def run_doctor(environment: DoctorEnvironment, notify: ProgressNotice) -> Doctor
         _present_tool(tools, "pnpm", INSTALL_PNPM),
         _java(tools),
         _gradle(tools),
+        _go(tools),
+        _rustc(tools),
+        _cargo(tools),
         _config(environment.config),
         _content(environment.content),
         *_workspace(environment, notify),
@@ -344,6 +353,47 @@ def _gradle(tools: ToolProbe) -> CheckResult:
     return CheckResult("gradle", CheckStatus.OK, version)
 
 
+def _at_least(version: str, minimum: tuple[int, int]) -> bool:
+    major, minor, *_ = (int(part) for part in version.split("."))
+    return (major, minor) >= minimum
+
+
+def _minimum_text(minimum: tuple[int, int]) -> str:
+    return ".".join(str(part) for part in minimum)
+
+
+def _go(tools: ToolProbe) -> CheckResult:
+    """Only `--lang go` needs Go, so a missing or old one warns."""
+    version = _version_of(tools, ("go", "version"))
+    if isinstance(version, _Unavailable):
+        return CheckResult("go", CheckStatus.WARN, version.reason, fix=INSTALL_GO)
+    if not _at_least(version, MINIMUM_GO):
+        detail = (
+            f"{version} (need {_minimum_text(MINIMUM_GO)} or newer; "
+            "cstudy builds with GOTOOLCHAIN=local and never downloads one)"
+        )
+        return CheckResult("go", CheckStatus.WARN, detail, fix=INSTALL_GO)
+    return CheckResult("go", CheckStatus.OK, version)
+
+
+def _rustc(tools: ToolProbe) -> CheckResult:
+    """Only `--lang rust` needs Rust, so a missing or old one warns."""
+    version = _version_of(tools, ("rustc", "--version"))
+    if isinstance(version, _Unavailable):
+        return CheckResult("rustc", CheckStatus.WARN, version.reason, fix=INSTALL_RUST)
+    if not _at_least(version, MINIMUM_RUSTC):
+        detail = f"{version} (need {_minimum_text(MINIMUM_RUSTC)} or newer)"
+        return CheckResult("rustc", CheckStatus.WARN, detail, fix=INSTALL_RUST)
+    return CheckResult("rustc", CheckStatus.OK, version)
+
+
+def _cargo(tools: ToolProbe) -> CheckResult:
+    version = _version_of(tools, ("cargo", "--version"))
+    if isinstance(version, _Unavailable):
+        return CheckResult("cargo", CheckStatus.WARN, version.reason, fix=INSTALL_RUST)
+    return CheckResult("cargo", CheckStatus.OK, version)
+
+
 def _config(source: ConfigSource) -> CheckResult:
     if not source.exists():
         return CheckResult(
@@ -428,8 +478,8 @@ def _debugpy(tools: ToolProbe, workspace_files: RepositoryFiles) -> list[CheckRe
 def _runner(
     workspace: PracticeWorkspace, language: Language, notify: ProgressNotice
 ) -> CheckResult:
-    """The optional languages join once they have adapters; a missing toolchain for them only
-    warns."""
+    """Only the core languages answer a handshake; Go and Rust are covered by their toolchain
+    rows, so a machine without them passes."""
     name = f"runner {language}"
     hello = _hello(workspace, language, notify)
     if isinstance(hello, RunnerInfo):

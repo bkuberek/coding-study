@@ -47,6 +47,9 @@ HEALTHY_TOOLS: dict[tuple[str, ...], ProbeResult] = {
         0, 'openjdk version "21.0.2" 2024-01-16\nOpenJDK Runtime Environment (build 21.0.2+13)\n'
     ),
     ("gradle", "--version"): ProbeResult(0, "\n------\nGradle 9.8.2\n------\n"),
+    ("go", "version"): ProbeResult(0, "go version go1.24.1 darwin/arm64\n"),
+    ("rustc", "--version"): ProbeResult(0, "rustc 1.80.0 (051478957 2024-07-21)\n"),
+    ("cargo", "--version"): ProbeResult(0, "cargo 1.80.0 (376290515 2024-07-16)\n"),
     IMPORT_DEBUGPY: ProbeResult(0, ""),
 }
 COMPLETE_WORKSPACE = {
@@ -306,6 +309,99 @@ def test_missing_gradle_is_only_a_warning():
     assert (result.status, result.fix) == (WARN, "brew install gradle")
 
 
+def test_healthy_optional_toolchains_report_versions():
+    report = doctor()
+    assert [(r.name, r.status, r.detail) for r in report.results[6:9]] == [
+        ("go", OK, "1.24.1"),
+        ("rustc", OK, "1.80.0"),
+        ("cargo", OK, "1.80.0"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("command", "name", "flag", "anchor"),
+    [
+        (("go", "version"), "go", "--lang go", "go"),
+        (("rustc", "--version"), "rustc", "--lang rust", "rust"),
+        (("cargo", "--version"), "cargo", "--lang rust", "rust"),
+    ],
+)
+def test_missing_optional_toolchain_only_warns_and_links_its_install_guide(
+    command, name, flag, anchor
+):
+    report = doctor(tools_with(command, None))
+    result = check(report, name)
+    assert (result.status, result.detail, report.passed) == (WARN, "not found on PATH", True)
+    assert result.fix is not None
+    assert result.fix.startswith(f"needed for {flag}")
+    assert result.fix.endswith(f"{TOOLCHAINS_GUIDE}#{anchor}")
+
+
+@pytest.mark.parametrize(
+    ("output", "expected"),
+    [
+        ("go version go1.24 linux/amd64", OK),
+        ("go version go1.25rc1 linux/amd64", OK),
+        ("go version devel go1.26-abc123 Mon Jan 1 00:00:00 2026 darwin/arm64", OK),
+        ("go version go1.23.9 darwin/arm64", WARN),
+        ("go version go1.9.7 linux/amd64", WARN),
+    ],
+)
+def test_go_must_be_1_24_or_newer(output, expected):
+    tools = tools_with(("go", "version"), ProbeResult(0, output))
+    assert check(doctor(tools), "go").status is expected
+
+
+def test_old_go_says_cstudy_never_downloads_a_toolchain():
+    tools = tools_with(("go", "version"), ProbeResult(0, "go version go1.23.9 darwin/arm64"))
+    assert summary(doctor(tools), "go") == (
+        WARN,
+        "1.23.9 (need 1.24 or newer; cstudy builds with GOTOOLCHAIN=local and never downloads one)",
+    )
+
+
+@pytest.mark.parametrize(
+    ("output", "expected"),
+    [
+        ("rustc 1.80.0 (051478957 2024-07-21)", OK),
+        ("rustc 1.100.2 (abcdef012 2027-01-01)", OK),
+        ("rustc 1.83.0-nightly (c273 2024-10-01)", OK),
+        ("rustc 1.79.0 (129f3b996 2024-06-10)", WARN),
+        ("rustc 1.8.0 (db2d3f84d 2016-04-12)", WARN),
+    ],
+)
+def test_rustc_must_be_1_80_or_newer(output, expected):
+    tools = tools_with(("rustc", "--version"), ProbeResult(0, output))
+    result = check(doctor(tools), "rustc")
+    assert result.status is expected
+
+
+def test_old_rustc_names_the_minimum_and_the_guide():
+    tools = tools_with(
+        ("rustc", "--version"), ProbeResult(0, "rustc 1.79.0 (129f3b996 2024-06-10)")
+    )
+    result = check(doctor(tools), "rustc")
+    assert (result.detail, result.fix) == (
+        "1.79.0 (need 1.80 or newer)",
+        f"needed for --lang rust, install Rust 1.80 or newer with rustup: {TOOLCHAINS_GUIDE}#rust",
+    )
+
+
+def test_a_rustup_shim_without_a_toolchain_only_warns():
+    tools = tools_with(("rustc", "--version"), ProbeResult(1, "error: no default toolchain"))
+    assert summary(doctor(tools), "rustc") == (WARN, "`rustc --version` exited with 1")
+
+
+def test_missing_optional_toolchains_do_not_change_the_core_checks():
+    tools = FakeTools()
+    for command in (("go", "version"), ("rustc", "--version"), ("cargo", "--version")):
+        tools.outputs[command] = None
+    report = doctor(tools)
+    assert [r.status for r in report.results if r.name in {"python", "uv", "node", "java"}] == [
+        OK
+    ] * 4
+
+
 def test_missing_config_file_uses_defaults():
     assert summary(doctor(), "config") == (
         OK,
@@ -341,9 +437,10 @@ def test_missing_content_fails():
 
 def test_missing_workspace_is_a_single_warning_pointing_at_cs_init():
     report = doctor(workspace=NotFound("no coding-study workspace at /tmp"))
-    assert [(r.name, r.status, r.fix) for r in report.results[8:]] == [
+    assert [(r.name, r.status, r.fix) for r in report.results if r.name == "workspace"] == [
         ("workspace", WARN, "cstudy init")
     ]
+    assert report.results[-1].name == "workspace"
 
 
 def test_a_workspace_this_cs_cannot_use_fails():
@@ -467,7 +564,7 @@ def test_every_core_language_runner_is_checked():
     assert names == ["runner python", "runner typescript", "runner java", "runner kotlin"]
 
 
-def test_optional_languages_are_not_reported_until_they_have_adapters():
+def test_optional_language_runners_are_not_handshaken():
     report = doctor()
     assert {"runner go", "runner rust"}.isdisjoint(result.name for result in report.results)
 
