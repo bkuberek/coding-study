@@ -45,6 +45,8 @@ It is obviously correct and makes a good oracle, but its cost depends on the ans
 - TypeScript: `Math.ceil(pile / speed)` is exact because `pile` and `speed` are integers below 2^31; sums stay below 2^53.
 - Java: `(pile + (long) speed - 1) / speed` promotes to `long` before the addition, so neither the numerator nor the total overflows.
 - Kotlin: `generateSequence(1) { it + 1 }.first { ... }` expresses "the first speed that fits" lazily; `sumOf` with a `Long` lambda (`speed - 1L`) accumulates in 64 bits.
+- Go: `int` is 64 bits, so `(pile + speed - 1) / speed` and the total of up to 10^4 such terms need no widening.
+- Rust: speed and hours are `i64`: the total of the ceilings can reach 10^4 * 10^9, far above `i32` (and cstudy builds Rust with overflow checks, so it would panic). Ceiling division is the formula `(pile + speed - 1) / speed`, because `div_ceil` is stable only on unsigned integers.
 
 ## Approach: search-the-speed (Binary search on the answer)
 
@@ -87,3 +89,5 @@ This is the expected answer, and its shape (binary search over the answer with a
 - TypeScript: `Math.max(...piles)` spreads up to 10^4 arguments, which is fine; for much larger arrays use a loop. `Math.floor((low + high) / 2)` is safe because the sum stays below 2^53.
 - Java: `Arrays.stream(piles).max().getAsInt()` gives the largest pile; `low + (high - low) / 2` avoids overflowing `int` when both bounds are near 10^9.
 - Kotlin: `piles.max()` is non-null for a non-empty `IntArray` (Kotlin 1.7+); the midpoint uses the same overflow-safe form as Java.
+- Go: `slices.Max(piles)` (Go 1.21 and newer) finds the largest pile and panics on an empty slice, which the constraints exclude; the midpoint is `low + (high-low)/2`.
+- Rust: `*piles.iter().max().unwrap()` finds the largest pile, and the search runs on `i64` values so that `hours_at` can share one signature with the brute-force version. The answer is at most the largest pile, so `as i32` is exact.
