@@ -52,6 +52,8 @@ Direct and easy to argue, and it extends to variants where the formula breaks (p
 - TypeScript: no priority queue or deque in the standard library; the reference uses a small max-heap and an array with a moving `head` index as a queue, because `Array.prototype.shift` is O(n).
 - Java: `PriorityQueue<>(Comparator.reverseOrder())` is the max-heap; the queue holds `int[]` pairs in an `ArrayDeque`. `task - 'A'` turns a label into an index.
 - Kotlin: `kotlin.collections.ArrayDeque<Pair<Int, Int>>` and `to` for pairs; `Char - Char` yields an `Int`, so `task - 'A'` indexes the count array.
+- Go: `container/heap` needs a type with `Len`, `Less`, `Swap`, `Push` and `Pop`, so the reference declares `maxHeap []int` with `Less` as `>` and keeps the counts positive. The cooldown queue is a plain slice of a small `cooling` struct: `waiting[0]` reads the front and `waiting = waiting[1:]` pops it, which is O(1) and fine for a queue that is only drained from the front. `task - 'A'` indexes the `[26]int` count array, since a `rune` is an integer.
+- Rust: `BinaryHeap<i32>` is already a max-heap, so counts stay positive with no negation. `VecDeque<(i32, i32)>` holds the `(time, copies left)` pairs, and the `is_some_and` loop condition plays the part of Python's `while cooling and cooling[0][0] <= time`. A `char` converts to its array slot with `task as u8 - b'A'`.
 
 ## Approach: frame-formula (Count frames around the most frequent task)
 
@@ -88,3 +90,5 @@ A one-line answer after counting, and the fastest possible. It is easy to misrem
 - TypeScript: `Math.max(...counts)` spreads only 26 values here, so it cannot hit the argument-count limit that spreading a large array would.
 - Java: one pass over the counts tracks both the maximum and how many labels reach it.
 - Kotlin: `IntArray.max()` and `count { it == top }` read the two numbers directly.
+- Go: `slices.Max(counts[:])` takes a slice of the fixed `[26]int` array, and the builtin `max` compares the two candidate answers. Counting the ties is a short loop.
+- Rust: the array is `Copy`, so `counts.into_iter().max()` consumes a copy and leaves `counts` for the tie count; `max()` returns an `Option`, hence `unwrap_or(0)`. The task count and the formula are both `i32` after one `as i32`, which cannot overflow for 10^4 tasks and a cooldown of at most 100.
