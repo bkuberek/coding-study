@@ -8,6 +8,7 @@ error itself is in the bridge, and only the bridge's errors become `load_error`s
 
 import json
 import re
+import sys
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,15 +24,21 @@ EDITION = "2021"
 MANIFEST_FILE = "Cargo.toml"
 WORKSPACE_SCOPES = ("test", "verify", "bench")
 """Each scope is a directory of harness packages, one per problem."""
+SPLIT_DEBUGINFO = '"unpacked"' if sys.platform == "darwin" else '"off"'
+"""Cargo's default for the platform: the debug info stays where the binary's symbolizer finds it,
+also for the private copy each run launches."""
 RELEASE_PROFILE: Mapping[str, str] = {
     "opt-level": "3",
     "overflow-checks": "true",
     "debug": '"line-tables-only"',
     "panic": '"unwind"',
+    "strip": '"none"',
+    "split-debuginfo": SPLIT_DEBUGINFO,
 }
 """Optimized, so `--perf` numbers are real; an `i32` overflow panics instead of wrapping; line
-tables give traces their lines; panics unwind, so one case's panic is caught. The build passes
-these as `--config` too, which outranks a user's `config.toml`."""
+tables give traces their lines, and the symbols and debug info stay in place so traces name
+their functions; panics unwind, so one case's panic is caught. The build passes these as
+`--config` too, which outranks a user's `config.toml`."""
 SYMBOL_CODES = frozenset({"E0412", "E0422", "E0425", "E0433", "E0583", "E0599", "E0603", "E0624"})
 """Errors that mean the target does not define a symbol the bridge calls (or keeps it private)."""
 PRIVATE_CODES = frozenset({"E0603", "E0624"})

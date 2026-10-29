@@ -1,6 +1,7 @@
 """Cargo's JSON output, recorded from real builds of two-sum (tests/.../rust/recorded): the
 workspace path is written `{root}`."""
 
+import sys
 import tomllib
 from pathlib import Path
 
@@ -133,6 +134,13 @@ def test_a_harness_package_links_the_runner_crates_of_the_runtime():
     assert document["dependencies"]["cs_runner"] == {
         "path": "../../../runtime/runners/rust/cs_runner"
     }
+
+
+def test_the_release_profile_keeps_the_symbols_and_debug_info_of_this_platform():
+    split_debuginfo = '"unpacked"' if sys.platform == "darwin" else '"off"'
+    arguments = profile_arguments()
+    assert 'profile.release.strip="none"' in arguments
+    assert f"profile.release.split-debuginfo={split_debuginfo}" in arguments
 
 
 @pytest.mark.parametrize("setting", sorted(RELEASE_PROFILE))

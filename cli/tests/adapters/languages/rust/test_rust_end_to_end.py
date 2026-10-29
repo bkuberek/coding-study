@@ -54,6 +54,12 @@ target = "wasm32-unknown-unknown"
 overflow-checks = false
 panic = "abort"
 """
+STRIPPING_CARGO_CONFIG = """[profile.release]
+strip = true
+split-debuginfo = "packed"
+"""
+OVERFLOW = HASH_MAP.replace("(target - n)", "(target + n * 1_000_000)")
+BIG = RunCase("big", FunctionInput({"nums": [5000, 1], "target": 2_147_000_000}), 10_000)
 
 
 @pytest.fixture
@@ -114,14 +120,22 @@ def test_a_compile_error_names_the_users_file(root):
 
 
 def test_an_overflow_panics_and_names_the_users_line(root):
-    write_solution(root, HASH_MAP.replace("(target - n)", "(target + n * 1_000_000)"))
-    big = RunCase("big", FunctionInput({"nums": [5000, 1], "target": 2_147_000_000}), 10_000)
-    (case,) = run(root, prepare(root), big).cases
+    write_solution(root, OVERFLOW)
+    (case,) = run(root, prepare(root), BIG).cases
     assert isinstance(case.outcome, Raised)
     assert (case.outcome.error.message, case.outcome.error.trace) == (
         "attempt to multiply with overflow",
         "two_sum.rs:6 in two_sum",
     )
+
+
+def test_a_users_strip_setting_keeps_the_function_names_in_traces(root):
+    (root / ".cargo").mkdir()
+    (root / ".cargo/config.toml").write_text(STRIPPING_CARGO_CONFIG)
+    write_solution(root, OVERFLOW)
+    (case,) = run(root, prepare(root), BIG).cases
+    assert isinstance(case.outcome, Raised)
+    assert case.outcome.error.trace == "two_sum.rs:6 in two_sum"
 
 
 def test_the_users_cargo_settings_do_not_reach_the_build(root, monkeypatch):
