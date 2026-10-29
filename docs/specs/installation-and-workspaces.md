@@ -102,7 +102,7 @@ Creates a workspace in `PATH` (default: `--workspace`, then `CSTUDY_WORKSPACE`, 
 | `--git` | Runs `git init` in `PATH`; `cstudy` never commits |
 | Output | `created workspace <path>`, the number of files written and skipped, the IDE files line of [`cstudy ide`](cli.md#cstudy-ide), then the next steps: `cd <path>`, `cstudy doctor --fix`, `cstudy start two-sum` |
 
-`cstudy init` installs nothing: `cstudy doctor --fix` runs `uv sync`, `pnpm install` and the Gradle warm-up. Go and Rust are optional: neither command runs `go` or `cargo`, so a machine without them gets the same workspace, and only `--lang go` needs Go 1.24 or newer and `--lang rust` Rust 1.80 or newer (without them, `cstudy test` exits 4 with `go was not found on PATH` or `cargo was not found on PATH`). `cstudy doctor` does not check Go or Rust yet ([ADR 0012](../decisions/0012-go-and-rust.md)).
+`cstudy init` installs nothing: `cstudy doctor --fix` runs `uv sync`, `pnpm install` and the Gradle warm-up. Go and Rust are optional: neither command runs `go` or `cargo`, so a machine without them gets the same workspace, and only `--lang go` needs Go 1.24 or newer and `--lang rust` Rust 1.80 or newer (without them, `cstudy test` exits 4 with `go was not found on PATH` or `cargo was not found on PATH`). `cstudy doctor` checks `go`, `rustc` and `cargo` and only warns when one is missing or too old ([ADR 0012](../decisions/0012-go-and-rust.md)).
 
 `rust/Cargo.toml` is for the editor: each problem file is an `[[example]]` with `crate-type = ["lib"]`, a crate of its own that rust-analyzer checks, with `autoexamples = false` so only listed files count and `cs_support` as a dev-dependency. `cstudy start --lang rust` appends the problem's entry when the manifest has none for its name or file, and leaves a manifest that does not parse alone. `lib.rs` is empty: a package needs one target before the first problem starts. `cstudy` builds solutions elsewhere ([runners](runners.md#rust-build-details)), so an edit to the manifest never affects a run.
 
@@ -163,7 +163,8 @@ Not set from project files, because IDEs keep them per user or need a plugin: th
 |-------|------|-----------|
 | `content` | Path, `bundled` or `checkout` | FAIL when the content root cannot be found |
 | `workspace` | Path and `created with cstudy <version>` (with the running version when it differs) | WARN when there is no workspace (`fix: cstudy init`); FAIL for an unreadable marker or a newer schema |
-| `workspace files` | Every template file exists | FAIL listing up to 5 missing files, `fix: cstudy doctor --fix` |
+| `workspace files` | Every core template file exists (everything but the Go and Rust files below) | FAIL listing up to 5 missing files, `fix: cstudy doctor --fix` |
+| `go and rust files` | `go.work` and the files of `go/` and `rust/` exist | WARN listing up to 5 missing files, `fix: cstudy doctor --fix`: a workspace created before Go and Rust existed lacks them, and nothing fails until you use `--lang go` or `--lang rust` |
 | `runner runtime` | The stamp matches the content and the IDE launcher is the shipped one | FAIL when missing or stale, `fix: cstudy doctor --fix` |
 | `jvm/gradlew`, `python/.venv`, `python debugpy`, `typescript/node_modules` and `runner <lang>` | As in [cli](cli.md#cstudy-doctor) | As in [cli](cli.md#cstudy-doctor) |
 

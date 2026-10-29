@@ -37,7 +37,7 @@ A spike (scratch code, not merged) built a Go runner and a Rust bridge for `two-
 
 ## Status
 
-This decision lands in steps. Implemented: the `Language` members, `CORE_LANGUAGES` and `OPTIONAL_LANGUAGES`, the schemas, layout and naming, the per-language tables, and the "not set up yet" error (exit 4) for a listed language without an adapter. Go and Rust each: the stub generator, the runner for function, design and progressive problems in test and bench mode, the workspace's `go/` or `rust/` project, conformance fixtures 9001 to 9013 (Rust without 9006 and 9010, see below), and references for `two-sum`, `lru-cache` and `invert-binary-tree`. Planned and not yet working: `decimal` and `date`, concurrency and `--debug` in both; Go and Rust `doctor` checks and IDE files; the rest of the references. Until a step lands, the specs mark its rows as planned.
+This decision lands in steps. Implemented: the `Language` members, `CORE_LANGUAGES` and `OPTIONAL_LANGUAGES`, the schemas, layout and naming, the per-language tables, and the "not set up yet" error (exit 4) for a listed language without an adapter. Go and Rust each: the stub generator, the runner for function, design and progressive problems in test and bench mode, the workspace's `go/` or `rust/` project, conformance fixtures 9001 to 9013 (Rust without 9006 and 9010, see below), and references for `two-sum`, `lru-cache` and `invert-binary-tree`. `cstudy doctor` checks `go`, `rustc` (1.80 or newer) and `cargo`, and warns about the Go and Rust files an older workspace lacks until `cstudy doctor --fix` writes them. Planned and not yet working: `decimal` and `date`, concurrency and `--debug` in both; Go and Rust IDE files; the rest of the references. Until a step lands, the specs mark its rows as planned.
 
 ## Amendments
 
@@ -66,7 +66,7 @@ Settled while building the Rust runner (2026-10-29):
 
 - Existing problems, stubs and requests are unchanged: the four core languages produce byte-identical output, and every default that meant "all languages" now means the core four.
 - During the backfill, `cstudy list --lang go` and `cstudy next --lang go` show only the problems that have Go references, and verify coverage lines show Go and Rust once a problem lists them.
-- A language that is known but has no adapter fails with `rust stub generator is not set up yet` (exit 4) wherever an adapter is needed, and with "not available in rust" (exit 3) for a problem that does not list it. `doctor` does not mention Go or Rust until their runners exist.
+- A language that is known but has no adapter fails with `rust stub generator is not set up yet` (exit 4) wherever an adapter is needed, and with "not available in rust" (exit 3) for a problem that does not list it. `cstudy doctor` only warns about a missing or old Go or Rust, never fails, and does not run their runners.
 - Full verify grows: Go adds roughly 0.5 to 1.5 s per problem and Rust 1.5 to 4 s, and Cargo's target-directory lock serializes parallel Rust builds. The oracle and ladder checks cost more per added language.
 - Go and Rust references written by agents need review at about twice the current reference volume.
 - A cyclic linked list cannot be expressed in Rust with `Box`, so cyclic-list and list `ref_of` problems are Go-only (S13); `no_alias_with` on a list works in Rust.
