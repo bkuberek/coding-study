@@ -42,6 +42,8 @@ It is simple and always returns the leftmost peak, which makes it a good oracle.
 
 - Kotlin: `0 until nums.lastIndex` is the half-open range `0..n-2`, empty for a single element.
 - Python: `range(len(nums) - 1)` is empty for one element, which falls through to `len(nums) - 1 == 0`.
+- Go: the loop condition `index < len(nums)-1` is false from the start for a single element, which falls through to `len(nums) - 1 == 0`.
+- Rust: `nums.windows(2).position(|pair| pair[0] > pair[1])` visits each adjacent pair and returns the index of the first descent; a single element has no windows, so `unwrap_or(nums.len() - 1)` supplies the answer.
 
 ## Approach: climb-the-slope (Binary search toward the rising neighbor)
 
@@ -81,3 +83,5 @@ It is the expected answer and shows that binary search does not need a sorted ar
 
 - All four languages compare `int` values directly; there is no arithmetic on values, so overflow cannot occur even at the extremes of the 32-bit range.
 - Kotlin: `nums.lastIndex` is `n - 1`; `ushr 1` floors the midpoint. Java and TypeScript use `>>> 1`; Python uses `//`.
+- Go: the midpoint is `low + (high-low)/2`, and `nums[middle+1]` is in range because `low < high` implies `middle < high`.
+- Rust: the indexes can stay `usize`: `high = middle` and `low = middle + 1` never subtract, and `nums.len() - 1` is safe for a non-empty array.
