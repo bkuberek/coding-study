@@ -6,6 +6,7 @@ status: ready
 difficulty: hard
 track: dsa
 kind: function
+languages: [python, typescript, java, kotlin, go, rust]
 patterns: [dp-1d, binary-search]
 signature:
   function:

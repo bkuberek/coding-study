@@ -52,6 +52,8 @@ The recurrence is the important insight; the linear scan is the obvious first wa
 - TypeScript: sort an index array with `(a, b) => endTime[a] - endTime[b]`; the difference stays well within the safe integer range.
 - Java: `Integer[]` indexes sorted with `Comparator.comparingInt`; a primitive `int[]` cannot take a comparator.
 - Kotlin: `startTime.indices.sortedBy { endTime[it] }` gives the order as a `List<Int>`.
+- Go: a small `job` struct and `sort.Slice` order the jobs by end time. `sort.Slice` is not stable, which changes nothing here: two jobs with the same end time can never both be chosen, so the order between them does not affect any answer.
+- Rust: a `Vec<(i32, i32, i32)>` of `(end, start, profit)` tuples; `sort()` orders tuples field by field, the same as Python's tuple sort.
 
 ## Approach: memoization (Top-down take-or-skip over jobs sorted by start)
 
@@ -89,6 +91,8 @@ A natural "decide each job" formulation with the optimal complexity. Its recursi
 - Python: `bisect_left(starts, end, lo=index + 1)` is the lower bound.
 - TypeScript and Kotlin: a hand-written lower-bound loop.
 - Java: the jobs become `{start, end, profit}` rows sorted by `row[0]`; fields hold the rows and the memo so the helper methods stay small.
+- Go: `sort.Search(n, f)` returns the first index in `[0, n)` where `f` holds, so searching `jobs[index+1:]` means searching a count of `len(jobs)-index-1` and adding `index+1` back. The recursion is a closure declared with `var` first.
+- Rust: `starts[index + 1..].partition_point(|&start| start < end)` is the lower bound over the tail of the sorted starts; add `index + 1` for the position in the whole slice. The recursion is a private function that takes the jobs, the starts and the memo.
 
 ## Approach: binary-search-dp (Bottom-up over end times with binary search)
 
@@ -128,3 +132,5 @@ The standard answer: iterative, no deep recursion, and optimal. An equivalent al
 - TypeScript: a hand-written upper-bound loop over the sorted end times.
 - Java: rows `{end, start, profit}` sorted by `row[0]`; `>>>` avoids overflow in the midpoint by habit.
 - Kotlin: `ushr 1` is the unsigned shift for the midpoint; `withIndex()` walks the sorted order with positions.
+- Go: `sort.Search(i, func(k int) bool { return jobs[k].end > current.start })` is the upper bound over the first `i` jobs, so no midpoint arithmetic is written by hand.
+- Rust: `ends[..i].partition_point(|&end| end <= start)` is the same upper bound over the sorted prefix; `ends` is a separate `Vec<i32>` so the predicate reads plain integers.
