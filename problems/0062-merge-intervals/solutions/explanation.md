@@ -45,6 +45,7 @@ It needs no sorting and handles intervals in arrival order, so it is a reasonabl
 - Python: tuple unpacking `for start, end in intervals` reads each pair without indexing.
 - Kotlin: `partition` splits the merged list into overlapping and separate intervals in one call. It tests against the original interval only, which the correctness argument shows is enough.
 - Java: `merged.toArray(new int[0][])` converts the list to `int[][]`.
+- Rust: `for other in merged` consumes the old list, so each interval is either moved into `separate` or folded into the running `(start, end)`; nothing is cloned.
 
 ## Approach: sort-and-sweep (Sort by start and sweep once)
 
@@ -85,3 +86,5 @@ This is the expected answer: short, fast, and the base of most interval problems
 - TypeScript: `sort((a, b) => a[0] - b[0])` is numeric; the default `sort()` would compare `"10,12"` and `"9,11"` as strings.
 - Java: `Comparator.comparingInt(interval -> interval[0])` avoids the overflow risk of `a[0] - b[0]` with large values; endpoints here reach 10^9, so subtraction could overflow for negative inputs in a variant.
 - Kotlin: `sortedBy { it[0] }` returns a sorted `List<IntArray>` and leaves the input array untouched; destructuring `(start, end)` works on `IntArray`.
+- Go: `slices.Compare` orders two slices lexicographically, so `slices.SortFunc(ordered, slices.Compare[[]int])` is `sorted(intervals)`. The sort runs on a `slices.Clone` of the outer slice, which leaves the caller's order alone, and the builtin `max` replaces `Math.max`.
+- Rust: `Vec<i32>` implements `Ord` lexicographically, so `intervals.sort()` sorts by start, then end, and the owned input is sorted in place. `merged.last_mut()` with a match guard (`Some(last) if start <= last[1]`) extends the last interval in place or falls through to `push`.
