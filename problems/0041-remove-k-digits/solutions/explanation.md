@@ -49,6 +49,8 @@ It states the greedy rule directly, which makes it a good oracle and a natural f
 - TypeScript: `splice(peak, 1)` removes one element; a regular expression strips the zeros.
 - Java: `StringBuilder.deleteCharAt` shifts the tail; the zeros are skipped by index and `substring` copies the rest.
 - Kotlin: the same `StringBuilder`, with `deleteAt`, `trimStart('0')` and `ifEmpty { "0" }`.
+- Go: the digits are a `[]byte`, and `slices.Delete(digits, peak, peak+1)` removes one in place by shifting the tail. `for range k` (Go 1.22 and newer) repeats the removal. `strings.TrimLeft(s, "0")` takes a set of characters and strips every leading zero; `TrimPrefix` would strip only one.
+- Rust: the digits are a `Vec<char>` and `Vec::remove` shifts the tail. The leading zeros go with `skip_while(|&digit| digit == '0')` while the string is collected, and an empty result becomes `"0"`.
 
 ## Approach: monotonic-stack (Keep a non-decreasing stack of digits)
 
@@ -89,3 +91,5 @@ The standard answer: one pass, simple code, and the same skeleton solves "smalle
 - TypeScript: an array of one-character strings compared with `>`, which compares digit characters correctly; `kept.length -= remaining` truncates in place.
 - Java: a `StringBuilder` is the stack (`charAt`, `setLength`, `append`), so no boxing.
 - Kotlin: the same `StringBuilder` with `last()` and `setLength`.
+- Go: a `[]byte` is the stack, and comparing two bytes with `>` orders the digit characters correctly. `kept[:len(kept)-remaining]` drops the leftover deletions without copying.
+- Rust: a `Vec<char>` is the stack; `char` comparison orders `'0'` to `'9'` correctly, and `Vec::truncate` drops the leftover deletions. `kept.last().is_some_and(|&last| last > digit)` reads the top without popping.
