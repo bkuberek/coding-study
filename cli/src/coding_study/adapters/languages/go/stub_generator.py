@@ -62,7 +62,7 @@ _SCALAR_TYPES: Mapping[Scalar, str] = {
 
 
 class GoStubGenerator:
-    """`StubGenerator` for `go/practice/<snake_slug>/<snake_slug>.go`."""
+    """`StubGenerator` for `go/practice/<snake_slug>/<snake_slug>.go` (`layout.go_file_name`)."""
 
     def generate(self, meta: ProblemMeta) -> str:
         lines = [_header(meta)]

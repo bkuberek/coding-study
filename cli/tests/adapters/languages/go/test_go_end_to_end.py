@@ -7,6 +7,7 @@ workspace's `go/` project that shares its runner runtime; the conformance fixtur
 
 import shutil
 import threading
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -15,9 +16,16 @@ from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.go import create_runner
 from coding_study.adapters.runner_runtime import RUNTIME_RUNNERS
 from coding_study.adapters.subprocess_runner import SubprocessRunner
-from coding_study.application.ports import BuildFailed, Prepared, PrepareResult, UserCode
+from coding_study.application.ports import (
+    BuildFailed,
+    Prepared,
+    PrepareResult,
+    References,
+    ReferenceSource,
+    UserCode,
+)
 from coding_study.domain.cases import FunctionInput
-from coding_study.domain.layout import stub_path, user_target
+from coding_study.domain.layout import reference_target, stub_path, user_target
 from coding_study.domain.naming import symbol_names
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.runs import JobReport, Raised, Returned, RunCase, RunJob, RunRequest
@@ -64,12 +72,19 @@ def prepare(root: Path, meta: ProblemMeta = TWO_SUM) -> PrepareResult:
     return runner.prepare(UserCode(meta), lambda _: None)
 
 
-def run(root: Path, result: PrepareResult, meta: ProblemMeta = TWO_SUM) -> JobReport:
+def run(
+    root: Path, result: PrepareResult, meta: ProblemMeta = TWO_SUM, approach: str | None = None
+) -> JobReport:
     assert isinstance(result, Prepared), result
+    target = (
+        user_target(meta, Language.GO, str(root))
+        if approach is None
+        else reference_target(meta, approach, Language.GO, str(root))
+    )
     job = RunJob(
         job_id=meta.slug,
         kind=meta.kind,
-        target=user_target(meta, Language.GO, str(root)),
+        target=target,
         names=symbol_names(meta.signature, Language.GO),
         signature=meta.signature,
         cases=(CASE,),
@@ -132,3 +147,23 @@ def test_concurrent_builds_each_run_their_own_binary(root):
     binaries = {result.launch.command[0] for result in results if isinstance(result, Prepared)}
     assert len(binaries) == 3
     assert all(isinstance(run(root, result).cases[0].outcome, Returned) for result in results)
+
+
+def test_a_slug_ending_in_a_test_suffix_still_builds_the_users_file(root):
+    meta = replace(TWO_SUM, slug="two-sum-test")
+    write_solution(root, HASH_MAP.replace("package two_sum", "package two_sum_test"), meta)
+    (case,) = run(root, prepare(root, meta), meta).cases
+    assert isinstance(case.outcome, Returned)
+
+
+@pytest.mark.parametrize("approach", ["sort-windows", "sort-test", "sort-linux-arm64"])
+def test_a_reference_named_like_a_go_build_constraint_still_builds(root, tmp_path, approach):
+    path = tmp_path / "solutions" / f"{approach}.go"
+    path.parent.mkdir()
+    path.write_text(HASH_MAP)
+    runner = create_runner(LanguageContext(root, root / RUNTIME_RUNNERS))
+    prepared = runner.prepare(
+        References(TWO_SUM, (ReferenceSource(approach, path),)), lambda _: None
+    )
+    (case,) = run(root, prepared, approach=approach).cases
+    assert isinstance(case.outcome, Returned)

@@ -46,6 +46,56 @@ COMPILED_USER_TARGET = "user"
 COMPILED_REFERENCE_PREFIX = "ref"
 """Go and Rust build the user's code and every reference into one binary (docs/specs/runners.md
 #request-file); a `compiled` target names the part to run."""
+GO_SAFE_SUFFIX = "_code"
+_GO_IGNORED_SUFFIXES = frozenset(
+    {
+        "aix",
+        "android",
+        "darwin",
+        "dragonfly",
+        "freebsd",
+        "hurd",
+        "illumos",
+        "ios",
+        "js",
+        "linux",
+        "nacl",
+        "netbsd",
+        "openbsd",
+        "plan9",
+        "solaris",
+        "wasip1",
+        "windows",
+        "zos",
+        "386",
+        "amd64",
+        "amd64p32",
+        "arm",
+        "armbe",
+        "arm64",
+        "arm64be",
+        "loong64",
+        "mips",
+        "mipsle",
+        "mips64",
+        "mips64le",
+        "mips64p32",
+        "mips64p32le",
+        "ppc",
+        "ppc64",
+        "ppc64le",
+        "riscv",
+        "riscv64",
+        "s390",
+        "s390x",
+        "sparc",
+        "sparc64",
+        "wasm",
+        "test",
+    }
+)
+"""The words after which `go build` reads a file name as a constraint (`go/build`'s known GOOS and
+GOARCH values) or as a test file. The word before the first `_` is never one."""
 
 
 def stub_path(meta: ProblemMeta, language: Language) -> str:
@@ -58,7 +108,7 @@ def stub_path(meta: ProblemMeta, language: Language) -> str:
         case Language.JAVA | Language.KOTLIN:
             return f"{_user_package_directory(meta, language)}/{_jvm_file_name(meta, language)}"
         case Language.GO:
-            return f"{_user_package_directory(meta, language)}/{meta.snake_slug}.go"
+            return f"{_user_package_directory(meta, language)}/{go_file_name(meta.snake_slug)}"
         case Language.RUST:
             return f"{user_directory(language)}/{meta.snake_slug}.rs"
         case _:
@@ -158,7 +208,7 @@ def reference_build_path(meta: ProblemMeta, approach_id: str, language: Language
             return f"{sources}/{package_directory}/{_jvm_file_name(meta, language)}"
         case Language.GO:
             package_directory = f"{BUILD_DIRECTORY}/go/{REFERENCE_PACKAGE}/{meta.snake_slug}"
-            return f"{package_directory}/{approach}/{approach}.go"
+            return f"{package_directory}/{approach}/{go_file_name(approach)}"
         case Language.RUST:
             return f"{BUILD_DIRECTORY}/rust/{REFERENCE_PACKAGE}/{meta.snake_slug}/{approach}.rs"
         case _:
@@ -194,6 +244,14 @@ def _jvm_sources(project: str, language: Language) -> str:
 
 def _jvm_file_name(meta: ProblemMeta, language: Language) -> str:
     return f"{jvm_class_name(meta)}.{SOURCE_EXTENSIONS[language]}"
+
+
+def go_file_name(stem: str) -> str:
+    """`<stem>.go`, unless the go tool would ignore that file: a last `_`-separated word naming a
+    GOOS, a GOARCH or `test` makes it a build constraint or a test file (`sort_windows.go`), so
+    the name gets a `_code` suffix."""
+    ignored = stem.rpartition("_")[2] in _GO_IGNORED_SUFFIXES and "_" in stem
+    return f"{stem}{GO_SAFE_SUFFIX if ignored else ''}.go"
 
 
 def snake_case(identifier: str) -> str:

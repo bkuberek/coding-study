@@ -216,3 +216,35 @@ def test_compiled_references_run_the_code_built_into_the_runner(language):
 
 def test_jvm_reference_package():
     assert layout.jvm_reference_package(TWO_SUM, "hash-map") == "ref.two_sum.hash_map"
+
+
+@pytest.mark.parametrize(
+    ("approach", "path"),
+    [
+        ("sort-windows", ".cs/build/go/ref/two_sum/sort_windows/sort_windows_code.go"),
+        ("two-linux-arm64", ".cs/build/go/ref/two_sum/two_linux_arm64/two_linux_arm64_code.go"),
+        ("check-test", ".cs/build/go/ref/two_sum/check_test/check_test_code.go"),
+        ("windows", ".cs/build/go/ref/two_sum/windows/windows.go"),
+        ("amd64-sort", ".cs/build/go/ref/two_sum/amd64_sort/amd64_sort.go"),
+    ],
+)
+def test_go_reference_files_never_end_in_a_name_go_ignores(approach, path):
+    assert layout.reference_build_path(TWO_SUM, approach, Language.GO) == path
+
+
+@pytest.mark.parametrize(
+    ("slug", "file_name"),
+    [
+        ("two-sum", "two_sum.go"),
+        ("sort-test", "sort_test_code.go"),
+        ("parse-windows", "parse_windows_code.go"),
+        ("pick-linux-arm64", "pick_linux_arm64_code.go"),
+        ("test", "test.go"),
+        ("window", "window.go"),
+    ],
+)
+def test_go_practice_files_never_end_in_a_name_go_ignores(slug, file_name):
+    meta = replace(TWO_SUM, slug=slug)
+    assert (
+        layout.stub_path(meta, Language.GO) == f"go/practice/{slug.replace('-', '_')}/{file_name}"
+    )

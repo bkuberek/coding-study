@@ -470,7 +470,7 @@ Broken references are materialized next to the approaches ([Reference materializ
 | Python | `.cs/build/python/ref/<snake_slug>/broken_<id_snake>.py` |
 | TypeScript | `.cs/build/typescript/ref/<slug>/broken-<id>.ts` |
 | Java, Kotlin | `.cs/build/jvm/<lang>/src/main/<lang>/ref/<snake_slug>/broken_<id_snake>/<ClassName>.<ext>`, package `ref.<snake_slug>.broken_<id_snake>` |
-| Go | `.cs/build/go/ref/<snake_slug>/broken_<id_snake>/broken_<id_snake>.go`, a package of its own linked as target `ref/broken-<id>` |
+| Go | `.cs/build/go/ref/<snake_slug>/broken_<id_snake>/broken_<id_snake>.go` (named as in [Reference materialization](#reference-materialization)), a package of its own linked as target `ref/broken-<id>` |
 | Rust | `.cs/build/rust/ref/<snake_slug>/broken_<id_snake>.rs`, the `#[path]` module `ref_broken_<id_snake>` |
 
 ### Conformance fixtures (Phase 5)
@@ -491,7 +491,7 @@ Added to `runners/conformance/` before any concurrent problem merges. `expectati
 | Step | Rule |
 |------|------|
 | Source | `StubGenerator` for the language renders the signature with the mapping table and naming rules from [problem-format](problem-format.md#type-dsl) |
-| Destination | Python `python/practice/<snake_slug>.py`; TypeScript `typescript/practice/<slug>.ts`; Java and Kotlin `jvm/<lang>/src/main/<lang>/practice/<snake_slug>/<Solution or ClassName>.<ext>`; Go `go/practice/<snake_slug>/<snake_slug>.go` in `package <snake_slug>`; Rust `rust/practice/<snake_slug>.rs` |
+| Destination | Python `python/practice/<snake_slug>.py`; TypeScript `typescript/practice/<slug>.ts`; Java and Kotlin `jvm/<lang>/src/main/<lang>/practice/<snake_slug>/<Solution or ClassName>.<ext>`; Go `go/practice/<snake_slug>/<snake_slug>.go` in `package <snake_slug>` ([Go file names](#go-file-names)); Rust `rust/practice/<snake_slug>.rs` |
 | Body | Python `raise NotImplementedError`; TypeScript `throw new Error("Not implemented")`; Java `throw new UnsupportedOperationException("Not implemented")`; Kotlin `TODO("Not implemented")`; Go `panic("not implemented")`; Rust `todo!()`. Constructors are empty (Go: `return &LRUCache{}` from `NewLRUCache`; Rust: `LRUCache {}` from `pub fn new(...) -> Self`). Rust methods take `&mut self`, or `&self` in a concurrent problem, whose instance the worker threads share |
 | Header | Title, statement path, run command |
 | Imports | Support classes only when used (TypeScript `Decimal` for `decimal`, and the type `IsoDate` for `date`, imported with `import type` or an inline `type` specifier); the standard library types of `decimal` and `date` only when used (Python `Decimal` and `date`, Java and Kotlin `BigDecimal` and `LocalDate`); Java always `import java.util.*;`; Go imports `time` for `date`, `cstudy/support` for node types (with `type ListNode = support.ListNode` per node type used) and `github.com/shopspring/decimal` for `decimal`, each only when used since Go rejects unused imports, on one `import` line or in a block grouped as goimports groups it (paths without a domain first); Rust `use std::cell::RefCell;` and `use std::rc::Rc;` for trees and graphs, then one group in rustfmt's order of `use chrono::NaiveDate;` for `date`, `use cs_support::{...};` with the node types used, and `use rust_decimal::Decimal;` for `decimal` |
@@ -512,8 +512,12 @@ Every generated stub must compile or import unchanged; the conformance suite che
 | Python | `.cs/build/python/ref/<snake_slug>/<approach_snake>.py` | none; executed with the workspace venv interpreter |
 | TypeScript | `.cs/build/typescript/ref/<slug>/<approach>.ts` | `.cs/build/typescript/package.json` and `support.ts` mirror the workspace so `#support` resolves |
 | Java, Kotlin | `.cs/build/jvm/<lang>/src/main/<lang>/ref/<snake_slug>/<approach_snake>/<Solution or ClassName>.<ext>` | Reference files declare no `package`; the materializer prepends `package ref.<snake_slug>.<approach_snake>` (with `;` for Java). Built with `jvm/gradlew -p .cs/build/jvm`, which includes `.cs/runtime/runners/jvm` |
-| Go | `.cs/build/go/ref/<snake_slug>/<approach_snake>/<approach_snake>.go` | None: reference files declare `package <snake_slug>` like the stub, so a file moves between `solutions/` and the practice directory unchanged. Each approach is its own package (import path `csbuild/ref/<snake_slug>/<approach_snake>`), linked into the problem's binary next to the user's package with a generated registration file beside it |
+| Go | `.cs/build/go/ref/<snake_slug>/<approach_snake>/<approach_snake>.go` (see the Go file names note below) | None: reference files declare `package <snake_slug>` like the stub, so a file moves between `solutions/` and the practice directory unchanged. Each approach is its own package (import path `csbuild/ref/<snake_slug>/<approach_snake>`), linked into the problem's binary next to the user's package with a generated registration file beside it |
 | Rust | `.cs/build/rust/ref/<snake_slug>/<approach_snake>.rs` | None: reference files are written like the stub (`pub fn`, or `pub struct` with `impl`) and copied unchanged. Each enters the problem's harness crate as the `#[path]` module `ref_<approach_snake>`, so compiler errors name the copy |
+
+### Go file names
+
+The go tool ignores a file whose name ends in `_<GOOS>`, `_<GOARCH>` or `_test` (before `.go`), which would leave the package without its function (`SymbolNotFound`). `layout.go_file_name` therefore appends `_code` to any such stem, for the practice file (`go/practice/sort_test/sort_test_code.go`) and for materialized references and broken references (`sort_windows/sort_windows_code.go`). Package names, directories and the `solutions/<approach>.go` files keep their plain names; only the name of the file the toolchain reads changes.
 
 For JVM bench the classpath joins the user's `practice.*` classes and the `ref.*` classes; package names never collide.
 
