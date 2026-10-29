@@ -15,6 +15,7 @@ node_modules/
 build/
 .gradle/
 .kotlin/
+target/
 __pycache__/
 .ruff_cache/
 .DS_Store

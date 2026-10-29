@@ -24,13 +24,14 @@ RUNTIME_DIRECTORY = ".cs/runtime"
 RUNTIME_RUNNERS = f"{RUNTIME_DIRECTORY}/runners"
 STAMP_FILE = f"{RUNTIME_DIRECTORY}/stamp.json"
 STAMP_FORMAT = 1
-RUNNER_NAMES = ("python", "typescript", "jvm", "go")
+RUNNER_NAMES = ("python", "typescript", "jvm", "go", "rust")
 """The runners a workspace builds against; `conformance/` is content, read in place."""
 SKIPPED_DIRECTORIES = frozenset(
     {
         "tests",
         "node_modules",
         "build",
+        "target",
         ".gradle",
         ".kotlin",
         ".venv",

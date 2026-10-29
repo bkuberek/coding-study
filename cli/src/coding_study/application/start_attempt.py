@@ -13,6 +13,7 @@ from coding_study.domain.attempts import Attempt, AttemptMode, AttemptStatus, Ne
 from coding_study.domain.buggy_stubs import buggy_as_stub, buggy_file
 from coding_study.domain.errors import ContentError, ContentIssue, UsageError
 from coding_study.domain.levels import FIRST_LEVEL, LevelProgress, level_progress
+from coding_study.domain.practice_manifests import practice_manifest, with_problem
 from coding_study.domain.precedence import resolve_language
 from coding_study.domain.problem import Language, Problem, StubSource
 
@@ -52,9 +53,11 @@ def start_attempt(environment: Environment, request: StartRequest) -> StartedAtt
     in_progress = environment.progress.in_progress_attempt(request.slug, language)
     if in_progress is not None and not request.fresh:
         created = _ensure_stub(environment, problem, language)
+        _list_in_manifest(environment, problem, language)
         statement = write_statement(environment, problem, in_progress.level_unlocked)
         return StartedAttempt(problem, in_progress, stub_path, statement, True, created)
     started = _Start(environment, problem, language, request).begin(in_progress)
+    _list_in_manifest(environment, problem, language)
     write_statement(environment, problem, started.attempt.level_unlocked)
     return started
 
@@ -80,6 +83,18 @@ def _ensure_stub(environment: Environment, problem: Problem, language: Language)
         return False
     environment.workspace.write_text(path, _stub_text(environment, problem, language))
     return True
+
+
+def _list_in_manifest(environment: Environment, problem: Problem, language: Language) -> None:
+    """Rust: adds the problem to `rust/Cargo.toml`, so the editor checks its file. A workspace
+    without the manifest gets it from `cstudy doctor --fix`, and the problem at the next start."""
+    manifest = practice_manifest(language)
+    if manifest is None or not environment.workspace.exists(manifest):
+        return
+    text = environment.workspace.read_text(manifest)
+    listed = with_problem(text, problem.meta)
+    if listed != text:
+        environment.workspace.write_text(manifest, listed)
 
 
 def _stub_text(environment: Environment, problem: Problem, language: Language) -> str:

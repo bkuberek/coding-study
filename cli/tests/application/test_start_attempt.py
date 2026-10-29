@@ -158,3 +158,34 @@ def test_language_without_a_stub_generator_renders_no_statement(environment):
     with pytest.raises(LanguageNotSetUpError):
         start(environment, language=Language.JAVA)
     assert not environment.workspace.exists(STATEMENT)
+
+
+RUST_MANIFEST = "rust/Cargo.toml"
+
+
+@pytest.fixture
+def rust_environment(tmp_path: Path):
+    root = copy_repository(tmp_path, PRACTICE)
+    meta = root / "problems/0001-two-sum/meta.yaml"
+    meta.write_text(meta.read_text() + "languages: [python, typescript, java, kotlin, rust]\n")
+    toolchains = FakeToolchains(stub_generators={Language.RUST: FakeStubGenerator()})
+    return make_environment(root, toolchains=toolchains, clock=FakeClock())
+
+
+def test_a_rust_start_lists_the_problem_in_the_rust_manifest(rust_environment):
+    rust_environment.workspace.write_text(RUST_MANIFEST, '[package]\nname = "practice"\n')
+    start(rust_environment, language=Language.RUST)
+    manifest = rust_environment.workspace.read_text(RUST_MANIFEST)
+    assert '[[example]]\nname = "two_sum"\npath = "practice/two_sum.rs"\n' in manifest
+
+
+def test_a_resumed_rust_attempt_lists_the_problem_too(rust_environment):
+    start(rust_environment, language=Language.RUST)
+    rust_environment.workspace.write_text(RUST_MANIFEST, '[package]\nname = "practice"\n')
+    start(rust_environment, language=Language.RUST)
+    assert 'name = "two_sum"' in rust_environment.workspace.read_text(RUST_MANIFEST)
+
+
+def test_without_a_rust_manifest_none_is_created(rust_environment):
+    start(rust_environment, language=Language.RUST)
+    assert not rust_environment.workspace.exists(RUST_MANIFEST)

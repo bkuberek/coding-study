@@ -24,6 +24,9 @@ PRACTICE_PROJECT_FILES = (
     "go/go.mod",
     "go/practice/.gitkeep",
     "go.work",
+    "rust/Cargo.toml",
+    "rust/lib.rs",
+    "rust/practice/.gitkeep",
 )
 VSCODE_TASKS = ".vscode/tasks.json"
 IDEA_MISC = ".idea/misc.xml"

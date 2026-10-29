@@ -1,0 +1,20 @@
+# The Rust practice project, for the editor: cstudy builds and runs solutions in .cs/build/rust.
+# Each problem is practice/<snake_slug>.rs, an example built as a library crate of its own, so a
+# broken problem never blocks another and rust-analyzer checks each one. `cstudy start --lang rust`
+# writes the file and adds its [[example]] at the end of this file. cs_support (ListNode, TreeNode,
+# GraphNode) comes from the workspace's runner runtime, which `cstudy doctor --fix` restores.
+[package]
+name = "practice"
+version = "0.0.0"
+edition = "2021"
+publish = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
+
+[lib]
+path = "lib.rs"
+
+[dev-dependencies]
+cs_support = { path = "../.cs/runtime/runners/rust/cs_support" }
