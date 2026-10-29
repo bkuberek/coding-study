@@ -12,7 +12,7 @@ from enum import StrEnum
 
 from coding_study.domain.debugging import DEFAULT_DEBUG_PORTS
 from coding_study.domain.layout import JVM_LANGUAGES
-from coding_study.domain.problem import ALL_LANGUAGES, Language
+from coding_study.domain.problem import CORE_LANGUAGES, Language
 
 EXECUTABLE = "cstudy"
 LANGUAGE_NAMES: Mapping[Language, str] = {
@@ -20,8 +20,10 @@ LANGUAGE_NAMES: Mapping[Language, str] = {
     Language.TYPESCRIPT: "TypeScript",
     Language.JAVA: "Java",
     Language.KOTLIN: "Kotlin",
+    Language.GO: "Go",
+    Language.RUST: "Rust",
 }
-JVM = tuple(language for language in ALL_LANGUAGES if language in JVM_LANGUAGES)
+JVM = tuple(language for language in CORE_LANGUAGES if language in JVM_LANGUAGES)
 JDWP_PORT = DEFAULT_DEBUG_PORTS[Language.JAVA]
 """The JVM listener IntelliJ's "Debug JVM (listen)" waits on; Java and Kotlin share it."""
 
@@ -67,7 +69,7 @@ class ProblemAction:
     """The command and its options, before the target."""
     scopes: tuple[Scope, ...] = BOTH_SCOPES
     choice: Choice | None = None
-    languages: tuple[Language, ...] = ALL_LANGUAGES
+    languages: tuple[Language, ...] = CORE_LANGUAGES
     """The languages it means something for; its name lists them unless it is all of them."""
 
     @property
@@ -93,7 +95,7 @@ class ProblemAction:
         return (*self.arguments, chosen) if chosen else self.arguments
 
     def _qualifier(self, scope: Scope) -> str:
-        if self.languages == ALL_LANGUAGES:
+        if self.languages == CORE_LANGUAGES:
             return str(scope)
         return f"{scope}, {language_names(self.languages)}"
 

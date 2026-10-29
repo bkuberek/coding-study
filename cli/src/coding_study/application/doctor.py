@@ -37,6 +37,7 @@ from coding_study.domain.errors import (
 )
 from coding_study.domain.layout import PYTHON_INTERPRETER, PYTHON_PROJECT, PYTHON_VENV
 from coding_study.domain.problem import (
+    CORE_LANGUAGES,
     ComparatorSpec,
     ComparatorType,
     ContentStatus,
@@ -380,7 +381,7 @@ def _workspace(environment: DoctorEnvironment, notify: ProgressNotice) -> list[C
         _runtime(workspace),
         *(_workspace_artifact(files, artifact) for artifact in WORKSPACE_ARTIFACTS),
         *_debugpy(environment.tools, files),
-        *(_runner(workspace, language, notify) for language in Language),
+        *(_runner(workspace, language, notify) for language in CORE_LANGUAGES),
     ]
 
 
@@ -427,6 +428,8 @@ def _debugpy(tools: ToolProbe, workspace_files: RepositoryFiles) -> list[CheckRe
 def _runner(
     workspace: PracticeWorkspace, language: Language, notify: ProgressNotice
 ) -> CheckResult:
+    """The optional languages join once they have adapters; a missing toolchain for them only
+    warns."""
     name = f"runner {language}"
     hello = _hello(workspace, language, notify)
     if isinstance(hello, RunnerInfo):

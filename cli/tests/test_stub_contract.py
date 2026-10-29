@@ -2,7 +2,7 @@ import pytest
 import yaml
 
 from coding_study.adapters.schema_validation import META_SCHEMA_FILE, SchemaValidator
-from coding_study.domain.problem import Language, ProblemKind
+from coding_study.domain.problem import CORE_LANGUAGES, Language, ProblemKind
 from coding_study.domain.signature import ClassSignature, Signature
 from tests.helpers import MAPPING_TABLE_TYPES, REPOSITORY_ROOT, SCHEMAS_DIRECTORY
 from tests.stub_contract import (
@@ -39,7 +39,7 @@ SPEC_STUB_LABELS = {
 }
 
 
-@pytest.mark.parametrize("language", list(Language))
+@pytest.mark.parametrize("language", CORE_LANGUAGES)
 @pytest.mark.parametrize(
     ("slug", "class_name"), [("two-sum", "Solution"), ("lru-cache", "LRUCache")]
 )

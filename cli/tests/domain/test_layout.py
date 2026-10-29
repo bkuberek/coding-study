@@ -16,7 +16,7 @@ from coding_study.domain.problem import (
     ProblemMeta,
     Track,
 )
-from coding_study.domain.runs import ClassTarget, FileTarget
+from coding_study.domain.runs import ClassTarget, CompiledTarget, FileTarget
 from coding_study.domain.signature import (
     ClassSignature,
     FunctionSignature,
@@ -89,6 +89,10 @@ LRU_CACHE = replace(
             "jvm/kotlin/src/main/kotlin/practice/lru_cache/LRUCache.kt",
         ),
         (LRU_CACHE, Language.PYTHON, "python/practice/lru_cache.py"),
+        (TWO_SUM, Language.GO, "go/practice/two_sum/two_sum.go"),
+        (LRU_CACHE, Language.GO, "go/practice/lru_cache/lru_cache.go"),
+        (TWO_SUM, Language.RUST, "rust/practice/two_sum.rs"),
+        (LRU_CACHE, Language.RUST, "rust/practice/lru_cache.rs"),
     ],
 )
 def test_stub_path(meta, language, path):
@@ -121,8 +125,21 @@ def test_jvm_class_kinds_run_the_declared_class():
     )
 
 
+@pytest.mark.parametrize("language", [Language.GO, Language.RUST])
+def test_compiled_languages_run_the_user_code_built_into_the_runner(language):
+    assert layout.user_target(TWO_SUM, language, ROOT) == CompiledTarget("user")
+
+
 def test_script_languages_watch_the_user_file():
     assert layout.watch_path(TWO_SUM, Language.TYPESCRIPT) == ("typescript/practice/two-sum.ts")
+
+
+def test_rust_watches_the_user_file():
+    assert layout.watch_path(TWO_SUM, Language.RUST) == "rust/practice/two_sum.rs"
+
+
+def test_go_watches_the_problem_package():
+    assert layout.watch_path(TWO_SUM, Language.GO) == "go/practice/two_sum"
 
 
 def test_jvm_languages_watch_the_problem_package():
@@ -138,6 +155,8 @@ def test_jvm_languages_watch_the_problem_package():
         (Language.TYPESCRIPT, "hash-map.ts"),
         (Language.JAVA, "hash-map.java"),
         (Language.KOTLIN, "hash-map.kt"),
+        (Language.GO, "hash-map.go"),
+        (Language.RUST, "hash-map.rs"),
     ],
 )
 def test_reference_file_name(language, name):
@@ -167,6 +186,9 @@ def test_unknown_extension_has_no_language():
             Language.KOTLIN,
             ".cs/build/jvm/kotlin/src/main/kotlin/ref/lru_cache/hash_map/LRUCache.kt",
         ),
+        (TWO_SUM, Language.GO, ".cs/build/go/ref/two_sum/hash_map/hash_map.go"),
+        (LRU_CACHE, Language.GO, ".cs/build/go/ref/lru_cache/hash_map/hash_map.go"),
+        (TWO_SUM, Language.RUST, ".cs/build/rust/ref/two_sum/hash_map.rs"),
     ],
 )
 def test_reference_build_path(meta, language, path):
@@ -182,6 +204,13 @@ def test_script_references_run_the_materialized_file():
 def test_jvm_references_run_the_materialized_class():
     assert layout.reference_target(TWO_SUM, "hash-map", Language.JAVA, ROOT) == ClassTarget(
         "ref.two_sum.hash_map.Solution"
+    )
+
+
+@pytest.mark.parametrize("language", [Language.GO, Language.RUST])
+def test_compiled_references_run_the_code_built_into_the_runner(language):
+    assert layout.reference_target(TWO_SUM, "hash-map", language, ROOT) == CompiledTarget(
+        "ref/hash-map"
     )
 
 

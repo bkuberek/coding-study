@@ -54,7 +54,7 @@ from coding_study.domain.judging import (
 )
 from coding_study.domain.layout import SOURCE_EXTENSIONS
 from coding_study.domain.problem import (
-    ALL_LANGUAGES,
+    CORE_LANGUAGES,
     Language,
     Problem,
     ProblemMeta,
@@ -252,7 +252,7 @@ def _duplicate_issues(environment: Environment) -> dict[str, tuple[str, ...]]:
 def _coverage(
     problems: Sequence[ProblemVerification], only: Language | None
 ) -> tuple[Coverage, ...]:
-    languages = (only,) if only else ALL_LANGUAGES
+    languages = (only,) if only else CORE_LANGUAGES
     loaded = [(problem, problem.meta) for problem in problems if problem.meta is not None]
     return tuple(
         Coverage(

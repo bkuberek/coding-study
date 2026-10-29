@@ -189,7 +189,7 @@ def _debugger(attach: DebugAttach) -> JsonObject:
             }
         case Language.JAVA:
             return {"type": "java", "hostName": DEBUG_HOST, "port": attach.port}
-        case Language.KOTLIN:
-            raise ValueError(f"VS Code cannot debug {attach.language} (see DEBUGGABLE)")
+        case Language.KOTLIN | Language.GO | Language.RUST:
+            raise ValueError(f"no VS Code attach configuration for {attach.language} (DEBUGGABLE)")
         case _:
             assert_never(attach.language)

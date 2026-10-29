@@ -11,7 +11,7 @@ from typing import assert_never
 
 from coding_study.domain.items import ItemMeta
 from coding_study.domain.problem import Language, ProblemMeta
-from coding_study.domain.runs import ClassTarget, FileTarget, RunTarget
+from coding_study.domain.runs import ClassTarget, CompiledTarget, FileTarget, RunTarget
 from coding_study.domain.signature import ClassSignature
 
 SOURCE_EXTENSIONS: Mapping[Language, str] = {
@@ -19,6 +19,8 @@ SOURCE_EXTENSIONS: Mapping[Language, str] = {
     Language.TYPESCRIPT: "ts",
     Language.JAVA: "java",
     Language.KOTLIN: "kt",
+    Language.GO: "go",
+    Language.RUST: "rs",
 }
 JVM_LANGUAGES = frozenset({Language.JAVA, Language.KOTLIN})
 SOLUTION_CLASS = "Solution"
@@ -35,7 +37,13 @@ PYTHON_INTERPRETER = f"{PYTHON_VENV}/bin/python"
 """The workspace interpreter, relative to `PYTHON_PROJECT`."""
 TYPESCRIPT_PROJECT = "typescript"
 JVM_PROJECT = "jvm"
+GO_PROJECT = "go"
+RUST_PROJECT = "rust"
 """The practice projects at the workspace root."""
+COMPILED_USER_TARGET = "user"
+COMPILED_REFERENCE_PREFIX = "ref"
+"""Go and Rust build the user's code and every reference into one binary (docs/specs/runners.md
+#request-file); a `compiled` target names the part to run."""
 
 
 def stub_path(meta: ProblemMeta, language: Language) -> str:
@@ -47,13 +55,17 @@ def stub_path(meta: ProblemMeta, language: Language) -> str:
             return f"{user_directory(language)}/{meta.slug}.ts"
         case Language.JAVA | Language.KOTLIN:
             return f"{_user_package_directory(meta, language)}/{_jvm_file_name(meta, language)}"
+        case Language.GO:
+            return f"{_user_package_directory(meta, language)}/{meta.snake_slug}.go"
+        case Language.RUST:
+            return f"{user_directory(language)}/{meta.snake_slug}.rs"
         case _:
             assert_never(language)
 
 
 def user_directory(language: Language) -> str:
-    """Where the user's files for `language` live: the files themselves, or on the JVM the
-    problems' package directories."""
+    """Where the user's files for `language` live: the files themselves, or on the JVM and in Go
+    the problems' package directories."""
     match language:
         case Language.PYTHON:
             return f"{PYTHON_PROJECT}/{USER_PACKAGE}"
@@ -61,16 +73,21 @@ def user_directory(language: Language) -> str:
             return f"{TYPESCRIPT_PROJECT}/{USER_PACKAGE}"
         case Language.JAVA | Language.KOTLIN:
             return f"{_jvm_sources(JVM_PROJECT, language)}/{USER_PACKAGE}"
+        case Language.GO:
+            return f"{GO_PROJECT}/{USER_PACKAGE}"
+        case Language.RUST:
+            return f"{RUST_PROJECT}/{USER_PACKAGE}"
         case _:
             assert_never(language)
 
 
 def watch_path(meta: ProblemMeta, language: Language) -> str:
-    """What `cstudy test --watch` watches: the user file, or on the JVM the problem's package."""
+    """What `cstudy test --watch` watches: the user file, or on the JVM and in Go the problem's
+    package."""
     match language:
-        case Language.PYTHON | Language.TYPESCRIPT:
+        case Language.PYTHON | Language.TYPESCRIPT | Language.RUST:
             return stub_path(meta, language)
-        case Language.JAVA | Language.KOTLIN:
+        case Language.JAVA | Language.KOTLIN | Language.GO:
             return _user_package_directory(meta, language)
         case _:
             assert_never(language)
@@ -82,6 +99,8 @@ def user_target(meta: ProblemMeta, language: Language, root: str) -> RunTarget:
             return FileTarget(f"{root}/{stub_path(meta, language)}")
         case Language.JAVA | Language.KOTLIN:
             return ClassTarget(f"{USER_PACKAGE}.{meta.snake_slug}.{jvm_class_name(meta)}")
+        case Language.GO | Language.RUST:
+            return CompiledTarget(COMPILED_USER_TARGET)
         case _:
             assert_never(language)
 
@@ -135,6 +154,11 @@ def reference_build_path(meta: ProblemMeta, approach_id: str, language: Language
             sources = _jvm_sources(f"{BUILD_DIRECTORY}/jvm", language)
             package_directory = jvm_reference_package(meta, approach_id).replace(".", "/")
             return f"{sources}/{package_directory}/{_jvm_file_name(meta, language)}"
+        case Language.GO:
+            package_directory = f"{BUILD_DIRECTORY}/go/{REFERENCE_PACKAGE}/{meta.snake_slug}"
+            return f"{package_directory}/{approach}/{approach}.go"
+        case Language.RUST:
+            return f"{BUILD_DIRECTORY}/rust/{REFERENCE_PACKAGE}/{meta.snake_slug}/{approach}.rs"
         case _:
             assert_never(language)
 
@@ -147,6 +171,8 @@ def reference_target(
             return FileTarget(f"{root}/{reference_build_path(meta, approach_id, language)}")
         case Language.JAVA | Language.KOTLIN:
             return ClassTarget(f"{jvm_reference_package(meta, approach_id)}.{jvm_class_name(meta)}")
+        case Language.GO | Language.RUST:
+            return CompiledTarget(f"{COMPILED_REFERENCE_PREFIX}/{approach_id}")
         case _:
             assert_never(language)
 

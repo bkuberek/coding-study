@@ -23,9 +23,15 @@ class Language(StrEnum):
     TYPESCRIPT = "typescript"
     JAVA = "java"
     KOTLIN = "kotlin"
+    GO = "go"
+    RUST = "rust"
 
 
-ALL_LANGUAGES = tuple(Language)
+CORE_LANGUAGES = (Language.PYTHON, Language.TYPESCRIPT, Language.JAVA, Language.KOTLIN)
+"""What a problem lists unless it says otherwise, and what "every language" means in defaults and
+coverage: the languages every problem has references in."""
+OPTIONAL_LANGUAGES = (Language.GO, Language.RUST)
+"""Problems opt in by listing them in `languages` (docs/decisions/0012-go-and-rust.md)."""
 
 
 class Track(StrEnum):
@@ -152,7 +158,7 @@ class ProblemMeta:
     comparator: ComparatorSpec
     approaches: tuple[Approach, ...]
     patterns: tuple[str, ...] = ()
-    languages: tuple[Language, ...] = ALL_LANGUAGES
+    languages: tuple[Language, ...] = CORE_LANGUAGES
     stub: StubSource = StubSource.GENERATED
     levels: tuple[Level, ...] = ()
     perf: Perf = Perf()

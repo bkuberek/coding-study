@@ -113,6 +113,15 @@ def test_language_not_set_up_is_an_environment_error(environment):
     )
 
 
+@pytest.mark.parametrize("language", ["go", "rust"])
+def test_a_problem_that_does_not_list_an_optional_language_is_a_usage_error(environment, language):
+    result = invoke("two-sum", "--lang", language)
+    assert (result.exit_code, result.stderr) == (
+        ExitCode.USAGE_ERROR,
+        f"error: two-sum is not available in {language}; use python, typescript, java, kotlin\n",
+    )
+
+
 def test_outside_a_workspace_is_a_usage_error_pointing_at_cs_init(tmp_path, monkeypatch):
     monkeypatch.delenv("CSTUDY_WORKSPACE", raising=False)
     monkeypatch.chdir(tmp_path)

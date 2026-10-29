@@ -29,6 +29,8 @@ REFERENCE_LABELS = {
     Language.TYPESCRIPT: "ts",
     Language.JAVA: "java",
     Language.KOTLIN: "kt",
+    Language.GO: "go",
+    Language.RUST: "rs",
 }
 _WIDTHS = (ID_WIDTH, SLUG_WIDTH, DIFFICULTY_WIDTH, PATTERN_WIDTH, STATUS_WIDTH, DUE_WIDTH)
 _HEADER = ("ID", "SLUG", "DIFF", "PATTERN", "STATUS", "DUE", "REFS")

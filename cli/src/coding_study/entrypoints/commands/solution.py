@@ -43,6 +43,8 @@ LEXERS = {
     Language.TYPESCRIPT: "typescript",
     Language.JAVA: "java",
     Language.KOTLIN: "kotlin",
+    Language.GO: "go",
+    Language.RUST: "rust",
 }
 
 

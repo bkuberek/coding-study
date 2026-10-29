@@ -458,13 +458,18 @@ def test_missing_gradle_wrapper_fails_with_how_to_generate_it():
     assert (result.status, result.fix) == (FAIL, "gradle wrapper (in jvm)")
 
 
-def test_every_language_runner_is_checked():
+def test_every_core_language_runner_is_checked():
     names = [
         r.name
         for r in doctor().results
         if r.name.startswith("runner ") and r.name != "runner runtime"
     ]
     assert names == ["runner python", "runner typescript", "runner java", "runner kotlin"]
+
+
+def test_optional_languages_are_not_reported_until_they_have_adapters():
+    report = doctor()
+    assert {"runner go", "runner rust"}.isdisjoint(result.name for result in report.results)
 
 
 def test_runner_that_answers_hello_passes_with_its_runtime():

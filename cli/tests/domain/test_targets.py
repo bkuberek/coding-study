@@ -16,6 +16,9 @@ KOTLIN_DIRECTORY = "jvm/kotlin/src/main/kotlin/practice/lru_cache"
         "typescript/practice/two-sum.ts",
         "Solution.java",
         "Solution.kt",
+        "two_sum.go",
+        "two_sum.rs",
+        "go/practice/two_sum/two_sum.go",
         "/abs/ws/jvm/kotlin/src/main/kotlin/practice/two_sum/Solution.kt",
         "practice\\two_sum.py",
     ],
@@ -40,6 +43,9 @@ def test_a_slug_or_id_is_not_a_path(target):
             SolutionFile(Language.KOTLIN, "two_sum"),
         ),
         (f"{KOTLIN_DIRECTORY}/LRUCache.kt", SolutionFile(Language.KOTLIN, "lru_cache")),
+        ("go/practice/two_sum/two_sum.go", SolutionFile(Language.GO, "two_sum")),
+        ("go/practice/two_sum/helpers.go", SolutionFile(Language.GO, "two_sum")),
+        ("rust/practice/two_sum.rs", SolutionFile(Language.RUST, "two_sum")),
     ],
 )
 def test_a_layout_path_names_its_language_and_problem(path, expected):
@@ -62,6 +68,11 @@ def test_a_layout_path_names_its_language_and_problem(path, expected):
         "jvm/java/src/main/java/practice/two_sum/inner/Solution.java",
         "jvm/java/src/test/java/practice/two_sum/Solution.java",
         "jvm/scala/src/main/scala/practice/two_sum/Solution.scala",
+        "go/practice/two_sum.go",
+        "go/practice/two_sum/inner/two_sum.go",
+        "go/practice/two_sum/two_sum.rs",
+        "rust/practice/two_sum/two_sum.rs",
+        "rust/practice/two_sum.go",
         "../python/practice/two_sum.py",
     ],
 )

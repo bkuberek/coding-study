@@ -67,6 +67,8 @@ WARMUPS: Mapping[Language, Warmup] = {
     Language.TYPESCRIPT: Warmup(3, 20, 0.05),
     Language.JAVA: Warmup(5, 20, 0.05),
     Language.KOTLIN: Warmup(5, 20, 0.05),
+    Language.GO: Warmup(1, 3, 0.05),
+    Language.RUST: Warmup(1, 3, 0.05),
 }
 """docs/specs/performance-analysis.md#measurement; the check call counts as the first run."""
 MEMORY_CAPS: Mapping[Language, Confidence] = {
@@ -74,6 +76,8 @@ MEMORY_CAPS: Mapping[Language, Confidence] = {
     Language.TYPESCRIPT: Confidence.LOW,
     Language.JAVA: Confidence.MEDIUM,
     Language.KOTLIN: Confidence.MEDIUM,
+    Language.GO: Confidence.MEDIUM,
+    Language.RUST: Confidence.HIGH,
 }
 
 

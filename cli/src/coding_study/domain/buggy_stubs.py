@@ -27,9 +27,10 @@ def buggy_file(language: Language) -> str:
 
 
 def buggy_as_stub(meta: ProblemMeta, language: Language, buggy: str) -> str:
-    """The user's file: the buggy code, in the `practice.<snake_slug>` package on the JVM."""
+    """The user's file: the buggy code, in the `practice.<snake_slug>` package on the JVM. Go and
+    Rust files are used as written."""
     match language:
-        case Language.PYTHON | Language.TYPESCRIPT:
+        case Language.PYTHON | Language.TYPESCRIPT | Language.GO | Language.RUST:
             return buggy
         case Language.JAVA | Language.KOTLIN:
             terminator = ";" if language is Language.JAVA else ""

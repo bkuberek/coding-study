@@ -17,8 +17,11 @@ DEFAULT_DEBUG_PORTS: Mapping[Language, int] = {
     Language.TYPESCRIPT: 9229,
     Language.JAVA: 5005,
     Language.KOTLIN: 5005,
+    Language.GO: 2345,
+    Language.RUST: 12345,
 }
-"""debugpy, the Node inspector and JDWP each use their usual port."""
+"""debugpy, the Node inspector, JDWP and Delve each use their usual port; Rust's debug server has no
+usual one, so it takes 12345."""
 DEBUGPY_INSTALL_COMMAND = f"uv add --dev debugpy --directory {PYTHON_PROJECT}"
 """Puts debugpy in a workspace's venv, also one created before the template listed it."""
 

@@ -157,7 +157,7 @@ def _names(issues: _Issues, content: ProblemContent) -> None:
     shadowed types that the Python stub imports.
     """
     signature = content.problem.meta.signature
-    for conflict in reserved_name_conflicts(signature):
+    for conflict in reserved_name_conflicts(signature, content.problem.meta.languages):
         converted = f' (as "{conflict.symbol}")' if conflict.symbol != conflict.name else ""
         message = f'"{conflict.name}" is a reserved word in {conflict.language}{converted}'
         issues.error(META_FILE, message, "signature")

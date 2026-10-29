@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from typing import Any, cast
 
 import pytest
@@ -20,6 +21,7 @@ from coding_study.domain.naming import ClassNames, FunctionNames
 from coding_study.domain.problem import ProblemKind
 from coding_study.domain.runs import (
     ClassTarget,
+    CompiledTarget,
     FileTarget,
     InvalidOutput,
     Raised,
@@ -120,6 +122,11 @@ def test_encodes_class_target_names_and_operation_cases():
         {"class": "LRUCache", "methods": {"get": "get", "put": "put"}},
         [{"id": "ex1", "ops": ["LRUCache", "get"], "args": [[2], [1]]}],
     )
+
+
+def test_encodes_a_compiled_target_by_its_id():
+    job = replace(TWO_SUM_JOB, target=CompiledTarget("ref/hash-map"))
+    assert encoded_job(job)["target"] == {"compiled": "ref/hash-map"}
 
 
 def test_encodes_class_signature_with_levels():

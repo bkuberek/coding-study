@@ -21,6 +21,8 @@ from coding_study.domain.errors import RunnerProtocolError
 from coding_study.domain.naming import FunctionNames, SymbolNames
 from coding_study.domain.runs import (
     PROTOCOL_VERSION,
+    ClassTarget,
+    CompiledTarget,
     FileTarget,
     InvalidOutput,
     Raised,
@@ -239,9 +241,13 @@ def _job(job: RunJob) -> JsonObject:
 
 
 def _target(target: RunTarget) -> JsonObject:
-    if isinstance(target, FileTarget):
-        return {"path": target.path}
-    return {"class": target.class_name}
+    match target:
+        case FileTarget(path):
+            return {"path": path}
+        case ClassTarget(class_name):
+            return {"class": class_name}
+        case CompiledTarget(id):
+            return {"compiled": id}
 
 
 def _names(names: SymbolNames) -> JsonObject:

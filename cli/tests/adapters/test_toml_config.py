@@ -114,7 +114,10 @@ def test_every_key_is_read(tmp_path):
 @pytest.mark.parametrize(
     ("text", "issue"),
     [
-        ('default_lang = "rust"', "default_lang: expected one of python, typescript, java, kotlin"),
+        (
+            'default_lang = "scala"',
+            "default_lang: expected one of python, typescript, java, kotlin, go, rust",
+        ),
         ('open_on_start = "yes"', "open_on_start: expected true or false"),
         ("progress_db = 5", "progress_db: expected a non-empty string"),
         ('[next]\ntracks = "dsa"', "next.tracks: expected a list of track ids"),
@@ -144,7 +147,7 @@ def test_invalid_values_are_reported_by_key(tmp_path, text, issue):
 
 def test_every_issue_is_collected(tmp_path):
     with pytest.raises(ConfigError) as raised:
-        write_config(tmp_path, 'default_lang = "rust"\nopen_on_start = 1\n').load()
+        write_config(tmp_path, 'default_lang = "scala"\nopen_on_start = 1\n').load()
     assert len(raised.value.issues) == 2
 
 
@@ -154,7 +157,7 @@ def test_invalid_toml_is_a_config_error(tmp_path):
 
 
 def test_config_error_names_the_file(tmp_path):
-    source = write_config(tmp_path, 'default_lang = "rust"')
+    source = write_config(tmp_path, 'default_lang = "scala"')
     with pytest.raises(ConfigError) as raised:
         source.load()
     assert raised.value.source == source.location

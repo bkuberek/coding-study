@@ -10,7 +10,7 @@ from coding_study.domain.cases import (
 )
 from coding_study.domain.errors import ContentError, ContentIssue
 from coding_study.domain.problem import (
-    ALL_LANGUAGES,
+    CORE_LANGUAGES,
     ApproachRole,
     ComparatorSpec,
     ComparatorType,
@@ -116,7 +116,7 @@ def test_maps_references_and_related():
 def test_applies_spec_defaults_for_omitted_fields():
     meta = two_sum_meta()
     assert (meta.languages, meta.stub, meta.levels, meta.order, meta.hang_guard_ms) == (
-        ALL_LANGUAGES,
+        CORE_LANGUAGES,
         StubSource.GENERATED,
         (),
         1000,

@@ -1,15 +1,17 @@
 """Per-language symbol names (docs/specs/problem-format.md#naming-rules).
 
-Canonical names are lowerCamelCase (classes PascalCase). Python converts functions, methods and
-parameters to snake_case; TypeScript, Java and Kotlin keep the canonical names. Runners never
-convert names: the CLI sends them in the request (docs/specs/runners.md#request-file).
+Canonical names are lowerCamelCase (classes PascalCase). Python and Rust convert functions,
+methods and parameters to snake_case; TypeScript, Java, Kotlin and Go keep the canonical names.
+Runners never convert names: the CLI sends them in the request
+(docs/specs/runners.md#request-file).
 """
 
 import builtins
 import keyword
 import re
-from collections.abc import Iterator, Mapping, Set
+from collections.abc import Iterable, Iterator, Mapping, Set
 from dataclasses import dataclass
+from typing import assert_never
 
 from coding_study.domain.problem import Language
 from coding_study.domain.signature import (
@@ -50,11 +52,26 @@ _TYPESCRIPT_RESERVED = _words(
     public static yield await
     """
 )
+_GO_KEYWORDS = _words(
+    """
+    break case chan const continue default defer else fallthrough for func go goto if import
+    interface map package range return select struct switch type var
+    """
+)
+_RUST_KEYWORDS = _words(
+    """
+    as async await break const continue crate dyn else enum extern false fn for if impl in let
+    loop match mod move mut pub ref return self Self static struct super trait true type unsafe use
+    where while abstract become box do final macro override priv try typeof unsized virtual yield
+    """
+)
 RESERVED_WORDS: Mapping[Language, frozenset[str]] = {
     Language.PYTHON: frozenset(keyword.kwlist),
     Language.TYPESCRIPT: _TYPESCRIPT_RESERVED,
     Language.JAVA: _JAVA_RESERVED,
     Language.KOTLIN: _KOTLIN_HARD_KEYWORDS,
+    Language.GO: _GO_KEYWORDS,
+    Language.RUST: _RUST_KEYWORDS,
 }
 PYTHON_BUILTINS = frozenset(name for name in dir(builtins) if not name.startswith("_"))
 PYTHON_TYPE_IMPORTS: Mapping[Scalar, str] = {Scalar.DATE: "date", Scalar.DECIMAL: "Decimal"}
@@ -96,9 +113,13 @@ def snake_case(name: str) -> str:
 
 def member_name(canonical: str, language: Language) -> str:
     """The name of a function, method or parameter in `language`."""
-    if language is Language.PYTHON:
-        return snake_case(canonical)
-    return canonical
+    match language:
+        case Language.PYTHON | Language.RUST:
+            return snake_case(canonical)
+        case Language.TYPESCRIPT | Language.JAVA | Language.KOTLIN | Language.GO:
+            return canonical
+        case _:
+            assert_never(language)
 
 
 def symbol_names(signature: Signature, language: Language) -> SymbolNames:
@@ -114,12 +135,16 @@ def is_reserved(symbol: str, language: Language) -> bool:
     return symbol in RESERVED_WORDS[language]
 
 
-def reserved_name_conflicts(signature: Signature) -> tuple[ReservedNameConflict, ...]:
-    """Every name that is a reserved word in some language after conversion (`cstudy verify` S3)."""
+def reserved_name_conflicts(
+    signature: Signature, languages: Iterable[Language]
+) -> tuple[ReservedNameConflict, ...]:
+    """Every name that is a reserved word in one of `languages` after conversion (`cstudy verify`
+    S3). A language the problem does not list never gets a stub, so it cannot conflict."""
+    listed = tuple(languages)
     return tuple(
         ReservedNameConflict(declared.name, language, symbol)
         for declared in _declared_names(signature)
-        for language in Language
+        for language in listed
         if is_reserved(symbol := declared.symbol(language), language)
     )
 

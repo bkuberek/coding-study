@@ -21,8 +21,11 @@ HELLO_TIMEOUT_MS: Mapping[Language, int] = {
     Language.TYPESCRIPT: 5_000,
     Language.JAVA: 15_000,
     Language.KOTLIN: 15_000,
+    Language.GO: 5_000,
+    Language.RUST: 5_000,
 }
-"""How long a freshly started runner may take to write its `hello` event."""
+"""How long a freshly started runner may take to write its `hello` event. Go and Rust runners are
+built before they start, so they answer as quickly as a script."""
 
 
 class RunMode(StrEnum):
@@ -45,7 +48,14 @@ class ClassTarget:
     class_name: str
 
 
-type RunTarget = FileTarget | ClassTarget
+@dataclass(frozen=True, slots=True)
+class CompiledTarget:
+    """Go and Rust: the id of code compiled into the runner binary, `user` or `ref/<approach>`."""
+
+    id: str
+
+
+type RunTarget = FileTarget | ClassTarget | CompiledTarget
 
 
 @dataclass(frozen=True, slots=True)

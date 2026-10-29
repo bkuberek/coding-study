@@ -38,8 +38,8 @@ def is_path_target(target: str) -> bool:
 def parse_solution_file(path: str) -> SolutionFile | None:
     """The solution file `path` (relative to the workspace root) is, or None.
 
-    On the JVM any source file directly in the problem's package counts, so helper classes
-    resolve to their problem like the declared class does.
+    On the JVM and in Go any source file directly in the problem's package counts, so helper
+    classes and files resolve to their problem like the declared one does.
     """
     for language in Language:
         prefix = f"{layout.user_directory(language)}/"
@@ -50,9 +50,9 @@ def parse_solution_file(path: str) -> SolutionFile | None:
 
 def _solution_file(language: Language, parts: list[str]) -> SolutionFile | None:
     match language:
-        case Language.PYTHON | Language.TYPESCRIPT:
+        case Language.PYTHON | Language.TYPESCRIPT | Language.RUST:
             return _file_in_directory(language, parts)
-        case Language.JAVA | Language.KOTLIN:
+        case Language.JAVA | Language.KOTLIN | Language.GO:
             return _file_in_package(language, parts)
         case _:
             assert_never(language)

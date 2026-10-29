@@ -12,7 +12,7 @@ from coding_study.application.environment import ProblemDestination
 from coding_study.application.new_problem import create_problem
 from coding_study.application.verify_content import VerifyRequest, verify_content
 from coding_study.domain.errors import UsageError
-from coding_study.domain.problem import ContentStatus, Language, Track
+from coding_study.domain.problem import CORE_LANGUAGES, ContentStatus, Track
 from coding_study.domain.scaffold import WORKSPACE_FIRST_ID, ScaffoldRequest, TemplateName
 from tests.fakes import make_environment
 from tests.helpers import FIXTURE_TRACKS
@@ -164,4 +164,4 @@ def test_the_concurrent_template_gets_an_empty_broken_reference_per_language(env
 def test_every_language_gets_a_reference_file_for_each_approach(environment):
     created = create(environment, "store", TemplateName.PROGRESSIVE)
     references = {name for name in created.files if name.startswith("solutions/reference.")}
-    assert len(references) == len(Language)
+    assert len(references) == len(CORE_LANGUAGES)

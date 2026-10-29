@@ -17,7 +17,7 @@ _PACKAGE_LINE = re.compile(r"^package [\w.]+;?[ \t]*\n", re.MULTILINE)
 
 def stub_as_reference(stub: str, language: Language) -> str:
     match language:
-        case Language.PYTHON | Language.TYPESCRIPT:
+        case Language.PYTHON | Language.TYPESCRIPT | Language.GO | Language.RUST:
             return stub
         case Language.JAVA | Language.KOTLIN:
             return _PACKAGE_LINE.sub("", stub, count=1)

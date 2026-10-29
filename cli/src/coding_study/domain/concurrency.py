@@ -52,6 +52,8 @@ ALLOWED_MODELS: Mapping[Language, frozenset[ConcurrencyModel]] = {
     Language.KOTLIN: frozenset({ConcurrencyModel.THREADS}),
     Language.PYTHON: frozenset({ConcurrencyModel.THREADS, ConcurrencyModel.ASYNC}),
     Language.TYPESCRIPT: frozenset({ConcurrencyModel.ASYNC}),
+    Language.GO: frozenset({ConcurrencyModel.THREADS}),
+    Language.RUST: frozenset({ConcurrencyModel.THREADS}),
 }
 """docs/specs/problem-format.md#models-and-language-support."""
 

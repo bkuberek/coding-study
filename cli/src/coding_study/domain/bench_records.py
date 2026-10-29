@@ -23,9 +23,11 @@ BATCH_INPUT_BUDGETS: Mapping[Language, int] = {
     Language.TYPESCRIPT: 10**7,
     Language.JAVA: 10**7,
     Language.KOTLIN: 10**7,
+    Language.GO: 10**7,
+    Language.RUST: 10**7,
 }
 """Calls per sample times the input's elements stays under this, bounding the decoded copies held
-at once: a Python list element costs about 36 bytes, a JVM or V8 array element 4 to 8."""
+at once: a Python list element costs about 36 bytes, a JVM, V8, Go or Rust array element 4 to 8."""
 
 
 def bench_seed(slug: str, size: int) -> int:

@@ -12,7 +12,7 @@ from coding_study.domain.naming import (
     snake_case,
     symbol_names,
 )
-from coding_study.domain.problem import Language
+from coding_study.domain.problem import CORE_LANGUAGES, Language
 from coding_study.domain.signature import (
     ClassSignature,
     FunctionSignature,
@@ -94,6 +94,12 @@ def test_typescript_class_names_are_canonical():
         ("fun", Language.KOTLIN),
         ("function", Language.TYPESCRIPT),
         ("await", Language.TYPESCRIPT),
+        ("range", Language.GO),
+        ("select", Language.GO),
+        ("move", Language.RUST),
+        ("self", Language.RUST),
+        ("Self", Language.RUST),
+        ("type", Language.RUST),
     ],
 )
 def test_reserved_words_per_language(word, language):
@@ -105,11 +111,12 @@ def test_ordinary_names_are_not_reserved():
 
 
 def test_no_conflicts_for_ordinary_names():
-    assert reserved_name_conflicts(function("twoSum", "nums", "target")) == ()
+    signature = function("twoSum", "nums", "target")
+    assert reserved_name_conflicts(signature, tuple(Language)) == ()
 
 
 def test_conflicts_name_every_language_that_reserves_the_name():
-    conflicts = reserved_name_conflicts(function("check", "in"))
+    conflicts = reserved_name_conflicts(function("check", "in"), CORE_LANGUAGES)
     assert conflicts == (
         ReservedNameConflict("in", Language.PYTHON, "in"),
         ReservedNameConflict("in", Language.TYPESCRIPT, "in"),
@@ -118,7 +125,7 @@ def test_conflicts_name_every_language_that_reserves_the_name():
 
 
 def test_conflicts_are_checked_after_conversion():
-    [conflict] = reserved_name_conflicts(function("check", "lambda"))
+    [conflict] = reserved_name_conflicts(function("check", "lambda"), CORE_LANGUAGES)
     assert conflict == ReservedNameConflict("lambda", Language.PYTHON, "lambda")
 
 
@@ -126,7 +133,8 @@ def test_conflicts_cover_methods_and_constructor_params():
     signature = ClassSignature(
         "Box", (Param("val", INT),), (Method("default", (), Returns(VoidType())),)
     )
-    assert {conflict.name for conflict in reserved_name_conflicts(signature)} == {"val", "default"}
+    conflicts = reserved_name_conflicts(signature, CORE_LANGUAGES)
+    assert {conflict.name for conflict in conflicts} == {"val", "default"}
 
 
 def test_shadowed_python_builtins_are_reported_once():
@@ -166,3 +174,31 @@ def test_a_name_shadows_only_a_type_the_signature_uses():
 def test_shadowed_imports_are_reported_once():
     params = (Param("date", DATE), Param("date", DATE))
     assert shadowed_python_imports(FunctionSignature("date", params, Returns(DATE))) == ("date",)
+
+
+def test_conflicts_only_consider_the_listed_languages():
+    signature = function("check", "val")
+    assert reserved_name_conflicts(signature, (Language.PYTHON, Language.JAVA)) == ()
+
+
+def test_a_method_named_after_a_rust_keyword_conflicts_only_when_rust_is_listed():
+    signature = ClassSignature("Board", (), (Method("move", (), Returns(VoidType())),))
+    assert reserved_name_conflicts(signature, CORE_LANGUAGES) == ()
+    assert reserved_name_conflicts(signature, (*CORE_LANGUAGES, Language.RUST)) == (
+        ReservedNameConflict("move", Language.RUST, "move"),
+    )
+
+
+def test_go_conflicts_are_found_after_conversion():
+    signature = function("check", "range")
+    assert reserved_name_conflicts(signature, (Language.GO,)) == (
+        ReservedNameConflict("range", Language.GO, "range"),
+    )
+
+
+def test_rust_names_are_snake_case():
+    assert member_name("twoSum", Language.RUST) == "two_sum"
+
+
+def test_go_functions_keep_the_canonical_name():
+    assert member_name("twoSum", Language.GO) == "twoSum"

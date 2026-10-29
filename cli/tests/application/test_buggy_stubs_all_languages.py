@@ -17,7 +17,7 @@ from coding_study.application.verify_content import (
     VerifyRequest,
     verify_content,
 )
-from coding_study.domain.problem import ALL_LANGUAGES
+from coding_study.domain.problem import CORE_LANGUAGES
 from tests.helpers import REPOSITORY_ROOT, SCHEMAS_DIRECTORY
 
 pytestmark = pytest.mark.slow
@@ -62,7 +62,7 @@ def without_bug(
 
 
 def test_every_language_is_verified(debugging):
-    assert [result.language for result in debugging.languages] == list(ALL_LANGUAGES)
+    assert [result.language for result in debugging.languages] == list(CORE_LANGUAGES)
 
 
 def test_buggy_files_fail_and_references_pass_in_every_language(debugging):
@@ -72,4 +72,4 @@ def test_buggy_files_fail_and_references_pass_in_every_language(debugging):
 def test_a_buggy_file_without_a_bug_fails_verify_in_every_language(without_bug):
     assert [result.problems for result in without_bug.languages] == [
         ("buggy stub passes every case; it must fail at least one",)
-    ] * len(ALL_LANGUAGES)
+    ] * len(CORE_LANGUAGES)

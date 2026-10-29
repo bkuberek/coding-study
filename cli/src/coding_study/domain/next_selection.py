@@ -13,7 +13,7 @@ from fractions import Fraction
 
 from coding_study.domain.items import ItemMeta
 from coding_study.domain.problem import (
-    ALL_LANGUAGES,
+    CORE_LANGUAGES,
     DEFAULT_CURRICULUM_ORDER,
     ContentStatus,
     Difficulty,
@@ -42,7 +42,7 @@ class Candidate:
     patterns: tuple[str, ...] = ()
     order: int = DEFAULT_CURRICULUM_ORDER
     content: ContentStatus = ContentStatus.READY
-    languages: tuple[Language, ...] = ALL_LANGUAGES
+    languages: tuple[Language, ...] = CORE_LANGUAGES
     """The problem's `languages`; items have none and need none."""
     progress: ProblemProgress = _UNTOUCHED
 
