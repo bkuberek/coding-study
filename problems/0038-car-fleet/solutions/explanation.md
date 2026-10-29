@@ -47,6 +47,8 @@ No sorting and only integer arithmetic, so it is easy to trust and serves as the
 ### Language notes
 
 - All four references are two nested loops; Python precomputes the distances once, and Java puts the cross-multiplication into a static helper, while TypeScript and Kotlin use a local function.
+- Go: `int` is 64 bits, so the cross products (at most 10^6 times 10^3) never overflow; a closure `arrivesLater` names the comparison.
+- Rust: the products also fit in `i32` (at most 10^9), but cstudy builds Rust with overflow checks, so the reference widens the distances to `i64` and leaves a wide margin. The slowest car ahead is an `Option<usize>` and `match` with a guard decides whether the next car ahead replaces it.
 
 ## Approach: sort-and-stack (Sort by position, then stack the fleet arrival times)
 
@@ -87,3 +89,5 @@ This is the standard answer and shows the monotonic stack clearly. Walking from 
 - TypeScript: sorts an array of indexes with a numeric comparator; the default `sort()` would compare the numbers as strings.
 - Java: an `Integer[]` of indexes sorted with `Comparator.comparingInt`, and a primitive `double[]` with a size counter as the stack.
 - Kotlin: `position.indices.sortedBy { position[it] }` gives the indexes in position order; `ArrayDeque<Double>` is the stack.
+- Go: the reference sorts a slice of car indexes with `slices.SortFunc` and `cmp.Compare` instead of sorting two slices in step, which leaves the inputs untouched. Arrival times are `float64`; two equal rationals produce the same quotient, so the `<=` comparison is exact here.
+- Rust: `sort_unstable_by_key(|&car| position[car])` orders the index vector; the positions are distinct, so stability does not matter. `f64` is not `Ord`, which rules out `sort()` and `BinaryHeap` on arrival times, but the stack only needs `<=`. `f64::from` widens the `i32` values exactly.
