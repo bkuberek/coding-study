@@ -43,6 +43,8 @@ It ignores the most useful fact in the statement, that the array is sorted. At n
 
 - Python: `numbers.index(complement, i + 1)` scans the rest of the list in C. It is still one comparison per later element, so still quadratic, just with a small constant.
 - TypeScript, Java, Kotlin: plain nested index loops; no boxing on `number[]`, `int[]` or `IntArray`.
+- Go: `slices.Index(numbers[i+1:], target-value)` scans only the later positions through a slice header and returns an offset into that subslice, so the answer adds `i + 1` back. A nil slice is the empty result.
+- Rust: `numbers[i + 1..].iter().position(..)` does the same on a borrowed subslice and also returns an offset, which is converted back to an absolute index and then to `i32`.
 
 ## Approach: binary-search (Binary search for each complement)
 
@@ -84,6 +86,8 @@ A big step up from quadratic and a natural first idea when you notice "sorted". 
 - TypeScript: no built-in binary search on arrays; the reference writes a lower bound with `>>> 1`.
 - Java: `Arrays.binarySearch(numbers, from, to, key)` returns a non-negative position when found and a negative insertion point otherwise; with duplicates it may return any matching position.
 - Kotlin: `IntArray.binarySearch(element, fromIndex)` has the same contract as the Java method.
+- Go: `slices.BinarySearch` returns the lower-bound position and a `found` flag on the sorted subslice `numbers[i+1:]`; the offset is relative to that subslice.
+- Rust: `<[T]>::binary_search` returns `Ok(position)` when found and `Err(insertion point)` otherwise, and with duplicates `Ok` may be any matching position, which is safe because exactly one pair adds up to the target.
 
 ## Approach: two-pointers (Close in from both ends)
 
@@ -125,3 +129,5 @@ Linear time and constant memory, the best possible for a single query. It is the
 - TypeScript: `total === target` compares exactly; all values are integers well within the 2^53 safe range.
 - Java: the sum of two `int`s within 10^9 cannot overflow; no `long` is needed.
 - Kotlin: `when` with conditions expresses the three-way branch in one expression.
+- Go: a `switch` with no subject keeps the three comparisons flat. The sum of two values within 10^9 fits easily in a 64-bit `int`.
+- Rust: `cmp(&target)` and a `match` on `Ordering` covers the three cases exhaustively. The sum of two values within 10^9 stays inside `i32`, which matters because the build checks overflow; `saturating_sub(1)` keeps the start of `right` from underflowing on an empty input.
