@@ -44,6 +44,7 @@ It needs no extra memory and is the easiest version to get right, which makes it
 - TypeScript: use `===`. Plain index loops are the fastest form in V8; `nums.indexOf(complement, i + 1)` is an equivalent one-liner.
 - Java: plain nested `for` loops over `int[]` involve no boxing. Return `new int[] {i, j}`.
 - Kotlin: `IntArray` is a primitive `int[]`, so `nums[i]` does not box. `for (j in i + 1 until nums.size)` mirrors the Java loop.
+- Go: `for i := range nums` with an inner `for j := i + 1; j < len(nums); j++` over a `[]int` does no allocation. Returning `nil` when no pair exists is fine: a nil slice is the empty result.
 
 ## Approach: hash-map (One-pass hash map)
 
@@ -84,3 +85,4 @@ It trades O(n) memory for linear time, which is almost always the right trade. I
 - TypeScript: use `Map<number, number>`, not a plain object. An object converts every key to a string and inherits prototype keys such as `constructor`; a `Map` keeps number keys as numbers and starts empty. `Map.get` returns `undefined` when absent.
 - Java: `HashMap<Integer, Integer>` boxes every key and value. Compare the looked-up `Integer` with `null` and never with `==` against another `Integer`, which compares references and only works by accident inside the small-integer cache (-128 to 127).
 - Kotlin: `HashMap<Int, Int>` boxes too (Kotlin `Int` in a generic becomes `java.lang.Integer`). `indexByValue[key]` returns `Int?`, so `?.let { return ... }` handles the hit without a `null` check. `nums.withIndex()` destructures into `(i, value)`.
+- Go: `partner, ok := indexByValue[target-value]` is the comma-ok form; `ok` tells a missing key from a stored index 0, which the plain lookup would return as the zero value. `make(map[int]int, len(nums))` sizes the map once.
