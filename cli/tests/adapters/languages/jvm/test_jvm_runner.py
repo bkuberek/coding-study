@@ -1,7 +1,6 @@
 import os
 import socket
 import sys
-from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -28,7 +27,6 @@ from coding_study.application.ports import (
     Prepared,
     PrepareResult,
     References,
-    ReferenceSource,
     UserCode,
 )
 from coding_study.domain.debugging import DebugSession
@@ -36,57 +34,19 @@ from coding_study.domain.errors import RunnerStartError
 from coding_study.domain.layout import reference_build_path
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
+from tests.adapters.languages.jvm.fake_gradle import (
+    CLASSPATH,
+    JAVA_SOURCE,
+    KOTLIN_SOURCE,
+    WORKSPACE_FILES,
+    FakeGradle,
+    reference_sources,
+)
 from tests.stub_contract import STUB_CASES
 
 TWO_SUM = next(case.meta for case in STUB_CASES if case.name == "two-sum")
-CLASSPATH = "/classes:/runner.jar"
 USER_FILE = "jvm/java/src/main/java/practice/two_sum/Solution.java"
-JAVA_SOURCE = "public class Solution {\n}\n"
-KOTLIN_SOURCE = "class Solution\n"
-WORKSPACE_FILES = (
-    "gradle.properties",
-    "gradle/libs.versions.toml",
-    "java/build.gradle.kts",
-    "kotlin/build.gradle.kts",
-)
 MAX_DIAGNOSTICS = 40
-
-
-class FakeGradle:
-    """Records every build; a successful build writes the classpath file like `csClasspath`."""
-
-    def __init__(self, root: Path, *, warm: bool = True, outcome: GradleOutcome | None = None):
-        self.root = root
-        self.warm = warm
-        self.outcome = outcome or GradleOutcome(0, "")
-        self.builds: list[tuple[str, ...]] = []
-
-    def daemon_running(self) -> bool:
-        return self.warm
-
-    def run(self, arguments: Sequence[str]) -> GradleOutcome:
-        self.builds.append(tuple(arguments))
-        if self.outcome.exit_code == 0:
-            project = self._project_directory(arguments)
-            task_project = next(arg for arg in arguments if arg.endswith(":csClasspath"))
-            output = project / task_project.split(":")[1] / "build" / "cs" / "runtime-classpath.txt"
-            output.parent.mkdir(parents=True, exist_ok=True)
-            output.write_text(f"{CLASSPATH}\n")
-        return self.outcome
-
-    def _project_directory(self, arguments: Sequence[str]) -> Path:
-        if "-p" in arguments:
-            return Path(arguments[list(arguments).index("-p") + 1])
-        return self.root / "jvm"
-
-
-@pytest.fixture
-def root(tmp_path: Path) -> Path:
-    workspace = tmp_path / "jvm"
-    for relative in WORKSPACE_FILES:
-        (workspace / relative).parent.mkdir(parents=True, exist_ok=True)
-        (workspace / relative).write_text(f"// {relative}\n")
-    return tmp_path
 
 
 def prepare(runner: JvmRunner, scope: UserCode | References) -> tuple[PrepareResult, list[str]]:
@@ -97,20 +57,6 @@ def prepare(runner: JvmRunner, scope: UserCode | References) -> tuple[PrepareRes
 def prepared(result: PrepareResult) -> Prepared:
     assert isinstance(result, Prepared)
     return result
-
-
-def reference_sources(
-    directory: Path, language: Language, *approaches: str
-) -> tuple[ReferenceSource, ...]:
-    directory.mkdir(parents=True, exist_ok=True)
-    extension = "java" if language is Language.JAVA else "kt"
-    text = JAVA_SOURCE if language is Language.JAVA else KOTLIN_SOURCE
-    sources = []
-    for approach in approaches:
-        path = directory / f"{approach}.{extension}"
-        path.write_text(text)
-        sources.append(ReferenceSource(approach, path))
-    return tuple(sources)
 
 
 def compile_failure(*lines: str) -> GradleOutcome:

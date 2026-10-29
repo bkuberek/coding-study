@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from coding_study.adapters.process_liveness import is_alive
 from coding_study.domain.errors import RunnerStartError
 
 WRAPPER = "gradlew"
@@ -50,7 +51,7 @@ class DaemonRegistry:
         if not self._directory.is_dir():
             return False
         pids = (_DAEMON_LOG.fullmatch(path.name) for path in self._directory.iterdir())
-        return any(_is_alive(int(match.group(1))) for match in pids if match)
+        return any(is_alive(int(match.group(1))) for match in pids if match)
 
 
 class WrapperGradle:
@@ -120,13 +121,3 @@ def compiler_diagnostics(output: str, source_directory: str) -> tuple[str, ...]:
 
 def output_tail(output: str) -> tuple[str, ...]:
     return tuple(deque(output.splitlines(), maxlen=OUTPUT_TAIL_LINES))
-
-
-def _is_alive(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True

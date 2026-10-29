@@ -5,6 +5,7 @@ test works in a temporary workspace: a copy of the practice workspace's `jvm` wi
 build outputs, sharing its runner runtime.
 """
 
+import os
 import shutil
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -394,3 +395,36 @@ def test_every_golden_stub_compiles(root):
         for language in JVM_LANGUAGES:
             shutil.rmtree((root / stub_path(case.meta, language)).parent, ignore_errors=True)
     assert outcome.exit_code == 0, outcome.output
+
+
+# Two `cstudy` processes on one workspace share the reference build's output directories.
+
+RACE_APPROACH = "hash-map"
+RACE_SOURCES = {Language.JAVA: "public class Solution {\n}\n", Language.KOTLIN: "class Solution\n"}
+CLASSPATH_FLAG = "-cp"
+
+
+def race_references(directory: Path, meta: ProblemMeta, language: Language) -> References:
+    source = directory / meta.slug / reference_file_name(RACE_APPROACH, language)
+    source.parent.mkdir(parents=True)
+    source.write_text(RACE_SOURCES[language])
+    return References(meta, (ReferenceSource(RACE_APPROACH, source),))
+
+
+def prepared_classes(result: PrepareResult, meta: ProblemMeta) -> list[Path]:
+    """The class files of the reference approach that the prepared launch can load."""
+    command = launched(result).launch.command
+    entries = command[command.index(CLASSPATH_FLAG) + 1].split(os.pathsep)
+    relative = Path("ref", meta.snake_slug, RACE_APPROACH.replace("-", "_"), "Solution.class")
+    return [Path(entry) / relative for entry in entries if (Path(entry) / relative).is_file()]
+
+
+@pytest.mark.parametrize("language", JVM_LANGUAGES)
+def test_a_build_for_another_problem_leaves_prepared_classes_loadable(root, tmp_path, language):
+    alpha = replace(TWO_SUM, slug="race-alpha")
+    beta = replace(TWO_SUM, slug="race-beta")
+    first = runner(root, language).prepare(
+        race_references(tmp_path, alpha, language), lambda _notice: None
+    )
+    runner(root, language).prepare(race_references(tmp_path, beta, language), lambda _notice: None)
+    assert prepared_classes(first, alpha) != []

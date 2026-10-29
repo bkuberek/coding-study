@@ -3,14 +3,21 @@
 `prepare` compiles one problem's package through the Gradle daemon (`csClasspath` with
 `-Pcs.only=<snake_slug>`), then launches a fresh `java` process on the classpath Gradle wrote.
 
+Each build narrows the project's output directories to its own problem, so concurrent `cstudy`
+processes on one workspace would delete each other's classes. Per project and language, one
+process at a time writes sources, builds and copies the built classes into a private directory
+(`RunClasses`); the JVM loads that copy, which `RunnerProcess` removes when the run ends.
+
 Under `cstudy test --debug` the JVM also gets a JDWP agent that suspends it until the IDE attaches:
 listening for the IDE, or, with `--debug-connect`, connecting to an IDE that listens already.
 """
 
 import os
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
+from coding_study.adapters.file_lock import exclusive_lock
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.debug_port import require_free_port
 from coding_study.adapters.languages.jvm.gradle import (
@@ -20,6 +27,7 @@ from coding_study.adapters.languages.jvm.gradle import (
     output_tail,
 )
 from coding_study.adapters.languages.jvm.reference_build import REFERENCE_PROJECT, ReferenceBuild
+from coding_study.adapters.languages.jvm.run_classes import RUNS_DIRECTORY, RunClasses
 from coding_study.application.ports import (
     BenchCode,
     BuildFailed,
@@ -35,7 +43,12 @@ from coding_study.application.ports import (
 )
 from coding_study.domain.debugging import DebugSession
 from coding_study.domain.errors import ContentError, ContentIssue, RunnerStartError
-from coding_study.domain.layout import JVM_PROJECT, reference_build_path, watch_path
+from coding_study.domain.layout import (
+    BUILD_DIRECTORY,
+    JVM_PROJECT,
+    reference_build_path,
+    watch_path,
+)
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
 
@@ -52,7 +65,13 @@ JDWP_REFUSED_MARKER = "transport error 202: connect failed"
 GRADLE_FLAGS = ("-q", "--console=plain")
 CLASSPATH_TASK = "csClasspath"
 ONLY_PROPERTY = "cs.only"
-CLASSPATH_FILE = "build/cs/runtime-classpath.txt"
+BUILD_OUTPUT = "build"
+"""Under each language's subproject: `classes/` for the JVM, `cs/runtime-classpath.txt` for us."""
+CLASSPATH_FILE = f"{BUILD_OUTPUT}/cs/runtime-classpath.txt"
+LOCKS_DIRECTORY = f"{BUILD_DIRECTORY}/jvm-locks"
+REFERENCES_LOCK = "references"
+PRACTICE_LOCK = "practice"
+WAIT_NOTICE = "waiting for another cstudy build in this workspace"
 COLD_DAEMON_NOTICE = "warming Gradle daemon (first run)"
 WARM_BUILD_NOTE = "gradle, warm"
 COLD_BUILD_NOTE = "gradle, cold"
@@ -75,6 +94,14 @@ class _Compiled:
     build_note: str
 
 
+@dataclass(frozen=True, slots=True)
+class _Preparation:
+    """What one `prepare` call reports to (`notify`) and keeps its private class copies in."""
+
+    notify: ProgressNotice
+    classes: RunClasses
+
+
 class JvmRunner:
     """`LanguageRunner` for one JVM language; both use `cs.runner.Main` from the runners' `jvm/`."""
 
@@ -84,37 +111,71 @@ class JvmRunner:
         self._workspace = context.workspace / WORKSPACE
         runners = context.runners / RUNNERS_BUILD
         self._references = ReferenceBuild(context.workspace, self._workspace, runners)
+        self._locks = context.workspace / LOCKS_DIRECTORY
+        self._runs = context.workspace / RUNS_DIRECTORY
 
     def prepare(self, scope: BuildScope, notify: ProgressNotice) -> PrepareResult:
+        """The private class copies belong to the launch, which `RunnerProcess` cleans up; a
+        failed preparation never reaches one, so it removes them itself."""
+        preparation = _Preparation(notify, RunClasses(self._runs))
+        try:
+            result = self._prepare(scope, preparation)
+        except BaseException:
+            preparation.classes.discard()
+            raise
+        if isinstance(result, BuildFailed):
+            preparation.classes.discard()
+        return result
+
+    def _prepare(self, scope: BuildScope, preparation: _Preparation) -> PrepareResult:
         match scope:
             case UserCode():
-                return self._prepare_user_code(scope, notify)
+                return self._prepare_user_code(scope, preparation)
             case References():
-                project = self._reference_project(scope.meta, scope.sources)
-                return self._prepared(self._compile(project, notify))
+                compiled = self._build_references(scope.meta, scope.sources, preparation)
+                return self._prepared(compiled, preparation)
             case BenchCode():
-                return self._prepare_bench(scope, notify)
+                return self._prepare_bench(scope, preparation)
 
-    def _prepare_user_code(self, scope: UserCode, notify: ProgressNotice) -> PrepareResult:
+    def _prepare_user_code(self, scope: UserCode, preparation: _Preparation) -> PrepareResult:
         """A debug port in use is reported before the build, not after it."""
-        debug = _debug_launch(scope.debug, notify)
-        return self._prepared(self._compile(self._user_project(scope.meta), notify), debug)
+        debug = _debug_launch(scope.debug, preparation.notify)
+        return self._prepared(self._build_user_code(scope.meta, preparation), preparation, debug)
 
-    def _prepare_bench(self, scope: BenchCode, notify: ProgressNotice) -> PrepareResult:
+    def _prepare_bench(self, scope: BenchCode, preparation: _Preparation) -> PrepareResult:
         """Both builds on one classpath (`practice.*` and `ref.*` never collide). A reference
         that does not compile is a content error; BuildFailed is always about user code."""
-        references = self._compile(self._reference_project(scope.meta, scope.sources), notify)
+        references = self._build_references(scope.meta, scope.sources, preparation)
         if isinstance(references, BuildFailed):
             raise ContentError(
                 [ContentIssue(REFERENCE_PROJECT, "", line) for line in references.diagnostics]
             )
         if scope.references_only:
-            return self._prepared(references)
-        user = self._compile(self._user_project(scope.meta), notify)
+            return self._prepared(references, preparation)
+        user = self._build_user_code(scope.meta, preparation)
         if isinstance(user, BuildFailed):
             return user
         joined = f"{user.classpath}{os.pathsep}{references.classpath}"
-        return self._prepared(_Compiled(joined, user.meta, user.build_note))
+        return self._prepared(_Compiled(joined, user.meta, user.build_note), preparation)
+
+    def _build_user_code(
+        self, meta: ProblemMeta, preparation: _Preparation
+    ) -> "_Compiled | BuildFailed":
+        with self._locked(PRACTICE_LOCK, preparation):
+            return self._compile(self._user_project(meta), preparation)
+
+    def _build_references(
+        self, meta: ProblemMeta, sources: tuple[ReferenceSource, ...], preparation: _Preparation
+    ) -> "_Compiled | BuildFailed":
+        """Writing the sources, removing the other approaches' files, building and copying the
+        classes happen under one lock: no other process builds in between."""
+        with self._locked(REFERENCES_LOCK, preparation):
+            return self._compile(self._reference_project(meta, sources), preparation)
+
+    def _locked(self, project: str, preparation: _Preparation) -> AbstractContextManager[None]:
+        """One lock per Gradle project and language: Java and Kotlin build side by side."""
+        path = self._locks / f"{project}-{self._language}.lock"
+        return exclusive_lock(path, lambda: preparation.notify(WAIT_NOTICE))
 
     def _user_project(self, meta: ProblemMeta) -> _GradleProject:
         return _GradleProject(self._workspace, (), watch_path(meta, self._language), meta)
@@ -128,21 +189,24 @@ class JvmRunner:
         return _GradleProject(directory, ("-p", str(directory)), problem_sources, meta)
 
     def _compile(
-        self, project: _GradleProject, notify: ProgressNotice
+        self, project: _GradleProject, preparation: _Preparation
     ) -> "_Compiled | BuildFailed":
         warm = self._gradle.daemon_running()
         if not warm:
-            notify(COLD_DAEMON_NOTICE)
+            preparation.notify(COLD_DAEMON_NOTICE)
         task = f":{self._language}:{CLASSPATH_TASK}"
         only = f"-P{ONLY_PROPERTY}={project.meta.snake_slug}"
         outcome = self._gradle.run([*project.selector, *GRADLE_FLAGS, task, only])
         if outcome.exit_code != 0:
             return _build_failure(outcome, project.sources)
         note = WARM_BUILD_NOTE if warm else COLD_BUILD_NOTE
-        return _Compiled(self._classpath(project), project.meta, note)
+        return _Compiled(self._classpath(project, preparation.classes), project.meta, note)
 
     def _prepared(
-        self, compiled: "_Compiled | BuildFailed", debug: DebugLaunch | None = None
+        self,
+        compiled: "_Compiled | BuildFailed",
+        preparation: _Preparation,
+        debug: DebugLaunch | None = None,
     ) -> PrepareResult:
         if isinstance(compiled, BuildFailed):
             return compiled
@@ -152,15 +216,19 @@ class JvmRunner:
             self._workspace,
             HELLO_TIMEOUT_MS[self._language],
             debug,
+            preparation.classes.directory,
         )
         return Prepared(launch, compiled.build_note)
 
-    def _classpath(self, project: _GradleProject) -> str:
-        path = project.directory / self._language / CLASSPATH_FILE
+    def _classpath(self, project: _GradleProject, classes: RunClasses) -> str:
+        """Gradle's runtime classpath, with its build output directories copied for this run."""
+        subproject = project.directory / self._language
+        path = subproject / CLASSPATH_FILE
         try:
-            return path.read_text(encoding="utf-8").strip()
+            classpath = path.read_text(encoding="utf-8").strip()
         except OSError as error:
             raise RunnerStartError(f"gradle did not write the runtime classpath {path}") from error
+        return classes.isolate(classpath, subproject / BUILD_OUTPUT)
 
 
 def _debug_launch(session: DebugSession | None, notify: ProgressNotice) -> DebugLaunch | None:

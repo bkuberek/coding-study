@@ -303,7 +303,11 @@ def typescript_launch(meta: ProblemMeta, files: Mapping[str, Path]) -> RunnerLau
 
 
 class JvmLaunches:
-    """Compiles each problem's references once, in a temporary copy of the workspace."""
+    """Compiles each problem's references once, in a temporary copy of the workspace.
+
+    A launch is reused for every run of its problem, so it keeps its private class copy: without
+    `scratch`, `SubprocessRunner` does not remove it after the first run.
+    """
 
     def __init__(self, root: Path) -> None:
         self._root = root
@@ -318,7 +322,7 @@ class JvmLaunches:
             sources = tuple(ReferenceSource(name, path) for name, path in files.items())
             prepared = runner.prepare(References(meta, sources), lambda _line: None)
             assert isinstance(prepared, Prepared), prepared
-            self._built[meta.slug] = prepared.launch
+            self._built[meta.slug] = replace(prepared.launch, scratch=None)
         return self._built[meta.slug]
 
 
