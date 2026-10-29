@@ -59,7 +59,7 @@ A queue of capacity 1 must hand each value over before the next one can go in. I
 - Order is first in, first out. In particular, the values of one producer reach the consumers in the order that producer put them.
 - `size` never reports a number outside 0 to `capacity`.
 
-Java and Kotlin run on platform threads and on virtual threads, Python on threads, and TypeScript as async workers on one event loop, where `put` and `take` are `async`. A passing stress run is evidence of thread safety, not proof: a different schedule can still expose a bug.
+Java and Kotlin run on platform threads and on virtual threads, Python and Rust on threads, Go on goroutines, and TypeScript as async workers on one event loop, where `put` and `take` are `async`. In Rust the threads share one queue, so its methods take `&self`. A passing stress run is evidence of thread safety, not proof: a different schedule can still expose a bug.
 
 ## Follow-ups
 

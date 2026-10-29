@@ -6,7 +6,7 @@ status: ready
 difficulty: medium
 track: concurrency
 kind: concurrent
-languages: [java, kotlin, python, typescript]
+languages: [java, kotlin, python, typescript, go, rust]
 signature:
   class:
     name: BoundedBlockingQueue
@@ -17,7 +17,7 @@ signature:
       - {name: size, params: [], returns: {type: int}}
 comparator: {type: ops}
 concurrency:
-  model: {java: threads, kotlin: threads, python: threads, typescript: async}
+  model: {java: threads, kotlin: threads, python: threads, typescript: async, go: threads, rust: threads}
   jvm_threads: [platform, virtual]
   runs: 3
   deadline_ms: 5000
@@ -25,7 +25,7 @@ concurrency:
     - id: no-lock
       name: Deque without a lock
       bug: Spin-waits on the size, then mutates a shared deque with no mutual exclusion
-      languages: [java, kotlin, python]
+      languages: [java, kotlin, python, go]
       caught_by: [s1]
     - id: if-not-while
       name: Wait guarded by if

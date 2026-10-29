@@ -51,6 +51,8 @@ Compared with semaphores, the monitor states the condition explicitly (`size == 
 - Kotlin: the same JDK classes, with `lock.withLock { ... }` releasing the lock on every path. With coroutines the same design is a `Mutex` plus waiting lists of `CompletableDeferred`, or simply `Channel(capacity)`, whose `send` and `receive` suspend instead of blocking; coroutines are not autograded here.
 - Python: two `threading.Condition` objects that share one `threading.Lock`. The GIL makes single bytecode operations atomic, not the check-then-act sequence of `put` and `take`, so the lock is still required. `queue.Queue(maxsize)` is the standard library version.
 - TypeScript: there are no threads, but every `await` is a point where another worker runs. The reference keeps FIFO lists of pending resolvers for takers and putters and hands values over directly: `put` resolves a waiting taker with its value instead of storing it, and `take` admits a waiting putter's value into the slot it just freed. Because the hand-off happens synchronously, no other worker can slip in between.
+- Go: a `sync.Mutex` and two `sync.Cond`s built on it with `sync.NewCond(&q.mu)`, over a ring buffer of `capacity` slots. `Cond.Wait` unlocks, sleeps and locks again, and its documentation asks for the `for` loop, since it may return before the condition holds. A buffered channel, `make(chan int, capacity)`, is the built-in version of this whole queue.
+- Rust: a `Mutex<VecDeque<i32>>` and two `Condvar`s. `wait` takes the guard and hands it back locked, and spurious wake-ups are allowed, so it sits in a `while` loop; `Condvar::wait_while` is that loop built in. The worker threads share the queue, so `put` and `take` take `&self`.
 
 ## Approach: semaphores (Two counting semaphores and a mutex)
 
@@ -89,6 +91,8 @@ It needs no wait loop, so the `if`-versus-`while` bug cannot happen. It uses thr
 - Kotlin: the same JDK `Semaphore`; `synchronized(mutex) { }` is a standard library function. With coroutines, `kotlinx.coroutines.sync.Semaphore` and `Mutex` give the same shape with suspending `acquire` and `lock`.
 - Python: `threading.Semaphore` and `threading.Lock`; `threading.BoundedSemaphore` would additionally catch a release beyond the initial count.
 - TypeScript has no built-in semaphore, so this approach has no TypeScript reference; the monitor's resolver lists are the async equivalent.
+- Go: buffered channels are Go's counting semaphores. `free` starts with `capacity` tokens and `stored` with none; receiving a token is the acquire, which blocks while the channel is empty, and sending one back is the release. A `sync.Mutex` guards the ring buffer.
+- Rust's standard library has no semaphore, so this approach has no Rust reference; a `Mutex` with `Condvar`s is the `monitor` approach.
 
 ## Broken: no-lock (Deque without a lock)
 
@@ -102,6 +106,8 @@ The deque is shared with no mutual exclusion: workers spin until the size looks 
 2. Consumer A sees a non-empty deque and is switched out before removing.
 3. Consumer B sees the same value and removes it.
 4. Consumer A resumes and removes from the now empty deque: `IndexError` in Python, `null` unboxed to `int` on the JVM.
+
+The Go version keeps its values in a fixed ring buffer with atomic `head` and `tail` counters, so no count is lost, and spins on their difference. But the check and the claim are separate steps, and a producer moves `tail` before it writes the slot: two consumers both see the last value and both claim a slot, so one reads a slot nobody filled, and a consumer can read a slot before its producer wrote it (`equal_multisets`, `distinct`, `source_order`). It never grows a slice without a lock, because Go is not memory-safe under a data race: a slice header torn between two goroutines can send a write outside its array. Safe Rust cannot express this bug at all; its broken reference is `if-not-while`.
 
 ### Fix
 
@@ -119,6 +125,8 @@ A woken worker does not check its condition again. With several consumers waitin
 2. A producer adds one value and wakes both.
 3. A re-acquires the lock first and removes the value.
 4. B re-acquires the lock, continues past its `if` and removes from the empty deque.
+
+In Go the same bug is `if` around `sync.Cond.Wait` with `Broadcast`, and the second `take` panics with an index out of range. In Rust it is `if` around `Condvar::wait` with `notify_all`, and `pop_front().unwrap()` panics on the empty deque; a `Condvar` may also wake up spuriously, which breaks an `if` even with a single waiter.
 
 ### Fix
 
