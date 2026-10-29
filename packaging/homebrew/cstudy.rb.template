@@ -43,7 +43,8 @@ class Cstudy < Formula
         cstudy doctor --fix
 
       cstudy doctor checks uv, Python 3.13, Node.js and pnpm, and JDK 21, and prints a fix
-      for anything missing. Install guide:
+      for anything missing. Go 1.24 and Rust 1.80 are optional: it only warns when they
+      are missing. Install guide:
         https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md
 
       A cstudy installed with uv or pipx runs instead of this one when its directory
