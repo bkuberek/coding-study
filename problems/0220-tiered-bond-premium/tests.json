@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"contractPrice": "750000", "bandFloors": ["0", "100000", "500000", "2500000"], "ratesPerThousand": ["25", "15", "10", "7.5"]}, "expected": "11000"},
+    {"id": "ex2", "visible": true, "input": {"contractPrice": "500000", "bandFloors": ["0", "100000", "500000", "2500000"], "ratesPerThousand": ["25", "15", "10", "7.5"]}, "expected": "8500"},
+    {"id": "ex3", "visible": true, "input": {"contractPrice": "3000000", "bandFloors": ["0", "100000", "500000", "2500000"], "ratesPerThousand": ["25", "15", "10", "7.5"]}, "expected": "32250"},
+    {"id": "h1", "input": {"contractPrice": "0", "bandFloors": ["0", "100000", "500000", "2500000"], "ratesPerThousand": ["25", "15", "10", "7.5"]}, "expected": "0", "note": "zero contract price"},
+    {"id": "h2", "input": {"contractPrice": "0.2", "bandFloors": ["0"], "ratesPerThousand": ["25"]}, "expected": "0.01", "note": "0.005 rounds half up to 0.01 (half-even gives 0)"},
+    {"id": "h3", "input": {"contractPrice": "12345.67", "bandFloors": ["0", "100000", "500000", "2500000"], "ratesPerThousand": ["25", "15", "10", "7.5"]}, "expected": "308.64", "note": "first band only; exact charge 308.64175"},
+    {"id": "h4", "input": {"contractPrice": "4000", "bandFloors": ["5000", "10000"], "ratesPerThousand": ["10", "8"]}, "expected": "0", "note": "below the first floor: nothing is charged"},
+    {"id": "h5", "input": {"contractPrice": "7500", "bandFloors": ["5000", "10000"], "ratesPerThousand": ["10", "8"]}, "expected": "25", "note": "only the slice above the first floor is charged"},
+    {"id": "h6", "input": {"contractPrice": "99999.99", "bandFloors": ["0", "100000", "500000", "2500000"], "ratesPerThousand": ["25", "15", "10", "7.5"]}, "expected": "2500", "note": "a cent below the second floor"},
+    {"id": "h7", "input": {"contractPrice": "100000.01", "bandFloors": ["0", "100000", "500000", "2500000"], "ratesPerThousand": ["25", "15", "10", "7.5"]}, "expected": "2500", "note": "a cent into the second band"},
+    {"id": "h8", "input": {"contractPrice": "10000000000", "bandFloors": ["0", "100000", "500000", "2500000"], "ratesPerThousand": ["25", "15", "10", "7.5"]}, "expected": "75009750", "note": "largest price, deep into the top band"},
+    {"id": "h9", "input": {"contractPrice": "123456.78", "bandFloors": ["0"], "ratesPerThousand": ["0"]}, "expected": "0", "note": "a zero rate"},
+    {"id": "h10", "input": {"contractPrice": "1000000", "bandFloors": ["0", "250000.50"], "ratesPerThousand": ["12.3456", "9.8765"]}, "expected": "10493.78", "note": "four-digit rates and a floor with cents"},
+    {"id": "h11", "input": {"contractPrice": "5000", "bandFloors": ["5000", "10000"], "ratesPerThousand": ["10", "8"]}, "expected": "0", "note": "price exactly on the first floor"},
+    {"id": "h12", "input": {"contractPrice": "100.4", "bandFloors": ["0", "100"], "ratesPerThousand": ["10", "12.5"]}, "expected": "1.01", "note": "a half-cent tie produced in the second band"}
+  ]
+}

@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0220"
+slug: tiered-bond-premium
+title: Tiered Bond Premium
+status: ready
+difficulty: easy
+track: practical
+kind: function
+signature:
+  function:
+    name: bondPremium
+    params:
+      - {name: contractPrice, type: decimal}
+      - {name: bandFloors, type: "decimal[]"}
+      - {name: ratesPerThousand, type: "decimal[]"}
+    returns: {type: decimal}
+comparator: {type: exact}
+approaches:
+  - {id: band-walk, name: Walk the bands and charge the slice of the price inside each, role: optimal, time: "O(b)", space: "O(1)", time_class: "n", space_class: "1"}
+related: [premium-rating-breakdown, installment-schedule]
+estimate_minutes: 20
