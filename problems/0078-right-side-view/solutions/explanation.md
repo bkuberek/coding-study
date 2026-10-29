@@ -48,6 +48,8 @@ It is the most direct answer and needs no recursion. On very wide trees its queu
 - TypeScript: the reference keeps one array per level, so the last node is `level[level.length - 1]`.
 - Java: `peekLast()` reads the back of an `ArrayDeque`.
 - Kotlin: `level.last()` on the current level list, and `flatMap` with `listOfNotNull` builds the next level.
+- Go: `queue[len(queue)-1]` is the back of the queue, and `queue = queue[1:]` pops the front in O(1).
+- Rust: `VecDeque::back()` borrows the queue, so `while let Some(last) = queue.back()` copies the value out (`last.borrow().val`) and lets the borrow end before the loop below pops and extends the same queue.
 
 ## Approach: right-first-dfs (Depth-first walk that visits the right child first)
 
@@ -87,3 +89,5 @@ Memory follows the height instead of the width, and the code is very short. It d
 - TypeScript: a recursive arrow function closes over `view`.
 - Java: a static helper receives the list as a parameter.
 - Kotlin: a local `fun` closes over the `MutableList`.
+- Go: the recursive closure appends to the captured `view`.
+- Rust: a closure cannot recurse, so `visit` is a function and `view` is passed as `&mut Vec<i32>`.
