@@ -45,6 +45,8 @@ It works for any binary tree, not only search trees, and it is hard to get wrong
 - TypeScript: pass `(a, b) => a - b` to `sort`; the values stay within ±10^9, so the subtraction is exact.
 - Java: the reference counts the nodes first so the values fit in an `int[]`, which `Arrays.sort` sorts without boxing.
 - Kotlin: `removeLast() ?: continue` skips null children pushed onto a nullable `ArrayDeque`; `sorted()` returns a new list.
+- Go: a slice of `*TreeNode` can hold `nil`, so the walk pushes both children without a check and skips the `nil` ones when it pops.
+- Rust: the stack is a `Vec<Option<Rc<RefCell<TreeNode>>>>`, so `None` children are pushed and skipped the same way; `values[k as usize - 1]` converts the 1-based rank.
 
 ## Approach: inorder-stack (In-order walk that stops at the kth node)
 
@@ -85,3 +87,4 @@ It uses the search-tree order to avoid both the sort and most of the tree when `
 - TypeScript: `for (;;)` with a return inside; `pop()!` asserts a node is available.
 - Java: `ArrayDeque` with `push` and `pop`; `--remaining == 0` combines the decrement and the test.
 - Kotlin: `ArrayDeque` with `addLast` and `removeLast`; the compiler accepts `while (true)` without a trailing return because the loop never completes normally.
+- Rust: the left spine is walked with `while let Some(current) = node { node = current.borrow().left.clone(); stack.push(current); }`. The child is cloned out of the `borrow()` guard in one statement, so the guard is gone before `current` moves into the stack.
