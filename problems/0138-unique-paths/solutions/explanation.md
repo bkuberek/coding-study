@@ -51,6 +51,8 @@ The most direct translation of the recurrence, which makes it the oracle. It pay
 - TypeScript: one `Int32Array` per row (all residues fit in 31 bits) and a closure for the recursion.
 - Java: the memo is a field, because Java has no nested functions; two residues below p add to less than 2^31, so `int` arithmetic is safe before the reduction.
 - Kotlin: a local `fun` closes over the memo, and `Array(m) { IntArray(n) { -1 } }` builds it.
+- Go: the closure is declared with `var count func(row, column int) int` before it is assigned, so it can call itself. `int` is 64 bits, so the sum of two residues cannot overflow.
+- Rust: a closure cannot call itself, so `count` is a private function over `&mut [Vec<Option<i32>>]`, where `None` marks an unknown cell. Like the Java version, two residues below `MOD` add up to less than 2^31, so `i32` holds the sum before the reduction.
 
 ## Approach: tabulation (Fill the table of path counts row by row)
 
@@ -87,6 +89,8 @@ No recursion, so no stack depth limit and less overhead per cell; it still store
 - Python: `[[1] * n for _ in range(m)]` builds independent rows; `[[1] * n] * m` would alias one row m times.
 - TypeScript: `Int32Array` rows filled with 1.
 - Java: `Arrays.fill` per row; Kotlin builds the rows with `IntArray(n) { 1 }`.
+- Go: each row is its own `make([]int, n)`, filled with 1 in a loop because `make` zeroes the memory.
+- Rust: `vec![vec![1; columns]; rows]` clones the inner vector, so the rows are independent.
 
 ## Approach: rolling-array (One row of path counts updated in place)
 
@@ -121,6 +125,7 @@ The best DP answer: same time, a fraction of the memory, and less cache pressure
 ### Language notes
 
 - Python: a list; TypeScript: an `Int32Array`; Java: `int[]` with `Arrays.fill`; Kotlin: `IntArray(width) { 1 }` and `repeat(height - 1)`.
+- Go: the built-in `min` and `max` pick the shorter and longer side. Rust: `m.min(n)` and `m.max(n)`, with `for _ in 1..height` because the row number is not used.
 
 ## Approach: binomial (Choose which moves go down with a modular inverse)
 
@@ -158,3 +163,5 @@ Asymptotically the best and the usual follow-up in interviews. It only works bec
 - Python: `pow(denominator, MOD - 2, MOD)` is built-in modular exponentiation. `math.comb(m + n - 2, m - 1) % MOD` is also correct, but it builds a number with hundreds of digits first.
 - TypeScript: `number` cannot hold 10^18 exactly, so the reference uses `BigInt` (`1_000_000_007n`) and converts back with `Number` at the end.
 - Java and Kotlin: `long` arithmetic with a hand-written square-and-multiply, since there is no built-in modular power for primitive types (`BigInteger.modPow` exists, but boxes every step).
+- Go: `int` is 64 bits, so a product of two residues (below 2^60) fits without `math/big`; `modPow` is the same hand-written square-and-multiply (`big.Int.Exp` would allocate at every step).
+- Rust: the signature uses `i32`, so the reference widens to `i64` for the products (`i64::from`) and narrows the final residue with `as i32`, which is safe because it is below 2^31. `mod_pow` is hand-written, since the standard integer `pow` takes no modulus.
