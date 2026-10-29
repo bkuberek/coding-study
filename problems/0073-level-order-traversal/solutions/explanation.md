@@ -49,6 +49,8 @@ It is the textbook answer and generalizes directly to the right-side view, zigza
 - TypeScript: the reference keeps the current level in an array and builds the next level in a fresh array, which avoids `Array.prototype.shift()` (linear on large arrays).
 - Java: `ArrayDeque` with `add` and `poll`; the result type `List<List<Integer>>` boxes the values.
 - Kotlin: `List(queue.size) { ... }` builds a level of exactly the current size, removing one node per element; the size is read once, when `List` is called.
+- Go: `queue = queue[1:]` drops the front in O(1), and `for range len(queue)` fixes the level size before the body appends the children. An empty tree returns a nil `[][]int`, which the runner encodes as `[]`.
+- Rust: `VecDeque` with `pop_front` and `extend(node.left.iter().cloned())`; `Vec::with_capacity(queue.len())` presizes each level.
 
 ## Approach: dfs-depth (Depth-first walk that appends by depth)
 
@@ -88,3 +90,5 @@ Same time and output, smaller working memory on wide trees (O(h) instead of O(w)
 - TypeScript: a recursive arrow function closes over `levels`.
 - Java: a static helper receives the result list as a parameter.
 - Kotlin: a local `fun visit` closes over `levels`, typed `MutableList<MutableList<Int>>` and returned as `List<List<Int>>`.
+- Go: `levels = append(levels, nil)` opens a level, and appending to a nil `[]int` allocates it on first use.
+- Rust: the stack holds `(Rc<RefCell<TreeNode>>, usize)` pairs. `extend` with `map(|right| (Rc::clone(right), depth + 1))` pushes the children, right before left, so the left one pops first.
