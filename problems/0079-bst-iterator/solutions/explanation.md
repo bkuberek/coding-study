@@ -46,6 +46,8 @@ It is simple and every call is worst-case O(1), but it pays for the whole tree u
 - TypeScript: `this.values[this.position++]` reads and advances in one expression.
 - Java: an `ArrayList<Integer>` boxes the values; an `int[]` sized by a counting pass would avoid that.
 - Kotlin: the `init` block runs the walk; `values[position++]` mirrors the Java idiom.
+- Go: `collect` is an unexported method; the runner reaches the class through the exported `NewBSTIterator`, `Next` and `HasNext` by reflection.
+- Rust: `new` collects the values with a free function over `&Option<Rc<RefCell<TreeNode>>>`, so the iterator keeps no tree. The generated stub spells `next` and `has_next` with `&mut self`, and clippy's `should_implement_trait` would suggest `Iterator`; the problem fixes the method names, so the lint is allowed on `next`.
 
 ## Approach: controlled-stack (Stack of the pending left spine)
 
@@ -84,3 +86,5 @@ It meets the follow-up: memory proportional to the height and constant amortized
 - TypeScript: the constructor takes a plain parameter and the stack is a field initialized in the class body; Node's type stripping rejects parameter properties such as `constructor(private root: TreeNode)`.
 - Java: `ArrayDeque` with `push` and `pop`; it never holds null because `pushLeftSpine` stops at null.
 - Kotlin: `ArrayDeque<TreeNode>` with `addLast` and `removeLast`; `next` and `hasNext` are ordinary methods here, not the `operator` functions of Kotlin's `Iterator`.
+- Go: `pushLeftSpine` is an unexported method with a `for` loop whose post statement advances the cursor (`node = node.Left`).
+- Rust: the stack holds `Rc<RefCell<TreeNode>>` clones, so the iterator owns what it needs and keeps the tree alive. `push_left_spine` takes the cursor by value and clones each left child out of the `borrow()` guard before pushing the current node. `#[allow(clippy::should_implement_trait)]` stays on `next`: the stub fixes the method name.
