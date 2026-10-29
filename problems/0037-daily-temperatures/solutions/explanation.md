@@ -44,6 +44,8 @@ Trivially correct, which makes it the oracle, and fast when warmer days come soo
 ### Language notes
 
 - All four references use two nested index loops with `break`; Kotlin's `IntArray(days)` and Java's `new int[days]` start at 0, TypeScript needs `fill(0)`, and Python uses `[0] * days`.
+- Go: `make([]int, days)` starts zeroed, so a day with no warmer day keeps the 0 the problem asks for. `break` leaves only the inner loop.
+- Rust: `vec![0; n]` is zeroed too. `temperatures[day + 1..].iter().position(..)` scans ahead and returns the offset of the first warmer day as an `Option<usize>`; the wait is that offset plus one, converted with `as i32`.
 
 ## Approach: monotonic-stack (Stack of days still waiting for a warmer one)
 
@@ -84,3 +86,5 @@ Linear and short; it is the expected interview answer and the template for every
 - TypeScript: an array with `push` and `pop`; `pop()!` asserts that the stack is not empty, which the loop condition guarantees.
 - Java: a plain `int[]` with a size counter avoids boxing every index into an `Integer`, as `ArrayDeque<Integer>` would.
 - Kotlin: `ArrayDeque<Int>` with `addLast`, `removeLast` and `last()`; `withIndex()` gives the day and its reading together.
+- Go: a `[]int` is the stack, with no boxing: `append` pushes and reslicing pops. The loop reads the top as `waiting[len(waiting)-1]`.
+- Rust: a `Vec<usize>` is the stack; `while let Some(&earlier) = waiting.last()` reads the top without popping, and the `break` inside leaves the loop when the top is not colder. Day numbers are `usize`, so the wait is converted with `as i32`.
