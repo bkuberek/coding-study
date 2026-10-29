@@ -41,6 +41,7 @@ Very little code and no sorting, so it is a trustworthy oracle. It does n^2 comp
 
 - Python: nested generator expressions inside `max` and `sum` avoid building lists.
 - Kotlin: `moment in start until end` is exactly the half-open test; destructuring lambdas `{ (start, end) -> ... }` work on `IntArray` through `component1` and `component2`.
+- Rust: an iterator chain (`map` over the moments, `filter` and `count` over the meetings, `max`) mirrors the nested generator expressions and builds no list.
 
 ## Approach: end-time-heap (Min-heap of end times)
 
@@ -80,6 +81,8 @@ The heap version simulates the actual allocation, so storing a room id next to e
 - TypeScript: there is no built-in priority queue, so the reference includes a small binary min-heap; sorting a fresh array of end times on every meeting would be O(n^2 log n).
 - Java: `PriorityQueue<Integer>` boxes each end time. `ends.peek() <= meeting[0]` unboxes the `Integer`, so the comparison is numeric (`==` between two `Integer`s would not be).
 - Kotlin: `java.util.PriorityQueue<Int>` is the same class; `peek()` returns a platform type, compared numerically after unboxing.
+- Go: `container/heap` needs a small `intHeap` type (`Len`, `Less`, `Swap`, `Push`, `Pop`). Overwriting `(*ends)[0]` and calling `heap.Fix(ends, 0)` is Python's `heapreplace`.
+- Rust: `BinaryHeap` is a max-heap, so end times are wrapped in `Reverse`. The reference replaces the earliest end with a `pop` and a `push`; `peek_mut` would replace it in place with one sift.
 
 ## Approach: sorted-sweep (Sweep sorted starts against sorted ends)
 
@@ -119,3 +122,4 @@ The shortest optimal solution, with primitive arrays and no heap, so it is also 
 - TypeScript: always pass a numeric comparator to `sort`; the default compares strings, so `1000` would sort before `999`.
 - Java: primitive `int[]` arrays sorted with `Arrays.sort` avoid all boxing.
 - Kotlin: `IntArray(n) { ... }.apply { sort() }` builds and sorts each primitive array in one expression.
+- Go and Rust: `slices.Sort` and `sort_unstable` order primitive integers in place with no comparator, so there is no string-comparison trap like TypeScript's default `sort`.
