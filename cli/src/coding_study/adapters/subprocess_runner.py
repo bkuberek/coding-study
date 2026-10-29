@@ -100,7 +100,10 @@ DEBUG_NOT_RESTARTED = "the runner ended during the debug session; it is not rest
 
 
 class SubprocessRunner:
-    """`RunnerProcess` for every language; one directory per run under `runs_directory`."""
+    """`RunnerProcess` for every language; one directory per run under `runs_directory`.
+
+    A launch's `scratch` directory is removed when its run ends, whether it completes, fails or is
+    interrupted."""
 
     def __init__(
         self,
@@ -126,6 +129,13 @@ class SubprocessRunner:
     def _attempts(self, launch: RunnerLaunch, progress: "_Progress") -> bool:
         """Runs and restarts the runner until the work is done; False when crash restarts ran
         out (a debug session allows none). Restarts the runner asked for do not count."""
+        try:
+            return self._attempt_until_done(launch, progress)
+        finally:
+            if launch.scratch is not None:
+                rmtree(launch.scratch, ignore_errors=True)
+
+    def _attempt_until_done(self, launch: RunnerLaunch, progress: "_Progress") -> bool:
         run_directory = self._new_run_directory()
         allowed_crashes = 0 if launch.debug else MAX_RESTARTS
         attempt = crashes = 0

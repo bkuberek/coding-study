@@ -239,6 +239,9 @@ class RunnerLaunch:
     hello_timeout_ms: int
     """`coding_study.domain.runs.HELLO_TIMEOUT_MS` for the language."""
     debug: DebugLaunch | None = None
+    scratch: Path | None = None
+    """A directory only this launch uses, such as a private copy of the build output;
+    `RunnerProcess` removes it when the run ends, however it ends."""
 
 
 @dataclass(frozen=True, slots=True)

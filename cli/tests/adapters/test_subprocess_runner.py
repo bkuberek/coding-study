@@ -3,6 +3,7 @@ import os
 import signal
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -246,3 +247,41 @@ def test_keeps_only_the_most_recent_runs(runner, runs_directory):
         (runs_directory / f"00000000-0000{index:02d}").mkdir(parents=True)
     run(runner)
     assert len(list(runs_directory.iterdir())) == KEPT_RUNS
+
+
+# A launch's scratch directory (a private copy of the build output) goes when the run ends.
+
+
+@pytest.fixture
+def scratch(tmp_path: Path) -> Path:
+    directory = tmp_path / "scratch"
+    directory.mkdir()
+    (directory / "Solution.class").write_text("bytecode")
+    return directory
+
+
+def test_removes_the_launch_scratch_directory_after_the_run(runner, scratch):
+    runner.run(replace(launch(), scratch=scratch), RunRequest((job(returns("a", 1)),)))
+    assert not scratch.exists()
+
+
+def test_removes_the_launch_scratch_directory_after_crashes_ran_out(runner, scratch):
+    crashes = [case(f"c{index}", "crash", exit_code=1) for index in range(MAX_RESTARTS + 1)]
+    runner.run(replace(launch(), scratch=scratch), RunRequest((job(*crashes),)))
+    assert not scratch.exists()
+
+
+def test_removes_the_launch_scratch_directory_when_the_runner_does_not_start(runner, scratch):
+    with pytest.raises(RunnerStartError):
+        runner.run(replace(launch("exit-before-hello"), scratch=scratch), RunRequest(()))
+    assert not scratch.exists()
+
+
+def test_removes_the_launch_scratch_directory_when_interrupted(monkeypatch, runner, scratch):
+    def interrupt(*_arguments: object) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(subprocess_runner._Attempt, "run", interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        runner.run(replace(launch(), scratch=scratch), RunRequest(()))
+    assert not scratch.exists()
