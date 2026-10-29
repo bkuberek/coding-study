@@ -47,6 +47,8 @@ Easy to get right and memory-free, which suits an oracle. It repeats the same co
 
 - Python: `nums.count(candidate)` does the inner scan in C, roughly ten times faster than a Python loop, with the same O(n^2) growth.
 - Kotlin: `nums.count { it == candidate }` is an inline function over the `IntArray`, so the predicate does not box.
+- Go: there is no `count` helper on a slice, so the inner loop counts matches itself; the function ends in `panic`, since Go demands a return on every path and the input always has a majority.
+- Rust: `iter().filter(..).count()` is the counting loop. The constraints guarantee a majority, so the final `panic!` is unreachable on valid input and only satisfies the return type.
 
 ## Approach: sorting (Sort a copy and take the middle)
 
@@ -81,6 +83,8 @@ A one-line answer that is easy to justify, but a log factor slower than the line
 
 - TypeScript: `Int32Array.from(nums).sort()` copies and sorts numerically. A plain `nums.sort()` would compare as strings and reorder the caller's array.
 - Java: `nums.clone()` then `Arrays.sort`. Kotlin: `nums.sortedArray()` returns a sorted copy.
+- Go: `slices.Clone` and `slices.Sort` sort a copy, so the caller's slice keeps its order.
+- Rust: `nums` is an owned `Vec<i32>`, so `sort_unstable` sorts the argument itself; equal values are interchangeable, so stability does not matter.
 
 ## Approach: hash-map (Count occurrences in a hash map)
 
@@ -119,6 +123,8 @@ Linear and general: the same map answers "how often does each value occur?", whi
 - TypeScript: `counts.get(value) ?? 0` handles absent keys; a `Map` keeps number keys as numbers.
 - Java: `counts.merge(value, 1, Integer::sum)` inserts or increments and returns the new count, which unboxes to `int`.
 - Kotlin: `getOrDefault(value, 0) + 1`, then `counts[value] = count`.
+- Go: a missing key reads as the zero value, so `counts[value]++` needs no existence check.
+- Rust: `entry(value).or_insert(0)` returns a `&mut usize` to the count, which is then incremented and compared through the same borrow.
 
 ## Approach: boyer-moore (Boyer-Moore majority vote)
 
@@ -155,3 +161,5 @@ Optimal in time and memory, and the answer interviewers look for after the hash 
 ### Language notes
 
 - All four references are the same loop over primitives. In Kotlin, `votes += if (value == candidate) 1 else -1` uses `if` as an expression; Java and TypeScript use the conditional operator.
+- Go: the vote is a plain `int` that goes up and down; no map or sort is involved, so the loop allocates nothing.
+- Rust: `votes` is an `i32` that can go negative only transiently; the loop moves the owned `Vec` into `for value in nums` and copies each `i32`.
