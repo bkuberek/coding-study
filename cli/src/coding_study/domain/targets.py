@@ -6,6 +6,7 @@ problem catalog, so it stays with the caller.
 """
 
 from dataclasses import dataclass
+from typing import assert_never
 
 from coding_study.domain import layout
 from coding_study.domain.problem import Language
@@ -48,13 +49,27 @@ def parse_solution_file(path: str) -> SolutionFile | None:
 
 
 def _solution_file(language: Language, parts: list[str]) -> SolutionFile | None:
+    match language:
+        case Language.PYTHON | Language.TYPESCRIPT:
+            return _file_in_directory(language, parts)
+        case Language.JAVA | Language.KOTLIN:
+            return _file_in_package(language, parts)
+        case _:
+            assert_never(language)
+
+
+def _file_in_directory(language: Language, parts: list[str]) -> SolutionFile | None:
     match parts:
-        case [file] if language not in layout.JVM_LANGUAGES:
+        case [file]:
             stem = _source_stem(language, file)
             return SolutionFile(language, stem) if stem else None
-        case [problem, file] if (
-            language in layout.JVM_LANGUAGES and problem and _source_stem(language, file)
-        ):
+        case _:
+            return None
+
+
+def _file_in_package(language: Language, parts: list[str]) -> SolutionFile | None:
+    match parts:
+        case [problem, file] if problem and _source_stem(language, file):
             return SolutionFile(language, problem)
         case _:
             return None

@@ -9,7 +9,7 @@ generating it again gives the same bytes.
 
 import json
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, assert_never
 
 from coding_study.domain.debugging import DEBUG_HOST
 from coding_study.domain.ide import GeneratedFile, Ide
@@ -187,5 +187,9 @@ def _debugger(attach: DebugAttach) -> JsonObject:
                 "port": attach.port,
                 "skipFiles": ["<node_internals>/**"],
             }
-        case _:
+        case Language.JAVA:
             return {"type": "java", "hostName": DEBUG_HOST, "port": attach.port}
+        case Language.KOTLIN:
+            raise ValueError(f"VS Code cannot debug {attach.language} (see DEBUGGABLE)")
+        case _:
+            assert_never(attach.language)

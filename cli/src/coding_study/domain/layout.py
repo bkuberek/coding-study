@@ -7,6 +7,7 @@ the absolute workspace root.
 """
 
 from collections.abc import Mapping
+from typing import assert_never
 
 from coding_study.domain.items import ItemMeta
 from coding_study.domain.problem import Language, ProblemMeta
@@ -44,8 +45,10 @@ def stub_path(meta: ProblemMeta, language: Language) -> str:
             return f"{user_directory(language)}/{meta.snake_slug}.py"
         case Language.TYPESCRIPT:
             return f"{user_directory(language)}/{meta.slug}.ts"
-        case _:
+        case Language.JAVA | Language.KOTLIN:
             return f"{_user_package_directory(meta, language)}/{_jvm_file_name(meta, language)}"
+        case _:
+            assert_never(language)
 
 
 def user_directory(language: Language) -> str:
@@ -56,21 +59,31 @@ def user_directory(language: Language) -> str:
             return f"{PYTHON_PROJECT}/{USER_PACKAGE}"
         case Language.TYPESCRIPT:
             return f"{TYPESCRIPT_PROJECT}/{USER_PACKAGE}"
-        case _:
+        case Language.JAVA | Language.KOTLIN:
             return f"{_jvm_sources(JVM_PROJECT, language)}/{USER_PACKAGE}"
+        case _:
+            assert_never(language)
 
 
 def watch_path(meta: ProblemMeta, language: Language) -> str:
     """What `cstudy test --watch` watches: the user file, or on the JVM the problem's package."""
-    if language in JVM_LANGUAGES:
-        return _user_package_directory(meta, language)
-    return stub_path(meta, language)
+    match language:
+        case Language.PYTHON | Language.TYPESCRIPT:
+            return stub_path(meta, language)
+        case Language.JAVA | Language.KOTLIN:
+            return _user_package_directory(meta, language)
+        case _:
+            assert_never(language)
 
 
 def user_target(meta: ProblemMeta, language: Language, root: str) -> RunTarget:
-    if language in JVM_LANGUAGES:
-        return ClassTarget(f"{USER_PACKAGE}.{meta.snake_slug}.{jvm_class_name(meta)}")
-    return FileTarget(f"{root}/{stub_path(meta, language)}")
+    match language:
+        case Language.PYTHON | Language.TYPESCRIPT:
+            return FileTarget(f"{root}/{stub_path(meta, language)}")
+        case Language.JAVA | Language.KOTLIN:
+            return ClassTarget(f"{USER_PACKAGE}.{meta.snake_slug}.{jvm_class_name(meta)}")
+        case _:
+            assert_never(language)
 
 
 def statement_path(slug: str) -> str:
@@ -118,18 +131,24 @@ def reference_build_path(meta: ProblemMeta, approach_id: str, language: Language
             return f"{BUILD_DIRECTORY}/python/{REFERENCE_PACKAGE}/{meta.snake_slug}/{approach}.py"
         case Language.TYPESCRIPT:
             return f"{BUILD_DIRECTORY}/typescript/{REFERENCE_PACKAGE}/{meta.slug}/{approach_id}.ts"
-        case _:
+        case Language.JAVA | Language.KOTLIN:
             sources = _jvm_sources(f"{BUILD_DIRECTORY}/jvm", language)
             package_directory = jvm_reference_package(meta, approach_id).replace(".", "/")
             return f"{sources}/{package_directory}/{_jvm_file_name(meta, language)}"
+        case _:
+            assert_never(language)
 
 
 def reference_target(
     meta: ProblemMeta, approach_id: str, language: Language, root: str
 ) -> RunTarget:
-    if language in JVM_LANGUAGES:
-        return ClassTarget(f"{jvm_reference_package(meta, approach_id)}.{jvm_class_name(meta)}")
-    return FileTarget(f"{root}/{reference_build_path(meta, approach_id, language)}")
+    match language:
+        case Language.PYTHON | Language.TYPESCRIPT:
+            return FileTarget(f"{root}/{reference_build_path(meta, approach_id, language)}")
+        case Language.JAVA | Language.KOTLIN:
+            return ClassTarget(f"{jvm_reference_package(meta, approach_id)}.{jvm_class_name(meta)}")
+        case _:
+            assert_never(language)
 
 
 def jvm_reference_package(meta: ProblemMeta, approach_id: str) -> str:

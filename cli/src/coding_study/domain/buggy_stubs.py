@@ -6,7 +6,9 @@ no `package` line on the JVM. `cstudy start` adds the user's `practice.<snake_sl
 fail.
 """
 
-from coding_study.domain.layout import JVM_LANGUAGES, SOURCE_EXTENSIONS, USER_PACKAGE
+from typing import assert_never
+
+from coding_study.domain.layout import SOURCE_EXTENSIONS, USER_PACKAGE
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.problem_files import BUGGY_DIRECTORY
 
@@ -26,7 +28,11 @@ def buggy_file(language: Language) -> str:
 
 def buggy_as_stub(meta: ProblemMeta, language: Language, buggy: str) -> str:
     """The user's file: the buggy code, in the `practice.<snake_slug>` package on the JVM."""
-    if language not in JVM_LANGUAGES:
-        return buggy
-    terminator = ";" if language is Language.JAVA else ""
-    return f"package {USER_PACKAGE}.{meta.snake_slug}{terminator}\n\n{buggy}"
+    match language:
+        case Language.PYTHON | Language.TYPESCRIPT:
+            return buggy
+        case Language.JAVA | Language.KOTLIN:
+            terminator = ";" if language is Language.JAVA else ""
+            return f"package {USER_PACKAGE}.{meta.snake_slug}{terminator}\n\n{buggy}"
+        case _:
+            assert_never(language)

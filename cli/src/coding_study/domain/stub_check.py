@@ -6,8 +6,8 @@ approach id. JVM references declare no package (the materializer prepends one), 
 """
 
 import re
+from typing import assert_never
 
-from coding_study.domain.layout import JVM_LANGUAGES
 from coding_study.domain.problem import Language
 
 STUB_APPROACH_ID = "generated-stub"
@@ -16,6 +16,10 @@ _PACKAGE_LINE = re.compile(r"^package [\w.]+;?[ \t]*\n", re.MULTILINE)
 
 
 def stub_as_reference(stub: str, language: Language) -> str:
-    if language not in JVM_LANGUAGES:
-        return stub
-    return _PACKAGE_LINE.sub("", stub, count=1)
+    match language:
+        case Language.PYTHON | Language.TYPESCRIPT:
+            return stub
+        case Language.JAVA | Language.KOTLIN:
+            return _PACKAGE_LINE.sub("", stub, count=1)
+        case _:
+            assert_never(language)
