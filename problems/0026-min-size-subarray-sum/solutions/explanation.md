@@ -45,6 +45,8 @@ Correct and short, hence the oracle. Every start recomputes sums that the previo
 
 - Python: two plain loops; CPython does about 10^7 simple steps per second, so n = 10^4 takes around half a second here.
 - TypeScript, Java, Kotlin: the same two loops over `number[]`, `int[]` or `IntArray`, with no allocation.
+- Go: two nested loops over the `[]int` with no allocation; 0 doubles as the "no window" answer, as in the other languages.
+- Rust: `enumerate().skip(start)` walks the positions from `start` while keeping the absolute index, so no index arithmetic is needed to read `nums[end]`. The best length is a `usize` and converts to `i32` once, at the return.
 
 ## Approach: prefix-binary-search (Prefix sums with a binary search per start)
 
@@ -85,6 +87,8 @@ A useful technique in its own right: with the prefix array built once, any targe
 - TypeScript: no built-in binary search; the reference writes a lower bound with `>>> 1` for the midpoint.
 - Java: `Arrays.binarySearch(prefix, from, to, key)` returns the position when found and `-(insertionPoint) - 1` otherwise. Prefix sums are strictly increasing here, so either result gives the lower bound directly.
 - Kotlin: `IntArray.binarySearch(element, fromIndex)` follows the same contract.
+- Go: `slices.BinarySearch` returns the lower-bound position in the sorted subslice `prefix[start+1:]` whether or not the key is present, so the `found` flag is ignored and `start + 1` is added back.
+- Rust: `partition_point(|&sum| sum < goal)` is the lower bound on the prefix sums (it counts the elements before the first sum that reaches the goal) and works for a missing key too, where `binary_search` would return an `Err`. The goal `prefix[start] + target` is at most about `2 * 10^9`, inside `i32`.
 
 ## Approach: sliding-window (Grow on the right and shrink on the left)
 
@@ -123,3 +127,5 @@ Linear time, constant memory, a handful of lines: the expected answer. It depend
 - TypeScript: `nums[left++]` reads the value and advances the index in one expression.
 - Java: same idiom; the sum stays within `int` because it never exceeds the total of the array.
 - Kotlin: `nums[left++]` works as in Java; `IntArray` avoids boxing.
+- Go: the window grows with `right` and shrinks while the sum still reaches the target; all counters are `int`.
+- Rust: `right + 1 - left` is written that way because the shrink loop can step `left` one past `right`, an empty window; `right - left + 1` would underflow `usize` first. `total` is an `i32`, and the sum of the whole array stays inside it.
