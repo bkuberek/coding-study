@@ -45,6 +45,8 @@ It is the smallest correct answer and fine when prefix questions are rare. It do
 - Python: `any(word.startswith(prefix) for word in self.words)` stops at the first match.
 - TypeScript: `String.prototype.startsWith`; a `for...of` loop over the `Set` allows the early return.
 - Java and Kotlin: `HashSet<String>` and `String.startsWith`; Kotlin's `any` also stops at the first match.
+- Go: there is no set type, so a `map[string]struct{}` plays the set (the empty struct takes no space) and `_, found := t.words[word]` is the membership test. `for word := range t.words` visits the keys in random order and `return true` leaves it at the first prefix match.
+- Rust: `HashSet<String>` with `contains(&word)`, and `self.words.iter().any(|word| word.starts_with(&prefix))`, which stops at the first match like Python's `any`.
 
 ## Approach: array-trie (Trie with one child slot per letter)
 
@@ -84,3 +86,5 @@ Every operation costs only the length of its argument, independent of how many w
 - TypeScript: `node.children[index] ??= new TrieNode()` creates a missing child and moves to it in one expression; `charCodeAt` avoids creating one-letter strings.
 - Java: a nested `Node` with a `Node[26]` array; `word.charAt(i) - 'a'` is the slot.
 - Kotlin: `arrayOfNulls<Node>(26)`, `letter - 'a'` (a `Char` minus a `Char` is an `Int`), and `?: return null` exits the walk as soon as the path breaks off.
+- Go: a node holds `children [26]*node`, an array of pointers rather than a slice, so one allocation makes the node and all its slots start as `nil`. `for _, letter := range word` yields runes, and `letter - 'a'` is the slot; a missing child is simply `nil`, with no `Option`.
+- Rust: `children: [Option<Box<Node>>; 26]` with `#[derive(Default)]` gives a node whose slots are all `None`. `get_or_insert_with(Box::default)` creates a missing child and returns a `&mut` to it, so `node = ...` walks down while inserting. The read-only `walk` returns `Option<&Node>` and uses `as_deref()?` to leave as soon as a slot is empty.
