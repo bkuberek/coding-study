@@ -46,6 +46,8 @@ It reuses the single-word solution unchanged and is easy to trust, but words tha
 - TypeScript: `string[][]` is mutable like the Python board; the loop breaks out on the first success so the cell is restored exactly once.
 - Java: `char[][]` cells are compared with `charAt` without boxing.
 - Kotlin: `Array<CharArray>` maps to the same JVM `char[][]`; `STEPS.any { (dr, dc) -> ... }` destructures each pair.
+- Go: the board is `[][]rune`, so a cell compares with `word[position]` once the word is converted with `[]rune(word)`, and `'#'` marks a visited cell in place. `trace` is a closure declared with `var trace func(...)` first so that it can call itself; `break` after the first success leaves the loop, and the cell is restored on the line after it.
+- Rust: the board is a `Vec<Vec<char>>` that the function owns (`mut board`), so marking and restoring cells needs no copy. A step off the board is caught by `checked_add_signed` on the `usize` coordinates, which returns `None` for a negative result instead of wrapping, and `any` stops at the first neighbor that succeeds.
 
 ## Approach: trie-backtracking (One backtracking pass guided by a trie of all words)
 
@@ -85,3 +87,5 @@ It explores each board walk once for all words together, which is what makes tho
 - TypeScript: a `TrieNode` class with 26 slots and `word: string | null`; `??=` builds missing children.
 - Java: a nested static `Node` class; the `#` mark is checked before indexing `children` with `letter - 'a'`.
 - Kotlin: `?: return` leaves `explore` when the letter has no child, and a local `fun explore` closes over the board and the result list.
+- Go: a node keeps `children [26]*node` and a `word string`, where `""` means "no word here, or already reported" (the words are never empty). `explore` returns on the `'#'` mark before computing `letter - 'a'`, which would be a negative index. The result slice is captured by the recursive closure.
+- Rust: `word: Option<String>` plus `node.word.take()` reports a word and clears it in one step, like Python's `pop`. The recursion passes `&mut Node` down while the board is passed as `&mut [Vec<char>]`, and the borrow checker accepts both because they are separate values. The `'#'` check comes first, because `slot('#')` would underflow `u8` and panic.
