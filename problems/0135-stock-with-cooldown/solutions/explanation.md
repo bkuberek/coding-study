@@ -47,6 +47,8 @@ The state space falls out of the problem statement directly, which makes it a go
 
 - Python: `functools.cache` keys on `(day, holding)` with a `bool` flag.
 - TypeScript, Java and Kotlin: a two-row table indexed by `holding` (0 or 1) and `day`, filled with -1.
+- Go: a closure must be declared before it can call itself (`var best func(day, holding int) int`, then the assignment). The table is `[2][]int`, filled with -1 because every real answer is at least 0.
+- Rust: a closure cannot call itself, so the recursion is a private function that takes the prices and the memo as parameters. An `Option<i32>` marks an unknown entry instead of a sentinel, and `if let Some(known)` returns a stored answer.
 
 ## Approach: tabulation (Bottom-up table of three daily states)
 
@@ -86,6 +88,7 @@ Makes the state machine explicit and easy to check, which is why it is the oracl
 ### Language notes
 
 - All four languages use three parallel arrays; Python lists, TypeScript arrays filled with 0, and zero-initialized `int[]` and `IntArray`.
+- Go and Rust use three zero-initialized slices too (`make([]int, n)` and `vec![0; n]`); the profits stay far below the `i32` limit.
 
 ## Approach: state-machine (Rolling hold, sold and rest totals)
 
@@ -121,3 +124,5 @@ The expected final answer, and the pattern generalizes to the whole family of st
 
 - Python and TypeScript: tuple and array destructuring assign the three values simultaneously.
 - Java and Kotlin: temporaries `nextHold`, `nextSold`, `nextRest` make the simultaneous update explicit.
+- Go: a tuple assignment evaluates every right-hand side before it assigns, so `hold, sold, rest = max(hold, rest-price), hold+price, max(rest, sold)` reads only the previous day. `max` is built in since Go 1.21.
+- Rust: destructuring assignment `(hold, sold, rest) = (...)` (stable since 1.59) evaluates the right side first, like Python; `max` is the `Ord::max` method, as in `hold.max(rest - price)`.
