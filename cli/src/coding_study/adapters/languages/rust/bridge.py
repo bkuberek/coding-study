@@ -4,7 +4,10 @@ Rust has no reflection, so each runner binary gets a `main.rs` generated from th
 brings every compiled target (the user's file, each reference) in as a `#[path]` module, so
 compiler errors, panics and breakpoints name the real file, and for each target it spells out
 every argument's type, decodes it, calls the code and hands back the result for encoding.
-Class kinds get a constructor function and a `match` on the operation name.
+Class kinds get a constructor function and a `match` on the operation name. A concurrent class
+is shared by the worker threads of its stress runs: its methods take `&self`, every decoded call
+is `Send`, and the constructor hands the instance to `cs_runner::shared`, whose `Send + Sync`
+bound is where the compiler rejects a class that is not thread-safe.
 
 Because every type is spelled, a solution with another signature fails to compile in the bridge,
 not in its own file. The bridge records which target owns each of its lines, so the runner can
@@ -24,7 +27,7 @@ from coding_study.adapters.languages.rust.types import (
 )
 from coding_study.domain.language_limits import LIST_IDENTITY, names_list_nodes
 from coding_study.domain.naming import NameRole, member_name
-from coding_study.domain.problem import Language
+from coding_study.domain.problem import Language, ProblemKind
 from coding_study.domain.signature import (
     ClassSignature,
     FunctionSignature,
@@ -40,6 +43,7 @@ UNSUPPORTED_TYPE = "UnsupportedType"
 ARGUMENT_PREFIX = "arg_"
 """The bridge names each decoded argument `arg_<parameter>`."""
 _IDENTITY_PREFIX = "nodes_of_"
+SHARED_NODES_REASON = "rust does not support node types in concurrent problems: Rc is not Send"
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,11 +77,13 @@ class Bridge:
     """1-based line number of each `mod` item to its target id."""
 
 
-def bridge_source(signature: Signature, targets: Sequence[BridgeTarget]) -> Bridge:
+def bridge_source(
+    signature: Signature, targets: Sequence[BridgeTarget], *, kind: ProblemKind
+) -> Bridge:
     lines = _Lines()
     lines.add(None, GENERATED_HEADER, "#![allow(unused)]", "")
     lines.add(None, *_imports(signature))
-    unsupported = unsupported_reason(signature)
+    unsupported = unsupported_reason(signature, kind)
     for target in targets:
         if target.with_module:
             lines.add(None, "#[allow(warnings)]", f"#[path = {rust_string(str(target.file))}]")
@@ -91,7 +97,7 @@ def bridge_source(signature: Signature, targets: Sequence[BridgeTarget]) -> Brid
         if unavailable is not None:
             entries.append((target, _unavailable_entry(unavailable)))
             continue
-        items, entry = _target_items(signature, target.module)
+        items, entry = _target_items(signature, target.module, kind)
         lines.add(target.target_id, *items)
         entries.append((target, entry))
     lines.add(None, "static TARGETS: &[cs_runner::Target] = &[")
@@ -108,13 +114,15 @@ def bridge_source(signature: Signature, targets: Sequence[BridgeTarget]) -> Brid
     return Bridge("\n".join(lines.text) + "\n", dict(lines.owners), dict(lines.modules))
 
 
-def unsupported_reason(signature: Signature) -> str | None:
+def unsupported_reason(signature: Signature, kind: ProblemKind) -> str | None:
     """Why no target of `signature` can run in Rust yet, or None."""
     missing = unsupported_scalars(signature)
     if missing:
         return f"rust does not support {' and '.join(missing)} yet"
     if names_list_nodes(signature):
         return LIST_IDENTITY
+    if kind is ProblemKind.CONCURRENT and node_kinds(signature):
+        return SHARED_NODES_REASON
     return None
 
 
@@ -176,7 +184,38 @@ def _unavailable_entry(unavailable: Unavailable) -> str:
     )
 
 
-def _target_items(signature: Signature, module: str) -> tuple[list[str], str]:
+@dataclass(frozen=True, slots=True)
+class _ClassForm:
+    """How a class reaches the runner: owned by one case, or shared by the worker threads of a
+    concurrent problem."""
+
+    construct: str
+    wrap: str
+    method: str
+    receiver: str
+    instance: str
+    entry: str
+
+
+_OWNED = _ClassForm(
+    construct="cs_runner::Construct",
+    wrap="cs_runner::object",
+    method="cs_runner::Method",
+    receiver="object: &mut dyn std::any::Any",
+    instance="cs_runner::instance",
+    entry="Class",
+)
+_SHARED = _ClassForm(
+    construct="cs_runner::SharedConstruct",
+    wrap="cs_runner::shared",
+    method="cs_runner::SharedMethod",
+    receiver="object: &(dyn std::any::Any + Send + Sync)",
+    instance="cs_runner::shared_instance",
+    entry="Concurrent",
+)
+
+
+def _target_items(signature: Signature, module: str, kind: ProblemKind) -> tuple[list[str], str]:
     """The bridge functions of one target and its `Entry`."""
     if isinstance(signature, FunctionSignature):
         name = member_name(signature.name, Language.RUST, NameRole.FUNCTION)
@@ -193,20 +232,21 @@ def _target_items(signature: Signature, module: str) -> tuple[list[str], str]:
             "",
         ]
         return items, f"cs_runner::Entry::Function({module}_call)"
-    return _class_items(signature, module)
+    form = _SHARED if kind is ProblemKind.CONCURRENT else _OWNED
+    return _class_items(signature, module, form)
 
 
-def _class_items(signature: ClassSignature, module: str) -> tuple[list[str], str]:
+def _class_items(signature: ClassSignature, module: str, form: _ClassForm) -> tuple[list[str], str]:
     class_type = f"{module}::{signature.name}"
     constructor = _decoding(signature.constructor_params, None, signature.name)
     construct = [
         f"fn {module}_construct(args: &cs_runner::Args) -> "
-        "Result<cs_runner::Construct, cs_runner::InputError> {",
+        f"Result<{form.construct}, cs_runner::InputError> {{",
         *constructor,
         f"{INDENT}Ok(Box::new(move || {{",
         f"{INDENT * 2}let instance: {class_type} = "
         f"{class_type}::new({_arguments(signature.constructor_params, None)});",
-        f"{INDENT * 2}cs_runner::object(instance)",
+        f"{INDENT * 2}{form.wrap}(instance)",
         f"{INDENT}}}))",
         "}",
         "",
@@ -218,15 +258,15 @@ def _class_items(signature: ClassSignature, module: str) -> tuple[list[str], str
         arms += [
             f"{INDENT * 2}{rust_string(method.name)} => {{",
             *(f"{INDENT * 2}{line}" for line in body.decoding),
-            f"{INDENT * 3}Ok(Box::new(move |object: &mut dyn std::any::Any| {{",
-            f"{INDENT * 4}let instance = cs_runner::instance::<{class_type}>(object);",
+            f"{INDENT * 3}Ok(Box::new(move |{form.receiver}| {{",
+            f"{INDENT * 4}let instance = {form.instance}::<{class_type}>(object);",
             *body.calling(INDENT * 4),
             f"{INDENT * 3}}}))",
             f"{INDENT * 2}}}",
         ]
     methods = [
         f"fn {module}_method(op: &str, args: &cs_runner::Args) -> "
-        "Result<cs_runner::Method, cs_runner::InputError> {",
+        f"Result<{form.method}, cs_runner::InputError> {{",
         f"{INDENT}match op {{",
         *arms,
         f"{INDENT * 2}_ => Err(cs_runner::InputError::unknown_op(op)),",
@@ -235,7 +275,8 @@ def _class_items(signature: ClassSignature, module: str) -> tuple[list[str], str
         "",
     ]
     entry = (
-        f"cs_runner::Entry::Class(cs_runner::Class {{ name: {rust_string(signature.name)}, "
+        f"cs_runner::Entry::{form.entry}(cs_runner::{form.entry} {{ "
+        f"name: {rust_string(signature.name)}, "
         f"construct: {module}_construct, method: {module}_method }})"
     )
     return [*construct, *methods], entry

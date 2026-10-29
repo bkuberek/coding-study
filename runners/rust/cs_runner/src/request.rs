@@ -6,6 +6,8 @@
 use crate::json::Json;
 
 pub const PROTOCOL_VERSION: i64 = 1;
+/// The only concurrency model Rust runs (docs/specs/problem-format.md#models-and-language-support).
+const THREADS_MODEL: &str = "threads";
 
 #[derive(Debug, PartialEq)]
 pub enum Mode {
@@ -18,6 +20,8 @@ pub enum Kind {
     Function,
     /// `design` and `progressive`: an operation sequence on one instance.
     Class,
+    /// Sequential cases like a class's, then stress runs whose workers share one instance.
+    Concurrent,
 }
 
 pub struct Request {
@@ -49,6 +53,27 @@ pub enum CallInput {
         ops: Vec<String>,
         args: Vec<Vec<Json>>,
     },
+    /// A stress run of a concurrent job, which the CLI expanded into literal worker scripts
+    /// (docs/specs/runners.md#concurrent-jobs).
+    Stress(Box<StressCase>),
+}
+
+pub struct StressCase {
+    pub seed: i64,
+    pub deadline_ms: u64,
+    pub yield_probability: f64,
+    pub max_yields: u64,
+    /// Starts with the constructor.
+    pub setup: Script,
+    pub workers: Vec<Script>,
+    pub final_script: Option<Script>,
+}
+
+/// Operation names and their argument lists, which may differ in length (a run error).
+#[derive(Clone)]
+pub struct Script {
+    pub ops: Vec<String>,
+    pub args: Vec<Vec<Json>>,
 }
 
 pub struct BenchJob {
@@ -139,9 +164,8 @@ fn parse_job(job: &Json, mode: &Mode) -> Result<Job, String> {
         Some("function") => Kind::Function,
         Some("design" | "progressive") => Kind::Class,
         Some("concurrent") => {
-            return Err(context(
-                "the rust runner does not run concurrent jobs yet".into(),
-            ))
+            check_concurrent(job, mode).map_err(context)?;
+            Kind::Concurrent
         }
         _ => {
             return Err(context(format!(
@@ -161,9 +185,15 @@ fn parse_job(job: &Json, mode: &Mode) -> Result<Job, String> {
         });
     }
     let target = compiled(job).map_err(context)?;
-    let cases = array(job, "cases")
+    let cases: Vec<Case> = array(job, "cases")
         .and_then(|cases| cases.iter().map(parse_case).collect())
         .map_err(context)?;
+    let stress = cases
+        .iter()
+        .any(|case| matches!(case.input, CallInput::Stress(_)));
+    if stress && kind != Kind::Concurrent {
+        return Err(context("only a concurrent job has stress cases".into()));
+    }
     Ok(Job {
         job_id,
         kind,
@@ -171,6 +201,20 @@ fn parse_job(job: &Json, mode: &Mode) -> Result<Job, String> {
         cases,
         bench: None,
     })
+}
+
+fn check_concurrent(job: &Json, mode: &Mode) -> Result<(), String> {
+    let model = job.get("model").and_then(Json::as_str);
+    if model != Some(THREADS_MODEL) {
+        return Err(format!(
+            "the rust runner runs the threads model only, not {}",
+            describe(job.get("model"))
+        ));
+    }
+    if *mode == Mode::Bench {
+        return Err("concurrent problems have no bench".into());
+    }
+    Ok(())
 }
 
 /// `target.compiled` of a job or a bench target.
@@ -189,7 +233,42 @@ fn parse_input(value: &Json) -> Result<CallInput, String> {
     if let Some(Json::Object(fields)) = value.get("input") {
         return Ok(CallInput::Named(fields.clone()));
     }
-    let ops = array(value, "ops").map_err(|_| "a case needs input or ops".to_string())?;
+    if let Some(stress) = value.get("stress") {
+        return parse_stress(stress).map(|stress| CallInput::Stress(Box::new(stress)));
+    }
+    array(value, "ops").map_err(|_| "a case needs input, ops or stress".to_string())?;
+    let Script { ops, args } = parse_script(value)?;
+    Ok(CallInput::Ops { ops, args })
+}
+
+fn parse_stress(stress: &Json) -> Result<StressCase, String> {
+    let perturb = stress.get("perturb").ok_or("missing perturb")?;
+    let setup = parse_script(stress.get("setup").ok_or("missing setup")?)?;
+    if setup.ops.is_empty() {
+        return Err("a stress case's setup needs the constructor".into());
+    }
+    Ok(StressCase {
+        seed: stress
+            .get("seed")
+            .and_then(Json::as_i64)
+            .ok_or("missing seed")?,
+        deadline_ms: count(stress, "deadline_ms")? as u64,
+        yield_probability: perturb
+            .get("yield_probability")
+            .and_then(Json::as_f64)
+            .ok_or("missing yield_probability")?,
+        max_yields: count(perturb, "max_yields")? as u64,
+        setup,
+        workers: array(stress, "workers")?
+            .iter()
+            .map(parse_script)
+            .collect::<Result<_, _>>()?,
+        final_script: stress.get("final").map(parse_script).transpose()?,
+    })
+}
+
+fn parse_script(value: &Json) -> Result<Script, String> {
+    let ops = array(value, "ops")?;
     let args = array(value, "args")?;
     let ops = ops
         .iter()
@@ -207,7 +286,7 @@ fn parse_input(value: &Json) -> Result<CallInput, String> {
                 .ok_or("args must be arrays")
         })
         .collect::<Result<_, _>>()?;
-    Ok(CallInput::Ops { ops, args })
+    Ok(Script { ops, args })
 }
 
 fn parse_bench(job: &Json) -> Result<BenchJob, String> {
@@ -314,13 +393,60 @@ mod tests {
         );
     }
 
+    const STRESS_CASE: &str = r#"{"id": "s1:thread:0", "stress": {"seed": 1000,
+        "deadline_ms": 5000, "perturb": {"yield_probability": 0.05, "max_yields": 3,
+        "python_granularity": "line"}, "setup": {"ops": ["Queue"], "args": [[4]]},
+        "workers": [{"ops": ["put", "@pause"], "args": [[1], [2]]}, {"ops": ["take"], "args": [[]]}],
+        "final": {"ops": ["size"], "args": [[]]}}}"#;
+
+    fn concurrent(model: &str, mode: &str, case: &str) -> String {
+        format!(
+            r#"{{"protocol": 1, "mode": "{mode}", "jobs": [{{"job_id": "q", "kind": "concurrent",
+            "model": "{model}", "target": {{"compiled": "user"}}, "cases": [{case}],
+            "targets": [{{"target_id": "user", "target": {{"compiled": "user"}}}}], "inputs": [],
+            "settings": {{}}}}]}}"#
+        )
+    }
+
     #[test]
-    fn rejects_unknown_protocols_modes_and_concurrent_jobs() {
+    fn reads_a_concurrent_job_with_stress_cases() {
+        let request = parse_request(&concurrent("threads", "test", STRESS_CASE));
+        assert!(request.is_ok(), "{:?}", request.err());
+        let job = &request.unwrap().jobs[0];
+        assert_eq!(job.kind, Kind::Concurrent);
+        let CallInput::Stress(stress) = &job.cases[0].input else {
+            panic!("expected a stress case");
+        };
+        assert_eq!(
+            (stress.seed, stress.deadline_ms, stress.max_yields),
+            (1000, 5000, 3)
+        );
+        assert_eq!(stress.setup.ops, ["Queue"]);
+        assert_eq!(stress.workers[0].ops, ["put", "@pause"]);
+        assert_eq!(
+            stress.final_script.as_ref().map(|script| script.ops.len()),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn rejects_the_async_model_a_concurrent_bench_and_stray_stress_cases() {
+        let errors = [
+            parse_request(&concurrent("async", "test", STRESS_CASE)),
+            parse_request(&concurrent("threads", "bench", STRESS_CASE)),
+            parse_request(
+                &concurrent("threads", "test", STRESS_CASE).replace("concurrent", "design"),
+            ),
+        ]
+        .map(|request| request.err().unwrap_or_default());
+        assert!(errors[0].contains("threads model only"), "{}", errors[0]);
+        assert!(errors[1].contains("no bench"), "{}", errors[1]);
+        assert!(errors[2].contains("only a concurrent job"), "{}", errors[2]);
+    }
+
+    #[test]
+    fn rejects_unknown_protocols_and_modes() {
         assert!(parse_request(r#"{"protocol": 2, "mode": "test", "jobs": []}"#).is_err());
         assert!(parse_request(r#"{"protocol": 1, "mode": "debug", "jobs": []}"#).is_err());
-        let concurrent = r#"{"protocol": 1, "mode": "test", "jobs": [{"job_id": "q",
-            "kind": "concurrent", "target": {"compiled": "user"}, "cases": []}]}"#;
-        let error = parse_request(concurrent).err().unwrap_or_default();
-        assert!(error.contains("concurrent jobs"), "{error}");
     }
 }

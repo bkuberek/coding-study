@@ -439,7 +439,7 @@ A concurrent problem (`kind: concurrent`, `track: concurrency`) is a class whose
 | Python | `threads` or `async`, one per problem | `thread` or `async` | CPython 3.13 with the GIL; which races a test can observe: [below](#observable-races-in-python) |
 | TypeScript | `async` only | `async` | Node 24, one event loop; `worker_threads` is not supported (objects cannot be shared between isolates, only `SharedArrayBuffer`). Synchronous methods are atomic, so a problem whose race needs shared-memory threads omits `typescript` from `languages` |
 | Go | `threads` only | `thread` | Goroutines released by a start gate, in parallel on up to `GOMAXPROCS` threads; `sync` primitives, channels and atomics. A data race is observable without injected yields, but a concurrent map write is a fatal runtime error (a crash), so broken references race on other state |
-| Rust (planned) | `threads` only | `thread` | `std::thread` workers over a shared `Arc<T>` (`T: Send + Sync`); a broken reference is a logic race, since safe Rust has no data races. No runner yet |
+| Rust | `threads` only | `thread` | `std::thread` workers over a shared `Arc<T>` (`T: Send + Sync`); `Mutex`, `Condvar`, `RwLock` and atomics. A broken reference is a logic race, since safe Rust has no data races: check-then-act across two lock acquisitions, `if` instead of `while` around `Condvar::wait`, a lock-order deadlock, or a separate atomic load and store |
 
 `concurrency.model` must give every language in `languages` a model from this table; anything else is a content error.
 

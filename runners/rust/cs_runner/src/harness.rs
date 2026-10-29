@@ -1,5 +1,6 @@
 //! Test mode (docs/specs/runners.md#event-stream): runs each job's cases against the targets the
-//! bridge registered, plus the panic handling bench mode shares.
+//! bridge registered, plus the panic handling bench mode shares. A concurrent job's stress runs
+//! go to the `stress` module.
 //!
 //! A panic in user code is caught per call. The panic hook replaces the default one, which would
 //! print to standard error, and keeps the message, the location and a backtrace, whose frames in
@@ -17,7 +18,8 @@ use crate::capture;
 use crate::events::{Events, Outcome, Status, UserError};
 use crate::json::Json;
 use crate::request::{CallInput, Job, Kind};
-use crate::{Args, Class, Entry, Target};
+use crate::stress;
+use crate::{Args, Class, Concurrent, Construct, Entry, InputError, Instance, Method, Target};
 
 /// A panic outside user code: the runner itself failed.
 pub const EXIT_INTERNAL_ERROR: i32 = 70;
@@ -196,7 +198,9 @@ pub fn bind<'a>(targets: &'a [Target], id: &str, kind: Kind) -> Result<&'a Targe
             },
             _,
         ) => Err(UserError::new(error_type, *message)),
-        (Entry::Function(_), Kind::Function) | (Entry::Class(_), Kind::Class) => Ok(target),
+        (Entry::Function(_), Kind::Function)
+        | (Entry::Class(_), Kind::Class)
+        | (Entry::Concurrent(_), Kind::Concurrent) => Ok(target),
         _ => Err(UserError::new(
             "LoadError",
             format!("target \"{id}\" was built for another kind of problem"),
@@ -204,7 +208,9 @@ pub fn bind<'a>(targets: &'a [Target], id: &str, kind: Kind) -> Result<&'a Targe
     }
 }
 
-pub fn run_test_jobs(targets: &[Target], jobs: &[Job], events: &mut Events) {
+/// Runs every job; false right after a stress run that left worker threads running and asked
+/// for a restart, in which case the runner exits without `bye`.
+pub fn run_test_jobs(targets: &[Target], jobs: &[Job], events: &mut Events) -> bool {
     for job in jobs {
         events.job_start(&job.job_id);
         match bind(targets, &job.target, job.kind) {
@@ -212,12 +218,28 @@ pub fn run_test_jobs(targets: &[Target], jobs: &[Job], events: &mut Events) {
             Ok(target) => {
                 for case in &job.cases {
                     events.case_start(&job.job_id, &case.id);
-                    events.case_result(&job.job_id, &case.id, run_case(target, &case.input));
+                    let CallInput::Stress(stress) = &case.input else {
+                        events.case_result(&job.job_id, &case.id, run_case(target, &case.input));
+                        continue;
+                    };
+                    let Entry::Concurrent(class) = &target.entry else {
+                        unreachable!("bind gives a concurrent job, the only one with stress cases, a concurrent target")
+                    };
+                    let (outcome, workers) = stress::run(target.file, class, stress);
+                    events.case_result(&job.job_id, &case.id, outcome);
+                    let running = workers.still_running();
+                    if running > 0 {
+                        let reason =
+                            format!("{running} worker threads still running after {}", case.id);
+                        events.restart_requested(&reason);
+                        return false;
+                    }
                 }
             }
         }
         events.job_end(&job.job_id);
     }
+    true
 }
 
 /// One case as `cstudy test` runs it, capturing what the code prints. Bench check calls run the
@@ -241,6 +263,9 @@ pub fn run_case(target: &Target, input: &CallInput) -> Outcome {
         (Entry::Class(class), CallInput::Ops { ops, args }) => {
             Operations::new(target.file, class).run(ops, args)
         }
+        (Entry::Concurrent(class), CallInput::Ops { ops, args }) => {
+            Operations::new(target.file, class).run(ops, args)
+        }
         (Entry::Function(_), CallInput::Ops { .. }) => Outcome::raised(
             UserError::invalid_input("a function job takes arguments, not an operation sequence"),
             0,
@@ -254,16 +279,60 @@ pub fn run_case(target: &Target, input: &CallInput) -> Outcome {
     outcome
 }
 
+/// The constructor and the methods of a class kind, as a sequential case calls them.
+trait Methods {
+    fn name(&self) -> &str;
+    fn construct(&self, args: &Args) -> Result<Construct, InputError>;
+    fn method(&self, op: &str, args: &Args) -> Result<Method, InputError>;
+}
+
+impl Methods for Class {
+    fn name(&self) -> &str {
+        self.name
+    }
+
+    fn construct(&self, args: &Args) -> Result<Construct, InputError> {
+        (self.construct)(args)
+    }
+
+    fn method(&self, op: &str, args: &Args) -> Result<Method, InputError> {
+        (self.method)(op, args)
+    }
+}
+
+/// A sequential case of a concurrent job runs on one thread, on the same shared instance a stress
+/// run's workers would use.
+impl Methods for Concurrent {
+    fn name(&self) -> &str {
+        self.name
+    }
+
+    fn construct(&self, args: &Args) -> Result<Construct, InputError> {
+        let make = (self.construct)(args)?;
+        Ok(Box::new(move || crate::object(make())))
+    }
+
+    fn method(&self, op: &str, args: &Args) -> Result<Method, InputError> {
+        let call = (self.method)(op, args)?;
+        Ok(Box::new(move |object: &mut dyn Any| {
+            let shared = object
+                .downcast_ref::<Instance>()
+                .expect("the constructor created the shared instance");
+            call(&**shared)
+        }))
+    }
+}
+
 /// One case of a class kind: the constructor, then each operation on the new instance.
 struct Operations<'a> {
     file: &'a str,
-    class: &'a Class,
+    class: &'a dyn Methods,
     outputs: Vec<Json>,
     duration: u64,
 }
 
 impl<'a> Operations<'a> {
-    fn new(file: &'a str, class: &'a Class) -> Self {
+    fn new(file: &'a str, class: &'a dyn Methods) -> Self {
         Operations {
             file,
             class,
@@ -281,14 +350,17 @@ impl<'a> Operations<'a> {
             let message = "a class job takes an operation sequence, not arguments";
             return self.failed(CONSTRUCTOR_OP, UserError::invalid_input(message));
         };
-        if first != self.class.name {
+        if first != self.class.name() {
             let message = format!(
                 "operation 0 must be \"{}\", got \"{first}\"",
-                self.class.name
+                self.class.name()
             );
             return self.failed(CONSTRUCTOR_OP, UserError::invalid_input(message));
         }
-        let make = match (self.class.construct)(&Args::Positional(&args[CONSTRUCTOR_OP])) {
+        let make = match self
+            .class
+            .construct(&Args::Positional(&args[CONSTRUCTOR_OP]))
+        {
             Ok(make) => make,
             Err(error) => return self.failed(CONSTRUCTOR_OP, UserError::invalid_input(error.0)),
         };
@@ -300,7 +372,7 @@ impl<'a> Operations<'a> {
         };
         self.outputs.push(Json::Null);
         for (index, (op, arguments)) in ops.iter().zip(args).enumerate().skip(1) {
-            let call = match (self.class.method)(op, &Args::Positional(arguments)) {
+            let call = match self.class.method(op, &Args::Positional(arguments)) {
                 Ok(call) => call,
                 Err(error) if error == crate::InputError::unknown_op(op) => {
                     let message = format!("unknown operation \"{op}\" at index {index}");
@@ -333,6 +405,7 @@ impl<'a> Operations<'a> {
             },
             duration_ns: self.duration,
             stdout: String::new(),
+            stress: Vec::new(),
         }
     }
 }

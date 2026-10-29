@@ -5,6 +5,7 @@ import yaml
 
 from coding_study.adapters.languages.rust.bridge import (
     LIST_IDENTITY,
+    SHARED_NODES_REASON,
     BridgeTarget,
     Unavailable,
     bridge_source,
@@ -12,6 +13,7 @@ from coding_study.adapters.languages.rust.bridge import (
     unsupported_reason,
 )
 from coding_study.adapters.problem_documents import meta_from_document
+from coding_study.domain.problem import ProblemKind, ProblemMeta
 from coding_study.domain.signature import Signature
 from tests.helpers import REPOSITORY_ROOT
 from tests.stub_contract import STUB_CASES
@@ -21,8 +23,12 @@ REFERENCE = BridgeTarget("ref/hash-map", "ref_hash_map", Path("/ws/.cs/build/rus
 CONFORMANCE = REPOSITORY_ROOT / "runners" / "conformance"
 
 
+def stub_meta(case_name: str) -> ProblemMeta:
+    return next(case.meta for case in STUB_CASES if case.name == case_name)
+
+
 def stub_signature(case_name: str) -> Signature:
-    return next(case.meta for case in STUB_CASES if case.name == case_name).signature
+    return stub_meta(case_name).signature
 
 
 def fixture_signature(directory: str) -> Signature:
@@ -30,8 +36,10 @@ def fixture_signature(directory: str) -> Signature:
     return meta_from_document(document, "meta.yaml").signature
 
 
-def text(signature: Signature, *targets: BridgeTarget) -> str:
-    return bridge_source(signature, targets or (USER,)).text
+def text(
+    signature: Signature, *targets: BridgeTarget, kind: ProblemKind = ProblemKind.DESIGN
+) -> str:
+    return bridge_source(signature, targets or (USER,), kind=kind).text
 
 
 def test_brings_each_target_in_as_a_path_module():
@@ -53,6 +61,20 @@ def test_a_class_constructs_with_new_and_matches_each_operation():
     assert '        "put" => {\n            args.count(2, "put")?;\n' in bridge
     assert "let output: () = instance.put(arg_key, arg_value);" in bridge
     assert "_ => Err(cs_runner::InputError::unknown_op(op))," in bridge
+
+
+def test_a_concurrent_class_is_shared_with_the_worker_threads():
+    meta = stub_meta("bounded-blocking-queue")
+    bridge = text(meta.signature, kind=meta.kind)
+    assert "Result<cs_runner::SharedConstruct, cs_runner::InputError> {" in bridge
+    assert "        cs_runner::shared(instance)\n" in bridge
+    assert "Ok(Box::new(move |object: &(dyn std::any::Any + Send + Sync)| {" in bridge
+    assert "cs_runner::shared_instance::<user::BoundedBlockingQueue>(object);" in bridge
+    assert "let output: i32 = instance.take();" in bridge
+    assert (
+        'cs_runner::Entry::Concurrent(cs_runner::Concurrent { name: "BoundedBlockingQueue",'
+        in bridge
+    )
 
 
 def test_method_names_are_snake_case_and_operations_canonical():
@@ -85,13 +107,21 @@ def test_no_alias_with_takes_the_addresses_first_and_retains_freed_memory():
 
 def test_identity_on_list_nodes_is_unsupported():
     signature = fixture_signature("9010-conformance-ref-of-list")
-    assert unsupported_reason(signature) == LIST_IDENTITY
+    assert unsupported_reason(signature, ProblemKind.DESIGN) == LIST_IDENTITY
     assert 'error_type: "UnsupportedType"' in text(signature)
 
 
 def test_decimal_and_date_are_unsupported_yet():
-    reason = unsupported_reason(stub_signature("conformance-decimal-date-types"))
+    reason = unsupported_reason(
+        stub_signature("conformance-decimal-date-types"), ProblemKind.DESIGN
+    )
     assert reason == "rust does not support decimal and date yet"
+
+
+def test_node_types_are_unsupported_in_concurrent_problems():
+    signature = stub_signature("conformance-types")
+    assert unsupported_reason(signature, ProblemKind.DESIGN) is None
+    assert unsupported_reason(signature, ProblemKind.CONCURRENT) == SHARED_NODES_REASON
 
 
 def test_an_unavailable_target_keeps_its_module_but_has_no_call():
@@ -107,7 +137,7 @@ def test_a_target_without_its_module_leaves_it_out():
 
 
 def test_owners_map_each_target_line_to_its_target():
-    bridge = bridge_source(stub_signature("two-sum"), (USER, REFERENCE))
+    bridge = bridge_source(stub_signature("two-sum"), (USER, REFERENCE), kind=ProblemKind.FUNCTION)
     lines = bridge.text.splitlines()
     call = next(n for n, line in enumerate(lines, 1) if "ref_hash_map::two_sum(" in line)
     module = next(n for n, line in enumerate(lines, 1) if line == "mod user;")

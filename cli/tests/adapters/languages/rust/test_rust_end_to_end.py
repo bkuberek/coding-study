@@ -16,11 +16,21 @@ from coding_study.adapters.languages.rust import create_runner
 from coding_study.adapters.runner_runtime import RUNTIME_RUNNERS
 from coding_study.adapters.subprocess_runner import SubprocessRunner
 from coding_study.application.ports import BuildFailed, Prepared, PrepareResult, UserCode
-from coding_study.domain.cases import FunctionInput
+from coding_study.domain.cases import FunctionInput, OperationSequence
+from coding_study.domain.concurrency import ConcurrencyModel, Perturbation
 from coding_study.domain.layout import stub_path, user_target
 from coding_study.domain.naming import symbol_names
 from coding_study.domain.problem import Language, ProblemMeta
-from coding_study.domain.runs import JobReport, Raised, Returned, RunCase, RunJob, RunRequest
+from coding_study.domain.runs import (
+    JobReport,
+    Raised,
+    Returned,
+    RunCase,
+    RunJob,
+    RunRequest,
+    StressCompleted,
+    StressRun,
+)
 from tests.stub_contract import STUB_CASES
 from tests.workspaces import workspace_like
 
@@ -60,6 +70,82 @@ split-debuginfo = "packed"
 """
 OVERFLOW = HASH_MAP.replace("(target - n)", "(target + n * 1_000_000)")
 BIG = RunCase("big", FunctionInput({"nums": [5000, 1], "target": 2_147_000_000}), 10_000)
+QUEUE = next(case.meta for case in STUB_CASES if case.name == "bounded-blocking-queue")
+MONITOR = """use std::collections::VecDeque;
+use std::sync::{Condvar, Mutex};
+
+pub struct BoundedBlockingQueue {
+    capacity: usize,
+    values: Mutex<VecDeque<i32>>,
+    changed: Condvar,
+}
+
+impl BoundedBlockingQueue {
+    pub fn new(capacity: i32) -> Self {
+        BoundedBlockingQueue {
+            capacity: capacity as usize,
+            values: Mutex::new(VecDeque::new()),
+            changed: Condvar::new(),
+        }
+    }
+
+    pub fn put(&self, value: i32) {
+        let mut values = self.changed.wait_while(self.values.lock().unwrap(), |values| {
+            values.len() == self.capacity
+        }).unwrap();
+        values.push_back(value);
+        self.changed.notify_all();
+    }
+
+    pub fn take(&self) -> i32 {
+        let mut values = self.changed.wait_while(self.values.lock().unwrap(), |values| {
+            values.is_empty()
+        }).unwrap();
+        let value = values.pop_front().unwrap();
+        self.changed.notify_all();
+        value
+    }
+
+    pub fn size(&self) -> i32 {
+        self.values.lock().unwrap().len() as i32
+    }
+}
+"""
+NOT_THREAD_SAFE = """use std::cell::RefCell;
+use std::collections::VecDeque;
+
+pub struct BoundedBlockingQueue {
+    values: RefCell<VecDeque<i32>>,
+}
+
+impl BoundedBlockingQueue {
+    pub fn new(capacity: i32) -> Self {
+        BoundedBlockingQueue { values: RefCell::new(VecDeque::new()) }
+    }
+
+    pub fn put(&self, value: i32) {
+        self.values.borrow_mut().push_back(value);
+    }
+
+    pub fn take(&self) -> i32 {
+        self.values.borrow_mut().pop_front().unwrap()
+    }
+
+    pub fn size(&self) -> i32 {
+        self.values.borrow().len() as i32
+    }
+}
+"""
+PUTS = OperationSequence(("put",) * 100, tuple((value,) for value in range(100)))
+TAKES = OperationSequence(("take",) * 100, ((),) * 100)
+STRESS = StressRun(
+    seed=1,
+    deadline_ms=5000,
+    perturb=Perturbation(),
+    setup=OperationSequence(("BoundedBlockingQueue",), ((2,),)),
+    workers=(PUTS, TAKES),
+    final=OperationSequence(("size",), ((),)),
+)
 
 
 @pytest.fixture
@@ -78,18 +164,21 @@ def prepare(root: Path, meta: ProblemMeta = TWO_SUM) -> PrepareResult:
     return runner.prepare(UserCode(meta), lambda _: None)
 
 
-def run(root: Path, result: PrepareResult, case: RunCase = CASE) -> JobReport:
+def run(
+    root: Path, result: PrepareResult, case: RunCase = CASE, meta: ProblemMeta = TWO_SUM
+) -> JobReport:
     assert isinstance(result, Prepared), result
     job = RunJob(
-        job_id=TWO_SUM.slug,
-        kind=TWO_SUM.kind,
-        target=user_target(TWO_SUM, Language.RUST, str(root)),
-        names=symbol_names(TWO_SUM.signature, Language.RUST),
-        signature=TWO_SUM.signature,
+        job_id=meta.slug,
+        kind=meta.kind,
+        target=user_target(meta, Language.RUST, str(root)),
+        names=symbol_names(meta.signature, Language.RUST),
+        signature=meta.signature,
         cases=(case,),
+        model=ConcurrencyModel.THREADS if meta.concurrency is not None else None,
     )
     report = SubprocessRunner(root / ".cs" / "runs").run(result.launch, RunRequest((job,)))
-    return report.job(TWO_SUM.slug)
+    return report.job(meta.slug)
 
 
 def test_the_users_function_runs_and_returns(root):
@@ -161,3 +250,19 @@ def test_concurrent_builds_each_run_their_own_binary(root):
     binaries = {result.launch.command[0] for result in results if isinstance(result, Prepared)}
     assert len(binaries) == 3
     assert all(isinstance(run(root, result).cases[0].outcome, Returned) for result in results)
+
+
+def test_a_concurrent_class_is_shared_by_the_worker_threads(root):
+    write_solution(root, MONITOR, QUEUE)
+    (case,) = run(root, prepare(root, QUEUE), RunCase("s1", STRESS, 10_000), QUEUE).cases
+    assert isinstance(case.outcome, StressCompleted), case.outcome
+    assert case.outcome.workers[1] == tuple(range(100))
+    assert case.outcome.final == (0,)
+
+
+def test_a_class_that_threads_cannot_share_is_a_load_error(root):
+    write_solution(root, NOT_THREAD_SAFE, QUEUE)
+    load_error = run(root, prepare(root, QUEUE), RunCase("s1", STRESS, 10_000), QUEUE).load_error
+    assert load_error is not None
+    assert load_error.type == "SignatureMismatch"
+    assert "cannot be shared between threads safely" in load_error.message, load_error

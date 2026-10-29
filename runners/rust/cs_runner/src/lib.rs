@@ -26,7 +26,12 @@
 //! }
 //! ```
 //!
-//! Exit codes: 0 once `bye` is written; 2 for a request that cannot be run.
+//! A concurrent problem's class is shared by the worker threads of its stress runs, so its
+//! bridge registers an [`Entry::Concurrent`]: methods take `&self`, every decoded call is `Send`,
+//! and [`shared`] requires the class to be `Send + Sync`.
+//!
+//! Exit codes: 0 once `bye` is written; 2 for a request that cannot be run; 3 after
+//! `restart_requested`.
 
 mod alloc;
 mod bench;
@@ -38,11 +43,13 @@ mod harness;
 pub mod json;
 mod nodes;
 mod request;
+mod stress;
 
 use std::any::Any;
 use std::cell::RefCell;
 use std::fs::File;
 use std::rc::Rc;
+use std::sync::Arc;
 
 pub use alloc::retaining;
 pub use codec::{Decode, Encode};
@@ -56,6 +63,8 @@ const CASE_STACK_BYTES: usize = 256 * 1024 * 1024;
 const CASE_THREAD: &str = "cs-runner-cases";
 const EXIT_COMPLETED: i32 = 0;
 const EXIT_BAD_REQUEST: i32 = 2;
+/// After `restart_requested`: a stress run left worker threads running.
+const EXIT_RESTART: i32 = 3;
 
 /// A case input that does not fit the declared parameters (error type `InvalidInput`).
 #[derive(Debug, PartialEq)]
@@ -87,9 +96,28 @@ pub struct Class {
     pub method: fn(&str, &Args) -> Result<Method, InputError>,
 }
 
+/// The instance of a concurrent class, which the worker threads share.
+pub type Instance = Arc<dyn Any + Send + Sync>;
+
+/// Creates the shared instance of a concurrent class.
+pub type SharedConstruct = Box<dyn FnOnce() -> Instance + Send>;
+
+/// One method call on a concurrent class's instance, on whichever thread runs it.
+pub type SharedMethod = Box<dyn FnOnce(&(dyn Any + Send + Sync)) -> Box<dyn Encode> + Send>;
+
+/// A concurrent class (docs/specs/runners.md#concurrent-jobs): its sequential cases run like a
+/// class's, its stress runs call the methods of one instance from several threads.
+pub struct Concurrent {
+    pub name: &'static str,
+    pub construct: fn(&Args) -> Result<SharedConstruct, InputError>,
+    /// A `match` on the operation name; [`InputError::unknown_op`] for any other name.
+    pub method: fn(&str, &Args) -> Result<SharedMethod, InputError>,
+}
+
 pub enum Entry {
     Function(Function),
     Class(Class),
+    Concurrent(Concurrent),
     /// A target that cannot run: its bridge code did not compile (a missing symbol, another
     /// signature) or it uses a type Rust does not support yet. The CLI built the binary without
     /// it, and each of its jobs gets this `load_error`.
@@ -186,6 +214,19 @@ pub fn instance<T: 'static>(object: &mut dyn Any) -> &mut T {
         .expect("the bridge calls methods on the instance its constructor created")
 }
 
+/// Shares a new instance of a concurrent class with the worker threads. The bound is where the
+/// compiler checks thread safety: a class with a `RefCell` or `Rc` field fails to build here.
+pub fn shared<T: Send + Sync + 'static>(instance: T) -> Instance {
+    Arc::new(instance)
+}
+
+/// The shared instance a method runs on, as the type the bridge's constructor created.
+pub fn shared_instance<T: 'static>(object: &(dyn Any + Send + Sync)) -> &T {
+    object
+        .downcast_ref::<T>()
+        .expect("the bridge calls methods on the instance its constructor created")
+}
+
 /// The runner's entry point: `--request R --out O`.
 pub fn main(targets: &'static [Target]) -> ! {
     std::process::exit(run(targets))
@@ -222,14 +263,21 @@ fn run(targets: &'static [Target]) -> i32 {
         .name(CASE_THREAD.into())
         .stack_size(CASE_STACK_BYTES)
         .spawn(move || {
-            match request.mode {
+            let completed = match request.mode {
                 request::Mode::Test => harness::run_test_jobs(targets, &request.jobs, &mut events),
-                request::Mode::Bench => bench::run_bench_jobs(targets, &request.jobs, &mut events),
+                request::Mode::Bench => {
+                    bench::run_bench_jobs(targets, &request.jobs, &mut events);
+                    true
+                }
+            };
+            if completed {
+                events.bye();
             }
-            events.bye();
+            completed
         });
     match cases.map(std::thread::JoinHandle::join) {
-        Ok(Ok(())) => EXIT_COMPLETED,
+        Ok(Ok(true)) => EXIT_COMPLETED,
+        Ok(Ok(false)) => EXIT_RESTART,
         Ok(Err(panic)) => {
             eprintln!(
                 "cs-rust-runner: internal error: {}",

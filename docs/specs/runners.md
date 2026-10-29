@@ -62,14 +62,14 @@ The lock and the copy protect against other `cstudy` processes. A Gradle build s
 |------|------|
 | Toolchain | Rust 1.80 or newer through rustup (`cargo` and `rustc` on PATH). The runner crates use the standard library only, so builds run with `--offline`, and without `--locked`, which fails whenever a harness package joins the workspace. The host target triple comes from `rustc -vV` once and is kept in `.cs/build/rust/host-target` |
 | Build workspace | `.cs/build/rust` is a Cargo workspace with one harness package per problem and scope (`test/<snake_slug>`, `verify/<snake_slug>`, `bench/<snake_slug>`, package `<scope>_<snake_slug>`), listed one by one because Cargo reads a glob that matches nothing as a path. Each package depends on `cs_runner` and `cs_support` in `.cs/runtime/runners/rust` by relative path; `CARGO_TARGET_DIR=.cs/build/rust/target` is shared, so the runner crates compile once per workspace |
-| Bridge | Each package's `main.rs` is generated from the signature. The user's file and each reference copy enter as `#[path = "<absolute file>"] mod user;` and `mod ref_<approach_snake>;`, so compiler errors, panics and breakpoints name the real file. Per target, the bridge decodes every argument with its declared Rust type, calls the function (`user::two_sum(arg_nums, arg_target)`), or for a class kind `LRUCache::new` and a `match` on the operation's canonical name, and boxes the result for encoding. Modifiers are generated too: a `ref_of` argument is looked up after the argument it points into, and `as: index` and `no_alias_with` take the parameter's node addresses before the call, which runs with freed memory retained so no new node can reuse an old node's address ([Node modifiers](#node-modifiers)) |
+| Bridge | Each package's `main.rs` is generated from the signature. The user's file and each reference copy enter as `#[path = "<absolute file>"] mod user;` and `mod ref_<approach_snake>;`, so compiler errors, panics and breakpoints name the real file. Per target, the bridge decodes every argument with its declared Rust type, calls the function (`user::two_sum(arg_nums, arg_target)`), or for a class kind `LRUCache::new` and a `match` on the operation's canonical name, and boxes the result for encoding. A concurrent class is registered as `Entry::Concurrent`: its constructor hands the instance to `cs_runner::shared`, which requires `Send + Sync` (a `RefCell` or `Rc` field is a `load_error` `SignatureMismatch` such as `` `RefCell<VecDeque<i32>>` cannot be shared between threads safely ``), and every decoded call is `Send`, so a concurrent problem with node types cannot run in Rust (`load_error` `UnsupportedType`). Modifiers are generated too: a `ref_of` argument is looked up after the argument it points into, and `as: index` and `no_alias_with` take the parameter's node addresses before the call, which runs with freed memory retained so no new node can reuse an old node's address ([Node modifiers](#node-modifiers)) |
 | Release profile | `opt-level = 3`, `overflow-checks = true`, `debug = "line-tables-only"`, `panic = "unwind"`, `strip = "none"` and the platform's default `split-debuginfo` (`"unpacked"` on macOS, `"off"` on Linux), in the workspace manifest and again as `--config profile.release.*`, which outranks a user's `config.toml`: `--perf` numbers are real, an `i32` overflow panics instead of wrapping, traces have line numbers and function names, and a panic is caught per case |
 | The user's Cargo setup | Cannot break or redirect a build: `CARGO_ENCODED_RUSTFLAGS` is set empty (it outranks `RUSTFLAGS` and every `rustflags` setting), `RUSTC_WRAPPER` and `RUSTC_WORKSPACE_WRAPPER` are set empty (which turns off a configured wrapper such as sccache), `--target <host>` overrides a configured `build.target`, and the user's `RUSTFLAGS`, `CARGO_TARGET_DIR`, `CARGO_BUILD_*` and `CARGO_PROFILE_*` variables are removed |
 | Compile errors | Classified by the primary span of each error-level compiler message only: a call whose signature does not match also gets a child note "function defined here" in the user's file. Errors in the user's or a reference file: exit 2 with `path:line:column: error[<code>]: <message>`, the span's label and up to two `help` or `note` lines (one that suggests a replacement first), paths relative to the workspace (at most 40 lines); in a bench, a reference's are a content error. Errors only in the bridge: the build runs again with those targets marked unavailable, keeping their `mod` so a hidden error in their file still fails the build, and the runner reports `load_error` with the compiler's message in the user's terms. `SymbolNotFound` keeps only the compiler's suggestions when it has any: ``cannot find function `two_sum` in `two_sum.rs`; a function with a similar name exists: `twosum` ``, ``no method named `get` found for mutable reference `&mut LRUCache` in the current scope; there is a method `gett` with a similar name``, ``function `two_sum` is private; declare it pub``. `SignatureMismatch`: ``mismatched types: parameter `nums` is `&[i32]`, the signature declares `Vec<i32>` ``, ``mismatched types: the result is `Vec<usize>`, the signature declares `Vec<i32>` ``. A failure with no compiler error, or errors in the runner crates, is an environment error (exit 4) with the output tail |
 | Concurrent `cstudy` processes, writes, cold start | As in Go: generation and build hold an exclusive `flock` on `.cs/build/rust/.cstudy.lock`, every run launches its own copy of the binary (`run/<pid>-<random>/<scope>_<snake_slug>`, removed when the run ends, as in Go), and generated files are rewritten only when their content changes (Cargo fingerprints sources by modification time, so rewriting identical bytes would rebuild). Before the first build of a workspace the CLI prints `compiling the Rust runner (first run)`; the build note is `rust, cold`, then `rust, warm` |
 | Debug build | `cstudy test --debug` builds with `--profile dev` instead of `--release`: `opt-level = 0`, `debug = true`, and the release profile's `overflow-checks`, `panic`, `strip` and `split-debuginfo`, pinned the same way (workspace manifest and `--config profile.dev.*`), so a debugger sees every line and variable. The first debug build compiles the runner crates again; before it the CLI prints `compiling the Rust runner for debugging (first debug run)` ([debug mode](#debug-mode)) |
 | Editor project | `rust/Cargo.toml` lists each started problem as an `[[example]]` with `crate-type = ["lib"]` ([layout](installation-and-workspaces.md#layout)); the build never reads it |
-| Not yet | `decimal` and `date` (`load_error` `UnsupportedType`), concurrent jobs (`hello` has no `stress` feature) |
+| Not yet | `decimal` and `date` (`load_error` `UnsupportedType`) |
 | Never | `ref_of` or `as: index` on a `ListNode` (`load_error` `UnsupportedType`) and cyclic list inputs (`InvalidInput`): an `Option<Box<ListNode>>` has one owner per node. [S13](authoring.md#static) keeps `rust` out of such problems |
 
 ## Request file
@@ -352,7 +352,7 @@ Every stress run is independent: fresh argument decoding, a fresh instance, fres
 | 5 | Each worker, per op: maybe yield ([Perturbation](#perturbation)); mark the op as in progress; call it (harness ops natively); encode the result immediately on the worker; record it |
 | 6 | The coordinator waits until every worker finished, one failed, or `deadline_ms` passed since the gate opened |
 | 7a | All finished: run `final` sequentially; status `ok` |
-| 7b | First worker failure (throw or unserializable result): stop waiting; JVM interrupts the other workers, async cancels them, Python threads and Go leave them; status `error` or `invalid_output` with `phase: "worker"`, `worker`, `op_index`, `progress` |
+| 7b | First worker failure (throw or unserializable result): stop waiting; JVM interrupts the other workers, async cancels them, Python threads, Go and Rust leave them; status `error` or `invalid_output` with `phase: "worker"`, `worker`, `op_index`, `progress` |
 | 7c | Deadline passed: status `stalled` with `progress`; the JVM interrupts the unfinished workers as in 7b |
 | 8 | Restore perturbation settings, stop capture, write `case_result` |
 | 9 | Threads model: if any worker thread (in Go, a worker goroutine) is still running 200 ms later, write `restart_requested` and exit 3 |
@@ -363,13 +363,14 @@ Details the procedure settles:
 
 | Item | Rule |
 |------|------|
-| After 7b or 7c | Every runtime sets a stop flag that workers check before each op, so a worker that is not stuck inside user code ends at its next op boundary. Python threads and goroutines cannot be stopped otherwise; TypeScript promises cannot be cancelled, so an unfinished worker's pending promise is abandoned |
+| After 7b or 7c | Every runtime sets a stop flag that workers check before each op, so a worker that is not stuck inside user code ends at its next op boundary. Python and Rust threads and goroutines cannot be stopped otherwise; TypeScript promises cannot be cancelled, so an unfinished worker's pending promise is abandoned |
 | Failures after the decision | The first failure wins; failures reported after the coordinator decided (for example an `InterruptedException` caused by the harness interrupt) are dropped |
 | `progress` | Lists every unfinished worker, the failing one included |
 | Decoding errors | An argument that does not decode fails the run before setup with `error` (type `InvalidInput`) in the phase that holds the op |
 | Python perturbation | The switch interval and monitoring apply from just before the workers start until they finished, failed or passed the deadline; setup and the final sequence run without them, and only worker threads draw yields |
 | JVM coordinator | Waits on one monitor for "all finished or one failed" with the remaining time, which is equivalent to joining each worker |
 | Go coordinator | Waits for a channel that is closed once every worker finished or the first one failed, or for a timer at the deadline. Each worker goroutine closes a channel of its own when it returns, however it returns, and step 9 waits for those |
+| Rust coordinator | Waits on a `Condvar` for "all finished or one failed" with the remaining time, like the JVM. Each worker thread counts itself as exited when it returns (a drop guard, so a panic counts too), and step 9 waits on the same `Condvar` for that count |
 | Python `async` | Leaves no threads, so it never asks for a restart; a task that suppresses cancellation is caught by the hang guard |
 
 ### Per-runtime execution
@@ -386,16 +387,16 @@ Details the procedure settles:
 
 The compiled runners run the `threads` model only, with one variant, `thread` ([ADR 0012](../decisions/0012-go-and-rust.md)):
 
-| Concern | Go |
-|---------|----|
-| Worker | One goroutine per worker; the scheduler runs them on up to `GOMAXPROCS` threads (the number of CPUs) |
-| Start gate | A `sync.WaitGroup` of `n` that each worker marks ready, then one channel that the coordinator closes |
-| Scheduler yield | `runtime.Gosched()` |
-| Injection inside user code | none: true parallelism |
-| Calls | Reflection as for class kinds, on the instance that setup created; a worker's panic is recovered in its own goroutine and reported like a case's |
-| Deadline | `select` on the "decided" channel and a timer at the gate's opening plus `deadline_ms` |
-| Per-worker PRNG | `math/rand/v2` PCG seeded with `(seed * 1_000_003 + ordinal, 0)` |
-| Stop | No goroutine can be stopped from outside: the stop flag ends a worker at its next op boundary, and one blocked or spinning in user code makes step 9 ask for a restart |
+| Concern | Go | Rust |
+|---------|----|------|
+| Worker | One goroutine per worker; the scheduler runs them on up to `GOMAXPROCS` threads (the number of CPUs) | `std::thread::Builder` named `cs-worker-<ordinal>` with a 16 MiB stack, each holding an `Arc` of the instance |
+| Start gate | A `sync.WaitGroup` of `n` that each worker marks ready, then one channel that the coordinator closes | `std::sync::Barrier` of `n + 1` |
+| Scheduler yield | `runtime.Gosched()` | `std::thread::yield_now()` |
+| Injection inside user code | none: true parallelism | none: true parallelism |
+| Calls | Reflection as for class kinds, on the instance that setup created; a worker's panic is recovered in its own goroutine and reported like a case's | The bridge's `&self` calls on the shared instance; a worker's panic is caught on its own thread, whose panic record holds the trace |
+| Deadline | `select` on the "decided" channel and a timer at the gate's opening plus `deadline_ms` | `Condvar::wait_timeout` with the remaining time |
+| Per-worker PRNG | `math/rand/v2` PCG seeded with `(seed * 1_000_003 + ordinal, 0)` | SplitMix64 seeded with `seed * 1_000_003 + ordinal` (wrapping) |
+| Stop | No goroutine can be stopped from outside: the stop flag ends a worker at its next op boundary, and one blocked or spinning in user code makes step 9 ask for a restart | The same for threads |
 
 Sequential cases of a concurrent job run exactly like class-kind cases; in the `async` model each runs in its own event loop and awaitable results are awaited. Synchronous code that never yields (an infinite loop in the `async` model, or a busy loop that the deadline cannot interrupt) is caught by the CLI hang guard as `timeout`.
 
@@ -408,6 +409,7 @@ The PRNG streams need not match across languages; they only make each runtime's 
 | JVM | With probability `yield_probability`, `1 + nextInt(max_yields)` calls of `Thread.yield()` | none (no agent, no bytecode rewriting) |
 | Python `threads` | Same rule with `time.sleep(0)` | See below |
 | Go | Same rule with `runtime.Gosched()` | none: true parallelism |
+| Rust | Same rule with `std::thread::yield_now()` | none: true parallelism |
 | `async` (Python, TypeScript) | Same rule with macrotask yields | none: a monitoring callback cannot await |
 
 Python `threads`, for the duration of each stress run only:
@@ -419,7 +421,7 @@ Python `threads`, for the duration of each stress run only:
 
 ### Harness ops
 
-Each run has its own probe sections, created on first use. A section holds `shared`, `exclusive`, `entries`, `violations` and `max_occupancy`, guarded by a `synchronized` monitor (JVM), a `threading.Lock` (Python threads) or a `sync.Mutex` (Go); the async runtimes need no lock.
+Each run has its own probe sections, created on first use. A section holds `shared`, `exclusive`, `entries`, `violations` and `max_occupancy`, guarded by a `synchronized` monitor (JVM), a `threading.Lock` (Python threads), a `sync.Mutex` (Go) or a `std::sync::Mutex` (Rust); the async runtimes need no lock.
 
 | Op | Behavior |
 |----|----------|
@@ -469,6 +471,7 @@ Broken references are materialized next to the approaches ([Reference materializ
 | TypeScript | `.cs/build/typescript/ref/<slug>/broken-<id>.ts` |
 | Java, Kotlin | `.cs/build/jvm/<lang>/src/main/<lang>/ref/<snake_slug>/broken_<id_snake>/<ClassName>.<ext>`, package `ref.<snake_slug>.broken_<id_snake>` |
 | Go | `.cs/build/go/ref/<snake_slug>/broken_<id_snake>/broken_<id_snake>.go`, a package of its own linked as target `ref/broken-<id>` |
+| Rust | `.cs/build/rust/ref/<snake_slug>/broken_<id_snake>.rs`, the `#[path]` module `ref_broken_<id_snake>` |
 
 ### Conformance fixtures (Phase 5)
 
@@ -516,6 +519,6 @@ For JVM bench the classpath joins the user's `practice.*` classes and the `ref.*
 
 ## Conformance suite
 
-`runners/conformance/` holds fixture problems in the normal problem format whose reference approaches are identity functions (return the argument unchanged) for every DSL type, plus fixtures for error paths: exception, `invalid_output`, missing symbol, hang, user printing to stdout, `ref_of`, `output_from`, `no_alias_with`, cyclic ListNode input, and decimal and date arithmetic (inputs that keep their scale, canonical outputs, rounding modes, days across leap years). `cstudy verify --conformance` runs each fixture in every language its `meta.yaml` lists and also compiles every generated stub; a runner that does not support a feature yet leaves the fixture's languages without it (Go lists 9001 to 9017 and 9019, Rust 9001 to 9013 except 9006 and 9010, which [S13](authoring.md#static) keeps out of Rust). It is a Phase 0 exit criterion and must pass before any runner change merges.
+`runners/conformance/` holds fixture problems in the normal problem format whose reference approaches are identity functions (return the argument unchanged) for every DSL type, plus fixtures for error paths: exception, `invalid_output`, missing symbol, hang, user printing to stdout, `ref_of`, `output_from`, `no_alias_with`, cyclic ListNode input, and decimal and date arithmetic (inputs that keep their scale, canonical outputs, rounding modes, days across leap years). `cstudy verify --conformance` runs each fixture in every language its `meta.yaml` lists and also compiles every generated stub; a runner that does not support a feature yet leaves the fixture's languages without it (Go lists 9001 to 9017 and 9019, Rust the same except 9006 and 9010, which [S13](authoring.md#static) keeps out of Rust). It is a Phase 0 exit criterion and must pass before any runner change merges.
 
 Fixtures live in `runners/conformance/<id>-<slug>/`; each language adds its reference files as `solutions/<approach>.<ext>`. `runners/conformance/expectations.json` (schema `schemas/conformance.schema.json`) gives the expected outcome per fixture and approach (`pass`, `error`, `invalid_output`, `timeout`, `load_error`) with per-case overrides, and `runners/conformance/README.md` states what every approach does in each language.

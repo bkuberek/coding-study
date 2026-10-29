@@ -226,7 +226,7 @@ class RustRunner:
         ]
         environment = {"CARGO_TARGET_DIR": str(self._build_directory / TARGET_DIRECTORY)}
         for _ in range(BUILD_PASSES):
-            bridge = bridge_source(build.meta.signature, targets)
+            bridge = bridge_source(build.meta.signature, targets, kind=build.meta.kind)
             self._write_package(build, package, bridge)
             outcome = self._toolchain.build(arguments, self._build_directory, environment)
             if outcome.exit_code == 0:

@@ -7,7 +7,7 @@ status: ready
 difficulty: easy
 track: concurrency
 kind: concurrent
-languages: [java, kotlin, python, go]
+languages: [java, kotlin, python, go, rust]
 signature:
   class:
     name: StressLeak

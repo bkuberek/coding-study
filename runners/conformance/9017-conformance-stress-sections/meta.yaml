@@ -7,7 +7,7 @@ status: ready
 difficulty: easy
 track: concurrency
 kind: concurrent
-languages: [java, kotlin, python, typescript, go]
+languages: [java, kotlin, python, typescript, go, rust]
 signature:
   class:
     name: StressMutex
@@ -17,7 +17,7 @@ signature:
       - {name: unlock, params: [], returns: {type: void}}
 comparator: {type: ops}
 concurrency:
-  model: {java: threads, kotlin: threads, python: threads, typescript: async, go: threads}
+  model: {java: threads, kotlin: threads, python: threads, typescript: async, go: threads, rust: threads}
   jvm_threads: [platform, virtual]
 approaches:
   - {id: locked, name: A real mutex, role: optimal, time: "O(1) per op", space: "O(n)"}

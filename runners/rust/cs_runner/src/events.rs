@@ -8,6 +8,8 @@ use crate::json::Json;
 use crate::request::PROTOCOL_VERSION;
 
 const RUNNER_NAME: &str = "rust";
+/// Tells the CLI that this runner runs concurrent jobs (docs/specs/runners.md#capability).
+const STRESS_FEATURE: &str = "stress";
 
 /// The `error` object of an event.
 #[derive(Clone, Debug, PartialEq)]
@@ -53,6 +55,8 @@ pub enum Status {
         op: Option<(usize, Vec<Json>)>,
     },
     InvalidOutput(String),
+    /// A stress run whose workers were unfinished at its deadline.
+    Stalled,
 }
 
 /// What one call sequence produced: a case, or a bench check call.
@@ -61,6 +65,9 @@ pub struct Outcome {
     pub status: Status,
     pub duration_ns: u64,
     pub stdout: String,
+    /// What a stress run adds after the status fields: the probe sections of a completed run, or
+    /// where a failed run failed and which workers had not finished.
+    pub stress: Vec<(&'static str, Json)>,
 }
 
 impl Outcome {
@@ -76,11 +83,16 @@ impl Outcome {
         Outcome::with(Status::InvalidOutput(reason), duration_ns)
     }
 
+    pub fn stalled(duration_ns: u64) -> Self {
+        Outcome::with(Status::Stalled, duration_ns)
+    }
+
     fn with(status: Status, duration_ns: u64) -> Self {
         Outcome {
             status,
             duration_ns,
             stdout: String::new(),
+            stress: Vec::new(),
         }
     }
 
@@ -104,7 +116,9 @@ impl Outcome {
                 fields.push(("status", text("invalid_output")));
                 fields.push(("reason", Json::String(reason)));
             }
+            Status::Stalled => fields.push(("status", text("stalled"))),
         }
+        fields.extend(self.stress);
         fields.push(("duration_ns", nanoseconds(self.duration_ns)));
         if !self.stdout.is_empty() {
             fields.push(("stdout", Json::String(self.stdout)));
@@ -180,6 +194,16 @@ impl Events {
             ("runner", text(RUNNER_NAME)),
             ("protocol", Json::Int(PROTOCOL_VERSION)),
             ("runtime", text(env!("CS_RUSTC_VERSION"))),
+            ("features", Json::Array(vec![text(STRESS_FEATURE)])),
+        ]);
+    }
+
+    /// Follows a stress run's `case_result` when its worker threads still run; the runner then
+    /// exits for a restart, without `bye`.
+    pub fn restart_requested(&mut self, reason: &str) {
+        self.emit(vec![
+            ("event", text("restart_requested")),
+            ("reason", text(reason)),
         ]);
     }
 
@@ -307,6 +331,7 @@ mod tests {
             },
             duration_ns: 5,
             stdout: String::new(),
+            stress: Vec::new(),
         };
         assert_eq!(
             line(outcome),
