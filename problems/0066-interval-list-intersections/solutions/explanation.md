@@ -81,6 +81,8 @@ Better than the two-pointer walk when `firstList` is short and `secondList` is l
 
 - Python and TypeScript: the search is written out; `bisect` would need a separate list of ends.
 - Kotlin: `val (secondStart, secondEnd) = secondList[partner]` destructures an `IntArray`.
+- Go: `sort.Search(n, pred)` returns the first index where `pred` holds, so the search runs over `secondList` itself with no separate list of ends; the loop that follows is a plain `for` with a post statement.
+- Rust: `partition_point` is the same search over the sorted `Vec`, and `second_list[partner..].iter().take_while(..)` walks the partners that start by `first_end`.
 
 ## Approach: two-pointers (Walk both lists with two pointers)
 
