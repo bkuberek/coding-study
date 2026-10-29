@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0226"
+slug: payroll-report-validation
+title: Payroll Report Validation
+status: ready
+difficulty: medium
+track: practical
+kind: function
+patterns: [arrays-hashing]
+signature:
+  function:
+    name: validateRows
+    params:
+      - {name: rows, type: "string[][]"}
+    returns: {type: "list<string>"}
+comparator: {type: exact}
+approaches:
+  - {id: single-pass-checks, name: Check every field of every row in one pass and remember keys for duplicates, role: optimal, time: "O(L)", space: "O(n)", time_class: "n", space_class: "n"}
+related: [duplicate-contractor-records]
+estimate_minutes: 35
