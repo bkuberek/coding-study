@@ -47,6 +47,7 @@ Constant memory and no helper structures, but quadratic: at 10^4 nodes it takes 
 
 - TypeScript: the inner walk needs `beforeTail.next!` because `strict` cannot see that the loop guard keeps it non-null.
 - Kotlin: `current?.next?.next != null` checks all three conditions at once and smart-casts `current` inside the loop; the Java fields are platform types, so `beforeTail.next.next` compiles without `?.`.
+- Rust: a `Box` list has one owner per node, so the walk to the tail keeps a single `&mut Option<Box<ListNode>>` cursor (`cursor = &mut cursor.as_mut()?.next`) and `cursor.take()` detaches the tail at the end. `current` is a `&mut Box<ListNode>` that moves forward by reborrowing through the node it just relinked.
 
 ## Approach: node-array (Index the nodes, then relink from both ends)
 
@@ -86,6 +87,7 @@ Linear and hard to get wrong, which makes it the oracle. The extra array is what
 
 - Kotlin: `generateSequence(head) { it.next }.toList()` collects the nodes in one line; the sequence ends at the first null.
 - Java: `ArrayList<ListNode>` with `get` and field assignment; there is no boxing here because the elements are already objects.
+- Rust: nodes own their successors, so a `Vec<&mut ListNode>` of every node cannot exist while the list is linked. The reference detaches each node into a `VecDeque<Box<ListNode>>` with `node.next.take()`, pops the front and the back alternately into a `Vec`, and relinks that order from the last node to the first, so each node takes over its successor.
 
 ## Approach: split-reverse-merge (Split at the middle, reverse the back half, interleave)
 
@@ -123,3 +125,4 @@ The expected answer, and a good test of fluency with three building blocks: fast
 - Python: the reversal is a separate helper with an explicit `following` reference, which is easier to check than a three-way tuple assignment.
 - TypeScript and Kotlin: on an even-length list, the last front node's `next` is null when the last back node is spliced in, so `front` becomes null in the same step as `back`. Typing `front` as nullable and testing both in the loop guard keeps the types honest; in Kotlin, typing `frontNext` as non-null `ListNode` compiles (the Java field is a platform type) but throws `NullPointerException` at exactly that step.
 - Kotlin: `fast.next?.next != null` reads Java fields typed as platform types; annotating locals as `ListNode` or `ListNode?` makes the nullability explicit instead of relying on platform types.
+- Rust: slow and fast would be two `&mut` cursors into one list, which the borrow checker rejects. The reference counts the nodes first, walks one cursor to node `(n - 1) / 2`, and cuts with `next.take()`: still O(n) time and O(1) extra space. Reversal and interleaving move links with `take()` instead of copying.
