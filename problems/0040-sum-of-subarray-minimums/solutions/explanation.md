@@ -45,6 +45,8 @@ Simple and obviously right, so it is the oracle. It does no redundant work per s
 - Python: `accumulate(arr[start:], min)` produces the running minimums for one start in C, and `sum` adds them; Python integers never overflow, so one reduction at the end suffices.
 - TypeScript: one start adds at most 9 * 10^8, so reducing once per start keeps every value exact in a double.
 - Java and Kotlin: the total is a `long`, reduced once per start.
+- Go: `int` is 64 bits, so the running total cannot overflow; the reference still reduces it once per start, as the Java and Kotlin versions do, and uses the built-in `min` (Go 1.21 and newer).
+- Rust: the total is an `i64`. With the per-start reduction an `i32` would just fit (below 2 * 10^9) but leave almost no margin, and cstudy builds Rust with overflow checks, so a slip would panic instead of wrapping. The final `% MOD` is below 2^31, so `as i32` is exact.
 
 ## Approach: contribution (Count the subarrays where each element is the minimum)
 
@@ -90,6 +92,8 @@ The standard answer; the same counting gives the sum of subarray maximums, and t
 - TypeScript: the product stays below 2^53, so it is exact as a double; the total is reduced on every step.
 - Java: a primitive `int[]` stack with a size counter; `left` and `right` are declared `long` so the product is computed in 64 bits.
 - Kotlin: `ArrayDeque<Int>` with `lastOrNull() ?: -1` for the missing left boundary; `toLong()` before multiplying.
+- Go: `arr[middle] * left * right` is at most 2.7 * 10^13, far inside a 64-bit `int`, so the total is reduced once at the end.
+- Rust: the reference widens to `i64` before multiplying (`i64::from(arr[middle]) * left * right`), because the product exceeds `i32`. `arr.get(index).copied().unwrap_or(0)` supplies the sentinel value 0 without extending the vector, and the missing left boundary is `-1` from `stack.last().map_or(-1, ..)`.
 
 ## Approach: stack-dp (Sum of minimums ending at each index from the previous smaller element)
 
@@ -128,3 +132,5 @@ It reads as a one-dimensional DP that the stack makes linear, and it avoids the 
 - TypeScript: `ending` values stay below 9 * 10^8; the running total is reduced every step.
 - Java: `long[] ending` and a cast `(long) value` before multiplying.
 - Kotlin: `LongArray`, with `lastOrNull()` to read the previous smaller index as a nullable `Int`.
+- Go: `ending` is a `[]int` of 64-bit values, so `value*(index-previous)` and the running sum need no widening.
+- Rust: `ending` is a `Vec<i64>`. A `match` on `stack.last()` separates "there is a previous smaller element" from "there is none", so no `-1` index is needed, and `index - previous` is a safe `usize` subtraction because the stack holds smaller indexes.
