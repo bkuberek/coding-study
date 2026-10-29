@@ -45,6 +45,8 @@ Trivially correct, hence the oracle, and fine when `k` is small. For wide window
 - TypeScript: an explicit inner loop; `Math.max(...nums.slice(...))` spreads up to 10^5 arguments and can exceed the engine's argument limit.
 - Java: preallocate `int[n - k + 1]` and fill it.
 - Kotlin: `IntArray(size) { start -> ... }` computes each entry with a lambda.
+- Go: `nums[start+1 : start+k]` is a window view of the same backing array, so the scan allocates nothing, and the built-in `max` (Go 1.21 and newer) replaces a hand-written comparison.
+- Rust: `nums.windows(k)` yields each window as a borrowed slice, and `iter().max()` returns an `Option` because a slice may be empty, so the reference unwraps it: `k` is at least 1.
 
 ## Approach: heap (Max-heap with lazy removal)
 
@@ -84,6 +86,8 @@ A general technique that works for any "maximum of a changing set" question, inc
 - TypeScript: the reference implements a small array-backed binary heap of positions, compared through `nums`.
 - Java: `PriorityQueue<Integer>` with the comparator `(a, b) -> Integer.compare(nums[b], nums[a])`. Never compare with `nums[b] - nums[a]` in general: subtraction overflows for large values (it is safe here only because values are within 10^4).
 - Kotlin: `PriorityQueue<Int>(compareByDescending { nums[it] })`.
+- Go: `container/heap` is a set of functions over a type with five methods (`Len`, `Less`, `Swap`, `Push`, `Pop`), and it builds a min-heap from `Less`, so `Less` reports the larger value as smaller. Call `heap.Push` and `heap.Pop` on the type, never its own `Push` and `Pop` methods, which only append and truncate the slice.
+- Rust: `BinaryHeap` is a max-heap already, and `(value, position)` tuples compare by value first, so the reference needs no comparator or negation. `peek` returns an `Option<&T>`, which `while let Some(&(largest, position))` unpacks.
 
 ## Approach: monotonic-deque (Deque of decreasing candidates)
 
@@ -127,3 +131,5 @@ Linear and the expected optimal answer. The same "monotonic queue" idea solves s
 - TypeScript: `Array.prototype.shift` is O(n) in the worst case, so the reference uses an `Int32Array` of capacity n with `head` and `tail` indices.
 - Java: `ArrayDeque<Integer>` with `peekLast`, `pollLast`, `peekFirst` and `pollFirst`; the boxed positions are compared after unboxing, so `<=` on them is safe.
 - Kotlin: `kotlin.collections.ArrayDeque` with `last()`, `removeLast()`, `first()` and `removeFirst()`.
+- Go: there is no deque type. A slice works as one: `candidates[:len(candidates)-1]` pops the back and `candidates[1:]` pops the front, both O(1). When `append` outgrows the shrunken capacity it copies only the live elements, so memory stays O(k).
+- Rust: `VecDeque<usize>` is the deque (`push_back`, `pop_back`, `pop_front`, indexing by `candidates[0]`). Positions are `usize`, so the window test is written `candidates[0] + k <= right` instead of `candidates[0] <= right - k`, which would underflow while `right < k`.
