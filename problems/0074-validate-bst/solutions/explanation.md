@@ -48,6 +48,7 @@ It mirrors the definition and is the safest first step towards the efficient ans
 - TypeScript: `-Infinity` and `Infinity` are safe neutral values for `Math.max` and `Math.min`.
 - Java: the helpers are only called on non-null nodes, so no sentinel is needed.
 - Kotlin: `node.left?.let(::largest) ?: Int.MIN_VALUE` uses the extreme `Int` as a neutral element; that is safe here because it only enters a `maxOf` together with the node's own value.
+- Rust: `largest` and `smallest` return `Option<i32>`, `None` for an empty subtree, so the caller writes `largest(&node.left).is_some_and(|value| value >= node.val)` and needs no separate null check; each combines its children with `filter_map(..).max()`.
 
 ## Approach: bounds (Pass down the open interval each node must lie in)
 
@@ -86,6 +87,8 @@ One pass, short code and an argument that is easy to state in an interview. It i
 - TypeScript: `number` holds every 32-bit value exactly, so `-Infinity` and `Infinity` are safe bounds.
 - Java: `long` bounds starting at `Long.MIN_VALUE` and `Long.MAX_VALUE` lie strictly outside the `int` range; `node.val` widens automatically in the comparisons.
 - Kotlin: the same `Long` bounds, with an explicit `toLong()` because Kotlin never widens implicitly.
+- Go: `*int` stands for Python's `int | None`, and `&node.Val` points at the node's own field, so passing a bound allocates nothing.
+- Rust: `Option<i32>` is `Copy`, so the bounds travel by value; `low.is_some_and(|low| node.val <= low)` is `low is not None and node.val <= low`.
 
 ## Approach: inorder (In-order walk that must strictly increase)
 
@@ -127,3 +130,5 @@ It needs no bounds at all, only the previous value, and its iterative form has n
 - TypeScript: `-Infinity` is below every value; `pop()!` asserts the stack is non-empty inside the loop.
 - Java: `ArrayDeque` as a stack (`push`, `pop`) and a `long previous` starting at `Long.MIN_VALUE`.
 - Kotlin: `ArrayDeque` with `addLast` and `removeLast`; the `Int` value is compared with the `Long` previous directly, and stored with `toLong()`.
+- Go: with no optional integer, `previous` is paired with a `hasPrevious` flag.
+- Rust: `previous` is an `Option<i32>` tested with `is_some_and`. The left-spine loop clones the child `Rc` out of the `borrow()` guard (`node = current.borrow().left.clone()`) before it pushes `current`, so the guard is gone before `current` moves.
