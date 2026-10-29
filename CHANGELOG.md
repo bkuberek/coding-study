@@ -2,6 +2,27 @@
 
 <!-- version list -->
 
+## v0.5.0 (2026-10-29)
+
+### Bug Fixes
+
+- **jvm**: Lock the shared build and run from a private class copy
+  ([`b3712e9`](https://github.com/bkuberek/coding-study/commit/b3712e9966e62f579acaca90c90f9ddbb0af894d))
+
+### Documentation
+
+- **install**: Explain trusting the Homebrew tap
+  ([`103e158`](https://github.com/bkuberek/coding-study/commit/103e15879f3767d888dd1cf205c3e4a7ce85504e))
+
+- **runners**: Document the JVM build lock and the per-run class copy
+  ([`fbfb5ba`](https://github.com/bkuberek/coding-study/commit/fbfb5ba2ab4e065ee040488a1d7d81b8b197329b))
+
+### Features
+
+- **runners**: Remove a launch's scratch directory when the run ends
+  ([`635beb2`](https://github.com/bkuberek/coding-study/commit/635beb2aaf2a432a4255ff9b3e797dd55c16d843))
+
+
 ## v0.4.1 (2026-10-29)
 
 ### Bug Fixes
