@@ -46,6 +46,8 @@ Short, and correct in every language that has big integers, which makes it a goo
 - TypeScript: `bigint` literals such as `10n` keep the arithmetic exact; `BigInt(digit)` converts a number, `/` on two `bigint`s truncates and `Number(total % 10n)` takes the last digit back out.
 - Java: `java.math.BigInteger` parses with `new BigInteger(String)` and adds with `add`; `StringBuilder.reverse()` puts the most significant digit first.
 - Kotlin: `String.toBigInteger()` and the `+` operator on `BigInteger` come from the standard library's extensions; `Char.digitToInt()` converts a digit character.
+- Go: `math/big` is in the standard library. `Mul` and `Add` mutate the receiver in place, so Horner's rule reuses one `*big.Int`, and `DivMod(total, ten, digit)` yields the quotient and the last digit in one call.
+- Rust: the standard library has no big integer, and solutions build offline without external crates. The reference carries a small `BigUint` of base-2^32 limbs with `mul_add`, `add` and `div_rem` by a small number; each operation walks every limb, so the time stays quadratic like the other languages' big-integer versions.
 
 ## Approach: digit-carry (Grade-school addition with a carry)
 
@@ -86,3 +88,4 @@ Linear, needs no big-number library, and works for numbers of any length; this i
 - TypeScript: `/` is floating-point division, so the carry needs `Math.floor(total / 10)`; `total % 10` is exact for small non-negative integers.
 - Java: integer `/` and `%` give the carry and digit; the parameters are reassigned as cursors, which is idiomatic for Java list walks.
 - Kotlin: ``first?.`val` ?: 0`` reads a digit or 0 in one expression, and `first?.next` advances only a non-null cursor.
+- Rust: both inputs are read through shared `Option<&ListNode>` cursors (`as_deref`), so the lists are not consumed, and the result grows through a `&mut Box<ListNode>` tail: `tail = tail.next.insert(Box::new(ListNode::new(digit)))` stores the node and returns a reference to it in one step.
