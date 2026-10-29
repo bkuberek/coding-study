@@ -47,6 +47,8 @@ It is the shortest correct format and the most common interview answer, and it s
 - TypeScript: `Number(token)` parses negative values; the cursor is a `let` captured by the closure.
 - Java: a `StringBuilder` builds the string; a small `Reader` class holds the token array and the cursor, because Java lambdas cannot mutate captured locals.
 - Kotlin: `joinToString` and `split` handle the delimiter; `TreeNode(value).apply { left = read(); right = read() }` keeps the order left, then right, explicit.
+- Go: a `strings.Builder` collects the text, and `read` is a closure over the token slice and the cursor (declared with `var read func() *TreeNode` first, because a closure cannot call itself by name before it exists). `node.Left = read()` then `node.Right = read()` are separate statements, so the order is fixed.
+- Rust: `data.split(",")` is an iterator, so passing `&mut Split` down the recursion is the cursor, with no index. `node.left = read(tokens)` runs before `node.right = read(tokens)` because the statements are in that order. Nodes are built as plain `TreeNode` values and wrapped in `Rc<RefCell<..>>` once their children are set; `serialize` only reads, so it takes `node.borrow()`.
 
 ## Approach: level-order (Breadth-first values with a marker for every missing child)
 
@@ -85,3 +87,5 @@ Iterative in both directions, so tree height never matters, and the format reads
 - TypeScript: a read index into a growing array instead of `Array.prototype.shift()`.
 - Java: `ArrayDeque` rejects null, so `serialize` writes markers for missing children instead of queueing them, and `StringJoiner` handles the separators.
 - Kotlin: `ArrayDeque<TreeNode?>` accepts null children while serializing; `TreeNode(...).also(queue::addLast)` creates, queues and assigns a child in one expression.
+- Go: a slice is the queue (`queue[0]` to read, `queue = queue[1:]` to pop, `append(queue, node.Left, node.Right)` to push). A nil `*TreeNode` fits in the slice, so the missing children need no special case while serializing.
+- Rust: `VecDeque<Option<Rc<RefCell<TreeNode>>>>` holds missing children as `None`. Cloning an `Rc` into the queue only bumps a counter. While deserializing, the queue holds only real nodes, so `root.iter().cloned().collect()` seeds it from an `Option` and `left.iter().chain(right.iter()).cloned()` enqueues whichever children exist. The node is mutably borrowed only after the queue is extended.
