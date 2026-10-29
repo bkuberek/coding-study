@@ -34,6 +34,10 @@ Paths are relative to the workspace root. The runners themselves run from the wo
 | JVM flags | `-XX:+UseSerialGC -Xshare:auto`; no tiering flags (they distort performance cases) |
 | Compile errors | Gradle exit code non-zero: the CLI prints compiler lines mentioning the user's file (max 40 lines) and exits 2 |
 | Cold start | If no daemon is running, the CLI prints `warming Gradle daemon (first run)` before building |
+| Locking | `-Pcs.only` narrows each build to one problem, so every build rewrites the shared output directories and deletes the classes of the problem built before. Per Gradle project and language, one `cstudy` process at a time writes the reference sources (and removes the other approaches' files), runs Gradle and copies the built class directories: an exclusive `flock` on `.cs/build/jvm-locks/<references or practice>-<lang>.lock`. A process that finds the lock taken prints `waiting for another cstudy build in this workspace` and waits; the kernel drops the lock when its holder ends, however it ends. Java and Kotlin use different locks and still build side by side. |
+| Per-run class copy | Under the lock, the build's class directories (the classpath entries below the subproject's `build/`) are copied into `.cs/build/jvm-runs/<pid>-<random>/`, and the JVM's `-cp` names the copy; jars, including the runner and support jars, keep their paths. A later build for another problem cannot take classes away from a JVM that loads them lazily. The runner process removes the copy when the run ends (completed, failed or interrupted); the next preparation removes copies whose process no longer exists (killed). |
+
+The lock and the copy protect against other `cstudy` processes. A Gradle build started by anything else on the same project (a script, an IDE build of `.cs/build/jvm`) does not take the lock and can still delete classes between the build and the copy.
 
 ## Request file
 
