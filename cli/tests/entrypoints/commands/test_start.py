@@ -124,11 +124,11 @@ def test_a_problem_that_does_not_list_an_optional_language_is_a_usage_error(envi
 
 def test_a_listed_language_without_an_adapter_is_an_environment_error(environment):
     meta = environment.root / "problems/0001-two-sum/meta.yaml"
-    meta.write_text(meta.read_text() + "languages: [python, typescript, java, kotlin, go]\n")
-    result = invoke("two-sum", "--lang", "go")
+    meta.write_text(meta.read_text() + "languages: [python, typescript, java, kotlin, rust]\n")
+    result = invoke("two-sum", "--lang", "rust")
     assert (result.exit_code, result.stderr) == (
         ExitCode.ENVIRONMENT_ERROR,
-        "error: go stub generator is not set up yet\n",
+        "error: rust stub generator is not set up yet\n",
     )
 
 

@@ -1,0 +1,3 @@
+{"ImportPath":"workspace/practice/two_sum","Action":"build-output","Output":"# workspace/practice/two_sum\n"}
+{"ImportPath":"workspace/practice/two_sum","Action":"build-output","Output":"../../../.cs/build/go/gen/two_sum/user_targets.go:6:12: undefined: twoSum\n"}
+{"ImportPath":"workspace/practice/two_sum","Action":"build-fail"}

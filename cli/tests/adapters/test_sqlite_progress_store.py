@@ -98,6 +98,43 @@ def test_attempts_without_a_language_are_allowed(store):
     assert store.add_attempt(new_attempt(language=None)).language is None
 
 
+@pytest.mark.parametrize("language", list(Language))
+def test_attempts_in_every_language_are_allowed(store, language):
+    assert store.add_attempt(new_attempt(language=language)).language is language
+
+
+def database_before_go_and_rust(database: Path) -> None:
+    """A progress database at schema version 3, with an attempt and its test run."""
+    migrations = resources.files(MIGRATIONS_PACKAGE) / MIGRATIONS_DIRECTORY
+    scripts = sorted(entry for entry in migrations.iterdir() if entry.name.endswith(".sql"))
+    with sqlite3.connect(database) as connection:
+        for script in scripts[:3]:
+            connection.executescript(script.read_text(encoding="utf-8"))
+        connection.execute("INSERT INTO meta (key, value) VALUES ('schema_version', '3')")
+        connection.execute(
+            "INSERT INTO attempts (id, slug, lang, mode, status, started_at) "
+            "VALUES (7, 'two-sum', 'java', 'new', 'in_progress', '2026-10-24T10:00:00+00:00')"
+        )
+        connection.execute(
+            "INSERT INTO test_runs (attempt_id, ran_at, code_hash, total, passed, failed, "
+            "errored, timed_out, tle, duration_ms) "
+            "VALUES (7, '2026-10-24T10:01:00+00:00', 'abc', 2, 2, 0, 0, 0, 0, 840)"
+        )
+
+
+def test_migrating_keeps_attempts_and_their_test_runs(database):
+    database_before_go_and_rust(database)
+    store = SqliteProgressStore(database)
+    assert (store.active_attempt(), store.latest_test_run(7)) != (None, None)
+    assert store.add_attempt(new_attempt(language=Language.GO)).language is Language.GO
+
+
+def test_migrated_test_runs_still_require_an_existing_attempt(database):
+    database_before_go_and_rust(database)
+    with pytest.raises(sqlite3.IntegrityError):
+        SqliteProgressStore(database).add_test_run(run_record(999))
+
+
 def test_attempt_ids_increase(store):
     first, second = store.add_attempt(new_attempt()), store.add_attempt(new_attempt())
     assert second.id > first.id

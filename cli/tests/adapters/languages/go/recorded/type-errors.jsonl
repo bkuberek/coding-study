@@ -1,0 +1,4 @@
+{"ImportPath":"workspace/practice/two_sum","Action":"build-output","Output":"# workspace/practice/two_sum\n"}
+{"ImportPath":"workspace/practice/two_sum","Action":"build-output","Output":"../../../go/practice/two_sum/two_sum.go:3:8: \"strings\" imported and not used\n"}
+{"ImportPath":"workspace/practice/two_sum","Action":"build-output","Output":"../../../go/practice/two_sum/two_sum.go:6:9: cannot use x (variable of type int) as []int value in return statement\n\thave (int)\n\twant ([]int)\n"}
+{"ImportPath":"workspace/practice/two_sum","Action":"build-fail"}
