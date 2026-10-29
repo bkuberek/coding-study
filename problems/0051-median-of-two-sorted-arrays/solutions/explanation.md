@@ -45,6 +45,8 @@ It is the shortest code and almost impossible to get wrong, which is all an orac
 - TypeScript: `Array.prototype.sort` compares as strings by default; pass `(a, b) => a - b`.
 - Java: `Arrays.copyOf` plus `System.arraycopy` builds the concatenation; `Arrays.sort` on `int[]` is a dual-pivot quicksort.
 - Kotlin: `nums1 + nums2` concatenates two `IntArray`s into a new `IntArray`; `apply { sort() }` sorts it in place and returns it.
+- Go: `slices.Concat` (Go 1.22 and newer) builds the joined slice without touching the inputs, and `slices.Sort` sorts the ints. `float64(a+b) / 2` converts before dividing, because `(a+b)/2` on `int` values truncates.
+- Rust: `[nums1, nums2].concat()` joins the two vectors and `sort_unstable` sorts the `i32` values. The even case is `f64::from(a + b) / 2.0`; dividing the integers first would truncate.
 
 ## Approach: merge-to-middle (Two-pointer merge up to the middle)
 
@@ -81,6 +83,8 @@ Linear time and constant memory, with code that is easy to reason about. It is a
 
 - Kotlin: `repeat(total / 2 + 1)` reads as "take that many merged values"; `nums1[i++]` returns the element and advances, as in Java.
 - Java and Kotlin: `(previous + current) / 2.0` cannot overflow, since values are at most 10^6 in magnitude.
+- Go: `for range total/2 + 1` (Go 1.22 and newer) repeats the step; the even-total average converts to `float64` before dividing.
+- Rust: `for _ in 0..=total / 2` repeats the step. `previous + current` is at most 2 * 10^6, so it cannot overflow `i32` before it becomes an `f64`.
 
 ## Approach: partition-search (Binary search for the balanced partition)
 
@@ -123,3 +127,5 @@ This is the answer the problem is designed around. It is famously easy to get su
 - TypeScript: `Infinity` and `-Infinity` are ordinary numbers, so `Math.max` and `Math.min` handle missing neighbors; destructuring `[short, long]` swaps the arrays without a temporary.
 - Java: the method calls itself once with the arguments swapped to make `nums1` the shorter array; `Integer.MIN_VALUE` and `Integer.MAX_VALUE` stand in for infinities.
 - Kotlin: the same swap and `Int.MIN_VALUE` / `Int.MAX_VALUE` sentinels; `when` keeps the three outcomes of a probe in one expression.
+- Go: `int` has no infinity, so the helper `neighbors` uses `math.MinInt` and `math.MaxInt` for a missing side, like Java's `Integer.MIN_VALUE`. Swapping the slices with `shorter, longer = longer, shorter` needs no temporary. The final `panic` is unreachable for sorted input and satisfies the compiler's return check.
+- Rust: `i32::MIN` and `i32::MAX` are the sentinels, and `nums.get(cut).copied().unwrap_or(i32::MAX)` supplies a missing right neighbor. All the indexes are `usize`: `take_short - 1` cannot underflow because `short_left > long_right` is false when `take_short` is 0 (the left sentinel is the smallest `i32`). `total.div_ceil(2)` is the ceiling division, and the average is computed in `f64`.
