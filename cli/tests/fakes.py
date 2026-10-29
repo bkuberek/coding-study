@@ -18,6 +18,7 @@ from coding_study.adapters.workspace_fs import WorkspaceFs
 from coding_study.application.environment import Environment, ProblemDestination
 from coding_study.application.ports import (
     BuildScope,
+    DebugServer,
     LanguageRunner,
     Prepared,
     PrepareResult,
@@ -62,6 +63,24 @@ class FakeLanguageRunner:
 class FakeStubGenerator:
     def generate(self, meta: ProblemMeta) -> str:
         return f"# stub for {meta.slug}\n"
+
+
+DELVE = DebugServer("dlv", "run `go install dlv`", Path("/go/bin/dlv"))
+DEBUGSERVER = DebugServer("debugserver", "run `xcode-select --install`", Path("/xcode/debugserver"))
+
+
+@dataclass
+class FakeDebugServers:
+    """Both debug servers installed unless a test says otherwise."""
+
+    delve_server: DebugServer = DELVE
+    lldb: DebugServer = DEBUGSERVER
+
+    def delve(self) -> DebugServer:
+        return self.delve_server
+
+    def lldb_server(self) -> DebugServer:
+        return self.lldb
 
 
 @dataclass

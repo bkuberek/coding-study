@@ -1,12 +1,13 @@
 """`cstudy test --debug` against the real runners, with the least a debugger client does.
 
 Marked `slow`: each test runs `cstudy test <file> --debug` as a real process in a copy of the
-session's practice workspace (the content is the Phase 4 fixture `level-store`), waits for the
-ready line on standard error, checks that the run is still waiting after the language's normal
-hello timeout, attaches a client and lets the run finish with a verdict. Python attaches over DAP
-and stops at a breakpoint; Node over the inspector protocol, also at a breakpoint; the JVM only
-gets the JDWP handshake and a resume (a breakpoint there is covered by hand with jdb, see
-docs/specs/runners.md#debug-mode). Every runner is killed when its test ends.
+session's practice workspace (the content is the Phase 4 fixture `level-store`, or `two-sum` for
+Go and Rust), waits for the ready line on standard error, checks that the run is still waiting
+after the language's normal hello timeout, attaches a client and lets the run finish with a
+verdict. Python attaches over DAP and stops at a breakpoint; Go too, through Delve; Node over the
+inspector protocol, also at a breakpoint; the JVM only gets the JDWP handshake and a resume (a
+breakpoint there is covered by hand with jdb, see docs/specs/runners.md#debug-mode). Every runner
+is killed when its test ends.
 """
 
 import os
@@ -22,6 +23,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from coding_study.adapters.languages.debug_servers import InstalledDebugServers, this_machine
 from coding_study.domain.debugging import DebugSession
 from coding_study.domain.layout import SOURCE_EXTENSIONS
 from coding_study.domain.problem import Language
@@ -50,6 +52,15 @@ USER_FILES = {
 }
 BREAKPOINT_LINES = {Language.PYTHON: 6, Language.TYPESCRIPT: 5}
 """The statement in `put`, in the reference solutions."""
+TWO_SUM = REPOSITORY_ROOT / "problems" / "0001-two-sum"
+TWO_SUM_FILES = {
+    Language.GO: "go/practice/two_sum/two_sum.go",
+    Language.RUST: "rust/practice/two_sum.rs",
+}
+TWO_SUM_BREAKPOINT_LINE = 6
+"""The lookup in the loop of the hash-map references."""
+DEBUG_SERVERS = InstalledDebugServers(this_machine())
+NO_DELVE = DEBUG_SERVERS.delve().path is None or shutil.which("go") is None
 LAUNCH = "from coding_study.entrypoints.launcher import main; main()"
 READY_TIMEOUT_SECONDS = 240
 EXIT_TIMEOUT_SECONDS = 120
@@ -127,8 +138,32 @@ def root(tmp_path_factory: pytest.TempPathFactory, practice_workspace: Path) -> 
     return workspace_like(practice_workspace, tmp_path_factory.mktemp("debug") / "ws")
 
 
+@pytest.fixture(scope="module")
+def two_sum_content(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    content = tmp_path_factory.mktemp("debug-two-sum-content")
+    shutil.copytree(SCHEMAS_DIRECTORY, content / "schemas")
+    shutil.copytree(TWO_SUM, content / "problems" / TWO_SUM.name)
+    (content / "runners").symlink_to(REPOSITORY_ROOT / "runners", target_is_directory=True)
+    return content
+
+
+@pytest.fixture(scope="module")
+def compiled_root(tmp_path_factory: pytest.TempPathFactory, practice_workspace: Path) -> Path:
+    """A workspace with the Go and Rust projects too."""
+    root = workspace_like(practice_workspace, tmp_path_factory.mktemp("debug-compiled") / "ws")
+    for project in TWO_SUM_FILES:
+        shutil.copytree(practice_workspace / project, root / project)
+    return root
+
+
 @pytest.fixture
 def environment(
+    root: Path, content: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> dict[str, str]:
+    return cstudy_environment(root, content, tmp_path, monkeypatch)
+
+
+def cstudy_environment(
     root: Path, content: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> dict[str, str]:
     """The environment of `cstudy`: this process's too, so `cstudy start` finds the workspace."""
@@ -157,6 +192,15 @@ class Debugging:
         file.write_text(package + reference.read_text())
         return file
 
+    def solved_two_sum(self, language: Language) -> Path:
+        """The same for two-sum, whose references declare the stub's package."""
+        started = runner.invoke(cli.app, ["start", "two-sum", "--lang", language, "--no-open"])
+        assert started.exit_code == 0, started.output
+        file = Path(self._environment["CSTUDY_WORKSPACE"]) / TWO_SUM_FILES[language]
+        reference = TWO_SUM / "solutions" / f"hash-map.{SOURCE_EXTENSIONS[language]}"
+        file.write_text(reference.read_text())
+        return file
+
     def start(self, file: Path, *options: str) -> DebuggedRun:
         output = self._tmp_path / f"run-{len(self._runs)}"
         output.mkdir()
@@ -171,6 +215,16 @@ class Debugging:
 
 @pytest.fixture
 def debugged(environment: dict[str, str], tmp_path: Path) -> Iterator[Debugging]:
+    debugging = Debugging(environment, tmp_path)
+    yield debugging
+    debugging.stop_everything()
+
+
+@pytest.fixture
+def compiled(
+    compiled_root: Path, two_sum_content: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[Debugging]:
+    environment = cstudy_environment(compiled_root, two_sum_content, tmp_path, monkeypatch)
     debugging = Debugging(environment, tmp_path)
     yield debugging
     debugging.stop_everything()
@@ -214,6 +268,24 @@ def test_typescript_waits_for_the_inspector_stops_at_a_breakpoint_and_gives_a_ve
     assert PASSED_LINE in run.stdout.splitlines()
 
 
+@pytest.mark.skipif(NO_DELVE, reason="go or dlv is not installed")
+def test_go_waits_for_delve_stops_at_a_breakpoint_and_gives_a_verdict(compiled):
+    file = compiled.solved_two_sum(Language.GO)
+    port = free_port()
+    run = compiled.start(file, "--debug-port", str(port))
+    run.wait_for_ready_line(DebugSession(Language.GO, port).ready_line)
+    assert wait_longer_than_the_hello_timeout(Language.GO, run)
+    client = DapClient(port, {"mode": "remote"})
+    stopped_at = client.stop_at(file, TWO_SUM_BREAKPOINT_LINE)
+    client.run_to_end(file)
+    assert (Path(stopped_at[0]).resolve(), stopped_at[1], run.finish()) == (
+        file.resolve(),
+        TWO_SUM_BREAKPOINT_LINE,
+        0,
+    )
+    assert PASSED_LINE in run.stdout.splitlines()
+
+
 @pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
 def test_the_jvm_waits_for_jdwp_and_runs_after_the_handshake_and_a_resume(debugged, language):
     file = debugged.solved(language)
@@ -248,6 +320,18 @@ def test_stopping_a_waiting_run_frees_the_debug_port(debugged):
     run.wait_for_ready_line(DebugSession(Language.PYTHON, port).ready_line)
     run.interrupt()
     assert run.finish() == 130
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", port))
+
+
+@pytest.mark.skipif(NO_DELVE, reason="go or dlv is not installed")
+def test_stopping_a_go_run_that_waits_for_delve_frees_the_debug_port(compiled):
+    file = compiled.solved_two_sum(Language.GO)
+    port = free_port()
+    run = compiled.start(file, "--debug-port", str(port))
+    run.wait_for_ready_line(DebugSession(Language.GO, port).ready_line)
+    run.stop()
+    assert run.finish() == 143
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", port))
 

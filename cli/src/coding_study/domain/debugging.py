@@ -24,6 +24,15 @@ DEFAULT_DEBUG_PORTS: Mapping[Language, int] = {
 usual one, so it takes 12345."""
 DEBUGPY_INSTALL_COMMAND = f"uv add --dev debugpy --directory {PYTHON_PROJECT}"
 """Puts debugpy in a workspace's venv, also one created before the template listed it."""
+DELVE = "dlv"
+DELVE_VERSION = "1.27.2"
+"""The Delve release `cstudy test --debug` is tested with for Go."""
+DEBUGSERVER = "debugserver"
+LLDB_SERVER = "lldb-server"
+"""Rust's debug server: Xcode's `debugserver` on macOS, LLDB's `lldb-server` on Linux."""
+INSTALL_DELVE = f"run `go install github.com/go-delve/delve/cmd/dlv@v{DELVE_VERSION}`"
+INSTALL_DEBUGSERVER = "run `xcode-select --install`"
+INSTALL_LLDB_SERVER = "install your distribution's lldb package"
 
 
 @dataclass(frozen=True, slots=True)

@@ -231,6 +231,28 @@ class DebugLaunch:
 
 
 @dataclass(frozen=True, slots=True)
+class DebugServer:
+    """The program `cstudy test --debug` starts a compiled runner under."""
+
+    name: str
+    """`dlv`, `debugserver` or `lldb-server`."""
+    install: str
+    """How to install it, as an instruction: "run `xcode-select --install`"."""
+    path: Path | None = None
+    """None when it is not installed."""
+
+
+class DebugServers(Protocol):
+    """Where the debug servers of Go and Rust are on this machine."""
+
+    def delve(self) -> DebugServer: ...
+
+    def lldb_server(self) -> DebugServer:
+        """`debugserver` on macOS, `lldb-server` on Linux."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
 class RunnerLaunch:
     """How to start a runner; `RunnerProcess` appends `--request R --out O`."""
 

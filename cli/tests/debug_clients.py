@@ -1,8 +1,9 @@
 """Minimal debugger clients for the `cstudy test --debug` end-to-end tests.
 
 A client does what an IDE does once it attaches: Python speaks the Debug Adapter Protocol to
-debugpy, Node's inspector is driven by `fixtures/debug/cdp_attach.mjs` (Node has a WebSocket
-client built in, Python has none), and the JVM only gets the JDWP handshake and a resume.
+debugpy, and to Delve as VS Code's Go extension does (`"mode": "remote"`); Node's inspector is
+driven by `fixtures/debug/cdp_attach.mjs` (Node has a WebSocket client built in, Python has none);
+the JVM only gets the JDWP handshake and a resume; Rust's debug server gets `lldb` in batch mode.
 """
 
 import json
@@ -24,13 +25,15 @@ HOST = "127.0.0.1"
 
 
 class DapClient:
-    """Attaches to debugpy, stops at a breakpoint, and lets the run go on."""
+    """Attaches to a debug adapter (debugpy by default), stops at a breakpoint, and lets the run
+    go on."""
 
-    def __init__(self, port: int) -> None:
+    def __init__(self, port: int, attach: dict[str, Any] | None = None) -> None:
         self._socket = socket.create_connection((HOST, port), timeout=CONNECT_TIMEOUT_SECONDS)
         self._buffer = b""
         self._sequence = 0
         self._thread = 0
+        self._attach = attach if attach is not None else {"justMyCode": True}
 
     def stop_at(self, path: Path, line: int) -> tuple[str, int]:
         """Sets one breakpoint, starts the run and returns the (file, line) it stops at."""
@@ -38,7 +41,7 @@ class DapClient:
             "initialize", {"clientID": "test", "adapterID": "debugpy", "pathFormat": "path"}
         )
         self._wait(lambda message: message.get("command") == "initialize")
-        self._request("attach", {"justMyCode": True})
+        self._request("attach", self._attach)
         self._wait(lambda message: message.get("event") == "initialized")
         breakpoints = self._request(
             "setBreakpoints", {"source": {"path": str(path)}, "breakpoints": [{"line": line}]}
@@ -56,6 +59,15 @@ class DapClient:
         """Removes the breakpoint, resumes the stopped thread and detaches."""
         self._request("setBreakpoints", {"source": {"path": str(path)}, "breakpoints": []})
         self._request("continue", {"threadId": self._thread})
+        self._request("disconnect", {"terminateDebuggee": False})
+        self._socket.close()
+
+    def run_to_end(self, path: Path) -> None:
+        """Removes the breakpoint, resumes, and disconnects once the program ended, as an IDE
+        does: Delve ends its debuggee when the client leaves first."""
+        self._request("setBreakpoints", {"source": {"path": str(path)}, "breakpoints": []})
+        self._request("continue", {"threadId": self._thread})
+        self._wait(lambda message: message.get("event") == "terminated")
         self._request("disconnect", {"terminateDebuggee": False})
         self._socket.close()
 
@@ -86,7 +98,7 @@ class DapClient:
     def _read(self) -> bytes:
         chunk = self._socket.recv(65536)
         if not chunk:
-            raise ConnectionError("debugpy closed the connection")
+            raise ConnectionError("the debug adapter closed the connection")
         return chunk
 
 

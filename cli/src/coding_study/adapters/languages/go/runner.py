@@ -12,10 +12,13 @@ compiler's message.
 Two `cstudy` processes may build the same problem at once (a watcher and a verify), so the
 generation and the build hold an exclusive lock, and each run launches its own copy of the binary,
 which no other build overwrites and which `RunnerProcess` removes when the run ends.
+
+`cstudy test --debug` builds a binary of its own without optimizations or inlining and starts it
+under a headless Delve, which holds it until the IDE attaches and continues it.
 """
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from coding_study.adapters.file_lock import exclusive_lock
@@ -25,6 +28,8 @@ from coding_study.adapters.languages.compiled_builds import (
     write_if_changed,
 )
 from coding_study.adapters.languages.context import LanguageContext
+from coding_study.adapters.languages.debug_port import require_free_port
+from coding_study.adapters.languages.debug_servers import require_installed
 from coding_study.adapters.languages.go.build_files import (
     REGISTRATION_FILE,
     Diagnostic,
@@ -41,6 +46,8 @@ from coding_study.application.ports import (
     BenchCode,
     BuildFailed,
     BuildScope,
+    DebugLaunch,
+    DebugServers,
     Prepared,
     PrepareResult,
     ProgressNotice,
@@ -49,12 +56,8 @@ from coding_study.application.ports import (
     RunnerLaunch,
     UserCode,
 )
-from coding_study.domain.errors import (
-    ContentError,
-    ContentIssue,
-    LanguageNotSetUpError,
-    RunnerStartError,
-)
+from coding_study.domain.debugging import DebugSession
+from coding_study.domain.errors import ContentError, ContentIssue, RunnerStartError
 from coding_study.domain.layout import (
     BUILD_DIRECTORY,
     COMPILED_REFERENCE_PREFIX,
@@ -83,7 +86,16 @@ WORK_FILE = "go.work"
 LOCK_FILE = ".cstudy.lock"
 WARM_MARKER = ".warm"
 """Written after the first successful build: the standard library and the runner are cached."""
+DEBUG_WARM_MARKER = ".warm-debug"
+"""The same for builds without optimizations, which compile the standard library again."""
 COLD_NOTICE = "compiling the Go runner and standard library (first run)"
+DEBUG_COLD_NOTICE = "compiling the Go runner and standard library for debugging (first debug run)"
+DEBUG_GCFLAGS = "-gcflags=all=-N -l"
+"""No optimizations and no inlining, so every line and variable of the user's code is there."""
+DEBUG_BINARIES = "debug"
+"""The binaries of debug builds, apart from the optimized ones of the same problem."""
+DELVE_READY_MARKER = "API server listening at:"
+"""What a headless Delve prints to standard output once it listens."""
 WARM_BUILD_NOTE = "go, warm"
 COLD_BUILD_NOTE = "go, cold"
 MAX_DIAGNOSTIC_LINES = 40
@@ -102,23 +114,32 @@ class _Build:
     meta: ProblemMeta
     user: bool
     sources: tuple[ReferenceSource, ...]
+    debug: bool = False
+    """Without optimizations or inlining, for `cstudy test --debug`."""
+
+    @property
+    def binaries(self) -> str:
+        return DEBUG_BINARIES if self.debug else self.scope
 
 
 class GoRunner:
     """`LanguageRunner` for Go."""
 
-    def __init__(self, context: LanguageContext, toolchain: GoToolchain) -> None:
+    def __init__(
+        self, context: LanguageContext, toolchain: GoToolchain, debug_servers: DebugServers
+    ) -> None:
         self._root = context.workspace.resolve()
         self._runners = context.runners.resolve() / RUNNER_DIRECTORY
         self._project = self._root / GO_PROJECT
         self._build_directory = self._root / BUILD_PROJECT
         self._toolchain = toolchain
+        self._debug_servers = debug_servers
 
     def prepare(self, scope: BuildScope, notify: ProgressNotice) -> PrepareResult:
         match scope:
+            case UserCode(debug=DebugSession() as session):
+                return self._prepare_debug(scope.meta, session, notify)
             case UserCode():
-                if scope.debug is not None:
-                    raise LanguageNotSetUpError(Language.GO, "debug mode")
                 build = _Build("test", scope.meta, True, ())
             case References():
                 build = _Build("verify", scope.meta, False, scope.sources)
@@ -126,18 +147,42 @@ class GoRunner:
                 build = _Build("bench", scope.meta, not scope.references_only, scope.sources)
         return self._prepare(build, notify)
 
+    def _prepare_debug(
+        self, meta: ProblemMeta, session: DebugSession, notify: ProgressNotice
+    ) -> PrepareResult:
+        """Delve starts the runner binary and holds it until the IDE attaches and continues it;
+        the arguments `RunnerProcess` appends go to the runner, after `--`."""
+        delve = require_installed(self._debug_servers.delve(), Language.GO)
+        require_free_port(session)
+        result = self._prepare(_Build("test", meta, True, (), debug=True), notify)
+        if isinstance(result, BuildFailed):
+            return result
+        launch = result.launch
+        command = (
+            str(delve),
+            "exec",
+            "--headless",
+            f"--listen={session.address}",
+            "--api-version=2",
+            *launch.command,
+            "--",
+        )
+        debug = DebugLaunch(session, notify, ready_marker=DELVE_READY_MARKER)
+        return replace(result, launch=replace(launch, command=command, debug=debug))
+
     def _prepare(self, build: _Build, notify: ProgressNotice) -> PrepareResult:
         module = self._workspace_module()
+        warm_marker = self._build_directory / (DEBUG_WARM_MARKER if build.debug else WARM_MARKER)
         with exclusive_lock(self._build_directory / LOCK_FILE):
-            warm = (self._build_directory / WARM_MARKER).is_file()
+            warm = warm_marker.is_file()
             if not warm:
-                notify(COLD_NOTICE)
+                notify(DEBUG_COLD_NOTICE if build.debug else COLD_NOTICE)
             self._write_module_files()
             packages = self._packages(build, module)
             result = self._compile(build, packages)
             if isinstance(result, BuildFailed):
                 return result
-            (self._build_directory / WARM_MARKER).touch()
+            warm_marker.touch()
             binary = private_copy(result, self._build_directory)
         launch = RunnerLaunch(
             (str(binary),),
@@ -242,7 +287,7 @@ class GoRunner:
                 overlay[virtual.parent / REGISTRATION_FILE] = package.registration
         main = self._build_directory / "cmd" / build.scope / build.meta.snake_slug / "main.go"
         write_if_changed(main, main_source(packages, unavailable))
-        arguments = ["-json"]
+        arguments = ["-json", *([DEBUG_GCFLAGS] if build.debug else [])]
         if overlay:
             overlay_file = self._generated(build.meta) / "overlay.json"
             write_if_changed(overlay_file, overlay_document(overlay))
@@ -279,7 +324,7 @@ class GoRunner:
         return self._build_directory / "gen" / meta.snake_slug
 
     def _binary(self, build: _Build) -> Path:
-        return self._build_directory / "bin" / build.scope / build.meta.snake_slug
+        return self._build_directory / "bin" / build.binaries / build.meta.snake_slug
 
 
 def _registered_symbol(meta: ProblemMeta) -> str:

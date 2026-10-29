@@ -1,15 +1,16 @@
 """`GoRunner.prepare` with a fake `go`: generation, the two-pass rule and the private binary."""
 
 import os
+import socket
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import pytest
 
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.go.build_files import REGISTRATION_FILE
-from coding_study.adapters.languages.go.runner import COLD_NOTICE, GoRunner
+from coding_study.adapters.languages.go.runner import COLD_NOTICE, DEBUG_COLD_NOTICE, GoRunner
 from coding_study.adapters.languages.go.toolchain import GoOutcome
 from coding_study.adapters.subprocess_runner import SubprocessRunner
 from coding_study.application.ports import (
@@ -22,9 +23,10 @@ from coding_study.application.ports import (
     UserCode,
 )
 from coding_study.domain.debugging import DebugSession
-from coding_study.domain.errors import ContentError, LanguageNotSetUpError, RunnerStartError
+from coding_study.domain.errors import ContentError, RunnerStartError
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.runs import RunRequest
+from tests.fakes import DELVE, FakeDebugServers
 from tests.helpers import FAKE_RUNNER_PROGRAM
 from tests.stub_contract import STUB_CASES
 
@@ -72,8 +74,9 @@ def workspace(tmp_path: Path) -> Path:
     return root
 
 
-def runner(root: Path, go: FakeGo) -> GoRunner:
-    return GoRunner(LanguageContext(root, root / ".cs/runtime/runners"), go)
+def runner(root: Path, go: FakeGo, debug_servers: FakeDebugServers | None = None) -> GoRunner:
+    context = LanguageContext(root, root / ".cs/runtime/runners")
+    return GoRunner(context, go, debug_servers or FakeDebugServers())
 
 
 def prepared(result: PrepareResult) -> Prepared:
@@ -223,7 +226,77 @@ def test_says_once_that_the_first_build_compiles_the_runner(workspace):
     assert notices == [COLD_NOTICE]
 
 
-def test_debug_mode_is_not_set_up_yet(workspace):
-    session = DebugSession(Language.GO, 2345)
-    with pytest.raises(LanguageNotSetUpError, match="go debug mode is not set up yet"):
-        runner(workspace, FakeGo()).prepare(UserCode(TWO_SUM, debug=session), lambda _: None)
+SESSION = DebugSession(Language.GO, 2345)
+
+
+def prepare_debug(
+    root: Path,
+    go: FakeGo,
+    debug_servers: FakeDebugServers | None = None,
+    notices: list[str] | None = None,
+) -> PrepareResult:
+    debugging = runner(root, go, debug_servers or FakeDebugServers())
+    notify = (notices if notices is not None else []).append
+    return debugging.prepare(UserCode(TWO_SUM, debug=SESSION), notify)
+
+
+def test_delve_starts_the_runner_headless_on_the_sessions_port(workspace):
+    launch = prepared(prepare_debug(workspace, FakeGo())).launch
+    assert launch.scratch is not None
+    assert launch.command == (
+        "/go/bin/dlv",
+        "exec",
+        "--headless",
+        "--listen=127.0.0.1:2345",
+        "--api-version=2",
+        str(launch.scratch / "two_sum"),
+        "--",
+    )
+
+
+def test_the_debug_binary_is_built_without_optimizations_or_inlining(workspace):
+    go = FakeGo()
+    prepare_debug(workspace, go)
+    arguments = go.builds[0][0]
+    assert "-gcflags=all=-N -l" in arguments
+    assert arguments[arguments.index("-o") + 1] == str(workspace / ".cs/build/go/bin/debug/two_sum")
+
+
+def test_the_launch_is_ready_when_delve_says_it_listens(workspace):
+    debug = prepared(prepare_debug(workspace, FakeGo())).launch.debug
+    assert debug is not None
+    assert (debug.session, debug.ready_marker) == (SESSION, "API server listening at:")
+
+
+def test_a_missing_delve_is_an_environment_error_before_building(workspace):
+    go = FakeGo()
+    missing = FakeDebugServers(delve_server=replace(DELVE, path=None))
+    with pytest.raises(RunnerStartError, match="cannot debug go: dlv was not found; run `go"):
+        prepare_debug(workspace, go, missing)
+    assert go.builds == []
+
+
+def test_a_port_in_use_is_an_environment_error_before_building(workspace):
+    go = FakeGo()
+    with socket.socket() as taken:
+        taken.bind(("127.0.0.1", 0))
+        taken.listen()
+        busy = DebugSession(Language.GO, taken.getsockname()[1])
+        debugging = runner(workspace, go, FakeDebugServers())
+        with pytest.raises(RunnerStartError, match="already in use"):
+            debugging.prepare(UserCode(TWO_SUM, debug=busy), lambda _: None)
+    assert go.builds == []
+
+
+def test_a_compile_error_while_debugging_is_a_build_failure(workspace):
+    error = build_output("../../../go/practice/two_sum/two_sum.go:3:8", "undefined: x")
+    go = FakeGo([GoOutcome(1, error, "")])
+    assert isinstance(prepare_debug(workspace, go), BuildFailed)
+
+
+def test_says_once_that_the_first_debug_build_compiles_the_standard_library(workspace):
+    notices: list[str] = []
+    prepare_user(workspace, FakeGo())
+    for _ in range(2):
+        prepare_debug(workspace, FakeGo(), notices=notices)
+    assert notices == [DEBUG_COLD_NOTICE]

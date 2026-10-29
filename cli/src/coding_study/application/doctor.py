@@ -35,6 +35,7 @@ from coding_study.domain.errors import (
     RunnerProtocolError,
     RunnerStartError,
 )
+from coding_study.domain.guides import TOOLCHAINS_GUIDE
 from coding_study.domain.layout import (
     GO_PROJECT,
     GO_WORK_FILE,
@@ -63,7 +64,6 @@ MINIMUM_NODE_MAJOR = 24
 JAVA_MAJOR = 21
 MINIMUM_GO = (1, 24)
 MINIMUM_RUSTC = (1, 80)
-TOOLCHAINS_GUIDE = "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md"
 INSTALL_UV = f"install uv: {TOOLCHAINS_GUIDE}#python-and-uv"
 INSTALL_PNPM = f"install pnpm: {TOOLCHAINS_GUIDE}#nodejs-and-pnpm"
 INSTALL_GO = f"needed for --lang go, install Go 1.24 or newer: {TOOLCHAINS_GUIDE}#go"
