@@ -47,6 +47,8 @@ It mirrors how a person checks an anagram by hand and needs no knowledge of the 
 
 - Python: the reference copies `t` into a list and strikes a position out by overwriting it with `""`, which no letter equals. `list.index` then does the scan in C, about ten times faster than a hand-written loop, without changing the growth.
 - TypeScript, Java and Kotlin: a boolean array of used marks next to the original string avoids copying characters.
+- Go: `[]byte(t)` copies the string into a mutable slice (Go strings are immutable), and `bytes.IndexByte` is a vectorized linear scan. Every character here is ASCII, so indexing the string yields whole letters.
+- Rust: `t.into_bytes()` reuses the owned `String`'s buffer as a `Vec<u8>` without copying, and `iter().position` is the linear scan. Strings are UTF-8, so the byte view is exact for lowercase ASCII.
 
 ## Approach: sorting (Sort both strings)
 
@@ -84,6 +86,8 @@ It is short and works for any alphabet, including Unicode, as long as both strin
 - TypeScript: `[...text].sort().join("")` splits into code points, sorts by UTF-16 code units (correct for lowercase letters) and joins back into a string that compares with `===`.
 - Java: `toCharArray()` copies, `Arrays.sort(char[])` sorts primitives, `Arrays.equals` compares contents.
 - Kotlin: `toCharArray().sortedArray()` returns a sorted copy; `contentEquals` compares contents, because `==` on arrays compares references.
+- Go: strings are immutable, so the code sorts `[]byte` copies with `slices.Sort` and compares them with `slices.Equal`.
+- Rust: `into_bytes` turns each owned `String` into a `Vec<u8>` for in-place `sort_unstable`, and `==` on two `Vec<u8>` compares contents.
 
 ## Approach: counting (Letter counts in a fixed array)
 
@@ -124,3 +128,5 @@ Optimal in both time and memory for a fixed small alphabet, and the expected int
 - TypeScript: `charCodeAt(i)` reads a UTF-16 code unit without allocating; an `Int32Array(26)` starts zeroed.
 - Java: `charAt(i) - 'a'` promotes `char` to `int`, so it indexes directly. `--counts[i] < 0` decrements and tests in one expression.
 - Kotlin: `letter - 'a'` on two `Char`s yields an `Int`. `IntArray(26)` starts zeroed and does not box.
+- Go: `var counts [26]int` is a zeroed array on the stack, and `s[i]-'a'` is a `byte`, which indexes the array directly. The index is bounds-checked, so a stray uppercase letter would panic instead of corrupting memory.
+- Rust: `[0i32; 26]` is a stack array. `letter - b'a'` is a `u8` subtraction, which panics on overflow in the cstudy build (it cannot happen for lowercase letters), and `usize::from` widens it to an index.
