@@ -3,15 +3,16 @@
 Types follow the Go column of docs/specs/problem-format.md#go-and-rust-mapping. Each problem is
 its own package, `package <snake_slug>`, which is also the package clause of reference and buggy
 files, so a file moves between `solutions/` and the practice directory unchanged. Node types are
-aliases of the runner's `cstudy/support` types, imported only when the signature uses them (Go
-rejects unused imports). The text is already gofmt-clean, so no formatter needs to run.
+aliases of the runner's `cstudy/support` types. `decimal` is the vendored shopspring/decimal
+package and `date` the standard `time` package. Each package is imported only when the signature
+uses it (Go rejects unused imports), grouped the way goimports groups them. The text is already
+gofmt-clean, so no formatter needs to run.
 """
 
 import re
 from collections.abc import Iterator, Mapping
 
 from coding_study.domain.concurrency import model_text
-from coding_study.domain.errors import LanguageNotSetUpError
 from coding_study.domain.layout import statement_path
 from coding_study.domain.naming import NameRole, constructor_name, member_name
 from coding_study.domain.problem import Language, ProblemMeta
@@ -40,8 +41,11 @@ SUPPORT_PACKAGE = "cstudy/support"
 SUPPORT_NAME = "support"
 SUPPORT_CLASSES = (NodeKind.LIST_NODE, NodeKind.TREE_NODE, NodeKind.GRAPH_NODE)
 """Node types in declaration order in stubs."""
-UNSUPPORTED_SCALARS = (Scalar.DECIMAL, Scalar.DATE)
-"""Planned with vendored libraries (docs/decisions/0012-go-and-rust.md)."""
+SCALAR_PACKAGES: Mapping[Scalar, str] = {
+    Scalar.DECIMAL: "github.com/shopspring/decimal",
+    Scalar.DATE: "time",
+}
+"""The package each scalar's Go type comes from."""
 FALLBACK_RECEIVER = "recv"
 _PASCAL_WORDS = re.compile(r"[A-Z]+(?![a-z])|[A-Z][a-z0-9]*|[a-z0-9]+")
 
@@ -52,6 +56,8 @@ _SCALAR_TYPES: Mapping[Scalar, str] = {
     Scalar.BOOL: "bool",
     Scalar.STRING: "string",
     Scalar.CHAR: "rune",
+    Scalar.DECIMAL: "decimal.Decimal",
+    Scalar.DATE: "time.Time",
 }
 
 
@@ -59,12 +65,10 @@ class GoStubGenerator:
     """`StubGenerator` for `go/practice/<snake_slug>/<snake_slug>.go`."""
 
     def generate(self, meta: ProblemMeta) -> str:
-        """Raises LanguageNotSetUpError for a signature with `decimal` or `date`."""
-        _reject_unsupported(meta)
         lines = [_header(meta)]
         if meta.concurrency is not None:
             lines.append(f"// Concurrency: {model_text(meta.concurrency, Language.GO)}")
-        lines += ["", f"package {meta.snake_slug}", *_support_declarations(meta), ""]
+        lines += ["", f"package {meta.snake_slug}", *_imports(meta), *_aliases(meta), ""]
         if isinstance(meta.signature, ClassSignature):
             lines += _class(meta.signature)
         else:
@@ -85,26 +89,48 @@ def go_type(declared: ReturnType) -> str:
             return ""
 
 
-def _reject_unsupported(meta: ProblemMeta) -> None:
-    declared = declared_types(meta.signature)
-    used = {scalar for value_type in declared for scalar in scalars_of(value_type)}
-    missing = [str(scalar) for scalar in UNSUPPORTED_SCALARS if scalar in used]
-    if missing:
-        raise LanguageNotSetUpError(Language.GO, f"support for {' and '.join(missing)}")
-
-
 def _header(meta: ProblemMeta) -> str:
     return f"// {meta.title}. Statement: {statement_path(meta.slug)}. Run: cstudy test {meta.slug}"
 
 
-def _support_declarations(meta: ProblemMeta) -> list[str]:
-    """`import "cstudy/support"` and one alias per node type the signature uses."""
-    kinds = {kind for declared in declared_types(meta.signature) for kind in _node_kinds(declared)}
-    used = [kind for kind in SUPPORT_CLASSES if kind in kinds]
+def _imports(meta: ProblemMeta) -> list[str]:
+    """The packages the signature uses: one `import` line for a single package, otherwise a
+    block whose first group holds the paths without a domain (`time`, `cstudy/support`), as
+    goimports writes it."""
+    declared = declared_types(meta.signature)
+    scalars = {scalar for value_type in declared for scalar in scalars_of(value_type)}
+    paths = [path for scalar, path in SCALAR_PACKAGES.items() if scalar in scalars]
+    if _node_kinds_used(meta):
+        paths.append(SUPPORT_PACKAGE)
+    if not paths:
+        return []
+    if len(paths) == 1:
+        return ["", f'import "{paths[0]}"']
+    local = sorted(path for path in paths if not _has_domain(path))
+    hosted = sorted(path for path in paths if _has_domain(path))
+    gap = [""] if local and hosted else []
+    return ["", "import (", *_quoted(local), *gap, *_quoted(hosted), ")"]
+
+
+def _has_domain(path: str) -> bool:
+    return "." in path.split("/")[0]
+
+
+def _quoted(paths: list[str]) -> list[str]:
+    return [f'{INDENT}"{path}"' for path in paths]
+
+
+def _aliases(meta: ProblemMeta) -> list[str]:
+    """One alias per node type the signature uses, so the body reads `*ListNode`."""
+    used = _node_kinds_used(meta)
     if not used:
         return []
-    aliases = [f"type {kind} = {SUPPORT_NAME}.{kind}" for kind in used]
-    return ["", f'import "{SUPPORT_PACKAGE}"', "", *aliases]
+    return ["", *(f"type {kind} = {SUPPORT_NAME}.{kind}" for kind in used)]
+
+
+def _node_kinds_used(meta: ProblemMeta) -> list[NodeKind]:
+    kinds = {kind for declared in declared_types(meta.signature) for kind in _node_kinds(declared)}
+    return [kind for kind in SUPPORT_CLASSES if kind in kinds]
 
 
 def _node_kinds(declared: ReturnType) -> Iterator[NodeKind]:

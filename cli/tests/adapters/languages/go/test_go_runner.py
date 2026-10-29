@@ -8,11 +8,17 @@ from pathlib import Path
 
 import pytest
 
+from coding_study.adapters import workspace_setup
 from coding_study.adapters.languages.context import LanguageContext
-from coding_study.adapters.languages.go.build_files import REGISTRATION_FILE
+from coding_study.adapters.languages.go.build_files import (
+    REGISTRATION_FILE,
+    VENDORED_MODULES,
+    vendored_path,
+)
 from coding_study.adapters.languages.go.runner import COLD_NOTICE, DEBUG_COLD_NOTICE, GoRunner
 from coding_study.adapters.languages.go.toolchain import GoOutcome
 from coding_study.adapters.subprocess_runner import SubprocessRunner
+from coding_study.adapters.workspace_setup import TEMPLATE_DIRECTORY
 from coding_study.application.ports import (
     BenchCode,
     BuildFailed,
@@ -27,9 +33,10 @@ from coding_study.domain.errors import ContentError, RunnerStartError
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.runs import RunRequest
 from tests.fakes import DELVE, FakeDebugServers
-from tests.helpers import FAKE_RUNNER_PROGRAM
+from tests.helpers import FAKE_RUNNER_PROGRAM, REPOSITORY_ROOT
 from tests.stub_contract import STUB_CASES
 
+TEMPLATE = Path(workspace_setup.__file__).parent / TEMPLATE_DIRECTORY
 TWO_SUM = next(case.meta for case in STUB_CASES if case.name == "two-sum")
 LRU_CACHE = next(case.meta for case in STUB_CASES if case.name == "lru-cache")
 SOLUTION = "package two_sum\n\nfunc twoSum(nums []int, target int) []int { return nil }\n"
@@ -119,6 +126,29 @@ def test_the_build_workspace_joins_the_practice_module_and_the_runner_runtime(wo
     work = (workspace / ".cs/build/go/go.work").read_text()
     assert "\t../../../go\n" in work
     assert "replace cstudy => ../../runtime/runners/go\n" in work
+
+
+def test_the_build_requires_the_vendored_modules_from_the_runner_runtime(workspace):
+    prepare_user(workspace, FakeGo())
+    module = (workspace / ".cs/build/go/go.mod").read_text()
+    work = (workspace / ".cs/build/go/go.work").read_text()
+    assert "\tgithub.com/shopspring/decimal v1.5.0\n" in module
+    assert (
+        "replace github.com/shopspring/decimal => "
+        "../../runtime/runners/go/third_party/github.com/shopspring/decimal\n"
+    ) in work
+
+
+def test_the_vendored_versions_match_the_runner_and_practice_modules():
+    runner_module = (REPOSITORY_ROOT / "runners/go/go.mod").read_text()
+    practice_module = (TEMPLATE / "go/go.mod").read_text()
+    for module, version in VENDORED_MODULES.items():
+        assert f"require {module} {version}\n" in runner_module
+        assert f"\t{module} {version}\n" in practice_module
+        assert f"\t{module} => ../.cs/runtime/runners/go/{vendored_path(module)}\n" in (
+            practice_module
+        )
+        assert (REPOSITORY_ROOT / "runners/go" / vendored_path(module) / "go.mod").is_file()
 
 
 def test_a_class_kind_registers_its_constructor(workspace):

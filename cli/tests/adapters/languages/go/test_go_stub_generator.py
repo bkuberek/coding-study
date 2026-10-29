@@ -6,14 +6,10 @@ import pytest
 
 from coding_study.adapters.languages.go import create_stub_generator
 from coding_study.adapters.languages.go.stub_generator import go_type
-from coding_study.domain.errors import LanguageNotSetUpError
 from coding_study.domain.problem import Language, ProblemMeta
-from coding_study.domain.signature import ClassSignature, Method, Param, Returns
+from coding_study.domain.signature import ClassSignature, FunctionSignature, Method, Param, Returns
 from coding_study.domain.type_dsl import parse_return_type, parse_value_type
 from tests.stub_contract import GOLDENS, STUB_CASES, StubCase, check_stub, stub_cases
-
-PENDING_DECIMAL_AND_DATE = frozenset({"conformance-decimal-date-types"})
-"""Go supports `decimal` and `date` once their libraries are vendored (ADR 0012)."""
 
 
 def stub_meta(case_name: str) -> ProblemMeta:
@@ -26,8 +22,6 @@ def generate(case_name: str) -> str:
 
 @stub_cases
 def test_go_stub(stub_case: StubCase):
-    if stub_case.name in PENDING_DECIMAL_AND_DATE:
-        pytest.skip("decimal and date are not supported in Go yet")
     check_stub(Language.GO, stub_case, create_stub_generator().generate(stub_case.meta))
 
 
@@ -42,6 +36,8 @@ def test_go_stub(stub_case: StubCase):
         ("list<list<string>>", "[][]string"),
         ("ListNode", "*ListNode"),
         ("list<TreeNode>", "[]*TreeNode"),
+        ("decimal", "decimal.Decimal"),
+        ("list<date>", "[]time.Time"),
         ("void", ""),
     ],
 )
@@ -49,11 +45,29 @@ def test_go_types_follow_the_mapping_table(dsl, expected):
     assert go_type(parse_return_type(dsl)) == expected
 
 
-def test_decimal_and_date_are_not_set_up_yet():
-    with pytest.raises(
-        LanguageNotSetUpError, match="go support for decimal and date is not set up yet"
-    ):
-        generate("conformance-decimal-date-types")
+def test_decimal_and_date_import_their_packages_as_goimports_groups_them():
+    stub = generate("conformance-decimal-date-types")
+    assert 'import (\n\t"time"\n\n\t"github.com/shopspring/decimal"\n)\n' in stub
+    assert "func (e *TypeEcho) EchoDecimal(value decimal.Decimal) decimal.Decimal {" in stub
+
+
+def test_a_single_package_is_imported_on_one_line():
+    meta = stub_meta("two-sum")
+    assert isinstance(meta.signature, FunctionSignature)
+    param = Param("day", parse_value_type("date"))
+    dated = replace(meta, signature=replace(meta.signature, params=(param,)))
+    assert '\nimport "time"\n\nfunc twoSum(day time.Time) []int {' in (
+        create_stub_generator().generate(dated)
+    )
+
+
+def test_the_support_package_groups_with_the_standard_library():
+    meta = stub_meta("invert-tree")
+    assert isinstance(meta.signature, FunctionSignature)
+    param = Param("since", parse_value_type("date"))
+    dated = replace(meta, signature=replace(meta.signature, params=(*meta.signature.params, param)))
+    stub = create_stub_generator().generate(dated)
+    assert 'import (\n\t"cstudy/support"\n\t"time"\n)\n\ntype TreeNode' in stub
 
 
 def test_imports_support_only_for_the_node_types_used():

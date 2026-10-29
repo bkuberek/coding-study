@@ -56,7 +56,7 @@ Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-l
 | `track` | `dsa`, `practical`, `lld`, `concurrency`, `debugging` | yes | Non-autograded tracks live in `tracks/` ([content](content.md)) |
 | `kind` | `function`, `design`, `progressive`, `concurrent` | yes | |
 | `patterns` | list of pattern ids | yes for `dsa` | First entry is the primary pattern; ids from [content](content.md#pattern-taxonomy) |
-| `languages` | list of `python`, `typescript`, `java`, `kotlin`, `go`, `rust` | no | Default the four core languages (`python`, `typescript`, `java`, `kotlin`), which every problem must list; `go` and `rust` are optional additions. A subset of the core languages is allowed only for `concurrency` and `debugging` ([ADR 0012](../decisions/0012-go-and-rust.md)). Go and Rust run function, design, progressive and concurrent problems; their `decimal` and `date` types are planned. Rust cannot be listed where an `Option<Box<ListNode>>` cannot express the problem ([S13](authoring.md#static)) |
+| `languages` | list of `python`, `typescript`, `java`, `kotlin`, `go`, `rust` | no | Default the four core languages (`python`, `typescript`, `java`, `kotlin`), which every problem must list; `go` and `rust` are optional additions. A subset of the core languages is allowed only for `concurrency` and `debugging` ([ADR 0012](../decisions/0012-go-and-rust.md)). Go and Rust run function, design, progressive and concurrent problems; Go supports `decimal` and `date`, and Rust's are planned. Rust cannot be listed where an `Option<Box<ListNode>>` cannot express the problem ([S13](authoring.md#static)) |
 | `signature` | object | yes | See [Signatures](#signatures) |
 | `comparator` | object | yes | See [Comparators](#comparators) |
 | `stub` | `generated` or `buggy` | no | Default `generated`; `buggy` copies `buggy/solution.<ext>` instead of codegen. Buggy files follow the reference file conventions (no JVM `package` line) ([authoring](authoring.md#debugging-problems)) |
@@ -204,7 +204,7 @@ General rules for rows not listed: `list<X>` maps element-wise using the `X` row
 
 ### Go and Rust mapping
 
-The Go and Rust columns ([ADR 0012](../decisions/0012-go-and-rust.md)). The Go column is normative, like the table above, for its stub generator and runner, except `decimal` and `date`, which are planned with vendored libraries: the Go stub generator exits 4 for them and the runner reports `load_error` `UnsupportedType`. The Rust column is normative too, for the Rust stub generator and the generated bridge, with the same exception for `decimal` and `date`; the bridge spells every type, so a solution with another type (`&[i32]` for `int[]`, `usize` for `int`) is a `load_error` `SignatureMismatch`. The JSON encoding is the one of the table above. A Go runner requires the exact types: a named slice type or `[]int64` for `int[]` is a `load_error` `SignatureMismatch`.
+The Go and Rust columns ([ADR 0012](../decisions/0012-go-and-rust.md)). The Go column is normative, like the table above, for its stub generator and runner. The Rust column is normative too, for the Rust stub generator and the generated bridge, except `decimal` and `date`, which are planned with vendored crates: the Rust stub generator exits 4 for them and the bridge reports `load_error` `UnsupportedType`. The bridge spells every type, so a solution with another type (`&[i32]` for `int[]`, `usize` for `int`) is a `load_error` `SignatureMismatch`. The JSON encoding is the one of the table above. A Go runner requires the exact types: a named slice type or `[]int64` for `int[]` is a `load_error` `SignatureMismatch`.
 
 | DSL | Go | Rust |
 |-----|----|------|
@@ -215,8 +215,8 @@ The Go and Rust columns ([ADR 0012](../decisions/0012-go-and-rust.md)). The Go c
 | `char` | `rune` | `char` |
 | `T[]`, `list<T>` | `[]T`; a nil slice encodes as `[]` | `Vec<T>` |
 | `T[][]`, `list<list<T>>` | `[][]T` | `Vec<Vec<T>>` |
-| `decimal` | `decimal.Decimal` (shopspring/decimal, vendored; planned) | `rust_decimal::Decimal` (vendored; planned) |
-| `date` | `time.Time` at UTC midnight; the encoder rejects anything else (planned) | `chrono::NaiveDate` (vendored; planned) |
+| `decimal` | `decimal.Decimal` from `github.com/shopspring/decimal` v1.5.0, vendored ([runners](runners.md#go-build-details)) | `rust_decimal::Decimal` (vendored; planned) |
+| `date` | `time.Time` at midnight in `time.UTC`; the encoder rejects another location, a time of day and years outside 0001 to 9999 | `chrono::NaiveDate` (vendored; planned) |
 | `ListNode` | `*ListNode` with `Val`, `Next` | `Option<Box<ListNode>>` |
 | `TreeNode` | `*TreeNode` | `Option<Rc<RefCell<TreeNode>>>` |
 | `GraphNode` | `*GraphNode` with `Neighbors []*GraphNode` | `Option<Rc<RefCell<GraphNode>>>` with `neighbors: Vec<Rc<RefCell<GraphNode>>>` |
@@ -255,7 +255,7 @@ The Go and Rust columns ([ADR 0012](../decisions/0012-go-and-rust.md)). The Go c
 
 Stubs import support classes only when the signature uses them. Java stubs always add `import java.util.*;`.
 
-`decimal` and `date` need no support class except in TypeScript, where `Decimal` is a class of `#support` and a `date` is an `IsoDate`: the `#support` alias `type IsoDate = string` for a plain `YYYY-MM-DD` string, which names the format in signatures. Because the workspace compiles with `verbatimModuleSyntax`, a stub imports it as a type: `import type { IsoDate } from "#support";` on its own, or `import { Decimal, type IsoDate } from "#support";` after the classes. A stub imports the standard library types it uses: Python `from datetime import date` and `from decimal import Decimal`, Java and Kotlin `java.math.BigDecimal` and `java.time.LocalDate`.
+`decimal` and `date` need no support class except in TypeScript, where `Decimal` is a class of `#support` and a `date` is an `IsoDate`: the `#support` alias `type IsoDate = string` for a plain `YYYY-MM-DD` string, which names the format in signatures. Because the workspace compiles with `verbatimModuleSyntax`, a stub imports it as a type: `import type { IsoDate } from "#support";` on its own, or `import { Decimal, type IsoDate } from "#support";` after the classes. A stub imports the standard library types it uses: Python `from datetime import date` and `from decimal import Decimal`, Java and Kotlin `java.math.BigDecimal` and `java.time.LocalDate`, Go `github.com/shopspring/decimal` and `time`.
 
 **TypeScript `Decimal`** is immutable and exact (a `bigint` unscaled value with a non-negative `scale`, both public and read-only), with no dependency to install:
 
@@ -268,6 +268,23 @@ Stubs import support classes only when the signature uses them. Java stubs alway
 | `cmp`, `eq`, `lt`, `lte`, `gt`, `gte` | By value: `1.50` equals `1.5` |
 | `abs`, `neg` | |
 | `toFixed(scale?, mode?)`, `toString()` | Plain notation, never an exponent; `toString` keeps the scale (`"2500.50"`) and `toFixed` rounds first (`HALF_UP` by default) |
+
+**Go** uses the library's own API, which has no rounding-mode type: each mode is a method, and `places` is the number of digits after the point, like `scale`.
+
+| TypeScript `Decimal`, Java `RoundingMode` | Go (`github.com/shopspring/decimal`) |
+|---|---|
+| `new Decimal("2500.50")`, `new Decimal(42)`, `new Decimal(250050n, 2)` | `decimal.RequireFromString("2500.50")` (or `NewFromString`, which returns an error), `decimal.NewFromInt(42)`, `decimal.New(250050, -2)` (an exponent, the negated scale) |
+| `plus`, `minus`, `times`, `abs`, `neg` | `Add`, `Sub`, `Mul`, `Abs`, `Neg` |
+| `cmp`, `eq`, `lt`, `lte`, `gt`, `gte` | `Cmp`, `Equal`, `LessThan`, `LessThanOrEqual`, `GreaterThan`, `GreaterThanOrEqual`; never `==`, which compares the representation |
+| `round(places, "HALF_UP")` | `Round(places)`: ties away from zero |
+| `"HALF_EVEN"` | `RoundBank(places)` |
+| `"HALF_DOWN"` | No method: `RoundDown(places)` when the dropped part is exactly half (`d.Sub(d.RoundDown(places)).Abs().Equal(decimal.New(5, -places-1))`), otherwise `Round(places)` |
+| `"DOWN"`, `"UP"`, `"FLOOR"`, `"CEILING"` | `RoundDown` (or `Truncate`), `RoundUp`, `RoundFloor`, `RoundCeil` |
+| `div(other, places, "HALF_UP")` | `DivRound(other, places)`: the exact quotient, rounded once. `Div(other)` rounds to `DivisionPrecision` (16) places, so a following `Round` rounds twice; `QuoRem(other, places)` gives the remainder too |
+| `movePointLeft(n)`, `movePointRight(n)` | `Shift(-n)`, `Shift(n)` |
+| `toFixed(places)` | `StringFixed(places)` (`HALF_UP`), `StringFixedBank(places)` |
+
+A Go `date` is a `time.Time` at midnight in `time.UTC`: build one with `time.Date(year, month, day, 0, 0, 0, 0, time.UTC)`. `AddDate(0, 0, n)` moves by days, but `AddDate(0, n, 0)` normalizes an overflow (31 January plus one month is 3 March), so month arithmetic clamps the day itself. Count days as `(end.Unix() - start.Unix()) / 86400`: `end.Sub(start)` is a `time.Duration`, which stops at about 292 years.
 
 ## Serialization of linked structures
 

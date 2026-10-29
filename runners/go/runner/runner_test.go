@@ -20,6 +20,7 @@ var registry = Registry{
 		"loud": fixture.Loud, "overflow": fixture.Overflow, "sortValues": fixture.SortValues,
 		"pickNode": fixture.PickNode, "sameList": fixture.SameList, "NewCounter": fixture.NewCounter,
 		"wrong": fixture.Wrong, "NewTally": fixture.NewTally, "NewGate": fixture.NewGate,
+		"third": fixture.Third, "price": fixture.Price,
 	},
 	"ref/new-node": {"pickNode": fixture.NewNode},
 }
@@ -200,8 +201,8 @@ func TestLoadErrors(t *testing.T) {
 			"SymbolNotFound", `the package defines no function "echoNumber": undefined: echoNumber`},
 		{"wrong parameter type", function("wrong", strings.Replace(twoSumSignature, "twoSum", "wrong", 1), `[]`),
 			&loader{registry: registry}, "SignatureMismatch", `"wrong" takes []int64 for "nums"; int[] is []int in Go`},
-		{"decimal", function("overflow", oneParam("overflow", "decimal", "decimal"), `[]`),
-			&loader{registry: registry}, "UnsupportedType", "the Go runner does not support decimal yet"},
+		{"float for a decimal", function("price", oneParam("price", "decimal", "decimal"), `[]`),
+			&loader{registry: registry}, "SignatureMismatch", `"price" takes float64 for "value"; decimal is decimal.Decimal in Go`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

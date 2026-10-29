@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"cstudy/support"
+	"github.com/shopspring/decimal"
 )
 
 type kind int
@@ -54,6 +56,8 @@ var goTypes = map[kind]reflect.Type{
 	kindBool:      reflect.TypeFor[bool](),
 	kindString:    reflect.TypeFor[string](),
 	kindChar:      reflect.TypeFor[rune](),
+	kindDecimal:   reflect.TypeFor[decimal.Decimal](),
+	kindDate:      reflect.TypeFor[time.Time](),
 	kindListNode:  reflect.TypeFor[*support.ListNode](),
 	kindTreeNode:  reflect.TypeFor[*support.TreeNode](),
 	kindGraphNode: reflect.TypeFor[*support.GraphNode](),
@@ -95,30 +99,16 @@ func cutList(text string) (string, bool) {
 	return strings.CutSuffix(rest, listSuffix)
 }
 
-// unsupportedType is a DSL type the Go runner cannot represent yet: `decimal` and `date` need
-// the vendored libraries of a later step (docs/decisions/0012-go-and-rust.md).
-type unsupportedType struct{ text string }
-
-func (e *unsupportedType) Error() string {
-	return fmt.Sprintf("the Go runner does not support %s yet", e.text)
-}
-
 // goType is the one Go type the mapping table allows for t (docs/specs/problem-format.md
 // #go-and-rust-mapping); nil for void.
-func (t *dslType) goType() (reflect.Type, error) {
+func (t *dslType) goType() reflect.Type {
 	switch t.kind {
 	case kindVoid:
-		return nil, nil
+		return nil
 	case kindSlice:
-		elem, err := t.elem.goType()
-		if err != nil {
-			return nil, err
-		}
-		return reflect.SliceOf(elem), nil
-	case kindDecimal, kindDate:
-		return nil, &unsupportedType{t.text}
+		return reflect.SliceOf(t.elem.goType())
 	}
-	return goTypes[t.kind], nil
+	return goTypes[t.kind]
 }
 
 func (t *dslType) isNode() bool {

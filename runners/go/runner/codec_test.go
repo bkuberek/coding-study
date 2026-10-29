@@ -64,6 +64,16 @@ func TestEveryTypeRoundTrips(t *testing.T) {
 		{"GraphNode", "[]", "[]"},
 		{"ListNode[]", "[[1,2],[],[3]]", "[[1,2],[],[3]]"},
 		{"list<TreeNode>", "[[1,2],[]]", "[[1,2],[]]"},
+		{"decimal", `"2500.00"`, `"2500"`},
+		{"decimal", `"-0.0"`, `"0"`},
+		{"decimal", `"-12.340"`, `"-12.34"`},
+		{"decimal", `"-9999999999999999999999999999"`, `"-9999999999999999999999999999"`},
+		{"decimal", `"0.0000000000000000000000000001"`, `"0.0000000000000000000000000001"`},
+		{"date", `"2024-02-29"`, `"2024-02-29"`},
+		{"date", `"0001-01-01"`, `"0001-01-01"`},
+		{"date", `"9999-12-31"`, `"9999-12-31"`},
+		{"decimal[][]", `[["1.50"],[]]`, `[["1.5"],[]]`},
+		{"list<date>", `["2024-03-01"]`, `["2024-03-01"]`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.typeText+" "+tt.input, func(t *testing.T) {
@@ -149,15 +159,6 @@ func TestCyclicListInputLinksTheTailBack(t *testing.T) {
 	}
 	if got := len(traverse(head)); got != 3 {
 		t.Errorf("traversal visits %d nodes, want 3", got)
-	}
-}
-
-func TestDecimalAndDateAreNotSupportedYet(t *testing.T) {
-	for _, text := range []string{"decimal", "date[]", "list<decimal>"} {
-		_, err := mustType(t, text).goType()
-		if err == nil || !strings.Contains(err.Error(), "does not support") {
-			t.Errorf("%s: got %v, want an unsupported type", text, err)
-		}
 	}
 }
 

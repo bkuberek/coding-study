@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"cstudy/support"
+	"github.com/shopspring/decimal"
 )
 
 type ListNode = support.ListNode
@@ -73,6 +74,17 @@ func (c *Counter) Fail() { panic(fmt.Errorf("counter failure")) }
 
 // Wrong has the right name but the wrong parameter type for a two-sum signature.
 func Wrong(nums []int64, target int) []int { return nil }
+
+// Third divides by three, then lowers the package's DivisionPrecision, which must not reach the
+// next case.
+func Third(value decimal.Decimal) decimal.Decimal {
+	third := value.Div(decimal.NewFromInt(3))
+	decimal.DivisionPrecision = 2
+	return third
+}
+
+// Price takes a float where the signature declares a decimal.
+func Price(value float64) float64 { return value }
 
 // Tally is a counter that many goroutines share; Step panics at index 100.
 type Tally struct {

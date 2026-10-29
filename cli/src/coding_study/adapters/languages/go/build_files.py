@@ -21,6 +21,11 @@ REGISTRATION_FILE = "zz_cs_targets.go"
 """The registration's file name inside the target's package directory."""
 REGISTRATION_VARIABLE = "CsTargets"
 RUNNER_PACKAGE = "cstudy/runner"
+THIRD_PARTY_DIRECTORY = "third_party"
+VENDORED_MODULES: Mapping[str, str] = {"github.com/shopspring/decimal": "v1.5.0"}
+"""The modules a solution may import (`decimal`) at their vendored versions. Builds never
+download, so each is a copy in the runner module's `third_party/`, reached through `replace`
+(runners/go/third_party/README.md)."""
 _PACKAGE_CLAUSE = re.compile(r"^package\s+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
 _DIAGNOSTIC = re.compile(
     r"^(?P<file>[^\s:][^:]*\.go):(?P<line>\d+)(?::(?P<column>\d+))?: (?P<message>.*)$"
@@ -56,6 +61,11 @@ class Diagnostic:
     def shown(self, path: str) -> tuple[str, ...]:
         """The diagnostic's lines with the file shown as `path`."""
         return (f"{path}:{self.position}: {self.message}", *self.continuation)
+
+
+def vendored_path(module: str) -> str:
+    """The copy of a vendored module, relative to the runner module."""
+    return f"{THIRD_PARTY_DIRECTORY}/{module}"
 
 
 def package_clause(source: str, default: str) -> str:

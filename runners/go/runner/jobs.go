@@ -57,6 +57,7 @@ func (t *functionTarget) run(input *callInput) outcome {
 	if err != nil {
 		return raised(inputFailure(err), 0)
 	}
+	freshDecimalSettings()
 	output := startCapture()
 	timed := invoke(t.fn, call.args, t.pkg)
 	stdout := output.stop()
@@ -97,6 +98,7 @@ type operations struct {
 }
 
 func (t *classTarget) run(input *callInput) outcome {
+	freshDecimalSettings()
 	output := startCapture()
 	result := (&operations{target: t, outputs: []any{}}).run(input)
 	result.stdout = output.stop()

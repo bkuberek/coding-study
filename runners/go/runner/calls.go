@@ -112,7 +112,7 @@ func nodesIn(value reflect.Value) []any {
 
 // nodeWithValue is the first node of the referenced parameter whose val equals the JSON value.
 func nodeWithValue(value any, p checkedParam, candidates []any) (reflect.Value, error) {
-	goType, _ := p.typ.goType()
+	goType := p.typ.goType()
 	if value == nil {
 		return reflect.Zero(goType), nil
 	}

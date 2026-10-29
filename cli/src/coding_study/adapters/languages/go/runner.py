@@ -32,6 +32,7 @@ from coding_study.adapters.languages.debug_port import require_free_port
 from coding_study.adapters.languages.debug_servers import require_installed
 from coding_study.adapters.languages.go.build_files import (
     REGISTRATION_FILE,
+    VENDORED_MODULES,
     Diagnostic,
     GoPackage,
     build_diagnostics,
@@ -40,6 +41,7 @@ from coding_study.adapters.languages.go.build_files import (
     overlay_document,
     package_clause,
     registration_source,
+    vendored_path,
 )
 from coding_study.adapters.languages.go.toolchain import GoToolchain
 from coding_study.application.ports import (
@@ -203,16 +205,24 @@ class GoRunner:
         return match.group(1) if match else DEFAULT_WORKSPACE_MODULE
 
     def _write_module_files(self) -> None:
+        """The build module requires the runner and the vendored modules, which references
+        import; the `go.work` replaces them with the runner runtime and its copies."""
         project = relative(self._project, self._build_directory)
         runners = relative(self._runners, self._build_directory)
+        vendored = VENDORED_MODULES.items()
+        requires = "".join(f"\t{module} {version}\n" for module, version in vendored)
+        replaces = "".join(
+            f"replace {module} => {runners}/{vendored_path(module)}\n" for module, _ in vendored
+        )
         write_if_changed(
             self._build_directory / MODULE_FILE,
-            f"module {BUILD_MODULE}\n\ngo {GO_VERSION}\n\nrequire {RUNNER_MODULE} v0.0.0\n",
+            f"module {BUILD_MODULE}\n\ngo {GO_VERSION}\n\n"
+            f"require (\n\t{RUNNER_MODULE} v0.0.0\n{requires})\n",
         )
         write_if_changed(
             self._build_directory / WORK_FILE,
             f"go {GO_VERSION}\n\nuse (\n\t.\n\t{project}\n)\n\n"
-            f"replace {RUNNER_MODULE} => {runners}\n",
+            f"replace {RUNNER_MODULE} => {runners}\n{replaces}",
         )
 
     def _packages(self, build: _Build, module: str) -> list[GoPackage]:

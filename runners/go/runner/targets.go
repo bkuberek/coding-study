@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 )
@@ -98,18 +97,13 @@ func check(symbol string, fnType reflect.Type, skip int, m member, constructor b
 	return checked, nil
 }
 
-// mapped parses a DSL type and finds its Go type; decimal and date are not supported yet.
+// mapped parses a DSL type and finds its Go type.
 func mapped(text string, parse func(string) (*dslType, error)) (*dslType, reflect.Type, *userError) {
 	t, err := parse(text)
 	if err != nil {
 		return nil, nil, &userError{Type: "SignatureMismatch", Message: err.Error()}
 	}
-	goType, err := t.goType()
-	var unsupported *unsupportedType
-	if errors.As(err, &unsupported) {
-		return nil, nil, &userError{Type: "UnsupportedType", Message: err.Error()}
-	}
-	return t, goType, nil
+	return t, t.goType(), nil
 }
 
 type functionTarget struct {

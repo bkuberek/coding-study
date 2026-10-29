@@ -7,9 +7,11 @@ import (
 	"math"
 	"reflect"
 	"strconv"
+	"time"
 	"unicode/utf8"
 
 	"cstudy/support"
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -80,6 +82,12 @@ func decode(value any, t *dslType) (reflect.Value, error) {
 			return reflect.Value{}, mismatch(value, t)
 		}
 		return reflect.ValueOf(r), nil
+	case kindDecimal:
+		d, err := decodeDecimal(value, t)
+		return reflect.ValueOf(d), err
+	case kindDate:
+		day, err := decodeDate(value, t)
+		return reflect.ValueOf(day), err
 	case kindListNode:
 		node, err := buildList(value)
 		return reflect.ValueOf(node), err
@@ -92,7 +100,7 @@ func decode(value any, t *dslType) (reflect.Value, error) {
 	case kindSlice:
 		return decodeSlice(value, t)
 	}
-	return reflect.Value{}, &unsupportedType{t.text}
+	return reflect.Value{}, fmt.Errorf("no decoder for %s", t.text)
 }
 
 func decodeSlice(value any, t *dslType) (reflect.Value, error) {
@@ -100,11 +108,7 @@ func decodeSlice(value any, t *dslType) (reflect.Value, error) {
 	if !ok {
 		return reflect.Value{}, mismatch(value, t)
 	}
-	sliceType, err := t.goType()
-	if err != nil {
-		return reflect.Value{}, err
-	}
-	slice := reflect.MakeSlice(sliceType, len(items), len(items))
+	slice := reflect.MakeSlice(t.goType(), len(items), len(items))
 	for i, item := range items {
 		element, err := decode(item, t.elem)
 		if err != nil {
@@ -198,6 +202,10 @@ func encodeValue(value reflect.Value, t *dslType) (any, error) {
 			return nil, &invalidOutput{fmt.Sprintf("expected char, got the code point %d", r)}
 		}
 		return string(r), nil
+	case kindDecimal:
+		return canonicalDecimal(value.Interface().(decimal.Decimal)), nil
+	case kindDate:
+		return encodeDate(value.Interface().(time.Time))
 	case kindListNode:
 		return encodeList(value.Interface().(*support.ListNode))
 	case kindTreeNode:
@@ -207,5 +215,5 @@ func encodeValue(value reflect.Value, t *dslType) (any, error) {
 	case kindVoid:
 		return nil, nil
 	}
-	return nil, &unsupportedType{t.text}
+	return nil, fmt.Errorf("no encoder for %s", t.text)
 }
