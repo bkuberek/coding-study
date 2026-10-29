@@ -49,6 +49,8 @@ A direct transcription of the precedence rules, which makes it a reliable oracle
 - TypeScript: `s.match(/\d+|[-+*/]/g)` tokenizes; `splice` replaces items in place.
 - Java: a hand-written tokenizer feeds a `List<Integer>` and a `List<Character>`; `remove(int)` removes by position.
 - Kotlin: `Regex.findAll` tokenizes; `removeAt` and indexed assignment update the lists.
+- Go: a hand-written tokenizer walks the bytes, as in Java. `slices.IndexFunc` finds the first operator of a level, and `slices.Delete` removes an entry and shifts the tail, which keeps each reduction O(n).
+- Rust: the tokenizer walks `s.bytes()` and matches `b'0'..=b'9'`. `iter().position` finds the first operator of a level and `Vec::remove` shifts the tail, so each reduction is O(n).
 
 ## Approach: stack (Stack of signed terms)
 
@@ -92,6 +94,8 @@ The standard answer, and the one that extends to parentheses: on `(`, push the c
 - TypeScript: `Math.trunc` truncates toward zero; `charCodeAt(0) - 48` converts a digit.
 - Java: an `ArrayDeque<Integer>` as the stack; `int` division truncates toward zero. The sum walks `descendingIterator()`, bottom to top, which is the order of the expression.
 - Kotlin: `kotlin.collections.ArrayDeque<Int>`; `character - '0'` converts a digit to an `Int`, and `terms.sum()` adds the deque from first to last.
+- Go: `terms[last] *= number` changes the top term in place, and `/` on `int` truncates toward zero. The final loop adds the terms from first to last.
+- Rust: `*terms.last_mut().unwrap() *= number` changes the top term in place. `terms.iter().sum()` adds from first to last, the same order as Java's `descendingIterator`; cstudy builds Rust with overflow checks, so a sum that wrapped silently in Java would panic instead.
 
 ## Approach: running-term (Running total and pending term)
 
@@ -132,3 +136,5 @@ Optimal in both time and memory. It does not extend to parentheses as directly a
 - TypeScript: plain `number` arithmetic is exact here, since every value stays far below 2^53.
 - Java: a `switch` with `case '+', '-' ->` handles both additive operators in one branch; `term /= number` truncates toward zero.
 - Kotlin: `when` with `'+', '-' ->` does the same; `s.withIndex()` provides the index for the last-character test.
+- Go: `case '+', '-':` handles both additive operators, and since Go has no conditional expression the sign is two statements (`term = number`, then `term = -number` for `-`). Indexing a string yields a `byte`, so `operator` and `character` are bytes.
+- Rust: `if` is an expression, so `term = if operator == b'+' { number } else { -number };` fits on one line, and `b'+'` is the byte literal that `s.bytes()` yields.
