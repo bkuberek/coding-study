@@ -52,6 +52,8 @@ Robust for any alphabet, because the content is never interpreted, and slightly 
 - TypeScript: a template literal builds each chunk, `indexOf` finds the marker and `slice` extracts the string.
 - Java: `StringBuilder` builds the encoding; `Integer.parseInt(encoded, position, marker, 10)` parses the digits in place without creating a substring (Java 9+).
 - Kotlin: `buildString { ... }` wraps a `StringBuilder`; `substring(...).toInt()` parses the length.
+- Go: `strings.Builder` appends without quadratic copying, `strconv.Itoa` and `strconv.Atoi` convert the length, and `strings.IndexByte` finds the marker. `len` counts bytes, which equals characters for the ASCII input, and slicing a string by byte offsets copies nothing.
+- Rust: `String` is UTF-8, so `len()` is a byte count and `&encoded[start..end]` slices by byte offsets; both match the character count only because every character is ASCII, and a slice that split a multi-byte character would panic. `find` returns the marker's byte offset and `parse::<usize>()` reads the digits.
 
 ## Approach: escaping (Escaped terminators)
 
@@ -94,3 +96,5 @@ The encoding stays readable and can be decoded as a stream, one character at a t
 - TypeScript: `replaceAll` escapes; `for (const character of encoded)` iterates code points. String concatenation with `+=` is optimized by V8.
 - Java: `encode` escapes inside the same loop that copies characters; `StringBuilder.setLength(0)` reuses one buffer for every decoded string.
 - Kotlin: `when` with conditions models the three cases of the decoder; `buildString` and `StringBuilder` work as in Java.
+- Go: the loop indexes the string by byte and writes bytes to a `strings.Builder`; `current.Reset()` after `String()` is safe, since `String()` returns the buffer that `Reset` then drops instead of reusing.
+- Rust: `chars()` walks the string and `String::push` appends; `std::mem::take(&mut current)` moves the finished string out and leaves an empty one behind, so no clone is needed.
