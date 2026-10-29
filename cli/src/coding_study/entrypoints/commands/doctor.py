@@ -10,6 +10,7 @@ from rich.text import Text
 
 from coding_study.adapters.environment_factory import RUNNERS_DIRECTORY
 from coding_study.adapters.languages.context import LanguageContext
+from coding_study.adapters.languages.debug_servers import InstalledDebugServers, Machine
 from coding_study.adapters.languages.registry import LANGUAGES
 from coding_study.adapters.locations import (
     ContentRootError,
@@ -85,6 +86,7 @@ def doctor_environment(cwd: Path, environ: Mapping[str, str], home: Path) -> Doc
     content = _content(environ)
     return DoctorEnvironment(
         tools=SubprocessToolProbe(),
+        debug_servers=InstalledDebugServers(Machine(environ, home)),
         config=TomlConfigSource(config_path(environ, home)),
         content=content,
         workspace=_workspace(cwd, environ, content),

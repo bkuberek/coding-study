@@ -18,6 +18,8 @@ from coding_study.application.ports import (
     BuildFailed,
     CommandRunner,
     ConfigSource,
+    DebugServer,
+    DebugServers,
     ProbeResult,
     ProgressNotice,
     RepositoryFiles,
@@ -28,7 +30,7 @@ from coding_study.application.ports import (
     UserCode,
     WorkspaceSetup,
 )
-from coding_study.domain.debugging import DEBUGPY_INSTALL_COMMAND
+from coding_study.domain.debugging import DEBUGPY_INSTALL_COMMAND, DELVE_VERSION
 from coding_study.domain.errors import (
     ConfigError,
     LanguageNotSetUpError,
@@ -129,6 +131,7 @@ class PracticeWorkspace:
 @dataclass(frozen=True, slots=True)
 class DoctorEnvironment:
     tools: ToolProbe
+    debug_servers: DebugServers
     config: ConfigSource
     content: ContentLocation | NotFound
     workspace: PracticeWorkspace | NotFound
@@ -149,6 +152,7 @@ class _WorkspaceArtifact:
         return f"{self.project}/{self.artifact}"
 
 
+NOT_FOUND = "not found"
 FIX_COMMAND = "cstudy doctor --fix"
 INIT_COMMAND = "cstudy init"
 MISSING_FILES_SHOWN = 5
@@ -271,6 +275,8 @@ def run_doctor(environment: DoctorEnvironment, notify: ProgressNotice) -> Doctor
         _go(tools),
         _rustc(tools),
         _cargo(tools),
+        _delve(tools, environment.debug_servers.delve()),
+        _lldb_server(environment.debug_servers.lldb_server()),
         _config(environment.config),
         _content(environment.content),
         *_workspace(environment, notify),
@@ -401,6 +407,36 @@ def _cargo(tools: ToolProbe) -> CheckResult:
     if isinstance(version, _Unavailable):
         return CheckResult("cargo", CheckStatus.WARN, version.reason, fix=INSTALL_RUST)
     return CheckResult("cargo", CheckStatus.OK, version)
+
+
+def _delve(tools: ToolProbe, server: DebugServer) -> CheckResult:
+    """Only `cstudy test --debug` with Go needs Delve, so a missing one warns; another release
+    than the tested one may work, so it passes."""
+    fix = _debugger_fix(server, Language.GO)
+    if server.path is None:
+        return CheckResult(server.name, CheckStatus.WARN, NOT_FOUND, fix=fix)
+    version = _version_of(tools, (str(server.path), "version"))
+    if isinstance(version, _Unavailable):
+        return CheckResult(server.name, CheckStatus.WARN, version.reason, fix=fix)
+    if version != DELVE_VERSION:
+        detail = f"{version} (cstudy is tested with {DELVE_VERSION})"
+        return CheckResult(server.name, CheckStatus.OK, detail)
+    return CheckResult(server.name, CheckStatus.OK, version)
+
+
+def _lldb_server(server: DebugServer) -> CheckResult:
+    """Only `cstudy test --debug` with Rust needs it, so a missing one warns."""
+    if server.path is None:
+        fix = _debugger_fix(server, Language.RUST)
+        return CheckResult(server.name, CheckStatus.WARN, NOT_FOUND, fix=fix)
+    return CheckResult(server.name, CheckStatus.OK, str(server.path))
+
+
+def _debugger_fix(server: DebugServer, language: Language) -> str:
+    return (
+        f"needed for --debug with --lang {language}, {server.install}: "
+        f"{TOOLCHAINS_GUIDE}#{language}"
+    )
 
 
 def _config(source: ConfigSource) -> CheckResult:

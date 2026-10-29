@@ -19,6 +19,7 @@ from coding_study.application.doctor import (
 )
 from coding_study.application.ports import (
     BuildFailed,
+    DebugServer,
     LanguageRunner,
     Prepared,
     ProbeResult,
@@ -31,12 +32,13 @@ from coding_study.domain.config import Config
 from coding_study.domain.errors import ConfigError, RunnerProtocolError, RunnerStartError
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import RunnerInfo, RunReport, RunRequest
-from tests.fakes import FakeLanguageRunner, FakeToolchains
+from tests.fakes import DEBUGSERVER, DELVE, FakeDebugServers, FakeLanguageRunner, FakeToolchains
 
 OK, WARN, FAIL = CheckStatus.OK, CheckStatus.WARN, CheckStatus.FAIL
 PYTHON_PATH = "/py/bin/python3.13"
 WORKSPACE_PYTHON = "/ws/python/.venv/bin/python"
 IMPORT_DEBUGPY = (WORKSPACE_PYTHON, "-c", "import debugpy")
+DELVE_VERSION = ("/go/bin/dlv", "version")
 HEALTHY_TOOLS: dict[tuple[str, ...], ProbeResult] = {
     ("uv", "python", "find", "3.13"): ProbeResult(0, f"{PYTHON_PATH}\n"),
     (PYTHON_PATH, "--version"): ProbeResult(0, "Python 3.13.2\n"),
@@ -50,6 +52,7 @@ HEALTHY_TOOLS: dict[tuple[str, ...], ProbeResult] = {
     ("go", "version"): ProbeResult(0, "go version go1.24.1 darwin/arm64\n"),
     ("rustc", "--version"): ProbeResult(0, "rustc 1.80.0 (051478957 2024-07-21)\n"),
     ("cargo", "--version"): ProbeResult(0, "cargo 1.80.0 (376290515 2024-07-16)\n"),
+    DELVE_VERSION: ProbeResult(0, "Delve Debugger\nVersion: 1.27.2\nBuild: $Id: 360e7b2 $\n"),
     IMPORT_DEBUGPY: ProbeResult(0, ""),
 }
 COMPLETE_WORKSPACE = {
@@ -187,10 +190,12 @@ def doctor(
     config: FakeConfigSource | None = None,
     workspace: PracticeWorkspace | NotFound | None = None,
     content: ContentLocation | NotFound = BUNDLED,
+    debug_servers: FakeDebugServers | None = None,
 ) -> DoctorReport:
     return run_doctor(
         DoctorEnvironment(
             tools=tools or FakeTools(),
+            debug_servers=debug_servers or FakeDebugServers(),
             config=config or FakeConfigSource(),
             content=content,
             workspace=workspace or workspace_with(),
@@ -385,6 +390,57 @@ def test_old_rustc_names_the_minimum_and_the_guide():
         "1.79.0 (need 1.80 or newer)",
         f"needed for --lang rust, install Rust 1.80 or newer with rustup: {TOOLCHAINS_GUIDE}#rust",
     )
+
+
+def test_installed_debuggers_pass_with_delves_version_and_the_servers_path():
+    report = doctor()
+    assert (summary(report, "dlv"), summary(report, "debugserver")) == (
+        (OK, "1.27.2"),
+        (OK, "/xcode/debugserver"),
+    )
+
+
+def test_another_delve_release_passes_and_names_the_tested_one():
+    tools = tools_with(DELVE_VERSION, ProbeResult(0, "Delve Debugger\nVersion: 1.26.1\n"))
+    assert summary(doctor(tools), "dlv") == (OK, "1.26.1 (cstudy is tested with 1.27.2)")
+
+
+@pytest.mark.parametrize(
+    ("servers", "name", "fix"),
+    [
+        (
+            FakeDebugServers(delve_server=replace(DELVE, path=None)),
+            "dlv",
+            f"needed for --debug with --lang go, run `go install dlv`: {TOOLCHAINS_GUIDE}#go",
+        ),
+        (
+            FakeDebugServers(lldb=replace(DEBUGSERVER, path=None)),
+            "debugserver",
+            "needed for --debug with --lang rust, run `xcode-select --install`: "
+            f"{TOOLCHAINS_GUIDE}#rust",
+        ),
+        (
+            FakeDebugServers(lldb=DebugServer("lldb-server", "install your lldb package")),
+            "lldb-server",
+            "needed for --debug with --lang rust, install your lldb package: "
+            f"{TOOLCHAINS_GUIDE}#rust",
+        ),
+    ],
+)
+def test_a_missing_debugger_only_warns_with_how_to_install_it(servers, name, fix):
+    report = doctor(debug_servers=servers)
+    result = check(report, name)
+    assert (result.status, result.detail, result.fix, report.passed) == (
+        WARN,
+        "not found",
+        fix,
+        True,
+    )
+
+
+def test_a_delve_that_does_not_run_only_warns():
+    tools = tools_with(DELVE_VERSION, ProbeResult(1, "killed"))
+    assert summary(doctor(tools), "dlv") == (WARN, "`/go/bin/dlv version` exited with 1")
 
 
 def test_a_rustup_shim_without_a_toolchain_only_warns():
