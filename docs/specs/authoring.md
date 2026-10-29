@@ -145,7 +145,7 @@ One file per problem, `solutions/explanation.md`, so approaches can be compared 
 
 Sections appear in `meta.yaml` approach order, ladder from brute to optimal. `## Overview` rows must match the approaches' ids, roles, time and space.
 
-Concurrent problems follow the approach sections with one section per broken reference, in `concurrency.broken` order. They are not in `## Overview`. For concurrent problems `### Language notes` is required for every `optimal` approach and covers Java platform versus virtual threads, Python's GIL (or asyncio), TypeScript's event loop when listed, and, when Kotlin is listed, how the same design would look with coroutines (`Mutex`, `Semaphore`, `Channel`), since coroutines are not autograded in v1 (PRD Q5).
+Concurrent problems follow the approach sections with one section per broken reference, in `concurrency.broken` order. They are not in `## Overview`. For concurrent problems `### Language notes` is required for every `optimal` approach and covers Java platform versus virtual threads, Python's GIL (or asyncio), TypeScript's event loop when listed, Go's `sync` primitives and channels and Rust's `Mutex`, `Condvar` and `&self` sharing when listed (or why an approach has no Go or Rust reference), and, when Kotlin is listed, how the same design would look with coroutines (`Mutex`, `Semaphore`, `Channel`), since coroutines are not autograded in v1 (PRD Q5).
 
 ```markdown
 ## Broken: if-not-while (Wait guarded by if)
@@ -334,6 +334,9 @@ A `pre-push` hook that runs the catalog gate is recommended but not mandatory ([
 - [ ] Values are traceable: producers use `$seq` with a `worker_stride` larger than any `repeat`, so multisets, `distinct` and `source_order` can name the lost or duplicated value.
 - [ ] Contention is real: several workers per group, small capacities or few keys (`$rand` over a small range), and a `@pause` inside probe sections.
 - [ ] Python broken references target a pattern observable at their `python_granularity` ([table](problem-format.md#observable-races-in-python)); `instruction` granularity comes with a lower Python `repeat`.
+- [ ] Go broken references race only on single-word fields (`int`, `bool`, pointers): a concurrent map write is a fatal error that crashes the runner, and a torn slice, string or interface header corrupts memory. Use `sync.Map` or atomics where a map or a growing slice is involved.
+- [ ] Rust broken references are logic races, since safe Rust has no data races: two lock acquisitions where one is needed, `if` instead of `while` around `Condvar::wait`, a lock-order deadlock, or a separate atomic load and store. A bug that safe Rust cannot express (an unguarded linked list, mutation under a read guard) gets `languages` without `rust`, and Rust gets a broken reference of its own.
+- [ ] A broken reference fails in more than one way where it can: one whose only failure is a window of a few instructions, such as a check and an increment on lossless atomics, is caught fewer than 9 times in 10 while `cstudy verify` runs the other languages' runners in parallel. Losing updates, as a `volatile` counter on the JVM does, widens it.
 - [ ] One broken reference per bug class, each with a `caught_by` case designed for it: missing lock, `if` instead of `while`, wrong notify, lock-order deadlock (caught as `STALLED`).
 - [ ] Correct references pass 10 of 10 runs per variant, with the slowest run under 25% of `deadline_ms`; broken references fail at least 9 of 10.
 - [ ] Explanation: `### Language notes` covers each language's primitives and the Kotlin coroutine version; each broken reference has `### Bug`, `### Failing interleaving` and `### Fix`.
