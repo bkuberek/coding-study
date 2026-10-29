@@ -49,6 +49,8 @@ Very easy to get right, and it adapts to odd rules (two rotten neighbors needed,
 - TypeScript: `touchesRot` is an arrow function closing over the grid; the final check is `grid.some((row) => row.includes(FRESH))`.
 - Java: a helper method checks the four neighbors with bounds tests; `List<int[]>` holds the turning cells.
 - Kotlin: `flatMap` and `filter` build the list of turning cells as pairs; `FRESH in row` checks an `IntArray` with `contains`.
+- Go: Like the other references, it marks oranges in place in `grid`, a slice of slices. The cells that turn this minute are collected in a `[][2]int` before any is changed. A package-level `const` pair names the two states.
+- Rust: the parameter is declared `mut grid` so the reference can mark oranges in place. Positions are `usize`, so `checked_add_signed` turns a step off the top or left edge into `None`, and `grid.get(nr).and_then(|row| row.get(nc))` turns one past the other edges into `None` too, which keeps the neighbor test free of bounds arithmetic.
 
 ## Approach: multi-source-bfs (Breadth-first search from all rotten oranges at once)
 
@@ -89,3 +91,5 @@ One pass over the oranges instead of one per minute, and the distances it comput
 - TypeScript: no queue class is needed: each minute builds the next frontier as a new array, which also makes the levels explicit.
 - Java: `ArrayDeque<int[]>`; the level loop counts down from `queue.size()` taken before the loop starts, since the queue grows during it.
 - Kotlin: `repeat(queue.size)` reads the size once, which processes exactly one level; cells are encoded as `r * cols + c` in an `ArrayDeque<Int>`.
+- Go: a slice is the queue: `queue[1:]` pops the front, `append` pushes the back, and `for frontier := len(queue); frontier > 0; frontier--` fixes the frontier size before the loop appends to the queue.
+- Rust: `VecDeque` is the queue and `for _ in 0..queue.len()` evaluates the length once, so cells pushed during the minute wait for the next one. The grid walk uses `iter().enumerate()` on rows and cells, the form clippy asks for when a loop index only reads the grid.
