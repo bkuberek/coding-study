@@ -4,7 +4,8 @@
 //
 //	runner.Main(runner.Registry{"user": two_sum.CsTargets, "ref/hash-map": hash_map.CsTargets}, nil)
 //
-// Exit codes: 0 once `bye` is written; 2 for a request that cannot be run.
+// Exit codes: 0 once `bye` is written; 2 for a request that cannot be run; 3 after
+// `restart_requested`.
 package runner
 
 import (
@@ -17,6 +18,8 @@ import (
 const (
 	exitCompleted  = 0
 	exitBadRequest = 2
+	// exitRestart follows restart_requested: a stress run left worker goroutines running.
+	exitRestart = 3
 )
 
 // Main runs the request named on the command line and exits.
@@ -49,8 +52,8 @@ func run(l *loader, argv []string, stderr io.Writer) int {
 	}
 	if req.Mode == modeBench {
 		runBenchJobs(l, req.Jobs, events)
-	} else {
-		runTestJobs(l, req.Jobs, events)
+	} else if !runTestJobs(l, req.Jobs, events) {
+		return exitRestart
 	}
 	events.bye()
 	return exitCompleted

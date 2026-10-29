@@ -438,7 +438,7 @@ A concurrent problem (`kind: concurrent`, `track: concurrency`) is a class whose
 | Kotlin | `threads` | `platform`, `virtual` | Same JVM runner and JDK APIs (`@Volatile`, `synchronized(lock) {}`, `ReentrantLock.withLock`). Coroutines are not autograded in v1 (PRD Q5); every Kotlin concurrent problem has a coroutine paragraph in its explanation's `### Language notes` |
 | Python | `threads` or `async`, one per problem | `thread` or `async` | CPython 3.13 with the GIL; which races a test can observe: [below](#observable-races-in-python) |
 | TypeScript | `async` only | `async` | Node 24, one event loop; `worker_threads` is not supported (objects cannot be shared between isolates, only `SharedArrayBuffer`). Synchronous methods are atomic, so a problem whose race needs shared-memory threads omits `typescript` from `languages` |
-| Go (planned) | `threads` only | `thread` | Goroutines released by a start gate; `sync` primitives, channels and atomics. The Go runner does not run concurrent jobs yet |
+| Go | `threads` only | `thread` | Goroutines released by a start gate, in parallel on up to `GOMAXPROCS` threads; `sync` primitives, channels and atomics. A data race is observable without injected yields, but a concurrent map write is a fatal runtime error (a crash), so broken references race on other state |
 | Rust (planned) | `threads` only | `thread` | `std::thread` workers over a shared `Arc<T>` (`T: Send + Sync`); a broken reference is a logic race, since safe Rust has no data races. No runner yet |
 
 `concurrency.model` must give every language in `languages` a model from this table; anything else is a content error.
@@ -662,6 +662,8 @@ Deliberately wrong references prove that each scenario can catch the bugs it was
 | TypeScript | not allowed | `blocking` methods are `async name(...): Promise<T>`; others plain |
 | Java | `blocking` methods declare `throws InterruptedException`; imports add `java.util.concurrent.*` and `java.util.concurrent.locks.*` | not allowed |
 | Kotlin | Plain methods (no checked exceptions) | not allowed |
+| Go | Plain methods on `*T`: a `blocking` method blocks its goroutine | not allowed |
+| Rust | Plain methods taking `&self`, since the worker threads share the instance, which must be `Send + Sync`: a `blocking` method blocks its thread | not allowed |
 
 The stub header gains one line naming the model, for example `Concurrency: threads (platform and virtual)`. In the `async` model the runner awaits a method's return value whenever it is awaitable, declared `blocking` or not.
 

@@ -10,8 +10,10 @@ import (
 const constructorOp = 0
 
 // runTestJobs runs the cases of each job (docs/specs/runners.md#event-stream). Inputs are
-// decoded fresh for every case; duration_ns covers only the calls into user code.
-func runTestJobs(l *loader, jobs []job, events *writer) {
+// decoded fresh for every case; duration_ns covers only the calls into user code. It returns
+// false right after a stress run that left worker goroutines running and asked for a restart:
+// the runner then exits without bye.
+func runTestJobs(l *loader, jobs []job, events *writer) bool {
 	for i := range jobs {
 		j := &jobs[i]
 		events.jobStart(j.JobID)
@@ -22,11 +24,29 @@ func runTestJobs(l *loader, jobs []job, events *writer) {
 			for k := range j.Cases {
 				c := &j.Cases[k]
 				events.caseStart(j.JobID, c.ID)
-				events.caseResult(j.JobID, c.ID, target.run(&c.callInput))
+				if c.Stress == nil {
+					events.caseResult(j.JobID, c.ID, target.run(&c.callInput))
+				} else if !runStressCase(j.JobID, c, target, events) {
+					return false
+				}
 			}
 		}
 		events.jobEnd(j.JobID)
 	}
+	return true
+}
+
+// runStressCase reports one stress run, then asks for a restart when its workers still run
+// (docs/specs/runners.md#exit-codes-hang-guard-and-restarts-additions).
+func runStressCase(jobID string, c *testCase, target caseRunner, events *writer) bool {
+	// checkJob allows stress cases in concurrent jobs only, whose signature is a class.
+	run := newStressRun(target.(*classTarget), c.Stress)
+	events.caseResult(jobID, c.ID, run.captured())
+	if running := run.leftovers(); running > 0 {
+		events.restartRequested(fmt.Sprintf("%d worker goroutines still running after %s", running, c.ID))
+		return false
+	}
+	return true
 }
 
 func (t *functionTarget) run(input *callInput) outcome {

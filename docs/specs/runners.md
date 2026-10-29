@@ -54,7 +54,7 @@ The lock and the copy protect against other `cstudy` processes. A Gradle build s
 | Writes | Generated files are rewritten only when their content changes |
 | Cold start | Before the first build of a workspace the CLI prints `compiling the Go runner and standard library (first run)`; the build note is `go, cold`, then `go, warm` |
 | Debug build | `cstudy test --debug` adds `-gcflags=all=-N -l` (no optimizations, no inlining, so every line and variable of the user's code can be inspected) and writes `bin/debug/<snake_slug>`, apart from the optimized binaries. The first debug build compiles the standard library again; before it the CLI prints `compiling the Go runner and standard library for debugging (first debug run)` ([debug mode](#debug-mode)) |
-| Not yet | `decimal` and `date` (the runner reports `load_error` `UnsupportedType`), concurrent jobs (`hello` has no `stress` feature, and a `concurrent` job is a bad request, exit 2) |
+| Not yet | `decimal` and `date` (the runner reports `load_error` `UnsupportedType`) |
 
 ### Rust build details
 
@@ -352,10 +352,10 @@ Every stress run is independent: fresh argument decoding, a fresh instance, fres
 | 5 | Each worker, per op: maybe yield ([Perturbation](#perturbation)); mark the op as in progress; call it (harness ops natively); encode the result immediately on the worker; record it |
 | 6 | The coordinator waits until every worker finished, one failed, or `deadline_ms` passed since the gate opened |
 | 7a | All finished: run `final` sequentially; status `ok` |
-| 7b | First worker failure (throw or unserializable result): stop waiting; JVM interrupts the other workers, async cancels them, Python threads leaves them; status `error` or `invalid_output` with `phase: "worker"`, `worker`, `op_index`, `progress` |
+| 7b | First worker failure (throw or unserializable result): stop waiting; JVM interrupts the other workers, async cancels them, Python threads and Go leave them; status `error` or `invalid_output` with `phase: "worker"`, `worker`, `op_index`, `progress` |
 | 7c | Deadline passed: status `stalled` with `progress`; the JVM interrupts the unfinished workers as in 7b |
 | 8 | Restore perturbation settings, stop capture, write `case_result` |
-| 9 | Threads model: if any worker thread is still alive 200 ms later, write `restart_requested` and exit 3 |
+| 9 | Threads model: if any worker thread (in Go, a worker goroutine) is still running 200 ms later, write `restart_requested` and exit 3 |
 
 `duration_ns` of a stress run is the time from gate open to the last worker finishing (or the failure or deadline); setup and final are excluded.
 
@@ -363,12 +363,13 @@ Details the procedure settles:
 
 | Item | Rule |
 |------|------|
-| After 7b or 7c | Every runtime sets a stop flag that workers check before each op, so a worker that is not stuck inside user code ends at its next op boundary. Python threads cannot be stopped otherwise; TypeScript promises cannot be cancelled, so an unfinished worker's pending promise is abandoned |
+| After 7b or 7c | Every runtime sets a stop flag that workers check before each op, so a worker that is not stuck inside user code ends at its next op boundary. Python threads and goroutines cannot be stopped otherwise; TypeScript promises cannot be cancelled, so an unfinished worker's pending promise is abandoned |
 | Failures after the decision | The first failure wins; failures reported after the coordinator decided (for example an `InterruptedException` caused by the harness interrupt) are dropped |
 | `progress` | Lists every unfinished worker, the failing one included |
 | Decoding errors | An argument that does not decode fails the run before setup with `error` (type `InvalidInput`) in the phase that holds the op |
 | Python perturbation | The switch interval and monitoring apply from just before the workers start until they finished, failed or passed the deadline; setup and the final sequence run without them, and only worker threads draw yields |
 | JVM coordinator | Waits on one monitor for "all finished or one failed" with the remaining time, which is equivalent to joining each worker |
+| Go coordinator | Waits for a channel that is closed once every worker finished or the first one failed, or for a timer at the deadline. Each worker goroutine closes a channel of its own when it returns, however it returns, and step 9 waits for those |
 | Python `async` | Leaves no threads, so it never asks for a restart; a task that suppresses cancellation is caught by the hang guard |
 
 ### Per-runtime execution
@@ -383,6 +384,19 @@ Details the procedure settles:
 | Deadline | Coordinator joins each worker with the remaining time | `Thread.join(remaining)` | `asyncio.wait(tasks, timeout=remaining)`, then cancel pending tasks | `Promise.race` against a `setTimeout`, cleared afterwards |
 | Per-worker PRNG | `new SplittableRandom(seed * 1_000_003L + ordinal)` | `random.Random(seed * 1_000_003 + ordinal)` | same as threads | mulberry32 seeded with `(seed * 1000003 + ordinal) >>> 0` |
 
+The compiled runners run the `threads` model only, with one variant, `thread` ([ADR 0012](../decisions/0012-go-and-rust.md)):
+
+| Concern | Go |
+|---------|----|
+| Worker | One goroutine per worker; the scheduler runs them on up to `GOMAXPROCS` threads (the number of CPUs) |
+| Start gate | A `sync.WaitGroup` of `n` that each worker marks ready, then one channel that the coordinator closes |
+| Scheduler yield | `runtime.Gosched()` |
+| Injection inside user code | none: true parallelism |
+| Calls | Reflection as for class kinds, on the instance that setup created; a worker's panic is recovered in its own goroutine and reported like a case's |
+| Deadline | `select` on the "decided" channel and a timer at the gate's opening plus `deadline_ms` |
+| Per-worker PRNG | `math/rand/v2` PCG seeded with `(seed * 1_000_003 + ordinal, 0)` |
+| Stop | No goroutine can be stopped from outside: the stop flag ends a worker at its next op boundary, and one blocked or spinning in user code makes step 9 ask for a restart |
+
 Sequential cases of a concurrent job run exactly like class-kind cases; in the `async` model each runs in its own event loop and awaitable results are awaited. Synchronous code that never yields (an infinite loop in the `async` model, or a busy loop that the deadline cannot interrupt) is caught by the CLI hang guard as `timeout`.
 
 The PRNG streams need not match across languages; they only make each runtime's perturbation, and the whole `async` schedule, reproducible for a given seed.
@@ -393,6 +407,7 @@ The PRNG streams need not match across languages; they only make each runtime's 
 |---------|-------------|------------------|
 | JVM | With probability `yield_probability`, `1 + nextInt(max_yields)` calls of `Thread.yield()` | none (no agent, no bytecode rewriting) |
 | Python `threads` | Same rule with `time.sleep(0)` | See below |
+| Go | Same rule with `runtime.Gosched()` | none: true parallelism |
 | `async` (Python, TypeScript) | Same rule with macrotask yields | none: a monitoring callback cannot await |
 
 Python `threads`, for the duration of each stress run only:
@@ -404,7 +419,7 @@ Python `threads`, for the duration of each stress run only:
 
 ### Harness ops
 
-Each run has its own probe sections, created on first use. A section holds `shared`, `exclusive`, `entries`, `violations` and `max_occupancy`, guarded by a `synchronized` monitor (JVM) or a `threading.Lock` (Python threads); the async runtimes need no lock.
+Each run has its own probe sections, created on first use. A section holds `shared`, `exclusive`, `entries`, `violations` and `max_occupancy`, guarded by a `synchronized` monitor (JVM), a `threading.Lock` (Python threads) or a `sync.Mutex` (Go); the async runtimes need no lock.
 
 | Op | Behavior |
 |----|----------|
@@ -453,6 +468,7 @@ Broken references are materialized next to the approaches ([Reference materializ
 | Python | `.cs/build/python/ref/<snake_slug>/broken_<id_snake>.py` |
 | TypeScript | `.cs/build/typescript/ref/<slug>/broken-<id>.ts` |
 | Java, Kotlin | `.cs/build/jvm/<lang>/src/main/<lang>/ref/<snake_slug>/broken_<id_snake>/<ClassName>.<ext>`, package `ref.<snake_slug>.broken_<id_snake>` |
+| Go | `.cs/build/go/ref/<snake_slug>/broken_<id_snake>/broken_<id_snake>.go`, a package of its own linked as target `ref/broken-<id>` |
 
 ### Conformance fixtures (Phase 5)
 
@@ -480,7 +496,7 @@ Added to `runners/conformance/` before any concurrent problem merges. `expectati
 | `stub: buggy` | Copy `problems/<dir>/buggy/solution.<ext>` instead of generating; buggy files declare no `package`, so on the JVM `cstudy start` prepends `package practice.<snake_slug>` (with `;` for Java). Go buggy files, like Go references, declare `package <snake_slug>` and are copied unchanged |
 | Formatting | Generated text already matches ruff, Prettier defaults, Google Java style, ktlint defaults, gofmt and rustfmt (including its vertical layout for a signature over 100 characters); no formatter runs |
 | Progressive | All methods emitted, each preceded by a `Level <n>` comment |
-| Concurrent | `blocking` methods become async methods (async model) or declare `throws InterruptedException` (Java); the header names the model ([problem-format](problem-format.md#stubs-for-concurrent-problems)) |
+| Concurrent | `blocking` methods become async methods (async model) or declare `throws InterruptedException` (Java); Kotlin, Go and Rust declare them like any other method, since the call simply blocks its thread or goroutine; the header names the model ([problem-format](problem-format.md#stubs-for-concurrent-problems)) |
 
 Every generated stub must compile or import unchanged; the conformance suite checks this for every DSL type.
 
@@ -500,6 +516,6 @@ For JVM bench the classpath joins the user's `practice.*` classes and the `ref.*
 
 ## Conformance suite
 
-`runners/conformance/` holds fixture problems in the normal problem format whose reference approaches are identity functions (return the argument unchanged) for every DSL type, plus fixtures for error paths: exception, `invalid_output`, missing symbol, hang, user printing to stdout, `ref_of`, `output_from`, `no_alias_with`, cyclic ListNode input, and decimal and date arithmetic (inputs that keep their scale, canonical outputs, rounding modes, days across leap years). `cstudy verify --conformance` runs each fixture in every language its `meta.yaml` lists and also compiles every generated stub; a runner that does not support a feature yet leaves the fixture's languages without it (Go lists 9001 to 9013, Rust the same except 9006 and 9010, which [S13](authoring.md#static) keeps out of Rust). It is a Phase 0 exit criterion and must pass before any runner change merges.
+`runners/conformance/` holds fixture problems in the normal problem format whose reference approaches are identity functions (return the argument unchanged) for every DSL type, plus fixtures for error paths: exception, `invalid_output`, missing symbol, hang, user printing to stdout, `ref_of`, `output_from`, `no_alias_with`, cyclic ListNode input, and decimal and date arithmetic (inputs that keep their scale, canonical outputs, rounding modes, days across leap years). `cstudy verify --conformance` runs each fixture in every language its `meta.yaml` lists and also compiles every generated stub; a runner that does not support a feature yet leaves the fixture's languages without it (Go lists 9001 to 9017 and 9019, Rust 9001 to 9013 except 9006 and 9010, which [S13](authoring.md#static) keeps out of Rust). It is a Phase 0 exit criterion and must pass before any runner change merges.
 
 Fixtures live in `runners/conformance/<id>-<slug>/`; each language adds its reference files as `solutions/<approach>.<ext>`. `runners/conformance/expectations.json` (schema `schemas/conformance.schema.json`) gives the expected outcome per fixture and approach (`pass`, `error`, `invalid_output`, `timeout`, `load_error`) with per-case overrides, and `runners/conformance/README.md` states what every approach does in each language.

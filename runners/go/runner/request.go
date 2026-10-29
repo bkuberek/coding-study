@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 )
 
 // protocolVersion is the runner protocol this runner speaks (docs/specs/runners.md#request-file).
@@ -21,6 +22,10 @@ const (
 	kindConcurrent  = "concurrent"
 )
 
+// modelThreads is the only concurrency model Go runs (docs/specs/problem-format.md#models-and-
+// language-support).
+const modelThreads = "threads"
+
 type request struct {
 	Protocol int    `json:"protocol"`
 	Mode     string `json:"mode"`
@@ -31,6 +36,7 @@ type request struct {
 type job struct {
 	JobID     string        `json:"job_id"`
 	Kind      string        `json:"kind"`
+	Model     string        `json:"model"`
 	Target    targetRef     `json:"target"`
 	Names     names         `json:"names"`
 	Signature signature     `json:"signature"`
@@ -97,6 +103,29 @@ type callInput struct {
 type testCase struct {
 	ID string `json:"id"`
 	callInput
+	// Stress is set on the stress runs of a concurrent job, which the CLI expanded into literal
+	// worker scripts (docs/specs/runners.md#concurrent-jobs).
+	Stress *stressCase `json:"stress"`
+}
+
+type stressCase struct {
+	Seed       int64        `json:"seed"`
+	DeadlineMS int64        `json:"deadline_ms"`
+	Perturb    perturbation `json:"perturb"`
+	Setup      script       `json:"setup"`
+	Workers    []script     `json:"workers"`
+	Final      *script      `json:"final"`
+}
+
+type perturbation struct {
+	YieldProbability float64 `json:"yield_probability"`
+	MaxYields        int     `json:"max_yields"`
+}
+
+// script is a sequence of operations: the setup (constructor first), one worker, or the final.
+type script struct {
+	Ops  []string            `json:"ops"`
+	Args [][]json.RawMessage `json:"args"`
 }
 
 type benchTarget struct {
@@ -162,15 +191,39 @@ func checkJob(j *job, mode string) error {
 			return fmt.Errorf("a class job needs signature.class")
 		}
 	case kindConcurrent:
-		return fmt.Errorf("the go runner does not run concurrent jobs yet")
+		if err := checkConcurrent(j, mode); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown kind %q", j.Kind)
+	}
+	if j.Kind != kindConcurrent && slices.ContainsFunc(j.Cases, isStress) {
+		return fmt.Errorf("only a concurrent job has stress cases")
 	}
 	if mode == modeBench && len(j.Targets) == 0 {
 		return fmt.Errorf("a bench job needs targets")
 	}
 	return nil
 }
+
+func checkConcurrent(j *job, mode string) error {
+	switch {
+	case j.Model != modelThreads:
+		return fmt.Errorf("the go runner runs the threads model only, not %q", j.Model)
+	case mode == modeBench:
+		return fmt.Errorf("concurrent problems have no bench")
+	case j.Signature.Class == nil:
+		return fmt.Errorf("a concurrent job needs signature.class")
+	}
+	for _, c := range j.Cases {
+		if c.Stress != nil && len(c.Stress.Setup.Ops) == 0 {
+			return fmt.Errorf("stress case %q has no constructor in its setup", c.ID)
+		}
+	}
+	return nil
+}
+
+func isStress(c testCase) bool { return c.Stress != nil }
 
 // isClass reports whether the job is one of the class kinds (an operation sequence per case).
 func (j *job) isClass() bool { return j.Signature.Class != nil }

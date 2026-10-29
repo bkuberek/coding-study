@@ -7,6 +7,7 @@ status: ready
 difficulty: easy
 track: concurrency
 kind: concurrent
+languages: [java, kotlin, python, typescript, go]
 signature:
   class:
     name: StressCounter
@@ -15,7 +16,7 @@ signature:
       - {name: increment, blocking: true, params: [], returns: {type: int}}
 comparator: {type: ops}
 concurrency:
-  model: {java: threads, kotlin: threads, python: threads, typescript: async}
+  model: {java: threads, kotlin: threads, python: threads, typescript: async, go: threads}
   jvm_threads: [platform, virtual]
 approaches:
   - {id: atomic, name: Read and write under one lock, role: optimal, time: "O(1) per op", space: "O(1)"}

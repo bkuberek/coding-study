@@ -19,7 +19,7 @@ var registry = Registry{
 		"twoSum": fixture.TwoSum, "indexAt": fixture.IndexAt, "shout": fixture.Shout,
 		"loud": fixture.Loud, "overflow": fixture.Overflow, "sortValues": fixture.SortValues,
 		"pickNode": fixture.PickNode, "sameList": fixture.SameList, "NewCounter": fixture.NewCounter,
-		"wrong": fixture.Wrong,
+		"wrong": fixture.Wrong, "NewTally": fixture.NewTally, "NewGate": fixture.NewGate,
 	},
 	"ref/new-node": {"pickNode": fixture.NewNode},
 }
@@ -247,7 +247,11 @@ func TestBadRequestsExitWith2(t *testing.T) {
 	tests := []struct{ name, body string }{
 		{"not JSON", "{"},
 		{"unknown protocol", `{"protocol": 2, "mode": "test", "jobs": []}`},
-		{"concurrent job", testRequest(`{"job_id": "j", "kind": "concurrent", "signature": {"class": {}}}`)},
+		{"async model", testRequest(`{"job_id": "j", "kind": "concurrent", "model": "async", "signature": {"class": {}}}`)},
+		{"concurrent bench", `{"protocol": 1, "mode": "bench", "jobs": [{"job_id": "j", "kind": "concurrent",
+			"model": "threads", "signature": {"class": {}}, "targets": [{"target_id": "user", "target": {"compiled": "user"}}]}]}`},
+		{"stress case outside a concurrent job", testRequest(`{"job_id": "j", "kind": "design", "signature": {"class": {}},
+			"cases": [{"id": "s1", "stress": {"setup": {"ops": [], "args": []}, "workers": []}}]}`)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

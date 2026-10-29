@@ -1,7 +1,8 @@
 """The stress conformance fixtures 9014 to 9019 through every real runner (Phase 5).
 
-Marked `slow`: Gradle, Node and the workspace venv, as `cstudy verify --conformance` runs them, in
-the session's practice workspace over this checkout's content.
+Marked `slow`: Gradle, Node, the workspace venv and the Go toolchain, as `cstudy verify
+--conformance` runs them, in the session's practice workspace over this checkout's content. Each
+fixture runs in the languages its meta.yaml lists.
 """
 
 import pytest
@@ -9,7 +10,7 @@ import pytest
 from coding_study.adapters.conformance_fixtures import load_conformance_suite
 from coding_study.adapters.environment_factory import conformance_environment, load_environment
 from coding_study.application.verify_conformance import ConformanceRequest, verify_conformance
-from coding_study.domain.problem import CORE_LANGUAGES
+from coding_study.domain.problem import CORE_LANGUAGES, Language
 from tests.helpers import REPOSITORY_ROOT
 
 pytestmark = pytest.mark.slow
@@ -24,7 +25,7 @@ STRESS_FIXTURES = (
 )
 
 
-@pytest.mark.parametrize("language", CORE_LANGUAGES)
+@pytest.mark.parametrize("language", [*CORE_LANGUAGES, Language.GO])
 def test_every_runner_meets_the_stress_expectations(language, practice_workspace):
     environ = {"CSTUDY_CONTENT": str(REPOSITORY_ROOT), "CSTUDY_WORKSPACE": str(practice_workspace)}
     environment = load_environment(practice_workspace, environ, practice_workspace)

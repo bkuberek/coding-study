@@ -10,6 +10,10 @@ import (
 
 const runnerName = "go"
 
+// stressFeature tells the CLI that this runner runs concurrent jobs (docs/specs/runners.md#
+// capability).
+const stressFeature = "stress"
+
 // field keeps event keys in the order the spec shows them.
 type field struct {
 	key   string
@@ -52,7 +56,8 @@ func runtimeVersion() string {
 
 func (w *writer) hello() {
 	w.emit(field{"event", "hello"}, field{"runner", runnerName},
-		field{"protocol", protocolVersion}, field{"runtime", runtimeVersion()})
+		field{"protocol", protocolVersion}, field{"runtime", runtimeVersion()},
+		field{"features", []string{stressFeature}})
 }
 
 func (w *writer) jobStart(jobID string) {
@@ -82,10 +87,18 @@ func (w *writer) targetLoadError(jobID, targetID string, err *userError) {
 
 func (w *writer) bye() { w.emit(field{"event", "bye"}) }
 
+// restartRequested follows a stress run's case_result when its worker goroutines still run; the
+// runner then exits with exitRestart, without bye.
+func (w *writer) restartRequested(reason string) {
+	w.emit(field{"event", "restart_requested"}, field{"reason", reason})
+}
+
 const (
 	statusOK            = "ok"
 	statusError         = "error"
 	statusInvalidOutput = "invalid_output"
+	// statusStalled is a stress run whose workers were unfinished at its deadline.
+	statusStalled = "stalled"
 )
 
 // outcome is what one call sequence produced: a case, or a bench check call.
@@ -99,6 +112,31 @@ type outcome struct {
 	partialOutput []any
 	durationNS    int64
 	stdout        string
+	// stress is set on the result of a stress run (docs/specs/runners.md#events).
+	stress *stressFields
+}
+
+// stressFields are what a stress run adds to a case_result: the probe sections of a completed
+// run, or where a failed run failed and which workers had not finished.
+type stressFields struct {
+	sections map[string]sectionCounts
+	phase    string
+	opIndex  int
+	// worker is the failing worker's ordinal in the worker phase, -1 otherwise.
+	worker   int
+	progress []workerProgress
+}
+
+type sectionCounts struct {
+	Entries      int `json:"entries"`
+	Violations   int `json:"violations"`
+	MaxOccupancy int `json:"max_occupancy"`
+}
+
+type workerProgress struct {
+	Worker    int  `json:"worker"`
+	Completed int  `json:"completed"`
+	InOp      bool `json:"in_op"`
 }
 
 func returned(output any, durationNS int64) outcome {
@@ -127,9 +165,26 @@ func (o outcome) fields() []field {
 	case statusInvalidOutput:
 		fields = append(fields, field{"reason", o.reason})
 	}
+	if o.stress != nil {
+		fields = append(fields, o.stress.fields(o.status)...)
+	}
 	fields = append(fields, field{"duration_ns", o.durationNS})
 	if o.stdout != "" {
 		fields = append(fields, field{"stdout", o.stdout})
+	}
+	return fields
+}
+
+func (s *stressFields) fields(status string) []field {
+	switch status {
+	case statusOK:
+		return []field{{"sections", s.sections}}
+	case statusStalled:
+		return []field{{"progress", s.progress}}
+	}
+	fields := []field{{"phase", s.phase}, {"op_index", s.opIndex}}
+	if s.worker >= 0 {
+		fields = append(fields, field{"worker", s.worker}, field{"progress", s.progress})
 	}
 	return fields
 }

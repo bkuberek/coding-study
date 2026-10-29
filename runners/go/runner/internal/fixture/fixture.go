@@ -5,6 +5,7 @@ package fixture
 import (
 	"fmt"
 	"slices"
+	"sync"
 
 	"cstudy/support"
 )
@@ -72,3 +73,32 @@ func (c *Counter) Fail() { panic(fmt.Errorf("counter failure")) }
 
 // Wrong has the right name but the wrong parameter type for a two-sum signature.
 func Wrong(nums []int64, target int) []int { return nil }
+
+// Tally is a counter that many goroutines share; Step panics at index 100.
+type Tally struct {
+	mu    sync.Mutex
+	count int
+}
+
+func NewTally() *Tally { return &Tally{} }
+
+func (t *Tally) Increment() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.count++
+	return t.count
+}
+
+func (t *Tally) Step(index int) int {
+	if index == 100 {
+		panic(fmt.Errorf("failed at %d", index))
+	}
+	return index
+}
+
+// Gate makes its callers wait on a channel that nobody closes.
+type Gate struct{ open chan struct{} }
+
+func NewGate() *Gate { return &Gate{open: make(chan struct{})} }
+
+func (g *Gate) Enter() { <-g.open }
