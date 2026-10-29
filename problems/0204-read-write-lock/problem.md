@@ -59,7 +59,7 @@ Every method is called concurrently by many workers.
 - Writer preference: while a writer waits, newly arriving readers wait as well, so a stream of overlapping readers cannot keep a writer out forever. Among waiting writers the order is not specified.
 - Stress tests count the workers between each acquisition and its release (shared for readers, exclusive for writers), and after every run check that the lock is free again.
 
-Java and Kotlin run on platform threads and on virtual threads, Python on threads, and TypeScript as async workers on one event loop, where `acquireRead` and `acquireWrite` are `async` and the other methods are plain. A passing stress run is evidence of correct synchronization, not proof; writer preference is part of the contract, but the stress tests check mutual exclusion and progress, not starvation.
+Java and Kotlin run on platform threads and on virtual threads, Python and Rust on threads, Go on goroutines, and TypeScript as async workers on one event loop, where `acquireRead` and `acquireWrite` are `async` and the other methods are plain. In Rust the threads share one lock, so its methods take `&self`. A passing stress run is evidence of correct synchronization, not proof; writer preference is part of the contract, but the stress tests check mutual exclusion and progress, not starvation.
 
 ## Follow-ups
 

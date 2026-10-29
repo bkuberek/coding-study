@@ -55,12 +55,16 @@ A read-write lock only pays off when read sections are long or reads vastly outn
 - Kotlin: the same JDK classes with `lock.withLock { }`, plus the `ReentrantReadWriteLock.read { }` and `write { }` extension functions. Coroutines have no read-write mutex in `kotlinx.coroutines`; the usual design is the same state machine guarded by a `Mutex`, with waiting lists of `CompletableDeferred`, so that waiting suspends instead of blocking a thread. Coroutines are not autograded here.
 - Python: two `threading.Condition` objects sharing one `threading.Lock`. The GIL does not make the check of `self._writing` and the update of `self._readers` one atomic step, so the mutex is still needed; the standard library has no read-write lock.
 - TypeScript: one event loop, so the counters need no mutex, but every `await` is a point where other workers run. The reference keeps FIFO lists of waiting readers and writers and updates the state when it admits them, which avoids re-checking after a wake-up.
+- Go: a `sync.Mutex` and two `sync.Cond`s on it, waited on in `for` loops. `sync.RWMutex` is the library version; it also gives waiting writers priority over new readers, and like this design it may be unlocked by a different goroutine than the one that locked it.
+- Rust: the counters in a `Mutex` with two `Condvar`s. `std::sync::RwLock` hands out guards that must be dropped by the code that took them, so it cannot implement `acquireRead` and `releaseRead` as separate calls; its fairness also depends on the operating system. The threads share the lock, so the methods take `&self`.
 
 ## Broken: unlocked-count (Reader count without a lock)
 
 ### Bug
 
 Writers exclude each other with a mutex, but readers only spin while `writing` is set and then increment a shared counter, all without the mutex. A reader's check and its increment are two steps, and a writer's check of the counter and its `writing = true` are two more, so a writer and a reader can both get in (`section` violation). On the JVM, `volatile` makes the fields visible but does not make `readers++` atomic: concurrent increments and decrements are lost, so the count drifts, letting a writer in among readers or locking writers out forever (`STALLED`, or the final `tryAcquireWrite` returning `false`).
+
+The Go version keeps the flag and the counter in plain fields that goroutines read and write at once, with a `sync.Mutex` between writers; `readers++` is a load and a store, so it loses updates as on the JVM. Safe Rust has no plain field to share, so its version keeps them in an `AtomicBool` and an `AtomicI32` and, like `volatile`, makes each load and store atomic but not the increment: it loads the count and stores the count plus one in a separate step. Its writers exclude each other with a compare-and-swap on another `AtomicBool`.
 
 ### Failing interleaving
 
@@ -76,7 +80,7 @@ Make the check and the update one atomic step under the same mutex the writer us
 
 ### Bug
 
-`releaseWrite` and the last `releaseRead` wake every waiting worker. Readers re-check their condition, but a woken writer continues past its `if` and sets `writing` without looking again. When two writers wait, one release lets both in (`section` violation with two exclusive holders).
+`releaseWrite` and the last `releaseRead` wake every waiting worker. Readers re-check their condition, but a woken writer continues past its `if` and sets `writing` without looking again. When two writers wait, one release lets both in (`section` violation with two exclusive holders). Go's version waits on one `sync.Cond` and wakes with `Broadcast`; Rust's waits on one `Condvar` and wakes with `notify_all`, and a `Condvar` may also wake a writer spuriously, with nobody's release at all.
 
 ### Failing interleaving
 

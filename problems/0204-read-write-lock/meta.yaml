@@ -6,7 +6,7 @@ status: ready
 difficulty: hard
 track: concurrency
 kind: concurrent
-languages: [java, kotlin, python, typescript]
+languages: [java, kotlin, python, typescript, go, rust]
 signature:
   class:
     name: ReadWriteLock
@@ -20,7 +20,7 @@ signature:
       - {name: tryAcquireWrite, params: [], returns: {type: bool}}
 comparator: {type: ops}
 concurrency:
-  model: {java: threads, kotlin: threads, python: threads, typescript: async}
+  model: {java: threads, kotlin: threads, python: threads, typescript: async, go: threads, rust: threads}
   jvm_threads: [platform, virtual]
   runs: 3
   deadline_ms: 5000
@@ -28,7 +28,7 @@ concurrency:
     - id: unlocked-count
       name: Reader count without a lock
       bug: Readers check the writer flag and bump a shared counter without mutual exclusion, so a writer can enter between a reader's check and its increment
-      languages: [java, kotlin, python]
+      languages: [java, kotlin, python, go, rust]
       caught_by: [s1]
     - id: if-not-while
       name: Writer wait guarded by if
