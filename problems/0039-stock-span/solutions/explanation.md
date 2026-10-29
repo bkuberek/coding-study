@@ -42,6 +42,8 @@ The definition turned into code, which makes it the oracle. It is fine when pric
 ### Language notes
 
 - Python and TypeScript keep a plain list or array of prices; Java's `ArrayList<Integer>` boxes each price, and `prices.get(day - 1) <= price` unboxes it for the comparison (comparing two boxed `Integer`s with `==` would compare references instead); Kotlin's `mutableListOf<Int>()` hides the same boxing.
+- Go: a `[]int` of prices holds plain values, so `s.prices[day-1] <= price` is a value comparison with no boxing.
+- Rust: a `Vec<i32>` of prices compares by value too. Days are `usize` indexes, so the span converts with `as i32` on return, and `day - 1` is safe because the loop tests `day > 0` first.
 
 ## Approach: monotonic-stack (Stack of prices with the spans they absorbed)
 
@@ -80,3 +82,5 @@ Linear over the whole sequence and the expected answer. A single call can take O
 - TypeScript: two parallel arrays avoid allocating a small object per day.
 - Java: an `ArrayDeque<int[]>` of two-element arrays, used as a stack through `push`, `pop` and `peek`.
 - Kotlin: a private `data class Entry` on an `ArrayDeque`, which reads better than a pair.
+- Go: a small struct `entry{price, span}` in a slice is the stack; the loop pops while the top price is not higher and adds each popped span.
+- Rust: a `Vec<(i32, i32)>` of tuples is the stack. `while let Some(&(top_price, top_span)) = self.stack.last()` copies the top out of the borrow, so `pop()` can run inside the loop body.
