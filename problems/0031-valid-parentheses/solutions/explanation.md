@@ -46,6 +46,8 @@ It is the way many people check brackets by hand and it is hard to get wrong, wh
 - TypeScript: `replaceAll` with a string pattern replaces literally.
 - Java: `String.replace(CharSequence, CharSequence)` replaces literally; `replaceAll` would treat `()` as a regular expression and match the empty string.
 - Kotlin: `fold` applies the three replacements in sequence; `String.replace(String, String)` is literal.
+- Go: `strings.ReplaceAll(s, pair, "")` replaces literally and returns a new string, as Java's `String.replace` does. Go strings are immutable byte sequences, so comparing `len` before and after is a byte count, which equals the character count here because the input is ASCII.
+- Rust: `str::replace` with a `&str` pattern is literal and returns a new `String`, so each round chains three replacements and rebinds `current`. `len()` counts bytes, which equals the character count for ASCII brackets.
 
 ## Approach: stack (Stack of open brackets)
 
@@ -86,3 +88,5 @@ Linear and single-pass, and it can report the exact position of the first error,
 - TypeScript: `pop()` on an empty array returns `undefined`, which never equals an opener, so the empty check comes for free.
 - Java: `ArrayDeque<Character>` is the recommended stack (`push`, `pop`); the legacy `Stack` class is synchronized and slower. `pop() != openerOf(c)` compares a `Character` with a `char`, which unboxes and compares values; comparing two `Character` objects with `!=` would compare references. A `char[]` with a top index avoids boxing entirely.
 - Kotlin: `kotlin.collections.ArrayDeque<Char>` with `addLast` and `removeLastOrNull()`; a null result on an empty stack never equals an opener.
+- Go: a `[]rune` is the stack: `append` pushes and reslicing `openBrackets[:last]` pops. The nil slice is a valid empty stack, and `len(openBrackets) - 1` is -1 when empty, which the `last < 0` check catches before indexing. `range` over a string yields runes, and a map from closer to opener answers both "is this a closer?" and "which opener does it need?" in one lookup.
+- Rust: a `Vec<char>` is the stack. `pop()` returns an `Option<char>`, so `pop() != Some(opener_of(character))` also rejects a closer on an empty stack without a separate emptiness check.
