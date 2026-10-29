@@ -48,6 +48,8 @@ The most literal reading of the statement and a useful oracle, but each step red
 - TypeScript: `every` checks all prerequisites and is `true` for an empty list.
 - Java: a helper `allTaken` keeps the scan readable; lists of `Integer` unbox in the enhanced `for`.
 - Kotlin: `firstOrNull { ... } ?: return false` expresses "take the first free course or give up" in one line.
+- Go: Python's `for ... else` has no counterpart, so a `found` flag ends the inner loop and the outer one returns `false` when it stays unset. `allTaken` replaces the generator expression passed to `all`.
+- Rust: `(0..count).find(|&course| ...)` returns the first course that can be taken as an `Option`, which replaces `for ... else`, and `iter().all(...)` stops at the first prerequisite that is not taken yet. Course numbers arrive as `i32` and are cast to `usize` once, when the lists are built.
 
 ## Approach: kahn (Queue the courses whose remaining prerequisite count drops to zero)
 
@@ -86,6 +88,8 @@ Linear, iterative and easy to extend: the dequeue order is a valid course order,
 - TypeScript: arrays have O(n) `shift`, so the reference walks a growing array with a `head` index; the array's final length is the number of courses taken.
 - Java: `ArrayDeque<Integer>` is the standard queue; `--waiting[unlocked] == 0` decrements and tests in one step.
 - Kotlin: `kotlin.collections.ArrayDeque` has `removeFirst` and `addLast`; destructuring `(course, before)` works on `IntArray` pairs.
+- Go: a slice serves as the queue (`ready[1:]` pops the front), `waiting` is a counter slice, and `for course, count := range waiting` collects the courses that start with no prerequisites.
+- Rust: `VecDeque<usize>` is the queue and is built from a `filter` over the course range. The counters are an `i32` vector that is only decremented for a course that is still waiting, so the `-= 1` never goes below zero when every edge is counted once.
 
 ## Approach: three-color-dfs (Depth-first search that detects a path looping back on itself)
 
@@ -123,3 +127,5 @@ Same bound as Kahn's algorithm, with less bookkeeping (no counts) but recursion 
 - TypeScript: Node's default stack comfortably holds 2000 frames of this size.
 - Java: the reference passes the graph and states as arguments to a private helper.
 - Kotlin: a local recursive `fun` captures the graph and the state array; `all { ... }` stops at the first failure.
+- Go: the three states are `iota` constants, and a recursive closure needs its `var completes func(course int) bool` declaration first, because the name must exist before the closure body refers to it. Goroutine stacks grow on demand, so deep chains do not overflow.
+- Rust: the recursion is a free function that takes the prerequisite lists and the `state` slice as parameters, since a Rust closure cannot call itself. The `all` over the courses borrows `state` mutably inside the closure, which is fine because nothing else holds it. The runner gives each case a large stack, so a long prerequisite chain does not overflow.
