@@ -50,6 +50,8 @@ With an unbounded alphabet this is O(n^2), the usual "brute force" of interviews
 - TypeScript: a fresh `Set<string>` per start; indexing `s[end]` yields one-character strings.
 - Java: a fresh `boolean[128]` per start is cheaper than a `HashSet<Character>`, and the run length is `end - start`.
 - Kotlin: `BooleanArray(128)` indexed by `Char.code`.
+- Go: a fresh `[128]bool` array per start is a zeroed value on the stack, so no set object is allocated; indexing a string yields a `byte`, which is whole characters for printable ASCII and indexes the array directly.
+- Rust: `[false; 128]` is a stack array, rebuilt for every start, and `usize::from(byte)` widens each byte into an index. The run length is `end - start`.
 
 ## Approach: sliding-set (Shrink the window one character at a time)
 
@@ -90,6 +92,8 @@ The canonical variable-size sliding window: grow on the right, shrink on the lef
 - TypeScript: `for (const ch of s)` iterates by code point, which equals iterating by index for the printable ASCII input here.
 - Java: `HashSet<Character>` boxes characters; `Character.valueOf` caches all ASCII values, so no allocation happens per step.
 - Kotlin: `HashSet<Char>` and the `in` operator; `for (ch in s)` iterates characters.
+- Go: the set of characters in the window is a `[128]bool` array; assigning `false` removes a character, and the window size is `right - left + 1`, so no counter is kept.
+- Rust: the same `[bool; 128]` array is the window set, and `bytes[left]` is the character that leaves it. The window size is the `right - left + 1` difference of two `usize` values, and the result is converted to `i32` once at the end.
 
 ## Approach: last-index (Jump the window past the last occurrence)
 
@@ -130,3 +134,5 @@ One pass, one array lookup per character, the fastest version. With a fixed smal
 - TypeScript: `new Int32Array(128).fill(-1)` indexed by `charCodeAt`; typed arrays avoid both hashing and string allocation.
 - Java: `int[128]` with `Arrays.fill(lastSeen, -1)`; a `char` indexes an array directly.
 - Kotlin: `IntArray(128) { -1 }` and `Char.code`; `withIndex()` yields position and character together.
+- Go: `lastSeen` is a `[128]int` pre-filled with -1, so an unseen character always fails the `previous >= left` test and no separate presence check is needed.
+- Rust: `[Option<usize>; 128]` records the last position, with `None` for an unseen character. `left = left.max(previous + 1)` covers both cases of the Python test: an occurrence inside the window moves the edge, an older one leaves it where it is.
