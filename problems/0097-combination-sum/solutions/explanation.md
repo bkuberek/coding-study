@@ -51,6 +51,8 @@ Very little to get wrong, which makes it the oracle. It does not use the order o
 - TypeScript: `[...chosen]` copies on success.
 - Java: passing `chosen` and `result` explicitly keeps the helper free of fields; `remove(chosen.size() - 1)` removes by index.
 - Kotlin: a local `fun` recursion; `removeAt` removes by index and avoids the `remove(element)` overload.
+- Go: the closure is declared first (`var explore func(index, remaining int)`) and assigned after, so it can call itself. `chosen = chosen[:len(chosen)-1]` undoes the append, and `slices.Clone(chosen)` snapshots a finished combination, because later appends reuse the same backing array.
+- Rust: the recursion is a function that takes `chosen` and `result` as `&mut Vec`, so the same buffers are shared down the recursion, and `chosen.clone()` snapshots a finished combination. `remaining` is an `i32` because it goes negative on an overshoot.
 
 ## Approach: sorted-pruning (Loop over sorted candidates and stop at the first that overshoots)
 
@@ -91,3 +93,5 @@ The standard interview answer: one loop per level and a sorted array make the pr
 - TypeScript: `[...candidates].sort((a, b) => a - b)` sorts numerically; the default `sort()` compares strings and would put 10 before 9.
 - Java: `candidates.clone()` then `Arrays.sort` sorts the primitive copy; the loop condition carries the break.
 - Kotlin: `candidates.sorted()` returns a sorted `List<Int>`; `break` inside the `for` loop stops it as in Java.
+- Go: `slices.Clone` plus `slices.Sort` sorts a copy of the `[]int`. A `break` inside a plain `for` loop leaves the loop, as the pruning needs.
+- Rust: the function owns `candidates`, so it sorts that vector in place with `sort_unstable`; equal integers are indistinguishable, and the values are distinct anyway. `iter().enumerate().skip(start)` walks the candidates from `start` while keeping the original index `i` for the recursive call.
