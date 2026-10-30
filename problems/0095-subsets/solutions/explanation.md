@@ -48,6 +48,8 @@ No recursion and no shared mutable state, which makes it short and easy to trust
 - TypeScript: `nums.filter((_, i) => ((mask >> i) & 1) === 1)` keeps the values whose bit is set; bit operators work on 32-bit integers, which is plenty for n at most 10.
 - Java: a nested loop fills an `ArrayList<Integer>`; `List<List<Integer>>` matches the signature.
 - Kotlin: `shr` and `and` are infix functions, and `filterIndexed` reads like the Python comprehension.
+- Go: `1<<len(nums)` is the number of masks, and `mask>>i&1 == 1` reads bit `i` (in Go the shift and the `&` have the same precedence and group left to right, so no parentheses are needed). The empty subset stays a `nil` slice, which the encoder writes as `[]`.
+- Rust: `1u32 << nums.len()` needs the `u32` suffix so the range has a type. Unlike C, Rust ranks `&` above `==`, so `(mask >> i) & 1 == 1` already means `((mask >> i) & 1) == 1`; the parentheses around the shift only make the order easy to read. `collect()` builds each inner `Vec` and then the outer one.
 
 ## Approach: backtracking (Choose or skip each value)
 
@@ -89,3 +91,5 @@ Same asymptotic cost as the bitmask, with a slightly higher constant for the cal
 - TypeScript: `[...chosen]` copies; an arrow function closure keeps the recursion local.
 - Java: `new ArrayList<>(chosen)` copies; `chosen.remove(chosen.size() - 1)` removes by index (an `int` argument), not by value.
 - Kotlin: `chosen.toList()` copies into a read-only list; a local `fun` can recurse and capture `result`.
+- Go: a recursive closure has to be declared first (`var explore func(index int)`) and assigned after, so it can call itself. `chosen = chosen[:len(chosen)-1]` undoes the append, and `slices.Clone(chosen)` snapshots the current choice, because the slice header shares its backing array with later appends.
+- Rust: the recursion is a function taking `chosen` and `result` as `&mut Vec`, which passes the same buffers down without copying them; `chosen.clone()` snapshots the current choice into `result`, and `chosen.pop()` undoes the push.
