@@ -48,6 +48,8 @@ Simple and obviously correct, with an optimal `getRandom`; only the search is sl
 - TypeScript: `includes`, `indexOf` and `pop`; `Math.floor(Math.random() * length)` is a uniform index.
 - Java: `values.indexOf(value)` boxes the `int` and calls `indexOf(Object)`, which searches for the value. `values.remove(values.size() - 1)` calls `remove(int)`, which removes by position: the two overloads are a classic `List<Integer>` trap.
 - Kotlin: `values.removeAt(values.lastIndex)` removes by position; `values.random()` draws a uniform element.
+- Go: `slices.Contains` and `slices.Index` are the linear scans, and `rand.IntN` from `math/rand/v2` is seeded automatically. Removing swaps the last value into the gap and reslices with `s.values[:last]`.
+- Rust: the standard library has no random numbers (`rand` is a crate), so the reference carries a few lines of xorshift64 seeded from `RandomState`, the source of the random keys behind every `HashMap`. `swap_remove` is the move-the-last-value-into-the-gap step in one call, and `get_random` takes `&mut self` because the generator has state.
 
 ## Approach: hash-set (Hash set with a walk for getRandom)
 
@@ -85,6 +87,8 @@ The natural first answer, and fine when random draws are rare. It fails the "eve
 - TypeScript: `Set.delete` returns whether the value was present, which is exactly the result `remove` needs.
 - Java: `Set.add` and `Set.remove(Object)` return whether the set changed; `getRandom` advances an iterator `rank` times.
 - Kotlin: `elementAt(index)` on a `Set` iterates to the index; it reads like indexing but costs O(n).
+- Go: a `map[int]struct{}` is the set. A map has no positions, so `GetRandom` draws a random rank and ranges over the map until it counts down to it; the random rank is independent of the iteration order, so every member is equally likely.
+- Rust: `HashSet::insert` and `remove` return whether the set changed, which is each method's result. `iter().nth(rank)` walks to the random rank, O(n), and the xorshift generator from the list-scan version supplies the rank.
 
 ## Approach: array-and-index-map (Array plus a map from value to index)
 
@@ -123,3 +127,5 @@ Meets the requirement for every operation and is the expected interview answer. 
 - TypeScript: a `Map<number, number>` keeps number keys as numbers; check `index === undefined`, since 0 is a valid index.
 - Java: `indexOf.remove(value)` returns the boxed index or `null`; compare it with `null`, not with `0`. `values.remove(values.size() - 1)` removes by position (the `remove(int)` overload). `java.util.Random.nextInt(bound)` is uniform over `[0, bound)`.
 - Kotlin: `indexOf.remove(value) ?: return false` handles absence in one line; `value in indexOf` checks for a key; `values.random()` draws uniformly.
+- Go: the `values` slice gives O(1) random access and the `indexOf` map gives O(1) lookup. A removal reslices with `s.values[:len(s.values)-1]`, and the former last value is re-recorded only when it moved into a gap.
+- Rust: `index_of.remove(&value)` both tests for presence and returns the index; `Vec::swap_remove` fills the gap with the last value, and `values.get(index)` is `Some` exactly when a value moved, because it is `None` when the removed value was the last one.
