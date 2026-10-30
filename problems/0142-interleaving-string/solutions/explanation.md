@@ -50,6 +50,8 @@ Natural to write and often fast in practice, because it only visits reachable pa
 - TypeScript: an `Int8Array` per row with -1, 0 and 1; `||` short-circuits so the second source is tried only when the first fails.
 - Java: a `Boolean[][]` uses `null` for unknown and unboxes on return; a `byte[][]` with three values avoids the boxing.
 - Kotlin: `arrayOfNulls<Boolean>` and the `?: run { ... }` idiom compute and store a missing entry.
+- Go: a small `verdict` type (`unknown`, `yes`, `no`) in an `int8` table. Its zero value is `unknown`, so `make` already marks every cell unknown. `&&` and `||` short-circuit, so `s3[i+j]` is read only while a source still has a character.
+- Rust: `Option<bool>` is the three-valued cell, and `&&` and `||` short-circuit as in the other languages, so the second source is tried only when the first fails.
 
 ## Approach: tabulation (Table of reachable prefix pairs)
 
@@ -85,6 +87,7 @@ No recursion and a fixed amount of work; the table can be walked back from `(m, 
 ### Language notes
 
 - Python and TypeScript: nested boolean arrays; Java `boolean[][]` and Kotlin `BooleanArray` rows start out false.
+- Go and Rust: `make([]bool, columns+1)` per row and `vec![vec![false; columns + 1]; rows + 1]` start out false. In Rust the `i > 0` and `j > 0` tests come first in each `&&` chain, so `i - 1`, `j - 1` and `i + j - 1` never run on a zero `usize`.
 
 ## Approach: rolling-array (One row of reachable prefixes along the shorter string)
 
@@ -119,3 +122,4 @@ The usual follow-up answer: same speed, far less memory. Like the full table it 
 ### Language notes
 
 - The four references are the same loop; Kotlin and Java use `BooleanArray` and `boolean[]`, Python and TypeScript plain arrays.
+- Go and Rust are the same loop over a `[]bool` or `Vec<bool>`. As in the table version, Rust puts `i > 0` and `j > 0` before every subtraction, so a `usize` never underflows; the cell `(0, 0)` is set once and the loop moves on.
