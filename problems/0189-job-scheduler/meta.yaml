@@ -6,6 +6,7 @@ status: ready
 difficulty: hard
 track: practical
 kind: progressive
+languages: [python, typescript, java, kotlin, go, rust]
 levels:
   - {level: 1, title: Priority queue of jobs}
   - {level: 2, title: Per-tenant rate limits}
