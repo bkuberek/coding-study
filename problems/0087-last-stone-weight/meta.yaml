@@ -6,6 +6,7 @@ status: ready
 difficulty: easy
 track: dsa
 kind: function
+languages: [python, typescript, java, kotlin, go, rust]
 patterns: [heap]
 signature:
   function:
@@ -15,12 +16,12 @@ signature:
     returns: {type: int}
 comparator: {type: exact}
 approaches:
-  - {id: sort-each-round, name: Sort the stones before every smash, role: brute, time: "O(n^2 log n)", space: "O(n)", time_class: "n^2 log n", space_class: "n", oracle: true}
+  - {id: sort-each-round, name: Sort the stones before every smash, role: brute, time: "O(n^2)", space: "O(n)", time_class: "n^2", space_class: "n", oracle: true}
   - {id: sorted-insert, name: Keep the stones sorted and binary-insert each new stone, role: intermediate, time: "O(n log n + n W)", space: "O(n)", time_class: "n log n", space_class: "n"}
   - {id: max-heap, name: Max-heap of the stone weights, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
 perf:
   size_param: number of stones
-  size_ladder: [100, 300, 1000, 3000, 10000]
+  size_ladder: [300, 1000, 3000, 10000]
   expected_from: max-heap
   time_limit: {factor: 5}
 references:

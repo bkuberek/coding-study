@@ -4,7 +4,7 @@
 
 | Approach | Role | Time | Space | Use when |
 |----------|------|------|-------|----------|
-| sort-each-round | brute | O(n^2 log n) | O(n) | the literal simulation; tiny piles |
+| sort-each-round | brute | O(n^2) | O(n) | the literal simulation; tiny piles |
 | sorted-insert | intermediate | O(n log n + n W) | O(n) | no heap available; moderate piles |
 | max-heap | optimal | O(n log n) | O(n) | default answer |
 
@@ -31,12 +31,12 @@ After sorting, the last two values are the two heaviest stones, which is exactly
 
 ### Complexity
 
-- Time: O(n^2 log n) — up to `n - 1` rounds, each sorting up to n values.
+- Time: O(n^2) — up to `n - 1` rounds, each sorting up to n values. After the first round the list is sorted except for the leftover appended at its end, and every library sort used here detects existing order: TimSort (Python, TypeScript, Kotlin's `MutableList`), the run merging of Java's `Arrays.sort` on `int[]`, Rust's `sort` (driftsort) and the partial insertion sort in Go's `slices.Sort` (pdqsort) each place that one value in O(n). A sort that ignored existing order would make it O(n^2 log n).
 - Space: O(n) — the copy of the pile.
 
 ### Trade-offs
 
-Obviously faithful to the statement, which makes it the oracle, but it re-sorts a pile that is already almost sorted after the first round. TimSort (Python, Java's object sort) notices sorted runs and is close to linear here, so in practice it behaves like O(n^2); it is still far slower than a heap at 10^4 stones.
+Obviously faithful to the statement, which makes it the oracle, but it re-sorts a pile that is already almost sorted after the first round. Adaptive sorts keep that to a linear scan plus one move, so each round is O(n) rather than O(n log n); it is still far slower than a heap at 10^4 stones.
 
 ### Pitfalls and edge cases
 
@@ -47,6 +47,8 @@ Obviously faithful to the statement, which makes it the oracle, but it re-sorts 
 
 - Java: `Arrays.sort(remaining, 0, size)` sorts only the live prefix of a primitive array, so no list or boxing is needed; the live size shrinks as stones are destroyed.
 - Kotlin: `removeAt(lastIndex)` removes the last element; `firstOrNull() ?: 0` covers the empty pile.
+- Go: `slices.Clone` copies the input first, so sorting does not reorder the caller's slice, and re-slicing with `remaining[:len(remaining)-2]` drops the two smashed stones without copying. An empty pile needs the explicit `len(remaining) == 0` check, since indexing `remaining[0]` would panic.
+- Rust: the function owns the `Vec<i32>`, so it sorts that vector in place and needs no copy. `pop()` returns an `Option`, and `expect` documents that the loop condition guarantees two stones; `first().copied().unwrap_or(0)` reads the last survivor or 0.
 
 ## Approach: sorted-insert (Keep the stones sorted and binary-insert each new stone)
 
@@ -86,6 +88,8 @@ A useful middle step when no priority queue is at hand, and fast in practice bec
 - TypeScript: there is no library binary search, so the reference writes `lowerBound`; `(low + high) >>> 1` halves without floating point. `splice(index, 0, value)` inserts.
 - Java: `Collections.binarySearch` on an `ArrayList<Integer>`; `remove(size() - 1)` resolves to the index overload because the argument is an `int`.
 - Kotlin: `MutableList.binarySearch(value)` from the standard library, with the same negative encoding.
+- Go: `slices.BinarySearch` returns the insertion position directly, with a second result saying whether the value is already there, so no negative encoding has to be decoded. `slices.Insert` opens the slot by shifting the tail, which is the O(n) cost of this approach.
+- Rust: `partition_point(|&weight| weight < leftover)` is the lower bound on a sorted `Vec`, and `Vec::insert` shifts the tail to make room, the same O(n) step. `binary_search` would return `Result<usize, usize>` with the slot in either variant.
 
 ## Approach: max-heap (Max-heap of the stone weights)
 
@@ -125,3 +129,5 @@ The standard answer and the reason this problem sits in the heap pattern. With w
 - TypeScript: no built-in priority queue, so the reference implements a binary max-heap with a bottom-up heapify in the constructor.
 - Java: `new PriorityQueue<>(capacity, Comparator.reverseOrder())` turns the default min-heap into a max-heap; the initial capacity must be at least 1. `poll` unboxes into `int`.
 - Kotlin: the same `java.util.PriorityQueue` with `reverseOrder()`; `heap.peek() ?: 0` covers the empty heap because `peek` returns null there.
+- Go: the standard library has `container/heap`, which works on any type implementing `heap.Interface`: `Len`, `Less`, `Swap` plus `Push` and `Pop` on the pointer. The reference defines `maxHeap []int` with `Less` as `>`, so index 0 is the heaviest. `heap.Pop` and `heap.Push` take the pointer and call `Push`/`Pop` for you, and `heap.Pop` returns `any`, hence the `.(int)` assertion. `heap.Init` is the O(n) heapify.
+- Rust: `BinaryHeap` is already a max-heap, so there is no negation trick and no comparator; `BinaryHeap::from(vec)` heapifies in O(n), and `peek()` returns `Option<&i32>`.
