@@ -44,6 +44,8 @@ Simple and exact, which makes it the oracle, and faster in practice than its bou
 - TypeScript: no library binary search; `(low + high) >>> 1` halves the range without floating point, and `splice(index, 0, value)` inserts.
 - Java: `Collections.binarySearch` returns `-(insertion point) - 1` for a missing value; `ArrayList.add(index, value)` shifts with `System.arraycopy`.
 - Kotlin: `MutableList.binarySearch` uses the same negative encoding; `toDouble()` converts the odd-count median.
+- Go: `slices.BinarySearch` returns the insertion position directly (plus a found flag), and `slices.Insert` shifts the tail to open the slot, which is the O(n) step. `float64(a+b) / 2` adds the two middle integers first, so the division is floating point and the sum stays exact.
+- Rust: `partition_point(|&value| value < num)` is the lower bound on the sorted `Vec`, and `Vec::insert` shifts the tail. `f64::from(a + b) / 2.0` adds in `i32` (at most 2 * 10^5 here) and converts before dividing.
 
 ## Approach: two-heaps (Max-heap of the lower half, min-heap of the upper half)
 
@@ -87,3 +89,5 @@ The standard answer: logarithmic insertion with constant-time queries, and a cla
 - TypeScript: no built-in priority queue, so the reference writes one `Heap` class parameterized by a `before` comparison and instantiates it twice, as a max-heap and as a min-heap.
 - Java: `new PriorityQueue<>(Comparator.reverseOrder())` is the max-heap; `(low.peek() + high.peek()) / 2.0` unboxes both tops and divides as `double`.
 - Kotlin: `PriorityQueue<Int>(reverseOrder())` and the default `PriorityQueue<Int>()`; `peek()` returns a platform type, so the arithmetic compiles without null checks because both heaps are non-empty whenever they are read.
+- Go: `container/heap` is a min-heap over any type implementing `heap.Interface`, so the reference declares one `intHeap` and stores the lower half negated, as the Python version does, which makes the same type the max-heap. There is no push-and-pop in one call, so the routing step is `heap.Push` on `low` followed by `heap.Pop` from it, then a push onto `high`; it is still O(log n).
+- Rust: `BinaryHeap<i32>` is the max-heap for the lower half and `BinaryHeap<Reverse<i32>>` is the min-heap for the upper half, so nothing is negated. `BinaryHeap` has no push-and-pop either, so routing is `push` then `pop`. `peek()` returns an `Option`; both halves are known to be non-empty when read, so `expect` states that.
