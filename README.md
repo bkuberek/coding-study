@@ -1,6 +1,6 @@
 # coding-study
 
-coding-study is a local, IDE-first practice system for senior and staff software engineering interviews. You solve original problems in your own editor in Python, TypeScript, Java, or Kotlin, and the `cstudy` command line tests your code, checks whether it is optimal, shows reference solutions, and schedules reviews with spaced repetition. Everything runs on your machine; there is no account and no service.
+coding-study is a local, IDE-first practice system for senior and staff software engineering interviews. You solve original problems in your own editor in Python, TypeScript, Java, Kotlin, Go, or Rust, and the `cstudy` command line tests your code, checks whether it is optimal, shows reference solutions, and schedules reviews with spaced repetition. Everything runs on your machine; there is no account and no service.
 
 - **Your editor, real toolchains.** Each language is an ordinary project (uv, pnpm, Gradle) that your editor and its language server open directly.
 - **More than algorithms.** Data structures and algorithms, multi-level practical problems, low-level design, concurrency, debugging, system design, and code review.
@@ -29,7 +29,7 @@ Upgrade with `uv tool upgrade coding-study` (or `pipx upgrade coding-study`). Ke
 
 ## Install the language toolchains
 
-`cstudy` runs your solutions with the real toolchain of each language, which you install yourself. uv and Python are required; Node.js, the JDK, Go and Rust are needed only for the languages that use them. The recommended install on macOS:
+`cstudy` runs your solutions with the real toolchain of each language, which you install yourself. uv and Python are required; Node.js, the JDK, Go and Rust are needed only for the languages that use them. Problems have reference solutions in all six languages, except where a language cannot express one or a bug exists in some languages only ([catalog](docs/specs/catalog.md)), so you can practice in any of them. The recommended install on macOS:
 
 | Tool | Version | Needed for | Install on macOS |
 |------|---------|------------|------------------|
@@ -104,11 +104,11 @@ All problem statements, tests and solutions are original ([ADR 0004](docs/decisi
 
 | Track | Items | Graded by | Format |
 |-------|------:|-----------|--------|
-| `dsa` | 185 | Tests, in all 4 languages | Functions and data-structure designs across 23 patterns |
-| `practical` | 6 | Tests, level by level | One class whose API grows over 4 levels |
+| `dsa` | 196 | Tests, in all 6 languages | Functions and data-structure designs across 23 patterns |
+| `practical` | 21 | Tests, level by level where a problem has levels | One class whose API grows over 4 levels, or a business task with money and dates |
 | `lld` | 8 | Tests, then a design rubric | Object-oriented design |
 | `concurrency` | 6 | Stress tests against invariants | Thread-safe classes, per-language models |
-| `debugging` | 16 | Tests | Buggy code to fix |
+| `debugging` | 16 | Tests | Buggy code to fix, including Go- and Rust-only bugs |
 | `system-design` | 10 | Self-graded with a rubric | Prompt, notes template, reference design |
 | `code-review` | 6 | Self-graded with a rubric | A change to review |
 | `behavioral` | none | Not tracked | Guidance for your own story bank |

@@ -11,7 +11,7 @@
 | [Rust](#rust) | `rustc` 1.80 or newer and `cargo`, through rustup; LLDB's `debugserver` (macOS) or `lldb-server` (Linux) for `--debug` | Optional: `--lang rust` |
 | [git](#git) | Any | Optional: versioning your workspace |
 
-You need only the toolchains of the languages you practice. `cstudy doctor` still reports a missing one as `FAIL`, and exits 4, when you do not use that language, except Go and Rust: they are optional languages, so a missing or too old one is a `WARN` ("needed for `--lang go`") and the exit code stays 0. Their debuggers, Delve and Rust's debug server, are `WARN`s too: only `cstudy test --debug` needs them.
+You need only the toolchains of the languages you practice. `cstudy doctor` still reports a missing one as `FAIL`, and exits 4, when you do not use that language, except Go and Rust: problems have Go and Rust references, but their toolchains are optional, so a missing or too old one is a `WARN` ("needed for `--lang go`") and the exit code stays 0. Their debuggers, Delve and Rust's debug server, are `WARN`s too: only `cstudy test --debug` needs them.
 
 ## Python and uv
 
@@ -114,7 +114,7 @@ Alternatives to SDKMAN: on macOS, `brew install openjdk@21`, then follow its cav
 
 ## Go
 
-Go is optional: only `--lang go` builds with it, and `cstudy doctor` warns, without failing, when it is missing. The workspace's Go project (`go/`) is a module that needs Go 1.24 or newer, the first release whose `go build -json` output `cstudy` parses. The standard installers all work: Homebrew on macOS, or the installer or archive from [go.dev/dl](https://go.dev/dl/) on macOS and Linux (follow [go.dev/doc/install](https://go.dev/doc/install) for the archive).
+The Go toolchain is optional: only `--lang go` builds with it, and `cstudy doctor` warns, without failing, when it is missing. The workspace's Go project (`go/`) is a module that needs Go 1.24 or newer, the first release whose `go build -json` output `cstudy` parses. The standard installers all work: Homebrew on macOS, or the installer or archive from [go.dev/dl](https://go.dev/dl/) on macOS and Linux (follow [go.dev/doc/install](https://go.dev/doc/install) for the archive).
 
 ```bash
 brew install go   # macOS
@@ -137,7 +137,7 @@ Nothing else is needed: the runner uses the standard library, and the one module
 
 ## Rust
 
-Rust is optional: only `--lang rust` builds with it, and `cstudy doctor` warns, without failing, when `rustc` or `cargo` is missing or `rustc` is older than 1.80. Install it with [rustup](https://rustup.rs), which manages toolchains and components. Do not use Homebrew's `rust` formula: it has no `rust-src` and no toolchain management, so rust-analyzer cannot show the standard library and you cannot pick a version.
+The Rust toolchain is optional: only `--lang rust` builds with it, and `cstudy doctor` warns, without failing, when `rustc` or `cargo` is missing or `rustc` is older than 1.80. Install it with [rustup](https://rustup.rs), which manages toolchains and components. Do not use Homebrew's `rust` formula: it has no `rust-src` and no toolchain management, so rust-analyzer cannot show the standard library and you cannot pick a version.
 
 ```bash
 brew install rustup   # macOS
