@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0243"
+slug: debug-range-value-copy
+title: "Debug: Range Value Copy"
+status: ready
+difficulty: easy
+track: debugging
+kind: function
+languages: [go]
+stub: buggy
+signature:
+  function:
+    name: closeMonth
+    params:
+      - {name: opening, type: "int[]"}
+      - {name: earnings, type: "int[][]"}
+      - {name: limit, type: int}
+    returns: {type: "int[][]"}
+comparator: {type: exact}
+approaches:
+  - {id: index-in-place, name: Update the slice element through its index, role: optimal, time: "O(n + e)", space: "O(n)", time_class: "n", space_class: "n"}
+related: [debug-append-aliasing, debug-grid-aliasing, bank-transfers]
+estimate_minutes: 15
