@@ -46,6 +46,8 @@ Obviously correct, which makes it a good oracle, but quadratic: with 5000 cables
 - TypeScript: `connections.filter((_, index) => ...)` keeps the critical cables; `Uint8Array` marks visited servers.
 - Java: `List.of(a, b)` builds each answer pair as an immutable `List<Integer>`.
 - Kotlin: `connections.indices.filter { ... }.map { connections[it].toList() }` turns the critical `IntArray` cables into `List<Int>` pairs.
+- Go: adjacency entries are small `link{neighbor, index}` structs, and the search uses a slice as its stack. The answer starts as `[][]int{}` rather than a nil slice so that "no critical cable" encodes as `[]`. The answer pairs are fresh two-element slices, not slices of `connections`.
+- Rust: `connected_without` is a closure borrowing `adjacency`, and the final `into_iter().enumerate().filter(...).map(...)` moves each critical cable out of `connections` without copying it. Cable indexes are `usize` and the results go back out as the original `Vec<i32>` pairs.
 
 ## Approach: tarjan-low-link (Tarjan's bridge finding with discovery times and low links)
 
@@ -86,3 +88,5 @@ Linear and the standard answer; the same discovery and low-link numbers also giv
 - TypeScript: a recursive arrow function over `Int32Array`s; 2000 levels fit Node's default stack.
 - Java: the search state lives in fields, so the recursive method takes just the server and its parent; JVM threads in the runner have a large stack.
 - Kotlin: a local recursive function that captures the arrays and a `var clock`.
+- Go: the recursion is a closure declared with `var visit func(server, parent int)` so that it can call itself, and it updates `clock`, `low`, `discovered` and `bridges` in the enclosing scope. `min` is the built-in (Go 1.21+). Go grows goroutine stacks on demand, so a recursion 2000 levels deep needs no special care.
+- Rust: a closure cannot call itself, so the arrays live in a `Search` struct and `visit` is a `&mut self` method. `let adjacency = self.adjacency;` copies the shared reference out of `self` before the loop, which lets the loop read the adjacency list while `self.visit` borrows `self` mutably. The parent is an `Option<usize>` (`None` for the root) instead of a `-1` sentinel, because `usize` cannot hold `-1`.
