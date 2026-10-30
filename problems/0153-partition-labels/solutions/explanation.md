@@ -44,6 +44,7 @@ Straightforward, so it is the oracle; it repeats the same "where is the last cop
 
 - Python: `str.rfind` searches from the right in C.
 - TypeScript, Java and Kotlin: `lastIndexOf` does the same; Java collects sizes in a `List<Integer>` and unboxes with `stream().mapToInt(...)`.
+- Go: `strings.LastIndexByte(s, s[start])` searches from the right. Rust: `bytes.iter().rposition(...)` returns an `Option`, so a small helper unwraps it with `expect`; the letter always occurs, because it was read from the string. The piece length is written `end + 1 - start`, which never underflows a `usize`.
 
 ## Approach: last-occurrence (One pass with a table of last positions)
 
@@ -80,6 +81,7 @@ The expected answer, and the cleanest greedy: one table, one pass. It is also th
 - Python: a dict comprehension keeps the last index because later entries overwrite earlier ones.
 - TypeScript: `charCodeAt(i) - 97` indexes a 26-slot array.
 - Java and Kotlin: `charAt(i) - 'a'` (Java) and `letter - 'a'` (Kotlin) give the slot; both return an `int` array of sizes.
+- Go and Rust: a fixed `[26]int` or `[usize; 26]` array indexed by `s[i] - 'a'`, a byte subtraction (Rust converts it with `as usize`); the array lives on the stack.
 
 ## Approach: merge-intervals (Merge the span of each letter)
 
@@ -117,3 +119,4 @@ Same speed as the last-occurrence pass; it makes the link to interval merging ex
 - TypeScript: a `Map` keeps insertion order too; each value is a `[first, last]` pair updated in place.
 - Java: two 26-slot arrays plus a list of letters in first-occurrence order.
 - Kotlin: a `LinkedHashMap` of `IntArray(2)` spans; `getOrPut` creates a span on the first copy, and destructuring `(first, last)` reads it.
+- Go: two `[26]int` arrays (`first` filled with -1) and a slice of letter slots in first-occurrence order, like Java. Rust: `first` uses `usize::MAX` as the "unseen" marker, and the current piece keeps an exclusive end, so "no piece yet" is 0 instead of the -1 that a `usize` cannot hold.
