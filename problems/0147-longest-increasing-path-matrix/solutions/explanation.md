@@ -49,6 +49,8 @@ Short and fast; the standard interview answer. The recursion depth equals the an
 - TypeScript: `Int32Array` rows and a constant list of four steps.
 - Java: fields for the grid and the memo, a static step table.
 - Kotlin: a local recursive `fun`, steps as `Pair`s destructured in the loop, and `in 0 until rows` range checks.
+- Go: the steps are a package-level `[4][2]int`, and the bounds test names both ends because `int` is signed.
+- Rust: a `usize` cannot go below zero, so `checked_add_signed(dr)` (stable since 1.66) returns `None` for a step off the top or left edge, and `let ... else { continue }` skips it; the upper bounds are tested afterwards. The steps are `(isize, isize)` pairs.
 
 ## Approach: sorted-cells (Tabulate the cells in decreasing order of value)
 
@@ -86,6 +88,8 @@ Iterative and easy to reason about, but the sort adds a log factor that the othe
 - TypeScript: cells numbered `r * columns + c`, sorted with a numeric comparator; values up to 2^31 - 1 subtract safely in doubles.
 - Java: each `(value, cell)` pair is packed into one `long` (value shifted left by 16 bits) so `Arrays.sort` on primitives orders the cells without boxing.
 - Kotlin: `sortedByDescending` on the cell numbers.
+- Go: `sort.Slice` over a slice of `[2]int` cells with a comparator that reads the matrix. It is not stable, which is fine here because ties may go either way.
+- Rust: `sort_by_key(|&(r, c)| Reverse(matrix[r][c]))`; `std::cmp::Reverse` turns the ascending sort into a descending one.
 
 ## Approach: topological-sort (Peel layers of local maxima with Kahn's algorithm)
 
@@ -124,3 +128,5 @@ Linear without recursion, so it is safe for any path length; it is longer to wri
 - TypeScript: an `Int8Array` of counts (at most 4) indexed by cell number.
 - Java: one `ArrayDeque<Integer>` processed in chunks of its current size, which delimits the rounds.
 - Kotlin: neighbors as lists of pairs and `--larger[nr][nc] == 0` to decrement and test in one step.
+- Go: a small `inGrid` closure and the shared `steps` table; each layer is a `[][2]int` grown with `append`, and an empty (nil) next layer ends the loop.
+- Rust: `neighbors` is a function that returns `impl Iterator`, built from `filter_map`, `checked_add_signed` and `then_some`. The counts are `u8`, like TypeScript's `Int8Array`, since a cell has at most four neighbors, and a layer is a `Vec<(usize, usize)>`.
