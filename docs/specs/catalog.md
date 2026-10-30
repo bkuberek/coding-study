@@ -1,17 +1,17 @@
 # Spec: Catalog
 
-The binding manifest of every catalog item: 196 DSA problems and 68 non-DSA items (52 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty and kind, and for the planned rows their batch and owner stream.
+The binding manifest of every catalog item: 196 DSA problems and 70 non-DSA items (54 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty and kind, and for the planned rows their batch and owner stream.
 
 | Track | Problems or items | Where |
 |-------|-------------------|-------|
 | `dsa` | 196 (185 planned, 11 added) | `problems/` |
-| `practical` | 22 (6 planned, 16 added) | `problems/` |
+| `practical` | 24 (6 planned, 16 added, 2 project problems not built yet) | `problems/` |
 | `lld` | 8 | `problems/` |
 | `concurrency` | 6 | `problems/` |
 | `debugging` | 16 (8 planned, 8 in Go and Rust) | `problems/` |
 | `system-design` | 10 | `tracks/system-design/` |
 | `code-review` | 6 | `tracks/code-review/` |
-| **Total** | **264** (248 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
+| **Total** | **266** (250 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
 
 ## Rules
 
@@ -24,7 +24,7 @@ The binding manifest of every catalog item: 196 DSA problems and 68 non-DSA item
 | Changes | A stream that cannot build a row as listed stops and reports. The catalog is amended in the main checkout first, never inside a stream worktree |
 | Wording | Statements, examples, tests, hints and explanations are original ([ADR 0004](../decisions/0004-original-problem-wording.md)). Common titles are allowed; LeetCode appears only as a link in `references.leetcode` |
 | Merge | A batch merges only when all its problems are `ready` and pass `cstudy verify --oracle` (and `--ladder` from Phase 2 on), as [content](content.md#content-batches) states |
-| Languages | Every problem has references in all six languages (Python, TypeScript, Java, Kotlin, Go, Rust) and lists no `languages`, except the rows whose `languages` column says otherwise and `0055-linked-list-cycle`, which has no Rust ([S13](authoring.md#static), [ADR 0012](../decisions/0012-go-and-rust.md)) |
+| Languages | Every problem has references in all six languages (Python, TypeScript, Java, Kotlin, Go, Rust) and lists no `languages`, except the rows whose `languages` column says otherwise, `0055-linked-list-cycle`, which has no Rust ([S13](authoring.md#static), [ADR 0012](../decisions/0012-go-and-rust.md)), and project problems, which list exactly the one language in their `language` column ([ADR 0014](../decisions/0014-project-problems.md)) |
 
 ## How streams use this file
 
@@ -34,7 +34,7 @@ The binding manifest of every catalog item: 196 DSA problems and 68 non-DSA item
 
 ## Id order
 
-Existing problems keep `0001`–`0003`. New DSA ids run from `0004` to `0185` by batch (1 to 6), then taxonomy order within a batch, then difficulty within a pattern. Non-DSA items in `problems/` continue at `0186`–`0213` in the order practical, lld, concurrency, debugging. Problems added after the plan take the next free ids: `0214`–`0228` practical, `0229`–`0239` DSA, `0240`–`0247` the Go and Rust debugging problems, and `0248` practical. Items in `tracks/` have slugs and no ids.
+Existing problems keep `0001`–`0003`. New DSA ids run from `0004` to `0185` by batch (1 to 6), then taxonomy order within a batch, then difficulty within a pattern. Non-DSA items in `problems/` continue at `0186`–`0213` in the order practical, lld, concurrency, debugging. Problems added after the plan take the next free ids: `0214`–`0228` practical, `0229`–`0239` DSA, `0240`–`0247` the Go and Rust debugging problems, `0248` practical, and `0249`–`0250` the practical project problems. Items in `tracks/` have slugs and no ids.
 
 ## DSA catalog
 
@@ -293,7 +293,7 @@ Each stream owns whole patterns, so one stream holds all problems of a pattern a
 
 ## Non-DSA catalog
 
-### practical (22, `problems/`)
+### practical (24, `problems/`)
 
 The six planned rows (owner P1) are `progressive`:
 
@@ -331,6 +331,13 @@ One more added later is a sibling of `banking-system` whose level 3 replaces the
 | id | slug | title | patterns | kind | difficulty |
 |----|------|-------|----------|------|------------|
 | 0248 | `scheduled-transfers-bank` | Scheduled Transfers Bank | `heap` | progressive | hard |
+
+Two [project problems](problem-format.md#project-problems) (kind `project`, one language each) carry `0248`'s behavior and statement wording into a seeded folder. Each is built from scratch, with its own starter, `tests.json` (at least 2 visible and 2 hidden cases per level, covering the rules `0248`'s cases pin down), reference and explanation; both list each other and `scheduled-transfers-bank` in `related`. Neither exists in `problems/` yet: 0249 is the Python pilot (roadmap Phase 8a) and 0250 the TypeScript one (Phase 8b).
+
+| id | slug | title | language | patterns | kind | difficulty |
+|----|------|-------|----------|----------|------|------------|
+| 0249 | `bank-project-python` | Bank Project (Python) | `python` | - | project | hard |
+| 0250 | `bank-project-typescript` | Bank Project (TypeScript) | `typescript` | - | project | hard |
 
 ### lld (8, owner L1, kind `design` plus `rubric.md`, `problems/`)
 

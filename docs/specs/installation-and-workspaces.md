@@ -70,12 +70,13 @@ created_with = "0.1.0"
   .cs/                    # index, cases, calibration, build, runs caches (ignored)
   .gitignore, README.md
   .vscode/, .idea/        # IDE project files: tasks, run and debug configurations, SDK settings
-  python/                 # pyproject.toml (dev tools: pyright, ruff, debugpy), uv.lock, practice/<snake_slug>.py
+  python/                 # pyproject.toml (dev tools: pyright, ruff, debugpy, pytest), uv.lock, practice/<snake_slug>.py
   typescript/             # package.json, pnpm-lock.yaml, tsconfig.json, support.ts, practice/<slug>.ts
   jvm/                    # Gradle wrapper, settings.gradle.kts, java/ and kotlin/ subprojects
   go/                     # go.mod (module workspace, Go 1.24), practice/<snake_slug>/<snake_slug>.go
   go.work                 # use ./go, so gopls and the go command find go/ from the root
   rust/                   # Cargo.toml (package practice, one [[example]] per started problem), .cargo/config.toml, lib.rs, practice/<snake_slug>.rs
+  projects/               # one folder per started project problem: projects/<slug>/ (tracked)
   notes/                  # answers to non-autograded items
   problems/               # your own problems, overlaid on the catalog
   .archive/               # previous attempts (tracked)
@@ -96,7 +97,7 @@ Creates a workspace in `PATH` (default: `--workspace`, then `CSTUDY_WORKSPACE`, 
 | Step | Rule |
 |------|------|
 | Refusals (exit 3) | `PATH` already holds a marker (`cstudy doctor --fix` repairs a workspace); `PATH` is inside another workspace; `PATH` is at or below a content checkout (a directory with `problems/` and `schemas/`) unless `--force` |
-| Files | Copies the template: the practice projects (`python/`, `typescript/`, `jvm/`, `go/`, `rust/`) and `go.work`, `notes/` and `problems/` (each with `.gitkeep`), `README.md` and `.gitignore`; makes `jvm/gradlew` executable; writes the marker. An existing file is never overwritten, so `cstudy init` can adopt a directory that already has files (for example a cloned repository) |
+| Files | Copies the template: the practice projects (`python/`, `typescript/`, `jvm/`, `go/`, `rust/`) and `go.work`, `notes/`, `problems/` and `projects/` (each with `.gitkeep`), `README.md` and `.gitignore`; makes `jvm/gradlew` executable; writes the marker. An existing file is never overwritten, so `cstudy init` can adopt a directory that already has files (for example a cloned repository) |
 | Runtime | Materializes the runners into `.cs/runtime/` ([below](#runner-runtime)), so an IDE can import the projects right away |
 | IDE files | Writes the [IDE files](#ide-files) of VS Code and IntelliJ IDEA, as `cstudy ide` does; `--ide vscode` or `--ide idea` (repeatable) writes only those, `--no-ide` none, and both together exit 3 |
 | `--git` | Runs `git init` in `PATH`; `cstudy` never commits |
@@ -106,7 +107,7 @@ Creates a workspace in `PATH` (default: `--workspace`, then `CSTUDY_WORKSPACE`, 
 
 `rust/Cargo.toml` is for the editor: each problem file is an `[[example]]` with `crate-type = ["lib"]`, a crate of its own that rust-analyzer checks, with `autoexamples = false` so only listed files count and `cs_support`, `rust_decimal` and `chrono` as dev-dependencies; `rust/.cargo/config.toml` resolves crates.io from the runtime's vendored crates, so rust-analyzer needs no network. `cstudy start --lang rust` appends the problem's entry when the manifest has none for its name or file, and leaves a manifest that does not parse alone. `lib.rs` is empty: a package needs one target before the first problem starts. `cstudy` builds solutions elsewhere ([runners](runners.md#rust-build-details)), so an edit to the manifest never affects a run.
 
-The workspace `.gitignore` ignores `/.cs/*` except `/.cs/workspace.toml` and `/.cs/ide.json`, `/.statements/`, `progress.db*`, `node_modules/`, `.venv/`, `build/`, `.gradle/`, `.kotlin/`, `target/`, `__pycache__/`, `.ruff_cache/`, and IntelliJ's per-user files (`.idea/workspace.xml`, `tasks.xml`, `usage.statistics.xml`, `dictionaries/`, `shelf/`, `libraries/`, `modules.xml`, `dataSources*`, `contentModel.xml`, `*.iml`). Practice files, notes, `.archive/`, your problems and the IDE files stay tracked, and you commit them when you choose ([PRD Q3](../prd.md#8-open-questions)).
+The workspace `.gitignore` ignores `/.cs/*` except `/.cs/workspace.toml` and `/.cs/ide.json`, `/.statements/`, `progress.db*`, `node_modules/`, `.venv/`, `build/`, `.gradle/`, `.kotlin/`, `target/`, `__pycache__/`, `.ruff_cache/`, `projects/*/.venv` and `projects/*/uv.lock` ([project folders](#project-folders): the `.venv` of a project is a symbolic link, which the pattern `.venv/` with its trailing slash does not match), and IntelliJ's per-user files (`.idea/workspace.xml`, `tasks.xml`, `usage.statistics.xml`, `dictionaries/`, `shelf/`, `libraries/`, `modules.xml`, `dataSources*`, `contentModel.xml`, `*.iml`). Practice files, project folders, notes, `.archive/`, your problems and the IDE files stay tracked, and you commit them when you choose ([PRD Q3](../prd.md#8-open-questions)).
 
 ## Runner runtime
 
@@ -122,6 +123,26 @@ The practice projects build and run against the runners, and Gradle, uv and Node
 
 Because the wiring is relative, a workspace keeps working when it moves or is cloned on another machine; there `cstudy doctor --fix` recreates `.cs/runtime/` (with the launcher), the venv, `node_modules` and the Gradle build. Editors open the workspace root with its [IDE files](#ide-files), or each project on its own: `python/` (pyright and ruff find `.venv`), `typescript/` (tsserver finds `node_modules`), `jvm/` (IntelliJ imports it as one Gradle project), `go/` (gopls reads `go.mod`) and `rust/` (rust-analyzer reads `Cargo.toml`).
 
+## Project folders
+
+A [project problem](problem-format.md#project-problems) is solved in `projects/<slug>/`: one self-contained folder per started project, which `cstudy start` fills from the problem's `starter/` tree and which you track like practice files ([ADR 0014](../decisions/0014-project-problems.md)). It opens as an editor root of its own. Nothing is installed per project: the folder reaches the workspace's toolchain installs by relative path, so a project starts offline (NFR-6) and survives a move or a clone of the workspace. Planned: nothing implements project folders yet.
+
+| Item | Python | TypeScript |
+|------|--------|------------|
+| Toolchain | The workspace venv, through the relative symbolic link `projects/<slug>/.venv -> ../../python/.venv`, which `cstudy start` creates. A relative target survives moving and copying the workspace, where an absolute one would dangle. The workspace template's dev group lists pytest, next to debugpy, pyright and ruff | The workspace's Node and `typescript/node_modules`: `tsconfig.json` takes its types from `../../typescript/node_modules/@types` |
+| Build files | The starter's `pyproject.toml`, tool tables only ([starter](problem-format.md#starter)): no `[project]` table, `requires-python` or `[tool.uv]`, because a `requires-python` above the venv's Python makes `uv run` delete the target of the `.venv` link, the shared `python/.venv`. Without a `[project]` table no second venv is created and no `uv.lock` is needed | The starter's `package.json` (`"type": "module"`, no dependencies) and `tsconfig.json` |
+| Editors | pyright, basedpyright and Pylance resolve imports between the project's files, its `tests/` and subfolders, `pytest` and `cs_support`, through `[tool.pyright]` `venvPath = "."` and `venv = ".venv"`; ruff reads `[tool.ruff]` | tsserver reads `tsconfig.json`; VS Code uses the workspace's TypeScript (`typescript.tsdk`) |
+| How `cstudy` runs it | `python/.venv/bin/python` by path, never the venv's console scripts, whose shebangs keep the venv's absolute path after the workspace moves. Every process it starts for a project gets `UV_NO_SYNC=1` and `PYTHONPYCACHEPREFIX=<workspace>/.cs/pycache`, so no bytecode lands in the folder; the runner keeps the project root off the front of `sys.path` ([project jobs](runners.md#project-jobs)) | `node` on the files, as for other TypeScript runs |
+| Native command | `.venv/bin/pytest` in the folder (after a workspace move, once `python/.venv` is recreated), or `uv run --no-sync pytest`; a plain `uv run` there writes a `uv.lock` (ignored) and warns about `requires-python`. Not `python -m pytest` from the folder: it puts the folder first on `sys.path`, where a file such as `random.py` shadows the standard library | `node --test` in the folder |
+| Caches | `-p no:cacheprovider` in the starter keeps `.pytest_cache` out; `__pycache__/` is ignored if a native run writes one | none |
+
+| Rule | Detail |
+|------|--------|
+| Start | A new attempt copies `starter/` without overwriting a file; a resumed attempt copies it only when the folder is missing, writes back a missing generated test file of an unlocked level, and recreates a missing or dangling `.venv` link ([cli](cli.md#cstudy-start)) |
+| Archive | `--fresh` and review attempts move the folder to `.archive/<slug>/<attempt_id>-<lang>/`, without the `.venv` link and caches, before copying the starter again |
+| Watched and hashed | Every file under the folder except `.venv`, `node_modules`, `__pycache__`, `.pytest_cache` and `.ruff_cache`: `cstudy test --watch` watches them and `code_hash` hashes their relative paths and bytes in path order |
+| Not yet supported | Java, Kotlin, Go and Rust project folders: each needs a build of its own (a Gradle build, a Go module, a Cargo crate), specified after spikes K4 to K6 |
+
 ## IDE files
 
 `cstudy init` and [`cstudy ide`](cli.md#cstudy-ide) write project files so that the workspace root opens in VS Code or IntelliJ IDEA with every `cstudy` action ready to run and debug ([ADR 0010](../decisions/0010-ide-integration.md)). `cstudy` stays the judge: the IDE runs `cstudy` commands, and debugging attaches to the runner that `cstudy test --debug` starts.
@@ -130,6 +151,7 @@ Because the wiring is relative, a workspace keeps working when it moves or is cl
 |--------|-------------------------------|----------------|
 | `test`, `test --perf`, `test --typecheck` (TypeScript), `bench`, `hint` | yes | yes |
 | `done --rating=ok\|easy\|hard`, `done --gave-up` | yes | yes |
+| `submit`, `status` (project problems) | yes | yes |
 | `solution`, `show`, `start --no-open` | yes | no: the target is required |
 | `test --debug` (VS Code), `test --debug --debug-connect` (IntelliJ, Java and Kotlin) | yes | yes |
 | `next`, `stats`, `doctor` | workspace commands, no target | |
@@ -140,7 +162,7 @@ One catalog (`coding_study/domain/ide_actions.py`) lists these actions, and both
 |------|-------|
 | `.vscode/tasks.json` | A `process` task per action and scope (`cstudy test (current file)` runs `cstudy test ${file}` in `${workspaceFolder}`); `done` asks for the outcome through a `pickString` input. The `cstudy test --debug` tasks are background tasks whose problem matcher ends at `cstudy: waiting for debugger on 127.0.0.1:<port>` |
 | `.vscode/launch.json` | `Debug current file (<language>)` and `Debug active attempt (<language>)` for Python (`debugpy` attach, port 5678), TypeScript (`node` attach, 9229), Java (`java` attach, 5005), Go (the Go extension's `go` attach in `"mode": "remote"` to the headless Delve, 2345) and Rust (CodeLLDB's `lldb` attach: `targetCreateCommands` `["target create \"\""]`, an empty target that takes the executable the debug server reports, since each run launches its own copy of the runner, then `processCreateCommands` `["gdb-remote 127.0.0.1:12345"]`; `preTerminateCommands` an lldb `script` one-liner that kills the process only while it is alive (`lldb.process.is_alive`; a plain `process kill` would print `error: Process must be launched.` after a run that already finished), because CodeLLDB detaches from an attached process when its session ends and the runner would go on without a debugger; and `sourceLanguages` `["rust"]` for Rust's formatters), each starting its `cstudy test --debug` task first; all on 127.0.0.1. None for Kotlin: VS Code's Java debugger never binds Kotlin breakpoints ([vscode-java-debug#241](https://github.com/microsoft/vscode-java-debug/issues/241)) |
-| `.vscode/settings.json` | `python.defaultInterpreterPath` `${workspaceFolder}/python/.venv/bin/python`, `typescript.tsdk` `typescript/node_modules/typescript/lib`, `java.import.gradle.enabled`, `go.toolsEnvVars` `{"GOTOOLCHAIN": "local"}`, `rust-analyzer.linkedProjects` `["rust/Cargo.toml"]` with `rust-analyzer.check.allTargets` and `rust-analyzer.check.extraArgs` `["--keep-going"]`, watcher and search exclusions for build output (`target` included); no JDK path |
+| `.vscode/settings.json` | `python.defaultInterpreterPath` `${workspaceFolder}/python/.venv/bin/python`, `typescript.tsdk` `typescript/node_modules/typescript/lib`, `java.import.gradle.enabled`, `go.toolsEnvVars` `{"GOTOOLCHAIN": "local"}`, `rust-analyzer.linkedProjects` `["rust/Cargo.toml"]` with `rust-analyzer.check.allTargets` and `rust-analyzer.check.extraArgs` `["--keep-going"]`, watcher and search exclusions for build output (`target` included) and for `projects/*/.venv`, the links to the shared venv; no JDK path |
 | `.vscode/extensions.json` | Recommends `ms-python.python`, `ms-python.debugpy`, `vscjava.vscode-java-pack`, `vscjava.vscode-gradle`, `golang.go`, `rust-lang.rust-analyzer`, `vadimcn.vscode-lldb` (CodeLLDB, the Rust debugger) |
 | `.idea/misc.xml` | The project JDK `21` (`JavaSDK`, language level `JDK_21`): the toolchain of the practice projects |
 | `.idea/gradle.xml` | `jvm/` linked as a Gradle project with its `java` and `kotlin` modules, run with the project JDK (`#USE_PROJECT_JDK`) |
@@ -177,8 +199,12 @@ Not set from project files, because IDEs keep them per user or need a plugin: th
 | `go and rust files` | `go.work` and the files of `go/` and `rust/` exist | WARN listing up to 5 missing files, `fix: cstudy doctor --fix`: a workspace created before Go and Rust existed lacks them, and nothing fails until you use `--lang go` or `--lang rust` |
 | `runner runtime` | The stamp matches the content and the IDE launcher is the shipped one | FAIL when missing or stale, `fix: cstudy doctor --fix` |
 | `jvm/gradlew`, `python/.venv`, `python debugpy`, `typescript/node_modules` and `runner <lang>` | As in [cli](cli.md#cstudy-doctor) | As in [cli](cli.md#cstudy-doctor) |
+| `projects` | `projects/` exists | WARN, `fix: cstudy doctor --fix` (a workspace created before project problems lacks it) |
+| `python pytest` | pytest is installed in `python/.venv` | WARN, `fix: uv add --dev pytest --directory python`: only Python project problems need it |
+| `project links` | Every Python project folder's `.venv` is the relative link to `../../python/.venv` and resolves | WARN listing up to 5 folders whose link is missing or dangling; `cstudy doctor --fix` recreates them |
+| `python/.venv location` | The shebang of the venv's console scripts names this `python/.venv` | WARN when it names another path (the workspace moved): the console scripts no longer run, though `cstudy` does; `fix: rm -rf python/.venv && cstudy doctor --fix` |
 
-`cstudy doctor --fix` first writes every missing template file (never overwriting one, so practice files are never touched), refreshes the runner runtime, then runs `uv sync` in `python/`, `pnpm install` in `typescript/` (and in the content checkout's `runners/typescript` when the content is a checkout), and the Gradle warm-up in `jvm/`. Outside a workspace it exits 3.
+`cstudy doctor --fix` first writes every missing template file (never overwriting one, so practice files are never touched), recreates missing or dangling `.venv` links in Python project folders, refreshes the runner runtime, then runs `uv sync` in `python/`, `pnpm install` in `typescript/` (and in the content checkout's `runners/typescript` when the content is a checkout), and the Gradle warm-up in `jvm/`. Outside a workspace it exits 3.
 
 ## Your own problems
 
@@ -196,7 +222,7 @@ Not set from project files, because IDEs keep them per user or need a plugin: th
 
 The checkout is content, not a workspace:
 
-- `cstudy init` inside it refuses without `--force`; as a second guard the root `.gitignore` ignores `.cs/`, `.statements/`, `progress.db*` and `progress-export.json` anywhere, and `/workspace/`, `/workspaces/`, `/ws/`, `/python/`, `/typescript/`, `/jvm/`, `/notes/` and `/.archive/` at the root.
+- `cstudy init` inside it refuses without `--force`; as a second guard the root `.gitignore` ignores `.cs/`, `.statements/`, `progress.db*` and `progress-export.json` anywhere, and `/workspace/`, `/workspaces/`, `/ws/`, `/python/`, `/typescript/`, `/jvm/`, `/notes/`, `/projects/` and `/.archive/` at the root.
 - Point `CSTUDY_WORKSPACE` (or `--workspace`) at a workspace outside the checkout; `uv run cstudy verify` then reads the checkout's content and builds with that workspace's toolchains.
 - The CLI tests never use a workspace in the checkout: fixtures create temporary workspaces, and the slow tests set one up per session with `cstudy init` and the `cstudy doctor --fix` steps.
 

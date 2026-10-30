@@ -7,7 +7,7 @@ A local, IDE-first interview-prep system for senior and staff engineer loops. Yo
 | Status | Implemented through Phase 7; open validation items in the [roadmap](roadmap.md#status) |
 | Users | One engineer per installation, practicing on their own machine |
 | Platform | macOS, local only |
-| Languages practiced | Python, TypeScript, Java, Kotlin, Go and Rust ([ADR 0012](decisions/0012-go-and-rust.md)) |
+| Languages practiced | Python, TypeScript, Java, Kotlin, Go and Rust ([ADR 0012](decisions/0012-go-and-rust.md)); a project problem is in one language ([ADR 0014](decisions/0014-project-problems.md)) |
 | Related | [Architecture](architecture.md), [Roadmap](roadmap.md), [Specs](README.md#specs) |
 
 ## 1. Executive summary
@@ -54,6 +54,7 @@ cstudy next  ->  cstudy start <slug> --lang kotlin  ->  edit in editor  ->  cstu
 | US-9 | As the user, I want to author my own problems with `cstudy new` and `cstudy verify`, so that the catalog grows with what I encounter. | Scaffold from templates; JSON Schema validation; verify reports pass/fail and per-language coverage. |
 | US-10 | As the user, I want non-autograded tracks (system design, code review, behavioral) in the same loop, so that all interview areas are tracked in one place. | Prompts, rubrics and reference material open through `cstudy start` and `cstudy solution`; attempts are logged and scheduled. |
 | US-11 | As the user, I want timed practice, so that I rehearse interview pressure. | `--timer 25m` shows elapsed and remaining time; finishing over time caps the review grade. |
+| US-12 | As the user, I want project problems: a folder of seeded files in one language that I extend level by level and test with that language's own tools, so that I practice building and changing a small codebase. | `cstudy start` seeds `projects/<slug>/`; `cstudy test` runs native tests generated from the visible cases plus my own; `cstudy submit` grades every case of the unlocked levels, hidden ones included, and opens the next level on a full pass; `cstudy done` grades by the levels finished. |
 
 ### Non-goals
 
@@ -75,8 +76,8 @@ Not applicable. The product contains no AI features.
 | ID | Requirement |
 |----|-------------|
 | FR-1 | Correctness is behavioral: the CLI executes the user's code, captures its output and compares it with expected values using the problem's comparator (exact, unordered, unordered-nested, float, checker, ops). Any valid answer passes; multi-answer problems use a checker. Reference solutions are never compared with user code. |
-| FR-2 | Tests are language-neutral data (`tests.json`); one runner per runtime executes any problem ([ADR 0001](decisions/0001-data-driven-tests.md)). |
-| FR-3 | Signatures are declared once in a type DSL and generated into idiomatic stubs for all 4 languages using the mapping in [problem-format](specs/problem-format.md#type-dsl). |
+| FR-2 | Tests are language-neutral data (`tests.json`); one runner per runtime executes any problem ([ADR 0001](decisions/0001-data-driven-tests.md)). A project problem's native visible tests are generated from that data, and its grade still comes from the data, judged by the core ([ADR 0014](decisions/0014-project-problems.md)). |
+| FR-3 | Signatures are declared once in a type DSL and generated into idiomatic stubs for every language a problem lists, using the mapping in [problem-format](specs/problem-format.md#type-dsl). Every catalog problem lists all six languages unless a language cannot express it, it is on the concurrency or debugging track, or it is a project problem, which lists one language and starts from a seeded folder instead of a stub. |
 | FR-4 | Every problem ships a full description (`problem.md`: statement, input, output, examples with explanations, constraints; optional follow-ups and progressive hints). |
 | FR-5 | Every problem ships one or more reference approaches tagged with time and space complexity, and every approach has an explanation section in the mandated format. Missing items fail `cstudy verify`. |
 | FR-6 | A problem may ship references in a subset of languages while in `draft`; `ready` problems require the optimal approach in every listed language. `cstudy verify` reports coverage per language. |
@@ -85,15 +86,16 @@ Not applicable. The product contains no AI features.
 | FR-9 | `cstudy bench` measures the user's code and all reference approaches on the same generated inputs in the same runtime and reports time, memory, empirical growth class, a verdict with confidence, and history ([performance-analysis](specs/performance-analysis.md)). |
 | FR-10 | Progress is stored in SQLite: attempts, test runs, schedule, bench runs ([progress-and-scheduling](specs/progress-and-scheduling.md)). |
 | FR-11 | `cstudy next` selects due reviews first, then new problems from the weakest pattern, using the deterministic formula in the progress spec. |
-| FR-12 | Content tracks: DSA, practical (progressive), low-level design, concurrency, system design, code review and debugging, behavioral (guidance only) ([content](specs/content.md)). |
+| FR-12 | Content tracks: DSA, practical (progressive and project), low-level design, concurrency, system design, code review and debugging, behavioral (guidance only) ([content](specs/content.md)). |
 | FR-13 | Users author problems with `cstudy new` templates and the workflow in [authoring](specs/authoring.md). |
 | FR-14 | Reference solutions stay outside the workspace; nothing the user opens by default shows them. |
+| FR-15 | Project problems: a problem may be a folder of seeded files in one language, solved level by level in `projects/<slug>/`. `cstudy test` runs its native tests as feedback; `cstudy submit` grades every case of the unlocked levels through the runner and opens the next level ([ADR 0014](decisions/0014-project-problems.md)). Python and TypeScript first; Java, Kotlin, Go and Rust are not yet supported. |
 
 ### Non-functional requirements
 
 | ID | Requirement | Measure |
 |----|-------------|---------|
-| NFR-1 | Fast feedback | `cstudy test` warm p50: Python and TypeScript 1.0 s, Java 3 s, Kotlin 5 s, and, once their runners exist, Go 1.0 s and Rust 2 s, for at most 50 cases of an O(n log n) solution. JVM cold start (first build after daemon stop) up to 60 s is accepted and printed as "warming Gradle daemon". |
+| NFR-1 | Fast feedback | `cstudy test` warm p50: Python and TypeScript 1.0 s, Java 3 s, Kotlin 5 s, and, once their runners exist, Go 1.0 s and Rust 2 s, for at most 50 cases of an O(n log n) solution; for a Python or TypeScript project problem, `cstudy test` and `cstudy submit` each within 1.0 s. JVM cold start (first build after daemon stop) up to 60 s is accepted and printed as "warming Gradle daemon". |
 | NFR-2 | Fast CLI | `cstudy list`, `cstudy next`, `cstudy stats` complete in at most 500 ms with 250 problems (index cache). |
 | NFR-3 | Verify throughput | Full `cstudy verify` (no oracle, no ladder) over 200 problems in the 4 core languages in at most 10 min (Go and Rust are gated per batch with `cstudy verify --lang`, [ADR 0012](decisions/0012-go-and-rust.md)); `cstudy verify <slug>` in at most 30 s warm. |
 | NFR-4 | Determinism | Same inputs, database and seed produce the same `cstudy next` choice, generated cases and oracle cases. |

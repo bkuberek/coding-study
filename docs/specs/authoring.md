@@ -27,6 +27,8 @@ Concurrent problems (`cstudy new <slug> --from-template concurrent`) replace ste
 | 6c | Write stress cases and their invariants ([problem-format](problem-format.md#stress-cases)) | `cstudy verify <slug> --static` |
 | 9c | Write the broken references in `solutions/broken/` and tune the scenarios until each is caught | `cstudy verify <slug> --require-ready` (D6, D7) |
 
+Project problems follow [their own workflow](#project-problems).
+
 A problem may stay `draft` with references in only some languages. Drafts are fully practicable (tests are language-neutral) but `cstudy next` skips them, and time limits by factor need an optimal reference in the attempt's language.
 
 ## problem.md
@@ -44,7 +46,7 @@ Every problem has a full description. Required headings, in order:
 | `## Follow-ups` | Optional extensions, often hinting at the optimal approach | optional |
 | `## Hints` | Optional `### Hint <n>`, numbered from 1, most general first | numbering |
 
-Progressive problems replace `## Examples` with one `## Level <n>: <title>` section per level, titled as in `meta.yaml` and in level order. Each level section starts with that level's operations and rules, then holds its own `### Example <n>` subsections (only examples: every `###` subsection needs a marker), and the example of a level-`L` visible case sits in `## Level L`. `## Statement`, `## Input`, `## Output` and `## Constraints` are shown at every level, so they describe only what holds for all levels and never a later level's rules ([progressive problems](problem-format.md#progressive-problems)). Concurrent problems add a required `## Concurrency` section after `## Constraints`: which methods are called concurrently, which block and until when, the ordering guarantee (for example FIFO), and the model per language. The rendered statement appends to it a generated table of the stress cases (id, note, worker groups with count and iterations, invariant types), so the user knows what is checked. No section may contain the placeholder text `TODO`.
+Progressive problems replace `## Examples` with one `## Level <n>: <title>` section per level, titled as in `meta.yaml` and in level order. Each level section starts with that level's operations and rules, then holds its own `### Example <n>` subsections (only examples: every `###` subsection needs a marker), and the example of a level-`L` visible case sits in `## Level L`. `## Statement`, `## Input`, `## Output` and `## Constraints` are shown at every level, so they describe only what holds for all levels and never a later level's rules ([progressive problems](problem-format.md#progressive-problems)). Project problems also require a non-empty `## Project` section after `## Output`, written in the problem language's names ([statement](problem-format.md#statement)). Concurrent problems add a required `## Concurrency` section after `## Constraints`: which methods are called concurrently, which block and until when, the ordering guarantee (for example FIFO), and the model per language. The rendered statement appends to it a generated table of the stress cases (id, note, worker groups with count and iterations, invariant types), so the user knows what is checked. No section may contain the placeholder text `TODO`.
 
 The example marker is replaced in the rendered statement by the case's input and expected output, so example data has one source (`tests.json`) and cannot drift. Values print as JSON, except that `decimal` and `date` values print without quotes, as the signature types them (`premium = 2500.50`, `[2026-01-01, 2026-07-01]`), so a statement never needs to explain the quotes. Hints never appear in the rendered statement; `cstudy hint` reveals them one at a time.
 
@@ -145,6 +147,8 @@ One file per problem, `solutions/explanation.md`, so approaches can be compared 
 
 Sections appear in `meta.yaml` approach order, ladder from brute to optimal. `## Overview` rows must match the approaches' ids, roles, time and space.
 
+A project problem's one approach section adds a required, non-empty `### Design` subsection after `### Algorithm`: the files of the reference and what each is responsible for. `### Language notes` is optional for it, and missing it is no warning.
+
 Concurrent problems follow the approach sections with one section per broken reference, in `concurrency.broken` order. They are not in `## Overview`. For concurrent problems `### Language notes` is required for every `optimal` approach and covers Java platform versus virtual threads, Python's GIL (or asyncio), TypeScript's event loop when listed, Go's `sync` primitives and channels and Rust's `Mutex`, `Condvar` and `&self` sharing when listed (or why an approach has no Go or Rust reference), and, when Kotlin is listed, how the same design would look with coroutines (`Mutex`, `Semaphore`, `Channel`), since coroutines are not autograded in v1 (PRD Q5).
 
 ```markdown
@@ -203,7 +207,7 @@ The title is `# <title>: Rubric`. Other `##` sections (for example `## Follow-up
 
 ## Practical and low-level design problems
 
-What a content stream writes for the `practical` and `lld` tracks, beyond what every problem needs:
+What a content stream writes for the `practical` and `lld` tracks, beyond what every problem needs (a `practical` project problem follows [Project problems](#project-problems) instead):
 
 | Item | `practical` | `lld` |
 |------|-------------|-------|
@@ -215,6 +219,20 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 | References | Every approach, implementing every level, in every language the problem lists (all six by default) | Every approach in every language the problem lists |
 | Optional | `generator.py` (then `generate` cases at the last level, one at the largest ladder size), `patterns`, more approaches | Same |
 
+### Project problems
+
+A [project problem](problem-format.md#project-problems) (`kind: project`, track `practical`) is a seeded folder in one language ([ADR 0014](../decisions/0014-project-problems.md)). A version in another language is a new problem, authored from scratch: only the statement wording may be reused, with that language's names, and both problems list each other in `related`.
+
+| Step | Action | Check |
+|------|--------|-------|
+| 1 | `cstudy new <slug> --from-template project-python` (or `project-typescript`): a starter with an entry class and two levels | `cstudy verify <slug> --static` |
+| 2 | Write `problem.md` (with `## Project` and one `## Level` section per level) and `tests.json` (at least 2 visible and 2 hidden cases per level) | `--static` |
+| 3 | Shape the starter: the entry class with level 1's methods, the seeded files, the build files, `README.md` | `cstudy verify <slug>` (D1) |
+| 4 | Write the reference overlay in `solutions/<approach>/`, level by level | `cstudy verify <slug>` (D3, D9) |
+| 5 | Write `solutions/explanation.md` with `### Design`; set `status: ready` | `cstudy verify <slug> --require-ready` |
+
+The starter is what the user sees first, so it states the contract and nothing more: level 1's methods with "not implemented" bodies, no hint of later levels, and seeded files that a real codebase would have (model types, a test fixture) rather than a solution's structure.
+
 ## Ready criteria
 
 `status: ready` requires all of the following; `cstudy verify --require-ready` enforces them.
@@ -225,6 +243,7 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 - `dsa` problems: at least 2 approaches (a slower one, or an alternative optimal technique when no slower approach is meaningful), an `oracle` approach in Python, and `generator.py`.
 - `tests.json`: at least 2 visible cases, at least 8 hand-written hidden cases, and, for `dsa` problems and any problem with `generator.py`, at least 1 `generate` case at the largest ladder size.
 - `progressive` problems: at least 2 levels; every level has at least 1 visible case and at least 2 hand-written hidden cases.
+- `project` problems: the `progressive` rules above, raised to at least 2 visible and 2 hand-written hidden cases per level, since the visible cases are the only tests a user has before submitting; exactly one approach, `optimal`, with its overlay and its `### Design` subsection; a starter with `README.md`; D9 passes. "Every language in `languages`" is the problem's one language, and the `dsa` rules on generators, oracles and `generate` cases do not apply.
 - `lld` problems: `rubric.md` present with every required section ([rubric.md](#rubricmd)).
 - `concurrent` problems: at least 2 visible and 4 hidden sequential cases; at least 2 stress cases; at least one broken reference for every language in `languages`; every broken reference caught (D7); the slowest correct run of every stress case uses at most 25% of its `deadline_ms` (margin against flaky stalls). The `dsa` rules on generators, oracles and `generate` cases do not apply.
 
@@ -238,30 +257,34 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 | S2 | Directory name equals `<id>-<slug>`; ids and slugs unique across `problems/` and `tracks/` |
 | S3 | Signature parses with the type DSL; names valid; no reserved words after per-language conversion, in the languages the problem lists (a Rust keyword other than `self`, `Self`, `super` and `crate` is allowed: Rust writes it as a raw identifier, `r#move`); no Go function named after a package its stub imports (`time` where the signature uses `date`, `decimal` where it uses `decimal`) and no Rust class named after an imported type (`NaiveDate`, `Decimal`), since neither stub compiles. Warnings, not errors: a Python name that shadows a builtin (`sum`), the type the Python stub imports for the signature (`date` where it uses `date`, `Decimal` where it uses `decimal`), or a Go parameter named after an imported package ([naming rules](problem-format.md#naming-rules)) |
 | S4 | Every case input and expected value conforms to the signature (ranges, char length, node encodings, op names and arities, `long` at most 2^53-1, `decimal` and `date` strings; an expected `decimal` is canonical, [Decimal and date](problem-format.md#decimal-and-date)) |
-| S5 | `problem.md` required headings, example markers and hint numbering; progressive: no `## Examples`, one `## Level <n>: <title>` per level as in `meta.yaml`, in order, each with at least one example, and each example in its case's level section |
+| S5 | `problem.md` required headings, example markers and hint numbering; progressive and project: no `## Examples`, one `## Level <n>: <title>` per level as in `meta.yaml`, in order, each with at least one example, and each example in its case's level section |
 | S6 | `explanation.md` sections and subsections per approach; complexity lines equal `meta.yaml`; overview table consistent |
-| S7 | Every file in `solutions/` maps to a declared approach, and to one of its `languages` when the approach names them; every approach has at least one file; only `concurrency` and `debugging` approaches name `languages`, and only languages of the problem; at most one `oracle`, and it has a Python file |
+| S7 | Every file in `solutions/` maps to a declared approach (for a project problem, every directory in `solutions/` is the declared approach, and no reference file per language exists), and to one of its `languages` when the approach names them; every approach has at least one file; only `concurrency` and `debugging` approaches name `languages`, and only languages of the problem; at most one `oracle`, and it has a Python file |
 | S8 | `checker.py` present if and only if `comparator.type` is `checker`; no `float` comparator (or `per_method` `float`) where the compared outputs hold `decimal` and no `double`, because decimals always compare exactly ([comparators](problem-format.md#comparators)); with `stub: buggy`, exactly one `buggy/solution.<ext>` per language in `languages`, and no `buggy/` otherwise; `rubric.md` for `lld`, and any `rubric.md` has the [required sections](#rubricmd) |
 | S9 | `perf.expected_from` names a Python approach; `size_ladder` ascending |
-| S10 | Progressive: levels contiguous from 1; every level has cases; every case `level` valid and using only methods introduced at or below it; `generate` cases at the last level |
+| S10 | Progressive and project: levels contiguous from 1; every level has cases; every case `level` valid and using only methods introduced at or below it; `generate` cases at the last level |
 | S11 | Concurrent: `kind: concurrent` if and only if `track: concurrency`; `concurrency.model` valid for every listed language; comparator `ops`; no `perf`, `oracle`, `time_class` or `generator.py`; `blocking` only on methods; `## Concurrency` section present |
 | S12 | Concurrent stress cases: steps name signature methods (not the constructor) or harness ops with valid arity; template ranges fit the parameter types; `@enter`/`@exit` balanced and nested per iteration; selectors name existing ops and argument indexes; 2 to 64 workers and at most 20,000 ops per run after expansion; `stress_checker.py` present if and only if a `checker` invariant exists; every broken file maps to a declared broken id and every `caught_by` id is a stress case; `## Broken` sections match `concurrency.broken` |
-| S13 | Every language in `languages` can express the problem, and a catalog problem outside the `concurrency` and `debugging` tracks lists every language that can (`must list rust: ...`); the schema only requires one language. A problem in your own workspace (`cstudy new` without a content checkout) may list any subset, but a `dsa` problem keeps `python` for its oracle (S7). Rust cannot when a `ref_of` points into a `ListNode` (or `ListNode[]`), when an `as: index` result is a `ListNode` or indexes one, or when a case input holds a cyclic list (`cycle_at`): an `Option<Box<ListNode>>` has one owner per node ([mapping](problem-format.md#go-and-rust-mapping)). `no_alias_with` on a list is fine |
+| S13 | Every language in `languages` can express the problem, and a catalog problem outside the `concurrency` and `debugging` tracks lists every language that can (`must list rust: ...`); the schema only requires one language. A problem in your own workspace (`cstudy new` without a content checkout) may list any subset, but a `dsa` problem keeps `python` for its oracle (S7). Rust cannot when a `ref_of` points into a `ListNode` (or `ListNode[]`), when an `as: index` result is a `ListNode` or indexes one, or when a case input holds a cyclic list (`cycle_at`): an `Option<Box<ListNode>>` has one owner per node ([mapping](problem-format.md#go-and-rust-mapping)). `no_alias_with` on a list is fine. A `project` problem is the third exception to `must list`, next to the subset tracks and workspace problems: it lists exactly one language (S14), and the message of a `must list` check never applies to it |
+| S14 | Project: `kind: project` if and only if a `project` block; track `practical`; exactly one language, `python` or `typescript` (any other: `project problems are not yet supported in java`); `project.entry` well formed for the language (a dotted module of identifiers in Python, a relative `.ts` path inside the root in TypeScript); comparator `ops` with `exact`, `unordered` or `float` for every method; signature types limited to scalars, arrays and lists, with no `decimal` in TypeScript; exactly one approach; no `generator.py`, `checker.py`, `stress_checker.py`, `buggy/`, `stub`, `perf`, `concurrency`, `oracle`, `generate` or `stress` cases |
+| S15 | Project starter: `starter/` exists, holds the entry file (`project.entry`) and `README.md`, at most 50 files and 256 KiB, UTF-8 text only, no symbolic links, no build output, caches or lock files ([starter](problem-format.md#starter)); Python: `pyproject.toml` with no `[project]` table, `requires-python` or `[tool.uv]`, and no top-level module or package named after a standard-library module or `pytest`; TypeScript: `package.json` with `"type": "module"` and no dependencies, and `tsconfig.json`. The overlay's paths stay inside the tree and its files are UTF-8 text |
+| S16 | Project: no starter file under `project.tests` has the name of a generated test file (`test_level_<n>.py`, `level-<n>.test.ts`); `problem.md` has a non-empty `## Project` section; the explanation has `### Design` |
 
 ### Dynamic
 
 | Id | Check |
 |----|-------|
-| D1 | Generated stubs compile or import in every language in `languages` |
+| D1 | Generated stubs compile or import in every language in `languages`. Project: the starter loads instead: a grading job of level 1 against the copied starter reports a result for every case and no `load_error` (cases may fail), and the starter's native suite runs to `job_end` without crashing the runner |
 | D2 | `generator.py` is deterministic (two calls with the same seed and size are equal) and its output passes `validate` |
-| D3 | Every approach file passes every case, including generated cases; progressive references implement every level, and each failure names its level (`level 2 ex2 FAIL: ...`) |
+| D3 | Every approach file passes every case, including generated cases; progressive and project references implement every level, and each failure names its level (`level 2 ex2 FAIL: ...`). A project reference runs as the starter with its overlay ([reference](problem-format.md#reference)) |
 | D4 | `--oracle`: 200 inputs (or `--oracle-cases N`) from the generator at small sizes (n drawn from 1 to 30 with seeds 1..N); every approach in every language agrees with the oracle under the comparator; for `checker` problems every output passes the checker. A problem without `generator.py` skips it and prints `oracle n/a`; the [ready criteria](#ready-criteria) still require a generator for `dsa` problems |
 | D5 | `--ladder`: each approach's measured time band is consistent with its declared `time_class` ([performance-analysis](performance-analysis.md#integration)). A problem without `generator.py` skips it and prints `ladder n/a` |
 | D6 | Concurrent: every approach passes every sequential case, and every stress case in 10 of 10 runs (or `--stress N`) per variant; reports the slowest run as a share of `deadline_ms`. The languages build side by side, but their runners take turns, so each stress run has the machine to itself as a user's `cstudy test` does: run together, every language's workers competed for the cores, which hid races and stretched runs |
 | D7 | Concurrent: every broken reference passes every sequential case, and fails each of its `caught_by` cases in at least 9 of 10 runs (`ceil(0.9 * N)`) per language and variant. Runs on every `cstudy verify` of the problem; it is the Phase 5 exit criterion |
 | D8 | `stub: buggy`: in every language the buggy file builds, loads and fails at least one case (any status but `PASS`); it replaces D1's generated-stub check, and D3 still requires the fixed references to pass |
+| D9 | Project: the reference passes the generated test file of every level and every test file of the starter, through the native suite ([suite job](runners.md#suite-job)): every test `ok` or `skipped` |
 
-D2, D4 and D5 do not apply to concurrent problems. Their D6 and D7 runs are not part of the 30 s `cstudy verify <slug>` target in NFR-3, because they execute about 10 runs per reference, case and variant.
+D2, D4 and D5 do not apply to concurrent or project problems. Their D6 and D7 runs are not part of the 30 s `cstudy verify <slug>` target in NFR-3, because they execute about 10 runs per reference, case and variant.
 
 D6, D7 and the deadline margin keep their thresholds on a busy machine: relaxed there, they would pass a stress case that misses races on a user's idle one. When one of them fails while the 1-minute load average is above half the cores, or on battery, the problem gets a warning that names the condition (`stress checks failed on a busy machine (load 13.4 is above half of 11 cores): ...`), so a load flake can be told from a weak stress case. Measured with three to four other agents on 11 cores (load 10 to 17), `token-bucket-limiter` and `read-write-lock` failed 4 of 6 verifies while every language's runner ran at once (Kotlin, Rust and Python broken references caught 7 or 8 times in 10, a correct Rust run at 31% of its deadline) and 1 of 6 once the runners took turns (Python `unlocked-count` caught 8 times in 10; the slowest correct run at most 13%).
 

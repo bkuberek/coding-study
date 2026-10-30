@@ -73,7 +73,7 @@ An `import-linter` contract in `cli/.importlinter` enforces the table (NFR-8).
 
 ### Languages
 
-`Language` has six members. `ALL_LANGUAGES` is what a problem lists by default and what every "all languages" default, coverage line and IDE action means; a problem lists fewer only where a language cannot express it (check S13) or on the concurrency and debugging tracks (`LANGUAGE_SUBSET_TRACKS`). `CORE_LANGUAGES` (Python, TypeScript, Java, Kotlin) are the languages whose toolchains every workspace needs: `cstudy doctor` fails without them, and only warns about Go and Rust ([ADR 0012](decisions/0012-go-and-rust.md)). Code that branches on a language uses an exhaustive `match` ending in `assert_never`, and `tests/test_language_tables.py` fails when a table keyed by `Language` lacks a row.
+`Language` has six members. `ALL_LANGUAGES` is what a problem lists by default and what every "all languages" default, coverage line and IDE action means; a problem lists fewer only where a language cannot express it (check S13) or on the concurrency and debugging tracks (`LANGUAGE_SUBSET_TRACKS`); a project problem lists exactly one ([ADR 0014](decisions/0014-project-problems.md)), and code that branches on `ProblemKind` uses the same exhaustive `match`. `CORE_LANGUAGES` (Python, TypeScript, Java, Kotlin) are the languages whose toolchains every workspace needs: `cstudy doctor` fails without them, and only warns about Go and Rust ([ADR 0012](decisions/0012-go-and-rust.md)). Code that branches on a language uses an exhaustive `match` ending in `assert_never`, and `tests/test_language_tables.py` fails when a table keyed by `Language` lacks a row.
 
 The adapter registry holds one stub generator and one runner per language that has an adapter package. Every language has its adapters now. A language without them would raise `LanguageNotSetUpError`, which the CLI reports as `error: rust stub generator is not set up yet` with exit code 4, as it does for any part that is not built yet; `cstudy start --lang rust` has already rejected any problem that does not list Rust with exit code 3. `cstudy doctor` handshakes the runners of the core languages only; for Go and Rust it checks the toolchains and debuggers and warns when one is missing.
 
@@ -175,7 +175,7 @@ coding-study/
   tracks/                   # non-autograded content (system design, code review, behavioral)
 ```
 
-The repository holds no workspace. A workspace, created by `cstudy init` anywhere else, holds the practice projects, `notes/`, `.archive/`, `.statements/`, its own `problems/`, `.cs/` and `progress.db` ([layout](specs/installation-and-workspaces.md#layout)).
+The repository holds no workspace. A workspace, created by `cstudy init` anywhere else, holds the practice projects, the project problems' folders in `projects/`, `notes/`, `.archive/`, `.statements/`, its own `problems/`, `.cs/` and `progress.db` ([layout](specs/installation-and-workspaces.md#layout)).
 
 ### Workspace decisions
 

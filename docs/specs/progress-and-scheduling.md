@@ -4,7 +4,7 @@ Progress lives in SQLite (`progress.db`, gitignored). The database stores only f
 
 ## Schema
 
-Applied by numbered migrations in `cli/src/coding_study/adapters/sqlite/migrations/` (`0001_init.sql`, ...); `meta.schema_version` records the last applied number. Tables arrive by phase: `meta`, `attempts`, `test_runs` in Phase 0; `schedule` in Phase 1; `bench_runs` in Phase 2 (`0003_bench_runs.sql`, written with `IF NOT EXISTS` so it is safe to renumber or run again); `0004_go_and_rust.sql` rebuilds `attempts` so that `lang` accepts `go` and `rust` (SQLite cannot change a `CHECK` constraint in place). Timestamps are ISO 8601 UTC strings; `due_on` is a local calendar date (`YYYY-MM-DD`) from the injected `Clock`.
+Applied by numbered migrations in `cli/src/coding_study/adapters/sqlite/migrations/` (`0001_init.sql`, ...); `meta.schema_version` records the last applied number. Tables arrive by phase: `meta`, `attempts`, `test_runs` in Phase 0; `schedule` in Phase 1; `bench_runs` in Phase 2 (`0003_bench_runs.sql`, written with `IF NOT EXISTS` so it is safe to renumber or run again); `0004_go_and_rust.sql` rebuilds `attempts` so that `lang` accepts `go` and `rust` (SQLite cannot change a `CHECK` constraint in place); `0005_project_problems.sql` adds `submissions` and `level_unlocks` for [project attempts](#project-attempts), with `IF NOT EXISTS`. Timestamps are ISO 8601 UTC strings; `due_on` is a local calendar date (`YYYY-MM-DD`) from the injected `Clock`.
 
 ```sql
 PRAGMA foreign_keys = ON;
@@ -82,14 +82,39 @@ CREATE TABLE bench_runs (
   env            TEXT NOT NULL         -- JSON: cpu, power, load, cores, runner, runtime, references_hash
 );
 CREATE INDEX bench_runs_by_problem ON bench_runs (slug, lang, ran_at);
+
+CREATE TABLE submissions (             -- project problems: one row per cstudy submit
+  id            INTEGER PRIMARY KEY,
+  attempt_id    INTEGER NOT NULL REFERENCES attempts (id),
+  submitted_at  TEXT NOT NULL,
+  code_hash     TEXT NOT NULL,         -- sha256 of the project folder
+  graded_up_to  INTEGER NOT NULL,      -- levels 1 to this one were graded
+  every_level   INTEGER NOT NULL,      -- 1 when graded_up_to was the unlocked level
+  levels        TEXT NOT NULL,         -- JSON [{level, total, passed, visible_total, visible_passed, hidden_total, hidden_passed}]
+  total         INTEGER NOT NULL,
+  passed        INTEGER NOT NULL,
+  failed        INTEGER NOT NULL,
+  errored       INTEGER NOT NULL,
+  timed_out     INTEGER NOT NULL,
+  duration_ms   INTEGER NOT NULL
+);
+CREATE INDEX submissions_by_attempt ON submissions (attempt_id, submitted_at);
+
+CREATE TABLE level_unlocks (           -- project problems: when each level opened
+  attempt_id   INTEGER NOT NULL REFERENCES attempts (id),
+  level        INTEGER NOT NULL,
+  unlocked_at  TEXT NOT NULL,
+  PRIMARY KEY (attempt_id, level)
+);
 ```
 
 ## Attempt lifecycle
 
 | Event | Effect |
 |-------|--------|
-| `cstudy start` | Insert `in_progress`; `mode` is `review` if a `schedule` row exists, `mock` under `cstudy mock`, else `new`. Same slug and language already `in_progress`: resume it. With `--fresh`: mark the old one `abandoned` (no grade, no schedule change). Progressive: a new attempt stores `level_unlocked = 1` |
-| `cstudy test` | Insert a `test_runs` row; set `first_pass_at` on the first all-pass run (progressive: of every level); progressive: raise `level_unlocked` by one when a run passes every unlocked level |
+| `cstudy start` | Insert `in_progress`; `mode` is `review` if a `schedule` row exists, `mock` under `cstudy mock`, else `new`. Same slug and language already `in_progress`: resume it. With `--fresh`: mark the old one `abandoned` (no grade, no schedule change). Progressive and project: a new attempt stores `level_unlocked = 1`; project: also a `level_unlocks` row for level 1, and `stub_path` is the folder `projects/<slug>` |
+| `cstudy test` | Insert a `test_runs` row; set `first_pass_at` on the first all-pass run (progressive: of every level); progressive: raise `level_unlocked` by one when a run passes every unlocked level. Project: the row holds the native suite's tally and changes nothing else |
+| `cstudy submit` | Project only: insert a `submissions` row; when it graded every unlocked level and passed every case, raise `level_unlocked` by one and insert its `level_unlocks` row, or, at the last level, set `first_pass_at` |
 | `cstudy mock` | One `cstudy start --fresh` per pick, mode `mock`, all with `time_limit_s` set to the shared timer; while it runs and a mock attempt is `in_progress`, `cstudy hint` and `cstudy solution` refuse ([cli](cli.md#cstudy-mock)) |
 | `cstudy hint` | `hints_used += 1` |
 | `cstudy solution` before a full pass | `solution_revealed = 1` |
@@ -105,7 +130,26 @@ Grades: 0 `again`, 1 `hard`, 2 `ok`, 3 `easy`. Computed in order:
 2. Otherwise from the rating: `easy` 3, `ok` 2, `hard` 1.
 3. Caps (minimum wins): any hint used caps at 2; finished over `--timer` caps at 1; with `schedule.penalize_suboptimal`, the attempt's latest bench verdict `suboptimal` at confidence `medium` or `high` caps at 1.
 
+Project attempts add one cap and their own rating rule ([below](#project-attempts)).
+
 Non-autograded items use step 2 only: no `--gave-up`, and revealing the reference, hints and the timer never lower the grade. Their attempts have `lang` NULL and `stub_path` set to the notes file.
+
+## Project attempts
+
+A [project problem](problem-format.md#project-problems)'s attempt is graded from its submissions, not its test runs ([ADR 0014](../decisions/0014-project-problems.md)).
+
+| Item | Rule |
+|------|------|
+| Counted submission | The latest submission with `every_level = 1`. Submissions with a lower `--level` never count |
+| Levels finished | The largest L such that the counted submission passed every case of levels 1 to L; 0 without a counted submission |
+| `cstudy done` | A rating is required when levels finished is at least 1, `--gave-up` otherwise |
+| Level cap | Applied with the caps above, the minimum winning: every level finished, no cap; all but the last, `hard` (1); fewer, `again` (0) |
+| Time box | Soft, as for every problem: finishing over `--timer` caps at `hard`; submissions are never refused |
+| Status | `passed` when every level is finished, `failed` otherwise, also when a rating was given |
+| `test_runs` | Native suite runs: `total` counts every reported test but skipped ones, `errored` holds errors and crashes, `tle` is 0; `code_hash` hashes the folder (every file but `.venv`, `node_modules` and caches, by relative path and bytes in path order) |
+| `level_unlocks` | One row per opened level, so `cstudy status` shows when each level opened |
+
+Two levels of four finished, rated `ok`: grade 0. Three of four, rated `ok`: grade 1. Four of four, rated `ok`, under the time box and without hints: grade 2.
 
 ## Scheduling algorithm
 

@@ -12,6 +12,7 @@ Each phase ends only when every exit criterion is observed. Phases run in order;
 | 5 | Concurrency track | concurrent kind, `test --stress` and `--seed` for concurrent problems, `solution --broken` |
 | 6 | System design, code review, debugging, behavioral | non-autograded items, buggy stubs |
 | 7 | Progress polish | `stats`, `mock`, `export`, `import`, `test --stress` for oracle inputs, `test --json` |
+| 8 | Project problems: Python, then TypeScript | project kind, `submit`, `status` |
 
 ## Status
 
@@ -118,3 +119,14 @@ Phases 0 to 7 are implemented: every command in the table above exists with its 
 - [x] `cstudy stats` matches hand-computed values on a fixture database.
 - [x] `cstudy export` output re-imports into an empty database with identical `cstudy stats` output.
 - [x] PRD Q4 closed with a recorded decision.
+
+## Phase 8: Project problems
+
+**Scope.** [ADR 0014](decisions/0014-project-problems.md) and its spec amendments, then the project kind ([problem-format](specs/problem-format.md#project-problems)): project folders, generated native tests, the `suite` and project grading jobs ([runners](specs/runners.md#project-jobs)), `cstudy submit` and `cstudy status`, verify checks S14 to S16 and D9. 8a is the Python pilot `0249-bank-project-python`, playable from `start` to `done`; 8b the TypeScript pilot `0250-bank-project-typescript` and `node:test` through the same suite protocol. Later, each behind its own spike: web interface groundwork in the CLI (an event stream, a starter manifest with `cstudy start --restore`, a lock per project), Java and Kotlin projects (K4), and Go and Rust projects (K5, K6).
+
+**Exit criteria.**
+
+- [ ] 8a: `cstudy verify --conformance` passes with fixtures 9022 and 9024, and `cstudy verify bank-project-python --require-ready` exits 0.
+- [ ] 8a: a manual run through all four levels of `bank-project-python`, from `cstudy start` to `cstudy done`.
+- [ ] 8a: warm p50 of `cstudy test` and `cstudy submit` on `bank-project-python` within 1.0 s (NFR-1).
+- [ ] 8b: the same three checks for `bank-project-typescript`, with fixtures 9023 and 9025.

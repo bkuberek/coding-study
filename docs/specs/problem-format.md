@@ -40,7 +40,7 @@ problems/0001-two-sum/
 | `id` | 4-digit zero-padded string, unique, assigned by `cstudy new` (max + 1); display and ordering only |
 | `slug` | `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, unique; the stable key in `progress.db`; immutable once merged |
 | `snake_slug` | `slug` with `-` replaced by `_`; used for Python modules and JVM packages |
-| Reference files | `solutions/<approach-id>.<ext>`, ext in `py`, `ts`, `java`, `kt`; every file maps to a declared approach |
+| Reference files | `solutions/<approach-id>.<ext>`, ext in `py`, `ts`, `java`, `kt`, `go`, `rs`; every file maps to a declared approach. A [project problem](#project-problems) has a directory `solutions/<approach-id>/` instead, and a `starter/` tree |
 
 ## meta.yaml
 
@@ -54,14 +54,15 @@ Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-l
 | `status` | `draft` or `ready` | yes | `ready` requirements: [authoring](authoring.md#ready-criteria) |
 | `difficulty` | `easy`, `medium`, `hard` | yes | |
 | `track` | `dsa`, `practical`, `lld`, `concurrency`, `debugging` | yes | Non-autograded tracks live in `tracks/` ([content](content.md)) |
-| `kind` | `function`, `design`, `progressive`, `concurrent` | yes | |
+| `kind` | `function`, `design`, `progressive`, `concurrent`, `project` | yes | `project`: [Project problems](#project-problems) |
 | `patterns` | list of pattern ids | yes for `dsa` | First entry is the primary pattern; ids from [content](content.md#pattern-taxonomy) |
-| `languages` | list of `python`, `typescript`, `java`, `kotlin`, `go`, `rust` | no | Default all six, which every problem lists, except a language that cannot express the problem: Rust where an `Option<Box<ListNode>>` cannot ([S13](authoring.md#static)), so `0055-linked-list-cycle` lists the other five. `concurrency` and `debugging` problems are the exception: they may list any subset of the six languages, so a Go- or Rust-native bug lists just `go` or `rust`, and the original debugging problems list the languages their bugs exist in ([ADR 0012](../decisions/0012-go-and-rust.md)). A problem you write in your own workspace is the exception to the catalog's rule: it lists any non-empty subset, and without a `languages` line it lists the four core languages (`python`, `typescript`, `java`, `kotlin`), what every problem listed before Go and Rust, so a problem written with an older `cstudy` keeps working. `cstudy new` writes the line explicitly. List `languages` in the catalog only where it differs from the default |
+| `languages` | list of `python`, `typescript`, `java`, `kotlin`, `go`, `rust` | no | Default all six, which every problem lists, except a language that cannot express the problem: Rust where an `Option<Box<ListNode>>` cannot ([S13](authoring.md#static)), so `0055-linked-list-cycle` lists the other five. `concurrency` and `debugging` problems are the exception: they may list any subset of the six languages, so a Go- or Rust-native bug lists just `go` or `rust`, and the original debugging problems list the languages their bugs exist in ([ADR 0012](../decisions/0012-go-and-rust.md)). A `project` problem lists exactly one language, `python` or `typescript` ([Project problems](#project-problems), [ADR 0014](../decisions/0014-project-problems.md)). A problem you write in your own workspace is the exception to the catalog's rule: it lists any non-empty subset, and without a `languages` line it lists the four core languages (`python`, `typescript`, `java`, `kotlin`), what every problem listed before Go and Rust, so a problem written with an older `cstudy` keeps working. `cstudy new` writes the line explicitly. List `languages` in the catalog only where it differs from the default |
 | `signature` | object | yes | See [Signatures](#signatures) |
 | `comparator` | object | yes | See [Comparators](#comparators) |
 | `stub` | `generated` or `buggy` | no | Default `generated`; `buggy` copies `buggy/solution.<ext>` instead of codegen. Buggy files follow the reference file conventions (no JVM `package` line) ([authoring](authoring.md#debugging-problems)) |
-| `levels` | list | `progressive` only | See [Progressive problems](#progressive-problems) |
-| `approaches` | list | yes, at least 1 | See [Approaches](#approaches-and-complexity) |
+| `levels` | list | `progressive` and `project` only | See [Progressive problems](#progressive-problems) |
+| `project` | object | `project` only | `entry` (required) and `tests`; see [Project problems](#project-problems) |
+| `approaches` | list | yes, at least 1; exactly 1 for `project` | See [Approaches](#approaches-and-complexity) |
 | `perf` | object | no | See [Performance block](#performance-block) |
 | `limits.hang_guard_ms` | int | no | Overrides the per-case hang guard (default 10000) |
 | `concurrency` | object | `concurrent` only | See [Concurrent problems](#concurrent-problems) |
@@ -86,7 +87,7 @@ signature:
     returns: {type: "int[]"}
 ```
 
-### Class (design, progressive, concurrent)
+### Class (design, progressive, concurrent, project)
 
 ```yaml
 signature:
@@ -112,7 +113,7 @@ signature:
 | `as: value` | node-typed `returns` | Serialize only the returned node's `val` (`null` when null) |
 | `as: index`, `of: <param>` | node-typed `returns` | Serialize the returned node's position in `<param>` traversal order (`-1` when null; a node outside `<param>` is `invalid_output`); for duplicate-valued structures. Traversal order: [runners](runners.md#node-modifiers) |
 | `no_alias_with: <param>` | node-typed `returns` | Fail with `invalid_output` if any returned node object is also reachable from `<param>` (deep-copy problems) |
-| `level: <n>` | method | Progressive level that introduces the method |
+| `level: <n>` | method | `progressive` and `project` only: the level that introduces the method |
 | `blocking: true` | method | `concurrent` only: the method may wait for another worker. Async model: generated as an async method; threads model: Java adds `throws InterruptedException` ([Concurrent problems](#stubs-for-concurrent-problems)) |
 
 Loading a problem rejects (content error) a modifier that names a parameter missing from its own function, constructor or method, or that sits on the wrong type: `ref_of` and `of` must name a parameter of the same node type, `output_from` needs a `void` return, `as` a node-typed return, and `blocking` a method of a `concurrent` problem.
@@ -343,7 +344,7 @@ Validated against `schemas/tests.schema.json`.
 | `stress` | object | `concurrent` only | A concurrent scenario instead of `ops`/`args` ([Stress cases](#stress-cases)); always hidden |
 | `expected` | any | yes, except `generate`, `stress` and `checker` cases | Checker problems may include one valid answer for display |
 | `generate` | `{n, seed}` | no | Input from `generator.py`; expected computed by `perf.expected_from`; always hidden |
-| `level` | int | `progressive` only | |
+| `level` | int | `progressive` and `project` only | |
 | `hang_guard_ms` | int | no | Per-case override |
 | `note` | string | no | Author note shown on failure |
 
@@ -360,7 +361,7 @@ All comparison happens in the CLI core on canonical JSON values. Equality is typ
 | `unordered-nested` | Top level is a multiset of inner arrays, each inner array also compared as a multiset (depth 2) | 3Sum, Group Anagrams, Subsets |
 | `float` | Every number satisfies `abs(a - e) <= tol * max(1, abs(e))`; structure otherwise exact | Averages, probabilities, geometry; `tolerance` default `1e-6` |
 | `checker` | `checker.py` returns `None` | Any valid topological order, any valid path, any valid partition |
-| `ops` | Per-operation outputs equal; `per_method` overrides a method's comparator (`exact`, `unordered`, `unordered-nested`, `float`) | Design and progressive problems |
+| `ops` | Per-operation outputs equal; `per_method` overrides a method's comparator (`exact`, `unordered`, `unordered-nested`, `float`) | Design, progressive and project problems |
 
 ```yaml
 comparator: {type: float, tolerance: 1.0e-5}
@@ -426,6 +427,203 @@ comparator: {type: ops}
 | Unlock | `cstudy start` opens level 1 on a new attempt (`attempts.level_unlocked`); a resumed attempt keeps its level, a `--fresh` or review attempt starts again at level 1. `cstudy test` runs the cases of levels 1 to the unlocked level. A run of every one of those cases (no `--case`, no lower `--level`) that passes them all unlocks the next level and rewrites the statement; one run unlocks at most one level |
 | Full pass | Only a run that passes the cases of every level is a full pass (`first_pass_at`, `cstudy done --rating`) |
 | Missing values | Methods return `""` (string) or `-1` (number) for absence, stated in the level text |
+
+Project problems share these rules, except the stub, the unlock and the language of the rendered names: [Project problems](#project-problems).
+
+## Project problems
+
+A project problem (`kind: project`, `track: practical`) is a folder of seeded files in one language. `cstudy start` copies the folder into the workspace, you edit its files or add new ones, and the problem opens in levels that build on the same code. Levels, level cases and the `ops` comparator work as for [progressive problems](#progressive-problems); what differs is the code (a folder, not a generated stub), the language (exactly one), the visible tests (native test files generated from `tests.json`) and what opens a level (`cstudy submit`, not `cstudy test`). Decision record: [ADR 0014](../decisions/0014-project-problems.md).
+
+Planned: nothing implements project problems yet ([roadmap](../roadmap.md#phase-8-project-problems)).
+
+| Language | Project problems |
+|----------|------------------|
+| Python | Supported; native tests run with pytest |
+| TypeScript | Supported; native tests run with `node:test` |
+| Java, Kotlin, Go, Rust | Not yet supported: check S14 rejects a project problem that lists them |
+
+### Content tree
+
+```text
+problems/0249-bank-project-python/
+  meta.yaml             # kind: project, languages: [python], levels, the graded API, the project block
+  problem.md            # ## Project, then one "## Level <n>: <title>" section per level
+  tests.json            # every case with its level
+  starter/              # the seeded tree; cstudy start copies it to <workspace>/projects/<slug>/
+    README.md           # the contract (entry class and module) and how to run the tests
+    pyproject.toml      # tool settings only (Python)
+    bank/bank.py        # the entry class Bank, with level 1's methods
+    bank/models.py      # seeded model types
+    tests/conftest.py   # optional test files from the author
+  solutions/
+    explanation.md      # one approach section, with "### Design"
+    reference/          # the one approach: an overlay on starter/, changed and added files only
+      bank/bank.py
+      bank/ledger.py
+```
+
+The TypeScript pilot has the same shape, with `package.json`, `tsconfig.json`, `src/bank.ts`, `src/models.ts` and `tests/`.
+
+### meta.yaml
+
+```yaml
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0249"
+slug: bank-project-python
+title: Bank Project (Python)
+status: draft
+difficulty: hard
+track: practical
+kind: project
+languages: [python]
+levels:
+  - {level: 1, title: Accounts and transfers}
+  - {level: 2, title: Top spenders}
+  - {level: 3, title: Scheduled transfers}
+  - {level: 4, title: Merges and balance history}
+signature:
+  class:
+    name: Bank
+    constructor: {params: []}
+    methods:
+      - {name: createAccount, level: 1, params: [{name: timestamp, type: long}, {name: accountId, type: string}], returns: {type: bool}}
+comparator: {type: ops}
+project:
+  entry: bank.bank      # Python: dotted module; TypeScript: src/bank.ts
+  tests: tests          # where cstudy writes the generated level tests; default "tests"
+approaches:
+  - {id: reference, name: Accounts with balance histories and a due-time heap, role: optimal, time: "...", space: "...", time_class: "n log n", space_class: "n"}
+related: [bank-project-typescript, scheduled-transfers-bank]
+estimate_minutes: 90
+```
+
+| Field | Rule |
+|-------|------|
+| `track` | `practical` |
+| `languages` | Exactly one: `python` or `typescript` |
+| `slug` | Ends in the language (`bank-project-python`): a version in another language is another problem, and slugs are unique |
+| `levels` | Required, as for progressive problems |
+| `signature` | A class signature: the entry class the grader constructs, canonical names, a `level` on every method |
+| `comparator` | `ops`. Every method's comparator, the default `exact` or a `per_method` entry, is `exact`, `unordered` or `float`, because generated tests express only these |
+| Types | Scalars, arrays and lists. No node types; no `decimal` in TypeScript, whose `Decimal` class comes from the runner's support module, which a project folder does not reach |
+| `project.entry` | Python: the dotted module that defines the entry class (`bank.bank`), a file `bank/bank.py` or `bank/bank/__init__.py` under the project root. TypeScript: the path, relative to the root, of the file that exports the entry class by name (`src/bank.ts`) |
+| `project.tests` | The directory, relative to the root, where `cstudy` writes the generated test files; default `tests` |
+| `approaches` | Exactly one, with role `optimal` |
+| Not allowed | `generator.py`, `checker.py`, `stress_checker.py`, `buggy/`, `stub`, `perf`, `concurrency`, `oracle`, and `generate` or `stress` cases |
+| `related` | Lists every sibling in another language, and may list the problems it builds on |
+
+A version in another language is built from scratch: its own id, slug, starter, `tests.json`, reference and explanation. Only the statement wording may be reused, with that language's names. Nothing is shared or inherited between siblings.
+
+### Starter
+
+| Item | Rule |
+|------|------|
+| Content | Every file the user starts with, in the project's own layout: the entry file, the build files, `README.md`, and any seeded modules and test files. UTF-8 text files only, at most 50 files and 256 KiB in all |
+| Never | Build output and caches (`__pycache__`, `.pytest_cache`, `.ruff_cache`, `node_modules`, `.venv`), lock files (`uv.lock`, `pnpm-lock.yaml`, `package-lock.json`), symbolic links, and a file under `project.tests` with the name of a generated test file |
+| Entry class | Defined at `project.entry` with level 1's methods only, each with a body that raises or throws "not implemented". Methods of later levels appear nowhere in the starter: each unlock names the methods to add. A starter may declare the API as an interface the entry class implements (an `abc.ABC` subclass, a TypeScript `interface`), which also holds level 1's methods only |
+| `README.md` | States the contract: the module or file and the class that must stay where they are, and how to run the tests with the language's own command |
+| Python build file | `pyproject.toml` with exactly the tool tables below and nothing else: no `[project]` table, no `requires-python`, no `[tool.uv]`. A `requires-python` above the workspace venv's Python makes `uv run` delete the shared venv through the project's `.venv` link ([project folders](installation-and-workspaces.md#project-folders)). No `__init__.py` is needed for packages, and no `pyrightconfig.json` |
+| TypeScript build files | `package.json` with `"type": "module"` and no dependencies; `tsconfig.json` as the workspace's (`module` `nodenext`, `noEmit`, `allowImportingTsExtensions`, `erasableSyntaxOnly`, `verbatimModuleSyntax`, `strict`) with `"typeRoots": ["../../typescript/node_modules/@types"]`, so `node:test` and `node:assert` have types. Imports name files with their extension (`../src/bank.ts`); code uses erasable syntax only, since Node strips types and refuses the rest (a parameter property fails with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`) |
+| Module names | Python: no top-level module or package named after a standard-library module (`random.py`, `types.py`, `typing.py`) or `pytest` |
+
+The Python starter's `pyproject.toml`:
+
+```toml
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--import-mode=importlib -p no:cacheprovider"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.13"
+
+[tool.ruff]
+target-version = "py313"
+```
+
+`pythonpath` lets the tests import the project's modules without `__init__.py` files, `--import-mode=importlib` allows test files with the same base name in different directories, and `-p no:cacheprovider` keeps `.pytest_cache` out of the folder. pyright needs `venvPath` and `venv` to resolve `pytest` and `cs_support` through the `.venv` link. `testpaths` names `project.tests`.
+
+### Statement
+
+`problem.md` has the progressive sections ([authoring](authoring.md#problemmd)) plus a required `## Project` section after `## Output`: what the starter holds, the entry contract, and how to run the tests natively. Its text uses the problem language's names (`create_account` in Python), and so does the rendered statement: example markers render operations with the language's method names, and each `## Level <n>` section starts with a generated line naming the methods that level adds, in the language's names, with parameter names and types as the language spells them (`Methods to add: create_account(timestamp: int, account_id: str) -> bool`). `## Statement`, `## Input`, `## Output`, `## Project` and `## Constraints` show at every level, so they describe only what holds for all levels and never a later level's methods.
+
+### Generated test files
+
+`cstudy` writes one native test file per level from that level's visible cases, in `project.tests` under the project root. It writes level 1's file when an attempt starts and each next level's file when that level opens, never over an existing file: the files are yours to edit and extend, and a missing file of an unlocked level is written again when the attempt resumes ([cli](cli.md#cstudy-start)).
+
+| Item | Python | TypeScript |
+|------|--------|------------|
+| File | `<tests>/test_level_<n>.py` | `<tests>/level-<n>.test.ts` |
+| Framework | pytest | `node:test` with `node:assert/strict` |
+| One test per visible case | `def test_<case id, "-" as "_">() -> None:` | `test("<case id>", () => { ... });` |
+| Case `note` | The test's docstring | A comment above the test |
+| Header | A docstring naming the level and the problem, and `Yours to edit and extend: cstudy never rewrites this file.` | The same text as `//` comments |
+| Import | `from <entry module> import <Class>` | `import { <Class> } from "<relative path to the entry file>";` |
+
+| Rule | Detail |
+|------|--------|
+| Body | The constructor op becomes `bank = Bank(...)` (`const bank = new Bank(...)`), the instance named after the class in the language's case. Each later op becomes one statement in the language's method names: a call alone where the method returns `void`, otherwise an assertion on its result |
+| `exact` | Python: `is True`, `is False` and `is None` for those values, since the core never equates `true` and `1`; `==` for everything else. TypeScript: `assert.equal` for scalars, `assert.deepEqual` for arrays and lists (both strict under `node:assert/strict`) |
+| `unordered` | Both sides sorted before comparing: `sorted(...) == [...]` with the expected literal already sorted; `assert.deepEqual([...result].sort(), [...])` |
+| `float` | Python: `pytest.approx(expected, rel=tol, abs=tol)`; TypeScript: a helper `assertClose(actual, expected, tol)` defined once in the file. Both pass exactly when `abs(a - e) <= tol * max(1, abs(e))` |
+| Agreement | A generated test passes when the core comparator would pass the case and fails when it would fail it, with one exception: Python's `==` equates `True` with `1` inside a list, where the core does not |
+| Values | Literals of the language, formatted as ruff and Prettier format them; `decimal` and `date` in Python as `Decimal("2500.50")` and `date.fromisoformat("2026-01-01")`, imported when used |
+
+Generated level 1 tests from case `ex1` of `0248-scheduled-transfers-bank`:
+
+```python
+"""Level 1 examples of bank-project-python, written by `cstudy start`.
+
+Yours to edit and extend: cstudy never rewrites this file.
+"""
+
+from bank.bank import Bank
+
+
+def test_ex1() -> None:
+    bank = Bank()
+    assert bank.create_account(1, "ivy") is True
+    assert bank.create_account(2, "leo") is True
+    assert bank.create_account(3, "ivy") is False
+    assert bank.deposit(4, "ivy", 800) == 800
+    assert bank.deposit(5, "max", 50) == -1
+```
+
+```ts
+// Level 1 examples of bank-project-typescript, written by `cstudy start`.
+// Yours to edit and extend: cstudy never rewrites this file.
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import { Bank } from "../src/bank.ts";
+
+test("ex1", () => {
+  const bank = new Bank();
+  assert.equal(bank.createAccount(1, "ivy"), true);
+  assert.equal(bank.createAccount(2, "leo"), true);
+  assert.equal(bank.createAccount(3, "ivy"), false);
+  assert.equal(bank.deposit(4, "ivy", 800), 800);
+});
+```
+
+### Levels and grading
+
+| Rule | Detail |
+|------|--------|
+| Carry-over | One folder for every level: level 2 extends the code of level 1. Nothing is reset or replaced when a level opens |
+| Native tests | `cstudy test` runs the generated files of the unlocked levels, the starter's test files and your own. Their verdict is feedback: no comparator runs on it, nothing is stored as a grade, and no level opens from it |
+| Grading | `cstudy submit` sends the inputs of every case of levels 1 to the unlocked level, visible and hidden, to the runner, which constructs the entry class and calls the operations; the core's `ops` comparator judges each output, with the hang guard and failure rules of every case. Visible cases are graded from `tests.json` too, so editing a generated test file never changes a grade |
+| Graded API | The runner checks only the methods of the levels it grades, so a method of a locked level never has to exist |
+| Unlock | `cstudy start` opens level 1 on a new attempt; a resumed attempt keeps its level, and a `--fresh` or review attempt starts again at level 1. A submission of every case of levels 1 to the unlocked level (no lower `--level`) that passes them all opens the next level: it rewrites the statement and writes that level's test file. One submission opens at most one level |
+| Every submission regrades | A submission at level N grades levels 1 to N again, because later rules change earlier results (a scheduled transfer that runs counts toward top spenders) |
+| Full pass | A submission that passes every case of every level (`first_pass_at`) |
+| Levels finished | What `cstudy done` grades from ([progress-and-scheduling](progress-and-scheduling.md#project-attempts)) |
+
+### Reference
+
+The one approach's reference is the directory `solutions/<approach-id>/`, an overlay on `starter/` that holds the changed and added files only and implements every level. `cstudy verify` copies `starter/`, then the overlay, into `.cs/build/projects/<slug>/<approach-id>/`, writes the generated test file of every level into the copy, and runs it ([runners](runners.md#project-jobs)). An overlay path stays inside the tree, and an overlay never deletes a starter file. `solutions/explanation.md` has the one approach section with every required subsection plus `### Design`: the files of the reference and what each is responsible for ([authoring](authoring.md#explanationmd)).
 
 ## Concurrent problems
 

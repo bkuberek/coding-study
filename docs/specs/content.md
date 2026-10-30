@@ -9,7 +9,7 @@ DSA is roughly a third of a senior or staff loop, so the catalog covers the othe
 | Track id | Name | Autograded | Location | Format | Target |
 |----------|------|------------|----------|--------|--------|
 | `dsa` | Data structures and algorithms | yes | `problems/` | `function` or `design` | 185 (Phases 1 and 3) |
-| `practical` | Practical multi-level | yes, level by level | `problems/` | `progressive` | 6 (Phase 4) |
+| `practical` | Practical multi-level | yes, level by level | `problems/` | `progressive`, or `project` (a seeded folder in one language) | 6 (Phase 4); 2 project problems (Phase 8) |
 | `lld` | Object-oriented and low-level design | API by ops tests; design by rubric | `problems/` | `design` plus `rubric.md` | 8 (Phase 4) |
 | `concurrency` | Concurrency | yes, per language subset | `problems/` | `concurrent` | 6 (Phase 5) |
 | `debugging` | Debugging | yes | `problems/` | `function` or `design` with `stub: buggy` | 8 (Phase 6) |

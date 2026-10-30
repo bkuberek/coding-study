@@ -10,7 +10,9 @@
 | [`cstudy doctor`](#cstudy-doctor) | Check and set up toolchains | 0 |
 | [`cstudy ide`](#cstudy-ide) | Write or refresh the VS Code and IntelliJ project files | W1 |
 | [`cstudy start`](#cstudy-start) | Create or reopen a stub, open the statement, begin an attempt | 0 |
-| [`cstudy test`](#cstudy-test) | Run the user's code against the cases | 0 |
+| [`cstudy test`](#cstudy-test) | Run the user's code against the cases; for a project problem, its native tests | 0 |
+| [`cstudy submit`](#cstudy-submit) | Grade a project problem and open its next level | 8 |
+| [`cstudy status`](#cstudy-status) | Show where a project attempt stands | 8 |
 | [`cstudy solution`](#cstudy-solution) | Show reference code with its explanation | 0 |
 | [`cstudy verify`](#cstudy-verify) | Content quality gate | 0 |
 | [`cstudy list`](#cstudy-list) | Browse problems with filters | 0 (status columns in 1) |
@@ -29,14 +31,14 @@
 
 ## Solution file targets
 
-[`start`](#cstudy-start), [`test`](#cstudy-test), [`hint`](#cstudy-hint), [`solution`](#cstudy-solution), [`done`](#cstudy-done), [`show`](#cstudy-show) and [`bench`](#cstudy-bench) take the problem as `<slug>` or as the path of one of your solution files, so an IDE can run any command on the file in its editor: `cstudy test python/practice/two_sum.py` is `cstudy test two-sum --lang python`.
+[`start`](#cstudy-start), [`test`](#cstudy-test), [`submit`](#cstudy-submit), [`status`](#cstudy-status), [`hint`](#cstudy-hint), [`solution`](#cstudy-solution), [`done`](#cstudy-done), [`show`](#cstudy-show) and [`bench`](#cstudy-bench) take the problem as `<slug>` or as the path of one of your solution files, so an IDE can run any command on the file in its editor: `cstudy test python/practice/two_sum.py` is `cstudy test two-sum --lang python`.
 
 | Rule | Detail |
 |------|--------|
 | Path or slug | An argument is a path when it contains `/` or `\`, or ends in `.py`, `.ts`, `.java` or `.kt`; anything else is a slug or an id, even when a file of that name exists. Relative paths resolve against the current directory, so an IDE passes the absolute path of the open file |
-| Files | The files [`cstudy start`](#cstudy-start) writes ([layout](../architecture.md#repository-layout)): `python/practice/<snake_slug>.py`, `typescript/practice/<slug>.ts`, `jvm/<java\|kotlin>/src/main/<java\|kotlin>/practice/<snake_slug>/<File>.<java\|kt>`, `go/practice/<snake_slug>/<File>.go` and `rust/practice/<snake_slug>.rs`. On the JVM and in Go any source file directly in the problem's package counts, such as the declared class of a class-design problem or a helper class. |
-| Problem | The slug is the problem whose file name the path carries (`two_sum` is `two-sum`); a path that names no problem exits 3 |
-| Language | The path's language is the language of the run. `--lang` may repeat it; naming another language exits 3 with both. `hint`, `done` and `show` have no `--lang`: they act on the problem, as with its slug |
+| Files | The files [`cstudy start`](#cstudy-start) writes ([layout](../architecture.md#repository-layout)): `python/practice/<snake_slug>.py`, `typescript/practice/<slug>.ts`, `jvm/<java\|kotlin>/src/main/<java\|kotlin>/practice/<snake_slug>/<File>.<java\|kt>`, `go/practice/<snake_slug>/<File>.go` and `rust/practice/<snake_slug>.rs`. On the JVM and in Go any source file directly in the problem's package counts, such as the declared class of a class-design problem or a helper class. For a [project problem](problem-format.md#project-problems), any file at any depth under `projects/<slug>/` counts (`projects/bank-project-python/bank/ledger.py`), except under `.venv`, `node_modules` and caches |
+| Problem | The slug is the problem whose file name the path carries (`two_sum` is `two-sum`), or, under `projects/`, the folder's name; a path that names no problem exits 3 |
+| Language | The path's language is the language of the run; a project file's language is its problem's, whatever the file's extension. `--lang` may repeat it; naming another language exits 3 with both. `hint`, `done` and `show` have no `--lang`: they act on the problem, as with its slug |
 | Not a solution file | A path outside the workspace, or inside it but not at one of those locations, exits 3 with `not a solution file in this workspace: <path>` |
 | Directory | A directory exits 3 with `open a solution file in the editor first (got a directory: <path>)`: IntelliJ passes the project directory as the current file when no editor has focus |
 
@@ -57,7 +59,7 @@
 
 | Flag | Effect |
 |------|--------|
-| `--json` | Machine-readable output, as an option of the command (`cstudy stats --json`, not `cstudy --json stats`): `stats` and [`test`](#json-output) have it; `list`, `next`, `bench` and `verify` do not yet |
+| `--json` | Machine-readable output, as an option of the command (`cstudy stats --json`, not `cstudy --json stats`): `stats`, [`test`](#json-output), [`submit`](#cstudy-submit) and [`status`](#cstudy-status) have it; `list`, `next`, `bench` and `verify` do not yet |
 | `--version` | Print `cstudy <version>` (for example `cstudy 0.1.0`), read from the installed package metadata, and exit 0 ([versioning](versioning.md)) |
 | `--no-color` | Plain output (also when `NO_COLOR` is set or stdout is not a TTY) |
 | `-v`, `--verbose` | Planned, not implemented yet: show runner commands, build output and timings |
@@ -107,12 +109,12 @@ auto_commit = false              # reserved (PRD Q3)
 cstudy doctor [--fix]
 ```
 
-Checks Python 3.13, uv, Node 24 or newer, pnpm, JDK 21, Homebrew Gradle, Go 1.24 or newer, `rustc` 1.80 or newer and `cargo` (the Go and Rust toolchains are optional, so these three rows WARN, never FAIL, with a link to the [toolchains guide](../guides/toolchains.md)), Delve (`dlv`, found as [debug mode](runners.md#debug-mode) finds it; the row shows its version, and a release other than the tested 1.27.2 passes with `(cstudy is tested with 1.27.2)`) and Rust's debug server (`debugserver` on macOS, `lldb-server` on Linux; the row shows its path), which only `cstudy test --debug` needs, so they WARN too, with the install step and the guide (``needed for --debug with --lang go, run `go install github.com/go-delve/delve/cmd/dlv@v1.27.2`: <guide>#go``), the config file, the content root, the workspace (core template files FAIL when missing, the optional `go.work`, `go/` and `rust/` files WARN; [workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), the Gradle wrapper, the workspace venv, `debugpy` in it, `node_modules`, and that the runner of each core language (`python`, `typescript`, `java`, `kotlin`; the Go and Rust runners are not handshaken, since that would compile them) answers `hello`: the runner is prepared for a problem with no files (`cs-doctor-handshake`, so the JVM build compiles no practice code) and started with no jobs. Outside a workspace only the toolchains, the config and the content are checked. `--fix` first writes every missing workspace template file (never overwriting one) and refreshes the runner runtime, then runs, in each workspace project that exists, `uv sync` in `python`, `pnpm install` in `typescript` (and, when the content is a checkout, in its `runners/typescript` for the runner's own `tsc` and Node types), and `./gradlew :java:classes :kotlin:classes -Pcs.only=cs_doctor_handshake` in `jvm` (builds the runner and support classes and warms the daemon without compiling practice files), printing one line per command and the last 10 output lines of a failed one. `--fix` outside a workspace exits 3.
+Checks Python 3.13, uv, Node 24 or newer, pnpm, JDK 21, Homebrew Gradle, Go 1.24 or newer, `rustc` 1.80 or newer and `cargo` (the Go and Rust toolchains are optional, so these three rows WARN, never FAIL, with a link to the [toolchains guide](../guides/toolchains.md)), Delve (`dlv`, found as [debug mode](runners.md#debug-mode) finds it; the row shows its version, and a release other than the tested 1.27.2 passes with `(cstudy is tested with 1.27.2)`) and Rust's debug server (`debugserver` on macOS, `lldb-server` on Linux; the row shows its path), which only `cstudy test --debug` needs, so they WARN too, with the install step and the guide (``needed for --debug with --lang go, run `go install github.com/go-delve/delve/cmd/dlv@v1.27.2`: <guide>#go``), the config file, the content root, the workspace (core template files FAIL when missing, the optional `go.work`, `go/` and `rust/` files WARN; [workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), the Gradle wrapper, the workspace venv, `debugpy` and `pytest` in it, the `.venv` links of the Python project folders ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), `node_modules`, and that the runner of each core language (`python`, `typescript`, `java`, `kotlin`; the Go and Rust runners are not handshaken, since that would compile them) answers `hello`: the runner is prepared for a problem with no files (`cs-doctor-handshake`, so the JVM build compiles no practice code) and started with no jobs. Outside a workspace only the toolchains, the config and the content are checked. `--fix` first writes every missing workspace template file (never overwriting one) and refreshes the runner runtime, then runs, in each workspace project that exists, `uv sync` in `python`, `pnpm install` in `typescript` (and, when the content is a checkout, in its `runners/typescript` for the runner's own `tsc` and Node types), and `./gradlew :java:classes :kotlin:classes -Pcs.only=cs_doctor_handshake` in `jvm` (builds the runner and support classes and warms the daemon without compiling practice files), printing one line per command and the last 10 output lines of a failed one. `--fix` outside a workspace exits 3.
 
 | Status | Meaning |
 |--------|---------|
 | `ok` | Check passed |
-| `WARN` | Not blocking: Homebrew Gradle missing (only needed to regenerate the wrapper), no workspace yet, a workspace project not set up yet, or `debugpy` missing from an existing venv (only [`cstudy test --debug`](#cstudy-test) needs it; `fix: uv add --dev debugpy --directory python`, which also covers a workspace created before the template listed it); Go, Rust, Delve or Rust's debug server missing (only `--lang go`, `--lang rust` or their `--debug` needs them) |
+| `WARN` | Not blocking: Homebrew Gradle missing (only needed to regenerate the wrapper), no workspace yet, a workspace project not set up yet, or `debugpy` missing from an existing venv (only [`cstudy test --debug`](#cstudy-test) needs it; `fix: uv add --dev debugpy --directory python`, which also covers a workspace created before the template listed it); `pytest` missing from it (only Python project problems need it; `fix: uv add --dev pytest --directory python`); no `projects/` folder; a dangling `.venv` link in a project folder, or a `python/.venv` that moved (both under [workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)); Go, Rust, Delve or Rust's debug server missing (only `--lang go`, `--lang rust` or their `--debug` needs them) |
 | `FAIL` | Blocks practice; a `fix:` hint follows when one applies |
 
 ```text
@@ -174,6 +176,18 @@ statement  .statements/two-sum.md
 next       cstudy test --watch
 ```
 
+A [project problem](problem-format.md#project-problems) starts in its one language: `--lang` may repeat it, another language exits 3 (`bank-project-python is solved in python only`), and `default_lang` never applies. A new attempt copies the problem's `starter/` tree to `projects/<slug>/`, never overwriting a file, links the folder to the workspace's toolchain (Python: [project folders](installation-and-workspaces.md#project-folders)), writes level 1's [test file](problem-format.md#generated-test-files), renders the statement at level 1, and opens `$EDITOR projects/<slug> <statement>`. A resumed attempt copies the starter only when the folder is missing, writes back a missing generated test file of an unlocked level, and recreates a missing or dangling `.venv` link; it never restores a file you deleted or changed. `--fresh` and review attempts first move the folder to `.archive/<slug>/<attempt_id>-<lang>/`, without its `.venv` link and caches. `--timer` works as for every problem.
+
+```text
+bank-project-python · hard · practical · python · project
+project    projects/bank-project-python (7 files)
+entry      bank/bank.py: Bank
+tests      tests/test_level_1.py (2 tests)
+statement  .statements/bank-project-python.md
+level      1 of 4: Accounts and transfers
+next       cstudy test --watch, then cstudy submit
+```
+
 For non-autograded items (system design, code review) `cstudy start` copies the item's `template.md`, under a header comment, to `notes/<track>/<slug>.md`, renders `prompt.md` (plus the change under review) to `.statements/<slug>.md`, inserts an attempt with no language and opens both files. `--lang` is a usage error; `--fresh` and review attempts archive the notes to `.archive/<slug>/<attempt_id>-notes/`; `--timer` is recorded but does not cap the grade. When [`study_guides.root`](#configuration) is set, the statement ends with a `## Study guides` section and the output adds a `guide` line, after `prompt`, for each referenced guide whose file exists under the root (`guide      file:///home/me/study-guides/distributed-systems-study-guide.md#databases`).
 
 ```text
@@ -196,12 +210,12 @@ cstudy test [<slug|file>] [--lang L] [--watch] [--case ID]... [--all] [--level N
 | `--watch` | Re-run on save of the user file (JVM: the problem's package directory), 150 ms debounce, screen cleared each run |
 | `--case` | Run only these case ids |
 | `--all` | Print every case, including passing hidden ones |
-| `--level` | Progressive: run levels 1 to N; N above the unlocked level exits 3 (`level 3 is locked; pass level 2 with cstudy test first`), as does `--level` on a problem without levels |
+| `--level` | Progressive and project problems: run levels 1 to N; N above the unlocked level exits 3 (`level 3 is locked; pass level 2 with cstudy test first`), as does `--level` on a problem without levels |
 | `--time-limit[=VALUE]` | Enable time limits; optional VALUE `5x` or `1500ms` ([precedence](performance-analysis.md#precedence)). The value only follows `=`: in `cstudy test --time-limit two-sum`, `two-sum` is the slug |
 | `--no-time-limit` | Disable time limits even if config enables them; together with `--time-limit` it is a usage error |
 | `--perf` | After all cases pass (not with `--case`), run a short bench (`reps` 3, stored in `bench_runs`) and print its verdict line and warnings; a wrong answer on a bench input prints `FAIL      wrong answer at n=...` and exits 1 |
 | `--typecheck` | TypeScript: also run `pnpm exec tsc --noEmit` (type stripping does not type-check) |
-| `--stress N` | 1 to 100. Concurrent problems: run every stress case N times per variant instead of `concurrency.runs` (default 3). Function and design problems: also run N [oracle inputs](#oracle-inputs), generated inputs checked against the oracle approach; progressive problems, and problems without `generator.py` or a Python oracle, exit 3 |
+| `--stress N` | 1 to 100. Concurrent problems: run every stress case N times per variant instead of `concurrency.runs` (default 3). Function and design problems: also run N [oracle inputs](#oracle-inputs), generated inputs checked against the oracle approach; progressive and project problems, and problems without `generator.py` or a Python oracle, exit 3 |
 | `--seed S` | Concurrent problems: base seed of every selected stress case instead of its `seed`; run `r` uses `S + r`. In the `async` model this reproduces a reported failing run exactly (`--case s1 --seed 1007 --stress 1`). Other problems: the first oracle input's seed (default 1), so `--stress 1 --seed 17` reruns `oracle-17`; without `--stress` it exits 3 |
 | `--json` | One [JSON document](#json-output) on standard output instead of the report; with `--watch`, `--perf` or `--debug` it is a usage error |
 | `--debug` | Start the runner under the language's debug agent and wait for an IDE to attach to it, with every time limit off ([Debugging](#debugging)) |
@@ -270,6 +284,43 @@ PASS     3 hidden cases
 level 1 passed · unlocked level 2 of 3: Remove and size
 statement  .statements/level-store.md (updated)
 ```
+
+#### Project problems
+
+On a [project problem](problem-format.md#project-problems), `cstudy test` runs the project's native suite through the runner ([suite job](runners.md#suite-job)): the generated test files of levels 1 to the unlocked level, the starter's test files and your own. It is feedback. The run is stored in `test_runs`, but it grades nothing and never opens a level: [`cstudy submit`](#cstudy-submit) does both.
+
+| Flag | For a project problem |
+|------|-----------------------|
+| `--level N` | Runs the generated files of levels 1 to N and every other test file; N above the unlocked level exits 3, as for progressive problems |
+| `--case ID` | A test id as the report prints it (`tests/test_level_1.py::test_ex1`), or its last part (`test_ex1`); repeatable. When no discovered test matches, the run prints `no test matches --case <ID>` and exits 3 |
+| `--watch` | Re-runs on a change to any file under `projects/<slug>/` except `.venv`, `node_modules`, `__pycache__`, `.pytest_cache` and `.ruff_cache` |
+| `--typecheck` | TypeScript: also runs the workspace's `tsc --noEmit -p projects/<slug>` and reports every diagnostic in the project |
+| `--json`, `--debug`, `--debug-port`, `--no-time-limit` | As for every problem; `--debug` stops at breakpoints in the project's code and in its tests |
+| `--all` | Accepted and changes nothing: every test is listed |
+| `--perf`, `--stress`, `--seed`, `--time-limit`, `--debug-connect` | Exit 3: `--perf is not available for project problems` |
+
+```text
+$ cstudy test
+bank-project-python · python · levels 1-2 of 4 · timer 31:40 / 90:00
+suite  pytest, 0.3s
+
+PASS     tests/test_level_1.py::test_ex1
+PASS     tests/test_level_1.py::test_ex2
+FAIL     tests/test_level_2.py::test_ex3
+         assert ['dan(300)', 'eve(350)'] == ['eve(350)', 'dan(300)']
+PASS     tests/test_overdraft.py::test_refuses_overdraft   yours
+
+3/4 passed · total 0.7s
+```
+
+| Rule | Detail |
+|------|--------|
+| Statuses | `PASS`, `FAIL` (an assertion failed: the framework's message, then `expected` and `actual` when it reports them), `ERROR` (another exception, a setup failure, or a test file that does not import), `SKIP`, `TIMEOUT`, `NOT RUN` |
+| Origin | A test in a generated file of an unlocked level is untagged; a test in a file the problem's `starter/` holds is tagged `starter`, any other `yours` |
+| Summary | Skipped tests are left out of the count. On a full pass: `all passed. Next: cstudy submit` |
+| Exit codes | 0 when every test that ran passed; 1 when one failed, errored, timed out or did not run, or when no test ran (`no tests ran`); 3; 4 (pytest missing from `python/.venv`: `fix: uv add --dev pytest --directory python`) |
+| `test_runs` | `total` counts every reported test but skipped ones; `failed` the `FAIL`s; `errored` the `ERROR`s and crashes; `timed_out` the `TIMEOUT`s; `tle` 0. `code_hash` covers the folder ([progress-and-scheduling](progress-and-scheduling.md#project-attempts)) |
+| `--json` | The document below with `comparator` null, `oracle` null and `stress` empty; `levels` as for progressive problems with `newly_unlocked` always false; each entry of `cases` is a test: `id`, `status` (`pass`, `fail`, `error`, `skip`, `timeout`, `not_run`), `duration_ns`, `origin` (`level`, `starter` or `yours`), `level` (the level of a generated file, else null), and `message`, `expected`, `actual`, `error` and `stdout` when set |
 
 #### Oracle inputs
 
@@ -374,6 +425,88 @@ cstudy: connecting to debugger at 127.0.0.1:5005 (kotlin)
 | `timer` | With `cstudy start --timer`: seconds elapsed and the time box; else null |
 | `tally` | What `test_runs` stores: the problem's cases and stress verdicts, without oracle inputs |
 
+## cstudy submit
+
+```text
+cstudy submit [<slug|file>] [--level N] [--json]
+```
+
+Grades a [project problem](problem-format.md#project-problems): every case of levels 1 to the unlocked level, visible and hidden, through the runner ([grading job](runners.md#grading-job)), judged by the core with the problem's comparator. A submission that passes every case of every unlocked level opens the next level. Planned: nothing implements it yet.
+
+| Rule | Detail |
+|------|--------|
+| Subject | The active attempt, or the attempt in progress of `<slug>`; none exits 3. A problem of another kind exits 3: `cstudy submit is for project problems; cstudy test grades two-sum` |
+| `--level N` | Grades levels 1 to N; N above the unlocked level exits 3 (`level 3 is locked; pass level 2 with cstudy submit first`). With N below the unlocked level the submission is stored but opens nothing and does not count for [`cstudy done`](#cstudy-done) |
+| Unlock | A submission of every unlocked level that passes every case opens the next level: it rewrites the statement, writes that level's [test file](problem-format.md#generated-test-files), records the time and prints the methods the level adds. One submission opens at most one level |
+| Last level | A submission that passes every case of every level is the full pass (`first_pass_at`) and prints `all passed · every level done. Next: cstudy done --rating easy\|ok\|hard` |
+| Visible cases | Listed with their status; a failing one shows input, expected and actual |
+| Hidden cases, practice | Passing ones collapse into a count per level; a failing one shows its id, input, expected and actual (PRD Q10) |
+| Hidden cases, mock | In an attempt with mode `mock`, only the number of failing hidden cases per level: no id, input or output, also with `--json` |
+| Stored | Every submission, in `submissions`, with a tally per level ([progress-and-scheduling](progress-and-scheduling.md#project-attempts)). A submission whose code does not load is stored too, with every graded case counted as errored |
+| No `--debug` | Grading is never debugged: copy a failing case into a test of your own and run `cstudy test --debug` |
+
+```text
+$ cstudy submit
+bank-project-python · python · submit levels 1-2 of 4 · timer 33:05 / 90:00
+
+level 1  PASS     5/5 (2 visible, 3 hidden)
+level 2  FAIL     4/5 (2 visible, 3 hidden)
+FAIL     h3    hidden · level 2
+         input     ops ["Bank", "create_account", ...]  args [[], [1, "zoe"], ...]
+         expected  ["abe(60)", "zoe(60)", "mia(0)"]
+         actual    ["zoe(60)", "abe(60)", "mia(0)"]
+
+9/10 passed · level 3 opens when levels 1-2 pass
+```
+
+A full pass of the unlocked levels ends with:
+
+```text
+10/10 passed · level 3 unlocked: Scheduled transfers
+add        schedule_transfer(timestamp: int, source_id: str, target_id: str, amount: int, delay: int) -> str, cancel_transfer(timestamp: int, account_id: str, transfer_id: str) -> bool
+tests      tests/test_level_3.py (2 tests)
+statement  .statements/bank-project-python.md (updated)
+```
+
+In a mock attempt the failing hidden case collapses: `level 2  FAIL     4/5 (2 visible, 3 hidden) · 1 hidden case failed`.
+
+Exit 0 when every graded case passed, 1 when one did not, 2 when the code did not load (`load_error`: the expected module and class), 3, 4.
+
+`--json` prints one document in the style of [`cstudy test --json`](#json-output): `slug`, `language`, `attempt_id`, `mode`, `outcome` (`passed`, `failed` or `load_failed`), `exit_code`, `every_level` (whether it graded every unlocked level), `timer`, `levels` (`graded_up_to`, `last`, `unlocked`, `newly_unlocked`, and `methods_added`, the methods of a newly opened level in the language's names, else empty), `level_tallies` (per level: `level`, `total`, `passed`, `visible_total`, `visible_passed`, `hidden_total`, `hidden_passed`), `load_error`, `cases` (as in `cstudy test --json`, each with its `level`; in a mock attempt hidden cases are left out and only `level_tallies` counts them), `tally` and `duration_s`.
+
+## cstudy status
+
+```text
+cstudy status [<slug|file>] [--json]
+```
+
+Shows where a [project problem](problem-format.md#project-problems)'s attempt in progress stands, without running anything. Planned: nothing implements it yet.
+
+| Line | Content |
+|------|---------|
+| Header | Slug, language, `project`, attempt id and mode |
+| `level` | The unlocked level, of the last, with its title and when it opened |
+| `timer` | Elapsed and time box, with `--timer`; else absent |
+| `tested` | The latest `cstudy test`: passed of total, and how long ago |
+| `submitted` | The latest submission's tally per level, and how long ago; `best` adds the highest passed count per level over the attempt when it differs |
+| `files` | Files changed, added and removed under `projects/<slug>/` against the problem's `starter/` tree, by content; generated test files, `.venv` and caches are left out |
+| `next` | `cstudy test --watch` before any submission, `cstudy submit once level <n> passes`, or `cstudy done --rating easy\|ok\|hard` after the full pass |
+
+```text
+$ cstudy status
+bank-project-python · python · project · attempt 41 · new
+level      2 of 4: Top spenders (opened 18:02)
+timer      33:05 / 90:00
+tested     3/4 passed, 1 min ago
+submitted  level 1 5/5 · level 2 4/5, 2 min ago
+files      2 changed, 1 added, 0 removed against the starter
+next       cstudy submit once level 2 passes
+```
+
+`--json` writes the same values: `slug`, `language`, `attempt_id`, `mode`, `statement` (its path), `levels` (`unlocked`, `last`, `titles` of the open levels, `opened_at` per open level), `timer`, `last_test_run` (`ran_at`, `total`, `passed`, or null), `latest_submission` (`submitted_at`, `level_tallies`, or null), `best_per_level` (`level`, `passed`, `total`), `files` (`changed`, `added`, `removed`, each a sorted list of paths relative to the folder) and `next`. In a mock attempt the tallies count hidden cases but name none.
+
+Exit 0; 3 without an attempt in progress, or for a problem of another kind (`cstudy status is for project problems`).
+
 ## cstudy hint
 
 ```text
@@ -397,6 +530,8 @@ Shows, through `$PAGER`, the explanation's overview table, then for each selecte
 
 `--broken` (concurrent problems) shows a deliberately broken reference instead (default: the first in `concurrency.broken` that has a file in the language) with its `## Broken: <id>` explanation section, as a "spot the bug" exercise; it counts as revealing the solution. The id only follows `=` (`--broken=if-not-while`), as with `cstudy test --time-limit=VALUE`, so in `cstudy solution --broken bounded-blocking-queue` the slug stays an argument. `--broken` with `--approach` or `--all`, on a problem without broken references, or with an unknown id exits 3.
 
+A [project problem](problem-format.md#project-problems) shows its one approach's section, `### Design` included, then the reference: each file the overlay adds in full, and each file it changes as a unified diff against the starter's file. `--lang` may repeat the problem's language; `--approach` and `--all` show the one approach.
+
 Problems with a `rubric.md` (track `lld`) show it right after the title, before the overview: the design criteria for self-review, then the reference design ([format](authoring.md#rubricmd)); `--explanation-only` keeps it.
 
 If the problem has an unsolved `in_progress` attempt, it asks `Reveal the solution? The attempt will be graded as again. [y/N]` (skipped with `--yes`) and sets `solution_revealed`.
@@ -415,6 +550,7 @@ cstudy done [<slug|file>] (--rating easy|ok|hard | --gave-up) [--notes TEXT]
 |------|--------|
 | Rating | Required when the latest test run passed all cases: every case of the problem, with a concurrent problem's stress cases counted once per variant, so a Java or Kotlin problem with `jvm_threads: [platform, virtual]` stores twice its stress cases. A run of some cases (`--case`, unlocked levels only) never counts |
 | `--gave-up` | Required when it did not; grade `again` |
+| Project problems | The latest submission that graded every unlocked level stands in for the latest test run. A rating is required when it passed every case of level 1, `--gave-up` otherwise, also when there is no such submission. The grade is capped by the levels that submission finished ([project attempts](progress-and-scheduling.md#project-attempts)), and the output says so: `bank-project-python · python · failed · levels 3 of 4 · 84m 10s · rating ok, capped at hard · hints 0` |
 | Non-autograded items | Rating only (`--gave-up` is a usage error); status `passed`, grade from the rating with no caps |
 | Effects | Close the attempt, compute the grade and next due date ([progress-and-scheduling](progress-and-scheduling.md)) |
 
@@ -429,7 +565,7 @@ next review  2026-10-27 (in 3 days) · ease 2.50
 cstudy next [--track T]... [--pattern P] [--difficulty D] [--lang L] [--new | --review] [--start]
 ```
 
-Applies the selection algorithm in [progress-and-scheduling](progress-and-scheduling.md#cstudy-next-selection). `--track` is repeatable and reaches non-autograded items, for example `cstudy next --track system-design`; their `start` line has no `--lang`. `--start` runs `cstudy start` on the result, in the `--lang` language (default `default_lang`) for a problem, and prints its report instead of the `start` line; it opens the editor when `open_on_start` is on. `--new` together with `--review`, or a `--pattern` outside the [taxonomy](content.md#pattern-taxonomy), is a usage error (exit 3).
+Applies the selection algorithm in [progress-and-scheduling](progress-and-scheduling.md#cstudy-next-selection). `--track` is repeatable and reaches non-autograded items, for example `cstudy next --track system-design`; their `start` line has no `--lang`. `--start` runs `cstudy start` on the result, in the `--lang` language (default `default_lang`) for a problem, and in its own language for a project problem, and prints its report instead of the `start` line; it opens the editor when `open_on_start` is on. `--new` together with `--review`, or a `--pattern` outside the [taxonomy](content.md#pattern-taxonomy), is a usage error (exit 3).
 
 ```text
 review  merge-intervals  (medium · intervals)  overdue 3d, interval 7d
@@ -464,12 +600,12 @@ ID    SLUG              DIFF    PATTERN          STATUS    DUE         REFS
 cstudy show <slug|file> [--level N]
 ```
 
-Prints the rendered statement (title, metadata, sections, examples generated from visible cases, unlocked levels, and for concurrent problems the generated stress-case table; never hints). For a progressive problem the unlocked levels are those of the problem's attempt in progress, or level 1 without one; `--level N` shows levels 1 to N and follows the `cstudy test --level` rules. For a non-autograded item it prints the statement `cstudy start` would write (the prompt, the change under review and the located [study guides](content.md#study-guides)) without writing it; `--level` is a usage error.
+Prints the rendered statement (title, metadata, sections, examples generated from visible cases, unlocked levels, and for concurrent problems the generated stress-case table; never hints). For a progressive or project problem the unlocked levels are those of the problem's attempt in progress, or level 1 without one, and a project problem's statement uses its language's names and each level's `Methods to add` line; `--level N` shows levels 1 to N and follows the `cstudy test --level` rules. For a non-autograded item it prints the statement `cstudy start` would write (the prompt, the change under review and the located [study guides](content.md#study-guides)) without writing it; `--level` is a usage error.
 
 ## cstudy new
 
 ```text
-cstudy new <slug> [--track T] [--from-template array|tree|design|progressive|concurrent]
+cstudy new <slug> [--track T] [--from-template array|tree|design|progressive|concurrent|project-python|project-typescript]
               [--title TEXT] [--difficulty D] [--pattern P]
 ```
 
@@ -481,6 +617,7 @@ Creates `problems/<next id>-<slug>/` from the template `cli/src/coding_study/ada
 | `tree` | `function`, param `TreeNode`, returns `TreeNode` | `dsa`, `trees` |
 | `design` | `class` with constructor and two methods, comparator `ops` | `dsa`, `arrays-hashing` |
 | `progressive` | `class` with 4 levels, one method per level, comparator `ops` | `practical`, none |
+| `project-python`, `project-typescript` | `class` with 2 levels, one method per level, comparator `ops`, `languages` the template's one language, a `project` block; a `starter/` with `README.md`, the build files of [the starter rules](problem-format.md#starter) and the entry file with level 1's method; `tests.json` with one visible case per level; the reference overlay `solutions/reference/` with the entry file; no `generator.py` and no reference file per language | `practical`, none |
 | `concurrent` | `class` with a `blocking` method and a plain one, comparator `ops`, a `concurrency` block (`model: threads`, languages java, kotlin, python), one sequential and one stress case, one broken reference | `concurrency`, none |
 
 Defaults: difficulty `medium`; title from the slug (`max-gap`: `Max Gap`). `--track` accepts the autograded tracks only (`dsa`, `practical`, `lld`, `concurrency`, `debugging`); `dsa` needs a primary pattern from `--pattern` or the template. `--track lld` also writes `rubric.md` with the [required sections](authoring.md#rubricmd) in order, each holding `TODO` text (check S8).
@@ -507,7 +644,7 @@ cstudy verify [<slug>...] [--changed] [--track T] [--lang L] [--static]
 | `--jobs` | Parallel language runners (default: number of languages). The runners of a concurrent problem's languages still take turns: their builds overlap, but each runs its stress cases alone |
 | `--stress N` | Concurrent problems: runs per stress case and variant for D6 and D7 (default 10); D7 requires failures in at least `ceil(0.9 * N)` runs. The line reports the fewest runs a correct reference passed (`stress 10/10`), the slowest correct run as a share of its deadline (`slowest 8%`) and the (broken reference, language, case, variant) combinations caught (`broken caught 11/11`) |
 
-Checks are listed in [authoring](authoring.md#what-cstudy-verify-checks).
+Checks are listed in [authoring](authoring.md#what-cstudy-verify-checks). A [project problem](problem-format.md#project-problems)'s line shows its one language, its cases (D3) and its native suite (D9): `0249-bank-proj...  static ok · py 1/1 ok · suite 14/14`; `--oracle` and `--ladder` print `n/a` for it, and `--lang` with another language leaves it out.
 
 ```text
 0001-two-sum      static ok · py 2/2 ok · ts 1/1 ok · java 1/1 ok · kt 1/1 ok · oracle 200/200
@@ -551,7 +688,7 @@ history   best previous 13.0ms at n=1e5 (2026-09-12) · now 9% faster · 1st of 
 | Warnings | `warning   <text>` lines after the verdicts: environment warnings (confidence capped at medium), recovered hangs and crashes, references that did not load, `beats declared optimal: check references` |
 | `--refs-only` | No `you` row and no verdict; stored with `attempt_id` NULL |
 
-Stored in `bench_runs` (a user run whose code does not build or load is not stored). Exit 0 when the bench completed (any verdict), 2 if the user code does not build or load, 1 if the user code fails correctness on a bench input. Concurrent problems have no bench in v1: exit 3 (`bench is not available for concurrent problems`).
+Stored in `bench_runs` (a user run whose code does not build or load is not stored). Exit 0 when the bench completed (any verdict), 2 if the user code does not build or load, 1 if the user code fails correctness on a bench input. Concurrent problems have no bench in v1: exit 3 (`bench is not available for concurrent problems`); neither have project problems (`bench is not available for project problems`).
 
 ## cstudy stats
 
@@ -616,6 +753,7 @@ Picks `count` problems with `cstudy next` rules (new only, medium and hard), sta
 |------|--------|
 | Picks | Step 2 of the [`cstudy next` selection](progress-and-scheduling.md#cstudy-next-selection) over the new `medium` and `hard` problems in scope, so the difficulty gate opens `medium` at once. Each pick comes from a group not picked yet while another group still has a new problem; picked problems count as in progress for the later picks |
 | Start | Each pick starts like `cstudy start <slug> --fresh --timer <minutes>m`, with attempt mode `mock`. The attempts start together with the same time box: that is the shared timer. `cstudy test` shows the time left, and `cstudy done` past the timer caps the grade at `hard`, as with `--timer` |
+| Project problems | Take part like other problems when the `practical` track is in scope and their language is the mock's; each starts like `cstudy start <slug> --fresh --timer <minutes>m`. In a mock attempt [`cstudy submit`](#cstudy-submit) reports only the number of failing hidden cases per level |
 | Lock | While the timer runs and a problem of the mock is unfinished, `cstudy hint`, `cstudy solution` and another `cstudy mock` exit 3: `cstudy hint is locked during the mock interview (group-anagrams, lru-cache; 31:20 left); it unlocks when the timer ends or every problem is done`. The mock is the attempts in progress with mode `mock`; nothing else is stored |
 
 ```text
@@ -639,7 +777,7 @@ An item shows `notes` and `prompt` lines instead, and the header names the langu
 cstudy export [--out PATH]
 ```
 
-Writes every `progress.db` table but `meta` as JSON, for backup (PRD Q2): `progress-export.json` at the workspace root by default, which the user may commit; a relative `--out` is relative to the current directory, and an existing file is replaced. Rows keep their ids and their stored values (the JSON columns of `bench_runs` stay strings), in insertion order, one row per line so a committed export diffs by row. [`cstudy import`](#cstudy-import) restores it.
+Writes every `progress.db` table but `meta` as JSON (`submissions` and `level_unlocks` included), for backup (PRD Q2): `progress-export.json` at the workspace root by default, which the user may commit; a relative `--out` is relative to the current directory, and an existing file is replaced. Rows keep their ids and their stored values (the JSON columns of `bench_runs` stay strings), in insertion order, one row per line so a committed export diffs by row. [`cstudy import`](#cstudy-import) restores it.
 
 ```json
 {
@@ -680,4 +818,4 @@ imported  attempts 6 · test_runs 4 · schedule 3 · bench_runs 3
 into      progress.db
 ```
 
-Exits 3, importing nothing, when the database already holds an attempt, test run, schedule entry or bench run (merging is [PRD Q12](../prd.md#8-open-questions)), when the file is missing, not JSON or not an export, when its `schema_version` is newer than this `cstudy`, or when a table, column or row does not fit the schema. Exit 0 otherwise.
+Exits 3, importing nothing, when the database already holds an attempt, test run, schedule entry, bench run, submission or level unlock (merging is [PRD Q12](../prd.md#8-open-questions)), when the file is missing, not JSON or not an export, when its `schema_version` is newer than this `cstudy`, or when a table, column or row does not fit the schema. Exit 0 otherwise.

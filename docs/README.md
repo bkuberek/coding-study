@@ -14,8 +14,8 @@ coding-study is a local, IDE-first interview-prep system: original problems stor
 
 | Spec | Defines | Read when |
 |------|---------|-----------|
-| [problem-format](specs/problem-format.md) | `meta.yaml`, `tests.json`, type DSL and per-language mapping, serialization, comparators, design, progressive and concurrent formats, worked examples | Building codegen, runners, verify, or writing content |
-| [runners](specs/runners.md) | CLI-runner protocol (test and bench modes), exit codes, hang guard, code location, stub generation, reference materialization | Building a runner or the runner adapter |
+| [problem-format](specs/problem-format.md) | `meta.yaml`, `tests.json`, type DSL and per-language mapping, serialization, comparators, design, progressive, project and concurrent formats, worked examples | Building codegen, runners, verify, or writing content |
+| [runners](specs/runners.md) | CLI-runner protocol (test and bench modes), exit codes, hang guard, code location, project and suite jobs, stub generation, reference materialization | Building a runner or the runner adapter |
 | [cli](specs/cli.md) | Every command, flag, output example, exit code; the config file | Building commands |
 | [progress-and-scheduling](specs/progress-and-scheduling.md) | SQLite schema, grades, SM-2 variant, weakness score, `cstudy next` | Building progress features |
 | [performance-analysis](specs/performance-analysis.md) | Optional time limits, size ladder, measurement, complexity classification, verdicts and confidence | Building `cstudy bench` or time limits |
@@ -23,7 +23,7 @@ coding-study is a local, IDE-first interview-prep system: original problems stor
 | [catalog](specs/catalog.md) | Binding manifest of every item: ids, slugs, titles, patterns, difficulty, kind, batch, owner stream | Writing content in a stream, or adding to the catalog |
 | [versioning](specs/versioning.md) | Commit types and version bumps, the version workflow, `CHANGELOG.md`, `cstudy --version`, the GitHub release and the Homebrew tap | Committing, or changing how releases are versioned or published |
 | [authoring](specs/authoring.md) | Authoring workflow, `problem.md` and `explanation.md` formats, ready criteria, every `cstudy verify` check | Writing or reviewing a problem |
-| [installation-and-workspaces](specs/installation-and-workspaces.md) | Packaging, content and workspace resolution, `cstudy init`, the runner runtime, IDE files, your own problems | Installing `cstudy`, setting up a workspace, or changing where files live |
+| [installation-and-workspaces](specs/installation-and-workspaces.md) | Packaging, content and workspace resolution, `cstudy init`, the runner runtime, project folders, IDE files, your own problems | Installing `cstudy`, setting up a workspace, or changing where files live |
 
 ## Guides
 
@@ -48,6 +48,7 @@ coding-study is a local, IDE-first interview-prep system: original problems stor
 | [0011](decisions/0011-decimal-and-date-types.md) | `decimal` and `date` are scalar types with string wire forms; runners write decimals in canonical form so the comparators stay type-blind |
 | [0012](decisions/0012-go-and-rust.md) | Go and Rust are required of every problem, after a per-problem backfill; compiled runners, exhaustive language dispatch |
 | [0013](decisions/0013-homebrew-distribution.md) | Each release attaches the wheel and a hashed requirements file to a GitHub release, and the workflow points the `cstudy` formula in `bkuberek/homebrew-tap` at them |
+| [0014](decisions/0014-project-problems.md) | Project problems are seeded folders in one language, solved in levels: native tests generated from `tests.json` for feedback, `cstudy submit` grades and opens levels |
 
 ## Conventions
 
