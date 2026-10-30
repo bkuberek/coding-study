@@ -48,6 +48,8 @@ The clearest way to explain the solution, and the oracle. It only visits the int
 - TypeScript: `Int32Array` rows and an explicit loop for the maximum.
 - Java: `System.arraycopy` builds the padded array; the memo is a field.
 - Kotlin: `intArrayOf(1, *nums, 1)` pads with the spread operator, and `(left + 1 until right).maxOf { ... }` takes the maximum.
+- Go: `make([]int, 0, n+2)` and two `append` calls pad the slice. The maximum is a loop with the built-in `max`, and the recursion is a closure declared with `var` first.
+- Rust: `Vec::with_capacity`, `push` and `extend` pad the vector. The maximum is a loop over `left + 1..right`, and the recursion is a private function that receives the values and the `Option<i32>` memo.
 
 ## Approach: tabulation (Fill the interval table by increasing length)
 
@@ -83,3 +85,4 @@ The standard answer. Iterating by gap (or by `left` descending and `right` ascen
 
 - Python: the inner maximum is a generator over `last`, reading `best[left]` once as `row`; at n = 300 this is about 4.5 million steps, a second or so in CPython.
 - TypeScript, Java and Kotlin: three nested loops over primitive arrays.
+- Go and Rust: the same three loops over `[][]int` and `Vec<Vec<i32>>`. Go's `row := best[left]` copies only the slice header, so writes through `row` land in the table. Rust's `0..size - gap` cannot underflow, because `gap < size`. The largest value, 300 * 100^3, fits an `i32`.
