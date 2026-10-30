@@ -45,6 +45,8 @@ General and familiar: it would handle obstacles with different removal costs unc
 - TypeScript: the reference implements a binary min-heap over `[cost, cell]` pairs, since there is no built-in priority queue.
 - Java: `PriorityQueue<int[]>` ordered by `entry[0]`; the loop returns from inside `while (true)`.
 - Kotlin: `PriorityQueue<Pair<Int, Int>>(compareBy { it.first })`, with cells encoded as `r * cols + c`.
+- Go: `container/heap` needs `Len`, `Less`, `Swap`, `Push` and `Pop`; `entryHeap` holds `entry{cost, r, c}` and orders by cost. Neighbors come from a `[4][2]int` array of deltas with an explicit bounds test, and the closing `panic` only satisfies Go's requirement that the function ends in a return or panic.
+- Rust: `BinaryHeap` is a max-heap, so `Reverse` over the `(cost, row, column)` tuple pops the cheapest entry first. `neighbors` uses `checked_add_signed` on the `usize` coordinates, which returns `None` instead of underflowing at row 0 or column 0, and `unreachable!` closes the loop that the grid guarantees always returns.
 
 ## Approach: zero-one-bfs (0-1 breadth-first search with a deque)
 
@@ -83,3 +85,5 @@ Linear and barely longer than a breadth-first search. It works only for edge cos
 - TypeScript: there is no built-in deque, so two arrays play its role: the current cost's list, which grows with zero-cost moves while it is scanned, and the next cost's list for one-cost moves; stale entries are skipped by comparing with the stored cost.
 - Java: `ArrayDeque<int[]>` with `addFirst`, `addLast` and `pollFirst`.
 - Kotlin: `kotlin.collections.ArrayDeque<Int>` with `addFirst`, `addLast` and `removeFirst`.
+- Go: the standard library has no slice-backed deque, so the reference uses `container/list`, whose `PushFront`, `PushBack` and `Remove(Front())` are all O(1); the elements are `[2]int` pairs stored in `any` and asserted back on removal. A ring buffer would avoid the per-element allocation but needs more code.
+- Rust: `VecDeque` is the deque, with `push_front`, `push_back` and `pop_front`. The `unreached` sentinel is `rows * cols` cast to `i32`, which the constraints keep at or under 10^5.
