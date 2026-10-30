@@ -45,6 +45,8 @@ The simplest correct answer and the oracle; about a million leaves at n = 20 is 
 
 - Python: about 2 million calls take a few tenths of a second in CPython.
 - TypeScript and Kotlin: a local function; Java: a static helper with the inputs as parameters.
+- Go: a closure declared with `var count func(index, total int) int` so it can recurse. Go has no conversion from `bool` to `int`, so an `if` returns 1 or 0.
+- Rust: a private function that receives the numbers and the target; `i32::from(total == target)` turns the `bool` into 1 or 0.
 
 ## Approach: memoization (Recursion over index and running sum with a memo table)
 
@@ -80,6 +82,8 @@ A small change to the brute force that makes it polynomial in s. It allocates a 
 
 - Python: `functools.cache` on a nested function; the state count is small enough for a dictionary.
 - TypeScript, Java and Kotlin: a table of `2s + 1` columns per index with -1 as "unknown"; `Arrays.stream(nums).sum()` and `nums.sum()` compute s.
+- Go: the same table of `2s + 1` columns per index, filled with -1; a short loop computes `s`.
+- Rust: `Option<i32>` cells in a `Vec<Vec<Option<i32>>>`, and `nums.iter().sum()` computes `s`. The column `(running + total) as usize` is never negative, because `|running|` never exceeds `s`.
 
 ## Approach: tabulation (Table of counts by prefix and running sum)
 
@@ -115,6 +119,7 @@ Iterative and easy to check; keeping only two rows would bring the space down to
 ### Language notes
 
 - Python enumerates each row; TypeScript, Java and Kotlin loop over offsets, and Kotlin destructures `withIndex()`.
+- Go ranges over `ways[i]` as `offset, count`. Rust loops over the offsets by index, because it reads `ways[i]` while it writes `ways[i + 1]` and the borrow checker would not allow a live iterator over one row of the table next to a write to another. Only offsets with a positive count reach `offset - value`, and a reachable offset always stays inside the table, so the `usize` subtraction cannot underflow.
 
 ## Approach: subset-sum (Count subsets with the positive sum in one rolling array)
 
@@ -151,3 +156,5 @@ The fastest and leanest version, and the insight interviewers look for. It is a 
 ### Language notes
 
 - The four references are the same loop; TypeScript divides with `/` after the parity check, so the result is an integer; Kotlin uses `downTo`.
+- Go: `%` keeps the sign of a negative operand, so the range check on `target` comes before the parity test; the loop is `for p := plus; p >= value; p--`.
+- Rust: `%` keeps the sign too, so the `target.abs() > total` test runs first. `(value..=plus).rev()` counts down and is an empty range when `value > plus`, so no `usize` goes below zero.
