@@ -49,6 +49,8 @@ Linear in the input and iterative. It is the natural choice because the two fail
 - TypeScript: a 26 by 26 boolean matrix dedupes rules; `String.fromCharCode(...codes)` builds the answer.
 - Java: `char - 'a'` indexes the matrix; a `StringBuilder` collects the letters.
 - Kotlin: `zipWithNext()` pairs neighbors, and `first.zip(second).indexOfFirst { (a, b) -> a != b }` finds the first difference, or -1 for a prefix.
+- Go: a `[26][26]bool` array holds the rules, as in the Java and TypeScript references. An array is a value, so it lives on the stack without an allocation, and scanning it in letter order makes the returned alphabet the same on every run. `word[i]-'a'` indexes it directly because a string index yields a `byte`.
+- Rust: `[[bool; 26]; 26]` is the rule matrix, and the letters index it as `(byte - b'a') as usize`. `words.windows(2)` yields each pair of neighbors, `first.len().min(second.len())` replaces the `zip` that stops at the shorter word, and a rule scan in letter order makes the answer deterministic.
 
 ## Approach: dfs-postorder (Depth-first search that emits a letter after everything it must precede)
 
@@ -88,3 +90,5 @@ Equivalent to Kahn's algorithm here; the recursion is at most 26 levels deep, so
 - TypeScript: `finished.reverse()` reverses in place before converting codes to characters.
 - Java: `StringBuilder.reverse()` turns the finishing order into the answer.
 - Kotlin: a local `fun` recursion captures the matrix and the states; `'a' + x` converts an index back to a letter.
+- Go: `visit` is a closure over `before`, `state` and `finished`, declared with `var` first so it can recurse. The finishing order is reversed in place with a two-index swap loop before it is converted to a string.
+- Rust: `visit` is a free function that takes the rule matrix by reference, the state array and the output string by mutable reference, since a closure cannot call itself. `finished.chars().rev().collect()` builds the reversed answer, which is safe for the ASCII letters.
