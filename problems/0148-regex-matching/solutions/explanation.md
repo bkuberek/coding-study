@@ -52,6 +52,8 @@ The most natural formulation and the oracle here; it only visits reachable state
 - TypeScript: an `Int8Array` per row with -1, 0 and 1.
 - Java: a `Boolean[][]` with `null` for unknown.
 - Kotlin: `arrayOfNulls<Boolean>` with the `?: run { ... }` idiom.
+- Go: a small `verdict` type (`unknown`, `yes`, `no`) in an `int8` table, so `make` already marks every cell unknown. `first && solve(...)` short-circuits, so `s[i]` is read only when `i < len(s)`.
+- Rust: `Option<bool>` cells and byte literals (`b'.'`, `b'*'`) over `as_bytes()`; `&&` and `||` short-circuit as in the other languages.
 
 ## Approach: tabulation (Table of prefix matches)
 
@@ -88,6 +90,7 @@ No recursion and a fixed amount of work; it fills every cell even when the answe
 ### Language notes
 
 - Python and TypeScript: nested boolean arrays; Java and Kotlin: primitive boolean arrays with a small `fits` helper for "letter or dot".
+- Go and Rust: the same `fits` helper on bytes. A `*` never starts the pattern, so `j >= 2` whenever `p[j - 1]` is a star; a violated constraint would make `j - 2` panic on a Rust `usize` instead of reading a wrong cell. `i > 0` is tested before `s[i - 1]`.
 
 ## Approach: rolling-array (Two rows over the pattern)
 
@@ -121,3 +124,4 @@ The memory-lean standard answer. A single row does not work as directly, because
 ### Language notes
 
 - Python: a fresh list per row; TypeScript: a destructuring swap of two arrays; Java: an explicit swap; Kotlin: `previous = current.also { current = previous }`.
+- Go: `previous, current = current, previous` swaps the slice headers; Rust: `std::mem::swap`. Neither row needs clearing: every cell of `current` is rewritten for each row, and row 0 never reads `previous`.
