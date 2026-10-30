@@ -42,6 +42,8 @@ Clear and hard to get wrong. A full copy of the matrix would also work but uses 
 
 - Python and Kotlin: hash sets of indexes. Java: two `boolean[]` arrays, one flag per row and column, which are sets over a small index range and avoid boxing.
 - TypeScript: `Set<number>` and `forEach` with indexes.
+- Go: there is no set type, so the reference uses `map[int]struct{}` (an empty struct takes no space) and tests membership with the comma-ok form.
+- Rust: `HashSet<usize>` holds the indexes, and the clearing pass walks `iter_mut().enumerate()` so each cell is written through the `&mut i32` the iterator hands out.
 
 ## Approach: in-place-markers (Use the first row and column as markers)
 
@@ -78,4 +80,6 @@ Meets the strictest memory follow-up and is the expected final answer in intervi
 ### Language notes
 
 - All four references use the same two passes with plain index loops (`range(rows - 1, -1, -1)`, `downTo` in Kotlin). The bottom-up loop also keeps the Java version free of a separate first-row branch; an earlier variant with one boolean per first line crashed the runner's GraalVM CE 21.0.2 JIT under the bench, while this shape runs cleanly.
+- Go: the same two passes with plain index loops, counting down with `for r := rows - 1; r >= 0; r--`.
+- Rust: the same two passes. The countdown is `(0..rows).rev()`, because a `usize` loop variable cannot test `r >= 0` once it reaches zero. The loops stay indexed because the marker row and column are written while another row is read, which an iterator over `matrix` could not do under the borrow checker.
 
