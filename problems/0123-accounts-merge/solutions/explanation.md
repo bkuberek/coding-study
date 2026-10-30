@@ -49,6 +49,8 @@ A small amount of code, and the structure is the right one. Only the tree shapes
 - TypeScript: the default `sort()` compares UTF-16 code units, which is character-code order for these ASCII strings.
 - Java: `putIfAbsent` returns the previous owner or `null`; a `TreeSet` both deduplicates and sorts with `String.compareTo`.
 - Kotlin: `putIfAbsent(...) ?: continue` skips first listings; `groupBy(::find)` groups account indexes by root.
+- Go: there is no ordered set in the standard library, so each person's addresses are collected in a `map[string]bool` and sorted once at the end with `slices.Sorted(maps.Keys(...))` (Go 1.23 and newer), which sorts by byte value like `String.compareTo` for ASCII addresses. Ranging over a map has no fixed order, so the roots are also recorded in first-seen order to keep the output stable.
+- Rust: `BTreeMap<usize, BTreeSet<&str>>` is the ordered grouping, so the addresses come out sorted and the people in order of their root account, with no separate sort. The addresses borrow from `accounts`, and only the final rows copy them into owned `String`s. `*first_owner.entry(address).or_insert(i)` is Python's `setdefault`.
 
 ## Approach: union-find (Union by size with path compression over accounts)
 
@@ -87,3 +89,5 @@ The standard answer: near-linear merging with two small arrays, then one sort pe
 - TypeScript: a `DisjointSets` class with fields set in the constructor body (no parameter properties); `Map` keeps the groups in first-seen order, which does not matter for the comparator.
 - Java: `computeIfAbsent(root, unused -> new TreeSet<>())` builds sorted, duplicate-free groups.
 - Kotlin: `groupBy(sets::find)`, then `distinct().sorted()` per group, builds the answer in one expression.
+- Go: the sets are a small struct with pointer-receiver methods; `owner, listed := firstOwner[address]` with the `if !listed` branch plays the part of `setdefault`. Like the quick-union version, it gathers addresses in maps, then sorts them with `slices.Sorted(maps.Keys(...))`, and keeps the roots in first-seen order.
+- Rust: the same `DisjointSet` struct shape as the other union-find references, with `find` taking `&mut self`. The grouping step calls `set.find(i)` inside the loop that fills a `BTreeMap` of `BTreeSet`s, which are ordered by byte value, so no explicit sort is needed.
