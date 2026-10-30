@@ -41,6 +41,11 @@ Faithful to the statement and easy to adapt (other turning rules, other start po
 - Check the bounds before reading `visited[nr][nc]`; in Python a negative index silently wraps to the other side.
 - Run the loop exactly `m * n` times instead of "until stuck"; the last step may compute a next cell that does not exist, which is harmless only if it is never read.
 
+### Language notes
+
+- Go: the headings are a `[4][2]int` array indexed by `heading`, and `for range rows * cols` (Go 1.22) repeats the body once per cell. Go's `int` coordinates can go negative, so the bounds test is a plain comparison before the `visited` lookup.
+- Rust: coordinates are `usize`, so a step to row -1 cannot be written as `r + dr`; `checked_add_signed` returns `None` instead of underflowing, and the helper `step` folds the bounds test into that `Option`. `.filter(|&(nr, nc)| !visited[nr][nc])` then drops a visited cell, and `None` means turn right.
+
 ## Approach: shrinking-bounds (Peel the outer ring while shrinking four bounds)
 
 ### Intuition
@@ -81,3 +86,5 @@ The standard answer: constant extra memory and no wasted lookups. The cost is ca
 - TypeScript: four plain loops; `push` grows the output array.
 - Java: the output size is known in advance (`m * n`), so the reference fills an `int[]` with a write index instead of boxing into a list.
 - Kotlin: `downTo` writes the backward passes directly (`right - 1 downTo left`); the reference collects into an `ArrayList<Int>` and converts with `toIntArray()` (an `IntArray` with a write index, as in Java, would avoid boxing).
+- Go: `append(order, matrix[top][left:right+1]...)` copies the top row in one call, and the four bounds are signed `int`s that may go to -1 on the last ring, as in the Python reference.
+- Rust: closed bounds would make `bottom` and `right` reach -1, which a `usize` cannot hold, so the reference uses half-open bounds (`bottom` and `right` are one past the last row and column) and the ring tests become `bottom - top > 1` and `right - left > 1`. `extend_from_slice` copies the top row, and the `.iter().rev()` chains walk the backward passes.
