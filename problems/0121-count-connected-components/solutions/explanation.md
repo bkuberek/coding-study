@@ -48,6 +48,8 @@ Short and obviously correct, so it is the oracle, and on random inputs it is oft
 - TypeScript: `Array.from({ length: n }, (_, x) => x)` initializes the parent array.
 - Java: a static `find(parent, x)` helper keeps the loop free of recursion.
 - Kotlin: `IntArray(n) { it }` initializes the parents; destructuring `(a, b)` reads an edge.
+- Go: `find` is a closure over `parent`, and it reassigns its own parameter `x` while walking up, which is the usual Go idiom since arguments are copies. The loop shape is the plain O(depth) climb, so the chains the generator builds stay quadratic.
+- Rust: `find` takes `&[usize]` because it only reads, so it can be called twice in one expression and the `parent[root_a] = root_b` write happens after both roots are known. Without compression there is nothing to mutate during a lookup.
 
 ## Approach: dfs (Count the depth-first searches needed to cover every node)
 
@@ -87,6 +89,8 @@ Optimal and simple when the whole graph is given at once. It needs adjacency lis
 - TypeScript: `stack.pop() as number` narrows the `number | undefined` result inside the non-empty loop.
 - Java: `ArrayDeque<Integer>` with `push` and `pop` is the recommended stack (the legacy `Stack` class is synchronized).
 - Kotlin: `kotlin.collections.ArrayDeque` with `addLast` and `removeLast` serves as the stack.
+- Go: adjacency lists are `[][]int` grown with `append`, the stack is a slice (`append` to push, reslice to pop), and `range seen` walks the start nodes. A nil `neighbors[node]` is an empty list, so isolated nodes need no special case.
+- Rust: the adjacency lists are `Vec<Vec<usize>>`, and `while let Some(node) = stack.pop()` drains the stack. Nodes arrive as `i32` and are cast to `usize` once, when the lists are built, which also fails loudly (a huge index) instead of silently wrapping if an input were ever negative.
 
 ## Approach: union-find (Union by size with path compression)
 
@@ -126,3 +130,5 @@ Near-linear, with less memory than adjacency lists, and it works online: you can
 - TypeScript: a small `DisjointSets` class with private fields assigned in the constructor body (no parameter properties) keeps `find` and `union` together.
 - Java: a `private static final` nested class holds the two `int[]` arrays; arrays of primitives avoid boxing.
 - Kotlin: a file-private class with `IntArray` fields; `rootA = rootB.also { rootB = rootA }` swaps the two roots in one line.
+- Go: `find` is a closure, and `parent[x], x = root, parent[x]` is the same tuple assignment as in Python, which reads the old `x` before either write. `rootA, rootB = rootB, rootA` swaps the roots.
+- Rust: `find` takes `&mut [usize]` because it compresses paths, and it reads the next link into a local before overwriting `parent[x]`. `std::mem::swap` exchanges the two roots, and the two `find` calls are separate statements, since both need the mutable borrow.
