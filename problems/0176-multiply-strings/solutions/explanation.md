@@ -44,6 +44,11 @@ Close to how people multiply by hand, so it is easy to explain and to check. It 
 - Keep the lists little-endian; adding numbers stored most-significant-first needs right-aligned indexes everywhere.
 - The shift is one zero per position, prepended in little-endian order (appended in the written number).
 
+### Language notes
+
+- Go: indexing a `string` yields a `byte`, so `int(num1[i] - '0')` reads a digit without creating substrings. Digits are little-endian `[]int` slices and every `add` allocates its result, as in the Python reference; `append(make([]int, shift), row...)` puts the shift zeros in front. The result is built in a `[]byte` and converted with one `string(text)` call.
+- Rust: `String::bytes()` walks the ASCII digits, and `ch - b'0'` is a `u8` that `u32::from` widens before any multiplication, so `digit * factor + carry` (at most 90) never overflows. `left.get(position).copied().unwrap_or(0)` reads a digit or zero past the shorter number, and `char::from(b'0' + digit as u8)` turns a digit back into a character.
+
 ## Approach: digit-grid (Accumulate every digit product at position i + j)
 
 ### Intuition
@@ -85,3 +90,5 @@ The standard interview answer: one allocation, one tight double loop and no stri
 - TypeScript: a `Uint8Array` holds digits compactly; `charCodeAt` reads digits without creating substrings.
 - Java: `charAt(i) - '0'` yields an `int`; a `StringBuilder` sized `m + n` builds the result without reallocation.
 - Kotlin: `num1[i] - '0'` subtracts two `Char`s into an `Int`, and `'0' + digit` adds an `Int` to a `Char`; `buildString` wraps a `StringBuilder`.
+- Go: the digits are read straight from the strings (`int(num1[i]-'0')`), and `digits` is one `[]int` allocated once at `m + n` entries. The result is assembled in a `[]byte` with capacity for exactly the digits kept, then converted once.
+- Rust: `first` and `second` are `Vec<u32>` of digits, and `(0..len).rev()` counts down without the `usize` underflow a `>= 0` test would cause. The accumulated `digits[i + j + 1] + first[i] * second[j] + carry` is at most 99, so `u32` is ample, and `collect()` into a `String` joins the characters.
