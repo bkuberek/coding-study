@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0242"
+slug: debug-shadowed-variable
+title: "Debug: Shadowed Variable"
+status: ready
+difficulty: easy
+track: debugging
+kind: function
+languages: [go]
+stub: buggy
+signature:
+  function:
+    name: checkoutTotal
+    params:
+      - {name: prices, type: "int[]"}
+      - {name: coupon, type: string}
+    returns: {type: int}
+comparator: {type: exact}
+approaches:
+  - {id: assign-outer, name: Assign the outer variable instead of declaring a new one, role: optimal, time: "O(n + c)", space: "O(1)", time_class: "n", space_class: "1"}
+related: [debug-nil-map-write, debug-running-total-overflow, tax-brackets]
+estimate_minutes: 15

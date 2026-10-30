@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"prices": [1999, 500, 250], "coupon": ""}, "expected": 2749},
+    {"id": "ex2", "visible": true, "input": {"prices": [1999, 500, 250], "coupon": "SAVE10"}, "expected": -1},
+    {"id": "h1", "input": {"prices": [1999, 500, 250], "coupon": "PCT10"}, "expected": 2475, "note": "percentage coupon"},
+    {"id": "h2", "input": {"prices": [1999, 500, 250], "coupon": "OFF500"}, "expected": 2249, "note": "fixed-amount coupon"},
+    {"id": "h3", "input": {"prices": [300, 200], "coupon": "OFF999999999"}, "expected": 0, "note": "discount larger than the subtotal"},
+    {"id": "h4", "input": {"prices": [4200], "coupon": "PCT100"}, "expected": 0, "note": "largest percentage"},
+    {"id": "h5", "input": {"prices": [4200], "coupon": "PCT0"}, "expected": -1, "note": "zero percent is invalid"},
+    {"id": "h6", "input": {"prices": [4200], "coupon": "PCT101"}, "expected": -1, "note": "percentage above 100 is invalid"},
+    {"id": "h7", "input": {"prices": [4200], "coupon": "OFF0"}, "expected": -1, "note": "zero amount is invalid"},
+    {"id": "h8", "input": {"prices": [4200], "coupon": "PCT"}, "expected": -1, "note": "prefix without a number"},
+    {"id": "h9", "input": {"prices": [], "coupon": ""}, "expected": 0, "note": "empty cart"},
+    {"id": "h10", "input": {"prices": [], "coupon": "PCT50"}, "expected": 0, "note": "valid coupon on an empty cart"},
+    {"id": "h11", "input": {"prices": [2000, 2000], "coupon": "PCT015"}, "expected": 3400, "note": "leading zeros"},
+    {"id": "h12", "input": {"prices": [1000000, 1000000, 1000000, 1000000, 1000000], "coupon": "PCT33"}, "expected": 3350000, "note": "largest prices"},
+    {"id": "h13", "input": {"prices": [999], "coupon": "PCT50"}, "expected": 500, "note": "the discount rounds down to a whole cent"},
+    {"id": "h14", "input": {"prices": [0, 0, 1], "coupon": "OFF1"}, "expected": 0, "note": "free items and a one-cent coupon"},
+    {"id": "h15", "input": {"prices": [], "coupon": "OFF"}, "expected": -1, "note": "invalid coupon on an empty cart"}
+  ]
+}
