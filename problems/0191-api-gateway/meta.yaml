@@ -6,6 +6,7 @@ status: ready
 difficulty: hard
 track: practical
 kind: progressive
+languages: [python, typescript, java, kotlin, go, rust]
 levels:
   - {level: 1, title: Route matching}
   - {level: 2, title: Fixed-window client limits}
