@@ -51,6 +51,8 @@ Clear and easy to check, which makes it the oracle. The repeated scans make it a
 - TypeScript: `every` stops at the first conflict; `".".repeat(col)` draws a row.
 - Java: an `int[]` of columns indexed by row needs no undo, since a row's entry is overwritten before it is read again.
 - Kotlin: `(0 until row).all { ... }` reads like the definition; `kotlin.math.abs` handles the diagonal distance.
+- Go: the standard library has `math.Abs` only for floating point, so the reference writes a three-line integer `abs`. A `for` loop with an early `return false` is the `all(...)`. `strings.Repeat(".", col) + "Q" + strings.Repeat(".", size-col-1)` draws a row, and a `draw` helper turns the column list into the board.
+- Rust: `abs_diff` on two `usize` columns gives the distance without a signed type (and without an underflow), and `Iterator::all` over `enumerate()` stops at the first conflict. `".".repeat(col)` and `format!` draw a row.
 
 ## Approach: attacked-lines (Track used columns and diagonals in sets)
 
@@ -91,6 +93,8 @@ The standard answer: simple bookkeeping and a constant-time test. Arrays of bool
 - TypeScript: boolean arrays with the `n - 1` offset; chained assignment marks all three lines in one statement.
 - Java: the reference keeps the markers in fields reset at the start of each call, which keeps the recursive method's signature short.
 - Kotlin: a local `mark(row, col, used)` function sets or clears the three lines, so the undo mirrors the do.
+- Go: there is no set literal, and a `map[int]struct{}` would do, but boolean slices are simpler and faster here: `columns` has `n` entries and the two diagonal arrays have `2n - 1`, with `row - col` shifted by `n - 1` so it is never negative. A multiple assignment sets or clears all three flags in one statement.
+- Rust: three `Vec<bool>` live in a small `Lines` struct so the recursion takes one parameter instead of three. `row - col` can be negative and the indexes are `usize`, so the diagonal index is computed as `row + n - 1 - col`, which never goes below zero because `col <= n - 1`.
 
 ## Approach: bitmask (Keep the attacked squares of the next row as bits)
 
@@ -132,3 +136,5 @@ The fastest of the three by a wide constant factor, and the version to use for c
 - TypeScript: bit operators work on 32-bit integers; `31 - Math.clz32(bit)` is the column of a single set bit.
 - Java: `Integer.numberOfTrailingZeros(bit)` is the column.
 - Kotlin: `and`, `or`, `xor`, `inv`, `shl` and `shr` are the infix bit operators; the same `Integer.numberOfTrailingZeros` gives the column.
+- Go: `&^` is AND NOT, so `full &^ (columns | diagonals | antiDiagonals)` is Python's `full & ~(...)` in one operator, and `free & -free` isolates the lowest set bit because `int` is signed two's complement. `bits.TrailingZeros(uint(bit))` from `math/bits` gives the column. In Go `<<` and `&` have the same precedence and group left to right, so `(diagonals|bit)<<1&full` shifts first and masks second.
+- Rust: the masks are `u32`, which cannot be negated with `-`, so the lowest set bit is `free & free.wrapping_neg()`; `!` is bitwise NOT, and `trailing_zeros()` gives the column. The three masks travel together as a `[u32; 3]` to keep the recursive function's parameter list short.
