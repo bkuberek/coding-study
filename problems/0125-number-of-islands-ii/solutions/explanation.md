@@ -47,6 +47,8 @@ Obviously correct, which makes it the oracle, but it throws away everything it l
 - TypeScript: cells are encoded as `r * n + c` so that a `Set<number>` can mark them.
 - Java: an `int[]` of round numbers marks seen cells without reallocating an array per operation: a cell counts as seen when its entry equals the current round.
 - Kotlin: the same round-stamping `IntArray`, and `IntArray(positions.size) { ... }` builds the answer one operation at a time.
+- Go: the `seen` set keys on `[2]int`, because arrays of comparable elements are comparable and so usable as map keys, which stands in for Python's tuples. `countIslands` is a closure over `land` and `cells`, so it always sees the cells added so far.
+- Rust: `HashSet<(usize, usize)>` takes tuple keys directly, and `seen.insert((nr, nc))` returns `false` for a cell already seen, so one call both tests and marks. The helper borrows `land` and `cells` as slices because it only reads them.
 
 ## Approach: quick-union (Naive union-find that links roots without balancing or compression)
 
@@ -84,6 +86,8 @@ The incremental count is the right idea; only the tree shapes are left to chance
 - TypeScript: `positions.map` returns the running count for each operation.
 - Java: a static `find(parent, x)` helper walks to the root iteratively.
 - Kotlin: `val (r, c) = positions[i]` destructures the operation.
+- Go: the grid is flattened to `r*n + c`, and `find` is a closure that climbs by reassigning its own parameter. There is no compression, so `parent` chains can grow as long as the cell count.
+- Rust: `find` takes `&[usize]` because it never changes `parent`, which is what lets both roots be looked up in one tuple expression before `parent[root_neighbor]` is written. Coordinates are `usize`, so `checked_add_signed` rejects a step off the top or left edge.
 
 ## Approach: union-find (Union by size with path compression over the cells)
 
@@ -122,3 +126,5 @@ Each operation costs effectively constant time after the one-time grid setup, wh
 - TypeScript: `DisjointSets` sets its arrays in the constructor body, with no parameter properties; `union` returns whether it merged, which drives the count.
 - Java: a `private static final` nested class over two `int[]` arrays.
 - Kotlin: `rootA = rootB.also { rootB = rootA }` swaps the roots before attaching the smaller one.
+- Go: `union` returns whether two groups merged, and `&&` short-circuits so it runs only for a land neighbor; each successful merge lowers `islands` by one, exactly as in the Python version.
+- Rust: `union` returns a `bool` and takes `&mut self`; the condition `land[nr * n + nc] && set.union(nr * n + nc, cell)` runs the merge only for a land neighbor. The `DisjointSet` struct keeps `parent` and `size` together, and `std::mem::swap` exchanges the roots for union by size.
