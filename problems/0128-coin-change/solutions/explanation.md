@@ -52,6 +52,8 @@ Direct translation of the recurrence, and it skips remainders that no sequence o
 - TypeScript: a closure over a `memo` array filled with -1.
 - Java: a private helper takes the memo and the unreachable sentinel explicitly.
 - Kotlin: a local `fun` captures `memo`; `IntArray(amount + 1) { unknown }` initializes the sentinel.
+- Go: there is no infinity for `int`, so `infinity = 1 << 30` stands in for `math.inf`: it is larger than any real answer (at most 2000 coins) and small enough that `1+infinity` cannot overflow, and the result is compared with `>= infinity` instead of `==`. A coin can be up to 2^31 - 1, which `int` holds on 64-bit platforms.
+- Rust: `INFINITY = 1 << 30` plays the role of `math.inf` for the same reason: `1 + INFINITY` stays inside `i32`, where `i32::MAX` would panic under the overflow checks. Coins are compared as `coin as usize <= remaining`, which is exact for positive `i32` values, and `fewest` is a free function because a closure cannot recurse.
 
 ## Approach: tabulation (Bottom-up table over amounts)
 
@@ -89,6 +91,8 @@ Simple, iterative, no stack depth concerns: the standard interview answer and th
 - Python: `[0] + [unreachable] * amount` builds the table in one expression.
 - TypeScript: `new Array<number>(amount + 1).fill(unreachable)`.
 - Java and Kotlin: `Arrays.fill` and the `IntArray(size) { init }` constructor set the sentinel.
+- Go: `make` zero-fills the table, so `fewest[0] = 0` is already set and the other cells are overwritten with `unreachable` in a first loop.
+- Rust: `vec![unreachable; amount + 1]` followed by `fewest[0] = 0` builds the table in two steps, the counterpart of Python's `[0] + [unreachable] * amount`. `unreachable` stays an `i32` and `amount` is shadowed as a `usize` for indexing.
 
 ## Approach: bfs (Breadth-first search over remainders)
 
@@ -125,3 +129,5 @@ The same worst case as the table, but it stops as soon as 0 is reached, which is
 - Python and TypeScript: a list per level avoids a separate distance array.
 - Java: an `ArrayDeque<Integer>` and a loop over the current `queue.size()` process one level at a time; the queue holds boxed integers.
 - Kotlin: a `mutableListOf<Int>()` per level, swapped into `level` after each round.
+- Go: each level is a fresh slice (`var nextLevel []int`, grown by `append`), and `seen` has one flag per remainder, so a remainder joins at most one level.
+- Rust: `remaining.checked_sub(coin as usize)` returns `None` when the coin is larger than the remainder, which replaces Python's `rest >= 0` test and avoids an unsigned underflow. Each level is a `Vec<usize>` replaced by the next one, so no queue type is needed.
