@@ -6,6 +6,7 @@ status: ready
 difficulty: hard
 track: lld
 kind: design
+languages: [python, typescript, java, kotlin, go, rust]
 signature:
   class:
     name: ElevatorSystem
