@@ -48,6 +48,8 @@ The clearest backtracking skeleton: choose, recurse, undo. Scanning all n flags 
 - TypeScript: `new Array<boolean>(n).fill(false)`; `[...ordering]` copies.
 - Java: `boolean[]` defaults to `false`; `ordering.remove(ordering.size() - 1)` uses the index overload because its argument is an `int`.
 - Kotlin: `BooleanArray(n)` defaults to `false`; `ordering.toList()` makes the copy.
+- Go: `make([]bool, len(nums))` starts all `false`. A recursive closure is declared first and assigned after so it can call itself, and `slices.Clone(ordering)` snapshots each finished ordering, because later appends reuse the same backing array.
+- Rust: `vec![false; n]` starts all `false`. The recursion is a function that takes `used`, `ordering` and `result` as `&mut`, so the same buffers are shared down the whole recursion; `ordering.clone()` snapshots a finished ordering.
 
 ## Approach: swap-in-place (Swap each candidate into the next slot)
 
@@ -88,3 +90,5 @@ No marker array and no membership test, so it does slightly less work per node. 
 - TypeScript: destructuring assignment `[a[i], a[j]] = [a[j], a[i]]` swaps; the spread copies the finished ordering.
 - Java: `nums.clone()` copies the primitive array; each leaf boxes the values into an `ArrayList<Integer>`.
 - Kotlin: `nums.copyOf()` copies the `IntArray`; `values.toList()` boxes a snapshot into a `List<Int>`.
+- Go: `values[slot], values[candidate] = values[candidate], values[slot]` swaps in one statement, and `slices.Clone` copies the input first so the caller's slice is left in its order.
+- Rust: `values.swap(slot, candidate)` swaps two elements of a slice in place, and `values.to_vec()` snapshots a finished ordering. The function owns `nums`, so it permutes that vector directly and needs no copy.
