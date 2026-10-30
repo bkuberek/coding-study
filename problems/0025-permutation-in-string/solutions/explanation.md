@@ -47,6 +47,8 @@ Obviously correct and short, hence the oracle. It throws away all work between n
 - TypeScript: sorting a `Uint8Array` of char codes is numeric and much faster than `split("").sort()`, which compares strings.
 - Java: `toCharArray`, `Arrays.sort` (a primitive sort) and `Arrays.equals`.
 - Kotlin: `toCharArray().apply { sort() }` sorts in place and returns the array; `contentEquals` compares contents, while `==` on arrays compares references.
+- Go: strings are immutable, so each window is copied into a `[]byte` with `[]byte(text[start:start+width])` and sorted with `slices.Sort`; `slices.Equal` compares it with the sorted pattern.
+- Rust: `bytes.windows(width)` yields every window as a borrowed subslice, `to_vec` copies it so it can be sorted, and `==` on two `Vec<u8>` compares contents. `windows` yields nothing when the text is shorter than the pattern (it panics for a width of 0, which the constraints exclude).
 
 ## Approach: window-counts (Slide a window and compare letter counts)
 
@@ -87,6 +89,8 @@ Linear and easy to write, and the comparison is a fixed 26 steps, so for this al
 - TypeScript: typed arrays have no built-in equality; the reference loops over the 26 slots.
 - Java: `Arrays.equals(int[], int[])` compares contents.
 - Kotlin: `IntArray.contentEquals` compares contents.
+- Go: `[26]int` is an array value, and arrays of comparable elements compare with `==` directly, so `window == need` needs no helper.
+- Rust: `[usize; 26]` also implements `PartialEq`, so `window == need` compares all 26 counts. The count only decreases for a letter that was added earlier, so the `usize` arithmetic cannot underflow, and `right + 1 >= width` avoids the `width - 1` subtraction.
 
 ## Approach: match-count (Slide a window and track balanced letters)
 
@@ -127,3 +131,5 @@ Constant work per step regardless of the alphabet size, and the same "count of s
 - TypeScript: an arrow function closes over `balanced` and `surplus`.
 - Java: there are no local functions in Java, so the reference keeps `surplus` and `balanced` as fields and resets them at the start of each call.
 - Kotlin: a local `fun shift` can modify the enclosing `var balanced` directly.
+- Go: a closure `shift` modifies the enclosing `surplus` array and `balanced` counter directly, the counterpart of Python's nested function with `nonlocal`.
+- Rust: a closure that mutated both `surplus` and `balanced` would keep them borrowed while the loop reads `balanced`, so the pair lives in a small `Balance` struct and `shift` is a method. `usize::from(byte - b'a')` turns a byte into a letter index.
