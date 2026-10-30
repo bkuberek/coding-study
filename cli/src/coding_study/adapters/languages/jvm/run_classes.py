@@ -1,14 +1,16 @@
-"""A run's private copy of the classes Gradle built (docs/specs/runners.md#jvm-build-details).
+"""A run's private copy of what Gradle built (docs/specs/runners.md#jvm-build-details).
 
 `-Pcs.only` narrows each build to one problem, so every build rewrites the shared output
-directories and deletes the classes of the problem built before. A JVM that loads classes lazily
-from those directories would lose them to the next `cstudy` process. Instead the build, taken under
-a lock, is copied into a directory of the run's own, and the JVM's classpath points at the copy.
+directories and deletes the classes of the problem built before, and a build after a change to the
+runner's sources rewrites the runner and support jars in place. A JVM that loads classes lazily
+from those files would lose them to the next `cstudy` process. Instead the build, taken under a
+lock, is copied into a directory of the run's own, and the JVM's classpath points at the copy.
 """
 
 import os
 import shutil
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 
 from coding_study.adapters.process_liveness import is_alive
@@ -31,16 +33,16 @@ class RunClasses:
     def directory(self) -> Path | None:
         return self._directory
 
-    def isolate(self, classpath: str, build: Path) -> str:
-        """`classpath` with every existing directory below `build` replaced by a private copy.
+    def isolate(self, classpath: str, outputs: Sequence[Path]) -> str:
+        """`classpath` with every existing entry below one of `outputs`, a class directory or a
+        jar, replaced by a private copy.
 
-        Call it while the build lock is held, so the directories are the build just made. Jars and
-        everything outside `build` keep their paths: nothing rewrites those between runs.
+        Call it while the build locks are held, so the entries are what the build just made.
+        Everything else, such as the jars in Gradle's cache, keeps its path: nothing rewrites
+        those between runs.
         """
-        resolved_build = build.resolve()
-        entries = (
-            self._isolated(Path(entry), resolved_build) for entry in classpath.split(os.pathsep)
-        )
+        resolved = tuple(output.resolve() for output in outputs)
+        entries = (self._isolated(Path(entry), resolved) for entry in classpath.split(os.pathsep))
         return os.pathsep.join(str(entry) for entry in entries)
 
     def discard(self) -> None:
@@ -48,12 +50,18 @@ class RunClasses:
             shutil.rmtree(self._directory, ignore_errors=True)
             self._directory = None
 
-    def _isolated(self, entry: Path, build: Path) -> Path:
-        if not (entry.is_dir() and entry.resolve().is_relative_to(build)):
+    def _isolated(self, entry: Path, outputs: Sequence[Path]) -> Path:
+        if not entry.exists():
+            return entry
+        resolved = entry.resolve()
+        if not any(resolved.is_relative_to(output) for output in outputs):
             return entry
         copy = self._run_directory() / f"{self._copies}-{entry.parent.name}-{entry.name}"
         self._copies += 1
-        shutil.copytree(entry, copy)
+        if entry.is_dir():
+            shutil.copytree(entry, copy)
+        else:
+            shutil.copyfile(entry, copy)
         return copy
 
     def _run_directory(self) -> Path:

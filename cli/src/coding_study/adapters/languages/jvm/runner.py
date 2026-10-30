@@ -28,6 +28,7 @@ from coding_study.adapters.languages.jvm.gradle import (
 )
 from coding_study.adapters.languages.jvm.reference_build import REFERENCE_PROJECT, ReferenceBuild
 from coding_study.adapters.languages.jvm.run_classes import RUNS_DIRECTORY, RunClasses
+from coding_study.adapters.languages.jvm.runtime_jars import RuntimeJars
 from coding_study.application.ports import (
     BenchCode,
     BuildFailed,
@@ -113,6 +114,7 @@ class JvmRunner:
         self._references = ReferenceBuild(context.workspace, self._workspace, runners)
         self._locks = context.workspace / LOCKS_DIRECTORY
         self._runs = context.workspace / RUNS_DIRECTORY
+        self._runtime = RuntimeJars(runners, self._locks)
 
     def prepare(self, scope: BuildScope, notify: ProgressNotice) -> PrepareResult:
         """The private class copies belong to the launch, which `RunnerProcess` cleans up; a
@@ -173,7 +175,8 @@ class JvmRunner:
             return self._compile(self._reference_project(meta, sources), preparation)
 
     def _locked(self, project: str, preparation: _Preparation) -> AbstractContextManager[None]:
-        """One lock per Gradle project and language: Java and Kotlin build side by side."""
+        """One lock per Gradle project and language: Java and Kotlin build side by side, while
+        the runtime's jars are current (`RuntimeJars`)."""
         path = self._locks / f"{project}-{self._language}.lock"
         return exclusive_lock(path, lambda: preparation.notify(WAIT_NOTICE))
 
@@ -196,11 +199,13 @@ class JvmRunner:
             preparation.notify(COLD_DAEMON_NOTICE)
         task = f":{self._language}:{CLASSPATH_TASK}"
         only = f"-P{ONLY_PROPERTY}={project.meta.snake_slug}"
-        outcome = self._gradle.run([*project.selector, *GRADLE_FLAGS, task, only])
-        if outcome.exit_code != 0:
-            return _build_failure(outcome, project.sources)
+        with self._runtime.held(lambda: preparation.notify(WAIT_NOTICE)):
+            outcome = self._gradle.run([*project.selector, *GRADLE_FLAGS, task, only])
+            if outcome.exit_code != 0:
+                return _build_failure(outcome, project.sources)
+            classpath = self._classpath(project, preparation.classes)
         note = WARM_BUILD_NOTE if warm else COLD_BUILD_NOTE
-        return _Compiled(self._classpath(project, preparation.classes), project.meta, note)
+        return _Compiled(classpath, project.meta, note)
 
     def _prepared(
         self,
@@ -221,14 +226,15 @@ class JvmRunner:
         return Prepared(launch, compiled.build_note)
 
     def _classpath(self, project: _GradleProject, classes: RunClasses) -> str:
-        """Gradle's runtime classpath, with its build output directories copied for this run."""
+        """Gradle's runtime classpath, with its build output directories and the runtime's jars
+        copied for this run."""
         subproject = project.directory / self._language
         path = subproject / CLASSPATH_FILE
         try:
             classpath = path.read_text(encoding="utf-8").strip()
         except OSError as error:
             raise RunnerStartError(f"gradle did not write the runtime classpath {path}") from error
-        return classes.isolate(classpath, subproject / BUILD_OUTPUT)
+        return classes.isolate(classpath, (subproject / BUILD_OUTPUT, self._runtime.directory))
 
 
 def _debug_launch(session: DebugSession | None, notify: ProgressNotice) -> DebugLaunch | None:

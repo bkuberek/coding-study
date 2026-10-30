@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from coding_study.adapters.file_lock import exclusive_lock
+from coding_study.adapters.file_lock import exclusive_lock, shared_lock
 
 WAIT_SECONDS = 10.0
 
@@ -68,3 +68,42 @@ def test_the_lock_is_released_when_the_block_raises(lock):
         raise ValueError("boom")
     with exclusive_lock(lock, lambda: pytest.fail("the lock was still held")):
         pass
+
+
+def test_shared_holders_do_not_wait_for_each_other(lock):
+    with shared_lock(lock), shared_lock(lock, lambda: pytest.fail("a shared holder waited")):
+        pass
+
+
+def test_an_exclusive_holder_waits_for_a_shared_one(lock):
+    events: list[str] = []
+    waiting = threading.Event()
+
+    def exclusive() -> None:
+        with exclusive_lock(lock, waiting.set):
+            events.append("exclusive")
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with shared_lock(lock):
+            future = pool.submit(exclusive)
+            assert waiting.wait(WAIT_SECONDS)
+            events.append("shared")
+        future.result(timeout=WAIT_SECONDS)
+    assert events == ["shared", "exclusive"]
+
+
+def test_a_shared_holder_waits_for_an_exclusive_one(lock):
+    events: list[str] = []
+    waiting = threading.Event()
+
+    def shared() -> None:
+        with shared_lock(lock, waiting.set):
+            events.append("shared")
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with exclusive_lock(lock):
+            future = pool.submit(shared)
+            assert waiting.wait(WAIT_SECONDS)
+            events.append("exclusive")
+        future.result(timeout=WAIT_SECONDS)
+    assert events == ["exclusive", "shared"]

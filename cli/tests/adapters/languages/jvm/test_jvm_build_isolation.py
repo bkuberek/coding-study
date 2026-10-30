@@ -336,9 +336,13 @@ def test_each_of_two_processes_keeps_the_classes_it_built(root, tmp_path):
         assert list(pool.map(build, [TWO_SUM, THREE_SUM])) == [True, True]
 
 
-def test_java_and_kotlin_build_at_the_same_time(root, tmp_path):
+def test_java_and_kotlin_build_at_the_same_time_once_the_runner_jars_are_current(root, tmp_path):
+    prepare(
+        runner_on(root, Language.JAVA, RuntimeJarGradle(root)),
+        references(tmp_path, TWO_SUM, Language.JAVA),
+    )
     both_building = threading.Barrier(2, timeout=WAIT_SECONDS)
-    gradle = ClassBuildingGradle(root, on_build=both_building.wait)
+    gradle = RuntimeJarGradle(root, on_build=both_building.wait)
 
     def build(language: Language) -> PrepareResult:
         return prepare(runner_on(root, language, gradle), references(tmp_path, TWO_SUM, language))
@@ -346,6 +350,83 @@ def test_java_and_kotlin_build_at_the_same_time(root, tmp_path):
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(build, [Language.JAVA, Language.KOTLIN]))
     assert all(isinstance(result, Prepared) for result in results)
+
+
+# Every JVM build may rebuild the runtime's runner and support jars, in place.
+
+
+class RuntimeJarGradle(ClassBuildingGradle):
+    """Also rewrites the runtime's runner jar, as Gradle does when the runner's sources changed:
+    its content names the build that wrote it."""
+
+    def build_classes(self, project: Path, language: Language, slug: str) -> str:
+        classes = super().build_classes(project, language, slug).split(":")[0]
+        jar = runtime_jar(self.root)
+        jar.parent.mkdir(parents=True, exist_ok=True)
+        jar.write_text(f"built for {slug}")
+        return f"{classes}:{jar}"
+
+
+def runtime_jar(root: Path) -> Path:
+    return root / "runners" / "jvm" / "runner" / "build" / "libs" / "runner.jar"
+
+
+def change_runtime_source(root: Path, text: str) -> None:
+    source = root / "runners" / "jvm" / "runner" / "src" / "Main.java"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text(text)
+
+
+def build_side_by_side(root: Path, tmp_path: Path, gradle: ClassBuildingGradle) -> None:
+    def build(language: Language) -> PrepareResult:
+        return prepare(runner_on(root, language, gradle), references(tmp_path, TWO_SUM, language))
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        list(pool.map(build, [Language.JAVA, Language.KOTLIN]))
+
+
+def test_a_launch_loads_a_private_copy_of_the_runtime_jars(root, tmp_path):
+    result = prepare(
+        runner_on(root, Language.JAVA, RuntimeJarGradle(root)),
+        references(tmp_path, TWO_SUM, Language.JAVA),
+    )
+    assert classpath(result)[1].parent == prepared(result).launch.scratch
+
+
+def test_a_later_build_that_rewrites_the_runner_jar_leaves_the_earlier_launch_its_jar(
+    root, tmp_path
+):
+    gradle = RuntimeJarGradle(root)
+    first = prepare(
+        runner_on(root, Language.JAVA, gradle), references(tmp_path, TWO_SUM, Language.JAVA)
+    )
+    prepare(runner_on(root, Language.JAVA, gradle), references(tmp_path, THREE_SUM, Language.JAVA))
+    assert classpath(first)[1].read_text() == "built for two_sum"
+
+
+def test_the_first_builds_of_java_and_kotlin_take_turns(root, tmp_path):
+    change_runtime_source(root, "class Main {}")
+    gradle = RuntimeJarGradle(root, pause=0.05)
+    build_side_by_side(root, tmp_path, gradle)
+    assert gradle.most_running == 1
+
+
+def test_builds_take_turns_again_after_the_runtime_sources_change(root, tmp_path):
+    change_runtime_source(root, "class Main {}")
+    build_side_by_side(root, tmp_path, RuntimeJarGradle(root))
+    change_runtime_source(root, "class Main { int changed; }")
+    gradle = RuntimeJarGradle(root, pause=0.05)
+    build_side_by_side(root, tmp_path, gradle)
+    assert gradle.most_running == 1
+
+
+def test_builds_take_turns_again_when_a_runner_jar_is_gone(root, tmp_path):
+    change_runtime_source(root, "class Main {}")
+    build_side_by_side(root, tmp_path, RuntimeJarGradle(root))
+    runtime_jar(root).unlink()
+    gradle = RuntimeJarGradle(root, pause=0.05)
+    build_side_by_side(root, tmp_path, gradle)
+    assert gradle.most_running == 1
 
 
 @dataclass(frozen=True, slots=True)
