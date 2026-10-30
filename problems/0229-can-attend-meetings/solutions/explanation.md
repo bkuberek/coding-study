@@ -78,3 +78,5 @@ Faster than the pairwise check by a factor of n / log n. The references copy the
 - TypeScript: always pass a numeric comparator, `[...intervals].sort((a, b) => a[0] - b[0])`; the default sort compares as strings, so `1000` would come before `999`.
 - Java: `intervals.clone()` is shallow, which is enough to keep the caller's order; `Arrays.sort` with `Comparator.comparingInt` sorts the copy.
 - Kotlin: `sortedBy { it[0] }` returns a new list, and `zipWithNext().all { (earlier, later) -> ... }` is empty, hence `true`, for fewer than two meetings.
+- Go: `slices.Clone` copies the outer slice (the inner slices are shared, which is enough to keep the caller's order) and `slices.SortFunc` sorts the copy by start with `cmp.Compare`; the neighbor check is a plain loop.
+- Rust: the function owns its `Vec<Vec<i32>>`, so `sort_unstable_by_key` can sort it in place with no copy, and `windows(2).all(..)` is `true` for fewer than two meetings.
