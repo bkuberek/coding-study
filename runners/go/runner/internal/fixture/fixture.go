@@ -83,6 +83,20 @@ func Third(value decimal.Decimal) decimal.Decimal {
 	return third
 }
 
+// Strict returns its argument, then forbids every decimal with a decimal point in what is decoded
+// next: a later case must not inherit the setting.
+func Strict(value decimal.Decimal) decimal.Decimal {
+	decimal.MaxDecodeExponent = 0
+	return value
+}
+
+// Ledger is a class whose Add does the same.
+type Ledger struct{}
+
+func NewLedger() *Ledger { return &Ledger{} }
+
+func (*Ledger) Add(value decimal.Decimal) decimal.Decimal { return Strict(value) }
+
 // Price takes a float where the signature declares a decimal.
 func Price(value float64) float64 { return value }
 

@@ -20,7 +20,8 @@ var registry = Registry{
 		"loud": fixture.Loud, "overflow": fixture.Overflow, "sortValues": fixture.SortValues,
 		"pickNode": fixture.PickNode, "sameList": fixture.SameList, "NewCounter": fixture.NewCounter,
 		"wrong": fixture.Wrong, "NewTally": fixture.NewTally, "NewGate": fixture.NewGate,
-		"third": fixture.Third, "price": fixture.Price,
+		"third": fixture.Third, "price": fixture.Price, "strict": fixture.Strict,
+		"NewLedger": fixture.NewLedger,
 	},
 	"ref/new-node": {"pickNode": fixture.NewNode},
 }

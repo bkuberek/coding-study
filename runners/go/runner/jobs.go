@@ -53,11 +53,11 @@ func (t *functionTarget) run(input *callInput) outcome {
 	if input.Input == nil {
 		return raised(inputFailure(fmt.Errorf("a function job takes arguments, not an operation sequence")), 0)
 	}
+	freshDecimalSettings()
 	call, err := bind(t.call, input.Input)
 	if err != nil {
 		return raised(inputFailure(err), 0)
 	}
-	freshDecimalSettings()
 	output := startCapture()
 	timed := invoke(t.fn, call.args, t.pkg)
 	stdout := output.stop()
@@ -81,6 +81,7 @@ func (t *functionTarget) prepare(input *callInput) (func() any, error) {
 	if input.Input == nil {
 		return nil, fmt.Errorf("a function job takes arguments, not an operation sequence")
 	}
+	freshDecimalSettings()
 	call, err := bind(t.call, input.Input)
 	if err != nil {
 		return nil, err
@@ -195,6 +196,7 @@ func (t *classTarget) prepare(input *callInput) (func() any, error) {
 	if len(input.Ops) == 0 || len(input.Ops) != len(input.Args) {
 		return nil, fmt.Errorf("a class job takes an operation sequence, not arguments")
 	}
+	freshDecimalSettings()
 	methods := make([]int, len(input.Ops))
 	arguments := make([][]reflect.Value, len(input.Ops))
 	for index, op := range input.Ops {

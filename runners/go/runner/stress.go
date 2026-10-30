@@ -124,6 +124,7 @@ func (r *stressRun) captured() outcome {
 }
 
 func (r *stressRun) run() outcome {
+	freshDecimalSettings()
 	setup, workers, final, failure := r.decode()
 	if failure != nil {
 		return failure.outcome(0, []workerProgress{})

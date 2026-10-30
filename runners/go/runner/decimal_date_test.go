@@ -9,6 +9,12 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+const ledgerJob = `{"job_id": "j", "kind": "concurrent", "model": "threads", "target": {"compiled": "user"},
+	"names": {"class": "Ledger", "constructor": "NewLedger", "methods": {"add": "Add"}},
+	"signature": {"class": {"name": "Ledger", "constructor": {"params": []}, "methods": [
+		{"name": "add", "params": [{"name": "value", "type": "decimal"}], "returns": {"type": "decimal"}}]}},
+	"cases": [CASES]}`
+
 func TestDecimalAndDateMapToTheVendoredAndStandardTypes(t *testing.T) {
 	tests := []struct {
 		typeText string
@@ -80,6 +86,42 @@ func TestEveryCaseStartsWithTheDefaultDecimalSettings(t *testing.T) {
 		if result["output"] != "0.3333333333333333" {
 			t.Errorf("%v: got %v, want 16 places", result["case_id"], result["output"])
 		}
+	}
+}
+
+// Arguments are decoded before the call, so the reset has to come before the decoding.
+
+func TestEveryFunctionCaseDecodesWithTheDefaultDecimalSettings(t *testing.T) {
+	cases := `[{"id": "first", "input": {"value": "1"}}, {"id": "second", "input": {"value": "1.50"}}]`
+	results := named(runJobs(t, function("strict", oneParam("strict", "decimal", "decimal"), cases)), "case_result")
+	for _, result := range results {
+		if result["status"] != "ok" || result["output"] == nil {
+			t.Errorf("%v: got %v", result["case_id"], result)
+		}
+	}
+}
+
+func TestEveryBenchInputDecodesWithTheDefaultDecimalSettings(t *testing.T) {
+	body := `{"protocol": 1, "mode": "bench", "jobs": [{"job_id": "j", "kind": "function",
+		"signature": ` + oneParam("strict", "decimal", "decimal") + `,
+		"targets": [{"target_id": "user", "target": {"compiled": "user"}, "names": {"function": "strict"}}],
+		"inputs": [{"size": 1, "input": {"value": "1"}, "max_batch": 10},
+			{"size": 2, "input": {"value": "1.50"}, "max_batch": 10}],
+		"settings": {"reps": 3, "warmup": {"min": 1, "max": 3, "cv": 0.05}, "budget_ms": 2000, "memory": false, "min_sample_ns": 1000}}]}`
+	_, events := runRequest(t, &loader{registry: registry}, body)
+	if errors := named(events, "bench_error"); len(errors) != 0 {
+		t.Errorf("got %v", errors)
+	}
+}
+
+func TestAStressRunDecodesWithTheDefaultDecimalSettings(t *testing.T) {
+	job := withCases(ledgerJob,
+		`{"id": "ex1", "ops": ["Ledger", "add"], "args": [[], ["1"]]}`,
+		stress("s1", "5000", `{"ops": ["Ledger"], "args": [[]]}`,
+			[]string{`{"ops": ["add"], "args": [["1.50"]]}`, `{"ops": ["add"], "args": [["1.50"]]}`}, ""))
+	results := named(runJobs(t, job), "case_result")
+	if len(results) != 2 || results[1]["status"] != "ok" {
+		t.Errorf("got %v", results)
 	}
 }
 
