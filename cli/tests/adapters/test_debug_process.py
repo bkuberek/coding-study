@@ -10,6 +10,7 @@ from coding_study.adapters import debug_process
 from coding_study.adapters.debug_process import (
     TAIL_LINES,
     DebugOutput,
+    _started_from,
     kill_processes_started_from,
 )
 from coding_study.application.ports import DebugLaunch
@@ -211,6 +212,57 @@ def test_a_machine_without_ps_leaves_the_processes_alone_without_failing(
         raise FileNotFoundError("ps")
 
     monkeypatch.setattr(debug_process.subprocess, "run", missing_ps)
+    monkeypatch.setattr(debug_process, "PROC_ROOT", tmp_path / "no-proc")
     left_behind = start_in(tmp_path / "scratch", started)
     kill_processes_started_from(tmp_path / "scratch", GRACE_SECONDS)
     assert is_running(left_behind)
+
+
+# Linux: BusyBox `ps` rejects `-x`, so the command lines come from `/proc/<pid>/cmdline`.
+
+
+def fake_proc(root: Path, commands: dict[str, list[str]]) -> Path:
+    """A `/proc` with one `cmdline` (NUL-terminated arguments) per entry, and files that are no
+    process."""
+    for name, arguments in commands.items():
+        entry = root / name
+        entry.mkdir(parents=True)
+        (entry / "cmdline").write_bytes("".join(f"{argument}\0" for argument in arguments).encode())
+    (root / "cpuinfo").write_text("not a process")
+    return root
+
+
+def test_the_proc_files_say_which_processes_started_from_the_directory(tmp_path):
+    scratch = tmp_path / "scratch"
+    proc = fake_proc(
+        tmp_path / "proc",
+        {
+            "101": [f"{scratch}/cs-runner", "--flag"],
+            "102": ["/usr/bin/python3", f"{scratch}/log.txt"],
+            "103": [f"{scratch}2/cs-runner"],
+            "104": [f"{scratch}/other-runner"],
+        },
+    )
+    assert sorted(_started_from(scratch, proc)) == [101, 104]
+
+
+def test_a_proc_command_in_a_directory_with_a_space_is_matched(tmp_path):
+    scratch = tmp_path / "my workspace" / "scratch"
+    proc = fake_proc(tmp_path / "proc", {"7": [f"{scratch}/cs-runner", "-c", "x"]})
+    assert _started_from(scratch, proc) == [7]
+
+
+def test_a_proc_entry_without_a_command_line_is_skipped(tmp_path):
+    """A kernel thread or a zombie has an empty `cmdline`; one that exited meanwhile has none."""
+    proc = fake_proc(tmp_path / "proc", {"5": [], "6": ["/bin/sleep"]})
+    (proc / "9").mkdir()
+    assert _started_from(tmp_path / "scratch", proc) == []
+
+
+def test_a_machine_without_proc_asks_ps(monkeypatch, tmp_path):
+    scratch = tmp_path / "scratch"
+    listing = subprocess.CompletedProcess(
+        [], 0, f"  42 {scratch}/cs-runner -c x\n  43 /bin/sleep\n"
+    )
+    monkeypatch.setattr(debug_process.subprocess, "run", lambda *_a, **_k: listing)
+    assert _started_from(scratch, tmp_path / "no-proc") == [42]

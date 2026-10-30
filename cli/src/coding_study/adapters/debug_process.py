@@ -10,7 +10,7 @@ import signal
 import subprocess
 import time
 from collections import deque
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Iterator
 from contextlib import contextmanager, suppress
 from pathlib import Path
 from types import FrameType
@@ -21,7 +21,9 @@ from coding_study.application.ports import DebugLaunch
 TAIL_LINES = 20
 STOP_SIGNALS = (signal.SIGTERM, signal.SIGHUP)
 PROCESS_LIST = ("ps", "-axww", "-o", "pid=,args=")
-"""Every process and the command line it started with, the same on macOS and Linux."""
+"""Every process and the command line it started with, on macOS. Linux reads `PROC_ROOT` instead:
+BusyBox's `ps` (Alpine) rejects `-x` and would list nothing."""
+PROC_ROOT = Path("/proc")
 PROCESS_LIST_TIMEOUT_SECONDS = 10.0
 EXIT_POLL_SECONDS = 0.01
 
@@ -119,7 +121,7 @@ def kill_processes_started_from(directory: Path | None, grace_seconds: float) ->
     this run executes from, does. Only a process whose executable (the first word of its command
     line) is inside `directory` is killed: not one that merely names a file there.
 
-    Does nothing without a directory, or where `ps` cannot say what is running."""
+    Does nothing without a directory, or where neither `/proc` nor `ps` can say what is running."""
     if directory is None:
         return
     running = _started_from(directory)
@@ -131,8 +133,29 @@ def kill_processes_started_from(directory: Path | None, grace_seconds: float) ->
         time.sleep(EXIT_POLL_SECONDS)
 
 
-def _started_from(directory: Path) -> list[int]:
-    prefixes = {f"{path}{os.sep}" for path in (directory, directory.resolve())}
+def _started_from(directory: Path, proc_root: Path | None = None) -> list[int]:
+    proc_root = proc_root or PROC_ROOT
+    prefixes = tuple(f"{path}{os.sep}" for path in {directory, directory.resolve()})
+    if proc_root.is_dir():
+        return [pid for pid, command in _proc_commands(proc_root) if command.startswith(prefixes)]
+    return [pid for pid, command in _listed_commands() if command.lstrip().startswith(prefixes)]
+
+
+def _proc_commands(proc_root: Path) -> Iterator[tuple[int, str]]:
+    """Each process and its executable as it was started: the first word of `cmdline`, which
+    separates its arguments with NUL, so a path with a space stays whole."""
+    for entry in proc_root.iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            command = (entry / "cmdline").read_bytes().partition(b"\0")[0]
+        except OSError:
+            continue
+        yield int(entry.name), command.decode(errors="replace")
+
+
+def _listed_commands() -> Iterator[tuple[int, str]]:
+    """Each process and its whole command line, from `ps`."""
     try:
         listing = subprocess.run(
             PROCESS_LIST,
@@ -143,10 +166,8 @@ def _started_from(directory: Path) -> list[int]:
             check=False,
         ).stdout
     except (OSError, subprocess.TimeoutExpired):
-        return []
-    running: list[int] = []
+        return
     for line in listing.splitlines():
         pid, _, command_line = line.strip().partition(" ")
-        if pid.isdigit() and command_line.lstrip().startswith(tuple(prefixes)):
-            running.append(int(pid))
-    return running
+        if pid.isdigit():
+            yield int(pid), command_line
