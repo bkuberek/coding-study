@@ -79,6 +79,8 @@ Short once the Fenwick tree is familiar, and it generalizes to "count values in 
 - TypeScript: sort the distinct values with a numeric comparator (`(a, b) => a - b`); the default sort compares strings, which misorders negative and multi-digit numbers.
 - Java: `Arrays.stream(nums).distinct().sorted().toArray()` and `Arrays.binarySearch` find a rank in O(log n) without a hash map.
 - Kotlin: `nums.distinct().sorted().toIntArray()` and `IntArray.binarySearch` do the same.
+- Go: the standard library has no ordered map, so ranks come from a sorted, de-duplicated copy of the values (`slices.Sort`, then `slices.Compact`, which removes adjacent duplicates) and `slices.BinarySearch` finds a value's position in O(log n); a hash map from value to rank would also work. `j & -j` is the lowest set bit on a signed `int`.
+- Rust: `sort_unstable` followed by `dedup` builds the distinct sorted values, and `binary_search` returns `Result<usize, usize>`: `Ok` with the position, which `expect` unwraps because every value is in the list. `usize` has no unary minus, so `-j` is written `j.wrapping_neg()` inside `low_bit`. `nums.iter().enumerate().rev()` walks the input from the right with its indexes.
 
 ## Approach: merge-sort-counts (Merge sort that counts the smaller values crossing over)
 
@@ -120,3 +122,5 @@ Needs no compression and no tree, only a careful merge, and it is the classic in
 - TypeScript: `Int32Array` buffers hold positions compactly; destructuring swaps the two arrays.
 - Java: plain `int[]` arrays swapped by reference after each level.
 - Kotlin: `order = buffer.also { buffer = order }` swaps the two arrays in one expression.
+- Go: `copy(buffer[out:high], order[right:high])` appends the rest of the right run in one call, and `order, buffer = buffer, order` swaps the two slices by header, so no data moves between levels. `min` is the built-in (Go 1.21+).
+- Rust: `copy_from_slice` does the same copy and requires equal lengths, which holds because `out == right` once the left run is used up. `std::mem::swap(&mut order, &mut buffer)` swaps the two vectors without moving their contents, `step_by(2 * width)` drives the runs, and the count `right - middle` is cast to `i32` for the `Vec<i32>` result.
