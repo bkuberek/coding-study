@@ -50,6 +50,8 @@ The grouping and sorting steps are already optimal; only the union-find trees ar
 - TypeScript: `[...s]` splits the string into characters; the default `sort()` orders single lowercase letters correctly.
 - Java: a `char[]` per group sorted with `Arrays.sort` avoids boxing.
 - Kotlin: `s.indices.groupBy(::find)` keeps each group's positions in increasing order, because `groupBy` preserves encounter order.
+- Go: strings are immutable, so the result is built in a `[]byte` copy and converted back with `string(letters)`. Indexing a string yields a `byte`, which is exact for the lowercase ASCII input, and `slices.Sort` sorts the bytes of each group. `for position := range len(s)` (Go 1.22 and newer) counts positions without decoding runes.
+- Rust: `s.as_bytes()` borrows the letters and `to_vec()` makes the mutable copy, so each group sorts the original letters while the output is rewritten. `sort_unstable` is fine for plain `u8` values, because equal letters are indistinguishable, and `String::from_utf8` turns the bytes back into the answer.
 
 ## Approach: union-find (Union by size with path compression, then sort each group)
 
@@ -87,3 +89,5 @@ Near-linear grouping and a single sort per group. Since there are only 26 letter
 - TypeScript: `DisjointSets` assigns its fields in the constructor body, with no parameter properties; a `Map` of position lists gathers the groups.
 - Java: `computeIfAbsent(root, unused -> new ArrayList<>())` gathers positions; `new String(letters)` builds the result.
 - Kotlin: `groupBy(sets::find)`, then `zip` of positions with sorted characters writes each group back.
+- Go: `parent[x], x = root, parent[x]` is the tuple assignment of the Python version, `rootA, rootB = rootB, rootA` swaps the roots, and `groups` is a slice indexed by root instead of a `defaultdict`; roots with no members stay nil and are skipped by the loop's empty work.
+- Rust: `find` takes `&mut [usize]` because it compresses paths, so it is called as its own statement before the group lists are pushed to, and `groups` is a `Vec<Vec<usize>>` indexed by root. `zip` stops at the shorter of the positions and the sorted letters, which have the same length.
