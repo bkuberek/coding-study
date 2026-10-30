@@ -51,6 +51,8 @@ Simple and side-effect free, which makes it the oracle. It searches blindly: a w
 - TypeScript: `STEPS.some(...)` short-circuits the same way; `board[r][c]` is a one-character string compared with `word[k]`.
 - Java: `char` comparison with `word.charAt(k)` avoids building strings; the explicit `break` stops after the first success.
 - Kotlin: `r !in 0 until rows` reads as the bounds check; `IntArray` destructuring in `{ (dr, dc) -> ... }` works through `component1` and `component2`.
+- Go: the board is `[][]rune`, so a cell compares with `letters[k]` after `[]rune(word)`. `visited` is built row by row with `make`, because `make([][]bool, rows)` only creates the outer slice. The recursive closure is declared first and assigned after, and `break` after the first success stops trying the other directions.
+- Rust: the bounds check moves into a small `neighbor` helper that returns `None` for a cell off the board, using `checked_add_signed` so a step to row `-1` is `None` and never wraps. `STEPS.iter().any(..)` stops at the first neighbor that succeeds, and `vec![vec![false; cols]; rows]` makes the visited grid, cloning the inner vector for each row.
 
 ## Approach: pruned-in-place (Count letters, search from the rarer end, mark cells in place)
 
@@ -93,3 +95,5 @@ Same worst case, but the counting check is linear and kills the classic adversar
 - TypeScript: `board.flat()` lists every cell for counting; `[...word].reverse().join("")` reverses the string.
 - Java: arrays of 128 counters indexed by `char` replace maps; incrementing `needed` and comparing in one pass returns early on the first shortage.
 - Kotlin: `groupingBy { it }.eachCount()` builds both count maps; `word.reversed()` returns the reversed string.
+- Go: two `[26]int` arrays count the letters, and `letter-'a'` is the slot, since a `rune` is an integer; `slices.Reverse` reverses the `[]rune` in place. The recursion checks the `'#'` mark through the comparison with `letters[k]` alone, because the word has no `'#'`.
+- Rust: two `[usize; 26]` arrays count the letters, and `available.iter().zip(&needed).any(..)` finds the first shortage. The function owns the board (`mut board`), so marking a cell with `'#'` and restoring it needs no copy; `letters.reverse()` reverses the word's characters in place.
