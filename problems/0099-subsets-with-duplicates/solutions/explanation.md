@@ -45,6 +45,8 @@ Easy to get right, which makes it the oracle, but it does the full 2^n work even
 - TypeScript: arrays compare by identity, so the reference keys a `Map` by `subset.join(",")`; negative numbers keep their sign in the key, so keys stay unambiguous.
 - Java: `List.equals` and `List.hashCode` are defined element by element, so a `HashSet<List<Integer>>` dedupes the lists.
 - Kotlin: the same content equality for `List<Int>`; a `LinkedHashSet` keeps the insertion order, which makes the output easy to read.
+- Go: a map key must be comparable, and a slice is not, so the reference keys a `map[string][]int` by the subset's text (the values and a comma after each, built with `strconv.AppendInt`), the same idea as the TypeScript key. A fixed-size array such as `[10]int` would be comparable but would have to encode the length too. The empty subset has the empty key, which is a perfectly good map key.
+- Rust: `Vec<i32>` implements `Hash` and `Eq` by content, so `HashSet<Vec<i32>>` dedupes the subsets directly, as Python's set of tuples does. `distinct.into_iter().collect()` moves the survivors out in arbitrary order, which the unordered comparator allows.
 
 ## Approach: skip-equal-siblings (Backtrack over sorted values and skip equal siblings)
 
@@ -85,3 +87,5 @@ Does work proportional to the answer instead of to 2^n, needs no hashing, and th
 - TypeScript: sort numerically with `(a, b) => a - b`; the default sort compares strings and orders `-1` after `-10` incorrectly for this purpose.
 - Java: comparing `int` values from the primitive array avoids `Integer` identity comparison, which would be wrong for values outside the small-integer cache.
 - Kotlin: `nums.sorted()` returns a `List<Int>`; `==` on `Int` compares values.
+- Go: `slices.Clone` plus `slices.Sort` sorts a copy, and `slices.Clone(chosen)` snapshots each subset, because later appends reuse the same backing array. `continue` skips a repeated sibling.
+- Rust: the function owns `nums`, so it sorts that vector in place; the recursion shares one `chosen` buffer through `&mut Vec<i32>` and `chosen.clone()` snapshots each subset. The loop is `for i in start..ordered.len()` because the comparison with `ordered[i - 1]` needs the index itself.
