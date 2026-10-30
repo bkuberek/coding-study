@@ -96,9 +96,12 @@ DEBUGGABLE = (Language.PYTHON, Language.TYPESCRIPT, Language.JAVA, Language.GO, 
 EMPTY_TARGET = 'target create ""'
 """CodeLLDB needs a target before it connects; an empty one takes the executable the debug server
 reports, since each run launches the runner from a directory of its own."""
-KILL_DEBUGGEE = "process kill"
+KILL_DEBUGGEE = "script None if not lldb.process.is_alive else (lldb.process.Kill() and None)"
 """CodeLLDB detaches from an attached process when its session ends, and the debug server then exits
-and leaves the runner going. `preTerminateCommands` run just before that detach."""
+and leaves the runner going. `preTerminateCommands` run just before that detach. A plain
+`process kill` prints `error: Process must be launched.` once the run has finished; this kills only
+a live process and prints nothing. Without Python in CodeLLDB it does nothing, and `cstudy test
+--debug` kills the runner itself when its task ends."""
 
 
 class VsCodeProject:

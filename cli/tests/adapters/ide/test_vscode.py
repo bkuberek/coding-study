@@ -174,7 +174,15 @@ def test_rust_kills_the_debuggee_before_the_session_ends():
     """Stopping an attach session detaches by default, which leaves the runner going: the debug
     server exits, and nobody follows the runner it started."""
     configuration = launch_configurations()["Debug current file (Rust)"]
-    assert configuration["preTerminateCommands"] == ["process kill"]
+    (command,) = configuration["preTerminateCommands"]
+    assert "lldb.process.Kill()" in command
+
+
+def test_rust_kills_the_debuggee_only_while_it_is_alive():
+    """After a finished run, `process kill` prints "Process must be launched"."""
+    configuration = launch_configurations()["Debug current file (Rust)"]
+    (command,) = configuration["preTerminateCommands"]
+    assert "lldb.process.is_alive" in command
 
 
 def test_kotlin_cannot_be_debugged_in_vscode():
