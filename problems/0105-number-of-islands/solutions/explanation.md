@@ -51,6 +51,8 @@ The shortest correct answer and the usual interview answer. It writes into `grid
 - TypeScript: the stack holds one number per cell (`r * cols + c`) instead of an array per cell, which avoids allocating a small array for every push. `grid` is `string[][]`, so the comparison is with the one-character string `"1"`.
 - Java: `char[][]` compares with the char literal `'1'`. `ArrayDeque` is the recommended stack (`push`, `pop`); the legacy `Stack` class is synchronized and slower.
 - Kotlin: `Array<CharArray>` with char literals; `kotlin.collections.ArrayDeque` with `addLast` and `removeLast` serves as the stack, and `nr in 0 until rows` reads as a bounds check.
+- Go: a slice of `[2]int` coordinates is the stack: `stack[len(stack)-1]` reads the top, `stack[:len(stack)-1]` pops it and `append` pushes. A `[2]int` is a small value type, so a push allocates nothing beyond the slice's growth. The grid is `[][]rune`, compared with the rune literal `'1'`, and the function sinks the input grid in place, as the Python version does.
+- Rust: a `Vec<(usize, usize)>` is the stack (`pop`, `push`), and the function owns the grid (`mut grid`), so sinking cells needs no copy. A step off the grid is caught by a small `neighbor` helper using `checked_add_signed`, which returns `None` for a negative coordinate instead of wrapping.
 
 ## Approach: bfs (Flood fill with a queue)
 
@@ -91,6 +93,8 @@ Same speed as `dfs`, and it leaves `grid` untouched. The order of visits does no
 - TypeScript: there is no built-in queue. The reference preallocates an `Int32Array` of size `m·n` and moves a head index forward, because every cell is enqueued at most once over the whole run; `visited` is a `Uint8Array`.
 - Java: `ArrayDeque` as a `Queue` (`add`, `poll`) and a `boolean[][]` for `visited`.
 - Kotlin: `ArrayDeque<Int>` with `addLast` and `removeFirst`; `Array(rows) { BooleanArray(cols) }` builds independent rows.
+- Go: a slice is the queue: `queue[0]` reads the front, `queue = queue[1:]` pops it in O(1) and `append` pushes at the back. `make([][]bool, rows)` creates only the outer slice, so each row of `visited` gets its own `make([]bool, cols)`.
+- Rust: `VecDeque` is the queue (`pop_front`, `push_back`), seeded with `VecDeque::from([(row, col)])`. `vec![vec![false; cols]; rows]` clones the inner vector once per row, so the rows are independent.
 
 ## Approach: union-find (Union-find over land squares)
 
@@ -132,3 +136,5 @@ A little more code and a little more memory than the flood fills for the same an
 - TypeScript: a small class over `Int32Array`s, since there is no library disjoint set.
 - Java: a private static nested class with `int[]` arrays keeps the helper out of the public API.
 - Kotlin: a private top-level class next to `Solution`; `rootA = rootB.also { rootB = rootA }` swaps the two roots.
+- Go: `find` and `union` are closures over the two slices. `parent[cell], cell = root, parent[cell]` is a safe one-line path compression: Go evaluates the index on the left and the right-hand sides first, and then assigns, so it writes `parent` at the old `cell` before `cell` moves on. Tuple swaps like `rootA, rootB = rootB, rootA` need no temporary.
+- Rust: a small `DisjointSet` struct owns `parent` and `size` so that `find` and `union` can borrow `self` mutably, which closures over two vectors could not do both at once. Path compression reads the next link before overwriting it (`let next = self.parent[cell]`), and `std::mem::swap` swaps the two roots.
