@@ -45,6 +45,7 @@ Simple and correct, which makes it the oracle; it is also the natural first idea
 ### Language notes
 
 - Python: a list-of-lists of widths; TypeScript: `Int32Array` rows; Java and Kotlin: `int[][]` and `Array<IntArray>`, with a `while` loop in Kotlin for the walk.
+- Go and Rust: the grid is a `[][]rune` or `Vec<Vec<char>>`, compared with `'0'`. The walk upwards is `for top := r; top >= 0; top--` in Go and `(0..=r).rev()` in Rust, which counts down to row 0 without a signed index.
 
 ## Approach: histogram-stack (Column heights per row and a monotonic stack)
 
@@ -83,6 +84,8 @@ The standard answer, and a good example of reducing a 2D problem to a known 1D o
 - Python: a list as the stack inside a helper function.
 - TypeScript and Java: a reusable primitive array of `n + 1` entries with a size counter, allocated once for all rows.
 - Kotlin: `ArrayDeque<Int>` in a private top-level helper.
+- Go: a slice is the stack, with `append` to push and a reslice to pop; its capacity is set once per call. Rust: a `Vec<usize>`, where `while let Some(&top) = rising.last()` peeks at the top bar and `pop()` removes it. `heights.get(index).copied().unwrap_or(0)` supplies the sentinel bar of height 0.
+- Rust: Python's `left = -1` for an empty stack cannot be a `usize`, so a `match` gives the width `index` when no bar is left below, and `index - left - 1` otherwise.
 
 ## Approach: left-right-dp (Height, left and right boundary arrays)
 
@@ -120,3 +123,4 @@ No stack, just three linear passes per row, and it frames the problem as a row-t
 ### Language notes
 
 - The four references share the passes; TypeScript uses `Int32Array`s with `fill(columns)`, Java `Arrays.fill`, Kotlin `IntArray(columns) { columns }`.
+- Go fills `right` with a loop; Rust builds it with `vec![columns; columns]`, and `(0..columns).rev()` is the right-to-left pass. Every left boundary is at most its right boundary, so the width `right[c] - left[c]` is a valid `usize` difference.
