@@ -40,6 +40,11 @@ Direct and easy to trust, so it serves as the oracle. It wastes the structure of
 - The running total can reach 10^14, so in Java and Kotlin it must be a `long`; an `int` overflows after three large values.
 - A zero sum is a multiple of every `k`, so `[0, 0]` is always `true`.
 
+### Language notes
+
+- Go: `int` is 64 bits on a 64-bit platform, so a running total of up to 10^14 needs no widening. `nums[start+1:]` is a view of the same array, so the inner loop starts at the second element without a copy.
+- Rust: a sum can reach 10^14, so the total and the modulus are `i64`, widened with `i64::from`; an `i32` total would panic, because the build checks overflow. `&nums[start + 1..]` is empty for the last start, so the inner loop simply does not run.
+
 ## Approach: remainder-index (First index of every prefix remainder)
 
 ### Intuition
@@ -80,3 +85,5 @@ Linear and the expected answer. It needs a map, where the brute force needs noth
 - TypeScript: numbers are doubles, and every intermediate value stays below 2^53, so `%` is exact. `Map.get` returns `undefined` for a missing remainder.
 - Java: `putIfAbsent` returns the stored position or `null`; the remainder update casts to `long` first: `(int) (((long) remainder + nums[p]) % k)`.
 - Kotlin: the same `putIfAbsent` on a `HashMap<Int, Int>` returns `Int?`; `remainder.toLong() + value` keeps the sum in 64 bits.
+- Go: the comma-ok lookup `earlier, seen := firstIndex[remainder]` plays the part of Python's `setdefault`: when the remainder is new the position is stored and the loop continues, otherwise the stored position is compared. `remainder + value` stays below 2^31 + 10^9, which Go's 64-bit `int` holds.
+- Rust: `*first_index.entry(remainder).or_insert(position)` is the `setdefault` equivalent: it inserts only when the key is new and returns the stored value either way. Because `k` can be up to `i32::MAX`, `remainder + value` can pass `i32::MAX`, so remainders, positions and the modulus are all `i64`.
