@@ -50,6 +50,8 @@ A faithful translation of the "skip or use" argument, and the oracle. It recurse
 - TypeScript: plain number arrays; every count stays far below 2^53.
 - Java: fields for the coins and the cache.
 - Kotlin: a local `fun` over `Array(k) { IntArray(amount + 1) { -1 } }`.
+- Go: the recursion is a closure declared with `var count func(i, total int) int` before it is assigned. The table is a `[][]int` of -1.
+- Rust: closures cannot recurse, so `count` is a private function. The coins are converted to `usize` once, so `total - coins[i]` is a plain index subtraction, and the `coins[i] <= total` guard keeps it from underflowing. `None` marks an unknown cell.
 
 ## Approach: tabulation (Table of counts by coin prefix and amount)
 
@@ -85,6 +87,7 @@ No recursion, and every cell has a clear meaning, which makes it the easiest ver
 
 - Python: rows are independent lists; Kotlin and Java tables are zero-initialized, so only `ways[0][0]` is set.
 - TypeScript: `Array.from` with a fill per row.
+- Go and Rust: rows from `make([]int, amount+1)` and `vec![vec![0; amount + 1]; k + 1]` start at zero, so only `ways[0][0]` is set. Rust reads each coin as a `usize` because `total - coin` is an index; the `total >= coin` guard prevents the underflow.
 
 ## Approach: rolling-array (One array of counts with coins in the outer loop)
 
@@ -119,3 +122,4 @@ The shortest and fastest version, and the expected interview answer. Its loop or
 ### Language notes
 
 - Python and TypeScript: plain arrays; Java and Kotlin: `int[]` and `IntArray`, safe by the 32-bit guarantee.
+- Go: a `[]int`, which is 64 bits wide. Rust: a `Vec<i32>`; cstudy builds with overflow checks, so a count above 2^31 - 1 would panic, but the constraints rule it out. `for total in coin..=amount` is an empty range when `coin > amount`, as `range(coin, amount + 1)` is in Python.
