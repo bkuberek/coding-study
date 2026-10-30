@@ -45,6 +45,7 @@ A faithful dynamic program over (position, open count), easy to trust, so it is 
 
 - Python: a `set` of counts.
 - TypeScript, Java and Kotlin: a boolean array indexed by count, rebuilt (or swapped with a second array) for each character.
+- Go and Rust: two boolean slices indexed by count, swapped after each character; `clear(following)` (Go 1.21) and `following.fill(false)` reset the next table. Scanning every slot costs O(n) per character even when few counts are possible, which is what makes the approach quadratic.
 
 ## Approach: two-stacks (Match closers against open and wildcard positions)
 
@@ -81,6 +82,7 @@ Gives an actual matching, which is useful if the replacements themselves must be
 - Python and TypeScript: plain lists and arrays as stacks.
 - Java: `ArrayDeque<Integer>` as a stack (`push` / `pop`); comparing two popped `Integer`s with `>` unboxes them.
 - Kotlin: `kotlin.collections.ArrayDeque` with `addLast` / `removeLast`.
+- Go: slices as stacks (`append` to push, a reslice to pop) and a tagless `switch` whose cases are conditions. Rust: `Vec<usize>` stacks and `match` arms with guards (`_ if !opens.is_empty()`). The final loop peeks with `last()` before it pops both stacks: popping the opens first would lose a `(` when no wildcard is left.
 
 ## Approach: balance-range (Keep the lowest and highest possible open count)
 
@@ -117,3 +119,4 @@ The expected answer: one pass, two variables. Its correctness depends on the int
 
 - Kotlin: a `when` over the character with block bodies updates both bounds per branch.
 - All four languages use the same two-integer loop.
+- Go and Rust: a `switch` or `match` on the byte, whose last arm is the wildcard, the only other symbol the constraints allow.
