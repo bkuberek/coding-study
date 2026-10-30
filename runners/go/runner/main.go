@@ -2,7 +2,7 @@
 // that links the user's package and the reference packages, each with a generated registration
 // file, and calls Main with their registrations:
 //
-//	runner.Main(runner.Registry{"user": two_sum.CsTargets, "ref/hash-map": hash_map.CsTargets}, nil)
+//	runner.Main(runner.Registry{"user": two_sum.CsTargets, "ref/hash-map": hash_map.CsTargets}, nil, nil)
 //
 // Exit codes: 0 once `bye` is written; 2 for a request that cannot be run; 3 after
 // `restart_requested`.
@@ -22,10 +22,11 @@ const (
 	exitRestart = 3
 )
 
-// Main runs the request named on the command line and exits.
-func Main(registry Registry, unavailable Unavailable) {
+// Main runs the request named on the command line and exits. A class kind's packages also
+// offer thunks, the typed method callers of their generated thunk file.
+func Main(registry Registry, unavailable Unavailable, thunks Thunks) {
 	keepCrashOutput()
-	os.Exit(run(&loader{registry: registry, unavailable: unavailable}, os.Args[1:], os.Stderr))
+	os.Exit(run(&loader{registry: registry, unavailable: unavailable, thunks: thunks}, os.Args[1:], os.Stderr))
 }
 
 func run(l *loader, argv []string, stderr io.Writer) int {

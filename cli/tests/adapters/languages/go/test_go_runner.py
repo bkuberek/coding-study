@@ -1,5 +1,6 @@
 """`GoRunner.prepare` with a fake `go`: generation, the two-pass rule and the private binary."""
 
+import json
 import os
 import socket
 from collections.abc import Mapping, Sequence
@@ -12,6 +13,7 @@ from coding_study.adapters import workspace_setup
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.go.build_files import (
     REGISTRATION_FILE,
+    THUNK_FILE,
     VENDORED_MODULES,
     vendored_path,
 )
@@ -39,6 +41,8 @@ from tests.stub_contract import STUB_CASES
 TEMPLATE = Path(workspace_setup.__file__).parent / TEMPLATE_DIRECTORY
 TWO_SUM = next(case.meta for case in STUB_CASES if case.name == "two-sum")
 LRU_CACHE = next(case.meta for case in STUB_CASES if case.name == "lru-cache")
+BLOCKING_QUEUE = next(case.meta for case in STUB_CASES if case.name == "bounded-blocking-queue")
+PROGRESSIVE = next(case.meta for case in STUB_CASES if case.name == "progressive")
 SOLUTION = "package two_sum\n\nfunc twoSum(nums []int, target int) []int { return nil }\n"
 
 
@@ -158,6 +162,51 @@ def test_a_class_kind_registers_its_constructor(workspace):
     assert '"NewLRUCache": NewLRUCache,' in registration.read_text()
 
 
+def test_a_class_kind_gets_thunks_that_call_its_methods(workspace):
+    (workspace / "go/practice/lru_cache").mkdir()
+    prepare_user(workspace, FakeGo(), LRU_CACHE)
+    build = workspace / ".cs/build/go"
+    assert (
+        "return r.(*LRUCache).Get(a[0].(int))" in (build / "gen/lru_cache" / THUNK_FILE).read_text()
+    )
+    assert '"user": t0.CsThunks,' in (build / "cmd/test/lru_cache/main.go").read_text()
+
+
+def test_a_progressive_class_gets_thunks_like_a_design_class(workspace):
+    (workspace / f"go/practice/{PROGRESSIVE.snake_slug}").mkdir()
+    prepare_user(workspace, FakeGo(), PROGRESSIVE)
+    thunks = workspace / ".cs/build/go/gen" / PROGRESSIVE.snake_slug / THUNK_FILE
+    assert ").ScanByPrefix(a[0].(int64), a[1].(string), a[2].(string))" in thunks.read_text()
+
+
+def test_the_users_thunks_enter_the_package_through_the_overlay(workspace):
+    (workspace / "go/practice/lru_cache").mkdir()
+    prepare_user(workspace, FakeGo(), LRU_CACHE)
+    build = workspace / ".cs/build/go"
+    overlay = json.loads((build / "gen/lru_cache/overlay.json").read_text())["Replace"]
+    assert overlay[str(workspace / "go/practice/lru_cache" / THUNK_FILE)] == str(
+        build / "gen/lru_cache" / THUNK_FILE
+    )
+
+
+def test_a_reference_class_gets_thunks_beside_its_registration(workspace):
+    source = reference(workspace, "linked-map", "package lru_cache\n")
+    runner(workspace, FakeGo()).prepare(References(LRU_CACHE, (source,)), lambda _: None)
+    package = workspace / ".cs/build/go/ref/lru_cache/linked_map"
+    assert "r.(*LRUCache).Put(a[0].(int), a[1].(int))" in (package / THUNK_FILE).read_text()
+    main = (workspace / ".cs/build/go/cmd/verify/lru_cache/main.go").read_text()
+    assert '"ref/linked-map": t0.CsThunks,' in main
+
+
+@pytest.mark.parametrize("meta", [TWO_SUM, BLOCKING_QUEUE], ids=["function", "concurrent"])
+def test_a_function_or_a_concurrent_class_is_called_through_reflection(workspace, meta):
+    (workspace / f"go/practice/{meta.snake_slug}").mkdir(exist_ok=True)
+    prepare_user(workspace, FakeGo(), meta)
+    build = workspace / ".cs/build/go"
+    assert not (build / "gen" / meta.snake_slug / THUNK_FILE).exists()
+    assert "}, nil, nil)" in (build / f"cmd/test/{meta.snake_slug}/main.go").read_text()
+
+
 def test_launches_a_private_copy_of_the_binary(workspace):
     launch = prepared(prepare_user(workspace, FakeGo())).launch
     copy = Path(launch.command[0])
@@ -203,6 +252,65 @@ def test_a_symbol_missing_from_the_package_is_built_again_without_it(workspace):
     assert '"twoSum"' not in (build / "gen/two_sum/user_targets.go").read_text()
     main = (build / "cmd/test/two_sum/main.go").read_text()
     assert '"user": {"twoSum": "undefined: twoSum"}' in main
+
+
+def class_workspace(workspace: Path) -> Path:
+    (workspace / "go/practice/lru_cache").mkdir()
+    return workspace / ".cs/build/go"
+
+
+THUNK_DIAGNOSTIC = "../../../.cs/build/go/gen/lru_cache/zz_cs_thunks.go:12:30"
+MISMATCH = "cannot use a[0].(int) (comma, ok expression of type int) as int64 value in argument"
+
+
+def test_a_method_that_does_not_match_is_built_again_with_empty_thunks(workspace):
+    build = class_workspace(workspace)
+    go = FakeGo([GoOutcome(1, build_output(THUNK_DIAGNOSTIC, MISMATCH), "")])
+    prepared(prepare_user(workspace, go, LRU_CACHE))
+    assert len(go.builds) == 2
+    thunks = (build / "gen/lru_cache" / THUNK_FILE).read_text()
+    assert thunks.endswith("}{}\n")
+    assert "Get" not in thunks
+    main = (build / "cmd/test/lru_cache/main.go").read_text()
+    assert '"user": t0.CsThunks,' in main
+    assert "runner.Unavailable" not in main
+
+
+def test_the_registration_survives_when_only_the_thunks_were_dropped(workspace):
+    build = class_workspace(workspace)
+    go = FakeGo([GoOutcome(1, build_output(THUNK_DIAGNOSTIC, MISMATCH), "")])
+    prepare_user(workspace, go, LRU_CACHE)
+    assert '"NewLRUCache": NewLRUCache,' in (build / "gen/lru_cache/user_targets.go").read_text()
+
+
+def test_a_missing_constructor_and_a_mismatched_method_are_dropped_in_the_same_build(workspace):
+    build = class_workspace(workspace)
+    registration = "../../../.cs/build/go/gen/lru_cache/user_targets.go:6:12"
+    output = build_output(registration, "undefined: NewLRUCache") + build_output(
+        THUNK_DIAGNOSTIC, MISMATCH
+    )
+    go = FakeGo([GoOutcome(1, output, "")])
+    prepared(prepare_user(workspace, go, LRU_CACHE))
+    assert len(go.builds) == 2
+    assert '"NewLRUCache"' not in (build / "gen/lru_cache/user_targets.go").read_text()
+    assert "Get" not in (build / "gen/lru_cache" / THUNK_FILE).read_text()
+
+
+def test_the_users_errors_are_reported_without_the_thunks_they_break(workspace):
+    class_workspace(workspace)
+    source = "../../../go/practice/lru_cache/lru_cache.go:3:8"
+    output = build_output(source, "undefined: x") + build_output(
+        THUNK_DIAGNOSTIC, "undefined: LRUCache"
+    )
+    result = prepare_user(workspace, FakeGo([GoOutcome(1, output, "")]), LRU_CACHE)
+    assert result == BuildFailed(("go/practice/lru_cache/lru_cache.go:3:8: undefined: x",))
+
+
+def test_thunks_that_still_do_not_compile_are_an_environment_error(workspace):
+    class_workspace(workspace)
+    failure = GoOutcome(1, build_output(THUNK_DIAGNOSTIC, MISMATCH), "")
+    with pytest.raises(RunnerStartError, match="registration and thunk files do not compile"):
+        prepare_user(workspace, FakeGo([failure, failure]), LRU_CACHE)
 
 
 def test_errors_in_the_user_file_are_a_build_failure_with_workspace_paths(workspace):

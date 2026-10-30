@@ -131,11 +131,12 @@ func (o *operations) operation(index int, op string, args []json.RawMessage) (ou
 	if err != nil {
 		return o.failed(index, err), true
 	}
-	fn := o.target.constructor
-	if index != constructorOp {
-		fn = o.instance.Method(o.target.methods[op].index)
+	var timed timedCall
+	if index == constructorOp {
+		timed = invoke(o.target.constructor, call.args, o.target.pkg)
+	} else {
+		timed = o.target.invokeMethod(o.target.methods[op], o.instance, call.args)
 	}
-	timed := invoke(fn, call.args, o.target.pkg)
 	o.duration += timed.durationNS
 	if timed.failure != nil {
 		return o.raised(index, timed.failure), true
@@ -179,6 +180,14 @@ func (t *classTarget) member(index int, op string) (*checkedMember, error) {
 	return method.call, nil
 }
 
+// invokeMethod calls a method on the instance, through its thunk when it has one.
+func (t *classTarget) invokeMethod(method *boundMethod, instance reflect.Value, args []reflect.Value) timedCall {
+	if method.thunk == nil {
+		return invoke(instance.Method(method.index), args, t.pkg)
+	}
+	return invokeThunk(method.thunk, instance.Interface(), args, t.pkg)
+}
+
 // addressable makes a constructor's value result a pointer, so methods with pointer receivers
 // can be called on it.
 func addressable(instance reflect.Value) reflect.Value {
@@ -191,14 +200,16 @@ func addressable(instance reflect.Value) reflect.Value {
 }
 
 // prepare decodes the whole sequence; the call constructs, then calls each method on the
-// instance, and returns every result so nothing is freed inside the timed region.
+// instance, and returns every result so nothing is freed inside the timed region. A method
+// with a thunk is called with its arguments as the any values the thunk asserts, so its call
+// involves no reflection.
 func (t *classTarget) prepare(input *callInput) (func() any, error) {
 	if len(input.Ops) == 0 || len(input.Ops) != len(input.Args) {
 		return nil, fmt.Errorf("a class job takes an operation sequence, not arguments")
 	}
 	freshDecimalSettings()
-	methods := make([]int, len(input.Ops))
-	arguments := make([][]reflect.Value, len(input.Ops))
+	steps := make([]step, len(input.Ops))
+	var constructorArgs []reflect.Value
 	for index, op := range input.Ops {
 		m, err := t.member(index, op)
 		if err != nil {
@@ -208,18 +219,43 @@ func (t *classTarget) prepare(input *callInput) (func() any, error) {
 		if err != nil {
 			return nil, err
 		}
-		if index != constructorOp {
-			methods[index] = t.methods[op].index
+		if index == constructorOp {
+			constructorArgs = call.args
+			continue
 		}
-		arguments[index] = call.args
+		steps[index] = t.step(t.methods[op], call.args)
 	}
 	return func() any {
-		instance := addressable(t.constructor.Call(arguments[constructorOp])[0])
-		results := make([]any, len(methods))
+		instance := addressable(t.constructor.Call(constructorArgs)[0])
+		receiver := instance.Interface()
+		results := make([]any, len(steps))
 		results[constructorOp] = instance
-		for index := constructorOp + 1; index < len(methods); index++ {
-			results[index] = instance.Method(methods[index]).Call(arguments[index])
+		for index := constructorOp + 1; index < len(steps); index++ {
+			results[index] = steps[index].call(instance, receiver)
 		}
 		return results
 	}, nil
+}
+
+// step is one method call of a prepared sequence with its decoded arguments.
+type step struct {
+	method int
+	args   []reflect.Value
+	thunk  Thunk
+	// thunkArgs are args as any values, for the thunk.
+	thunkArgs []any
+}
+
+func (t *classTarget) step(method *boundMethod, args []reflect.Value) step {
+	if method.thunk == nil {
+		return step{method: method.index, args: args}
+	}
+	return step{thunk: method.thunk, thunkArgs: anyArguments(args)}
+}
+
+func (s *step) call(instance reflect.Value, receiver any) any {
+	if s.thunk != nil {
+		return s.thunk(receiver, s.thunkArgs)
+	}
+	return instance.Method(s.method).Call(s.args)
 }

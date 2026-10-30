@@ -7,13 +7,17 @@ workspace's `go/` project that shares its runner runtime; the conformance fixtur
 
 import shutil
 import threading
-from dataclasses import replace
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import pytest
 
 from coding_study.adapters.languages.context import LanguageContext
+from coding_study.adapters.languages.debug_servers import InstalledDebugServers, this_machine
 from coding_study.adapters.languages.go import create_runner
+from coding_study.adapters.languages.go.runner import GoRunner
+from coding_study.adapters.languages.go.toolchain import GoOutcome, SubprocessGo
 from coding_study.adapters.runner_runtime import RUNTIME_RUNNERS
 from coding_study.adapters.subprocess_runner import SubprocessRunner
 from coding_study.application.ports import (
@@ -24,7 +28,7 @@ from coding_study.application.ports import (
     ReferenceSource,
     UserCode,
 )
-from coding_study.domain.cases import FunctionInput
+from coding_study.domain.cases import FunctionInput, OperationSequence
 from coding_study.domain.layout import reference_target, stub_path, user_target
 from coding_study.domain.naming import symbol_names
 from coding_study.domain.problem import Language, ProblemMeta
@@ -38,6 +42,7 @@ pytestmark = [
 ]
 
 TWO_SUM = next(case.meta for case in STUB_CASES if case.name == "two-sum")
+LRU_CACHE = next(case.meta for case in STUB_CASES if case.name == "lru-cache")
 HASH_MAP = """package two_sum
 
 func twoSum(nums []int, target int) []int {
@@ -73,7 +78,11 @@ def prepare(root: Path, meta: ProblemMeta = TWO_SUM) -> PrepareResult:
 
 
 def run(
-    root: Path, result: PrepareResult, meta: ProblemMeta = TWO_SUM, approach: str | None = None
+    root: Path,
+    result: PrepareResult,
+    meta: ProblemMeta = TWO_SUM,
+    approach: str | None = None,
+    case: RunCase = CASE,
 ) -> JobReport:
     assert isinstance(result, Prepared), result
     target = (
@@ -87,7 +96,7 @@ def run(
         target=target,
         names=symbol_names(meta.signature, Language.GO),
         signature=meta.signature,
-        cases=(CASE,),
+        cases=(case,),
     )
     report = SubprocessRunner(root / ".cs" / "runs").run(result.launch, RunRequest((job,)))
     return report.job(meta.slug)
@@ -167,3 +176,122 @@ def test_a_reference_named_like_a_go_build_constraint_still_builds(root, tmp_pat
     )
     (case,) = run(root, prepared, approach=approach).cases
     assert isinstance(case.outcome, Returned)
+
+
+CACHE_OPERATIONS = RunCase(
+    "ops",
+    OperationSequence(("LRUCache", "put", "get", "get"), ((2,), (1, 10), (1,), (3,))),
+    10_000,
+)
+CACHE = """package lru_cache
+
+type LRUCache struct{ values map[int]int }
+
+func NewLRUCache(capacity int) *LRUCache { return &LRUCache{values: map[int]int{}} }
+
+func (c *LRUCache) Get(key int) int {
+	if value, ok := c.values[key]; ok {
+		return value
+	}
+	return -1
+}
+
+func (c *LRUCache) Put(key int, value int) { c.values[key] = value }
+"""
+
+
+@dataclass
+class CountingGo:
+    """The real `go`, counting its builds: a second one means the thunks were left out."""
+
+    builds: int = 0
+    real: SubprocessGo = field(default_factory=SubprocessGo)
+
+    def build(
+        self, arguments: Sequence[str], cwd: Path, environment: Mapping[str, str]
+    ) -> GoOutcome:
+        self.builds += 1
+        return self.real.build(arguments, cwd, environment)
+
+
+def prepare_class(root: Path, go: CountingGo) -> PrepareResult:
+    runner = GoRunner(
+        LanguageContext(root, root / RUNTIME_RUNNERS), go, InstalledDebugServers(this_machine())
+    )
+    return runner.prepare(UserCode(LRU_CACHE), lambda _: None)
+
+
+def run_class(root: Path, source: str, go: CountingGo) -> JobReport:
+    write_solution(root, source, LRU_CACHE)
+    return run(root, prepare_class(root, go), LRU_CACHE, case=CACHE_OPERATIONS)
+
+
+def test_a_design_problems_methods_run_through_the_generated_thunks(root):
+    go = CountingGo()
+    (case,) = run_class(root, CACHE, go).cases
+    assert isinstance(case.outcome, Returned)
+    assert (case.outcome.output, go.builds) == ([None, None, 10, -1], 1)
+
+
+def test_a_panic_in_a_method_names_the_users_line_and_not_the_thunk(root):
+    go = CountingGo()
+    source = CACHE.replace("return -1", "return c.values[key] / (key - key)")
+    (case,) = run_class(root, source, go).cases
+    assert isinstance(case.outcome, Raised)
+    assert (go.builds, case.outcome.error.trace) == (1, "lru_cache.go:11 in LRUCache.Get")
+
+
+def test_a_method_with_another_signature_is_a_signature_mismatch(root):
+    go = CountingGo()
+    source = CACHE.replace(
+        "Put(key int, value int) { c.values[key]", "Put(key int64, value int) { c.values[int(key)]"
+    )
+    report = run_class(root, source, go)
+    assert report.load_error is not None
+    assert (report.load_error.type, report.load_error.message) == (
+        "SignatureMismatch",
+        '"Put" takes int64 for "key"; int is int in Go',
+    )
+    assert go.builds == 2
+
+
+def test_a_method_with_another_arity_is_a_signature_mismatch(root):
+    go = CountingGo()
+    report = run_class(
+        root,
+        CACHE.replace("Put(key int, value int) { c.values[key] = value }", "Put(key int) {}"),
+        go,
+    )
+    assert report.load_error is not None
+    assert report.load_error.message == '"Put" takes 1 parameters; the signature declares 2'
+
+
+def test_a_method_with_another_result_is_a_signature_mismatch(root):
+    go = CountingGo()
+    source = CACHE.replace("Get(key int) int {", "Get(key int) int64 {").replace(
+        "return value", "return int64(value)"
+    )
+    report = run_class(root, source, go)
+    assert report.load_error is not None
+    assert report.load_error.message == '"Get" must return int for int'
+    assert go.builds == 1
+
+
+def test_a_class_without_the_declared_type_still_runs_through_reflection(root):
+    go = CountingGo()
+    source = CACHE.replace("LRUCache", "Cache").replace("NewCache", "NewLRUCache")
+    (case,) = run_class(root, source, go).cases
+    assert isinstance(case.outcome, Returned)
+    assert (case.outcome.output, go.builds) == ([None, None, 10, -1], 2)
+
+
+def test_a_constructor_of_another_type_still_runs_through_reflection(root):
+    go = CountingGo()
+    source = CACHE.replace(
+        "func NewLRUCache(capacity int) *LRUCache { return &LRUCache{values: map[int]int{}} }",
+        "type Cache struct{ LRUCache }\n\n"
+        "func NewLRUCache(capacity int) *Cache { return &Cache{LRUCache{values: map[int]int{}}} }",
+    )
+    (case,) = run_class(root, source, go).cases
+    assert isinstance(case.outcome, Returned)
+    assert (case.outcome.output, go.builds) == ([None, None, 10, -1], 1)

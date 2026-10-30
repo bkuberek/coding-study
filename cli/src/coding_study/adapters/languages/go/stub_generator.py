@@ -10,7 +10,7 @@ gofmt-clean, so no formatter needs to run.
 """
 
 import re
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 
 from coding_study.domain.concurrency import model_text
 from coding_study.domain.layout import statement_path
@@ -76,15 +76,17 @@ class GoStubGenerator:
         return "\n".join(lines) + "\n"
 
 
-def go_type(declared: ReturnType) -> str:
-    """The Go spelling of a DSL type; empty for void (no result)."""
+def go_type(declared: ReturnType, node_package: str = "") -> str:
+    """The Go spelling of a DSL type; empty for void (no result). A node type is spelled with the
+    stub's alias (`*ListNode`), or qualified by `node_package` (`*support.ListNode`)."""
     match declared:
         case ScalarType(scalar):
             return _SCALAR_TYPES[scalar]
         case NodeType(kind):
-            return f"*{kind}"
+            qualifier = f"{node_package}." if node_package else ""
+            return f"*{qualifier}{kind}"
         case ArrayType(element) | ListType(element):
-            return f"[]{go_type(element)}"
+            return f"[]{go_type(element, node_package)}"
         case VoidType():
             return ""
 
@@ -94,13 +96,18 @@ def _header(meta: ProblemMeta) -> str:
 
 
 def _imports(meta: ProblemMeta) -> list[str]:
-    """The packages the signature uses: one `import` line for a single package, otherwise a
-    block whose first group holds the paths without a domain (`time`, `cstudy/support`), as
-    goimports writes it."""
-    declared = declared_types(meta.signature)
-    scalars = {scalar for value_type in declared for scalar in scalars_of(value_type)}
+    return import_lines(declared_types(meta.signature))
+
+
+def import_lines(declared: Iterable[ReturnType]) -> list[str]:
+    """The packages that spelling `declared` uses: one `import` line for a single package,
+    otherwise a block whose first group holds the paths without a domain (`time`,
+    `cstudy/support`), as goimports writes it. Empty when none is needed; otherwise the lines
+    start with a blank one."""
+    types = list(declared)
+    scalars = {scalar for value_type in types for scalar in scalars_of(value_type)}
     paths = [path for scalar, path in SCALAR_PACKAGES.items() if scalar in scalars]
-    if _node_kinds_used(meta):
+    if any(next(_node_kinds(value_type), None) is not None for value_type in types):
         paths.append(SUPPORT_PACKAGE)
     if not paths:
         return []

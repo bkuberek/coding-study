@@ -10,6 +10,23 @@ import (
 // registered: they are found with MethodByName, which is why Go methods are exported.
 type Registry map[string]map[string]any
 
+// Thunk calls one method of a class with its arguments already of the method's Go types, and
+// returns the result as an any (nil for a method without one).
+type Thunk = func(receiver any, args []any) any
+
+// TargetThunks are the typed callers that a class kind's generated thunk file offers for the
+// methods of its type. Receiver is a nil *T, the type the thunks assert their receiver to be;
+// Methods are keyed by Go method name. A zero value offers none.
+type TargetThunks struct {
+	Receiver any
+	Methods  map[string]Thunk
+}
+
+// Thunks maps a compiled target id to its thunks. A method without a thunk is called through
+// reflection, and so is every method of a target whose thunk file did not compile
+// (docs/specs/runners.md#go-build-details).
+type Thunks map[string]TargetThunks
+
 // Unavailable maps a target id to the symbols whose registration did not compile, with the
 // compiler's message; the CLI rebuilt without them, and their jobs get a load_error
 // (docs/specs/runners.md#locating-user-code).
@@ -34,6 +51,7 @@ type checkedParam struct {
 type loader struct {
 	registry    Registry
 	unavailable Unavailable
+	thunks      Thunks
 }
 
 // lookup finds a registered symbol of a target, or explains why it is missing.
@@ -135,6 +153,8 @@ type classTarget struct {
 type boundMethod struct {
 	index int
 	call  *checkedMember
+	// thunk is nil when the method is called through reflection.
+	thunk Thunk
 }
 
 func (l *loader) bindClass(ref targetRef, n names, sig *signature) (*classTarget, *userError) {
@@ -160,6 +180,7 @@ func (l *loader) bindClass(ref targetRef, n names, sig *signature) (*classTarget
 	if receiver.Kind() != reflect.Pointer {
 		receiver = reflect.PointerTo(receiver)
 	}
+	thunks := l.thunksFor(ref, receiver)
 	for _, m := range declared.Methods {
 		symbol := n.Methods[m.Name]
 		found, ok := receiver.MethodByName(symbol)
@@ -171,9 +192,20 @@ func (l *loader) bindClass(ref targetRef, n names, sig *signature) (*classTarget
 		if err != nil {
 			return nil, err
 		}
-		target.methods[m.Name] = &boundMethod{index: found.Index, call: call}
+		target.methods[m.Name] = &boundMethod{index: found.Index, call: call, thunk: thunks[symbol]}
 	}
 	return target, nil
+}
+
+// thunksFor are the thunks of a target that were generated for the type its constructor
+// returns; a thunk asserts its receiver, so thunks for any other type are not used. Reflection
+// still checks every signature first, so a mismatch is reported the same way with or without them.
+func (l *loader) thunksFor(ref targetRef, receiver reflect.Type) map[string]Thunk {
+	offered := l.thunks[ref.Compiled]
+	if offered.Receiver == nil || reflect.TypeOf(offered.Receiver) != receiver {
+		return nil
+	}
+	return offered.Methods
 }
 
 // caseRunner is a loaded target of either kind.

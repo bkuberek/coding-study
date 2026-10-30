@@ -16,6 +16,8 @@ const (
 	// panicType is the error type of a panic with a value that is not an error, such as the
 	// stubs' panic("not implemented").
 	panicType = "panic"
+	// thunkFile is the generated file of a class's method thunks; its frames are not the user's.
+	thunkFile = "zz_cs_thunks.go"
 )
 
 // userError is the `error` object of an event.
@@ -53,15 +55,43 @@ type timedCall struct {
 
 // invoke calls user code and recovers a panic as a userError whose trace keeps only frames of
 // pkg; durationNS covers the call only.
-func invoke(fn reflect.Value, args []reflect.Value, pkg string) (call timedCall) {
+func invoke(fn reflect.Value, args []reflect.Value, pkg string) timedCall {
+	return timeCall(pkg, func() []reflect.Value { return fn.Call(args) })
+}
+
+// invokeThunk is invoke for a method called through its generated thunk. The arguments are
+// converted before the clock starts, the result after it stops.
+func invokeThunk(thunk Thunk, receiver any, args []reflect.Value, pkg string) timedCall {
+	arguments := anyArguments(args)
+	var result any
+	call := timeCall(pkg, func() []reflect.Value {
+		result = thunk(receiver, arguments)
+		return nil
+	})
+	if call.failure == nil && result != nil {
+		call.results = []reflect.Value{reflect.ValueOf(result)}
+	}
+	return call
+}
+
+func timeCall(pkg string, call func() []reflect.Value) (timed timedCall) {
 	start := time.Now()
 	defer func() {
-		call.durationNS = time.Since(start).Nanoseconds()
+		timed.durationNS = time.Since(start).Nanoseconds()
 		if recovered := recover(); recovered != nil {
-			call.failure = describePanic(recovered, pkg)
+			timed.failure = describePanic(recovered, pkg)
 		}
 	}()
-	return timedCall{results: fn.Call(args)}
+	return timedCall{results: call()}
+}
+
+// anyArguments are the decoded arguments as the any values that a thunk asserts.
+func anyArguments(args []reflect.Value) []any {
+	arguments := make([]any, len(args))
+	for i, arg := range args {
+		arguments[i] = arg.Interface()
+	}
+	return arguments
 }
 
 // describePanic runs inside the deferred recover, while the panicking frames are still on the
@@ -82,7 +112,8 @@ func userTrace(pkg string) string {
 	var lines []string
 	for {
 		frame, more := frames.Next()
-		if function, ok := strings.CutPrefix(frame.Function, pkg); ok {
+		function, ok := strings.CutPrefix(frame.Function, pkg)
+		if ok && filepath.Base(frame.File) != thunkFile {
 			lines = append(lines, fmt.Sprintf("%s:%d in %s", filepath.Base(frame.File), frame.Line, readableFunction(function)))
 		}
 		if !more {

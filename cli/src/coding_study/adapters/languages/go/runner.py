@@ -7,7 +7,9 @@ and the runner runtime by a `go.work`), compiles one runner binary for the probl
 Compile errors in the user's or a reference file are a build failure (exit 2). Errors only in a
 generated registration file mean the package does not define the expected symbol: the build is
 repeated without that registration, and the runner reports a `load_error` for the target with the
-compiler's message.
+compiler's message. Errors only in a generated thunk file mean a method does not have the declared
+signature: the build is repeated with that file empty, and the runner, which checks signatures
+through reflection, reports the mismatch.
 
 Two `cstudy` processes may build the same problem at once (a watcher and a verify), so the
 generation and the build hold an exclusive lock, and each run launches its own copy of the binary,
@@ -32,15 +34,18 @@ from coding_study.adapters.languages.debug_port import require_free_port
 from coding_study.adapters.languages.debug_servers import require_installed
 from coding_study.adapters.languages.go.build_files import (
     REGISTRATION_FILE,
+    THUNK_FILE,
     VENDORED_MODULES,
     Diagnostic,
     GoPackage,
+    ThunkFile,
     build_diagnostics,
     main_source,
     output_text,
     overlay_document,
     package_clause,
     registration_source,
+    thunk_source,
     vendored_path,
 )
 from coding_study.adapters.languages.go.toolchain import GoToolchain
@@ -71,9 +76,9 @@ from coding_study.domain.layout import (
     stub_path,
 )
 from coding_study.domain.naming import NameRole, constructor_name, member_name
-from coding_study.domain.problem import Language, ProblemMeta
+from coding_study.domain.problem import Language, ProblemKind, ProblemMeta
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
-from coding_study.domain.signature import FunctionSignature
+from coding_study.domain.signature import ClassSignature, FunctionSignature
 
 GO_VERSION = "1.24"
 """The `go` line of the generated module and workspace; `go build -json` needs Go 1.24."""
@@ -103,7 +108,8 @@ COLD_BUILD_NOTE = "go, cold"
 MAX_DIAGNOSTIC_LINES = 40
 OUTPUT_TAIL_LINES = 20
 BUILD_PASSES = 2
-"""The second pass leaves out the registrations that did not compile; each holds one symbol."""
+"""The second pass leaves out the registrations and thunks that did not compile; a registration
+holds one symbol, and a thunk file one class."""
 _MODULE_LINE = re.compile(r"^module\s+(\S+)", re.MULTILINE)
 
 
@@ -238,6 +244,7 @@ class GoRunner:
                     package_clause(_read(source), meta.snake_slug),
                     symbol,
                     self._generated(meta) / "user_targets.go",
+                    _thunk_file(meta, self._generated(meta) / THUNK_FILE),
                 )
             )
         for source in build.sources:
@@ -258,14 +265,16 @@ class GoRunner:
             package_clause(text, meta.snake_slug),
             symbol,
             target.parent / REGISTRATION_FILE,
+            _thunk_file(meta, target.parent / THUNK_FILE),
         )
 
     def _compile(self, build: _Build, packages: list[GoPackage]) -> "Path | BuildFailed":
-        """The built binary, after a second pass without the registrations that did not
-        compile; BuildFailed for errors in user code (and reference code, in verify)."""
+        """The built binary, after a second pass without the registrations and thunks that did
+        not compile; BuildFailed for errors in user code (and reference code, in verify)."""
         unavailable: dict[str, str] = {}
+        without_thunks: set[str] = set()
         for _ in range(BUILD_PASSES):
-            arguments = self._generate(build, packages, unavailable)
+            arguments = self._generate(build, packages, unavailable, without_thunks)
             outcome = self._toolchain.build(
                 arguments, self._build_directory, {"GOWORK": str(self._build_directory / WORK_FILE)}
             )
@@ -276,25 +285,44 @@ class GoRunner:
                 tail = output_text(outcome.stdout, outcome.stderr)[-OUTPUT_TAIL_LINES:]
                 raise RunnerStartError(f"go build failed with exit code {outcome.exit_code}", tail)
             registrations = {package.registration.resolve(): package for package in packages}
-            source_errors = [d for d in diagnostics if d.path not in registrations]
+            thunks = {
+                package.thunks.path.resolve(): package for package in packages if package.thunks
+            }
+            source_errors = [d for d in diagnostics if d.path not in {*registrations, *thunks}]
             if source_errors:
                 return self._build_failure(build, source_errors)
             for diagnostic in diagnostics:
-                unavailable.setdefault(registrations[diagnostic.path].target_id, diagnostic.message)
-        raise RunnerStartError("the generated Go registration files do not compile")
+                if diagnostic.path in thunks:
+                    without_thunks.add(thunks[diagnostic.path].target_id)
+                else:
+                    unavailable.setdefault(
+                        registrations[diagnostic.path].target_id, diagnostic.message
+                    )
+        raise RunnerStartError("the generated Go registration and thunk files do not compile")
 
     def _generate(
-        self, build: _Build, packages: list[GoPackage], unavailable: dict[str, str]
+        self,
+        build: _Build,
+        packages: list[GoPackage],
+        unavailable: dict[str, str],
+        without_thunks: set[str],
     ) -> list[str]:
-        """Writes the registrations, the overlay and the main package; returns the build's
+        """Writes the registrations, thunks, overlay and main package; returns the build's
         arguments."""
         overlay: dict[Path, Path] = {}
+        virtual = (self._root / stub_path(build.meta, Language.GO)).parent
         for package in packages:
             source = registration_source(package, package.target_id not in unavailable)
             write_if_changed(package.registration, source)
             if package.target_id == COMPILED_USER_TARGET:
-                virtual = self._root / stub_path(build.meta, Language.GO)
-                overlay[virtual.parent / REGISTRATION_FILE] = package.registration
+                overlay[virtual / REGISTRATION_FILE] = package.registration
+            if package.thunks is not None:
+                offered = package.target_id not in without_thunks
+                write_if_changed(
+                    package.thunks.path, thunk_source(package.thunks, package.package, offered)
+                )
+                if package.target_id == COMPILED_USER_TARGET:
+                    overlay[virtual / THUNK_FILE] = package.thunks.path
         main = self._build_directory / "cmd" / build.scope / build.meta.snake_slug / "main.go"
         write_if_changed(main, main_source(packages, unavailable))
         arguments = ["-json", *([DEBUG_GCFLAGS] if build.debug else [])]
@@ -345,6 +373,15 @@ def _registered_symbol(meta: ProblemMeta) -> str:
     constructor = constructor_name(signature.name, Language.GO)
     assert constructor is not None
     return constructor
+
+
+def _thunk_file(meta: ProblemMeta, path: Path) -> ThunkFile | None:
+    """The thunks of a design or progressive class. A concurrent class is called by stress
+    workers, which keep reflection, and has no bench."""
+    signature = meta.signature
+    if isinstance(signature, ClassSignature) and meta.kind is not ProblemKind.CONCURRENT:
+        return ThunkFile(path, signature)
+    return None
 
 
 def _read(path: Path) -> str:

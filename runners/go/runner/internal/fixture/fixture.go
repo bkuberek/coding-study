@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"sync"
+	"time"
 
 	"cstudy/support"
 	"github.com/shopspring/decimal"
@@ -128,3 +129,39 @@ type Gate struct{ open chan struct{} }
 func NewGate() *Gate { return &Gate{open: make(chan struct{})} }
 
 func (g *Gate) Enter() { <-g.open }
+
+// Shelf is a class whose methods take and return every kind of value a thunk converts.
+type Shelf struct{}
+
+func NewShelf() *Shelf { return &Shelf{} }
+
+// Total sums a list.
+func (*Shelf) Total(values []int) int {
+	total := 0
+	for _, value := range values {
+		total += value
+	}
+	return total
+}
+
+// Later moves a date forward by a whole number of days.
+func (*Shelf) Later(day time.Time, days decimal.Decimal) time.Time {
+	return day.AddDate(0, 0, int(days.IntPart()))
+}
+
+// Skip returns the list without its first node, nil for a list of one or none.
+func (*Shelf) Skip(head *ListNode) *ListNode {
+	if head == nil {
+		return nil
+	}
+	return head.Next
+}
+
+// Sort sorts values in place (output_from).
+func (*Shelf) Sort(values []int) { slices.Sort(values) }
+
+// Locate returns the node it was given (ref_of with as: index).
+func (*Shelf) Locate(head *ListNode, node *ListNode) *ListNode { return node }
+
+// Mistyped takes an int64 where the signature declares an int.
+func (*Shelf) Mistyped(value int64) int { return int(value) }
