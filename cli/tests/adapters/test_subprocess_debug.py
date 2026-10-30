@@ -300,6 +300,25 @@ def test_a_runner_left_behind_by_an_agent_that_exited_is_killed(runner, debuggin
     assert not survived
 
 
+def test_a_runner_left_behind_is_killed_even_when_the_group_kill_fails(
+    monkeypatch, runner, debugging
+):
+    group_kill = subprocess_runner._kill_group
+
+    def kill_then_report_a_live_runner(process: subprocess.Popen[bytes]) -> None:
+        group_kill(process)
+        raise PermissionError
+
+    monkeypatch.setattr(subprocess_runner, "_kill_group", kill_then_report_a_live_runner)
+    with pytest.raises(PermissionError):
+        run(runner, debugging.launch("debug-detach"), case("a", "return", value=1))
+    leftover = int(debugging.leftover.read_text())
+    survived = not ended(leftover)
+    if survived:
+        os.kill(leftover, signal.SIGKILL)
+    assert not survived
+
+
 def test_a_group_is_never_signalled_once_its_leader_was_reaped(monkeypatch, runner, debugging):
     """The id of a reaped leader may name an unrelated group by then."""
     signalled: list[int] = []

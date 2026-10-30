@@ -493,9 +493,11 @@ class _Attempt:
             try:
                 self._follow(process, _EventLines(events))
             finally:
-                _kill_group(process)
-                if self._launch.debug is not None:
-                    kill_processes_started_from(self._launch.scratch, EXIT_GRACE_SECONDS)
+                try:
+                    _kill_group(process)
+                finally:
+                    if self._launch.debug is not None:
+                        kill_processes_started_from(self._launch.scratch, EXIT_GRACE_SECONDS)
 
     def _open_stdout(self, streams: ExitStack) -> IO[bytes] | int:
         """Debug agents print their ready line to standard output or error: keep both. An agent
