@@ -80,3 +80,5 @@ One pass after the sort and a single running maximum. Sorting in place would sav
 - TypeScript: `[...intervals].sort((a, b) => a[0] - b[0] || b[1] - a[1])`; the comparator must return a number, not a boolean.
 - Java: `Arrays.sort` on `intervals.clone()` with an explicit comparator that uses `Integer.compare` on starts and then on ends in reverse.
 - Kotlin: `intervals.sortedWith(compareBy<IntArray>({ it[0] }, { -it[1] }))`; destructuring `(_, end)` skips the start.
+- Go: `slices.Clone` plus `slices.SortFunc` with `cmp.Or(cmp.Compare(a[0], b[0]), cmp.Compare(b[1], a[1]))`; swapping `a` and `b` in the second comparison is the "longer first" order, and the comparator must return a negative, zero or positive `int`, not a boolean.
+- Rust: the function owns its vector, so `sort_unstable_by(|a, b| a[0].cmp(&b[0]).then(b[1].cmp(&a[1])))` sorts it in place; `Ordering::then` chains the tie-break.
