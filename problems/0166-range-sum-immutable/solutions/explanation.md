@@ -42,6 +42,8 @@ Simplest possible code and no preparation cost, so it wins when there are only o
 
 - Python: `sum(self.nums[left : right + 1])` copies the slice and adds it in C; still O(n) per call.
 - Kotlin: `left..right` is an inclusive range, matching the problem's bounds.
+- Go: `a.nums[left : right+1]` is a view of the same backing array, not a copy, so the loop touches each element once and allocates nothing. The accumulator is an `int64`, matching the `long` return type.
+- Rust: the constructor takes the `Vec<i32>` by value and keeps it. `self.nums[left as usize..=right as usize]` borrows the slice, and `i64::from(value)` widens each element before the sum, so a total past `i32::MAX` is exact rather than a panic from the overflow checks.
 
 ## Approach: prefix-sums (Prefix sums built once)
 
@@ -80,3 +82,5 @@ The standard answer: a linear preparation pays for itself after a couple of quer
 - TypeScript: plain `number` arithmetic is exact for integers up to 2^53, and these sums stay far below it, so no `BigInt` is needed.
 - Java: `long[]` prefixes; the subtraction of two `long` values returns `long`, matching the signature.
 - Kotlin: `LongArray(nums.size + 1)` starts zero-filled, so `prefix[0] = 0` comes for free; the `init` block fills it.
+- Go: `[]int64` prefixes, built with one pass; `SumRange` returns the difference of two `int64` values, which is the signature's `long`. Both indexes are plain ints, so no conversion is needed on the lookup.
+- Rust: the prefix `Vec<i64>` is built with `with_capacity(len + 1)` and a running `i64` total, so every addition is done in 64 bits. The `i32` bounds become `usize` with `as` at the lookup, and `right as usize + 1` cannot overflow for a valid index.

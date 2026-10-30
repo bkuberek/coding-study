@@ -6,6 +6,7 @@ status: ready
 difficulty: easy
 track: dsa
 kind: design
+languages: [python, typescript, java, kotlin, go, rust]
 patterns: [prefix-sum]
 signature:
   class:
