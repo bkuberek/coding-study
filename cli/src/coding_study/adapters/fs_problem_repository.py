@@ -45,6 +45,7 @@ class FsProblemRepository:
         self._root = root
         self._problems = root / problems_directory
         self._index = index
+        self._workspace = False
         schemas = root / SCHEMAS_DIRECTORY
         self._meta_schema_stamp = file_stamp(schemas / META_SCHEMA_FILE)
         self._meta_schema = SchemaValidator.from_file(schemas / META_SCHEMA_FILE)
@@ -53,6 +54,7 @@ class FsProblemRepository:
     def over(self, root: Path) -> "FsProblemRepository":
         """These schemas and this index over `root`'s problems/ (a workspace's own problems)."""
         repository = copy.copy(self)
+        repository._workspace = True
         repository._root = root
         repository._problems = root / PROBLEMS_DIRECTORY
         return repository
@@ -110,7 +112,8 @@ class FsProblemRepository:
         self._index.save()
 
     def _meta(self, directory: Path, meta_document: Any) -> ProblemMeta:
-        meta = meta_from_document(meta_document, self._source(directory / META_FILE))
+        source = self._source(directory / META_FILE)
+        meta = meta_from_document(meta_document, source, self._workspace)
         self._check_directory_name(directory, meta)
         return meta
 

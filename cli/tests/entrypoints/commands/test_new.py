@@ -30,11 +30,18 @@ def test_prints_the_new_directory(environment):
 
 def test_prints_the_authoring_workflow_with_the_slug(environment):
     lines = invoke("max-gap").output.splitlines()
-    assert lines[1:4] == [
+    assert lines[2:5] == [
         "next steps (docs/specs/authoring.md#workflow)",
         "  2. Write problem.md: statement, input, output, constraints, in original wording",
         "     cstudy verify max-gap --static",
     ]
+
+
+def test_says_where_to_trim_the_languages(environment):
+    assert invoke("max-gap").output.splitlines()[1] == (
+        "languages  meta.yaml lists the languages to write references in; remove the ones you "
+        "do not practice, and their reference files"
+    )
 
 
 def test_ends_with_the_ready_gate(environment):

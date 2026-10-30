@@ -23,6 +23,7 @@ from coding_study.domain.cases import (
 from coding_study.domain.errors import ContentError, ContentIssue
 from coding_study.domain.problem import (
     ALL_LANGUAGES,
+    CORE_LANGUAGES,
     DEFAULT_BUDGET_MS,
     DEFAULT_CURRICULUM_ORDER,
     DEFAULT_FLOAT_TOLERANCE,
@@ -69,10 +70,11 @@ class _DocumentError(Exception):
         self.message = message
 
 
-def meta_from_document(document: Document, source: str) -> ProblemMeta:
-    """`source` is the repository-relative file name used in reported issues."""
+def meta_from_document(document: Document, source: str, workspace: bool = False) -> ProblemMeta:
+    """`source` is the repository-relative file name used in reported issues. A `workspace`
+    problem is the user's own: without a `languages` line it lists the core languages."""
     try:
-        meta = _meta(document)
+        meta = _meta(document, workspace)
     except _DocumentError as issue:
         raise ContentError([ContentIssue(source, issue.location, issue.message)]) from None
     issues = modifier_issues(meta.signature)
@@ -94,8 +96,9 @@ def cases_from_document(
         raise ContentError([ContentIssue(source, issue.location, issue.message)]) from None
 
 
-def _meta(document: Document) -> ProblemMeta:
-    languages = tuple(Language(name) for name in document.get("languages", ALL_LANGUAGES))
+def _meta(document: Document, workspace: bool) -> ProblemMeta:
+    default = CORE_LANGUAGES if workspace else ALL_LANGUAGES
+    languages = tuple(Language(name) for name in document.get("languages", default))
     concurrency = document.get("concurrency")
     return ProblemMeta(
         id=document["id"],
@@ -121,6 +124,7 @@ def _meta(document: Document) -> ProblemMeta:
         concurrency=(
             concurrency_from_document(concurrency, languages) if concurrency is not None else None
         ),
+        workspace=workspace,
     )
 
 

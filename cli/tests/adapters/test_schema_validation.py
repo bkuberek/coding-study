@@ -41,31 +41,22 @@ def test_fixture_meta_is_valid(directory_name):
     assert validator_for_meta_file().violations(load_fixture_meta(directory_name), SOURCE) == []
 
 
-CORE = ["python", "typescript", "java", "kotlin"]
-
-
 @pytest.mark.parametrize(
     "languages",
-    [[*CORE, "go", "rust"], ["rust", *CORE, "go"], [*CORE, "go"]],
-    ids=["all six", "any order", "without rust (check S13 decides)"],
+    [["python"], ["rust", "python"], ["go", "rust"], ["python", "typescript", "java", "kotlin"]],
+    ids=["one", "any order", "go and rust alone", "the core four"],
 )
-def test_problems_list_the_core_languages_and_go(languages):
+def test_a_problem_may_list_any_subset_of_the_languages(languages):
     meta = load_fixture_meta("0001-two-sum")
     meta["languages"] = languages
     assert validator_for_meta_file().violations(meta, SOURCE) == []
 
 
-@pytest.mark.parametrize(
-    ("languages", "missing"),
-    [(["python", "typescript", "java", "go", "rust"], "kotlin"), ([*CORE, "rust"], "go")],
-)
-def test_a_missing_language_is_named(languages, missing):
+def test_a_problem_lists_at_least_one_language():
     meta = load_fixture_meta("0001-two-sum")
-    meta["languages"] = languages
+    meta["languages"] = []
     issues = validator_for_meta_file().violations(meta, SOURCE)
-    assert [(issue.location, issue.message) for issue in issues] == [
-        ("languages", f'must include "{missing}"')
-    ]
+    assert [issue.location for issue in issues] == ["languages"]
 
 
 @pytest.mark.parametrize("directory_name", ["0001-two-sum", "0002-lru-cache"])
@@ -94,22 +85,6 @@ INVALID_META: dict[str, tuple[Mutation, str]] = {
     "unknown top-level key": (lambda meta: meta.update(hints=["think"]), ""),
     "dsa without patterns": (lambda meta: meta.pop("patterns"), ""),
     "unknown pattern": (lambda meta: meta.update(patterns=["sorting"]), "patterns[0]"),
-    "language subset outside concurrency": (
-        lambda meta: meta.update(languages=["python"]),
-        "languages",
-    ),
-    "language subset missing a core language": (
-        lambda meta: meta.update(languages=["python", "typescript", "java", "go"]),
-        "languages",
-    ),
-    "language subset missing go": (
-        lambda meta: meta.update(languages=["python", "typescript", "java", "kotlin", "rust"]),
-        "languages",
-    ),
-    "go and rust alone": (
-        lambda meta: meta.update(languages=["go", "rust"]),
-        "languages",
-    ),
     "approach languages not a language": (
         lambda meta: meta["approaches"][0].update(languages=["scala"]),
         "approaches[0].languages[0]",

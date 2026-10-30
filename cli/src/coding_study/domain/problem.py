@@ -35,7 +35,8 @@ cannot express it (check S13) and on the concurrency and debugging tracks
 CORE_LANGUAGES = (Language.PYTHON, Language.TYPESCRIPT, Language.JAVA, Language.KOTLIN)
 """The languages whose toolchains every workspace needs: `cstudy doctor` starts their runners and
 fails without them. A missing Go or Rust toolchain is only a warning, since only `--lang go` and
-`--lang rust` use it."""
+`--lang rust` use it. They are also what a workspace problem lists without a `languages` line,
+which is what every problem listed before Go and Rust."""
 
 
 class Track(StrEnum):
@@ -185,6 +186,9 @@ class ProblemMeta:
     estimate_minutes: int | None = None
     concurrency: "Concurrency | None" = None
     """Concurrent problems only (docs/specs/problem-format.md#concurrent-problems)."""
+    workspace: bool = False
+    """Written by the user in their workspace, not part of the catalog: it may list any subset of
+    the languages (check S13) and, without a `languages` line, lists `CORE_LANGUAGES`."""
 
     @property
     def directory_name(self) -> str:

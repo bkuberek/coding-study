@@ -601,10 +601,26 @@ def test_a_problem_lists_every_language_that_can_express_it(problems):
     ]
 
 
+def test_a_catalog_problem_lists_the_core_languages_too(problems):
+    problem = with_meta(problems, languages=(Language.GO, Language.RUST))
+    assert [issue for issue in errors(content(problems, problem=problem)) if "must list" in issue]
+
+
 def test_a_problem_leaves_out_a_language_that_cannot_express_it(problems):
     problem = list_problem(problems, {"values": [1, 2], "cycle_at": 0}, WITHOUT_RUST)
     issues = errors(content(problems, problem=problem))
     assert [issue for issue in issues if "languages:" in issue] == []
+
+
+def test_a_workspace_problem_lists_any_subset_of_the_languages(problems):
+    problem = with_meta(problems, workspace=True, languages=(Language.PYTHON,))
+    assert errors(content(problems, problem=problem)) == []
+
+
+def test_a_workspace_problem_still_cannot_list_a_language_that_cannot_express_it(problems):
+    problem = list_problem(problems, {"values": [1, 2], "cycle_at": 0})
+    problem = replace(problem, meta=replace(problem.meta, workspace=True))
+    assert any("cannot list rust" in issue for issue in errors(content(problems, problem=problem)))
 
 
 @pytest.mark.parametrize("track", [Track.CONCURRENCY, Track.DEBUGGING])

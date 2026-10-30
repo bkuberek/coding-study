@@ -220,7 +220,7 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 `status: ready` requires all of the following; `cstudy verify --require-ready` enforces them.
 
 - Every static and dynamic check below passes.
-- At least one `optimal` approach has a reference file in every language in `languages`, which defaults to all six ([ADR 0012](../decisions/0012-go-and-rust.md)).
+- At least one `optimal` approach has a reference file in every language in `languages`, which defaults to all six in the catalog and to the four core languages in a workspace problem without the line ([ADR 0012](../decisions/0012-go-and-rust.md)).
 - Every approach has a reference file in each of its languages: every language in `languages`, unless a `concurrency` or `debugging` approach names fewer in its own `languages` ([Approaches](problem-format.md#approaches-and-complexity)).
 - `dsa` problems: at least 2 approaches (a slower one, or an alternative optimal technique when no slower approach is meaningful), an `oracle` approach in Python, and `generator.py`.
 - `tests.json`: at least 2 visible cases, at least 8 hand-written hidden cases, and, for `dsa` problems and any problem with `generator.py`, at least 1 `generate` case at the largest ladder size.
@@ -246,7 +246,7 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 | S10 | Progressive: levels contiguous from 1; every level has cases; every case `level` valid and using only methods introduced at or below it; `generate` cases at the last level |
 | S11 | Concurrent: `kind: concurrent` if and only if `track: concurrency`; `concurrency.model` valid for every listed language; comparator `ops`; no `perf`, `oracle`, `time_class` or `generator.py`; `blocking` only on methods; `## Concurrency` section present |
 | S12 | Concurrent stress cases: steps name signature methods (not the constructor) or harness ops with valid arity; template ranges fit the parameter types; `@enter`/`@exit` balanced and nested per iteration; selectors name existing ops and argument indexes; 2 to 64 workers and at most 20,000 ops per run after expansion; `stress_checker.py` present if and only if a `checker` invariant exists; every broken file maps to a declared broken id and every `caught_by` id is a stress case; `## Broken` sections match `concurrency.broken` |
-| S13 | Every language in `languages` can express the problem, and a problem outside the `concurrency` and `debugging` tracks lists every language that can (`must list rust: ...`). Rust cannot when a `ref_of` points into a `ListNode` (or `ListNode[]`), when an `as: index` result is a `ListNode` or indexes one, or when a case input holds a cyclic list (`cycle_at`): an `Option<Box<ListNode>>` has one owner per node ([mapping](problem-format.md#go-and-rust-mapping)). `no_alias_with` on a list is fine |
+| S13 | Every language in `languages` can express the problem, and a catalog problem outside the `concurrency` and `debugging` tracks lists every language that can (`must list rust: ...`); the schema only requires one language. A problem in your own workspace (`cstudy new` without a content checkout) may list any subset, but a `dsa` problem keeps `python` for its oracle (S7). Rust cannot when a `ref_of` points into a `ListNode` (or `ListNode[]`), when an `as: index` result is a `ListNode` or indexes one, or when a case input holds a cyclic list (`cycle_at`): an `Option<Box<ListNode>>` has one owner per node ([mapping](problem-format.md#go-and-rust-mapping)). `no_alias_with` on a list is fine |
 
 ### Dynamic
 

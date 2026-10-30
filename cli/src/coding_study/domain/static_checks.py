@@ -198,8 +198,9 @@ def _case_values(issues: _Issues, content: ProblemContent) -> None:
 
 
 def _language_limits(issues: _Issues, content: ProblemContent) -> None:
-    """S13: every listed language can express the signature and the case inputs, and a problem
-    outside the concurrency and debugging tracks lists every language that can."""
+    """S13: every listed language can express the signature and the case inputs, and a catalog
+    problem outside the concurrency and debugging tracks lists every language that can. The
+    user's own workspace problems list any subset."""
     problem = content.problem
     meta = problem.meta
     for language in Language:
@@ -207,7 +208,7 @@ def _language_limits(issues: _Issues, content: ProblemContent) -> None:
         if language in meta.languages:
             for reason in reasons:
                 issues.error(META_FILE, f"cannot list {language}: {reason}", "languages")
-        elif not reasons and meta.track not in LANGUAGE_SUBSET_TRACKS:
+        elif not reasons and meta.track not in LANGUAGE_SUBSET_TRACKS and not meta.workspace:
             issues.error(META_FILE, f"must list {language}: {EVERY_LANGUAGE}", "languages")
 
 

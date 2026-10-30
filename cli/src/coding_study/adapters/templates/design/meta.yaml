@@ -7,6 +7,7 @@ difficulty: {{difficulty}}
 track: {{track}}
 kind: design
 {{patterns}}
+languages: [python, typescript, java, kotlin, go, rust]
 signature:
   class:
     name: {{class_name}}

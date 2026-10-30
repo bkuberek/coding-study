@@ -28,7 +28,7 @@
       "items": { "$ref": "#/$defs/pattern" }
     },
     "languages": {
-      "description": "Default all six. Every problem lists python, typescript, java, kotlin and go, and rust unless Rust cannot express it (check S13). The concurrency and debugging tracks may list any subset",
+      "description": "Default all six in the catalog (check S13 requires every language that can express the problem, except on the concurrency and debugging tracks) and the core four in a workspace problem, which may list any non-empty subset",
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
@@ -108,22 +108,6 @@
       "if": { "required": ["kind"], "properties": { "kind": { "const": "function" } } },
       "then": { "properties": { "signature": { "required": ["function"] } } },
       "else": { "properties": { "signature": { "required": ["class"] } } }
-    },
-    {
-      "if": { "required": ["track"], "properties": { "track": { "enum": ["concurrency", "debugging"] } } },
-      "else": {
-        "properties": {
-          "languages": {
-            "allOf": [
-              { "contains": { "const": "python" } },
-              { "contains": { "const": "typescript" } },
-              { "contains": { "const": "java" } },
-              { "contains": { "const": "kotlin" } },
-              { "contains": { "const": "go" } }
-            ]
-          }
-        }
-      }
     },
     {
       "description": "Concurrent problems: a concurrency block, the ops comparator, no perf block and no complexity classes or oracle; every other kind declares complexity classes",

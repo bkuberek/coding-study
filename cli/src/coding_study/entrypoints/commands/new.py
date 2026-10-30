@@ -42,6 +42,10 @@ WORKFLOW = (
     ("Set status: ready", "cstudy verify {slug} --oracle --ladder --require-ready"),
 )
 """docs/specs/authoring.md#workflow, from step 2; `cstudy new` is step 1."""
+LANGUAGES_HINT = (
+    "languages  meta.yaml lists the languages to write references in; remove the ones you "
+    "do not practice, and their reference files"
+)
 
 
 def register(app: typer.Typer) -> None:
@@ -78,6 +82,7 @@ def new(
 
 def _report(created: CreatedProblem) -> Iterator[Text]:
     yield Text(f"created  {created.directory}  ({created.template} template, draft)", "bold")
+    yield Text(LANGUAGES_HINT)
     yield Text("next steps (docs/specs/authoring.md#workflow)")
     for number, (action, check) in enumerate(WORKFLOW, start=FIRST_STEP):
         yield Text(f"  {number}. {action}")

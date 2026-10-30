@@ -12,6 +12,7 @@ from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.adapters.problem_overlay import OverlayProblemFiles, OverlayProblemRepository
 from coding_study.domain.errors import ContentError
+from coding_study.domain.problem import ALL_LANGUAGES, CORE_LANGUAGES
 from tests.helpers import FIXTURE_PROBLEMS
 
 TWO_SUM = FIXTURE_PROBLEMS / "0001-two-sum"
@@ -115,3 +116,30 @@ def test_problem_files_hide_the_catalog_directory_of_a_shadowed_slug(files, work
 def test_a_shadowed_slug_is_listed_once(files, workspace):
     own_problem(workspace, "0001-two-sum", "My Two Sum")
     assert files.slugs() == ("two-sum", "lru-cache", "pair-sum")
+
+
+def test_a_workspace_problem_without_languages_lists_the_core_languages(problems):
+    assert problems.load("pair-sum").meta.languages == CORE_LANGUAGES
+
+
+def test_a_listing_gives_a_workspace_problem_the_core_languages_too(problems):
+    own = next(s for s in problems.list_summaries() if s.meta.slug == "pair-sum")
+    assert own.meta.languages == CORE_LANGUAGES
+
+
+def test_a_workspace_problem_lists_the_languages_it_names(problems, workspace):
+    meta = workspace / "problems" / "5001-pair-sum" / "meta.yaml"
+    meta.write_text(meta.read_text().replace("track: dsa\n", "track: dsa\nlanguages: [python]\n"))
+    assert [language.value for language in problems.load("pair-sum").meta.languages] == ["python"]
+
+
+def test_a_catalog_problem_without_languages_lists_every_language(problems):
+    assert problems.load("two-sum").meta.languages == ALL_LANGUAGES
+
+
+def test_only_a_workspace_problem_is_marked_as_one(problems):
+    assert [(s.meta.slug, s.meta.workspace) for s in problems.list_summaries()] == [
+        ("two-sum", False),
+        ("lru-cache", False),
+        ("pair-sum", True),
+    ]

@@ -152,6 +152,13 @@ def test_each_template_passes_static_checks_after_replacing_the_placeholders(env
     assert static_errors(environment, "scaffolded") == ()
 
 
+@pytest.mark.parametrize("template", [t for t in TemplateName if t is not TemplateName.CONCURRENT])
+def test_each_template_writes_its_languages_explicitly(environment, template):
+    created = create(environment, "scaffolded", template)
+    meta = (environment.root / created.directory / "meta.yaml").read_text()
+    assert "languages: [python, typescript, java, kotlin, go, rust]\n" in meta
+
+
 def test_the_concurrent_template_gets_an_empty_broken_reference_per_language(environment):
     created = create(environment, "limiter", TemplateName.CONCURRENT)
     broken = [name for name in created.files if name.startswith("solutions/broken/")]
