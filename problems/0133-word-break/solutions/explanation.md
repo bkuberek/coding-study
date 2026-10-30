@@ -51,6 +51,8 @@ The most natural derivation. Its cost grows with the dictionary size `m`, which 
 - TypeScript: a `Uint8Array` stores unknown, yes and no; `String.prototype.startsWith(word, start)` takes a position.
 - Java: a `Boolean[]` uses `null` for "not computed"; `String.startsWith(prefix, offset)` compares in place.
 - Kotlin: `arrayOfNulls<Boolean>(n)` plus `memo[start]?.let { return it }` returns a cached answer; `any` short-circuits over the words.
+- Go: `strings.HasPrefix(s[start:], word)` compares in place, since slicing a string shares its bytes, and the memo is a `[]int8` with three `iota` states (unknown, splittable, unsplittable), like the TypeScript and Java versions. The recursive closure is declared with `var canSplitFrom func(start int) bool` first.
+- Rust: `s[start..].starts_with(word.as_str())` compares in place, which is exact because the input is lowercase ASCII (slicing a `String` at a non-boundary byte would panic). The memo is `Vec<Option<bool>>`, where `None` is "not decided yet", and `Iterator::any` short-circuits over the words like Python's loop.
 
 ## Approach: tabulation (Bottom-up reachable prefixes with a word set)
 
@@ -90,6 +92,8 @@ Independent of the dictionary size per position, iterative, and short: the stand
 - TypeScript: `new Set(wordDict)` and `s.slice(start, end)`; `Math.max(...lengths)` is fine for 1000 words.
 - Java: a `HashSet<String>` and `substring`, which copies the characters in modern JDKs.
 - Kotlin: `toHashSet()`, `maxOf { it.length }`, and `any` over the bounded range of starts.
+- Go: the dictionary is a `map[string]bool` and `words[s[start:end]]` looks up a substring that shares `s`'s bytes, so the probe allocates nothing. The built-in `max` clamps the window start at 0.
+- Rust: `HashSet<&str>` borrows the words from `word_dict`, and `words.contains(&s[start..end])` probes with a borrowed slice, so no `String` is built per lookup. `end.saturating_sub(longest)` is the unsigned form of `max(0, end - longest)`.
 
 ## Approach: trie (Walk a trie of the words from each reachable position)
 
@@ -128,3 +132,5 @@ The fastest when the dictionary is large or its words are long, and the walk nat
 - TypeScript: a node type with a `Map<string, TrieNode>` of children, built by a small factory function instead of a class with parameter properties.
 - Java: a nested static class with a `TrieNode[26]` array of children, indexed by `letter - 'a'`.
 - Kotlin: a private class with `arrayOfNulls<TrieNode>(26)`; the elvis operator `?: break` ends a walk when no child exists.
+- Go: the trie is a struct with a `[26]*trieNode` array and an `endsWord` flag, indexed by `letter - 'a'` as in the Java version; a nil child pointer means no word continues that way, which ends the walk.
+- Rust: `TrieNode` derives `Default` (arrays of up to 32 elements do), and `children: [Option<Box<TrieNode>>; 26]` is the owned tree. The insert loop reborrows `node` as `&mut` at each step through `get_or_insert_with(Box::default)`, and the lookup walks with a shared `&TrieNode` and `match`, leaving the loop on a missing child.
