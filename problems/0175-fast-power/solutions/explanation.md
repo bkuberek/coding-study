@@ -41,6 +41,11 @@ Obviously correct and a good oracle, but useless for large exponents with ordina
 - `abs(-2^31)` does not fit in a 32-bit `int`: in Java, `Math.abs(Integer.MIN_VALUE)` is still negative. Widen to `long` before taking the absolute value.
 - Compute `1 / x` once, rather than dividing at the end: `1 / x^|n|` overflows to infinity before it can underflow back, which gives 0 here only by luck.
 
+### Language notes
+
+- Go: `n` arrives as an `int`, which is 64 bits on a 64-bit platform, so `-n` is exact even for `-2^31`. Go has no integer `abs` in the standard library, so the sign is flipped with an `if`. `math.IsInf(result, 0)` tests for an infinity of either sign.
+- Rust: `n.unsigned_abs()` returns a `u32` and is exact for `i32::MIN`, where `-n` would overflow and panic because the build checks overflow. Floating-point `*` never panics: an overflowing product becomes an infinity, which `f64::is_infinite` catches.
+
 ## Approach: binary-exponentiation (Square the base and halve the exponent)
 
 ### Intuition
@@ -80,3 +85,5 @@ The expected answer, and the same loop computes modular powers (`result = result
 - TypeScript: numbers are doubles, so `-n` is exact even for `-2^31`; but the bitwise operators (`&`, `>>`) work on 32-bit signed integers, and `2^31 >> 1` would become negative. The reference uses `% 2` and `Math.floor(exponent / 2)` instead.
 - Java: `long exponent = n` widens before negating; `exponent >>= 1` on a non-negative `long` is a plain halving.
 - Kotlin: `n.toLong()` widens; bit operations are infix functions (`exponent and 1L`, `exponent shr 1`), and `and` binds more loosely than `==`, so `(exponent and 1L) == 1L` needs the parentheses.
+- Go: `x, n = 1/x, -n` is a tuple assignment, and `-n` cannot overflow in a 64-bit `int`. The loop is the same bit test as the other languages (`n&1 == 1`, `n >>= 1`).
+- Rust: `n.unsigned_abs()` gives a `u32` exponent that is safe for `i32::MIN`, so the loop needs no `i64` widening as the Java version does. `exponent & 1 == 1` and `exponent >>= 1` read and drop one bit at a time while `base` is squared in place.
