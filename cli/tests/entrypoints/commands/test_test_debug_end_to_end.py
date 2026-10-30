@@ -170,11 +170,8 @@ def two_sum_content(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.fixture(scope="module")
 def compiled_root(tmp_path_factory: pytest.TempPathFactory, practice_workspace: Path) -> Path:
-    """A workspace with the Go and Rust projects too."""
-    root = workspace_like(practice_workspace, tmp_path_factory.mktemp("debug-compiled") / "ws")
-    for project in TWO_SUM_FILES:
-        shutil.copytree(practice_workspace / project, root / project)
-    return root
+    """A workspace of its own for the Go and Rust runs."""
+    return workspace_like(practice_workspace, tmp_path_factory.mktemp("debug-compiled") / "ws")
 
 
 @pytest.fixture
