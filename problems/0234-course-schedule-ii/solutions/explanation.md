@@ -47,6 +47,8 @@ Very simple and a faithful oracle, but quadratic: with long prerequisite chains 
 - TypeScript: `findIndex` with an `every` check scans for the next course.
 - Java: a helper `allTaken` checks a prerequisite list; the result is an `int[]` (`new int[0]` when there is no order).
 - Kotlin: `firstOrNull { ... } ?: return IntArray(0)` returns early when nothing is available.
+- Go: there is no `for ... else`, so the scan records the course it found (or `-1`) and the caller returns the empty order when none was found.
+- Rust: `(0..count).find(..)` returns an `Option`, and `let Some(course) = next else { return Vec::new() }` plays the part of `for ... else`.
 
 ## Approach: kahn (Queue the courses whose remaining prerequisite count drops to zero)
 
@@ -85,6 +87,8 @@ Iterative, with no recursion depth to worry about, and processing the queue by r
 - TypeScript: an array with a head index is the queue, because `shift()` is O(n) per call.
 - Java: `ArrayDeque<Integer>` and a `List<List<Integer>>` adjacency; the order is built in an `int[]` and `new int[0]` is returned when it is short.
 - Kotlin: Kotlin's own `ArrayDeque<Int>` with `removeFirst`, and `IntArray(numCourses)` for the order.
+- Go: one slice is both the queue and the order, with a `head` index instead of popping, as in the TypeScript version; the slice is longer than `numCourses` never, so it is returned as the answer when complete.
+- Rust: `VecDeque` is the queue (`pop_front`, `push_back`), and the order is a separate `Vec<i32>`.
 
 ## Approach: dfs-postorder (Depth-first search that lists a course after its prerequisites)
 
@@ -124,3 +128,5 @@ No separate counting pass and, because the edges point from a course to its prer
 - TypeScript, Java and Kotlin: a `cursor` array indexed by course replaces the tuple, which works because a course appears at most once on the stack.
 - Java: `ArrayDeque<Integer>` used with `push`, `peek` and `pop`.
 - Kotlin: Kotlin's `ArrayDeque` with `addLast`, `last` and `removeLast`.
+- Go: a `cursor` slice indexed by course replaces the Python tuple, as in the TypeScript, Java and Kotlin versions; the three states are `iota` constants.
+- Rust: `State` is a `Copy` enum, and `while let Some(&course) = stack.last()` copies the top of the stack out, so the loop body can push and pop without holding a borrow.
