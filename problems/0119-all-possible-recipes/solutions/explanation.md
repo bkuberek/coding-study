@@ -46,6 +46,8 @@ Hard to get wrong, so it serves as the oracle. When recipes form long chains lis
 - TypeScript: `Set.has` inside `every` does the same.
 - Java: `available.containsAll(list)` checks a whole ingredient list in one call.
 - Kotlin: `partition` splits the pending recipes into ready and not ready against the items available when the sweep starts, so it may need a few more sweeps than the in-place loop; the result is the same.
+- Go: `available` is a `map[string]bool` set, so a missing item reads as `false`, and `allAvailable` stands in for Python's `all(...)` over a generator. A nil slice starts `stillPending`, which `append` grows only when a recipe has to wait.
+- Rust: `available` is a `HashSet<&str>` whose members borrow from `supplies` and later `recipes`, so no string is copied while the set grows. `for i in pending` consumes the index list, and `still_pending` is built fresh each sweep, as in the Python version. The result clones each recipe name once, when it is prepared.
 
 ## Approach: kahn (Queue available items and count each recipe's missing ingredients)
 
@@ -84,6 +86,8 @@ Linear and iterative: the standard topological sort with the supplies as the sta
 - TypeScript: `usedBy.get(item) ?? []` handles items that no recipe uses; a moving head index makes the array a queue.
 - Java: `computeIfAbsent` builds the lists, and `getOrDefault(item, List.of())` reads them safely.
 - Kotlin: `getOrPut` builds the lists, and `orEmpty()` turns a missing entry into an empty list.
+- Go: the queue starts as a copy of `supplies` (`append([]string(nil), supplies...)`), so popping the front never disturbs the input slice, and a missing key in `usedBy` reads as an empty slice, which replaces `defaultdict`.
+- Rust: `used_by` maps each item to the recipes that use it, borrowing the item names from `ingredients`, and `entry(item).or_default()` plays the part of `defaultdict`. The queue is a `VecDeque<&str>` of names borrowed from `supplies` and `recipes`, so a prepared recipe is pushed without a copy. `let Some(users) = used_by.get(item) else { continue }` skips supplies that no recipe uses.
 
 ## Approach: memo-dfs (Memoized depth-first search that treats a loop as impossible)
 
@@ -121,3 +125,5 @@ Same bound as Kahn's algorithm and closer to the problem's wording. Its recursio
 - TypeScript: a union type `"on path" | boolean` keeps the memo honest; `items.every(canPrepare)` stops at the first impossible ingredient.
 - Java: a small `enum` with three states replaces nullable `Boolean` values.
 - Kotlin: `verdict[item]?.let { return it == Verdict.PREPARABLE }` returns early for decided and in-progress recipes alike.
+- Go: the memo is a `map[string]verdict` over a small `iota` type, and the zero value `undecided` stands for "not computed yet", so a missing key needs no comma-ok check. `canPrepare` is a closure declared with `var` first so it can call itself.
+- Rust: the memo values are a three-variant enum, which makes "being explored" a state the compiler tracks instead of a magic string. The recursion is a method on a `Kitchen<'a>` struct that owns the lookup tables and borrows every name from the inputs; copying the stored `&'a [String]` out of `needs` before the loop lets the `all` closure borrow `self` mutably.
