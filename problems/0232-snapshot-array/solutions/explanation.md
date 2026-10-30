@@ -83,3 +83,5 @@ Overwriting within the same snapshot keeps each list short. When `length` is hug
 - TypeScript: two parallel arrays per position (ids and values) and a hand-written upper bound, because there is no library search.
 - Java: an `ArrayList` of `int[]` pairs per position inside an `ArrayList`, which avoids generic array creation; the search is hand-written.
 - Kotlin: `Array(length) { mutableListOf<IntArray>() }` and a hand-written upper bound. The library's `binarySearch` reports a missing key as `-(insertion point) - 1`, so an upper bound loop is clearer.
+- Go: `sort.Search` is the library upper bound: it returns the first change whose id is greater than `snapId`, so the one before it is in force. `make([][]change, length)` makes `length` nil slices, which `append` grows on first use.
+- Rust: `partition_point(|&(id, _)| id <= snap_id)` is the library upper bound, so no hand-written search is needed. The last entry is updated through `last_mut()` when it belongs to the current snapshot period, and `checked_sub(1)` turns "no change yet" into the default `0`.
