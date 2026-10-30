@@ -46,6 +46,8 @@ A useful cross-check and the natural first idea, but it wastes most of its work:
 - TypeScript: a small recursion places either bracket while some are left, which visits the same C(2n, n) arrangements without a combinations helper.
 - Java: the same recursion over a `char[]`; `new String(brackets)` copies the buffer for each kept string.
 - Kotlin: a local `fun` recursion writes into a `CharArray`; `String(brackets)` copies it.
+- Go: neither the standard library nor the language has a combinations iterator, so the reference steps through the sorted position lists itself, which is what `itertools.combinations` does inside: advance the rightmost position that can still move right and reset those after it. `bytes.Repeat([]byte{')'}, size)` makes a buffer of closers, and `string(brackets)` copies a balanced one into the result.
+- Rust: there is no combinations iterator in the standard library either, so the reference advances the position list by hand, with `(0..n).rev().find(..)` locating the rightmost position that can still move; when none can, every combination has been visited. `vec![')'; size]` makes the buffer, and `brackets.iter().collect()` builds a `String` from the characters.
 
 ## Approach: count-open-close (Add a bracket only while the prefix can still be completed)
 
@@ -86,3 +88,5 @@ Output-optimal: it does a constant amount of work per character written. It is a
 - TypeScript: the same array buffer and `join("")`.
 - Java: a `StringBuilder` with `deleteCharAt(length() - 1)` undoes the last character.
 - Kotlin: `StringBuilder` works the same way; `deleteCharAt` is available on the JVM.
+- Go: a `[]byte` buffer grows with `append` and shrinks with a re-slice, `brackets[:len(brackets)-1]`, and `string(brackets)` copies it into the result at each leaf. The recursion is a closure declared with `var extend func(...)` first so it can call itself.
+- Rust: a `String` buffer with `push` and `pop` is the natural undo stack, and `brackets.clone()` copies it into the result at each leaf. The recursion shares the buffer and the result through `&mut` parameters.
