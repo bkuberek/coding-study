@@ -47,6 +47,8 @@ Needs no preparation and is easy to read, which makes it the oracle. The same su
 - TypeScript: `s.slice(start, end + 1)` takes the piece; indexing a string returns one-character strings that compare with `!==`.
 - Java: `substring(start, end + 1)` and `charAt` comparisons; `List<List<String>>` matches the signature.
 - Kotlin: `s[left++] != s[right--]` compares `Char` values and advances both pointers in one line.
+- Go: indexing a string gives a `byte`, so `s[left] != s[right]` compares bytes, which is exact for the lowercase ASCII letters here, and `s[start:end+1]` slices a piece without copying. The `isPalindrome` closure is a plain function value; only `cutFrom` needs the `var cutFrom func(...)` declaration first, because it calls itself. `slices.Clone(pieces)` snapshots a finished partition.
+- Rust: `s.as_bytes()` gives the bytes to compare, and `s[start..=end].to_string()` slices out a piece, which is valid because the letters are single-byte ASCII (a byte range inside a multi-byte character would panic). The recursion shares one `pieces` buffer through `&mut Vec<String>`, and `pieces.clone()` snapshots a finished partition.
 
 ## Approach: palindrome-table (Precompute every palindromic substring, then backtrack)
 
@@ -83,3 +85,5 @@ Removes the repeated two-pointer scans for an O(n^2) table, a good trade wheneve
 - TypeScript: `Array.from({ length: n }, () => new Array<boolean>(n).fill(false))` builds independent rows for the same reason.
 - Java: `new boolean[n][n]` is initialized to `false`.
 - Kotlin: `Array(n) { BooleanArray(n) }` creates one fresh row per index; `downTo` iterates `i` from the end.
+- Go: `make([][]bool, n)` creates only the outer slice, so each row needs its own `make([]bool, n)`; a loop `for i := n - 1; i >= 0; i--` walks the rows from the end. The `&&` and `||` short-circuit, so `palindrome[i+1][j-1]` is read only when `j-i >= 2`.
+- Rust: `vec![vec![false; n]; n]` clones the inner vector once per row, so the rows are independent; `(0..n).rev()` walks `i` from the end. The `&&` and `||` short-circuit, so `j - 1` and `i + 1` are computed only when `j - i >= 2`, and the `usize` subtraction cannot underflow.
