@@ -47,6 +47,8 @@ Easy to check against the statement, which makes it the oracle. Quadratic work m
 - Python: removing the chosen index with `list.pop(position)` keeps the remaining indexes in ascending order.
 - TypeScript: `splice(best, 1)` removes and returns the chosen index; the scan tracks the next arrival itself rather than spreading 10^5 values into `Math.min`, which can exceed the engine's argument limit.
 - Java and Kotlin: a `boolean[]` of finished tasks avoids list removals; the same pass computes the next arrival for idle stretches.
+- Go: `int` is 64 bits, so the clock can pass 2^31 - 1 without a wider type. `slices.Delete(remaining, best, best+1)` removes one element and shifts the tail, keeping the indexes ascending like Python's `list.pop(position)`; it is O(n), as the scan already is.
+- Rust: the clock is an `i64`, because the sum of up to 10^5 processing times of 10^9 each does not fit an `i32`; the task fields are widened with `i64::from`. The pick is `filter` then `min_by_key`, which returns the first of several equal minimums, so on equal processing times the smaller index (earlier in `remaining`) wins, as the strict `<` does in the other languages. `Vec::remove(best)` keeps the order.
 
 ## Approach: sort-and-heap (Sort by arrival, pick from a min-heap of arrived tasks)
 
@@ -88,3 +90,5 @@ The standard answer: two classic structures, each doing what it is good at. It i
 - TypeScript: no built-in priority queue, so the reference implements a min-heap of indexes with a `before` comparison on `(processingTime, index)`; the class assigns its field in the constructor because parameter properties are not erasable syntax.
 - Java: `Comparator.<Integer>comparingInt(i -> tasks[i][1]).thenComparingInt(i -> i)` builds the two-level key; the explicit type witness is needed for the chained call to infer `Integer`.
 - Kotlin: `compareBy<Int> { tasks[it][1] }.thenBy { it }` builds the same comparator; `tasks.indices.sortedBy { tasks[it][0] }` produces the arrival order.
+- Go: `container/heap` needs a type that implements `heap.Interface`, so the reference declares `shortestFirst []waitingTask`, and its `Less` compares the processing time and then the index, which is the tie-break written out. The arrival order comes from `slices.SortFunc` with `cmp.Compare` on the enqueue times.
+- Rust: `BinaryHeap<Reverse<(i32, usize)>>` is a min-heap of `(processing time, index)` tuples, and tuples compare field by field, so the tie-break needs no comparator. `sort_by_key` orders the indexes by enqueue time, and `time.max(..)` is the idle jump.
