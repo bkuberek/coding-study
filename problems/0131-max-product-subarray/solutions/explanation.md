@@ -43,7 +43,9 @@ Obviously correct and short, which makes it the oracle; too slow for 2 * 10^4 el
 
 ### Language notes
 
-- All four languages use the same two nested index loops; the products of real subarrays fit in 32 bits by the constraints, so Java and Kotlin `int` never overflow.
+- Python, TypeScript, Java and Kotlin use the same two nested index loops; the products of real subarrays fit in 32 bits by the constraints, so Java and Kotlin `int` never overflow.
+- Go: the same two nested loops, with the built-in `max` (Go 1.21 and newer). `int` is 64 bits, so the running product has room to spare.
+- Rust: the inner loop walks the slice `&nums[start..]` instead of an index, and `i32` is exact because the constraints keep every subarray product within 32 bits; overflow checks are on, so a product that escaped that range would panic instead of wrapping.
 
 ## Approach: track-min-max (Largest and smallest product ending at each index)
 
@@ -84,6 +86,8 @@ The expected interview answer: one pass, constant memory, and the reasoning gene
 - TypeScript: `Math.max` and `Math.min` take any number of arguments. A product such as `0 * -3` is `-0`, which compares equal to 0 and serializes as `0`.
 - Java: nested `Math.max` calls, since it takes exactly two arguments.
 - Kotlin: `maxOf` and `minOf` take three arguments directly.
+- Go: the built-in `max` and `min` take three arguments, so the three candidates need no temporary slice, and both extremes are computed from the old `largest` and `smallest` before either is reassigned.
+- Rust: the three candidates sit in a `[i32; 3]` array, and `into_iter().max()` and `min()` return `Option`s that the reference unwraps, since the array is never empty. The array is `Copy`, so it can be iterated twice.
 
 ## Approach: prefix-suffix (Best running product from the left and from the right)
 
@@ -121,3 +125,5 @@ Equally fast and arguably simpler code than tracking the minimum, but its correc
 - TypeScript: `Math.max(...nums)` spreads up to 2 * 10^4 arguments, well inside the engine's limit; `fromLeft === 0` is also true for `-0`.
 - Java: `Arrays.stream(nums).max().getAsInt()` computes the initial best.
 - Kotlin: `nums.max()` on an `IntArray` returns the maximum and throws only on an empty array, which the constraints rule out.
+- Go: Python's `from_left or 1` becomes an explicit `if fromLeft == 0 { fromLeft = 1 }`, because Go has no truthiness for numbers, and the initial `best` comes from one pass over the values.
+- Rust: the same explicit zero restart replaces `or 1`, and `nums.iter().copied().max().unwrap()` takes the initial best, which cannot fail on the non-empty input the constraints guarantee. The running products stay within `i32` because each is the product of a real subarray.
