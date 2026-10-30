@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0240"
+slug: debug-append-aliasing
+title: "Debug: Append Aliasing"
+status: ready
+difficulty: medium
+track: debugging
+kind: function
+languages: [go]
+stub: buggy
+signature:
+  function:
+    name: bundleCombos
+    params:
+      - {name: items, type: "int[]"}
+      - {name: size, type: int}
+    returns: {type: "list<list<int>>"}
+comparator: {type: exact}
+approaches:
+  - {id: clone-on-store, name: Copy each bundle when storing it, role: optimal, time: "O(2^n + C(n, k) * k)", space: "O(C(n, k) * k)", time_class: "2^n", space_class: "2^n"}
+related: [subsets, combination-sum-no-reuse, debug-grid-aliasing]
+estimate_minutes: 20
