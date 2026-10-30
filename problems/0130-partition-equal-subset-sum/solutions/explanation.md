@@ -50,6 +50,8 @@ The short-circuiting `or` stops at the first subset found, so on splittable inpu
 - TypeScript: one `Uint8Array` per element holds three states (unknown, yes, no) in a byte each.
 - Java: a `byte[][]` memo with the same three states; `Arrays.stream(nums).sum()` computes the total.
 - Kotlin: `Array(n) { ByteArray(t + 1) }` and `nums.sum()`; the state constants are file-level `const val`s.
+- Go: the memo is a `[][]int8` with three `iota` states (unknown, reachable, unreachable), the same shape as the Java and Kotlin versions, and the recursive closure is declared with `var reachable func(index, remaining int) bool` first.
+- Rust: the memo is `Vec<Vec<Option<bool>>>`, so `None` is "not decided yet" and the type has no unused fourth state; `if let Some(known) = memo[index][remaining as usize]` returns early for a decided state. The recursion is a free function that takes the memo as `&mut [Vec<Option<bool>>]`, and `remaining` stays an `i32` so the negative case can be tested before it is used as an index.
 
 ## Approach: tabulation (Table of reachable sums per prefix)
 
@@ -87,6 +89,8 @@ Iterative and easy to check, so it is the oracle. Keeping every row lets you reb
 - Python: a list of lists built with a comprehension; `[[False] * (t + 1)] * (n + 1)` would alias one row `n + 1` times.
 - TypeScript: `Array.from` with a factory creates an independent row per element.
 - Java and Kotlin: `new boolean[n + 1][t + 1]` and `Array(n + 1) { BooleanArray(t + 1) }` are zero-initialized to `false`.
+- Go: each row is a `[]bool` made with `make`, so the rows are independent, and `previous, current := reach[i], reach[i+1]` names the two slices without copying them.
+- Rust: the loop reads row `i` and writes row `i + 1` of the same `Vec`, which two plain indexings cannot do under the borrow rules, so `split_at_mut(i + 1)` hands out the two rows as separate borrows. `vec![vec![false; t + 1]; n + 1]` clones the inner row, so the rows are independent.
 
 ## Approach: one-row (Single row of reachable sums updated right to left)
 
@@ -124,3 +128,5 @@ The standard final answer: the same time as the table with a fraction of its mem
 - Python: `range(t, v - 1, -1)` walks down to `v` inclusive.
 - TypeScript and Java: a classic decreasing `for` loop over a boolean array.
 - Kotlin: `for (s in target downTo value)` expresses the right-to-left pass directly.
+- Go: `for s := target; s >= value; s--` is the right-to-left pass, and the loop simply does not run when `value` is larger than `target`.
+- Rust: `(value..=target).rev()` walks from `target` down to `value`, and the range is empty when `value > target`, so there is no unsigned underflow to guard against. Values arrive as `i32` and are cast to `usize` once per element.
