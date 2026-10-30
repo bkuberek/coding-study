@@ -78,6 +78,8 @@ The shortest and fastest structure for prefix sums with point updates, which is 
 - TypeScript: block sums stay below 2^53, so plain `number`s are exact; `i & -i` is a 32-bit operation, fine for `n <= 10^5`.
 - Java: `long[]` block sums; `(long) value - values[index]` computes the delta in 64 bits.
 - Kotlin: `i and -i` replaces `i & -i`; the reference names it `lowBit` for readability.
+- Go: `i & -i` works on a signed `int`, so `lowBit` is a one-liner. The tree is an `[]int64`, matching the `long` result, and the constructor clones `nums` so later updates do not write through to the caller's slice. A method such as `prefix` is unexported (lowercase), which keeps it off the public surface the runner reflects over.
+- Rust: `usize` has no unary minus, so `-i` is written `i.wrapping_neg()` and `low_bit` is `i & i.wrapping_neg()`. The constructor takes `Vec<i32>` by value and keeps it as `values`, so no clone is needed; the delta is computed in `i64`, because `value - old` can reach 2 * 10^5 but the tree entries are 64-bit sums.
 
 ## Approach: segment-tree (Iterative segment tree)
 
@@ -116,3 +118,5 @@ A little more code than a Fenwick tree for sums, but it generalizes: replace `+`
 - TypeScript: `>>= 1` halves indexes below 2^31 exactly.
 - Java: `long[] tree = new long[2 * n]`; `tree[low++]` and `tree[--high]` express the moves compactly.
 - Kotlin: `(low and 1) == 1` needs the parentheses because the infix `and` binds more loosely than `==`.
+- Go: the tree is a single `[]int64` of `2 * size` entries with the leaves at the back, as in the Python version, and `low&1 == 1` needs no parentheses because Go's `&` binds tighter than `==`.
+- Rust: the same flat `Vec<i64>`. `low & 1 == 1` also needs no parentheses in Rust, where `&` binds tighter than `==` (unlike C and Java); `(1..size).rev()` counts the internal nodes down without a signed loop variable.
