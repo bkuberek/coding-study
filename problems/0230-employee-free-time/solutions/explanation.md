@@ -46,6 +46,8 @@ Obviously correct and easy to trust as an oracle, but quadratic. It never uses t
 - TypeScript: `new Set(...)` removes duplicates, and the numeric comparator in `sort` matters (the default sort is lexicographic).
 - Java: a `TreeSet<Integer>` keeps the endpoints distinct and sorted.
 - Kotlin: `toSortedSet()` and `zipWithNext()` express the same thing.
+- Go: `slices.Sort` followed by `slices.Compact` gives the distinct sorted endpoints, and `slices.ContainsFunc` is the `any(...)` scan.
+- Rust: `sort_unstable` followed by `dedup` does the same; the busy test is `iter().any(..)` over references into the owned schedule.
 
 ## Approach: flatten-and-sort (Sort all intervals by start and sweep the busy end)
 
@@ -85,6 +87,8 @@ The simplest optimal answer. It ignores that each employee's list is already sor
 - TypeScript: `schedule.flat()` builds a new outer array, so the in-place `sort` with a numeric comparator does not touch the input.
 - Java: collect the intervals in an `ArrayList<int[]>`, sort with `Comparator.comparingInt`, and return `free.toArray(new int[0][])`.
 - Kotlin: `schedule.flatten().sortedBy { it[0] }`, with the result as `toTypedArray()` (an empty answer is `emptyArray<IntArray>()`).
+- Go: appending each employee's `[][]int` copies only slice headers, so the inner intervals are shared with the input and never modified; the sort compares start, then end, with `cmp.Or(cmp.Compare(..), cmp.Compare(..))`.
+- Rust: `into_iter().flatten()` moves the intervals out of the owned schedule, and `Vec<i32>` already orders lexicographically, so `sort_unstable()` needs no comparator.
 
 ## Approach: heap-merge (Merge the employees' sorted lists with a min-heap)
 
@@ -123,3 +127,5 @@ Better than a full sort when `k` is much smaller than `n`, and it works on lists
 - TypeScript: there is no built-in heap, so the reference includes a small binary min-heap of `[start, person, position]` entries (as `min-meeting-rooms` does).
 - Java: `PriorityQueue<int[]>` with `Comparator.comparingInt` on the start and then the employee; the answer is built in a `List<int[]>` and returned with `toArray(new int[0][])`.
 - Kotlin: `PriorityQueue<IntArray>(compareBy({ it[0] }, { it[1] }))`; destructuring an `IntArray` gives `start`, `person` and `position`.
+- Go: `container/heap` needs a type with the five-method interface; `upcomingHeap` orders by start, then employee, then position, like the Python tuples.
+- Rust: `BinaryHeap` is a max-heap, so `Reverse((start, person, position))` makes it a min-heap, and the tuple order gives the same tie-breaks as Python's tuples.
