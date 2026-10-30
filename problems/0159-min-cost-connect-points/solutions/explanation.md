@@ -47,6 +47,8 @@ Simple and general: it works on any edge list, and on sparse graphs it is the na
 - TypeScript: pairs are packed as `(cost * 1024 + i) * 1024 + j` into a `Float64Array`, whose `sort()` is numeric (a plain array's `sort()` would compare strings); the packed values stay below 2^53, so they are exact.
 - Java: pairs are packed into a `long[]` as `cost << 20 | i << 10 | j` and sorted with `Arrays.sort`, which avoids allocating half a million objects.
 - Kotlin: the same packing into a `LongArray` with `shl`, `or` and `and`; `LongArray.sort()` sorts the primitives in place.
+- Go: the pairs are packed into an `int` (64 bits wide) as `cost<<20 | i<<10 | j`, like Java and Kotlin, and `slices.Sort` orders the plain integers without allocating a value per pair. The find function is a closure, and `parent[node], node = root, parent[node]` is the same one-step swap as Python's.
+- Rust: a `Vec<(i32, usize, usize)>`; tuples compare field by field, cost first, like Python's tuples, so `sort_unstable()` orders the pairs, at 24 bytes per pair. `find` is a function over `&mut [usize]` instead of a closure, because a closure would keep `parent` borrowed while the main loop also writes to it.
 
 ## Approach: prim-dense (Prim with an array of cheapest connections)
 
@@ -85,3 +87,4 @@ Optimal for a complete graph: it never builds the edge list and needs only linea
 - TypeScript: two plain loops per round; `Infinity` marks points not yet offered a cable.
 - Java: `Integer.MAX_VALUE` marks them, and `Math.min` updates the array.
 - Kotlin: `(0 until n).filter { !inTree[it] }.minBy { cheapest[it] }` picks the next point; `val (x, y) = points[point]` destructures an `IntArray`.
+- Go: `math.MaxInt` marks points not yet offered a cable; it is only compared, never added to, and the scan is an explicit loop. Rust: `i32::MAX` marks them, and `(0..n).filter(...).min_by_key(...)` picks the next point, the first of several equal minima, like Python's `min`.
