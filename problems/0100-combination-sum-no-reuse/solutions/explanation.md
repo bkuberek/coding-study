@@ -46,6 +46,8 @@ Obviously correct and short, so it is the oracle. It ignores the target while ge
 - TypeScript: a `Map` keyed by `chosen.join(",")` dedupes, since arrays compare by identity.
 - Java: `HashSet<List<Integer>>` works because `List` defines content-based `equals` and `hashCode`.
 - Kotlin: `filterIndexed` builds each subset; `List<Int>` content equality lets a `LinkedHashSet` dedupe.
+- Go: a map key must be comparable and a slice is not, so the reference keys a `map[string][]int` by the combination's text (each value followed by a comma, built with `strconv.AppendInt`), like the TypeScript key. A repeated key just overwrites an identical combination.
+- Rust: `Vec<i32>` implements `Hash` and `Eq` by content, so `HashSet<Vec<i32>>` dedupes directly, as Python's set of tuples does; the closure that builds each subset names its return type (`-> Vec<i32>`) so `collect()` knows what to build before the `filter`. The sum fits `i32` easily (at most 15 values of 30).
 
 ## Approach: skip-equal-siblings (Backtrack over sorted entries, skipping equal siblings and overshoots)
 
@@ -86,3 +88,5 @@ Faster in practice by orders of magnitude, and it never needs a set. The two cut
 - TypeScript: sort with a numeric comparator; the loop condition carries the overshoot break.
 - Java: comparing `ordered[i] == ordered[i - 1]` on primitive `int` values avoids boxed `Integer` identity comparison.
 - Kotlin: `break` and `continue` work inside a `for` loop over `start until ordered.size`; `toList()` copies `chosen`.
+- Go: `slices.Clone` plus `slices.Sort` sorts a copy, and `slices.Clone(chosen)` snapshots each match, because later appends reuse the same backing array. `break` and `continue` work as in Java.
+- Rust: the function owns `candidates`, so it sorts that vector in place; the recursion shares one `chosen` buffer through `&mut Vec<i32>`, and `chosen.clone()` snapshots each match. `for i in start..ordered.len()` keeps the index for the `ordered[i - 1]` comparison and the recursive call.
