@@ -78,6 +78,8 @@ Slower than Kadane and longer to write, but it is the version that generalizes: 
 - Python: a nested function over index bounds avoids slicing, which would copy subarrays at every level.
 - TypeScript and Kotlin: a closure over `nums`; Java passes the array to a private method.
 - Java and Kotlin: `>>>` and `ushr` compute the midpoint without overflow by habit.
+- Go: a closure declared with `var bestIn func(low, high int) int`; the built-in `max` takes three arguments, so the three candidates fit in one call.
+- Rust: a private function over `&[i32]`; `nums[low..=middle].iter().rev()` walks the left half outwards from the middle, and `Ord::max` takes two arguments, so the three candidates chain. Slicing borrows, so no subarray is copied.
 
 ## Approach: kadane (Kadane's running best sum)
 
@@ -113,3 +115,4 @@ The expected answer: one pass, two variables, and a proof that works both as a r
 ### Language notes
 
 - All four languages use the same two-variable loop with `max` / `Math.max` / `maxOf`.
+- Go and Rust use it as well, over `nums[1:]` and `&nums[1..]`, which borrow the tail instead of copying it.
