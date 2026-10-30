@@ -47,6 +47,8 @@ A natural derivation that interviewers accept as a stepping stone, with the same
 - Python: `functools.cache` on the nested function; the generator expression in `max` drives the top-level calls.
 - TypeScript and Java: an explicit loop over the starts collects the maximum.
 - Kotlin: `nums.indices.maxOf { longestFrom(it) }` expresses the final maximum in one call.
+- Go: an explicit loop collects the maximum over all starts, and the memo is a zero-filled `[]int` where 0 means "not computed yet", which is safe because every start has a run of at least 1. The recursive closure is declared with `var longestFrom func(start int) int` first.
+- Rust: `longest_from` is a free function taking `nums` and the memo as slices, because a closure cannot recurse; `(0..n).map(...).max()` drives the top-level calls and returns an `Option`, which `unwrap_or(0)` resolves for the empty case the constraints exclude. The runner's large per-case stack covers the recursion depth.
 
 ## Approach: tabulation (Quadratic table of runs ending at each index)
 
@@ -84,6 +86,8 @@ The textbook DP, short and reliable, so it is the oracle. Storing for each `i` t
 - TypeScript: `Math.max(...ending)` spreads at most 2500 values here; for very large arrays prefer a loop, since spreading has an argument-count limit.
 - Java: the maximum is tracked during the loop.
 - Kotlin: `IntArray(n) { 1 }` initializes the table and `ending.max()` returns the maximum.
+- Go: the maximum is tracked while the table is filled, so no second pass is needed, and the built-in `max` (Go 1.21 and newer) compares the two lengths.
+- Rust: `ending.into_iter().max()` returns an `Option<i32>` because an iterator may be empty, so `unwrap_or(0)` supplies a value for the case the constraints exclude. The inner comparison `ending[j] + 1 > ending[i]` reads and writes the same vector in separate statements, so the borrow checker has nothing to object to.
 
 ## Approach: patience-sorting (Smallest tails with binary search)
 
@@ -122,3 +126,5 @@ The asymptotically best answer and short once understood. The invariant is less 
 - TypeScript: no built-in binary search, so the reference writes the lower-bound loop; `tails[low] = value` appends when `low` equals the length.
 - Java: `Arrays.binarySearch(tails, 0, size, value)` returns `-(insertion point) - 1` when the value is absent; the tails are distinct, so a found value is replaced by itself.
 - Kotlin: `IntArray.binarySearch(element, fromIndex, toIndex)` has the same contract as Java's.
+- Go: `slices.BinarySearch(tails, value)` (Go 1.21 and newer) returns the first position whose tail is not smaller than `value`, which is `bisect_left`, together with a found flag the reference ignores. The tails slice is allocated with capacity `len(nums)`, so `append` never reallocates.
+- Rust: `partition_point(|&tail| tail < value)` is the lower bound on a sorted slice: it returns the first index where the predicate turns false. `binary_search` would also work, since `Ok(i)` and `Err(i)` both carry the lower bound for distinct tails, but `partition_point` states the intent directly.
