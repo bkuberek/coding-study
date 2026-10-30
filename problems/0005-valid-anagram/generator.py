@@ -2,7 +2,11 @@
 
 `t` is a shuffle of `s`. In about half of the inputs one letter of `t` is then replaced by a
 different letter, so the strings are no longer anagrams (answer `false`). The alphabet is
-either the first 3 letters or all 26, so small inputs repeat letters often.
+either the first 3 letters or all 26 for inputs shorter than `FULL_ALPHABET_FROM`, so small
+inputs repeat letters often; longer inputs always use all 26. A sort needs far fewer steps on
+3 distinct letters than on 26 (Go's pattern-defeating quicksort, Java's quicksort below its
+counting-sort cutoff), so a per-seed choice of alphabet put a cheap input at one size of the
+size ladder and an expensive one at the next, and the sorting approach drifted from n log n.
 
 Striking letters out of `t` scans from the front each time, so its work grows with n^2 at
 every seed: in the `false` case the letter that cannot be matched is usually one of the last
@@ -15,12 +19,16 @@ import string
 MIN_LENGTH = 1
 MAX_LENGTH = 5 * 10**4
 ALPHABET_SIZES = (3, 26)
+FULL_ALPHABET_FROM = 100
 MISMATCH_PROBABILITY = 0.5
 
 
 def generate(rng: random.Random, n: int) -> dict:
     length = min(max(n, MIN_LENGTH), MAX_LENGTH)
-    alphabet = string.ascii_lowercase[: rng.choice(ALPHABET_SIZES)]
+    alphabet_size = max(ALPHABET_SIZES)
+    if length < FULL_ALPHABET_FROM:
+        alphabet_size = rng.choice(ALPHABET_SIZES)
+    alphabet = string.ascii_lowercase[:alphabet_size]
     s = rng.choices(alphabet, k=length)
     t = s[:]
     rng.shuffle(t)

@@ -21,7 +21,7 @@ approaches:
   - {id: counting, name: Letter counts in a fixed array, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
 perf:
   size_param: length of each string
-  size_ladder: [1000, 3000, 10000, 30000]
+  size_ladder: [300, 1000, 3000, 10000, 30000]
   expected_from: counting
   time_limit: {factor: 5}
 references:
