@@ -51,6 +51,8 @@ The most natural code for the problem and the usual interview answer. Its weak p
 - TypeScript: `Map<GraphNode, GraphNode>` compares object keys by reference. The recursive helper is a closure over the map; 2000 frames are well inside Node's default stack.
 - Java: `HashMap` with `GraphNode` keys uses identity because the class does not override `equals` and `hashCode`; `IdentityHashMap` would make that explicit. Recursion depth is no concern on the runner's 256 MiB stack.
 - Kotlin: a local function captures the map; `clones[original]?.let { return it }` returns early from `copy`, because `let` is inline. Use `` original.`val` `` since `val` is a keyword.
+- Go: a node is a `*GraphNode`, and a pointer is a valid map key that compares by address, so `map[*GraphNode]*GraphNode` is an identity map with no extra work. The closure `copyNode` is declared with `var copyNode func(...)` first so it can call itself, and the clone is stored in the map before its neighbors are copied. A nil `Neighbors` slice grows with `append`.
+- Rust: a node is an `Rc<RefCell<GraphNode>>`, and `Rc` compares by value when asked to, so the map is keyed by the node's address, `Rc::as_ptr(original)`, which is identity. The copy is created and stored in the map before the neighbors are visited; the original is only borrowed immutably while the recursion runs, and the copy's neighbor list is assigned afterwards with `borrow_mut`. Because neighbors hold `Rc`s to each other, a cyclic graph is never freed when its last outside handle is dropped; that leak is inherent to `Rc` graphs (a `Weak` back edge would avoid it but would not fit the `Vec<Rc<..>>` neighbor type), and a test graph has at most a few thousand small nodes.
 
 ## Approach: bfs (Breadth-first copy with a map of clones)
 
@@ -92,3 +94,5 @@ No recursion, so no stack limit, for a few more lines. It is the safer default o
 - TypeScript: an array with a moving head index is the queue, since `shift()` is linear; `new GraphNode(val)` starts with a fresh empty `neighbors` array because default arguments are evaluated per call.
 - Java: `ArrayDeque` as the queue and `HashMap` for the copies; `GraphNode.neighbors` is a mutable `ArrayList`.
 - Kotlin: `getOrPut` creates and enqueues a missing copy in one expression; `kotlin.collections.ArrayDeque` with `addLast` and `removeFirst` is the queue.
+- Go: a slice is the queue (`queue[0]` reads the front, `queue = queue[1:]` pops it, `append` pushes). The map literal `map[*GraphNode]*GraphNode{node: {Val: node.Val}}` seeds the root's copy, and `_, seen := clones[neighbor]` is the membership test.
+- Rust: `VecDeque` is the queue, seeded from the root. While the loop walks `original.borrow().neighbors` it mutates the copy (`clone.borrow_mut()`), which is a different `RefCell` from the original's, so the two borrows do not collide. The map is keyed by `Rc::as_ptr`, the node's address.
