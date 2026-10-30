@@ -10,6 +10,7 @@ import pytest
 
 from coding_study.application.ports import RunnerLaunch
 from coding_study.application.verify_content import VerifyRequest, verify_content
+from coding_study.domain.bench_records import MachineState, PowerSource
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import (
     CaseOutcome,
@@ -23,7 +24,9 @@ from coding_study.domain.runs import (
 )
 from tests.concurrency_fakes import duplicating, queue
 from tests.fakes import (
+    QUIET_MACHINE,
     FakeLanguageRunner,
+    FakeMachine,
     FakeStubGenerator,
     FakeToolchains,
     ScriptedRunnerProcess,
@@ -35,6 +38,8 @@ from tests.helpers import CONCURRENCY_PROBLEMS
 SLUG = "bounded-blocking-queue"
 STRESS_RUN_SECONDS = 0.05
 """Long enough for runners started side by side to overlap."""
+BUSY_MACHINE = MachineState("Test CPU", PowerSource.AC, 13.4, 11)
+BUSY_NOTE = "load 13.4 is above half of 11 cores"
 
 
 def caught(job: RunJob, case: RunCase) -> CaseOutcome:
@@ -42,13 +47,16 @@ def caught(job: RunJob, case: RunCase) -> CaseOutcome:
     return duplicating(job, case) if "/broken-" in job.job_id else queue(job, case)
 
 
-def environment_with(tmp_path: Path, answer):
+def environment_with(tmp_path: Path, answer, machine: MachineState = QUIET_MACHINE):
     process = ScriptedRunnerProcess(answer)
     toolchains = FakeToolchains(
         {Language.PYTHON: FakeLanguageRunner()}, {Language.PYTHON: FakeStubGenerator()}
     )
     root = repository_root(tmp_path, CONCURRENCY_PROBLEMS)
-    return make_environment(root, toolchains=toolchains, runner_process=process), process
+    environment = make_environment(
+        root, toolchains=toolchains, runner_process=process, machine=FakeMachine(machine)
+    )
+    return environment, process
 
 
 def verify(environment, **fields):
@@ -175,6 +183,34 @@ def test_the_languages_stress_runs_take_turns(tmp_path):
     request = VerifyRequest(slugs=(SLUG,), stress_runs=1)
     verify_content(environment, request, lambda _line: None)
     assert process.most_at_once == 1
+
+
+def test_a_stress_failure_on_a_busy_machine_names_the_load(tmp_path):
+    environment, _ = environment_with(tmp_path, queue, BUSY_MACHINE)
+    warnings = verify(environment).warnings
+    assert any(BUSY_NOTE in warning for warning in warnings)
+
+
+def test_a_deadline_margin_failure_on_a_busy_machine_names_the_load(tmp_path):
+    def slow(job: RunJob, case: RunCase) -> CaseOutcome:
+        outcome = caught(job, case)
+        if isinstance(outcome, StressCompleted) and job.job_id.endswith("/monitor"):
+            return replace(outcome, duration_ns=2_000_000_000)
+        return outcome
+
+    environment, _ = environment_with(tmp_path, slow, BUSY_MACHINE)
+    warnings = verify(environment, require_ready=True).warnings
+    assert any(BUSY_NOTE in warning for warning in warnings)
+
+
+def test_a_stress_failure_on_a_quiet_machine_has_no_load_note(tmp_path):
+    environment, _ = environment_with(tmp_path, queue)
+    assert not any("load" in warning for warning in verify(environment).warnings)
+
+
+def test_stress_that_passes_on_a_busy_machine_has_no_load_note(tmp_path):
+    environment, _ = environment_with(tmp_path, caught, BUSY_MACHINE)
+    assert not any("load" in warning for warning in verify(environment).warnings)
 
 
 @pytest.mark.parametrize("field", ["approaches", "broken"])

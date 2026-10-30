@@ -394,17 +394,31 @@ class _DynamicChecks:
         )
         results = tuple(result for result, _ in runs.values())
         ladder = self._ladder(results) if generated and self._request.ladder else ()
-        ready_errors = verification.ready_errors
-        if self._request.require_ready:
-            ready_errors += _deadline_margin_problems(results)
+        margin_errors = _deadline_margin_problems(results) if self._request.require_ready else ()
         return replace(
             verification,
             languages=results,
             oracle=oracle,
             dynamic_errors=tuple(self._errors),
             ladder=ladder,
-            ready_errors=ready_errors,
+            ready_errors=verification.ready_errors + margin_errors,
+            warnings=verification.warnings + self._busy_machine_notes(results, margin_errors),
             skipped=() if generated else self._generator_checks_requested(),
+        )
+
+    def _busy_machine_notes(
+        self, results: Sequence[LanguageResult], margin_errors: Sequence[str]
+    ) -> tuple[str, ...]:
+        """Failed stress checks name a busy machine: with other work on the cores, races show
+        less often and runs take longer. The thresholds stay; the note tells a load flake from
+        a weak stress case."""
+        failed = any(not check.ok for result in results for check in result.stress)
+        if not (failed or margin_errors):
+            return ()
+        return tuple(
+            f"stress checks failed on a busy machine ({condition}): races show less often and "
+            "runs take longer; verify again when it is idle"
+            for condition in self._environment.machine.snapshot().warnings
         )
 
     def _generator_checks_requested(self) -> tuple[SkippedCheck, ...]:

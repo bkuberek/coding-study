@@ -262,6 +262,8 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 
 D2, D4 and D5 do not apply to concurrent problems. Their D6 and D7 runs are not part of the 30 s `cstudy verify <slug>` target in NFR-3, because they execute about 10 runs per reference, case and variant.
 
+D6, D7 and the deadline margin keep their thresholds on a busy machine: relaxed there, they would pass a stress case that misses races on a user's idle one. When one of them fails while the 1-minute load average is above half the cores, or on battery, the problem gets a warning that names the condition (`stress checks failed on a busy machine (load 13.4 is above half of 11 cores): ...`), so a load flake can be told from a weak stress case. Measured with three to four other agents on 11 cores (load 10 to 17), `token-bucket-limiter` and `read-write-lock` failed 4 of 6 verifies while every language's runner ran at once (Kotlin, Rust and Python broken references caught 7 or 8 times in 10, a correct Rust run at 31% of its deadline) and 1 of 6 once the runners took turns (Python `unlocked-count` caught 8 times in 10; the slowest correct run at most 13%).
+
 ### Coverage report
 
 `cstudy verify` always ends with per-language coverage (problems with at least one passing reference in that language over problems that list the language) and lists drafts with partial coverage. Missing languages are not failures for drafts; they are failures under `--require-ready`.
