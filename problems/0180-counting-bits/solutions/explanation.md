@@ -43,6 +43,8 @@ Reuses a known routine and needs no insight, but ignores how the counts relate. 
 
 - Python: `bin(i).count("1")` counts in C over the binary string; it is still O(log n) per number.
 - TypeScript, Java, Kotlin: the inner loop `word &= word - 1` runs once per set bit.
+- Go: the same inner loop as the JVM languages, `for word := i; word != 0; word &= word - 1`, with the update clause doing the bit clearing. `bits.OnesCount` from `math/bits` is a single instruction on most CPUs, so using it here would turn the approach into O(n) and hide the O(log n) per number that it exists to show.
+- Rust: the same loop inside a `map` closure that `collect`s the `n + 1` counts into a `Vec<i32>`. `i32::count_ones` is the built-in, left out for the same reason as in Go.
 
 ## Approach: half-plus-low-bit (Reuse the count of i / 2 and add the lowest bit)
 
@@ -81,3 +83,5 @@ Linear, branch-free and short: the expected answer. An equivalent recurrence use
 - TypeScript: `i >> 1` is a 32-bit operation, which is exact for `i <= 10^6`.
 - Java: `new int[n + 1]` is zero-filled, so `bits[0] = 0` needs no statement.
 - Kotlin: shifts and masks are infix functions, `i shr 1` and `i and 1`; `IntArray(n + 1)` starts zero-filled.
+- Go: `make([]int, n+1)` is zero-filled, so `bits[0]` needs no statement. In Go `&` binds tighter than `+`, as `*` does (unlike C and Java), so the parentheses in `bits[i>>1] + (i & 1)` are for the reader, not the compiler.
+- Rust: `vec![0; n + 1]` is zero-filled. Indexes are `usize`, so `n` is cast once, and `(i & 1) as i32` converts the low bit for the `Vec<i32>`. In Rust `&` binds looser than `+`, so there the parentheses are required.
