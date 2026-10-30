@@ -83,3 +83,5 @@ The default answer. The traversal is iterative, so recursion depth is no concern
 - TypeScript: `new Map(employees.map((record) => [record[0], record]))` builds the index.
 - Java: `HashMap<Integer, int[]>` plus an `ArrayDeque<Integer>` used as a stack. Totals stay within `int` (at most 10^4 * 100 in absolute value).
 - Kotlin: `employees.associateBy { it[0] }` builds the index and `getValue` fails loudly on a missing id.
+- Go: `map[int][]int` stores the row slices themselves, so indexing copies no data; the stack is a slice grown with `append(pending, record[2:]...)`.
+- Rust: the index is a `HashMap<i32, &Vec<i32>>` that borrows the rows of the owned `employees`, and `extend_from_slice(&record[2..])` pushes the subordinate ids; a row with only two values yields an empty slice, not an error.
