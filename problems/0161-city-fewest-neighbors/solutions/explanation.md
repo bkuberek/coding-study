@@ -48,6 +48,8 @@ Very short and independent of the number of roads, which makes it the natural pi
 - TypeScript: rows are plain arrays filled with `Infinity`, which adds safely.
 - Java: `Integer.MAX_VALUE / 2` serves as infinity so that adding two of them stays positive.
 - Kotlin: the same constant; the final choice is `(0 until n).last { counts[it] == fewest }`, which states the tie rule directly.
+- Go: `inf = math.MaxInt / 2` (a 64-bit `int`) makes the sum of two "no road" entries safe from overflow, and `dist[i][j]` is indexed directly, so the `[][]int` needs no copy. The `for` loops with explicit indexes mirror the textbook triple loop.
+- Rust: `i32::MAX / 2` plays the same role, and it is required, not a nicety: overflow checks are on, so `i32::MAX + i32::MAX` would panic. Cloning the `middle` row before the loop lets `dist.iter_mut()` borrow every row mutably without aliasing the row being read.
 
 ## Approach: dijkstra-from-each (Dijkstra with a heap from every city)
 
@@ -86,3 +88,5 @@ Faster than Floyd-Warshall on sparse graphs and on small thresholds, and it scal
 - TypeScript: the reference implements a binary min-heap, since there is no built-in priority queue; a `Uint8Array` marks settled cities.
 - Java: `PriorityQueue<int[]>` ordered by the distance field.
 - Kotlin: `PriorityQueue<Pair<Int, Int>>(compareBy { it.first })` inside a local function that captures the graph.
+- Go: `container/heap` needs a type with `Len`, `Less`, `Swap`, `Push` and `Pop`; the reference defines `visitHeap` over `visit{distance, city}` structs. A `[]bool` of size `n` records the settled cities, and the closure `reachable` captures `graph`, `n` and the threshold.
+- Rust: `BinaryHeap<Reverse<(i32, usize)>>` is the min-heap; the tuple compares by distance first. The closure `reachable` borrows `graph` immutably and allocates its own `settled` vector per source.
