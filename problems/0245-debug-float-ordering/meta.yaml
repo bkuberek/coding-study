@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0245"
+slug: debug-float-ordering
+title: "Debug: Float Ordering"
+status: ready
+difficulty: medium
+track: debugging
+kind: function
+languages: [rust]
+stub: buggy
+signature:
+  function:
+    name: rankCreatives
+    params:
+      - {name: ids, type: "int[]"}
+      - {name: impressions, type: "int[]"}
+      - {name: clicks, type: "int[]"}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: defined-rate, name: Define the empty rate and compare with a total order, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+related: [debug-sort-comparator, top-k-frequent-elements, debug-unsigned-underflow]
+estimate_minutes: 20

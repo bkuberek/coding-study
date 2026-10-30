@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"ids": [7, 3, 9], "impressions": [100, 200, 50], "clicks": [5, 30, 5]}, "expected": [3, 9, 7]},
+    {"id": "ex2", "visible": true, "input": {"ids": [4, 2, 8], "impressions": [300, 100, 10], "clicks": [3, 1, 2]}, "expected": [8, 2, 4]},
+    {"id": "h1", "input": {"ids": [11, 12, 13], "impressions": [400, 0, 80], "clicks": [20, 0, 8]}, "expected": [13, 11, 12], "note": "one creative that was never shown"},
+    {"id": "h2", "input": {"ids": [30, 10, 20], "impressions": [0, 0, 0], "clicks": [0, 0, 0]}, "expected": [10, 20, 30], "note": "no creative was shown yet"},
+    {"id": "h3", "input": {"ids": [5], "impressions": [0], "clicks": [0]}, "expected": [5], "note": "a single creative that was never shown"},
+    {"id": "h4", "input": {"ids": [6, 2], "impressions": [500, 0], "clicks": [0, 0]}, "expected": [2, 6], "note": "shown without clicks ties with never shown"},
+    {"id": "h5", "input": {"ids": [1, 2, 3], "impressions": [10, 1000, 7], "clicks": [10, 999, 0]}, "expected": [1, 2, 3], "note": "every impression clicked"},
+    {"id": "h6", "input": {"ids": [100, 200, 300], "impressions": [1000000000, 999999999, 1000000000], "clicks": [999999999, 999999998, 1000000000]}, "expected": [300, 100, 200], "note": "largest counts, rates that differ in the ninth digit"},
+    {"id": "h7", "input": {"ids": [9, 6, 3], "impressions": [9, 6, 3], "clicks": [3, 2, 1]}, "expected": [3, 6, 9], "note": "equal rates written as different fractions"},
+    {"id": "h8", "input": {"ids": [42], "impressions": [77], "clicks": [11]}, "expected": [42], "note": "a single creative"},
+    {"id": "h9", "input": {"ids": [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45], "impressions": [100, 90, 80, 70, 60, 50, 40, 30, 20, 10, 100, 90, 80, 70, 60, 50, 40, 30, 20, 0, 100, 90, 80, 70, 60], "clicks": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 2, 4, 6, 8, 10, 12, 14, 16, 18, 0, 3, 6, 9, 12, 15]}, "expected": [30, 39, 38, 29, 37, 28, 45, 36, 27, 44, 35, 26, 34, 43, 25, 33, 42, 24, 32, 23, 41, 22, 31, 21, 40], "note": "a larger campaign with one new creative"},
+    {"id": "h10", "input": {"ids": [1000000, 1], "impressions": [3, 3], "clicks": [1, 1]}, "expected": [1, 1000000], "note": "tie broken by the smaller id"},
+    {"id": "h11", "input": {"ids": [8, 4, 6, 2], "impressions": [0, 50, 0, 50], "clicks": [0, 1, 0, 2]}, "expected": [2, 4, 6, 8], "note": "two new creatives rank last, by id"}
+  ]
+}
