@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v0.7.0 (2026-10-30)
+
+### Documentation
+
+- **readme**: Count the new practical problem
+  ([`2d5c077`](https://github.com/bkuberek/coding-study/commit/2d5c077a336f3ebaa1bcb357d015087ba6c48d1f))
+
+### Features
+
+- **problems**: Add scheduled-transfers-bank
+  ([`6afbc0c`](https://github.com/bkuberek/coding-study/commit/6afbc0c9af793c7bff7e6cb138a1b7f19bbdbc6a))
+
+
 ## v0.6.0 (2026-10-30)
 
 ### Bug Fixes
