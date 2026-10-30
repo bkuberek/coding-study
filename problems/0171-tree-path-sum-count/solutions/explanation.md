@@ -41,6 +41,11 @@ Straightforward and fine for balanced trees, where it is O(n log n). It recomput
 - Do not stop a walk once the sum matches: negative values and zeros below can match again.
 - Two nested recursions (one to pick the start, one to walk down) can reach depth 2h, which overflows default stacks on deep trees; iterating avoids it.
 
+### Language notes
+
+- Go: `TreeNode` is the support package's struct, aliased in the file as in the stub, and a nil `*TreeNode` is an empty subtree. The two explicit stacks are slices (`starts` of nodes, `pending` of `walk{node, total}` pairs), and `[]*TreeNode{left, right}` lets one loop skip the nil children.
+- Rust: a node is an `Rc<RefCell<TreeNode>>`, so the stacks hold cloned `Rc`s (a reference-count bump, not a copy of the node). `borrow()` takes a short shared borrow to read `val`, `left` and `right`, and `[&node.left, &node.right].into_iter().flatten()` visits only the children that exist.
+
 ## Approach: prefix-backtracking (Prefix sums along the root path with backtracking)
 
 ### Intuition
@@ -82,3 +87,5 @@ Linear regardless of the shape, and the expected answer. It needs recursion (or 
 - TypeScript: an inner `function` closes over the map and the target; `Map.get` returns `undefined` for a missing sum, hence `?? 0`.
 - Java: the map and target live in fields so the recursive helper takes only the node and the sum; `merge(total, -1, Integer::sum)` undoes the increment.
 - Kotlin: a local `fun` captures the map; the node value is `` node.`val` `` because `val` is a Kotlin keyword.
+- Go: the recursion is a closure declared with `var countBelow func(...)` so it can call itself, and it updates the shared `onPath` map in place; reading a missing key gives 0 without inserting it, and `onPath[total]--` undoes the increment on the way out.
+- Rust: a recursive closure is not possible, so `count_below` is a free function that takes the map as `&mut HashMap<i32, i32>`. `let Some(node) = node else { return 0 }` handles the empty subtree, `node.borrow()` holds a shared borrow of the node across the two recursive calls (they only read), and the prefix sums stay under 4 * 10^6, well inside `i32`.
