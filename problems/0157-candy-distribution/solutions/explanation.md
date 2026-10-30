@@ -44,6 +44,7 @@ The most direct reading of the rules and easy to argue, so it is the oracle; the
 
 - Python and TypeScript: a `changed` flag drives the outer loop.
 - Java and Kotlin: `Arrays.stream(candies).sum()` and `IntArray.sum()` total the result; at most about 2 * 10^8 candies, inside 32-bit range.
+- Go: `for changed := true; changed; { ... }` resets the flag at the top of each round, and a short loop totals the counts. Rust: `while changed`, with `i + 1 < n` in place of `i < n - 1`, and `candies.iter().sum()` totals the counts as an `i32`.
 
 ## Approach: two-pass (Satisfy left neighbors then right neighbors)
 
@@ -81,6 +82,7 @@ The standard answer: two short loops and a clean argument. Its linear memory is 
 - Python: two `range` loops, one of them reversed with step -1.
 - TypeScript: `reduce` sums the counts.
 - Kotlin: `for (i in n - 2 downTo 0)` is empty when `n` is 1.
+- Go: `for i := n - 2; i >= 0; i--` is empty when `n` is 1, and a loop totals the counts. Rust: the right-to-left pass is `(0..n - 1).rev()`, which is empty for one child and never forms `n - 2` on a `usize`.
 
 ## Approach: slope-counting (One pass over rising and falling runs)
 
@@ -116,3 +118,4 @@ Constant memory and a single pass, at the cost of a subtle invariant that is eas
 
 - Kotlin: a `when` without a subject replaces the `if` chain; `total += down + if (down > peak) 1 else 0` uses `if` as an expression.
 - All four languages keep the same four counters.
+- Go: a tagless `switch` replaces the `if` chain, and a nested `if` adds the optional candy, since Go has no conditional expression. Rust: `ratings.windows(2)` yields each adjacent pair, and `i32::from(down > peak)` turns the comparison into 0 or 1.
