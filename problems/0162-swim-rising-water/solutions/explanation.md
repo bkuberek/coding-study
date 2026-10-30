@@ -46,6 +46,8 @@ Each piece is simple: a textbook flood fill and a textbook binary search, easy t
 - TypeScript: cells are encoded as `r * n + c`, visited flags live in a `Uint8Array`, and the queue is an array with a moving head.
 - Java: `(low + high) >>> 1` is the overflow-safe midpoint idiom, harmless here; `ArrayDeque<int[]>` holds the cells.
 - Kotlin: a local function captures `grid` and `n`; `if (reachable(middle)) high = middle else low = middle + 1` keeps the loop compact.
+- Go: `reachable` is a closure over `grid` and `n`. The queue is a slice of `[2]int` pairs walked with a `head` index, which avoids re-slicing and costs one append per cell; `max` is the built-in (Go 1.21+). The four moves come from a `[4][2]int` array of deltas.
+- Rust: `reachable` is a free function taking `&[Vec<i32>]`, so the search borrows the grid without copying it. Coordinates are `usize` and the deltas `isize`: the neighbor is computed as `isize`, bounds-checked, then converted back, because `r - 1` on a `usize` row 0 would panic. The queue is a `VecDeque`.
 
 ## Approach: min-heap (Dijkstra-style search on the highest cell so far)
 
@@ -83,3 +85,5 @@ One pass, no bound on heights needed, and the idea carries over to every "minimi
 - TypeScript: the reference implements a binary min-heap over `[level, cell]` pairs, since there is no built-in priority queue.
 - Java: `PriorityQueue<int[]>` ordered by `entry[0]`; `while (true)` ends by returning at the goal, which is always reachable.
 - Kotlin: `PriorityQueue<Pair<Int, Int>>(compareBy { it.first })`, with cells encoded as `r * n + c`.
+- Go: `container/heap` needs `Len`, `Less`, `Swap`, `Push` and `Pop`; `entryHeap` holds `entry{level, r, c}` and orders by level. The final `panic` is only there because Go requires a `return` or `panic` at the end of the function.
+- Rust: `BinaryHeap` is a max-heap, so `Reverse` over the `(level, row, column)` tuple pops the lowest level first. The loop never falls through for valid input, so `unreachable!` states that and satisfies the return type.
