@@ -22,6 +22,7 @@ from pathlib import Path
 from coding_study.adapters.languages.rust.types import (
     crate_imports,
     node_kinds,
+    rust_name,
     rust_type,
 )
 from coding_study.domain.language_limits import LIST_IDENTITY, names_list_nodes
@@ -208,7 +209,7 @@ _SHARED = _ClassForm(
 def _target_items(signature: Signature, module: str, kind: ProblemKind) -> tuple[list[str], str]:
     """The bridge functions of one target and its `Entry`."""
     if isinstance(signature, FunctionSignature):
-        name = member_name(signature.name, Language.RUST, NameRole.FUNCTION)
+        name = rust_name(signature.name, NameRole.FUNCTION)
         call = f"{module}::{name}"
         body = _call(signature.params, signature.returns, call, None)
         items = [
@@ -243,7 +244,7 @@ def _class_items(signature: ClassSignature, module: str, form: _ClassForm) -> tu
     ]
     arms: list[str] = []
     for method in signature.methods:
-        name = member_name(method.name, Language.RUST, NameRole.METHOD)
+        name = rust_name(method.name, NameRole.METHOD)
         body = _call(method.params, method.returns, f"instance.{name}", method.name)
         arms += [
             f"{INDENT * 2}{rust_string(method.name)} => {{",

@@ -83,6 +83,19 @@ def test_method_names_are_snake_case_and_operations_canonical():
     assert "instance.scan_by_prefix(arg_timestamp, arg_key, arg_prefix)" in bridge
 
 
+def test_keyword_names_are_called_as_raw_identifiers_and_operations_stay_canonical():
+    bridge = text(stub_signature("keyword-names"))
+    assert "let instance: user::Robot = user::Robot::new(arg_ref);" in bridge
+    assert '        "move" => {\n            args.count(1, "move")?;\n' in bridge
+    assert "let output: i32 = instance.r#move(arg_steps);" in bridge
+    assert "let output: () = instance.r#loop(arg_match);" in bridge
+
+
+def test_a_function_named_after_a_keyword_is_called_as_a_raw_identifier():
+    signature = replace(stub_signature("two-sum"), name="match")
+    assert "user::r#match(arg_nums, arg_target);" in text(signature)
+
+
 def test_output_from_passes_a_mutable_reference_and_encodes_the_argument():
     bridge = text(stub_signature("rotate"))
     assert '    let mut arg_nums: Vec<i32> = args.named("nums")?;\n' in bridge

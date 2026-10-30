@@ -94,6 +94,22 @@ def test_reserved_names_are_errors(problems):
     )
 
 
+def test_a_rust_keyword_that_a_raw_identifier_spells_is_no_error(problems):
+    meta = problems["two-sum"].meta
+    signature = replace(meta.signature, params=(replace(meta.signature.params[0], name="move"),))
+    problem = with_meta(problems, signature=signature, languages=(*meta.languages, Language.RUST))
+    assert not any("reserved word" in issue for issue in errors(content(problems, problem=problem)))
+
+
+def test_a_rust_keyword_no_raw_identifier_spells_is_an_error(problems):
+    meta = problems["two-sum"].meta
+    signature = replace(meta.signature, params=(replace(meta.signature.params[0], name="self"),))
+    problem = with_meta(problems, signature=signature, languages=(*meta.languages, Language.RUST))
+    assert f'{META}: signature: "self" is a reserved word in rust' in errors(
+        content(problems, problem=problem)
+    )
+
+
 def test_shadowed_python_builtins_are_warnings(problems):
     meta = problems["two-sum"].meta
     signature = replace(meta.signature, params=(replace(meta.signature.params[0], name="sum"),))

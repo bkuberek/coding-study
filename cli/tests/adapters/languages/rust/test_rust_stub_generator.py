@@ -80,6 +80,21 @@ def test_names_are_snake_case_with_new_as_the_constructor():
     assert "    pub fn new(capacity: i32) -> Self {\n        LRUCache {}\n" in generate("lru-cache")
 
 
+def test_keywords_are_written_as_raw_identifiers():
+    stub = generate("keyword-names")
+    assert "    pub fn new(r#ref: i32) -> Self {\n" in stub
+    assert "    pub fn r#move(&mut self, steps: i32) -> i32 {\n" in stub
+    assert "    pub fn r#loop(&mut self, r#match: i32) {\n" in stub
+
+
+def test_a_function_named_after_a_keyword_is_a_raw_identifier():
+    signature = FunctionSignature(
+        "match", (Param("type", parse_value_type("int")),), Returns(parse_return_type("int"))
+    )
+    stub = RustStubGenerator().generate(replace(stub_meta("two-sum"), signature=signature))
+    assert "pub fn r#match(r#type: i32) -> i32 {\n" in stub
+
+
 def test_output_from_takes_the_parameter_by_mutable_reference():
     assert "pub fn rotate(nums: &mut Vec<i32>, k: i32) {" in generate("rotate")
 

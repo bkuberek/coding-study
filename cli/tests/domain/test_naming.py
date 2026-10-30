@@ -8,6 +8,7 @@ from coding_study.domain.naming import (
     is_reserved,
     member_name,
     reserved_name_conflicts,
+    rust_identifier,
     shadowed_imports,
     shadowed_python_builtins,
     snake_case,
@@ -263,12 +264,40 @@ def test_conflicts_only_consider_the_listed_languages():
     assert reserved_name_conflicts(signature, (Language.PYTHON, Language.JAVA)) == ()
 
 
-def test_a_method_named_after_a_rust_keyword_conflicts_only_when_rust_is_listed():
-    signature = ClassSignature("Board", (), (Method("move", (), Returns(VoidType())),))
+def test_a_rust_keyword_that_a_raw_identifier_spells_is_no_conflict():
+    signature = ClassSignature(
+        "Board", (Param("ref", INT),), (Method("move", (), Returns(VoidType())),)
+    )
+    assert reserved_name_conflicts(signature, (Language.RUST,)) == ()
+
+
+@pytest.mark.parametrize("word", ["self", "crate"])
+def test_a_rust_keyword_no_raw_identifier_spells_conflicts_only_when_rust_is_listed(word):
+    signature = function("check", word)
     assert reserved_name_conflicts(signature, CORE_LANGUAGES) == ()
     assert reserved_name_conflicts(signature, (*CORE_LANGUAGES, Language.RUST)) == (
-        ReservedNameConflict("move", Language.RUST, "move"),
+        ReservedNameConflict(word, Language.RUST, word),
     )
+
+
+def test_a_class_named_self_conflicts_in_rust():
+    assert reserved_name_conflicts(design_class("Self", "push"), (Language.RUST,)) == (
+        ReservedNameConflict("Self", Language.RUST, "Self"),
+    )
+
+
+@pytest.mark.parametrize(
+    ("symbol", "spelled"),
+    [
+        ("move", "r#move"),
+        ("type", "r#type"),
+        ("async", "r#async"),
+        ("try", "r#try"),
+        ("nums", "nums"),
+    ],
+)
+def test_rust_spells_keywords_as_raw_identifiers(symbol, spelled):
+    assert rust_identifier(symbol) == spelled
 
 
 def test_go_conflicts_are_found_after_conversion():

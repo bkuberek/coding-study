@@ -3,23 +3,24 @@
 Types follow the Rust column of docs/specs/problem-format.md#go-and-rust-mapping, the way
 LeetCode writes them: owned parameters, `&mut` for an `output_from` parameter, `pub struct` with
 `pub fn new(...) -> Self` and `&mut self` methods (`&self` for concurrent problems, whose
-instance threads share). Node types come from the `cs_support` crate, `decimal` is
-`rust_decimal::Decimal` and `date` is `chrono::NaiveDate`; each is imported only when the
-signature uses it, in one group after the `Rc` and `RefCell` imports that trees and graphs need.
-The
-text is already rustfmt-clean, including rustfmt's split of a signature longer than 100
-characters, so no formatter needs to run.
+instance threads share), and a name that is a keyword written as a raw identifier (`r#move`).
+Node types come from the `cs_support` crate, `decimal` is `rust_decimal::Decimal` and `date` is
+`chrono::NaiveDate`; each is imported only when the signature uses it, in one group after the
+`Rc` and `RefCell` imports that trees and graphs need. The text is already rustfmt-clean,
+including rustfmt's split of a signature longer than 100 characters, so no formatter needs to
+run.
 """
 
 from coding_study.adapters.languages.rust.types import (
     SHARED_NODES,
     crate_imports,
     node_kinds,
+    rust_name,
     rust_type,
 )
 from coding_study.domain.concurrency import model_text
 from coding_study.domain.layout import statement_path
-from coding_study.domain.naming import NameRole, member_name
+from coding_study.domain.naming import NameRole
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.signature import ClassSignature, FunctionSignature, Method, Param
 from coding_study.domain.type_dsl import ReturnType
@@ -60,7 +61,7 @@ def _imports(meta: ProblemMeta) -> list[str]:
 
 
 def _function(signature: FunctionSignature) -> list[str]:
-    name = member_name(signature.name, Language.RUST, NameRole.FUNCTION)
+    name = rust_name(signature.name, NameRole.FUNCTION)
     params = [_param(param, signature.returns.output_from) for param in signature.params]
     head = _head(f"pub fn {name}", params, signature.returns.type, "")
     return [*head, f"{INDENT}{NOT_IMPLEMENTED}", "}"]
@@ -85,7 +86,7 @@ def _class(signature: ClassSignature, shared: bool) -> list[str]:
 
 def _method(method: Method, receiver: str) -> list[str]:
     level = [] if method.level is None else [f"{INDENT}// Level {method.level}"]
-    name = member_name(method.name, Language.RUST, NameRole.METHOD)
+    name = rust_name(method.name, NameRole.METHOD)
     params = [receiver, *(_param(param, method.returns.output_from) for param in method.params)]
     head = _head(f"pub fn {name}", params, method.returns.type, INDENT)
     return [*level, *head, f"{INDENT * 2}{NOT_IMPLEMENTED}", f"{INDENT}}}"]
@@ -107,6 +108,6 @@ def _head(name: str, params: list[str], returns: ReturnType | None, indent: str)
 
 
 def _param(param: Param, output_from: str | None) -> str:
-    name = member_name(param.name, Language.RUST, NameRole.PARAMETER)
+    name = rust_name(param.name, NameRole.PARAMETER)
     mutable = "&mut " if param.name == output_from else ""
     return f"{name}: {mutable}{rust_type(param.type)}"

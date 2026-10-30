@@ -122,6 +122,27 @@ def test_module_paths_in_types_are_the_users_names():
     assert load_error(error, "user", "lru_cache.rs").message == "no method for `LRUCache`"
 
 
+def test_raw_identifiers_are_the_names_of_the_signature():
+    """rustc writes a keyword name as the bridge calls it, `r#move`; the problem calls it `move`.
+    A raw string literal such as `r#"a"#` is not a name."""
+    error = CompilerError(
+        BRIDGE_FILE,
+        1,
+        1,
+        "E0599",
+        "no method named `r#move` found for struct `user::Robot` in the current scope",
+        "",
+        ("help: there is a method `r#loop` with a similar name",),
+        suggestions=("help: there is a method `r#loop` with a similar name",),
+    )
+    assert load_error(error, "user", "robot.rs").message == (
+        "no method named `move` found for struct `Robot` in the current scope; "
+        "there is a method `loop` with a similar name"
+    )
+    literal = CompilerError(BRIDGE_FILE, 1, 1, "E0308", 'found `r#"a"#`', "", ())
+    assert load_error(literal, "user", "robot.rs").message == 'found `r#"a"#`'
+
+
 def test_the_workspace_lists_each_harness_package(tmp_path):
     for package in ("test/two_sum", "bench/lru_cache", "verify/two_sum"):
         (tmp_path / package).mkdir(parents=True)

@@ -19,6 +19,7 @@ from coding_study.adapters.languages.rust.bridge import (
     GENERATED_HEADER,
     Unavailable,
 )
+from coding_study.domain.naming import RAW_IDENTIFIER_PREFIX
 
 EDITION = "2021"
 RUST_VERSION = "1.80"
@@ -79,6 +80,8 @@ _ARTIFACT = "compiler-artifact"
 _EXTERNAL_FILE = re.compile(r"^(/rustc/|<)")
 _EXPECTED_FOUND = re.compile(r"expected `(?P<expected>.+)`, found `(?P<found>.+)`")
 _ARGUMENT = re.compile(rf"(?:&mut )?{ARGUMENT_PREFIX}(?P<name>\w+)")
+_RAW_IDENTIFIER = re.compile(rf"\b{RAW_IDENTIFIER_PREFIX}(?=[A-Za-z_])")
+"""rustc's spelling of a keyword name, `r#move`; not a raw string literal `r#"..."#`."""
 _HELP = "help: "
 
 
@@ -214,8 +217,8 @@ def output_text(stdout: str, stderr: str) -> tuple[str, ...]:
 
 def load_error(error: CompilerError, module: str, file_name: str) -> Unavailable:
     """The `load_error` of a target whose bridge code did not compile, in the user's terms: the
-    bridge's module `user` is the file `two_sum.rs`, and a type mismatch says which side is the
-    user's."""
+    bridge's module `user` is the file `two_sum.rs`, a type mismatch says which side is the
+    user's, and a keyword name is the signature's `move`, not the bridge's `r#move`."""
     symbol = error.code in SYMBOL_CODES
     message = _mismatch(error) or error.message
     if symbol:
@@ -229,6 +232,7 @@ def load_error(error: CompilerError, module: str, file_name: str) -> Unavailable
         .replace(f"`{module}::", "`")
         .replace(f"{module}::", "")
     )
+    message = _RAW_IDENTIFIER.sub("", message)
     return Unavailable(SYMBOL_NOT_FOUND if symbol else SIGNATURE_MISMATCH, message)
 
 

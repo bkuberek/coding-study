@@ -3,7 +3,8 @@
 Canonical names are lowerCamelCase (classes PascalCase). Python and Rust convert functions,
 methods and parameters to snake_case; TypeScript, Java and Kotlin keep the canonical names. Go
 keeps them too, except that methods are exported (PascalCase) because reflection only finds
-exported ones. Runners never convert names: the CLI sends them in the request
+exported ones. Rust source writes a name that is a keyword as a raw identifier (`r#move`), but
+the name stays `move`. Runners never convert names: the CLI sends them in the request
 (docs/specs/runners.md#request-file).
 """
 
@@ -67,6 +68,10 @@ _RUST_KEYWORDS = _words(
     where while abstract become box do final macro override priv try typeof unsized virtual yield
     """
 )
+_RUST_PATH_KEYWORDS = _words("crate self Self super")
+"""The Rust keywords that no raw identifier can spell: `r#self` does not compile."""
+_RUST_RAW_KEYWORDS = _RUST_KEYWORDS - _RUST_PATH_KEYWORDS
+RAW_IDENTIFIER_PREFIX = "r#"
 RESERVED_WORDS: Mapping[Language, frozenset[str]] = {
     Language.PYTHON: frozenset(keyword.kwlist),
     Language.TYPESCRIPT: _TYPESCRIPT_RESERVED,
@@ -210,17 +215,24 @@ def is_reserved(symbol: str, language: Language) -> bool:
     return symbol in RESERVED_WORDS[language]
 
 
+def rust_identifier(symbol: str) -> str:
+    """`symbol` as Rust source writes it: a keyword as a raw identifier (`r#move`), any other
+    name as it is. S3 keeps the keywords a raw identifier cannot spell out of signatures."""
+    return f"{RAW_IDENTIFIER_PREFIX}{symbol}" if symbol in _RUST_RAW_KEYWORDS else symbol
+
+
 def reserved_name_conflicts(
     signature: Signature, languages: Iterable[Language]
 ) -> tuple[ReservedNameConflict, ...]:
     """Every name that is a reserved word in one of `languages` after conversion (`cstudy verify`
-    S3). A language the problem does not list never gets a stub, so it cannot conflict."""
+    S3), except a Rust keyword that a raw identifier spells. A language the problem does not
+    list never gets a stub, so it cannot conflict."""
     listed = tuple(languages)
     return tuple(
         ReservedNameConflict(declared.name, language, symbol)
         for declared in _declared_names(signature)
         for language in listed
-        if is_reserved(symbol := declared.symbol(language), language)
+        if _cannot_declare(symbol := declared.symbol(language), language)
     )
 
 
@@ -261,6 +273,11 @@ def _python_names_in(signature: Signature, names: Set[str]) -> tuple[str, ...]:
     """The signature's Python names that are in `names`, each once, in declaration order."""
     python_names = (declared.symbol(Language.PYTHON) for declared in _declared_names(signature))
     return tuple(dict.fromkeys(name for name in python_names if name in names))
+
+
+def _cannot_declare(symbol: str, language: Language) -> bool:
+    raw = language is Language.RUST and symbol in _RUST_RAW_KEYWORDS
+    return is_reserved(symbol, language) and not raw
 
 
 def _param_names(params: tuple[Param, ...], language: Language) -> dict[str, str]:

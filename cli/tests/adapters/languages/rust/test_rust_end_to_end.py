@@ -136,6 +136,31 @@ impl BoundedBlockingQueue {
     }
 }
 """
+ROBOT = next(case.meta for case in STUB_CASES if case.name == "keyword-names")
+RAW_IDENTIFIERS = """pub struct Robot {
+    position: i32,
+}
+
+impl Robot {
+    pub fn new(r#ref: i32) -> Self {
+        Robot { position: r#ref }
+    }
+
+    pub fn r#move(&mut self, steps: i32) -> i32 {
+        self.position += steps;
+        self.position
+    }
+
+    pub fn r#loop(&mut self, r#match: i32) {
+        self.position = r#match;
+    }
+}
+"""
+MOVES = RunCase(
+    "moves",
+    OperationSequence(("Robot", "move", "loop", "move"), ((1,), (2,), (10,), (5,))),
+    10_000,
+)
 PUTS = OperationSequence(("put",) * 100, tuple((value,) for value in range(100)))
 TAKES = OperationSequence(("take",) * 100, ((),) * 100)
 STRESS = StressRun(
@@ -196,6 +221,24 @@ def test_a_misnamed_function_is_a_load_error_with_the_compilers_reason(root):
         "SymbolNotFound",
         "cannot find function `two_sum` in `two_sum.rs`; "
         "a function with a similar name exists: `two_summ`",
+    )
+
+
+def test_methods_named_after_keywords_run_as_raw_identifiers(root):
+    write_solution(root, RAW_IDENTIFIERS, ROBOT)
+    (case,) = run(root, prepare(root, ROBOT), MOVES, ROBOT).cases
+    assert isinstance(case.outcome, Returned), case.outcome
+    assert case.outcome.output == [None, 3, None, 15]
+
+
+def test_a_misnamed_keyword_method_is_a_load_error_with_the_compilers_hint(root):
+    write_solution(root, RAW_IDENTIFIERS.replace("pub fn r#move(", "pub fn mov("), ROBOT)
+    load_error = run(root, prepare(root, ROBOT), MOVES, ROBOT).load_error
+    assert load_error is not None
+    assert (load_error.type, load_error.message) == (
+        "SymbolNotFound",
+        "no method named `move` found for mutable reference `&mut Robot` in the current scope; "
+        "there is a method `mov` with a similar name",
     )
 
 

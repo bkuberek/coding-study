@@ -1,8 +1,10 @@
-"""The Rust column of docs/specs/problem-format.md#go-and-rust-mapping, shared by the stub
-generator and the bridge generator."""
+"""The Rust column of docs/specs/problem-format.md#go-and-rust-mapping and the spelling of names,
+shared by the stub generator and the bridge generator."""
 
 from collections.abc import Iterator, Mapping
 
+from coding_study.domain.naming import NameRole, member_name, rust_identifier
+from coding_study.domain.problem import Language
 from coding_study.domain.signature import Signature, declared_types
 from coding_study.domain.type_dsl import (
     ArrayType,
@@ -51,6 +53,12 @@ def rust_type(declared: ReturnType) -> str:
             return f"Vec<{rust_type(element)}>"
         case VoidType():
             return ""
+
+
+def rust_name(canonical: str, role: NameRole) -> str:
+    """A function, method or parameter as Rust source declares and calls it: snake_case, and a
+    keyword as a raw identifier (`r#move`)."""
+    return rust_identifier(member_name(canonical, Language.RUST, role))
 
 
 def crate_imports(signature: Signature) -> list[str]:
