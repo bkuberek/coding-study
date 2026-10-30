@@ -40,6 +40,11 @@ Easy to reason about, and linear if the input happens to be sorted already (then
 - Do not forget the case `m = n`: no index mismatches.
 - In TypeScript, `[...].sort()` without a comparator sorts as strings (`10` before `9`); the reference sorts an `Int32Array`, which compares numerically.
 
+### Language notes
+
+- Go: `slices.Clone` copies the input first, so the sort does not reorder the caller's slice (`slices.Sort` works in place), and `slices.Sort` then orders the copy. Skipping the clone would save the O(n) extra space but change the caller's data.
+- Rust: the parameter is an owned `Vec<i32>`, so `sort_unstable` can reorder it in place with no copy; the O(n) of the Java reference is the clone that ownership makes unnecessary here. Indexes are `usize` and values `i32`, so each comparison casts the index once.
+
 ## Approach: expected-sum (Subtract the sum from the sum of 0 to n)
 
 ### Intuition
@@ -76,6 +81,8 @@ Very short and easy to justify. Its weak spot is the magnitude: for `n = 10^5` t
 - TypeScript: numbers are doubles, exact up to 2^53, so `5 * 10^9` is no problem.
 - Java: `long n = nums.length` makes the whole expression 64-bit; the final cast to `int` is safe because the answer is at most `n`.
 - Kotlin: `nums.sumOf { it.toLong() }` sums in 64 bits.
+- Go: `len(nums)` is an `int`, which is 64 bits on a 64-bit platform, so `n * (n + 1) / 2` (up to 5 * 10^9) is exact without a wider type.
+- Rust: `len()` is a `usize`, but the formula goes through `i64` because the sum overflows `i32` and the build checks overflow; `i64::from(value)` widens each element, and the final difference fits back into `i32`.
 
 ## Approach: xor-indices (XOR every index and value together)
 
@@ -110,3 +117,5 @@ Same cost as the sum, but no intermediate value ever exceeds the largest number 
 ### Language notes
 
 - Python, TypeScript and Java use `^`; Kotlin uses the infix function `xor`. All values are small non-negative integers, so 32-bit XOR (TypeScript, JVM) and unbounded XOR (Python) agree.
+- Go: `result ^= index ^ value` folds the index and the value in one statement; all values are small non-negative integers, so the result is the missing value with no sign concerns.
+- Rust: `index as i32 ^ value` parses as `(index as i32) ^ value`, since `as` binds tighter than `^`; the cast is exact because `index` is below `10^5`.
