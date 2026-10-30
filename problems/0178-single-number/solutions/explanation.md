@@ -38,6 +38,11 @@ Simple, general (it works for "every other value occurs three times" without cha
 - Do not stop at the first count of 1 during the counting pass: the second copy of that value may come later.
 - Sorting and then scanning pairs also works with O(1) extra memory (if sorting in place is allowed), at O(n log n) time.
 
+### Language notes
+
+- Go: `counts[value]++` works on a missing key because it reads as 0. Go randomizes map iteration order, which is harmless here: exactly one entry has a count of 1, so any order finds it. The closing `panic` only satisfies Go's rule that the function ends in a return or panic.
+- Rust: `*counts.entry(value).or_insert(0) += 1` is the counting idiom, and `into_iter().find(...)` takes the entry with count 1 out of the map, so `expect` documents the guarantee in the statement instead of returning a made-up default.
+
 ## Approach: xor-fold (XOR all the values together)
 
 ### Intuition
@@ -75,3 +80,5 @@ Optimal in time and memory and very short, which is why interviewers like it. It
 - TypeScript: `^` first converts both operands to 32-bit signed integers. Every input here is a 32-bit integer, so nothing is lost; with values beyond 32 bits it would silently truncate.
 - Java: `int` is 32-bit two's complement, matching the inputs exactly.
 - Kotlin: there is no `^` operator; the infix function `xor` does the same (`result xor value`), and `fold(0)` accumulates over the `IntArray`.
+- Go: `^=` is the XOR-assign operator, and `^` between two operands is XOR (a unary `^x` is bitwise NOT). `int` is 64 bits on a 64-bit platform, and XOR of sign-extended 32-bit inputs is again a sign-extended 32-bit value, so negative inputs come back with the right sign.
+- Rust: `fold(0, |result, value| result ^ value)` is the whole reference; `^` on `i32` works on the two's complement bits, matching the Java `int`, and it never overflows.
