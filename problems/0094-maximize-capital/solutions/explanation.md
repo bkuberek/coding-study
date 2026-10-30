@@ -46,6 +46,8 @@ The shortest correct code and an exact check of the greedy rule, which makes it 
 ### Language notes
 
 - Kotlin: `repeat(k)` with a `return funds` inside the lambda leaves the whole function, because `repeat` is an inline function, so a non-local return is allowed.
+- Go: `for range k` repeats the body `k` times (range over an integer, Go 1.22), and `break` leaves that loop directly. Go's `int` is 64 bits, so the running capital needs no widening.
+- Rust: the parameters are owned, so `mut w` updates the capital in place. The scan keeps `best_profit` next to `best` (profits are never negative, so `-1` means "none yet"), which makes the strict `>` of the other languages a plain comparison and avoids `Option` combinators. The capital never exceeds 10^9 + 10^5 * 10^4, inside `i32`.
 
 ## Approach: sort-and-heap (Sort by required capital, pick from a max-heap of affordable profits)
 
@@ -87,3 +89,5 @@ The standard answer, built from the same pattern as `single-threaded-cpu`: an ar
 - TypeScript: no built-in priority queue, so the reference implements a small max-heap; the projects are sorted as an index array keyed by `capital`.
 - Java: an `int[][]` of `{capital, profit}` pairs sorted with `Comparator.comparingInt`, and a `PriorityQueue<Integer>` with `Comparator.reverseOrder()`; `poll` unboxes into the `int` sum.
 - Kotlin: `profits.indices.sortedBy { capital[it] }` gives the arrival order; `affordable.poll() ?: return funds` ends the function when the heap is empty, because `poll` returns null there.
+- Go: a small `project` struct pairs each requirement with its profit, sorted with `slices.SortFunc` and `cmp.Compare`. `container/heap` needs a type that implements `heap.Interface`, so the reference declares `maxHeap []int` with `Less` as `>`, and `heap.Pop(affordable).(int)` asserts the stored type back.
+- Rust: `capital.into_iter().zip(profits)` builds the `(capital, profit)` pairs, and tuples sort field by field, like Python's `sorted(zip(..))`. `BinaryHeap<i32>` is already a max-heap, so no negation is needed, and `let Some(profit) = affordable.pop() else { break }` is the empty-heap exit.
