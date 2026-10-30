@@ -39,6 +39,8 @@ MAX_SAFE_LONG = 2**53 - 1
 BMP_LIMIT = 0x10000
 MAX_DECIMAL_DIGITS = 28
 """Python's default decimal context precision."""
+MAX_DECIMAL_PLACES = 28
+"""The digits after the point `rust_decimal` holds (its scale), however many are zeros."""
 DECIMAL_PATTERN = re.compile(r"-?(0|[1-9][0-9]*)(\.[0-9]+)?")
 DATE_PATTERN = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 CYCLE_VALUES = "values"
@@ -170,6 +172,8 @@ def _decimal_problem(value: JsonValue, output: bool) -> str | None:
         )
     if len(_decimal_digits(value)) > MAX_DECIMAL_DIGITS:
         return f"{value_text(value)} has more than {MAX_DECIMAL_DIGITS} significant digits"
+    if len(value.partition(".")[2]) > MAX_DECIMAL_PLACES:
+        return f"{value_text(value)} has more than {MAX_DECIMAL_PLACES} digits after the point"
     canonical = canonical_decimal(value)
     if output and value != canonical:
         return (

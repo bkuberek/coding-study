@@ -234,7 +234,7 @@ The Go and Rust columns ([ADR 0012](../decisions/0012-go-and-rust.md)). The Go c
 
 | Type | JSON encoding | Rules |
 |------|---------------|-------|
-| `decimal` | String matching `^-?(0\|[1-9][0-9]*)(\.[0-9]+)?$` | At most 28 significant digits (Python's default context precision). An input keeps its scale: `"2500.00"` reaches the solution with scale 2. An expected value is canonical: no trailing fractional zeros, no bare `.`, and no `-0` (`"2500"`, never `"2500.00"`) |
+| `decimal` | String matching `^-?(0\|[1-9][0-9]*)(\.[0-9]+)?$` | At most 28 significant digits (Python's default context precision) and at most 28 digits after the point (`rust_decimal`'s scale, trailing zeros included), which `verify --static` enforces for every problem. An input keeps its scale: `"2500.00"` reaches the solution with scale 2. An expected value is canonical: no trailing fractional zeros, no bare `.`, and no `-0` (`"2500"`, never `"2500.00"`) |
 | `date` | String `YYYY-MM-DD` matching `^[0-9]{4}-[0-9]{2}-[0-9]{2}$` | A real calendar day in years 0001 to 9999; `20240101`, `2024-1-1` and timestamps are rejected |
 
 **Equality is numeric.** Each runner writes a returned `decimal` in canonical form (it strips trailing fractional zeros and the dot, and writes `-0` as `0`), so `2500.00` and `2500` come back as the same text, the comparators stay type-blind, and a rounding mistake still fails because it changes the number. `cstudy verify --static` rejects a non-canonical expected value and suggests the canonical form. A problem states the scale and rounding mode of every decimal result, because the scale is not compared.
