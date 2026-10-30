@@ -49,6 +49,8 @@ Follows the statement word for word and is easy to trust, which makes it the ora
 - TypeScript: `every` is `true` for a course without prerequisites, which makes it free.
 - Java: a small `finishedBefore` helper keeps the inner loop readable.
 - Kotlin: `finishedIn[it] in 1 until current` is the range check; `current` is a `val` copy of the semester so the lambda does not capture a changing `var`.
+- Go: `allFinishedBefore` replaces Python's chained comparison `0 < finished_in[before] < semester`, which Go does not allow, so the check is spelled as two conditions. Courses are numbered from 1, so every slice has `n + 1` entries and index 0 stays unused.
+- Rust: `0 < finished_in[before] && finished_in[before] < semester` writes out the chained comparison, and the free courses are collected with `filter` over `1..=n` before any is marked, so a course taken this semester cannot unlock another in the same one. Course numbers arrive as `i32` and are cast to `usize` when the lists are built.
 
 ## Approach: kahn-levels (Run the topological sort one level per semester)
 
@@ -87,6 +89,8 @@ Linear, iterative and the same code as Course Schedule plus a level counter, whi
 - TypeScript: building `nextSemester` arrays avoids queue `shift` costs entirely.
 - Java: `--waiting[unlocked] == 0` decrements and tests in one expression.
 - Kotlin: `(1..n).filter { waiting[it] == 0 }` builds the first semester.
+- Go: each semester is a fresh slice built with `append`, and `var nextSemester []int` starts as nil, which `len` and `range` treat as empty, so no allocation is needed for a semester that unlocks nothing.
+- Rust: the courses of one semester are a `Vec<usize>` that is replaced, not cleared, by `semester_courses = next_semester`, and `for &course in &semester_courses` borrows it while the next level is collected in a separate vector. The result is `i32`, so `semesters` is counted in `i32` while `taken` is a `usize` compared with `n`.
 
 ## Approach: longest-chain-dfs (Memoized depth-first search for the longest prerequisite chain)
 
@@ -124,3 +128,5 @@ Linear like Kahn's algorithm and closer to the "longest path in a DAG" view. The
 - TypeScript: Node's default stack holds a few thousand frames of this size; chains in the tests stay well below that.
 - Java: the JVM runner gives cases a large thread stack, so deep chains are safe.
 - Kotlin: a local `fun` recursion with `maxOf` mirrors the recurrence.
+- Go: the memo is a plain `[]int` where 0 means not computed and the constant `onPath = -1` marks a course being explored. The recursive closure is declared with `var chainLength func(course int) int` first, and the built-in `max` keeps the longest chain.
+- Rust: `chain_length` is a free function taking the prerequisite lists and the memo slice, because a Rust closure cannot call itself, and `i32::max` keeps the longest chain. A long prerequisite chain recurses deeply, which the runner's large per-case stack allows.
