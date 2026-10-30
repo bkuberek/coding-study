@@ -46,6 +46,8 @@ Obviously correct, and the cost grows with the income instead of the bracket cou
 - Python: `Decimal(cents).scaleb(-2)`.
 - TypeScript: `new Decimal(BigInt(cents), 2)` from `#support`, the `(unscaled, scale)` constructor.
 - Java: `BigDecimal.valueOf(cents, 2)`. Kotlin: `BigDecimal.valueOf(cents.toLong(), 2)`.
+- Go: `decimal.New(int64(cents), -2)`, where the second argument is an exponent, the negated scale. The sum is at most 10^8, which fits an `int` on any platform.
+- Rust: `Decimal::new(cents, 2)` from an `i64` count of hundredths. The brackets are `i32`, and a slice times a rate is at most 10^8, so the product fits; the running total is an `i64` anyway.
 - The runner prints decimals canonically, so the scale-2 result `3.10` passes as `3.1`.
 
 ## Approach: bracket-slices (Tax each bracket's slice of the income at once)
@@ -84,4 +86,5 @@ The answer to give. It never touches individual units, so the income can be as l
 
 - Use the same conversions as above: `Decimal(cents).scaleb(-2)` in Python, `new Decimal(BigInt(cents), 2)` in TypeScript, `BigDecimal.valueOf(cents, 2)` in Java and `BigDecimal.valueOf(cents.toLong(), 2)` in Kotlin.
 - Java imports `java.math.BigDecimal`, Kotlin imports the same class, and TypeScript imports `Decimal` from `#support`.
+- Go builds the result with `decimal.New(int64(cents), -2)` and uses the built-in `min` (Go 1.21 and newer) for the end of the slice. Rust builds it with `Decimal::new(cents, 2)`, and `bracket[0].min(income)` is `Ord::min` on `i32`.
 - Never build a decimal from a `double`.
