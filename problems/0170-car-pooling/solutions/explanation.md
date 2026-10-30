@@ -77,6 +77,8 @@ Works for any locations, however large or sparse, which is why it is the general
 - TypeScript: the comparator `a[0] - b[0] || a[1] - b[1]` falls through to the change when locations are equal.
 - Java: `Comparator.<int[]>comparingInt(e -> e[0]).thenComparingInt(e -> e[1])` on an `int[][]`; the explicit type witness lets the chained comparator infer `int[]`.
 - Kotlin: `compareBy<IntArray>({ it[0] }, { it[1] })` builds the same two-key comparator; `for ((passengers, start, end) in trips)` destructures each `IntArray`.
+- Go: events are a small `event{location, change}` struct and `slices.SortFunc` takes a three-way comparator; `cmp.Or(cmp.Compare(a.location, b.location), cmp.Compare(a.change, b.change))` returns the first non-zero comparison, which is the tie-break that puts drop-offs (negative changes) before pickups at the same location.
+- Rust: `(location, change)` tuples already order lexicographically, so `events.sort_unstable()` applies the same tie-break with no comparator. The sort needs no stability because equal tuples are interchangeable.
 
 ## Approach: difference-array (Difference array over locations)
 
@@ -115,3 +117,5 @@ The fastest approach here, and the usual interview answer when the location boun
 - Python: `max(accumulate(change)) <= capacity` computes every load in C; it scans the whole array instead of stopping early, which costs at most O(L) extra.
 - TypeScript: an `Int32Array` is zero-filled, compact and fast to scan; loads stay below 10^6.
 - Java and Kotlin: `new int[L + 1]` and `IntArray(L + 1)` are zero-initialized; Kotlin's `maxOf { it[2] }` finds `L` in one expression.
+- Go: the maximum end location is found with the built-in `max` in one pass, and the final loop checks the running load as it goes, so no second array of loads is built.
+- Rust: `max().unwrap_or(0)` finds the last location (there is at least one trip, but the iterator still returns an `Option`), and the cast to `usize` happens once. The loads stay below 10^6, so `i32` is enough.
