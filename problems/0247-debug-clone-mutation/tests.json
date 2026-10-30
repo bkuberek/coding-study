@@ -1,0 +1,97 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "ex1",
+      "visible": true,
+      "ops": ["Ledger", "transfer", "transfer", "balance", "balance", "transfers"],
+      "args": [[[100, 40]], [0, 1, 150], [1, 1, 10], [0], [1], [1]],
+      "expected": [null, false, false, 100, 40, 0]
+    },
+    {
+      "id": "ex2",
+      "visible": true,
+      "ops": ["Ledger", "transfer", "balance", "transfers"],
+      "args": [[[500, 20, 0]], [0, 2, 125], [0], [0]],
+      "expected": [null, true, 375, 1]
+    },
+    {
+      "id": "h1",
+      "ops": ["Ledger", "transfer", "balance", "balance", "transfers"],
+      "args": [[[100, 40]], [0, 1, 30], [0], [1], [1]],
+      "expected": [null, true, 70, 70, 1],
+      "note": "the recipient's side of one transfer"
+    },
+    {
+      "id": "h2",
+      "ops": ["Ledger", "transfer", "transfer", "balance", "balance", "balance"],
+      "args": [[[50, 0, 0]], [0, 1, 50], [1, 2, 50], [0], [1], [2]],
+      "expected": [null, true, true, 0, 0, 50],
+      "note": "money passed along a chain"
+    },
+    {
+      "id": "h3",
+      "ops": ["Ledger", "transfer", "balance", "balance"],
+      "args": [[[75, 25]], [0, 1, 75], [0], [1]],
+      "expected": [null, true, 0, 100],
+      "note": "the whole balance moves"
+    },
+    {
+      "id": "h4",
+      "ops": ["Ledger", "transfer", "transfer", "balance", "balance", "transfers", "transfers"],
+      "args": [[[10, 10]], [0, 1, 11], [1, 0, 10], [0], [1], [0], [1]],
+      "expected": [null, false, true, 20, 0, 1, 1],
+      "note": "one transfer above the balance, then one exactly at it"
+    },
+    {
+      "id": "h5",
+      "ops": ["Ledger", "transfer", "balance", "transfers"],
+      "args": [[[300]], [0, 0, 100], [0], [0]],
+      "expected": [null, false, 300, 0],
+      "note": "single account: a transfer to itself is rejected"
+    },
+    {
+      "id": "h6",
+      "ops": ["Ledger", "transfer", "transfer", "transfer", "balance", "balance", "transfers", "transfers"],
+      "args": [[[100, 100]], [0, 1, 60], [1, 0, 150], [0, 1, 100], [0], [1], [0], [1]],
+      "expected": [null, true, true, true, 90, 110, 3, 3],
+      "note": "money moving back and forth"
+    },
+    {
+      "id": "h7",
+      "ops": ["Ledger", "transfer", "transfer", "transfer", "transfer", "balance", "balance", "balance", "balance"],
+      "args": [[[1000, 200, 30, 0]], [0, 3, 400], [1, 3, 200], [2, 0, 30], [3, 1, 500], [0], [1], [2], [3]],
+      "expected": [null, true, true, true, true, 630, 500, 0, 100],
+      "note": "several transfers; the total stays 1230"
+    },
+    {
+      "id": "h8",
+      "ops": ["Ledger", "transfer", "transfer", "balance", "balance", "balance"],
+      "args": [[[0, 0, 90]], [0, 1, 1], [2, 0, 90], [0], [1], [2]],
+      "expected": [null, false, true, 90, 0, 0],
+      "note": "an empty account rejects a send, then receives"
+    },
+    {
+      "id": "h9",
+      "ops": ["Ledger", "transfer", "transfer", "transfer", "transfers", "transfers", "transfers"],
+      "args": [[[60, 60, 60]], [0, 2, 10], [1, 2, 10], [2, 0, 5], [0], [1], [2]],
+      "expected": [null, true, true, true, 2, 1, 3],
+      "note": "transfer counts on both sides"
+    },
+    {
+      "id": "h10",
+      "ops": ["Ledger", "transfer", "transfer", "balance", "balance"],
+      "args": [[[1000000, 1000000]], [0, 1, 1000000], [1, 0, 2000000], [0], [1]],
+      "expected": [null, true, true, 2000000, 0],
+      "note": "largest amounts"
+    },
+    {
+      "id": "h11",
+      "ops": ["Ledger", "balance", "transfers", "transfer", "balance"],
+      "args": [[[5, 6, 7]], [2], [2], [2, 1, 8], [2]],
+      "expected": [null, 7, 0, false, 7],
+      "note": "queries before any transfer, then a rejected one"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0247"
+slug: debug-clone-mutation
+title: "Debug: Clone Mutation"
+status: ready
+difficulty: medium
+track: debugging
+kind: design
+languages: [rust]
+stub: buggy
+signature:
+  class:
+    name: Ledger
+    constructor: {params: [{name: balances, type: "int[]"}]}
+    methods:
+      - name: transfer
+        params: [{name: fromAccount, type: int}, {name: toAccount, type: int}, {name: amount, type: int}]
+        returns: {type: bool}
+      - {name: balance, params: [{name: account, type: int}], returns: {type: int}}
+      - {name: transfers, params: [{name: account, type: int}], returns: {type: int}}
+comparator: {type: ops}
+approaches:
+  - {id: sequential-borrows, name: One mutable borrow at a time, role: optimal, time: "O(1) per op", space: "O(n)", time_class: "n", space_class: "n"}
+related: [bank-transfers, debug-char-boundary, debug-range-value-copy]
+estimate_minutes: 20
