@@ -44,6 +44,8 @@ Direct and easy to trust, so it is the oracle. Each failed simulation throws awa
 
 - Python: the `for ... else` clause runs only when the inner loop did not break, which marks a successful trip.
 - TypeScript, Java and Kotlin: a `step` counter that reaches `n` marks success.
+- Go: a `completed` flag, cleared just before the `break`, plays the part of `for ... else`.
+- Rust: `(0..n).all(|step| ...)` stops at the first `false`, so it stops at the first dry station and is `true` only when every leg kept the tank non-negative; the closure updates `fuel` as it goes.
 
 ## Approach: reset-on-deficit (One pass that restarts after every empty tank)
 
@@ -78,6 +80,7 @@ The expected interview answer: one pass, constant memory, and a crisp skipping a
 ### Language notes
 
 - All four languages use the same three-variable loop; totals stay below 10^9, inside 32-bit range.
+- Go and Rust use it too. Rust keeps `start` as a `usize` station number and casts the answer with `as i32`.
 
 ## Approach: lowest-prefix (Start right after the lowest running balance)
 
@@ -112,3 +115,4 @@ Same cost as the reset version and arguably the cleanest proof: the whole proble
 ### Language notes
 
 - All four languages use the same loop; balances stay within plus or minus 10^9, inside 32-bit range.
+- Go and Rust: the final `start % n` is a guard that keeps the answer a valid station number. Rust holds `start` as a `usize` and casts the result with `as i32`.

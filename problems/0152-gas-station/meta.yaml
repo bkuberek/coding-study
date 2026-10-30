@@ -6,6 +6,7 @@ status: ready
 difficulty: medium
 track: dsa
 kind: function
+languages: [python, typescript, java, kotlin, go, rust]
 patterns: [greedy]
 signature:
   function:
