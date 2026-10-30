@@ -49,6 +49,8 @@ Transparent and close to hardware, so it is easy to verify, and its running time
 - Python: after the loop, `result` is a 32-bit pattern; `~(result ^ 0xFFFFFFFF)` turns a pattern with the sign bit set into the negative number it represents.
 - TypeScript: `(x ^ y ^ carry) << 31` produces a negative 32-bit number, which is the right sign; the result needs no conversion.
 - Java and Kotlin: `int`/`Int` arithmetic is already 32-bit two's complement; Kotlin spells the operators `ushr`, `and`, `or`, `xor` and `shl`.
+- Go: the stub's `int` is 64 bits wide, but the problem is a 32-bit sum, so the reference converts the inputs to `uint32` (a negative `int` wraps to its 32-bit pattern) and works on that. Converting the result back with `int(int32(result))` reinterprets a set sign bit as a negative number, which replaces the mask-and-invert step of the Python version.
+- Rust: `a as u32` reinterprets an `i32`'s bits without a check, and `result as i32` reads them back with the sign, so no mask is needed. The bit operations and the shift never overflow (a shift only panics when the count is 32 or more, and `position` stays below that), so overflow checks have nothing to catch.
 
 ## Approach: xor-and-carry (Add without carries and repeat with the carries)
 
@@ -89,3 +91,5 @@ The standard interview answer: short, and fast because it handles all columns in
 - TypeScript: `&`, `^` and `<<` convert to 32-bit signed integers, so `(a & b) << 1` drops bit 31 exactly like Java's `int`; no masking is needed.
 - Java: plain `int` arithmetic; `<< 1` discards the bit shifted out of position 31.
 - Kotlin: the same with infix functions, `(sum and carry) shl 1` and `sum xor carry`; Kotlin parameters are read-only, so the reference copies them into `var`s.
+- Go: a `uint32` discards the bit shifted out of position 31, which is exactly the 32-bit wraparound, so the loop ends without the `& 0xFFFFFFFF` that Python needs after each shift. `x ^= y` is the carry-free column sum.
+- Rust: `(x & y) << 1` on a `u32` drops the top bit without panicking (the overflow check covers the shift count, not the bits shifted out), so the carry dies out as in Java's `int`. `x as i32` recovers the sign at the end.
