@@ -48,6 +48,8 @@ The recurrence in its most direct form and the oracle here. The tables avoid the
 - Python: a nested function over a list-of-lists cache; `max` over a generator visits every cell.
 - TypeScript: cells are one-character strings (`"1"`), and `Int16Array` rows hold sides up to 300.
 - Java and Kotlin: `char[][]` and `Array<CharArray>`, compared with `'0'`; Java keeps the grid and cache in fields.
+- Go: the grid is a `[][]rune`, compared with the rune literal `'0'`; the built-in `min` takes three arguments, and the recursion is a closure declared with `var` first.
+- Rust: the grid is a `Vec<Vec<char>>`. `Ord::min` takes two arguments, so the three neighbors chain as `down.min(right).min(diagonal)`; the recursion is a private function that receives the grid and the `Option<i32>` cache.
 
 ## Approach: tabulation (Table of the largest square ending at each cell)
 
@@ -82,6 +84,7 @@ Simple loops and no recursion; the table could also answer "how many squares end
 ### Language notes
 
 - Python and TypeScript: nested arrays; Java and Kotlin: zero-initialized `int[][]` and `IntArray` rows; Kotlin destructures `withIndex()` for the row and column.
+- Go and Rust: zero-initialized rows (`make` per row, and `vec![vec![0; columns + 1]; rows + 1]`). The border row and column at index 0 mean the cell at `(r, c)` reads `side[r][c]`, `side[r][c + 1]` and `side[r + 1][c]` without a bounds test, and without a `usize` subtraction at the edge in Rust.
 
 ## Approach: rolling-array (One row of square sides plus the diagonal value)
 
@@ -116,3 +119,4 @@ The memory-optimal version and a frequent interview follow-up. The saved diagona
 ### Language notes
 
 - The four references share the loop; TypeScript uses `Int16Array`, Java `int[]`, Kotlin `IntArray`, Python a list.
+- Go and Rust share it too, over a `[]int` or `Vec<i32>`. The side for column `c` lives at `side[c + 1]`, so the left neighbor `side[c]` needs no subtraction; Rust's `for (c, &cell) in row.iter().enumerate()` gives the column and the cell together.
