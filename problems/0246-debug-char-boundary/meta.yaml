@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0246"
+slug: debug-char-boundary
+title: "Debug: Char Boundary"
+status: ready
+difficulty: medium
+track: debugging
+kind: function
+languages: [rust]
+stub: buggy
+signature:
+  function:
+    name: truncateLabel
+    params:
+      - {name: label, type: string}
+      - {name: width, type: int}
+    returns: {type: string}
+comparator: {type: exact}
+approaches:
+  - {id: count-chars, name: "Count and cut by characters, not bytes", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+related: [encode-decode-strings, valid-palindrome, debug-unsigned-underflow]
+estimate_minutes: 15

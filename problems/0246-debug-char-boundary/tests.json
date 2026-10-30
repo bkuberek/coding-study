@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"label": "Wireless Mouse", "width": 20}, "expected": "Wireless Mouse"},
+    {"id": "ex2", "visible": true, "input": {"label": "Mechanical Keyboard", "width": 10}, "expected": "Mechanica…"},
+    {"id": "h1", "input": {"label": "Café", "width": 4}, "expected": "Café", "note": "fits in characters, not in bytes"},
+    {"id": "h2", "input": {"label": "Crème brûlée", "width": 4}, "expected": "Crè…", "note": "cut right after a two-byte character"},
+    {"id": "h3", "input": {"label": "Ölfilter", "width": 5}, "expected": "Ölfi…", "note": "two-byte character at the start"},
+    {"id": "h4", "input": {"label": "Пылесос Turbo", "width": 8}, "expected": "Пылесос…", "note": "Cyrillic, two bytes per letter"},
+    {"id": "h5", "input": {"label": "東京タワー模型", "width": 5}, "expected": "東京タワ…", "note": "three bytes per character"},
+    {"id": "h6", "input": {"label": "", "width": 3}, "expected": "", "note": "empty label"},
+    {"id": "h7", "input": {"label": "abc", "width": 1}, "expected": "…", "note": "width 1 leaves only the ellipsis"},
+    {"id": "h8", "input": {"label": "x", "width": 1}, "expected": "x", "note": "one character, width 1"},
+    {"id": "h9", "input": {"label": "Wait… what", "width": 6}, "expected": "Wait……", "note": "label that already contains an ellipsis"},
+    {"id": "h10", "input": {"label": "naïve", "width": 5}, "expected": "naïve", "note": "exactly width characters, more bytes"},
+    {"id": "h11", "input": {"label": "★★★★★ Seller", "width": 6}, "expected": "★★★★★…", "note": "three-byte symbols"},
+    {"id": "h12", "input": {"label": "Straße", "width": 6}, "expected": "Straße", "note": "exactly width characters, cut would land inside the last one"},
+    {"id": "h13", "input": {"label": "abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij", "width": 100}, "expected": "abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij", "note": "longest ASCII label at the largest width"},
+    {"id": "h14", "input": {"label": "Ünïcödé Ëvérÿwhérë", "width": 100}, "expected": "Ünïcödé Ëvérÿwhérë", "note": "short label, wide column"}
+  ]
+}
