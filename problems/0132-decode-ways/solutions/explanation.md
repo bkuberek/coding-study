@@ -50,6 +50,8 @@ Derives naturally from "what is the first letter?", which many people find easie
 - TypeScript: `Number(s.slice(i, i + 2))` parses the pair; a memo of -1 marks unknown entries, since 0 is a real count.
 - Java: arithmetic on `charAt(i) - '0'` avoids building substrings.
 - Kotlin: `substring(...).toInt()` reads the pair; a local `fun` captures the memo.
+- Go: indexing a string yields a `byte`, so `int(s[start]-'0')*10 + int(s[start+1]-'0')` reads a pair without a substring, and the memo is filled with -1 because 0 is a real count. The recursive closure is declared with `var waysFrom func(start int) int` first.
+- Rust: the digits are borrowed as `s.as_bytes()`, and the pair is computed in `u8` arithmetic (at most 99), tested with `(10..=26).contains(&pair)`. The recursion is a free function because a closure cannot call itself, with the memo passed as `&mut [i32]` and filled with -1.
 
 ## Approach: tabulation (Bottom-up table of prefix decodings)
 
@@ -87,6 +89,8 @@ Iterative, with no stack depth issue, and the table shows how zeros wipe out cou
 - Python and Kotlin: slicing two characters and parsing them as an integer keeps the check readable.
 - TypeScript: `Number("05")` is 5, so the `>= 10` test is what rejects a leading zero.
 - Java: the pair is built from two `charAt` values; `int[]` starts at 0, so only `ways[0]` needs setting.
+- Go: the table is a zero-filled `[]int`, only `ways[0]` is set, and each pair is read with byte arithmetic. The `if pair := ...; pair >= 10 && pair <= 26` form scopes the pair to the check.
+- Rust: `vec![0; n + 1]` is zero-filled and the digits are read from `as_bytes()`, so there are no substrings or parsing. `(10..=26).contains(&pair)` is the range test, and the counts fit in `i32` by the constraints, with overflow checks on as a backstop.
 
 ## Approach: two-variables (Rolling counts of the last two prefixes)
 
@@ -125,3 +129,5 @@ The expected final answer. It is easy to get the shifting wrong, so derive the t
 - TypeScript: `charCodeAt(i) - 48` turns a digit character into its value without allocating substrings.
 - Java: the same arithmetic with `charAt(i) - '0'`.
 - Kotlin: `Char.digitToInt()` converts a digit, and `in 10..26` checks the pair's range.
+- Go: a plain index replaces Python's `previous_digit` string, and `twoBack, oneBack = oneBack, current` updates the pair in one statement.
+- Rust: `digits[i - 1]` replaces the remembered previous digit, guarded by `i > 0`, and `(two_back, one_back) = (one_back, current)` is a destructuring assignment (Rust 1.59 and newer).
