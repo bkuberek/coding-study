@@ -43,6 +43,7 @@ Obviously correct, so it is the oracle; at 10^5 days it would need about 5 * 10^
 ### Language notes
 
 - All four languages use the same nested loops; prices are at most 10^4, so differences fit easily in 32 bits.
+- Go and Rust use them too. `sell` starts at `buy + 1`, so the range is empty for the last day, and a difference can be negative, which is why the best profit starts at 0.
 
 ## Approach: running-minimum (Sell against the cheapest price so far)
 
@@ -79,6 +80,7 @@ The standard answer: one pass, constant memory, and easy to explain with the exc
 - Python: `max` and `min` builtins per step; iterating over the list itself avoids the copy that `prices[1:]` would make.
 - TypeScript: `Math.max` and `Math.min` on numbers.
 - Java and Kotlin: `Math.max` / `Math.min` and `maxOf` / `minOf` on primitive `int`.
+- Go: the built-in `min` and `max` (Go 1.21). Rust: the `Ord::max` and `Ord::min` methods, as in `best.max(price - cheapest)`, over `for &price in &prices`.
 
 ## Approach: daily-gains (Best run of daily price changes)
 
@@ -114,3 +116,4 @@ Equivalent to the running minimum, with the same cost; its value is the connecti
 
 - Python: index-based iteration avoids building a list of differences or a shifted copy of `prices`.
 - TypeScript, Java and Kotlin: the same two-variable loop.
+- Go: the index-based loop from day 1. Rust: `prices.windows(2)` yields every pair of consecutive days as a slice without copying, so the daily change is `pair[1] - pair[0]`, and a single price yields no windows, so the answer is 0.
