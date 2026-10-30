@@ -47,6 +47,8 @@ The shortest code and the only one here that tolerates negative travel times. It
 - TypeScript: `Infinity` is a valid `number`, and `Infinity + w` stays `Infinity`, so no guard is needed.
 - Java: `Integer.MAX_VALUE` marks unreached nodes and must be checked before adding, or the sum overflows to a negative number.
 - Kotlin: `for ((u, v, w) in times)` destructures each `IntArray` link; `maxOf` finds the latest arrival.
+- Go: `math.MaxInt` marks unreached nodes and, as in Java, is tested before the addition: integer overflow in Go wraps silently to a negative number.
+- Rust: `i32::MAX` marks them, and the test comes first for the same reason. cstudy builds with overflow checks, so `i32::MAX + w` would panic instead of wrapping.
 
 ## Approach: dijkstra-array (Dijkstra that scans for the closest unsettled node)
 
@@ -85,6 +87,8 @@ No priority queue needed, and on dense networks (E close to V^2) it is actually 
 - TypeScript: a plain loop finds the closest unsettled node; `Uint8Array` stores the settled flags.
 - Java: `List<List<int[]>>` adjacency; the scan is an explicit loop over `int[] arrival`.
 - Kotlin: `(1..n).filter { !settled[it] }.minBy { arrival[it] }` expresses the scan directly, at the cost of a temporary list per round.
+- Go: a `[][]link` adjacency list with a small `link` struct, and the scan is an explicit loop.
+- Rust: a `Vec<Vec<(usize, i32)>>` adjacency list. The scan is `(1..=n).filter(...).min_by_key(...)`, which returns the first of several equal minima like Python's `min`; the `expect` records that an unsettled node always remains in a round.
 
 ## Approach: dijkstra-heap (Dijkstra with a binary min-heap)
 
@@ -123,3 +127,5 @@ The standard answer for sparse networks. "Lazy deletion" (pushing duplicates and
 - TypeScript: there is no built-in priority queue, so the reference implements a binary min-heap with `push` (sift up) and `pop` (sift down) over `[time, node]` tuples.
 - Java: `PriorityQueue<int[]>` with `Comparator.comparingInt(entry -> entry[0])`.
 - Kotlin: `PriorityQueue<Pair<Int, Int>>(compareBy { it.first })`; destructuring `val (time, node)` reads an entry.
+- Go: `container/heap` works on any type that implements `heap.Interface` (`Len`, `Less`, `Swap`, `Push`, `Pop`), so the reference defines `entryHeap` over `entry{time, node}` values. `Push` and `Pop` take and return `any`, so every pop needs the type assertion `.(entry)`.
+- Rust: `BinaryHeap` is a max-heap, so each entry is wrapped in `Reverse` and the smallest time comes out first; tuples compare by their first field, the time. `while let Some(Reverse((time, node))) = queue.pop()` unpacks the entry.
