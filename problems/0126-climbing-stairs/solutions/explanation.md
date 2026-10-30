@@ -54,6 +54,8 @@ Closest to how the problem is usually reasoned about, so it is a natural first a
 - TypeScript: a closure over an array filled with 0; arrow functions capture `memo` without passing it.
 - Java: a private helper takes the memo array as a parameter, since Java has no nested functions.
 - Kotlin: a local `fun` inside `climbStairs` captures the `IntArray` memo directly.
+- Go: a recursive closure needs `var ways func(step int) int` declared first, and a `[]int` memo makes the zero value mean "not computed yet", which is safe because every step has at least one way. The int is 64 bits on common platforms, so the answers up to `n = 45` fit with room to spare.
+- Rust: a closure cannot call itself, so `ways` is a free function that takes the memo as `&mut [i32]`, and the memo is a `Vec<i32>` filled with 0 for "not computed". `i32` holds every answer up to `n = 45` and overflow checks are on, so a bigger `n` would panic instead of wrapping.
 
 ## Approach: tabulation (Bottom-up table of step counts)
 
@@ -90,6 +92,8 @@ As fast as memoization without recursion overhead or stack depth, and it is the 
 - Python: `[0] * (n + 1)` is safe here because the elements are immutable integers.
 - TypeScript: `new Array<number>(n + 1).fill(0)`; without `fill` the entries are holes and arithmetic on them gives `NaN`.
 - Java and Kotlin: `new int[n + 1]` and `IntArray(n + 1)` are zero-initialized primitive arrays.
+- Go: `make([]int, n+1)` is zero-filled, so only the two base entries are set before the loop.
+- Rust: `vec![0; n + 1]` is zero-filled, and `for step in 2..=n` is empty for `n = 1`, so the base entries are enough. The sum `ways[step - 1] + ways[step - 2]` stays within `i32` for the problem's `n`, and overflow checks would catch a larger one.
 
 ## Approach: two-variables (Rolling pair of counts)
 
@@ -126,3 +130,5 @@ The answer interviewers expect after the table. It hides the recurrence a little
 - Python and TypeScript: tuple and array destructuring swap the pair in one statement.
 - Java: a temporary `current` makes the simultaneous update explicit.
 - Kotlin: `repeat(n - 1)` runs the body once per step from 2 to `n`, and zero times when `n = 1`.
+- Go: `twoBelow, oneBelow = oneBelow, oneBelow+twoBelow` evaluates the right side first, so no temporary is needed; the loop variable `step` only counts iterations.
+- Rust: `(two_below, one_below) = (one_below, one_below + two_below)` is a destructuring assignment (Rust 1.59 and newer) that evaluates the right side first, and `for _ in 2..=n` runs zero times for `n = 1`.
