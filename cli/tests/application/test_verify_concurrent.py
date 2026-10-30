@@ -1,11 +1,14 @@
 """`cstudy verify` D6 and D7 on the concurrent fixture with scripted runs
 (docs/specs/authoring.md)."""
 
+import threading
+import time
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
+from coding_study.application.ports import RunnerLaunch
 from coding_study.application.verify_content import VerifyRequest, verify_content
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import (
@@ -13,6 +16,8 @@ from coding_study.domain.runs import (
     Returned,
     RunCase,
     RunJob,
+    RunReport,
+    RunRequest,
     StressCompleted,
     StressRun,
 )
@@ -28,6 +33,8 @@ from tests.fakes import (
 from tests.helpers import CONCURRENCY_PROBLEMS
 
 SLUG = "bounded-blocking-queue"
+STRESS_RUN_SECONDS = 0.05
+"""Long enough for runners started side by side to overlap."""
 
 
 def caught(job: RunJob, case: RunCase) -> CaseOutcome:
@@ -133,6 +140,41 @@ def test_stress_runs_get_the_stress_hang_guard(tmp_path):
     cases = [case for request in process.requests for job in request.jobs for case in job.cases]
     stress = [case for case in cases if isinstance(case.input, StressRun)]
     assert {case.hang_guard_ms for case in stress} == {10_000}
+
+
+class OverlapRecordingProcess(ScriptedRunnerProcess):
+    """Each run with stress cases lasts a moment; records how many of them ran at once."""
+
+    def __init__(self, answer) -> None:
+        super().__init__(answer)
+        self._lock = threading.Lock()
+        self._running = 0
+        self.most_at_once = 0
+
+    def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
+        if not any(isinstance(case.input, StressRun) for job in request.jobs for case in job.cases):
+            return super().run(launch, request)
+        with self._lock:
+            self._running += 1
+            self.most_at_once = max(self.most_at_once, self._running)
+        time.sleep(STRESS_RUN_SECONDS)
+        with self._lock:
+            self._running -= 1
+        return super().run(launch, request)
+
+
+def test_the_languages_stress_runs_take_turns(tmp_path):
+    process = OverlapRecordingProcess(caught)
+    languages = (Language.JAVA, Language.KOTLIN, Language.PYTHON, Language.TYPESCRIPT)
+    toolchains = FakeToolchains(
+        {language: FakeLanguageRunner() for language in languages},
+        {language: FakeStubGenerator() for language in languages},
+    )
+    root = repository_root(tmp_path, CONCURRENCY_PROBLEMS)
+    environment = make_environment(root, toolchains=toolchains, runner_process=process)
+    request = VerifyRequest(slugs=(SLUG,), stress_runs=1)
+    verify_content(environment, request, lambda _line: None)
+    assert process.most_at_once == 1
 
 
 @pytest.mark.parametrize("field", ["approaches", "broken"])

@@ -3,11 +3,14 @@
 D6: every approach passes every sequential case and every stress case in N of N runs per variant.
 D7: every broken reference passes every sequential case and fails each of its `caught_by` cases in
 at least `ceil(0.9 * N)` runs per language and variant. All of a language's references and broken
-references share one build and one runner process.
+references share one build and one runner process. The languages build side by side, but their
+runners take turns (`runner_slot`): a stress run measures one runner alone, as a user's run does,
+not the contention of every language's workers at once, which hid races and stretched runs.
 """
 
 import math
 from collections.abc import Sequence
+from contextlib import AbstractContextManager
 from dataclasses import dataclass, replace
 
 from coding_study.application.environment import Environment
@@ -55,12 +58,15 @@ class ConcurrentVerifier:
         problem: Problem,
         language: Language,
         notify: ProgressNotice,
+        runner_slot: AbstractContextManager[object] | None = None,
     ) -> None:
+        """`runner_slot`, shared by the problem's languages, is held while the runner runs."""
         self._environment = environment
         self._problem = problem
         self._meta = problem.meta
         self._language = language
         self._notify = notify
+        self._runner_slot = runner_slot
         self._run = LanguageRun(environment, problem.meta, language)
 
     def verify(
@@ -88,7 +94,8 @@ class ConcurrentVerifier:
             *self._run.references(approach_ids).sources,
             *self._run.broken_references(brokens),
         )
-        code_run = self._run.run(References(self._meta, sources), jobs, self._notify)
+        scope = References(self._meta, sources)
+        code_run = self._run.run(scope, jobs, self._notify, self._runner_slot)
         if code_run.report is None:
             diagnostics = code_run.build_failure.diagnostics if code_run.build_failure else ()
             problem = "references do not build: " + " | ".join(diagnostics[:SHOWN_DIAGNOSTICS])

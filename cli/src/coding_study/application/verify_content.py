@@ -10,6 +10,7 @@ problem without one (practical, lld, debugging and concurrent problems may omit 
 reported as not applicable; the ready criteria still require a generator for every `dsa` problem.
 """
 
+import threading
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from enum import StrEnum
@@ -364,6 +365,8 @@ class _DynamicChecks:
         self._problem = problem
         self._meta = problem.meta
         self._errors: list[str] = []
+        self._runner_slot = threading.Lock()
+        """Concurrent problems: one language's runner runs its stress cases at a time."""
 
     def apply(self, verification: ProblemVerification) -> ProblemVerification:
         generated = self._environment.files.read_text(self._meta.slug, GENERATOR_FILE) is not None
@@ -500,7 +503,7 @@ class _DynamicChecks:
             return LanguageResult(language, (), tuple(problems)), None
         if self._meta.concurrency is not None:
             concurrent = ConcurrentVerifier(
-                self._environment, self._problem, language, self._notify
+                self._environment, self._problem, language, self._notify, self._runner_slot
             ).verify(approaches, cases, comparator, self._request.stress_runs)
             result = LanguageResult(
                 language,

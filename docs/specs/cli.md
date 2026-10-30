@@ -504,7 +504,7 @@ cstudy verify [<slug>...] [--changed] [--track T] [--lang L] [--static]
 | `--ladder` | Bench references and check time bands against declared classes: one language at a time after the parallel checks, only where the references passed their cases, memory off, `perf.size_ladder` sizes. Prints `ladder ok` or `ladder FAIL`; a reference with fewer than 3 usable sizes is a warning, not a failure. A problem without `generator.py` prints `ladder n/a` and does not fail |
 | `--conformance` | Run the runner conformance suite |
 | `--require-ready` | Fail any problem whose `status` is not `ready` |
-| `--jobs` | Parallel language runners (default: number of languages) |
+| `--jobs` | Parallel language runners (default: number of languages). The runners of a concurrent problem's languages still take turns: their builds overlap, but each runs its stress cases alone |
 | `--stress N` | Concurrent problems: runs per stress case and variant for D6 and D7 (default 10); D7 requires failures in at least `ceil(0.9 * N)` runs. The line reports the fewest runs a correct reference passed (`stress 10/10`), the slowest correct run as a share of its deadline (`slowest 8%`) and the (broken reference, language, case, variant) combinations caught (`broken caught 11/11`) |
 
 Checks are listed in [authoring](authoring.md#what-cstudy-verify-checks).

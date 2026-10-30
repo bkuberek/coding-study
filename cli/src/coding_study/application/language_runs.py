@@ -4,6 +4,7 @@ Job ids: `<slug>` for the user's code, `<slug>/<approach>` for references.
 """
 
 from collections.abc import Iterable, Sequence
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
 
 from coding_study.application.environment import Environment
@@ -93,15 +94,23 @@ class LanguageRun:
             for broken in brokens
         )
 
-    def run(self, scope: BuildScope, jobs: Sequence[RunJob], notify: ProgressNotice) -> CodeRun:
-        """Build what `scope` needs, then run `jobs` in one runner process."""
+    def run(
+        self,
+        scope: BuildScope,
+        jobs: Sequence[RunJob],
+        notify: ProgressNotice,
+        runner_slot: AbstractContextManager[object] | None = None,
+    ) -> CodeRun:
+        """Build what `scope` needs, then run `jobs` in one runner process, holding
+        `runner_slot` (when given) while the runner runs but not while it builds."""
         clock = self._environment.clock
         started = clock.monotonic()
         prepared = self._environment.toolchains.runner(self._language).prepare(scope, notify)
         build_seconds = clock.monotonic() - started
         if isinstance(prepared, BuildFailed):
             return CodeRun(build_seconds, build_failure=prepared)
-        report = self._environment.runner_process.run(prepared.launch, RunRequest(tuple(jobs)))
+        with runner_slot or nullcontext():
+            report = self._environment.runner_process.run(prepared.launch, RunRequest(tuple(jobs)))
         return CodeRun(build_seconds, report, build_note=prepared.build_note)
 
     def _job(
