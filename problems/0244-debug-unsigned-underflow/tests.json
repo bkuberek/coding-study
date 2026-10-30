@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"releaseTimes": [1000, 2000, 3000], "at": 2500}, "expected": 1},
+    {"id": "ex2", "visible": true, "input": {"releaseTimes": [1000, 2000, 3000], "at": 3000}, "expected": 2},
+    {"id": "h1", "input": {"releaseTimes": [1000, 2000, 3000], "at": 999}, "expected": -1, "note": "before the first release"},
+    {"id": "h2", "input": {"releaseTimes": [], "at": 5}, "expected": -1, "note": "no releases at all"},
+    {"id": "h3", "input": {"releaseTimes": [500], "at": 500}, "expected": 0, "note": "one release, exactly at its time"},
+    {"id": "h4", "input": {"releaseTimes": [500], "at": 499}, "expected": -1, "note": "one release, just before it"},
+    {"id": "h5", "input": {"releaseTimes": [1000, 2000, 3000], "at": 1000}, "expected": 0, "note": "exactly at the first release"},
+    {"id": "h6", "input": {"releaseTimes": [1000, 2000, 3000], "at": 9007199254740991}, "expected": 2, "note": "long after the last release"},
+    {"id": "h7", "input": {"releaseTimes": [0, 10, 20], "at": 0}, "expected": 0, "note": "first release at time zero"},
+    {"id": "h8", "input": {"releaseTimes": [9007199254740989, 9007199254740990, 9007199254740991], "at": 9007199254740990}, "expected": 1, "note": "largest timestamps"},
+    {"id": "h9", "input": {"releaseTimes": [3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181, 6765], "at": 2583}, "expected": 13, "note": "longer history, between two releases"},
+    {"id": "h10", "input": {"releaseTimes": [3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181, 6765], "at": 2}, "expected": -1, "note": "longer history, before the first release"},
+    {"id": "h11", "input": {"releaseTimes": [100, 200], "at": 199}, "expected": 0, "note": "two releases, one tick before the second"},
+    {"id": "h12", "input": {"releaseTimes": [100, 200], "at": 0}, "expected": -1, "note": "two releases, query at time zero"}
+  ]
+}
