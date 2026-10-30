@@ -336,6 +336,41 @@ def test_approach_without_a_file(problems):
     ]
 
 
+def test_an_approach_lists_only_languages_of_the_problem(problems):
+    meta = problems["two-sum"].meta
+    brute = replace(meta.approaches[0], languages=(Language.PYTHON, Language.RUST))
+    problem = with_meta(
+        problems,
+        track=Track.DEBUGGING,
+        languages=(Language.PYTHON, Language.JAVA),
+        approaches=(brute, *meta.approaches[1:]),
+    )
+    assert errors(content(problems, problem=problem)) == [
+        f"{META}: approaches[0]: languages not in languages: rust"
+    ]
+
+
+def test_only_concurrency_and_debugging_approaches_name_their_languages(problems):
+    meta = problems["two-sum"].meta
+    brute = replace(meta.approaches[0], languages=meta.languages)
+    problem = with_meta(problems, approaches=(brute, *meta.approaches[1:]))
+    assert errors(content(problems, problem=problem)) == [
+        f"{META}: approaches[0]: languages: only concurrency and debugging approaches may "
+        "have references in fewer languages than the problem"
+    ]
+
+
+def test_a_reference_outside_its_approachs_languages_is_an_error(problems):
+    meta = problems["two-sum"].meta
+    hash_map = replace(meta.approaches[1], languages=(Language.JAVA,))
+    approaches = (meta.approaches[0], hash_map)
+    problem = with_meta(problems, track=Track.DEBUGGING, approaches=approaches)
+    assert errors(content(problems, problem=problem)) == [
+        "problems/0001-two-sum/solutions/hash-map.py: "
+        "its language is not in the approach's languages"
+    ]
+
+
 # S8
 
 

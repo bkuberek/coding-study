@@ -103,6 +103,13 @@ def test_go_and_rust_take_a_model_and_a_repeat_of_their_own(root):
     assert repeat == Repeat(500, {Language.GO: 300, Language.RUST: 200})
 
 
+def test_an_approach_may_name_the_languages_it_has_references_in(root):
+    edit_meta(root, lambda meta: meta["approaches"][0].update(languages=["java", "kotlin"]))
+    (approach,) = load(root).meta.approaches
+    assert approach.languages == (Language.JAVA, Language.KOTLIN)
+    assert not approach.covers(Language.PYTHON, load(root).meta.languages)
+
+
 def test_jvm_threads_are_read(root):
     concurrency = load(root).meta.concurrency
     assert concurrency.jvm_threads == (ThreadKind.PLATFORM, ThreadKind.VIRTUAL)  # type: ignore[union-attr]

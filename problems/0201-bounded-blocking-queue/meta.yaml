@@ -33,7 +33,7 @@ concurrency:
       caught_by: [s2]
 approaches:
   - {id: monitor, name: One lock with two conditions, role: optimal, time: "O(1) per op", space: "O(capacity)"}
-  - {id: semaphores, name: Two counting semaphores and a mutex, role: optimal, time: "O(1) per op", space: "O(capacity)"}
+  - {id: semaphores, name: Two counting semaphores and a mutex, role: optimal, time: "O(1) per op", space: "O(capacity)", languages: [java, kotlin, python, go]}
 references:
   leetcode: {number: 1188, url: "https://leetcode.com/problems/design-bounded-blocking-queue/"}
 related: [concurrency-limiter, read-write-lock]

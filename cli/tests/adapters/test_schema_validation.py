@@ -102,6 +102,10 @@ INVALID_META: dict[str, tuple[Mutation, str]] = {
         lambda meta: meta.update(languages=["go", "rust"]),
         "languages",
     ),
+    "approach languages not a language": (
+        lambda meta: meta["approaches"][0].update(languages=["scala"]),
+        "approaches[0].languages[0]",
+    ),
     "unknown language": (
         lambda meta: meta.update(languages=["python", "typescript", "java", "kotlin", "scala"]),
         "languages[4]",

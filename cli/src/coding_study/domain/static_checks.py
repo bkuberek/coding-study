@@ -27,6 +27,7 @@ from coding_study.domain.naming import (
     shadowed_python_builtins,
 )
 from coding_study.domain.problem import (
+    LANGUAGE_SUBSET_TRACKS,
     Approach,
     ApproachRole,
     ComparatorType,
@@ -77,6 +78,10 @@ APPROACH_SUBSECTIONS = (
 )
 COMPLEXITY_SUBSECTION = "Complexity"
 LANGUAGE_NOTES = "Language notes"
+APPROACH_LANGUAGES_TRACKS = (
+    "languages: only concurrency and debugging approaches may have references in fewer "
+    "languages than the problem"
+)
 _TABLE_SEPARATOR = re.compile(r":?-+:?")
 
 
@@ -197,23 +202,30 @@ def _language_limits(issues: _Issues, content: ProblemContent) -> None:
 
 
 def _solution_files(issues: _Issues, content: ProblemContent) -> None:
-    """S7: files map to approaches, approaches have files, one Python oracle at most."""
-    approaches = content.problem.meta.approaches
-    declared = {approach.id for approach in approaches}
+    """S7: files map to approaches and their languages, approaches have files, one Python oracle
+    at most."""
+    meta = content.problem.meta
+    approaches = meta.approaches
+    declared = {approach.id: approach for approach in approaches}
     present: set[str] = set()
     for name in content.solution_files:
         if name == EXPLANATION_NAME or name.startswith("."):
             continue
         stem, _, extension = name.rpartition(".")
-        if stem in declared and language_of_extension(extension) is not None:
-            present.add(stem)
-        else:
+        language = language_of_extension(extension)
+        if stem not in declared or language is None:
             issues.error(solution_file(name), "maps to no declared approach")
+            continue
+        present.add(stem)
+        named = declared[stem].languages
+        if named is not None and language not in named:
+            issues.error(solution_file(name), "its language is not in the approach's languages")
     for approach in approaches:
         if approach.id not in present:
             issues.error(
                 META_FILE, f"{approach.id} has no reference file in solutions/", "approaches"
             )
+    _approach_languages(issues, meta)
     oracles = [approach.id for approach in approaches if approach.oracle]
     if len(oracles) > 1:
         issues.error(META_FILE, "at most one approach may be the oracle", "approaches")
@@ -221,6 +233,20 @@ def _solution_files(issues: _Issues, content: ProblemContent) -> None:
     for oracle in oracles:
         if oracle not in python:
             issues.error(META_FILE, f"oracle {oracle} needs solutions/{oracle}.py", "approaches")
+
+
+def _approach_languages(issues: _Issues, meta: ProblemMeta) -> None:
+    """S7: only a concurrency or debugging approach names its languages, and only languages of
+    the problem."""
+    for index, approach in enumerate(meta.approaches):
+        if approach.languages is None:
+            continue
+        location = f"approaches[{index}]"
+        if meta.track not in LANGUAGE_SUBSET_TRACKS:
+            issues.error(META_FILE, APPROACH_LANGUAGES_TRACKS, location)
+        outside = [name for name in approach.languages if name not in meta.languages]
+        if outside:
+            issues.error(META_FILE, f"languages not in languages: {', '.join(outside)}", location)
 
 
 def _companion_files(issues: _Issues, content: ProblemContent) -> None:

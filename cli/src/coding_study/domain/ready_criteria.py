@@ -5,7 +5,7 @@
 
 from coding_study.domain.cases import GeneratedInput
 from coding_study.domain.concurrency import Concurrency
-from coding_study.domain.layout import SOURCE_EXTENSIONS
+from coding_study.domain.layout import SOURCE_EXTENSIONS, reference_file_name
 from coding_study.domain.problem import (
     ApproachRole,
     ContentStatus,
@@ -39,6 +39,7 @@ def ready_problems(content: ProblemContent) -> tuple[str, ...]:
     missing = [language for language in meta.languages if not _has_optimal(content, language)]
     if missing:
         problems.append(f"no optimal reference in {', '.join(missing)}")
+    problems += _missing_references(content)
     if meta.track is Track.DSA:
         problems += _dsa_problems(content)
     if meta.kind is ProblemKind.PROGRESSIVE:
@@ -57,6 +58,23 @@ def _has_optimal(content: ProblemContent, language: Language) -> bool:
         for approach in content.problem.meta.approaches
         if approach.role is ApproachRole.OPTIMAL
     )
+
+
+def _missing_references(content: ProblemContent) -> list[str]:
+    """Every approach has a reference in each of its languages: the problem's, unless the
+    approach names fewer."""
+    languages = content.problem.meta.languages
+    problems: list[str] = []
+    for approach in content.problem.meta.approaches:
+        missing = [
+            language
+            for language in languages
+            if approach.covers(language, languages)
+            and reference_file_name(approach.id, language) not in content.solution_files
+        ]
+        if missing:
+            problems.append(f"{approach.id} has no reference in {', '.join(missing)}")
+    return problems
 
 
 def _dsa_problems(content: ProblemContent) -> list[str]:

@@ -302,7 +302,14 @@
         "space": { "type": "string", "minLength": 1 },
         "time_class": { "description": "Required, except in concurrent problems", "$ref": "#/$defs/complexityClass" },
         "space_class": { "description": "Required, except in concurrent problems", "$ref": "#/$defs/complexityClass" },
-        "oracle": { "description": "At most one; must exist in Python", "type": "boolean" }
+        "oracle": { "description": "At most one; must exist in Python", "type": "boolean" },
+        "languages": {
+          "description": "The languages it has references in, a subset of the problem's; default all of them. Concurrency and debugging problems only (check S7)",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/language" }
+        }
       }
     },
     "language": { "enum": ["python", "typescript", "java", "kotlin", "go", "rust"] },

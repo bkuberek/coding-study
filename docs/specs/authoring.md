@@ -221,6 +221,7 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 
 - Every static and dynamic check below passes.
 - At least one `optimal` approach has a reference file in every language in `languages`. `languages` defaults to the four core languages; listing `go` or `rust` makes this rule, the dynamic checks and the coverage lines apply to them too ([ADR 0012](../decisions/0012-go-and-rust.md)).
+- Every approach has a reference file in each of its languages: every language in `languages`, unless a `concurrency` or `debugging` approach names fewer in its own `languages` ([Approaches](problem-format.md#approaches-and-complexity)).
 - `dsa` problems: at least 2 approaches (a slower one, or an alternative optimal technique when no slower approach is meaningful), an `oracle` approach in Python, and `generator.py`.
 - `tests.json`: at least 2 visible cases, at least 8 hand-written hidden cases, and, for `dsa` problems and any problem with `generator.py`, at least 1 `generate` case at the largest ladder size.
 - `progressive` problems: at least 2 levels; every level has at least 1 visible case and at least 2 hand-written hidden cases.
@@ -239,7 +240,7 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 | S4 | Every case input and expected value conforms to the signature (ranges, char length, node encodings, op names and arities, `long` at most 2^53-1, `decimal` and `date` strings; an expected `decimal` is canonical, [Decimal and date](problem-format.md#decimal-and-date)) |
 | S5 | `problem.md` required headings, example markers and hint numbering; progressive: no `## Examples`, one `## Level <n>: <title>` per level as in `meta.yaml`, in order, each with at least one example, and each example in its case's level section |
 | S6 | `explanation.md` sections and subsections per approach; complexity lines equal `meta.yaml`; overview table consistent |
-| S7 | Every file in `solutions/` maps to a declared approach; every approach has at least one file; at most one `oracle`, and it has a Python file |
+| S7 | Every file in `solutions/` maps to a declared approach, and to one of its `languages` when the approach names them; every approach has at least one file; only `concurrency` and `debugging` approaches name `languages`, and only languages of the problem; at most one `oracle`, and it has a Python file |
 | S8 | `checker.py` present if and only if `comparator.type` is `checker`; no `float` comparator (or `per_method` `float`) where the compared outputs hold `decimal` and no `double`, because decimals always compare exactly ([comparators](problem-format.md#comparators)); with `stub: buggy`, exactly one `buggy/solution.<ext>` per language in `languages`, and no `buggy/` otherwise; `rubric.md` for `lld`, and any `rubric.md` has the [required sections](#rubricmd) |
 | S9 | `perf.expected_from` names a Python approach; `size_ladder` ascending |
 | S10 | Progressive: levels contiguous from 1; every level has cases; every case `level` valid and using only methods introduced at or below it; `generate` cases at the last level |

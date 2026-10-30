@@ -511,7 +511,7 @@ Other `meta.yaml` rules for `concurrent` problems:
 |-------|------|
 | `comparator` | Must be `ops` (with optional `per_method`); used by sequential cases and `final.expected` |
 | `signature` | `class` only; `blocking: true` marks methods that may wait |
-| `approaches` | `id`, `name`, `role`, `time`, `space` as usual; `time_class`, `space_class` and `oracle` are not allowed |
+| `approaches` | `id`, `name`, `role`, `time`, `space` as usual, and optional `languages` where an approach has references in fewer languages than the problem ([Approaches](#approaches-and-complexity)); `time_class`, `space_class` and `oracle` are not allowed |
 | `perf`, `generator.py` | Not allowed: no bench, ladder, time limits or oracle for concurrent problems in v1 |
 
 ### Stress cases
@@ -978,6 +978,8 @@ approaches:
 ```
 
 Complexity classes, ordered: `1`, `log n`, `sqrt n`, `n`, `n log n`, `n^2`, `n^2 log n`, `n^3`, `2^n`, `n!`. At least one approach has `role: optimal`; several may (for example heap and quickselect).
+
+Every approach has a reference in every language the problem lists. A `concurrency` or `debugging` problem may name fewer for one approach, with `languages` (a subset of the problem's), where a language has no equivalent of the technique: `0201-bounded-blocking-queue`'s `semaphores` lists `languages: [java, kotlin, python, go]`, since neither TypeScript nor Rust's standard library has a semaphore. The explanation says why in the approach's language notes. A reference file in a language the approach does not name is a static error (S7), and a missing one in a language it names fails the [ready criteria](authoring.md#ready-criteria).
 
 ## Performance block
 

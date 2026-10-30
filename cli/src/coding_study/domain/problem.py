@@ -45,6 +45,12 @@ class Track(StrEnum):
     BEHAVIORAL = "behavioral"
 
 
+LANGUAGE_SUBSET_TRACKS = frozenset({Track.CONCURRENCY, Track.DEBUGGING})
+"""Tracks whose problems may list any subset of the languages, and whose approaches may have
+references in fewer languages than their problem: a race or a bug often exists in some languages
+only."""
+
+
 class ContentStatus(StrEnum):
     DRAFT = "draft"
     READY = "ready"
@@ -116,6 +122,12 @@ class Approach:
     """None only for concurrent problems, which declare no complexity classes."""
     space_class: ComplexityClass | None
     oracle: bool = False
+    languages: tuple[Language, ...] | None = None
+    """The languages it has references in, where that is not every language of the problem
+    (concurrency and debugging problems only); None: every language of the problem."""
+
+    def covers(self, language: Language, problem_languages: tuple[Language, ...]) -> bool:
+        return language in (self.languages or problem_languages)
 
 
 @dataclass(frozen=True, slots=True)

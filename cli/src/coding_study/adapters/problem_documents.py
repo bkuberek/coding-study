@@ -211,9 +211,14 @@ def _approaches(approaches: Sequence[Document]) -> tuple[Approach, ...]:
             time_class=_complexity_class(approach.get("time_class")),
             space_class=_complexity_class(approach.get("space_class")),
             oracle=approach.get("oracle", False),
+            languages=_languages(approach.get("languages")),
         )
         for approach in approaches
     )
+
+
+def _languages(names: Sequence[str] | None) -> tuple[Language, ...] | None:
+    return tuple(Language(name) for name in names) if names else None
 
 
 def _complexity_class(name: str | None) -> ComplexityClass | None:

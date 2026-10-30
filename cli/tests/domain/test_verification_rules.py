@@ -9,6 +9,7 @@ from coding_study.domain.comparators import comparator_for
 from coding_study.domain.conformance import ExpectedOutcome, ExpectedStatus
 from coding_study.domain.conformance_check import outcome_mismatch
 from coding_study.domain.judging import RunnableCase, judge, verdict_summary
+from coding_study.domain.layout import reference_file_name
 from coding_study.domain.problem import (
     ComparatorSpec,
     ComparatorType,
@@ -146,14 +147,18 @@ def two_sum(tmp_path_factory):
 
 def ready_content(problem, **changes) -> ProblemContent:
     directory = PRACTICE / "0001-two-sum"
-    solutions = ("brute-force.py", "explanation.md", "hash-map.java", "hash-map.kt", "hash-map.py")
+    references = tuple(
+        reference_file_name(approach.id, language)
+        for approach in problem.meta.approaches
+        for language in problem.meta.languages
+    )
     base = ProblemContent(
         directory="problems/0001-two-sum",
         problem=problem,
         problem_markdown=None,
         explanation=None,
         files=tuple(sorted(path.name for path in directory.iterdir() if path.is_file())),
-        solution_files=(*solutions, "hash-map.ts"),
+        solution_files=("explanation.md", *references),
     )
     return replace(base, **changes)
 
@@ -183,6 +188,22 @@ def test_every_language_needs_an_optimal_reference(two_sum):
     files = ("brute-force.py", "hash-map.py")
     problems = ready_problems(ready_content(two_sum, solution_files=files))
     assert "no optimal reference in typescript, java, kotlin" in problems
+
+
+def test_every_approach_needs_a_reference_in_every_language(two_sum):
+    files = tuple(
+        name for name in ready_content(two_sum).solution_files if name != "brute-force.kt"
+    )
+    problems = ready_problems(ready_content(two_sum, solution_files=files))
+    assert "brute-force has no reference in kotlin" in problems
+
+
+def test_an_approach_needs_references_only_in_its_languages(two_sum):
+    brute = replace(two_sum.meta.approaches[0], languages=(Language.PYTHON,))
+    meta = replace(two_sum.meta, approaches=(brute, *two_sum.meta.approaches[1:]))
+    files = (*(name for name in ready_content(two_sum).solution_files if "brute" not in name),)
+    content = ready_content(replace(two_sum, meta=meta), solution_files=(*files, "brute-force.py"))
+    assert not any("brute-force" in problem for problem in ready_problems(content))
 
 
 def test_hand_written_hidden_cases_are_counted(two_sum):

@@ -31,6 +31,6 @@ concurrency:
       caught_by: [s1]
 approaches:
   - {id: locked, name: Lazy refill and take under one lock, role: optimal, time: "O(1) per op", space: "O(1)"}
-  - {id: cas-state, name: Compare-and-set on an immutable state, role: optimal, time: "O(1) per op, amortized under contention", space: "O(1)"}
+  - {id: cas-state, name: Compare-and-set on an immutable state, role: optimal, time: "O(1) per op, amortized under contention", space: "O(1)", languages: [java, kotlin]}
 related: [concurrency-limiter, bank-transfers]
 estimate_minutes: 30

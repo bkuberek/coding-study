@@ -34,6 +34,6 @@ concurrency:
       caught_by: [s1, s2]
 approaches:
   - {id: hand-off, name: FIFO waiter queue with direct hand-off, role: optimal, time: "O(1) per op", space: "O(waiters)"}
-  - {id: fair-semaphore, name: Fair semaphore from the standard library, role: optimal, time: "O(1) per op", space: "O(waiters)"}
+  - {id: fair-semaphore, name: Fair semaphore from the standard library, role: optimal, time: "O(1) per op", space: "O(waiters)", languages: [java, kotlin, go]}
 related: [bounded-blocking-queue, read-write-lock]
 estimate_minutes: 30
