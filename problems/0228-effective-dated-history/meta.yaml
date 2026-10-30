@@ -6,7 +6,6 @@ status: ready
 difficulty: medium
 track: practical
 kind: progressive
-languages: [python, typescript, java, kotlin, go, rust]
 patterns: [binary-search]
 levels:
   - {level: 1, title: Effective-dated values}

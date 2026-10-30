@@ -6,7 +6,6 @@ status: ready
 difficulty: hard
 track: practical
 kind: progressive
-languages: [python, typescript, java, kotlin, go, rust]
 levels:
   - {level: 1, title: Accounts and transfers}
   - {level: 2, title: Top spenders}

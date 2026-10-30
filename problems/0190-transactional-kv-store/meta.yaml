@@ -6,7 +6,6 @@ status: ready
 difficulty: medium
 track: practical
 kind: progressive
-languages: [python, typescript, java, kotlin, go, rust]
 levels:
   - {level: 1, title: Keys and value counts}
   - {level: 2, title: Begin and rollback}

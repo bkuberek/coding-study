@@ -6,7 +6,6 @@ status: ready
 difficulty: hard
 track: concurrency
 kind: concurrent
-languages: [java, kotlin, python, typescript, go, rust]
 signature:
   class:
     name: ReadWriteLock

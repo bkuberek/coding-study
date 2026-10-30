@@ -6,7 +6,6 @@ status: ready
 difficulty: medium
 track: concurrency
 kind: concurrent
-languages: [java, kotlin, python, typescript, go, rust]
 signature:
   class:
     name: ConcurrencyLimiter

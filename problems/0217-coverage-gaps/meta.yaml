@@ -6,7 +6,6 @@ status: ready
 difficulty: medium
 track: practical
 kind: function
-languages: [python, typescript, java, kotlin, go, rust]
 patterns: [intervals]
 signature:
   function:
