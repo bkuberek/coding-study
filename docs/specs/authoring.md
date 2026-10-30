@@ -275,7 +275,7 @@ A debugging problem is an ordinary problem (`track: debugging`, `stub: buggy`) w
 - `buggy/solution.<ext>` for each language in `languages`, written like a reference file (no JVM `package` line), with the same symbols the signature declares.
 - The bug makes at least one case fail in every language (D8); visible examples may pass, so the user has to find the failing input.
 - `solutions/` holds the fixed code as the `optimal` approach; `explanation.md` names the bug in `### Intuition` and the general trap in `### Pitfalls and edge cases`.
-- A language-specific bug (integer overflow, mutable default arguments, boxed equality) restricts `languages` to the languages that have it.
+- A language-specific bug (integer overflow, mutable default arguments, boxed equality) restricts `languages` to the languages that have it. Go and Rust get bugs of their own (append aliasing, nil map writes, `usize` underflow, NaN ordering and others), each listing only `go` or `rust`, rather than ports of the core-language problems ([ADR 0012](../decisions/0012-go-and-rust.md)).
 
 ## Items
 

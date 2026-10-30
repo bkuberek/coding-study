@@ -108,7 +108,7 @@ All problem statements, tests and solutions are original ([ADR 0004](docs/decisi
 | `practical` | 6 | Tests, level by level | One class whose API grows over 4 levels |
 | `lld` | 8 | Tests, then a design rubric | Object-oriented design |
 | `concurrency` | 6 | Stress tests against invariants | Thread-safe classes, per-language models |
-| `debugging` | 8 | Tests | Buggy code to fix |
+| `debugging` | 16 | Tests | Buggy code to fix |
 | `system-design` | 10 | Self-graded with a rubric | Prompt, notes template, reference design |
 | `code-review` | 6 | Self-graded with a rubric | A change to review |
 | `behavioral` | none | Not tracked | Guidance for your own story bank |
