@@ -323,6 +323,9 @@ A `pre-push` hook that runs the catalog gate is recommended but not mandatory ([
 - [ ] Explanation section for every approach with all required subsections; language notes where idioms differ.
 - [ ] `perf.size_ladder` within constraints; a `generate` case at the largest size.
 - [ ] The ladder spans two or more decades where the slowest approach allows it (over one decade, neighbouring classes such as n^1.5 and n^2 are within the [drift tolerance](performance-analysis.md#ladder-check)), and the generator drives every approach to its declared worst case at every size: the same input family at every seed, no early exits that some seeds hit and others miss.
+- [ ] A search that stops at its first success (`word-search`) gets inputs at the ladder sizes that it must search to the end, or to a fixed share of it, in every approach: random inputs make the time at each size depend on the input drawn, and in Go and Rust such calls take under a microsecond, where the ladder cannot see growth.
+- [ ] `time_class` is the class with the libraries the references use: re-sorting a list that is sorted but for a few values is a linear pass with every library sort in the catalog (Timsort in Python, TypeScript and Kotlin's lists, run merging in Java's `Arrays.sort`, Rust's driftsort, Go's pdqsort), so such a brute force is O(n) per sort, not O(n log n) (`last-stone-weight`).
+- [ ] A lower-order term that grows with n, such as a fixed cost per round of a simulation, is not the fixed per-call cost the drift allows for: when it dominates the smallest size in Go or Rust, start the ladder above that size instead of declaring a lower class.
 - [ ] `cstudy verify <slug> --oracle --ladder --require-ready` exits 0.
 
 ### Concurrency checklist
