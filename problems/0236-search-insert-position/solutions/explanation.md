@@ -80,3 +80,5 @@ The half-open form never needs a separate "not found" branch and gives the inser
 - Java: `Arrays.binarySearch` returns `-(insertion point) - 1` when the value is absent, so a decoding step is needed.
 - Kotlin: `nums.binarySearch(target)` has the same encoding.
 - TypeScript: there is no library search, and `(low + high) >>> 1` is the usual middle; Java and Kotlin use the overflow-safe `low + (high - low) / 2`.
+- Go: `sort.SearchInts(nums, target)` is the library call for exactly this; the reference writes the loop with the overflow-safe `low + (high-low)/2`.
+- Rust: `nums.partition_point(|&value| value < target)` is the library one-liner. `binary_search` would also work only when the values are distinct: it returns `Ok` with any one of several equal positions. The loop uses the half-open range `[low, high)` over `usize` indexes, so `high = middle` and `low = middle + 1` never go below zero, unlike a closed-range search with `high = middle - 1`.
