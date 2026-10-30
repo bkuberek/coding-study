@@ -32,7 +32,7 @@ def test_track_report(environment):
         "  not ready: system-design items need at least one reference (links or study_guides)",
         "url-shortener     static ok",
         "",
-        "coverage  python 0/0 · typescript 0/0 · java 0/0 · kotlin 0/0",
+        "coverage  python 0/0 · typescript 0/0 · java 0/0 · kotlin 0/0 · go 0/0 · rust 0/0",
         "result    1 failed · 1 passed",
     ]
 

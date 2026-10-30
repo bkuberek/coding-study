@@ -180,6 +180,8 @@ def test_by_language_counts_problems_offered_in_it():
         ("typescript", 1),
         ("java", 1),
         ("kotlin", 1),
+        ("go", 1),
+        ("rust", 1),
     ]
 
 
@@ -196,6 +198,8 @@ def test_by_language_counts_attempts_in_that_language():
         ("typescript", 0),
         ("java", 0),
         ("kotlin", 1),
+        ("go", 0),
+        ("rust", 0),
     ]
 
 

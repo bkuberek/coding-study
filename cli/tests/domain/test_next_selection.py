@@ -239,6 +239,12 @@ def test_the_language_filter_uses_the_problem_languages():
     assert picked_slug(subset, scope=scope) is None
 
 
+@pytest.mark.parametrize("language", [Language.GO, Language.RUST])
+def test_a_problem_is_available_in_go_and_rust_by_default(language):
+    scope = NextScope(frozenset({Track.DSA}), language=language)
+    assert picked_slug(candidate("default"), scope=scope) == "default"
+
+
 def test_an_item_candidate_has_no_id_and_no_languages():
     meta = ItemMeta(
         "url-shortener",

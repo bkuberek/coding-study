@@ -35,7 +35,7 @@ TODO: waiting with `if` instead of `while`, lost wake-ups.
 
 ### Language notes
 
-TODO: Java platform versus virtual threads, Python's GIL, and the Kotlin coroutine version (`Mutex`, `Semaphore`, `Channel`).
+TODO: Java platform versus virtual threads, Python's GIL, the Kotlin coroutine version (`Mutex`, `Semaphore`, `Channel`), Go's `sync` package and channels, and Rust's `Mutex`, `Condvar` and `Send + Sync`.
 
 ## Broken: no-wait (Acquire without waiting)
 

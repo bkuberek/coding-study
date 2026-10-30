@@ -12,7 +12,7 @@ from coding_study.application.environment import ProblemDestination
 from coding_study.application.new_problem import create_problem
 from coding_study.application.verify_content import VerifyRequest, verify_content
 from coding_study.domain.errors import UsageError
-from coding_study.domain.problem import CORE_LANGUAGES, ContentStatus, Track
+from coding_study.domain.problem import ALL_LANGUAGES, ContentStatus, Track
 from coding_study.domain.scaffold import WORKSPACE_FIRST_ID, ScaffoldRequest, TemplateName
 from tests.fakes import make_environment
 from tests.helpers import FIXTURE_TRACKS
@@ -25,7 +25,8 @@ TEMPLATE_FILES = (
     "solutions/explanation.md",
     "tests.json",
 )
-REFERENCE_FILES = tuple(f"solutions/reference.{ext}" for ext in ("py", "ts", "java", "kt"))
+EXTENSIONS = ("py", "ts", "java", "kt", "go", "rs")
+REFERENCE_FILES = tuple(f"solutions/reference.{extension}" for extension in EXTENSIONS)
 
 
 @pytest.fixture
@@ -158,10 +159,12 @@ def test_the_concurrent_template_gets_an_empty_broken_reference_per_language(env
         "solutions/broken/no-wait.java",
         "solutions/broken/no-wait.kt",
         "solutions/broken/no-wait.py",
+        "solutions/broken/no-wait.go",
+        "solutions/broken/no-wait.rs",
     ]
 
 
 def test_every_language_gets_a_reference_file_for_each_approach(environment):
     created = create(environment, "store", TemplateName.PROGRESSIVE)
     references = {name for name in created.files if name.startswith("solutions/reference.")}
-    assert len(references) == len(CORE_LANGUAGES)
+    assert len(references) == len(ALL_LANGUAGES)

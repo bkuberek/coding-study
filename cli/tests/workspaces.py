@@ -3,7 +3,7 @@
 
 One workspace per session is set up the way a user's is, with the `cstudy init` scaffold and the
 `cstudy doctor --fix` steps. Modules that write practice files get a light copy of it: their own
-config files and JVM project, with the venv, `node_modules` and runner runtime linked.
+config files, JVM, Go and Rust projects, with the venv, `node_modules` and runner runtime linked.
 """
 
 import shutil
@@ -19,6 +19,9 @@ TEST_VERSION = "test"
 SETUP_STEPS = (PYTHON_FIX, TYPESCRIPT_FIX, JVM_FIX)
 JVM_COPY_IGNORED = shutil.ignore_patterns("build", ".gradle", ".kotlin", "src")
 TYPESCRIPT_PROJECT_FILES = ("package.json", "tsconfig.json", "support.ts")
+COMPILED_PROJECTS = ("go", "rust")
+COMPILED_COPY_IGNORED = shutil.ignore_patterns("target")
+GO_WORK = "go.work"
 
 
 def set_up_workspace(root: Path) -> Path:
@@ -47,6 +50,9 @@ def workspace_like(practice: Path, destination: Path) -> Path:
         practice / "typescript" / "node_modules", target_is_directory=True
     )
     shutil.copytree(practice / "jvm", destination / "jvm", ignore=JVM_COPY_IGNORED, symlinks=True)
+    for project in COMPILED_PROJECTS:
+        shutil.copytree(practice / project, destination / project, ignore=COMPILED_COPY_IGNORED)
+    shutil.copyfile(practice / GO_WORK, destination / GO_WORK)
     runtime = destination / RUNTIME_DIRECTORY
     runtime.symlink_to(practice / RUNTIME_DIRECTORY, target_is_directory=True)
     return destination

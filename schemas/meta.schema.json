@@ -28,7 +28,7 @@
       "items": { "$ref": "#/$defs/pattern" }
     },
     "languages": {
-      "description": "Default the core four (python, typescript, java, kotlin), which every problem must list; go and rust are optional. The concurrency and debugging tracks may list any subset",
+      "description": "Default all six. Every problem lists python, typescript, java, kotlin and go, and rust unless Rust cannot express it (check S13). The concurrency and debugging tracks may list any subset",
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
@@ -118,7 +118,8 @@
               { "contains": { "const": "python" } },
               { "contains": { "const": "typescript" } },
               { "contains": { "const": "java" } },
-              { "contains": { "const": "kotlin" } }
+              { "contains": { "const": "kotlin" } },
+              { "contains": { "const": "go" } }
             ]
           }
         }

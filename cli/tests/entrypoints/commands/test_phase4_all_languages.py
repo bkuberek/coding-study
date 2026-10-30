@@ -1,11 +1,12 @@
-"""Phase 4 in all four languages: a progressive problem unlocks its levels one at a time and the
+"""Phase 4 in every language: a progressive problem unlocks its levels one at a time and the
 rendered statement hides the locked levels (the exit criterion), and `cstudy verify` passes the
 progressive and low-level design fixtures.
 
-Marked `slow`: it drives the real runners (the workspace Python venv, Node, Gradle and the JVM)
-through `cstudy start`, `cstudy test`, `cstudy done` and `cstudy verify`. The content root is
-temporary (the fixture problems and a link to the real `runners/`), and the workspace is a copy of
-the session's practice workspace that links its venv, `node_modules` and runner runtime.
+Marked `slow`: it drives the real runners (the workspace Python venv, Node, Gradle and the JVM,
+Go and Cargo) through `cstudy start`, `cstudy test`, `cstudy done` and `cstudy verify`. The
+content root is temporary (the fixture problems and a link to the real `runners/`), and the
+workspace is a copy of the session's practice workspace that links its venv, `node_modules` and
+runner runtime.
 """
 
 import shutil
@@ -15,7 +16,7 @@ import pytest
 from typer.testing import CliRunner
 
 from coding_study.domain.layout import SOURCE_EXTENSIONS
-from coding_study.domain.problem import CORE_LANGUAGES, Language
+from coding_study.domain.problem import ALL_LANGUAGES, Language
 from coding_study.entrypoints import cli
 from tests.helpers import REPOSITORY_ROOT, SCHEMAS_DIRECTORY
 from tests.workspaces import workspace_like
@@ -37,6 +38,8 @@ USER_FILES = {
         "jvm/kotlin/src/main/kotlin/practice/level_store/LevelStore.kt",
         "package practice.level_store\n\n",
     ),
+    Language.GO: ("go/practice/level_store/level_store.go", ""),
+    Language.RUST: ("rust/practice/level_store.rs", ""),
 }
 LEVEL_TITLES = (
     "## Level 1: Put and get",
@@ -84,7 +87,7 @@ def shown_levels(root: Path) -> tuple[str, ...]:
     return tuple(title for title in LEVEL_TITLES if title in statement)
 
 
-@pytest.mark.parametrize("language", CORE_LANGUAGES, ids=str)
+@pytest.mark.parametrize("language", ALL_LANGUAGES, ids=str)
 def test_levels_unlock_one_at_a_time(root, cstudy, language):
     observed: list[tuple[int, tuple[str, ...]]] = []
     started = cstudy("start", "level-store", "--lang", language, "--no-open")
@@ -110,7 +113,7 @@ def test_verify_passes_the_fixtures_in_every_language(cstudy):
     assert (result.exit_code, result.output.splitlines()[-2:]) == (
         0,
         [
-            "coverage  python 2/2 · typescript 2/2 · java 2/2 · kotlin 2/2",
+            "coverage  python 2/2 · typescript 2/2 · java 2/2 · kotlin 2/2 · go 2/2 · rust 2/2",
             "result    0 failed · 2 passed",
         ],
     )

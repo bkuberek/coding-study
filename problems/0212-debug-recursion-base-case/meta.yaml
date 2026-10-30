@@ -6,6 +6,7 @@ status: ready
 difficulty: medium
 track: debugging
 kind: function
+languages: [python, typescript, java, kotlin]
 stub: buggy
 signature:
   function:

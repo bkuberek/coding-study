@@ -187,7 +187,7 @@ def test_draft_status_is_not_ready(two_sum):
 def test_every_language_needs_an_optimal_reference(two_sum):
     files = ("brute-force.py", "hash-map.py")
     problems = ready_problems(ready_content(two_sum, solution_files=files))
-    assert "no optimal reference in typescript, java, kotlin" in problems
+    assert "no optimal reference in typescript, java, kotlin, go, rust" in problems
 
 
 def test_every_approach_needs_a_reference_in_every_language(two_sum):

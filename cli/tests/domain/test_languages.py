@@ -1,7 +1,17 @@
-from coding_study.domain.problem import CORE_LANGUAGES, OPTIONAL_LANGUAGES, Language
+from coding_study.domain.problem import (
+    ALL_LANGUAGES,
+    CORE_LANGUAGES,
+    LANGUAGE_SUBSET_TRACKS,
+    Language,
+    Track,
+)
 
 
-def test_core_languages_are_the_four_every_problem_lists():
+def test_every_problem_lists_all_six_languages_by_default():
+    assert tuple(Language) == ALL_LANGUAGES
+
+
+def test_core_languages_are_the_toolchains_every_workspace_needs():
     assert CORE_LANGUAGES == (
         Language.PYTHON,
         Language.TYPESCRIPT,
@@ -10,9 +20,5 @@ def test_core_languages_are_the_four_every_problem_lists():
     )
 
 
-def test_optional_languages_are_go_and_rust():
-    assert OPTIONAL_LANGUAGES == (Language.GO, Language.RUST)
-
-
-def test_core_and_optional_languages_partition_the_enum():
-    assert (*CORE_LANGUAGES, *OPTIONAL_LANGUAGES) == tuple(Language)
+def test_only_concurrency_and_debugging_problems_list_a_subset():
+    assert {Track.CONCURRENCY, Track.DEBUGGING} == LANGUAGE_SUBSET_TRACKS

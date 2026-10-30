@@ -229,7 +229,7 @@ def test_concurrent_approaches_may_not_declare_classes(root):
 def test_blocking_is_rejected_outside_concurrent_problems(root):
     def design(meta: dict[str, Any]) -> None:
         meta.update(kind="design", track="lld")
-        del meta["concurrency"]
+        del meta["concurrency"], meta["languages"]
         for approach in meta["approaches"]:
             approach.update(time_class="1", space_class="n")
 

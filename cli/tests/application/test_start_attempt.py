@@ -166,8 +166,6 @@ RUST_MANIFEST = "rust/Cargo.toml"
 @pytest.fixture
 def rust_environment(tmp_path: Path):
     root = copy_repository(tmp_path, PRACTICE)
-    meta = root / "problems/0001-two-sum/meta.yaml"
-    meta.write_text(meta.read_text() + "languages: [python, typescript, java, kotlin, rust]\n")
     toolchains = FakeToolchains(stub_generators={Language.RUST: FakeStubGenerator()})
     return make_environment(root, toolchains=toolchains, clock=FakeClock())
 

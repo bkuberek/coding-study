@@ -7,7 +7,7 @@ difficulty: {{difficulty}}
 track: {{track}}
 kind: concurrent
 {{patterns}}
-languages: [java, kotlin, python]
+languages: [java, kotlin, python, go, rust]
 signature:
   class:
     name: {{class_name}}

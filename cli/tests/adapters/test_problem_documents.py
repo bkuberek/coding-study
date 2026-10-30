@@ -10,7 +10,7 @@ from coding_study.domain.cases import (
 )
 from coding_study.domain.errors import ContentError, ContentIssue
 from coding_study.domain.problem import (
-    CORE_LANGUAGES,
+    ALL_LANGUAGES,
     ApproachRole,
     ComparatorSpec,
     ComparatorType,
@@ -117,7 +117,7 @@ def test_maps_references_and_related():
 def test_applies_spec_defaults_for_omitted_fields():
     meta = two_sum_meta()
     assert (meta.languages, meta.stub, meta.levels, meta.order, meta.hang_guard_ms) == (
-        CORE_LANGUAGES,
+        ALL_LANGUAGES,
         StubSource.GENERATED,
         (),
         1000,
@@ -125,12 +125,15 @@ def test_applies_spec_defaults_for_omitted_fields():
     )
 
 
-def test_listed_languages_keep_go_and_rust_in_document_order():
+def test_listed_languages_keep_their_document_order():
     document = load_fixture_meta("0001-two-sum")
-    document["languages"] = ["python", "typescript", "java", "kotlin", "rust", "go"]
+    document["languages"] = ["rust", "python", "typescript", "java", "kotlin", "go"]
     assert meta_from_document(document, META_SOURCE).languages == (
-        *CORE_LANGUAGES,
         Language.RUST,
+        Language.PYTHON,
+        Language.TYPESCRIPT,
+        Language.JAVA,
+        Language.KOTLIN,
         Language.GO,
     )
 

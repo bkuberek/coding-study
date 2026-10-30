@@ -78,6 +78,10 @@ APPROACH_SUBSECTIONS = (
 )
 COMPLEXITY_SUBSECTION = "Complexity"
 LANGUAGE_NOTES = "Language notes"
+EVERY_LANGUAGE = (
+    "every problem outside the concurrency and debugging tracks lists every language that can "
+    "express it"
+)
 APPROACH_LANGUAGES_TRACKS = (
     "languages: only concurrency and debugging approaches may have references in fewer "
     "languages than the problem"
@@ -194,11 +198,17 @@ def _case_values(issues: _Issues, content: ProblemContent) -> None:
 
 
 def _language_limits(issues: _Issues, content: ProblemContent) -> None:
-    """S13: every listed language can express the signature and the case inputs."""
+    """S13: every listed language can express the signature and the case inputs, and a problem
+    outside the concurrency and debugging tracks lists every language that can."""
     problem = content.problem
-    for language in problem.meta.languages:
-        for reason in language_limits(problem.meta.signature, problem.cases, language):
-            issues.error(META_FILE, f"cannot list {language}: {reason}", "languages")
+    meta = problem.meta
+    for language in Language:
+        reasons = language_limits(meta.signature, problem.cases, language)
+        if language in meta.languages:
+            for reason in reasons:
+                issues.error(META_FILE, f"cannot list {language}: {reason}", "languages")
+        elif not reasons and meta.track not in LANGUAGE_SUBSET_TRACKS:
+            issues.error(META_FILE, f"must list {language}: {EVERY_LANGUAGE}", "languages")
 
 
 def _solution_files(issues: _Issues, content: ProblemContent) -> None:

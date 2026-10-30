@@ -22,7 +22,7 @@ from coding_study.domain.cases import (
 )
 from coding_study.domain.errors import ContentError, ContentIssue
 from coding_study.domain.problem import (
-    CORE_LANGUAGES,
+    ALL_LANGUAGES,
     DEFAULT_BUDGET_MS,
     DEFAULT_CURRICULUM_ORDER,
     DEFAULT_FLOAT_TOLERANCE,
@@ -95,7 +95,7 @@ def cases_from_document(
 
 
 def _meta(document: Document) -> ProblemMeta:
-    languages = tuple(Language(name) for name in document.get("languages", CORE_LANGUAGES))
+    languages = tuple(Language(name) for name in document.get("languages", ALL_LANGUAGES))
     concurrency = document.get("concurrency")
     return ProblemMeta(
         id=document["id"],

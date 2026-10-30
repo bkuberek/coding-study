@@ -7,7 +7,7 @@ A local, IDE-first interview-prep system for senior and staff engineer loops. Yo
 | Status | Implemented through Phase 7; open validation items in the [roadmap](roadmap.md#status) |
 | Users | One engineer per installation, practicing on their own machine |
 | Platform | macOS, local only |
-| Languages practiced | Python, TypeScript, Java, Kotlin; Go and Rust are being added as optional languages per problem ([ADR 0012](decisions/0012-go-and-rust.md)) |
+| Languages practiced | Python, TypeScript, Java, Kotlin, Go and Rust ([ADR 0012](decisions/0012-go-and-rust.md)) |
 | Related | [Architecture](architecture.md), [Roadmap](roadmap.md), [Specs](README.md#specs) |
 
 ## 1. Executive summary

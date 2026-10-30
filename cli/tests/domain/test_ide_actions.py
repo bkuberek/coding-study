@@ -22,6 +22,10 @@ def test_an_action_is_named_after_its_command_and_scope():
     assert action.name(Scope.CURRENT_FILE) == "cstudy test --perf (current file)"
 
 
+def test_an_action_means_something_for_every_language_by_default():
+    assert ProblemAction(("test",)).languages == tuple(Language)
+
+
 def test_an_action_for_some_languages_names_them():
     action = ProblemAction(("test", "--typecheck"), languages=(Language.TYPESCRIPT,))
     expected = "cstudy test --typecheck (active attempt, TypeScript)"

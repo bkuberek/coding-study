@@ -27,11 +27,15 @@ class Language(StrEnum):
     RUST = "rust"
 
 
+ALL_LANGUAGES = tuple(Language)
+"""What a problem lists unless it says otherwise, and what "every language" means in defaults,
+coverage and IDE actions: every problem has references in all of them, except where a language
+cannot express it (check S13) and on the concurrency and debugging tracks
+(docs/decisions/0012-go-and-rust.md)."""
 CORE_LANGUAGES = (Language.PYTHON, Language.TYPESCRIPT, Language.JAVA, Language.KOTLIN)
-"""What a problem lists unless it says otherwise, and what "every language" means in defaults and
-coverage: the languages every problem has references in."""
-OPTIONAL_LANGUAGES = (Language.GO, Language.RUST)
-"""Problems opt in by listing them in `languages` (docs/decisions/0012-go-and-rust.md)."""
+"""The languages whose toolchains every workspace needs: `cstudy doctor` starts their runners and
+fails without them. A missing Go or Rust toolchain is only a warning, since only `--lang go` and
+`--lang rust` use it."""
 
 
 class Track(StrEnum):
@@ -170,7 +174,7 @@ class ProblemMeta:
     comparator: ComparatorSpec
     approaches: tuple[Approach, ...]
     patterns: tuple[str, ...] = ()
-    languages: tuple[Language, ...] = CORE_LANGUAGES
+    languages: tuple[Language, ...] = ALL_LANGUAGES
     stub: StubSource = StubSource.GENERATED
     levels: tuple[Level, ...] = ()
     perf: Perf = Perf()

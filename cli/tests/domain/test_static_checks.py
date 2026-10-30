@@ -97,14 +97,14 @@ def test_reserved_names_are_errors(problems):
 def test_a_rust_keyword_that_a_raw_identifier_spells_is_no_error(problems):
     meta = problems["two-sum"].meta
     signature = replace(meta.signature, params=(replace(meta.signature.params[0], name="move"),))
-    problem = with_meta(problems, signature=signature, languages=(*meta.languages, Language.RUST))
+    problem = with_meta(problems, signature=signature)
     assert not any("reserved word" in issue for issue in errors(content(problems, problem=problem)))
 
 
 def test_a_rust_keyword_no_raw_identifier_spells_is_an_error(problems):
     meta = problems["two-sum"].meta
     signature = replace(meta.signature, params=(replace(meta.signature.params[0], name="self"),))
-    problem = with_meta(problems, signature=signature, languages=(*meta.languages, Language.RUST))
+    problem = with_meta(problems, signature=signature)
     assert f'{META}: signature: "self" is a reserved word in rust' in errors(
         content(problems, problem=problem)
     )
@@ -133,7 +133,7 @@ def test_a_go_parameter_that_shadows_an_imported_package_is_a_warning(problems):
     meta = problems["two-sum"].meta
     day = Param("time", parse_value_type("date"))
     signature = replace(meta.signature, params=(day, *meta.signature.params[1:]))
-    problem = with_meta(problems, signature=signature, languages=(*meta.languages, Language.GO))
+    problem = with_meta(problems, signature=signature)
     assert warnings(content(problems, problem=problem)) == [
         f'{META}: signature: "time" shadows the package time that the Go stub imports'
     ]
@@ -144,7 +144,7 @@ def test_a_go_function_named_after_an_imported_package_is_an_error(problems):
     signature = replace(
         meta.signature, name="decimal", returns=Returns(parse_return_type("decimal"))
     )
-    problem = with_meta(problems, signature=signature, languages=(*meta.languages, Language.GO))
+    problem = with_meta(problems, signature=signature)
     conflict = '"decimal" conflicts with the package decimal that the Go stub imports'
     assert f"{META}: signature: {conflict}" in errors(content(problems, problem=problem))
 
@@ -390,7 +390,7 @@ def test_checker_py_needs_the_checker_comparator(problems):
 
 def test_buggy_stub_needs_a_file_per_language(problems):
     problem = with_meta(problems, stub=StubSource.BUGGY)
-    assert len(errors(content(problems, problem=problem))) == 4
+    assert len(errors(content(problems, problem=problem))) == len(Language)
 
 
 FLOAT = ComparatorSpec(ComparatorType.FLOAT)
@@ -564,11 +564,17 @@ def test_valid_progressive_problem(problems):
 # S13
 
 
-def list_problem(problems, case_input):
+WITHOUT_RUST = tuple(language for language in Language if language is not Language.RUST)
+MUST_LIST = (
+    "every problem outside the concurrency and debugging tracks lists every language that can "
+    "express it"
+)
+
+
+def list_problem(problems, case_input, languages=tuple(Language)):
     meta = problems["two-sum"].meta
     head = Param("head", parse_value_type("ListNode"))
     signature = replace(meta.signature, params=(head,), returns=Returns(parse_return_type("int")))
-    languages = (*meta.languages, Language.RUST)
     case = Case("c1", FunctionInput({"head": case_input}), Expected(1))
     problem = replace(problems["two-sum"], cases=(case,))
     return replace(problem, meta=replace(meta, signature=signature, languages=languages))
@@ -586,3 +592,23 @@ def test_rust_can_be_listed_with_an_acyclic_list_input(problems):
     problem = list_problem(problems, [1, 2])
     issues = errors(content(problems, problem=problem))
     assert [issue for issue in issues if "cannot list" in issue] == []
+
+
+def test_a_problem_lists_every_language_that_can_express_it(problems):
+    problem = with_meta(problems, languages=WITHOUT_RUST)
+    assert errors(content(problems, problem=problem)) == [
+        f"{META}: languages: must list rust: {MUST_LIST}"
+    ]
+
+
+def test_a_problem_leaves_out_a_language_that_cannot_express_it(problems):
+    problem = list_problem(problems, {"values": [1, 2], "cycle_at": 0}, WITHOUT_RUST)
+    issues = errors(content(problems, problem=problem))
+    assert [issue for issue in issues if "languages:" in issue] == []
+
+
+@pytest.mark.parametrize("track", [Track.CONCURRENCY, Track.DEBUGGING])
+def test_concurrency_and_debugging_problems_list_any_subset(problems, track):
+    problem = with_meta(problems, track=track, languages=(Language.PYTHON,))
+    issues = errors(content(problems, problem=problem))
+    assert [issue for issue in issues if "must list" in issue] == []

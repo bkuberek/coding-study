@@ -46,21 +46,25 @@ CORE = ["python", "typescript", "java", "kotlin"]
 
 @pytest.mark.parametrize(
     "languages",
-    [CORE, [*CORE, "go"], [*CORE, "rust"], [*CORE, "go", "rust"], ["go", *CORE, "rust"]],
-    ids=["core", "go", "rust", "go and rust", "any order"],
+    [[*CORE, "go", "rust"], ["rust", *CORE, "go"], [*CORE, "go"]],
+    ids=["all six", "any order", "without rust (check S13 decides)"],
 )
-def test_problems_list_the_core_languages_and_may_add_go_and_rust(languages):
+def test_problems_list_the_core_languages_and_go(languages):
     meta = load_fixture_meta("0001-two-sum")
     meta["languages"] = languages
     assert validator_for_meta_file().violations(meta, SOURCE) == []
 
 
-def test_a_missing_core_language_is_named():
+@pytest.mark.parametrize(
+    ("languages", "missing"),
+    [(["python", "typescript", "java", "go", "rust"], "kotlin"), ([*CORE, "rust"], "go")],
+)
+def test_a_missing_language_is_named(languages, missing):
     meta = load_fixture_meta("0001-two-sum")
-    meta["languages"] = ["python", "typescript", "java", "go"]
+    meta["languages"] = languages
     issues = validator_for_meta_file().violations(meta, SOURCE)
     assert [(issue.location, issue.message) for issue in issues] == [
-        ("languages", 'must include "kotlin"')
+        ("languages", f'must include "{missing}"')
     ]
 
 
@@ -98,7 +102,11 @@ INVALID_META: dict[str, tuple[Mutation, str]] = {
         lambda meta: meta.update(languages=["python", "typescript", "java", "go"]),
         "languages",
     ),
-    "optional languages alone": (
+    "language subset missing go": (
+        lambda meta: meta.update(languages=["python", "typescript", "java", "kotlin", "rust"]),
+        "languages",
+    ),
+    "go and rust alone": (
         lambda meta: meta.update(languages=["go", "rust"]),
         "languages",
     ),

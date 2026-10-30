@@ -212,7 +212,7 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 | `problem.md` | `## Statement`, `## Input`, `## Output`, one `## Level <n>: <title>` per level (operations, rules, examples), `## Constraints` | The usual sections with `## Examples` |
 | `tests.json` | `level` on every case; per level at least 1 visible and 2 hidden cases | At least 2 visible and 8 hidden cases |
 | Extra file | none | `rubric.md` ([format](#rubricmd)) |
-| References | An `optimal` approach implementing every level, in every language the problem lists (the 4 core languages by default) | An `optimal` approach in every language the problem lists |
+| References | Every approach, implementing every level, in every language the problem lists (all six by default) | Every approach in every language the problem lists |
 | Optional | `generator.py` (then `generate` cases at the last level, one at the largest ladder size), `patterns`, more approaches | Same |
 
 ## Ready criteria
@@ -220,7 +220,7 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 `status: ready` requires all of the following; `cstudy verify --require-ready` enforces them.
 
 - Every static and dynamic check below passes.
-- At least one `optimal` approach has a reference file in every language in `languages`. `languages` defaults to the four core languages; listing `go` or `rust` makes this rule, the dynamic checks and the coverage lines apply to them too ([ADR 0012](../decisions/0012-go-and-rust.md)).
+- At least one `optimal` approach has a reference file in every language in `languages`, which defaults to all six ([ADR 0012](../decisions/0012-go-and-rust.md)).
 - Every approach has a reference file in each of its languages: every language in `languages`, unless a `concurrency` or `debugging` approach names fewer in its own `languages` ([Approaches](problem-format.md#approaches-and-complexity)).
 - `dsa` problems: at least 2 approaches (a slower one, or an alternative optimal technique when no slower approach is meaningful), an `oracle` approach in Python, and `generator.py`.
 - `tests.json`: at least 2 visible cases, at least 8 hand-written hidden cases, and, for `dsa` problems and any problem with `generator.py`, at least 1 `generate` case at the largest ladder size.
@@ -246,7 +246,7 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 | S10 | Progressive: levels contiguous from 1; every level has cases; every case `level` valid and using only methods introduced at or below it; `generate` cases at the last level |
 | S11 | Concurrent: `kind: concurrent` if and only if `track: concurrency`; `concurrency.model` valid for every listed language; comparator `ops`; no `perf`, `oracle`, `time_class` or `generator.py`; `blocking` only on methods; `## Concurrency` section present |
 | S12 | Concurrent stress cases: steps name signature methods (not the constructor) or harness ops with valid arity; template ranges fit the parameter types; `@enter`/`@exit` balanced and nested per iteration; selectors name existing ops and argument indexes; 2 to 64 workers and at most 20,000 ops per run after expansion; `stress_checker.py` present if and only if a `checker` invariant exists; every broken file maps to a declared broken id and every `caught_by` id is a stress case; `## Broken` sections match `concurrency.broken` |
-| S13 | Every language in `languages` can express the problem. Rust cannot when a `ref_of` points into a `ListNode` (or `ListNode[]`), when an `as: index` result is a `ListNode` or indexes one, or when a case input holds a cyclic list (`cycle_at`): an `Option<Box<ListNode>>` has one owner per node ([mapping](problem-format.md#go-and-rust-mapping)). `no_alias_with` on a list is fine |
+| S13 | Every language in `languages` can express the problem, and a problem outside the `concurrency` and `debugging` tracks lists every language that can (`must list rust: ...`). Rust cannot when a `ref_of` points into a `ListNode` (or `ListNode[]`), when an `as: index` result is a `ListNode` or indexes one, or when a case input holds a cyclic list (`cycle_at`): an `Option<Box<ListNode>>` has one owner per node ([mapping](problem-format.md#go-and-rust-mapping)). `no_alias_with` on a list is fine |
 
 ### Dynamic
 
@@ -322,7 +322,7 @@ A `pre-push` hook that runs the catalog gate is recommended but not mandatory ([
 - [ ] Hidden cases cover: minimum size, single element, duplicates, negatives and zero, all-equal values, sorted and reverse-sorted input, maximum values, and the no-answer path when the problem has one.
 - [ ] Comparator chosen deliberately: `unordered` or `checker` whenever several outputs are valid.
 - [ ] Brute-force oracle in Python; generator deterministic and constraint-valid.
-- [ ] Optimal approach in every listed language, written idiomatically (not transliterated).
+- [ ] Every approach in every listed language, Go and Rust included, written idiomatically (not transliterated); a concurrency or debugging approach without a counterpart in some language names its `languages` and says why in its language notes.
 - [ ] Explanation section for every approach with all required subsections; language notes where idioms differ.
 - [ ] `perf.size_ladder` within constraints; a `generate` case at the largest size.
 - [ ] The ladder spans two or more decades where the slowest approach allows it (over one decade, neighbouring classes such as n^1.5 and n^2 are within the [drift tolerance](performance-analysis.md#ladder-check)), and the generator drives every approach to its declared worst case at every size: the same input family at every seed, no early exits that some seeds hit and others miss.

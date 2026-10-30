@@ -42,11 +42,11 @@ def invoke(*arguments: str) -> Run:
 def test_static_report(environment):
     assert invoke("--static").report == [
         "0001-two-sum      static ok",
-        "0002-lru-cache    static ok      draft (coverage 1/4)",
+        "0002-lru-cache    static ok      draft (coverage 1/6)",
         "  warning: problems/0002-lru-cache/solutions/explanation.md: "
         'approach ordered-dict: no "### Language notes"',
         "",
-        "coverage  python 2/2 · typescript 0/2 · java 0/2 · kotlin 0/2",
+        "coverage  python 2/2 · typescript 0/2 · java 0/2 · kotlin 0/2 · go 0/2 · rust 0/2",
         "result    0 failed · 2 passed",
     ]
 
@@ -66,7 +66,7 @@ def test_dynamic_report(environment):
 
 def test_oracle_without_a_generator_is_not_applicable(environment):
     assert invoke("--lang", "python", "lru-cache", "--oracle").report[0] == (
-        "0002-lru-cache    static ok · py 1/1 ok · oracle n/a      draft (coverage 1/4)"
+        "0002-lru-cache    static ok · py 1/1 ok · oracle n/a      draft (coverage 1/6)"
     )
 
 
@@ -101,7 +101,7 @@ def test_require_ready_lists_what_is_missing(environment):
     lines = invoke("--static", "--require-ready", "two-sum").report
     assert lines[:2] == [
         "0001-two-sum      static ok · not ready",
-        "  not ready: no optimal reference in typescript, java, kotlin",
+        "  not ready: no optimal reference in typescript, java, kotlin, go, rust",
     ]
 
 

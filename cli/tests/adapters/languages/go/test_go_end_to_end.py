@@ -61,9 +61,7 @@ CASE = RunCase("ex1", FunctionInput({"nums": [2, 7, 11, 15], "target": 9}), 10_0
 
 @pytest.fixture
 def root(tmp_path: Path, practice_workspace: Path) -> Path:
-    destination = workspace_like(practice_workspace, tmp_path / "ws")
-    shutil.copytree(practice_workspace / "go", destination / "go")
-    return destination
+    return workspace_like(practice_workspace, tmp_path / "ws")
 
 
 def write_solution(root: Path, source: str, meta: ProblemMeta = TWO_SUM) -> None:

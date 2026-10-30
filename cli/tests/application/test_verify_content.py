@@ -4,7 +4,7 @@ import pytest
 
 from coding_study.application.verify_content import SkippedCheck, VerifyRequest, verify_content
 from coding_study.domain.errors import LanguageNotSetUpError, UnknownProblemError
-from coding_study.domain.problem import CORE_LANGUAGES, Language, Track
+from coding_study.domain.problem import ALL_LANGUAGES, Language, Track
 from tests.e2e import e2e_environment
 from tests.fakes import repository_root
 
@@ -166,38 +166,34 @@ def test_coverage_counts_problems_with_a_passing_reference(environment):
     ]
 
 
-def list_optional_languages_in_two_sum(environment) -> None:
+def test_coverage_counts_only_the_problems_that_list_a_language(environment):
     path = environment.root / TWO_SUM / "meta.yaml"
-    path.write_text(path.read_text() + "languages: [python, typescript, java, kotlin, go]\n")
-
-
-def test_coverage_shows_an_optional_language_once_a_problem_lists_it(environment):
-    list_optional_languages_in_two_sum(environment)
+    path.write_text(path.read_text().replace("track: dsa", "track: debugging"))
+    path.write_text(path.read_text() + "languages: [python, typescript, java, kotlin]\n")
     coverage = verify(environment, static_only=True, language=None).coverage
     assert [(entry.language, entry.covered, entry.listed) for entry in coverage][-2:] == [
-        (Language.KOTLIN, 0, 2),
         (Language.GO, 0, 1),
+        (Language.RUST, 0, 1),
     ]
 
 
 def test_verifying_a_listed_language_without_an_adapter_says_it_is_not_set_up(environment):
-    list_optional_languages_in_two_sum(environment)
     with pytest.raises(LanguageNotSetUpError, match="go stub generator is not set up yet"):
         verify(environment, language=Language.GO)
 
 
-def test_coverage_leaves_out_optional_languages_nobody_lists(environment):
+def test_coverage_shows_every_language(environment):
     coverage = verify(environment, static_only=True, language=None).coverage
-    assert {entry.language for entry in coverage} == set(CORE_LANGUAGES)
+    assert tuple(entry.language for entry in coverage) == ALL_LANGUAGES
 
 
-def test_coverage_for_one_language_is_that_language_even_when_nothing_lists_it(environment):
+def test_coverage_for_one_language_is_that_language_only(environment):
     coverage = verify(environment, static_only=True, language=Language.RUST).coverage
     assert [(entry.language, entry.covered, entry.listed) for entry in coverage] == [
-        (Language.RUST, 0, 0)
+        (Language.RUST, 0, 2)
     ]
 
 
 def test_static_coverage_counts_reference_files(environment):
     coverage = verify(environment, static_only=True, language=None).coverage
-    assert [(entry.covered, entry.listed) for entry in coverage] == [(2, 2), (0, 2), (0, 2), (0, 2)]
+    assert [(entry.covered, entry.listed) for entry in coverage] == [(2, 2), *[(0, 2)] * 5]
