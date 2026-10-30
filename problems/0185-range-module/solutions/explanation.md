@@ -47,6 +47,8 @@ Simple to reason about and fast while the number of intervals is small, but ever
 - Python and Kotlin: tuples or `Pair`s with destructuring in the loops.
 - TypeScript: two parallel arrays of starts and ends, so a rebuild copies small integers instead of allocating one pair per stored interval.
 - Java: `int[]` pairs in an `ArrayList`; untouched intervals are reused instead of copied.
+- Go: intervals are small `interval{start, end}` structs in a slice, and each change builds a new slice with the exact capacity it needs and swaps it in, as the Python version does with a list. A `switch` with no tag expresses the three-way split of `AddRange` (before, after, overlapping) more clearly than an `if` chain, and `min` and `max` are built in (Go 1.21+).
+- Rust: intervals are `(i32, i32)` tuples in a `Vec`; `add_range` shadows its parameters with `let (mut left, mut right) = (left, right)` so the merge loop can widen them, and each change builds a fresh `Vec` and assigns it to `self.intervals`. `iter().any(...)` replaces the search loop of `query_range`.
 
 ## Approach: dynamic-segment-tree (Segment tree over the coordinates with lazy assignment)
 
@@ -90,3 +92,5 @@ Logarithmic in the coordinate range regardless of how fragmented the covered set
 - TypeScript: a small `CoverNode` class with nullable children. Its fields are declared and assigned explicitly, because constructor parameter properties are TypeScript-only syntax that Node's type stripping does not run.
 - Java: a `private static final class Node` with an `int` state; dropped subtrees are reclaimed by the garbage collector.
 - Kotlin: `node.left ?: Node(node.state).also { node.left = it }` creates a missing child on first use; the state constants live in a `companion object`.
+- Go: nodes are pointers (`*node`), as in Java: collapsing a node sets its children to `nil`, and the garbage collector reclaims the dropped subtree. The recursive helpers `assign` and `isCovered` are unexported package functions, so only the three public methods are visible to the runner. The tuple assignment `n.state, n.left, n.right = agreed, nil, nil` collapses the node in one statement.
+- Rust: a node owns its two children as `Option<Box<[Node; 2]>>`, so collapsing a node with `self.children = None` frees the subtree at once, with no garbage collector and no arena index like the Python lists. `get_or_insert_with` splits a uniform node on first use, and `let [first, second] = &mut **children` hands out both children as disjoint `&mut Node` borrows so they can be assigned recursively. `State` is a small `Copy` enum instead of the integer constants.

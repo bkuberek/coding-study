@@ -6,6 +6,7 @@ status: ready
 difficulty: hard
 track: dsa
 kind: design
+languages: [python, typescript, java, kotlin, go, rust]
 patterns: [segment-tree-fenwick, intervals]
 signature:
   class:
