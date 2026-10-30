@@ -45,6 +45,8 @@ Simple and branch-free, with a fixed cost. When most bits are 0, it wastes steps
 - TypeScript: `n >>> p` converts `n` to an unsigned 32-bit integer first, so the top bit of `2^32 - 1` is read correctly; `n >> p` would treat it as a sign.
 - Java: on a `long`, `>>>` and `>>` agree because the value is non-negative; `(int) (... & 1L)` narrows the bit to an `int`.
 - Kotlin: shifts and masks are infix functions on `Long`: `(n ushr p) and 1L`.
+- Go: the input is an `int64`, so `n >> position` is an arithmetic shift, which agrees with a logical one because `n` is non-negative. Go accepts a signed shift count (since Go 1.13), so the `int` loop variable needs no conversion.
+- Rust: `n >> position` on an `i64` is also arithmetic and agrees for a non-negative `n`; the shift count is a `u32` here, which keeps the range `0..WORD_BITS` free of casts, and `as i32` narrows the single remaining bit.
 
 ## Approach: clear-lowest-bit (Clear the lowest set bit until none is left)
 
@@ -82,3 +84,5 @@ Faster than checking every position on sparse words and a frequent interview que
 - TypeScript: `n | 0` brings the value into 32-bit signed range (the same 32 bits); the loop condition `!== 0` works for negative words too.
 - Java: `(int) n` keeps the low 32 bits; `Integer.bitCount(word)` or `Long.bitCount(n)` is the built-in.
 - Kotlin: `n.toInt()` narrows the same way; `and` replaces `&`, and `countOneBits()` is the built-in.
+- Go: `uint32(n)` keeps the low 32 bits as an unsigned word, so `word - 1` cannot go negative when `word` is non-zero and `&=` clears the lowest set bit. The built-in alternative is `bits.OnesCount32` from `math/bits`.
+- Rust: `n as u32` truncates to the low 32 bits, and the `u32` makes `word - 1` safe under overflow checks because the loop only runs while `word != 0`. The built-in is `u32::count_ones` (or `i64::count_ones` on the original value).
