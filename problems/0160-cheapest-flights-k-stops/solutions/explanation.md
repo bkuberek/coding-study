@@ -48,6 +48,8 @@ Short, exact, and its bound depends on `k`, not on prices. It always relaxes eve
 - TypeScript: `previous.slice()` copies the row; `Infinity + cost` stays `Infinity`, so no guard is needed.
 - Java: `price.clone()` copies the row, and `Integer.MAX_VALUE` must be checked before adding to avoid overflow.
 - Kotlin: `copyOf()` copies the `IntArray`, and `for ((start, end, cost) in flights)` destructures each flight.
+- Go: `slices.Clone(price)` copies the row. `math.MaxInt` marks an unreachable city, and the `!= unreached` check before the addition is required: `MaxInt + cost` wraps to a negative number instead of failing, and would pass the `<` test.
+- Rust: `price.clone()` copies the `Vec<i32>`. `i32::MAX` marks an unreachable city; the build checks overflow, so adding a cost to it would panic, and the `!= UNREACHED` guard is what prevents that. `0..=k` runs the `k + 1` rounds.
 
 ## Approach: dijkstra-stops (Dijkstra over (city, flights taken) states)
 
@@ -89,3 +91,5 @@ Often fast in practice, because it stops as soon as the destination is popped, a
 - TypeScript: the reference implements a small binary min-heap over `[price, city, used]` tuples, since there is no built-in priority queue.
 - Java: `PriorityQueue<int[]>` ordered by `state[0]`.
 - Kotlin: `PriorityQueue<Triple<Int, Int, Int>>(compareBy { it.first })`; the popped `Triple` destructures into `price`, `city` and `used`.
+- Go: `container/heap` has no ready-made queue; the reference defines `stateHeap` with `Len`, `Less`, `Swap`, `Push` and `Pop`, and `heap.Push` / `heap.Pop` do the sifting. `Push` and `Pop` take a pointer receiver because they change the slice's length.
+- Rust: `BinaryHeap` is a max-heap, so entries are wrapped in `Reverse` to pop the cheapest first. The `(price, city, used)` tuple orders lexicographically, like Python's, and `while let Some(Reverse((price, city, used))) = heap.pop()` destructures the popped state.
