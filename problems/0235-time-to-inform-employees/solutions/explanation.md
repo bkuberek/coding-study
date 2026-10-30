@@ -41,8 +41,8 @@ No extra memory and almost no code, but it re-adds the same prefix sums for empl
 
 ### Language notes
 
-- All four languages: a `while (current != headID)` loop on primitive arrays; no allocation.
-- The parameter `headID` is `head_id` in Python and stays `headID` in the other languages.
+- Every language: a `while (current != headID)` loop on primitive arrays or slices; no allocation.
+- The parameter `headID` is `head_id` in Python and Rust and stays `headID` in the other languages.
 
 ## Approach: top-down (Traverse down from the head carrying the elapsed time)
 
@@ -81,3 +81,5 @@ Iterative, so the 2000 levels of the constraint do not matter for the stack dept
 - TypeScript: `Array.from({ length: n }, () => [])` builds independent lists (not `new Array(n).fill([])`, which shares one list).
 - Java: a `List<List<Integer>>` and an `ArrayDeque<int[]>` holding `{employee, heardAt}` pairs.
 - Kotlin: `Array(n) { mutableListOf<Int>() }` and a `Pair<Int, Int>` stack. Answers stay within `Int`: at most 2000 * 1000.
+- Go: a function-local `hearing` struct replaces the tuple on the stack, and `make([][]int, n)` gives `n` independent nil slices that `append` grows.
+- Rust: the stack holds `(usize, i32)` tuples, and `vec![Vec::new(); n]` clones an empty vector `n` times, so the lists are independent.
