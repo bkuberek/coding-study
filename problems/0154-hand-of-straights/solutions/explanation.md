@@ -47,6 +47,8 @@ A direct transcription of the greedy argument, which makes it the oracle. The li
 - TypeScript: `indexOf` plus `splice`; `shift()` removes the smallest card from the front.
 - Java: `cards.remove(Integer.valueOf(value))` removes by value; `cards.remove(value)` with an `int` would remove by index, a classic boxing trap.
 - Kotlin: `remove(element)` removes by value and `removeAt(index)` by position, so the trap does not exist.
+- Go: `slices.Index` finds a value and `slices.Delete(cards, i, i+1)` removes it, shifting the tail; `cards[1:]` drops the smallest card. Each straight still scans and shifts the slice, so the total stays quadratic.
+- Rust: a `Vec` has only remove-by-index, so there is no value-versus-index trap: `remove(0)` takes the smallest card, and `iter().position(...)` followed by `remove(index)` takes each following value. Every `remove` shifts the tail, which keeps the approach quadratic.
 
 ## Approach: sorted-counts (Count the cards and consume straights from the smallest value)
 
@@ -86,6 +88,8 @@ The standard answer: short, and the count map makes the greedy argument easy to 
 - TypeScript: a `Map` plus a numerically sorted key list; the default `sort()` compares as strings and would put 10 before 9.
 - Java: `TreeMap` iterates keys in order; updating the value of an existing key while iterating `keySet()` is allowed because it is not a structural change.
 - Kotlin: the same `TreeMap`; `merge(card, 1, Int::plus)` counts in one call.
+- Go: a `map[int]int` and `slices.Sorted(maps.Keys(counts))` (Go 1.23) for the sorted distinct values. Reading a missing key gives 0 without inserting it, so `counts[following] < starting` rejects a missing value.
+- Rust: a `HashMap<i32, i32>` and a sorted `Vec` of its keys, collected before the loop so the map can be updated while it runs. `get_mut` returns `None` for a missing key, so one `match` arm rejects both a missing value and too few cards.
 
 ## Approach: open-straights (Sweep the distinct values tracking open straights)
 
@@ -123,3 +127,4 @@ Each distinct value is visited exactly once and nothing is decremented ahead of 
 - Python: `collections.deque` with `popleft`.
 - TypeScript: an array with a moving `head` index acts as a queue without O(n) `shift` calls.
 - Java and Kotlin: `ArrayDeque<Integer>` / `ArrayDeque<Int>`; iterating `TreeMap` entries yields values in order with their counts.
+- Go: a slice is the queue: `append` pushes and `opened = opened[1:]` pops the front in constant time. Rust: `VecDeque` with `push_back` and `pop_front`. Both sort the distinct values first, as in the counting approach.
