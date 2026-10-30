@@ -75,3 +75,5 @@ The standard answer and the direct generalization of one-dimensional prefix sums
 - TypeScript: `Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))` creates independent rows; filling one shared array would alias every row.
 - Java: `new int[m + 1][n + 1]` is zero-initialized, so no explicit fill is needed.
 - Kotlin: `Array(m + 1) { IntArray(n + 1) }` builds the table as `Array<IntArray>`, which is the JVM's `int[][]`.
+- Go: `make([][]int, m+1)` creates the outer slice with nil rows, so each row is allocated separately with its own `make`; `above := prefix[r]` names the finished row to read while the new one is filled. The elements are plain `int`, which holds a rectangle sum of up to 4 * 10^8 on every platform Go targets.
+- Rust: `vec![vec![0; cols + 1]]` seeds the zero row, and `prefix.push(row)` appends each finished row. The `above` row is a shared borrow of `prefix` that ends before the `push`, so no clone is needed. The query casts the four `i32` bounds to `usize` once and then indexes; the table holds `i32`, enough for the 4 * 10^8 maximum, and an overflow would panic rather than wrap.
