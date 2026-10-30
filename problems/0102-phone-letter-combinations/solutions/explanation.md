@@ -46,6 +46,8 @@ No recursion and very short, which makes it the oracle. It keeps a whole level i
 - TypeScript: `flatMap` over the words and `map` over the letters (spread from the string) builds the next level.
 - Java: a `String[]` indexed by `digit - '0'` replaces a map; `List.of("")` is an immutable starting level that is never modified.
 - Kotlin: `fold` threads the list of words through the digits; `getValue` fails loudly on a digit outside the table instead of returning null.
+- Go: a `[8]string` array indexed by `digit - '2'` replaces the map (iterating a string yields runes, and a rune is an integer). Each level is a new slice sized once with `make([]string, 0, len(words)*len(letters))`, and `word+string(letter)` appends a rune-sized piece to a word; the empty input returns `nil`, which the encoder writes as `[]`.
+- Rust: a `const KEYPAD: [&str; 8]` indexed by `digit - b'2'` replaces the map. `flat_map` over the words and `chars()` of the digit's letters builds the next level in one expression, and the inner closure is `move` so each `word` reference travels with it. `format!("{word}{letter}")` builds each longer word.
 
 ## Approach: backtracking (Fill one letter per digit depth-first)
 
@@ -85,3 +87,5 @@ The template behind every other problem in this pattern, and it uses a single fi
 - TypeScript: `letters.join("")` builds each word; iterating a string with `for...of` yields its characters.
 - Java: a `char[]` buffer becomes a word with `new String(letters)`, which copies it.
 - Kotlin: `String(letters)` copies the `CharArray`; a local `fun` captures the buffer and the result list.
+- Go: the buffer is a `[]byte` (the letters are ASCII), and `string(letters)` copies it into a new string, so overwriting a slot later cannot change a finished word. `fill` is a closure declared with `var fill func(slot int)` first so it can call itself.
+- Rust: the buffer is a `Vec<char>` filled with placeholders and passed down as `&mut [char]`, and `letters.iter().collect()` builds a new `String` from the characters, so a finished word is independent of the buffer.
