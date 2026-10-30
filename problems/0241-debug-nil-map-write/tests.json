@@ -1,0 +1,97 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "ex1",
+      "visible": true,
+      "ops": ["PageViews", "record", "record", "record", "views", "uniqueVisitors", "views", "uniqueVisitors"],
+      "args": [[], ["/home", "ana"], ["/home", "ben"], ["/home", "ana"], ["/home"], ["/home"], ["/blog"], ["/blog"]],
+      "expected": [null, null, null, null, 3, 2, 0, 0]
+    },
+    {
+      "id": "ex2",
+      "visible": true,
+      "ops": ["PageViews", "record", "record", "record", "merge", "views", "uniqueVisitors", "views", "uniqueVisitors"],
+      "args": [[], ["/pricing", "ana"], ["/pricing", "ben"], ["/plans", "ana"], ["/pricing", "/plans"], ["/plans"], ["/plans"], ["/pricing"], ["/pricing"]],
+      "expected": [null, null, null, null, null, 3, 2, 0, 0]
+    },
+    {
+      "id": "h1",
+      "ops": ["PageViews", "record", "record", "merge", "views", "uniqueVisitors", "views"],
+      "args": [[], ["/pricing", "ana"], ["/pricing", "ben"], ["/pricing", "/plans"], ["/plans"], ["/plans"], ["/pricing"]],
+      "expected": [null, null, null, null, 2, 2, 0],
+      "note": "merge into a page with no views yet"
+    },
+    {
+      "id": "h2",
+      "ops": ["PageViews", "record", "merge", "views", "views", "uniqueVisitors"],
+      "args": [[], ["/a", "ana"], ["/old", "/new"], ["/old"], ["/new"], ["/a"]],
+      "expected": [null, null, null, 0, 0, 1],
+      "note": "merge between two pages that were never recorded"
+    },
+    {
+      "id": "h3",
+      "ops": ["PageViews", "record", "record", "merge", "views", "uniqueVisitors"],
+      "args": [[], ["/docs", "ana"], ["/docs", "ana"], ["/missing", "/docs"], ["/docs"], ["/docs"]],
+      "expected": [null, null, null, null, 2, 1],
+      "note": "merge from a page that was never recorded"
+    },
+    {
+      "id": "h4",
+      "ops": ["PageViews", "record", "record", "merge", "views", "uniqueVisitors"],
+      "args": [[], ["/same", "ana"], ["/same", "ben"], ["/same", "/same"], ["/same"], ["/same"]],
+      "expected": [null, null, null, null, 2, 2],
+      "note": "merge a page into itself"
+    },
+    {
+      "id": "h5",
+      "ops": ["PageViews", "record", "record", "record", "merge", "record", "record", "views", "uniqueVisitors", "views", "uniqueVisitors"],
+      "args": [[], ["/v1", "ana"], ["/v1", "ana"], ["/v1", "ben"], ["/v1", "/v2"], ["/v2", "cy"], ["/v1", "dee"], ["/v2"], ["/v2"], ["/v1"], ["/v1"]],
+      "expected": [null, null, null, null, null, null, null, 4, 3, 1, 1],
+      "note": "new page keeps counting after the merge; the old address starts over"
+    },
+    {
+      "id": "h6",
+      "ops": ["PageViews", "record", "record", "merge", "merge", "views", "uniqueVisitors", "views", "views"],
+      "args": [[], ["/a", "ana"], ["/a", "ben"], ["/a", "/b"], ["/b", "/c"], ["/c"], ["/c"], ["/a"], ["/b"]],
+      "expected": [null, null, null, null, null, 2, 2, 0, 0],
+      "note": "two moves in a row, each to a new page"
+    },
+    {
+      "id": "h7",
+      "ops": ["PageViews", "record", "record", "record", "record", "record", "merge", "views", "uniqueVisitors"],
+      "args": [[], ["/x", "ana"], ["/x", "ben"], ["/y", "ben"], ["/y", "cy"], ["/y", "cy"], ["/x", "/y"], ["/y"], ["/y"]],
+      "expected": [null, null, null, null, null, null, null, 5, 3],
+      "note": "overlapping visitors count once after a merge into an existing page"
+    },
+    {
+      "id": "h8",
+      "ops": ["PageViews", "views", "uniqueVisitors", "merge", "views"],
+      "args": [[], ["/nothing"], ["/nothing"], ["/nothing", "/else"], ["/else"]],
+      "expected": [null, 0, 0, null, 0],
+      "note": "queries before any view"
+    },
+    {
+      "id": "h9",
+      "ops": ["PageViews", "record", "merge", "merge", "views", "uniqueVisitors", "views"],
+      "args": [[], ["/home", "ana"], ["/home", "/start"], ["/start", "/home"], ["/home"], ["/home"], ["/start"]],
+      "expected": [null, null, null, null, 1, 1, 0],
+      "note": "move to a new page and back"
+    },
+    {
+      "id": "h10",
+      "ops": ["PageViews", "record", "record", "record", "record", "merge", "views", "uniqueVisitors"],
+      "args": [[], ["/sale", "ana"], ["/sale", "ana"], ["/sale", "ana"], ["/sale", "ana"], ["/sale", "/deals"], ["/deals"], ["/deals"]],
+      "expected": [null, null, null, null, null, null, 4, 1],
+      "note": "one visitor, many views, moved to a new page"
+    },
+    {
+      "id": "h11",
+      "ops": ["PageViews", "record", "record", "record", "merge", "merge", "views", "uniqueVisitors", "views"],
+      "args": [[], ["/a", "ana"], ["/b", "ben"], ["/b", "ana"], ["/a", "/b"], ["/b", "/a"], ["/a"], ["/a"], ["/b"]],
+      "expected": [null, null, null, null, null, null, 3, 2, 0],
+      "note": "merge into an existing page, then back to the address that was emptied"
+    }
+  ]
+}

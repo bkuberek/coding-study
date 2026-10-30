@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0241"
+slug: debug-nil-map-write
+title: "Debug: Nil Map Write"
+status: ready
+difficulty: easy
+track: debugging
+kind: design
+languages: [go]
+stub: buggy
+signature:
+  class:
+    name: PageViews
+    constructor: {params: []}
+    methods:
+      - {name: record, params: [{name: page, type: string}, {name: visitor, type: string}], returns: {type: void}}
+      - {name: views, params: [{name: page, type: string}], returns: {type: int}}
+      - {name: uniqueVisitors, params: [{name: page, type: string}], returns: {type: int}}
+      - {name: merge, params: [{name: source, type: string}, {name: target, type: string}], returns: {type: void}}
+comparator: {type: ops}
+approaches:
+  - {id: create-on-write, name: Create the inner map before writing to it, role: optimal, time: "O(1) per record, O(v) per views or merge", space: "O(d)", time_class: "n^2", space_class: "n"}
+related: [design-twitter, group-anagrams, debug-append-aliasing]
+estimate_minutes: 15
