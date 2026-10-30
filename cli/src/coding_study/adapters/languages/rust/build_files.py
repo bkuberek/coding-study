@@ -21,6 +21,8 @@ from coding_study.adapters.languages.rust.bridge import (
 )
 
 EDITION = "2021"
+RUST_VERSION = "1.80"
+"""The oldest compiler cstudy supports (`cstudy doctor`); clippy suggests nothing newer."""
 MANIFEST_FILE = "Cargo.toml"
 WORKSPACE_SCOPES = ("test", "verify", "bench")
 """Each scope is a directory of harness packages, one per problem."""
@@ -134,7 +136,8 @@ def package_manifest(name: str, runtime: str) -> str:
     crates = "".join(f"{crate} = {spec}\n" for crate, spec in DECIMAL_DATE_CRATES.items())
     return (
         f'# {GENERATED_HEADER.removeprefix("// ")}\n[package]\nname = "{name}"\n'
-        f'version = "0.0.0"\nedition = "{EDITION}"\npublish = false\n\n'
+        f'version = "0.0.0"\nedition = "{EDITION}"\nrust-version = "{RUST_VERSION}"\n'
+        f"publish = false\n\n"
         f'[[bin]]\nname = "{name}"\npath = "main.rs"\n\n[dependencies]\n'
         f'cs_runner = {{ path = "{runtime}/cs_runner" }}\n'
         f'cs_support = {{ path = "{runtime}/cs_support" }}\n{crates}'

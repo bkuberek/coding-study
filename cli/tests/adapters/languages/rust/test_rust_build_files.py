@@ -23,6 +23,7 @@ from coding_study.adapters.languages.rust.build_files import (
     workspace_members,
 )
 from coding_study.adapters.workspace_setup import TEMPLATE_DIRECTORY
+from coding_study.application.doctor import MINIMUM_RUSTC
 from tests.helpers import REPOSITORY_ROOT
 
 RECORDED = Path(__file__).parent / "recorded"
@@ -211,3 +212,24 @@ def test_the_workspace_manifest_pins_the_dev_profile_too():
 def test_the_release_profile_is_also_passed_on_the_command_line(setting):
     arguments = profile_arguments()
     assert f"profile.release.{setting}={RELEASE_PROFILE[setting]}" in arguments
+
+
+# clippy reads `rust-version` from the package it checks, and suggests no API newer than it.
+
+MSRV = ".".join(str(part) for part in MINIMUM_RUSTC)
+
+
+@pytest.mark.parametrize("crate", ["cs_runner", "cs_support"])
+def test_the_runner_crates_declare_the_minimum_rust_version(crate):
+    manifest = tomllib.loads((REPOSITORY_ROOT / "runners/rust" / crate / "Cargo.toml").read_text())
+    assert manifest["package"]["rust-version"] == MSRV
+
+
+def test_the_practice_project_declares_the_minimum_rust_version():
+    template = Path(workspace_setup.__file__).parent / TEMPLATE_DIRECTORY / "rust"
+    assert tomllib.loads((template / "Cargo.toml").read_text())["package"]["rust-version"] == MSRV
+
+
+def test_a_harness_package_declares_the_minimum_rust_version():
+    manifest = tomllib.loads(package_manifest("test_two_sum", "../../../runtime/runners/rust"))
+    assert manifest["package"]["rust-version"] == MSRV
