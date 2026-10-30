@@ -50,6 +50,8 @@ The direct form of the recurrence and the oracle. It recurses up to 1,000 deep a
 - TypeScript: plain number arrays (counts stay below 2^31, far from 2^53).
 - Java: fields for the strings and the cache.
 - Kotlin: a local `fun`; `count(i + 1, j) + if (...) ... else 0` adds the optional term inline.
+- Go: a closure declared with `var count func(i, j int) int`. Go has no conditional expression, so the optional term is added by an `if` after the first call.
+- Rust: a private function over byte slices. `s.len() - i` cannot underflow, because the guard above it returns before `i` passes `s.len()`. `None` marks an unknown cell.
 
 ## Approach: tabulation (Table of occurrence counts for prefix pairs)
 
@@ -84,6 +86,7 @@ Straightforward loops; it stores all rows although each row reads only the previ
 ### Language notes
 
 - Python and TypeScript: nested arrays with an explicit loop for column 0; Kotlin sets `row[0] = 1` in the row initializer.
+- Go sets `ways[i][0] = 1` while it allocates each row; Rust does it with `iter_mut()` over the rows. Both loops start at 1, so `s[i - 1]` and `t[j - 1]` stay in range and a `usize` never underflows.
 
 ## Approach: rolling-array (One array over t updated from right to left)
 
@@ -118,3 +121,4 @@ The expected optimal answer: compact, fast, and memory-light. The right-to-left 
 ### Language notes
 
 - The four references share the loop; Kotlin uses `downTo`, the others a decrementing index.
+- Go uses the decrementing index `for j := len(t); j > 0; j--`. Rust uses `(1..=t.len()).rev()`, which counts down without a signed index and is empty when `t` is.
