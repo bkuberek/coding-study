@@ -49,6 +49,8 @@ It follows the decision directly and is easy to derive under pressure. The recur
 - TypeScript: an arrow function closes over the `memo` array.
 - Java: the helper receives `nums` and `memo` explicitly; `Arrays.fill(memo, -1)` sets the sentinel.
 - Kotlin: a local `fun` captures `nums` and `memo`; `IntArray(n) { -1 }` initializes the sentinel in the constructor.
+- Go: `make` zero-fills the memo, and 0 is a real answer (all-zero cash), so the slice is filled with the `notComputed` sentinel of -1 first. The recursive closure is declared with `var bestFrom func(house int) int` before it is assigned. Goroutine stacks grow on demand, so 2000 levels need no special handling.
+- Rust: the memo is a `Vec<i32>` filled with `NOT_COMPUTED = -1` by `vec![NOT_COMPUTED; n]`, since 0 is a legitimate answer. A closure cannot call itself, so `best_from` is a free function that takes `nums` and the memo as slices; the runner gives each case a large stack, so 2000 levels of recursion fit easily.
 
 ## Approach: tabulation (Bottom-up table over prefixes)
 
@@ -85,6 +87,8 @@ No recursion, no stack concerns, and the clearest to check, so it is the oracle.
 - Python: `[0] * (len(nums) + 1)`; integers are immutable, so the shared initial value is safe.
 - TypeScript: `new Array<number>(n + 1).fill(0)` avoids holes that would make `Math.max` return `NaN`.
 - Java and Kotlin: primitive arrays start at 0; `Math.max` and `maxOf` work on unboxed `int`.
+- Go: `max` is the built-in (Go 1.21 and newer), and `make([]int, len(nums)+1)` is zero-filled, so `best[0]` is already the empty prefix.
+- Rust: `i32::max` as a method (`best[i - 1].max(...)`) replaces a free function, and `vec![0; len + 1]` is zero-filled. The sums stay within `i32` because there are at most 2000 values of at most 10^4, and overflow checks are on regardless.
 
 ## Approach: two-variables (Rolling best totals)
 
@@ -120,3 +124,5 @@ The expected final answer: linear time, constant memory, a few lines. It discard
 
 - Python and TypeScript: tuple and array destructuring update the pair in one statement.
 - Java and Kotlin: a temporary `current` keeps the simultaneous update explicit.
+- Go: `withoutLast, withLast = withLast, max(withLast, withoutLast+cash)` evaluates the right side before assigning, so it needs no temporary.
+- Rust: `(without_last, with_last) = (with_last, with_last.max(without_last + cash))` is a destructuring assignment (Rust 1.59 and newer), and `for cash in nums` consumes the vector by value, which is fine since `nums` is owned and not used again.
