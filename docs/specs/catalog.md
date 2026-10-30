@@ -1,6 +1,17 @@
 # Spec: Catalog
 
-The binding manifest of every catalog item: 185 DSA problems and 44 non-DSA items, each with its id, slug, title, patterns, difficulty, kind, batch and owner stream. Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
+The binding manifest of every catalog item: 196 DSA problems and 67 non-DSA items (51 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty and kind, and for the planned rows their batch and owner stream.
+
+| Track | Problems or items | Where |
+|-------|-------------------|-------|
+| `dsa` | 196 (185 planned, 11 added) | `problems/` |
+| `practical` | 21 (6 planned, 15 added) | `problems/` |
+| `lld` | 8 | `problems/` |
+| `concurrency` | 6 | `problems/` |
+| `debugging` | 16 (8 planned, 8 in Go and Rust) | `problems/` |
+| `system-design` | 10 | `tracks/system-design/` |
+| `code-review` | 6 | `tracks/code-review/` |
+| **Total** | **263** (247 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
 
 ## Rules
 
@@ -13,6 +24,7 @@ The binding manifest of every catalog item: 185 DSA problems and 44 non-DSA item
 | Changes | A stream that cannot build a row as listed stops and reports. The catalog is amended in the main checkout first, never inside a stream worktree |
 | Wording | Statements, examples, tests, hints and explanations are original ([ADR 0004](../decisions/0004-original-problem-wording.md)). Common titles are allowed; LeetCode appears only as a link in `references.leetcode` |
 | Merge | A batch merges only when all its problems are `ready` and pass `cstudy verify --oracle` (and `--ladder` from Phase 2 on), as [content](content.md#content-batches) states |
+| Languages | Every problem has references in all six languages (Python, TypeScript, Java, Kotlin, Go, Rust) and lists no `languages`, except the rows whose `languages` column says otherwise and `0055-linked-list-cycle`, which has no Rust ([S13](authoring.md#static), [ADR 0012](../decisions/0012-go-and-rust.md)) |
 
 ## How streams use this file
 
@@ -22,11 +34,11 @@ The binding manifest of every catalog item: 185 DSA problems and 44 non-DSA item
 
 ## Id order
 
-Existing problems keep `0001`–`0003`. New DSA ids run from `0004` to `0185` by batch (1 to 6), then taxonomy order within a batch, then difficulty within a pattern. Non-DSA items in `problems/` continue at `0186`–`0213` in the order practical, lld, concurrency, debugging. Items in `tracks/` have slugs and no ids.
+Existing problems keep `0001`–`0003`. New DSA ids run from `0004` to `0185` by batch (1 to 6), then taxonomy order within a batch, then difficulty within a pattern. Non-DSA items in `problems/` continue at `0186`–`0213` in the order practical, lld, concurrency, debugging. Problems added after the plan take the next free ids: `0214`–`0228` practical, `0229`–`0239` DSA, and `0240`–`0247` the Go and Rust debugging problems. Items in `tracks/` have slugs and no ids.
 
 ## DSA catalog
 
-185 problems. Columns: `id`, `slug`, `title`, `primary` pattern, `secondary` patterns, `difficulty`, `lc` (LeetCode reference number, reference only), `kind`, `batch`, `stream`. Rows marked `existing` are already in `problems/`; their stream owns any revision but they do not count toward its quota.
+196 problems: 185 planned in six batches, and 11 [added later](#later-dsa-additions). Columns: `id`, `slug`, `title`, `primary` pattern, `secondary` patterns, `difficulty`, `lc` (LeetCode reference number, reference only), `kind`, `batch`, `stream`. Rows marked `existing` are already in `problems/`; their stream owns any revision but they do not count toward its quota.
 
 ### Batch 1 (34 problems: `arrays-hashing`, `two-pointers`, `sliding-window`, `stack`)
 
@@ -243,6 +255,24 @@ Existing problems keep `0001`–`0003`. New DSA ids run from `0004` to `0185` by
 | 0184 | `count-smaller-after-self` | Count Smaller Numbers After Self | `segment-tree-fenwick` | `binary-search` | hard | 315 | function | 6 | D10 |
 | 0185 | `range-module` | Range Module | `segment-tree-fenwick` | `intervals` | hard | 715 | design | 6 | D10 |
 
+### Later DSA additions
+
+11 problems added after the six batches, outside the stream plan, with the next free ids. Two of them are examples the original selection [replaced](#departures-from-the-example-additions-in-content): Meeting Rooms (252) as `can-attend-meetings`, and Course Schedule II (210).
+
+| id | slug | title | primary | secondary | difficulty | lc | kind |
+|----|------|-------|---------|-----------|------------|----|------|
+| 0229 | `can-attend-meetings` | Can Attend All Meetings | `intervals` | - | easy | 252 | function |
+| 0230 | `employee-free-time` | Employee Free Time | `intervals` | `heap` | hard | 759 | function |
+| 0231 | `remove-covered-intervals` | Remove Covered Intervals | `intervals` | - | medium | 1288 | function |
+| 0232 | `snapshot-array` | Snapshot Array | `binary-search` | `arrays-hashing` | medium | 1146 | design |
+| 0233 | `employee-importance` | Employee Importance | `graphs` | `arrays-hashing` | medium | 690 | function |
+| 0234 | `course-schedule-ii` | Course Schedule II | `topological-sort` | `graphs` | medium | 210 | function |
+| 0235 | `time-to-inform-employees` | Time to Inform All Employees | `graphs` | `trees` | medium | 1376 | function |
+| 0236 | `search-insert-position` | Search Insert Position | `binary-search` | - | easy | 35 | function |
+| 0237 | `tax-brackets` | Tax Owed Under Brackets | `math-geometry` | - | easy | 2303 | function |
+| 0238 | `replace-words` | Replace Words with Roots | `tries` | `arrays-hashing` | medium | 648 | function |
+| 0239 | `sorted-insertion-cost` | Sorted Insertion Cost | `segment-tree-fenwick` | `binary-search` | hard | 1649 | function |
+
 ## Stream assignment
 
 | stream | patterns | batches | new problems | ids (new only) |
@@ -263,7 +293,9 @@ Each stream owns whole patterns, so one stream holds all problems of a pattern a
 
 ## Non-DSA catalog
 
-### practical (6, owner P1, kind `progressive`, `problems/`)
+### practical (21, `problems/`)
+
+The six planned rows (owner P1) are `progressive`:
 
 | id | slug | title | scope | difficulty |
 |----|------|-------|-------|------------|
@@ -273,6 +305,26 @@ Each stream owns whole patterns, so one stream holds all problems of a pattern a
 | 0189 | `job-scheduler` | Rate-Limited Job Scheduler | Submit and run jobs by priority; then per-tenant rate limits; then retries with backoff; then dependencies and cancellation | hard |
 | 0190 | `transactional-kv-store` | Transactional Key-Value Store | Set, get and count by value; then begin and rollback; then nested transactions; then commit semantics with snapshots | medium |
 | 0191 | `api-gateway` | API Gateway | Route registration and matching; then per-client fixed-window limits; then sliding windows and quotas; then per-upstream circuit breakers | hard |
+
+15 added later are insurance tasks of every kind, many with `decimal` and `date` values:
+
+| id | slug | title | patterns | kind | difficulty |
+|----|------|-------|----------|------|------------|
+| 0214 | `premium-rating-breakdown` | Premium Rating Breakdown | `binary-search`, `arrays-hashing` | function | medium |
+| 0215 | `versioned-rate-table` | Versioned Rate Table | `binary-search` | design | medium |
+| 0216 | `pro-rata-unearned-premium` | Pro-Rata Unearned Premium | - | function | easy |
+| 0217 | `coverage-gaps` | Coverage Gaps | `intervals` | function | medium |
+| 0218 | `contractor-exposure-rollup` | Contractor Exposure Rollup | `graphs` | function | medium |
+| 0219 | `installment-schedule` | Installment Schedule | `math-geometry` | function | medium |
+| 0220 | `tiered-bond-premium` | Tiered Bond Premium | - | function | easy |
+| 0221 | `earned-premium-as-of` | Earned Premium As Of | - | function | easy |
+| 0222 | `endorsement-replay` | Endorsement Replay | `binary-search` | design | medium |
+| 0223 | `certificate-expiry-alerts` | Certificate Expiry Alerts | `arrays-hashing` | function | easy |
+| 0224 | `loss-ratio-by-period` | Loss Ratio by Period | `arrays-hashing` | function | medium |
+| 0225 | `rate-change-impact` | Rate Change Impact | `arrays-hashing` | function | medium |
+| 0226 | `payroll-report-validation` | Payroll Report Validation | `arrays-hashing` | function | medium |
+| 0227 | `duplicate-contractor-records` | Duplicate Contractor Records | `union-find`, `arrays-hashing` | function | medium |
+| 0228 | `effective-dated-history` | Effective-Dated History | `binary-search` | progressive | medium |
 
 ### lld (8, owner L1, kind `design` plus `rubric.md`, `problems/`)
 
@@ -291,25 +343,35 @@ Each stream owns whole patterns, so one stream holds all problems of a pattern a
 
 | id | slug | title | scope | difficulty | languages |
 |----|------|-------|-------|------------|-----------|
-| 0200 | `thread-safe-lru-cache` | Thread-Safe LRU Cache | Make a compound structure atomic under concurrent get and put; lock granularity trade-offs | hard | java, kotlin, python |
-| 0201 | `bounded-blocking-queue` | Bounded Blocking Queue | Fixed-capacity queue with blocking put and take; condition waits with `while` re-checks, no lost wakeups | medium | java, kotlin, python, typescript |
-| 0202 | `bank-transfers` | Bank Transfers | Concurrent transfers between accounts; deadlock avoidance by lock ordering, conservation invariant | medium | java, kotlin, python |
-| 0203 | `token-bucket-limiter` | Token Bucket Limiter | Thread-safe token bucket with explicit timestamps; atomic check-then-act, exact grant counts | medium | java, kotlin, python |
-| 0204 | `read-write-lock` | Read-Write Lock | Many readers or one writer; writer preference to avoid starvation | hard | java, kotlin, python, typescript |
-| 0205 | `concurrency-limiter` | Concurrency Limiter | Counting semaphore with at most k holders and FIFO fairness | medium | java, kotlin, python, typescript |
+| 0200 | `thread-safe-lru-cache` | Thread-Safe LRU Cache | Make a compound structure atomic under concurrent get and put; lock granularity trade-offs | hard | java, kotlin, python, go, rust |
+| 0201 | `bounded-blocking-queue` | Bounded Blocking Queue | Fixed-capacity queue with blocking put and take; condition waits with `while` re-checks, no lost wakeups | medium | all |
+| 0202 | `bank-transfers` | Bank Transfers | Concurrent transfers between accounts; deadlock avoidance by lock ordering, conservation invariant | medium | java, kotlin, python, go, rust |
+| 0203 | `token-bucket-limiter` | Token Bucket Limiter | Thread-safe token bucket with explicit timestamps; atomic check-then-act, exact grant counts | medium | java, kotlin, python, go, rust |
+| 0204 | `read-write-lock` | Read-Write Lock | Many readers or one writer; writer preference to avoid starvation | hard | all |
+| 0205 | `concurrency-limiter` | Concurrency Limiter | Counting semaphore with at most k holders and FIFO fairness | medium | all |
 
-### debugging (8, owner B1, kind `function` or `design` with `stub: buggy`, `problems/`)
+### debugging (16, kind `function` or `design` with `stub: buggy`, `problems/`)
+
+The eight planned rows (owner B1) port one bug to the languages it exists in; 0240 to 0247 are bugs native to Go and Rust ([ADR 0012](../decisions/0012-go-and-rust.md)).
 
 | id | slug | title | scope | difficulty | languages |
 |----|------|-------|-------|------------|-----------|
-| 0206 | `debug-binary-search-bounds` | Debug: Binary Search Bounds | Off-by-one loop condition and midpoint update that skip the last element or loop forever | easy | all |
-| 0207 | `debug-grid-aliasing` | Debug: Grid Aliasing | Rows that share one list and a shallow copy of BFS state, so one write changes many cells | medium | all |
+| 0206 | `debug-binary-search-bounds` | Debug: Binary Search Bounds | Off-by-one loop condition and midpoint update that skip the last element or loop forever | easy | python, typescript, java, kotlin |
+| 0207 | `debug-grid-aliasing` | Debug: Grid Aliasing | Rows that share one list and a shallow copy of BFS state, so one write changes many cells | medium | python, typescript, java, kotlin |
 | 0208 | `debug-running-total-overflow` | Debug: Running Total Overflow | 32-bit accumulator overflow in a sum of products; the fix is a wider type, not a cast at the end | medium | java, kotlin |
-| 0209 | `debug-sort-comparator` | Debug: Leaderboard Comparator | Subtraction comparator that overflows and a tie-break that breaks transitivity | medium | all |
+| 0209 | `debug-sort-comparator` | Debug: Leaderboard Comparator | Subtraction comparator that overflows and a tie-break that breaks transitivity | medium | python, typescript, java, kotlin |
 | 0210 | `debug-mutable-default-argument` | Debug: Mutable Default Argument | Accumulator default argument that leaks state across calls | easy | python |
 | 0211 | `debug-boxed-equality` | Debug: Boxed Integer Equality | Reference comparison of boxed integers that passes small tests and fails above the cache range | medium | java, kotlin |
-| 0212 | `debug-recursion-base-case` | Debug: Recursion Base Case | Tree path-sum recursion whose base case treats a null child as a leaf | medium | all |
-| 0213 | `debug-window-shrink` | Debug: Window Shrink | Sliding window that decrements counts without removing zero entries, so the distinct count is wrong | medium | all |
+| 0212 | `debug-recursion-base-case` | Debug: Recursion Base Case | Tree path-sum recursion whose base case treats a null child as a leaf | medium | python, typescript, java, kotlin |
+| 0213 | `debug-window-shrink` | Debug: Window Shrink | Sliding window that decrements counts without removing zero entries, so the distinct count is wrong | medium | python, typescript, java, kotlin |
+| 0240 | `debug-append-aliasing` | Debug: Append Aliasing | Combinations built with `append` share one backing array, so a later bundle overwrites one already stored | medium | go |
+| 0241 | `debug-nil-map-write` | Debug: Nil Map Write | A nested map whose inner map is never made, so the first write to it panics | easy | go |
+| 0242 | `debug-shadowed-variable` | Debug: Shadowed Variable | `:=` in an inner block declares a new variable, so the outer discount stays zero | easy | go |
+| 0243 | `debug-range-value-copy` | Debug: Range Value Copy | A `range` loop that caps a copy of each struct, so the slice never changes | easy | go |
+| 0244 | `debug-unsigned-underflow` | Debug: Unsigned Underflow | A binary search ported from Java whose `usize` bound goes below zero and panics | easy | rust |
+| 0245 | `debug-float-ordering` | Debug: Float Ordering | A never-shown creative's rate of `0 / 0` is NaN, and the `partial_cmp(...).unwrap()` sort panics on it | medium | rust |
+| 0246 | `debug-char-boundary` | Debug: Char Boundary | Truncation by byte index, which panics inside a multi-byte character | medium | rust |
+| 0247 | `debug-clone-mutation` | Debug: Clone Mutation | A clone added to satisfy the borrow checker takes the credit, so transfers credit nobody | medium | rust |
 
 ### system-design (10, owner S1, `tracks/system-design/`)
 
