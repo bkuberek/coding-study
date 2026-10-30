@@ -47,6 +47,8 @@ Simple, and fast in practice because the shift is one block move of memory, but 
 - TypeScript: hand-written lower and upper bound, and `splice(index, 0, x)` to insert; never sort the whole array again for every insertion.
 - Java: an `ArrayList<Integer>` with a hand-written search and `add(index, x)`. Keep the total in a `long`, since a total near n^2 / 8 passes `Integer.MAX_VALUE` for large `n`.
 - Kotlin: `ArrayList<Int>` and a `Long` total.
+- Go: `sort.SearchInts` is `bisect_left`, the upper bound is `sort.Search` with `ordered[i] > value`, and `slices.Insert` shifts the tail, which is the quadratic part. The total reaches about n^2 / 4, far below the range of Go's 64-bit `int`.
+- Rust: two `partition_point` calls give the lower and upper bounds and `Vec::insert` shifts the tail. The total goes in an `i64`: this build checks integer overflow, so an `i32` total would panic once it passed 2^31.
 
 ## Approach: fenwick-tree (Fenwick tree of counts by value)
 
@@ -86,3 +88,5 @@ It needs bounded values, or coordinate compression when they are large. A segmen
 - TypeScript: an `Int32Array` for the tree and a plain `number` for the cost, reduced at every step.
 - Java: an `int[]` tree and a `long` cost reduced at every step; the final value is below the modulus, so the cast to `int` is safe.
 - Kotlin: an `IntArray` tree, a `Long` cost, and a local function for the prefix query.
+- Go: `value & -value` works on a signed `int` exactly as in Python, and the tree is a plain `[]int`.
+- Rust: the indexes are `usize`, which has no unary minus, so the lowest set bit is `value & value.wrapping_neg()`. The prefix query takes the tree as a parameter instead of capturing it, because the loop also mutates the tree; the cost is an `i64` reduced at every step and cast to `i32` at the end.
