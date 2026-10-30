@@ -48,6 +48,8 @@ Clearly correct, so it is the oracle. It repeats a full search for every edge, a
 - TypeScript: `stack.pop() as number` is safe inside the non-empty loop.
 - Java: a fresh `boolean[]` per search and an `ArrayDeque<Integer>` stack.
 - Kotlin: `ArrayDeque(listOf(start))` seeds the stack; `val (a, b) = edge` destructures the pair while `edge` itself is returned unchanged.
+- Go: the visited set is a fresh `map[int]bool` for every query, as the Python `seen` set is, and a missing key reads as `false`. `connected` is a closure over `neighbors`, and the function returns `nil` for the unreachable "no redundant edge" case, which encodes as an empty array.
+- Rust: `HashSet::insert` returns `false` for a node already seen, so `if seen.insert(neighbor)` marks and tests in one step. The redundant edge is returned with `edge.clone()`, a copy of the input row, and `connected` borrows the adjacency lists as `&[Vec<usize>]` because it never changes them.
 
 ## Approach: quick-union (Naive union-find that links roots without balancing or compression)
 
@@ -84,6 +86,8 @@ Much faster than a search in typical inputs and only a few lines, but its runnin
 - TypeScript: the closure `find` reassigns its parameter, which is a local copy.
 - Java: a static `find(parent, x)` helper.
 - Kotlin: a local `find` with a `var` copy of its argument, since Kotlin parameters are read-only.
+- Go: `find` is a closure that climbs by reassigning its own parameter, and the loop has no compression, so a chain of edges stays a chain of parents.
+- Rust: `find` takes `&[usize]`, so the two lookups for one edge can sit in a single expression, and `(0..=edges.len()).collect()` builds the `n + 1` parents because nodes are numbered from 1. The edge is returned with `edge.clone()`.
 
 ## Approach: union-find (Union by size with path compression)
 
@@ -122,3 +126,5 @@ Near-linear and independent of the edge order, with two small arrays and no adja
 - TypeScript: a `DisjointSets` class whose `union` returns whether it merged keeps the main loop short; fields are assigned in the constructor body, without parameter properties.
 - Java: a `private static final` nested class over two `int[]` arrays.
 - Kotlin: `edges.firstOrNull { (a, b) -> !sets.union(a, b) }` stops at the first edge that merges nothing.
+- Go: `parent[x], x = root, parent[x]` is the same simultaneous assignment as Python's, and `rootA, rootB = rootB, rootA` swaps the roots for union by size.
+- Rust: `find` takes `&mut [usize]`, reads the next link into a local before it rewrites `parent[x]`, and is called in two separate statements because each call needs the mutable borrow. `std::mem::swap` exchanges the roots.
