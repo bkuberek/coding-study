@@ -73,6 +73,8 @@ The usual interview answer: in place, short and easy to verify, since each step 
 - TypeScript: `Array.prototype.reverse` reverses in place as well.
 - Java: no built-in in-place reversal for `int[]`, so the reference swaps from both ends; `Collections.reverse` would need boxed lists.
 - Kotlin: `IntArray.reverse()` reverses in place, unlike `reversed()`, which returns a new list.
+- Go: the tuple assignment `matrix[r][c], matrix[c][r] = matrix[c][r], matrix[r][c]` swaps without a temporary, and `slices.Reverse(row)` reverses a row in place; a row of a `[][]int` is a slice header into shared memory, so the caller sees the change.
+- Rust: swapping `matrix[r][c]` with `matrix[c][r]` needs two `&mut` borrows of `matrix` at once, which the borrow checker refuses. `split_at_mut(r + 1)` splits the rows into row `r` and the rows below it, which are disjoint, so `std::mem::swap` can hold one cell from each. `row.reverse()` reverses in place. The stub takes `&mut Vec<Vec<i32>>` and this reference only uses slice operations, so clippy's `ptr_arg` is allowed on the function.
 
 ## Approach: four-way-swap (Cycle four cells at a time, layer by layer)
 
@@ -110,3 +112,5 @@ Moves each value once, the minimum, but the four index expressions are easy to m
 ### Language notes
 
 - All four references are line-for-line the same algorithm; only loop syntax differs (`range`, `for (let ...)`, `0 until n / 2`). Integer division `n // 2`, `Math.floor(n / 2)` and `n / 2` on `int` all round down.
+- Go: the same loops with C-style `for` headers; the four assignments run in the order the comment gives.
+- Rust: indexes are `usize`, and the subtractions `n - 1 - layer` and `last - layer` cannot underflow because `layer < n / 2` and `last >= layer`. Each move is a plain `matrix[a][b] = matrix[c][d]`, which copies an `i32`, so no temporary borrow is needed; `ptr_arg` is allowed for the same reason as in `transpose-reverse`.
