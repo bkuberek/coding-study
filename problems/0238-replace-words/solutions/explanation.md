@@ -46,6 +46,7 @@ No preprocessing and very little code. Sorting the roots by length would allow a
 - TypeScript: `String.prototype.startsWith`.
 - Java: `sentence.split(" ")` takes a regular expression, and a single space is literal, so it is fine here. The result is built with a `StringBuilder`.
 - Kotlin: `split(' ')` returns a `List<String>` and `joinToString(" ")` joins it back.
+- Go and Rust: `best` holds a slice of the word or a root (a `string` in Go, a `&str` in Rust), so nothing is copied until the final `strings.Join` or `join(" ")`.
 
 ## Approach: trie (Trie of the roots walked once per word)
 
@@ -84,3 +85,5 @@ The prefix-set alternative (put the roots in a set and test each prefix of a wor
 - Python: nested dicts with an end-marker key that is never a letter.
 - TypeScript, Java and Kotlin: a node class with a 26-slot child array (`(TrieNode | null)[]`, `TrieNode[]`, `arrayOfNulls<TrieNode>(26)`) and a boolean `end`.
 - Java and Kotlin build the result with `StringBuilder` or `joinToString`; the input has single spaces only, so nothing is trimmed or collapsed.
+- Go: a node is `struct { children [26]*trieNode; end bool }`, where a nil pointer means "no child"; the words are lowercase ASCII, so indexing the string by byte is safe. `shorten` returns a slice of the word (`word[:length]`), which copies nothing.
+- Rust: `children: [Option<Box<TrieNode>>; 26]` derives `Default` (arrays of up to 32 elements do), and `get_or_insert_with(Box::default)` creates the missing child while walking down with a `&mut` cursor. `shorten` returns a `&str` borrowed from the sentence, so no word is copied before the final `join`.
