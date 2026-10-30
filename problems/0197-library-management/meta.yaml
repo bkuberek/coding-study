@@ -6,6 +6,7 @@ status: ready
 difficulty: medium
 track: lld
 kind: design
+languages: [python, typescript, java, kotlin, go, rust]
 signature:
   class:
     name: Library
