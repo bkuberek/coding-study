@@ -43,6 +43,7 @@ A direct translation of the definition, so it is the oracle. Marking the same ta
 ### Language notes
 
 - All four languages use a boolean array; values up to 10^5 plus an index stay far inside 32-bit range.
+- Go and Rust use a `[]bool` or `Vec<bool>` too. Rust converts the jump to `usize` before it adds it to the index, and `last.min(i + jump)` clamps the marked range at the last index.
 
 ## Approach: farthest-reach (Track the farthest reachable index)
 
@@ -77,6 +78,7 @@ The expected answer: shortest code and a clean exchange argument. It also genera
 ### Language notes
 
 - All four languages use the same loop; `i + nums[i]` is at most about 1.1 * 10^5, no overflow concern.
+- Go and Rust use it as well. Rust keeps `farthest` as a `usize`, since an index and a non-negative jump never go below zero, and adds `jump as usize`.
 
 ## Approach: leftmost-good (Move the goal backwards)
 
@@ -111,3 +113,4 @@ Same cost as the forward greedy; some people find "move the goal" easier to prov
 ### Language notes
 
 - Kotlin: `for (i in nums.size - 2 downTo 0)` is empty for a single-element array, which correctly returns `true`.
+- Go: `for i := len(nums) - 2; i >= 0; i--` does not run for a single element either. Rust: `len - 2` would underflow a `usize` there, so the loop counts down with `(0..goal).rev()`, where `goal` starts at `len - 1`; the range is empty for one element and covers every earlier index otherwise.
