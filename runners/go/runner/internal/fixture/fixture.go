@@ -84,9 +84,16 @@ func Third(value decimal.Decimal) decimal.Decimal {
 	return third
 }
 
+// strictSetting orders Strict's writes when the goroutines of a stress run call it at once: the
+// tests check that the runner resets the setting between cases, and an unordered write from two
+// goroutines would be a data race of the fixture's own under `go test -race`.
+var strictSetting sync.Mutex
+
 // Strict returns its argument, then forbids every decimal with a decimal point in what is decoded
 // next: a later case must not inherit the setting.
 func Strict(value decimal.Decimal) decimal.Decimal {
+	strictSetting.Lock()
+	defer strictSetting.Unlock()
 	decimal.MaxDecodeExponent = 0
 	return value
 }
