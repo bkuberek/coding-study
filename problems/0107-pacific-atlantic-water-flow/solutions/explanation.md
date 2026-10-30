@@ -48,6 +48,8 @@ Direct and easy to trust, which makes it the oracle, but each search rediscovers
 - TypeScript: one `Int32Array` holds, for each cell, the id of the last search that visited it, so no array is reallocated or cleared per search.
 - Java: the same idea with an `int[][]` filled with -1 once; `ArrayDeque<int[]>` is the stack.
 - Kotlin: the search is a local function that captures `seen`, `rows` and `cols`; `nr !in 0 until rows` is the bounds check.
+- Go: a flat `[]int` of `rows*cols` entries holds the id of the last search that visited each cell, as in the Java and TypeScript versions, so nothing is reallocated or cleared per search; ids start at 1 because Go zeroes the slice. A slice of `[2]int` is the stack (`stack[len(stack)-1]`, `stack[:len(stack)-1]`, `append`). The long condition is split after `&&`, because Go ends a statement at a line break only after a complete expression.
+- Rust: the id grid is a `Vec<Vec<usize>>`, passed as `&mut [Vec<usize>]`, so the search borrows it mutably while `heights` stays a shared borrow. A step off the grid is caught by a `neighbor` helper using `checked_add_signed`, which returns `None` for a negative coordinate instead of wrapping.
 
 ## Approach: ocean-bfs (Climb uphill from both coasts)
 
@@ -87,3 +89,5 @@ Two linear searches replace m·n separate ones, which is the whole point of the 
 - TypeScript: cells are encoded as `r * cols + c` in a `Uint8Array` of marks, and the queue is a plain array with a moving head.
 - Java: two `boolean[][]` arrays and two `ArrayDeque<int[]>` queues, seeded in one pass over the grid; the result is converted with `toArray(new int[0][])`.
 - Kotlin: the search takes the coast as a lambda `(Int, Int) -> Boolean`, and the answer is collected with `filter` and `map` over the cell indexes.
+- Go: `climb` is a closure over `heights`, and the coast is a list of `[2]int` cells that is built by two short loops (the top or bottom row, then the left or right column). The corner cell appears in both loops, so `climb` skips a cell it has already marked, which makes it enqueue the corner once, as Python's set does. A slice is the queue (`queue[0]`, `queue = queue[1:]`, `append`).
+- Rust: `climb` takes the coast as a slice of cells and returns the grid of reached flags; the two coasts are built with `map` and `chain` over the columns and the rows. `VecDeque` is the queue (`pop_front`, `push_back`), and `vec![vec![false; cols]; rows]` makes independent rows.
