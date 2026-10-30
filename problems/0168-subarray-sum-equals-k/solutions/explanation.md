@@ -80,3 +80,5 @@ Linear and the expected interview answer. It trades O(n) memory for the quadrati
 - TypeScript: `Map<number, number>` with `seen.get(x) ?? 0`; number keys compare by value.
 - Java: `HashMap<Integer, Integer>` with `getOrDefault` and `merge(total, 1, Integer::sum)`; keys are boxed, and boxing is the main constant-factor cost.
 - Kotlin: `HashMap<Int, Int>` with the index operator; `seen[x] ?: 0` handles the nullable lookup.
+- Go: reading a missing key from a `map[int]int` returns the zero value without inserting it, so `count += seen[total-k]` needs no comma-ok form, and `seen[total]++` creates the entry on first use. The literal `map[int]int{0: 1}` seeds the empty prefix.
+- Rust: `HashMap::get` returns an `Option<&i32>`, so the lookup is `.copied().unwrap_or(0)`, and `*seen.entry(total).or_insert(0) += 1` is the counting idiom. The prefix sums stay under 2 * 10^7 and `total - k` under 3 * 10^7, well inside `i32`, which matters because overflow checks make a wrap a panic.
