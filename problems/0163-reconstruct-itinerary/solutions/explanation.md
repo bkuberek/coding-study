@@ -46,6 +46,8 @@ Easy to explain and to get right, and its order of exploration gives the lexicog
 - TypeScript: the default `sort()` compares UTF-16 code units, which orders uppercase codes correctly; the recursive helper is a closure over the maps and the route.
 - Java: the state lives in fields that are reset at the start of each call, keeping the recursive method's signature small; `List.of()` stands in for airports with no outgoing tickets.
 - Kotlin: `groupBy({ it[0] }, { it[1] })` builds the destination lists in one call, and `mapValues` sorts them.
+- Go: `extend` is a closure that calls itself, so it is declared first with `var extend func(airport string) bool` and assigned afterwards. `slices.Sort` orders each destination list in place, and the `route = route[:len(route)-1]` re-slice is the undo step that Python spells `route.pop()`. Go has no `defaultdict`, but a missing key reads as a nil slice, so the loop over an airport with no tickets simply does nothing.
+- Rust: a recursive closure is awkward under the borrow checker, so the search state (the destination lists with a used flag per ticket, the route and the ticket count) lives in a `Search` struct and `extend` is a `&mut self` method. The strings are `&str` borrowed from `tickets`, so nothing is cloned until the final `String::from` conversion. Sorting the `(destination, used)` pairs sorts by destination because every flag starts `false`.
 
 ## Approach: hierholzer (Hierholzer's algorithm with sorted destinations)
 
@@ -84,3 +86,5 @@ Linear apart from sorting, no backtracking, and short. The iterative stack avoid
 - TypeScript: each destination list is sorted and reversed once, then used as a stack with `pop()`.
 - Java: a `PriorityQueue<String>` per airport gives the smallest destination with `poll()`; `LinkedList.addFirst` builds the route already in order.
 - Kotlin: the same `PriorityQueue` per airport; a `kotlin.collections.ArrayDeque` serves both as the stack and, with `addFirst`, as the route.
+- Go: the stack is a slice, and "pop" is `stack[:len(stack)-1]`. Each destination list is sorted and then reversed with `slices.Reverse`, so its last element is the smallest destination and shrinking the slice by one removes it in O(1).
+- Rust: `Vec::pop` on the reverse-sorted list takes the smallest destination, and `destinations.get_mut(airport).and_then(Vec::pop)` folds "no entry" and "empty list" into one `None`. `stack.last()` is copied out with `Some(&airport)` before `stack.push`, so the borrow has ended when the stack changes.
