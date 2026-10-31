@@ -1,9 +1,11 @@
 """Waits for saves of the user's code, for `cstudy test --watch` (docs/specs/cli.md#cstudy-test).
 
 A single file is watched through its directory, filtered to that file, because editors often
-save by writing a new file and renaming it over the old one. A burst yields only when the
-watched content differs from the last time, so replayed file-system events and saves that change
-nothing do not re-run the tests.
+save by writing a new file and renaming it over the old one. A directory, such as a JVM package or
+a project folder, is watched with its tracked files only: the `.venv` link, `node_modules` and
+caches are not (docs/specs/installation-and-workspaces.md#project-folders). A burst yields only
+when the watched content differs from the last time, so replayed file-system events and saves that
+change nothing do not re-run the tests.
 """
 
 import hashlib
@@ -12,6 +14,9 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import watchfiles
+
+from coding_study.adapters.project_folders import tracked_files
+from coding_study.domain.workspace_projects import is_untracked
 
 DEBOUNCE_MS = 150
 
@@ -24,7 +29,7 @@ class WatchfilesWatcher:
 
     def changes(self, path: Path) -> Iterator[None]:
         directory = path if path.is_dir() else path.parent
-        accepts = _anything if path.is_dir() else _same_file(path)
+        accepts = _tracked_in(path) if path.is_dir() else _same_file(path)
         last = _content_digest(path)
         for _ in watchfiles.watch(
             directory,
@@ -39,8 +44,17 @@ class WatchfilesWatcher:
                 yield None
 
 
-def _anything(_changed: str) -> bool:
-    return True
+def _tracked_in(directory: Path) -> Callable[[str], bool]:
+    resolved = directory.resolve()
+
+    def accepts(changed: str) -> bool:
+        try:
+            relative = Path(changed).resolve().relative_to(resolved)
+        except ValueError:
+            return False
+        return not is_untracked(relative.as_posix())
+
+    return accepts
 
 
 def _same_file(target: Path) -> Callable[[str], bool]:
@@ -50,10 +64,7 @@ def _same_file(target: Path) -> Callable[[str], bool]:
 
 def _content_digest(path: Path) -> str:
     digest = hashlib.sha256()
-    files = (
-        sorted(entry for entry in path.rglob("*") if entry.is_file()) if path.is_dir() else [path]
-    )
-    for file in files:
+    for file in tracked_files(path) if path.is_dir() else [path]:
         digest.update(str(file).encode())
         digest.update(file.read_bytes() if file.is_file() else b"\0missing")
     return digest.hexdigest()

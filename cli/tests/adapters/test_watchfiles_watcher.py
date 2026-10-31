@@ -48,3 +48,33 @@ def test_saving_inside_a_watched_directory_yields(tmp_path):
     threading.Timer(GIVE_UP_AFTER_SECONDS, stop.set).start()
     saved = package / "Solution.java"
     assert first_change(WatchfilesWatcher(stop_event=stop), package, stop, saved) is None
+
+
+# project folders (docs/specs/installation-and-workspaces.md#project-folders)
+
+
+@pytest.fixture
+def project(tmp_path: Path) -> Path:
+    folder = tmp_path / "projects" / "bank-project-python"
+    for directory in ("bank/ledger", "bank/__pycache__", ".pytest_cache", "node_modules"):
+        (folder / directory).mkdir(parents=True)
+    (folder / "bank" / "bank.py").write_text("class Bank: ...\n")
+    return folder
+
+
+def test_saving_a_nested_file_of_a_project_folder_yields(project):
+    stop = threading.Event()
+    threading.Timer(GIVE_UP_AFTER_SECONDS, stop.set).start()
+    saved = project / "bank" / "ledger" / "entries.py"
+    assert first_change(WatchfilesWatcher(stop_event=stop), project, stop, saved) is None
+
+
+@pytest.mark.parametrize(
+    "untracked",
+    ["bank/__pycache__/bank.cpython-313.pyc", ".pytest_cache/lastfailed", "node_modules/x.js"],
+)
+def test_saving_an_untracked_file_of_a_project_folder_is_ignored(project, untracked):
+    stop = threading.Event()
+    threading.Timer(QUIET_PERIOD_SECONDS, stop.set).start()
+    saved = project / untracked
+    assert first_change(WatchfilesWatcher(stop_event=stop), project, stop, saved) == STOPPED

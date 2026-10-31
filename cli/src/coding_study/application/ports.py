@@ -530,8 +530,21 @@ class Workspace(Protocol):
         """Move a file into `directory` (created when missing); returns its new path."""
         ...
 
+    def archive_folder(self, path: str, destination: str) -> None:
+        """Move the directory `path` to `destination`, without the untracked entries
+        (`workspace_projects.is_untracked`) it holds: those are deleted, and a link is removed,
+        never followed. Raises FileExistsError when `destination` exists."""
+        ...
+
+    def ensure_link(self, path: str, target: str) -> bool:
+        """Make `path` a symbolic link to `target` (relative to the link's directory) when nothing
+        is there or a link there dangles; True when it did. Anything else is left alone."""
+        ...
+
     def content_hash(self, path: str) -> str:
-        """sha256 of a file, or of every file under a directory; stable for missing paths."""
+        """sha256 of a file, or of every tracked file under a directory (relative path and bytes,
+        in path order; `workspace_projects.is_untracked` entries aside); stable for missing
+        paths."""
         ...
 
     def absolute(self, path: str) -> Path: ...
@@ -557,5 +570,6 @@ class EditorOpener(Protocol):
 
 class ChangeWatcher(Protocol):
     def changes(self, path: Path) -> Iterator[None]:
-        """Yield once per debounced burst of saves to `path` (a file or a directory tree)."""
+        """Yield once per debounced burst of saves to `path` (a file or a directory tree, whose
+        untracked entries, `workspace_projects.is_untracked`, are not watched)."""
         ...
