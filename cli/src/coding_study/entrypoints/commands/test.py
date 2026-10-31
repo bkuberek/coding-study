@@ -41,9 +41,7 @@ from coding_study.domain.errors import UsageError
 from coding_study.domain.generated_cases import OracleInput
 from coding_study.domain.judging import CaseStatus, CaseVerdict
 from coding_study.domain.problem import Language
-from coding_study.domain.runs import (
-    UserError,
-)
+from coding_study.domain.runs import UserError
 from coding_study.domain.stress_runs import StressSelection
 from coding_study.domain.stress_verdict import StressVerdict
 from coding_study.domain.time_limits import (
