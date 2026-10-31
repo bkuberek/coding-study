@@ -5,7 +5,7 @@ The binding manifest of every catalog item: 196 DSA problems and 70 non-DSA item
 | Track | Problems or items | Where |
 |-------|-------------------|-------|
 | `dsa` | 196 (185 planned, 11 added) | `problems/` |
-| `practical` | 24 (6 planned, 16 added, 1 project problem added, 1 planned) | `problems/` |
+| `practical` | 24 (6 planned, 16 added, 2 project problems added) | `problems/` |
 | `lld` | 8 | `problems/` |
 | `concurrency` | 6 | `problems/` |
 | `debugging` | 16 (8 planned, 8 in Go and Rust) | `problems/` |
@@ -332,7 +332,7 @@ One more added later is a sibling of `banking-system` whose level 3 replaces the
 |----|------|-------|----------|------|------------|
 | 0248 | `scheduled-transfers-bank` | Scheduled Transfers Bank | `heap` | progressive | hard |
 
-Two [project problems](problem-format.md#project-problems) (kind `project`, one language each) carry `0248`'s behavior and statement wording into a seeded folder. Each is built from scratch, with its own starter, `tests.json` (at least 2 visible and 2 hidden cases per level, covering the rules `0248`'s cases pin down), reference and explanation; both list each other and `scheduled-transfers-bank` in `related`. `0249` is the Python pilot (roadmap Phase 8a) and exists in `problems/`; `0250` is the TypeScript one (Phase 8b) and is planned.
+Two [project problems](problem-format.md#project-problems) (kind `project`, one language each) carry `0248`'s behavior and statement wording into a seeded folder. Each is built from scratch, with its own starter, `tests.json` (at least 2 visible and 2 hidden cases per level, covering the rules `0248`'s cases pin down), reference and explanation; both list each other and `scheduled-transfers-bank` in `related`. `0249` is the Python pilot (roadmap Phase 8a) and `0250` the TypeScript one (Phase 8b); both exist in `problems/`.
 
 | id | slug | title | language | patterns | kind | difficulty |
 |----|------|-------|----------|----------|------|------------|
