@@ -7,6 +7,7 @@ from starlette.types import ASGIApp
 from coding_study.entrypoints.web.api_attempts import attempt_routes
 from coding_study.entrypoints.web.api_browsing import browsing_routes
 from coding_study.entrypoints.web.api_health import health_routes
+from coding_study.entrypoints.web.api_progress import progress_routes
 from coding_study.entrypoints.web.api_session import session_routes
 from coding_study.entrypoints.web.context import ServerSettings, ServerState
 from coding_study.entrypoints.web.errors import exception_handlers
@@ -21,6 +22,7 @@ def create_app(settings: ServerSettings) -> ASGIApp:
         *browsing_routes(),
         *attempt_routes(),
         *health_routes(),
+        *progress_routes(),
     ]
     app = Starlette(routes=routes, exception_handlers=exception_handlers())
     app.state.server = ServerState(settings)

@@ -143,5 +143,12 @@ def test_a_file_reads_as_it_is_on_disk(workspace, browser, attempts):
     assert response.json()["text"] == on_disk
 
 
+def test_the_export_downloads_the_progress_cstudy_export_writes(browser, attempts):
+    """Its `exported_at` changes with every export, so the attempts stand for the document."""
+    exported = browser.get("/api/v1/progress/export").json()
+    ids = sorted(row["id"] for row in exported["tables"]["attempts"])
+    assert ids == sorted(attempts.values())
+
+
 def test_the_doctor_view_is_cstudy_doctor_json(browser, document):
     assert browser.get("/api/v1/doctor").json() == document("doctor")
