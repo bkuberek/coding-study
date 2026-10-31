@@ -9,7 +9,12 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
-from coding_study.domain.diagnostics import Diagnostic, distinct, load_diagnostic
+from coding_study.domain.diagnostics import (
+    Diagnostic,
+    distinct,
+    load_diagnostic,
+    report_diagnostic,
+)
 from coding_study.domain.judging import Tally
 from coding_study.domain.runs import Crashed, Raised, TimedOut
 from coding_study.domain.suite_runs import (
@@ -114,15 +119,17 @@ def suite_tally(verdicts: Sequence[SuiteTestVerdict]) -> Tally:
     return Tally(total=len(counted), **counts)
 
 
-def suite_diagnostics(report: SuiteReport) -> tuple[Diagnostic, ...]:
-    """Where the project's code did not load: the suite that could not run, then each test file
-    that failed to collect (a result whose id is the file), each place once."""
+def suite_diagnostics(report: SuiteReport, root: str) -> tuple[Diagnostic, ...]:
+    """Where the project's code did not load: the suite that could not run, read from the
+    framework's report with paths under the project folder `root`, then each test file that
+    failed to collect (a result whose id is the file), each place once."""
     collected = (
         load_diagnostic(test.outcome.error)
         for test in report.tests
         if isinstance(test.outcome, Raised) and file_of_test(test.test_id) == test.test_id
     )
-    suite = (load_diagnostic(report.load_error),) if report.load_error else ()
+    refused = report.load_error
+    suite = (report_diagnostic(refused, root),) if refused else ()
     return distinct((*suite, *collected))
 
 

@@ -185,3 +185,11 @@ def test_a_test_file_that_does_not_import_is_a_diagnostic(environment, suites):
 
 def test_a_suite_that_imports_has_no_diagnostics(environment):
     assert run(environment).diagnostics == ()
+
+
+def test_a_suite_the_framework_refused_is_read_with_paths_in_the_project(environment, suites):
+    root = environment.workspace.absolute(FOLDER)
+    report = f'E     File "{root}/bank/bank.py", line 3\nE   SyntaxError: invalid syntax'
+    suites.suite_load_error = UserError("UsageError", report)
+    (diagnostic,) = run(environment).diagnostics
+    assert (diagnostic.file, diagnostic.line) == ("bank/bank.py", 3)

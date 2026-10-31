@@ -71,15 +71,12 @@ class ProjectTestResult:
     watched: str
     """The project folder, relative to the workspace root."""
     debug: DebugSession | None = None
+    diagnostics: tuple[Diagnostic, ...] = ()
+    """Where the project's code did not load (docs/specs/cli.md#diagnostics)."""
 
     @property
     def tally(self) -> Tally:
         return suite_tally(self.verdicts)
-
-    @property
-    def diagnostics(self) -> tuple[Diagnostic, ...]:
-        """Where the project's code did not load (docs/specs/cli.md#diagnostics)."""
-        return suite_diagnostics(self.report)
 
     @property
     def ran(self) -> bool:
@@ -150,6 +147,7 @@ def run_project_tests(
         every_case=not request.case_ids and levels.ran_up_to == levels.unlocked,
         watched=folder,
         debug=debug,
+        diagnostics=suite_diagnostics(report, str(run.root)),
     )
     if debug is None:
         _record(environment, result)

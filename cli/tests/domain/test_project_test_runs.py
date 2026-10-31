@@ -2,7 +2,7 @@
 
 import pytest
 
-from coding_study.domain.diagnostics import load_diagnostic
+from coding_study.domain.diagnostics import load_diagnostic, report_diagnostic
 from coding_study.domain.judging import Tally
 from coding_study.domain.project_test_runs import (
     SuiteOrigin,
@@ -112,30 +112,33 @@ def test_every_selection_without_a_test_is_reported():
 
 
 RUNNER = RunnerInfo("python", 1, "3.13", ("project", "suite"))
+ROOT = "/ws/projects/bank-project-python"
 BROKEN = UserError("SyntaxError", "invalid syntax (bank.py, line 5)", "bank/bank.py:5")
 
 
 def test_a_test_file_that_does_not_import_is_a_diagnostic():
     report = SuiteReport(RUNNER, (SuiteTest("tests/test_level_1.py", Raised(BROKEN, 0)),))
-    assert suite_diagnostics(report) == (load_diagnostic(BROKEN),)
+    assert suite_diagnostics(report, ROOT) == (load_diagnostic(BROKEN),)
 
 
 def test_a_test_that_raised_is_no_diagnostic():
     report = SuiteReport(RUNNER, (SuiteTest("tests/test_level_1.py::test_ex1", Raised(BROKEN, 0)),))
-    assert suite_diagnostics(report) == ()
+    assert suite_diagnostics(report, ROOT) == ()
 
 
 def test_a_crash_while_collecting_is_no_diagnostic():
-    assert suite_diagnostics(SuiteReport(RUNNER, (SuiteTest("tests/test_a.py", Crashed(1)),))) == ()
-
-
-def test_a_suite_that_could_not_run_is_a_diagnostic():
-    report = SuiteReport(RUNNER, load_error=UserError("UsageError", "no such option: -x"))
-    assert suite_diagnostics(report) == (
-        load_diagnostic(UserError("UsageError", "no such option: -x")),
+    assert (
+        suite_diagnostics(SuiteReport(RUNNER, (SuiteTest("tests/test_a.py", Crashed(1)),)), ROOT)
+        == ()
     )
+
+
+def test_a_suite_that_could_not_run_is_read_from_the_frameworks_report():
+    refused = UserError("UsageError", "bank/bank.py:3: in <module>\nE   NameError: name 'x'")
+    report = SuiteReport(RUNNER, load_error=refused)
+    assert suite_diagnostics(report, ROOT) == (report_diagnostic(refused, ROOT),)
 
 
 def test_files_that_fail_on_the_same_line_make_one_diagnostic():
     tests = tuple(SuiteTest(f"tests/test_level_{level}.py", Raised(BROKEN, 0)) for level in (1, 2))
-    assert suite_diagnostics(SuiteReport(RUNNER, tests)) == (load_diagnostic(BROKEN),)
+    assert suite_diagnostics(SuiteReport(RUNNER, tests), ROOT) == (load_diagnostic(BROKEN),)
