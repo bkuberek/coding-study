@@ -139,7 +139,7 @@ Exit 0 when no check reports `FAIL` (and, with `--fix`, every setup command succ
 cstudy ide [vscode|idea|all] [--force]
 ```
 
-Writes or refreshes the workspace's [IDE files](installation-and-workspaces.md#ide-files) (`.vscode/`, `.idea/`) for the named IDE (default: `all`), and installs the IntelliJ launcher into `.cs/runtime/ide/`. VS Code's `rust-analyzer.linkedProjects` lists the Rust project folders that exist when it runs, so run it again after starting a Rust project problem. `cstudy init` does the same unless `--no-ide`; `--ide vscode` or `--ide idea` (repeatable) limits it to those.
+Writes or refreshes the workspace's [IDE files](installation-and-workspaces.md#ide-files) (`.vscode/`, `.idea/`) for the named IDE (default: `all`), and installs the IntelliJ launcher into `.cs/runtime/ide/`. VS Code's `rust-analyzer.linkedProjects` lists the Rust project folders that exist when it runs; [`cstudy start`](#cstudy-start) refreshes VS Code's files the same way when it writes a new Rust project folder in a workspace whose VS Code settings `cstudy` wrote. `cstudy init` does the same unless `--no-ide`; `--ide vscode` or `--ide idea` (repeatable) limits it to those.
 
 | Rule | Detail |
 |------|--------|
@@ -179,6 +179,8 @@ next       cstudy test --watch
 ```
 
 A [project problem](problem-format.md#project-problems) starts in its one language: `--lang` may repeat it, another language exits 3 (`bank-project-python is solved in python only`), and `default_lang` never applies. A new attempt copies the problem's `starter/` tree to `projects/<slug>/`, never overwriting a file, links the folder to the workspace's toolchain (Python: [project folders](installation-and-workspaces.md#project-folders)), writes level 1's [test file](problem-format.md#generated-test-files), renders the statement at level 1, and opens `$EDITOR projects/<slug> <statement>`. A resumed attempt copies the starter only when the folder is missing, writes back a missing generated test file of an unlocked level, and recreates a missing or dangling `.venv` link; it never restores a file you deleted or changed (`--restore` does, one file at a time). `--fresh` and review attempts first move the folder to `.archive/<slug>/<attempt_id>-<lang>/`, without its `.venv` link and caches. `--timer` works as for every problem. The `project` line counts the files the folder holds, as `code_hash` sees them ([project folders](installation-and-workspaces.md#project-folders)): the starter's, the generated test files and your own, without the `.venv` link, `node_modules` and caches.
+
+A start that writes a new Rust project folder, in a workspace where `cstudy` wrote `.vscode/settings.json` (`cstudy init` or `cstudy ide`, as `.cs/ide.json` records), then refreshes VS Code's files as `cstudy ide vscode` does, under the same [rewriting rule](installation-and-workspaces.md#ide-files), so `rust-analyzer.linkedProjects` names the folder. When that changed a file, the output adds the `ide` line of [`cstudy ide`](#cstudy-ide) before `next` (`ide        vscode · 1 updated`), and its warning when it kept a `settings.json` you edited. Without that recorded file it writes no IDE file, and a resumed attempt leaves them alone.
 
 ```text
 bank-project-python · hard · practical · python · project

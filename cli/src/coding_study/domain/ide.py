@@ -25,6 +25,8 @@ class Ide(StrEnum):
 
 
 IDE_DIRECTORIES: Mapping[Ide, str] = {Ide.VSCODE: ".vscode", Ide.IDEA: ".idea"}
+VSCODE_SETTINGS = f"{IDE_DIRECTORIES[Ide.VSCODE]}/settings.json"
+"""VS Code's settings, relative to the workspace root."""
 
 
 class Change(StrEnum):

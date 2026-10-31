@@ -3,7 +3,7 @@
 
 from collections.abc import Mapping
 
-from coding_study.application.ide_files import IdeRequest, generate_ide_files
+from coding_study.application.ide_files import IdeRequest, generate_ide_files, link_rust_projects
 from coding_study.domain.ide import (
     NO_PROJECT_FOLDERS,
     Change,
@@ -132,3 +132,46 @@ def test_the_renderers_see_the_workspaces_rust_projects():
     renderer = FakeRenderer(GeneratedFile(TASKS, "tasks\n"))
     generate_ide_files({Ide.VSCODE: renderer}, InMemoryFiles(), IdeRequest((Ide.VSCODE,)))
     assert renderer.workspaces == [IdeWorkspace(("projects/bank-project-rust/Cargo.toml",))]
+
+
+# cstudy start of a Rust project links its folder (docs/specs/cli.md#cstudy-start)
+
+SETTINGS = ".vscode/settings.json"
+UNLINKED = '{"rust-analyzer.linkedProjects": ["rust/Cargo.toml"]}\n'
+LINKED = GeneratedFile(SETTINGS, '{"rust-analyzer.linkedProjects": ["...", "projects/..."]}\n')
+RUST_START = {Ide.VSCODE: FakeRenderer(LINKED), Ide.IDEA: FakeRenderer(GeneratedFile(MISC, "x\n"))}
+
+
+def written_by_cstudy(store: InMemoryFiles, path: str, content: str) -> None:
+    store.contents[path] = content
+    store.recorded[path] = content_digest(content.encode())
+
+
+def test_a_rust_start_refreshes_the_vscode_settings_cstudy_wrote():
+    store = InMemoryFiles()
+    written_by_cstudy(store, SETTINGS, UNLINKED)
+    link_rust_projects(RUST_START, store)
+    assert store.contents[SETTINGS] == LINKED.content
+
+
+def test_a_rust_start_refreshes_vscode_files_only():
+    store = InMemoryFiles()
+    written_by_cstudy(store, SETTINGS, UNLINKED)
+    report = link_rust_projects(RUST_START, store)
+    assert report is not None
+    assert (report.ides, changes(report)) == ((Ide.VSCODE,), {SETTINGS: Change.UPDATED})
+
+
+def test_a_rust_start_keeps_vscode_settings_you_edited():
+    store = InMemoryFiles()
+    written_by_cstudy(store, SETTINGS, UNLINKED)
+    store.contents[SETTINGS] = '{"editor.fontSize": 14}\n'
+    report = link_rust_projects(RUST_START, store)
+    assert report is not None
+    assert changes(report) == {SETTINGS: Change.KEPT}
+
+
+def test_a_rust_start_writes_no_ide_file_where_cstudy_never_wrote_vscode_settings():
+    store = InMemoryFiles()
+    written_by_cstudy(store, MISC, "x\n")
+    assert (link_rust_projects(RUST_START, store), set(store.contents)) == (None, {MISC})

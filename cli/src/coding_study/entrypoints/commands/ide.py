@@ -24,7 +24,7 @@ from coding_study.domain.ide import Change, Ide
 from coding_study.entrypoints.shared import add_command, command_environ, console
 
 NAME = "ide"
-LABEL = "{:<9}"
+LABEL_WIDTH = 9
 """As wide as `cstudy init`'s labels, whose report includes these lines."""
 ALL_IDES = tuple(Ide)
 RENDERERS: Mapping[Ide, IdeRenderer] = {Ide.VSCODE: VsCodeProject(), Ide.IDEA: IntellijProject()}
@@ -66,18 +66,19 @@ def write_ide_files(root: Path, request: IdeRequest) -> IdeReport:
     return generate_ide_files(RENDERERS, FsGeneratedFiles(root), request)
 
 
-def report_lines(report: IdeReport) -> Iterator[Text]:
-    """`ide  vscode, idea · 2 created · 1 kept`, then a warning per kept file."""
+def report_lines(report: IdeReport, label_width: int = LABEL_WIDTH) -> Iterator[Text]:
+    """`ide  vscode, idea · 2 created · 1 kept`, then a warning per kept file; labels padded to
+    `label_width`, as the report that shows them pads its own."""
     counts = [
         f"{len(paths)} {change}"
         for change in Change
         if change is not Change.UNCHANGED and (paths := report.paths(change))
     ]
     summary = " · ".join(counts) if report.changed else "no changes"
-    yield Text(f"{LABEL.format(NAME)}{', '.join(report.ides)} · {summary}")
+    yield Text(f"{NAME.ljust(label_width)}{', '.join(report.ides)} · {summary}")
     for path in report.paths(Change.KEPT):
         yield Text(
-            f"{LABEL.format('warning')}kept {path}: edited, or not written by cstudy "
+            f"{'warning'.ljust(label_width)}kept {path}: edited, or not written by cstudy "
             f"(cstudy ide --force overwrites it)",
             style="yellow",
         )

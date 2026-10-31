@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from coding_study.domain.ide import (
+    VSCODE_SETTINGS,
     Change,
     GeneratedFile,
     Ide,
@@ -86,6 +87,17 @@ def generate_ide_files(
     if plan.manifest != recorded:
         files.save_manifest(plan.manifest)
     return IdeReport(request.ides, plan.steps)
+
+
+def link_rust_projects(
+    renderers: Mapping[Ide, IdeRenderer], files: GeneratedFiles
+) -> IdeReport | None:
+    """`cstudy start` of a new Rust project folder: VS Code's settings name every Rust folder in
+    `rust-analyzer.linkedProjects`, so once `cstudy` has written them it refreshes VS Code's
+    files as `cstudy ide vscode` does. None, writing nothing, when it never wrote them."""
+    if VSCODE_SETTINGS not in files.manifest():
+        return None
+    return generate_ide_files(renderers, files, IdeRequest((Ide.VSCODE,)))
 
 
 def _apply(step: Step, files: GeneratedFiles) -> None:

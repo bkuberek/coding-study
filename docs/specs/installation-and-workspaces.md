@@ -178,7 +178,7 @@ A Rust project folder is a crate of its own ([problem-format](problem-format.md#
 |------|------|
 | Toolchain | The workspace's `rustc` and `cargo`, and the runtime's vendored crates, which the folder's `.cargo/config.toml` names by the relative path `../../.cs/runtime/runners/rust/vendor`. `cstudy start` writes that file when the folder lacks it, on a new or a resumed attempt, and never changes one that exists |
 | Build files | The starter's `Cargo.toml` and `.cargo/config.toml`. The folder is not a member of `rust/`: Cargo refuses a member outside the workspace root |
-| Editors | rust-analyzer analyses a Cargo project that `rust-analyzer.linkedProjects` names, so [`cstudy ide`](#ide-files) adds `projects/<slug>/Cargo.toml` of each Rust folder to it |
+| Editors | rust-analyzer analyses a Cargo project that `rust-analyzer.linkedProjects` names, so [`cstudy ide`](#ide-files) adds `projects/<slug>/Cargo.toml` of each Rust folder to it, and so does [`cstudy start`](cli.md#cstudy-start) of a new Rust folder once `cstudy` has written `.vscode/settings.json` |
 | How `cstudy` runs it | It builds in `.cs/build/rust-projects/<slug>/` with the dev profile and a private `CARGO_HOME`, and writes nothing into the folder ([runners](runners.md#rust-projects)) |
 | Native command | `cargo test` in the folder: it writes `target/` and `Cargo.lock` there, both ignored |
 | Caches | `target/` |
@@ -214,7 +214,7 @@ Go and Rust need no tasks or run configurations of their own: every action is la
 |---------|-----|
 | `go.toolsEnvVars` `GOTOOLCHAIN=local` | The Go extension's tools (gopls) run as `cstudy` does and never download the toolchain `go/go.mod` asks for ([toolchains](../guides/toolchains.md#go)). gopls finds `go/` through the `go.work` at the workspace root; no setting is needed for that |
 | `rust-analyzer.linkedProjects` `rust/Cargo.toml` | The Cargo project is in `rust/`, not at the workspace root |
-| `rust-analyzer.linkedProjects` `projects/<slug>/Cargo.toml` | Each Rust project folder is a crate of its own, outside `rust/`; a folder is a Rust project when it holds a `Cargo.toml`. A project started after the last `cstudy ide` is missing until `cstudy ide` runs again, and `cstudy doctor` says so |
+| `rust-analyzer.linkedProjects` `projects/<slug>/Cargo.toml` | Each Rust project folder is a crate of its own, outside `rust/`; a folder is a Rust project when it holds a `Cargo.toml`. `cstudy start` refreshes VS Code's files when it writes a new Rust folder, once `cstudy` has written them; a folder started otherwise, or while a `settings.json` you edited is kept, is missing until `cstudy ide` runs again, and `cstudy doctor` says so |
 | `rust-analyzer.check.allTargets`, `rust-analyzer.check.extraArgs` `--keep-going` | Each problem is an `[[example]]` built as a library crate ([ADR 0012](../decisions/0012-go-and-rust.md)); checking every target covers them, and `--keep-going` reports the errors of every problem when one is broken instead of stopping at the first |
 
 An existing workspace gets the new settings and extensions from `cstudy ide`, which follows the rewriting rule below: it updates `settings.json` and `extensions.json` while they are as `cstudy` wrote them, and keeps (with a warning) the ones you edited until `cstudy ide --force`, or until you copy the keys over. `cstudy doctor --fix` never writes IDE files. Debug configurations for Go and Rust are not generated yet.

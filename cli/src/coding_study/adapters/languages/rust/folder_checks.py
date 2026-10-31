@@ -12,7 +12,7 @@ from typing import cast
 
 from coding_study.adapters.ide.vscode import LINKED_PROJECTS
 from coding_study.application.ports import FolderCheck
-from coding_study.domain.ide import Ide
+from coding_study.domain.ide import VSCODE_SETTINGS
 from coding_study.domain.workspace_projects import (
     CARGO_CONFIG_FILE,
     CARGO_MANIFEST,
@@ -25,7 +25,6 @@ CONFIG_PROBLEM = f"missing or unresolved {CARGO_CONFIG_FILE}"
 LINKED_CHECK = "rust linked projects"
 LINKED_PROBLEM = f"missing from {LINKED_PROJECTS}"
 IDE_COMMAND = "cstudy ide"
-VSCODE_SETTINGS = f"{Ide.VSCODE.directory}/settings.json"
 
 
 @dataclass(frozen=True, slots=True)

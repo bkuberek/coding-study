@@ -9,7 +9,9 @@ from rich.console import Console
 from rich.text import Text
 
 from coding_study.adapters.environment_factory import load_environment
+from coding_study.adapters.ide.generated_files import FsGeneratedFiles
 from coding_study.application.environment import Environment
+from coding_study.application.ide_files import link_rust_projects
 from coding_study.application.practice_catalog import is_item
 from coding_study.application.project_start import (
     RESTORE_IS_FOR_PROJECTS,
@@ -25,6 +27,7 @@ from coding_study.domain.attempts import parse_timer
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.project import project_language
+from coding_study.entrypoints.commands.ide import RENDERERS, report_lines
 from coding_study.entrypoints.shared import (
     PROBLEM_TARGET_HELP,
     add_command,
@@ -94,10 +97,25 @@ def start_and_report(output: Console, environment: Environment, request: StartRe
         lines, files = _start_item(environment, request)
     else:
         started = start_attempt(environment, request)
-        lines, files = _report(started), (started.stub_path, started.statement_path)
+        linked = tuple(_linked(environment.root)) if _seeded_rust_folder(started) else ()
+        lines, files = _report(started, linked), (started.stub_path, started.statement_path)
     for line in lines:
         output.print(line)
     return files
+
+
+def _seeded_rust_folder(started: StartedAttempt) -> bool:
+    """A Rust project folder this start wrote, which rust-analyzer analyses once VS Code's
+    settings link it."""
+    language = started.attempt.language
+    return started.project is not None and started.created_stub and language is Language.RUST
+
+
+def _linked(root: Path) -> Iterator[Text]:
+    """The `cstudy ide` lines of the refresh that links the folder, when it changed a file."""
+    report = link_rust_projects(RENDERERS, FsGeneratedFiles(root))
+    if report is not None and report.changed:
+        yield from report_lines(report, LABEL_WIDTH)
 
 
 def restore_and_report(output: Console, environment: Environment, request: RestoreRequest) -> None:
@@ -124,7 +142,8 @@ def _timer_seconds(timer: str | None) -> int | None:
         raise UsageError(str(error)) from None
 
 
-def _report(started: StartedAttempt) -> Iterator[Text]:
+def _report(started: StartedAttempt, linked: tuple[Text, ...] = ()) -> Iterator[Text]:
+    """`linked`: the IDE lines of linking a new Rust project folder, before `next`."""
     header = _header(started.problem.meta, started.attempt.language or "")
     project = started.project
     if project is None:
@@ -142,6 +161,7 @@ def _report(started: StartedAttempt) -> Iterator[Text]:
         yield _line("attempt", "resumed")
     if started.archived_to:
         yield _line("archived", started.archived_to)
+    yield from linked
     yield _line("next", NEXT_STEP if project is None else PROJECT_NEXT_STEP)
 
 
