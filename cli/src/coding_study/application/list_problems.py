@@ -1,9 +1,13 @@
 """`cstudy list`: problems with their progress, filtered (docs/specs/cli.md#cstudy-list)."""
 
+from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 
 from coding_study.application.environment import Environment
+from coding_study.domain.attempts import Attempt
+from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.problem import (
     ContentStatus,
     Difficulty,
@@ -26,6 +30,13 @@ class ProblemFilter:
     content: ContentStatus | None = None
     language: Language | None = None
     """Problems with a reference in this language."""
+    kind: EntryKind | None = None
+    """`item` keeps the non-autograded items only; a kind of problem leaves them out."""
+
+    @property
+    def lists_items(self) -> bool:
+        """Whether the kind leaves room for items, which `list_items` filters further."""
+        return self.kind in (None, EntryKind.ITEM)
 
     def matches(self, summary: ProblemSummary, status: ProblemStatus) -> bool:
         meta = summary.meta
@@ -36,6 +47,7 @@ class ProblemFilter:
             self.status in (None, status),
             self.content in (None, meta.status),
             self.language is None or self.language in summary.reference_languages,
+            self.kind in (None, entry_kind(meta.kind)),
         )
         return all(checks)
 
@@ -45,6 +57,16 @@ class ListedProblem:
     summary: ProblemSummary
     status: ProblemStatus
     due_on: date | None
+
+
+@dataclass(frozen=True, slots=True)
+class ListingContext:
+    """What `cstudy list --json` adds to the rows."""
+
+    today: date
+    """The local date the statuses are of."""
+    in_progress: Mapping[str, tuple[Attempt, ...]]
+    """Each slug's attempts in progress, earliest start first; slugs without one are absent."""
 
 
 def list_problems(
@@ -57,6 +79,14 @@ def list_problems(
         for summary in environment.problems.list_summaries()
     )
     return tuple(item for item in listed if problem_filter.matches(item.summary, item.status))
+
+
+def listing_context(environment: Environment) -> ListingContext:
+    in_progress: defaultdict[str, list[Attempt]] = defaultdict(list)
+    for attempt in environment.progress.attempts_in_progress():
+        in_progress[attempt.slug].append(attempt)
+    today = environment.clock.local_date(environment.clock.now())
+    return ListingContext(today, {slug: tuple(found) for slug, found in in_progress.items()})
 
 
 def _listed(summary: ProblemSummary, progress: ProblemProgress, today: date) -> ListedProblem:

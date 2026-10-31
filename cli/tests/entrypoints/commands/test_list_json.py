@@ -1,0 +1,161 @@
+"""`cstudy list --kind` and `cstudy list --json` (docs/specs/cli.md#cstudy-list)."""
+
+import json
+from dataclasses import replace
+from datetime import date
+from pathlib import Path
+
+import pytest
+from typer.testing import CliRunner
+
+from coding_study.adapters.fs_problem_repository import FsProblemRepository
+from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
+from coding_study.domain.problem import Language
+from coding_study.domain.scheduling import ReviewState, ScheduleEntry
+from coding_study.entrypoints import cli
+from coding_study.entrypoints.commands import list_problems
+from tests.fakes import NOW, make_environment, repository_root
+from tests.helpers import FIXTURE_TRACKS
+
+runner = CliRunner()
+PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
+
+
+@pytest.fixture
+def environment(tmp_path, monkeypatch):
+    environment = make_environment(repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS))
+    monkeypatch.setattr(list_problems, "load_catalog_environment", lambda *_: environment)
+    return environment
+
+
+def invoke(*arguments: str):
+    return runner.invoke(cli.app, ["list", *arguments])
+
+
+def listed_slugs(*arguments: str) -> list[str]:
+    return [line.split()[1] for line in invoke(*arguments).output.splitlines()[1:]]
+
+
+def document(*arguments: str):
+    return json.loads(invoke("--json", *arguments).stdout)
+
+
+def entry(slug: str, *arguments: str):
+    return next(found for found in document(*arguments)["entries"] if found["slug"] == slug)
+
+
+def test_without_a_kind_problems_come_before_items(environment):
+    assert listed_slugs() == [
+        "two-sum",
+        "lru-cache",
+        "url-shortener",
+        "news-feed",
+        "retry-wrapper",
+    ]
+
+
+def test_a_kind_of_problem_leaves_the_items_out(environment):
+    assert listed_slugs("--kind", "function") == ["two-sum"]
+
+
+def test_the_item_kind_lists_the_items_only(environment):
+    assert listed_slugs("--kind", "item") == ["url-shortener", "news-feed", "retry-wrapper"]
+
+
+def test_an_unknown_kind_is_a_usage_error(environment):
+    assert invoke("--kind", "puzzle").exit_code != 0
+
+
+def test_json_is_dated_today(environment):
+    assert document()["today"] == NOW.date().isoformat()
+
+
+def test_json_lists_problems_then_items(environment):
+    assert [found["slug"] for found in document()["entries"]] == [
+        "two-sum",
+        "lru-cache",
+        "url-shortener",
+        "news-feed",
+        "retry-wrapper",
+    ]
+
+
+def test_json_describes_a_problem(environment):
+    assert entry("two-sum") == {
+        "id": "0001",
+        "slug": "two-sum",
+        "title": "Two Sum",
+        "track": "dsa",
+        "kind": "function",
+        "difficulty": "easy",
+        "patterns": ["arrays-hashing"],
+        "languages": ["python"],
+        "content": "ready",
+        "source": "catalog",
+        "status": "new",
+        "due_on": None,
+        "in_progress": [],
+    }
+
+
+def test_json_describes_an_item(environment):
+    assert entry("url-shortener") == {
+        "id": None,
+        "slug": "url-shortener",
+        "title": "URL Shortener",
+        "track": "system-design",
+        "kind": "item",
+        "difficulty": "medium",
+        "patterns": [],
+        "languages": [],
+        "content": "ready",
+        "source": "catalog",
+        "status": "new",
+        "due_on": None,
+        "in_progress": [],
+    }
+
+
+def test_json_names_each_attempt_in_progress(environment):
+    environment.progress.add_attempt(NewAttempt("two-sum", Language.KOTLIN, AttemptMode.NEW, NOW))
+    assert entry("two-sum")["in_progress"] == [
+        {"attempt_id": 1, "language": "kotlin", "mode": "new"}
+    ]
+
+
+def test_json_names_an_items_attempt_in_progress_without_a_language(environment):
+    environment.progress.add_attempt(NewAttempt("url-shortener", None, AttemptMode.REVIEW, NOW))
+    assert entry("url-shortener")["in_progress"] == [
+        {"attempt_id": 1, "language": None, "mode": "review"}
+    ]
+
+
+def test_json_has_the_status_and_due_date(environment):
+    attempt = environment.progress.add_attempt(
+        NewAttempt("two-sum", Language.PYTHON, AttemptMode.NEW, NOW)
+    )
+    environment.progress.update_attempt(replace(attempt, status=AttemptStatus.PASSED))
+    environment.progress.save_schedule_entry(
+        ScheduleEntry("two-sum", ReviewState(interval_days=3), date(2026, 10, 27), Grade.OK, NOW)
+    )
+    found = entry("two-sum")
+    assert (found["status"], found["due_on"]) == ("passed", "2026-10-27")
+
+
+def test_json_names_a_workspace_problem_as_yours(environment, monkeypatch):
+    workspace_problems = FsProblemRepository(environment.root).over(environment.root)
+    yours = replace(environment, problems=workspace_problems)
+    monkeypatch.setattr(list_problems, "load_catalog_environment", lambda *_: yours)
+    assert entry("lru-cache")["source"] == "workspace"
+
+
+def test_json_applies_the_filters(environment):
+    assert [found["slug"] for found in document("--kind", "item")["entries"]] == [
+        "url-shortener",
+        "news-feed",
+        "retry-wrapper",
+    ]
+
+
+def test_json_with_no_match_has_no_entries(environment):
+    assert document("--lang", "kotlin")["entries"] == []

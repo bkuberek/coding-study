@@ -6,8 +6,15 @@ user answers in a notes file; `cstudy done` takes a self-graded rating. The rubr
 """
 
 from dataclasses import dataclass
+from enum import StrEnum
 
-from coding_study.domain.problem import DEFAULT_CURRICULUM_ORDER, ContentStatus, Difficulty, Track
+from coding_study.domain.problem import (
+    DEFAULT_CURRICULUM_ORDER,
+    ContentStatus,
+    Difficulty,
+    ProblemKind,
+    Track,
+)
 
 ITEM_FILE = "item.yaml"
 PROMPT_FILE = "prompt.md"
@@ -64,3 +71,19 @@ class ItemMeta:
     order: int = DEFAULT_CURRICULUM_ORDER
     references: ItemReferences = ItemReferences()
     related: tuple[str, ...] = ()
+
+
+class EntryKind(StrEnum):
+    """A catalog entry's `kind` in the CLI's JSON documents and `cstudy list --kind`: its kind of
+    problem, or `item` for a non-autograded item."""
+
+    FUNCTION = "function"
+    DESIGN = "design"
+    PROGRESSIVE = "progressive"
+    CONCURRENT = "concurrent"
+    PROJECT = "project"
+    ITEM = "item"
+
+
+def entry_kind(kind: ProblemKind) -> EntryKind:
+    return EntryKind(kind.value)

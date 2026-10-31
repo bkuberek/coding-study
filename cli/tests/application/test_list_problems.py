@@ -4,8 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from coding_study.application.list_problems import ProblemFilter, list_problems
+from coding_study.application.list_problems import ProblemFilter, list_problems, listing_context
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
+from coding_study.domain.items import EntryKind
 from coding_study.domain.problem import ContentStatus, Difficulty, Language, Track
 from coding_study.domain.scheduling import ProblemStatus, ReviewState, ScheduleEntry
 from tests.fakes import NOW, make_environment
@@ -60,6 +61,21 @@ def test_filter_by_language_without_references(environment):
     assert slugs(environment, language=Language.KOTLIN) == []
 
 
+def test_filter_by_kind(environment):
+    assert slugs(environment, kind=EntryKind.DESIGN) == ["lru-cache"]
+
+
+def test_the_item_kind_leaves_every_problem_out(environment):
+    assert slugs(environment, kind=EntryKind.ITEM) == []
+
+
+@pytest.mark.parametrize(
+    ("kind", "lists_items"), [(None, True), (EntryKind.ITEM, True), (EntryKind.FUNCTION, False)]
+)
+def test_only_no_kind_or_the_item_kind_lists_items(kind, lists_items):
+    assert ProblemFilter(kind=kind).lists_items is lists_items
+
+
 @pytest.mark.parametrize(
     ("language", "listed"),
     [(Language.PYTHON, ["bank-project-python"]), (Language.TYPESCRIPT, [])],
@@ -97,3 +113,20 @@ def test_overdue_problems_are_due(environment):
         ScheduleEntry("two-sum", ReviewState(interval_days=3, reps=1), overdue, Grade.OK, NOW)
     )
     assert slugs(environment, status=ProblemStatus.DUE) == ["two-sum"]
+
+
+def test_the_listing_is_of_todays_date(environment):
+    assert listing_context(environment).today == NOW.date()
+
+
+def test_the_listing_groups_attempts_in_progress_by_slug(environment):
+    progress = environment.progress
+    python = progress.add_attempt(NewAttempt("two-sum", Language.PYTHON, AttemptMode.NEW, NOW))
+    later = NOW + timedelta(minutes=1)
+    kotlin = progress.add_attempt(NewAttempt("two-sum", Language.KOTLIN, AttemptMode.NEW, later))
+    assert listing_context(environment).in_progress == {"two-sum": (python, kotlin)}
+
+
+def test_the_listing_leaves_finished_attempts_out(environment):
+    finish(environment, AttemptStatus.PASSED)
+    assert listing_context(environment).in_progress == {}
