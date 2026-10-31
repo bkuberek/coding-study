@@ -4,7 +4,7 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from coding_study.domain.attempts import Attempt, NewAttempt, RunRecord
 from coding_study.domain.bench_records import BenchOutcome, BenchRunRecord, MachineState
@@ -597,3 +597,36 @@ class ProjectTestGenerator(Protocol):
         language's formatter lays it out; the caller writes it to `tests.path` in the project."""
         ...
 
+
+@dataclass(frozen=True, slots=True)
+class ProjectGrading:
+    """Launch the runner for a project's grading job in `root` (`cstudy submit`, and `cstudy
+    verify`); a grading job is never debugged."""
+
+    root: Path
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectSuite:
+    """Launch the runner for a project's native suite in `root` (`cstudy test`, and `cstudy
+    verify` D9)."""
+
+    root: Path
+    debug: DebugSession | None = None
+    """`cstudy test --debug`: breakpoints in the project's code and in its tests both stop."""
+
+
+type ProjectScope = ProjectGrading | ProjectSuite
+
+
+@runtime_checkable
+class ProjectRunner(Protocol):
+    """A `LanguageRunner` that also runs project jobs (docs/specs/runners.md#project-jobs):
+    Python for now."""
+
+    def prepare_project(self, scope: ProjectScope, notify: ProgressNotice) -> RunnerLaunch:
+        """How to launch the runner in the project root; a project builds nothing.
+
+        Raises RunnerStartError when the workspace's toolchain lacks what the job needs.
+        """
+        ...

@@ -6,9 +6,16 @@ with the workspace interpreter, whose environment provides `cs_runner` and `cs_s
 
 Under `cstudy test --debug` the interpreter runs a short bootstrap that starts debugpy, says so on
 standard error, waits for the IDE, and then runs `cs_runner` as `python -m cs_runner` would.
+
+A project job (docs/specs/runners.md#project-jobs) runs in the project root with `-P`, so the
+working directory never comes first on `sys.path`, where a project file named like a standard
+library module would shadow it; the runner adds the root at the end itself. Its bytecode goes to
+the workspace's `.cs/pycache`, and `UV_NO_SYNC` keeps anything it starts from syncing the shared
+venv through the project's `.venv` link.
 """
 
 import shutil
+from dataclasses import replace
 from pathlib import Path
 
 from coding_study.adapters.languages.debug_port import require_free_port
@@ -20,6 +27,9 @@ from coding_study.application.ports import (
     Prepared,
     PrepareResult,
     ProgressNotice,
+    ProjectGrading,
+    ProjectScope,
+    ProjectSuite,
     References,
     RunnerLaunch,
     ToolProbe,
@@ -38,6 +48,11 @@ from coding_study.domain.runs import HELLO_TIMEOUT_MS
 
 WORKSPACE_DIRECTORY = PYTHON_PROJECT
 RUNNER_MODULE = "cs_runner"
+SAFE_PATH_FLAG = "-P"
+"""Keeps the working directory, a project root, off `sys.path`."""
+BYTECODE_DIRECTORY = ".cs/pycache"
+PYTEST_PACKAGE_PATTERN = "lib/python*/site-packages/pytest/__init__.py"
+PYTEST_INSTALL_COMMAND = f"uv add --dev pytest --directory {PYTHON_PROJECT}"
 READY_MARKER = "cstudy-debug-agent-listening"
 DEBUG_BOOTSTRAP = f"""\
 import runpy
@@ -57,7 +72,7 @@ code."""
 
 
 class PythonRunner:
-    """`LanguageRunner` for Python."""
+    """`LanguageRunner` and `ProjectRunner` for Python."""
 
     def __init__(self, root: Path, probe: ToolProbe | None = None) -> None:
         self._root = root
@@ -72,16 +87,36 @@ class PythonRunner:
             self._materialize(scope)
         return Prepared(launch)
 
-    def _launch(self) -> RunnerLaunch:
-        command = (str(self._interpreter()), "-m", RUNNER_MODULE)
+    def prepare_project(self, scope: ProjectScope, notify: ProgressNotice) -> RunnerLaunch:
+        """Grading and suite jobs launch alike; a suite needs pytest, and may be debugged."""
+        match scope:
+            case ProjectSuite(debug=DebugSession() as session):
+                self._require_pytest()
+                launch = self._debug_launch(session, notify, (SAFE_PATH_FLAG,))
+            case ProjectSuite():
+                self._require_pytest()
+                launch = self._launch((SAFE_PATH_FLAG,))
+            case ProjectGrading():
+                launch = self._launch((SAFE_PATH_FLAG,))
+        environment = {
+            "UV_NO_SYNC": "1",
+            "PYTHONPYCACHEPREFIX": str(self._root / BYTECODE_DIRECTORY),
+        }
+        return replace(launch, cwd=scope.root, environment=environment)
+
+    def _launch(self, flags: tuple[str, ...] = ()) -> RunnerLaunch:
+        command = (str(self._interpreter()), *flags, "-m", RUNNER_MODULE)
         return RunnerLaunch(command, self._workspace, HELLO_TIMEOUT_MS[Language.PYTHON])
 
-    def _debug_launch(self, session: DebugSession, notify: ProgressNotice) -> RunnerLaunch:
+    def _debug_launch(
+        self, session: DebugSession, notify: ProgressNotice, flags: tuple[str, ...] = ()
+    ) -> RunnerLaunch:
         interpreter = self._interpreter()
         self._require_debugpy(interpreter)
         require_free_port(session)
         command = (
             str(interpreter),
+            *flags,
             "-X",
             "frozen_modules=off",
             "-c",
@@ -107,6 +142,15 @@ class PythonRunner:
             raise RunnerStartError(
                 "cannot debug python: debugpy is not installed in "
                 f"{WORKSPACE_DIRECTORY}/{PYTHON_VENV}; run `{DEBUGPY_INSTALL_COMMAND}`"
+            )
+
+    def _require_pytest(self) -> None:
+        """Checked on disk: asking the interpreter would cost a start of its own on every run."""
+        venv = self._workspace / PYTHON_VENV
+        if not any(venv.glob(PYTEST_PACKAGE_PATTERN)):
+            raise RunnerStartError(
+                f"pytest is missing from {WORKSPACE_DIRECTORY}/{PYTHON_VENV}; "
+                f"fix: {PYTEST_INSTALL_COMMAND}"
             )
 
     def _materialize(self, references: References | BenchCode) -> None:
