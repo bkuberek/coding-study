@@ -14,11 +14,13 @@ import {
   EventWriter,
   PROTOCOL_VERSION,
   readRequest,
+  type TestJob,
 } from "./lib/protocol.ts";
+import { runSuiteJob } from "./lib/suite.ts";
 
 const RUNNER_NAME = "typescript";
 /** Protocol additions this runner implements (docs/specs/runners.md#capability). */
-const FEATURES = ["stress"];
+const FEATURES = ["stress", "project", "suite"];
 const BAD_REQUEST_EXIT_CODE = 2;
 
 interface Options {
@@ -38,6 +40,17 @@ function parseOptions(argv: readonly string[]): Options {
   return { request: value("--request"), out: value("--out") };
 }
 
+async function runTestJob(job: TestJob, events: EventWriter): Promise<void> {
+  switch (job.shape) {
+    case "concurrent":
+      return runConcurrentJob(job, events);
+    case "suite":
+      return runSuiteJob(job, events);
+    default:
+      return runJob(job, events);
+  }
+}
+
 const exit = blockProcessExit();
 try {
   const options = parseOptions(process.argv.slice(2));
@@ -52,11 +65,7 @@ try {
   });
   if (request.mode === "test") {
     for (const job of request.jobs) {
-      if (job.shape === "concurrent") {
-        await runConcurrentJob(job, events);
-      } else {
-        await runJob(job, events);
-      }
+      await runTestJob(job, events);
     }
   } else {
     for (const job of request.jobs) {

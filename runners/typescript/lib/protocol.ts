@@ -8,6 +8,9 @@ import { parseType, UnknownTypeError, type TypeSpec } from "./types.ts";
 export const PROTOCOL_VERSION = 1;
 const TEST_MODE = "test";
 const CONCURRENT_KIND = "concurrent";
+const SUITE_KIND = "suite";
+/** The one test framework this runner hosts in a suite job. */
+const NODE_TEST_FRAMEWORK = "node-test";
 const ASYNC_MODEL = "async";
 const BENCH_MODE = "bench";
 const NANOSECONDS_PER_MILLISECOND = 1_000_000;
@@ -108,7 +111,20 @@ export interface ConcurrentJob {
   readonly cases: readonly (OperationCase | StressCase)[];
 }
 
-export type TestJob = Job | ConcurrentJob;
+/** A project's own `node:test` files, discovered from its root (docs/specs/runners.md#suite-job). */
+export interface SuiteJob {
+  readonly shape: "suite";
+  readonly jobId: string;
+  readonly root: string;
+  /** Files, relative to the root, that are not run. */
+  readonly exclude: readonly string[];
+  /** Test ids, or their last part, to run; empty: every test. */
+  readonly select: readonly string[];
+  /** Test ids not to run: those reported before a restart, and the one that hung or crashed. */
+  readonly skip: readonly string[];
+}
+
+export type TestJob = Job | ConcurrentJob | SuiteJob;
 
 export interface ErrorInfo {
   readonly type: string;
@@ -207,7 +223,11 @@ function parseJsonFile(path: string): unknown {
 }
 
 function parseTestJob(job: Record<string, unknown>): TestJob {
-  if (field(job, "kind") !== CONCURRENT_KIND) {
+  const kind = field(job, "kind");
+  if (kind === SUITE_KIND) {
+    return suiteJob(job);
+  }
+  if (kind !== CONCURRENT_KIND) {
     return parseJob(job);
   }
   const jobId = string(job, "job_id", "job");
@@ -236,6 +256,23 @@ function parseTestJob(job: Record<string, unknown>): TestJob {
         ? operationCase(value, id, where)
         : stressCase(object(stress, `${where} ${id} stress`), id, where);
     }),
+  };
+}
+
+function suiteJob(job: Record<string, unknown>): SuiteJob {
+  const jobId = string(job, "job_id", "job");
+  const where = `job "${jobId}"`;
+  const framework = string(job, "framework", where);
+  if (framework !== NODE_TEST_FRAMEWORK) {
+    throw new BadRequest(`${where}: framework "${framework}" is not supported`);
+  }
+  return {
+    shape: "suite",
+    jobId,
+    root: string(job, "root", where),
+    exclude: strings(job, "exclude", where),
+    select: strings(job, "select", where),
+    skip: strings(job, "skip", where),
   };
 }
 
@@ -522,6 +559,16 @@ function string(
   where: string,
 ): string {
   return stringValue(field(owner, key), `${where} "${key}"`);
+}
+
+function strings(
+  owner: Record<string, unknown>,
+  key: string,
+  where: string,
+): readonly string[] {
+  return array(owner, key, where).map((value) =>
+    stringValue(value, `${where} "${key}"`),
+  );
 }
 
 function optionalString(
