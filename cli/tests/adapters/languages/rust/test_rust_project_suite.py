@@ -269,16 +269,51 @@ def test_a_debugged_test_that_never_reported_crashed(tmp_path):
     assert tests[0].outcome == Crashed(-1, ("last words",))
 
 
+LOG = "libtest.log"
+
+
 class LldbServerTests(ScriptedTests):
+    """`lldb-server` sends the test's output to the debugger only; libtest's log file is what
+    the test leaves."""
+
+    log: str = ""
+
     def debug(self, test: DebuggedTest) -> None:
         self.debugged.append(test)
+        path = test.command[test.command.index("--logfile") + 1]
+        Path(path).write_text(self.log)
 
 
-def test_under_lldb_server_the_outcome_is_not_known(tmp_path):
+def debug_under_lldb_server(tmp_path: Path, log: str) -> SuiteTest:
     processes = LldbServerTests(scripted().answers)
+    processes.log = log
     tests, _, _ = debug(processes, built(LEVEL_TARGET, scratch=tmp_path), server=LLDB_SERVER)
-    assert tests[0].outcome == Raised(
-        UserError("libtest", "the outcome of a test debugged under lldb-server is not known"), 0
+    return tests[0]
+
+
+def test_under_lldb_server_a_passing_test_is_read_from_libtests_log(tmp_path):
+    assert debug_under_lldb_server(tmp_path, "ok ex1\n").outcome == Passed(0, "")
+
+
+def test_under_lldb_server_a_failing_test_is_read_from_libtests_log(tmp_path):
+    outcome = debug_under_lldb_server(tmp_path, "failed ex1\n").outcome
+    assert isinstance(outcome, AssertionFailed)
+
+
+def test_under_lldb_server_a_test_that_left_no_result_crashed(tmp_path):
+    assert debug_under_lldb_server(tmp_path, "").outcome == Crashed(-1, ())
+
+
+def test_lldb_server_runs_the_test_with_libtests_log_in_the_scratch_directory(tmp_path):
+    processes = LldbServerTests(scripted().answers)
+    debug(processes, built(LEVEL_TARGET, scratch=tmp_path), server=LLDB_SERVER)
+    assert processes.debugged[0].command[-6:] == (
+        str(LEVEL_1),
+        "--exact",
+        "ex1",
+        "--nocapture",
+        "--logfile",
+        str(tmp_path / LOG),
     )
 
 
@@ -290,6 +325,13 @@ def test_lldb_server_runs_as_a_gdbserver_without_output_files(tmp_path):
         "gdbserver",
         "--named-pipe",
     )
+
+
+def test_debugserver_runs_the_test_without_a_log_file(tmp_path):
+    processes = scripted()
+    processes.debug_output = OK.format(name="ex1")
+    debug(processes, built(LEVEL_TARGET, scratch=tmp_path))
+    assert "--logfile" not in processes.debugged[0].command
 
 
 # real processes

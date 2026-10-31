@@ -113,6 +113,32 @@ def debugged_outcome(name: str, output: str, root: Path) -> SuiteOutcome:
     return AssertionFailed(report.failure(root), 0, report.printed())
 
 
+LOGGED_FAILURE = "the test failed; its panic message went to the debugger, not to cstudy"
+_LOGGED_DETAIL = ": "
+
+
+def logged_outcome(name: str, log: str) -> SuiteOutcome:
+    """The outcome of the test `name` that ran under `lldb-server`, from the file libtest wrote
+    for `--logfile`: one line `ok <name>`, `failed <name>` or `ignored <name>` (with `: <note>`
+    after the word for a failure's note or an ignore's reason). `lldb-server` sends the test's
+    output only to the debugger, so the log is all that is left; a missing line means the test
+    crashed. A debugged run has no durations."""
+    suffix = f" {name}"
+    results = [line.removesuffix(suffix) for line in log.splitlines() if line.endswith(suffix)]
+    if not results:
+        return Crashed(DEBUGGED_EXIT, ())
+    word, _, detail = results[-1].partition(_LOGGED_DETAIL)
+    match word:
+        case "ok":
+            return Passed(0, "")
+        case "ignored":
+            return Skipped(detail or _IGNORED, 0)
+        case "failed":
+            return AssertionFailed(detail or LOGGED_FAILURE, 0)
+        case _:
+            return Crashed(DEBUGGED_EXIT, ())
+
+
 @dataclass(frozen=True, slots=True)
 class _Report:
     name: str

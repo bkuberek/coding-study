@@ -10,6 +10,7 @@ from coding_study.adapters.languages.rust.libtest import (
     FinishedTest,
     finished_outcome,
     listed_tests,
+    logged_outcome,
 )
 from coding_study.domain.runs import Crashed, Raised, UserError
 from coding_study.domain.suite_runs import AssertionFailed, Passed, Skipped
@@ -163,3 +164,43 @@ def test_output_beyond_4_kib_is_truncated_with_a_notice():
     found = outcome("ok", 0, long)
     assert isinstance(found, Passed)
     assert found.stdout == "x" * 4096 + "\n[output truncated at 4 KiB]\n"
+
+
+# libtest's `--logfile`: the only report of a test debugged under lldb-server, whose output goes
+# to the debugger. The lines are recorded from real runs.
+
+
+@pytest.mark.parametrize("name", ["ex1", "ledger::tests::posts_twice"])
+def test_a_logged_ok_is_a_pass(name):
+    assert logged_outcome(name, f"ok {name}\n") == Passed(0, "")
+
+
+def test_a_logged_failure_says_that_the_panic_went_to_the_debugger():
+    outcome = logged_outcome("ex1", "failed ex1\n")
+    assert outcome == AssertionFailed(
+        "the test failed; its panic message went to the debugger, not to cstudy", 0
+    )
+
+
+def test_a_logged_failure_with_libtests_own_note_shows_the_note():
+    log = "failed: test did not panic as expected at u.rs:1:28 should_not\n"
+    assert logged_outcome("should_not", log) == AssertionFailed(
+        "test did not panic as expected at u.rs:1:28", 0
+    )
+
+
+def test_a_logged_ignored_test_is_skipped():
+    assert logged_outcome("slow", "ignored slow\n") == Skipped("ignored", 0)
+
+
+def test_a_logged_ignored_test_keeps_its_reason():
+    assert logged_outcome("slow", "ignored: not today slow\n") == Skipped("not today", 0)
+
+
+@pytest.mark.parametrize("log", ["", "\n"], ids=["no file content", "a blank line"])
+def test_a_log_without_a_result_means_the_test_crashed(log):
+    assert logged_outcome("ex1", log) == Crashed(-1, ())
+
+
+def test_a_result_of_another_test_does_not_count():
+    assert logged_outcome("ex1", "ok ex2\n") == Crashed(-1, ())

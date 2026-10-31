@@ -9,6 +9,8 @@ its own process: the next test runs, and nothing restarts.
 `cstudy test --debug` runs one test under Rust's debug server, which holds it at its entry point
 until the IDE connects. The server sends the test's output to the debugger, so `debugserver` writes
 it to files instead (`--stdout-path`, `--stderr-path`), and the outcome is read from them.
+`lldb-server` has no such option; the test writes libtest's own log (`--logfile`), which holds
+the outcome and nothing else.
 """
 
 import os
@@ -28,6 +30,7 @@ from coding_study.adapters.languages.rust.libtest import (
     debugged_outcome,
     finished_outcome,
     listed_tests,
+    logged_outcome,
 )
 from coding_study.adapters.languages.rust.project_build import BuiltTests, SuiteTarget
 from coding_study.adapters.process_liveness import OrphanGuard, kill_processes_started_from
@@ -45,9 +48,10 @@ GDBSERVER_MODE = "gdbserver"
 READY_FILE = "debug-port"
 DEBUG_STDOUT = "stdout.txt"
 DEBUG_STDERR = "stderr.txt"
+LIBTEST_LOG = "libtest.log"
+LOGFILE = "--logfile"
 SERVER_OUTPUT = "debug-server.txt"
 ONE_DEBUGGED_TEST = "a debug run of a Rust project runs one test; pick it with --case"
-UNKNOWN_UNDER_LLDB_SERVER = "the outcome of a test debugged under lldb-server is not known"
 UNCLEAN_ENVIRONMENT = ("RUST_BACKTRACE", "RUST_LIB_BACKTRACE")
 """Left out of a test's environment: with them unset, a panic's message ends with libtest's note
 on backtraces, which is where `libtest` finds its end."""
@@ -184,13 +188,13 @@ class LibtestSuite:
         output = () if lldb_server else (f"--stdout-path={stdout}", f"--stderr-path={stderr}")
         ready_file = scratch / READY_FILE
         session = debugging.session
-        test = (str(binary), EXACT, name, NO_CAPTURE)
+        log = scratch / LIBTEST_LOG
+        test = (str(binary), EXACT, name, NO_CAPTURE, *((LOGFILE, str(log)) if lldb_server else ()))
         command = (*server, *output, "--named-pipe", str(ready_file), session.address, "--", *test)
         announce = lambda: debugging.announce(session.ready_line)  # noqa: E731
         self._processes.debug(DebuggedTest(command, self._root, ready_file, scratch, announce))
         if lldb_server:
-            unknown: SuiteOutcome = Raised(UserError(LIBTEST_ERROR, UNKNOWN_UNDER_LLDB_SERVER), 0)
-            return self._finished(test_id, unknown)
+            return self._finished(test_id, logged_outcome(name, _read(log)))
         text = _read(stdout) + _read(stderr)
         return self._finished(test_id, debugged_outcome(name, text, self._root))
 

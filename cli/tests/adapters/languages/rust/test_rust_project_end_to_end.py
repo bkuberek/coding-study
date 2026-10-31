@@ -26,7 +26,7 @@ from coding_study.application.environment import Environment
 from coding_study.application.project_runs import GradingRun, SuiteRun, run_grading, run_suite
 from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.config import Config, HangGuardSettings
-from coding_study.domain.debugging import LLDB_SERVER, DebugSession
+from coding_study.domain.debugging import DebugSession
 from coding_study.domain.judging import Judgement
 from coding_study.domain.levels import cases_up_to
 from coding_study.domain.problem import Language, Problem
@@ -54,11 +54,9 @@ POLL_SECONDS = 0.05
 LEDGER_OPEN_LINE = 13
 """The first statement of `Ledger::open` in the reference's src/ledger.rs."""
 ABORTED_EXIT = 128 + signal.SIGABRT
-DEBUG_SERVER = InstalledDebugServers(this_machine()).lldb_server()
-NO_LLDB = DEBUG_SERVER.path is None or not shutil.which("lldb")
-DEBUGGED_OUTCOME = Raised if DEBUG_SERVER.name == LLDB_SERVER else Passed
-"""`debugserver` (macOS) writes the test's output to files that give its outcome; `lldb-server`
-(Linux) sends it only to the debugger, so the outcome is reported as not known."""
+NO_LLDB = InstalledDebugServers(this_machine()).lldb_server().path is None or not shutil.which(
+    "lldb"
+)
 STATUSES = """\
 use std::process;
 use std::thread;
@@ -335,5 +333,5 @@ def test_a_debugged_test_stops_at_a_breakpoint_in_the_projects_code(
         report = running.result(timeout=READY_TIMEOUT_SECONDS)
     assert "stop reason = breakpoint 1.1" in printed
     assert [(test.test_id, type(test.outcome)) for test in report.tests] == [
-        ("tests/level_1.rs::ex1", DEBUGGED_OUTCOME),
+        ("tests/level_1.rs::ex1", Passed),
     ]
