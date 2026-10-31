@@ -80,8 +80,18 @@ export class FileTreePanel {
 
   /** Reads the tree again and draws it, as after a change to a file. */
   async refresh(): Promise<void> {
-    this.#tree = await this.#setup.tabs.files.tree();
+    this.show(await this.#setup.tabs.files.tree());
+  }
+
+  /** Draws a tree the caller already read. */
+  show(tree: Tree): void {
+    this.#tree = tree;
     this.#render();
+  }
+
+  /** Whether the tree, as last drawn, lists the file. */
+  has(path: string): boolean {
+    return this.#tree.entries.some((entry) => entry.path === path);
   }
 
   destroy(): void {

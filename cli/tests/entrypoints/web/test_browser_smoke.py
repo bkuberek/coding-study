@@ -1,10 +1,13 @@
 """The page in a real browser (docs/specs/web-ui.md#testing): log in with the printed URL, open
 the problem list, open a project problem with its statement, resume its attempt, open a file of
 its tree in the editor, edit it and save it with Cmd or Ctrl-S, see its state turn `modified`,
-then restore it from the tree and see it `unchanged`, under the page's Content Security Policy.
+restore it from the tree and see it `unchanged`, run its tests and see their rows while the run goes
+on, cancel that run, and run the tests to their end, under the page's Content Security Policy.
 
-Playwright is in the optional `browser` dependency group: `uv sync --group browser`, then
-`uv run --group browser playwright install chromium`. Without either the test is skipped.
+The workspace shares the session's practice workspace's toolchains, so the project's suite runs
+with the real pytest. Playwright is in the optional `browser` dependency group: `uv sync --group
+browser`, then `uv run --group browser playwright install chromium`. Without either the test is
+skipped.
 """
 
 import subprocess
@@ -12,12 +15,12 @@ import sys
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 import pytest
 
-from tests.helpers import mark_workspace
 from tests.serve_process import RunningServer, running_server, served_environment
+from tests.workspaces import workspace_like
 
 pytestmark = pytest.mark.slow
 sync_api = pytest.importorskip("playwright.sync_api", reason="Playwright is not installed")
@@ -28,6 +31,10 @@ TYPED = "# saved from the page"
 WAIT_MS = 60_000
 FILE_BUTTON = f"button.tree-file[data-path='{FILE}']"
 OPEN_EDITOR = ".panel:not([hidden]) .cm-content"
+RUN_WAIT_MS = 240_000
+"""Generous for a run: the machine running the slow tests is often loaded."""
+SLOW_TEST = "tests/test_slow.py"
+SLOW_TEST_TEXT = "import time\n\n\ndef test_slow():\n    time.sleep(120)\n"
 
 
 class ConsoleLine(Protocol):
@@ -80,24 +87,28 @@ class Visit:
     saved_text: str = ""
     restored_badges: int = -1
     restored_editor: str = ""
+    rows_while_running: list[str] = field(default_factory=list[str])
+    cancelled: str = ""
+    finished: str = ""
     errors: list[str] = field(default_factory=list[str])
 
 
 @pytest.fixture(scope="module")
-def workspace(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    return mark_workspace(tmp_path_factory.mktemp("browser") / "workspace")
-
-
-@pytest.fixture(scope="module")
-def server(workspace: Path) -> Iterator[RunningServer]:
+def workspace(practice_workspace: Path, tmp_path_factory: pytest.TempPathFactory) -> Path:
+    root = workspace_like(practice_workspace, tmp_path_factory.mktemp("browser") / "workspace")
     subprocess.run(
         [sys.executable, "-m", "coding_study", "start", PROJECT, "--no-open"],
-        env=served_environment(workspace),
-        cwd=workspace,
+        env=served_environment(root),
+        cwd=root,
         stdin=subprocess.DEVNULL,
         capture_output=True,
         check=True,
     )
+    return root
+
+
+@pytest.fixture(scope="module")
+def server(workspace: Path) -> Iterator[RunningServer]:
     with running_server(workspace) as running:
         yield running
 
@@ -129,6 +140,10 @@ def visit(server: RunningServer, workspace: Path) -> Visit:
         _save_an_edit(page, seen)
         seen.saved_text = (workspace / "projects" / PROJECT / FILE).read_text()
         _restore(page, seen)
+        _run_and_cancel(page, workspace / "projects" / PROJECT / SLOW_TEST, seen)
+        page.click(".run-button.primary")
+        finished = ".result-summary-text:has-text('passed')"
+        seen.finished = page.wait_for_selector(finished, timeout=RUN_WAIT_MS).inner_text()
         browser.close()
     return seen
 
@@ -153,6 +168,21 @@ def _restore(page: BrowserPage, seen: Visit) -> None:
     page.wait_for_selector(f"{FILE_BUTTON}:not(:has(.badge))")
     seen.restored_badges = page.locator(f"{FILE_BUTTON} .badge").count()
     seen.restored_editor = page.locator(OPEN_EDITOR).inner_text()
+
+
+def _run_and_cancel(page: Any, slow_test: Path, seen: Visit) -> None:
+    """Runs the tests with one that sleeps, reads the rows shown while it runs, then cancels."""
+    slow_test.write_text(SLOW_TEST_TEXT)
+    try:
+        page.click(".run-button.primary")
+        page.wait_for_selector(".result-running:has-text('test_slow')", timeout=RUN_WAIT_MS)
+        seen.rows_while_running = page.locator(".result-row .result-id").all_inner_texts()
+        page.click(".cancel-button")
+        page.wait_for_selector(".result-summary", timeout=RUN_WAIT_MS)
+        seen.cancelled = page.locator(".result-summary-text").inner_text()
+    finally:
+        slow_test.unlink(missing_ok=True)
+    page.wait_for_selector(".run-button.primary:not([disabled])")
 
 
 def _console(seen: Visit, message: ConsoleLine) -> None:
@@ -194,6 +224,18 @@ def test_a_restore_from_the_tree_turns_it_unchanged(visit):
 
 def test_a_restore_shows_the_starter_in_the_open_tab(visit):
     assert TYPED not in visit.restored_editor
+
+
+def test_a_run_shows_its_test_rows_while_it_goes_on(visit):
+    assert visit.rows_while_running == ["test_ex1", "test_ex2"]
+
+
+def test_a_cancelled_run_ends_interrupted(visit):
+    assert visit.cancelled == "interrupted"
+
+
+def test_a_run_ends_with_the_reports_summary(visit):
+    assert visit.finished.startswith("0/2 passed · 2 errors · total ")
 
 
 def test_the_page_logs_no_error_under_its_content_security_policy(visit):

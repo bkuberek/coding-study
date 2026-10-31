@@ -31,6 +31,8 @@ interface OpenFile {
 
 export type SavedListener = (path: string) => void;
 
+export type EditorListener = (path: string, editor: Editor) => void;
+
 export class EditorTabs {
   readonly element: HTMLElement;
   readonly files: AttemptFiles;
@@ -40,6 +42,7 @@ export class EditorTabs {
   readonly #placeholder: HTMLElement;
   readonly #open = new Map<string, OpenFile>();
   readonly #savedListeners = new Set<SavedListener>();
+  readonly #editorListeners = new Set<EditorListener>();
   readonly #untrack: () => void;
   #active: string | null = null;
   #destroyed = false;
@@ -136,6 +139,17 @@ export class EditorTabs {
     this.#open.clear();
   }
 
+  /** The editors of the open files whose text shows, by path. */
+  editors(): Map<string, Editor> {
+    return new Map([...this.#open].flatMap(([path, { editor }]) => (editor ? [[path, editor] as const] : [])));
+  }
+
+  /** Calls `listener` with each editor once its file's text shows; the function returned removes it. */
+  onEditor(listener: EditorListener): () => void {
+    this.#editorListeners.add(listener);
+    return () => this.#editorListeners.delete(listener);
+  }
+
   async #show(file: OpenFile, document: FileDocument): Promise<void> {
     if (document.text === null) {
       file.panel.replaceChildren(
@@ -170,6 +184,7 @@ export class EditorTabs {
     file.editor = editor;
     file.view = view;
     view.attach(editor);
+    for (const listener of this.#editorListeners) listener(path, editor);
   }
 
   #addTab(path: string): OpenFile {

@@ -1,0 +1,580 @@
+/*
+ * Runs and jobs: the run controls in the attempt's header, the results panel as a terminal pane
+ * below the editors, and a job's report. Rows set in the report's columns (status, id, facts), the
+ * failing ones ruled in the fail ink; stress runs as a strip of cells that fill as runs end. Every
+ * status is a glyph and a word; colour only repeats it.
+ */
+
+/* the run controls */
+
+.run-toolbar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.run-toolbar .button {
+  padding: 3px 10px;
+}
+
+.run-toolbar kbd {
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font: inherit;
+  font-size: var(--text-xs);
+  opacity: 0.7;
+}
+
+.run-button span[aria-hidden="true"],
+.cancel-button span[aria-hidden="true"] {
+  font-size: 0.85em;
+}
+
+.cancel-button:not(:disabled) {
+  border-color: var(--fail);
+  color: var(--fail);
+}
+
+.run-toolbar.is-running .run-button.primary {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0 6px,
+    color-mix(in srgb, var(--on-accent) 18%, transparent) 6px 12px
+  );
+  background-size: 34px 34px;
+  animation: run-stripes 0.9s linear infinite;
+}
+
+@keyframes run-stripes {
+  to {
+    background-position: 34px 0;
+  }
+}
+
+/* the results panel */
+
+.workbench .results {
+  display: grid;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  max-height: 46vh;
+  padding: 0;
+  overflow: hidden;
+}
+
+.results-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 7px 18px 6px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.results-head .eyebrow {
+  margin: 0;
+}
+
+.results-title {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--text-s);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.show-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.results-progress {
+  display: block;
+  width: 100%;
+  height: 3px;
+  border: 0;
+  appearance: none;
+  background: var(--rule);
+  color: var(--accent);
+}
+
+.results-progress::-webkit-progress-bar {
+  background: var(--rule);
+}
+
+.results-progress::-webkit-progress-value {
+  background: var(--accent);
+  transition: width 0.2s ease-out;
+}
+
+.results-progress::-moz-progress-bar {
+  background: var(--accent);
+}
+
+.results-progress:indeterminate {
+  background: linear-gradient(90deg, var(--rule) 0 35%, var(--accent) 35% 55%, var(--rule) 55%) 0 0 / 300% 100%;
+  animation: progress-sweep 1.2s linear infinite;
+}
+
+.results-progress:indeterminate::-webkit-progress-bar {
+  background: transparent;
+}
+
+.results-progress:indeterminate::-moz-progress-bar {
+  background: transparent;
+}
+
+@keyframes progress-sweep {
+  from {
+    background-position: 100% 0;
+  }
+
+  to {
+    background-position: 0 0;
+  }
+}
+
+.results-body {
+  overflow: auto;
+  padding: 8px 18px 14px;
+  font-size: var(--text-s);
+  line-height: 1.5;
+}
+
+.results-body:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.result-label {
+  display: inline-block;
+  min-width: 10ch;
+  color: var(--ink-soft);
+}
+
+.result-build {
+  margin: 0 0 6px;
+}
+
+.result-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.result-row {
+  display: grid;
+  grid-template-columns: 9ch minmax(6ch, max-content) 1fr;
+  column-gap: 12px;
+  align-items: baseline;
+  padding: 1px 0 1px 8px;
+  border-left: 2px solid transparent;
+}
+
+.result-row .badge {
+  font-weight: 600;
+}
+
+.result-id {
+  overflow-wrap: anywhere;
+}
+
+.result-facts {
+  color: var(--ink-soft);
+}
+
+.result-row.status-fail,
+.result-row.status-error,
+.result-row.status-timeout,
+.result-row.status-invalid,
+.result-row.status-stalled {
+  border-left-color: var(--fail);
+  background: color-mix(in srgb, var(--fail) 5%, transparent);
+}
+
+.result-row.status-tle {
+  border-left-color: var(--warn);
+}
+
+.result-count .result-id {
+  color: var(--ink-soft);
+}
+
+.result-more {
+  grid-template-columns: 1fr;
+  padding-left: calc(9ch + 20px);
+  color: var(--ink-soft);
+}
+
+.result-file {
+  margin: 8px 0 2px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--rule);
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+}
+
+.result-file:first-child {
+  margin-top: 0;
+  border-top: 0;
+}
+
+.result-details {
+  display: grid;
+  grid-column: 2 / -1;
+  grid-template-columns: max-content 1fr;
+  column-gap: 12px;
+  margin: 2px 0 6px;
+}
+
+.result-details dt {
+  color: var(--ink-soft);
+}
+
+.result-details dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.result-level {
+  grid-template-columns: 9ch 9ch 1fr;
+  margin-top: 4px;
+}
+
+.result-level-name {
+  color: var(--ink-soft);
+}
+
+.result-running,
+.result-notice {
+  margin: 4px 0 0 8px;
+  color: var(--ink-soft);
+}
+
+.result-running .badge {
+  animation: blink 0.8s steps(1) infinite;
+}
+
+/* stress runs */
+
+.result-stress {
+  grid-template-columns: 9ch minmax(6ch, max-content) max-content 1fr;
+}
+
+.stress-dots {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-self: center;
+}
+
+.stress-dot {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--rule);
+  border-radius: 1px;
+}
+
+.dot-pass {
+  border-color: var(--ok);
+  background: var(--ok);
+}
+
+.dot-fail,
+.dot-error,
+.dot-invalid,
+.dot-stalled,
+.dot-timeout {
+  border-color: var(--fail);
+  background: var(--fail);
+}
+
+.dot-not_run {
+  border-style: dashed;
+}
+
+.dot-running {
+  border-color: var(--accent);
+  animation: blink 0.8s steps(1) infinite;
+}
+
+.stress-failures {
+  grid-column: 2 / -1;
+  margin: 2px 0 6px;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-soft);
+}
+
+.stress-failures .ghost {
+  padding: 0 6px;
+  border-color: var(--rule);
+  color: var(--accent);
+}
+
+.result-reason {
+  color: var(--ink);
+}
+
+/* diagnostics, a level that opened, perf and the summary */
+
+.result-diagnostics {
+  margin-top: 10px;
+  padding-top: 6px;
+  border-top: 1px solid var(--rule);
+}
+
+.result-diagnostics h3 {
+  margin: 0 0 4px;
+}
+
+.result-diagnostics ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.diagnostic {
+  padding: 1px 0;
+}
+
+.diagnostic-jump {
+  padding: 0 4px;
+  border: 0;
+  border-bottom: 1px dotted var(--accent);
+  border-radius: 0;
+  background: transparent;
+  color: var(--accent);
+}
+
+.diagnostic-jump:hover {
+  background: var(--accent-soft);
+}
+
+.diagnostic-place {
+  font-variant-numeric: tabular-nums;
+}
+
+.result-unlocked {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--ok);
+  border-left-width: 3px;
+  background: color-mix(in srgb, var(--ok) 7%, var(--paper-raised));
+}
+
+.result-unlocked p {
+  margin: 2px 0;
+}
+
+.result-unlocked-title {
+  font-weight: 600;
+}
+
+.result-perf {
+  margin-top: 8px;
+}
+
+.result-perf p {
+  margin: 2px 0;
+}
+
+.result-summary {
+  margin-top: 10px;
+  padding-top: 6px;
+  border-top: 2px solid currentColor;
+}
+
+.result-summary-text {
+  margin: 0;
+  font-weight: 700;
+}
+
+.result-note {
+  margin: 2px 0 0;
+  color: var(--ink-soft);
+  font-weight: 400;
+  white-space: pre-wrap;
+}
+
+/* run options */
+
+.run-options {
+  padding: 8px 18px 10px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper-raised);
+}
+
+.run-options-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  align-items: end;
+}
+
+.run-option {
+  display: grid;
+  gap: 2px;
+  font-size: var(--text-xs);
+}
+
+.run-option label {
+  color: var(--ink-soft);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.run-option input[type="text"],
+.run-option input[type="number"],
+.run-option select {
+  width: auto;
+  min-width: 9ch;
+  padding: 3px 6px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-s);
+}
+
+.run-option input[type="number"] {
+  width: 9ch;
+}
+
+.run-option-hint {
+  color: var(--ink-soft);
+}
+
+.run-option-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.run-option-check label {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.run-options-pair {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.run-options-command {
+  margin: 8px 0 0;
+  font-size: var(--text-s);
+}
+
+/* a job */
+
+.job {
+  margin: 12px 0;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--chrome);
+  color: var(--chrome-ink);
+}
+
+.results .job {
+  margin: 0;
+  border-width: 1px 0;
+  border-radius: 0;
+}
+
+.job-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--chrome-raised);
+}
+
+.job-head .eyebrow {
+  color: var(--chrome-soft);
+}
+
+.job-head .cmd {
+  border-color: var(--chrome-raised);
+  background: var(--chrome-raised);
+  color: var(--chrome-ink);
+}
+
+.job-head .quiet {
+  color: var(--chrome-soft);
+}
+
+.job-cancel {
+  padding: 2px 10px;
+  border-color: var(--chrome-raised);
+  background: transparent;
+  color: var(--chrome-ink);
+}
+
+.job-cancel:not(:disabled) {
+  border-color: var(--fail);
+}
+
+.job-log {
+  max-height: 32vh;
+  margin: 0;
+  overflow: auto;
+  padding: 8px 12px 10px;
+  font: var(--text-s) / 1.45 var(--font-mono);
+  white-space: pre-wrap;
+}
+
+.job-log:empty::before {
+  content: "…";
+  color: var(--chrome-soft);
+}
+
+.job-stderr {
+  color: var(--chrome-soft);
+}
+
+.job .state-error {
+  background: transparent;
+  color: var(--chrome-ink);
+}
+
+/* the Health view's fix and own problems */
+
+.health-fix {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.own {
+  margin-top: 28px;
+}
+
+.verify-switches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  color: var(--ink-soft);
+}
+
+.own-problem-list li {
+  padding: 3px 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .result-running .badge,
+  .dot-running,
+  .results-progress:indeterminate,
+  .run-toolbar.is-running .run-button.primary {
+    animation: none;
+  }
+}

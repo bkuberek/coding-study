@@ -1,7 +1,59 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { ApiError, CSRF_HEADER, createApi, errorOf, type Fetch } from "../src/page/api.ts";
+import { ApiError, CSRF_HEADER, createApi, errorOf, FILE_SAVED_EVENT, type Fetch, type FileSaved } from "../src/page/api.ts";
+
+function heard(events: EventTarget): FileSaved[] {
+  const saved: FileSaved[] = [];
+  events.addEventListener(FILE_SAVED_EVENT, (event) => saved.push((event as CustomEvent<FileSaved>).detail));
+  return saved;
+}
+
+test("an error keeps the fields its document adds, such as the run holding a slot", () => {
+  const error = errorOf(409, '{"error": {"code": "conflict", "message": "busy", "fix": null, "run": "c8a4"}}');
+  assert.equal(error.details["run"], "c8a4");
+});
+
+test("saving a file of an attempt tells the page which one", async () => {
+  const events = new EventTarget();
+  const saved = heard(events);
+  const { fetcher } = recording(200, '{"path": "bank/bank.py", "sha256": "ab"}');
+  await createApi("csrf", fetcher, events).put("/api/v1/attempts/7/files/bank/bank%20one.py", { text: "" });
+  assert.deepEqual(saved, [{ attemptId: 7, path: "bank/bank one.py" }]);
+});
+
+test("saving a file through send tells the page which one", async () => {
+  const events = new EventTarget();
+  const saved = heard(events);
+  const { fetcher } = recording(200, '{"path": "a.py", "sha256": "ab"}');
+  await createApi("csrf", fetcher, events).send("PUT", "/api/v1/attempts/7/files/a.py", { body: { text: "" }, headers: { "If-Match": '"ab"' } });
+  assert.deepEqual(saved, [{ attemptId: 7, path: "a.py" }]);
+});
+
+test("deleting or moving a file is no save", async () => {
+  const events = new EventTarget();
+  const saved = heard(events);
+  const api = createApi("csrf", recording(200, "").fetcher, events);
+  await api.send("DELETE", "/api/v1/attempts/7/files/a.py");
+  await api.post("/api/v1/attempts/7/files/a.py/move", { to: "b.py" });
+  assert.deepEqual(saved, []);
+});
+
+test("a save the server refused tells nothing", async () => {
+  const events = new EventTarget();
+  const saved = heard(events);
+  const { fetcher } = recording(412, '{"error": {"code": "precondition_failed", "message": "stale", "fix": null}}');
+  await assert.rejects(createApi("csrf", fetcher, events).put("/api/v1/attempts/7/files/a.py", { text: "" }));
+  assert.deepEqual(saved, []);
+});
+
+test("storing the preferences saves no file", async () => {
+  const events = new EventTarget();
+  const saved = heard(events);
+  const { fetcher } = recording(200, "{}");
+  await createApi("csrf", fetcher, events).put("/api/v1/preferences", { vim: true });
+  assert.deepEqual(saved, []);
+});
 
 interface Sent {
   readonly path: string;

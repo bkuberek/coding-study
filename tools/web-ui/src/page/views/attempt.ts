@@ -1,14 +1,15 @@
 /**
- * The Attempt view (docs/specs/web-ui.md#attempt-view): the header with the timer, the file tree,
- * the editor tabs, the statement with its levels and hints, and the results panel, which shows the
- * latest recorded run until the page runs tests itself.
+ * The Attempt view (docs/specs/web-ui.md#attempt-view): the header with the timer, the attempt's
+ * Hint, Solution and Done and the run controls, the file tree, the editor tabs, the statement with
+ * its levels and hints, and the results panel, where runs stream.
  */
 
-import { attemptFlows } from "../attempts.ts";
+import { type AttemptFlows, attemptFlows } from "../attempts.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { badge, command, h, rendered } from "../dom.ts";
 import { secondsSince, timerText } from "../format.ts";
 import { problemHash } from "../routes.ts";
+import { AttemptRuns } from "../runs.ts";
 import { loading, showFailure } from "../states.ts";
 import { FileTreePanel } from "../fileTreePanel.ts";
 import type { AttemptStatus, Rendered, Tree } from "../types.ts";
@@ -26,14 +27,36 @@ export function attemptView(context: PageContext, id: number): Cleanup {
 
   const tabs = new EditorTabs(context, id);
   const unsubscribe = context.onPreferences((preferences) => tabs.applyPreferences(preferences));
+  const runs = new AttemptRuns({
+    context,
+    attemptId: id,
+    tabs,
+    refresh: () => void load().catch((error: unknown) => showFailure(page, error)),
+    hasFile: (path) => shown?.files.has(path) ?? false,
+  });
+  const clock = h("span", { class: "timer", role: "timer", "aria-label": "Time on this attempt" });
+  const statusClock = h("span", { class: "segment timer-segment" });
   let timer: number | undefined;
-  let files: FileTreePanel | null = null;
+  let shown: {
+    readonly head: HTMLElement;
+    readonly brief: HTMLElement;
+    readonly flows: AttemptFlows;
+    readonly files: FileTreePanel;
+  } | null = null;
 
-  void Promise.all([api.get<AttemptStatus>(`/api/v1/attempts/${id}`), api.get<Tree>(`/api/v1/attempts/${id}/files`)])
-    .then(async ([status, tree]) => {
-      const statement = await api.get<Rendered>(`/api/v1/problems/${encodeURIComponent(status.slug)}/statement`);
-      const clock = h("span", { class: "timer", role: "timer", "aria-label": "Time on this attempt" });
-      const statusClock = h("span", { class: "segment timer-segment" });
+  /** Draws the attempt; once drawn, a second call, after a run opened a level, redraws the header, tree and statement. */
+  const load = async () => {
+    const [status, tree] = await Promise.all([api.get<AttemptStatus>(`/api/v1/attempts/${id}`), api.get<Tree>(`/api/v1/attempts/${id}/files`)]);
+    const statement = await api.get<Rendered>(`/api/v1/problems/${encodeURIComponent(status.slug)}/statement`);
+    if (shown) {
+      // The hints this tab revealed and the controls live on; only what the new level changes is drawn again.
+      shown.flows.update(status);
+      const next = { ...shown, head: head(status, clock, shown.flows, runs.toolbar), brief: brief(status, statement, shown.flows.hints) };
+      shown.head.replaceWith(next.head);
+      shown.brief.replaceWith(next.brief);
+      shown.files.show(tree);
+      shown = next;
+    } else {
       const tick = () => {
         const text = timerText(secondsSince(status.started_at, Date.now()), status.timer?.limit_s ?? null);
         clock.textContent = text;
@@ -45,38 +68,35 @@ export function attemptView(context: PageContext, id: number): Cleanup {
       tick();
       timer = window.setInterval(tick, TICK_MS);
       const flows = attemptFlows(context, status);
+      const files = new FileTreePanel({ attempt: status, tree, tabs, announce: (message) => shell.announce(message) });
+      tabs.onSaved(() => void files.refresh().catch(() => {}));
+      shown = { head: head(status, clock, flows, runs.toolbar), brief: brief(status, statement, flows.hints), flows, files };
       page.removeAttribute("aria-busy");
-      files = new FileTreePanel({ attempt: status, tree, tabs, announce: (message) => shell.announce(message) });
-      const panel = files;
-      tabs.onSaved(() => void panel.refresh().catch(() => {}));
-      page.replaceChildren(
-        head(status, clock, flows.actions),
-        files.element,
-        tabs.element,
-        brief(status, statement, flows.hints),
-        results(status),
-      );
+      page.replaceChildren(shown.head, files.element, tabs.element, shown.brief, runs.panel);
       shell.setCommand(`cstudy status ${status.slug}`);
-      shell.setStatus({
-        mode: status.mode.toUpperCase(),
-        where: [status.slug, status.language, status.kind].filter(Boolean).join(" · "),
-        extra: [levelSegment(status), statusClock].filter((node): node is HTMLElement => node !== null),
-      });
       document.title = `${status.slug} · cstudy`;
       const first = tree.entries.find((entry) => entry.origin === "stub" || entry.origin === "notes");
       if (first) void tabs.open(first.path);
-    })
-    .catch((error: unknown) => showFailure(page, error));
+    }
+    shell.setStatus({
+      mode: status.mode.toUpperCase(),
+      where: [status.slug, status.language, status.kind].filter(Boolean).join(" · "),
+      extra: [levelSegment(status), statusClock].filter((node): node is HTMLElement => node !== null),
+    });
+    await runs.setAttempt(status, tree.root);
+  };
+  void load().catch((error: unknown) => showFailure(page, error));
 
   return () => {
     window.clearInterval(timer);
     unsubscribe();
+    runs.destroy();
     tabs.destroy();
-    files?.destroy();
+    shown?.files.destroy();
   };
 }
 
-function head(status: AttemptStatus, clock: HTMLElement, actions: HTMLElement): HTMLElement {
+function head(status: AttemptStatus, clock: HTMLElement, flows: AttemptFlows, toolbar: HTMLElement): HTMLElement {
   return h(
     "header",
     { class: "attempt-head" },
@@ -89,7 +109,8 @@ function head(status: AttemptStatus, clock: HTMLElement, actions: HTMLElement): 
     badge("", status.mode, status.mode === "mock" ? "fail" : status.mode === "review" ? "info" : "quiet"),
     status.levels ? h("span", { class: "level" }, `level ${status.levels.unlocked} of ${status.levels.last}`) : null,
     clock,
-    actions,
+    flows.actions,
+    toolbar,
     h("span", { class: "spacer" }),
     h("span", { class: "next-step" }, h("span", { class: "quiet" }, "next "), command(status.next)),
   );
@@ -129,28 +150,5 @@ function brief(status: AttemptStatus, statement: Rendered, hints: HTMLElement): 
       hints,
       status.solution_revealed ? h("p", { class: "tone-warn" }, "solution revealed: the attempt is graded as again") : null,
     ),
-  );
-}
-
-function results(status: AttemptStatus): HTMLElement {
-  const run = status.last_test_run;
-  const test = `cstudy test ${status.slug}` + (status.language && status.kind !== "project" ? ` --lang ${status.language}` : "");
-  return h(
-    "section",
-    { class: "results", "aria-label": "Results" },
-    h("h2", { class: "eyebrow" }, "results"),
-    run
-      ? h(
-          "p",
-          { class: "last-run" },
-          badge(run.passed === run.total ? "✓" : "✕", `${run.passed}/${run.total} passed`, run.passed === run.total ? "ok" : "fail"),
-          h("span", { class: "quiet" }, ` latest cstudy test, ${new Date(run.ran_at).toLocaleString()}`),
-        )
-      : status.kind === "item"
-        ? h("p", { class: "quiet" }, "Items have no runs: answer in the notes.")
-        : h("p", { class: "quiet" }, "No test run yet."),
-    status.kind === "item"
-      ? null
-      : h("p", { class: "quiet" }, "Runs stream here once the page runs tests; for now run ", command(test), " in a terminal."),
   );
 }

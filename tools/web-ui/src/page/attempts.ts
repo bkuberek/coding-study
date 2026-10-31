@@ -136,6 +136,13 @@ class HintControl {
     this.#render();
   }
 
+  /** Takes the count and the lock of the status read after a level opened. */
+  update(status: AttemptStatus): void {
+    this.#used = status.hints.used;
+    this.#lockedUntil = status.hints.locked_until_level;
+    this.#render();
+  }
+
   /** `message` disables the button and describes why; null enables it. */
   setLock(message: string | null): void {
     this.#lock = message;
@@ -184,6 +191,8 @@ export interface AttemptFlows {
   readonly actions: HTMLElement;
   /** The hints this tab revealed, for the statement pane. */
   readonly hints: HTMLElement;
+  /** Takes the status read after a level opened; the hints already revealed stay. */
+  update(status: AttemptStatus): void;
 }
 
 /** The attempt's Hint, Solution and Done controls; Hint and Solution follow the mock lock. */
@@ -193,5 +202,5 @@ export function attemptFlows(context: PageContext, status: AttemptStatus): Attem
   const done = h("button", { type: "button", class: "button", title: `cstudy done ${status.slug}: finish and schedule the review` }, "Done…");
   done.addEventListener("click", () => openLazily(context, () => import("./doneDialog.ts"), (dialog) => dialog.openDoneDialog(context, status)));
   const actions = h("span", { class: "flow-actions", role: "group", "aria-label": "Attempt" }, hints.button, solutionButton(context, status.slug), done);
-  return { actions, hints: hints.panel };
+  return { actions, hints: hints.panel, update: (status) => hints.update(status) };
 }
