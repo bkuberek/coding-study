@@ -4,6 +4,7 @@ from typing import cast
 import pytest
 
 from coding_study.adapters.languages.context import LanguageContext
+from coding_study.adapters.languages.python.test_generator import PythonTestGenerator
 from coding_study.adapters.languages.registry import (
     LANGUAGES,
     LanguageFactories,
@@ -54,3 +55,20 @@ def test_passes_the_context_to_the_runner_factory():
 def test_unregistered_language_is_not_set_up():
     with pytest.raises(LanguageNotSetUpError, match="kotlin runner is not set up yet"):
         fake_registry().runner(Language.KOTLIN, CONTEXT)
+
+
+def test_python_generates_the_tests_of_project_levels():
+    assert isinstance(LANGUAGES.project_test_generator(Language.PYTHON), PythonTestGenerator)
+
+
+@pytest.mark.parametrize("language", [language for language in Language if language != "python"])
+def test_other_languages_generate_no_project_tests_yet(language):
+    with pytest.raises(
+        LanguageNotSetUpError, match=f"{language} project test generator is not set up yet"
+    ):
+        LANGUAGES.project_test_generator(language)
+
+
+def test_an_unregistered_language_generates_no_project_tests():
+    with pytest.raises(LanguageNotSetUpError, match="kotlin project test generator"):
+        fake_registry().project_test_generator(Language.KOTLIN)

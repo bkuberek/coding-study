@@ -6,18 +6,22 @@ from dataclasses import dataclass
 
 from coding_study.adapters.languages import go, jvm, python, rust, typescript
 from coding_study.adapters.languages.context import LanguageContext
-from coding_study.application.ports import LanguageRunner, StubGenerator
+from coding_study.adapters.languages.python.test_generator import PythonTestGenerator
+from coding_study.application.ports import LanguageRunner, ProjectTestGenerator, StubGenerator
 from coding_study.domain.errors import LanguageNotSetUpError
 from coding_study.domain.problem import Language
 
 STUB_GENERATOR = "stub generator"
 RUNNER = "runner"
+PROJECT_TEST_GENERATOR = "project test generator"
 
 
 @dataclass(frozen=True, slots=True)
 class LanguageFactories:
     stub_generator: Callable[[], StubGenerator]
     runner: Callable[[LanguageContext], LanguageRunner]
+    project_test_generator: Callable[[], ProjectTestGenerator] | None = None
+    """None: the language has no project problems yet, or no generated tests for them."""
 
 
 class LanguageRegistry:
@@ -36,6 +40,14 @@ class LanguageRegistry:
         """Raises LanguageNotSetUpError until the language's stream implements it."""
         return self._for(language, RUNNER).runner(context)
 
+    def project_test_generator(self, language: Language) -> ProjectTestGenerator:
+        """Raises LanguageNotSetUpError for a language whose project tests are not generated
+        yet (docs/specs/problem-format.md#generated-test-files)."""
+        factory = self._for(language, PROJECT_TEST_GENERATOR).project_test_generator
+        if factory is None:
+            raise LanguageNotSetUpError(language, PROJECT_TEST_GENERATOR)
+        return factory()
+
     def _for(self, language: Language, component: str) -> LanguageFactories:
         factories = self._factories.get(language)
         if factories is None:
@@ -45,7 +57,9 @@ class LanguageRegistry:
 
 LANGUAGES = LanguageRegistry(
     {
-        Language.PYTHON: LanguageFactories(python.create_stub_generator, python.create_runner),
+        Language.PYTHON: LanguageFactories(
+            python.create_stub_generator, python.create_runner, PythonTestGenerator
+        ),
         Language.TYPESCRIPT: LanguageFactories(
             typescript.create_stub_generator, typescript.create_runner
         ),

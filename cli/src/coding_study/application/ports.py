@@ -20,6 +20,7 @@ from coding_study.domain.items import ItemMeta
 from coding_study.domain.problem import Language, Problem, ProblemMeta, ProblemSummary
 from coding_study.domain.progress_export import ProgressSnapshot
 from coding_study.domain.progress_stats import LatestBench
+from coding_study.domain.project_tests import LevelTests
 from coding_study.domain.runs import RunReport, RunRequest
 from coding_study.domain.scheduling import ProblemProgress, ScheduleEntry
 from coding_study.domain.time_limits import Calibration
@@ -572,4 +573,13 @@ class ChangeWatcher(Protocol):
     def changes(self, path: Path) -> Iterator[None]:
         """Yield once per debounced burst of saves to `path` (a file or a directory tree, whose
         untracked entries, `workspace_projects.is_untracked`, are not watched)."""
+        ...
+
+
+class ProjectTestGenerator(Protocol):
+    """One per project language (docs/specs/problem-format.md#generated-test-files)."""
+
+    def generate(self, tests: LevelTests) -> str:
+        """The native test file of one level, ending with a newline and laid out as the
+        language's formatter lays it out; the caller writes it to `tests.path` in the project."""
         ...
