@@ -11,8 +11,17 @@ from coding_study.application.environment import Environment
 from coding_study.application.practice_catalog import practice_candidates
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.errors import UsageError
-from coding_study.domain.next_selection import NextPick, NextQuery, NextScope, NextSource, pick_next
-from coding_study.domain.problem import Difficulty, Language, Track
+from coding_study.domain.next_selection import (
+    Candidate,
+    NextPick,
+    NextQuery,
+    NextScope,
+    NextSource,
+    pick_next,
+)
+from coding_study.domain.precedence import resolve_language
+from coding_study.domain.problem import Difficulty, Language, ProblemKind, Track
+from coding_study.domain.project import project_language
 from coding_study.domain.taxonomy import PATTERNS
 from coding_study.domain.weakness import GradedAttempt
 
@@ -57,3 +66,16 @@ def _graded(environment: Environment, attempt: Attempt) -> GradedAttempt | None:
         return None
     ended_on = environment.clock.local_date(attempt.ended_at)
     return GradedAttempt(attempt.id, attempt.slug, attempt.grade, attempt.ended_at, ended_on)
+
+
+def start_language(
+    environment: Environment, candidate: Candidate, requested: Language | None
+) -> Language | None:
+    """The language `cstudy next --start` starts `candidate` in: a project problem's own, `--lang`
+    or the config's `default_lang` for another problem, and none for an item."""
+    if not candidate.autograded:
+        return None
+    meta = environment.problems.load(candidate.slug).meta
+    if meta.kind is ProblemKind.PROJECT:
+        return project_language(meta)
+    return resolve_language(requested, environment.config)

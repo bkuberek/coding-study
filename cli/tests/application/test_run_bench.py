@@ -26,6 +26,7 @@ from tests.fakes import (
 )
 from tests.fakes import repository_root as copy_repository
 from tests.helpers import CONCURRENCY_PROBLEMS
+from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 OPTIONS = BenchOptions(sizes=BENCH_SIZES)
@@ -290,3 +291,11 @@ def test_a_problem_without_a_generator_is_a_content_error(environment):
     (environment.root / "problems" / "0001-two-sum" / "generator.py").unlink()
     with pytest.raises(ContentError, match=r"generator\.py"):
         bench(environment)
+
+
+def test_project_problems_have_no_bench(tmp_path):
+    environment = project_environment(tmp_path, ScriptedProjectProcess())
+    start_attempt(environment, StartRequest(PROJECT_SLUG))
+    request = RunBenchRequest(PROJECT_SLUG, Language.PYTHON, OPTIONS)
+    with pytest.raises(UsageError, match="bench is not available for project problems"):
+        run_bench(environment, request, [].append)

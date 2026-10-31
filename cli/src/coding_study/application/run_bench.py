@@ -53,7 +53,7 @@ from coding_study.domain.generated_cases import generated_run_input
 from coding_study.domain.judging import outcome_summary
 from coding_study.domain.naming import symbol_names
 from coding_study.domain.precedence import resolve_hang_guard_ms
-from coding_study.domain.problem import ApproachRole, Language, Problem, ProblemMeta
+from coding_study.domain.problem import ApproachRole, Language, Problem, ProblemKind, ProblemMeta
 from coding_study.domain.problem_files import GENERATOR_FILE, solution_file
 from coding_study.domain.runs import UserError
 from coding_study.domain.value_text import value_text
@@ -163,6 +163,8 @@ def run_bench(
     problem = environment.problems.load(slug)
     if problem.meta.concurrency is not None:
         raise UsageError("bench is not available for concurrent problems")
+    if problem.meta.kind is ProblemKind.PROJECT:
+        raise UsageError("bench is not available for project problems")
     plan = plan_bench(environment, problem, language, request)
     machine = environment.machine.snapshot()
     measured = measure(environment, plan, notify)

@@ -7,11 +7,10 @@ import typer
 from rich.text import Text
 
 from coding_study.adapters.environment_factory import load_environment
-from coding_study.application.next_problem import NextRequest, next_problem
+from coding_study.application.next_problem import NextRequest, next_problem, start_language
 from coding_study.application.start_attempt import StartRequest
 from coding_study.domain.errors import UsageError
 from coding_study.domain.next_selection import NewPick, NextPick, NextSource, ReviewPick
-from coding_study.domain.precedence import resolve_language
 from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.entrypoints.commands.start import open_in_editor, start_and_report
 from coding_study.entrypoints.shared import add_command, command_environ, console
@@ -55,13 +54,11 @@ def next_command(
         return
     output.print(_pick_line(picked))
     candidate = picked.candidate
-    start_language = (
-        resolve_language(language, environment.config) if candidate.autograded else None
-    )
+    language_to_start = start_language(environment, candidate, language)
     if not start:
-        output.print(_line("start", _start_command(candidate.slug, start_language)))
+        output.print(_line("start", _start_command(candidate.slug, language_to_start)))
         return
-    files = start_and_report(output, environment, StartRequest(candidate.slug, start_language))
+    files = start_and_report(output, environment, StartRequest(candidate.slug, language_to_start))
     if environment.config.open_on_start:
         open_in_editor(output, environment, files)
 

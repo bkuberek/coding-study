@@ -67,13 +67,18 @@ def _report(session: MockSession) -> Iterator[Text]:
     yield Text(_header(session), style="bold")
     for number, problem in enumerate(session.problems, start=1):
         yield Text(f"{number}  {pick_summary(problem.pick)}")
-        user_label, statement_label = (
-            ("stub", "statement") if problem.pick.candidate.autograded else ("notes", "prompt")
-        )
+        user_label, statement_label = _labels(problem)
         yield _line(user_label, problem.user_file, INDENT)
         yield _line(statement_label, problem.statement, INDENT)
     yield _line("locked", LOCKED)
     yield _line("next", _next_step(session.problems[0]))
+
+
+def _labels(problem: MockProblem) -> tuple[str, str]:
+    """The user's file and the statement: a stub, a project folder, or an item's notes."""
+    if not problem.pick.candidate.autograded:
+        return "notes", "prompt"
+    return ("project" if problem.is_project else "stub"), "statement"
 
 
 def _header(session: MockSession) -> str:

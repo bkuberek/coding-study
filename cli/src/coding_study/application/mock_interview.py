@@ -38,8 +38,9 @@ class MockRequest:
 class MockProblem:
     pick: NewPick
     user_file: str
-    """The stub, or the notes of a non-autograded item."""
+    """The stub, the folder of a project problem, or the notes of a non-autograded item."""
     statement: str
+    is_project: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,4 +89,5 @@ def _start(
         return MockProblem(pick, item.notes_path, item.statement_path)
     request = StartRequest(slug, language, fresh=True, timer_s=timer_s, mock=True)
     started = start_attempt(environment, request)
-    return MockProblem(pick, started.stub_path, started.statement_path)
+    is_project = started.project is not None
+    return MockProblem(pick, started.stub_path, started.statement_path, is_project)
