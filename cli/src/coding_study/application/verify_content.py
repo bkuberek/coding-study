@@ -5,9 +5,11 @@ stub builds and loads (D1), every reference passes every case (D3; progressive r
 every level, and their failures name the level), and with `--oracle` every approach agrees with
 the oracle on small generated inputs (D4). The generator must be deterministic and its inputs
 must pass `validate` (D2). Concurrent problems run D6 and D7 instead of D2 and D4
-(`coding_study.application.verify_concurrency`). `--oracle` and `--ladder` need generator.py: a
-problem without one (practical, lld, debugging and concurrent problems may omit it) skips them,
-reported as not applicable; the ready criteria still require a generator for every `dsa` problem.
+(`coding_study.application.verify_concurrency`), and project problems D1, D3 and D9 on a starter
+and a reference built as folders (`coding_study.application.verify_projects`). `--oracle` and
+`--ladder` need generator.py: a problem without one (practical, lld, debugging, concurrent and
+project problems may omit it) skips them, reported as not applicable; the ready criteria still
+require a generator for every `dsa` problem.
 """
 
 import threading
@@ -37,6 +39,7 @@ from coding_study.application.verify_items import (
     verify_items,
 )
 from coding_study.application.verify_ladder import LadderResult, verify_ladder
+from coding_study.application.verify_projects import SuiteCheck, verify_project
 from coding_study.domain.cases import Expected, GeneratedInput, JsonValue
 from coding_study.domain.comparators import Comparator
 from coding_study.domain.errors import ContentError, ContentIssue, UnknownProblemError
@@ -57,6 +60,7 @@ from coding_study.domain.problem import (
     ALL_LANGUAGES,
     Language,
     Problem,
+    ProblemKind,
     ProblemMeta,
     StubSource,
     Track,
@@ -131,6 +135,8 @@ class ProblemVerification:
     """With `--ladder`: one result per language whose references passed."""
     skipped: tuple[SkippedCheck, ...] = ()
     """Requested checks that need generator.py, which this problem does not have."""
+    suite: SuiteCheck | None = None
+    """Project problems: D9, the reference's native suite; None when it did not run."""
 
     @property
     def passed(self) -> bool:
@@ -141,6 +147,7 @@ class ProblemVerification:
             and all(language.passed for language in self.languages)
             and (self.oracle is None or not self.oracle.failures)
             and all(result.passed for result in self.ladder)
+            and (self.suite is None or self.suite.passed)
         )
 
     def covers(self, language: Language) -> bool:
@@ -278,7 +285,8 @@ class _ProblemVerifier:
         self._known_slugs = known_slugs
 
     def verify(self, slug: str, duplicates: tuple[str, ...]) -> ProblemVerification | None:
-        """None when the problem is outside `--track`."""
+        """None when the problem is outside `--track`, or a project outside `--lang`: a project
+        problem counts only in its one language."""
         directory = self._environment.files.problem_directory(slug)
         try:
             problem = self._environment.problems.load(slug)
@@ -286,6 +294,11 @@ class _ProblemVerifier:
             issues = (*duplicates, *(str(issue) for issue in error.issues))
             return ProblemVerification(directory, None, static_errors=issues)
         if self._request.track not in (None, problem.meta.track):
+            return None
+        if problem.meta.kind is ProblemKind.PROJECT and self._request.language not in (
+            None,
+            *problem.meta.languages,
+        ):
             return None
         content = problem_content(self._environment, slug, problem)
         static = static_checks(content)
@@ -373,6 +386,8 @@ class _DynamicChecks:
             for language in self._meta.languages
             if self._request.language in (None, language)
         ]
+        if self._meta.kind is ProblemKind.PROJECT:
+            return self._project(verification, languages)
         runs = per_language(
             languages,
             lambda language: self._language(language, cases, oracle_cases, comparator),
@@ -395,6 +410,22 @@ class _DynamicChecks:
             ready_errors=verification.ready_errors + margin_errors,
             warnings=verification.warnings + self._busy_machine_notes(results, margin_errors),
             skipped=() if generated else self._generator_checks_requested(),
+        )
+
+    def _project(
+        self, verification: ProblemVerification, languages: Sequence[Language]
+    ) -> ProblemVerification:
+        """D1, D3 and D9 in the project's one language; D2, D4 and D5 do not apply."""
+        projects = [
+            verify_project(self._environment, self._problem, language, self._notify)
+            for language in languages
+        ]
+        return replace(
+            verification,
+            languages=tuple(project.language for project in projects),
+            suite=next((project.suite for project in projects), None),
+            dynamic_errors=tuple(self._errors),
+            skipped=self._generator_checks_requested(),
         )
 
     def _busy_machine_notes(

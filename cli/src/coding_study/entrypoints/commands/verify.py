@@ -1,6 +1,7 @@
 """`cstudy verify` (docs/specs/cli.md#cstudy-verify); the checks are in docs/specs/authoring.md."""
 
 from collections.abc import Iterable, Iterator
+from dataclasses import replace
 from pathlib import Path
 from typing import Annotated
 
@@ -11,9 +12,16 @@ from rich.text import Text
 from coding_study.adapters.conformance_fixtures import load_conformance_suite
 from coding_study.adapters.environment_factory import conformance_environment, load_environment
 from coding_study.adapters.git_changed_files import GitChangedFiles
+from coding_study.adapters.languages.registry import LANGUAGES
 from coding_study.application.changed_problems import CHANGED_BASE, changed_problem_slugs
 from coding_study.application.environment import Environment
-from coding_study.application.ports import ProgressNotice
+from coding_study.application.ports import (
+    LanguageRunner,
+    ProgressNotice,
+    ProjectTestGenerator,
+    StubGenerator,
+    Toolchains,
+)
 from coding_study.application.reference_runs import LanguageResult
 from coding_study.application.verify_conformance import (
     ConformanceRequest,
@@ -98,7 +106,9 @@ def verify(
         raise UsageError("--oracle-cases needs --oracle")
     if changed and (slugs or conformance):
         raise UsageError("--changed selects the problems itself; drop the slugs or --conformance")
-    environment = load_environment(Path.cwd(), command_environ(context), Path.home())
+    environment = _with_project_tests(
+        load_environment(Path.cwd(), command_environ(context), Path.home())
+    )
     output = console(context)
     selected = tuple(slugs or ())
     if changed:
@@ -126,6 +136,27 @@ def verify(
     for line in _content_lines(report):
         output.print(line)
     raise typer.Exit(_content_exit_code(report))
+
+
+class _ProjectTestToolchains:
+    """The environment's toolchains, plus the registry's generators of project tests, which a
+    reference's build holds (docs/specs/runners.md#reference-materialization)."""
+
+    def __init__(self, toolchains: Toolchains) -> None:
+        self._toolchains = toolchains
+
+    def stub_generator(self, language: Language) -> StubGenerator:
+        return self._toolchains.stub_generator(language)
+
+    def runner(self, language: Language) -> LanguageRunner:
+        return self._toolchains.runner(language)
+
+    def project_test_generator(self, language: Language) -> ProjectTestGenerator:
+        return LANGUAGES.project_test_generator(language)
+
+
+def _with_project_tests(environment: Environment) -> Environment:
+    return replace(environment, toolchains=_ProjectTestToolchains(environment.toolchains))
 
 
 def _notice(output: Console) -> ProgressNotice:
@@ -183,6 +214,9 @@ class _ProblemLines:
         yield "static ok"
         for result in self._problem.languages:
             yield _language_part(result)
+        suite = self._problem.suite
+        if suite is not None:
+            yield f"suite {suite.passing}/{suite.total}"
         oracle = self._problem.oracle
         if oracle is not None:
             yield f"oracle {oracle.agreed}/{oracle.total}"
@@ -200,6 +234,8 @@ class _ProblemLines:
         problem = self._problem
         for result in problem.languages:
             yield from _language_failures(result)
+        if problem.suite is not None:
+            yield from (f"suite: {failure}" for failure in problem.suite.failures)
         if problem.oracle is not None:
             yield from (f"oracle: {failure}" for failure in problem.oracle.failures)
         for ladder in problem.ladder:

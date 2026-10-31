@@ -651,3 +651,14 @@ class ProjectRunner(Protocol):
         Raises RunnerStartError when the workspace's toolchain lacks what the job needs.
         """
         ...
+
+
+@runtime_checkable
+class ProjectTestGenerators(Protocol):
+    """`Toolchains` that also write a project problem's level tests, which `cstudy verify` puts
+    into a reference's build (docs/specs/runners.md#reference-materialization)."""
+
+    def project_test_generator(self, language: Language) -> ProjectTestGenerator:
+        """Raises LanguageNotSetUpError for a language whose project tests are not generated
+        yet."""
+        ...

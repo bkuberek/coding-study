@@ -6,17 +6,26 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from coding_study.adapters.fs_problem_repository import FsProblemRepository
+from coding_study.adapters.languages.python.test_generator import PythonTestGenerator
 from coding_study.application.case_materialization import EXPECTED_VALUES_NOTICE
+from coding_study.application.environment import Environment
+from coding_study.application.ports import ProjectTestGenerators
+from coding_study.application.reference_runs import ApproachResult, LanguageResult
+from coding_study.application.verify_content import Coverage, ProblemVerification, VerifyReport
+from coding_study.application.verify_projects import SuiteCheck
+from coding_study.domain.problem import Language
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import verify
 from coding_study.entrypoints.shared import ExitCode
 from tests.e2e import e2e_environment
-from tests.fakes import FixedChangedFiles, repository_root
+from tests.fakes import FixedChangedFiles, make_environment, repository_root
 from tests.helpers import REPOSITORY_ROOT
 
 runner = CliRunner()
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
 CONFORMANCE = REPOSITORY_ROOT / "runners" / "conformance"
+PY = Language.PYTHON
 
 
 @pytest.fixture
@@ -183,3 +192,72 @@ def test_conformance_failures_exit_1(conformance_root):
             "  py identity: values: expected pass, got FAIL",
         ],
     )
+
+
+PROJECT_DIRECTORY = "problems/0249-bank-project-python"
+
+
+def project_report(languages: tuple[LanguageResult, ...], suite: SuiteCheck) -> VerifyReport:
+    meta = FsProblemRepository(REPOSITORY_ROOT).load("bank-project-python").meta
+    problem = ProblemVerification(
+        PROJECT_DIRECTORY, meta, languages=languages, suite=suite, reference_languages=(PY,)
+    )
+    return VerifyReport((problem,), (Coverage(PY, 1 if problem.passed else 0, 1),))
+
+
+@pytest.fixture
+def reported(tmp_path, monkeypatch):
+    """Prints the report it is given instead of verifying."""
+    environment = make_environment(repository_root(tmp_path, PRACTICE))
+
+    def report_with(report: VerifyReport) -> None:
+        monkeypatch.setattr(verify, "load_environment", lambda *_: environment)
+        monkeypatch.setattr(verify, "verify_content", lambda *_: report)
+
+    return report_with
+
+
+def test_a_project_line_shows_its_language_and_its_suite(reported):
+    reported(
+        project_report((LanguageResult(PY, (ApproachResult("reference"),)),), SuiteCheck(14, 14))
+    )
+    assert invoke("bank-project-python").report[0] == (
+        "0249-bank-pro...  static ok · py 1/1 ok · suite 14/14"
+    )
+
+
+def test_a_failing_suite_lists_its_failures_and_exits_1(reported):
+    failure = "tests/test_level_2.py::test_ex1 failed: assert -1 == 5"
+    passing = (LanguageResult(PY, (ApproachResult("reference"),)),)
+    reported(project_report(passing, SuiteCheck(13, 14, (failure,))))
+    result = invoke("bank-project-python")
+    assert (result.exit_code, result.report[:2]) == (
+        ExitCode.FAILURES,
+        ["0249-bank-pro...  static ok · py 1/1 ok · suite 13/14", f"  suite: {failure}"],
+    )
+
+
+def test_verify_writes_project_tests_with_the_languages_generators(tmp_path, monkeypatch):
+    verified: list[Environment] = []
+
+    def capture(environment: Environment, *_: object) -> VerifyReport:
+        verified.append(environment)
+        return VerifyReport((), ())
+
+    environment = make_environment(repository_root(tmp_path, PRACTICE))
+    monkeypatch.setattr(verify, "load_environment", lambda *_: environment)
+    monkeypatch.setattr(verify, "verify_content", capture)
+    invoke()
+    [toolchains] = [found.toolchains for found in verified]
+    assert isinstance(toolchains, ProjectTestGenerators)
+    assert isinstance(toolchains.project_test_generator(PY), PythonTestGenerator)
+
+
+def test_a_starter_that_does_not_load_is_a_language_problem(reported):
+    problem = "starter does not load: SyntaxError: invalid syntax"
+    languages = (LanguageResult(PY, (ApproachResult("reference"),), (problem,)),)
+    reported(project_report(languages, SuiteCheck(14, 14)))
+    assert invoke("bank-project-python").report[:2] == [
+        "0249-bank-pro...  static ok · py 1/1 FAIL · suite 14/14",
+        f"  py {problem}",
+    ]
