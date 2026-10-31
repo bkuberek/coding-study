@@ -15,11 +15,11 @@ from coding_study.adapters.languages.registry import (
     LanguageFactories,
     LanguageRegistry,
 )
+from coding_study.adapters.languages.rust.test_generator import RustTestGenerator
 from coding_study.adapters.languages.typescript.test_generator import TypeScriptTestGenerator
 from coding_study.application.ports import BuildScope, PrepareResult, ProgressNotice
 from coding_study.domain.errors import LanguageNotSetUpError
 from coding_study.domain.problem import Language, ProblemMeta
-from coding_study.domain.project import PROJECT_LANGUAGES
 
 CONTEXT = LanguageContext(workspace=Path("/ws"), runners=Path("/content/runners"))
 
@@ -68,6 +68,10 @@ def test_python_generates_the_tests_of_project_levels():
     assert isinstance(LANGUAGES.project_test_generator(Language.PYTHON), PythonTestGenerator)
 
 
+def test_rust_generates_the_tests_of_project_levels():
+    assert isinstance(LANGUAGES.project_test_generator(Language.RUST), RustTestGenerator)
+
+
 def test_typescript_generates_the_tests_of_project_levels():
     generator = LANGUAGES.project_test_generator(Language.TYPESCRIPT)
     assert isinstance(generator, TypeScriptTestGenerator)
@@ -83,14 +87,6 @@ def test_go_generates_the_tests_of_project_levels():
 )
 def test_java_and_kotlin_generate_the_tests_of_project_levels(language, generator):
     assert isinstance(LANGUAGES.project_test_generator(language), generator)
-
-
-@pytest.mark.parametrize("language", sorted(set(Language) - set(PROJECT_LANGUAGES)))
-def test_other_languages_generate_no_project_tests_yet(language):
-    with pytest.raises(
-        LanguageNotSetUpError, match=f"{language} project test generator is not set up yet"
-    ):
-        LANGUAGES.project_test_generator(language)
 
 
 def test_an_unregistered_language_generates_no_project_tests():

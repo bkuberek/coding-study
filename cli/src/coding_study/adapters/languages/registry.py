@@ -12,6 +12,7 @@ from coding_study.adapters.languages.jvm.test_generators import (
     KotlinTestGenerator,
 )
 from coding_study.adapters.languages.python.test_generator import PythonTestGenerator
+from coding_study.adapters.languages.rust.test_generator import RustTestGenerator
 from coding_study.adapters.languages.typescript.test_generator import TypeScriptTestGenerator
 from coding_study.application.ports import LanguageRunner, ProjectTestGenerator, StubGenerator
 from coding_study.domain.errors import LanguageNotSetUpError
@@ -76,6 +77,8 @@ LANGUAGES = LanguageRegistry(
             jvm.create_kotlin_stub_generator, jvm.create_kotlin_runner, KotlinTestGenerator
         ),
         Language.GO: LanguageFactories(go.create_stub_generator, go.create_runner, GoTestGenerator),
-        Language.RUST: LanguageFactories(rust.create_stub_generator, rust.create_runner),
+        Language.RUST: LanguageFactories(
+            rust.create_stub_generator, rust.create_runner, RustTestGenerator
+        ),
     }
 )
