@@ -191,6 +191,49 @@ def test_a_suite_that_could_not_run_shows_the_frameworks_error(environment, proc
     assert lines()[3] == "ERROR    load  UsageError: bad addopts"
 
 
+# Exit 2 when code in the folder did not build or load, as for a single file
+# (docs/specs/cli.md#exit-codes)
+
+DOES_NOT_COMPILE = UserError(
+    "CompileError", "the project does not compile", "src/main/java/bank/Bank.java:3: error: ';'"
+)
+
+
+def test_a_project_that_does_not_compile_exits_2(environment, process):
+    process.tests = ()
+    process.suite_load_error = DOES_NOT_COMPILE
+    assert cs_test().exit_code == ExitCode.USER_CODE_ERROR
+
+
+def test_a_suite_the_framework_refused_to_run_exits_2(environment, process):
+    process.tests = ()
+    process.suite_load_error = UserError("ImportError", "No module named 'helpers'")
+    assert cs_test().exit_code == ExitCode.USER_CODE_ERROR
+
+
+def test_a_package_that_does_not_compile_exits_2_though_other_tests_ran(environment, process):
+    broken = SuiteTest("bank-project-go/broken", Raised(DOES_NOT_COMPILE, 0))
+    process.tests = (LEVEL_1_TEST, broken)
+    assert cs_test().exit_code == ExitCode.USER_CODE_ERROR
+
+
+def test_a_test_file_that_does_not_import_exits_2(environment, process):
+    syntax = UserError("SyntaxError", "invalid syntax", 'File "tests/test_mine.py", line 2')
+    process.tests = (LEVEL_1_TEST, SuiteTest("tests/test_mine.py", Raised(syntax, 0)))
+    assert cs_test().exit_code == ExitCode.USER_CODE_ERROR
+
+
+def test_a_test_that_raises_while_it_runs_exits_1(environment, process):
+    process.tests = (SuiteTest("tests/test_level_1.py::test_ex1", Raised(ERROR, 1000)),)
+    assert cs_test().exit_code == ExitCode.FAILURES
+
+
+def test_json_gives_the_exit_code_of_code_that_does_not_compile(environment, process):
+    process.tests = ()
+    process.suite_load_error = DOES_NOT_COMPILE
+    assert (document()["outcome"], document()["exit_code"]) == ("load_failed", 2)
+
+
 def test_a_selection_of_tests_does_not_point_to_submit(environment):
     assert lines("--case", "test_ex1")[-1] == "all selected tests passed"
 

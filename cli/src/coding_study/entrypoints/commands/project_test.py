@@ -66,9 +66,9 @@ def require_project_options(given: Sequence[str]) -> None:
 
 
 def project_test_exit_code(result: ProjectTestResult) -> int:
-    """2 when the folder did not type-check; 0 when every test that ran passed and some test
-    ran; 1 otherwise."""
-    if result.build_failure is not None:
+    """2 when code in the folder did not type-check, build or load, as for a single file; 0 when
+    every test that ran passed and some test ran; 1 otherwise."""
+    if result.code_failed_to_load:
         return ExitCode.USER_CODE_ERROR
     return ExitCode.SUCCESS if result.passed else ExitCode.FAILURES
 

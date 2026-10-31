@@ -149,6 +149,10 @@ def test_code_that_does_not_compile_does_not_load(played):
     assert (result.exit_code, "CompileError" in result.output) == (ExitCode.USER_CODE_ERROR, True)
 
 
+def test_a_suite_that_does_not_compile_exits_2(played):
+    assert played["broken test"].exit_code == ExitCode.USER_CODE_ERROR
+
+
 def test_a_suite_that_does_not_compile_lists_the_compiler_lines(language, played):
     bank = f"{sources(language, 'main')}/Bank.{EXTENSIONS[language]}:"
     assert bank in played["broken test"].output

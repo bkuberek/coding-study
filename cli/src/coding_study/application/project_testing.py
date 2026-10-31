@@ -120,6 +120,12 @@ class ProjectTestResult:
         return suite_tally(self.verdicts)
 
     @property
+    def code_failed_to_load(self) -> bool:
+        """Code in the folder did not type-check, build or load: the suite could not run, or a
+        test file, package or test target never ran its tests."""
+        return self.build_failure is not None or bool(self.diagnostics)
+
+    @property
     def every_level_done(self) -> bool:
         """A submission already passed every case of every level: the full pass."""
         return self.attempt.first_pass_at is not None

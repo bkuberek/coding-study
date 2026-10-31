@@ -188,8 +188,8 @@ def test_a_nil_map_panic_names_its_runtime_error(played):
     assert error["message"] == "assignment to entry in nil map"
 
 
-def test_a_run_with_failures_exits_1(played):
-    assert played["test of yours"].exit_code == ExitCode.FAILURES
+def test_a_run_with_a_package_that_does_not_compile_exits_2(played):
+    assert played["test of yours"].exit_code == ExitCode.USER_CODE_ERROR
 
 
 def test_a_passing_submission_opens_level_2(played):
