@@ -60,6 +60,7 @@
 | Flag | Effect |
 |------|--------|
 | `--json` | Machine-readable output, as an option of the command (`cstudy stats --json`, not `cstudy --json stats`): `stats`, [`test`](#json-output), [`submit`](#cstudy-submit) and [`status`](#cstudy-status) have it; `list`, `next`, `bench` and `verify` do not yet |
+| `--events` | The run as a stream of JSON events instead of the report, as an option of the command: [`test`](#project-problems) on a project problem and [`submit`](#cstudy-submit) have it ([Event stream](#event-stream)) |
 | `--version` | Print `cstudy <version>` (for example `cstudy 0.1.0`), read from the installed package metadata, and exit 0 ([versioning](versioning.md)) |
 | `--no-color` | Plain output (also when `NO_COLOR` is set or stdout is not a TTY) |
 | `-v`, `--verbose` | Planned, not implemented yet: show runner commands, build output and timings |
@@ -222,7 +223,7 @@ restored   tests/test_level_2.py (level 2 tests)
 ```text
 cstudy test [<slug|file>] [--lang L] [--watch] [--case ID]... [--all] [--level N]
         [--time-limit[=VALUE] | --no-time-limit] [--perf] [--typecheck] [--stress N] [--seed S]
-        [--json] [--debug [--debug-port N] [--debug-connect]]
+        [--json | --events] [--debug [--debug-port N] [--debug-connect]]
 ```
 
 | Flag | Effect |
@@ -316,6 +317,7 @@ On a [project problem](problem-format.md#project-problems), `cstudy test` runs t
 | `--watch` | Re-runs on a change to any file under `projects/<slug>/` except `.venv`, `node_modules`, `__pycache__`, `.pytest_cache` and `.ruff_cache` |
 | `--typecheck` | TypeScript: also runs the workspace's `tsc --noEmit -p projects/<slug>` and reports every diagnostic in the project |
 | `--json`, `--debug`, `--debug-port`, `--no-time-limit` | As for every problem; `--debug` stops at breakpoints in the project's code and in its tests |
+| `--events` | The run as an [event stream](#event-stream) instead of the report; on a problem of another kind it exits 3 |
 | `--all` | Accepted and changes nothing: every test is listed |
 | `--perf`, `--stress`, `--seed`, `--time-limit`, `--debug-connect` | Exit 3: `--perf is not available for project problems` |
 
@@ -448,7 +450,7 @@ cstudy: connecting to debugger at 127.0.0.1:5005 (kotlin)
 ## cstudy submit
 
 ```text
-cstudy submit [<slug|file>] [--level N] [--json]
+cstudy submit [<slug|file>] [--level N] [--json | --events]
 ```
 
 Grades a [project problem](problem-format.md#project-problems): every case of levels 1 to the unlocked level, visible and hidden, through the runner ([grading job](runners.md#grading-job)), judged by the core with the problem's comparator. A submission that passes every case of every unlocked level opens the next level.
@@ -493,6 +495,77 @@ In a mock attempt the failing hidden case collapses: `level 2  FAIL     4/5 (2 v
 Exit 0 when every graded case passed, 1 when one did not, 2 when the code did not load (`load_error`: the expected module and class), 3, 4.
 
 `--json` prints one document in the style of [`cstudy test --json`](#json-output): `slug`, `language`, `attempt_id`, `mode`, `outcome` (`passed`, `failed` or `load_failed`), `exit_code`, `every_level` (whether it graded every unlocked level), `timer`, `levels` (`graded_up_to`, `last`, `unlocked`, `newly_unlocked`, and `methods_added`, the methods of a newly opened level in the language's names, else empty), `level_tallies` (per level: `level`, `total`, `passed`, `visible_total`, `visible_passed`, `hidden_total`, `hidden_passed`), `load_error`, `cases` (as in `cstudy test --json`, each with its `level`; in a mock attempt hidden cases are left out and only `level_tallies` counts them), `tally` and `duration_s`.
+
+`--events` writes the submission as an [event stream](#event-stream) instead of the report.
+
+## Event stream
+
+`cstudy test --events` on a [project problem](#project-problems) and `cstudy submit --events` write the run as a stream of events instead of the report: newline-delimited JSON on standard output, one object per line, each line written and flushed as soon as `cstudy` has it. It is the boundary a web interface builds on to show a run as it happens ([ADR 0014](../decisions/0014-project-problems.md)). `schemas/events.schema.json` describes every event.
+
+```text
+$ cstudy submit --events
+{"type": "run_start", "version": 1, "command": "submit", "slug": "bank-project-python", "language": "python", "attempt_id": 7, "mode": "new", "levels": {"up_to": 1, "unlocked": 1, "last": 4}}
+{"type": "case_result", "version": 1, "id": "ex1", "visible": true, "generated": false, "status": "pass", "duration_ns": 41000, "level": 1}
+{"type": "case_result", "version": 1, "id": "h1", "visible": false, "generated": false, "status": "fail", "duration_ns": 38000, "input": {"ops": ["Bank", "create_account"], "args": [[], [1, "zoe"]]}, "expected": [null, true], "actual": [null, false], "reason": null, "level": 1}
+{"type": "level_result", "version": 1, "status": "fail", "level": 1, "total": 2, "passed": 1, "visible_total": 1, "visible_passed": 1, "hidden_total": 1, "hidden_passed": 0}
+{"type": "run_end", "version": 1, "outcome": "failed", "exit_code": 1, "message": null, "summary": {"slug": "bank-project-python", ...}}
+```
+
+| Rule | Detail |
+|------|--------|
+| Lines | Every line is one JSON object whose first fields are `type` and `version`. Standard output holds nothing else; `error: ...` goes to standard error, as for any command |
+| Version | `version` is 1. It changes only when an event changes incompatibly: a field removed, renamed or given another type, or an ordering rule dropped. New event types and new fields keep the version, so a reader ignores the types and fields it does not know |
+| `--json` | A final summary, where events are a stream: `run_end` carries the document `--json` prints, so the two flags exclude each other (`--events excludes --json`, exit 3) |
+| Excluded | `--watch` and `--debug` exit 3 (`--events excludes --watch`); `cstudy test --events` on a problem of another kind exits 3 (`--events is for project problems`) |
+| Exit codes | Those of the run without `--events`; `run_end.exit_code` is the exit code of the process |
+
+### Events
+
+| `type` | Command | Fields | When |
+|--------|---------|--------|------|
+| `run_start` | both | `command` (`test` or `submit`), `slug`, `language`, `attempt_id`, `mode` (`new`, `review` or `mock`), `levels`: `up_to` (the last level the run covers), `unlocked` and `last` | Once the options are checked, before the run's work begins |
+| `output` | both | `text`: a progress notice the report would print, such as `computing expected values ...` | As it happens |
+| `test_result` | `test` | An entry of `cases` in [`cstudy test --json`](#project-problems) on a project problem: `id`, `status`, `duration_ns`, `origin`, `level`, and `message`, `expected`, `actual`, `error` and `stdout` when set | Once per test the suite reported, a test file that failed to collect included |
+| `case_result` | `submit` | An entry of `cases` in [`cstudy submit --json`](#cstudy-submit), with its `level` | Once per graded case; a mock attempt writes none for hidden cases, which only `level_result` counts |
+| `diagnostic` | both | One [diagnostic](#diagnostics) | Once per diagnostic |
+| `level_result` | `submit` | An entry of `level_tallies` in `cstudy submit --json`, plus `status`: `pass` when every graded case of the level passed, else `fail` | Once per graded level |
+| `level_unlocked` | `submit` | `level`, `title`, `methods` (the methods the level adds, in the language's names, as `methods_added`), `tests` (`path` of the level's generated test file relative to the project folder, and `count`, its tests) and `statement` (the rewritten statement's path) | When the submission opened a level |
+| `run_end` | both | `outcome`, `exit_code`, `message` and `summary` | Last |
+
+`run_end.outcome` is the `outcome` of the `--json` document (`passed`, `failed` or `load_failed`), `error` when the run stopped after `run_start` (an environment error such as pytest missing from `python/.venv`, a `--case` that names no test, an internal error), or `interrupted` (Ctrl-C, exit 130). `summary` is the document `--json` prints, or null for `error` and `interrupted`; `message` is the error's text for `error`, else null.
+
+### Ordering
+
+| Rule | Detail |
+|------|--------|
+| Bounds | `run_start` is the first line and `run_end` the last. A run that stops before it starts (no attempt, a locked level, another kind of problem) writes no event, only `error: ...` on standard error, as `--json` writes no document. Once `run_start` is written, `run_end` follows unless the process is killed |
+| Output | `output` may come anywhere between `run_start` and `run_end` |
+| Results | `test_result` and `case_result` come in run order: the suite's order for tests, `tests.json` order for cases |
+| Diagnostics | `diagnostic` comes after `run_start` and before the first `level_result`, or before `run_end` in `cstudy test` |
+| Levels | `level_result` comes after every `case_result`, in level order, then `level_unlocked` |
+| Timing | Results are written once the runner has reported them: today, when the suite or the grading job ends. The time between two results is not a test's duration; `duration_ns` is |
+
+### Diagnostics
+
+A diagnostic says where code does not load, build or type-check, so an editor can mark the place.
+
+| Field | Meaning |
+|-------|---------|
+| `source` | `load` (the runner could not load the code, or the framework could not collect a test file), `typecheck` (a type checker, such as `tsc --noEmit` for `--typecheck`) or `build` (a compiler) |
+| `severity` | `error`, `warning` or `info` |
+| `file` | Relative to the project folder, or null when the report names no file |
+| `line`, `column` | 1-based, or null when the report names none; a runner's trace never names a column |
+| `code` | The tool's name for the problem: the exception type (`SyntaxError`, `SymbolNotFound`) or a compiler's code (`TS2322`); null when it has none |
+| `message` | The tool's message; the exception type when the message is empty |
+
+A `load` diagnostic comes from a [load error](runners.md#event-stream---out-json-lines):
+
+| Load error | Where it points |
+|------------|-----------------|
+| The grading job's, or a test file that failed to collect (a result whose id is the file, which stays a `test_result` with status `error` as well) | The innermost frame of the error's trace: `bank/bank.py:12 in Bank.deposit` gives `bank/bank.py`, line 12. `code` is the error's type |
+| The suite's own, when the framework refused to run it, such as a `conftest.py` that does not import | Read from the framework's report: the innermost frame of its Python traceback that lies in the project folder, an absolute path made relative to the folder, and the traceback's last exception as `code` and `message` (`E   SyntaxError: invalid syntax`) |
+
+An error without such a frame gives a diagnostic without a place, and one without an exception line keeps its own type and message. Test files that fail on the same line of one module give one diagnostic. An exception a test raises while it runs is a test result, not a diagnostic. A type checker's or compiler's report is read by a parser for its format into the same fields.
 
 ## cstudy status
 

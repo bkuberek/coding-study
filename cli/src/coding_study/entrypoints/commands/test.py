@@ -9,6 +9,9 @@ their 3 smallest failures and collapse the rest into counts.
 `--debug` runs the same judged run with the runner waiting for an IDE debugger. Its ready line goes
 to standard error as plain text, like every notice of a `--json` run, so IDE tasks can match it; the
 report shows no durations, because pauses at breakpoints would be part of them.
+
+`--events` on a project problem writes the run as JSON events instead of the report
+(docs/specs/cli.md#event-stream).
 """
 
 import json
@@ -26,7 +29,12 @@ from coding_study.adapters.environment_factory import load_environment
 from coding_study.application import run_tests as use_case
 from coding_study.application.active_attempt import autograded_language, find_attempt
 from coding_study.application.environment import Environment
-from coding_study.application.project_testing import ProjectTestRequest, is_project_attempt
+from coding_study.application.project_events import stream_project_tests
+from coding_study.application.project_testing import (
+    ProjectTestRequest,
+    ProjectTestResult,
+    is_project_attempt,
+)
 from coding_study.application.resolve_target import Target, resolve_target
 from coding_study.application.run_bench import (
     PERF_REPS,
@@ -49,7 +57,13 @@ from coding_study.domain.time_limits import (
     CaseLimit,
     parse_time_limit,
 )
+from coding_study.entrypoints.commands._events import (
+    RunSummary,
+    require_events_alone,
+    write_events,
+)
 from coding_study.entrypoints.commands.bench import bench_exit_code, perf_lines
+from coding_study.entrypoints.commands.project_documents import project_test_document
 from coding_study.entrypoints.commands.project_test import (
     ProjectTestOptions,
     ProjectTestSession,
@@ -174,6 +188,10 @@ def run_tests(
     as_json: Annotated[
         bool, typer.Option("--json", help="One JSON document instead of the report.")
     ] = False,
+    events: Annotated[
+        bool,
+        typer.Option("--events", help="Project problems: the run as JSON events, one per line."),
+    ] = False,
     debug: Annotated[
         bool,
         typer.Option(
@@ -215,6 +233,8 @@ def run_tests(
         ),
     )
     _require_text_for(options, watch)
+    if events:
+        require_events_alone(_given({"--json": as_json, "--watch": watch, "--debug": debug}))
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     target = resolve_target(environment, Target(slug, language), Path.cwd())
     if is_project_attempt(environment, target.slug, target.language):
@@ -232,11 +252,15 @@ def run_tests(
         project_request = ProjectTestRequest(
             target.slug, target.language, tuple(case or ()), level, debug_request
         )
+        if events:
+            raise typer.Exit(_stream_project_tests(environment, project_request))
         project_options = ProjectTestOptions(as_json, debug)
         project = ProjectTestSession(
             environment, project_request, console(context), project_options
         )
         _run_session(project, watch)
+    if events:
+        raise UsageError("--events is for project problems")
     request = use_case.RunTestsRequest(
         target.slug,
         target.language,
@@ -248,6 +272,17 @@ def run_tests(
         debug_request,
     )
     _run_session(_Session(environment, request, console(context), options), watch)
+
+
+def _stream_project_tests(environment: Environment, request: ProjectTestRequest) -> int:
+    return write_events(
+        lambda emit: stream_project_tests(environment, request, emit), _project_summary
+    )
+
+
+def _project_summary(result: ProjectTestResult) -> RunSummary:
+    exit_code = ExitCode.SUCCESS if result.passed else ExitCode.FAILURES
+    return RunSummary(exit_code, project_test_document(result, exit_code))
 
 
 class _RunSession(Protocol):

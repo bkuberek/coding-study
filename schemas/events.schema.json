@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study CLI events",
+  "description": "One line of `cstudy test --events` or `cstudy submit --events` on a project problem. Spec: docs/specs/cli.md#event-stream",
+  "oneOf": [
+    { "$ref": "#/$defs/run_start" },
+    { "$ref": "#/$defs/output" },
+    { "$ref": "#/$defs/test_result" },
+    { "$ref": "#/$defs/case_result" },
+    { "$ref": "#/$defs/diagnostic" },
+    { "$ref": "#/$defs/level_result" },
+    { "$ref": "#/$defs/level_unlocked" },
+    { "$ref": "#/$defs/run_end" }
+  ],
+  "$defs": {
+    "version": { "description": "Changes only when an event changes incompatibly", "const": 1 },
+    "level": { "type": "integer", "minimum": 1 },
+    "optional_level": { "type": ["integer", "null"], "minimum": 1 },
+    "count": { "type": "integer", "minimum": 0 },
+    "duration_ns": { "type": ["integer", "null"], "minimum": 0 },
+    "error": {
+      "description": "An exception or load error, as in the runner protocol",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "message", "trace"],
+      "properties": {
+        "type": { "type": "string" },
+        "message": { "type": "string" },
+        "trace": { "type": "string" }
+      }
+    },
+    "run_start": {
+      "description": "First: the run's options are checked and its work begins",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "command", "slug", "language", "attempt_id", "mode", "levels"],
+      "properties": {
+        "type": { "const": "run_start" },
+        "version": { "$ref": "#/$defs/version" },
+        "command": { "enum": ["test", "submit"] },
+        "slug": { "type": "string", "minLength": 1 },
+        "language": { "enum": ["python", "typescript", "java", "kotlin", "go", "rust"] },
+        "attempt_id": { "type": "integer" },
+        "mode": { "enum": ["new", "review", "mock"] },
+        "levels": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["up_to", "unlocked", "last"],
+          "properties": {
+            "up_to": { "description": "The last level the run covers", "$ref": "#/$defs/level" },
+            "unlocked": { "$ref": "#/$defs/level" },
+            "last": { "$ref": "#/$defs/level" }
+          }
+        }
+      }
+    },
+    "output": {
+      "description": "A progress notice the report would print",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "text"],
+      "properties": {
+        "type": { "const": "output" },
+        "version": { "$ref": "#/$defs/version" },
+        "text": { "type": "string" }
+      }
+    },
+    "test_result": {
+      "description": "`cstudy test`: one test of the native suite, as an entry of `cases` in `cstudy test --json`",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "id", "status", "duration_ns", "origin", "level"],
+      "properties": {
+        "type": { "const": "test_result" },
+        "version": { "$ref": "#/$defs/version" },
+        "id": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["pass", "fail", "error", "skip", "timeout", "not_run"] },
+        "duration_ns": { "$ref": "#/$defs/duration_ns" },
+        "origin": { "enum": ["level", "starter", "yours"] },
+        "level": { "$ref": "#/$defs/optional_level" },
+        "message": { "type": "string" },
+        "expected": true,
+        "actual": true,
+        "error": { "$ref": "#/$defs/error" },
+        "stdout": { "type": "string" }
+      }
+    },
+    "case_result": {
+      "description": "`cstudy submit`: one graded case, as an entry of `cases` in `cstudy submit --json`",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "id", "visible", "generated", "status", "duration_ns", "level"],
+      "properties": {
+        "type": { "const": "case_result" },
+        "version": { "$ref": "#/$defs/version" },
+        "id": { "type": "string", "minLength": 1 },
+        "visible": { "type": "boolean" },
+        "generated": { "type": "boolean" },
+        "status": {
+          "enum": ["pass", "fail", "error", "timeout", "tle", "invalid", "stalled", "not_run"]
+        },
+        "duration_ns": { "$ref": "#/$defs/duration_ns" },
+        "level": { "$ref": "#/$defs/optional_level" },
+        "input": { "type": "object" },
+        "expected": true,
+        "actual": true,
+        "reason": { "type": ["string", "null"] },
+        "error": { "$ref": "#/$defs/error" },
+        "op_index": { "type": ["integer", "null"], "minimum": 0 },
+        "partial_output": { "type": "array" },
+        "hang_guard_ms": { "type": "integer", "minimum": 0 },
+        "exit_code": { "type": "integer" },
+        "stderr": { "type": "array", "items": { "type": "string" } },
+        "time_limit_ms": { "type": "number", "minimum": 0 },
+        "time_limit_basis": { "type": ["string", "null"] },
+        "note": { "type": "string" },
+        "stdout": { "type": "string" }
+      }
+    },
+    "diagnostic": {
+      "description": "Where code does not load, build or type-check (docs/specs/cli.md#diagnostics)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "source", "severity", "file", "line", "column", "code", "message"],
+      "properties": {
+        "type": { "const": "diagnostic" },
+        "version": { "$ref": "#/$defs/version" },
+        "source": { "enum": ["load", "typecheck", "build"] },
+        "severity": { "enum": ["error", "warning", "info"] },
+        "file": { "description": "Relative to the project folder", "type": ["string", "null"] },
+        "line": { "type": ["integer", "null"], "minimum": 1 },
+        "column": { "type": ["integer", "null"], "minimum": 1 },
+        "code": { "type": ["string", "null"] },
+        "message": { "type": "string" }
+      }
+    },
+    "level_result": {
+      "description": "`cstudy submit`: one graded level, as an entry of `level_tallies` in `cstudy submit --json` plus its status",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "version",
+        "status",
+        "level",
+        "total",
+        "passed",
+        "visible_total",
+        "visible_passed",
+        "hidden_total",
+        "hidden_passed"
+      ],
+      "properties": {
+        "type": { "const": "level_result" },
+        "version": { "$ref": "#/$defs/version" },
+        "status": { "enum": ["pass", "fail"] },
+        "level": { "$ref": "#/$defs/level" },
+        "total": { "$ref": "#/$defs/count" },
+        "passed": { "$ref": "#/$defs/count" },
+        "visible_total": { "$ref": "#/$defs/count" },
+        "visible_passed": { "$ref": "#/$defs/count" },
+        "hidden_total": { "$ref": "#/$defs/count" },
+        "hidden_passed": { "$ref": "#/$defs/count" }
+      }
+    },
+    "level_unlocked": {
+      "description": "`cstudy submit`: the level the submission opened",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "level", "title", "methods", "tests", "statement"],
+      "properties": {
+        "type": { "const": "level_unlocked" },
+        "version": { "$ref": "#/$defs/version" },
+        "level": { "$ref": "#/$defs/level" },
+        "title": { "type": "string" },
+        "methods": { "type": "array", "items": { "type": "string" } },
+        "tests": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "count"],
+          "properties": {
+            "path": { "description": "Relative to the project folder", "type": "string" },
+            "count": { "$ref": "#/$defs/count" }
+          }
+        },
+        "statement": { "type": "string" }
+      }
+    },
+    "run_end": {
+      "description": "Last: the outcome, the exit code and the document `--json` prints",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "outcome", "exit_code", "message", "summary"],
+      "properties": {
+        "type": { "const": "run_end" },
+        "version": { "$ref": "#/$defs/version" },
+        "outcome": { "enum": ["passed", "failed", "load_failed", "error", "interrupted"] },
+        "exit_code": { "enum": [0, 1, 2, 3, 4, 5, 70, 130] },
+        "message": { "type": ["string", "null"] },
+        "summary": { "type": ["object", "null"] }
+      },
+      "if": { "properties": { "outcome": { "enum": ["error", "interrupted"] } } },
+      "then": { "properties": { "summary": { "type": "null" } } },
+      "else": {
+        "properties": {
+          "summary": { "type": "object", "required": ["outcome", "exit_code"] },
+          "message": { "type": "null" }
+        }
+      }
+    }
+  }
+}

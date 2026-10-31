@@ -118,8 +118,7 @@ def submit_project(
     language = autograded_language(attempt)
     problem = environment.problems.load(attempt.slug)
     meta = problem.meta
-    if meta.kind is not ProblemKind.PROJECT:
-        raise UsageError(f"cstudy submit is for project problems; cstudy test grades {meta.slug}")
+    require_project(meta)
     levels = project_levels(meta, attempt.level_unlocked, request.level)
     folder = project_folder(meta.slug)
     run = GradingRun(problem, language, environment.workspace.absolute(folder), levels.ran_up_to)
@@ -153,6 +152,12 @@ def submit_project(
         return result
     with environment.workspace.locked(project_lock(meta.slug)):
         return _Opener(environment, problem, language).after_passing(result)
+
+
+def require_project(meta: ProblemMeta) -> None:
+    """Raises UsageError for a problem of another kind, which `cstudy test` grades."""
+    if meta.kind is not ProblemKind.PROJECT:
+        raise UsageError(f"cstudy submit is for project problems; cstudy test grades {meta.slug}")
 
 
 class _Opener:

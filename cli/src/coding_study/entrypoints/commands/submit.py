@@ -3,7 +3,8 @@
 One line per graded level with its passed count, then the visible cases with their status and the
 failing hidden ones with their input, expected and actual; a mock attempt names no hidden case and
 only counts the failing ones per level. A submission that opens a level names the methods it adds,
-its test file and the rewritten statement.
+its test file and the rewritten statement. `--events` writes the submission as JSON events instead
+(docs/specs/cli.md#event-stream).
 """
 
 import json
@@ -17,6 +18,8 @@ import typer
 from rich.text import Text
 
 from coding_study.adapters.environment_factory import load_environment
+from coding_study.application.environment import Environment
+from coding_study.application.project_events import stream_submission
 from coding_study.application.resolve_target import Target, resolve_target
 from coding_study.application.submit_project import (
     OpenedLevel,
@@ -29,6 +32,11 @@ from coding_study.domain.judging import CaseStatus, CaseVerdict
 from coding_study.domain.levels import FIRST_LEVEL
 from coding_study.domain.project import in_language_operations
 from coding_study.domain.submissions import LevelTally
+from coding_study.entrypoints.commands._events import (
+    RunSummary,
+    require_events_alone,
+    write_events,
+)
 from coding_study.entrypoints.commands.project_documents import submit_document
 from coding_study.entrypoints.commands.report_text import (
     STATUS_STYLES,
@@ -71,10 +79,18 @@ def submit(
     as_json: Annotated[
         bool, typer.Option("--json", help="One JSON document instead of the report.")
     ] = False,
+    events: Annotated[
+        bool, typer.Option("--events", help="The run as JSON events, one per line.")
+    ] = False,
 ) -> None:
     """Grade a project problem and open its next level."""
+    if events:
+        require_events_alone(("--json",) if as_json else ())
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     target = resolve_target(environment, Target(slug), Path.cwd())
+    request = SubmitRequest(target.slug, target.language, level)
+    if events:
+        raise typer.Exit(_stream_submission(environment, request))
     output = console(context)
 
     def notice(line: str) -> None:
@@ -83,7 +99,6 @@ def submit(
         else:
             output.print(Text(line, style="dim"))
 
-    request = SubmitRequest(target.slug, target.language, level)
     result = submit_project(environment, request, notice)
     exit_code = submit_exit_code(result)
     if as_json:
@@ -92,6 +107,15 @@ def submit(
         for line in SubmitReport(result).lines():
             output.print(line)
     raise typer.Exit(exit_code)
+
+
+def _stream_submission(environment: Environment, request: SubmitRequest) -> int:
+    return write_events(lambda emit: stream_submission(environment, request, emit), _summary)
+
+
+def _summary(result: SubmitResult) -> RunSummary:
+    exit_code = submit_exit_code(result)
+    return RunSummary(exit_code, submit_document(result, exit_code))
 
 
 def submit_exit_code(result: SubmitResult) -> int:
