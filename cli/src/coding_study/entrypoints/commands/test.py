@@ -35,22 +35,12 @@ from coding_study.application.run_bench import (
 )
 from coding_study.application.time_limits import TimeLimitFlags
 from coding_study.domain import layout
-from coding_study.domain.cases import FunctionInput
 from coding_study.domain.debugging import DebugRequest
 from coding_study.domain.errors import UsageError
 from coding_study.domain.generated_cases import OracleInput
-from coding_study.domain.judging import CaseStatus, CaseVerdict, RunnableCase, outcome_summary
+from coding_study.domain.judging import CaseStatus, CaseVerdict
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import (
-    Crashed,
-    InvalidOutput,
-    NotRun,
-    Raised,
-    Returned,
-    RunInput,
-    Stalled,
-    StressCompleted,
-    TimedOut,
     UserError,
 )
 from coding_study.domain.stress_runs import StressSelection
@@ -60,9 +50,21 @@ from coding_study.domain.time_limits import (
     CaseLimit,
     parse_time_limit,
 )
-from coding_study.domain.value_text import value_text
 from coding_study.entrypoints.commands.bench import bench_exit_code, perf_lines
-from coding_study.entrypoints.commands.run_document import operations_up_to, run_document
+from coding_study.entrypoints.commands.report_text import (
+    INDENT,
+    LABEL_WIDTH,
+    STATUS_STYLES,
+    STATUS_WIDTH,
+    case_details,
+    clock_text,
+    detail_line,
+    duration_text,
+    error_text,
+    levels_text,
+    trace_lines,
+)
+from coding_study.entrypoints.commands.run_document import run_document
 from coding_study.entrypoints.shared import (
     ERROR_EXIT_CODES,
     OPTIONAL_TARGET_HELP,
@@ -75,10 +77,7 @@ from coding_study.entrypoints.shared import (
 )
 
 NAME = "test"
-STATUS_WIDTH = 9
 MIN_ID_WIDTH = 6
-LABEL_WIDTH = 10
-INDENT = " " * STATUS_WIDTH
 DONE_HINT = "all passed. Next: cstudy done --rating easy|ok|hard"
 STRESS_EVIDENCE = "stress runs found no race (not a proof of thread safety)"
 MAX_STRESS_RUNS = 100
@@ -87,20 +86,8 @@ TIMES = "\N{MULTIPLICATION SIGN}"
 SUBSET_PASSED = "all selected cases passed"
 DEBUG_PASSED = "all passed (debug run: not recorded; cstudy test records the run)"
 STATEMENT_LABEL = "statement  "
-MILLISECONDS_PER_SECOND = 1000
 MAX_PORT = 65535
 TIME_LIMIT_OPTION = "--time-limit"
-SECONDS_PER_MINUTE = 60
-_STATUS_STYLES = {
-    CaseStatus.PASS: "green",
-    CaseStatus.FAIL: "bold red",
-    CaseStatus.ERROR: "bold red",
-    CaseStatus.INVALID: "bold red",
-    CaseStatus.TIMEOUT: "yellow",
-    CaseStatus.TLE: "yellow",
-    CaseStatus.STALLED: "bold red",
-    CaseStatus.NOT_RUN: "dim",
-}
 _SUMMARY_LABELS = (
     (CaseStatus.FAIL, "failed", "failed"),
     (CaseStatus.INVALID, "invalid", "invalid"),
@@ -425,7 +412,7 @@ class _Report:
             parts.append("debug")
         levels = self._result.levels
         if levels is not None:
-            parts.append(_levels_text(levels.ran_up_to, levels.progress.last))
+            parts.append(levels_text(levels.ran_up_to, levels.progress.last))
         if self._result.meta.concurrency is not None:
             parts += self._concurrent_counts(visible, hidden)
         else:
@@ -440,7 +427,7 @@ class _Report:
         if attempt.time_limit_s is not None:
             elapsed = attempt.solve_time(self._result.ran_at)
             limit = timedelta(seconds=attempt.time_limit_s)
-            parts.append(f"timer {_clock(elapsed)} / {_clock(limit)}")
+            parts.append(f"timer {clock_text(elapsed)} / {clock_text(limit)}")
         return " · ".join(parts)
 
     def _concurrent_counts(self, visible: int, hidden: int) -> list[str]:
@@ -512,7 +499,7 @@ class _Report:
         comparator = self._result.comparator.label
         source = f"oracle {oracle.approach}"
         label = f"{comparator}, {source}" if comparator else source
-        yield from (_detail(name, value) for name, value in _details(verdict, label))
+        yield from (detail_line(name, value) for name, value in case_details(verdict, label))
 
     def _stress(self, verdict: StressVerdict) -> Iterator[Text]:
         """Stress cases are hidden but always printed: their scenario is the exercise."""
@@ -536,19 +523,19 @@ class _Report:
         duration = verdict.duration_ns
         shows_durations = self._result.debug is None
         if verdict.status is CaseStatus.PASS and duration is not None and shows_durations:
-            parts.append(_duration(duration))
+            parts.append(duration_text(duration))
         if verdict.time_limit is not None and duration is not None:
-            parts.append(f"{_duration(duration)} > limit {_limit_text(verdict.time_limit)}")
+            parts.append(f"{duration_text(duration)} > limit {_limit_text(verdict.time_limit)}")
         return " · ".join(parts)
 
     def _load_error(self, error: UserError) -> Iterator[Text]:
         line = self._status_line(CaseStatus.ERROR, "load".ljust(self._id_width))
-        line.append(_error_text(error))
+        line.append(error_text(error))
         yield line
-        yield from (Text(f"{INDENT}{' ' * self._id_width}{trace}") for trace in _trace(error))
+        yield from (Text(f"{INDENT}{' ' * self._id_width}{trace}") for trace in trace_lines(error))
 
     def _status_line(self, status: CaseStatus, rest: str) -> Text:
-        line = Text(status.value.ljust(STATUS_WIDTH), style=_STATUS_STYLES[status])
+        line = Text(status.value.ljust(STATUS_WIDTH), style=STATUS_STYLES[status])
         line.append(rest)
         return line
 
@@ -581,44 +568,8 @@ class _Report:
         line.rstrip()
         yield line
         if verdict.status not in (CaseStatus.PASS, CaseStatus.TLE):
-            details = _details(verdict, self._result.comparator.label)
-            yield from (_detail(label, value) for label, value in details)
-
-
-def _details(verdict: CaseVerdict, comparator_label: str | None) -> Iterator[tuple[str, str]]:
-    outcome = verdict.outcome
-    case = verdict.case
-    match outcome:
-        case Returned(output=output):
-            yield ("input", _input_text(case.input))
-            yield ("expected", _expected_text(case, comparator_label))
-            yield ("actual", value_text(output))
-            if verdict.mismatch is not None and verdict.mismatch.detail:
-                yield ("reason", verdict.mismatch.detail)
-        case Raised(error=error, op_index=op_index, partial_output=partial):
-            yield ("input", _input_text(operations_up_to(case.input, op_index)))
-            yield ("error", _error_text(error))
-            yield from (("", trace) for trace in _trace(error))
-            if op_index is not None:
-                yield ("outputs", value_text(list(partial)))
-        case InvalidOutput(reason=reason):
-            yield ("input", _input_text(case.input))
-            yield ("reason", reason)
-        case TimedOut(limit_ms=limit_ms):
-            yield ("input", _input_text(case.input))
-            yield ("limit", f"{limit_ms} ms hang guard")
-        case Crashed(exit_code=exit_code, stderr_tail=stderr_tail):
-            yield ("input", _input_text(case.input))
-            yield ("crash", f"runner exited with code {exit_code}")
-            yield from (("", line) for line in stderr_tail)
-        case NotRun(reason=reason):
-            yield ("reason", reason)
-        case StressCompleted() | Stalled():
-            yield ("reason", outcome_summary(outcome))
-    if case.note:
-        yield ("note", case.note)
-    if isinstance(outcome, Returned | Raised | InvalidOutput) and outcome.stdout:
-        yield from _labelled_lines("stdout", outcome.stdout.rstrip("\n").splitlines())
+            details = case_details(verdict, self._result.comparator.label)
+            yield from (detail_line(label, value) for label, value in details)
 
 
 def _oracle_counts(inputs: tuple[OracleInput, ...]) -> str:
@@ -637,7 +588,7 @@ def _stress_label(verdict: StressVerdict) -> str:
         parts.append(f"{runs}/{runs} runs")
         median = verdict.median_ms
         if median is not None:
-            parts.append(f"median {_duration(round(median * NANOSECONDS_PER_MILLISECOND))}")
+            parts.append(f"median {duration_text(round(median * NANOSECONDS_PER_MILLISECOND))}")
     else:
         parts.append(f"{verdict.runs_passed}/{runs} runs passed")
     if verdict.status is CaseStatus.STALLED:
@@ -645,62 +596,6 @@ def _stress_label(verdict: StressVerdict) -> str:
     return " · ".join(parts)
 
 
-def _labelled_lines(label: str, lines: list[str]) -> Iterator[tuple[str, str]]:
-    for index, line in enumerate(lines):
-        yield (label if index == 0 else "", line)
-
-
-def _expected_text(case: RunnableCase, comparator_label: str | None) -> str:
-    expected = case.expected
-    text = value_text(expected.value) if expected is not None else "any valid answer"
-    return f"{text}  ({comparator_label})" if comparator_label else text
-
-
-def _input_text(run_input: RunInput) -> str:
-    if isinstance(run_input, FunctionInput):
-        return "  ".join(
-            f"{name}={value_text(value)}" for name, value in run_input.arguments.items()
-        )
-    args = value_text([list(arguments) for arguments in run_input.args])
-    return f"ops={value_text(list(run_input.ops))}  args={args}"
-
-
-def _error_text(error: UserError) -> str:
-    return f"{error.type}: {error.message}" if error.message else error.type
-
-
-def _trace(error: UserError) -> list[str]:
-    return error.trace.splitlines() if error.trace else []
-
-
-def _detail(label: str, value: str) -> Text:
-    line = Text(INDENT)
-    line.append(label.ljust(LABEL_WIDTH), style="dim")
-    line.append(value)
-    return line
-
-
-def _duration(nanoseconds: int) -> str:
-    milliseconds = nanoseconds / NANOSECONDS_PER_MILLISECOND
-    if milliseconds < 10:
-        return f"{milliseconds:.2f}ms"
-    if milliseconds < 100:
-        return f"{milliseconds:.1f}ms"
-    if milliseconds < MILLISECONDS_PER_SECOND:
-        return f"{milliseconds:.0f}ms"
-    return f"{milliseconds / MILLISECONDS_PER_SECOND:.2f}s"
-
-
 def _limit_text(limit: CaseLimit) -> str:
-    text = _duration(round(limit.ms * NANOSECONDS_PER_MILLISECOND))
+    text = duration_text(round(limit.ms * NANOSECONDS_PER_MILLISECOND))
     return f"{text} ({limit.basis})" if limit.basis else text
-
-
-def _levels_text(ran_up_to: int, last: int) -> str:
-    covered = f"level {ran_up_to}" if ran_up_to == 1 else f"levels 1-{ran_up_to}"
-    return f"{covered} of {last}"
-
-
-def _clock(duration: timedelta) -> str:
-    minutes, seconds = divmod(int(duration.total_seconds()), SECONDS_PER_MINUTE)
-    return f"{minutes:02d}:{seconds:02d}"

@@ -165,7 +165,7 @@ def run_tests(
     started = clock.monotonic()
     attempt = find_attempt(environment.progress, request.slug, request.language)
     language = autograded_language(attempt)
-    debug = _debug_session(request.debug, language)
+    debug = resolve_debug_session(request.debug, language)
     problem = environment.problems.load(attempt.slug)
     meta = problem.meta
     oracle = _oracle_stress(environment, problem, request.stress)
@@ -226,7 +226,7 @@ def run_tests(
     return _unlock(environment, problem, result)
 
 
-def _debug_session(request: DebugRequest | None, language: Language) -> DebugSession | None:
+def resolve_debug_session(request: DebugRequest | None, language: Language) -> DebugSession | None:
     if request is None:
         return None
     try:
