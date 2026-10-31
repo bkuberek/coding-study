@@ -29,6 +29,8 @@ PYTHON_EXCEPTION = re.compile(r"(?:E\s+)?(?P<type>[A-Z]\w*(?:Error|Exception)): 
 syntax`."""
 ABSOLUTE_PREFIX = "/"
 PARENT_PREFIX = "../"
+CURRENT_PREFIX = "./"
+FILE_URL_PREFIX = "file://"
 PATH_SEPARATOR = "/"
 
 
@@ -70,6 +72,12 @@ class DiagnosticParser(Protocol):
         """Every diagnostic in `output`, in the order the tool reported them, with paths relative
         to the project folder."""
         ...
+
+
+def named_file(name: str) -> str:
+    """A file as a compiler names it, as a path: the path of a `file://` URL (kotlinc), without
+    the `./` Go puts before a file of the directory it ran in."""
+    return name.removeprefix(FILE_URL_PREFIX).removeprefix(CURRENT_PREFIX)
 
 
 def load_diagnostic(error: UserError) -> Diagnostic:
@@ -142,13 +150,27 @@ class SolutionFiles:
     def path_of(self, file: str) -> str | None:
         """The workspace path of a file a tool named, when it is the problem's: the user file by
         the end of its path, as a runner's trace names it by its file name (`two_sum.py`) and
-        `tsc` from its own directory (`practice/two-sum.ts`), or a file of the package by its
-        name. None for any other file."""
-        if self.user_file == file or self.user_file.endswith(f"{PATH_SEPARATOR}{file}"):
+        `tsc` from its own directory (`practice/two-sum.ts`), or by a path that ends with its
+        workspace path, as a compiler names it absolute (`/ws/jvm/.../Solution.java`); or a file
+        of the package, by its name or by a path through the package directory. None for any
+        other file."""
+        if self._is_user_file(file):
             return self.user_file
-        if self.package is not None and PATH_SEPARATOR not in file:
-            return f"{self.package}{PATH_SEPARATOR}{file}"
-        return None
+        return self._package_file(file)
+
+    def _is_user_file(self, file: str) -> bool:
+        ends_the_user_file = self.user_file.endswith(f"{PATH_SEPARATOR}{file}")
+        ends_like_the_user_file = file.endswith(f"{PATH_SEPARATOR}{self.user_file}")
+        return file == self.user_file or ends_the_user_file or ends_like_the_user_file
+
+    def _package_file(self, file: str) -> str | None:
+        if self.package is None:
+            return None
+        directory, _, name = file.rpartition(PATH_SEPARATOR)
+        in_package = directory == self.package or directory.endswith(
+            f"{PATH_SEPARATOR}{self.package}"
+        )
+        return f"{self.package}{PATH_SEPARATOR}{name}" if in_package or not directory else None
 
 
 def solution_load_diagnostic(error: UserError, files: SolutionFiles) -> Diagnostic:
@@ -170,10 +192,30 @@ def _solution_place(frame: str, files: SolutionFiles) -> tuple[str, int] | None:
 
 
 def in_solution_files(diagnostic: Diagnostic, files: SolutionFiles) -> Diagnostic:
-    """A tool's diagnostic with its file given from the workspace root when it is the problem's;
-    any other file as the tool named it."""
-    path = files.path_of(diagnostic.file) if diagnostic.file is not None else None
-    return replace(diagnostic, file=path) if path else diagnostic
+    """A tool's diagnostic with its file given from the workspace root when it is the problem's.
+    A file the tool named by an absolute path that is not the problem's is no file the editor can
+    open: the diagnostic keeps its message and loses its place. Any other file stays as the tool
+    named it."""
+    if diagnostic.file is None:
+        return diagnostic
+    path = files.path_of(diagnostic.file)
+    if path:
+        return replace(diagnostic, file=path)
+    return _without_place(diagnostic) if diagnostic.file.startswith(ABSOLUTE_PREFIX) else diagnostic
+
+
+def in_project_folder(diagnostic: Diagnostic, root: str) -> Diagnostic:
+    """A compiler's diagnostic of a project with its file relative to the project folder `root`,
+    which a relative path already is; a file outside the folder keeps its message and loses its
+    place."""
+    if diagnostic.file is None:
+        return diagnostic
+    path = _in_project(diagnostic.file, root)
+    return replace(diagnostic, file=path) if path else _without_place(diagnostic)
+
+
+def _without_place(diagnostic: Diagnostic) -> Diagnostic:
+    return replace(diagnostic, file=None, line=None, column=None)
 
 
 def distinct(diagnostics: Iterable[Diagnostic]) -> tuple[Diagnostic, ...]:

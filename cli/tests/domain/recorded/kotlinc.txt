@@ -1,0 +1,4 @@
+e: file:///ws/jvm/kotlin/src/main/kotlin/practice/two_sum/Solution.kt:8:24 Initializer type mismatch: expected 'Int', actual 'String'.
+e: file:///ws/jvm/kotlin/src/main/kotlin/practice/two_sum/Solution.kt:9:17 Unresolved reference 'undefinedName'.
+e: file:///ws/jvm/kotlin/src/main/kotlin/practice/two_sum/Solution.kt:10:17 None of the following candidates is applicable:
+e: file:///ws/jvm/kotlin/src/main/kotlin/practice/two_sum/Solution.kt:15:16 Unresolved reference 'missing'.

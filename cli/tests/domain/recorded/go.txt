@@ -1,0 +1,10 @@
+go/practice/two_sum/two_sum.go:5:2: "os" imported and not used
+go/practice/two_sum/two_sum.go:13:6: declared and not used: count
+go/practice/two_sum/two_sum.go:13:18: cannot use "five" (untyped string constant) as int value in variable declaration
+go/practice/two_sum/two_sum.go:14:14: undefined: undefinedName
+go/practice/two_sum/two_sum.go:15:11: not enough arguments in call to pair
+	have (number)
+	want (int, int)
+go/practice/two_sum/two_sum.go:16:6: declared and not used: s
+go/practice/two_sum/two_sum.go:16:17: cannot use pair(1, 2) (value of type int) as string value in variable declaration
+go/practice/two_sum/two_sum.go:17:9: undefined: missing

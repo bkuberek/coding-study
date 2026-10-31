@@ -1,0 +1,1 @@
+w: file:///ws/jvm/kotlin/src/main/kotlin/practice/two_sum/Solution.kt:9:27 'fun old(): Int' is deprecated. old.

@@ -1,0 +1,3 @@
+# vetmod
+./main.go:6:17: cannot use 5 (untyped int constant) as string value in variable declaration
+./main.go:7:17: undefined: y

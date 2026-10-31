@@ -1,0 +1,25 @@
+/ws/jvm/java/src/main/java/practice/two_sum/Solution.java:7: error: incompatible types: String cannot be converted to int
+        int count = "five";
+                    ^
+/ws/jvm/java/src/main/java/practice/two_sum/Solution.java:9: error: cannot find symbol
+        names.add(undefinedName);
+                  ^
+  symbol:   variable undefinedName
+  location: class Solution
+/ws/jvm/java/src/main/java/practice/two_sum/Solution.java:10: error: incompatible types: int cannot be converted to String
+        names.add(1, 2);
+                     ^
+/ws/jvm/java/src/main/java/practice/two_sum/Solution.java:11: error: cannot find symbol
+        Strin text = null;
+        ^
+  symbol:   class Strin
+  location: class Solution
+/ws/jvm/java/src/main/java/practice/two_sum/Solution.java:12: warning: [removal] Integer(int) in Integer has been deprecated and marked for removal
+        Integer boxed = new Integer(5);
+                        ^
+/ws/jvm/java/src/main/java/practice/two_sum/Solution.java:17: error: cannot find symbol
+        return missing(3);
+               ^
+  symbol:   method missing(int)
+  location: class Solution
+Note: /ws/jvm/java/src/main/java/practice/two_sum/Solution.java uses unchecked or unsafe operations.

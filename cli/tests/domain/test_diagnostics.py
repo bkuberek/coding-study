@@ -6,6 +6,7 @@ from coding_study.domain.diagnostics import (
     Severity,
     SolutionFiles,
     distinct,
+    in_project_folder,
     in_solution_files,
     load_diagnostic,
     report_diagnostic,
@@ -126,6 +127,11 @@ def test_a_frameworks_report_is_an_error_from_loading():
 
 PYTHON_FILES = SolutionFiles("python/practice/two_sum.py")
 GO_FILES = SolutionFiles("go/practice/two_sum/two_sum.go", "go/practice/two_sum")
+JAVA_FILES = SolutionFiles(
+    "jvm/java/src/main/java/practice/two_sum/Solution.java",
+    "jvm/java/src/main/java/practice/two_sum",
+)
+JAVA_PACKAGE = "/ws/jvm/java/src/main/java/practice/two_sum"
 
 
 def test_the_user_file_named_by_its_file_name_is_given_from_the_workspace_root():
@@ -184,3 +190,57 @@ def test_a_tools_diagnostic_of_another_file_keeps_its_name():
 def test_a_tools_diagnostic_without_a_file_stays_without_a_place():
     diagnostic = Diagnostic("undefined: x", DiagnosticSource.BUILD)
     assert in_solution_files(diagnostic, PYTHON_FILES) == diagnostic
+
+
+def test_the_user_file_named_by_an_absolute_path_is_given_from_the_workspace_root():
+    assert JAVA_FILES.path_of(f"{JAVA_PACKAGE}/Solution.java") == JAVA_FILES.user_file
+
+
+def test_a_file_of_the_package_named_by_an_absolute_path_is_the_problems():
+    assert (
+        JAVA_FILES.path_of(f"{JAVA_PACKAGE}/Helper.java")
+        == "jvm/java/src/main/java/practice/two_sum/Helper.java"
+    )
+
+
+def test_a_file_of_another_package_named_by_an_absolute_path_is_not_the_problems():
+    assert JAVA_FILES.path_of("/ws/jvm/java/src/main/java/practice/other/Solution.java") is None
+
+
+def test_a_file_of_a_package_below_the_problems_is_not_the_problems():
+    assert JAVA_FILES.path_of(f"{JAVA_PACKAGE}/inner/Helper.java") is None
+
+
+def test_a_compilers_diagnostic_of_the_user_file_is_given_from_the_workspace_root():
+    diagnostic = Diagnostic(
+        "x", DiagnosticSource.BUILD, file=f"{JAVA_PACKAGE}/Solution.java", line=7, column=3
+    )
+    mapped = in_solution_files(diagnostic, JAVA_FILES)
+    assert (mapped.file, mapped.line, mapped.column) == (JAVA_FILES.user_file, 7, 3)
+
+
+def test_a_diagnostic_of_an_absolute_path_outside_the_problem_has_no_file():
+    diagnostic = Diagnostic("x", DiagnosticSource.BUILD, file="/ws/.cs/build/Other.java", line=2)
+    mapped = in_solution_files(diagnostic, JAVA_FILES)
+    assert (mapped.file, mapped.line, mapped.message) == (None, None, "x")
+
+
+def test_a_diagnostic_of_a_project_file_is_given_from_the_project_folder():
+    diagnostic = Diagnostic("x", DiagnosticSource.BUILD, file="/ws/projects/bank/src/lib.rs")
+    assert in_project_folder(diagnostic, "/ws/projects/bank").file == "src/lib.rs"
+
+
+def test_a_diagnostic_of_a_relative_project_file_keeps_its_path():
+    diagnostic = Diagnostic("x", DiagnosticSource.BUILD, file="src/lib.rs")
+    assert in_project_folder(diagnostic, "/ws/projects/bank") == diagnostic
+
+
+def test_a_diagnostic_of_a_file_outside_the_project_folder_has_no_file():
+    diagnostic = Diagnostic("x", DiagnosticSource.BUILD, file="/ws/runners/support.rs", line=3)
+    mapped = in_project_folder(diagnostic, "/ws/projects/bank")
+    assert (mapped.file, mapped.line, mapped.message) == (None, None, "x")
+
+
+def test_a_project_diagnostic_without_a_file_stays_without_a_place():
+    diagnostic = Diagnostic("failed to parse manifest", DiagnosticSource.BUILD)
+    assert in_project_folder(diagnostic, "/ws/projects/bank") == diagnostic
