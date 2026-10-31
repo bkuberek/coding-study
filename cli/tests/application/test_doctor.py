@@ -32,6 +32,7 @@ from coding_study.domain.config import Config
 from coding_study.domain.errors import ConfigError, RunnerProtocolError, RunnerStartError
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import RunnerInfo, RunReport, RunRequest
+from coding_study.domain.suite_runs import SuiteJob, SuiteReport
 from tests.fakes import DEBUGSERVER, DELVE, FakeDebugServers, FakeLanguageRunner, FakeToolchains
 
 OK, WARN, FAIL = CheckStatus.OK, CheckStatus.WARN, CheckStatus.FAIL
@@ -121,6 +122,9 @@ class HelloProcess:
 
     def bench(self, launch: RunnerLaunch, request: BenchRequest) -> BenchReport:
         raise AssertionError("cstudy doctor never benches")
+
+    def run_suite(self, launch: RunnerLaunch, job: SuiteJob) -> SuiteReport:
+        raise AssertionError("cstudy doctor never runs a suite")
 
 
 @dataclass

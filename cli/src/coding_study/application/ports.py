@@ -1,7 +1,7 @@
 """Ports the application drives; adapters implement them (docs/architecture.md)."""
 
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
 from typing import Protocol
@@ -23,6 +23,7 @@ from coding_study.domain.progress_stats import LatestBench
 from coding_study.domain.project_tests import LevelTests
 from coding_study.domain.runs import RunReport, RunRequest
 from coding_study.domain.scheduling import ProblemProgress, ScheduleEntry
+from coding_study.domain.suite_runs import SuiteJob, SuiteReport
 from coding_study.domain.time_limits import Calibration
 
 
@@ -268,6 +269,9 @@ class RunnerLaunch:
     scratch: Path | None = None
     """A directory only this launch uses, such as a private copy of the build output;
     `RunnerProcess` removes it when the run ends, however it ends."""
+    environment: Mapping[str, str] = field(default_factory=dict[str, str], hash=False)
+    """Variables set for the runner on top of the CLI's own environment; left out of the hash,
+    since a mapping has none."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -316,6 +320,15 @@ class RunnerProcess(Protocol):
         """Measurements of every target at every size it reached (docs/specs/runners.md#bench-mode).
 
         A hang or crash stops the target it happened to; the others carry on. Raises like `run`.
+        """
+        ...
+
+    def run_suite(self, launch: RunnerLaunch, job: SuiteJob) -> SuiteReport:
+        """One result per test the framework ran (docs/specs/runners.md#suite-job).
+
+        A test that hangs or crashes is recorded as such, and the suite restarts without the
+        tests reported so far. Raises like `run`, and RunnerStartError for a runner without
+        suite jobs.
         """
         ...
 
@@ -583,3 +596,4 @@ class ProjectTestGenerator(Protocol):
         """The native test file of one level, ending with a newline and laid out as the
         language's formatter lays it out; the caller writes it to `tests.path` in the project."""
         ...
+

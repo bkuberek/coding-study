@@ -4,7 +4,7 @@ Every runner speaks this format; only `SubprocessRunner` reads and writes it.
 """
 
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import NoReturn, cast
 
@@ -44,11 +44,19 @@ from coding_study.domain.runs import (
     WorkerProgress,
 )
 from coding_study.domain.signature import FunctionSignature, Param, Returns, Signature
+from coding_study.domain.suite_runs import (
+    AssertionFailed,
+    Comparison,
+    Passed,
+    Skipped,
+    SuiteJob,
+)
 
 type JsonObject = dict[str, JsonValue]
 
 MAX_QUOTED_LINE_LENGTH = 200
 DEFAULT_SAMPLE_CALLS = 1
+SUITE_KIND = "suite"
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,7 +78,9 @@ class CaseStart:
     case_id: str
 
 
-type ReportedOutcome = Returned | Raised | InvalidOutput | StressCompleted | Stalled
+type SuiteReported = Passed | AssertionFailed | Skipped
+"""Results only a suite job reports; a test's `error` is a `Raised`, as a case's is."""
+type ReportedOutcome = Returned | Raised | InvalidOutput | StressCompleted | Stalled | SuiteReported
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,6 +194,25 @@ def encode_request(request: RunRequest) -> JsonObject:
         "protocol": PROTOCOL_VERSION,
         "mode": RunMode.TEST.value,
         "jobs": [_job(job) for job in request.jobs],
+    }
+
+
+def encode_suite_request(job: SuiteJob, skip: Sequence[str]) -> JsonObject:
+    """`skip`: the tests reported before a restart, and the one that hung or crashed."""
+    return {
+        "protocol": PROTOCOL_VERSION,
+        "mode": RunMode.TEST.value,
+        "jobs": [
+            {
+                "job_id": job.job_id,
+                "kind": SUITE_KIND,
+                "framework": job.framework.value,
+                "root": job.root,
+                "exclude": list(job.exclude),
+                "select": list(job.select),
+                "skip": list(skip),
+            }
+        ],
     }
 
 
@@ -481,12 +510,39 @@ def _case_result(fields: _Fields) -> CaseResult:
     return CaseResult(job_id, case_id, decoder(fields))
 
 
-def _returned(fields: _Fields) -> Returned | StressCompleted:
-    """A stress run's `ok` carries `sections`; its output holds setup, workers and final."""
+def _returned(fields: _Fields) -> Returned | StressCompleted | Passed:
+    """A stress run's `ok` carries `sections`, its output holding setup, workers and final; a
+    suite job's test has no output."""
     if fields.has("sections"):
         return _stress_completed(fields)
+    if not fields.has("output"):
+        return Passed(fields.integer("duration_ns"), fields.optional_string("stdout"))
     return Returned(
         fields.value("output"), fields.integer("duration_ns"), fields.optional_string("stdout")
+    )
+
+
+def _assertion_failed(fields: _Fields) -> AssertionFailed:
+    return AssertionFailed(
+        fields.string("message"),
+        fields.integer("duration_ns"),
+        fields.optional_string("stdout"),
+        _comparison(fields),
+    )
+
+
+def _comparison(fields: _Fields) -> Comparison | None:
+    sides = (fields.has("expected"), fields.has("actual"))
+    if sides == (False, False):
+        return None
+    if sides != (True, True):
+        fields.fail("a failed assertion reports both expected and actual, or neither")
+    return Comparison(fields.value("expected"), fields.value("actual"))
+
+
+def _skipped(fields: _Fields) -> Skipped:
+    return Skipped(
+        fields.string("message"), fields.integer("duration_ns"), fields.optional_string("stdout")
     )
 
 
@@ -630,6 +686,8 @@ _OUTCOME_DECODERS: Mapping[str, Callable[[_Fields], ReportedOutcome]] = {
     "error": _raised,
     "invalid_output": _invalid_output,
     "stalled": _stalled,
+    "failed": _assertion_failed,
+    "skipped": _skipped,
 }
 _FAILURE_DECODERS: Mapping[str, Callable[[_Fields], Raised | InvalidOutput]] = {
     "error": _raised,

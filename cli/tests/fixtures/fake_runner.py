@@ -3,6 +3,7 @@
 Each case input holds one `step` that says what the "user code" does:
 
     {"do": "return", "value": V}   case_result ok with output V
+    {"do": "pass"}                 case_result ok without an output, as only a suite's test has
     {"do": "raise", "message": M}  case_result error
     {"do": "invalid"}              case_result invalid_output
     {"do": "hang"}                 sleeps after case_start
@@ -160,6 +161,8 @@ class Runner:
         ids = {"job_id": job_id, "case_id": case_id, "duration_ns": 1000, "stdout": ""}
         if action == "return":
             self.emit(event="case_result", status="ok", output=step["value"], **ids)
+        elif action == "pass":
+            self.emit(event="case_result", status="ok", **ids)
         elif action == "raise":
             error = {"type": "ValueError", "message": step["message"]}
             self.emit(event="case_result", status="error", error=error, **ids)

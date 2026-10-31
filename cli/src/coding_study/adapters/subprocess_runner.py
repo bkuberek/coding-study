@@ -12,7 +12,10 @@ Watchdog phases, measured from the latest event:
 - anywhere else: `idle_limit_ms` (for example a module that hangs while loading).
 
 A hang or crash is reported on the case (or bench target) in progress, or on the next one not
-run yet when nothing is in progress, and the runner restarts with the work still pending.
+run yet when nothing is in progress, and the runner restarts with the work still pending. A suite
+job (docs/specs/runners.md#suite-job) has no cases: its framework discovers the tests, so a hang or
+crash is reported on the test in progress, if any, and the restart leaves out every test reported
+so far.
 
 After a stress run that left threads alive, a runner writes `restart_requested` and exits with
 code 3 (docs/specs/runners.md#exit-codes-hang-guard-and-restarts-additions): it restarts for the
@@ -40,7 +43,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from shutil import rmtree
-from typing import IO, Protocol
+from typing import IO, Protocol, TypeGuard
 
 from coding_study.adapters.bench_progress import BenchProgress
 from coding_study.adapters.debug_process import (
@@ -63,6 +66,7 @@ from coding_study.adapters.runner_protocol import (
     accepted_hello,
     decode_event,
     encode_request,
+    encode_suite_request,
 )
 from coding_study.application.ports import DebugLaunch, RunnerLaunch
 from coding_study.domain.bench_runs import BenchReport, BenchRequest
@@ -76,6 +80,7 @@ from coding_study.domain.runs import (
     Crashed,
     JobReport,
     NotRun,
+    Raised,
     Returned,
     RunCase,
     RunJob,
@@ -88,6 +93,16 @@ from coding_study.domain.runs import (
     TimedOut,
     UserError,
 )
+from coding_study.domain.suite_runs import (
+    AssertionFailed,
+    Passed,
+    Skipped,
+    SuiteJob,
+    SuiteOutcome,
+    SuiteReport,
+    SuiteResult,
+    SuiteTest,
+)
 
 MAX_RESTARTS = 3
 KEPT_RUNS = 20
@@ -95,6 +110,9 @@ STDERR_TAIL_LINES = 20
 BAD_REQUEST_EXIT_CODE = 2
 RESTART_EXIT_CODE = 3
 STRESS_FEATURE = "stress"
+PROJECT_FEATURE = "project"
+SUITE_FEATURE = "suite"
+PROJECT_PROBLEMS = "project problems"
 POLL_INTERVAL_SECONDS = 0.005
 EXIT_GRACE_SECONDS = 5.0
 MILLISECONDS_PER_SECOND = 1000
@@ -130,6 +148,12 @@ class SubprocessRunner:
         progress = BenchProgress(request)
         if not self._attempts(launch, progress):
             progress.note(f"the runner was restarted {MAX_RESTARTS} times; the bench stopped early")
+        return progress.report()
+
+    def run_suite(self, launch: RunnerLaunch, job: SuiteJob) -> SuiteReport:
+        progress = _SuiteProgress(job)
+        if not self._attempts(launch, progress):
+            progress.stop(_not_restarted_reason(launch))
         return progress.report()
 
     def _attempts(self, launch: RunnerLaunch, progress: "_Progress") -> bool:
@@ -227,6 +251,7 @@ class _RunProgress:
         self._restart_requested = False
         self._restarted_after: dict[str, list[str]] = {job.job_id: [] for job in request.jobs}
         self._needs_stress = any(job.kind is ProblemKind.CONCURRENT for job in request.jobs)
+        self._needs_project = any(job.kind is ProblemKind.PROJECT for job in request.jobs)
 
     @property
     def said_hello(self) -> bool:
@@ -317,10 +342,13 @@ class _RunProgress:
         return JobReport(job.job_id, cases, self._load_errors.get(job.job_id), restarted_after)
 
     def _hello(self, hello: Hello) -> None:
-        """A concurrent job needs a runner with the `stress` feature (runners.md#capability)."""
+        """A concurrent job needs a runner with the `stress` feature (runners.md#capability), and
+        a project job one with `project` (runners.md#project-jobs)."""
         accepted = accepted_hello(hello, self._said_hello)
-        if self._needs_stress and STRESS_FEATURE not in accepted.features:
-            raise RunnerStartError(f"runner {accepted.runner} does not support concurrent problems")
+        if self._needs_stress:
+            _require_feature(accepted, STRESS_FEATURE, "concurrent problems")
+        if self._needs_project:
+            _require_feature(accepted, PROJECT_FEATURE, PROJECT_PROBLEMS)
         self._runner = self._runner or accepted
         self._said_hello = True
 
@@ -342,6 +370,8 @@ class _RunProgress:
         in_progress = self._case_in_progress
         if in_progress is None or (in_progress[0], in_progress[1].id) != (job_id, case_id):
             raise RunnerProtocolError(f'case_result for "{job_id}/{case_id}" without case_start')
+        if isinstance(outcome, Passed | AssertionFailed | Skipped):
+            raise RunnerProtocolError(f'case_result for "{job_id}/{case_id}" is not a case result')
         problem = _result_problem(in_progress[1], outcome)
         if problem is not None:
             raise RunnerProtocolError(f'case_result for "{job_id}/{case_id}": {problem}')
@@ -401,6 +431,140 @@ class _RunProgress:
             ),
             None,
         )
+
+
+class _SuiteProgress:
+    """The tests reported so far across restarts, and the protocol state of the current attempt.
+
+    Every restart asks the runner to leave out the tests reported so far: the ones that ran, and
+    the one that hung or crashed."""
+
+    def __init__(self, job: SuiteJob) -> None:
+        self._job = job
+        self._outcomes: dict[str, SuiteOutcome] = {}
+        """By test id, in the order the tests were reported."""
+        self._load_error: UserError | None = None
+        self._finished = False
+        self._stopped_early: str | None = None
+        self._runner: RunnerInfo | None = None
+        self._said_hello = False
+        self._job_started = False
+        self._test_in_progress: str | None = None
+
+    @property
+    def said_hello(self) -> bool:
+        return self._said_hello
+
+    @property
+    def restart_requested(self) -> bool:
+        return False
+
+    @property
+    def call_limit_ms(self) -> int | None:
+        return self._job.hang_guard_ms if self._test_in_progress is not None else None
+
+    def begin_attempt(self) -> JsonObject:
+        self._said_hello = False
+        self._job_started = False
+        self._test_in_progress = None
+        return encode_suite_request(self._job, tuple(self._outcomes))
+
+    def apply(self, event: RunnerEvent) -> None:
+        if isinstance(event, Hello):
+            self._hello(event)
+            return
+        if not self._said_hello:
+            raise RunnerProtocolError(f"runner sent {type(event).__name__} before hello")
+        match event:
+            case JobStart(job_id):
+                self._started(job_id)
+            case CaseStart(job_id, test_id):
+                self._test_start(job_id, test_id)
+            case CaseResult(job_id, test_id, outcome):
+                self._test_result(job_id, test_id, outcome)
+            case LoadError(job_id, error):
+                self._job_event(job_id, "load_error")
+                self._load_error = error
+                self._finished = True
+            case JobEnd(job_id):
+                self._job_event(job_id, "job_end")
+                self._finished = True
+            case Bye():
+                self._bye()
+            case _:
+                raise RunnerProtocolError(f"runner sent {type(event).__name__} in a suite job")
+
+    def interrupt(self, outcome: Crashed | TimedOut) -> None:
+        """Recorded on the test in progress; a hang or crash between tests names no test."""
+        if self._test_in_progress is not None:
+            self._outcomes[self._test_in_progress] = outcome
+            self._test_in_progress = None
+
+    def is_complete(self) -> bool:
+        return self._finished
+
+    def stop(self, reason: str) -> None:
+        self._stopped_early = reason
+
+    def report(self) -> SuiteReport:
+        if self._runner is None:
+            raise RunnerProtocolError("runner never said hello")
+        tests = tuple(SuiteTest(test_id, outcome) for test_id, outcome in self._outcomes.items())
+        return SuiteReport(self._runner, tests, self._load_error, self._stopped_early)
+
+    def _hello(self, hello: Hello) -> None:
+        accepted = accepted_hello(hello, self._said_hello)
+        _require_feature(accepted, SUITE_FEATURE, PROJECT_PROBLEMS)
+        self._runner = self._runner or accepted
+        self._said_hello = True
+
+    def _started(self, job_id: str) -> None:
+        self._require_job(job_id)
+        if self._job_started:
+            raise RunnerProtocolError(f'runner started job "{job_id}" twice')
+        self._job_started = True
+
+    def _test_start(self, job_id: str, test_id: str) -> None:
+        self._job_event(job_id, "case_start")
+        if test_id in self._outcomes:
+            raise RunnerProtocolError(f'runner reported test "{test_id}" of "{job_id}" twice')
+        self._test_in_progress = test_id
+
+    def _test_result(self, job_id: str, test_id: str, outcome: ReportedOutcome) -> None:
+        self._require_job(job_id)
+        if self._test_in_progress != test_id:
+            raise RunnerProtocolError(f'case_result for "{job_id}/{test_id}" without case_start')
+        if not _is_test_result(outcome):
+            raise RunnerProtocolError(f'case_result for "{job_id}/{test_id}" is not a test result')
+        self._outcomes[test_id] = outcome
+        self._test_in_progress = None
+
+    def _job_event(self, job_id: str, event: str) -> None:
+        """`event` belongs inside the job, between tests."""
+        self._require_job(job_id)
+        if not self._job_started:
+            raise RunnerProtocolError(f'runner sent {event} for "{job_id}" outside job_start')
+        if self._test_in_progress is not None:
+            raise RunnerProtocolError(f"runner sent {event} before the case_result of a test")
+
+    def _bye(self) -> None:
+        if self._test_in_progress is not None or not self._finished:
+            raise RunnerProtocolError("runner said bye without ending the suite job")
+
+    def _require_job(self, job_id: str) -> None:
+        if job_id != self._job.job_id:
+            raise RunnerProtocolError(f'unknown job "{job_id}"')
+
+
+def _is_test_result(outcome: ReportedOutcome) -> TypeGuard[SuiteResult]:
+    return isinstance(outcome, Passed | AssertionFailed | Skipped) or (
+        isinstance(outcome, Raised) and outcome.stress is None
+    )
+
+
+def _require_feature(runner: RunnerInfo, feature: str, problems: str) -> None:
+    if feature not in runner.features:
+        raise RunnerStartError(f"runner {runner.runner} does not support {problems}")
 
 
 class _AttemptFiles:
@@ -517,6 +681,7 @@ class _Attempt:
             process = subprocess.Popen(
                 [*self._launch.command, *arguments],
                 cwd=self._launch.cwd,
+                env=_environment(self._launch),
                 stdin=subprocess.DEVNULL,
                 stdout=stdout,
                 stderr=stderr,
@@ -632,6 +797,13 @@ class _Attempt:
                 f"runner did not say hello within {limit_ms} ms", self._files.stderr_tail()
             )
         self._progress.interrupt(TimedOut(limit_ms))
+
+
+def _environment(launch: RunnerLaunch) -> dict[str, str] | None:
+    """The CLI's environment with the launch's variables; None leaves it as it is."""
+    if not launch.environment:
+        return None
+    return {**os.environ, **launch.environment}
 
 
 def _no_debugger_message(session: DebugSession) -> str:

@@ -140,6 +140,33 @@ def test_exit_without_bye_during_a_case_is_a_crash(runner):
     assert outcome == Crashed(0, ("crashed",))
 
 
+def test_a_project_job_needs_a_runner_with_project_jobs(runner):
+    project = replace(job(returns("a", 1)), kind=ProblemKind.PROJECT)
+    with pytest.raises(RunnerStartError, match="does not support project problems"):
+        run(runner, project)
+
+
+def test_a_suite_result_in_a_test_job_is_a_protocol_error(runner):
+    with pytest.raises(RunnerProtocolError, match="not a case result"):
+        run(runner, job(case("a", "pass")))
+
+
+def test_the_launch_environment_adds_to_the_cli_environment(runner, tmp_path):
+    seen = tmp_path / "environment.json"
+    script = tmp_path / "record_environment.py"
+    script.write_text(
+        "import json, os, pathlib, sys\n"
+        f"pathlib.Path({str(seen)!r}).write_text(json.dumps(dict(os.environ)))\n"
+        "sys.exit(1)\n"
+    )
+    environment = {"UV_NO_SYNC": "1"}
+    launch = RunnerLaunch((sys.executable, str(script)), tmp_path, 5_000, environment=environment)
+    with pytest.raises(RunnerStartError):
+        runner.run(launch, RunRequest(()))
+    recorded = json.loads(seen.read_text())
+    assert (recorded["UV_NO_SYNC"], recorded["PATH"]) == ("1", os.environ["PATH"])
+
+
 def test_cases_left_after_the_last_restart_are_not_run(runner):
     crashes = [case(f"c{index}", "crash", exit_code=1) for index in range(MAX_RESTARTS + 2)]
     assert [type(outcome) for outcome in outcomes(run(runner, job(*crashes)))] == [
