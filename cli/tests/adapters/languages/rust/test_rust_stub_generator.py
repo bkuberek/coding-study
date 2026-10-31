@@ -1,4 +1,3 @@
-import shutil
 import subprocess
 from dataclasses import replace
 
@@ -10,6 +9,7 @@ from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.signature import FunctionSignature, Param, Returns
 from coding_study.domain.type_dsl import parse_return_type, parse_value_type
 from tests.stub_contract import GOLDENS, STUB_CASES, StubCase, check_stub, stub_cases
+from tests.toolchains import needs_rustfmt
 
 
 def stub_meta(case_name: str) -> ProblemMeta:
@@ -121,7 +121,7 @@ def test_a_signature_longer_than_100_characters_is_split_like_rustfmt():
     ) in stub
 
 
-@pytest.mark.skipif(shutil.which("rustfmt") is None, reason="rustfmt is not installed")
+@needs_rustfmt
 def test_goldens_are_rustfmt_clean():
     goldens = [GOLDENS.path(Language.RUST, case.name) for case in STUB_CASES]
     present = [str(path) for path in goldens if path.exists()]

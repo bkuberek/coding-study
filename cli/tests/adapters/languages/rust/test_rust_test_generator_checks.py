@@ -27,6 +27,7 @@ from coding_study.domain.type_dsl import parse_return_type, parse_value_type
 from tests.fakes import repository_root
 from tests.helpers import REPOSITORY_ROOT, RUST_PROJECT_PROBLEMS
 from tests.project_builders import method, ops_case, project_meta, project_problem
+from tests.toolchains import needs_rustfmt
 
 pytestmark = [
     pytest.mark.slow,
@@ -126,6 +127,7 @@ class _Corpus:
         return self._random.choice(choices[type_text])
 
 
+@needs_rustfmt
 def test_rustfmt_leaves_a_random_corpus_as_it_is(tmp_path):
     corpus = _Corpus(CORPUS_SEED)
     for index in range(CORPUS_FILES):
@@ -180,6 +182,7 @@ def bank(tmp_path_factory) -> Problem:
     return FsProblemRepository(root).load("bank-project-rust")
 
 
+@needs_rustfmt
 def test_the_fixtures_level_files_are_as_rustfmt_lays_them_out(bank, tmp_path):
     root = crate(tmp_path, bank, "reference")
     checked = rustfmt_check(root / "tests")
