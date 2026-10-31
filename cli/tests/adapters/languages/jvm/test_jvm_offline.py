@@ -1,4 +1,5 @@
-"""Java and Kotlin build offline once `cstudy doctor --fix` has run on a fresh Gradle home (NFR-6).
+"""Java and Kotlin build offline once `cstudy doctor --fix` has run on a fresh Gradle home (NFR-6):
+single-file problems, and project folders, whose libraries the warm-up projects cache.
 
 Marked `slow`: the warm-up downloads what an empty Gradle home lacks, so it needs the network once.
 The Gradle distribution is linked from the user's Gradle home, since the wrapper would download
@@ -6,6 +7,7 @@ that same one, and the module stops its own daemon at the end.
 """
 
 import os
+import shutil
 import subprocess
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -22,6 +24,7 @@ from tests.workspaces import TEST_VERSION
 pytestmark = pytest.mark.slow
 
 DISTRIBUTIONS = Path("wrapper") / "dists"
+PROJECTS = Path(__file__).resolve().parents[3] / "fixtures" / "jvm-projects" / "problems"
 OFFLINE_SLUG = "offline_check"
 """Names no practice package, and differs from the warm-up's, so the build resolves again."""
 
@@ -74,4 +77,13 @@ def test_a_single_file_problem_builds_offline_after_the_warm_up(
     built = warmed_up.gradle(
         "--offline", "-q", f":{language}:csClasspath", f"-Pcs.only={OFFLINE_SLUG}"
     )
+    assert built.returncode == 0, built.stdout + built.stderr
+
+
+@pytest.mark.parametrize("problem", ["0001-bank-project-java", "0002-bank-project-kotlin"])
+def test_a_project_folder_builds_offline_after_the_warm_up(warmed_up: OfflineWorkspace, problem):
+    """Its main and test classes, against JUnit and kotlin-test, with no network."""
+    folder = warmed_up.root / "projects" / problem
+    shutil.copytree(PROJECTS / problem / "starter", folder)
+    built = warmed_up.gradle("-p", str(folder), "--offline", "-q", "csClasspath")
     assert built.returncode == 0, built.stdout + built.stderr
