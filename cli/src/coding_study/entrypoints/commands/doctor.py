@@ -29,7 +29,7 @@ from coding_study.adapters.subprocess_tool_probe import (
 from coding_study.adapters.toml_config import TomlConfigSource, config_path
 from coding_study.adapters.toolchains import RegistryToolchains
 from coding_study.adapters.workspace_marker import has_marker, read_marker, tool_version
-from coding_study.adapters.workspace_setup import FsWorkspaceSetup
+from coding_study.adapters.workspace_setup import FsProjectLinks, FsWorkspaceSetup
 from coding_study.application.doctor import (
     CheckResult,
     CheckStatus,
@@ -117,6 +117,7 @@ def _workspace(
         toolchains=RegistryToolchains(LANGUAGES, LanguageContext(root, root / RUNTIME_RUNNERS)),
         runner_process=SubprocessRunner(root / RUNS_DIRECTORY),
         commands=SubprocessCommandRunner(),
+        project_links=FsProjectLinks(),
     )
 
 

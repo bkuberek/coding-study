@@ -22,6 +22,7 @@ from coding_study.application.ports import (
     DebugServers,
     ProbeResult,
     ProgressNotice,
+    ProjectLinks,
     RepositoryFiles,
     RunnerProcess,
     ScaffoldOutcome,
@@ -60,6 +61,7 @@ from coding_study.domain.problem import (
 from coding_study.domain.runs import RunnerInfo, RunRequest
 from coding_study.domain.signature import FunctionSignature, Returns
 from coding_study.domain.type_dsl import VoidType
+from coding_study.domain.workspace_projects import PROJECTS_DIRECTORY
 
 PYTHON_VERSION = "3.13"
 MINIMUM_NODE_MAJOR = 24
@@ -126,6 +128,7 @@ class PracticeWorkspace:
     """Built against the runner runtime as it is: `--fix` refreshes it, the checks do not."""
     runner_process: RunnerProcess
     commands: CommandRunner
+    project_links: ProjectLinks
 
 
 @dataclass(frozen=True, slots=True)
@@ -165,6 +168,13 @@ WORKSPACE_ARTIFACTS = (
     _WorkspaceArtifact("typescript", "node_modules", FIX_COMMAND),
 )
 DEBUGPY_CHECK = "python debugpy"
+PYTEST_CHECK = "python pytest"
+PYTEST_INSTALL_COMMAND = f"uv add --dev pytest --directory {PYTHON_PROJECT}"
+"""Workspaces created before the template listed pytest lack it; only project problems need it."""
+PROJECTS_CHECK = "projects"
+PROJECT_LINKS_CHECK = "project links"
+VENV_LOCATION_CHECK = f"{PYTHON_PROJECT}/{PYTHON_VENV} location"
+VENV_RECREATE_COMMAND = f"rm -rf {PYTHON_PROJECT}/{PYTHON_VENV} && {FIX_COMMAND}"
 RUNNER_TYPESCRIPT = "runners/typescript"
 """In a content checkout, `--fix` also installs the TypeScript runner's own `tsc` and types."""
 HANDSHAKE_META = ProblemMeta(
@@ -222,11 +232,14 @@ class FixOutcome:
 
 def repair_workspace(workspace: PracticeWorkspace, notify: ProgressNotice) -> ScaffoldOutcome:
     """Write the missing template files (never touching existing ones, so practice files are
-    safe) and bring the runner runtime in step with the content."""
+    safe), link the Python project folders to the venv again, and bring the runner runtime in
+    step with the content."""
     root = workspace.files.root
     restored = workspace.setup.write_missing(root)
     for relative in restored.written:
         notify(f"restored {relative}")
+    for folder in workspace.project_links.relink(root):
+        notify(f"relinked {folder}/{PYTHON_VENV}")
     workspace.setup.refresh_runtime(root)
     return restored
 
@@ -473,19 +486,26 @@ def _workspace(environment: DoctorEnvironment, notify: ProgressNotice) -> list[C
     return [
         CheckResult("workspace", CheckStatus.OK, f"{files.root} ({created})"),
         *_workspace_files(workspace),
+        _projects(files),
         _runtime(workspace),
         *(_workspace_artifact(files, artifact) for artifact in WORKSPACE_ARTIFACTS),
         *_debugpy(environment.tools, files),
+        *_pytest(environment.tools, files),
+        _project_links(workspace),
+        *_venv_location(workspace),
         *(_runner(workspace, language, notify) for language in CORE_LANGUAGES),
     ]
 
 
 def _workspace_files(workspace: PracticeWorkspace) -> list[CheckResult]:
     """Workspaces from before Go and Rust lack their files, which `--fix` writes, so those only
-    warn; any other missing file blocks practice."""
+    warn, and the `projects` check covers the project folders; any other missing file blocks
+    practice."""
     missing = workspace.setup.missing_files(workspace.files.root)
     optional = tuple(path for path in missing if _is_optional_language_file(path))
-    core = tuple(path for path in missing if path not in optional)
+    core = tuple(
+        path for path in missing if path not in optional and not _is_in_projects_folder(path)
+    )
     return [
         _missing_files("workspace files", core, CheckStatus.FAIL),
         _missing_files(OPTIONAL_LANGUAGE_FILES, optional, CheckStatus.WARN),
@@ -496,13 +516,56 @@ def _is_optional_language_file(path: str) -> bool:
     return path == GO_WORK_FILE or path.split("/")[0] in OPTIONAL_PROJECTS
 
 
+def _is_in_projects_folder(path: str) -> bool:
+    return path.split("/")[0] == PROJECTS_DIRECTORY
+
+
 def _missing_files(name: str, missing: tuple[str, ...], status: CheckStatus) -> CheckResult:
-    if not missing:
+    return _listed(name, missing, status, "missing")
+
+
+def _listed(name: str, paths: tuple[str, ...], status: CheckStatus, what: str) -> CheckResult:
+    """OK without `paths`; else `status` naming the first few, with the `--fix` command."""
+    if not paths:
         return CheckResult(name, CheckStatus.OK)
-    shown = ", ".join(missing[:MISSING_FILES_SHOWN])
-    more = len(missing) - MISSING_FILES_SHOWN
-    detail = f"{len(missing)} missing: {shown}" + (f" and {more} more" if more > 0 else "")
+    shown = ", ".join(paths[:MISSING_FILES_SHOWN])
+    more = len(paths) - MISSING_FILES_SHOWN
+    detail = f"{len(paths)} {what}: {shown}" + (f" and {more} more" if more > 0 else "")
     return CheckResult(name, status, detail, fix=FIX_COMMAND)
+
+
+def _projects(files: RepositoryFiles) -> CheckResult:
+    """A workspace from before project problems has no `projects/`, which `--fix` writes; only
+    project problems use it, so its absence warns."""
+    if files.exists(PROJECTS_DIRECTORY):
+        return CheckResult(PROJECTS_CHECK, CheckStatus.OK)
+    detail = "missing (a workspace from before project problems)"
+    return CheckResult(PROJECTS_CHECK, CheckStatus.WARN, detail, fix=FIX_COMMAND)
+
+
+def _project_links(workspace: PracticeWorkspace) -> CheckResult:
+    """A Python project folder reaches the venv through its `.venv` link; without it editors
+    and the native `pytest` lose the venv, though `cstudy` still runs, so a broken one warns."""
+    unlinked = workspace.project_links.unlinked(workspace.files.root)
+    what = f"missing or dangling {PYTHON_VENV} links"
+    return _listed(PROJECT_LINKS_CHECK, unlinked, CheckStatus.WARN, what)
+
+
+def _venv_location(workspace: PracticeWorkspace) -> list[CheckResult]:
+    """The venv's console scripts keep its absolute path in their shebangs, so after the
+    workspace moves they no longer run; `cstudy` runs the interpreter by path and still works.
+    Nothing to check before the venv exists."""
+    files = workspace.files
+    if not files.exists(PYTHON_VENV_ARTIFACT.path):
+        return []
+    moved = workspace.project_links.moved_venv(files.root)
+    if moved is None:
+        return [CheckResult(VENV_LOCATION_CHECK, CheckStatus.OK)]
+    detail = (
+        f"its console scripts name {moved}: the workspace moved, so they no longer run "
+        "(cstudy still does)"
+    )
+    return [CheckResult(VENV_LOCATION_CHECK, CheckStatus.WARN, detail, fix=VENV_RECREATE_COMMAND)]
 
 
 def _runtime(workspace: PracticeWorkspace) -> CheckResult:
@@ -527,12 +590,27 @@ def _debugpy(tools: ToolProbe, workspace_files: RepositoryFiles) -> list[CheckRe
     so a missing one only warns. Nothing to check before the venv exists."""
     if not workspace_files.exists(PYTHON_VENV_ARTIFACT.path):
         return []
-    interpreter = workspace_files.root / PYTHON_PROJECT / PYTHON_INTERPRETER
-    found = tools.run((str(interpreter), "-c", "import debugpy"))
-    if found is not None and found.exit_code == 0:
+    if _importable(tools, workspace_files, "debugpy"):
         return [CheckResult(DEBUGPY_CHECK, CheckStatus.OK, "installed (cstudy test --debug)")]
     detail = "not installed (only cstudy test --debug needs it)"
     return [CheckResult(DEBUGPY_CHECK, CheckStatus.WARN, detail, fix=DEBUGPY_INSTALL_COMMAND)]
+
+
+def _pytest(tools: ToolProbe, workspace_files: RepositoryFiles) -> list[CheckResult]:
+    """The runner hosts pytest for a Python project's native tests; nothing else needs it, so a
+    missing one only warns. Nothing to check before the venv exists."""
+    if not workspace_files.exists(PYTHON_VENV_ARTIFACT.path):
+        return []
+    if _importable(tools, workspace_files, "pytest"):
+        return [CheckResult(PYTEST_CHECK, CheckStatus.OK, "installed (Python project problems)")]
+    detail = "not installed (only Python project problems need it)"
+    return [CheckResult(PYTEST_CHECK, CheckStatus.WARN, detail, fix=PYTEST_INSTALL_COMMAND)]
+
+
+def _importable(tools: ToolProbe, workspace_files: RepositoryFiles, module: str) -> bool:
+    interpreter = workspace_files.root / PYTHON_PROJECT / PYTHON_INTERPRETER
+    found = tools.run((str(interpreter), "-c", f"import {module}"))
+    return found is not None and found.exit_code == 0
 
 
 def _runner(

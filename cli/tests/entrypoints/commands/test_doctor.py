@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
@@ -163,6 +164,20 @@ def test_fix_refreshes_the_runner_runtime(monkeypatch, tmp_path):
     monkeypatch.setattr(doctor, "fix_workspace", lambda *_: ())
     runner.invoke(cli.app, ["doctor", "--fix"])
     assert (workspace / ".cs" / "runtime" / "runners" / "jvm" / "settings.gradle.kts").is_file()
+
+
+def test_fix_recreates_a_dangling_project_link(monkeypatch, tmp_path):
+    workspace = mark_workspace(tmp_path)
+    project = workspace / "projects" / "bank-project-python"
+    project.mkdir(parents=True)
+    (project / "pyproject.toml").write_text("[tool.ruff]\n")
+    (project / ".venv").symlink_to("/moved/away/.venv", target_is_directory=True)
+    monkeypatch.setenv("CSTUDY_WORKSPACE", str(workspace))
+    stub_report(monkeypatch)
+    monkeypatch.setattr(doctor, "fix_workspace", lambda *_: ())
+    lines = runner.invoke(cli.app, ["doctor", "--fix"]).output.splitlines()
+    relinked = "relinked projects/bank-project-python/.venv" in lines
+    assert (relinked, (project / ".venv").readlink()) == (True, Path("../../python/.venv"))
 
 
 def test_doctor_environment_reports_a_missing_workspace(tmp_path):

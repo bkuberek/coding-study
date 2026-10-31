@@ -39,6 +39,7 @@ OK, WARN, FAIL = CheckStatus.OK, CheckStatus.WARN, CheckStatus.FAIL
 PYTHON_PATH = "/py/bin/python3.13"
 WORKSPACE_PYTHON = "/ws/python/.venv/bin/python"
 IMPORT_DEBUGPY = (WORKSPACE_PYTHON, "-c", "import debugpy")
+IMPORT_PYTEST = (WORKSPACE_PYTHON, "-c", "import pytest")
 DELVE_VERSION = ("/go/bin/dlv", "version")
 HEALTHY_TOOLS: dict[tuple[str, ...], ProbeResult] = {
     ("uv", "python", "find", "3.13"): ProbeResult(0, f"{PYTHON_PATH}\n"),
@@ -55,10 +56,12 @@ HEALTHY_TOOLS: dict[tuple[str, ...], ProbeResult] = {
     ("cargo", "--version"): ProbeResult(0, "cargo 1.80.0 (376290515 2024-07-16)\n"),
     DELVE_VERSION: ProbeResult(0, "Delve Debugger\nVersion: 1.27.2\nBuild: $Id: 360e7b2 $\n"),
     IMPORT_DEBUGPY: ProbeResult(0, ""),
+    IMPORT_PYTEST: ProbeResult(0, ""),
 }
 COMPLETE_WORKSPACE = {
     "jvm",
     "jvm/gradlew",
+    "projects",
     "python",
     "python/.venv",
     "typescript",
@@ -165,6 +168,23 @@ class FakeSetup:
         raise AssertionError("cstudy doctor never runs git init")
 
 
+@dataclass
+class FakeProjectLinks:
+    unlinked_folders: tuple[str, ...] = ()
+    moved: str | None = None
+    relinked: list[Path] = field(default_factory=list[Path])
+
+    def unlinked(self, root: Path) -> tuple[str, ...]:
+        return self.unlinked_folders
+
+    def relink(self, root: Path) -> tuple[str, ...]:
+        self.relinked.append(root)
+        return self.unlinked_folders
+
+    def moved_venv(self, root: Path) -> str | None:
+        return self.moved
+
+
 def healthy_runners() -> dict[Language, LanguageRunner]:
     return {
         language: FakeLanguageRunner(Prepared(RunnerLaunch((language.value,), Path("/"), 1000)))
@@ -178,6 +198,7 @@ def workspace_with(
     process: HelloProcess | None = None,
     commands: FakeCommands | None = None,
     setup: FakeSetup | None = None,
+    links: FakeProjectLinks | None = None,
 ) -> PracticeWorkspace:
     return PracticeWorkspace(
         files=FakeFiles(set(COMPLETE_WORKSPACE) if paths is None else paths),
@@ -186,6 +207,7 @@ def workspace_with(
         toolchains=FakeToolchains(healthy_runners() if runners is None else runners),
         runner_process=process or HelloProcess(),
         commands=commands or FakeCommands(),
+        project_links=links or FakeProjectLinks(),
     )
 
 
@@ -576,6 +598,119 @@ def test_many_missing_files_are_summarized():
     setup = FakeSetup(missing=tuple(f"f{index}" for index in range(7)))
     detail = check(doctor(workspace=workspace_with(setup=setup)), "workspace files").detail
     assert detail == "7 missing: f0, f1, f2, f3, f4 and 2 more"
+
+
+def test_a_workspace_with_a_projects_folder_passes_its_check():
+    assert summary(doctor(), "projects") == (OK, "")
+
+
+def test_a_workspace_without_a_projects_folder_only_warns_with_the_fix_command():
+    paths = COMPLETE_WORKSPACE - {"projects"}
+    result = check(doctor(workspace=workspace_with(paths)), "projects")
+    assert (result.status, result.detail, result.fix) == (
+        WARN,
+        "missing (a workspace from before project problems)",
+        "cstudy doctor --fix",
+    )
+
+
+def test_a_missing_projects_folder_does_not_fail_the_files_check():
+    setup = FakeSetup(missing=("projects/.gitkeep",))
+    report = doctor(workspace=workspace_with(COMPLETE_WORKSPACE - {"projects"}, setup=setup))
+    assert (summary(report, "workspace files"), report.passed) == ((OK, ""), True)
+
+
+def test_the_files_check_leaves_the_projects_folder_to_its_own_check():
+    setup = FakeSetup(missing=("projects/.gitkeep", "python/pyproject.toml"))
+    report = doctor(workspace=workspace_with(setup=setup))
+    assert summary(report, "workspace files") == (FAIL, "1 missing: python/pyproject.toml")
+
+
+def test_project_folders_linked_to_the_workspace_venv_pass():
+    assert summary(doctor(), "project links") == (OK, "")
+
+
+def test_unlinked_project_folders_only_warn_listing_them_with_the_fix_command():
+    links = FakeProjectLinks(("projects/bank-project-python", "projects/parking-lot-python"))
+    report = doctor(workspace=workspace_with(links=links))
+    result = check(report, "project links")
+    assert (result.status, result.detail, result.fix, report.passed) == (
+        WARN,
+        "2 missing or dangling .venv links: projects/bank-project-python, "
+        "projects/parking-lot-python",
+        "cstudy doctor --fix",
+        True,
+    )
+
+
+def test_many_unlinked_project_folders_are_summarized():
+    links = FakeProjectLinks(tuple(f"projects/p{index}" for index in range(6)))
+    detail = check(doctor(workspace=workspace_with(links=links)), "project links").detail
+    assert detail == (
+        "6 missing or dangling .venv links: projects/p0, projects/p1, projects/p2, projects/p3, "
+        "projects/p4 and 1 more"
+    )
+
+
+def test_a_venv_whose_scripts_name_this_workspace_passes():
+    assert summary(doctor(), "python/.venv location") == (OK, "")
+
+
+def test_a_venv_from_before_the_workspace_moved_only_warns_with_the_fix_command():
+    links = FakeProjectLinks(moved="/old/ws/python/.venv")
+    report = doctor(workspace=workspace_with(links=links))
+    result = check(report, "python/.venv location")
+    assert (result.status, result.detail, result.fix, report.passed) == (
+        WARN,
+        "its console scripts name /old/ws/python/.venv: the workspace moved, so they no "
+        "longer run (cstudy still does)",
+        "rm -rf python/.venv && cstudy doctor --fix",
+        True,
+    )
+
+
+def test_the_venv_location_is_not_checked_before_the_venv_exists():
+    report = doctor(workspace=workspace_with(COMPLETE_WORKSPACE - {"python/.venv"}))
+    assert "python/.venv location" not in [result.name for result in report.results]
+
+
+def test_pytest_in_the_workspace_venv_passes():
+    assert summary(doctor(), "python pytest") == (OK, "installed (Python project problems)")
+
+
+def test_missing_pytest_is_only_a_warning_with_the_fix():
+    report = doctor(tools_with(IMPORT_PYTEST, ProbeResult(1, "ModuleNotFoundError")))
+    result = check(report, "python pytest")
+    assert (result.status, result.detail, result.fix, report.passed) == (
+        WARN,
+        "not installed (only Python project problems need it)",
+        "uv add --dev pytest --directory python",
+        True,
+    )
+
+
+def test_pytest_is_not_checked_before_the_venv_exists():
+    report = doctor(workspace=workspace_with(COMPLETE_WORKSPACE - {"python/.venv"}))
+    assert "python pytest" not in [result.name for result in report.results]
+
+
+def test_project_rows_follow_the_workspace_files_in_the_specs_order():
+    names = [result.name for result in doctor().results]
+    rows = ["projects", "python pytest", "project links", "python/.venv location"]
+    assert [name for name in names if name in rows] == rows
+
+
+def test_repair_recreates_the_project_links():
+    links = FakeProjectLinks(("projects/bank-project-python",))
+    repair_workspace(workspace_with(links=links), lambda _line: None)
+    assert links.relinked == [Path("/ws")]
+
+
+def test_repair_names_each_relinked_folder():
+    lines: list[str] = []
+    links = FakeProjectLinks(("projects/bank-project-python",))
+    repair_workspace(workspace_with(links=links), lines.append)
+    assert "relinked projects/bank-project-python/.venv" in lines
 
 
 def test_a_current_runner_runtime_passes():

@@ -662,3 +662,25 @@ class ProjectTestGenerators(Protocol):
         """Raises LanguageNotSetUpError for a language whose project tests are not generated
         yet."""
         ...
+
+
+class ProjectLinks(Protocol):
+    """How a workspace's Python project folders reach its venv, and where that venv's console
+    scripts think it is (docs/specs/installation-and-workspaces.md#cstudy-doctor-in-a-workspace).
+    Paths are relative to the workspace `root`."""
+
+    def unlinked(self, root: Path) -> tuple[str, ...]:
+        """The Python project folders (`projects/<slug>` with a `pyproject.toml`) whose `.venv`
+        link is missing or dangles, in path order."""
+        ...
+
+    def relink(self, root: Path) -> tuple[str, ...]:
+        """Recreates those links as the relative link to the workspace venv; returns the folders
+        it relinked."""
+        ...
+
+    def moved_venv(self, root: Path) -> str | None:
+        """The venv that the shebangs of `python/.venv`'s console scripts name, when it is not
+        this workspace's `python/.venv` (the workspace moved); None when they name it, or when
+        there is no script to read."""
+        ...
