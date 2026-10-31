@@ -148,9 +148,20 @@ def test_json_with_watch_is_a_usage_error(environment):
     assert result.exit_code == ExitCode.USAGE_ERROR
 
 
-def test_json_with_perf_is_a_usage_error(environment):
-    result = runner.invoke(cli.app, ["test", "--json", "--perf"])
-    assert result.exit_code == ExitCode.USAGE_ERROR
+def test_json_without_perf_has_no_perf(environment):
+    solve(environment)
+    assert document()["perf"] is None
+
+
+def test_code_that_loads_has_no_diagnostic(environment):
+    solve(environment)
+    assert document()["diagnostics"] == []
+
+
+def test_code_that_does_not_load_is_a_diagnostic(environment):
+    solve(environment, "def two_sum(nums, target):\n    return [0, 1]\n\ndef broken(:\n")
+    (diagnostic,) = document()["diagnostics"]
+    assert (diagnostic["source"], diagnostic["code"]) == ("load", "SyntaxError")
 
 
 @pytest.fixture

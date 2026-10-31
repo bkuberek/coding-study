@@ -1,17 +1,23 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "coding-study CLI events",
-  "description": "One line of `cstudy test --events` or `cstudy submit --events` on a project problem. Spec: docs/specs/cli.md#event-stream",
+  "description": "One line of `cstudy test --events` on every autograded problem, or of `cstudy submit --events`. Spec: docs/specs/cli.md#event-stream",
   "oneOf": [
     { "$ref": "#/$defs/run_start" },
     { "$ref": "#/$defs/output" },
+    { "$ref": "#/$defs/build" },
     { "$ref": "#/$defs/test_start" },
     { "$ref": "#/$defs/test_result" },
     { "$ref": "#/$defs/case_start" },
     { "$ref": "#/$defs/case_result" },
+    { "$ref": "#/$defs/case_revised" },
+    { "$ref": "#/$defs/stress_run_start" },
+    { "$ref": "#/$defs/stress_run" },
+    { "$ref": "#/$defs/stress_result" },
     { "$ref": "#/$defs/diagnostic" },
     { "$ref": "#/$defs/level_result" },
     { "$ref": "#/$defs/level_unlocked" },
+    { "$ref": "#/$defs/perf_result" },
     { "$ref": "#/$defs/run_end" }
   ],
   "$defs": {
@@ -32,7 +38,7 @@
       }
     },
     "run_start": {
-      "description": "First: the run's options are checked and its work begins",
+      "description": "First: the run's options are checked and its work begins. `kind`, `track`, `timer`, `time_limit` and `planned` are new: a project stream an earlier cstudy wrote lacks them",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "version", "command", "slug", "language", "attempt_id", "mode", "levels"],
@@ -45,13 +51,54 @@
         "attempt_id": { "type": "integer" },
         "mode": { "enum": ["new", "review", "mock"] },
         "levels": {
-          "type": "object",
+          "description": "Null for a kind without levels",
+          "type": ["object", "null"],
           "additionalProperties": false,
           "required": ["up_to", "unlocked", "last"],
           "properties": {
             "up_to": { "description": "The last level the run covers", "$ref": "#/$defs/level" },
             "unlocked": { "$ref": "#/$defs/level" },
             "last": { "$ref": "#/$defs/level" }
+          }
+        },
+        "kind": { "enum": ["function", "design", "progressive", "concurrent", "project"] },
+        "track": { "type": "string", "minLength": 1 },
+        "timer": {
+          "description": "The attempt's time box at the start; null without one",
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["elapsed_s", "limit_s"],
+          "properties": {
+            "elapsed_s": { "$ref": "#/$defs/count" },
+            "limit_s": { "$ref": "#/$defs/count" }
+          }
+        },
+        "time_limit": {
+          "description": "The value in effect (`5x`, `1500ms`); null when time limits are off",
+          "type": ["string", "null"]
+        },
+        "planned": {
+          "description": "What a single-file run will report, as its header counts it; null for a project",
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["cases", "visible", "hidden", "generated", "oracle_inputs", "stress"],
+          "properties": {
+            "cases": { "$ref": "#/$defs/count" },
+            "visible": { "$ref": "#/$defs/count" },
+            "hidden": { "$ref": "#/$defs/count" },
+            "generated": { "$ref": "#/$defs/count" },
+            "oracle_inputs": { "$ref": "#/$defs/count" },
+            "stress": {
+              "description": "A concurrent problem's stress cases, variants, and runs per stress case and variant; else null",
+              "type": ["object", "null"],
+              "additionalProperties": false,
+              "required": ["cases", "variants", "runs"],
+              "properties": {
+                "cases": { "$ref": "#/$defs/count" },
+                "variants": { "$ref": "#/$defs/count" },
+                "runs": { "$ref": "#/$defs/count" }
+              }
+            }
           }
         }
       }
@@ -65,6 +112,21 @@
         "type": { "const": "output" },
         "version": { "$ref": "#/$defs/version" },
         "text": { "type": "string" }
+      }
+    },
+    "build": {
+      "description": "`cstudy test` on a single-file problem: the build or type check ended, built or not",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "seconds", "note"],
+      "properties": {
+        "type": { "const": "build" },
+        "version": { "$ref": "#/$defs/version" },
+        "seconds": { "$ref": "#/$defs/seconds" },
+        "note": {
+          "description": "`gradle, warm`; null when the build failed",
+          "type": ["string", "null"]
+        }
       }
     },
     "test_start": {
@@ -99,7 +161,7 @@
       }
     },
     "case_start": {
-      "description": "`cstudy submit`: the runner started one graded case; a mock attempt has none for hidden cases",
+      "description": "The runner started one graded case or oracle input; a mock submission has none for hidden cases",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "version", "id", "visible", "level"],
@@ -108,11 +170,15 @@
         "version": { "$ref": "#/$defs/version" },
         "id": { "type": "string", "minLength": 1 },
         "visible": { "type": "boolean" },
-        "level": { "$ref": "#/$defs/optional_level" }
-      }
+        "level": { "$ref": "#/$defs/optional_level" },
+        "oracle": { "description": "An oracle input of `cstudy test --stress N`", "const": true },
+        "seed": { "type": "integer" },
+        "n": { "type": "integer", "minimum": 0 }
+      },
+      "dependentRequired": { "oracle": ["seed", "n"] }
     },
     "case_result": {
-      "description": "`cstudy submit`: one graded case, as an entry of `cases` in `cstudy submit --json`",
+      "description": "One graded case or oracle input, as an entry of `cases` (or `oracle.inputs`) in `cstudy submit --json` or `cstudy test --json`; never `tle`",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "version", "id", "visible", "generated", "status", "duration_ns", "level"],
@@ -122,9 +188,52 @@
         "id": { "type": "string", "minLength": 1 },
         "visible": { "type": "boolean" },
         "generated": { "type": "boolean" },
-        "status": {
-          "enum": ["pass", "fail", "error", "timeout", "tle", "invalid", "stalled", "not_run"]
-        },
+        "status": { "enum": ["pass", "fail", "error", "timeout", "invalid", "stalled", "not_run"] },
+        "duration_ns": { "$ref": "#/$defs/duration_ns" },
+        "level": { "$ref": "#/$defs/optional_level" },
+        "input": { "type": "object" },
+        "expected": true,
+        "actual": true,
+        "reason": { "type": ["string", "null"] },
+        "error": { "$ref": "#/$defs/error" },
+        "op_index": { "type": ["integer", "null"], "minimum": 0 },
+        "partial_output": { "type": "array" },
+        "hang_guard_ms": { "type": "integer", "minimum": 0 },
+        "exit_code": { "type": "integer" },
+        "stderr": { "type": "array", "items": { "type": "string" } },
+        "time_limit_ms": { "type": "number", "minimum": 0 },
+        "time_limit_basis": { "type": ["string", "null"] },
+        "note": { "type": "string" },
+        "stdout": { "type": "string" },
+        "oracle": { "description": "An oracle input of `cstudy test --stress N`", "const": true },
+        "seed": { "type": "integer" },
+        "n": { "type": "integer", "minimum": 0 }
+      },
+      "dependentRequired": { "oracle": ["seed", "n"] }
+    },
+    "case_revised": {
+      "description": "`cstudy test` on a single-file problem: a case whose verdict its time limit changed, its entry again, complete",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "version",
+        "id",
+        "visible",
+        "generated",
+        "status",
+        "duration_ns",
+        "level",
+        "time_limit_ms",
+        "time_limit_basis"
+      ],
+      "properties": {
+        "type": { "const": "case_revised" },
+        "version": { "$ref": "#/$defs/version" },
+        "id": { "type": "string", "minLength": 1 },
+        "visible": { "type": "boolean" },
+        "generated": { "type": "boolean" },
+        "status": { "const": "tle" },
         "duration_ns": { "$ref": "#/$defs/duration_ns" },
         "level": { "$ref": "#/$defs/optional_level" },
         "input": { "type": "object" },
@@ -143,6 +252,91 @@
         "stdout": { "type": "string" }
       }
     },
+    "stress_run_start": {
+      "description": "`cstudy test` on a concurrent problem: the runner started one stress run",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "id", "variant", "run", "seed"],
+      "properties": {
+        "type": { "const": "stress_run_start" },
+        "version": { "$ref": "#/$defs/version" },
+        "id": { "description": "The stress case", "type": "string", "minLength": 1 },
+        "variant": { "$ref": "#/$defs/variant" },
+        "run": { "description": "0-based", "$ref": "#/$defs/count" },
+        "seed": { "type": "integer" }
+      }
+    },
+    "stress_run": {
+      "description": "`cstudy test` on a concurrent problem: one stress run, judged against its invariants",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "version",
+        "id",
+        "variant",
+        "run",
+        "seed",
+        "status",
+        "duration_ns",
+        "reasons"
+      ],
+      "properties": {
+        "type": { "const": "stress_run" },
+        "version": { "$ref": "#/$defs/version" },
+        "id": { "description": "The stress case", "type": "string", "minLength": 1 },
+        "variant": { "$ref": "#/$defs/variant" },
+        "run": { "description": "0-based", "$ref": "#/$defs/count" },
+        "seed": { "type": "integer" },
+        "status": { "enum": ["pass", "fail", "error", "invalid", "stalled", "timeout", "not_run"] },
+        "duration_ns": { "$ref": "#/$defs/duration_ns" },
+        "reasons": {
+          "description": "As the report prints them; empty on `pass`",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "stress_result": {
+      "description": "`cstudy test` on a concurrent problem: one stress case and variant, as an entry of `stress` in `cstudy test --json`",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "version",
+        "id",
+        "variant",
+        "status",
+        "runs",
+        "runs_passed",
+        "median_ms",
+        "failures"
+      ],
+      "properties": {
+        "type": { "const": "stress_result" },
+        "version": { "$ref": "#/$defs/version" },
+        "id": { "type": "string", "minLength": 1 },
+        "variant": { "$ref": "#/$defs/variant" },
+        "status": { "enum": ["pass", "fail", "error", "invalid", "stalled", "timeout", "not_run"] },
+        "runs": { "$ref": "#/$defs/count" },
+        "runs_passed": { "$ref": "#/$defs/count" },
+        "median_ms": { "type": ["number", "null"], "minimum": 0 },
+        "failures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["run", "seed", "status", "reasons"],
+            "properties": {
+              "run": { "$ref": "#/$defs/count" },
+              "seed": { "type": "integer" },
+              "status": { "enum": ["fail", "error", "invalid", "stalled", "timeout", "not_run"] },
+              "reasons": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
     "diagnostic": {
       "description": "Where code does not load, build or type-check (docs/specs/cli.md#diagnostics)",
       "type": "object",
@@ -153,7 +347,10 @@
         "version": { "$ref": "#/$defs/version" },
         "source": { "enum": ["load", "typecheck", "build"] },
         "severity": { "enum": ["error", "warning", "info"] },
-        "file": { "description": "Relative to the project folder", "type": ["string", "null"] },
+        "file": {
+          "description": "Relative to the project folder for a project problem, else to the workspace root",
+          "type": ["string", "null"]
+        },
         "line": { "type": ["integer", "null"], "minimum": 1 },
         "column": { "type": ["integer", "null"], "minimum": 1 },
         "code": { "type": ["string", "null"] },
@@ -190,7 +387,7 @@
       }
     },
     "level_unlocked": {
-      "description": "`cstudy submit`: the level the submission opened",
+      "description": "The level the run opened: by a submission, or by `cstudy test` on a progressive problem",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "version", "level", "title", "methods", "tests", "statement"],
@@ -201,15 +398,34 @@
         "title": { "type": "string" },
         "methods": { "type": "array", "items": { "type": "string" } },
         "tests": {
-          "type": "object",
+          "type": ["object", "null"],
           "additionalProperties": false,
           "required": ["path", "count"],
           "properties": {
             "path": { "description": "Relative to the project folder", "type": "string" },
             "count": { "$ref": "#/$defs/count" }
-          }
+          },
+          "description": "Null for a progressive problem, which has no generated test files"
         },
         "statement": { "type": "string" }
+      }
+    },
+    "perf_result": {
+      "description": "`cstudy test --perf`: the short bench after every case passed",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "verdict", "confidence", "text", "warnings", "wrong_answer"],
+      "properties": {
+        "type": { "const": "perf_result" },
+        "version": { "$ref": "#/$defs/version" },
+        "verdict": { "enum": ["optimal", "near-optimal", "suboptimal", "unknown", null] },
+        "confidence": { "enum": ["high", "medium", "low", null] },
+        "text": { "description": "The verdict line the report prints", "type": "string" },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "wrong_answer": {
+          "description": "The `FAIL wrong answer at n=...` line",
+          "type": ["string", "null"]
+        }
       }
     },
     "run_end": {
@@ -235,6 +451,15 @@
           "message": { "type": "null" }
         }
       }
-    }
+    },
+    "case_status": {
+      "enum": ["pass", "fail", "error", "timeout", "tle", "invalid", "stalled", "not_run"]
+    },
+    "variant": {
+      "description": "As `stress` in `cstudy test --json` names it",
+      "type": "string",
+      "minLength": 1
+    },
+    "seconds": { "type": "number", "minimum": 0 }
   }
 }

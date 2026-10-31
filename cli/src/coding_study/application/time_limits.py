@@ -14,6 +14,7 @@ from coding_study.application.language_runs import LanguageRun, reference_job_id
 from coding_study.application.ports import ProgressNotice
 from coding_study.application.reference_runs import approaches_in
 from coding_study.domain import layout
+from coding_study.domain.config import Config
 from coding_study.domain.errors import ContentError, ContentIssue
 from coding_study.domain.judging import RunnableCase
 from coding_study.domain.precedence import resolve_time_limit, time_limits_enabled
@@ -63,10 +64,9 @@ def resolve_time_limits(
 ) -> TimeLimits | None:
     """The limits for this run, or None when they are off or cannot apply."""
     config = environment.config
-    if not time_limits_enabled(request.flags.enabled, config):
+    limit = requested_time_limit(config, request.problem.meta, request.flags)
+    if limit is None:
         return None
-    meta = request.problem.meta
-    limit = resolve_time_limit(request.flags.value, config, meta.perf.time_limit)
     floor_ms = config.time_limit.floor_ms
     if isinstance(limit, AbsoluteTimeLimit):
         return TimeLimits(limit, floor_ms)
@@ -75,6 +75,16 @@ def resolve_time_limits(
         notify(unavailable_notice(request.language))
         return None
     return TimeLimits(limit, floor_ms, calibration)
+
+
+def requested_time_limit(
+    config: Config, meta: ProblemMeta, flags: TimeLimitFlags
+) -> TimeLimit | None:
+    """The limit a run of `meta` asks for, or None when time limits are off. Whether it applies
+    is known after the run: a factor needs a calibration in the run's runtime."""
+    if not time_limits_enabled(flags.enabled, config):
+        return None
+    return resolve_time_limit(flags.value, config, meta.perf.time_limit)
 
 
 class Calibrator:

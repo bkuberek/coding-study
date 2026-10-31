@@ -10,8 +10,7 @@ their 3 smallest failures and collapse the rest into counts.
 to standard error as plain text, like every notice of a `--json` run, so IDE tasks can match it; the
 report shows no durations, because pauses at breakpoints would be part of them.
 
-`--events` on a project problem writes the run as JSON events instead of the report
-(docs/specs/cli.md#event-stream).
+`--events` writes the run as JSON events instead of the report (docs/specs/cli.md#event-stream).
 """
 
 import json
@@ -36,14 +35,12 @@ from coding_study.application.project_testing import (
     is_project_attempt,
 )
 from coding_study.application.resolve_target import Target, resolve_target
-from coding_study.application.run_bench import (
-    PERF_REPS,
-    BenchOptions,
-    RunBenchRequest,
-    run_bench,
-)
+from coding_study.application.run_bench import BenchResult
+from coding_study.application.run_events import EventSink
+from coding_study.application.single_file_events import stream_perf, stream_tests
 from coding_study.application.time_limits import TimeLimitFlags
 from coding_study.domain import layout
+from coding_study.domain.cases import JsonValue
 from coding_study.domain.debugging import DebugRequest
 from coding_study.domain.errors import UsageError
 from coding_study.domain.generated_cases import OracleInput
@@ -62,7 +59,7 @@ from coding_study.entrypoints.commands._events import (
     require_events_alone,
     write_events,
 )
-from coding_study.entrypoints.commands.bench import bench_exit_code, perf_lines
+from coding_study.entrypoints.commands.bench import bench_exit_code, perf_lines, perf_value
 from coding_study.entrypoints.commands.project_documents import project_test_document
 from coding_study.entrypoints.commands.project_test import (
     ProjectTestOptions,
@@ -191,7 +188,7 @@ def run_tests(
     ] = False,
     events: Annotated[
         bool,
-        typer.Option("--events", help="Project problems: the run as JSON events, one per line."),
+        typer.Option("--events", help="The run as JSON events, one per line."),
     ] = False,
     debug: Annotated[
         bool,
@@ -233,7 +230,7 @@ def run_tests(
             }
         ),
     )
-    _require_text_for(options, watch)
+    _require_one_run_for(options, watch)
     if events:
         require_events_alone(_given({"--json": as_json, "--watch": watch, "--debug": debug}))
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
@@ -265,8 +262,6 @@ def run_tests(
             environment, project_request, console(context), project_options
         )
         _run_session(project, watch)
-    if events:
-        raise UsageError("--events is for project problems")
     request = use_case.RunTestsRequest(
         target.slug,
         target.language,
@@ -277,7 +272,33 @@ def run_tests(
         StressSelection(stress, seed),
         debug_request,
     )
+    if events:
+        raise typer.Exit(_stream_tests(environment, request, perf))
     _run_session(_Session(environment, request, console(context), options), watch)
+
+
+@dataclass(frozen=True, slots=True)
+class _CheckedRun:
+    result: use_case.RunTestsResult
+    bench: BenchResult | None
+    """`--perf`: the check, when it ran."""
+
+    @property
+    def exit_code(self) -> int:
+        exit_code = _exit_code(self.result)
+        return max(exit_code, bench_exit_code(self.bench)) if self.bench else exit_code
+
+    def document(self) -> dict[str, JsonValue]:
+        perf = perf_value(self.bench) if self.bench else None
+        return run_document(self.result, self.exit_code, perf)
+
+
+def _stream_tests(environment: Environment, request: use_case.RunTestsRequest, perf: bool) -> int:
+    def run(emit: EventSink) -> _CheckedRun:
+        result = stream_tests(environment, request, emit)
+        return _CheckedRun(result, stream_perf(environment, result, emit) if perf else None)
+
+    return write_events(run, lambda checked: RunSummary(checked.exit_code, checked.document()))
 
 
 def _stream_project_tests(environment: Environment, request: ProjectTestRequest) -> int:
@@ -325,7 +346,7 @@ def _time_limit_flags(time_limit: str | None, no_time_limit: bool) -> TimeLimitF
 class _Options:
     show_all: bool = False
     perf: bool = False
-    """`--perf`: after a full pass, a short bench and its verdict line."""
+    """`--perf`: after a full pass, a short bench and its verdict line (`perf` with `--json`)."""
     as_json: bool = False
     """`--json`: the run as one JSON document; notices go to standard error."""
     debug: bool = False
@@ -358,10 +379,10 @@ def _debug_request(options: _DebugOptions, excluded: tuple[str, ...]) -> DebugRe
     return DebugRequest(options.port, options.connect)
 
 
-def _require_text_for(options: _Options, watch: bool) -> None:
-    """`--watch` reprints and `--perf` adds a bench report: neither fits one JSON document."""
-    if options.as_json and (watch or options.perf):
-        raise UsageError("--json excludes --watch and --perf")
+def _require_one_run_for(options: _Options, watch: bool) -> None:
+    """`--watch` reprints: its runs do not fit one JSON document."""
+    if options.as_json and watch:
+        raise UsageError("--json excludes --watch")
 
 
 class _Session:
@@ -379,25 +400,24 @@ class _Session:
 
     def run(self) -> int:
         result = use_case.run_tests(self._environment, self._request, self._notice)
-        exit_code = _exit_code(result)
         if self._options.as_json:
-            typer.echo(json.dumps(run_document(result, exit_code), indent=2))
-            return exit_code
+            checked = _CheckedRun(result, self._perf(result))
+            typer.echo(json.dumps(checked.document(), indent=2))
+            return checked.exit_code
         for line in _Report(result, self._options.show_all).lines():
             self._output.print(line)
-        if self._options.perf and result.passed and result.every_case:
-            return max(exit_code, self._perf(result))
-        return exit_code
+        checked = _CheckedRun(result, self._perf(result))
+        if checked.bench is not None:
+            self._output.print(Text(""))
+            for line in perf_lines(checked.bench):
+                self._output.print(line)
+        return checked.exit_code
 
-    def _perf(self, result: use_case.RunTestsResult) -> int:
+    def _perf(self, result: use_case.RunTestsResult) -> BenchResult | None:
         """docs/specs/performance-analysis.md#integration: `reps=3`, stored as a bench run."""
-        options = BenchOptions(reps=PERF_REPS)
-        request = RunBenchRequest(result.meta.slug, result.language, options)
-        bench = run_bench(self._environment, request, self._notice)
-        self._output.print(Text(""))
-        for line in perf_lines(bench):
-            self._output.print(line)
-        return bench_exit_code(bench)
+        if not self._options.perf:
+            return None
+        return use_case.perf_check(self._environment, result, self._notice)
 
     def watch(self) -> int:
         """Run now and after every save, until interrupted; returns the last exit code."""

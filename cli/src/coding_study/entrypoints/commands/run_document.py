@@ -26,11 +26,15 @@ from coding_study.domain.runs import (
     UserError,
 )
 from coding_study.domain.stress_verdict import StressRunResult, StressVerdict
+from coding_study.entrypoints.commands._diagnostics import diagnostic_value
 
 DECIMALS = 3
 
 
-def run_document(result: RunTestsResult, exit_code: int) -> dict[str, JsonValue]:
+def run_document(
+    result: RunTestsResult, exit_code: int, perf: JsonValue = None
+) -> dict[str, JsonValue]:
+    """`perf`: the `--perf` check's value, null without one."""
     judgement = result.judgement
     load_error = judgement.load_error if judgement else None
     verdicts = judgement.verdicts if judgement else ()
@@ -48,11 +52,13 @@ def run_document(result: RunTestsResult, exit_code: int) -> dict[str, JsonValue]
         "levels": levels_value(result.levels),
         "build": _build(result.code_run),
         "load_error": error_value(load_error) if load_error else None,
+        "diagnostics": [diagnostic_value(diagnostic) for diagnostic in result.diagnostics],
         "cases": [case_value(verdict) for verdict in verdicts if verdict.case.id not in oracle_ids],
         "oracle": _oracle(result.oracle, verdicts),
-        "stress": [_stress(verdict) for verdict in judgement.stress] if judgement else [],
+        "stress": [stress_value(verdict) for verdict in judgement.stress] if judgement else [],
         "tally": tally_value(result.tally),
         "duration_s": round(result.duration_seconds, DECIMALS),
+        "perf": perf,
     }
 
 
@@ -195,7 +201,7 @@ def error_value(error: UserError) -> JsonValue:
     return {"type": error.type, "message": error.message, "trace": error.trace}
 
 
-def _stress(verdict: StressVerdict) -> JsonValue:
+def stress_value(verdict: StressVerdict) -> dict[str, JsonValue]:
     """The shape docs/specs/cli.md#concurrent-problems specifies, with every failing run."""
     median = verdict.median_ms
     return {
@@ -205,11 +211,11 @@ def _stress(verdict: StressVerdict) -> JsonValue:
         "runs": len(verdict.runs),
         "runs_passed": verdict.runs_passed,
         "median_ms": round(median, DECIMALS) if median is not None else None,
-        "failures": [_failed_run(run) for run in verdict.runs if not run.passed],
+        "failures": [stress_run_value(run) for run in verdict.runs if not run.passed],
     }
 
 
-def _failed_run(run: StressRunResult) -> JsonValue:
+def stress_run_value(run: StressRunResult) -> dict[str, JsonValue]:
     return {
         "run": run.run,
         "seed": run.seed,

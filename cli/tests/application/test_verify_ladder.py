@@ -7,7 +7,7 @@ from typing import Protocol
 import pytest
 
 from coding_study.adapters.subprocess_runner import SubprocessRunner
-from coding_study.application.ports import RunnerLaunch
+from coding_study.application.ports import CaseListener, RunnerLaunch
 from coding_study.application.verify_content import SkippedCheck, VerifyRequest, verify_content
 from coding_study.application.verify_ladder import SETTLE_SECONDS
 from coding_study.domain.bench_records import MachineState, PowerSource
@@ -35,7 +35,9 @@ class RealCasesScriptedBench:
     cases: SubprocessRunner
     benches: Benches
 
-    def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
+    def run(
+        self, launch: RunnerLaunch, request: RunRequest, listener: CaseListener | None = None
+    ) -> RunReport:
         return self.cases.run(launch, request)
 
     def bench(self, launch: RunnerLaunch, request: BenchRequest) -> BenchReport:

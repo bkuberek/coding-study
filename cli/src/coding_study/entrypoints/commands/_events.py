@@ -1,4 +1,4 @@
-"""`--events`: a project run as JSON events, one per line on standard output
+"""`--events`: a run as JSON events, one per line on standard output
 (docs/specs/cli.md#event-stream).
 
 Each event is written and flushed as soon as the run reports it. The command ends the stream with
@@ -13,24 +13,40 @@ from dataclasses import dataclass
 import typer
 
 from coding_study.application.run_events import (
+    BuildEnded,
     CaseGraded,
+    CaseRevised,
     CaseStarted,
     DiagnosticFound,
     EventSink,
     LevelGraded,
     LevelOpened,
     OutputLine,
+    PerfChecked,
+    PlannedCases,
     RunEvent,
     RunStarted,
+    StressGraded,
+    StressRunJudged,
+    StressRunStarted,
     SuiteTestReported,
     SuiteTestStarted,
 )
 from coding_study.application.submit_project import OpenedLevel
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import UsageError
+from coding_study.domain.generated_cases import OracleInput
+from coding_study.domain.stress_runs import PlannedRun
 from coding_study.entrypoints.commands._diagnostics import diagnostic_value
+from coding_study.entrypoints.commands.bench import perf_value
 from coding_study.entrypoints.commands.project_documents import level_tally_value, suite_test_value
-from coding_study.entrypoints.commands.run_document import case_value
+from coding_study.entrypoints.commands.run_document import (
+    DECIMALS,
+    case_value,
+    stress_run_value,
+    stress_value,
+    timer_value,
+)
 from coding_study.entrypoints.shared import ERROR_EXIT_CODES, ExitCode
 
 EVENTS_VERSION = 1
@@ -113,14 +129,27 @@ def event_value(event: RunEvent) -> dict[str, JsonValue]:
             return _event("run_start", _start_fields(event))
         case OutputLine(text=text):
             return _event("output", {"text": text})
+        case BuildEnded(seconds=seconds, note=note):
+            return _event("build", {"seconds": round(seconds, DECIMALS), "note": note})
         case SuiteTestStarted(test_id=test_id):
             return _event("test_start", {"id": test_id})
         case SuiteTestReported(verdict=verdict):
             return _event("test_result", suite_test_value(verdict))
-        case CaseStarted(case=case, level=level):
-            return _event("case_start", {"id": case.id, "visible": case.visible, "level": level})
-        case CaseGraded(verdict=verdict, level=level):
-            return _event("case_result", case_value(verdict) | {"level": level})
+        case CaseStarted(case=case, level=level, oracle=oracle):
+            started = {"id": case.id, "visible": case.visible, "level": level}
+            return _event("case_start", started | _oracle_fields(oracle))
+        case CaseGraded(verdict=verdict, level=level, oracle=oracle):
+            graded = case_value(verdict) | {"level": level}
+            return _event("case_result", graded | _oracle_fields(oracle))
+        case CaseRevised(verdict=verdict, level=level):
+            return _event("case_revised", case_value(verdict) | {"level": level})
+        case StressRunStarted(planned=planned):
+            return _event("stress_run_start", _stress_run_fields(planned))
+        case StressRunJudged(planned=planned, result=result):
+            judged = stress_run_value(result) | {"duration_ns": result.duration_ns}
+            return _event("stress_run", _stress_run_fields(planned) | judged)
+        case StressGraded(verdict=verdict):
+            return _event("stress_result", stress_value(verdict))
         case DiagnosticFound(diagnostic=diagnostic):
             return _event("diagnostic", diagnostic_value(diagnostic))
         case LevelGraded(tally=tally):
@@ -130,6 +159,8 @@ def event_value(event: RunEvent) -> dict[str, JsonValue]:
             return _event("level_result", {"status": status} | counts)
         case LevelOpened(opened=opened):
             return _event("level_unlocked", _opened_fields(opened))
+        case PerfChecked(bench=bench):
+            return _event("perf_result", perf_value(bench))
 
 
 def _event(event_type: str, fields: Mapping[str, JsonValue]) -> dict[str, JsonValue]:
@@ -138,26 +169,67 @@ def _event(event_type: str, fields: Mapping[str, JsonValue]) -> dict[str, JsonVa
 
 def _start_fields(started: RunStarted) -> dict[str, JsonValue]:
     levels = started.levels
+    meta, attempt = started.meta, started.attempt
     return {
         "command": started.command.value,
-        "slug": started.meta.slug,
+        "slug": meta.slug,
         "language": started.language.value,
-        "attempt_id": started.attempt.id,
-        "mode": started.attempt.mode.value,
-        "levels": {
+        "attempt_id": attempt.id,
+        "mode": attempt.mode.value,
+        "levels": None
+        if levels is None
+        else {
             "up_to": levels.ran_up_to,
             "unlocked": levels.unlocked,
             "last": levels.progress.last,
         },
+        "kind": meta.kind.value,
+        "track": meta.track.value,
+        "timer": timer_value(attempt, started.at),
+        "time_limit": str(started.time_limit) if started.time_limit else None,
+        "planned": _planned_fields(started.planned),
+    }
+
+
+def _planned_fields(planned: PlannedCases | None) -> JsonValue:
+    if planned is None:
+        return None
+    stress = planned.stress
+    return {
+        "cases": planned.cases,
+        "visible": planned.visible,
+        "hidden": planned.hidden,
+        "generated": planned.generated,
+        "oracle_inputs": planned.oracle_inputs,
+        "stress": None
+        if stress is None
+        else {"cases": stress.cases, "variants": stress.variants, "runs": stress.runs},
+    }
+
+
+def _oracle_fields(oracle: OracleInput | None) -> dict[str, JsonValue]:
+    """An oracle input of `cstudy test --stress N` says so, with its seed and size."""
+    if oracle is None:
+        return {}
+    return {"oracle": True, "seed": oracle.seed, "n": oracle.n}
+
+
+def _stress_run_fields(planned: PlannedRun) -> dict[str, JsonValue]:
+    return {
+        "id": planned.case.id,
+        "variant": planned.variant.value,
+        "run": planned.run,
+        "seed": planned.seed,
     }
 
 
 def _opened_fields(opened: OpenedLevel) -> dict[str, JsonValue]:
+    tests = opened.tests
     return {
         "level": opened.level,
         "title": opened.title,
         "methods": list(opened.methods),
-        "tests": {"path": opened.tests.path, "count": opened.tests.tests},
+        "tests": None if tests is None else {"path": tests.path, "count": tests.tests},
         "statement": opened.statement,
     }
 

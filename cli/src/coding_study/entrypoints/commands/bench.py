@@ -27,6 +27,7 @@ from coding_study.domain.bench_stats import (
     size_text,
 )
 from coding_study.domain.bench_verdict import GrowthVerdict, History, SpaceVerdict
+from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Language
 from coding_study.entrypoints.shared import (
@@ -113,6 +114,22 @@ def perf_lines(result: BenchResult) -> Iterator[Text]:
     yield from lines.failure()
     yield from lines.verdict()
     yield from lines.warnings()
+
+
+def perf_value(result: BenchResult) -> dict[str, JsonValue]:
+    """`cstudy test --perf` as `--json` and the `perf_result` event hold it: the time verdict and
+    its confidence, null after a wrong answer, and the lines the report prints, as text."""
+    lines = BenchReportLines(result)
+    shown = [line.plain for line in (*lines.failure(), *lines.verdict())]
+    time = result.verdict.time if result.verdict is not None else None
+    judged = time is not None and result.wrong_answer is None
+    return {
+        "verdict": time.verdict.value if time and judged else None,
+        "confidence": time.confidence.value if time and judged else None,
+        "text": shown[0] if shown else "",
+        "warnings": [line.plain for line in lines.warnings()],
+        "wrong_answer": shown[-1] if result.wrong_answer is not None else None,
+    }
 
 
 def verdict_line(time: GrowthVerdict, analysis: TargetAnalysis | None) -> Text:

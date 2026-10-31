@@ -4,7 +4,7 @@ power laws instead of running code."""
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
-from coding_study.application.ports import RunnerLaunch
+from coding_study.application.ports import CaseListener, RunnerLaunch
 from coding_study.domain.bench_runs import (
     USER_TARGET_ID,
     BenchInput,
@@ -65,7 +65,9 @@ class ScriptedBenchProcess:
     runtime: str = "3.13.2"
     requests: list[BenchRequest] = field(default_factory=list[BenchRequest])
 
-    def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
+    def run(
+        self, launch: RunnerLaunch, request: RunRequest, listener: CaseListener | None = None
+    ) -> RunReport:
         raise AssertionError("a bench never runs test cases")
 
     def bench(self, launch: RunnerLaunch, request: BenchRequest) -> BenchReport:

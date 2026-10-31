@@ -40,8 +40,7 @@ from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import submit as submit_command
 from coding_study.entrypoints.commands import test as test_command
 from coding_study.entrypoints.shared import ExitCode
-from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_PROBLEMS, PROJECT_PROBLEMS, SCHEMAS_DIRECTORY
+from tests.helpers import PROJECT_PROBLEMS, SCHEMAS_DIRECTORY
 from tests.project_fakes import (
     PROJECT_SLUG,
     FakeProjectRunner,
@@ -60,6 +59,18 @@ BROKEN = UserError(
 )
 NOTICE = "warming the project runner"
 FAILED = SuiteTest("tests/test_level_1.py::test_ex1", AssertionFailed("assert -1 == 5", 1000))
+PROJECT_TYPES = {
+    "run_start",
+    "output",
+    "test_start",
+    "test_result",
+    "case_start",
+    "case_result",
+    "diagnostic",
+    "level_result",
+    "level_unlocked",
+    "run_end",
+}
 
 
 def correct(job: RunJob, case: RunCase) -> CaseOutcome:
@@ -157,6 +168,11 @@ def test_the_start_names_the_run(environment):
         "attempt_id": 1,
         "mode": "new",
         "levels": {"up_to": 1, "unlocked": 1, "last": 2},
+        "kind": "project",
+        "track": "practical",
+        "timer": None,
+        "time_limit": None,
+        "planned": None,
     }
 
 
@@ -258,15 +274,9 @@ def test_events_exclude_the_other_outputs(environment, flag):
     assert (result.exit_code, result.stderr) == (3, f"error: --events excludes {flag}\n")
 
 
-def test_events_are_for_project_problems(tmp_path, monkeypatch):
-    toolchains = FakeToolchains(stub_generators={Language.PYTHON: FakeStubGenerator()})
-    environment = make_environment(
-        repository_root(tmp_path, FIXTURE_PROBLEMS), toolchains=toolchains
-    )
-    start_attempt(environment, StartRequest("two-sum", Language.PYTHON))
-    monkeypatch.setattr(test_command, "load_environment", lambda *_: environment)
-    result = cs("test", "--events")
-    assert (result.exit_code, result.stderr) == (3, "error: --events is for project problems\n")
+def test_perf_is_not_for_a_projects_events(environment):
+    result = cs("test", "--perf", "--events")
+    assert (result.exit_code, result.stdout) == (3, "")
 
 
 def test_a_submission_grades_each_case_as_it_starts_and_ends_then_opens_a_level(environment):
@@ -415,12 +425,33 @@ def test_every_event_of_cstudy_submit_matches_the_schema(environment, process):
     assert invalid == []
 
 
-def test_the_schema_covers_every_event_type_the_commands_write(environment, process):
+def test_project_runs_write_every_event_type_of_a_project(environment, process):
     written = {event["type"] for event in every_test_event(environment, process)}
     written |= {event["type"] for event in every_submit_event(environment, process)}
-    assert written == {
+    assert written == PROJECT_TYPES
+
+
+def test_the_schema_covers_every_event_type_of_every_kind():
+    single_file = {"build", "case_revised", "stress_run_start", "stress_run", "stress_result"}
+    assert PROJECT_TYPES | single_file | {"perf_result"} == {
         definition["$ref"].removeprefix("#/$defs/") for definition in EVENTS_SCHEMA["oneOf"]
     }
+
+
+def test_an_earlier_project_start_is_still_valid():
+    """Before `--events` covered every kind, `run_start` had none of `kind`, `track`, `timer`,
+    `time_limit` and `planned`."""
+    earlier = {
+        "type": "run_start",
+        "version": 1,
+        "command": "submit",
+        "slug": PROJECT_SLUG,
+        "language": "python",
+        "attempt_id": 7,
+        "mode": "new",
+        "levels": {"up_to": 1, "unlocked": 1, "last": 4},
+    }
+    assert Draft202012Validator(EVENTS_SCHEMA).is_valid(earlier)
 
 
 def test_the_schema_refuses_an_event_of_an_unknown_type():

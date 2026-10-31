@@ -11,7 +11,7 @@ same shape.
 
 import re
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Protocol
 
@@ -29,6 +29,7 @@ PYTHON_EXCEPTION = re.compile(r"(?:E\s+)?(?P<type>[A-Z]\w*(?:Error|Exception)): 
 syntax`."""
 ABSOLUTE_PREFIX = "/"
 PARENT_PREFIX = "../"
+PATH_SEPARATOR = "/"
 
 
 class Severity(StrEnum):
@@ -126,6 +127,53 @@ def _in_project(path: str, root: str) -> str | None:
 def _last_exception(lines: Sequence[str]) -> re.Match[str] | None:
     exceptions = (PYTHON_EXCEPTION.match(line) for line in reversed(lines))
     return next((exception for exception in exceptions if exception is not None), None)
+
+
+@dataclass(frozen=True, slots=True)
+class SolutionFiles:
+    """The files of a problem that is not a project, from the workspace root
+    (docs/specs/cli.md#solution-file-targets)."""
+
+    user_file: str
+    package: str | None = None
+    """On the JVM and in Go, the problem's package directory: every source file directly in it is
+    the problem's."""
+
+    def path_of(self, file: str) -> str | None:
+        """The workspace path of a file a tool named, when it is the problem's: the user file by
+        the end of its path, as a runner's trace names it by its file name (`two_sum.py`) and
+        `tsc` from its own directory (`practice/two-sum.ts`), or a file of the package by its
+        name. None for any other file."""
+        if self.user_file == file or self.user_file.endswith(f"{PATH_SEPARATOR}{file}"):
+            return self.user_file
+        if self.package is not None and PATH_SEPARATOR not in file:
+            return f"{self.package}{PATH_SEPARATOR}{file}"
+        return None
+
+
+def solution_load_diagnostic(error: UserError, files: SolutionFiles) -> Diagnostic:
+    """Code of a problem that is not a project that did not load, at the innermost frame of its
+    trace that lies in a file of the problem; without a place when no frame does."""
+    places = (_solution_place(frame, files) for frame in reversed(error.trace.splitlines()))
+    place = next((place for place in places if place is not None), None)
+    return replace(
+        load_diagnostic(UserError(error.type, error.message)),
+        file=place[0] if place else None,
+        line=place[1] if place else None,
+    )
+
+
+def _solution_place(frame: str, files: SolutionFiles) -> tuple[str, int] | None:
+    found = TRACE_FRAME.fullmatch(frame)
+    path = files.path_of(found["file"]) if found else None
+    return (path, int(found["line"])) if found and path else None
+
+
+def in_solution_files(diagnostic: Diagnostic, files: SolutionFiles) -> Diagnostic:
+    """A tool's diagnostic with its file given from the workspace root when it is the problem's;
+    any other file as the tool named it."""
+    path = files.path_of(diagnostic.file) if diagnostic.file is not None else None
+    return replace(diagnostic, file=path) if path else diagnostic
 
 
 def distinct(diagnostics: Iterable[Diagnostic]) -> tuple[Diagnostic, ...]:

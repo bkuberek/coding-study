@@ -4,9 +4,12 @@ from coding_study.domain.diagnostics import (
     Diagnostic,
     DiagnosticSource,
     Severity,
+    SolutionFiles,
     distinct,
+    in_solution_files,
     load_diagnostic,
     report_diagnostic,
+    solution_load_diagnostic,
 )
 from coding_study.domain.runs import UserError
 
@@ -119,3 +122,65 @@ def test_a_report_without_an_exception_keeps_the_error():
 def test_a_frameworks_report_is_an_error_from_loading():
     diagnostic = reported(CONFTEST_SYNTAX)
     assert (diagnostic.severity, diagnostic.source) == (Severity.ERROR, DiagnosticSource.LOAD)
+
+
+PYTHON_FILES = SolutionFiles("python/practice/two_sum.py")
+GO_FILES = SolutionFiles("go/practice/two_sum/two_sum.go", "go/practice/two_sum")
+
+
+def test_the_user_file_named_by_its_file_name_is_given_from_the_workspace_root():
+    assert PYTHON_FILES.path_of("two_sum.py") == "python/practice/two_sum.py"
+
+
+def test_the_user_file_named_by_the_end_of_its_path_is_given_from_the_workspace_root():
+    assert PYTHON_FILES.path_of("practice/two_sum.py") == "python/practice/two_sum.py"
+
+
+def test_another_file_beside_a_single_user_file_is_not_the_problems():
+    assert PYTHON_FILES.path_of("helpers.py") is None
+
+
+def test_a_file_that_only_ends_like_the_user_file_is_not_the_problems():
+    assert PYTHON_FILES.path_of("sum.py") is None
+
+
+def test_any_file_of_a_package_is_the_problems():
+    assert GO_FILES.path_of("helper.go") == "go/practice/two_sum/helper.go"
+
+
+def test_a_single_file_load_error_points_at_the_user_file():
+    error = UserError("NameError", "name 'x' is not defined", "two_sum.py:6 in <module>")
+    diagnostic = solution_load_diagnostic(error, PYTHON_FILES)
+    assert (diagnostic.file, diagnostic.line) == ("python/practice/two_sum.py", 6)
+
+
+def test_a_load_error_without_a_frame_in_the_problem_has_no_place():
+    trace = "helpers.py:9 in pairs\nsort.py:30 in sort"
+    diagnostic = solution_load_diagnostic(UserError("panic", "boom", trace), PYTHON_FILES)
+    assert (diagnostic.file, diagnostic.line) == (None, None)
+
+
+def test_a_package_load_error_points_at_its_innermost_frame_in_the_package():
+    trace = "two_sum.go:4 in twoSum\nhelper.go:9 in pairs"
+    diagnostic = solution_load_diagnostic(UserError("panic", "boom", trace), GO_FILES)
+    assert (diagnostic.file, diagnostic.line) == ("go/practice/two_sum/helper.go", 9)
+
+
+def test_a_single_file_load_error_keeps_its_type_and_message():
+    diagnostic = solution_load_diagnostic(SYNTAX, PYTHON_FILES)
+    assert (diagnostic.code, diagnostic.message) == ("SyntaxError", SYNTAX.message)
+
+
+def test_a_tools_diagnostic_of_the_user_file_is_given_from_the_workspace_root():
+    diagnostic = Diagnostic("wrong type", DiagnosticSource.TYPECHECK, file="practice/two_sum.py")
+    assert in_solution_files(diagnostic, PYTHON_FILES).file == "python/practice/two_sum.py"
+
+
+def test_a_tools_diagnostic_of_another_file_keeps_its_name():
+    diagnostic = Diagnostic("wrong type", DiagnosticSource.TYPECHECK, file="lib/other.py")
+    assert in_solution_files(diagnostic, PYTHON_FILES).file == "lib/other.py"
+
+
+def test_a_tools_diagnostic_without_a_file_stays_without_a_place():
+    diagnostic = Diagnostic("undefined: x", DiagnosticSource.BUILD)
+    assert in_solution_files(diagnostic, PYTHON_FILES) == diagnostic

@@ -240,8 +240,9 @@ def _opened_lines(opened: OpenedLevel) -> Iterator[Text]:
     if opened.methods:
         yield _line("add", ", ".join(opened.methods))
     tests = opened.tests
-    count = f"{tests.tests} {'test' if tests.tests == 1 else 'tests'}"
-    yield _line("tests", f"{tests.path} ({count})")
+    if tests is not None:
+        count = f"{tests.tests} {'test' if tests.tests == 1 else 'tests'}"
+        yield _line("tests", f"{tests.path} ({count})")
     yield _line("statement", f"{opened.statement} (updated)")
 
 

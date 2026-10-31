@@ -11,6 +11,7 @@ stream ends it with the outcome and the exit code, which are the command's own.
 
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
+from datetime import datetime
 from typing import Self
 
 from coding_study.application.active_attempt import autograded_language, find_attempt
@@ -53,7 +54,7 @@ def stream_project_tests(
     """Raises as `run_project_tests`: a locked level before any event; a `--case` that names no
     test, or a toolchain that cannot run the suite, after the start."""
     subject = _Subject.find(environment, request)
-    emit(subject.started(RunCommand.TEST, request.level))
+    emit(subject.started(RunCommand.TEST, request.level, environment.clock.now()))
     live = _LiveTests(emit)
     result = run_project_tests(environment, replace(request, listener=live), _notices(emit))
     live.report_the_rest(result.verdicts)
@@ -69,7 +70,7 @@ def stream_submission(
     toolchain that cannot grade the project after the start."""
     subject = _Subject.find(environment, request)
     require_project(subject.meta)
-    emit(subject.started(RunCommand.SUBMIT, request.level))
+    emit(subject.started(RunCommand.SUBMIT, request.level, environment.clock.now()))
     live = _LiveCases(emit, subject)
     result = submit_project(environment, replace(request, listener=live), _notices(emit))
     live.report_the_rest(result.judgement.verdicts)
@@ -99,11 +100,11 @@ class _Subject:
         attempt = find_attempt(environment.progress, request.slug, request.language)
         return cls(attempt, environment.problems.load(attempt.slug))
 
-    def started(self, command: RunCommand, level: int | None) -> RunStarted:
+    def started(self, command: RunCommand, level: int | None, at: datetime) -> RunStarted:
         """Raises UsageError for a level still locked."""
         attempt = self.attempt
         levels = project_levels(self.meta, attempt.level_unlocked, level)
-        return RunStarted(command, self.meta, attempt, autograded_language(attempt), levels)
+        return RunStarted(command, self.meta, attempt, autograded_language(attempt), levels, at)
 
 
 class _LiveTests:

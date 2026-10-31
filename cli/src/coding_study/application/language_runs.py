@@ -6,11 +6,14 @@ Job ids: `<slug>` for the user's code, `<slug>/<approach>` for references.
 from collections.abc import Iterable, Sequence
 from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
+from typing import Protocol
 
 from coding_study.application.environment import Environment
 from coding_study.application.ports import (
     BuildFailed,
     BuildScope,
+    CaseListener,
+    PrepareResult,
     ProgressNotice,
     References,
     ReferenceSource,
@@ -33,6 +36,14 @@ class CodeRun:
     """None when the build failed."""
     build_failure: BuildFailed | None = None
     build_note: str | None = None
+
+
+class CodeRunListener(CaseListener, Protocol):
+    """Told when the build ends, then of each case as the runner reports it."""
+
+    def build_ended(self, seconds: float, prepared: PrepareResult) -> None:
+        """How long the build took, and what it gave: the launch, or the failure."""
+        ...
 
 
 def reference_job_id(slug: str, approach_id: str) -> str:
@@ -100,17 +111,23 @@ class LanguageRun:
         jobs: Sequence[RunJob],
         notify: ProgressNotice,
         runner_slot: AbstractContextManager[object] | None = None,
+        *,
+        listener: CodeRunListener | None = None,
     ) -> CodeRun:
         """Build what `scope` needs, then run `jobs` in one runner process, holding
-        `runner_slot` (when given) while the runner runs but not while it builds."""
+        `runner_slot` (when given) while the runner runs but not while it builds. `listener`
+        hears the build end, then each case as the runner reports it."""
         clock = self._environment.clock
         started = clock.monotonic()
         prepared = self._environment.toolchains.runner(self._language).prepare(scope, notify)
         build_seconds = clock.monotonic() - started
+        if listener is not None:
+            listener.build_ended(build_seconds, prepared)
         if isinstance(prepared, BuildFailed):
             return CodeRun(build_seconds, build_failure=prepared)
+        request = RunRequest(tuple(jobs))
         with runner_slot or nullcontext():
-            report = self._environment.runner_process.run(prepared.launch, RunRequest(tuple(jobs)))
+            report = self._environment.runner_process.run(prepared.launch, request, listener)
         return CodeRun(build_seconds, report, build_note=prepared.build_note)
 
     def _job(

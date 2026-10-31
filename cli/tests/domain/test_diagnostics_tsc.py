@@ -66,3 +66,8 @@ def test_a_diagnostic_without_a_file_has_no_place():
 
 def test_lines_that_are_not_diagnostics_are_left_out():
     assert parsed("", "Found 1 error.") == ()
+
+
+def test_a_file_from_tscs_own_directory_keeps_its_path():
+    report = TscReport(".").parse("practice/two-sum.ts(3,5): error TS2322: Wrong type.")
+    assert report[0].file == "practice/two-sum.ts"

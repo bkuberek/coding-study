@@ -25,6 +25,7 @@ SEVERITIES = {
 CONTINUATION_PREFIXES = (" ", "\t")
 PARENT = "../"
 SEPARATOR = "/"
+CURRENT_DIRECTORY = "."
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,7 +58,10 @@ class TscReport:
         )
 
     def _from_folder(self, path: str) -> str:
-        """`path` relative to the project folder, climbing out of it for a file elsewhere."""
+        """`path` relative to the project folder, climbing out of it for a file elsewhere; as it
+        is when the folder is tsc's own directory."""
+        if self.folder == CURRENT_DIRECTORY:
+            return path
         inside = f"{self.folder}{SEPARATOR}"
         if path.startswith(inside):
             return path.removeprefix(inside)

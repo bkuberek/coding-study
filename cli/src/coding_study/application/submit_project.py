@@ -57,13 +57,14 @@ class SubmitRequest:
 
 @dataclass(frozen=True, slots=True)
 class OpenedLevel:
-    """The level a submission opened."""
+    """The level a submission, or a run of a progressive problem's tests, opened."""
 
     level: int
     title: str
     methods: tuple[str, ...]
     """The methods the level adds, as the problem's language declares them."""
-    tests: LevelTestFile
+    tests: LevelTestFile | None
+    """None for a progressive problem, which has no generated test files."""
     statement: str
     """The statement's path, rewritten to show the level."""
 
@@ -208,15 +209,16 @@ class _Opener:
         opened = OpenedLevel(
             level=level,
             title=result.levels.progress.title(level),
-            methods=self._methods(level),
+            methods=level_method_texts(self._problem.meta, level, self._language),
             tests=tests,
             statement=statement,
         )
         return replace(result, attempt=attempt, opened=opened)
 
-    def _methods(self, level: int) -> tuple[str, ...]:
-        signature = self._problem.meta.signature
-        if not isinstance(signature, ClassSignature):
-            return ()
-        methods = level_methods(signature, level)
-        return tuple(method_text(method, self._language) for method in methods)
+
+def level_method_texts(meta: ProblemMeta, level: int, language: Language) -> tuple[str, ...]:
+    """The methods `level` adds, as `language` declares them; none for a function."""
+    signature = meta.signature
+    if not isinstance(signature, ClassSignature):
+        return ()
+    return tuple(method_text(method, language) for method in level_methods(signature, level))

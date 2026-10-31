@@ -142,7 +142,8 @@ def test_a_test_run_starts_by_naming_itself(environment):
 
 
 def test_the_start_names_the_levels_the_run_covers(environment):
-    assert first_start(streamed_tests(environment)).levels.ran_up_to == 1
+    levels = first_start(streamed_tests(environment)).levels
+    assert (levels.ran_up_to if levels else None) == 1
 
 
 def test_a_test_run_passes_notices_on_then_reports_each_test_as_it_starts_and_ends(
