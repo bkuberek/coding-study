@@ -6,6 +6,7 @@ from dataclasses import replace
 
 import pytest
 
+from coding_study.application.attempt_status import attempt_status
 from coding_study.application.environment import Environment
 from coding_study.application.project_manifest import ProjectManifests
 from coding_study.application.project_start import (
@@ -13,7 +14,6 @@ from coding_study.application.project_start import (
     RestoreRequest,
     restore_project_file,
 )
-from coding_study.application.project_status import project_status
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.errors import UsageError
 from coding_study.domain.file_states import FileState
@@ -52,8 +52,9 @@ def write(environment: Environment, path: str, text: str) -> None:
 
 
 def state_of(environment: Environment, path: str) -> FileState:
-    files = project_status(environment, None, None).files
-    return next(file.state for file in files if file.path == path)
+    project = attempt_status(environment, None, None).project
+    assert project is not None
+    return next(file.state for file in project.files if file.path == path)
 
 
 def test_restore_brings_back_a_modified_starter_file(environment):

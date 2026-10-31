@@ -1,11 +1,13 @@
 """`cstudy status` (docs/specs/cli.md#cstudy-status).
 
 Times show in local time, and ages relative to the run of the command; a mock attempt's tallies
-count hidden cases but never name one. The `files` line counts the folder's changes against the
-starter; `--json` adds every file's origin and state.
+count hidden cases but never name one. The lines a kind has no value for are left out. A
+project's `files` line counts the folder's changes against the starter; `--json` adds every
+file's origin and state.
 """
 
 import json
+from collections.abc import Iterator
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated
@@ -14,9 +16,16 @@ import typer
 from rich.text import Text
 
 from coding_study.adapters.environment_factory import load_environment
-from coding_study.application.project_status import ProjectStatus, project_status
+from coding_study.application.attempt_status import (
+    AttemptStanding,
+    HintCount,
+    ProjectStanding,
+    attempt_status,
+)
 from coding_study.application.resolve_target import Target, resolve_target
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.items import EntryKind
+from coding_study.domain.levels import LevelProgress
 from coding_study.domain.submissions import LevelTally, SubmissionRecord
 from coding_study.entrypoints.commands.project_documents import level_tally_value
 from coding_study.entrypoints.commands.report_text import clock_text
@@ -31,7 +40,8 @@ from coding_study.entrypoints.shared import (
 NAME = "status"
 LABEL_WIDTH = 11
 NOT_YET = "not yet"
-PROJECT_KIND = "project"
+REVEALED = "revealed"
+REVEALED_AND_GRADED = "revealed, graded as again"
 SECONDS_PER_MINUTE = 60
 MINUTES_PER_HOUR = 60
 HOURS_PER_DAY = 24
@@ -48,10 +58,10 @@ def status(
         bool, typer.Option("--json", help="One JSON document instead of the report.")
     ] = False,
 ) -> None:
-    """Show where a project attempt stands."""
+    """Show where an attempt stands."""
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     target = resolve_target(environment, Target(slug), Path.cwd())
-    found = project_status(environment, target.slug, target.language)
+    found = attempt_status(environment, target.slug, target.language)
     if as_json:
         typer.echo(json.dumps(status_document(found), indent=2))
         return
@@ -63,22 +73,24 @@ def status(
         output.print(line)
 
 
-def status_document(found: ProjectStatus) -> dict[str, JsonValue]:
+def status_document(found: AttemptStanding) -> dict[str, JsonValue]:
     attempt = found.attempt
-    latest = found.latest_submission
+    project = found.project
+    latest = project.latest_submission if project else None
     run = found.last_test_run
     return {
-        "slug": found.meta.slug,
+        "slug": attempt.slug,
+        "kind": found.kind.value,
+        "track": found.track.value,
         "language": attempt.language.value if attempt.language else None,
         "attempt_id": attempt.id,
         "mode": attempt.mode.value,
+        "started_at": attempt.started_at.isoformat(),
+        "file": found.file,
+        "hints": _hints_value(found.hints),
+        "solution_revealed": attempt.solution_revealed,
         "statement": found.statement,
-        "levels": {
-            "unlocked": found.levels.unlocked,
-            "last": found.levels.last,
-            "titles": [level.title for level in found.opened],
-            "opened_at": [_instant(level.opened_at) for level in found.opened],
-        },
+        "levels": _levels_value(found),
         "timer": timer_value(attempt, found.now),
         "last_test_run": (
             {
@@ -100,48 +112,91 @@ def status_document(found: ProjectStatus) -> dict[str, JsonValue]:
         ),
         "best_per_level": [
             {"level": tally.level, "passed": tally.passed, "total": tally.total}
-            for tally in found.best_per_level
+            for tally in (project.best_per_level if project else ())
         ],
-        "files": _files_value(found),
+        "files": _files_value(project) if project else None,
         "next": found.next_step,
     }
 
 
-def _header(found: ProjectStatus) -> str:
-    attempt = found.attempt
-    parts = (
-        found.meta.slug,
-        attempt.language or "",
-        PROJECT_KIND,
-        f"attempt {attempt.id}",
-        attempt.mode,
-    )
-    return " · ".join(parts)
+def _hints_value(hints: HintCount) -> JsonValue:
+    return {
+        "used": hints.used,
+        "total": hints.total,
+        "locked_until_level": hints.locked_until_level,
+    }
 
 
-def _lines(found: ProjectStatus) -> list[tuple[str, str]]:
+def _levels_value(found: AttemptStanding) -> JsonValue:
+    """A progressive problem's openings are not stored, so only a project lists them."""
     levels = found.levels
-    current = found.opened[-1]
-    level = f"{levels.unlocked} of {levels.last}: {current.title}"
-    if current.opened_at is not None:
-        level += f" (opened {_local_time(current.opened_at, found.now)})"
-    lines = [("level", level)]
+    if levels is None:
+        return None
+    opened_at: list[JsonValue] = (
+        [_instant(level.opened_at) for level in found.opened] if found.project is not None else []
+    )
+    titles: list[JsonValue] = [level.title for level in found.opened]
+    return {
+        "unlocked": levels.unlocked,
+        "last": levels.last,
+        "titles": titles,
+        "opened_at": opened_at,
+    }
+
+
+def _header(found: AttemptStanding) -> str:
+    """An item has no language, and its track stands for its kind."""
+    attempt = found.attempt
+    kind = found.track.value if found.kind is EntryKind.ITEM else found.kind.value
+    parts = (attempt.slug, attempt.language, kind, f"attempt {attempt.id}", attempt.mode)
+    return " · ".join(part for part in parts if part)
+
+
+def _lines(found: AttemptStanding) -> Iterator[tuple[str, str]]:
+    if found.file is not None:
+        yield "file", found.file
+    if found.levels is not None:
+        yield "level", _level(found.levels, found)
     attempt = found.attempt
     if attempt.time_limit_s is not None:
         elapsed = attempt.solve_time(found.now)
         limit = timedelta(seconds=attempt.time_limit_s)
-        lines.append(("timer", f"{clock_text(elapsed)} / {clock_text(limit)}"))
-    lines.append(("tested", _tested(found)))
-    lines.append(("submitted", _submitted(found)))
-    changes = found.starter_changes
+        yield "timer", f"{clock_text(elapsed)} / {clock_text(limit)}"
+    if found.hints.total:
+        yield "hints", _hints(found.hints)
+    if attempt.solution_revealed:
+        yield "solution", REVEALED if found.kind is EntryKind.ITEM else REVEALED_AND_GRADED
+    if found.kind is not EntryKind.ITEM:
+        yield "tested", _tested(found)
+    if found.project is not None:
+        yield from _project_lines(found.project, found.now)
+    yield "next", found.next_step
+
+
+def _level(levels: LevelProgress, found: AttemptStanding) -> str:
+    """The unlocked level, of the last, with its title; when it opened, if recorded."""
+    current = found.opened[-1]
+    level = f"{levels.unlocked} of {levels.last}: {current.title}"
+    if current.opened_at is not None:
+        level += f" (opened {_local_time(current.opened_at, found.now)})"
+    return level
+
+
+def _hints(hints: HintCount) -> str:
+    text = f"{hints.used} of {hints.total}"
+    locked = hints.locked_until_level
+    return text if locked is None else f"{text}, next opens with level {locked}"
+
+
+def _project_lines(project: ProjectStanding, now: datetime) -> Iterator[tuple[str, str]]:
+    yield "submitted", _submitted(project, now)
+    changes = project.starter_changes
     counts = f"{len(changes.changed)} changed, {len(changes.added)} added"
-    lines.append(("files", f"{counts}, {len(changes.removed)} removed against the starter"))
-    lines.append(("next", found.next_step))
-    return lines
+    yield "files", f"{counts}, {len(changes.removed)} removed against the starter"
 
 
-def _files_value(found: ProjectStatus) -> dict[str, JsonValue]:
-    changes = found.starter_changes
+def _files_value(project: ProjectStanding) -> dict[str, JsonValue]:
+    changes = project.starter_changes
     entries: list[JsonValue] = [
         {
             "path": file.path,
@@ -149,7 +204,7 @@ def _files_value(found: ProjectStatus) -> dict[str, JsonValue]:
             "level": file.level,
             "state": file.state.value,
         }
-        for file in found.files
+        for file in project.files
     ]
     return {
         "changed": list(changes.changed),
@@ -159,7 +214,7 @@ def _files_value(found: ProjectStatus) -> dict[str, JsonValue]:
     }
 
 
-def _tested(found: ProjectStatus) -> str:
+def _tested(found: AttemptStanding) -> str:
     run = found.last_test_run
     if run is None:
         return NOT_YET
@@ -168,12 +223,12 @@ def _tested(found: ProjectStatus) -> str:
     return f"{text}, before level {level} opened" if level is not None else text
 
 
-def _submitted(found: ProjectStatus) -> str:
-    latest = found.latest_submission
+def _submitted(project: ProjectStanding, now: datetime) -> str:
+    latest = project.latest_submission
     if latest is None:
         return NOT_YET
-    text = f"{_tallies(latest.levels)}, {_ago(found.now - latest.submitted_at)}"
-    better = _better(latest, found.best_per_level)
+    text = f"{_tallies(latest.levels)}, {_ago(now - latest.submitted_at)}"
+    better = _better(latest, project.best_per_level)
     return f"{text} · best {_tallies(better)}" if better else text
 
 

@@ -10,13 +10,11 @@ from typer.testing import CliRunner
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.attempts import RunRecord
 from coding_study.domain.judging import Tally
-from coding_study.domain.problem import Language
 from coding_study.domain.submissions import LevelTally, LevelUnlock, SubmissionRecord
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import status as status_command
 from coding_study.entrypoints.shared import ExitCode
-from tests.fakes import NOW, FakeStubGenerator, FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_PROBLEMS
+from tests.fakes import NOW
 from tests.project_fakes import (
     PROJECT_FOLDER,
     PROJECT_SLUG,
@@ -66,6 +64,7 @@ def lines(*arguments: str) -> list[str]:
 def test_a_new_attempt_has_nothing_tested_or_submitted(environment):
     assert lines() == [
         f"{PROJECT_SLUG} · python · project · attempt 1 · new",
+        f"file       {PROJECT_FOLDER}",
         f"level      1 of 2: Accounts and deposits (opened {OPENED})",
         "tested     not yet",
         "submitted  not yet",
@@ -139,29 +138,58 @@ def test_after_a_submission_next_names_the_level_to_pass(environment):
     assert lines()[-1] == "next       cstudy submit once level 1 passes"
 
 
-def test_another_kind_of_problem_exits_3(tmp_path, monkeypatch):
-    toolchains = FakeToolchains(stub_generators={Language.PYTHON: FakeStubGenerator()})
-    environment = make_environment(
-        repository_root(tmp_path, FIXTURE_PROBLEMS), toolchains=toolchains
-    )
-    start_attempt(environment, StartRequest("two-sum", Language.PYTHON))
+def test_without_an_attempt_in_progress_status_exits_3(tmp_path, monkeypatch):
+    environment = project_environment(tmp_path, ScriptedProjectProcess())
     monkeypatch.setattr(status_command, "load_environment", lambda *_: environment)
-    result = cs_status()
-    assert (result.exit_code, result.stderr) == (
-        ExitCode.USAGE_ERROR,
-        "error: cstudy status is for project problems\n",
-    )
+    assert cs_status().exit_code == ExitCode.USAGE_ERROR
 
 
 def test_json_describes_the_attempt(environment):
     found = json.loads(cs_status("--json").stdout)
-    assert {key: found[key] for key in ("slug", "language", "attempt_id", "mode", "next")} == {
+    described = ("slug", "kind", "track", "language", "attempt_id", "mode", "started_at", "next")
+    assert {key: found[key] for key in described} == {
         "slug": PROJECT_SLUG,
+        "kind": "project",
+        "track": "practical",
         "language": "python",
         "attempt_id": 1,
         "mode": "new",
+        "started_at": NOW.isoformat(),
         "next": "cstudy test --watch",
     }
+
+
+def test_json_names_the_folder_as_the_file(environment):
+    assert json.loads(cs_status("--json").stdout)["file"] == PROJECT_FOLDER
+
+
+def test_json_counts_the_hints(environment):
+    assert json.loads(cs_status("--json").stdout)["hints"] == {
+        "used": 0,
+        "total": 0,
+        "locked_until_level": None,
+    }
+
+
+def test_json_says_whether_the_solution_was_revealed(environment):
+    attempt = environment.progress.active_attempt()
+    environment.progress.update_attempt(replace(attempt, solution_revealed=True))
+    assert json.loads(cs_status("--json").stdout)["solution_revealed"] is True
+
+
+def test_hints_name_the_level_the_next_hint_opens_with(environment):
+    problem_md = environment.root / "problems" / "0001-bank-project-python" / "problem.md"
+    hints = "\n## Hints\n\n### Hint 1\n\nA dictionary.\n\n### Hint 2\n\nBoth accounts.\n"
+    problem_md.write_text(problem_md.read_text(encoding="utf-8") + hints, encoding="utf-8")
+    attempt = environment.progress.active_attempt()
+    environment.progress.update_attempt(replace(attempt, hints_used=1))
+    assert "hints      1 of 2, next opens with level 2" in lines()
+
+
+def test_a_revealed_solution_shows_its_grade(environment):
+    attempt = environment.progress.active_attempt()
+    environment.progress.update_attempt(replace(attempt, solution_revealed=True))
+    assert "solution   revealed, graded as again" in lines()
 
 
 def test_json_lists_the_open_levels(environment):
