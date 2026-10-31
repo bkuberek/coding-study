@@ -6,6 +6,7 @@ from starlette.types import ASGIApp
 
 from coding_study.entrypoints.web.api_attempts import attempt_routes
 from coding_study.entrypoints.web.api_browsing import browsing_routes
+from coding_study.entrypoints.web.api_files import file_routes
 from coding_study.entrypoints.web.api_health import health_routes
 from coding_study.entrypoints.web.api_progress import progress_routes
 from coding_study.entrypoints.web.api_session import session_routes
@@ -21,6 +22,7 @@ def create_app(settings: ServerSettings) -> ASGIApp:
         *session_routes(),
         *browsing_routes(),
         *attempt_routes(),
+        *file_routes(),
         *health_routes(),
         *progress_routes(),
     ]

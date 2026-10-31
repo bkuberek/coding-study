@@ -40,10 +40,10 @@ async def read_file(request: Request) -> Response:
 
 
 def attempt_routes() -> list[BaseRoute]:
+    """A file's own route, which takes its reads too, is in `api_files`."""
     return [
         Route(ATTEMPT, status, methods=["GET"]),
         Route(f"{ATTEMPT}/files", tree, methods=["GET"]),
-        Route(f"{ATTEMPT}/files/{{path:path}}", read_file, methods=["GET"]),
     ]
 
 

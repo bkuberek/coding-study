@@ -13,6 +13,9 @@ from coding_study.entrypoints.web.children import ChildCommand
 from coding_study.entrypoints.web.security import SessionSecrets
 from coding_study.entrypoints.web.worker import UseCaseWorker
 
+LOCK_DEADLINE_S = 5.0
+"""How long a file change waits for its project's lock (docs/specs/web-ui.md#file-scope)."""
+
 
 @dataclass(frozen=True, slots=True)
 class ServerSettings:
@@ -27,6 +30,7 @@ class ServerSettings:
     preferences: PreferencesStore
     child: ChildCommand = field(default_factory=ChildCommand)
     """How the server starts a child `cstudy`."""
+    lock_deadline_s: float = LOCK_DEADLINE_S
 
 
 @dataclass(frozen=True, slots=True)

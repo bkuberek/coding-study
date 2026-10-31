@@ -17,6 +17,10 @@ from starlette.types import ExceptionHandler
 
 from coding_study.domain.errors import (
     AttemptEndedError,
+    FileChangedError,
+    FileTooLargeError,
+    LockBusyError,
+    PathTakenError,
     UnknownAttemptError,
     UnknownFileError,
     UnknownProblemError,
@@ -75,8 +79,13 @@ _LOOKUP_ERRORS: Mapping[type[Exception], ErrorCode] = {
     UnknownAttemptError: ErrorCode.NOT_FOUND,
     UnknownFileError: ErrorCode.NOT_FOUND,
     AttemptEndedError: ErrorCode.ATTEMPT_ENDED,
+    FileChangedError: ErrorCode.PRECONDITION_FAILED,
+    PathTakenError: ErrorCode.CONFLICT,
+    LockBusyError: ErrorCode.LOCKED,
+    FileTooLargeError: ErrorCode.TOO_LARGE,
 }
-"""Errors whose code is not their exit code's: what the API addresses that is missing or over."""
+"""Errors whose code is not their exit code's: what the API addresses that is missing or over,
+and the refusals of a change to an attempt's files."""
 INTERNAL_MESSAGE = "internal error; the terminal running cstudy serve shows its traceback"
 
 
@@ -118,6 +127,22 @@ async def _domain_error(_request: Request, error: Exception) -> Response:
     return error_response(domain_error_code(error), str(error))
 
 
+async def _changed_file(_request: Request, error: Exception) -> Response:
+    """412, with the SHA-256 of the file's content now (null when it is gone) in the document
+    and as the `ETag`, so the page can offer to overwrite it on purpose."""
+    assert isinstance(error, FileChangedError)
+    code = ErrorCode.PRECONDITION_FAILED
+    body = {"code": code.value, "message": str(error), "fix": None, "sha256": error.sha256}
+    document = {"error": body}
+    headers = None if error.sha256 is None else {"etag": entity_tag(error.sha256)}
+    return JsonResponse(document, status_code=error_status(code), headers=headers)
+
+
+def entity_tag(sha256: str) -> str:
+    """The `ETag` of a file's content: its SHA-256, quoted."""
+    return f'"{sha256}"'
+
+
 async def _api_error(_request: Request, error: Exception) -> Response:
     assert isinstance(error, ApiError)
     return error_response(error.code, str(error))
@@ -142,6 +167,7 @@ def exception_handlers() -> dict[type[Exception], ExceptionHandler]:
     return {
         **dict.fromkeys(ERROR_EXIT_CODES, _domain_error),
         **dict.fromkeys(_LOOKUP_ERRORS, _domain_error),
+        FileChangedError: _changed_file,
         ApiError: _api_error,
         HTTPException: _http_error,
         Exception: _internal_error,

@@ -2,12 +2,16 @@
 (docs/specs/web-ui.md#file-api-rules)."""
 
 import hashlib
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
+from coding_study.adapters.file_lock import exclusive_lock
 from coding_study.application.attempt_files import (
     EDITABLE_BYTES,
+    AttemptFileChanges,
+    SavedFile,
     StartedFile,
     attempt_tree,
     read_attempt_file,
@@ -17,11 +21,18 @@ from coding_study.application.environment import Environment
 from coding_study.application.ports import StubGenerator
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.application.start_item import ItemStartRequest, start_item_attempt
-from coding_study.domain.attempts import Attempt
-from coding_study.domain.errors import UnknownFileError, UsageError
+from coding_study.domain.attempts import Attempt, AttemptStatus
+from coding_study.domain.errors import (
+    AttemptEndedError,
+    FileChangedError,
+    FileTooLargeError,
+    LockBusyError,
+    UnknownFileError,
+    UsageError,
+)
 from coding_study.domain.file_states import FileState
 from coding_study.domain.problem import Language
-from coding_study.domain.project_manifest import FileOrigin
+from coding_study.domain.project_manifest import FileOrigin, project_lock
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
 from tests.helpers import FIXTURE_TRACKS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
@@ -235,3 +246,240 @@ def test_a_starter_file_reads_with_its_state(project):
     write(environment, f"{PROJECT}/README.md", b"# Mine\n")
     found = read_attempt_file(environment, attempt, "README.md").file
     assert (found.origin, found.state) == (FileOrigin.STARTER, FileState.MODIFIED)
+
+
+# changes: each waits at most a deadline for the project's lock
+
+DEADLINE_S = 0.05
+SAVED = "class Bank:\n    pass\n"
+
+
+def changes(started_attempt: tuple[Environment, Attempt]) -> AttemptFileChanges:
+    environment, attempt = started_attempt
+    return AttemptFileChanges(environment, attempt, DEADLINE_S)
+
+
+def sha(text: str) -> str:
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def current_sha(started_attempt: tuple[Environment, Attempt], path: str) -> str:
+    return read_attempt_file(*pair(started_attempt), path).sha256
+
+
+def on_disk(started_attempt: tuple[Environment, Attempt], path: str) -> str:
+    environment, _attempt = started_attempt
+    return environment.workspace.read_text(path)
+
+
+@pytest.fixture
+def held_lock(project):
+    """Another `cstudy` holding the project's lock."""
+    environment, _attempt = project
+    with exclusive_lock(environment.workspace.absolute(project_lock(PROJECT_SLUG))):
+        yield
+
+
+# saving
+
+
+def test_saving_writes_the_text(project):
+    changes(project).save("bank/bank.py", SAVED, current_sha(project, "bank/bank.py"))
+    assert on_disk(project, f"{PROJECT}/bank/bank.py") == SAVED
+
+
+def test_saving_answers_the_cleaned_path_and_the_new_sha256(project):
+    saved = changes(project).save("./bank/bank.py", SAVED, current_sha(project, "bank/bank.py"))
+    assert saved == SavedFile("bank/bank.py", sha(SAVED))
+
+
+def test_a_saved_starter_file_turns_modified(project):
+    changes(project).save("README.md", "# Mine\n", current_sha(project, "README.md"))
+    assert read_attempt_file(*pair(project), "README.md").file.state is FileState.MODIFIED
+
+
+def test_saving_the_file_a_single_file_attempt_started_with(python):
+    changes(python).save("two_sum.py", SAVED, sha(STUB_TEXT))
+    assert on_disk(python, "python/practice/two_sum.py") == SAVED
+
+
+def test_saving_an_items_notes(tmp_path):
+    environment = practice(tmp_path)
+    attempt = start_item_attempt(environment, ItemStartRequest("url-shortener")).attempt
+    notes = read_attempt_file(environment, attempt, "url-shortener.md")
+    changes((environment, attempt)).save("url-shortener.md", "# My design\n", notes.sha256)
+    assert environment.workspace.read_text("notes/system-design/url-shortener.md") == (
+        "# My design\n"
+    )
+
+
+def test_saving_over_a_file_that_changed_since_it_was_read_is_refused(project):
+    environment, _attempt = project
+    stale = current_sha(project, "README.md")
+    write(environment, f"{PROJECT}/README.md", b"# Theirs\n")
+    with pytest.raises(FileChangedError, match=r"README\.md changed since"):
+        changes(project).save("README.md", "# Mine\n", stale)
+
+
+def test_a_refused_save_names_the_files_current_sha256(project):
+    environment, _attempt = project
+    stale = current_sha(project, "README.md")
+    write(environment, f"{PROJECT}/README.md", b"# Theirs\n")
+    with pytest.raises(FileChangedError) as refused:
+        changes(project).save("README.md", "# Mine\n", stale)
+    assert refused.value.sha256 == sha("# Theirs\n")
+
+
+def test_a_refused_save_leaves_the_file_alone(project):
+    environment, _attempt = project
+    stale = current_sha(project, "README.md")
+    write(environment, f"{PROJECT}/README.md", b"# Theirs\n")
+    with pytest.raises(FileChangedError):
+        changes(project).save("README.md", "# Mine\n", stale)
+    assert on_disk(project, f"{PROJECT}/README.md") == "# Theirs\n"
+
+
+def test_saving_a_file_deleted_since_it_was_read_is_refused_without_a_sha256(project):
+    environment, _attempt = project
+    stale = current_sha(project, "README.md")
+    environment.workspace.absolute(f"{PROJECT}/README.md").unlink()
+    with pytest.raises(FileChangedError, match=r"README\.md was deleted since") as refused:
+        changes(project).save("README.md", "# Mine\n", stale)
+    assert refused.value.sha256 is None
+
+
+@pytest.mark.parametrize(
+    ("path", "reason"),
+    [
+        ("../pyproject.toml", "leaves the folder"),
+        ("bank/../../x.py", "leaves the folder"),
+        ("/etc/hosts", "is absolute"),
+        ("bank\\bank.py", "uses \\\\ instead of /"),
+        (".venv/bin/python", "the page never shows what tools write"),
+    ],
+)
+def test_saving_a_path_the_rules_refuse_is_refused_with_their_reason(project, path, reason):
+    with pytest.raises(UsageError, match=f"cannot save .*: {reason}"):
+        changes(project).save(path, SAVED, "unused")
+
+
+def test_saving_through_a_link_is_refused(project):
+    environment, _attempt = project
+    write(environment, "secret.txt", b"secret\n")
+    environment.workspace.absolute(f"{PROJECT}/README.md").unlink()
+    environment.workspace.absolute(f"{PROJECT}/README.md").symlink_to("../../secret.txt")
+    with pytest.raises(UsageError, match=r"cannot save README\.md: README\.md is a symbolic link"):
+        changes(project).save("README.md", "# Mine\n", sha("secret\n"))
+
+
+def test_saving_through_a_link_leaves_its_target_alone(project):
+    environment, _attempt = project
+    write(environment, "secret.txt", b"secret\n")
+    environment.workspace.absolute(f"{PROJECT}/README.md").unlink()
+    environment.workspace.absolute(f"{PROJECT}/README.md").symlink_to("../../secret.txt")
+    with pytest.raises(UsageError):
+        changes(project).save("README.md", "# Mine\n", sha("secret\n"))
+    assert on_disk(project, "secret.txt") == "secret\n"
+
+
+def test_saving_a_file_outside_a_single_file_scope_is_refused(python):
+    environment, _attempt = python
+    write(environment, "python/practice/other.py", b"x = 1\n")
+    with pytest.raises(UsageError, match=r"cannot save other\.py: not one of the attempt's files"):
+        changes(python).save("other.py", SAVED, sha("x = 1\n"))
+
+
+def test_saving_text_over_the_limit_is_refused(python):
+    with pytest.raises(FileTooLargeError, match=r"cannot save two_sum\.py: .* over 1 MiB"):
+        changes(python).save("two_sum.py", "#" * (EDITABLE_BYTES + 1), sha(STUB_TEXT))
+
+
+def test_saving_text_up_to_the_limit_is_kept(python):
+    changes(python).save("two_sum.py", "#" * EDITABLE_BYTES, sha(STUB_TEXT))
+    assert len(on_disk(python, "python/practice/two_sum.py")) == EDITABLE_BYTES
+
+
+def test_saving_over_a_file_that_is_not_text_is_refused(python):
+    environment, _attempt = python
+    write(environment, "python/practice/two_sum.py", b"\xff\xfe binary")
+    current = hashlib.sha256(b"\xff\xfe binary").hexdigest()
+    with pytest.raises(UsageError, match=r"cannot save two_sum\.py: it is not UTF-8 text"):
+        changes(python).save("two_sum.py", SAVED, current)
+
+
+def test_saving_waits_at_most_the_deadline_for_the_projects_lock(project, held_lock):
+    with pytest.raises(LockBusyError):
+        changes(project).save("README.md", "# Mine\n", current_sha(project, "README.md"))
+
+
+def test_saving_for_an_attempt_that_ended_is_refused(project):
+    environment, attempt = project
+    expected = current_sha(project, "README.md")
+    environment.progress.update_attempt(replace(attempt, status=AttemptStatus.ABANDONED))
+    with pytest.raises(AttemptEndedError):
+        changes(project).save("README.md", "# Mine\n", expected)
+
+
+# creating
+
+
+def test_creating_writes_a_new_file(project):
+    changes(project).create("bank/ledger.py", "LEDGER = []\n")
+    assert on_disk(project, f"{PROJECT}/bank/ledger.py") == "LEDGER = []\n"
+
+
+def test_creating_answers_the_new_files_sha256(project):
+    created = changes(project).create("bank/ledger.py", "LEDGER = []\n")
+    assert created == SavedFile("bank/ledger.py", sha("LEDGER = []\n"))
+
+
+def test_creating_makes_the_folders_on_the_way(project):
+    changes(project).create("bank/models/account.py", "class Account: ...\n")
+    assert on_disk(project, f"{PROJECT}/bank/models/account.py") == "class Account: ...\n"
+
+
+def test_a_created_project_file_reads_as_yours_and_added(project):
+    changes(project).create("bank/ledger.py", "LEDGER = []\n")
+    found = read_attempt_file(*pair(project), "bank/ledger.py").file
+    assert (found.origin, found.state) == (FileOrigin.YOURS, FileState.ADDED)
+
+
+def test_creating_a_file_that_exists_is_refused_with_its_sha256(project):
+    with pytest.raises(FileChangedError, match=r"cannot create README\.md: it exists") as refused:
+        changes(project).create("README.md", "# Mine\n")
+    assert refused.value.sha256 == current_sha(project, "README.md")
+
+
+def test_creating_where_a_folder_is_is_refused(project):
+    with pytest.raises(UsageError, match="cannot create bank: bank is a directory"):
+        changes(project).create("bank", "x\n")
+
+
+def test_creating_a_file_a_tool_would_write_is_refused(project):
+    with pytest.raises(UsageError, match=r"cannot create node_modules/x\.js: the page never shows"):
+        changes(project).create("node_modules/x.js", "x\n")
+
+
+def test_creating_a_java_file_in_a_java_attempts_package(tmp_path):
+    environment = practice(tmp_path)
+    attempt = started(environment, Language.JAVA)
+    changes((environment, attempt)).create("Helper.java", "class Helper {}\n")
+    assert environment.workspace.read_text(f"{JAVA_PACKAGE}/Helper.java") == "class Helper {}\n"
+
+
+@pytest.mark.parametrize("path", ["inner/Deep.java", "notes.txt"])
+def test_creating_anything_else_in_a_java_package_is_refused(tmp_path, path):
+    environment = practice(tmp_path)
+    attempt = started(environment, Language.JAVA)
+    with pytest.raises(UsageError, match=r"not one of the attempt's \.java files"):
+        changes((environment, attempt)).create(path, "x\n")
+
+
+def test_creating_beside_a_single_file_attempts_file_is_refused(python):
+    with pytest.raises(UsageError, match=r"cannot create helper\.py: .* one file, two_sum\.py"):
+        changes(python).create("helper.py", "x = 1\n")
+
+
+def test_creating_waits_at_most_the_deadline_for_the_projects_lock(project, held_lock):
+    with pytest.raises(LockBusyError):
+        changes(project).create("bank/ledger.py", "LEDGER = []\n")

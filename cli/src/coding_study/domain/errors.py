@@ -93,6 +93,24 @@ class UnknownFileError(LookupError):
         self.path = path
 
 
+class FileChangedError(Exception):
+    """A change to an attempt's file that the file no longer allows: it changed or went since the
+    web UI read it, or a file is already where the web UI would create one."""
+
+    def __init__(self, message: str, sha256: str | None) -> None:
+        super().__init__(message)
+        self.sha256 = sha256
+        """The SHA-256 of the file's content now; None when no file is there."""
+
+
+class FileTooLargeError(Exception):
+    """Text the web UI would save is over the size it edits."""
+
+
+class PathTakenError(Exception):
+    """A file of an attempt would move where something already is."""
+
+
 class LockBusyError(Exception):
     """Another `cstudy` held a lock past the deadline the web UI waits for it."""
 
