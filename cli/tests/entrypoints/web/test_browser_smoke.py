@@ -2,8 +2,8 @@
 the problem list, open a project problem with its statement, resume its attempt, open a file of
 its tree in the editor, edit it and save it with Cmd or Ctrl-S, see its state turn `modified`,
 restore it from the tree and see it `unchanged`, run its tests and see their rows while the run goes
-on, cancel that run, run the tests to their end, and name a new file in the tree's dialog, under the
-page's Content Security Policy.
+on, cancel that run, run the tests to their end, name a new file in the tree's dialog, and turn Run
+on save on to see a save start a run, under the page's Content Security Policy.
 
 The workspace shares the session's practice workspace's toolchains, so the project's suite runs
 with the real pytest. Playwright is in the optional `browser` dependency group: `uv sync --group
@@ -13,6 +13,7 @@ skipped.
 
 import subprocess
 import sys
+import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -30,6 +31,11 @@ PROJECT = "bank-project-python"
 FILE = "bank/bank.py"
 TYPED = "# saved from the page"
 CREATED = "bank/scratch.py"
+SAVED_AGAIN = "# saved again"
+RUNS_OF_THE_ATTEMPT = """([id, known]) =>
+    fetch(`/api/v1/runs?attempt_id=${id}`).then(r => r.json())
+        .then(runs => runs.map(run => run.id).filter(found => !known.includes(found)))"""
+POLL_MS = 250
 WAIT_MS = 60_000
 FILE_BUTTON = f"button.tree-file[data-path='{FILE}']"
 OPEN_EDITOR = ".panel:not([hidden]) .cm-content"
@@ -93,6 +99,7 @@ class Visit:
     cancelled: str = ""
     finished: str = ""
     tree_after_create: list[str] = field(default_factory=list[str])
+    runs_started_by_a_save: int = 0
     errors: list[str] = field(default_factory=list[str])
 
 
@@ -148,6 +155,7 @@ def visit(server: RunningServer, workspace: Path) -> Visit:
         finished = ".result-summary-text:has-text('passed')"
         seen.finished = page.wait_for_selector(finished, timeout=RUN_WAIT_MS).inner_text()
         _create_a_file(page, seen)
+        _save_with_run_on_save(page, seen)
         browser.close()
     return seen
 
@@ -184,6 +192,32 @@ def _create_a_file(page: Any, seen: Visit) -> None:
     seen.tree_after_create = page.locator("button.tree-file").evaluate_all(
         "buttons => buttons.map(button => button.dataset.path)"
     )
+
+
+def _save_with_run_on_save(page: Any, seen: Visit) -> None:
+    """Turns Run on save on, saves an edit of the attempt, and waits for the run the save starts."""
+    attempt = page.evaluate("location.hash")
+    attempt_id = attempt.rsplit("/", 1)[1]
+    known = _runs_of(page, attempt_id, [])
+    page.evaluate("location.hash = '#/settings'")
+    page.click("#pref-run_on_save")
+    page.evaluate("hash => { location.hash = hash }", attempt)
+    page.click(FILE_BUTTON)
+    page.click(OPEN_EDITOR)
+    page.keyboard.press("ControlOrMeta+End")
+    page.keyboard.type(f"\n{SAVED_AGAIN}\n")
+    page.keyboard.press("ControlOrMeta+s")
+    deadline = time.monotonic() + RUN_WAIT_MS / 1000
+    started: list[str] = []
+    while not started and time.monotonic() < deadline:
+        page.wait_for_timeout(POLL_MS)
+        started = [found for found in _runs_of(page, attempt_id, known) if found not in known]
+    seen.runs_started_by_a_save = len(started)
+
+
+def _runs_of(page: Any, attempt_id: str, known: list[str]) -> list[str]:
+    """The ids of the attempt's runs the server keeps, which are not in `known`."""
+    return page.evaluate(RUNS_OF_THE_ATTEMPT, [attempt_id, known])
 
 
 def _run_and_cancel(page: Any, slow_test: Path, seen: Visit) -> None:
@@ -256,6 +290,10 @@ def test_a_run_ends_with_the_reports_summary(visit):
 
 def test_a_new_file_named_in_the_dialog_shows_in_the_tree(visit):
     assert CREATED in visit.tree_after_create
+
+
+def test_a_save_starts_a_run_when_run_on_save_is_on(visit):
+    assert visit.runs_started_by_a_save >= 1
 
 
 def test_the_page_logs_no_error_under_its_content_security_policy(visit):
