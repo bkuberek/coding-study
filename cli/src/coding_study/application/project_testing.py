@@ -31,11 +31,12 @@ from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Tally
 from coding_study.domain.levels import FIRST_LEVEL, LevelRun
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
-from coding_study.domain.project import level_test_file
+from coding_study.domain.project import NO_PROJECT_FILES, ProjectTree, level_test_file
 from coding_study.domain.project_test_runs import (
     SuiteOrigins,
     SuiteTestVerdict,
     judge_suite,
+    rust_starter_test_files,
     suite_diagnostics,
     suite_tally,
     unmatched_selections,
@@ -172,7 +173,7 @@ def run_project_tests(
     folder = project_folder(meta.slug)
     root = environment.workspace.absolute(folder)
     failure = typecheck_project(environment, language, root) if request.typecheck else None
-    origins = _origins(problem, language, levels)
+    origins = _origins(environment, problem, levels)
     listener = request.listener
     run = SuiteRun(
         meta,
@@ -243,16 +244,23 @@ def _typecheck_diagnostics(
     return report(folder).parse("\n".join(failure.diagnostics))
 
 
-def _origins(problem: Problem, language: Language, levels: LevelRun) -> SuiteOrigins:
-    project = problem.meta.project
+def _origins(environment: Environment, problem: Problem, levels: LevelRun) -> SuiteOrigins:
+    """A Rust test id names a crate target, not the file of a unit test, so Rust also takes the
+    folder's files, and only the starter files that declare a test
+    (docs/specs/runners.md#rust-projects)."""
+    meta = problem.meta
+    project = meta.project
     assert project is not None
-    files = problem.project_files
-    starter = files.starter.paths if files and files.starter else frozenset[str]()
+    language = meta.languages[0]
+    starter = (problem.project_files or NO_PROJECT_FILES).starter or ProjectTree(())
     level_files = {
         level_test_file(project, language, level): level
         for level in range(FIRST_LEVEL, levels.unlocked + 1)
     }
-    return SuiteOrigins(level_files, starter)
+    if language is not Language.RUST:
+        return SuiteOrigins(level_files, starter.paths)
+    folder_files = environment.workspace.tracked_files(project_folder(meta.slug))
+    return SuiteOrigins(level_files, rust_starter_test_files(starter), frozenset(folder_files))
 
 
 def _require_matches(verdicts: tuple[SuiteTestVerdict, ...], case_ids: tuple[str, ...]) -> None:

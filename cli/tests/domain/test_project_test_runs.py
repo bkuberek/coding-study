@@ -4,11 +4,14 @@ import pytest
 
 from coding_study.domain.diagnostics import load_diagnostic, report_diagnostic
 from coding_study.domain.judging import Tally
+from coding_study.domain.project import ProjectFile, ProjectTree
 from coding_study.domain.project_test_runs import (
     SuiteOrigin,
     SuiteOrigins,
     SuiteStatus,
     judge_suite,
+    rust_starter_test_files,
+    rust_test_file,
     suite_diagnostics,
     suite_status,
     suite_tally,
@@ -57,6 +60,76 @@ def test_each_outcome_has_its_status(outcome, status):
 )
 def test_a_test_takes_the_origin_of_its_file(test_id, origin):
     assert ORIGINS.origin(test_id) == origin
+
+
+# Rust: a test id names its target, and a unit test's module path names its file
+
+
+RUST_ORIGINS = SuiteOrigins(
+    level_files={"tests/level_1.rs": 1},
+    starter_files=frozenset({"src/account.rs", "tests/bank.rs"}),
+    module_files=frozenset(
+        {
+            "src/lib.rs",
+            "src/bank.rs",
+            "src/account.rs",
+            "src/ledger.rs",
+            "tests/level_1.rs",
+            "tests/bank.rs",
+        }
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    ("test_id", "origin"),
+    [
+        ("src/lib.rs::ledger::tests::posts_twice", (SuiteOrigin.YOURS, None)),
+        ("src/lib.rs::bank::tests::refuses_overdraft", (SuiteOrigin.YOURS, None)),
+        ("src/lib.rs::account::tests::opens_empty", (SuiteOrigin.STARTER, None)),
+        ("src/lib.rs::tests::at_the_crate_root", (SuiteOrigin.YOURS, None)),
+        ("tests/level_1.rs::ex1", (SuiteOrigin.LEVEL, 1)),
+        ("tests/bank.rs::deposits", (SuiteOrigin.STARTER, None)),
+        ("tests/level_1.rs", (SuiteOrigin.LEVEL, 1)),
+    ],
+)
+def test_a_rust_test_takes_the_origin_of_the_file_that_declares_it(test_id, origin):
+    assert RUST_ORIGINS.origin(test_id) == origin
+
+
+@pytest.mark.parametrize(
+    ("test_id", "files", "declared_in"),
+    [
+        ("src/lib.rs::ledger::tests::posts", {"src/ledger.rs"}, "src/ledger.rs"),
+        ("src/lib.rs::ledger::tests::posts", {"src/ledger/mod.rs"}, "src/ledger/mod.rs"),
+        (
+            "src/lib.rs::ledger::tests::posts",
+            {"src/ledger.rs", "src/ledger/tests.rs"},
+            "src/ledger/tests.rs",
+        ),
+        ("src/lib.rs::ledger::audit::tests::x", {"src/ledger.rs"}, "src/ledger.rs"),
+        ("src/lib.rs::helpers::tests::x", set(), "src/lib.rs"),
+        ("src/lib.rs::at_the_root", {"src/ledger.rs"}, "src/lib.rs"),
+        ("src/bin/tool.rs::parse::tests::x", {"src/bin/parse.rs"}, "src/bin/parse.rs"),
+        ("tests/level_1.rs::ex1", {"tests/level_1.rs"}, "tests/level_1.rs"),
+        ("src/lib.rs", {"src/lib.rs"}, "src/lib.rs"),
+    ],
+)
+def test_a_rust_test_is_declared_in_its_innermost_module_with_a_file(test_id, files, declared_in):
+    assert rust_test_file(test_id, frozenset(files)) == declared_in
+
+
+def test_only_the_starters_rust_files_that_declare_a_test_hold_its_tests():
+    starter = ProjectTree(
+        (
+            ProjectFile("Cargo.toml", 10, '[package]\nname = "bank"\n'),
+            ProjectFile("src/lib.rs", 10, "mod account;\n"),
+            ProjectFile(
+                "src/account.rs", 10, "#[cfg(test)]\nmod tests {\n    #[test]\n    fn x() {}\n}\n"
+            ),
+        )
+    )
+    assert rust_starter_test_files(starter) == frozenset({"src/account.rs"})
 
 
 def test_judging_keeps_the_run_order():

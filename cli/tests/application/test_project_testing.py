@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from coding_study.application.environment import Environment
+from coding_study.application.ports import HostedSuite
 from coding_study.application.project_testing import (
     ProjectTestRequest,
     is_project_attempt,
@@ -19,11 +20,16 @@ from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
 from coding_study.domain.project_test_runs import SuiteOrigin, SuiteTestVerdict
-from coding_study.domain.runs import Raised, UserError
-from coding_study.domain.suite_runs import AssertionFailed, Passed, SuiteTest
+from coding_study.domain.runs import Raised, RunnerInfo, UserError
+from coding_study.domain.suite_runs import AssertionFailed, Passed, SuiteReport, SuiteTest
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_PROBLEMS
-from tests.project_fakes import FakeProjectRunner, ScriptedProjectProcess, project_environment
+from tests.helpers import FIXTURE_PROBLEMS, RUST_PROJECT_PROBLEMS
+from tests.project_fakes import (
+    FakeProjectRunner,
+    FakeTestGenerator,
+    ScriptedProjectProcess,
+    project_environment,
+)
 
 SLUG = "bank-project-python"
 FOLDER = f"projects/{SLUG}"
@@ -219,3 +225,56 @@ def test_a_listener_hears_each_test_start_then_its_verdict(environment, suites):
         (YOURS.test_id, None),
         (YOURS.test_id, SuiteOrigin.YOURS),
     ]
+
+
+# Rust: a unit test's id names its crate target, so its module path finds its file
+
+
+@dataclass
+class RustSuiteHost:
+    """A Rust runner that reports `tests` for every suite it hosts."""
+
+    tests: tuple[SuiteTest, ...] = ()
+
+    def prepare(self, scope, notify):
+        raise AssertionError("a project job is prepared with prepare_project")
+
+    def prepare_project(self, scope, notify):
+        raise AssertionError("cstudy test hosts a Rust suite")
+
+    def run_project_suite(self, suite: HostedSuite, notify) -> SuiteReport:
+        return SuiteReport(RUST_RUNNER, self.tests)
+
+
+RUST_FOLDER = "projects/bank-project-rust"
+RUST_RUNNER = RunnerInfo("rust", 1, "1.92", ("project",))
+
+
+@pytest.fixture
+def rust_host() -> RustSuiteHost:
+    return RustSuiteHost()
+
+
+@pytest.fixture
+def rust_environment(tmp_path, rust_host) -> Environment:
+    toolchains = FakeToolchains(
+        runners={Language.RUST: rust_host},
+        project_test_generators={Language.RUST: FakeTestGenerator()},
+    )
+    root = repository_root(tmp_path, RUST_PROJECT_PROBLEMS)
+    environment = make_environment(root, toolchains=toolchains)
+    start_attempt(environment, StartRequest("bank-project-rust"))
+    return environment
+
+
+def test_a_rust_unit_test_in_a_module_of_yours_is_yours(rust_environment, rust_host):
+    rust_environment.workspace.write_text(f"{RUST_FOLDER}/src/ledger.rs", "#[test]\nfn x() {}\n")
+    rust_host.tests = (SuiteTest("src/lib.rs::ledger::tests::posts_twice", Passed(1000)),)
+    assert [verdict.origin for verdict in run(rust_environment).verdicts] == [SuiteOrigin.YOURS]
+
+
+def test_a_rust_unit_test_added_to_a_starter_module_without_tests_is_yours(
+    rust_environment, rust_host
+):
+    rust_host.tests = (SuiteTest("src/lib.rs::tests::creates_an_account", Passed(1000)),)
+    assert [verdict.origin for verdict in run(rust_environment).verdicts] == [SuiteOrigin.YOURS]
