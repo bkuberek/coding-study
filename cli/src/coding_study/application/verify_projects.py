@@ -14,7 +14,13 @@ from pathlib import Path
 
 from coding_study.application.environment import Environment
 from coding_study.application.ports import ProgressNotice
-from coding_study.application.project_runs import GradingRun, SuiteRun, run_grading, run_suite
+from coding_study.application.project_runs import (
+    COMPILE_ERROR,
+    GradingRun,
+    SuiteRun,
+    run_grading,
+    run_suite,
+)
 from coding_study.application.reference_runs import ApproachResult, LanguageResult, shown
 from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.errors import ContentError, ContentIssue
@@ -271,7 +277,12 @@ def _outcome_text(outcome: SuiteOutcome) -> str:
 
 
 def _error_text(error: UserError) -> str:
-    return f"{error.type}: {_first_line(error.message)}"
+    """The error's first line; a project that does not compile adds the compiler's first line,
+    which its trace holds (docs/specs/runners.md#jvm-project-builds)."""
+    text = f"{error.type}: {_first_line(error.message)}"
+    if error.type == COMPILE_ERROR and error.trace:
+        return f"{text}: {_first_line(error.trace)}"
+    return text
 
 
 def _first_line(text: str) -> str:

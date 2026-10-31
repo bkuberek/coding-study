@@ -10,7 +10,8 @@ import pytest
 
 from coding_study.application import verify_projects
 from coding_study.application.environment import Environment
-from coding_study.application.ports import ProjectSuite
+from coding_study.application.ports import BuildFailed, ProjectSuite
+from coding_study.application.project_runs import compile_error
 from coding_study.application.verify_content import (
     ProblemVerification,
     SkippedCheck,
@@ -273,6 +274,16 @@ def test_a_reference_that_does_not_load_fails(environment, process):
     [result] = verify(environment).languages
     assert result.approaches[0].failures == (
         "does not load: SymbolNotFound: bank.bank has no class Bank",
+    )
+
+
+def test_a_reference_that_does_not_compile_names_the_first_compiler_line(environment, process):
+    lines = ("src/main/java/bank/Bank.java:3: error: ';' expected", "        int x")
+    process.reference.load_error = compile_error(BuildFailed(lines))
+    [result] = verify(environment).languages
+    assert result.approaches[0].failures == (
+        "does not load: CompileError: the project does not compile: "
+        "src/main/java/bank/Bank.java:3: error: ';' expected",
     )
 
 
