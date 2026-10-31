@@ -10,16 +10,21 @@ import json
 import re
 import sys
 from collections.abc import Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import cast
 
 from coding_study.adapters.languages.rust.bridge import (
     ARGUMENT_PREFIX,
     GENERATED_HEADER,
+    Bridge,
+    BridgeTarget,
     Unavailable,
 )
+from coding_study.domain.errors import RunnerStartError
 from coding_study.domain.naming import RAW_IDENTIFIER_PREFIX
+from coding_study.domain.project import RUST_VENDORED_CRATES
+from coding_study.domain.workspace_projects import RUST_VENDORED_SOURCE
 
 EDITION = "2021"
 RUST_VERSION = "1.80"
@@ -57,13 +62,12 @@ DEV = "dev"
 PROFILES: Mapping[str, Mapping[str, str]] = {RELEASE: RELEASE_PROFILE, DEV: DEV_PROFILE}
 VENDOR_DIRECTORY = "vendor"
 """The vendored crates inside the runtime's `rust/` directory (runners/rust/vendor/README.md)."""
-VENDORED_SOURCE = "cstudy-vendor"
-DECIMAL_DATE_CRATES: Mapping[str, str] = {
-    "chrono": '{ version = "=0.4.45", default-features = false, features = ["std"] }',
-    "rust_decimal": '{ version = "=1.43.0", default-features = false, features = ["maths"] }',
-}
+VENDORED_SOURCE = RUST_VENDORED_SOURCE
+DECIMAL_DATE_CRATES: Mapping[str, str] = RUST_VENDORED_CRATES
 """The crates of `decimal` and `date`, declared as `cs_runner` declares them. A solution is a
 module of the harness crate, so the harness depends on them directly for its `use` lines."""
+USER_CRATE = "user"
+"""The name a project harness gives the project's crate, as the bridge's module of a target."""
 SYMBOL_CODES = frozenset({"E0412", "E0422", "E0425", "E0433", "E0583", "E0599", "E0603", "E0624"})
 """Errors that mean the target does not define a symbol the bridge calls (or keeps it private)."""
 PRIVATE_CODES = frozenset({"E0603", "E0624"})
@@ -147,6 +151,14 @@ def package_manifest(name: str, runtime: str) -> str:
     )
 
 
+def project_harness_manifest(name: str, crate: str, root: str, runtime: str) -> str:
+    """A project's harness package `name`, depending on the crate `crate` at the relative path
+    `root` under the name `user`, and on the runner crates at `runtime`, the relative path to the
+    runtime's `rust/` directory (docs/specs/runners.md#rust-projects)."""
+    user = f'{USER_CRATE} = {{ package = "{crate}", path = {json.dumps(root)} }}\n'
+    return package_manifest(name, runtime).replace("[dependencies]\n", f"[dependencies]\n{user}")
+
+
 def profile_arguments(profile: str = RELEASE) -> list[str]:
     return [
         argument
@@ -169,30 +181,51 @@ def vendored_source_arguments(vendor: Path) -> list[str]:
 def compiler_errors(stdout: str, cwd: Path) -> tuple[CompilerError, ...]:
     """Every error-level compiler message with a primary span; summaries such as `aborting due
     to 2 previous errors` have none."""
-    errors: list[CompilerError] = []
+    return tuple(error for _, error in target_errors(stdout, cwd))
+
+
+def target_errors(stdout: str, cwd: Path) -> tuple[tuple[Path, CompilerError], ...]:
+    """`compiler_errors` with the source root of the target that each was compiled for: a
+    library and its unit tests both report an error of the library's files."""
+    errors: list[tuple[Path, CompilerError]] = []
     for message in _messages(stdout, _COMPILER_MESSAGE):
-        diagnostic = _object(message.get("message"))
-        if diagnostic.get("level") != _ERROR:
-            continue
-        span = _primary_span(diagnostic)
-        if span is None:
-            continue
-        code = _object(diagnostic.get("code")).get("code")
-        notes = _notes(diagnostic)
-        errors.append(
-            CompilerError(
-                path=(cwd / str(span.get("file_name"))).resolve(),
-                line=_integer(span.get("line_start")),
-                column=_integer(span.get("column_start")),
-                code=code if isinstance(code, str) else "",
-                message=str(diagnostic.get("message", "")),
-                label=str(span.get("label") or ""),
-                notes=tuple(note.text for note in notes[:MAX_NOTES]),
-                snippet=_snippet(span),
-                suggestions=tuple(note.text for note in notes if note.suggests),
-            )
-        )
+        error = _compiler_error(_object(message.get("message")), cwd)
+        if error is not None:
+            target = Path(str(_object(message.get("target")).get("src_path", "")))
+            errors.append(((cwd / target).resolve(), error))
     return tuple(errors)
+
+
+def _compiler_error(diagnostic: dict[str, object], cwd: Path) -> CompilerError | None:
+    if diagnostic.get("level") != _ERROR:
+        return None
+    span = _primary_span(diagnostic)
+    if span is None:
+        return None
+    code = _object(diagnostic.get("code")).get("code")
+    notes = _notes(diagnostic)
+    return CompilerError(
+        path=(cwd / str(span.get("file_name"))).resolve(),
+        line=_integer(span.get("line_start")),
+        column=_integer(span.get("column_start")),
+        code=code if isinstance(code, str) else "",
+        message=str(diagnostic.get("message", "")),
+        label=str(span.get("label") or ""),
+        notes=tuple(note.text for note in notes[:MAX_NOTES]),
+        snippet=_snippet(span),
+        suggestions=tuple(note.text for note in notes if note.suggests),
+    )
+
+
+def built_test_binaries(stdout: str) -> tuple[tuple[Path, Path], ...]:
+    """Each test binary `cargo build --tests` built, with its target's source root."""
+    built: list[tuple[Path, Path]] = []
+    for artifact in _messages(stdout, _ARTIFACT):
+        path = artifact.get("executable")
+        if _object(artifact.get("profile")).get("test") is True and isinstance(path, str):
+            source = _object(artifact.get("target")).get("src_path")
+            built.append((Path(str(source)), Path(path)))
+    return tuple(built)
 
 
 def executable(stdout: str, name: str) -> Path | None:
@@ -217,8 +250,9 @@ def output_text(stdout: str, stderr: str) -> tuple[str, ...]:
 
 def load_error(error: CompilerError, module: str, file_name: str) -> Unavailable:
     """The `load_error` of a target whose bridge code did not compile, in the user's terms: the
-    bridge's module `user` is the file `two_sum.rs`, a type mismatch says which side is the
-    user's, and a keyword name is the signature's `move`, not the bridge's `r#move`."""
+    bridge's module or crate `user` is the file `two_sum.rs` (a project's `src/lib.rs`), a type
+    mismatch says which side is the user's, and a keyword name is the signature's `move`, not the
+    bridge's `r#move`."""
     symbol = error.code in SYMBOL_CODES
     message = _mismatch(error) or error.message
     if symbol:
@@ -229,11 +263,43 @@ def load_error(error: CompilerError, module: str, file_name: str) -> Unavailable
         message += "; declare it pub"
     message = (
         message.replace(f"module `{module}`", f"`{file_name}`")
+        .replace(f"crate `{module}`", f"`{file_name}`")
         .replace(f"`{module}::", "`")
         .replace(f"{module}::", "")
     )
     message = _RAW_IDENTIFIER.sub("", message)
     return Unavailable(SYMBOL_NOT_FOUND if symbol else SIGNATURE_MISMATCH, message)
+
+
+def marked_unavailable(
+    targets: list[BridgeTarget],
+    bridge: Bridge,
+    errors: tuple[CompilerError, ...],
+) -> list[BridgeTarget]:
+    """`targets` with each one that owns a failing bridge line marked unavailable, with the
+    first of its errors; a target whose module line failed (its file is missing) loses the
+    module too. A failing line that no target owns means the generator is broken."""
+    failures: dict[str, Unavailable] = {}
+    missing_modules: set[str] = set()
+    for error in errors:
+        owner = bridge.owners.get(error.line)
+        if owner is None:
+            shown = error.shown(str(error.path))
+            raise RunnerStartError("the generated Rust bridge does not compile", shown)
+        if error.line in bridge.modules:
+            missing_modules.add(owner)
+        target = next(target for target in targets if target.target_id == owner)
+        failures.setdefault(owner, load_error(error, target.module, target.shown_name))
+    return [
+        replace(
+            target,
+            unavailable=failures[target.target_id],
+            with_module=target.target_id not in missing_modules,
+        )
+        if target.target_id in failures
+        else target
+        for target in targets
+    ]
 
 
 def _mismatch(error: CompilerError) -> str | None:

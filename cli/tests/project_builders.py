@@ -49,6 +49,7 @@ PROJECTS = {
     Language.JAVA: Project("bank.Bank", "src/test/java/bank"),
     Language.KOTLIN: Project("bank.Bank", "src/test/kotlin/bank"),
     Language.GO: Project("bank.go"),
+    Language.RUST: Project("bank"),
 }
 """The bank's `project` block in each language that has project problems."""
 

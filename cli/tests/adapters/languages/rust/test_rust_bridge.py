@@ -48,6 +48,28 @@ def test_brings_each_target_in_as_a_path_module():
     assert "mod ref_hash_map;\n" in bridge
 
 
+PROJECT = BridgeTarget("user", "user", Path("/ws/projects/bank-project-rust"), crate=True)
+
+
+def test_a_project_crate_is_a_dependency_not_a_path_module():
+    bridge = text(stub_signature("lru-cache"), PROJECT, kind=ProblemKind.PROJECT)
+    assert "mod user;" not in bridge
+
+
+def test_a_project_crate_is_called_through_its_root():
+    bridge = text(stub_signature("lru-cache"), PROJECT, kind=ProblemKind.PROJECT)
+    assert "let instance: user::LRUCache = user::LRUCache::new(arg_capacity);" in bridge
+
+
+def test_a_project_crate_keeps_trace_frames_in_every_file_of_its_folder():
+    bridge = text(stub_signature("lru-cache"), PROJECT, kind=ProblemKind.PROJECT)
+    assert 'file: "/ws/projects/bank-project-rust/",' in bridge
+
+
+def test_a_project_crate_names_its_library_root_in_messages():
+    assert (PROJECT.shown_name, USER.shown_name) == ("src/lib.rs", "two_sum.rs")
+
+
 def test_a_function_decodes_each_argument_by_name_with_its_declared_type():
     bridge = text(stub_signature("two-sum"))
     assert '    let arg_nums: Vec<i32> = args.named("nums")?;\n' in bridge

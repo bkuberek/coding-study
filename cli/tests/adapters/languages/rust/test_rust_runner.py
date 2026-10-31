@@ -77,6 +77,9 @@ class FakeCargo:
         self.hosts += 1
         return HOST
 
+    def release(self, cwd: Path) -> str:
+        return "1.92.0"
+
 
 @pytest.fixture
 def workspace(tmp_path: Path) -> Path:

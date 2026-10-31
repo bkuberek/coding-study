@@ -15,10 +15,12 @@ from coding_study.application.comparison import problem_comparator
 from coding_study.application.environment import Environment
 from coding_study.application.ports import (
     BuildFailed,
+    HostedSuite,
     ProgressNotice,
     ProjectGrading,
     ProjectRunner,
     ProjectSuite,
+    ProjectSuiteHost,
     ProjectTypeChecker,
     SuiteListener,
     Toolchains,
@@ -51,7 +53,7 @@ SUITE_FRAMEWORKS: Mapping[Language, SuiteFramework | None] = {
     Language.JAVA: SuiteFramework.JUNIT_PLATFORM,
     Language.KOTLIN: SuiteFramework.JUNIT_PLATFORM,
     Language.GO: SuiteFramework.GO_TEST,
-    Language.RUST: None,
+    Language.RUST: SuiteFramework.LIBTEST,
 }
 """None: project problems are not yet supported in the language (ADR 0014)."""
 COMPILE_ERROR = "CompileError"
@@ -90,10 +92,17 @@ def project_levels(meta: ProblemMeta, unlocked: int | None, requested: int | Non
 
 
 def run_suite(environment: Environment, run: SuiteRun, notify: ProgressNotice) -> SuiteReport:
-    """Raises RunnerStartError (exit 4) when the language's runner has no project jobs or the
-    toolchain lacks the framework."""
+    """Through the runner process, or, for a language that runs each test as a process of its
+    own (Rust), through the language's runner itself.
+
+    Raises RunnerStartError (exit 4) when the language's runner has no project jobs or the
+    toolchain lacks the framework.
+    """
     runner = project_runner(environment.toolchains, run.language)
     job = suite_job(run, environment.config)
+    if isinstance(runner, ProjectSuiteHost):
+        hosted = HostedSuite(run.meta.slug, job, run.debug, run.listener)
+        return runner.run_project_suite(hosted, notify)
     suite = ProjectSuite(run.root, run.debug, run.meta, job.exclude)
     prepared = runner.prepare_project(suite, notify)
     if isinstance(prepared, BuildFailed):
@@ -168,7 +177,8 @@ class GradingRun:
 
 def run_grading(environment: Environment, run: GradingRun, notify: ProgressNotice) -> Judgement:
     """Judges the project's cases of levels 1 to `run.level` (visible and hidden) with the
-    problem's comparator, as `cstudy test` judges any other class job.
+    problem's comparator, as `cstudy test` judges any other class job. A project whose code does
+    not compile has a load error in place of every case.
 
     Raises RunnerStartError (exit 4) when the language's runner has no project jobs, ValueError
     for a problem without a `project` block or a language without project problems.

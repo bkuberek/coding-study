@@ -9,6 +9,7 @@ from coding_study.application.environment import Environment
 from coding_study.application.ports import (
     BuildFailed,
     BuildScope,
+    HostedSuite,
     PrepareResult,
     ProgressNotice,
     ProjectGrading,
@@ -427,3 +428,75 @@ def test_grading_judges_each_case_for_the_listener_as_it_ends(environment, probl
         ("h2", None),
         ("h2", CaseStatus.PASS),
     ]
+
+
+# a language that hosts its suite itself (Rust)
+
+
+@dataclass
+class HostingRunner:
+    """A project runner that runs its suite itself."""
+
+    scopes: list[ProjectScope] = field(default_factory=list[ProjectScope])
+    suites: list[HostedSuite] = field(default_factory=list[HostedSuite])
+
+    def prepare(self, scope: BuildScope, notify: ProgressNotice) -> PrepareResult:
+        raise AssertionError("a project job is prepared with prepare_project")
+
+    def prepare_project(
+        self, scope: ProjectScope, notify: ProgressNotice
+    ) -> RunnerLaunch | BuildFailed:
+        self.scopes.append(scope)
+        return LAUNCH
+
+    def run_project_suite(self, suite: HostedSuite, notify: ProgressNotice) -> SuiteReport:
+        self.suites.append(suite)
+        return REPORT
+
+
+def hosting(environment: Environment, hosting_runner: HostingRunner) -> Environment:
+    toolchains = FakeToolchains(runners={Language.PYTHON: hosting_runner})
+    return replace(environment, toolchains=toolchains)
+
+
+def test_a_hosted_suite_runs_in_the_languages_runner(environment, meta, process):
+    hosting_runner = HostingRunner()
+    run_suite(hosting(environment, hosting_runner), suite_run(meta), [].append)
+    assert (len(hosting_runner.suites), process.suites) == (1, [])
+
+
+def test_a_hosted_suite_gets_the_problem_the_job_the_debug_session_and_the_listener(
+    environment, meta
+):
+    hosting_runner, listener = HostingRunner(), SilentTests()
+    session = DebugSession(Language.RUST, 12345)
+    run = suite_run(meta, debug=session, listener=listener)
+    run_suite(hosting(environment, hosting_runner), run, [].append)
+    (suite,) = hosting_runner.suites
+    assert (suite.slug, suite.job.job_id, suite.debug, suite.listener) == (
+        SLUG,
+        f"{SLUG}/suite",
+        session,
+        listener,
+    )
+
+
+def test_a_hosted_suites_report_is_the_runners(environment, meta):
+    report = run_suite(hosting(environment, HostingRunner()), suite_run(meta), [].append)
+    assert report == REPORT
+
+
+def test_a_rust_suite_is_run_by_libtest(environment, meta):
+    hosting_runner = HostingRunner()
+    toolchains = FakeToolchains(runners={Language.RUST: hosting_runner})
+    run = replace(suite_run(meta), language=Language.RUST)
+    run_suite(replace(environment, toolchains=toolchains), run, [].append)
+    assert hosting_runner.suites[0].job.framework is SuiteFramework.LIBTEST
+
+
+def test_a_grading_hands_the_graded_problem_and_level_to_the_runner(grading_environment, problem):
+    hosting_runner = HostingRunner()
+    run_grading(hosting(grading_environment, hosting_runner), grading_run(problem), [].append)
+    (scope,) = hosting_runner.scopes
+    assert isinstance(scope, ProjectGrading)
+    assert (scope.root, scope.meta, scope.level) == (ROOT, problem.meta, 2)

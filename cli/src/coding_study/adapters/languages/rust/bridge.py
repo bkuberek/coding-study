@@ -28,6 +28,7 @@ from coding_study.adapters.languages.rust.types import (
 from coding_study.domain.language_limits import LIST_IDENTITY, names_list_nodes
 from coding_study.domain.naming import NameRole, member_name
 from coding_study.domain.problem import Language, ProblemKind
+from coding_study.domain.project import PATH_SEPARATOR, RUST_LIBRARY_ROOT
 from coding_study.domain.signature import (
     ClassSignature,
     FunctionSignature,
@@ -66,6 +67,21 @@ class BridgeTarget:
     unavailable: Unavailable | None = None
     with_module: bool = True
     """False when the module itself cannot be loaded (its file is missing)."""
+    crate: bool = False
+    """A project's crate, which the harness depends on as `module` instead of bringing a file in
+    as a `#[path]` module: `file` is the crate's root directory, and every file under it is the
+    target's (docs/specs/runners.md#rust-projects)."""
+
+    @property
+    def shown_name(self) -> str:
+        """The file a message names for the target: a project crate's library root."""
+        return RUST_LIBRARY_ROOT if self.crate else self.file.name
+
+    @property
+    def trace_file(self) -> str:
+        """What `cs_runner::Target.file` holds: the file whose frames a trace keeps, or for a
+        crate its directory with a final `/`, so the frames of every file under it are kept."""
+        return f"{self.file}{PATH_SEPARATOR}" if self.crate else str(self.file)
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,7 +101,7 @@ def bridge_source(
     lines.add(None, *_imports(signature))
     unsupported = unsupported_reason(signature, kind)
     for target in targets:
-        if target.with_module:
+        if target.with_module and not target.crate:
             lines.add(None, "#[allow(warnings)]", f"#[path = {rust_string(str(target.file))}]")
             lines.module(target.target_id, f"mod {target.module};")
             lines.add(None, "")
@@ -106,7 +122,7 @@ def bridge_source(
             target.target_id,
             f"{INDENT}cs_runner::Target {{",
             f"{INDENT * 2}id: {rust_string(target.target_id)},",
-            f"{INDENT * 2}file: {rust_string(str(target.file))},",
+            f"{INDENT * 2}file: {rust_string(target.trace_file)},",
             f"{INDENT * 2}entry: {entry},",
             f"{INDENT}}},",
         )

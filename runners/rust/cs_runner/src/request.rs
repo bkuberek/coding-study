@@ -162,7 +162,7 @@ fn parse_job(job: &Json, mode: &Mode) -> Result<Job, String> {
     let context = |error: String| format!("job \"{job_id}\": {error}");
     let kind = match job.get("kind").and_then(Json::as_str) {
         Some("function") => Kind::Function,
-        Some("design" | "progressive") => Kind::Class,
+        Some("design" | "progressive" | "project") => Kind::Class,
         Some("concurrent") => {
             check_concurrent(job, mode).map_err(context)?;
             Kind::Concurrent
@@ -371,6 +371,17 @@ mod tests {
             panic!("expected operations");
         };
         assert_eq!((ops.len(), args.len()), (2, 2));
+        assert_eq!(request.jobs[0].kind, Kind::Class);
+    }
+
+    #[test]
+    fn a_project_job_is_a_class_job() {
+        let request = parse_request(
+            r#"{"protocol": 1, "mode": "test", "jobs": [{"job_id": "bank", "kind": "project",
+            "target": {"compiled": "user"},
+            "cases": [{"id": "ex1", "ops": ["Bank", "deposit"], "args": [[], [1, "a", 5]]}]}]}"#,
+        )
+        .unwrap();
         assert_eq!(request.jobs[0].kind, Kind::Class);
     }
 

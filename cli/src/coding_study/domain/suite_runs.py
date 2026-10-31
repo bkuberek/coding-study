@@ -19,6 +19,8 @@ class SuiteFramework(StrEnum):
     GO_TEST = "go-test"
     JUNIT_PLATFORM = "junit-platform"
     """Java's JUnit Jupiter and Kotlin's kotlin.test, both on the JUnit Platform."""
+    LIBTEST = "libtest"
+    """Rust's test harness: `cstudy` runs each test as a process of its own."""
 
 
 @dataclass(frozen=True, slots=True)

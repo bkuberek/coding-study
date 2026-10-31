@@ -10,6 +10,8 @@ use crate::request::PROTOCOL_VERSION;
 const RUNNER_NAME: &str = "rust";
 /// Tells the CLI that this runner runs concurrent jobs (docs/specs/runners.md#capability).
 const STRESS_FEATURE: &str = "stress";
+/// Grading jobs of project problems, whose crate the harness links (runners.md#rust-projects).
+const PROJECT_FEATURE: &str = "project";
 
 /// The `error` object of an event.
 #[derive(Clone, Debug, PartialEq)]
@@ -194,7 +196,10 @@ impl Events {
             ("runner", text(RUNNER_NAME)),
             ("protocol", Json::Int(PROTOCOL_VERSION)),
             ("runtime", text(env!("CS_RUSTC_VERSION"))),
-            ("features", Json::Array(vec![text(STRESS_FEATURE)])),
+            (
+                "features",
+                Json::Array(vec![text(STRESS_FEATURE), text(PROJECT_FEATURE)]),
+            ),
         ]);
     }
 

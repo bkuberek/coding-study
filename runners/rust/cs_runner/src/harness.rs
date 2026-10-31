@@ -114,46 +114,57 @@ fn frames(backtrace: &str) -> Vec<Frame<'_>> {
 }
 
 /// The frames of a backtrace in `file`, innermost last, like the other runners:
-/// `two_sum.rs:7 in two_sum`, `lru_cache.rs:31 in LRUCache::get`.
+/// `two_sum.rs:7 in two_sum`, `lru_cache.rs:31 in LRUCache::get`. A `file` that ends with `/` is a
+/// project's crate: the frames of every file under it are kept, named relative to it
+/// (`src/ledger.rs:12 in ledger::Ledger::post`).
 ///
 /// In a release build the innermost user function is often inlined into its caller and listed
 /// without a location; the panic's own location (indexing, arithmetic overflow and `unwrap`
 /// report the user's line) stands in for it.
 pub fn user_trace(backtrace: &str, file: &str, panicked_at: Option<(&str, u32)>) -> Vec<String> {
     let frames = frames(backtrace);
-    let name = file_name(file);
-    let line_of = |frame: &Frame| {
-        frame
-            .location
-            .filter(|(path, _)| *path == file)
-            .map(|(_, line)| line)
-    };
-    let innermost = frames.iter().position(|frame| line_of(frame).is_some());
+    let crate_root = file.ends_with('/');
+    let place = |path: &str, line: u32| shown_path(path, file).map(|name| (name, line));
+    let place_of = |frame: &Frame| frame.location.and_then(|(path, line)| place(path, line));
+    let innermost = frames.iter().position(|frame| place_of(frame).is_some());
     let mut lines = Vec::new();
-    if let Some((_, line)) = panicked_at.filter(|(path, _)| *path == file) {
-        if innermost.and_then(|index| line_of(&frames[index])) != Some(line) {
+    if let Some((name, line)) = panicked_at.and_then(|(path, line)| place(path, line)) {
+        if innermost.and_then(|index| place_of(&frames[index])) != Some((name.clone(), line)) {
             let inlined = innermost
                 .and_then(|index| index.checked_sub(1))
                 .map(|index| &frames[index])
                 .filter(|frame| frame.location.is_none());
             lines.push(match inlined {
-                Some(frame) => format!("{name}:{line} in {}", function(frame.symbol)),
+                Some(frame) => format!("{name}:{line} in {}", function(frame.symbol, crate_root)),
                 None => format!("{name}:{line}"),
             });
         }
     }
     for frame in &frames {
-        if let Some(line) = line_of(frame) {
-            lines.push(format!("{name}:{line} in {}", function(frame.symbol)));
+        if let Some((name, line)) = place_of(frame) {
+            lines.push(format!(
+                "{name}:{line} in {}",
+                function(frame.symbol, crate_root)
+            ));
         }
     }
     lines.reverse();
     lines
 }
 
+/// How a trace names `path` when it belongs to the target `file`; None when it does not.
+fn shown_path(path: &str, file: &str) -> Option<String> {
+    if file.ends_with('/') {
+        path.strip_prefix(file).map(str::to_string)
+    } else {
+        (path == file).then(|| file_name(file))
+    }
+}
+
 /// `two_sum_test::user::LRUCache::get::h0123456789abcdef` as `LRUCache::get`: the crate and the
-/// bridge's module are internal.
-fn function(symbol: &str) -> String {
+/// bridge's module are internal. A project's crate is a crate of its own, so only its name is
+/// dropped: `bank::Bank::deposit` is `Bank::deposit`.
+fn function(symbol: &str, crate_root: bool) -> String {
     let symbol = match symbol.rsplit_once("::h") {
         Some((name, hash)) if hash.len() == 16 && hash.bytes().all(|b| b.is_ascii_hexdigit()) => {
             name
@@ -161,10 +172,11 @@ fn function(symbol: &str) -> String {
         _ => symbol,
     };
     let parts: Vec<&str> = symbol.split("::").collect();
-    if symbol.starts_with('<') || parts.len() <= 2 {
+    let internal = if crate_root { 1 } else { 2 };
+    if symbol.starts_with('<') || parts.len() <= internal {
         return symbol.to_string();
     }
-    parts[2..].join("::")
+    parts[internal..].join("::")
 }
 
 /// A call into user code with its duration; a panic becomes an error with the user's frames.
@@ -469,13 +481,49 @@ mod tests {
     #[test]
     fn function_names_drop_the_crate_the_module_and_the_hash() {
         assert_eq!(
-            function("two_sum_test::user::two_sum::h0123456789abcdef"),
+            function("two_sum_test::user::two_sum::h0123456789abcdef", false),
             "two_sum"
         );
         assert_eq!(
-            function("x_test::ref_hash_map::helper::{{closure}}"),
+            function("x_test::ref_hash_map::helper::{{closure}}", false),
             "helper::{{closure}}"
         );
-        assert_eq!(function("main"), "main");
+        assert_eq!(function("main", false), "main");
+    }
+
+    const CRATE: &str = "/ws/projects/bank/";
+    const PROJECT_BACKTRACE: &str = "   0: std::backtrace::Backtrace::force_capture
+             at /rustc/abc/library/std/src/backtrace.rs:312:9
+   1: bank::ledger::Ledger::post::h0123456789abcdef
+             at /ws/projects/bank/src/ledger.rs:12:9
+   2: bank::Bank::deposit
+             at /ws/projects/bank/src/lib.rs:20:9
+   3: project_bank::user_method::{{closure}}
+             at /ws/.cs/build/rust-projects/bank/harness/main.rs:40:5
+   4: main
+";
+
+    #[test]
+    fn a_crate_keeps_the_frames_of_every_file_under_it() {
+        assert_eq!(
+            user_trace(PROJECT_BACKTRACE, CRATE, None),
+            [
+                "src/lib.rs:20 in Bank::deposit",
+                "src/ledger.rs:12 in ledger::Ledger::post"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_crate_names_the_panic_location_relative_to_it() {
+        let panicked_at = Some(("/ws/projects/bank/src/ledger.rs", 14));
+        assert_eq!(
+            user_trace(PROJECT_BACKTRACE, CRATE, panicked_at),
+            [
+                "src/lib.rs:20 in Bank::deposit",
+                "src/ledger.rs:12 in ledger::Ledger::post",
+                "src/ledger.rs:14"
+            ]
+        );
     }
 }

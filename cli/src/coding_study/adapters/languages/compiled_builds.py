@@ -35,18 +35,28 @@ def private_copy(binary: Path, build_directory: Path) -> Path:
 
     The copy's directory is the launch's `scratch`: `RunnerProcess` removes it when the run ends.
     Directories of processes that ended without cleaning up (killed, say) are removed here."""
+    _, (copy,) = private_copies((binary,), build_directory)
+    return copy
+
+
+def private_copies(
+    binaries: tuple[Path, ...], build_directory: Path
+) -> tuple[Path, tuple[Path, ...]]:
+    """`private_copy` for several binaries, in one directory of this run's own: the directory,
+    and the copies in the order of `binaries`. Their names must differ."""
     runs = build_directory / RUNS_DIRECTORY
     runs.mkdir(parents=True, exist_ok=True)
     _remove_abandoned_runs(runs)
     directory = Path(tempfile.mkdtemp(prefix=f"{os.getpid()}{_PID_SEPARATOR}", dir=runs))
-    copy = directory / binary.name
+    copies = tuple(directory / binary.name for binary in binaries)
     try:
-        shutil.copyfile(binary, copy)
-        copy.chmod(EXECUTABLE_MODE)
+        for binary, copy in zip(binaries, copies, strict=True):
+            shutil.copyfile(binary, copy)
+            copy.chmod(EXECUTABLE_MODE)
     except BaseException:
         shutil.rmtree(directory, ignore_errors=True)
         raise
-    return copy
+    return directory, copies
 
 
 def _remove_abandoned_runs(runs: Path) -> None:

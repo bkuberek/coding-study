@@ -681,7 +681,7 @@ class ProjectGrading:
 
     root: Path
     meta: ProblemMeta | None = field(default=None, compare=False)
-    """The graded problem, for a runner that compiles the project with its grader (Go)."""
+    """The graded problem, for a runner that compiles the project with its grader (Go, Rust)."""
     level: int | None = field(default=None, compare=False)
     """The graded level: such a runner compiles the methods of levels 1 to it only."""
 
@@ -715,7 +715,8 @@ class ProjectRunner(Protocol):
         """How to launch the runner in the project root. Python and TypeScript build nothing, and
         any bytecode cached for the project's files is deleted first (runners.md#suite-job); Java
         and Kotlin build the folder first, and BuildFailed holds the compiler's lines when it does
-        not compile (runners.md#jvm-project-builds).
+        not compile (runners.md#jvm-project-builds); Rust builds the harness of a grading
+        (runners.md#rust-projects), and runs its suites through `ProjectSuiteHost` instead.
 
         Raises RunnerStartError when the workspace's toolchain lacks what the job needs.
         """
@@ -778,4 +779,31 @@ class ProjectLibraries(Protocol):
 
     def uncached_project_libraries(self) -> str | None:
         """Why a project build would miss a library offline; None when it would find them all."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class HostedSuite:
+    """A project's native suite, for a `ProjectSuiteHost` to run itself."""
+
+    slug: str
+    """The problem, whose build the suite shares with its grading."""
+    job: SuiteJob
+    debug: DebugSession | None = None
+    """`cstudy test --debug`: one test under the language's debug server."""
+    listener: SuiteListener | None = None
+    """Hears each test as it starts and ends."""
+
+
+@runtime_checkable
+class ProjectSuiteHost(Protocol):
+    """A `ProjectRunner` that runs a project's native suite itself, one process per test, instead
+    of through a runner process: Rust (docs/specs/runners.md#rust-projects)."""
+
+    def run_project_suite(self, suite: HostedSuite, notify: ProgressNotice) -> SuiteReport:
+        """One result per test, in the order they ran; a hang or a crash ends only its test, and
+        a test target that does not compile is one `error` result.
+
+        Raises RunnerStartError when the toolchain cannot build or run the suite.
+        """
         ...

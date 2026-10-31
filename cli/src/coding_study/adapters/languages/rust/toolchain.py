@@ -30,6 +30,7 @@ USER_CARGO_PREFIXES = ("CARGO_BUILD_", "CARGO_PROFILE_")
 """Variables of the user's environment that would change where or how the build compiles; the
 build leaves them out and sets its own target directory."""
 _HOST_PREFIX = "host: "
+_RELEASE_PREFIX = "release: "
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +57,11 @@ class CargoToolchain(Protocol):
         `aarch64-apple-darwin`. Raises RunnerStartError when it cannot be found."""
         ...
 
+    def release(self, cwd: Path) -> str:
+        """The version of that `rustc`, such as `1.92.0`. Raises RunnerStartError when it cannot
+        be found."""
+        ...
+
 
 class SubprocessCargo:
     """`CargoToolchain` backed by the commands on PATH."""
@@ -72,13 +78,21 @@ class SubprocessCargo:
         )
 
     def host(self, cwd: Path) -> str:
-        completed = _run([RUSTC, "-vV"], cwd, build_environment(os.environ, {}))
-        text = completed.stdout.decode("utf-8", errors="replace")
-        for line in text.splitlines():
-            if line.startswith(_HOST_PREFIX):
-                return line.removeprefix(_HOST_PREFIX).strip()
-        stderr = completed.stderr.decode("utf-8", errors="replace").splitlines()
-        raise RunnerStartError("rustc -vV did not name the host target", stderr[-5:])
+        return _rustc_field(cwd, _HOST_PREFIX, "the host target")
+
+    def release(self, cwd: Path) -> str:
+        return _rustc_field(cwd, _RELEASE_PREFIX, "its release")
+
+
+def _rustc_field(cwd: Path, prefix: str, what: str) -> str:
+    """A line of `rustc -vV`, such as `host: aarch64-apple-darwin`, without its name."""
+    completed = _run([RUSTC, "-vV"], cwd, build_environment(os.environ, {}))
+    text = completed.stdout.decode("utf-8", errors="replace")
+    for line in text.splitlines():
+        if line.startswith(prefix):
+            return line.removeprefix(prefix).strip()
+    stderr = completed.stderr.decode("utf-8", errors="replace").splitlines()
+    raise RunnerStartError(f"rustc -vV did not name {what}", stderr[-5:])
 
 
 def _run(

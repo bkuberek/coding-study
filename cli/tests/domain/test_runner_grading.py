@@ -67,6 +67,6 @@ def test_a_jvm_project_is_graded_through_its_entry_class(language):
     assert target == ClassTarget("bank.Bank")
 
 
-def test_a_language_without_project_problems_has_no_grading_target():
-    with pytest.raises(ValueError, match="not yet supported in rust"):
-        grading_target(Project("bank"), Language.RUST, "/ws/projects/bank")
+def test_a_rust_project_is_graded_through_the_users_compiled_target():
+    target = grading_target(Project("bank"), Language.RUST, "/ws/projects/bank")
+    assert target == CompiledTarget("user")

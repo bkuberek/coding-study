@@ -23,8 +23,9 @@ from coding_study.domain.signature import ClassSignature, Signature
 def grading_target(project: Project, language: Language, root: str) -> RunTarget:
     """What the runner loads from the project folder at `root` (absolute): a Python project is
     the folder and its entry module, a TypeScript one its entry file, a Java or Kotlin one its
-    entry class, on the classpath of the folder's build, and a Go one the user's package, which
-    the runner binary was compiled with.
+    entry class, on the classpath of the folder's build, a Go one the user's package, which
+    the runner binary was compiled with, and a Rust one the user's crate, compiled into the
+    harness that runs it.
 
     Raises ValueError for a language without project problems.
     """
@@ -35,7 +36,7 @@ def grading_target(project: Project, language: Language, root: str) -> RunTarget
             return FileTarget(f"{root}/{project.entry}")
         case Language.JAVA | Language.KOTLIN:
             return ClassTarget(project.entry)
-        case Language.GO:
+        case Language.GO | Language.RUST:
             return CompiledTarget(COMPILED_USER_TARGET)
         case _:
             raise ValueError(unsupported_language(language))

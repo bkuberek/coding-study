@@ -15,10 +15,16 @@ with the compiler's message in the user's terms.
 (`debugserver` on macOS, `lldb-server gdbserver` on Linux), which holds it at its entry point
 until the IDE connects with `gdb-remote` and continues it. The server prints nothing: it writes
 its port to the file `--named-pipe` names once it listens.
+
+A project problem builds in a workspace of its own (`project_build`): its grading launches the
+harness binary like any runner, and its suite runs each test as a process of its own
+(`project_suite`), with no runner process at all (docs/specs/runners.md#rust-projects).
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
+from shutil import rmtree
 
 from coding_study.adapters.file_lock import exclusive_lock
 from coding_study.adapters.languages.compiled_builds import (
@@ -32,7 +38,6 @@ from coding_study.adapters.languages.debug_servers import require_installed
 from coding_study.adapters.languages.rust.bridge import (
     Bridge,
     BridgeTarget,
-    Unavailable,
     bridge_source,
 )
 from coding_study.adapters.languages.rust.build_files import (
@@ -42,13 +47,24 @@ from coding_study.adapters.languages.rust.build_files import (
     CompilerError,
     compiler_errors,
     executable,
-    load_error,
+    marked_unavailable,
     output_text,
     package_manifest,
     profile_arguments,
     vendored_source_arguments,
     workspace_manifest,
     workspace_members,
+)
+from coding_study.adapters.languages.rust.project_build import (
+    ProjectBuildError,
+    RustBuildSettings,
+    RustProjectBuild,
+)
+from coding_study.adapters.languages.rust.project_suite import (
+    DebugTarget,
+    LibtestProcesses,
+    LibtestSuite,
+    SubprocessTests,
 )
 from coding_study.adapters.languages.rust.toolchain import CargoToolchain
 from coding_study.application.ports import (
@@ -58,9 +74,13 @@ from coding_study.application.ports import (
     DebugLaunch,
     DebugServer,
     DebugServers,
+    HostedSuite,
     Prepared,
     PrepareResult,
     ProgressNotice,
+    ProjectGrading,
+    ProjectScope,
+    ProjectSuite,
     References,
     ReferenceSource,
     RunnerLaunch,
@@ -78,7 +98,9 @@ from coding_study.domain.layout import (
     stub_path,
 )
 from coding_study.domain.problem import Language, ProblemMeta
-from coding_study.domain.runs import HELLO_TIMEOUT_MS
+from coding_study.domain.runner_grading import graded_signature
+from coding_study.domain.runs import HELLO_TIMEOUT_MS, PROTOCOL_VERSION, RunnerInfo
+from coding_study.domain.suite_runs import SuiteReport
 
 RUNNER_DIRECTORY = "rust"
 """The runner crates inside the runners directory."""
@@ -87,6 +109,9 @@ BRIDGE_FILE = "main.rs"
 TARGET_DIRECTORY = "target"
 HOST_FILE = "host-target"
 """The `rustc` host triple, asked once per workspace: every build passes it as `--target`."""
+RELEASE_FILE = "rustc-release"
+"""The `rustc` version, asked once per workspace: a project suite's report names it."""
+RUNNER_NAME = "rust"
 LOCK_FILE = ".cstudy.lock"
 WARM_MARKER = ".warm"
 """Written after the first successful build: the runner crates are compiled."""
@@ -130,10 +155,14 @@ class _Build:
 
 
 class RustRunner:
-    """`LanguageRunner` for Rust."""
+    """`LanguageRunner`, `ProjectRunner` and `ProjectSuiteHost` for Rust."""
 
     def __init__(
-        self, context: LanguageContext, toolchain: CargoToolchain, debug_servers: DebugServers
+        self,
+        context: LanguageContext,
+        toolchain: CargoToolchain,
+        debug_servers: DebugServers,
+        tests: LibtestProcesses | None = None,
     ) -> None:
         self._root = context.workspace.resolve()
         self._runtime = context.runners.resolve() / RUNNER_DIRECTORY
@@ -141,6 +170,70 @@ class RustRunner:
         self._build_directory = self._root / BUILD_PROJECT
         self._toolchain = toolchain
         self._debug_servers = debug_servers
+        self._tests = tests or SubprocessTests()
+
+    def prepare_project(
+        self, scope: ProjectScope, notify: ProgressNotice
+    ) -> RunnerLaunch | BuildFailed:
+        """The harness of a grading, built from the graded levels' signature; BuildFailed when
+        the project's own code does not compile. A suite never comes here: `run_project_suite`
+        runs it.
+
+        Raises RunnerStartError when the build fails outside the project.
+        """
+        match scope:
+            case ProjectGrading(meta=ProblemMeta() as meta, level=int() as level):
+                return self._prepare_grading(scope.root, meta, level, notify)
+            case ProjectGrading():
+                raise ValueError("a Rust grading builds its bridge from the graded problem")
+            case ProjectSuite():
+                raise ValueError("a Rust project's suite runs through run_project_suite")
+
+    def run_project_suite(self, suite: HostedSuite, notify: ProgressNotice) -> SuiteReport:
+        """Builds every test target of the project, then runs each test as a process of its own
+        (docs/specs/runners.md#rust-projects). A debug server is looked up, and the debug port
+        checked, before anything is built.
+
+        Raises RunnerStartError when the toolchain cannot build or run the suite.
+        """
+        job = suite.job
+        debugging = None if suite.debug is None else self._debug_target(suite.debug, notify)
+        runner = RunnerInfo(RUNNER_NAME, PROTOCOL_VERSION, self._release())
+        build = RustProjectBuild(self._settings(), suite.slug, Path(job.root))
+        try:
+            built = build.tests(job.exclude)
+        except ProjectBuildError as error:
+            return SuiteReport(runner, load_error=error.error)
+        try:
+            libtest = LibtestSuite(self._tests, job, suite.listener)
+            if debugging is None:
+                return SuiteReport(runner, libtest.run(built))
+            tests, stopped_early = libtest.debug(built, debugging)
+            return SuiteReport(runner, tests, stopped_early=stopped_early)
+        finally:
+            if built.scratch is not None:
+                rmtree(built.scratch, ignore_errors=True)
+
+    def _prepare_grading(
+        self, root: Path, meta: ProblemMeta, level: int, notify: ProgressNotice
+    ) -> RunnerLaunch | BuildFailed:
+        build = RustProjectBuild(self._settings(), meta.slug, root)
+        if not build.warm:
+            notify(COLD_NOTICE)
+        binary = build.harness(graded_signature(meta.signature, level))
+        if isinstance(binary, BuildFailed):
+            return binary
+        timeout = HELLO_TIMEOUT_MS[Language.RUST]
+        return RunnerLaunch((str(binary),), root, timeout, scratch=binary.parent)
+
+    def _debug_target(self, session: DebugSession, notify: ProgressNotice) -> DebugTarget:
+        server = self._debug_servers.lldb_server()
+        path = require_installed(server, Language.RUST)
+        require_free_port(session)
+        return DebugTarget(session, server.name, path, notify)
+
+    def _settings(self) -> RustBuildSettings:
+        return RustBuildSettings(self._root, self._runtime, self._toolchain, self._host)
 
     def prepare(self, scope: BuildScope, notify: ProgressNotice) -> PrepareResult:
         match scope:
@@ -245,7 +338,7 @@ class RustRunner:
             source_errors = [error for error in errors if error.path != bridge_file]
             if source_errors:
                 return self._build_failure(build, source_errors)
-            targets = _without_failing(targets, bridge, errors)
+            targets = marked_unavailable(targets, bridge, errors)
         raise RunnerStartError("the generated Rust bridge does not compile")
 
     def _write_package(self, build: _Build, package: Path, bridge: Bridge) -> None:
@@ -264,15 +357,22 @@ class RustRunner:
 
     def _host(self) -> str:
         """The host triple, from `rustc -vV` once, then from the build directory."""
-        cached = self._build_directory / HOST_FILE
+        return self._cached(HOST_FILE, self._toolchain.host)
+
+    def _release(self) -> str:
+        """The `rustc` version, from `rustc -vV` once, then from the build directory."""
+        return self._cached(RELEASE_FILE, self._toolchain.release)
+
+    def _cached(self, name: str, ask: Callable[[Path], str]) -> str:
+        cached = self._build_directory / name
         if cached.is_file():
-            host = cached.read_text(encoding="utf-8").strip()
-            if host:
-                return host
+            value = cached.read_text(encoding="utf-8").strip()
+            if value:
+                return value
         self._build_directory.mkdir(parents=True, exist_ok=True)
-        host = self._toolchain.host(self._build_directory)
-        cached.write_text(f"{host}\n", encoding="utf-8")
-        return host
+        value = ask(self._build_directory)
+        cached.write_text(f"{value}\n", encoding="utf-8")
+        return value
 
     def _build_failure(self, build: _Build, errors: list[CompilerError]) -> BuildFailed:
         """Errors in reference code are content errors where only the references matter;
@@ -306,34 +406,3 @@ class RustRunner:
 
 def _server_command(server: DebugServer, path: Path) -> tuple[str, ...]:
     return (str(path), GDBSERVER_MODE) if server.name == LLDB_SERVER else (str(path),)
-
-
-def _without_failing(
-    targets: list[BridgeTarget],
-    bridge: Bridge,
-    errors: tuple[CompilerError, ...],
-) -> list[BridgeTarget]:
-    """`targets` with each one that owns a failing bridge line marked unavailable, with the
-    first of its errors; a target whose module line failed (its file is missing) loses the
-    module too. A failing line that no target owns means the generator is broken."""
-    failures: dict[str, Unavailable] = {}
-    missing_modules: set[str] = set()
-    for error in errors:
-        owner = bridge.owners.get(error.line)
-        if owner is None:
-            shown = error.shown(str(error.path))
-            raise RunnerStartError("the generated Rust bridge does not compile", shown)
-        if error.line in bridge.modules:
-            missing_modules.add(owner)
-        target = next(target for target in targets if target.target_id == owner)
-        failures.setdefault(owner, load_error(error, target.module, target.file.name))
-    return [
-        replace(
-            target,
-            unavailable=failures[target.target_id],
-            with_module=target.target_id not in missing_modules,
-        )
-        if target.target_id in failures
-        else target
-        for target in targets
-    ]
