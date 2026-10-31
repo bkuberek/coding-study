@@ -1,0 +1,15 @@
+// Package app holds the type that `cstudy submit` and the tests drive.
+package app
+
+// {{class_name}} TODO: what it keeps.
+type {{class_name}} struct{}
+
+// New{{class_name}} returns an empty {{class_name}}.
+func New{{class_name}}() *{{class_name}} {
+	return &{{class_name}}{}
+}
+
+// Put TODO: what it does; returns the previous value of key, or "" when there was none.
+func (a *{{class_name}}) Put(timestamp int64, key string, value string) string {
+	panic("not implemented")
+}

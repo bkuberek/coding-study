@@ -17,7 +17,7 @@ TEMPLATE_FILES = {
     [
         name
         for name in TemplateName
-        if name not in ("concurrent", "project-python", "project-typescript")
+        if name not in ("concurrent", "project-python", "project-typescript", "project-go")
     ],
 )
 def test_every_template_has_the_scaffold_files(template):
@@ -48,6 +48,21 @@ def test_the_typescript_project_template_has_a_starter_and_an_overlay_instead_of
         "starter/src/main.ts",
         "solutions/reference/src/main.ts",
     }
+
+
+def test_the_go_project_template_has_a_starter_and_an_overlay_instead_of_a_generator():
+    files = set(PackagedProblemTemplates().files(TemplateName.PROJECT_GO))
+    assert files == TEMPLATE_FILES - {"generator.py"} | {
+        "starter/README.md",
+        "starter/go.mod",
+        "starter/app.go",
+        "solutions/reference/app.go",
+    }
+
+
+def test_the_go_starters_module_is_named_after_the_slug():
+    files = PackagedProblemTemplates().files(TemplateName.PROJECT_GO)
+    assert files["starter/go.mod"].startswith("module {{slug}}\n")
 
 
 def test_the_typescript_starters_build_files_drop_their_template_suffix():

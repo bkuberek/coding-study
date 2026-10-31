@@ -1,0 +1,26 @@
+// Package app holds the type that `cstudy submit` and the tests drive.
+//
+// TODO: replace this sketch with the reference of every level.
+package app
+
+// {{class_name}} keeps the values by key.
+type {{class_name}} struct {
+	values map[string]string
+}
+
+// New{{class_name}} returns an empty {{class_name}}.
+func New{{class_name}}() *{{class_name}} {
+	return &{{class_name}}{values: map[string]string{}}
+}
+
+// Put stores value under key; returns the previous value of key, or "" when there was none.
+func (a *{{class_name}}) Put(timestamp int64, key string, value string) string {
+	previous := a.values[key]
+	a.values[key] = value
+	return previous
+}
+
+// Get returns the value of key, or "" when there is none.
+func (a *{{class_name}}) Get(timestamp int64, key string) string {
+	return a.values[key]
+}

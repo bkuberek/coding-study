@@ -50,7 +50,7 @@ def test_ends_with_the_ready_gate(environment):
     )
 
 
-PROJECT_TEMPLATES = ("project-python", "project-typescript")
+PROJECT_TEMPLATES = ("project-python", "project-typescript", "project-go")
 
 
 @pytest.mark.parametrize("template", PROJECT_TEMPLATES)

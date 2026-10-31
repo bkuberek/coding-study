@@ -63,7 +63,9 @@ PROJECT_WORKFLOW = (
     ),
 )
 """docs/specs/authoring.md#project-problems, from step 2: a project problem's own workflow."""
-PROJECT_TEMPLATES = frozenset({TemplateName.PROJECT_PYTHON, TemplateName.PROJECT_TYPESCRIPT})
+PROJECT_TEMPLATES = frozenset(
+    {TemplateName.PROJECT_PYTHON, TemplateName.PROJECT_TYPESCRIPT, TemplateName.PROJECT_GO}
+)
 """A project problem is written in its one language, so no languages need trimming."""
 LANGUAGES_HINT = (
     "languages  meta.yaml lists the languages to write references in; remove the ones you "
