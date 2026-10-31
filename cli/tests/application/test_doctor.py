@@ -41,7 +41,6 @@ from coding_study.domain.errors import ConfigError, RunnerProtocolError, RunnerS
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import RunnerInfo, RunReport, RunRequest
 from coding_study.domain.suite_runs import SuiteJob, SuiteReport
-from coding_study.domain.workspace_projects import GoProjectFolder
 from tests.fakes import DEBUGSERVER, DELVE, FakeDebugServers, FakeLanguageRunner, FakeToolchains
 
 OK, WARN, FAIL = CheckStatus.OK, CheckStatus.WARN, CheckStatus.FAIL
@@ -713,73 +712,6 @@ def test_project_rows_follow_the_workspace_files_in_the_specs_order():
     assert [name for name in names if name in rows] == rows
 
 
-class GoFoldersRunner(FakeLanguageRunner):
-    """A Go runner that finds `folders` and writes the missing `go.work` files."""
-
-    def __init__(self, *folders: GoProjectFolder) -> None:
-        super().__init__(Prepared(RunnerLaunch(("go",), Path("/"), 1000)))
-        self.folders = folders
-        self.repaired = 0
-
-    def go_project_folders(self) -> tuple[GoProjectFolder, ...]:
-        return self.folders
-
-    def write_missing_go_work_files(self) -> tuple[str, ...]:
-        self.repaired += 1
-        return tuple(found.folder for found in self.folders if not found.has_work_file)
-
-
-def with_go_folders(*folders: GoProjectFolder) -> PracticeWorkspace:
-    return workspace_with(runners={**healthy_runners(), Language.GO: GoFoldersRunner(*folders)})
-
-
-def go_folder(slug: str, **changes: object) -> GoProjectFolder:
-    return replace(GoProjectFolder(f"projects/{slug}", slug, has_work_file=True), **changes)
-
-
-def test_go_project_folders_with_their_go_work_and_own_modules_pass():
-    report = doctor(workspace=with_go_folders(go_folder("a-project-go")))
-    assert summary(report, "go projects") == (OK, "")
-
-
-def test_a_go_folder_without_its_go_work_only_warns_with_the_fix_command():
-    folder = go_folder("a-project-go", has_work_file=False)
-    report = doctor(workspace=with_go_folders(folder))
-    result = check(report, "go projects")
-    assert (result.status, result.detail, result.fix, report.passed) == (
-        WARN,
-        "1 problem: projects/a-project-go has no go.work",
-        "cstudy doctor --fix",
-        True,
-    )
-
-
-def test_a_go_replacement_that_does_not_resolve_points_to_the_restore():
-    folder = go_folder("a-project-go", unresolved=("../../gone",))
-    result = check(doctor(workspace=with_go_folders(folder)), "go projects")
-    assert result.fix == "cstudy start a-project-go --restore go.mod"
-
-
-def test_two_go_folders_with_one_module_say_so():
-    folders = (go_folder("a-project-go", module="bank"), go_folder("b-project-go", module="bank"))
-    result = check(doctor(workspace=with_go_folders(*folders)), "go projects")
-    assert (result.detail, result.fix) == (
-        "1 problem: projects/a-project-go and projects/b-project-go both declare module bank",
-        "give each folder a module of its own in its go.mod",
-    )
-
-
-def test_go_folders_are_not_checked_without_a_go_runner_that_finds_them():
-    assert "go projects" not in [result.name for result in doctor().results]
-
-
-def test_repair_writes_the_missing_go_work_files():
-    lines: list[str] = []
-    workspace = with_go_folders(go_folder("a-project-go", has_work_file=False))
-    repair_workspace(workspace, lines.append)
-    assert "wrote projects/a-project-go/go.work" in lines
-
-
 def test_repair_recreates_the_project_links():
     links = FakeProjectLinks(("projects/bank-project-python",))
     repair_workspace(workspace_with(links=links), lambda _line: None)
@@ -1119,6 +1051,35 @@ def test_failing_project_folders_only_warn_listing_them_with_the_checks_fix():
         "1 missing from rust-analyzer.linkedProjects: projects/bank-project-rust",
         "cstudy ide",
         True,
+    )
+
+
+def test_project_folders_are_not_checked_without_a_runner_that_checks_them():
+    names = [result.name for result in doctor().results]
+    assert ("go projects" in names, "rust project config" in names) == (False, False)
+
+
+def test_a_folder_check_of_sentences_lists_them_apart_from_their_commas():
+    problems = (
+        "projects/a-project-go has no go.work",
+        "projects/a-project-go, projects/b-project-go and projects/c-project-go all declare "
+        "module bank",
+    )
+    go = FolderCheck("go projects", problems, "problems", separator="; ")
+    result = check(doctor(workspace=with_folder_checks(FolderCheckingRunner((go,)))), "go projects")
+    assert result.detail == (
+        "2 problems: projects/a-project-go has no go.work; projects/a-project-go, "
+        "projects/b-project-go and projects/c-project-go all declare module bank"
+    )
+
+
+def test_a_folder_check_shows_its_first_five_failures_and_counts_the_rest():
+    folders = tuple(f"projects/p{number}" for number in range(1, 8))
+    failing = replace(CONFIG_CHECK, failing=folders)
+    report = doctor(workspace=with_folder_checks(FolderCheckingRunner((failing,))))
+    assert check(report, "rust project config").detail == (
+        "7 missing .cargo/config.toml: projects/p1, projects/p2, projects/p3, projects/p4, "
+        "projects/p5 and 2 more"
     )
 
 

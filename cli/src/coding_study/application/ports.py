@@ -27,7 +27,6 @@ from coding_study.domain.scheduling import ProblemProgress, ScheduleEntry
 from coding_study.domain.submissions import LevelUnlock, SubmissionRecord
 from coding_study.domain.suite_runs import SuiteJob, SuiteReport, SuiteTest
 from coding_study.domain.time_limits import Calibration
-from coding_study.domain.workspace_projects import GoProjectFolder
 
 
 class ProblemRepository(Protocol):
@@ -760,18 +759,6 @@ class ProjectTypeChecker(Protocol):
 
 
 @runtime_checkable
-class GoProjectFolders(Protocol):
-    """A runner that finds a workspace's Go project folders and writes the `go.work` they lack
-    (docs/specs/installation-and-workspaces.md#cstudy-doctor-in-a-workspace): Go."""
-
-    def go_project_folders(self) -> tuple[GoProjectFolder, ...]: ...
-
-    def write_missing_go_work_files(self) -> tuple[str, ...]:
-        """The folders whose `go.work` it wrote, relative to the workspace root."""
-        ...
-
-
-@runtime_checkable
 class ProjectLibraries(Protocol):
     """A runner whose project builds run offline on libraries that `cstudy doctor --fix` caches
     by building a warm-up project (docs/specs/installation-and-workspaces.md#jvm-project-folders):
@@ -816,17 +803,21 @@ class FolderCheck:
 
     name: str
     failing: tuple[str, ...]
-    """The folders that fail it, relative to the workspace root, in path order."""
+    """What fails it, in order: the failing folders, relative to the workspace root, or one
+    sentence per problem."""
     problem: str
-    """What is wrong with each failing folder: `missing from rust-analyzer.linkedProjects`."""
+    """What the row counts: `missing from rust-analyzer.linkedProjects` after a number of
+    folders, or `problems`."""
     fix: str | None = None
     """The command that repairs it; None: `cstudy doctor --fix` does."""
+    separator: str = ", "
+    """Between the failures the row shows: `; ` for sentences, which may hold commas."""
 
 
 @runtime_checkable
 class ProjectFolderChecks(Protocol):
     """A `LanguageRunner` whose project folders reach the workspace's toolchain through files
-    `cstudy` writes, or that an editor must be told about: Rust."""
+    `cstudy` writes, or that an editor must be told about: Go and Rust."""
 
     def folder_checks(self) -> tuple[FolderCheck, ...]:
         """One check per row that applies to this workspace."""

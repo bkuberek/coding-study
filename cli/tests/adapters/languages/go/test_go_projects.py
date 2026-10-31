@@ -15,7 +15,6 @@ from coding_study.adapters.languages.go.build_files import COLD_NOTICE
 from coding_study.adapters.languages.go.runner import GoRunner
 from coding_study.adapters.languages.go.toolchain import GO_ENVIRONMENT, GoOutcome
 from coding_study.application.ports import (
-    GoProjectFolders,
     ProjectGrading,
     ProjectSuite,
     RunnerLaunch,
@@ -314,11 +313,10 @@ def test_nothing_is_written_to_the_project_folder(workspace):
 # folders
 
 
-def test_the_go_runner_finds_the_workspaces_go_folders(workspace):
-    found = runner(workspace, FakeGo())
-    assert isinstance(found, GoProjectFolders)
-    assert [folder.folder for folder in found.go_project_folders()] == [f"projects/{SLUG}"]
+def test_the_go_runner_checks_the_workspaces_go_folders(workspace):
+    (check,) = runner(workspace, FakeGo()).folder_checks()
+    assert check.failing == (f"projects/{SLUG} has no go.work",)
 
 
 def test_the_go_runner_writes_the_missing_go_work_files(workspace):
-    assert runner(workspace, FakeGo()).write_missing_go_work_files() == (f"projects/{SLUG}",)
+    assert runner(workspace, FakeGo()).repair_folders() == (f"projects/{SLUG}/go.work",)
