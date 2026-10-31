@@ -22,10 +22,9 @@ class InstalledWebUi:
         self._directory = static_directory
 
     def assets(self) -> WebUiAssets:
-        manifest = self._directory / MANIFEST_FILE
-        if not manifest.is_file():
+        if not (self._directory / MANIFEST_FILE).is_file():
             return WebUiAssets(0, f"missing {MANIFEST_FILE}")
-        digests = _digests(manifest)
+        digests = manifest_digests(self._directory)
         if digests is None:
             return WebUiAssets(0, f"unreadable {MANIFEST_FILE}")
         size = 0
@@ -50,10 +49,11 @@ class InstalledWebUi:
         return WebServerLibraries(tuple(versions))
 
 
-def _digests(manifest: Path) -> dict[str, str] | None:
-    """The manifest's `files`, each path relative to it with its SHA-256; None when the file is
-    not such a manifest."""
+def manifest_digests(static_directory: Path) -> dict[str, str] | None:
+    """The `files` of the directory's manifest: each `/`-separated path relative to it with its
+    SHA-256. None when the manifest is missing or not such a document."""
     try:
+        manifest = static_directory / MANIFEST_FILE
         document: object = json.loads(manifest.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return None

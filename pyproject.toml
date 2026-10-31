@@ -24,7 +24,7 @@ cstudy = "coding_study.entrypoints.launcher:main"
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28",
+    "httpx2>=2.16",
     "hypothesis>=6.170.9",
     "import-linter>=2.15",
     "pyright>=1.1.414",

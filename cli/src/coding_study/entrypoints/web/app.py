@@ -1,0 +1,21 @@
+"""The app factory: routes, error handlers and the security layer around them
+(docs/specs/web-ui.md#server)."""
+
+from starlette.applications import Starlette
+from starlette.types import ASGIApp
+
+from coding_study.entrypoints.web.api_session import session_routes
+from coding_study.entrypoints.web.context import ServerSettings, ServerState
+from coding_study.entrypoints.web.errors import exception_handlers
+from coding_study.entrypoints.web.page import front_end_routes
+from coding_study.entrypoints.web.security import SecurityMiddleware
+
+
+def create_app(settings: ServerSettings) -> ASGIApp:
+    routes = [
+        *front_end_routes(settings.static_directory, settings.secrets.csrf),
+        *session_routes(),
+    ]
+    app = Starlette(routes=routes, exception_handlers=exception_handlers())
+    app.state.server = ServerState(settings)
+    return SecurityMiddleware(app, settings.port, settings.secrets)

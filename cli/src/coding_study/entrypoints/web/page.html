@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  The server fills in two values per response (entrypoints/web/page.py):
+  cstudy-csrf, the token every POST, PUT and DELETE sends as X-Cstudy-CSRF; and
+  cstudy-csp-nonce, the nonce of this response's style-src, which the page's code passes to
+  createEditor({nonce}) of /assets/editor.js, so CodeMirror's style elements are allowed.
+-->
+<meta name="cstudy-csrf" content="{{csrf}}">
+<meta name="cstudy-csp-nonce" content="{{nonce}}">
+<title>cstudy</title>
+</head>
+<body>
+<main>
+<h1>cstudy</h1>
+<p>The page's views are not built yet; the practice loop runs in the terminal for now.</p>
+</main>
+</body>
+</html>
