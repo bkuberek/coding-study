@@ -176,11 +176,11 @@ statement  .statements/two-sum.md
 next       cstudy test --watch
 ```
 
-A [project problem](problem-format.md#project-problems) starts in its one language: `--lang` may repeat it, another language exits 3 (`bank-project-python is solved in python only`), and `default_lang` never applies. A new attempt copies the problem's `starter/` tree to `projects/<slug>/`, never overwriting a file, links the folder to the workspace's toolchain (Python: [project folders](installation-and-workspaces.md#project-folders)), writes level 1's [test file](problem-format.md#generated-test-files), renders the statement at level 1, and opens `$EDITOR projects/<slug> <statement>`. A resumed attempt copies the starter only when the folder is missing, writes back a missing generated test file of an unlocked level, and recreates a missing or dangling `.venv` link; it never restores a file you deleted or changed. `--fresh` and review attempts first move the folder to `.archive/<slug>/<attempt_id>-<lang>/`, without its `.venv` link and caches. `--timer` works as for every problem.
+A [project problem](problem-format.md#project-problems) starts in its one language: `--lang` may repeat it, another language exits 3 (`bank-project-python is solved in python only`), and `default_lang` never applies. A new attempt copies the problem's `starter/` tree to `projects/<slug>/`, never overwriting a file, links the folder to the workspace's toolchain (Python: [project folders](installation-and-workspaces.md#project-folders)), writes level 1's [test file](problem-format.md#generated-test-files), renders the statement at level 1, and opens `$EDITOR projects/<slug> <statement>`. A resumed attempt copies the starter only when the folder is missing, writes back a missing generated test file of an unlocked level, and recreates a missing or dangling `.venv` link; it never restores a file you deleted or changed. `--fresh` and review attempts first move the folder to `.archive/<slug>/<attempt_id>-<lang>/`, without its `.venv` link and caches. `--timer` works as for every problem. The `project` line counts the files the folder holds, as `code_hash` sees them ([project folders](installation-and-workspaces.md#project-folders)): the starter's, the generated test files and your own, without the `.venv` link, `node_modules` and caches.
 
 ```text
 bank-project-python · hard · practical · python · project
-project    projects/bank-project-python (7 files)
+project    projects/bank-project-python (6 files)
 entry      bank/bank.py: Bank
 tests      tests/test_level_1.py (2 tests)
 statement  .statements/bank-project-python.md

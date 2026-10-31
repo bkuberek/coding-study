@@ -581,6 +581,12 @@ class Workspace(Protocol):
         paths."""
         ...
 
+    def tracked_files(self, path: str) -> tuple[str, ...]:
+        """Every file under the directory `path`, relative to it, in path order, without the
+        untracked entries (`workspace_projects.is_untracked`); a link to a directory is never
+        followed. Nothing when `path` is not a directory."""
+        ...
+
     def absolute(self, path: str) -> Path: ...
 
 

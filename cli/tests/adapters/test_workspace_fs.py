@@ -136,6 +136,40 @@ def test_content_hash_of_a_project_folder_does_not_depend_on_its_location(worksp
     assert workspace.content_hash("projects/copy") == workspace.content_hash(project)
 
 
+def test_tracked_files_lists_a_folders_files_relative_to_it_in_path_order(workspace, project):
+    workspace.write_text(f"{project}/bank/models.py", "MODELS = []\n")
+    assert workspace.tracked_files(project) == ("README.md", "bank/bank.py", "bank/models.py")
+
+
+@pytest.mark.parametrize(
+    "untracked",
+    [
+        "bank/__pycache__/bank.cpython-313.pyc",
+        ".pytest_cache/v/cache/lastfailed",
+        ".ruff_cache/CACHEDIR.TAG",
+        "node_modules/typescript/index.js",
+        "uv.lock",
+    ],
+)
+def test_tracked_files_leaves_out_untracked_files(workspace, project, untracked):
+    workspace.write_text(f"{project}/{untracked}", "generated\n")
+    assert untracked not in workspace.tracked_files(project)
+
+
+def test_tracked_files_leaves_out_the_shared_venv(workspace, project):
+    assert workspace.tracked_files(project) == ("README.md", "bank/bank.py")
+
+
+def test_tracked_files_never_follows_a_link_to_a_directory(workspace, project):
+    workspace.write_text("elsewhere/notes.md", "# Notes\n")
+    workspace.absolute(f"{project}/linked").symlink_to("../../elsewhere", target_is_directory=True)
+    assert "linked/notes.md" not in workspace.tracked_files(project)
+
+
+def test_tracked_files_of_a_missing_folder_is_empty(workspace):
+    assert workspace.tracked_files(PROJECT) == ()
+
+
 def test_ensure_link_creates_a_relative_link(workspace, shared_venv):
     workspace.ensure_link(VENV_LINK, SHARED_VENV_TARGET)
     assert workspace.absolute(VENV_LINK).readlink() == Path(SHARED_VENV_TARGET)

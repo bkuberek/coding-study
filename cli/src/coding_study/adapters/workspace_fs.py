@@ -68,5 +68,9 @@ class WorkspaceFs:
             digest.update(target.read_bytes() if target.is_file() else _MISSING)
         return digest.hexdigest()
 
+    def tracked_files(self, path: str) -> tuple[str, ...]:
+        folder = self.absolute(path)
+        return tuple(sorted(file.relative_to(folder).as_posix() for file in tracked_files(folder)))
+
     def absolute(self, path: str) -> Path:
         return self._root / path

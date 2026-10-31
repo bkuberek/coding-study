@@ -9,7 +9,6 @@ archive the folder; a refused archive leaves no half-started attempt.
 from dataclasses import dataclass, replace
 
 from coding_study.application.environment import Environment
-from coding_study.application.ports import Workspace
 from coding_study.application.project_tests import LevelTestFile, LevelTestWriter
 from coding_study.application.project_workspace import (
     archive_project,
@@ -21,7 +20,7 @@ from coding_study.domain.attempts import Attempt, AttemptMode, AttemptStatus, Ne
 from coding_study.domain.errors import UsageError
 from coding_study.domain.levels import FIRST_LEVEL
 from coding_study.domain.problem import Language, Problem
-from coding_study.domain.project import PATH_SEPARATOR, entry_files, project_language
+from coding_study.domain.project import entry_files, project_language
 from coding_study.domain.signature import ClassSignature
 from coding_study.domain.submissions import LevelUnlock
 from coding_study.domain.workspace_projects import project_folder
@@ -34,7 +33,7 @@ class StartedProject:
     folder: str
     """`projects/<slug>`, relative to the workspace root."""
     files: int
-    """The starter's files and the generated test files the folder holds."""
+    """The files the folder holds, untracked ones aside (`Workspace.tracked_files`)."""
     entry_file: str
     """Relative to the folder: the file that defines the entry class."""
     entry_class: str
@@ -151,16 +150,11 @@ class _ProjectStarter:
         assert isinstance(signature, ClassSignature)
         return StartedProject(
             folder=self._folder,
-            files=self._file_count(tests),
+            files=len(self._environment.workspace.tracked_files(self._folder)),
             entry_file=self._entry_file(),
             entry_class=signature.name,
             tests=tests,
         )
-
-    def _file_count(self, tests: LevelTestFile) -> int:
-        files = self._problem.project_files
-        starter = files.starter.paths if files and files.starter else frozenset[str]()
-        return _existing(self._environment.workspace, self._folder, starter | {tests.path})
 
     def _entry_file(self) -> str:
         """The entry module's file as the starter has it; the module file when it has neither."""
@@ -170,7 +164,3 @@ class _ProjectStarter:
         files = self._problem.project_files
         starter = files.starter.paths if files and files.starter else frozenset[str]()
         return next((path for path in candidates if path in starter), candidates[0])
-
-
-def _existing(workspace: Workspace, folder: str, paths: frozenset[str]) -> int:
-    return sum(1 for path in paths if workspace.exists(f"{folder}{PATH_SEPARATOR}{path}"))

@@ -103,6 +103,22 @@ def test_the_project_counts_the_starter_and_the_generated_tests(environment):
     assert project.files == 4
 
 
+def test_the_project_counts_a_file_you_added(environment):
+    start(environment)
+    environment.workspace.write_text(f"{FOLDER}/bank/ledger.py", "LEDGER = []\n")
+    project = start(environment).project
+    assert project is not None
+    assert project.files == 5
+
+
+def test_the_project_leaves_untracked_files_out_of_its_count(environment):
+    start(environment)
+    environment.workspace.write_text(f"{FOLDER}/bank/__pycache__/bank.cpython-313.pyc", "")
+    project = start(environment).project
+    assert project is not None
+    assert project.files == 4
+
+
 def test_the_project_reports_level_1s_test_file(environment):
     project = start(environment).project
     assert project is not None
