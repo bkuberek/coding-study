@@ -59,6 +59,11 @@ class DebugOutput:
         connecting = self._debug.session.connect
         return connecting and bool(marker) and any(marker in text for text in self._texts())
 
+    def agent_rejected_the_program(self) -> bool:
+        """The agent listened, then refused the program it was to debug."""
+        marker = self._debug.rejected_marker
+        return bool(marker) and any(marker in text for text in self._texts())
+
     def tail(self) -> tuple[str, ...]:
         """The last lines of standard output, then of standard error."""
         lines = (deque(text.splitlines(), maxlen=TAIL_LINES) for text in self._texts())

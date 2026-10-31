@@ -52,6 +52,10 @@ DEBUG_GCFLAGS = "-gcflags=all=-N -l"
 """No optimizations and no inlining, so every line and variable of the user's code is there."""
 DELVE_READY_MARKER = "API server listening at:"
 """What a headless Delve prints to standard output once it listens."""
+DELVE_REFUSAL_MARKER = "--check-go-version=false"
+"""In the message of a Delve that refuses a Go it does not support, after it listened: `Go version
+go1.24.13 is too old for this version of Delve (minimum supported version 1.25, suppress this
+error with --check-go-version=false)`."""
 WARM_BUILD_NOTE = "go, warm"
 COLD_BUILD_NOTE = "go, cold"
 MAX_DIAGNOSTIC_LINES = 40

@@ -127,6 +127,7 @@ CONNECT_PATIENCE_SECONDS = 10.0
 """How long a runner that connects to an IDE keeps trying while nobody listens."""
 CONNECT_FIRST_DELAY_SECONDS = 0.2
 CONNECT_MAX_DELAY_SECONDS = 1.0
+DEBUG_ENDED_BEFORE_THE_RUN = "the debug session ended before the run started"
 DEBUG_NOT_RESTARTED = "the runner ended during the debug session; it is not restarted"
 
 
@@ -788,10 +789,15 @@ class _Attempt:
 
     def _require_agent_to_have_listened(self) -> None:
         """A runner that finished a debug run never listened (Node starts without its inspector
-        when the port is taken): nobody could have debugged it. The output is read once more,
-        because the marker and `bye` may both have landed since the poll's last check."""
+        when the port is taken): nobody could have debugged it. So did one whose agent listened,
+        then refused the program (Delve and an older Go). The output is read once more, because
+        the marker and `bye` may both have landed since the poll's last check."""
         debug, output = self._launch.debug, self._output
-        if debug is None or output is None or self._announced or output.agent_listens():
+        if debug is None or output is None:
+            return
+        if output.agent_rejected_the_program():
+            raise RunnerStartError(DEBUG_ENDED_BEFORE_THE_RUN, output.tail())
+        if self._announced or output.agent_listens():
             return
         session = debug.session
         raise RunnerStartError(
@@ -834,8 +840,7 @@ class _Attempt:
         if output.refused_connection():
             return _NoDebuggerListeningError()
         return RunnerStartError(
-            f"the debug session ended before the run started (runner exit code {exit_code})",
-            output.tail(),
+            f"{DEBUG_ENDED_BEFORE_THE_RUN} (runner exit code {exit_code})", output.tail()
         )
 
     def _timed_out(self) -> None:

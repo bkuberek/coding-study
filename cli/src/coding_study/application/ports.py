@@ -235,6 +235,9 @@ class DebugLaunch:
     ready_file: Path | None = None
     """For an agent that prints nothing (`debugserver`): a file it writes once it listens.
     `RunnerProcess` creates it empty before each launch."""
+    rejected_marker: str = ""
+    """Text the agent prints, after it listens, when it refuses the program it was to debug (Delve
+    and a Go older than it supports); the session is then a start error that shows the output."""
 
 
 @dataclass(frozen=True, slots=True)

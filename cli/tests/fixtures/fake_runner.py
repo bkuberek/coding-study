@@ -15,7 +15,7 @@ Each case input holds one `step` that says what the "user code" does:
 A job whose target path ends in "missing.py" gets a load_error. `--startup` misbehaves before
 any job runs: silent, exit-before-hello, bad-request, garbage, protocol-2, unknown-job, skip-cases.
 
-Debug agents are imitated by four more startups, each logging one line to `--launch-log` and
+Debug agents are imitated by five more startups, each logging one line to `--launch-log` and
 talking about `--ready-line` and `--refused-line` (on `--ready-stream`):
 
     debug-wait    prints the ready line (or, given `--ready-file`, writes a port to that file,
@@ -26,6 +26,8 @@ talking about `--ready-line` and `--refused-line` (on `--ready-stream`):
                   of its own, and runs `--leftover-binary` (default: this interpreter)
     debug-refuse  prints the refused line to stderr and exits 2 until the `--release` file exists
     debug-exit    prints "address already in use" to stderr and exits 1
+    debug-reject  prints the ready line, then the `--rejected-line` to stderr, and runs on: an
+                  agent that listens, then refuses the program, as Delve does for an older Go
 """
 
 import argparse
@@ -48,6 +50,7 @@ def main() -> int:
     parser.add_argument("--ready-line", default="agent listening")
     parser.add_argument("--ready-stream", default="stdout")
     parser.add_argument("--refused-line", default="connect refused")
+    parser.add_argument("--rejected-line", default="program rejected")
     parser.add_argument("--release", default="")
     parser.add_argument("--launch-log", default="")
     parser.add_argument("--ready-file", default="")
@@ -74,6 +77,10 @@ class Runner:
         if self.startup == "debug-exit":
             print("address already in use", file=sys.stderr, flush=True)
             return 1
+        if self.startup == "debug-reject":
+            self.say_ready()
+            print(arguments.rejected_line, file=sys.stderr, flush=True)
+            return None
         if self.startup == "debug-refuse" and not release.exists():
             print(arguments.refused_line, file=sys.stderr, flush=True)
             return 2

@@ -25,6 +25,7 @@ from coding_study.adapters.languages.go.build_files import (
     BUILD_PROJECT,
     COLD_NOTICE,
     DELVE_READY_MARKER,
+    DELVE_REFUSAL_MARKER,
     GENERATED_HEADER,
     GO_VERSION,
     LOCK_FILE,
@@ -171,7 +172,10 @@ class GoProjectBuilds:
         )
         if scope.debug is None:
             return launch
-        return replace(launch, debug=DebugLaunch(scope.debug, notify, DELVE_READY_MARKER))
+        debug = DebugLaunch(
+            scope.debug, notify, DELVE_READY_MARKER, rejected_marker=DELVE_REFUSAL_MARKER
+        )
+        return replace(launch, debug=debug)
 
     def build(self, arguments: list[str], root: _Root) -> GoOutcome:
         """`go build <arguments>` in the build directory, against the root's `go.work`."""

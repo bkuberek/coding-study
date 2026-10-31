@@ -39,6 +39,7 @@ from coding_study.domain.type_dsl import Scalar, ScalarType
 FAKE_RUNNER = Path(__file__).resolve().parents[1] / "fixtures" / "fake_runner.py"
 READY = "fake agent listening"
 REFUSED = "fake connect refused"
+REJECTED = "fake program rejected"
 HANG_GUARD_MS = 200
 IDLE_LIMIT_MS = 300
 HELLO_TIMEOUT_MS = 100
@@ -95,6 +96,8 @@ class Debugging:
             self.stream,
             "--refused-line",
             REFUSED,
+            "--rejected-line",
+            REJECTED,
             "--release",
             str(self.release),
             "--launch-log",
@@ -105,7 +108,7 @@ class Debugging:
             str(runner_binary),
             *(("--ready-file", str(self.ready_file)) if self.ready_file else ()),
         )
-        debug = DebugLaunch(self.session, self._announce, ready, REFUSED, self.ready_file)
+        debug = DebugLaunch(self.session, self._announce, ready, REFUSED, self.ready_file, REJECTED)
         return RunnerLaunch(command, FAKE_RUNNER.parent, hello_timeout_ms, debug, self.scratch)
 
     def _private_runner_binary(self) -> Path:
@@ -254,6 +257,23 @@ def test_that_start_error_says_the_debug_session_ended(runner, debugging):
 def test_a_run_that_finishes_without_an_agent_is_a_start_error(runner, debugging):
     with pytest.raises(RunnerStartError, match="finished without a debug agent listening"):
         run(runner, debugging.launch("normal"), case("a", "return", value=1))
+
+
+def test_an_agent_that_listens_then_refuses_the_program_is_a_start_error_with_its_message(
+    runner, debugging
+):
+    """Delve prints its ready line, then `Go version go1.24.x is too old for this version of
+    Delve`, and ends; the suite runner that started it goes on to say `bye`."""
+    with pytest.raises(
+        RunnerStartError, match="the debug session ended before the run started"
+    ) as raised:
+        run(runner, debugging.launch("debug-reject"), case("a", "return", value=1))
+    assert REJECTED in raised.value.stderr_tail
+
+
+def test_a_run_whose_agent_never_refused_anything_is_no_start_error(runner, debugging):
+    outcome = run(runner, debugging.launch("debug-wait"), case("a", "return", value=1))
+    assert outcome == [Returned(1, 1000)]
 
 
 def test_nothing_is_announced_for_a_run_that_never_listened(runner, debugging):
