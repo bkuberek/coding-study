@@ -23,6 +23,7 @@ from coding_study.domain.progress_stats import LatestBench
 from coding_study.domain.project_tests import LevelTests
 from coding_study.domain.runs import RunReport, RunRequest
 from coding_study.domain.scheduling import ProblemProgress, ScheduleEntry
+from coding_study.domain.submissions import LevelUnlock, SubmissionRecord
 from coding_study.domain.suite_runs import SuiteJob, SuiteReport
 from coding_study.domain.time_limits import Calibration
 
@@ -357,6 +358,20 @@ class ProgressStore(Protocol):
     def add_test_run(self, run: RunRecord) -> None: ...
 
     def latest_test_run(self, attempt_id: int) -> RunRecord | None: ...
+
+    def add_submission(self, submission: SubmissionRecord) -> None: ...
+
+    def submissions(self, attempt_id: int) -> tuple[SubmissionRecord, ...]:
+        """A project attempt's submissions, earliest first."""
+        ...
+
+    def add_level_unlock(self, unlock: LevelUnlock) -> None:
+        """A level opens once: a second unlock of it is ignored."""
+        ...
+
+    def level_unlocks(self, attempt_id: int) -> tuple[LevelUnlock, ...]:
+        """When each level of a project attempt opened, by level."""
+        ...
 
     def schedule_entry(self, slug: str) -> ScheduleEntry | None: ...
 

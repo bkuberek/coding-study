@@ -12,7 +12,7 @@ from tests.stats_fixture import fill_progress
 
 runner = CliRunner()
 EXPORT_FILE = "progress-export.json"
-COUNTS = "attempts 6 · test_runs 4 · schedule 3 · bench_runs 3"
+COUNTS = "attempts 6 · test_runs 4 · schedule 3 · bench_runs 3 · submissions 0 · level_unlocks 0"
 
 
 @pytest.fixture

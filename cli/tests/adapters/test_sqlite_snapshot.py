@@ -13,7 +13,7 @@ from coding_study.domain.progress_export import ProgressSnapshot
 from tests.fakes import NOW, make_environment
 from tests.stats_fixture import fill_progress
 
-TABLES = ("attempts", "test_runs", "schedule", "bench_runs")
+TABLES = ("attempts", "test_runs", "schedule", "bench_runs", "submissions", "level_unlocks")
 
 
 @pytest.fixture
@@ -34,7 +34,7 @@ def test_a_snapshot_names_every_table_but_meta(store):
 
 
 def test_a_snapshot_records_the_schema_version(store):
-    assert store.snapshot().schema_version == 4
+    assert store.snapshot().schema_version == 5
 
 
 def test_a_snapshot_holds_every_row(filled):
@@ -43,6 +43,8 @@ def test_a_snapshot_holds_every_row(filled):
         "test_runs": 4,
         "schedule": 3,
         "bench_runs": 3,
+        "submissions": 0,
+        "level_unlocks": 0,
     }
 
 
@@ -95,9 +97,9 @@ def test_a_refused_restore_changes_nothing(filled):
 
 def test_a_snapshot_from_a_newer_schema_is_refused(store):
     with pytest.raises(
-        UsageError, match=re.escape("schema 5, which is newer than this cstudy (4)")
+        UsageError, match=re.escape("schema 6, which is newer than this cstudy (5)")
     ):
-        store.restore(ProgressSnapshot(5, {}))
+        store.restore(ProgressSnapshot(6, {}))
 
 
 def test_an_unknown_table_is_refused(store):

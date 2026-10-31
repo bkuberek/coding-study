@@ -13,7 +13,7 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
-from coding_study.adapters.sqlite import bench_rows
+from coding_study.adapters.sqlite import bench_rows, submission_rows
 from coding_study.domain.attempts import (
     Attempt,
     AttemptMode,
@@ -31,10 +31,11 @@ from coding_study.domain.problem import Language
 from coding_study.domain.progress_export import ColumnValue, ProgressSnapshot
 from coding_study.domain.progress_stats import LatestBench
 from coding_study.domain.scheduling import ProblemProgress, ReviewState, ScheduleEntry
+from coding_study.domain.submissions import LevelUnlock, SubmissionRecord
 
 SCHEMA_VERSION_KEY = "schema_version"
 META_TABLE = "meta"
-TABLE_ORDER = ("attempts", "test_runs", "schedule", "bench_runs")
+TABLE_ORDER = ("attempts", "test_runs", "schedule", "bench_runs", "submissions", "level_unlocks")
 """Snapshot and restore order: attempts before the rows that reference them."""
 MIGRATIONS_PACKAGE = "coding_study.adapters.sqlite"
 MIGRATIONS_DIRECTORY = "migrations"
@@ -140,6 +141,22 @@ class SqliteProgressStore:
                 (attempt_id,),
             ).fetchone()
         return _run_record(row) if row is not None else None
+
+    def add_submission(self, submission: SubmissionRecord) -> None:
+        with self._connection() as connection:
+            submission_rows.insert_submission(connection, submission)
+
+    def submissions(self, attempt_id: int) -> tuple[SubmissionRecord, ...]:
+        with self._connection() as connection:
+            return submission_rows.submissions(connection, attempt_id)
+
+    def add_level_unlock(self, unlock: LevelUnlock) -> None:
+        with self._connection() as connection:
+            submission_rows.insert_level_unlock(connection, unlock)
+
+    def level_unlocks(self, attempt_id: int) -> tuple[LevelUnlock, ...]:
+        with self._connection() as connection:
+            return submission_rows.level_unlocks(connection, attempt_id)
 
     def schedule_entry(self, slug: str) -> ScheduleEntry | None:
         with self._connection() as connection:
