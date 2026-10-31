@@ -480,7 +480,7 @@ Exit 0 when every graded case passed, 1 when one did not, 2 when the code did no
 cstudy status [<slug|file>] [--json]
 ```
 
-Shows where a [project problem](problem-format.md#project-problems)'s attempt in progress stands, without running anything. Planned: nothing implements it yet.
+Shows where a [project problem](problem-format.md#project-problems)'s attempt in progress stands, without running anything. Planned: nothing implements the `files` line and field yet.
 
 | Line | Content |
 |------|---------|
