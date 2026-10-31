@@ -2,27 +2,31 @@
 (docs/specs/cli.md#project-problems).
 
 The suite runs the generated test files of levels 1 to the unlocked level (or `--level`), the
-starter's test files and your own. The run is stored in `test_runs`, but it grades nothing and
-never opens a level: `cstudy submit` does both.
+starter's test files and your own. With `--typecheck` the folder's type check comes first, and a
+failure runs no test. The run is stored in `test_runs`, but it grades nothing and never opens a
+level: `cstudy submit` does both.
 """
 
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
 from coding_study.application.active_attempt import autograded_language, find_attempt
 from coding_study.application.environment import Environment
-from coding_study.application.ports import ProgressNotice
+from coding_study.application.ports import BuildFailed, ProgressNotice
 from coding_study.application.project_runs import (
     SUITE_FRAMEWORKS,
     SuiteRun,
     project_levels,
     run_suite,
+    typecheck_project,
 )
 from coding_study.application.run_tests import resolve_debug_session
 from coding_study.domain.attempts import Attempt, RunRecord
 from coding_study.domain.debugging import DebugRequest, DebugSession
-from coding_study.domain.diagnostics import Diagnostic
+from coding_study.domain.diagnostics import Diagnostic, DiagnosticParser, DiagnosticSource
+from coding_study.domain.diagnostics_tsc import TscReport
 from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Tally
 from coding_study.domain.levels import FIRST_LEVEL, LevelRun
@@ -36,10 +40,21 @@ from coding_study.domain.project_test_runs import (
     suite_tally,
     unmatched_selections,
 )
+from coding_study.domain.runs import UserError
 from coding_study.domain.suite_runs import SuiteFramework, SuiteReport, SuiteTest
 from coding_study.domain.workspace_projects import project_folder
 
 MILLISECONDS_PER_SECOND = 1000
+TYPECHECK_REPORTS: Mapping[Language, Callable[[str], DiagnosticParser] | None] = {
+    Language.PYTHON: None,
+    Language.TYPESCRIPT: TscReport,
+    Language.JAVA: None,
+    Language.KOTLIN: None,
+    Language.GO: None,
+    Language.RUST: None,
+}
+"""How to read each language's type check, given the project folder its paths start with; None:
+no parser, so each line of the report is a diagnostic without a place."""
 
 
 class SuiteVerdictListener(Protocol):
@@ -62,6 +77,8 @@ class ProjectTestRequest:
     """`--debug`: the suite runs under an IDE debugger and is not recorded."""
     listener: SuiteVerdictListener | None = None
     """`--events`: hears each test while the suite runs."""
+    typecheck: bool = False
+    """`--typecheck`: type-check the folder first; a failure runs no test."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,7 +88,8 @@ class ProjectTestResult:
     language: Language
     framework: SuiteFramework
     levels: LevelRun
-    report: SuiteReport
+    report: SuiteReport | None
+    """None when the type check failed and no test ran."""
     verdicts: tuple[SuiteTestVerdict, ...]
     ran_at: datetime
     suite_seconds: float
@@ -83,7 +101,19 @@ class ProjectTestResult:
     """The project folder, relative to the workspace root."""
     debug: DebugSession | None = None
     diagnostics: tuple[Diagnostic, ...] = ()
-    """Where the project's code did not load (docs/specs/cli.md#diagnostics)."""
+    """Where the project's code did not type-check or load (docs/specs/cli.md#diagnostics)."""
+    build_failure: BuildFailed | None = None
+    """`--typecheck`: the type check's report, when it failed."""
+
+    @property
+    def load_error(self) -> UserError | None:
+        """The framework could not run the suite."""
+        return self.report.load_error if self.report else None
+
+    @property
+    def stopped_early(self) -> str | None:
+        """Why the tests not reported never ran; None when the suite ran to its end."""
+        return self.report.stopped_early if self.report else None
 
     @property
     def tally(self) -> Tally:
@@ -96,9 +126,10 @@ class ProjectTestResult:
 
     @property
     def passed(self) -> bool:
-        """Every test that ran passed, some test ran, and the suite ran to its end."""
-        complete = self.report.load_error is None and self.report.stopped_early is None
-        return complete and self.ran and self.tally.all_passed
+        """The folder type-checked, every test that ran passed, some test ran, and the suite ran
+        to its end."""
+        complete = self.report is not None and self.load_error is None
+        return complete and self.stopped_early is None and self.ran and self.tally.all_passed
 
 
 def is_project_attempt(
@@ -118,7 +149,7 @@ def run_project_tests(
     environment: Environment, request: ProjectTestRequest, notify: ProgressNotice
 ) -> ProjectTestResult:
     """Raises UsageError for a locked level or a `--case` that names no test, and
-    RunnerStartError (exit 4) when the toolchain cannot run the suite."""
+    RunnerStartError (exit 4) when the toolchain cannot type-check the folder or run the suite."""
     clock = environment.clock
     started = clock.monotonic()
     attempt = find_attempt(environment.progress, request.slug, request.language)
@@ -128,22 +159,24 @@ def run_project_tests(
     meta = problem.meta
     levels = project_levels(meta, attempt.level_unlocked, request.level)
     folder = project_folder(meta.slug)
+    root = environment.workspace.absolute(folder)
+    failure = typecheck_project(environment, language, root) if request.typecheck else None
     origins = _origins(problem, language, levels)
     listener = request.listener
     run = SuiteRun(
         meta,
         language,
-        environment.workspace.absolute(folder),
+        root,
         levels.ran_up_to,
         request.case_ids,
         debug,
         _TestJudge(origins, listener) if listener else None,
     )
     suite_started = clock.monotonic()
-    report = run_suite(environment, run, notify)
+    report = None if failure else run_suite(environment, run, notify)
     suite_seconds = clock.monotonic() - suite_started
-    verdicts = judge_suite(report.tests, origins)
-    if report.load_error is None:
+    verdicts = judge_suite(report.tests, origins) if report else ()
+    if report is not None and report.load_error is None:
         _require_matches(verdicts, request.case_ids)
     framework = SUITE_FRAMEWORKS[language]
     assert framework is not None
@@ -161,7 +194,12 @@ def run_project_tests(
         every_case=not request.case_ids and levels.ran_up_to == levels.unlocked,
         watched=folder,
         debug=debug,
-        diagnostics=suite_diagnostics(report, str(run.root)),
+        diagnostics=(
+            suite_diagnostics(report, str(root))
+            if report
+            else _typecheck_diagnostics(failure, language, folder)
+        ),
+        build_failure=failure,
     )
     if debug is None:
         _record(environment, result)
@@ -181,6 +219,19 @@ class _TestJudge:
     def test_finished(self, test: SuiteTest) -> None:
         (verdict,) = judge_suite((test,), self._origins)
         self._listener.test_judged(verdict)
+
+
+def _typecheck_diagnostics(
+    failure: BuildFailed | None, language: Language, folder: str
+) -> tuple[Diagnostic, ...]:
+    """The type check's report read by its language's parser, else one diagnostic per line."""
+    if failure is None:
+        return ()
+    report = TYPECHECK_REPORTS[language]
+    if report is None:
+        source = DiagnosticSource.TYPECHECK
+        return tuple(Diagnostic(line, source) for line in failure.diagnostics)
+    return report(folder).parse("\n".join(failure.diagnostics))
 
 
 def _origins(problem: Problem, language: Language, levels: LevelRun) -> SuiteOrigins:

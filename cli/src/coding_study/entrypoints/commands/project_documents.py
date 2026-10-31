@@ -28,7 +28,7 @@ CRASH_TYPE = "crash"
 def project_test_document(result: ProjectTestResult, exit_code: int) -> dict[str, JsonValue]:
     """`comparator` and `oracle` are null and `stress` empty: a suite is the framework's verdict,
     and no level opens from it."""
-    load_error = result.report.load_error
+    load_error = result.load_error
     return {
         "slug": result.meta.slug,
         "language": result.language.value,
@@ -40,16 +40,25 @@ def project_test_document(result: ProjectTestResult, exit_code: int) -> dict[str
         "time_limit": None,
         "timer": timer_value(result.attempt, result.ran_at),
         "levels": levels_value(result.levels),
-        "build": NO_BUILD,
+        "build": _build(result),
         "load_error": error_value(load_error) if load_error else None,
         "diagnostics": [diagnostic_value(diagnostic) for diagnostic in result.diagnostics],
         "cases": [suite_test_value(verdict) for verdict in result.verdicts],
-        "stopped_early": result.report.stopped_early,
+        "stopped_early": result.stopped_early,
         "oracle": None,
         "stress": [],
         "tally": tally_value(result.tally),
         "duration_s": round(result.duration_seconds, DECIMALS),
     }
+
+
+def _build(result: ProjectTestResult) -> JsonValue:
+    """A project folder builds nothing before its suite runs; `--typecheck` keeps the type
+    check's report when it fails."""
+    failure = result.build_failure
+    if failure is None:
+        return NO_BUILD
+    return {"seconds": 0.0, "note": None, "diagnostics": list(failure.diagnostics)}
 
 
 def suite_test_value(verdict: SuiteTestVerdict) -> dict[str, JsonValue]:
@@ -85,7 +94,9 @@ def suite_test_value(verdict: SuiteTestVerdict) -> dict[str, JsonValue]:
 
 
 def _test_outcome(result: ProjectTestResult) -> str:
-    if result.report.load_error is not None:
+    if result.build_failure is not None:
+        return "build_failed"
+    if result.load_error is not None:
         return "load_failed"
     return "passed" if result.passed else "failed"
 

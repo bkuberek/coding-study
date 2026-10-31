@@ -45,6 +45,7 @@ SUBSET_PASSED = "all selected tests passed"
 DEBUG_PASSED = "all passed (debug run: not recorded; cstudy test records the run)"
 NO_TESTS = "no tests ran"
 NOT_RUN = "NOT RUN"
+BUILD_FAILED = "BUILD FAILED"
 ORIGIN_GAP = "   "
 _STYLES = {
     SuiteStatus.PASS: "green",
@@ -64,7 +65,10 @@ def require_project_options(given: Sequence[str]) -> None:
 
 
 def project_test_exit_code(result: ProjectTestResult) -> int:
-    """0 when every test that ran passed and some test ran; 1 otherwise."""
+    """2 when the folder did not type-check; 0 when every test that ran passed and some test
+    ran; 1 otherwise."""
+    if result.build_failure is not None:
+        return ExitCode.USER_CODE_ERROR
     return ExitCode.SUCCESS if result.passed else ExitCode.FAILURES
 
 
@@ -131,7 +135,7 @@ class ProjectTestReport:
     def lines(self) -> Iterator[Text]:
         result = self._result
         yield Text(self._header(), style="bold")
-        if result.debug is None:
+        if result.debug is None and result.report is not None:
             yield Text(f"suite  {result.framework}, {result.suite_seconds:.1f}s")
         yield Text("")
         yield from self._body()
@@ -154,14 +158,18 @@ class ProjectTestReport:
         return " · ".join(parts)
 
     def _body(self) -> Iterator[Text]:
-        report = self._result.report
-        if report.load_error is not None:
-            yield from _load_error(report.load_error)
+        result = self._result
+        if result.build_failure is not None:
+            yield Text(BUILD_FAILED, style=_FAILING_STYLE)
+            yield from (Text(line) for line in result.build_failure.diagnostics)
             return
-        for verdict in self._result.verdicts:
+        if result.load_error is not None:
+            yield from _load_error(result.load_error)
+            return
+        for verdict in result.verdicts:
             yield from _test_lines(verdict)
-        if report.stopped_early is not None:
-            yield status_line(NOT_RUN, _FAILING_STYLE, report.stopped_early)
+        if result.stopped_early is not None:
+            yield status_line(NOT_RUN, _FAILING_STYLE, result.stopped_early)
 
     def _summary(self) -> str:
         result = self._result

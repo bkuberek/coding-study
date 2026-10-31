@@ -251,7 +251,12 @@ def run_tests(
             )
         )
         project_request = ProjectTestRequest(
-            target.slug, target.language, tuple(case or ()), level, debug_request
+            target.slug,
+            target.language,
+            tuple(case or ()),
+            level,
+            debug_request,
+            typecheck=typecheck,
         )
         if events:
             raise typer.Exit(_stream_project_tests(environment, project_request))
