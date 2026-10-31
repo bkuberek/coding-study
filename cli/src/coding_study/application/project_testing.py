@@ -120,6 +120,11 @@ class ProjectTestResult:
         return suite_tally(self.verdicts)
 
     @property
+    def every_level_done(self) -> bool:
+        """A submission already passed every case of every level: the full pass."""
+        return self.attempt.first_pass_at is not None
+
+    @property
     def ran(self) -> bool:
         """Some test ran: skipped tests do not count."""
         return self.tally.total > 0

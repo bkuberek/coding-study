@@ -27,6 +27,8 @@ from coding_study.entrypoints.commands.run_document import operations_up_to
 STATUS_WIDTH = 9
 LABEL_WIDTH = 10
 INDENT = " " * STATUS_WIDTH
+EVERY_LEVEL_DONE = "all passed · every level done. Next: cstudy done --rating easy|ok|hard"
+"""A project problem's line once a submission passed every case of every level."""
 SECONDS_PER_MINUTE = 60
 MILLISECONDS_PER_SECOND = 1000
 STATUS_STYLES = {

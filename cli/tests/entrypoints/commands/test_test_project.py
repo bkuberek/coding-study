@@ -21,6 +21,7 @@ from coding_study.domain.suite_runs import (
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import test as test_command
 from coding_study.entrypoints.shared import ExitCode
+from tests.fakes import NOW
 from tests.project_fakes import (
     LEVEL_1_TEST,
     PROJECT_FOLDER,
@@ -80,6 +81,30 @@ def test_a_passing_suite_points_to_cstudy_submit(environment):
 
 def test_a_passing_suite_exits_0(environment):
     assert cs_test().exit_code == ExitCode.SUCCESS
+
+
+def finish_every_level(environment) -> None:
+    """As the full pass of `cstudy submit` leaves the attempt."""
+    attempt = environment.progress.active_attempt()
+    environment.progress.update_attempt(replace(attempt, level_unlocked=2, first_pass_at=NOW))
+
+
+def test_after_the_full_pass_a_passing_suite_points_to_cstudy_done(environment):
+    finish_every_level(environment)
+    assert lines()[-1] == ("all passed · every level done. Next: cstudy done --rating easy|ok|hard")
+
+
+def test_after_the_full_pass_a_run_of_fewer_levels_points_nowhere(environment):
+    finish_every_level(environment)
+    assert lines("--level", "1")[-1] == "all selected tests passed"
+
+
+def test_with_every_level_open_before_the_full_pass_a_passing_suite_points_to_submit(
+    environment,
+):
+    attempt = environment.progress.active_attempt()
+    environment.progress.update_attempt(replace(attempt, level_unlocked=2))
+    assert lines()[-1] == "all passed. Next: cstudy submit"
 
 
 def test_a_failing_test_shows_the_frameworks_message_then_expected_and_actual(environment, process):

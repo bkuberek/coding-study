@@ -2,7 +2,7 @@
 
 Every test the suite reported is listed in run order with its status; a test of yours or of the
 starter carries that tag. The run is feedback: a full pass points to `cstudy submit`, which grades
-the project and opens its next level.
+the project and opens its next level, or to `cstudy done` once a submission passed every level.
 """
 
 import json
@@ -29,6 +29,7 @@ from coding_study.domain.value_text import value_text
 from coding_study.domain.workspace_projects import project_folder
 from coding_study.entrypoints.commands.project_documents import project_test_document
 from coding_study.entrypoints.commands.report_text import (
+    EVERY_LEVEL_DONE,
     INDENT,
     clock_text,
     detail_line,
@@ -183,7 +184,9 @@ class ProjectTestReport:
         result = self._result
         if result.debug is not None:
             return DEBUG_PASSED
-        return FULL_PASS if result.every_case else SUBSET_PASSED
+        if not result.every_case:
+            return SUBSET_PASSED
+        return EVERY_LEVEL_DONE if result.every_level_done else FULL_PASS
 
 
 def _test_lines(verdict: SuiteTestVerdict) -> Iterator[Text]:

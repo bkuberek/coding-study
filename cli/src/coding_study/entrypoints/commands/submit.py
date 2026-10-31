@@ -39,6 +39,7 @@ from coding_study.entrypoints.commands._events import (
 )
 from coding_study.entrypoints.commands.project_documents import submit_document
 from coding_study.entrypoints.commands.report_text import (
+    EVERY_LEVEL_DONE,
     STATUS_STYLES,
     case_details,
     clock_text,
@@ -60,7 +61,6 @@ NAME = "submit"
 LABEL_WIDTH = 11
 LEVEL_WIDTH = 9
 MIN_ID_WIDTH = 6
-DONE_HINT = "all passed · every level done. Next: cstudy done --rating easy|ok|hard"
 DID_NOT_LOAD = "the code did not load"
 HIDDEN = "hidden"
 
@@ -233,7 +233,7 @@ class SubmitReport:
         if result.opened is not None:
             yield from _opened_lines(result.opened)
         elif result.finished_every_level:
-            yield Text(DONE_HINT, style="green")
+            yield Text(EVERY_LEVEL_DONE, style="green")
 
 
 def _opened_lines(opened: OpenedLevel) -> Iterator[Text]:
