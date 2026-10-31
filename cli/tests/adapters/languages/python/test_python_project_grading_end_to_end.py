@@ -28,7 +28,7 @@ SLUG = "bank-project-python"
 PILOT = CATALOG_PROBLEMS / "0249-bank-project-python"
 RUNNER_SOURCES = REPOSITORY_ROOT / "runners" / "python" / "src"
 LAST_LEVEL = 4
-CASES_THROUGH_LAST_LEVEL = 28
+CASES_THROUGH_LAST_LEVEL = 29
 
 
 @pytest.fixture(scope="module")
