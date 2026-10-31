@@ -1,11 +1,12 @@
 """Scheduler yields of the threads model (docs/specs/runners.md#perturbation)."""
 
-import time
+import os
 
-from cs_runner.perturbation import SWITCH_INTERVAL_SECONDS, scheduler_yields
+from cs_runner.perturbation import scheduler_yields
 
 
-def test_a_scheduler_yield_lasts_one_switch_interval():
-    started = time.perf_counter()
-    scheduler_yields(1)
-    assert time.perf_counter() - started >= SWITCH_INTERVAL_SECONDS
+def test_a_scheduler_yield_gives_up_the_cpu(monkeypatch):
+    yields: list[None] = []
+    monkeypatch.setattr(os, "sched_yield", lambda: yields.append(None))
+    scheduler_yields(3)
+    assert len(yields) == 3

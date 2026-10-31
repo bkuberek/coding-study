@@ -918,7 +918,7 @@ A concurrent problem (`kind: concurrent`, `track: concurrency`) is a class whose
 
 ### Observable races in Python
 
-With the GIL, a thread switch happens only between bytecode instructions at points where the interpreter checks for a pending switch. During a stress run the Python runner sets `sys.setswitchinterval(1e-5)` and, through `sys.monitoring`, yields before a random fraction of the user file's lines (or instructions) executed by worker threads ([runners](runners.md#perturbation)). A yield keeps the GIL for one switch interval, so a waiting worker takes it over even on a busy machine ([why](runners.md#python-yields-keep-the-gil)).
+With the GIL, a thread switch happens only between bytecode instructions at points where the interpreter checks for a pending switch. During a stress run the Python runner sets `sys.setswitchinterval(1e-5)` and, through `sys.monitoring`, yields before a random fraction of the user file's lines (or instructions) executed by worker threads ([runners](runners.md#perturbation)). A yield gives up the CPU, so a waiting worker takes the GIL even on a busy machine ([why](runners.md#python-yields-give-up-the-cpu)).
 
 | Bug pattern | Observable with `python_granularity: line` (default) | With `instruction` |
 |-------------|------------------------------------------------------|--------------------|

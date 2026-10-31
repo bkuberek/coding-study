@@ -6,10 +6,10 @@ the same way before lines (or instructions) of the target file that worker threa
 monitoring callback cannot await, so the async model only yields between ops.
 """
 
+import os
 import random
 import sys
 import threading
-import time
 from collections.abc import Generator
 from contextlib import contextmanager
 from types import CodeType
@@ -32,18 +32,17 @@ def yield_count(rng: random.Random, perturb: Perturbation) -> int:
 
 
 def scheduler_yields(count: int) -> None:
-    """Each yield spins for one switch interval and keeps the GIL. A worker waiting for the GIL
-    asks for it within that interval, and the interpreter hands it over at its next check.
+    """Each yield releases the GIL and gives up the CPU. On a busy machine the yielding worker
+    waits for its next turn, and a worker waiting for the GIL takes it meanwhile; on an idle one
+    nothing else is ready on that core, and the call returns at once.
 
-    `time.sleep(0)` released the GIL for one system call instead: on a busy machine a waiting
-    worker was not scheduled in time to take it, and every release restarted that worker's
-    wait, so it never asked. The yielding worker kept the GIL and could finish its script
-    alone, and a racy reference passed whole runs.
+    `time.sleep(0)` released the GIL without giving up the CPU: on a busy machine a waiting
+    worker was not running during that one system call, and every release restarted its wait,
+    so it never asked for the GIL. The yielding worker kept it and could finish its script
+    alone, and a racy reference passed whole runs (docs/specs/runners.md#perturbation).
     """
     for _ in range(count):
-        end = time.perf_counter() + SWITCH_INTERVAL_SECONDS
-        while time.perf_counter() < end:
-            pass
+        os.sched_yield()
 
 
 @contextmanager
