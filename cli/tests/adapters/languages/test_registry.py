@@ -4,6 +4,7 @@ from typing import cast
 import pytest
 
 from coding_study.adapters.languages.context import LanguageContext
+from coding_study.adapters.languages.go.test_generator import GoTestGenerator
 from coding_study.adapters.languages.python.test_generator import PythonTestGenerator
 from coding_study.adapters.languages.registry import (
     LANGUAGES,
@@ -66,6 +67,10 @@ def test_python_generates_the_tests_of_project_levels():
 def test_typescript_generates_the_tests_of_project_levels():
     generator = LANGUAGES.project_test_generator(Language.TYPESCRIPT)
     assert isinstance(generator, TypeScriptTestGenerator)
+
+
+def test_go_generates_the_tests_of_project_levels():
+    assert isinstance(LANGUAGES.project_test_generator(Language.GO), GoTestGenerator)
 
 
 @pytest.mark.parametrize("language", sorted(set(Language) - set(PROJECT_LANGUAGES)))

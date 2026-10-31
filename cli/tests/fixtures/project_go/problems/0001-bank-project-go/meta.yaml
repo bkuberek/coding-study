@@ -1,0 +1,30 @@
+id: "0001"
+slug: bank-project-go
+title: Bank Project (Go)
+status: draft
+difficulty: medium
+track: practical
+kind: project
+languages: [go]
+levels:
+  - {level: 1, title: Accounts and deposits}
+  - {level: 2, title: Transfers and reports}
+signature:
+  class:
+    name: Bank
+    constructor: {params: []}
+    methods:
+      - {name: createAccount, level: 1, params: [{name: timestamp, type: long}, {name: accountId, type: string}], returns: {type: bool}}
+      - {name: deposit, level: 1, params: [{name: timestamp, type: long}, {name: accountId, type: string}, {name: amount, type: long}], returns: {type: long}}
+      - {name: transfer, level: 2, params: [{name: timestamp, type: long}, {name: sourceId, type: string}, {name: targetId, type: string}, {name: amount, type: long}], returns: {type: long}}
+      - {name: closeAccount, level: 2, params: [{name: timestamp, type: long}, {name: accountId, type: string}], returns: {type: void}}
+      - {name: accounts, level: 2, params: [], returns: {type: "list<string>"}}
+      - {name: balances, level: 2, params: [], returns: {type: "list<long>"}}
+      - {name: averageBalance, level: 2, params: [], returns: {type: double}}
+      - {name: interest, level: 2, params: [{name: accountId, type: string}, {name: rate, type: decimal}], returns: {type: decimal}}
+comparator: {type: ops, per_method: {accounts: unordered, averageBalance: float}}
+project:
+  entry: bank.go
+approaches:
+  - {id: reference, name: Balances in a ledger, role: optimal, time: "O(n log n) for balances, O(1) otherwise", space: "O(n)", time_class: "n log n", space_class: "n"}
+estimate_minutes: 45
