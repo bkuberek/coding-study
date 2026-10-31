@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the web UI front end (docs/specs/web-ui-proposal.md#shipping-the-bundle-offline) into the
+# Builds the web UI front end (docs/specs/web-ui.md#front-end-assets) into the
 # cstudy package, or into the directory given as the first argument. See README.md.
 #
 # The build is reproducible: pnpm installs exactly what pnpm-lock.yaml pins, without running any

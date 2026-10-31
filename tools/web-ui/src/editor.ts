@@ -1,5 +1,5 @@
 /**
- * The code editor of the cstudy web UI (docs/specs/web-ui-proposal.md#editor-and-front-end):
+ * The code editor of the cstudy web UI (docs/specs/web-ui.md#editor):
  * CodeMirror 6 with a language per file extension, each fetched the first time a file needs it;
  * `cstudy` diagnostics as lint markers; light and dark themes; opt-in Vim keybindings, fetched
  * when first turned on; and a keyboard path out of the editor.

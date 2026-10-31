@@ -1,11 +1,14 @@
 {
-  "entry": "editor.js",
+  "entry": "app.js",
   "files": {
     "THIRD_PARTY_LICENSES.txt": "f31dee406b0da3a20aec1a131a9d30b748191e2a64e5202585b032523f698f07",
+    "app.css": "eb2d391a25340b1291d6f8a05f8ee7f359bb7b490d972d09706990e394cdc082",
+    "app.js": "b66ecd1c0f0e10e099f74e4f8ef133ea79b306e4c48178087ac98af35d2460f8",
     "chunks/chunk-3YBDTJD7.js": "f28c9188337ac64b620e1ef46e66d2485863ee190794402de7804e9b21c25cdf",
     "chunks/chunk-6OI2SVZ2.js": "e1b2c46913fc0ef367e339bd8469cf895bcacb688b553f3a22d1d747a3f5d1b4",
     "chunks/chunk-V3K3RAGV.js": "36afa8c55fe247dd952f6509be379480e87f2da7c22982b0435f6747237b59d5",
     "chunks/chunk-XPYNG6SJ.js": "24983ca77901dfeef2adfe0ab53e36417af47de591d6c73b2f82e3799838e3aa",
+    "chunks/editor-BERKT72T.js": "aec3aeea319e0362c1d27e2d87f2b455893dc625293855f0fa3cd49ddb0067c9",
     "chunks/go-6P5FBZMG.js": "ba8e703088a8ede876f54a5496788bc634d44f23df67667975146c881b5aae25",
     "chunks/java-APXJ6PCU.js": "be8db089e67cffd18197f02957dcb4584781778e7533fefe7c876a7848eceef2",
     "chunks/javascript-2IGOJGFF.js": "73a7d434e67d0ed21781b82a362a2b64702607a91da1ec165d62c15a57247a5f",
@@ -16,7 +19,6 @@
     "chunks/rust-DHPJ7YVS.js": "0e5276d1b2fa2fe9353446db9e0e94aec4c3ccdfd81cf38b4072d2e1f42d4441",
     "chunks/toml-PQHPWSAV.js": "d79f6f0652eaa5c4cfc71568cfe61e2fa51c643c177c7eb2812984d3a1c1dc4f",
     "chunks/vim-SJRKPGUB.js": "d60f4079cb6d59ec58e1defd80d8d9e9f9c0d0ea107faf37dcd30d896ff02dba",
-    "chunks/yaml-N4HBF5ZC.js": "a4447fc69eac82fc57b3cb3d4aa19aaa7c640f8ee28ffcea61574dd017ca03ac",
-    "editor.js": "bf8f34a2f4de5b2479ba4590bf77f523bd6caf127e8a55dc8ed168f11143cdd2"
+    "chunks/yaml-N4HBF5ZC.js": "a4447fc69eac82fc57b3cb3d4aa19aaa7c640f8ee28ffcea61574dd017ca03ac"
   }
 }

@@ -1,13 +1,14 @@
 # Web UI front end
 
-The sources of the front end that `cstudy serve` serves: the CodeMirror 6 editor module, and later the page's own code ([proposal](../../docs/specs/web-ui-proposal.md#editor-and-front-end)). The build writes into `cli/src/coding_study/entrypoints/web/static/`, and that output is committed, as the IntelliJ launcher jar is ([ADR 0010](../../docs/decisions/0010-ide-integration.md)). Installing `cstudy` with pip, uv or Homebrew never runs this build and never needs Node.
+The sources of the front end that `cstudy serve` serves: the page's own code and the CodeMirror 6 editor module ([web-ui](../../docs/specs/web-ui.md#front-end-assets)). The build writes into `cli/src/coding_study/entrypoints/web/static/`, and that output is committed, as the IntelliJ launcher jar is ([ADR 0010](../../docs/decisions/0010-ide-integration.md)). Installing `cstudy` with pip, uv or Homebrew never runs this build and never needs Node.
 
 | Path | Holds |
 |------|-------|
 | `package.json`, `pnpm-lock.yaml` | Exact versions and integrity hashes of every package |
-| `src/editor.ts` | The editor module: the entry point the page imports |
+| `src/app.ts`, `src/page/` | The page: its entry point, views, stylesheet (`page/app.css`) and the pure parts its tests cover |
+| `src/editor.ts` | The editor module, a chunk the page fetches the first time a file opens |
 | `src/grammars/*.ts`, `src/vim.ts` | One chunk per language and one for Vim keybindings, each fetched on first use |
-| `test/*.test.ts` | Unit tests of the module's pure parts, run with `node --test` |
+| `test/*.test.ts` | Unit tests of the pure parts of the page and the editor module, run with `node --test` |
 | `scripts/build.ts` | The esbuild run, the license notice and the digest manifest |
 | `build.sh` | Install, type-check, test, build |
 
@@ -41,7 +42,7 @@ The build writes minified ES modules with no runtime network request: the page l
 
 | File | Content |
 |------|---------|
-| `editor.js` | The entry point, with a fixed name |
+| `app.js`, `app.css` | The page's entry point and stylesheet, with fixed names, which `page.html` loads |
 | `chunks/<name>-<hash>.js` | Content-hashed chunks: the shared CodeMirror core, a chunk per language, Vim |
 | `THIRD_PARTY_LICENSES.txt` | Name, version, license and license text of every package the chunks contain |
 | `manifest.json` | `entry`, and `files`: each other file's path with its SHA-256 |
@@ -50,17 +51,18 @@ Sizes as of the current lockfile, gzip at level 9:
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| Every JavaScript file | 912.1 | 321.7 |
-| Before any language: entry and core | 403.3 | 133.9 |
-| A Python file | 473.7 | 161.3 |
-| A TypeScript or JavaScript file, the largest grammar | 512.2 | 175.2 |
+| The page, before any file opens: `app.js` and `app.css` | 45.7 | 14.8 |
+| Every JavaScript and CSS file but Vim | 838.0 | 298.3 |
+| The editor before any language: the page, the editor and the core | 448.9 | 148.7 |
+| A Python file | 519.2 | 176.1 |
+| A TypeScript or JavaScript file, the largest grammar | 557.8 | 190.0 |
 | Vim keybindings, added on top | 119.7 | 38.2 |
 
-The proposal's budget is 1 MB raw and 350 KB gzip for the whole bundle, the page's code included, and 600 KB raw for one language. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
+The budget (NFR-12) is 1 MB raw and 350 KB gzip for the whole bundle without Vim, the page's code included, and 600 KB raw loaded before a file of one language is editable. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
 
 ## Editor module
 
-The page imports `createEditor` from `editor.js`. Every call is on the returned `Editor`.
+The page imports `createEditor` from `editor.ts` when the first file opens. Every call is on the returned `Editor`.
 
 | Call | Does |
 |------|------|

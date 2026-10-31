@@ -1,6 +1,6 @@
 """The front end committed under entrypoints/web/static/: its manifest records every file's SHA-256,
 the wheel ships every file, and a rebuild from tools/web-ui/ gives the same bytes
-(docs/specs/web-ui-proposal.md#shipping-the-bundle-offline)."""
+(docs/specs/web-ui.md#front-end-assets)."""
 
 import hashlib
 import json

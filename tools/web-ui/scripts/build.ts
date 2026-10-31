@@ -1,6 +1,6 @@
 /**
  * Builds the web UI front end into the cstudy package, or into the directory given as the first
- * argument (docs/specs/web-ui-proposal.md#shipping-the-bundle-offline): minified ES modules, an
+ * argument (docs/specs/web-ui.md#front-end-assets): minified ES modules, an
  * entry with a fixed name and content-hashed chunks; THIRD_PARTY_LICENSES.txt with the license of
  * every package the chunks contain; and manifest.json with each file's SHA-256. The output
  * directory is the build's own: every file in it is replaced.
@@ -15,7 +15,8 @@ import * as esbuild from "esbuild";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const PACKAGE_STATIC = path.resolve(ROOT, "../../cli/src/coding_study/entrypoints/web/static");
-const ENTRY = "editor.js";
+// The page's module; its stylesheet is app.css, and the editor module is a chunk it fetches.
+const ENTRY = "app.js";
 const MANIFEST = "manifest.json";
 const LICENSES = "THIRD_PARTY_LICENSES.txt";
 const LICENSE_FILE = /^(licen[cs]e|copying)(\.(md|txt))?$/i;
@@ -25,7 +26,7 @@ const output = path.resolve(process.argv[2] ?? PACKAGE_STATIC);
 await clearPreviousBuild(output);
 const { metafile } = await esbuild.build({
   absWorkingDir: ROOT,
-  entryPoints: { [path.parse(ENTRY).name]: "src/editor.ts" },
+  entryPoints: { [path.parse(ENTRY).name]: "src/app.ts" },
   outdir: output,
   bundle: true,
   splitting: true,

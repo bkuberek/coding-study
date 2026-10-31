@@ -1,0 +1,185 @@
+/**
+ * The Problems view (docs/specs/web-ui.md#problems-view): the `cstudy next` pick, the `cstudy list`
+ * filters, kept in the fragment's query, and the table, items after problems.
+ */
+
+import { listCommand, nextCommand, NEXT_FILTERS, startCommand } from "../commands.ts";
+import type { Cleanup, PageContext } from "../context.ts";
+import { badge, command, h } from "../dom.ts";
+import { problemBadge } from "../format.ts";
+import { attemptHash, type FilterKey, type Filters, problemHash, problemsHash } from "../routes.ts";
+import { empty, loading, showFailure } from "../states.ts";
+import type { ListEntry, NextPick, ProblemList } from "../types.ts";
+
+const DIFFICULTIES = ["easy", "medium", "hard"];
+const STATUSES = ["new", "attempted", "passed", "due", "mastered"];
+const CONTENT = ["draft", "ready"];
+const LANGUAGE_LABELS: Readonly<Record<string, string>> = {
+  python: "py",
+  typescript: "ts",
+  java: "java",
+  kotlin: "kt",
+  go: "go",
+  rust: "rs",
+};
+
+export function problemsView(context: PageContext, filters: Filters): Cleanup {
+  const { api, shell, session } = context;
+  shell.setView("problems");
+  shell.setCommand(listCommand(filters));
+  shell.setStatus({ mode: "LIST", where: "problems" });
+
+  const next = h("section", { class: "next-card", "aria-labelledby": "next-heading" });
+  const table = h("section", { class: "listing", "aria-label": "Problems", "aria-busy": "true" }, loading());
+  const choices: Readonly<Record<Exclude<FilterKey, "pattern">, readonly string[]>> = {
+    track: session.tracks,
+    kind: session.kinds,
+    lang: session.languages,
+    difficulty: DIFFICULTIES,
+    status: STATUSES,
+    content: CONTENT,
+  };
+  shell.main.replaceChildren(
+    h("h1", { class: "sr-only" }, "Problems"),
+    next,
+    filterForm(filters, choices),
+    table,
+  );
+  next.replaceChildren(h("h2", { id: "next-heading", class: "eyebrow" }, "next"), loading("picking…"));
+
+  void api
+    .get<ProblemList>(`/api/v1/problems${queryOf(filters, Object.keys(choices).concat("pattern") as FilterKey[])}`)
+    .then((list) => {
+      shell.setAttempts(list.entries);
+      table.removeAttribute("aria-busy");
+      table.replaceChildren(listing(list.entries));
+      const items = list.entries.filter((entry) => entry.kind === "item").length;
+      shell.setStatus({ mode: "LIST", where: `${list.entries.length - items} problems · ${items} items · ${list.today}` });
+    })
+    .catch((error: unknown) => showFailure(table, error));
+  void api
+    .get<NextPick>(`/api/v1/next${queryOf(filters, NEXT_FILTERS)}`)
+    .then((pick) => next.replaceChildren(h("h2", { id: "next-heading", class: "eyebrow" }, "next"), ...nextPick(pick, filters)))
+    .catch((error: unknown) => showFailure(next, error));
+  return () => {};
+}
+
+function queryOf(filters: Filters, keys: readonly FilterKey[]): string {
+  const query = new URLSearchParams();
+  for (const key of keys) {
+    const value = filters[key];
+    if (value) query.set(key, value);
+  }
+  const text = query.toString();
+  return text ? `?${text}` : "";
+}
+
+function nextPick(pick: NextPick, filters: Filters): Node[] {
+  if (pick.pick === null) return [h("p", { class: "next-line" }, pick.message)];
+  return [
+    h(
+      "p",
+      { class: "next-line" },
+      h("span", { class: `pick pick-${pick.pick}` }, pick.pick),
+      h("a", { href: problemHash(pick.slug), class: "next-slug" }, pick.slug),
+      h("span", { class: "quiet" }, `(${pick.difficulty} · ${pick.group})`),
+      h("span", { class: "next-reason" }, pick.reason),
+    ),
+    h(
+      "p",
+      { class: "next-start" },
+      h("span", { class: "quiet" }, "start "),
+      command(startCommand(pick.slug, pick.language)),
+      h("span", { class: "quiet" }, ` · same as ${nextCommand(filters)}`),
+    ),
+  ];
+}
+
+function filterForm(
+  filters: Filters,
+  choices: Readonly<Record<Exclude<FilterKey, "pattern">, readonly string[]>>,
+): HTMLFormElement {
+  const apply = (key: FilterKey, value: string) => {
+    location.hash = problemsHash({ ...filters, [key]: value });
+  };
+  const selects = (Object.keys(choices) as Exclude<FilterKey, "pattern">[]).map((key) => {
+    const select = h(
+      "select",
+      { id: `filter-${key}`, name: key },
+      h("option", { value: "" }, "any"),
+      ...choices[key].map((value) => h("option", { value, selected: filters[key] === value }, value)),
+    );
+    select.addEventListener("change", () => apply(key, select.value));
+    return h("label", { class: "filter", for: `filter-${key}` }, h("span", { class: "filter-name" }, key), select);
+  });
+  const pattern = h("input", {
+    id: "filter-pattern",
+    name: "pattern",
+    type: "search",
+    value: filters.pattern ?? "",
+    placeholder: "arrays-hashing",
+    spellcheck: "false",
+    autocomplete: "off",
+  });
+  const form = h(
+    "form",
+    { class: "filters", role: "search", "aria-label": "Filter problems" },
+    ...selects,
+    h("label", { class: "filter filter-wide", for: "filter-pattern" }, h("span", { class: "filter-name" }, "pattern"), pattern),
+    Object.keys(filters).length ? h("a", { href: "#/", class: "clear" }, "clear filters") : null,
+  );
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    apply("pattern", pattern.value.trim());
+  });
+  pattern.addEventListener("change", () => apply("pattern", pattern.value.trim()));
+  return form;
+}
+
+function listing(entries: readonly ListEntry[]): HTMLElement {
+  if (entries.length === 0) return empty("no problems match", h("a", { href: "#/" }, "clear the filters"));
+  const header = ["id", "problem", "diff", "pattern", "kind", "status", "due", "refs", "in progress"];
+  return h(
+    "table",
+    { class: "problems" },
+    h("caption", { class: "sr-only" }, "Problems, then items, matching the filters"),
+    h("thead", {}, h("tr", {}, ...header.map((name) => h("th", { scope: "col" }, name)))),
+    h("tbody", {}, ...entries.map(row)),
+  );
+}
+
+function row(entry: ListEntry): HTMLTableRowElement {
+  const status = problemBadge(entry.status);
+  const topic = entry.patterns[0] ?? entry.track;
+  return h(
+    "tr",
+    { class: entry.kind === "item" ? "is-item" : null },
+    h("td", { class: "num" }, entry.id ?? "–"),
+    h(
+      "td",
+      { class: "title-cell" },
+      h("a", { href: problemHash(entry.slug), class: "slug" }, entry.slug),
+      h("span", { class: "title" }, entry.title),
+      entry.content === "draft" ? h("span", { class: "tag" }, "draft") : null,
+      entry.source === "workspace" ? h("span", { class: "tag" }, "yours") : null,
+    ),
+    h("td", { class: `diff diff-${entry.difficulty}` }, entry.difficulty),
+    h("td", {}, topic),
+    h("td", { class: "quiet" }, entry.kind),
+    h("td", {}, badge(status.glyph, status.text, status.tone)),
+    h("td", { class: "num quiet" }, entry.due_on ?? "–"),
+    h("td", { class: "refs quiet" }, entry.languages.map((language) => LANGUAGE_LABELS[language] ?? language).join(" ") || "–"),
+    h(
+      "td",
+      { class: "resume" },
+      ...entry.in_progress.map((attempt) =>
+        h(
+          "a",
+          { href: attemptHash(attempt.attempt_id), class: "resume-link", title: `Resume attempt ${attempt.attempt_id}` },
+          "↻ ",
+          attempt.language ?? "notes",
+        ),
+      ),
+    ),
+  );
+}
