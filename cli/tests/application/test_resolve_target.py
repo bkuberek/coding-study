@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,7 @@ from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Language
 from tests.fakes import make_environment
 from tests.fakes import repository_root as copy_repository
+from tests.helpers import BANK_PROJECT, PROJECT_PROBLEMS
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 KOTLIN_TWO_SUM = "jvm/kotlin/src/main/kotlin/practice/two_sum/Solution.kt"
@@ -133,3 +135,91 @@ def test_a_directory_asks_for_a_solution_file_in_the_editor(environment, practic
 def test_the_directory_message_names_the_directory(environment, practice_directory):
     with pytest.raises(UsageError, match=r"got a directory: python/practice\)"):
         resolve(environment, practice_directory)
+
+
+# project folders: projects/<slug>/
+
+
+BANK_FOLDER = "projects/bank-project-python"
+
+
+@pytest.fixture
+def projects(workspace: Path):
+    shutil.copytree(PROJECT_PROBLEMS / BANK_PROJECT, workspace / "problems" / BANK_PROJECT)
+    (workspace / BANK_FOLDER / "bank").mkdir(parents=True)
+    return make_environment(workspace)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        f"{BANK_FOLDER}/bank/bank.py",
+        f"{BANK_FOLDER}/bank/ledger/entries.py",
+        f"{BANK_FOLDER}/tests/test_level_1.py",
+        f"{BANK_FOLDER}/README.md",
+        f"{BANK_FOLDER}/pyproject.toml",
+    ],
+)
+def test_any_file_in_a_project_folder_is_its_problem_in_its_language(projects, path):
+    assert resolve(projects, path) == Target("bank-project-python", Language.PYTHON)
+
+
+def test_an_absolute_project_path_resolves_like_a_relative_one(projects):
+    absolute = str(projects.root / BANK_FOLDER / "bank" / "bank.py")
+    assert resolve(projects, absolute) == Target("bank-project-python", Language.PYTHON)
+
+
+def test_a_project_file_resolves_against_the_working_directory(projects):
+    cwd = projects.root / BANK_FOLDER / "bank"
+    assert resolve(projects, "bank.py", cwd=cwd) == Target("bank-project-python", Language.PYTHON)
+
+
+def test_the_language_option_may_repeat_the_project_language(projects):
+    target = resolve(projects, f"{BANK_FOLDER}/bank/bank.py", Language.PYTHON)
+    assert target == Target("bank-project-python", Language.PYTHON)
+
+
+def test_another_language_option_is_a_usage_error_naming_both(projects):
+    with pytest.raises(UsageError, match=r"python.*typescript|typescript.*python"):
+        resolve(projects, f"{BANK_FOLDER}/bank/bank.py", Language.TYPESCRIPT)
+
+
+def test_the_project_folder_itself_asks_for_a_solution_file_in_the_editor(projects):
+    with pytest.raises(UsageError, match=r"got a directory: projects/bank-project-python\)"):
+        resolve(projects, BANK_FOLDER)
+
+
+@pytest.mark.parametrize(
+    "inside",
+    [
+        ".venv/lib/python3.13/site-packages/pytest/__init__.py",
+        "node_modules/typescript/index.js",
+        "bank/__pycache__/bank.cpython-313.pyc",
+        ".pytest_cache/v/cache/lastfailed",
+    ],
+)
+def test_a_file_under_the_venv_node_modules_or_caches_is_not_a_solution_file(projects, inside):
+    with pytest.raises(UsageError, match="not a solution file in this workspace"):
+        resolve(projects, f"{BANK_FOLDER}/{inside}")
+
+
+def test_a_file_reached_through_the_venv_link_is_not_a_solution_file(projects):
+    (projects.root / "python" / ".venv" / "lib").mkdir(parents=True)
+    (projects.root / BANK_FOLDER / ".venv").symlink_to("../../python/.venv")
+    with pytest.raises(UsageError, match="not a solution file in this workspace"):
+        resolve(projects, f"{BANK_FOLDER}/.venv/lib/site.py")
+
+
+def test_a_file_directly_in_projects_is_not_a_solution_file(projects):
+    with pytest.raises(UsageError, match="not a solution file in this workspace"):
+        resolve(projects, "projects/README.md")
+
+
+def test_a_folder_named_after_no_problem_is_a_usage_error(projects):
+    with pytest.raises(UsageError, match=r"no problem for projects/ledger/bank\.py"):
+        resolve(projects, "projects/ledger/bank.py")
+
+
+def test_a_folder_named_after_a_problem_of_another_kind_is_a_usage_error(projects):
+    with pytest.raises(UsageError, match="two-sum is not a project problem"):
+        resolve(projects, "projects/two-sum/solution.py")

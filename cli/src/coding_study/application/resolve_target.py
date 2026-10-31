@@ -1,7 +1,8 @@
 """A command's problem target: a slug or id, or a solution file in the workspace.
 
 `cstudy test python/practice/two_sum.py` means `cstudy test two-sum --lang python`, so an IDE can
-run any command on the file in its editor (docs/specs/cli.md#solution-file-targets).
+run any command on the file in its editor (docs/specs/cli.md#solution-file-targets). Any file in a
+project folder (`projects/<slug>/`) is a solution file of that folder's problem, in its language.
 """
 
 import os
@@ -11,7 +12,8 @@ from pathlib import Path
 from coding_study.application.environment import Environment
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Language
-from coding_study.domain.targets import SolutionFile, is_path_target, parse_solution_file
+from coding_study.domain.targets import is_path_target, parse_solution_file
+from coding_study.domain.workspace_projects import folder_language, project_slug
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,33 +46,48 @@ def resolve_problem(environment: Environment, target: ProblemTarget, cwd: Path) 
     """
     if not is_path_target(target.slug):
         return target
-    solution = _solution_file(environment, target.slug, cwd)
-    if target.language not in (None, solution.language):
+    path = _workspace_path(environment, target.slug, cwd)
+    slug = project_slug(path)
+    found = (
+        _project_file(environment, slug, target.slug)
+        if slug is not None
+        else _practice_file(environment, path, target.slug)
+    )
+    if target.language not in (None, found.language):
         raise UsageError(
-            f"{target.slug} is a {solution.language} file but --lang {target.language} was given"
+            f"{target.slug} is a {found.language} file but --lang {target.language} was given"
         )
-    return ProblemTarget(_slug_of(environment, solution, target.slug), solution.language)
+    return found
 
 
-def _solution_file(environment: Environment, text: str, cwd: Path) -> SolutionFile:
+def _workspace_path(environment: Environment, text: str, cwd: Path) -> str:
+    """`text` relative to the workspace root, links resolved."""
     absolute = Path(os.path.normpath(cwd / text)).resolve()
     if absolute.is_dir():
         raise UsageError(_directory(text))
     try:
-        relative = absolute.relative_to(environment.root.resolve())
+        return absolute.relative_to(environment.root.resolve()).as_posix()
     except ValueError:
         raise UsageError(_not_a_solution_file(text)) from None
-    found = parse_solution_file(relative.as_posix())
-    if found is None:
+
+
+def _practice_file(environment: Environment, path: str, text: str) -> ProblemTarget:
+    solution = parse_solution_file(path)
+    if solution is None:
         raise UsageError(_not_a_solution_file(text))
-    return found
-
-
-def _slug_of(environment: Environment, solution: SolutionFile, text: str) -> str:
     for slug in environment.files.slugs():
         if solution.belongs_to(slug):
-            return slug
+            return ProblemTarget(slug, solution.language)
     raise UsageError(f"no problem for {text}: none is named {solution.name}")
+
+
+def _project_file(environment: Environment, slug: str, text: str) -> ProblemTarget:
+    if slug not in environment.files.slugs():
+        raise UsageError(f"no problem for {text}: none is named {slug}")
+    language = folder_language(environment.problems.load(slug).meta)
+    if language is None:
+        raise UsageError(f"{_not_a_solution_file(text)} ({slug} is not a project problem)")
+    return ProblemTarget(slug, language)
 
 
 def _not_a_solution_file(text: str) -> str:

@@ -21,6 +21,7 @@ from coding_study.domain.workspace_projects import (
     folder_language,
     is_untracked,
     project_folder,
+    project_slug,
     toolchain_link,
 )
 
@@ -103,3 +104,41 @@ def test_the_venv_link_node_modules_caches_and_the_uv_lock_are_untracked(path):
 )
 def test_everything_else_is_tracked(path):
     assert not is_untracked(path)
+
+
+# file targets
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        f"{BANK}/bank/bank.py",
+        f"{BANK}/bank/ledger/entries.py",
+        f"{BANK}/README.md",
+        f"{BANK}/pyproject.toml",
+        f"{BANK}/uv.lock",
+    ],
+)
+def test_any_file_in_a_project_folder_names_the_folder(path):
+    assert project_slug(path) == "bank-project-python"
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "",
+        "projects",
+        "projects/README.md",
+        BANK,
+        f"{BANK}/.venv/lib/python3.13/site-packages/pytest/__init__.py",
+        f"{BANK}/node_modules/typescript/index.js",
+        f"{BANK}/bank/__pycache__/bank.cpython-313.pyc",
+        f"{BANK}/.pytest_cache/v/cache/lastfailed",
+        f"{BANK}/.ruff_cache/CACHEDIR.TAG",
+        "python/practice/two_sum.py",
+        "notes/projects/bank-project-python/plan.md",
+        "projectsx/bank-project-python/bank/bank.py",
+    ],
+)
+def test_a_path_outside_a_folder_or_under_its_venv_or_caches_names_no_project(path):
+    assert project_slug(path) is None

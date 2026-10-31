@@ -61,5 +61,16 @@ def is_untracked(path: str) -> bool:
     return path in UNTRACKED_ROOT_FILES or _names_untracked(path.split(PATH_SEPARATOR))
 
 
+def project_slug(path: str) -> str | None:
+    """The folder, which is the problem's slug, that the file `path` lies in; None for a path
+    outside every project folder or under one's `.venv`, `node_modules` or caches
+    (docs/specs/cli.md#solution-file-targets)."""
+    match path.split(PATH_SEPARATOR):
+        case [directory, slug, *directories, _file] if directory == PROJECTS_DIRECTORY and slug:
+            return None if _names_untracked(directories) else slug
+        case _:
+            return None
+
+
 def _names_untracked(segments: Sequence[str]) -> bool:
     return any(segment in UNTRACKED_DIRECTORIES for segment in segments)
