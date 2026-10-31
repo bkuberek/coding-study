@@ -11,6 +11,12 @@ class Cstudy < Formula
 
   depends_on "python@3.13"
 
+  # On Linux the prebuilt rpds-py and watchfiles extensions link libgcc_s, which `brew linkage`
+  # finds only in Homebrew's gcc.
+  on_linux do
+    depends_on "gcc"
+  end
+
   # Rewriting the @rpath install name of watchfiles' prebuilt extension to an absolute path
   # fails: the wheel's Mach-O header has no room for it. Python loads an extension by its file
   # path and never resolves that name, so keeping it is safe.
