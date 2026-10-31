@@ -10,9 +10,13 @@ import (
 
 const runnerName = "go"
 
-// stressFeature tells the CLI that this runner runs concurrent jobs (docs/specs/runners.md#
-// capability).
-const stressFeature = "stress"
+// stressFeature tells the CLI that this runner runs concurrent jobs, and projectFeature and
+// suiteFeature that it runs a project's grading and suite jobs (docs/specs/runners.md#capability).
+const (
+	stressFeature  = "stress"
+	projectFeature = "project"
+	suiteFeature   = "suite"
+)
 
 // field keeps event keys in the order the spec shows them.
 type field struct {
@@ -57,7 +61,7 @@ func runtimeVersion() string {
 func (w *writer) hello() {
 	w.emit(field{"event", "hello"}, field{"runner", runnerName},
 		field{"protocol", protocolVersion}, field{"runtime", runtimeVersion()},
-		field{"features", []string{stressFeature}})
+		field{"features", []string{stressFeature, projectFeature, suiteFeature}})
 }
 
 func (w *writer) jobStart(jobID string) {

@@ -52,9 +52,9 @@ func withCases(job string, cases ...string) string {
 
 const tallySetup = `{"ops": ["Tally"], "args": [[]]}`
 
-func TestHelloAnnouncesTheStressFeature(t *testing.T) {
+func TestHelloAnnouncesTheStressProjectAndSuiteFeatures(t *testing.T) {
 	events := runJobs(t)
-	if asJSON(events[0]["features"]) != `["stress"]` {
+	if asJSON(events[0]["features"]) != `["stress","project","suite"]` {
 		t.Errorf("hello: %v", events[0])
 	}
 }

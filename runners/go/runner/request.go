@@ -20,7 +20,15 @@ const (
 	kindDesign      = "design"
 	kindProgressive = "progressive"
 	kindConcurrent  = "concurrent"
+	// kindProject grades a project folder compiled into the binary, as a class job
+	// (docs/specs/runners.md#go-project-jobs).
+	kindProject = "project"
+	// kindSuite runs a project folder's native tests with `go test`.
+	kindSuite = "suite"
 )
+
+// frameworkGoTest is the only framework of a Go suite job.
+const frameworkGoTest = "go-test"
 
 // modelThreads is the only concurrency model Go runs (docs/specs/problem-format.md#models-and-
 // language-support).
@@ -32,7 +40,8 @@ type request struct {
 	Jobs     []job  `json:"jobs"`
 }
 
-// job is a test job (target, names, cases) or a bench job (targets, inputs, settings).
+// job is a test job (target, names, cases), a bench job (targets, inputs, settings) or a suite
+// job (framework, root, exclude, select, skip).
 type job struct {
 	JobID     string        `json:"job_id"`
 	Kind      string        `json:"kind"`
@@ -44,6 +53,11 @@ type job struct {
 	Targets   []benchTarget `json:"targets"`
 	Inputs    []benchInput  `json:"inputs"`
 	Settings  benchSettings `json:"settings"`
+	Framework string        `json:"framework"`
+	Root      string        `json:"root"`
+	Exclude   []string      `json:"exclude"`
+	Select    []string      `json:"select"`
+	Skip      []string      `json:"skip"`
 }
 
 // targetRef names code compiled into this binary: "user" or "ref/<approach>". Compiled code has
@@ -176,6 +190,9 @@ func readRequest(path string) (*request, error) {
 		if err := checkJob(&req.Jobs[i], req.Mode); err != nil {
 			return nil, fmt.Errorf("job %q: %w", req.Jobs[i].JobID, err)
 		}
+		if req.Jobs[i].Kind == kindSuite && len(req.Jobs) > 1 {
+			return nil, fmt.Errorf("job %q: a suite job comes alone", req.Jobs[i].JobID)
+		}
 	}
 	return &req, nil
 }
@@ -186,7 +203,9 @@ func checkJob(j *job, mode string) error {
 		if j.Signature.Function == nil {
 			return fmt.Errorf("a function job needs signature.function")
 		}
-	case kindDesign, kindProgressive:
+	case kindSuite:
+		return checkSuite(j, mode)
+	case kindDesign, kindProgressive, kindProject:
 		if j.Signature.Class == nil {
 			return fmt.Errorf("a class job needs signature.class")
 		}
@@ -202,6 +221,18 @@ func checkJob(j *job, mode string) error {
 	}
 	if mode == modeBench && len(j.Targets) == 0 {
 		return fmt.Errorf("a bench job needs targets")
+	}
+	return nil
+}
+
+func checkSuite(j *job, mode string) error {
+	switch {
+	case mode != modeTest:
+		return fmt.Errorf("a suite job runs in test mode")
+	case j.Framework != frameworkGoTest:
+		return fmt.Errorf("the go runner runs %q suites, not %q", frameworkGoTest, j.Framework)
+	case j.Root == "":
+		return fmt.Errorf("a suite job needs its root")
 	}
 	return nil
 }

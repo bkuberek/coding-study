@@ -4,8 +4,10 @@
 //
 //	runner.Main(runner.Registry{"user": two_sum.CsTargets, "ref/hash-map": hash_map.CsTargets}, nil, nil)
 //
+// A suite job needs no target: it runs a project's tests with `go test` (suite.go).
+//
 // Exit codes: 0 once `bye` is written; 2 for a request that cannot be run; 3 after
-// `restart_requested`.
+// `restart_requested`; 1 after a test crashed its test binary, with that test in progress.
 package runner
 
 import (
@@ -20,6 +22,9 @@ const (
 	exitBadRequest = 2
 	// exitRestart follows restart_requested: a stress run left worker goroutines running.
 	exitRestart = 3
+	// exitTestCrashed leaves the test that crashed its test binary in progress, for the CLI to
+	// report as a crash.
+	exitTestCrashed = 1
 )
 
 // Main runs the request named on the command line and exits. A class kind's packages also
@@ -27,6 +32,14 @@ const (
 func Main(registry Registry, unavailable Unavailable, thunks Thunks) {
 	keepCrashOutput()
 	os.Exit(run(&loader{registry: registry, unavailable: unavailable, thunks: thunks}, os.Args[1:], os.Stderr))
+}
+
+// suiteJob is the request's suite job, which comes alone; nil for any other request.
+func suiteJob(req *request) *job {
+	if len(req.Jobs) == 1 && req.Jobs[0].Kind == kindSuite {
+		return &req.Jobs[0]
+	}
+	return nil
 }
 
 func run(l *loader, argv []string, stderr io.Writer) int {
@@ -51,7 +64,11 @@ func run(l *loader, argv []string, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "cs-go-runner: bad request:", err)
 		return exitBadRequest
 	}
-	if req.Mode == modeBench {
+	if suite := suiteJob(req); suite != nil {
+		if !runSuiteJob(suite, events, stderr) {
+			return exitTestCrashed
+		}
+	} else if req.Mode == modeBench {
 		runBenchJobs(l, req.Jobs, events)
 	} else if !runTestJobs(l, req.Jobs, events) {
 		return exitRestart
