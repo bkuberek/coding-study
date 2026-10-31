@@ -6,10 +6,11 @@ of the levels it grades: a method of a locked level never has to exist.
 """
 
 from dataclasses import replace
+from typing import assert_never
 
 from coding_study.domain.layout import COMPILED_USER_TARGET
 from coding_study.domain.problem import Language
-from coding_study.domain.project import Project, unsupported_language
+from coding_study.domain.project import Project
 from coding_study.domain.runs import (
     ClassTarget,
     CompiledTarget,
@@ -26,8 +27,6 @@ def grading_target(project: Project, language: Language, root: str) -> RunTarget
     entry class, on the classpath of the folder's build, a Go one the user's package, which
     the runner binary was compiled with, and a Rust one the user's crate, compiled into the
     harness that runs it.
-
-    Raises ValueError for a language without project problems.
     """
     match language:
         case Language.PYTHON:
@@ -39,7 +38,7 @@ def grading_target(project: Project, language: Language, root: str) -> RunTarget
         case Language.GO | Language.RUST:
             return CompiledTarget(COMPILED_USER_TARGET)
         case _:
-            raise ValueError(unsupported_language(language))
+            assert_never(language)
 
 
 def graded_signature(signature: Signature, level: int) -> ClassSignature:

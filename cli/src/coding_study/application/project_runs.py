@@ -34,7 +34,7 @@ from coding_study.domain.levels import LevelRun, cases_up_to, level_run
 from coding_study.domain.naming import symbol_names
 from coding_study.domain.precedence import resolve_hang_guard_ms
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
-from coding_study.domain.project import level_test_file, unsupported_language
+from coding_study.domain.project import level_test_file
 from coding_study.domain.runner_grading import graded_signature, grading_target
 from coding_study.domain.runs import (
     CaseReport,
@@ -47,7 +47,7 @@ from coding_study.domain.runs import (
 from coding_study.domain.suite_runs import SuiteFramework, SuiteJob, SuiteReport
 
 SUITE_JOB = "suite"
-SUITE_FRAMEWORKS: Mapping[Language, SuiteFramework | None] = {
+SUITE_FRAMEWORKS: Mapping[Language, SuiteFramework] = {
     Language.PYTHON: SuiteFramework.PYTEST,
     Language.TYPESCRIPT: SuiteFramework.NODE_TEST,
     Language.JAVA: SuiteFramework.JUNIT_PLATFORM,
@@ -55,7 +55,6 @@ SUITE_FRAMEWORKS: Mapping[Language, SuiteFramework | None] = {
     Language.GO: SuiteFramework.GO_TEST,
     Language.RUST: SuiteFramework.LIBTEST,
 }
-"""None: project problems are not yet supported in the language (ADR 0014)."""
 COMPILE_ERROR = "CompileError"
 DOES_NOT_COMPILE = "the project does not compile"
 
@@ -135,17 +134,14 @@ def project_runner(toolchains: Toolchains, language: Language) -> ProjectRunner:
 
 
 def suite_job(run: SuiteRun, config: Config) -> SuiteJob:
-    """Raises ValueError for a problem without a `project` block or a language without suites."""
+    """Raises ValueError for a problem without a `project` block."""
     meta = run.meta
     if meta.project is None:
         raise ValueError(f"{meta.slug} is not a project problem")
-    framework = SUITE_FRAMEWORKS[run.language]
-    if framework is None:
-        raise ValueError(unsupported_language(run.language))
     locked = range(run.level + 1, len(meta.levels) + 1)
     return SuiteJob(
         job_id=f"{meta.slug}/{SUITE_JOB}",
-        framework=framework,
+        framework=SUITE_FRAMEWORKS[run.language],
         root=str(run.root),
         hang_guard_ms=resolve_hang_guard_ms(config, None, meta.hang_guard_ms),
         exclude=tuple(level_test_file(meta.project, run.language, level) for level in locked),
@@ -181,7 +177,7 @@ def run_grading(environment: Environment, run: GradingRun, notify: ProgressNotic
     not compile has a load error in place of every case.
 
     Raises RunnerStartError (exit 4) when the language's runner has no project jobs, ValueError
-    for a problem without a `project` block or a language without project problems.
+    for a problem without a `project` block.
     """
     runner = project_runner(environment.toolchains, run.language)
     graded = replace(run.problem, cases=cases_up_to(run.problem.cases, run.level))
@@ -223,8 +219,7 @@ class _CaseJudge:
 
 
 def grading_job(run: GradingRun, cases: Sequence[RunnableCase], config: Config) -> RunJob:
-    """Raises ValueError for a problem without a `project` block or a language without project
-    problems."""
+    """Raises ValueError for a problem without a `project` block."""
     meta = run.problem.meta
     if meta.project is None:
         raise ValueError(f"{meta.slug} is not a project problem")

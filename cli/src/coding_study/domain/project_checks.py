@@ -35,7 +35,6 @@ from coding_study.domain.problem_files import (
 from coding_study.domain.project import (
     NO_PROJECT_FILES,
     PATH_SEPARATOR,
-    PROJECT_LANGUAGES,
     RUST_SCALAR_CRATES,
     RUST_VENDORED_CRATES,
     Project,
@@ -47,7 +46,6 @@ from coding_study.domain.project import (
     level_test_pattern,
     level_tests_directory_issue,
     relative_path_issue,
-    unsupported_language,
 )
 from coding_study.domain.signature import ClassSignature, declared_types
 from coding_study.domain.stress import StressScenario
@@ -269,11 +267,9 @@ class _Issues:
 
 
 def _language(content: ProjectContent) -> Language | None:
-    """The problem's one language, when project problems support it."""
+    """The problem's one language; None when it lists another number."""
     languages = content.problem.meta.languages
-    if len(languages) == 1 and languages[0] in PROJECT_LANGUAGES:
-        return languages[0]
-    return None
+    return languages[0] if len(languages) == 1 else None
 
 
 def _well_formed_entry(content: ProjectContent) -> tuple[Project, Language] | None:
@@ -310,8 +306,6 @@ class _Settings:
         languages = self._meta.languages
         if len(languages) != 1:
             self._error("a project problem lists exactly one language", "languages")
-        elif languages[0] not in PROJECT_LANGUAGES:
-            self._error(unsupported_language(languages[0]), "languages")
 
     def _project(self) -> None:
         project, language = self._meta.project, _language(self._content)

@@ -5,7 +5,7 @@ from dataclasses import replace
 
 import pytest
 
-from coding_study.domain.problem import Language
+from coding_study.domain.problem import ALL_LANGUAGES, Language
 from coding_study.domain.project import (
     DEFAULT_TESTS_DIRECTORY,
     PROJECT_LANGUAGES,
@@ -29,14 +29,7 @@ JVM = (Language.JAVA, Language.KOTLIN)
 
 
 def test_project_problems_exist_in_every_language():
-    assert PROJECT_LANGUAGES == (
-        Language.PYTHON,
-        Language.TYPESCRIPT,
-        Language.JAVA,
-        Language.KOTLIN,
-        Language.GO,
-        Language.RUST,
-    )
+    assert PROJECT_LANGUAGES == ALL_LANGUAGES
 
 
 def test_generated_tests_go_to_tests_by_default():

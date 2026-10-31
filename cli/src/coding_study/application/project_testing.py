@@ -189,13 +189,11 @@ def run_project_tests(
     verdicts = judge_suite(report.tests, origins) if report else ()
     if report is not None and report.load_error is None:
         _require_matches(verdicts, request.case_ids)
-    framework = SUITE_FRAMEWORKS[language]
-    assert framework is not None
     result = ProjectTestResult(
         meta=meta,
         attempt=attempt,
         language=language,
-        framework=framework,
+        framework=SUITE_FRAMEWORKS[language],
         levels=levels,
         report=report,
         verdicts=verdicts,

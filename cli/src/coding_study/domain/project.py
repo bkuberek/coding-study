@@ -159,28 +159,19 @@ def relative_path_issue(path: str) -> str | None:
 
 
 def entry_issue(entry: str, language: Language) -> str | None:
-    """Why `entry` cannot name the entry of a project in `language`; None when it can.
-
-    Raises ValueError for a language without project problems.
-    """
+    """Why `entry` cannot name the entry of a project in `language`; None when it can."""
     return _project_language(language).entry_issue(entry)
 
 
 def entry_files(entry: str, language: Language) -> tuple[str, ...]:
-    """The project files, any one of which defines a well-formed `entry`.
-
-    Raises ValueError for a language without project problems.
-    """
+    """The project files, any one of which defines a well-formed `entry`."""
     return _project_language(language).entry_files(entry)
 
 
 def level_tests_directory_issue(tests: str, language: Language) -> str | None:
     """Why `tests` cannot hold the generated test files of a project in `language`, beyond
     `relative_path_issue`; None when it can. Go's files declare `package <last name>_test`; Java
-    and Kotlin need a package directory of the test sources.
-
-    Raises ValueError for a language without project problems.
-    """
+    and Kotlin need a package directory of the test sources."""
     return _project_language(language).level_tests_directory_issue(tests)
 
 
@@ -188,8 +179,7 @@ def project_tests_package(project: Project, language: Language) -> str:
     """The package of a Java or Kotlin project's generated tests, from their directory:
     `src/test/java/com/bank` holds `com.bank`.
 
-    Raises ValueError for a language whose tests have no package, or whose project problems are
-    not supported.
+    Raises ValueError for a language whose tests have no package.
     """
     root = _project_language(language).test_sources
     if root is None:
@@ -200,20 +190,14 @@ def project_tests_package(project: Project, language: Language) -> str:
 
 
 def level_test_file(project: Project, language: Language, level: int) -> str:
-    """The generated test file of `level`, relative to the project root.
-
-    Raises ValueError for a language without project problems.
-    """
+    """The generated test file of `level`, relative to the project root."""
     names = _project_language(language)
     name = f"{names.level_test_prefix}{level}{names.level_test_suffix}"
     return f"{project.tests}{PATH_SEPARATOR}{name}"
 
 
 def level_test_pattern(language: Language) -> re.Pattern[str]:
-    """Matches the file name of a generated test file of any level.
-
-    Raises ValueError for a language without project problems.
-    """
+    """Matches the file name of a generated test file of any level."""
     names = _project_language(language)
     prefix, suffix = re.escape(names.level_test_prefix), re.escape(names.level_test_suffix)
     return re.compile(f"{prefix}[1-9][0-9]*{suffix}")
@@ -228,23 +212,17 @@ def go_package_name(source: str) -> str | None:
 def project_language(meta: ProblemMeta) -> Language:
     """The one language a project problem is solved in.
 
-    Raises ValueError when `meta` lists another number of languages, or a language without
-    project problems.
+    Raises ValueError when `meta` lists another number of languages.
     """
     if len(meta.languages) != 1:
         raise ValueError(f"{meta.slug} lists {len(meta.languages)} languages, not one")
-    language = meta.languages[0]
-    _project_language(language)
-    return language
+    return meta.languages[0]
 
 
 def method_text(method: Method, language: Language) -> str:
     """`method` as `language` declares it: `create_account(timestamp: int, account_id: str) ->
     bool` in Python, `createAccount(timestamp: number, accountId: string): boolean` in TypeScript,
-    `boolean createAccount(long timestamp, String accountId)` in Java.
-
-    Raises ValueError for a language without project problems.
-    """
+    `boolean createAccount(long timestamp, String accountId)` in Java."""
     declare = _project_language(language).declare
     params = tuple(
         (member_name(param.name, language, NameRole.PARAMETER), param.type)
@@ -683,7 +661,7 @@ def _jvm_language(sources: str, suffix: str, declare: _Declare) -> _ProjectLangu
     )
 
 
-_PROJECT_LANGUAGES: Mapping[Language, _ProjectLanguage | None] = {
+_PROJECT_LANGUAGES: Mapping[Language, _ProjectLanguage] = {
     Language.PYTHON: _ProjectLanguage(
         _python_entry_issue,
         _python_entry_files,
@@ -717,17 +695,9 @@ _PROJECT_LANGUAGES: Mapping[Language, _ProjectLanguage | None] = {
         _rust_level_tests_directory_issue,
     ),
 }
-"""None: a language whose project problems are not yet supported."""
-PROJECT_LANGUAGES = tuple(language for language, found in _PROJECT_LANGUAGES.items() if found)
-"""The languages a project problem may list."""
-
-
-def unsupported_language(language: Language) -> str:
-    return f"project problems are not yet supported in {language}"
+PROJECT_LANGUAGES = tuple(_PROJECT_LANGUAGES)
+"""The languages a project problem may list: every language."""
 
 
 def _project_language(language: Language) -> _ProjectLanguage:
-    found = _PROJECT_LANGUAGES[language]
-    if found is None:
-        raise ValueError(unsupported_language(language))
-    return found
+    return _PROJECT_LANGUAGES[language]
