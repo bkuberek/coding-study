@@ -214,10 +214,16 @@ TYPESCRIPT_FIX = FixStep("typescript", ("pnpm", "install"))
 RUNNER_TYPESCRIPT_FIX = FixStep(RUNNER_TYPESCRIPT, ("pnpm", "install"))
 JVM_FIX = FixStep(
     "jvm",
-    ("./gradlew", ":java:classes", ":kotlin:classes", f"-Pcs.only={HANDSHAKE_META.snake_slug}"),
+    (
+        "./gradlew",
+        ":java:csClasspath",
+        ":kotlin:csClasspath",
+        f"-Pcs.only={HANDSHAKE_META.snake_slug}",
+    ),
 )
-"""Builds the runner and support classes and warms the Gradle daemon; `cs.only` names no
-practice package, so a half-written practice file never fails the setup."""
+"""Builds the runner and support classes and warms the Gradle daemon. Resolving the runtime
+classpath caches the runner's own libraries, without which no JVM problem builds offline; `cs.only`
+names no practice package, so a half-written practice file never fails the setup."""
 
 
 @dataclass(frozen=True, slots=True)

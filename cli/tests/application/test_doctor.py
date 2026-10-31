@@ -6,6 +6,7 @@ import pytest
 
 from coding_study.application.doctor import (
     HANDSHAKE_META,
+    JVM_FIX,
     CheckResult,
     CheckStatus,
     ContentLocation,
@@ -939,10 +940,21 @@ def test_fix_runs_the_setup_command_of_every_workspace_project():
         (("uv", "sync"), Path("/ws/python")),
         (("pnpm", "install"), Path("/ws/typescript")),
         (
-            ("./gradlew", ":java:classes", ":kotlin:classes", "-Pcs.only=cs_doctor_handshake"),
+            (
+                "./gradlew",
+                ":java:csClasspath",
+                ":kotlin:csClasspath",
+                "-Pcs.only=cs_doctor_handshake",
+            ),
             Path("/ws/jvm"),
         ),
     ]
+
+
+def test_the_jvm_warm_up_resolves_the_runtime_classpath():
+    """Compiling classes alone never caches the runner's own libraries, so nothing would build
+    offline afterwards (NFR-6)."""
+    assert {":java:csClasspath", ":kotlin:csClasspath"} <= set(JVM_FIX.command)
 
 
 def test_fix_installs_the_typescript_runner_of_a_content_checkout():
@@ -978,7 +990,8 @@ def test_fix_announces_each_command_before_running_it():
     lines: list[str] = []
     fix(workspace_with(paths={"jvm"}), notify=lines.append)
     assert lines == [
-        "running ./gradlew :java:classes :kotlin:classes -Pcs.only=cs_doctor_handshake (in jvm)"
+        "running ./gradlew :java:csClasspath :kotlin:csClasspath -Pcs.only=cs_doctor_handshake "
+        "(in jvm)"
     ]
 
 
