@@ -14,6 +14,7 @@ import pytest
 
 from coding_study.adapters import subprocess_runner
 from coding_study.adapters.debug_process import terminated_like_interrupt
+from coding_study.adapters.process_liveness import is_alive
 from coding_study.adapters.subprocess_runner import SubprocessRunner, _Attempt
 from coding_study.application.ports import DebugLaunch, RunnerLaunch
 from coding_study.domain.cases import FunctionInput, JsonValue
@@ -300,9 +301,7 @@ def test_the_ready_file_is_empty_when_the_agent_starts(runner, tmp_path):
 def ended(pid: int) -> bool:
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
-        try:
-            os.kill(pid, 0)
-        except ProcessLookupError:
+        if not is_alive(pid):
             return True
         time.sleep(0.02)
     return False

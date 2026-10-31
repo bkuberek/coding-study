@@ -11,7 +11,8 @@ from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 
-PROCESS_LIST = ("ps", "-axww", "-o", "pid=,ppid=,pgid=,args=")
+PROCESS_LIST = ("ps", "-axww", "-o", "pid=,ppid=,pgid=,stat=,args=")
+ZOMBIE_STATE = "Z"
 ORPHAN_PATIENCE_SECONDS = 2.0
 """How soon after `cstudy` died nothing it started may run any more."""
 POLL_SECONDS = 0.05
@@ -28,10 +29,14 @@ class Process:
 
 
 def running_processes() -> list[Process]:
+    """Every process but the zombies, which have ended: where nothing reaps orphans (a container
+    without an init process) they stay."""
     listing = subprocess.run(PROCESS_LIST, capture_output=True, text=True, check=True).stdout
     processes: list[Process] = []
     for line in listing.splitlines():
-        pid, parent, group, *command = line.split(maxsplit=3)
+        pid, parent, group, state, *command = line.split(maxsplit=4)
+        if state.startswith(ZOMBIE_STATE):
+            continue
         processes.append(Process(int(pid), int(parent), int(group), command[0] if command else ""))
     return processes
 
