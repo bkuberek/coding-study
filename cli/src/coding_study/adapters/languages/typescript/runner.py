@@ -18,11 +18,11 @@ import json
 import os
 import re
 import shutil
-import subprocess
 from dataclasses import replace
 from pathlib import Path, PurePosixPath
 from typing import Protocol
 
+from coding_study.adapters.languages.bounded_process import BoundedProcess
 from coding_study.adapters.languages.debug_port import require_free_port
 from coding_study.application.ports import (
     BenchCode,
@@ -88,21 +88,19 @@ class TypeChecker(Protocol):
 
 
 class PnpmTypeChecker:
-    """Runs the project's own `tsc --noEmit` through pnpm (docs/specs/cli.md, `--typecheck`)."""
+    """Runs the project's own `tsc --noEmit` through pnpm (docs/specs/cli.md, `--typecheck`),
+    stopped when it outlives `timeout_seconds` (docs/specs/runners.md#build-timeouts)."""
+
+    def __init__(self, timeout_seconds: float = TYPECHECK_TIMEOUT_SECONDS) -> None:
+        self._process = BoundedProcess(TYPECHECK_NOTE, timeout_seconds)
 
     def check(self, project: Path, *arguments: str) -> ProbeResult | None:
         try:
-            completed = subprocess.run(
-                (*TYPECHECK_COMMAND, *arguments),
-                cwd=project,
-                capture_output=True,
-                text=True,
-                timeout=TYPECHECK_TIMEOUT_SECONDS,
-                check=False,
-            )
+            completed = self._process.run((*TYPECHECK_COMMAND, *arguments), project, None)
         except FileNotFoundError:
             return None
-        return ProbeResult(completed.returncode, completed.stdout + completed.stderr)
+        output = completed.stdout + completed.stderr
+        return ProbeResult(completed.returncode, output.decode("utf-8", errors="replace"))
 
 
 class TypeScriptRunner:

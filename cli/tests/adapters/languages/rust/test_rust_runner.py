@@ -143,6 +143,15 @@ def test_crates_resolve_from_the_vendored_directory_of_the_runtime(workspace):
     assert f'source.cstudy-vendor.directory="{vendor}"' in arguments
 
 
+def test_the_compiler_and_the_hosts_linker_are_pinned(workspace):
+    cargo = FakeCargo()
+    prepare_user(workspace, cargo)
+    arguments = cargo.builds[0][0]
+    assert ('build.rustc="rustc"', f'target.{HOST}.linker="cc"') == tuple(
+        argument for argument in arguments if argument.startswith(("build.rustc", "target."))
+    )
+
+
 def test_the_bridge_brings_in_the_users_file_by_its_path(workspace):
     prepare_user(workspace, FakeCargo())
     assert f'#[path = "{workspace}/rust/practice/two_sum.rs"]\nmod user;' in bridge(workspace)

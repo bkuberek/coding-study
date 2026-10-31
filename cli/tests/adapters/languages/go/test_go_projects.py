@@ -13,7 +13,11 @@ import pytest
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.go.build_files import COLD_NOTICE
 from coding_study.adapters.languages.go.runner import GoRunner
-from coding_study.adapters.languages.go.toolchain import GO_ENVIRONMENT, GoOutcome
+from coding_study.adapters.languages.go.toolchain import (
+    GO_ENVIRONMENT,
+    UNSET_PLATFORM_SETTINGS,
+    GoOutcome,
+)
 from coding_study.application.ports import (
     ProjectGrading,
     ProjectSuite,
@@ -276,7 +280,11 @@ def test_the_suite_runs_in_the_root_with_its_go_work_and_this_machines_platform(
     launch = suite(workspace, FakeGo())
     assert (launch.cwd, launch.environment) == (
         folder(workspace),
-        {**GO_ENVIRONMENT, "GOWORK": str(work_file(workspace)), "GOOS": "", "GOARCH": ""},
+        {
+            **GO_ENVIRONMENT,
+            "GOWORK": str(work_file(workspace)),
+            **UNSET_PLATFORM_SETTINGS,
+        },
     )
 
 

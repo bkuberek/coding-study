@@ -39,6 +39,7 @@ from coding_study.adapters.languages.rust.build_files import (
     profile_arguments,
     project_harness_manifest,
     target_errors,
+    toolchain_arguments,
     vendored_source_arguments,
     workspace_manifest,
 )
@@ -239,6 +240,7 @@ class RustProjectBuild:
             *("--target", settings.host(), "-p", package, *targets),
             *profile_arguments(DEV),
             *vendored_source_arguments(settings.runtime / VENDOR_DIRECTORY),
+            *toolchain_arguments(settings.host()),
         ]
         environment = {
             "CARGO_TARGET_DIR": str(settings.workspace / TARGET_DIRECTORY),

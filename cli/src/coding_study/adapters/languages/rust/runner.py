@@ -51,6 +51,7 @@ from coding_study.adapters.languages.rust.build_files import (
     output_text,
     package_manifest,
     profile_arguments,
+    toolchain_arguments,
     vendored_source_arguments,
     workspace_manifest,
     workspace_members,
@@ -331,6 +332,7 @@ class RustRunner:
             *("--target", self._host(), "-p", build.package),
             *(profile_arguments(DEV) if build.debug else profile_arguments()),
             *vendored_source_arguments(self._runtime / VENDOR_DIRECTORY),
+            *toolchain_arguments(self._host()),
         ]
         environment = {"CARGO_TARGET_DIR": str(self._build_directory / TARGET_DIRECTORY)}
         for _ in range(BUILD_PASSES):

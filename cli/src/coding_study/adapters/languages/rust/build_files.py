@@ -61,6 +61,8 @@ RELEASE = "release"
 DEV = "dev"
 PROFILES: Mapping[str, Mapping[str, str]] = {RELEASE: RELEASE_PROFILE, DEV: DEV_PROFILE}
 VENDOR_DIRECTORY = "vendor"
+COMPILER = "rustc"
+LINKER = "cc"
 """The vendored crates inside the runtime's `rust/` directory (runners/rust/vendor/README.md)."""
 VENDORED_SOURCE = RUST_VENDORED_SOURCE
 DECIMAL_DATE_CRATES: Mapping[str, str] = RUST_VENDORED_CRATES
@@ -164,6 +166,16 @@ def profile_arguments(profile: str = RELEASE) -> list[str]:
         argument
         for key, value in PROFILES[profile].items()
         for argument in ("--config", f"profile.{profile}.{key}={value}")
+    ]
+
+
+def toolchain_arguments(host: str) -> list[str]:
+    """Pin the compiler and the linker of `host` to the platform's defaults; like the profile,
+    these outrank a user's `build.rustc` and `target.<host>.linker` (environment or
+    `config.toml`), which a missing or foreign tool would turn into a failed build."""
+    return [
+        *("--config", f'build.rustc="{COMPILER}"'),
+        *("--config", f'target.{host}.linker="{LINKER}"'),
     ]
 
 

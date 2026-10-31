@@ -18,6 +18,7 @@ from coding_study.adapters.languages.rust.build_files import (
     load_error,
     package_manifest,
     profile_arguments,
+    toolchain_arguments,
     vendored_source_arguments,
     workspace_manifest,
     workspace_members,
@@ -188,6 +189,15 @@ def test_crates_io_is_replaced_by_the_vendored_directory():
         'source.crates-io.replace-with="cstudy-vendor"',
         "--config",
         'source.cstudy-vendor.directory="/ws/.cs/runtime/runners/rust/vendor"',
+    ]
+
+
+def test_the_compiler_and_the_hosts_linker_are_pinned_to_the_platforms_defaults():
+    assert toolchain_arguments("aarch64-apple-darwin") == [
+        "--config",
+        'build.rustc="rustc"',
+        "--config",
+        'target.aarch64-apple-darwin.linker="cc"',
     ]
 
 

@@ -146,6 +146,14 @@ def test_a_build_pins_the_dev_profile_and_the_vendored_crates(workspace):
     assert 'source.crates-io.replace-with="cstudy-vendor"' in arguments
 
 
+def test_a_build_pins_the_compiler_and_the_hosts_linker(workspace):
+    build, cargo = project_build(workspace, BUILT)
+    build.harness(SIGNATURE)
+    ((arguments, _, _),) = cargo.builds
+    assert 'build.rustc="rustc"' in arguments
+    assert f'target.{HOST}.linker="cc"' in arguments
+
+
 def test_a_build_shares_the_target_directory_and_has_a_cargo_home_of_its_own(workspace):
     build, cargo = project_build(workspace, BUILT)
     build.harness(SIGNATURE)

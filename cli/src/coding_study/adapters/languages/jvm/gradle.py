@@ -2,17 +2,21 @@
 
 import os
 import re
-import subprocess
 from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from coding_study.adapters.languages.bounded_process import (
+    DEFAULT_BUILD_TIMEOUT_SECONDS,
+    BoundedProcess,
+)
 from coding_study.adapters.process_liveness import is_alive
 from coding_study.domain.errors import RunnerStartError
 
 WRAPPER = "gradlew"
+BUILD_STEP = "Gradle build"
 WRAPPER_PROPERTIES = "gradle/wrapper/gradle-wrapper.properties"
 MAX_DIAGNOSTIC_LINES = 40
 OUTPUT_TAIL_LINES = 20
@@ -55,11 +59,18 @@ class DaemonRegistry:
 
 
 class WrapperGradle:
-    """`GradleBuild` backed by the workspace's `jvm/gradlew`, run from that project."""
+    """`GradleBuild` backed by the workspace's `jvm/gradlew`, run from that project and stopped
+    when a build outlives `timeout_seconds` (docs/specs/runners.md#build-timeouts)."""
 
-    def __init__(self, workspace: Path, gradle_user_home: Path) -> None:
+    def __init__(
+        self,
+        workspace: Path,
+        gradle_user_home: Path,
+        timeout_seconds: float = DEFAULT_BUILD_TIMEOUT_SECONDS,
+    ) -> None:
         self._workspace = workspace
         self._gradle_user_home = gradle_user_home
+        self._process = BoundedProcess(BUILD_STEP, timeout_seconds)
 
     def daemon_running(self) -> bool:
         version = wrapper_gradle_version(self._workspace / WRAPPER_PROPERTIES)
@@ -74,13 +85,8 @@ class WrapperGradle:
                 f"{wrapper} is missing; run `cstudy doctor` to set up the JVM workspace"
             )
         try:
-            completed = subprocess.run(
-                [str(wrapper), *arguments],
-                cwd=self._workspace,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                check=False,
+            completed = self._process.run_interleaved(
+                [str(wrapper), *arguments], self._workspace, None
             )
         except OSError as error:
             raise RunnerStartError(f"cannot run {wrapper}: {error.strerror or error}") from error

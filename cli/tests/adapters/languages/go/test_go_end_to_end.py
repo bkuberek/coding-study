@@ -117,6 +117,18 @@ def test_the_users_go_settings_do_not_reach_the_build(root, tmp_path, monkeypatc
     assert isinstance(case.outcome, Returned)
 
 
+def test_the_users_c_compiler_and_build_variants_do_not_reach_the_build(root, monkeypatch):
+    monkeypatch.setenv("CC", "/nonexistent/cc")
+    monkeypatch.setenv("CGO_ENABLED", "1")
+    monkeypatch.setenv("CGO_CFLAGS", "-not-a-flag")
+    monkeypatch.setenv("GOEXPERIMENT", "not-an-experiment")
+    monkeypatch.setenv("GOAMD64", "v9")
+    monkeypatch.setenv("GOARM64", "v9.9")
+    write_solution(root, HASH_MAP)
+    (case,) = run(root, prepare(root)).cases
+    assert isinstance(case.outcome, Returned)
+
+
 def test_a_misnamed_function_is_a_load_error_with_the_compilers_reason(root):
     write_solution(root, HASH_MAP.replace("func twoSum(", "func twoSumm("))
     load_error = run(root, prepare(root)).load_error

@@ -2,8 +2,8 @@
 (docs/specs/runners.md#rust-build-details).
 
 The user's Cargo setup must neither break nor redirect a build: the build pins the target
-directory, the target triple, the release profile's semantics, and runs without rustflags or a
-`rustc` wrapper, whatever the environment or a `config.toml` says.
+directory, the target triple, the compiler, the linker, the release profile's semantics, and runs
+without rustflags or a `rustc` wrapper, whatever the environment or a `config.toml` says.
 """
 
 import os
@@ -13,6 +13,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from coding_study.adapters.languages.bounded_process import (
+    DEFAULT_BUILD_TIMEOUT_SECONDS,
+    BoundedProcess,
+)
 from coding_study.domain.errors import RunnerStartError
 
 CARGO = "cargo"
@@ -25,10 +29,22 @@ CARGO_ENVIRONMENT = {
 }
 """`CARGO_ENCODED_RUSTFLAGS` outranks every other source of rustflags, and an empty value means
 none; an empty wrapper turns off one configured as `build.rustc-wrapper` (sccache, for example)."""
-USER_CARGO_SETTINGS = frozenset({"RUSTFLAGS", "CARGO_TARGET_DIR"})
-USER_CARGO_PREFIXES = ("CARGO_BUILD_", "CARGO_PROFILE_")
-"""Variables of the user's environment that would change where or how the build compiles; the
-build leaves them out and sets its own target directory."""
+USER_CARGO_SETTINGS = frozenset(
+    {
+        *("RUSTFLAGS", "RUSTC", "RUSTC_BOOTSTRAP", "RUSTDOC", "RUSTDOCFLAGS"),
+        *("CARGO_ENCODED_RUSTDOCFLAGS", "CARGO_INCREMENTAL"),
+    }
+)
+USER_CARGO_PREFIXES = (
+    *("CARGO_BUILD_", "CARGO_PROFILE_", "CARGO_UNSTABLE_"),
+    *("CARGO_TARGET_", "CARGO_TERM_"),
+)
+"""Variables of the user's environment that would change where or how the build compiles: the
+compiler, the flags, the linker, runner and flags of any target (`CARGO_TARGET_<triple>_LINKER`,
+and `CARGO_TARGET_DIR`), or how Cargo prints; the build leaves them out and sets its own target
+directory. `PATH`, the proxy variables, `CARGO_HOME` and the rustup variables stay."""
+BUILD_STEP = "cargo build"
+VERSION_STEP = "rustc -vV"
 _HOST_PREFIX = "host: "
 _RELEASE_PREFIX = "release: "
 
@@ -64,13 +80,17 @@ class CargoToolchain(Protocol):
 
 
 class SubprocessCargo:
-    """`CargoToolchain` backed by the commands on PATH."""
+    """`CargoToolchain` backed by the commands on PATH, stopped when one outlives
+    `timeout_seconds` (docs/specs/runners.md#build-timeouts)."""
+
+    def __init__(self, timeout_seconds: float = DEFAULT_BUILD_TIMEOUT_SECONDS) -> None:
+        self._timeout_seconds = timeout_seconds
 
     def build(
         self, arguments: Sequence[str], cwd: Path, environment: Mapping[str, str]
     ) -> CargoOutcome:
         command = [CARGO, "build", *arguments]
-        completed = _run(command, cwd, build_environment(os.environ, environment))
+        completed = self._run(BUILD_STEP, command, cwd, build_environment(os.environ, environment))
         return CargoOutcome(
             completed.returncode,
             completed.stdout.decode("utf-8", errors="replace"),
@@ -78,39 +98,35 @@ class SubprocessCargo:
         )
 
     def host(self, cwd: Path) -> str:
-        return _rustc_field(cwd, _HOST_PREFIX, "the host target")
+        return self._rustc_field(cwd, _HOST_PREFIX, "the host target")
 
     def release(self, cwd: Path) -> str:
-        return _rustc_field(cwd, _RELEASE_PREFIX, "its release")
+        return self._rustc_field(cwd, _RELEASE_PREFIX, "its release")
+
+    def _rustc_field(self, cwd: Path, prefix: str, what: str) -> str:
+        """A line of `rustc -vV`, such as `host: aarch64-apple-darwin`, without its name."""
+        command = [RUSTC, "-vV"]
+        completed = self._run(VERSION_STEP, command, cwd, build_environment(os.environ, {}))
+        return _field(completed, prefix, what)
+
+    def _run(
+        self, step: str, command: list[str], cwd: Path, environment: dict[str, str]
+    ) -> "subprocess.CompletedProcess[bytes]":
+        try:
+            return BoundedProcess(step, self._timeout_seconds).run(command, cwd, environment)
+        except FileNotFoundError:
+            raise RunnerStartError(MISSING_CARGO) from None
+        except OSError as error:
+            raise RunnerStartError(f"cannot run {command[0]}: {error.strerror or error}") from error
 
 
-def _rustc_field(cwd: Path, prefix: str, what: str) -> str:
-    """A line of `rustc -vV`, such as `host: aarch64-apple-darwin`, without its name."""
-    completed = _run([RUSTC, "-vV"], cwd, build_environment(os.environ, {}))
+def _field(completed: "subprocess.CompletedProcess[bytes]", prefix: str, what: str) -> str:
     text = completed.stdout.decode("utf-8", errors="replace")
     for line in text.splitlines():
         if line.startswith(prefix):
             return line.removeprefix(prefix).strip()
     stderr = completed.stderr.decode("utf-8", errors="replace").splitlines()
     raise RunnerStartError(f"rustc -vV did not name {what}", stderr[-5:])
-
-
-def _run(
-    command: list[str], cwd: Path, environment: dict[str, str]
-) -> "subprocess.CompletedProcess[bytes]":
-    try:
-        return subprocess.run(
-            command,
-            cwd=cwd,
-            env=environment,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            check=False,
-        )
-    except FileNotFoundError:
-        raise RunnerStartError(MISSING_CARGO) from None
-    except OSError as error:
-        raise RunnerStartError(f"cannot run {command[0]}: {error.strerror or error}") from error
 
 
 def build_environment(inherited: Mapping[str, str], build: Mapping[str, str]) -> dict[str, str]:

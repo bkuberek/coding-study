@@ -51,7 +51,12 @@ from coding_study.adapters.languages.go.build_files import (
     thunk_source,
     vendored_path,
 )
-from coding_study.adapters.languages.go.toolchain import GO_ENVIRONMENT, GoOutcome, GoToolchain
+from coding_study.adapters.languages.go.toolchain import (
+    GO_ENVIRONMENT,
+    UNSET_PLATFORM_SETTINGS,
+    GoOutcome,
+    GoToolchain,
+)
 from coding_study.application.ports import (
     DebugLaunch,
     DebugServers,
@@ -85,8 +90,6 @@ DEBUG_LISTEN = "CSTUDY_GO_DEBUG_LISTEN"
 DEBUG_DELVE = "CSTUDY_GO_DELVE"
 DEBUG_PACKAGE = "CSTUDY_GO_DEBUG_PACKAGE"
 _GO_VERSION_PARTS = re.compile(r"\d+")
-_UNSET = ""
-"""The go command reads an empty GOOS or GOARCH as unset: this machine's platform."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,8 +159,7 @@ class GoProjectBuilds:
         environment = {
             **GO_ENVIRONMENT,
             "GOWORK": str(root.work_file),
-            "GOOS": _UNSET,
-            "GOARCH": _UNSET,
+            **UNSET_PLATFORM_SETTINGS,
             **debug_environment,
         }
         launch = RunnerLaunch(

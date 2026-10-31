@@ -13,6 +13,7 @@ import pytest
 
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.rust import create_runner
+from coding_study.adapters.languages.rust.toolchain import SubprocessCargo
 from coding_study.adapters.runner_runtime import RUNTIME_RUNNERS
 from coding_study.adapters.subprocess_runner import SubprocessRunner
 from coding_study.application.ports import BuildFailed, Prepared, PrepareResult, UserCode
@@ -277,6 +278,20 @@ def test_the_users_cargo_settings_do_not_reach_the_build(root, monkeypatch):
     monkeypatch.setenv("RUSTC_WRAPPER", "/nonexistent/sccache")
     monkeypatch.setenv("CARGO_BUILD_TARGET", "wasm32-unknown-unknown")
     monkeypatch.setenv("CARGO_TARGET_DIR", "/nonexistent/target")
+    write_solution(root, HASH_MAP)
+    (case,) = run(root, prepare(root)).cases
+    assert isinstance(case.outcome, Returned)
+
+
+def test_the_users_linker_and_compiler_do_not_reach_the_build(root, monkeypatch):
+    host = SubprocessCargo().host(root)
+    (root / ".cargo").mkdir()
+    (root / ".cargo/config.toml").write_text(
+        f'[target.{host}]\nlinker = "/nonexistent/ld"\n\n[build]\nrustc = "/nonexistent/rustc"\n'
+    )
+    linker_variable = f"CARGO_TARGET_{host.upper().replace('-', '_')}_LINKER"
+    monkeypatch.setenv(linker_variable, "/nonexistent/ld-from-environment")
+    monkeypatch.setenv("RUSTC", "/nonexistent/rustc-from-environment")
     write_solution(root, HASH_MAP)
     (case,) = run(root, prepare(root)).cases
     assert isinstance(case.outcome, Returned)
