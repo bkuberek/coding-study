@@ -47,6 +47,7 @@ from coding_study.domain.layout import (
 )
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
+from coding_study.domain.workspace_projects import PYTEST_INSTALL_COMMAND
 
 WORKSPACE_DIRECTORY = PYTHON_PROJECT
 RUNNER_MODULE = "cs_runner"
@@ -54,7 +55,6 @@ SAFE_PATH_FLAG = "-P"
 """Keeps the working directory, a project root, off `sys.path`."""
 BYTECODE_DIRECTORY = ".cs/pycache"
 PYTEST_PACKAGE_PATTERN = "lib/python*/site-packages/pytest/__init__.py"
-PYTEST_INSTALL_COMMAND = f"uv add --dev pytest --directory {PYTHON_PROJECT}"
 READY_MARKER = "cstudy-debug-agent-listening"
 DEBUG_BOOTSTRAP = f"""\
 import runpy

@@ -7,7 +7,6 @@ import pytest
 
 from coding_study.adapters.languages.python.runner import (
     DEBUG_BOOTSTRAP,
-    PYTEST_INSTALL_COMMAND,
     READY_MARKER,
     PythonRunner,
 )
@@ -23,6 +22,7 @@ from coding_study.domain.debugging import DebugSession
 from coding_study.domain.errors import RunnerStartError
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
+from coding_study.domain.workspace_projects import PYTEST_INSTALL_COMMAND
 
 INTERPRETER = Path("python/.venv/bin/python")
 PYTEST_PACKAGE = Path("python/.venv/lib/python3.13/site-packages/pytest/__init__.py")

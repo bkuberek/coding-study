@@ -61,7 +61,7 @@ from coding_study.domain.problem import (
 from coding_study.domain.runs import RunnerInfo, RunRequest
 from coding_study.domain.signature import FunctionSignature, Returns
 from coding_study.domain.type_dsl import VoidType
-from coding_study.domain.workspace_projects import PROJECTS_DIRECTORY
+from coding_study.domain.workspace_projects import PROJECTS_DIRECTORY, PYTEST_INSTALL_COMMAND
 
 PYTHON_VERSION = "3.13"
 MINIMUM_NODE_MAJOR = 24
@@ -169,8 +169,6 @@ WORKSPACE_ARTIFACTS = (
 )
 DEBUGPY_CHECK = "python debugpy"
 PYTEST_CHECK = "python pytest"
-PYTEST_INSTALL_COMMAND = f"uv add --dev pytest --directory {PYTHON_PROJECT}"
-"""Workspaces created before the template listed pytest lack it; only project problems need it."""
 PROJECTS_CHECK = "projects"
 PROJECT_LINKS_CHECK = "project links"
 VENV_LOCATION_CHECK = f"{PYTHON_PROJECT}/{PYTHON_VENV} location"

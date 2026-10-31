@@ -15,6 +15,9 @@ from coding_study.domain.problem import Language, ProblemKind, ProblemMeta
 from coding_study.domain.project import PATH_SEPARATOR
 
 PROJECTS_DIRECTORY = "projects"
+PYTEST_INSTALL_COMMAND = f"uv add --dev pytest --directory {layout.PYTHON_PROJECT}"
+"""A Python project's tests run in the workspace venv; workspaces created before the template
+listed pytest lack it."""
 UNTRACKED_DIRECTORIES = frozenset(
     {layout.PYTHON_VENV, "node_modules", "__pycache__", ".pytest_cache", ".ruff_cache"}
 )
