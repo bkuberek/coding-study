@@ -1,5 +1,6 @@
 """`cstudy next` (docs/specs/cli.md#cstudy-next)."""
 
+import json
 from pathlib import Path
 from typing import Annotated
 
@@ -7,8 +8,9 @@ import typer
 from rich.text import Text
 
 from coding_study.adapters.environment_factory import load_environment
-from coding_study.application.next_problem import NextRequest, next_problem, start_language
+from coding_study.application.next_problem import NextRequest, Recommendation, recommend
 from coding_study.application.start_attempt import StartRequest
+from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import UsageError
 from coding_study.domain.next_selection import NewPick, NextPick, NextSource, ReviewPick
 from coding_study.domain.problem import Difficulty, Language, Track
@@ -18,6 +20,8 @@ from coding_study.entrypoints.shared import add_command, command_environ, consol
 NAME = "next"
 LABEL_WIDTH = 8
 NOTHING_TO_PICK = "nothing due and no new problems in scope"
+REVIEW_PICK = "review"
+NEW_PICK = "new"
 
 
 def register(app: typer.Typer) -> None:
@@ -43,24 +47,51 @@ def next_command(
     new: Annotated[bool, typer.Option("--new", help="Skip reviews.")] = False,
     review: Annotated[bool, typer.Option("--review", help="Skip new problems.")] = False,
     start: Annotated[bool, typer.Option("--start", help="Run cstudy start on the pick.")] = False,
+    as_json: Annotated[
+        bool, typer.Option("--json", help="One JSON document instead of the report.")
+    ] = False,
 ) -> None:
     """Pick what to practice."""
+    if as_json and start:
+        raise UsageError("--json excludes --start")
     request = NextRequest(tuple(tracks or ()), pattern, difficulty, language, _source(new, review))
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
-    picked = next_problem(environment, request)
+    recommendation = recommend(environment, request)
+    if as_json:
+        typer.echo(json.dumps(next_document(recommendation), indent=2))
+        return
     output = console(context)
-    if picked is None:
+    if recommendation is None:
         output.print(NOTHING_TO_PICK)
         return
-    output.print(_pick_line(picked))
-    candidate = picked.candidate
-    language_to_start = start_language(environment, candidate, language)
+    output.print(_pick_line(recommendation.pick))
+    slug = recommendation.pick.candidate.slug
     if not start:
-        output.print(_line("start", _start_command(candidate.slug, language_to_start)))
+        output.print(_line("start", _start_command(slug, recommendation.language)))
         return
-    files = start_and_report(output, environment, StartRequest(candidate.slug, language_to_start))
+    files = start_and_report(output, environment, StartRequest(slug, recommendation.language))
     if environment.config.open_on_start:
         open_in_editor(output, environment, files)
+
+
+def next_document(recommendation: Recommendation | None) -> dict[str, JsonValue]:
+    """`cstudy next --json`."""
+    if recommendation is None:
+        return {"pick": None, "message": NOTHING_TO_PICK}
+    picked = recommendation.pick
+    candidate = picked.candidate
+    language = recommendation.language
+    return {
+        "pick": _pick_label(picked),
+        "slug": candidate.slug,
+        "title": recommendation.title,
+        "kind": recommendation.kind.value,
+        "difficulty": candidate.difficulty.value,
+        "group": candidate.group.name,
+        "reason": _reason(picked),
+        "language": language.value if language else None,
+        "start": _start_command(candidate.slug, language),
+    }
 
 
 def _source(new: bool, review: bool) -> NextSource:
@@ -78,8 +109,11 @@ def _start_command(slug: str, language: Language | None) -> str:
 
 
 def _pick_line(picked: NextPick) -> Text:
-    label = "review" if isinstance(picked, ReviewPick) else "new"
-    return _line(label, pick_summary(picked))
+    return _line(_pick_label(picked), pick_summary(picked))
+
+
+def _pick_label(picked: NextPick) -> str:
+    return REVIEW_PICK if isinstance(picked, ReviewPick) else NEW_PICK
 
 
 def pick_summary(picked: NextPick) -> str:

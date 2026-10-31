@@ -801,7 +801,7 @@ start   cstudy start koko-eating-bananas --lang kotlin
 
 A review due today reads `due today, interval 3d`; a new pick from a non-`dsa` group reads `weakest track: practical (0.75)`.
 
-`--json` prints the pick as one document instead: `{"pick": "review" or "new", "slug", "title", "kind", "difficulty", "group", "reason", "language", "start"}`, where `reason` is the text after the parentheses (`overdue 3d, interval 7d`), `language` the language `--start` would use (null for an item) and `start` the command of the `start` line; with nothing to pick, `{"pick": null, "message": ...}` with the text the report prints. `--json` with `--start` is a usage error (exit 3).
+`--json` prints the pick as one document instead: `{"pick": "review" or "new", "slug", "title", "kind", "difficulty", "group", "reason", "language", "start"}`, where `kind` is as in [`cstudy list --json`](#cstudy-list) (`item` for an item), `group` the pick's [weakness group](progress-and-scheduling.md#weakness-score) (the primary pattern of a `dsa` problem, else the track), `reason` the text after the parentheses (`overdue 3d, interval 7d`), `language` the language `--start` would use (null for an item) and `start` the command of the `start` line; with nothing to pick, `{"pick": null, "message": ...}` with the text the report prints. `--json` with `--start` is a usage error (exit 3).
 
 ## cstudy list
 

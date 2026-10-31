@@ -1,3 +1,4 @@
+import json
 from dataclasses import replace
 from datetime import timedelta
 
@@ -127,3 +128,55 @@ def test_an_unknown_pattern_is_a_usage_error(environment):
 
 def test_command_is_registered():
     assert "next" in {command.name for command in cli.app.registered_commands}
+
+
+def document(*arguments: str):
+    return json.loads(invoke("--json", *arguments).stdout)
+
+
+def test_json_describes_a_new_pick(environment):
+    assert document() == {
+        "pick": "new",
+        "slug": "two-sum",
+        "title": "Two Sum",
+        "kind": "function",
+        "difficulty": "easy",
+        "group": "arrays-hashing",
+        "reason": "weakest pattern: arrays-hashing (0.75)",
+        "language": "python",
+        "start": "cstudy start two-sum --lang python",
+    }
+
+
+def test_json_describes_a_review(environment):
+    schedule_review(environment, "lru-cache", overdue_days=3)
+    found = document()
+    assert (found["pick"], found["reason"]) == ("review", "overdue 3d, interval 7d")
+
+
+def test_json_starts_in_the_language_given(environment):
+    found = document("--lang", "kotlin")
+    assert (found["language"], found["start"]) == (
+        "kotlin",
+        "cstudy start two-sum --lang kotlin",
+    )
+
+
+def test_json_with_nothing_to_pick_says_so(environment):
+    assert document("--track", "practical") == {
+        "pick": None,
+        "message": "nothing due and no new problems in scope",
+    }
+
+
+def test_json_and_start_together_are_a_usage_error(environment):
+    result = invoke("--json", "--start")
+    assert (result.exit_code, result.stderr) == (
+        ExitCode.USAGE_ERROR,
+        "error: --json excludes --start\n",
+    )
+
+
+def test_json_and_start_together_start_nothing(environment):
+    invoke("--json", "--start")
+    assert environment.progress.active_attempt() is None

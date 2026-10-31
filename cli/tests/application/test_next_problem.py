@@ -4,15 +4,21 @@ from pathlib import Path
 
 import pytest
 
-from coding_study.application.next_problem import NextRequest, next_problem
+from coding_study.application.next_problem import (
+    NextRequest,
+    Recommendation,
+    next_problem,
+    recommend,
+)
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
 from coding_study.domain.config import Config, NextSettings
+from coding_study.domain.items import EntryKind
 from coding_study.domain.next_selection import NewPick, NextSource, ReviewPick
 from coding_study.domain.problem import Language, Track
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from tests.fakes import NOW, make_environment
 from tests.fakes import repository_root as copy_repository
-from tests.helpers import FIRST_CATALOG, copy_catalog_problems
+from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, copy_catalog_problems
 
 
 @pytest.fixture
@@ -93,3 +99,31 @@ def test_the_same_snapshot_gives_the_same_pick(environment):
     finish(environment, "invert-binary-tree", Grade.OK, due_in_days=-2)
     request = NextRequest()
     assert next_problem(environment, request) == next_problem(environment, request)
+
+
+def described(recommendation: Recommendation | None) -> tuple[str, EntryKind, Language | None]:
+    assert recommendation is not None
+    return recommendation.title, recommendation.kind, recommendation.language
+
+
+def test_a_recommendation_names_the_title_kind_and_language(environment):
+    assert described(recommend(environment, NextRequest())) == (
+        "Two Sum",
+        EntryKind.FUNCTION,
+        Language.PYTHON,
+    )
+
+
+def test_a_recommendation_starts_in_the_language_asked_for(environment):
+    request = NextRequest(language=Language.KOTLIN)
+    assert described(recommend(environment, request))[2] is Language.KOTLIN
+
+
+def test_an_item_recommendation_has_no_language(tmp_path, problems):
+    environment = make_environment(copy_repository(tmp_path, problems, FIXTURE_TRACKS))
+    request = NextRequest(tracks=(Track.SYSTEM_DESIGN,))
+    assert described(recommend(environment, request)) == ("URL Shortener", EntryKind.ITEM, None)
+
+
+def test_nothing_in_scope_recommends_nothing(environment):
+    assert recommend(environment, NextRequest(tracks=(Track.PRACTICAL,))) is None

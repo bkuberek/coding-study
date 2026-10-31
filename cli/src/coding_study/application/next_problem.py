@@ -11,6 +11,7 @@ from coding_study.application.environment import Environment
 from coding_study.application.practice_catalog import practice_candidates
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.errors import UsageError
+from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.next_selection import (
     Candidate,
     NextPick,
@@ -20,7 +21,7 @@ from coding_study.domain.next_selection import (
     pick_next,
 )
 from coding_study.domain.precedence import resolve_language
-from coding_study.domain.problem import Difficulty, Language, ProblemKind, Track
+from coding_study.domain.problem import Difficulty, Language, ProblemKind, ProblemMeta, Track
 from coding_study.domain.project import project_language
 from coding_study.domain.taxonomy import PATTERNS
 from coding_study.domain.weakness import GradedAttempt
@@ -34,6 +35,17 @@ class NextRequest:
     difficulty: Difficulty | None = None
     language: Language | None = None
     source: NextSource = NextSource.ANY
+
+
+@dataclass(frozen=True, slots=True)
+class Recommendation:
+    """The pick with what `cstudy next --json` names beside it."""
+
+    pick: NextPick
+    title: str
+    kind: EntryKind
+    language: Language | None
+    """The language `cstudy next --start` starts it in; None for an item."""
 
 
 def next_problem(environment: Environment, request: NextRequest) -> NextPick | None:
@@ -50,6 +62,20 @@ def next_problem(environment: Environment, request: NextRequest) -> NextPick | N
     query = NextQuery(scope, clock.local_date(clock.now()), request.source)
     candidates = practice_candidates(environment, scope.tracks)
     return pick_next(candidates, graded_attempts(environment), query)
+
+
+def recommend(environment: Environment, request: NextRequest) -> Recommendation | None:
+    """`next_problem`, with the pick's title, kind and start language."""
+    picked = next_problem(environment, request)
+    if picked is None:
+        return None
+    candidate = picked.candidate
+    if not candidate.autograded:
+        item = environment.items.load(candidate.slug)
+        return Recommendation(picked, item.title, EntryKind.ITEM, None)
+    meta = environment.problems.load(candidate.slug).meta
+    language = _problem_language(environment, meta, request.language)
+    return Recommendation(picked, meta.title, entry_kind(meta.kind), language)
 
 
 def graded_attempts(environment: Environment) -> tuple[GradedAttempt, ...]:
@@ -76,6 +102,12 @@ def start_language(
     if not candidate.autograded:
         return None
     meta = environment.problems.load(candidate.slug).meta
+    return _problem_language(environment, meta, requested)
+
+
+def _problem_language(
+    environment: Environment, meta: ProblemMeta, requested: Language | None
+) -> Language:
     if meta.kind is ProblemKind.PROJECT:
         return project_language(meta)
     return resolve_language(requested, environment.config)
