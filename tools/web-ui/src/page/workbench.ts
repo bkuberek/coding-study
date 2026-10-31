@@ -1,18 +1,19 @@
 /**
- * The Attempt view's file tree and editor tabs (docs/specs/web-ui.md#attempt-view): one CodeMirror
- * view per open file, fetched with the editor module the first time a file opens. Until the page
- * saves files, every editor is read-only.
+ * The Attempt view's editor tabs (docs/specs/web-ui.md#attempt-view): one CodeMirror view per open
+ * file, fetched with the editor module the first time a file opens. Text the page edits opens
+ * writable and saves with Cmd or Ctrl-S (`EditorFile`); a tab with unsaved changes asks before it
+ * closes, and so do the view and the page.
  */
 
 import type { Editor } from "../editor.ts";
 import type { PageContext } from "./context.ts";
-import { badge, h } from "./dom.ts";
-import { fileBadge, originText } from "./format.ts";
+import { h } from "./dom.ts";
+import { EditorFile, markTab } from "./editorFile.ts";
+import { confirmAction } from "./fileDialogs.ts";
+import { AttemptFiles } from "./files.ts";
+import { isSaveShortcut, saveShortcutLabel, trackUnsaved } from "./save.ts";
 import { failure, loading } from "./states.ts";
-import { type FileNode, fileTree, type TreeNode } from "./tree.ts";
-import type { FileDocument, Preferences, Tree, TreeEntry } from "./types.ts";
-
-const READ_ONLY_NOTE = "Read-only: the page does not save files yet; edit them in your editor.";
+import type { FileDocument, Preferences } from "./types.ts";
 
 let editorModule: Promise<typeof import("../editor.ts")> | null = null;
 
@@ -25,114 +26,46 @@ interface OpenFile {
   readonly tab: HTMLButtonElement;
   readonly panel: HTMLElement;
   editor: Editor | null;
+  view: EditorFile | null;
 }
 
-/** The tree of the attempt's files; `open` is called with a file's path. */
-export function fileTreeView(tree: Tree, open: (path: string) => void): HTMLElement {
-  const list = treeList(fileTree(tree.entries), open, 0);
-  const view = h(
-    "nav",
-    { class: "files", "aria-label": "Files" },
-    h("p", { class: "files-root eyebrow", title: tree.root }, tree.root),
-    tree.entries.length ? list : h("p", { class: "quiet" }, "no files"),
-  );
-  rovingFocus(view);
-  return view;
-}
-
-function treeList(nodes: readonly TreeNode<TreeEntry>[], open: (path: string) => void, depth: number): HTMLElement {
-  return h(
-    "ul",
-    { class: depth === 0 ? "tree" : "tree-children", role: depth === 0 ? "list" : null },
-    ...nodes.map((node) =>
-      node.kind === "folder"
-        ? h(
-            "li",
-            {},
-            h(
-              "details",
-              { open: true },
-              h("summary", { class: "tree-folder", "data-tree-item": true, tabindex: "-1" }, node.name),
-              treeList(node.children, open, depth + 1),
-            ),
-          )
-        : h("li", {}, fileButton(node, open)),
-    ),
-  );
-}
-
-function fileButton(node: FileNode<TreeEntry>, open: (path: string) => void): HTMLButtonElement {
-  const entry = node.file;
-  const state = fileBadge(entry.state === "unchanged" ? null : entry.state);
-  const origin = originText(entry.origin, entry.level);
-  const missing = entry.size === null;
-  const button = h(
-    "button",
-    {
-      type: "button",
-      class: `tree-file${missing ? " is-missing" : ""}`,
-      "data-tree-item": true,
-      "data-path": entry.path,
-      tabindex: "-1",
-      disabled: missing,
-      title: `${entry.path} · ${origin}${missing ? " · missing on disk" : ""}`,
-    },
-    h("span", { class: "tree-name" }, node.name),
-    h("span", { class: "tree-origin" }, origin === "yours" || origin === "stub" || origin === "notes" ? "" : origin),
-    state ? badge(state.glyph, state.text, `${state.tone} compact`) : null,
-  );
-  button.addEventListener("click", () => open(entry.path));
-  return button;
-}
-
-/** One tree item takes the Tab stop; the arrow keys move between the visible ones. */
-function rovingFocus(view: HTMLElement): void {
-  const items = () =>
-    [...view.querySelectorAll<HTMLElement>("[data-tree-item]")].filter(
-      (item) => item.getClientRects().length > 0 && !(item as HTMLButtonElement).disabled,
-    );
-  const first = items()[0] ?? view.querySelector<HTMLElement>("[data-tree-item]");
-  first?.setAttribute("tabindex", "0");
-  view.addEventListener("keydown", (event) => {
-    const current = (event.target as Element).closest<HTMLElement>("[data-tree-item]");
-    if (!current) return;
-    const visible = items();
-    const index = visible.indexOf(current);
-    const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
-    const target =
-      event.key === "Home" ? visible[0] : event.key === "End" ? visible.at(-1) : step ? visible[index + step] : undefined;
-    if (!target) return;
-    event.preventDefault();
-    current.setAttribute("tabindex", "-1");
-    target.setAttribute("tabindex", "0");
-    target.focus();
-  });
-}
+export type SavedListener = (path: string) => void;
 
 export class EditorTabs {
   readonly element: HTMLElement;
+  readonly files: AttemptFiles;
   readonly #context: PageContext;
-  readonly #attemptId: number;
   readonly #tablist: HTMLElement;
   readonly #panels: HTMLElement;
   readonly #placeholder: HTMLElement;
   readonly #open = new Map<string, OpenFile>();
+  readonly #savedListeners = new Set<SavedListener>();
+  readonly #untrack: () => void;
   #active: string | null = null;
   #destroyed = false;
 
   constructor(context: PageContext, attemptId: number) {
     this.#context = context;
-    this.#attemptId = attemptId;
+    this.files = new AttemptFiles(context.api, attemptId);
+    const shortcut = saveShortcutLabel(navigator.platform);
     this.#tablist = h("div", { class: "tablist", role: "tablist", "aria-label": "Open files" });
-    this.#placeholder = h("div", { class: "editor-empty" }, h("p", {}, "Open a file from the tree."), h("p", { class: "quiet" }, READ_ONLY_NOTE));
+    this.#placeholder = h(
+      "div",
+      { class: "editor-empty" },
+      h("p", {}, "Open a file from the tree."),
+      h("p", { class: "quiet" }, `${shortcut} saves the open file; the page never saves on its own.`),
+    );
     this.#panels = h("div", { class: "panels" }, this.#placeholder);
     this.#tablist.addEventListener("keydown", (event) => this.#onTabKey(event));
     this.element = h(
       "section",
       { class: "editors", "aria-label": "Editor" },
-      h("div", { class: "tabbar" }, this.#tablist, h("span", { class: "chip", title: READ_ONLY_NOTE }, "read-only")),
+      h("div", { class: "tabbar" }, this.#tablist, h("span", { class: "chip save-hint", title: "Save the open file" }, h("kbd", {}, shortcut), " save")),
       this.#panels,
     );
+    document.addEventListener("keydown", this.#onSaveKey);
+    window.addEventListener("beforeunload", this.#onUnload);
+    this.#untrack = trackUnsaved(() => this.unsavedPaths());
   }
 
   async open(path: string): Promise<void> {
@@ -145,14 +78,45 @@ export class EditorTabs {
     const file = this.#addTab(path);
     this.#activate(path);
     try {
-      const document = await this.#context.api.get<FileDocument>(
-        `/api/v1/attempts/${this.#attemptId}/files/${path.split("/").map(encodeURIComponent).join("/")}`,
-      );
+      const document = await this.files.read(path);
       if (this.#destroyed) return;
       await this.#show(file, document);
     } catch (error) {
       file.panel.replaceChildren(failure(error));
     }
+  }
+
+  isOpen(path: string): boolean {
+    return this.#open.has(path);
+  }
+
+  isModified(path: string): boolean {
+    return this.#open.get(path)?.view?.modified ?? false;
+  }
+
+  unsavedPaths(): string[] {
+    return [...this.#open].filter(([, file]) => file.view?.modified).map(([path]) => path);
+  }
+
+  /** Saves the file of the active tab. */
+  async saveActive(): Promise<void> {
+    if (this.#active !== null) await this.#open.get(this.#active)?.view?.save();
+  }
+
+  /** Shows the file as it is on disk now, dropping the tab's changes. */
+  async reload(path: string): Promise<void> {
+    await this.#open.get(path)?.view?.reload();
+  }
+
+  /** Closes the file's tab without asking, dropping its changes. */
+  discard(path: string): void {
+    this.#remove(path);
+  }
+
+  /** Calls the listener with the path of every file a tab saves. */
+  onSaved(listener: SavedListener): () => void {
+    this.#savedListeners.add(listener);
+    return () => this.#savedListeners.delete(listener);
   }
 
   applyPreferences(preferences: Preferences): void {
@@ -164,6 +128,10 @@ export class EditorTabs {
 
   destroy(): void {
     this.#destroyed = true;
+    document.removeEventListener("keydown", this.#onSaveKey);
+    window.removeEventListener("beforeunload", this.#onUnload);
+    this.#untrack();
+    this.#savedListeners.clear();
     for (const { editor } of this.#open.values()) editor?.destroy();
     this.#open.clear();
   }
@@ -175,19 +143,33 @@ export class EditorTabs {
       );
       return;
     }
-    file.panel.replaceChildren();
+    const path = document.path;
+    const view = new EditorFile(file.panel, document, this.files, {
+      modified: (modified) => markTab(file.tab, path, modified),
+      saved: () => {
+        for (const listener of this.#savedListeners) listener(path);
+      },
+      gone: () => this.#remove(path),
+      announce: (message) => this.#context.shell.announce(message),
+    });
     const { createEditor } = await loadEditorModule();
     const preferences = this.#context.preferences();
-    file.editor = await createEditor({
-      parent: file.panel,
-      path: document.path,
+    const editor = await createEditor({
+      parent: view.host,
+      path,
       text: document.text,
       nonce: this.#context.nonce,
       theme: preferences.theme,
-      readOnly: true,
+      readOnly: false,
       vim: preferences.vim,
     });
-    if (this.#destroyed) file.editor.destroy();
+    if (this.#destroyed || !this.#open.has(path)) {
+      editor.destroy();
+      return;
+    }
+    file.editor = editor;
+    file.view = view;
+    view.attach(editor);
   }
 
   #addTab(path: string): OpenFile {
@@ -202,15 +184,15 @@ export class EditorTabs {
     );
     const panel = h("div", { role: "tabpanel", id: `${id}-panel`, "aria-labelledby": id, class: "panel", hidden: true }, loading(`opening ${path}…`));
     tab.addEventListener("click", (event) => {
-      if (event.target === close) this.#close(path);
+      if ((event.target as Element).closest(".tab-close, .tab-dot")) void this.#close(path);
       else this.#activate(path);
     });
     tab.addEventListener("auxclick", (event) => {
-      if (event.button === 1) this.#close(path);
+      if (event.button === 1) void this.#close(path);
     });
     this.#tablist.append(tab);
     this.#panels.append(panel);
-    const file: OpenFile = { tab, panel, editor: null };
+    const file: OpenFile = { tab, panel, editor: null, view: null };
     this.#open.set(path, file);
     return file;
   }
@@ -226,7 +208,21 @@ export class EditorTabs {
     }
   }
 
-  #close(path: string): void {
+  /** Closes the tab, once its unsaved changes, if any, may go. */
+  async #close(path: string): Promise<void> {
+    if (this.isModified(path)) {
+      const close = await confirmAction({
+        title: "Close with unsaved changes?",
+        message: `${path} has changes the page has not saved. Closing its tab loses them.`,
+        action: "Close and lose them",
+        destructive: true,
+      });
+      if (!close) return;
+    }
+    this.#remove(path);
+  }
+
+  #remove(path: string): void {
     const file = this.#open.get(path);
     if (!file) return;
     const paths = [...this.#open.keys()];
@@ -252,7 +248,7 @@ export class EditorTabs {
     const moves: Record<string, number | undefined> = { ArrowRight: index + 1, ArrowLeft: index - 1, Home: 0, End: paths.length - 1 };
     if (event.key === "Delete" && this.#active !== null) {
       event.preventDefault();
-      this.#close(this.#active);
+      void this.#close(this.#active);
       return;
     }
     const target = moves[event.key];
@@ -262,4 +258,15 @@ export class EditorTabs {
     this.#activate(path);
     this.#open.get(path)?.tab.focus();
   }
+
+  /** Cmd or Ctrl-S anywhere in the view saves the active tab, never the browser's page. */
+  readonly #onSaveKey = (event: KeyboardEvent): void => {
+    if (!isSaveShortcut(event) || this.#active === null) return;
+    event.preventDefault();
+    void this.saveActive();
+  };
+
+  readonly #onUnload = (event: BeforeUnloadEvent): void => {
+    if (this.unsavedPaths().length > 0) event.preventDefault();
+  };
 }

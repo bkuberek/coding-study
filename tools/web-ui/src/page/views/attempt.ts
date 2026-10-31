@@ -9,8 +9,9 @@ import { badge, command, h, rendered } from "../dom.ts";
 import { secondsSince, timerText } from "../format.ts";
 import { problemHash } from "../routes.ts";
 import { loading, showFailure } from "../states.ts";
+import { FileTreePanel } from "../fileTreePanel.ts";
 import type { AttemptStatus, Rendered, Tree } from "../types.ts";
-import { EditorTabs, fileTreeView } from "../workbench.ts";
+import { EditorTabs } from "../workbench.ts";
 
 const TICK_MS = 1000;
 
@@ -42,9 +43,11 @@ export function attemptView(context: PageContext, id: number): Cleanup {
       tick();
       timer = window.setInterval(tick, TICK_MS);
       page.removeAttribute("aria-busy");
+      const files = new FileTreePanel(tree, tabs.files, (path) => void tabs.open(path));
+      tabs.onSaved(() => void files.refresh().catch(() => {}));
       page.replaceChildren(
         head(status, clock),
-        fileTreeView(tree, (path) => void tabs.open(path)),
+        files.element,
         tabs.element,
         brief(status, statement),
         results(status),

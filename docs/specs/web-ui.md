@@ -376,8 +376,10 @@ Start dialog: the language (the problem's languages; fixed for a project; none f
 | Change from elsewhere | Page behaviour |
 |-----------------------|----------------|
 | A file changed on disk, the tab has no unsaved edits | The tab reloads and keeps the cursor |
-| A file changed on disk, the tab has unsaved edits | A banner: Reload, or Keep mine, which saves over the disk version on purpose |
-| A save with a stale `If-Match` | The same banner |
+| A file changed on disk, the tab has unsaved edits | A banner: Reload theirs, which drops the tab's edits, or Overwrite, which saves over the disk version on purpose (`If-Match` with the SHA-256 the 412 named) |
+| A save with a stale `If-Match` | The same banner; when the file is gone, Close the tab, or Save mine again (`If-None-Match: *`) |
+| A save the server refuses otherwise | A banner with the refusal's message; after `attempt_ended` the tab turns read-only |
+| Closing a tab, leaving the view or the page with unsaved edits | The page asks first: its own dialog for a tab, the browser's for the view and the page |
 | A file added or deleted | The tree refreshes |
 | `attempt_changed` or `progress_changed` | The header, statement, tree and status refetch |
 | The attempt ended elsewhere | The view says so, keeps the editors read-only, and links to the Problem view |
@@ -425,7 +427,7 @@ The [preferences](#preferences), each applied at once and stored, and the paths 
 | Languages | Python, TypeScript, Java, Kotlin, Go, Rust, JSON, TOML and Markdown highlighting, each loaded the first time a file needs it; no language service: the page relies on the CLI's diagnostics |
 | CSP | Every view gets `EditorView.cspNonce` with the page's nonce |
 | Vim | With the `vim` preference on, `codemirror-vim` loads as a chunk of its own and applies to every editor; `:w` saves |
-| Save | Explicit only (Cmd or Ctrl-S); no autosave |
+| Save | Explicit only (Cmd or Ctrl-S, anywhere in the Attempt view, for the active tab); no autosave. A tab with unsaved edits shows a dot in place of its close button and says so to screen readers; a generated test file opens with a note that editing it never changes a grade |
 
 ### Keyboard and accessibility
 

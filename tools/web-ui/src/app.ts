@@ -9,6 +9,7 @@ import { createApi } from "./page/api.ts";
 import type { Cleanup, PageContext, PreferencesListener } from "./page/context.ts";
 import { h } from "./page/dom.ts";
 import { parseRoute, type Route } from "./page/routes.ts";
+import { leaveWarning, unsavedPaths } from "./page/save.ts";
 import { mountShell, nextTheme } from "./page/shell.ts";
 import { failure } from "./page/states.ts";
 import type { Preferences, ProblemList, Session } from "./page/types.ts";
@@ -88,7 +89,15 @@ async function start(root: HTMLElement): Promise<void> {
 
   let cleanup: Cleanup = () => {};
   let shown: Route["view"] | null = null;
+  let shownHash = location.hash;
   const render = () => {
+    // Leaving a view drops its editors, so unsaved changes keep the view unless the user agrees.
+    const warning = shown === null ? null : leaveWarning(unsavedPaths());
+    if (warning !== null && !window.confirm(warning)) {
+      history.replaceState(null, "", shownHash || "#/");
+      return;
+    }
+    shownHash = location.hash;
     cleanup();
     const route = parseRoute(location.hash);
     cleanup = show(context, route);
