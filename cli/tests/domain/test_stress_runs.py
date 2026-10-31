@@ -3,8 +3,10 @@ from dataclasses import replace
 import pytest
 
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
+from coding_study.domain.attempts import RunRecord, passed_every_case
 from coding_study.domain.cases import OperationSequence
 from coding_study.domain.concurrency import STALL_GRACE_MS, StressVariant, ThreadKind
+from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language, Problem
 from coding_study.domain.stress import (
     ArithmeticSequence,
@@ -19,9 +21,10 @@ from coding_study.domain.stress import (
 from coding_study.domain.stress_runs import (
     StressSelection,
     expand_workers,
+    full_run_case_count,
     plan_runs,
 )
-from tests.fakes import repository_root
+from tests.fakes import NOW, repository_root
 from tests.helpers import CONCURRENCY_PROBLEMS
 
 SETUP = OperationSequence(("Queue",), ((4,),))
@@ -168,3 +171,26 @@ def test_python_repeat_override_reaches_the_request(queue):
 def test_problems_without_concurrency_plan_no_runs(queue):
     plain = replace(queue, meta=replace(queue.meta, concurrency=None))
     assert plan_runs(plain, Language.PYTHON, StressSelection()) == ()
+
+
+def run_record(total: int, passed: int) -> RunRecord:
+    return RunRecord(1, NOW, "hash", Tally(total=total, passed=passed), duration_ms=10)
+
+
+def test_a_run_of_every_case_that_passed_them_all_passed_every_case(queue):
+    full = full_run_case_count(queue, Language.PYTHON)
+    assert passed_every_case(run_record(full, full), queue, Language.PYTHON)
+
+
+def test_a_run_with_a_failure_did_not_pass_every_case(queue):
+    full = full_run_case_count(queue, Language.PYTHON)
+    assert not passed_every_case(run_record(full, full - 1), queue, Language.PYTHON)
+
+
+def test_a_run_of_some_cases_did_not_pass_every_case(queue):
+    full = full_run_case_count(queue, Language.PYTHON)
+    assert not passed_every_case(run_record(full - 1, full - 1), queue, Language.PYTHON)
+
+
+def test_no_run_did_not_pass_every_case(queue):
+    assert not passed_every_case(None, queue, Language.PYTHON)

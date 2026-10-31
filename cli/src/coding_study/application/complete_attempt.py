@@ -18,13 +18,13 @@ from coding_study.domain.attempts import (
     Rating,
     cap_grade,
     grade_attempt,
+    passed_every_case,
     self_graded,
 )
 from coding_study.domain.errors import UsageError
 from coding_study.domain.items import ItemMeta
 from coding_study.domain.problem import Problem, ProblemKind, ProblemMeta
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry, next_review_state
-from coding_study.domain.stress_runs import full_run_case_count
 from coding_study.domain.submissions import counted_submission, level_grade_cap, levels_finished
 
 RATINGS = "|".join(Rating)
@@ -67,9 +67,8 @@ def complete_attempt(environment: Environment, request: DoneRequest) -> Finished
     problem = environment.problems.load(attempt.slug)
     if problem.meta.kind is ProblemKind.PROJECT:
         return _finish_project(environment, attempt, problem, request)
-    passed = _latest_run_passed(
-        environment, attempt, full_run_case_count(problem, attempt.language)
-    )
+    latest = environment.progress.latest_test_run(attempt.id)
+    passed = passed_every_case(latest, problem, attempt.language)
     _check_rating_matches(passed, request)
     now = environment.clock.now()
     caps = _measured_caps(environment, attempt)
@@ -153,12 +152,6 @@ def _finish_item(
     environment.progress.update_attempt(finished)
     schedule = _reschedule(environment, finished)
     return FinishedAttempt(meta, finished, schedule, environment.clock.local_date(now))
-
-
-def _latest_run_passed(environment: Environment, attempt: Attempt, full_run_total: int) -> bool:
-    """Whether the latest `cstudy test` run passed every case of the problem."""
-    latest = environment.progress.latest_test_run(attempt.id)
-    return latest is not None and latest.tally.all_passed and latest.tally.total == full_run_total
 
 
 def _check_rating_matches(passed: bool, request: DoneRequest) -> None:

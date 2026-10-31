@@ -14,14 +14,13 @@ from coding_study.application.active_attempt import find_attempt
 from coding_study.application.environment import Environment
 from coding_study.application.project_manifest import folder_states
 from coding_study.domain import layout
-from coding_study.domain.attempts import Attempt, RunRecord
+from coding_study.domain.attempts import Attempt, RunRecord, passed_every_case
 from coding_study.domain.file_states import FolderFile, StarterChanges, starter_changes
 from coding_study.domain.hints import hint_level, problem_hints
 from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.levels import FIRST_LEVEL, LevelProgress, level_progress
 from coding_study.domain.problem import Language, ProblemKind, Track
 from coding_study.domain.problem_files import PROBLEM_FILE
-from coding_study.domain.stress_runs import full_run_case_count
 from coding_study.domain.submissions import LevelTally, SubmissionRecord, best_per_level
 
 TEST_NEXT = "cstudy test --watch"
@@ -194,8 +193,7 @@ class _ProblemStatus:
         """Testing until a run passes every case of the problem, as `cstudy done` requires."""
         language = self._attempt.language
         assert language is not None
-        full_run = full_run_case_count(self._problem, language)
-        passed = last_run is not None and _passed_every_case(last_run, full_run)
+        passed = passed_every_case(last_run, self._problem, language)
         return DONE_NEXT if passed else TEST_NEXT
 
     def _project(self) -> ProjectStanding | None:
@@ -207,7 +205,3 @@ class _ProblemStatus:
             best_per_level=best_per_level(submissions),
             files=folder_states(self._environment, self._problem, self._levels.unlocked),
         )
-
-
-def _passed_every_case(run: RunRecord, full_run: int) -> bool:
-    return run.tally.all_passed and run.tally.total == full_run

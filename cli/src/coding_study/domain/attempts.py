@@ -7,7 +7,8 @@ from datetime import datetime, timedelta
 from enum import IntEnum, StrEnum
 
 from coding_study.domain.judging import Tally
-from coding_study.domain.problem import Language
+from coding_study.domain.problem import Language, Problem
+from coding_study.domain.stress_runs import full_run_case_count
 
 SECONDS_PER_MINUTE = 60
 SECONDS_PER_HOUR = 3600
@@ -105,6 +106,14 @@ class RunRecord:
     duration_ms: int
     time_limit: str | None = None
     """"5x", "1500ms", or None when time limits were off."""
+
+
+def passed_every_case(run: RunRecord | None, problem: Problem, language: Language) -> bool:
+    """Whether a `cstudy test` run passed every case of the problem, as `cstudy done` needs for
+    a rating: a run of fewer cases (`--case`, an earlier level) never counts."""
+    if run is None:
+        return False
+    return run.tally.all_passed and run.tally.total == full_run_case_count(problem, language)
 
 
 def grade_attempt(attempt: Attempt, rating: Rating | None, ended_at: datetime) -> Grade:
