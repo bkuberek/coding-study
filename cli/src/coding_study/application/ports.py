@@ -884,3 +884,15 @@ class ProgressDatabase(Protocol):
         """Brings the file to the latest schema, as the first command to open it would; raises
         UsageError when it cannot."""
         ...
+
+
+class PreferencesStore(Protocol):
+    """The web UI's `.cs/serve/preferences.json` (docs/specs/web-ui.md#preferences)."""
+
+    def read(self) -> object:
+        """The parsed JSON document; None when the file is missing or unreadable."""
+        ...
+
+    def write(self, document: dict[str, object]) -> None:
+        """Replaces the whole file."""
+        ...
