@@ -122,11 +122,13 @@ Phases 0 to 7 are implemented: every command in the table above exists with its 
 
 ## Phase 8: Project problems
 
-**Scope.** [ADR 0014](decisions/0014-project-problems.md) and its spec amendments, then the project kind ([problem-format](specs/problem-format.md#project-problems)): project folders, generated native tests, the `suite` and project grading jobs ([runners](specs/runners.md#project-jobs)), `cstudy submit` and `cstudy status`, verify checks S14 to S16 and D9. 8a is the Python pilot `0249-bank-project-python`, playable from `start` to `done`; 8b the TypeScript pilot `0250-bank-project-typescript` and `node:test` through the same suite protocol. Later, each behind its own spike: web interface groundwork in the CLI (an event stream, a starter manifest with `cstudy start --restore`, a lock per project), Java and Kotlin projects (K4), and Go and Rust projects (K5, K6).
+**Scope.** [ADR 0014](decisions/0014-project-problems.md) and its spec amendments, then the project kind ([problem-format](specs/problem-format.md#project-problems)): project folders, generated native tests, the `suite` and project grading jobs ([runners](specs/runners.md#project-jobs)), `cstudy submit` and `cstudy status`, verify checks S14 to S16 and D9. 8a is the Python pilot `0249-bank-project-python`, playable from `start` to `done`; 8b the TypeScript pilot `0250-bank-project-typescript` and `node:test` through the same suite protocol. Later, each behind its own spike: web interface groundwork in the CLI (an event stream, a starter manifest with `cstudy start --restore`, a lock per project), Java and Kotlin projects (K4: 8c `0251-bank-project-java`, 8d `0252-bank-project-kotlin`), and Go and Rust projects (K5, K6: 8e `0253-bank-project-go`, 8f `0254-bank-project-rust`).
 
-**Exit criteria.**
+**Exit criteria.** Each pilot passes three checks in its language: `cstudy verify --conformance` passes with the language's project and suite fixtures, and `cstudy verify <slug> --require-ready` exits 0; a manual run through all four levels, from `cstudy start` to `cstudy done`; and the warm p50 of `cstudy test` and of `cstudy submit` is within the language's NFR-1 target.
 
-- [ ] 8a: `cstudy verify --conformance` passes with fixtures 9022 and 9024, and `cstudy verify bank-project-python --require-ready` exits 0.
-- [ ] 8a: a manual run through all four levels of `bank-project-python`, from `cstudy start` to `cstudy done`.
-- [ ] 8a: warm p50 of `cstudy test` and `cstudy submit` on `bank-project-python` within 1.0 s (NFR-1).
-- [ ] 8b: the same three checks for `bank-project-typescript`, with fixtures 9023 and 9025.
+- [ ] 8a, Python, `bank-project-python`: fixtures 9022 and 9024; NFR-1 1.0 s.
+- [ ] 8b, TypeScript, `bank-project-typescript`: fixtures 9023 and 9025; NFR-1 1.0 s.
+- [ ] 8c, Java, `bank-project-java`: fixtures 9026 and 9028; NFR-1 3 s.
+- [ ] 8d, Kotlin, `bank-project-kotlin`: fixtures 9027 and 9029; NFR-1 5 s.
+- [ ] 8e, Go, `bank-project-go`: fixtures 9030 and 9031; NFR-1 1.5 s.
+- [ ] 8f, Rust, `bank-project-rust`: fixtures 9032 and 9033; NFR-1 2 s.
