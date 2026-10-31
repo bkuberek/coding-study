@@ -564,12 +564,12 @@ target-version = "py313"
 
 | Rule | Detail |
 |------|--------|
-| Body | The constructor op becomes `bank = Bank(...)` (`const bank = new Bank(...)`), the instance named after the class in the language's case. Each later op becomes one statement in the language's method names: a call alone where the method returns `void`, otherwise an assertion on its result |
+| Body | The constructor op becomes `bank = Bank(...)` (`const bank = new Bank(...)`), the instance named after the class in the language's case. Each later op becomes one statement in the language's method names: a call alone where the method returns `void`, otherwise an assertion on its result. A case with no other operation calls the constructor alone (`Bank(...)`), so no variable goes unused |
 | `exact` | Python: `is True`, `is False` and `is None` for those values, since the core never equates `true` and `1`; `==` for everything else. TypeScript: `assert.equal` for scalars, `assert.deepEqual` for arrays and lists (both strict under `node:assert/strict`) |
 | `unordered` | Both sides sorted before comparing: `sorted(...) == [...]` with the expected literal already sorted; `assert.deepEqual([...result].sort(), [...])` |
 | `float` | Python: `pytest.approx(expected, rel=tol, abs=tol)`; TypeScript: a helper `assertClose(actual, expected, tol)` defined once in the file. Both pass exactly when `abs(a - e) <= tol * max(1, abs(e))` |
-| Agreement | A generated test passes when the core comparator would pass the case and fails when it would fail it, with one exception: Python's `==` equates `True` with `1` inside a list, where the core does not |
-| Values | Literals of the language, formatted as ruff and Prettier format them; `decimal` and `date` in Python as `Decimal("2500.50")` and `date.fromisoformat("2026-01-01")`, imported when used |
+| Agreement | A generated test passes when the core comparator would pass the case and fails when it would fail it, with one exception: Python's `==` equates `True` with `1` and `False` with `0` where a number is expected, alone or inside a list, where the core does not |
+| Values | Literals of the language, formatted as ruff and Prettier format them; `decimal` and `date` in Python as `Decimal("2500.50")` (a whole number as `Decimal(10)`, except `-0`, which stays `Decimal("-0")`) and `date.fromisoformat("2026-01-01")`, imported when used |
 
 Generated level 1 tests from case `ex1` of `0248-scheduled-transfers-bank`:
 
