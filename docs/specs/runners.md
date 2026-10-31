@@ -525,7 +525,7 @@ Added to `runners/conformance/` before any concurrent problem merges. `expectati
 
 | Fixture | Approaches | Expected |
 |---------|------------|----------|
-| `9014-conformance-stress-counter` | `atomic` (correct counter), `racy` (reads the count on one line and writes it on the next; TypeScript awaits between them) | `atomic` passes 10 of 10; `racy` fails at least 9 of 10 in every language and variant |
+| `9014-conformance-stress-counter` | `atomic` (correct counter), `racy` (reads the count on one line and writes it on the next; TypeScript awaits between them, and Java, Kotlin, Go and Rust yield to the scheduler between them) | `atomic` passes 10 of 10; `racy` fails at least 9 of 10 in every language and variant |
 | `9015-conformance-stress-stall` | `never-opens` (`await` or wait on a gate nobody opens) | `stalled`, with `progress` naming the waiting workers |
 | `9016-conformance-stress-worker-error` | `throws-at` (a worker op throws at op 100) | `error` with `phase: "worker"` and `op_index` 100 |
 | `9017-conformance-stress-sections` | `locked`, `unlocked` (a mutex around `@enter`/`@exit` probes) | `locked`: 0 violations; `unlocked`: violations in at least 9 of 10 runs |

@@ -14,6 +14,7 @@ impl StressCounter {
     /// Safe Rust has no data race to lose an increment with: a separate load and store do.
     pub fn increment(&self) -> i32 {
         let current = self.count.load(Ordering::Relaxed);
+        std::thread::yield_now();
         self.count.store(current + 1, Ordering::Relaxed);
         current + 1
     }

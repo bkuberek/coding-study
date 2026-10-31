@@ -3,6 +3,7 @@ class StressCounter {
 
     fun increment(): Int {
         val current = count
+        Thread.yield()
         count = current + 1
         return current + 1
     }
