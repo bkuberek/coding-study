@@ -1,0 +1,25 @@
+id: "0002"
+slug: bank-project-typescript
+title: Bank Project (TypeScript)
+status: draft
+difficulty: medium
+track: practical
+kind: project
+languages: [typescript]
+levels:
+  - {level: 1, title: Accounts and deposits}
+  - {level: 2, title: Transfers}
+signature:
+  class:
+    name: Bank
+    constructor: {params: []}
+    methods:
+      - {name: createAccount, level: 1, params: [{name: timestamp, type: long}, {name: accountId, type: string}], returns: {type: bool}}
+      - {name: deposit, level: 1, params: [{name: timestamp, type: long}, {name: accountId, type: string}, {name: amount, type: long}], returns: {type: long}}
+      - {name: transfer, level: 2, params: [{name: timestamp, type: long}, {name: sourceId, type: string}, {name: targetId, type: string}, {name: amount, type: long}], returns: {type: long}}
+comparator: {type: ops}
+project:
+  entry: src/bank.ts
+approaches:
+  - {id: reference, name: Balances in a ledger, role: optimal, time: "O(1) per operation", space: "O(n)", time_class: "n", space_class: "n"}
+estimate_minutes: 45

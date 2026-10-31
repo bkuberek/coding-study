@@ -495,7 +495,7 @@ Added to `runners/conformance/` before any concurrent problem merges. `expectati
 
 ## Project jobs
 
-A [project problem](problem-format.md#project-problems) is a folder, not one file, and its native tests run inside the runner. Two kinds of job serve it: a **grading job** (`cstudy submit`, and `cstudy verify` D1 and D3), an ordinary class job whose target is the project, and a **suite job** (`cstudy test`, and D1 and D9), which runs the project's native test framework in-process. Python and TypeScript runners support both; the JVM, Go and Rust runners do not support project jobs yet ([ADR 0014](../decisions/0014-project-problems.md)). Planned: the TypeScript runner does not run project jobs yet.
+A [project problem](problem-format.md#project-problems) is a folder, not one file, and its native tests run inside the runner. Two kinds of job serve it: a **grading job** (`cstudy submit`, and `cstudy verify` D1 and D3), an ordinary class job whose target is the project, and a **suite job** (`cstudy test`, and D1 and D9), which runs the project's native test framework in-process. Python and TypeScript runners support both; the JVM, Go and Rust runners do not support project jobs yet ([ADR 0014](../decisions/0014-project-problems.md)).
 
 ### Capability
 

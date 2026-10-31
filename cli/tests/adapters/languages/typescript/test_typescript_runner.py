@@ -38,7 +38,7 @@ class FakeTypeChecker:
         self.result = result
         self.projects: list[Path] = []
 
-    def check(self, project: Path) -> ProbeResult | None:
+    def check(self, project: Path, *arguments: str) -> ProbeResult | None:
         self.projects.append(project)
         return self.result
 

@@ -13,10 +13,12 @@ from coding_study.application.case_materialization import CaseMaterializer
 from coding_study.application.comparison import problem_comparator
 from coding_study.application.environment import Environment
 from coding_study.application.ports import (
+    BuildFailed,
     ProgressNotice,
     ProjectGrading,
     ProjectRunner,
     ProjectSuite,
+    ProjectTypeChecker,
     Toolchains,
 )
 from coding_study.domain.config import Config
@@ -79,6 +81,22 @@ def run_suite(environment: Environment, run: SuiteRun, notify: ProgressNotice) -
     runner = project_runner(environment.toolchains, run.language)
     launch = runner.prepare_project(ProjectSuite(run.root, run.debug), notify)
     return environment.runner_process.run_suite(launch, suite_job(run, environment.config))
+
+
+def typecheck_project(
+    environment: Environment, language: Language, root: Path
+) -> BuildFailed | None:
+    """`cstudy test --typecheck` on the project folder at `root`: its language's type check of
+    the whole folder, a build step of its own (docs/specs/cli.md#project-problems). None when the
+    folder type-checks, or when its language has no type check apart from running it.
+
+    Raises RunnerStartError (exit 4) for a language without project jobs, or a workspace that
+    cannot type-check.
+    """
+    runner = project_runner(environment.toolchains, language)
+    if not isinstance(runner, ProjectTypeChecker):
+        return None
+    return runner.typecheck_project(root)
 
 
 def project_runner(toolchains: Toolchains, language: Language) -> ProjectRunner:

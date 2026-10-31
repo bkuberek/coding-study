@@ -32,6 +32,12 @@ CONCURRENCY_PROBLEMS = Path(__file__).resolve().parent / "fixtures" / "concurren
 PROJECT_PROBLEMS = Path(__file__).resolve().parent / "fixtures" / "project" / "problems"
 """A Python project fixture problem: a starter tree and a reference overlay."""
 BANK_PROJECT = "0001-bank-project-python"
+TYPESCRIPT_PROJECT_PROBLEMS = (
+    Path(__file__).resolve().parent / "fixtures" / "typescript-project" / "problems"
+)
+"""A TypeScript project fixture problem: a starter whose entry imports a sibling file, and a
+reference overlay that adds one."""
+TYPESCRIPT_BANK_PROJECT = "0002-bank-project-typescript"
 FAKE_RUNNER_PROGRAM = (
     f'#!/bin/sh\nexec "{sys.executable}" "{Path(__file__).resolve().parent}'
     '/fixtures/fake_runner.py" "$@"\n'

@@ -670,7 +670,7 @@ type ProjectScope = ProjectGrading | ProjectSuite
 @runtime_checkable
 class ProjectRunner(Protocol):
     """A `LanguageRunner` that also runs project jobs (docs/specs/runners.md#project-jobs):
-    Python for now."""
+    Python and TypeScript."""
 
     def prepare_project(self, scope: ProjectScope, notify: ProgressNotice) -> RunnerLaunch:
         """How to launch the runner in the project root; a project builds nothing, and any
@@ -700,4 +700,18 @@ class ProjectLinks(Protocol):
         """The venv that the shebangs of `python/.venv`'s console scripts name, when it is not
         this workspace's `python/.venv` (the workspace moved); None when they name it, or when
         there is no script to read."""
+        ...
+
+
+@runtime_checkable
+class ProjectTypeChecker(Protocol):
+    """A `ProjectRunner` whose language type-checks a project folder as a build step of its own
+    (`cstudy test --typecheck`, docs/specs/cli.md#project-problems): TypeScript."""
+
+    def typecheck_project(self, root: Path) -> BuildFailed | None:
+        """Every diagnostic in the folder at `root`, with paths relative to the workspace; None
+        when it type-checks.
+
+        Raises RunnerStartError when the workspace cannot type-check.
+        """
         ...

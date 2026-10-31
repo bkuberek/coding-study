@@ -22,7 +22,7 @@ SESSION = DebugSession(Language.TYPESCRIPT, 9229)
 
 
 class PassingTypeChecker:
-    def check(self, project: Path) -> ProbeResult | None:
+    def check(self, project: Path, *arguments: str) -> ProbeResult | None:
         return ProbeResult(0, "")
 
 
