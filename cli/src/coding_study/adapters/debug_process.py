@@ -5,27 +5,17 @@ that the runner's own output says when the agent listens (or could not connect),
 debug run, however it ends, must never leave the runner going or holding the debug port.
 """
 
-import os
 import signal
-import subprocess
-import time
 from collections import deque
-from collections.abc import Callable, Generator, Iterator
-from contextlib import contextmanager, suppress
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from pathlib import Path
 from types import FrameType
 
-from coding_study.adapters.process_liveness import is_alive
 from coding_study.application.ports import DebugLaunch
 
 TAIL_LINES = 20
 STOP_SIGNALS = (signal.SIGTERM, signal.SIGHUP)
-PROCESS_LIST = ("ps", "-axww", "-o", "pid=,args=")
-"""Every process and the command line it started with, on macOS. Linux reads `PROC_ROOT` instead:
-BusyBox's `ps` (Alpine) rejects `-x` and would list nothing."""
-PROC_ROOT = Path("/proc")
-PROCESS_LIST_TIMEOUT_SECONDS = 10.0
-EXIT_POLL_SECONDS = 0.01
 
 type _Handler = Callable[[int, FrameType | None], object] | int | signal.Handlers | None
 
@@ -109,65 +99,3 @@ def terminated_like_interrupt() -> Generator[None]:
     finally:
         for stop_signal, handler in previous.items():
             signal.signal(stop_signal, handler)
-
-
-def kill_processes_started_from(directory: Path | None, grace_seconds: float) -> None:
-    """Kills every process running a file of `directory`, then waits up to `grace_seconds` for
-    them to be gone.
-
-    A debug server that lets go of its runner (`debugserver` after lldb's `detach`) exits and
-    leaves it going, followed by nobody. The server starts the runner in a process group of its
-    own, so the server's group says nothing about it; the launch's private directory, which only
-    this run executes from, does. Only a process whose executable (the first word of its command
-    line) is inside `directory` is killed: not one that merely names a file there.
-
-    Does nothing without a directory, or where neither `/proc` nor `ps` can say what is running."""
-    if directory is None:
-        return
-    running = _started_from(directory)
-    for pid in running:
-        with suppress(ProcessLookupError, PermissionError):
-            os.kill(pid, signal.SIGKILL)
-    deadline = time.monotonic() + grace_seconds
-    while any(is_alive(pid) for pid in running) and time.monotonic() < deadline:
-        time.sleep(EXIT_POLL_SECONDS)
-
-
-def _started_from(directory: Path, proc_root: Path | None = None) -> list[int]:
-    proc_root = proc_root or PROC_ROOT
-    prefixes = tuple(f"{path}{os.sep}" for path in {directory, directory.resolve()})
-    if proc_root.is_dir():
-        return [pid for pid, command in _proc_commands(proc_root) if command.startswith(prefixes)]
-    return [pid for pid, command in _listed_commands() if command.lstrip().startswith(prefixes)]
-
-
-def _proc_commands(proc_root: Path) -> Iterator[tuple[int, str]]:
-    """Each process and its executable as it was started: the first word of `cmdline`, which
-    separates its arguments with NUL, so a path with a space stays whole."""
-    for entry in proc_root.iterdir():
-        if not entry.name.isdigit():
-            continue
-        try:
-            command = (entry / "cmdline").read_bytes().partition(b"\0")[0]
-        except OSError:
-            continue
-        yield int(entry.name), command.decode(errors="replace")
-
-
-def _listed_commands() -> Iterator[tuple[int, str]]:
-    """Each process and its whole command line, from `ps`."""
-    try:
-        listing = subprocess.run(
-            PROCESS_LIST,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            timeout=PROCESS_LIST_TIMEOUT_SECONDS,
-            check=False,
-        ).stdout
-    except (OSError, subprocess.TimeoutExpired):
-        return
-    for line in listing.splitlines():
-        pid, _, command_line = line.strip().partition(" ")
-        if pid.isdigit():
-            yield int(pid), command_line

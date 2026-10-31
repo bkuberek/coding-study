@@ -41,6 +41,7 @@ from coding_study.domain.runs import (
 )
 from coding_study.domain.signature import FunctionSignature, Param, Returns
 from coding_study.domain.type_dsl import Scalar, ScalarType
+from tests.process_table import DyingCstudy, kill_all, left_running
 
 FAKE_RUNNER = Path(__file__).resolve().parents[1] / "fixtures" / "fake_runner.py"
 HANG_GUARD_MS = 200
@@ -366,3 +367,12 @@ def test_removes_the_launch_scratch_directory_when_interrupted(monkeypatch, runn
     with pytest.raises(KeyboardInterrupt):
         runner.run(replace(launch(), scratch=scratch), RunRequest(()))
     assert not scratch.exists()
+
+
+def test_a_hanging_runner_ends_with_its_group_when_cstudy_dies(tmp_path):
+    """docs/specs/runners.md#process-lifecycle: SIGKILL leaves `cstudy` no time to clean up."""
+    cstudy = DyingCstudy("runner", tmp_path / "runs")
+    assert cstudy.said() == ["going"]
+    left = left_running(cstudy.kill())
+    kill_all(left)
+    assert left == []

@@ -26,6 +26,7 @@ from coding_study.domain.suite_runs import (
     SuiteJob,
     SuiteTest,
 )
+from tests.process_table import DyingCstudy, kill_all, left_running
 
 ROOT = Path("/ws/projects/bank")
 LEVEL_1 = Path("/ws/.cs/build/rust-projects/bank/run/1-a/level_1-0123")
@@ -331,3 +332,13 @@ def test_a_test_runs_without_the_users_backtrace_settings(script, tmp_path, monk
     finished = SubprocessTests().run((str(binary),), tmp_path, LIMIT_MS)
     assert finished is not None
     assert finished.output == "unset unset\n"
+
+
+def test_a_hanging_test_ends_with_its_group_when_cstudy_dies(tmp_path):
+    """docs/specs/runners.md#process-lifecycle: SIGKILL leaves `cstudy` no time to clean up."""
+    marker = tmp_path / "running"
+    cstudy = DyingCstudy("libtest", marker)
+    cstudy.wait_for(marker)
+    left = left_running(cstudy.kill())
+    kill_all(left)
+    assert left == []

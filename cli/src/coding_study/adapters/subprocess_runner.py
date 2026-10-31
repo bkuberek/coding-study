@@ -30,6 +30,10 @@ as the runner starts when it connects to an IDE that is already listening; that 
 while nobody listens, so it is launched again for a while. When a debug attempt ends, whatever it
 leaves running from the launch's `scratch` directory is killed: a debug server that lets go of its
 runner exits, and the runner (in a process group of its own) runs on.
+
+Every attempt starts an `OrphanGuard` before its runner, so that a `cstudy` that dies without
+cleaning up (SIGKILL, a crash) still takes the runner's process group with it, and in a debug
+attempt what runs from `scratch` (docs/specs/runners.md#process-lifecycle).
 """
 
 import json
@@ -47,11 +51,8 @@ from shutil import rmtree
 from typing import IO, Protocol, TypeGuard
 
 from coding_study.adapters.bench_progress import BenchProgress
-from coding_study.adapters.debug_process import (
-    DebugOutput,
-    kill_processes_started_from,
-    terminated_like_interrupt,
-)
+from coding_study.adapters.debug_process import DebugOutput, terminated_like_interrupt
+from coding_study.adapters.process_liveness import OrphanGuard, kill_processes_started_from
 from coding_study.adapters.runner_protocol import (
     Bye,
     CaseResult,
@@ -694,15 +695,21 @@ class _Attempt:
             stderr = streams.enter_context(self._files.stderr.open("wb"))
             events = streams.enter_context(self._files.events.open("rb"))
             stdout = self._open_stdout(streams)
-            process = self._start(stdout, stderr)
-            try:
-                self._follow(process, _EventLines(events))
-            finally:
+            with OrphanGuard(self._debug_scratch()) as guard:
+                process = self._start(stdout, stderr)
+                guard.watch(process.pid)
                 try:
-                    _kill_group(process)
+                    self._follow(process, _EventLines(events))
                 finally:
-                    if self._launch.debug is not None:
-                        kill_processes_started_from(self._launch.scratch, EXIT_GRACE_SECONDS)
+                    try:
+                        _kill_group(process)
+                    finally:
+                        kill_processes_started_from(self._debug_scratch(), EXIT_GRACE_SECONDS)
+
+    def _debug_scratch(self) -> Path | None:
+        """The launch's private directory in a debug run, whose processes the run kills when it
+        ends: a debug server starts its runner from there, and may leave it going."""
+        return self._launch.scratch if self._launch.debug is not None else None
 
     def _open_stdout(self, streams: ExitStack) -> IO[bytes] | int:
         """Debug agents print their ready line to standard output or error: keep both. An agent

@@ -21,10 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from coding_study.adapters.debug_process import (
-    kill_processes_started_from,
-    terminated_like_interrupt,
-)
+from coding_study.adapters.debug_process import terminated_like_interrupt
 from coding_study.adapters.languages.rust.libtest import (
     LIBTEST_ERROR,
     FinishedTest,
@@ -33,6 +30,7 @@ from coding_study.adapters.languages.rust.libtest import (
     listed_tests,
 )
 from coding_study.adapters.languages.rust.project_build import BuiltTests, SuiteTarget
+from coding_study.adapters.process_liveness import OrphanGuard, kill_processes_started_from
 from coding_study.application.ports import SuiteListener
 from coding_study.domain.debugging import LLDB_SERVER, DebugSession
 from coding_study.domain.errors import RunnerStartError
@@ -236,21 +234,24 @@ def _read(path: Path) -> str:
 
 class SubprocessTests:
     """`LibtestProcesses` as real processes, each in a process group of its own, so a test that
-    started processes of its own is ended with them."""
+    started processes of its own is ended with them; an `OrphanGuard` ends them too if `cstudy`
+    dies meanwhile (docs/specs/runners.md#process-lifecycle)."""
 
     def run(self, command: Sequence[str], cwd: Path, limit_ms: int) -> FinishedTest | None:
-        started = time.perf_counter_ns()
-        process = _start(command, cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        try:
-            output, _ = process.communicate(timeout=limit_ms / MILLISECONDS_PER_SECOND)
-        except subprocess.TimeoutExpired:
-            _kill_group(process)
-            process.communicate()
-            return None
-        except BaseException:
-            _kill_group(process)
-            raise
-        duration = time.perf_counter_ns() - started
+        with OrphanGuard() as guard:
+            started = time.perf_counter_ns()
+            process = _start(command, cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            guard.watch(process.pid)
+            try:
+                output, _ = process.communicate(timeout=limit_ms / MILLISECONDS_PER_SECOND)
+            except subprocess.TimeoutExpired:
+                _kill_group(process)
+                process.communicate()
+                return None
+            except BaseException:
+                _kill_group(process)
+                raise
+            duration = time.perf_counter_ns() - started
         return FinishedTest(
             _exit_code(process.returncode), output.decode(errors="replace"), duration
         )
@@ -258,8 +259,13 @@ class SubprocessTests:
     def debug(self, test: DebuggedTest) -> None:
         test.ready_file.write_bytes(b"")
         server_output = test.scratch / SERVER_OUTPUT
-        with terminated_like_interrupt(), server_output.open("wb") as output:
+        with (
+            terminated_like_interrupt(),
+            server_output.open("wb") as output,
+            OrphanGuard(test.scratch) as guard,
+        ):
             process = _start(test.command, test.cwd, stdout=output, stderr=subprocess.STDOUT)
+            guard.watch(process.pid)
             try:
                 self._follow(process, test, server_output)
             finally:
