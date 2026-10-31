@@ -262,8 +262,8 @@ The page `cstudy serve` serves ([web-ui](web-ui.md#front-end-assets)) is a front
 
 | Item | Rule |
 |------|------|
-| Sources | `tools/web-ui/`: `package.json`, `package-lock.json` with integrity hashes, the TypeScript and CSS sources, and `build.sh`. Outside `cli/src`, so neither the wheel nor the sdist holds them |
-| Build | `tools/web-ui/build.sh`: `npm ci --ignore-scripts`, then esbuild into `static/`, with content-hashed chunk names, `manifest.json` (each file's SHA-256) and `THIRD_PARTY_LICENSES.txt`. Needs Node 24 and npm, a contributor's tools only |
+| Sources | `tools/web-ui/`: `package.json` with exact versions, `pnpm-lock.yaml` with integrity hashes, the TypeScript and CSS sources, and `build.sh`. Outside `cli/src`, so neither the wheel nor the sdist holds them |
+| Build | `tools/web-ui/build.sh`: `pnpm install --frozen-lockfile --ignore-scripts` (run from `tools/web-ui/`, so Corepack reads the pinned pnpm), then esbuild into `static/`, with content-hashed chunk names, `manifest.json` (each file's SHA-256) and `THIRD_PARTY_LICENSES.txt`. Needs Node 24 and npm, a contributor's tools only |
 | Not `build` | The output directory is `static/`: the wheel excludes directories named `build` |
 | Checks | A fast test asserts the wheel holds every file `manifest.json` names; a slow test rebuilds and compares the bytes; `cstudy doctor` compares the installed files with the manifest ([workspace checks](#cstudy-doctor-in-a-workspace)) |
 | Runtime | The page requests nothing but the server's own files (NFR-12) |
