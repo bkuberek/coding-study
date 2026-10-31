@@ -450,6 +450,10 @@ class MachineProbe(Protocol):
         """CPU model, power source, load average and core count, right now."""
         ...
 
+    def settle(self, timeout_seconds: float) -> None:
+        """Returns once a snapshot shows no environment warning, or after `timeout_seconds`."""
+        ...
+
 
 class Clock(Protocol):
     def now(self) -> datetime:

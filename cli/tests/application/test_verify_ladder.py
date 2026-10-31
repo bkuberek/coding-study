@@ -1,23 +1,31 @@
 """`cstudy verify --ladder`: the references' measured bands against their declared `time_class`."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Protocol
 
 import pytest
 
 from coding_study.adapters.subprocess_runner import SubprocessRunner
 from coding_study.application.ports import RunnerLaunch
 from coding_study.application.verify_content import SkippedCheck, VerifyRequest, verify_content
+from coding_study.application.verify_ladder import SETTLE_SECONDS
+from coding_study.domain.bench_records import MachineState, PowerSource
 from coding_study.domain.bench_runs import USER_TARGET_ID, BenchReport, BenchRequest
 from coding_study.domain.bench_verdict import LadderStatus
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import RunReport, RunRequest, UserError
 from tests.bench_fakes import ScriptedBenchProcess, optimal_user, power_law, timed
 from tests.e2e import e2e_environment
-from tests.fakes import repository_root
+from tests.fakes import QUIET_MACHINE, FakeMachine, repository_root
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 TWO_SUM = "problems/0001-two-sum"
+BUSY_MACHINE = MachineState("Test CPU", PowerSource.AC, 6.0, 8)
+
+
+class Benches(Protocol):
+    def bench(self, launch: RunnerLaunch, request: BenchRequest) -> BenchReport: ...
 
 
 @dataclass
@@ -25,7 +33,7 @@ class RealCasesScriptedBench:
     """Runs test cases for real (mini Python runner); benches are scripted."""
 
     cases: SubprocessRunner
-    benches: ScriptedBenchProcess
+    benches: Benches
 
     def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
         return self.cases.run(launch, request)
@@ -34,12 +42,25 @@ class RealCasesScriptedBench:
         return self.benches.bench(launch, request)
 
 
-def environment_with(tmp_path: Path, benches: ScriptedBenchProcess):
+@dataclass
+class BenchesPerAttempt:
+    """Each bench request is measured by the next of `attempts`; the last one keeps answering."""
+
+    attempts: tuple[ScriptedBenchProcess, ...]
+    requests: list[BenchRequest] = field(default_factory=list[BenchRequest])
+
+    def bench(self, launch: RunnerLaunch, request: BenchRequest) -> BenchReport:
+        self.requests.append(request)
+        attempt = self.attempts[min(len(self.requests), len(self.attempts)) - 1]
+        return attempt.bench(launch, request)
+
+
+def environment_with(tmp_path: Path, benches: Benches, machine: FakeMachine | None = None):
     root = repository_root(tmp_path, PRACTICE)
     meta = root / TWO_SUM / "meta.yaml"
     meta.write_text(meta.read_text().replace("[10, 100]", "[10, 100, 400, 1600]"))
     process = RealCasesScriptedBench(SubprocessRunner(root / ".cs" / "runs"), benches)
-    return e2e_environment(root, runner_process=process)
+    return e2e_environment(root, runner_process=process, machine=machine or FakeMachine())
 
 
 def verify(environment, **fields):
@@ -134,6 +155,92 @@ def test_references_that_fail_their_cases_are_not_benched(environment, benches):
     solution.write_text(solution.read_text().replace("return [", "return [0, 0] or ["))
     verify(environment, ladder=True)
     assert benches.requests == []
+
+
+# Machine load: a busy machine is a warning, and a contradiction there is measured once more
+
+
+CONTRADICTING = {"hash-map": power_law(2.0)}
+
+
+def contradicting_then_consistent() -> BenchesPerAttempt:
+    return BenchesPerAttempt((optimal_user(**CONTRADICTING), optimal_user()))
+
+
+def settling() -> FakeMachine:
+    return FakeMachine(BUSY_MACHINE, settled_state=QUIET_MACHINE)
+
+
+def test_a_ladder_records_the_machine_it_ran_on(environment):
+    assert verify(environment, ladder=True).ladder[0].machine == QUIET_MACHINE
+
+
+def test_a_ladder_on_a_quiet_machine_has_no_load_note(environment):
+    assert verify(environment, ladder=True).ladder[0].notes == ()
+
+
+def test_a_ladder_on_a_busy_machine_is_a_warning(tmp_path):
+    environment = environment_with(tmp_path, optimal_user(), FakeMachine(BUSY_MACHINE))
+    assert verify(environment, ladder=True).ladder[0].notes == (
+        "measured on a busy machine (load 6.0 is above half of 8 cores): timings drift, "
+        "so verify again when it is idle",
+    )
+
+
+def test_a_consistent_ladder_on_a_busy_machine_is_measured_once(tmp_path):
+    benches = optimal_user()
+    verify(environment_with(tmp_path, benches, FakeMachine(BUSY_MACHINE)), ladder=True)
+    assert len(benches.requests) == 1
+
+
+def test_a_contradiction_on_a_quiet_machine_is_measured_once(tmp_path):
+    benches = contradicting_then_consistent()
+    problem = verify(environment_with(tmp_path, benches), ladder=True)
+    assert (problem.passed, len(benches.requests)) == (False, 1)
+
+
+def test_a_contradiction_on_a_busy_machine_is_measured_again(tmp_path):
+    benches = contradicting_then_consistent()
+    verify(environment_with(tmp_path, benches, settling()), ladder=True)
+    assert len(benches.requests) == 2
+
+
+def test_the_second_measurement_decides(tmp_path):
+    environment = environment_with(tmp_path, contradicting_then_consistent(), settling())
+    assert verify(environment, ladder=True).passed
+
+
+def test_the_ladder_waits_for_the_machine_to_settle_before_measuring_again(tmp_path):
+    machine = settling()
+    verify(environment_with(tmp_path, contradicting_then_consistent(), machine), ladder=True)
+    assert machine.settles == [SETTLE_SECONDS]
+
+
+def test_a_measured_again_ladder_names_the_first_machine(tmp_path):
+    environment = environment_with(tmp_path, contradicting_then_consistent(), settling())
+    (result,) = verify(environment, ladder=True).ladder
+    assert (result.retried_after, result.machine) == (BUSY_MACHINE, QUIET_MACHINE)
+
+
+def test_a_measured_again_ladder_says_so(tmp_path):
+    environment = environment_with(tmp_path, contradicting_then_consistent(), settling())
+    assert verify(environment, ladder=True).ladder[0].notes == (
+        "contradicted its class on a busy machine (load 6.0 is above half of 8 cores); "
+        "measured again after waiting up to 60s for it to settle",
+    )
+
+
+def test_a_ladder_is_measured_again_once_at_most(tmp_path):
+    benches = BenchesPerAttempt((optimal_user(**CONTRADICTING),))
+    problem = verify(environment_with(tmp_path, benches, FakeMachine(BUSY_MACHINE)), ladder=True)
+    assert (problem.passed, len(benches.requests)) == (False, 2)
+
+
+def test_a_reference_that_does_not_load_is_not_measured_again(tmp_path):
+    benches = optimal_user(**CONTRADICTING)
+    benches.load_errors = {"brute-force": UserError("ImportError", "broken")}
+    verify(environment_with(tmp_path, benches, FakeMachine(BUSY_MACHINE)), ladder=True)
+    assert len(benches.requests) == 1
 
 
 def without_generator(environment):

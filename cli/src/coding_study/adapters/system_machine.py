@@ -1,13 +1,16 @@
 """The machine state a bench runs under (docs/specs/performance-analysis.md#environment-record).
 
 macOS answers through `sysctl -n machdep.cpu.brand_string` and `pmset -g batt`; elsewhere the
-CPU falls back to `platform.processor()` and the power source is unknown.
+CPU falls back to `platform.processor()` and the power source is unknown. `settle` polls the
+state until it shows no environment warning (`cstudy verify --ladder` waits so before measuring
+a contradicted ladder again).
 """
 
 import os
 import platform
 import subprocess
-from collections.abc import Sequence
+import time
+from collections.abc import Callable, Sequence
 
 from coding_study.domain.bench_records import MachineState, PowerSource
 
@@ -16,13 +19,31 @@ POWER_COMMAND = ("pmset", "-g", "batt")
 PROBE_TIMEOUT_SECONDS = 2.0
 AC_MARKER = "'AC Power'"
 BATTERY_MARKER = "'Battery Power'"
+SETTLE_POLL_SECONDS = 5.0
+"""The kernel recomputes the load averages every 5 seconds."""
 
 
 class SystemMachine:
     """`MachineProbe` for the machine `cstudy` runs on."""
 
+    def __init__(
+        self,
+        sleep: Callable[[float], None] = time.sleep,
+        monotonic: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self._sleep = sleep
+        self._monotonic = monotonic
+
     def snapshot(self) -> MachineState:
         return MachineState(_cpu(), _power(), _load(), os.cpu_count() or 1)
+
+    def settle(self, timeout_seconds: float) -> None:
+        deadline = self._monotonic() + timeout_seconds
+        while self.snapshot().warnings:
+            remaining = deadline - self._monotonic()
+            if remaining <= 0:
+                return
+            self._sleep(min(SETTLE_POLL_SECONDS, remaining))
 
 
 def _cpu() -> str:

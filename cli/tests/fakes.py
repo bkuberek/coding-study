@@ -202,9 +202,18 @@ QUIET_MACHINE = MachineState("Test CPU", PowerSource.AC, 0.5, 8)
 @dataclass
 class FakeMachine:
     state: MachineState = QUIET_MACHINE
+    settled_state: MachineState | None = None
+    """What the machine shows once `settle` returns; None leaves `state` as it is."""
+    settles: list[float] = field(default_factory=list[float])
+    """The timeout of every `settle` call."""
 
     def snapshot(self) -> MachineState:
         return self.state
+
+    def settle(self, timeout_seconds: float) -> None:
+        self.settles.append(timeout_seconds)
+        if self.settled_state is not None:
+            self.state = self.settled_state
 
 
 class ScriptedWatcher:

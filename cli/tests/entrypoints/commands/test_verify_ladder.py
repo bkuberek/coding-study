@@ -5,22 +5,46 @@ from typer.testing import CliRunner
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import verify as verify_command
 from coding_study.entrypoints.shared import ExitCode
-from tests.application.test_verify_ladder import environment_with
+from tests.application.test_verify_ladder import (
+    BUSY_MACHINE,
+    contradicting_then_consistent,
+    environment_with,
+    settling,
+)
 from tests.bench_fakes import optimal_user, power_law, timed
+from tests.fakes import FakeMachine
 
 runner = CliRunner()
 
 
-def invoke(tmp_path, monkeypatch, benches=None):
-    environment = environment_with(tmp_path, benches or optimal_user())
+def invoke(tmp_path, monkeypatch, benches=None, machine=None):
+    environment = environment_with(tmp_path, benches or optimal_user(), machine)
     monkeypatch.setattr(verify_command, "load_environment", lambda *_: environment)
     return runner.invoke(cli.app, ["verify", "two-sum", "--lang", "python", "--ladder"])
 
 
+def problem_line(result) -> str:
+    return next(line for line in result.output.splitlines() if line.startswith("0001-two-sum"))
+
+
 def test_a_consistent_ladder_is_ok(tmp_path, monkeypatch):
-    result = invoke(tmp_path, monkeypatch)
-    line = next(line for line in result.output.splitlines() if line.startswith("0001-two-sum"))
-    assert "ladder ok" in line
+    assert "ladder ok" in problem_line(invoke(tmp_path, monkeypatch))
+
+
+def test_the_ladder_shows_the_load_it_ran_at(tmp_path, monkeypatch):
+    assert "ladder ok (load 0.5)" in problem_line(invoke(tmp_path, monkeypatch))
+
+
+def test_a_busy_machine_is_a_warning(tmp_path, monkeypatch):
+    result = invoke(tmp_path, monkeypatch, machine=FakeMachine(BUSY_MACHINE))
+    assert (
+        "warning: ladder py: measured on a busy machine (load 6.0 is above half of 8 cores)"
+    ) in result.output
+
+
+def test_a_ladder_measured_again_shows_the_load_of_the_second_measurement(tmp_path, monkeypatch):
+    result = invoke(tmp_path, monkeypatch, contradicting_then_consistent(), settling())
+    assert "ladder ok (load 0.5)" in problem_line(result)
 
 
 def test_a_consistent_ladder_exits_0(tmp_path, monkeypatch):

@@ -28,6 +28,7 @@ from coding_study.application.verify_content import (
     VerifyRequest,
     verify_content,
 )
+from coding_study.application.verify_ladder import LadderResult
 from coding_study.domain.errors import UsageError
 from coding_study.domain.generated_cases import DEFAULT_ORACLE_CASES
 from coding_study.domain.problem import ContentStatus, Language, Track
@@ -194,7 +195,7 @@ class _ProblemLines:
         yield from _stress_parts(self._problem.languages)
         if self._problem.ladder:
             ladder_ok = all(result.passed for result in self._problem.ladder)
-            yield f"ladder {'ok' if ladder_ok else 'FAIL'}"
+            yield f"ladder {'ok' if ladder_ok else 'FAIL'}{_load_text(self._problem.ladder)}"
         yield from (f"{check} n/a" for check in self._problem.skipped)
         if self._problem.dynamic_errors:
             yield "FAIL"
@@ -218,9 +219,12 @@ class _ProblemLines:
 
     def _warnings(self) -> Iterator[Text]:
         ladder_notes = (
-            f"ladder {REFERENCE_LABELS[ladder.language]}: {check.message}"
+            f"ladder {REFERENCE_LABELS[ladder.language]}: {note}"
             for ladder in self._problem.ladder
-            for check in (*ladder.tolerated, *ladder.unclassified)
+            for note in (
+                *(check.message for check in (*ladder.tolerated, *ladder.unclassified)),
+                *ladder.notes,
+            )
         )
         for warning in (*self._problem.warnings, *ladder_notes):
             yield Text(f"{DETAIL_INDENT}warning: {warning}", style="yellow")
@@ -253,6 +257,16 @@ def _language_failures(result: LanguageResult) -> Iterator[str]:
         yield from (
             f"{label} broken {broken.approach_id}: {failure}" for failure in broken.failures
         )
+
+
+def _load_text(ladders: Iterable[LadderResult]) -> str:
+    """` (load 2.3)`: the highest 1-minute load any language's ladder ran at."""
+    loads = [
+        ladder.machine.load_1m
+        for ladder in ladders
+        if ladder.machine is not None and ladder.machine.load_1m is not None
+    ]
+    return f" (load {max(loads):.1f})" if loads else ""
 
 
 def _stress_parts(results: Iterable[LanguageResult]) -> Iterator[str]:

@@ -109,6 +109,19 @@ Each band includes its lower bound and excludes its upper bound. There are no ba
 | Other band, drift above 4 | `contradicts`: a failure, such as `hash-map declares O(n) but measures ~n^2 (slope 2.00); time / n varies 160x, more than the 4x tolerance` |
 | Declared `2^n` or `n!` | Band only: an exponential has no single g(n) to divide by |
 
+#### Busy machine
+
+On a busy machine timings drift by more than the tolerance allows for. Busy means an environment warning: on battery, or the 1-minute load average above half the core count ([confidence](#confidence)). `cstudy verify --ladder` reads the machine right after each language's measurement:
+
+| Case | Behavior |
+|------|----------|
+| Every ladder | The problem line shows the highest 1-minute load its ladders ran at: `ladder ok (load 2.3)` |
+| Busy machine | A warning names the condition: `ladder py: measured on a busy machine (load 13.4 is above half of 11 cores): timings drift, so verify again when it is idle` |
+| A contradiction on a busy machine | The language is measured once more after the machine settles: once a reading, polled every 5 s, shows no warning, or after 60 s (`SETTLE_SECONDS`). The second measurement decides, and a warning says so: `ladder py: contradicted its class on a busy machine (...); measured again after waiting up to 60s for it to settle` |
+| A reference that does not build, load or run | Not measured again: load does not explain it |
+
+The tolerance stays 4 on a busy machine ([ADR 0009](../decisions/0009-ladder-calibration.md)). Like the stress thresholds ([authoring](authoring.md#dynamic)), a tolerance relaxed there would pass a ladder that contradicts its class on an idle one. A second measurement, after other work had a minute to finish, gets a contradiction caused by a burst of load out of the way. A contradiction that holds on a machine that stays busy still fails, with both warnings.
+
 ### Memory
 
 Same slope fit on the memory metric over the completed sizes that have a memory figure; values under 4 KiB count as 4 KiB, so small allocations read as constant. Bands: `constant` (below 0.3), `sublinear` (0.3 to 0.75), `linear` (0.75 to 1.35), `superlinear` (1.35 and above). At least 3 sizes are required.
