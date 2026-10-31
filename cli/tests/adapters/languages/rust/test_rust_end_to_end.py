@@ -5,8 +5,10 @@ the practice workspace's runner runtime and builds in its own `.cs/build/rust`; 
 fixtures run through `cstudy verify --conformance` (tests/application/test_verify_conformance.py).
 """
 
+import os
 import shutil
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -212,6 +214,24 @@ def test_the_users_function_runs_and_returns(root):
     (case,) = run(root, prepare(root)).cases
     assert isinstance(case.outcome, Returned)
     assert case.outcome.output == [0, 1]
+
+
+ANSWERS_THE_OTHER_WAY = (
+    "pub fn two_sum(_nums: Vec<i32>, _target: i32) -> Vec<i32> {\n    vec![1, 0]\n}\n"
+)
+AN_HOUR = 3600
+
+
+def test_a_solution_replaced_by_a_copy_with_an_older_modification_time_is_rebuilt(root):
+    """What `rsync -a` and `cp -p` leave: Cargo would take the file for the one it built."""
+    write_solution(root, HASH_MAP)
+    run(root, prepare(root))
+    write_solution(root, ANSWERS_THE_OTHER_WAY)
+    older = time.time() - AN_HOUR
+    os.utime(root / stub_path(TWO_SUM, Language.RUST), (older, older))
+    (case,) = run(root, prepare(root)).cases
+    assert isinstance(case.outcome, Returned)
+    assert case.outcome.output == [1, 0]
 
 
 def test_a_misnamed_function_is_a_load_error_with_the_compilers_reason(root):

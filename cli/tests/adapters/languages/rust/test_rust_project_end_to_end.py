@@ -7,6 +7,7 @@ every suite runs each test of each target as a process of its own. The level tes
 real generator's.
 """
 
+import os
 import shutil
 import signal
 import time
@@ -237,6 +238,38 @@ def test_the_suite_of_level_1_leaves_the_locked_levels_file_out(workspace, envir
     assert [(test.test_id, type(test.outcome)) for test in report.tests] == [
         ("tests/level_1.rs::ex1", Passed),
     ]
+
+
+AN_HOUR = 3600
+
+
+def replace_with_older_copy(folder: Path, path: str, source: Path) -> None:
+    """What `rsync -a` and `cp -p` do: the file's new content, with a modification time that is
+    older than the last build."""
+    shutil.copyfile(source, folder / path)
+    older = time.time() - AN_HOUR
+    os.utime(folder / path, (older, older))
+
+
+def first_outcome(report: SuiteReport):
+    return report.tests[0].outcome
+
+
+def test_a_source_replaced_by_a_copy_with_an_older_modification_time_is_rebuilt(
+    workspace, environment, problem
+):
+    """Cargo rebuilds a crate when a source is newer than its last build, so a copy that keeps
+    an older time would run the code of the build before it."""
+    folder = project_folder(workspace, problem, "older-copy", "reference")
+    select = ("tests/level_1.rs::ex1",)
+    before = run_suite(
+        environment, SuiteRun(problem.meta, Language.RUST, folder, 1, select=select), print
+    )
+    replace_with_older_copy(folder, "src/lib.rs", FIXTURE / "starter" / "src" / "lib.rs")
+    after = run_suite(
+        environment, SuiteRun(problem.meta, Language.RUST, folder, 1, select=select), print
+    )
+    assert (type(first_outcome(before)), type(first_outcome(after))) == (Passed, AssertionFailed)
 
 
 @pytest.fixture(scope="module")

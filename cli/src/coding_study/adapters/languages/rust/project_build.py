@@ -46,6 +46,10 @@ from coding_study.adapters.languages.rust.build_files import (
     vendored_source_arguments,
     workspace_manifest,
 )
+from coding_study.adapters.languages.rust.source_stamps import (
+    project_sources,
+    touch_replaced_sources,
+)
 from coding_study.adapters.languages.rust.toolchain import CargoOutcome, CargoToolchain
 from coding_study.application.ports import BuildFailed
 from coding_study.application.project_runs import COMPILE_ERROR
@@ -66,6 +70,8 @@ PLACEHOLDER_BRIDGE = "fn main() {}\n"
 package must load."""
 CARGO_HOME_DIRECTORY = "cargo-home"
 LOCK_FILE = ".cstudy.lock"
+SOURCES_RECORD = "sources.json"
+"""The digests of the project's sources at the last build (`source_stamps`)."""
 WARM_MARKER = ".warm"
 """Written after the first successful build of the harness: the runner crates are compiled."""
 SUITE_TARGETS = ("--lib", "--tests", "--keep-going")
@@ -187,11 +193,13 @@ class RustProjectBuild:
 
     @contextmanager
     def _locked(self) -> Generator[None]:
-        """The build workspace's lock, and the runtime lock shared with every other build."""
+        """The build workspace's lock, and the runtime lock shared with every other build; the
+        project's sources that were replaced by older copies are touched, so Cargo sees them."""
         with (
             exclusive_lock(self._directory / LOCK_FILE),
             shared_lock(self._settings.workspace / RUNTIME_LOCK),
         ):
+            touch_replaced_sources(project_sources(self._root), self._directory / SOURCES_RECORD)
             yield
 
     def _harness_binary(

@@ -69,6 +69,7 @@ from coding_study.adapters.languages.rust.project_suite import (
     LibtestSuite,
     SubprocessTests,
 )
+from coding_study.adapters.languages.rust.source_stamps import touch_replaced_sources
 from coding_study.adapters.languages.rust.toolchain import CargoToolchain
 from coding_study.application.ports import (
     BenchCode,
@@ -117,6 +118,8 @@ RELEASE_FILE = "rustc-release"
 """The `rustc` version, asked once per workspace: a project suite's report names it."""
 RUNNER_NAME = "rust"
 LOCK_FILE = ".cstudy.lock"
+SOURCES_DIRECTORY = ".sources"
+"""A record per problem of the practice file's digest at the last build (`source_stamps`)."""
 WARM_MARKER = ".warm"
 """Written after the first successful build: the runner crates are compiled."""
 DEBUG_WARM_MARKER = ".warm-debug"
@@ -295,6 +298,7 @@ class RustRunner:
             if not warm:
                 notify(DEBUG_COLD_NOTICE if build.debug else COLD_NOTICE)
             targets = self._targets(build)
+            self._touch_replaced_user_file(build)
             result = self._compile(build, targets)
             if isinstance(result, BuildFailed):
                 return result
@@ -307,6 +311,13 @@ class RustRunner:
             scratch=binary.parent,
         )
         return Prepared(launch, WARM_BUILD_NOTE if warm else COLD_BUILD_NOTE)
+
+    def _touch_replaced_user_file(self, build: _Build) -> None:
+        """A practice file replaced by an older copy looks unchanged to Cargo (`source_stamps`)."""
+        if build.user:
+            user_file = self._root / stub_path(build.meta, Language.RUST)
+            record = self._build_directory / SOURCES_DIRECTORY / f"{build.meta.snake_slug}.json"
+            touch_replaced_sources([user_file], record)
 
     def _targets(self, build: _Build) -> list[BridgeTarget]:
         meta = build.meta
