@@ -201,6 +201,11 @@ export class AttemptRuns {
         this.#results.update();
         this.#ended();
       },
+      lost: () => {
+        this.#stream = null;
+        this.#results.show(null, [h("p", { class: "quiet" }, "The server no longer keeps this run, as after a restart; run the tests again.")]);
+        this.#showState();
+      },
     });
     this.#showState();
   }

@@ -14,6 +14,8 @@ export interface StreamListener {
   restart(): void;
   message(event: string, data: unknown): void;
   closed(closed: Closed): void;
+  /** The server refused the stream, as for a run it no longer keeps, or a server that restarted. */
+  lost(): void;
 }
 
 export class LiveStream {
@@ -50,6 +52,12 @@ export class LiveStream {
     source.addEventListener(CLOSED_EVENT, (event) => {
       this.close();
       this.#listener.closed(JSON.parse((event as MessageEvent<string>).data) as Closed);
+    });
+    // A dropped connection reconnects by itself, with Last-Event-ID; a refused one stays closed.
+    source.addEventListener("error", () => {
+      if (source.readyState !== EventSource.CLOSED || this.#ended) return;
+      this.close();
+      this.#listener.lost();
     });
     this.#source = source;
   }

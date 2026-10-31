@@ -102,6 +102,11 @@ export class JobPanel {
       restart: () => this.#log.replaceChildren(),
       message: (_name, data) => this.#append(data as JobLine),
       closed: (closed) => this.#ended(closed),
+      lost: () => {
+        this.#stream = null;
+        this.#cancel.disabled = true;
+        this.#state.replaceChildren(badge("?", "the server no longer keeps this job", "quiet"));
+      },
     });
   }
 
