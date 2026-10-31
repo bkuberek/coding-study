@@ -37,7 +37,11 @@ from coding_study.application.ports import (
     UserCode,
     WorkspaceSetup,
 )
-from coding_study.domain.debugging import DEBUGPY_INSTALL_COMMAND, DELVE_VERSION
+from coding_study.domain.debugging import (
+    DEBUGPY_INSTALL_COMMAND,
+    DELVE_VERSION,
+    delve_minimum_go,
+)
 from coding_study.domain.errors import (
     ConfigError,
     LanguageNotSetUpError,
@@ -524,10 +528,25 @@ def _delve(tools: ToolProbe, server: DebugServer) -> CheckResult:
     version = _version_of(tools, (str(server.path), "version"))
     if isinstance(version, _Unavailable):
         return CheckResult(server.name, CheckStatus.WARN, version.reason, fix=fix)
+    minimum = delve_minimum_go(version)
+    go = _version_of(tools, ("go", "version"))
+    if minimum is not None and not isinstance(go, _Unavailable) and not _at_least(go, minimum):
+        return _delve_refusing_go(server, version, minimum, go)
     if version != DELVE_VERSION:
         detail = f"{version} (cstudy is tested with {DELVE_VERSION})"
         return CheckResult(server.name, CheckStatus.OK, detail)
     return CheckResult(server.name, CheckStatus.OK, version)
+
+
+def _delve_refusing_go(
+    server: DebugServer, version: str, minimum: tuple[int, int], go: str
+) -> CheckResult:
+    """Delve refuses a program built with an older Go, though building with it works, so the Go
+    row stays as it is and only `--debug` is affected."""
+    wanted = _minimum_text(minimum)
+    detail = f"{version} (debugs only Go {wanted} or newer; found Go {go})"
+    fix = _debugger_fix(server, Language.GO, f"install Go {wanted} or newer")
+    return CheckResult(server.name, CheckStatus.WARN, detail, fix=fix)
 
 
 def _lldb_server(server: DebugServer) -> CheckResult:
@@ -538,9 +557,9 @@ def _lldb_server(server: DebugServer) -> CheckResult:
     return CheckResult(server.name, CheckStatus.OK, str(server.path))
 
 
-def _debugger_fix(server: DebugServer, language: Language) -> str:
+def _debugger_fix(server: DebugServer, language: Language, step: str | None = None) -> str:
     return (
-        f"needed for --debug with --lang {language}, {server.install}: "
+        f"needed for --debug with --lang {language}, {step or server.install}: "
         f"{TOOLCHAINS_GUIDE}#{language}"
     )
 

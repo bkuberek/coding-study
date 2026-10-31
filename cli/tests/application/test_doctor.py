@@ -67,7 +67,7 @@ HEALTHY_TOOLS: dict[tuple[str, ...], ProbeResult] = {
         0, 'openjdk version "21.0.2" 2024-01-16\nOpenJDK Runtime Environment (build 21.0.2+13)\n'
     ),
     ("gradle", "--version"): ProbeResult(0, "\n------\nGradle 9.8.2\n------\n"),
-    ("go", "version"): ProbeResult(0, "go version go1.24.1 darwin/arm64\n"),
+    ("go", "version"): ProbeResult(0, "go version go1.25.0 darwin/arm64\n"),
     ("rustc", "--version"): ProbeResult(0, "rustc 1.80.0 (051478957 2024-07-21)\n"),
     ("cargo", "--version"): ProbeResult(0, "cargo 1.80.0 (376290515 2024-07-16)\n"),
     DELVE_VERSION: ProbeResult(0, "Delve Debugger\nVersion: 1.27.2\nBuild: $Id: 360e7b2 $\n"),
@@ -393,7 +393,7 @@ def test_missing_gradle_is_only_a_warning():
 def test_healthy_optional_toolchains_report_versions():
     report = doctor()
     assert [(r.name, r.status, r.detail) for r in report.results[6:9]] == [
-        ("go", OK, "1.24.1"),
+        ("go", OK, "1.25.0"),
         ("rustc", OK, "1.80.0"),
         ("cargo", OK, "1.80.0"),
     ]
@@ -479,6 +479,41 @@ def test_installed_debuggers_pass_with_delves_version_and_the_servers_path():
 def test_another_delve_release_passes_and_names_the_tested_one():
     tools = tools_with(DELVE_VERSION, ProbeResult(0, "Delve Debugger\nVersion: 1.26.1\n"))
     assert summary(doctor(tools), "dlv") == (OK, "1.26.1 (cstudy is tested with 1.27.2)")
+
+
+GO_VERSION = ("go", "version")
+
+
+def test_a_delve_that_refuses_the_installed_go_warns_with_the_go_to_install():
+    tools = tools_with(GO_VERSION, ProbeResult(0, "go version go1.24.13 linux/arm64\n"))
+    result = check(doctor(tools), "dlv")
+    assert (result.status, result.detail, result.fix) == (
+        WARN,
+        "1.27.2 (debugs only Go 1.25 or newer; found Go 1.24.13)",
+        f"needed for --debug with --lang go, install Go 1.25 or newer: {TOOLCHAINS_GUIDE}#go",
+    )
+
+
+def test_a_delve_that_refuses_the_installed_go_does_not_fail_the_report():
+    tools = tools_with(GO_VERSION, ProbeResult(0, "go version go1.24.13 linux/arm64\n"))
+    assert doctor(tools).passed
+
+
+def test_a_go_the_delve_accepts_passes():
+    tools = tools_with(GO_VERSION, ProbeResult(0, "go version go1.25 linux/amd64\n"))
+    assert summary(doctor(tools), "dlv") == (OK, "1.27.2")
+
+
+def test_an_older_delve_is_not_judged_against_the_go_it_may_accept():
+    tools = FakeTools()
+    tools.outputs[GO_VERSION] = ProbeResult(0, "go version go1.24.13 linux/arm64\n")
+    tools.outputs[DELVE_VERSION] = ProbeResult(0, "Delve Debugger\nVersion: 1.26.1\n")
+    assert summary(doctor(tools), "dlv") == (OK, "1.26.1 (cstudy is tested with 1.27.2)")
+
+
+def test_a_missing_go_leaves_the_delve_row_to_the_go_row():
+    tools = tools_with(GO_VERSION, None)
+    assert summary(doctor(tools), "dlv") == (OK, "1.27.2")
 
 
 @pytest.mark.parametrize(

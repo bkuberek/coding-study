@@ -27,6 +27,10 @@ DEBUGPY_INSTALL_COMMAND = f"uv add --dev debugpy --directory {PYTHON_PROJECT}"
 DELVE = "dlv"
 DELVE_VERSION = "1.27.2"
 """The Delve release `cstudy test --debug` is tested with for Go."""
+DELVE_REQUIRING_NEWER_GO = (1, 27)
+DELVE_MINIMUM_GO = (1, 25)
+"""From Delve 1.27 on, the oldest Go it debugs: it refuses a binary built with an older one
+(`Go version go1.24.x is too old for this version of Delve`), though building needs only 1.24."""
 DEBUGSERVER = "debugserver"
 LLDB_SERVER = "lldb-server"
 """Rust's debug server: Xcode's `debugserver` on macOS, LLDB's `lldb-server` on Linux."""
@@ -62,6 +66,13 @@ class DebugSession:
         if self.connect:
             return f"cstudy: connecting to debugger at {self.address} ({self.language})"
         return f"cstudy: waiting for debugger on {self.address} ({self.language})"
+
+
+def delve_minimum_go(delve_version: str) -> tuple[int, int] | None:
+    """The oldest Go (major, minor) the Delve release debugs; None when it is not known to refuse
+    any that cstudy builds with."""
+    major, minor, *_ = (int(part) for part in delve_version.split("."))
+    return DELVE_MINIMUM_GO if (major, minor) >= DELVE_REQUIRING_NEWER_GO else None
 
 
 def debug_session(request: DebugRequest, language: Language) -> DebugSession:

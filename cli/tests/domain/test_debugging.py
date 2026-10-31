@@ -1,6 +1,11 @@
 import pytest
 
-from coding_study.domain.debugging import DebugRequest, DebugSession, debug_session
+from coding_study.domain.debugging import (
+    DebugRequest,
+    DebugSession,
+    debug_session,
+    delve_minimum_go,
+)
 from coding_study.domain.problem import Language
 
 DEFAULT_PORTS = {
@@ -51,3 +56,16 @@ def test_ready_line_when_waiting_for_the_ide_to_attach(language, port, line):
 def test_ready_line_when_connecting_to_a_listening_ide():
     session = DebugSession(Language.KOTLIN, 5005, connect=True)
     assert session.ready_line == "cstudy: connecting to debugger at 127.0.0.1:5005 (kotlin)"
+
+
+@pytest.mark.parametrize(
+    ("delve", "minimum"),
+    [("1.27.2", (1, 25)), ("1.27.0", (1, 25)), ("1.28.1", (1, 25)), ("2.0.0", (1, 25))],
+)
+def test_delve_1_27_and_newer_debug_only_go_1_25_and_newer(delve, minimum):
+    assert delve_minimum_go(delve) == minimum
+
+
+@pytest.mark.parametrize("delve", ["1.26.1", "1.9.0", "0.12.2"])
+def test_an_older_delve_has_no_known_minimum_go(delve):
+    assert delve_minimum_go(delve) is None
