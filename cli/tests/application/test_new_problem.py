@@ -156,6 +156,7 @@ ONE_LANGUAGE_TEMPLATES = (
     TemplateName.CONCURRENT,
     TemplateName.PROJECT_PYTHON,
     TemplateName.PROJECT_TYPESCRIPT,
+    TemplateName.PROJECT_GO,
 )
 
 
