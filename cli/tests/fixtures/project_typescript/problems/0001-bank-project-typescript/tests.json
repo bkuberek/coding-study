@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "level": 1, "ops": ["Bank", "createAccount", "createAccount", "deposit", "deposit"], "args": [[], [1, "ivy"], [2, "ivy"], [3, "ivy", 800], [4, "max", 50]], "expected": [null, true, false, 800, -1]},
+    {"id": "h1", "level": 1, "ops": ["Bank", "createAccount", "deposit", "deposit"], "args": [[], [1, "bo"], [2, "bo", 10], [3, "bo", 15]], "expected": [null, true, 10, 25]},
+    {"id": "ex2", "visible": true, "level": 2, "note": "the second transfer asks for more than ivy still holds", "ops": ["Bank", "createAccount", "createAccount", "deposit", "transfer", "transfer", "createAccount", "accounts", "averageBalance", "balances", "closeAccount", "accounts", "averageBalance"], "args": [[], [1, "ivy"], [2, "leo"], [3, "ivy", 500], [4, "ivy", "leo", 200], [5, "ivy", "leo", 400], [6, "amy"], [], [], [], [7, "amy"], [], []], "expected": [null, true, true, 500, 300, -1, true, ["leo", "ivy", "amy"], 166.66666666666666, [0, 300, 200], null, ["ivy", "leo"], 250]},
+    {"id": "ex3", "visible": true, "level": 2, "ops": ["Bank", "createAccount", "deposit", "createAccount", "transfer", "balances", "accounts"], "args": [[], [1, "account-with-a-very-very-long-name"], [2, "account-with-a-very-very-long-name", 1000000], [3, "another-very-very-long-account-name"], [4, "account-with-a-very-very-long-name", "another-very-very-long-account-name", 250000], [], []], "expected": [null, true, 1000000, true, 750000, [750000, 250000], ["another-very-very-long-account-name", "account-with-a-very-very-long-name"]]},
+    {"id": "h2", "level": 2, "ops": ["Bank", "createAccount", "transfer", "averageBalance"], "args": [[], [1, "ivy"], [2, "ivy", "zed", 1], []], "expected": [null, true, -1, 0]}
+  ]
+}
