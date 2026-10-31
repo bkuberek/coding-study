@@ -3,7 +3,8 @@
 
 A new attempt copies the starter into `projects/<slug>/` without overwriting a file; a resumed
 attempt copies it only when the folder is missing, so a file you deleted or changed stays as it
-is. Both link the folder to the workspace's toolchain when the link is missing or dangles.
+is. Both link the folder to the workspace's toolchain when the link is missing or dangles: a
+Python folder's `.venv` link, or a Go folder's own `go.work`, written when it is missing.
 `--fresh` and review attempts first archive the folder, without what tools wrote into it.
 """
 
@@ -17,7 +18,12 @@ from coding_study.domain.errors import ContentError, ContentIssue, UsageError
 from coding_study.domain.problem import Problem
 from coding_study.domain.problem_files import STARTER_DIRECTORY
 from coding_study.domain.project import ProjectTree
-from coding_study.domain.workspace_projects import folder_language, project_folder, toolchain_link
+from coding_study.domain.workspace_projects import (
+    folder_language,
+    project_folder,
+    toolchain_files,
+    toolchain_link,
+)
 
 NOT_TEXT = "is not UTF-8 text: a starter holds text files only"
 NO_STARTER = "is missing: cstudy start copies it into the workspace"
@@ -30,7 +36,8 @@ class SeededProject:
     copied: tuple[str, ...]
     """The starter files this call wrote, relative to the folder, in path order."""
     linked: bool
-    """This call created or recreated the folder's link to the toolchain."""
+    """This call created or recreated the folder's link to the toolchain, or wrote a toolchain
+    file it lacked."""
 
 
 def seed_project(workspace: Workspace, problem: Problem) -> SeededProject:
@@ -102,7 +109,13 @@ def _starter_source(problem: Problem) -> str:
 
 def _link(workspace: Workspace, problem: Problem, folder: str) -> bool:
     language = folder_language(problem.meta)
-    link = None if language is None else toolchain_link(language)
-    if link is None:
+    if language is None:
         return False
-    return workspace.ensure_link(f"{folder}/{link.path}", link.target)
+    missing = [
+        file for file in toolchain_files(language) if not workspace.exists(f"{folder}/{file.path}")
+    ]
+    for file in missing:
+        workspace.write_text(f"{folder}/{file.path}", file.text)
+    link = toolchain_link(language)
+    linked = link is not None and workspace.ensure_link(f"{folder}/{link.path}", link.target)
+    return linked or bool(missing)

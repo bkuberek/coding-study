@@ -10,6 +10,7 @@ import pytest
 from tests.helpers import REPOSITORY_ROOT, WORKSPACE_TEMPLATE
 
 FOLDER = "projects/bank-project-python"
+GO_FOLDER = "projects/bank-project-go"
 
 
 def ignored(repository: Path, path: str) -> bool:
@@ -45,8 +46,20 @@ def test_the_workspace_ignores_the_venv_link_and_uv_lock_of_a_project(workspace,
     assert ignored(workspace, path)
 
 
+@pytest.mark.parametrize("path", [f"{GO_FOLDER}/go.work", f"{GO_FOLDER}/go.work.sum"])
+def test_the_workspace_ignores_the_go_work_of_a_go_project(workspace, path):
+    assert ignored(workspace, path)
+
+
 @pytest.mark.parametrize(
-    "path", [f"{FOLDER}/bank/bank.py", f"{FOLDER}/pyproject.toml", f"{FOLDER}/tests/test_x.py"]
+    "path",
+    [
+        f"{FOLDER}/bank/bank.py",
+        f"{FOLDER}/pyproject.toml",
+        f"{FOLDER}/tests/test_x.py",
+        f"{GO_FOLDER}/go.mod",
+        f"{GO_FOLDER}/tools/go.work",
+    ],
 )
 def test_the_workspace_tracks_the_files_of_a_project(workspace, path):
     assert not ignored(workspace, path)

@@ -29,6 +29,7 @@ FOLDER = f"projects/{SLUG}"
 STARTER = ("README.md", "bank/bank.py", "pyproject.toml")
 VENV_LINK = f"{FOLDER}/.venv"
 VENV_TARGET = Path("../../python/.venv")
+GO_WORK = f"{FOLDER}/go.work"
 ARCHIVE = f".archive/{SLUG}/3-python"
 PILOT = "0249-bank-project-python"
 
@@ -115,6 +116,43 @@ def test_a_typescript_folder_has_no_link(workspace, problem):
     meta = replace(problem.meta, languages=(Language.TYPESCRIPT,))
     seed_project(workspace, replace(problem, meta=meta))
     assert not os.path.lexists(workspace.absolute(VENV_LINK))
+
+
+def go(problem: Problem) -> Problem:
+    return replace(problem, meta=replace(problem.meta, languages=(Language.GO,)))
+
+
+def test_a_go_folder_gets_a_go_work_of_its_own(workspace, problem):
+    seed_project(workspace, go(problem))
+    assert workspace.read_text(GO_WORK) == "go 1.24\n\nuse .\n"
+
+
+def test_writing_the_go_work_links_the_go_folder(workspace, problem):
+    assert seed_project(workspace, go(problem)).linked
+
+
+def test_a_go_work_of_yours_is_kept(workspace, problem):
+    workspace.write_text(GO_WORK, "go 1.25\n\nuse (\n\t.\n\t../shared\n)\n")
+    seeded = seed_project(workspace, go(problem))
+    assert (seeded.linked, workspace.read_text(GO_WORK).startswith("go 1.25")) == (False, True)
+
+
+def test_a_python_folder_gets_no_go_work(workspace, problem):
+    seed_project(workspace, problem)
+    assert not workspace.exists(GO_WORK)
+
+
+def test_a_resumed_go_attempt_writes_a_missing_go_work(workspace, problem):
+    seed_project(workspace, go(problem))
+    os.remove(workspace.absolute(GO_WORK))
+    resume_project(workspace, go(problem))
+    assert workspace.exists(GO_WORK)
+
+
+def test_archiving_leaves_the_go_work_behind(workspace, problem):
+    seed_project(workspace, go(problem))
+    archive_project(workspace, owner())
+    assert not workspace.exists(f"{ARCHIVE}/go.work")
 
 
 def test_the_pilot_starter_is_copied_whole(workspace, tmp_path):
