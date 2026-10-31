@@ -1,11 +1,11 @@
 """Changes to an attempt's files from the page (docs/specs/web-ui.md#attempts,
 docs/specs/web-ui.md#file-api-rules).
 
-A save names, in `If-Match`, the `ETag` its read gave, and a new file comes with
-`If-None-Match: *`, so a change made elsewhere since the read is never overwritten unseen: the
-page gets 412 with the file's SHA-256 now and decides. Each change runs on the worker, as a use
-case of the attempt in progress, waiting at most the server's lock deadline for the project's
-lock.
+A save, a move and a delete name, in `If-Match`, the `ETag` the file's read gave, and a new file
+comes with `If-None-Match: *`, so a change made elsewhere since the read is never lost unseen:
+the page gets 412 with the file's SHA-256 now and decides. A restore is `cstudy start --restore`.
+Each change runs on the worker, as a use case of the attempt in progress, waiting at most the
+server's lock deadline for the project's lock.
 """
 
 from collections.abc import Awaitable, Callable, Mapping, Sequence
@@ -28,9 +28,11 @@ FILE = f"{ATTEMPT}/files/{{path:path}}"
 ANY_FILE = "*"
 SAVED = 200
 CREATED = 201
+DELETED = 204
 NEEDS_PRECONDITION = (
     "a save needs If-Match with the ETag the file was read with, and a new file If-None-Match: *"
 )
+NEEDS_IF_MATCH = "a move or a delete needs If-Match with the ETag the file was read with"
 
 type Endpoint = Callable[[Request], Awaitable[Response]]
 
@@ -52,7 +54,36 @@ async def put_file(request: Request) -> Response:
     return _saved(saved, SAVED)
 
 
-_FILE_METHODS: Mapping[str, Endpoint] = {"GET": read_file, "PUT": put_file}
+async def delete_file(request: Request) -> Response:
+    """204; a starter or generated test file then shows `deleted` and can be restored."""
+    path: str = request.path_params["path"]
+    expected = _required_if_match(request)
+    await _changing(request, lambda files: files.delete(path, expected))
+    return Response(status_code=DELETED)
+
+
+async def move_file(request: Request) -> Response:
+    """`{"to": …}`: the file's new path and its SHA-256, which a move keeps."""
+    path: str = request.path_params["path"]
+    expected = _required_if_match(request)
+    target = _string_field(await json_body(request), "to")
+    moved = await _changing(request, lambda files: files.move(path, target, expected))
+    return _saved(moved, SAVED)
+
+
+async def restore_file(request: Request) -> Response:
+    """`{"path": …}`: `cstudy start --restore` of a starter or generated test file."""
+    path = _string_field(await json_body(request), "path")
+    restored = await _changing(request, lambda files: files.restore(path))
+    document = {"path": restored.path, "origin": restored.origin.value, "level": restored.level}
+    return JsonResponse(document)
+
+
+_FILE_METHODS: Mapping[str, Endpoint] = {
+    "GET": read_file,
+    "PUT": put_file,
+    "DELETE": delete_file,
+}
 
 
 async def file_methods(request: Request) -> Response:
@@ -61,7 +92,11 @@ async def file_methods(request: Request) -> Response:
 
 
 def file_routes() -> Sequence[BaseRoute]:
-    return [Route(FILE, file_methods, methods=list(_FILE_METHODS))]
+    return [
+        Route(FILE, file_methods, methods=list(_FILE_METHODS)),
+        Route(f"{FILE}/move", move_file, methods=["POST"]),
+        Route(f"{ATTEMPT}/restore", restore_file, methods=["POST"]),
+    ]
 
 
 async def _changing[Result](
@@ -81,6 +116,13 @@ async def _changing[Result](
 def _saved(saved: SavedFile, status: int) -> Response:
     document = {"path": saved.path, "sha256": saved.sha256}
     return JsonResponse(document, status_code=status, headers={"etag": entity_tag(saved.sha256)})
+
+
+def _required_if_match(request: Request) -> str:
+    if_match = request.headers.get("if-match")
+    if if_match is None:
+        raise ApiError(ErrorCode.PRECONDITION_REQUIRED, NEEDS_IF_MATCH)
+    return _unquoted(if_match)
 
 
 def _unquoted(entity_tag_header: str) -> str:

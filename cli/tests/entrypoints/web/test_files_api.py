@@ -324,3 +324,213 @@ def test_creating_beside_a_single_file_attempts_file_gets_422(practice_client, p
         (422, "usage"),
         "cannot create helper.py: the attempt has one file, two_sum.py",
     )
+
+
+def test_a_method_a_file_does_not_take_gets_405_naming_the_ones_it_takes(client, project_attempt):
+    response = client.patch(file_url(project_attempt, "README.md"), headers=WRITE_HEADERS)
+    allowed = {method.strip() for method in response.headers["allow"].split(",")}
+    assert (error(response), allowed) == (
+        (405, "method_not_allowed"),
+        {"GET", "HEAD", "PUT", "DELETE"},
+    )
+
+
+# moving
+
+
+def move(client: TestClient, attempt: Attempt, path: str, to: str, if_match: str):
+    return client.post(
+        f"{file_url(attempt, path)}/move",
+        json={"to": to},
+        headers={**WRITE_HEADERS, "If-Match": if_match},
+    )
+
+
+def test_a_move_answers_the_new_path_and_the_files_sha256(client, project, project_attempt):
+    expected = etag(project, f"{PROJECT}/README.md")
+    response = move(client, project_attempt, "README.md", "docs/README.md", expected)
+    assert (response.status_code, response.json()) == (
+        200,
+        {"path": "docs/README.md", "sha256": expected.strip('"')},
+    )
+
+
+def test_a_moved_file_reads_at_its_new_path(client, project, project_attempt):
+    move(client, project_attempt, "README.md", "NOTES.md", etag(project, f"{PROJECT}/README.md"))
+    assert client.get(file_url(project_attempt, "NOTES.md")).json()["state"] == "added"
+
+
+def test_a_move_onto_a_file_gets_409_conflict(client, project, project_attempt):
+    expected = etag(project, f"{PROJECT}/README.md")
+    response = move(client, project_attempt, "README.md", "bank/bank.py", expected)
+    assert error(response) == (409, "conflict")
+
+
+def test_a_move_with_a_stale_if_match_gets_412(client, project, project_attempt):
+    stale = etag(project, f"{PROJECT}/README.md")
+    project.workspace.write_text(f"{PROJECT}/README.md", "# Theirs\n")
+    response = move(client, project_attempt, "README.md", "NOTES.md", stale)
+    assert error(response) == (412, "precondition_failed")
+
+
+def test_a_move_without_if_match_gets_428(client, project_attempt):
+    response = client.post(
+        f"{file_url(project_attempt, 'README.md')}/move",
+        json={"to": "NOTES.md"},
+        headers=WRITE_HEADERS,
+    )
+    assert error(response) == (428, "precondition_required")
+
+
+@pytest.mark.parametrize("target", ["../README.md", "/etc/README.md", "bank\\README.md"])
+def test_a_move_out_of_the_root_gets_422(client, project, project_attempt, target):
+    expected = etag(project, f"{PROJECT}/README.md")
+    response = move(client, project_attempt, "README.md", target, expected)
+    assert error(response) == (422, "usage")
+
+
+def test_a_move_without_a_target_gets_422(client, project, project_attempt):
+    response = client.post(
+        f"{file_url(project_attempt, 'README.md')}/move",
+        json={},
+        headers={**WRITE_HEADERS, "If-Match": etag(project, f"{PROJECT}/README.md")},
+    )
+    assert error(response) == (422, "usage")
+
+
+def test_a_move_in_a_single_file_attempt_gets_422(practice_client, python_attempt):
+    response = move(practice_client, python_attempt, "two_sum.py", "x.py", f'"{sha(STUB_TEXT)}"')
+    assert error(response) == (422, "usage")
+
+
+# deleting
+
+
+def delete(client: TestClient, attempt: Attempt, path: str, if_match: str):
+    return client.delete(file_url(attempt, path), headers={**WRITE_HEADERS, "If-Match": if_match})
+
+
+def test_a_delete_gets_204(client, project, project_attempt):
+    response = delete(client, project_attempt, "README.md", etag(project, f"{PROJECT}/README.md"))
+    assert (response.status_code, response.content) == (204, b"")
+
+
+def test_a_deleted_starter_file_shows_deleted_in_the_tree(client, project, project_attempt):
+    delete(client, project_attempt, "README.md", etag(project, f"{PROJECT}/README.md"))
+    entries = client.get(f"/api/v1/attempts/{project_attempt.id}/files").json()["entries"]
+    assert next(entry["state"] for entry in entries if entry["path"] == "README.md") == "deleted"
+
+
+def test_a_delete_without_if_match_gets_428(client, project_attempt):
+    response = client.delete(file_url(project_attempt, "README.md"), headers=WRITE_HEADERS)
+    assert error(response) == (428, "precondition_required")
+
+
+def test_a_delete_with_a_stale_if_match_gets_412(client, project, project_attempt):
+    stale = etag(project, f"{PROJECT}/README.md")
+    project.workspace.write_text(f"{PROJECT}/README.md", "# Theirs\n")
+    response = delete(client, project_attempt, "README.md", stale)
+    assert error(response) == (412, "precondition_failed")
+
+
+def test_a_delete_through_a_link_gets_422(client, project, project_attempt):
+    project.workspace.write_text("secret.txt", "secret\n")
+    project.workspace.absolute(f"{PROJECT}/README.md").unlink()
+    project.workspace.absolute(f"{PROJECT}/README.md").symlink_to("../../secret.txt")
+    response = delete(client, project_attempt, "README.md", f'"{sha("secret\n")}"')
+    assert error(response) == (422, "usage")
+
+
+def test_a_delete_that_leaves_the_root_gets_422(client, project_attempt):
+    response = delete(client, project_attempt, "bank/%2E%2E/%2E%2E/x.py", '"unused"')
+    assert error(response) == (422, "usage")
+
+
+def test_a_delete_while_the_projects_lock_stays_busy_gets_409_locked(
+    tmp_path, project, project_attempt
+):
+    with (
+        session_client(impatient_app(tmp_path, project)) as client,
+        exclusive_lock(project.workspace.absolute(project_lock(PROJECT_SLUG))),
+    ):
+        expected = etag(project, f"{PROJECT}/README.md")
+        response = delete(client, project_attempt, "README.md", expected)
+    assert error(response) == (409, "locked")
+
+
+# restoring
+
+
+def restore(client: TestClient, attempt: Attempt, path: str):
+    return client.post(
+        f"/api/v1/attempts/{attempt.id}/restore", json={"path": path}, headers=WRITE_HEADERS
+    )
+
+
+def test_a_restore_answers_the_files_path_origin_and_level(client, project, project_attempt):
+    project.workspace.write_text(f"{PROJECT}/README.md", "# Mine\n")
+    response = restore(client, project_attempt, "README.md")
+    assert (response.status_code, response.json()) == (
+        200,
+        {"path": "README.md", "origin": "starter", "level": None},
+    )
+
+
+def test_a_restored_file_reads_as_unchanged(client, project, project_attempt):
+    project.workspace.write_text(f"{PROJECT}/README.md", "# Mine\n")
+    restore(client, project_attempt, "README.md")
+    assert client.get(file_url(project_attempt, "README.md")).json()["state"] == "unchanged"
+
+
+def test_restoring_a_generated_test_file_names_its_level(client, project, project_attempt):
+    test_file = next(
+        entry["path"]
+        for entry in client.get(f"/api/v1/attempts/{project_attempt.id}/files").json()["entries"]
+        if entry["origin"] == "level"
+    )
+    project.workspace.absolute(f"{PROJECT}/{test_file}").unlink()
+    response = restore(client, project_attempt, test_file)
+    assert (response.json()["origin"], response.json()["level"]) == ("level", 1)
+
+
+def test_restoring_a_file_you_added_gets_422_with_the_clis_message(
+    client, project, project_attempt
+):
+    project.workspace.write_text(f"{PROJECT}/bank/ledger.py", "LEDGER = []\n")
+    response = restore(client, project_attempt, "bank/ledger.py")
+    assert (error(response), response.json()["error"]["message"]) == (
+        (422, "usage"),
+        "cannot restore bank/ledger.py: not a starter file or a generated test file of an open "
+        f"level of {PROJECT_SLUG}",
+    )
+
+
+def test_restoring_in_a_single_file_attempt_gets_422(practice_client, python_attempt):
+    response = restore(practice_client, python_attempt, "two_sum.py")
+    assert (error(response), response.json()["error"]["message"]) == (
+        (422, "usage"),
+        "--restore is for project problems",
+    )
+
+
+def test_a_restore_without_a_path_gets_422(client, project_attempt):
+    response = client.post(
+        f"/api/v1/attempts/{project_attempt.id}/restore", json={}, headers=WRITE_HEADERS
+    )
+    assert error(response) == (422, "usage")
+
+
+def test_a_restore_while_the_projects_lock_stays_busy_gets_409_locked(
+    tmp_path, project, project_attempt
+):
+    with (
+        session_client(impatient_app(tmp_path, project)) as client,
+        exclusive_lock(project.workspace.absolute(project_lock(PROJECT_SLUG))),
+    ):
+        response = restore(client, project_attempt, "README.md")
+    assert error(response) == (409, "locked")
+
+
+def test_a_restore_for_an_ended_attempt_gets_409(client, project, project_attempt):
+    project.progress.update_attempt(replace(project_attempt, status=AttemptStatus.ABANDONED))
+    assert error(restore(client, project_attempt, "README.md")) == (409, "attempt_ended")

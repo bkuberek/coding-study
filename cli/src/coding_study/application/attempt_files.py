@@ -18,11 +18,17 @@ from typing import assert_never
 from coding_study.application.active_attempt import attempt_in_progress
 from coding_study.application.environment import Environment
 from coding_study.application.project_manifest import folder_states
+from coding_study.application.project_start import (
+    RestoredFile,
+    RestoreRequest,
+    restore_project_file,
+)
 from coding_study.domain import layout
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.errors import (
     FileChangedError,
     FileTooLargeError,
+    PathTakenError,
     UnknownFileError,
     UsageError,
 )
@@ -56,6 +62,9 @@ class _Verb(StrEnum):
     READ = "read"
     SAVE = "save"
     CREATE = "create"
+    MOVE = "move"
+    MOVE_TO = "move a file to"
+    DELETE = "delete"
 
 
 @dataclass(frozen=True, slots=True)
@@ -189,12 +198,7 @@ class AttemptFileChanges:
         cleaned = _scoped_path(self._scope, _Verb.SAVE, path)
         _require_editable_size(_Verb.SAVE, cleaned, text)
         with self._changing():
-            current = self._current(_Verb.SAVE, cleaned)
-            if current is None:
-                raise FileChangedError(f"{cleaned} was deleted since the page read it", None)
-            if _sha256(current) != expected_sha256:
-                message = f"{cleaned} changed since the page read it"
-                raise FileChangedError(message, _sha256(current))
+            current = self._unchanged(_Verb.SAVE, cleaned, expected_sha256)
             if _text(current) is None:
                 raise UsageError(f"cannot save {cleaned}: it is not UTF-8 text up to 1 MiB")
             self._write(_Verb.SAVE, cleaned, text)
@@ -214,6 +218,60 @@ class AttemptFileChanges:
                 raise FileChangedError(f"cannot create {cleaned}: it exists", _sha256(current))
             self._write(_Verb.CREATE, cleaned, text)
         return SavedFile(cleaned, content_digest(text))
+
+    def move(self, path: str, target: str, expected_sha256: str) -> SavedFile:
+        """Moves the file, while it still has the SHA-256 `expected_sha256`, to `target`,
+        making the directories on the way; answers its new path.
+
+        Raises FileChangedError when the file changed or went since it was read, PathTakenError
+        when anything is at `target`, and UsageError where the attempt's kind moves no files.
+        """
+        cleaned = self._reshapable_path(_Verb.MOVE, path)
+        destination = self._reshapable_path(_Verb.MOVE_TO, target)
+        if destination == cleaned:
+            raise UsageError(f"cannot move {cleaned}: it is already there")
+        with self._changing():
+            current = self._unchanged(_Verb.MOVE, cleaned, expected_sha256)
+            try:
+                self._environment.workspace.move_within(self._scope.root, cleaned, destination)
+            except FileExistsError:
+                message = f"cannot move {cleaned} to {destination}: it exists"
+                raise PathTakenError(message) from None
+            except ValueError as error:
+                raise UsageError(f"cannot move {cleaned}: {error}") from None
+        return SavedFile(destination, _sha256(current))
+
+    def delete(self, path: str, expected_sha256: str) -> None:
+        """Deletes the file while it still has the SHA-256 `expected_sha256`. A starter file or
+        a generated test file then shows `deleted`, and `restore` writes it back.
+
+        Raises FileChangedError when the file changed or went since it was read, and UsageError
+        where the attempt's kind deletes no files.
+        """
+        cleaned = self._reshapable_path(_Verb.DELETE, path)
+        with self._changing():
+            self._unchanged(_Verb.DELETE, cleaned, expected_sha256)
+            try:
+                self._environment.workspace.delete_within(self._scope.root, cleaned)
+            except ValueError as error:
+                raise UsageError(f"cannot delete {cleaned}: {error}") from None
+
+    def restore(self, path: str) -> RestoredFile:
+        """`cstudy start --restore` of the file, as `restore_project_file` does it for the
+        terminal, waiting at most the deadline for the project's lock."""
+        attempt = self._attempt
+        request = RestoreRequest(attempt.slug, attempt.language, path, self._lock_deadline_s)
+        return restore_project_file(self._environment, request)
+
+    def _unchanged(self, verb: _Verb, cleaned: str, expected_sha256: str) -> bytes:
+        """The file's content, while its SHA-256 is `expected_sha256`; raises FileChangedError
+        once it is another or the file is gone."""
+        current = self._current(verb, cleaned)
+        if current is None:
+            raise FileChangedError(f"{cleaned} was deleted since the page read it", None)
+        if _sha256(current) != expected_sha256:
+            raise FileChangedError(f"{cleaned} changed since the page read it", _sha256(current))
+        return current
 
     def _reshapable_path(self, verb: _Verb, path: str) -> str:
         """`path` cleaned, where the attempt's kind lets files be created, moved and deleted."""

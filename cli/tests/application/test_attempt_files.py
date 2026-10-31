@@ -27,6 +27,7 @@ from coding_study.domain.errors import (
     FileChangedError,
     FileTooLargeError,
     LockBusyError,
+    PathTakenError,
     UnknownFileError,
     UsageError,
 )
@@ -483,3 +484,211 @@ def test_creating_beside_a_single_file_attempts_file_is_refused(python):
 def test_creating_waits_at_most_the_deadline_for_the_projects_lock(project, held_lock):
     with pytest.raises(LockBusyError):
         changes(project).create("bank/ledger.py", "LEDGER = []\n")
+
+
+# moving
+
+README_TEXT = "# Bank Project (Python)"
+
+
+def state_of(started_attempt: tuple[Environment, Attempt], path: str) -> FileState | None:
+    tree = attempt_tree(*pair(started_attempt))
+    return next(found.state for found in tree.files if found.path == path)
+
+
+def test_moving_puts_the_file_at_its_new_path(project):
+    expected = on_disk(project, f"{PROJECT}/README.md")
+    changes(project).move("README.md", "docs/README.md", current_sha(project, "README.md"))
+    assert on_disk(project, f"{PROJECT}/docs/README.md") == expected
+
+
+def test_moving_answers_the_new_path_and_the_files_sha256(project):
+    expected = current_sha(project, "README.md")
+    moved = changes(project).move("README.md", "./docs/README.md", expected)
+    assert moved == SavedFile("docs/README.md", expected)
+
+
+def test_a_moved_starter_file_shows_deleted_at_its_old_path(project):
+    changes(project).move("README.md", "NOTES.md", current_sha(project, "README.md"))
+    assert (state_of(project, "README.md"), state_of(project, "NOTES.md")) == (
+        FileState.DELETED,
+        FileState.ADDED,
+    )
+
+
+def test_moving_a_file_that_changed_since_it_was_read_is_refused(project):
+    environment, _attempt = project
+    stale = current_sha(project, "README.md")
+    write(environment, f"{PROJECT}/README.md", b"# Theirs\n")
+    with pytest.raises(FileChangedError, match=r"README\.md changed since"):
+        changes(project).move("README.md", "NOTES.md", stale)
+
+
+def test_moving_onto_a_file_is_refused(project):
+    with pytest.raises(PathTakenError, match=r"cannot move README\.md to bank/bank\.py: it exists"):
+        changes(project).move("README.md", "bank/bank.py", current_sha(project, "README.md"))
+
+
+def test_moving_onto_a_file_leaves_both_alone(project):
+    expected = on_disk(project, f"{PROJECT}/bank/bank.py")
+    with pytest.raises(PathTakenError):
+        changes(project).move("README.md", "bank/bank.py", current_sha(project, "README.md"))
+    assert on_disk(project, f"{PROJECT}/bank/bank.py") == expected
+
+
+def test_moving_a_file_to_its_own_path_is_refused(project):
+    with pytest.raises(UsageError, match=r"cannot move README\.md: it is already there"):
+        changes(project).move("README.md", "./README.md", current_sha(project, "README.md"))
+
+
+@pytest.mark.parametrize(
+    ("target", "reason"),
+    [
+        ("../README.md", "leaves the folder"),
+        ("/tmp/README.md", "is absolute"),
+        (".venv/README.md", "the page never shows what tools write"),
+    ],
+)
+def test_moving_to_a_path_the_rules_refuse_is_refused(project, target, reason):
+    with pytest.raises(UsageError, match=f"cannot move a file to .*: {reason}"):
+        changes(project).move("README.md", target, current_sha(project, "README.md"))
+
+
+def test_moving_into_a_directory_that_is_a_link_is_refused(project):
+    environment, _attempt = project
+    write(environment, "elsewhere/kept.py", b"kept\n")
+    environment.workspace.absolute(f"{PROJECT}/out").symlink_to(
+        "../../elsewhere", target_is_directory=True
+    )
+    with pytest.raises(UsageError, match=r"cannot move README\.md: out is a symbolic link"):
+        changes(project).move("README.md", "out/README.md", current_sha(project, "README.md"))
+
+
+def test_moving_a_java_file_within_its_package(tmp_path):
+    environment = practice(tmp_path)
+    attempt = started(environment, Language.JAVA)
+    write(environment, f"{JAVA_PACKAGE}/Helper.java", b"class Helper {}\n")
+    expected = hashlib.sha256(b"class Helper {}\n").hexdigest()
+    changes((environment, attempt)).move("Helper.java", "Helpers.java", expected)
+    assert environment.workspace.read_text(f"{JAVA_PACKAGE}/Helpers.java") == "class Helper {}\n"
+
+
+def test_moving_a_java_file_out_of_its_package_is_refused(tmp_path):
+    environment = practice(tmp_path)
+    attempt = started(environment, Language.JAVA)
+    write(environment, f"{JAVA_PACKAGE}/Helper.java", b"class Helper {}\n")
+    expected = hashlib.sha256(b"class Helper {}\n").hexdigest()
+    with pytest.raises(UsageError, match=r"not one of the attempt's \.java files"):
+        changes((environment, attempt)).move("Helper.java", "inner/Helper.java", expected)
+
+
+def test_moving_a_single_file_attempts_file_is_refused(python):
+    with pytest.raises(UsageError, match=r"cannot move two_sum\.py: the attempt has one file"):
+        changes(python).move("two_sum.py", "solution.py", sha(STUB_TEXT))
+
+
+def test_moving_waits_at_most_the_deadline_for_the_projects_lock(project, held_lock):
+    with pytest.raises(LockBusyError):
+        changes(project).move("README.md", "NOTES.md", current_sha(project, "README.md"))
+
+
+# deleting
+
+
+def test_deleting_removes_the_file(project):
+    environment, _attempt = project
+    changes(project).delete("bank/bank.py", current_sha(project, "bank/bank.py"))
+    assert not environment.workspace.exists(f"{PROJECT}/bank/bank.py")
+
+
+def test_a_deleted_starter_file_shows_deleted(project):
+    changes(project).delete("README.md", current_sha(project, "README.md"))
+    assert state_of(project, "README.md") is FileState.DELETED
+
+
+def test_deleting_a_file_that_changed_since_it_was_read_is_refused(project):
+    environment, _attempt = project
+    stale = current_sha(project, "README.md")
+    write(environment, f"{PROJECT}/README.md", b"# Theirs\n")
+    with pytest.raises(FileChangedError, match=r"README\.md changed since"):
+        changes(project).delete("README.md", stale)
+
+
+def test_deleting_a_file_already_gone_is_refused_without_a_sha256(project):
+    environment, _attempt = project
+    stale = current_sha(project, "README.md")
+    environment.workspace.absolute(f"{PROJECT}/README.md").unlink()
+    with pytest.raises(FileChangedError) as refused:
+        changes(project).delete("README.md", stale)
+    assert refused.value.sha256 is None
+
+
+def test_deleting_a_link_is_refused(project):
+    environment, _attempt = project
+    write(environment, "secret.txt", b"secret\n")
+    environment.workspace.absolute(f"{PROJECT}/README.md").unlink()
+    environment.workspace.absolute(f"{PROJECT}/README.md").symlink_to("../../secret.txt")
+    with pytest.raises(UsageError, match=r"README\.md is a symbolic link"):
+        changes(project).delete("README.md", sha("secret\n"))
+
+
+def test_deleting_a_single_file_attempts_file_is_refused(python):
+    with pytest.raises(UsageError, match=r"cannot delete two_sum\.py: the attempt has one file"):
+        changes(python).delete("two_sum.py", sha(STUB_TEXT))
+
+
+def test_deleting_a_java_file_of_the_package(tmp_path):
+    environment = practice(tmp_path)
+    attempt = started(environment, Language.JAVA)
+    write(environment, f"{JAVA_PACKAGE}/Helper.java", b"class Helper {}\n")
+    expected = hashlib.sha256(b"class Helper {}\n").hexdigest()
+    changes((environment, attempt)).delete("Helper.java", expected)
+    assert not environment.workspace.exists(f"{JAVA_PACKAGE}/Helper.java")
+
+
+def test_deleting_waits_at_most_the_deadline_for_the_projects_lock(project, held_lock):
+    with pytest.raises(LockBusyError):
+        changes(project).delete("README.md", current_sha(project, "README.md"))
+
+
+# restoring, as `cstudy start --restore` does
+
+
+def test_restoring_a_modified_starter_file_turns_it_unchanged(project):
+    environment, _attempt = project
+    write(environment, f"{PROJECT}/README.md", b"# Mine\n")
+    changes(project).restore("README.md")
+    assert state_of(project, "README.md") is FileState.UNCHANGED
+
+
+def test_restoring_a_deleted_starter_file_writes_it_back(project):
+    environment, _attempt = project
+    environment.workspace.absolute(f"{PROJECT}/README.md").unlink()
+    changes(project).restore("README.md")
+    assert on_disk(project, f"{PROJECT}/README.md").startswith(README_TEXT)
+
+
+def test_restoring_answers_the_files_origin(project):
+    restored = changes(project).restore("./README.md")
+    assert (restored.path, restored.origin, restored.level) == (
+        "README.md",
+        FileOrigin.STARTER,
+        None,
+    )
+
+
+def test_restoring_a_file_you_added_is_refused(project):
+    environment, _attempt = project
+    write(environment, f"{PROJECT}/bank/ledger.py", b"LEDGER = []\n")
+    with pytest.raises(UsageError, match=r"cannot restore bank/ledger\.py: not a starter file"):
+        changes(project).restore("bank/ledger.py")
+
+
+def test_restoring_in_a_single_file_attempt_is_refused_as_the_cli_refuses(python):
+    with pytest.raises(UsageError, match="--restore is for project problems"):
+        changes(python).restore("two_sum.py")
+
+
+def test_restoring_waits_at_most_the_deadline_for_the_projects_lock(project, held_lock):
+    with pytest.raises(LockBusyError):
+        changes(project).restore("README.md")

@@ -8,10 +8,12 @@ folder's manifest anew (`project_manifest`); an archived folder takes none along
 writes one file the manifest records back as `cstudy` provides it now.
 """
 
+from contextlib import AbstractContextManager
 from dataclasses import dataclass, replace
 
 from coding_study.application.active_attempt import find_attempt
 from coding_study.application.environment import Environment
+from coding_study.application.ports import Workspace
 from coding_study.application.project_manifest import (
     ProjectManifests,
     folder_manifest,
@@ -86,6 +88,9 @@ class RestoreRequest:
     """None, or the problem's own language."""
     path: str
     """The file, relative to the project folder, as given."""
+    lock_deadline_s: float | None = None
+    """How long to wait for the project's lock before LockBusyError; None, as the CLI does,
+    waits as long as another command holds it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,7 +229,8 @@ def restore_project_file(environment: Environment, request: RestoreRequest) -> R
 
     Raises UsageError for another kind of problem or language, without an attempt in progress,
     for a missing folder, and for a path that names no file `cstudy` provided in the folder or
-    that a link or a directory blocks.
+    that a link or a directory blocks; LockBusyError when the lock stays busy past the request's
+    deadline.
     """
     problem = environment.problems.load(request.slug)
     if problem.meta.kind is not ProblemKind.PROJECT:
@@ -236,8 +242,17 @@ def restore_project_file(environment: Environment, request: RestoreRequest) -> R
     except ValueError as error:
         raise UsageError(f"cannot restore {request.path}: {error}") from None
     restorer = _Restorer(environment, problem, attempt.level_unlocked or FIRST_LEVEL)
-    with environment.workspace.locked(project_lock(problem.meta.slug)):
+    with _project_lock(environment.workspace, problem.meta.slug, request.lock_deadline_s):
         return restorer.restore(path)
+
+
+def _project_lock(
+    workspace: Workspace, slug: str, deadline_s: float | None
+) -> AbstractContextManager[None]:
+    lock = project_lock(slug)
+    if deadline_s is None:
+        return workspace.locked(lock)
+    return workspace.locked_with_deadline(lock, deadline_s)
 
 
 class _Restorer:
