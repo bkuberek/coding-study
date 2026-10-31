@@ -1,14 +1,17 @@
 """Project folders in the workspace (docs/specs/installation-and-workspaces.md#project-folders).
 
 `cstudy start` fills `projects/<slug>/` from a project problem's starter and links it to the
-workspace's toolchain. What tools write into a folder is untracked, as the workspace's
-`.gitignore` has it: the `.venv` link, `node_modules`, caches and a `uv.lock`. `cstudy test --watch`
-ignores those, `code_hash` leaves them out, and an archived attempt goes without them. Paths are
-POSIX strings, relative to the workspace root or, where a name says so, to the folder.
+workspace's toolchain: a Python folder through its `.venv` link, a Go folder through a `go.work` of
+its own. What tools write into a folder is untracked, as the workspace's `.gitignore` has it: the
+`.venv` link, `node_modules`, caches, a `uv.lock`, and Go's `go.work` and `go.work.sum`.
+`cstudy test --watch` ignores those, `code_hash` leaves them out, and an archived attempt goes
+without them. Paths are POSIX strings, relative to the workspace root or, where a name says so, to
+the folder.
 """
 
-from collections.abc import Sequence
-from dataclasses import dataclass
+import re
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass, field
 
 from coding_study.domain import layout
 from coding_study.domain.problem import Language, ProblemKind, ProblemMeta
@@ -22,10 +25,25 @@ UNTRACKED_DIRECTORIES = frozenset(
     {layout.PYTHON_VENV, "node_modules", "__pycache__", ".pytest_cache", ".ruff_cache"}
 )
 """Untracked wherever they appear in a folder."""
-UNTRACKED_ROOT_FILES = frozenset({"uv.lock"})
-"""Untracked at the root of a folder only: a plain `uv run` there writes one."""
+GO_MODULE_FILE = "go.mod"
+GO_WORK_FILE = "go.work"
+GO_WORK_SUM_FILE = "go.work.sum"
+GO_WORK_VERSION = "1.24"
+"""The `go` line of a folder's `go.work`, and the one a Go starter's `go.mod` declares."""
+UNTRACKED_ROOT_FILES = frozenset({"uv.lock", GO_WORK_FILE, GO_WORK_SUM_FILE})
+"""Untracked at the root of a folder only: a plain `uv run` there writes a `uv.lock`, and
+`cstudy start` a Go folder's `go.work`."""
+GO_VENDORED_MODULES: Mapping[str, str] = {"github.com/shopspring/decimal": "v1.5.0"}
+"""The modules a Go solution may import beyond the standard library, at their vendored versions:
+copies in the runner runtime, reached through `replace`, so nothing is downloaded
+(docs/specs/runners.md#go-build-details)."""
 _FOLDER_TO_WORKSPACE_ROOT = "../.."
 """From `projects/<slug>/` up to the workspace root."""
+_GO_THIRD_PARTY = ".cs/runtime/runners/go/third_party"
+"""The vendored Go modules' copies, relative to the workspace root."""
+_GO_COMMENT = re.compile(r"//.*")
+_GO_BLOCK_END = ")"
+_GO_REPLACEMENT_ARROW = "=>"
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +54,40 @@ class ToolchainLink:
     """Relative to the folder."""
     target: str
     """Relative to the folder, so the link survives moving and cloning the workspace."""
+
+
+@dataclass(frozen=True, slots=True)
+class ToolchainFile:
+    """A file that reaches the workspace's toolchain from a project folder, written when missing."""
+
+    path: str
+    """Relative to the folder."""
+    text: str
+
+
+@dataclass(frozen=True, slots=True)
+class GoModuleFile:
+    """What a `go.mod` declares; None for a directive it lacks."""
+
+    module: str | None
+    go: str | None
+    requires: Mapping[str, str] = field(default_factory=dict[str, str])
+    """The version of each required module."""
+    replaces: Mapping[str, str] = field(default_factory=dict[str, str])
+    """What replaces each module: a path, or a module and version."""
+
+
+@dataclass(frozen=True, slots=True)
+class GoProjectFolder:
+    """What `cstudy doctor` finds in a Go project folder (a folder with a `go.mod`)."""
+
+    folder: str
+    """`projects/<slug>`, relative to the workspace root."""
+    module: str | None
+    """Its `go.mod`'s module path."""
+    has_work_file: bool
+    unresolved: tuple[str, ...] = ()
+    """The local `replace` targets of its `go.mod` that name no directory."""
 
 
 def project_folder(slug: str) -> str:
@@ -57,6 +109,86 @@ def toolchain_link(language: Language) -> ToolchainLink | None:
         )
         return ToolchainLink(layout.PYTHON_VENV, venv)
     return None
+
+
+def toolchain_files(language: Language) -> tuple[ToolchainFile, ...]:
+    """A Go folder holds a `go.work` of its own, so the workspace's root `go.work` never claims
+    it; the others need none."""
+    if language is Language.GO:
+        return (ToolchainFile(GO_WORK_FILE, f"go {GO_WORK_VERSION}\n\nuse .\n"),)
+    return ()
+
+
+def go_vendored_replacement(module: str) -> str:
+    """The `replace` target of a vendored module in a Go folder's `go.mod`: its copy in the
+    runner runtime, relative to `projects/<slug>/`."""
+    return PATH_SEPARATOR.join((_FOLDER_TO_WORKSPACE_ROOT, _GO_THIRD_PARTY, module))
+
+
+def go_module_file(text: str) -> GoModuleFile:
+    """The directives of a `go.mod`, single or in blocks, without comments."""
+    module = go = None
+    requires: dict[str, str] = {}
+    replaces: dict[str, str] = {}
+    block: str | None = None
+    for raw in text.splitlines():
+        words = _GO_COMMENT.sub("", raw).split()
+        if not words:
+            continue
+        if block is not None:
+            if words == [_GO_BLOCK_END]:
+                block = None
+            else:
+                _directive(block, words, requires, replaces)
+            continue
+        verb, *rest = words
+        if rest == ["("]:
+            block = verb
+        elif verb == "module" and rest:
+            module = rest[0].strip('"')
+        elif verb == "go" and rest:
+            go = rest[0]
+        else:
+            _directive(verb, rest, requires, replaces)
+    return GoModuleFile(module, go, requires, replaces)
+
+
+def _directive(
+    verb: str, words: list[str], requires: dict[str, str], replaces: dict[str, str]
+) -> None:
+    if verb == "require" and len(words) >= 2:
+        requires[words[0]] = words[1]
+    elif verb == "replace" and _GO_REPLACEMENT_ARROW in words:
+        arrow = words.index(_GO_REPLACEMENT_ARROW)
+        replaces[words[0]] = " ".join(words[arrow + 1 :])
+
+
+def go_folder_problems(folders: Iterable[GoProjectFolder]) -> tuple[str, ...]:
+    """What `cstudy doctor` warns about in the Go project folders, in folder order: a missing
+    `go.work`, a `replace` that names no directory, and a module path two folders declare."""
+    ordered = sorted(folders, key=lambda found: found.folder)
+    problems: list[str] = []
+    for found in ordered:
+        if not found.has_work_file:
+            problems.append(f"{found.folder} has no {GO_WORK_FILE}")
+        problems += (
+            f"{found.folder}/{GO_MODULE_FILE} replaces a module with {target}, which does not exist"
+            for target in found.unresolved
+        )
+    by_module: dict[str, list[str]] = {}
+    for found in ordered:
+        if found.module is not None:
+            by_module.setdefault(found.module, []).append(found.folder)
+    problems += (
+        _sharing(sharing, module) for module, sharing in by_module.items() if len(sharing) > 1
+    )
+    return tuple(problems)
+
+
+def _sharing(folders: Sequence[str], module: str) -> str:
+    *others, last = folders
+    each = "both" if len(folders) == 2 else "all"
+    return f"{', '.join(others)} and {last} {each} declare module {module}"
 
 
 def is_untracked(path: str) -> bool:

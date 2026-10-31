@@ -17,17 +17,18 @@ from coding_study.domain.project import (
     level_methods,
     level_test_file,
     level_test_pattern,
+    level_tests_directory_issue,
     method_text,
     project_language,
     relative_path_issue,
 )
 from tests.project_builders import BANK, CREATE_ACCOUNT, DEPOSIT, TRANSFER, method, project_meta
 
-WITHOUT_PROJECTS = (Language.JAVA, Language.KOTLIN, Language.GO, Language.RUST)
+WITHOUT_PROJECTS = (Language.JAVA, Language.KOTLIN, Language.RUST)
 
 
-def test_project_problems_exist_in_python_and_typescript():
-    assert PROJECT_LANGUAGES == (Language.PYTHON, Language.TYPESCRIPT)
+def test_project_problems_exist_in_python_typescript_and_go():
+    assert PROJECT_LANGUAGES == (Language.PYTHON, Language.TYPESCRIPT, Language.GO)
 
 
 def test_generated_tests_go_to_tests_by_default():
@@ -94,6 +95,24 @@ def test_a_typescript_entry_that_is_not_a_ts_file_in_the_project_is_rejected(ent
     )
 
 
+@pytest.mark.parametrize("entry", ["bank.go", "bank/bank.go", "internal/core/bank.go"])
+def test_a_go_entry_is_a_go_file(entry):
+    assert entry_issue(entry, Language.GO) is None
+
+
+@pytest.mark.parametrize(
+    "entry", ["bank_test.go", "bank/bank_test.go", "bank", "bank.ts", "../bank.go", "/bank.go"]
+)
+def test_a_go_entry_that_is_not_a_go_file_in_the_project_is_rejected(entry):
+    assert entry_issue(entry, Language.GO) == (
+        f'"{entry}" is not a .go file inside the project such as bank.go, other than a test file'
+    )
+
+
+def test_a_go_entry_is_its_own_file():
+    assert entry_files("bank/bank.go", Language.GO) == ("bank/bank.go",)
+
+
 def test_a_python_entry_is_a_module_file_or_a_package():
     assert entry_files("bank.bank", Language.PYTHON) == ("bank/bank.py", "bank/bank/__init__.py")
 
@@ -107,7 +126,11 @@ def test_a_typescript_entry_is_its_own_file():
 
 @pytest.mark.parametrize(
     ("language", "expected"),
-    [(Language.PYTHON, "tests/test_level_2.py"), (Language.TYPESCRIPT, "tests/level-2.test.ts")],
+    [
+        (Language.PYTHON, "tests/test_level_2.py"),
+        (Language.TYPESCRIPT, "tests/level-2.test.ts"),
+        (Language.GO, "tests/level_2_test.go"),
+    ],
 )
 def test_each_level_has_one_generated_test_file(language, expected):
     assert level_test_file(Project("bank.bank"), language, 2) == expected
@@ -120,7 +143,11 @@ def test_generated_test_files_go_to_the_project_tests_directory():
 
 @pytest.mark.parametrize(
     ("language", "name"),
-    [(Language.PYTHON, "test_level_12.py"), (Language.TYPESCRIPT, "level-3.test.ts")],
+    [
+        (Language.PYTHON, "test_level_12.py"),
+        (Language.TYPESCRIPT, "level-3.test.ts"),
+        (Language.GO, "level_7_test.go"),
+    ],
 )
 def test_the_level_test_pattern_matches_a_generated_file_of_any_level(language, name):
     assert level_test_pattern(language).fullmatch(name)
@@ -131,6 +158,31 @@ def test_the_level_test_pattern_matches_a_generated_file_of_any_level(language, 
 )
 def test_the_level_test_pattern_matches_nothing_else(name):
     assert level_test_pattern(Language.PYTHON).fullmatch(name) is None
+
+
+@pytest.mark.parametrize("name", ["level_0_test.go", "level_1.go", "level_1_test.go.orig"])
+def test_the_go_level_test_pattern_matches_nothing_else(name):
+    assert level_test_pattern(Language.GO).fullmatch(name) is None
+
+
+# the generated tests' directory
+
+
+@pytest.mark.parametrize("tests", ["tests", "checks/levels", "level_tests"])
+def test_a_go_tests_directory_ends_in_a_package_name(tests):
+    assert level_tests_directory_issue(tests, Language.GO) is None
+
+
+@pytest.mark.parametrize("tests", ["level-tests", "checks/2", "tests/func"])
+def test_a_go_tests_directory_that_cannot_name_a_package_is_rejected(tests):
+    assert level_tests_directory_issue(tests, Language.GO) == (
+        f'"{tests}" does not end in a Go package name such as tests'
+    )
+
+
+@pytest.mark.parametrize("language", [Language.PYTHON, Language.TYPESCRIPT])
+def test_other_languages_take_any_tests_directory(language):
+    assert level_tests_directory_issue("level-tests", language) is None
 
 
 @pytest.mark.parametrize(
@@ -175,6 +227,7 @@ def test_a_project_problem_in_another_language_has_no_language_of_its_own(langua
     [
         (Language.PYTHON, "create_account(timestamp: int, account_id: str) -> bool"),
         (Language.TYPESCRIPT, "createAccount(timestamp: number, accountId: string): boolean"),
+        (Language.GO, "CreateAccount(timestamp int64, accountId string) bool"),
     ],
 )
 def test_a_method_reads_as_its_language_declares_it(language, expected):
@@ -197,6 +250,25 @@ def test_a_method_spells_its_types_in_its_language(returns, python, typescript):
     found = method("snapshot", 1, returns=returns)
     texts = (method_text(found, Language.PYTHON), method_text(found, Language.TYPESCRIPT))
     assert texts == (f"snapshot() -> {python}", f"snapshot(): {typescript}")
+
+
+@pytest.mark.parametrize(
+    ("returns", "go"),
+    [
+        ("double", "float64"),
+        ("char", "rune"),
+        ("decimal", "decimal.Decimal"),
+        ("date", "time.Time"),
+        ("list<string>", "[]string"),
+        ("int[][]", "[][]int"),
+    ],
+)
+def test_a_go_method_spells_its_types_in_go(returns, go):
+    assert method_text(method("snapshot", 1, returns=returns), Language.GO) == f"Snapshot() {go}"
+
+
+def test_a_go_method_without_a_result_has_no_return_type():
+    assert method_text(method("reset", 1, returns="void"), Language.GO) == "Reset()"
 
 
 def test_a_method_without_parameters_has_empty_parentheses():

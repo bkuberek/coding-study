@@ -216,7 +216,7 @@ def test_a_project_problem_lists_exactly_one_language(bank):
     ]
 
 
-@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN, Language.GO, Language.RUST])
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN, Language.RUST])
 def test_other_languages_have_no_project_problems_yet(bank, language):
     problem = with_meta(bank, languages=(language,))
     assert errors(content(problem)) == [
@@ -663,4 +663,137 @@ def test_a_project_without_an_overlay_has_no_optimal_reference(bank):
     assert [reason for reason in reasons if "reference" in reason] == [
         "no optimal reference in python",
         "reference has no reference in python",
+    ]
+
+
+# Go projects
+
+GO_MODULE = """module bank-project-python
+
+go 1.24
+
+require github.com/shopspring/decimal v1.5.0
+
+replace github.com/shopspring/decimal => {}
+""".format("../../.cs/runtime/runners/go/third_party/github.com/shopspring/decimal")
+GO_ENTRY = "package bank\n\ntype Bank struct{}\n\nfunc NewBank() *Bank { return &Bank{} }\n"
+
+
+def go(problem):
+    """The fixture as a Go project, with a valid Go starter and reference."""
+    starter = ProjectTree(
+        (
+            text_file("README.md", "Run go test ./...\n"),
+            text_file("bank.go", GO_ENTRY),
+            text_file("go.mod", GO_MODULE),
+        )
+    )
+    files = ProjectFiles(starter, {"reference": ProjectTree((text_file("bank.go", GO_ENTRY),))})
+    meta = replace(problem.meta, languages=(Language.GO,), project=Project("bank.go"))
+    return replace(problem, meta=meta, project_files=files)
+
+
+def with_go_module(problem, text: str):
+    return with_starter(problem, text_file("go.mod", text))
+
+
+def test_the_go_fixture_passes(bank):
+    assert errors(content(go(bank))) == []
+
+
+@pytest.mark.parametrize("type_text", ["decimal", "list<date>", "int[][]"])
+def test_a_go_project_signature_takes_decimals_and_dates(bank, type_text):
+    assert signature_errors(with_constructor_param(go(bank), type_text)) == []
+
+
+def test_a_go_entry_is_not_a_test_file(bank):
+    problem = with_meta(go(bank), project=Project("bank_test.go"))
+    assert errors(content(problem)) == [
+        f'{META}: project.entry: "bank_test.go" is not a .go file inside the project such as '
+        "bank.go, other than a test file"
+    ]
+
+
+def test_a_go_tests_directory_ends_in_a_package_name(bank):
+    problem = with_meta(go(bank), project=Project("bank.go", "level-tests"))
+    assert errors(content(problem)) == [
+        f'{META}: project.tests: "level-tests" does not end in a Go package name such as tests'
+    ]
+
+
+def test_a_go_starter_has_a_go_module(bank):
+    assert starter_errors(without_starter_files(go(bank), "go.mod")) == [
+        f"{STARTER}/go.mod: missing"
+    ]
+
+
+def test_a_go_module_is_named_after_the_slug(bank):
+    text = GO_MODULE.replace("module bank-project-python", "module bank")
+    problem = with_go_module(go(bank), text)
+    assert starter_errors(problem) == [
+        f'{STARTER}/go.mod: declares module "bank"; a project\'s module is its slug, '
+        "bank-project-python"
+    ]
+
+
+def test_a_go_module_says_go_1_24(bank):
+    problem = with_go_module(go(bank), GO_MODULE.replace("go 1.24", "go 1.26"))
+    assert starter_errors(problem) == [
+        f'{STARTER}/go.mod: says "go 1.26"; a project\'s go.mod says go 1.24'
+    ]
+
+
+def test_a_go_module_requires_no_module_that_is_not_vendored(bank):
+    text = GO_MODULE.replace("v1.5.0", "v1.5.0\nrequire example.com/money v1.0.0")
+    assert starter_errors(with_go_module(go(bank), text)) == [
+        f"{STARTER}/go.mod: requires example.com/money v1.0.0, which is not vendored: a project "
+        "builds offline, with github.com/shopspring/decimal v1.5.0 only"
+    ]
+
+
+def test_a_go_module_requires_the_vendored_version(bank):
+    text = GO_MODULE.replace("decimal v1.5.0", "decimal v1.4.0")
+    assert starter_errors(with_go_module(go(bank), text)) == [
+        f"{STARTER}/go.mod: requires github.com/shopspring/decimal v1.4.0, which is not vendored: "
+        "a project builds offline, with github.com/shopspring/decimal v1.5.0 only"
+    ]
+
+
+def test_a_go_module_replaces_a_vendored_module_with_the_runtimes_copy(bank):
+    text = GO_MODULE.replace("../../.cs/runtime", "../../../.cs/runtime")
+    assert starter_errors(with_go_module(go(bank), text)) == [
+        f"{STARTER}/go.mod: does not replace github.com/shopspring/decimal with "
+        "../../.cs/runtime/runners/go/third_party/github.com/shopspring/decimal, the runtime's copy"
+    ]
+
+
+def test_a_go_module_may_require_nothing(bank):
+    text = "module bank-project-python\n\ngo 1.24\n"
+    assert starter_errors(with_go_module(go(bank), text)) == []
+
+
+def test_a_go_starter_has_no_go_sum(bank):
+    assert starter_errors(with_starter(go(bank), text_file("go.sum"))) == [
+        f"{STARTER}/go.sum: is a lock file"
+    ]
+
+
+@pytest.mark.parametrize("name", ["go.work", "go.work.sum"])
+def test_a_go_starter_has_no_workspace_file(bank, name):
+    assert starter_errors(with_starter(go(bank), text_file(name))) == [
+        f"{STARTER}/{name}: cstudy start writes the folder's go.work"
+    ]
+
+
+def test_a_go_entry_is_not_a_main_package(bank):
+    problem = with_starter(go(bank), text_file("bank.go", "package main\n\nfunc main() {}\n"))
+    assert starter_errors(problem) == [
+        f"{STARTER}/bank.go: declares package main; the grader imports the entry's package"
+    ]
+
+
+def test_a_go_starter_has_no_generated_test_file(bank):
+    problem = with_starter(go(bank), text_file("tests/level_1_test.go", "package tests_test\n"))
+    assert starter_errors(problem) == [
+        f"{STARTER}/tests/level_1_test.go: has the name of a generated test file"
     ]

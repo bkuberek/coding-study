@@ -40,7 +40,9 @@ from coding_study.domain.project import (
     ProjectTree,
     entry_files,
     entry_issue,
+    go_package_name,
     level_test_pattern,
+    level_tests_directory_issue,
     relative_path_issue,
     unsupported_language,
 )
@@ -55,6 +57,15 @@ from coding_study.domain.type_dsl import (
     ScalarType,
     VoidType,
     scalars_of,
+)
+from coding_study.domain.workspace_projects import (
+    GO_MODULE_FILE,
+    GO_VENDORED_MODULES,
+    GO_WORK_FILE,
+    GO_WORK_SUM_FILE,
+    GO_WORK_VERSION,
+    go_module_file,
+    go_vendored_replacement,
 )
 
 MAX_STARTER_FILES = 50
@@ -80,6 +91,7 @@ LOCK_FILES = frozenset(
         *("uv.lock", "poetry.lock", "pdm.lock", "Pipfile.lock"),
         *("package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock"),
         *("bun.lock", "bun.lockb"),
+        "go.sum",
     }
 )
 SHADOWED_PYTHON_MODULES = frozenset({"pytest"})
@@ -92,6 +104,7 @@ PACKAGE_DEPENDENCY_FIELDS = (
     "optionalDependencies",
 )
 _PYTHON_SUFFIX = ".py"
+_GO_MAIN_PACKAGE = "main"
 
 type _Report = Callable[[str, str], None]
 """Reports a message on a path of the starter."""
@@ -188,6 +201,10 @@ class _Settings:
             self._error(issue, "project.entry")
         if issue := relative_path_issue(project.tests):
             self._error(f'"{project.tests}" {issue}', "project.tests")
+        elif language is not None and (
+            issue := level_tests_directory_issue(project.tests, language)
+        ):
+            self._error(issue, "project.tests")
 
     def _comparator(self) -> None:
         comparator = self._meta.comparator
@@ -278,6 +295,10 @@ class _Trees:
             _PythonStarter(self._error, starter).check()
         elif language is Language.TYPESCRIPT:
             _TypeScriptStarter(self._error, starter).check()
+        elif language is Language.GO:
+            entry = _well_formed_entry(self._content)
+            slug = self._content.problem.meta.slug
+            _GoStarter(self._error, starter, slug).check(entry[0].entry if entry else None)
         self._generated_test_names(starter)
 
     def _error(self, path: str, message: str) -> None:
@@ -433,6 +454,57 @@ class _TypeScriptStarter:
         for field in PACKAGE_DEPENDENCY_FIELDS:
             if package.get(field):
                 self._report(PACKAGE_FILE, f"declares {field}")
+
+
+class _GoStarter:
+    """S15: a module named after the slug that builds offline, reaching only the vendored modules
+    through the runtime's copies; the folder's `go.work` left to `cstudy start`; and an entry
+    package that the grader can import."""
+
+    def __init__(self, report: _Report, starter: ProjectTree, slug: str) -> None:
+        self._report = report
+        self._starter = starter
+        self._slug = slug
+
+    def check(self, entry: str | None) -> None:
+        self._module()
+        for name in (GO_WORK_FILE, GO_WORK_SUM_FILE):
+            if name in self._starter.paths:
+                self._report(name, f"cstudy start writes the folder's {GO_WORK_FILE}")
+        entry_file = None if entry is None else self._starter.file(entry)
+        if entry_file is not None and go_package_name(entry_file.text or "") == _GO_MAIN_PACKAGE:
+            message = f"declares package {_GO_MAIN_PACKAGE}; the grader imports the entry's package"
+            self._report(entry_file.path, message)
+
+    def _module(self) -> None:
+        file = self._starter.file(GO_MODULE_FILE)
+        if file is None:
+            self._report(GO_MODULE_FILE, "missing")
+            return
+        module = go_module_file(file.text or "")
+        if module.module != self._slug:
+            message = (
+                f'declares module "{module.module}"; a project\'s module is its slug, {self._slug}'
+            )
+            self._report(GO_MODULE_FILE, message)
+        if module.go != GO_WORK_VERSION:
+            message = f'says "go {module.go}"; a project\'s go.mod says go {GO_WORK_VERSION}'
+            self._report(GO_MODULE_FILE, message)
+        for required, version in module.requires.items():
+            if GO_VENDORED_MODULES.get(required) != version:
+                message = (
+                    f"requires {required} {version}, which is not vendored: a project builds "
+                    f"offline, with {_vendored_go_modules()} only"
+                )
+                self._report(GO_MODULE_FILE, message)
+            elif module.replaces.get(required) != (copy := go_vendored_replacement(required)):
+                self._report(
+                    GO_MODULE_FILE, f"does not replace {required} with {copy}, the runtime's copy"
+                )
+
+
+def _vendored_go_modules() -> str:
+    return ", ".join(f"{module} {version}" for module, version in GO_VENDORED_MODULES.items())
 
 
 class _Documents:

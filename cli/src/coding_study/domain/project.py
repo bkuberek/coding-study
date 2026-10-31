@@ -19,7 +19,7 @@ from dataclasses import dataclass, field, replace
 from coding_study.domain.cases import OperationSequence
 from coding_study.domain.levels import level_heading
 from coding_study.domain.markdown import MarkdownDocument
-from coding_study.domain.naming import NameRole, member_name
+from coding_study.domain.naming import RESERVED_WORDS, NameRole, member_name
 from coding_study.domain.problem import Language, Problem, ProblemMeta
 from coding_study.domain.signature import ClassSignature, Method, Param, Signature
 from coding_study.domain.statement import render_statement
@@ -43,6 +43,10 @@ _WINDOWS_SEPARATOR = "\\"
 _PYTHON_SOURCE_SUFFIX = ".py"
 _PYTHON_PACKAGE_FILE = "__init__.py"
 _TYPESCRIPT_SOURCE_SUFFIX = ".ts"
+_GO_SOURCE_SUFFIX = ".go"
+_GO_TEST_SUFFIX = "_test.go"
+_GO_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+_GO_PACKAGE_CLAUSE = re.compile(r"^package\s+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,6 +144,15 @@ def entry_files(entry: str, language: Language) -> tuple[str, ...]:
     return _project_language(language).entry_files(entry)
 
 
+def level_tests_directory_issue(tests: str, language: Language) -> str | None:
+    """Why `tests` cannot hold the generated test files of a project in `language`, beyond
+    `relative_path_issue`; None when it can. Go's files declare `package <last name>_test`.
+
+    Raises ValueError for a language without project problems.
+    """
+    return _project_language(language).level_tests_directory_issue(tests)
+
+
 def level_test_file(project: Project, language: Language, level: int) -> str:
     """The generated test file of `level`, relative to the project root.
 
@@ -158,6 +171,12 @@ def level_test_pattern(language: Language) -> re.Pattern[str]:
     names = _project_language(language)
     prefix, suffix = re.escape(names.level_test_prefix), re.escape(names.level_test_suffix)
     return re.compile(f"{prefix}[1-9][0-9]*{suffix}")
+
+
+def go_package_name(source: str) -> str | None:
+    """The name in the first `package` clause of a Go file; None when it has none."""
+    match = _GO_PACKAGE_CLAUSE.search(source)
+    return match.group(1) if match else None
 
 
 def project_language(meta: ProblemMeta) -> Language:
@@ -181,11 +200,13 @@ def method_text(method: Method, language: Language) -> str:
     """
     names = _project_language(language)
     params = ", ".join(
-        f"{member_name(param.name, language, NameRole.PARAMETER)}: {names.type_text(param.type)}"
+        f"{member_name(param.name, language, NameRole.PARAMETER)}"
+        f"{names.parameter_separator}{names.type_text(param.type)}"
         for param in method.params
     )
     name = member_name(method.name, language, NameRole.METHOD)
-    return f"{name}({params}){names.returns_separator}{names.type_text(method.returns.type)}"
+    returns = names.type_text(method.returns.type)
+    return f"{name}({params}){names.returns_separator}{returns}" if returns else f"{name}({params})"
 
 
 def level_methods(signature: ClassSignature, level: int) -> tuple[Method, ...]:
@@ -291,7 +312,12 @@ class _ProjectLanguage:
     type_text: Callable[[ReturnType], str]
     """A type as the statement's `Methods to add:` line spells it, as the language's stubs do."""
     returns_separator: str
-    """Between a method's parameters and its return type."""
+    """Between a method's parameters and its return type; a method whose type spells as nothing
+    (Go's `void`) has neither."""
+    parameter_separator: str = ": "
+    """Between a parameter's name and its type."""
+    level_tests_directory_issue: Callable[[str], str | None] = lambda _tests: None
+    """Why a `project.tests` directory cannot hold the generated files, beyond its path."""
 
 
 def _python_entry_issue(entry: str) -> str | None:
@@ -316,6 +342,21 @@ def _typescript_entry_issue(entry: str) -> str | None:
     return f'"{entry}" is not a .ts file inside the project such as src/bank.ts'
 
 
+def _go_entry_issue(entry: str) -> str | None:
+    is_source = entry.endswith(_GO_SOURCE_SUFFIX) and not entry.endswith(_GO_TEST_SUFFIX)
+    if is_source and relative_path_issue(entry) is None:
+        return None
+    return f'"{entry}" is not a .go file inside the project such as bank.go, other than a test file'
+
+
+def _go_level_tests_directory_issue(tests: str) -> str | None:
+    """The generated files declare `package <last directory name>_test`."""
+    name = tests.rpartition(PATH_SEPARATOR)[2]
+    if _GO_IDENTIFIER.fullmatch(name) and name not in RESERVED_WORDS[Language.GO]:
+        return None
+    return f'"{tests}" does not end in a Go package name such as tests'
+
+
 _PYTHON_SCALARS: Mapping[Scalar, str] = {
     Scalar.INT: "int",
     Scalar.LONG: "int",
@@ -337,6 +378,19 @@ _TYPESCRIPT_SCALARS: Mapping[Scalar, str] = {
     Scalar.DATE: "string",
 }
 """A project folder cannot reach the runner's support module, so a date is its ISO string."""
+
+
+_GO_SCALARS: Mapping[Scalar, str] = {
+    Scalar.INT: "int",
+    Scalar.LONG: "int64",
+    Scalar.DOUBLE: "float64",
+    Scalar.BOOL: "bool",
+    Scalar.STRING: "string",
+    Scalar.CHAR: "rune",
+    Scalar.DECIMAL: "decimal.Decimal",
+    Scalar.DATE: "time.Time",
+}
+"""The Go mapping (docs/specs/problem-format.md#go-and-rust-mapping)."""
 
 
 def _python_type(declared: ReturnType) -> str:
@@ -364,6 +418,19 @@ def _typescript_type(declared: ReturnType) -> str:
             return "void"
 
 
+def _go_type(declared: ReturnType) -> str:
+    """A `void` result spells as nothing: a Go method without one declares no type."""
+    match declared:
+        case ScalarType(scalar):
+            return _GO_SCALARS[scalar]
+        case NodeType(kind):
+            return f"*{kind}"
+        case ArrayType(element) | ListType(element):
+            return f"[]{_go_type(element)}"
+        case VoidType():
+            return ""
+
+
 _PROJECT_LANGUAGES: Mapping[Language, _ProjectLanguage | None] = {
     Language.PYTHON: _ProjectLanguage(
         _python_entry_issue, _python_entry_files, "test_level_", ".py", _python_type, " -> "
@@ -378,10 +445,19 @@ _PROJECT_LANGUAGES: Mapping[Language, _ProjectLanguage | None] = {
     ),
     Language.JAVA: None,
     Language.KOTLIN: None,
-    Language.GO: None,
+    Language.GO: _ProjectLanguage(
+        _go_entry_issue,
+        lambda entry: (entry,),
+        "level_",
+        _GO_TEST_SUFFIX,
+        _go_type,
+        " ",
+        parameter_separator=" ",
+        level_tests_directory_issue=_go_level_tests_directory_issue,
+    ),
     Language.RUST: None,
 }
-"""None: not yet supported; Java, Kotlin, Go and Rust wait for spikes (ADR 0014)."""
+"""None: not yet supported; Java, Kotlin and Rust wait for spikes (ADR 0014)."""
 PROJECT_LANGUAGES = tuple(language for language, found in _PROJECT_LANGUAGES.items() if found)
 """The languages a project problem may list."""
 
