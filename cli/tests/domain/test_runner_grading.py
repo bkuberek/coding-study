@@ -1,6 +1,9 @@
 import pytest
 
-from coding_study.domain.runner_grading import graded_signature
+from coding_study.domain.problem import Language
+from coding_study.domain.project import Project
+from coding_study.domain.runner_grading import graded_signature, grading_target
+from coding_study.domain.runs import FileTarget, ProjectTarget
 from coding_study.domain.signature import (
     ClassSignature,
     FunctionSignature,
@@ -40,3 +43,18 @@ def test_a_function_signature_has_no_levels_to_grade():
     function = FunctionSignature("twoSum", (), Returns(LONG))
     with pytest.raises(ValueError, match="class"):
         graded_signature(function, 1)
+
+
+def test_a_python_project_is_graded_through_its_folder_and_entry_module():
+    target = grading_target(Project("bank.bank"), Language.PYTHON, "/ws/projects/bank")
+    assert target == ProjectTarget("/ws/projects/bank", "bank.bank")
+
+
+def test_a_typescript_project_is_graded_through_its_entry_file():
+    target = grading_target(Project("src/bank.ts"), Language.TYPESCRIPT, "/ws/projects/bank")
+    assert target == FileTarget("/ws/projects/bank/src/bank.ts")
+
+
+def test_a_language_without_project_problems_has_no_grading_target():
+    with pytest.raises(ValueError, match="not yet supported in java"):
+        grading_target(Project("bank.Bank"), Language.JAVA, "/ws/projects/bank")

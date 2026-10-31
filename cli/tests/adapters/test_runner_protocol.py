@@ -24,6 +24,7 @@ from coding_study.domain.runs import (
     CompiledTarget,
     FileTarget,
     InvalidOutput,
+    ProjectTarget,
     Raised,
     Returned,
     RunCase,
@@ -127,6 +128,17 @@ def test_encodes_class_target_names_and_operation_cases():
 def test_encodes_a_compiled_target_by_its_id():
     job = replace(TWO_SUM_JOB, target=CompiledTarget("ref/hash-map"))
     assert encoded_job(job)["target"] == {"compiled": "ref/hash-map"}
+
+
+def test_encodes_a_project_target_by_its_root_and_entry_module():
+    job = replace(
+        LRU_JOB, kind=ProblemKind.PROJECT, target=ProjectTarget("/ws/projects/bank", "bank.bank")
+    )
+    encoded = encoded_job(job)
+    assert (encoded["kind"], encoded["target"]) == (
+        "project",
+        {"project": "/ws/projects/bank", "module": "bank.bank"},
+    )
 
 
 def test_encodes_the_constructor_name_when_the_language_names_one():

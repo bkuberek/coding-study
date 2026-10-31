@@ -1,17 +1,20 @@
 """Running a project problem's jobs (docs/specs/runners.md#project-jobs).
 
-`cstudy test` runs a project's native suite and `cstudy submit` its grading job. Both launch the
-runner in the project folder, one process per job: two projects may define the same top-level
-module, and a grading job and a suite job of one project would share it.
+`cstudy test` runs a project's native suite; `cstudy submit` and `cstudy verify` run its grading
+job. Both launch the runner in the project folder, one process per job: two projects may define
+the same top-level module, and a grading job and a suite job of one project would share it.
 """
 
-from collections.abc import Mapping
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, replace
 from pathlib import Path
 
+from coding_study.application.case_materialization import CaseMaterializer
+from coding_study.application.comparison import problem_comparator
 from coding_study.application.environment import Environment
 from coding_study.application.ports import (
     ProgressNotice,
+    ProjectGrading,
     ProjectRunner,
     ProjectSuite,
     Toolchains,
@@ -19,9 +22,14 @@ from coding_study.application.ports import (
 from coding_study.domain.config import Config
 from coding_study.domain.debugging import DebugSession
 from coding_study.domain.errors import RunnerStartError
+from coding_study.domain.judging import Judgement, RunnableCase, judge
+from coding_study.domain.levels import cases_up_to
+from coding_study.domain.naming import symbol_names
 from coding_study.domain.precedence import resolve_hang_guard_ms
-from coding_study.domain.problem import Language, ProblemMeta
+from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
 from coding_study.domain.project import level_test_file, unsupported_language
+from coding_study.domain.runner_grading import graded_signature, grading_target
+from coding_study.domain.runs import RunCase, RunJob, RunRequest
 from coding_study.domain.suite_runs import SuiteFramework, SuiteJob, SuiteReport
 
 SUITE_JOB = "suite"
@@ -84,3 +92,54 @@ def suite_job(run: SuiteRun, config: Config) -> SuiteJob:
         exclude=tuple(level_test_file(meta.project, run.language, level) for level in locked),
         select=run.select,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class GradingRun:
+    """One grading of a project folder (`cstudy submit`, `cstudy verify` D1 and D3)."""
+
+    problem: Problem
+    language: Language
+    root: Path
+    """The project folder: `projects/<slug>/`, or a reference's build copy."""
+    level: int
+    """Cases of levels 1 to `level` run, against the methods of those levels."""
+
+
+def run_grading(environment: Environment, run: GradingRun, notify: ProgressNotice) -> Judgement:
+    """Judges the project's cases of levels 1 to `run.level` (visible and hidden) with the
+    problem's comparator, as `cstudy test` judges any other class job.
+
+    Raises RunnerStartError (exit 4) when the language's runner has no project jobs, ValueError
+    for a problem without a `project` block or a language without project problems.
+    """
+    meta = run.problem.meta
+    runner = project_runner(environment.toolchains, run.language)
+    graded = replace(run.problem, cases=cases_up_to(run.problem.cases, run.level))
+    cases = CaseMaterializer(environment, notify).runnable_cases(graded)
+    job = grading_job(run, cases, environment.config)
+    launch = runner.prepare_project(ProjectGrading(run.root), notify)
+    report = environment.runner_process.run(launch, RunRequest((job,)))
+    return judge(cases, report.job(job.job_id), problem_comparator(environment, meta))
+
+
+def grading_job(run: GradingRun, cases: Sequence[RunnableCase], config: Config) -> RunJob:
+    """Raises ValueError for a problem without a `project` block or a language without project
+    problems."""
+    meta = run.problem.meta
+    if meta.project is None:
+        raise ValueError(f"{meta.slug} is not a project problem")
+    signature = graded_signature(meta.signature, run.level)
+    return RunJob(
+        job_id=meta.slug,
+        kind=ProblemKind.PROJECT,
+        target=grading_target(meta.project, run.language, str(run.root)),
+        names=symbol_names(signature, run.language),
+        signature=signature,
+        cases=tuple(_run_case(case, meta, config) for case in cases),
+    )
+
+
+def _run_case(case: RunnableCase, meta: ProblemMeta, config: Config) -> RunCase:
+    hang_guard_ms = resolve_hang_guard_ms(config, case.hang_guard_ms, meta.hang_guard_ms)
+    return RunCase(case.id, case.input, hang_guard_ms)

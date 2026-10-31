@@ -25,6 +25,7 @@ from coding_study.domain.runs import (
     CompiledTarget,
     FileTarget,
     InvalidOutput,
+    ProjectTarget,
     Raised,
     RequestInput,
     Returned,
@@ -277,6 +278,8 @@ def _target(target: RunTarget) -> JsonObject:
             return {"class": class_name}
         case CompiledTarget(id):
             return {"compiled": id}
+        case ProjectTarget(root, module):
+            return {"project": root, "module": module}
 
 
 def _names(names: SymbolNames) -> JsonObject:

@@ -55,7 +55,17 @@ class CompiledTarget:
     id: str
 
 
-type RunTarget = FileTarget | ClassTarget | CompiledTarget
+@dataclass(frozen=True, slots=True)
+class ProjectTarget:
+    """A Python project problem: the project folder and the dotted module of its entry class
+    (docs/specs/runners.md#grading-job)."""
+
+    root: str
+    """Absolute."""
+    module: str
+
+
+type RunTarget = FileTarget | ClassTarget | CompiledTarget | ProjectTarget
 
 
 @dataclass(frozen=True, slots=True)
