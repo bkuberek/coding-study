@@ -47,6 +47,36 @@
       "tests/statuses.test.ts::raises": {"status": "error", "message": "conformance failure"},
       "tests/statuses.test.ts::prints": {"status": "ok", "stdout": "conformance output\n"}
     }},
+    {"problem": "conformance-project-java", "approach": "reference", "outcome": {"status": "pass"}},
+    {"problem": "conformance-project-kotlin", "approach": "reference", "outcome": {"status": "pass"}},
+    {"problem": "conformance-suite-junit-java", "approach": "reference", "outcome": {"status": "pass"}, "tests": {
+      "src/test/java/probe/Level1Test.java::ex1": {"status": "ok"},
+      "src/test/java/probe/StatusesTest.java::passes": {"status": "ok"},
+      "src/test/java/probe/StatusesTest.java::hangs": {"status": "timeout"},
+      "src/test/java/probe/StatusesTest.java::failsAnAssertion": {"status": "failed", "message": "expected: <ping> but was: <pong>"},
+      "src/test/java/probe/StatusesTest.java::endsTheProcess": {"status": "crashed"},
+      "src/test/java/probe/StatusesTest.java::raises": {"status": "error", "message": "conformance failure"},
+      "src/test/java/probe/StatusesTest.java::prints": {"status": "ok", "stdout": "conformance output\n"},
+      "src/test/java/probe/StatusesTest.java::disabled": {"status": "skipped", "message": "not ready"},
+      "src/test/java/probe/StatusesTest.java::assumes": {"status": "skipped", "message": "aborted: Assumption failed: no network"},
+      "src/test/java/probe/StatusesTest.java::counts[1]": {"status": "ok"},
+      "src/test/java/probe/StatusesTest.java::counts[2]": {"status": "ok"},
+      "src/test/java/probe/BrokenSetupTest.java": {"status": "error", "message": "setup failure"}
+    }},
+    {"problem": "conformance-suite-junit-kotlin", "approach": "reference", "outcome": {"status": "pass"}, "tests": {
+      "src/test/kotlin/probe/Level1Test.kt::ex1": {"status": "ok"},
+      "src/test/kotlin/probe/StatusesTest.kt::passes": {"status": "ok"},
+      "src/test/kotlin/probe/StatusesTest.kt::hangs": {"status": "timeout"},
+      "src/test/kotlin/probe/StatusesTest.kt::failsAnAssertion": {"status": "failed", "message": "expected: <ping> but was: <pong>"},
+      "src/test/kotlin/probe/StatusesTest.kt::endsTheProcess": {"status": "crashed"},
+      "src/test/kotlin/probe/StatusesTest.kt::raises": {"status": "error", "message": "conformance failure"},
+      "src/test/kotlin/probe/StatusesTest.kt::prints": {"status": "ok", "stdout": "conformance output\n"},
+      "src/test/kotlin/probe/StatusesTest.kt::disabled": {"status": "skipped", "message": "not ready"},
+      "src/test/kotlin/probe/StatusesTest.kt::assumes": {"status": "skipped", "message": "aborted: Assumption failed: no network"},
+      "src/test/kotlin/probe/StatusesTest.kt::counts[1]": {"status": "ok"},
+      "src/test/kotlin/probe/StatusesTest.kt::counts[2]": {"status": "ok"},
+      "src/test/kotlin/probe/BrokenSetupTest.kt": {"status": "error", "message": "setup failure"}
+    }},
     {"problem": "conformance-project-go", "approach": "reference", "outcome": {"status": "pass"}},
     {"problem": "conformance-suite-go-test", "approach": "reference", "outcome": {"status": "pass"}, "tests": {
       "tests/level_1_test.go::TestEx1": {"status": "ok"},

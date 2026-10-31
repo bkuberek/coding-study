@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9027"
+slug: conformance-project-kotlin
+title: "Conformance: a Kotlin project folder"
+status: ready
+difficulty: easy
+track: practical
+kind: project
+languages: [kotlin]
+levels:
+  - {level: 1, title: Classes across packages}
+signature:
+  class:
+    name: Inventory
+    constructor: {params: []}
+    methods:
+      - {name: add, level: 1, params: [{name: name, type: string}, {name: count, type: int}], returns: {type: int}}
+      - {name: label, level: 1, params: [{name: name, type: string}], returns: {type: string}}
+comparator: {type: ops}
+project:
+  entry: store.Inventory
+  tests: src/test/kotlin/store
+approaches:
+  - {id: reference, name: "The entry uses a class of its own package and one of a subpackage", role: optimal, time: "O(1)", space: "O(n)", time_class: "1", space_class: "n"}

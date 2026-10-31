@@ -166,6 +166,29 @@ def test_a_node_test_suite_expects_the_same_statuses_under_its_own_test_ids():
     }
 
 
+@pytest.mark.parametrize(("language", "extension"), [("java", "java"), ("kotlin", "kt")])
+def test_a_junit_suite_expects_what_only_the_junit_platform_reports(language, extension):
+    """A class whose setup fails is one result under its file's id; a disabled test and a failed
+    assumption are skipped; a parameterized test is one result per invocation."""
+    [suite] = [e for e in SUITE.expectations if e.slug == f"conformance-suite-junit-{language}"]
+    statuses = {test_id: test.status for test_id, test in suite.tests.items()}
+    tests = f"src/test/{language}/probe"
+    assert {
+        test_id: statuses[test_id]
+        for test_id in (
+            f"{tests}/BrokenSetupTest.{extension}",
+            f"{tests}/StatusesTest.{extension}::disabled",
+            f"{tests}/StatusesTest.{extension}::assumes",
+            f"{tests}/StatusesTest.{extension}::counts[2]",
+        )
+    } == {
+        f"{tests}/BrokenSetupTest.{extension}": ExpectedTestStatus.ERROR,
+        f"{tests}/StatusesTest.{extension}::disabled": ExpectedTestStatus.SKIPPED,
+        f"{tests}/StatusesTest.{extension}::assumes": ExpectedTestStatus.SKIPPED,
+        f"{tests}/StatusesTest.{extension}::counts[2]": ExpectedTestStatus.OK,
+    }
+
+
 @pytest.mark.parametrize(
     ("document", "message"),
     [
