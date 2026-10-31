@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0251"
+slug: bank-project-java
+title: Bank Project (Java)
+status: draft
+difficulty: hard
+track: practical
+kind: project
+languages: [java]
+levels:
+  - {level: 1, title: Accounts and transfers}
+  - {level: 2, title: Top spenders}
+  - {level: 3, title: Scheduled transfers}
+  - {level: 4, title: Merges and balance history}
+signature:
+  class:
+    name: Bank
+    constructor: {params: []}
+    methods:
+      - {name: createAccount, level: 1, params: [{name: timestamp, type: long}, {name: accountId, type: string}], returns: {type: bool}}
+      - {name: deposit, level: 1, params: [{name: timestamp, type: long}, {name: accountId, type: string}, {name: amount, type: long}], returns: {type: long}}
+      - {name: transfer, level: 1, params: [{name: timestamp, type: long}, {name: sourceId, type: string}, {name: targetId, type: string}, {name: amount, type: long}], returns: {type: long}}
+      - {name: topSpenders, level: 2, params: [{name: timestamp, type: long}, {name: n, type: int}], returns: {type: "list<string>"}}
+      - {name: scheduleTransfer, level: 3, params: [{name: timestamp, type: long}, {name: sourceId, type: string}, {name: targetId, type: string}, {name: amount, type: long}, {name: delay, type: long}], returns: {type: string}}
+      - {name: cancelTransfer, level: 3, params: [{name: timestamp, type: long}, {name: accountId, type: string}, {name: transferId, type: string}], returns: {type: bool}}
+      - {name: mergeAccounts, level: 4, params: [{name: timestamp, type: long}, {name: accountId, type: string}, {name: otherId, type: string}], returns: {type: bool}}
+      - {name: getBalance, level: 4, params: [{name: timestamp, type: long}, {name: accountId, type: string}, {name: timeAt, type: long}], returns: {type: long}}
+comparator: {type: ops}
+project:
+  entry: bank.Bank
+  tests: src/test/java/bank
+approaches:
+  - {id: reference, name: Accounts with balance histories and a due-time priority queue, role: optimal, time: "O(log p) per scheduled transfer; O(1) per balance change; O(log h) per historical read; O(a log a) per ranking", space: "O(a + h + p)", time_class: "n log n", space_class: "n"}
+related: [bank-project-python, bank-project-typescript, bank-project-go, bank-project-kotlin, scheduled-transfers-bank, banking-system]
+estimate_minutes: 90

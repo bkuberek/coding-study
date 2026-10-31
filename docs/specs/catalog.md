@@ -338,6 +338,7 @@ Three [project problems](problem-format.md#project-problems) (kind `project`, on
 |----|------|-------|----------|----------|------|------------|
 | 0249 | `bank-project-python` | Bank Project (Python) | `python` | - | project | hard |
 | 0250 | `bank-project-typescript` | Bank Project (TypeScript) | `typescript` | - | project | hard |
+| 0251 | `bank-project-java` | Bank Project (Java) | `java` | - | project | hard |
 | 0252 | `bank-project-kotlin` | Bank Project (Kotlin) | `kotlin` | - | project | hard |
 | 0253 | `bank-project-go` | Bank Project (Go) | `go` | - | project | hard |
 
