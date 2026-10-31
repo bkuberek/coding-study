@@ -303,3 +303,12 @@ def test_the_document_lists_where_test_files_did_not_import(environment, process
 
 def test_the_document_of_a_suite_that_imported_has_no_diagnostics(environment):
     assert document()["diagnostics"] == []
+
+
+def test_the_document_says_why_a_suite_stopped_early(environment, process):
+    process.stopped_early = "the runner was restarted 3 times"
+    assert document()["stopped_early"] == "the runner was restarted 3 times"
+
+
+def test_the_document_of_a_suite_that_ran_to_its_end_did_not_stop_early(environment):
+    assert document()["stopped_early"] is None

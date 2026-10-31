@@ -178,6 +178,11 @@ def test_the_end_carries_the_json_document(environment):
     assert end["summary"] | {"duration_s": None} == document | {"duration_s": None}
 
 
+def test_the_end_says_why_a_suite_stopped_early(environment, process):
+    process.stopped_early = "the runner was restarted 3 times"
+    assert last("test")["summary"]["stopped_early"] == "the runner was restarted 3 times"
+
+
 def test_a_passing_run_ends_passed_with_exit_code_0(environment):
     assert {key: last("test")[key] for key in ("outcome", "exit_code", "message")} == {
         "outcome": "passed",

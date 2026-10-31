@@ -44,6 +44,7 @@ def project_test_document(result: ProjectTestResult, exit_code: int) -> dict[str
         "load_error": error_value(load_error) if load_error else None,
         "diagnostics": [diagnostic_value(diagnostic) for diagnostic in result.diagnostics],
         "cases": [suite_test_value(verdict) for verdict in result.verdicts],
+        "stopped_early": result.report.stopped_early,
         "oracle": None,
         "stress": [],
         "tally": tally_value(result.tally),
