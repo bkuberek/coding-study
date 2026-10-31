@@ -7,11 +7,19 @@
 | [uv and Python](#python-and-uv) | uv (any version; 0.10 or newer recommended), Python 3.13 found by `uv python find 3.13` | Required: `cstudy` and the Python practice project |
 | [Node.js and pnpm](#nodejs-and-pnpm) | Node 24 or newer, any pnpm (9 or newer recommended) | TypeScript |
 | [JDK 21](#jdk-21) | Exactly major version 21 | Java and Kotlin |
-| [Go](#go) | Go 1.24 or newer; Delve (`dlv`, any version, 1.27.2 tested) for `--debug` | Optional: `--lang go` |
+| [Go](#go) | Go 1.24 or newer; Delve (`dlv`, any version, 1.27.2 tested, which debugs Go 1.25 or newer) for `--debug` | Optional: `--lang go` |
 | [Rust](#rust) | `rustc` 1.80 or newer and `cargo`, through rustup; LLDB's `debugserver` (macOS) or `lldb-server` (Linux) for `--debug` | Optional: `--lang rust` |
 | [git](#git) | Any | Optional: versioning your workspace |
 
 You need only the toolchains of the languages you practice. `cstudy doctor` still reports a missing one as `FAIL`, and exits 4, when you do not use that language, except Go and Rust: problems have Go and Rust references, but their toolchains are optional, so a missing or too old one is a `WARN` ("needed for `--lang go`") and the exit code stays 0. Their debuggers, Delve and Rust's debug server, are `WARN`s too: only `cstudy test --debug` needs them.
+
+On Linux, the installs below were checked on Ubuntu 24.04 (arm64), where the system packages they need are:
+
+```bash
+sudo apt install build-essential git lldb openjdk-21-jdk
+```
+
+`build-essential` provides the C linker that Rust needs, and `lldb` provides `lldb-server` for `--debug` with Rust. uv, Node, Go and Rust come from their own installers, as each section shows.
 
 ## Python and uv
 
@@ -107,7 +115,7 @@ java -version   # openjdk version "21.0.13" ...
 
 Nothing else is needed for Java or Kotlin:
 
-- **Gradle**: each workspace ships the Gradle wrapper (`jvm/gradlew`), which downloads its own Gradle on first use. `cstudy doctor` reports a missing system Gradle as `WARN`; only a maintainer who regenerates the wrapper needs one (`brew install gradle`).
+- **Gradle**: each workspace ships the Gradle wrapper (`jvm/gradlew`), which downloads its own Gradle on first use. `cstudy doctor` reports a missing system Gradle as `WARN`; only a maintainer who regenerates the wrapper needs one (`brew install gradle`, or `sdk install gradle` on Linux, although the warning names Homebrew).
 - **Kotlin**: the Kotlin Gradle plugin compiles the Kotlin project, and Gradle downloads it with the build, so `kotlinc` is not required. Install it with `sdk install kotlin` only if you want a Kotlin REPL.
 
 Alternatives to SDKMAN: on macOS, `brew install openjdk@21`, then follow its caveats to put it on `PATH`; on Debian and Ubuntu, `sudo apt install openjdk-21-jdk`; on Fedora, `sudo dnf install java-21-openjdk-devel`.
@@ -133,7 +141,7 @@ Nothing else is needed: the runner uses the standard library, and the one module
 - **`GOTOOLCHAIN=local`**: since Go 1.21 the `go` command downloads the toolchain a `go.mod` asks for, and `go/go.mod` says `go 1.24`. `cstudy` builds with `GOTOOLCHAIN=local` and never downloads one, so with an older Go it stops with an error instead. Export `GOTOOLCHAIN=local` in your shell as well if you want your own `go` commands, and your editor, to behave the same way.
 - **Your Go settings**: `cstudy` pins its own build environment (`GOENV=off`, `GOFLAGS=-mod=readonly`, `GOPROXY=off`, and your `GOOS`, `GOARCH` and `GOWORK` removed), so `go env -w` values and shell variables never change how it builds. They still apply to the `go` commands you run yourself. The Go build cache is kept, so the standard library compiles once per machine.
 - **Editor**: the `go.work` file at the workspace root lets gopls find the module in `go/`, so open the workspace root. The workspace's VS Code files recommend the Go extension (`golang.go`) and run its tools with `GOTOOLCHAIN=local`; `cstudy ide` adds them to a workspace created earlier.
-- **Debugging**: `cstudy test --debug` runs the Go runner under [Delve](https://github.com/go-delve/delve). Install the release `cstudy` is tested with, `go install github.com/go-delve/delve/cmd/dlv@v1.27.2`, and check it with `dlv version`. `go install` puts `dlv` in `GOBIN`, or in `bin` of your `GOPATH` (`~/go/bin`), where `cstudy` finds it even when that directory is not on `PATH`. On macOS Delve runs your code through Xcode's `debugserver`, so it needs the Command Line Tools and the permission to debug described under [Rust](#rust). In VS Code, **Debug current file (Go)** starts the run and attaches the Go extension. `cstudy doctor` warns while `dlv` is missing.
+- **Debugging**: `cstudy test --debug` runs the Go runner under [Delve](https://github.com/go-delve/delve). Install the release `cstudy` is tested with, `go install github.com/go-delve/delve/cmd/dlv@v1.27.2`, and check it with `dlv version`. `go install` puts `dlv` in `GOBIN`, or in `bin` of your `GOPATH` (`~/go/bin`), where `cstudy` finds it even when that directory is not on `PATH`. Delve 1.27.2 debugs only programs built with Go 1.25 or newer, and refuses older ones (`Go version go1.24.x is too old for this version of Delve`), so debugging Go needs Go 1.25 or newer even though building needs only 1.24. On macOS Delve runs your code through Xcode's `debugserver`, so it needs the Command Line Tools and the permission to debug described under [Rust](#rust). In VS Code, **Debug current file (Go)** starts the run and attaches the Go extension. `cstudy doctor` warns while `dlv` is missing.
 
 ## Rust
 
@@ -150,7 +158,7 @@ or, on macOS and Linux, the script from rustup.rs:
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Open a new terminal afterwards, so `~/.cargo/bin` is on `PATH`. For rust-analyzer in your editor, add the standard library sources:
+On Linux, Rust links with the system's C toolchain: install `build-essential` on Debian and Ubuntu first. Open a new terminal afterwards, so `~/.cargo/bin` is on `PATH`. For rust-analyzer in your editor, add the standard library sources:
 
 ```bash
 rustup component add rust-src
@@ -167,7 +175,7 @@ Nothing else is needed: the runner crates' only dependencies, `rust_decimal` and
 
 - **Your Cargo setup**: `cstudy` ignores your Cargo configuration for its builds. `RUSTFLAGS`, rustc wrappers such as `sccache`, `CARGO_TARGET_DIR`, `CARGO_BUILD_*` and `CARGO_PROFILE_*` do not reach them, and crates.io always resolves to the vendored crates, so none can break a build or change what it measures. They still apply to the `cargo` commands you run yourself. Builds go to `.cs/build/rust` in the workspace.
 - **Editor**: `rust/Cargo.toml` lists each problem you start, so rust-analyzer checks every file; open the workspace root, or `rust/`. Its `rust/.cargo/config.toml` resolves `rust_decimal` and `chrono` from the vendored crates, for `cargo` commands run in `rust/`. The workspace's VS Code files recommend rust-analyzer (`rust-lang.rust-analyzer`), link `rust/Cargo.toml` and check with `--keep-going`; `cstudy ide` adds them to a workspace created earlier. The extension's rust-analyzer needs a recent stable toolchain: with an older one it reports an outdated toolchain and may flag standard macros such as `todo!` and `vec!`, which `rustup update` fixes.
-- **Debugging**: `cstudy test --debug` runs the Rust runner under LLDB's debug server, and in VS Code **Debug current file (Rust)** attaches CodeLLDB (`vadimcn.vscode-lldb`, which the workspace's VS Code files recommend). On macOS the server is `debugserver`, which the Xcode Command Line Tools (`xcode-select --install`) and Xcode ship inside LLDB.framework; `cstudy` finds it as `lldb` does, through `xcode-select -p`. macOS lets a program be debugged only with permission: members of the `_developer` group have it (`id -Gn` lists your groups); for anyone else macOS asks for an administrator when a debug session starts, until an administrator turns developer mode on with `sudo DevToolsSecurity -enable`. On Linux the server is `lldb-server`, from your distribution's `lldb` package; `cstudy` looks for it on `PATH` (not tried on Linux yet). `cstudy doctor` warns while the server is missing.
+- **Debugging**: `cstudy test --debug` runs the Rust runner under LLDB's debug server, and in VS Code **Debug current file (Rust)** attaches CodeLLDB (`vadimcn.vscode-lldb`, which the workspace's VS Code files recommend). On macOS the server is `debugserver`, which the Xcode Command Line Tools (`xcode-select --install`) and Xcode ship inside LLDB.framework; `cstudy` finds it as `lldb` does, through `xcode-select -p`. macOS lets a program be debugged only with permission: members of the `_developer` group have it (`id -Gn` lists your groups); for anyone else macOS asks for an administrator when a debug session starts, until an administrator turns developer mode on with `sudo DevToolsSecurity -enable`. On Linux the server is `lldb-server`, from your distribution's `lldb` package (`sudo apt install lldb` on Debian and Ubuntu; a versioned package alone, such as `lldb-18`, installs only `lldb-server-18`), and `cstudy` looks for it on `PATH`. In a Docker container, start the container with `--security-opt seccomp=unconfined`: the default profile refuses the call `lldb-server` makes to turn off address randomization, and the debug run stops with `personality set failed: Operation not permitted`. A debugged test of a Rust project problem is reported as an `error` on Linux, because `lldb-server` sends the test's output only to your debugger: read the result there. `cstudy doctor` warns while the server is missing.
 
 ## git
 
