@@ -2,6 +2,413 @@
 
 <!-- version list -->
 
+## v0.8.0 (2026-10-31)
+
+### Bug Fixes
+
+- **cli**: Cache the JVM runtime classpath in the doctor's warm-up
+  ([`0263cb8`](https://github.com/bkuberek/coding-study/commit/0263cb8a7b39c5410b3edbffc41ad1206e142123))
+
+- **cli**: Clear a project's stale bytecode before each project run
+  ([`15f6000`](https://github.com/bkuberek/coding-study/commit/15f6000bd2ac0cc2ad755c87660d1a9a644f7af3))
+
+- **cli**: Exit 2 from cstudy test when a project's code does not build or load
+  ([`b52adaa`](https://github.com/bkuberek/coding-study/commit/b52adaabe82108d3b1b1efb0e621a68f5bd5122e))
+
+- **cli**: Point cstudy test to cstudy done once every level is done
+  ([`55a7f58`](https://github.com/bkuberek/coding-study/commit/55a7f587ccc8bf310db95bb065efb8256ceb99f3))
+
+- **cli**: Report a project whose builds cannot be written
+  ([`e5ddf30`](https://github.com/bkuberek/coding-study/commit/e5ddf30b13eed6e4b842ade526f51c8bf21c7ce8))
+
+- **cli**: Start each project build from an empty folder
+  ([`a145e5f`](https://github.com/bkuberek/coding-study/commit/a145e5f88c522a52f4000cae08020d9a5337abd2))
+
+- **cli**: Tag Rust unit tests by the file their module path names
+  ([`27bb6be`](https://github.com/bkuberek/coding-study/commit/27bb6beea7cb3cef53a51c44c89d4736b3e602eb))
+
+- **progress**: Migrate a new progress database safely from concurrent processes
+  ([`3b4577a`](https://github.com/bkuberek/coding-study/commit/3b4577a3bb1d778ae2b9da740f4af6790236e2b2))
+
+### Chores
+
+- **problems**: Link bank-project-python from scheduled-transfers-bank
+  ([`8a7ff5e`](https://github.com/bkuberek/coding-study/commit/8a7ff5e545c3be615de915080651acb27f5f7280))
+
+### Code Style
+
+- **cli**: Import UserError on one line in the test command
+  ([`6f1d922`](https://github.com/bkuberek/coding-study/commit/6f1d922da8691ac0e8cb9090118127df9405ef73))
+
+### Documentation
+
+- Accept project problems (ADR 0014) and specify the format
+  ([`93148bf`](https://github.com/bkuberek/coding-study/commit/93148bf130b40527973f69a42a3a5ca1ceaadf53))
+
+- Bring project-problem counts, Phase 8 exit criteria and TypeScript test rules up to date
+  ([`858a152`](https://github.com/bkuberek/coding-study/commit/858a1525b6afabddad0bdd2db45dd60e12e26076))
+
+- Count the six project problems and tick the Phase 8 pilots
+  ([`51c667e`](https://github.com/bkuberek/coding-study/commit/51c667e4052e05d6401c07baa48852e05c7a4897))
+
+- Note the Go suite's first build and the compile error trace
+  ([`b10e6d6`](https://github.com/bkuberek/coding-study/commit/b10e6d6a6a2ab5a7f6c6043ccd408d2bb884fb31))
+
+- Print the doctor's JVM warm-up commands as they run
+  ([`f1f2248`](https://github.com/bkuberek/coding-study/commit/f1f22485378d83c3d9122658e8b7dc98cd2ed8b6))
+
+- Say which replace lines cstudy doctor checks in a Go folder
+  ([`fccbc08`](https://github.com/bkuberek/coding-study/commit/fccbc08ce50051feb86d33c121c2676b46066c0f))
+
+- Specify Go project problems after spike K5
+  ([`5ac7ec4`](https://github.com/bkuberek/coding-study/commit/5ac7ec4459ed09530be327dbda0e7efab1597dfa))
+
+- Specify Java and Kotlin project problems from spike K4
+  ([`59406e7`](https://github.com/bkuberek/coding-study/commit/59406e7c1c36fd14aeba2e6ecb96b6101ddf439b))
+
+- **architecture**: Name the events schema among the schemas
+  ([`8d41c42`](https://github.com/bkuberek/coding-study/commit/8d41c42ccf362de9f12ae5f044c8e51390c4637e))
+
+- **cli**: Name Rust among the runners of project jobs
+  ([`9b80a6f`](https://github.com/bkuberek/coding-study/commit/9b80a6f7e10dcda3cc904ab315894e052a097418))
+
+- **specs**: Exclude uv.lock from project hashes and refuse an existing archive
+  ([`bf1a22c`](https://github.com/bkuberek/coding-study/commit/bf1a22c60a70124f30ab753ba93eab557b7eaf33))
+
+- **specs**: Map project hints to levels and fix the done example
+  ([`4882635`](https://github.com/bkuberek/coding-study/commit/48826357b95fd5d4a2cf5003329301e16c538d37))
+
+- **specs**: Propose project problems
+  ([`6a52eff`](https://github.com/bkuberek/coding-study/commit/6a52eff309959aec2f44b69c3090e632b2140214))
+
+- **specs**: Settle generated pytest edge cases
+  ([`69b5720`](https://github.com/bkuberek/coding-study/commit/69b57200f63e3c899c49f2f5b3fa352a6ce8fb87))
+
+- **specs**: Settle suite job edge cases and stale bytecode
+  ([`d97708e`](https://github.com/bkuberek/coding-study/commit/d97708e686a565a4a33290e8091180d15890f32d))
+
+- **specs**: Settle TypeScript project types and test selection
+  ([`a993f75`](https://github.com/bkuberek/coding-study/commit/a993f759f1d902c9f07c4b125be0da8a75daa7d4))
+
+- **specs**: Specify Rust project problems
+  ([`d1a7144`](https://github.com/bkuberek/coding-study/commit/d1a71449dc422d8c141741b6160135d806f5732b))
+
+### Features
+
+- **application**: Write the generated test file of a project level
+  ([`f812b4a`](https://github.com/bkuberek/coding-study/commit/f812b4ab7f10e5f1d3c0e31cea551396c68e1352))
+
+- **cli**: Accept Go project problems in the domain and check their starters
+  ([`82c7374`](https://github.com/bkuberek/coding-study/commit/82c73747b373c20537944bb40d70820763d01246))
+
+- **cli**: Accept Java and Kotlin project problems
+  ([`44f554e`](https://github.com/bkuberek/coding-study/commit/44f554e52f8269d9e2fb7060251494926abd1701))
+
+- **cli**: Accept Rust project problems and seed their folders
+  ([`dca247a`](https://github.com/bkuberek/coding-study/commit/dca247ac5b338f5cb062130bb6486d1f574f2dd0))
+
+- **cli**: Add the project-go template to cstudy new
+  ([`9c6278e`](https://github.com/bkuberek/coding-study/commit/9c6278e52eebc55766f9f1fd06946c99f70621e9))
+
+- **cli**: Add the project-java and project-kotlin templates
+  ([`be60dea`](https://github.com/bkuberek/coding-study/commit/be60dea3e62a167b1544a8ffafd594434f356288))
+
+- **cli**: Add the project-rust problem template
+  ([`0625c3d`](https://github.com/bkuberek/coding-study/commit/0625c3d40bdae6782d4270632c0ef3b31691707a))
+
+- **cli**: Apply the project rules to bench, next and mock
+  ([`0986f07`](https://github.com/bkuberek/coding-study/commit/0986f07976af6ce11dbf23b57a8296de0d0fb9fd))
+
+- **cli**: Build, test and grade Java and Kotlin project folders
+  ([`075ba06`](https://github.com/bkuberek/coding-study/commit/075ba063d12772babe330bc0b394337b92dd6b1a))
+
+- **cli**: Check Go project folders in cstudy doctor
+  ([`4108401`](https://github.com/bkuberek/coding-study/commit/4108401cc1548ff625a6c250ed7b8c6b262975bc))
+
+- **cli**: Count a project's overlay as its reference
+  ([`ff0d6da`](https://github.com/bkuberek/coding-study/commit/ff0d6da8e7ec65cf29603c541cd1d05c368640de))
+
+- **cli**: Doctor checks project folders, their venv links and pytest
+  ([`4fe4e17`](https://github.com/bkuberek/coding-study/commit/4fe4e170784b0be88ed74e526ae26a79bee544f7))
+
+- **cli**: Generate Go testing level files for project problems
+  ([`cb7ef39`](https://github.com/bkuberek/coding-study/commit/cb7ef39c55f858d33627aa12bbbf3f2fef90ebf5))
+
+- **cli**: Generate JUnit 5 and kotlin.test level tests
+  ([`ff12a52`](https://github.com/bkuberek/coding-study/commit/ff12a528c09fdf09e2348993ae3bba0ac22487a3))
+
+- **cli**: Generate libtest level files for Rust projects
+  ([`103ef23`](https://github.com/bkuberek/coding-study/commit/103ef23a58aaf8ed00df5011c3bab3bc3670061a))
+
+- **cli**: Generate node:test level files for TypeScript projects
+  ([`1b194b3`](https://github.com/bkuberek/coding-study/commit/1b194b30e058e8801c25d6289c7f2e13b817ff10))
+
+- **cli**: Give a Go project folder a go.work of its own
+  ([`051ba8e`](https://github.com/bkuberek/coding-study/commit/051ba8e26b0a54e91ad359e34f898c8122f19067))
+
+- **cli**: Give project load errors structured diagnostics
+  ([`c72a49c`](https://github.com/bkuberek/coding-study/commit/c72a49c8f1a57d163a837382fb29f1245cbe871a))
+
+- **cli**: Grade and test Go project folders through their own go.work
+  ([`41bebae`](https://github.com/bkuberek/coding-study/commit/41bebae99d2bb48271a839d15614b5aabead4455))
+
+- **cli**: Grade project attempts by the levels finished
+  ([`09f7d19`](https://github.com/bkuberek/coding-study/commit/09f7d1999f328acb1c9702a3a225b263eb8e6c04))
+
+- **cli**: Grade project folders through the runner
+  ([`4993ee1`](https://github.com/bkuberek/coding-study/commit/4993ee1269298122a889caa8a4c7f9fe16c07cfc))
+
+- **cli**: Grade project problems with cstudy submit
+  ([`07c7a51`](https://github.com/bkuberek/coding-study/commit/07c7a512d9d67b4da83054659f3a4ac06873c7d8))
+
+- **cli**: Grade Rust projects and run their suites one process per test
+  ([`96d447f`](https://github.com/bkuberek/coding-study/commit/96d447f177769222f9945afc13ffe32a7dbca533))
+
+- **cli**: Launch python project jobs and expose project run seams
+  ([`07801fb`](https://github.com/bkuberek/coding-study/commit/07801fbd4edcc1c0affb654f2e05c9c90c3a53c4))
+
+- **cli**: Launch TypeScript project jobs and type-check project folders
+  ([`edfbbc9`](https://github.com/bkuberek/coding-study/commit/edfbbc95fc4be072b729d371d05df65b466f550a))
+
+- **cli**: Link a new Rust project folder in VS Code's settings on cstudy start
+  ([`de744db`](https://github.com/bkuberek/coding-study/commit/de744dbd78b84bc6c8def5d23beac01eff1a7c01))
+
+- **cli**: Link and check Rust project folders in ide and doctor
+  ([`eca48ae`](https://github.com/bkuberek/coding-study/commit/eca48ae24a666e7a3e20b3ecca6e16b167dc7216))
+
+- **cli**: List a project folder's tracked files through the Workspace port
+  ([`fefd177`](https://github.com/bkuberek/coding-study/commit/fefd177da82736498732915b0b3d9025d767da41))
+
+- **cli**: List diagnostics in the project JSON documents
+  ([`d3a936f`](https://github.com/bkuberek/coding-study/commit/d3a936f23006cd44ebad98b9e28fc118457b65a9))
+
+- **cli**: Lock a project while cstudy writes its tests and unlocks
+  ([`7641ce6`](https://github.com/bkuberek/coding-study/commit/7641ce6b3f5792c0a66719841ada84125af19a86))
+
+- **cli**: Name the first compiler line when a project does not compile in verify
+  ([`0d9a91e`](https://github.com/bkuberek/coding-study/commit/0d9a91e649b93752198c788679fff1786cfb8d1a))
+
+- **cli**: Project-python template for cstudy new
+  ([`3ca75bd`](https://github.com/bkuberek/coding-study/commit/3ca75bd7a421f86a6a9e0977dcf47c649e36daf5))
+
+- **cli**: Reach the project test generator and name cstudy submit for project levels
+  ([`9585a13`](https://github.com/bkuberek/coding-study/commit/9585a130a73888f86069068912cc9beca9a2fac7))
+
+- **cli**: Read diagnostics from a suite the framework refused
+  ([`0154d05`](https://github.com/bkuberek/coding-study/commit/0154d05b2c8d456057f887b7667a6dbc8dce7e0f))
+
+- **cli**: Record a starter manifest for each project folder
+  ([`bf2ff04`](https://github.com/bkuberek/coding-study/commit/bf2ff041b2c9a29cbf078dffe2a0d3a1b376c835))
+
+- **cli**: Resolve file targets inside project folders
+  ([`d64023a`](https://github.com/bkuberek/coding-study/commit/d64023ac003611171bdc869f83b691456b76988e))
+
+- **cli**: Restore one project file with cstudy start --restore
+  ([`ae3a25f`](https://github.com/bkuberek/coding-study/commit/ae3a25f918730fac50f997328504f90876fe38c7))
+
+- **cli**: Run a project's native tests with cstudy test
+  ([`c53a77a`](https://github.com/bkuberek/coding-study/commit/c53a77a89a29f5c893328a64f9e250d563b4c0f0))
+
+- **cli**: Run project suites through the runner protocol
+  ([`b299d0a`](https://github.com/bkuberek/coding-study/commit/b299d0aadf3794b16810909634bdbc3273ad9dd7))
+
+- **cli**: Run the Python project fixtures in the conformance suite
+  ([`af2aca8`](https://github.com/bkuberek/coding-study/commit/af2aca86d23cef9794b16373134fb466d88dc8bb))
+
+- **cli**: Say when the latest cstudy test predates an open level in cstudy status
+  ([`95433c6`](https://github.com/bkuberek/coding-study/commit/95433c69d0a9bca4cb3ebb3dc902a94597f42b46))
+
+- **cli**: Say why a project suite stopped early in its JSON
+  ([`42e112e`](https://github.com/bkuberek/coding-study/commit/42e112ef50cd23b064ff167037b9201d2b81dcba))
+
+- **cli**: Select the project-typescript template in cstudy new
+  ([`4afa23c`](https://github.com/bkuberek/coding-study/commit/4afa23c244187dd05d5c4c612e6ad5d8202b31dd))
+
+- **cli**: Ship the project-typescript template files
+  ([`44e54ec`](https://github.com/bkuberek/coding-study/commit/44e54ecc4a5ff638e41ff6a3e47d344913d01e82))
+
+- **cli**: Show a project attempt with cstudy status
+  ([`3f367b2`](https://github.com/bkuberek/coding-study/commit/3f367b253fa6ffc7bd371be6c49fd6bebc315b5f))
+
+- **cli**: Show a project's reference as an overlay on its starter
+  ([`8bc62c9`](https://github.com/bkuberek/coding-study/commit/8bc62c985468e978ee3743fbb6175b3ad3100680))
+
+- **cli**: Show only the hints of a project's unlocked levels
+  ([`e0d87c1`](https://github.com/bkuberek/coding-study/commit/e0d87c1ce112461037bfd5a97926b1d2a6509cf0))
+
+- **cli**: Show the state of each project file in cstudy status
+  ([`7128bb0`](https://github.com/bkuberek/coding-study/commit/7128bb088dd43e5cbc41651606db2b2fdeea08da))
+
+- **cli**: Start project problems in their folder
+  ([`a15651a`](https://github.com/bkuberek/coding-study/commit/a15651a2652ee5f3f61d3deff6e082399dadf0e2))
+
+- **cli**: Store project submissions and level unlocks
+  ([`410751e`](https://github.com/bkuberek/coding-study/commit/410751ecaa6796b9bac9d9371a6e1feac9d164c4))
+
+- **cli**: Stream each project test and graded case as it runs
+  ([`aacfb91`](https://github.com/bkuberek/coding-study/commit/aacfb91a281d11c042558f7eac3865ebfd173123))
+
+- **cli**: Stream project test and submit runs as events
+  ([`6d509ce`](https://github.com/bkuberek/coding-study/commit/6d509ce02c7adff74f3ec80edce3440cdf799bdf))
+
+- **cli**: Type-check a project folder with cstudy test --typecheck
+  ([`43369b8`](https://github.com/bkuberek/coding-study/commit/43369b82c767bf84b813bec4d698a34ddbd56bba))
+
+- **cli**: Verify project problems through their starter and reference builds
+  ([`ae39de4`](https://github.com/bkuberek/coding-study/commit/ae39de4c088566546e77c3030bd37b403929103f))
+
+- **domain**: Add the project problem kind
+  ([`c084a2e`](https://github.com/bkuberek/coding-study/commit/c084a2ea611cc096cd14dc8e81f5fa942b14f974))
+
+- **domain**: Load the starter and reference trees of project problems
+  ([`2226e1b`](https://github.com/bkuberek/coding-study/commit/2226e1bfd36d5549849973f95a179cbd929bafb7))
+
+- **domain**: Plan the generated test file of a project level
+  ([`a0d98b5`](https://github.com/bkuberek/coding-study/commit/a0d98b5fd99d06862a6ec3dba74d999e7236a58b))
+
+- **problems**: Add bank-project-go
+  ([`d8b63df`](https://github.com/bkuberek/coding-study/commit/d8b63df23b7e9349241140d756ec1760b11b456e))
+
+- **problems**: Add bank-project-java
+  ([`d4b5956`](https://github.com/bkuberek/coding-study/commit/d4b5956d6352ff54290848cb67e7e5e823ca1eff))
+
+- **problems**: Add bank-project-kotlin
+  ([`ba1e6a3`](https://github.com/bkuberek/coding-study/commit/ba1e6a3b18a26a7e7e7e16fc52a495c776179d35))
+
+- **problems**: Add bank-project-python
+  ([`7eaadc1`](https://github.com/bkuberek/coding-study/commit/7eaadc1a06757125e62cb1ec58dffd42b9688dc9))
+
+- **problems**: Add bank-project-rust
+  ([`31d4414`](https://github.com/bkuberek/coding-study/commit/31d441474fa8d5e4931d5e751c0263648cf8260d))
+
+- **problems**: Add bank-project-typescript as a draft
+  ([`8c8a163`](https://github.com/bkuberek/coding-study/commit/8c8a163305dfce01b522d3433bdbda1df30cd9c6))
+
+- **problems**: Link every bank pilot to its Rust sibling and to scheduled-transfers-bank
+  ([`9a79d79`](https://github.com/bkuberek/coding-study/commit/9a79d792f004c757ce23270cbada60671312793d))
+
+- **problems**: Mark bank-project-go ready
+  ([`1ed50f0`](https://github.com/bkuberek/coding-study/commit/1ed50f0eb01fd5d6fa8d5b5a4b736a693ab4a58d))
+
+- **problems**: Mark bank-project-java ready
+  ([`9c156c4`](https://github.com/bkuberek/coding-study/commit/9c156c4e3aed2c390a4f0d2493280e53a6774d54))
+
+- **problems**: Mark bank-project-kotlin ready
+  ([`7b3aef4`](https://github.com/bkuberek/coding-study/commit/7b3aef44487a68086b82b9b1482c5b0c15325663))
+
+- **problems**: Mark bank-project-python ready
+  ([`5e859e0`](https://github.com/bkuberek/coding-study/commit/5e859e0394a67a307969cb1c69780214d24a1fd0))
+
+- **problems**: Mark bank-project-rust ready
+  ([`023ba8b`](https://github.com/bkuberek/coding-study/commit/023ba8bae16a8a13c18ea355b460b41b399cb99a))
+
+- **problems**: Mark bank-project-typescript ready
+  ([`a3031c7`](https://github.com/bkuberek/coding-study/commit/a3031c77827a2b6b5dfd8cabe45c13538bd604b9))
+
+- **python**: Generate the pytest file of a project level
+  ([`eff3278`](https://github.com/bkuberek/coding-study/commit/eff3278ee999982cf13df641733787b21c6fff9e))
+
+- **runners**: Add the TypeScript project and node:test conformance fixtures
+  ([`dd6ca3d`](https://github.com/bkuberek/coding-study/commit/dd6ca3de9a12551d6f476700f2f000ce640610ee))
+
+- **runners**: Report a Go project that does not compile as a load error
+  ([`dec5484`](https://github.com/bkuberek/coding-study/commit/dec54847e8535f995f9c632f588ae8f3ed90aef8))
+
+- **runners**: Report a test that ends its Go test binary and run its package again
+  ([`e3e4a4d`](https://github.com/bkuberek/coding-study/commit/e3e4a4d0bdd4fb6b74d9dedfedaba1f41e97a2d6))
+
+- **runners**: Run a Go project's suite through go test -json
+  ([`ab4a8a6`](https://github.com/bkuberek/coding-study/commit/ab4a8a6d60bd52e0b0590967ea19a86164679817))
+
+- **runners**: Run node:test suite jobs in the TypeScript runner
+  ([`3936f03`](https://github.com/bkuberek/coding-study/commit/3936f0301a6ca3f9207464b3bf5f77be46d2dc9c))
+
+- **runners**: Run python project grading and pytest suite jobs
+  ([`ce71816`](https://github.com/bkuberek/coding-study/commit/ce718160289bca32b5651c964b99c0e1d2bbec76))
+
+- **statement**: Render project statements in their language
+  ([`c43e023`](https://github.com/bkuberek/coding-study/commit/c43e0235de0d71ce9f64cf7a71844524a366b50d))
+
+- **static**: Check project problems
+  ([`143f4f3`](https://github.com/bkuberek/coding-study/commit/143f4f3994604f96161f6684ffaa5d55da910100))
+
+- **workspace**: Add projects/ and pytest to the workspace template
+  ([`d044add`](https://github.com/bkuberek/coding-study/commit/d044add2761ce2c01fb4ff5dd9aa0596617e900e))
+
+- **workspace**: Seed, link, archive, hash and watch project folders
+  ([`7b9ae8d`](https://github.com/bkuberek/coding-study/commit/7b9ae8d65fbf8c511f3024a8d857cdd9802649f9))
+
+### Refactoring
+
+- **cli**: Check Go project folders through the generic doctor seam
+  ([`802b2eb`](https://github.com/bkuberek/coding-study/commit/802b2eb7d892f4264cca9b67cc05d46eedd245b9))
+
+- **cli**: Drop the unsupported-language paths now that every language has project problems
+  ([`7f2f1ad`](https://github.com/bkuberek/coding-study/commit/7f2f1adfa6086b950cc4f1fb85c2de8f201ee97a))
+
+- **cli**: Give the project test exit code one home
+  ([`710135f`](https://github.com/bkuberek/coding-study/commit/710135f23205075d62af534c8b36dbd74b0f6cd1))
+
+- **cli**: Give the pytest install command one home
+  ([`6b9d663`](https://github.com/bkuberek/coding-study/commit/6b9d6635c27ca1c858e84acb511b6c202c5ed7f0))
+
+- **cli**: Share one test file printer between generators
+  ([`b784e47`](https://github.com/bkuberek/coding-study/commit/b784e4731f18480360d379a975f73bde7c14834f))
+
+- **cli**: Share the case report lines of cstudy test
+  ([`503f324`](https://github.com/bkuberek/coding-study/commit/503f324af14e197fb75d1b1046cfe4f618c0261c))
+
+- **cli**: Verify through Toolchains.project_test_generator
+  ([`fcf3ab4`](https://github.com/bkuberek/coding-study/commit/fcf3ab4ee280027e52ef545b0894e21a04fed9b2))
+
+### Testing
+
+- **cli**: Build Java and Kotlin project folders offline after the warm-up
+  ([`d4130ea`](https://github.com/bkuberek/coding-study/commit/d4130ea3f406891c57a818ce78754da7f7e77f1e))
+
+- **cli**: Count project-go among the one-language templates
+  ([`bc8c53c`](https://github.com/bkuberek/coding-study/commit/bc8c53cb461e91cebef93cb7d1920d9d98653125))
+
+- **cli**: Count the pilot's new tie case in the grading test
+  ([`5f7b8c4`](https://github.com/bkuberek/coding-study/commit/5f7b8c4b5ea210d8afd807f8c9a251b28389ed62))
+
+- **cli**: Debug a Go project through Delve end to end
+  ([`5e5761b`](https://github.com/bkuberek/coding-study/commit/5e5761b33f9e25232c0b0bd329ecb4d5cc9cf0be))
+
+- **cli**: Export carries a project attempt's level unlocks
+  ([`e7b4843`](https://github.com/bkuberek/coding-study/commit/e7b48433265684947a0ea4ba857bb5da5b871130))
+
+- **cli**: List the files of the JVM project templates
+  ([`36f409b`](https://github.com/bkuberek/coding-study/commit/36f409b9577c67fea541fbaa63c1f566784aa5cc))
+
+- **cli**: Play a Go project problem end to end through the Go toolchain
+  ([`f382d2e`](https://github.com/bkuberek/coding-study/commit/f382d2ebd917430c3508611f20862108b2c3c9a1))
+
+- **cli**: Play the pilot project from start to done
+  ([`6d94111`](https://github.com/bkuberek/coding-study/commit/6d94111a3afd7f7be832b7b87b5e261312ecca61))
+
+- **cli**: Run Rust project problems end to end through cargo
+  ([`ce850f0`](https://github.com/bkuberek/coding-study/commit/ce850f0d8fcdcb33bf635f4319fc364c7595060a))
+
+- **cli**: Stop at breakpoints in a debugged TypeScript project suite
+  ([`0537f6f`](https://github.com/bkuberek/coding-study/commit/0537f6f175494627c5cb056323215192f5676e11))
+
+- **conformance**: Add the Java and Kotlin project fixtures 9026 to 9029
+  ([`11bd847`](https://github.com/bkuberek/coding-study/commit/11bd84773000f4ea2e1fb341dc3f569ee3ff465d))
+
+- **problems**: Add a three-way tie to bank-project-python
+  ([`6ad2829`](https://github.com/bkuberek/coding-study/commit/6ad2829eab1156d70e39e203aae9e36802229f5d))
+
+- **problems**: Add hidden case h22 to the Python, TypeScript, Kotlin and Go bank pilots
+  ([`0eaae50`](https://github.com/bkuberek/coding-study/commit/0eaae5076d146a212aa5a7963ede9ba053311038))
+
+- **runners**: Add Go project and go test suite conformance fixtures
+  ([`fb7a4d3`](https://github.com/bkuberek/coding-study/commit/fb7a4d3768652a3a93cee38d6aaba937770435f4))
+
+- **runners**: Add Rust project and cargo suite conformance fixtures
+  ([`39b415a`](https://github.com/bkuberek/coding-study/commit/39b415a6edda3ca2ad47a8993b0622850be8b656))
+
+
 ## v0.7.0 (2026-10-30)
 
 ### Documentation
