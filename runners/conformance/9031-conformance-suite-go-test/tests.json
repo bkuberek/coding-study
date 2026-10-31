@@ -1,0 +1,7 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "level": 1, "ops": ["Probe", "ping"], "args": [[], []], "expected": [null, "pong"]}
+  ]
+}

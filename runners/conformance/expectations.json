@@ -46,6 +46,20 @@
       "tests/statuses.test.ts::ends the process": {"status": "crashed"},
       "tests/statuses.test.ts::raises": {"status": "error", "message": "conformance failure"},
       "tests/statuses.test.ts::prints": {"status": "ok", "stdout": "conformance output\n"}
+    }},
+    {"problem": "conformance-project-go", "approach": "reference", "outcome": {"status": "pass"}},
+    {"problem": "conformance-suite-go-test", "approach": "reference", "outcome": {"status": "pass"}, "tests": {
+      "tests/level_1_test.go::TestEx1": {"status": "ok"},
+      "tests/statuses_test.go::TestPasses": {"status": "ok"},
+      "tests/statuses_test.go::TestFailsAnAssertion": {"status": "failed"},
+      "tests/statuses_test.go::TestTable/ok": {"status": "ok"},
+      "tests/statuses_test.go::TestTable/bad": {"status": "failed"},
+      "tests/statuses_test.go::TestTable": {"status": "failed"},
+      "tests/statuses_test.go::TestPanics": {"status": "error", "message": "conformance failure"},
+      "tests/statuses_test.go::TestPrints": {"status": "ok", "stdout": "conformance output\n"},
+      "tests/statuses_test.go::TestEndsTheProcess": {"status": "error"},
+      "tests/statuses_test.go::TestHangs": {"status": "timeout"},
+      "conformance-suite-go-test/broken": {"status": "error"}
     }}
   ]
 }

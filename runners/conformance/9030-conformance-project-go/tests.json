@@ -1,0 +1,8 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "level": 1, "ops": ["Inventory", "add", "add", "label", "value"], "args": [[], ["pens", 3], ["pens", 2], ["pens"], ["pens", "1.25"]], "expected": [null, 3, 5, "pens: 5", "6.25"]},
+    {"id": "h1", "level": 1, "ops": ["Inventory", "label", "value"], "args": [[], ["ink"], ["ink", "2.50"]], "expected": [null, "ink: 0", "0"]}
+  ]
+}
