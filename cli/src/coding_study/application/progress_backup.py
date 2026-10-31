@@ -38,6 +38,11 @@ def import_progress(environment: Environment, text: str) -> Mapping[str, int]:
         document = json.loads(text)
     except json.JSONDecodeError as error:
         raise UsageError(f"not JSON: {error}") from None
+    return import_progress_document(environment, document)
+
+
+def import_progress_document(environment: Environment, document: object) -> Mapping[str, int]:
+    """`import_progress` of an export already read as JSON, such as one the web UI uploads."""
     try:
         snapshot = parse_export(document)
     except ValueError as error:
