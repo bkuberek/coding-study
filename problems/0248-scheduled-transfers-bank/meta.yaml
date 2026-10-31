@@ -28,5 +28,5 @@ signature:
 comparator: {type: ops}
 approaches:
   - {id: ledger-heap, name: Accounts with balance histories and a due-time heap, role: optimal, time: "O(log p) per scheduled transfer; O(log h) per balance change or historical read; O(a log a) per ranking", space: "O(a + h + p)", time_class: "n log n", space_class: "n"}
-related: [banking-system, bank-project-python, job-scheduler, single-threaded-cpu, bank-transfers]
+related: [banking-system, bank-project-python, bank-project-typescript, bank-project-java, bank-project-kotlin, bank-project-go, bank-project-rust, job-scheduler, single-threaded-cpu, bank-transfers]
 estimate_minutes: 90
