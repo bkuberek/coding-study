@@ -11,7 +11,7 @@ from coding_study.domain.time_limits import TimeLimit
 
 if TYPE_CHECKING:
     from coding_study.domain.concurrency import Concurrency
-    from coding_study.domain.project import Project
+    from coding_study.domain.project import Project, ProjectFiles
 
 DEFAULT_FLOAT_TOLERANCE = 1e-6
 DEFAULT_SIZE_LADDER = (100, 1000, 10000, 100000)
@@ -207,6 +207,8 @@ class ProblemMeta:
 class Problem:
     meta: ProblemMeta
     cases: tuple[Case, ...]
+    project_files: "ProjectFiles | None" = None
+    """Project problems only: the starter and the reference overlays."""
 
 
 @dataclass(frozen=True, slots=True)

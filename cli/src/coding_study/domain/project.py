@@ -2,13 +2,14 @@
 one language, graded through an entry class and opened in levels as progressive problems are.
 
 The `project` block of meta.yaml names the entry and the directory that receives the native test
-files `cstudy` generates per level. Paths inside a project folder are relative and `/`-separated,
-and none may lead out of the folder.
+files `cstudy` generates per level. `starter/` and each approach's `solutions/<approach>/`, an
+overlay of changed and added files on the starter, are trees of plain files. Paths inside a project
+folder are relative and `/`-separated, and none may lead out of the folder.
 """
 
 import keyword
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from coding_study.domain.problem import Language
 
@@ -31,6 +32,50 @@ class Project:
     project root in TypeScript (`src/bank.ts`)."""
     tests: str = DEFAULT_TESTS_DIRECTORY
     """The directory, relative to the project root, that receives the generated level tests."""
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectFile:
+    path: str
+    """Relative to its folder, as `relative_path_issue` requires."""
+    size: int
+    """In bytes."""
+    text: str | None
+    """The content, when it is UTF-8 without NUL bytes; None otherwise."""
+
+    def __post_init__(self) -> None:
+        issue = relative_path_issue(self.path)
+        if issue is not None:
+            raise ValueError(f'project file "{self.path}" {issue}')
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectTree:
+    """The plain files of one folder, in path order."""
+
+    files: tuple[ProjectFile, ...]
+
+    @property
+    def paths(self) -> frozenset[str]:
+        return frozenset(file.path for file in self.files)
+
+    @property
+    def size(self) -> int:
+        return sum(file.size for file in self.files)
+
+    def file(self, path: str) -> ProjectFile | None:
+        return next((file for file in self.files if file.path == path), None)
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectFiles:
+    """The trees in a project problem's directory."""
+
+    starter: ProjectTree | None
+    """`starter/`, or None when the problem has none."""
+    overlays: Mapping[str, ProjectTree] = field(default_factory=dict[str, ProjectTree])
+    """Every directory in `solutions/` by name: the reference of the approach it names, as the
+    files it changes or adds on the starter."""
 
 
 def relative_path_issue(path: str) -> str | None:

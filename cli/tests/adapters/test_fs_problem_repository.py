@@ -6,6 +6,8 @@ import pytest
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.domain.errors import ContentError, UnknownProblemError
 from coding_study.domain.problem import Language, ProblemKind, ProblemSummary
+from tests.fakes import repository_root
+from tests.helpers import PROJECT_PROBLEMS
 
 TWO_SUM = Path("problems/0001-two-sum")
 
@@ -149,3 +151,22 @@ def test_problems_can_live_in_another_directory(content_root):
     (content_root / "problems").rename(content_root / "runners" / "conformance")
     repository = FsProblemRepository(content_root, "runners/conformance")
     assert repository.load("two-sum").meta.directory_name == "0001-two-sum"
+
+
+def test_a_project_problem_loads_its_starter_and_reference(tmp_path):
+    root = repository_root(tmp_path, PROJECT_PROBLEMS)
+    project_files = FsProblemRepository(root).load("bank-project-python").project_files
+    assert project_files is not None
+    assert (project_files.starter is not None, set(project_files.overlays)) == (True, {"reference"})
+
+
+def test_a_project_problem_with_a_link_in_its_starter_does_not_load(tmp_path):
+    root = repository_root(tmp_path, PROJECT_PROBLEMS)
+    starter = root / "problems" / "0001-bank-project-python" / "starter"
+    (starter / "link.md").symlink_to("README.md")
+    with pytest.raises(ContentError, match=r"starter/link\.md: is a symbolic link"):
+        FsProblemRepository(root).load("bank-project-python")
+
+
+def test_other_problems_have_no_project_files(content_root):
+    assert FsProblemRepository(content_root).load("lru-cache").project_files is None

@@ -13,6 +13,7 @@ import yaml
 
 from coding_study.adapters.document_index import DocumentIndex, file_stamp, index_key
 from coding_study.adapters.problem_documents import cases_from_document, meta_from_document
+from coding_study.adapters.problem_project_files import read_project_files
 from coding_study.adapters.schema_validation import (
     META_SCHEMA_FILE,
     SCHEMAS_DIRECTORY,
@@ -21,7 +22,14 @@ from coding_study.adapters.schema_validation import (
 )
 from coding_study.domain.errors import ContentError, ContentIssue, UnknownProblemError
 from coding_study.domain.layout import language_of_extension
-from coding_study.domain.problem import Language, Problem, ProblemMeta, ProblemSummary
+from coding_study.domain.problem import (
+    Language,
+    Problem,
+    ProblemKind,
+    ProblemMeta,
+    ProblemSummary,
+)
+from coding_study.domain.project import ProjectFiles
 
 PROBLEMS_DIRECTORY = "problems"
 META_FILE = "meta.yaml"
@@ -72,7 +80,7 @@ class FsProblemRepository:
             raise ContentError([*meta_issues, *tests_issues])
         meta = self._meta(directory, meta_document)
         cases = cases_from_document(tests_document, meta.comparator, self._source(tests_file))
-        return Problem(meta, cases)
+        return Problem(meta, cases, self._project_files(directory, meta))
 
     def list_summaries(self) -> tuple[ProblemSummary, ...]:
         summaries: list[ProblemSummary] = []
@@ -116,6 +124,11 @@ class FsProblemRepository:
         meta = meta_from_document(meta_document, source, self._workspace)
         self._check_directory_name(directory, meta)
         return meta
+
+    def _project_files(self, directory: Path, meta: ProblemMeta) -> ProjectFiles | None:
+        if meta.kind is not ProblemKind.PROJECT:
+            return None
+        return read_project_files(directory, self._source(directory))
 
     def _directory_of(self, slug: str) -> Path:
         for directory in self._problem_directories():

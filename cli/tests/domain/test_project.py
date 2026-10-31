@@ -1,5 +1,7 @@
 """The `project` block of meta.yaml and the paths inside a project folder."""
 
+import re
+
 import pytest
 
 from coding_study.domain.problem import Language
@@ -7,6 +9,8 @@ from coding_study.domain.project import (
     DEFAULT_TESTS_DIRECTORY,
     PROJECT_LANGUAGES,
     Project,
+    ProjectFile,
+    ProjectTree,
     entry_files,
     entry_issue,
     level_test_file,
@@ -121,3 +125,31 @@ def test_generated_test_files_go_to_the_project_tests_directory():
 def test_other_languages_have_no_project_problems_yet(use, language):
     with pytest.raises(ValueError, match=f"project problems are not yet supported in {language}"):
         use(language)
+
+
+# file trees
+
+
+@pytest.mark.parametrize("path", ["/etc/passwd", "../outside.py", "bank/../../outside.py"])
+def test_a_project_file_never_lies_outside_its_folder(path):
+    with pytest.raises(ValueError, match=re.escape(f'project file "{path}"')):
+        ProjectFile(path, 0, "")
+
+
+def test_a_tree_knows_its_paths():
+    tree = ProjectTree((ProjectFile("README.md", 3, "Hi\n"), ProjectFile("bank/bank.py", 0, "")))
+    assert tree.paths == frozenset({"README.md", "bank/bank.py"})
+
+
+def test_a_tree_size_is_the_size_of_its_files():
+    tree = ProjectTree((ProjectFile("README.md", 3, "Hi\n"), ProjectFile("logo.png", 70, None)))
+    assert tree.size == 73
+
+
+def test_a_file_finds_a_file_of_its_tree_by_path():
+    readme = ProjectFile("README.md", 3, "Hi\n")
+    assert ProjectTree((readme,)).file("README.md") == readme
+
+
+def test_a_tree_has_no_file_at_a_missing_path():
+    assert ProjectTree(()).file("README.md") is None
