@@ -27,6 +27,7 @@ from coding_study.domain.errors import UsageError
 from coding_study.domain.items import REFERENCE_FILE
 from coding_study.domain.problem import Language
 from coding_study.domain.problem_files import RUBRIC_FILE
+from coding_study.domain.project_reference import ReferenceFile
 from coding_study.entrypoints.shared import (
     PROBLEM_TARGET_HELP,
     add_command,
@@ -49,6 +50,7 @@ LEXERS = {
 
 
 BROKEN_OPTION = "--broken"
+DIFF_LEXER = "diff"
 
 
 def register(app: typer.Typer) -> None:
@@ -125,6 +127,8 @@ def _renderables(view: SolutionView) -> Iterator[RenderableType]:
         yield Markdown(view.overview)
     for part in view.approaches:
         yield from _approach(part, view.language)
+    for file in view.project_files:
+        yield from _reference_file(file, view.language)
     if view.broken is not None:
         yield from _broken(view.broken, view.language)
 
@@ -153,6 +157,13 @@ def _approach(part: ApproachSolution, language: Language) -> Iterator[Renderable
     elif part.available and language not in part.available:
         available = ", ".join(part.available)
         yield Text(f"no {language} reference; available: {available}", style="dim")
+
+
+def _reference_file(file: ReferenceFile, language: Language) -> Iterator[RenderableType]:
+    """An added file in full, a changed one as its diff against the starter."""
+    yield Text("")
+    yield Text(f"{file.path} ({'added' if file.added else 'changed'})", style="bold")
+    yield Syntax(file.text, LEXERS[language] if file.added else DIFF_LEXER, line_numbers=False)
 
 
 def _require_item_options(request: SolutionRequest) -> None:

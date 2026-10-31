@@ -10,13 +10,21 @@ from dataclasses import dataclass, replace
 
 from coding_study.application.environment import Environment
 from coding_study.application.mock_interview import require_no_running_mock
+from coding_study.application.project_start import project_start_language
 from coding_study.domain import layout
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.concurrency import BrokenReference
 from coding_study.domain.errors import UsageError
 from coding_study.domain.explanation import Explanation
 from coding_study.domain.precedence import first_set
-from coding_study.domain.problem import Approach, ApproachRole, Language, ProblemMeta
+from coding_study.domain.problem import (
+    Approach,
+    ApproachRole,
+    Language,
+    Problem,
+    ProblemKind,
+    ProblemMeta,
+)
 from coding_study.domain.problem_files import (
     BROKEN_DIRECTORY,
     EXPLANATION_FILE,
@@ -25,6 +33,7 @@ from coding_study.domain.problem_files import (
     broken_file,
     solution_file,
 )
+from coding_study.domain.project_reference import ReferenceFile, reference_files
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,12 +79,17 @@ class SolutionView:
     """rubric.md as written: design criteria, then the reference design."""
     broken: BrokenSolution | None = None
     """With `--broken`: the broken reference shown instead of the approaches."""
+    project_files: tuple[ReferenceFile, ...] = ()
+    """A project problem: its reference as files added in full and diffs against the starter."""
 
 
 def show_solution(environment: Environment, request: SolutionRequest) -> SolutionView:
     """Raises UsageError during a mock interview."""
     require_no_running_mock(environment, "cstudy solution")
-    meta = environment.problems.load(request.slug).meta
+    problem = environment.problems.load(request.slug)
+    meta = problem.meta
+    if meta.kind is ProblemKind.PROJECT:
+        return _project_solution(environment, problem, request)
     attempt = environment.progress.active_attempt(request.slug)
     language = first_set(
         request.language,
@@ -100,6 +114,47 @@ def show_solution(environment: Environment, request: SolutionRequest) -> Solutio
             for approach in _selected(meta, request)
         ),
         rubric=environment.files.read_text(meta.slug, RUBRIC_FILE),
+    )
+
+
+def _project_solution(
+    environment: Environment, problem: Problem, request: SolutionRequest
+) -> SolutionView:
+    """A project's one approach with `### Design`, then its overlay on the starter, in its one
+    language (docs/specs/cli.md#cstudy-solution)."""
+    meta = problem.meta
+    if request.broken is not None:
+        raise UsageError(f"{meta.slug} has no broken references (concurrent problems only)")
+    language = project_start_language(problem, request.language)
+    text = environment.files.read_text(meta.slug, EXPLANATION_FILE)
+    explanation = Explanation(text) if text is not None else None
+    overview = explanation.overview if explanation else None
+    parts = _Parts(environment, meta, explanation)
+    approaches = tuple(
+        ApproachSolution(approach, parts.section(approach.id), None, (language,))
+        for approach in _selected(meta, request)
+    )
+    return SolutionView(
+        meta=meta,
+        language=language,
+        overview=overview.text if overview else None,
+        approaches=approaches,
+        project_files=() if request.explanation_only else _overlay_files(problem, approaches),
+    )
+
+
+def _overlay_files(
+    problem: Problem, approaches: tuple[ApproachSolution, ...]
+) -> tuple[ReferenceFile, ...]:
+    files = problem.project_files
+    if files is None:
+        return ()
+    overlays = (files.overlays.get(part.approach.id) for part in approaches)
+    return tuple(
+        found
+        for overlay in overlays
+        if overlay is not None
+        for found in reference_files(files.starter, overlay)
     )
 
 
@@ -174,7 +229,7 @@ class _Parts:
         if language is not None and language in available:
             name = solution_file(layout.reference_file_name(approach.id, language))
             code = self._environment.files.read_text(self._meta.slug, name)
-        return ApproachSolution(approach, self._section(approach.id), code, available)
+        return ApproachSolution(approach, self.section(approach.id), code, available)
 
     def broken(
         self, broken: BrokenReference, request: SolutionRequest, language: Language
@@ -189,7 +244,8 @@ class _Parts:
             code = self._environment.files.read_text(self._meta.slug, name)
         return BrokenSolution(broken, self._broken_section(broken.id), code, available)
 
-    def _section(self, approach_id: str) -> str | None:
+    def section(self, approach_id: str) -> str | None:
+        """The approach's section of explanation.md, heading included."""
         if self._explanation is None:
             return None
         found = self._explanation.approach(approach_id)
