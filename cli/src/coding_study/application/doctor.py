@@ -86,6 +86,7 @@ MINIMUM_GO = (1, 24)
 MINIMUM_RUSTC = (1, 80)
 INSTALL_UV = f"install uv: {TOOLCHAINS_GUIDE}#python-and-uv"
 INSTALL_PNPM = f"install pnpm: {TOOLCHAINS_GUIDE}#nodejs-and-pnpm"
+INSTALL_JAVA = f"install JDK {JAVA_MAJOR}: {TOOLCHAINS_GUIDE}#jdk-{JAVA_MAJOR}"
 INSTALL_GO = f"needed for --lang go, install Go 1.24 or newer: {TOOLCHAINS_GUIDE}#go"
 INSTALL_RUST = (
     f"needed for --lang rust, install Rust 1.80 or newer with rustup: {TOOLCHAINS_GUIDE}#rust"
@@ -250,6 +251,10 @@ JVM_FIX = FixStep(
 """Builds the runner and support classes and warms the Gradle daemon. Resolving the runtime
 classpath caches the runner's own libraries, without which no JVM problem builds offline; `cs.only`
 names no practice package, so a half-written practice file never fails the setup."""
+JAVA_PROBE = ("java", "-version")
+NO_JAVA_REASON = "java is not installed or does not run"
+NO_JAVA_FIX = replace(JVM_FIX, manual=INSTALL_JAVA)
+"""The warm-up as it is reported when Java is missing."""
 JVM_PROJECT_LANGUAGES = (Language.JAVA, Language.KOTLIN)
 PROJECT_WARMUPS = "../.cs/runtime/runners/jvm/project-warmup"
 """From `jvm/`: a project folder per language in the runner runtime, with one test each."""
@@ -276,13 +281,17 @@ class FixOutcome:
     step: FixStep
     result: ProbeResult | None
     """None when the command's executable is missing."""
+    skipped: str | None = None
+    """Why the step did not run at all: it would only have failed."""
 
     @property
     def succeeded(self) -> bool:
-        return _succeeded(self.result)
+        return self.skipped is None and _succeeded(self.result)
 
     @property
     def detail(self) -> str:
+        if self.skipped is not None:
+            return f"skipped: {self.skipped}"
         if self.result is None:
             return f"{self.step.command[0]} not found on PATH"
         return f"exited with {self.result.exit_code}" if self.result.exit_code else ""
@@ -327,11 +336,23 @@ def fix_workspace(
     the TypeScript runner's install, before the JVM warm-up. The Python project then gets
     pytest when its venv lacks it."""
     outcomes: list[FixOutcome] = []
-    for step, directory in _fix_plan(workspace, content):
+    jvm = _can_warm_up_jvm(workspace)
+    for step, directory in _fix_plan(workspace, content, jvm):
         outcome = _run_step(workspace.commands, step, directory, notify)
         if outcome is not None:
             outcomes.append(outcome)
+    if not jvm:
+        outcomes.append(FixOutcome(NO_JAVA_FIX, None, skipped=NO_JAVA_REASON))
     return tuple(outcomes)
+
+
+def _can_warm_up_jvm(workspace: PracticeWorkspace) -> bool:
+    """False for a workspace with a JVM project when no working `java` is on PATH: Gradle would
+    only fail."""
+    files = workspace.files
+    if not files.exists(JVM_FIX.project):
+        return True
+    return _succeeded(workspace.commands.run(JAVA_PROBE, files.root / JVM_FIX.project))
 
 
 def _run_step(
@@ -354,7 +375,7 @@ def _succeeded(result: ProbeResult | None) -> bool:
 
 
 def _fix_plan(
-    workspace: PracticeWorkspace, content: ContentLocation | NotFound
+    workspace: PracticeWorkspace, content: ContentLocation | NotFound, jvm: bool
 ) -> list[tuple[FixStep, Path]]:
     files = workspace.files
     plan = [
@@ -364,7 +385,7 @@ def _fix_plan(
     ]
     if _is_checkout(content) and content.files.exists(RUNNER_TYPESCRIPT):
         plan.append((RUNNER_TYPESCRIPT_FIX, content.files.root / RUNNER_TYPESCRIPT))
-    if files.exists(JVM_FIX.project):
+    if jvm and files.exists(JVM_FIX.project):
         plan += [(step, files.root / step.project) for step in (JVM_FIX, *JVM_PROJECT_WARMUPS)]
     return plan
 
@@ -461,11 +482,11 @@ def _node(tools: ToolProbe) -> CheckResult:
 
 def _java(tools: ToolProbe) -> CheckResult:
     version = _version_of(tools, ("java", "-version"), _JAVA_VERSION)
-    fix = f"install JDK {JAVA_MAJOR}: {TOOLCHAINS_GUIDE}#jdk-{JAVA_MAJOR}"
     if isinstance(version, _Unavailable):
-        return CheckResult("java", CheckStatus.FAIL, version.reason, fix=fix)
+        return CheckResult("java", CheckStatus.FAIL, version.reason, fix=INSTALL_JAVA)
     if _major(version) != JAVA_MAJOR:
-        return CheckResult("java", CheckStatus.FAIL, f"{version} (need JDK {JAVA_MAJOR})", fix=fix)
+        detail = f"{version} (need JDK {JAVA_MAJOR})"
+        return CheckResult("java", CheckStatus.FAIL, detail, fix=INSTALL_JAVA)
     return CheckResult("java", CheckStatus.OK, version)
 
 

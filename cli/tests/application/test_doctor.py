@@ -88,6 +88,8 @@ IMPORT_PYTEST_IN_PYTHON = ((".venv/bin/python", "-c", "import pytest"), Path("/w
 ADD_PYTEST_OFFLINE = ("uv", "add", "--dev", "--offline", PYTEST_REQUIREMENT)
 ADD_PYTEST = ("uv", "add", "--dev", PYTEST_REQUIREMENT)
 TOOLCHAINS_GUIDE = "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md"
+JAVA_PROBE = (("java", "-version"), Path("/ws/jvm"))
+INSTALL_JDK = f"install JDK 21: {TOOLCHAINS_GUIDE}#jdk-21"
 
 
 @dataclass
@@ -1042,6 +1044,7 @@ def test_fix_runs_the_setup_command_of_every_workspace_project():
     commands = FakeCommands()
     fix(workspace_with(commands=commands))
     assert commands.ran == [
+        JAVA_PROBE,
         (("uv", "sync"), Path("/ws/python")),
         IMPORT_PYTEST_IN_PYTHON,
         (("pnpm", "install"), Path("/ws/typescript")),
@@ -1076,7 +1079,7 @@ def test_the_jvm_warm_up_resolves_the_runtime_classpath():
 def test_fix_installs_the_typescript_runner_of_a_content_checkout():
     commands = FakeCommands()
     fix(workspace_with(commands=commands), CHECKOUT)
-    assert commands.ran[3] == (("pnpm", "install"), Path("/checkout/runners/typescript"))
+    assert commands.ran[4] == (("pnpm", "install"), Path("/checkout/runners/typescript"))
 
 
 def test_fix_skips_projects_that_are_not_set_up():
@@ -1099,6 +1102,47 @@ def test_fix_reports_each_command_outcome():
         ("jvm", True),
         ("jvm", True),
     ]
+
+
+def gradle_commands(commands: FakeCommands) -> list[tuple[str, ...]]:
+    return [command for command, _cwd in commands.ran if command[0] == "./gradlew"]
+
+
+@pytest.mark.parametrize(
+    "probe",
+    [None, ProbeResult(1, "Unable to locate a Java Runtime")],
+    ids=["no java on PATH", "a java stub that does not run"],
+)
+def test_fix_skips_the_gradle_warm_up_without_a_working_java(probe):
+    commands = FakeCommands({JAVA_PROBE[0]: probe})
+    fix(workspace_with(paths={"jvm"}, commands=commands))
+    assert gradle_commands(commands) == []
+
+
+def test_fix_reports_the_skipped_warm_up_with_the_jdk_to_install():
+    commands = FakeCommands({JAVA_PROBE[0]: None})
+    outcome = fix(workspace_with(paths={"jvm"}, commands=commands))[-1]
+    assert (outcome.succeeded, outcome.detail, outcome.step.manual) == (
+        False,
+        "skipped: java is not installed or does not run",
+        INSTALL_JDK,
+    )
+
+
+def test_fix_still_sets_up_the_other_projects_without_java():
+    commands = FakeCommands({JAVA_PROBE[0]: None})
+    outcomes = fix(workspace_with(commands=commands))
+    assert [(outcome.step.project, outcome.succeeded) for outcome in outcomes] == [
+        ("python", True),
+        ("typescript", True),
+        ("jvm", False),
+    ]
+
+
+def test_fix_looks_for_java_only_in_a_workspace_with_a_jvm_project():
+    commands = FakeCommands()
+    fix(workspace_with(paths={"python"}, commands=commands))
+    assert JAVA_PROBE[0] not in [command for command, _cwd in commands.ran]
 
 
 def test_fix_with_a_missing_tool_fails_that_step():
