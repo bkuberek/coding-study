@@ -7,7 +7,6 @@ status: ready
 difficulty: easy
 track: concurrency
 kind: concurrent
-languages: [java, kotlin, python, typescript, go, rust]
 signature:
   class:
     name: StressCounter
