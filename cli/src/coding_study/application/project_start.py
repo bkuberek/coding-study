@@ -4,13 +4,19 @@ A project starts in its one language. A new attempt copies the starter into `pro
 writes level 1's test file and opens level 1; a resumed attempt writes back the missing test files
 of its unlocked levels and leaves every other file as it is. `--fresh` and review attempts first
 archive the folder; a refused archive leaves no half-started attempt. A new attempt writes the
-folder's manifest anew (`project_manifest`); an archived folder takes none along.
+folder's manifest anew (`project_manifest`); an archived folder takes none along. `--restore`
+writes one file the manifest records back as `cstudy` provides it now.
 """
 
 from dataclasses import dataclass, replace
 
+from coding_study.application.active_attempt import find_attempt
 from coding_study.application.environment import Environment
-from coding_study.application.project_manifest import ProjectManifests, starter_files
+from coding_study.application.project_manifest import (
+    ProjectManifests,
+    folder_manifest,
+    starter_files,
+)
 from coding_study.application.project_tests import LevelTestFile, LevelTestWriter
 from coding_study.application.project_workspace import (
     archive_project,
@@ -21,12 +27,21 @@ from coding_study.application.statement_file import write_statement
 from coding_study.domain.attempts import Attempt, AttemptMode, AttemptStatus, NewAttempt
 from coding_study.domain.errors import UsageError
 from coding_study.domain.levels import FIRST_LEVEL
-from coding_study.domain.problem import Language, Problem
+from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
 from coding_study.domain.project import entry_files, project_language
-from coding_study.domain.project_manifest import project_lock
+from coding_study.domain.project_manifest import (
+    FileOrigin,
+    ProvidedFile,
+    content_digest,
+    folder_path,
+    project_lock,
+)
+from coding_study.domain.project_tests import level_tests
 from coding_study.domain.signature import ClassSignature
 from coding_study.domain.submissions import LevelUnlock
 from coding_study.domain.workspace_projects import project_folder
+
+RESTORE_IS_FOR_PROJECTS = "--restore is for project problems"
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +77,26 @@ class ProjectStartRequest:
     fresh: bool
     timer_s: int | None
     mode: AttemptMode
+
+
+@dataclass(frozen=True, slots=True)
+class RestoreRequest:
+    slug: str
+    language: Language | None
+    """None, or the problem's own language."""
+    path: str
+    """The file, relative to the project folder, as given."""
+
+
+@dataclass(frozen=True, slots=True)
+class RestoredFile:
+    meta: ProblemMeta
+    path: str
+    """Relative to the folder, without `.` and `..` segments."""
+    origin: FileOrigin
+    """`starter`, or `level` for a generated test file."""
+    level: int | None
+    """The level of a generated test file; None for a starter file."""
 
 
 def project_start_language(problem: Problem, requested: Language | None) -> Language:
@@ -181,3 +216,68 @@ class _ProjectStarter:
         files = self._problem.project_files
         starter = files.starter.paths if files and files.starter else frozenset[str]()
         return next((path for path in candidates if path in starter), candidates[0])
+
+
+def restore_project_file(environment: Environment, request: RestoreRequest) -> RestoredFile:
+    """`cstudy start --restore`: one starter file, or the generated test file of an open level,
+    written as `cstudy` provides it now and recorded so in the manifest, under the project's lock.
+
+    Raises UsageError for another kind of problem or language, without an attempt in progress,
+    for a missing folder, and for a path that names no file `cstudy` provided in the folder or
+    that a link or a directory blocks.
+    """
+    problem = environment.problems.load(request.slug)
+    if problem.meta.kind is not ProblemKind.PROJECT:
+        raise UsageError(RESTORE_IS_FOR_PROJECTS)
+    project_start_language(problem, request.language)
+    attempt = find_attempt(environment.progress, problem.meta.slug, request.language)
+    try:
+        path = folder_path(request.path)
+    except ValueError as error:
+        raise UsageError(f"cannot restore {request.path}: {error}") from None
+    restorer = _Restorer(environment, problem, attempt.level_unlocked or FIRST_LEVEL)
+    with environment.workspace.locked(project_lock(problem.meta.slug)):
+        return restorer.restore(path)
+
+
+class _Restorer:
+    def __init__(self, environment: Environment, problem: Problem, unlocked: int) -> None:
+        self._environment = environment
+        self._problem = problem
+        self._unlocked = unlocked
+        self._slug = problem.meta.slug
+
+    def restore(self, path: str) -> RestoredFile:
+        workspace = self._environment.workspace
+        folder = project_folder(self._slug)
+        if not workspace.exists(folder):
+            raise UsageError(f"{folder} is missing: cstudy start {self._slug} copies the starter")
+        manifest = folder_manifest(self._environment, self._problem, self._unlocked)
+        provided = manifest.file(path)
+        if provided is None:
+            raise UsageError(
+                f"cannot restore {path}: not a starter file or a generated test file of an open "
+                f"level of {self._slug}"
+            )
+        text = self._text(provided)
+        try:
+            workspace.write_within(folder, path, text)
+        except ValueError as error:
+            raise UsageError(f"cannot restore {path}: {error}") from None
+        restored = replace(provided, digest=content_digest(text))
+        ProjectManifests(workspace).save(self._slug, manifest.with_file(restored))
+        return RestoredFile(self._problem.meta, path, provided.origin, provided.level)
+
+    def _text(self, provided: ProvidedFile) -> str:
+        if provided.level is not None:
+            language = project_language(self._problem.meta)
+            generator = self._environment.toolchains.project_test_generator(language)
+            return generator.generate(level_tests(self._problem, provided.level))
+        files = self._problem.project_files
+        starter = files.starter if files else None
+        found = None if starter is None else starter.file(provided.path)
+        if found is None or found.text is None:
+            raise UsageError(
+                f"cannot restore {provided.path}: the starter of {self._slug} no longer has it"
+            )
+        return found.text

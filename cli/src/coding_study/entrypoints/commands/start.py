@@ -11,13 +11,20 @@ from rich.text import Text
 from coding_study.adapters.environment_factory import load_environment
 from coding_study.application.environment import Environment
 from coding_study.application.practice_catalog import is_item
-from coding_study.application.project_start import StartedProject
+from coding_study.application.project_start import (
+    RESTORE_IS_FOR_PROJECTS,
+    RestoredFile,
+    RestoreRequest,
+    StartedProject,
+    restore_project_file,
+)
 from coding_study.application.resolve_target import ProblemTarget, resolve_problem
 from coding_study.application.start_attempt import StartedAttempt, StartRequest, start_attempt
 from coding_study.application.start_item import ItemStartRequest, start_item_attempt
 from coding_study.domain.attempts import parse_timer
 from coding_study.domain.errors import UsageError
-from coding_study.domain.problem import Language
+from coding_study.domain.problem import Language, ProblemMeta
+from coding_study.domain.project import project_language
 from coding_study.entrypoints.shared import (
     PROBLEM_TARGET_HELP,
     add_command,
@@ -30,6 +37,7 @@ LABEL_WIDTH = 11
 NEXT_STEP = "cstudy test --watch"
 PROJECT_NEXT_STEP = "cstudy test --watch, then cstudy submit"
 PROJECT_KIND = "project"
+RESTORE_EXCLUDES = "--restore excludes --fresh and --timer"
 
 type OpenFiles = tuple[str, str]
 """The user's file (stub or notes), then the statement."""
@@ -53,12 +61,28 @@ def start(
         typer.Option("--timer", metavar="DURATION", help="Time box, for example 25m or 1h."),
     ] = None,
     no_open: Annotated[bool, typer.Option("--no-open", help="Do not launch the editor.")] = False,
+    restore: Annotated[
+        str | None,
+        typer.Option(
+            "--restore",
+            metavar="PATH",
+            help="Project problems: write one starter or generated test file back, as cstudy "
+            "provides it; PATH is relative to the project folder.",
+        ),
+    ] = None,
 ) -> None:
     """Create or reopen a stub, open the statement, begin an attempt."""
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     target = resolve_problem(environment, ProblemTarget(slug, language), Path.cwd())
-    request = StartRequest(target.slug, target.language, fresh, _timer_seconds(timer))
     output = console(context)
+    if restore is not None:
+        if fresh or timer is not None:
+            raise UsageError(RESTORE_EXCLUDES)
+        restore_and_report(
+            output, environment, RestoreRequest(target.slug, target.language, restore)
+        )
+        return
+    request = StartRequest(target.slug, target.language, fresh, _timer_seconds(timer))
     files = start_and_report(output, environment, request)
     if not no_open and environment.config.open_on_start:
         open_in_editor(output, environment, files)
@@ -74,6 +98,14 @@ def start_and_report(output: Console, environment: Environment, request: StartRe
     for line in lines:
         output.print(line)
     return files
+
+
+def restore_and_report(output: Console, environment: Environment, request: RestoreRequest) -> None:
+    """`--restore`: writes one file of a project back and prints it; opens nothing."""
+    if is_item(environment, request.slug):
+        raise UsageError(RESTORE_IS_FOR_PROJECTS)
+    for line in _restored(restore_project_file(environment, request)):
+        output.print(line)
 
 
 def open_in_editor(output: Console, environment: Environment, files: OpenFiles) -> None:
@@ -93,9 +125,7 @@ def _timer_seconds(timer: str | None) -> int | None:
 
 
 def _report(started: StartedAttempt) -> Iterator[Text]:
-    meta = started.problem.meta
-    topic = meta.patterns[0] if meta.patterns else meta.track
-    header = [meta.slug, meta.difficulty, topic, started.attempt.language or ""]
+    header = _header(started.problem.meta, started.attempt.language or "")
     project = started.project
     if project is None:
         yield Text(" · ".join(header), style="bold")
@@ -113,6 +143,19 @@ def _report(started: StartedAttempt) -> Iterator[Text]:
     if started.archived_to:
         yield _line("archived", started.archived_to)
     yield _line("next", NEXT_STEP if project is None else PROJECT_NEXT_STEP)
+
+
+def _header(meta: ProblemMeta, language: str) -> list[str]:
+    topic = meta.patterns[0] if meta.patterns else meta.track
+    return [meta.slug, meta.difficulty, topic, language]
+
+
+def _restored(restored: RestoredFile) -> Iterator[Text]:
+    """The project's header, then the file `--restore` wrote back."""
+    header = _header(restored.meta, project_language(restored.meta))
+    yield Text(" · ".join((*header, PROJECT_KIND)), style="bold")
+    origin = "starter" if restored.level is None else f"level {restored.level} tests"
+    yield _line("restored", f"{restored.path} ({origin})")
 
 
 def _project_lines(project: StartedProject) -> Iterator[Text]:

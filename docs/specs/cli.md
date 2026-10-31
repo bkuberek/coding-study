@@ -157,7 +157,7 @@ warning  kept .vscode/tasks.json: edited, or not written by cstudy (cstudy ide -
 ## cstudy start
 
 ```text
-cstudy start <slug|file> [--lang L] [--fresh] [--timer DURATION] [--no-open]
+cstudy start <slug|file> [--lang L] [--fresh] [--timer DURATION] [--no-open] [--restore PATH]
 ```
 
 | Flag | Effect |
@@ -166,6 +166,7 @@ cstudy start <slug|file> [--lang L] [--fresh] [--timer DURATION] [--no-open]
 | `--fresh` | Archive the existing file and write a new stub (implied for review attempts) |
 | `--timer` | Time box, for example `25m` or `1h`; shown by `cstudy test`; finishing over time caps the grade at `hard` |
 | `--no-open` | Do not launch the editor |
+| `--restore` | Project problems: write one file of the folder back as `cstudy` provides it, and do nothing else ([below](#restoring-a-file)) |
 
 Effects: generate or keep the stub ([runners](runners.md#stub-generation)), render `.statements/<slug>.md`, insert an attempt (`in_progress`), and open `$EDITOR <stub> <statement>`. Starting a problem that already has an `in_progress` attempt in the same language resumes it. A progressive problem's new attempt opens level 1, and the statement shows only the unlocked levels; the output adds a `level` line (`level      1 of 4: Set and get`).
 
@@ -176,7 +177,7 @@ statement  .statements/two-sum.md
 next       cstudy test --watch
 ```
 
-A [project problem](problem-format.md#project-problems) starts in its one language: `--lang` may repeat it, another language exits 3 (`bank-project-python is solved in python only`), and `default_lang` never applies. A new attempt copies the problem's `starter/` tree to `projects/<slug>/`, never overwriting a file, links the folder to the workspace's toolchain (Python: [project folders](installation-and-workspaces.md#project-folders)), writes level 1's [test file](problem-format.md#generated-test-files), renders the statement at level 1, and opens `$EDITOR projects/<slug> <statement>`. A resumed attempt copies the starter only when the folder is missing, writes back a missing generated test file of an unlocked level, and recreates a missing or dangling `.venv` link; it never restores a file you deleted or changed. `--fresh` and review attempts first move the folder to `.archive/<slug>/<attempt_id>-<lang>/`, without its `.venv` link and caches. `--timer` works as for every problem. The `project` line counts the files the folder holds, as `code_hash` sees them ([project folders](installation-and-workspaces.md#project-folders)): the starter's, the generated test files and your own, without the `.venv` link, `node_modules` and caches.
+A [project problem](problem-format.md#project-problems) starts in its one language: `--lang` may repeat it, another language exits 3 (`bank-project-python is solved in python only`), and `default_lang` never applies. A new attempt copies the problem's `starter/` tree to `projects/<slug>/`, never overwriting a file, links the folder to the workspace's toolchain (Python: [project folders](installation-and-workspaces.md#project-folders)), writes level 1's [test file](problem-format.md#generated-test-files), renders the statement at level 1, and opens `$EDITOR projects/<slug> <statement>`. A resumed attempt copies the starter only when the folder is missing, writes back a missing generated test file of an unlocked level, and recreates a missing or dangling `.venv` link; it never restores a file you deleted or changed (`--restore` does, one file at a time). `--fresh` and review attempts first move the folder to `.archive/<slug>/<attempt_id>-<lang>/`, without its `.venv` link and caches. `--timer` works as for every problem. The `project` line counts the files the folder holds, as `code_hash` sees them ([project folders](installation-and-workspaces.md#project-folders)): the starter's, the generated test files and your own, without the `.venv` link, `node_modules` and caches.
 
 ```text
 bank-project-python · hard · practical · python · project
@@ -195,6 +196,25 @@ url-shortener · medium · system-design · 45 min
 notes      notes/system-design/url-shortener.md
 prompt     .statements/url-shortener.md
 next       answer in the notes, then cstudy solution url-shortener
+```
+
+#### Restoring a file
+
+`cstudy start <slug|file> --restore PATH` writes one file of a project folder back as `cstudy` provides it: a starter file, or the [generated test file](problem-format.md#generated-test-files) of an open level. It acts on the attempt in progress and starts, resumes and opens nothing.
+
+| Rule | Detail |
+|------|--------|
+| `PATH` | Relative to the project folder, as `cstudy status --json` lists it (`bank/bank.py`, `tests/test_level_2.py`). `.` and `..` segments are resolved first (`bank/../bank/bank.py` is `bank/bank.py`); an absolute path, a `\` separator, a path that leaves the folder or names the folder itself exits 3 (`cannot restore ../progress.db: leaves the folder`) |
+| Which files | Those the folder's [manifest](installation-and-workspaces.md#project-folders) records, deleted or not. A file of yours, or the test file of a locked level, exits 3: `cannot restore bank/ledger.py: not a starter file or a generated test file of an open level of bank-project-python` |
+| Content | A starter file as the problem's `starter/` holds it now; a generated test file as `cstudy` generates it now. The manifest then records that content, so the file shows `unchanged` in `cstudy status`. A starter file the problem no longer has exits 3 |
+| Links | Never written through: when the file, or a directory between the folder and it, is a symbolic link, `cstudy start` exits 3 (`cannot restore bank/bank.py: bank is a symbolic link`) and writes nothing; so does a directory at the file's path |
+| Refusals (exit 3) | Another kind of problem (`--restore is for project problems`), no attempt in progress, a missing folder (`cstudy start <slug>` copies the starter again), `--fresh` or `--timer` with it (`--restore excludes --fresh and --timer`) |
+| Lock | Held while it writes the file and the manifest ([project folders](installation-and-workspaces.md#project-folders)) |
+
+```text
+$ cstudy start bank-project-python --restore tests/test_level_2.py
+bank-project-python · hard · practical · python · project
+restored   tests/test_level_2.py (level 2 tests)
 ```
 
 ## cstudy test

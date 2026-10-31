@@ -284,3 +284,62 @@ def test_locked_releases_the_lock_when_the_block_raises(workspace):
     with pytest.raises(RuntimeError), workspace.locked(LOCK):
         raise RuntimeError("interrupted")
     assert not lock_is_held(workspace.absolute(LOCK))
+
+
+def test_write_within_writes_the_file_inside_the_folder(workspace, project):
+    workspace.write_within(project, "bank/bank.py", "class Bank: pass\n")
+    assert workspace.read_text(f"{project}/bank/bank.py") == "class Bank: pass\n"
+
+
+def test_write_within_creates_missing_directories(workspace, project):
+    workspace.write_within(project, "bank/ledger/entries.py", "ENTRIES = []\n")
+    assert workspace.read_text(f"{project}/bank/ledger/entries.py") == "ENTRIES = []\n"
+
+
+def test_write_within_refuses_a_file_that_is_a_link(workspace, project):
+    workspace.write_text("elsewhere/hosts", "kept\n")
+    workspace.absolute(f"{project}/README.md").unlink()
+    workspace.absolute(f"{project}/README.md").symlink_to("../../elsewhere/hosts")
+    with pytest.raises(ValueError, match=r"README\.md is a symbolic link"):
+        workspace.write_within(project, "README.md", "# Bank\n")
+
+
+def test_write_within_never_writes_through_a_link(workspace, project):
+    workspace.write_text("elsewhere/hosts", "kept\n")
+    workspace.absolute(f"{project}/README.md").unlink()
+    workspace.absolute(f"{project}/README.md").symlink_to("../../elsewhere/hosts")
+    with pytest.raises(ValueError, match="symbolic link"):
+        workspace.write_within(project, "README.md", "# Bank\n")
+    assert workspace.read_text("elsewhere/hosts") == "kept\n"
+
+
+def test_write_within_refuses_a_directory_on_the_way_that_is_a_link(workspace, project):
+    workspace.write_text("elsewhere/bank.py", "kept\n")
+    workspace.remove_folder(f"{project}/bank")
+    workspace.absolute(f"{project}/bank").symlink_to("../../elsewhere", target_is_directory=True)
+    with pytest.raises(ValueError, match="bank is a symbolic link"):
+        workspace.write_within(project, "bank/bank.py", "class Bank: ...\n")
+
+
+def test_write_within_refuses_a_dangling_link(workspace, project):
+    workspace.absolute(f"{project}/README.md").unlink()
+    workspace.absolute(f"{project}/README.md").symlink_to("../../nowhere/README.md")
+    with pytest.raises(ValueError, match=r"README\.md is a symbolic link"):
+        workspace.write_within(project, "README.md", "# Bank\n")
+
+
+def test_write_within_refuses_a_directory_at_the_files_path(workspace, project):
+    workspace.write_text(f"{project}/notes/today.md", "# Today\n")
+    with pytest.raises(ValueError, match="notes is a directory"):
+        workspace.write_within(project, "notes", "# Notes\n")
+
+
+def test_write_within_refuses_a_file_on_the_way(workspace, project):
+    with pytest.raises(ValueError, match=r"README\.md is not a directory"):
+        workspace.write_within(project, "README.md/notes.md", "# Notes\n")
+
+
+def test_write_within_follows_a_folder_that_is_itself_a_link(workspace, project):
+    workspace.absolute("projects/alias").symlink_to("bank-project-python", target_is_directory=True)
+    workspace.write_within("projects/alias", "README.md", "# Alias\n")
+    assert workspace.read_text(f"{project}/README.md") == "# Alias\n"

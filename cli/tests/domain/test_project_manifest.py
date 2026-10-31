@@ -3,12 +3,15 @@
 
 import hashlib
 
+import pytest
+
 from coding_study.domain.project import ProjectFile, ProjectTree
 from coding_study.domain.project_manifest import (
     FileOrigin,
     ProjectManifest,
     ProvidedFile,
     content_digest,
+    folder_path,
     level_file,
     manifest_path,
     project_lock,
@@ -73,3 +76,35 @@ def test_the_manifest_lives_outside_the_project_folder():
 
 def test_the_projects_lock_lives_next_to_its_manifest():
     assert project_lock("bank-project-python") == ".cs/projects/bank-project-python.lock"
+
+
+@pytest.mark.parametrize(
+    ("given", "path"),
+    [
+        ("bank/bank.py", "bank/bank.py"),
+        ("./bank/bank.py", "bank/bank.py"),
+        ("bank//bank.py", "bank/bank.py"),
+        ("bank/../bank/bank.py", "bank/bank.py"),
+        ("tests/./test_level_1.py", "tests/test_level_1.py"),
+    ],
+)
+def test_folder_path_normalizes_a_path_inside_the_folder(given, path):
+    assert folder_path(given) == path
+
+
+@pytest.mark.parametrize(
+    ("given", "reason"),
+    [
+        ("../other/bank.py", "leaves the folder"),
+        ("bank/../../bank.py", "leaves the folder"),
+        ("..", "leaves the folder"),
+        ("/etc/hosts", "is absolute"),
+        ("bank\\bank.py", "uses \\"),
+        ("", "names no file"),
+        ("bank/..", "names no file"),
+        (".", "names no file"),
+    ],
+)
+def test_folder_path_refuses_a_path_that_names_no_file_inside_the_folder(given, reason):
+    with pytest.raises(ValueError, match=reason.replace("\\", "\\\\")):
+        folder_path(given)

@@ -582,6 +582,16 @@ class Workspace(Protocol):
         paths."""
         ...
 
+    def write_within(self, folder: str, path: str, text: str) -> None:
+        """Writes `text` to the file `path`, relative to the directory `folder`, creating missing
+        directories on the way; `folder` itself may be a link.
+
+        Raises ValueError, writing nothing, when the file or a directory between `folder` and it
+        is a symbolic link, since the write could land outside `folder`, or when the file is a
+        directory or a directory on the way is a file.
+        """
+        ...
+
     def locked(self, path: str) -> AbstractContextManager[None]:
         """Holds an exclusive lock on the file `path`, created when missing, for the `with` block:
         another holder, in this process or another, makes it wait. Not reentrant: asking for a

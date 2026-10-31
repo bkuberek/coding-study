@@ -13,9 +13,12 @@ import hashlib
 from dataclasses import dataclass
 from enum import StrEnum
 
-from coding_study.domain.project import ProjectTree
+from coding_study.domain.project import PATH_SEPARATOR, ProjectTree
 
 MANIFESTS_DIRECTORY = ".cs/projects"
+_CURRENT_SEGMENT = "."
+_PARENT_SEGMENT = ".."
+_WINDOWS_SEPARATOR = "\\"
 MANIFEST_SUFFIX = ".json"
 LOCK_SUFFIX = ".lock"
 
@@ -78,6 +81,30 @@ def level_file(path: str, text: str, level: int) -> ProvidedFile:
 def manifest_path(slug: str) -> str:
     """Relative to the workspace root."""
     return f"{MANIFESTS_DIRECTORY}/{slug}{MANIFEST_SUFFIX}"
+
+
+def folder_path(path: str) -> str:
+    """`path`, a file named relative to a project folder, without `.`, `..` and empty segments
+    (`bank/../bank/bank.py` is `bank/bank.py`), as the manifest names it.
+
+    Raises ValueError for an absolute path, a `\\` separator, a path that leaves the folder, or one
+    that names the folder itself.
+    """
+    if path.startswith(PATH_SEPARATOR):
+        raise ValueError("is absolute: name the file relative to the project folder")
+    if _WINDOWS_SEPARATOR in path:
+        raise ValueError(f"uses {_WINDOWS_SEPARATOR} instead of {PATH_SEPARATOR}")
+    segments: list[str] = []
+    for segment in path.split(PATH_SEPARATOR):
+        if segment == _PARENT_SEGMENT:
+            if not segments:
+                raise ValueError("leaves the folder")
+            segments.pop()
+        elif segment not in ("", _CURRENT_SEGMENT):
+            segments.append(segment)
+    if not segments:
+        raise ValueError("names no file in the folder")
+    return PATH_SEPARATOR.join(segments)
 
 
 def project_lock(slug: str) -> str:

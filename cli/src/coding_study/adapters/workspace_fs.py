@@ -3,7 +3,7 @@
 import hashlib
 import shutil
 from contextlib import AbstractContextManager
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from coding_study.adapters.file_lock import exclusive_lock
 from coding_study.adapters.project_folders import remove_untracked, tracked_files
@@ -70,6 +70,15 @@ class WorkspaceFs:
             digest.update(target.read_bytes() if target.is_file() else _MISSING)
         return digest.hexdigest()
 
+    def write_within(self, folder: str, path: str, text: str) -> None:
+        root = self.absolute(folder)
+        segments = PurePosixPath(path).parts
+        for depth in range(1, len(segments) + 1):
+            _refuse_unsafe(root, PurePosixPath(*segments[:depth]), depth == len(segments))
+        target = root / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+
     def locked(self, path: str) -> AbstractContextManager[None]:
         return exclusive_lock(self.absolute(path))
 
@@ -79,3 +88,15 @@ class WorkspaceFs:
 
     def absolute(self, path: str) -> Path:
         return self._root / path
+
+
+def _refuse_unsafe(root: Path, step: PurePosixPath, is_file: bool) -> None:
+    """Raises ValueError when the entry `step`, under `root`, would make a write leave `root` or
+    replace a directory: a link, a directory at the file's path, a file on the way."""
+    entry = root / step
+    if entry.is_symlink():
+        raise ValueError(f"{step} is a symbolic link")
+    if is_file and entry.is_dir():
+        raise ValueError(f"{step} is a directory")
+    if not is_file and entry.exists() and not entry.is_dir():
+        raise ValueError(f"{step} is not a directory")
