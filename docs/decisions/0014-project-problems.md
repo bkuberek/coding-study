@@ -33,13 +33,13 @@ A spike (scratch code, not merged) built a two-file bank in Python and TypeScrip
 - **One final reference.** Each project problem has exactly one approach, whose reference is an overlay on the starter (`solutions/<approach>/`, changed and added files only) implementing every level. No snapshot per level.
 - **Runners host the framework.** The Python, TypeScript and JVM runners learn to load a project folder for grading and to run the native framework in-process as a new `suite` job, so a test gets the runner's hang guard, output capture, crash restart and debug launch. Go runs its test binaries as child processes of the runner instead, with the same guarantees ([Go](#go-spike-k5)).
 - **Shared toolchains.** A project folder reaches the workspace's toolchain by relative path: the Python venv and Node installs, the vendored Go modules, and on the JVM the workspace's Gradle wrapper, daemon and runner runtime. Nothing is installed per project, so a Python, TypeScript or Go project starts offline (NFR-6). A Java or Kotlin project starts offline once `cstudy doctor --fix` has cached JUnit, kotlin-test and their dependencies, which no single-file problem needs ([Java and Kotlin](#java-and-kotlin-spike-k4)).
-- **Python and TypeScript first.** Rust project problems are not yet supported, and `cstudy verify` rejects one; Go followed after spike K5 ([below](#go-spike-k5)), Java and Kotlin after spike K4 ([below](#java-and-kotlin-spike-k4)). Each needed a build of its own per project (a Gradle build, a Go module, a Cargo crate) and a spike before it was specified:
+- **Python and TypeScript first.** Go followed after spike K5 ([below](#go-spike-k5)), Java and Kotlin after spike K4 ([below](#java-and-kotlin-spike-k4)), Rust after spike K6 ([below](#rust-spike-k6)). Each needed a build of its own per project (a Gradle build, a Go module, a Cargo crate) and a spike before it was specified:
 
   | Language | Open question | Spike |
   |----------|---------------|-------|
   | Java, Kotlin | Settled by K4: a standalone Gradle build per project folder on the shared daemon, within NFR-1 without a persistent runner ([below](#java-and-kotlin-spike-k4)) | K4 |
   | Go | Settled by K5: one module per project with a `go.work` of its own in the folder, never an entry in the root `go.work`; the overlay registration works inside a project package ([below](#go-spike-k5)) | K5 |
-  | Rust | `cargo test` results on stable Rust without libtest's JSON output; two profiles (tests in dev, grading in release) compiled per change; a harness that depends on the project crate by path | K6 |
+  | Rust | Settled by K6: a standalone crate per folder, graded through a harness that depends on it by path, with the dev profile for tests and grading alike; each test a process of its own, since stable libtest has no JSON output ([below](#rust-spike-k6)) | K6 |
 
 ### Go (spike K5)
 
@@ -71,6 +71,16 @@ Measured on an M3 Pro (JDK 21.0.2, Gradle 9.8.2, Kotlin 2.4.21, JUnit 5.14.4), w
 - **Offline.** `cstudy doctor --fix` builds one warm-up project per language from the template, which caches JUnit, kotlin-test and `apiguardian-api` (a resolvable prefetch configuration missed `apiguardian-api`, which only JUnit's compile variant brings). The first build of a new folder takes 1.5 to 2.4 s on a warm daemon.
 - **No persistent JVM runner.** [ADR 0007](0007-no-persistent-jvm-runner.md)'s trigger is not met, and the Kotlin Gradle plugin already keeps a compile daemon of its own.
 
+### Rust (spike K6)
+
+Spike K6 (scratch code, not merged) built a bank crate and a probe crate whose tests pass, panic, abort, hang, are ignored and expect a panic (`should_panic`), on Rust 1.92 and rust-analyzer 0.3.3097. Rust project problems follow its design ([problem-format](../specs/problem-format.md#rust-projects), [runners](../specs/runners.md#rust-projects), [installation-and-workspaces](../specs/installation-and-workspaces.md#project-folders)):
+
+- **A standalone crate per folder.** Cargo refuses a workspace member outside the workspace root, so `projects/<slug>/` cannot join `rust/` or `.cs/build/rust`; it is a library crate of its own. The starter ships `Cargo.toml` and `.cargo/config.toml`, which points crates.io at the runtime's vendored crates by a path relative to the folder, for rust-analyzer and the native `cargo test`. `project.entry` names the crate, whose root `src/lib.rs` makes the entry class public; the generated tests are integration tests, `tests/level_<n>.rs`. `projects/*/Cargo.lock` is ignored: cstudy's builds never write one in the folder, and the native `cargo test` does.
+- **A harness on a path dependency.** Grading builds `.cs/build/rust-projects/<slug>/`, a Cargo workspace whose only member is a harness depending on the project crate by path, `user = { package = "<crate>", path = "..." }`. The generated bridge needs no change: it calls `user::Bank`, with the methods of the graded levels only, and a `load_error` names `src/lib.rs` where a single file is named.
+- **The dev profile for projects.** The suite and grading both build with the dev profile and the existing pins, sharing `.cs/build/rust/target`, so a grade after a suite run compiles only the harness (about 0.19 s); projects have no bench, `--perf` or time limit to need the release profile. Each build workspace gets a private `CARGO_HOME`: the package-cache lock in `CARGO_HOME`, not the target directory's, serialised concurrent builds.
+- **Suite: one process per test.** libtest's stable output is pretty text, and `--format json` needs nightly, so nothing parses a report: `cstudy` builds every test target with `cargo build --lib --tests --keep-going --message-format=json`, lists each binary's tests with `--list --format terse`, and runs each test as a process of its own, `<binary> --exact <name> --nocapture`, judging it by its exit code. As for Go, the tests run outside the runner's process; unlike Go's, a hang or a crash ends only that test's process, so the suite never restarts, and a test file that does not compile is one `error` result while the others run.
+- **Speed.** A Rust project's `cstudy test` takes about 1.5 to 1.8 s end to end and its grade about 1.1 s, over the 1.0 s that NFR-1 sets for Python and TypeScript projects, so NFR-1 gives Rust projects a target of their own, 2 s.
+
 ## Consequences
 
 - A project problem has no generated stub, no generator, no bench, no oracle and no time limit: `cstudy bench`, `cstudy test --perf`, `--stress` and `--time-limit`, and `cstudy verify --oracle` and `--ladder`, do not apply to it.
@@ -88,7 +98,7 @@ Measured on an M3 Pro (JDK 21.0.2, Gradle 9.8.2, Kotlin 2.4.21, JUnit 5.14.4), w
 
 | Trigger | What to reconsider |
 |---------|--------------------|
-| Spike K6 reports | Specify Rust's project folder, suite and grading, amending this ADR |
+| A Rust project's warm `cstudy test` p50 exceeds its 2 s NFR-1 target | Running each test binary once for all its tests, and one process per test only after a hang or a crash |
 | The warm p50 of a Java or Kotlin project, measured as [ADR 0007](0007-no-persistent-jvm-runner.md) measures, exceeds two thirds of its NFR-1 target | ADR 0007's levers for the project build: skip Gradle when nothing changed, then a compile server |
 | The owner finds the pilot's generated tests read like machine output | Hand-written visible tests in the starter, kept next to `tests.json` (alternative C below) |
 | Ports become frequent, or a third language version of one project is wanted | Sharing cases between siblings, and a `variant_of` field so that `cstudy start bank-project --lang typescript` works |

@@ -441,7 +441,7 @@ A project problem (`kind: project`, `track: practical`) is a folder of seeded fi
 | Go | Supported; native tests run with `go test` ([Go project jobs](runners.md#go-project-jobs)) |
 | Java | Supported; native tests run with JUnit 5 (Jupiter) on the JUnit Platform |
 | Kotlin | Supported; native tests run with kotlin.test on JUnit 5 |
-| Rust | Not yet supported: check S14 rejects a project problem that lists it |
+| Rust | Supported; native tests are libtest's `#[test]` functions, one process per test ([Rust projects](#rust-projects)) |
 
 ### Content tree
 
@@ -478,7 +478,7 @@ problems/<id>-bank-project-java/
   solutions/reference/src/main/java/bank/Bank.java
 ```
 
-A Kotlin project has `src/main/kotlin/` and `src/test/kotlin/` instead.
+A Kotlin project has `src/main/kotlin/` and `src/test/kotlin/` instead. A Rust project has `Cargo.toml`, `.cargo/config.toml`, `src/lib.rs` and its modules, and `tests/` ([Rust projects](#rust-projects)).
 
 ### meta.yaml
 
@@ -516,14 +516,14 @@ estimate_minutes: 90
 | Field | Rule |
 |-------|------|
 | `track` | `practical` |
-| `languages` | Exactly one: `python`, `typescript`, `go`, `java` or `kotlin` |
+| `languages` | Exactly one: `python`, `typescript`, `go`, `java`, `kotlin` or `rust` |
 | `slug` | Ends in the language (`bank-project-python`): a version in another language is another problem, and slugs are unique |
 | `levels` | Required, as for progressive problems |
 | `signature` | A class signature: the entry class the grader constructs, canonical names, a `level` on every method |
 | `comparator` | `ops`. Every method's comparator, the default `exact` or a `per_method` entry, is `exact`, `unordered` or `float`, because generated tests express only these. Java and Kotlin: on a method that returns an array or a list, `unordered` needs elements of `int`, `long`, `double`, `string` or `date`, which sort naturally, and `float` is not allowed |
 | Types | Scalars, arrays and lists. No node types; no `decimal` in TypeScript, whose `Decimal` class comes from the runner's support module, which a project folder does not reach. Go takes `decimal` (the vendored `decimal.Decimal`, which the starter's `go.mod` reaches) and `date` (`time.Time`) Java and Kotlin: a method's result holds no array inside an array or a list, and no `decimal` inside either, since a generated test compares `BigDecimal` by its canonical text and arrays only through `assertArrayEquals` or `assertContentEquals`; parameters may take any of these types |
-| `project.entry` | Python: the dotted module that defines the entry class (`bank.bank`), a file `bank/bank.py` or `bank/bank/__init__.py` under the project root. TypeScript: the path, relative to the root, of the file that exports the entry class by name (`src/bank.ts`). Go: the path, relative to the root, of the `.go` file that declares the entry type and its constructor `New<Class>` (`bank.go`, `bank/bank.go`), not a `_test.go` file; its directory is the package that `cstudy submit` grades Java and Kotlin: the fully qualified name of the entry class (`bank.Bank`), in a named package, whose simple name is the signature's class; the file is `src/main/java/bank/Bank.java` (Kotlin: `src/main/kotlin/bank/Bank.kt`) |
-| `project.tests` | The directory, relative to the root, where `cstudy` writes the generated test files; default `tests`. Go: its last directory name is a Go identifier, because the generated files declare `package <name>_test` Java and Kotlin: a package directory under `src/test/java/` (Kotlin: `src/test/kotlin/`), such as `src/test/java/bank`; the default does not apply |
+| `project.entry` | Python: the dotted module that defines the entry class (`bank.bank`), a file `bank/bank.py` or `bank/bank/__init__.py` under the project root. TypeScript: the path, relative to the root, of the file that exports the entry class by name (`src/bank.ts`). Go: the path, relative to the root, of the `.go` file that declares the entry type and its constructor `New<Class>` (`bank.go`, `bank/bank.go`), not a `_test.go` file; its directory is the package that `cstudy submit` grades Java and Kotlin: the fully qualified name of the entry class (`bank.Bank`), in a named package, whose simple name is the signature's class; the file is `src/main/java/bank/Bank.java` (Kotlin: `src/main/kotlin/bank/Bank.kt`). Rust: the crate, the starter's package name (`bank`), whose root `src/lib.rs` makes the entry class public at the crate root |
+| `project.tests` | The directory, relative to the root, where `cstudy` writes the generated test files; default `tests`. Go: its last directory name is a Go identifier, because the generated files declare `package <name>_test` Java and Kotlin: a package directory under `src/test/java/` (Kotlin: `src/test/kotlin/`), such as `src/test/java/bank`; the default does not apply. Rust: `tests`, the directory Cargo takes integration tests from |
 | `approaches` | Exactly one, with role `optimal` |
 | Not allowed | `generator.py`, `checker.py`, `stress_checker.py`, `buggy/`, `stub`, `perf`, `concurrency`, `oracle`, and `generate` or `stress` cases |
 | `related` | Lists every sibling in another language, and may list the problems it builds on |
@@ -802,6 +802,67 @@ func TestEx1(t *testing.T) {
 ```
 
 A generated file is in one package with every other test file of its directory, so a level file that calls a method you have not written yet stops that package from compiling: `cstudy test` reports one `error` for the package until the method exists, and `cstudy test --level N` leaves out the files of the levels above N.
+
+### Rust projects
+
+A Rust project is a library crate of its own: Cargo refuses a workspace member outside the workspace root, so the folder cannot join the workspace's `rust/` project ([ADR 0014](../decisions/0014-project-problems.md#rust-spike-k6)). `project.entry` is the crate, and `project.tests` is `tests`.
+
+| Item | Rule |
+|------|------|
+| `Cargo.toml` | A `[package]` whose `name` is `project.entry`, with `edition = "2021"` and `rust-version = "1.80"`, and no `build`, `links` or `workspace` key. The only other tables are `[dependencies]` and `[dev-dependencies]`, and they may list only the vendored crates, each exactly as the runner declares it: `rust_decimal = { version = "=1.43.0", default-features = false, features = ["maths"] }` and `chrono = { version = "=0.4.45", default-features = false, features = ["std"] }`. A signature that uses `decimal` needs `rust_decimal` in `[dependencies]`, one that uses `date` needs `chrono`: the entry class declares their types, and the harness's copy of each crate is the same one |
+| `.cargo/config.toml` | Points crates.io at the runtime's vendored crates, by a path relative to the folder, so that rust-analyzer and the native `cargo test` build offline. Its tables are exactly the ones below; `cstudy start` writes the file when a folder lacks it |
+| Crate name | `project.entry`: lowercase letters, digits and `_`, starting with a letter; not a Rust keyword and not a crate the build or the tests already name (`std`, `core`, `alloc`, `proc_macro`, `test`, `user`, `cs_runner`, `cs_support`, `rust_decimal`, `chrono`, `arrayvec`, `num_traits`, `autocfg`) |
+| Entry class | Public at the crate root, as `use bank::Bank;` imports it: declared in `src/lib.rs`, or in a module that `src/lib.rs` re-exports (`pub use bank::Bank;`). Methods are named in snake case and take `&mut self`, the constructor is `pub fn new(...) -> Self`, and the types are the [Rust mapping](#go-and-rust-mapping)'s, as a single-file stub declares them; a method of level 1 has the body `todo!()` |
+| Never | `Cargo.lock`, `target/`, `build.rs`, `rust-toolchain` and `rust-toolchain.toml` |
+
+The starter's `.cargo/config.toml`:
+
+```toml
+[source.crates-io]
+replace-with = "cstudy-vendor"
+
+[source.cstudy-vendor]
+directory = "../../.cs/runtime/runners/rust/vendor"
+```
+
+A statement's `Methods to add:` line declares each method as the crate does: `create_account(&mut self, timestamp: i64, account_id: String) -> bool`, without `-> ...` for a method that returns nothing.
+
+Generated test files:
+
+| Item | Rust |
+|------|------|
+| File | `tests/level_<n>.rs`, an integration test: a crate of its own that uses the project's library |
+| Framework | libtest, through `#[test]` functions |
+| One test per visible case | `#[test] fn <case id, "-" as "_">()`; an id that is not a Rust identifier on its own, one that starts with a digit or is a keyword, gets the prefix `case_` (`case_1`, `case_loop`) |
+| Case `note` | A `///` comment above the test |
+| Header | `//!` comments naming the level and the problem, and `Yours to edit and extend: cstudy never rewrites this file.` |
+| Import | `use <crate>::<Class>;`, and `use chrono::NaiveDate;` and `use rust_decimal::Decimal;` when a value needs them |
+| Body | `let mut bank = Bank::new(...);`, the instance named after the class in snake case, then one statement per operation: the call alone for a method that returns nothing, otherwise an assertion on its result. A case with no other operation calls `Bank::new(...);` alone |
+| `exact` | `assert!(...)` and `assert!(!...)` for a `bool`, `assert_eq!(result, expected)` for anything else, with `Vec::<T>::new()` for an empty list |
+| `unordered` | `assert_eq!(sorted(result), expected)`, the expected list already in Rust's order, through a helper `sorted` defined once in the file. Its items must be ordered (`Ord`): a list holding doubles cannot be generated, and `cstudy verify` reports it |
+| `float` | A helper `assert_close(actual, expected, tolerance)` defined once in the file, which passes exactly when `abs(a - e) <= tol * max(1, abs(e))`; for a list of doubles, `assert_all_close`, item by item after equal lengths. A `float` comparator on deeper lists of doubles cannot be generated, and `cstudy verify` reports it |
+| Values | Rust literals as rustfmt formats them, within 100 columns; a `String` argument as `"ivy".to_string()` and an expected one as `"ivy"`, a `double` with a decimal point (`2.0`), a `char` as `'a'`, lists as `vec![...]`, a `decimal` as `Decimal::from_str_exact("2500.50").unwrap()` and a `date` as `NaiveDate::from_ymd_opt(2026, 1, 1).unwrap()` |
+| Agreement | A generated test passes exactly when the core comparator would pass the case |
+
+The file is laid out as rustfmt lays it out with its defaults, and it is clippy-clean for Rust 1.80. Generated level 1 tests from case `ex1` of `0248-scheduled-transfers-bank`:
+
+```rust
+//! Level 1 examples of bank-project-rust, written by `cstudy start`.
+//!
+//! Yours to edit and extend: cstudy never rewrites this file.
+
+use bank::Bank;
+
+#[test]
+fn ex1() {
+    let mut bank = Bank::new();
+    assert!(bank.create_account(1, "ivy".to_string()));
+    assert!(bank.create_account(2, "leo".to_string()));
+    assert!(!bank.create_account(3, "ivy".to_string()));
+    assert_eq!(bank.deposit(4, "ivy".to_string(), 800), 800);
+    assert_eq!(bank.deposit(5, "max".to_string(), 50), -1);
+}
+```
 
 ### Levels and grading
 

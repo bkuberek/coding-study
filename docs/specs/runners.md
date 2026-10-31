@@ -26,7 +26,7 @@ A runner is a small program per runtime that loads one target (the user's file, 
 
 Paths are relative to the workspace root. The runners themselves run from the workspace's [runner runtime](installation-and-workspaces.md#runner-runtime) in `.cs/runtime/runners/`, a copy of the content's `runners/` that `cstudy` refreshes before the first runner of a command when the content changed. `R` and `O` live in `.cs/runs/<run_id>/` as `request-<n>.json` and `events-<n>.jsonl`, one pair per restart `n`; the last 20 runs are kept. The process starts in its own process group.
 
-A [project job](#project-jobs) starts in the project root instead: the Python runner adds `-P` and its own environment there, Go launches binaries of its own ([Go project jobs](#go-project-jobs)), and Java and Kotlin build the project folder with its own Gradle build ([JVM project builds](#jvm-project-builds)).
+A [project job](#project-jobs) starts in the project root instead: the Python runner adds `-P` and its own environment there, Go launches binaries of its own ([Go project jobs](#go-project-jobs)), Java and Kotlin build the project folder with its own Gradle build ([JVM project builds](#jvm-project-builds)), and a Rust project builds in `.cs/build/rust-projects/<slug>` with the dev profile ([Rust projects](#rust-projects)).
 
 ### JVM build details
 
@@ -495,11 +495,11 @@ Added to `runners/conformance/` before any concurrent problem merges. `expectati
 
 ## Project jobs
 
-A [project problem](problem-format.md#project-problems) is a folder, not one file, and its native tests run inside the runner. Two kinds of job serve it: a **grading job** (`cstudy submit`, and `cstudy verify` D1 and D3), an ordinary class job whose target is the project, and a **suite job** (`cstudy test`, and D1 and D9), which runs the project's native test framework in-process. The Python, TypeScript and JVM (Java and Kotlin) runners support both; the Rust runner does not support project jobs yet ([ADR 0014](../decisions/0014-project-problems.md)). The Go runner supports both too, running the tests as a child process ([Go project jobs](#go-project-jobs)).
+A [project problem](problem-format.md#project-problems) is a folder, not one file, and its native tests run inside the runner. Two kinds of job serve it: a **grading job** (`cstudy submit`, and `cstudy verify` D1 and D3), an ordinary class job whose target is the project, and a **suite job** (`cstudy test`, and D1 and D9), which runs the project's native test framework in-process. The Python, TypeScript and JVM (Java and Kotlin) runners support both. The Go runner supports both too, running the tests as a child process ([Go project jobs](#go-project-jobs)). The Rust runner runs grading jobs, and `cstudy` runs a Rust project's suite itself, one process per test ([Rust projects](#rust-projects)).
 
 ### Capability
 
-`hello.features` lists `project` and `suite` when the runner supports them. `cstudy` refuses a project job to a runner that does not list them, as an environment error (exit 4). The JVM runner lists `stress` and `project` always, and `suite` when a test framework host is on its classpath: a project's test runtime classpath holds `cs.suite`, the classpath of a single-file problem does not.
+`hello.features` lists `project` and `suite` when the runner supports them. `cstudy` refuses a project job to a runner that does not list them, as an environment error (exit 4). The JVM runner lists `stress` and `project` always, and `suite` when a test framework host is on its classpath: a project's test runtime classpath holds `cs.suite`, the classpath of a single-file problem does not. The Rust runner lists `project` (and `stress`), not `suite`: no runner process hosts a Rust suite.
 
 ### Launch
 
@@ -558,7 +558,7 @@ Cases, events, the hang guard and restarts are those of every class job.
 
 | Field | Meaning |
 |-------|---------|
-| `framework` | `pytest`, `node-test`, `go-test` or `junit-platform` (Java and Kotlin) |
+| `framework` | `pytest`, `node-test`, `go-test` or `junit-platform` (Java and Kotlin); a Rust suite is `libtest`, which `cstudy` runs itself ([Rust projects](#rust-projects)) |
 | `root` | The project root |
 | `exclude` | Files, relative to the root, that are not run: the generated files of levels above `cstudy test --level N`. On the JVM the build has already left them out of the test compile |
 | `select` | Test ids to run (`cstudy test --case`); empty: every test the framework discovers |
@@ -625,9 +625,39 @@ The Go runner runs both project jobs from binaries that `cstudy` builds in `.cs/
 | Usage error | A `go test` that fails before any package runs (a missing `go.mod`, a module it cannot resolve offline) is a `load_error` of type `GoTestError` carrying its output tail |
 | Debug | `cstudy test --debug` runs one package under Delve: the package of the selections when they name files of one package, else the package of the generated test files (`project.tests`). The runner builds its test binary with `go test -c -gcflags=all=-N -l` into the launch's private directory, starts `dlv exec --headless --listen=127.0.0.1:<port> --api-version=2 --wd <package directory> <binary> -- -test.v=test2json -test.count=1 -test.timeout=0 -test.paniconexit0 [-test.run R] [-test.skip S]`, copies Delve's `API server listening at:` line to its own standard output for the [ready line](#debug-mode), and pipes the rest through `go tool test2json -t -p <import path>`. A package that does not build is reported as above, and nothing waits for a debugger; a test binary that ends early is reported as above and its package does not run again. Delve is found, and required, as in [debug mode](#debug-mode) |
 
-### Not yet supported
+### Rust projects
 
-Rust project jobs wait for spike K6, recorded in [ADR 0014](../decisions/0014-project-problems.md). Until then the Rust runner does not list `project` or `suite`, and check S14 keeps project problems out of Rust.
+A Rust project folder is a crate of its own ([problem-format](problem-format.md#rust-projects)). Both of its jobs build in a Cargo workspace of the project's own, with the dev profile, and the build never writes into the folder ([ADR 0014](../decisions/0014-project-problems.md#rust-spike-k6)).
+
+| Item | Rule |
+|------|------|
+| Build workspace | `.cs/build/rust-projects/<slug>/`: `Cargo.toml`, a workspace whose only member is `harness/`, with the [profiles](#rust-build-details) pinned as in `.cs/build/rust`; `harness/Cargo.toml`, the package `project_<snake_slug>` with the bin target of the same name, depending on the project crate by path as `user = { package = "<crate>", path = "<root>" }`, on `cs_runner` and `cs_support`, and on `rust_decimal` and `chrono` as the other harnesses do; `harness/main.rs`, the bridge. The crate is the `[package] name` of the root's `Cargo.toml`, read on every build. One workspace serves every root of the problem (the folder, D1's starter, D3's reference), so its manifest names the root of the last build |
+| Settings | As in [Rust build details](#rust-build-details): offline, `--target <host>`, the vendored source as `--config`, the user's Cargo variables removed, and `CARGO_TARGET_DIR=.cs/build/rust/target`, shared with the single-file builds. The profile is dev, pinned as for `cstudy test --debug`: the suite and the grade then share the crate's compiled code, and a grade after a suite run compiles only the harness. `CARGO_HOME` is the build workspace's own `cargo-home/`, since builds that share a `CARGO_HOME` wait on its package-cache lock; the vendored source needs nothing from it, and the user's `config.toml` stays out |
+| Concurrent `cstudy` processes | The generation and the build hold an exclusive `flock` on `.cs/build/rust-projects/<slug>/.cstudy.lock`; each run launches private copies of the binaries it runs, in `run/<pid>-<random>/` under the build workspace, removed when the run ends |
+| Grading job | `cargo build -p project_<snake_slug>`, then the harness binary as any Rust runner: `{"compiled": "user"}`, launched in the root. The bridge is generated from the graded signature, so a method of a locked level is never called, and the user's crate is the dependency `user`, not a `#[path]` module. Its `Target.file` is the root with a final `/`, so a trace keeps every frame in a file under the root, named relative to it (`src/ledger.rs:12 in Ledger::post`). Compiler errors in the root's files: no run, and every graded case gets the `load_error` `CompileError` whose message is the first error (`src/lib.rs:4:5: error[E0425]: cannot find value ...`) and whose trace the rest, paths relative to the root. Errors only in the bridge are `load_error`s as for single files, naming `src/lib.rs` for the crate |
+| Suite build | `cargo build -p <crate> --lib --tests --keep-going --message-format=json`: the library's unit tests, each integration test under `tests/`, and the unit tests of any bin target. `--keep-going` builds every target that compiles when another does not |
+| Test targets | Each built test binary, by the `src_path` of its target relative to the root (`src/lib.rs`, `tests/level_1.rs`), in path order. The targets of `exclude` (the generated files of locked levels) are neither listed nor run, and their compiler errors are left out. A target with compiler errors is one `error` result whose `case_id` is that path, with the `CompileError` above; a target that the build left out because a target it needs did not compile (an integration test whose library does not build) reports nothing of its own |
+| Listing | `<binary> --list --format terse`, the lines `<name>: test`, in its order; a binary whose listing fails is one `error` result for its target |
+| Test id | `<target path>::<libtest name>`: `tests/level_1.rs::ex1`, `src/lib.rs::ledger::tests::posts_twice`. `select` and `skip` match ids, or their last part, as for the other frameworks |
+| Run | Each test as a process of its own, one at a time: `<binary> --exact <name> --nocapture` in the root, with `RUST_BACKTRACE=0`, standard output and standard error captured together, and a process group of its own |
+| Output | What the test printed, without libtest's own lines and without the panic message, which goes to `message`; the 4 KiB limit of [Execution environment](#execution-environment) |
+| Hang guard | The test's process group is killed after the hang guard of the [suite rules](#suite-job); the test is `timeout`, and the next test runs. Nothing restarts, since nothing else was in that process |
+
+| Exit of the test's process | Result |
+|----------------------------|--------|
+| 0, libtest counting `1 passed` (including a `should_panic` test that panicked as it should) | `ok` |
+| 0, libtest counting `1 ignored` | `skipped`, `message` the reason of `#[ignore = "..."]`, or `ignored` |
+| 101 | `failed`: `message` is the panic's message, then `at <path>:<line>:<column>` relative to the root (`assertion \`left == right\` failed`, `left: 3`, `right: 4`, `at tests/level_1.rs:9:5`); without a panic, what libtest printed for the failure (`note: test did not panic as expected ...`, or the `Error: ...` of a test that returned an `Err`). Every panic is `failed`, the `todo!()` of a starter's method included: libtest does not tell an assertion from another panic |
+| Any other exit, or a signal (an abort is 134, 128 plus `SIGABRT`) | The test crashed (`Crashed` with that code and the last 20 lines of its output); the next test runs |
+
+Doctests are not run. The report's runner is `rust`, with the `rustc` version as its runtime.
+
+| Debug | Rule |
+|-------|------|
+| What runs | One test, in its own process under Rust's [debug server](#debug-mode): the first test the suite would run, after `--case`. The others do not run, and the report says so (`a debug run of a Rust project runs one test; pick it with --case`) |
+| Command | `debugserver --stdout-path=<scratch>/stdout.txt --stderr-path=<scratch>/stderr.txt --named-pipe <scratch>/debug-port 127.0.0.1:<port> -- <binary> --exact <name> --nocapture`, in the root, with the private copy of the test binary; the server holds the test at its entry point until the IDE connects with `gdb-remote`, as for single files. Breakpoints in the project's code and in the test both stop |
+| Result | Read from the test's output, which the server writes to those files: libtest's `test result:` line counts the test passed, failed or ignored, and its absence means the test crashed. The exit code is the debugger's, not the test's. `lldb-server` on Linux has no such option (not yet tried on a Linux machine): its test is reported as an `error`, `the outcome of a test debugged under lldb-server is not known` |
+| Watchdog, stopping | As in [debug mode](#debug-mode): no time limit; Ctrl-C, SIGTERM and SIGHUP kill the server's process group and every process running from the launch's private directory |
 
 ## Stub generation
 
@@ -673,5 +703,7 @@ For JVM bench the classpath joins the user's `practice.*` classes and the `ref.*
 Project fixtures, each listing its one language: `9022-conformance-project-python` and `9023-conformance-project-typescript`, two-file projects whose entry imports a sibling module by package path and by relative path (grading); `9024-conformance-suite-pytest` and `9025-conformance-suite-node-test`, suites with a test that passes, one that fails an assertion, one that raises, one that hangs, one that prints and one that ends the process (suite statuses, output capture, hang guard and restart). `expectations.json` gains per-test outcomes for suite fixtures. Go adds `9030-conformance-project-go`, a project whose entry's package imports a subpackage of the module (grading through the overlay), and `9031-conformance-suite-go-test`, a suite with a test that passes, one that fails an assertion, a failing subtest, one that panics, one that prints, one that ends the process, one that hangs, and a package whose test file does not compile ([Go project jobs](#go-project-jobs)).
 
 The JVM's project fixtures: `9026-conformance-project-java` and `9027-conformance-project-kotlin`, whose entry uses a class of its own package and one of a subpackage (grading on the main runtime classpath); `9028-conformance-suite-junit-java` and `9029-conformance-suite-junit-kotlin`, suites with the six tests above, a class whose `@BeforeAll` fails (reported once, under the class's id, and left out of every restart after it), a disabled test, a failed assumption and a parameterized test (`[1]`, `[2]`).
+
+Rust's project fixtures: `9032-conformance-project-rust`, a crate whose entry module uses a sibling by `crate::` and by `super::` path and is re-exported at the crate root (grading); `9033-conformance-suite-cargo`, a suite with a test that passes, one that fails an assertion, one that panics, one that hangs, one that aborts, one that prints, an ignored test, a `should_panic` test, and a test file that does not compile (one process per test: the hang and the abort end only their own test).
 
 Fixtures live in `runners/conformance/<id>-<slug>/`; each language adds its reference files as `solutions/<approach>.<ext>`. `runners/conformance/expectations.json` (schema `schemas/conformance.schema.json`) gives the expected outcome per fixture and approach (`pass`, `error`, `invalid_output`, `timeout`, `load_error`) with per-case overrides, and `runners/conformance/README.md` states what every approach does in each language.

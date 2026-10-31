@@ -103,12 +103,17 @@ Settled while backfilling the catalog (2026-10-29):
 - **JVM runs copy the runtime's jars.** Both Gradle projects include the runtime's runner build, so the first builds after a runner change rebuilt `runner.jar` in place, Java and Kotlin at once, while another JVM could be reading it (`NoClassDefFoundError: BadRequestException` before `hello`). Builds now hold a runtime lock, shared while the runtime's sources and jars match the last exclusive build and exclusive otherwise, and every run loads private copies of the jars, as it already did of the class directories.
 - **One input family at every ladder size.** `valid-anagram` drew its alphabet (3 or 26 letters) per seed, so the 1000-letter ladder input had 3 letters and the larger ones 26. A sort does far less work on 3 distinct values (Go's pdqsort groups equal elements, Java's quicksort too), which put a step into the sorting curve: Go measured slope 1.44 to 1.50 and a drift of 3.5x to 4.0x against the 4x tolerance. Inputs of 100 letters or more now always use all 26, and the sorting curve is n log n in Go (slope 1.15 to 1.24). Java and Kotlin sort a `char[]`, which the JDK counting-sorts above 1750 elements with a table of 65536 counters (about 0.09 ms a call here), so their curve is n log n up to 1000 letters and flat after; with the larger alphabet, a ladder starting at 1000 read as slope 0.71 and 5.0x drift in Java. The ladder now starts at 300 (slope 0.83, within the band). No reference changed.
 
+Settled while adding Rust project problems (2026-10-31, [ADR 0014](0014-project-problems.md#rust-spike-k6)):
+
+- **Projects grade in the dev profile.** The release profile stays for single files, whose `--perf` numbers must be real; a project has no bench, perf or time limit, and its grade after a suite run is about 0.26 s faster in dev, since the suite already compiled the crate in dev. `opt-level = 1` was a possible middle ground and is not used.
+- **The lock that serializes builds is `CARGO_HOME`'s.** Concurrent builds waited on the package-cache lock of the shared `CARGO_HOME`, not on the target directory, so each project build workspace has a private `CARGO_HOME`.
+
 ## Consequences
 
 - Existing problems, stubs and requests are unchanged: the four core languages produce byte-identical output. During the backfill every default that meant "all languages" meant the core four; since the flip it means all six.
 - During the backfill, `cstudy list --lang go` and `cstudy next --lang go` show only the problems that have Go references, and verify coverage lines show Go and Rust once a problem lists them.
 - A language that is known but has no adapter fails with `rust stub generator is not set up yet` (exit 4) wherever an adapter is needed, and with "not available in rust" (exit 3) for a problem that does not list it. `cstudy doctor` only warns about a missing or old Go or Rust, never fails, and does not run their runners.
-- Full verify grows: Go adds roughly 0.5 to 1.5 s per problem and Rust 1.5 to 4 s, and Cargo's target-directory lock serializes parallel Rust builds. The oracle and ladder checks cost more per added language.
+- Full verify grows: Go adds roughly 0.5 to 1.5 s per problem and Rust 1.5 to 4 s, and the package-cache lock of a shared `CARGO_HOME` serializes parallel Rust builds (spike K6 measured it; the target directory's lock did not). The oracle and ladder checks cost more per added language.
 - Go and Rust references written by agents need review at about twice the current reference volume.
 - A cyclic linked list cannot be expressed in Rust with `Box`, so cyclic-list and list `ref_of` problems are Go-only (S13); `no_alias_with` on a list works in Rust.
 
