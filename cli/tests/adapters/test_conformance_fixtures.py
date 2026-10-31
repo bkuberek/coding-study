@@ -152,6 +152,20 @@ def test_a_grading_fixture_expects_no_tests():
     assert grading.tests == {}
 
 
+def test_a_node_test_suite_expects_the_same_statuses_under_its_own_test_ids():
+    [suite] = [e for e in SUITE.expectations if e.slug == "conformance-suite-node-test"]
+    statuses = {test_id: test.status for test_id, test in suite.tests.items()}
+    assert statuses == {
+        "tests/level-1.test.ts::ex1": ExpectedTestStatus.OK,
+        "tests/statuses.test.ts::passes": ExpectedTestStatus.OK,
+        "tests/statuses.test.ts::hangs": ExpectedTestStatus.TIMEOUT,
+        "tests/statuses.test.ts::fails an assertion": ExpectedTestStatus.FAILED,
+        "tests/statuses.test.ts::ends the process": ExpectedTestStatus.CRASHED,
+        "tests/statuses.test.ts::raises": ExpectedTestStatus.ERROR,
+        "tests/statuses.test.ts::prints": ExpectedTestStatus.OK,
+    }
+
+
 @pytest.mark.parametrize(
     ("document", "message"),
     [

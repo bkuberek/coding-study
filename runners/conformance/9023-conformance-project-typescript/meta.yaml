@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9023"
+slug: conformance-project-typescript
+title: "Conformance: a TypeScript project folder"
+status: ready
+difficulty: easy
+track: practical
+kind: project
+languages: [typescript]
+levels:
+  - {level: 1, title: Imports between files}
+signature:
+  class:
+    name: Inventory
+    constructor: {params: []}
+    methods:
+      - {name: add, level: 1, params: [{name: name, type: string}, {name: count, type: int}], returns: {type: int}}
+      - {name: label, level: 1, params: [{name: name, type: string}], returns: {type: string}}
+comparator: {type: ops}
+project:
+  entry: src/inventory.ts
+  tests: tests
+approaches:
+  - {id: reference, name: "The entry imports its sibling module by relative path and through the package's imports map", role: optimal, time: "O(1)", space: "O(n)", time_class: "1", space_class: "n"}

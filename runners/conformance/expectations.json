@@ -36,6 +36,16 @@
       "tests/test_statuses.py::test_ends_the_process": {"status": "crashed"},
       "tests/test_statuses.py::test_raises": {"status": "error", "message": "conformance failure"},
       "tests/test_statuses.py::test_prints": {"status": "ok", "stdout": "conformance output\n"}
+    }},
+    {"problem": "conformance-project-typescript", "approach": "reference", "outcome": {"status": "pass"}},
+    {"problem": "conformance-suite-node-test", "approach": "reference", "outcome": {"status": "pass"}, "tests": {
+      "tests/level-1.test.ts::ex1": {"status": "ok"},
+      "tests/statuses.test.ts::passes": {"status": "ok"},
+      "tests/statuses.test.ts::hangs": {"status": "timeout"},
+      "tests/statuses.test.ts::fails an assertion": {"status": "failed"},
+      "tests/statuses.test.ts::ends the process": {"status": "crashed"},
+      "tests/statuses.test.ts::raises": {"status": "error", "message": "conformance failure"},
+      "tests/statuses.test.ts::prints": {"status": "ok", "stdout": "conformance output\n"}
     }}
   ]
 }
