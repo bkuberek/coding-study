@@ -17,7 +17,15 @@ TEMPLATE_FILES = {
     [
         name
         for name in TemplateName
-        if name not in ("concurrent", "project-python", "project-typescript", "project-go")
+        if name
+        not in (
+            "concurrent",
+            "project-python",
+            "project-typescript",
+            "project-java",
+            "project-kotlin",
+            "project-go",
+        )
     ],
 )
 def test_every_template_has_the_scaffold_files(template):
@@ -63,6 +71,24 @@ def test_the_go_project_template_has_a_starter_and_an_overlay_instead_of_a_gener
 def test_the_go_starters_module_is_named_after_the_slug():
     files = PackagedProblemTemplates().files(TemplateName.PROJECT_GO)
     assert files["starter/go.mod"].startswith("module {{slug}}\n")
+
+
+@pytest.mark.parametrize(
+    ("template", "language", "extension"),
+    [(TemplateName.PROJECT_JAVA, "java", "java"), (TemplateName.PROJECT_KOTLIN, "kotlin", "kt")],
+)
+def test_a_jvm_project_template_has_a_gradle_starter_and_an_overlay(template, language, extension):
+    entry = f"src/main/{language}/app/{{{{class_name}}}}.{extension}"
+    files = set(PackagedProblemTemplates().files(template))
+    assert files == TEMPLATE_FILES - {"generator.py"} | {
+        "starter/README.md",
+        "starter/settings.gradle.kts",
+        "starter/build.gradle.kts",
+        "starter/gradle.properties",
+        "starter/gradle/wrapper/gradle-wrapper.properties",
+        f"starter/{entry}",
+        f"solutions/reference/{entry}",
+    }
 
 
 def test_the_typescript_starters_build_files_drop_their_template_suffix():
