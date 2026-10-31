@@ -144,7 +144,7 @@ def test_a_python_folder_gets_no_go_work(workspace, problem):
 
 def test_a_resumed_go_attempt_writes_a_missing_go_work(workspace, problem):
     seed_project(workspace, go(problem))
-    os.remove(workspace.absolute(GO_WORK))
+    workspace.absolute(GO_WORK).unlink()
     resume_project(workspace, go(problem))
     assert workspace.exists(GO_WORK)
 

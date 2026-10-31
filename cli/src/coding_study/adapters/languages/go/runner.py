@@ -68,6 +68,7 @@ from coding_study.adapters.languages.go.build_files import (
 )
 from coding_study.adapters.languages.go.project_build import GoProjectBuilds
 from coding_study.adapters.languages.go.toolchain import GoToolchain
+from coding_study.adapters.project_folders import go_project_folders, write_missing_go_work_files
 from coding_study.application.ports import (
     BenchCode,
     BuildFailed,
@@ -100,6 +101,7 @@ from coding_study.domain.naming import NameRole, constructor_name, member_name
 from coding_study.domain.problem import Language, ProblemKind, ProblemMeta
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
 from coding_study.domain.signature import ClassSignature, FunctionSignature
+from coding_study.domain.workspace_projects import GoProjectFolder
 
 DEFAULT_WORKSPACE_MODULE = "workspace"
 DEBUG_WARM_MARKER = ".warm-debug"
@@ -129,7 +131,7 @@ class _Build:
 
 
 class GoRunner:
-    """`LanguageRunner` and `ProjectRunner` for Go."""
+    """`LanguageRunner`, `ProjectRunner` and `GoProjectFolders` for Go."""
 
     def __init__(
         self, context: LanguageContext, toolchain: GoToolchain, debug_servers: DebugServers
@@ -150,6 +152,12 @@ class GoRunner:
                 return self._projects.grading(scope, notify)
             case ProjectSuite():
                 return self._projects.suite(scope, notify)
+
+    def go_project_folders(self) -> tuple[GoProjectFolder, ...]:
+        return go_project_folders(self._root)
+
+    def write_missing_go_work_files(self) -> tuple[str, ...]:
+        return write_missing_go_work_files(self._root)
 
     def prepare(self, scope: BuildScope, notify: ProgressNotice) -> PrepareResult:
         match scope:

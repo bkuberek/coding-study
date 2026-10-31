@@ -4,7 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from coding_study.adapters.project_folders import remove_untracked, tracked_files
+from coding_study.adapters.project_folders import (
+    go_project_folders,
+    remove_untracked,
+    tracked_files,
+    write_missing_go_work_files,
+)
+from coding_study.domain.workspace_projects import GoProjectFolder
 
 UNTRACKED = (
     "uv.lock",
@@ -81,3 +87,72 @@ def test_removing_untracked_entries_keeps_the_tracked_files(folder):
         "bank/bank.py",
         "tests/test_level_1.py",
     ]
+
+
+# Go folders
+
+GO_MODULE = """module bank-project-go
+
+go 1.24
+
+require github.com/shopspring/decimal v1.5.0
+
+replace github.com/shopspring/decimal => {}
+""".format("../../.cs/runtime/runners/go/third_party/github.com/shopspring/decimal")
+
+
+@pytest.fixture
+def go_workspace(tmp_path: Path) -> Path:
+    folder = tmp_path / "projects" / "bank-project-go"
+    folder.mkdir(parents=True)
+    (folder / "go.mod").write_text(GO_MODULE)
+    (folder / "go.work").write_text("go 1.24\n\nuse .\n")
+    (tmp_path / ".cs/runtime/runners/go/third_party/github.com/shopspring/decimal").mkdir(
+        parents=True
+    )
+    (tmp_path / "projects" / "bank-project-python").mkdir()
+    return tmp_path
+
+
+def test_a_go_folder_is_a_folder_with_a_go_mod(go_workspace):
+    assert go_project_folders(go_workspace) == (
+        GoProjectFolder("projects/bank-project-go", "bank-project-go", has_work_file=True),
+    )
+
+
+def test_a_go_folder_without_its_go_work_says_so(go_workspace):
+    (go_workspace / "projects/bank-project-go/go.work").unlink()
+    (found,) = go_project_folders(go_workspace)
+    assert not found.has_work_file
+
+
+def test_a_replacement_that_names_no_directory_is_unresolved(go_workspace):
+    module = go_workspace / "projects/bank-project-go/go.mod"
+    module.write_text(GO_MODULE.replace("../../.cs", "../../../.cs"))
+    (found,) = go_project_folders(go_workspace)
+    assert found.unresolved == (
+        "../../../.cs/runtime/runners/go/third_party/github.com/shopspring/decimal",
+    )
+
+
+def test_a_replacement_by_another_module_is_not_a_directory(go_workspace):
+    module = go_workspace / "projects/bank-project-go/go.mod"
+    module.write_text("module bank\n\nreplace example.com/a => example.com/b v1.0.0\n")
+    (found,) = go_project_folders(go_workspace)
+    assert found.unresolved == ()
+
+
+def test_a_workspace_without_projects_has_no_go_folders(tmp_path):
+    assert go_project_folders(tmp_path) == ()
+
+
+def test_the_missing_go_work_files_are_written(go_workspace):
+    (go_workspace / "projects/bank-project-go/go.work").unlink()
+    written = write_missing_go_work_files(go_workspace)
+    work = (go_workspace / "projects/bank-project-go/go.work").read_text()
+    assert (written, work) == (("projects/bank-project-go",), "go 1.24\n\nuse .\n")
+
+
+def test_a_go_work_of_yours_is_never_rewritten(go_workspace):
+    (go_workspace / "projects/bank-project-go/go.work").write_text("go 1.25\n\nuse .\n")
+    assert write_missing_go_work_files(go_workspace) == ()

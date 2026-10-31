@@ -27,6 +27,7 @@ from coding_study.domain.scheduling import ProblemProgress, ScheduleEntry
 from coding_study.domain.submissions import LevelUnlock, SubmissionRecord
 from coding_study.domain.suite_runs import SuiteJob, SuiteReport, SuiteTest
 from coding_study.domain.time_limits import Calibration
+from coding_study.domain.workspace_projects import GoProjectFolder
 
 
 class ProblemRepository(Protocol):
@@ -747,4 +748,16 @@ class ProjectTypeChecker(Protocol):
 
         Raises RunnerStartError when the workspace cannot type-check.
         """
+        ...
+
+
+@runtime_checkable
+class GoProjectFolders(Protocol):
+    """A runner that finds a workspace's Go project folders and writes the `go.work` they lack
+    (docs/specs/installation-and-workspaces.md#cstudy-doctor-in-a-workspace): Go."""
+
+    def go_project_folders(self) -> tuple[GoProjectFolder, ...]: ...
+
+    def write_missing_go_work_files(self) -> tuple[str, ...]:
+        """The folders whose `go.work` it wrote, relative to the workspace root."""
         ...

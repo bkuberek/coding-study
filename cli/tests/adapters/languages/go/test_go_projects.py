@@ -14,7 +14,12 @@ from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.go.build_files import COLD_NOTICE
 from coding_study.adapters.languages.go.runner import GoRunner
 from coding_study.adapters.languages.go.toolchain import GO_ENVIRONMENT, GoOutcome
-from coding_study.application.ports import ProjectGrading, ProjectSuite, RunnerLaunch
+from coding_study.application.ports import (
+    GoProjectFolders,
+    ProjectGrading,
+    ProjectSuite,
+    RunnerLaunch,
+)
 from coding_study.domain.debugging import DebugSession
 from coding_study.domain.errors import RunnerStartError
 from coding_study.domain.problem import Language
@@ -304,3 +309,16 @@ def test_nothing_is_written_to_the_project_folder(workspace):
     grade(workspace, FakeGo())
     suite(workspace, FakeGo())
     assert sorted(path.name for path in folder(workspace).iterdir()) == ["bank.go", "go.mod"]
+
+
+# folders
+
+
+def test_the_go_runner_finds_the_workspaces_go_folders(workspace):
+    found = runner(workspace, FakeGo())
+    assert isinstance(found, GoProjectFolders)
+    assert [folder.folder for folder in found.go_project_folders()] == [f"projects/{SLUG}"]
+
+
+def test_the_go_runner_writes_the_missing_go_work_files(workspace):
+    assert runner(workspace, FakeGo()).write_missing_go_work_files() == (f"projects/{SLUG}",)

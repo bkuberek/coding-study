@@ -20,6 +20,7 @@ from coding_study.application.ports import (
     ConfigSource,
     DebugServer,
     DebugServers,
+    GoProjectFolders,
     ProbeResult,
     ProgressNotice,
     ProjectLinks,
@@ -61,7 +62,13 @@ from coding_study.domain.problem import (
 from coding_study.domain.runs import RunnerInfo, RunRequest
 from coding_study.domain.signature import FunctionSignature, Returns
 from coding_study.domain.type_dsl import VoidType
-from coding_study.domain.workspace_projects import PROJECTS_DIRECTORY, PYTEST_INSTALL_COMMAND
+from coding_study.domain.workspace_projects import (
+    GO_MODULE_FILE,
+    PROJECTS_DIRECTORY,
+    PYTEST_INSTALL_COMMAND,
+    GoProjectFolder,
+    go_folder_problems,
+)
 
 PYTHON_VERSION = "3.13"
 MINIMUM_NODE_MAJOR = 24
@@ -171,6 +178,8 @@ DEBUGPY_CHECK = "python debugpy"
 PYTEST_CHECK = "python pytest"
 PROJECTS_CHECK = "projects"
 PROJECT_LINKS_CHECK = "project links"
+GO_PROJECTS_CHECK = "go projects"
+GO_MODULE_FIX = "give each folder a module of its own in its go.mod"
 VENV_LOCATION_CHECK = f"{PYTHON_PROJECT}/{PYTHON_VENV} location"
 VENV_RECREATE_COMMAND = f"rm -rf {PYTHON_PROJECT}/{PYTHON_VENV} && {FIX_COMMAND}"
 RUNNER_TYPESCRIPT = "runners/typescript"
@@ -238,6 +247,9 @@ def repair_workspace(workspace: PracticeWorkspace, notify: ProgressNotice) -> Sc
         notify(f"restored {relative}")
     for folder in workspace.project_links.relink(root):
         notify(f"relinked {folder}/{PYTHON_VENV}")
+    go_folders = _go_folders(workspace)
+    for folder in go_folders.write_missing_go_work_files() if go_folders else ():
+        notify(f"wrote {folder}/{GO_WORK_FILE}")
     workspace.setup.refresh_runtime(root)
     return restored
 
@@ -490,6 +502,7 @@ def _workspace(environment: DoctorEnvironment, notify: ProgressNotice) -> list[C
         *_debugpy(environment.tools, files),
         *_pytest(environment.tools, files),
         _project_links(workspace),
+        *_go_projects(workspace),
         *_venv_location(workspace),
         *(_runner(workspace, language, notify) for language in CORE_LANGUAGES),
     ]
@@ -547,6 +560,44 @@ def _project_links(workspace: PracticeWorkspace) -> CheckResult:
     unlinked = workspace.project_links.unlinked(workspace.files.root)
     what = f"missing or dangling {PYTHON_VENV} links"
     return _listed(PROJECT_LINKS_CHECK, unlinked, CheckStatus.WARN, what)
+
+
+def _go_projects(workspace: PracticeWorkspace) -> list[CheckResult]:
+    """A Go project folder needs its own `go.work`, a vendored `replace` that resolves and a
+    module path of its own for the go command and gopls; `cstudy` builds it regardless, so a
+    problem warns. Nothing to check without a Go runner that finds the folders."""
+    go_folders = _go_folders(workspace)
+    if go_folders is None:
+        return []
+    folders = go_folders.go_project_folders()
+    problems = go_folder_problems(folders)
+    if not problems:
+        return [CheckResult(GO_PROJECTS_CHECK, CheckStatus.OK)]
+    shown = "; ".join(problems[:MISSING_FILES_SHOWN])
+    more = len(problems) - MISSING_FILES_SHOWN
+    count = f"{len(problems)} problem{'s' if len(problems) > 1 else ''}"
+    detail = f"{count}: {shown}" + (f" and {more} more" if more > 0 else "")
+    return [CheckResult(GO_PROJECTS_CHECK, CheckStatus.WARN, detail, fix=_go_fix(folders))]
+
+
+def _go_folders(workspace: PracticeWorkspace) -> GoProjectFolders | None:
+    try:
+        runner = workspace.toolchains.runner(Language.GO)
+    except LanguageNotSetUpError:
+        return None
+    return runner if isinstance(runner, GoProjectFolders) else None
+
+
+def _go_fix(folders: Sequence[GoProjectFolder]) -> str:
+    """`--fix` writes a missing `go.work`; a `replace` that does not resolve comes back with the
+    starter's `go.mod`; a shared module path needs an edit."""
+    if any(not found.has_work_file for found in folders):
+        return FIX_COMMAND
+    unresolved = next((found for found in folders if found.unresolved), None)
+    if unresolved is not None:
+        slug = unresolved.folder.rpartition("/")[2]
+        return f"cstudy start {slug} --restore {GO_MODULE_FILE}"
+    return GO_MODULE_FIX
 
 
 def _venv_location(workspace: PracticeWorkspace) -> list[CheckResult]:
