@@ -91,3 +91,12 @@ class UnknownFileError(LookupError):
     def __init__(self, path: str, root: str) -> None:
         super().__init__(f"no file {path} in {root}")
         self.path = path
+
+
+class LockBusyError(Exception):
+    """Another `cstudy` held a lock past the deadline the web UI waits for it."""
+
+    def __init__(self, lock: str, deadline_s: float) -> None:
+        super().__init__(
+            f"another cstudy command held {lock} for {deadline_s:g} s; try again once it ends"
+        )

@@ -639,11 +639,13 @@ class Workspace(Protocol):
 
     def write_within(self, folder: str, path: str, text: str) -> None:
         """Writes `text` to the file `path`, relative to the directory `folder`, creating missing
-        directories on the way; `folder` itself may be a link.
+        directories on the way; `folder` itself may be a link. The write is atomic: a new file
+        beside it replaces the file, keeping its mode; a new file gets mode 0644.
 
         Raises ValueError, writing nothing, when the file or a directory between `folder` and it
-        is a symbolic link, since the write could land outside `folder`, or when the file is a
-        directory or a directory on the way is a file.
+        is a symbolic link, since the write could land outside `folder`, when the file is a
+        directory or not a regular file, when a directory on the way is a file, or when `path` is
+        not relative and canonical (`project.relative_path_issue`).
         """
         ...
 
@@ -676,8 +678,28 @@ class Workspace(Protocol):
 
         Raises FileNotFoundError when the file or a directory on the way is missing, and
         ValueError when the file or a directory between `folder` and it is a symbolic link, the
-        file is a directory or not a regular file, or a directory on the way is a file.
+        file is a directory or not a regular file, a directory on the way is a file, or `path` is
+        not relative and canonical.
         """
+        ...
+
+    def delete_within(self, folder: str, path: str) -> None:
+        """Deletes the file `path`, relative to the directory `folder`; `folder` itself may be a
+        link. Raises as `read_within` does, deleting nothing."""
+        ...
+
+    def move_within(self, folder: str, path: str, target: str) -> None:
+        """Moves the file `path` to `target`, both relative to the directory `folder`, creating
+        missing directories on the way to `target`; `folder` itself may be a link.
+
+        Raises FileExistsError when anything is at `target`, and otherwise as `read_within` does
+        for `path` and `write_within` does for `target`, moving nothing.
+        """
+        ...
+
+    def locked_with_deadline(self, path: str, deadline_s: float) -> AbstractContextManager[None]:
+        """Like `locked`, but waits at most `deadline_s` seconds for another holder to let go,
+        then raises LockBusyError."""
         ...
 
 

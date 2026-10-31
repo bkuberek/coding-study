@@ -1,10 +1,15 @@
 import os
 import shutil
+import stat
+import threading
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
+from coding_study.adapters.file_lock import exclusive_lock
 from coding_study.adapters.workspace_fs import WorkspaceFs
+from coding_study.domain.errors import LockBusyError
 from tests.project_locks import lock_is_held
 
 STUB = "python/practice/two_sum.py"
@@ -519,3 +524,243 @@ def test_read_within_raises_file_not_found_under_a_missing_directory(workspace, 
 def test_read_within_follows_a_folder_that_is_itself_a_link(workspace, project):
     workspace.absolute("projects/alias").symlink_to("bank-project-python", target_is_directory=True)
     assert workspace.read_within("projects/alias", "README.md") == b"# Bank\n"
+
+
+def file_mode(workspace: WorkspaceFs, path: str) -> int:
+    return stat.S_IMODE(workspace.absolute(path).stat().st_mode)
+
+
+def entries(directory: Path) -> list[str]:
+    return sorted(entry.name for entry in directory.iterdir())
+
+
+def linked_readme(workspace: WorkspaceFs, project: str) -> None:
+    """README.md becomes a link to a file outside the folder."""
+    workspace.write_text("elsewhere/hosts", "kept\n")
+    workspace.absolute(f"{project}/README.md").unlink()
+    workspace.absolute(f"{project}/README.md").symlink_to("../../elsewhere/hosts")
+
+
+def linked_bank(workspace: WorkspaceFs, project: str) -> None:
+    """bank/ becomes a link to a directory outside the folder."""
+    workspace.write_text("elsewhere/bank.py", "kept\n")
+    workspace.remove_folder(f"{project}/bank")
+    workspace.absolute(f"{project}/bank").symlink_to("../../elsewhere", target_is_directory=True)
+
+
+@pytest.fixture
+def private_umask() -> Iterator[None]:
+    previous = os.umask(0o077)
+    try:
+        yield
+    finally:
+        os.umask(previous)
+
+
+# writing atomically (docs/specs/web-ui.md#file-api-rules)
+
+
+def test_write_within_replaces_the_file_instead_of_writing_into_it(workspace, project):
+    """A second name for the old file keeps the old bytes: the write renamed a new file over it,
+    so no reader ever sees half of the new content."""
+    os.link(workspace.absolute(f"{project}/README.md"), workspace.absolute("README.before"))
+    workspace.write_within(project, "README.md", "# Bank, saved\n")
+    assert workspace.read_text("README.before") == "# Bank\n"
+
+
+def test_write_within_keeps_the_files_mode(workspace, project):
+    workspace.absolute(f"{project}/README.md").chmod(0o600)
+    workspace.write_within(project, "README.md", "# Bank, saved\n")
+    assert file_mode(workspace, f"{project}/README.md") == 0o600
+
+
+def test_write_within_gives_a_new_file_mode_0644_whatever_the_umask(
+    workspace, project, private_umask
+):
+    workspace.write_within(project, "bank/ledger.py", "LEDGER = []\n")
+    assert file_mode(workspace, f"{project}/bank/ledger.py") == 0o644
+
+
+def test_write_within_leaves_no_temporary_file_behind(workspace, project):
+    workspace.write_within(project, "bank/bank.py", "class Bank: pass\n")
+    assert entries(workspace.absolute(f"{project}/bank")) == ["bank.py"]
+
+
+def test_write_within_refuses_a_named_pipe_without_waiting_for_a_reader(workspace, project):
+    os.mkfifo(workspace.absolute(f"{project}/bank/pipe"))
+    with pytest.raises(ValueError, match="bank/pipe is not a regular file"):
+        workspace.write_within(project, "bank/pipe", "data\n")
+
+
+def test_write_within_refuses_a_path_that_leaves_the_folder(workspace, project):
+    with pytest.raises(ValueError, match=r"\.\./escaped\.py leaves its folder"):
+        workspace.write_within(project, "../escaped.py", "escaped\n")
+
+
+def test_write_within_refuses_an_absolute_path(workspace, project):
+    absolute = str(workspace.absolute("escaped.py"))
+    with pytest.raises(ValueError, match="is absolute"):
+        workspace.write_within(project, absolute, "escaped\n")
+
+
+# deleting
+
+
+def test_delete_within_deletes_the_file(workspace, project):
+    workspace.delete_within(project, "bank/bank.py")
+    assert not workspace.exists(f"{project}/bank/bank.py")
+
+
+def test_delete_within_refuses_a_file_that_is_a_link(workspace, project):
+    linked_readme(workspace, project)
+    with pytest.raises(ValueError, match=r"README\.md is a symbolic link"):
+        workspace.delete_within(project, "README.md")
+
+
+def test_delete_within_never_deletes_through_a_directory_that_is_a_link(workspace, project):
+    linked_bank(workspace, project)
+    with pytest.raises(ValueError, match="bank is a symbolic link"):
+        workspace.delete_within(project, "bank/bank.py")
+    assert workspace.read_text("elsewhere/bank.py") == "kept\n"
+
+
+def test_delete_within_refuses_a_directory(workspace, project):
+    with pytest.raises(ValueError, match="bank is a directory"):
+        workspace.delete_within(project, "bank")
+
+
+def test_delete_within_refuses_a_named_pipe(workspace, project):
+    os.mkfifo(workspace.absolute(f"{project}/bank/pipe"))
+    with pytest.raises(ValueError, match="bank/pipe is not a regular file"):
+        workspace.delete_within(project, "bank/pipe")
+
+
+def test_delete_within_raises_file_not_found_for_a_missing_file(workspace, project):
+    with pytest.raises(FileNotFoundError):
+        workspace.delete_within(project, "bank/ledger.py")
+
+
+def test_delete_within_refuses_a_path_that_leaves_the_folder(workspace, project):
+    workspace.write_text("projects/kept.py", "kept\n")
+    with pytest.raises(ValueError, match="leaves its folder"):
+        workspace.delete_within(project, "../kept.py")
+
+
+# moving
+
+
+def test_move_within_moves_the_files_content(workspace, project):
+    workspace.move_within(project, "bank/bank.py", "bank/core.py")
+    assert workspace.read_text(f"{project}/bank/core.py") == "class Bank: ...\n"
+
+
+def test_move_within_removes_the_file_from_its_old_path(workspace, project):
+    workspace.move_within(project, "bank/bank.py", "bank/core.py")
+    assert not workspace.exists(f"{project}/bank/bank.py")
+
+
+def test_move_within_creates_missing_directories(workspace, project):
+    workspace.move_within(project, "README.md", "docs/guide/README.md")
+    assert workspace.read_text(f"{project}/docs/guide/README.md") == "# Bank\n"
+
+
+def test_move_within_refuses_an_existing_target(workspace, project):
+    with pytest.raises(FileExistsError):
+        workspace.move_within(project, "README.md", "bank/bank.py")
+
+
+def test_move_within_keeps_an_existing_target(workspace, project):
+    with pytest.raises(FileExistsError):
+        workspace.move_within(project, "README.md", "bank/bank.py")
+    assert workspace.read_text(f"{project}/bank/bank.py") == "class Bank: ...\n"
+
+
+def test_move_within_refuses_a_file_that_is_a_link(workspace, project):
+    linked_readme(workspace, project)
+    with pytest.raises(ValueError, match=r"README\.md is a symbolic link"):
+        workspace.move_within(project, "README.md", "NOTES.md")
+
+
+def test_move_within_never_moves_into_a_directory_that_is_a_link(workspace, project):
+    workspace.write_text("elsewhere/kept.py", "kept\n")
+    workspace.absolute(f"{project}/out").symlink_to("../../elsewhere", target_is_directory=True)
+    with pytest.raises(ValueError, match="out is a symbolic link"):
+        workspace.move_within(project, "README.md", "out/README.md")
+    assert entries(workspace.absolute("elsewhere")) == ["kept.py"]
+
+
+def test_move_within_raises_file_not_found_for_a_missing_file(workspace, project):
+    with pytest.raises(FileNotFoundError):
+        workspace.move_within(project, "bank/ledger.py", "bank/entries.py")
+
+
+def test_move_within_refuses_a_target_that_leaves_the_folder(workspace, project):
+    with pytest.raises(ValueError, match="leaves its folder"):
+        workspace.move_within(project, "README.md", "../README.md")
+
+
+def tells_case_apart(directory: Path) -> bool:
+    probe = directory / "Probe"
+    probe.write_text("")
+    try:
+        return not (directory / "probe").exists()
+    finally:
+        probe.unlink()
+
+
+def test_move_within_renames_a_file_to_another_case_of_its_name(workspace, project, tmp_path):
+    if tells_case_apart(tmp_path):
+        pytest.skip("only a file system that ignores case finds the new name taken")
+    workspace.move_within(project, "README.md", "Readme.md")
+    assert entries(workspace.absolute(project)) == [".venv", "Readme.md", "bank"]
+
+
+# a lock with a deadline (docs/specs/web-ui.md#file-api-rules)
+
+SHORT_DEADLINE_S = 0.05
+LONG_DEADLINE_S = 5.0
+
+
+@pytest.fixture
+def held_lock(workspace) -> Iterator[None]:
+    """Another holder of the project's lock, as another `cstudy` would be."""
+    with exclusive_lock(workspace.absolute(LOCK)):
+        yield
+
+
+def test_locked_with_deadline_holds_the_lock_for_the_with_block(workspace):
+    with workspace.locked_with_deadline(LOCK, LONG_DEADLINE_S):
+        assert lock_is_held(workspace.absolute(LOCK))
+
+
+def test_locked_with_deadline_releases_the_lock_after_the_with_block(workspace):
+    with workspace.locked_with_deadline(LOCK, LONG_DEADLINE_S):
+        pass
+    assert not lock_is_held(workspace.absolute(LOCK))
+
+
+def test_locked_with_deadline_gives_up_once_the_deadline_passes(workspace, held_lock):
+    with (
+        pytest.raises(LockBusyError, match=f"another cstudy command held {LOCK}"),
+        workspace.locked_with_deadline(LOCK, SHORT_DEADLINE_S),
+    ):
+        pass
+
+
+def test_locked_with_deadline_waits_for_a_holder_that_lets_go_in_time(workspace):
+    holding = threading.Event()
+    release = threading.Event()
+
+    def hold() -> None:
+        with exclusive_lock(workspace.absolute(LOCK)):
+            holding.set()
+            release.wait()
+
+    holder = threading.Thread(target=hold)
+    holder.start()
+    holding.wait()
+    threading.Timer(SHORT_DEADLINE_S, release.set).start()
+    with workspace.locked_with_deadline(LOCK, LONG_DEADLINE_S):
+        entered = True
+    holder.join()
+    assert entered
