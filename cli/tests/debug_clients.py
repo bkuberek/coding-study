@@ -102,6 +102,13 @@ class DapClient:
         return chunk
 
 
+def free_port() -> int:
+    """A port on the loopback interface that nothing listens on now."""
+    with socket.socket() as probe:
+        probe.bind((HOST, 0))
+        return probe.getsockname()[1]
+
+
 def run_cdp_client(port: int, path: Path, line: int) -> str:
     """Node's inspector: break at `path:line`, resume, detach; returns what the client printed."""
     completed = subprocess.run(

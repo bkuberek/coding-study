@@ -7,6 +7,8 @@ level test files stand in for the generated ones, in the shape problem-format.md
 """
 
 import shutil
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -23,10 +25,12 @@ from coding_study.application.project_runs import (
     typecheck_project,
 )
 from coding_study.domain.case_status import CaseStatus
+from coding_study.domain.debugging import DebugSession
 from coding_study.domain.judging import Judgement
 from coding_study.domain.levels import cases_up_to
 from coding_study.domain.problem import Language, Problem
 from coding_study.domain.suite_runs import Passed, SuiteReport
+from tests.debug_clients import free_port, run_cdp_client
 from tests.fakes import FakeToolchains, make_environment, repository_root
 from tests.helpers import (
     REPOSITORY_ROOT,
@@ -41,6 +45,12 @@ pytestmark = [
 
 SLUG = "bank-project-typescript"
 FIXTURE = TYPESCRIPT_PROJECT_PROBLEMS / TYPESCRIPT_BANK_PROJECT
+READY_TIMEOUT_SECONDS = 30.0
+POLL_SECONDS = 0.05
+TEST_BODY_LINE = 9
+"""`const bank = new Bank();` in tests/level-1.test.ts."""
+LEDGER_OPEN_LINE = 10
+"""The first statement of `Ledger.open` in the reference's src/ledger.ts."""
 LAST_LEVEL = 2
 CASES_THROUGH_LAST_LEVEL = 6
 STARTER_TEST = "tests/accounts.test.ts::an account with a balance is open"
@@ -198,6 +208,40 @@ def test_the_suite_of_the_last_level_runs_every_levels_file(workspace, environme
     folder = project_folder(workspace, "suite-level-2", "reference")
     report = suite(environment, problem, folder, LAST_LEVEL)
     assert [test.test_id for test in report.tests][-1] == "tests/level-2.test.ts::ex2"
+
+
+def debugged_suite(
+    environment: Environment, problem: Problem, folder: Path, breakpoint: tuple[Path, int]
+) -> tuple[str, SuiteReport]:
+    """Runs the suite of level 1 under the inspector and stops once at `breakpoint` with a
+    DevTools client, as an IDE would; returns what the client printed and the report."""
+    session = DebugSession(Language.TYPESCRIPT, free_port())
+    notices: list[str] = []
+    run = SuiteRun(problem.meta, Language.TYPESCRIPT, folder, 1, debug=session)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        report = pool.submit(run_suite, environment, run, notices.append)
+        deadline = time.monotonic() + READY_TIMEOUT_SECONDS
+        while session.ready_line not in notices and time.monotonic() < deadline:
+            time.sleep(POLL_SECONDS)
+        printed = run_cdp_client(session.port, *breakpoint)
+        return printed, report.result(timeout=READY_TIMEOUT_SECONDS)
+
+
+def test_a_debugged_suite_stops_at_a_breakpoint_in_a_test_file(workspace, environment, problem):
+    folder = project_folder(workspace, "debug-test-file", "reference")
+    breakpoint = (folder / "tests" / "level-1.test.ts", TEST_BODY_LINE)
+    printed, report = debugged_suite(environment, problem, folder, breakpoint)
+    assert printed.startswith(f"STOP AT line {TEST_BODY_LINE} ")
+    assert all(isinstance(test.outcome, Passed) for test in report.tests)
+
+
+def test_a_debugged_suite_stops_at_a_breakpoint_in_the_projects_code(
+    workspace, environment, problem
+):
+    folder = project_folder(workspace, "debug-project-code", "reference")
+    breakpoint = (folder / "src" / "ledger.ts", LEDGER_OPEN_LINE)
+    printed, _ = debugged_suite(environment, problem, folder, breakpoint)
+    assert printed.startswith(f"STOP AT line {LEDGER_OPEN_LINE} in open")
 
 
 def test_a_parameter_property_does_not_load(workspace, environment, problem):
