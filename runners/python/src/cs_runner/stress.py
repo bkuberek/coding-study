@@ -2,10 +2,11 @@
 
 Every run is independent: fresh argument decoding, a fresh instance, fresh probe sections and
 fresh PRNGs. Setup runs on the case thread; the workers wait at a start gate and are released
-together; the coordinator waits until every worker finished, one failed, or the deadline passed;
-then the final sequence runs. In the threads model a failed or stalled run leaves its workers
-behind (Python cannot stop a thread): they are asked to stop between ops, and the caller asks
-for a restart when any is still alive shortly after.
+together (threads then wait at a start line until all of them run); the coordinator waits until
+every worker finished, one failed, or the deadline passed; then the final sequence runs. In the
+threads model a failed or stalled run leaves its workers behind (Python cannot stop a thread):
+they are asked to stop between ops, and the caller asks for a restart when any is still alive
+shortly after.
 """
 
 import asyncio
@@ -33,7 +34,12 @@ from cs_runner.failures import UserError, describe
 from cs_runner.harness import HarnessError, Sections, WorkerHarness
 from cs_runner.jobs import arguments_by_name, member_of
 from cs_runner.json_value import Json
-from cs_runner.perturbation import sleep_yields, thread_perturbation, worker_thread, yield_count
+from cs_runner.perturbation import (
+    scheduler_yields,
+    thread_perturbation,
+    worker_thread,
+    yield_count,
+)
 from cs_runner.request import ConcurrentJob, Model, Script, StressCase
 
 HARNESS_PREFIX = "@"
@@ -182,6 +188,26 @@ class _Shared:
         return all(self.progress.finished)
 
 
+class StartLine:
+    """Threads model: holds each worker after the gate until every worker has passed it.
+
+    The gate releases the workers together, but a busy machine wakes them one at a time, and
+    the first one could finish its script before the others even asked for the GIL. Waiting
+    here, they all ask; the spin keeps the interpreter's switch checks running, so an arriving
+    worker gets the GIL at once.
+    """
+
+    def __init__(self, workers: int) -> None:
+        self._lock = threading.Lock()
+        self._absent = workers
+
+    def arrive(self) -> None:
+        with self._lock:
+            self._absent -= 1
+        while self._absent:
+            pass
+
+
 class _Base:
     def __init__(self, design: type, job: ConcurrentJob, case: StressCase, plan: _Plan) -> None:
         self._design = design
@@ -243,7 +269,7 @@ class _ThreadRun(_Base):
             return StressResult(StressFailed(failure.outcome, failure.at))
         workers = len(self._plan.workers)
         gate = threading.Barrier(workers + 1)
-        threads = self._threads(gate)
+        threads = self._threads(gate, StartLine(workers))
         with thread_perturbation(self._case.perturb, self._job.path):
             for thread in threads:
                 thread.start()
@@ -277,18 +303,18 @@ class _ThreadRun(_Base):
 
     def _sequential_op(self, op: _Op) -> Json:
         if op.call is None:
-            WorkerHarness(self._shared.sections, sleep_yields).run(op.op, op.args)
+            WorkerHarness(self._shared.sections, scheduler_yields).run(op.op, op.args)
             return None
         assert op.call is not None
         return self._encode(op, self._method(op)(*op.call.arguments))
 
-    def _threads(self, gate: threading.Barrier) -> list[threading.Thread]:
+    def _threads(self, gate: threading.Barrier, start_line: StartLine) -> list[threading.Thread]:
         previous = threading.stack_size(WORKER_STACK_BYTES)
         try:
             return [
                 threading.Thread(
                     target=self._work,
-                    args=(ordinal, gate),
+                    args=(ordinal, gate, start_line),
                     name=f"cs-worker-{ordinal}",
                     daemon=True,
                 )
@@ -306,19 +332,20 @@ class _ThreadRun(_Base):
                 lambda: shared.failure is not None or shared.all_finished(), timeout
             )
 
-    def _work(self, ordinal: int, gate: threading.Barrier) -> None:
+    def _work(self, ordinal: int, gate: threading.Barrier, start_line: StartLine) -> None:
         shared = self._shared
         perturb = self._case.perturb
         rng = worker_rng(self._case.seed, ordinal)
-        harness = WorkerHarness(shared.sections, sleep_yields)
+        harness = WorkerHarness(shared.sections, scheduler_yields)
         progress = shared.progress
         outputs = shared.outputs[ordinal]
         with worker_thread(rng, perturb):
             gate.wait()
+            start_line.arrive()
             for index, op in enumerate(self._plan.workers[ordinal]):
                 if shared.stopped:
                     return
-                sleep_yields(yield_count(rng, perturb))
+                scheduler_yields(yield_count(rng, perturb))
                 progress.in_op[ordinal] = True
                 try:
                     if op.call is None:

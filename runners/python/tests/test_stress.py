@@ -1,12 +1,14 @@
 """Concurrent jobs end to end through `main` (docs/specs/runners.md#concurrent-jobs)."""
 
 import json
+import threading
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from cs_runner.program import BAD_REQUEST_EXIT_CODE, RESTART_EXIT_CODE
+from cs_runner.stress import StartLine
 from tests.runner_harness import Event, RunnerRun, request_of, run_request_text, write_source
 
 COUNTER_SIGNATURE: dict[str, Any] = {
@@ -18,6 +20,7 @@ COUNTER_SIGNATURE: dict[str, Any] = {
             {"name": "get", "params": [], "returns": {"type": "int"}},
             {"name": "wait", "params": [], "returns": {"type": "void"}, "blocking": True},
             {"name": "fail", "params": [{"name": "at", "type": "int"}], "returns": {"type": "int"}},
+            {"name": "meet", "params": [], "returns": {"type": "void"}, "blocking": True},
         ],
     }
 }
@@ -30,6 +33,7 @@ class Counter:
         self._lock = threading.Lock()
         self._count = 0
         self._never = threading.Event()
+        self._meeting = threading.Barrier(2)
 
     def increment(self):
         with self._lock:
@@ -46,6 +50,9 @@ class Counter:
         if at == 3:
             raise IndexError("failed at 3")
         return at
+
+    def meet(self):
+        self._meeting.wait()
 """
 RACY = LOCKED.replace(
     "        with self._lock:\n            count", "        if True:\n            count"
@@ -74,7 +81,11 @@ class Counter:
         await asyncio.sleep(0)
         self._count = count + at
         return self._count
+
+    def meet(self):
+        pass
 """
+HOLD_SECONDS = 0.05
 PERTURB = {"yield_probability": 0.05, "max_yields": 3, "python_granularity": "line"}
 
 
@@ -180,11 +191,29 @@ def test_leftover_threads_request_a_restart(tmp_path):
 
 
 def test_probe_sections_count_violations_without_a_lock(tmp_path):
-    probe = script(("@enter", ["data", "exclusive"]), ("@pause", [5]), ("@exit", ["data"]))
-    worker = {"ops": probe["ops"] * 50, "args": probe["args"] * 50}
-    result = run(tmp_path, LOCKED, [stress_case("s", [worker, worker, worker])]).only_result()
+    """The meetings hold the first worker inside the section while the second one enters."""
+    enter, leave = ("@enter", ["data", "exclusive"]), ("@exit", ["data"])
+    inside = script(enter, ("meet", []), ("meet", []), leave)
+    entering = script(("meet", []), enter, leave, ("meet", []))
+    result = run(tmp_path, LOCKED, [stress_case("s", [inside, entering])]).only_result()
     section = result["sections"]["data"]
-    assert (section["entries"], section["violations"] > 0) == (150, True)
+    assert (section["entries"], section["violations"]) == (2, 1)
+
+
+def test_the_start_line_holds_a_worker_until_every_worker_arrived():
+    line = StartLine(2)
+    passed = threading.Event()
+
+    def arrive_first() -> None:
+        line.arrive()
+        passed.set()
+
+    first = threading.Thread(target=arrive_first)
+    first.start()
+    held = not passed.wait(HOLD_SECONDS)
+    line.arrive()
+    first.join()
+    assert held
 
 
 def test_exit_without_enter_is_a_harness_error(tmp_path):

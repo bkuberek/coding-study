@@ -31,9 +31,19 @@ def yield_count(rng: random.Random, perturb: Perturbation) -> int:
     return 1 + rng.randrange(perturb.max_yields)
 
 
-def sleep_yields(count: int) -> None:
+def scheduler_yields(count: int) -> None:
+    """Each yield spins for one switch interval and keeps the GIL. A worker waiting for the GIL
+    asks for it within that interval, and the interpreter hands it over at its next check.
+
+    `time.sleep(0)` released the GIL for one system call instead: on a busy machine a waiting
+    worker was not scheduled in time to take it, and every release restarted that worker's
+    wait, so it never asked. The yielding worker kept the GIL and could finish its script
+    alone, and a racy reference passed whole runs.
+    """
     for _ in range(count):
-        time.sleep(0)
+        end = time.perf_counter() + SWITCH_INTERVAL_SECONDS
+        while time.perf_counter() < end:
+            pass
 
 
 @contextmanager
@@ -81,7 +91,7 @@ def _start_monitoring(event: int, target_file: str) -> None:
             return monitoring.DISABLE
         rng: random.Random | None = getattr(_worker, "rng", None)
         if rng is not None:
-            sleep_yields(yield_count(rng, _worker.perturb))
+            scheduler_yields(yield_count(rng, _worker.perturb))
         return None
 
     monitoring.use_tool_id(TOOL_ID, TOOL_NAME)

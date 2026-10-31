@@ -418,8 +418,8 @@ Details the procedure settles:
 | Concern | JVM (Java, Kotlin) | Python, `threads` | Python, `async` | TypeScript, `async` |
 |---------|--------------------|-------------------|-----------------|---------------------|
 | Worker | `platform`: `new Thread(null, r, "cs-worker-<ordinal>", 0)`, daemon. `virtual`: `Thread.ofVirtual().name("cs-worker-<ordinal>").unstarted(r)` | `threading.Thread(daemon=True)`, created after `threading.stack_size(16 MiB)`, restored afterwards | `asyncio.Task` in a fresh loop per run (`asyncio.run` on the case thread); setup and final run in the same loop | one async function per worker on the runner's loop |
-| Start gate | `CountDownLatch` `ready(n)` then `go(1)` | `threading.Barrier(n + 1)` | `asyncio.Event`, set after every task is created | one shared promise, resolved after every worker started |
-| Scheduler yield | `Thread.yield()` | `time.sleep(0)` | `await asyncio.sleep(0)` | `await new Promise((resolve) => setImmediate(resolve))` |
+| Start gate | `CountDownLatch` `ready(n)` then `go(1)` | `threading.Barrier(n + 1)`, then a start line: each worker spins until every worker has passed the gate ([why](#python-yields-keep-the-gil)) | `asyncio.Event`, set after every task is created | one shared promise, resolved after every worker started |
+| Scheduler yield | `Thread.yield()` | A busy wait of one switch interval that keeps the GIL ([why](#python-yields-keep-the-gil)) | `await asyncio.sleep(0)` | `await new Promise((resolve) => setImmediate(resolve))` |
 | Injection inside user code | none: true parallelism | `sys.monitoring` ([Perturbation](#perturbation)) | none | none |
 | Calls | Reflection as for class kinds; an `InterruptedException` caused by the harness interrupt (7b) is not reported | Direct | Result awaited when `inspect.isawaitable` | Result awaited when it is a thenable |
 | Deadline | Coordinator joins each worker with the remaining time | `Thread.join(remaining)` | `asyncio.wait(tasks, timeout=remaining)`, then cancel pending tasks | `Promise.race` against a `setTimeout`, cleared afterwards |
@@ -447,7 +447,7 @@ The PRNG streams need not match across languages; they only make each runtime's 
 | Runtime | Between ops | Inside user code |
 |---------|-------------|------------------|
 | JVM | With probability `yield_probability`, `1 + nextInt(max_yields)` calls of `Thread.yield()` | none (no agent, no bytecode rewriting) |
-| Python `threads` | Same rule with `time.sleep(0)` | See below |
+| Python `threads` | Same rule with its scheduler yield, a busy wait of one switch interval | See below |
 | Go | Same rule with `runtime.Gosched()` | none: true parallelism |
 | Rust | Same rule with `std::thread::yield_now()` | none: true parallelism |
 | `async` (Python, TypeScript) | Same rule with macrotask yields | none: a monitoring callback cannot await |
@@ -456,8 +456,14 @@ Python `threads`, for the duration of each stress run only:
 
 1. `sys.setswitchinterval(1e-5)`; the previous value is restored at step 8.
 2. Unless `python_granularity` is `none`: `sys.monitoring.use_tool_id(3, "cs-stress")`, register one callback for `LINE` (granularity `line`) or `INSTRUCTION` (granularity `instruction`), `sys.monitoring.set_events(3, <event>)`, and `sys.monitoring.restart_events()` at run start.
-3. The callback returns `sys.monitoring.DISABLE` for code whose `co_filename` is not the target file. In the target file, and only on worker threads (a `threading.local` flag), it draws from the worker's PRNG and with probability `yield_probability` calls `time.sleep(0)` `1 + randrange(max_yields)` times.
+3. The callback returns `sys.monitoring.DISABLE` for code whose `co_filename` is not the target file. In the target file, and only on worker threads (a `threading.local` flag), it draws from the worker's PRNG and with probability `yield_probability` makes `1 + randrange(max_yields)` scheduler yields.
 4. At run end: `sys.monitoring.set_events(3, 0)` and `sys.monitoring.free_tool_id(3)`.
+
+#### Python yields keep the GIL
+
+A Python scheduler yield spins for one switch interval without releasing the GIL. A worker waiting for the GIL times out within that interval and asks for it, and the interpreter hands it over at the yielding worker's next check (CPython's forced switching), however late the machine schedules the waiting worker. The earlier yield, `time.sleep(0)`, released the GIL for one system call instead. On a busy machine the waiting worker was rarely running during that call, and each release woke its wait before the timeout, so it never asked: the yielding worker kept the GIL and could run its whole script alone. For the same reason the workers wait at a start line after the gate: the gate releases them together, but a busy machine wakes them one at a time, and the first could finish before the others asked for the GIL.
+
+Measured on 11 cores with other agents and a CPU hog running (load 29 to 88), the racy `conformance-stress-counter` reference lost no increment in 12 of 100 runs with `time.sleep(0)`, so 3 of 10 verifies missed the 9 of 10 it requires. Traces of such runs showed the workers running one after another (0 to 187 µs, 223 to 459 µs, 483 to 771 µs). With the busy wait and the start line, 1 of 200 runs lost nothing (load 29 to 36) and 20 of 20 verifies passed; at that rate a verify misses 9 of 10 about once in 1,000.
 
 ### Harness ops
 
