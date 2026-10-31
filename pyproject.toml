@@ -23,6 +23,9 @@ dependencies = [
 cstudy = "coding_study.entrypoints.launcher:main"
 
 [dependency-groups]
+browser = [
+    "playwright>=1.58",
+]
 dev = [
     "httpx2>=2.16",
     "hypothesis>=6.170.9",
