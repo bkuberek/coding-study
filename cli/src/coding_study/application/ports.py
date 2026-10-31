@@ -653,17 +653,6 @@ class ProjectRunner(Protocol):
         ...
 
 
-@runtime_checkable
-class ProjectTestGenerators(Protocol):
-    """`Toolchains` that also write a project problem's level tests, which `cstudy verify` puts
-    into a reference's build (docs/specs/runners.md#reference-materialization)."""
-
-    def project_test_generator(self, language: Language) -> ProjectTestGenerator:
-        """Raises LanguageNotSetUpError for a language whose project tests are not generated
-        yet."""
-        ...
-
-
 class ProjectLinks(Protocol):
     """How a workspace's Python project folders reach its venv, and where that venv's console
     scripts think it is (docs/specs/installation-and-workspaces.md#cstudy-doctor-in-a-workspace).

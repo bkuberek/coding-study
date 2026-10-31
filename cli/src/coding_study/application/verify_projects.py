@@ -13,16 +13,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from coding_study.application.environment import Environment
-from coding_study.application.ports import (
-    ProgressNotice,
-    ProjectTestGenerator,
-    ProjectTestGenerators,
-    Toolchains,
-)
+from coding_study.application.ports import ProgressNotice
 from coding_study.application.project_runs import GradingRun, SuiteRun, run_grading, run_suite
 from coding_study.application.reference_runs import ApproachResult, LanguageResult, shown
 from coding_study.domain.case_status import CaseStatus
-from coding_study.domain.errors import ContentError, ContentIssue, LanguageNotSetUpError
+from coding_study.domain.errors import ContentError, ContentIssue
 from coding_study.domain.judging import Judgement, outcome_summary, verdict_summary
 from coding_study.domain.layout import BUILD_DIRECTORY
 from coding_study.domain.levels import FIRST_LEVEL
@@ -50,7 +45,6 @@ PROJECT_BUILDS = f"{BUILD_DIRECTORY}/projects"
 """A reference's build: `<PROJECT_BUILDS>/<slug>/<approach>/`."""
 STARTER_BUILDS = f"{STUB_DIRECTORY}/projects"
 """D1's copy of a starter: `<STARTER_BUILDS>/<slug>/`, next to the generated stubs it replaces."""
-PROJECT_TEST_GENERATOR = "project test generator"
 STARTER_SUITE = "starter suite"
 NOT_RUN = "not run: the reference does not build"
 NOT_TEXT = "is not UTF-8 text: a project holds text files only"
@@ -134,14 +128,6 @@ def suite_test_summary(test: SuiteTest) -> str:
     return f"{test.test_id} {_outcome_text(test.outcome)}"
 
 
-def project_test_generator(toolchains: Toolchains, language: Language) -> ProjectTestGenerator:
-    """Raises LanguageNotSetUpError when the toolchains generate no project tests in
-    `language`."""
-    if not isinstance(toolchains, ProjectTestGenerators):
-        raise LanguageNotSetUpError(language, PROJECT_TEST_GENERATOR)
-    return toolchains.project_test_generator(language)
-
-
 class _ProjectBuild:
     def __init__(self, environment: Environment, problem: Problem) -> None:
         self._environment = environment
@@ -155,7 +141,7 @@ class _ProjectBuild:
         for path, text in texts.items():
             workspace.write_text(f"{folder}{PATH_SEPARATOR}{path}", text)
         language = project_language(self._problem.meta)
-        generator = project_test_generator(self._environment.toolchains, language)
+        generator = self._environment.toolchains.project_test_generator(language)
         for level in range(FIRST_LEVEL, levels + 1):
             tests = level_tests(self._problem, level)
             workspace.write_text(f"{folder}{PATH_SEPARATOR}{tests.path}", generator.generate(tests))

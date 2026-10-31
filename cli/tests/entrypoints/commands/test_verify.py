@@ -7,10 +7,7 @@ import pytest
 from typer.testing import CliRunner
 
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
-from coding_study.adapters.languages.python.test_generator import PythonTestGenerator
 from coding_study.application.case_materialization import EXPECTED_VALUES_NOTICE
-from coding_study.application.environment import Environment
-from coding_study.application.ports import ProjectTestGenerators
 from coding_study.application.reference_runs import ApproachResult, LanguageResult
 from coding_study.application.verify_content import Coverage, ProblemVerification, VerifyReport
 from coding_study.application.verify_projects import SuiteCheck
@@ -235,22 +232,6 @@ def test_a_failing_suite_lists_its_failures_and_exits_1(reported):
         ExitCode.FAILURES,
         ["0249-bank-pro...  static ok · py 1/1 ok · suite 13/14", f"  suite: {failure}"],
     )
-
-
-def test_verify_writes_project_tests_with_the_languages_generators(tmp_path, monkeypatch):
-    verified: list[Environment] = []
-
-    def capture(environment: Environment, *_: object) -> VerifyReport:
-        verified.append(environment)
-        return VerifyReport((), ())
-
-    environment = make_environment(repository_root(tmp_path, PRACTICE))
-    monkeypatch.setattr(verify, "load_environment", lambda *_: environment)
-    monkeypatch.setattr(verify, "verify_content", capture)
-    invoke()
-    [toolchains] = [found.toolchains for found in verified]
-    assert isinstance(toolchains, ProjectTestGenerators)
-    assert isinstance(toolchains.project_test_generator(PY), PythonTestGenerator)
 
 
 def test_a_starter_that_does_not_load_is_a_language_problem(reported):
