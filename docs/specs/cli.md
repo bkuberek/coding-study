@@ -56,6 +56,7 @@
 | 5 | Content error (schema or static check failure in problem files) |
 | 70 | Internal error (bug in `cstudy` or a runner protocol violation) |
 | 130 | Interrupted |
+| 143 | Terminated (SIGTERM) during an `--events` run |
 
 ## Global flags
 
@@ -572,7 +573,7 @@ $ cstudy test two-sum --lang kotlin --time-limit --events
 
 | `type` | Command | Fields | When |
 |--------|---------|--------|------|
-| `run_start` | both | `command` (`test` or `submit`), `slug`, `language`, `attempt_id`, `mode` (`new`, `review` or `mock`), `levels`: `up_to` (the last level the run covers), `unlocked` and `last`, or null for a kind without levels; `kind` (`function`, `design`, `progressive`, `concurrent` or `project`), `track`; `timer`: `elapsed_s` at the start and `limit_s`, or null without a time box; `time_limit`: the value in effect (`"5x"`, `"1500ms"`), or null when time limits are off; `planned`, below | Once the options are checked, before the run's work begins |
+| `run_start` | both | `command` (`test` or `submit`), `slug`, `language`, `attempt_id`, `mode` (`new`, `review` or `mock`), `levels`: `up_to` (the last level the run covers), `unlocked` and `last`, or null for a kind without levels; `kind` (`function`, `design`, `progressive`, `concurrent` or `project`), `track`; `timer`: `elapsed_s` at the start and `limit_s`, or null without a time box; `time_limit`: the value the run asks for (`"5x"`, `"1500ms"`), or null when time limits are off; `planned`, below | Once the options are checked, before the run's work begins |
 | `output` | both | `text`: a progress notice the report would print, such as `computing expected values ...` or `warming Gradle daemon ...` | As it happens |
 | `build` | `test`, single-file | `seconds` and `note`, as `build` in [`cstudy test --json`](#json-output) (`gradle, warm`) | When the build or the type check ends, for a language or option that has one (Java, Kotlin, Go, Rust, TypeScript with `--typecheck`), whether it succeeded or not |
 | `test_start` | `test`, project | `id`: the test id, as in `test_result` | As the runner starts the test, a test file it collects included |
@@ -586,7 +587,7 @@ $ cstudy test two-sum --lang kotlin --time-limit --events
 | `diagnostic` | both | One [diagnostic](#diagnostics) | Once per diagnostic |
 | `level_result` | `submit` | An entry of `level_tallies` in `cstudy submit --json`, plus `status`: `pass` when every graded case of the level passed, else `fail` | Once per graded level |
 | `level_unlocked` | `submit`; `test`, progressive | `level`, `title`, `methods` (the methods the level adds, in the language's names, as `methods_added`; empty when it adds none), `tests` (`path` of the level's generated test file relative to the project folder, and `count`, its tests; null for a progressive problem) and `statement` (the rewritten statement's path) | When the run opened a level |
-| `perf_result` | `test`, with `--perf` | `verdict` (`optimal`, `near-optimal`, `suboptimal` or `unknown`, null after a wrong answer), `confidence` (`high`, `medium`, `low`, or null), `text` (the verdict line the report prints), `warnings` (the report's `warning` lines, as text) and `wrong_answer` (the `FAIL wrong answer at n=...` line, or null) | After the short bench of `--perf`, which runs only when every case passed |
+| `perf_result` | `test`, with `--perf` | `verdict` (`optimal`, `near-optimal`, `suboptimal` or `unknown`, null after a wrong answer), `confidence` (`high`, `medium`, `low`, or null), `text` (the verdict line, or the line the report prints in its place), `warnings` (the report's `warning` lines, as text) and `wrong_answer` (the `FAIL wrong answer at n=...` line, or null) | After the short bench of `--perf`, which runs only when every case passed |
 | `run_end` | both | `outcome`, `exit_code`, `message` and `summary` | Last |
 
 `planned` says what the run will report, so a reader can show progress against it: for a single-file `test`, `{"cases", "visible", "hidden", "generated", "oracle_inputs", "stress"}`, the counts the report's header prints, with `stress` `{"cases", "variants", "runs"}` for a concurrent problem (runs per stress case and variant) or null; for a project run, null, since a suite's size is known only as it runs.
@@ -1084,7 +1085,7 @@ stop       Ctrl-C
 |------|--------|
 | Workspace | Needed, as for every practice command: exit 3 without one |
 | Address | `127.0.0.1` only; there is no option to bind another address |
-| Output | The version and workspace, the URL with its session token once, then one line per finished run and job; no request log. The token is printed nowhere else |
+| Output | The version and workspace, the URL with its session token once, then one line per finished run and job, and a last `stop` line naming what stopped it, `Ctrl-C` or `SIGTERM`; no request log. The token is printed nowhere else |
 | Stop | Ctrl-C (SIGINT) or SIGTERM sends SIGINT to every run and job in progress, closes the streams, removes the redirect file and exits 130 (143 after SIGTERM) |
 | Exit 4 | The port is in use (`port 53817 on 127.0.0.1 is already in use; choose another with --port`), or the web server libraries or the page's assets are missing or do not match their manifest (`fix: reinstall cstudy`); `cstudy doctor` shows both as `WARN` rows |
 | Import cost | Only `cstudy serve` imports the web server, so every other command starts as before (NFR-2) |

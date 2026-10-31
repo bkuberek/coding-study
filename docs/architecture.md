@@ -123,7 +123,7 @@ The adapter registry holds one stub generator and one runner per language that h
 | File watching | `watchfiles` |
 | Web server (`cstudy serve` only) | Starlette on uvicorn, without uvicorn's `standard` extra |
 | Markdown to HTML (`cstudy serve` only) | markdown-it-py and Pygments, already installed with Rich |
-| Tests, lint, types | pytest, ruff, pyright, import-linter; httpx for Starlette's test client and Playwright in an optional group, for the web UI |
+| Tests, lint, types | pytest, ruff, pyright, import-linter; httpx2 for Starlette's test client and Playwright in an optional group, for the web UI |
 
 ## Data flow: `cstudy start two-sum --lang kotlin`
 

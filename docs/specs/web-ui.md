@@ -53,7 +53,7 @@ Each practice command maps to one page area, one endpoint and the use case the c
 | In-process calls | Handlers call use cases through one worker thread (an anyio `CapacityLimiter` of 1), each call with a fresh `Environment`, so use cases never run concurrently inside the server |
 | Child processes | `sys.executable -m coding_study --workspace <root> [--content <root>] <command> …`, the argument list built by the server with no shell. `--content` is passed when the server was started with it. Each child starts in a session of its own, with standard input from `/dev/null`, the workspace root as its current directory, and `NO_COLOR=1` and `COLUMNS=120` added to the server's environment |
 | `python -m coding_study` | `coding_study/__main__.py` calls the console script's `main`, so a child is always the same install as the server |
-| Logging | No access log. Standard output holds the startup lines and one line per finished run and job; an internal error prints its traceback to standard error. The session token never reaches a log line |
+| Logging | No access log. Standard output holds the startup lines, one line per finished run and job, and the `stop` line ([`cstudy serve`](cli.md#cstudy-serve)); an internal error prints its traceback to standard error. The session token never reaches a log line |
 
 ### Modules
 
@@ -61,6 +61,7 @@ Each practice command maps to one page area, one endpoint and the use case the c
 |--------|-------|
 | `entrypoints/commands/serve.py` | The `cstudy serve` command |
 | `entrypoints/web/app.py` | The app factory: routes, middleware, startup and shutdown |
+| `entrypoints/web/page.html` | The page template: the server fills in the CSRF token and the CSP nonce of each response (`{{csrf}}`, `{{nonce}}`) |
 | `entrypoints/web/security.py` | Token, cookie, Host, Origin and CSRF checks, the CSP nonce, response headers |
 | `entrypoints/web/runs.py` | The registry of runs and jobs: child processes, buffered lines, slots, cancel |
 | `entrypoints/web/notifications.py` | `watchfiles.awatch` over the watched set, as server-sent events |
@@ -119,7 +120,8 @@ Errors share one document:
 | Code | Status | When |
 |------|--------|------|
 | `usage` | 422 | What exits 3 in the terminal: a locked level, an unknown case, a path the rules refuse, a hint or solution during a mock |
-| `not_found` | 404 | An unknown problem, attempt, run, job or file |
+| `not_found` | 404 | An unknown problem, attempt, run, job or file, or a path the API does not have |
+| `method_not_allowed` | 405 | A method the path does not take, such as `DELETE /api/v1/session`; the `Allow` header names the ones it takes |
 | `attempt_ended` | 409 | The attempt is no longer in progress |
 | `conflict` | 409 | A run of the attempt is in progress (the document adds `run`, its id), a job is in progress (`job`), a move target exists, `doctor --fix` is running |
 | `locked` | 409 | The project's lock stayed busy for 5 s |
