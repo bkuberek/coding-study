@@ -1,6 +1,7 @@
 """The `project` block of meta.yaml and the paths inside a project folder."""
 
 import re
+from dataclasses import replace
 
 import pytest
 
@@ -13,10 +14,14 @@ from coding_study.domain.project import (
     ProjectTree,
     entry_files,
     entry_issue,
+    level_methods,
     level_test_file,
     level_test_pattern,
+    method_text,
+    project_language,
     relative_path_issue,
 )
+from tests.project_builders import BANK, CREATE_ACCOUNT, DEPOSIT, TRANSFER, method, project_meta
 
 WITHOUT_PROJECTS = (Language.JAVA, Language.KOTLIN, Language.GO, Language.RUST)
 
@@ -135,13 +140,79 @@ def test_the_level_test_pattern_matches_nothing_else(name):
         lambda language: entry_files("bank.bank", language),
         lambda language: level_test_file(Project("bank.bank"), language, 1),
         level_test_pattern,
+        lambda language: method_text(DEPOSIT, language),
     ],
-    ids=["entry_issue", "entry_files", "level_test_file", "level_test_pattern"],
+    ids=["entry_issue", "entry_files", "level_test_file", "level_test_pattern", "method_text"],
 )
 @pytest.mark.parametrize("language", WITHOUT_PROJECTS)
 def test_other_languages_have_no_project_problems_yet(use, language):
     with pytest.raises(ValueError, match=f"project problems are not yet supported in {language}"):
         use(language)
+
+
+# the problem's language
+
+
+def test_a_project_problem_is_solved_in_its_one_language():
+    assert project_language(project_meta(language=Language.TYPESCRIPT)) is Language.TYPESCRIPT
+
+
+def test_a_project_problem_with_two_languages_has_no_language_of_its_own():
+    meta = replace(project_meta(), languages=(Language.PYTHON, Language.TYPESCRIPT))
+    with pytest.raises(ValueError, match="bank-project-python lists 2 languages, not one"):
+        project_language(meta)
+
+
+@pytest.mark.parametrize("language", WITHOUT_PROJECTS)
+def test_a_project_problem_in_another_language_has_no_language_of_its_own(language):
+    meta = replace(project_meta(), languages=(language,))
+    with pytest.raises(ValueError, match=f"not yet supported in {language}"):
+        project_language(meta)
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        (Language.PYTHON, "create_account(timestamp: int, account_id: str) -> bool"),
+        (Language.TYPESCRIPT, "createAccount(timestamp: number, accountId: string): boolean"),
+    ],
+)
+def test_a_method_reads_as_its_language_declares_it(language, expected):
+    assert method_text(CREATE_ACCOUNT, language) == expected
+
+
+@pytest.mark.parametrize(
+    ("returns", "python", "typescript"),
+    [
+        ("void", "None", "void"),
+        ("double", "float", "number"),
+        ("char", "str", "string"),
+        ("decimal", "Decimal", "Decimal"),
+        ("date", "date", "string"),
+        ("list<string>", "list[str]", "string[]"),
+        ("int[][]", "list[list[int]]", "number[][]"),
+    ],
+)
+def test_a_method_spells_its_types_in_its_language(returns, python, typescript):
+    found = method("snapshot", 1, returns=returns)
+    texts = (method_text(found, Language.PYTHON), method_text(found, Language.TYPESCRIPT))
+    assert texts == (f"snapshot() -> {python}", f"snapshot(): {typescript}")
+
+
+def test_a_method_without_parameters_has_empty_parentheses():
+    assert method_text(method("size", 1, returns="int"), Language.PYTHON) == "size() -> int"
+
+
+def test_a_level_adds_the_methods_declared_with_its_number():
+    assert level_methods(BANK, 1) == (CREATE_ACCOUNT, DEPOSIT)
+
+
+def test_methods_keep_their_declaration_order():
+    assert level_methods(BANK, 2) == (TRANSFER,)
+
+
+def test_a_level_beyond_the_last_adds_no_methods():
+    assert level_methods(BANK, 3) == ()
 
 
 # file trees

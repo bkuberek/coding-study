@@ -10,7 +10,7 @@ from coding_study.domain.errors import UnknownProblemError, UsageError
 from coding_study.domain.problem import Language
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment
 from tests.fakes import repository_root as copy_repository
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_TRACKS, PROJECT_PROBLEMS
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 PHASE4 = FIXTURES / "phase4" / "problems"
@@ -72,6 +72,18 @@ def test_a_level_on_a_problem_without_levels_is_a_usage_error(tmp_path):
 def test_problems_without_levels_show_everything_but_hints(tmp_path):
     environment = environment_on(tmp_path, PRACTICE)
     assert "## Constraints" in show(environment, "two-sum")
+
+
+def test_a_project_statement_names_operations_in_its_language(tmp_path):
+    environment = environment_on(tmp_path, PROJECT_PROBLEMS)
+    operations = 'Operations: ["Bank", "create_account", "create_account", "deposit", "deposit"]'
+    assert operations in show(environment, "bank-project-python")
+
+
+def test_a_project_level_opens_with_the_methods_it_adds(tmp_path):
+    environment = environment_on(tmp_path, PROJECT_PROBLEMS)
+    added = "Methods to add: create_account(timestamp: int, account_id: str) -> bool, deposit("
+    assert added in show(environment, "bank-project-python")
 
 
 def test_unknown_problem(environment):

@@ -1,7 +1,8 @@
 """`cstudy show`: the rendered statement (docs/specs/cli.md#cstudy-show).
 
-Progressive problems show the levels the attempt in progress has unlocked (level 1 without one),
-or levels 1 to `--level`. Non-autograded items show their rendered prompt.
+Progressive and project problems show the levels the attempt in progress has unlocked (level 1
+without one), or levels 1 to `--level`; a project problem's statement speaks its language.
+Non-autograded items show their rendered prompt.
 """
 
 from dataclasses import dataclass
@@ -18,7 +19,8 @@ from coding_study.domain.levels import level_run
 class ShowRequest:
     slug: str
     level: int | None = None
-    """Progressive problems: show levels 1 to `level`; None shows every unlocked level."""
+    """Progressive and project problems: show levels 1 to `level`; None shows every unlocked
+    level."""
 
 
 def show_statement(environment: Environment, request: ShowRequest) -> str:
