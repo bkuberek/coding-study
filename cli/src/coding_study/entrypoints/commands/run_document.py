@@ -5,10 +5,11 @@ report shows for it. Statuses are the text statuses in lower case, `NOT RUN` as 
 """
 
 from collections.abc import Sequence
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from coding_study.application.language_runs import CodeRun
 from coding_study.application.run_tests import OracleStress, RunTestsResult
+from coding_study.domain.attempts import Attempt
 from coding_study.domain.cases import FunctionInput, JsonValue, OperationSequence
 from coding_study.domain.judging import CaseStatus, CaseVerdict, Tally, outcome_summary
 from coding_study.domain.levels import LevelRun
@@ -43,14 +44,14 @@ def run_document(result: RunTestsResult, exit_code: int) -> dict[str, JsonValue]
         "every_case": result.every_case,
         "comparator": result.comparator.label,
         "time_limit": str(result.time_limits.limit) if result.time_limits else None,
-        "timer": _timer(result),
-        "levels": _levels(result.levels),
+        "timer": timer_value(result.attempt, result.ran_at),
+        "levels": levels_value(result.levels),
         "build": _build(result.code_run),
-        "load_error": _error(load_error) if load_error else None,
-        "cases": [_case(verdict) for verdict in verdicts if verdict.case.id not in oracle_ids],
+        "load_error": error_value(load_error) if load_error else None,
+        "cases": [case_value(verdict) for verdict in verdicts if verdict.case.id not in oracle_ids],
         "oracle": _oracle(result.oracle, verdicts),
         "stress": [_stress(verdict) for verdict in judgement.stress] if judgement else [],
-        "tally": _tally(result.tally),
+        "tally": tally_value(result.tally),
         "duration_s": round(result.duration_seconds, DECIMALS),
     }
 
@@ -75,15 +76,16 @@ def _outcome(result: RunTestsResult) -> str:
     return "passed" if judgement.passed else "failed"
 
 
-def _timer(result: RunTestsResult) -> JsonValue:
-    limit_s = result.attempt.time_limit_s
+def timer_value(attempt: Attempt, at: datetime) -> JsonValue:
+    """The `--timer` time box and the seconds elapsed at `at`; None without one."""
+    limit_s = attempt.time_limit_s
     if limit_s is None:
         return None
-    elapsed = result.attempt.solve_time(result.ran_at) // timedelta(seconds=1)
+    elapsed = attempt.solve_time(at) // timedelta(seconds=1)
     return {"elapsed_s": elapsed, "limit_s": limit_s}
 
 
-def _levels(levels: LevelRun | None) -> JsonValue:
+def levels_value(levels: LevelRun | None) -> JsonValue:
     if levels is None:
         return None
     return {
@@ -103,7 +105,7 @@ def _build(code_run: CodeRun) -> JsonValue:
     }
 
 
-def _tally(tally: Tally) -> JsonValue:
+def tally_value(tally: Tally) -> JsonValue:
     return {
         "total": tally.total,
         "passed": tally.passed,
@@ -114,7 +116,7 @@ def _tally(tally: Tally) -> JsonValue:
     }
 
 
-def _case(verdict: CaseVerdict) -> dict[str, JsonValue]:
+def case_value(verdict: CaseVerdict) -> dict[str, JsonValue]:
     case = verdict.case
     entry: dict[str, JsonValue] = {
         "id": case.id,
@@ -152,7 +154,7 @@ def _details(verdict: CaseVerdict) -> dict[str, JsonValue]:
         case Raised(error=error, op_index=op_index, partial_output=partial):
             return {
                 "input": _input(operations_up_to(run_input, op_index)),
-                "error": _error(error),
+                "error": error_value(error),
                 "op_index": op_index,
                 "partial_output": list(partial),
             }
@@ -178,7 +180,7 @@ def _oracle(oracle: OracleStress | None, verdicts: Sequence[CaseVerdict]) -> Jso
     for found in oracle.inputs:
         if found.case_id in by_id:
             entry: dict[str, JsonValue] = {"seed": found.seed, "n": found.n}
-            inputs.append(entry | _case(by_id[found.case_id]))
+            inputs.append(entry | case_value(by_id[found.case_id]))
     return {"approach": oracle.approach, "inputs": inputs}
 
 
@@ -189,7 +191,7 @@ def _input(run_input: RunInput) -> JsonValue:
     return {"ops": list(run_input.ops), "args": [list(arguments) for arguments in run_input.args]}
 
 
-def _error(error: UserError) -> JsonValue:
+def error_value(error: UserError) -> JsonValue:
     return {"type": error.type, "message": error.message, "trace": error.trace}
 
 

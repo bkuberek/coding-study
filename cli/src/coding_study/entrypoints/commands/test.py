@@ -16,7 +16,7 @@ from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, NoReturn, Protocol
 
 import typer
 from rich.console import Console
@@ -26,6 +26,7 @@ from coding_study.adapters.environment_factory import load_environment
 from coding_study.application import run_tests as use_case
 from coding_study.application.active_attempt import autograded_language, find_attempt
 from coding_study.application.environment import Environment
+from coding_study.application.project_testing import ProjectTestRequest, is_project_attempt
 from coding_study.application.resolve_target import Target, resolve_target
 from coding_study.application.run_bench import (
     PERF_REPS,
@@ -51,6 +52,11 @@ from coding_study.domain.time_limits import (
     parse_time_limit,
 )
 from coding_study.entrypoints.commands.bench import bench_exit_code, perf_lines
+from coding_study.entrypoints.commands.project_test import (
+    ProjectTestOptions,
+    ProjectTestSession,
+    require_project_options,
+)
 from coding_study.entrypoints.commands.report_text import (
     INDENT,
     LABEL_WIDTH,
@@ -213,6 +219,26 @@ def run_tests(
     _require_text_for(options, watch)
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     target = resolve_target(environment, Target(slug, language), Path.cwd())
+    if is_project_attempt(environment, target.slug, target.language):
+        require_project_options(
+            _given(
+                {
+                    "--perf": perf,
+                    "--stress": stress is not None,
+                    "--seed": seed is not None,
+                    "--time-limit": time_limit is not None,
+                    "--debug-connect": debug_connect,
+                }
+            )
+        )
+        project_request = ProjectTestRequest(
+            target.slug, target.language, tuple(case or ()), level, debug_request
+        )
+        project_options = ProjectTestOptions(as_json, debug)
+        project = ProjectTestSession(
+            environment, project_request, console(context), project_options
+        )
+        _run_session(project, watch)
     request = use_case.RunTestsRequest(
         target.slug,
         target.language,
@@ -223,7 +249,17 @@ def run_tests(
         StressSelection(stress, seed),
         debug_request,
     )
-    session = _Session(environment, request, console(context), options)
+    _run_session(_Session(environment, request, console(context), options), watch)
+
+
+class _RunSession(Protocol):
+    def run(self) -> int: ...
+
+    def watch(self) -> int: ...
+
+
+def _run_session(session: _RunSession, watch: bool) -> NoReturn:
+    """Runs once, or on every save with `--watch`, and exits with the last run's code."""
     try:
         raise typer.Exit(session.watch() if watch else session.run())
     except KeyboardInterrupt:
