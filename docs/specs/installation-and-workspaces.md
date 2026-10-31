@@ -67,7 +67,7 @@ created_with = "0.1.0"
   .cs/workspace.toml      # marker (tracked)
   .cs/ide.json            # digests of the IDE files cstudy wrote (tracked)
   .cs/runtime/            # materialized runners and the IntelliJ launcher (ignored, per machine)
-  .cs/                    # index, cases, calibration, build, runs caches (ignored)
+  .cs/                    # index, cases, calibration, build, runs caches, project manifests (ignored)
   .gitignore, README.md
   .vscode/, .idea/        # IDE project files: tasks, run and debug configurations, SDK settings
   python/                 # pyproject.toml (dev tools: pyright, ruff, debugpy, pytest), uv.lock, practice/<snake_slug>.py
@@ -125,7 +125,7 @@ Because the wiring is relative, a workspace keeps working when it moves or is cl
 
 ## Project folders
 
-A [project problem](problem-format.md#project-problems) is solved in `projects/<slug>/`: one self-contained folder per started project, which `cstudy start` fills from the problem's `starter/` tree and which you track like practice files ([ADR 0014](../decisions/0014-project-problems.md)). It opens as an editor root of its own. Nothing is installed per project: the folder reaches the workspace's toolchain installs by relative path, so a project starts offline (NFR-6) and survives a move or a clone of the workspace. Planned: nothing implements project folders yet.
+A [project problem](problem-format.md#project-problems) is solved in `projects/<slug>/`: one self-contained folder per started project, which `cstudy start` fills from the problem's `starter/` tree and which you track like practice files ([ADR 0014](../decisions/0014-project-problems.md)). It opens as an editor root of its own. Nothing is installed per project: the folder reaches the workspace's toolchain installs by relative path, so a project starts offline (NFR-6) and survives a move or a clone of the workspace.
 
 | Item | Python | TypeScript |
 |------|--------|------------|
@@ -140,6 +140,7 @@ A [project problem](problem-format.md#project-problems) is solved in `projects/<
 |------|--------|
 | Start | A new attempt copies `starter/` without overwriting a file; a resumed attempt copies it only when the folder is missing, writes back a missing generated test file of an unlocked level, and recreates a missing or dangling `.venv` link ([cli](cli.md#cstudy-start)) |
 | Archive | `--fresh` and review attempts move the folder to `.archive/<slug>/<attempt_id>-<lang>/`, without the `.venv` link and caches, before copying the starter again. When that directory already exists, `cstudy start` exits 3 and moves nothing |
+| Manifest | `.cs/projects/<slug>.json`, outside the folder and ignored like the rest of `.cs/`: every file `cstudy` provided in the folder, each starter file and the generated test file of each open level, with the SHA-256 of the content it provided, also where it kept a file of yours at that path. The document is `{"format": 1, "files": {<path>: {"origin": "starter" or "level", "level": <n>, "sha256": <digest>}}}`, sorted by path, with `level` for generated files only. A new attempt writes it anew from the starter; a generated test file is recorded when `cstudy` writes it, or keeps a file at its path that the manifest does not name yet; a resumed attempt keeps it, and writes it again from the starter when the folder or the manifest is missing (a folder you deleted, a clone). An archived folder takes none along. [`cstudy status`](cli.md#cstudy-status) compares the folder with it, so a starter file stays unchanged after a newer `cstudy` changes the starter |
 | Watched and hashed | Every file under the folder except `.venv`, `node_modules`, `__pycache__`, `.pytest_cache` and `.ruff_cache`, and the folder's `uv.lock`: `cstudy test --watch` watches them and `code_hash` hashes their relative paths and bytes in path order |
 | Not yet supported | Java, Kotlin, Go and Rust project folders: each needs a build of its own (a Gradle build, a Go module, a Cargo crate), specified after spikes K4 to K6 |
 

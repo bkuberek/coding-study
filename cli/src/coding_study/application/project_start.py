@@ -3,12 +3,14 @@
 A project starts in its one language. A new attempt copies the starter into `projects/<slug>/`,
 writes level 1's test file and opens level 1; a resumed attempt writes back the missing test files
 of its unlocked levels and leaves every other file as it is. `--fresh` and review attempts first
-archive the folder; a refused archive leaves no half-started attempt.
+archive the folder; a refused archive leaves no half-started attempt. A new attempt writes the
+folder's manifest anew (`project_manifest`); an archived folder takes none along.
 """
 
 from dataclasses import dataclass, replace
 
 from coding_study.application.environment import Environment
+from coding_study.application.project_manifest import ProjectManifests, starter_files
 from coding_study.application.project_tests import LevelTestFile, LevelTestWriter
 from coding_study.application.project_workspace import (
     archive_project,
@@ -88,10 +90,19 @@ class _ProjectStarter:
         self._folder = project_folder(problem.meta.slug)
         generator = environment.toolchains.project_test_generator(language)
         self._tests = LevelTestWriter(environment.workspace, generator)
+        self._manifests = ProjectManifests(environment.workspace)
 
     def resume(self, attempt: Attempt) -> ProjectStart:
+        """Keeps the folder's manifest, but writes it again from the starter when the folder was
+        missing, so copied again, or when the manifest is missing; the test files then add
+        theirs."""
         unlocked = attempt.level_unlocked or FIRST_LEVEL
-        seeded = resume_project(self._environment.workspace, self._problem)
+        workspace = self._environment.workspace
+        slug = self._problem.meta.slug
+        kept = workspace.exists(self._folder) and self._manifests.load(slug) is not None
+        seeded = resume_project(workspace, self._problem)
+        if not kept:
+            self._manifests.save(slug, starter_files(self._problem))
         written = self._tests.write_levels(self._problem, self._folder, unlocked)
         write_statement(self._environment, self._problem, unlocked)
         return ProjectStart(attempt, self._started(written[-1]), True, bool(seeded.copied))
@@ -112,6 +123,7 @@ class _ProjectStarter:
         now = self._environment.clock.now()
         progress.add_level_unlock(LevelUnlock(attempt.id, FIRST_LEVEL, now))
         seeded = seed_project(self._environment.workspace, self._problem)
+        self._manifests.save(slug, starter_files(self._problem))
         written = self._tests.write_level(self._problem, self._folder, FIRST_LEVEL)
         write_statement(self._environment, self._problem, FIRST_LEVEL)
         project = self._started(written)

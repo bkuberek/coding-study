@@ -5,11 +5,14 @@ level opens, and never over a file that exists
 import pytest
 
 from coding_study.adapters.workspace_fs import WorkspaceFs
+from coding_study.application.project_manifest import ProjectManifests
 from coding_study.application.project_tests import LevelTestFile, LevelTestWriter
+from coding_study.domain.project_manifest import FileOrigin, ProvidedFile, content_digest
 from coding_study.domain.project_tests import LevelTests
 from tests.project_builders import ops_case, project_problem
 
-ROOT = "projects/bank-project-python"
+SLUG = "bank-project-python"
+ROOT = f"projects/{SLUG}"
 PROBLEM = project_problem(
     ops_case("ex1", 1, ("deposit", [1, "a", 5], -1)),
     ops_case("ex2", 1, ("deposit", [2, "b", 5], -1)),
@@ -76,10 +79,26 @@ def test_a_kept_file_is_reported_as_not_written(writer, workspace):
     assert not writer.write_level(PROBLEM, ROOT, 1).written
 
 
-def test_a_kept_file_costs_no_generation(writer, workspace, generator):
-    workspace.write_text(LEVEL_1, "# mine\n")
+def test_a_kept_file_the_manifest_records_costs_no_generation(writer, workspace, generator):
+    writer.write_level(PROBLEM, ROOT, 1)
+    generator.generated.clear()
     writer.write_level(PROBLEM, ROOT, 1)
     assert generator.generated == []
+
+
+def test_a_written_file_is_recorded_in_the_manifest_as_generated(writer, workspace):
+    writer.write_level(PROBLEM, ROOT, 1)
+    assert ProjectManifests(workspace).recorded(SLUG, "tests/test_level_1.py") == ProvidedFile(
+        "tests/test_level_1.py", content_digest("# level 1\n"), FileOrigin.LEVEL, 1
+    )
+
+
+def test_a_kept_file_is_recorded_as_generated_when_the_manifest_lacks_it(writer, workspace):
+    workspace.write_text(LEVEL_1, "# mine\n")
+    writer.write_level(PROBLEM, ROOT, 1)
+    recorded = ProjectManifests(workspace).recorded(SLUG, "tests/test_level_1.py")
+    assert recorded is not None
+    assert recorded.digest == content_digest("# level 1\n")
 
 
 def test_resuming_writes_back_the_missing_files_of_the_unlocked_levels(writer, workspace):
