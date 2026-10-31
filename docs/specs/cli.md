@@ -135,7 +135,7 @@ ok    runner kotlin answers hello: jvm 21.0.2, protocol 1
 
 Exit 0 when no check reports `FAIL` (and, with `--fix`, every setup command succeeded), else 4.
 
-`--json` prints the same checks as one document instead of the rows, and exits as the rows would; with `--fix` it is a usage error (`--json excludes --fix`, exit 3). Each check is one row: `name` (`python`, `workspace`, `runner kotlin`), `status` (`ok`, `warn` or `fail`), `detail` (the rest of the row, such as `3.13.2`) and `fix` (the hint, or null). The page [`cstudy serve`](#cstudy-serve) serves shows it ([web-ui](web-ui.md#health-view)).
+`--json` prints the same checks as one document instead of the rows, and exits as the rows would; with `--fix` it is a usage error (`--json excludes --fix`, exit 3). Each check is one row: `name` (`python`, `workspace`, `runner kotlin`), `status` (`ok`, `warn` or `fail`), `detail` (the rest of the row, such as `3.13.2`, or `""` for a row with nothing after its name) and `fix` (the hint, or null). Progress notices, such as the Gradle warm-up, go to standard error. The page [`cstudy serve`](#cstudy-serve) serves shows it ([web-ui](web-ui.md#health-view)).
 
 ```json
 {"workspace": "/home/me/ws", "passed": false, "checks": [

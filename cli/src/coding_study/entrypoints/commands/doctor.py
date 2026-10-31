@@ -1,5 +1,6 @@
 """`cstudy doctor` (docs/specs/cli.md#cstudy-doctor)."""
 
+import json
 from collections.abc import Iterator, Mapping
 from pathlib import Path
 from typing import Annotated
@@ -36,6 +37,7 @@ from coding_study.application.doctor import (
     CheckStatus,
     ContentLocation,
     DoctorEnvironment,
+    DoctorReport,
     FixOutcome,
     NotFound,
     PracticeWorkspace,
@@ -44,8 +46,9 @@ from coding_study.application.doctor import (
     run_doctor,
 )
 from coding_study.application.ports import ProgressNotice
+from coding_study.domain.cases import JsonValue
 from coding_study.domain.config import Config
-from coding_study.domain.errors import ConfigError
+from coding_study.domain.errors import ConfigError, UsageError
 from coding_study.entrypoints.shared import ExitCode, add_command, command_environ, console
 
 NAME = "doctor"
@@ -76,16 +79,52 @@ def doctor(
             ),
         ),
     ] = False,
+    as_json: Annotated[
+        bool, typer.Option("--json", help="One JSON document instead of the rows.")
+    ] = False,
 ) -> None:
     """Check toolchains, the config file and the workspace setup."""
-    output = console(context)
+    if as_json and fix:
+        raise UsageError("--json excludes --fix")
     environment = doctor_environment(Path.cwd(), command_environ(context), Path.home())
+    if as_json:
+        _print_document(environment)
+        return
+    output = console(context)
     fixes_failed = fix and not _fix(environment, output)
     report = run_doctor(environment, _notice(output))
     for result in report.results:
         output.print(_check_line(result))
     if fixes_failed or not report.passed:
         raise typer.Exit(ExitCode.ENVIRONMENT_ERROR)
+
+
+def _print_document(environment: DoctorEnvironment) -> None:
+    """The checks as one document; notices go to standard error."""
+    report = run_doctor(environment, _error_notice)
+    typer.echo(json.dumps(doctor_document(environment, report), indent=2))
+    if not report.passed:
+        raise typer.Exit(ExitCode.ENVIRONMENT_ERROR)
+
+
+def doctor_document(environment: DoctorEnvironment, report: DoctorReport) -> dict[str, JsonValue]:
+    """`cstudy doctor --json`."""
+    workspace = environment.workspace
+    root = None if isinstance(workspace, NotFound) else str(workspace.files.root)
+    checks: list[JsonValue] = [
+        {
+            "name": result.name,
+            "status": result.status.value,
+            "detail": result.detail,
+            "fix": result.fix,
+        }
+        for result in report.results
+    ]
+    return {"workspace": root, "passed": report.passed, "checks": checks}
+
+
+def _error_notice(line: str) -> None:
+    typer.echo(line, err=True)
 
 
 def doctor_environment(cwd: Path, environ: Mapping[str, str], home: Path) -> DoctorEnvironment:
