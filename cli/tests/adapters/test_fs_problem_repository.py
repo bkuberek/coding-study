@@ -170,3 +170,18 @@ def test_a_project_problem_with_a_link_in_its_starter_does_not_load(tmp_path):
 
 def test_other_problems_have_no_project_files(content_root):
     assert FsProblemRepository(content_root).load("lru-cache").project_files is None
+
+
+def test_a_project_reference_is_its_overlay_in_the_problems_language(tmp_path):
+    root = repository_root(tmp_path, PROJECT_PROBLEMS)
+    [bank] = FsProblemRepository(root).list_summaries()
+    assert bank.reference_languages == (Language.PYTHON,)
+
+
+def test_a_project_without_files_in_its_overlay_has_no_reference_languages(tmp_path):
+    root = repository_root(tmp_path, PROJECT_PROBLEMS)
+    overlay = root / "problems" / "0001-bank-project-python" / "solutions" / "reference"
+    shutil.rmtree(overlay)
+    overlay.mkdir()
+    [bank] = FsProblemRepository(root).list_summaries()
+    assert bank.reference_languages == ()

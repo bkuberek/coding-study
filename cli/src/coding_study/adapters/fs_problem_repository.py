@@ -176,9 +176,14 @@ def _slug_of(directory_name: str) -> str | None:
 
 
 def _reference_languages(directory: Path, meta: ProblemMeta) -> tuple[Language, ...]:
+    """The languages of the declared approaches' reference files; a project problem's reference
+    is an overlay directory in its one language."""
     solutions = directory / SOLUTIONS_DIRECTORY
     if not solutions.is_dir():
         return ()
+    if meta.kind is ProblemKind.PROJECT:
+        overlays = (solutions / approach.id for approach in meta.approaches)
+        return meta.languages if any(map(_has_files, overlays)) else ()
     approach_ids = {approach.id for approach in meta.approaches}
     found = {
         language_of_extension(path.suffix.removeprefix("."))
@@ -186,6 +191,10 @@ def _reference_languages(directory: Path, meta: ProblemMeta) -> tuple[Language, 
         if path.is_file() and path.stem in approach_ids
     }
     return tuple(language for language in Language if language in found)
+
+
+def _has_files(directory: Path) -> bool:
+    return directory.is_dir() and any(path.is_file() for path in directory.rglob("*"))
 
 
 def read_content_file(path: Path, source: str) -> str:

@@ -631,7 +631,36 @@ def test_the_design_comes_after_the_algorithm(bank):
 # ready criteria
 
 
-def test_a_project_problem_meets_the_level_ready_criteria(bank):
+def test_every_level_of_a_project_needs_two_visible_cases(bank):
+    assert "level 1 needs at least 2 visible cases (has 1)" in ready_problems(content(bank))
+
+
+def test_a_project_level_without_visible_cases_says_so(bank):
     cases = tuple(replace(case, visible=False) if case.id == "ex2" else case for case in bank.cases)
     problem = replace(bank, cases=cases)
-    assert "level 2 needs at least 1 visible case (has 0)" in ready_problems(content(problem))
+    assert "level 2 needs at least 2 visible cases (has 0)" in ready_problems(content(problem))
+
+
+def test_every_level_of_a_project_needs_two_hidden_cases(bank):
+    problem = replace(bank, cases=tuple(case for case in bank.cases if case.id != "h4"))
+    assert "level 2 needs at least 2 hidden hand-written cases (has 1)" in ready_problems(
+        content(problem)
+    )
+
+
+def test_a_project_problem_needs_two_levels(bank):
+    problem = with_meta(bank, levels=bank.meta.levels[:1])
+    assert "project problems need at least 2 levels" in ready_problems(content(problem))
+
+
+def test_a_projects_overlay_is_its_reference_in_its_language(bank):
+    reasons = ready_problems(content(bank))
+    assert [reason for reason in reasons if "reference" in reason] == []
+
+
+def test_a_project_without_an_overlay_has_no_optimal_reference(bank):
+    reasons = ready_problems(content(with_overlays(bank)))
+    assert [reason for reason in reasons if "reference" in reason] == [
+        "no optimal reference in python",
+        "reference has no reference in python",
+    ]

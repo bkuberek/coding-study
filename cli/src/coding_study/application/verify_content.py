@@ -53,7 +53,6 @@ from coding_study.domain.judging import (
     outcome_summary,
     verdict_summary,
 )
-from coding_study.domain.layout import SOURCE_EXTENSIONS
 from coding_study.domain.problem import (
     ALL_LANGUAGES,
     Language,
@@ -72,7 +71,7 @@ from coding_study.domain.problem_files import (
     RUBRIC_FILE,
     SOLUTIONS_DIRECTORY,
 )
-from coding_study.domain.ready_criteria import MAX_SLOWEST_SHARE, ready_problems
+from coding_study.domain.ready_criteria import MAX_SLOWEST_SHARE, has_reference, ready_problems
 from coding_study.domain.runs import Returned, RunReport
 from coding_study.domain.static_checks import ProblemContent, static_checks
 
@@ -335,13 +334,12 @@ def _deadline_margin_problems(results: Sequence[LanguageResult]) -> tuple[str, .
 
 
 def _reference_languages(content: ProblemContent) -> tuple[Language, ...]:
-    approaches = {approach.id for approach in content.problem.meta.approaches}
-    extensions = {
-        name.rpartition(".")[2]
-        for name in content.solution_files
-        if name.rpartition(".")[0] in approaches
-    }
-    return tuple(language for language in Language if SOURCE_EXTENSIONS[language] in extensions)
+    approaches = content.problem.meta.approaches
+    return tuple(
+        language
+        for language in Language
+        if any(has_reference(content, approach.id, language) for approach in approaches)
+    )
 
 
 class _DynamicChecks:

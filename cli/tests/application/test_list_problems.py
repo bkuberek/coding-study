@@ -10,6 +10,7 @@ from coding_study.domain.problem import ContentStatus, Difficulty, Language, Tra
 from coding_study.domain.scheduling import ProblemStatus, ReviewState, ScheduleEntry
 from tests.fakes import NOW, make_environment
 from tests.fakes import repository_root as copy_repository
+from tests.helpers import PROJECT_PROBLEMS
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 
@@ -57,6 +58,15 @@ def test_filter_by_reference_language(environment):
 
 def test_filter_by_language_without_references(environment):
     assert slugs(environment, language=Language.KOTLIN) == []
+
+
+@pytest.mark.parametrize(
+    ("language", "listed"),
+    [(Language.PYTHON, ["bank-project-python"]), (Language.TYPESCRIPT, [])],
+)
+def test_a_project_is_listed_under_the_language_of_its_overlay(tmp_path, language, listed):
+    environment = make_environment(copy_repository(tmp_path, PROJECT_PROBLEMS))
+    assert slugs(environment, language=language) == listed
 
 
 def finish(environment, status: AttemptStatus) -> None:
