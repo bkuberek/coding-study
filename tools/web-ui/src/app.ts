@@ -17,10 +17,8 @@ import { failure, loading } from "./page/states.ts";
 import type { Preferences, ProblemList, Session } from "./page/types.ts";
 import { attemptView } from "./page/views/attempt.ts";
 import { missingView } from "./page/views/elsewhere.ts";
-import { healthView } from "./page/views/health.ts";
 import { problemView } from "./page/views/problem.ts";
 import { problemsView } from "./page/views/problems.ts";
-import { settingsView } from "./page/views/settings.ts";
 
 /** Alt and a view's number opens the view, as the top bar's tabs show. */
 const VIEW_KEYS: Readonly<Record<string, string>> = Object.fromEntries(VIEWS.map(({ key, hash }) => [`Digit${key}`, hash]));
@@ -47,9 +45,9 @@ function show(context: PageContext, route: Route): Cleanup {
     case "progress":
       return lazyView(context, () => import("./page/stats.ts").then((module) => module.progressView));
     case "health":
-      return healthView(context);
+      return lazyView(context, () => import("./page/views/health.ts").then((module) => module.healthView));
     case "settings":
-      return settingsView(context);
+      return lazyView(context, () => import("./page/views/settings.ts").then((module) => module.settingsView));
     case "missing":
       return missingView(context, route.fragment);
   }

@@ -5,7 +5,7 @@ The sources of the front end that `cstudy serve` serves: the page's own code and
 | Path | Holds |
 |------|-------|
 | `package.json`, `pnpm-lock.yaml` | Exact versions and integrity hashes of every package |
-| `src/app.ts`, `src/page/` | The page: its entry point, views, stylesheets (`page/app.css`, and `page/flows.css` for the attempt flows, mocks, solutions and progress) and the pure parts its tests cover |
+| `src/app.ts`, `src/page/` | The page: its entry point, views, stylesheets (`page/app.css`; `page/flows.css` for the attempt flows, mocks, solutions and progress; `page/files.css` for saving and managing files; `page/runs.css` for runs and jobs) and the pure parts its tests cover |
 | `src/editor.ts` | The editor module, a chunk the page fetches the first time a file opens |
 | `src/grammars/*.ts`, `src/vim.ts` | One chunk per language and one for Vim keybindings, each fetched on first use |
 | `test/*.test.ts` | Unit tests of the pure parts of the page and the editor module, run with `node --test` |
@@ -51,16 +51,21 @@ Sizes as of the current lockfile, gzip at level 9:
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 115.3 | 36.5 |
-| Every JavaScript and CSS file but Vim | 929.3 | 326.8 |
-| The editor before any language: the page, the editor and the core | 518.4 | 170.3 |
-| A Python file | 588.8 | 197.2 |
-| A TypeScript or JavaScript file, the largest grammar | 627.3 | 210.8 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 87.5 | 28.8 |
+| Every JavaScript and CSS file but Vim | 934.9 | 332.9 |
+| The editor before any language: the page, the editor and the core | 490.6 | 162.6 |
+| A Python file | 561.0 | 189.5 |
+| A TypeScript or JavaScript file, the largest grammar | 599.5 | 203.1 |
 | Vim keybindings, added on top | 119.7 | 38.2 |
-| The Mock and Progress views together, each a chunk fetched when it first opens | 9.2 | 4.1 |
-| The Start, Done, Solution and file dialogs, each fetched when first used (with the chunks they share) | 12.6 | 6.1 |
+| The Mock and Progress views together, each a chunk fetched when it first opens | 9.4 | 4.1 |
+| The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 8.2 | 3.9 |
+| The run session, fetched when a run first starts or shows: streaming and drawing it, Cancel, diagnostics | 17.8 | 6.6 |
+| The Run options form, fetched when it first opens | 3.2 | 1.4 |
+| The job panel for Bench, fetched when Bench first starts (Health fetches it with its view) | 3.4 | 1.6 |
+| The file tree's menu and actions, fetched when a menu first opens or an action first runs | 4.1 | 1.8 |
+| The Start, Done, Solution and file dialogs, each fetched when first used (with the chunks they share) | 13.0 | 6.2 |
 
-The budget (NFR-12) is 1 MB raw and 350 KB gzip for the whole bundle without Vim, the page's code included, and 600 KB raw loaded before a file of one language is editable. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
+The budget (NFR-12) is 1 MB raw and 350 KB gzip for the whole bundle without Vim, the page's code included, and 600 KB raw loaded before a file of one language is editable. What a view or a control needs only when it is used is a chunk of its own (the rows above), so the page, the largest grammar and the editor stay under the 600 KB; `cli/tests/entrypoints/web/test_bundle_budget.py` holds the committed files to both limits. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
 
 ## Editor module
 

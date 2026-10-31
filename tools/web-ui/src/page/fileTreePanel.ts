@@ -6,18 +6,21 @@
  * or the context menu key; F2 renames and Delete deletes. The tree is drawn again after every
  * change, so the states stay the ones `cstudy status` prints, keeping the folders the user closed
  * and the item that holds the focus.
+ *
+ * What an action does, and the menu that offers it, is `treeActions.ts`, a chunk of its own
+ * fetched the first time a menu opens or an action runs, so the page loads less before a file is
+ * editable (NFR-12).
  */
 
 import "./files.css";
 
 import { badge, h } from "./dom.ts";
-import type { NameField } from "./fileDialogs.ts";
-import { askNames, confirmAction } from "./fileQuestions.ts";
-import { baseName, creates, fileActions, type FileScope, fileScope, joinPath, nameIssue, packageExtension, parentOf } from "./fileRules.ts";
+import { creates, fileActions, type FileScope, fileScope, packageExtension } from "./fileRules.ts";
 import type { AttemptFiles } from "./files.ts";
 import { fileBadge, originText } from "./format.ts";
-import { messageOf } from "./states.ts";
+import { fetchChunk } from "./lazy.ts";
 import { type FileNode, fileTree, type TreeNode } from "./tree.ts";
+import type { TreeActions, TreeHost } from "./treeActions.ts";
 import type { AttemptStatus, Tree, TreeEntry } from "./types.ts";
 
 /** What the tree needs of the editor tabs: `EditorTabs` has all of it. */
@@ -40,7 +43,7 @@ export interface TreeSetup {
   readonly announce: (message: string) => void;
 }
 
-interface MenuItem {
+export interface MenuItem {
   readonly label: string;
   /** The key that does it from the tree, or the command it matches. */
   readonly hint: string;
@@ -50,7 +53,6 @@ interface MenuItem {
 
 const ITEM = "[data-tree-item]";
 const QUIET_ORIGINS = new Set(["yours", "stub", "notes"]);
-const PROVIDED_ORIGINS = new Set(["starter", "level"]);
 
 export class FileTreePanel {
   readonly element: HTMLElement;
@@ -58,9 +60,10 @@ export class FileTreePanel {
   readonly #scope: FileScope;
   readonly #extension: string | null;
   readonly #notice: HTMLElement;
-  readonly #menu = new TreeMenu();
   /** The folders the user closed, by path; every other folder shows open. */
   readonly #closed = new Set<string>();
+  #actions: Promise<TreeActions | null> | null = null;
+  #destroyed = false;
   #tree: Tree;
   /** The `data-tree-item` key of the item that holds the tree's one Tab stop. */
   #current: string | null = null;
@@ -95,7 +98,8 @@ export class FileTreePanel {
   }
 
   destroy(): void {
-    this.#menu.close();
+    this.#destroyed = true;
+    void this.#actions?.then((actions) => actions?.menu.close());
   }
 
   #render(): void {
@@ -116,9 +120,9 @@ export class FileTreePanel {
     const allowed = creates(this.#scope);
     if (!allowed.files) return null;
     const newFile = h("button", { type: "button", class: "ghost tree-tool", title: "New file" }, "+ file");
-    newFile.addEventListener("click", () => void this.#newFile(folder));
+    newFile.addEventListener("click", () => this.#lazily((actions) => actions.newFile(folder)));
     const newFolder = allowed.folders ? h("button", { type: "button", class: "ghost tree-tool", title: "New folder" }, "+ folder") : null;
-    newFolder?.addEventListener("click", () => void this.#newFolder(folder));
+    newFolder?.addEventListener("click", () => this.#lazily((actions) => actions.newFolder(folder)));
     return h("span", { class: "tree-tools" }, newFile, newFolder);
   }
 
@@ -175,141 +179,68 @@ export class FileTreePanel {
       { type: "button", class: "tree-more", tabindex: "-1", "aria-haspopup": "menu", "aria-label": `Actions for ${entry.path}`, title: "Actions" },
       "⋯",
     );
-    more.addEventListener("click", () => this.#menu.open(more, actions, button));
+    more.addEventListener("click", () => this.#openMenu(more, actions, button));
     return h("span", { class: "tree-row" }, button, more);
   }
 
   #fileItems(entry: TreeEntry): MenuItem[] {
     const allowed = fileActions(this.#scope, entry);
     const items: MenuItem[] = [];
-    if (allowed.restore) items.push({ label: "Restore", hint: "start --restore", run: () => void this.#restore(entry) });
+    if (allowed.restore) items.push({ label: "Restore", hint: "start --restore", run: () => this.#lazily((actions) => actions.restore(entry)) });
     if (allowed.rename) {
       const label = this.#scope === "project" ? "Rename or move…" : "Rename…";
-      items.push({ label, hint: "F2", run: () => void this.#rename(entry) });
+      items.push({ label, hint: "F2", run: () => this.#lazily((actions) => actions.rename(entry)) });
     }
-    if (allowed.delete) items.push({ label: "Delete…", hint: "Del", destructive: true, run: () => void this.#delete(entry) });
+    if (allowed.delete) items.push({ label: "Delete…", hint: "Del", destructive: true, run: () => this.#lazily((actions) => actions.delete(entry)) });
     return items;
   }
 
   #folderItems(folder: string): MenuItem[] {
     if (!creates(this.#scope).folders) return [];
     return [
-      { label: "New file here…", hint: "", run: () => void this.#newFile(folder) },
-      { label: "New folder here…", hint: "", run: () => void this.#newFolder(folder) },
+      { label: "New file here…", hint: "", run: () => this.#lazily((actions) => actions.newFile(folder)) },
+      { label: "New folder here…", hint: "", run: () => this.#lazily((actions) => actions.newFolder(folder)) },
     ];
   }
 
-  #newFile(folder: string): Promise<void> {
-    return this.#ask({
-      title: "New file",
-      fields: [this.#nameField("Name", folder, "")],
-      action: "Create",
-      submit: async ([name = ""]) => this.#create(joinPath(folder, name)),
+  #openMenu(anchor: HTMLElement, items: readonly MenuItem[], returnFocus: HTMLElement, at?: { x: number; y: number }): void {
+    this.#lazily((actions) => actions.menu.open(anchor, items, returnFocus, at));
+  }
+
+  /** Does `act` with the tree's actions, which are fetched the first time one is needed. */
+  #lazily(act: (actions: TreeActions) => unknown): void {
+    this.#actions ??= this.#fetchActions();
+    void this.#actions.then((actions) => {
+      if (actions !== null && !this.#destroyed) void act(actions);
     });
   }
 
-  /** A folder holds files, so a new one comes with its first file. */
-  #newFolder(folder: string): Promise<void> {
-    return this.#ask({
-      title: "New folder",
-      note: "A folder exists once it holds a file: name its first one too.",
-      fields: [this.#nameField("Folder", folder, ""), this.#nameField("First file", "", "")],
-      action: "Create",
-      submit: async ([name = "", file = ""]) => this.#create(joinPath(joinPath(folder, name), file)),
-    });
+  async #fetchActions(): Promise<TreeActions | null> {
+    const module = await fetchChunk(this.#setup.announce, () => import("./treeActions.ts"));
+    if (module === null) {
+      this.#actions = null;
+      return null;
+    }
+    return new module.TreeActions(this.#host());
   }
 
-  async #create(path: string): Promise<null> {
-    await this.#setup.tabs.files.create(path, "");
-    this.#setup.announce(`created ${path}`);
-    await this.refresh();
-    void this.#setup.tabs.open(path);
-    return null;
-  }
-
-  #rename(entry: TreeEntry): Promise<void> {
-    const project = this.#scope === "project";
-    const field = this.#nameField(project ? "New path" : "New name", "", entry.path);
-    return this.#ask({
-      title: project ? "Rename or move" : "Rename",
-      ...(project ? { note: `Relative to ${this.#tree.root}; folders on the way are made. Now in ${parentOf(entry.path) || "the root"}.` } : {}),
-      fields: [{ ...field, issue: (value) => (value === entry.path ? "type another name" : field.issue(value)) }],
-      action: "Rename",
-      submit: async ([to = ""]) => {
-        const tabs = this.#setup.tabs;
-        if (tabs.isModified(entry.path)) return `save or close ${entry.path} first: its tab has unsaved changes`;
-        const { sha256 } = await tabs.files.read(entry.path);
-        const moved = await tabs.files.move(entry.path, to, sha256);
-        const wasOpen = tabs.isOpen(entry.path);
-        tabs.discard(entry.path);
-        this.#current = `file:${moved.path}`;
-        this.#setup.announce(`renamed ${entry.path} to ${moved.path}`);
-        await this.refresh();
-        if (wasOpen) void tabs.open(moved.path);
-        return null;
+  #host(): TreeHost {
+    const tree = () => this.#tree;
+    return {
+      attempt: this.#setup.attempt,
+      tabs: this.#setup.tabs,
+      scope: this.#scope,
+      extension: this.#extension,
+      get root() {
+        return tree().root;
       },
-    });
-  }
-
-  async #delete(entry: TreeEntry): Promise<void> {
-    const tabs = this.#setup.tabs;
-    const provided = PROVIDED_ORIGINS.has(entry.origin);
-    const unsaved = tabs.isModified(entry.path) ? " Its tab's unsaved changes go too." : "";
-    const confirmed = await confirmAction({
-      title: `Delete ${baseName(entry.path)}?`,
-      message: provided
-        ? `${entry.path} is a ${originText(entry.origin, entry.level)} file: Restore writes it back as cstudy provides it.${unsaved}`
-        : `${entry.path} is a file you added; the page cannot bring it back.${unsaved}`,
-      action: "Delete",
-      destructive: true,
-    });
-    if (!confirmed) return;
-    await this.#act(`deleted ${entry.path}`, async () => {
-      const { sha256 } = await tabs.files.read(entry.path);
-      await tabs.files.remove(entry.path, sha256);
-      tabs.discard(entry.path);
-    });
-  }
-
-  async #restore(entry: TreeEntry): Promise<void> {
-    const tabs = this.#setup.tabs;
-    const command = `cstudy start ${this.#setup.attempt.slug} --restore ${entry.path}`;
-    const loses = entry.state === "modified" || tabs.isModified(entry.path);
-    if (loses) {
-      const confirmed = await confirmAction({
-        title: `Restore ${baseName(entry.path)}?`,
-        message: `${entry.path} goes back to what cstudy provides now; your changes to it are replaced.`,
-        action: "Restore",
-        destructive: true,
-        command,
-      });
-      if (!confirmed) return;
-    }
-    await this.#act(`restored ${entry.path}`, async () => {
-      await tabs.files.restore(entry.path);
-      if (tabs.isOpen(entry.path)) await tabs.reload(entry.path);
-    });
-  }
-
-  /** Runs a change, then draws the tree again; a refusal shows above the tree. */
-  async #act(done: string, change: () => Promise<void>): Promise<void> {
-    try {
-      await change();
-      this.#show(null);
-      this.#setup.announce(done);
-    } catch (error) {
-      this.#show(messageOf(error));
-    }
-    await this.refresh().catch((error: unknown) => this.#show(messageOf(error)));
-  }
-
-  async #ask(request: Parameters<typeof askNames>[0]): Promise<void> {
-    this.#show(null);
-    await askNames(request);
-  }
-
-  #nameField(label: string, folder: string, value: string): NameField {
-    return { label, prefix: folder ? `${folder}/` : "", value, issue: (name) => nameIssue(this.#scope, this.#extension, name) };
+      announce: this.#setup.announce,
+      refresh: () => this.refresh(),
+      show: (refusal) => this.#show(refusal),
+      select: (key) => {
+        this.#current = key;
+      },
+    };
   }
 
   #show(refusal: string | null): void {
@@ -342,7 +273,7 @@ export class FileTreePanel {
     const items = item ? this.#itemsOf(item) : [];
     if (!item || !items.length) return;
     event.preventDefault();
-    this.#menu.open(item, items, item, { x: event.clientX, y: event.clientY });
+    this.#openMenu(item, items, item, { x: event.clientX, y: event.clientY });
   }
 
   /** One item takes the Tab stop; the arrow keys, Home and End move between the visible ones. */
@@ -365,81 +296,10 @@ export class FileTreePanel {
     const opensMenu = event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey);
     const direct = { F2: "F2", Delete: "Del" }[event.key];
     const chosen = direct === undefined ? undefined : items.find((found) => found.hint === direct);
-    if (opensMenu && items.length) this.#menu.open(item, items, item);
+    if (opensMenu && items.length) this.#openMenu(item, items, item);
     else if (chosen) chosen.run();
     else return false;
     event.preventDefault();
     return true;
   }
-}
-
-/** One menu at a time, by the item it acts on; it closes on Escape, Tab, a choice or a click elsewhere. */
-class TreeMenu {
-  #element: HTMLElement | null = null;
-  #anchor: HTMLElement | null = null;
-  #returnFocus: HTMLElement | null = null;
-
-  open(anchor: HTMLElement, items: readonly MenuItem[], returnFocus: HTMLElement, at?: { x: number; y: number }): void {
-    this.close();
-    const buttons = items.map((item) => {
-      const button = h(
-        "button",
-        { type: "button", role: "menuitem", tabindex: "-1", class: item.destructive ? "is-destructive" : null },
-        h("span", {}, item.label),
-        item.hint ? h("span", { class: "tree-menu-hint" }, item.hint) : null,
-      );
-      button.addEventListener("click", () => {
-        this.close(false);
-        item.run();
-      });
-      return button;
-    });
-    const subject = returnFocus.dataset["path"] ?? returnFocus.dataset["folder"] ?? "the file";
-    const menu = h("div", { class: "tree-menu", role: "menu", "aria-label": `Actions for ${subject}` }, ...buttons);
-    menu.addEventListener("keydown", (event) => this.#onKey(event, buttons));
-    document.body.append(menu);
-    const rect = anchor.getBoundingClientRect();
-    const x = Math.min(at?.x ?? rect.left, window.innerWidth - menu.offsetWidth - 8);
-    const y = Math.min(at?.y ?? rect.bottom + 2, window.innerHeight - menu.offsetHeight - 8);
-    menu.style.left = `${Math.max(x, 8)}px`;
-    menu.style.top = `${Math.max(y, 8)}px`;
-    this.#element = menu;
-    this.#anchor = anchor;
-    this.#returnFocus = returnFocus;
-    if (anchor.hasAttribute("aria-haspopup")) anchor.setAttribute("aria-expanded", "true");
-    document.addEventListener("pointerdown", this.#onPointer, true);
-    buttons[0]?.focus();
-  }
-
-  close(restoreFocus = true): void {
-    if (this.#element === null) return;
-    this.#element.remove();
-    this.#element = null;
-    this.#anchor?.removeAttribute("aria-expanded");
-    document.removeEventListener("pointerdown", this.#onPointer, true);
-    if (restoreFocus) this.#returnFocus?.focus();
-  }
-
-  #onKey(event: KeyboardEvent, buttons: readonly HTMLButtonElement[]): void {
-    const index = buttons.indexOf(event.target as HTMLButtonElement);
-    const moves: Record<string, number | undefined> = {
-      ArrowDown: (index + 1) % buttons.length,
-      ArrowUp: (index - 1 + buttons.length) % buttons.length,
-      Home: 0,
-      End: buttons.length - 1,
-    };
-    if (event.key === "Escape" || event.key === "Tab") {
-      event.preventDefault();
-      this.close();
-      return;
-    }
-    const target = moves[event.key];
-    if (target === undefined) return;
-    event.preventDefault();
-    buttons[target]?.focus();
-  }
-
-  readonly #onPointer = (event: PointerEvent): void => {
-    if (!this.#element?.contains(event.target as Node)) this.close(false);
-  };
 }

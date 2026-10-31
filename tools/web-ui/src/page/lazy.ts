@@ -12,3 +12,13 @@ export function openLazily<Module>(context: PageContext, load: () => Promise<Mod
     .then(open)
     .catch((error: unknown) => context.shell.announce(`could not open: ${messageOf(error)}`));
 }
+
+/** The module `load` fetches, or null when the fetch failed, which `announce` says. */
+export async function fetchChunk<Module>(announce: (message: string) => void, load: () => Promise<Module>): Promise<Module | null> {
+  try {
+    return await load();
+  } catch (error) {
+    announce(`could not load: ${messageOf(error)}`);
+    return null;
+  }
+}
