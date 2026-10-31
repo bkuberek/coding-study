@@ -1,0 +1,17 @@
+// The class that `cstudy submit` and the tests drive.
+//
+// TODO: replace this sketch with the reference of every level.
+
+export class {{class_name}} {
+  readonly #values = new Map<string, string>();
+
+  put(timestamp: number, key: string, value: string): string {
+    const previous = this.#values.get(key) ?? "";
+    this.#values.set(key, value);
+    return previous;
+  }
+
+  get(timestamp: number, key: string): string {
+    return this.#values.get(key) ?? "";
+  }
+}

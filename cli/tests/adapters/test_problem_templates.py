@@ -34,6 +34,26 @@ def test_the_python_project_template_has_a_starter_and_an_overlay_instead_of_a_g
     }
 
 
+PROJECT_TYPESCRIPT = "project-typescript"
+"""The TypeScript project template's directory, loaded by name until `TemplateName` lists it."""
+
+
+def test_the_typescript_project_template_has_a_starter_and_an_overlay_instead_of_a_generator():
+    files = set(PackagedProblemTemplates().files(PROJECT_TYPESCRIPT))
+    assert files == TEMPLATE_FILES - {"generator.py"} | {
+        "starter/README.md",
+        "starter/package.json",
+        "starter/tsconfig.json",
+        "starter/src/main.ts",
+        "solutions/reference/src/main.ts",
+    }
+
+
+def test_the_typescript_starters_build_files_drop_their_template_suffix():
+    files = PackagedProblemTemplates().files(PROJECT_TYPESCRIPT)
+    assert '"type": "module"' in files["starter/package.json"]
+
+
 def test_a_file_that_is_code_only_once_filled_in_drops_its_template_suffix():
     files = PackagedProblemTemplates().files(TemplateName.PROJECT_PYTHON)
     assert "class {{class_name}}:" in files["starter/app/main.py"]

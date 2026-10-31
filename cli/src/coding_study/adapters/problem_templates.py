@@ -2,9 +2,11 @@
 
 Shipping them as package data (like the SQLite migrations) keeps `cstudy new` working for any
 repository root, including one set by `CS_ROOT`. A file that tools would read where it ships
-ends in `.tmpl`, which its path in the new problem drops: a project starter's `pyproject.toml`,
-which ruff would take for the configuration of the templates, and code whose placeholders keep it
-from being valid until they are filled in, such as `class {{class_name}}:` in Python.
+ends in `.tmpl`, which its path in the new problem drops: a project starter's build files
+(`pyproject.toml`, `package.json`, `tsconfig.json`), which ruff, Node or tsc would take for the
+configuration of the templates, and code whose placeholders keep it from being valid until they
+are filled in, such as `class {{class_name}}:` in Python or `export class {{class_name}} {` in
+TypeScript.
 """
 
 from collections.abc import Iterator
