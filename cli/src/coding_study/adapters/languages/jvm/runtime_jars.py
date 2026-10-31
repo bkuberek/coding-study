@@ -17,8 +17,14 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from coding_study.adapters.file_lock import exclusive_lock, shared_lock
+from coding_study.domain.layout import BUILD_DIRECTORY
 
+LOCKS_DIRECTORY = f"{BUILD_DIRECTORY}/jvm-locks"
+"""The JVM builds' locks, relative to the workspace."""
 LOCK_FILE = "runtime.lock"
+RUNTIME_LOCK = f"{LOCKS_DIRECTORY}/{LOCK_FILE}"
+"""Relative to the workspace. The runtime refresh holds it exclusively while it rewrites the
+runtime's `runners/jvm` (adapters/runner_runtime.py), so no build reads sources half copied."""
 RECORD_FILE = "runtime-jars.txt"
 """What the sources and jars looked like after the last build under the exclusive lock."""
 BUILD_OUTPUT = "build"

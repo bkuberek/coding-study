@@ -41,6 +41,10 @@ BUILD_MODULE = "csbuild"
 MODULE_FILE = "go.mod"
 WORK_FILE = "go.work"
 LOCK_FILE = ".cstudy.lock"
+BUILD_LOCK = f"{BUILD_PROJECT}/{LOCK_FILE}"
+"""Relative to the workspace. Every Go build holds it from generation to the copy of its binary,
+and the runtime refresh while it rewrites the runtime's `runners/go`
+(adapters/runner_runtime.py), so no build reads sources half copied."""
 WARM_MARKER = ".warm"
 """Written after the first successful build: the standard library and the runner are cached."""
 COLD_NOTICE = "compiling the Go runner and standard library (first run)"

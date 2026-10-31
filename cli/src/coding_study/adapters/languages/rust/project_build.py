@@ -10,16 +10,18 @@ share `.cs/build/rust/target`, so a grade after a suite run compiles only the ha
 nothing is written into the project folder.
 
 The build holds an exclusive lock on its workspace while it writes, builds and copies the binaries
-it hands out, so a build by another `cstudy` process never changes them under a run.
+it hands out, so a build by another `cstudy` process never changes them under a run, and the
+runtime lock shared, so the runtime refresh never rewrites the crates Cargo reads.
 """
 
 import tomllib
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Generator, Iterable, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-from coding_study.adapters.file_lock import exclusive_lock
+from coding_study.adapters.file_lock import exclusive_lock, shared_lock
 from coding_study.adapters.languages.compiled_builds import (
     private_copies,
     relative,
@@ -29,6 +31,7 @@ from coding_study.adapters.languages.rust.bridge import BridgeTarget, bridge_sou
 from coding_study.adapters.languages.rust.build_files import (
     DEV,
     MANIFEST_FILE,
+    RUNTIME_LOCK,
     USER_CRATE,
     VENDOR_DIRECTORY,
     CompilerError,
@@ -140,7 +143,7 @@ class RustProjectBuild:
 
         Raises RunnerStartError when the build fails for a reason outside the project.
         """
-        with exclusive_lock(self._directory / LOCK_FILE):
+        with self._locked():
             try:
                 crate = self._crate()
             except ProjectBuildError as error:
@@ -161,7 +164,7 @@ class RustProjectBuild:
         for a failure outside the project.
         """
         excluded = frozenset(exclude)
-        with exclusive_lock(self._directory / LOCK_FILE):
+        with self._locked():
             crate = self._crate()
             self._write(crate, None)
             outcome = self._cargo(crate, SUITE_TARGETS)
@@ -181,6 +184,15 @@ class RustProjectBuild:
         ]
         targets = sorted((*built, *failed), key=lambda target: target.path)
         return BuiltTests(tuple(targets), scratch)
+
+    @contextmanager
+    def _locked(self) -> Generator[None]:
+        """The build workspace's lock, and the runtime lock shared with every other build."""
+        with (
+            exclusive_lock(self._directory / LOCK_FILE),
+            shared_lock(self._settings.workspace / RUNTIME_LOCK),
+        ):
+            yield
 
     def _harness_binary(
         self, signature: ClassSignature, crate: str, targets: list[BridgeTarget]

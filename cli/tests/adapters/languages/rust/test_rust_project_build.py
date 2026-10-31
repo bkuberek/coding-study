@@ -5,11 +5,14 @@ workspace path is written `{root}`."""
 import json
 import tomllib
 from collections.abc import Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
 
+from coding_study.adapters.file_lock import shared_lock
+from coding_study.adapters.languages.rust.build_files import RUNTIME_LOCK
 from coding_study.adapters.languages.rust.project_build import (
     ProjectBuildError,
     RustBuildSettings,
@@ -22,9 +25,11 @@ from coding_study.domain.errors import RunnerStartError
 from coding_study.domain.runs import UserError
 from coding_study.domain.signature import ClassSignature
 from tests.project_builders import BANK
+from tests.project_locks import lock_is_held
 
 RECORDED = Path(__file__).parent / "recorded"
 HOST = "aarch64-apple-darwin"
+WAIT_SECONDS = 10.0
 SLUG = "bank-project-rust"
 MANIFEST = '[package]\nname = "bank"\nedition = "2021"\n'
 SIGNATURE: ClassSignature = BANK
@@ -74,9 +79,13 @@ def project_build(
     workspace: Path, *outputs: tuple[int, str, str]
 ) -> tuple[RustProjectBuild, ReplayedCargo]:
     cargo = ReplayedCargo(workspace, list(outputs))
+    return build_with(workspace, cargo), cargo
+
+
+def build_with(workspace: Path, cargo: ReplayedCargo) -> RustProjectBuild:
     runtime = workspace / ".cs/runtime/runners/rust"
     settings = RustBuildSettings(workspace, runtime, cargo, lambda: HOST)
-    return RustProjectBuild(settings, SLUG, workspace / "projects" / SLUG), cargo
+    return RustProjectBuild(settings, SLUG, workspace / "projects" / SLUG)
 
 
 def build_directory(workspace: Path) -> Path:
@@ -172,6 +181,36 @@ def test_nothing_is_written_into_the_project_folder(workspace):
     build.harness(SIGNATURE)
     build.tests(())
     assert [path.name for path in (workspace / "projects" / SLUG).iterdir()] == ["Cargo.toml"]
+
+
+@dataclass
+class LockProbingCargo(ReplayedCargo):
+    """Records, at each build, whether the runtime lock was held."""
+
+    lock: Path = Path()
+    held: list[bool] = field(default_factory=list[bool])
+
+    def build(
+        self, arguments: Sequence[str], cwd: Path, environment: Mapping[str, str]
+    ) -> CargoOutcome:
+        self.held.append(lock_is_held(self.lock))
+        return super().build(arguments, cwd, environment)
+
+
+def test_the_grading_and_the_suite_build_under_the_runtime_lock(workspace):
+    """The runtime refresh then cannot rewrite the vendored crates while Cargo reads them."""
+    cargo = LockProbingCargo(workspace, [BUILT, SUITE], lock=workspace / RUNTIME_LOCK)
+    build = build_with(workspace, cargo)
+    build.harness(SIGNATURE)
+    build.tests(())
+    assert cargo.held == [True, True]
+
+
+def test_project_builds_share_the_runtime_lock(workspace):
+    build, _ = project_build(workspace, BUILT)
+    with ThreadPoolExecutor(max_workers=1) as pool, shared_lock(workspace / RUNTIME_LOCK):
+        harness = pool.submit(build.harness, SIGNATURE)
+        assert isinstance(harness.result(timeout=WAIT_SECONDS), Path)
 
 
 # grading

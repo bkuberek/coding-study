@@ -5,19 +5,26 @@ Gradle, uv and Node write next to what they build, and the runners bundled with 
 installed package, which must stay read-only. Each workspace therefore builds against a copy in
 `.cs/runtime/runners/`, kept in step with the content by a digest of the copied sources:
 changed files are rewritten, removed ones deleted, unchanged ones keep their timestamps (Gradle's
-up-to-date checks stay cheap) and build output in the copy survives. The runtime also holds the
-IntelliJ open-file launcher (`adapters/ide/launcher.py`), so whatever restores the runtime on a
-fresh clone restores the launcher too.
+up-to-date checks stay cheap) and build output in the copy survives. A compiled runner's copy
+changes under the lock its builds hold while they read it, so a build in another `cstudy` process
+never compiles sources half copied. The runtime also holds the IntelliJ open-file launcher
+(`adapters/ide/launcher.py`), so whatever restores the runtime on a fresh clone restores the
+launcher too.
 """
 
 import hashlib
 import json
 import os
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
+from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 from typing import cast
 
+from coding_study.adapters.file_lock import exclusive_lock
 from coding_study.adapters.ide.launcher import IdeLauncher
+from coding_study.adapters.languages.go.build_files import BUILD_LOCK as GO_BUILD_LOCK
+from coding_study.adapters.languages.jvm.runtime_jars import RUNTIME_LOCK as JVM_RUNTIME_LOCK
+from coding_study.adapters.languages.rust.build_files import RUNTIME_LOCK as RUST_RUNTIME_LOCK
 from coding_study.domain.errors import RunnerStartError
 
 RUNTIME_DIRECTORY = ".cs/runtime"
@@ -41,6 +48,13 @@ SKIPPED_DIRECTORIES = frozenset(
     }
 )
 """Never copied from the content, and never deleted from the copy."""
+BUILD_LOCKS: Mapping[str, str] = {
+    "jvm": JVM_RUNTIME_LOCK,
+    "go": GO_BUILD_LOCK,
+    "rust": RUST_RUNTIME_LOCK,
+}
+"""Per compiled runner, the lock (relative to the workspace) that its builds hold while they read
+its copy; the refresh holds it exclusively while it changes that copy."""
 
 
 class RunnerRuntime:
@@ -59,20 +73,43 @@ class RunnerRuntime:
 
     def ensure(self) -> Path:
         """Brings the copy and the IDE launcher in step with the content; returns the copy's
-        directory."""
+        directory. Only a runner whose copy changes waits for its builds' lock."""
         sources = self._sources()
         digest = self._digest(sources)
         self._launcher.install()
         if self._stamp() == digest:
             return self.directory
-        for relative, source in sources.items():
-            _copy_if_changed(source, self.directory / relative)
-        for relative, path in _files(self.directory):
-            if relative not in sources:
-                path.unlink()
+        for runner in self._out_of_step(sources):
+            with self._build_lock(runner):
+                self._sync(runner, sources)
         stamp = self._workspace / STAMP_FILE
         stamp.write_text(json.dumps({"format": STAMP_FORMAT, "digest": digest}) + "\n")
         return self.directory
+
+    def _out_of_step(self, sources: Mapping[str, Path]) -> list[str]:
+        """The runners, by their directory, whose copy has a file that differs from `sources`,
+        or lacks one, or has one too many."""
+        copies = dict(_files(self.directory))
+        differing = {
+            relative
+            for relative, source in sources.items()
+            if relative not in copies or copies[relative].read_bytes() != source.read_bytes()
+        }
+        differing |= copies.keys() - sources.keys()
+        return sorted({_runner(relative) for relative in differing})
+
+    def _build_lock(self, runner: str) -> AbstractContextManager[None]:
+        lock = BUILD_LOCKS.get(runner)
+        return nullcontext() if lock is None else exclusive_lock(self._workspace / lock)
+
+    def _sync(self, runner: str, sources: Mapping[str, Path]) -> None:
+        """One runner's copy, compared again: another process may have refreshed it."""
+        for relative, path in _files(self.directory):
+            if _runner(relative) == runner and relative not in sources:
+                path.unlink(missing_ok=True)
+        for relative, source in sources.items():
+            if _runner(relative) == runner:
+                _copy_if_changed(source, self.directory / relative)
 
     def _sources(self) -> dict[str, Path]:
         if not self._runners.is_dir():
@@ -115,6 +152,11 @@ def _files(directory: Path, prefix: str = "") -> Iterator[tuple[str, Path]]:
         for name in sorted(names):
             path = base / name
             yield f"{prefix}{path.relative_to(directory).as_posix()}", path
+
+
+def _runner(relative: str) -> str:
+    """The runner directory of a path relative to the runners directory."""
+    return relative.partition("/")[0]
 
 
 def _copy_if_changed(source: Path, target: Path) -> None:

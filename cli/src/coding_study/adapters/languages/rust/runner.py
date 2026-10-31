@@ -26,7 +26,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from shutil import rmtree
 
-from coding_study.adapters.file_lock import exclusive_lock
+from coding_study.adapters.file_lock import exclusive_lock, shared_lock
 from coding_study.adapters.languages.compiled_builds import (
     private_copy,
     relative,
@@ -43,6 +43,7 @@ from coding_study.adapters.languages.rust.bridge import (
 from coding_study.adapters.languages.rust.build_files import (
     DEV,
     MANIFEST_FILE,
+    RUNTIME_LOCK,
     VENDOR_DIRECTORY,
     CompilerError,
     compiler_errors,
@@ -286,7 +287,10 @@ class RustRunner:
 
     def _prepare(self, build: _Build, notify: ProgressNotice) -> PrepareResult:
         warm_marker = self._build_directory / (DEBUG_WARM_MARKER if build.debug else WARM_MARKER)
-        with exclusive_lock(self._build_directory / LOCK_FILE):
+        with (
+            exclusive_lock(self._build_directory / LOCK_FILE),
+            shared_lock(self._root / RUNTIME_LOCK),
+        ):
             warm = warm_marker.is_file()
             if not warm:
                 notify(DEBUG_COLD_NOTICE if build.debug else COLD_NOTICE)

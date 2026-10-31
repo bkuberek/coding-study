@@ -34,6 +34,7 @@ from coding_study.adapters.languages.jvm.runner import (
     WAIT_NOTICE,
     JvmRunner,
 )
+from coding_study.adapters.languages.jvm.runtime_jars import RUNTIME_LOCK
 from coding_study.adapters.subprocess_runner import SubprocessRunner
 from coding_study.application.ports import (
     BenchCode,
@@ -383,6 +384,14 @@ def build_side_by_side(root: Path, tmp_path: Path, gradle: ClassBuildingGradle) 
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         list(pool.map(build, [Language.JAVA, Language.KOTLIN]))
+
+
+def test_a_build_holds_the_lock_the_runtime_refresh_takes(root, tmp_path):
+    """The refresh then cannot rewrite the runner's sources while Gradle reads them."""
+    held: list[bool] = []
+    gradle = ClassBuildingGradle(root, on_build=lambda: held.append(lock_held(root / RUNTIME_LOCK)))
+    prepare(runner_on(root, Language.JAVA, gradle), references(tmp_path, TWO_SUM, Language.JAVA))
+    assert held == [True]
 
 
 def test_a_launch_loads_a_private_copy_of_the_runtime_jars(root, tmp_path):

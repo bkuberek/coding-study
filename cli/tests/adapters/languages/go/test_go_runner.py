@@ -12,6 +12,7 @@ import pytest
 from coding_study.adapters import workspace_setup
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.go.build_files import (
+    BUILD_LOCK,
     REGISTRATION_FILE,
     THUNK_FILE,
     VENDORED_MODULES,
@@ -36,6 +37,7 @@ from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.runs import RunRequest
 from tests.fakes import DELVE, FakeDebugServers
 from tests.helpers import FAKE_RUNNER_PROGRAM, REPOSITORY_ROOT
+from tests.project_locks import lock_is_held
 from tests.stub_contract import STUB_CASES
 
 TEMPLATE = Path(workspace_setup.__file__).parent / TEMPLATE_DIRECTORY
@@ -97,6 +99,27 @@ def prepared(result: PrepareResult) -> Prepared:
 
 def prepare_user(root: Path, go: FakeGo, meta: ProblemMeta = TWO_SUM) -> PrepareResult:
     return runner(root, go).prepare(UserCode(meta), lambda _: None)
+
+
+@dataclass
+class LockProbingGo(FakeGo):
+    """Records, at each build, whether the lock the runtime refresh takes was held."""
+
+    lock: Path = Path()
+    held: list[bool] = field(default_factory=list[bool])
+
+    def build(
+        self, arguments: Sequence[str], cwd: Path, environment: Mapping[str, str]
+    ) -> GoOutcome:
+        self.held.append(lock_is_held(self.lock))
+        return super().build(arguments, cwd, environment)
+
+
+def test_builds_hold_the_lock_the_runtime_refresh_takes(workspace):
+    """The refresh then cannot rewrite the runner's sources while the go command reads them."""
+    go = LockProbingGo(lock=workspace / BUILD_LOCK)
+    prepare_user(workspace, go)
+    assert set(go.held) == {True}
 
 
 def reference(root: Path, approach: str = "hash-map", text: str = SOLUTION) -> ReferenceSource:

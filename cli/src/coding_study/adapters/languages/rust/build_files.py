@@ -22,6 +22,7 @@ from coding_study.adapters.languages.rust.bridge import (
     Unavailable,
 )
 from coding_study.domain.errors import RunnerStartError
+from coding_study.domain.layout import BUILD_DIRECTORY
 from coding_study.domain.naming import RAW_IDENTIFIER_PREFIX
 from coding_study.domain.project import RUST_VENDORED_CRATES
 from coding_study.domain.workspace_projects import RUST_VENDORED_SOURCE
@@ -64,6 +65,10 @@ VENDOR_DIRECTORY = "vendor"
 COMPILER = "rustc"
 LINKER = "cc"
 """The vendored crates inside the runtime's `rust/` directory (runners/rust/vendor/README.md)."""
+RUNTIME_LOCK = f"{BUILD_DIRECTORY}/rust/runtime.lock"
+"""Relative to the workspace. Every Rust build, of practice files, references or a project, holds
+it shared while Cargo reads the runtime's crates, and the runtime refresh exclusively while it
+rewrites them (adapters/runner_runtime.py), so no build reads sources half copied."""
 VENDORED_SOURCE = RUST_VENDORED_SOURCE
 DECIMAL_DATE_CRATES: Mapping[str, str] = RUST_VENDORED_CRATES
 """The crates of `decimal` and `date`, declared as `cs_runner` declares them. A solution is a

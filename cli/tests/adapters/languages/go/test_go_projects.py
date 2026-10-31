@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from coding_study.adapters.languages.context import LanguageContext
-from coding_study.adapters.languages.go.build_files import COLD_NOTICE
+from coding_study.adapters.languages.go.build_files import BUILD_LOCK, COLD_NOTICE
 from coding_study.adapters.languages.go.runner import GoRunner
 from coding_study.adapters.languages.go.toolchain import (
     GO_ENVIRONMENT,
@@ -30,6 +30,7 @@ from coding_study.domain.project import Project
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
 from tests.fakes import DELVE, FakeDebugServers
 from tests.project_builders import project_meta
+from tests.project_locks import lock_is_held
 
 META = project_meta(language=Language.GO)
 SLUG = META.slug
@@ -268,6 +269,28 @@ def test_the_suite_runner_is_built_once_without_a_target(workspace):
         "./cmd/suite",
     ]
     assert "runner.Main(nil, nil, nil)" in main
+
+
+@dataclass
+class LockProbingGo(FakeGo):
+    """Records, at each build, whether the lock the runtime refresh takes was held."""
+
+    lock: Path = Path()
+    held: list[bool] = field(default_factory=list[bool])
+
+    def build(
+        self, arguments: Sequence[str], cwd: Path, environment: Mapping[str, str]
+    ) -> GoOutcome:
+        self.held.append(lock_is_held(self.lock))
+        return super().build(arguments, cwd, environment)
+
+
+def test_project_builds_hold_the_lock_the_runtime_refresh_takes(workspace):
+    """The refresh then cannot rewrite the runner's sources while the go command reads them."""
+    go = LockProbingGo(lock=workspace / BUILD_LOCK)
+    grade(workspace, go)
+    suite(workspace, go)
+    assert set(go.held) == {True}
 
 
 def test_the_first_suite_also_compiles_the_testing_packages(workspace):

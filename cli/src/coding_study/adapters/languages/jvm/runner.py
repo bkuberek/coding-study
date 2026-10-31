@@ -29,7 +29,7 @@ from coding_study.adapters.languages.jvm.gradle import (
 )
 from coding_study.adapters.languages.jvm.reference_build import REFERENCE_PROJECT, ReferenceBuild
 from coding_study.adapters.languages.jvm.run_classes import RUNS_DIRECTORY, RunClasses
-from coding_study.adapters.languages.jvm.runtime_jars import RuntimeJars
+from coding_study.adapters.languages.jvm.runtime_jars import LOCKS_DIRECTORY, RuntimeJars
 from coding_study.application.ports import (
     BenchCode,
     BuildFailed,
@@ -48,12 +48,7 @@ from coding_study.application.ports import (
 )
 from coding_study.domain.debugging import DebugSession
 from coding_study.domain.errors import ContentError, ContentIssue, RunnerStartError
-from coding_study.domain.layout import (
-    BUILD_DIRECTORY,
-    JVM_PROJECT,
-    reference_build_path,
-    watch_path,
-)
+from coding_study.domain.layout import JVM_PROJECT, reference_build_path, watch_path
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
 
@@ -91,7 +86,6 @@ WARMUP_PROJECTS = "project-warmup"
 WARMUP_CLASSPATH = SUITE_CLASSPATH_FILE
 JAR_SUFFIX = ".jar"
 LOCK_DIGEST_LENGTH = 12
-LOCKS_DIRECTORY = f"{BUILD_DIRECTORY}/jvm-locks"
 REFERENCES_LOCK = "references"
 PRACTICE_LOCK = "practice"
 WAIT_NOTICE = "waiting for another cstudy build in this workspace"

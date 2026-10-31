@@ -1,10 +1,15 @@
 """The per-workspace copy of the runners (installation-and-workspaces.md#runner-runtime)."""
 
 import os
+from concurrent.futures import Future, ThreadPoolExecutor, wait
 from pathlib import Path
 
 import pytest
 
+from coding_study.adapters.file_lock import exclusive_lock, shared_lock
+from coding_study.adapters.languages.go.build_files import BUILD_LOCK as GO_BUILD_LOCK
+from coding_study.adapters.languages.jvm.runtime_jars import RUNTIME_LOCK as JVM_RUNTIME_LOCK
+from coding_study.adapters.languages.rust.build_files import RUNTIME_LOCK as RUST_RUNTIME_LOCK
 from coding_study.adapters.runner_runtime import RUNTIME_RUNNERS, RunnerRuntime
 from coding_study.domain.errors import RunnerStartError
 
@@ -21,6 +26,9 @@ SOURCES = {
 }
 OLD_NS = 1_000_000_000
 LAUNCHER = ".cs/runtime/ide/cstudy-launcher.jar"
+WAIT_SECONDS = 10.0
+SETTLE_SECONDS = 0.2
+"""Far longer than a refresh of these few files takes when nothing holds it up."""
 
 
 @pytest.fixture
@@ -141,3 +149,71 @@ def test_ensure_restores_the_ide_launcher_of_an_up_to_date_copy(runtime, workspa
     (workspace / LAUNCHER).unlink()
     runtime.ensure()
     assert (workspace / LAUNCHER).is_file()
+
+
+# The refresh and the builds that read the copy (docs/specs/runners.md#jvm-build-details).
+# A build holds its runtime's lock while it reads the copy: shared for the JVM and Rust,
+# exclusively for Go, whose builds take turns anyway.
+
+BUILD_LOCKS = [
+    pytest.param("jvm/runner/Main.java", JVM_RUNTIME_LOCK, shared_lock, id="jvm"),
+    pytest.param("go/runner.go", GO_BUILD_LOCK, exclusive_lock, id="go"),
+    pytest.param("rust/cs_runner/src/lib.rs", RUST_RUNTIME_LOCK, shared_lock, id="rust"),
+]
+
+
+def write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text)
+
+
+def still_running(future: Future[Path]) -> bool:
+    """Whether `future` is unfinished after an unhindered refresh of these files would be done."""
+    done, _ = wait([future], timeout=SETTLE_SECONDS)
+    return not done
+
+
+@pytest.mark.parametrize(("source", "lock", "build_lock"), BUILD_LOCKS)
+def test_the_refresh_leaves_a_copy_alone_while_a_build_reads_it(
+    runtime, runners, workspace, source, lock, build_lock
+):
+    write(runners / source, "before\n")
+    runtime.ensure()
+    write(runners / source, "after\n")
+    copy = workspace / RUNTIME_RUNNERS / source
+    with ThreadPoolExecutor(max_workers=1) as pool, build_lock(workspace / lock):
+        refresh = pool.submit(runtime.ensure)
+        assert (still_running(refresh), copy.read_text()) == (True, "before\n")
+
+
+@pytest.mark.parametrize(("source", "lock", "build_lock"), BUILD_LOCKS)
+def test_the_refresh_changes_the_copy_once_the_build_ends(
+    runtime, runners, workspace, source, lock, build_lock
+):
+    write(runners / source, "before\n")
+    runtime.ensure()
+    write(runners / source, "after\n")
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with build_lock(workspace / lock):
+            refresh = pool.submit(runtime.ensure)
+        refresh.result(timeout=WAIT_SECONDS)
+    assert (workspace / RUNTIME_RUNNERS / source).read_text() == "after\n"
+
+
+def test_the_refresh_deletes_a_removed_source_only_once_the_build_ends(runtime, runners, workspace):
+    runtime.ensure()
+    (runners / "jvm" / "settings.gradle.kts").unlink()
+    copy = workspace / RUNTIME_RUNNERS / "jvm" / "settings.gradle.kts"
+    with ThreadPoolExecutor(max_workers=1) as pool, shared_lock(workspace / JVM_RUNTIME_LOCK):
+        refresh = pool.submit(runtime.ensure)
+        assert (still_running(refresh), copy.is_file()) == (True, True)
+
+
+def test_a_refresh_that_leaves_a_copy_alone_does_not_wait_for_its_builds(
+    runtime, runners, workspace
+):
+    runtime.ensure()
+    (runners / "typescript" / "runner.ts").write_text("export const changed = 1;\n")
+    with ThreadPoolExecutor(max_workers=1) as pool, exclusive_lock(workspace / JVM_RUNTIME_LOCK):
+        refresh = pool.submit(runtime.ensure)
+        assert refresh.result(timeout=WAIT_SECONDS) == runtime.directory

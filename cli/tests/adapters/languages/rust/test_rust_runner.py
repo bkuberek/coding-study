@@ -5,12 +5,15 @@ import json
 import os
 import socket
 from collections.abc import Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import pytest
 
+from coding_study.adapters.file_lock import shared_lock
 from coding_study.adapters.languages.context import LanguageContext
+from coding_study.adapters.languages.rust.build_files import RUNTIME_LOCK
 from coding_study.adapters.languages.rust.runner import COLD_NOTICE, DEBUG_COLD_NOTICE, RustRunner
 from coding_study.adapters.languages.rust.toolchain import CargoOutcome
 from coding_study.adapters.subprocess_runner import SubprocessRunner
@@ -30,6 +33,7 @@ from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.runs import RunRequest
 from tests.fakes import DEBUGSERVER, FakeDebugServers
 from tests.helpers import FAKE_RUNNER_PROGRAM
+from tests.project_locks import lock_is_held
 from tests.stub_contract import STUB_CASES
 
 TWO_SUM = next(case.meta for case in STUB_CASES if case.name == "two-sum")
@@ -37,6 +41,7 @@ LRU_CACHE = next(case.meta for case in STUB_CASES if case.name == "lru-cache")
 SOLUTION = "pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {\n    vec![]\n}\n"
 HOST = "aarch64-apple-darwin"
 RECORDED = Path(__file__).parent / "recorded"
+WAIT_SECONDS = 10.0
 
 
 def recorded(name: str, root: Path) -> CargoOutcome:
@@ -219,6 +224,38 @@ def test_unchanged_generated_files_keep_their_timestamps(workspace):
     os.utime(main, (1, 1))
     prepare_user(workspace, FakeCargo())
     assert main.stat().st_mtime == 1
+
+
+@dataclass
+class LockProbingCargo(FakeCargo):
+    """Records, at each build, whether the runtime lock was held."""
+
+    lock: Path = Path()
+    held: list[bool] = field(default_factory=list[bool])
+
+    def build(
+        self, arguments: Sequence[str], cwd: Path, environment: Mapping[str, str]
+    ) -> CargoOutcome:
+        self.held.append(lock_is_held(self.lock))
+        return super().build(arguments, cwd, environment)
+
+
+def test_cargo_builds_under_the_runtime_lock(workspace):
+    """The runtime refresh then cannot rewrite the runner crates while Cargo reads them."""
+    cargo = LockProbingCargo(lock=workspace / RUNTIME_LOCK)
+    prepare_user(workspace, cargo)
+    assert cargo.held == [True]
+
+
+def test_builds_share_the_runtime_lock(workspace):
+    with ThreadPoolExecutor(max_workers=1) as pool, shared_lock(workspace / RUNTIME_LOCK):
+        build = pool.submit(prepare_user, workspace, FakeCargo())
+        assert isinstance(build.result(timeout=WAIT_SECONDS), Prepared)
+
+
+def test_the_runtime_lock_is_released_after_the_build(workspace):
+    prepare_user(workspace, FakeCargo())
+    assert not lock_is_held(workspace / RUNTIME_LOCK)
 
 
 def test_a_symbol_missing_from_the_file_is_built_again_without_it(workspace):
