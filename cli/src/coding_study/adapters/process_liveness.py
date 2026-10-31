@@ -20,19 +20,57 @@ PROCESS_LIST = ("ps", "-axww", "-o", "pid=,args=")
 """Every process and the command line it started with, on macOS. Linux reads `PROC_ROOT` instead:
 BusyBox's `ps` (Alpine) rejects `-x` and would list nothing."""
 PROC_ROOT = Path("/proc")
+PROCESS_STATE = ("ps", "-o", "stat=", "-p")
+"""One process's state, on macOS (`Z` begins a zombie's). Linux reads `PROC_ROOT` instead."""
+ZOMBIE_STATE = "Z"
 PROCESS_LIST_TIMEOUT_SECONDS = 10.0
 EXIT_POLL_SECONDS = 0.01
 GUARD_READ_BYTES = 4096
 
 
 def is_alive(pid: int) -> bool:
+    """Whether `pid` runs. A zombie, which has ended and waits for a parent to collect it, is
+    dead: where nothing reaps orphans (a container without an init process) it would stay
+    forever."""
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
     except PermissionError:
-        return True
-    return True
+        pass
+    return not _is_zombie(pid)
+
+
+def _is_zombie(pid: int, proc_root: Path | None = None) -> bool:
+    proc_root = proc_root or PROC_ROOT
+    if proc_root.is_dir():
+        return _proc_state(proc_root, pid) == ZOMBIE_STATE
+    return _listed_state(pid).startswith(ZOMBIE_STATE)
+
+
+def _proc_state(proc_root: Path, pid: int) -> str:
+    """The state letter of `/proc/<pid>/stat`: the field after the command name, which may hold
+    spaces and parentheses, so it follows the last parenthesis."""
+    try:
+        stat = (proc_root / str(pid) / "stat").read_text(errors="replace")
+    except OSError:
+        return ""
+    fields = stat.rpartition(")")[2].split()
+    return fields[0] if fields else ""
+
+
+def _listed_state(pid: int) -> str:
+    try:
+        return subprocess.run(
+            (*PROCESS_STATE, str(pid)),
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=PROCESS_LIST_TIMEOUT_SECONDS,
+            check=False,
+        ).stdout.strip()
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
 
 
 def kill_processes_started_from(directory: Path | None, grace_seconds: float) -> None:

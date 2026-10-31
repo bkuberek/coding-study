@@ -12,7 +12,9 @@ import pytest
 from coding_study.adapters import process_liveness
 from coding_study.adapters.process_liveness import (
     OrphanGuard,
+    _is_zombie,
     _started_from,
+    is_alive,
     kill_processes_started_from,
 )
 from tests.process_table import (
@@ -27,6 +29,7 @@ GRACE_SECONDS = 0.1
 """Short: a killed child of this test stays a zombie until the test waits for it."""
 ENDED_BY_KILL = -signal.SIGKILL
 SLEEP_FOR_A_MINUTE = "import time; time.sleep(60)"
+GRACE_PERIOD_TO_SKIP_SECONDS = 5.0
 
 
 # Processes left behind by a debug server that let go of its runner.
@@ -259,3 +262,69 @@ def test_watching_with_a_guard_someone_killed_is_no_error(sleeper):
         os.kill(killed.pid, signal.SIGKILL)
         time.sleep(GRACE_SECONDS)
         guard.watch(sleeper.pid)
+
+
+# A zombie is dead: nothing but its parent can still reap it.
+
+
+def a_zombie(processes: list[subprocess.Popen[bytes]]) -> subprocess.Popen[bytes]:
+    """A child that exited and that nobody waited for, which stays in the process table."""
+    child = subprocess.Popen([sys.executable, "-c", "pass"], stdout=subprocess.PIPE)
+    processes.append(child)
+    assert child.stdout is not None
+    child.stdout.read()
+    time.sleep(0.1)
+    return child
+
+
+def test_a_zombie_is_not_alive(started):
+    assert not is_alive(a_zombie(started).pid)
+
+
+def test_a_running_process_is_alive(tmp_path, started):
+    assert is_alive(start_in(tmp_path / "scratch", started).pid)
+
+
+def test_a_process_that_is_gone_is_not_alive(started):
+    child = a_zombie(started)
+    child.wait()
+    assert not is_alive(child.pid)
+
+
+def test_the_cleanup_does_not_wait_the_grace_period_for_the_zombies_it_makes(tmp_path, started):
+    """The test is the parent of what it kills, so the victim stays a zombie."""
+    start_in(tmp_path / "scratch", started)
+    begun = time.monotonic()
+    kill_processes_started_from(tmp_path / "scratch", GRACE_PERIOD_TO_SKIP_SECONDS)
+    assert time.monotonic() - begun < GRACE_PERIOD_TO_SKIP_SECONDS / 2
+
+
+# Linux: the state is the first field after the command name in `/proc/<pid>/stat`.
+
+
+def fake_stat(root: Path, pid: int, stat: str) -> Path:
+    entry = root / str(pid)
+    entry.mkdir(parents=True)
+    (entry / "stat").write_text(stat)
+    return root
+
+
+def test_the_proc_state_z_is_a_zombie(tmp_path):
+    proc = fake_stat(tmp_path / "proc", 5, "5 (python3) Z 1 5 5 0 -1 4228")
+    assert _is_zombie(5, proc)
+
+
+def test_the_proc_state_s_is_no_zombie(tmp_path):
+    proc = fake_stat(tmp_path / "proc", 5, "5 (python3) S 1 5 5 0 -1 4228")
+    assert not _is_zombie(5, proc)
+
+
+def test_a_command_name_with_spaces_and_parentheses_does_not_hide_the_state(tmp_path):
+    """The name can be `a) Z (b`; the state follows the last parenthesis."""
+    proc = fake_stat(tmp_path / "proc", 5, "5 (a) Z (b) S 1 5 5 0 -1 4228")
+    assert not _is_zombie(5, proc)
+
+
+def test_a_process_with_no_proc_entry_is_no_zombie(tmp_path):
+    (tmp_path / "proc").mkdir()
+    assert not _is_zombie(5, tmp_path / "proc")
