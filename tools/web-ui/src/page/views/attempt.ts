@@ -26,6 +26,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
   const tabs = new EditorTabs(context, id);
   const unsubscribe = context.onPreferences((preferences) => tabs.applyPreferences(preferences));
   let timer: number | undefined;
+  let files: FileTreePanel | null = null;
 
   void Promise.all([api.get<AttemptStatus>(`/api/v1/attempts/${id}`), api.get<Tree>(`/api/v1/attempts/${id}/files`)])
     .then(async ([status, tree]) => {
@@ -43,8 +44,9 @@ export function attemptView(context: PageContext, id: number): Cleanup {
       tick();
       timer = window.setInterval(tick, TICK_MS);
       page.removeAttribute("aria-busy");
-      const files = new FileTreePanel(tree, tabs.files, (path) => void tabs.open(path));
-      tabs.onSaved(() => void files.refresh().catch(() => {}));
+      files = new FileTreePanel({ attempt: status, tree, tabs, announce: (message) => shell.announce(message) });
+      const panel = files;
+      tabs.onSaved(() => void panel.refresh().catch(() => {}));
       page.replaceChildren(
         head(status, clock),
         files.element,
@@ -68,6 +70,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
     window.clearInterval(timer);
     unsubscribe();
     tabs.destroy();
+    files?.destroy();
   };
 }
 

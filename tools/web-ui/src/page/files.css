@@ -147,6 +147,118 @@
   cursor: default;
 }
 
+/* the tree's actions: the tools by the root, a menu button per file, the menu itself */
+
+.files-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 6px;
+  margin-bottom: 8px;
+}
+
+.files-head .files-root {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+}
+
+.tree-tools {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.tree-tool {
+  padding: 0 5px;
+  font-size: var(--text-xs);
+}
+
+.tree-tool:hover {
+  color: var(--accent);
+}
+
+.tree-notice {
+  margin: 0 0 8px;
+  padding: 4px 8px;
+  border-left: 3px solid var(--fail);
+  background: var(--paper-raised);
+  color: var(--fail);
+  font-size: var(--text-xs);
+}
+
+/* the menu button lies over the row's right end, so it never narrows the file's name */
+.tree-row {
+  position: relative;
+  display: block;
+}
+
+.tree-more {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--paper-sunken);
+  color: var(--ink-soft);
+  line-height: 1.4;
+  opacity: 0;
+  transform: translateY(-50%);
+}
+
+.tree-row:hover .tree-more,
+.tree-row:focus-within .tree-more,
+.tree-more[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.tree-more:hover {
+  color: var(--accent);
+}
+
+.tree-menu {
+  position: fixed;
+  z-index: 20;
+  display: grid;
+  min-width: 220px;
+  padding: 4px;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.2);
+  font-size: var(--text-s);
+}
+
+.tree-menu [role="menuitem"] {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  text-align: left;
+}
+
+.tree-menu [role="menuitem"]:hover,
+.tree-menu [role="menuitem"]:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}
+
+.tree-menu .is-destructive {
+  color: var(--fail);
+}
+
+.tree-menu-hint {
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+}
+
 /* dialogs */
 
 .file-dialog {
