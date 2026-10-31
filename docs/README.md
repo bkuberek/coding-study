@@ -1,6 +1,6 @@
 # coding-study documentation
 
-coding-study is a local, IDE-first interview-prep system: original problems stored as data, solved in your own editor in Python, TypeScript, Java, Kotlin, Go or Rust, and driven by a CLI (`cstudy`) that tests, benchmarks, explains and schedules reviews. To install it and start practicing, read the [README](../README.md); to change it, read [CONTRIBUTING](../CONTRIBUTING.md).
+coding-study is a local, IDE-first interview-prep system: original problems stored as data, solved in your own editor in Python, TypeScript, Java, Kotlin, Go or Rust, and driven by a CLI (`cstudy`) that tests, benchmarks, explains and schedules reviews, in the terminal or through the local page `cstudy serve` serves. To install it and start practicing, read the [README](../README.md); to change it, read [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## Reading order
 
@@ -23,6 +23,7 @@ coding-study is a local, IDE-first interview-prep system: original problems stor
 | [catalog](specs/catalog.md) | Binding manifest of every item: ids, slugs, titles, patterns, difficulty, kind, batch, owner stream | Writing content in a stream, or adding to the catalog |
 | [versioning](specs/versioning.md) | Commit types and version bumps, the version workflow, `CHANGELOG.md`, `cstudy --version`, the GitHub release and the Homebrew tap | Committing, or changing how releases are versioned or published |
 | [authoring](specs/authoring.md) | Authoring workflow, `problem.md` and `explanation.md` formats, ready criteria, every `cstudy verify` check | Writing or reviewing a problem |
+| [web-ui](specs/web-ui.md) | `cstudy serve`: the local page, its API v1, runs and jobs as server-sent events, the security model, file API rules, page behaviour, mocks, solutions, preferences and assets | Building or changing the web UI |
 | [installation-and-workspaces](specs/installation-and-workspaces.md) | Packaging, content and workspace resolution, `cstudy init`, the runner runtime, project folders, IDE files, your own problems | Installing `cstudy`, setting up a workspace, or changing where files live |
 
 ## Guides
@@ -49,6 +50,7 @@ coding-study is a local, IDE-first interview-prep system: original problems stor
 | [0012](decisions/0012-go-and-rust.md) | Go and Rust are required of every problem, after a per-problem backfill; compiled runners, exhaustive language dispatch |
 | [0013](decisions/0013-homebrew-distribution.md) | Each release attaches the wheel and a hashed requirements file to a GitHub release, and the workflow points the `cstudy` formula in `bkuberek/homebrew-tap` at them |
 | [0014](decisions/0014-project-problems.md) | Project problems are seeded folders in one language, solved in levels: native tests generated from `tests.json` for feedback, `cstudy submit` grades and opens levels |
+| [0015](decisions/0015-local-web-ui.md) | A local web UI, `cstudy serve`, with full practice parity: every action calls the CLI's use case or runs its command, and runs stream live for every kind |
 
 ## Conventions
 

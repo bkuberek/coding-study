@@ -11,7 +11,8 @@ The CLI is a hexagonal application: a pure domain core (problems, attempts, sche
 | TypeScript runner | `runners/typescript/` | TypeScript on Node 24 | `runner.ts` and `support.ts` (the node classes and `Decimal`); erasable syntax only |
 | JVM runner | `runners/jvm/` | Java 21, Gradle included build | `cs.runner.Main` and `cs.support.*`; serves Java and Kotlin |
 | Content | `problems/`, `tracks/` | YAML, JSON, Markdown, code | Problems, tests, references, explanations, generators |
-| Schemas | `schemas/` | JSON Schema | `meta.schema.json`, `tests.schema.json`, `item.schema.json`, `conformance.schema.json`; hand-maintained source of truth for validation (`jsonschema`) and editor completion. `events.schema.json` describes the lines of `cstudy test --events` and `cstudy submit --events` ([event stream](specs/cli.md#event-stream)) for programs that read them |
+| Web UI | `cli/src/coding_study/entrypoints/web/`, sources in `tools/web-ui/` | Python (Starlette on uvicorn); TypeScript and CodeMirror 6, built and committed | `cstudy serve`: the local page, a second driving adapter ([below](#web-adapter), [web-ui](specs/web-ui.md)) |
+| Schemas | `schemas/` | JSON Schema | `meta.schema.json`, `tests.schema.json`, `item.schema.json`, `conformance.schema.json`; hand-maintained source of truth for validation (`jsonschema`) and editor completion. `events.schema.json` describes the lines of `cstudy test --events` and `cstudy submit --events` ([event stream](specs/cli.md#event-stream)) for programs that read them, and `web-api.schema.json` the web API's own documents |
 | Workspace templates | `cli/src/coding_study/adapters/workspace_template/` | 3 real projects | What `cstudy init` copies into a workspace |
 | Workspace | anywhere, outside this repository ([installation-and-workspaces](specs/installation-and-workspaces.md)) | 4 real projects | The user's code, notes and own problems, versioned on their own |
 | Progress | `<workspace>/progress.db` | SQLite | Attempts, test runs, schedule, bench runs |
@@ -23,6 +24,7 @@ The CLI is a hexagonal application: a pure domain core (problems, attempts, sche
 flowchart LR
   subgraph Driving
     CLI[Typer CLI entrypoint]
+    WEB[Web adapter: cstudy serve]
   end
   subgraph Application
     UC[Use cases]
@@ -41,6 +43,8 @@ flowchart LR
     CLK[SystemClock]
   end
   CLI --> UC --> D
+  WEB --> UC
+  WEB -->|child cstudy per run| CLI
   UC --> FS & DB & RUN & GEN & WS & PY & ED & CLK
 ```
 
@@ -71,6 +75,19 @@ Dependencies point inward. Ports are Python `Protocol` classes in `cli/src/codin
 
 An `import-linter` contract in `cli/.importlinter` enforces the table (NFR-8).
 
+### Web adapter
+
+`cstudy serve` is a second driving adapter beside the Typer CLI ([ADR 0015](decisions/0015-local-web-ui.md), [web-ui](specs/web-ui.md)). It reaches the application in two ways: reads and small writes call use cases in-process, through one worker thread; runs and long jobs start a child `python -m coding_study …` and relay its output, so the terminal and the page run the same command.
+
+| Rule | Detail |
+|------|--------|
+| Package | `coding_study.entrypoints.web`, beside `entrypoints.commands`; it may import every layer, as entrypoints do |
+| Lazy import | `entrypoints/commands/serve.py` imports `entrypoints.web` inside the command function only, so no other command loads Starlette or uvicorn (NFR-2); a test checks `sys.modules` after importing `coding_study.entrypoints.cli` |
+| Import contracts | `starlette` and `uvicorn` join the forbidden modules of the domain and application contracts, and a new contract forbids them to `coding_study.adapters` |
+| New use cases | `application/attempt_files.py` (an attempt's files: tree, read, save, create, move, delete) and `application/problem_history.py` (shared with `cstudy history`); `project_status` grows into `attempt_status` for every kind |
+| New port methods | `Workspace.read_within`, `delete_within` and `move_within`, beside `write_within`, none following a link |
+| No new judging | The adapter never runs user code and never compares an output; it relays `--events` lines unchanged |
+
 ### Languages
 
 `Language` has six members. `ALL_LANGUAGES` is what a problem lists by default and what every "all languages" default, coverage line and IDE action means; a problem lists fewer only where a language cannot express it (check S13) or on the concurrency and debugging tracks (`LANGUAGE_SUBSET_TRACKS`); a project problem lists exactly one ([ADR 0014](decisions/0014-project-problems.md)), and code that branches on `ProblemKind` uses the same exhaustive `match`. `CORE_LANGUAGES` (Python, TypeScript, Java, Kotlin) are the languages whose toolchains every workspace needs: `cstudy doctor` fails without them, and only warns about Go and Rust ([ADR 0012](decisions/0012-go-and-rust.md)). Code that branches on a language uses an exhaustive `match` ending in `assert_never`, and `tests/test_language_tables.py` fails when a table keyed by `Language` lacks a row.
@@ -92,6 +109,8 @@ The adapter registry holds one stub generator and one runner per language that h
 | `StartMock` | `cstudy mock` |
 | `ExportProgress`, `ImportProgress` | `cstudy export`, `cstudy import` |
 | `InitWorkspace` | `cstudy init` |
+| `AttemptStatus`, `ProblemHistory` | `cstudy status`, `cstudy history` |
+| `AttemptFiles` | The web UI's editor and file tree |
 
 ### CLI libraries
 
@@ -102,7 +121,9 @@ The adapter registry holds one stub generator and one runner per language that h
 | YAML | PyYAML (`safe_load`) |
 | Schema validation | `jsonschema` |
 | File watching | `watchfiles` |
-| Tests, lint, types | pytest, ruff, pyright, import-linter |
+| Web server (`cstudy serve` only) | Starlette on uvicorn, without uvicorn's `standard` extra |
+| Markdown to HTML (`cstudy serve` only) | markdown-it-py and Pygments, already installed with Rich |
+| Tests, lint, types | pytest, ruff, pyright, import-linter; httpx for Starlette's test client and Playwright in an optional group, for the web UI |
 
 ## Data flow: `cstudy start two-sum --lang kotlin`
 
@@ -152,6 +173,29 @@ sequenceDiagram
 
 The runner never receives expected values. Comparison, time-limit verdicts and reporting are core logic.
 
+## Data flow: a test run from the page
+
+```mermaid
+sequenceDiagram
+  participant T as Browser tab
+  participant S as cstudy serve
+  participant C as Child cstudy
+  participant R as Runner
+  T->>S: POST /api/v1/runs (attempt, test, options)
+  S->>S: Pre-checks in-process; take the attempt's run slot
+  S->>C: python -m coding_study test SLUG --lang L --events
+  S-->>T: 201 with the run id
+  T->>S: GET /api/v1/runs/ID/events
+  C->>R: The job, as cstudy test runs it
+  R-->>C: case_start, case_result
+  C-->>S: One event line per start and judged result
+  S-->>T: One server-sent event per line, data unchanged
+  C-->>S: run_end, then exit
+  S-->>T: closed, with the exit code; the slot frees
+```
+
+Cancel sends the child SIGINT, which ends the run as Ctrl-C does ([web-ui](specs/web-ui.md#cancel)).
+
 ## Repository layout
 
 ```text
@@ -171,6 +215,7 @@ coding-study/
     conformance/            # fixture problems for every DSL type and error path, expectations.json
   schemas/                  # meta, tests, item, conformance and events JSON Schemas
   tools/ide-launcher/       # source and reproducible build of the IntelliJ open-file launcher (its jar ships in adapters/ide/)
+  tools/web-ui/             # sources, lockfile and build of the web UI front end (its bundle ships in entrypoints/web/static/)
   problems/<id>-<slug>/     # autograded content (format: specs/problem-format.md)
   tracks/                   # non-autograded content (system design, code review, behavioral)
 ```
@@ -229,6 +274,7 @@ The workspace's `.cs/` (ignored by its `.gitignore`, except the `workspace.toml`
 | `.cs/calibration/<lang>/<slug>.json` | Reference per-case timings for time limits | Hash of reference file, tests, runtime version, machine id |
 | `.cs/build/<lang>/` | Materialized references for verify and bench; in Go and Rust also the generated build and its runner binaries ([Go](specs/runners.md#go-build-details), [Rust](specs/runners.md#rust-build-details)) | Rebuilt on change |
 | `.cs/runs/<run_id>/` | Request and result files | Keep last 20 |
+| `.cs/serve/` | The web UI's `preferences.json`, and the redirect file `<port>.html` that `cstudy serve --open` writes ([web-ui](specs/web-ui.md#preferences)) | Preferences kept; the redirect file removed when the server stops |
 | `.cs/runtime/` | The runner runtime: a copy of the content's `runners/{python,typescript,jvm,go}` with its build output, and `stamp.json` | Digest of the copied sources; refreshed before the first runner of a command, by `cstudy init` and by `cstudy doctor --fix` |
 
 ### Index cache

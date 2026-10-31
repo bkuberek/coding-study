@@ -17,7 +17,8 @@ When several installs exist, the first `cstudy` on `PATH` runs; Homebrew warns w
 | Item | Rule |
 |------|------|
 | Distribution | `coding-study`, defined by the root `pyproject.toml` (hatchling); the `cstudy` script |
-| Wheel | `coding_study/` from `cli/src/coding_study/`, plus `coding_study/content/{problems,tracks,runners,schemas}` from the repository root |
+| Wheel | `coding_study/` from `cli/src/coding_study/`, the web UI's built assets in `coding_study/entrypoints/web/static/` included ([Web UI assets](#web-ui-assets)), plus `coding_study/content/{problems,tracks,runners,schemas}` from the repository root |
+| Runtime dependencies | Those in `uv.lock`, which include starlette, uvicorn (without its `standard` extra) and h11 for `cstudy serve`: pure-Python wheels, so the Homebrew formula needs no change ([ADR 0015](../decisions/0015-local-web-ui.md)) |
 | Release files | The wheel and `requirements.txt` (the runtime dependencies from `uv.lock`, with hashes), attached to the GitHub release of each version ([versioning](versioning.md#github-release)) |
 | sdist | The same top-level paths as the checkout (`cli/src`, `problems`, `tracks`, `runners`, `schemas`), so a wheel built from the sdist equals one built from the checkout |
 | Excluded | Build output and caches (`node_modules`, `build`, `.gradle`, `.kotlin`, `.venv`, `__pycache__`, `.pytest_cache`, `.ruff_cache`, `target`) and `runners/python/tests` |
@@ -67,6 +68,7 @@ created_with = "0.1.0"
   .cs/workspace.toml      # marker (tracked)
   .cs/ide.json            # digests of the IDE files cstudy wrote (tracked)
   .cs/runtime/            # materialized runners and the IntelliJ launcher (ignored, per machine)
+  .cs/serve/              # web UI preferences and the transient --open redirect file (ignored)
   .cs/                    # index, cases, calibration, build, runs caches, project manifests and locks (ignored)
   .gitignore, README.md
   .vscode/, .idea/        # IDE project files: tasks, run and debug configurations, SDK settings
@@ -248,9 +250,23 @@ Not set from project files, because IDEs keep them per user or need a plugin: th
 | `rust project config` | Every Rust project folder (one with a `Cargo.toml`) has a `.cargo/config.toml` whose replacement source for crates.io is a directory that exists, resolved from the folder | WARN listing up to 5 folders, `fix: cstudy doctor --fix`, which writes a missing file and refreshes the runtime; a file that names another directory is kept (`cstudy start <slug> --restore .cargo/config.toml` writes the starter's back) |
 | `rust linked projects` | Every Rust project folder's `Cargo.toml` is in `rust-analyzer.linkedProjects` of `.vscode/settings.json`; no row without that file | WARN listing up to 5 folders, `fix: cstudy ide` |
 | `java project libraries`, `kotlin project libraries` | The language's warm-up project built, and every library (jar) on the test runtime classpath it wrote still exists, so project folders build offline | WARN, `fix: cstudy doctor --fix` (online once): only Java and Kotlin project problems need them; nothing to check before `jvm/` exists |
+| `web ui assets` | Every file `entrypoints/web/static/manifest.json` names is installed with its SHA-256: total size and `digest matches` | WARN naming the first missing or different file, `fix: reinstall cstudy`: only `cstudy serve` needs them |
+| `web server` | starlette and uvicorn import: their versions | WARN, `fix: reinstall cstudy`: only `cstudy serve` needs them |
 | `python/.venv location` | The shebang of the venv's console scripts names this `python/.venv` | WARN when it names another path (the workspace moved): the console scripts no longer run, though `cstudy` does; `fix: rm -rf python/.venv && cstudy doctor --fix` |
 
 `cstudy doctor --fix` first writes every missing template file (never overwriting one, so practice files are never touched), recreates missing or dangling `.venv` links in Python project folders, missing `go.work` files in Go project folders and missing `.cargo/config.toml` files in Rust project folders, refreshes the runner runtime, migrates an older `progress.db` to the latest schema (under the same lock as the first command that opens it; a newer or unreadable one is left as it is, and its row stays), then runs `uv sync` in `python/` and, when `python/.venv` cannot import pytest, adds it the way the template declares it (`pytest>=9.1`): `uv add --dev --offline "pytest>=9.1"`, which needs only uv's cache, and, only if that fails, the same without `--offline`. When both fail, as when offline with pytest not cached, the step prints `FAIL`, the end of uv's output and `fix: once online, run: uv add --dev "pytest>=9.1" --directory python`, and `--fix` exits 4; the rest of the fix still runs. Then it runs `pnpm install` in `typescript/` (and in the content checkout's `runners/typescript` when the content is a checkout), and the Gradle warm-up in `jvm/`: the runtime classpath of both practice projects, which caches the runner's own libraries, then the two warm-up projects of [JVM project folders](#jvm-project-folders). Outside a workspace it exits 3.
+
+## Web UI assets
+
+The page `cstudy serve` serves ([web-ui](web-ui.md#front-end-assets)) is a front end built from `tools/web-ui/` and committed, built, under `cli/src/coding_study/entrypoints/web/static/`, as the IntelliJ launcher jar is built from `tools/ide-launcher/` and committed ([ADR 0010](../decisions/0010-ide-integration.md)). `uv tool install git+…`, pipx and the release workflow build the wheel straight from the repository, so the bundle must already be there: installing `cstudy` never needs Node or the network.
+
+| Item | Rule |
+|------|------|
+| Sources | `tools/web-ui/`: `package.json`, `package-lock.json` with integrity hashes, the TypeScript and CSS sources, and `build.sh`. Outside `cli/src`, so neither the wheel nor the sdist holds them |
+| Build | `tools/web-ui/build.sh`: `npm ci --ignore-scripts`, then esbuild into `static/`, with content-hashed chunk names, `manifest.json` (each file's SHA-256) and `THIRD_PARTY_LICENSES.txt`. Needs Node 24 and npm, a contributor's tools only |
+| Not `build` | The output directory is `static/`: the wheel excludes directories named `build` |
+| Checks | A fast test asserts the wheel holds every file `manifest.json` names; a slow test rebuilds and compares the bytes; `cstudy doctor` compares the installed files with the manifest ([workspace checks](#cstudy-doctor-in-a-workspace)) |
+| Runtime | The page requests nothing but the server's own files (NFR-12) |
 
 ## Your own problems
 
@@ -271,6 +287,7 @@ The checkout is content, not a workspace:
 
 - `cstudy init` inside it refuses without `--force`; as a second guard the root `.gitignore` ignores `.cs/`, `.statements/`, `progress.db*` and `progress-export.json` anywhere, and `/workspace/`, `/workspaces/`, `/ws/`, `/python/`, `/typescript/`, `/jvm/`, `/notes/`, `/projects/` and `/.archive/` at the root.
 - Point `CSTUDY_WORKSPACE` (or `--workspace`) at a workspace outside the checkout; `uv run cstudy verify` then reads the checkout's content and builds with that workspace's toolchains.
+- A change to the web UI's front end is rebuilt with `tools/web-ui/build.sh` and committed with its sources ([Web UI assets](#web-ui-assets)); the browser smoke test needs the optional Playwright development group and its Chromium.
 - The CLI tests never use a workspace in the checkout: fixtures create temporary workspaces, and the slow tests set one up per session with `cstudy init` and the `cstudy doctor --fix` steps.
 
 ## Replaces

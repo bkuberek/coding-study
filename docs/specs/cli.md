@@ -1,6 +1,6 @@
 # Spec: CLI (`cstudy`)
 
-`cstudy` is the only interface. It is installed as a tool with its content bundled, and every command runs against a content root (problems, tracks, runners, schemas) and a workspace (your practice projects, notes and progress); [installation-and-workspaces](installation-and-workspaces.md) defines how both are found. Paths `cstudy` prints for workspace files are relative to the workspace root.
+`cstudy` is the interface: in the terminal, and through the local page that [`cstudy serve`](#cstudy-serve) serves, which calls the same use cases and starts the same commands ([web-ui](web-ui.md)). It is installed as a tool with its content bundled, and every command runs against a content root (problems, tracks, runners, schemas) and a workspace (your practice projects, notes and progress); [installation-and-workspaces](installation-and-workspaces.md) defines how both are found. Paths `cstudy` prints for workspace files are relative to the workspace root.
 
 ## Command summary
 
@@ -12,7 +12,9 @@
 | [`cstudy start`](#cstudy-start) | Create or reopen a stub, open the statement, begin an attempt | 0 |
 | [`cstudy test`](#cstudy-test) | Run the user's code against the cases; for a project problem, its native tests | 0 |
 | [`cstudy submit`](#cstudy-submit) | Grade a project problem and open its next level | 8 |
-| [`cstudy status`](#cstudy-status) | Show where a project attempt stands | 8 |
+| [`cstudy status`](#cstudy-status) | Show where an attempt stands | 8 (every kind in 9) |
+| [`cstudy history`](#cstudy-history) | Show a problem's attempts, runs and review schedule | 9 |
+| [`cstudy serve`](#cstudy-serve) | Serve the local web UI | 9 |
 | [`cstudy solution`](#cstudy-solution) | Show reference code with its explanation | 0 |
 | [`cstudy verify`](#cstudy-verify) | Content quality gate | 0 |
 | [`cstudy list`](#cstudy-list) | Browse problems with filters | 0 (status columns in 1) |
@@ -31,7 +33,7 @@
 
 ## Solution file targets
 
-[`start`](#cstudy-start), [`test`](#cstudy-test), [`submit`](#cstudy-submit), [`status`](#cstudy-status), [`hint`](#cstudy-hint), [`solution`](#cstudy-solution), [`done`](#cstudy-done), [`show`](#cstudy-show) and [`bench`](#cstudy-bench) take the problem as `<slug>` or as the path of one of your solution files, so an IDE can run any command on the file in its editor: `cstudy test python/practice/two_sum.py` is `cstudy test two-sum --lang python`.
+[`start`](#cstudy-start), [`test`](#cstudy-test), [`submit`](#cstudy-submit), [`status`](#cstudy-status), [`hint`](#cstudy-hint), [`solution`](#cstudy-solution), [`done`](#cstudy-done), [`show`](#cstudy-show), [`history`](#cstudy-history) and [`bench`](#cstudy-bench) take the problem as `<slug>` or as the path of one of your solution files, so an IDE can run any command on the file in its editor: `cstudy test python/practice/two_sum.py` is `cstudy test two-sum --lang python`.
 
 | Rule | Detail |
 |------|--------|
@@ -59,8 +61,8 @@
 
 | Flag | Effect |
 |------|--------|
-| `--json` | Machine-readable output, as an option of the command (`cstudy stats --json`, not `cstudy --json stats`): `stats`, [`test`](#json-output), [`submit`](#cstudy-submit) and [`status`](#cstudy-status) have it; `list`, `next`, `bench` and `verify` do not yet |
-| `--events` | The run as a stream of JSON events instead of the report, as an option of the command: [`test`](#project-problems) on a project problem and [`submit`](#cstudy-submit) have it ([Event stream](#event-stream)) |
+| `--json` | Machine-readable output, as an option of the command (`cstudy stats --json`, not `cstudy --json stats`): `stats`, [`test`](#json-output), [`submit`](#cstudy-submit), [`status`](#cstudy-status), [`history`](#cstudy-history), [`list`](#cstudy-list), [`next`](#cstudy-next) and [`doctor`](#cstudy-doctor) have it; `bench` and `verify` do not yet |
+| `--events` | The run as a stream of JSON events instead of the report, as an option of the command: [`test`](#cstudy-test) on every autograded problem and [`submit`](#cstudy-submit) have it ([Event stream](#event-stream)) |
 | `--version` | Print `cstudy <version>` (for example `cstudy 0.1.0`), read from the installed package metadata, and exit 0 ([versioning](versioning.md)) |
 | `--no-color` | Plain output (also when `NO_COLOR` is set or stdout is not a TTY) |
 | `-v`, `--verbose` | Planned, not implemented yet: show runner commands, build output and timings |
@@ -107,7 +109,7 @@ auto_commit = false              # reserved (PRD Q3)
 ## cstudy doctor
 
 ```text
-cstudy doctor [--fix]
+cstudy doctor [--fix | --json]
 ```
 
 Checks Python 3.13, uv, Node 24 or newer, pnpm, JDK 21, Homebrew Gradle, Go 1.24 or newer, `rustc` 1.80 or newer and `cargo` (the Go and Rust toolchains are optional, so these three rows WARN, never FAIL, with a link to the [toolchains guide](../guides/toolchains.md)), Delve (`dlv`, found as [debug mode](runners.md#debug-mode) finds it; the row shows its version, and a release other than the tested 1.27.2 passes with `(cstudy is tested with 1.27.2)`) and Rust's debug server (`debugserver` on macOS, `lldb-server` on Linux; the row shows its path), which only `cstudy test --debug` needs, so they WARN too, with the install step and the guide (``needed for --debug with --lang go, run `go install github.com/go-delve/delve/cmd/dlv@v1.27.2`: <guide>#go``), the config file, the content root, the workspace (core template files FAIL when missing, the optional `go.work`, `go/` and `rust/` files WARN; [workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), the progress database (its schema against the one this `cstudy` migrates to: WARN when older, FAIL when newer), the Gradle wrapper, the workspace venv, `debugpy` and `pytest` in it, the `.venv` links of the Python project folders, the `go.work`, `replace` lines and module paths of the Go project folders, the `.cargo/config.toml` and rust-analyzer link of the Rust ones, the libraries that Java and Kotlin project folders build with offline ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), `node_modules`, and that the runner of each core language (`python`, `typescript`, `java`, `kotlin`; the Go and Rust runners are not handshaken, since that would compile them) answers `hello`: the runner is prepared for a problem with no files (`cs-doctor-handshake`, so the JVM build compiles no practice code) and started with no jobs. Outside a workspace only the toolchains, the config and the content are checked. `--fix` first writes every missing workspace template file (never overwriting one), refreshes the runner runtime and migrates an older `progress.db` to the latest schema (one line, `migrated progress.db from schema 4 to 5`), then runs, in each workspace project that exists, `uv sync` in `python` (followed, when the venv cannot import pytest, by `uv add --dev --offline "pytest>=9.1"`, retried without `--offline` when it fails, so a workspace created before the template listed pytest gets it; when both fail the line is `FAIL` with `fix: once online, run: uv add --dev "pytest>=9.1" --directory python`), `pnpm install` in `typescript` (and, when the content is a checkout, in its `runners/typescript` for the runner's own `tsc` and Node types), and in `jvm`, unless `java -version` fails (then one `FAIL` line, `skipped: java is not installed or does not run`, with the JDK fix, replaces the Gradle steps), the Gradle warm-up: `./gradlew :java:csClasspath :kotlin:csClasspath -Pcs.only=cs_doctor_handshake` (builds the runner and support classes, resolves the runtime classpath so that the runner's own libraries are cached for offline builds, and warms the daemon without compiling practice files), then `./gradlew -p ../.cs/runtime/runners/jvm/project-warmup/java -q --console=plain csClasspath` and the same for `kotlin` (the warm-up projects, which cache what Java and Kotlin project folders build with: [JVM project folders](installation-and-workspaces.md#jvm-project-folders)), printing one line per command and the last 10 output lines of a failed one. `--fix` outside a workspace exits 3.
@@ -132,6 +134,24 @@ ok    runner kotlin answers hello: jvm 21.0.2, protocol 1
 ```
 
 Exit 0 when no check reports `FAIL` (and, with `--fix`, every setup command succeeded), else 4.
+
+`--json` prints the same checks as one document instead of the rows, and exits as the rows would; with `--fix` it is a usage error (`--json excludes --fix`, exit 3). Each check is one row: `name` (`python`, `workspace`, `runner kotlin`), `status` (`ok`, `warn` or `fail`), `detail` (the rest of the row, such as `3.13.2`) and `fix` (the hint, or null). The page [`cstudy serve`](#cstudy-serve) serves shows it ([web-ui](web-ui.md#health-view)).
+
+```json
+{"workspace": "/home/me/ws", "passed": false, "checks": [
+  {"name": "python", "status": "ok", "detail": "3.13.2", "fix": null},
+  {"name": "python/.venv", "status": "fail", "detail": "missing", "fix": "cstudy doctor --fix"}
+]}
+```
+
+`workspace` is the workspace's path, or null outside a workspace; `passed` is false when a check failed.
+
+The `web ui assets` and `web server` rows check what `cstudy serve` needs ([installation-and-workspaces](installation-and-workspaces.md#web-ui-assets)). Both WARN, never FAIL, since practice in the terminal does not need them:
+
+```text
+ok    web ui assets 0.8 MB, digest matches
+ok    web server starlette 1.10.0, uvicorn 0.54.0
+```
 
 ## cstudy ide
 
@@ -240,7 +260,8 @@ cstudy test [<slug|file>] [--lang L] [--watch] [--case ID]... [--all] [--level N
 | `--typecheck` | TypeScript: also run `pnpm exec tsc --noEmit` (type stripping does not type-check) |
 | `--stress N` | 1 to 100. Concurrent problems: run every stress case N times per variant instead of `concurrency.runs` (default 3). Function and design problems: also run N [oracle inputs](#oracle-inputs), generated inputs checked against the oracle approach; progressive and project problems, and problems without `generator.py` or a Python oracle, exit 3 |
 | `--seed S` | Concurrent problems: base seed of every selected stress case instead of its `seed`; run `r` uses `S + r`. In the `async` model this reproduces a reported failing run exactly (`--case s1 --seed 1007 --stress 1`). Other problems: the first oracle input's seed (default 1), so `--stress 1 --seed 17` reruns `oracle-17`; without `--stress` it exits 3 |
-| `--json` | One [JSON document](#json-output) on standard output instead of the report; with `--watch`, `--perf` or `--debug` it is a usage error |
+| `--json` | One [JSON document](#json-output) on standard output instead of the report; with `--watch` or `--debug` it is a usage error. With `--perf` the document's `perf` holds the check's verdict |
+| `--events` | The run as an [event stream](#event-stream) instead of the report, on every autograded problem |
 | `--debug` | Start the runner under the language's debug agent and wait for an IDE to attach to it, with every time limit off ([Debugging](#debugging)) |
 | `--debug-port N` | With `--debug`: the agent's port, 1 to 65535. Defaults: Python 5678, TypeScript 9229, Java and Kotlin 5005, Go 2345, Rust 12345 |
 | `--debug-connect` | With `--debug`, Java and Kotlin only: connect to an IDE that is already listening on the port instead of listening for it |
@@ -319,7 +340,7 @@ On a [project problem](problem-format.md#project-problems), `cstudy test` runs t
 | `--watch` | Re-runs on a change to any file under `projects/<slug>/` except `.venv`, `node_modules`, `__pycache__`, `.pytest_cache`, `.ruff_cache`, `build`, `.gradle` and `.kotlin` |
 | `--typecheck` | TypeScript: first runs the workspace's `tsc --noEmit -p projects/<slug>`. A folder that type-checks runs its suite as usual. A type error prints `BUILD FAILED` and every line `tsc` printed in place of the tests, runs no test, exits 2, and is stored as a run without tests; each error is a [diagnostic](#diagnostics) with source `typecheck`. A language without a type check (Python) runs its suite as usual |
 | `--json`, `--debug`, `--debug-port`, `--no-time-limit` | As for every problem; `--debug` stops at breakpoints in the project's code and in its tests. Go debugs one package's tests: those of the `--case` tests, else the package of the generated test files ([Go project jobs](runners.md#go-project-jobs)). In Rust each test is a process of its own, so `--debug` runs one: the first that `--case` selects, or the first of the suite, and the report says that the others did not run ([Rust projects](runners.md#rust-projects)) |
-| `--events` | The run as an [event stream](#event-stream) instead of the report; on a problem of another kind it exits 3 |
+| `--events` | The run as an [event stream](#event-stream) instead of the report: `test_start` and `test_result` per test |
 | `--all` | Accepted and changes nothing: every test is listed |
 | `--perf`, `--stress`, `--seed`, `--time-limit`, `--debug-connect` | Exit 3: `--perf is not available for project problems` |
 
@@ -449,6 +470,8 @@ cstudy: connecting to debugger at 127.0.0.1:5005 (kotlin)
 | `levels` | Progressive problems: `ran_up_to`, `last`, `unlocked`, `newly_unlocked`; else null |
 | `timer` | With `cstudy start --timer`: seconds elapsed and the time box; else null |
 | `tally` | What `test_runs` stores: the problem's cases and stress verdicts, without oracle inputs |
+| `diagnostics` | The run's [diagnostics](#diagnostics), after `load_error`: one per line of `build.diagnostics` (which keeps the compiler's lines as text) and one for a load error; empty when the code built and loaded |
+| `perf` | With `--perf`: `{"verdict", "confidence", "text", "warnings", "wrong_answer"}` as the [`perf_result` event](#events) holds them, or null when the check did not run (a case failed); without `--perf`, null |
 
 ## cstudy submit
 
@@ -503,51 +526,97 @@ Exit 0 when every graded case passed, 1 when one did not, 2 when the code did no
 
 ## Event stream
 
-`cstudy test --events` on a [project problem](#project-problems) and `cstudy submit --events` write the run as a stream of events instead of the report: newline-delimited JSON on standard output, one object per line, each line written and flushed as soon as `cstudy` has it. It is the boundary a web interface builds on to show a run as it happens ([ADR 0014](../decisions/0014-project-problems.md)). `schemas/events.schema.json` describes every event.
+`cstudy test --events` on every autograded problem (function, design, progressive, concurrent, and project, the debugging track's problems included) and `cstudy submit --events` write the run as a stream of events instead of the report: newline-delimited JSON on standard output, one object per line, each line written and flushed as soon as `cstudy` has it. It is the boundary the local web UI builds on to show a run as it happens ([ADR 0014](../decisions/0014-project-problems.md), [ADR 0015](../decisions/0015-local-web-ui.md)): a page run is this command, relayed. `schemas/events.schema.json` describes every event.
 
 ```text
 $ cstudy submit --events
-{"type": "run_start", "version": 1, "command": "submit", "slug": "bank-project-python", "language": "python", "attempt_id": 7, "mode": "new", "levels": {"up_to": 1, "unlocked": 1, "last": 4}}
+{"type": "run_start", "version": 1, "command": "submit", "slug": "bank-project-python", "language": "python", "attempt_id": 7, "mode": "new", "levels": {"up_to": 1, "unlocked": 1, "last": 4}, "kind": "project", "track": "practical", "timer": null, "time_limit": null, "planned": null}
 {"type": "case_result", "version": 1, "id": "ex1", "visible": true, "generated": false, "status": "pass", "duration_ns": 41000, "level": 1}
 {"type": "case_result", "version": 1, "id": "h1", "visible": false, "generated": false, "status": "fail", "duration_ns": 38000, "input": {"ops": ["Bank", "create_account"], "args": [[], [1, "zoe"]]}, "expected": [null, true], "actual": [null, false], "reason": null, "level": 1}
 {"type": "level_result", "version": 1, "status": "fail", "level": 1, "total": 2, "passed": 1, "visible_total": 1, "visible_passed": 1, "hidden_total": 1, "hidden_passed": 0}
 {"type": "run_end", "version": 1, "outcome": "failed", "exit_code": 1, "message": null, "summary": {"slug": "bank-project-python", ...}}
 ```
 
+A single-file run, with a time limit that turns one case into `TLE` once the run has calibrated it:
+
+```text
+$ cstudy test two-sum --lang kotlin --time-limit --events
+{"type": "run_start", "version": 1, "command": "test", "slug": "two-sum", "language": "kotlin", "attempt_id": 12, "mode": "new", "levels": null, "kind": "function", "track": "dsa", "timer": {"elapsed_s": 751, "limit_s": 1500}, "time_limit": "5x", "planned": {"cases": 14, "visible": 2, "hidden": 11, "generated": 1, "oracle_inputs": 0, "stress": null}}
+{"type": "build", "version": 1, "seconds": 1.8, "note": "gradle, warm"}
+{"type": "case_start", "version": 1, "id": "ex1", "visible": true, "level": null}
+{"type": "case_result", "version": 1, "id": "ex1", "visible": true, "generated": false, "status": "pass", "duration_ns": 40000, "level": null}
+...
+{"type": "case_result", "version": 1, "id": "g1", "visible": false, "generated": true, "status": "pass", "duration_ns": 412000000, "level": null}
+{"type": "case_revised", "version": 1, "id": "g1", "visible": false, "generated": true, "status": "tle", "duration_ns": 412000000, "time_limit_ms": 95.0, "time_limit_basis": "5x hash-map, calibrated", "level": null}
+{"type": "run_end", "version": 1, "outcome": "failed", "exit_code": 1, "message": null, "summary": {"slug": "two-sum", ...}}
+```
+
+### Rules
+
 | Rule | Detail |
 |------|--------|
 | Lines | Every line is one JSON object whose first fields are `type` and `version`. Standard output holds nothing else; `error: ...` goes to standard error, as for any command |
-| Version | `version` is 1. It changes only when an event changes incompatibly: a field removed, renamed or given another type, or an ordering rule dropped. New event types and new fields keep the version, so a reader ignores the types and fields it does not know |
 | `--json` | A final summary, where events are a stream: `run_end` carries the document `--json` prints, so the two flags exclude each other (`--events excludes --json`, exit 3) |
-| Excluded | `--watch` and `--debug` exit 3 (`--events excludes --watch`); `cstudy test --events` on a problem of another kind exits 3 (`--events is for project problems`) |
+| Excluded | `--watch` and `--debug` exit 3 (`--events excludes --watch`). `cstudy test` on a non-autograded item exits 3 with or without `--events` |
+| Accepted | Every other flag of the run: `--level`, `--case`, `--all` (which changes nothing: every case is an event), `--typecheck`, `--stress`, `--seed`, `--time-limit`, `--no-time-limit` and `--perf` |
 | Exit codes | Those of the run without `--events`; `run_end.exit_code` is the exit code of the process |
+| Signals | SIGINT ends the run as Ctrl-C does: `run_end` with outcome `interrupted` and exit 130. SIGTERM does the same with exit 143, so a program that started the run can stop it with either. Both kill the runner's process group and store nothing |
+
+### Version
+
+`version` is 1. It changes only when an event changes incompatibly: a field removed or renamed, a field's type changed on a stream an earlier `cstudy` wrote, or an ordering rule dropped. New event types, new fields, new values of an enumeration, and fields that may be null on streams no earlier `cstudy` wrote keep the version, so a reader ignores the types and fields it does not know. Every line of a project stream that `cstudy` wrote before `--events` covered every kind is still valid and means the same: those streams only gain the fields `kind`, `track`, `timer`, `time_limit` and `planned` of `run_start`, and the exit code 143.
 
 ### Events
 
+"Single-file" below means every autograded kind but `project`.
+
 | `type` | Command | Fields | When |
 |--------|---------|--------|------|
-| `run_start` | both | `command` (`test` or `submit`), `slug`, `language`, `attempt_id`, `mode` (`new`, `review` or `mock`), `levels`: `up_to` (the last level the run covers), `unlocked` and `last` | Once the options are checked, before the run's work begins |
-| `output` | both | `text`: a progress notice the report would print, such as `computing expected values ...` | As it happens |
-| `test_start` | `test` | `id`: the test id, as in `test_result` | As the runner starts the test, a test file it collects included |
-| `test_result` | `test` | An entry of `cases` in [`cstudy test --json`](#project-problems) on a project problem: `id`, `status`, `duration_ns`, `origin`, `level`, and `message`, `expected`, `actual`, `error` and `stdout` when set | As the test ends: once per test the suite reported, a test file that failed to collect included |
-| `case_start` | `submit` | `id`, `visible` and `level` of the case | As the runner starts the case; a mock attempt writes none for hidden cases |
-| `case_result` | `submit` | An entry of `cases` in [`cstudy submit --json`](#cstudy-submit), with its `level` | As the case ends and is judged: once per graded case; a mock attempt writes none for hidden cases, which only `level_result` counts |
+| `run_start` | both | `command` (`test` or `submit`), `slug`, `language`, `attempt_id`, `mode` (`new`, `review` or `mock`), `levels`: `up_to` (the last level the run covers), `unlocked` and `last`, or null for a kind without levels; `kind` (`function`, `design`, `progressive`, `concurrent` or `project`), `track`; `timer`: `elapsed_s` at the start and `limit_s`, or null without a time box; `time_limit`: the value in effect (`"5x"`, `"1500ms"`), or null when time limits are off; `planned`, below | Once the options are checked, before the run's work begins |
+| `output` | both | `text`: a progress notice the report would print, such as `computing expected values ...` or `warming Gradle daemon ...` | As it happens |
+| `build` | `test`, single-file | `seconds` and `note`, as `build` in [`cstudy test --json`](#json-output) (`gradle, warm`) | When the build or the type check ends, for a language or option that has one (Java, Kotlin, Go, Rust, TypeScript with `--typecheck`), whether it succeeded or not |
+| `test_start` | `test`, project | `id`: the test id, as in `test_result` | As the runner starts the test, a test file it collects included |
+| `test_result` | `test`, project | An entry of `cases` in [`cstudy test --json`](#project-problems) on a project problem: `id`, `status`, `duration_ns`, `origin`, `level`, and `message`, `expected`, `actual`, `error` and `stdout` when set | As the test ends: once per test the suite reported, a test file that failed to collect included |
+| `case_start` | `submit`; `test`, single-file | `id`, `visible` and `level` of the case (null for a kind without levels); for an oracle input also `oracle: true`, `seed` and `n` | As the runner starts the case or oracle input; a mock submission writes none for hidden cases |
+| `case_result` | `submit`; `test`, single-file | An entry of `cases` in [`cstudy submit --json`](#cstudy-submit) or [`cstudy test --json`](#json-output), with its `level`; for an oracle input an entry of `oracle.inputs`, with `oracle: true`, `seed` and `n` | As the case ends and is judged by the comparator: once per graded case and oracle input; a mock submission writes none for hidden cases, which only `level_result` counts. Its `status` is never `tle`: a time limit is judged after the run, in `case_revised` |
+| `case_revised` | `test`, single-file | The case's entry again, complete, with its final `status` (`tle`) and `time_limit_ms` and `time_limit_basis` | Once per case whose verdict the time limit changed, after the time limits are resolved |
+| `stress_run_start` | `test`, concurrent | `id` (the stress case), `variant` (as `stress` in `cstudy test --json` names it, such as `platform` or `virtual`), `run` (0-based) and `seed` | As the runner starts the run |
+| `stress_run` | `test`, concurrent | `id`, `variant`, `run`, `seed`, `status` (`pass`, `fail`, `error`, `invalid`, `stalled`, `timeout`), `duration_ns`, and `reasons` (the run's verdict reasons as the report prints them; empty on `pass`) | As the run ends and is judged against its invariants |
+| `stress_result` | `test`, concurrent | An entry of `stress` in `cstudy test --json`: `id`, `variant`, `status`, `runs`, `runs_passed`, `median_ms`, `failures` | Right after the last `stress_run` of its stress case and variant |
 | `diagnostic` | both | One [diagnostic](#diagnostics) | Once per diagnostic |
 | `level_result` | `submit` | An entry of `level_tallies` in `cstudy submit --json`, plus `status`: `pass` when every graded case of the level passed, else `fail` | Once per graded level |
-| `level_unlocked` | `submit` | `level`, `title`, `methods` (the methods the level adds, in the language's names, as `methods_added`), `tests` (`path` of the level's generated test file relative to the project folder, and `count`, its tests) and `statement` (the rewritten statement's path) | When the submission opened a level |
+| `level_unlocked` | `submit`; `test`, progressive | `level`, `title`, `methods` (the methods the level adds, in the language's names, as `methods_added`; empty when it adds none), `tests` (`path` of the level's generated test file relative to the project folder, and `count`, its tests; null for a progressive problem) and `statement` (the rewritten statement's path) | When the run opened a level |
+| `perf_result` | `test`, with `--perf` | `verdict` (`optimal`, `near-optimal`, `suboptimal` or `unknown`, null after a wrong answer), `confidence` (`high`, `medium`, `low`, or null), `text` (the verdict line the report prints), `warnings` (the report's `warning` lines, as text) and `wrong_answer` (the `FAIL wrong answer at n=...` line, or null) | After the short bench of `--perf`, which runs only when every case passed |
 | `run_end` | both | `outcome`, `exit_code`, `message` and `summary` | Last |
 
-`run_end.outcome` is the `outcome` of the `--json` document (`passed`, `failed`, `build_failed` or `load_failed`), `error` when the run stopped after `run_start` (an environment error such as pytest missing from `python/.venv`, a `--case` that names no test, an internal error), or `interrupted` (Ctrl-C, exit 130). `summary` is the document `--json` prints, or null for `error` and `interrupted`; `message` is the error's text for `error`, else null.
+`planned` says what the run will report, so a reader can show progress against it: for a single-file `test`, `{"cases", "visible", "hidden", "generated", "oracle_inputs", "stress"}`, the counts the report's header prints, with `stress` `{"cases", "variants", "runs"}` for a concurrent problem (runs per stress case and variant) or null; for a project run, null, since a suite's size is known only as it runs.
+
+`run_end.outcome` is the `outcome` of the `--json` document (`passed`, `failed`, `build_failed` or `load_failed`), `error` when the run stopped after `run_start` (an environment error such as pytest missing from `python/.venv`, a `--case` that names no test, an internal error), or `interrupted` (SIGINT, exit 130; SIGTERM, exit 143). `summary` is the document `--json` prints, or null for `error` and `interrupted`; `message` is the error's text for `error`, else null.
+
+### Events by kind
+
+| Kind | Results | Also |
+|------|---------|------|
+| Function, design (the debugging track's `stub: buggy` problems are these kinds) | `case_start` and `case_result` per case, then per oracle input with `--stress N` | `build`, `case_revised` with a time limit, `perf_result` with `--perf` |
+| Progressive | `case_start` and `case_result` per case of levels 1 to `levels.up_to`, each with its `level` | `level_unlocked` when the run opened a level; `build`, `case_revised` |
+| Concurrent | `case_start` and `case_result` per sequential case, then `stress_run_start` and `stress_run` per stress run, and `stress_result` per stress case and variant | `build`, `case_revised` for sequential cases |
+| Project, `test` | `test_start` and `test_result` per test | |
+| Project, `submit` | `case_start` and `case_result` per graded case | `level_result` per level, `level_unlocked` |
+
+Timing is in the fields, not in the order of the lines: `duration_ns` on each result (the call or the test only, as the runner measures it), `seconds` on `build`, `median_ms` on `stress_result`, `timer` on `run_start`, and `duration_s` in the `run_end` summary. Events carry no clock time: a reader sees each line as it is written.
 
 ### Ordering
 
 | Rule | Detail |
 |------|--------|
-| Bounds | `run_start` is the first line and `run_end` the last. A run that stops before it starts (no attempt, a locked level, another kind of problem) writes no event, only `error: ...` on standard error, as `--json` writes no document. Once `run_start` is written, `run_end` follows unless the process is killed |
+| Bounds | `run_start` is the first line and `run_end` the last. A run that stops before it starts (no attempt, a locked level, `submit` on another kind of problem, a usage error in the options) writes no event, only `error: ...` on standard error, as `--json` writes no document. Once `run_start` is written, `run_end` follows unless the process is killed |
 | Output | `output` may come anywhere between `run_start` and `run_end` |
-| Results | `test_result` and `case_result` come in run order: the suite's order for tests, `tests.json` order for cases. A start comes before the result of its test or case, and no other test's or case's event comes between them. A result comes without a start when the runner never started its test or case: a hang or crash between cases is recorded on the next case, and a case left not run when restarts ran out comes, with status `not_run`, after the results the runner reported |
-| Diagnostics | `diagnostic` comes after `run_start` and before the first `level_result`, or before `run_end` in `cstudy test` |
-| Levels | `level_result` comes after every `case_result`, in level order, then `level_unlocked` |
+| Build | `build` comes before the first start or result |
+| Results | `test_result`, `case_result` and `stress_run` come in run order: the suite's order for tests; for cases, `tests.json` order, then oracle inputs in seed order, then stress runs in the order the runner runs them. A start comes before the result of its test, case or stress run, and no other one's event comes between them. A result comes without a start when the runner never started its test or case: a hang or crash between cases is recorded on the next case, and a case left not run when restarts ran out comes, with status `not_run`, after the results the runner reported |
+| Revisions | `case_revised` comes after every result and `stress_result`, in the order of the cases it revises; a case is revised at most once |
+| Diagnostics | `diagnostic` comes after `run_start` and before the first `level_result`, or before `level_unlocked`, `perf_result` and `run_end` in `cstudy test` |
+| Levels | `level_result` comes after every `case_result`, in level order, then `level_unlocked`; in `cstudy test`, `level_unlocked` comes after every result and revision |
+| Perf | `perf_result` comes after everything but `run_end`, and only when every case passed; `output` lines of its bench may precede it |
 | Timing | Each start and result is written as the runner reports it, while the run goes on, so a reader can show the test in progress. A result that ended in a hang is written when the hang guard expires. The time between a start and its result includes the runner's own work; `duration_ns` is the test's or call's duration |
 
 ### Diagnostics
@@ -558,7 +627,7 @@ A diagnostic says where code does not load, build or type-check, so an editor ca
 |-------|---------|
 | `source` | `load` (the runner could not load the code, or the framework could not collect a test file), `typecheck` (a type checker, such as `tsc --noEmit` for `--typecheck`) or `build` (a compiler) |
 | `severity` | `error`, `warning` or `info` |
-| `file` | Relative to the project folder, or null when the report names no file |
+| `file` | Relative to the project folder for a project problem, and to the workspace root for any other (`python/practice/two_sum.py`), or null when the report names no file |
 | `line`, `column` | 1-based, or null when the report names none; a runner's trace never names a column |
 | `code` | The tool's name for the problem: the exception type (`SyntaxError`, `SymbolNotFound`) or a compiler's code (`TS2322`); null when it has none |
 | `message` | The tool's message; the exception type when the message is empty |
@@ -570,7 +639,7 @@ A `load` diagnostic comes from a [load error](runners.md#event-stream---out-json
 | The grading job's, or a test file that failed to collect (a result whose id is the file, which stays a `test_result` with status `error` as well) | The innermost frame of the error's trace: `bank/bank.py:12 in Bank.deposit` gives `bank/bank.py`, line 12. `code` is the error's type |
 | The suite's own, when the framework refused to run it, such as a `conftest.py` that does not import | Read from the framework's report: the innermost frame of its Python traceback that lies in the project folder, an absolute path made relative to the folder, and the traceback's last exception as `code` and `message` (`E   SyntaxError: invalid syntax`) |
 
-Diagnostics are `diagnostic` events, and the `diagnostics` list of `cstudy test --json` on a project problem and of `cstudy submit --json`. An error without such a frame gives a diagnostic without a place, and one without an exception line keeps its own type and message. Test files that fail on the same line of one module give one diagnostic. An exception a test raises while it runs is a test result, not a diagnostic. A type checker's or compiler's report is read by a parser for its format into the same fields. For `tsc`, each line `src/bank.ts(3,5): error TS2322: <message>` is one diagnostic, with its category (`error`, `warning`, or `message` and `suggestion` as `info`) as `severity`, its code as `code`, and the indented lines below it continuing `message`; a path outside the project folder is given from the folder (`../../typescript/support.ts`), and a line without a place, such as `error TS5083: ...`, has none. A checker without a parser gives each line as a diagnostic without a place.
+Diagnostics are `diagnostic` events, and the `diagnostics` list of `cstudy test --json` and of `cstudy submit --json`. On a single-file problem a load error points at the innermost frame of its trace that lies in a file of the problem ([solution file targets](#solution-file-targets)), a trace's bare file name (`two_sum.py:7 in two_sum`) naming the user file, and each line of a failed build (`build.diagnostics`) is read by the parser for its tool as below. An error without such a frame gives a diagnostic without a place, and one without an exception line keeps its own type and message. Test files that fail on the same line of one module give one diagnostic. An exception a test raises while it runs is a test result, not a diagnostic. A type checker's or compiler's report is read by a parser for its format into the same fields. For `tsc`, each line `src/bank.ts(3,5): error TS2322: <message>` is one diagnostic, with its category (`error`, `warning`, or `message` and `suggestion` as `info`) as `severity`, its code as `code`, and the indented lines below it continuing `message`; a path outside the project folder is given from the folder (`../../typescript/support.ts`), and a line without a place, such as `error TS5083: ...`, has none. A checker without a parser gives each line as a diagnostic without a place.
 
 ## cstudy status
 
@@ -578,30 +647,45 @@ Diagnostics are `diagnostic` events, and the `diagnostics` list of `cstudy test 
 cstudy status [<slug|file>] [--json]
 ```
 
-Shows where a [project problem](problem-format.md#project-problems)'s attempt in progress stands, without running anything.
+Shows where an attempt in progress stands, for every kind of problem and for non-autograded items, without running anything. The lines a kind has no value for are left out: `submitted` and `files` are for [project problems](problem-format.md#project-problems), `level` for progressive and project problems, `tested` for autograded problems.
 
 | Line | Content |
 |------|---------|
-| Header | Slug, language, `project`, attempt id and mode |
-| `level` | The unlocked level, of the last, with its title and when it opened |
+| Header | Slug, language (none for an item), kind (`function`, `design`, `progressive`, `concurrent`, `project`, or the item's track), attempt id and mode |
+| `file` | The file `cstudy start` wrote: the stub, the project folder or the notes |
+| `level` | The unlocked level, of the last, with its title; for a project, when it opened |
 | `timer` | Elapsed and time box, with `--timer`; else absent |
+| `hints` | Hints used of the problem's hints, and for a project `next opens with level N` while the next hint is locked; absent for a problem without hints |
+| `solution` | `revealed, graded as again` once `cstudy solution` marked the attempt; else absent |
 | `tested` | The latest `cstudy test`: passed of total, and how long ago. A run older than a level's opening covered none of that level's tests, so the line then ends with the first level that opened after it: `2/2 passed, 12 min ago, before level 2 opened` |
 | `submitted` | The latest submission's tally per level, and how long ago; `best` adds the highest passed count per level over the attempt when it differs |
 | `files` | Starter files changed and removed, and files added, under `projects/<slug>/`, by content against what the starter provided (the folder's [manifest](installation-and-workspaces.md#project-folders)); generated test files, `.venv` and caches are left out |
-| `next` | `cstudy test --watch` before any submission, `cstudy submit once level <n> passes`, or `cstudy done --rating easy\|ok\|hard` after the full pass |
+| `next` | Project: `cstudy test --watch` before any submission, `cstudy submit once level <n> passes`, or `cstudy done --rating easy\|ok\|hard` after the full pass. Other problems: `cstudy test --watch` until a run passes every case (of the last level, for a progressive problem), then `cstudy done --rating easy\|ok\|hard`, or `cstudy done --gave-up` once you stop. Items: `answer in the notes, then cstudy solution <slug>`, as `cstudy start` prints it |
 
 ```text
 $ cstudy status
 bank-project-python · python · project · attempt 41 · new
+file       projects/bank-project-python
 level      2 of 4: Top spenders (opened 18:02)
 timer      33:05 / 90:00
+hints      1 of 4, next opens with level 3
 tested     3/4 passed, 1 min ago
 submitted  level 1 5/5 · level 2 4/5, 2 min ago
 files      2 changed, 1 added, 0 removed against the starter
 next       cstudy submit once level 2 passes
 ```
 
-`--json` writes the same values: `slug`, `language`, `attempt_id`, `mode`, `statement` (its path), `levels` (`unlocked`, `last`, `titles` of the open levels, `opened_at` per open level), `timer`, `last_test_run` (`ran_at`, `total`, `passed` and `predates_level`, the first level that opened after the run or null, or null without a run), `latest_submission` (`submitted_at`, `level_tallies`, or null), `best_per_level` (`level`, `passed`, `total`), `files` (`changed`, `added`, `removed`, each a sorted list of paths relative to the folder, and `entries`, below) and `next`. In a mock attempt the tallies count hidden cases but name none.
+```text
+$ cstudy status two-sum
+two-sum · kotlin · function · attempt 12 · new
+file       jvm/kotlin/src/main/kotlin/practice/two_sum/Solution.kt
+timer      12:31 / 25:00
+hints      0 of 2
+tested     12/14 passed, 3 min ago
+next       cstudy test --watch
+```
+
+`--json` writes the same values: `slug`, `kind`, `track`, `language` (null for an item), `attempt_id`, `mode`, `started_at`, `file` (the `file` line's path), `hints` (`used`, `total`, and `locked_until_level`, the level the next hint opens with while it is locked, else null), `solution_revealed`, `statement` (its path), `levels` (`unlocked`, `last`, `titles` of the open levels, `opened_at` per open level), `timer`, `last_test_run` (`ran_at`, `total`, `passed` and `predates_level`, the first level that opened after the run or null, or null without a run), `latest_submission` (`submitted_at`, `level_tallies`, or null), `best_per_level` (`level`, `passed`, `total`), `files` (`changed`, `added`, `removed`, each a sorted list of paths relative to the folder, and `entries`, below) and `next`. In a mock attempt the tallies count hidden cases but name none. A value a kind does not have is null (`levels` without levels, `last_test_run` for an item, `latest_submission` and `files` but for a project) or empty (`best_per_level`); `levels.opened_at` holds a project's opening times and is empty for a progressive problem, whose openings are not stored.
 
 `files.entries` is the folder's tree for an interface that shows it: every file under the folder, untracked ones aside, and every file `cstudy` provided that the folder lacks, in path order, each with `path` (relative to the folder), `origin`, `level` and `state`.
 
@@ -613,7 +697,35 @@ next       cstudy submit once level 2 passes
 
 Without a manifest (a folder started before `cstudy` kept one, or a clone), `status` compares the folder with what `cstudy` provides now: the starter and the generated test files of the open levels. It writes no manifest; the next `cstudy start` does.
 
-Exit 0; 3 without an attempt in progress, or for a problem of another kind (`cstudy status is for project problems`).
+Exit 0; 3 without an attempt in progress.
+
+## cstudy history
+
+```text
+cstudy history <slug|file> [--json]
+```
+
+Shows one problem's or item's past in this workspace: its review schedule and every attempt, newest first, with the runs each recorded. It reads `progress.db` only.
+
+```text
+$ cstudy history two-sum
+two-sum · easy · arrays-hashing · passed
+review     due 2026-10-27 (in 3 days) · interval 7d · ease 2.50 · reps 2 · lapses 0
+
+ATTEMPT  LANG    MODE    STATUS       STARTED           TIME     RATING  GRADE  HINTS  TESTS  BENCH
+14       kotlin  review  passed       2026-10-24 09:12  18m 40s  ok      ok     0      3      optimal
+9        python  new     failed       2026-10-17 20:01  41m 02s  -       again  2      7      -
+8        python  new     abandoned    2026-10-17 19:30  -        -       -      0      1      -
+```
+
+| Rule | Detail |
+|------|--------|
+| Header | Slug, difficulty, the pattern or track, and the [problem status](progress-and-scheduling.md#problem-status) |
+| `review` | The `schedule` row: due date and how far off, interval, ease, reps and lapses; `not scheduled` without one |
+| Attempts | Every attempt of the slug in every language: id, language (`-` for an item), mode, status, start, solve time (`-` while in progress or abandoned), rating, grade (`again`, `hard`, `ok`, `easy`), hints used, test runs (or submissions, for a project), and the latest bench verdict. A revealed solution adds `solution` after the grade. None: `no attempts yet` |
+| `--json` | `{"slug", "kind", "track", "status", "schedule": {"due_on", "interval_days", "ease", "reps", "lapses", "last_grade"} or null, "attempts": [...]}`, each attempt with `attempt_id`, `language`, `mode`, `status`, `started_at`, `ended_at`, `solve_s`, `rating`, `grade`, `hints_used`, `solution_revealed`, `time_limit_s`, `level_unlocked`, `levels_finished` (projects, else null), and its rows: `test_runs` (`ran_at`, `total`, `passed`, `failed`, `errored`, `timed_out`, `tle`, `time_limit`, `duration_ms`), `submissions` (`submitted_at`, `graded_up_to`, `every_level`, `levels`, `total`, `passed`, `duration_ms`; empty but for a project) and `bench_runs` (`ran_at`, `verdict`, `confidence`, `ratio`, `reference_id`), each list oldest first |
+
+Exit 0; 3 for an unknown slug.
 
 ## cstudy hint
 
@@ -672,7 +784,7 @@ next review  2026-10-27 (in 3 days) · ease 2.50
 ## cstudy next
 
 ```text
-cstudy next [--track T]... [--pattern P] [--difficulty D] [--lang L] [--new | --review] [--start]
+cstudy next [--track T]... [--pattern P] [--difficulty D] [--lang L] [--new | --review] [--start | --json]
 ```
 
 Applies the selection algorithm in [progress-and-scheduling](progress-and-scheduling.md#cstudy-next-selection). `--track` is repeatable and reaches non-autograded items, for example `cstudy next --track system-design`; their `start` line has no `--lang`. `--start` runs `cstudy start` on the result, in the `--lang` language (default `default_lang`) for a problem, and in its own language for a project problem, and prints its report instead of the `start` line; it opens the editor when `open_on_start` is on. `--new` together with `--review`, or a `--pattern` outside the [taxonomy](content.md#pattern-taxonomy), is a usage error (exit 3).
@@ -689,13 +801,17 @@ start   cstudy start koko-eating-bananas --lang kotlin
 
 A review due today reads `due today, interval 3d`; a new pick from a non-`dsa` group reads `weakest track: practical (0.75)`.
 
+`--json` prints the pick as one document instead: `{"pick": "review" or "new", "slug", "title", "kind", "difficulty", "group", "reason", "language", "start"}`, where `reason` is the text after the parentheses (`overdue 3d, interval 7d`), `language` the language `--start` would use (null for an item) and `start` the command of the `start` line; with nothing to pick, `{"pick": null, "message": ...}` with the text the report prints. `--json` with `--start` is a usage error (exit 3).
+
 ## cstudy list
 
 ```text
-cstudy list [--track T] [--pattern P] [--difficulty D] [--status S] [--content draft|ready] [--lang L]
+cstudy list [--track T] [--kind K] [--pattern P] [--difficulty D] [--status S] [--content draft|ready] [--lang L] [--json]
 ```
 
-`--status`: `new`, `attempted`, `passed`, `due`, `mastered` (definitions in [progress-and-scheduling](progress-and-scheduling.md#problem-status)). `--lang` filters to problems whose references cover that language. Non-autograded items follow the problems, ordered by track, `order` and slug, with `-` for the id and the references and their track in the pattern column; `--pattern` and `--lang` leave them out.
+`--status`: `new`, `attempted`, `passed`, `due`, `mastered` (definitions in [progress-and-scheduling](progress-and-scheduling.md#problem-status)). `--kind`: `function`, `design`, `progressive`, `concurrent`, `project`, or `item` for the non-autograded items. `--lang` filters to problems whose references cover that language. Non-autograded items follow the problems, ordered by track, `order` and slug, with `-` for the id and the references and their track in the pattern column; `--pattern` and `--lang` leave them out, and `--kind` other than `item` leaves them out.
+
+`--json` prints the same rows as one document, problems then items: `{"today": "2026-10-24", "entries": [...]}`, each entry with `id` (null for an item), `slug`, `title`, `track`, `kind` (`item` for an item), `difficulty`, `patterns`, `languages` (the reference languages, empty for an item), `content` (`draft` or `ready`), `source` (`catalog`, or `workspace` for [your own problems](installation-and-workspaces.md#your-own-problems)), `status`, `due_on` (null without a schedule row) and `in_progress` (each attempt in progress of the slug: `attempt_id`, `language`, `mode`). Exit 0.
 
 ```text
 ID    SLUG              DIFF    PATTERN          STATUS    DUE         REFS
@@ -929,3 +1045,35 @@ into      progress.db
 ```
 
 Exits 3, importing nothing, when the database already holds an attempt, test run, schedule entry, bench run, submission or level unlock (merging is [PRD Q12](../prd.md#8-open-questions)), when the file is missing, not JSON or not an export, when its `schema_version` is newer than this `cstudy`, or when a table, column or row does not fit the schema. Exit 0 otherwise.
+
+## cstudy serve
+
+```text
+cstudy serve [--port N] [--open]
+```
+
+Serves the local web UI for the workspace on `127.0.0.1` until stopped ([web-ui](web-ui.md), [ADR 0015](../decisions/0015-local-web-ui.md)). The page runs the practice loop through the same use cases and commands as the terminal.
+
+| Flag | Effect |
+|------|--------|
+| `--port N` | Listen on `127.0.0.1:N`, 1 to 65535; default 0, a free port the system picks |
+| `--open` | Open the page in the default browser, through a redirect file so the token stays out of other processes' arguments ([security](web-ui.md#security)); without it no browser opens |
+
+```text
+$ cstudy serve --open
+cstudy serve 0.9.0 · workspace ~/cstudy-workspace
+open       http://127.0.0.1:53817/?token=QmFua1Byb2plY3Q...
+run        submit bank-project-python · failed · 9/10 · 1.4s
+run        test two-sum · kotlin · passed · 14/14 · 2.1s
+job        doctor --fix · exit 0
+stop       Ctrl-C
+```
+
+| Rule | Detail |
+|------|--------|
+| Workspace | Needed, as for every practice command: exit 3 without one |
+| Address | `127.0.0.1` only; there is no option to bind another address |
+| Output | The version and workspace, the URL with its session token once, then one line per finished run and job; no request log. The token is printed nowhere else |
+| Stop | Ctrl-C (SIGINT) or SIGTERM sends SIGINT to every run and job in progress, closes the streams, removes the redirect file and exits 130 (143 after SIGTERM) |
+| Exit 4 | The port is in use (`port 53817 on 127.0.0.1 is already in use; choose another with --port`), or the web server libraries or the page's assets are missing or do not match their manifest (`fix: reinstall cstudy`); `cstudy doctor` shows both as `WARN` rows |
+| Import cost | Only `cstudy serve` imports the web server, so every other command starts as before (NFR-2) |

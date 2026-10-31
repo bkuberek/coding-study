@@ -1,6 +1,6 @@
 # Product Requirements: coding-study
 
-A local, IDE-first interview-prep system for senior and staff engineer loops. You solve problems in your own editor, and a CLI (`cstudy`) does everything a practice website would: it picks the next problem, scaffolds a stub, runs tests, reveals solutions, analyzes performance and tracks progress.
+A local, IDE-first interview-prep system for senior and staff engineer loops. You solve problems in your own editor, and a CLI (`cstudy`) does everything a practice website would: it picks the next problem, scaffolds a stub, runs tests, reveals solutions, analyzes performance and tracks progress. `cstudy serve` also serves the same loop as a page in your browser, on your own machine ([ADR 0015](decisions/0015-local-web-ui.md)).
 
 | Field | Value |
 |-------|-------|
@@ -55,10 +55,11 @@ cstudy next  ->  cstudy start <slug> --lang kotlin  ->  edit in editor  ->  cstu
 | US-10 | As the user, I want non-autograded tracks (system design, code review, behavioral) in the same loop, so that all interview areas are tracked in one place. | Prompts, rubrics and reference material open through `cstudy start` and `cstudy solution`; attempts are logged and scheduled. |
 | US-11 | As the user, I want timed practice, so that I rehearse interview pressure. | `--timer 25m` shows elapsed and remaining time; finishing over time caps the review grade. |
 | US-12 | As the user, I want project problems: a folder of seeded files in one language that I extend level by level and test with that language's own tools, so that I practice building and changing a small codebase. | `cstudy start` seeds `projects/<slug>/`; `cstudy test` runs native tests generated from the visible cases plus my own; `cstudy submit` grades every case of the unlocked levels, hidden ones included, and opens the next level on a full pass; `cstudy done` grades by the levels finished. |
+| US-13 | As the user, I want to practice in a local browser page as well as in the terminal, so that I can read, edit, run and submit in one place when I choose. | `cstudy serve` serves a page on `127.0.0.1`; every practice command has a page action that calls the same use case and gives the same result; runs stream live; nothing the page shows or changes is out of reach of the CLI ([web-ui](specs/web-ui.md)). |
 
 ### Non-goals
 
-- No web UI, browser editor, accounts, multi-user support or leaderboards.
+- No leaderboards.
 - No textual or AST comparison of user code with reference code.
 - No AI grading of code, designs or behavioral answers.
 - No copying of LeetCode statements or test data ([ADR 0004](decisions/0004-original-problem-wording.md)).
@@ -90,6 +91,7 @@ Not applicable. The product contains no AI features.
 | FR-13 | Users author problems with `cstudy new` templates and the workflow in [authoring](specs/authoring.md). |
 | FR-14 | Reference solutions stay outside the workspace; nothing the user opens by default shows them. |
 | FR-15 | Project problems: a problem may be a folder of seeded files in one language, solved level by level in `projects/<slug>/`. `cstudy test` runs its native tests as feedback; `cstudy submit` grades every case of the unlocked levels through the runner and opens the next level ([ADR 0014](decisions/0014-project-problems.md)). Python and TypeScript first, then Go, Java, Kotlin and Rust. |
+| FR-16 | Local web UI: `cstudy serve` serves a page with full practice parity: browsing with filters and the `cstudy next` pick, start, live test runs for every kind and language, submit, hints, solutions behind the CLI's confirmation, done, status with the project file tree and restore, mock interviews, statistics and history, a `doctor` view with `doctor --fix`, and progress export and import. Each action calls the use case its command calls, and runs are `cstudy` commands relayed as events; the page never gets behaviour the CLI lacks ([ADR 0015](decisions/0015-local-web-ui.md), [web-ui](specs/web-ui.md)). |
 
 ### Non-functional requirements
 
@@ -104,6 +106,9 @@ Not applicable. The product contains no AI features.
 | NFR-7 | Editor integration | Each practice project of a workspace (`python/`, `typescript/`, `jvm/`) is a standard project (uv, pnpm, Gradle) that LazyVim LSPs and IntelliJ open without custom configuration. |
 | NFR-8 | Architecture | Domain core has no imports of I/O, subprocess, SQLite or filesystem modules; enforced by an import contract test. |
 | NFR-9 | Honest measurement | Performance verdicts always carry a confidence level and never claim more precision than the data supports. |
+| NFR-10 | Local page security | `cstudy serve` binds `127.0.0.1` only; every request needs the session cookie, every unsafe request also the CSRF header and an allowed `Origin`, every request an allowed `Host`; no response carries CORS headers; the page runs under a CSP without `unsafe-inline` or `unsafe-eval`; the file API never leaves an attempt's files or follows a link. Each rule has an API test ([web-ui](specs/web-ui.md#security)). |
+| NFR-11 | Page feedback | A run started from the page: warm p50 from `POST /api/v1/runs` to its `run_end` reaching the page within the NFR-1 target of the same command, kind and language plus 0.1 s; the first `case_start` or `test_start` reaches the page within 50 ms of the child writing it. Measured on a quiet machine for the six project pilots and one single-file problem per language. |
+| NFR-12 | Page weight | No request leaves the machine (the CSP's `default-src 'self'`, NFR-6); the vendored bundle is at most 1 MB raw and 350 KB gzip without the optional Vim chunk, and at most 600 KB raw is loaded before a file of one language is editable. |
 
 ## 5. Technical overview
 
@@ -115,6 +120,7 @@ See [architecture](architecture.md) for components and data flows.
 | Runners | Python (venv), TypeScript (Node 24 type stripping), JVM (one runner for Java and Kotlin, built with the Gradle wrapper, [ADR 0003](decisions/0003-gradle-wrapper-jvm.md)) |
 | Storage | Content in files (YAML, JSON, Markdown); progress in SQLite `progress.db` |
 | Integration | Subprocess plus JSON files between CLI and runners ([runners](specs/runners.md)) |
+| Web UI | `cstudy serve`: Starlette on uvicorn on `127.0.0.1`, a vendored CodeMirror 6 front end, runs as child `cstudy` commands relayed as server-sent events ([ADR 0015](decisions/0015-local-web-ui.md)) |
 | Security and privacy | Local only; no network at runtime; content code (generators, checkers) is trusted repository code; user code runs as the user with a hang guard but no sandbox |
 
 ## 6. Risks

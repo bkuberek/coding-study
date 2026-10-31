@@ -92,7 +92,7 @@ Spike K6 (scratch code, not merged) built a bank crate and a probe crate whose t
 - A starter's `pyproject.toml` holds tool tables only. A `[project]` table, `requires-python` or `[tool.uv]` in it could make `uv run` delete the shared venv, so check S15 rejects them.
 - A Go project folder is a module of its own whose `go.work`, like a Python folder's `.venv` link, is untracked: `cstudy start` writes it when it is missing and `cstudy doctor --fix` restores it. `cstudy doctor` also warns about a vendored `replace` that does not resolve and about two folders with one module path. A generated Go level file that calls a method not written yet stops its whole package from compiling, as any Go test would; `cstudy test --level` leaves it out.
 - The pilots are `0249-bank-project-python`, then `0250-bank-project-typescript`, with the behavior of `0248-scheduled-transfers-bank`. 0187 and 0248 stay progressive, since converting them would remove their six-language versions.
-- The web interface is still a PRD non-goal; the project folder, `cstudy submit --json` and `cstudy status --json` are the boundary it would build on.
+- The web interface is still a PRD non-goal; the project folder, `cstudy submit --json` and `cstudy status --json` are the boundary it would build on. [ADR 0015](0015-local-web-ui.md) later made it a goal.
 
 ## Revisit
 
@@ -103,7 +103,7 @@ Spike K6 (scratch code, not merged) built a bank crate and a probe crate whose t
 | The owner finds the pilot's generated tests read like machine output | Hand-written visible tests in the starter, kept next to `tests.json` (alternative C below) |
 | Ports become frequent, or a third language version of one project is wanted | Sharing cases between siblings, and a `variant_of` field so that `cstudy start bank-project --lang typescript` works |
 | Seeing the code evolve proves worth about four times the reference work | A reference snapshot per level, shown by `cstudy solution --level N` |
-| The web interface is scheduled | The PRD non-goal and the absence of a sandbox for user code |
+| The web interface is scheduled | Closed by [ADR 0015](0015-local-web-ui.md), which builds the local web UI on this boundary |
 
 ## Alternatives considered
 

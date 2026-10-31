@@ -13,6 +13,7 @@ Each phase ends only when every exit criterion is observed. Phases run in order;
 | 6 | System design, code review, debugging, behavioral | non-autograded items, buggy stubs |
 | 7 | Progress polish | `stats`, `mock`, `export`, `import`, `test --stress` for oracle inputs, `test --json` |
 | 8 | Project problems: Python, then TypeScript | project kind, `submit`, `status` |
+| 9 | Local web UI with full practice parity | `serve`, `history`, `test --events` for every kind, `--json` for `list`, `next` and `doctor` |
 
 ## Status
 
@@ -132,3 +133,17 @@ Phases 0 to 7 are implemented: every command in the table above exists with its 
 - [x] 8d, Kotlin, `bank-project-kotlin`: fixtures 9027 and 9029; NFR-1 5 s.
 - [x] 8e, Go, `bank-project-go`: fixtures 9030 and 9031; NFR-1 1.5 s.
 - [x] 8f, Rust, `bank-project-rust`: fixtures 9032 and 9033; NFR-1 2 s.
+
+## Phase 9: Local web UI
+
+**Scope.** [ADR 0015](decisions/0015-local-web-ui.md) and its specs ([web-ui](specs/web-ui.md), [cli](specs/cli.md#cstudy-serve)). First the CLI surface the page needs: `cstudy test --events` for every kind ([event stream](specs/cli.md#event-stream)), `--json` for `cstudy list`, `cstudy next` and `cstudy doctor`, `cstudy list --kind`, `cstudy status` for every kind and `cstudy history`. Then `cstudy serve`: the server with its security model, the vendored CodeMirror 6 front end, the read API and page shell, saving and file management, runs with live results and diagnostics, attempt flows (start, hints, solutions, done), mock interviews, notifications, progress and health views, and diagnostic parsers for `javac`, `kotlinc`, `go` and `cargo`. The first runnable slice is a project problem: `cstudy serve --open`, edit and save a file, run the tests and submit with streamed results, cancel a run, see an import error marked on its line, and watch a level open.
+
+**Exit criteria.**
+
+- [ ] Every practice command in the [parity table](specs/web-ui.md#command-parity) works from the page, for every kind, in all six languages.
+- [ ] The API security tests pass: Host, Origin, cookie, CSRF, CSP and the absence of CORS headers, body limits, and every file API path rule (NFR-10).
+- [ ] Every API response validates against its schema, and the documents the CLI also prints equal its `--json` output.
+- [ ] The browser smoke test passes in headless Chromium: login, the editor under the CSP, a streamed run, cancel, a diagnostic marker, the solution confirmation, Vim loading, no console error; a manual check passes in Safari and Firefox.
+- [ ] Warm page runs meet NFR-11 on a quiet machine for the six project pilots and one single-file problem per language.
+- [ ] The bundle meets NFR-12, its rebuild matches `manifest.json`, and the wheel holds every asset.
+- [ ] A user guide, `docs/guides/web-ui.md`, covers starting the server, the views and the keyboard.
