@@ -18,7 +18,8 @@ from coding_study.application.ports import WebServerLibraries, WebUiAssets
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import serve
 from coding_study.entrypoints.shared import ExitCode
-from coding_study.entrypoints.web import server
+from coding_study.entrypoints.web import app, server
+from coding_study.entrypoints.web.context import ServerSettings
 from tests.web_server import web_workspace
 
 runner = CliRunner()
@@ -238,6 +239,34 @@ def test_the_socket_is_closed_when_the_server_stops(workspace, monkeypatch):
     monkeypatch.setattr(server, "bind_loopback", recorded)
     serving(monkeypatch, ServerLoop(KeyboardInterrupt))
     assert bound[0].fileno() == -1
+
+
+def served_settings(monkeypatch) -> list[ServerSettings]:
+    """The settings `cstudy serve` builds its app from."""
+    built: list[ServerSettings] = []
+    create_app = app.create_app
+
+    def recorded(settings: ServerSettings) -> ASGIApp:
+        built.append(settings)
+        return create_app(settings)
+
+    monkeypatch.setattr(app, "create_app", recorded)
+    return built
+
+
+def test_children_get_the_content_the_server_was_started_with(workspace, monkeypatch, tmp_path):
+    content = tmp_path / "content"
+    content.mkdir()
+    settings = served_settings(monkeypatch)
+    monkeypatch.setattr(server, "serve_forever", ServerLoop(KeyboardInterrupt))
+    runner.invoke(cli.app, ["--content", str(content), "serve"])
+    assert settings[0].child.content == content
+
+
+def test_children_get_no_content_when_the_server_was_started_without(workspace, monkeypatch):
+    settings = served_settings(monkeypatch)
+    serving(monkeypatch, ServerLoop(KeyboardInterrupt))
+    assert settings[0].child.content is None
 
 
 def test_without_open_no_browser_opens(workspace, monkeypatch, opened):

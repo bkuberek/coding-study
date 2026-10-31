@@ -24,6 +24,7 @@ from coding_study.application.environment import Environment
 from coding_study.application.ports import WebUiInstall
 from coding_study.entrypoints.shared import (
     ExitCode,
+    GlobalOptions,
     add_command,
     command_environ,
     console,
@@ -70,6 +71,7 @@ def serve(
     _require_installed(InstalledWebUi(STATIC_DIRECTORY))
     from coding_study.entrypoints.web import server
     from coding_study.entrypoints.web.app import create_app
+    from coding_study.entrypoints.web.children import ChildCommand
     from coding_study.entrypoints.web.context import ServerSettings
     from coding_study.entrypoints.web.security import SessionSecrets, login_url
 
@@ -86,6 +88,7 @@ def serve(
             static_directory=STATIC_DIRECTORY,
             load_environment=_workspace_environment(root, environ, home),
             preferences=FsPreferencesStore(root),
+            child=ChildCommand(content=context.ensure_object(GlobalOptions).content),
         )
         output = console(context)
         output.print(Text(f"cstudy serve {settings.version} · workspace {_shown(root, home)}"))
