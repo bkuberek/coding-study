@@ -50,6 +50,10 @@ from coding_study.domain.diagnostics import (
     in_solution_files,
     solution_load_diagnostic,
 )
+from coding_study.domain.diagnostics_go import GoReport
+from coding_study.domain.diagnostics_javac import JavacReport
+from coding_study.domain.diagnostics_kotlinc import KotlincReport
+from coding_study.domain.diagnostics_rustc import RustcReport
 from coding_study.domain.diagnostics_tsc import CURRENT_DIRECTORY, TscReport
 from coding_study.domain.errors import UsageError
 from coding_study.domain.generated_cases import OracleInput, oracle_approach, oracle_inputs
@@ -83,14 +87,14 @@ STRESS_SKIPPED_NOTICE = "stress runs are skipped while debugging"
 BUILD_REPORTS: Mapping[Language, DiagnosticParser | None] = {
     Language.PYTHON: None,
     Language.TYPESCRIPT: TscReport(CURRENT_DIRECTORY),
-    Language.JAVA: None,
-    Language.KOTLIN: None,
-    Language.GO: None,
-    Language.RUST: None,
+    Language.JAVA: JavacReport(),
+    Language.KOTLIN: KotlincReport(),
+    Language.GO: GoReport(),
+    Language.RUST: RustcReport(),
 }
-"""How to read a failed build of a single file, whose paths start in the directory the tool ran
-in; TypeScript builds nothing but `--typecheck`. None: each line is a diagnostic without a
-place."""
+"""How to read a failed build of a single file, whose paths are the directory the tool ran in or
+absolute; TypeScript builds nothing but `--typecheck`. None: each line is a diagnostic without a
+place, as it is for a report the language's parser finds nothing in."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -453,9 +457,8 @@ def _diagnostics(
 
 def _build_diagnostics(failure: BuildFailed, language: Language) -> tuple[Diagnostic, ...]:
     parser = BUILD_REPORTS[language]
-    if parser is None:
-        return tuple(Diagnostic(line, DiagnosticSource.BUILD) for line in failure.diagnostics)
-    return parser.parse("\n".join(failure.diagnostics))
+    found = parser.parse("\n".join(failure.diagnostics)) if parser else ()
+    return found or tuple(Diagnostic(line, DiagnosticSource.BUILD) for line in failure.diagnostics)
 
 
 def _oracle_stress(

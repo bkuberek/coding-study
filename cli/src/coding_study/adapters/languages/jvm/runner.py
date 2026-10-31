@@ -410,8 +410,13 @@ def _jdwp_agent(session: DebugSession) -> str:
 
 
 def _build_failure(outcome: GradleOutcome, sources: str) -> BuildFailed:
-    """Compiler errors in the problem's files; any other failure is an environment error."""
-    diagnostics = compiler_diagnostics(outcome.output, f"{sources}/")
+    """Compiler errors in the problem's files, once: Gradle prints them again, indented, under its
+    failure report, which is kept only when it holds the only copy. Any other failure is an
+    environment error."""
+    printed, _, report = outcome.output.partition(FAILURE_REPORT_MARKER)
+    diagnostics = compiler_diagnostics(printed, f"{sources}/") or compiler_diagnostics(
+        report, f"{sources}/"
+    )
     if not diagnostics:
         message = f"gradle build failed with exit code {outcome.exit_code}"
         raise RunnerStartError(message, output_tail(outcome.output))

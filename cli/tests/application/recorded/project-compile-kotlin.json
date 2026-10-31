@@ -1,0 +1,9 @@
+{
+  "where": "suite",
+  "test_id": null,
+  "error": {
+    "type": "CompileError",
+    "message": "the project does not compile",
+    "trace": "e: src/main/kotlin/bank/Bank.kt:12:24 Initializer type mismatch: expected 'Int', actual 'String'.\ne: src/main/kotlin/bank/Bank.kt:13:18 Unresolved reference 'missingId'.\ne: src/main/kotlin/bank/Bank.kt:13:31 Null cannot be a value of a non-null type 'Account'."
+  }
+}

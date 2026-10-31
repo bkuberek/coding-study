@@ -164,6 +164,33 @@ def test_build_failure_keeps_indented_compiler_context(root):
     assert result == BuildFailed((error, "        retur 1;", "        ^"))
 
 
+def test_compiler_lines_are_kept_once_when_gradle_repeats_them_under_what_went_wrong(root):
+    error = f"{root}/{USER_FILE}:4: error: x"
+    repeated = (
+        "* What went wrong:",
+        f"  {error}",
+        "          retur 1;",
+        "          ^",
+        "  1 error",
+    )
+    gradle = FakeGradle(
+        root, outcome=compile_failure(error, "        retur 1;", "        ^", "1 error", *repeated)
+    )
+    result, _ = prepare(
+        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, gradle), UserCode(TWO_SUM)
+    )
+    assert result == BuildFailed((error, "        retur 1;", "        ^"))
+
+
+def test_a_report_gradle_gives_only_under_what_went_wrong_is_kept(root):
+    error = f"{root}/{USER_FILE}:4: error: x"
+    gradle = FakeGradle(root, outcome=compile_failure("* What went wrong:", f"  {error}"))
+    result, _ = prepare(
+        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, gradle), UserCode(TWO_SUM)
+    )
+    assert result == BuildFailed((f"  {error}",))
+
+
 def test_build_failure_without_user_file_lines_is_an_environment_error(root):
     gradle = FakeGradle(root, outcome=compile_failure("Could not resolve cs:runner."))
     with pytest.raises(RunnerStartError, match="Could not resolve cs:runner"):

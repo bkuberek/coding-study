@@ -15,6 +15,7 @@ from typing import Protocol
 from coding_study.application.active_attempt import autograded_language, find_attempt
 from coding_study.application.environment import Environment
 from coding_study.application.ports import BuildFailed, ProgressNotice
+from coding_study.application.project_build_diagnostics import project_diagnostics
 from coding_study.application.project_runs import (
     SUITE_FRAMEWORKS,
     SuiteRun,
@@ -37,7 +38,6 @@ from coding_study.domain.project_test_runs import (
     SuiteTestVerdict,
     judge_suite,
     rust_starter_test_files,
-    suite_diagnostics,
     suite_tally,
     unmatched_selections,
 )
@@ -205,7 +205,7 @@ def run_project_tests(
         watched=folder,
         debug=debug,
         diagnostics=(
-            suite_diagnostics(report, str(root))
+            project_diagnostics(report, language, str(root))
             if report
             else _typecheck_diagnostics(failure, language, folder)
         ),

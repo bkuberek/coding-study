@@ -262,9 +262,13 @@ def test_go_that_does_not_build_is_a_build_and_a_diagnostic(go):
     )
 
 
-def test_the_go_compiler_line_is_the_diagnostics_message(go):
-    message = of_type(go["broken"], "diagnostic")[0]["message"]
-    assert message.startswith("go/practice/two_sum/two_sum.go:4:")
+def test_go_that_does_not_build_is_a_diagnostic_at_the_users_file_and_line(go):
+    diagnostic = of_type(go["broken"], "diagnostic")[0]
+    assert (diagnostic["file"], diagnostic["line"], diagnostic["message"]) == (
+        GO_USER_FILE,
+        4,
+        "undefined: missing",
+    )
 
 
 def test_go_that_builds_names_its_build_before_its_cases(go):

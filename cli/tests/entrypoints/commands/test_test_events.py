@@ -345,7 +345,7 @@ def test_code_that_does_not_load_writes_no_case(tmp_path, monkeypatch):
     assert types(warmed()) == ["run_start", "diagnostic", "run_end"]
 
 
-def test_each_compiler_line_is_a_build_diagnostic(tmp_path, monkeypatch):
+def test_a_compiler_line_is_a_build_diagnostic_at_its_place(tmp_path, monkeypatch):
     runner = FakeLanguageRunner(BuildFailed((COMPILER_LINE,)))
     scripted(tmp_path, monkeypatch, Language.GO, runner=runner)
     assert of_type(events(), "diagnostic") == [
@@ -354,11 +354,11 @@ def test_each_compiler_line_is_a_build_diagnostic(tmp_path, monkeypatch):
             "version": 1,
             "source": "build",
             "severity": "error",
-            "file": None,
-            "line": None,
-            "column": None,
+            "file": "go/practice/two_sum/two_sum.go",
+            "line": 4,
+            "column": 9,
             "code": None,
-            "message": COMPILER_LINE,
+            "message": "undefined: undefinedThing",
         }
     ]
 

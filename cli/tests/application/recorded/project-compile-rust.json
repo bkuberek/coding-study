@@ -1,0 +1,9 @@
+{
+  "where": "test",
+  "test_id": "src/lib.rs",
+  "error": {
+    "type": "CompileError",
+    "message": "src/bank.rs:22:30: error[E0425]: cannot find value `missing_id` in this scope",
+    "trace": "    not found in this scope\nsrc/bank.rs:21:26: error[E0308]: mismatched types\n    expected `i32`, found `&str`\nsrc/bank.rs:22:42: error[E0308]: mismatched types\n    expected `Account`, found `Option<_>`\n    note: expected struct `Account`\n     found enum `Option<_>`\n    help: the return type of this call is `Option<_>` due to the type of the argument passed"
+  }
+}

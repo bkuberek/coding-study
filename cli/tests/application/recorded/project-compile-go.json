@@ -1,0 +1,9 @@
+{
+  "where": "test",
+  "test_id": "bank-project-go",
+  "error": {
+    "type": "CompileError",
+    "message": "bank.go:17:6: declared and not used: count\nbank.go:17:18: cannot use \"five\" (untyped string constant) as int value in variable declaration\nbank.go:18:13: undefined: missingID",
+    "trace": "bank.go:17"
+  }
+}
