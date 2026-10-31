@@ -22,6 +22,7 @@ from coding_study.adapters.locations import (
     workspace_directory,
 )
 from coding_study.adapters.runner_runtime import RUNTIME_RUNNERS
+from coding_study.adapters.serve_install import InstalledWebUi
 from coding_study.adapters.sqlite.progress_database import SqliteProgressDatabase
 from coding_study.adapters.subprocess_runner import SubprocessRunner
 from coding_study.adapters.subprocess_tool_probe import (
@@ -50,6 +51,7 @@ from coding_study.domain.cases import JsonValue
 from coding_study.domain.config import Config
 from coding_study.domain.errors import ConfigError, UsageError
 from coding_study.entrypoints.shared import ExitCode, add_command, command_environ, console
+from coding_study.entrypoints.web import STATIC_DIRECTORY
 
 NAME = "doctor"
 STATUS_LABEL_WIDTH = 6
@@ -137,6 +139,7 @@ def doctor_environment(cwd: Path, environ: Mapping[str, str], home: Path) -> Doc
         content=content,
         workspace=_workspace(cwd, environ, content, config),
         version=tool_version(),
+        web=InstalledWebUi(STATIC_DIRECTORY),
     )
 
 

@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from coding_study.adapters.serve_install import InstalledWebUi
 from coding_study.adapters.sqlite.progress_database import SqliteProgressDatabase
 from coding_study.adapters.sqlite.schema import latest_schema_version
 from coding_study.application.doctor import (
@@ -23,6 +24,7 @@ from coding_study.application.ports import ProbeResult, ScaffoldOutcome
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import doctor
 from coding_study.entrypoints.shared import ExitCode
+from coding_study.entrypoints.web import STATIC_DIRECTORY
 from tests.helpers import REPOSITORY_ROOT, mark_workspace, progress_database_at
 
 runner = CliRunner()
@@ -208,6 +210,11 @@ def test_doctor_environment_finds_the_checkout_content(tmp_path):
     content = doctor.doctor_environment(tmp_path, {}, tmp_path).content
     assert isinstance(content, ContentLocation)
     assert (content.files.root, content.editable) == (REPOSITORY_ROOT, True)
+
+
+def test_doctor_environment_checks_the_installed_web_ui(tmp_path):
+    web = doctor.doctor_environment(tmp_path, {}, tmp_path).web
+    assert web.assets() == InstalledWebUi(STATIC_DIRECTORY).assets()
 
 
 def test_a_failed_fix_prints_what_to_do_by_hand(monkeypatch, tmp_path):

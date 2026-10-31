@@ -161,8 +161,8 @@ class DoctorEnvironment:
     workspace: PracticeWorkspace | NotFound
     version: str
     """The running `cstudy` version."""
-    web: WebUiInstall | None = None
-    """What `cstudy serve` needs; None leaves out the `web ui assets` and `web server` rows."""
+    web: WebUiInstall
+    """What `cstudy serve` needs, for the `web ui assets` and `web server` rows."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -842,11 +842,9 @@ def _project_libraries(workspace: PracticeWorkspace) -> list[CheckResult]:
     return results
 
 
-def _web_ui(web: WebUiInstall | None) -> list[CheckResult]:
+def _web_ui(web: WebUiInstall) -> list[CheckResult]:
     """Only `cstudy serve` needs these, so a broken install warns: practice in the terminal
     works without them."""
-    if web is None:
-        return []
     return [_web_assets(web.assets()), _web_server(web.server_libraries())]
 
 

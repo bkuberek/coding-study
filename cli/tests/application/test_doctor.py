@@ -282,7 +282,7 @@ def doctor(
             content=content,
             workspace=workspace or workspace_with(),
             version=RUNNING_VERSION,
-            web=web,
+            web=web or FakeWebUi(),
         ),
         lambda _line: None,
     )
