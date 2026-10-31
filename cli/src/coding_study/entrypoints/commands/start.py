@@ -11,6 +11,7 @@ from rich.text import Text
 from coding_study.adapters.environment_factory import load_environment
 from coding_study.application.environment import Environment
 from coding_study.application.practice_catalog import is_item
+from coding_study.application.project_start import StartedProject
 from coding_study.application.resolve_target import ProblemTarget, resolve_problem
 from coding_study.application.start_attempt import StartedAttempt, StartRequest, start_attempt
 from coding_study.application.start_item import ItemStartRequest, start_item_attempt
@@ -27,6 +28,8 @@ from coding_study.entrypoints.shared import (
 NAME = "start"
 LABEL_WIDTH = 11
 NEXT_STEP = "cstudy test --watch"
+PROJECT_NEXT_STEP = "cstudy test --watch, then cstudy submit"
+PROJECT_KIND = "project"
 
 type OpenFiles = tuple[str, str]
 """The user's file (stub or notes), then the statement."""
@@ -92,9 +95,14 @@ def _timer_seconds(timer: str | None) -> int | None:
 def _report(started: StartedAttempt) -> Iterator[Text]:
     meta = started.problem.meta
     topic = meta.patterns[0] if meta.patterns else meta.track
-    language = started.attempt.language or ""
-    yield Text(" · ".join((meta.slug, meta.difficulty, topic, language)), style="bold")
-    yield _line("stub", started.stub_path)
+    header = [meta.slug, meta.difficulty, topic, started.attempt.language or ""]
+    project = started.project
+    if project is None:
+        yield Text(" · ".join(header), style="bold")
+        yield _line("stub", started.stub_path)
+    else:
+        yield Text(" · ".join((*header, PROJECT_KIND)), style="bold")
+        yield from _project_lines(project)
     yield _line("statement", started.statement_path)
     levels = started.levels
     if levels is not None:
@@ -104,7 +112,17 @@ def _report(started: StartedAttempt) -> Iterator[Text]:
         yield _line("attempt", "resumed")
     if started.archived_to:
         yield _line("archived", started.archived_to)
-    yield _line("next", NEXT_STEP)
+    yield _line("next", NEXT_STEP if project is None else PROJECT_NEXT_STEP)
+
+
+def _project_lines(project: StartedProject) -> Iterator[Text]:
+    """`project`, `entry` and `tests` lines in place of the stub."""
+    files = f"{project.files} {'file' if project.files == 1 else 'files'}"
+    yield _line("project", f"{project.folder} ({files})")
+    yield _line("entry", f"{project.entry_file}: {project.entry_class}")
+    tests = project.tests
+    count = f"{tests.tests} {'test' if tests.tests == 1 else 'tests'}"
+    yield _line("tests", f"{tests.path} ({count})")
 
 
 def _start_item(environment: Environment, request: StartRequest) -> tuple[list[Text], OpenFiles]:

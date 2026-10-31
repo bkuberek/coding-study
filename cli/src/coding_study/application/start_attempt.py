@@ -7,6 +7,11 @@ progress-and-scheduling.md#attempt-lifecycle.
 from dataclasses import dataclass, replace
 
 from coding_study.application.environment import Environment
+from coding_study.application.project_start import (
+    ProjectStartRequest,
+    StartedProject,
+    start_project,
+)
 from coding_study.application.statement_file import write_statement
 from coding_study.domain import layout
 from coding_study.domain.attempts import Attempt, AttemptMode, AttemptStatus, NewAttempt
@@ -15,7 +20,7 @@ from coding_study.domain.errors import ContentError, ContentIssue, UsageError
 from coding_study.domain.levels import FIRST_LEVEL, LevelProgress, level_progress
 from coding_study.domain.practice_manifests import practice_manifest, with_problem
 from coding_study.domain.precedence import resolve_language
-from coding_study.domain.problem import Language, Problem, StubSource
+from coding_study.domain.problem import Language, Problem, ProblemKind, StubSource
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,7 +42,10 @@ class StartedAttempt:
     statement_path: str
     resumed: bool
     created_stub: bool
+    """A project problem: the call copied starter files into the folder."""
     archived_to: str | None = None
+    project: StartedProject | None = None
+    """Project problems: the folder `stub_path` names, its entry and its test file."""
 
     @property
     def levels(self) -> LevelProgress | None:
@@ -47,6 +55,8 @@ class StartedAttempt:
 
 def start_attempt(environment: Environment, request: StartRequest) -> StartedAttempt:
     problem = environment.problems.load(request.slug)
+    if problem.meta.kind is ProblemKind.PROJECT:
+        return _start_project(environment, problem, request)
     language = resolve_language(request.language, environment.config)
     _require_language(problem, language)
     stub_path = layout.stub_path(problem.meta, language)
@@ -68,6 +78,27 @@ def attempt_mode(mock: bool, scheduled: bool) -> AttemptMode:
     if mock:
         return AttemptMode.MOCK
     return AttemptMode.REVIEW if scheduled else AttemptMode.NEW
+
+
+def _start_project(
+    environment: Environment, problem: Problem, request: StartRequest
+) -> StartedAttempt:
+    """A project problem starts in its folder, in its one language
+    (docs/specs/cli.md#cstudy-start)."""
+    scheduled = environment.progress.schedule_entry(problem.meta.slug) is not None
+    mode = attempt_mode(request.mock, scheduled)
+    project_request = ProjectStartRequest(request.language, request.fresh, request.timer_s, mode)
+    started = start_project(environment, problem, project_request)
+    return StartedAttempt(
+        problem=problem,
+        attempt=started.attempt,
+        stub_path=started.project.folder,
+        statement_path=layout.statement_path(problem.meta.slug),
+        resumed=started.resumed,
+        created_stub=started.copied_starter,
+        archived_to=started.archived_to,
+        project=started.project,
+    )
 
 
 def _require_language(problem: Problem, language: Language) -> None:
