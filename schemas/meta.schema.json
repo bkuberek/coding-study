@@ -386,7 +386,7 @@
       "required": ["entry"],
       "properties": {
         "entry": {
-          "description": "Where the entry class lives: a dotted module in Python (bank.bank), a .ts file relative to the project root in TypeScript (src/bank.ts)",
+          "description": "Where the entry class lives: a dotted module in Python (bank.bank), a .ts file relative to the project root in TypeScript (src/bank.ts), the .go file that declares the entry type and its constructor in Go (bank.go)",
           "type": "string",
           "minLength": 1
         },
