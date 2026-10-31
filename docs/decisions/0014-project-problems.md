@@ -4,6 +4,7 @@
 |-------|-------|
 | Status | Accepted |
 | Date | 2026-10-30 |
+| Amended | 2026-10-31: [Go project problems](#go-spike-k5), after spike K5 |
 | Spec | [problem-format](../specs/problem-format.md#project-problems), [runners](../specs/runners.md#project-jobs), [cli](../specs/cli.md#cstudy-submit), [authoring](../specs/authoring.md#project-problems), [installation-and-workspaces](../specs/installation-and-workspaces.md#project-folders), [progress-and-scheduling](../specs/progress-and-scheduling.md#project-attempts) |
 | Amends | [ADR 0001](0001-data-driven-tests.md) (native test files generated from the data), [ADR 0012](0012-go-and-rust.md) (a fourth exception to the six-language rule) |
 
@@ -30,15 +31,26 @@ A spike (scratch code, not merged) built a two-file bank in Python and TypeScrip
 - **Hidden cases.** A failing hidden case shows its input, expected and actual in a practice attempt, and only a count in a mock attempt.
 - **Grade.** `cstudy done` takes a rating once level 1 passes and caps the grade by the levels finished: all levels, no cap; all but the last, `hard`; fewer, `again`. The time box stays soft: finishing over it caps the grade at `hard`, as today.
 - **One final reference.** Each project problem has exactly one approach, whose reference is an overlay on the starter (`solutions/<approach>/`, changed and added files only) implementing every level. No snapshot per level.
-- **Runners host the framework.** The Python and TypeScript runners learn to load a project folder for grading and to run the native framework in-process as a new `suite` job, so a test gets the runner's hang guard, output capture, crash restart and debug launch.
+- **Runners host the framework.** The Python and TypeScript runners learn to load a project folder for grading and to run the native framework in-process as a new `suite` job, so a test gets the runner's hang guard, output capture, crash restart and debug launch. Go runs its test binaries as child processes of the runner instead, with the same guarantees ([Go](#go-spike-k5)).
 - **Shared toolchains.** A project folder reaches the workspace's Python venv and Node installs by relative path; nothing is installed per project, so a project starts offline (NFR-6).
-- **Python and TypeScript first.** Java, Kotlin, Go and Rust project problems are not yet supported, and `cstudy verify` rejects one. Each needs a build of its own per project (a Gradle build, a Go module, a Cargo crate) and a spike before it is specified:
+- **Python and TypeScript first.** Java, Kotlin and Rust project problems are not yet supported, and `cstudy verify` rejects one; Go followed after spike K5 ([below](#go-spike-k5)). Each needs a build of its own per project (a Gradle build, a Go module, a Cargo crate) and a spike before it is specified:
 
   | Language | Open question | Spike |
   |----------|---------------|-------|
   | Java, Kotlin | Warm p50 of compiling main and test sources plus a JUnit Platform launch against NFR-1's 3 s and 5 s; JUnit resolved offline; locks and per-run class copies per project build. The Gradle step already takes 0.85 to 1.55 s warm for one package, and ADR 0007 names multi-file problems as its revisit trigger | K4 |
-  | Go | One module per project in the root `go.work` for gopls; the overlay registration inside a project package | K5 |
+  | Go | Settled by K5: one module per project with a `go.work` of its own in the folder, never an entry in the root `go.work`; the overlay registration works inside a project package ([below](#go-spike-k5)) | K5 |
   | Rust | `cargo test` results on stable Rust without libtest's JSON output; two profiles (tests in dev, grading in release) compiled per change; a harness that depends on the project crate by path | K6 |
+
+### Go (spike K5)
+
+Spike K5 (scratch code, not merged) built a two-package Go bank with a test file per level, own tests, subtests, parallel tests and an Example, on Go 1.27 and Delve 1.27.2. Go project problems follow its design ([problem-format](../specs/problem-format.md#project-problems), [runners](../specs/runners.md#go-project-jobs), [installation-and-workspaces](../specs/installation-and-workspaces.md#project-folders)):
+
+- **A module per folder, with a `go.work` of its own.** The starter's `go.mod` declares `module <slug>` (check S15) and reaches the vendored decimal module through `replace ../../.cs/runtime/runners/go/third_party/...`, so it needs neither a `go.sum` nor the network. `cstudy start` writes `projects/<slug>/go.work` holding `use .`, through which gopls and `go test ./...` in the folder resolve imports. The root `go.work` is left alone: a `use` line there breaks every go command once an archive moves the folder, and two folders with one module path fail with `module appears multiple times`.
+- **Grading** builds a runner binary per project against a `go.work` of its own in the build directory, which joins the build module `csbuild` and the project folder. The registration and thunk files enter the entry's package through `go build -overlay`, as for a practice file; overlay and typed thunks work for a package spread across files and subpackages. The thunks cover the methods of the graded levels only. Measured: 0.23 to 0.37 s p50 of toolchain time.
+- **Suite.** The runner runs `go test -json -count=1 -timeout=0 ./...` in the folder as a child process and turns its events into suite results. This corrects "Runners host the framework" for Go: the tests run in test binaries, not in the runner's process, yet the hang guard, output capture, crash restart and debug launch still work through the child. Parsing the native report is fine here, unlike JUnit XML in the alternatives below, because `go test -json` is the go command's documented interface and reports each test as it starts and ends. Measured: 0.53 to 0.69 s p50.
+- **Hang guard and restarts.** `-timeout` covers a whole test binary, not a test, so the hang guard times the gap since the last `go test` event, `t.Parallel` tests pausing and finishing late, and the CLI's watcher kills the process group. A test binary that panics or calls `os.Exit` is a crash of the test it was running. A restart passes `-skip` with the top-level tests already reported and the culprit: one regular expression cannot name an arbitrary set of subtests, so a restart leaves out whole top-level tests.
+- **Debug.** The runner builds the test binary with `-gcflags=all=-N -l`, runs it under `dlv exec --headless`, and pipes its output through `go tool test2json`; breakpoints in the project's code and in its tests stop.
+- **Speed.** A Go project's `cstudy test` takes about 1.2 to 1.4 s end to end, over the 1.0 s that NFR-1 sets for Python and TypeScript projects, so NFR-1 gives Go projects a target of their own, 1.5 s.
 
 ## Consequences
 
@@ -47,6 +59,7 @@ A spike (scratch code, not merged) built a two-file bank in Python and TypeScrip
 - New CLI surface: `cstudy submit` and `cstudy status`, a `projects/` folder in every workspace, pytest in the workspace's Python template, `submissions` and `level_unlocks` tables, and verify checks S14 to S16 and D9.
 - The Python runner gains a package-aware loader that compiles project modules from source on every run and keeps library bytecode under `.cs/pycache/`, and one runner process per project job, since two projects may both define a top-level `bank` module.
 - A starter's `pyproject.toml` holds tool tables only. A `[project]` table, `requires-python` or `[tool.uv]` in it could make `uv run` delete the shared venv, so check S15 rejects them.
+- A Go project folder is a module of its own whose `go.work`, like a Python folder's `.venv` link, is untracked: `cstudy start` writes it when it is missing and `cstudy doctor --fix` restores it. `cstudy doctor` also warns about a vendored `replace` that does not resolve and about two folders with one module path. A generated Go level file that calls a method not written yet stops its whole package from compiling, as any Go test would; `cstudy test --level` leaves it out.
 - The pilots are `0249-bank-project-python`, then `0250-bank-project-typescript`, with the behavior of `0248-scheduled-transfers-bank`. 0187 and 0248 stay progressive, since converting them would remove their six-language versions.
 - The web interface is still a PRD non-goal; the project folder, `cstudy submit --json` and `cstudy status --json` are the boundary it would build on.
 

@@ -316,7 +316,7 @@ On a [project problem](problem-format.md#project-problems), `cstudy test` runs t
 | `--case ID` | A test id as the report prints it (`tests/test_level_1.py::test_ex1`), or its last part (`test_ex1`); repeatable. When no discovered test matches, the run prints `no test matches --case <ID>` and exits 3 |
 | `--watch` | Re-runs on a change to any file under `projects/<slug>/` except `.venv`, `node_modules`, `__pycache__`, `.pytest_cache` and `.ruff_cache` |
 | `--typecheck` | TypeScript: first runs the workspace's `tsc --noEmit -p projects/<slug>`. A folder that type-checks runs its suite as usual. A type error prints `BUILD FAILED` and every line `tsc` printed in place of the tests, runs no test, exits 2, and is stored as a run without tests; each error is a [diagnostic](#diagnostics) with source `typecheck`. A language without a type check (Python) runs its suite as usual |
-| `--json`, `--debug`, `--debug-port`, `--no-time-limit` | As for every problem; `--debug` stops at breakpoints in the project's code and in its tests |
+| `--json`, `--debug`, `--debug-port`, `--no-time-limit` | As for every problem; `--debug` stops at breakpoints in the project's code and in its tests. Go debugs one package's tests: those of the `--case` tests, else the package of the generated test files ([Go project jobs](runners.md#go-project-jobs)) |
 | `--events` | The run as an [event stream](#event-stream) instead of the report; on a problem of another kind it exits 3 |
 | `--all` | Accepted and changes nothing: every test is listed |
 | `--perf`, `--stress`, `--seed`, `--time-limit`, `--debug-connect` | Exit 3: `--perf is not available for project problems` |
@@ -340,7 +340,7 @@ PASS     tests/test_overdraft.py::test_refuses_overdraft   yours
 | Statuses | `PASS`, `FAIL` (an assertion failed: the framework's message, then `expected` and `actual` when it reports them), `ERROR` (another exception, a setup failure, or a test file that does not import), `SKIP`, `TIMEOUT`, `NOT RUN` |
 | Origin | A test in a generated file of an unlocked level is untagged; a test in a file the problem's `starter/` holds is tagged `starter`, any other `yours` |
 | Summary | Skipped tests are left out of the count. On a full pass: `all passed. Next: cstudy submit` |
-| Exit codes | 0 when every test that ran passed; 1 when one failed, errored, timed out or did not run, or when no test ran (`no tests ran`); 2 when `--typecheck` found a type error; 3; 4 (pytest missing from `python/.venv`: `fix: uv add --dev pytest --directory python`) |
+| Exit codes | 0 when every test that ran passed; 1 when one failed, errored, timed out or did not run, or when no test ran (`no tests ran`); 2 when `--typecheck` found a type error; 3; 4 (pytest missing from `python/.venv`: `fix: uv add --dev pytest --directory python`; `go` missing for a Go project) |
 | `test_runs` | `total` counts every reported test but skipped ones; `failed` the `FAIL`s; `errored` the `ERROR`s and crashes; `timed_out` the `TIMEOUT`s; `tle` 0. `code_hash` covers the folder ([progress-and-scheduling](progress-and-scheduling.md#project-attempts)) |
 | `--json` | The document below with `comparator` null, `oracle` null and `stress` empty, `diagnostics`, the run's [diagnostics](#diagnostics) (empty when the code loaded), after `load_error`, and `stopped_early` after `cases`: why the tests not reported never ran, such as `the runner was restarted 3 times`, or null when the suite ran to its end; `levels` as for progressive problems with `newly_unlocked` always false; each entry of `cases` is a test: `id`, `status` (`pass`, `fail`, `error`, `skip`, `timeout`, `not_run`), `duration_ns`, `origin` (`level`, `starter` or `yours`), `level` (the level of a generated file, else null), and `message`, `expected`, `actual`, `error` and `stdout` when set |
 
@@ -712,7 +712,7 @@ Prints the rendered statement (title, metadata, sections, examples generated fro
 ## cstudy new
 
 ```text
-cstudy new <slug> [--track T] [--from-template array|tree|design|progressive|concurrent|project-python|project-typescript]
+cstudy new <slug> [--track T] [--from-template array|tree|design|progressive|concurrent|project-python|project-typescript|project-go]
               [--title TEXT] [--difficulty D] [--pattern P]
 ```
 
@@ -724,7 +724,7 @@ Creates `problems/<next id>-<slug>/` from the template `cli/src/coding_study/ada
 | `tree` | `function`, param `TreeNode`, returns `TreeNode` | `dsa`, `trees` |
 | `design` | `class` with constructor and two methods, comparator `ops` | `dsa`, `arrays-hashing` |
 | `progressive` | `class` with 4 levels, one method per level, comparator `ops` | `practical`, none |
-| `project-python`, `project-typescript` | `class` with 2 levels, one method per level, comparator `ops`, `languages` the template's one language, a `project` block; a `starter/` with `README.md`, the build files of [the starter rules](problem-format.md#starter) and the entry file with level 1's method; `tests.json` with one visible case per level; the reference overlay `solutions/reference/` with the entry file; no `generator.py` and no reference file per language | `practical`, none |
+| `project-python`, `project-typescript`, `project-go` | `class` with 2 levels, one method per level, comparator `ops`, `languages` the template's one language, a `project` block; a `starter/` with `README.md`, the build files of [the starter rules](problem-format.md#starter) and the entry file with level 1's method; `tests.json` with one visible case per level; the reference overlay `solutions/reference/` with the entry file; no `generator.py` and no reference file per language | `practical`, none |
 | `concurrent` | `class` with a `blocking` method and a plain one, comparator `ops`, a `concurrency` block (`model: threads`, languages java, kotlin, python), one sequential and one stress case, one broken reference | `concurrency`, none |
 
 Defaults: difficulty `medium`; title from the slug (`max-gap`: `Max Gap`). `--track` accepts the autograded tracks only (`dsa`, `practical`, `lld`, `concurrency`, `debugging`); `dsa` needs a primary pattern from `--pattern` or the template. `--track lld` also writes `rubric.md` with the [required sections](authoring.md#rubricmd) in order, each holding `TODO` text (check S8).

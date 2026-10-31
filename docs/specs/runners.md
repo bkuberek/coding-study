@@ -26,7 +26,7 @@ A runner is a small program per runtime that loads one target (the user's file, 
 
 Paths are relative to the workspace root. The runners themselves run from the workspace's [runner runtime](installation-and-workspaces.md#runner-runtime) in `.cs/runtime/runners/`, a copy of the content's `runners/` that `cstudy` refreshes before the first runner of a command when the content changed. `R` and `O` live in `.cs/runs/<run_id>/` as `request-<n>.json` and `events-<n>.jsonl`, one pair per restart `n`; the last 20 runs are kept. The process starts in its own process group.
 
-A [project job](#project-jobs) (Python and TypeScript) starts in the project root instead, and the Python runner adds `-P` and its own environment there.
+A [project job](#project-jobs) (Python, TypeScript and Go) starts in the project root instead, and the Python runner adds `-P` and its own environment there; Go launches binaries of its own ([Go project jobs](#go-project-jobs)).
 
 ### JVM build details
 
@@ -495,7 +495,7 @@ Added to `runners/conformance/` before any concurrent problem merges. `expectati
 
 ## Project jobs
 
-A [project problem](problem-format.md#project-problems) is a folder, not one file, and its native tests run inside the runner. Two kinds of job serve it: a **grading job** (`cstudy submit`, and `cstudy verify` D1 and D3), an ordinary class job whose target is the project, and a **suite job** (`cstudy test`, and D1 and D9), which runs the project's native test framework in-process. Python and TypeScript runners support both; the JVM, Go and Rust runners do not support project jobs yet ([ADR 0014](../decisions/0014-project-problems.md)).
+A [project problem](problem-format.md#project-problems) is a folder, not one file, and its native tests run inside the runner. Two kinds of job serve it: a **grading job** (`cstudy submit`, and `cstudy verify` D1 and D3), an ordinary class job whose target is the project, and a **suite job** (`cstudy test`, and D1 and D9), which runs the project's native test framework in-process. Python and TypeScript runners support both; the JVM and Rust runners do not support project jobs yet ([ADR 0014](../decisions/0014-project-problems.md)). The Go runner supports both too, running the tests as a child process ([Go project jobs](#go-project-jobs)).
 
 ### Capability
 
@@ -541,7 +541,7 @@ Cases, events, the hang guard and restarts are those of every class job.
 
 | Field | Meaning |
 |-------|---------|
-| `framework` | `pytest` or `node-test` |
+| `framework` | `pytest`, `node-test` or `go-test` |
 | `root` | The project root |
 | `exclude` | Files, relative to the root, that are not run: the generated files of levels above `cstudy test --level N` |
 | `select` | Test ids to run (`cstudy test --case`); empty: every test the framework discovers |
@@ -574,9 +574,43 @@ Events: `job_start`, then per test `case_start` and `case_result` with the test 
 | Bytecode | Before each project run the CLI deletes the project folder's subtree of the bytecode prefix (`<ws>/.cs/pycache`), so an edit made within the same second that keeps the file size never runs stale code; the shared environment's bytecode stays cached |
 | Judging | A suite result is the framework's verdict on code the user may edit: feedback, never a grade. No comparator runs on it, and no level opens from it |
 
+### Go project jobs
+
+The Go runner runs both project jobs from binaries that `cstudy` builds in `.cs/build/go` with the environment, lock, private copy and cold-start notice of [Go build details](#go-build-details); the tests themselves run in the test binaries of a `go test` that the runner starts ([ADR 0014](../decisions/0014-project-problems.md#go-spike-k5)).
+
+| Item | Rule |
+|------|------|
+| `go.work` per root | `.cs/build/go/project/<root>/go.work`, where `<root>` is the project root relative to the workspace (`projects/bank-project-go`): `use` of the build module `csbuild` and of the root, and `replace` of the runner module `cstudy` and of each vendored module with the runtime's copies. A `replace` in a `go.work` outranks the folder's `go.mod`, so a reference's build copy, deeper than `projects/<slug>/`, builds too. Its `go` line is the higher of 1.24 and the folder's `go.mod` |
+| Grading binary | `cmd/project/<snake_slug>/main.go` imports the entry's package as target `user`: `<module>/<directory of project.entry>`, or `<module>` for an entry at the root, with the module read from the root's `go.mod`. The registration (`New<Class>`) and the thunks of the graded levels' methods, generated in `.cs/build/go/project/<root>/`, enter that package through `go build -overlay`, so nothing is written to the folder. Built as `bin/project/<snake_slug>` with `GOWORK` naming the root's `go.work`, and launched in the root |
+| Grading target | `{"compiled": "user"}` in a job of kind `project`, otherwise the class job of [Grading job](#grading-job) |
+| Compile errors | Errors only in the registration or thunk files: the second pass and the runner's `load_error` of [Go build details](#go-build-details). Errors in the project's files: the binary is built again without the project, and the runner reports a `load_error` of type `CompileError` whose message is the compiler's lines with paths relative to the root (at most 40), so `cstudy submit` stores a submission whose code does not load and `cstudy verify` D1 and D3 name the errors. A failure with no diagnostics in the project is an environment error (exit 4), as for single files |
+| Suite binary | `cmd/suite/main.go`, the runner with no target, built as `bin/suite/cs_go_suite` and launched in the root with the fixed environment of [Go build details](#go-build-details), `GOWORK` naming the root's `go.work`, and `GOOS` and `GOARCH` set empty, which the go command reads as unset |
+| Suite command | `go test -json -count=1 -timeout=0 [-overlay F] [-run R] [-skip S] ./...` in the root, a child process of the runner in the runner's process group: `-count=1` never reuses a cached result, `-timeout=0` leaves hangs to the hang guard, `F` maps each file of `exclude` to `""`, which removes it from the build, and `R` is `^(A\|B)$` of the top-level tests that `select` names |
+| Test id | `<file>::<test>`: the file that declares the top-level test, relative to the root, which the runner finds by parsing the package's `_test.go` files, and the name `go test` reports, subtests included (`tests/level_1_test.go::TestEx1`, `bank_test.go::TestTransfer/too_big`). A package that does not build is reported under its import path (`bank-project-go/tests`) |
+| `select` | A whole id or its last part (`TestEx1`, `TestTransfer/too_big`): `-run` names its top-level test, which runs with all its subtests; when every selection names a file, only those files' packages run |
+
+| `go test -json` reports | `case_result` |
+|-------------------------|---------------|
+| `pass` | `ok`; `stdout` holds the test's output lines without the framing (`=== RUN`, `--- PASS`) |
+| `fail` | `failed`; `message` holds the test's output lines without the framing: the `t.Error` and `t.Log` text with its `file:line:` prefix, or an Example's `got:` and `want:` lines. Every subtest is a test of its own, and a parent with a failed subtest fails too |
+| `skip` | `skipped`; `message` is the skip reason |
+| `build-output` and `build-fail`: a compile or `go vet` error | `error` of type `CompileError` on the package's import path, the message holding the errors with paths relative to the root, without the `#` headers; the other packages still run |
+| A test binary that ends early: a panic, `os.Exit`, `log.Fatal` or a fatal runtime error such as a deadlock | A crash of the test it ended in, so the suite restarts without it |
+| No event within the hang guard | A hang of the test still running |
+
+| Rule | Detail |
+|------|--------|
+| Order | `go test` runs packages side by side and `t.Parallel` tests together, while the protocol has one test in progress, so the runner writes each test's `case_start` and `case_result` once the test ends, in the order tests end |
+| Hang guard | When no `go test` event has arrived for 1 s, the runner writes `case_start` for a test still running: the earliest started one that has no unfinished subtest and is not paused (`t.Parallel` tests wait in `pause`). From there the CLI's hang guard applies to it as to any test, and the runner writes the results that end meanwhile after its own. So the guard times the gap since the last event, never a whole `run` to `pass` span, which a paused parallel test stretches |
+| Crash | A test binary ended early when its package ends without the binary's own closing `PASS` or `FAIL` line and did not fail to build. The culprit is the test whose output holds a line starting with `panic: `, else the test still running in it. The runner lets the other packages finish and writes their results, then `case_start` for the culprit and the binary's last output on its standard error, and exits without `bye`: the CLI reports the crash on the culprit with that output and restarts the suite as for any crash ([Suite job](#suite-job)). A binary that ended outside any test is an `error` of type `TestBinaryExited` on its package |
+| Restart | `skip` holds the tests reported so far and the culprit; the runner turns it into `-skip` of their top-level tests, package by package. Each package with a skipped test runs in a `go test` of its own and the others run together, so a test that shares its name with one reported in another package still runs; a skipped package id leaves its package out. One regular expression cannot name an arbitrary set of subtests, so a restart leaves out the whole top-level test of a hung or crashed subtest |
+| No tests | A suite with no test file ends with `job_end` and no results |
+| Usage error | A `go test` that fails before any package runs (a missing `go.mod`, a module it cannot resolve offline) is a `load_error` of type `GoTestError` carrying its output tail |
+| Debug | `cstudy test --debug` runs one package under Delve: the package of the selections when they name files of one package, else the package of the generated test files (`project.tests`). The runner builds its test binary with `go test -c -gcflags=all=-N -l` into the launch's private directory, starts `dlv exec --headless --listen=127.0.0.1:<port> --api-version=2 --wd <package directory> <binary> -- -test.v=test2json -test.count=1 -test.timeout=0 -test.paniconexit0 [-test.run R] [-test.skip S]`, copies Delve's `API server listening at:` line to its own standard output for the [ready line](#debug-mode), and pipes the rest through `go tool test2json -t -p <import path>`. A package that does not build is reported as above, and nothing waits for a debugger. Delve is found, and required, as in [debug mode](#debug-mode) |
+
 ### Not yet supported
 
-Java, Kotlin, Go and Rust project jobs wait for spikes K4 (JVM), K5 (Go) and K6 (Rust), recorded in [ADR 0014](../decisions/0014-project-problems.md). Until then those runners do not list `project` or `suite`, and check S14 keeps project problems out of their languages.
+Java, Kotlin and Rust project jobs wait for spikes K4 (JVM) and K6 (Rust), recorded in [ADR 0014](../decisions/0014-project-problems.md). Until then those runners do not list `project` or `suite`, and check S14 keeps project problems out of their languages.
 
 ## Stub generation
 
@@ -606,7 +640,7 @@ Every generated stub must compile or import unchanged; the conformance suite che
 | TypeScript | `.cs/build/typescript/ref/<slug>/<approach>.ts` | `.cs/build/typescript/package.json` and `support.ts` mirror the workspace so `#support` resolves |
 | Java, Kotlin | `.cs/build/jvm/<lang>/src/main/<lang>/ref/<snake_slug>/<approach_snake>/<Solution or ClassName>.<ext>` | Reference files declare no `package`; the materializer prepends `package ref.<snake_slug>.<approach_snake>` (with `;` for Java). Built with `jvm/gradlew -p .cs/build/jvm`, which includes `.cs/runtime/runners/jvm` |
 | Go | `.cs/build/go/ref/<snake_slug>/<approach_snake>/<approach_snake>.go` (see the Go file names note below) | None: reference files declare `package <snake_slug>` like the stub, so a file moves between `solutions/` and the practice directory unchanged. Each approach is its own package (import path `csbuild/ref/<snake_slug>/<approach_snake>`), linked into the problem's binary next to the user's package with a generated registration file beside it |
-| Project (Python, TypeScript) | `.cs/build/projects/<slug>/<approach>/`: a copy of `starter/`, then of the overlay `solutions/<approach>/`, then the generated test file of every level; rebuilt when the problem's files change | None; run as a [project job](#project-jobs) in that root |
+| Project (Python, TypeScript, Go) | `.cs/build/projects/<slug>/<approach>/`: a copy of `starter/`, then of the overlay `solutions/<approach>/`, then the generated test file of every level; rebuilt when the problem's files change | None; run as a [project job](#project-jobs) in that root |
 | Rust | `.cs/build/rust/ref/<snake_slug>/<approach_snake>.rs` | None: reference files are written like the stub (`pub fn`, or `pub struct` with `impl`) and copied unchanged. Each enters the problem's harness crate as the `#[path]` module `ref_<approach_snake>`, so compiler errors name the copy |
 
 ### Go file names
@@ -619,6 +653,6 @@ For JVM bench the classpath joins the user's `practice.*` classes and the `ref.*
 
 `runners/conformance/` holds fixture problems in the normal problem format whose reference approaches are identity functions (return the argument unchanged) for every DSL type, plus fixtures for error paths: exception, `invalid_output`, missing symbol, hang, user printing to stdout, `ref_of`, `output_from`, `no_alias_with`, cyclic ListNode input, and decimal and date arithmetic (inputs that keep their scale, canonical outputs, rounding modes, days across leap years). `cstudy verify --conformance` runs each fixture in every language its `meta.yaml` lists and also compiles every generated stub; a runner that does not support a feature yet leaves the fixture's languages without it (Go lists 9001 to 9017 and 9019 to 9021, Rust the same except 9006 and 9010, which [S13](authoring.md#static) keeps out of Rust). It is a Phase 0 exit criterion and must pass before any runner change merges.
 
-Project fixtures, each listing its one language: `9022-conformance-project-python` and `9023-conformance-project-typescript`, two-file projects whose entry imports a sibling module by package path and by relative path (grading); `9024-conformance-suite-pytest` and `9025-conformance-suite-node-test`, suites with a test that passes, one that fails an assertion, one that raises, one that hangs, one that prints and one that ends the process (suite statuses, output capture, hang guard and restart). `expectations.json` gains per-test outcomes for suite fixtures.
+Project fixtures, each listing its one language: `9022-conformance-project-python` and `9023-conformance-project-typescript`, two-file projects whose entry imports a sibling module by package path and by relative path (grading); `9024-conformance-suite-pytest` and `9025-conformance-suite-node-test`, suites with a test that passes, one that fails an assertion, one that raises, one that hangs, one that prints and one that ends the process (suite statuses, output capture, hang guard and restart). `expectations.json` gains per-test outcomes for suite fixtures. Go adds `9030-conformance-project-go`, a project whose entry's package imports a subpackage of the module (grading through the overlay), and `9031-conformance-suite-go-test`, a suite with a test that passes, one that fails an assertion, a failing subtest, one that panics, one that prints, one that ends the process, one that hangs, and a package whose test file does not compile ([Go project jobs](#go-project-jobs)).
 
 Fixtures live in `runners/conformance/<id>-<slug>/`; each language adds its reference files as `solutions/<approach>.<ext>`. `runners/conformance/expectations.json` (schema `schemas/conformance.schema.json`) gives the expected outcome per fixture and approach (`pass`, `error`, `invalid_output`, `timeout`, `load_error`) with per-case overrides, and `runners/conformance/README.md` states what every approach does in each language.

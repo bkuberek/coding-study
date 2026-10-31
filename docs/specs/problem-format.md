@@ -438,7 +438,8 @@ A project problem (`kind: project`, `track: practical`) is a folder of seeded fi
 |----------|------------------|
 | Python | Supported; native tests run with pytest |
 | TypeScript | Supported; native tests run with `node:test` |
-| Java, Kotlin, Go, Rust | Not yet supported: check S14 rejects a project problem that lists them |
+| Go | Supported; native tests run with `go test` ([Go project jobs](runners.md#go-project-jobs)) |
+| Java, Kotlin, Rust | Not yet supported: check S14 rejects a project problem that lists them |
 
 ### Content tree
 
@@ -460,7 +461,7 @@ problems/0249-bank-project-python/
       bank/ledger.py
 ```
 
-The TypeScript pilot has the same shape, with `package.json`, `tsconfig.json`, `src/bank.ts`, `src/models.ts` and `tests/`.
+The TypeScript pilot has the same shape, with `package.json`, `tsconfig.json`, `src/bank.ts`, `src/models.ts` and `tests/`. A Go project has `go.mod` at its root, the entry type in a `.go` file such as `bank.go`, and `tests/`.
 
 ### meta.yaml
 
@@ -498,14 +499,14 @@ estimate_minutes: 90
 | Field | Rule |
 |-------|------|
 | `track` | `practical` |
-| `languages` | Exactly one: `python` or `typescript` |
+| `languages` | Exactly one: `python`, `typescript` or `go` |
 | `slug` | Ends in the language (`bank-project-python`): a version in another language is another problem, and slugs are unique |
 | `levels` | Required, as for progressive problems |
 | `signature` | A class signature: the entry class the grader constructs, canonical names, a `level` on every method |
 | `comparator` | `ops`. Every method's comparator, the default `exact` or a `per_method` entry, is `exact`, `unordered` or `float`, because generated tests express only these |
-| Types | Scalars, arrays and lists. No node types; no `decimal` in TypeScript, whose `Decimal` class comes from the runner's support module, which a project folder does not reach |
-| `project.entry` | Python: the dotted module that defines the entry class (`bank.bank`), a file `bank/bank.py` or `bank/bank/__init__.py` under the project root. TypeScript: the path, relative to the root, of the file that exports the entry class by name (`src/bank.ts`) |
-| `project.tests` | The directory, relative to the root, where `cstudy` writes the generated test files; default `tests` |
+| Types | Scalars, arrays and lists. No node types; no `decimal` in TypeScript, whose `Decimal` class comes from the runner's support module, which a project folder does not reach. Go takes `decimal` (the vendored `decimal.Decimal`, which the starter's `go.mod` reaches) and `date` (`time.Time`) |
+| `project.entry` | Python: the dotted module that defines the entry class (`bank.bank`), a file `bank/bank.py` or `bank/bank/__init__.py` under the project root. TypeScript: the path, relative to the root, of the file that exports the entry class by name (`src/bank.ts`). Go: the path, relative to the root, of the `.go` file that declares the entry type and its constructor `New<Class>` (`bank.go`, `bank/bank.go`), not a `_test.go` file; its directory is the package that `cstudy submit` grades |
+| `project.tests` | The directory, relative to the root, where `cstudy` writes the generated test files; default `tests`. Go: its last directory name is a Go identifier, because the generated files declare `package <name>_test` |
 | `approaches` | Exactly one, with role `optimal` |
 | Not allowed | `generator.py`, `checker.py`, `stress_checker.py`, `buggy/`, `stub`, `perf`, `concurrency`, `oracle`, and `generate` or `stress` cases |
 | `related` | Lists every sibling in another language, and may list the problems it builds on |
@@ -523,6 +524,8 @@ A version in another language is built from scratch: its own id, slug, starter, 
 | Python build file | `pyproject.toml` with exactly the tool tables below and nothing else: no `[project]` table, no `requires-python`, no `[tool.uv]`. A `requires-python` above the workspace venv's Python makes `uv run` delete the shared venv through the project's `.venv` link ([project folders](installation-and-workspaces.md#project-folders)). No `__init__.py` is needed for packages, and no `pyrightconfig.json` |
 | TypeScript build files | `package.json` with `"type": "module"` and no dependencies; `tsconfig.json` as the workspace's (`module` `nodenext`, `noEmit`, `allowImportingTsExtensions`, `erasableSyntaxOnly`, `verbatimModuleSyntax`, `strict`) with `"types": ["node"]` and `"typeRoots": ["../../typescript/node_modules/@types"]`, so `node:test` and `node:assert` have types (TypeScript 6 loads no `@types` package that `types` does not list). Imports name files with their extension (`../src/bank.ts`); code uses erasable syntax only, since Node strips types and refuses the rest (a parameter property fails with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`) |
 | Module names | Python: no top-level module or package named after a standard-library module (`random.py`, `types.py`, `typing.py`) or `pytest` |
+| Go build files | `go.mod` at the root with `module <slug>`, the `go 1.24` directive, and no requirement but the vendored modules: `require github.com/shopspring/decimal v1.5.0` with `replace github.com/shopspring/decimal => ../../.cs/runtime/runners/go/third_party/github.com/shopspring/decimal`, which reaches the [runner runtime](installation-and-workspaces.md#runner-runtime)'s copy from `projects/<slug>/`, so no build needs the network or a `go.sum`. No `go.sum`, `go.work` or `go.work.sum`: `cstudy start` writes the folder's `go.work` ([project folders](installation-and-workspaces.md#project-folders)) |
+| Go entry | The entry file declares a package other than `main`, since the grader imports it, and the entry type `<Class>` with its constructor `func New<Class>(...) *<Class>`, the [Go mapping](#go-and-rust-mapping) of a design class; level 1's methods panic with `not implemented` |
 
 The Python starter's `pyproject.toml`:
 
@@ -545,7 +548,7 @@ target-version = "py313"
 
 ### Statement
 
-`problem.md` has the progressive sections ([authoring](authoring.md#problemmd)) plus a required `## Project` section after `## Output`: what the starter holds, the entry contract, and how to run the tests natively. Its text uses the problem language's names (`create_account` in Python), and so does the rendered statement: example markers render operations with the language's method names, and each `## Level <n>` section starts with a generated line naming the methods that level adds, in the language's names, with parameter names and types as the language spells them (`Methods to add: create_account(timestamp: int, account_id: str) -> bool`). `## Statement`, `## Input`, `## Output`, `## Project` and `## Constraints` show at every level, so they describe only what holds for all levels and never a later level's methods.
+`problem.md` has the progressive sections ([authoring](authoring.md#problemmd)) plus a required `## Project` section after `## Output`: what the starter holds, the entry contract, and how to run the tests natively. Its text uses the problem language's names (`create_account` in Python), and so does the rendered statement: example markers render operations with the language's method names, and each `## Level <n>` section starts with a generated line naming the methods that level adds, in the language's names, with parameter names and types as the language spells them (`Methods to add: create_account(timestamp: int, account_id: str) -> bool`; in Go, `CreateAccount(timestamp int64, accountId string) bool`). `## Statement`, `## Input`, `## Output`, `## Project` and `## Constraints` show at every level, so they describe only what holds for all levels and never a later level's methods.
 
 ### Generated test files
 
@@ -605,6 +608,55 @@ test("ex1", () => {
   assert.equal(bank.deposit(4, "ivy", 800), 800);
 });
 ```
+
+#### Go test files
+
+Go's generated files use the standard `testing` package and the [Go mapping](#go-and-rust-mapping) of every value. A file is an external test package: it reaches the entry's package by its import path, as `cstudy submit` does, and so it sees only what the package exports.
+
+| Item | Go |
+|------|----|
+| File | `<tests>/level_<n>_test.go`, declaring `package <name>_test`, where `<name>` is the last directory name of `project.tests` (`package tests_test`) |
+| One test per visible case | `func Test<Id>(t *testing.T)`: the case id with `-` as `_` and its first letter in upper case (`ex1` is `TestEx1`, `l2-ex1` is `TestL2_ex1`) |
+| Case `note` | A `//` comment above the test |
+| Header | The same text as `//` comments, then a blank line before the package clause |
+| Import | `testing`; the entry's package by its import path, `<slug>` for an entry at the root (`bank-project-go`) or `<slug>/<directory>`, with the name the starter's entry file gives the package when that is not the path's last element (`bank "bank-project-go"`); `math`, `slices`, `time` and `github.com/shopspring/decimal` when used, in gofmt's groups |
+
+| Rule | Go |
+|------|----|
+| Body | The constructor op becomes `b := bank.NewBank(...)`, the instance named after the class's first letter in lower case, or the class in lowerCamelCase when that letter is `t`; `bank.NewBank(...)` alone when no other op follows. A `void` method's call stands alone; any other becomes `if got := b.CreateAccount(1, "ivy"); <mismatch> {` with `t.Errorf` naming the call, the result (`%v`) and the expected value as the file writes them |
+| `exact` | `got != <value>` for scalars and dates; `!got` and `got` for `true` and `false`; `!got.Equal(<value>)` for a decimal; `!slices.Equal(got, <value>)` for a list, and `slices.EqualFunc` through nested lists and lists of decimals, with `slices.Equal` and `decimal.Decimal.Equal` |
+| `unordered` | The result sorted first, with `slices.Sorted(slices.Values(...))`, or `slices.SortedFunc` with `slices.Compare`, `decimal.Decimal.Cmp` or `time.Time.Compare`, against a literal already sorted that way. Lists of numbers, strings, characters, decimals and dates, and lists of lists of numbers, strings and characters; any other `unordered` list cannot be generated, which `cstudy verify` reports |
+| `float` | A function `closeTo(got, want float64) bool`, defined once in the file when used, which holds exactly when `abs(a - e) <= tol * max(1, abs(e))`; lists compare item by item with `slices.EqualFunc` |
+| Agreement | As for Python and TypeScript, with one exception: `!=` on a `time.Time` that carries a monotonic clock reading, one derived from `time.Now()`, fails where the runner, which writes the date, passes it. A nil slice equals an empty one, as the runner encodes it |
+| Values | Go literals laid out as gofmt keeps them, one statement per line: `[]string{"ivy", "leo"}`, `[][]int{{1, 2}, {3}}`, `'a'` for a `char`, `decimal.RequireFromString("2500.50")` for a `decimal` (an input keeps its scale) and `time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)` for a `date` |
+
+```go
+// Level 1 examples of bank-project-go, written by `cstudy start`.
+// Yours to edit and extend: cstudy never rewrites this file.
+
+package tests_test
+
+import (
+	"testing"
+
+	bank "bank-project-go"
+)
+
+func TestEx1(t *testing.T) {
+	b := bank.NewBank()
+	if got := b.CreateAccount(1, "ivy"); !got {
+		t.Errorf(`b.CreateAccount(1, "ivy") = %v, want true`, got)
+	}
+	if got := b.CreateAccount(3, "ivy"); got {
+		t.Errorf(`b.CreateAccount(3, "ivy") = %v, want false`, got)
+	}
+	if got := b.Deposit(4, "ivy", 800); got != 800 {
+		t.Errorf(`b.Deposit(4, "ivy", 800) = %v, want 800`, got)
+	}
+}
+```
+
+A generated file is in one package with every other test file of its directory, so a level file that calls a method you have not written yet stops that package from compiling: `cstudy test` reports one `error` for the package until the method exists, and `cstudy test --level N` leaves out the files of the levels above N.
 
 ### Levels and grading
 
