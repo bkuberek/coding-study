@@ -1,6 +1,8 @@
 """`cstudy done`: finish an attempt and schedule its review.
 
-Specs: docs/specs/cli.md#cstudy-done and progress-and-scheduling.md.
+Specs: docs/specs/cli.md#cstudy-done and progress-and-scheduling.md. A project attempt is graded
+from its counted submission instead of its latest test run (progress-and-scheduling.md#project-
+attempts): a rating once level 1 passed, capped by the levels finished.
 """
 
 from dataclasses import dataclass, replace
@@ -20,9 +22,10 @@ from coding_study.domain.attempts import (
 )
 from coding_study.domain.errors import UsageError
 from coding_study.domain.items import ItemMeta
-from coding_study.domain.problem import ProblemMeta
+from coding_study.domain.problem import Problem, ProblemKind, ProblemMeta
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry, next_review_state
 from coding_study.domain.stress_runs import full_run_case_count
+from coding_study.domain.submissions import counted_submission, level_grade_cap, levels_finished
 
 RATINGS = "|".join(Rating)
 
@@ -36,11 +39,23 @@ class DoneRequest:
 
 
 @dataclass(frozen=True, slots=True)
+class LevelsFinished:
+    """A project attempt's levels finished by its counted submission, and the grade cap they
+    set."""
+
+    finished: int
+    last: int
+    cap: Grade | None
+
+
+@dataclass(frozen=True, slots=True)
 class FinishedAttempt:
     meta: ProblemMeta | ItemMeta
     attempt: Attempt
     schedule: ScheduleEntry
     today: date
+    project: LevelsFinished | None = None
+    """Project problems only."""
 
 
 def complete_attempt(environment: Environment, request: DoneRequest) -> FinishedAttempt:
@@ -50,6 +65,8 @@ def complete_attempt(environment: Environment, request: DoneRequest) -> Finished
     if attempt.language is None:
         return _finish_item(environment, attempt, request)
     problem = environment.problems.load(attempt.slug)
+    if problem.meta.kind is ProblemKind.PROJECT:
+        return _finish_project(environment, attempt, problem, request)
     passed = _latest_run_passed(
         environment, attempt, full_run_case_count(problem, attempt.language)
     )
@@ -68,6 +85,40 @@ def complete_attempt(environment: Environment, request: DoneRequest) -> Finished
     environment.progress.update_attempt(finished)
     schedule = _reschedule(environment, finished)
     return FinishedAttempt(problem.meta, finished, schedule, environment.clock.local_date(now))
+
+
+def _finish_project(
+    environment: Environment, attempt: Attempt, problem: Problem, request: DoneRequest
+) -> FinishedAttempt:
+    """The counted submission stands in for the latest test run: a rating once it passed level 1,
+    `--gave-up` otherwise; the levels it finished cap the grade, and only all of them pass."""
+    counted = counted_submission(environment.progress.submissions(attempt.id))
+    levels = LevelsFinished(levels_finished(counted), len(problem.meta.levels), None)
+    levels = replace(levels, cap=level_grade_cap(levels.finished, levels.last))
+    if levels.finished and request.gave_up:
+        raise UsageError(
+            f"the latest submission of every unlocked level passed level 1; "
+            f"finish with --rating {RATINGS}"
+        )
+    if not levels.finished and request.rating is not None:
+        raise UsageError(
+            "no submission of every unlocked level passed level 1 yet; run cstudy submit, or "
+            "finish with --gave-up"
+        )
+    now = environment.clock.now()
+    caps = (levels.cap,) if levels.cap is not None else ()
+    finished = replace(
+        attempt,
+        status=AttemptStatus.PASSED if levels.cap is None else AttemptStatus.FAILED,
+        ended_at=now,
+        rating=request.rating,
+        grade=cap_grade(grade_attempt(attempt, request.rating, now), caps),
+        notes=request.notes,
+    )
+    environment.progress.update_attempt(finished)
+    schedule = _reschedule(environment, finished)
+    today = environment.clock.local_date(now)
+    return FinishedAttempt(problem.meta, finished, schedule, today, levels)
 
 
 def _measured_caps(environment: Environment, attempt: Attempt) -> tuple[Grade, ...]:

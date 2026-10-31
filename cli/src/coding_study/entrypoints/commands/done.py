@@ -14,7 +14,7 @@ from coding_study.application.complete_attempt import (
     complete_attempt,
 )
 from coding_study.application.resolve_target import Target, resolve_target
-from coding_study.domain.attempts import Rating
+from coding_study.domain.attempts import Rating, self_graded
 from coding_study.entrypoints.shared import (
     OPTIONAL_TARGET_HELP,
     add_command,
@@ -57,16 +57,30 @@ def done(
 def _summary(finished: FinishedAttempt) -> str:
     attempt = finished.attempt
     assert attempt.ended_at is not None
-    rating = f"rating {attempt.rating}" if attempt.rating else "gave up"
+    project = finished.project
+    levels = f"levels {project.finished} of {project.last}" if project else ""
     parts = (
         attempt.slug,
         attempt.language or "",
         attempt.status,
+        levels,
         solve_time_text(attempt.solve_time(attempt.ended_at)),
-        rating,
+        _rating(finished),
         f"hints {attempt.hints_used}",
     )
     return " · ".join(part for part in parts if part)
+
+
+def _rating(finished: FinishedAttempt) -> str:
+    """`rating ok`; a project grade the levels finished capped below the rating says so."""
+    attempt = finished.attempt
+    if attempt.rating is None:
+        return "gave up"
+    rating = f"rating {attempt.rating}"
+    cap = finished.project.cap if finished.project else None
+    if cap is None or attempt.grade is None or cap >= self_graded(attempt.rating):
+        return rating
+    return f"{rating}, capped at {attempt.grade.name.lower()}"
 
 
 def _next_review(finished: FinishedAttempt) -> str:
