@@ -11,7 +11,7 @@ The CLI is a hexagonal application: a pure domain core (problems, attempts, sche
 | TypeScript runner | `runners/typescript/` | TypeScript on Node 24 | `runner.ts` and `support.ts` (the node classes and `Decimal`); erasable syntax only |
 | JVM runner | `runners/jvm/` | Java 21, Gradle included build | `cs.runner.Main` and `cs.support.*`; serves Java and Kotlin |
 | Content | `problems/`, `tracks/` | YAML, JSON, Markdown, code | Problems, tests, references, explanations, generators |
-| Schemas | `schemas/` | JSON Schema | `meta.schema.json`, `tests.schema.json`, `item.schema.json`, `conformance.schema.json`; hand-maintained source of truth for validation (`jsonschema`) and editor completion |
+| Schemas | `schemas/` | JSON Schema | `meta.schema.json`, `tests.schema.json`, `item.schema.json`, `conformance.schema.json`; hand-maintained source of truth for validation (`jsonschema`) and editor completion. `events.schema.json` describes the lines of `cstudy test --events` and `cstudy submit --events` ([event stream](specs/cli.md#event-stream)) for programs that read them |
 | Workspace templates | `cli/src/coding_study/adapters/workspace_template/` | 3 real projects | What `cstudy init` copies into a workspace |
 | Workspace | anywhere, outside this repository ([installation-and-workspaces](specs/installation-and-workspaces.md)) | 4 real projects | The user's code, notes and own problems, versioned on their own |
 | Progress | `<workspace>/progress.db` | SQLite | Attempts, test runs, schedule, bench runs |
@@ -169,7 +169,7 @@ coding-study/
     typescript/             # runner.ts, support.ts
     jvm/                    # Gradle included build: support + runner (Java)
     conformance/            # fixture problems for every DSL type and error path, expectations.json
-  schemas/                  # meta, tests and item JSON Schemas
+  schemas/                  # meta, tests, item, conformance and events JSON Schemas
   tools/ide-launcher/       # source and reproducible build of the IntelliJ open-file launcher (its jar ships in adapters/ide/)
   problems/<id>-<slug>/     # autograded content (format: specs/problem-format.md)
   tracks/                   # non-autograded content (system design, code review, behavioral)
