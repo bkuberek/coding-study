@@ -707,7 +707,7 @@ type ProjectScope = ProjectGrading | ProjectSuite
 @runtime_checkable
 class ProjectRunner(Protocol):
     """A `LanguageRunner` that also runs project jobs (docs/specs/runners.md#project-jobs):
-    Python, TypeScript, Java, Kotlin and Go."""
+    Python, TypeScript, Java, Kotlin, Go and Rust."""
 
     def prepare_project(
         self, scope: ProjectScope, notify: ProgressNotice
