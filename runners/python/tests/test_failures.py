@@ -1,8 +1,9 @@
 from collections.abc import Callable
 
-from cs_runner.failures import MAX_TRACE_LINES, describe
+from cs_runner.failures import MAX_TRACE_LINES, UserFile, UserFolder, describe
 
-USER_FILE = "/workspace/python/practice/user_code.py"
+USER_FILE = UserFile("/workspace/python/practice/user_code.py")
+PROJECT = UserFolder("/workspace/projects/bank")
 RECURSIVE_SOURCE = """
 def recurse(depth):
     if depth == 0:
@@ -11,9 +12,9 @@ def recurse(depth):
 """
 
 
-def user_function(source: str, name: str) -> Callable[..., object]:
+def user_function(source: str, name: str, path: str = USER_FILE.path) -> Callable[..., object]:
     namespace: dict[str, object] = {}
-    exec(compile(source, USER_FILE, "exec"), namespace)
+    exec(compile(source, path, "exec"), namespace)
     function = namespace[name]
     assert callable(function)
     return function
@@ -52,9 +53,19 @@ def test_trace_keeps_the_innermost_frames():
 
 
 def test_trace_points_at_a_syntax_error_in_the_user_file():
-    error = raised_by(lambda: compile("x = (\n", USER_FILE, "exec"))
+    error = raised_by(lambda: compile("x = (\n", USER_FILE.path, "exec"))
     assert describe(error, USER_FILE).trace == "user_code.py:1"
 
 
 def test_trace_is_empty_without_user_frames():
     assert describe(raised_by(lambda: int("x")), USER_FILE).trace == ""
+
+
+def test_a_project_trace_shows_files_relative_to_its_root():
+    recurse = user_function(RECURSIVE_SOURCE, "recurse", f"{PROJECT.root}/bank/ledger.py")
+    assert describe(raised_by(lambda: recurse(0)), PROJECT).trace == "bank/ledger.py:4 in recurse"
+
+
+def test_a_project_trace_leaves_out_files_beside_its_root():
+    recurse = user_function(RECURSIVE_SOURCE, "recurse", f"{PROJECT.root}-copy/bank/ledger.py")
+    assert describe(raised_by(lambda: recurse(0)), PROJECT).trace == ""

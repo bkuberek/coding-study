@@ -16,9 +16,15 @@ from cs_runner.calls import bind
 from cs_runner.capture import capture_output
 from cs_runner.errors import CaseInputError, InvalidOutputError
 from cs_runner.events import EventWriter, InvalidOutput, Raised, Returned, SequentialOutcome
-from cs_runner.failures import UserError, describe
+from cs_runner.failures import UserCode, UserError, describe
 from cs_runner.json_value import Json
-from cs_runner.loading import TargetLoadError, find_class, find_function, load_module
+from cs_runner.loading import (
+    TargetLoadError,
+    find_class,
+    find_function,
+    load_entry_class,
+    load_module,
+)
 from cs_runner.request import (
     BenchCase,
     ClassJob,
@@ -26,22 +32,25 @@ from cs_runner.request import (
     FunctionJob,
     Member,
     OperationCase,
+    ProjectJob,
     SequentialJob,
 )
 
 CONSTRUCTOR_INDEX = 0
 
 type CaseRun = Callable[[], SequentialOutcome]
+type TestJob = SequentialJob | ProjectJob
+"""Jobs whose cases run one call sequence at a time in test mode."""
 type PreparedCall = Callable[[], object]
 """A call into user code with its inputs already decoded; returns what the code returned."""
 
 
-def run_jobs(jobs: Sequence[SequentialJob], events: EventWriter) -> None:
+def run_jobs(jobs: Sequence[TestJob], events: EventWriter) -> None:
     for job in jobs:
         run_job(job, events)
 
 
-def run_job(job: SequentialJob, events: EventWriter) -> None:
+def run_job(job: TestJob, events: EventWriter) -> None:
     events.job_start(job.job_id)
     try:
         cases = _loaded_cases(job)
@@ -54,17 +63,18 @@ def run_job(job: SequentialJob, events: EventWriter) -> None:
     events.job_end(job.job_id)
 
 
-def load_target(job: SequentialJob) -> "FunctionTarget | ClassTarget":
-    """Raises TargetLoadError when the file, the symbol or its signature does not fit."""
-    module = load_module(job.path)
+def load_target(job: TestJob) -> "FunctionTarget | ClassTarget":
+    """Raises TargetLoadError when the code, the symbol or its signature does not fit."""
     match job:
         case FunctionJob():
-            return FunctionTarget(job, find_function(module, job.function))
+            return FunctionTarget(job, find_function(load_module(job.path), job.function))
         case ClassJob():
-            return ClassTarget(job, find_class(module, job))
+            return ClassTarget(job, find_class(load_module(job.path), job))
+        case ProjectJob():
+            return ClassTarget(job, load_entry_class(job))
 
 
-def _loaded_cases(job: SequentialJob) -> list[tuple[str, CaseRun]]:
+def _loaded_cases(job: TestJob) -> list[tuple[str, CaseRun]]:
     target = load_target(job)
     return [(case.case_id, partial(target.run, case)) for case in job.cases]
 
@@ -101,8 +111,8 @@ class FunctionTarget:
         self._function = function
 
     @property
-    def path(self) -> str:
-        return self._job.path
+    def user_code(self) -> UserCode:
+        return self._job.user_code
 
     def run(self, case: BenchCase) -> SequentialOutcome:
         """One case as `cstudy test` runs it; raises CaseInputError for an operation sequence."""
@@ -122,7 +132,7 @@ class FunctionTarget:
             timed = _call(self._function, call.arguments)
         stdout = output.text()
         if timed.error is not None:
-            return Raised(describe(timed.error, self._job.path), timed.duration_ns, stdout)
+            return Raised(describe(timed.error, self._job.user_code), timed.duration_ns, stdout)
         try:
             return Returned(call.encode_result(timed.value), timed.duration_ns, stdout)
         except InvalidOutputError as error:
@@ -130,13 +140,13 @@ class FunctionTarget:
 
 
 class ClassTarget:
-    def __init__(self, job: ClassJob, design: type) -> None:
+    def __init__(self, job: ClassJob | ProjectJob, design: type) -> None:
         self._job = job
         self._design = design
 
     @property
-    def path(self) -> str:
-        return self._job.path
+    def user_code(self) -> UserCode:
+        return self._job.user_code
 
     def run(self, case: BenchCase) -> SequentialOutcome:
         """One case as `cstudy test` runs it; raises CaseInputError for function arguments."""
@@ -181,7 +191,7 @@ def _operation_case(case: BenchCase) -> OperationCase:
 class _OperationSequence:
     """One case of a class kind: the constructor, then each operation on the new instance."""
 
-    def __init__(self, job: ClassJob, design: type) -> None:
+    def __init__(self, job: ClassJob | ProjectJob, design: type) -> None:
         self._job = job
         self._design = design
         self._instance: object = None
@@ -205,7 +215,7 @@ class _OperationSequence:
         timed = _call(self._callable(index, member), call.arguments)
         self._duration_ns += timed.duration_ns
         if timed.error is not None:
-            return self._raised(describe(timed.error, self._job.path), index)
+            return self._raised(describe(timed.error, self._job.user_code), index)
         if index == CONSTRUCTOR_INDEX:
             self._instance = timed.value
             self._outputs.append(None)
@@ -225,7 +235,7 @@ class _OperationSequence:
         return Raised(error, self._duration_ns, op_index=index, partial_output=list(self._outputs))
 
 
-def member_of(job: ClassJob, index: int, op: str) -> Member:
+def member_of(job: ClassJob | ProjectJob, index: int, op: str) -> Member:
     constructor = job.constructor
     if index == CONSTRUCTOR_INDEX:
         if op != constructor.name:

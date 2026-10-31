@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9022"
+slug: conformance-project-python
+title: "Conformance: a Python project folder"
+status: ready
+difficulty: easy
+track: practical
+kind: project
+languages: [python]
+levels:
+  - {level: 1, title: Imports between files}
+signature:
+  class:
+    name: Inventory
+    constructor: {params: []}
+    methods:
+      - {name: add, level: 1, params: [{name: name, type: string}, {name: count, type: int}], returns: {type: int}}
+      - {name: label, level: 1, params: [{name: name, type: string}], returns: {type: string}}
+comparator: {type: ops}
+project:
+  entry: store.inventory
+  tests: tests
+approaches:
+  - {id: reference, name: "The entry imports its sibling module by package path and by relative path", role: optimal, time: "O(1)", space: "O(n)", time_class: "1", space_class: "n"}

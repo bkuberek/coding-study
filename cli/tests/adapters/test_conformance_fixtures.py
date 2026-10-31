@@ -23,6 +23,9 @@ DEEPEST_LIST = "list<list<list<int>>>"
 SUITE = load_conformance_suite(REPOSITORY_ROOT)
 REPOSITORY = conformance_repository(REPOSITORY_ROOT)
 SUMMARIES = REPOSITORY.list_summaries()
+PROJECT_FIXTURES = {"conformance-project-python", "conformance-suite-pytest"}
+"""Run by the Python runner's own tests (runners/python/tests) until `cstudy verify
+--conformance` runs project jobs; expectations.json gains them then."""
 
 
 def write_expectations(root: Path, document: object) -> None:
@@ -49,7 +52,7 @@ def test_every_fixture_loads_with_its_cases():
 
 def test_every_fixture_has_an_expectation():
     expected_slugs = {expectation.slug for expectation in SUITE.expectations}
-    assert {summary.meta.slug for summary in SUMMARIES} == expected_slugs
+    assert {summary.meta.slug for summary in SUMMARIES} - PROJECT_FIXTURES == expected_slugs
 
 
 @pytest.mark.parametrize("expectation", SUITE.expectations, ids=lambda e: e.approach_id)

@@ -14,8 +14,9 @@ from cs_runner.json_value import Json
 from cs_runner.request import PROTOCOL_VERSION
 
 RUNNER_NAME = "python"
-FEATURES = ["stress"]
-"""Protocol additions this runner implements (docs/specs/runners.md#capability)."""
+FEATURES = ["stress", "project", "suite"]
+"""Protocol additions this runner implements (docs/specs/runners.md#capability and
+#project-jobs)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,9 +152,48 @@ class Stalled:
         return fields | _measured(self.duration_ns, self.stdout)
 
 
+@dataclass(frozen=True, slots=True)
+class Passed:
+    """`ok` of a suite job's test, which has no output (docs/specs/runners.md#suite-job)."""
+
+    duration_ns: int
+    stdout: str = ""
+
+    def fields(self) -> dict[str, Json]:
+        return {"status": "ok", **_measured(self.duration_ns, self.stdout)}
+
+
+@dataclass(frozen=True, slots=True)
+class AssertionFailed:
+    """`failed`: a suite job's test whose assertion failed, with the framework's text."""
+
+    message: str
+    duration_ns: int
+    stdout: str = ""
+
+    def fields(self) -> dict[str, Json]:
+        fields: dict[str, Json] = {"status": "failed", "message": self.message}
+        return fields | _measured(self.duration_ns, self.stdout)
+
+
+@dataclass(frozen=True, slots=True)
+class Skipped:
+    """`skipped`: the framework skipped a suite job's test, for the reason in `message`."""
+
+    message: str
+    duration_ns: int
+    stdout: str = ""
+
+    def fields(self) -> dict[str, Json]:
+        fields: dict[str, Json] = {"status": "skipped", "message": self.message}
+        return fields | _measured(self.duration_ns, self.stdout)
+
+
 type SequentialOutcome = Returned | Raised | InvalidOutput
 """What one call sequence produced: a function or design case, or a bench check call."""
-type CaseOutcome = SequentialOutcome | StressReturned | StressFailed | Stalled
+type SuiteOutcome = Passed | AssertionFailed | Raised | Skipped
+"""What one test of a suite job came to."""
+type CaseOutcome = SequentialOutcome | StressReturned | StressFailed | Stalled | SuiteOutcome
 
 
 @dataclass(frozen=True, slots=True)

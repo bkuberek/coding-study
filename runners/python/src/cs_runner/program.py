@@ -16,7 +16,8 @@ from cs_runner.concurrent import RestartRequestError, run_concurrent_job
 from cs_runner.errors import BadRequestError
 from cs_runner.events import EventWriter
 from cs_runner.jobs import run_job
-from cs_runner.request import BenchRequest, ConcurrentJob, TestRequest, parse_request
+from cs_runner.request import BenchRequest, ConcurrentJob, SuiteJob, TestRequest, parse_request
+from cs_runner.suite import run_suite_job
 
 COMPLETED_EXIT_CODE = 0
 BAD_REQUEST_EXIT_CODE = 2
@@ -47,10 +48,13 @@ def _run(request: TestRequest | BenchRequest, events: EventWriter) -> None:
     match request:
         case TestRequest(jobs):
             for job in jobs:
-                if isinstance(job, ConcurrentJob):
-                    run_concurrent_job(job, events)
-                else:
-                    run_job(job, events)
+                match job:
+                    case ConcurrentJob():
+                        run_concurrent_job(job, events)
+                    case SuiteJob():
+                        run_suite_job(job, events)
+                    case _:
+                        run_job(job, events)
         case BenchRequest(jobs):
             run_bench_jobs(jobs, events)
 

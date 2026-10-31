@@ -197,7 +197,7 @@ class _Base:
             return _OpFailedError(InvalidOutput(error.reason, duration_ns), at)
         if isinstance(error, HarnessError):
             return _OpFailedError(Raised(UserError("HarnessError", str(error)), duration_ns), at)
-        return _OpFailedError(Raised(describe(error, self._job.path), duration_ns), at)
+        return _OpFailedError(Raised(describe(error, self._job.user_code), duration_ns), at)
 
     def _phase_failure(self, error: BaseException, phase: str, index: int) -> _OpFailedError:
         return self._failed(error, FailedAt(phase, index), 0)

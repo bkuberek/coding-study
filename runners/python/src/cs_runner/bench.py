@@ -133,7 +133,7 @@ class _Bench:
             result = call()
         except (Exception, SystemExit) as error:
             tracemalloc.stop()
-            self._events.bench_error(point, Raised(describe(error, target.code.path), 0))
+            self._events.bench_error(point, Raised(describe(error, target.code.user_code), 0))
             return False
         peak = tracemalloc.get_traced_memory()[1]
         tracemalloc.stop()
@@ -159,7 +159,7 @@ class _Bench:
                 results.append(call())
         except (Exception, SystemExit) as error:
             elapsed = time.perf_counter_ns() - started
-            self._events.bench_error(point, Raised(describe(error, target.code.path), elapsed))
+            self._events.bench_error(point, Raised(describe(error, target.code.user_code), elapsed))
             return None
         wall_ns = time.perf_counter_ns() - started
         cpu_ns = time.process_time_ns() - cpu_started

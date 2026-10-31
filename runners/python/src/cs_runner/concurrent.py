@@ -91,7 +91,7 @@ class _AsyncSequence:
             value = await self._call(index, member.symbol, call.arguments)
         except (Exception, SystemExit) as error:
             self._duration_ns += time.perf_counter_ns() - started
-            return self._raised(describe(error, self._job.path), index)
+            return self._raised(describe(error, self._job.user_code), index)
         self._duration_ns += time.perf_counter_ns() - started
         if index == CONSTRUCTOR_INDEX:
             self._instance = value

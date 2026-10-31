@@ -122,7 +122,7 @@ def run(directory: Path, source: str, cases: list[Event], model: str = "threads"
 
 def test_hello_announces_the_stress_feature(tmp_path):
     hello = run(tmp_path, LOCKED, []).events[0]
-    assert hello["features"] == ["stress"]
+    assert "stress" in hello["features"]
 
 
 def test_a_locked_counter_counts_every_increment(tmp_path):

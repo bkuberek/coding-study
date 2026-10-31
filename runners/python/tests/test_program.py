@@ -59,7 +59,7 @@ def test_hello_names_the_runner_protocol_and_runtime(tmp_path):
         "runner": "python",
         "protocol": 1,
         "runtime": platform.python_version(),
-        "features": ["stress"],
+        "features": ["stress", "project", "suite"],
     }
 
 

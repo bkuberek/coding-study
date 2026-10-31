@@ -1,4 +1,4 @@
-"""The request file (docs/specs/runners.md#request-file and #bench-mode).
+"""The request file (docs/specs/runners.md#request-file, #bench-mode and #project-jobs).
 
 Signatures use canonical names; `names` gives the Python symbol of the function, class and each
 method. Anything that cannot be run is a BadRequestError (exit code 2).
@@ -8,6 +8,7 @@ import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from enum import StrEnum
+from pathlib import Path
 from typing import cast
 
 from cs_runner.dsl import (
@@ -19,10 +20,13 @@ from cs_runner.dsl import (
     parse_value_type,
 )
 from cs_runner.errors import BadRequestError
+from cs_runner.failures import UserFile, UserFolder
 from cs_runner.json_value import Json, is_int
 
 PROTOCOL_VERSION = 1
 CONCURRENT_KIND = "concurrent"
+PROJECT_KIND = "project"
+SUITE_KIND = "suite"
 TEST_MODE = "test"
 BENCH_MODE = "bench"
 NANOSECONDS_PER_MILLISECOND = 1_000_000
@@ -87,6 +91,10 @@ class FunctionJob:
     function: Member
     cases: tuple[FunctionCase, ...]
 
+    @property
+    def user_code(self) -> UserFile:
+        return UserFile(self.path)
+
 
 @dataclass(frozen=True, slots=True)
 class ClassJob:
@@ -97,6 +105,51 @@ class ClassJob:
     methods: Mapping[str, Member]
     """By canonical name."""
     cases: tuple[OperationCase, ...]
+
+    @property
+    def user_code(self) -> UserFile:
+        return UserFile(self.path)
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectJob:
+    """A grading job: a class job whose target is a project folder and the dotted module of its
+    entry class (docs/specs/runners.md#grading-job)."""
+
+    job_id: str
+    root: str
+    """Absolute, with symbolic links resolved, so it matches the paths of the code it loads."""
+    module: str
+    constructor: Member
+    methods: Mapping[str, Member]
+    """Only the methods of the levels being graded."""
+    cases: tuple[OperationCase, ...]
+
+    @property
+    def user_code(self) -> UserFolder:
+        return UserFolder(self.root)
+
+
+class Framework(StrEnum):
+    """The test frameworks this runner hosts in a suite job."""
+
+    PYTEST = "pytest"
+
+
+@dataclass(frozen=True, slots=True)
+class SuiteJob:
+    """A project's native tests, discovered and run by `framework` (runners.md#suite-job)."""
+
+    job_id: str
+    framework: Framework
+    root: str
+    """Absolute, with symbolic links resolved, as for a grading job."""
+    exclude: tuple[str, ...]
+    """Files, relative to the root, that are not run."""
+    select: tuple[str, ...]
+    """Test ids, or their last part, to run; empty: every test."""
+    skip: tuple[str, ...]
+    """Test ids not to run: those reported before a restart, and the one that hung or crashed."""
 
 
 class Model(StrEnum):
@@ -153,6 +206,10 @@ class ConcurrentJob:
     cases: tuple["OperationCase | StressCase", ...]
     """Sequential cases first, then the stress runs."""
 
+    @property
+    def user_code(self) -> UserFile:
+        return UserFile(self.path)
+
     def as_class_job(self) -> ClassJob:
         """The job without its cases, so sequential cases run like a design problem's."""
         return ClassJob(self.job_id, self.path, self.constructor, self.methods, ())
@@ -160,7 +217,7 @@ class ConcurrentJob:
 
 type SequentialJob = FunctionJob | ClassJob
 """Jobs whose cases run one call sequence at a time; bench targets are always one."""
-type Job = SequentialJob | ConcurrentJob
+type Job = SequentialJob | ConcurrentJob | ProjectJob | SuiteJob
 type BenchCase = FunctionCase | OperationCase
 
 
@@ -299,6 +356,12 @@ class _Fields:
     def json_object(self, key: str) -> dict[str, Json]:
         return cast("dict[str, Json]", self.object(key)._data)
 
+    def texts(self, key: str) -> tuple[str, ...]:
+        values = self.array(key)
+        if not all(isinstance(value, str) for value in values):
+            raise BadRequestError(f"{self.location}.{key} must hold strings")
+        return tuple(cast("list[str]", values))
+
     def strings(self, key: str) -> dict[str, str]:
         values = self.object(key)._data
         if not all(isinstance(value, str) for value in values.values()):
@@ -318,6 +381,9 @@ class _JobParts:
 
 
 def _job(job: _Fields) -> Job:
+    kind = job.string("kind")
+    if kind == SUITE_KIND:
+        return _suite_job(job)
     parts = _JobParts(
         job.string("job_id"),
         job.object("target"),
@@ -325,9 +391,41 @@ def _job(job: _Fields) -> Job:
         job.object("signature"),
         tuple(job.objects("cases")),
     )
-    if job.string("kind") == CONCURRENT_KIND:
+    if kind == CONCURRENT_KIND:
         return _concurrent_job(parts, _model(job))
+    if kind == PROJECT_KIND and parts.target.has(PROJECT_KIND):
+        return _project_job(parts)
     return _parser(job)(parts)
+
+
+def _project_job(parts: _JobParts) -> ProjectJob:
+    design = _class_parts(parts)
+    return ProjectJob(
+        parts.job_id,
+        _resolved(parts.target.string(PROJECT_KIND)),
+        parts.target.string("module"),
+        design.constructor,
+        design.methods,
+        design.cases,
+    )
+
+
+def _suite_job(job: _Fields) -> SuiteJob:
+    framework = job.string("framework")
+    if framework not in Framework:
+        raise BadRequestError(f'{job.location}.framework "{framework}" is not supported')
+    return SuiteJob(
+        job_id=job.string("job_id"),
+        framework=Framework(framework),
+        root=_resolved(job.string("root")),
+        exclude=job.texts("exclude"),
+        select=job.texts("select"),
+        skip=job.texts("skip"),
+    )
+
+
+def _resolved(path: str) -> str:
+    return str(Path(path).resolve())
 
 
 def _model(job: _Fields) -> Model:
@@ -396,7 +494,27 @@ def _function_job(parts: _JobParts) -> FunctionJob:
     return FunctionJob(parts.job_id, parts.target.string("path"), function, cases)
 
 
+@dataclass(frozen=True, slots=True)
+class _ClassParts:
+    """What a class job declares besides its target."""
+
+    constructor: Member
+    methods: Mapping[str, Member]
+    cases: tuple[OperationCase, ...]
+
+
 def _class_job(parts: _JobParts) -> ClassJob:
+    design = _class_parts(parts)
+    return ClassJob(
+        parts.job_id,
+        parts.target.string("path"),
+        design.constructor,
+        design.methods,
+        design.cases,
+    )
+
+
+def _class_parts(parts: _JobParts) -> _ClassParts:
     declared = parts.signature.object("class")
     constructor = Member(
         declared.string("name"),
@@ -407,20 +525,16 @@ def _class_job(parts: _JobParts) -> ClassJob:
     symbols = parts.names.strings("methods")
     methods = (_method(method, symbols) for method in declared.objects("methods"))
     cases = tuple(_operation_case(case, case.string("id")) for case in parts.cases)
-    return ClassJob(
-        parts.job_id,
-        parts.target.string("path"),
-        constructor,
-        {method.name: method for method in methods},
-        cases,
-    )
+    return _ClassParts(constructor, {method.name: method for method in methods}, cases)
 
 
 _JOB_PARSERS: Mapping[str, Callable[[_JobParts], SequentialJob]] = {
     "function": _function_job,
     "design": _class_job,
     "progressive": _class_job,
+    PROJECT_KIND: _class_job,
 }
+"""A project job with a file target is a generated stub, which `cstudy verify` loads as a file."""
 
 
 def _bench_job(job: _Fields) -> BenchJob:
