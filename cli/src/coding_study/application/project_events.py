@@ -9,9 +9,8 @@ diagnostics, each graded level, and the level a submission opened. The command t
 stream ends it with the outcome and the exit code, which are the command's own.
 """
 
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
-from enum import StrEnum
 from typing import Self
 
 from coding_study.application.active_attempt import autograded_language, find_attempt
@@ -23,103 +22,29 @@ from coding_study.application.project_testing import (
     ProjectTestResult,
     run_project_tests,
 )
+from coding_study.application.run_events import (
+    CaseGraded,
+    CaseStarted,
+    DiagnosticFound,
+    EventSink,
+    LevelGraded,
+    LevelOpened,
+    OutputLine,
+    RunCommand,
+    RunStarted,
+    SuiteTestReported,
+    SuiteTestStarted,
+)
 from coding_study.application.submit_project import (
-    OpenedLevel,
     SubmitRequest,
     SubmitResult,
     require_project,
     submit_project,
 )
 from coding_study.domain.attempts import Attempt, AttemptMode
-from coding_study.domain.diagnostics import Diagnostic
 from coding_study.domain.judging import CaseVerdict, RunnableCase
-from coding_study.domain.levels import LevelRun
-from coding_study.domain.problem import Language, Problem, ProblemMeta
+from coding_study.domain.problem import Problem, ProblemMeta
 from coding_study.domain.project_test_runs import SuiteTestVerdict
-from coding_study.domain.submissions import LevelTally
-
-
-class RunCommand(StrEnum):
-    TEST = "test"
-    SUBMIT = "submit"
-
-
-@dataclass(frozen=True, slots=True)
-class RunStarted:
-    """The run's options are checked and its work begins."""
-
-    command: RunCommand
-    meta: ProblemMeta
-    attempt: Attempt
-    language: Language
-    levels: LevelRun
-    """`ran_up_to` is the last level the run covers."""
-
-
-@dataclass(frozen=True, slots=True)
-class OutputLine:
-    """A progress notice, such as `computing expected values ...`."""
-
-    text: str
-
-
-@dataclass(frozen=True, slots=True)
-class SuiteTestStarted:
-    """The runner started one test of the native suite (`cstudy test`)."""
-
-    test_id: str
-
-
-@dataclass(frozen=True, slots=True)
-class SuiteTestReported:
-    """One test of the native suite ended (`cstudy test`)."""
-
-    verdict: SuiteTestVerdict
-
-
-@dataclass(frozen=True, slots=True)
-class CaseStarted:
-    """The runner started one graded case (`cstudy submit`)."""
-
-    case: RunnableCase
-    level: int | None
-
-
-@dataclass(frozen=True, slots=True)
-class CaseGraded:
-    """One graded case ended and was judged (`cstudy submit`)."""
-
-    verdict: CaseVerdict
-    level: int | None
-
-
-@dataclass(frozen=True, slots=True)
-class DiagnosticFound:
-    diagnostic: Diagnostic
-
-
-@dataclass(frozen=True, slots=True)
-class LevelGraded:
-    tally: LevelTally
-
-
-@dataclass(frozen=True, slots=True)
-class LevelOpened:
-    opened: OpenedLevel
-
-
-type ProjectEvent = (
-    RunStarted
-    | OutputLine
-    | SuiteTestStarted
-    | SuiteTestReported
-    | CaseStarted
-    | CaseGraded
-    | DiagnosticFound
-    | LevelGraded
-    | LevelOpened
-)
-type EventSink = Callable[[ProjectEvent], None]
 
 
 def stream_project_tests(

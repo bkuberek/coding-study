@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 import typer
 
-from coding_study.application.project_events import (
+from coding_study.application.run_events import (
     CaseGraded,
     CaseStarted,
     DiagnosticFound,
@@ -20,7 +20,7 @@ from coding_study.application.project_events import (
     LevelGraded,
     LevelOpened,
     OutputLine,
-    ProjectEvent,
+    RunEvent,
     RunStarted,
     SuiteTestReported,
     SuiteTestStarted,
@@ -80,7 +80,7 @@ class _Stream:
     def __init__(self) -> None:
         self._started = False
 
-    def emit(self, event: ProjectEvent) -> None:
+    def emit(self, event: RunEvent) -> None:
         self._started = True
         _write(event_value(event))
 
@@ -107,7 +107,7 @@ class _Stream:
         _write(_event("run_end", ending))
 
 
-def event_value(event: ProjectEvent) -> dict[str, JsonValue]:
+def event_value(event: RunEvent) -> dict[str, JsonValue]:
     match event:
         case RunStarted():
             return _event("run_start", _start_fields(event))

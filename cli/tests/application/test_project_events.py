@@ -15,22 +15,21 @@ from coding_study.application.ports import (
     RunnerLaunch,
     SuiteListener,
 )
-from coding_study.application.project_events import (
+from coding_study.application.project_events import stream_project_tests, stream_submission
+from coding_study.application.project_testing import ProjectTestRequest
+from coding_study.application.run_events import (
     CaseGraded,
     CaseStarted,
     DiagnosticFound,
     LevelGraded,
     LevelOpened,
     OutputLine,
-    ProjectEvent,
     RunCommand,
+    RunEvent,
     RunStarted,
     SuiteTestReported,
     SuiteTestStarted,
-    stream_project_tests,
-    stream_submission,
 )
-from coding_study.application.project_testing import ProjectTestRequest
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.application.submit_project import SubmitRequest
 from coding_study.domain.diagnostics import load_diagnostic
@@ -114,25 +113,25 @@ def environment(tmp_path, process) -> Environment:
     return environment
 
 
-def streamed_tests(environment: Environment, **fields: object) -> list[ProjectEvent]:
-    events: list[ProjectEvent] = []
+def streamed_tests(environment: Environment, **fields: object) -> list[RunEvent]:
+    events: list[RunEvent] = []
     request = replace(ProjectTestRequest(), **fields)  # type: ignore[arg-type]
     stream_project_tests(environment, request, events.append)
     return events
 
 
-def streamed_submission(environment: Environment, **fields: object) -> list[ProjectEvent]:
-    events: list[ProjectEvent] = []
+def streamed_submission(environment: Environment, **fields: object) -> list[RunEvent]:
+    events: list[RunEvent] = []
     request = replace(SubmitRequest(), **fields)  # type: ignore[arg-type]
     stream_submission(environment, request, events.append)
     return events
 
 
-def kinds(events: list[ProjectEvent]) -> list[type]:
+def kinds(events: list[RunEvent]) -> list[type]:
     return [type(event) for event in events]
 
 
-def first_start(events: list[ProjectEvent]) -> RunStarted:
+def first_start(events: list[RunEvent]) -> RunStarted:
     first = events[0]
     assert isinstance(first, RunStarted)
     return first
@@ -195,14 +194,14 @@ def test_a_diagnostic_carries_the_load_error(environment, process):
 
 
 def test_a_locked_level_stops_the_run_before_any_event(environment):
-    events: list[ProjectEvent] = []
+    events: list[RunEvent] = []
     with pytest.raises(UsageError):
         stream_project_tests(environment, ProjectTestRequest(level=2), events.append)
     assert events == []
 
 
 def test_a_case_that_names_no_test_fails_after_the_start(environment):
-    events: list[ProjectEvent] = []
+    events: list[RunEvent] = []
     with pytest.raises(UsageError):
         stream_project_tests(environment, ProjectTestRequest(case_ids=("nope",)), events.append)
     assert kinds(events)[0] is RunStarted
@@ -283,7 +282,7 @@ def test_code_that_does_not_load_is_a_diagnostic_before_the_levels(environment, 
 
 
 def test_a_locked_level_stops_the_submission_before_any_event(environment):
-    events: list[ProjectEvent] = []
+    events: list[RunEvent] = []
     with pytest.raises(UsageError):
         stream_submission(environment, SubmitRequest(level=2), events.append)
     assert events == []
@@ -295,7 +294,7 @@ def test_another_kind_of_problem_stops_the_submission_before_any_event(tmp_path)
         repository_root(tmp_path, FIXTURE_PROBLEMS), toolchains=toolchains
     )
     start_attempt(environment, StartRequest("two-sum", Language.PYTHON))
-    events: list[ProjectEvent] = []
+    events: list[RunEvent] = []
     with pytest.raises(UsageError, match="cstudy submit is for project problems"):
         stream_submission(environment, SubmitRequest(), events.append)
     assert events == []
