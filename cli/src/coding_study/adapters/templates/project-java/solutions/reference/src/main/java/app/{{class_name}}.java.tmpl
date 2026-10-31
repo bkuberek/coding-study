@@ -1,0 +1,20 @@
+// The class that `cstudy submit` and the tests drive.
+//
+// TODO: replace this sketch with the reference of every level.
+package app;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class {{class_name}} {
+    private final Map<String, String> values = new HashMap<>();
+
+    public String put(long timestamp, String key, String value) {
+        String previous = values.put(key, value);
+        return previous == null ? "" : previous;
+    }
+
+    public String get(long timestamp, String key) {
+        return values.getOrDefault(key, "");
+    }
+}

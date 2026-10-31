@@ -1,0 +1,12 @@
+// The class that `cstudy submit` and the tests drive.
+//
+// TODO: replace this sketch with the reference of every level.
+package app
+
+class {{class_name}} {
+    private val values = mutableMapOf<String, String>()
+
+    fun put(timestamp: Long, key: String, value: String): String = values.put(key, value) ?: ""
+
+    fun get(timestamp: Long, key: String): String = values[key] ?: ""
+}

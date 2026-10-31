@@ -47,7 +47,8 @@ def create_problem(
     directory = f"{problems.directory}/{scaffold.directory_name}"
     placeholders = scaffold.placeholders()
     written: list[str] = []
-    for name, text in sorted(templates.files(request.template).items()):
+    for template_path, text in sorted(templates.files(request.template).items()):
+        name = render_template(template_path, placeholders)
         destination.writer.write_text(f"{directory}/{name}", render_template(text, placeholders))
         written.append(name)
     for name, text in scaffold.track_files().items():

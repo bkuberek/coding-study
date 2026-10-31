@@ -13,6 +13,7 @@ from coding_study.application.new_problem import create_problem
 from coding_study.application.verify_content import VerifyRequest, verify_content
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import ALL_LANGUAGES, ContentStatus, Language, ProblemKind, Track
+from coding_study.domain.project_checks import jvm_build_files
 from coding_study.domain.scaffold import WORKSPACE_FIRST_ID, ScaffoldRequest, TemplateName
 from tests.fakes import make_environment
 from tests.helpers import FIXTURE_TRACKS
@@ -156,6 +157,8 @@ ONE_LANGUAGE_TEMPLATES = (
     TemplateName.CONCURRENT,
     TemplateName.PROJECT_PYTHON,
     TemplateName.PROJECT_TYPESCRIPT,
+    TemplateName.PROJECT_JAVA,
+    TemplateName.PROJECT_KOTLIN,
     TemplateName.PROJECT_GO,
 )
 
@@ -262,3 +265,79 @@ def test_a_typescript_projects_overlay_implements_every_level(environment):
     created = create(environment, "bank-project-typescript", TemplateName.PROJECT_TYPESCRIPT)
     overlay = environment.root / created.directory / "solutions" / "reference" / "src" / "main.ts"
     assert ("  put(" in overlay.read_text(), "  get(" in overlay.read_text()) == (True, True)
+
+
+JVM_TEMPLATES = {
+    Language.JAVA: TemplateName.PROJECT_JAVA,
+    Language.KOTLIN: TemplateName.PROJECT_KOTLIN,
+}
+JVM_EXTENSIONS = {Language.JAVA: "java", Language.KOTLIN: "kt"}
+
+
+def jvm_project(environment, language: Language):
+    return create(environment, f"bank-project-{language}", JVM_TEMPLATES[language])
+
+
+def jvm_entry(language: Language, class_name: str) -> str:
+    return f"src/main/{language}/app/{class_name}.{JVM_EXTENSIONS[language]}"
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_a_jvm_project_gets_its_starter_and_overlay_and_no_reference_file(environment, language):
+    entry = jvm_entry(language, f"BankProject{language.capitalize()}")
+    assert jvm_project(environment, language).files == (
+        "meta.yaml",
+        "problem.md",
+        "solutions/explanation.md",
+        f"solutions/reference/{entry}",
+        "starter/README.md",
+        "starter/build.gradle.kts",
+        "starter/gradle.properties",
+        "starter/gradle/wrapper/gradle-wrapper.properties",
+        "starter/settings.gradle.kts",
+        f"starter/{entry}",
+        "tests.json",
+    )
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_a_jvm_project_lists_its_language_alone(environment, language):
+    meta = environment.problems.load(jvm_project(environment, language).slug).meta
+    assert (meta.kind, meta.languages) == (ProblemKind.PROJECT, (language,))
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_a_jvm_project_names_its_entry_class_and_test_package(environment, language):
+    meta = environment.problems.load(jvm_project(environment, language).slug).meta
+    assert meta.project is not None
+    assert (meta.project.entry, meta.project.tests) == (
+        f"app.BankProject{language.capitalize()}",
+        f"src/test/{language}/app",
+    )
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_a_jvm_projects_build_files_are_the_templates(environment, language):
+    """Check S15 holds the starter to these exact files."""
+    created = jvm_project(environment, language)
+    starter = environment.root / created.directory / "starter"
+    expected = jvm_build_files(created.slug, language)
+    assert {path: (starter / path).read_text() for path in expected} == expected
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_a_jvm_projects_starter_declares_level_ones_method_only(environment, language):
+    created = jvm_project(environment, language)
+    class_name = f"BankProject{language.capitalize()}"
+    entry = environment.root / created.directory / "starter" / jvm_entry(language, class_name)
+    text = entry.read_text()
+    assert (f"class {class_name}" in text, " put(" in text, " get(" in text) == (True, True, False)
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_a_jvm_projects_overlay_implements_every_level(environment, language):
+    created = jvm_project(environment, language)
+    class_name = f"BankProject{language.capitalize()}"
+    reference = environment.root / created.directory / "solutions" / "reference"
+    text = (reference / jvm_entry(language, class_name)).read_text()
+    assert (" put(" in text, " get(" in text) == (True, True)

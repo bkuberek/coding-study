@@ -37,6 +37,10 @@ class TemplateName(StrEnum):
     """A project problem in Python: a starter folder and the reference's overlay on it."""
     PROJECT_TYPESCRIPT = "project-typescript"
     """A project problem in TypeScript: a starter folder and the reference's overlay on it."""
+    PROJECT_JAVA = "project-java"
+    """A project problem in Java: a Gradle project folder and the reference's overlay on it."""
+    PROJECT_KOTLIN = "project-kotlin"
+    """A project problem in Kotlin: a Gradle project folder and the reference's overlay on it."""
     PROJECT_GO = "project-go"
     """A project problem in Go: a starter module and the reference's overlay on it."""
 
@@ -55,6 +59,8 @@ TEMPLATE_DEFAULTS: Mapping[TemplateName, TemplateDefaults] = {
     TemplateName.CONCURRENT: TemplateDefaults(Track.CONCURRENCY, None),
     TemplateName.PROJECT_PYTHON: TemplateDefaults(Track.PRACTICAL, None),
     TemplateName.PROJECT_TYPESCRIPT: TemplateDefaults(Track.PRACTICAL, None),
+    TemplateName.PROJECT_JAVA: TemplateDefaults(Track.PRACTICAL, None),
+    TemplateName.PROJECT_KOTLIN: TemplateDefaults(Track.PRACTICAL, None),
     TemplateName.PROJECT_GO: TemplateDefaults(Track.PRACTICAL, None),
 }
 

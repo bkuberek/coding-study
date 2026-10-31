@@ -84,6 +84,12 @@ def test_the_go_project_template_defaults_to_the_practical_track():
     assert (scaffold.track, scaffold.patterns) == (Track.PRACTICAL, ())
 
 
+@pytest.mark.parametrize("template", [TemplateName.PROJECT_JAVA, TemplateName.PROJECT_KOTLIN])
+def test_the_jvm_project_templates_default_to_the_practical_track(template):
+    scaffold = plan(slug=f"bank-{template}", template=template)
+    assert (scaffold.track, scaffold.patterns) == (Track.PRACTICAL, ())
+
+
 def test_the_difficulty_defaults_to_medium():
     assert plan(slug="two-sum").difficulty is Difficulty.MEDIUM
 
