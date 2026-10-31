@@ -11,10 +11,15 @@ export function empty(text: string, ...more: Node[]): HTMLElement {
   return h("div", { class: "state state-empty" }, h("p", {}, text), ...more);
 }
 
+/** The text of a refusal, as the CLI words it. */
+export function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 /** An error as the CLI words it; an environment error adds its `fix` and a way to the Health view. */
 export function failure(error: unknown): HTMLElement {
   const known = error instanceof ApiError ? error : null;
-  const message = known?.message ?? (error instanceof Error ? error.message : String(error));
+  const message = messageOf(error);
   return h(
     "div",
     { class: "state state-error", role: "alert" },

@@ -11,10 +11,12 @@
 import "./files.css";
 
 import { badge, h } from "./dom.ts";
-import { askNames, confirmAction, messageOf, type NameField } from "./fileDialogs.ts";
+import type { NameField } from "./fileDialogs.ts";
+import { askNames, confirmAction } from "./fileQuestions.ts";
 import { baseName, creates, fileActions, type FileScope, fileScope, joinPath, nameIssue, packageExtension, parentOf } from "./fileRules.ts";
 import type { AttemptFiles } from "./files.ts";
 import { fileBadge, originText } from "./format.ts";
+import { messageOf } from "./states.ts";
 import { type FileNode, fileTree, type TreeNode } from "./tree.ts";
 import type { AttemptStatus, Tree, TreeEntry } from "./types.ts";
 

@@ -3,12 +3,13 @@
  * how to start or resume it, its approaches, and its `cstudy history`.
  */
 
-import { defaultLanguage, openStartDialog } from "../attempts.ts";
+import { defaultLanguage } from "../attempts.ts";
 import { startCommand } from "../commands.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { solutionButton } from "../solution.ts";
 import { badge, command, h, rendered } from "../dom.ts";
 import { localMinute, problemBadge, solveTime } from "../format.ts";
+import { openLazily } from "../lazy.ts";
 import { attemptHash } from "../routes.ts";
 import { empty, loading, showFailure } from "../states.ts";
 import type { History, PastAttempt, ProblemDocument, Rendered } from "../types.ts";
@@ -73,7 +74,7 @@ function side(context: PageContext, problem: ProblemDocument, history: History):
 function practice(context: PageContext, problem: ProblemDocument, scheduled: boolean): HTMLElement {
   const language = defaultLanguage(problem, context.session.default_lang);
   const start = h("button", { type: "button", class: "button primary", title: `${startCommand(problem.slug, language)} --no-open` }, "Start…");
-  start.addEventListener("click", () => openStartDialog(context, problem, scheduled));
+  start.addEventListener("click", () => openLazily(context, () => import("../startDialog.ts"), (dialog) => dialog.openStartDialog(context, problem, scheduled)));
   const solution = solutionButton(context, problem.slug);
   const resumes = problem.in_progress.map((attempt) =>
     h(

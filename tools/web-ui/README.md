@@ -51,13 +51,14 @@ Sizes as of the current lockfile, gzip at level 9:
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 89.4 | 28.8 |
-| Every JavaScript and CSS file but Vim | 890.7 | 312.9 |
-| The editor before any language: the page, the editor and the core | 492.6 | 162.5 |
-| A Python file | 563.0 | 189.4 |
-| A TypeScript or JavaScript file, the largest grammar | 601.5 | 203.0 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 78.5 | 25.7 |
+| Every JavaScript and CSS file but Vim | 892.6 | 316.0 |
+| The editor before any language: the page, the editor and the core | 481.7 | 159.5 |
+| A Python file | 552.1 | 186.4 |
+| A TypeScript or JavaScript file, the largest grammar | 590.6 | 200.0 |
 | Vim keybindings, added on top | 119.7 | 38.2 |
-| The Mock and Progress views together, each a chunk fetched when it first opens | 9.0 | 4.0 |
+| The Mock and Progress views together, each a chunk fetched when it first opens | 9.2 | 4.1 |
+| The Start, Done, Solution and file dialogs, each fetched when first used (with the chunks they share) | 12.6 | 6.1 |
 
 The budget (NFR-12) is 1 MB raw and 350 KB gzip for the whole bundle without Vim, the page's code included, and 600 KB raw loaded before a file of one language is editable. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
 

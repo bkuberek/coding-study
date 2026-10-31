@@ -9,7 +9,7 @@ import type { Editor } from "../editor.ts";
 import type { PageContext } from "./context.ts";
 import { h } from "./dom.ts";
 import { EditorFile, markTab } from "./editorFile.ts";
-import { confirmAction } from "./fileDialogs.ts";
+import { confirmAction } from "./fileQuestions.ts";
 import { AttemptFiles } from "./files.ts";
 import { isSaveShortcut, saveShortcutLabel, trackUnsaved } from "./save.ts";
 import { failure, loading } from "./states.ts";

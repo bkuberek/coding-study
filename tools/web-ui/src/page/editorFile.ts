@@ -10,10 +10,10 @@ import "./files.css";
 import type { Editor } from "../editor.ts";
 import { ApiError } from "./api.ts";
 import { badge, h, nodes } from "./dom.ts";
-import { messageOf } from "./fileDialogs.ts";
 import type { AttemptFiles, Conflict } from "./files.ts";
 import { originText } from "./format.ts";
 import { FileSaver, type SaveOutcome } from "./save.ts";
+import { messageOf } from "./states.ts";
 import type { FileDocument } from "./types.ts";
 
 export interface EditorFileEvents {

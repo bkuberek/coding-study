@@ -5,10 +5,8 @@
  * refused name can be corrected without starting over.
  */
 
-import "./files.css";
-
-import { ApiError } from "./api.ts";
 import { command, h } from "./dom.ts";
+import { messageOf } from "./states.ts";
 
 export interface Confirmation {
   readonly title: string;
@@ -129,12 +127,6 @@ export function askNames(request: NameRequest): Promise<boolean> {
     });
     dialog.addEventListener("close", () => resolve(done), { once: true });
   });
-}
-
-/** The text of a refusal, as the CLI words it. */
-export function messageOf(error: unknown): string {
-  if (error instanceof ApiError) return error.message;
-  return error instanceof Error ? error.message : String(error);
 }
 
 function opened(form: HTMLFormElement, titleId: string): HTMLDialogElement {

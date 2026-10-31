@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { NO_SELECTION, solutionBody, solutionCommand } from "../src/page/solution.ts";
+import { NO_SELECTION, solutionBody, solutionCommand } from "../src/page/solutionPane.ts";
 
 test("the default selection sends nothing but the confirmation", () => {
   assert.deepEqual(solutionBody(NO_SELECTION, false), { confirm: false });
