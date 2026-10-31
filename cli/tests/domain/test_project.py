@@ -14,6 +14,7 @@ from coding_study.domain.project import (
     entry_files,
     entry_issue,
     level_test_file,
+    level_test_pattern,
     relative_path_issue,
 )
 
@@ -113,13 +114,29 @@ def test_generated_test_files_go_to_the_project_tests_directory():
 
 
 @pytest.mark.parametrize(
+    ("language", "name"),
+    [(Language.PYTHON, "test_level_12.py"), (Language.TYPESCRIPT, "level-3.test.ts")],
+)
+def test_the_level_test_pattern_matches_a_generated_file_of_any_level(language, name):
+    assert level_test_pattern(language).fullmatch(name)
+
+
+@pytest.mark.parametrize(
+    "name", ["test_level_0.py", "test_level_x.py", "test_level_1.pyc", "level-1.test.ts"]
+)
+def test_the_level_test_pattern_matches_nothing_else(name):
+    assert level_test_pattern(Language.PYTHON).fullmatch(name) is None
+
+
+@pytest.mark.parametrize(
     "use",
     [
         lambda language: entry_issue("bank.bank", language),
         lambda language: entry_files("bank.bank", language),
         lambda language: level_test_file(Project("bank.bank"), language, 1),
+        level_test_pattern,
     ],
-    ids=["entry_issue", "entry_files", "level_test_file"],
+    ids=["entry_issue", "entry_files", "level_test_file", "level_test_pattern"],
 )
 @pytest.mark.parametrize("language", WITHOUT_PROJECTS)
 def test_other_languages_have_no_project_problems_yet(use, language):

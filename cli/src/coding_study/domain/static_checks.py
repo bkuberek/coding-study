@@ -1,4 +1,4 @@
-"""`cstudy verify --static` checks S3 to S13 on one problem (docs/specs/authoring.md#static).
+"""`cstudy verify --static` checks S3 to S16 on one problem (docs/specs/authoring.md#static).
 
 S1 (schemas) and S2 (directory name) fail while loading the problem; uniqueness across problems
 needs every problem and is checked by the caller.
@@ -19,7 +19,7 @@ from coding_study.domain.generated_cases import expected_source
 from coding_study.domain.ide_actions import LANGUAGE_NAMES
 from coding_study.domain.language_limits import language_limits
 from coding_study.domain.layout import SOURCE_EXTENSIONS, language_of_extension
-from coding_study.domain.levels import level_heading
+from coding_study.domain.levels import has_levels, level_heading
 from coding_study.domain.markdown import MarkdownDocument, MarkdownSection
 from coding_study.domain.naming import (
     reserved_name_conflicts,
@@ -49,6 +49,8 @@ from coding_study.domain.problem_files import (
     TESTS_FILE,
     solution_file,
 )
+from coding_study.domain.project import NO_PROJECT_FILES
+from coding_study.domain.project_checks import ProjectContent, project_issues
 from coding_study.domain.rubric import LLD_RUBRIC_SECTIONS, rubric_issues
 from coding_study.domain.signature import ClassSignature, FunctionSignature, Method, output_type
 from coding_study.domain.statement import example_marker
@@ -136,6 +138,7 @@ def static_checks(content: ProblemContent) -> StaticReport:
     _perf(issues, content)
     _levels(issues, content.problem)
     issues.errors += concurrency_issues(_concurrency_content(content))
+    issues.errors += project_issues(_project_content(content))
     return StaticReport(tuple(issues.errors), tuple(issues.warnings))
 
 
@@ -148,6 +151,17 @@ def _concurrency_content(content: ProblemContent) -> ConcurrencyContent:
         explanation=content.explanation,
         files=content.files,
         broken_files=content.broken_files,
+    )
+
+
+def _project_content(content: ProblemContent) -> ProjectContent:
+    return ProjectContent(
+        directory=content.directory,
+        problem=content.problem,
+        problem_markdown=content.problem_markdown,
+        explanation=content.explanation,
+        files=content.files,
+        buggy_files=content.buggy_files,
     )
 
 
@@ -200,7 +214,7 @@ def _case_values(issues: _Issues, content: ProblemContent) -> None:
 def _language_limits(issues: _Issues, content: ProblemContent) -> None:
     """S13: every listed language can express the signature and the case inputs, and a catalog
     problem outside the concurrency and debugging tracks lists every language that can. The
-    user's own workspace problems list any subset."""
+    user's own workspace problems list any subset, and a project problem one language (S14)."""
     problem = content.problem
     meta = problem.meta
     for language in Language:
@@ -208,15 +222,40 @@ def _language_limits(issues: _Issues, content: ProblemContent) -> None:
         if language in meta.languages:
             for reason in reasons:
                 issues.error(META_FILE, f"cannot list {language}: {reason}", "languages")
-        elif not reasons and meta.track not in LANGUAGE_SUBSET_TRACKS and not meta.workspace:
+        elif not reasons and _lists_every_language(meta):
             issues.error(META_FILE, f"must list {language}: {EVERY_LANGUAGE}", "languages")
+
+
+def _lists_every_language(meta: ProblemMeta) -> bool:
+    return (
+        meta.track not in LANGUAGE_SUBSET_TRACKS
+        and not meta.workspace
+        and meta.kind is not ProblemKind.PROJECT
+    )
 
 
 def _solution_files(issues: _Issues, content: ProblemContent) -> None:
     """S7: files map to approaches and their languages, approaches have files, one Python oracle
     at most."""
     meta = content.problem.meta
-    approaches = meta.approaches
+    if meta.kind is ProblemKind.PROJECT:
+        _overlays(issues, content)
+    else:
+        _reference_files(issues, content)
+    _approach_languages(issues, meta)
+    oracles = [approach.id for approach in meta.approaches if approach.oracle]
+    if len(oracles) > 1:
+        issues.error(META_FILE, "at most one approach may be the oracle", "approaches")
+    python = _python_approaches(content)
+    for oracle in oracles:
+        if oracle not in python:
+            issues.error(META_FILE, f"oracle {oracle} needs solutions/{oracle}.py", "approaches")
+
+
+def _reference_files(issues: _Issues, content: ProblemContent) -> None:
+    """S7: every file is a reference of a declared approach in one of its languages, and every
+    approach has one."""
+    approaches = content.problem.meta.approaches
     declared = {approach.id: approach for approach in approaches}
     present: set[str] = set()
     for name in content.solution_files:
@@ -236,14 +275,26 @@ def _solution_files(issues: _Issues, content: ProblemContent) -> None:
             issues.error(
                 META_FILE, f"{approach.id} has no reference file in solutions/", "approaches"
             )
-    _approach_languages(issues, meta)
-    oracles = [approach.id for approach in approaches if approach.oracle]
-    if len(oracles) > 1:
-        issues.error(META_FILE, "at most one approach may be the oracle", "approaches")
-    python = _python_approaches(content)
-    for oracle in oracles:
-        if oracle not in python:
-            issues.error(META_FILE, f"oracle {oracle} needs solutions/{oracle}.py", "approaches")
+
+
+def _overlays(issues: _Issues, content: ProblemContent) -> None:
+    """S7 for a project problem: every directory in solutions/ is the declared approach, an
+    overlay on the starter with at least one file, and no reference file exists."""
+    problem = content.problem
+    overlays = (problem.project_files or NO_PROJECT_FILES).overlays
+    for name in content.solution_files:
+        if name != EXPLANATION_NAME and not name.startswith("."):
+            message = "a project reference is a directory, solutions/<approach>/"
+            issues.error(solution_file(name), message)
+    declared = {approach.id for approach in problem.meta.approaches}
+    for name in overlays:
+        if name not in declared:
+            issues.error(solution_file(name), "maps to no declared approach")
+    for approach_id in sorted(declared):
+        overlay = overlays.get(approach_id)
+        if overlay is None or not overlay.files:
+            message = f"{approach_id} has no files in {solution_file(approach_id)}/"
+            issues.error(META_FILE, message, "approaches")
 
 
 def _approach_languages(issues: _Issues, meta: ProblemMeta) -> None:
@@ -345,10 +396,10 @@ def _python_approaches(content: ProblemContent) -> set[str]:
 
 
 def _levels(issues: _Issues, problem: Problem) -> None:
-    """S10: progressive levels are contiguous and cases use only unlocked methods."""
+    """S10: progressive and project levels are contiguous and cases use only unlocked methods."""
     meta = problem.meta
     signature = meta.signature
-    if meta.kind is not ProblemKind.PROGRESSIVE or not isinstance(signature, ClassSignature):
+    if not has_levels(meta.kind) or not isinstance(signature, ClassSignature):
         return
     numbers = [level.number for level in meta.levels]
     if numbers != list(range(1, len(numbers) + 1)):
@@ -409,23 +460,23 @@ class _ProblemMarkdown:
 
     def _sections(self) -> None:
         sections = {section.title: section for section in self._document.sections(2)}
-        progressive = self._problem.meta.kind is ProblemKind.PROGRESSIVE
+        leveled = has_levels(self._problem.meta.kind)
         for title in REQUIRED_SECTIONS:
-            if progressive and title == EXAMPLES_SECTION:
+            if leveled and title == EXAMPLES_SECTION:
                 continue
             section = sections.get(title)
             if section is None:
                 self._error(f'missing "## {title}"')
             elif not section.text:
                 self._error(f'"## {title}" is empty')
-        if progressive:
+        if leveled:
             self._level_sections(sections)
         self._order([title for title in sections if title in PROBLEM_SECTIONS])
 
     def _level_sections(self, sections: dict[str, MarkdownSection]) -> None:
         if EXAMPLES_SECTION in sections:
             self._error(
-                f'progressive problems put examples in "## Level" sections, '
+                f'{self._problem.meta.kind} problems put examples in "## Level" sections, '
                 f'not in "## {EXAMPLES_SECTION}"'
             )
         found = [
@@ -482,7 +533,7 @@ class _ProblemMarkdown:
                 self._error(f'visible case "{case.id}" has no example')
             elif case.visible and count > 1:
                 self._error(f'visible case "{case.id}" is referenced {count} times')
-        if self._problem.meta.kind is ProblemKind.PROGRESSIVE:
+        if has_levels(self._problem.meta.kind):
             self._example_levels(cases)
 
     def _example_levels(self, cases: dict[str, Case]) -> None:
@@ -552,6 +603,8 @@ class _ExplanationChecks:
         self._explanation = explanation
         self._requires_language_notes = meta.kind is ProblemKind.CONCURRENT
         """Concurrent problems: every optimal approach explains each language's primitives."""
+        self._expects_language_notes = meta.kind is not ProblemKind.PROJECT
+        """A project problem has one language, so there is nothing to compare."""
 
     def check(self) -> None:
         sections = self._explanation.approaches()
@@ -590,6 +643,8 @@ class _ExplanationChecks:
         if complexity is not None:
             self._complexity(approach, complexity)
         notes = subsections.get(LANGUAGE_NOTES)
+        if not self._expects_language_notes:
+            return
         if approach.role is ApproachRole.OPTIMAL and (notes is None or not notes.text):
             message = f'approach {approach.id}: no "### {LANGUAGE_NOTES}"'
             if self._requires_language_notes:

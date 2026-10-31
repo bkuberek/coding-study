@@ -8,6 +8,7 @@ folder are relative and `/`-separated, and none may lead out of the folder.
 """
 
 import keyword
+import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
@@ -78,6 +79,10 @@ class ProjectFiles:
     files it changes or adds on the starter."""
 
 
+NO_PROJECT_FILES = ProjectFiles(None)
+"""What a problem without trees has: no starter and no overlays."""
+
+
 def relative_path_issue(path: str) -> str | None:
     """Why `path` cannot name a file or directory inside a folder; None when it can.
 
@@ -119,16 +124,28 @@ def level_test_file(project: Project, language: Language, level: int) -> str:
 
     Raises ValueError for a language without project problems.
     """
-    name = _project_language(language).level_test_name.format(level=level)
+    names = _project_language(language)
+    name = f"{names.level_test_prefix}{level}{names.level_test_suffix}"
     return f"{project.tests}{PATH_SEPARATOR}{name}"
+
+
+def level_test_pattern(language: Language) -> re.Pattern[str]:
+    """Matches the file name of a generated test file of any level.
+
+    Raises ValueError for a language without project problems.
+    """
+    names = _project_language(language)
+    prefix, suffix = re.escape(names.level_test_prefix), re.escape(names.level_test_suffix)
+    return re.compile(f"{prefix}[1-9][0-9]*{suffix}")
 
 
 @dataclass(frozen=True, slots=True)
 class _ProjectLanguage:
     entry_issue: Callable[[str], str | None]
     entry_files: Callable[[str], tuple[str, ...]]
-    level_test_name: str
-    """A format string with a `level` field."""
+    level_test_prefix: str
+    level_test_suffix: str
+    """A generated test file is named prefix, level number, suffix."""
 
 
 def _python_entry_issue(entry: str) -> str | None:
@@ -155,10 +172,10 @@ def _typescript_entry_issue(entry: str) -> str | None:
 
 _PROJECT_LANGUAGES: Mapping[Language, _ProjectLanguage | None] = {
     Language.PYTHON: _ProjectLanguage(
-        _python_entry_issue, _python_entry_files, "test_level_{level}.py"
+        _python_entry_issue, _python_entry_files, "test_level_", ".py"
     ),
     Language.TYPESCRIPT: _ProjectLanguage(
-        _typescript_entry_issue, lambda entry: (entry,), "level-{level}.test.ts"
+        _typescript_entry_issue, lambda entry: (entry,), "level-", ".test.ts"
     ),
     Language.JAVA: None,
     Language.KOTLIN: None,

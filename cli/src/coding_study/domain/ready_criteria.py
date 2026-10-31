@@ -6,11 +6,11 @@
 from coding_study.domain.cases import GeneratedInput
 from coding_study.domain.concurrency import Concurrency
 from coding_study.domain.layout import SOURCE_EXTENSIONS, reference_file_name
+from coding_study.domain.levels import has_levels
 from coding_study.domain.problem import (
     ApproachRole,
     ContentStatus,
     Language,
-    ProblemKind,
     ProblemMeta,
     Track,
 )
@@ -42,7 +42,7 @@ def ready_problems(content: ProblemContent) -> tuple[str, ...]:
     problems += _missing_references(content)
     if meta.track is Track.DSA:
         problems += _dsa_problems(content)
-    if meta.kind is ProblemKind.PROGRESSIVE:
+    if has_levels(meta.kind):
         problems += _level_problems(content)
     if meta.concurrency is not None:
         problems += _concurrent_problems(content, meta.concurrency)
