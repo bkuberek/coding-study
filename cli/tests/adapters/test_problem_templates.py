@@ -13,7 +13,12 @@ TEMPLATE_FILES = {
 
 
 @pytest.mark.parametrize(
-    "template", [name for name in TemplateName if name not in ("concurrent", "project-python")]
+    "template",
+    [
+        name
+        for name in TemplateName
+        if name not in ("concurrent", "project-python", "project-typescript")
+    ],
 )
 def test_every_template_has_the_scaffold_files(template):
     assert set(PackagedProblemTemplates().files(template)) == TEMPLATE_FILES
@@ -34,12 +39,8 @@ def test_the_python_project_template_has_a_starter_and_an_overlay_instead_of_a_g
     }
 
 
-PROJECT_TYPESCRIPT = "project-typescript"
-"""The TypeScript project template's directory, loaded by name until `TemplateName` lists it."""
-
-
 def test_the_typescript_project_template_has_a_starter_and_an_overlay_instead_of_a_generator():
-    files = set(PackagedProblemTemplates().files(PROJECT_TYPESCRIPT))
+    files = set(PackagedProblemTemplates().files(TemplateName.PROJECT_TYPESCRIPT))
     assert files == TEMPLATE_FILES - {"generator.py"} | {
         "starter/README.md",
         "starter/package.json",
@@ -50,7 +51,7 @@ def test_the_typescript_project_template_has_a_starter_and_an_overlay_instead_of
 
 
 def test_the_typescript_starters_build_files_drop_their_template_suffix():
-    files = PackagedProblemTemplates().files(PROJECT_TYPESCRIPT)
+    files = PackagedProblemTemplates().files(TemplateName.PROJECT_TYPESCRIPT)
     assert '"type": "module"' in files["starter/package.json"]
 
 

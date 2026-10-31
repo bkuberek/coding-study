@@ -50,21 +50,26 @@ def test_ends_with_the_ready_gate(environment):
     )
 
 
-def test_a_project_template_prints_the_project_workflow(environment):
-    lines = invoke("bank-project-python", "--from-template", "project-python").output.splitlines()
+PROJECT_TEMPLATES = ("project-python", "project-typescript")
+
+
+@pytest.mark.parametrize("template", PROJECT_TEMPLATES)
+def test_a_project_template_prints_the_project_workflow(environment, template):
+    lines = invoke(f"bank-{template}", "--from-template", template).output.splitlines()
     assert lines[1:4] == [
         "next steps (docs/specs/authoring.md#project-problems)",
         "  2. Write problem.md, with ## Project and one ## Level section per level, and "
         "tests.json, with at least 2 visible and 2 hidden cases per level",
-        "     cstudy verify bank-project-python --static",
+        f"     cstudy verify bank-{template} --static",
     ]
 
 
-def test_a_project_template_ends_with_the_ready_gate(environment):
-    lines = invoke("bank-project-python", "--from-template", "project-python").output.splitlines()
+@pytest.mark.parametrize("template", PROJECT_TEMPLATES)
+def test_a_project_template_ends_with_the_ready_gate(environment, template):
+    lines = invoke(f"bank-{template}", "--from-template", template).output.splitlines()
     assert lines[-2:] == [
         "  5. Write solutions/explanation.md with ### Design; set status: ready",
-        "     cstudy verify bank-project-python --require-ready",
+        f"     cstudy verify bank-{template} --require-ready",
     ]
 
 

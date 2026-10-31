@@ -152,7 +152,11 @@ def test_each_template_passes_static_checks_after_replacing_the_placeholders(env
     assert static_errors(environment, "scaffolded") == ()
 
 
-ONE_LANGUAGE_TEMPLATES = (TemplateName.CONCURRENT, TemplateName.PROJECT_PYTHON)
+ONE_LANGUAGE_TEMPLATES = (
+    TemplateName.CONCURRENT,
+    TemplateName.PROJECT_PYTHON,
+    TemplateName.PROJECT_TYPESCRIPT,
+)
 
 
 @pytest.mark.parametrize("template", [t for t in TemplateName if t not in ONE_LANGUAGE_TEMPLATES])
@@ -217,3 +221,43 @@ def test_a_python_projects_overlay_implements_every_level(environment):
     created = create(environment, "bank-project-python", TemplateName.PROJECT_PYTHON)
     overlay = environment.root / created.directory / "solutions" / "reference" / "app" / "main.py"
     assert ("def put(" in overlay.read_text(), "def get(" in overlay.read_text()) == (True, True)
+
+
+TYPESCRIPT_PROJECT_FILES = (
+    "meta.yaml",
+    "problem.md",
+    "solutions/explanation.md",
+    "solutions/reference/src/main.ts",
+    "starter/README.md",
+    "starter/package.json",
+    "starter/src/main.ts",
+    "starter/tsconfig.json",
+    "tests.json",
+)
+
+
+def test_a_typescript_project_gets_its_starter_and_overlay_and_no_reference_file(environment):
+    created = create(environment, "bank-project-typescript", TemplateName.PROJECT_TYPESCRIPT)
+    assert created.files == TYPESCRIPT_PROJECT_FILES
+
+
+def test_a_typescript_project_lists_typescript_alone(environment):
+    created = create(environment, "bank-project-typescript", TemplateName.PROJECT_TYPESCRIPT)
+    meta = environment.problems.load(created.slug).meta
+    assert (meta.kind, meta.languages) == (ProblemKind.PROJECT, (Language.TYPESCRIPT,))
+
+
+def test_a_typescript_projects_starter_declares_level_ones_method_only(environment):
+    created = create(environment, "bank-project-typescript", TemplateName.PROJECT_TYPESCRIPT)
+    entry = (environment.root / created.directory / "starter" / "src" / "main.ts").read_text()
+    assert (
+        "export class BankProjectTypescript {" in entry,
+        "  put(" in entry,
+        "  get(" in entry,
+    ) == (True, True, False)
+
+
+def test_a_typescript_projects_overlay_implements_every_level(environment):
+    created = create(environment, "bank-project-typescript", TemplateName.PROJECT_TYPESCRIPT)
+    overlay = environment.root / created.directory / "solutions" / "reference" / "src" / "main.ts"
+    assert ("  put(" in overlay.read_text(), "  get(" in overlay.read_text()) == (True, True)

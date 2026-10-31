@@ -74,6 +74,11 @@ def test_the_python_project_template_defaults_to_the_practical_track():
     assert (scaffold.track, scaffold.patterns) == (Track.PRACTICAL, ())
 
 
+def test_the_typescript_project_template_defaults_to_the_practical_track():
+    scaffold = plan(slug="bank-project-typescript", template=TemplateName.PROJECT_TYPESCRIPT)
+    assert (scaffold.track, scaffold.patterns) == (Track.PRACTICAL, ())
+
+
 def test_the_difficulty_defaults_to_medium():
     assert plan(slug="two-sum").difficulty is Difficulty.MEDIUM
 
