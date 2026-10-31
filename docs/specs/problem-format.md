@@ -434,8 +434,6 @@ Project problems share these rules, except the stub, the unlock and the language
 
 A project problem (`kind: project`, `track: practical`) is a folder of seeded files in one language. `cstudy start` copies the folder into the workspace, you edit its files or add new ones, and the problem opens in levels that build on the same code. Levels, level cases and the `ops` comparator work as for [progressive problems](#progressive-problems); what differs is the code (a folder, not a generated stub), the language (exactly one), the visible tests (native test files generated from `tests.json`) and what opens a level (`cstudy submit`, not `cstudy test`). Decision record: [ADR 0014](../decisions/0014-project-problems.md).
 
-Planned: nothing implements project problems yet ([roadmap](../roadmap.md#phase-8-project-problems)).
-
 | Language | Project problems |
 |----------|------------------|
 | Python | Supported; native tests run with pytest |
@@ -523,7 +521,7 @@ A version in another language is built from scratch: its own id, slug, starter, 
 | Entry class | Defined at `project.entry` with level 1's methods only, each with a body that raises or throws "not implemented". Methods of later levels appear nowhere in the starter: each unlock names the methods to add. A starter may declare the API as an interface the entry class implements (an `abc.ABC` subclass, a TypeScript `interface`), which also holds level 1's methods only |
 | `README.md` | States the contract: the module or file and the class that must stay where they are, and how to run the tests with the language's own command |
 | Python build file | `pyproject.toml` with exactly the tool tables below and nothing else: no `[project]` table, no `requires-python`, no `[tool.uv]`. A `requires-python` above the workspace venv's Python makes `uv run` delete the shared venv through the project's `.venv` link ([project folders](installation-and-workspaces.md#project-folders)). No `__init__.py` is needed for packages, and no `pyrightconfig.json` |
-| TypeScript build files | `package.json` with `"type": "module"` and no dependencies; `tsconfig.json` as the workspace's (`module` `nodenext`, `noEmit`, `allowImportingTsExtensions`, `erasableSyntaxOnly`, `verbatimModuleSyntax`, `strict`) with `"typeRoots": ["../../typescript/node_modules/@types"]`, so `node:test` and `node:assert` have types. Imports name files with their extension (`../src/bank.ts`); code uses erasable syntax only, since Node strips types and refuses the rest (a parameter property fails with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`) |
+| TypeScript build files | `package.json` with `"type": "module"` and no dependencies; `tsconfig.json` as the workspace's (`module` `nodenext`, `noEmit`, `allowImportingTsExtensions`, `erasableSyntaxOnly`, `verbatimModuleSyntax`, `strict`) with `"types": ["node"]` and `"typeRoots": ["../../typescript/node_modules/@types"]`, so `node:test` and `node:assert` have types (TypeScript 6 loads no `@types` package that `types` does not list). Imports name files with their extension (`../src/bank.ts`); code uses erasable syntax only, since Node strips types and refuses the rest (a parameter property fails with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`) |
 | Module names | Python: no top-level module or package named after a standard-library module (`random.py`, `types.py`, `typing.py`) or `pytest` |
 
 The Python starter's `pyproject.toml`:

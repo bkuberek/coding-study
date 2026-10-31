@@ -553,7 +553,7 @@ A suite job has no `cases`: the framework discovers the tests. Python discovers 
 |------|--------|-------------|
 | Host | `pytest.main([...])` on the `cs-runner-cases` thread, with `--rootdir <root>`, plugin autoloading off (`PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`), `-p no:cacheprovider`, pytest's own capture off, and a plugin of the runner's that writes the events | `run({ files, isolation: "none", concurrency: 1 })` in the runner's process, its `test:start`, `test:pass` and `test:fail` events turned into protocol events |
 | Test id | pytest's node id: `tests/test_level_1.py::test_ex1` | `<file relative to the root>::<test name>`, nested names from the outermost `describe` joined by ` > ` |
-| `skip` | Left out by exact node id in the runner's plugin (pytest's `--deselect` matches prefixes, so it is not used) | Left out by exact name |
+| `skip` | Left out by exact node id in the runner's plugin (pytest's `--deselect` matches prefixes, so it is not used) | Left out by exact id: a `beforeEach` hook of the runner's throws before the body of a test that `skip` lists or `select` does not name, and nothing is reported for it (with isolation `none`, Node reads name patterns only from its own command line) |
 
 Events: `job_start`, then per test `case_start` and `case_result` with the test id as `case_id`, then `job_end`.
 
