@@ -126,9 +126,9 @@ Phases 0 to 7 are implemented: every command in the table above exists with its 
 
 **Exit criteria.** Each pilot passes three checks in its language: `cstudy verify --conformance` passes with the language's project and suite fixtures, and `cstudy verify <slug> --require-ready` exits 0; a manual run through all four levels, from `cstudy start` to `cstudy done`; and the warm p50 of `cstudy test` and of `cstudy submit` is within the language's NFR-1 target.
 
-- [ ] 8a, Python, `bank-project-python`: fixtures 9022 and 9024; NFR-1 1.0 s.
-- [ ] 8b, TypeScript, `bank-project-typescript`: fixtures 9023 and 9025; NFR-1 1.0 s.
-- [ ] 8c, Java, `bank-project-java`: fixtures 9026 and 9028; NFR-1 3 s.
-- [ ] 8d, Kotlin, `bank-project-kotlin`: fixtures 9027 and 9029; NFR-1 5 s.
-- [ ] 8e, Go, `bank-project-go`: fixtures 9030 and 9031; NFR-1 1.5 s.
-- [ ] 8f, Rust, `bank-project-rust`: fixtures 9032 and 9033; NFR-1 2 s.
+- [x] 8a, Python, `bank-project-python`: fixtures 9022 and 9024; NFR-1 1.0 s.
+- [x] 8b, TypeScript, `bank-project-typescript`: fixtures 9023 and 9025; NFR-1 1.0 s.
+- [x] 8c, Java, `bank-project-java`: fixtures 9026 and 9028; NFR-1 3 s.
+- [x] 8d, Kotlin, `bank-project-kotlin`: fixtures 9027 and 9029; NFR-1 5 s.
+- [x] 8e, Go, `bank-project-go`: fixtures 9030 and 9031; NFR-1 1.5 s.
+- [x] 8f, Rust, `bank-project-rust`: fixtures 9032 and 9033; NFR-1 2 s.
