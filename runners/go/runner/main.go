@@ -42,6 +42,15 @@ func suiteJob(req *request) *job {
 	return nil
 }
 
+// MainBuildFailed runs the request of a project whose code did not compile: every job that loads
+// target reports a load_error of type CompileError with the compiler's lines as its message and
+// the first error's place as its trace.
+func MainBuildFailed(target, message, trace string) {
+	keepCrashOutput()
+	failure := &userError{Type: compileErrorType, Message: message, Trace: trace}
+	os.Exit(run(&loader{broken: map[string]*userError{target: failure}}, os.Args[1:], os.Stderr))
+}
+
 func run(l *loader, argv []string, stderr io.Writer) int {
 	flags := flag.NewFlagSet("cs-go-runner", flag.ContinueOnError)
 	flags.SetOutput(stderr)

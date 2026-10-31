@@ -305,3 +305,15 @@ func TestBenchStopsATargetThatPanics(t *testing.T) {
 		t.Errorf("got %v", events)
 	}
 }
+
+func TestATargetThatDidNotBuildIsALoadErrorWithTheCompilerLines(t *testing.T) {
+	broken := &loader{broken: map[string]*userError{"user": {Type: "CompileError",
+		Message: "bank.go:3:9: undefined: x", Trace: "bank.go:3"}}}
+	job := strings.Replace(counterJob, `"kind": "design"`, `"kind": "project"`, 1)
+	_, events := runRequest(t, broken, testRequest(job))
+	loadErrors := named(events, "load_error")
+	if len(loadErrors) != 1 || asJSON(loadErrors[0]["error"]) !=
+		`{"message":"bank.go:3:9: undefined: x","trace":"bank.go:3","type":"CompileError"}` {
+		t.Errorf("got %v", events)
+	}
+}

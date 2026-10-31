@@ -52,10 +52,16 @@ type loader struct {
 	registry    Registry
 	unavailable Unavailable
 	thunks      Thunks
+	// broken holds the targets whose code did not compile, with the compiler's error: a project
+	// built without them (docs/specs/runners.md#go-project-jobs).
+	broken map[string]*userError
 }
 
 // lookup finds a registered symbol of a target, or explains why it is missing.
 func (l *loader) lookup(ref targetRef, symbol, what string) (reflect.Value, *userError) {
+	if failure, ok := l.broken[ref.Compiled]; ok {
+		return reflect.Value{}, failure
+	}
 	symbols, ok := l.registry[ref.Compiled]
 	if !ok {
 		return reflect.Value{}, &userError{Type: "LoadError",
