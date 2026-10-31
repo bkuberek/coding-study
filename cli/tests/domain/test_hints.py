@@ -1,4 +1,6 @@
-from coding_study.domain.hints import problem_hints
+import pytest
+
+from coding_study.domain.hints import hint_level, problem_hints
 
 PROBLEM = """# Two Sum
 
@@ -38,3 +40,17 @@ def test_subsections_of_other_sections_are_not_hints():
 def test_headings_inside_code_fences_are_not_hints():
     markdown = "# T\n\n## Hints\n\n### Hint 1\n\n```\n### Hint 2\n```\n"
     assert problem_hints(markdown) == ("```\n### Hint 2\n```",)
+
+
+@pytest.mark.parametrize(
+    ("hints", "levels", "opening"),
+    [
+        (4, 4, (1, 2, 3, 4)),
+        (2, 4, (1, 3)),
+        (8, 4, (1, 1, 2, 2, 3, 3, 4, 4)),
+        (5, 4, (1, 1, 2, 3, 4)),
+        (3, 1, (1, 1, 1)),
+    ],
+)
+def test_hints_spread_evenly_over_the_levels_in_order(hints, levels, opening):
+    assert tuple(hint_level(number, hints, levels) for number in range(1, hints + 1)) == opening

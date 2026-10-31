@@ -8,7 +8,7 @@ from rich.text import Text
 
 from coding_study.adapters.environment_factory import load_environment
 from coding_study.application.resolve_target import Target, resolve_target
-from coding_study.application.reveal_hint import reveal_hint
+from coding_study.application.reveal_hint import HintsLocked, reveal_hint
 from coding_study.entrypoints.shared import (
     OPTIONAL_TARGET_HELP,
     add_command,
@@ -38,6 +38,9 @@ def hint(
     output = console(context)
     if revealed is None:
         output.print(NO_MORE_HINTS)
+        return
+    if isinstance(revealed, HintsLocked):
+        output.print(f"{NO_MORE_HINTS} until level {revealed.level} opens")
         return
     output.print(Text(f"{revealed.slug} · hint {revealed.number} of {revealed.total}", "bold"))
     output.print(Text(revealed.text))
