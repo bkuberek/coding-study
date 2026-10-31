@@ -6,7 +6,7 @@ import pytest
 
 from coding_study.application.complete_attempt import DoneRequest, complete_attempt
 from coding_study.application.start_attempt import StartRequest, start_attempt
-from coding_study.domain.attempts import AttemptStatus, Grade, Rating, RunRecord
+from coding_study.domain.attempts import AttemptStatus, Grade, GradeCap, Rating, RunRecord
 from coding_study.domain.bench_records import BenchRunRecord
 from coding_study.domain.bench_verdict import Confidence, Verdict
 from coding_study.domain.config import Config, ScheduleSettings
@@ -18,6 +18,7 @@ from tests.fakes import NOW, FakeClock, FakeStubGenerator, FakeToolchains, make_
 from tests.fakes import repository_root as copy_repository
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
+STUBBED = (Language.PYTHON, Language.KOTLIN)
 SOLVE_TIME = timedelta(minutes=18, seconds=40)
 
 
@@ -29,7 +30,9 @@ def clock() -> FakeClock:
 @pytest.fixture
 def environment(tmp_path: Path, clock: FakeClock):
     root = copy_repository(tmp_path, PRACTICE)
-    toolchains = FakeToolchains(stub_generators={Language.PYTHON: FakeStubGenerator()})
+    toolchains = FakeToolchains(
+        stub_generators={language: FakeStubGenerator() for language in STUBBED}
+    )
     environment = make_environment(root, toolchains=toolchains, clock=clock)
     start_attempt(environment, StartRequest("two-sum"))
     clock.advance(SOLVE_TIME)
@@ -165,3 +168,26 @@ def test_the_suboptimal_penalty_can_be_turned_off(environment):
         replace(environment, config=config), DoneRequest(rating=Rating.EASY)
     )
     assert finished.attempt.grade is Grade.EASY
+
+
+def test_a_finish_names_the_caps_that_lowered_the_grade(environment):
+    record_run(environment, passed=4)
+    attempt = environment.progress.active_attempt()
+    environment.progress.update_attempt(replace(attempt, hints_used=1))
+    record_bench(environment, Verdict.SUBOPTIMAL, Confidence.HIGH)
+    assert done(environment, rating=Rating.EASY).caps == (GradeCap.HINT, GradeCap.SUBOPTIMAL)
+
+
+def test_a_finish_at_the_caps_grade_names_none(environment):
+    record_run(environment, passed=4)
+    record_bench(environment, Verdict.SUBOPTIMAL, Confidence.HIGH)
+    assert done(environment, rating=Rating.HARD).caps == ()
+
+
+def test_a_language_finishes_the_attempt_in_that_language(environment):
+    kotlin = start_attempt(environment, StartRequest("two-sum", Language.KOTLIN)).attempt
+    finished = done(environment, slug="two-sum", language=Language.PYTHON, gave_up=True)
+    assert (finished.attempt.language, environment.progress.attempt(kotlin.id).status) == (
+        Language.PYTHON,
+        AttemptStatus.IN_PROGRESS,
+    )

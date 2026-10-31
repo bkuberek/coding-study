@@ -13,7 +13,7 @@ from coding_study.application.mock_interview import require_no_running_mock
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.hints import hint_level, problem_hints
 from coding_study.domain.levels import level_progress
-from coding_study.domain.problem import ProblemKind
+from coding_study.domain.problem import Language, ProblemKind
 from coding_study.domain.problem_files import PROBLEM_FILE
 
 
@@ -35,11 +35,14 @@ class HintsLocked:
     """The level whose opening reveals the next hint."""
 
 
-def reveal_hint(environment: Environment, slug: str | None) -> RevealedHint | HintsLocked | None:
-    """None when every hint is already revealed; raises UsageError without an attempt or during
-    a mock interview."""
+def reveal_hint(
+    environment: Environment, slug: str | None, language: Language | None = None
+) -> RevealedHint | HintsLocked | None:
+    """The next hint of the attempt in progress for `slug`, in `language` when given. None when
+    every hint is already revealed; raises UsageError without an attempt or during a mock
+    interview."""
     require_no_running_mock(environment, "cstudy hint")
-    attempt = find_attempt(environment.progress, slug, None)
+    attempt = find_attempt(environment.progress, slug, language)
     hints = problem_hints(environment.files.read_text(attempt.slug, PROBLEM_FILE) or "")
     if attempt.hints_used >= len(hints):
         return None

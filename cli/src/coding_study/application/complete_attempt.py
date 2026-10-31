@@ -15,15 +15,18 @@ from coding_study.domain.attempts import (
     Attempt,
     AttemptStatus,
     Grade,
+    GradeCap,
     Rating,
+    attempt_caps,
     cap_grade,
+    capped_by,
     grade_attempt,
     passed_every_case,
     self_graded,
 )
 from coding_study.domain.errors import UsageError
 from coding_study.domain.items import ItemMeta
-from coding_study.domain.problem import Problem, ProblemKind, ProblemMeta
+from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry, next_review_state
 from coding_study.domain.submissions import counted_submission, level_grade_cap, levels_finished
 
@@ -36,6 +39,8 @@ class DoneRequest:
     rating: Rating | None = None
     gave_up: bool = False
     notes: str | None = None
+    language: Language | None = None
+    """The attempt's language, when two attempts of `slug` are in progress."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,12 +61,14 @@ class FinishedAttempt:
     today: date
     project: LevelsFinished | None = None
     """Project problems only."""
+    caps: tuple[GradeCap, ...] = ()
+    """The caps that held the grade below the rating."""
 
 
 def complete_attempt(environment: Environment, request: DoneRequest) -> FinishedAttempt:
     if (request.rating is None) == (not request.gave_up):
         raise UsageError(f"finish with either --rating {RATINGS} or --gave-up")
-    attempt = find_attempt(environment.progress, request.slug, None)
+    attempt = find_attempt(environment.progress, request.slug, request.language)
     if attempt.language is None:
         return _finish_item(environment, attempt, request)
     problem = environment.problems.load(attempt.slug)
@@ -71,8 +78,8 @@ def complete_attempt(environment: Environment, request: DoneRequest) -> Finished
     passed = passed_every_case(latest, problem, attempt.language)
     _check_rating_matches(passed, request)
     now = environment.clock.now()
-    caps = _measured_caps(environment, attempt)
-    grade = cap_grade(grade_attempt(attempt, request.rating, now), caps)
+    measured = _measured_caps(environment, attempt)
+    grade = cap_grade(grade_attempt(attempt, request.rating, now), measured.values())
     finished = replace(
         attempt,
         status=AttemptStatus.PASSED if passed else AttemptStatus.FAILED,
@@ -83,7 +90,9 @@ def complete_attempt(environment: Environment, request: DoneRequest) -> Finished
     )
     environment.progress.update_attempt(finished)
     schedule = _reschedule(environment, finished)
-    return FinishedAttempt(problem.meta, finished, schedule, environment.clock.local_date(now))
+    caps = capped_by(request.rating, {**attempt_caps(attempt, now), **measured})
+    today = environment.clock.local_date(now)
+    return FinishedAttempt(problem.meta, finished, schedule, today, caps=caps)
 
 
 def _finish_project(
@@ -105,32 +114,33 @@ def _finish_project(
             "finish with --gave-up"
         )
     now = environment.clock.now()
-    caps = (levels.cap,) if levels.cap is not None else ()
+    level_caps = {GradeCap.LEVELS: levels.cap} if levels.cap is not None else {}
     finished = replace(
         attempt,
         status=AttemptStatus.PASSED if levels.cap is None else AttemptStatus.FAILED,
         ended_at=now,
         rating=request.rating,
-        grade=cap_grade(grade_attempt(attempt, request.rating, now), caps),
+        grade=cap_grade(grade_attempt(attempt, request.rating, now), level_caps.values()),
         notes=request.notes,
     )
     environment.progress.update_attempt(finished)
     schedule = _reschedule(environment, finished)
     today = environment.clock.local_date(now)
-    return FinishedAttempt(problem.meta, finished, schedule, today, levels)
+    caps = capped_by(request.rating, {**attempt_caps(attempt, now), **level_caps})
+    return FinishedAttempt(problem.meta, finished, schedule, today, levels, caps)
 
 
-def _measured_caps(environment: Environment, attempt: Attempt) -> tuple[Grade, ...]:
+def _measured_caps(environment: Environment, attempt: Attempt) -> dict[GradeCap, Grade]:
     """Grade caps from facts outside the attempt row (progress-and-scheduling.md#grade): with
     `schedule.penalize_suboptimal`, the attempt's latest bench verdict `suboptimal` at
     confidence `medium` or `high` caps the grade at `hard`.
     """
     if not environment.config.schedule.penalize_suboptimal:
-        return ()
+        return {}
     outcome = environment.progress.latest_bench_outcome(attempt.id)
     if outcome is None or not outcome.is_confident_suboptimal:
-        return ()
-    return (SUBOPTIMAL_GRADE_CAP,)
+        return {}
+    return {GradeCap.SUBOPTIMAL: SUBOPTIMAL_GRADE_CAP}
 
 
 def _finish_item(

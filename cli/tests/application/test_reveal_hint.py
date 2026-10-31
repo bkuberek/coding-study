@@ -10,13 +10,16 @@ from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment
 from tests.fakes import repository_root as copy_repository
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
+STUBBED = (Language.PYTHON, Language.KOTLIN)
 FIRST_HINT = "For each value, which partner would complete the sum?"
 SECOND_HINT = "Remember the values already seen, together with their positions."
 
 
 @pytest.fixture
 def environment(tmp_path: Path):
-    toolchains = FakeToolchains(stub_generators={Language.PYTHON: FakeStubGenerator()})
+    toolchains = FakeToolchains(
+        stub_generators={language: FakeStubGenerator() for language in STUBBED}
+    )
     environment = make_environment(copy_repository(tmp_path, PRACTICE), toolchains=toolchains)
     start_attempt(environment, StartRequest("two-sum"))
     return environment
@@ -67,3 +70,11 @@ def test_no_attempt_in_progress_is_a_usage_error(tmp_path):
     environment = make_environment(copy_repository(tmp_path, PRACTICE))
     with pytest.raises(UsageError):
         reveal_hint(environment, None)
+
+
+def test_a_language_reveals_the_hint_of_the_attempt_in_that_language(environment):
+    start_attempt(environment, StartRequest("two-sum", Language.KOTLIN))
+    reveal_hint(environment, "two-sum", Language.PYTHON)
+    python = environment.progress.in_progress_attempt("two-sum", Language.PYTHON)
+    assert python is not None
+    assert python.hints_used == 1

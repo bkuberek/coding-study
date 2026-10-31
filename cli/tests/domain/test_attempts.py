@@ -8,8 +8,11 @@ from coding_study.domain.attempts import (
     AttemptMode,
     AttemptStatus,
     Grade,
+    GradeCap,
     Rating,
+    attempt_caps,
     cap_grade,
+    capped_by,
     grade_attempt,
     parse_timer,
 )
@@ -73,6 +76,45 @@ def test_caps_never_raise_a_grade():
 
 def test_no_caps_keep_the_grade():
     assert cap_grade(Grade.EASY, ()) is Grade.EASY
+
+
+def test_an_attempt_without_hints_reveals_or_a_time_box_has_no_caps():
+    assert attempt_caps(ATTEMPT, ENDED) == {}
+
+
+def test_a_hint_is_a_cap_at_ok():
+    assert attempt_caps(replace(ATTEMPT, hints_used=1), ENDED) == {GradeCap.HINT: Grade.OK}
+
+
+def test_finishing_past_the_time_box_is_a_cap_at_hard():
+    attempt = replace(ATTEMPT, time_limit_s=15 * 60)
+    assert attempt_caps(attempt, ENDED) == {GradeCap.TIME_BOX: Grade.HARD}
+
+
+def test_a_solution_revealed_before_a_full_pass_is_a_cap_at_again():
+    attempt = replace(ATTEMPT, solution_revealed=True, first_pass_at=None)
+    assert attempt_caps(attempt, ENDED) == {GradeCap.SOLUTION: Grade.AGAIN}
+
+
+def test_a_solution_revealed_after_a_full_pass_is_no_cap():
+    assert attempt_caps(replace(ATTEMPT, solution_revealed=True), ENDED) == {}
+
+
+def test_a_cap_below_the_rating_applied():
+    assert capped_by(Rating.EASY, {GradeCap.HINT: Grade.OK}) == (GradeCap.HINT,)
+
+
+def test_a_cap_at_the_rating_did_not_apply():
+    assert capped_by(Rating.OK, {GradeCap.HINT: Grade.OK}) == ()
+
+
+def test_no_cap_applies_without_a_rating():
+    assert capped_by(None, {GradeCap.SOLUTION: Grade.AGAIN}) == ()
+
+
+def test_applied_caps_follow_the_cap_order():
+    caps = {GradeCap.LEVELS: Grade.HARD, GradeCap.HINT: Grade.OK, GradeCap.TIME_BOX: Grade.HARD}
+    assert capped_by(Rating.EASY, caps) == (GradeCap.HINT, GradeCap.TIME_BOX, GradeCap.LEVELS)
 
 
 def test_solve_time_is_wall_clock_since_start():

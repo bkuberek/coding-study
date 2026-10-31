@@ -1,8 +1,10 @@
 """The documents of the API that no command prints (docs/specs/web-ui.md#endpoints)."""
 
 from coding_study.application.attempt_files import AttemptTree, FileContent, ScopedFile
+from coding_study.application.complete_attempt import FinishedAttempt
 from coding_study.application.environment import Environment
 from coding_study.application.problem_details import ProblemDetails
+from coding_study.application.reveal_hint import HintsLocked, RevealedHint
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.problem import Language, ProblemKind, Track
 from coding_study.entrypoints.commands._events import EVENTS_VERSION
@@ -75,6 +77,40 @@ def file_document(content: FileContent) -> dict[str, JsonValue]:
         "level": value["level"],
         "state": value["state"],
         "editable": content.editable,
+    }
+
+
+def hint_document(revealed: RevealedHint | HintsLocked | None) -> dict[str, JsonValue]:
+    """`POST /api/v1/attempts/{id}/hints`: the hint, the level a project's next hint opens
+    with, or that every hint is revealed, as `cstudy hint` prints them."""
+    if revealed is None:
+        return {"exhausted": True}
+    if isinstance(revealed, HintsLocked):
+        return {"locked_until_level": revealed.level}
+    text = markdown_document(revealed.text)
+    return {"hint": {"number": revealed.number, "total": revealed.total, **text}}
+
+
+def done_document(finished: FinishedAttempt) -> dict[str, JsonValue]:
+    """`POST /api/v1/attempts/{id}/done`: the values of the two lines `cstudy done` prints."""
+    attempt = finished.attempt
+    assert attempt.ended_at is not None
+    schedule = finished.schedule
+    return {
+        "slug": attempt.slug,
+        "language": attempt.language.value if attempt.language else None,
+        "status": attempt.status.value,
+        "levels_finished": finished.project.finished if finished.project else None,
+        "solve_s": int(attempt.solve_time(attempt.ended_at).total_seconds()),
+        "rating": attempt.rating.value if attempt.rating else None,
+        "grade": attempt.grade.name.lower() if attempt.grade is not None else None,
+        "caps": [cap.value for cap in finished.caps],
+        "hints_used": attempt.hints_used,
+        "next_review": {
+            "due_on": schedule.due_on.isoformat(),
+            "in_days": (schedule.due_on - finished.today).days,
+            "ease": schedule.state.ease,
+        },
     }
 
 

@@ -1,7 +1,7 @@
 """Attempts and their grades (docs/specs/progress-and-scheduling.md#attempt-lifecycle)."""
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import IntEnum, StrEnum
@@ -43,6 +43,20 @@ class Grade(IntEnum):
     OK = 2
     EASY = 3
 
+
+class GradeCap(StrEnum):
+    """What can hold a grade below its rating (docs/specs/progress-and-scheduling.md#grade), in
+    the order the page's done document names them (docs/specs/web-ui.md#attempts)."""
+
+    HINT = "hint"
+    TIME_BOX = "time_box"
+    SUBOPTIMAL = "suboptimal"
+    LEVELS = "levels"
+    SOLUTION = "solution"
+
+
+type Caps = Mapping[GradeCap, Grade]
+"""Each cap that holds for an attempt, with the grade it caps at."""
 
 _RATING_GRADES = {Rating.EASY: Grade.EASY, Rating.OK: Grade.OK, Rating.HARD: Grade.HARD}
 HINT_GRADE_CAP = Grade.OK
@@ -122,15 +136,31 @@ def grade_attempt(attempt: Attempt, rating: Rating | None, ended_at: datetime) -
     Applies the caps the attempt row knows about; callers apply caps from other facts (such as
     bench verdicts) with `cap_grade`.
     """
-    revealed_before_passing = attempt.solution_revealed and attempt.first_pass_at is None
-    if rating is None or revealed_before_passing:
+    if rating is None:
         return Grade.AGAIN
-    caps: list[Grade] = []
+    return cap_grade(_RATING_GRADES[rating], attempt_caps(attempt, ended_at).values())
+
+
+def attempt_caps(attempt: Attempt, ended_at: datetime) -> dict[GradeCap, Grade]:
+    """The caps the attempt row knows about: a solution revealed before a full pass grades
+    `again`, a hint caps at `ok`, finishing past the time box at `hard`."""
+    caps: dict[GradeCap, Grade] = {}
+    if attempt.solution_revealed and attempt.first_pass_at is None:
+        caps[GradeCap.SOLUTION] = Grade.AGAIN
     if attempt.hints_used > 0:
-        caps.append(HINT_GRADE_CAP)
+        caps[GradeCap.HINT] = HINT_GRADE_CAP
     if attempt.is_over_time(ended_at):
-        caps.append(OVER_TIME_GRADE_CAP)
-    return cap_grade(_RATING_GRADES[rating], caps)
+        caps[GradeCap.TIME_BOX] = OVER_TIME_GRADE_CAP
+    return caps
+
+
+def capped_by(rating: Rating | None, caps: Caps) -> tuple[GradeCap, ...]:
+    """The caps below the rating's grade, which therefore lowered it, in `GradeCap` order; none
+    without a rating, since giving up grades `again` whatever holds."""
+    if rating is None:
+        return ()
+    rated = _RATING_GRADES[rating]
+    return tuple(cap for cap in GradeCap if cap in caps and caps[cap] < rated)
 
 
 def cap_grade(grade: Grade, caps: Iterable[Grade]) -> Grade:

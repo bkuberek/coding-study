@@ -10,7 +10,7 @@ import pytest
 from coding_study.application.complete_attempt import DoneRequest, complete_attempt
 from coding_study.application.environment import Environment
 from coding_study.application.start_attempt import StartRequest, start_attempt
-from coding_study.domain.attempts import AttemptStatus, Grade, Rating
+from coding_study.domain.attempts import AttemptStatus, Grade, GradeCap, Rating
 from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Tally
 from coding_study.domain.submissions import LevelTally, SubmissionRecord
@@ -117,3 +117,8 @@ def test_the_time_box_still_caps_the_grade(environment):
     environment.progress.update_attempt(replace(attempt, time_limit_s=60))
     environment.clock.advance(timedelta(hours=1))
     assert done(environment, Rating.EASY).attempt.grade is Grade.HARD
+
+
+def test_the_levels_cap_is_named(environment):
+    submit(environment, PASSED_1, FAILED_2)
+    assert done(environment, Rating.EASY).caps == (GradeCap.LEVELS,)
