@@ -73,6 +73,7 @@ def serve(
     from coding_study.entrypoints.web.app import create_app
     from coding_study.entrypoints.web.children import ChildCommand
     from coding_study.entrypoints.web.context import ServerSettings
+    from coding_study.entrypoints.web.runs import Children
     from coding_study.entrypoints.web.security import SessionSecrets, login_url
 
     try:
@@ -95,8 +96,9 @@ def serve(
         url = login_url(settings.port, secrets.token)
         output.print(_line("open", url))
         redirect = _open_in_browser(root, settings.port, url) if open_browser else None
+        children = Children(report=lambda label, text: output.print(_line(label, text)))
         try:
-            server.serve_forever(create_app(settings), listener)
+            server.serve_forever(create_app(settings, children), listener, children.stop)
         except KeyboardInterrupt:
             _stop(output, "Ctrl-C", ExitCode.INTERRUPTED)
         except server.Terminated:

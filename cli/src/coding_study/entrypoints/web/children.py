@@ -10,6 +10,7 @@ import os
 import signal
 import sys
 from collections.abc import Sequence
+from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -65,3 +66,83 @@ async def run_child(
         raise ChildDeadlineError from None
     assert process.returncode is not None
     return ChildResult(process.returncode, stdout.decode(), stderr.decode())
+
+
+LINE_LIMIT = 16 * 1024 * 1024
+"""The longest line a streamed child may write: a `run_end` carries a whole `--json` document."""
+
+
+class _ExitProtocol(asyncio.subprocess.SubprocessStreamProtocol):
+    """Tells when the process exits, which `Process.wait` does only once its pipes close too."""
+
+    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+        super().__init__(limit=LINE_LIMIT, loop=loop)
+        self.exited = asyncio.Event()
+
+    def process_exited(self) -> None:
+        super().process_exited()
+        self.exited.set()
+
+
+@dataclass(frozen=True, slots=True)
+class StreamedChild:
+    """A child whose output is read line by line as it comes."""
+
+    transport: asyncio.SubprocessTransport
+    protocol: _ExitProtocol
+
+    @property
+    def stdout(self) -> asyncio.StreamReader:
+        assert self.protocol.stdout is not None
+        return self.protocol.stdout
+
+    @property
+    def stderr(self) -> asyncio.StreamReader:
+        assert self.protocol.stderr is not None
+        return self.protocol.stderr
+
+    @property
+    def returncode(self) -> int | None:
+        """The process's status once it exited: negative for the signal that ended it."""
+        return self.transport.get_returncode()
+
+    async def exited(self) -> int:
+        """Waits for the process to exit, even while a process it left behind holds its pipes."""
+        await self.protocol.exited.wait()
+        returncode = self.returncode
+        assert returncode is not None
+        return returncode
+
+    def send(self, number: signal.Signals) -> None:
+        """Sends a signal to the process while it runs, and to nothing else."""
+        if self.returncode is None:
+            with suppress(ProcessLookupError):
+                os.kill(self.transport.get_pid(), number)
+
+    def kill_group(self) -> None:
+        """SIGKILL to the process and everything still in its process group."""
+        if self.returncode is None:
+            with suppress(ProcessLookupError):
+                os.killpg(self.transport.get_pid(), signal.SIGKILL)
+
+    def close(self) -> None:
+        """Closes the pipes, which a process the child left behind may still hold."""
+        self.transport.close()
+
+
+async def start_child(
+    child: ChildCommand, workspace: Path, command: Sequence[str]
+) -> StreamedChild:
+    loop = asyncio.get_running_loop()
+    protocol = _ExitProtocol(loop)
+    transport, _ = await loop.subprocess_exec(
+        lambda: protocol,
+        *child.arguments(workspace, command),
+        stdin=asyncio.subprocess.DEVNULL,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        cwd=workspace,
+        env={**os.environ, **CHILD_ENVIRONMENT},
+        start_new_session=True,
+    )
+    return StreamedChild(transport, protocol)

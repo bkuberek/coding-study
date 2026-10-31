@@ -92,9 +92,13 @@ INTERNAL_MESSAGE = "internal error; the terminal running cstudy serve shows its 
 class ApiError(Exception):
     """A refusal no use case raises, such as a child `cstudy` that failed or ran too long."""
 
-    def __init__(self, code: ErrorCode, message: str) -> None:
+    def __init__(
+        self, code: ErrorCode, message: str, details: Mapping[str, str] | None = None
+    ) -> None:
         super().__init__(message)
         self.code = code
+        self.details = dict(details or {})
+        """Fields the error document adds, such as `run`, the id of the run holding a slot."""
 
 
 def error_status(code: ErrorCode) -> int:
@@ -102,10 +106,13 @@ def error_status(code: ErrorCode) -> int:
 
 
 def error_response(
-    code: ErrorCode, message: str, headers: Mapping[str, str] | None = None
+    code: ErrorCode,
+    message: str,
+    headers: Mapping[str, str] | None = None,
+    details: Mapping[str, str] | None = None,
 ) -> JsonResponse:
-    document = {"error": {"code": code.value, "message": message, "fix": None}}
-    return JsonResponse(document, status_code=error_status(code), headers=headers)
+    error = {"code": code.value, "message": message, "fix": None, **(details or {})}
+    return JsonResponse({"error": error}, status_code=error_status(code), headers=headers)
 
 
 def domain_error_code(error: Exception) -> ErrorCode:
@@ -145,7 +152,7 @@ def entity_tag(sha256: str) -> str:
 
 async def _api_error(_request: Request, error: Exception) -> Response:
     assert isinstance(error, ApiError)
-    return error_response(error.code, str(error))
+    return error_response(error.code, str(error), details=error.details)
 
 
 async def _http_error(request: Request, error: Exception) -> Response:

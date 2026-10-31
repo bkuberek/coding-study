@@ -15,6 +15,7 @@ from coding_study.application.environment import Environment
 from coding_study.entrypoints.web.app import create_app
 from coding_study.entrypoints.web.children import ChildCommand
 from coding_study.entrypoints.web.context import ServerSettings
+from coding_study.entrypoints.web.runs import Children
 from coding_study.entrypoints.web.security import SessionSecrets, cookie_name
 from tests.fakes import make_environment
 from tests.helpers import SCHEMAS_DIRECTORY
@@ -50,10 +51,13 @@ def web_workspace(root: Path, **overrides: object) -> Environment:
 
 
 def web_app(
-    root: Path, environment: Environment | None = None, child: ChildCommand | None = None
+    root: Path,
+    environment: Environment | None = None,
+    child: ChildCommand | None = None,
+    children: Children | None = None,
 ) -> ASGIApp:
     """The app of a server on `PORT` over the workspace `root`; `child` replaces the `cstudy`
-    its children run."""
+    its children run, and `children` holds its runs and jobs."""
     workspace = environment or web_workspace(root)
     return create_app(
         ServerSettings(
@@ -64,7 +68,8 @@ def web_app(
             load_environment=lambda: workspace,
             preferences=FsPreferencesStore(root),
             child=child or ChildCommand(),
-        )
+        ),
+        children,
     )
 
 

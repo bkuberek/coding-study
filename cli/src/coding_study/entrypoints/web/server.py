@@ -5,9 +5,10 @@ the port the system picks for `--port 0` is known to the session (docs/specs/web
 import errno
 import signal
 import socket
-from collections.abc import Generator
+from collections.abc import Callable, Coroutine, Generator
 from contextlib import contextmanager
 from types import FrameType
+from typing import Any
 
 import uvicorn
 from starlette.types import ASGIApp
@@ -15,6 +16,13 @@ from starlette.types import ASGIApp
 from coding_study.entrypoints.web.security import LOOPBACK
 
 STOP_SIGNALS = frozenset({signal.SIGINT, signal.SIGTERM})
+
+type Stopping = Callable[[], Coroutine[Any, Any, None]]
+"""What the server does first as it shuts down: stop the runs and jobs."""
+
+
+async def _nothing() -> None:
+    pass
 
 
 class PortInUseError(Exception):
@@ -63,10 +71,10 @@ def stop_signals() -> Generator[None]:
                 signal.signal(number, handler)
 
 
-def serve_forever(app: ASGIApp, listener: socket.socket) -> None:
+def serve_forever(app: ASGIApp, listener: socket.socket, stopping: Stopping = _nothing) -> None:
     """Serves, inside `stop_signals`, until one of them stops the server; returns only when the
     server did not start. uvicorn handles the signal by shutting down, then raises it again for
-    the handlers of `stop_signals`.
+    the handlers of `stop_signals`. `stopping` runs first as it shuts down.
 
     No access log and no `server` header; proxy headers are ignored, since every connection
     comes from this machine."""
@@ -82,10 +90,20 @@ def serve_forever(app: ASGIApp, listener: socket.socket) -> None:
         proxy_headers=False,
         server_header=False,
     )
-    _Server(config).run(sockets=[listener])
+    _Server(config, stopping).run(sockets=[listener])
 
 
 class _Server(uvicorn.Server):
+    def __init__(self, config: uvicorn.Config, stopping: Stopping) -> None:
+        super().__init__(config)
+        self._stopping = stopping
+
+    async def shutdown(self, sockets: list[socket.socket] | None = None) -> None:
+        """Runs `stopping` before uvicorn waits for the open responses: a run's stream stays
+        open until its child exits, and the children stop only once they are told to."""
+        await self._stopping()
+        await super().shutdown(sockets)
+
     @contextmanager
     def capture_signals(self) -> Generator[None]:
         """Lets the blocked stop signals in once uvicorn's own handlers are in place."""

@@ -1,5 +1,6 @@
 """`cstudy serve` (docs/specs/cli.md#cstudy-serve), with the server loop replaced."""
 
+import asyncio
 import signal
 import socket
 import stat
@@ -20,6 +21,7 @@ from coding_study.entrypoints.commands import serve
 from coding_study.entrypoints.shared import ExitCode
 from coding_study.entrypoints.web import app, server
 from coding_study.entrypoints.web.context import ServerSettings
+from coding_study.entrypoints.web.runs import Children
 from tests.web_server import web_workspace
 
 runner = CliRunner()
@@ -40,8 +42,8 @@ class FakeWebUi:
 
 class ServerLoop:
     """Stands in for uvicorn: records the app and the socket, runs `during`, then stops the
-    way `stop` says, as Ctrl-C (KeyboardInterrupt) or SIGTERM (server.Terminated) do, or
-    returns, as a server that failed to start does."""
+    way `stop` says, as Ctrl-C (KeyboardInterrupt) or SIGTERM (server.Terminated) do, running
+    `stopping` first as the server does, or returns, as a server that failed to start does."""
 
     def __init__(
         self, stop: type[BaseException] | None, during: Callable[[], None] = lambda: None
@@ -51,11 +53,12 @@ class ServerLoop:
         self.apps: list[ASGIApp] = []
         self.addresses: list[tuple[str, int]] = []
 
-    def __call__(self, app: ASGIApp, listener: socket.socket) -> None:
+    def __call__(self, app: ASGIApp, listener: socket.socket, stopping: server.Stopping) -> None:
         self.apps.append(app)
         self.addresses.append(listener.getsockname())
         self.during()
         if self.stop is not None:
+            asyncio.run(stopping())
             raise self.stop
 
     @property
@@ -180,6 +183,24 @@ def test_the_printed_token_logs_in_to_the_workspaces_server(workspace, monkeypat
     assert document["workspace"] == str(workspace)
 
 
+def test_a_server_that_stopped_starts_no_job(workspace, monkeypatch):
+    loop = ServerLoop(KeyboardInterrupt)
+    url = printed_url(serving(monkeypatch, loop).stdout)
+    address = url.split("/?")[0]
+    with TestClient(loop.app, base_url=address) as client:
+        client.get(url)
+        csrf = client.get("/").text.split('name="cstudy-csrf" content="')[1].split('"')[0]
+        response = client.post(
+            "/api/v1/jobs",
+            json={"command": "doctor_fix", "confirm": True},
+            headers={"Origin": address, "X-Cstudy-CSRF": csrf},
+        )
+    assert (response.status_code, response.json()["error"]["message"]) == (
+        409,
+        "cstudy serve is stopping",
+    )
+
+
 def test_each_start_prints_a_new_token(workspace, monkeypatch):
     first = printed_url(serving(monkeypatch, ServerLoop(KeyboardInterrupt)).stdout)
     second = printed_url(serving(monkeypatch, ServerLoop(KeyboardInterrupt)).stdout)
@@ -246,9 +267,9 @@ def served_settings(monkeypatch) -> list[ServerSettings]:
     built: list[ServerSettings] = []
     create_app = app.create_app
 
-    def recorded(settings: ServerSettings) -> ASGIApp:
+    def recorded(settings: ServerSettings, children: Children | None = None) -> ASGIApp:
         built.append(settings)
-        return create_app(settings)
+        return create_app(settings, children)
 
     monkeypatch.setattr(app, "create_app", recorded)
     return built

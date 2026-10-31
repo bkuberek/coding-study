@@ -64,6 +64,7 @@ Each practice command maps to one page area, one endpoint and the use case the c
 | `entrypoints/web/page.html` | The page template: the server fills in the CSRF token and the CSP nonce of each response (`{{csrf}}`, `{{nonce}}`) |
 | `entrypoints/web/security.py` | Token, cookie, Host, Origin and CSRF checks, the CSP nonce, response headers |
 | `entrypoints/web/runs.py` | The registry of runs and jobs: child processes, buffered lines, slots, cancel |
+| `entrypoints/web/run_options.py` | The [run options](#run-options) and [job options](#jobs), checked by name and type, and the child's argument list they become |
 | `entrypoints/web/notifications.py` | `watchfiles.awatch` over the watched set, as server-sent events |
 | `entrypoints/web/api_*.py` | Route handlers, one module per group of the [endpoint tables](#endpoints) |
 | `entrypoints/web/documents.py` | Builders of the documents no command prints; the others come from the command modules' builders, such as `status_document` |
@@ -72,11 +73,12 @@ Each practice command maps to one page area, one endpoint and the use case the c
 | `entrypoints/web/static/` | The vendored front end, `manifest.json` and `THIRD_PARTY_LICENSES.txt` ([Front-end assets](#front-end-assets)) |
 | `application/attempt_files.py` | Tree, read, save, create, move and delete within an attempt's [file scope](#file-scope) |
 | `application/problem_history.py` | The history of one problem, shared with `cstudy history` |
+| `application/run_checks.py` | The [pre-checks](#lifecycle) of a run, and the scope check of `verify` jobs |
 | `adapters/workspace_fs.py` | New `Workspace` methods `read_within`, `delete_within` and `move_within` beside `write_within`, none following a link, and `locked_with_deadline`, the project lock that gives up after a deadline ([Lock](#file-scope)) |
 
 ### Shutdown
 
-Ctrl-C (SIGINT) or SIGTERM stops the server: it sends SIGINT to every run and job in progress, closes every stream, waits for the children as [Cancel](#cancel) does, deletes its `--open` redirect file, and exits 130 (143 after SIGTERM).
+Ctrl-C (SIGINT) or SIGTERM stops the server: it sends SIGINT to every run and job in progress, closes every stream, waits for the children as [Cancel](#cancel) does, deletes its `--open` redirect file, and exits 130 (143 after SIGTERM). The children are stopped first, before the server waits for its open responses, since a run's stream stays open until its child exits; from then on a new run or job gets 409 `conflict` (`cstudy serve is stopping`).
 
 ## Security
 
@@ -182,13 +184,15 @@ Errors share one document:
 |-----------------|---------|----------|
 | `POST /api/v1/runs` | [Run options](#run-options) | 201 `{"id": "c8a4df906a913818"}` |
 | `GET /api/v1/runs?attempt_id=N` | | The attempt's retained runs, newest first, each as below |
-| `GET /api/v1/runs/{id}` | | `{"id", "attempt_id", "command", "options", "state", "started_at", "exit_code", "summary"}`: `state` `running` or `ended`, `summary` the `run_end` summary or null |
+| `GET /api/v1/runs/{id}` | | `{"id", "attempt_id", "command", "options", "state", "started_at", "exit_code", "summary"}`: `options` the run options but `attempt_id` and `command`, with `typecheck` as the run applied it; `state` `running` or `ended`, `summary` the `run_end` summary or null |
 | `GET /api/v1/runs/{id}/events` | `Last-Event-ID` | The run as [SSE](#server-sent-events) |
-| `POST /api/v1/runs/{id}/cancel` | | 202; an ended run gets 409 `conflict` |
+| `POST /api/v1/runs/{id}/cancel` | | 202 `{"id"}`; an ended run gets 409 `conflict` |
 | `POST /api/v1/jobs` | [Job options](#jobs) | 201 `{"id": …}` |
 | `GET /api/v1/jobs/{id}` | | `{"id", "command", "options", "state", "started_at", "exit_code"}` |
 | `GET /api/v1/jobs/{id}/events` | `Last-Event-ID` | The job's lines as SSE |
-| `POST /api/v1/jobs/{id}/cancel` | | 202 |
+| `POST /api/v1/jobs/{id}/cancel` | | 202 `{"id"}`; an ended job gets 409 `conflict` |
+
+A 409 `conflict` for a taken slot names what holds it inside the error document: `{"error": {"code": "conflict", "message": "a run of this attempt is in progress: test two-sum · python", "fix": null, "run": "c8a4df906a913818"}}`, or `"job": …` for a job.
 
 ### Mock, progress and health
 
@@ -212,15 +216,15 @@ A run is a child `cstudy test --events` or `cstudy submit --events`, relayed unc
 |-------|------|---------|-----|
 | `attempt_id` | integer, required | `<slug> --lang <language>` of the attempt (no `--lang` for a project) | every run |
 | `command` | `test` or `submit` | the command | `submit` for project problems only |
-| `level` | integer or null | `--level N` | progressive and project problems |
-| `cases` | list of strings | `--case ID` per entry | `test` |
-| `typecheck` | boolean | `--typecheck` | TypeScript; default the `typecheck` preference |
-| `stress` | integer 1 to 100, or null | `--stress N` | concurrent problems, and function and design problems with `oracle` |
-| `seed` | integer or null | `--seed S` | with `stress` |
+| `level` | integer or null | `--level=N` | progressive and project problems |
+| `cases` | list of strings | `--case=ID` per entry | `test` |
+| `typecheck` | boolean or null | `--typecheck` | TypeScript, and left out for any other language; null or absent: the `typecheck` preference |
+| `stress` | integer 1 to 100, or null | `--stress=N` | concurrent problems, and function and design problems with `oracle` |
+| `seed` | integer or null | `--seed=S` | with `stress` |
 | `time_limit` | null (the configuration's), `true`, `false`, or a value such as `"5x"` or `"1500ms"` | nothing, `--time-limit`, `--no-time-limit`, `--time-limit=<value>` | single-file problems but concurrent stress runs |
 | `perf` | boolean | `--perf` | function and design problems, without `cases` |
 
-The page offers only the options the attempt's kind accepts. The server checks types and ranges and runs the pre-checks below; any other refusal comes from the child as exit 3, reported in `closed`.
+The page offers only the options the attempt's kind accepts. The server checks names, types and ranges and runs the pre-checks below; any other refusal comes from the child as exit 3, reported in `closed`. An unknown field gets 422 `usage`, and so does a `submit` with a `test` option set (`cstudy submit takes no cases`). A value from the request becomes one `--option=value` token, so it never reads as another option: `test two-sum --lang python --events --case=ex1 --stress=30`.
 
 ### Lifecycle
 
@@ -230,7 +234,7 @@ The page offers only the options the attempt's kind accepts. The server checks t
 | Slot | One run per attempt at a time: a second `POST /api/v1/runs` for the attempt gets 409 `conflict` with the active run's id, and the page attaches to it. Runs of different attempts may overlap, as two terminal runs may. While a `doctor_fix` job runs, every run gets 409 |
 | Start | 201 as soon as the child is spawned; `run_started` goes to every notification stream |
 | Free | The slot frees when the child exits, not at `run_end`, and `closed` is sent at that moment |
-| End | One line on the server's standard output, from `run_end`: `run   test two-sum · python · passed · 14/14 · 0.9s`; `run_ended` on every notification stream |
+| End | One line on the server's standard output, from `run_end`: `run   test two-sum · python · passed · 14/14 · 0.9s` (`interrupted` or `error` alone without a summary); a child that wrote no `run_end` shows its exit code or signal instead (`run   test two-sum · python · exit 3`); `run_ended` on every notification stream |
 | Retention | A run's lines stay in memory while it runs and until ten newer runs of the same attempt exist |
 
 ### Server-sent events
@@ -245,14 +249,14 @@ data: {"type": "case_result", "version": 1, "id": "ex1", "visible": true, "gener
 | Rule | Detail |
 |------|--------|
 | Message | `event` is the line's `type`, `data` the line unchanged, `id` its 0-based index in the run. Ordering is the CLI's ([ordering](cli.md#ordering)). A line that is not a JSON object with a `type` is dropped and reported on the server's standard error |
-| `closed` | The server's own last message, after the child exits: `{"exit_code": n, "signal": null, "stderr": [...]}`. `signal` names the signal that ended the child (`SIGKILL`) or is null; `stderr` holds the last 20 lines of standard error when no `run_end` came, else is empty. The server then ends the response |
+| `closed` | The server's own last message, after the child exits, without an `id`: `{"exit_code": n, "signal": null, "stderr": [...]}`. `signal` names the signal that ended the child (`SIGKILL`) or is null, and `exit_code` is then 128 + its number, as a shell reports it (137); `stderr` holds the last 20 lines of standard error when no `run_end` came, else is empty. The server then ends the response. The output a child wrote before it exited is relayed first; a process it left behind holding its standard output open delays `closed` by at most 1 s |
 | Replay | A request with `Last-Event-ID: n` gets the lines after `n`, then the live ones; an ended run replays and closes at once |
 | Keep-alive | A comment line (`: keep-alive`) every 15 s while nothing else is sent |
-| Connections | A browser opens at most six HTTP/1.1 connections per host across all tabs. A tab holds one notification stream, plus one run or job stream while one is in progress, and closes both while hidden (Page Visibility API), resuming with `Last-Event-ID` |
+| Connections | A browser opens at most six HTTP/1.1 connections per host across all tabs. A tab holds one notification stream, plus one run or job stream while one is in progress, and closes both while hidden (Page Visibility API). `EventSource` sends `Last-Event-ID` on its own reconnects only, so a tab that comes back opens the run's stream again from its start and redraws the results from the replay |
 
 ### Cancel
 
-`POST /api/v1/runs/{id}/cancel` sends SIGINT to the child, which writes `run_end` with outcome `interrupted`, kills its runner's process group and stores nothing, as Ctrl-C does in the terminal. A child still alive 10 s later gets SIGTERM, which an `--events` run treats as SIGINT ([cli](cli.md#rules)); one still alive 5 s after that gets SIGKILL, and `closed` names the signal.
+`POST /api/v1/runs/{id}/cancel` sends SIGINT to the child, which writes `run_end` with outcome `interrupted`, kills its runner's process group and stores nothing, as Ctrl-C does in the terminal. A child still alive 10 s later gets SIGTERM, which an `--events` run treats as SIGINT ([cli](cli.md#rules)); one still alive 5 s after that gets SIGKILL, with every process still in its process group, and `closed` names the signal. SIGINT and SIGTERM go to the child alone, as its own handlers stop its runner; a second cancel while the first is under way changes nothing.
 
 ## Jobs
 
@@ -261,17 +265,17 @@ A job is a child `cstudy` command whose text report is relayed line by line: com
 | `command` | Options | Child |
 |-----------|---------|-------|
 | `doctor_fix` | `confirm` (required) | `cstudy doctor --fix` |
-| `verify` | `slugs` (one or more of your own problems: those whose `source` is `workspace` in `cstudy list --json`), `static`, `oracle`, `ladder` (booleans) | `cstudy verify <slug>... [--static] [--oracle] [--ladder]` |
-| `bench` | `slug`, `language`, `sizes` (list of positive integers), `reps` (1 to 50), `refs_only`, `no_memory` | `cstudy bench <slug> --lang <language> [--sizes LIST] [--reps N] [--refs-only] [--no-memory]` |
+| `verify` | `slugs` (one or more of your own problems: those whose `source` is `workspace` in `cstudy list --json`), `static`, `oracle`, `ladder` (booleans) | `cstudy verify [--static] [--oracle] [--ladder] -- <slug>...` |
+| `bench` | `slug`, `language`, `sizes` (list of positive integers), `reps` (1 to 50), `refs_only`, `no_memory` | `cstudy bench --lang=<language> [--sizes=LIST] [--reps=N] [--refs-only] [--no-memory] -- <slug>` |
 
 | Rule | Detail |
 |------|--------|
 | Confirmation | `doctor_fix` without `confirm` gets 409 with `Run cstudy doctor --fix? It writes missing workspace files, refreshes the runner runtime, migrates progress.db, and runs uv sync, pnpm install and the Gradle warm-up, which may need the network.` |
-| Verify scope | A catalog problem gets 422: `the page verifies your own problems; run cstudy verify in a content checkout for catalog problems` |
+| Verify scope | A catalog problem gets 422: `the page verifies your own problems; run cstudy verify in a content checkout for catalog problems`; a slug no problem has gets 404 `not_found` |
 | Slot | One job at a time in the server: a second gets 409 `conflict` with the job's id. `doctor_fix` also waits for no run: with a run in progress it gets 409 |
 | Messages | `event: line`, `data: {"stream": "stdout" or "stderr", "text": "<line without its newline>"}`, `id` the line's index; then `closed` as for runs |
 | Cancel and retention | As for runs; the server keeps the last ten jobs |
-| End | `job   doctor --fix · exit 0` on the server's standard output; `job_ended` on every notification stream |
+| End | `job   doctor --fix · exit 0` (or the signal that ended it, `SIGKILL`) on the server's standard output; `job_ended` on every notification stream |
 
 ## Notifications
 
@@ -515,8 +519,8 @@ A missing or unreadable file means the defaults; the server rewrites it whole on
 | Application | `attempt_files`: the path rules (`..`, absolute, `\`, untracked, a link at any segment, a directory at the file's path, outside the scope), preconditions, the lock's deadline; `problem_history` | Fakes, as in `tests/application/` | fast |
 | Adapter | The new `Workspace` methods never follow a link, with real links in `tmp_path` | Real files | fast |
 | API | Each endpoint's status, and its own documents validated against `schemas/web-api.schema.json` (documents a CLI command also prints are compared with that command's output instead, as `cli.md` describes them); documents equal to the CLI's (`status_document`, `list`, `next`, `stats`); the security matrix: Host, Origin, cookie, CSRF, CSP present, no CORS headers, body limits; confirmations | Starlette's `TestClient` with a test `Environment` | fast |
-| Streaming | SSE framing, ordering, `Last-Event-ID`, `closed`, the 409 slot, cancel to `run_end` `interrupted`, the SIGTERM and SIGKILL escalation, job lines | A scripted child that replays golden NDJSON and waits for signals, behind the run launcher seam | fast |
-| End to end | A real `test --events` and `submit --events` on the Python project pilot, a single-file run in each core language, a concurrent stress run, a level unlock, a cancel, a real file event | The existing slow workspace fixtures | slow |
+| Streaming | SSE framing, ordering, `Last-Event-ID`, `closed`, the 409 slot, cancel to `run_end` `interrupted`, the SIGTERM and SIGKILL escalation, job lines | A scripted child that replays golden NDJSON and waits for signals (`tests/scripted_child.py`, run in place of `python -m coding_study` through the child command's interpreter) | fast |
+| End to end | A real `test --events` and `submit --events` on the Python project pilot, a single-file run in each core language, a concurrent stress run, a level unlock, a cancel, a real file event | The existing slow workspace fixtures; `tests/entrypoints/commands/test_serve_runs_end_to_end.py` covers a Python single-file run, the pilot's tests, a cancel that leaves no test process, the reference's submission opening level 2 and a server stopped during a run so far | slow |
 | Browser | Login, the editor under the CSP, a streamed run, cancel, a diagnostic marker, the solution confirmation, Vim loading, no console error | Playwright, in the optional `browser` dependency group (`uv sync --group browser`), skipped when not installed; `tests/entrypoints/web/test_browser_smoke.py` covers login, the problem list, a project's statement and tree, a file in the editor, a save with the shortcut that turns the file `modified`, and a restore from the tree that turns it `unchanged` so far; `tests/entrypoints/web/test_browser_flows.py` starts a single-file problem with a time box, turns Vim on and finds it after a reload, takes a hint, reveals the solution through its question, finishes with Done, starts a mock and finds Hint locked in its attempt | slow |
 | Bundle | The rebuild matches `manifest.json`; the wheel holds every asset | npm and esbuild; `uv build` | slow |
 | Import cost | `import coding_study.entrypoints.cli` loads neither Starlette nor uvicorn | A subprocess checks `sys.modules` | fast |
