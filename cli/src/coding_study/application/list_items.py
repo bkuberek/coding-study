@@ -1,6 +1,7 @@
 """`cstudy list` rows for non-autograded items (docs/specs/cli.md#cstudy-list).
 
-Items have no patterns and no reference languages, so `--pattern` and `--lang` leave them out.
+Items have no patterns and no reference languages, so `--pattern` and `--lang` leave them out, as
+`--kind` does unless it is `item`.
 """
 
 from dataclasses import dataclass
@@ -37,7 +38,8 @@ def list_items(environment: Environment, problem_filter: ProblemFilter) -> tuple
 
 def _may_match(problem_filter: ProblemFilter) -> bool:
     return (
-        problem_filter.pattern is None
+        problem_filter.lists_items
+        and problem_filter.pattern is None
         and problem_filter.language is None
         and problem_filter.track in (None, *ITEM_TRACKS)
     )
