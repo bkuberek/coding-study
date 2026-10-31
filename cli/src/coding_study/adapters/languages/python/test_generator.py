@@ -10,20 +10,19 @@ for `decimal` and `date`, imported when used; a whole decimal is `Decimal(10)`, 
 default rules (FURB157) flag `Decimal("10")`.
 
 The text already matches `ruff format` with its default line length, so no formatter runs. A
-statement too long for one line is laid out by a printer of the same family as ruff's: each pair
-of brackets is a group that keeps its content on one line when it fits, and otherwise moves it to
-indented lines of its own, one item per line, with a trailing comma after several items. Call
-arguments get a second chance on a single indented line first. Groups are decided from left to
-right, each one measured up to the next place a later group could break. An assertion is wrapped
-in parentheses, broken before its operator, unless its right side ends with brackets of its own.
+statement too long for one line is laid out by the printer of test_printer.py, of the same family
+as ruff's: each pair of brackets is a group that keeps its content on one line when it fits, and
+otherwise moves it to indented lines of its own, one item per line, with a trailing comma after
+several items. Call arguments get a second chance on a single indented line first. An assertion
+is wrapped in parentheses, broken before its operator, unless its right side ends with brackets of
+its own.
 """
 
 import keyword
 import re
 import textwrap
 import unicodedata
-from collections.abc import Iterator, Sequence
-from dataclasses import dataclass
+from collections.abc import Sequence
 from decimal import Decimal
 from typing import Any
 
@@ -31,6 +30,18 @@ from coding_study.adapters.languages.python.stub_generator import (
     INDENT,
     LINE_LENGTH,
     SENTENCE_ENDINGS,
+)
+from coding_study.adapters.languages.test_printer import (
+    SOFT_LINE,
+    SPACE_OR_LINE,
+    Doc,
+    Group,
+    IfBreak,
+    Indent,
+    Style,
+    Text,
+    flattened,
+    layout,
 )
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.naming import NameRole, member_name, snake_case
@@ -54,206 +65,85 @@ _WHOLE_NUMBER = re.compile(r"-?[0-9]+")
 _NEGATIVE_ZERO = "-0"
 
 
-# A document: text with the places it may break, laid out by `_layout`.
-
-
-@dataclass(frozen=True, slots=True)
-class _Text:
-    text: str
-
-
-@dataclass(frozen=True, slots=True)
-class _Line:
-    """A line break when its group breaks, else `flat`: nothing, or a space."""
-
-    flat: str
-
-
-@dataclass(frozen=True, slots=True)
-class _Indent:
-    content: "_Doc"
-
-
-@dataclass(frozen=True, slots=True)
-class _Group:
-    """Laid out on one line when it fits, else with every `_Line` directly in it broken."""
-
-    content: "_Doc"
-
-
-@dataclass(frozen=True, slots=True)
-class _IfBreak:
-    """`text` only when the enclosing group breaks: a trailing comma, a parenthesis."""
-
-    text: str
-
-
-type _Doc = _Text | _Line | _Indent | _Group | _IfBreak | tuple[_Doc, ...]
-
-_SOFT_LINE = _Line("")
-_SPACE_OR_LINE = _Line(" ")
-
-
-def _call(callee: str, arguments: Sequence[_Doc]) -> _Doc:
+def _call(callee: str, arguments: Sequence[Doc]) -> Doc:
     """`callee(...)`: the arguments on one line, else on one indented line, else one per line."""
     if not arguments:
-        return _Text(f"{callee}()")
-    inner = _Group(_comma_separated(arguments))
-    return (_Text(f"{callee}("), _Group((_Indent((_SOFT_LINE, inner)), _SOFT_LINE)), _Text(")"))
+        return Text(f"{callee}()")
+    inner = Group(_comma_separated(arguments))
+    return (Text(f"{callee}("), Group((Indent((SOFT_LINE, inner)), SOFT_LINE)), Text(")"))
 
 
-def _list(items: Sequence[_Doc]) -> _Doc:
+def _list(items: Sequence[Doc]) -> Doc:
     """`[...]`: the items on one line, else one per line."""
     if not items:
-        return _Text("[]")
-    content = (_Indent((_SOFT_LINE, _comma_separated(items))), _SOFT_LINE)
-    return (_Text("["), _Group(content), _Text("]"))
+        return Text("[]")
+    content = (Indent((SOFT_LINE, _comma_separated(items))), SOFT_LINE)
+    return (Text("["), Group(content), Text("]"))
 
 
-def _comma_separated(items: Sequence[_Doc]) -> _Doc:
-    separated: list[_Doc] = []
+def _comma_separated(items: Sequence[Doc]) -> Doc:
+    separated: list[Doc] = []
     for index, item in enumerate(items):
         if index:
-            separated += [_Text(","), _SPACE_OR_LINE]
+            separated += [Text(","), SPACE_OR_LINE]
         separated.append(item)
     if len(items) > 1:
-        separated.append(_IfBreak(","))
+        separated.append(IfBreak(Text(",")))
     return tuple(separated)
 
 
-def _assertion(left: _Doc, operator: str, right: _Doc) -> _Doc:
+def _assertion(left: Doc, operator: str, right: Doc) -> Doc:
     """`assert left <operator> right`, parenthesized and broken before the operator when it is
     too long, unless the right side can break its own brackets instead."""
-    plain = (_Text("assert "), left, _Text(f" {operator} "), right)
+    plain = (Text("assert "), left, Text(f" {operator} "), right)
     if _breaks_own_brackets(plain, right):
         return plain
-    comparison = _Group((left, _SPACE_OR_LINE, _Text(f"{operator} "), right))
-    return (_Text("assert "), _parenthesized(comparison))
+    comparison = Group((left, SPACE_OR_LINE, Text(f"{operator} "), right))
+    return (Text("assert "), _parenthesized(comparison))
 
 
-def _assignment(name: str, value: _Doc) -> _Doc:
+def _assignment(name: str, value: Doc) -> Doc:
     """`name = value`, with the value parenthesized when it is too long and cannot break its own
     brackets: `Cls()` has none to break."""
-    plain = (_Text(f"{name} = "), value)
+    plain = (Text(f"{name} = "), value)
     if _breaks_own_brackets(plain, value):
         return plain
-    return (_Text(f"{name} = "), _parenthesized(value))
+    return (Text(f"{name} = "), _parenthesized(value))
 
 
-def _breaks_own_brackets(statement: _Doc, last: _Doc) -> bool:
+def _breaks_own_brackets(statement: Doc, last: Doc) -> bool:
     """Whether `statement` breaks the brackets of its `last` part, and those before it, instead of
     adding parentheses: `last` has brackets with something in them, and the line fits up to the
     first bracket of the statement."""
     return _has_group(last) and len(INDENT) + _width_before_group(statement) <= LINE_LENGTH
 
 
-def _parenthesized(doc: _Doc) -> _Doc:
+def _parenthesized(doc: Doc) -> Doc:
     """`doc` in parentheses of its own, on indented lines, when it does not fit on one line."""
-    return _Group((_IfBreak("("), _Indent((_SOFT_LINE, doc)), _SOFT_LINE, _IfBreak(")")))
+    return Group((IfBreak(Text("(")), Indent((SOFT_LINE, doc)), SOFT_LINE, IfBreak(Text(")"))))
 
 
-def _has_group(doc: _Doc) -> bool:
+def _has_group(doc: Doc) -> bool:
     match doc:
-        case _Group():
+        case Group():
             return True
         case tuple():
             return any(_has_group(part) for part in doc)
-        case _Indent(content):
+        case Indent(content):
             return _has_group(content)
         case _:
             return False
 
 
-def _width_before_group(doc: _Doc) -> int:
+def _width_before_group(doc: Doc) -> int:
     """The columns of the text before the first group of `doc`."""
     width = 0
-    for part in _flattened(doc):
-        if isinstance(part, _Group):
+    for part in flattened(doc):
+        if isinstance(part, Group):
             break
-        if isinstance(part, _Text):
+        if isinstance(part, Text):
             width += _width(part.text)
     return width
-
-
-def _flattened(doc: _Doc) -> Iterator[_Doc]:
-    match doc:
-        case tuple():
-            for part in doc:
-                yield from _flattened(part)
-        case _Indent(content):
-            yield from _flattened(content)
-        case _:
-            yield doc
-
-
-@dataclass(frozen=True, slots=True)
-class _Command:
-    indent: str
-    broken: bool
-    doc: _Doc
-
-
-def _layout(doc: _Doc) -> str:
-    """One statement of a test body, at its indentation."""
-    output, column = [INDENT], len(INDENT)
-    commands = [_Command(INDENT, True, doc)]
-    while commands:
-        command = commands.pop()
-        match command.doc:
-            case tuple():
-                commands += [
-                    _Command(command.indent, command.broken, part) for part in reversed(command.doc)
-                ]
-            case _Indent(content):
-                commands.append(_Command(command.indent + INDENT, command.broken, content))
-            case _Group(content):
-                on_one_line = _Command(command.indent, False, content)
-                fits = not command.broken or _fits(on_one_line, commands, LINE_LENGTH - column)
-                commands.append(on_one_line if fits else _Command(command.indent, True, content))
-            case _Line() if command.broken:
-                output.append(f"\n{command.indent}")
-                column = _width(command.indent)
-            case _Line(text) | _Text(text):
-                output.append(text)
-                column += _width(text)
-            case _IfBreak(text) if command.broken:
-                output.append(text)
-                column += _width(text)
-            case _IfBreak():
-                pass
-    return "".join(output)
-
-
-def _fits(first: _Command, rest: list[_Command], width: int) -> bool:
-    """Whether `first` fits in `width` columns on one line, together with what follows it up to
-    the next line break; a group that follows is measured as broken, so only up to its opening."""
-    pending, remaining = [first], len(rest)
-    while width >= 0:
-        if not pending:
-            if not remaining:
-                return True
-            remaining -= 1
-            pending.append(rest[remaining])
-            continue
-        command = pending.pop()
-        match command.doc:
-            case tuple():
-                pending += [
-                    _Command(command.indent, command.broken, part) for part in reversed(command.doc)
-                ]
-            case _Indent(content) | _Group(content):
-                pending.append(_Command(command.indent, command.broken, content))
-            case _Line() if command.broken:
-                return True
-            case _Line(flat):
-                width -= _width(flat)
-            case _Text(text):
-                width -= _width(text)
-            case _IfBreak(text) if command.broken:
-                width -= _width(text)
-            case _IfBreak():
-                pass
-    return False
 
 
 class PythonTestGenerator:
@@ -289,11 +179,11 @@ class _LevelFile:
     def _function(self, test: LevelTest) -> str:
         lines = [f"def test_{test.case_id.replace('-', '_')}() -> None:"]
         lines += _docstring(test.note or "")
-        lines.append(_layout(self._construction(test)))
-        lines += (_layout(self._statement(call)) for call in test.calls)
+        lines.append(layout(self._construction(test), _STYLE, INDENT))
+        lines += (layout(self._statement(call), _STYLE, INDENT) for call in test.calls)
         return "\n".join(lines)
 
-    def _construction(self, test: LevelTest) -> _Doc:
+    def _construction(self, test: LevelTest) -> Doc:
         """`bank = Bank(...)`, or `Bank(...)` alone when no call follows to use the instance."""
         params = self._tests.signature.constructor_params
         types = [param.type for param in params]
@@ -301,7 +191,7 @@ class _LevelFile:
         construction = _call(self._tests.signature.name, arguments)
         return _assignment(self._instance, construction) if test.calls else construction
 
-    def _statement(self, call: Call) -> _Doc:
+    def _statement(self, call: Call) -> Doc:
         name = member_name(call.method.name, Language.PYTHON, NameRole.METHOD)
         types = [param.type for param in call.method.params]
         invocation = _call(
@@ -316,7 +206,7 @@ class _LevelFile:
             in_order = self._values.in_python_order(expected, declared)
             return _assertion(_call("sorted", [invocation]), "==", in_order)
         if expected is None or isinstance(expected, bool):
-            return _assertion(invocation, "is", _Text(_literal(expected)))
+            return _assertion(invocation, "is", Text(_literal(expected)))
         return _assertion(invocation, "==", self._values.doc(expected, declared))
 
 
@@ -327,43 +217,43 @@ class _Values:
         self._tolerance = _literal(float(tolerance))
         self.imports: set[str] = set()
 
-    def doc(self, value: JsonValue, declared: ValueType | None) -> _Doc:
+    def doc(self, value: JsonValue, declared: ValueType | None) -> Doc:
         match declared:
             case ScalarType(Scalar.DECIMAL) if isinstance(value, str):
                 self.imports.add(DECIMAL_IMPORT)
-                return _call("Decimal", [_Text(_decimal_argument(value))])
+                return _call("Decimal", [Text(_decimal_argument(value))])
             case ScalarType(Scalar.DATE) if isinstance(value, str):
                 self.imports.add(DATE_IMPORT)
-                return _call("date.fromisoformat", [_Text(_literal(value))])
+                return _call("date.fromisoformat", [Text(_literal(value))])
             case _ if isinstance(value, list):
                 element = _element_type(declared)
                 return _list([self.doc(item, element) for item in value])
             case _:
-                return _Text(_literal(value))
+                return Text(_literal(value))
 
-    def arguments(self, values: Sequence[JsonValue], types: Sequence[ValueType]) -> list[_Doc]:
+    def arguments(self, values: Sequence[JsonValue], types: Sequence[ValueType]) -> list[Doc]:
         """Each value by its parameter's type; values past the parameters as plain JSON."""
         return [
             self.doc(value, types[index] if index < len(types) else None)
             for index, value in enumerate(values)
         ]
 
-    def in_python_order(self, values: list[JsonValue], declared: ValueType | None) -> _Doc:
+    def in_python_order(self, values: list[JsonValue], declared: ValueType | None) -> Doc:
         """The list as `sorted` orders it in Python: decimals by value, the rest as they are."""
         element = _element_type(declared)
         ordered = sorted(values, key=lambda value: _sort_key(value, element))
         return self.doc(ordered, declared)
 
-    def close_to(self, value: JsonValue, declared: ValueType | None) -> _Doc:
+    def close_to(self, value: JsonValue, declared: ValueType | None) -> Doc:
         """`pytest.approx` around each number or innermost list of numbers in `value`."""
         if isinstance(value, list) and not all(_is_number(item) for item in value):
             element = _element_type(declared)
             return _list([self._close_to_item(item, element) for item in value])
         self.imports.add(PYTEST_IMPORT)
-        tolerance = [_Text(f"rel={self._tolerance}"), _Text(f"abs={self._tolerance}")]
+        tolerance = [Text(f"rel={self._tolerance}"), Text(f"abs={self._tolerance}")]
         return _call("pytest.approx", [self.doc(value, declared), *tolerance])
 
-    def _close_to_item(self, value: JsonValue, declared: ValueType | None) -> _Doc:
+    def _close_to_item(self, value: JsonValue, declared: ValueType | None) -> Doc:
         return (
             self.close_to(value, declared) if _holds_numbers(value) else self.doc(value, declared)
         )
@@ -497,3 +387,7 @@ def _character_width(character: str) -> int:
     if unicodedata.combining(character):
         return 0
     return 2 if unicodedata.east_asian_width(character) in ("W", "F") else 1
+
+
+_STYLE = Style(LINE_LENGTH, INDENT, _width)
+"""How ruff lays out a statement: its line length, indentation and column count."""
