@@ -21,6 +21,7 @@ from coding_study.application.statement_file import write_statement
 from coding_study.domain.attempts import Attempt, AttemptMode
 from coding_study.domain.cases import Case
 from coding_study.domain.comparators import Comparator
+from coding_study.domain.diagnostics import Diagnostic, load_diagnostic
 from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Judgement
 from coding_study.domain.levels import LevelRun, cases_up_to
@@ -98,6 +99,12 @@ class SubmitResult:
         """The full pass: every case of every level passed."""
         progress = self.levels.progress
         return self.every_level and self.judgement.passed and progress.all_unlocked
+
+    @property
+    def diagnostics(self) -> tuple[Diagnostic, ...]:
+        """Where the project's code did not load (docs/specs/cli.md#diagnostics)."""
+        error = self.judgement.load_error
+        return (load_diagnostic(error),) if error else ()
 
 
 def submit_project(

@@ -21,6 +21,7 @@ from coding_study.application.project_runs import (
 from coding_study.application.run_tests import resolve_debug_session
 from coding_study.domain.attempts import Attempt, RunRecord
 from coding_study.domain.debugging import DebugRequest, DebugSession
+from coding_study.domain.diagnostics import Diagnostic
 from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Tally
 from coding_study.domain.levels import FIRST_LEVEL, LevelRun
@@ -30,6 +31,7 @@ from coding_study.domain.project_test_runs import (
     SuiteOrigins,
     SuiteTestVerdict,
     judge_suite,
+    suite_diagnostics,
     suite_tally,
     unmatched_selections,
 )
@@ -73,6 +75,11 @@ class ProjectTestResult:
     @property
     def tally(self) -> Tally:
         return suite_tally(self.verdicts)
+
+    @property
+    def diagnostics(self) -> tuple[Diagnostic, ...]:
+        """Where the project's code did not load (docs/specs/cli.md#diagnostics)."""
+        return suite_diagnostics(self.report)
 
     @property
     def ran(self) -> bool:

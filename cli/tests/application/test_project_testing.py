@@ -15,10 +15,12 @@ from coding_study.application.project_testing import (
 )
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.debugging import DebugRequest
+from coding_study.domain.diagnostics import load_diagnostic
 from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
 from coding_study.domain.project_test_runs import SuiteOrigin
+from coding_study.domain.runs import Raised, UserError
 from coding_study.domain.suite_runs import AssertionFailed, Passed, SuiteTest
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
 from tests.helpers import FIXTURE_PROBLEMS
@@ -173,3 +175,13 @@ def test_a_project_attempt_in_another_language_is_refused(environment):
 def test_the_suite_root_is_absolute(environment, suites):
     run(environment)
     assert Path(suites.suites[0].root).is_absolute()
+
+
+def test_a_test_file_that_does_not_import_is_a_diagnostic(environment, suites):
+    broken = UserError("SyntaxError", "invalid syntax", "bank/bank.py:5")
+    suites.tests = (SuiteTest("tests/test_level_1.py", Raised(broken, 0)),)
+    assert run(environment).diagnostics == (load_diagnostic(broken),)
+
+
+def test_a_suite_that_imports_has_no_diagnostics(environment):
+    assert run(environment).diagnostics == ()

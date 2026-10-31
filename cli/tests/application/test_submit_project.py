@@ -11,6 +11,7 @@ from coding_study.application.environment import Environment
 from coding_study.application.project_tests import LevelTestFile
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.application.submit_project import SubmitRequest, submit_project
+from coding_study.domain.diagnostics import load_diagnostic
 from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
@@ -220,3 +221,12 @@ def test_submissions_over_the_time_box_are_still_graded(environment):
 def test_the_result_counts_the_levels_after_the_submission(environment):
     levels = submit(environment).levels
     assert (levels.ran_up_to, levels.unlocked, levels.newly_unlocked) == (1, 2, True)
+
+
+def test_code_that_does_not_load_is_a_diagnostic(environment, process):
+    process.load_error = UserError("SyntaxError", "invalid syntax", "bank/bank.py:5")
+    assert submit(environment).diagnostics == (load_diagnostic(process.load_error),)
+
+
+def test_code_that_loads_has_no_diagnostics(environment):
+    assert submit(environment).diagnostics == ()

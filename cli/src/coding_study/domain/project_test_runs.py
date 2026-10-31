@@ -9,6 +9,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
+from coding_study.domain.diagnostics import Diagnostic, distinct, load_diagnostic
 from coding_study.domain.judging import Tally
 from coding_study.domain.runs import Crashed, Raised, TimedOut
 from coding_study.domain.suite_runs import (
@@ -16,6 +17,7 @@ from coding_study.domain.suite_runs import (
     Passed,
     Skipped,
     SuiteOutcome,
+    SuiteReport,
     SuiteTest,
 )
 
@@ -110,6 +112,18 @@ def suite_tally(verdicts: Sequence[SuiteTestVerdict]) -> Tally:
     for verdict in counted:
         counts[_TALLY_FIELDS[verdict.status]] += 1
     return Tally(total=len(counted), **counts)
+
+
+def suite_diagnostics(report: SuiteReport) -> tuple[Diagnostic, ...]:
+    """Where the project's code did not load: the suite that could not run, then each test file
+    that failed to collect (a result whose id is the file), each place once."""
+    collected = (
+        load_diagnostic(test.outcome.error)
+        for test in report.tests
+        if isinstance(test.outcome, Raised) and file_of_test(test.test_id) == test.test_id
+    )
+    suite = (load_diagnostic(report.load_error),) if report.load_error else ()
+    return distinct((*suite, *collected))
 
 
 def unmatched_selections(test_ids: Sequence[str], selections: Sequence[str]) -> tuple[str, ...]:
