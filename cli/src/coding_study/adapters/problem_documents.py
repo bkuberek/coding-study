@@ -45,6 +45,7 @@ from coding_study.domain.problem import (
     StubSource,
     Track,
 )
+from coding_study.domain.project import DEFAULT_TESTS_DIRECTORY, Project
 from coding_study.domain.signature import (
     ClassSignature,
     FunctionSignature,
@@ -124,8 +125,15 @@ def _meta(document: Document, workspace: bool) -> ProblemMeta:
         concurrency=(
             concurrency_from_document(concurrency, languages) if concurrency is not None else None
         ),
+        project=_project(document.get("project")),
         workspace=workspace,
     )
+
+
+def _project(project: Document | None) -> Project | None:
+    if project is None:
+        return None
+    return Project(entry=project["entry"], tests=project.get("tests", DEFAULT_TESTS_DIRECTORY))
 
 
 def _signature(signature: Document) -> Signature:

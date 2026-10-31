@@ -20,6 +20,7 @@ from coding_study.domain.problem import (
     ProblemKind,
     StubSource,
 )
+from coding_study.domain.project import Project
 from coding_study.domain.signature import (
     ClassSignature,
     FunctionSignature,
@@ -37,7 +38,7 @@ from coding_study.domain.type_dsl import (
     ScalarType,
     VoidType,
 )
-from tests.helpers import load_fixture_meta, load_fixture_tests
+from tests.helpers import BANK_PROJECT, PROJECT_PROBLEMS, load_fixture_meta, load_fixture_tests
 
 META_SOURCE = "problems/0001-two-sum/meta.yaml"
 TESTS_SOURCE = "problems/0001-two-sum/tests.json"
@@ -52,6 +53,30 @@ def two_sum_meta():
 
 def lru_cache_meta():
     return meta_from_document(load_fixture_meta("0002-lru-cache"), META_SOURCE)
+
+
+def project_document():
+    return load_fixture_meta(BANK_PROJECT, PROJECT_PROBLEMS)
+
+
+def test_maps_the_project_kind():
+    assert meta_from_document(project_document(), META_SOURCE).kind is ProblemKind.PROJECT
+
+
+def test_maps_the_project_block():
+    document = project_document()
+    document["project"] = {"entry": "app.bank", "tests": "checks"}
+    assert meta_from_document(document, META_SOURCE).project == Project("app.bank", "checks")
+
+
+def test_the_generated_tests_go_to_tests_unless_the_project_block_says_otherwise():
+    assert meta_from_document(project_document(), META_SOURCE).project == Project(
+        "bank.bank", "tests"
+    )
+
+
+def test_other_kinds_have_no_project_block():
+    assert lru_cache_meta().project is None
 
 
 def test_maps_function_signature_with_parsed_types():

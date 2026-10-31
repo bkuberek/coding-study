@@ -19,7 +19,7 @@
     "status": { "enum": ["draft", "ready"] },
     "difficulty": { "enum": ["easy", "medium", "hard"] },
     "track": { "enum": ["dsa", "practical", "lld", "concurrency", "debugging"] },
-    "kind": { "enum": ["function", "design", "progressive", "concurrent"] },
+    "kind": { "enum": ["function", "design", "progressive", "concurrent", "project"] },
     "patterns": {
       "description": "The first entry is the primary pattern",
       "type": "array",
@@ -28,7 +28,7 @@
       "items": { "$ref": "#/$defs/pattern" }
     },
     "languages": {
-      "description": "Default all six in the catalog (check S13 requires every language that can express the problem, except on the concurrency and debugging tracks) and the core four in a workspace problem, which may list any non-empty subset",
+      "description": "Default all six in the catalog (check S13 requires every language that can express the problem, except on the concurrency and debugging tracks) and the core four in a workspace problem, which may list any non-empty subset; a project problem lists exactly one",
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
@@ -38,7 +38,7 @@
     "comparator": { "$ref": "#/$defs/comparator" },
     "stub": { "enum": ["generated", "buggy"] },
     "levels": {
-      "description": "Progressive problems only",
+      "description": "Progressive and project problems only",
       "type": "array",
       "minItems": 1,
       "items": {
@@ -92,7 +92,8 @@
     "related": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/slug" } },
     "order": { "description": "Curriculum order within the primary pattern (default 1000)", "type": "integer" },
     "estimate_minutes": { "$ref": "#/$defs/positiveInteger" },
-    "concurrency": { "$ref": "#/$defs/concurrency" }
+    "concurrency": { "$ref": "#/$defs/concurrency" },
+    "project": { "$ref": "#/$defs/project" }
   },
   "allOf": [
     {
@@ -100,9 +101,19 @@
       "then": { "required": ["patterns"] }
     },
     {
-      "if": { "required": ["kind"], "properties": { "kind": { "const": "progressive" } } },
+      "if": { "required": ["kind"], "properties": { "kind": { "enum": ["progressive", "project"] } } },
       "then": { "required": ["levels"] },
       "else": { "not": { "required": ["levels"] } }
+    },
+    {
+      "description": "Project problems: a project block and exactly one language; no stub or perf, even at their defaults (check S14)",
+      "if": { "required": ["kind"], "properties": { "kind": { "const": "project" } } },
+      "then": {
+        "required": ["project", "languages"],
+        "not": { "anyOf": [{ "required": ["stub"] }, { "required": ["perf"] }] },
+        "properties": { "languages": { "maxItems": 1 } }
+      },
+      "else": { "not": { "required": ["project"] } }
     },
     {
       "if": { "required": ["kind"], "properties": { "kind": { "const": "function" } } },
@@ -238,7 +249,7 @@
                   "name": { "$ref": "#/$defs/memberName" },
                   "params": { "$ref": "#/$defs/params" },
                   "returns": { "$ref": "#/$defs/returns" },
-                  "level": { "description": "Progressive level that introduces the method", "$ref": "#/$defs/positiveInteger" },
+                  "level": { "description": "Progressive and project problems: the level that introduces the method", "$ref": "#/$defs/positiveInteger" },
                   "blocking": { "description": "Concurrent problems: the method may wait for another worker", "type": "boolean" }
                 }
               }
@@ -365,6 +376,24 @@
               }
             }
           }
+        }
+      }
+    },
+    "project": {
+      "description": "Project problems only (docs/specs/problem-format.md#project-problems)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry"],
+      "properties": {
+        "entry": {
+          "description": "Where the entry class lives: a dotted module in Python (bank.bank), a .ts file relative to the project root in TypeScript (src/bank.ts)",
+          "type": "string",
+          "minLength": 1
+        },
+        "tests": {
+          "description": "The directory, relative to the project root, that receives the generated level tests (default tests)",
+          "type": "string",
+          "minLength": 1
         }
       }
     },

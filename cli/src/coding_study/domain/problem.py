@@ -11,6 +11,7 @@ from coding_study.domain.time_limits import TimeLimit
 
 if TYPE_CHECKING:
     from coding_study.domain.concurrency import Concurrency
+    from coding_study.domain.project import Project
 
 DEFAULT_FLOAT_TOLERANCE = 1e-6
 DEFAULT_SIZE_LADDER = (100, 1000, 10000, 100000)
@@ -30,8 +31,8 @@ class Language(StrEnum):
 ALL_LANGUAGES = tuple(Language)
 """What a problem lists unless it says otherwise, and what "every language" means in defaults,
 coverage and IDE actions: every problem has references in all of them, except where a language
-cannot express it (check S13) and on the concurrency and debugging tracks
-(docs/decisions/0012-go-and-rust.md)."""
+cannot express it (check S13), on the concurrency and debugging tracks
+(docs/decisions/0012-go-and-rust.md), and in project problems, which have exactly one."""
 CORE_LANGUAGES = (Language.PYTHON, Language.TYPESCRIPT, Language.JAVA, Language.KOTLIN)
 """The languages whose toolchains every workspace needs: `cstudy doctor` starts their runners and
 fails without them. A missing Go or Rust toolchain is only a warning, since only `--lang go` and
@@ -72,6 +73,7 @@ class ProblemKind(StrEnum):
     DESIGN = "design"
     PROGRESSIVE = "progressive"
     CONCURRENT = "concurrent"
+    PROJECT = "project"
 
 
 class StubSource(StrEnum):
@@ -186,6 +188,8 @@ class ProblemMeta:
     estimate_minutes: int | None = None
     concurrency: "Concurrency | None" = None
     """Concurrent problems only (docs/specs/problem-format.md#concurrent-problems)."""
+    project: "Project | None" = None
+    """Project problems only (docs/specs/problem-format.md#project-problems)."""
     workspace: bool = False
     """Written by the user in their workspace, not part of the catalog: it may list any subset of
     the languages (check S13) and, without a `languages` line, lists `CORE_LANGUAGES`."""

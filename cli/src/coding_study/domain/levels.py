@@ -1,4 +1,4 @@
-"""Progressive problems unlock their levels one at a time.
+"""Progressive and project problems unlock their levels one at a time.
 
 Spec: docs/specs/problem-format.md#progressive-problems. An attempt stores its highest unlocked
 level; `cstudy test` runs the cases of every unlocked level, and a run that passes all of them
@@ -8,6 +8,7 @@ unlocks the next one.
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
+from typing import assert_never
 
 from coding_study.domain.cases import Case
 from coding_study.domain.problem import Level, ProblemKind, ProblemMeta
@@ -93,9 +94,20 @@ def level_run(meta: ProblemMeta, unlocked: int | None, requested: int | None) ->
     return LevelRun(progress.run_level(requested), progress)
 
 
+def has_levels(kind: ProblemKind) -> bool:
+    """Whether problems of `kind` open their levels one at a time."""
+    match kind:
+        case ProblemKind.PROGRESSIVE | ProblemKind.PROJECT:
+            return True
+        case ProblemKind.FUNCTION | ProblemKind.DESIGN | ProblemKind.CONCURRENT:
+            return False
+        case _:
+            assert_never(kind)
+
+
 def level_progress(meta: ProblemMeta, unlocked: int | None) -> LevelProgress | None:
     """None for problems without levels; an attempt that stored no level has level 1 open."""
-    if meta.kind is not ProblemKind.PROGRESSIVE or not meta.levels:
+    if not has_levels(meta.kind) or not meta.levels:
         return None
     stored = max(unlocked or FIRST_LEVEL, FIRST_LEVEL)
     return LevelProgress(meta.levels, min(stored, len(meta.levels)))

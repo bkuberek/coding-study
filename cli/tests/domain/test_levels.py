@@ -6,6 +6,7 @@ from coding_study.domain.cases import Case, Expected, OperationSequence
 from coding_study.domain.levels import (
     LevelProgress,
     cases_up_to,
+    has_levels,
     level_heading,
     level_progress,
 )
@@ -49,6 +50,7 @@ META = ProblemMeta(
     levels=LEVELS,
 )
 DESIGN = replace(META, kind=ProblemKind.DESIGN, levels=())
+PROJECT = replace(META, kind=ProblemKind.PROJECT)
 
 
 def case(case_id: str, level: int | None) -> Case:
@@ -61,6 +63,24 @@ def test_problems_without_levels_have_no_progress():
 
 def test_an_attempt_without_a_stored_level_has_level_1_unlocked():
     assert level_progress(META, None) == LevelProgress(LEVELS, 1)
+
+
+def test_a_project_problem_opens_its_levels_as_a_progressive_one_does():
+    assert level_progress(PROJECT, 2) == LevelProgress(LEVELS, 2)
+
+
+@pytest.mark.parametrize(
+    ("kind", "leveled"),
+    [
+        (ProblemKind.PROGRESSIVE, True),
+        (ProblemKind.PROJECT, True),
+        (ProblemKind.FUNCTION, False),
+        (ProblemKind.DESIGN, False),
+        (ProblemKind.CONCURRENT, False),
+    ],
+)
+def test_progressive_and_project_problems_have_levels(kind, leveled):
+    assert has_levels(kind) is leveled
 
 
 def test_the_stored_level_is_unlocked():

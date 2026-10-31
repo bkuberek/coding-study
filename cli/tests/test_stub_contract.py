@@ -61,8 +61,9 @@ def test_every_case_is_a_schema_valid_meta(name):
     assert validator.violations(document, name) == []
 
 
-def test_cases_cover_every_kind():
-    assert {case.meta.kind for case in STUB_CASES} == set(ProblemKind)
+def test_cases_cover_every_kind_with_a_stub():
+    """A project problem seeds a starter folder instead of a generated stub."""
+    assert {case.meta.kind for case in STUB_CASES} == set(ProblemKind) - {ProblemKind.PROJECT}
 
 
 def test_cases_cover_every_type_in_the_mapping_table_and_void():

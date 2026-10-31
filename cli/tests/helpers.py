@@ -29,6 +29,9 @@ FIXTURE_TRACKS = Path(__file__).resolve().parent / "fixtures" / "tracks"
 """Non-autograded fixture items: tracks/<track>/<slug>/."""
 CONCURRENCY_PROBLEMS = Path(__file__).resolve().parent / "fixtures" / "concurrency" / "problems"
 """A concurrent fixture problem with correct and broken references in every language."""
+PROJECT_PROBLEMS = Path(__file__).resolve().parent / "fixtures" / "project" / "problems"
+"""A Python project fixture problem: a starter tree and a reference overlay."""
+BANK_PROJECT = "0001-bank-project-python"
 FAKE_RUNNER_PROGRAM = (
     f'#!/bin/sh\nexec "{sys.executable}" "{Path(__file__).resolve().parent}'
     '/fixtures/fake_runner.py" "$@"\n'
@@ -62,8 +65,8 @@ def copy_catalog_problems(destination: Path, directory_names: tuple[str, ...]) -
     return destination
 
 
-def load_fixture_meta(directory_name: str) -> dict[str, Any]:
-    return yaml.safe_load((FIXTURE_PROBLEMS / directory_name / "meta.yaml").read_text())
+def load_fixture_meta(directory_name: str, problems: Path = FIXTURE_PROBLEMS) -> dict[str, Any]:
+    return yaml.safe_load((problems / directory_name / "meta.yaml").read_text())
 
 
 def load_fixture_tests(directory_name: str) -> dict[str, Any]:

@@ -11,7 +11,13 @@ from coding_study.adapters.schema_validation import (
     TESTS_SCHEMA_FILE,
     SchemaValidator,
 )
-from tests.helpers import SCHEMAS_DIRECTORY, load_fixture_meta, load_fixture_tests
+from tests.helpers import (
+    BANK_PROJECT,
+    PROJECT_PROBLEMS,
+    SCHEMAS_DIRECTORY,
+    load_fixture_meta,
+    load_fixture_tests,
+)
 
 SOURCE = "problems/0001-two-sum/meta.yaml"
 
@@ -141,6 +147,50 @@ def test_invalid_meta_is_reported_at_its_location(mutate, location):
     assert location in locations_after(
         validator_for_meta_file(), load_fixture_meta("0001-two-sum"), mutate
     )
+
+
+def project_meta() -> dict[str, Any]:
+    return load_fixture_meta(BANK_PROJECT, PROJECT_PROBLEMS)
+
+
+def test_project_fixture_meta_is_valid():
+    assert validator_for_meta_file().violations(project_meta(), SOURCE) == []
+
+
+def test_the_project_block_may_name_the_tests_directory():
+    meta = project_meta()
+    meta["project"]["tests"] = "checks/levels"
+    assert validator_for_meta_file().violations(meta, SOURCE) == []
+
+
+INVALID_PROJECT_META: dict[str, tuple[Mutation, str]] = {
+    "no project block": (lambda meta: meta.pop("project"), ""),
+    "no languages": (lambda meta: meta.pop("languages"), ""),
+    "two languages": (lambda meta: meta.update(languages=["python", "typescript"]), "languages"),
+    "no levels": (lambda meta: meta.pop("levels"), ""),
+    "no entry": (lambda meta: meta["project"].pop("entry"), "project"),
+    "empty entry": (lambda meta: meta["project"].update(entry=""), "project.entry"),
+    "empty tests directory": (lambda meta: meta["project"].update(tests=""), "project.tests"),
+    "unknown project key": (lambda meta: meta["project"].update(starter="src"), "project"),
+    "stub": (lambda meta: meta.update(stub="generated"), ""),
+    "perf": (lambda meta: meta.update(perf={"budget_ms": 100}), ""),
+}
+
+
+@pytest.mark.parametrize(
+    ("mutate", "location"), INVALID_PROJECT_META.values(), ids=list(INVALID_PROJECT_META)
+)
+def test_invalid_project_meta_is_reported_at_its_location(mutate, location):
+    assert location in locations_after(validator_for_meta_file(), project_meta(), mutate)
+
+
+@pytest.mark.parametrize("directory_name", ["0001-two-sum", "0002-lru-cache"])
+def test_only_a_project_problem_has_a_project_block(directory_name):
+    def add_project(meta: dict[str, Any]) -> None:
+        meta["project"] = {"entry": "bank.bank"}
+
+    meta = load_fixture_meta(directory_name)
+    assert "" in locations_after(validator_for_meta_file(), meta, add_project)
 
 
 def first_case(**values: Any) -> Mutation:
