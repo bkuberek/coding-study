@@ -26,6 +26,8 @@ forbidden_modules =
     shutil
     sqlite3
     subprocess
+    starlette
+    uvicorn
 
 [importlinter:contract:application]
 name = Application depends on ports, not on libraries or process and database I/O
@@ -40,3 +42,14 @@ forbidden_modules =
     shutil
     sqlite3
     subprocess
+    starlette
+    uvicorn
+
+[importlinter:contract:adapters]
+name = Only the web adapter, an entrypoint, imports the web server libraries
+type = forbidden
+source_modules =
+    coding_study.adapters
+forbidden_modules =
+    starlette
+    uvicorn

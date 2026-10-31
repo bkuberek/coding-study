@@ -1,4 +1,7 @@
+import subprocess
+import sys
 import tomllib
+from importlib.metadata import version
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -44,3 +47,14 @@ def test_ctrl_c_while_the_cli_imports_exits_130(monkeypatch):
     with pytest.raises(SystemExit) as exited:
         launcher.main()
     assert exited.value.code == ExitCode.INTERRUPTED
+
+
+def test_python_dash_m_coding_study_runs_the_cli():
+    """`cstudy serve` starts its runs as `sys.executable -m coding_study`, the same install."""
+    finished = subprocess.run(
+        [sys.executable, "-m", "coding_study", "--version"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert finished.stdout == f"cstudy {version('coding-study')}\n"
