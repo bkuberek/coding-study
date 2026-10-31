@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import cast
 
 from coding_study.domain.ide import content_digest
+from coding_study.domain.workspace_projects import CARGO_MANIFEST, PROJECTS_DIRECTORY
 
 MANIFEST_FILE = ".cs/ide.json"
 MANIFEST_FORMAT = 1
@@ -57,3 +58,13 @@ class FsGeneratedFiles:
     def save_manifest(self, manifest: Mapping[str, str]) -> None:
         document = {"format": MANIFEST_FORMAT, "files": dict(sorted(manifest.items()))}
         self.write(MANIFEST_FILE, json.dumps(document, indent=INDENT) + "\n")
+
+    def rust_projects(self) -> tuple[str, ...]:
+        projects = self._root / PROJECTS_DIRECTORY
+        if not projects.is_dir():
+            return ()
+        return tuple(
+            f"{PROJECTS_DIRECTORY}/{folder.name}/{CARGO_MANIFEST}"
+            for folder in sorted(projects.iterdir())
+            if (folder / CARGO_MANIFEST).is_file()
+        )

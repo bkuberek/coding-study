@@ -13,6 +13,7 @@ from coding_study.domain.ide import (
     Change,
     GeneratedFile,
     Ide,
+    IdeWorkspace,
     Regeneration,
     Step,
     plan_regeneration,
@@ -22,7 +23,9 @@ from coding_study.domain.ide import (
 class IdeRenderer(Protocol):
     """One IDE's project files."""
 
-    def files(self) -> tuple[GeneratedFile, ...]: ...
+    def files(self, workspace: IdeWorkspace = ...) -> tuple[GeneratedFile, ...]:
+        """For `workspace`; by default, one without project folders."""
+        ...
 
 
 class GeneratedFiles(Protocol):
@@ -42,6 +45,11 @@ class GeneratedFiles(Protocol):
         ...
 
     def save_manifest(self, manifest: Mapping[str, str]) -> None: ...
+
+    def rust_projects(self) -> tuple[str, ...]:
+        """The manifest of each Rust project folder, a folder of `projects/` holding a
+        `Cargo.toml`, as `projects/<slug>/Cargo.toml`, in path order."""
+        ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,7 +75,8 @@ class IdeReport:
 def generate_ide_files(
     renderers: Mapping[Ide, IdeRenderer], files: GeneratedFiles, request: IdeRequest
 ) -> IdeReport:
-    generated = tuple(file for ide in request.ides for file in renderers[ide].files())
+    workspace = IdeWorkspace(files.rust_projects())
+    generated = tuple(file for ide in request.ides for file in renderers[ide].files(workspace))
     recorded = files.manifest()
     regeneration = Regeneration(generated, recorded, request.ides, force=request.force)
     current = {path: files.digest(path) for path in regeneration.paths()}

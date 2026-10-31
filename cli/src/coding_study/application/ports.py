@@ -807,3 +807,32 @@ class ProjectSuiteHost(Protocol):
         Raises RunnerStartError when the toolchain cannot build or run the suite.
         """
         ...
+
+
+@dataclass(frozen=True, slots=True)
+class FolderCheck:
+    """One `cstudy doctor` row about a language's project folders
+    (docs/specs/installation-and-workspaces.md#cstudy-doctor-in-a-workspace)."""
+
+    name: str
+    failing: tuple[str, ...]
+    """The folders that fail it, relative to the workspace root, in path order."""
+    problem: str
+    """What is wrong with each failing folder: `missing from rust-analyzer.linkedProjects`."""
+    fix: str | None = None
+    """The command that repairs it; None: `cstudy doctor --fix` does."""
+
+
+@runtime_checkable
+class ProjectFolderChecks(Protocol):
+    """A `LanguageRunner` whose project folders reach the workspace's toolchain through files
+    `cstudy` writes, or that an editor must be told about: Rust."""
+
+    def folder_checks(self) -> tuple[FolderCheck, ...]:
+        """One check per row that applies to this workspace."""
+        ...
+
+    def repair_folders(self) -> tuple[str, ...]:
+        """Writes what `cstudy doctor --fix` restores in the folders, never over a file;
+        returns what it wrote, relative to the workspace root."""
+        ...

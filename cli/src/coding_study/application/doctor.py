@@ -9,7 +9,7 @@ project's setup command first.
 
 import re
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from pathlib import Path
 from typing import TypeGuard
@@ -20,9 +20,12 @@ from coding_study.application.ports import (
     ConfigSource,
     DebugServer,
     DebugServers,
+    FolderCheck,
     GoProjectFolders,
+    LanguageRunner,
     ProbeResult,
     ProgressNotice,
+    ProjectFolderChecks,
     ProjectLibraries,
     ProjectLinks,
     RepositoryFiles,
@@ -61,6 +64,7 @@ from coding_study.domain.problem import (
     ProblemMeta,
     Track,
 )
+from coding_study.domain.project import PROJECT_LANGUAGES
 from coding_study.domain.runs import RunnerInfo, RunRequest
 from coding_study.domain.signature import FunctionSignature, Returns
 from coding_study.domain.type_dsl import VoidType
@@ -277,6 +281,9 @@ def repair_workspace(workspace: PracticeWorkspace, notify: ProgressNotice) -> Sc
     go_folders = _go_folders(workspace)
     for folder in go_folders.write_missing_go_work_files() if go_folders else ():
         notify(f"wrote {folder}/{GO_WORK_FILE}")
+    for runner in _folder_checking_runners(workspace):
+        for path in runner.repair_folders():
+            notify(f"wrote {path}")
     workspace.setup.refresh_runtime(root)
     return restored
 
@@ -530,6 +537,7 @@ def _workspace(environment: DoctorEnvironment, notify: ProgressNotice) -> list[C
         *_pytest(environment.tools, files),
         _project_links(workspace),
         *_go_projects(workspace),
+        *_folder_checks(workspace),
         *_venv_location(workspace),
         *(_runner(workspace, language, notify) for language in CORE_LANGUAGES),
         *_project_libraries(workspace),
@@ -626,6 +634,34 @@ def _go_fix(folders: Sequence[GoProjectFolder]) -> str:
         slug = unresolved.folder.rpartition("/")[2]
         return f"cstudy start {slug} --restore {GO_MODULE_FILE}"
     return GO_MODULE_FIX
+
+
+def _folder_checks(workspace: PracticeWorkspace) -> list[CheckResult]:
+    """What a language checks in its project folders (Rust: their `.cargo/config.toml` and
+    rust-analyzer's link to them); editors and native tools need it, `cstudy` does not, so a
+    failing folder warns."""
+    return [
+        _folder_row(check)
+        for runner in _folder_checking_runners(workspace)
+        for check in runner.folder_checks()
+    ]
+
+
+def _folder_row(check: FolderCheck) -> CheckResult:
+    row = _listed(check.name, check.failing, CheckStatus.WARN, check.problem)
+    return replace(row, fix=check.fix) if row.fix and check.fix else row
+
+
+def _folder_checking_runners(workspace: PracticeWorkspace) -> list[ProjectFolderChecks]:
+    runners = (_runner_of(workspace, language) for language in PROJECT_LANGUAGES)
+    return [runner for runner in runners if isinstance(runner, ProjectFolderChecks)]
+
+
+def _runner_of(workspace: PracticeWorkspace, language: Language) -> LanguageRunner | None:
+    try:
+        return workspace.toolchains.runner(language)
+    except LanguageNotSetUpError:
+        return None
 
 
 def _venv_location(workspace: PracticeWorkspace) -> list[CheckResult]:

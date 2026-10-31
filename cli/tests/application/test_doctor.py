@@ -24,6 +24,7 @@ from coding_study.application.ports import (
     BuildScope,
     CaseListener,
     DebugServer,
+    FolderCheck,
     LanguageRunner,
     Prepared,
     PrepareResult,
@@ -1068,3 +1069,67 @@ def test_project_libraries_are_not_checked_before_jvm_exists():
     paths = set(COMPLETE_WORKSPACE) - {"jvm"}
     report = doctor(workspace=workspace_with(paths=paths, runners=runners))
     assert not [result for result in report.results if "project libraries" in result.name]
+
+
+# project folders a language checks (Rust: .cargo/config.toml and rust-analyzer's link)
+
+
+@dataclass
+class FolderCheckingRunner:
+    """A runner whose project folders `cstudy doctor` checks and repairs."""
+
+    checks: tuple[FolderCheck, ...]
+    restored: tuple[str, ...] = ()
+    repairs: int = 0
+
+    def prepare(self, scope, notify):
+        return Prepared(RunnerLaunch(("rust",), Path("/"), 1000))
+
+    def folder_checks(self) -> tuple[FolderCheck, ...]:
+        return self.checks
+
+    def repair_folders(self) -> tuple[str, ...]:
+        self.repairs += 1
+        return self.restored
+
+
+CONFIG_CHECK = FolderCheck("rust project config", (), "missing .cargo/config.toml")
+LINKED_CHECK = FolderCheck(
+    "rust linked projects",
+    ("projects/bank-project-rust",),
+    "missing from rust-analyzer.linkedProjects",
+    "cstudy ide",
+)
+
+
+def with_folder_checks(runner: FolderCheckingRunner) -> PracticeWorkspace:
+    return workspace_with(runners={**healthy_runners(), Language.RUST: runner})
+
+
+def test_a_language_check_of_its_project_folders_passes_without_failing_folders():
+    report = doctor(workspace=with_folder_checks(FolderCheckingRunner((CONFIG_CHECK,))))
+    assert summary(report, "rust project config") == (OK, "")
+
+
+def test_failing_project_folders_only_warn_listing_them_with_the_checks_fix():
+    report = doctor(workspace=with_folder_checks(FolderCheckingRunner((LINKED_CHECK,))))
+    result = check(report, "rust linked projects")
+    assert (result.status, result.detail, result.fix, report.passed) == (
+        WARN,
+        "1 missing from rust-analyzer.linkedProjects: projects/bank-project-rust",
+        "cstudy ide",
+        True,
+    )
+
+
+def test_a_folder_check_without_a_fix_of_its_own_is_fixed_by_doctor_fix():
+    failing = replace(CONFIG_CHECK, failing=("projects/bank-project-rust",))
+    report = doctor(workspace=with_folder_checks(FolderCheckingRunner((failing,))))
+    assert check(report, "rust project config").fix == "cstudy doctor --fix"
+
+
+def test_repair_writes_what_the_languages_folders_lack_and_names_it():
+    runner = FolderCheckingRunner((), restored=("projects/bank-project-rust/.cargo/config.toml",))
+    lines: list[str] = []
+    repair_workspace(with_folder_checks(runner), lines.append)
+    assert "wrote projects/bank-project-rust/.cargo/config.toml" in lines

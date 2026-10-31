@@ -12,7 +12,7 @@ from collections.abc import Iterator
 from typing import Any, assert_never
 
 from coding_study.domain.debugging import DEBUG_HOST
-from coding_study.domain.ide import GeneratedFile, Ide
+from coding_study.domain.ide import NO_PROJECT_FOLDERS, GeneratedFile, Ide, IdeWorkspace
 from coding_study.domain.ide_actions import (
     BOTH_SCOPES,
     DEBUG_ATTACH,
@@ -104,14 +104,23 @@ a live process and prints nothing. Without Python in CodeLLDB it does nothing, a
 --debug` kills the runner itself when its task ends."""
 
 
+LINKED_PROJECTS = "rust-analyzer.linkedProjects"
+
+
 class VsCodeProject:
-    def files(self) -> tuple[GeneratedFile, ...]:
+    def files(self, workspace: IdeWorkspace = NO_PROJECT_FOLDERS) -> tuple[GeneratedFile, ...]:
         return (
             _json_file("tasks.json", _tasks()),
             _json_file("launch.json", _launch()),
-            _json_file("settings.json", SETTINGS),
+            _json_file("settings.json", _settings(workspace)),
             _json_file("extensions.json", EXTENSIONS),
         )
+
+
+def _settings(workspace: IdeWorkspace) -> JsonObject:
+    """The settings, with each Rust project folder linked after the workspace's `rust/`: a folder
+    is a crate of its own, which rust-analyzer finds only through `linkedProjects`."""
+    return {**SETTINGS, LINKED_PROJECTS: [*SETTINGS[LINKED_PROJECTS], *workspace.rust_projects]}
 
 
 def _json_file(name: str, document: JsonObject) -> GeneratedFile:

@@ -55,6 +55,7 @@ from coding_study.adapters.languages.rust.build_files import (
     workspace_manifest,
     workspace_members,
 )
+from coding_study.adapters.languages.rust.folder_checks import RustFolderChecks
 from coding_study.adapters.languages.rust.project_build import (
     ProjectBuildError,
     RustBuildSettings,
@@ -74,6 +75,7 @@ from coding_study.application.ports import (
     DebugLaunch,
     DebugServer,
     DebugServers,
+    FolderCheck,
     HostedSuite,
     Prepared,
     PrepareResult,
@@ -155,7 +157,7 @@ class _Build:
 
 
 class RustRunner:
-    """`LanguageRunner`, `ProjectRunner` and `ProjectSuiteHost` for Rust."""
+    """`LanguageRunner`, `ProjectRunner`, `ProjectSuiteHost` and `ProjectFolderChecks` for Rust."""
 
     def __init__(
         self,
@@ -171,6 +173,15 @@ class RustRunner:
         self._toolchain = toolchain
         self._debug_servers = debug_servers
         self._tests = tests or SubprocessTests()
+        self._folders = RustFolderChecks(self._root)
+
+    def folder_checks(self) -> tuple[FolderCheck, ...]:
+        """`ProjectFolderChecks`: the Rust rows of `cstudy doctor`."""
+        return self._folders.folder_checks()
+
+    def repair_folders(self) -> tuple[str, ...]:
+        """`ProjectFolderChecks`: writes the missing `.cargo/config.toml` files."""
+        return self._folders.repair_folders()
 
     def prepare_project(
         self, scope: ProjectScope, notify: ProgressNotice

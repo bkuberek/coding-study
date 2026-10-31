@@ -4,7 +4,14 @@
 from collections.abc import Mapping
 
 from coding_study.application.ide_files import IdeRequest, generate_ide_files
-from coding_study.domain.ide import Change, GeneratedFile, Ide, content_digest
+from coding_study.domain.ide import (
+    NO_PROJECT_FOLDERS,
+    Change,
+    GeneratedFile,
+    Ide,
+    IdeWorkspace,
+    content_digest,
+)
 
 TASKS = ".vscode/tasks.json"
 MISC = ".idea/misc.xml"
@@ -13,8 +20,10 @@ MISC = ".idea/misc.xml"
 class FakeRenderer:
     def __init__(self, *files: GeneratedFile) -> None:
         self._files = files
+        self.workspaces: list[IdeWorkspace] = []
 
-    def files(self) -> tuple[GeneratedFile, ...]:
+    def files(self, workspace: IdeWorkspace = NO_PROJECT_FOLDERS) -> tuple[GeneratedFile, ...]:
+        self.workspaces.append(workspace)
         return self._files
 
 
@@ -40,6 +49,9 @@ class InMemoryFiles:
     def save_manifest(self, manifest: Mapping[str, str]) -> None:
         self.recorded = dict(manifest)
         self.manifest_saves += 1
+
+    def rust_projects(self) -> tuple[str, ...]:
+        return ("projects/bank-project-rust/Cargo.toml",)
 
 
 RENDERERS = {
@@ -114,3 +126,9 @@ def test_a_file_of_another_name_in_the_directory_is_never_touched():
     store.contents[".idea/runConfigurations/Mine.xml"] = "<mine />\n"
     generate_ide_files(RENDERERS, store, IdeRequest((Ide.IDEA,), force=True))
     assert store.contents[".idea/runConfigurations/Mine.xml"] == "<mine />\n"
+
+
+def test_the_renderers_see_the_workspaces_rust_projects():
+    renderer = FakeRenderer(GeneratedFile(TASKS, "tasks\n"))
+    generate_ide_files({Ide.VSCODE: renderer}, InMemoryFiles(), IdeRequest((Ide.VSCODE,)))
+    assert renderer.workspaces == [IdeWorkspace(("projects/bank-project-rust/Cargo.toml",))]

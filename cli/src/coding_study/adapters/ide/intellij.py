@@ -21,7 +21,7 @@ from dataclasses import dataclass
 
 from coding_study.adapters.ide.launcher import LAUNCHER_IN_RUNTIME
 from coding_study.adapters.runner_runtime import RUNTIME_DIRECTORY
-from coding_study.domain.ide import GeneratedFile, Ide
+from coding_study.domain.ide import NO_PROJECT_FOLDERS, GeneratedFile, Ide, IdeWorkspace
 from coding_study.domain.ide_actions import (
     BOTH_SCOPES,
     DEBUG_CONNECT,
@@ -88,7 +88,8 @@ class _Configuration:
 
 
 class IntellijProject:
-    def files(self) -> tuple[GeneratedFile, ...]:
+    def files(self, workspace: IdeWorkspace = NO_PROJECT_FOLDERS) -> tuple[GeneratedFile, ...]:
+        """IntelliJ's files depend on nothing in `workspace`: it writes no Rust project files."""
         configurations = (*_action_configurations(), *_debug_configurations())
         return (
             GeneratedFile(f"{DIRECTORY}/misc.xml", _project_file(_misc())),

@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 from coding_study.adapters.ide.vscode import VsCodeProject
+from coding_study.domain.ide import IdeWorkspace
 from tests.helpers import WORKSPACE_TEMPLATE
 
 TASKS = ".vscode/tasks.json"
@@ -226,6 +227,17 @@ def test_the_extensions_for_every_language_are_recommended():
 def test_rust_analyzer_links_the_rust_project_of_the_template():
     linked = document(SETTINGS)["rust-analyzer.linkedProjects"]
     assert [(WORKSPACE_TEMPLATE / path).is_file() for path in linked] == [True]
+
+
+def test_rust_analyzer_links_each_rust_project_folder_after_the_template():
+    workspace = IdeWorkspace(("projects/bank-project-rust/Cargo.toml",))
+    settings = next(
+        file for file in VsCodeProject().files(workspace) if file.path.endswith("settings.json")
+    )
+    assert json.loads(settings.content)["rust-analyzer.linkedProjects"] == [
+        "rust/Cargo.toml",
+        "projects/bank-project-rust/Cargo.toml",
+    ]
 
 
 def test_rust_analyzer_checks_every_target_and_keeps_going_past_a_broken_problem():

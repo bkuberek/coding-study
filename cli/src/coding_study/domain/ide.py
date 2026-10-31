@@ -41,6 +41,19 @@ def content_digest(content: bytes) -> str:
 
 
 @dataclass(frozen=True, slots=True)
+class IdeWorkspace:
+    """What the generated files depend on in the workspace itself."""
+
+    rust_projects: tuple[str, ...] = ()
+    """The manifest of each Rust project folder, `projects/<slug>/Cargo.toml`, in path order:
+    rust-analyzer analyses only the Cargo projects `linkedProjects` names."""
+
+
+NO_PROJECT_FOLDERS = IdeWorkspace()
+"""A workspace without project folders, as a new one is."""
+
+
+@dataclass(frozen=True, slots=True)
 class GeneratedFile:
     path: str
     """Relative to the workspace root, with `/` separators."""

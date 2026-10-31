@@ -69,3 +69,19 @@ def test_an_unreadable_manifest_records_nothing(files, tmp_path, text):
     (tmp_path / ".cs").mkdir()
     (tmp_path / MANIFEST_FILE).write_text(text)
     assert files.manifest() == {}
+
+
+def test_a_project_folder_with_a_cargo_manifest_is_a_rust_project(files, tmp_path):
+    for folder in ("bank-project-rust", "ledger-project-rust", "bank-project-python"):
+        (tmp_path / "projects" / folder).mkdir(parents=True)
+    (tmp_path / "projects/bank-project-rust/Cargo.toml").write_text("")
+    (tmp_path / "projects/ledger-project-rust/Cargo.toml").write_text("")
+    (tmp_path / "projects/bank-project-python/pyproject.toml").write_text("")
+    assert files.rust_projects() == (
+        "projects/bank-project-rust/Cargo.toml",
+        "projects/ledger-project-rust/Cargo.toml",
+    )
+
+
+def test_a_workspace_without_projects_has_no_rust_projects(files):
+    assert files.rust_projects() == ()
