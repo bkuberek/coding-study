@@ -26,7 +26,7 @@ A runner is a small program per runtime that loads one target (the user's file, 
 
 Paths are relative to the workspace root. The runners themselves run from the workspace's [runner runtime](installation-and-workspaces.md#runner-runtime) in `.cs/runtime/runners/`, a copy of the content's `runners/` that `cstudy` refreshes before the first runner of a command when the content changed. `R` and `O` live in `.cs/runs/<run_id>/` as `request-<n>.json` and `events-<n>.jsonl`, one pair per restart `n`; the last 20 runs are kept. The process starts in its own process group.
 
-A [project job](#project-jobs) (Python, TypeScript and Go) starts in the project root instead, and the Python runner adds `-P` and its own environment there; Go launches binaries of its own ([Go project jobs](#go-project-jobs)).
+A [project job](#project-jobs) starts in the project root instead: the Python runner adds `-P` and its own environment there, Go launches binaries of its own ([Go project jobs](#go-project-jobs)), and Java and Kotlin build the project folder with its own Gradle build ([JVM project builds](#jvm-project-builds)).
 
 ### JVM build details
 
@@ -495,11 +495,11 @@ Added to `runners/conformance/` before any concurrent problem merges. `expectati
 
 ## Project jobs
 
-A [project problem](problem-format.md#project-problems) is a folder, not one file, and its native tests run inside the runner. Two kinds of job serve it: a **grading job** (`cstudy submit`, and `cstudy verify` D1 and D3), an ordinary class job whose target is the project, and a **suite job** (`cstudy test`, and D1 and D9), which runs the project's native test framework in-process. Python and TypeScript runners support both; the JVM and Rust runners do not support project jobs yet ([ADR 0014](../decisions/0014-project-problems.md)). The Go runner supports both too, running the tests as a child process ([Go project jobs](#go-project-jobs)).
+A [project problem](problem-format.md#project-problems) is a folder, not one file, and its native tests run inside the runner. Two kinds of job serve it: a **grading job** (`cstudy submit`, and `cstudy verify` D1 and D3), an ordinary class job whose target is the project, and a **suite job** (`cstudy test`, and D1 and D9), which runs the project's native test framework in-process. The Python, TypeScript and JVM (Java and Kotlin) runners support both; the Rust runner does not support project jobs yet ([ADR 0014](../decisions/0014-project-problems.md)). The Go runner supports both too, running the tests as a child process ([Go project jobs](#go-project-jobs)).
 
 ### Capability
 
-`hello.features` lists `project` and `suite` when the runner supports them. `cstudy` refuses a project job to a runner that does not list them, as an environment error (exit 4).
+`hello.features` lists `project` and `suite` when the runner supports them. `cstudy` refuses a project job to a runner that does not list them, as an environment error (exit 4). The JVM runner lists `stress` and `project` always, and `suite` when a test framework host is on its classpath: a project's test runtime classpath holds `cs.suite`, the classpath of a single-file problem does not.
 
 ### Launch
 
@@ -510,18 +510,35 @@ A [project problem](problem-format.md#project-problems) is a folder, not one fil
 | Python command | The workspace venv's interpreter by path, `python/.venv/bin/python -P -m cs_runner --request R --out O`. `cstudy` never runs the venv's console scripts (`pytest`, `uv run pytest`), whose absolute shebangs break when the workspace moves. `-P` keeps the cwd off `sys.path`, so a user file named after a standard-library module or `pytest` cannot shadow it |
 | Python environment | `PYTHONPYCACHEPREFIX=<workspace>/.cs/pycache`, so library and test bytecode never lands in the project and stays warm between runs, and `UV_NO_SYNC=1`, so nothing a project job starts lets uv sync, lock or delete the shared venv |
 | TypeScript command | `node .cs/runtime/runners/typescript/runner.ts --request R --out O`, by absolute path, as for other jobs |
+| Java and Kotlin command | After the folder's build ([JVM project builds](#jvm-project-builds)): `java -XX:+UseSerialGC -Xshare:auto -cp <classpath> cs.runner.Main --request R --out O`, the classpath being the build's main runtime classpath for a grading job and its test runtime classpath for a suite job, with the build's class directories and the runtime's jars replaced by the run's private copies |
 | Isolation | One runner process per project job. Two projects may both define a top-level `bank` module, and a grading job and a suite job of one project would share `sys.modules`, so `cstudy verify` never batches a project job with another job |
-| Debug | As for other jobs ([Debug mode](#debug-mode)): debugpy wraps `-m cs_runner` (with `-P`), which hosts pytest in the same process, and `node --inspect-wait` runs the tests in the inspected process (`isolation: "none"`), so breakpoints in the project's code and in its tests both stop. Grading jobs are never debugged: `cstudy submit` has no `--debug` |
+| Debug | As for other jobs ([Debug mode](#debug-mode)): debugpy wraps `-m cs_runner` (with `-P`), which hosts pytest in the same process, `node --inspect-wait` runs the tests in the inspected process (`isolation: "none"`), and JDWP suspends the JVM that hosts the JUnit Platform, so breakpoints in the project's code and in its tests both stop. Grading jobs are never debugged: `cstudy submit` has no `--debug` |
+
+### JVM project builds
+
+A Java or Kotlin project folder is a Gradle build of its own ([starter](problem-format.md#starter)), which applies the `cs.project` plugin of the runtime's `runners/jvm` build: JDK 21, JUnit Jupiter for the tests and kotlin.test on JUnit 5 with Kotlin, `cs.runner` on the runtime classpath, and its JUnit Platform host `cs.suite` on the test runtime classpath ([ADR 0014](../decisions/0014-project-problems.md#java-and-kotlin-spike-k4)).
+
+| Item | Rule |
+|------|------|
+| Command | `jvm/gradlew -p <root> -q --console=plain --offline <task>`, run in `jvm` like every JVM build, so it uses the workspace's Gradle and its daemon. `--offline`: a project build never reaches the network; `cstudy doctor --fix` caches what it needs |
+| Tasks | A suite job builds `csClasspath`: the main and test classes, and both runtime classpaths, in `build/cs/main-classpath.txt` and `build/cs/test-classpath.txt`. A grading job builds `csMainClasspath`: the main classes and `build/cs/main-classpath.txt` only, so a test file that does not compile, such as a level's generated tests before its methods exist, never blocks a submission |
+| Locked levels | `-Pcs.exclude=<path>,...` names the generated test files of the levels above `cstudy test --level N`, relative to the root, and the plugin leaves them out of the test compile: they may call methods that do not exist yet. The runner reads no `exclude` |
+| Concurrent `cstudy` processes | One process at a time builds a folder and copies what it built: an exclusive `flock` on `.cs/build/jvm-locks/project-<folder name>-<digest of its absolute path>.lock`, held around the build, the read of the classpath file and the copy, with the runtime lock of [JVM build details](#jvm-build-details) inside it. Two folders, or a folder and a single-file problem, build side by side |
+| Per-run class copy | As for single-file problems: the classpath entries below the folder's `build/` and the runtime's jars are copied into `.cs/build/jvm-runs/<pid>-<random>/`, which the run removes when it ends |
+| Compile errors | Lines of the compiler's output that mention the folder's `src/`, with their indented context, at most 40: a grading job reports them as its `load_error` (type `CompileError`), so the submission is stored with every graded case errored and `cstudy submit` exits 2; a suite job reports them as the suite's `load_error`, and `cstudy test` lists them and exits 1 |
+| Missing libraries | A build that fails because a library is not cached for offline mode is an environment error (exit 4): ``the project build needs libraries that are not cached yet; run `cstudy doctor --fix` once while online`` |
+| Any other failure | An environment error with the last lines of Gradle's output |
+| Cold start | As for other JVM builds, `warming Gradle daemon (first run)` before a build with no daemon running. The first build of a folder also configures it, 1.5 to 2.4 s on a warm daemon |
 
 ### Grading job
 
-| Item | Python | TypeScript |
-|------|--------|------------|
-| `target` | `{"project": "<abs root>", "module": "bank.bank"}` | `{"path": "<abs root>/src/bank.ts"}`, launched in the root |
-| Loading | The runner imports everything it needs first (`cs_runner`, `cs_support`, pytest for a suite job), then appends the root to the end of `sys.path` and imports `module` with `importlib.import_module`. Both `from .models import Account` and `from bank.models import Account` resolve | Relative imports resolve from each file's URL, under the project's `package.json` (`"type": "module"`). A bare import resolves only to Node's builtins: the project has no `node_modules` and no `#support` |
-| Fresh code | Every module whose file is under the root compiles from source on every run, never from bytecode, as single files do (`_SourceOnlyLoader`), so an edit made within the same second is never hidden | Node reads the files on every run |
-| Signature | The request's `signature` and `names` hold only the methods with `level` at or below the graded level, so the load check of every declared method never asks for a method of a locked level | Same |
-| Missing entry | `load_error` `SymbolNotFound` naming the expected module and class (`bank.bank has no class Bank`) | `load_error` naming the file and the export |
+| Item | Python | TypeScript | Java and Kotlin |
+|------|--------|------------|-----------------|
+| `target` | `{"project": "<abs root>", "module": "bank.bank"}` | `{"path": "<abs root>/src/bank.ts"}`, launched in the root | `{"class": "bank.Bank"}`, the entry, as for single-file problems |
+| Loading | The runner imports everything it needs first (`cs_runner`, `cs_support`, pytest for a suite job), then appends the root to the end of `sys.path` and imports `module` with `importlib.import_module`. Both `from .models import Account` and `from bank.models import Account` resolve | Relative imports resolve from each file's URL, under the project's `package.json` (`"type": "module"`). A bare import resolves only to Node's builtins: the project has no `node_modules` and no `#support` | `Class.forName` on the main runtime classpath, which holds the project's classes and the libraries it may use, never its tests or JUnit |
+| Fresh code | Every module whose file is under the root compiles from source on every run, never from bytecode, as single files do (`_SourceOnlyLoader`), so an edit made within the same second is never hidden | Node reads the files on every run | Gradle compiles what changed, and the JVM loads the run's private copy |
+| Signature | The request's `signature` and `names` hold only the methods with `level` at or below the graded level, so the load check of every declared method never asks for a method of a locked level | Same | Same |
+| Missing entry | `load_error` `SymbolNotFound` naming the expected module and class (`bank.bank has no class Bank`) | `load_error` naming the file and the export | `load_error` `ClassNotFoundException` (`class bank.Bank not found`); code that does not compile is a `CompileError` ([JVM project builds](#jvm-project-builds)) |
 
 Cases, events, the hang guard and restarts are those of every class job.
 
@@ -541,28 +558,28 @@ Cases, events, the hang guard and restarts are those of every class job.
 
 | Field | Meaning |
 |-------|---------|
-| `framework` | `pytest`, `node-test` or `go-test` |
+| `framework` | `pytest`, `node-test`, `go-test` or `junit-platform` (Java and Kotlin) |
 | `root` | The project root |
-| `exclude` | Files, relative to the root, that are not run: the generated files of levels above `cstudy test --level N` |
+| `exclude` | Files, relative to the root, that are not run: the generated files of levels above `cstudy test --level N`. On the JVM the build has already left them out of the test compile |
 | `select` | Test ids to run (`cstudy test --case`); empty: every test the framework discovers |
 | `skip` | Test ids not to run, set on a restart |
 
-A suite job has no `cases`: the framework discovers the tests. Python discovers them as pytest does from the root, under the project's `pyproject.toml` (`testpaths`, `pythonpath`, `addopts`); TypeScript takes the files `node --test` finds from the root with its default patterns.
+A suite job has no `cases`: the framework discovers the tests. Python discovers them as pytest does from the root, under the project's `pyproject.toml` (`testpaths`, `pythonpath`, `addopts`); TypeScript takes the files `node --test` finds from the root with its default patterns; the JVM discovers them in every directory of its classpath, which are the project's main and test class directories, never in a jar.
 
-| Item | pytest | `node:test` |
-|------|--------|-------------|
-| Host | `pytest.main([...])` on the `cs-runner-cases` thread, with `--rootdir <root>`, plugin autoloading off (`PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`), `-p no:cacheprovider`, pytest's own capture off, and a plugin of the runner's that writes the events | `run({ files, isolation: "none", concurrency: 1 })` in the runner's process, its `test:start`, `test:pass` and `test:fail` events turned into protocol events |
-| Test id | pytest's node id: `tests/test_level_1.py::test_ex1` | `<file relative to the root>::<test name>`, nested names from the outermost `describe` joined by ` > ` |
-| `skip` | Left out by exact node id in the runner's plugin (pytest's `--deselect` matches prefixes, so it is not used) | Left out by exact id: a `beforeEach` hook of the runner's throws before the body of a test that `skip` lists or `select` does not name, and nothing is reported for it (with isolation `none`, Node reads name patterns only from its own command line) |
+| Item | pytest | `node:test` | `junit-platform` |
+|------|--------|-------------|------------------|
+| Host | `pytest.main([...])` on the `cs-runner-cases` thread, with `--rootdir <root>`, plugin autoloading off (`PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`), `-p no:cacheprovider`, pytest's own capture off, and a plugin of the runner's that writes the events | `run({ files, isolation: "none", concurrency: 1 })` in the runner's process, its `test:start`, `test:pass` and `test:fail` events turned into protocol events | The JUnit Platform Launcher (`LauncherFactory.openSession()`) on the `cs-runner-cases` thread, with parallel execution off whatever a `junit-platform.properties` says, and a `TestExecutionListener` that writes the events. `cs.runner.Main` finds the host, `cs.suite`, with `ServiceLoader` |
+| Test id | pytest's node id: `tests/test_level_1.py::test_ex1` | `<file relative to the root>::<test name>`, nested names from the outermost `describe` joined by ` > ` | `<class>::<method>`: `bank.Level1Test::ex1`, a nested class as `bank.Outer$Inner`, plus `[n]` per parameterized or dynamic invocation (`bank.RateTest::rounds[2]`). A class reported on its own is its class name |
+| `skip` | Left out by exact node id in the runner's plugin (pytest's `--deselect` matches prefixes, so it is not used) | Left out by exact id: a `beforeEach` hook of the runner's throws before the body of a test that `skip` lists or `select` does not name, and nothing is reported for it (with isolation `none`, Node reads name patterns only from its own command line) | | Left out by exact id, and by class: every test of a class in `skip`, whose failed setup or skip was reported once under the class's id, so the setup does not run and report it again. A parameterized or dynamic test with an invocation in `skip` is left out whole, since running it again would report its earlier invocations a second time |
 
 Events: `job_start`, then per test `case_start` and `case_result` with the test id as `case_id`, then `job_end`.
 
 | `case_result.status` | When |
 |----------------------|------|
 | `ok` | The test passed |
-| `failed` | It raised an assertion error (Python `AssertionError`, `node:assert`'s `AssertionError`): `message` holds the framework's failure text (pytest's assertion detail, such as `assert -1 == 5`), plus `expected` and `actual` when the framework reports them as JSON values (`node:assert`). pytest's `pytest.fail` counts as `failed` |
-| `error` | Any other exception, a setup or teardown failure, or a test file that fails to collect or import; `error` as for cases. A collection failure is one result whose `case_id` is the file; pytest runs with `--continue-on-collection-errors`, so the other files still run |
-| `skipped` | The framework skipped it; `message` holds the reason. An expected failure (pytest `xfail`) is `skipped` with `message` `xfail: <reason>` |
+| `failed` | It raised an assertion error (Python `AssertionError`, `node:assert`'s `AssertionError`, a JVM `AssertionError`): `message` holds the framework's failure text (pytest's assertion detail, such as `assert -1 == 5`; JUnit's `expected: <5> but was: <-1>`), plus `expected` and `actual` when the framework reports both: JSON values from `node:assert`, and on the JVM the strings opentest4j's `AssertionFailedError` carries (`"5"` and `"-1"`), which JUnit's `assertEquals` and kotlin.test's assertions both raise. pytest's `pytest.fail` and JUnit's `fail` count as `failed` |
+| `error` | Any other exception, a setup or teardown failure, or a test file that fails to collect or import; `error` as for cases, the trace keeping the frames outside the JDK, Kotlin's library, JUnit and the runner. A collection failure is one result whose `case_id` is the file; pytest runs with `--continue-on-collection-errors`, so the other files still run. On the JVM a class whose `@BeforeAll` or `@AfterAll` fails is one result whose `case_id` is the class |
+| `skipped` | The framework skipped it; `message` holds the reason. An expected failure (pytest `xfail`) is `skipped` with `message` `xfail: <reason>`. On the JVM a `@Disabled` test, or a disabled class reported once under its id, is `skipped` with JUnit's reason, and a failed assumption is `skipped` with `message` `aborted: <reason>` |
 
 | Rule | Detail |
 |------|--------|
@@ -570,8 +587,8 @@ Events: `job_start`, then per test `case_start` and `case_result` with the test 
 | Hang guard | The case rules: from `case_start` to `case_result`, config `hang_guard.ms`, else meta `limits.hang_guard_ms`, else 10000; any other gap after `hello`, 10000. On expiry the process group is killed, the test is `timeout`, and the suite restarts with `skip` holding every test already reported and the one that hung |
 | Crash | An exit without `bye` is reported on the test in progress, and the suite restarts the same way. After 3 restarts, tests not yet reported are `not_run`, and the report marks the suite as stopped early |
 | No tests | A suite that discovers nothing ends with `job_end` and no results |
-| Usage error | A framework usage or internal error that runs nothing (pytest `UsageError`, `InternalError`) is a `load_error` carrying the framework's output |
-| Bytecode | Before each project run the CLI deletes the project folder's subtree of the bytecode prefix (`<ws>/.cs/pycache`), so an edit made within the same second that keeps the file size never runs stale code; the shared environment's bytecode stays cached |
+| Usage error | A framework usage or internal error that runs nothing (pytest `UsageError`, `InternalError`; on the JVM an exception from the Launcher before any test ran) is a `load_error` carrying the framework's output |
+| Bytecode | Python: before each project run the CLI deletes the project folder's subtree of the bytecode prefix (`<ws>/.cs/pycache`), so an edit made within the same second that keeps the file size never runs stale code; the shared environment's bytecode stays cached |
 | Judging | A suite result is the framework's verdict on code the user may edit: feedback, never a grade. No comparator runs on it, and no level opens from it |
 
 ### Go project jobs
@@ -610,7 +627,7 @@ The Go runner runs both project jobs from binaries that `cstudy` builds in `.cs/
 
 ### Not yet supported
 
-Java, Kotlin and Rust project jobs wait for spikes K4 (JVM) and K6 (Rust), recorded in [ADR 0014](../decisions/0014-project-problems.md). Until then those runners do not list `project` or `suite`, and check S14 keeps project problems out of their languages.
+Rust project jobs wait for spike K6, recorded in [ADR 0014](../decisions/0014-project-problems.md). Until then the Rust runner does not list `project` or `suite`, and check S14 keeps project problems out of Rust.
 
 ## Stub generation
 
@@ -640,7 +657,7 @@ Every generated stub must compile or import unchanged; the conformance suite che
 | TypeScript | `.cs/build/typescript/ref/<slug>/<approach>.ts` | `.cs/build/typescript/package.json` and `support.ts` mirror the workspace so `#support` resolves |
 | Java, Kotlin | `.cs/build/jvm/<lang>/src/main/<lang>/ref/<snake_slug>/<approach_snake>/<Solution or ClassName>.<ext>` | Reference files declare no `package`; the materializer prepends `package ref.<snake_slug>.<approach_snake>` (with `;` for Java). Built with `jvm/gradlew -p .cs/build/jvm`, which includes `.cs/runtime/runners/jvm` |
 | Go | `.cs/build/go/ref/<snake_slug>/<approach_snake>/<approach_snake>.go` (see the Go file names note below) | None: reference files declare `package <snake_slug>` like the stub, so a file moves between `solutions/` and the practice directory unchanged. Each approach is its own package (import path `csbuild/ref/<snake_slug>/<approach_snake>`), linked into the problem's binary next to the user's package with a generated registration file beside it |
-| Project (Python, TypeScript, Go) | `.cs/build/projects/<slug>/<approach>/`: a copy of `starter/`, then of the overlay `solutions/<approach>/`, then the generated test file of every level; rebuilt when the problem's files change | None; run as a [project job](#project-jobs) in that root |
+| Project (Python, TypeScript, Go, Java, Kotlin) | `.cs/build/projects/<slug>/<approach>/`: a copy of `starter/`, then of the overlay `solutions/<approach>/`, then the generated test file of every level; rebuilt when the problem's files change | None; run as a [project job](#project-jobs) in that root, which a Java or Kotlin copy builds with its own Gradle files, finding the workspace by walking up |
 | Rust | `.cs/build/rust/ref/<snake_slug>/<approach_snake>.rs` | None: reference files are written like the stub (`pub fn`, or `pub struct` with `impl`) and copied unchanged. Each enters the problem's harness crate as the `#[path]` module `ref_<approach_snake>`, so compiler errors name the copy |
 
 ### Go file names
@@ -654,5 +671,7 @@ For JVM bench the classpath joins the user's `practice.*` classes and the `ref.*
 `runners/conformance/` holds fixture problems in the normal problem format whose reference approaches are identity functions (return the argument unchanged) for every DSL type, plus fixtures for error paths: exception, `invalid_output`, missing symbol, hang, user printing to stdout, `ref_of`, `output_from`, `no_alias_with`, cyclic ListNode input, and decimal and date arithmetic (inputs that keep their scale, canonical outputs, rounding modes, days across leap years). `cstudy verify --conformance` runs each fixture in every language its `meta.yaml` lists and also compiles every generated stub; a runner that does not support a feature yet leaves the fixture's languages without it (Go lists 9001 to 9017 and 9019 to 9021, Rust the same except 9006 and 9010, which [S13](authoring.md#static) keeps out of Rust). It is a Phase 0 exit criterion and must pass before any runner change merges.
 
 Project fixtures, each listing its one language: `9022-conformance-project-python` and `9023-conformance-project-typescript`, two-file projects whose entry imports a sibling module by package path and by relative path (grading); `9024-conformance-suite-pytest` and `9025-conformance-suite-node-test`, suites with a test that passes, one that fails an assertion, one that raises, one that hangs, one that prints and one that ends the process (suite statuses, output capture, hang guard and restart). `expectations.json` gains per-test outcomes for suite fixtures. Go adds `9030-conformance-project-go`, a project whose entry's package imports a subpackage of the module (grading through the overlay), and `9031-conformance-suite-go-test`, a suite with a test that passes, one that fails an assertion, a failing subtest, one that panics, one that prints, one that ends the process, one that hangs, and a package whose test file does not compile ([Go project jobs](#go-project-jobs)).
+
+The JVM's project fixtures: `9026-conformance-project-java` and `9027-conformance-project-kotlin`, whose entry uses a class of its own package and one of a subpackage (grading on the main runtime classpath); `9028-conformance-suite-junit-java` and `9029-conformance-suite-junit-kotlin`, suites with the six tests above, a class whose `@BeforeAll` fails (reported once, under the class's id, and left out of every restart after it), a disabled test, a failed assumption and a parameterized test (`[1]`, `[2]`).
 
 Fixtures live in `runners/conformance/<id>-<slug>/`; each language adds its reference files as `solutions/<approach>.<ext>`. `runners/conformance/expectations.json` (schema `schemas/conformance.schema.json`) gives the expected outcome per fixture and approach (`pass`, `error`, `invalid_output`, `timeout`, `load_error`) with per-case overrides, and `runners/conformance/README.md` states what every approach does in each language.

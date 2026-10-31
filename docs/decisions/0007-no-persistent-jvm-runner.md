@@ -35,6 +35,10 @@ The Gradle step is the `build` time `cstudy test` prints. In the quietest passes
 - No daemon lifecycle of our own: nothing to start, health-check, version-match against the workspace build or restart after a crash. The Gradle daemon is the only long-lived process, and Gradle manages it.
 - The JVM still costs about 0.9 s more than Python or TypeScript per run, nearly all of it the Gradle step; that is accepted. Background load widens the spread of the JVM numbers (a 6.18 s run in pass 1), so a revisit measures on a quiet machine.
 
+## Revisit check: project problems (spike K4, 2026-10-31)
+
+Multi-file problems are this decision's named trigger, so spike K4 measured Java and Kotlin project problems before they were specified ([ADR 0014](0014-project-problems.md#java-and-kotlin-spike-k4)). A project folder is a Gradle build of its own on the shared daemon, and each `cstudy test` compiles its main and test sources and then starts a fresh JVM that hosts the JUnit Platform. Warm p50 after a one-file edit: 0.61 to 0.64 s for Java and 1.26 to 1.41 s for Kotlin (build and launch), about 1.0 s and 1.8 s with `cstudy`'s own time. Both stay under two thirds of their NFR-1 target, so the decision stands unchanged. The Kotlin Gradle plugin already runs a compile daemon of its own, so the compile server named above as the second lever already exists for Kotlin.
+
 ## Alternatives considered
 
 | Alternative | Why rejected |

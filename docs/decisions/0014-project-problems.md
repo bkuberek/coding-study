@@ -4,7 +4,7 @@
 |-------|-------|
 | Status | Accepted |
 | Date | 2026-10-30 |
-| Amended | 2026-10-31: [Go project problems](#go-spike-k5), after spike K5 |
+| Amended | 2026-10-31: [Go project problems](#go-spike-k5), after spike K5; [Java and Kotlin project problems](#java-and-kotlin-spike-k4), after spike K4 |
 | Spec | [problem-format](../specs/problem-format.md#project-problems), [runners](../specs/runners.md#project-jobs), [cli](../specs/cli.md#cstudy-submit), [authoring](../specs/authoring.md#project-problems), [installation-and-workspaces](../specs/installation-and-workspaces.md#project-folders), [progress-and-scheduling](../specs/progress-and-scheduling.md#project-attempts) |
 | Amends | [ADR 0001](0001-data-driven-tests.md) (native test files generated from the data), [ADR 0012](0012-go-and-rust.md) (a fourth exception to the six-language rule) |
 
@@ -25,19 +25,19 @@ A spike (scratch code, not merged) built a two-file bank in Python and TypeScrip
 
 - **A new kind.** `kind: project` on the `practical` track: a folder of seeded files (`starter/`) that `cstudy start` copies to `projects/<slug>/` in the workspace. Levels, level cases and the `ops` comparator work as for progressive problems and share one level module; the kind gets its own branch in every exhaustive `match` on `ProblemKind`.
 - **One language per problem.** A project problem lists exactly one language and is solved only in it. A version in another language is a separate problem, built from scratch with its own id, slug, starter, cases, reference and explanation; only the statement wording may be reused. Siblings link through `related`, and the slug carries the language (`bank-project-python`), since slugs key progress. This is a fourth exception to the six-language rule of ADR 0012: check S13 skips `must list` for the kind.
-- **`tests.json` stays the single source.** Its cases feed the statement's examples, the visible native tests and the grade. `cstudy` generates one native test file per level from that level's visible cases (pytest, `node:test`), at start for level 1 and at each unlock for the next level, and never rewrites one. Authors may ship extra test files in the starter, and users add their own.
+- **`tests.json` stays the single source.** Its cases feed the statement's examples, the visible native tests and the grade. `cstudy` generates one native test file per level from that level's visible cases (pytest, `node:test`, JUnit 5, kotlin.test), at start for level 1 and at each unlock for the next level, and never rewrites one. Authors may ship extra test files in the starter, and users add their own.
 - **Two commands.** `cstudy test` runs the native suite: the generated files, the starter's and your own. It is feedback only, never a grade, and opens nothing. `cstudy submit` sends every case of the unlocked levels, visible and hidden, through the runner protocol; the core's comparator judges each output, and a submission that passes every one opens the next level. Editing a generated test file never changes a grade.
 - **Levels stay hidden until they open.** The starter holds only level 1's methods. Each unlock reveals the next statement section, which names the methods to add, and the grader checks only the methods of the levels it grades.
 - **Hidden cases.** A failing hidden case shows its input, expected and actual in a practice attempt, and only a count in a mock attempt.
 - **Grade.** `cstudy done` takes a rating once level 1 passes and caps the grade by the levels finished: all levels, no cap; all but the last, `hard`; fewer, `again`. The time box stays soft: finishing over it caps the grade at `hard`, as today.
 - **One final reference.** Each project problem has exactly one approach, whose reference is an overlay on the starter (`solutions/<approach>/`, changed and added files only) implementing every level. No snapshot per level.
-- **Runners host the framework.** The Python and TypeScript runners learn to load a project folder for grading and to run the native framework in-process as a new `suite` job, so a test gets the runner's hang guard, output capture, crash restart and debug launch. Go runs its test binaries as child processes of the runner instead, with the same guarantees ([Go](#go-spike-k5)).
-- **Shared toolchains.** A project folder reaches the workspace's Python venv and Node installs by relative path; nothing is installed per project, so a project starts offline (NFR-6).
-- **Python and TypeScript first.** Java, Kotlin and Rust project problems are not yet supported, and `cstudy verify` rejects one; Go followed after spike K5 ([below](#go-spike-k5)). Each needs a build of its own per project (a Gradle build, a Go module, a Cargo crate) and a spike before it is specified:
+- **Runners host the framework.** The Python, TypeScript and JVM runners learn to load a project folder for grading and to run the native framework in-process as a new `suite` job, so a test gets the runner's hang guard, output capture, crash restart and debug launch. Go runs its test binaries as child processes of the runner instead, with the same guarantees ([Go](#go-spike-k5)).
+- **Shared toolchains.** A project folder reaches the workspace's toolchain by relative path: the Python venv and Node installs, the vendored Go modules, and on the JVM the workspace's Gradle wrapper, daemon and runner runtime. Nothing is installed per project, so a Python, TypeScript or Go project starts offline (NFR-6). A Java or Kotlin project starts offline once `cstudy doctor --fix` has cached JUnit, kotlin-test and their dependencies, which no single-file problem needs ([Java and Kotlin](#java-and-kotlin-spike-k4)).
+- **Python and TypeScript first.** Rust project problems are not yet supported, and `cstudy verify` rejects one; Go followed after spike K5 ([below](#go-spike-k5)), Java and Kotlin after spike K4 ([below](#java-and-kotlin-spike-k4)). Each needed a build of its own per project (a Gradle build, a Go module, a Cargo crate) and a spike before it was specified:
 
   | Language | Open question | Spike |
   |----------|---------------|-------|
-  | Java, Kotlin | Warm p50 of compiling main and test sources plus a JUnit Platform launch against NFR-1's 3 s and 5 s; JUnit resolved offline; locks and per-run class copies per project build. The Gradle step already takes 0.85 to 1.55 s warm for one package, and ADR 0007 names multi-file problems as its revisit trigger | K4 |
+  | Java, Kotlin | Settled by K4: a standalone Gradle build per project folder on the shared daemon, within NFR-1 without a persistent runner ([below](#java-and-kotlin-spike-k4)) | K4 |
   | Go | Settled by K5: one module per project with a `go.work` of its own in the folder, never an entry in the root `go.work`; the overlay registration works inside a project package ([below](#go-spike-k5)) | K5 |
   | Rust | `cargo test` results on stable Rust without libtest's JSON output; two profiles (tests in dev, grading in release) compiled per change; a harness that depends on the project crate by path | K6 |
 
@@ -52,12 +52,33 @@ Spike K5 (scratch code, not merged) built a two-package Go bank with a test file
 - **Debug.** The runner builds the test binary with `-gcflags=all=-N -l`, runs it under `dlv exec --headless`, and pipes its output through `go tool test2json`; breakpoints in the project's code and in its tests stop.
 - **Speed.** A Go project's `cstudy test` takes about 1.2 to 1.4 s end to end, over the 1.0 s that NFR-1 sets for Python and TypeScript projects, so NFR-1 gives Go projects a target of their own, 1.5 s.
 
+### Java and Kotlin (spike K4)
+
+The question K4 answered: the warm p50 of compiling a project's main and test sources plus a JUnit Platform launch, against NFR-1's 3 s (Java) and 5 s (Kotlin); JUnit resolved offline; locks and per-run class copies per project build. ADR 0007 names multi-file problems as its revisit trigger.
+
+Measured on an M3 Pro (JDK 21.0.2, Gradle 9.8.2, Kotlin 2.4.21, JUnit 5.14.4), warm p50 after a one-file edit, for three routes:
+
+| Route | Java | Kotlin | Verdict |
+|-------|------|--------|---------|
+| (a) One shared Gradle build, a source set per project | Similar to (b) | Similar to (b) | Rejected: adding a project costs 1 to 1.8 s once and invalidates the configuration cache of every JVM build; VS Code folds every project into one Eclipse project, so packages clash; Kotlin tests cannot see `internal` declarations |
+| (b) A standalone Gradle build per project folder, on the shared daemon | 0.61 to 0.64 s build and launch (about 1.0 s with `cstudy`'s own 0.4 s) | 1.26 to 1.41 s (about 1.8 s) | **Chosen**: a third of the targets |
+| (c) `javac` and `kotlinc` called directly | Similar | 2.6 to 4.7 s: every run starts a cold compiler with no incremental compile | Rejected |
+
+- **A Gradle build per folder.** `projects/<slug>/` holds its own `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties` and `gradle/wrapper/gradle-wrapper.properties`, and `src/main/<java|kotlin>` and `src/test/<java|kotlin>`. Its settings find the workspace by walking up to `.cs/workspace.toml`, never by a fixed `../..`, because the same files also build in `.cs/build/projects/<slug>/<approach>/`. They take the workspace's version catalog and include the runtime's `runners/jvm` build, whose `cs.project` plugin sets the JDK, JUnit and the runner. This is the route that rejects project folders inside the language projects (see the alternatives).
+- **Build and run.** `cstudy` runs `<ws>/jvm/gradlew -p <folder> --offline` on the shared daemon: `csClasspath` writes the main and test runtime classpaths before a suite, `csMainClasspath` the main one before grading, so a test file that does not compile never blocks a submission. One exclusive lock per project build (not per language), the existing runtime lock and the per-run class copy keep concurrent `cstudy` processes apart; their cost is in the timings.
+- **Suite.** `java -cp <test runtime classpath> cs.runner.Main` hosts the JUnit Platform Launcher with a listener that writes protocol events: framework `junit-platform`, JUnit Jupiter for Java and kotlin.test on JUnit 5 for Kotlin. Test ids are `pkg.Class::method`, with `[n]` per parameterized invocation. A failed assertion's expected and actual are the strings opentest4j carries, not JSON values. A class whose `@BeforeAll` fails is reported once, under the class's id, so a restart's `skip` prunes by class as well as by test.
+- **Grading.** The class job of every JVM problem, on the main runtime classpath; the target is the entry class (`bank.Bank`).
+- **Offline.** `cstudy doctor --fix` builds one warm-up project per language from the template, which caches JUnit, kotlin-test and `apiguardian-api` (a resolvable prefetch configuration missed `apiguardian-api`, which only JUnit's compile variant brings). The first build of a new folder takes 1.5 to 2.4 s on a warm daemon.
+- **No persistent JVM runner.** [ADR 0007](0007-no-persistent-jvm-runner.md)'s trigger is not met, and the Kotlin Gradle plugin already keeps a compile daemon of its own.
+
 ## Consequences
 
 - A project problem has no generated stub, no generator, no bench, no oracle and no time limit: `cstudy bench`, `cstudy test --perf`, `--stress` and `--time-limit`, and `cstudy verify --oracle` and `--ladder`, do not apply to it.
 - Coverage lines and `--lang` filters count a project only in its language. The catalog grows one problem per language version, and each version costs a full authoring pass; the TypeScript pilot measures that cost.
-- New CLI surface: `cstudy submit` and `cstudy status`, a `projects/` folder in every workspace, pytest in the workspace's Python template, `submissions` and `level_unlocks` tables, and verify checks S14 to S16 and D9.
+- New CLI surface: `cstudy submit` and `cstudy status`, a `projects/` folder in every workspace, pytest in the workspace's Python template, `submissions` and `level_unlocks` tables, verify checks S14 to S16 and D9, and the `cstudy doctor` rows on the JVM project libraries.
 - The Python runner gains a package-aware loader that compiles project modules from source on every run and keeps library bytecode under `.cs/pycache/`, and one runner process per project job, since two projects may both define a top-level `bank` module.
+- The runners' JVM build gains the `cs.project` Gradle plugin, which every Java and Kotlin project folder applies, and `cs.suite`, the JUnit Platform host that only a project's test runtime classpath holds. A Java or Kotlin starter's build files are exactly the template's, with its slug as the root project's name (check S15), so every folder builds the same way and offline.
+- The JVM warm-up of `cstudy doctor --fix` resolves the runtime classpath (`csClasspath`) and builds the warm-up projects. K4 found that the warm-up before it compiled classes only, so a fresh Gradle home never cached the runner's own `gson` and no Java or Kotlin problem, single-file ones included, built offline.
 - A starter's `pyproject.toml` holds tool tables only. A `[project]` table, `requires-python` or `[tool.uv]` in it could make `uv run` delete the shared venv, so check S15 rejects them.
 - A Go project folder is a module of its own whose `go.work`, like a Python folder's `.venv` link, is untracked: `cstudy start` writes it when it is missing and `cstudy doctor --fix` restores it. `cstudy doctor` also warns about a vendored `replace` that does not resolve and about two folders with one module path. A generated Go level file that calls a method not written yet stops its whole package from compiling, as any Go test would; `cstudy test --level` leaves it out.
 - The pilots are `0249-bank-project-python`, then `0250-bank-project-typescript`, with the behavior of `0248-scheduled-transfers-bank`. 0187 and 0248 stay progressive, since converting them would remove their six-language versions.
@@ -67,7 +88,8 @@ Spike K5 (scratch code, not merged) built a two-package Go bank with a test file
 
 | Trigger | What to reconsider |
 |---------|--------------------|
-| Spikes K4, K5 or K6 report | Specify that language's project folder, suite and grading, amending this ADR; K4 may also reopen [ADR 0007](0007-no-persistent-jvm-runner.md) |
+| Spike K6 reports | Specify Rust's project folder, suite and grading, amending this ADR |
+| The warm p50 of a Java or Kotlin project, measured as [ADR 0007](0007-no-persistent-jvm-runner.md) measures, exceeds two thirds of its NFR-1 target | ADR 0007's levers for the project build: skip Gradle when nothing changed, then a compile server |
 | The owner finds the pilot's generated tests read like machine output | Hand-written visible tests in the starter, kept next to `tests.json` (alternative C below) |
 | Ports become frequent, or a third language version of one project is wanted | Sharing cases between siblings, and a `variant_of` field so that `cstudy start bank-project --lang typescript` works |
 | Seeing the code evolve proves worth about four times the reference work | A reference snapshot per level, shown by `cstudy solution --level N` |
@@ -86,6 +108,9 @@ Spike K5 (scratch code, not merged) built a two-package Go bank with a test file
 | A level opens once its visible tests pass; submissions only score | The visible tests are editable, so a level would open on the user's own verdict |
 | Every method stubbed in the starter from level 1 | Designing for changes you cannot see yet is the point of a staged project |
 | Project folders inside the language projects (`python/projects/<slug>/`) | Inherits the venv and `node_modules` without configuration, but is not one folder on the JVM, and Go and Rust need a module or crate of their own anyway |
+| JVM: one shared Gradle build with a source set per project (K4 route a) | As fast as a build per folder, but each new project costs 1 to 1.8 s once and invalidates the configuration cache of every JVM build, VS Code folds every project into one Eclipse project so packages clash, and Kotlin tests cannot see `internal` declarations |
+| JVM: `javac` and `kotlinc` called directly (K4 route c) | Kotlin takes 2.6 to 4.7 s per run: a cold compiler every time, with no incremental compile |
+| JVM: prefetch JUnit with a resolvable configuration in the workspace build | Misses `apiguardian-api`, which only JUnit's compile variant brings; building a real project from the template caches exactly what a folder needs |
 | A venv or `node_modules` per project | Every start would need the network (NFR-6), and disk use multiplies |
 | Run the native tool and parse its report (JUnit XML) | Less code per language, but loses the per-test hang guard, crash restart, output capture and debug launch the runner already has |
 | Vitest or Jest for TypeScript | They need a network install and a transform of their own; `node:test` ships with Node 24 and runs `.ts` through type stripping |

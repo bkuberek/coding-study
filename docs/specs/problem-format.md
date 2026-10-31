@@ -439,7 +439,9 @@ A project problem (`kind: project`, `track: practical`) is a folder of seeded fi
 | Python | Supported; native tests run with pytest |
 | TypeScript | Supported; native tests run with `node:test` |
 | Go | Supported; native tests run with `go test` ([Go project jobs](runners.md#go-project-jobs)) |
-| Java, Kotlin, Rust | Not yet supported: check S14 rejects a project problem that lists them |
+| Java | Supported; native tests run with JUnit 5 (Jupiter) on the JUnit Platform |
+| Kotlin | Supported; native tests run with kotlin.test on JUnit 5 |
+| Rust | Not yet supported: check S14 rejects a project problem that lists it |
 
 ### Content tree
 
@@ -461,7 +463,22 @@ problems/0249-bank-project-python/
       bank/ledger.py
 ```
 
-The TypeScript pilot has the same shape, with `package.json`, `tsconfig.json`, `src/bank.ts`, `src/models.ts` and `tests/`. A Go project has `go.mod` at its root, the entry type in a `.go` file such as `bank.go`, and `tests/`.
+The TypeScript pilot has the same shape, with `package.json`, `tsconfig.json`, `src/bank.ts`, `src/models.ts` and `tests/`. A Go project has `go.mod` at its root, the entry type in a `.go` file such as `bank.go`, and `tests/`. A Java project is a Gradle project of its own:
+
+```text
+problems/<id>-bank-project-java/
+  meta.yaml                                  # project: {entry: bank.Bank, tests: src/test/java/bank}
+  starter/
+    README.md
+    settings.gradle.kts, build.gradle.kts, gradle.properties
+    gradle/wrapper/gradle-wrapper.properties
+    src/main/java/bank/Bank.java             # the entry class Bank, with level 1's methods
+    src/main/java/bank/Account.java          # seeded model types
+    src/test/java/bank/AccountTest.java      # optional test files from the author
+  solutions/reference/src/main/java/bank/Bank.java
+```
+
+A Kotlin project has `src/main/kotlin/` and `src/test/kotlin/` instead.
 
 ### meta.yaml
 
@@ -488,8 +505,8 @@ signature:
       - {name: createAccount, level: 1, params: [{name: timestamp, type: long}, {name: accountId, type: string}], returns: {type: bool}}
 comparator: {type: ops}
 project:
-  entry: bank.bank      # Python: dotted module; TypeScript: src/bank.ts
-  tests: tests          # where cstudy writes the generated level tests; default "tests"
+  entry: bank.bank      # Python: dotted module; TypeScript: src/bank.ts; Java and Kotlin: bank.Bank
+  tests: tests          # where cstudy writes the generated level tests; default "tests" (Java: src/test/java/bank)
 approaches:
   - {id: reference, name: Accounts with balance histories and a due-time heap, role: optimal, time: "...", space: "...", time_class: "n log n", space_class: "n"}
 related: [bank-project-typescript, scheduled-transfers-bank]
@@ -499,14 +516,14 @@ estimate_minutes: 90
 | Field | Rule |
 |-------|------|
 | `track` | `practical` |
-| `languages` | Exactly one: `python`, `typescript` or `go` |
+| `languages` | Exactly one: `python`, `typescript`, `go`, `java` or `kotlin` |
 | `slug` | Ends in the language (`bank-project-python`): a version in another language is another problem, and slugs are unique |
 | `levels` | Required, as for progressive problems |
 | `signature` | A class signature: the entry class the grader constructs, canonical names, a `level` on every method |
-| `comparator` | `ops`. Every method's comparator, the default `exact` or a `per_method` entry, is `exact`, `unordered` or `float`, because generated tests express only these |
-| Types | Scalars, arrays and lists. No node types; no `decimal` in TypeScript, whose `Decimal` class comes from the runner's support module, which a project folder does not reach. Go takes `decimal` (the vendored `decimal.Decimal`, which the starter's `go.mod` reaches) and `date` (`time.Time`) |
-| `project.entry` | Python: the dotted module that defines the entry class (`bank.bank`), a file `bank/bank.py` or `bank/bank/__init__.py` under the project root. TypeScript: the path, relative to the root, of the file that exports the entry class by name (`src/bank.ts`). Go: the path, relative to the root, of the `.go` file that declares the entry type and its constructor `New<Class>` (`bank.go`, `bank/bank.go`), not a `_test.go` file; its directory is the package that `cstudy submit` grades |
-| `project.tests` | The directory, relative to the root, where `cstudy` writes the generated test files; default `tests`. Go: its last directory name is a Go identifier, because the generated files declare `package <name>_test` |
+| `comparator` | `ops`. Every method's comparator, the default `exact` or a `per_method` entry, is `exact`, `unordered` or `float`, because generated tests express only these. Java and Kotlin: on a method that returns an array or a list, `unordered` needs elements of `int`, `long`, `double`, `string` or `date`, which sort naturally, and `float` is not allowed |
+| Types | Scalars, arrays and lists. No node types; no `decimal` in TypeScript, whose `Decimal` class comes from the runner's support module, which a project folder does not reach. Go takes `decimal` (the vendored `decimal.Decimal`, which the starter's `go.mod` reaches) and `date` (`time.Time`) Java and Kotlin: a method's result holds no array inside an array or a list, and no `decimal` inside either, since a generated test compares `BigDecimal` by its canonical text and arrays only through `assertArrayEquals` or `assertContentEquals`; parameters may take any of these types |
+| `project.entry` | Python: the dotted module that defines the entry class (`bank.bank`), a file `bank/bank.py` or `bank/bank/__init__.py` under the project root. TypeScript: the path, relative to the root, of the file that exports the entry class by name (`src/bank.ts`). Go: the path, relative to the root, of the `.go` file that declares the entry type and its constructor `New<Class>` (`bank.go`, `bank/bank.go`), not a `_test.go` file; its directory is the package that `cstudy submit` grades Java and Kotlin: the fully qualified name of the entry class (`bank.Bank`), in a named package, whose simple name is the signature's class; the file is `src/main/java/bank/Bank.java` (Kotlin: `src/main/kotlin/bank/Bank.kt`) |
+| `project.tests` | The directory, relative to the root, where `cstudy` writes the generated test files; default `tests`. Go: its last directory name is a Go identifier, because the generated files declare `package <name>_test` Java and Kotlin: a package directory under `src/test/java/` (Kotlin: `src/test/kotlin/`), such as `src/test/java/bank`; the default does not apply |
 | `approaches` | Exactly one, with role `optimal` |
 | Not allowed | `generator.py`, `checker.py`, `stress_checker.py`, `buggy/`, `stub`, `perf`, `concurrency`, `oracle`, and `generate` or `stress` cases |
 | `related` | Lists every sibling in another language, and may list the problems it builds on |
@@ -518,11 +535,12 @@ A version in another language is built from scratch: its own id, slug, starter, 
 | Item | Rule |
 |------|------|
 | Content | Every file the user starts with, in the project's own layout: the entry file, the build files, `README.md`, and any seeded modules and test files. UTF-8 text files only, at most 50 files and 256 KiB in all |
-| Never | Build output and caches (`__pycache__`, `.pytest_cache`, `.ruff_cache`, `node_modules`, `.venv`), lock files (`uv.lock`, `pnpm-lock.yaml`, `package-lock.json`), symbolic links, and a file under `project.tests` with the name of a generated test file |
-| Entry class | Defined at `project.entry` with level 1's methods only, each with a body that raises or throws "not implemented". Methods of later levels appear nowhere in the starter: each unlock names the methods to add. A starter may declare the API as an interface the entry class implements (an `abc.ABC` subclass, a TypeScript `interface`), which also holds level 1's methods only |
+| Never | Build output and caches (`__pycache__`, `.pytest_cache`, `.ruff_cache`, `node_modules`, `.venv`; on the JVM `build`, `.gradle`, `.kotlin` and `.class` or `.jar` files), lock files (`uv.lock`, `pnpm-lock.yaml`, `package-lock.json`), symbolic links, and a file under `project.tests` with the name of a generated test file |
+| Entry class | Defined at `project.entry` with level 1's methods only, each with a body that raises or throws "not implemented". Methods of later levels appear nowhere in the starter: each unlock names the methods to add. A starter may declare the API as an interface the entry class implements (an `abc.ABC` subclass, a TypeScript, Java or Kotlin `interface`), which also holds level 1's methods only. Java and Kotlin: the entry class is public, with a public constructor that takes the signature's constructor parameters |
 | `README.md` | States the contract: the module or file and the class that must stay where they are, and how to run the tests with the language's own command |
 | Python build file | `pyproject.toml` with exactly the tool tables below and nothing else: no `[project]` table, no `requires-python`, no `[tool.uv]`. A `requires-python` above the workspace venv's Python makes `uv run` delete the shared venv through the project's `.venv` link ([project folders](installation-and-workspaces.md#project-folders)). No `__init__.py` is needed for packages, and no `pyrightconfig.json` |
 | TypeScript build files | `package.json` with `"type": "module"` and no dependencies; `tsconfig.json` as the workspace's (`module` `nodenext`, `noEmit`, `allowImportingTsExtensions`, `erasableSyntaxOnly`, `verbatimModuleSyntax`, `strict`) with `"types": ["node"]` and `"typeRoots": ["../../typescript/node_modules/@types"]`, so `node:test` and `node:assert` have types (TypeScript 6 loads no `@types` package that `types` does not list). Imports name files with their extension (`../src/bank.ts`); code uses erasable syntax only, since Node strips types and refuses the rest (a parameter property fails with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`) |
+| Java and Kotlin build files | `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties` and `gradle/wrapper/gradle-wrapper.properties`, byte for byte as `cstudy new --from-template project-java` (`project-kotlin`) writes them, with the slug as `rootProject.name`: every project builds the same way, offline, with what `cstudy doctor --fix` cached ([project folders](installation-and-workspaces.md#project-folders)). No `gradlew` of its own: the workspace's runs the build |
 | Module names | Python: no top-level module or package named after a standard-library module (`random.py`, `types.py`, `typing.py`) or `pytest` |
 | Go build files | `go.mod` at the root with `module <slug>`, the `go 1.24` directive, and no requirement but the vendored modules: `require github.com/shopspring/decimal v1.5.0` with `replace github.com/shopspring/decimal => ../../.cs/runtime/runners/go/third_party/github.com/shopspring/decimal`, which reaches the [runner runtime](installation-and-workspaces.md#runner-runtime)'s copy from `projects/<slug>/`, so no build needs the network or a `go.sum`. No `go.sum`, `go.work` or `go.work.sum`: `cstudy start` writes the folder's `go.work` ([project folders](installation-and-workspaces.md#project-folders)) |
 | Go entry | The entry file declares a package other than `main`, since the grader imports it, and the entry type `<Class>` with its constructor `func New<Class>(...) *<Class>`, the [Go mapping](#go-and-rust-mapping) of a design class; level 1's methods panic with `not implemented` |
@@ -546,9 +564,64 @@ target-version = "py313"
 
 `pythonpath` lets the tests import the project's modules without `__init__.py` files, `--import-mode=importlib` allows test files with the same base name in different directories, and `-p no:cacheprovider` keeps `.pytest_cache` out of the folder. pyright needs `venvPath` and `venv` to resolve `pytest` and `cs_support` through the `.venv` link. `testpaths` names `project.tests`.
 
+The Java and Kotlin starters' `settings.gradle.kts`, here for the slug `bank-project-java`:
+
+```kotlin
+// This project's own Gradle build; open this folder in your IDE as a Gradle project.
+// It finds the coding-study workspace by walking up to .cs/workspace.toml and builds with the
+// workspace's version catalog and runner runtime, so keep this file as it is.
+pluginManagement {
+    var directory: File? = settingsDir
+    while (directory != null && !directory.resolve(".cs/workspace.toml").isFile) {
+        directory = directory.parentFile
+    }
+    val workspace = directory ?: throw GradleException("$settingsDir is not inside a coding-study workspace")
+    extra["cs.workspace"] = workspace
+    includeBuild(workspace.resolve(".cs/runtime/runners/jvm"))
+}
+
+val workspace = extra["cs.workspace"] as File
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+    }
+    versionCatalogs {
+        create("libs") {
+            from(files(workspace.resolve("jvm/gradle/libs.versions.toml")))
+        }
+    }
+}
+
+rootProject.name = "bank-project-java"
+
+includeBuild(workspace.resolve(".cs/runtime/runners/jvm"))
+```
+
+The settings walk up to the workspace marker, rather than naming `../..`, because the same files build in `projects/<slug>/` and in a reference's copy under `.cs/build/projects/` ([reference](#reference)). The `pluginManagement` block runs before the rest of the file and cannot share its variables, so it hands the workspace on through `extra`.
+
+`build.gradle.kts`, Java, then Kotlin:
+
+```kotlin
+// Builds with JDK 21, JUnit 5 and the cstudy runner (the cs.project plugin); keep this file as it is.
+plugins {
+    id("cs.project")
+}
+```
+
+```kotlin
+// Builds with JDK 21, Kotlin, kotlin.test on JUnit 5 and the cstudy runner (the cs.project plugin); keep this file as it is.
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+    id("cs.project")
+}
+```
+
+`gradle.properties` and `gradle/wrapper/gradle-wrapper.properties` are the workspace's `jvm/gradle.properties` and `jvm/gradle/wrapper/gradle-wrapper.properties`, so the folder's builds share the workspace's Gradle version and daemon, and an IDE opening the folder picks the same Gradle.
+
 ### Statement
 
-`problem.md` has the progressive sections ([authoring](authoring.md#problemmd)) plus a required `## Project` section after `## Output`: what the starter holds, the entry contract, and how to run the tests natively. Its text uses the problem language's names (`create_account` in Python), and so does the rendered statement: example markers render operations with the language's method names, and each `## Level <n>` section starts with a generated line naming the methods that level adds, in the language's names, with parameter names and types as the language spells them (`Methods to add: create_account(timestamp: int, account_id: str) -> bool`; in Go, `CreateAccount(timestamp int64, accountId string) bool`). `## Statement`, `## Input`, `## Output`, `## Project` and `## Constraints` show at every level, so they describe only what holds for all levels and never a later level's methods.
+`problem.md` has the progressive sections ([authoring](authoring.md#problemmd)) plus a required `## Project` section after `## Output`: what the starter holds, the entry contract, and how to run the tests natively. Its text uses the problem language's names (`create_account` in Python), and so does the rendered statement: example markers render operations with the language's method names, and each `## Level <n>` section starts with a generated line naming the methods that level adds, in the language's names, with parameter names and types as the language spells them (`Methods to add: create_account(timestamp: int, account_id: str) -> bool`; in Go, `CreateAccount(timestamp int64, accountId string) bool`; Java `boolean createAccount(long timestamp, String accountId)`; Kotlin `createAccount(timestamp: Long, accountId: String): Boolean`, without a return type for a `void` method). `## Statement`, `## Input`, `## Output`, `## Project` and `## Constraints` show at every level, so they describe only what holds for all levels and never a later level's methods.
 
 ### Generated test files
 
@@ -571,6 +644,28 @@ target-version = "py313"
 | `float` | Python: `pytest.approx(expected, rel=tol, abs=tol)`; TypeScript: a helper `assertClose(actual, expected, tol)` defined once in the file. Both pass exactly when `abs(a - e) <= tol * max(1, abs(e))` |
 | Agreement | A generated test passes when the core comparator would pass the case and fails when it would fail it, with one exception: Python's `==` equates `True` with `1` and `False` with `0` where a number is expected, alone or inside a list, where the core does not |
 | Values | Literals of the language, formatted as ruff and Prettier format them; `decimal` and `date` in Python as `Decimal("2500.50")` (a whole number as `Decimal(10)`, except `-0`, which stays `Decimal("-0")`) and `date.fromisoformat("2026-01-01")`, imported when used |
+
+Java and Kotlin write a test class per level in the package of `project.tests`:
+
+| Item | Java | Kotlin |
+|------|------|--------|
+| File | `<tests>/Level<n>Test.java` (`src/test/java/bank/Level1Test.java`) | `<tests>/Level<n>Test.kt` |
+| Framework | JUnit 5 Jupiter: `org.junit.jupiter.api.Test` and the static methods of `org.junit.jupiter.api.Assertions` | kotlin.test on JUnit 5: `kotlin.test.Test` and its assertion functions |
+| Package and class | `package <tests below src/test/java, "/" as ".">;`, then `class Level<n>Test` | `package ...` from `src/test/kotlin`, then `class Level<n>Test` |
+| One test per visible case | `@Test void <case id, "-" as "_">()`, prefixed `case_` when that is no Java identifier or is a keyword | `@Test fun <case id>()`, in backticks when the id is no Kotlin identifier or is a keyword (``fun `ex-overdraft`()``) |
+| Case `note` | `//` comment lines above `@Test` | The same |
+| Header | The Python header's two lines as `//` comments, before `package` | The same |
+| Import | `import <entry>;` when the entry class is in another package | `import <entry>` likewise |
+
+| Rule | Java | Kotlin |
+|------|------|--------|
+| Body | `Bank bank = new Bank(...);`, the instance named after the class in lowerCamelCase; then one statement per op, a `void` call alone; a case with no other op is `new Bank(...);` | `val bank = Bank(...)`; the same statements; `Bank(...)` alone |
+| `exact` | `assertTrue(...)` and `assertFalse(...)` for `true` and `false`, `assertNull(...)` for `null`; a `decimal` as its canonical text, `assertEquals("2500.5", x.stripTrailingZeros().toPlainString())`, since `BigDecimal.equals` compares the scale; `assertArrayEquals(new int[] {1, 2}, x)` for arrays; `assertEquals(expected, x)` for the rest | The same, with `assertContentEquals(intArrayOf(1, 2), x)` for arrays |
+| `unordered` | A list as `assertEquals(List.of(...), x.stream().sorted().toList())`, an array as `assertArrayEquals(new int[] {...}, Arrays.stream(x).sorted().toArray())` (`.toArray(String[]::new)` and `.toArray(LocalDate[]::new)` for strings and dates), the expected literal already sorted as Java sorts it | `assertEquals(listOf(...), x.sorted())`, `assertContentEquals(intArrayOf(...), x.sortedArray())` |
+| `float` | `assertEquals(expected, x, delta)` on a `double`, `delta` being `tol * max(1, abs(expected))` written as a literal, which passes exactly when the core's comparator does | `assertEquals(expected, x, delta)` (kotlin.test's `absoluteTolerance`) |
+| Values | `5`; `5L` for every `long`; `2.5` and `3.0`; `true`; `'a'`; `"ivy"`; `null`; `new BigDecimal("2500.50")`; `LocalDate.parse("2026-01-01")`; `new int[] {1, 2}` (`new int[][] {{1, 2}}` nested); `List.of(1, 2)`, or `Arrays.asList(...)` when an element is `null` | The same scalars, with `$` escaped in strings and `Int.MIN_VALUE` and `Long.MIN_VALUE` for the smallest values, which have no literal; `BigDecimal("2500.50")`; `intArrayOf(1, 2)` (`longArrayOf`, `doubleArrayOf`, `booleanArrayOf`, `charArrayOf`, and `arrayOf(...)` for other elements); `listOf(1, 2)` |
+| Layout | 4-space indent; imports as Google Java style orders them: the static `Assertions` methods in one block, then the rest, each in ASCII order, with a blank line between; a blank line between tests. A statement over 100 columns puts its call's arguments on one continuation line 8 columns deeper, or failing that one argument per line, each laid out the same way | ktlint's official style: 4-space indent; one block of imports in ASCII order with `java`, `javax` and `kotlin` imports last. A statement over 140 columns puts each argument of its call on its own line 4 columns deeper, with a trailing comma, and the closing parenthesis on a line of its own |
+| Agreement | As for Python and TypeScript, with no exception for `true` and `1`; `0.0` and `-0.0` differ under `exact`, as `assertEquals` compares doubles bit for bit | The same |
 
 Generated level 1 tests from case `ex1` of `0248-scheduled-transfers-bank`:
 
@@ -607,6 +702,53 @@ test("ex1", () => {
   assert.equal(bank.createAccount(3, "ivy"), false);
   assert.equal(bank.deposit(4, "ivy", 800), 800);
 });
+```
+
+```java
+// Level 1 examples of bank-project-java, written by `cstudy start`.
+// Yours to edit and extend: cstudy never rewrites this file.
+package bank;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
+
+class Level1Test {
+    @Test
+    void ex1() {
+        Bank bank = new Bank();
+        assertTrue(bank.createAccount(1L, "ivy"));
+        assertTrue(bank.createAccount(2L, "leo"));
+        assertFalse(bank.createAccount(3L, "ivy"));
+        assertEquals(800L, bank.deposit(4L, "ivy", 800L));
+        assertEquals(-1L, bank.deposit(5L, "max", 50L));
+    }
+}
+```
+
+```kotlin
+// Level 1 examples of bank-project-kotlin, written by `cstudy start`.
+// Yours to edit and extend: cstudy never rewrites this file.
+package bank
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+class Level1Test {
+    @Test
+    fun ex1() {
+        val bank = Bank()
+        assertTrue(bank.createAccount(1L, "ivy"))
+        assertTrue(bank.createAccount(2L, "leo"))
+        assertFalse(bank.createAccount(3L, "ivy"))
+        assertEquals(800L, bank.deposit(4L, "ivy", 800L))
+        assertEquals(-1L, bank.deposit(5L, "max", 50L))
+    }
+}
 ```
 
 #### Go test files
