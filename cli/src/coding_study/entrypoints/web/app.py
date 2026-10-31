@@ -11,6 +11,7 @@ from coding_study.entrypoints.web.api_health import health_routes
 from coding_study.entrypoints.web.api_practice import practice_routes
 from coding_study.entrypoints.web.api_progress import progress_routes
 from coding_study.entrypoints.web.api_session import session_routes
+from coding_study.entrypoints.web.api_solutions import solution_routes
 from coding_study.entrypoints.web.context import ServerSettings, ServerState
 from coding_study.entrypoints.web.errors import exception_handlers
 from coding_study.entrypoints.web.page import front_end_routes
@@ -25,6 +26,7 @@ def create_app(settings: ServerSettings) -> ASGIApp:
         *attempt_routes(),
         *file_routes(),
         *practice_routes(),
+        *solution_routes(),
         *health_routes(),
         *progress_routes(),
     ]

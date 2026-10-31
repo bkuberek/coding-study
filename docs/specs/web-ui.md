@@ -465,8 +465,9 @@ sequenceDiagram
 
 | Rule | Detail |
 |------|--------|
-| Selection | `language`, `approach`, `all`, `broken` and `explanation_only` as `cstudy solution` takes them, with its defaults and its usage errors |
-| Content | `markdown` is what `cstudy solution` pages, as Markdown: the rubric (track `lld`), the overview table, each approach's section followed by its code in a fenced block, or the `no <lang> reference; available: …` line; for a project, each added file in full and each changed file as a fenced `diff`. `html` is that Markdown rendered on the server with Pygments highlighting |
+| Selection | `language`, `approach`, `all`, `broken` (`true` for `--broken`, an id for `--broken=ID`) and `explanation_only` as `cstudy solution` takes them, with its defaults and its usage errors. As in the terminal, the selection and the mock lock are checked before the question, so a refused request never asks |
+| Content | `markdown` is what `cstudy solution` pages, as Markdown: the title line (`# Two Sum · python`), the rubric (track `lld`), the overview table, each approach's section followed by its code in a fenced block, or the `no <lang> reference; available: …` line in italics; for a project, each added file in full and each changed file as a fenced `diff` under its path (`**bank/bank.py** (changed)`); for `broken`, the broken reference's bug, code and section. A fence is one backtick longer than the longest run of backticks in the code. `html` is that Markdown rendered on the server with Pygments highlighting. `approaches` lists the ids of the approaches shown (empty for `broken` and for an item), `kind` is as in `cstudy list --json` |
+| Items | The title with the track, `rubric.md` and `reference.md`, without a question; `language` null. A `language`, `approach`, `all`, `broken` or `explanation_only` gets the CLI's 422 |
 | Shown | In a read-only Solution pane, never in an editor tab, so a reference is never saved into your files |
 | Recorded | `marked_attempt_id` names the attempt marked `solution_revealed`, or is null when none was: no attempt in progress, one already passed, or an item, whose reference never lowers the grade |
 
