@@ -250,6 +250,9 @@ class SqliteProgressStore:
                 for number, row in enumerate(snapshot.tables.get(table, ()), start=1):
                     _insert_row(connection, table, columns, number, row)
 
+    def attempt(self, attempt_id: int) -> Attempt | None:
+        return self._one_attempt("id = ?", (attempt_id,))
+
     def attempts(self, slug: str) -> tuple[Attempt, ...]:
         with self._connection() as connection:
             rows = connection.execute(

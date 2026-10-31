@@ -8,10 +8,12 @@ from coding_study.application.next_problem import (
     NextRequest,
     Recommendation,
     next_problem,
+    next_source,
     recommend,
 )
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
 from coding_study.domain.config import Config, NextSettings
+from coding_study.domain.errors import UsageError
 from coding_study.domain.items import EntryKind
 from coding_study.domain.next_selection import NewPick, NextSource, ReviewPick
 from coding_study.domain.problem import Language, Track
@@ -127,3 +129,20 @@ def test_an_item_recommendation_has_no_language(tmp_path, problems):
 
 def test_nothing_in_scope_recommends_nothing(environment):
     assert recommend(environment, NextRequest(tracks=(Track.PRACTICAL,))) is None
+
+
+@pytest.mark.parametrize(
+    ("new", "review", "source"),
+    [
+        (False, False, NextSource.ANY),
+        (True, False, NextSource.NEW_ONLY),
+        (False, True, NextSource.REVIEWS_ONLY),
+    ],
+)
+def test_new_and_review_choose_the_source(new, review, source):
+    assert next_source(new, review) is source
+
+
+def test_new_and_review_together_are_a_usage_error():
+    with pytest.raises(UsageError, match="--new and --review exclude each other"):
+        next_source(True, True)

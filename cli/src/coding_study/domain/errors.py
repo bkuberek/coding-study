@@ -66,3 +66,28 @@ class UsageError(Exception):
 
 class VersionControlError(Exception):
     """git is missing, or cannot compare the repository with a branch (exit code 4)."""
+
+
+class UnknownAttemptError(LookupError):
+    """No attempt has the id the web UI asked for."""
+
+    def __init__(self, attempt_id: int) -> None:
+        super().__init__(f"unknown attempt {attempt_id}")
+        self.attempt_id = attempt_id
+
+
+class AttemptEndedError(Exception):
+    """The web UI asked for an attempt that is no longer in progress, or that another attempt of
+    the same problem and language replaced."""
+
+    def __init__(self, attempt_id: int, slug: str) -> None:
+        super().__init__(f"attempt {attempt_id} of {slug} is no longer in progress")
+        self.attempt_id = attempt_id
+
+
+class UnknownFileError(LookupError):
+    """No file at a path the web UI asked for in an attempt's files."""
+
+    def __init__(self, path: str, root: str) -> None:
+        super().__init__(f"no file {path} in {root}")
+        self.path = path

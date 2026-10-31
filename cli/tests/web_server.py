@@ -13,6 +13,7 @@ from starlette.types import ASGIApp
 from coding_study.adapters.preferences_fs import FsPreferencesStore
 from coding_study.application.environment import Environment
 from coding_study.entrypoints.web.app import create_app
+from coding_study.entrypoints.web.children import ChildCommand
 from coding_study.entrypoints.web.context import ServerSettings
 from coding_study.entrypoints.web.security import SessionSecrets, cookie_name
 from tests.fakes import make_environment
@@ -48,8 +49,11 @@ def web_workspace(root: Path, **overrides: object) -> Environment:
     return make_environment(root, **overrides)
 
 
-def web_app(root: Path, environment: Environment | None = None) -> ASGIApp:
-    """The app of a server on `PORT` over the workspace `root`."""
+def web_app(
+    root: Path, environment: Environment | None = None, child: ChildCommand | None = None
+) -> ASGIApp:
+    """The app of a server on `PORT` over the workspace `root`; `child` replaces the `cstudy`
+    its children run."""
     workspace = environment or web_workspace(root)
     return create_app(
         ServerSettings(
@@ -59,6 +63,7 @@ def web_app(root: Path, environment: Environment | None = None) -> ASGIApp:
             static_directory=static_directory(root),
             load_environment=lambda: workspace,
             preferences=FsPreferencesStore(root),
+            child=child or ChildCommand(),
         )
     )
 

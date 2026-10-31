@@ -175,6 +175,22 @@ def test_in_progress_attempt_is_none_after_abandoning(store):
     assert store.in_progress_attempt("two-sum", Language.PYTHON) is None
 
 
+def test_an_attempt_is_found_by_its_id(store):
+    store.add_attempt(new_attempt("two-sum"))
+    wanted = store.add_attempt(new_attempt("lru-cache", minutes=5))
+    assert store.attempt(wanted.id) == wanted
+
+
+def test_a_finished_attempt_is_found_by_its_id(store):
+    finished = replace(store.add_attempt(new_attempt()), status=AttemptStatus.ABANDONED)
+    store.update_attempt(finished)
+    assert store.attempt(finished.id) == finished
+
+
+def test_an_unknown_id_finds_no_attempt(store):
+    assert store.attempt(41) is None
+
+
 def test_latest_attempt_includes_finished_attempts(store):
     attempt = store.add_attempt(new_attempt())
     finished = replace(attempt, status=AttemptStatus.FAILED)

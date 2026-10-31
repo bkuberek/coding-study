@@ -161,10 +161,9 @@ def run_bench(
 ) -> BenchResult:
     attempt, slug, language = _subject(environment, request)
     problem = environment.problems.load(slug)
-    if problem.meta.concurrency is not None:
-        raise UsageError("bench is not available for concurrent problems")
-    if problem.meta.kind is ProblemKind.PROJECT:
-        raise UsageError("bench is not available for project problems")
+    issue = bench_issue(problem.meta)
+    if issue is not None:
+        raise UsageError(issue)
     plan = plan_bench(environment, problem, language, request)
     machine = environment.machine.snapshot()
     measured = measure(environment, plan, notify)
@@ -172,6 +171,15 @@ def run_bench(
         return BenchResult(plan, machine, attempt, build_failure=measured)
     result = _Evaluation(environment, plan, machine).evaluate(measured)
     return _Recorder(environment, plan, attempt).record(result)
+
+
+def bench_issue(meta: ProblemMeta) -> str | None:
+    """Why `cstudy bench` is not available for a problem; None when it is."""
+    if meta.concurrency is not None:
+        return "bench is not available for concurrent problems"
+    if meta.kind is ProblemKind.PROJECT:
+        return "bench is not available for project problems"
+    return None
 
 
 def plan_bench(

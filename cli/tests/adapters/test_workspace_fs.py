@@ -468,3 +468,54 @@ def test_write_within_follows_a_folder_that_is_itself_a_link(workspace, project)
     workspace.absolute("projects/alias").symlink_to("bank-project-python", target_is_directory=True)
     workspace.write_within("projects/alias", "README.md", "# Alias\n")
     assert workspace.read_text(f"{project}/README.md") == "# Alias\n"
+
+
+def test_read_within_reads_the_bytes_of_a_file_inside_the_folder(workspace, project):
+    assert workspace.read_within(project, "bank/bank.py") == b"class Bank: ...\n"
+
+
+def test_read_within_refuses_a_file_that_is_a_link(workspace, project):
+    workspace.write_text("elsewhere/hosts", "secret\n")
+    workspace.absolute(f"{project}/README.md").unlink()
+    workspace.absolute(f"{project}/README.md").symlink_to("../../elsewhere/hosts")
+    with pytest.raises(ValueError, match=r"README\.md is a symbolic link"):
+        workspace.read_within(project, "README.md")
+
+
+def test_read_within_refuses_a_directory_on_the_way_that_is_a_link(workspace, project):
+    workspace.write_text("elsewhere/bank.py", "secret\n")
+    workspace.remove_folder(f"{project}/bank")
+    workspace.absolute(f"{project}/bank").symlink_to("../../elsewhere", target_is_directory=True)
+    with pytest.raises(ValueError, match="bank is a symbolic link"):
+        workspace.read_within(project, "bank/bank.py")
+
+
+def test_read_within_refuses_a_directory_at_the_files_path(workspace, project):
+    with pytest.raises(ValueError, match="bank is a directory"):
+        workspace.read_within(project, "bank")
+
+
+def test_read_within_refuses_a_file_on_the_way(workspace, project):
+    with pytest.raises(ValueError, match=r"README\.md is not a directory"):
+        workspace.read_within(project, "README.md/notes.md")
+
+
+def test_read_within_refuses_a_named_pipe_without_waiting_for_a_writer(workspace, project):
+    os.mkfifo(workspace.absolute(f"{project}/bank/pipe"))
+    with pytest.raises(ValueError, match="bank/pipe is not a regular file"):
+        workspace.read_within(project, "bank/pipe")
+
+
+def test_read_within_raises_file_not_found_for_a_missing_file(workspace, project):
+    with pytest.raises(FileNotFoundError):
+        workspace.read_within(project, "bank/ledger.py")
+
+
+def test_read_within_raises_file_not_found_under_a_missing_directory(workspace, project):
+    with pytest.raises(FileNotFoundError):
+        workspace.read_within(project, "ledger/entries.py")
+
+
+def test_read_within_follows_a_folder_that_is_itself_a_link(workspace, project):
+    workspace.absolute("projects/alias").symlink_to("bank-project-python", target_is_directory=True)
+    assert workspace.read_within("projects/alias", "README.md") == b"# Bank\n"

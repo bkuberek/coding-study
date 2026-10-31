@@ -464,6 +464,10 @@ class ProgressStore(Protocol):
         """The attempt's bench runs, earliest first."""
         ...
 
+    def attempt(self, attempt_id: int) -> Attempt | None:
+        """The attempt with this id, in any status; None when there is none."""
+        ...
+
 
 class MachineProbe(Protocol):
     def snapshot(self) -> MachineState:
@@ -664,6 +668,16 @@ class Workspace(Protocol):
         deleted, as is a directory that leaves empty. Untracked entries
         (`workspace_projects.is_untracked`), what build tools wrote, are kept. A link is never
         followed: one at `path`, or among the tracked entries, is removed."""
+        ...
+
+    def read_within(self, folder: str, path: str) -> bytes:
+        """The bytes of the file `path`, relative to the directory `folder`; `folder` itself may
+        be a link.
+
+        Raises FileNotFoundError when the file or a directory on the way is missing, and
+        ValueError when the file or a directory between `folder` and it is a symbolic link, the
+        file is a directory or not a regular file, or a directory on the way is a file.
+        """
         ...
 
 

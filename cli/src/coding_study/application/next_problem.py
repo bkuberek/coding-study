@@ -48,6 +48,15 @@ class Recommendation:
     """The language `cstudy next --start` starts it in; None for an item."""
 
 
+def next_source(new: bool, review: bool) -> NextSource:
+    """The source of `--new` and `--review`; raises UsageError for both."""
+    if new and review:
+        raise UsageError("--new and --review exclude each other")
+    if new:
+        return NextSource.NEW_ONLY
+    return NextSource.REVIEWS_ONLY if review else NextSource.ANY
+
+
 def next_problem(environment: Environment, request: NextRequest) -> NextPick | None:
     """Raises UsageError for a pattern outside the taxonomy."""
     if request.pattern is not None and request.pattern not in PATTERNS:

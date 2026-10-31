@@ -85,7 +85,7 @@ An `import-linter` contract in `cli/.importlinter` enforces the table (NFR-8).
 | Lazy import | `entrypoints/commands/serve.py` imports `entrypoints.web` inside the command function only, so no other command loads Starlette or uvicorn (NFR-2); a test checks `sys.modules` after importing `coding_study.entrypoints.cli` |
 | Import contracts | `starlette` and `uvicorn` join the forbidden modules of the domain and application contracts, and a new contract forbids them to `coding_study.adapters` |
 | New use cases | `application/attempt_files.py` (an attempt's files: tree, read, save, create, move, delete) and `application/problem_history.py` (shared with `cstudy history`); `project_status` grows into `attempt_status` for every kind |
-| New port methods | `Workspace.read_within`, `delete_within` and `move_within`, beside `write_within`, none following a link |
+| New port methods | `Workspace.read_within`, `delete_within` and `move_within`, beside `write_within`, none following a link; `ProgressStore.attempt`, an attempt by its id |
 | No new judging | The adapter never runs user code and never compares an output; it relays `--events` lines unchanged |
 
 ### Languages

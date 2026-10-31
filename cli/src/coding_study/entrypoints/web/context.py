@@ -9,6 +9,7 @@ from starlette.requests import Request
 
 from coding_study.application.environment import Environment
 from coding_study.application.ports import PreferencesStore
+from coding_study.entrypoints.web.children import ChildCommand
 from coding_study.entrypoints.web.security import SessionSecrets
 from coding_study.entrypoints.web.worker import UseCaseWorker
 
@@ -24,6 +25,8 @@ class ServerSettings:
     load_environment: Callable[[], Environment]
     """A fresh Environment of the server's workspace, for each use case call."""
     preferences: PreferencesStore
+    child: ChildCommand = field(default_factory=ChildCommand)
+    """How the server starts a child `cstudy`."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,3 +37,13 @@ class ServerState:
 
 def server_state(request: Request) -> ServerState:
     return cast(ServerState, request.app.state.server)
+
+
+async def in_workspace[*Arguments, Result](
+    request: Request, use: Callable[[Environment, *Arguments], Result], *arguments: *Arguments
+) -> Result:
+    """`use` called on the worker with a fresh Environment of the server's workspace, as a
+    command builds one for its run."""
+    server = server_state(request)
+    load_environment = server.settings.load_environment
+    return await server.worker.run(lambda: use(load_environment(), *arguments))

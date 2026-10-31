@@ -473,6 +473,13 @@ def _oracle_stress(
         if stress.seed is not None:
             raise UsageError(f"--seed needs --stress N for {meta.slug} (not a concurrent problem)")
         return None
+    first_seed = stress.seed if stress.seed is not None else DEFAULT_ORACLE_SEED
+    return OracleStress(stress_oracle(environment, meta), oracle_inputs(stress.runs, first_seed))
+
+
+def stress_oracle(environment: Environment, meta: ProblemMeta) -> str:
+    """The `oracle: true` approach whose Python outputs check the inputs `--stress N` generates
+    for a problem that is not concurrent. Raises UsageError when the problem has none to offer."""
     if meta.kind is ProblemKind.PROGRESSIVE:
         raise UsageError(f"--stress has no oracle inputs for progressive problems like {meta.slug}")
     needs = "--stress needs generator.py and an oracle approach with a Python reference"
@@ -481,8 +488,7 @@ def _oracle_stress(
     oracle = oracle_approach(meta)
     if oracle is None or oracle not in python_approaches(environment, meta):
         raise UsageError(f"{needs}; {meta.slug} has no oracle with a Python reference")
-    first_seed = stress.seed if stress.seed is not None else DEFAULT_ORACLE_SEED
-    return OracleStress(oracle, oracle_inputs(stress.runs, first_seed))
+    return oracle
 
 
 def _level_run(problem: Problem, unlocked: int | None, requested: int | None) -> LevelRun | None:

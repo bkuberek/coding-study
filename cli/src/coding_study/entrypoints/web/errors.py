@@ -15,7 +15,12 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ExceptionHandler
 
-from coding_study.domain.errors import UnknownProblemError
+from coding_study.domain.errors import (
+    AttemptEndedError,
+    UnknownAttemptError,
+    UnknownFileError,
+    UnknownProblemError,
+)
 from coding_study.entrypoints.shared import ERROR_EXIT_CODES, ExitCode
 from coding_study.entrypoints.web.responses import JsonResponse
 
@@ -65,7 +70,22 @@ _HTTP_ERRORS: Mapping[int, ErrorCode] = {
     404: ErrorCode.NOT_FOUND,
     405: ErrorCode.METHOD_NOT_ALLOWED,
 }
+_LOOKUP_ERRORS: Mapping[type[Exception], ErrorCode] = {
+    UnknownProblemError: ErrorCode.NOT_FOUND,
+    UnknownAttemptError: ErrorCode.NOT_FOUND,
+    UnknownFileError: ErrorCode.NOT_FOUND,
+    AttemptEndedError: ErrorCode.ATTEMPT_ENDED,
+}
+"""Errors whose code is not their exit code's: what the API addresses that is missing or over."""
 INTERNAL_MESSAGE = "internal error; the terminal running cstudy serve shows its traceback"
+
+
+class ApiError(Exception):
+    """A refusal no use case raises, such as a child `cstudy` that failed or ran too long."""
+
+    def __init__(self, code: ErrorCode, message: str) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 def error_status(code: ErrorCode) -> int:
@@ -80,14 +100,27 @@ def error_response(
 
 
 def domain_error_code(error: Exception) -> ErrorCode:
-    """The code of the exit code the CLI gives `error`, but `not_found` for an unknown problem."""
-    if isinstance(error, UnknownProblemError):
-        return ErrorCode.NOT_FOUND
-    return _EXIT_CODE_ERRORS[ERROR_EXIT_CODES[type(error)]]
+    """The code of the exit code the CLI gives `error`, but `not_found` for an unknown problem,
+    attempt or file and `attempt_ended` for an attempt no longer in progress."""
+    code = _LOOKUP_ERRORS.get(type(error))
+    return code if code is not None else _EXIT_CODE_ERRORS[ERROR_EXIT_CODES[type(error)]]
+
+
+def exit_code_error(exit_code: int) -> ErrorCode:
+    """The code of a child `cstudy`'s exit code; `internal` for one the CLI does not document."""
+    try:
+        return _EXIT_CODE_ERRORS[ExitCode(exit_code)]
+    except (ValueError, KeyError):
+        return ErrorCode.INTERNAL
 
 
 async def _domain_error(_request: Request, error: Exception) -> Response:
     return error_response(domain_error_code(error), str(error))
+
+
+async def _api_error(_request: Request, error: Exception) -> Response:
+    assert isinstance(error, ApiError)
+    return error_response(error.code, str(error))
 
 
 async def _http_error(request: Request, error: Exception) -> Response:
@@ -108,6 +141,8 @@ async def _internal_error(_request: Request, _error: Exception) -> Response:
 def exception_handlers() -> dict[type[Exception], ExceptionHandler]:
     return {
         **dict.fromkeys(ERROR_EXIT_CODES, _domain_error),
+        **dict.fromkeys(_LOOKUP_ERRORS, _domain_error),
+        ApiError: _api_error,
         HTTPException: _http_error,
         Exception: _internal_error,
     }
