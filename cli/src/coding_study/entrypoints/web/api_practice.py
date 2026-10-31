@@ -2,6 +2,8 @@
 through the use cases `cstudy start --no-open`, `cstudy hint` and `cstudy done` call. Hints and
 done address the attempt by its id and call the use case with its slug and language."""
 
+from dataclasses import replace
+
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import BaseRoute, Route
@@ -118,7 +120,5 @@ def _hint(environment: Environment, attempt_id: int) -> dict[str, JsonValue]:
 
 def _done(environment: Environment, attempt_id: int, request: DoneRequest) -> dict[str, JsonValue]:
     attempt = attempt_in_progress(environment.progress, attempt_id)
-    addressed = DoneRequest(
-        attempt.slug, request.rating, request.gave_up, request.notes, attempt.language
-    )
+    addressed = replace(request, slug=attempt.slug, language=attempt.language)
     return done_document(complete_attempt(environment, addressed))
