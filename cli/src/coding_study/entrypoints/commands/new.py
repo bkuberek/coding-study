@@ -1,6 +1,6 @@
 """`cstudy new` (docs/specs/cli.md#cstudy-new)."""
 
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import Annotated
 
@@ -42,6 +42,29 @@ WORKFLOW = (
     ("Set status: ready", "cstudy verify {slug} --oracle --ladder --require-ready"),
 )
 """docs/specs/authoring.md#workflow, from step 2; `cstudy new` is step 1."""
+PROJECT_WORKFLOW = (
+    (
+        "Write problem.md, with ## Project and one ## Level section per level, and tests.json, "
+        "with at least 2 visible and 2 hidden cases per level",
+        "cstudy verify {slug} --static",
+    ),
+    (
+        "Shape the starter: the entry class with level 1's methods, the seeded files, the build "
+        "files, README.md",
+        "cstudy verify {slug}",
+    ),
+    (
+        "Write the reference overlay in solutions/<approach>/, level by level",
+        "cstudy verify {slug}",
+    ),
+    (
+        "Write solutions/explanation.md with ### Design; set status: ready",
+        "cstudy verify {slug} --require-ready",
+    ),
+)
+"""docs/specs/authoring.md#project-problems, from step 2: a project problem's own workflow."""
+PROJECT_TEMPLATES = frozenset({TemplateName.PROJECT_PYTHON})
+"""A project problem is written in its one language, so no languages need trimming."""
 LANGUAGES_HINT = (
     "languages  meta.yaml lists the languages to write references in; remove the ones you "
     "do not practice, and their reference files"
@@ -82,8 +105,16 @@ def new(
 
 def _report(created: CreatedProblem) -> Iterator[Text]:
     yield Text(f"created  {created.directory}  ({created.template} template, draft)", "bold")
+    if created.template in PROJECT_TEMPLATES:
+        yield Text("next steps (docs/specs/authoring.md#project-problems)")
+        yield from _steps(PROJECT_WORKFLOW, created.slug)
+        return
     yield Text(LANGUAGES_HINT)
     yield Text("next steps (docs/specs/authoring.md#workflow)")
-    for number, (action, check) in enumerate(WORKFLOW, start=FIRST_STEP):
+    yield from _steps(WORKFLOW, created.slug)
+
+
+def _steps(workflow: Iterable[tuple[str, str]], slug: str) -> Iterator[Text]:
+    for number, (action, check) in enumerate(workflow, start=FIRST_STEP):
         yield Text(f"  {number}. {action}")
-        yield Text(f"{STEP_INDENT}{check.format(slug=created.slug)}", "dim")
+        yield Text(f"{STEP_INDENT}{check.format(slug=slug)}", "dim")

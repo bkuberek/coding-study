@@ -1,0 +1,17 @@
+"""The class that `cstudy submit` and the tests drive.
+
+TODO: replace this sketch with the reference of every level.
+"""
+
+
+class {{class_name}}:
+    def __init__(self) -> None:
+        self._values: dict[str, str] = {}
+
+    def put(self, timestamp: int, key: str, value: str) -> str:
+        previous = self._values.get(key, "")
+        self._values[key] = value
+        return previous
+
+    def get(self, timestamp: int, key: str) -> str:
+        return self._values.get(key, "")

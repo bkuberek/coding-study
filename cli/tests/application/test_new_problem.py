@@ -12,7 +12,7 @@ from coding_study.application.environment import ProblemDestination
 from coding_study.application.new_problem import create_problem
 from coding_study.application.verify_content import VerifyRequest, verify_content
 from coding_study.domain.errors import UsageError
-from coding_study.domain.problem import ALL_LANGUAGES, ContentStatus, Track
+from coding_study.domain.problem import ALL_LANGUAGES, ContentStatus, Language, ProblemKind, Track
 from coding_study.domain.scaffold import WORKSPACE_FIRST_ID, ScaffoldRequest, TemplateName
 from tests.fakes import make_environment
 from tests.helpers import FIXTURE_TRACKS
@@ -152,7 +152,10 @@ def test_each_template_passes_static_checks_after_replacing_the_placeholders(env
     assert static_errors(environment, "scaffolded") == ()
 
 
-@pytest.mark.parametrize("template", [t for t in TemplateName if t is not TemplateName.CONCURRENT])
+ONE_LANGUAGE_TEMPLATES = (TemplateName.CONCURRENT, TemplateName.PROJECT_PYTHON)
+
+
+@pytest.mark.parametrize("template", [t for t in TemplateName if t not in ONE_LANGUAGE_TEMPLATES])
 def test_each_template_writes_its_languages_explicitly(environment, template):
     created = create(environment, "scaffolded", template)
     meta = (environment.root / created.directory / "meta.yaml").read_text()
@@ -175,3 +178,42 @@ def test_every_language_gets_a_reference_file_for_each_approach(environment):
     created = create(environment, "store", TemplateName.PROGRESSIVE)
     references = {name for name in created.files if name.startswith("solutions/reference.")}
     assert len(references) == len(ALL_LANGUAGES)
+
+
+PROJECT_FILES = (
+    "meta.yaml",
+    "problem.md",
+    "solutions/explanation.md",
+    "solutions/reference/app/main.py",
+    "starter/README.md",
+    "starter/app/main.py",
+    "starter/pyproject.toml",
+    "tests.json",
+)
+
+
+def test_a_python_project_gets_its_starter_and_overlay_and_no_reference_file(environment):
+    created = create(environment, "bank-project-python", TemplateName.PROJECT_PYTHON)
+    assert created.files == PROJECT_FILES
+
+
+def test_a_python_project_lists_python_alone(environment):
+    created = create(environment, "bank-project-python", TemplateName.PROJECT_PYTHON)
+    meta = environment.problems.load(created.slug).meta
+    assert (meta.kind, meta.languages) == (ProblemKind.PROJECT, (Language.PYTHON,))
+
+
+def test_a_python_projects_starter_declares_level_ones_method_only(environment):
+    created = create(environment, "bank-project-python", TemplateName.PROJECT_PYTHON)
+    entry = (environment.root / created.directory / "starter" / "app" / "main.py").read_text()
+    assert ("class BankProjectPython:" in entry, "def put(" in entry, "def get(" in entry) == (
+        True,
+        True,
+        False,
+    )
+
+
+def test_a_python_projects_overlay_implements_every_level(environment):
+    created = create(environment, "bank-project-python", TemplateName.PROJECT_PYTHON)
+    overlay = environment.root / created.directory / "solutions" / "reference" / "app" / "main.py"
+    assert ("def put(" in overlay.read_text(), "def get(" in overlay.read_text()) == (True, True)

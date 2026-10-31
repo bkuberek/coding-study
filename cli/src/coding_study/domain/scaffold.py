@@ -1,4 +1,4 @@
-"""What `cstudy new` writes (docs/specs/cli.md#cstudy-new): a draft problem from one of 5 templates.
+"""What `cstudy new` writes (docs/specs/cli.md#cstudy-new): a draft problem from one of 6 templates.
 
 Template files hold `{{name}}` placeholders (`Scaffold.placeholders`); everything else in them
 is literal, including the `TODO` text that `cstudy verify --static` rejects in problem.md until
@@ -33,6 +33,8 @@ class TemplateName(StrEnum):
     DESIGN = "design"
     PROGRESSIVE = "progressive"
     CONCURRENT = "concurrent"
+    PROJECT_PYTHON = "project-python"
+    """A project problem in Python: a starter folder and the reference's overlay on it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +49,7 @@ TEMPLATE_DEFAULTS: Mapping[TemplateName, TemplateDefaults] = {
     TemplateName.DESIGN: TemplateDefaults(Track.DSA, "arrays-hashing"),
     TemplateName.PROGRESSIVE: TemplateDefaults(Track.PRACTICAL, None),
     TemplateName.CONCURRENT: TemplateDefaults(Track.CONCURRENCY, None),
+    TemplateName.PROJECT_PYTHON: TemplateDefaults(Track.PRACTICAL, None),
 }
 
 

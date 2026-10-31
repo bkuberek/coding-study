@@ -50,6 +50,24 @@ def test_ends_with_the_ready_gate(environment):
     )
 
 
+def test_a_project_template_prints_the_project_workflow(environment):
+    lines = invoke("bank-project-python", "--from-template", "project-python").output.splitlines()
+    assert lines[1:4] == [
+        "next steps (docs/specs/authoring.md#project-problems)",
+        "  2. Write problem.md, with ## Project and one ## Level section per level, and "
+        "tests.json, with at least 2 visible and 2 hidden cases per level",
+        "     cstudy verify bank-project-python --static",
+    ]
+
+
+def test_a_project_template_ends_with_the_ready_gate(environment):
+    lines = invoke("bank-project-python", "--from-template", "project-python").output.splitlines()
+    assert lines[-2:] == [
+        "  5. Write solutions/explanation.md with ### Design; set status: ready",
+        "     cstudy verify bank-project-python --require-ready",
+    ]
+
+
 def test_flags_reach_the_scaffold(environment):
     invoke("same-tree", "--from-template", "tree", "--title", "Same Tree?", "--difficulty", "easy")
     meta = environment.problems.load("same-tree").meta
