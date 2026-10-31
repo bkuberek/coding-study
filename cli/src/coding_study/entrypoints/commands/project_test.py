@@ -63,6 +63,11 @@ def require_project_options(given: Sequence[str]) -> None:
         raise UsageError(f"{given[0]} is not available for project problems")
 
 
+def project_test_exit_code(result: ProjectTestResult) -> int:
+    """0 when every test that ran passed and some test ran; 1 otherwise."""
+    return ExitCode.SUCCESS if result.passed else ExitCode.FAILURES
+
+
 @dataclass(frozen=True, slots=True)
 class ProjectTestOptions:
     as_json: bool = False
@@ -86,7 +91,7 @@ class ProjectTestSession:
 
     def run(self) -> int:
         result = run_project_tests(self._environment, self._request, self._notice)
-        exit_code = ExitCode.SUCCESS if result.passed else ExitCode.FAILURES
+        exit_code = project_test_exit_code(result)
         if self._options.as_json:
             typer.echo(json.dumps(project_test_document(result, exit_code), indent=2))
             return exit_code

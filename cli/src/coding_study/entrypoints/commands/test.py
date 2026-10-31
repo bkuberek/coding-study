@@ -67,6 +67,7 @@ from coding_study.entrypoints.commands.project_documents import project_test_doc
 from coding_study.entrypoints.commands.project_test import (
     ProjectTestOptions,
     ProjectTestSession,
+    project_test_exit_code,
     require_project_options,
 )
 from coding_study.entrypoints.commands.report_text import (
@@ -281,7 +282,7 @@ def _stream_project_tests(environment: Environment, request: ProjectTestRequest)
 
 
 def _project_summary(result: ProjectTestResult) -> RunSummary:
-    exit_code = ExitCode.SUCCESS if result.passed else ExitCode.FAILURES
+    exit_code = project_test_exit_code(result)
     return RunSummary(exit_code, project_test_document(result, exit_code))
 
 
