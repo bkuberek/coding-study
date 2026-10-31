@@ -30,7 +30,8 @@ func runDebugged(request *suiteRequest, tests *projectTests, overlay string, t *
 		return err
 	}
 	if built != nil {
-		t.queue(tests.importPath(directory), *built)
+		importPath := tests.importPath(directory)
+		t.queue(readyResult{id: importPath, pkg: importPath, result: *built})
 		t.pump()
 		return nil
 	}

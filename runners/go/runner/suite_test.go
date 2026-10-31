@@ -145,35 +145,34 @@ func TestAPackageThatDoesNotBuildIsOneCompileError(t *testing.T) {
 	}
 }
 
-func TestAPanicCrashesItsTestAfterTheOtherResults(t *testing.T) {
+func TestAPanicIsAnErrorOfItsTest(t *testing.T) {
 	r := newRecorded().feed(started("TestA"), end("pass", "TestA"), started("TestB"),
 		out("TestB", "--- FAIL: TestB (0.00s)\n"), out("TestB", "panic: boom [recovered]\n"),
 		out("TestB", "goroutine 7 [running]:\n"), end("fail", "TestB"),
 		testEvent{Action: "fail", Package: "p"})
-	var stderr bytes.Buffer
-	if r.translator.conclude(&stderr) {
-		t.Fatal("concluded without a crash")
-	}
-	want := "start p_test.go::TestA | ok p_test.go::TestA | start p_test.go::TestB"
-	if got := joined(r.summary(t)); got != want {
-		t.Errorf("events %s", got)
-	}
-	if !strings.HasSuffix(stderr.String(), "panic: boom [recovered]\n") {
-		t.Errorf("stderr %q", stderr.String())
+	failure := r.result(t, "p_test.go::TestB")["error"].(map[string]any)
+	if failure["type"] != "panic" || failure["message"] != "boom" {
+		t.Errorf("error %v", failure)
 	}
 }
 
-func TestATestThatEndsTheBinaryCrashes(t *testing.T) {
+func TestAPackageWhoseBinaryEndedRunsAgainWithoutItsReportedTests(t *testing.T) {
 	r := newRecorded().feed(started("TestA"), end("pass", "TestA"), started("TestB"),
-		out("TestB", "=== RUN   TestB\n"), testEvent{Action: "fail", Package: "p"})
-	var stderr bytes.Buffer
-	r.translator.conclude(&stderr)
-	want := "start p_test.go::TestA | ok p_test.go::TestA | start p_test.go::TestB"
-	if got := joined(r.summary(t)); got != want {
-		t.Errorf("events %s", got)
+		out("TestB", "panic: boom\n"), end("fail", "TestB"), testEvent{Action: "fail", Package: "p"})
+	reruns := r.translator.takeReruns()
+	if asJSON(reruns) != `["p"]` || asJSON(r.translator.reportedTops["p"]) != `["TestA","TestB"]` {
+		t.Errorf("reruns %v, reported %v", reruns, r.translator.reportedTops)
 	}
-	if stderr.String() != "the test binary of p ended during TestB\n" {
-		t.Errorf("stderr %q", stderr.String())
+}
+
+func TestATestThatEndsTheBinaryIsAnExitWithItsOutput(t *testing.T) {
+	r := newRecorded().feed(started("TestA"), end("pass", "TestA"), started("TestB"),
+		out("TestB", "=== RUN   TestB\n"), out("TestB", "    b_test.go:3: fatal\n"),
+		testEvent{Action: "fail", Package: "p"})
+	result := r.result(t, "p_test.go::TestB")
+	failure := result["error"].(map[string]any)
+	if failure["type"] != "exit" || result["stdout"] != "    b_test.go:3: fatal\n" {
+		t.Errorf("result %v", result)
 	}
 }
 
@@ -363,7 +362,7 @@ func TestAPackageWhoseTestsDoNotCompileIsReportedAndTheOthersRun(t *testing.T) {
 	}
 }
 
-func TestAPanicEndsTheRunWithItsTestInProgress(t *testing.T) {
+func TestAPanicIsReportedAndTheRestOfItsPackageStillRuns(t *testing.T) {
 	root := writeProject(t, map[string]string{"suite.go": projectSource, "suite_test.go": `package suite
 
 import "testing"
@@ -372,15 +371,15 @@ func TestFirst(t *testing.T) {}
 
 func TestPanics(t *testing.T) { panic("boom") }
 
-func TestNever(t *testing.T) {}
-`})
-	code, events, stderr := runSuite(t, root, "")
-	last := events[len(events)-1]
-	if code != exitTestCrashed || last["event"] != "case_start" || last["case_id"] != "suite_test.go::TestPanics" {
-		t.Errorf("exit %d, last event %v", code, last)
-	}
-	if !strings.Contains(stderr, "panic: boom") {
-		t.Errorf("stderr %q", stderr)
+func TestExits(t *testing.T) { exit() }
+
+func TestLast(t *testing.T) {}
+`, "exit_test.go": "package suite\n\nimport \"os\"\n\nfunc exit() { os.Exit(3) }\n"})
+	code, events, _ := runSuite(t, root, "")
+	want := map[string]string{"suite_test.go::TestFirst": "ok", "suite_test.go::TestPanics": "error",
+		"suite_test.go::TestExits": "error", "suite_test.go::TestLast": "ok"}
+	if code != exitCompleted || asJSON(statuses(events)) != asJSON(want) {
+		t.Errorf("exit %d, statuses %v", code, statuses(events))
 	}
 }
 
@@ -413,17 +412,15 @@ func TestASuiteWithoutAModuleIsALoadError(t *testing.T) {
 	}
 }
 
-func TestACrashShowsTheProjectFramesOfItsPanic(t *testing.T) {
+func TestAPanicsTraceHoldsTheFramesOfTheProjectsFiles(t *testing.T) {
 	r := newRecorded().feed(started("TestB"), out("TestB", "--- FAIL: TestB (0.00s)\n"),
 		out("TestB", "panic: boom [recovered]\n"), out("TestB", "goroutine 7 [running]:\n"),
 		out("TestB", "p.(*Bank).Deposit(...)\n"), out("TestB", "\t/ws/p/bank.go:14 +0x30\n"),
 		out("TestB", "p_test.TestB(0x1?)\n"), out("TestB", "\t/ws/p/tests/b_test.go:9 +0x2c\n"),
 		out("TestB", "testing.tRunner(0x1, 0x2)\n"), out("TestB", "\t/go/src/testing/testing.go:1 +0x1\n"),
 		end("fail", "TestB"), testEvent{Action: "fail", Package: "p"})
-	var stderr bytes.Buffer
-	r.translator.conclude(&stderr)
-	want := "tests/b_test.go:9 in TestB\nbank.go:14 in Bank.Deposit\npanic: boom [recovered]\n"
-	if stderr.String() != want {
-		t.Errorf("stderr %q", stderr.String())
+	failure := r.result(t, "p_test.go::TestB")["error"].(map[string]any)
+	if failure["trace"] != "tests/b_test.go:9 in TestB\nbank.go:14 in Bank.Deposit" {
+		t.Errorf("error %v", failure)
 	}
 }

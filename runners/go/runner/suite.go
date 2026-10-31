@@ -311,7 +311,7 @@ func (r *suiteRequest) overlay() (string, error) {
 }
 
 // runSuiteJob reports every test of the project (docs/specs/runners.md#go-project-jobs). It
-// returns false when a test crashed its test binary: the runner then exits without bye.
+// returns false when a test never ended: the runner then exits without bye.
 func runSuiteJob(j *job, events *writer, stderr io.Writer) bool {
 	events.jobStart(j.JobID)
 	tests, err := scanProject(j.Root, excluded(j.Exclude))
@@ -339,20 +339,36 @@ func runSuiteJob(j *job, events *writer, stderr io.Writer) bool {
 	return translator.conclude(stderr)
 }
 
+// runEach runs the request's `go test` runs, then each package whose test binary ended early again
+// without the tests reported so far, until none ends early: every run reports the test it ended
+// in, so each package runs at most once per top-level test.
 func runEach(request *suiteRequest, tests *projectTests, overlay string, t *translator) error {
-	for _, run := range request.runs(tests) {
-		arguments := []string{"test", "-json", "-count=1", "-timeout=0"}
-		if overlay != "" {
-			arguments = append(arguments, "-overlay="+overlay)
+	runs := request.runs(tests)
+	for len(runs) > 0 {
+		for _, run := range runs {
+			if err := runGoTest(request, overlay, run, t); err != nil {
+				return err
+			}
 		}
-		arguments = append(append(arguments, request.flags(run.skip, "")...), run.patterns...)
-		command := exec.Command("go", arguments...)
-		command.Dir = request.root
-		if err := follow(command, t); err != nil {
-			return err
+		runs = nil
+		for _, importPath := range t.takeReruns() {
+			directory := tests.directory(importPath)
+			skip := append(slices.Clone(request.skipIn[directory]), t.reportedTops[importPath]...)
+			runs = append(runs, goTestRun{patterns: []string{packagePattern(directory)}, skip: skip})
 		}
 	}
 	return nil
+}
+
+func runGoTest(request *suiteRequest, overlay string, run goTestRun, t *translator) error {
+	arguments := []string{"test", "-json", "-count=1", "-timeout=0"}
+	if overlay != "" {
+		arguments = append(arguments, "-overlay="+overlay)
+	}
+	arguments = append(append(arguments, request.flags(run.skip, "")...), run.patterns...)
+	command := exec.Command("go", arguments...)
+	command.Dir = request.root
+	return follow(command, t)
 }
 
 // follow runs a command whose standard output is `go test -json` events; an error when it failed

@@ -17,8 +17,8 @@ import (
 // test's case_start and case_result are written together once it ends. When no event comes for
 // quietGap, the earliest started test still running is named in progress with case_start, so the
 // CLI's hang guard times it from there; results that end meanwhile wait for its own. A test binary
-// that ends without its closing PASS or FAIL line crashed: the runner reports the crash on its
-// culprit by ending the protocol with that test in progress.
+// that ends without its closing PASS or FAIL line (a panic, os.Exit, a fatal runtime error) is an
+// error of the test it ended in, and its package runs again without the tests reported so far.
 
 const (
 	statusFailed  = "failed"
@@ -29,8 +29,10 @@ const (
 	compileErrorType = "CompileError"
 	// binaryExitedType is a test binary that ended outside any test.
 	binaryExitedType = "TestBinaryExited"
-	idSeparator      = "::"
-	crashTextLines   = 30
+	// exitType is a test that ended its test binary without a panic: os.Exit, log.Fatal.
+	exitType       = "exit"
+	idSeparator    = "::"
+	crashTextLines = 30
 )
 
 // testEvent is one line of `go test -json` (go doc cmd/test2json). OutputType is left out: older
@@ -98,21 +100,19 @@ type packageRun struct {
 	importPath string
 	tests      map[string]*runningTest
 	output     []string
-	// closed is set by the test binary's own closing PASS or FAIL line: it did not crash.
+	// closed is set by the test binary's own closing PASS or FAIL line: it did not end early.
 	closed bool
-	// panicked are failed tests whose output holds a panic, held until the package ends: a
-	// crash, unless the binary went on to close normally.
+	// panicked are failed tests whose output holds a panic, held until the package ends: the
+	// binary ended in them, unless it went on to close normally.
 	panicked []*runningTest
 }
 
 type readyResult struct {
 	id     string
 	result suiteResult
-}
-
-type crashReport struct {
-	id   string
-	text string
+	// pkg and top are the import path and the top-level test of a test's result; top is empty
+	// for a package's.
+	pkg, top string
 }
 
 // translator turns the events of one or more `go test -json` runs into the job's events.
@@ -129,7 +129,10 @@ type translator struct {
 	seq        int
 	ready      []readyResult
 	inProgress *runningTest
-	crash      *crashReport
+	// reruns are the packages whose test binary ended early, to run again.
+	reruns map[string]bool
+	// reportedTops are the top-level tests reported, by import path.
+	reportedTops map[string][]string
 	// sawPackage is set once any package started, built or failed to build.
 	sawPackage bool
 }
@@ -140,7 +143,8 @@ func newTranslator(jobID, root string, events *writer, names testNames, skip []s
 		reported[id] = true
 	}
 	return &translator{jobID: jobID, root: root, events: events, names: names, reported: reported,
-		packages: map[string]*packageRun{}, builds: map[string][]string{}, failed: map[string]bool{}}
+		packages: map[string]*packageRun{}, builds: map[string][]string{}, failed: map[string]bool{},
+		reruns: map[string]bool{}, reportedTops: map[string][]string{}}
 }
 
 // follow handles the lines of one `go test -json` run until they end, naming a test in progress
@@ -248,17 +252,17 @@ func (t *translator) testEnd(e testEvent) {
 	switch e.Action {
 	case "pass":
 		text := strings.Join(lines, "")
-		t.queue(test.id, suiteResult{status: statusOK, durationNS: duration,
+		t.queueTest(test, suiteResult{status: statusOK, durationNS: duration,
 			stdout: truncated([]byte(text), len(text))})
 	case "skip":
-		t.queue(test.id, suiteResult{status: statusSkipped, durationNS: duration,
+		t.queueTest(test, suiteResult{status: statusSkipped, durationNS: duration,
 			message: messageOf(lines, "skipped")})
 	default:
 		if panicLine(lines) != "" {
 			test.pkg.panicked = append(test.pkg.panicked, test)
 			return
 		}
-		t.queue(test.id, failure(test, duration))
+		t.queueTest(test, failure(test, duration))
 	}
 }
 
@@ -271,22 +275,23 @@ func (t *translator) packageEnd(e testEvent) {
 	p := t.pkg(e.Package)
 	switch {
 	case e.FailedBuild != "":
-		t.queue(p.importPath, compileError(t.builds[e.FailedBuild]))
+		t.queue(readyResult{id: p.importPath, pkg: p.importPath, result: compileError(t.builds[e.FailedBuild])})
 		delete(t.failed, e.FailedBuild)
 	case e.Action == "skip":
 	case !p.closed:
-		t.crashed(p)
+		t.ended(p)
 	default:
 		for _, test := range p.panicked {
-			t.queue(test.id, failure(test, 0))
+			t.queueTest(test, failure(test, 0))
 		}
 	}
 	p.panicked = nil
 }
 
-// crashed reports a test binary that ended early on its culprit: the test named in progress if it
-// was there, else the test that panicked, else the one still running. Other panics are failures.
-func (t *translator) crashed(p *packageRun) {
+// ended reports a test binary that ended early as an error of its culprit: the test named in
+// progress if it was there, else the test that panicked, else the one still running. Other panics
+// are failures. The package runs again without the tests reported so far.
+func (t *translator) ended(p *packageRun) {
 	culprit := t.inProgress
 	if culprit == nil || culprit.pkg != p || culprit.done && !contains(p.panicked, culprit) {
 		culprit = nil
@@ -299,18 +304,29 @@ func (t *translator) crashed(p *packageRun) {
 	}
 	for _, test := range p.panicked {
 		if test != culprit {
-			t.queue(test.id, failure(test, 0))
+			t.queueTest(test, failure(test, 0))
 		}
 	}
 	if culprit == nil {
 		message := messageOf(unframed(p.output), "the test binary ended outside any test")
-		t.queue(p.importPath, suiteResult{status: statusError,
-			err: &userError{Type: binaryExitedType, Message: message}})
+		t.queue(readyResult{id: p.importPath, pkg: p.importPath, result: suiteResult{
+			status: statusError, err: &userError{Type: binaryExitedType, Message: message}}})
 		return
 	}
-	if t.crash == nil {
-		t.crash = &crashReport{id: culprit.id, text: crashText(culprit, t.root)}
+	culprit.done = true
+	t.queueTest(culprit, binaryEnded(culprit, t.root))
+	t.reruns[p.importPath] = true
+}
+
+// takeReruns are the packages to run again, in order; it forgets them.
+func (t *translator) takeReruns() []string {
+	packages := make([]string, 0, len(t.reruns))
+	for importPath := range t.reruns {
+		packages = append(packages, importPath)
 	}
+	slices.Sort(packages)
+	t.reruns = map[string]bool{}
+	return packages
 }
 
 func contains(tests []*runningTest, wanted *runningTest) bool {
@@ -353,8 +369,11 @@ func (t *translator) quiet() {
 	}
 }
 
-func (t *translator) queue(id string, result suiteResult) {
-	t.ready = append(t.ready, readyResult{id: id, result: result})
+func (t *translator) queue(ready readyResult) { t.ready = append(t.ready, ready) }
+
+func (t *translator) queueTest(test *runningTest, result suiteResult) {
+	top, _, _ := strings.Cut(test.name, "/")
+	t.queue(readyResult{id: test.id, result: result, pkg: test.pkg.importPath, top: top})
 }
 
 // pump writes the results that are ready: the one in progress first, the others only when no
@@ -370,41 +389,43 @@ func (t *translator) pump() {
 		if index < 0 {
 			return
 		}
-		t.events.suiteResult(t.jobID, t.ready[index].id, t.ready[index].result)
-		t.reported[t.ready[index].id] = true
+		t.write(t.ready[index])
 		t.ready = append(t.ready[:index], t.ready[index+1:]...)
 		t.inProgress = nil
 	}
 	for _, ready := range t.ready {
 		if !t.reported[ready.id] {
 			t.events.caseStart(t.jobID, ready.id)
-			t.events.suiteResult(t.jobID, ready.id, ready.result)
-			t.reported[ready.id] = true
+			t.write(ready)
 		}
 	}
 	t.ready = t.ready[:0]
 }
 
+func (t *translator) write(ready readyResult) {
+	t.events.suiteResult(t.jobID, ready.id, ready.result)
+	t.reported[ready.id] = true
+	if ready.top != "" {
+		t.reportedTops[ready.pkg] = appendOnce(t.reportedTops[ready.pkg], ready.top)
+	}
+}
+
 // endRun reports the packages whose build failed with no package event to say so.
 func (t *translator) endRun() {
 	for importPath := range t.failed {
-		t.queue(bareImportPath(importPath), compileError(t.builds[importPath]))
+		bare := bareImportPath(importPath)
+		t.queue(readyResult{id: bare, pkg: bare, result: compileError(t.builds[importPath])})
 	}
 	t.failed = map[string]bool{}
 	t.pump()
 }
 
-// conclude ends the job: with job_end, or, after a crash, with the culprit in progress and the
-// crash's output on stderr, for the CLI to report and restart without it. It returns false when
-// the runner must exit without bye.
+// conclude ends the job with job_end; or, when the test in progress never ended (`go test` itself
+// was ended), it leaves that test in progress with its output on stderr, for the CLI to report as a
+// crash, and returns false: the runner exits without bye.
 func (t *translator) conclude(stderr io.Writer) bool {
 	if t.inProgress != nil {
 		fmt.Fprint(stderr, crashText(t.inProgress, t.root))
-		return false
-	}
-	if t.crash != nil {
-		t.events.caseStart(t.jobID, t.crash.id)
-		fmt.Fprint(stderr, t.crash.text)
 		return false
 	}
 	t.events.jobEnd(t.jobID)
@@ -459,6 +480,31 @@ func panicLine(lines []string) string {
 		}
 	}
 	return ""
+}
+
+// binaryEnded is the error of a test its test binary ended in: a panic or a fatal runtime error,
+// with the frames of the project's files as its trace, or an exit; what the test printed before is
+// its output.
+func binaryEnded(test *runningTest, root string) suiteResult {
+	lines := unframed(test.output)
+	why := panicLine(lines)
+	var printed []string
+	for _, line := range lines {
+		if why != "" && strings.HasPrefix(line, why) {
+			break
+		}
+		printed = append(printed, line)
+	}
+	stdout := strings.Join(printed, "")
+	failure := &userError{Type: exitType,
+		Message: fmt.Sprintf("the test binary ended during %s: os.Exit or log.Fatal ends it", test.name)}
+	if why != "" {
+		kind, message, _ := strings.Cut(why, ": ")
+		message, _, _ = strings.Cut(message, " [recovered")
+		failure = &userError{Type: kind, Message: message,
+			Trace: strings.Join(projectFrames(lines, root), "\n")}
+	}
+	return suiteResult{status: statusError, err: failure, stdout: truncated([]byte(stdout), len(stdout))}
 }
 
 // crashText is why the test binary ended, closing what the test printed before: the panic, after
