@@ -9,8 +9,8 @@ import type { Editor } from "../editor.ts";
 import type { PageContext } from "./context.ts";
 import { h } from "./dom.ts";
 import { EditorFile, markTab } from "./editorFile.ts";
-import { confirmAction } from "./fileQuestions.ts";
 import { AttemptFiles } from "./files.ts";
+import { confirmLazily } from "./lazy.ts";
 import { isSaveShortcut, saveShortcutLabel, trackUnsaved } from "./save.ts";
 import { failure, loading } from "./states.ts";
 import type { FileDocument, Preferences } from "./types.ts";
@@ -226,7 +226,7 @@ export class EditorTabs {
   /** Closes the tab, once its unsaved changes, if any, may go. */
   async #close(path: string): Promise<void> {
     if (this.isModified(path)) {
-      const close = await confirmAction({
+      const close = await confirmLazily({
         title: "Close with unsaved changes?",
         message: `${path} has changes the page has not saved. Closing its tab loses them.`,
         action: "Close and lose them",

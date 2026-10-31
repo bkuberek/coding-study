@@ -2,7 +2,8 @@
 the problem list, open a project problem with its statement, resume its attempt, open a file of
 its tree in the editor, edit it and save it with Cmd or Ctrl-S, see its state turn `modified`,
 restore it from the tree and see it `unchanged`, run its tests and see their rows while the run goes
-on, cancel that run, and run the tests to their end, under the page's Content Security Policy.
+on, cancel that run, run the tests to their end, and name a new file in the tree's dialog, under the
+page's Content Security Policy.
 
 The workspace shares the session's practice workspace's toolchains, so the project's suite runs
 with the real pytest. Playwright is in the optional `browser` dependency group: `uv sync --group
@@ -28,6 +29,7 @@ sync_api = pytest.importorskip("playwright.sync_api", reason="Playwright is not 
 PROJECT = "bank-project-python"
 FILE = "bank/bank.py"
 TYPED = "# saved from the page"
+CREATED = "bank/scratch.py"
 WAIT_MS = 60_000
 FILE_BUTTON = f"button.tree-file[data-path='{FILE}']"
 OPEN_EDITOR = ".panel:not([hidden]) .cm-content"
@@ -90,6 +92,7 @@ class Visit:
     rows_while_running: list[str] = field(default_factory=list[str])
     cancelled: str = ""
     finished: str = ""
+    tree_after_create: list[str] = field(default_factory=list[str])
     errors: list[str] = field(default_factory=list[str])
 
 
@@ -144,6 +147,7 @@ def visit(server: RunningServer, workspace: Path) -> Visit:
         page.click(".run-button.primary")
         finished = ".result-summary-text:has-text('passed')"
         seen.finished = page.wait_for_selector(finished, timeout=RUN_WAIT_MS).inner_text()
+        _create_a_file(page, seen)
         browser.close()
     return seen
 
@@ -164,10 +168,22 @@ def _restore(page: BrowserPage, seen: Visit) -> None:
     page.focus(FILE_BUTTON)
     page.keyboard.press("Shift+F10")
     page.click(".tree-menu [role=menuitem]:has-text('Restore')")
-    page.click("dialog.file-dialog button.danger")
+    page.click("dialog.sheet button.danger")
     page.wait_for_selector(f"{FILE_BUTTON}:not(:has(.badge))")
     seen.restored_badges = page.locator(f"{FILE_BUTTON} .badge").count()
     seen.restored_editor = page.locator(OPEN_EDITOR).inner_text()
+
+
+def _create_a_file(page: Any, seen: Visit) -> None:
+    """Types a name in the dialog the tree's New file opens, and reads the tree once it lists it."""
+    page.click("button.tree-tool[title='New file']")
+    page.wait_for_selector("dialog.sheet[open] input")
+    page.keyboard.type(CREATED)
+    page.keyboard.press("Enter")
+    page.wait_for_selector(f"button.tree-file[data-path='{CREATED}']")
+    seen.tree_after_create = page.locator("button.tree-file").evaluate_all(
+        "buttons => buttons.map(button => button.dataset.path)"
+    )
 
 
 def _run_and_cancel(page: Any, slow_test: Path, seen: Visit) -> None:
@@ -236,6 +252,10 @@ def test_a_cancelled_run_ends_interrupted(visit):
 
 def test_a_run_ends_with_the_reports_summary(visit):
     assert visit.finished.startswith("0/2 passed · 2 errors · total ")
+
+
+def test_a_new_file_named_in_the_dialog_shows_in_the_tree(visit):
+    assert CREATED in visit.tree_after_create
 
 
 def test_the_page_logs_no_error_under_its_content_security_policy(visit):

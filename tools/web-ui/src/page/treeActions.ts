@@ -6,8 +6,7 @@
  */
 
 import { h } from "./dom.ts";
-import type { NameField } from "./fileDialogs.ts";
-import { askNames, confirmAction } from "./fileQuestions.ts";
+import { askNames, confirmAction, type NameField } from "./dialogs.ts";
 import type { MenuItem, TreeTabs } from "./fileTreePanel.ts";
 import { baseName, type FileScope, joinPath, nameIssue, parentOf } from "./fileRules.ts";
 import { originText } from "./format.ts";

@@ -7,7 +7,7 @@
 
 import { confirmed } from "./confirmation.ts";
 import type { PageContext } from "./context.ts";
-import { confirmDialog, openSheet } from "./dialogs.ts";
+import { confirmAction, openSheet } from "./dialogs.ts";
 import { h, rendered } from "./dom.ts";
 import { SOLUTION_COMMAND } from "./solution.ts";
 import { failure, loading } from "./states.ts";
@@ -85,7 +85,7 @@ function solutionPane(context: PageContext, problem: ProblemDocument): HTMLEleme
     try {
       const send = (confirm: boolean) =>
         context.api.post<SolutionDocument>(`/api/v1/problems/${encodeURIComponent(problem.slug)}/solution`, solutionBody(selection(), confirm));
-      const document = await confirmed(send, (question) => confirmDialog(question, "Reveal"));
+      const document = await confirmed(send, (message) => confirmAction({ title: "confirm", message, action: "Reveal", destructive: false }));
       pane.replaceChildren(document === null ? h("p", { class: "quiet" }, "not revealed") : shown(document));
       context.shell.announce(document === null ? "not revealed" : `solution of ${problem.slug} shown`);
     } catch (error) {

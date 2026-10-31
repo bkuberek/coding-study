@@ -4,6 +4,7 @@
  */
 
 import type { PageContext } from "./context.ts";
+import type { Confirmation } from "./dialogs.ts";
 import { messageOf } from "./states.ts";
 
 /** Runs `open` with the module `load` fetches; a failed fetch is announced instead. */
@@ -11,6 +12,11 @@ export function openLazily<Module>(context: PageContext, load: () => Promise<Mod
   load()
     .then(open)
     .catch((error: unknown) => context.shell.announce(`could not open: ${messageOf(error)}`));
+}
+
+/** `confirmAction` of `dialogs.ts`, which is fetched the first time a question is asked. */
+export async function confirmLazily(confirmation: Confirmation): Promise<boolean> {
+  return (await import("./dialogs.ts")).confirmAction(confirmation);
 }
 
 /** The module `load` fetches, or null when the fetch failed, which `announce` says. */

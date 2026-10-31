@@ -1,1 +1,0 @@
-import{f as t}from"./chunk-LA3PBB42.js";function l(o,e,n){e().then(n).catch(r=>o.shell.announce(`could not open: ${t(r)}`))}async function d(o,e){try{return await e()}catch(n){return o(`could not load: ${t(n)}`),null}}export{l as a,d as b};

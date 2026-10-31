@@ -6,7 +6,7 @@
 
 import { confirmed } from "./confirmation.ts";
 import type { Cleanup, PageContext } from "./context.ts";
-import { confirmDialog } from "./dialogs.ts";
+import { confirmAction } from "./dialogs.ts";
 import { command, h } from "./dom.ts";
 import { solveTime } from "./format.ts";
 import { problemHash } from "./routes.ts";
@@ -232,6 +232,6 @@ async function importFile(context: PageContext, file: File): Promise<Record<stri
     throw new Error(`${file.name} is not JSON`);
   }
   const send = (confirm: boolean) => context.api.post<{ imported: Record<string, number> }>("/api/v1/progress/import", { confirm, export: document });
-  const answer = await confirmed(send, (question) => confirmDialog(question, "Import"));
+  const answer = await confirmed(send, (message) => confirmAction({ title: "confirm", message, action: "Import", destructive: false }));
   return answer?.imported ?? null;
 }

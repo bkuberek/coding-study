@@ -1,6 +1,6 @@
 /*
  * Saving and managing files (docs/specs/web-ui.md#attempt-view): the unsaved dot on a tab, the
- * banners above an editor, and the dialogs that ask for a name or a confirmation. A conflict reads
+ * banners above an editor, and the fields of the dialog that asks for names. A conflict reads
  * like a warning strip taped over the sheet: a hatched edge in the warning hue, never colour alone.
  */
 
@@ -259,58 +259,10 @@
   font-size: var(--text-xs);
 }
 
-/* dialogs */
+/* the dialogs that ask for names (the sheet is flows.css) */
 
-.file-dialog {
-  width: min(480px, calc(100vw - 32px));
-  padding: 0;
-  border: 1px solid var(--rule);
-  border-top: 3px solid var(--accent);
-  border-radius: var(--radius);
-  background: var(--paper-raised);
-  color: var(--ink);
-  box-shadow: 0 24px 60px rgb(0 0 0 / 0.28);
-}
-
-.file-dialog::backdrop {
-  background: rgb(20 22 26 / 0.45);
-  backdrop-filter: blur(1px);
-}
-
-.file-dialog form {
-  display: grid;
-  gap: 12px;
-  padding: 18px 20px 16px;
-}
-
-.file-dialog[aria-busy="true"] form {
+.sheet[aria-busy="true"] form {
   cursor: progress;
-}
-
-.dialog-title {
-  font-size: var(--text-l);
-}
-
-.dialog-title::before {
-  content: "❯ ";
-  color: var(--accent);
-}
-
-.dialog-message,
-.dialog-command {
-  margin: 0;
-}
-
-.dialog-field {
-  display: grid;
-  gap: 4px;
-}
-
-.dialog-label {
-  color: var(--ink-soft);
-  font-size: var(--text-xs);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .dialog-input {
@@ -347,12 +299,6 @@
   margin: 0;
   color: var(--fail);
   font-size: var(--text-s);
-}
-
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
 }
 
 .button.danger {

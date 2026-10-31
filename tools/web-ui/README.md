@@ -51,19 +51,19 @@ Sizes as of the current lockfile, gzip at level 9:
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 87.5 | 28.8 |
-| Every JavaScript and CSS file but Vim | 934.9 | 332.9 |
-| The editor before any language: the page, the editor and the core | 490.6 | 162.6 |
-| A Python file | 561.0 | 189.5 |
-| A TypeScript or JavaScript file, the largest grammar | 599.5 | 203.1 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 86.7 | 28.7 |
+| Every JavaScript and CSS file but Vim | 933.5 | 332.5 |
+| The editor before any language: the page, the editor and the core | 489.8 | 162.5 |
+| A Python file | 560.2 | 189.4 |
+| A TypeScript or JavaScript file, the largest grammar | 598.8 | 203.0 |
 | Vim keybindings, added on top | 119.7 | 38.2 |
-| The Mock and Progress views together, each a chunk fetched when it first opens | 9.4 | 4.1 |
+| The Mock and Progress views together, each a chunk fetched when it first opens | 9.5 | 4.2 |
 | The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 8.2 | 3.9 |
 | The run session, fetched when a run first starts or shows: streaming and drawing it, Cancel, diagnostics | 17.8 | 6.6 |
 | The Run options form, fetched when it first opens | 3.2 | 1.4 |
 | The job panel for Bench, fetched when Bench first starts (Health fetches it with its view) | 3.4 | 1.6 |
-| The file tree's menu and actions, fetched when a menu first opens or an action first runs | 4.1 | 1.8 |
-| The Start, Done, Solution and file dialogs, each fetched when first used (with the chunks they share) | 13.0 | 6.2 |
+| The file tree's menu and actions, fetched when a menu first opens or an action first runs (with the dialog module) | 6.7 | 3.0 |
+| The dialog module (sheets, confirmations, questions that ask for names) and the Start, Done and Solution dialogs, each fetched when first used | 12.1 | 5.8 |
 
 The budget (NFR-12) is 1 MB raw and 350 KB gzip for the whole bundle without Vim, the page's code included, and 600 KB raw loaded before a file of one language is editable. What a view or a control needs only when it is used is a chunk of its own (the rows above), so the page, the largest grammar and the editor stay under the 600 KB; `cli/tests/entrypoints/web/test_bundle_budget.py` holds the committed files to both limits. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
 
