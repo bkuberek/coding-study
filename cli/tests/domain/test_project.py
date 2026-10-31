@@ -25,17 +25,17 @@ from coding_study.domain.project import (
 )
 from tests.project_builders import BANK, CREATE_ACCOUNT, DEPOSIT, TRANSFER, method, project_meta
 
-WITHOUT_PROJECTS = (Language.RUST,)
 JVM = (Language.JAVA, Language.KOTLIN)
 
 
-def test_project_problems_exist_in_every_language_but_rust():
+def test_project_problems_exist_in_every_language():
     assert PROJECT_LANGUAGES == (
         Language.PYTHON,
         Language.TYPESCRIPT,
         Language.JAVA,
         Language.KOTLIN,
         Language.GO,
+        Language.RUST,
     )
 
 
@@ -156,6 +156,36 @@ def test_a_jvm_entry_is_the_source_file_of_its_class(language, expected):
     assert entry_files("com.bank.Bank", language) == expected
 
 
+@pytest.mark.parametrize("entry", ["bank", "bank_app", "b2", "my_bank_3"])
+def test_a_rust_entry_is_a_crate_name(entry):
+    assert entry_issue(entry, Language.RUST) is None
+
+
+@pytest.mark.parametrize(
+    "entry", ["bank-app", "Bank", "_bank", "1bank", "bank.rs", "src/lib.rs", "bank::Bank", ""]
+)
+def test_a_rust_entry_that_is_not_a_crate_name_is_rejected(entry):
+    assert entry_issue(entry, Language.RUST) == (
+        f'"{entry}" is not a crate name such as bank: lowercase letters, digits and _'
+    )
+
+
+@pytest.mark.parametrize("entry", ["fn", "loop", "type", "self", "crate"])
+def test_a_rust_entry_that_is_a_keyword_is_rejected(entry):
+    assert entry_issue(entry, Language.RUST) == f'"{entry}" is a Rust keyword'
+
+
+@pytest.mark.parametrize("entry", ["std", "core", "test", "user", "cs_runner", "rust_decimal"])
+def test_a_rust_entry_that_names_a_crate_of_the_build_is_rejected(entry):
+    assert entry_issue(entry, Language.RUST) == (
+        f'"{entry}" is a crate the build or the tests already name'
+    )
+
+
+def test_a_rust_entry_is_the_library_root_of_its_crate():
+    assert entry_files("bank", Language.RUST) == ("src/lib.rs",)
+
+
 def test_a_python_entry_is_a_module_file_or_a_package():
     assert entry_files("bank.bank", Language.PYTHON) == ("bank/bank.py", "bank/bank/__init__.py")
 
@@ -173,6 +203,7 @@ def test_a_typescript_entry_is_its_own_file():
         (Language.PYTHON, "tests/test_level_2.py"),
         (Language.TYPESCRIPT, "tests/level-2.test.ts"),
         (Language.GO, "tests/level_2_test.go"),
+        (Language.RUST, "tests/level_2.rs"),
     ],
 )
 def test_each_level_has_one_generated_test_file(language, expected):
@@ -195,6 +226,16 @@ def test_generated_test_files_go_to_the_project_tests_directory():
     assert level_test_file(project, Language.PYTHON, 1) == "checks/levels/test_level_1.py"
 
 
+def test_rust_tests_go_to_tests():
+    assert level_tests_directory_issue("tests", Language.RUST) is None
+
+
+def test_rust_tests_anywhere_else_are_rejected():
+    assert level_tests_directory_issue("checks", Language.RUST) == (
+        '"checks" is not tests, where Cargo finds integration tests'
+    )
+
+
 @pytest.mark.parametrize(
     ("language", "name"),
     [
@@ -203,6 +244,7 @@ def test_generated_test_files_go_to_the_project_tests_directory():
         (Language.GO, "level_7_test.go"),
         (Language.JAVA, "Level12Test.java"),
         (Language.KOTLIN, "Level3Test.kt"),
+        (Language.RUST, "level_4.rs"),
     ],
 )
 def test_the_level_test_pattern_matches_a_generated_file_of_any_level(language, name):
@@ -282,31 +324,6 @@ def test_jvm_tests_are_in_the_package_their_directory_names(language, tests):
     assert project_tests_package(Project("com.bank.Bank", tests), language) == "com.bank"
 
 
-@pytest.mark.parametrize(
-    "use",
-    [
-        lambda language: entry_issue("bank.bank", language),
-        lambda language: entry_files("bank.bank", language),
-        lambda language: level_test_file(Project("bank.bank"), language, 1),
-        level_test_pattern,
-        lambda language: method_text(DEPOSIT, language),
-        lambda language: level_tests_directory_issue("tests", language),
-    ],
-    ids=[
-        "entry_issue",
-        "entry_files",
-        "level_test_file",
-        "level_test_pattern",
-        "method_text",
-        "level_tests_directory_issue",
-    ],
-)
-@pytest.mark.parametrize("language", WITHOUT_PROJECTS)
-def test_other_languages_have_no_project_problems_yet(use, language):
-    with pytest.raises(ValueError, match=f"project problems are not yet supported in {language}"):
-        use(language)
-
-
 # the problem's language
 
 
@@ -320,13 +337,6 @@ def test_a_project_problem_with_two_languages_has_no_language_of_its_own():
         project_language(meta)
 
 
-@pytest.mark.parametrize("language", WITHOUT_PROJECTS)
-def test_a_project_problem_in_another_language_has_no_language_of_its_own(language):
-    meta = replace(project_meta(), languages=(language,))
-    with pytest.raises(ValueError, match=f"not yet supported in {language}"):
-        project_language(meta)
-
-
 @pytest.mark.parametrize(
     ("language", "expected"),
     [
@@ -335,6 +345,7 @@ def test_a_project_problem_in_another_language_has_no_language_of_its_own(langua
         (Language.GO, "CreateAccount(timestamp int64, accountId string) bool"),
         (Language.JAVA, "boolean createAccount(long timestamp, String accountId)"),
         (Language.KOTLIN, "createAccount(timestamp: Long, accountId: String): Boolean"),
+        (Language.RUST, "create_account(&mut self, timestamp: i64, account_id: String) -> bool"),
     ],
 )
 def test_a_method_reads_as_its_language_declares_it(language, expected):
@@ -406,6 +417,23 @@ def test_a_void_method_has_no_return_type_in_kotlin():
     assert method_text(method("reset", 1, "timestamp: long"), Language.KOTLIN) == (
         "reset(timestamp: Long)"
     )
+
+
+@pytest.mark.parametrize(
+    ("returns", "rust"),
+    [
+        ("double", " -> f64"),
+        ("char", " -> char"),
+        ("decimal", " -> Decimal"),
+        ("date", " -> NaiveDate"),
+        ("list<string>", " -> Vec<String>"),
+        ("int[][]", " -> Vec<Vec<i32>>"),
+        ("void", ""),
+    ],
+)
+def test_a_rust_method_spells_its_types_as_the_rust_stub_does(returns, rust):
+    found = method("snapshot", 1, returns=returns)
+    assert method_text(found, Language.RUST) == f"snapshot(&mut self){rust}"
 
 
 def test_a_method_without_parameters_has_empty_parentheses():

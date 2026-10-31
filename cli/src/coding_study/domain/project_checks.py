@@ -36,6 +36,8 @@ from coding_study.domain.project import (
     NO_PROJECT_FILES,
     PATH_SEPARATOR,
     PROJECT_LANGUAGES,
+    RUST_SCALAR_CRATES,
+    RUST_VENDORED_CRATES,
     Project,
     ProjectFile,
     ProjectTree,
@@ -60,11 +62,14 @@ from coding_study.domain.type_dsl import (
     scalars_of,
 )
 from coding_study.domain.workspace_projects import (
+    CARGO_CONFIG_FILE,
+    CARGO_MANIFEST,
     GO_MODULE_FILE,
     GO_VENDORED_MODULES,
     GO_WORK_FILE,
     GO_WORK_SUM_FILE,
     GO_WORK_VERSION,
+    RUST_CARGO_CONFIG,
     go_module_file,
     go_vendored_replacement,
 )
@@ -87,6 +92,7 @@ CACHE_DIRECTORIES = frozenset(
     {
         *("__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", ".venv", "node_modules"),
         *("build", ".gradle", ".kotlin"),
+        "target",
     }
 )
 BUILD_OUTPUT_SUFFIXES = (".pyc", ".tsbuildinfo", ".class", ".jar")
@@ -94,7 +100,7 @@ LOCK_FILES = frozenset(
     {
         *("uv.lock", "poetry.lock", "pdm.lock", "Pipfile.lock"),
         *("package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock"),
-        *("bun.lock", "bun.lockb"),
+        *("bun.lock", "bun.lockb", "Cargo.lock"),
         "go.sum",
     }
 )
@@ -194,6 +200,18 @@ def _jvm_build(language: Language) -> str:
         case _:
             raise ValueError(f"{language} projects have no Gradle build")
 
+
+RUST_EDITION = "2021"
+RUST_VERSION = "1.80"
+"""The oldest Rust cstudy supports; clippy then flags APIs newer than it in the crate."""
+RUST_PACKAGE_TABLE = "package"
+RUST_DEPENDENCY_TABLES = ("dependencies", "dev-dependencies")
+RUST_PACKAGE_KEYS_REFUSED = ("build", "links", "workspace")
+"""A build script or a native library would run code at build time; a workspace key would move
+the crate into another workspace."""
+RUST_FILES_REFUSED = frozenset({"build.rs", "rust-toolchain", "rust-toolchain.toml"})
+"""At the starter's root: a build script runs code at build time, and a toolchain file would ask
+rustup for another toolchain than the workspace's."""
 
 type _Report = Callable[[str, str], None]
 """Reports a message on a path of the starter."""
@@ -467,6 +485,8 @@ class _Trees:
         elif language is not None and language in JVM_LANGUAGES:
             build_files = jvm_build_files(self._content.problem.meta.slug, language)
             _JvmStarter(self._error, starter, language).check(build_files)
+        elif language is Language.RUST:
+            _RustStarter(self._error, starter, self._content).check()
         self._generated_test_names(starter)
 
     def _error(self, path: str, message: str) -> None:
@@ -695,6 +715,114 @@ class _JvmStarter:
         for path in WRAPPER_SCRIPTS:
             if path in self._starter.paths:
                 self._report(path, "is not used: the workspace's jvm/gradlew builds the project")
+
+
+class _RustStarter:
+    """S15: a library crate of its own that builds offline from the vendored crates, with the
+    edition and the oldest Rust cstudy supports, and nothing that runs at build time or asks for
+    another toolchain."""
+
+    def __init__(self, report: _Report, starter: ProjectTree, content: ProjectContent) -> None:
+        self._report = report
+        self._starter = starter
+        self._content = content
+
+    def check(self) -> None:
+        self._manifest()
+        self._config()
+        for path in sorted(RUST_FILES_REFUSED & self._starter.paths):
+            message = "a project crate has no build script and uses the workspace's toolchain"
+            self._report(path, message)
+
+    def _manifest(self) -> None:
+        document = self._toml(CARGO_MANIFEST)
+        if document is None:
+            return
+        package = _table(document.get(RUST_PACKAGE_TABLE))
+        if package is None:
+            self._report(CARGO_MANIFEST, f"has no [{RUST_PACKAGE_TABLE}] table")
+            return
+        self._package(package)
+        allowed = {RUST_PACKAGE_TABLE, *RUST_DEPENDENCY_TABLES}
+        for name in document:
+            if name not in allowed:
+                self._report(
+                    CARGO_MANIFEST,
+                    f"has a [{name}] table: a project crate has only [package], [dependencies] "
+                    "and [dev-dependencies]",
+                )
+        for table in RUST_DEPENDENCY_TABLES:
+            self._dependencies(table, _table(document.get(table)) or {})
+        self._crates_of_the_signature(_table(document.get(RUST_DEPENDENCY_TABLES[0])) or {})
+
+    def _package(self, package: Mapping[str, object]) -> None:
+        well_formed = _well_formed_entry(self._content)
+        crate = package.get("name")
+        if well_formed is not None and crate != (entry := well_formed[0].entry):
+            self._report(CARGO_MANIFEST, f'names the crate "{crate}", not the entry {entry}')
+        if package.get("edition") != RUST_EDITION:
+            self._report(CARGO_MANIFEST, f'needs edition = "{RUST_EDITION}"')
+        if package.get("rust-version") != RUST_VERSION:
+            self._report(CARGO_MANIFEST, f'needs rust-version = "{RUST_VERSION}"')
+        for key in RUST_PACKAGE_KEYS_REFUSED:
+            if key in package:
+                self._report(CARGO_MANIFEST, f"[{RUST_PACKAGE_TABLE}] sets {key}")
+
+    def _dependencies(self, table: str, dependencies: Mapping[str, object]) -> None:
+        for crate, declared in dependencies.items():
+            expected = RUST_VENDORED_CRATES.get(crate)
+            if expected is None:
+                self._report(
+                    CARGO_MANIFEST,
+                    f"[{table}] lists {crate}: a project crate may use only the vendored "
+                    "rust_decimal and chrono",
+                )
+            elif declared != tomllib.loads(f"value = {expected}")["value"]:
+                self._report(
+                    CARGO_MANIFEST,
+                    f"[{table}] declares {crate} otherwise than the runner: {crate} = {expected}",
+                )
+
+    def _crates_of_the_signature(self, dependencies: Mapping[str, object]) -> None:
+        """The entry class declares the types of `decimal` and `date`, so the crate depends on
+        theirs."""
+        used = {
+            scalar
+            for declared in declared_types(self._content.problem.meta.signature)
+            for scalar in scalars_of(declared)
+        }
+        for scalar, crate in RUST_SCALAR_CRATES.items():
+            if scalar in used and crate not in dependencies:
+                message = f"the signature uses {scalar}: [dependencies] needs {crate}"
+                self._report(CARGO_MANIFEST, message)
+
+    def _config(self) -> None:
+        document = self._toml(CARGO_CONFIG_FILE, report_invalid=False)
+        if document is None:
+            return
+        if document != tomllib.loads(RUST_CARGO_CONFIG):
+            self._report(
+                CARGO_CONFIG_FILE,
+                "does not hold exactly the vendored source of "
+                "docs/specs/problem-format.md#rust-projects",
+            )
+
+    def _toml(self, path: str, *, report_invalid: bool = True) -> dict[str, object] | None:
+        """The parsed file; None, reported, when it is missing or not TOML (an invalid config is
+        reported as one that does not hold the vendored source)."""
+        file = self._starter.file(path)
+        if file is None:
+            self._report(path, "missing")
+            return None
+        if file.text is None:
+            return None
+        try:
+            return tomllib.loads(file.text)
+        except tomllib.TOMLDecodeError as error:
+            if report_invalid:
+                self._report(path, f"is not valid TOML: {error}")
+                return None
+            return {"invalid": str(error)}
 
 
 class _Documents:

@@ -4,7 +4,8 @@
 A new attempt copies the starter into `projects/<slug>/` without overwriting a file; a resumed
 attempt copies it only when the folder is missing, so a file you deleted or changed stays as it
 is. Both link the folder to the workspace's toolchain when the link is missing or dangles: a
-Python folder's `.venv` link, or a Go folder's own `go.work`, written when it is missing.
+Python folder's `.venv` link, or the file through which a folder reaches it, written when it is
+missing: a Go folder's own `go.work`, a Rust folder's `.cargo/config.toml`.
 `--fresh` and review attempts first archive the folder, without what tools wrote into it.
 """
 
@@ -48,7 +49,8 @@ def seed_project(workspace: Workspace, problem: Problem) -> SeededProject:
     """
     folder = project_folder(problem.meta.slug)
     copied = _copy_starter(workspace, problem, folder)
-    return SeededProject(folder, copied, _link(workspace, problem, folder))
+    linked = _link(workspace, problem, folder)
+    return SeededProject(folder, copied, linked)
 
 
 def resume_project(workspace: Workspace, problem: Problem) -> SeededProject:
@@ -58,7 +60,8 @@ def resume_project(workspace: Workspace, problem: Problem) -> SeededProject:
     """
     folder = project_folder(problem.meta.slug)
     copied = () if workspace.exists(folder) else _copy_starter(workspace, problem, folder)
-    return SeededProject(folder, copied, _link(workspace, problem, folder))
+    linked = _link(workspace, problem, folder)
+    return SeededProject(folder, copied, linked)
 
 
 def archive_project(workspace: Workspace, owner: Attempt) -> str | None:

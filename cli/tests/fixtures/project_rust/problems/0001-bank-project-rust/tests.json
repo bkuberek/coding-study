@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "level": 1, "ops": ["Bank", "createAccount", "createAccount", "deposit", "deposit"], "args": [[], [1, "ivy"], [2, "ivy"], [3, "ivy", 800], [4, "max", 50]], "expected": [null, true, false, 800, -1]},
+    {"id": "h1", "level": 1, "ops": ["Bank", "deposit"], "args": [[], [1, "ann", 5]], "expected": [null, -1]},
+    {"id": "h2", "level": 1, "ops": ["Bank", "createAccount", "deposit", "deposit"], "args": [[], [1, "bo"], [2, "bo", 10], [3, "bo", 15]], "expected": [null, true, 10, 25]},
+    {"id": "ex2", "visible": true, "level": 2, "ops": ["Bank", "createAccount", "createAccount", "deposit", "transfer", "transfer"], "args": [[], [1, "ivy"], [2, "leo"], [3, "ivy", 500], [4, "ivy", "leo", 200], [5, "ivy", "leo", 400]], "expected": [null, true, true, 500, 300, -1]},
+    {"id": "h3", "level": 2, "ops": ["Bank", "createAccount", "transfer"], "args": [[], [1, "ivy"], [2, "ivy", "zed", 1]], "expected": [null, true, -1]},
+    {"id": "h4", "level": 2, "ops": ["Bank", "createAccount", "deposit", "transfer"], "args": [[], [1, "ivy"], [2, "ivy", 9], [3, "ivy", "ivy", 4]], "expected": [null, true, 9, -1]}
+  ]
+}

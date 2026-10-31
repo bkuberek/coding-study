@@ -217,14 +217,6 @@ def test_a_project_problem_lists_exactly_one_language(bank):
     ]
 
 
-@pytest.mark.parametrize("language", [Language.RUST])
-def test_other_languages_have_no_project_problems_yet(bank, language):
-    problem = with_meta(bank, languages=(language,))
-    assert errors(content(problem)) == [
-        f"{META}: languages: project problems are not yet supported in {language}"
-    ]
-
-
 def test_the_entry_is_well_formed_for_the_language(bank):
     problem = with_meta(bank, project=Project("bank/bank.py"))
     assert errors(content(problem)) == [

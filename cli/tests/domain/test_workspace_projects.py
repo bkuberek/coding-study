@@ -80,7 +80,19 @@ def test_a_go_folder_gets_a_go_work_file_of_its_own():
     assert toolchain_files(Language.GO) == (ToolchainFile("go.work", "go 1.24\n\nuse .\n"),)
 
 
-@pytest.mark.parametrize("language", [Language.PYTHON, Language.TYPESCRIPT])
+def test_a_rust_folder_reaches_the_vendored_crates_through_its_cargo_config():
+    assert toolchain_files(Language.RUST) == (
+        ToolchainFile(
+            ".cargo/config.toml",
+            '[source.crates-io]\nreplace-with = "cstudy-vendor"\n\n[source.cstudy-vendor]\n'
+            'directory = "../../.cs/runtime/runners/rust/vendor"\n',
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "language", [Language.PYTHON, Language.TYPESCRIPT, Language.JAVA, Language.KOTLIN]
+)
 def test_other_folders_get_no_toolchain_file(language):
     assert toolchain_files(language) == ()
 
@@ -103,6 +115,9 @@ def test_other_folders_get_no_toolchain_file(language):
         "uv.lock",
         "go.work",
         "go.work.sum",
+        "target",
+        "target/debug/deps/bank-0123",
+        "Cargo.lock",
     ],
 )
 def test_the_venv_link_node_modules_caches_and_the_uv_lock_are_untracked(path):
@@ -141,6 +156,11 @@ def test_a_file_under_gradle_build_output_names_no_project():
         "docs/uv.lock",
         "go.mod",
         "tools/go.work",
+        "Cargo.toml",
+        ".cargo/config.toml",
+        "tests/level_1.rs",
+        "docs/Cargo.lock",
+        "targets/notes.md",
     ],
 )
 def test_everything_else_is_tracked(path):

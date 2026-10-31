@@ -21,11 +21,13 @@ __pycache__/
 .DS_Store
 
 # Project folders: .venv is a link to python/.venv, which `.venv/` (a directory) does not match;
-# a plain `uv run` in a folder writes uv.lock; `cstudy start` writes a Go folder's go.work
+# a plain `uv run` in a folder writes uv.lock; `cstudy start` writes a Go folder's go.work, and
+# the native `cargo test` writes Cargo.lock
 projects/*/.venv
 projects/*/uv.lock
 projects/*/go.work
 projects/*/go.work.sum
+projects/*/Cargo.lock
 
 # IntelliJ IDEA: commit .idea/misc.xml, .idea/gradle.xml and .idea/runConfigurations/ (written by
 # `cstudy ide`), not the per-user state

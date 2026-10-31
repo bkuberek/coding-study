@@ -38,6 +38,9 @@ TYPESCRIPT_PROJECT_PROBLEMS = (
 """A TypeScript project fixture problem: a starter whose entry imports a sibling file, and a
 reference overlay that adds one."""
 TYPESCRIPT_BANK_PROJECT = "0002-bank-project-typescript"
+RUST_PROJECT_PROBLEMS = Path(__file__).resolve().parent / "fixtures" / "project_rust" / "problems"
+"""A Rust project fixture problem: a crate's starter and a reference overlay over two modules."""
+RUST_BANK_PROJECT = "0001-bank-project-rust"
 FAKE_RUNNER_PROGRAM = (
     f'#!/bin/sh\nexec "{sys.executable}" "{Path(__file__).resolve().parent}'
     '/fixtures/fake_runner.py" "$@"\n'

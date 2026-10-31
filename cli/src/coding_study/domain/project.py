@@ -50,6 +50,32 @@ _GO_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _GO_PACKAGE_CLAUSE = re.compile(r"^package\s+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
 _PACKAGE_SEPARATOR = "."
 _JVM_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+RUST_LIBRARY_ROOT = "src/lib.rs"
+"""Where a Rust project's library crate starts, and where its entry class is public."""
+RUST_TESTS_DIRECTORY = "tests"
+"""Where Cargo finds integration tests, so where a Rust project's level tests go."""
+_RUST_CRATE_NAME = re.compile(r"[a-z][a-z0-9_]*")
+RUST_NAMED_CRATES = frozenset(
+    {
+        *("std", "core", "alloc", "proc_macro", "test"),
+        *("user", "cs_runner", "cs_support"),
+        *("rust_decimal", "chrono", "arrayvec", "num_traits", "autocfg"),
+    }
+)
+"""Crates the harness or a test already names: the standard library's, the bridge's alias of the
+project crate (`user`), the runner's and the vendored ones."""
+RUST_VENDORED_CRATES: Mapping[str, str] = {
+    "chrono": '{ version = "=0.4.45", default-features = false, features = ["std"] }',
+    "rust_decimal": '{ version = "=1.43.0", default-features = false, features = ["maths"] }',
+}
+"""The crates of `decimal` and `date`, vendored with the runner, and the only ones a Rust project
+may depend on: declared exactly as the runner declares them, so a project, the harness and the
+runner share one copy of each."""
+RUST_SCALAR_CRATES: Mapping[Scalar, str] = {
+    Scalar.DECIMAL: "rust_decimal",
+    Scalar.DATE: "chrono",
+}
+"""The vendored crate whose type a scalar is in Rust."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -401,6 +427,34 @@ def _go_level_tests_directory_issue(tests: str) -> str | None:
     return f'"{tests}" does not end in a Go package name such as tests'
 
 
+def _rust_entry_issue(entry: str) -> str | None:
+    if not _RUST_CRATE_NAME.fullmatch(entry):
+        return f'"{entry}" is not a crate name such as bank: lowercase letters, digits and _'
+    if entry in RESERVED_WORDS[Language.RUST]:
+        return f'"{entry}" is a Rust keyword'
+    if entry in RUST_NAMED_CRATES:
+        return f'"{entry}" is a crate the build or the tests already name'
+    return None
+
+
+def _rust_level_tests_directory_issue(tests: str) -> str | None:
+    """Cargo finds integration tests in `tests/` only."""
+    if tests == RUST_TESTS_DIRECTORY:
+        return None
+    return f'"{tests}" is not {RUST_TESTS_DIRECTORY}, where Cargo finds integration tests'
+
+
+def _rust_declaration(
+    name: str, params: tuple[tuple[str, ValueType], ...], returns: ReturnType
+) -> str:
+    """As the single-file stubs declare a method: `&mut self` first, no `->` for `void`."""
+    listed = ", ".join(
+        ("&mut self", *(f"{param}: {_rust_type(declared)}" for param, declared in params))
+    )
+    returned = _rust_type(returns)
+    return f"{name}({listed}) -> {returned}" if returned else f"{name}({listed})"
+
+
 _PYTHON_SCALARS: Mapping[Scalar, str] = {
     Scalar.INT: "int",
     Scalar.LONG: "int",
@@ -422,6 +476,16 @@ _TYPESCRIPT_SCALARS: Mapping[Scalar, str] = {
     Scalar.DATE: "string",
 }
 """A project folder cannot reach the runner's support module, so a date is its ISO string."""
+_RUST_SCALARS: Mapping[Scalar, str] = {
+    Scalar.INT: "i32",
+    Scalar.LONG: "i64",
+    Scalar.DOUBLE: "f64",
+    Scalar.BOOL: "bool",
+    Scalar.STRING: "String",
+    Scalar.CHAR: "char",
+    Scalar.DECIMAL: "Decimal",
+    Scalar.DATE: "NaiveDate",
+}
 
 
 _GO_SCALARS: Mapping[Scalar, str] = {
@@ -447,6 +511,19 @@ def _python_type(declared: ReturnType) -> str:
             return f"list[{_python_type(element)}]"
         case VoidType():
             return "None"
+
+
+def _rust_type(declared: ReturnType) -> str:
+    """As the Rust stubs spell it; empty for `void`, which a Rust method leaves out."""
+    match declared:
+        case ScalarType(scalar):
+            return _RUST_SCALARS[scalar]
+        case NodeType(kind):
+            return f"Option<Box<{kind}>>"
+        case ArrayType(element) | ListType(element):
+            return f"Vec<{_rust_type(element)}>"
+        case VoidType():
+            return ""
 
 
 def _typescript_type(declared: ReturnType) -> str:
@@ -631,9 +708,16 @@ _PROJECT_LANGUAGES: Mapping[Language, _ProjectLanguage | None] = {
         _Annotated(_go_type, " ", parameter_separator=" "),
         _go_level_tests_directory_issue,
     ),
-    Language.RUST: None,
+    Language.RUST: _ProjectLanguage(
+        _rust_entry_issue,
+        lambda _entry: (RUST_LIBRARY_ROOT,),
+        "level_",
+        ".rs",
+        _rust_declaration,
+        _rust_level_tests_directory_issue,
+    ),
 }
-"""None: not yet supported; Rust waits for spike K6 (ADR 0014)."""
+"""None: a language whose project problems are not yet supported."""
 PROJECT_LANGUAGES = tuple(language for language, found in _PROJECT_LANGUAGES.items() if found)
 """The languages a project problem may list."""
 

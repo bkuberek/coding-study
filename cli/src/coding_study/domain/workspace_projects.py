@@ -25,17 +25,19 @@ UNTRACKED_DIRECTORIES = frozenset(
     {
         *(layout.PYTHON_VENV, "node_modules", "__pycache__", ".pytest_cache", ".ruff_cache"),
         *("build", ".gradle", ".kotlin"),
+        "target",
     }
 )
-"""Untracked wherever they appear in a folder; the last three are what a Gradle build writes."""
+"""Untracked wherever they appear in a folder: `build`, `.gradle` and `.kotlin` are what a Gradle
+build writes, `target` what the native `cargo test` builds."""
 GO_MODULE_FILE = "go.mod"
 GO_WORK_FILE = "go.work"
 GO_WORK_SUM_FILE = "go.work.sum"
 GO_WORK_VERSION = "1.24"
 """The `go` line of a folder's `go.work`, and the one a Go starter's `go.mod` declares."""
-UNTRACKED_ROOT_FILES = frozenset({"uv.lock", GO_WORK_FILE, GO_WORK_SUM_FILE})
-"""Untracked at the root of a folder only: a plain `uv run` there writes a `uv.lock`, and
-`cstudy start` a Go folder's `go.work`."""
+UNTRACKED_ROOT_FILES = frozenset({"uv.lock", GO_WORK_FILE, GO_WORK_SUM_FILE, "Cargo.lock"})
+"""Untracked at the root of a folder only: a plain `uv run` there writes a `uv.lock`,
+`cstudy start` a Go folder's `go.work`, and the native `cargo test` a `Cargo.lock`."""
 GO_VENDORED_MODULES: Mapping[str, str] = {"github.com/shopspring/decimal": "v1.5.0"}
 """The modules a Go solution may import beyond the standard library, at their vendored versions:
 copies in the runner runtime, reached through `replace`, so nothing is downloaded
@@ -47,6 +49,22 @@ _GO_THIRD_PARTY = ".cs/runtime/runners/go/third_party"
 _GO_COMMENT = re.compile(r"//.*")
 _GO_BLOCK_END = ")"
 _GO_REPLACEMENT_ARROW = "=>"
+CARGO_MANIFEST = "Cargo.toml"
+"""A project folder holding one is a Rust project."""
+CARGO_CONFIG_FILE = ".cargo/config.toml"
+RUST_VENDOR_DIRECTORY = ".cs/runtime/runners/rust/vendor"
+"""The runtime's vendored crates, relative to the workspace root."""
+RUST_VENDORED_SOURCE = "cstudy-vendor"
+"""The name of the source that replaces crates.io, in a folder's config as in every build."""
+RUST_CARGO_CONFIG = f"""\
+[source.crates-io]
+replace-with = "{RUST_VENDORED_SOURCE}"
+
+[source.{RUST_VENDORED_SOURCE}]
+directory = "{_FOLDER_TO_WORKSPACE_ROOT}/{RUST_VENDOR_DIRECTORY}"
+"""
+"""A Rust folder's `.cargo/config.toml`: crates.io from the vendored crates, by a path relative
+to the folder, so rust-analyzer and the native `cargo test` build offline."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,9 +134,12 @@ def toolchain_link(language: Language) -> ToolchainLink | None:
 
 def toolchain_files(language: Language) -> tuple[ToolchainFile, ...]:
     """A Go folder holds a `go.work` of its own, so the workspace's root `go.work` never claims
-    it; the others need none."""
+    it; a Rust folder reaches the vendored crates through `.cargo/config.toml`; the others need
+    none."""
     if language is Language.GO:
         return (ToolchainFile(GO_WORK_FILE, f"go {GO_WORK_VERSION}\n\nuse .\n"),)
+    if language is Language.RUST:
+        return (ToolchainFile(CARGO_CONFIG_FILE, RUST_CARGO_CONFIG),)
     return ()
 
 

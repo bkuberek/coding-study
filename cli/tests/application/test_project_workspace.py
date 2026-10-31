@@ -22,7 +22,7 @@ from coding_study.domain.errors import ContentError, UsageError
 from coding_study.domain.problem import Language, Problem
 from coding_study.domain.project import ProjectFile, ProjectFiles, ProjectTree
 from tests.fakes import repository_root
-from tests.helpers import CATALOG_PROBLEMS, PROJECT_PROBLEMS
+from tests.helpers import CATALOG_PROBLEMS, PROJECT_PROBLEMS, RUST_PROJECT_PROBLEMS
 
 SLUG = "bank-project-python"
 FOLDER = f"projects/{SLUG}"
@@ -216,6 +216,64 @@ def test_a_resumed_attempt_recreates_a_dangling_link(workspace, problem):
     workspace.absolute(VENV_LINK).symlink_to("/moved/python/.venv")
     resume_project(workspace, problem)
     assert workspace.absolute(VENV_LINK).readlink() == VENV_TARGET
+
+
+# a Rust folder's vendored source
+
+RUST_FOLDER = "projects/bank-project-rust"
+CARGO_CONFIG = f"{RUST_FOLDER}/.cargo/config.toml"
+VENDORED_SOURCE = """\
+[source.crates-io]
+replace-with = "cstudy-vendor"
+
+[source.cstudy-vendor]
+directory = "../../.cs/runtime/runners/rust/vendor"
+"""
+
+
+@pytest.fixture(scope="module")
+def rust_problem(tmp_path_factory) -> Problem:
+    root = repository_root(tmp_path_factory.mktemp("content"), RUST_PROJECT_PROBLEMS)
+    return FsProblemRepository(root).load("bank-project-rust")
+
+
+def without_cargo_config(problem: Problem) -> Problem:
+    files = problem.project_files or ProjectFiles(None)
+    assert files.starter is not None
+    kept = tuple(file for file in files.starter.files if file.path != ".cargo/config.toml")
+    return replace(problem, project_files=replace(files, starter=ProjectTree(kept)))
+
+
+def test_a_rust_folder_points_crates_io_at_the_vendored_crates(workspace, rust_problem):
+    seed_project(workspace, rust_problem)
+    assert workspace.read_text(CARGO_CONFIG) == VENDORED_SOURCE
+
+
+def test_a_rust_folder_whose_starter_holds_the_config_needs_no_link(workspace, rust_problem):
+    assert not seed_project(workspace, rust_problem).linked
+
+
+def test_a_rust_starter_without_the_config_gets_it_written(workspace, rust_problem):
+    seeded = seed_project(workspace, without_cargo_config(rust_problem))
+    assert (seeded.linked, workspace.read_text(CARGO_CONFIG)) == (True, VENDORED_SOURCE)
+
+
+def test_a_resumed_rust_attempt_writes_a_deleted_config_back(workspace, rust_problem):
+    seed_project(workspace, rust_problem)
+    workspace.absolute(CARGO_CONFIG).unlink()
+    assert resume_project(workspace, rust_problem).linked
+
+
+def test_a_resumed_rust_attempt_keeps_an_edited_config(workspace, rust_problem):
+    seed_project(workspace, rust_problem)
+    workspace.write_text(CARGO_CONFIG, "# mine\n")
+    resume_project(workspace, rust_problem)
+    assert workspace.read_text(CARGO_CONFIG) == "# mine\n"
+
+
+def test_a_python_folder_gets_no_cargo_config(workspace, problem):
+    seed_project(workspace, problem)
+    assert not workspace.exists(f"{FOLDER}/.cargo/config.toml")
 
 
 # --fresh and review attempts
