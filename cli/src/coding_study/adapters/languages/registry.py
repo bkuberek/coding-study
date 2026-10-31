@@ -7,6 +7,10 @@ from dataclasses import dataclass
 from coding_study.adapters.languages import go, jvm, python, rust, typescript
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.go.test_generator import GoTestGenerator
+from coding_study.adapters.languages.jvm.test_generators import (
+    JavaTestGenerator,
+    KotlinTestGenerator,
+)
 from coding_study.adapters.languages.python.test_generator import PythonTestGenerator
 from coding_study.adapters.languages.typescript.test_generator import TypeScriptTestGenerator
 from coding_study.application.ports import LanguageRunner, ProjectTestGenerator, StubGenerator
@@ -65,9 +69,11 @@ LANGUAGES = LanguageRegistry(
         Language.TYPESCRIPT: LanguageFactories(
             typescript.create_stub_generator, typescript.create_runner, TypeScriptTestGenerator
         ),
-        Language.JAVA: LanguageFactories(jvm.create_java_stub_generator, jvm.create_java_runner),
+        Language.JAVA: LanguageFactories(
+            jvm.create_java_stub_generator, jvm.create_java_runner, JavaTestGenerator
+        ),
         Language.KOTLIN: LanguageFactories(
-            jvm.create_kotlin_stub_generator, jvm.create_kotlin_runner
+            jvm.create_kotlin_stub_generator, jvm.create_kotlin_runner, KotlinTestGenerator
         ),
         Language.GO: LanguageFactories(go.create_stub_generator, go.create_runner, GoTestGenerator),
         Language.RUST: LanguageFactories(rust.create_stub_generator, rust.create_runner),
