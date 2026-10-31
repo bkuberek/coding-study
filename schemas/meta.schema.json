@@ -386,12 +386,12 @@
       "required": ["entry"],
       "properties": {
         "entry": {
-          "description": "Where the entry class lives: a dotted module in Python (bank.bank), a .ts file relative to the project root in TypeScript (src/bank.ts), the .go file that declares the entry type and its constructor in Go (bank.go)",
+          "description": "Where the entry class lives: a dotted module in Python (bank.bank), a .ts file relative to the project root in TypeScript (src/bank.ts), the fully qualified class in Java and Kotlin (bank.Bank), the .go file that declares the entry type and its constructor in Go (bank.go)",
           "type": "string",
           "minLength": 1
         },
         "tests": {
-          "description": "The directory, relative to the project root, that receives the generated level tests (default tests)",
+          "description": "The directory, relative to the project root, that receives the generated level tests (default tests); in Java and Kotlin a package directory of the test sources (src/test/java/bank)",
           "type": "string",
           "minLength": 1
         }

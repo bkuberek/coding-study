@@ -19,7 +19,7 @@ from dataclasses import dataclass, field, replace
 from coding_study.domain.cases import OperationSequence
 from coding_study.domain.levels import level_heading
 from coding_study.domain.markdown import MarkdownDocument
-from coding_study.domain.naming import RESERVED_WORDS, NameRole, member_name
+from coding_study.domain.naming import RESERVED_WORDS, NameRole, is_reserved, member_name
 from coding_study.domain.problem import Language, Problem, ProblemMeta
 from coding_study.domain.signature import ClassSignature, Method, Param, Signature
 from coding_study.domain.statement import render_statement
@@ -30,6 +30,7 @@ from coding_study.domain.type_dsl import (
     ReturnType,
     Scalar,
     ScalarType,
+    ValueType,
     VoidType,
 )
 
@@ -47,6 +48,8 @@ _GO_SOURCE_SUFFIX = ".go"
 _GO_TEST_SUFFIX = "_test.go"
 _GO_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _GO_PACKAGE_CLAUSE = re.compile(r"^package\s+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
+_PACKAGE_SEPARATOR = "."
+_JVM_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,7 +58,8 @@ class Project:
 
     entry: str
     """Where the entry class lives: a dotted module in Python (`bank.bank`), a file relative to the
-    project root in TypeScript (`src/bank.ts`)."""
+    project root in TypeScript (`src/bank.ts`), the class's fully qualified name in Java and
+    Kotlin (`bank.Bank`)."""
     tests: str = DEFAULT_TESTS_DIRECTORY
     """The directory, relative to the project root, that receives the generated level tests."""
 
@@ -146,11 +150,27 @@ def entry_files(entry: str, language: Language) -> tuple[str, ...]:
 
 def level_tests_directory_issue(tests: str, language: Language) -> str | None:
     """Why `tests` cannot hold the generated test files of a project in `language`, beyond
-    `relative_path_issue`; None when it can. Go's files declare `package <last name>_test`.
+    `relative_path_issue`; None when it can. Go's files declare `package <last name>_test`; Java
+    and Kotlin need a package directory of the test sources.
 
     Raises ValueError for a language without project problems.
     """
     return _project_language(language).level_tests_directory_issue(tests)
+
+
+def project_tests_package(project: Project, language: Language) -> str:
+    """The package of a Java or Kotlin project's generated tests, from their directory:
+    `src/test/java/com/bank` holds `com.bank`.
+
+    Raises ValueError for a language whose tests have no package, or whose project problems are
+    not supported.
+    """
+    root = _project_language(language).test_sources
+    if root is None:
+        raise ValueError(f"{language} tests have no package")
+    return project.tests.removeprefix(f"{root}{PATH_SEPARATOR}").replace(
+        PATH_SEPARATOR, _PACKAGE_SEPARATOR
+    )
 
 
 def level_test_file(project: Project, language: Language, level: int) -> str:
@@ -194,19 +214,17 @@ def project_language(meta: ProblemMeta) -> Language:
 
 def method_text(method: Method, language: Language) -> str:
     """`method` as `language` declares it: `create_account(timestamp: int, account_id: str) ->
-    bool` in Python, `createAccount(timestamp: number, accountId: string): boolean` in TypeScript.
+    bool` in Python, `createAccount(timestamp: number, accountId: string): boolean` in TypeScript,
+    `boolean createAccount(long timestamp, String accountId)` in Java.
 
     Raises ValueError for a language without project problems.
     """
-    names = _project_language(language)
-    params = ", ".join(
-        f"{member_name(param.name, language, NameRole.PARAMETER)}"
-        f"{names.parameter_separator}{names.type_text(param.type)}"
+    declare = _project_language(language).declare
+    params = tuple(
+        (member_name(param.name, language, NameRole.PARAMETER), param.type)
         for param in method.params
     )
-    name = member_name(method.name, language, NameRole.METHOD)
-    returns = names.type_text(method.returns.type)
-    return f"{name}({params}){names.returns_separator}{returns}" if returns else f"{name}({params})"
+    return declare(member_name(method.name, language, NameRole.METHOD), params, method.returns.type)
 
 
 def level_methods(signature: ClassSignature, level: int) -> tuple[Method, ...]:
@@ -302,6 +320,11 @@ def _method_name(canonical: str, language: Language) -> str:
     return member_name(canonical, language, NameRole.METHOD)
 
 
+type _Declare = Callable[[str, tuple[tuple[str, ValueType], ...], ReturnType], str]
+"""A method as the statement's `Methods to add:` line spells it, from its name, its parameters'
+names and types and its return type, with the types as the language's stubs spell them."""
+
+
 @dataclass(frozen=True, slots=True)
 class _ProjectLanguage:
     entry_issue: Callable[[str], str | None]
@@ -309,15 +332,36 @@ class _ProjectLanguage:
     level_test_prefix: str
     level_test_suffix: str
     """A generated test file is named prefix, level number, suffix."""
-    type_text: Callable[[ReturnType], str]
-    """A type as the statement's `Methods to add:` line spells it, as the language's stubs do."""
-    returns_separator: str
-    """Between a method's parameters and its return type; a method whose type spells as nothing
-    (Go's `void`) has neither."""
-    parameter_separator: str = ": "
-    """Between a parameter's name and its type."""
+    declare: _Declare
     level_tests_directory_issue: Callable[[str], str | None] = lambda _tests: None
     """Why a `project.tests` directory cannot hold the generated files, beyond its path."""
+    test_sources: str | None = None
+    """Java and Kotlin: the directory of the test sources, where the generated tests go to a
+    package directory; None where they may go to any directory."""
+
+
+@dataclass(frozen=True, slots=True)
+class _Annotated:
+    """`name(param: type, ...)` and the return type after `returns_separator`: the declarations
+    of Python, TypeScript, Go and Kotlin."""
+
+    type_text: Callable[[ReturnType], str]
+    returns_separator: str
+    """Between a method's parameters and its return type; a method whose type spells as nothing
+    (Go's and Kotlin's `void`) has neither."""
+    parameter_separator: str = ": "
+    """Between a parameter's name and its type."""
+
+    def __call__(
+        self, name: str, params: tuple[tuple[str, ValueType], ...], returns: ReturnType
+    ) -> str:
+        listed = ", ".join(
+            f"{param}{self.parameter_separator}{self.type_text(declared)}"
+            for param, declared in params
+        )
+        declared = f"{name}({listed})"
+        returned = self.type_text(returns)
+        return f"{declared}{self.returns_separator}{returned}" if returned else declared
 
 
 def _python_entry_issue(entry: str) -> str | None:
@@ -431,33 +475,165 @@ def _go_type(declared: ReturnType) -> str:
             return ""
 
 
+def _jvm_entry_issue(entry: str) -> str | None:
+    """A class in a named package, every part an identifier of both Java and Kotlin."""
+    parts = entry.split(_PACKAGE_SEPARATOR)
+    if len(parts) < 2 or not all(_JVM_IDENTIFIER.fullmatch(part) for part in parts):
+        return (
+            f'"{entry}" is not the fully qualified name of a class in a package, such as bank.Bank'
+        )
+    keyword = next((part for part in parts if _is_jvm_keyword(part)), None)
+    return None if keyword is None else f'"{entry}" holds the keyword "{keyword}"'
+
+
+def _package_directory_issue(tests: str, test_sources: str) -> str | None:
+    root = f"{test_sources}{PATH_SEPARATOR}"
+    parts = tests.removeprefix(root).split(PATH_SEPARATOR)
+    is_package = all(
+        _JVM_IDENTIFIER.fullmatch(part) and not _is_jvm_keyword(part) for part in parts
+    )
+    if tests.startswith(root) and is_package:
+        return None
+    return f'"{tests}" is not a package directory under {root}, such as {root}bank'
+
+
+def _is_jvm_keyword(word: str) -> bool:
+    return is_reserved(word, Language.JAVA) or is_reserved(word, Language.KOTLIN)
+
+
+@dataclass(frozen=True, slots=True)
+class _ClassFile:
+    """The source file of a fully qualified class: `bank.Bank` in `src/main/java/bank/Bank.java`."""
+
+    main_sources: str
+    suffix: str
+
+    def __call__(self, entry: str) -> tuple[str, ...]:
+        path = entry.replace(_PACKAGE_SEPARATOR, PATH_SEPARATOR)
+        return (f"{self.main_sources}{PATH_SEPARATOR}{path}{self.suffix}",)
+
+
+_JAVA_SCALARS: Mapping[Scalar, str] = {
+    Scalar.INT: "int",
+    Scalar.LONG: "long",
+    Scalar.DOUBLE: "double",
+    Scalar.BOOL: "boolean",
+    Scalar.STRING: "String",
+    Scalar.CHAR: "char",
+    Scalar.DECIMAL: "BigDecimal",
+    Scalar.DATE: "LocalDate",
+}
+_JAVA_BOXED: Mapping[Scalar, str] = {
+    **_JAVA_SCALARS,
+    Scalar.INT: "Integer",
+    Scalar.LONG: "Long",
+    Scalar.DOUBLE: "Double",
+    Scalar.BOOL: "Boolean",
+    Scalar.CHAR: "Character",
+}
+"""A list holds objects: the wrapper class of each primitive."""
+_KOTLIN_SCALARS: Mapping[Scalar, str] = {
+    Scalar.INT: "Int",
+    Scalar.LONG: "Long",
+    Scalar.DOUBLE: "Double",
+    Scalar.BOOL: "Boolean",
+    Scalar.STRING: "String",
+    Scalar.CHAR: "Char",
+    Scalar.DECIMAL: "BigDecimal",
+    Scalar.DATE: "LocalDate",
+}
+_KOTLIN_PRIMITIVE_ARRAYS: Mapping[Scalar, str] = {
+    Scalar.INT: "IntArray",
+    Scalar.LONG: "LongArray",
+    Scalar.DOUBLE: "DoubleArray",
+    Scalar.BOOL: "BooleanArray",
+    Scalar.CHAR: "CharArray",
+}
+
+
+def _java_type(declared: ReturnType) -> str:
+    match declared:
+        case ScalarType(scalar):
+            return _JAVA_SCALARS[scalar]
+        case NodeType(kind):
+            return f"{kind}"
+        case ArrayType(element):
+            return f"{_java_type(element)}[]"
+        case ListType(ScalarType(scalar)):
+            return f"List<{_JAVA_BOXED[scalar]}>"
+        case ListType(element):
+            return f"List<{_java_type(element)}>"
+        case VoidType():
+            return "void"
+
+
+def _kotlin_type(declared: ReturnType) -> str:
+    """A `void` result spells as nothing: a Kotlin function without one leaves out `Unit`."""
+    match declared:
+        case ScalarType(scalar):
+            return _KOTLIN_SCALARS[scalar]
+        case NodeType(kind):
+            return f"{kind}?"
+        case ArrayType(ScalarType(scalar)) if scalar in _KOTLIN_PRIMITIVE_ARRAYS:
+            return _KOTLIN_PRIMITIVE_ARRAYS[scalar]
+        case ArrayType(element):
+            return f"Array<{_kotlin_type(element)}>"
+        case ListType(element):
+            return f"List<{_kotlin_type(element)}>"
+        case VoidType():
+            return ""
+
+
+def _java_declaration(
+    name: str, params: tuple[tuple[str, ValueType], ...], returns: ReturnType
+) -> str:
+    listed = ", ".join(f"{_java_type(declared)} {param}" for param, declared in params)
+    return f"{_java_type(returns)} {name}({listed})"
+
+
+def _jvm_language(sources: str, suffix: str, declare: _Declare) -> _ProjectLanguage:
+    """Java's or Kotlin's rules, the sources of the language under `src/main/<sources>` and
+    `src/test/<sources>`."""
+    test_sources = f"src/test/{sources}"
+    return _ProjectLanguage(
+        _jvm_entry_issue,
+        _ClassFile(f"src/main/{sources}", suffix),
+        "Level",
+        f"Test{suffix}",
+        declare,
+        lambda tests: _package_directory_issue(tests, test_sources),
+        test_sources,
+    )
+
+
 _PROJECT_LANGUAGES: Mapping[Language, _ProjectLanguage | None] = {
     Language.PYTHON: _ProjectLanguage(
-        _python_entry_issue, _python_entry_files, "test_level_", ".py", _python_type, " -> "
+        _python_entry_issue,
+        _python_entry_files,
+        "test_level_",
+        ".py",
+        _Annotated(_python_type, " -> "),
     ),
     Language.TYPESCRIPT: _ProjectLanguage(
         _typescript_entry_issue,
         lambda entry: (entry,),
         "level-",
         ".test.ts",
-        _typescript_type,
-        ": ",
+        _Annotated(_typescript_type, ": "),
     ),
-    Language.JAVA: None,
-    Language.KOTLIN: None,
+    Language.JAVA: _jvm_language("java", ".java", _java_declaration),
+    Language.KOTLIN: _jvm_language("kotlin", ".kt", _Annotated(_kotlin_type, ": ")),
     Language.GO: _ProjectLanguage(
         _go_entry_issue,
         lambda entry: (entry,),
         "level_",
         _GO_TEST_SUFFIX,
-        _go_type,
-        " ",
-        parameter_separator=" ",
-        level_tests_directory_issue=_go_level_tests_directory_issue,
+        _Annotated(_go_type, " ", parameter_separator=" "),
+        _go_level_tests_directory_issue,
     ),
     Language.RUST: None,
 }
-"""None: not yet supported; Java, Kotlin and Rust wait for spikes (ADR 0014)."""
+"""None: not yet supported; Rust waits for spike K6 (ADR 0014)."""
 PROJECT_LANGUAGES = tuple(language for language, found in _PROJECT_LANGUAGES.items() if found)
 """The languages a project problem may list."""
 

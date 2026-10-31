@@ -17,6 +17,7 @@ from typing import cast
 from coding_study.domain.cases import GeneratedInput
 from coding_study.domain.errors import ContentIssue
 from coding_study.domain.explanation import Explanation
+from coding_study.domain.layout import JVM_LANGUAGES
 from coding_study.domain.markdown import MarkdownDocument, MarkdownSection
 from coding_study.domain.problem import ComparatorType, Language, Problem, ProblemKind, Track
 from coding_study.domain.problem_files import (
@@ -46,7 +47,7 @@ from coding_study.domain.project import (
     relative_path_issue,
     unsupported_language,
 )
-from coding_study.domain.signature import declared_types
+from coding_study.domain.signature import ClassSignature, declared_types
 from coding_study.domain.stress import StressScenario
 from coding_study.domain.type_dsl import (
     ArrayType,
@@ -83,9 +84,12 @@ GENERATED_TEST_COMPARATORS = (ComparatorType.EXACT, ComparatorType.UNORDERED, Co
 """What a generated test can assert."""
 FORBIDDEN_FILES = (GENERATOR_FILE, CHECKER_FILE, STRESS_CHECKER_FILE)
 CACHE_DIRECTORIES = frozenset(
-    {"__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", ".venv", "node_modules"}
+    {
+        *("__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", ".venv", "node_modules"),
+        *("build", ".gradle", ".kotlin"),
+    }
 )
-BUILD_OUTPUT_SUFFIXES = (".pyc", ".tsbuildinfo")
+BUILD_OUTPUT_SUFFIXES = (".pyc", ".tsbuildinfo", ".class", ".jar")
 LOCK_FILES = frozenset(
     {
         *("uv.lock", "poetry.lock", "pdm.lock", "Pipfile.lock"),
@@ -105,9 +109,108 @@ PACKAGE_DEPENDENCY_FIELDS = (
 )
 _PYTHON_SUFFIX = ".py"
 _GO_MAIN_PACKAGE = "main"
+SETTINGS_FILE = "settings.gradle.kts"
+BUILD_FILE = "build.gradle.kts"
+GRADLE_PROPERTIES_FILE = "gradle.properties"
+WRAPPER_PROPERTIES_FILE = "gradle/wrapper/gradle-wrapper.properties"
+WRAPPER_SCRIPTS = ("gradlew", "gradlew.bat")
+JVM_SORTABLE = frozenset({Scalar.INT, Scalar.LONG, Scalar.DOUBLE, Scalar.STRING, Scalar.DATE})
+"""What a generated Java or Kotlin test sorts by natural order for `unordered`."""
+_JVM_SETTINGS_HEAD = """\
+// This project's own Gradle build; open this folder in your IDE as a Gradle project.
+// It finds the coding-study workspace by walking up to .cs/workspace.toml and builds with the
+// workspace's version catalog and runner runtime, so keep this file as it is.
+pluginManagement {
+    var directory: File? = settingsDir
+    while (directory != null && !directory.resolve(".cs/workspace.toml").isFile) {
+        directory = directory.parentFile
+    }
+    val workspace = directory
+        ?: throw GradleException("$settingsDir is not inside a coding-study workspace")
+    extra["cs.workspace"] = workspace
+    includeBuild(workspace.resolve(".cs/runtime/runners/jvm"))
+}
+
+val workspace = extra["cs.workspace"] as File
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+    }
+    versionCatalogs {
+        create("libs") {
+            from(files(workspace.resolve("jvm/gradle/libs.versions.toml")))
+        }
+    }
+}
+
+"""
+_JVM_SETTINGS_TAIL = """
+includeBuild(workspace.resolve(".cs/runtime/runners/jvm"))
+"""
+_JAVA_BUILD = """\
+// Builds with JDK 21, JUnit 5 and the cstudy runner (the cs.project plugin); keep this file
+// as it is.
+plugins {
+    id("cs.project")
+}
+"""
+_KOTLIN_BUILD = """\
+// Builds with JDK 21, Kotlin, kotlin.test on JUnit 5 and the cstudy runner (the cs.project
+// plugin); keep this file as it is.
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+    id("cs.project")
+}
+"""
+_GRADLE_PROPERTIES = """\
+org.gradle.daemon=true
+org.gradle.configuration-cache=true
+org.gradle.console=plain
+kotlin.code.style=official
+"""
+"""The workspace's `jvm/gradle.properties`: the folder's builds share its daemon."""
+_WRAPPER_PROPERTIES = """\
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\\://services.gradle.org/distributions/gradle-9.8.2-bin.zip
+networkTimeout=10000
+retries=0
+retryBackOffMs=500
+validateDistributionUrl=true
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+"""
+"""The workspace's `jvm/gradle/wrapper/gradle-wrapper.properties`: an IDE that opens the folder
+uses the workspace's Gradle."""
+
+
+def _jvm_build(language: Language) -> str:
+    match language:
+        case Language.JAVA:
+            return _JAVA_BUILD
+        case Language.KOTLIN:
+            return _KOTLIN_BUILD
+        case _:
+            raise ValueError(f"{language} projects have no Gradle build")
+
 
 type _Report = Callable[[str, str], None]
 """Reports a message on a path of the starter."""
+
+
+def jvm_build_files(slug: str, language: Language) -> Mapping[str, str]:
+    """The build files of a Java or Kotlin project, by path, as the language's `cstudy new`
+    template writes them (docs/specs/problem-format.md#starter).
+
+    Raises ValueError for another language.
+    """
+    return {
+        SETTINGS_FILE: f'{_JVM_SETTINGS_HEAD}rootProject.name = "{slug}"\n{_JVM_SETTINGS_TAIL}',
+        BUILD_FILE: _jvm_build(language),
+        GRADLE_PROPERTIES_FILE: _GRADLE_PROPERTIES,
+        WRAPPER_PROPERTIES_FILE: _WRAPPER_PROPERTIES,
+    }
 
 
 @dataclass(frozen=True, slots=True)
@@ -199,12 +302,22 @@ class _Settings:
             return
         if language is not None and (issue := entry_issue(project.entry, language)):
             self._error(issue, "project.entry")
+        elif language in JVM_LANGUAGES:
+            self._entry_class(project.entry)
         if issue := relative_path_issue(project.tests):
             self._error(f'"{project.tests}" {issue}', "project.tests")
         elif language is not None and (
             issue := level_tests_directory_issue(project.tests, language)
         ):
             self._error(issue, "project.tests")
+
+    def _entry_class(self, entry: str) -> None:
+        """Java and Kotlin name the class itself, which must be the signature's."""
+        named = entry.rpartition(".")[2]
+        expected = self._meta.signature.name
+        if named != expected:
+            message = f'"{entry}" names the class {named}, not the signature\'s {expected}'
+            self._error(message, "project.entry")
 
     def _comparator(self) -> None:
         comparator = self._meta.comparator
@@ -221,17 +334,34 @@ class _Settings:
 
     def _types(self) -> None:
         declared = {str(found): found for found in declared_types(self._meta.signature)}
-        typescript = _language(self._content) is Language.TYPESCRIPT
+        language = _language(self._content)
         for text, found in declared.items():
             if _holds_node(found):
                 message = "project problems take scalars, arrays and lists, not node types"
                 self._error(f"{text}: {message}", "signature")
-            elif typescript and Scalar.DECIMAL in scalars_of(found):
+            elif language is Language.TYPESCRIPT and Scalar.DECIMAL in scalars_of(found):
                 message = (
                     "a TypeScript project cannot reach the Decimal class of the runner's "
                     "support module"
                 )
                 self._error(f"{text}: {message}", "signature")
+        if language in JVM_LANGUAGES:
+            self._jvm_results()
+
+    def _jvm_results(self) -> None:
+        """What a generated Java or Kotlin test can compare: no array or `decimal` inside an
+        array or list, `unordered` over elements that sort naturally, `float` on a double."""
+        signature = self._meta.signature
+        if not isinstance(signature, ClassSignature):
+            return
+        per_method = self._meta.comparator.per_method
+        for method in signature.methods:
+            returns = method.returns.type
+            if issue := _jvm_result_issue(returns):
+                self._error(f"{method.name} returns {returns}: {issue}", "signature")
+            compared = per_method.get(method.name, ComparatorType.EXACT)
+            if issue := _jvm_comparison_issue(returns, compared):
+                self._error(issue, f"comparator.per_method.{method.name}")
 
     def _approaches(self) -> None:
         approaches = self._meta.approaches
@@ -256,6 +386,41 @@ class _Settings:
                 self._issues.error(TESTS_FILE, "a project problem has no generate cases", location)
             elif isinstance(case.input, StressScenario):
                 self._issues.error(TESTS_FILE, "a project problem has no stress cases", location)
+
+
+def _jvm_result_issue(returns: ReturnType) -> str | None:
+    if not isinstance(returns, ArrayType | ListType):
+        return None
+    inner = _contained(returns)
+    test = "a generated Java or Kotlin test compares"
+    if any(isinstance(found, ArrayType) for found in inner):
+        return f"{test} no array inside an array or a list"
+    if Scalar.DECIMAL in scalars_of(returns):
+        return f"{test} no decimal inside an array or a list"
+    return None
+
+
+def _contained(declared: ArrayType | ListType) -> list[ReturnType]:
+    """Every type inside an array or list, at any depth."""
+    element = declared.element
+    if isinstance(element, ArrayType | ListType):
+        return [element, *_contained(element)]
+    return [element]
+
+
+def _jvm_comparison_issue(returns: ReturnType, compared: ComparatorType) -> str | None:
+    if not isinstance(returns, ArrayType | ListType):
+        return None
+    if compared is ComparatorType.FLOAT:
+        return f"a generated Java or Kotlin test compares float on a double, not on {returns}"
+    element = returns.element
+    sortable = isinstance(element, ScalarType) and element.scalar in JVM_SORTABLE
+    if compared is ComparatorType.UNORDERED and not sortable:
+        return (
+            "a generated Java or Kotlin test sorts int, long, double, string or date elements, "
+            f"not {element}"
+        )
+    return None
 
 
 def _holds_node(declared: ReturnType) -> bool:
@@ -299,6 +464,9 @@ class _Trees:
             entry = _well_formed_entry(self._content)
             slug = self._content.problem.meta.slug
             _GoStarter(self._error, starter, slug).check(entry[0].entry if entry else None)
+        elif language is not None and language in JVM_LANGUAGES:
+            build_files = jvm_build_files(self._content.problem.meta.slug, language)
+            _JvmStarter(self._error, starter, language).check(build_files)
         self._generated_test_names(starter)
 
     def _error(self, path: str, message: str) -> None:
@@ -505,6 +673,28 @@ class _GoStarter:
 
 def _vendored_go_modules() -> str:
     return ", ".join(f"{module} {version}" for module, version in GO_VENDORED_MODULES.items())
+
+
+class _JvmStarter:
+    """S15: the template's Gradle files, so every folder builds the same way and offline, and no
+    wrapper script of its own: the workspace's runs every build."""
+
+    def __init__(self, report: _Report, starter: ProjectTree, language: Language) -> None:
+        self._report = report
+        self._starter = starter
+        self._template = f"project-{language}"
+
+    def check(self, build_files: Mapping[str, str]) -> None:
+        for path, text in build_files.items():
+            file = self._starter.file(path)
+            if file is None:
+                self._report(path, "missing")
+            elif file.text is not None and file.text != text:
+                written = f"cstudy new --from-template {self._template} writes"
+                self._report(path, f"differs from what {written}")
+        for path in WRAPPER_SCRIPTS:
+            if path in self._starter.paths:
+                self._report(path, "is not used: the workspace's jvm/gradlew builds the project")
 
 
 class _Documents:

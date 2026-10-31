@@ -15,13 +15,14 @@ from coding_study.domain.problem import (
     Track,
 )
 from coding_study.domain.project import Project, ProjectFile, ProjectFiles, ProjectTree
+from coding_study.domain.project_checks import jvm_build_files
 from coding_study.domain.ready_criteria import ready_problems
-from coding_study.domain.signature import ClassSignature, Param
+from coding_study.domain.signature import ClassSignature, Param, Returns
 from coding_study.domain.static_checks import ProblemContent, static_checks
 from coding_study.domain.stress import StressScenario
-from coding_study.domain.type_dsl import parse_value_type
+from coding_study.domain.type_dsl import parse_return_type, parse_value_type
 from tests.fakes import repository_root
-from tests.helpers import BANK_PROJECT, PROJECT_PROBLEMS
+from tests.helpers import BANK_PROJECT, PROJECT_PROBLEMS, WORKSPACE_TEMPLATE
 
 FIXTURE = PROJECT_PROBLEMS / BANK_PROJECT
 DIRECTORY = f"problems/{BANK_PROJECT}"
@@ -216,7 +217,7 @@ def test_a_project_problem_lists_exactly_one_language(bank):
     ]
 
 
-@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN, Language.RUST])
+@pytest.mark.parametrize("language", [Language.RUST])
 def test_other_languages_have_no_project_problems_yet(bank, language):
     problem = with_meta(bank, languages=(language,))
     assert errors(content(problem)) == [
@@ -571,6 +572,218 @@ def test_a_typescript_starter_holds_no_generated_test_name(bank):
     problem = with_starter(typescript(bank), text_file("tests/level-2.test.ts"))
     assert errors(content(problem)) == [
         f"{STARTER}/tests/level-2.test.ts: has the name of a generated test file"
+    ]
+
+
+# Java and Kotlin
+
+JVM_SOURCES = {Language.JAVA: "java", Language.KOTLIN: "kotlin"}
+JVM_EXTENSIONS = {Language.JAVA: "java", Language.KOTLIN: "kt"}
+BUILD_FILES = (
+    "settings.gradle.kts",
+    "build.gradle.kts",
+    "gradle.properties",
+    "gradle/wrapper/gradle-wrapper.properties",
+)
+
+
+def jvm(problem, language: Language = Language.JAVA):
+    """The fixture as a Java or Kotlin project, with a valid starter and reference."""
+    sources, extension = JVM_SOURCES[language], JVM_EXTENSIONS[language]
+    entry = f"src/main/{sources}/bank/Bank.{extension}"
+    build_files = jvm_build_files(problem.meta.slug, language)
+    files = (
+        text_file("README.md", "Run ../../jvm/gradlew test.\n"),
+        text_file(entry, "package bank\n"),
+        *(text_file(path, text) for path, text in build_files.items()),
+    )
+    starter = ProjectTree(tuple(sorted(files, key=lambda file: file.path)))
+    trees = ProjectFiles(starter, {"reference": ProjectTree((text_file(entry),))})
+    project = Project("bank.Bank", f"src/test/{sources}/bank")
+    meta = replace(problem.meta, languages=(language,), project=project)
+    return replace(problem, meta=meta, project_files=trees)
+
+
+def with_returns(problem, method_name: str, returns: str):
+    signature = problem.meta.signature
+    assert isinstance(signature, ClassSignature)
+    methods = tuple(
+        replace(method, returns=Returns(parse_return_type(returns)))
+        if method.name == method_name
+        else method
+        for method in signature.methods
+    )
+    return with_meta(problem, signature=replace(signature, methods=methods))
+
+
+def meta_errors(problem) -> list[str]:
+    """Errors in meta.yaml alone: a changed result type also fails the cases' values (S4)."""
+    return [issue for issue in errors(content(problem)) if issue.startswith(META)]
+
+
+def deposit_returns(problem, returns: str, comparator: ComparatorType = ComparatorType.EXACT):
+    spec = ComparatorSpec(ComparatorType.OPS, per_method={"deposit": comparator})
+    return with_meta(with_returns(problem, "deposit", returns), comparator=spec)
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_the_jvm_fixture_passes(bank, language):
+    assert errors(content(jvm(bank, language))) == []
+
+
+def test_a_jvm_entry_is_a_class_in_a_package(bank):
+    problem = with_meta(jvm(bank), project=Project("Bank", "src/test/java/bank"))
+    assert errors(content(problem)) == [
+        f'{META}: project.entry: "Bank" is not the fully qualified name of a class in a '
+        "package, such as bank.Bank"
+    ]
+
+
+def test_a_jvm_entry_names_the_signature_class(bank):
+    problem = with_meta(jvm(bank), project=Project("bank.Ledger", "src/test/java/bank"))
+    assert errors(content(problem)) == [
+        f'{META}: project.entry: "bank.Ledger" names the class Ledger, not the signature\'s Bank',
+        f"{STARTER}: has no src/main/java/bank/Ledger.java for the entry bank.Ledger",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("language", "tests", "root"),
+    [
+        (Language.JAVA, "tests", "src/test/java"),
+        (Language.KOTLIN, "src/test/java/bank", "src/test/kotlin"),
+    ],
+)
+def test_jvm_generated_tests_go_to_a_test_package(bank, language, tests, root):
+    problem = with_meta(jvm(bank, language), project=Project("bank.Bank", tests))
+    assert errors(content(problem)) == [
+        f'{META}: project.tests: "{tests}" is not a package directory under {root}/, such as '
+        f"{root}/bank"
+    ]
+
+
+@pytest.mark.parametrize("returns", ["int[][]", "list<int[]>", "list<list<int[]>>"])
+def test_a_jvm_result_holds_no_array_inside_an_array_or_a_list(bank, returns):
+    assert meta_errors(deposit_returns(jvm(bank), returns)) == [
+        f"{META}: signature: deposit returns {returns}: a generated Java or Kotlin test compares "
+        "no array inside an array or a list"
+    ]
+
+
+@pytest.mark.parametrize("returns", ["list<decimal>", "decimal[]", "list<list<decimal>>"])
+def test_a_jvm_result_holds_no_decimal_inside_an_array_or_a_list(bank, returns):
+    assert meta_errors(deposit_returns(jvm(bank), returns)) == [
+        f"{META}: signature: deposit returns {returns}: a generated Java or Kotlin test compares "
+        "no decimal inside an array or a list"
+    ]
+
+
+@pytest.mark.parametrize("returns", ["decimal", "list<list<int>>", "string[]", "list<date>"])
+def test_a_jvm_result_may_be_a_scalar_an_array_or_nested_lists(bank, returns):
+    assert meta_errors(deposit_returns(jvm(bank), returns)) == []
+
+
+@pytest.mark.parametrize("type_text", ["int[][]", "list<int[]>", "list<decimal>"])
+def test_a_jvm_parameter_may_take_any_array_or_list(bank, type_text):
+    assert signature_errors(with_constructor_param(jvm(bank), type_text)) == []
+
+
+@pytest.mark.parametrize(("returns", "element"), [("list<bool>", "bool"), ("char[]", "char")])
+def test_jvm_unordered_results_sort_naturally(bank, returns, element):
+    problem = deposit_returns(jvm(bank), returns, ComparatorType.UNORDERED)
+    assert meta_errors(problem) == [
+        f"{META}: comparator.per_method.deposit: a generated Java or Kotlin test sorts int, "
+        f"long, double, string or date elements, not {element}"
+    ]
+
+
+@pytest.mark.parametrize("returns", ["list<string>", "int[]", "long", "list<date>"])
+def test_jvm_unordered_results_of_sortable_elements_pass(bank, returns):
+    assert meta_errors(deposit_returns(jvm(bank), returns, ComparatorType.UNORDERED)) == []
+
+
+@pytest.mark.parametrize("returns", ["double[]", "list<double>"])
+def test_jvm_float_compares_no_array_or_list(bank, returns):
+    assert meta_errors(deposit_returns(jvm(bank), returns, ComparatorType.FLOAT)) == [
+        f"{META}: comparator.per_method.deposit: a generated Java or Kotlin test compares float "
+        f"on a double, not on {returns}"
+    ]
+
+
+def test_jvm_float_compares_a_double(bank):
+    assert meta_errors(deposit_returns(jvm(bank), "double", ComparatorType.FLOAT)) == []
+
+
+@pytest.mark.parametrize("path", BUILD_FILES)
+def test_a_jvm_starter_has_every_build_file(bank, path):
+    assert errors(content(without_starter_files(jvm(bank), path))) == [f"{STARTER}/{path}: missing"]
+
+
+@pytest.mark.parametrize("path", BUILD_FILES)
+def test_a_jvm_build_file_is_the_templates(bank, path):
+    edited = jvm_build_files(bank.meta.slug, Language.JAVA)[path] + "// mine\n"
+    problem = with_starter(jvm(bank), text_file(path, edited))
+    assert errors(content(problem)) == [
+        f"{STARTER}/{path}: differs from what cstudy new --from-template project-java writes"
+    ]
+
+
+def test_a_jvm_project_is_named_after_its_slug(bank):
+    settings = jvm_build_files(bank.meta.slug, Language.JAVA)["settings.gradle.kts"]
+    assert 'rootProject.name = "bank-project-python"\n' in settings
+
+
+@pytest.mark.parametrize("path", ["gradle.properties", "gradle/wrapper/gradle-wrapper.properties"])
+def test_a_jvm_project_shares_the_workspace_gradle_settings(path):
+    """The same Gradle version and daemon settings as the workspace's, so builds share a daemon
+    and an IDE opening the folder uses the workspace's Gradle."""
+    workspace = (WORKSPACE_TEMPLATE / "jvm" / path).read_text()
+    assert jvm_build_files("bank-project-java", Language.JAVA)[path] == workspace
+
+
+def test_a_kotlin_build_applies_the_kotlin_plugin(bank):
+    build = jvm_build_files(bank.meta.slug, Language.KOTLIN)["build.gradle.kts"]
+    assert "    alias(libs.plugins.kotlin.jvm)\n" in build
+
+
+@pytest.mark.parametrize("path", ["gradlew", "gradlew.bat"])
+def test_a_jvm_starter_has_no_wrapper_script(bank, path):
+    assert errors(content(with_starter(jvm(bank), text_file(path)))) == [
+        f"{STARTER}/{path}: is not used: the workspace's jvm/gradlew builds the project"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("path", "cache"),
+    [
+        ("build/classes/java/main/bank/Bank.class", "build"),
+        (".gradle/configuration-cache/entry.bin", ".gradle"),
+        (".kotlin/sessions/session.salive", ".kotlin"),
+    ],
+)
+def test_a_jvm_starter_holds_no_build_output(bank, path, cache):
+    assert errors(content(with_starter(jvm(bank), text_file(path)))) == [
+        f"{STARTER}/{cache}: is build output or a cache"
+    ]
+
+
+@pytest.mark.parametrize("path", ["src/main/java/bank/Bank.class", "libs/helper.jar"])
+def test_a_jvm_starter_holds_no_class_or_jar_file(bank, path):
+    assert errors(content(with_starter(jvm(bank), text_file(path)))) == [
+        f"{STARTER}/{path}: is build output or a cache"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("language", "path"),
+    [
+        (Language.JAVA, "src/test/java/bank/Level1Test.java"),
+        (Language.KOTLIN, "src/test/kotlin/bank/Level2Test.kt"),
+    ],
+)
+def test_a_jvm_starter_holds_no_generated_test_name(bank, language, path):
+    assert errors(content(with_starter(jvm(bank, language), text_file(path)))) == [
+        f"{STARTER}/{path}: has the name of a generated test file"
     ]
 
 

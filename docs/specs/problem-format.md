@@ -575,7 +575,8 @@ pluginManagement {
     while (directory != null && !directory.resolve(".cs/workspace.toml").isFile) {
         directory = directory.parentFile
     }
-    val workspace = directory ?: throw GradleException("$settingsDir is not inside a coding-study workspace")
+    val workspace = directory
+        ?: throw GradleException("$settingsDir is not inside a coding-study workspace")
     extra["cs.workspace"] = workspace
     includeBuild(workspace.resolve(".cs/runtime/runners/jvm"))
 }
@@ -603,14 +604,16 @@ The settings walk up to the workspace marker, rather than naming `../..`, becaus
 `build.gradle.kts`, Java, then Kotlin:
 
 ```kotlin
-// Builds with JDK 21, JUnit 5 and the cstudy runner (the cs.project plugin); keep this file as it is.
+// Builds with JDK 21, JUnit 5 and the cstudy runner (the cs.project plugin); keep this file
+// as it is.
 plugins {
     id("cs.project")
 }
 ```
 
 ```kotlin
-// Builds with JDK 21, Kotlin, kotlin.test on JUnit 5 and the cstudy runner (the cs.project plugin); keep this file as it is.
+// Builds with JDK 21, Kotlin, kotlin.test on JUnit 5 and the cstudy runner (the cs.project
+// plugin); keep this file as it is.
 plugins {
     alias(libs.plugins.kotlin.jvm)
     id("cs.project")

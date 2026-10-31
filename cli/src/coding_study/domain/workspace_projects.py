@@ -3,10 +3,10 @@
 `cstudy start` fills `projects/<slug>/` from a project problem's starter and links it to the
 workspace's toolchain: a Python folder through its `.venv` link, a Go folder through a `go.work` of
 its own. What tools write into a folder is untracked, as the workspace's `.gitignore` has it: the
-`.venv` link, `node_modules`, caches, a `uv.lock`, and Go's `go.work` and `go.work.sum`.
-`cstudy test --watch` ignores those, `code_hash` leaves them out, and an archived attempt goes
-without them. Paths are POSIX strings, relative to the workspace root or, where a name says so, to
-the folder.
+`.venv` link, `node_modules`, caches, Gradle's build output, a `uv.lock`, and Go's `go.work` and
+`go.work.sum`. `cstudy test --watch` ignores those, `code_hash` leaves them out, and an archived
+attempt goes without them. Paths are POSIX strings, relative to the workspace root or, where a name
+says so, to the folder.
 """
 
 import re
@@ -22,9 +22,12 @@ PYTEST_INSTALL_COMMAND = f"uv add --dev pytest --directory {layout.PYTHON_PROJEC
 """A Python project's tests run in the workspace venv; workspaces created before the template
 listed pytest lack it."""
 UNTRACKED_DIRECTORIES = frozenset(
-    {layout.PYTHON_VENV, "node_modules", "__pycache__", ".pytest_cache", ".ruff_cache"}
+    {
+        *(layout.PYTHON_VENV, "node_modules", "__pycache__", ".pytest_cache", ".ruff_cache"),
+        *("build", ".gradle", ".kotlin"),
+    }
 )
-"""Untracked wherever they appear in a folder."""
+"""Untracked wherever they appear in a folder; the last three are what a Gradle build writes."""
 GO_MODULE_FILE = "go.mod"
 GO_WORK_FILE = "go.work"
 GO_WORK_SUM_FILE = "go.work.sum"

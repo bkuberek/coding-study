@@ -43,8 +43,14 @@ TRANSFER = method(
 BANK = ClassSignature("Bank", (), (CREATE_ACCOUNT, DEPOSIT, TRANSFER))
 LEVELS = (Level(1, "Accounts"), Level(2, "Transfers"))
 OPS = ComparatorSpec(ComparatorType.OPS)
-ENTRIES = {Language.PYTHON: "bank.bank", Language.GO: "bank.go"}
-"""The entry of the bank in each language but TypeScript's, `src/bank.ts`."""
+PROJECTS = {
+    Language.PYTHON: Project("bank.bank"),
+    Language.TYPESCRIPT: Project("src/bank.ts"),
+    Language.JAVA: Project("bank.Bank", "src/test/java/bank"),
+    Language.KOTLIN: Project("bank.Bank", "src/test/kotlin/bank"),
+    Language.GO: Project("bank.go"),
+}
+"""The bank's `project` block in each language that has project problems."""
 
 
 def project_meta(
@@ -76,7 +82,7 @@ def project_meta(
         ),
         languages=(language,),
         levels=levels,
-        project=Project(ENTRIES.get(language, "src/bank.ts")),
+        project=PROJECTS[language],
     )
 
 

@@ -54,7 +54,9 @@ def test_a_project_folder_is_named_after_its_slug():
     assert project_folder("bank-project-python") == BANK
 
 
-@pytest.mark.parametrize("language", [Language.PYTHON, Language.TYPESCRIPT])
+@pytest.mark.parametrize(
+    "language", [Language.PYTHON, Language.TYPESCRIPT, Language.JAVA, Language.KOTLIN]
+)
 def test_a_folder_is_written_in_its_problem_language(language):
     assert folder_language(replace(META, languages=(language,))) is language
 
@@ -105,6 +107,24 @@ def test_other_folders_get_no_toolchain_file(language):
 )
 def test_the_venv_link_node_modules_caches_and_the_uv_lock_are_untracked(path):
     assert is_untracked(path)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "build/classes/java/main/bank/Bank.class",
+        "build/cs/test-classpath.txt",
+        ".gradle/configuration-cache/entry.bin",
+        ".kotlin/sessions/session.salive",
+    ],
+)
+def test_gradle_build_output_is_untracked(path):
+    """Watching it would re-run `cstudy test --watch` after every build it starts."""
+    assert is_untracked(path)
+
+
+def test_a_file_under_gradle_build_output_names_no_project():
+    assert project_slug("projects/bank-project-java/build/cs/main-classpath.txt") is None
 
 
 @pytest.mark.parametrize(
