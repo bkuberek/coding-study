@@ -4,8 +4,11 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from coding_study.adapters.sqlite.progress_database import SqliteProgressDatabase
+from coding_study.adapters.sqlite.schema import latest_schema_version
 from coding_study.application.doctor import (
     JVM_FIX,
+    PYTEST_FIX,
     PYTHON_FIX,
     TYPESCRIPT_FIX,
     CheckResult,
@@ -20,7 +23,7 @@ from coding_study.application.ports import ProbeResult, ScaffoldOutcome
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import doctor
 from coding_study.entrypoints.shared import ExitCode
-from tests.helpers import REPOSITORY_ROOT, mark_workspace
+from tests.helpers import REPOSITORY_ROOT, mark_workspace, progress_database_at
 
 runner = CliRunner()
 
@@ -205,3 +208,54 @@ def test_doctor_environment_finds_the_checkout_content(tmp_path):
     content = doctor.doctor_environment(tmp_path, {}, tmp_path).content
     assert isinstance(content, ContentLocation)
     assert (content.files.root, content.editable) == (REPOSITORY_ROOT, True)
+
+
+def test_a_failed_fix_prints_what_to_do_by_hand(monkeypatch, tmp_path):
+    monkeypatch.setenv("CSTUDY_WORKSPACE", str(mark_workspace(tmp_path)))
+    stub_report(monkeypatch)
+    stub_fixes(monkeypatch, FixOutcome(PYTEST_FIX, ProbeResult(2, "error sending request\n")))
+    lines = runner.invoke(cli.app, ["doctor", "--fix"]).output.splitlines()
+    assert lines[0].endswith(f"    fix: {PYTEST_FIX.manual}")
+
+
+def test_a_failed_fix_without_a_manual_step_prints_no_fix(monkeypatch, tmp_path):
+    monkeypatch.setenv("CSTUDY_WORKSPACE", str(mark_workspace(tmp_path)))
+    stub_report(monkeypatch)
+    stub_fixes(monkeypatch, FixOutcome(PYTHON_FIX, ProbeResult(1, "")))
+    lines = runner.invoke(cli.app, ["doctor", "--fix"]).output.splitlines()
+    assert "fix:" not in lines[0]
+
+
+def test_fix_migrates_an_older_progress_database(monkeypatch, tmp_path):
+    workspace = mark_workspace(tmp_path)
+    progress_database_at(workspace / "progress.db", 4)
+    monkeypatch.setenv("CSTUDY_WORKSPACE", str(workspace))
+    stub_report(monkeypatch)
+    monkeypatch.setattr(doctor, "fix_workspace", lambda *_: ())
+    lines = runner.invoke(cli.app, ["doctor", "--fix"]).output.splitlines()
+    assert "migrated progress.db from schema 4 to 5" in lines
+    assert (
+        SqliteProgressDatabase(workspace / "progress.db").schema().found == latest_schema_version()
+    )
+
+
+def test_doctor_environment_reads_the_progress_database_the_config_names(tmp_path):
+    mark_workspace(tmp_path)
+    progress_database_at(tmp_path / "state.db", 4)
+    config = tmp_path / "config.toml"
+    config.write_text('progress_db = "state.db"\n')
+    environment = doctor.doctor_environment(tmp_path, {"CSTUDY_CONFIG": str(config)}, tmp_path)
+    assert isinstance(environment.workspace, PracticeWorkspace)
+    assert environment.workspace.progress.schema().found == 4
+
+
+def test_doctor_environment_reads_the_default_progress_database_when_the_config_is_invalid(
+    tmp_path,
+):
+    mark_workspace(tmp_path)
+    progress_database_at(tmp_path / "progress.db", 4)
+    config = tmp_path / "config.toml"
+    config.write_text("progress_db = 5\n")
+    environment = doctor.doctor_environment(tmp_path, {"CSTUDY_CONFIG": str(config)}, tmp_path)
+    assert isinstance(environment.workspace, PracticeWorkspace)
+    assert environment.workspace.progress.schema().found == 4

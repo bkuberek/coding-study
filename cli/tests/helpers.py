@@ -1,7 +1,9 @@
 import json
 import shutil
+import sqlite3
 import sys
 from dataclasses import replace
+from importlib import resources
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +13,7 @@ from coding_study.adapters.conformance_fixtures import (
     conformance_repository,
     load_conformance_suite,
 )
+from coding_study.adapters.sqlite.schema import MIGRATIONS_DIRECTORY, MIGRATIONS_PACKAGE
 from coding_study.domain.conformance import ConformanceSuite
 from coding_study.domain.problem import ProblemKind
 
@@ -106,3 +109,20 @@ def mark_workspace(directory: Path, created_with: str = "0.1.0") -> Path:
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(f'schema = 1\ncreated_with = "{created_with}"\n')
     return directory
+
+
+def progress_database_at(path: Path, version: int) -> None:
+    """A progress database migrated up to `version` only, holding the attempt 7 at two-sum."""
+    migrations = resources.files(MIGRATIONS_PACKAGE) / MIGRATIONS_DIRECTORY
+    scripts = sorted(
+        (entry for entry in migrations.iterdir() if entry.name.endswith(".sql")),
+        key=lambda entry: entry.name,
+    )
+    with sqlite3.connect(path) as connection:
+        for script in scripts[:version]:
+            connection.executescript(script.read_text(encoding="utf-8"))
+        connection.execute("INSERT INTO meta (key, value) VALUES ('schema_version', ?)", (version,))
+        connection.execute(
+            "INSERT INTO attempts (id, slug, lang, mode, status, started_at) "
+            "VALUES (7, 'two-sum', 'python', 'new', 'passed', '2026-10-24T10:00:00+00:00')"
+        )

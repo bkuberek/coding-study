@@ -827,3 +827,27 @@ class ProjectFolderChecks(Protocol):
         """Writes what `cstudy doctor --fix` restores in the folders, never over a file;
         returns what it wrote, relative to the workspace root."""
         ...
+
+
+@dataclass(frozen=True, slots=True)
+class ProgressSchema:
+    """The schema of progress.db against the one this `cstudy` migrates to
+    (docs/specs/progress-and-scheduling.md#schema)."""
+
+    found: int | None
+    """The last migration the file records; None before the file exists."""
+    latest: int
+
+
+class ProgressDatabase(Protocol):
+    """The progress.db file itself, for `cstudy doctor`; the data goes through `ProgressStore`."""
+
+    def schema(self) -> ProgressSchema:
+        """Reads the schema without creating or migrating the file; raises UsageError when the
+        file is not a progress database."""
+        ...
+
+    def migrate(self) -> None:
+        """Brings the file to the latest schema, as the first command to open it would; raises
+        UsageError when it cannot."""
+        ...

@@ -6,11 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from coding_study.adapters.sqlite.progress_store import (
-    MIGRATIONS_DIRECTORY,
-    MIGRATIONS_PACKAGE,
-    SqliteProgressStore,
-)
+from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
+from coding_study.adapters.sqlite.schema import MIGRATIONS_DIRECTORY, MIGRATIONS_PACKAGE
 from coding_study.domain.attempts import (
     AttemptMode,
     AttemptStatus,

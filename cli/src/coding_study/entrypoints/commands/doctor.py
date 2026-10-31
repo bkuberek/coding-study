@@ -21,6 +21,7 @@ from coding_study.adapters.locations import (
     workspace_directory,
 )
 from coding_study.adapters.runner_runtime import RUNTIME_RUNNERS
+from coding_study.adapters.sqlite.progress_database import SqliteProgressDatabase
 from coding_study.adapters.subprocess_runner import SubprocessRunner
 from coding_study.adapters.subprocess_tool_probe import (
     SubprocessCommandRunner,
@@ -43,6 +44,8 @@ from coding_study.application.doctor import (
     run_doctor,
 )
 from coding_study.application.ports import ProgressNotice
+from coding_study.domain.config import Config
+from coding_study.domain.errors import ConfigError
 from coding_study.entrypoints.shared import ExitCode, add_command, command_environ, console
 
 NAME = "doctor"
@@ -67,7 +70,10 @@ def doctor(
         bool,
         typer.Option(
             "--fix",
-            help="First run uv sync, pnpm install and the Gradle build in the workspace projects.",
+            help=(
+                "First run uv sync (and add pytest when the venv lacks it), pnpm install and the "
+                "Gradle build in the workspace projects, and migrate progress.db."
+            ),
         ),
     ] = False,
 ) -> None:
@@ -84,12 +90,13 @@ def doctor(
 
 def doctor_environment(cwd: Path, environ: Mapping[str, str], home: Path) -> DoctorEnvironment:
     content = _content(environ)
+    config = TomlConfigSource(config_path(environ, home))
     return DoctorEnvironment(
         tools=SubprocessToolProbe(),
         debug_servers=InstalledDebugServers(Machine(environ, home)),
-        config=TomlConfigSource(config_path(environ, home)),
+        config=config,
         content=content,
-        workspace=_workspace(cwd, environ, content),
+        workspace=_workspace(cwd, environ, content, config),
         version=tool_version(),
     )
 
@@ -103,7 +110,10 @@ def _content(environ: Mapping[str, str]) -> ContentLocation | NotFound:
 
 
 def _workspace(
-    cwd: Path, environ: Mapping[str, str], content: ContentLocation | NotFound
+    cwd: Path,
+    environ: Mapping[str, str],
+    content: ContentLocation | NotFound,
+    config: TomlConfigSource,
 ) -> PracticeWorkspace | NotFound:
     try:
         root = find_workspace(cwd, environ)
@@ -118,7 +128,16 @@ def _workspace(
         runner_process=SubprocessRunner(root / RUNS_DIRECTORY),
         commands=SubprocessCommandRunner(),
         project_links=FsProjectLinks(),
+        progress=SqliteProgressDatabase(root / _progress_db(config)),
     )
+
+
+def _progress_db(config: TomlConfigSource) -> str:
+    """The configured file; an invalid config is the `config` row's to report, so the default."""
+    try:
+        return config.load().progress_db
+    except ConfigError:
+        return Config().progress_db
 
 
 def _fix(environment: DoctorEnvironment, output: Console) -> bool:
@@ -136,7 +155,8 @@ def _fix(environment: DoctorEnvironment, output: Console) -> bool:
 
 def _fix_lines(outcome: FixOutcome) -> Iterator[Text]:
     status = CheckStatus.OK if outcome.succeeded else CheckStatus.FAIL
-    yield _check_line(CheckResult(str(outcome.step), status, outcome.detail))
+    manual = None if outcome.succeeded else outcome.step.manual
+    yield _check_line(CheckResult(str(outcome.step), status, outcome.detail, fix=manual))
     if outcome.succeeded or outcome.result is None:
         return
     for line in outcome.result.output.splitlines()[-FIX_OUTPUT_LINES:]:

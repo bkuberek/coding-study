@@ -9,7 +9,7 @@ project's setup command first.
 
 import re
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from pathlib import Path
 from typing import TypeGuard
@@ -23,7 +23,9 @@ from coding_study.application.ports import (
     FolderCheck,
     LanguageRunner,
     ProbeResult,
+    ProgressDatabase,
     ProgressNotice,
+    ProgressSchema,
     ProjectFolderChecks,
     ProjectLibraries,
     ProjectLinks,
@@ -41,6 +43,7 @@ from coding_study.domain.errors import (
     LanguageNotSetUpError,
     RunnerProtocolError,
     RunnerStartError,
+    UsageError,
 )
 from coding_study.domain.guides import TOOLCHAINS_GUIDE
 from coding_study.domain.layout import (
@@ -67,7 +70,10 @@ from coding_study.domain.project import PROJECT_LANGUAGES
 from coding_study.domain.runs import RunnerInfo, RunRequest
 from coding_study.domain.signature import FunctionSignature, Returns
 from coding_study.domain.type_dsl import VoidType
-from coding_study.domain.workspace_projects import PROJECTS_DIRECTORY, PYTEST_INSTALL_COMMAND
+from coding_study.domain.workspace_projects import (
+    PROJECTS_DIRECTORY,
+    PYTEST_REQUIREMENT,
+)
 
 PYTHON_VERSION = "3.13"
 MINIMUM_NODE_MAJOR = 24
@@ -135,6 +141,7 @@ class PracticeWorkspace:
     runner_process: RunnerProcess
     commands: CommandRunner
     project_links: ProjectLinks
+    progress: ProgressDatabase
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,6 +184,8 @@ DEBUGPY_CHECK = "python debugpy"
 PYTEST_CHECK = "python pytest"
 PROJECTS_CHECK = "projects"
 PROJECT_LINKS_CHECK = "project links"
+PROGRESS_CHECK = "progress database"
+UPGRADE_CSTUDY = "upgrade cstudy"
 VENV_LOCATION_CHECK = f"{PYTHON_PROJECT}/{PYTHON_VENV} location"
 VENV_RECREATE_COMMAND = f"rm -rf {PYTHON_PROJECT}/{PYTHON_VENV} && {FIX_COMMAND}"
 RUNNER_TYPESCRIPT = "runners/typescript"
@@ -201,12 +210,28 @@ class FixStep:
     project: str
     """Relative to the workspace, or `runners/typescript` of the content checkout."""
     command: tuple[str, ...]
+    unless: tuple[str, ...] | None = None
+    """A check that runs first, in the project: when it succeeds the step has nothing to do and
+    is not run, nor reported."""
+    retry: tuple[str, ...] | None = None
+    """What runs when `command` fails; the step's outcome is then the retry's."""
+    manual: str | None = None
+    """What to do by hand when the step fails."""
 
     def __str__(self) -> str:
         return f"{' '.join(self.command)} (in {self.project})"
 
 
 PYTHON_FIX = FixStep("python", ("uv", "sync"))
+PYTEST_FIX = FixStep(
+    PYTHON_PROJECT,
+    ("uv", "add", "--dev", "--offline", PYTEST_REQUIREMENT),
+    unless=(PYTHON_INTERPRETER, "-c", "import pytest"),
+    retry=("uv", "add", "--dev", PYTEST_REQUIREMENT),
+    manual=f'once online, run: uv add --dev "{PYTEST_REQUIREMENT}" --directory {PYTHON_PROJECT}',
+)
+"""Adds pytest to a workspace created before the template listed it. Offline first, which works
+whenever uv's cache holds pytest; online only when it does not."""
 TYPESCRIPT_FIX = FixStep("typescript", ("pnpm", "install"))
 RUNNER_TYPESCRIPT_FIX = FixStep(RUNNER_TYPESCRIPT, ("pnpm", "install"))
 JVM_FIX = FixStep(
@@ -250,7 +275,7 @@ class FixOutcome:
 
     @property
     def succeeded(self) -> bool:
-        return self.result is not None and self.result.exit_code == 0
+        return _succeeded(self.result)
 
     @property
     def detail(self) -> str:
@@ -273,19 +298,55 @@ def repair_workspace(workspace: PracticeWorkspace, notify: ProgressNotice) -> Sc
         for path in runner.repair_folders():
             notify(f"wrote {path}")
     workspace.setup.refresh_runtime(root)
+    _migrate_progress(workspace.progress, notify)
     return restored
+
+
+def _migrate_progress(progress: ProgressDatabase, notify: ProgressNotice) -> None:
+    """Migrate an older progress.db now rather than on the next command that opens it; a newer
+    or unreadable one stays as it is, for the check to report."""
+    try:
+        schema = progress.schema()
+        if schema.found is None or schema.found >= schema.latest:
+            return
+        progress.migrate()
+    except UsageError as error:
+        notify(f"progress.db stays as it is: {error}")
+        return
+    notify(f"migrated progress.db from schema {schema.found} to {schema.latest}")
 
 
 def fix_workspace(
     workspace: PracticeWorkspace, content: ContentLocation | NotFound, notify: ProgressNotice
 ) -> tuple[FixOutcome, ...]:
     """Run the setup command of every workspace project that exists, and in a content checkout
-    the TypeScript runner's install, before the JVM warm-up."""
+    the TypeScript runner's install, before the JVM warm-up. The Python project then gets
+    pytest when its venv lacks it."""
     outcomes: list[FixOutcome] = []
     for step, directory in _fix_plan(workspace, content):
-        notify(f"running {step}")
-        outcomes.append(FixOutcome(step, workspace.commands.run(step.command, directory)))
+        outcome = _run_step(workspace.commands, step, directory, notify)
+        if outcome is not None:
+            outcomes.append(outcome)
     return tuple(outcomes)
+
+
+def _run_step(
+    commands: CommandRunner, step: FixStep, directory: Path, notify: ProgressNotice
+) -> FixOutcome | None:
+    """None when the step's `unless` check succeeds."""
+    if step.unless is not None and _succeeded(commands.run(step.unless, directory)):
+        return None
+    notify(f"running {step}")
+    outcome = FixOutcome(step, commands.run(step.command, directory))
+    if outcome.succeeded or step.retry is None:
+        return outcome
+    retried = replace(step, command=step.retry, retry=None)
+    notify(f"running {retried}")
+    return FixOutcome(retried, commands.run(retried.command, directory))
+
+
+def _succeeded(result: ProbeResult | None) -> bool:
+    return result is not None and result.exit_code == 0
 
 
 def _fix_plan(
@@ -294,7 +355,7 @@ def _fix_plan(
     files = workspace.files
     plan = [
         (step, files.root / step.project)
-        for step in (PYTHON_FIX, TYPESCRIPT_FIX)
+        for step in (PYTHON_FIX, PYTEST_FIX, TYPESCRIPT_FIX)
         if files.exists(step.project)
     ]
     if _is_checkout(content) and content.files.exists(RUNNER_TYPESCRIPT):
@@ -520,6 +581,7 @@ def _workspace(environment: DoctorEnvironment, notify: ProgressNotice) -> list[C
         *_workspace_files(workspace),
         _projects(files),
         _runtime(workspace),
+        _progress_database(workspace.progress),
         *(_workspace_artifact(files, artifact) for artifact in WORKSPACE_ARTIFACTS),
         *_debugpy(environment.tools, files),
         *_pytest(environment.tools, files),
@@ -646,6 +708,32 @@ def _runtime(workspace: PracticeWorkspace) -> CheckResult:
     return CheckResult("runner runtime", CheckStatus.FAIL, detail, fix=FIX_COMMAND)
 
 
+def _progress_database(progress: ProgressDatabase) -> CheckResult:
+    """An older schema migrates on the next command that opens progress.db, so it only warns;
+    a newer one was written by a later `cstudy`, which this one cannot read."""
+    try:
+        schema = progress.schema()
+    except UsageError as error:
+        return CheckResult(PROGRESS_CHECK, CheckStatus.FAIL, str(error))
+    return _progress_schema(schema)
+
+
+def _progress_schema(schema: ProgressSchema) -> CheckResult:
+    if schema.found is None:
+        detail = "not created yet (created on first use)"
+        return CheckResult(PROGRESS_CHECK, CheckStatus.OK, detail)
+    if schema.found > schema.latest:
+        detail = f"schema {schema.found} is newer than the {schema.latest} this cstudy reads"
+        return CheckResult(PROGRESS_CHECK, CheckStatus.FAIL, detail, fix=UPGRADE_CSTUDY)
+    if schema.found < schema.latest:
+        detail = (
+            f"schema {schema.found}, this cstudy uses {schema.latest}: "
+            "migrates on next use; `--fix` migrates now"
+        )
+        return CheckResult(PROGRESS_CHECK, CheckStatus.WARN, detail, fix=FIX_COMMAND)
+    return CheckResult(PROGRESS_CHECK, CheckStatus.OK, f"schema {schema.found}")
+
+
 def _workspace_artifact(repository: RepositoryFiles, artifact: _WorkspaceArtifact) -> CheckResult:
     if not repository.exists(artifact.project):
         return CheckResult(
@@ -675,7 +763,7 @@ def _pytest(tools: ToolProbe, workspace_files: RepositoryFiles) -> list[CheckRes
     if _importable(tools, workspace_files, "pytest"):
         return [CheckResult(PYTEST_CHECK, CheckStatus.OK, "installed (Python project problems)")]
     detail = "not installed (only Python project problems need it)"
-    return [CheckResult(PYTEST_CHECK, CheckStatus.WARN, detail, fix=PYTEST_INSTALL_COMMAND)]
+    return [CheckResult(PYTEST_CHECK, CheckStatus.WARN, detail, fix=FIX_COMMAND)]
 
 
 def _importable(tools: ToolProbe, workspace_files: RepositoryFiles, module: str) -> bool:

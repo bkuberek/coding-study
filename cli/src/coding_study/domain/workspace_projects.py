@@ -18,9 +18,11 @@ from coding_study.domain.problem import Language, ProblemKind, ProblemMeta
 from coding_study.domain.project import PATH_SEPARATOR
 
 PROJECTS_DIRECTORY = "projects"
+PYTEST_REQUIREMENT = "pytest>=9.1"
+"""What the workspace template's `python/pyproject.toml` declares."""
 PYTEST_INSTALL_COMMAND = f"uv add --dev pytest --directory {layout.PYTHON_PROJECT}"
 """A Python project's tests run in the workspace venv; workspaces created before the template
-listed pytest lack it."""
+listed pytest lack it, and `cstudy doctor --fix` adds it."""
 UNTRACKED_DIRECTORIES = frozenset(
     {
         *(layout.PYTHON_VENV, "node_modules", "__pycache__", ".pytest_cache", ".ruff_cache"),

@@ -13,6 +13,7 @@ from coding_study.application.doctor import (
     ContentLocation,
     DoctorEnvironment,
     DoctorReport,
+    FixStep,
     NotFound,
     PracticeWorkspace,
     fix_workspace,
@@ -30,6 +31,7 @@ from coding_study.application.ports import (
     PrepareResult,
     ProbeResult,
     ProgressNotice,
+    ProgressSchema,
     RunnerLaunch,
     ScaffoldOutcome,
     SuiteListener,
@@ -37,10 +39,16 @@ from coding_study.application.ports import (
 )
 from coding_study.domain.bench_runs import BenchReport, BenchRequest
 from coding_study.domain.config import Config
-from coding_study.domain.errors import ConfigError, RunnerProtocolError, RunnerStartError
+from coding_study.domain.errors import (
+    ConfigError,
+    RunnerProtocolError,
+    RunnerStartError,
+    UsageError,
+)
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import RunnerInfo, RunReport, RunRequest
 from coding_study.domain.suite_runs import SuiteJob, SuiteReport
+from coding_study.domain.workspace_projects import PYTEST_REQUIREMENT
 from tests.fakes import DEBUGSERVER, DELVE, FakeDebugServers, FakeLanguageRunner, FakeToolchains
 
 OK, WARN, FAIL = CheckStatus.OK, CheckStatus.WARN, CheckStatus.FAIL
@@ -76,6 +84,9 @@ COMPLETE_WORKSPACE = {
     "typescript/node_modules",
 }
 RUNNING_VERSION = "0.1.0"
+IMPORT_PYTEST_IN_PYTHON = ((".venv/bin/python", "-c", "import pytest"), Path("/ws/python"))
+ADD_PYTEST_OFFLINE = ("uv", "add", "--dev", "--offline", PYTEST_REQUIREMENT)
+ADD_PYTEST = ("uv", "add", "--dev", PYTEST_REQUIREMENT)
 TOOLCHAINS_GUIDE = "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md"
 
 
@@ -197,6 +208,31 @@ class FakeProjectLinks:
         return self.moved
 
 
+LATEST_SCHEMA = 5
+
+
+@dataclass
+class FakeProgress:
+    """A progress.db at `found` (None: not created yet) that migrates to `latest`."""
+
+    found: int | None = LATEST_SCHEMA
+    latest: int = LATEST_SCHEMA
+    unreadable: str | None = None
+    migration_error: str | None = None
+    migrations: int = 0
+
+    def schema(self) -> ProgressSchema:
+        if self.unreadable:
+            raise UsageError(self.unreadable)
+        return ProgressSchema(self.found, self.latest)
+
+    def migrate(self) -> None:
+        if self.migration_error:
+            raise UsageError(self.migration_error)
+        self.migrations += 1
+        self.found = self.latest
+
+
 def healthy_runners() -> dict[Language, LanguageRunner]:
     return {
         language: FakeLanguageRunner(Prepared(RunnerLaunch((language.value,), Path("/"), 1000)))
@@ -211,6 +247,7 @@ def workspace_with(
     commands: FakeCommands | None = None,
     setup: FakeSetup | None = None,
     links: FakeProjectLinks | None = None,
+    progress: FakeProgress | None = None,
 ) -> PracticeWorkspace:
     return PracticeWorkspace(
         files=FakeFiles(set(COMPLETE_WORKSPACE) if paths is None else paths),
@@ -220,6 +257,7 @@ def workspace_with(
         runner_process=process or HelloProcess(),
         commands=commands or FakeCommands(),
         project_links=links or FakeProjectLinks(),
+        progress=progress or FakeProgress(),
     )
 
 
@@ -696,7 +734,7 @@ def test_missing_pytest_is_only_a_warning_with_the_fix():
     assert (result.status, result.detail, result.fix, report.passed) == (
         WARN,
         "not installed (only Python project problems need it)",
-        "uv add --dev pytest --directory python",
+        "cstudy doctor --fix",
         True,
     )
 
@@ -733,6 +771,101 @@ def test_a_stale_runner_runtime_fails_with_the_fix_command():
     setup = FakeSetup(current=False)
     result = check(doctor(workspace=workspace_with(setup=setup)), "runner runtime")
     assert (result.status, result.fix) == (FAIL, "cstudy doctor --fix")
+
+
+def test_a_current_progress_database_passes():
+    assert summary(doctor(), "progress database") == (OK, "schema 5")
+
+
+def test_a_progress_database_not_created_yet_passes():
+    workspace = workspace_with(progress=FakeProgress(found=None))
+    assert summary(doctor(workspace=workspace), "progress database") == (
+        OK,
+        "not created yet (created on first use)",
+    )
+
+
+def test_an_older_progress_database_only_warns_that_it_migrates_on_next_use():
+    report = doctor(workspace=workspace_with(progress=FakeProgress(found=4)))
+    result = check(report, "progress database")
+    assert (result.status, result.detail, result.fix, report.passed) == (
+        WARN,
+        "schema 4, this cstudy uses 5: migrates on next use; `--fix` migrates now",
+        "cstudy doctor --fix",
+        True,
+    )
+
+
+def test_a_progress_database_without_a_schema_is_older_than_the_first():
+    report = doctor(workspace=workspace_with(progress=FakeProgress(found=0)))
+    assert check(report, "progress database").status is WARN
+
+
+def test_a_newer_progress_database_fails_telling_to_upgrade_cstudy():
+    report = doctor(workspace=workspace_with(progress=FakeProgress(found=6)))
+    result = check(report, "progress database")
+    assert (result.status, result.detail, result.fix, report.passed) == (
+        FAIL,
+        "schema 6 is newer than the 5 this cstudy reads",
+        "upgrade cstudy",
+        False,
+    )
+
+
+def test_an_unreadable_progress_database_fails_with_the_reason():
+    progress = FakeProgress(unreadable="the progress database cannot be read: not a database")
+    report = doctor(workspace=workspace_with(progress=progress))
+    result = check(report, "progress database")
+    assert (result.status, result.detail) == (
+        FAIL,
+        "the progress database cannot be read: not a database",
+    )
+
+
+def test_the_progress_database_row_follows_the_runner_runtime():
+    names = [result.name for result in doctor().results]
+    assert names.index("progress database") == names.index("runner runtime") + 1
+
+
+def test_repair_migrates_an_older_progress_database():
+    progress = FakeProgress(found=4)
+    repair_workspace(workspace_with(progress=progress), lambda _line: None)
+    assert progress.migrations == 1
+
+
+def test_repair_names_the_migration():
+    lines: list[str] = []
+    repair_workspace(workspace_with(progress=FakeProgress(found=4)), lines.append)
+    assert lines == ["migrated progress.db from schema 4 to 5"]
+
+
+@pytest.mark.parametrize("found", [LATEST_SCHEMA, None, 6])
+def test_repair_leaves_a_progress_database_that_is_current_absent_or_newer(found):
+    progress = FakeProgress(found=found)
+    repair_workspace(workspace_with(progress=progress), lambda _line: None)
+    assert progress.migrations == 0
+
+
+def test_repair_survives_an_unreadable_progress_database():
+    progress = FakeProgress(unreadable="the progress database cannot be read: not a database")
+    repair_workspace(workspace_with(progress=progress), lambda _line: None)
+    assert progress.migrations == 0
+
+
+def test_repair_says_why_a_progress_database_stays_as_it_is():
+    lines: list[str] = []
+    progress = FakeProgress(unreadable="the progress database cannot be read: not a database")
+    repair_workspace(workspace_with(progress=progress), lines.append)
+    assert lines == [
+        "progress.db stays as it is: the progress database cannot be read: not a database"
+    ]
+
+
+def test_repair_survives_a_migration_that_fails():
+    lines: list[str] = []
+    progress = FakeProgress(found=4, migration_error="the progress database is locked")
+    repair_workspace(workspace_with(progress=progress), lines.append)
+    assert lines == ["progress.db stays as it is: the progress database is locked"]
 
 
 def test_repair_writes_the_missing_files():
@@ -875,6 +1008,7 @@ def test_fix_runs_the_setup_command_of_every_workspace_project():
     fix(workspace_with(commands=commands))
     assert commands.ran == [
         (("uv", "sync"), Path("/ws/python")),
+        IMPORT_PYTEST_IN_PYTHON,
         (("pnpm", "install"), Path("/ws/typescript")),
         (
             (
@@ -907,13 +1041,16 @@ def test_the_jvm_warm_up_resolves_the_runtime_classpath():
 def test_fix_installs_the_typescript_runner_of_a_content_checkout():
     commands = FakeCommands()
     fix(workspace_with(commands=commands), CHECKOUT)
-    assert commands.ran[2] == (("pnpm", "install"), Path("/checkout/runners/typescript"))
+    assert commands.ran[3] == (("pnpm", "install"), Path("/checkout/runners/typescript"))
 
 
 def test_fix_skips_projects_that_are_not_set_up():
     commands = FakeCommands()
     fix(workspace_with(paths={"python"}, commands=commands))
-    assert [command for command, _cwd in commands.ran] == [("uv", "sync")]
+    assert [command for command, _cwd in commands.ran] == [
+        ("uv", "sync"),
+        IMPORT_PYTEST_IN_PYTHON[0],
+    ]
 
 
 def test_fix_reports_each_command_outcome():
@@ -933,6 +1070,93 @@ def test_fix_with_a_missing_tool_fails_that_step():
     commands = FakeCommands({("uv", "sync"): None})
     outcomes = fix(workspace_with(commands=commands))
     assert outcomes[0].detail == "uv not found on PATH"
+
+
+def pytest_missing() -> dict[tuple[str, ...], ProbeResult | None]:
+    return {IMPORT_PYTEST_IN_PYTHON[0]: ProbeResult(1, "ModuleNotFoundError: pytest")}
+
+
+def test_fix_adds_pytest_to_a_workspace_that_lacks_it_offline_first():
+    commands = FakeCommands(pytest_missing())
+    outcomes = fix(workspace_with(paths={"python"}, commands=commands))
+    assert [command for command, _cwd in commands.ran] == [
+        ("uv", "sync"),
+        IMPORT_PYTEST_IN_PYTHON[0],
+        ADD_PYTEST_OFFLINE,
+    ]
+    assert all(outcome.succeeded for outcome in outcomes)
+
+
+def test_fix_adds_pytest_in_the_python_project():
+    commands = FakeCommands(pytest_missing())
+    fix(workspace_with(paths={"python"}, commands=commands))
+    assert commands.ran[-1] == (ADD_PYTEST_OFFLINE, Path("/ws/python"))
+
+
+def test_fix_leaves_the_requirements_alone_when_pytest_imports():
+    commands = FakeCommands()
+    fix(workspace_with(paths={"python"}, commands=commands))
+    assert not [command for command, _cwd in commands.ran if command[:2] == ("uv", "add")]
+
+
+def test_fix_adds_pytest_online_when_uvs_cache_lacks_it():
+    results = {**pytest_missing(), ADD_PYTEST_OFFLINE: ProbeResult(2, "pytest not in the cache")}
+    commands = FakeCommands(results)
+    outcomes = fix(workspace_with(paths={"python"}, commands=commands))
+    assert [command for command, _cwd in commands.ran][-2:] == [ADD_PYTEST_OFFLINE, ADD_PYTEST]
+    assert outcomes[-1].succeeded
+
+
+def test_fix_names_the_command_that_added_pytest_online():
+    results = {**pytest_missing(), ADD_PYTEST_OFFLINE: ProbeResult(2, "")}
+    outcomes = fix(workspace_with(paths={"python"}, commands=FakeCommands(results)))
+    assert outcomes[-1].step.command == ADD_PYTEST
+
+
+def test_fix_does_not_go_online_when_the_offline_add_worked():
+    commands = FakeCommands(pytest_missing())
+    fix(workspace_with(paths={"python"}, commands=commands))
+    assert ADD_PYTEST not in [command for command, _cwd in commands.ran]
+
+
+def test_fix_fails_the_pytest_step_with_the_manual_fix_when_offline_without_a_cache():
+    results = {
+        **pytest_missing(),
+        ADD_PYTEST_OFFLINE: ProbeResult(2, "not in the cache"),
+        ADD_PYTEST: ProbeResult(2, "error sending request"),
+    }
+    outcome = fix(workspace_with(paths={"python"}, commands=FakeCommands(results)))[-1]
+    assert (outcome.succeeded, outcome.detail, outcome.step.manual) == (
+        False,
+        "exited with 2",
+        'once online, run: uv add --dev "pytest>=9.1" --directory python',
+    )
+
+
+def test_fix_announces_each_attempt_to_add_pytest():
+    lines: list[str] = []
+    results = {**pytest_missing(), ADD_PYTEST_OFFLINE: ProbeResult(2, "")}
+    fix(workspace_with(paths={"python"}, commands=FakeCommands(results)), notify=lines.append)
+    assert lines[1:] == [
+        "running uv add --dev --offline pytest>=9.1 (in python)",
+        "running uv add --dev pytest>=9.1 (in python)",
+    ]
+
+
+def test_fix_checks_pytest_only_in_workspaces_with_a_python_project():
+    commands = FakeCommands(pytest_missing())
+    fix(workspace_with(paths={"typescript"}, commands=commands))
+    assert IMPORT_PYTEST_IN_PYTHON[0] not in [command for command, _cwd in commands.ran]
+
+
+def test_the_pytest_requirement_is_the_one_the_template_declares():
+    template = Path(__file__).parents[2] / "src/coding_study/adapters/workspace_template"
+    declared = (template / "python" / "pyproject.toml").read_text(encoding="utf-8")
+    assert f'"{PYTEST_REQUIREMENT}"' in declared
+
+
+def test_a_step_without_a_manual_fix_has_none():
+    assert FixStep("python", ("uv", "sync")).manual is None
 
 
 def test_fix_announces_each_command_before_running_it():

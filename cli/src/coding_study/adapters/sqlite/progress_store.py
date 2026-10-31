@@ -1,7 +1,7 @@
 """progress.db in SQLite (docs/specs/progress-and-scheduling.md#schema).
 
-Numbered migrations in `migrations/` (`0001_init.sql`, ...) run in order on first use;
-`meta.schema_version` records the last one applied. Timestamps are ISO 8601 UTC strings.
+Numbered migrations in `migrations/` (`0001_init.sql`, ...) run in order on first use
+(`schema.py`). Timestamps are ISO 8601 UTC strings.
 """
 
 import sqlite3
@@ -9,12 +9,11 @@ from collections import defaultdict
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from datetime import UTC, date, datetime
-from importlib import resources
 from pathlib import Path
 from typing import Any
 
 from coding_study.adapters.sqlite import bench_rows, submission_rows
-from coding_study.adapters.sqlite.migration_lock import migration_lock
+from coding_study.adapters.sqlite.schema import migrate_locked, schema_version
 from coding_study.domain.attempts import (
     Attempt,
     AttemptMode,
@@ -34,13 +33,9 @@ from coding_study.domain.progress_stats import LatestBench
 from coding_study.domain.scheduling import ProblemProgress, ReviewState, ScheduleEntry
 from coding_study.domain.submissions import LevelUnlock, SubmissionRecord
 
-SCHEMA_VERSION_KEY = "schema_version"
 META_TABLE = "meta"
 TABLE_ORDER = ("attempts", "test_runs", "schedule", "bench_runs", "submissions", "level_unlocks")
 """Snapshot and restore order: attempts before the rows that reference them."""
-MIGRATIONS_PACKAGE = "coding_study.adapters.sqlite"
-MIGRATIONS_DIRECTORY = "migrations"
-MIGRATION_SUFFIX = ".sql"
 
 _LATEST_FIRST = "ORDER BY started_at DESC, id DESC LIMIT 1"
 _ATTEMPT_UPDATE = """
@@ -237,7 +232,7 @@ class SqliteProgressStore:
     def snapshot(self) -> ProgressSnapshot:
         with self._connection() as connection:
             return ProgressSnapshot(
-                _schema_version(connection),
+                schema_version(connection),
                 {
                     table: tuple(
                         dict(row)
@@ -277,37 +272,8 @@ class SqliteProgressStore:
             connection.close()
 
     def _migrate_once(self, connection: sqlite3.Connection) -> None:
-        """Migrate under a lock that every process of this database takes: the scripts commit on
-        their own, so a transaction cannot make the check and the change one step."""
-        with migration_lock(self._path):
-            _migrate(connection)
+        migrate_locked(self._path, connection)
         self._migrated = True
-
-
-def _migrate(connection: sqlite3.Connection) -> None:
-    connection.execute("PRAGMA journal_mode = WAL")
-    applied = _schema_version(connection)
-    for number, script in _migrations():
-        if number <= applied:
-            continue
-        connection.executescript(script)
-        with connection:
-            connection.execute(
-                "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-                (SCHEMA_VERSION_KEY, str(number)),
-            )
-
-
-def _schema_version(connection: sqlite3.Connection) -> int:
-    has_meta = connection.execute(
-        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'meta'"
-    ).fetchone()
-    if has_meta is None:
-        return 0
-    row = connection.execute(
-        "SELECT value FROM meta WHERE key = ?", (SCHEMA_VERSION_KEY,)
-    ).fetchone()
-    return int(row["value"]) if row is not None else 0
 
 
 def _data_tables(connection: sqlite3.Connection) -> tuple[str, ...]:
@@ -326,7 +292,7 @@ def _columns(connection: sqlite3.Connection, table: str) -> frozenset[str]:
 
 
 def _require_restorable(connection: sqlite3.Connection, snapshot: ProgressSnapshot) -> None:
-    current = _schema_version(connection)
+    current = schema_version(connection)
     if snapshot.schema_version > current:
         raise UsageError(
             f"the export uses progress.db schema {snapshot.schema_version}, "
@@ -358,19 +324,6 @@ def _insert_row(
         )
     except sqlite3.Error as error:
         raise UsageError(f"cannot import {table} row {number}: {error}") from None
-
-
-def _migrations() -> list[tuple[int, str]]:
-    directory = resources.files(MIGRATIONS_PACKAGE) / MIGRATIONS_DIRECTORY
-    scripts = sorted(
-        (entry for entry in directory.iterdir() if entry.name.endswith(MIGRATION_SUFFIX)),
-        key=lambda entry: entry.name,
-    )
-    return [(_migration_number(entry.name), entry.read_text(encoding="utf-8")) for entry in scripts]
-
-
-def _migration_number(file_name: str) -> int:
-    return int(file_name.partition("_")[0])
 
 
 def _instant_text(instant: datetime) -> str:
