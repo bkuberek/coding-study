@@ -36,6 +36,8 @@ It uses `GITHUB_TOKEN`; the bot commit and tag do not start further workflow run
 
 `cstudy --version` prints the installed version, read from package metadata. The first run on a repository without tags tags the current version, `v0.1.0`, without changing it.
 
+`.github/workflows/ci.yml` is separate: on every push to a branch and every pull request, it runs the fast [checks](../../CONTRIBUTING.md#checks) on `ubuntu-latest` (lint, format, types, layer contracts, `pytest -m "not slow"`, and `cstudy verify --static` against a workspace it creates). It only reads the repository, holds no secret and publishes nothing. It does not gate `version.yml`, and the release commit's `[skip ci]` skips it.
+
 ## GitHub release
 
 The `release` job builds the release files from a checkout of the tag, with the tooling in `packaging/` of the commit the run is for (the tag may predate a change to it):
