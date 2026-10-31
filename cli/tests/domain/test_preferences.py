@@ -3,11 +3,18 @@ import pytest
 from coding_study.domain.errors import UsageError
 from coding_study.domain.preferences import (
     Preferences,
+    Theme,
     parse_preferences,
     preferences_document,
 )
 
-DEFAULT_DOCUMENT = {"format": 1, "vim": False, "run_on_save": False, "typecheck": True}
+DEFAULT_DOCUMENT = {
+    "format": 1,
+    "vim": False,
+    "run_on_save": False,
+    "typecheck": True,
+    "theme": "system",
+}
 
 
 def test_the_defaults_are_the_specs():
@@ -33,8 +40,23 @@ def test_a_document_round_trips():
 
 
 def test_an_unknown_key_is_refused():
-    with pytest.raises(UsageError, match='unknown preference "theme"'):
-        parse_preferences({"theme": "dark"})
+    with pytest.raises(UsageError, match='unknown preference "font"'):
+        parse_preferences({"font": "serif"})
+
+
+@pytest.mark.parametrize("theme", list(Theme))
+def test_the_theme_is_system_light_or_dark(theme):
+    assert parse_preferences({"theme": theme.value}) == Preferences(theme=theme)
+
+
+@pytest.mark.parametrize("value", ["sepia", "", True, None])
+def test_another_theme_is_refused(value):
+    with pytest.raises(UsageError, match='preference "theme" must be system, light or dark'):
+        parse_preferences({"theme": value})
+
+
+def test_the_theme_is_written_by_name():
+    assert preferences_document(Preferences(theme=Theme.DARK))["theme"] == "dark"
 
 
 @pytest.mark.parametrize("value", [1, 0, "true", None, [True]])

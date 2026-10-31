@@ -431,7 +431,7 @@ The [preferences](#preferences), each applied at once and stored, and the paths 
 | Tab | Tab indents. Escape then Tab leaves the editor, and Ctrl-M (Alt-Shift-M on macOS) toggles tab focus mode; with Vim on, only the toggle applies |
 | Shortcuts | Cmd or Ctrl-S saves, Cmd or Ctrl-Enter runs the tests, Cmd or Ctrl-Shift-Enter submits, Escape in the results panel cancels a run after a confirmation, F8 goes to the next diagnostic. Each button names its shortcut and the CLI command it runs |
 | Screen readers | The editor content has an `aria-label` naming the file; a polite live region announces a run's start and summary, not every case; statuses are text and icon, never color alone |
-| Display | Light and dark follow `prefers-color-scheme`; motion follows `prefers-reduced-motion` |
+| Display | Light and dark follow `prefers-color-scheme` unless the `theme` preference names one; motion follows `prefers-reduced-motion` |
 
 ## Solutions
 
@@ -469,7 +469,7 @@ sequenceDiagram
 `.cs/serve/preferences.json` in the workspace, ignored with the rest of `.cs/`:
 
 ```json
-{"format": 1, "vim": false, "run_on_save": false, "typecheck": true}
+{"format": 1, "vim": false, "run_on_save": false, "typecheck": true, "theme": "system"}
 ```
 
 | Key | Default | Effect |
@@ -477,6 +477,7 @@ sequenceDiagram
 | `vim` | false | Vim keybindings in every editor |
 | `run_on_save` | false | [Run on save](#attempt-view) |
 | `typecheck` | true | `typecheck` of TypeScript runs, so type errors reach the editor as markers |
+| `theme` | `system` | `light` or `dark` for the page and its editors; `system` follows `prefers-color-scheme` |
 
 A missing or unreadable file means the defaults; the server rewrites it whole on `PUT`.
 

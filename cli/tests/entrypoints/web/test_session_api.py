@@ -17,7 +17,7 @@ from tests.web_server import (
 
 PREFERENCES = "/api/v1/preferences"
 PREFERENCES_FILE = ".cs/serve/preferences.json"
-DEFAULTS = {"format": 1, "vim": False, "run_on_save": False, "typecheck": True}
+DEFAULTS = {"format": 1, "vim": False, "run_on_save": False, "typecheck": True, "theme": "system"}
 
 
 @pytest.fixture
@@ -90,10 +90,10 @@ def test_saved_preferences_are_written_to_the_workspace(tmp_path, app):
 
 def test_an_unknown_preference_gets_422_usage(app):
     with session_client(app) as client:
-        response = client.put(PREFERENCES, json={"theme": "dark"}, headers=WRITE_HEADERS)
+        response = client.put(PREFERENCES, json={"font": "serif"}, headers=WRITE_HEADERS)
     assert (response.status_code, response.json()) == (
         422,
-        {"error": {"code": "usage", "message": 'unknown preference "theme"', "fix": None}},
+        {"error": {"code": "usage", "message": 'unknown preference "font"', "fix": None}},
     )
 
 

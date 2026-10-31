@@ -41,11 +41,17 @@ def test_saving_returns_the_preferences():
 def test_saving_writes_the_whole_document():
     store = MemoryPreferencesStore()
     save_preferences(store, {"vim": True})
-    assert store.document == {"format": 1, "vim": True, "run_on_save": False, "typecheck": True}
+    assert store.document == {
+        "format": 1,
+        "vim": True,
+        "run_on_save": False,
+        "typecheck": True,
+        "theme": "system",
+    }
 
 
 def test_an_invalid_document_is_refused_and_nothing_is_written():
     store = MemoryPreferencesStore()
     with pytest.raises(UsageError):
-        save_preferences(store, {"theme": "dark"})
+        save_preferences(store, {"font": "serif"})
     assert store.writes == 0
