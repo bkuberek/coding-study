@@ -56,6 +56,7 @@ The `homebrew` job downloads the two files from the GitHub release, so the formu
 | Formula step | What it does |
 |--------------|--------------|
 | `depends_on "python@3.13"` | Runs `cstudy` on Homebrew's Python 3.13, in a virtual environment in the keg's `libexec` |
+| `on_linux do depends_on "gcc" end` | On Linux, provides `libgcc_s` for the prebuilt rpds-py and watchfiles extensions, so `brew linkage` finds it (Homebrew's Python already installs GCC there, so it adds nothing) |
 | `resource "requirements"` | `pip install --require-hashes --only-binary=:all: --no-deps`: binary wheels from PyPI, each checked against its hash, so installing needs network access. Homebrew's own `std_pip_args` build from source, and rpds-py and watchfiles need Rust for that |
 | `url` | `pip install` of the release wheel; `cstudy` is linked into Homebrew's `bin` |
 | `preserve_rpath` | Keeps the `@rpath` install name of watchfiles' prebuilt extension, which has no header room for Homebrew's absolute one |
