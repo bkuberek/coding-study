@@ -625,7 +625,8 @@ class ProjectRunner(Protocol):
     Python for now."""
 
     def prepare_project(self, scope: ProjectScope, notify: ProgressNotice) -> RunnerLaunch:
-        """How to launch the runner in the project root; a project builds nothing.
+        """How to launch the runner in the project root; a project builds nothing, and any
+        bytecode cached for the project's files is deleted first (runners.md#suite-job).
 
         Raises RunnerStartError when the workspace's toolchain lacks what the job needs.
         """

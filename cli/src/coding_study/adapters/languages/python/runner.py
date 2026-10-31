@@ -10,8 +10,10 @@ standard error, waits for the IDE, and then runs `cs_runner` as `python -m cs_ru
 A project job (docs/specs/runners.md#project-jobs) runs in the project root with `-P`, so the
 working directory never comes first on `sys.path`, where a project file named like a standard
 library module would shadow it; the runner adds the root at the end itself. Its bytecode goes to
-the workspace's `.cs/pycache`, and `UV_NO_SYNC` keeps anything it starts from syncing the shared
-venv through the project's `.venv` link.
+the workspace's `.cs/pycache`, where the prefix mirrors absolute paths: each run first deletes the
+project's own subtree, so an edit made within the same second that keeps a file's size never runs
+stale code, and keeps the shared environment's bytecode. `UV_NO_SYNC` keeps anything the runner
+starts from syncing the shared venv through the project's `.venv` link.
 """
 
 import shutil
@@ -88,7 +90,8 @@ class PythonRunner:
         return Prepared(launch)
 
     def prepare_project(self, scope: ProjectScope, notify: ProgressNotice) -> RunnerLaunch:
-        """Grading and suite jobs launch alike; a suite needs pytest, and may be debugged."""
+        """Grading and suite jobs launch alike; a suite needs pytest, and may be debugged. The
+        project's stale bytecode is deleted."""
         match scope:
             case ProjectSuite(debug=DebugSession() as session):
                 self._require_pytest()
@@ -98,10 +101,9 @@ class PythonRunner:
                 launch = self._launch((SAFE_PATH_FLAG,))
             case ProjectGrading():
                 launch = self._launch((SAFE_PATH_FLAG,))
-        environment = {
-            "UV_NO_SYNC": "1",
-            "PYTHONPYCACHEPREFIX": str(self._root / BYTECODE_DIRECTORY),
-        }
+        bytecode = self._root / BYTECODE_DIRECTORY
+        shutil.rmtree(_bytecode_of(bytecode, scope.root), ignore_errors=True)
+        environment = {"UV_NO_SYNC": "1", "PYTHONPYCACHEPREFIX": str(bytecode)}
         return replace(launch, cwd=scope.root, environment=environment)
 
     def _launch(self, flags: tuple[str, ...] = ()) -> RunnerLaunch:
@@ -166,3 +168,11 @@ class PythonRunner:
 
     def _shown(self, path: Path) -> str:
         return str(path.relative_to(self._root) if path.is_relative_to(self._root) else path)
+
+
+def _bytecode_of(prefix: Path, folder: Path) -> Path:
+    """Where `PYTHONPYCACHEPREFIX` puts the bytecode of the files under `folder`: the folder's
+    resolved absolute path, without its drive or root, below the prefix. The runner resolves a
+    project root the same way."""
+    resolved = folder.resolve()
+    return prefix / resolved.relative_to(resolved.anchor)

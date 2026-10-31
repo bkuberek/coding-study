@@ -124,3 +124,44 @@ def test_a_debugged_suite_keeps_the_project_environment(root):
 def test_a_debugged_suite_needs_debugpy(root):
     with pytest.raises(RunnerStartError, match="debugpy"):
         prepare(root, ProjectSuite(root / PROJECT, SESSION), FakeProbe(ProbeResult(1, "")))
+
+
+def bytecode_of(root: Path, project: Path) -> Path:
+    """Where `PYTHONPYCACHEPREFIX` mirrors the project's absolute path."""
+    return root / ".cs/pycache" / project.resolve().relative_to(project.resolve().anchor)
+
+
+def cached(directory: Path) -> Path:
+    stale = directory / "bank" / "__pycache__" / "bank.cpython-313.pyc"
+    stale.parent.mkdir(parents=True)
+    stale.touch()
+    return stale
+
+
+@pytest.mark.parametrize("scope", [ProjectGrading, ProjectSuite])
+def test_a_project_job_starts_without_the_projects_stale_bytecode(root, scope):
+    stale = cached(bytecode_of(root, root / PROJECT))
+    prepare(root, scope(root / PROJECT))
+    assert not stale.exists()
+
+
+def test_a_project_job_keeps_the_bytecode_of_other_projects(root):
+    other = cached(bytecode_of(root, root / "projects/other"))
+    prepare(root, ProjectGrading(root / PROJECT))
+    assert other.exists()
+
+
+def test_a_project_job_keeps_the_bytecode_of_the_shared_environment(root):
+    library = cached(bytecode_of(root, root / "python/.venv/lib"))
+    prepare(root, ProjectGrading(root / PROJECT))
+    assert library.exists()
+
+
+def test_a_project_job_clears_the_bytecode_of_a_project_reached_through_a_link(root):
+    (root / PROJECT).parent.mkdir(parents=True)
+    real = root / "elsewhere"
+    real.mkdir()
+    (root / PROJECT).symlink_to(real)
+    stale = cached(bytecode_of(root, real))
+    prepare(root, ProjectGrading(root / PROJECT))
+    assert not stale.exists()
