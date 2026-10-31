@@ -9,6 +9,7 @@ from coding_study.domain.project_test_runs import SuiteTestVerdict
 from coding_study.domain.runs import Crashed, Raised, TimedOut, UserError
 from coding_study.domain.submissions import LevelTally
 from coding_study.domain.suite_runs import AssertionFailed, Passed, Skipped
+from coding_study.entrypoints.commands._diagnostics import diagnostic_value
 from coding_study.entrypoints.commands.run_document import (
     DECIMALS,
     case_value,
@@ -41,6 +42,7 @@ def project_test_document(result: ProjectTestResult, exit_code: int) -> dict[str
         "levels": levels_value(result.levels),
         "build": NO_BUILD,
         "load_error": error_value(load_error) if load_error else None,
+        "diagnostics": [diagnostic_value(diagnostic) for diagnostic in result.diagnostics],
         "cases": [suite_test_value(verdict) for verdict in result.verdicts],
         "oracle": None,
         "stress": [],
@@ -128,6 +130,7 @@ def submit_document(result: SubmitResult, exit_code: int) -> dict[str, JsonValue
         },
         "level_tallies": [level_tally_value(tally) for tally in result.level_tallies],
         "load_error": error_value(load_error) if load_error else None,
+        "diagnostics": [diagnostic_value(diagnostic) for diagnostic in result.diagnostics],
         "cases": [
             case_value(verdict) | {"level": levels.get(verdict.case.id)} for verdict in shown
         ],

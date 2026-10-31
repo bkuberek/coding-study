@@ -342,7 +342,7 @@ PASS     tests/test_overdraft.py::test_refuses_overdraft   yours
 | Summary | Skipped tests are left out of the count. On a full pass: `all passed. Next: cstudy submit` |
 | Exit codes | 0 when every test that ran passed; 1 when one failed, errored, timed out or did not run, or when no test ran (`no tests ran`); 3; 4 (pytest missing from `python/.venv`: `fix: uv add --dev pytest --directory python`) |
 | `test_runs` | `total` counts every reported test but skipped ones; `failed` the `FAIL`s; `errored` the `ERROR`s and crashes; `timed_out` the `TIMEOUT`s; `tle` 0. `code_hash` covers the folder ([progress-and-scheduling](progress-and-scheduling.md#project-attempts)) |
-| `--json` | The document below with `comparator` null, `oracle` null and `stress` empty; `levels` as for progressive problems with `newly_unlocked` always false; each entry of `cases` is a test: `id`, `status` (`pass`, `fail`, `error`, `skip`, `timeout`, `not_run`), `duration_ns`, `origin` (`level`, `starter` or `yours`), `level` (the level of a generated file, else null), and `message`, `expected`, `actual`, `error` and `stdout` when set |
+| `--json` | The document below with `comparator` null, `oracle` null and `stress` empty, and `diagnostics`, the run's [diagnostics](#diagnostics) (empty when the code loaded), after `load_error`; `levels` as for progressive problems with `newly_unlocked` always false; each entry of `cases` is a test: `id`, `status` (`pass`, `fail`, `error`, `skip`, `timeout`, `not_run`), `duration_ns`, `origin` (`level`, `starter` or `yours`), `level` (the level of a generated file, else null), and `message`, `expected`, `actual`, `error` and `stdout` when set |
 
 #### Oracle inputs
 
@@ -494,7 +494,7 @@ In a mock attempt the failing hidden case collapses: `level 2  FAIL     4/5 (2 v
 
 Exit 0 when every graded case passed, 1 when one did not, 2 when the code did not load (`load_error`: the expected module and class), 3, 4.
 
-`--json` prints one document in the style of [`cstudy test --json`](#json-output): `slug`, `language`, `attempt_id`, `mode`, `outcome` (`passed`, `failed` or `load_failed`), `exit_code`, `every_level` (whether it graded every unlocked level), `timer`, `levels` (`graded_up_to`, `last`, `unlocked`, `newly_unlocked`, and `methods_added`, the methods of a newly opened level in the language's names, else empty), `level_tallies` (per level: `level`, `total`, `passed`, `visible_total`, `visible_passed`, `hidden_total`, `hidden_passed`), `load_error`, `cases` (as in `cstudy test --json`, each with its `level`; in a mock attempt hidden cases are left out and only `level_tallies` counts them), `tally` and `duration_s`.
+`--json` prints one document in the style of [`cstudy test --json`](#json-output): `slug`, `language`, `attempt_id`, `mode`, `outcome` (`passed`, `failed` or `load_failed`), `exit_code`, `every_level` (whether it graded every unlocked level), `timer`, `levels` (`graded_up_to`, `last`, `unlocked`, `newly_unlocked`, and `methods_added`, the methods of a newly opened level in the language's names, else empty), `level_tallies` (per level: `level`, `total`, `passed`, `visible_total`, `visible_passed`, `hidden_total`, `hidden_passed`), `load_error`, `diagnostics` (the [diagnostics](#diagnostics) of code that did not load, else empty), `cases` (as in `cstudy test --json`, each with its `level`; in a mock attempt hidden cases are left out and only `level_tallies` counts them), `tally` and `duration_s`.
 
 `--events` writes the submission as an [event stream](#event-stream) instead of the report.
 
@@ -565,7 +565,7 @@ A `load` diagnostic comes from a [load error](runners.md#event-stream---out-json
 | The grading job's, or a test file that failed to collect (a result whose id is the file, which stays a `test_result` with status `error` as well) | The innermost frame of the error's trace: `bank/bank.py:12 in Bank.deposit` gives `bank/bank.py`, line 12. `code` is the error's type |
 | The suite's own, when the framework refused to run it, such as a `conftest.py` that does not import | Read from the framework's report: the innermost frame of its Python traceback that lies in the project folder, an absolute path made relative to the folder, and the traceback's last exception as `code` and `message` (`E   SyntaxError: invalid syntax`) |
 
-An error without such a frame gives a diagnostic without a place, and one without an exception line keeps its own type and message. Test files that fail on the same line of one module give one diagnostic. An exception a test raises while it runs is a test result, not a diagnostic. A type checker's or compiler's report is read by a parser for its format into the same fields.
+Diagnostics are `diagnostic` events, and the `diagnostics` list of `cstudy test --json` on a project problem and of `cstudy submit --json`. An error without such a frame gives a diagnostic without a place, and one without an exception line keeps its own type and message. Test files that fail on the same line of one module give one diagnostic. An exception a test raises while it runs is a test result, not a diagnostic. A type checker's or compiler's report is read by a parser for its format into the same fields.
 
 ## cstudy status
 

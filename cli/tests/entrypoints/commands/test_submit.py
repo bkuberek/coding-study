@@ -233,3 +233,14 @@ def test_json_of_code_that_does_not_load_names_the_error(environment, process):
         "SymbolNotFound",
         [],
     )
+
+
+def test_the_document_lists_the_diagnostics_of_code_that_did_not_load(environment, process):
+    process.load_error = UserError("SyntaxError", "invalid syntax", "bank/bank.py:5")
+    assert [(found["file"], found["line"]) for found in document()["diagnostics"]] == [
+        ("bank/bank.py", 5)
+    ]
+
+
+def test_the_document_of_code_that_loaded_has_no_diagnostics(environment):
+    assert document()["diagnostics"] == []

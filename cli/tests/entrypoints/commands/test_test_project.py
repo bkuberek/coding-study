@@ -291,3 +291,15 @@ def test_a_debug_run_names_itself_and_shows_no_durations(environment):
         "1/1 passed",
         "all passed (debug run: not recorded; cstudy test records the run)",
     ]
+
+
+def test_the_document_lists_where_test_files_did_not_import(environment, process):
+    broken = UserError("SyntaxError", "invalid syntax", "bank/bank.py:5")
+    process.tests = (SuiteTest("tests/test_level_1.py", Raised(broken, 0)),)
+    assert [(found["file"], found["line"]) for found in document()["diagnostics"]] == [
+        ("bank/bank.py", 5)
+    ]
+
+
+def test_the_document_of_a_suite_that_imported_has_no_diagnostics(environment):
+    assert document()["diagnostics"] == []
