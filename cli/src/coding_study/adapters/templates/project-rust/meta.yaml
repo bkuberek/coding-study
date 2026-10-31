@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "{{id}}"
+slug: {{slug}}
+title: {{title_yaml}}
+status: draft
+difficulty: {{difficulty}}
+track: {{track}}
+kind: project
+{{patterns}}
+languages: [rust]
+levels:
+  - {level: 1, title: Store values}
+  - {level: 2, title: Read values}
+signature:
+  class:
+    name: {{class_name}}
+    constructor: {params: []}
+    methods:
+      - {name: put, level: 1, params: [{name: timestamp, type: long}, {name: key, type: string}, {name: value, type: string}], returns: {type: string}}
+      - {name: get, level: 2, params: [{name: timestamp, type: long}, {name: key, type: string}], returns: {type: string}}
+comparator: {type: ops}
+project:
+  entry: {{crate_name}}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "O(1) per op", space: "O(n)", time_class: "n", space_class: "n"}

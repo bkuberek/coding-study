@@ -1,0 +1,25 @@
+//! The struct that `cstudy submit` and the tests drive.
+//!
+//! TODO: replace this sketch with the reference of every level.
+
+use std::collections::HashMap;
+
+pub struct {{class_name}} {
+    values: HashMap<String, String>,
+}
+
+impl {{class_name}} {
+    pub fn new() -> Self {
+        {{class_name}} {
+            values: HashMap::new(),
+        }
+    }
+
+    pub fn put(&mut self, _timestamp: i64, key: String, value: String) -> String {
+        self.values.insert(key, value).unwrap_or_default()
+    }
+
+    pub fn get(&mut self, _timestamp: i64, key: String) -> String {
+        self.values.get(&key).cloned().unwrap_or_default()
+    }
+}

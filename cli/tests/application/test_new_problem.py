@@ -160,6 +160,7 @@ ONE_LANGUAGE_TEMPLATES = (
     TemplateName.PROJECT_JAVA,
     TemplateName.PROJECT_KOTLIN,
     TemplateName.PROJECT_GO,
+    TemplateName.PROJECT_RUST,
 )
 
 
@@ -341,3 +342,53 @@ def test_a_jvm_projects_overlay_implements_every_level(environment, language):
     reference = environment.root / created.directory / "solutions" / "reference"
     text = (reference / jvm_entry(language, class_name)).read_text()
     assert (" put(" in text, " get(" in text) == (True, True)
+
+
+RUST_PROJECT_FILES = (
+    "meta.yaml",
+    "problem.md",
+    "solutions/explanation.md",
+    "solutions/reference/src/lib.rs",
+    "starter/.cargo/config.toml",
+    "starter/Cargo.toml",
+    "starter/README.md",
+    "starter/src/lib.rs",
+    "tests.json",
+)
+
+
+def test_a_rust_project_gets_its_starter_and_overlay_and_no_reference_file(environment):
+    created = create(environment, "bank-project-rust", TemplateName.PROJECT_RUST)
+    assert created.files == RUST_PROJECT_FILES
+
+
+def test_a_rust_project_lists_rust_alone_with_the_crate_as_entry(environment):
+    created = create(environment, "bank-project-rust", TemplateName.PROJECT_RUST)
+    meta = environment.problems.load(created.slug).meta
+    assert (meta.languages, meta.project and meta.project.entry) == (
+        (Language.RUST,),
+        "bank_project_rust",
+    )
+
+
+def test_a_rust_projects_crate_is_named_after_the_entry(environment):
+    created = create(environment, "bank-project-rust", TemplateName.PROJECT_RUST)
+    manifest = (environment.root / created.directory / "starter" / "Cargo.toml").read_text()
+    assert 'name = "bank_project_rust"\n' in manifest
+
+
+def test_a_rust_projects_starter_declares_level_ones_method_only(environment):
+    created = create(environment, "bank-project-rust", TemplateName.PROJECT_RUST)
+    entry = (environment.root / created.directory / "starter" / "src" / "lib.rs").read_text()
+    assert (
+        "pub struct BankProjectRust {" in entry,
+        "    pub fn put(" in entry,
+        "    pub fn get(" in entry,
+    ) == (True, True, False)
+
+
+def test_a_rust_projects_overlay_implements_every_level(environment):
+    created = create(environment, "bank-project-rust", TemplateName.PROJECT_RUST)
+    overlay = environment.root / created.directory / "solutions" / "reference" / "src" / "lib.rs"
+    text = overlay.read_text()
+    assert ("    pub fn put(" in text, "    pub fn get(" in text) == (True, True)

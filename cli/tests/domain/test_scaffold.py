@@ -90,6 +90,11 @@ def test_the_jvm_project_templates_default_to_the_practical_track(template):
     assert (scaffold.track, scaffold.patterns) == (Track.PRACTICAL, ())
 
 
+def test_the_rust_project_template_defaults_to_the_practical_track():
+    scaffold = plan(slug="bank-project-rust", template=TemplateName.PROJECT_RUST)
+    assert (scaffold.track, scaffold.patterns) == (Track.PRACTICAL, ())
+
+
 def test_the_difficulty_defaults_to_medium():
     assert plan(slug="two-sum").difficulty is Difficulty.MEDIUM
 
@@ -124,6 +129,10 @@ def placeholders(**fields: object) -> dict[str, str]:
 def test_signature_names_come_from_the_slug():
     names = placeholders(slug="max-sub-array2")
     assert (names["function_name"], names["class_name"]) == ("maxSubArray2", "MaxSubArray2")
+
+
+def test_the_crate_name_is_the_slug_in_snake_case():
+    assert placeholders(slug="bank-project-rust")["crate_name"] == "bank_project_rust"
 
 
 def test_the_yaml_title_is_quoted():

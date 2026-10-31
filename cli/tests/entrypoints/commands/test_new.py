@@ -56,6 +56,7 @@ PROJECT_TEMPLATES = (
     "project-java",
     "project-kotlin",
     "project-go",
+    "project-rust",
 )
 
 

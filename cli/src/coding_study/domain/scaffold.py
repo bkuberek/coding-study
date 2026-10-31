@@ -43,6 +43,8 @@ class TemplateName(StrEnum):
     """A project problem in Kotlin: a Gradle project folder and the reference's overlay on it."""
     PROJECT_GO = "project-go"
     """A project problem in Go: a starter module and the reference's overlay on it."""
+    PROJECT_RUST = "project-rust"
+    """A project problem in Rust: a starter crate and the reference's overlay on it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +64,7 @@ TEMPLATE_DEFAULTS: Mapping[TemplateName, TemplateDefaults] = {
     TemplateName.PROJECT_JAVA: TemplateDefaults(Track.PRACTICAL, None),
     TemplateName.PROJECT_KOTLIN: TemplateDefaults(Track.PRACTICAL, None),
     TemplateName.PROJECT_GO: TemplateDefaults(Track.PRACTICAL, None),
+    TemplateName.PROJECT_RUST: TemplateDefaults(Track.PRACTICAL, None),
 }
 
 
@@ -103,6 +106,7 @@ class Scaffold:
             "patterns": f"patterns: [{', '.join(self.patterns)}]" if self.patterns else "",
             "function_name": words[0] + "".join(word.capitalize() for word in words[1:]),
             "class_name": "".join(word.capitalize() for word in words),
+            "crate_name": "_".join(words),
         }
 
     def track_files(self) -> Mapping[str, str]:

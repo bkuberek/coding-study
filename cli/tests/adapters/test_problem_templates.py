@@ -2,6 +2,7 @@ import pytest
 
 from coding_study.adapters.problem_templates import PackagedProblemTemplates
 from coding_study.domain.scaffold import TemplateName
+from coding_study.domain.workspace_projects import RUST_CARGO_CONFIG
 
 TEMPLATE_FILES = {
     "generator.py",
@@ -25,6 +26,7 @@ TEMPLATE_FILES = {
             "project-java",
             "project-kotlin",
             "project-go",
+            "project-rust",
         )
     ],
 )
@@ -89,6 +91,22 @@ def test_a_jvm_project_template_has_a_gradle_starter_and_an_overlay(template, la
         f"starter/{entry}",
         f"solutions/reference/{entry}",
     }
+
+
+def test_the_rust_project_template_has_a_starter_and_an_overlay_instead_of_a_generator():
+    files = set(PackagedProblemTemplates().files(TemplateName.PROJECT_RUST))
+    assert files == TEMPLATE_FILES - {"generator.py"} | {
+        "starter/README.md",
+        "starter/Cargo.toml",
+        "starter/.cargo/config.toml",
+        "starter/src/lib.rs",
+        "solutions/reference/src/lib.rs",
+    }
+
+
+def test_the_rust_starters_cargo_config_is_the_vendored_source():
+    files = PackagedProblemTemplates().files(TemplateName.PROJECT_RUST)
+    assert files["starter/.cargo/config.toml"] == RUST_CARGO_CONFIG
 
 
 def test_the_typescript_starters_build_files_drop_their_template_suffix():
