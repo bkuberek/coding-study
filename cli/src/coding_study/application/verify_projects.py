@@ -86,11 +86,7 @@ def verify_project(
 
 def reference_build(environment: Environment, problem: Problem, approach_id: str) -> Path:
     """The approach's build: the starter, its overlay over it, then the generated test file of
-    every level; returns the absolute root.
-
-    Files are written over the previous build, so a file removed from the starter or the overlay
-    stays until `.cs/build/projects/` is deleted.
-    """
+    every level, in a folder emptied first; returns the absolute root."""
     files = problem.project_files or NO_PROJECT_FILES
     trees = {
         STARTER_DIRECTORY: files.starter or _NO_FILES,
@@ -101,8 +97,8 @@ def reference_build(environment: Environment, problem: Problem, approach_id: str
 
 
 def starter_build(environment: Environment, problem: Problem) -> Path:
-    """The starter with level 1's generated test file, as `cstudy start` seeds a project folder;
-    returns the absolute root."""
+    """The starter with level 1's generated test file, as `cstudy start` seeds a project folder,
+    in a folder emptied first; returns the absolute root."""
     starter = (problem.project_files or NO_PROJECT_FILES).starter or _NO_FILES
     folder = f"{STARTER_BUILDS}/{problem.meta.slug}"
     trees = {STARTER_DIRECTORY: starter}
@@ -135,9 +131,11 @@ class _ProjectBuild:
 
     def write(self, folder: str, trees: Mapping[str, ProjectTree], levels: int) -> Path:
         """`trees` by their directory in the problem, later ones over earlier ones; then the
-        generated test files of levels 1 to `levels`."""
+        generated test files of levels 1 to `levels`. `folder` is emptied first, so a file removed
+        from a tree since the last build cannot linger in it."""
         texts = self._texts(trees)
         workspace = self._environment.workspace
+        workspace.remove_folder(folder)
         for path, text in texts.items():
             workspace.write_text(f"{folder}{PATH_SEPARATOR}{path}", text)
         language = project_language(self._problem.meta)

@@ -147,6 +147,27 @@ def test_the_starter_build_has_no_later_levels_tests(environment, root):
     assert "tests/test_level_2.py" not in build_files(root, STARTER_BUILD)
 
 
+@pytest.mark.parametrize("build", [REFERENCE_BUILD, STARTER_BUILD])
+def test_a_build_starts_from_an_empty_folder(environment, root, build):
+    stale = root / build / "bank" / "removed_helper.py"
+    stale.parent.mkdir(parents=True)
+    stale.write_text("# left by an earlier build\n")
+    verify(environment)
+    assert "bank/removed_helper.py" not in build_files(root, build)
+
+
+@pytest.mark.parametrize("build", [REFERENCE_BUILD, STARTER_BUILD])
+def test_a_build_never_deletes_through_a_link(environment, root, build):
+    outside = root / "elsewhere"
+    outside.mkdir()
+    (outside / "kept.txt").write_text("not a build file\n")
+    link = root / build / ".venv"
+    link.parent.mkdir(parents=True)
+    link.symlink_to(outside, target_is_directory=True)
+    verify(environment)
+    assert (outside / "kept.txt").is_file()
+
+
 def test_verify_needs_the_project_test_generator(environment):
     toolchains = replace(environment.toolchains, project_test_generators={})
     with pytest.raises(LanguageNotSetUpError, match="project test generator"):

@@ -40,6 +40,13 @@ class WorkspaceFs:
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(source, target)
 
+    def remove_folder(self, path: str) -> None:
+        folder = self.absolute(path)
+        if folder.is_symlink():
+            folder.unlink()
+        elif folder.is_dir():
+            shutil.rmtree(folder)
+
     def ensure_link(self, path: str, target: str) -> bool:
         link = self.absolute(path)
         if link.exists():

@@ -565,6 +565,11 @@ class Workspace(Protocol):
         never followed. Raises FileExistsError when `destination` exists."""
         ...
 
+    def remove_folder(self, path: str) -> None:
+        """Delete the directory `path` with everything in it. A link, there or inside, is
+        removed, never followed. Nothing happens when `path` does not exist."""
+        ...
+
     def ensure_link(self, path: str, target: str) -> bool:
         """Make `path` a symbolic link to `target` (relative to the link's directory) when nothing
         is there or a link there dangles; True when it did. Anything else is left alone."""

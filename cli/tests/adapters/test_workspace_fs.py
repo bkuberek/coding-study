@@ -198,3 +198,34 @@ def test_archive_folder_refuses_an_existing_destination(workspace, project):
     workspace.write_text(f"{ARCHIVE}/notes.md", "an earlier attempt\n")
     with pytest.raises(FileExistsError):
         workspace.archive_folder(project, ARCHIVE)
+
+
+def test_remove_folder_deletes_the_folder(workspace, project):
+    workspace.remove_folder(project)
+    assert not os.path.lexists(workspace.absolute(project))
+
+
+def test_remove_folder_never_deletes_through_the_venv_link(workspace, project, shared_venv):
+    workspace.remove_folder(project)
+    assert (shared_venv / "bin" / "python").is_file()
+
+
+def test_remove_folder_unlinks_a_link_to_a_folder(workspace, shared_venv):
+    workspace.absolute(PROJECT).parent.mkdir(parents=True)
+    workspace.absolute(PROJECT).symlink_to(shared_venv)
+    workspace.remove_folder(PROJECT)
+    assert (os.path.lexists(workspace.absolute(PROJECT)), (shared_venv / "bin").is_dir()) == (
+        False,
+        True,
+    )
+
+
+def test_remove_folder_leaves_its_siblings_alone(workspace, project):
+    workspace.write_text("projects/other/README.md", "# Other\n")
+    workspace.remove_folder(project)
+    assert workspace.exists("projects/other/README.md")
+
+
+def test_remove_folder_of_a_missing_path_does_nothing(workspace):
+    workspace.remove_folder(PROJECT)
+    assert not workspace.exists(PROJECT)
