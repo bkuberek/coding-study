@@ -10,11 +10,13 @@ from coding_study.adapters.languages.python.test_generator import PythonTestGene
 from coding_study.application.environment import Environment
 from coding_study.application.ports import (
     BuildScope,
+    CaseListener,
     PrepareResult,
     ProgressNotice,
     ProjectScope,
     ProjectTestGenerator,
     RunnerLaunch,
+    SuiteListener,
 )
 from coding_study.application.verify_projects import STARTER_BUILDS
 from coding_study.domain.cases import JsonValue
@@ -100,7 +102,8 @@ def expected_answers(*problems: Problem) -> GradingAnswer:
 
 @dataclass
 class ScriptedProjectProcess:
-    """Reports `tests` for every suite, and answers every graded case with `answer`.
+    """Reports `tests` for every suite, and answers every graded case with `answer`, telling the
+    listener of each test and case as a runner would.
 
     A grading job fails to load with `load_error` when it is set; a suite does not run with
     `suite_load_error`, and stops with `stopped_early`.
@@ -118,8 +121,14 @@ class ScriptedProjectProcess:
     def gradings(self) -> list[RunJob]:
         return [job for request in self.requests for job in request.jobs]
 
-    def run_suite(self, launch: RunnerLaunch, job: SuiteJob) -> SuiteReport:
+    def run_suite(
+        self, launch: RunnerLaunch, job: SuiteJob, listener: SuiteListener | None = None
+    ) -> SuiteReport:
         self.suites.append(job)
+        if listener is not None and self.suite_load_error is None:
+            for test in self.tests:
+                listener.test_started(test.test_id)
+                listener.test_finished(test)
         return SuiteReport(
             PROJECT_RUNNER,
             self.tests,
@@ -127,16 +136,24 @@ class ScriptedProjectProcess:
             stopped_early=self.stopped_early,
         )
 
-    def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
+    def run(
+        self, launch: RunnerLaunch, request: RunRequest, listener: CaseListener | None = None
+    ) -> RunReport:
         self.requests.append(request)
-        return RunReport(PROJECT_RUNNER, tuple(self._job(job) for job in request.jobs))
+        jobs = tuple(self._job(job, listener) for job in request.jobs)
+        return RunReport(PROJECT_RUNNER, jobs)
 
-    def _job(self, job: RunJob) -> JobReport:
+    def _job(self, job: RunJob, listener: CaseListener | None) -> JobReport:
         if self.load_error is not None:
             return JobReport(job.job_id, load_error=self.load_error)
-        return JobReport(
-            job.job_id, tuple(CaseReport(case.id, self.answer(job, case)) for case in job.cases)
-        )
+        reports: list[CaseReport] = []
+        for case in job.cases:
+            report = CaseReport(case.id, self.answer(job, case))
+            if listener is not None:
+                listener.case_started(job.job_id, case.id)
+                listener.case_finished(job.job_id, report)
+            reports.append(report)
+        return JobReport(job.job_id, tuple(reports))
 
 
 @dataclass
@@ -147,11 +164,15 @@ class ScriptedBuilds:
     starter: ScriptedProjectProcess
     reference: ScriptedProjectProcess
 
-    def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
-        return self._script(launch).run(launch, request)
+    def run(
+        self, launch: RunnerLaunch, request: RunRequest, listener: CaseListener | None = None
+    ) -> RunReport:
+        return self._script(launch).run(launch, request, listener)
 
-    def run_suite(self, launch: RunnerLaunch, job: SuiteJob) -> SuiteReport:
-        return self._script(launch).run_suite(launch, job)
+    def run_suite(
+        self, launch: RunnerLaunch, job: SuiteJob, listener: SuiteListener | None = None
+    ) -> SuiteReport:
+        return self._script(launch).run_suite(launch, job, listener)
 
     def _script(self, launch: RunnerLaunch) -> ScriptedProjectProcess:
         in_the_starters_build = STARTER_BUILDS in launch.cwd.as_posix()

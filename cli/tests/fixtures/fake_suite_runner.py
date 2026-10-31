@@ -9,6 +9,8 @@ with what it does:
     {"id": T, "do": "raise"}            case_result error
     {"id": T, "do": "skip"}             case_result skipped with message "later"
     {"id": T, "do": "hang"}             sleeps after case_start
+    {"id": T, "do": "sleep", "seconds": S}
+                                        sleeps S seconds after case_start, then case_result ok
     {"id": T, "do": "stall"}            sleeps before case_start
     {"id": T, "do": "crash"}            writes "crashed" to stderr and exits 9 after case_start
     {"id": T, "do": "environment", "variable": V}
@@ -97,6 +99,9 @@ class Runner:
             self.emit(event="case_result", status="ok", output=1, **ids)
         elif action == "hang":
             time.sleep(FOREVER_SECONDS)
+        elif action == "sleep":
+            time.sleep(test["seconds"])
+            self.emit(event="case_result", status="ok", **ids)
         elif action == "crash":
             print("crashed", file=sys.stderr, flush=True)
             sys.exit(CRASH_EXIT_CODE)

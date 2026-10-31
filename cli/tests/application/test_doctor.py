@@ -19,12 +19,14 @@ from coding_study.application.doctor import (
 )
 from coding_study.application.ports import (
     BuildFailed,
+    CaseListener,
     DebugServer,
     LanguageRunner,
     Prepared,
     ProbeResult,
     RunnerLaunch,
     ScaffoldOutcome,
+    SuiteListener,
     UserCode,
 )
 from coding_study.domain.bench_runs import BenchReport, BenchRequest
@@ -117,7 +119,9 @@ class HelloProcess:
         self.features = features
         self.requests: list[RunRequest] = []
 
-    def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
+    def run(
+        self, launch: RunnerLaunch, request: RunRequest, listener: CaseListener | None = None
+    ) -> RunReport:
         self.requests.append(request)
         if self.error is not None:
             raise self.error
@@ -126,7 +130,9 @@ class HelloProcess:
     def bench(self, launch: RunnerLaunch, request: BenchRequest) -> BenchReport:
         raise AssertionError("cstudy doctor never benches")
 
-    def run_suite(self, launch: RunnerLaunch, job: SuiteJob) -> SuiteReport:
+    def run_suite(
+        self, launch: RunnerLaunch, job: SuiteJob, listener: SuiteListener | None = None
+    ) -> SuiteReport:
         raise AssertionError("cstudy doctor never runs a suite")
 
 

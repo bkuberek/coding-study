@@ -8,6 +8,7 @@ from typer.testing import CliRunner
 
 from coding_study.application.ports import (
     BuildScope,
+    CaseListener,
     DebugLaunch,
     Prepared,
     PrepareResult,
@@ -57,12 +58,14 @@ class AnnouncingProcess(ScriptedRunnerProcess):
         super().__init__(two_sum)
         self.interrupted = interrupted
 
-    def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
+    def run(
+        self, launch: RunnerLaunch, request: RunRequest, listener: CaseListener | None = None
+    ) -> RunReport:
         if launch.debug is not None:
             launch.debug.announce(launch.debug.session.ready_line)
         if self.interrupted:
             raise KeyboardInterrupt
-        return super().run(launch, request)
+        return super().run(launch, request, listener)
 
 
 def wrong(job: RunJob, case: RunCase) -> Returned:

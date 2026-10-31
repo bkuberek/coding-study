@@ -15,7 +15,12 @@ from coding_study.application.active_attempt import autograded_language, find_at
 from coding_study.application.comparison import problem_comparator
 from coding_study.application.environment import Environment
 from coding_study.application.ports import ProgressNotice
-from coding_study.application.project_runs import GradingRun, project_levels, run_grading
+from coding_study.application.project_runs import (
+    CaseVerdictListener,
+    GradingRun,
+    project_levels,
+    run_grading,
+)
 from coding_study.application.project_tests import LevelTestFile, LevelTestWriter
 from coding_study.application.statement_file import write_statement
 from coding_study.domain.attempts import Attempt, AttemptMode
@@ -46,6 +51,8 @@ class SubmitRequest:
     language: Language | None = None
     level: int | None = None
     """`--level N`: grade levels 1 to N; None grades every unlocked level."""
+    listener: CaseVerdictListener | None = None
+    """`--events`: hears each graded case while the grading runs."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,7 +128,8 @@ def submit_project(
     require_project(meta)
     levels = project_levels(meta, attempt.level_unlocked, request.level)
     folder = project_folder(meta.slug)
-    run = GradingRun(problem, language, environment.workspace.absolute(folder), levels.ran_up_to)
+    root = environment.workspace.absolute(folder)
+    run = GradingRun(problem, language, root, levels.ran_up_to, request.listener)
     judgement = run_grading(environment, run, notify)
     graded = cases_up_to(problem.cases, levels.ran_up_to)
     duration = clock.monotonic() - started

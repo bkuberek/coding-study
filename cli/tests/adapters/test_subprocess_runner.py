@@ -3,7 +3,8 @@ import os
 import signal
 import subprocess
 import sys
-from dataclasses import replace
+import time
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,7 @@ from coding_study.domain.naming import FunctionNames
 from coding_study.domain.problem import ProblemKind
 from coding_study.domain.runs import (
     CaseOutcome,
+    CaseReport,
     Crashed,
     FileTarget,
     InvalidOutput,
@@ -43,6 +45,7 @@ from coding_study.domain.type_dsl import Scalar, ScalarType
 FAKE_RUNNER = Path(__file__).resolve().parents[1] / "fixtures" / "fake_runner.py"
 HANG_GUARD_MS = 200
 IDLE_LIMIT_MS = 300
+SLOW_CASE_SECONDS = 0.5
 SLEEPING_COMMAND = (sys.executable, "-c", "import time; time.sleep(60)")
 SIGNATURE = FunctionSignature(
     "step", (Param("step", ScalarType(Scalar.STRING)),), Returns(ScalarType(Scalar.INT))
@@ -77,8 +80,31 @@ def runner(runs_directory: Path) -> SubprocessRunner:
     return SubprocessRunner(runs_directory, idle_limit_ms=IDLE_LIMIT_MS)
 
 
+@dataclass
+class HeardCases:
+    """What a run's listener heard, in order, and when each case started."""
+
+    heard: list[tuple[str, str, CaseOutcome | None]] = field(
+        default_factory=list[tuple[str, str, CaseOutcome | None]]
+    )
+    started_at: dict[str, float] = field(default_factory=dict[str, float])
+
+    def case_started(self, job_id: str, case_id: str) -> None:
+        self.heard.append((job_id, case_id, None))
+        self.started_at[case_id] = time.monotonic()
+
+    def case_finished(self, job_id: str, report: CaseReport) -> None:
+        self.heard.append((job_id, report.case_id, report.outcome))
+
+
 def run(runner: SubprocessRunner, *jobs: RunJob, startup: str = "normal") -> RunReport:
     return runner.run(launch(startup), RunRequest(jobs))
+
+
+def heard(runner: SubprocessRunner, *jobs: RunJob) -> HeardCases:
+    listener = HeardCases()
+    runner.run(launch(), RunRequest(jobs), listener)
+    return listener
 
 
 def outcomes(report: RunReport, job_id: str = "j") -> list[CaseOutcome]:
@@ -173,6 +199,34 @@ def test_cases_left_after_the_last_restart_are_not_run(runner):
         *([Crashed] * (MAX_RESTARTS + 1)),
         NotRun,
     ]
+
+
+def test_a_listener_hears_each_case_start_then_its_outcome(runner):
+    assert heard(runner, job(returns("a", 1), returns("b", 2))).heard == [
+        ("j", "a", None),
+        ("j", "a", Returned(1, 1000)),
+        ("j", "b", None),
+        ("j", "b", Returned(2, 1000)),
+    ]
+
+
+def test_a_listener_hears_a_hung_case_end_with_its_timeout(runner):
+    assert heard(runner, job(case("a", "hang"))).heard == [
+        ("j", "a", None),
+        ("j", "a", TimedOut(HANG_GUARD_MS)),
+    ]
+
+
+def test_a_listener_hears_a_case_start_while_the_run_still_goes(runner):
+    slow = replace(case("slow", "sleep", seconds=SLOW_CASE_SECONDS), hang_guard_ms=5_000)
+    listener = heard(runner, job(slow))
+    assert time.monotonic() - listener.started_at["slow"] >= SLOW_CASE_SECONDS * 0.8
+
+
+def test_a_listener_hears_no_case_left_when_restarts_run_out(runner):
+    crashes = [case(f"c{index}", "crash", exit_code=1) for index in range(MAX_RESTARTS + 2)]
+    finished = [case_id for _, case_id, outcome in heard(runner, job(*crashes)).heard if outcome]
+    assert finished == [f"c{index}" for index in range(MAX_RESTARTS + 1)]
 
 
 def test_runner_that_never_says_hello_is_an_environment_error(runner):

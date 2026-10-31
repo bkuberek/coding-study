@@ -22,10 +22,10 @@ from coding_study.domain.problem import Language, Problem, ProblemMeta, ProblemS
 from coding_study.domain.progress_export import ProgressSnapshot
 from coding_study.domain.progress_stats import LatestBench
 from coding_study.domain.project_tests import LevelTests
-from coding_study.domain.runs import RunReport, RunRequest
+from coding_study.domain.runs import CaseReport, RunReport, RunRequest
 from coding_study.domain.scheduling import ProblemProgress, ScheduleEntry
 from coding_study.domain.submissions import LevelUnlock, SubmissionRecord
-from coding_study.domain.suite_runs import SuiteJob, SuiteReport
+from coding_study.domain.suite_runs import SuiteJob, SuiteReport, SuiteTest
 from coding_study.domain.time_limits import Calibration
 
 
@@ -305,11 +305,35 @@ class LanguageRunner(Protocol):
         ...
 
 
+class CaseListener(Protocol):
+    """Told of each case as the runner reports it, while the run goes on."""
+
+    def case_started(self, job_id: str, case_id: str) -> None: ...
+
+    def case_finished(self, job_id: str, report: CaseReport) -> None:
+        """The case's outcome as recorded: its result, or the hang or crash it ended in. A case
+        left not run when restarts run out has none: only the report holds it."""
+        ...
+
+
+class SuiteListener(Protocol):
+    """Told of each test of a suite as the runner reports it, while the suite goes on."""
+
+    def test_started(self, test_id: str) -> None: ...
+
+    def test_finished(self, test: SuiteTest) -> None:
+        """The test's outcome as recorded: its result, or the hang or crash it ended in."""
+        ...
+
+
 class RunnerProcess(Protocol):
     """Runs any prepared runner; one implementation (`SubprocessRunner`) serves every language."""
 
-    def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
+    def run(
+        self, launch: RunnerLaunch, request: RunRequest, listener: CaseListener | None = None
+    ) -> RunReport:
         """One outcome per requested case, including timeouts, crashes and cases not run.
+        `listener` hears each case as it starts and ends.
 
         A launch with a `DebugLaunch` waits for the debugger without time limits or restarts.
 
@@ -325,8 +349,11 @@ class RunnerProcess(Protocol):
         """
         ...
 
-    def run_suite(self, launch: RunnerLaunch, job: SuiteJob) -> SuiteReport:
-        """One result per test the framework ran (docs/specs/runners.md#suite-job).
+    def run_suite(
+        self, launch: RunnerLaunch, job: SuiteJob, listener: SuiteListener | None = None
+    ) -> SuiteReport:
+        """One result per test the framework ran (docs/specs/runners.md#suite-job). `listener`
+        hears each test as it starts and ends.
 
         A test that hangs or crashes is recorded as such, and the suite restarts without the
         tests reported so far. Raises like `run`, and RunnerStartError for a runner without

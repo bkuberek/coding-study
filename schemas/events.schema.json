@@ -5,7 +5,9 @@
   "oneOf": [
     { "$ref": "#/$defs/run_start" },
     { "$ref": "#/$defs/output" },
+    { "$ref": "#/$defs/test_start" },
     { "$ref": "#/$defs/test_result" },
+    { "$ref": "#/$defs/case_start" },
     { "$ref": "#/$defs/case_result" },
     { "$ref": "#/$defs/diagnostic" },
     { "$ref": "#/$defs/level_result" },
@@ -65,6 +67,17 @@
         "text": { "type": "string" }
       }
     },
+    "test_start": {
+      "description": "`cstudy test`: the runner started one test of the native suite",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "id"],
+      "properties": {
+        "type": { "const": "test_start" },
+        "version": { "$ref": "#/$defs/version" },
+        "id": { "type": "string", "minLength": 1 }
+      }
+    },
     "test_result": {
       "description": "`cstudy test`: one test of the native suite, as an entry of `cases` in `cstudy test --json`",
       "type": "object",
@@ -83,6 +96,19 @@
         "actual": true,
         "error": { "$ref": "#/$defs/error" },
         "stdout": { "type": "string" }
+      }
+    },
+    "case_start": {
+      "description": "`cstudy submit`: the runner started one graded case; a mock attempt has none for hidden cases",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version", "id", "visible", "level"],
+      "properties": {
+        "type": { "const": "case_start" },
+        "version": { "$ref": "#/$defs/version" },
+        "id": { "type": "string", "minLength": 1 },
+        "visible": { "type": "boolean" },
+        "level": { "$ref": "#/$defs/optional_level" }
       }
     },
     "case_result": {

@@ -18,6 +18,7 @@ from coding_study.adapters.workspace_fs import WorkspaceFs
 from coding_study.application.environment import Environment, ProblemDestination
 from coding_study.application.ports import (
     BuildScope,
+    CaseListener,
     DebugServer,
     LanguageRunner,
     Prepared,
@@ -126,23 +127,32 @@ def two_sum(job: RunJob, case: RunCase) -> Returned:
 
 
 class ScriptedRunnerProcess:
-    """Answers every case with `answer(job, case)`; jobs in `load_errors` fail to load."""
+    """Answers every case with `answer(job, case)`, telling the listener of each case as a runner
+    would; jobs in `load_errors` fail to load."""
 
     def __init__(self, answer: Answer, load_errors: Mapping[str, UserError] | None = None) -> None:
         self.answer = answer
         self.load_errors = dict(load_errors or {})
         self.requests: list[RunRequest] = []
 
-    def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
+    def run(
+        self, launch: RunnerLaunch, request: RunRequest, listener: CaseListener | None = None
+    ) -> RunReport:
         self.requests.append(request)
-        return RunReport(RunnerInfo("fake", 1, "0"), tuple(map(self._job, request.jobs)))
+        jobs = tuple(self._job(job, listener) for job in request.jobs)
+        return RunReport(RunnerInfo("fake", 1, "0"), jobs)
 
-    def _job(self, job: RunJob) -> JobReport:
+    def _job(self, job: RunJob, listener: CaseListener | None) -> JobReport:
         if job.job_id in self.load_errors:
             return JobReport(job.job_id, load_error=self.load_errors[job.job_id])
-        return JobReport(
-            job.job_id, tuple(CaseReport(case.id, self.answer(job, case)) for case in job.cases)
-        )
+        reports: list[CaseReport] = []
+        for case in job.cases:
+            report = CaseReport(case.id, self.answer(job, case))
+            if listener is not None:
+                listener.case_started(job.job_id, case.id)
+                listener.case_finished(job.job_id, report)
+            reports.append(report)
+        return JobReport(job.job_id, tuple(reports))
 
 
 class FakeClock:

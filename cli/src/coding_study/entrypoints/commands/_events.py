@@ -14,6 +14,7 @@ import typer
 
 from coding_study.application.project_events import (
     CaseGraded,
+    CaseStarted,
     DiagnosticFound,
     EventSink,
     LevelGraded,
@@ -22,6 +23,7 @@ from coding_study.application.project_events import (
     ProjectEvent,
     RunStarted,
     SuiteTestReported,
+    SuiteTestStarted,
 )
 from coding_study.application.submit_project import OpenedLevel
 from coding_study.domain.cases import JsonValue
@@ -111,8 +113,12 @@ def event_value(event: ProjectEvent) -> dict[str, JsonValue]:
             return _event("run_start", _start_fields(event))
         case OutputLine(text=text):
             return _event("output", {"text": text})
+        case SuiteTestStarted(test_id=test_id):
+            return _event("test_start", {"id": test_id})
         case SuiteTestReported(verdict=verdict):
             return _event("test_result", suite_test_value(verdict))
+        case CaseStarted(case=case, level=level):
+            return _event("case_start", {"id": case.id, "visible": case.visible, "level": level})
         case CaseGraded(verdict=verdict, level=level):
             return _event("case_result", case_value(verdict) | {"level": level})
         case DiagnosticFound(diagnostic=diagnostic):

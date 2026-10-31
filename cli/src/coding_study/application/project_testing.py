@@ -8,6 +8,7 @@ never opens a level: `cstudy submit` does both.
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Protocol
 
 from coding_study.application.active_attempt import autograded_language, find_attempt
 from coding_study.application.environment import Environment
@@ -35,10 +36,18 @@ from coding_study.domain.project_test_runs import (
     suite_tally,
     unmatched_selections,
 )
-from coding_study.domain.suite_runs import SuiteFramework, SuiteReport
+from coding_study.domain.suite_runs import SuiteFramework, SuiteReport, SuiteTest
 from coding_study.domain.workspace_projects import project_folder
 
 MILLISECONDS_PER_SECOND = 1000
+
+
+class SuiteVerdictListener(Protocol):
+    """Told of each test as it starts, and of its verdict as soon as the runner reports it."""
+
+    def test_started(self, test_id: str) -> None: ...
+
+    def test_judged(self, verdict: SuiteTestVerdict) -> None: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +60,8 @@ class ProjectTestRequest:
     """`--level N`: the generated files of levels 1 to N; None runs every unlocked level's."""
     debug: DebugRequest | None = None
     """`--debug`: the suite runs under an IDE debugger and is not recorded."""
+    listener: SuiteVerdictListener | None = None
+    """`--events`: hears each test while the suite runs."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,6 +128,8 @@ def run_project_tests(
     meta = problem.meta
     levels = project_levels(meta, attempt.level_unlocked, request.level)
     folder = project_folder(meta.slug)
+    origins = _origins(problem, language, levels)
+    listener = request.listener
     run = SuiteRun(
         meta,
         language,
@@ -124,11 +137,12 @@ def run_project_tests(
         levels.ran_up_to,
         request.case_ids,
         debug,
+        _TestJudge(origins, listener) if listener else None,
     )
     suite_started = clock.monotonic()
     report = run_suite(environment, run, notify)
     suite_seconds = clock.monotonic() - suite_started
-    verdicts = judge_suite(report.tests, _origins(problem, language, levels))
+    verdicts = judge_suite(report.tests, origins)
     if report.load_error is None:
         _require_matches(verdicts, request.case_ids)
     framework = SUITE_FRAMEWORKS[language]
@@ -152,6 +166,21 @@ def run_project_tests(
     if debug is None:
         _record(environment, result)
     return result
+
+
+class _TestJudge:
+    """Judges each test the runner reports, as `run_project_tests` judges them all at the end."""
+
+    def __init__(self, origins: SuiteOrigins, listener: SuiteVerdictListener) -> None:
+        self._origins = origins
+        self._listener = listener
+
+    def test_started(self, test_id: str) -> None:
+        self._listener.test_started(test_id)
+
+    def test_finished(self, test: SuiteTest) -> None:
+        (verdict,) = judge_suite((test,), self._origins)
+        self._listener.test_judged(verdict)
 
 
 def _origins(problem: Problem, language: Language, levels: LevelRun) -> SuiteOrigins:

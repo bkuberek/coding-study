@@ -8,9 +8,16 @@ import pytest
 
 from coding_study.adapters.languages.python.test_generator import PythonTestGenerator
 from coding_study.application.environment import Environment
-from coding_study.application.ports import ProgressNotice, ProjectScope, RunnerLaunch
+from coding_study.application.ports import (
+    CaseListener,
+    ProgressNotice,
+    ProjectScope,
+    RunnerLaunch,
+    SuiteListener,
+)
 from coding_study.application.project_events import (
     CaseGraded,
+    CaseStarted,
     DiagnosticFound,
     LevelGraded,
     LevelOpened,
@@ -19,6 +26,7 @@ from coding_study.application.project_events import (
     RunCommand,
     RunStarted,
     SuiteTestReported,
+    SuiteTestStarted,
     stream_project_tests,
     stream_submission,
 )
@@ -28,8 +36,17 @@ from coding_study.application.submit_project import SubmitRequest
 from coding_study.domain.diagnostics import load_diagnostic
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Language
-from coding_study.domain.runs import CaseOutcome, Raised, Returned, RunCase, RunJob, UserError
-from coding_study.domain.suite_runs import Passed, SuiteTest
+from coding_study.domain.runs import (
+    CaseOutcome,
+    Raised,
+    Returned,
+    RunCase,
+    RunJob,
+    RunReport,
+    RunRequest,
+    UserError,
+)
+from coding_study.domain.suite_runs import Passed, SuiteJob, SuiteReport, SuiteTest
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
 from tests.helpers import FIXTURE_PROBLEMS, PROJECT_PROBLEMS
 from tests.project_fakes import (
@@ -65,6 +82,23 @@ class NoticingRunner(FakeProjectRunner):
     def prepare_project(self, scope: ProjectScope, notify: ProgressNotice) -> RunnerLaunch:
         notify(NOTICE)
         return FakeProjectRunner.prepare_project(self, scope, notify)
+
+
+@dataclass
+class Unheard:
+    """Runs as `process` does, but tells no listener: a runner whose results come at the end."""
+
+    process: ScriptedProjectProcess
+
+    def run(
+        self, launch: RunnerLaunch, request: RunRequest, listener: CaseListener | None = None
+    ) -> RunReport:
+        return self.process.run(launch, request)
+
+    def run_suite(
+        self, launch: RunnerLaunch, job: SuiteJob, listener: SuiteListener | None = None
+    ) -> SuiteReport:
+        return self.process.run_suite(launch, job)
 
 
 @pytest.fixture
@@ -112,14 +146,27 @@ def test_the_start_names_the_levels_the_run_covers(environment):
     assert first_start(streamed_tests(environment)).levels.ran_up_to == 1
 
 
-def test_a_test_run_passes_notices_on_then_reports_each_test(environment, process):
+def test_a_test_run_passes_notices_on_then_reports_each_test_as_it_starts_and_ends(
+    environment, process
+):
     process.tests = (LEVEL_1_TEST, MINE)
     assert kinds(streamed_tests(environment)) == [
         RunStarted,
         OutputLine,
+        SuiteTestStarted,
         SuiteTestReported,
+        SuiteTestStarted,
         SuiteTestReported,
     ]
+
+
+def test_a_started_test_is_named(environment):
+    assert streamed_tests(environment)[2] == SuiteTestStarted(LEVEL_1_TEST.test_id)
+
+
+def test_tests_the_runner_did_not_report_live_come_when_the_suite_ends(environment, process):
+    environment = replace(environment, runner_process=Unheard(process))
+    assert kinds(streamed_tests(environment)) == [RunStarted, OutputLine, SuiteTestReported]
 
 
 def test_a_notice_keeps_its_text(environment):
@@ -158,20 +205,40 @@ def test_a_case_that_names_no_test_fails_after_the_start(environment):
     events: list[ProjectEvent] = []
     with pytest.raises(UsageError):
         stream_project_tests(environment, ProjectTestRequest(case_ids=("nope",)), events.append)
-    assert kinds(events) == [RunStarted, OutputLine]
+    assert kinds(events)[0] is RunStarted
 
 
 def test_a_submission_starts_by_naming_itself(environment):
     assert first_start(streamed_submission(environment)).command is RunCommand.SUBMIT
 
 
-def test_a_passing_submission_grades_cases_then_levels_then_opens_one(environment):
+def test_a_passing_submission_grades_each_case_as_it_starts_and_ends_then_opens_a_level(
+    environment,
+):
     assert kinds(streamed_submission(environment)) == [
         RunStarted,
         OutputLine,
-        CaseGraded,
-        CaseGraded,
-        CaseGraded,
+        *([CaseStarted, CaseGraded] * 3),
+        LevelGraded,
+        LevelOpened,
+    ]
+
+
+def test_a_started_case_carries_its_visibility_and_level(environment):
+    started = [e for e in streamed_submission(environment) if isinstance(e, CaseStarted)]
+    assert [(event.case.id, event.case.visible, event.level) for event in started] == [
+        ("ex1", True, 1),
+        ("h1", False, 1),
+        ("h2", False, 1),
+    ]
+
+
+def test_cases_the_runner_did_not_report_live_come_when_the_grading_ends(environment, process):
+    environment = replace(environment, runner_process=Unheard(process))
+    assert kinds(streamed_submission(environment)) == [
+        RunStarted,
+        OutputLine,
+        *([CaseGraded] * 3),
         LevelGraded,
         LevelOpened,
     ]
@@ -197,8 +264,12 @@ def test_a_failing_submission_opens_nothing(environment, process):
 def test_a_mock_attempt_names_no_hidden_case(environment, process):
     start_attempt(environment, StartRequest(PROJECT_SLUG, fresh=True, mock=True))
     process.answer = wrong_on_h1
-    graded = [event for event in streamed_submission(environment) if isinstance(event, CaseGraded)]
-    assert [event.verdict.case.id for event in graded] == ["ex1"]
+    named = [
+        event.case.id if isinstance(event, CaseStarted) else event.verdict.case.id
+        for event in streamed_submission(environment)
+        if isinstance(event, CaseStarted | CaseGraded)
+    ]
+    assert named == ["ex1", "ex1"]
 
 
 def test_code_that_does_not_load_is_a_diagnostic_before_the_levels(environment, process):

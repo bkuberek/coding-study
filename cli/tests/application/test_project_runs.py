@@ -14,6 +14,7 @@ from coding_study.application.ports import (
     ProjectScope,
     ProjectSuite,
     RunnerLaunch,
+    SuiteListener,
 )
 from coding_study.application.project_runs import (
     GradingRun,
@@ -26,6 +27,7 @@ from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.config import Config, HangGuardSettings
 from coding_study.domain.debugging import DebugSession
 from coding_study.domain.errors import RunnerStartError
+from coding_study.domain.judging import CaseVerdict, RunnableCase
 from coding_study.domain.naming import ClassNames
 from coding_study.domain.precedence import DEFAULT_HANG_GUARD_MS
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
@@ -40,7 +42,7 @@ from coding_study.domain.runs import (
     UserError,
 )
 from coding_study.domain.signature import ClassSignature
-from coding_study.domain.suite_runs import SuiteFramework, SuiteJob, SuiteReport
+from coding_study.domain.suite_runs import SuiteFramework, SuiteJob, SuiteReport, SuiteTest
 from tests.fakes import FakeToolchains, ScriptedRunnerProcess, make_environment, repository_root
 from tests.helpers import PROJECT_PROBLEMS
 
@@ -71,10 +73,25 @@ class RecordingSuiteProcess:
     suites: list[tuple[RunnerLaunch, SuiteJob]] = field(
         default_factory=list[tuple[RunnerLaunch, SuiteJob]]
     )
+    listeners: list[SuiteListener | None] = field(default_factory=list[SuiteListener | None])
 
-    def run_suite(self, launch: RunnerLaunch, job: SuiteJob) -> SuiteReport:
+    def run_suite(
+        self, launch: RunnerLaunch, job: SuiteJob, listener: SuiteListener | None = None
+    ) -> SuiteReport:
         self.suites.append((launch, job))
+        self.listeners.append(listener)
         return REPORT
+
+
+@dataclass
+class SilentTests:
+    """A suite listener that keeps nothing."""
+
+    def test_started(self, test_id: str) -> None:
+        pass
+
+    def test_finished(self, test: SuiteTest) -> None:
+        pass
 
 
 @pytest.fixture
@@ -306,3 +323,42 @@ def test_a_runner_without_project_jobs_cannot_grade(environment, problem):
     toolchains = FakeToolchains(runners={Language.PYTHON: FileOnlyRunner()})
     with pytest.raises(RunnerStartError, match="python"):
         run_grading(replace(environment, toolchains=toolchains), grading_run(problem), [].append)
+
+
+@dataclass
+class HeardVerdicts:
+    """What a grading's listener heard, in order: each case started, then each verdict."""
+
+    heard: list[tuple[str, CaseStatus | None]] = field(
+        default_factory=list[tuple[str, CaseStatus | None]]
+    )
+
+    def case_started(self, case: RunnableCase) -> None:
+        self.heard.append((case.id, None))
+
+    def case_judged(self, verdict: CaseVerdict) -> None:
+        self.heard.append((verdict.case.id, verdict.status))
+
+
+def test_a_suite_tells_the_runs_listener_of_each_test(environment, meta, process):
+    listener = SilentTests()
+    run_suite(environment, suite_run(meta, listener=listener), [].append)
+    assert process.listeners == [listener]
+
+
+def test_grading_judges_each_case_for_the_listener_as_it_ends(environment, problem):
+    wrong_on_h1 = correct_answers(problem)
+    answers = ScriptedRunnerProcess(
+        lambda job, case: Returned(["wrong"], 1) if case.id == "h1" else wrong_on_h1(job, case)
+    )
+    listener = HeardVerdicts()
+    run = replace(grading_run(problem, level=1), listener=listener)
+    run_grading(replace(environment, runner_process=answers), run, [].append)
+    assert listener.heard == [
+        ("ex1", None),
+        ("ex1", CaseStatus.PASS),
+        ("h1", None),
+        ("h1", CaseStatus.FAIL),
+        ("h2", None),
+        ("h2", CaseStatus.PASS),
+    ]

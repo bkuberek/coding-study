@@ -8,6 +8,7 @@ the same top-level module, and a grading job and a suite job of one project woul
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Protocol
 
 from coding_study.application.case_materialization import CaseMaterializer
 from coding_study.application.comparison import problem_comparator
@@ -19,19 +20,21 @@ from coding_study.application.ports import (
     ProjectRunner,
     ProjectSuite,
     ProjectTypeChecker,
+    SuiteListener,
     Toolchains,
 )
+from coding_study.domain.comparators import Comparator
 from coding_study.domain.config import Config
 from coding_study.domain.debugging import DebugSession
 from coding_study.domain.errors import RunnerStartError, UsageError
-from coding_study.domain.judging import Judgement, RunnableCase, judge
+from coding_study.domain.judging import CaseVerdict, Judgement, RunnableCase, judge
 from coding_study.domain.levels import LevelRun, cases_up_to, level_run
 from coding_study.domain.naming import symbol_names
 from coding_study.domain.precedence import resolve_hang_guard_ms
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
 from coding_study.domain.project import level_test_file, unsupported_language
 from coding_study.domain.runner_grading import graded_signature, grading_target
-from coding_study.domain.runs import RunCase, RunJob, RunRequest
+from coding_study.domain.runs import CaseReport, JobReport, RunCase, RunJob, RunRequest
 from coding_study.domain.suite_runs import SuiteFramework, SuiteJob, SuiteReport
 
 SUITE_JOB = "suite"
@@ -59,6 +62,8 @@ class SuiteRun:
     select: tuple[str, ...] = ()
     """`cstudy test --case`: test ids, or their last part."""
     debug: DebugSession | None = None
+    listener: SuiteListener | None = None
+    """Hears each test as the runner reports it."""
 
 
 def project_levels(meta: ProblemMeta, unlocked: int | None, requested: int | None) -> LevelRun:
@@ -80,7 +85,8 @@ def run_suite(environment: Environment, run: SuiteRun, notify: ProgressNotice) -
     toolchain lacks the framework."""
     runner = project_runner(environment.toolchains, run.language)
     launch = runner.prepare_project(ProjectSuite(run.root, run.debug), notify)
-    return environment.runner_process.run_suite(launch, suite_job(run, environment.config))
+    job = suite_job(run, environment.config)
+    return environment.runner_process.run_suite(launch, job, run.listener)
 
 
 def typecheck_project(
@@ -126,6 +132,15 @@ def suite_job(run: SuiteRun, config: Config) -> SuiteJob:
     )
 
 
+class CaseVerdictListener(Protocol):
+    """Told of each graded case as it starts, and of its verdict as soon as the runner reports
+    the case's outcome."""
+
+    def case_started(self, case: RunnableCase) -> None: ...
+
+    def case_judged(self, verdict: CaseVerdict) -> None: ...
+
+
 @dataclass(frozen=True, slots=True)
 class GradingRun:
     """One grading of a project folder (`cstudy submit`, `cstudy verify` D1 and D3)."""
@@ -136,6 +151,7 @@ class GradingRun:
     """The project folder: `projects/<slug>/`, or a reference's build copy."""
     level: int
     """Cases of levels 1 to `level` run, against the methods of those levels."""
+    listener: CaseVerdictListener | None = None
 
 
 def run_grading(environment: Environment, run: GradingRun, notify: ProgressNotice) -> Judgement:
@@ -145,14 +161,34 @@ def run_grading(environment: Environment, run: GradingRun, notify: ProgressNotic
     Raises RunnerStartError (exit 4) when the language's runner has no project jobs, ValueError
     for a problem without a `project` block or a language without project problems.
     """
-    meta = run.problem.meta
     runner = project_runner(environment.toolchains, run.language)
     graded = replace(run.problem, cases=cases_up_to(run.problem.cases, run.level))
     cases = CaseMaterializer(environment, notify).runnable_cases(graded)
     job = grading_job(run, cases, environment.config)
+    comparator = problem_comparator(environment, run.problem.meta)
     launch = runner.prepare_project(ProjectGrading(run.root), notify)
-    report = environment.runner_process.run(launch, RunRequest((job,)))
-    return judge(cases, report.job(job.job_id), problem_comparator(environment, meta))
+    judging = _CaseJudge(cases, comparator, run.listener) if run.listener else None
+    report = environment.runner_process.run(launch, RunRequest((job,)), judging)
+    return judge(cases, report.job(job.job_id), comparator)
+
+
+class _CaseJudge:
+    """Judges each case the runner reports, as `run_grading` judges them all at the end."""
+
+    def __init__(
+        self, cases: Sequence[RunnableCase], comparator: Comparator, listener: CaseVerdictListener
+    ) -> None:
+        self._cases = {case.id: case for case in cases}
+        self._comparator = comparator
+        self._listener = listener
+
+    def case_started(self, job_id: str, case_id: str) -> None:
+        self._listener.case_started(self._cases[case_id])
+
+    def case_finished(self, job_id: str, report: CaseReport) -> None:
+        case = self._cases[report.case_id]
+        judged = judge((case,), JobReport(job_id, (report,)), self._comparator)
+        self._listener.case_judged(judged.verdicts[0])
 
 
 def grading_job(run: GradingRun, cases: Sequence[RunnableCase], config: Config) -> RunJob:

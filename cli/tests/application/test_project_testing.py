@@ -1,7 +1,7 @@
 """`cstudy test` on a project problem runs its native suite as feedback
 (docs/specs/cli.md#project-problems)."""
 
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import pytest
@@ -19,7 +19,7 @@ from coding_study.domain.diagnostics import load_diagnostic
 from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
-from coding_study.domain.project_test_runs import SuiteOrigin
+from coding_study.domain.project_test_runs import SuiteOrigin, SuiteTestVerdict
 from coding_study.domain.runs import Raised, UserError
 from coding_study.domain.suite_runs import AssertionFailed, Passed, SuiteTest
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
@@ -193,3 +193,30 @@ def test_a_suite_the_framework_refused_is_read_with_paths_in_the_project(environ
     suites.suite_load_error = UserError("UsageError", report)
     (diagnostic,) = run(environment).diagnostics
     assert (diagnostic.file, diagnostic.line) == ("bank/bank.py", 3)
+
+
+@dataclass
+class HeardTests:
+    """What a project test run's listener heard, in order."""
+
+    heard: list[tuple[str, SuiteOrigin | None]] = field(
+        default_factory=list[tuple[str, SuiteOrigin | None]]
+    )
+
+    def test_started(self, test_id: str) -> None:
+        self.heard.append((test_id, None))
+
+    def test_judged(self, verdict: SuiteTestVerdict) -> None:
+        self.heard.append((verdict.test.test_id, verdict.origin))
+
+
+def test_a_listener_hears_each_test_start_then_its_verdict(environment, suites):
+    suites.tests = (LEVEL_1, YOURS)
+    listener = HeardTests()
+    run(environment, listener=listener)
+    assert listener.heard == [
+        (LEVEL_1.test_id, None),
+        (LEVEL_1.test_id, SuiteOrigin.LEVEL),
+        (YOURS.test_id, None),
+        (YOURS.test_id, SuiteOrigin.YOURS),
+    ]

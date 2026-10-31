@@ -8,7 +8,12 @@ import pytest
 from jsonschema import Draft202012Validator
 from typer.testing import CliRunner, Result
 
-from coding_study.application.ports import ProgressNotice, ProjectScope, RunnerLaunch
+from coding_study.application.ports import (
+    ProgressNotice,
+    ProjectScope,
+    RunnerLaunch,
+    SuiteListener,
+)
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.errors import RunnerStartError
 from coding_study.domain.problem import Language
@@ -71,10 +76,12 @@ class StoppingProcess(ScriptedProjectProcess):
 
     stop: BaseException | None = None
 
-    def run_suite(self, launch: RunnerLaunch, job: SuiteJob) -> SuiteReport:
+    def run_suite(
+        self, launch: RunnerLaunch, job: SuiteJob, listener: SuiteListener | None = None
+    ) -> SuiteReport:
         if self.stop is not None:
             raise self.stop
-        return ScriptedProjectProcess.run_suite(self, launch, job)
+        return ScriptedProjectProcess.run_suite(self, launch, job, listener)
 
 
 @dataclass
@@ -116,6 +123,10 @@ def last(*arguments: str) -> dict:
     return events(*arguments)[-1]
 
 
+def first(event_type: str, *arguments: str) -> dict:
+    return next(event for event in events(*arguments) if event["type"] == event_type)
+
+
 def test_every_event_names_its_type_and_version_first(environment):
     assert {tuple(event)[:2] for event in events("test")} == {("type", "version")}
 
@@ -124,8 +135,16 @@ def test_every_event_is_version_1(environment):
     assert {event["version"] for event in events("submit")} == {1}
 
 
-def test_a_test_run_starts_reports_each_test_and_ends(environment):
-    assert types("test") == ["run_start", "test_result", "run_end"]
+def test_a_test_run_starts_reports_each_test_as_it_starts_and_ends_then_ends(environment):
+    assert types("test") == ["run_start", "test_start", "test_result", "run_end"]
+
+
+def test_a_started_test_is_named(environment):
+    assert first("test_start", "test") == {
+        "type": "test_start",
+        "version": 1,
+        "id": "tests/test_level_1.py::test_ex1",
+    }
 
 
 def test_the_start_names_the_run(environment):
@@ -142,7 +161,7 @@ def test_the_start_names_the_run(environment):
 
 
 def test_a_test_result_is_the_json_documents_case(environment):
-    assert events("test")[1] == {
+    assert first("test_result", "test") == {
         "type": "test_result",
         "version": 1,
         "id": "tests/test_level_1.py::test_ex1",
@@ -176,7 +195,7 @@ def test_a_failing_run_exits_as_its_end_says(environment, process):
 
 def test_a_test_file_that_does_not_import_is_a_diagnostic(environment, process):
     process.tests = (SuiteTest("tests/test_level_1.py", Raised(BROKEN, 0)),)
-    assert events("test")[2] == {
+    assert first("diagnostic", "test") == {
         "type": "diagnostic",
         "version": 1,
         "source": "load",
@@ -245,20 +264,28 @@ def test_events_are_for_project_problems(tmp_path, monkeypatch):
     assert (result.exit_code, result.stderr) == (3, "error: --events is for project problems\n")
 
 
-def test_a_submission_grades_cases_then_levels_then_opens_one(environment):
+def test_a_submission_grades_each_case_as_it_starts_and_ends_then_opens_a_level(environment):
     assert types("submit") == [
         "run_start",
-        "case_result",
-        "case_result",
-        "case_result",
+        *(["case_start", "case_result"] * 3),
         "level_result",
         "level_unlocked",
         "run_end",
     ]
 
 
+def test_a_started_case_names_its_visibility_and_level(environment):
+    assert first("case_start", "submit") == {
+        "type": "case_start",
+        "version": 1,
+        "id": "ex1",
+        "visible": True,
+        "level": 1,
+    }
+
+
 def test_a_graded_case_is_the_json_documents_case(environment):
-    assert events("submit")[1] == {
+    assert first("case_result", "submit") == {
         "type": "case_result",
         "version": 1,
         "id": "ex1",
@@ -272,7 +299,7 @@ def test_a_graded_case_is_the_json_documents_case(environment):
 
 def test_a_level_result_counts_the_level_with_its_status(environment, process):
     process.answer = wrong_on_h1
-    assert events("submit")[4] == {
+    assert first("level_result", "submit") == {
         "type": "level_result",
         "version": 1,
         "status": "fail",
@@ -287,7 +314,7 @@ def test_a_level_result_counts_the_level_with_its_status(environment, process):
 
 
 def test_an_opened_level_names_its_methods_tests_and_statement(environment):
-    assert events("submit")[5] == {
+    assert first("level_unlocked", "submit") == {
         "type": "level_unlocked",
         "version": 1,
         "level": 2,
@@ -301,8 +328,8 @@ def test_an_opened_level_names_its_methods_tests_and_statement(environment):
 def test_a_mock_submission_writes_no_hidden_case(environment, process):
     start_attempt(environment, StartRequest(PROJECT_SLUG, fresh=True, mock=True))
     process.answer = wrong_on_h1
-    cases = [event["id"] for event in events("submit") if event["type"] == "case_result"]
-    assert cases == ["ex1"]
+    named = [event["id"] for event in events("submit") if event["type"].startswith("case_")]
+    assert named == ["ex1", "ex1"]
 
 
 def test_code_that_does_not_load_is_a_diagnostic_and_ends_load_failed(environment, process):

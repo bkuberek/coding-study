@@ -525,8 +525,10 @@ $ cstudy submit --events
 |--------|---------|--------|------|
 | `run_start` | both | `command` (`test` or `submit`), `slug`, `language`, `attempt_id`, `mode` (`new`, `review` or `mock`), `levels`: `up_to` (the last level the run covers), `unlocked` and `last` | Once the options are checked, before the run's work begins |
 | `output` | both | `text`: a progress notice the report would print, such as `computing expected values ...` | As it happens |
-| `test_result` | `test` | An entry of `cases` in [`cstudy test --json`](#project-problems) on a project problem: `id`, `status`, `duration_ns`, `origin`, `level`, and `message`, `expected`, `actual`, `error` and `stdout` when set | Once per test the suite reported, a test file that failed to collect included |
-| `case_result` | `submit` | An entry of `cases` in [`cstudy submit --json`](#cstudy-submit), with its `level` | Once per graded case; a mock attempt writes none for hidden cases, which only `level_result` counts |
+| `test_start` | `test` | `id`: the test id, as in `test_result` | As the runner starts the test, a test file it collects included |
+| `test_result` | `test` | An entry of `cases` in [`cstudy test --json`](#project-problems) on a project problem: `id`, `status`, `duration_ns`, `origin`, `level`, and `message`, `expected`, `actual`, `error` and `stdout` when set | As the test ends: once per test the suite reported, a test file that failed to collect included |
+| `case_start` | `submit` | `id`, `visible` and `level` of the case | As the runner starts the case; a mock attempt writes none for hidden cases |
+| `case_result` | `submit` | An entry of `cases` in [`cstudy submit --json`](#cstudy-submit), with its `level` | As the case ends and is judged: once per graded case; a mock attempt writes none for hidden cases, which only `level_result` counts |
 | `diagnostic` | both | One [diagnostic](#diagnostics) | Once per diagnostic |
 | `level_result` | `submit` | An entry of `level_tallies` in `cstudy submit --json`, plus `status`: `pass` when every graded case of the level passed, else `fail` | Once per graded level |
 | `level_unlocked` | `submit` | `level`, `title`, `methods` (the methods the level adds, in the language's names, as `methods_added`), `tests` (`path` of the level's generated test file relative to the project folder, and `count`, its tests) and `statement` (the rewritten statement's path) | When the submission opened a level |
@@ -540,10 +542,10 @@ $ cstudy submit --events
 |------|--------|
 | Bounds | `run_start` is the first line and `run_end` the last. A run that stops before it starts (no attempt, a locked level, another kind of problem) writes no event, only `error: ...` on standard error, as `--json` writes no document. Once `run_start` is written, `run_end` follows unless the process is killed |
 | Output | `output` may come anywhere between `run_start` and `run_end` |
-| Results | `test_result` and `case_result` come in run order: the suite's order for tests, `tests.json` order for cases |
+| Results | `test_result` and `case_result` come in run order: the suite's order for tests, `tests.json` order for cases. A start comes before the result of its test or case, and no other test's or case's event comes between them. A result comes without a start when the runner never started its test or case: a hang or crash between cases is recorded on the next case, and a case left not run when restarts ran out comes, with status `not_run`, after the results the runner reported |
 | Diagnostics | `diagnostic` comes after `run_start` and before the first `level_result`, or before `run_end` in `cstudy test` |
 | Levels | `level_result` comes after every `case_result`, in level order, then `level_unlocked` |
-| Timing | Results are written once the runner has reported them: today, when the suite or the grading job ends. The time between two results is not a test's duration; `duration_ns` is |
+| Timing | Each start and result is written as the runner reports it, while the run goes on, so a reader can show the test in progress. A result that ended in a hang is written when the hang guard expires. The time between a start and its result includes the runner's own work; `duration_ns` is the test's or call's duration |
 
 ### Diagnostics
 

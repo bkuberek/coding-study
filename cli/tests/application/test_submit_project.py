@@ -2,7 +2,7 @@
 (docs/specs/cli.md#cstudy-submit, progress-and-scheduling.md#project-attempts)."""
 
 import json
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from datetime import timedelta
 
 import pytest
@@ -11,9 +11,10 @@ from coding_study.application.environment import Environment
 from coding_study.application.project_tests import LevelTestFile
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.application.submit_project import SubmitRequest, submit_project
+from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.diagnostics import load_diagnostic
 from coding_study.domain.errors import UsageError
-from coding_study.domain.judging import Tally
+from coding_study.domain.judging import CaseVerdict, RunnableCase, Tally
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import CaseOutcome, Returned, RunCase, RunJob, UserError
 from coding_study.domain.submissions import LevelTally, LevelUnlock
@@ -230,3 +231,32 @@ def test_code_that_does_not_load_is_a_diagnostic(environment, process):
 
 def test_code_that_loads_has_no_diagnostics(environment):
     assert submit(environment).diagnostics == ()
+
+
+@dataclass
+class HeardCases:
+    """What a submission's listener heard, in order."""
+
+    heard: list[tuple[str, CaseStatus | None]] = field(
+        default_factory=list[tuple[str, CaseStatus | None]]
+    )
+
+    def case_started(self, case: RunnableCase) -> None:
+        self.heard.append((case.id, None))
+
+    def case_judged(self, verdict: CaseVerdict) -> None:
+        self.heard.append((verdict.case.id, verdict.status))
+
+
+def test_a_listener_hears_each_case_start_then_its_verdict(environment, process):
+    process.answer = wrong_on("h1")
+    listener = HeardCases()
+    submit(environment, listener=listener)
+    assert listener.heard == [
+        ("ex1", None),
+        ("ex1", CaseStatus.PASS),
+        ("h1", None),
+        ("h1", CaseStatus.FAIL),
+        ("h2", None),
+        ("h2", CaseStatus.PASS),
+    ]

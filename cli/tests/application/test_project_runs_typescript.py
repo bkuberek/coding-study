@@ -15,6 +15,7 @@ from coding_study.application.ports import (
     ProjectGrading,
     ProjectSuite,
     RunnerLaunch,
+    SuiteListener,
 )
 from coding_study.application.project_runs import (
     GradingRun,
@@ -61,7 +62,9 @@ class FileOnlyRunner:
 class RecordingSuiteProcess:
     jobs: list[SuiteJob] = field(default_factory=list[SuiteJob])
 
-    def run_suite(self, launch: RunnerLaunch, job: SuiteJob) -> SuiteReport:
+    def run_suite(
+        self, launch: RunnerLaunch, job: SuiteJob, listener: SuiteListener | None = None
+    ) -> SuiteReport:
         self.jobs.append(job)
         return REPORT
 

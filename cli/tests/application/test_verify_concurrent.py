@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from coding_study.application.ports import RunnerLaunch
+from coding_study.application.ports import CaseListener, RunnerLaunch
 from coding_study.application.verify_content import VerifyRequest, verify_content
 from coding_study.domain.bench_records import MachineState, PowerSource
 from coding_study.domain.problem import Language
@@ -159,16 +159,18 @@ class OverlapRecordingProcess(ScriptedRunnerProcess):
         self._running = 0
         self.most_at_once = 0
 
-    def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
+    def run(
+        self, launch: RunnerLaunch, request: RunRequest, listener: CaseListener | None = None
+    ) -> RunReport:
         if not any(isinstance(case.input, StressRun) for job in request.jobs for case in job.cases):
-            return super().run(launch, request)
+            return super().run(launch, request, listener)
         with self._lock:
             self._running += 1
             self.most_at_once = max(self.most_at_once, self._running)
         time.sleep(STRESS_RUN_SECONDS)
         with self._lock:
             self._running -= 1
-        return super().run(launch, request)
+        return super().run(launch, request, listener)
 
 
 def test_the_languages_stress_runs_take_turns(tmp_path):

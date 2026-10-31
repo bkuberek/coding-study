@@ -15,7 +15,8 @@ A hang or crash is reported on the case (or bench target) in progress, or on the
 run yet when nothing is in progress, and the runner restarts with the work still pending. A suite
 job (docs/specs/runners.md#suite-job) has no cases: its framework discovers the tests, so a hang or
 crash is reported on the test in progress, if any, and the restart leaves out every test reported
-so far.
+so far. A run's listener hears each case or test as it starts and as its outcome is recorded,
+while the run goes on; cases left not run when restarts run out are only in the report.
 
 After a stress run that left threads alive, a runner writes `restart_requested` and exits with
 code 3 (docs/specs/runners.md#exit-codes-hang-guard-and-restarts-additions): it restarts for the
@@ -68,7 +69,12 @@ from coding_study.adapters.runner_protocol import (
     encode_request,
     encode_suite_request,
 )
-from coding_study.application.ports import DebugLaunch, RunnerLaunch
+from coding_study.application.ports import (
+    CaseListener,
+    DebugLaunch,
+    RunnerLaunch,
+    SuiteListener,
+)
 from coding_study.domain.bench_runs import BenchReport, BenchRequest
 from coding_study.domain.debugging import DebugSession
 from coding_study.domain.errors import RunnerProtocolError, RunnerStartError
@@ -138,8 +144,10 @@ class SubprocessRunner:
         self._runs_directory = runs_directory
         self._limits = _Limits(idle_limit_ms, connect_patience_seconds)
 
-    def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
-        progress = _RunProgress(request)
+    def run(
+        self, launch: RunnerLaunch, request: RunRequest, listener: CaseListener | None = None
+    ) -> RunReport:
+        progress = _RunProgress(request, listener or _NOBODY)
         if not self._attempts(launch, progress):
             progress.mark_pending_not_run(_not_restarted_reason(launch))
         return progress.report()
@@ -150,8 +158,10 @@ class SubprocessRunner:
             progress.note(f"the runner was restarted {MAX_RESTARTS} times; the bench stopped early")
         return progress.report()
 
-    def run_suite(self, launch: RunnerLaunch, job: SuiteJob) -> SuiteReport:
-        progress = _SuiteProgress(job)
+    def run_suite(
+        self, launch: RunnerLaunch, job: SuiteJob, listener: SuiteListener | None = None
+    ) -> SuiteReport:
+        progress = _SuiteProgress(job, listener or _NOBODY)
         if not self._attempts(launch, progress):
             progress.stop(_not_restarted_reason(launch))
         return progress.report()
@@ -234,11 +244,32 @@ class _Progress(Protocol):
     def is_complete(self) -> bool: ...
 
 
-class _RunProgress:
-    """Outcomes so far and the protocol state of the current attempt."""
+class _Nobody:
+    """The listener of a run that nobody follows."""
 
-    def __init__(self, request: RunRequest) -> None:
+    def case_started(self, job_id: str, case_id: str) -> None:
+        pass
+
+    def case_finished(self, job_id: str, report: CaseReport) -> None:
+        pass
+
+    def test_started(self, test_id: str) -> None:
+        pass
+
+    def test_finished(self, test: SuiteTest) -> None:
+        pass
+
+
+_NOBODY = _Nobody()
+
+
+class _RunProgress:
+    """Outcomes so far and the protocol state of the current attempt; `listener` hears each
+    outcome as it is recorded."""
+
+    def __init__(self, request: RunRequest, listener: CaseListener) -> None:
         self._request = request
+        self._listener = listener
         self._outcomes: dict[str, dict[str, CaseOutcome]] = {job.job_id: {} for job in request.jobs}
         self._load_errors: dict[str, UserError] = {}
         self._finished_jobs: set[str] = set()
@@ -314,7 +345,7 @@ class _RunProgress:
         self._case_in_progress = None
         if target is not None:
             job_id, case = target
-            self._outcomes[job_id][case.id] = outcome
+            self._record(job_id, case.id, outcome)
 
     def is_complete(self) -> bool:
         return all(
@@ -365,6 +396,7 @@ class _RunProgress:
         if case is None or case_id in self._outcomes[job_id]:
             raise RunnerProtocolError(f'unexpected case "{case_id}" in job "{job_id}"')
         self._case_in_progress = (job_id, case)
+        self._listener.case_started(job_id, case_id)
 
     def _case_result(self, job_id: str, case_id: str, outcome: ReportedOutcome) -> None:
         in_progress = self._case_in_progress
@@ -375,10 +407,14 @@ class _RunProgress:
         problem = _result_problem(in_progress[1], outcome)
         if problem is not None:
             raise RunnerProtocolError(f'case_result for "{job_id}/{case_id}": {problem}')
-        self._outcomes[job_id][case_id] = outcome
         self._case_in_progress = None
+        self._record(job_id, case_id, outcome)
         is_stress = isinstance(in_progress[1].input, StressRun)
         self._last_stress_result = (job_id, case_id) if is_stress else None
+
+    def _record(self, job_id: str, case_id: str, outcome: CaseOutcome) -> None:
+        self._outcomes[job_id][case_id] = outcome
+        self._listener.case_finished(job_id, CaseReport(case_id, outcome))
 
     def _restart(self) -> None:
         """Only right after a stress run's result; the runner exits with code 3 next."""
@@ -439,8 +475,9 @@ class _SuiteProgress:
     Every restart asks the runner to leave out the tests reported so far: the ones that ran, and
     the one that hung or crashed."""
 
-    def __init__(self, job: SuiteJob) -> None:
+    def __init__(self, job: SuiteJob, listener: SuiteListener) -> None:
         self._job = job
+        self._listener = listener
         self._outcomes: dict[str, SuiteOutcome] = {}
         """By test id, in the order the tests were reported."""
         self._load_error: UserError | None = None
@@ -497,8 +534,7 @@ class _SuiteProgress:
     def interrupt(self, outcome: Crashed | TimedOut) -> None:
         """Recorded on the test in progress; a hang or crash between tests names no test."""
         if self._test_in_progress is not None:
-            self._outcomes[self._test_in_progress] = outcome
-            self._test_in_progress = None
+            self._record(self._test_in_progress, outcome)
 
     def is_complete(self) -> bool:
         return self._finished
@@ -529,6 +565,7 @@ class _SuiteProgress:
         if test_id in self._outcomes:
             raise RunnerProtocolError(f'runner reported test "{test_id}" of "{job_id}" twice')
         self._test_in_progress = test_id
+        self._listener.test_started(test_id)
 
     def _test_result(self, job_id: str, test_id: str, outcome: ReportedOutcome) -> None:
         self._require_job(job_id)
@@ -536,8 +573,12 @@ class _SuiteProgress:
             raise RunnerProtocolError(f'case_result for "{job_id}/{test_id}" without case_start')
         if not _is_test_result(outcome):
             raise RunnerProtocolError(f'case_result for "{job_id}/{test_id}" is not a test result')
+        self._record(test_id, outcome)
+
+    def _record(self, test_id: str, outcome: SuiteOutcome) -> None:
         self._outcomes[test_id] = outcome
         self._test_in_progress = None
+        self._listener.test_finished(SuiteTest(test_id, outcome))
 
     def _job_event(self, job_id: str, event: str) -> None:
         """`event` belongs inside the job, between tests."""
