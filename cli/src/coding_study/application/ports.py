@@ -896,3 +896,31 @@ class PreferencesStore(Protocol):
     def write(self, document: dict[str, object]) -> None:
         """Replaces the whole file."""
         ...
+
+
+@dataclass(frozen=True, slots=True)
+class WebUiAssets:
+    """The page's files that `static/manifest.json` names, as installed."""
+
+    size_bytes: int
+    """The total size of the files checked before the first problem."""
+    problem: str | None = None
+    """The first file in path order that is missing or differs from its digest, such as
+    `missing editor.js`; None when every file matches."""
+
+
+@dataclass(frozen=True, slots=True)
+class WebServerLibraries:
+    versions: tuple[str, ...]
+    """`starlette 1.10.0`, `uvicorn 0.54.0`: each library that imported."""
+    problem: str | None = None
+    """The first library that does not import, and why."""
+
+
+class WebUiInstall(Protocol):
+    """What `cstudy serve` needs from the installation
+    (docs/specs/installation-and-workspaces.md#web-ui-assets)."""
+
+    def assets(self) -> WebUiAssets: ...
+
+    def server_libraries(self) -> WebServerLibraries: ...

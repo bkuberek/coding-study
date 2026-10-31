@@ -35,6 +35,9 @@ from coding_study.application.ports import (
     Toolchains,
     ToolProbe,
     UserCode,
+    WebServerLibraries,
+    WebUiAssets,
+    WebUiInstall,
     WorkspaceSetup,
 )
 from coding_study.domain.debugging import (
@@ -158,6 +161,8 @@ class DoctorEnvironment:
     workspace: PracticeWorkspace | NotFound
     version: str
     """The running `cstudy` version."""
+    web: WebUiInstall | None = None
+    """What `cstudy serve` needs; None leaves out the `web ui assets` and `web server` rows."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -193,6 +198,10 @@ PROGRESS_CHECK = "progress database"
 UPGRADE_CSTUDY = "upgrade cstudy"
 VENV_LOCATION_CHECK = f"{PYTHON_PROJECT}/{PYTHON_VENV} location"
 VENV_RECREATE_COMMAND = f"rm -rf {PYTHON_PROJECT}/{PYTHON_VENV} && {FIX_COMMAND}"
+WEB_ASSETS_CHECK = "web ui assets"
+WEB_SERVER_CHECK = "web server"
+REINSTALL_COMMAND = "reinstall cstudy"
+BYTES_PER_MB = 1_000_000
 RUNNER_TYPESCRIPT = "runners/typescript"
 """In a content checkout, `--fix` also installs the TypeScript runner's own `tsc` and types."""
 HANDSHAKE_META = ProblemMeta(
@@ -630,6 +639,7 @@ def _workspace(environment: DoctorEnvironment, notify: ProgressNotice) -> list[C
         *_venv_location(workspace),
         *(_runner(workspace, language, notify) for language in CORE_LANGUAGES),
         *_project_libraries(workspace),
+        *_web_ui(environment.web),
     ]
 
 
@@ -830,6 +840,27 @@ def _project_libraries(workspace: PracticeWorkspace) -> list[CheckResult]:
         else:
             results.append(CheckResult(name, CheckStatus.WARN, missing, fix=FIX_COMMAND))
     return results
+
+
+def _web_ui(web: WebUiInstall | None) -> list[CheckResult]:
+    """Only `cstudy serve` needs these, so a broken install warns: practice in the terminal
+    works without them."""
+    if web is None:
+        return []
+    return [_web_assets(web.assets()), _web_server(web.server_libraries())]
+
+
+def _web_assets(assets: WebUiAssets) -> CheckResult:
+    if assets.problem is not None:
+        return CheckResult(WEB_ASSETS_CHECK, CheckStatus.WARN, assets.problem, REINSTALL_COMMAND)
+    size = f"{assets.size_bytes / BYTES_PER_MB:.1f} MB"
+    return CheckResult(WEB_ASSETS_CHECK, CheckStatus.OK, f"{size}, digest matches")
+
+
+def _web_server(libraries: WebServerLibraries) -> CheckResult:
+    if libraries.problem is not None:
+        return CheckResult(WEB_SERVER_CHECK, CheckStatus.WARN, libraries.problem, REINSTALL_COMMAND)
+    return CheckResult(WEB_SERVER_CHECK, CheckStatus.OK, ", ".join(libraries.versions))
 
 
 def _runner(

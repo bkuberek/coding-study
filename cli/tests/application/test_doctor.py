@@ -36,6 +36,9 @@ from coding_study.application.ports import (
     ScaffoldOutcome,
     SuiteListener,
     UserCode,
+    WebServerLibraries,
+    WebUiAssets,
+    WebUiInstall,
 )
 from coding_study.domain.bench_runs import BenchReport, BenchRequest
 from coding_study.domain.config import Config
@@ -269,6 +272,7 @@ def doctor(
     workspace: PracticeWorkspace | NotFound | None = None,
     content: ContentLocation | NotFound = BUNDLED,
     debug_servers: FakeDebugServers | None = None,
+    web: WebUiInstall | None = None,
 ) -> DoctorReport:
     return run_doctor(
         DoctorEnvironment(
@@ -278,6 +282,7 @@ def doctor(
             content=content,
             workspace=workspace or workspace_with(),
             version=RUNNING_VERSION,
+            web=web,
         ),
         lambda _line: None,
     )
@@ -1397,3 +1402,54 @@ def test_repair_writes_what_the_languages_folders_lack_and_names_it():
     lines: list[str] = []
     repair_workspace(with_folder_checks(runner), lines.append)
     assert "wrote projects/bank-project-rust/.cargo/config.toml" in lines
+
+
+INSTALLED_ASSETS = WebUiAssets(812_345)
+INSTALLED_LIBRARIES = WebServerLibraries(("starlette 1.10.0", "uvicorn 0.54.0"))
+
+
+@dataclass
+class FakeWebUi:
+    assets_found: WebUiAssets = INSTALLED_ASSETS
+    libraries: WebServerLibraries = INSTALLED_LIBRARIES
+
+    def assets(self) -> WebUiAssets:
+        return self.assets_found
+
+    def server_libraries(self) -> WebServerLibraries:
+        return self.libraries
+
+
+def web_rows(report: DoctorReport) -> list[tuple[str, CheckStatus, str, str | None]]:
+    names = ("web ui assets", "web server")
+    return [(r.name, r.status, r.detail, r.fix) for r in report.results if r.name in names]
+
+
+def test_an_installed_web_ui_reports_its_size_and_server_versions():
+    assert web_rows(doctor(web=FakeWebUi())) == [
+        ("web ui assets", OK, "0.8 MB, digest matches", None),
+        ("web server", OK, "starlette 1.10.0, uvicorn 0.54.0", None),
+    ]
+
+
+def test_web_ui_assets_that_do_not_match_their_manifest_only_warn():
+    web = FakeWebUi(assets_found=WebUiAssets(0, "missing editor.js"))
+    report = doctor(web=web)
+    assert (check(report, "web ui assets"), report.passed) == (
+        CheckResult("web ui assets", WARN, "missing editor.js", "reinstall cstudy"),
+        True,
+    )
+
+
+def test_web_server_libraries_that_do_not_import_only_warn():
+    web = FakeWebUi(libraries=WebServerLibraries((), "uvicorn does not import: no uvicorn"))
+    report = doctor(web=web)
+    assert (check(report, "web server"), report.passed) == (
+        CheckResult("web server", WARN, "uvicorn does not import: no uvicorn", "reinstall cstudy"),
+        True,
+    )
+
+
+def test_the_web_ui_is_checked_in_a_workspace_only():
+    report = doctor(workspace=NotFound("no workspace here"), web=FakeWebUi())
+    assert web_rows(report) == []
