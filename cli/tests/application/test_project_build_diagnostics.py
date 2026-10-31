@@ -25,6 +25,7 @@ from coding_study.application.project_testing import (
     run_project_tests,
 )
 from coding_study.application.start_attempt import StartRequest, start_attempt
+from coding_study.application.submit_project import SubmitRequest, submit_project
 from coding_study.domain.diagnostics import Diagnostic, DiagnosticSource, Severity
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import Raised, UserError
@@ -159,3 +160,37 @@ def test_an_error_that_is_not_a_compile_error_stays_the_load_diagnostic(tmp_path
         "ImportError",
         "src/bank.rs",
     )
+
+
+def submission_diagnostics(tmp_path: Path, language: Language) -> tuple[Diagnostic, ...]:
+    """What `cstudy submit` reports for the captured compile error, as the load error of the
+    grading job."""
+    error, _ = compile_error(language)
+    toolchains = FakeToolchains(
+        runners={language: FakeProjectRunner()},
+        project_test_generators={language: GENERATORS[language]},
+    )
+    process = ScriptedProjectProcess(load_error=error)
+    root = repository_root(tmp_path, PROBLEMS[language])
+    environment = make_environment(root, toolchains=toolchains, runner_process=process)
+    start_attempt(environment, StartRequest(f"bank-project-{language}"))
+    return submit_project(environment, SubmitRequest(), [].append).diagnostics
+
+
+def test_a_submission_that_does_not_compile_is_a_diagnostic_at_the_first_errors_place(
+    tmp_path, language
+):
+    first = submission_diagnostics(tmp_path, language)[0]
+    file, line, column, code = FIRST_ERRORS[language]
+    assert (first.source, first.file, first.line, first.column, first.code) == (
+        DiagnosticSource.BUILD,
+        file,
+        line,
+        column,
+        code,
+    )
+
+
+def test_a_submission_gives_a_diagnostic_for_each_error_of_the_report(tmp_path, language):
+    counts = {Language.JAVA: 2, Language.KOTLIN: 3, Language.GO: 3, Language.RUST: 3}
+    assert len(submission_diagnostics(tmp_path, language)) == counts[language]

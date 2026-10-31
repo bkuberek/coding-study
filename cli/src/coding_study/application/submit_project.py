@@ -15,6 +15,7 @@ from coding_study.application.active_attempt import autograded_language, find_at
 from coding_study.application.comparison import problem_comparator
 from coding_study.application.environment import Environment
 from coding_study.application.ports import ProgressNotice
+from coding_study.application.project_build_diagnostics import load_error_diagnostics
 from coding_study.application.project_runs import (
     CaseVerdictListener,
     GradingRun,
@@ -26,7 +27,7 @@ from coding_study.application.statement_file import write_statement
 from coding_study.domain.attempts import Attempt, AttemptMode
 from coding_study.domain.cases import Case
 from coding_study.domain.comparators import Comparator
-from coding_study.domain.diagnostics import Diagnostic, load_diagnostic
+from coding_study.domain.diagnostics import Diagnostic
 from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Judgement
 from coding_study.domain.levels import LevelRun, cases_up_to
@@ -110,9 +111,11 @@ class SubmitResult:
 
     @property
     def diagnostics(self) -> tuple[Diagnostic, ...]:
-        """Where the project's code did not load (docs/specs/cli.md#diagnostics)."""
+        """Where the project's code did not compile or load (docs/specs/cli.md#diagnostics)."""
         error = self.judgement.load_error
-        return (load_diagnostic(error),) if error else ()
+        if error is None:
+            return ()
+        return load_error_diagnostics(error, self.language, project_folder(self.meta.slug))
 
 
 def submit_project(

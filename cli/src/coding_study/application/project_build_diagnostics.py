@@ -18,6 +18,7 @@ from coding_study.domain.diagnostics import (
     DiagnosticParser,
     distinct,
     in_project_folder,
+    load_diagnostic,
 )
 from coding_study.domain.problem import Language
 from coding_study.domain.project_test_runs import file_of_test, suite_diagnostics
@@ -40,6 +41,15 @@ def project_diagnostics(
     )
     compiled = (diagnostic for _, found in read_tests for diagnostic in found)
     return distinct((*suite, *compiled, *suite_diagnostics(remaining, root)))
+
+
+def load_error_diagnostics(
+    error: UserError, language: Language, root: str
+) -> tuple[Diagnostic, ...]:
+    """The diagnostics of a project's load error, as `cstudy submit` gets it for a grading job:
+    the errors of a compile error's report, else the one diagnostic of the load error. Paths are
+    relative to the project folder `root`."""
+    return _read(error, BUILD_REPORTS[language], root) or (load_diagnostic(error),)
 
 
 def _read_test(test: SuiteTest, parser: DiagnosticParser | None, root: str) -> Sequence[Diagnostic]:
