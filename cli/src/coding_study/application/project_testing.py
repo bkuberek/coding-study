@@ -12,13 +12,18 @@ from datetime import datetime
 from coding_study.application.active_attempt import autograded_language, find_attempt
 from coding_study.application.environment import Environment
 from coding_study.application.ports import ProgressNotice
-from coding_study.application.project_runs import SUITE_FRAMEWORKS, SuiteRun, run_suite
+from coding_study.application.project_runs import (
+    SUITE_FRAMEWORKS,
+    SuiteRun,
+    project_levels,
+    run_suite,
+)
 from coding_study.application.run_tests import resolve_debug_session
 from coding_study.domain.attempts import Attempt, RunRecord
 from coding_study.domain.debugging import DebugRequest, DebugSession
 from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Tally
-from coding_study.domain.levels import FIRST_LEVEL, LevelRun, level_run
+from coding_study.domain.levels import FIRST_LEVEL, LevelRun
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
 from coding_study.domain.project import level_test_file
 from coding_study.domain.project_test_runs import (
@@ -106,7 +111,7 @@ def run_project_tests(
     debug = resolve_debug_session(request.debug, language)
     problem = environment.problems.load(attempt.slug)
     meta = problem.meta
-    levels = _level_run(meta, attempt.level_unlocked, request.level)
+    levels = project_levels(meta, attempt.level_unlocked, request.level)
     folder = project_folder(meta.slug)
     run = SuiteRun(
         meta,
@@ -142,16 +147,6 @@ def run_project_tests(
     if debug is None:
         _record(environment, result)
     return result
-
-
-def _level_run(meta: ProblemMeta, unlocked: int | None, requested: int | None) -> LevelRun:
-    try:
-        levels = level_run(meta, unlocked, requested)
-    except ValueError as error:
-        raise UsageError(str(error)) from None
-    if levels is None:
-        raise ValueError(f"{meta.slug} has no levels")
-    return levels
 
 
 def _origins(problem: Problem, language: Language, levels: LevelRun) -> SuiteOrigins:

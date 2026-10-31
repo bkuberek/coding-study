@@ -4,9 +4,9 @@ import pytest
 
 from coding_study.domain.judging import Tally
 from coding_study.domain.project_test_runs import (
-    SuiteStatus,
     SuiteOrigin,
     SuiteOrigins,
+    SuiteStatus,
     judge_suite,
     suite_status,
     suite_tally,

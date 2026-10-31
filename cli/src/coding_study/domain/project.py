@@ -211,7 +211,7 @@ def in_language_names(problem: Problem) -> Problem:
     signature = _named_signature(meta.signature, language)
     named = replace(meta, signature=signature, comparator=comparator)
     cases = tuple(
-        replace(case, input=_named_operations(case.input, language))
+        replace(case, input=in_language_operations(case.input, language))
         if isinstance(case.input, OperationSequence)
         else case
         for case in problem.cases
@@ -269,7 +269,9 @@ def _named_params(params: tuple[Param, ...], language: Language) -> tuple[Param,
     )
 
 
-def _named_operations(sequence: OperationSequence, language: Language) -> OperationSequence:
+def in_language_operations(sequence: OperationSequence, language: Language) -> OperationSequence:
+    """`sequence` with its methods named as `language` names them; the constructor keeps the
+    class's name."""
     constructor, *operations = sequence.ops
     named = (constructor, *(_method_name(operation, language) for operation in operations))
     return replace(sequence, ops=named)

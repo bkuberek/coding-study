@@ -21,6 +21,7 @@ from coding_study.entrypoints.commands import (
     solution,
     start,
     stats,
+    submit,
     test,
     verify,
 )
@@ -31,6 +32,7 @@ COMMAND_REGISTRATIONS: tuple[Callable[[typer.Typer], None], ...] = (
     ide.register,
     start.register,
     test.register,
+    submit.register,
     list_problems.register,
     show.register,
     solution.register,

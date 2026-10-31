@@ -431,7 +431,7 @@ cstudy: connecting to debugger at 127.0.0.1:5005 (kotlin)
 cstudy submit [<slug|file>] [--level N] [--json]
 ```
 
-Grades a [project problem](problem-format.md#project-problems): every case of levels 1 to the unlocked level, visible and hidden, through the runner ([grading job](runners.md#grading-job)), judged by the core with the problem's comparator. A submission that passes every case of every unlocked level opens the next level. Planned: nothing implements it yet.
+Grades a [project problem](problem-format.md#project-problems): every case of levels 1 to the unlocked level, visible and hidden, through the runner ([grading job](runners.md#grading-job)), judged by the core with the problem's comparator. A submission that passes every case of every unlocked level opens the next level.
 
 | Rule | Detail |
 |------|--------|

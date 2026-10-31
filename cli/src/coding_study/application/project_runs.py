@@ -21,9 +21,9 @@ from coding_study.application.ports import (
 )
 from coding_study.domain.config import Config
 from coding_study.domain.debugging import DebugSession
-from coding_study.domain.errors import RunnerStartError
+from coding_study.domain.errors import RunnerStartError, UsageError
 from coding_study.domain.judging import Judgement, RunnableCase, judge
-from coding_study.domain.levels import cases_up_to
+from coding_study.domain.levels import LevelRun, cases_up_to, level_run
 from coding_study.domain.naming import symbol_names
 from coding_study.domain.precedence import resolve_hang_guard_ms
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
@@ -57,6 +57,20 @@ class SuiteRun:
     select: tuple[str, ...] = ()
     """`cstudy test --case`: test ids, or their last part."""
     debug: DebugSession | None = None
+
+
+def project_levels(meta: ProblemMeta, unlocked: int | None, requested: int | None) -> LevelRun:
+    """The levels a project command covers: 1 to `requested`, or to the unlocked level.
+
+    Raises UsageError for a level the problem lacks or one still locked.
+    """
+    try:
+        levels = level_run(meta, unlocked, requested)
+    except ValueError as error:
+        raise UsageError(str(error)) from None
+    if levels is None:
+        raise ValueError(f"{meta.slug} has no levels")
+    return levels
 
 
 def run_suite(environment: Environment, run: SuiteRun, notify: ProgressNotice) -> SuiteReport:
