@@ -3,12 +3,16 @@
 
 Each event is written and flushed as soon as the run reports it. The command ends the stream with
 `run_end`, which carries the document `--json` prints, or the error that stopped the run once it
-had started; a run that stops before it starts writes no event at all.
+had started; a run that stops before it starts writes no event at all. SIGINT and SIGTERM end it
+as interrupted.
 """
 
 import json
-from collections.abc import Callable, Mapping, Sequence
+import signal
+from collections.abc import Callable, Generator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
+from types import FrameType
 
 import typer
 
@@ -54,6 +58,8 @@ ERROR_OUTCOME = "error"
 INTERRUPTED_OUTCOME = "interrupted"
 LEVEL_PASSED = "pass"
 LEVEL_FAILED = "fail"
+TERMINATED_EXIT_CODE = 128 + signal.SIGTERM
+"""SIGTERM ends a run as SIGINT does, with the shell's exit code for it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,17 +80,22 @@ def write_events[R](run: Callable[[EventSink], R], summarize: Callable[[R], RunS
     """Runs with every event written as it comes, ends the stream and returns the exit code.
 
     An error after the start ends the stream, then propagates, so that `error: ...` still reaches
-    standard error; Ctrl-C ends it and exits 130.
+    standard error; Ctrl-C ends it and exits 130, SIGTERM 143. Either unwinds the run, which kills
+    the runner's process group.
     """
     stream = _Stream()
     try:
-        result = run(stream.emit)
+        with _terminated_like_interrupt():
+            result = run(stream.emit)
     except tuple(ERROR_EXIT_CODES) as error:
         stream.stop(ERROR_OUTCOME, ERROR_EXIT_CODES[type(error)], str(error))
         raise
     except KeyboardInterrupt:
         stream.stop(INTERRUPTED_OUTCOME, ExitCode.INTERRUPTED, None)
         raise typer.Exit(ExitCode.INTERRUPTED) from None
+    except _Terminated:
+        stream.stop(INTERRUPTED_OUTCOME, TERMINATED_EXIT_CODE, None)
+        raise typer.Exit(TERMINATED_EXIT_CODE) from None
     summary = summarize(result)
     stream.finish(summary)
     return summary.exit_code
@@ -121,6 +132,28 @@ class _Stream:
             "summary": None,
         }
         _write(_event("run_end", ending))
+
+
+class _Terminated(BaseException):
+    """SIGTERM, raised where the run is, like KeyboardInterrupt for SIGINT."""
+
+
+@contextmanager
+def _terminated_like_interrupt() -> Generator[None]:
+    """Off the main thread, where no handler can be set, SIGTERM keeps its default."""
+
+    def stop(_signal_number: int, _frame: FrameType | None) -> None:
+        raise _Terminated
+
+    try:
+        previous = signal.signal(signal.SIGTERM, stop)
+    except ValueError:
+        yield
+        return
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, previous)
 
 
 def event_value(event: RunEvent) -> dict[str, JsonValue]:

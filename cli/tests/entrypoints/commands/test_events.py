@@ -2,6 +2,8 @@
 line on standard output (docs/specs/cli.md#event-stream)."""
 
 import json
+import os
+import signal
 from dataclasses import dataclass
 
 import pytest
@@ -261,6 +263,32 @@ def test_an_interrupted_run_ends_the_stream(environment, process):
     result = cs("test", "--events")
     end = json.loads(result.stdout.splitlines()[-1])
     assert (result.exit_code, end["outcome"], end["summary"]) == (130, "interrupted", None)
+
+
+@dataclass
+class TerminatedProcess(ScriptedProjectProcess):
+    """Gets SIGTERM while the suite runs, as a program that started the run sends it."""
+
+    def run_suite(
+        self, launch: RunnerLaunch, job: SuiteJob, listener: SuiteListener | None = None
+    ) -> SuiteReport:
+        os.kill(os.getpid(), signal.SIGTERM)
+        return ScriptedProjectProcess.run_suite(self, launch, job, listener)
+
+
+def test_a_terminated_run_ends_the_stream_with_exit_code_143(tmp_path, monkeypatch):
+    environment = project_environment(tmp_path, TerminatedProcess(answer=correct))
+    start_attempt(environment, StartRequest(PROJECT_SLUG))
+    monkeypatch.setattr(test_command, "load_environment", lambda *_: environment)
+    result = cs("test", "--events")
+    end = json.loads(result.stdout.splitlines()[-1])
+    assert (result.exit_code, end["outcome"], end["exit_code"]) == (143, "interrupted", 143)
+
+
+def test_a_finished_run_gives_sigterm_back(environment):
+    previous = signal.getsignal(signal.SIGTERM)
+    cs("test", "--events")
+    assert signal.getsignal(signal.SIGTERM) is previous
 
 
 def test_a_locked_level_writes_no_event(environment):

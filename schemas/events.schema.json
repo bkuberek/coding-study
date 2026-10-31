@@ -439,7 +439,7 @@
         "outcome": {
           "enum": ["passed", "failed", "build_failed", "load_failed", "error", "interrupted"]
         },
-        "exit_code": { "enum": [0, 1, 2, 3, 4, 5, 70, 130] },
+        "exit_code": { "enum": [0, 1, 2, 3, 4, 5, 70, 130, 143] },
         "message": { "type": ["string", "null"] },
         "summary": { "type": ["object", "null"] }
       },
