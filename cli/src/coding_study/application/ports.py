@@ -633,6 +633,15 @@ class Workspace(Protocol):
 
     def absolute(self, path: str) -> Path: ...
 
+    def sync_folder(self, path: str, files: Mapping[str, str]) -> None:
+        """Makes the tracked files of the directory `path` exactly `files` (text by path,
+        relative to it), creating the directory when missing: a file whose content differs is
+        written, an equal one keeps its modification time, and any other tracked entry is
+        deleted, as is a directory that leaves empty. Untracked entries
+        (`workspace_projects.is_untracked`), what build tools wrote, are kept. A link is never
+        followed: one at `path`, or among the tracked entries, is removed."""
+        ...
+
 
 class Toolchains(Protocol):
     """Language adapters for one repository root."""

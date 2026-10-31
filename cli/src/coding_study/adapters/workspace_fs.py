@@ -2,11 +2,16 @@
 
 import hashlib
 import shutil
+from collections.abc import Mapping
 from contextlib import AbstractContextManager
 from pathlib import Path, PurePosixPath
 
 from coding_study.adapters.file_lock import exclusive_lock
-from coding_study.adapters.project_folders import remove_untracked, tracked_files
+from coding_study.adapters.project_folders import (
+    remove_untracked,
+    sync_tracked_files,
+    tracked_files,
+)
 
 _MISSING = b"\0missing"
 
@@ -88,6 +93,9 @@ class WorkspaceFs:
 
     def absolute(self, path: str) -> Path:
         return self._root / path
+
+    def sync_folder(self, path: str, files: Mapping[str, str]) -> None:
+        sync_tracked_files(self.absolute(path), files)
 
 
 def _refuse_unsafe(root: Path, step: PurePosixPath, is_file: bool) -> None:

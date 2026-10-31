@@ -2,6 +2,7 @@
 the overlay, then D1 (the starter loads), D3 (the reference passes every case of every level) and
 D9 (the reference passes its native suite), each through a runner of its own."""
 
+import os
 import shutil
 from dataclasses import replace
 from pathlib import Path
@@ -48,6 +49,7 @@ from tests.project_fakes import (
 REFERENCE_BUILD = f"{PROJECT_BUILDS}/{PROJECT_SLUG}/reference"
 STARTER_BUILD = f"{STARTER_BUILDS}/{PROJECT_SLUG}"
 LEVEL_TESTS = ("tests/test_level_1.py::test_ex1", "tests/test_level_2.py::test_ex2")
+OLD_NS = 1_000_000_000
 
 
 @pytest.fixture
@@ -149,12 +151,51 @@ def test_the_starter_build_has_no_later_levels_tests(environment, root):
 
 
 @pytest.mark.parametrize("build", [REFERENCE_BUILD, STARTER_BUILD])
-def test_a_build_starts_from_an_empty_folder(environment, root, build):
+def test_a_build_removes_a_file_the_problem_no_longer_has(environment, root, build):
     stale = root / build / "bank" / "removed_helper.py"
     stale.parent.mkdir(parents=True)
     stale.write_text("# left by an earlier build\n")
     verify(environment)
     assert "bank/removed_helper.py" not in build_files(root, build)
+
+
+@pytest.mark.parametrize("build", [REFERENCE_BUILD, STARTER_BUILD])
+def test_a_build_rewrites_a_file_that_differs_from_the_problems(environment, root, build):
+    verify(environment)
+    readme = root / build / "README.md"
+    readme.write_text("# edited since\n")
+    verify(environment)
+    starter = root / "problems" / BANK_PROJECT / "starter" / "README.md"
+    assert readme.read_text() == starter.read_text()
+
+
+@pytest.mark.parametrize("path", ["README.md", "tests/test_level_1.py"])
+@pytest.mark.parametrize("build", [REFERENCE_BUILD, STARTER_BUILD])
+def test_a_build_keeps_the_timestamp_of_an_unchanged_file(environment, root, build, path):
+    """Build tools that compare timestamps (Gradle, Cargo) then skip the file's work."""
+    verify(environment)
+    unchanged = root / build / path
+    os.utime(unchanged, ns=(OLD_NS, OLD_NS))
+    verify(environment)
+    assert unchanged.stat().st_mtime_ns == OLD_NS
+
+
+@pytest.mark.parametrize(
+    "output",
+    [
+        "build/classes/java/main/bank/Bank.class",
+        ".gradle/configuration-cache/entry.bin",
+        ".kotlin/sessions/daemon.salive",
+        "target/debug/libbank.rlib",
+    ],
+)
+@pytest.mark.parametrize("build", [REFERENCE_BUILD, STARTER_BUILD])
+def test_a_build_keeps_what_the_build_tools_wrote(environment, root, build, output):
+    cached = root / build / output
+    cached.parent.mkdir(parents=True)
+    cached.write_text("cached\n")
+    verify(environment)
+    assert cached.read_text() == "cached\n"
 
 
 @pytest.mark.parametrize("build", [REFERENCE_BUILD, STARTER_BUILD])

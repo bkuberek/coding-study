@@ -31,7 +31,6 @@ from coding_study.domain.problem import Language, Problem
 from coding_study.domain.problem_files import SOLUTIONS_DIRECTORY, STARTER_DIRECTORY
 from coding_study.domain.project import (
     NO_PROJECT_FILES,
-    PATH_SEPARATOR,
     ProjectTree,
     project_language,
 )
@@ -92,7 +91,7 @@ def verify_project(
 
 def reference_build(environment: Environment, problem: Problem, approach_id: str) -> Path:
     """The approach's build: the starter, its overlay over it, then the generated test file of
-    every level, in a folder emptied first; returns the absolute root."""
+    every level, in a folder synced to exactly those files; returns the absolute root."""
     files = problem.project_files or NO_PROJECT_FILES
     trees = {
         STARTER_DIRECTORY: files.starter or _NO_FILES,
@@ -104,7 +103,7 @@ def reference_build(environment: Environment, problem: Problem, approach_id: str
 
 def starter_build(environment: Environment, problem: Problem) -> Path:
     """The starter with level 1's generated test file, as `cstudy start` seeds a project folder,
-    in a folder emptied first; returns the absolute root."""
+    in a folder synced to exactly those files; returns the absolute root."""
     starter = (problem.project_files or NO_PROJECT_FILES).starter or _NO_FILES
     folder = f"{STARTER_BUILDS}/{problem.meta.slug}"
     trees = {STARTER_DIRECTORY: starter}
@@ -137,18 +136,17 @@ class _ProjectBuild:
 
     def write(self, folder: str, trees: Mapping[str, ProjectTree], levels: int) -> Path:
         """`trees` by their directory in the problem, later ones over earlier ones; then the
-        generated test files of levels 1 to `levels`. `folder` is emptied first, so a file removed
-        from a tree since the last build cannot linger in it."""
+        generated test files of levels 1 to `levels`. `folder` is synced to exactly those files:
+        a file removed from a tree since the last build cannot linger in it, while unchanged files
+        and the build tools' output stay, so the next build is incremental."""
         texts = self._texts(trees)
-        workspace = self._environment.workspace
-        workspace.remove_folder(folder)
-        for path, text in texts.items():
-            workspace.write_text(f"{folder}{PATH_SEPARATOR}{path}", text)
         language = project_language(self._problem.meta)
         generator = self._environment.toolchains.project_test_generator(language)
         for level in range(FIRST_LEVEL, levels + 1):
             tests = level_tests(self._problem, level)
-            workspace.write_text(f"{folder}{PATH_SEPARATOR}{tests.path}", generator.generate(tests))
+            texts[tests.path] = generator.generate(tests)
+        workspace = self._environment.workspace
+        workspace.sync_folder(folder, texts)
         return workspace.absolute(folder)
 
     def _texts(self, trees: Mapping[str, ProjectTree]) -> dict[str, str]:

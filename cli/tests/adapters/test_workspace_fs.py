@@ -1,4 +1,5 @@
 import os
+import shutil
 from pathlib import Path
 
 import pytest
@@ -264,6 +265,130 @@ def test_remove_folder_leaves_its_siblings_alone(workspace, project):
 def test_remove_folder_of_a_missing_path_does_nothing(workspace):
     workspace.remove_folder(PROJECT)
     assert not workspace.exists(PROJECT)
+
+
+# build folders (docs/specs/runners.md#reference-materialization)
+
+BUILD = ".cs/build/projects/bank-project-java/reference"
+BANK_SOURCE = "src/main/java/bank/Bank.java"
+BUILD_FILES = {"build.gradle.kts": "plugins {}\n", BANK_SOURCE: "class Bank {}\n"}
+OLD_NS = 1_000_000_000
+
+
+@pytest.fixture
+def synced(workspace) -> str:
+    workspace.sync_folder(BUILD, BUILD_FILES)
+    return BUILD
+
+
+@pytest.fixture
+def elsewhere(workspace) -> Path:
+    workspace.write_text("elsewhere/Bank.java", "kept\n")
+    return workspace.absolute("elsewhere")
+
+
+def test_sync_folder_writes_the_files(workspace, synced):
+    assert workspace.tracked_files(synced) == ("build.gradle.kts", BANK_SOURCE)
+
+
+def test_sync_folder_rewrites_a_changed_file(workspace, synced):
+    workspace.sync_folder(synced, {**BUILD_FILES, BANK_SOURCE: "class Bank { int id; }\n"})
+    assert workspace.read_text(f"{synced}/{BANK_SOURCE}") == "class Bank { int id; }\n"
+
+
+def test_sync_folder_keeps_the_timestamp_of_an_unchanged_file(workspace, synced):
+    unchanged = workspace.absolute(f"{synced}/{BANK_SOURCE}")
+    os.utime(unchanged, ns=(OLD_NS, OLD_NS))
+    workspace.sync_folder(synced, BUILD_FILES)
+    assert unchanged.stat().st_mtime_ns == OLD_NS
+
+
+def test_sync_folder_deletes_a_file_it_was_not_given(workspace, synced):
+    workspace.write_text(f"{synced}/src/main/java/bank/Ledger.java", "class Ledger {}\n")
+    workspace.sync_folder(synced, BUILD_FILES)
+    assert workspace.tracked_files(synced) == ("build.gradle.kts", BANK_SOURCE)
+
+
+def test_sync_folder_deletes_a_directory_it_leaves_empty(workspace, synced):
+    workspace.write_text(f"{synced}/src/main/java/ledger/Ledger.java", "class Ledger {}\n")
+    workspace.sync_folder(synced, BUILD_FILES)
+    assert not os.path.lexists(workspace.absolute(f"{synced}/src/main/java/ledger"))
+
+
+@pytest.mark.parametrize(
+    "output",
+    [
+        "build/classes/java/main/bank/Bank.class",
+        ".gradle/configuration-cache/entry.bin",
+        ".kotlin/sessions/daemon.salive",
+        "target/debug/bank",
+        "src/main/java/bank/__pycache__/bank.cpython-313.pyc",
+    ],
+)
+def test_sync_folder_keeps_what_build_tools_wrote(workspace, synced, output):
+    workspace.write_text(f"{synced}/{output}", "built\n")
+    workspace.sync_folder(synced, BUILD_FILES)
+    assert workspace.read_text(f"{synced}/{output}") == "built\n"
+
+
+def test_sync_folder_replaces_a_link_at_a_files_path(workspace, synced, elsewhere):
+    source = workspace.absolute(f"{synced}/{BANK_SOURCE}")
+    source.unlink()
+    source.symlink_to(elsewhere / "Bank.java")
+    workspace.sync_folder(synced, BUILD_FILES)
+    assert (source.is_symlink(), source.read_text()) == (False, "class Bank {}\n")
+
+
+def test_sync_folder_never_writes_through_a_link_at_a_files_path(workspace, synced, elsewhere):
+    source = workspace.absolute(f"{synced}/{BANK_SOURCE}")
+    source.unlink()
+    source.symlink_to(elsewhere / "Bank.java")
+    workspace.sync_folder(synced, BUILD_FILES)
+    assert (elsewhere / "Bank.java").read_text() == "kept\n"
+
+
+def test_sync_folder_never_writes_through_a_link_on_the_way(workspace, synced, elsewhere):
+    package = workspace.absolute(f"{synced}/src/main/java/bank")
+    shutil.rmtree(package)
+    package.symlink_to(elsewhere, target_is_directory=True)
+    workspace.sync_folder(synced, BUILD_FILES)
+    assert sorted(path.name for path in elsewhere.iterdir()) == ["Bank.java"]
+
+
+def test_sync_folder_removes_a_link_it_was_not_given(workspace, synced, elsewhere):
+    link = workspace.absolute(f"{synced}/linked")
+    link.symlink_to(elsewhere, target_is_directory=True)
+    workspace.sync_folder(synced, BUILD_FILES)
+    assert not os.path.lexists(link)
+
+
+def test_sync_folder_never_deletes_through_a_link(workspace, synced, elsewhere):
+    workspace.absolute(f"{synced}/linked").symlink_to(elsewhere, target_is_directory=True)
+    workspace.sync_folder(synced, BUILD_FILES)
+    assert (elsewhere / "Bank.java").read_text() == "kept\n"
+
+
+def test_sync_folder_replaces_a_folder_that_is_a_link(workspace, elsewhere):
+    folder = workspace.absolute(BUILD)
+    folder.parent.mkdir(parents=True)
+    folder.symlink_to(elsewhere, target_is_directory=True)
+    workspace.sync_folder(BUILD, BUILD_FILES)
+    assert (folder.is_symlink(), (elsewhere / "Bank.java").read_text()) == (False, "kept\n")
+
+
+def test_sync_folder_replaces_a_directory_at_a_files_path(workspace, synced):
+    script = workspace.absolute(f"{synced}/build.gradle.kts")
+    script.unlink()
+    workspace.write_text(f"{synced}/build.gradle.kts/build/output.txt", "built\n")
+    workspace.sync_folder(synced, BUILD_FILES)
+    assert script.read_text() == "plugins {}\n"
+
+
+def test_sync_folder_replaces_a_file_on_the_way(workspace, synced):
+    shutil.rmtree(workspace.absolute(f"{synced}/src/main/java/bank"))
+    workspace.write_text(f"{synced}/src/main/java/bank", "a file\n")
+    workspace.sync_folder(synced, BUILD_FILES)
+    assert workspace.read_text(f"{synced}/{BANK_SOURCE}") == "class Bank {}\n"
 
 
 LOCK = ".cs/projects/bank-project-python.lock"
