@@ -10,6 +10,7 @@ from coding_study.domain.attempts import AttemptMode, NewAttempt
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Language
 from coding_study.domain.progress_export import ProgressSnapshot
+from coding_study.domain.submissions import LevelUnlock
 from tests.fakes import NOW, make_environment
 from tests.stats_fixture import fill_progress
 
@@ -86,6 +87,14 @@ def test_restoring_keeps_attempt_ids_for_later_attempts(filled, store):
 def test_restoring_into_a_database_with_progress_is_refused(filled):
     with pytest.raises(UsageError, match="already holds progress"):
         filled.restore(filled.snapshot())
+
+
+def test_an_export_carries_level_unlocks(store):
+    attempt = store.add_attempt(NewAttempt("bank", Language.PYTHON, AttemptMode.NEW, NOW))
+    store.add_level_unlock(LevelUnlock(attempt.id, 1, NOW))
+    assert store.snapshot().tables["level_unlocks"] == (
+        {"attempt_id": attempt.id, "level": 1, "unlocked_at": NOW.isoformat()},
+    )
 
 
 def test_a_refused_restore_changes_nothing(filled):
