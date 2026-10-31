@@ -52,6 +52,7 @@ STARTER_BUILDS = f"{STUB_DIRECTORY}/projects"
 """D1's copy of a starter: `<STARTER_BUILDS>/<slug>/`, next to the generated stubs it replaces."""
 PROJECT_TEST_GENERATOR = "project test generator"
 STARTER_SUITE = "starter suite"
+NOT_RUN = "not run: the reference does not build"
 NOT_TEXT = "is not UTF-8 text: a project holds text files only"
 _NO_FILES = ProjectTree(())
 
@@ -190,21 +191,22 @@ class _ProjectChecks:
         self._notify = notify
 
     def verify(self) -> ProjectVerification:
-        starter_problems = tuple(self._starter_problems())
+        """The builds first: a case a generated test cannot express fails them both."""
         approach_id = self._problem.meta.approaches[0].id
         try:
+            starter = starter_build(self._environment, self._problem)
             root = reference_build(self._environment, self._problem, approach_id)
         except ValueError as error:
             failed = ApproachResult(approach_id, (f"does not build: {error}",))
-            result = LanguageResult(self._language, (failed,), starter_problems)
-            return ProjectVerification(result, SuiteCheck(0, 0, ("not run",)))
+            result = LanguageResult(self._language, (failed,))
+            return ProjectVerification(result, SuiteCheck(0, 0, (NOT_RUN,)))
+        starter_problems = tuple(self._starter_problems(starter))
         approach = ApproachResult(approach_id, self._reference_failures(root))
         result = LanguageResult(self._language, (approach,), starter_problems)
         return ProjectVerification(result, self._suite(root))
 
-    def _starter_problems(self) -> Iterator[str]:
+    def _starter_problems(self, root: Path) -> Iterator[str]:
         """D1: the starter loads, and neither its cases nor its suite crash the runner."""
-        root = starter_build(self._environment, self._problem)
         grading = GradingRun(self._problem, self._language, root, FIRST_LEVEL)
         judgement = run_grading(self._environment, grading, self._notify)
         if judgement.load_error is not None:

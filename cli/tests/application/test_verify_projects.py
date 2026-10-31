@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from coding_study.application import verify_projects
 from coding_study.application.environment import Environment
 from coding_study.application.ports import ProjectSuite
 from coding_study.application.verify_content import (
@@ -150,6 +151,33 @@ def test_verify_needs_the_project_test_generator(environment):
     toolchains = replace(environment.toolchains, project_test_generators={})
     with pytest.raises(LanguageNotSetUpError, match="project test generator"):
         verify(replace(environment, toolchains=toolchains))
+
+
+@pytest.fixture
+def inexpressible_case(monkeypatch):
+    """`level_tests` refuses a case, as it does one a generated test cannot express."""
+
+    def refuse(*_: object) -> object:
+        raise ValueError("a generated test cannot compare getBalance with checker")
+
+    monkeypatch.setattr(verify_projects, "level_tests", refuse)
+
+
+def test_a_case_without_a_generated_test_fails_the_build(environment, inexpressible_case):
+    [result] = verify(environment).languages
+    assert result.approaches[0].failures == (
+        "does not build: a generated test cannot compare getBalance with checker",
+    )
+
+
+def test_a_reference_that_does_not_build_runs_nothing(environment, process, inexpressible_case):
+    problem = verify(environment)
+    builds = (process.starter, process.reference)
+    jobs_run = [job for build in builds for job in (*build.gradings, *build.suites)]
+    assert (problem.suite, jobs_run) == (
+        SuiteCheck(0, 0, ("not run: the reference does not build",)),
+        [],
+    )
 
 
 # a project that passes
