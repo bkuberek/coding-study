@@ -515,6 +515,8 @@ cstudy hint [<slug|file>]
 
 Prints the next unrevealed `### Hint N` from `problem.md` and increments `hints_used` on the active attempt. Prints `no more hints` when exhausted (exit 0, `hints_used` unchanged). The next hint is number `hints_used + 1`, so hints are counted per attempt. Locked (exit 3) while a [mock interview](#cstudy-mock) runs.
 
+For a project problem, hints open with levels: of `h` hints across `L` levels, hint `n` opens with level `(n-1)*L//h + 1`. While the next hint's level is locked, `cstudy hint` prints `no more hints until level N opens` (exit 0, `hints_used` unchanged).
+
 ```text
 two-sum · hint 1 of 2
 For each value, which partner would complete the sum?
@@ -550,7 +552,7 @@ cstudy done [<slug|file>] (--rating easy|ok|hard | --gave-up) [--notes TEXT]
 |------|--------|
 | Rating | Required when the latest test run passed all cases: every case of the problem, with a concurrent problem's stress cases counted once per variant, so a Java or Kotlin problem with `jvm_threads: [platform, virtual]` stores twice its stress cases. A run of some cases (`--case`, unlocked levels only) never counts |
 | `--gave-up` | Required when it did not; grade `again` |
-| Project problems | The latest submission that graded every unlocked level stands in for the latest test run. A rating is required when it passed every case of level 1, `--gave-up` otherwise, also when there is no such submission. The grade is capped by the levels that submission finished ([project attempts](progress-and-scheduling.md#project-attempts)), and the output says so: `bank-project-python · python · failed · levels 3 of 4 · 84m 10s · rating ok, capped at hard · hints 0` |
+| Project problems | The latest submission that graded every unlocked level stands in for the latest test run. A rating is required when it passed every case of level 1, `--gave-up` otherwise, also when there is no such submission. The grade is capped by the levels that submission finished ([project attempts](progress-and-scheduling.md#project-attempts)), and the output says so: `bank-project-python · python · failed · levels 3 of 4 · 1h 24m · rating ok, capped at hard · hints 0` |
 | Non-autograded items | Rating only (`--gave-up` is a usage error); status `passed`, grade from the rating with no caps |
 | Effects | Close the attempt, compute the grade and next due date ([progress-and-scheduling](progress-and-scheduling.md)) |
 
