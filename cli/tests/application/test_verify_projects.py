@@ -3,22 +3,13 @@ the overlay, then D1 (the starter loads), D3 (the reference passes every case of
 D9 (the reference passes its native suite), each through a runner of its own."""
 
 import shutil
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field, replace
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from coding_study.application.environment import Environment
-from coding_study.application.ports import (
-    BuildScope,
-    PrepareResult,
-    ProgressNotice,
-    ProjectScope,
-    ProjectSuite,
-    ProjectTestGenerator,
-    RunnerLaunch,
-)
+from coding_study.application.ports import ProjectSuite
 from coding_study.application.verify_content import (
     ProblemVerification,
     SkippedCheck,
@@ -30,119 +21,31 @@ from coding_study.application.verify_projects import (
     STARTER_BUILDS,
     SuiteCheck,
 )
-from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import LanguageNotSetUpError
 from coding_study.domain.problem import Language
-from coding_study.domain.project_tests import LevelTests
-from coding_study.domain.runs import (
-    CaseOutcome,
-    CaseReport,
-    Crashed,
-    JobReport,
-    Raised,
-    Returned,
-    RunCase,
-    RunnerInfo,
-    RunReport,
-    RunRequest,
-    UserError,
-)
+from coding_study.domain.runs import Crashed, Raised, Returned, UserError
 from coding_study.domain.signature import ClassSignature
 from coding_study.domain.suite_runs import (
     AssertionFailed,
     Passed,
     Skipped,
-    SuiteJob,
-    SuiteReport,
     SuiteTest,
 )
-from tests.fakes import FakeToolchains, make_environment, repository_root
+from tests.fakes import make_environment, repository_root
 from tests.helpers import BANK_PROJECT, PROJECT_PROBLEMS
+from tests.project_fakes import (
+    PROJECT_SLUG,
+    FakeProjectRunner,
+    FakeTestGenerator,
+    ScriptedBuilds,
+    ScriptedProjectProcess,
+    project_toolchains,
+    scripted_builds,
+)
 
-SLUG = "bank-project-python"
-REFERENCE_BUILD = f"{PROJECT_BUILDS}/{SLUG}/reference"
-STARTER_BUILD = f"{STARTER_BUILDS}/{SLUG}"
-RUNNER = RunnerInfo("python", 1, "3.13", ("project", "suite"))
-NOT_IMPLEMENTED = UserError("NotImplementedError", "")
+REFERENCE_BUILD = f"{PROJECT_BUILDS}/{PROJECT_SLUG}/reference"
+STARTER_BUILD = f"{STARTER_BUILDS}/{PROJECT_SLUG}"
 LEVEL_TESTS = ("tests/test_level_1.py::test_ex1", "tests/test_level_2.py::test_ex2")
-
-
-class FakeTestGenerator:
-    """One line per visible case, so a test can tell what was generated."""
-
-    def generate(self, tests: LevelTests) -> str:
-        names = "".join(f"test {test.case_id}\n" for test in tests.tests)
-        return f"# level {tests.level} of {tests.slug}\n{names}"
-
-
-@dataclass
-class ProjectToolchains(FakeToolchains):
-    generators: dict[Language, ProjectTestGenerator] = field(
-        default_factory=lambda: {Language.PYTHON: FakeTestGenerator()}
-    )
-
-    def project_test_generator(self, language: Language) -> ProjectTestGenerator:
-        if language not in self.generators:
-            raise LanguageNotSetUpError(language, "project test generator")
-        return self.generators[language]
-
-
-class LaunchInTheRoot:
-    """A project runner whose launch starts in the project root it was prepared for."""
-
-    def prepare(self, scope: BuildScope, notify: ProgressNotice) -> PrepareResult:
-        raise AssertionError("a project job is prepared with prepare_project")
-
-    def prepare_project(self, scope: ProjectScope, notify: ProgressNotice) -> RunnerLaunch:
-        return RunnerLaunch(("python",), scope.root, 1_000)
-
-
-type Answer = Callable[[RunCase], CaseOutcome]
-
-
-def raises_not_implemented(case: RunCase) -> CaseOutcome:
-    return Raised(NOT_IMPLEMENTED, 1_000)
-
-
-def passing_suite(*test_ids: str) -> SuiteReport:
-    return SuiteReport(RUNNER, tuple(SuiteTest(test_id, Passed(1_000)) for test_id in test_ids))
-
-
-@dataclass
-class ProjectProcess:
-    """Runs the starter's build as a starter (every call raises) and the reference's as a
-    correct project; `answers`, `load_errors` and `suites` override either, by build name."""
-
-    expected: Mapping[str, JsonValue]
-    answers: dict[str, Answer] = field(default_factory=dict[str, Answer])
-    load_errors: dict[str, UserError] = field(default_factory=dict[str, UserError])
-    suites: dict[str, SuiteReport] = field(default_factory=dict[str, SuiteReport])
-    graded: list[tuple[str, RunRequest]] = field(default_factory=list[tuple[str, RunRequest]])
-    suite_jobs: list[tuple[str, SuiteJob]] = field(default_factory=list[tuple[str, SuiteJob]])
-
-    def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
-        build = _build_name(launch.cwd)
-        self.graded.append((build, request))
-        (job,) = request.jobs
-        if build in self.load_errors:
-            return RunReport(RUNNER, (JobReport(job.job_id, load_error=self.load_errors[build]),))
-        answer = self.answers.get(build, self._default(build))
-        cases = tuple(CaseReport(case.id, answer(case)) for case in job.cases)
-        return RunReport(RUNNER, (JobReport(job.job_id, cases),))
-
-    def run_suite(self, launch: RunnerLaunch, job: SuiteJob) -> SuiteReport:
-        build = _build_name(launch.cwd)
-        self.suite_jobs.append((build, job))
-        return self.suites.get(build, passing_suite(*LEVEL_TESTS))
-
-    def _default(self, build: str) -> Answer:
-        if build == "starter":
-            return raises_not_implemented
-        return lambda case: Returned(self.expected[case.id], 1_000)
-
-
-def _build_name(root: Path) -> str:
-    return "starter" if STARTER_BUILDS in root.as_posix() else "reference"
 
 
 @pytest.fixture
@@ -151,26 +54,25 @@ def root(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def process(root: Path) -> ProjectProcess:
-    problem = make_environment(root).problems.load(SLUG)
-    expected = {case.id: case.expected.value for case in problem.cases if case.expected}
-    return ProjectProcess(expected)
+def process(root: Path) -> ScriptedBuilds:
+    problem = make_environment(root).problems.load(PROJECT_SLUG)
+    return scripted_builds(problem, passing=LEVEL_TESTS)
 
 
 @pytest.fixture
-def environment(root: Path, process: ProjectProcess) -> Environment:
-    toolchains = ProjectToolchains(runners={Language.PYTHON: LaunchInTheRoot()})
+def environment(root: Path, process: ScriptedBuilds) -> Environment:
+    toolchains = project_toolchains(FakeTestGenerator())
     return make_environment(root, toolchains=toolchains, runner_process=process)
 
 
 def verify(environment: Environment, **fields: object) -> ProblemVerification:
-    request = VerifyRequest(**{"slugs": (SLUG,), **fields})  # type: ignore[arg-type]
+    request = VerifyRequest(**{"slugs": (PROJECT_SLUG,), **fields})  # type: ignore[arg-type]
     [problem] = verify_content(environment, request, lambda _line: None).problems
     return problem
 
 
 def coverage(environment: Environment, language: Language) -> tuple[int, int]:
-    request = VerifyRequest(slugs=(SLUG,), static_only=True)
+    request = VerifyRequest(slugs=(PROJECT_SLUG,), static_only=True)
     report = verify_content(environment, request, lambda _line: None)
     [entry] = (entry for entry in report.coverage if entry.language is language)
     return entry.covered, entry.listed
@@ -185,12 +87,10 @@ def build_files(root: Path, build: str) -> dict[str, str]:
     }
 
 
-def graded_levels(process: ProjectProcess, build: str) -> list[tuple[str, ...]]:
+def graded_levels(build: ScriptedProjectProcess) -> list[tuple[str, ...]]:
     return [
         tuple(method.name for method in job.signature.methods)
-        for graded, request in process.graded
-        if graded == build
-        for job in request.jobs
+        for job in build.gradings
         if isinstance(job.signature, ClassSignature)
     ]
 
@@ -229,8 +129,8 @@ def test_the_reference_build_holds_the_generated_tests_of_every_level(environmen
     verify(environment)
     files = build_files(root, REFERENCE_BUILD)
     assert (files["tests/test_level_1.py"], files["tests/test_level_2.py"]) == (
-        f"# level 1 of {SLUG}\ntest ex1\n",
-        f"# level 2 of {SLUG}\ntest ex2\n",
+        f"# level 1 of {PROJECT_SLUG}\ntest ex1\n",
+        f"# level 2 of {PROJECT_SLUG}\ntest ex2\n",
     )
 
 
@@ -247,7 +147,7 @@ def test_the_starter_build_has_no_later_levels_tests(environment, root):
 
 
 def test_verify_needs_the_project_test_generator(environment):
-    toolchains = ProjectToolchains(runners={Language.PYTHON: LaunchInTheRoot()}, generators={})
+    toolchains = replace(environment.toolchains, project_test_generators={})
     with pytest.raises(LanguageNotSetUpError, match="project test generator"):
         verify(replace(environment, toolchains=toolchains))
 
@@ -270,30 +170,30 @@ def test_the_suite_counts_the_tests_that_passed(environment):
 
 def test_a_skipped_test_counts_as_passing(environment, process):
     skipped = SuiteTest("tests/test_mine.py::test_later", Skipped("not today", 1_000))
-    report = passing_suite(*LEVEL_TESTS)
-    process.suites["reference"] = replace(report, tests=(*report.tests, skipped))
+    process.reference.tests = (*process.reference.tests, skipped)
     assert verify(environment).suite == SuiteCheck(3, 3)
 
 
 def test_the_reference_is_graded_at_its_last_level(environment, process):
     verify(environment)
-    assert graded_levels(process, "reference") == [("createAccount", "deposit", "transfer")]
+    assert graded_levels(process.reference) == [("createAccount", "deposit", "transfer")]
 
 
 def test_the_reference_suite_runs_every_levels_tests(environment, process):
     verify(environment)
-    [job] = [job for build, job in process.suite_jobs if build == "reference"]
+    [job] = process.reference.suites
     assert job.exclude == ()
 
 
 def test_the_starter_is_graded_at_level_one(environment, process):
     verify(environment)
-    assert graded_levels(process, "starter") == [("createAccount", "deposit")]
+    assert graded_levels(process.starter) == [("createAccount", "deposit")]
 
 
 def test_every_project_job_gets_a_runner_of_its_own(environment, process):
     verify(environment)
-    assert [len(request.jobs) for _, request in process.graded] == [1, 1]
+    requests = [*process.starter.requests, *process.reference.requests]
+    assert [len(request.jobs) for request in requests] == [1, 1]
 
 
 def test_oracle_and_ladder_do_not_apply_to_a_project(environment):
@@ -302,7 +202,7 @@ def test_oracle_and_ladder_do_not_apply_to_a_project(environment):
 
 
 def test_another_language_leaves_the_project_out(environment):
-    request = VerifyRequest(slugs=(SLUG,), language=Language.TYPESCRIPT)
+    request = VerifyRequest(slugs=(PROJECT_SLUG,), language=Language.TYPESCRIPT)
     assert verify_content(environment, request, lambda _line: None).problems == ()
 
 
@@ -310,8 +210,9 @@ def test_another_language_leaves_the_project_out(environment):
 
 
 def test_a_failing_case_names_its_level(environment, process):
-    process.answers["reference"] = lambda case: Returned(
-        [None, True, 0] if case.id == "h3" else process.expected[case.id], 1_000
+    correct = process.reference.answer
+    process.reference.answer = lambda job, case: (
+        Returned([None, True, 0], 1_000) if case.id == "h3" else correct(job, case)
     )
     [result] = verify(environment).languages
     [failure] = result.approaches[0].failures
@@ -319,7 +220,7 @@ def test_a_failing_case_names_its_level(environment, process):
 
 
 def test_a_reference_that_does_not_load_fails(environment, process):
-    process.load_errors["reference"] = UserError("SymbolNotFound", "bank.bank has no class Bank")
+    process.reference.load_error = UserError("SymbolNotFound", "bank.bank has no class Bank")
     [result] = verify(environment).languages
     assert result.approaches[0].failures == (
         "does not load: SymbolNotFound: bank.bank has no class Bank",
@@ -331,9 +232,7 @@ def test_a_reference_that_does_not_load_fails(environment, process):
 
 def test_a_failing_test_fails_the_suite(environment, process):
     failed = SuiteTest(LEVEL_TESTS[1], AssertionFailed("assert -1 == 300\n where ...", 1_000))
-    process.suites["reference"] = SuiteReport(
-        RUNNER, (SuiteTest(LEVEL_TESTS[0], Passed(1_000)), failed)
-    )
+    process.reference.tests = (SuiteTest(LEVEL_TESTS[0], Passed(1_000)), failed)
     problem = verify(environment)
     assert (problem.suite, problem.passed) == (
         SuiteCheck(1, 2, (f"{LEVEL_TESTS[1]} failed: assert -1 == 300",)),
@@ -343,7 +242,7 @@ def test_a_failing_test_fails_the_suite(environment, process):
 
 def test_a_test_that_raises_names_the_exception(environment, process):
     raised = SuiteTest(LEVEL_TESTS[0], Raised(UserError("KeyError", "'ivy'"), 1_000))
-    process.suites["reference"] = SuiteReport(RUNNER, (raised,))
+    process.reference.tests = (raised,)
     assert verify(environment).suite == SuiteCheck(
         0, 1, (f"{LEVEL_TESTS[0]} error: KeyError: 'ivy'",)
     )
@@ -351,7 +250,8 @@ def test_a_test_that_raises_names_the_exception(environment, process):
 
 def test_a_suite_that_does_not_run_fails(environment, process):
     usage = UserError("UsageError", "unrecognized arguments: --bad")
-    process.suites["reference"] = SuiteReport(RUNNER, load_error=usage)
+    process.reference.tests = ()
+    process.reference.suite_load_error = usage
     assert verify(environment).suite == SuiteCheck(
         0, 0, ("does not run: UsageError: unrecognized arguments: --bad",)
     )
@@ -359,9 +259,8 @@ def test_a_suite_that_does_not_run_fails(environment, process):
 
 def test_a_suite_that_stopped_early_fails(environment, process):
     crashed = SuiteTest(LEVEL_TESTS[0], Crashed(1))
-    process.suites["reference"] = SuiteReport(
-        RUNNER, (crashed,), stopped_early="the runner crashed 3 times"
-    )
+    process.reference.tests = (crashed,)
+    process.reference.stopped_early = "the runner crashed 3 times"
     assert verify(environment).suite == SuiteCheck(
         0,
         1,
@@ -376,7 +275,7 @@ def test_a_suite_that_stopped_early_fails(environment, process):
 
 
 def test_a_starter_that_does_not_load_fails(environment, process):
-    process.load_errors["starter"] = UserError("SyntaxError", "invalid syntax (bank.py, line 3)")
+    process.starter.load_error = UserError("SyntaxError", "invalid syntax (bank.py, line 3)")
     [result] = verify(environment).languages
     assert result.problems == (
         "starter does not load: SyntaxError: invalid syntax (bank.py, line 3)",
@@ -384,7 +283,7 @@ def test_a_starter_that_does_not_load_fails(environment, process):
 
 
 def test_a_starter_that_crashes_the_runner_fails(environment, process):
-    process.answers["starter"] = lambda case: Crashed(1)
+    process.starter.answer = lambda job, case: Crashed(1)
     [result] = verify(environment).languages
     assert result.problems == ("starter runner crashed with exit code 1",)
 
@@ -395,38 +294,33 @@ def test_a_starter_whose_cases_fail_still_loads(environment):
 
 
 def test_a_starter_suite_that_crashes_the_runner_fails(environment, process):
-    process.suites["starter"] = SuiteReport(RUNNER, (SuiteTest(LEVEL_TESTS[0], Crashed(1)),))
+    process.starter.tests = (SuiteTest(LEVEL_TESTS[0], Crashed(1)),)
     [result] = verify(environment).languages
     assert result.problems == (f"starter suite: {LEVEL_TESTS[0]} runner crashed with exit code 1",)
 
 
 def test_a_starter_suite_that_does_not_run_fails(environment, process):
     usage = UserError("UsageError", "no such option")
-    process.suites["starter"] = SuiteReport(RUNNER, load_error=usage)
+    process.starter.tests = ()
+    process.starter.suite_load_error = usage
     [result] = verify(environment).languages
     assert result.problems == ("starter suite does not run: UsageError: no such option",)
 
 
 def test_the_starter_suite_runs_in_the_starters_build(environment, process, root):
     verify(environment)
-    [job] = [job for build, job in process.suite_jobs if build == "starter"]
+    [job] = process.starter.suites
     assert job.root == str(root / STARTER_BUILD)
 
 
 def test_the_suite_runs_in_the_reference_build(environment, process, root):
     verify(environment)
-    [job] = [job for build, job in process.suite_jobs if build == "reference"]
+    [job] = process.reference.suites
     assert job.root == str(root / REFERENCE_BUILD)
 
 
 def test_a_project_suite_is_prepared_as_a_suite(environment, root):
-    prepared: list[ProjectScope] = []
-
-    class Recording(LaunchInTheRoot):
-        def prepare_project(self, scope: ProjectScope, notify: ProgressNotice) -> RunnerLaunch:
-            prepared.append(scope)
-            return super().prepare_project(scope, notify)
-
-    toolchains = ProjectToolchains(runners={Language.PYTHON: Recording()})
+    runner = FakeProjectRunner()
+    toolchains = project_toolchains(FakeTestGenerator(), runner)
     verify(replace(environment, toolchains=toolchains))
-    assert ProjectSuite(root / REFERENCE_BUILD) in prepared
+    assert ProjectSuite(root / REFERENCE_BUILD) in runner.scopes

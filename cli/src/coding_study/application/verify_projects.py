@@ -114,6 +114,16 @@ def starter_build(environment: Environment, problem: Problem) -> Path:
     return _ProjectBuild(environment, problem).write(folder, trees, FIRST_LEVEL)
 
 
+def project_approaches(problem: Problem) -> tuple[str, ...]:
+    """Declared approaches whose overlay holds at least one file, in meta.yaml order."""
+    overlays = (problem.project_files or NO_PROJECT_FILES).overlays
+    return tuple(
+        approach.id
+        for approach in problem.meta.approaches
+        if approach.id in overlays and overlays[approach.id].files
+    )
+
+
 def last_level(problem: Problem) -> int:
     return max((level.number for level in problem.meta.levels), default=FIRST_LEVEL)
 

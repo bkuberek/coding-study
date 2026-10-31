@@ -1,7 +1,8 @@
-"""Stand-ins for a project problem's runner, its suite runs and its grading runs, and an
-environment on the fixture project problem (docs/specs/runners.md#project-jobs)."""
+"""Stand-ins for a project problem's runner, its suite runs and its grading runs, its project test
+generator, and an environment on the fixture project problem
+(docs/specs/runners.md#project-jobs)."""
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -12,13 +13,19 @@ from coding_study.application.ports import (
     PrepareResult,
     ProgressNotice,
     ProjectScope,
+    ProjectTestGenerator,
     RunnerLaunch,
 )
-from coding_study.domain.problem import Language
+from coding_study.application.verify_projects import STARTER_BUILDS
+from coding_study.domain.cases import JsonValue
+from coding_study.domain.problem import Language, Problem
+from coding_study.domain.project_tests import LevelTests
 from coding_study.domain.runs import (
     CaseOutcome,
     CaseReport,
     JobReport,
+    Raised,
+    Returned,
     RunCase,
     RunJob,
     RunnerInfo,
@@ -34,13 +41,22 @@ PROJECT_SLUG = "bank-project-python"
 PROJECT_FOLDER = f"projects/{PROJECT_SLUG}"
 PROJECT_RUNNER = RunnerInfo("python", 1, "3.13", ("project", "suite"))
 LEVEL_1_TEST = SuiteTest("tests/test_level_1.py::test_ex1", Passed(1000))
+NOT_IMPLEMENTED = UserError("NotImplementedError", "")
 
 type GradingAnswer = Callable[[RunJob, RunCase], CaseOutcome]
 
 
+class FakeTestGenerator:
+    """One line per visible case, so a test can tell what was generated."""
+
+    def generate(self, tests: LevelTests) -> str:
+        names = "".join(f"test {test.case_id}\n" for test in tests.tests)
+        return f"# level {tests.level} of {tests.slug}\n{names}"
+
+
 @dataclass
 class FakeProjectRunner:
-    """Launches every project job in its root; never builds."""
+    """Launches every project job in the root it was prepared for; never builds."""
 
     scopes: list[ProjectScope] = field(default_factory=list[ProjectScope])
 
@@ -52,27 +68,67 @@ class FakeProjectRunner:
         return RunnerLaunch(("python",), scope.root, 5_000)
 
 
+def project_toolchains(
+    generator: ProjectTestGenerator, runner: FakeProjectRunner | None = None
+) -> FakeToolchains:
+    """Python's toolchains for project problems: `runner` (default: a new one) and `generator`."""
+    return FakeToolchains(
+        runners={Language.PYTHON: runner or FakeProjectRunner()},
+        project_test_generators={Language.PYTHON: generator},
+    )
+
+
 def unanswered(job: RunJob, case: RunCase) -> CaseOutcome:
     raise AssertionError(f"no scripted answer for case {case.id}")
 
 
+def raises_not_implemented(job: RunJob, case: RunCase) -> CaseOutcome:
+    return Raised(NOT_IMPLEMENTED, 1_000)
+
+
+def expected_answers(*problems: Problem) -> GradingAnswer:
+    """Answers every case with the problem's expected output; a problem's slug is the id of its
+    grading job."""
+    expected: Mapping[str, Mapping[str, JsonValue]] = {
+        problem.meta.slug: {
+            case.id: case.expected.value for case in problem.cases if case.expected is not None
+        }
+        for problem in problems
+    }
+    return lambda job, case: Returned(expected[job.job_id][case.id], 1_000)
+
+
 @dataclass
 class ScriptedProjectProcess:
-    """Reports `tests` for every suite, and answers every graded case with `answer`; a grading
-    job fails to load with `load_error` when it is set."""
+    """Reports `tests` for every suite, and answers every graded case with `answer`.
+
+    A grading job fails to load with `load_error` when it is set; a suite does not run with
+    `suite_load_error`, and stops with `stopped_early`.
+    """
 
     tests: tuple[SuiteTest, ...] = (LEVEL_1_TEST,)
     answer: GradingAnswer = unanswered
     load_error: UserError | None = None
+    suite_load_error: UserError | None = None
+    stopped_early: str | None = None
     suites: list[SuiteJob] = field(default_factory=list[SuiteJob])
-    gradings: list[RunJob] = field(default_factory=list[RunJob])
+    requests: list[RunRequest] = field(default_factory=list[RunRequest])
+
+    @property
+    def gradings(self) -> list[RunJob]:
+        return [job for request in self.requests for job in request.jobs]
 
     def run_suite(self, launch: RunnerLaunch, job: SuiteJob) -> SuiteReport:
         self.suites.append(job)
-        return SuiteReport(PROJECT_RUNNER, self.tests)
+        return SuiteReport(
+            PROJECT_RUNNER,
+            self.tests,
+            load_error=self.suite_load_error,
+            stopped_early=self.stopped_early,
+        )
 
     def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
-        self.gradings.extend(request.jobs)
+        self.requests.append(request)
         return RunReport(PROJECT_RUNNER, tuple(self._job(job) for job in request.jobs))
 
     def _job(self, job: RunJob) -> JobReport:
@@ -83,14 +139,40 @@ class ScriptedProjectProcess:
         )
 
 
+@dataclass
+class ScriptedBuilds:
+    """What `cstudy verify` runs: D1's copy of the starter and a reference, each with a script of
+    its own; a job runs the script of the build it launches in."""
+
+    starter: ScriptedProjectProcess
+    reference: ScriptedProjectProcess
+
+    def run(self, launch: RunnerLaunch, request: RunRequest) -> RunReport:
+        return self._script(launch).run(launch, request)
+
+    def run_suite(self, launch: RunnerLaunch, job: SuiteJob) -> SuiteReport:
+        return self._script(launch).run_suite(launch, job)
+
+    def _script(self, launch: RunnerLaunch) -> ScriptedProjectProcess:
+        in_the_starters_build = STARTER_BUILDS in launch.cwd.as_posix()
+        return self.starter if in_the_starters_build else self.reference
+
+
+def scripted_builds(*problems: Problem, passing: Sequence[str] = ()) -> ScriptedBuilds:
+    """A starter whose every call raises and a reference that answers every case of `problems`
+    correctly; both builds run the `passing` tests."""
+    tests = tuple(SuiteTest(test_id, Passed(1_000)) for test_id in passing)
+    return ScriptedBuilds(
+        starter=ScriptedProjectProcess(tests, raises_not_implemented),
+        reference=ScriptedProjectProcess(tests, expected_answers(*problems)),
+    )
+
+
 def project_environment(
     tmp_path: Path, process: ScriptedProjectProcess, **overrides: object
 ) -> Environment:
     """The fixture project problem, its Python runner faked and its tests generated for real."""
-    toolchains = FakeToolchains(
-        runners={Language.PYTHON: FakeProjectRunner()},
-        project_test_generators={Language.PYTHON: PythonTestGenerator()},
-    )
+    toolchains = project_toolchains(PythonTestGenerator())
     parts: Mapping[str, object] = {"toolchains": toolchains, "runner_process": process}
     root = repository_root(tmp_path, PROJECT_PROBLEMS)
     return make_environment(root, **{**parts, **overrides})

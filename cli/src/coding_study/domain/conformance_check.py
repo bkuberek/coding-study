@@ -1,15 +1,27 @@
 """Judging a runner against the conformance suite's expected outcomes (runners/conformance/)."""
 
 from collections import Counter
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 
 from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.cases import JsonValue
-from coding_study.domain.conformance import ExpectedOutcome, ExpectedStatus
+from coding_study.domain.conformance import (
+    ExpectedOutcome,
+    ExpectedStatus,
+    ExpectedTest,
+    ExpectedTestStatus,
+)
 from coding_study.domain.judging import CaseVerdict
-from coding_study.domain.runs import InvalidOutput, Raised, Returned, Stalled, TimedOut
+from coding_study.domain.runs import Crashed, InvalidOutput, Raised, Returned, Stalled, TimedOut
 from coding_study.domain.stress_runs import RUN_ID_SEPARATOR
 from coding_study.domain.stress_verdict import StressRunResult, StressVerdict
+from coding_study.domain.suite_runs import (
+    AssertionFailed,
+    Passed,
+    Skipped,
+    SuiteOutcome,
+    SuiteReport,
+)
 from coding_study.domain.value_text import json_text, value_text
 
 _STRESS_STATUSES = {
@@ -64,6 +76,88 @@ def _error_mismatch(expected: ExpectedOutcome, outcome: Raised) -> str | None:
         wanted, actual = value_text(list(partial)), value_text(list(outcome.partial_output))
         return f"expected partial_output {wanted}, got {actual}"
     return None
+
+
+def suite_mismatches(expected: Mapping[str, ExpectedTest], report: SuiteReport) -> list[str]:
+    """Why a suite job's report does not match the expected outcome of every test: each
+    expected test reported once with its status, message and output, and no other test."""
+    if report.load_error is not None:
+        error = report.load_error
+        return [f"suite did not run: {error.type}: {error.message}"]
+    outcomes = {test.test_id: test.outcome for test in report.tests}
+    counts = Counter(test.test_id for test in report.tests)
+    mismatches = [
+        f"{test_id}: reported {count} times" for test_id, count in counts.items() if count > 1
+    ]
+    for test_id, outcome in outcomes.items():
+        wanted = expected.get(test_id)
+        problem = (
+            f"not expected, got {_test_status(outcome)}"
+            if wanted is None
+            else _test_mismatch(wanted, outcome)
+        )
+        if problem is not None:
+            mismatches.append(f"{test_id}: {problem}")
+    mismatches += [
+        f"{test_id}: expected {wanted.status}, not reported"
+        for test_id, wanted in expected.items()
+        if test_id not in outcomes
+    ]
+    if report.stopped_early is not None:
+        mismatches.append(f"suite stopped early: {report.stopped_early}")
+    return mismatches
+
+
+def _test_mismatch(expected: ExpectedTest, outcome: SuiteOutcome) -> str | None:
+    status = _test_status(outcome)
+    if status is not expected.status:
+        return f"expected {expected.status}, got {status}"
+    message = _test_message(outcome)
+    if expected.message is not None and message != expected.message:
+        return f"expected message {json_text(expected.message)}, got {json_text(message)}"
+    stdout = _test_stdout(outcome)
+    if expected.stdout is not None and stdout != expected.stdout:
+        return f"expected stdout {json_text(expected.stdout)}, got {json_text(stdout)}"
+    return None
+
+
+def _test_status(outcome: SuiteOutcome) -> ExpectedTestStatus:
+    match outcome:
+        case Passed():
+            return ExpectedTestStatus.OK
+        case AssertionFailed():
+            return ExpectedTestStatus.FAILED
+        case Raised():
+            return ExpectedTestStatus.ERROR
+        case Skipped():
+            return ExpectedTestStatus.SKIPPED
+        case TimedOut():
+            return ExpectedTestStatus.TIMEOUT
+        case Crashed():
+            return ExpectedTestStatus.CRASHED
+
+
+def _test_message(outcome: SuiteOutcome) -> str | None:
+    match outcome:
+        case AssertionFailed(message=message) | Skipped(message=message):
+            return message
+        case Raised(error=error):
+            return error.message
+        case Passed() | TimedOut() | Crashed():
+            return None
+
+
+def _test_stdout(outcome: SuiteOutcome) -> str | None:
+    match outcome:
+        case (
+            Passed(stdout=stdout)
+            | AssertionFailed(stdout=stdout)
+            | Skipped(stdout=stdout)
+            | Raised(stdout=stdout)
+        ):
+            return stdout
+        case TimedOut() | Crashed():
+            return None
 
 
 def stress_mismatch(

@@ -1,7 +1,8 @@
 """Expected runner outcomes for the conformance suite (docs/specs/runners.md#conformance-suite).
 
 Fixtures are ordinary problems under runners/conformance/; every language's reference approach
-for a fixture must produce these outcomes when run through its runner.
+for a fixture must produce these outcomes when run through its runner. A project fixture's
+reference is also expected to run its native suite with a given outcome per test.
 """
 
 from collections.abc import Mapping
@@ -48,12 +49,40 @@ class ExpectedOutcome:
     """Stress cases: the runner asked to be restarted after the case's runs."""
 
 
+class ExpectedTestStatus(StrEnum):
+    """What a suite job reports for one test (docs/specs/runners.md#suite-job)."""
+
+    OK = "ok"
+    FAILED = "failed"
+    """An assertion failed."""
+    ERROR = "error"
+    """Any other exception, a failing fixture, or a test file that does not import."""
+    SKIPPED = "skipped"
+    TIMEOUT = "timeout"
+    """The CLI's hang guard ended the test; the suite restarted without it."""
+    CRASHED = "crashed"
+    """The runner process ended during the test; the suite restarted without it."""
+
+
+@dataclass(frozen=True, slots=True)
+class ExpectedTest:
+    """The outcome of one test of a project fixture's native suite."""
+
+    status: ExpectedTestStatus
+    message: str | None = None
+    """`failed`, `error` and `skipped`: the exact message (an exception's, without its type)."""
+    stdout: str | None = None
+    """The exact captured standard output."""
+
+
 @dataclass(frozen=True, slots=True)
 class ConformanceExpectation:
     slug: str
     approach_id: str
     outcome: ExpectedOutcome
     case_outcomes: Mapping[str, ExpectedOutcome] = field(default_factory=dict[str, ExpectedOutcome])
+    tests: Mapping[str, ExpectedTest] = field(default_factory=dict[str, ExpectedTest])
+    """Project fixtures: every test the native suite runs, by test id; empty: no suite job."""
 
     def outcome_for(self, case_id: str) -> ExpectedOutcome:
         return self.case_outcomes.get(case_id, self.outcome)

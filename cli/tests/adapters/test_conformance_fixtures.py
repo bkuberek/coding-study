@@ -14,6 +14,7 @@ from coding_study.domain.conformance import (
     ConformanceExpectation,
     ExpectedOutcome,
     ExpectedStatus,
+    ExpectedTestStatus,
 )
 from coding_study.domain.errors import ContentError
 from coding_study.domain.signature import ClassSignature
@@ -23,9 +24,6 @@ DEEPEST_LIST = "list<list<list<int>>>"
 SUITE = load_conformance_suite(REPOSITORY_ROOT)
 REPOSITORY = conformance_repository(REPOSITORY_ROOT)
 SUMMARIES = REPOSITORY.list_summaries()
-PROJECT_FIXTURES = {"conformance-project-python", "conformance-suite-pytest"}
-"""Run by the Python runner's own tests (runners/python/tests) until `cstudy verify
---conformance` runs project jobs; expectations.json gains them then."""
 
 
 def write_expectations(root: Path, document: object) -> None:
@@ -52,7 +50,7 @@ def test_every_fixture_loads_with_its_cases():
 
 def test_every_fixture_has_an_expectation():
     expected_slugs = {expectation.slug for expectation in SUITE.expectations}
-    assert {summary.meta.slug for summary in SUMMARIES} - PROJECT_FIXTURES == expected_slugs
+    assert {summary.meta.slug for summary in SUMMARIES} == expected_slugs
 
 
 @pytest.mark.parametrize("expectation", SUITE.expectations, ids=lambda e: e.approach_id)
@@ -123,6 +121,37 @@ def test_parses_expected_stdout():
     assert stdout.outcome.stdout == "conformance output\n"
 
 
+def suite_expectation() -> ConformanceExpectation:
+    [suite] = [e for e in SUITE.expectations if e.slug == "conformance-suite-pytest"]
+    return suite
+
+
+def test_parses_the_expected_outcome_of_each_test_of_a_suite():
+    statuses = {test_id: test.status for test_id, test in suite_expectation().tests.items()}
+    assert statuses == {
+        "tests/test_level_1.py::test_ex1": ExpectedTestStatus.OK,
+        "tests/test_statuses.py::test_passes": ExpectedTestStatus.OK,
+        "tests/test_statuses.py::test_hangs": ExpectedTestStatus.TIMEOUT,
+        "tests/test_statuses.py::test_fails_an_assertion": ExpectedTestStatus.FAILED,
+        "tests/test_statuses.py::test_ends_the_process": ExpectedTestStatus.CRASHED,
+        "tests/test_statuses.py::test_raises": ExpectedTestStatus.ERROR,
+        "tests/test_statuses.py::test_prints": ExpectedTestStatus.OK,
+    }
+
+
+def test_parses_a_tests_message_and_output():
+    tests = suite_expectation().tests
+    raises, prints = (
+        tests[f"tests/test_statuses.py::{name}"] for name in ("test_raises", "test_prints")
+    )
+    assert (raises.message, prints.stdout) == ("conformance failure", "conformance output\n")
+
+
+def test_a_grading_fixture_expects_no_tests():
+    [grading] = [e for e in SUITE.expectations if e.slug == "conformance-project-python"]
+    assert grading.tests == {}
+
+
 @pytest.mark.parametrize(
     ("document", "message"),
     [
@@ -132,6 +161,20 @@ def test_parses_expected_stdout():
         (
             {"version": 1, "expectations": [{"problem": "p", "approach": "a", "outcome": {}}]},
             "status",
+        ),
+        (
+            {
+                "version": 1,
+                "expectations": [
+                    {
+                        "problem": "p",
+                        "approach": "a",
+                        "outcome": {"status": "pass"},
+                        "tests": {"t": {"status": "pass"}},
+                    }
+                ],
+            },
+            "tests",
         ),
     ],
 )

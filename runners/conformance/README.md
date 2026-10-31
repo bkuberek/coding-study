@@ -12,6 +12,7 @@ Fixture problems in the normal problem format ([problem-format](../../docs/specs
 | `<id>-<slug>/solutions/<approach>.java`, `.kt` | JVM runner | Reference approach without a `package` line; the materializer prepends it |
 | `<id>-<slug>/solutions/<approach>.go` | Go runner | Reference approach in `package <snake_slug>`, like the stub; copied unchanged into a package of its own |
 | `<id>-<slug>/solutions/<approach>.rs` | Rust runner | Reference approach as the stub declares it (`pub fn`, or `pub struct` with `impl`); built as a `#[path]` module of the problem's harness crate |
+| `<id>-<slug>/starter/`, `<id>-<slug>/solutions/<approach>/` | The runner of the project fixture's one language | A [project fixture](../../docs/specs/problem-format.md#project-problems): the starter, and the approach's overlay on it. `cstudy verify --conformance` builds the starter with the overlay and the generated test file of every level ([reference materialization](../../docs/specs/runners.md#reference-materialization)) and runs it as a [project job](../../docs/specs/runners.md#project-jobs); a project fixture has no generated stub |
 | `expectations.json` | Shared by every runner | Expected outcome per fixture and approach |
 
 ## Outcomes
@@ -25,6 +26,17 @@ Fixture problems in the normal problem format ([problem-format](../../docs/specs
 | `load_error` | The runner reports `load_error` for the job instead of any case |
 | `fail` | Stress cases: the run completed but broke an invariant or `final.expected` |
 | `stalled` | Stress cases: workers were still unfinished at the deadline; `progress` names a worker inside an op |
+
+A project fixture's cases run as a grading job at its last level and take the outcomes above. When its expectation lists `tests`, the reference's native suite also runs as a [suite job](../../docs/specs/runners.md#suite-job), and every test it reports must be listed, by test id, and reported once with its status; `message` and `stdout`, when given, must match exactly:
+
+| Test status | Meaning |
+|-------------|---------|
+| `ok` | The test passed |
+| `failed` | An assertion failed; `message` is the framework's failure text |
+| `error` | Any other exception, a failing fixture, or a test file that does not import; `message` is the exception's message |
+| `skipped` | The framework skipped it; `message` is the reason |
+| `timeout` | The CLI hang guard ended the runner during the test, and the suite restarted without it |
+| `crashed` | The runner process ended during the test, and the suite restarted without it |
 
 Stress cases run `runs` times per variant (default 10; JVM fixtures run once per thread kind). With `pass`, at most `max_failed` runs may fail (default 0); with any other status, at least `min_failed` runs (default: every run) must fail with that status, and `message`, `op_index` and `phase` must match each of them. `deterministic` repeats the first seed once more and requires both runs of that seed to produce the same run record and the other seeds at least two distinct records; `restart_requested` requires the runner to ask for a restart after a run of the case. A fixture runs only in the languages its `meta.yaml` lists, which is also how a runner skips what it does not support yet: Go lists 9001 to 9017 and 9019 to 9021. `conformance-stress-async-determinism` (9018) stays Python and TypeScript: it tests the `async` model, and Go and Rust run the `threads` model only. Rust lists the same fixtures as Go except `conformance-cyclic-list` (9006) and `conformance-ref-of-list` (9010), which `cstudy verify` S13 keeps out of Rust for good: an `Option<Box<ListNode>>` cannot be cyclic, and `ref_of` cannot hand out a second reference to one of its nodes ([ADR 0012](../../docs/decisions/0012-go-and-rust.md)).
 
@@ -59,3 +71,7 @@ Every approach is written once per language, in that language's idiomatic form f
 | `conformance-stress-sections` | `unlocked` | `lock` and `unlock` do nothing | `s1`: fail (`section`) in at least 9 of 10 |
 | `conformance-stress-async-determinism` | `interleaves` | `append` yields once, appends and returns the length (Python async and TypeScript only) | `s1`: pass, identical records for one seed, distinct across seeds |
 | `conformance-stress-leak` | `ignores-interrupt` | `spin` loops forever ignoring interrupts, `fail` throws (threads only; Go and Rust have no interrupt at all, and neither a goroutine nor a thread can be stopped from outside) | `s1`: error, then `restart_requested`; `s2` still runs and passes |
+| `conformance-project-python` | `reference` | A two-file Python project: the entry module `store/inventory.py` imports its sibling `store/labels.py` by package path and by relative path, and raises `ImportError` if the two imports load the module twice; `Inventory` adds stock counts and labels them | pass |
+| `conformance-suite-pytest` | `reference` | `Probe.ping` returns `pong`; the overlay adds `tests/test_statuses.py`, with a test that passes, one that hangs, one that fails an assertion, one that ends the process (`os._exit(3)`), one that raises `RuntimeError("conformance failure")` and one that prints. `limits.hang_guard_ms` is 1000, so the hang costs a second | pass; tests: the generated `test_ex1` and `test_passes` ok, `test_hangs` timeout, `test_fails_an_assertion` failed, `test_ends_the_process` crashed, `test_raises` error with its message, `test_prints` ok with stdout `conformance output\n` |
+
+The TypeScript project fixtures of the spec, `9023-conformance-project-typescript` and `9025-conformance-suite-node-test`, arrive with the TypeScript runner's project and suite jobs: a fixture lists only the languages that support it, and a project fixture lists exactly one.

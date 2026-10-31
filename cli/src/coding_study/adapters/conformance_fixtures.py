@@ -16,6 +16,8 @@ from coding_study.domain.conformance import (
     ConformanceSuite,
     ExpectedOutcome,
     ExpectedStatus,
+    ExpectedTest,
+    ExpectedTestStatus,
 )
 from coding_study.domain.errors import ContentError, ContentIssue
 
@@ -52,11 +54,21 @@ def _parse(path: Path, source: str) -> Any:
 
 def _expectation(entry: Mapping[str, Any]) -> ConformanceExpectation:
     overrides = entry.get("cases", {})
+    tests = entry.get("tests", {})
     return ConformanceExpectation(
         slug=entry["problem"],
         approach_id=entry["approach"],
         outcome=_outcome(entry["outcome"]),
         case_outcomes={case_id: _outcome(outcome) for case_id, outcome in overrides.items()},
+        tests={test_id: _test(outcome) for test_id, outcome in tests.items()},
+    )
+
+
+def _test(outcome: Mapping[str, Any]) -> ExpectedTest:
+    return ExpectedTest(
+        status=ExpectedTestStatus(outcome["status"]),
+        message=outcome.get("message"),
+        stdout=outcome.get("stdout"),
     )
 
 

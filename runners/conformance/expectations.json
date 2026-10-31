@@ -26,6 +26,16 @@
     {"problem": "conformance-stress-sections", "approach": "locked", "outcome": {"status": "pass"}, "cases": {"s1": {"status": "pass", "runs": 10}}},
     {"problem": "conformance-stress-sections", "approach": "unlocked", "outcome": {"status": "pass"}, "cases": {"s1": {"status": "fail", "runs": 10, "min_failed": 9}}},
     {"problem": "conformance-stress-async-determinism", "approach": "interleaves", "outcome": {"status": "pass"}, "cases": {"s1": {"status": "pass", "runs": 10, "deterministic": true}}},
-    {"problem": "conformance-stress-leak", "approach": "ignores-interrupt", "outcome": {"status": "pass"}, "cases": {"s1": {"status": "error", "runs": 1, "phase": "worker", "restart_requested": true}, "s2": {"status": "pass", "runs": 1}}}
+    {"problem": "conformance-stress-leak", "approach": "ignores-interrupt", "outcome": {"status": "pass"}, "cases": {"s1": {"status": "error", "runs": 1, "phase": "worker", "restart_requested": true}, "s2": {"status": "pass", "runs": 1}}},
+    {"problem": "conformance-project-python", "approach": "reference", "outcome": {"status": "pass"}},
+    {"problem": "conformance-suite-pytest", "approach": "reference", "outcome": {"status": "pass"}, "tests": {
+      "tests/test_level_1.py::test_ex1": {"status": "ok"},
+      "tests/test_statuses.py::test_passes": {"status": "ok"},
+      "tests/test_statuses.py::test_hangs": {"status": "timeout"},
+      "tests/test_statuses.py::test_fails_an_assertion": {"status": "failed"},
+      "tests/test_statuses.py::test_ends_the_process": {"status": "crashed"},
+      "tests/test_statuses.py::test_raises": {"status": "error", "message": "conformance failure"},
+      "tests/test_statuses.py::test_prints": {"status": "ok", "stdout": "conformance output\n"}
+    }}
   ]
 }

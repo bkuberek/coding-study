@@ -16,6 +16,7 @@ signature:
     methods:
       - {name: ping, level: 1, params: [], returns: {type: string}}
 comparator: {type: ops}
+limits: {hang_guard_ms: 1000}
 project:
   entry: probe.probe
   tests: tests

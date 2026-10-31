@@ -23,7 +23,26 @@
           "description": "Per-case overrides, keyed by case id",
           "type": "object",
           "additionalProperties": { "$ref": "#/$defs/outcome" }
+        },
+        "tests": {
+          "description": "Project fixtures: the reference's native suite runs, and every test it reports is listed here by test id, each reported once and no other",
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/$defs/testOutcome" }
         }
+      }
+    },
+    "testOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "description": "The suite job's status for the test; timeout and crashed: the CLI ended the runner during the test and restarted the suite without it",
+          "enum": ["ok", "failed", "error", "skipped", "timeout", "crashed"]
+        },
+        "message": { "description": "failed, error and skipped: the exact message", "type": "string" },
+        "stdout": { "description": "The exact captured standard output", "type": "string" }
       }
     },
     "outcome": {

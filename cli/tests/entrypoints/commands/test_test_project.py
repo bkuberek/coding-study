@@ -16,7 +16,6 @@ from coding_study.domain.suite_runs import (
     Comparison,
     Passed,
     Skipped,
-    SuiteReport,
     SuiteTest,
 )
 from coding_study.entrypoints import cli
@@ -25,7 +24,6 @@ from coding_study.entrypoints.shared import ExitCode
 from tests.project_fakes import (
     LEVEL_1_TEST,
     PROJECT_FOLDER,
-    PROJECT_RUNNER,
     PROJECT_SLUG,
     ScriptedProjectProcess,
     project_environment,
@@ -157,15 +155,14 @@ def test_a_run_without_tests_exits_1(environment, process):
     assert cs_test().exit_code == ExitCode.FAILURES
 
 
-def test_a_suite_stopped_early_says_why(environment, process, monkeypatch):
-    stopped = SuiteReport(PROJECT_RUNNER, (LEVEL_1_TEST,), stopped_early="restarts ran out")
-    monkeypatch.setattr(process, "run_suite", lambda launch, job: stopped)
+def test_a_suite_stopped_early_says_why(environment, process):
+    process.stopped_early = "restarts ran out"
     assert "NOT RUN  restarts ran out" in lines()
 
 
-def test_a_suite_that_could_not_run_shows_the_frameworks_error(environment, process, monkeypatch):
-    failed = SuiteReport(PROJECT_RUNNER, load_error=UserError("UsageError", "bad addopts"))
-    monkeypatch.setattr(process, "run_suite", lambda launch, job: failed)
+def test_a_suite_that_could_not_run_shows_the_frameworks_error(environment, process):
+    process.tests = ()
+    process.suite_load_error = UserError("UsageError", "bad addopts")
     assert lines()[3] == "ERROR    load  UsageError: bad addopts"
 
 

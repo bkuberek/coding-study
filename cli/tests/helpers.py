@@ -43,17 +43,20 @@ RUNNER_TRUNCATION_NOTICE = "\n[output truncated at 4 KiB]\n"
 
 
 def sequential_conformance_suite() -> ConformanceSuite:
-    """The conformance expectations of fixtures without stress cases.
+    """The conformance expectations of fixtures without stress cases or a project folder.
 
     The per-language end-to-end tests replay those case by case; the stress fixtures (Phase 5)
-    run through `cstudy verify --conformance` (tests/adapters/languages/test_stress_conformance.py).
+    run through `cstudy verify --conformance` (tests/adapters/languages/test_stress_conformance.py),
+    and so do the project fixtures, as project jobs in their one language
+    (tests/adapters/languages/python/test_python_project_conformance.py).
     """
     suite = load_conformance_suite(REPOSITORY_ROOT)
     fixtures = conformance_repository(REPOSITORY_ROOT)
+    replayed = (ProblemKind.FUNCTION, ProblemKind.DESIGN, ProblemKind.PROGRESSIVE)
     expectations = tuple(
         expectation
         for expectation in suite.expectations
-        if fixtures.load(expectation.slug).meta.kind is not ProblemKind.CONCURRENT
+        if fixtures.load(expectation.slug).meta.kind in replayed
     )
     return replace(suite, expectations=expectations)
 
