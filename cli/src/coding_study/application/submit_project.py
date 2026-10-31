@@ -26,6 +26,7 @@ from coding_study.domain.judging import Judgement
 from coding_study.domain.levels import LevelRun, cases_up_to
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
 from coding_study.domain.project import level_methods, method_text
+from coding_study.domain.project_manifest import project_lock
 from coding_study.domain.signature import ClassSignature
 from coding_study.domain.submissions import (
     LevelTally,
@@ -143,7 +144,8 @@ def submit_project(
     )
     if not (submission.every_level and judgement.passed):
         return result
-    return _Opener(environment, problem, language).after_passing(result)
+    with environment.workspace.locked(project_lock(meta.slug)):
+        return _Opener(environment, problem, language).after_passing(result)
 
 
 class _Opener:
@@ -155,6 +157,15 @@ class _Opener:
         self._language = language
 
     def after_passing(self, result: SubmitResult) -> SubmitResult:
+        """Under the project's lock, against the attempt as stored now: a submission graded
+        while another opened the level, or while `cstudy start --fresh` ended the attempt,
+        opens nothing."""
+        stored = self._environment.progress.in_progress_attempt(result.meta.slug, self._language)
+        if stored is None or stored.id != result.attempt.id:
+            return result
+        result = replace(result, attempt=stored)
+        if stored.level_unlocked != result.levels.unlocked:
+            return result
         levels = result.levels.after_passing()
         if levels.newly_unlocked:
             return self._open(replace(result, levels=levels))

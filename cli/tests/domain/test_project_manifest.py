@@ -11,6 +11,7 @@ from coding_study.domain.project_manifest import (
     content_digest,
     level_file,
     manifest_path,
+    project_lock,
     starter_manifest,
 )
 
@@ -68,3 +69,7 @@ def test_level_file_records_the_generated_text_and_its_level():
 
 def test_the_manifest_lives_outside_the_project_folder():
     assert manifest_path("bank-project-python") == ".cs/projects/bank-project-python.json"
+
+
+def test_the_projects_lock_lives_next_to_its_manifest():
+    assert project_lock("bank-project-python") == ".cs/projects/bank-project-python.lock"

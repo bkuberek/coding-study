@@ -4,7 +4,9 @@
 The manifest names each file `cstudy` put in `projects/<slug>/`, the starter's and the generated
 test file of each open level, with the SHA-256 of the content it provided, so that each file of
 the folder can be told unchanged, modified, added or deleted even after a newer `cstudy` changes
-the starter or the generated tests. It lives in `.cs/projects/<slug>.json`, outside the folder.
+the starter or the generated tests. It lives in `.cs/projects/<slug>.json`, outside the folder,
+next to the project's lock, which every command holds while it writes the folder's generated
+files, its manifest or the attempt's levels.
 """
 
 import hashlib
@@ -15,6 +17,7 @@ from coding_study.domain.project import ProjectTree
 
 MANIFESTS_DIRECTORY = ".cs/projects"
 MANIFEST_SUFFIX = ".json"
+LOCK_SUFFIX = ".lock"
 
 
 class FileOrigin(StrEnum):
@@ -75,6 +78,11 @@ def level_file(path: str, text: str, level: int) -> ProvidedFile:
 def manifest_path(slug: str) -> str:
     """Relative to the workspace root."""
     return f"{MANIFESTS_DIRECTORY}/{slug}{MANIFEST_SUFFIX}"
+
+
+def project_lock(slug: str) -> str:
+    """The lock file of the project `slug`, relative to the workspace root."""
+    return f"{MANIFESTS_DIRECTORY}/{slug}{LOCK_SUFFIX}"
 
 
 def _path(file: ProvidedFile) -> str:

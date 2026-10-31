@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from coding_study.adapters.workspace_fs import WorkspaceFs
+from tests.project_locks import lock_is_held
 
 STUB = "python/practice/two_sum.py"
 
@@ -263,3 +264,23 @@ def test_remove_folder_leaves_its_siblings_alone(workspace, project):
 def test_remove_folder_of_a_missing_path_does_nothing(workspace):
     workspace.remove_folder(PROJECT)
     assert not workspace.exists(PROJECT)
+
+
+LOCK = ".cs/projects/bank-project-python.lock"
+
+
+def test_locked_holds_the_lock_for_the_with_block(workspace):
+    with workspace.locked(LOCK):
+        assert lock_is_held(workspace.absolute(LOCK))
+
+
+def test_locked_releases_the_lock_after_the_with_block(workspace):
+    with workspace.locked(LOCK):
+        pass
+    assert not lock_is_held(workspace.absolute(LOCK))
+
+
+def test_locked_releases_the_lock_when_the_block_raises(workspace):
+    with pytest.raises(RuntimeError), workspace.locked(LOCK):
+        raise RuntimeError("interrupted")
+    assert not lock_is_held(workspace.absolute(LOCK))

@@ -1,6 +1,7 @@
 """Ports the application drives; adapters implement them (docs/architecture.md)."""
 
 from collections.abc import Callable, Iterator, Mapping, Sequence
+from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
@@ -579,6 +580,12 @@ class Workspace(Protocol):
         """sha256 of a file, or of every tracked file under a directory (relative path and bytes,
         in path order; `workspace_projects.is_untracked` entries aside); stable for missing
         paths."""
+        ...
+
+    def locked(self, path: str) -> AbstractContextManager[None]:
+        """Holds an exclusive lock on the file `path`, created when missing, for the `with` block:
+        another holder, in this process or another, makes it wait. Not reentrant: asking for a
+        lock you hold waits forever. A crash never leaves the lock held."""
         ...
 
     def tracked_files(self, path: str) -> tuple[str, ...]:

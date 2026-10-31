@@ -2,8 +2,10 @@
 
 import hashlib
 import shutil
+from contextlib import AbstractContextManager
 from pathlib import Path
 
+from coding_study.adapters.file_lock import exclusive_lock
 from coding_study.adapters.project_folders import remove_untracked, tracked_files
 
 _MISSING = b"\0missing"
@@ -67,6 +69,9 @@ class WorkspaceFs:
         else:
             digest.update(target.read_bytes() if target.is_file() else _MISSING)
         return digest.hexdigest()
+
+    def locked(self, path: str) -> AbstractContextManager[None]:
+        return exclusive_lock(self.absolute(path))
 
     def tracked_files(self, path: str) -> tuple[str, ...]:
         folder = self.absolute(path)

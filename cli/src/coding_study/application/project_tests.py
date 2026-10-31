@@ -5,7 +5,8 @@ A level's file is written when the level opens: level 1's when the attempt start
 level's when a submission opens it. A file that exists is never written over, since the files
 are the user's to edit; a resumed attempt writes back the missing files of its unlocked levels.
 Each file is recorded in the folder's manifest (`project_manifest`) as `cstudy` generated it. The
-commands (`cstudy start`, `cstudy submit`) choose when; this module only writes.
+commands (`cstudy start`, `cstudy submit`) choose when, and hold the project's lock while this
+writes; this module takes no lock, since the lock is not reentrant.
 """
 
 from dataclasses import dataclass

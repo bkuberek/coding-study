@@ -23,6 +23,7 @@ from coding_study.domain.errors import UsageError
 from coding_study.domain.levels import FIRST_LEVEL
 from coding_study.domain.problem import Language, Problem
 from coding_study.domain.project import entry_files, project_language
+from coding_study.domain.project_manifest import project_lock
 from coding_study.domain.signature import ClassSignature
 from coding_study.domain.submissions import LevelUnlock
 from coding_study.domain.workspace_projects import project_folder
@@ -74,12 +75,16 @@ def project_start_language(problem: Problem, requested: Language | None) -> Lang
 def start_project(
     environment: Environment, problem: Problem, request: ProjectStartRequest
 ) -> ProjectStart:
+    """Under the project's lock: a concurrent `cstudy start` resumes the attempt this one begins,
+    and a concurrent unlock writes into the folder before or after this, never during it."""
     language = project_start_language(problem, request.language)
-    in_progress = environment.progress.in_progress_attempt(problem.meta.slug, language)
-    starter = _ProjectStarter(environment, problem, language)
-    if in_progress is not None and not request.fresh:
-        return starter.resume(in_progress)
-    return starter.begin(in_progress, request)
+    slug = problem.meta.slug
+    with environment.workspace.locked(project_lock(slug)):
+        in_progress = environment.progress.in_progress_attempt(slug, language)
+        starter = _ProjectStarter(environment, problem, language)
+        if in_progress is not None and not request.fresh:
+            return starter.resume(in_progress)
+        return starter.begin(in_progress, request)
 
 
 class _ProjectStarter:
