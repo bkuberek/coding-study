@@ -38,7 +38,7 @@
       "required": ["status"],
       "properties": {
         "status": {
-          "description": "The suite job's status for the test; timeout and crashed: the CLI ended the runner during the test and restarted the suite without it",
+          "description": "The suite job's status for the test; timeout and crashed: the CLI ended the runner during the test and restarted the suite without it, or, for a suite of one process per test (Rust), the test's own process ended",
           "enum": ["ok", "failed", "error", "skipped", "timeout", "crashed"]
         },
         "message": { "description": "failed, error and skipped: the exact message", "type": "string" },

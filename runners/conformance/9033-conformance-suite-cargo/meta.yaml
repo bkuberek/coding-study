@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9033"
+slug: conformance-suite-cargo
+title: "Conformance: a cargo test suite"
+status: ready
+difficulty: easy
+track: practical
+kind: project
+languages: [rust]
+levels:
+  - {level: 1, title: Suite statuses}
+signature:
+  class:
+    name: Probe
+    constructor: {params: []}
+    methods:
+      - {name: ping, level: 1, params: [], returns: {type: string}}
+comparator: {type: ops}
+limits: {hang_guard_ms: 1000}
+project:
+  entry: probe
+approaches:
+  - {id: reference, name: "ping answers pong; the tests cover every suite status, a hang, an abort and a test file that does not compile", role: optimal, time: "O(1)", space: "O(1)", time_class: "1", space_class: "1"}

@@ -90,6 +90,19 @@
       "tests/statuses_test.go::TestEndsTheProcess": {"status": "error"},
       "tests/statuses_test.go::TestHangs": {"status": "timeout"},
       "conformance-suite-go-test/broken": {"status": "error"}
+    }},
+    {"problem": "conformance-project-rust", "approach": "reference", "outcome": {"status": "pass"}},
+    {"problem": "conformance-suite-cargo", "approach": "reference", "outcome": {"status": "pass"}, "tests": {
+      "tests/broken.rs": {"status": "error"},
+      "tests/level_1.rs::ex1": {"status": "ok"},
+      "tests/statuses.rs::passes": {"status": "ok"},
+      "tests/statuses.rs::fails_an_assertion": {"status": "failed"},
+      "tests/statuses.rs::panics": {"status": "failed", "message": "conformance failure\nat tests/statuses.rs:21:5"},
+      "tests/statuses.rs::hangs": {"status": "timeout"},
+      "tests/statuses.rs::aborts": {"status": "crashed"},
+      "tests/statuses.rs::prints": {"status": "ok", "stdout": "conformance output\n"},
+      "tests/statuses.rs::is_ignored": {"status": "skipped", "message": "conformance reason"},
+      "tests/statuses.rs::panics_as_expected": {"status": "ok"}
     }}
   ]
 }

@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9032"
+slug: conformance-project-rust
+title: "Conformance: a Rust project folder"
+status: ready
+difficulty: easy
+track: practical
+kind: project
+languages: [rust]
+levels:
+  - {level: 1, title: Modules between files}
+signature:
+  class:
+    name: Inventory
+    constructor: {params: []}
+    methods:
+      - {name: add, level: 1, params: [{name: name, type: string}, {name: count, type: int}], returns: {type: int}}
+      - {name: label, level: 1, params: [{name: name, type: string}], returns: {type: string}}
+comparator: {type: ops}
+project:
+  entry: shop
+approaches:
+  - {id: reference, name: "The entry module uses its sibling by crate path and by super path, and the crate root re-exports it", role: optimal, time: "O(1)", space: "O(n)", time_class: "1", space_class: "n"}
