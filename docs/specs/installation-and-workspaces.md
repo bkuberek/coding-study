@@ -261,6 +261,7 @@ Not set from project files, because IDEs keep them per user or need a plugin: th
 | Catalog | The union, in directory name (id) order; `cstudy list`, `cstudy next`, `cstudy start`, `cstudy test` and `cstudy verify` treat both alike |
 | Slug collision | The workspace problem wins and hides the content problem with that slug entirely (no file-level merge). Your practice files and progress therefore always match the problem you wrote, also after an upgrade adds a problem with your slug |
 | Id collision | Ids only order and name directories; two problems with the same id and different slugs are both listed, and `cstudy verify` reports the duplicate id (S2) |
+| Languages | A problem in `problems/` may list any non-empty subset of the six languages in its `meta.yaml`, and without a `languages` line it lists the four core languages (`python`, `typescript`, `java`, `kotlin`), which is not the catalog's default of all six: a problem written before Go and Rust keeps working, and it needs no Go or Rust reference. `cstudy new` writes the line explicitly ([problem format](problem-format.md#metayaml)) |
 | `cstudy new` | With bundled content it writes `problems/<id>-<slug>/` in the workspace, numbering from `5001` above the workspace's highest id, so new catalog problems never take your ids; with an editable checkout it writes into the checkout as before (highest checkout id plus one) |
 | Tracks | Non-autograded items come from the content root only |
 
