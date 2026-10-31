@@ -21,6 +21,7 @@ Run `cstudy` anywhere inside this directory, or from elsewhere with `cstudy --wo
 | `.vscode/`, `.idea/` | VS Code and IntelliJ IDEA project files written by `cstudy init` and `cstudy ide`; yours to edit |
 | `notes/` | Your answers to system design and code review items |
 | `problems/` | Problems you write yourself (`cstudy new <slug>`); they join the catalog |
+| `projects/` | One folder per project problem you started (`projects/<slug>/`), seeded from its starter; a Python folder reaches `python/.venv` through its `.venv` link |
 | `.archive/` | Earlier attempts that `cstudy start --fresh` and reviews moved aside |
 | `.cs/workspace.toml` | Marks this directory as a workspace; keep it in version control |
 | `.cs/ide.json` | Which IDE files cstudy wrote, and what they held; keep it in version control |

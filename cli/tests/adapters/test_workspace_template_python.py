@@ -32,3 +32,12 @@ def test_debugpy_is_not_a_dependency_of_running_solutions(project):
 
 def test_the_lock_pins_debugpy(locked_names):
     assert "debugpy" in locked_names
+
+
+def test_the_project_depends_on_pytest_for_project_problems(project):
+    declared = [requirement.split(">")[0] for requirement in project["dependency-groups"]["dev"]]
+    assert "pytest" in declared
+
+
+def test_the_lock_pins_pytest(locked_names):
+    assert "pytest" in locked_names

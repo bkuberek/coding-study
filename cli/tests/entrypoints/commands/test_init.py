@@ -53,7 +53,7 @@ def test_init_writes_the_practice_projects(target, relative):
     assert (target / relative).is_file()
 
 
-@pytest.mark.parametrize("relative", ["README.md", ".gitignore", "notes", "problems"])
+@pytest.mark.parametrize("relative", ["README.md", ".gitignore", "notes", "problems", "projects"])
 def test_init_writes_the_workspace_files(target, relative):
     init(str(target))
     assert (target / relative).exists()

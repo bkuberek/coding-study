@@ -20,6 +20,11 @@ __pycache__/
 .ruff_cache/
 .DS_Store
 
+# Project folders: .venv is a link to python/.venv, which `.venv/` (a directory) does not match;
+# a plain `uv run` in a folder writes uv.lock
+projects/*/.venv
+projects/*/uv.lock
+
 # IntelliJ IDEA: commit .idea/misc.xml, .idea/gradle.xml and .idea/runConfigurations/ (written by
 # `cstudy ide`), not the per-user state
 .idea/workspace.xml

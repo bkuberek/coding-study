@@ -60,6 +60,14 @@ def test_a_workspace_from_before_go_and_rust_is_missing_only_their_files(tmp_pat
     assert {path.split("/")[0] for path in missing} == {"go.work", "go", "rust"}
 
 
+def test_a_workspace_from_before_project_problems_is_missing_only_the_projects_folder(tmp_path):
+    setup = FsWorkspaceSetup(tmp_path / "runners", "0.1.0")
+    workspace = tmp_path / "ws"
+    setup.write_missing(workspace)
+    shutil.rmtree(workspace / "projects")
+    assert setup.missing_files(workspace) == ("projects/.gitkeep",)
+
+
 def test_writing_the_missing_files_restores_go_and_rust(tmp_path):
     setup = FsWorkspaceSetup(tmp_path / "runners", "0.1.0")
     workspace = tmp_path / "ws"
