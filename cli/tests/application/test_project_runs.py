@@ -7,6 +7,7 @@ import pytest
 
 from coding_study.application.environment import Environment
 from coding_study.application.ports import (
+    BuildFailed,
     BuildScope,
     PrepareResult,
     ProgressNotice,
@@ -23,6 +24,7 @@ from coding_study.application.project_runs import (
     project_runner,
     run_grading,
     run_suite,
+    suite_job,
 )
 from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.config import Config, HangGuardSettings
@@ -52,16 +54,23 @@ LAUNCH = RunnerLaunch(("python", "-P", "-m", "cs_runner"), Path("/ws/projects/ba
 REPORT = SuiteReport(RunnerInfo("python", 1, "3.13", ("project", "suite")))
 
 
+COMPILER_LINES = ("Bank.java:3: error: ';' expected", "        int x", "             ^")
+COMPILE_ERROR = UserError("CompileError", "the project does not compile", "\n".join(COMPILER_LINES))
+
+
 @dataclass
 class FakeProjectRunner:
     scopes: list[ProjectScope] = field(default_factory=list[ProjectScope])
+    build_failure: BuildFailed | None = None
 
     def prepare(self, scope: BuildScope, notify: ProgressNotice) -> PrepareResult:
         raise AssertionError("a project job is prepared with prepare_project")
 
-    def prepare_project(self, scope: ProjectScope, notify: ProgressNotice) -> RunnerLaunch:
+    def prepare_project(
+        self, scope: ProjectScope, notify: ProgressNotice
+    ) -> RunnerLaunch | BuildFailed:
         self.scopes.append(scope)
-        return LAUNCH
+        return self.build_failure or LAUNCH
 
 
 class FileOnlyRunner:
@@ -134,8 +143,32 @@ def sent_job(environment: Environment, run: SuiteRun, process: RecordingSuitePro
 
 
 def test_the_suite_runs_in_the_project_root(environment, meta, runner):
-    run_suite(environment, suite_run(meta), [].append)
+    run_suite(environment, suite_run(meta, level=2), [].append)
     assert runner.scopes == [ProjectSuite(Path("/ws/projects/bank"))]
+
+
+def test_the_build_leaves_out_the_generated_files_of_locked_levels(environment, meta, runner):
+    """A Java or Kotlin build compiles no test file the run leaves out: it may call methods that
+    do not exist yet."""
+    run_suite(environment, suite_run(meta, level=1), [].append)
+    assert runner.scopes[0].exclude == ("tests/test_level_2.py",)
+
+
+def test_a_suite_that_does_not_build_reports_the_compiler_lines(environment, meta, runner):
+    runner.build_failure = BuildFailed(COMPILER_LINES)
+    assert run_suite(environment, suite_run(meta), [].append).load_error == COMPILE_ERROR
+
+
+def test_a_suite_that_does_not_build_starts_no_runner(environment, meta, runner, process):
+    runner.build_failure = BuildFailed(COMPILER_LINES)
+    run_suite(environment, suite_run(meta), [].append)
+    assert process.suites == []
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_a_jvm_suite_is_run_by_the_junit_platform(meta, language):
+    job = suite_job(replace(suite_run(meta), language=language), Config())
+    assert job.framework is SuiteFramework.JUNIT_PLATFORM
 
 
 def test_the_suite_runs_through_the_prepared_launch(environment, meta, process):
@@ -188,7 +221,7 @@ def test_the_configured_hang_guard_wins(environment, meta, process):
 
 def test_a_debug_session_reaches_the_launch(environment, meta, runner):
     session = DebugSession(Language.PYTHON, 5678)
-    run_suite(environment, suite_run(meta, debug=session), [].append)
+    run_suite(environment, suite_run(meta, level=2, debug=session), [].append)
     assert runner.scopes == [ProjectSuite(Path("/ws/projects/bank"), session)]
 
 
@@ -327,6 +360,20 @@ def test_a_project_that_does_not_load_has_a_load_error(environment, problem):
         replace(environment, runner_process=broken), grading_run(problem), [].append
     )
     assert judgement.load_error == SESSION_ERROR
+
+
+def test_a_project_that_does_not_build_has_a_load_error(grading_environment, problem, runner):
+    runner.build_failure = BuildFailed(COMPILER_LINES)
+    judgement = run_grading(grading_environment, grading_run(problem), [].append)
+    assert (judgement.load_error, judgement.case_count) == (COMPILE_ERROR, len(problem.cases))
+
+
+def test_a_project_that_does_not_build_starts_no_runner(
+    grading_environment, grading_process, problem, runner
+):
+    runner.build_failure = BuildFailed(COMPILER_LINES)
+    run_grading(grading_environment, grading_run(problem), [].append)
+    assert grading_process.requests == []
 
 
 def test_a_problem_without_a_project_block_cannot_be_graded(

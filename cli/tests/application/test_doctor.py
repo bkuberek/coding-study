@@ -7,6 +7,7 @@ import pytest
 from coding_study.application.doctor import (
     HANDSHAKE_META,
     JVM_FIX,
+    JVM_PROJECT_WARMUPS,
     CheckResult,
     CheckStatus,
     ContentLocation,
@@ -20,11 +21,14 @@ from coding_study.application.doctor import (
 )
 from coding_study.application.ports import (
     BuildFailed,
+    BuildScope,
     CaseListener,
     DebugServer,
     LanguageRunner,
     Prepared,
+    PrepareResult,
     ProbeResult,
+    ProgressNotice,
     RunnerLaunch,
     ScaffoldOutcome,
     SuiteListener,
@@ -948,7 +952,17 @@ def test_fix_runs_the_setup_command_of_every_workspace_project():
             ),
             Path("/ws/jvm"),
         ),
+        *((step.command, Path("/ws/jvm")) for step in JVM_PROJECT_WARMUPS),
     ]
+
+
+@pytest.mark.parametrize("language", ["java", "kotlin"])
+def test_the_jvm_warm_up_builds_a_project_folder_per_language(language):
+    """Project folders build offline on JUnit and kotlin-test, which no single-file problem
+    needs, so a warm-up project of each language caches them."""
+    commands = {step.command for step in JVM_PROJECT_WARMUPS}
+    warmup = f"../.cs/runtime/runners/jvm/project-warmup/{language}"
+    assert ("./gradlew", "-p", warmup, "-q", "--console=plain", "csClasspath") in commands
 
 
 def test_the_jvm_warm_up_resolves_the_runtime_classpath():
@@ -977,6 +991,8 @@ def test_fix_reports_each_command_outcome():
         ("typescript", False),
         ("runners/typescript", False),
         ("jvm", True),
+        ("jvm", True),
+        ("jvm", True),
     ]
 
 
@@ -991,9 +1007,64 @@ def test_fix_announces_each_command_before_running_it():
     fix(workspace_with(paths={"jvm"}), notify=lines.append)
     assert lines == [
         "running ./gradlew :java:csClasspath :kotlin:csClasspath -Pcs.only=cs_doctor_handshake "
-        "(in jvm)"
+        "(in jvm)",
+        *(f"running {step}" for step in JVM_PROJECT_WARMUPS),
     ]
 
 
 def test_any_failure_fails_the_report():
     assert doctor(tools_with(("node", "--version"), None)).passed is False
+
+
+@dataclass
+class LibrariesRunner:
+    """A JVM runner that says whether its project builds would find their libraries offline."""
+
+    missing: str | None = None
+
+    def prepare(self, scope: BuildScope, notify: ProgressNotice) -> PrepareResult:
+        return Prepared(RunnerLaunch(("java",), Path("/"), 1000))
+
+    def uncached_project_libraries(self) -> str | None:
+        return self.missing
+
+
+def with_jvm_libraries(java: str | None, kotlin: str | None) -> PracticeWorkspace:
+    runners = {
+        **healthy_runners(),
+        Language.JAVA: LibrariesRunner(java),
+        Language.KOTLIN: LibrariesRunner(kotlin),
+    }
+    return workspace_with(runners=runners)
+
+
+@pytest.mark.parametrize("language", ["java", "kotlin"])
+def test_cached_project_libraries_pass(language):
+    report = doctor(workspace=with_jvm_libraries(None, None))
+    assert summary(report, f"{language} project libraries") == (
+        CheckStatus.OK,
+        f"cached ({language.capitalize()} project problems build offline)",
+    )
+
+
+def test_uncached_project_libraries_only_warn():
+    """Only Java and Kotlin project problems need them."""
+    report = doctor(workspace=with_jvm_libraries(None, "the warm-up project has not built"))
+    result = check(report, "kotlin project libraries")
+    assert (result.status, result.detail, result.fix) == (
+        CheckStatus.WARN,
+        "the warm-up project has not built",
+        "cstudy doctor --fix",
+    )
+
+
+def test_a_runner_without_project_libraries_has_no_row():
+    report = doctor()
+    assert not [result for result in report.results if "project libraries" in result.name]
+
+
+def test_project_libraries_are_not_checked_before_jvm_exists():
+    runners = {**healthy_runners(), Language.JAVA: LibrariesRunner("not built")}
+    paths = set(COMPLETE_WORKSPACE) - {"jvm"}
+    report = doctor(workspace=workspace_with(paths=paths, runners=runners))
+    assert not [result for result in report.results if "project libraries" in result.name]

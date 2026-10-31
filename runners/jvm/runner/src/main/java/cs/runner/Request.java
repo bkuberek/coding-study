@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ record Request(List<Job> jobs) implements RunnerRequest {
     static final int PROTOCOL = 1;
     private static final String FUNCTION_KIND = "function";
     private static final String CONCURRENT_KIND = "concurrent";
+    private static final String SUITE_KIND = "suite";
     private static final String THREADS_MODEL = "threads";
     private static final String PLATFORM = "platform";
 
@@ -27,18 +29,26 @@ record Request(List<Job> jobs) implements RunnerRequest {
         String id();
     }
 
-    sealed interface Job permits FunctionJob, ClassJob, ConcurrentJob {
+    sealed interface Job permits FunctionJob, ClassJob, ConcurrentJob, SuiteJob {
         String id();
-
-        /** The fully qualified class from {@code target.class}. */
-        String className();
     }
 
+    /** @param className the fully qualified class from {@code target.class} */
     record FunctionJob(String id, String className, Member function, List<FunctionCase> cases)
             implements Job {
     }
 
     /**
+     * A project's native tests (docs/specs/runners.md#suite-job): no target and no cases, since
+     * the framework discovers the tests. {@code exclude} is not read: the build already left
+     * those files out.
+     */
+    record SuiteJob(String id, String framework, Path root, SuiteSelection selection)
+            implements Job {
+    }
+
+    /**
+     * @param className the fully qualified class from {@code target.class}
      * @param methods keyed by canonical method name, as {@code ops} names them
      */
     record ClassJob(
@@ -116,6 +126,9 @@ record Request(List<Job> jobs) implements RunnerRequest {
 
     static Job job(JsonObject job) {
         String id = Json.string(job, "job_id");
+        if (SUITE_KIND.equals(Json.string(job, "kind"))) {
+            return suiteJob(job, id);
+        }
         String className = Json.string(Json.object(job, "target"), "class");
         JsonObject names = Json.object(job, "names");
         JsonObject signature = Json.object(job, "signature");
@@ -138,6 +151,24 @@ record Request(List<Job> jobs) implements RunnerRequest {
             return new ConcurrentJob(id, className, constructor, methods, concurrentCases(cases));
         }
         return new ClassJob(id, className, constructor, methods, operationsCases(cases));
+    }
+
+    private static SuiteJob suiteJob(JsonObject job, String id) {
+        SuiteSelection selection =
+                new SuiteSelection(strings(job, "select"), new HashSet<>(strings(job, "skip")));
+        Path root = Path.of(Json.string(job, "root"));
+        return new SuiteJob(id, Json.string(job, "framework"), root, selection);
+    }
+
+    private static List<String> strings(JsonObject object, String key) {
+        List<String> values = new ArrayList<>();
+        for (JsonElement value : Json.array(object, key)) {
+            if (!Json.isString(value)) {
+                throw new BadRequestException("\"" + key + "\" must hold strings");
+            }
+            values.add(value.getAsString());
+        }
+        return List.copyOf(values);
     }
 
     private static List<Case> concurrentCases(JsonArray cases) {

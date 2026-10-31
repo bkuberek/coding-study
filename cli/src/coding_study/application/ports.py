@@ -696,6 +696,9 @@ class ProjectSuite:
     """`cstudy test --debug`: breakpoints in the project's code and in its tests both stop."""
     meta: ProblemMeta | None = field(default=None, compare=False)
     """The problem, for a runner whose debug run picks a package of the project (Go)."""
+    exclude: tuple[str, ...] = ()
+    """The suite job's `exclude`: test files, relative to the root, that a language which compiles
+    its tests leaves out of the build, since they may call methods that do not exist yet."""
 
 
 type ProjectScope = ProjectGrading | ProjectSuite
@@ -704,11 +707,15 @@ type ProjectScope = ProjectGrading | ProjectSuite
 @runtime_checkable
 class ProjectRunner(Protocol):
     """A `LanguageRunner` that also runs project jobs (docs/specs/runners.md#project-jobs):
-    Python and TypeScript."""
+    Python, TypeScript, Java, Kotlin and Go."""
 
-    def prepare_project(self, scope: ProjectScope, notify: ProgressNotice) -> RunnerLaunch:
-        """How to launch the runner in the project root; a project builds nothing, and any
-        bytecode cached for the project's files is deleted first (runners.md#suite-job).
+    def prepare_project(
+        self, scope: ProjectScope, notify: ProgressNotice
+    ) -> RunnerLaunch | BuildFailed:
+        """How to launch the runner in the project root. Python and TypeScript build nothing, and
+        any bytecode cached for the project's files is deleted first (runners.md#suite-job); Java
+        and Kotlin build the folder first, and BuildFailed holds the compiler's lines when it does
+        not compile (runners.md#jvm-project-builds).
 
         Raises RunnerStartError when the workspace's toolchain lacks what the job needs.
         """
@@ -760,4 +767,15 @@ class GoProjectFolders(Protocol):
 
     def write_missing_go_work_files(self) -> tuple[str, ...]:
         """The folders whose `go.work` it wrote, relative to the workspace root."""
+        ...
+
+
+@runtime_checkable
+class ProjectLibraries(Protocol):
+    """A runner whose project builds run offline on libraries that `cstudy doctor --fix` caches
+    by building a warm-up project (docs/specs/installation-and-workspaces.md#jvm-project-folders):
+    Java and Kotlin."""
+
+    def uncached_project_libraries(self) -> str | None:
+        """Why a project build would miss a library offline; None when it would find them all."""
         ...

@@ -20,6 +20,10 @@ final class JobRunner {
 
     void run(Request request) {
         for (Request.Job job : request.jobs()) {
+            if (job instanceof Request.SuiteJob suite) {
+                SuiteRun.run(suite, events);
+                continue;
+            }
             events.jobStart(job.id());
             try {
                 runCases(job);
@@ -43,6 +47,7 @@ final class JobRunner {
                     ClassTarget.load(design),
                     Request.OperationsCase::id);
             case Request.ConcurrentJob concurrent -> runConcurrent(concurrent);
+            case Request.SuiteJob suite -> throw new IllegalStateException("a suite job has no cases");
         }
     }
 

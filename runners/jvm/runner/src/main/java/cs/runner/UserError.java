@@ -7,11 +7,39 @@ import java.util.List;
 /** An exception from user code, or why a target could not be loaded. */
 record UserError(String type, String message, String trace) {
     static final int MAX_TRACE_LINES = 10;
+    private static final List<String> FRAMEWORK_PACKAGES = List.of(
+            "java.", "javax.", "jdk.", "sun.", "kotlin.", "org.junit.", "org.opentest4j.",
+            "cs.runner.", "cs.suite.");
 
     /** Describes {@code error}, keeping only stack frames from classes in {@code userPackage}. */
     static UserError of(Throwable error, String userPackage) {
         String message = error.getMessage() == null ? "" : error.getMessage();
         return new UserError(typeName(error.getClass()), message, trace(error, userPackage));
+    }
+
+    /**
+     * Describes an exception from a project's code or tests, keeping the stack frames that are
+     * not the JDK's, the test framework's or the runner's: a project spans packages of its own.
+     */
+    static UserError ofFramework(Throwable error) {
+        String message = error.getMessage() == null ? "" : error.getMessage();
+        List<String> lines = new ArrayList<>();
+        for (StackTraceElement frame : error.getStackTrace()) {
+            if (!isFrameworkFrame(frame) && lines.size() < MAX_TRACE_LINES) {
+                lines.add(frame(frame));
+            }
+        }
+        return new UserError(typeName(error.getClass()), message, String.join("\n", lines));
+    }
+
+    private static boolean isFrameworkFrame(StackTraceElement frame) {
+        String className = frame.getClassName();
+        for (String prefix : FRAMEWORK_PACKAGES) {
+            if (className.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static String typeName(Class<?> type) {

@@ -34,19 +34,28 @@ from coding_study.domain.precedence import resolve_hang_guard_ms
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
 from coding_study.domain.project import level_test_file, unsupported_language
 from coding_study.domain.runner_grading import graded_signature, grading_target
-from coding_study.domain.runs import CaseReport, JobReport, RunCase, RunJob, RunRequest
+from coding_study.domain.runs import (
+    CaseReport,
+    JobReport,
+    RunCase,
+    RunJob,
+    RunRequest,
+    UserError,
+)
 from coding_study.domain.suite_runs import SuiteFramework, SuiteJob, SuiteReport
 
 SUITE_JOB = "suite"
 SUITE_FRAMEWORKS: Mapping[Language, SuiteFramework | None] = {
     Language.PYTHON: SuiteFramework.PYTEST,
     Language.TYPESCRIPT: SuiteFramework.NODE_TEST,
-    Language.JAVA: None,
-    Language.KOTLIN: None,
+    Language.JAVA: SuiteFramework.JUNIT_PLATFORM,
+    Language.KOTLIN: SuiteFramework.JUNIT_PLATFORM,
     Language.GO: SuiteFramework.GO_TEST,
     Language.RUST: None,
 }
 """None: project problems are not yet supported in the language (ADR 0014)."""
+COMPILE_ERROR = "CompileError"
+DOES_NOT_COMPILE = "the project does not compile"
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,9 +93,12 @@ def run_suite(environment: Environment, run: SuiteRun, notify: ProgressNotice) -
     """Raises RunnerStartError (exit 4) when the language's runner has no project jobs or the
     toolchain lacks the framework."""
     runner = project_runner(environment.toolchains, run.language)
-    launch = runner.prepare_project(ProjectSuite(run.root, run.debug, run.meta), notify)
     job = suite_job(run, environment.config)
-    return environment.runner_process.run_suite(launch, job, run.listener)
+    suite = ProjectSuite(run.root, run.debug, run.meta, job.exclude)
+    prepared = runner.prepare_project(suite, notify)
+    if isinstance(prepared, BuildFailed):
+        return SuiteReport(None, load_error=compile_error(prepared))
+    return environment.runner_process.run_suite(prepared, job, run.listener)
 
 
 def typecheck_project(
@@ -166,10 +178,19 @@ def run_grading(environment: Environment, run: GradingRun, notify: ProgressNotic
     cases = CaseMaterializer(environment, notify).runnable_cases(graded)
     job = grading_job(run, cases, environment.config)
     comparator = problem_comparator(environment, run.problem.meta)
-    launch = runner.prepare_project(ProjectGrading(run.root, run.problem.meta, run.level), notify)
+    grading = ProjectGrading(run.root, run.problem.meta, run.level)
+    prepared = runner.prepare_project(grading, notify)
+    if isinstance(prepared, BuildFailed):
+        return judge(cases, JobReport(job.job_id, load_error=compile_error(prepared)), comparator)
     judging = _CaseJudge(cases, comparator, run.listener) if run.listener else None
-    report = environment.runner_process.run(launch, RunRequest((job,)), judging)
+    report = environment.runner_process.run(prepared, RunRequest((job,)), judging)
     return judge(cases, report.job(job.job_id), comparator)
+
+
+def compile_error(failure: BuildFailed) -> UserError:
+    """A project that does not compile, as the load error of the job it never ran: the compiler's
+    lines are its trace (docs/specs/runners.md#jvm-project-builds)."""
+    return UserError(COMPILE_ERROR, DOES_NOT_COMPILE, "\n".join(failure.diagnostics))
 
 
 class _CaseJudge:

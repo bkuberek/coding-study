@@ -3,7 +3,7 @@ import pytest
 from coding_study.domain.problem import Language
 from coding_study.domain.project import Project
 from coding_study.domain.runner_grading import graded_signature, grading_target
-from coding_study.domain.runs import CompiledTarget, FileTarget, ProjectTarget
+from coding_study.domain.runs import ClassTarget, CompiledTarget, FileTarget, ProjectTarget
 from coding_study.domain.signature import (
     ClassSignature,
     FunctionSignature,
@@ -60,6 +60,13 @@ def test_a_go_project_is_graded_through_the_user_package_compiled_into_the_runne
     assert target == CompiledTarget("user")
 
 
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_a_jvm_project_is_graded_through_its_entry_class(language):
+    """The class is on the classpath of the folder's build; the runner loads it by name."""
+    target = grading_target(Project("bank.Bank"), language, "/ws/projects/bank")
+    assert target == ClassTarget("bank.Bank")
+
+
 def test_a_language_without_project_problems_has_no_grading_target():
-    with pytest.raises(ValueError, match="not yet supported in java"):
-        grading_target(Project("bank.Bank"), Language.JAVA, "/ws/projects/bank")
+    with pytest.raises(ValueError, match="not yet supported in rust"):
+        grading_target(Project("bank"), Language.RUST, "/ws/projects/bank")

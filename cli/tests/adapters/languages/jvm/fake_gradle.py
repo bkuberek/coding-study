@@ -101,6 +101,69 @@ class ClassBuildingGradle(FakeGradle):
         return f"{output}:/runner.jar"
 
 
+PROJECT_CLASSPATH_FILES = {
+    "csClasspath": ("build/cs/main-classpath.txt", "build/cs/test-classpath.txt"),
+    "csMainClasspath": ("build/cs/main-classpath.txt",),
+}
+"""What each task of the `cs.project` plugin writes, relative to the project folder."""
+
+
+class ProjectGradle:
+    """Builds a project folder like the `cs.project` plugin: the main classes, the test classes
+    with `csClasspath`, and the classpath files naming them next to a library jar.
+
+    `pause` stretches each build so that builds that overlap are noticed.
+    """
+
+    def __init__(
+        self, *, warm: bool = True, outcome: GradleOutcome | None = None, pause: float = 0.0
+    ):
+        self.warm = warm
+        self.outcome = outcome or GradleOutcome(0, "")
+        self.builds: list[tuple[str, ...]] = []
+        self._pause = pause
+        self._guard = threading.Lock()
+        self._running = 0
+        self.most_running = 0
+
+    def daemon_running(self) -> bool:
+        return self.warm
+
+    def run(self, arguments: Sequence[str]) -> GradleOutcome:
+        with self._guard:
+            self.builds.append(tuple(arguments))
+            self._running += 1
+            self.most_running = max(self.most_running, self._running)
+        try:
+            time.sleep(self._pause)
+            if self.outcome.exit_code == 0:
+                self._build(Path(arguments[list(arguments).index("-p") + 1]), arguments)
+            return self.outcome
+        finally:
+            with self._guard:
+                self._running -= 1
+
+    def _build(self, root: Path, arguments: Sequence[str]) -> None:
+        task = next(argument for argument in arguments if argument in PROJECT_CLASSPATH_FILES)
+        main = root / "build" / "classes" / "java" / "main"
+        test = root / "build" / "classes" / "java" / "test"
+        for directory, name in ((main, "Bank.class"), (test, "Level1Test.class")):
+            (directory / "bank").mkdir(parents=True, exist_ok=True)
+            (directory / "bank" / name).write_text(name)
+        classpaths = {
+            "main-classpath.txt": f"{main}:{LIBRARY}",
+            "test-classpath.txt": f"{test}:{main}:{LIBRARY}",
+        }
+        for relative in PROJECT_CLASSPATH_FILES[task]:
+            output = root / relative
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(f"{classpaths[output.name]}\n")
+
+
+LIBRARY = "/gradle/caches/junit-jupiter.jar"
+"""A jar in Gradle's cache: a run keeps its path, as nothing rewrites it."""
+
+
 def reference_sources(
     directory: Path, language: Language, *approaches: str
 ) -> tuple[ReferenceSource, ...]:

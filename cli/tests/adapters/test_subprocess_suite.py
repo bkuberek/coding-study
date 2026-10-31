@@ -157,7 +157,9 @@ def test_a_load_error_replaces_the_tests(runner, root):
 
 
 def test_reports_the_runner_from_hello(runner, root):
-    assert run_suite(runner, root).runner.features == ("stress", "project", "suite")
+    info = run_suite(runner, root).runner
+    assert info is not None
+    assert info.features == ("stress", "project", "suite")
 
 
 def test_a_runner_without_suite_jobs_cannot_run_one(runner, root):

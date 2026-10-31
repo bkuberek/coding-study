@@ -2,6 +2,8 @@ package cs.runner;
 
 import java.io.PrintStream;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -20,6 +22,8 @@ public final class Main {
     private static final long CASE_STACK_BYTES = 256L * 1024 * 1024;
     private static final String REQUEST_FLAG = "--request";
     private static final String OUT_FLAG = "--out";
+    private static final String STRESS_FEATURE = "stress";
+    private static final String PROJECT_FEATURE = "project";
 
     private Main() {
     }
@@ -46,11 +50,23 @@ public final class Main {
         Path outPath = Path.of(option(args, OUT_FLAG));
         RunnerRequest request = RunnerRequest.read(requestPath);
         try (EventWriter events = EventWriter.open(outPath)) {
-            events.hello(System.getProperty("java.version"));
+            events.hello(System.getProperty("java.version"), features());
             runOnLargeStack(() -> run(request, events));
             events.bye();
         }
         return EXIT_OK;
+    }
+
+    /**
+     * Stress runs and project grading always; suite jobs when a test framework host is on the
+     * classpath, as on a project's test runtime classpath (docs/specs/runners.md#capability).
+     */
+    private static List<String> features() {
+        List<String> features = new ArrayList<>(List.of(STRESS_FEATURE, PROJECT_FEATURE));
+        if (SuiteRun.available()) {
+            features.add(SuiteRun.SUITE_FEATURE);
+        }
+        return features;
     }
 
     private static void run(RunnerRequest request, EventWriter events) {

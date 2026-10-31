@@ -15,7 +15,7 @@ import pytest
 
 from coding_study.adapters.languages.jvm.gradle import default_gradle_user_home
 from coding_study.adapters.workspace_setup import FsWorkspaceSetup
-from coding_study.application.doctor import JVM_FIX
+from coding_study.application.doctor import JVM_FIX, JVM_PROJECT_WARMUPS
 from tests.helpers import REPOSITORY_ROOT
 from tests.workspaces import TEST_VERSION
 
@@ -55,7 +55,7 @@ def warmed_up(tmp_path_factory: pytest.TempPathFactory) -> Iterator[OfflineWorks
     setup.write_missing(root)
     setup.refresh_runtime(root)
     workspace = OfflineWorkspace(root, {**os.environ, "GRADLE_USER_HOME": str(home)})
-    for step in (JVM_FIX,):
+    for step in (JVM_FIX, *JVM_PROJECT_WARMUPS):
         subprocess.run(
             step.command,
             cwd=root / step.project,

@@ -13,7 +13,6 @@ from coding_study.application.ports import (
     PrepareResult,
     ProgressNotice,
     ProjectGrading,
-    ProjectSuite,
     RunnerLaunch,
     SuiteListener,
 )
@@ -114,7 +113,7 @@ def test_a_typescript_suite_is_run_by_node_test(environment, problem):
 
 def test_a_typescript_suite_runs_in_the_project_root(environment, problem, runner):
     sent_suite(environment, problem, 1)
-    assert runner.scopes == [ProjectSuite(ROOT)]
+    assert [scope.root for scope in runner.scopes] == [ROOT]
 
 
 def test_a_typescript_suite_leaves_out_the_test_files_of_locked_levels(environment, problem):

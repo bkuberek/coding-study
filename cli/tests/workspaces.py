@@ -12,11 +12,16 @@ from pathlib import Path
 
 from coding_study.adapters.runner_runtime import RUNTIME_DIRECTORY
 from coding_study.adapters.workspace_setup import FsWorkspaceSetup
-from coding_study.application.doctor import JVM_FIX, PYTHON_FIX, TYPESCRIPT_FIX
+from coding_study.application.doctor import (
+    JVM_FIX,
+    JVM_PROJECT_WARMUPS,
+    PYTHON_FIX,
+    TYPESCRIPT_FIX,
+)
 from tests.helpers import REPOSITORY_ROOT, mark_workspace
 
 TEST_VERSION = "test"
-SETUP_STEPS = (PYTHON_FIX, TYPESCRIPT_FIX, JVM_FIX)
+SETUP_STEPS = (PYTHON_FIX, TYPESCRIPT_FIX, JVM_FIX, *JVM_PROJECT_WARMUPS)
 JVM_COPY_IGNORED = shutil.ignore_patterns("build", ".gradle", ".kotlin", "src")
 TYPESCRIPT_PROJECT_FILES = ("package.json", "tsconfig.json", "support.ts")
 COMPILED_PROJECTS = ("go", "rust")

@@ -62,6 +62,8 @@ final class BenchRunner {
                         of(ClassTarget.load(design), Request.OperationsCase.class);
                 case Request.ConcurrentJob concurrent ->
                         throw new BadRequestException("concurrent problems have no bench");
+                case Request.SuiteJob suite ->
+                        throw new BadRequestException("project suites have no bench");
             };
         }
 

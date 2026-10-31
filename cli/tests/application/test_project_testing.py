@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 from coding_study.application.environment import Environment
-from coding_study.application.ports import ProjectSuite
 from coding_study.application.project_testing import (
     ProjectTestRequest,
     is_project_attempt,
@@ -74,7 +73,7 @@ def test_the_suite_runs_in_the_project_folder(environment, suites):
 
 def test_the_runner_launches_in_the_project_folder(environment, runner):
     run(environment)
-    assert runner.scopes == [ProjectSuite(environment.workspace.absolute(FOLDER))]
+    assert [scope.root for scope in runner.scopes] == [environment.workspace.absolute(FOLDER)]
 
 
 def test_the_generated_files_of_locked_levels_are_left_out(environment, suites):

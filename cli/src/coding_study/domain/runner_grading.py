@@ -10,14 +10,21 @@ from dataclasses import replace
 from coding_study.domain.layout import COMPILED_USER_TARGET
 from coding_study.domain.problem import Language
 from coding_study.domain.project import Project, unsupported_language
-from coding_study.domain.runs import CompiledTarget, FileTarget, ProjectTarget, RunTarget
+from coding_study.domain.runs import (
+    ClassTarget,
+    CompiledTarget,
+    FileTarget,
+    ProjectTarget,
+    RunTarget,
+)
 from coding_study.domain.signature import ClassSignature, Signature
 
 
 def grading_target(project: Project, language: Language, root: str) -> RunTarget:
     """What the runner loads from the project folder at `root` (absolute): a Python project is
-    the folder and its entry module, a TypeScript one its entry file, and a Go one the user's
-    package, which the runner binary was compiled with.
+    the folder and its entry module, a TypeScript one its entry file, a Java or Kotlin one its
+    entry class, on the classpath of the folder's build, and a Go one the user's package, which
+    the runner binary was compiled with.
 
     Raises ValueError for a language without project problems.
     """
@@ -26,6 +33,8 @@ def grading_target(project: Project, language: Language, root: str) -> RunTarget
             return ProjectTarget(root, project.entry)
         case Language.TYPESCRIPT:
             return FileTarget(f"{root}/{project.entry}")
+        case Language.JAVA | Language.KOTLIN:
+            return ClassTarget(project.entry)
         case Language.GO:
             return CompiledTarget(COMPILED_USER_TARGET)
         case _:

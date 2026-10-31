@@ -12,12 +12,11 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 /** The {@code --out} event stream: one JSON object per line, flushed immediately. */
 final class EventWriter implements Closeable {
     static final String RUNNER = "jvm";
-    /** The protocol addition this runner implements (docs/specs/runners.md#capability). */
-    static final String STRESS_FEATURE = "stress";
     private static final Gson GSON =
             new GsonBuilder().disableHtmlEscaping().serializeNulls().create();
 
@@ -31,14 +30,15 @@ final class EventWriter implements Closeable {
         return new EventWriter(Files.newBufferedWriter(path, StandardCharsets.UTF_8));
     }
 
-    void hello(String runtime) {
+    /** {@code features}: the protocol additions this runner implements (runners.md#capability). */
+    void hello(String runtime, List<String> features) {
         JsonObject event = event("hello");
         event.addProperty("runner", RUNNER);
         event.addProperty("protocol", Request.PROTOCOL);
         event.addProperty("runtime", runtime);
-        JsonArray features = new JsonArray();
-        features.add(STRESS_FEATURE);
-        event.add("features", features);
+        JsonArray listed = new JsonArray();
+        features.forEach(listed::add);
+        event.add("features", listed);
         write(event);
     }
 
@@ -61,6 +61,17 @@ final class EventWriter implements Closeable {
         JsonObject event = caseEvent("case_result", jobId, caseId);
         result.describe(event);
         event.addProperty("duration_ns", result.durationNs());
+        if (!stdout.isEmpty()) {
+            event.addProperty("stdout", stdout);
+        }
+        write(event);
+    }
+
+    /** A suite job's test: {@code result} holds its status and the fields of that status. */
+    void testResult(String jobId, String testId, JsonObject result, long durationNs, String stdout) {
+        JsonObject event = caseEvent("case_result", jobId, testId);
+        result.entrySet().forEach(field -> event.add(field.getKey(), field.getValue()));
+        event.addProperty("duration_ns", durationNs);
         if (!stdout.isEmpty()) {
             event.addProperty("stdout", stdout);
         }

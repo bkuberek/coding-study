@@ -23,6 +23,7 @@ from coding_study.application.ports import (
     GoProjectFolders,
     ProbeResult,
     ProgressNotice,
+    ProjectLibraries,
     ProjectLinks,
     RepositoryFiles,
     RunnerProcess,
@@ -43,6 +44,7 @@ from coding_study.domain.guides import TOOLCHAINS_GUIDE
 from coding_study.domain.layout import (
     GO_PROJECT,
     GO_WORK_FILE,
+    JVM_PROJECT,
     PYTHON_INTERPRETER,
     PYTHON_PROJECT,
     PYTHON_VENV,
@@ -224,6 +226,25 @@ JVM_FIX = FixStep(
 """Builds the runner and support classes and warms the Gradle daemon. Resolving the runtime
 classpath caches the runner's own libraries, without which no JVM problem builds offline; `cs.only`
 names no practice package, so a half-written practice file never fails the setup."""
+JVM_PROJECT_LANGUAGES = (Language.JAVA, Language.KOTLIN)
+PROJECT_WARMUPS = "../.cs/runtime/runners/jvm/project-warmup"
+"""From `jvm/`: a project folder per language in the runner runtime, with one test each."""
+JVM_PROJECT_WARMUPS = tuple(
+    FixStep(
+        "jvm",
+        (
+            "./gradlew",
+            "-p",
+            f"{PROJECT_WARMUPS}/{language}",
+            "-q",
+            "--console=plain",
+            "csClasspath",
+        ),
+    )
+    for language in JVM_PROJECT_LANGUAGES
+)
+"""Caches what Java and Kotlin project folders build with offline, JUnit, kotlin-test and their
+dependencies, which no single-file problem needs (docs/specs/installation-and-workspaces.md)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -284,7 +305,7 @@ def _fix_plan(
     if _is_checkout(content) and content.files.exists(RUNNER_TYPESCRIPT):
         plan.append((RUNNER_TYPESCRIPT_FIX, content.files.root / RUNNER_TYPESCRIPT))
     if files.exists(JVM_FIX.project):
-        plan.append((JVM_FIX, files.root / JVM_FIX.project))
+        plan += [(step, files.root / step.project) for step in (JVM_FIX, *JVM_PROJECT_WARMUPS)]
     return plan
 
 
@@ -511,6 +532,7 @@ def _workspace(environment: DoctorEnvironment, notify: ProgressNotice) -> list[C
         *_go_projects(workspace),
         *_venv_location(workspace),
         *(_runner(workspace, language, notify) for language in CORE_LANGUAGES),
+        *_project_libraries(workspace),
     ]
 
 
@@ -666,6 +688,26 @@ def _importable(tools: ToolProbe, workspace_files: RepositoryFiles, module: str)
     interpreter = workspace_files.root / PYTHON_PROJECT / PYTHON_INTERPRETER
     found = tools.run((str(interpreter), "-c", f"import {module}"))
     return found is not None and found.exit_code == 0
+
+
+def _project_libraries(workspace: PracticeWorkspace) -> list[CheckResult]:
+    """Java and Kotlin project folders build offline on libraries the warm-up caches; only
+    project problems need them, so missing ones warn. Nothing to check before `jvm/` exists."""
+    if not workspace.files.exists(JVM_PROJECT):
+        return []
+    results: list[CheckResult] = []
+    for language in JVM_PROJECT_LANGUAGES:
+        runner = workspace.toolchains.runner(language)
+        if not isinstance(runner, ProjectLibraries):
+            continue
+        name = f"{language} project libraries"
+        missing = runner.uncached_project_libraries()
+        if missing is None:
+            detail = f"cached ({language.capitalize()} project problems build offline)"
+            results.append(CheckResult(name, CheckStatus.OK, detail))
+        else:
+            results.append(CheckResult(name, CheckStatus.WARN, missing, fix=FIX_COMMAND))
+    return results
 
 
 def _runner(

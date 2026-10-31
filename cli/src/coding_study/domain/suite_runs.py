@@ -17,6 +17,8 @@ class SuiteFramework(StrEnum):
     PYTEST = "pytest"
     NODE_TEST = "node-test"
     GO_TEST = "go-test"
+    JUNIT_PLATFORM = "junit-platform"
+    """Java's JUnit Jupiter and Kotlin's kotlin.test, both on the JUnit Platform."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,7 +87,9 @@ class SuiteTest:
 
 @dataclass(frozen=True, slots=True)
 class SuiteReport:
-    runner: RunnerInfo
+    runner: RunnerInfo | None
+    """From the runner's `hello`; None when no runner started, as for a project that does not
+    build."""
     tests: tuple[SuiteTest, ...] = ()
     """In the order they ran, across restarts."""
     load_error: UserError | None = None
