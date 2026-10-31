@@ -3,8 +3,10 @@
  * how to start or resume it, its approaches, and its `cstudy history`.
  */
 
+import { defaultLanguage, openStartDialog } from "../attempts.ts";
 import { startCommand } from "../commands.ts";
 import type { Cleanup, PageContext } from "../context.ts";
+import { solutionButton } from "../solution.ts";
 import { badge, command, h, rendered } from "../dom.ts";
 import { localMinute, problemBadge, solveTime } from "../format.ts";
 import { attemptHash } from "../routes.ts";
@@ -62,14 +64,17 @@ function side(context: PageContext, problem: ProblemDocument, history: History):
   return h(
     "aside",
     { class: "problem-side", "aria-label": "Practice" },
-    practice(context, problem),
+    practice(context, problem, history.schedule !== null),
     problem.approaches.length ? approaches(problem) : null,
     historySection(problem.slug, history),
   );
 }
 
-function practice(context: PageContext, problem: ProblemDocument): HTMLElement {
-  const language = problemLanguage(context, problem);
+function practice(context: PageContext, problem: ProblemDocument, scheduled: boolean): HTMLElement {
+  const language = defaultLanguage(problem, context.session.default_lang);
+  const start = h("button", { type: "button", class: "button primary", title: `${startCommand(problem.slug, language)} --no-open` }, "Start…");
+  start.addEventListener("click", () => openStartDialog(context, problem, scheduled));
+  const solution = solutionButton(context, problem.slug);
   const resumes = problem.in_progress.map((attempt) =>
     h(
       "li",
@@ -87,19 +92,11 @@ function practice(context: PageContext, problem: ProblemDocument): HTMLElement {
     { class: "side-block", "aria-labelledby": "practice-heading" },
     h("h2", { id: "practice-heading", class: "eyebrow" }, "practise"),
     resumes.length ? h("ul", { class: "plain" }, ...resumes) : null,
-    h("p", { class: "quiet" }, resumes.length ? "or start another in the terminal:" : "start it in the terminal:"),
-    h("p", {}, command(startCommand(problem.slug, language))),
+    h("p", { class: "practice-actions" }, start, solution),
+    scheduled ? h("p", { class: "quiet" }, "a start is a review attempt: your current files move to .archive/") : null,
     problem.hints_total ? h("p", { class: "quiet" }, `${problem.hints_total} hints · any hint caps the review grade at ok`) : null,
     problem.levels ? h("p", { class: "quiet" }, `${problem.levels.last} levels, each opened by passing the one before`) : null,
   );
-}
-
-/** The language `cstudy start` would use: the only one, or `default_lang` when the problem has it. */
-function problemLanguage(context: PageContext, problem: ProblemDocument): string | null {
-  if (problem.languages.length === 0) return null;
-  if (problem.languages.length === 1) return problem.kind === "project" ? null : (problem.languages[0] ?? null);
-  const preferred = context.session.default_lang;
-  return problem.languages.includes(preferred) ? preferred : (problem.languages[0] ?? null);
 }
 
 function approaches(problem: ProblemDocument): HTMLElement {

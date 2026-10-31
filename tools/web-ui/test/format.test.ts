@@ -75,3 +75,11 @@ test("a generated test file names its level", () => {
 test("a solve time is minutes and padded seconds", () => {
   assert.equal(solveTime(2462), "41m 02s");
 });
+
+test("a solve time from an hour on is hours and padded minutes, as cstudy done writes it", () => {
+  assert.equal(solveTime(3900), "1h 05m");
+});
+
+test("a solve time under a minute is seconds alone", () => {
+  assert.equal(solveTime(42), "42s");
+});

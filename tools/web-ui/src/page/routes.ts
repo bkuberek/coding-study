@@ -12,16 +12,19 @@ export type Route =
   | { readonly view: "problems"; readonly filters: Filters }
   | { readonly view: "problem"; readonly slug: string }
   | { readonly view: "attempt"; readonly id: number }
+  | { readonly view: "mock" }
+  | { readonly view: "progress" }
   | { readonly view: "health" }
   | { readonly view: "settings" }
-  | { readonly view: "terminal"; readonly command: string }
   | { readonly view: "missing"; readonly fragment: string };
 
-/** Views the page does not have yet; it names the command that does the same. */
-const TERMINAL_VIEWS: Readonly<Record<string, string>> = {
-  mock: "cstudy mock",
-  progress: "cstudy stats",
-};
+/** The views addressed by one segment, such as `#/health`. */
+const SINGLE_VIEWS = ["mock", "progress", "health", "settings"] as const;
+type SingleView = (typeof SINGLE_VIEWS)[number];
+
+function isSingleView(segment: string): segment is SingleView {
+  return (SINGLE_VIEWS as readonly string[]).includes(segment);
+}
 
 export function parseRoute(fragment: string): Route {
   const hash = fragment.startsWith("#") ? fragment.slice(1) : fragment;
@@ -35,9 +38,7 @@ export function parseRoute(fragment: string): Route {
   if (first === "attempts" && second !== undefined && rest.length === 0 && /^[1-9]\d*$/.test(second)) {
     return { view: "attempt", id: Number(second) };
   }
-  if (segments.length === 1 && (first === "health" || first === "settings")) return { view: first };
-  const command = segments.length === 1 ? TERMINAL_VIEWS[first] : undefined;
-  if (command !== undefined) return { view: "terminal", command };
+  if (segments.length === 1 && isSingleView(first)) return { view: first };
   return { view: "missing", fragment: `#${hash}` };
 }
 
@@ -53,6 +54,7 @@ export function problemsHash(filters: Filters): string {
 
 export const problemHash = (slug: string): string => `#/problems/${encodeURIComponent(slug)}`;
 export const attemptHash = (id: number): string => `#/attempts/${id}`;
+export const MOCK_HASH = "#/mock";
 
 function filtersOf(query: URLSearchParams): Filters {
   const filters: Filters = {};

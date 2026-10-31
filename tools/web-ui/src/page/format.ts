@@ -76,10 +76,15 @@ export function originText(origin: string, level: number | null): string {
   return origin;
 }
 
-/** `41m 02s`, as `cstudy done` and `cstudy history` write a solve time. */
-export function solveTime(seconds: number): string {
-  const minutes = Math.floor(seconds / SECONDS_PER_MINUTE);
-  return `${minutes}m ${String(seconds % SECONDS_PER_MINUTE).padStart(2, "0")}s`;
+/** `41m 02s`, `1h 05m` or `42s`, as `cstudy done` and `cstudy history` write a solve time. */
+export function solveTime(totalSeconds: number): string {
+  const seconds = Math.floor(totalSeconds);
+  const hours = Math.floor(seconds / SECONDS_PER_HOUR);
+  const minutes = Math.floor((seconds % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  if (hours > 0) return `${hours}h ${pad(minutes)}m`;
+  if (minutes > 0) return `${minutes}m ${pad(seconds % SECONDS_PER_MINUTE)}s`;
+  return `${seconds}s`;
 }
 
 /** `2026-10-24 09:12` in local time. */

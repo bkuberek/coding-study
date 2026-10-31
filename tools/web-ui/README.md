@@ -5,7 +5,7 @@ The sources of the front end that `cstudy serve` serves: the page's own code and
 | Path | Holds |
 |------|-------|
 | `package.json`, `pnpm-lock.yaml` | Exact versions and integrity hashes of every package |
-| `src/app.ts`, `src/page/` | The page: its entry point, views, stylesheet (`page/app.css`) and the pure parts its tests cover |
+| `src/app.ts`, `src/page/` | The page: its entry point, views, stylesheets (`page/app.css`, and `page/flows.css` for the attempt flows, mocks, solutions and progress) and the pure parts its tests cover |
 | `src/editor.ts` | The editor module, a chunk the page fetches the first time a file opens |
 | `src/grammars/*.ts`, `src/vim.ts` | One chunk per language and one for Vim keybindings, each fetched on first use |
 | `test/*.test.ts` | Unit tests of the pure parts of the page and the editor module, run with `node --test` |
@@ -51,12 +51,13 @@ Sizes as of the current lockfile, gzip at level 9:
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js` and `app.css` | 67.0 | 21.1 |
-| Every JavaScript and CSS file but Vim | 859.3 | 304.6 |
-| The editor before any language: the page, the editor and the core | 470.2 | 155.0 |
-| A Python file | 540.5 | 182.4 |
-| A TypeScript or JavaScript file, the largest grammar | 579.1 | 196.4 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 89.4 | 28.8 |
+| Every JavaScript and CSS file but Vim | 890.7 | 312.9 |
+| The editor before any language: the page, the editor and the core | 492.6 | 162.5 |
+| A Python file | 563.0 | 189.4 |
+| A TypeScript or JavaScript file, the largest grammar | 601.5 | 203.0 |
 | Vim keybindings, added on top | 119.7 | 38.2 |
+| The Mock and Progress views together, each a chunk fetched when it first opens | 9.0 | 4.0 |
 
 The budget (NFR-12) is 1 MB raw and 350 KB gzip for the whole bundle without Vim, the page's code included, and 600 KB raw loaded before a file of one language is editable. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
 

@@ -4,6 +4,7 @@
  * latest recorded run until the page runs tests itself.
  */
 
+import { attemptFlows } from "../attempts.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { badge, command, h, rendered } from "../dom.ts";
 import { secondsSince, timerText } from "../format.ts";
@@ -43,15 +44,16 @@ export function attemptView(context: PageContext, id: number): Cleanup {
       };
       tick();
       timer = window.setInterval(tick, TICK_MS);
+      const flows = attemptFlows(context, status);
       page.removeAttribute("aria-busy");
       files = new FileTreePanel({ attempt: status, tree, tabs, announce: (message) => shell.announce(message) });
       const panel = files;
       tabs.onSaved(() => void panel.refresh().catch(() => {}));
       page.replaceChildren(
-        head(status, clock),
+        head(status, clock, flows.actions),
         files.element,
         tabs.element,
-        brief(status, statement),
+        brief(status, statement, flows.hints),
         results(status),
       );
       shell.setCommand(`cstudy status ${status.slug}`);
@@ -74,7 +76,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
   };
 }
 
-function head(status: AttemptStatus, clock: HTMLElement): HTMLElement {
+function head(status: AttemptStatus, clock: HTMLElement, actions: HTMLElement): HTMLElement {
   return h(
     "header",
     { class: "attempt-head" },
@@ -87,6 +89,7 @@ function head(status: AttemptStatus, clock: HTMLElement): HTMLElement {
     badge("", status.mode, status.mode === "mock" ? "fail" : status.mode === "review" ? "info" : "quiet"),
     status.levels ? h("span", { class: "level" }, `level ${status.levels.unlocked} of ${status.levels.last}`) : null,
     clock,
+    actions,
     h("span", { class: "spacer" }),
     h("span", { class: "next-step" }, h("span", { class: "quiet" }, "next "), command(status.next)),
   );
@@ -97,9 +100,8 @@ function levelSegment(status: AttemptStatus): HTMLElement | null {
   return h("span", { class: "segment" }, `level ${status.levels.unlocked}/${status.levels.last}`);
 }
 
-function brief(status: AttemptStatus, statement: Rendered): HTMLElement {
+function brief(status: AttemptStatus, statement: Rendered, hints: HTMLElement): HTMLElement {
   const levels = status.levels;
-  const hints = status.hints;
   return h(
     "aside",
     { class: "brief", "aria-label": "Statement" },
@@ -124,17 +126,8 @@ function brief(status: AttemptStatus, statement: Rendered): HTMLElement {
     h(
       "footer",
       { class: "brief-notes" },
-      hints.total
-        ? h(
-            "p",
-            {},
-            `hints ${hints.used} of ${hints.total}`,
-            hints.locked_until_level ? ` · the next opens with level ${hints.locked_until_level}` : "",
-            h("span", { class: "quiet" }, " · any hint caps the review grade at ok"),
-          )
-        : null,
+      hints,
       status.solution_revealed ? h("p", { class: "tone-warn" }, "solution revealed: the attempt is graded as again") : null,
-      hints.total ? h("p", { class: "quiet" }, "hint: ", command(`cstudy hint ${status.slug}`)) : null,
     ),
   );
 }

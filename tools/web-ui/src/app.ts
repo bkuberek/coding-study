@@ -4,23 +4,26 @@
  * languages load the first time a file opens.
  */
 import "./page/app.css";
+import "./page/flows.css";
 
 import { createApi } from "./page/api.ts";
 import type { Cleanup, PageContext, PreferencesListener } from "./page/context.ts";
 import { h } from "./page/dom.ts";
+import { mockBanner, MockWatch } from "./page/mock.ts";
 import { parseRoute, type Route } from "./page/routes.ts";
 import { leaveWarning, unsavedPaths } from "./page/save.ts";
-import { mountShell, nextTheme } from "./page/shell.ts";
-import { failure } from "./page/states.ts";
+import { mountShell, nextTheme, VIEWS } from "./page/shell.ts";
+import { failure, loading } from "./page/states.ts";
 import type { Preferences, ProblemList, Session } from "./page/types.ts";
 import { attemptView } from "./page/views/attempt.ts";
-import { missingView, terminalView } from "./page/views/elsewhere.ts";
+import { missingView } from "./page/views/elsewhere.ts";
 import { healthView } from "./page/views/health.ts";
 import { problemView } from "./page/views/problem.ts";
 import { problemsView } from "./page/views/problems.ts";
 import { settingsView } from "./page/views/settings.ts";
 
-const VIEW_KEYS: Readonly<Record<string, string>> = { Digit1: "#/", Digit2: "#/health", Digit3: "#/settings" };
+/** Alt and a view's number opens the view, as the top bar's tabs show. */
+const VIEW_KEYS: Readonly<Record<string, string>> = Object.fromEntries(VIEWS.map(({ key, hash }) => [`Digit${key}`, hash]));
 
 function meta(name: string): string {
   return document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`)?.content ?? "";
@@ -39,15 +42,34 @@ function show(context: PageContext, route: Route): Cleanup {
       return problemView(context, route.slug);
     case "attempt":
       return attemptView(context, route.id);
+    case "mock":
+      return lazyView(context, () => import("./page/views/mock.ts").then((module) => module.mockView));
+    case "progress":
+      return lazyView(context, () => import("./page/stats.ts").then((module) => module.progressView));
     case "health":
       return healthView(context);
     case "settings":
       return settingsView(context);
-    case "terminal":
-      return terminalView(context, route.command);
     case "missing":
       return missingView(context, route.fragment);
   }
+}
+
+/** A view in a chunk of its own, fetched when it first opens, so the page loads less before a
+ * file is editable (NFR-12). */
+function lazyView(context: PageContext, load: () => Promise<(context: PageContext) => Cleanup>): Cleanup {
+  let cleanup: Cleanup | null = null;
+  let left = false;
+  context.shell.main.replaceChildren(loading());
+  load()
+    .then((view) => {
+      if (!left) cleanup = view(context);
+    })
+    .catch((error: unknown) => context.shell.main.replaceChildren(failure(error)));
+  return () => {
+    left = true;
+    cleanup?.();
+  };
 }
 
 function isTyping(target: EventTarget | null): boolean {
@@ -74,11 +96,15 @@ async function start(root: HTMLElement): Promise<void> {
   });
   applyTheme(preferences);
   shell.showPreferences(preferences);
+  const mock = new MockWatch(api);
+  shell.setBanner(mockBanner(mock));
+  mock.watch();
   const context: PageContext = {
     api,
     session,
     nonce: meta("cstudy-csp-nonce"),
     shell,
+    mock,
     preferences: () => preferences,
     savePreferences,
     onPreferences(listener) {

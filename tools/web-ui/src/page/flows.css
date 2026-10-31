@@ -1,0 +1,544 @@
+/*
+ * The attempt flows, mock interviews, solutions and progress (docs/specs/web-ui.md#page), in the
+ * page's terms: paper for reading, the terminal's chrome for what cstudy prints, the accent for
+ * what acts. Dialogs open as small terminal windows over a dimmed page.
+ */
+
+/* dialogs */
+
+.sheet {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  padding: 0;
+  border: 1px solid #000;
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow:
+    0 1px 0 var(--chrome-raised),
+    0 24px 60px rgb(0 0 0 / 0.35);
+  overflow: hidden;
+  animation: sheet-in 160ms ease-out;
+}
+
+.sheet-wide {
+  width: min(960px, calc(100vw - 32px));
+}
+
+.sheet[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.sheet::backdrop {
+  background: color-mix(in srgb, var(--chrome) 55%, transparent);
+  backdrop-filter: blur(2px) saturate(0.8);
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 6px 0 14px;
+  min-height: 34px;
+  background: var(--chrome);
+  color: var(--chrome-ink);
+}
+
+.sheet-head::before {
+  content: "❯";
+  color: var(--accent);
+}
+
+.sheet-head h2 {
+  flex: 1;
+  font: 600 var(--text-s) / 1.4 var(--font-mono);
+  letter-spacing: 0.06em;
+}
+
+.sheet-close {
+  color: var(--chrome-soft);
+}
+
+.sheet-close:hover {
+  color: var(--chrome-ink);
+}
+
+.sheet-body {
+  overflow: auto;
+  padding: 18px 20px 20px;
+}
+
+.sheet-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.sheet-command {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 0;
+}
+
+.sheet-command .cmd {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.question {
+  margin: 0;
+  font: 18px / 1.45 var(--font-prose);
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* form fields */
+
+.field {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 12px;
+}
+
+.field > label,
+.field > legend {
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.field p {
+  margin: 0;
+  font-size: var(--text-s);
+}
+
+.field.check {
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  column-gap: 8px;
+}
+
+.field.check > label {
+  color: var(--ink);
+  font-size: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.field.check p {
+  grid-column: 2;
+}
+
+input[type="number"],
+input[type="date"],
+input[type="file"],
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font: inherit;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.review-note {
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--info);
+  background: var(--paper-raised);
+}
+
+.sheet-error:empty {
+  display: none;
+}
+
+/* the Done dialog */
+
+.outcomes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+}
+
+.outcomes legend {
+  margin-bottom: 6px;
+  padding: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  cursor: pointer;
+}
+
+.outcome:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.outcome-gave-up {
+  margin-left: auto;
+  border-style: dashed;
+}
+
+.caps {
+  margin: 0 0 8px;
+  font-size: var(--text-s);
+}
+
+.outcome-lines {
+  margin: 0 0 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--chrome);
+  color: var(--chrome-ink);
+  font-size: var(--text-s);
+  white-space: pre-wrap;
+}
+
+.outcome-lines strong {
+  color: var(--accent);
+}
+
+/* the attempt's header and its hints */
+
+.flow-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.flow-actions .button {
+  padding: 2px 10px;
+}
+
+.hints p {
+  margin: 4px 0;
+}
+
+.hint-notice:empty {
+  display: none;
+}
+
+.hint {
+  margin: 10px 0;
+  padding: 2px 0 2px 12px;
+  border-left: 3px solid var(--warn);
+}
+
+.hint .eyebrow {
+  margin-bottom: 2px;
+}
+
+/* the Problem view's practice block */
+
+.practice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* the Solution pane */
+
+.solution-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.solution-pane {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+}
+
+.solution-pane:empty {
+  display: none;
+}
+
+.solution-reference .prose pre {
+  max-height: none;
+}
+
+/* the mock interview: the banner, the countdown and the cards */
+
+.banner-slot {
+  display: flex;
+  align-items: center;
+  margin-left: 12px;
+}
+
+.mock-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 10px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(-45deg, var(--accent) 0 8px, color-mix(in srgb, var(--accent) 82%, #000) 8px 16px);
+  color: var(--on-accent);
+  font-size: var(--text-s);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.mock-banner::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: blink 1.6s steps(1) infinite;
+}
+
+.mock {
+  max-width: 1100px;
+}
+
+.mock-running {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 28px;
+  margin-bottom: 20px;
+}
+
+.mock-clock {
+  margin: 0;
+  font: 600 clamp(56px, 9vw, 112px) / 0.95 var(--font-prose);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.mock-lock {
+  margin: 0 0 10px;
+}
+
+.mock-over {
+  font: 18px / 1.45 var(--font-prose);
+}
+
+.mock-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.mock-card {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  justify-items: start;
+  padding: 16px 18px 18px 56px;
+  border: 1px solid var(--rule);
+  border-top: 4px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+}
+
+.mock-card h2 {
+  font: 600 20px / 1.2 var(--font-prose);
+}
+
+.mock-card p {
+  margin: 0;
+}
+
+.mock-number {
+  position: absolute;
+  top: 10px;
+  left: 16px;
+  color: var(--accent);
+  font: 600 32px / 1 var(--font-prose);
+}
+
+.mock-card.is-finished {
+  border-top-color: var(--ok);
+  background: var(--paper);
+}
+
+.mock-card.is-finished h2 {
+  color: var(--ink-soft);
+}
+
+.mock-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 180px));
+  gap: 0 16px;
+  max-width: 760px;
+  padding: 16px 18px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+}
+
+.mock-tracks,
+.mock-form .sheet-command,
+.mock-form .sheet-error {
+  grid-column: 1 / -1;
+}
+
+.mock-tracks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 0;
+  border: 0;
+}
+
+.mock-tracks legend {
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 0;
+}
+
+.mock-tracks .check {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+  color: var(--ink);
+  font-size: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* the Progress view */
+
+.progress-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: 24px;
+  align-items: start;
+}
+
+.stats-controls {
+  display: flex;
+  gap: 12px;
+}
+
+.stats-controls .field {
+  width: 180px;
+}
+
+.stats-table th[scope="row"] {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+  font-size: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.stats-table .num {
+  text-align: right;
+}
+
+.stats-region[aria-busy="true"] {
+  opacity: 0.6;
+}
+
+.stats-summary {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 16px;
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--chrome);
+  color: var(--chrome-ink);
+  font-size: var(--text-s);
+}
+
+.stats-summary dt {
+  color: var(--chrome-soft);
+}
+
+.stats-summary dd {
+  margin: 0;
+}
+
+.progress-side .side-block + .side-block {
+  margin-top: 16px;
+}
+
+.review-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-list .button {
+  margin-left: auto;
+  padding: 1px 10px;
+}
+
+.import-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.import-form label {
+  grid-column: 1 / -1;
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 1100px) {
+  .progress-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .solution-controls,
+  .mock-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+
+  .mock-banner::before {
+    animation: none;
+  }
+}

@@ -179,6 +179,94 @@ export interface FileDocument {
   readonly editable: boolean;
 }
 
+/** `POST /api/v1/attempts/{id}/hints`. */
+export type HintResult =
+  | { readonly hint: { readonly number: number; readonly total: number } & Rendered }
+  | { readonly locked_until_level: number }
+  | { readonly exhausted: true };
+
+/** `POST /api/v1/attempts/{id}/done`: the values of the lines `cstudy done` prints. */
+export interface DoneDocument {
+  readonly slug: string;
+  readonly language: string | null;
+  readonly status: string;
+  readonly levels_finished: number | null;
+  readonly solve_s: number;
+  readonly rating: string | null;
+  readonly grade: string | null;
+  readonly caps: readonly string[];
+  readonly hints_used: number;
+  readonly next_review: { readonly due_on: string; readonly in_days: number; readonly ease: number };
+}
+
+/** `POST /api/v1/problems/{slug}/solution`. */
+export interface SolutionDocument extends Rendered {
+  readonly slug: string;
+  readonly kind: string;
+  readonly language: string | null;
+  readonly approaches: readonly string[];
+  readonly marked_attempt_id: number | null;
+}
+
+export interface MockAttempt {
+  readonly attempt_id: number;
+  readonly slug: string;
+  readonly title: string;
+  readonly difficulty: string;
+  readonly kind: string;
+  readonly language: string | null;
+}
+
+/** `GET /api/v1/mock`. */
+export type MockState =
+  | { readonly running: false }
+  | {
+      readonly running: true;
+      readonly ends_at: string;
+      readonly remaining_s: number;
+      readonly attempts: readonly MockAttempt[];
+      readonly locked: readonly string[];
+    };
+
+/** `POST /api/v1/mock`. */
+export interface StartedMock {
+  readonly minutes: number;
+  readonly count: number;
+  readonly language: string;
+  readonly ends_at: string | null;
+  readonly problems: readonly (MockAttempt & {
+    readonly group: string;
+    readonly reason: string;
+    readonly file: string;
+    readonly statement: string;
+  })[];
+  readonly message: string | null;
+}
+
+export interface StatsGroup {
+  readonly group: string;
+  readonly problems: number;
+  readonly attempted: number;
+  readonly passed: number;
+  readonly mastered: number;
+  readonly recent_attempts: number;
+  readonly recent_passed: number;
+  readonly pass_rate: number | null;
+  readonly median_solve_s: number | null;
+  readonly weakness: number;
+}
+
+/** `cstudy stats --json`. */
+export interface StatsDocument {
+  readonly today: string;
+  readonly by: string;
+  readonly since: string | null;
+  readonly groups: readonly StatsGroup[];
+  readonly attempts: { readonly finished: number; readonly last_7_days: number; readonly streak_days: number };
+  readonly reviews: { readonly due_today: number; readonly overdue: number };
+  readonly bench: Readonly<Record<string, number>>;
+}
+
 export interface Check {
   readonly name: string;
   readonly status: "ok" | "warn" | "fail";

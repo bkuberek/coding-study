@@ -39,6 +39,7 @@ export interface Api {
   put<Document>(path: string, body: unknown): Promise<Document>;
   /** Any write; null for an answer without a body, such as 204. */
   send<Document>(method: WriteMethod, path: string, options?: WriteOptions): Promise<Document | null>;
+  post<Document>(path: string, body: unknown): Promise<Document>;
 }
 
 export function createApi(csrf: string, fetcher: Fetch = (input, init) => fetch(input, init)): Api {
@@ -52,6 +53,7 @@ export function createApi(csrf: string, fetcher: Fetch = (input, init) => fetch(
   return {
     get: (path) => request(path, { headers: { Accept: "application/json" } }),
     put: (path, body) => request(path, { method: "PUT", headers: writeHeaders, body: JSON.stringify(body) }),
+    post: (path, body) => request(path, { method: "POST", headers: writeHeaders, body: JSON.stringify(body) }),
     send: (method, path, options = {}) =>
       request(path, {
         method,

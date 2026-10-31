@@ -40,6 +40,22 @@ test("a write sends its body as JSON", async () => {
   assert.equal(sent[0]?.init.body, '{"vim":true}');
 });
 
+test("a post sends the page's CSRF token and its body as JSON", async () => {
+  const { fetcher, sent } = recording(201, '{"attempt_id": 7}');
+  await createApi("the-token", fetcher).post("/api/v1/attempts", { slug: "two-sum" });
+  const init = sent[0]?.init;
+  assert.deepEqual([init?.method, new Headers(init?.headers).get(CSRF_HEADER), init?.body], [
+    "POST",
+    "the-token",
+    '{"slug":"two-sum"}',
+  ]);
+});
+
+test("a post answers the parsed document", async () => {
+  const { fetcher } = recording(201, '{"attempt_id": 7}');
+  assert.deepEqual(await createApi("csrf", fetcher).post("/api/v1/attempts", {}), { attempt_id: 7 });
+});
+
 test("a refusal throws the error document's code and message", async () => {
   const body = '{"error": {"code": "usage", "message": "level 3 is locked", "fix": null}}';
   const { fetcher } = recording(422, body);

@@ -8,7 +8,7 @@ import { attemptHash } from "./routes.ts";
 import { h } from "./dom.ts";
 import type { ListEntry, Preferences, Theme } from "./types.ts";
 
-export type ViewName = "problems" | "health" | "settings" | null;
+export type ViewName = "problems" | "mock" | "progress" | "health" | "settings" | null;
 
 export interface StatusLine {
   /** The leftmost segment: the attempt's mode, or the view. */
@@ -23,6 +23,8 @@ export interface Shell {
   setView(name: ViewName): void;
   setStatus(line: StatusLine): void;
   setAttempts(entries: readonly ListEntry[]): void;
+  /** Puts the mock interview's banner in the top bar. */
+  setBanner(banner: HTMLElement): void;
   showPreferences(preferences: Preferences): void;
   /** Read by screen readers without moving the focus. */
   announce(message: string): void;
@@ -33,10 +35,12 @@ export interface ShellActions {
   readonly nextTheme: () => void;
 }
 
-const VIEWS: readonly { readonly name: Exclude<ViewName, null>; readonly hash: string; readonly key: string }[] = [
+export const VIEWS: readonly { readonly name: Exclude<ViewName, null>; readonly hash: string; readonly key: string }[] = [
   { name: "problems", hash: "#/", key: "1" },
-  { name: "health", hash: "#/health", key: "2" },
-  { name: "settings", hash: "#/settings", key: "3" },
+  { name: "mock", hash: "#/mock", key: "2" },
+  { name: "progress", hash: "#/progress", key: "3" },
+  { name: "health", hash: "#/health", key: "4" },
+  { name: "settings", hash: "#/settings", key: "5" },
 ];
 
 export const THEMES: readonly Theme[] = ["system", "light", "dark"];
@@ -66,6 +70,7 @@ export function mountShell(root: HTMLElement, version: string, actions: ShellAct
   const theme = h("button", { type: "button", class: "segment toggle" }, "theme");
   const announcer = h("div", { class: "sr-only", "aria-live": "polite", role: "status" });
   const main = h("main", { id: "main", tabindex: "-1" });
+  const bannerSlot = h("span", { class: "banner-slot" });
 
   copy.addEventListener("click", () => {
     void navigator.clipboard?.writeText(commandText.textContent ?? "").then(() => shell.announce("command copied"));
@@ -83,6 +88,7 @@ export function mountShell(root: HTMLElement, version: string, actions: ShellAct
       { class: "topbar" },
       h("a", { class: "brand", href: "#/" }, h("span", { class: "brand-mark", "aria-hidden": "true" }, "❯"), "cstudy"),
       h("nav", { "aria-label": "Views" }, ...links),
+      bannerSlot,
       attemptsMenu,
     ),
     h(
@@ -141,6 +147,9 @@ export function mountShell(root: HTMLElement, version: string, actions: ShellAct
       );
       attemptsCount.textContent = String(attempts.length);
       attemptsList.replaceChildren(...(attempts.length ? attempts : [h("li", { class: "menu-empty" }, "none")]));
+    },
+    setBanner(banner) {
+      bannerSlot.replaceChildren(banner);
     },
     showPreferences(preferences) {
       vim.textContent = preferences.vim ? "vim on" : "vim off";

@@ -40,8 +40,8 @@ test("health and settings are views of their own", () => {
   assert.deepEqual([parseRoute("#/health").view, parseRoute("#/settings").view], ["health", "settings"]);
 });
 
-test("a view the page lacks names the command that has it", () => {
-  assert.deepEqual(parseRoute("#/progress"), { view: "terminal", command: "cstudy stats" });
+test("mock and progress are views of their own", () => {
+  assert.deepEqual([parseRoute("#/mock").view, parseRoute("#/progress").view], ["mock", "progress"]);
 });
 
 test("an unknown fragment is missing", () => {
