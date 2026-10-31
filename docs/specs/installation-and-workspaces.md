@@ -139,8 +139,8 @@ A [project problem](problem-format.md#project-problems) is solved in `projects/<
 | Rule | Detail |
 |------|--------|
 | Start | A new attempt copies `starter/` without overwriting a file; a resumed attempt copies it only when the folder is missing, writes back a missing generated test file of an unlocked level, and recreates a missing or dangling `.venv` link ([cli](cli.md#cstudy-start)) |
-| Archive | `--fresh` and review attempts move the folder to `.archive/<slug>/<attempt_id>-<lang>/`, without the `.venv` link and caches, before copying the starter again |
-| Watched and hashed | Every file under the folder except `.venv`, `node_modules`, `__pycache__`, `.pytest_cache` and `.ruff_cache`: `cstudy test --watch` watches them and `code_hash` hashes their relative paths and bytes in path order |
+| Archive | `--fresh` and review attempts move the folder to `.archive/<slug>/<attempt_id>-<lang>/`, without the `.venv` link and caches, before copying the starter again. When that directory already exists, `cstudy start` exits 3 and moves nothing |
+| Watched and hashed | Every file under the folder except `.venv`, `node_modules`, `__pycache__`, `.pytest_cache` and `.ruff_cache`, and the folder's `uv.lock`: `cstudy test --watch` watches them and `code_hash` hashes their relative paths and bytes in path order |
 | Not yet supported | Java, Kotlin, Go and Rust project folders: each needs a build of its own (a Gradle build, a Go module, a Cargo crate), specified after spikes K4 to K6 |
 
 ## IDE files
