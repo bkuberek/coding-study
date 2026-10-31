@@ -49,17 +49,18 @@ def stats(
     as_json: Annotated[bool, typer.Option("--json", help="Machine-readable output.")] = False,
 ) -> None:
     """Progress summary."""
-    request = StatsRequest(by, _since(since))
+    request = StatsRequest(by, parse_since(since))
     view = show_stats(load_environment(Path.cwd(), command_environ(context), Path.home()), request)
     if as_json:
-        typer.echo(json.dumps(_document(view), indent=2))
+        typer.echo(json.dumps(stats_document(view), indent=2))
         return
     output = console(context)
     for line in _lines(view):
         output.print(line)
 
 
-def _since(text: str | None) -> date | None:
+def parse_since(text: str | None) -> date | None:
+    """`--since`, a date such as 2026-10-01; raises UsageError for anything else."""
     if text is None:
         return None
     try:
@@ -123,7 +124,8 @@ def _round_half_up(value: Fraction) -> int:
     return math.floor(value + Fraction(1, 2))
 
 
-def _document(view: StatsView) -> dict[str, JsonValue]:
+def stats_document(view: StatsView) -> dict[str, JsonValue]:
+    """`cstudy stats --json`."""
     progress, query = view.stats, view.query
     return {
         "today": query.today.isoformat(),

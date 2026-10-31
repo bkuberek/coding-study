@@ -108,9 +108,7 @@ def list_document(environment: Environment, problem_filter: ProblemFilter) -> di
 def _entries(
     environment: Environment, problem_filter: ProblemFilter
 ) -> tuple[tuple[ListedProblem, ...], tuple[ListedItem, ...]]:
-    problems = list_problems(environment, problem_filter)
-    items = list_items(environment, problem_filter) if problem_filter.lists_items else ()
-    return problems, items
+    return list_problems(environment, problem_filter), list_items(environment, problem_filter)
 
 
 def _problem_entry(problem: ListedProblem, listing: ListingContext) -> dict[str, JsonValue]:

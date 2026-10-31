@@ -8,11 +8,16 @@ import typer
 from rich.text import Text
 
 from coding_study.adapters.environment_factory import load_environment
-from coding_study.application.next_problem import NextRequest, Recommendation, recommend
+from coding_study.application.next_problem import (
+    NextRequest,
+    Recommendation,
+    next_source,
+    recommend,
+)
 from coding_study.application.start_attempt import StartRequest
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import UsageError
-from coding_study.domain.next_selection import NewPick, NextPick, NextSource, ReviewPick
+from coding_study.domain.next_selection import NewPick, NextPick, ReviewPick
 from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.entrypoints.commands.start import open_in_editor, start_and_report
 from coding_study.entrypoints.shared import add_command, command_environ, console
@@ -54,7 +59,9 @@ def next_command(
     """Pick what to practice."""
     if as_json and start:
         raise UsageError("--json excludes --start")
-    request = NextRequest(tuple(tracks or ()), pattern, difficulty, language, _source(new, review))
+    request = NextRequest(
+        tuple(tracks or ()), pattern, difficulty, language, next_source(new, review)
+    )
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     recommendation = recommend(environment, request)
     if as_json:
@@ -92,14 +99,6 @@ def next_document(recommendation: Recommendation | None) -> dict[str, JsonValue]
         "language": language.value if language else None,
         "start": _start_command(candidate.slug, language),
     }
-
-
-def _source(new: bool, review: bool) -> NextSource:
-    if new and review:
-        raise UsageError("--new and --review exclude each other")
-    if new:
-        return NextSource.NEW_ONLY
-    return NextSource.REVIEWS_ONLY if review else NextSource.ANY
 
 
 def _start_command(slug: str, language: Language | None) -> str:
