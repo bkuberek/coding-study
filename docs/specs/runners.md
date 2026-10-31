@@ -553,23 +553,25 @@ A suite job has no `cases`: the framework discovers the tests. Python discovers 
 |------|--------|-------------|
 | Host | `pytest.main([...])` on the `cs-runner-cases` thread, with `--rootdir <root>`, plugin autoloading off (`PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`), `-p no:cacheprovider`, pytest's own capture off, and a plugin of the runner's that writes the events | `run({ files, isolation: "none", concurrency: 1 })` in the runner's process, its `test:start`, `test:pass` and `test:fail` events turned into protocol events |
 | Test id | pytest's node id: `tests/test_level_1.py::test_ex1` | `<file relative to the root>::<test name>`, nested names from the outermost `describe` joined by ` > ` |
-| `skip` | Deselected (`--deselect <id>`) | Left out by exact name |
+| `skip` | Left out by exact node id in the runner's plugin (pytest's `--deselect` matches prefixes, so it is not used) | Left out by exact name |
 
 Events: `job_start`, then per test `case_start` and `case_result` with the test id as `case_id`, then `job_end`.
 
 | `case_result.status` | When |
 |----------------------|------|
 | `ok` | The test passed |
-| `failed` | It raised an assertion error (Python `AssertionError`, `node:assert`'s `AssertionError`): `message` holds the framework's failure text (pytest's assertion detail, such as `assert -1 == 5`), plus `expected` and `actual` when the framework reports them as JSON values (`node:assert`) |
-| `error` | Any other exception, a setup or teardown failure, or a test file that fails to collect or import; `error` as for cases. A collection failure is one result whose `case_id` is the file |
-| `skipped` | The framework skipped it; `message` holds the reason |
+| `failed` | It raised an assertion error (Python `AssertionError`, `node:assert`'s `AssertionError`): `message` holds the framework's failure text (pytest's assertion detail, such as `assert -1 == 5`), plus `expected` and `actual` when the framework reports them as JSON values (`node:assert`). pytest's `pytest.fail` counts as `failed` |
+| `error` | Any other exception, a setup or teardown failure, or a test file that fails to collect or import; `error` as for cases. A collection failure is one result whose `case_id` is the file; pytest runs with `--continue-on-collection-errors`, so the other files still run |
+| `skipped` | The framework skipped it; `message` holds the reason. An expected failure (pytest `xfail`) is `skipped` with `message` `xfail: <reason>` |
 
 | Rule | Detail |
 |------|--------|
 | Output | Captured per test by the runner, as per case, with the 4 KiB limit ([Execution environment](#execution-environment)) |
 | Hang guard | The case rules: from `case_start` to `case_result`, config `hang_guard.ms`, else meta `limits.hang_guard_ms`, else 10000; any other gap after `hello`, 10000. On expiry the process group is killed, the test is `timeout`, and the suite restarts with `skip` holding every test already reported and the one that hung |
-| Crash | An exit without `bye` is reported on the test in progress, and the suite restarts the same way. After 3 restarts, tests not yet reported are `not_run`, and the report names how many |
+| Crash | An exit without `bye` is reported on the test in progress, and the suite restarts the same way. After 3 restarts, tests not yet reported are `not_run`, and the report marks the suite as stopped early |
 | No tests | A suite that discovers nothing ends with `job_end` and no results |
+| Usage error | A framework usage or internal error that runs nothing (pytest `UsageError`, `InternalError`) is a `load_error` carrying the framework's output |
+| Bytecode | Before each project run the CLI deletes the project folder's subtree of the bytecode prefix (`<ws>/.cs/pycache`), so an edit made within the same second that keeps the file size never runs stale code; the shared environment's bytecode stays cached |
 | Judging | A suite result is the framework's verdict on code the user may edit: feedback, never a grade. No comparator runs on it, and no level opens from it |
 
 ### Not yet supported
