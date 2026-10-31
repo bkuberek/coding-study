@@ -43,7 +43,7 @@ SUITE_FRAMEWORKS: Mapping[Language, SuiteFramework | None] = {
     Language.TYPESCRIPT: SuiteFramework.NODE_TEST,
     Language.JAVA: None,
     Language.KOTLIN: None,
-    Language.GO: None,
+    Language.GO: SuiteFramework.GO_TEST,
     Language.RUST: None,
 }
 """None: project problems are not yet supported in the language (ADR 0014)."""
@@ -84,7 +84,7 @@ def run_suite(environment: Environment, run: SuiteRun, notify: ProgressNotice) -
     """Raises RunnerStartError (exit 4) when the language's runner has no project jobs or the
     toolchain lacks the framework."""
     runner = project_runner(environment.toolchains, run.language)
-    launch = runner.prepare_project(ProjectSuite(run.root, run.debug), notify)
+    launch = runner.prepare_project(ProjectSuite(run.root, run.debug, run.meta), notify)
     job = suite_job(run, environment.config)
     return environment.runner_process.run_suite(launch, job, run.listener)
 
@@ -166,7 +166,7 @@ def run_grading(environment: Environment, run: GradingRun, notify: ProgressNotic
     cases = CaseMaterializer(environment, notify).runnable_cases(graded)
     job = grading_job(run, cases, environment.config)
     comparator = problem_comparator(environment, run.problem.meta)
-    launch = runner.prepare_project(ProjectGrading(run.root), notify)
+    launch = runner.prepare_project(ProjectGrading(run.root, run.problem.meta, run.level), notify)
     judging = _CaseJudge(cases, comparator, run.listener) if run.listener else None
     report = environment.runner_process.run(launch, RunRequest((job,)), judging)
     return judge(cases, report.job(job.job_id), comparator)

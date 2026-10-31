@@ -679,6 +679,10 @@ class ProjectGrading:
     verify`); a grading job is never debugged."""
 
     root: Path
+    meta: ProblemMeta | None = field(default=None, compare=False)
+    """The graded problem, for a runner that compiles the project with its grader (Go)."""
+    level: int | None = field(default=None, compare=False)
+    """The graded level: such a runner compiles the methods of levels 1 to it only."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -689,6 +693,8 @@ class ProjectSuite:
     root: Path
     debug: DebugSession | None = None
     """`cstudy test --debug`: breakpoints in the project's code and in its tests both stop."""
+    meta: ProblemMeta | None = field(default=None, compare=False)
+    """The problem, for a runner whose debug run picks a package of the project (Go)."""
 
 
 type ProjectScope = ProjectGrading | ProjectSuite

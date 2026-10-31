@@ -16,6 +16,7 @@ from coding_study.domain.runs import Crashed, Raised, RunnerInfo, TimedOut, User
 class SuiteFramework(StrEnum):
     PYTEST = "pytest"
     NODE_TEST = "node-test"
+    GO_TEST = "go-test"
 
 
 @dataclass(frozen=True, slots=True)

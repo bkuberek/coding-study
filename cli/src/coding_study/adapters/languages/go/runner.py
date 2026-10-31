@@ -33,13 +33,31 @@ from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.debug_port import require_free_port
 from coding_study.adapters.languages.debug_servers import require_installed
 from coding_study.adapters.languages.go.build_files import (
+    BUILD_MODULE,
+    BUILD_PASSES,
+    BUILD_PROJECT,
+    COLD_BUILD_NOTE,
+    COLD_NOTICE,
+    DEBUG_GCFLAGS,
+    DELVE_READY_MARKER,
+    GO_VERSION,
+    LOCK_FILE,
+    MAX_DIAGNOSTIC_LINES,
+    MODULE_FILE,
+    OUTPUT_TAIL_LINES,
     REGISTRATION_FILE,
+    RUNNER_DIRECTORY,
+    RUNNER_MODULE,
     THUNK_FILE,
     VENDORED_MODULES,
+    WARM_BUILD_NOTE,
+    WARM_MARKER,
+    WORK_FILE,
     Diagnostic,
     GoPackage,
     ThunkFile,
     build_diagnostics,
+    build_module_source,
     main_source,
     output_text,
     overlay_document,
@@ -48,6 +66,7 @@ from coding_study.adapters.languages.go.build_files import (
     thunk_source,
     vendored_path,
 )
+from coding_study.adapters.languages.go.project_build import GoProjectBuilds
 from coding_study.adapters.languages.go.toolchain import GoToolchain
 from coding_study.application.ports import (
     BenchCode,
@@ -58,6 +77,9 @@ from coding_study.application.ports import (
     Prepared,
     PrepareResult,
     ProgressNotice,
+    ProjectGrading,
+    ProjectScope,
+    ProjectSuite,
     References,
     ReferenceSource,
     RunnerLaunch,
@@ -66,7 +88,6 @@ from coding_study.application.ports import (
 from coding_study.domain.debugging import DebugSession
 from coding_study.domain.errors import ContentError, ContentIssue, RunnerStartError
 from coding_study.domain.layout import (
-    BUILD_DIRECTORY,
     COMPILED_REFERENCE_PREFIX,
     COMPILED_USER_TARGET,
     GO_PROJECT,
@@ -80,36 +101,13 @@ from coding_study.domain.problem import Language, ProblemKind, ProblemMeta
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
 from coding_study.domain.signature import ClassSignature, FunctionSignature
 
-GO_VERSION = "1.24"
-"""The `go` line of the generated module and workspace; `go build -json` needs Go 1.24."""
-RUNNER_MODULE = "cstudy"
-RUNNER_DIRECTORY = "go"
-"""The runner module inside the runners directory."""
-BUILD_PROJECT = f"{BUILD_DIRECTORY}/go"
-BUILD_MODULE = "csbuild"
 DEFAULT_WORKSPACE_MODULE = "workspace"
-MODULE_FILE = "go.mod"
-WORK_FILE = "go.work"
-LOCK_FILE = ".cstudy.lock"
-WARM_MARKER = ".warm"
-"""Written after the first successful build: the standard library and the runner are cached."""
 DEBUG_WARM_MARKER = ".warm-debug"
-"""The same for builds without optimizations, which compile the standard library again."""
-COLD_NOTICE = "compiling the Go runner and standard library (first run)"
+"""Written after the first build without optimizations, which compiles the standard library
+again."""
 DEBUG_COLD_NOTICE = "compiling the Go runner and standard library for debugging (first debug run)"
-DEBUG_GCFLAGS = "-gcflags=all=-N -l"
-"""No optimizations and no inlining, so every line and variable of the user's code is there."""
 DEBUG_BINARIES = "debug"
 """The binaries of debug builds, apart from the optimized ones of the same problem."""
-DELVE_READY_MARKER = "API server listening at:"
-"""What a headless Delve prints to standard output once it listens."""
-WARM_BUILD_NOTE = "go, warm"
-COLD_BUILD_NOTE = "go, cold"
-MAX_DIAGNOSTIC_LINES = 40
-OUTPUT_TAIL_LINES = 20
-BUILD_PASSES = 2
-"""The second pass leaves out the registrations and thunks that did not compile; a registration
-holds one symbol, and a thunk file one class."""
 _MODULE_LINE = re.compile(r"^module\s+(\S+)", re.MULTILINE)
 
 
@@ -131,7 +129,7 @@ class _Build:
 
 
 class GoRunner:
-    """`LanguageRunner` for Go."""
+    """`LanguageRunner` and `ProjectRunner` for Go."""
 
     def __init__(
         self, context: LanguageContext, toolchain: GoToolchain, debug_servers: DebugServers
@@ -142,6 +140,16 @@ class GoRunner:
         self._build_directory = self._root / BUILD_PROJECT
         self._toolchain = toolchain
         self._debug_servers = debug_servers
+        self._projects = GoProjectBuilds(self._root, self._runners, toolchain, debug_servers)
+
+    def prepare_project(self, scope: ProjectScope, notify: ProgressNotice) -> RunnerLaunch:
+        """Builds the grading binary of a project root, or the suite runner, and launches a
+        private copy in the root (docs/specs/runners.md#go-project-jobs)."""
+        match scope:
+            case ProjectGrading():
+                return self._projects.grading(scope, notify)
+            case ProjectSuite():
+                return self._projects.suite(scope, notify)
 
     def prepare(self, scope: BuildScope, notify: ProgressNotice) -> PrepareResult:
         match scope:
@@ -215,16 +223,11 @@ class GoRunner:
         import; the `go.work` replaces them with the runner runtime and its copies."""
         project = relative(self._project, self._build_directory)
         runners = relative(self._runners, self._build_directory)
-        vendored = VENDORED_MODULES.items()
-        requires = "".join(f"\t{module} {version}\n" for module, version in vendored)
         replaces = "".join(
-            f"replace {module} => {runners}/{vendored_path(module)}\n" for module, _ in vendored
+            f"replace {module} => {runners}/{vendored_path(module)}\n"
+            for module in VENDORED_MODULES
         )
-        write_if_changed(
-            self._build_directory / MODULE_FILE,
-            f"module {BUILD_MODULE}\n\ngo {GO_VERSION}\n\n"
-            f"require (\n\t{RUNNER_MODULE} v0.0.0\n{requires})\n",
-        )
+        write_if_changed(self._build_directory / MODULE_FILE, build_module_source())
         write_if_changed(
             self._build_directory / WORK_FILE,
             f"go {GO_VERSION}\n\nuse (\n\t.\n\t{project}\n)\n\n"

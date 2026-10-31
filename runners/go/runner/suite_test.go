@@ -23,7 +23,7 @@ type recorded struct {
 
 func newRecorded(skip ...string) *recorded {
 	var out bytes.Buffer
-	return &recorded{translator: newTranslator("j", &writer{out: &out}, fileNames{}, skip), out: &out}
+	return &recorded{translator: newTranslator("j", "/ws/p", &writer{out: &out}, fileNames{}, skip), out: &out}
 }
 
 func (r *recorded) feed(events ...testEvent) *recorded {
@@ -410,5 +410,20 @@ func TestASuiteWithoutAModuleIsALoadError(t *testing.T) {
 	_, events, _ := runSuite(t, t.TempDir(), "")
 	if events[2]["event"] != "load_error" {
 		t.Errorf("events %v", events)
+	}
+}
+
+func TestACrashShowsTheProjectFramesOfItsPanic(t *testing.T) {
+	r := newRecorded().feed(started("TestB"), out("TestB", "--- FAIL: TestB (0.00s)\n"),
+		out("TestB", "panic: boom [recovered]\n"), out("TestB", "goroutine 7 [running]:\n"),
+		out("TestB", "p.(*Bank).Deposit(...)\n"), out("TestB", "\t/ws/p/bank.go:14 +0x30\n"),
+		out("TestB", "p_test.TestB(0x1?)\n"), out("TestB", "\t/ws/p/tests/b_test.go:9 +0x2c\n"),
+		out("TestB", "testing.tRunner(0x1, 0x2)\n"), out("TestB", "\t/go/src/testing/testing.go:1 +0x1\n"),
+		end("fail", "TestB"), testEvent{Action: "fail", Package: "p"})
+	var stderr bytes.Buffer
+	r.translator.conclude(&stderr)
+	want := "tests/b_test.go:9 in TestB\nbank.go:14 in Bank.Deposit\npanic: boom [recovered]\n"
+	if stderr.String() != want {
+		t.Errorf("stderr %q", stderr.String())
 	}
 }

@@ -17,6 +17,7 @@ from coding_study.application.ports import (
     SuiteListener,
 )
 from coding_study.application.project_runs import (
+    SUITE_FRAMEWORKS,
     GradingRun,
     SuiteRun,
     project_runner,
@@ -242,6 +243,23 @@ def graded_methods(job: RunJob) -> tuple[str, ...]:
 def test_grading_runs_in_the_project_root(grading_environment, problem, runner):
     run_grading(grading_environment, grading_run(problem), [].append)
     assert runner.scopes == [ProjectGrading(ROOT)]
+
+
+def test_grading_tells_the_runner_the_problem_and_the_graded_level(
+    grading_environment, problem, runner
+):
+    run_grading(grading_environment, grading_run(problem, level=1), [].append)
+    (scope,) = runner.scopes
+    assert (scope.meta, getattr(scope, "level", None)) == (problem.meta, 1)
+
+
+def test_the_suite_tells_the_runner_the_problem(environment, meta, runner):
+    run_suite(environment, suite_run(meta), [].append)
+    assert runner.scopes[0].meta == meta
+
+
+def test_a_go_suite_is_run_by_go_test():
+    assert SUITE_FRAMEWORKS[Language.GO] is SuiteFramework.GO_TEST
 
 
 def test_grading_is_one_class_job_of_the_project_kind_under_the_slug(

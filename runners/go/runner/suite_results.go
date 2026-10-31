@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 )
@@ -114,7 +117,9 @@ type crashReport struct {
 
 // translator turns the events of one or more `go test -json` runs into the job's events.
 type translator struct {
-	jobID      string
+	jobID string
+	// root is the project root, whose files' frames a crash shows.
+	root       string
 	events     *writer
 	names      testNames
 	reported   map[string]bool
@@ -129,12 +134,12 @@ type translator struct {
 	sawPackage bool
 }
 
-func newTranslator(jobID string, events *writer, names testNames, skip []string) *translator {
+func newTranslator(jobID, root string, events *writer, names testNames, skip []string) *translator {
 	reported := map[string]bool{}
 	for _, id := range skip {
 		reported[id] = true
 	}
-	return &translator{jobID: jobID, events: events, names: names, reported: reported,
+	return &translator{jobID: jobID, root: root, events: events, names: names, reported: reported,
 		packages: map[string]*packageRun{}, builds: map[string][]string{}, failed: map[string]bool{}}
 }
 
@@ -304,7 +309,7 @@ func (t *translator) crashed(p *packageRun) {
 		return
 	}
 	if t.crash == nil {
-		t.crash = &crashReport{id: culprit.id, text: crashText(culprit)}
+		t.crash = &crashReport{id: culprit.id, text: crashText(culprit, t.root)}
 	}
 }
 
@@ -394,7 +399,7 @@ func (t *translator) endRun() {
 // the runner must exit without bye.
 func (t *translator) conclude(stderr io.Writer) bool {
 	if t.inProgress != nil {
-		fmt.Fprint(stderr, crashText(t.inProgress))
+		fmt.Fprint(stderr, crashText(t.inProgress, t.root))
 		return false
 	}
 	if t.crash != nil {
@@ -456,18 +461,84 @@ func panicLine(lines []string) string {
 	return ""
 }
 
-// crashText is what the test printed before the binary ended, its last lines, closed by the line
-// that says why.
-func crashText(test *runningTest) string {
+// crashText is why the test binary ended, closing what the test printed before: the panic, after
+// the frames of the project's files in its stack (innermost last, `bank.go:14 in Bank.Deposit`),
+// or the test's last lines and that the binary ended during it.
+func crashText(test *runningTest, root string) string {
 	lines := unframed(test.output)
-	if len(lines) > crashTextLines {
-		lines = lines[len(lines)-crashTextLines:]
-	}
 	why := panicLine(lines)
 	if why == "" {
+		if len(lines) > crashTextLines {
+			lines = lines[len(lines)-crashTextLines:]
+		}
 		why = fmt.Sprintf("the test binary of %s ended during %s", test.pkg.importPath, test.name)
+		return strings.Join(lines, "") + why + "\n"
 	}
-	return strings.Join(lines, "") + why + "\n"
+	var kept []string
+	for _, line := range lines {
+		if strings.HasPrefix(line, why) {
+			break
+		}
+		kept = append(kept, line)
+	}
+	for _, frame := range projectFrames(lines, root) {
+		kept = append(kept, frame+"\n")
+	}
+	return strings.Join(kept, "") + why + "\n"
+}
+
+// projectFrames are the frames of a Go stack trace in files under root, innermost last, at most
+// maxTraceLines.
+func projectFrames(lines []string, root string) []string {
+	var frames []string
+	for i := 1; i < len(lines) && root != ""; i++ {
+		place, _, _ := strings.Cut(strings.TrimSpace(lines[i]), " +")
+		file, number, found := cutLast(place, ":")
+		relative, inRoot := underRoot(file, root)
+		if !strings.HasPrefix(lines[i], "\t") || !found || !inRoot {
+			continue
+		}
+		frames = append(frames, fmt.Sprintf("%s:%s in %s", filepath.ToSlash(relative), number,
+			frameFunction(strings.TrimSpace(lines[i-1]))))
+	}
+	slices.Reverse(frames)
+	if len(frames) > maxTraceLines {
+		frames = frames[len(frames)-maxTraceLines:]
+	}
+	return frames
+}
+
+// frameFunction is a stack frame's function without its package and arguments:
+// `bank-project-go.(*Bank).Deposit(...)` is `Bank.Deposit`.
+func frameFunction(call string) string {
+	function, _, _ := cutLast(call, "(")
+	if slash := strings.LastIndex(function, "/"); slash >= 0 {
+		function = function[slash+1:]
+	}
+	_, function, _ = strings.Cut(function, ".")
+	return readableFunction(function)
+}
+
+// underRoot is file relative to root, which a stack names as given or with its links resolved.
+func underRoot(file, root string) (string, bool) {
+	roots := []string{root}
+	if resolved, err := filepath.EvalSymlinks(root); err == nil && resolved != root {
+		roots = append(roots, resolved)
+	}
+	for _, candidate := range roots {
+		if relative, ok := strings.CutPrefix(file, candidate+string(os.PathSeparator)); ok {
+			return relative, true
+		}
+	}
+	return "", false
+}
+
+func cutLast(text, separator string) (string, string, bool) {
+	index := strings.LastIndex(text, separator)
+	if index < 0 {
+		return text, "", false
+	}
+	return text[:index], text[index+len(separator):], true
 }
 
 var diagnosticPlace = regexp.MustCompile(`^(?:\./)?([^\s:]+\.go):(\d+)`)

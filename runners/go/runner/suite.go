@@ -321,7 +321,7 @@ func runSuiteJob(j *job, events *writer, stderr io.Writer) bool {
 		return true
 	}
 	request := readSuiteRequest(j, tests)
-	translator := newTranslator(j.JobID, events, tests, j.Skip)
+	translator := newTranslator(j.JobID, j.Root, events, tests, j.Skip)
 	overlay, err := request.overlay()
 	if overlay != "" {
 		defer os.Remove(overlay)
