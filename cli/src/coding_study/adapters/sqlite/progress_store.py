@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from coding_study.adapters.sqlite import bench_rows, submission_rows
+from coding_study.adapters.sqlite.migration_lock import migration_lock
 from coding_study.domain.attempts import (
     Attempt,
     AttemptMode,
@@ -269,12 +270,18 @@ class SqliteProgressStore:
         try:
             connection.execute("PRAGMA foreign_keys = ON")
             if not self._migrated:
-                _migrate(connection)
-                self._migrated = True
+                self._migrate_once(connection)
             with connection:
                 yield connection
         finally:
             connection.close()
+
+    def _migrate_once(self, connection: sqlite3.Connection) -> None:
+        """Migrate under a lock that every process of this database takes: the scripts commit on
+        their own, so a transaction cannot make the check and the change one step."""
+        with migration_lock(self._path):
+            _migrate(connection)
+        self._migrated = True
 
 
 def _migrate(connection: sqlite3.Connection) -> None:
