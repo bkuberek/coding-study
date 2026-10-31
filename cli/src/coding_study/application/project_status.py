@@ -53,6 +53,20 @@ class ProjectStatus:
     def starter_changes(self) -> StarterChanges:
         return starter_changes(self.files)
 
+    @property
+    def test_run_predates_level(self) -> int | None:
+        """The first level that opened after the latest `cstudy test`, which that run did not
+        cover; None without a run, or when it ran after every recorded unlock."""
+        run = self.last_test_run
+        if run is None:
+            return None
+        later = (
+            level.level
+            for level in self.opened
+            if level.opened_at is not None and level.opened_at > run.ran_at
+        )
+        return next(later, None)
+
 
 def project_status(
     environment: Environment, slug: str | None, language: Language | None

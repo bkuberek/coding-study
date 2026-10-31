@@ -11,7 +11,7 @@ from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.attempts import RunRecord
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
-from coding_study.domain.submissions import LevelTally, SubmissionRecord
+from coding_study.domain.submissions import LevelTally, LevelUnlock, SubmissionRecord
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import status as status_command
 from coding_study.entrypoints.shared import ExitCode
@@ -90,6 +90,36 @@ def test_tested_shows_the_latest_run_and_its_age(environment):
     environment.progress.add_test_run(run)
     environment.clock.advance(timedelta(minutes=1))
     assert "tested     3/4 passed, 1 min ago" in lines()
+
+
+def tested_before_level_2_opened(environment) -> None:
+    run = RunRecord(attempt_id(environment), NOW, "abc", Tally(total=2, passed=2), 700)
+    environment.progress.add_test_run(run)
+    attempt = environment.progress.active_attempt()
+    environment.progress.update_attempt(replace(attempt, level_unlocked=2))
+    environment.progress.add_level_unlock(LevelUnlock(attempt.id, 2, NOW + timedelta(minutes=5)))
+    environment.clock.advance(timedelta(minutes=12))
+
+
+def test_tested_says_the_run_came_before_a_level_opened(environment):
+    tested_before_level_2_opened(environment)
+    assert "tested     2/2 passed, 12 min ago, before level 2 opened" in lines()
+
+
+def test_json_names_the_first_level_that_opened_after_the_test_run(environment):
+    tested_before_level_2_opened(environment)
+    assert json.loads(cs_status("--json").stdout)["last_test_run"] == {
+        "ran_at": NOW.isoformat(),
+        "total": 2,
+        "passed": 2,
+        "predates_level": 2,
+    }
+
+
+def test_json_names_no_level_for_a_test_run_after_every_unlock(environment):
+    run = RunRecord(attempt_id(environment), NOW, "abc", Tally(total=4, passed=3), 700)
+    environment.progress.add_test_run(run)
+    assert json.loads(cs_status("--json").stdout)["last_test_run"]["predates_level"] is None
 
 
 def test_submitted_shows_each_level_of_the_latest_submission(environment):

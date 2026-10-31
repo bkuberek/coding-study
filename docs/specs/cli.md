@@ -583,7 +583,7 @@ Shows where a [project problem](problem-format.md#project-problems)'s attempt in
 | Header | Slug, language, `project`, attempt id and mode |
 | `level` | The unlocked level, of the last, with its title and when it opened |
 | `timer` | Elapsed and time box, with `--timer`; else absent |
-| `tested` | The latest `cstudy test`: passed of total, and how long ago |
+| `tested` | The latest `cstudy test`: passed of total, and how long ago. A run older than a level's opening covered none of that level's tests, so the line then ends with the first level that opened after it: `2/2 passed, 12 min ago, before level 2 opened` |
 | `submitted` | The latest submission's tally per level, and how long ago; `best` adds the highest passed count per level over the attempt when it differs |
 | `files` | Starter files changed and removed, and files added, under `projects/<slug>/`, by content against what the starter provided (the folder's [manifest](installation-and-workspaces.md#project-folders)); generated test files, `.venv` and caches are left out |
 | `next` | `cstudy test --watch` before any submission, `cstudy submit once level <n> passes`, or `cstudy done --rating easy\|ok\|hard` after the full pass |
@@ -599,7 +599,7 @@ files      2 changed, 1 added, 0 removed against the starter
 next       cstudy submit once level 2 passes
 ```
 
-`--json` writes the same values: `slug`, `language`, `attempt_id`, `mode`, `statement` (its path), `levels` (`unlocked`, `last`, `titles` of the open levels, `opened_at` per open level), `timer`, `last_test_run` (`ran_at`, `total`, `passed`, or null), `latest_submission` (`submitted_at`, `level_tallies`, or null), `best_per_level` (`level`, `passed`, `total`), `files` (`changed`, `added`, `removed`, each a sorted list of paths relative to the folder, and `entries`, below) and `next`. In a mock attempt the tallies count hidden cases but name none.
+`--json` writes the same values: `slug`, `language`, `attempt_id`, `mode`, `statement` (its path), `levels` (`unlocked`, `last`, `titles` of the open levels, `opened_at` per open level), `timer`, `last_test_run` (`ran_at`, `total`, `passed` and `predates_level`, the first level that opened after the run or null, or null without a run), `latest_submission` (`submitted_at`, `level_tallies`, or null), `best_per_level` (`level`, `passed`, `total`), `files` (`changed`, `added`, `removed`, each a sorted list of paths relative to the folder, and `entries`, below) and `next`. In a mock attempt the tallies count hidden cases but name none.
 
 `files.entries` is the folder's tree for an interface that shows it: every file under the folder, untracked ones aside, and every file `cstudy` provided that the folder lacks, in path order, each with `path` (relative to the folder), `origin`, `level` and `state`.
 

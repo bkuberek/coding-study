@@ -116,6 +116,29 @@ def test_status_shows_the_latest_test_run(environment):
     assert project_status(environment, None, None).last_test_run == run
 
 
+def add_test_run(environment: Environment, minutes: int) -> None:
+    ran_at = NOW + timedelta(minutes=minutes)
+    run = RunRecord(attempt_id(environment), ran_at, "abc", Tally(total=2, passed=2), 700)
+    environment.progress.add_test_run(run)
+
+
+def test_a_test_run_before_a_level_opened_did_not_cover_that_level(environment):
+    add_test_run(environment, minutes=10)
+    open_level_2(environment)
+    assert project_status(environment, None, None).test_run_predates_level == 2
+
+
+def test_a_test_run_after_every_unlock_covers_every_open_level(environment):
+    open_level_2(environment)
+    add_test_run(environment, minutes=31)
+    assert project_status(environment, None, None).test_run_predates_level is None
+
+
+def test_without_a_test_run_no_level_is_left_out_of_one(environment):
+    open_level_2(environment)
+    assert project_status(environment, None, None).test_run_predates_level is None
+
+
 def test_status_shows_the_latest_submission(environment):
     submission(environment, LevelTally(1, 1, 1, 2, 2), minutes=1)
     latest = submission(environment, LevelTally(1, 1, 1, 2, 1), minutes=2)

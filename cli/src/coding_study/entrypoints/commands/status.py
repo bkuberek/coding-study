@@ -81,7 +81,12 @@ def status_document(found: ProjectStatus) -> dict[str, JsonValue]:
         },
         "timer": timer_value(attempt, found.now),
         "last_test_run": (
-            {"ran_at": run.ran_at.isoformat(), "total": run.tally.total, "passed": run.tally.passed}
+            {
+                "ran_at": run.ran_at.isoformat(),
+                "total": run.tally.total,
+                "passed": run.tally.passed,
+                "predates_level": found.test_run_predates_level,
+            }
             if run
             else None
         ),
@@ -126,13 +131,7 @@ def _lines(found: ProjectStatus) -> list[tuple[str, str]]:
         elapsed = attempt.solve_time(found.now)
         limit = timedelta(seconds=attempt.time_limit_s)
         lines.append(("timer", f"{clock_text(elapsed)} / {clock_text(limit)}"))
-    run = found.last_test_run
-    tested = (
-        f"{run.tally.passed}/{run.tally.total} passed, {_ago(found.now - run.ran_at)}"
-        if run
-        else NOT_YET
-    )
-    lines.append(("tested", tested))
+    lines.append(("tested", _tested(found)))
     lines.append(("submitted", _submitted(found)))
     changes = found.starter_changes
     counts = f"{len(changes.changed)} changed, {len(changes.added)} added"
@@ -158,6 +157,15 @@ def _files_value(found: ProjectStatus) -> dict[str, JsonValue]:
         "removed": list(changes.removed),
         "entries": entries,
     }
+
+
+def _tested(found: ProjectStatus) -> str:
+    run = found.last_test_run
+    if run is None:
+        return NOT_YET
+    text = f"{run.tally.passed}/{run.tally.total} passed, {_ago(found.now - run.ran_at)}"
+    level = found.test_run_predates_level
+    return f"{text}, before level {level} opened" if level is not None else text
 
 
 def _submitted(found: ProjectStatus) -> str:
