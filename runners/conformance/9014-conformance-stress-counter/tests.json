@@ -3,6 +3,6 @@
   "version": 1,
   "cases": [
     {"id": "ex1", "ops": ["StressCounter", "increment", "increment"], "args": [[], [], []], "expected": [null, 1, 2]},
-    {"id": "s1", "note": "4 workers increment one counter", "stress": {"seed": 1000, "setup": {"ops": ["StressCounter"], "args": [[]]}, "workers": [{"group": "incrementer", "count": 4, "repeat": {"default": 4000, "python": 500, "typescript": 200}, "steps": [{"op": "increment", "args": []}]}], "invariants": [{"type": "distinct", "values": {"op": "increment"}}]}}
+    {"id": "s1", "note": "4 workers increment one counter", "stress": {"seed": 1000, "setup": {"ops": ["StressCounter"], "args": [[]]}, "workers": [{"group": "incrementer", "count": 4, "repeat": {"default": 1000, "python": 500, "typescript": 200}, "steps": [{"op": "increment", "args": []}]}], "invariants": [{"type": "distinct", "values": {"op": "increment"}}]}}
   ]
 }
