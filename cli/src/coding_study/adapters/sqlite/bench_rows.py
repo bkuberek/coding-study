@@ -1,5 +1,5 @@
-"""`bench_runs` rows (docs/specs/progress-and-scheduling.md#schema): records in, history and
-the latest outcome out."""
+"""`bench_runs` rows (docs/specs/progress-and-scheduling.md#schema): records in, history, the
+latest outcome and an attempt's runs out."""
 
 import json
 import sqlite3
@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
-from coding_study.domain.bench_records import BenchOutcome, BenchRunRecord
+from coding_study.domain.bench_records import BenchOutcome, BenchRunRecord, BenchRunSummary
 from coding_study.domain.bench_runs import USER_TARGET_ID
 from coding_study.domain.bench_stats import SizeStats, TargetSeries
 from coding_study.domain.bench_verdict import Confidence, PastRun, Verdict
@@ -30,6 +30,11 @@ SELECT verdict, confidence FROM bench_runs
 WHERE attempt_id = ?
 ORDER BY ran_at DESC, id DESC
 LIMIT 1
+"""
+ATTEMPT_RUNS = """
+SELECT ran_at, verdict, confidence, ratio, reference_id FROM bench_runs
+WHERE attempt_id = ?
+ORDER BY ran_at, id
 """
 
 
@@ -69,6 +74,22 @@ def latest_outcome(connection: sqlite3.Connection, attempt_id: int) -> BenchOutc
     if row is None:
         return None
     return BenchOutcome(Verdict(row["verdict"]), Confidence(row["confidence"]))
+
+
+def attempt_bench_runs(
+    connection: sqlite3.Connection, attempt_id: int
+) -> tuple[BenchRunSummary, ...]:
+    rows = connection.execute(ATTEMPT_RUNS, (attempt_id,)).fetchall()
+    return tuple(
+        BenchRunSummary(
+            datetime.fromisoformat(row["ran_at"]),
+            Verdict(row["verdict"]),
+            Confidence(row["confidence"]),
+            row["ratio"],
+            row["reference_id"],
+        )
+        for row in rows
+    )
 
 
 def _sizes(series: TargetSeries) -> dict[str, JsonValue]:

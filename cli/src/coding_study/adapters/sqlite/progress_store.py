@@ -23,7 +23,7 @@ from coding_study.domain.attempts import (
     Rating,
     RunRecord,
 )
-from coding_study.domain.bench_records import BenchOutcome, BenchRunRecord
+from coding_study.domain.bench_records import BenchOutcome, BenchRunRecord, BenchRunSummary
 from coding_study.domain.bench_verdict import PastRun, Verdict
 from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Tally
@@ -249,6 +249,24 @@ class SqliteProgressStore:
                 columns = _columns(connection, table)
                 for number, row in enumerate(snapshot.tables.get(table, ()), start=1):
                     _insert_row(connection, table, columns, number, row)
+
+    def attempts(self, slug: str) -> tuple[Attempt, ...]:
+        with self._connection() as connection:
+            rows = connection.execute(
+                "SELECT * FROM attempts WHERE slug = ? ORDER BY started_at DESC, id DESC", (slug,)
+            ).fetchall()
+        return tuple(_attempt(row) for row in rows)
+
+    def test_runs(self, attempt_id: int) -> tuple[RunRecord, ...]:
+        with self._connection() as connection:
+            rows = connection.execute(
+                "SELECT * FROM test_runs WHERE attempt_id = ? ORDER BY ran_at, id", (attempt_id,)
+            ).fetchall()
+        return tuple(_run_record(row) for row in rows)
+
+    def bench_runs(self, attempt_id: int) -> tuple[BenchRunSummary, ...]:
+        with self._connection() as connection:
+            return bench_rows.attempt_bench_runs(connection, attempt_id)
 
     def _one_attempt(self, condition: str, parameters: tuple[object, ...]) -> Attempt | None:
         with self._connection() as connection:

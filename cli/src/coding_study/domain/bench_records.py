@@ -116,3 +116,14 @@ class BenchOutcome:
     def is_confident_suboptimal(self) -> bool:
         """What `schedule.penalize_suboptimal` acts on: `suboptimal` at medium or high (PRD Q8)."""
         return self.verdict is Verdict.SUBOPTIMAL and self.confidence is not Confidence.LOW
+
+
+@dataclass(frozen=True, slots=True)
+class BenchRunSummary:
+    """A stored bench run as `cstudy history` lists it."""
+
+    ran_at: datetime
+    verdict: Verdict
+    confidence: Confidence
+    ratio: float | None
+    reference_id: str | None

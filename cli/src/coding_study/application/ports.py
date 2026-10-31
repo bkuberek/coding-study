@@ -8,7 +8,12 @@ from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from coding_study.domain.attempts import Attempt, NewAttempt, RunRecord
-from coding_study.domain.bench_records import BenchOutcome, BenchRunRecord, MachineState
+from coding_study.domain.bench_records import (
+    BenchOutcome,
+    BenchRunRecord,
+    BenchRunSummary,
+    MachineState,
+)
 from coding_study.domain.bench_runs import BenchReport, BenchRequest
 from coding_study.domain.bench_verdict import PastRun
 from coding_study.domain.cases import JsonValue
@@ -445,6 +450,18 @@ class ProgressStore(Protocol):
         Raises UsageError, and imports nothing, when the database holds progress, the snapshot
         comes from a newer schema, or a table, column or row does not fit.
         """
+        ...
+
+    def attempts(self, slug: str) -> tuple[Attempt, ...]:
+        """Every attempt at `slug`, in every language and status, latest start first."""
+        ...
+
+    def test_runs(self, attempt_id: int) -> tuple[RunRecord, ...]:
+        """The attempt's `cstudy test` runs, earliest first."""
+        ...
+
+    def bench_runs(self, attempt_id: int) -> tuple[BenchRunSummary, ...]:
+        """The attempt's bench runs, earliest first."""
         ...
 
 
