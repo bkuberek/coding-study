@@ -480,7 +480,7 @@ Exit 0 when every graded case passed, 1 when one did not, 2 when the code did no
 cstudy status [<slug|file>] [--json]
 ```
 
-Shows where a [project problem](problem-format.md#project-problems)'s attempt in progress stands, without running anything. Planned: nothing implements the `files` line and field yet.
+Shows where a [project problem](problem-format.md#project-problems)'s attempt in progress stands, without running anything.
 
 | Line | Content |
 |------|---------|
@@ -489,7 +489,7 @@ Shows where a [project problem](problem-format.md#project-problems)'s attempt in
 | `timer` | Elapsed and time box, with `--timer`; else absent |
 | `tested` | The latest `cstudy test`: passed of total, and how long ago |
 | `submitted` | The latest submission's tally per level, and how long ago; `best` adds the highest passed count per level over the attempt when it differs |
-| `files` | Files changed, added and removed under `projects/<slug>/` against the problem's `starter/` tree, by content; generated test files, `.venv` and caches are left out |
+| `files` | Starter files changed and removed, and files added, under `projects/<slug>/`, by content against what the starter provided (the folder's [manifest](installation-and-workspaces.md#project-folders)); generated test files, `.venv` and caches are left out |
 | `next` | `cstudy test --watch` before any submission, `cstudy submit once level <n> passes`, or `cstudy done --rating easy\|ok\|hard` after the full pass |
 
 ```text
@@ -503,7 +503,17 @@ files      2 changed, 1 added, 0 removed against the starter
 next       cstudy submit once level 2 passes
 ```
 
-`--json` writes the same values: `slug`, `language`, `attempt_id`, `mode`, `statement` (its path), `levels` (`unlocked`, `last`, `titles` of the open levels, `opened_at` per open level), `timer`, `last_test_run` (`ran_at`, `total`, `passed`, or null), `latest_submission` (`submitted_at`, `level_tallies`, or null), `best_per_level` (`level`, `passed`, `total`), `files` (`changed`, `added`, `removed`, each a sorted list of paths relative to the folder) and `next`. In a mock attempt the tallies count hidden cases but name none.
+`--json` writes the same values: `slug`, `language`, `attempt_id`, `mode`, `statement` (its path), `levels` (`unlocked`, `last`, `titles` of the open levels, `opened_at` per open level), `timer`, `last_test_run` (`ran_at`, `total`, `passed`, or null), `latest_submission` (`submitted_at`, `level_tallies`, or null), `best_per_level` (`level`, `passed`, `total`), `files` (`changed`, `added`, `removed`, each a sorted list of paths relative to the folder, and `entries`, below) and `next`. In a mock attempt the tallies count hidden cases but name none.
+
+`files.entries` is the folder's tree for an interface that shows it: every file under the folder, untracked ones aside, and every file `cstudy` provided that the folder lacks, in path order, each with `path` (relative to the folder), `origin`, `level` and `state`.
+
+| `origin` | `level` | `state` |
+|----------|---------|---------|
+| `starter`: a file the starter provided | null | `unchanged` while its content is what `cstudy` provided, `modified` once it differs, `deleted` when the folder lacks it |
+| `level`: the [generated test file](problem-format.md#generated-test-files) of an open level | its level | the same: `modified` is a test file you edited |
+| `yours`: any other file | null | `added` |
+
+Without a manifest (a folder started before `cstudy` kept one, or a clone), `status` compares the folder with what `cstudy` provides now: the starter and the generated test files of the open levels. It writes no manifest; the next `cstudy start` does.
 
 Exit 0; 3 without an attempt in progress, or for a problem of another kind (`cstudy status is for project problems`).
 

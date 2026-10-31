@@ -12,10 +12,12 @@ import json
 from collections.abc import Mapping
 from typing import cast
 
+from coding_study.application.environment import Environment
 from coding_study.application.ports import ProjectTestGenerator, Workspace
+from coding_study.domain.file_states import FolderFile, folder_files
 from coding_study.domain.levels import FIRST_LEVEL
 from coding_study.domain.problem import Problem
-from coding_study.domain.project import relative_path_issue
+from coding_study.domain.project import PATH_SEPARATOR, project_language, relative_path_issue
 from coding_study.domain.project_manifest import (
     FileOrigin,
     ProjectManifest,
@@ -25,6 +27,7 @@ from coding_study.domain.project_manifest import (
     starter_manifest,
 )
 from coding_study.domain.project_tests import level_tests
+from coding_study.domain.workspace_projects import project_folder
 
 MANIFEST_FORMAT = 1
 INDENT = 2
@@ -81,6 +84,30 @@ def provided_now(
         tests = level_tests(problem, level)
         manifest = manifest.with_file(level_file(tests.path, generator.generate(tests), level))
     return manifest
+
+
+def folder_manifest(environment: Environment, problem: Problem, unlocked: int) -> ProjectManifest:
+    """The folder's manifest; without one, what `cstudy` provides now (`provided_now`), which
+    this writes nowhere."""
+    manifest = ProjectManifests(environment.workspace).load(problem.meta.slug)
+    if manifest is not None:
+        return manifest
+    generator = environment.toolchains.project_test_generator(project_language(problem.meta))
+    return provided_now(problem, generator, unlocked)
+
+
+def folder_states(
+    environment: Environment, problem: Problem, unlocked: int
+) -> tuple[FolderFile, ...]:
+    """Every file of the folder of an attempt at level `unlocked`, untracked ones aside, and every
+    file `cstudy` provided that the folder lacks, each with its origin and state."""
+    workspace = environment.workspace
+    folder = project_folder(problem.meta.slug)
+    digests = {
+        path: workspace.content_hash(f"{folder}{PATH_SEPARATOR}{path}")
+        for path in workspace.tracked_files(folder)
+    }
+    return folder_files(folder_manifest(environment, problem, unlocked), digests)
 
 
 def _entry(file: ProvidedFile) -> dict[str, object]:

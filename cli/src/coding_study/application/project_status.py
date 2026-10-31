@@ -2,7 +2,8 @@
 (docs/specs/cli.md#cstudy-status).
 
 The unlocked level and when each level opened, the time box, the latest `cstudy test` run, the
-latest submission and the best count per level, and what to do next.
+latest submission and the best count per level, the state of each file of the folder against
+what `cstudy` provided, and what to do next.
 """
 
 from dataclasses import dataclass
@@ -10,9 +11,11 @@ from datetime import datetime
 
 from coding_study.application.active_attempt import find_attempt
 from coding_study.application.environment import Environment
+from coding_study.application.project_manifest import folder_states
 from coding_study.domain import layout
 from coding_study.domain.attempts import Attempt, RunRecord
 from coding_study.domain.errors import UsageError
+from coding_study.domain.file_states import FolderFile, StarterChanges, starter_changes
 from coding_study.domain.levels import FIRST_LEVEL, LevelProgress, level_progress
 from coding_study.domain.problem import Language, ProblemKind, ProblemMeta
 from coding_study.domain.submissions import LevelTally, SubmissionRecord, best_per_level
@@ -42,7 +45,13 @@ class ProjectStatus:
     latest_submission: SubmissionRecord | None
     best_per_level: tuple[LevelTally, ...]
     """The most passed cases of each level over the attempt's submissions."""
+    files: tuple[FolderFile, ...]
+    """Every file of the folder and every file `cstudy` provided that it lacks, in path order."""
     next_step: str
+
+    @property
+    def starter_changes(self) -> StarterChanges:
+        return starter_changes(self.files)
 
 
 def project_status(
@@ -50,7 +59,8 @@ def project_status(
 ) -> ProjectStatus:
     """Raises UsageError without an attempt in progress, or for another kind of problem."""
     attempt = find_attempt(environment.progress, slug, language)
-    meta = environment.problems.load(attempt.slug).meta
+    problem = environment.problems.load(attempt.slug)
+    meta = problem.meta
     levels = level_progress(meta, attempt.level_unlocked)
     if meta.kind is not ProblemKind.PROJECT or levels is None:
         raise UsageError("cstudy status is for project problems")
@@ -72,6 +82,7 @@ def project_status(
         last_test_run=progress.latest_test_run(attempt.id),
         latest_submission=latest,
         best_per_level=best_per_level(submissions),
+        files=folder_states(environment, problem, levels.unlocked),
         next_step=_next_step(attempt, latest, levels),
     )
 

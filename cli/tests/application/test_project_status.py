@@ -11,12 +11,18 @@ from coding_study.application.project_status import OpenLevel, project_status
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.attempts import RunRecord
 from coding_study.domain.errors import UsageError
+from coding_study.domain.file_states import FileState, StarterChanges
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
 from coding_study.domain.submissions import LevelTally, LevelUnlock, SubmissionRecord
 from tests.fakes import NOW, FakeStubGenerator, FakeToolchains, make_environment, repository_root
 from tests.helpers import FIXTURE_PROBLEMS
-from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
+from tests.project_fakes import (
+    PROJECT_FOLDER,
+    PROJECT_SLUG,
+    ScriptedProjectProcess,
+    project_environment,
+)
 
 LATER = NOW + timedelta(minutes=30)
 
@@ -124,3 +130,63 @@ def test_status_keeps_the_best_count_of_each_level(environment):
 
 def test_status_reads_the_clock(environment):
     assert project_status(environment, None, None).now == NOW
+
+
+# files (docs/specs/cli.md#cstudy-status)
+
+
+def edit_the_folder(environment: Environment) -> None:
+    """Changes the README, adds a module and deletes pyproject.toml."""
+    workspace = environment.workspace
+    workspace.write_text(f"{PROJECT_FOLDER}/README.md", "# mine\n")
+    workspace.write_text(f"{PROJECT_FOLDER}/bank/ledger.py", "LEDGER = []\n")
+    workspace.absolute(f"{PROJECT_FOLDER}/pyproject.toml").unlink()
+
+
+def states(environment: Environment) -> dict[str, FileState]:
+    return {file.path: file.state for file in project_status(environment, None, None).files}
+
+
+def test_a_new_folder_holds_every_file_as_provided(environment):
+    assert states(environment) == {
+        "README.md": FileState.UNCHANGED,
+        "bank/bank.py": FileState.UNCHANGED,
+        "pyproject.toml": FileState.UNCHANGED,
+        "tests/test_level_1.py": FileState.UNCHANGED,
+    }
+
+
+def test_status_tells_each_file_changed_added_or_deleted(environment):
+    edit_the_folder(environment)
+    assert states(environment) == {
+        "README.md": FileState.MODIFIED,
+        "bank/bank.py": FileState.UNCHANGED,
+        "bank/ledger.py": FileState.ADDED,
+        "pyproject.toml": FileState.DELETED,
+        "tests/test_level_1.py": FileState.UNCHANGED,
+    }
+
+
+def test_status_counts_the_changes_against_the_starter(environment):
+    edit_the_folder(environment)
+    assert project_status(environment, None, None).starter_changes == StarterChanges(
+        changed=("README.md",), added=("bank/ledger.py",), removed=("pyproject.toml",)
+    )
+
+
+def test_status_leaves_untracked_files_out(environment):
+    environment.workspace.write_text(f"{PROJECT_FOLDER}/bank/__pycache__/bank.pyc", "")
+    environment.workspace.write_text(f"{PROJECT_FOLDER}/uv.lock", "version = 1\n")
+    assert "uv.lock" not in states(environment)
+
+
+def test_without_a_manifest_status_compares_with_what_cstudy_provides_now(environment):
+    environment.workspace.absolute(f".cs/projects/{PROJECT_SLUG}.json").unlink()
+    environment.workspace.write_text(f"{PROJECT_FOLDER}/README.md", "# mine\n")
+    assert states(environment)["README.md"] is FileState.MODIFIED
+
+
+def test_without_a_manifest_status_writes_none(environment):
+    environment.workspace.absolute(f".cs/projects/{PROJECT_SLUG}.json").unlink()
+    project_status(environment, None, None)
+    assert not environment.workspace.exists(f".cs/projects/{PROJECT_SLUG}.json")

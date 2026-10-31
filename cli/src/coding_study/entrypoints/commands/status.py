@@ -1,7 +1,8 @@
 """`cstudy status` (docs/specs/cli.md#cstudy-status).
 
 Times show in local time, and ages relative to the run of the command; a mock attempt's tallies
-count hidden cases but never name one.
+count hidden cases but never name one. The `files` line counts the folder's changes against the
+starter; `--json` adds every file's origin and state.
 """
 
 import json
@@ -96,6 +97,7 @@ def status_document(found: ProjectStatus) -> dict[str, JsonValue]:
             {"level": tally.level, "passed": tally.passed, "total": tally.total}
             for tally in found.best_per_level
         ],
+        "files": _files_value(found),
         "next": found.next_step,
     }
 
@@ -132,8 +134,30 @@ def _lines(found: ProjectStatus) -> list[tuple[str, str]]:
     )
     lines.append(("tested", tested))
     lines.append(("submitted", _submitted(found)))
+    changes = found.starter_changes
+    counts = f"{len(changes.changed)} changed, {len(changes.added)} added"
+    lines.append(("files", f"{counts}, {len(changes.removed)} removed against the starter"))
     lines.append(("next", found.next_step))
     return lines
+
+
+def _files_value(found: ProjectStatus) -> dict[str, JsonValue]:
+    changes = found.starter_changes
+    entries: list[JsonValue] = [
+        {
+            "path": file.path,
+            "origin": file.origin.value,
+            "level": file.level,
+            "state": file.state.value,
+        }
+        for file in found.files
+    ]
+    return {
+        "changed": list(changes.changed),
+        "added": list(changes.added),
+        "removed": list(changes.removed),
+        "entries": entries,
+    }
 
 
 def _submitted(found: ProjectStatus) -> str:

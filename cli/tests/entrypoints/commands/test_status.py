@@ -17,7 +17,12 @@ from coding_study.entrypoints.commands import status as status_command
 from coding_study.entrypoints.shared import ExitCode
 from tests.fakes import NOW, FakeStubGenerator, FakeToolchains, make_environment, repository_root
 from tests.helpers import FIXTURE_PROBLEMS
-from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
+from tests.project_fakes import (
+    PROJECT_FOLDER,
+    PROJECT_SLUG,
+    ScriptedProjectProcess,
+    project_environment,
+)
 
 runner = CliRunner()
 OPENED = NOW.astimezone().strftime("%H:%M")
@@ -64,6 +69,7 @@ def test_a_new_attempt_has_nothing_tested_or_submitted(environment):
         f"level      1 of 2: Accounts and deposits (opened {OPENED})",
         "tested     not yet",
         "submitted  not yet",
+        "files      0 changed, 0 added, 0 removed against the starter",
         "next       cstudy test --watch",
     ]
 
@@ -153,3 +159,37 @@ def test_json_without_runs_has_nulls(environment):
         None,
         None,
     )
+
+
+def edit_the_folder(environment) -> None:
+    workspace = environment.workspace
+    workspace.write_text(f"{PROJECT_FOLDER}/README.md", "# mine\n")
+    workspace.write_text(f"{PROJECT_FOLDER}/bank/ledger.py", "LEDGER = []\n")
+    workspace.write_text(f"{PROJECT_FOLDER}/tests/test_level_1.py", "# mine\n")
+    workspace.absolute(f"{PROJECT_FOLDER}/pyproject.toml").unlink()
+
+
+def test_files_counts_the_changes_against_the_starter(environment):
+    edit_the_folder(environment)
+    assert "files      1 changed, 1 added, 1 removed against the starter" in lines()
+
+
+def test_json_files_lists_the_changes_against_the_starter(environment):
+    edit_the_folder(environment)
+    files = json.loads(cs_status("--json").stdout)["files"]
+    assert {key: files[key] for key in ("changed", "added", "removed")} == {
+        "changed": ["README.md"],
+        "added": ["bank/ledger.py"],
+        "removed": ["pyproject.toml"],
+    }
+
+
+def test_json_files_has_every_files_origin_and_state(environment):
+    edit_the_folder(environment)
+    assert json.loads(cs_status("--json").stdout)["files"]["entries"] == [
+        {"path": "README.md", "origin": "starter", "level": None, "state": "modified"},
+        {"path": "bank/bank.py", "origin": "starter", "level": None, "state": "unchanged"},
+        {"path": "bank/ledger.py", "origin": "yours", "level": None, "state": "added"},
+        {"path": "pyproject.toml", "origin": "starter", "level": None, "state": "deleted"},
+        {"path": "tests/test_level_1.py", "origin": "level", "level": 1, "state": "modified"},
+    ]
