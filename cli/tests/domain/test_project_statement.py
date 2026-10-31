@@ -138,3 +138,10 @@ def test_per_method_comparators_follow_their_methods():
     assert in_language_names(problem).meta.comparator.per_method == {
         "create_account": ComparatorType.EXACT
     }
+
+
+def test_the_locked_notice_names_cstudy_submit():
+    assert (
+        "> Level 2 is locked. Pass every case up to level 1 with `cstudy submit` to unlock it."
+        in rendered(unlocked=1)
+    )

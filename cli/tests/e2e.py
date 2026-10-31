@@ -9,6 +9,7 @@ import shutil
 import sys
 from pathlib import Path
 
+from coding_study.adapters.languages.python.test_generator import PythonTestGenerator
 from coding_study.adapters.subprocess_runner import SubprocessRunner
 from coding_study.application.environment import Environment
 from coding_study.application.ports import (
@@ -17,6 +18,7 @@ from coding_study.application.ports import (
     Prepared,
     PrepareResult,
     ProgressNotice,
+    ProjectTestGenerator,
     References,
     RunnerLaunch,
     StubGenerator,
@@ -86,6 +88,10 @@ class PythonOnlyToolchains:
     def runner(self, language: Language) -> LanguageRunner:
         self._require_python(language, "runner")
         return MiniPythonRunner(self._root)
+
+    def project_test_generator(self, language: Language) -> ProjectTestGenerator:
+        self._require_python(language, "project test generator")
+        return PythonTestGenerator()
 
     def _require_python(self, language: Language, component: str) -> None:
         if language is not Language.PYTHON:

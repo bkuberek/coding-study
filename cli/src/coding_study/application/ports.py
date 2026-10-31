@@ -590,6 +590,11 @@ class Toolchains(Protocol):
         """Raises LanguageNotSetUpError until the language is implemented."""
         ...
 
+    def project_test_generator(self, language: Language) -> "ProjectTestGenerator":
+        """Raises LanguageNotSetUpError for a language whose project tests are not generated
+        yet."""
+        ...
+
 
 class EditorOpener(Protocol):
     def open(self, paths: Sequence[Path]) -> str | None:

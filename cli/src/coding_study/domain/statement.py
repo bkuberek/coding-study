@@ -131,10 +131,11 @@ class _StatementView:
         progress = self._progress
         assert progress is not None
         locked, passing = progress.locked, f"Pass every case up to level {progress.unlocked}"
+        opener = f"`{progress.opened_by}`"
         if len(locked) == 1:
-            return f"> Level {locked[0]} is locked. {passing} with `cstudy test` to unlock it."
+            return f"> Level {locked[0]} is locked. {passing} with {opener} to unlock it."
         return (
-            f"> Levels {locked[0]} to {locked[-1]} are locked. {passing} with `cstudy test` to "
+            f"> Levels {locked[0]} to {locked[-1]} are locked. {passing} with {opener} to "
             "unlock the next one."
         )
 

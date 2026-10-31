@@ -23,6 +23,7 @@ from coding_study.application.ports import (
     Prepared,
     PrepareResult,
     ProgressNotice,
+    ProjectTestGenerator,
     RunnerLaunch,
     StubGenerator,
 )
@@ -89,11 +90,19 @@ class FakeToolchains:
     stub_generators: dict[Language, StubGenerator] = field(
         default_factory=dict[Language, StubGenerator]
     )
+    project_test_generators: dict[Language, ProjectTestGenerator] = field(
+        default_factory=dict[Language, ProjectTestGenerator]
+    )
 
     def stub_generator(self, language: Language) -> StubGenerator:
         if language not in self.stub_generators:
             raise LanguageNotSetUpError(language, "stub generator")
         return self.stub_generators[language]
+
+    def project_test_generator(self, language: Language) -> ProjectTestGenerator:
+        if language not in self.project_test_generators:
+            raise LanguageNotSetUpError(language, "project test generator")
+        return self.project_test_generators[language]
 
     def runner(self, language: Language) -> LanguageRunner:
         if language not in self.runners:

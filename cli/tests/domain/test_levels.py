@@ -4,6 +4,7 @@ import pytest
 
 from coding_study.domain.cases import Case, Expected, OperationSequence
 from coding_study.domain.levels import (
+    SUBMIT_COMMAND,
     LevelProgress,
     cases_up_to,
     has_levels,
@@ -66,7 +67,15 @@ def test_an_attempt_without_a_stored_level_has_level_1_unlocked():
 
 
 def test_a_project_problem_opens_its_levels_as_a_progressive_one_does():
-    assert level_progress(PROJECT, 2) == LevelProgress(LEVELS, 2)
+    assert level_progress(PROJECT, 2) == LevelProgress(LEVELS, 2, SUBMIT_COMMAND)
+
+
+def test_a_locked_level_of_a_project_problem_names_cstudy_submit():
+    progress = level_progress(PROJECT, 2)
+    assert progress is not None
+    locked = "level 3 is locked; pass level 2 with cstudy submit first"
+    with pytest.raises(ValueError, match=locked):
+        progress.run_level(3)
 
 
 @pytest.mark.parametrize(

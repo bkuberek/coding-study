@@ -2,7 +2,8 @@
 
 Spec: docs/specs/problem-format.md#progressive-problems. An attempt stores its highest unlocked
 level; `cstudy test` runs the cases of every unlocked level, and a run that passes all of them
-unlocks the next one.
+unlocks the next one. A project problem opens its levels with `cstudy submit` instead
+(docs/specs/problem-format.md#levels-and-grading).
 """
 
 import re
@@ -14,6 +15,8 @@ from coding_study.domain.cases import Case
 from coding_study.domain.problem import Level, ProblemKind, ProblemMeta
 
 FIRST_LEVEL = 1
+TEST_COMMAND = "cstudy test"
+SUBMIT_COMMAND = "cstudy submit"
 _LEVEL_HEADING = re.compile(r"Level (?P<number>\d+): \S.*")
 
 
@@ -23,6 +26,8 @@ class LevelProgress:
 
     levels: tuple[Level, ...]
     unlocked: int
+    opened_by: str = TEST_COMMAND
+    """The command whose pass of every unlocked level opens the next one."""
 
     @property
     def last(self) -> int:
@@ -54,7 +59,8 @@ class LevelProgress:
             raise ValueError(f"no level {requested}; levels are {FIRST_LEVEL} to {self.last}")
         if requested > self.unlocked:
             raise ValueError(
-                f"level {requested} is locked; pass level {self.unlocked} with cstudy test first"
+                f"level {requested} is locked; pass level {self.unlocked} with {self.opened_by} "
+                "first"
             )
         return requested
 
@@ -110,7 +116,12 @@ def level_progress(meta: ProblemMeta, unlocked: int | None) -> LevelProgress | N
     if not has_levels(meta.kind) or not meta.levels:
         return None
     stored = max(unlocked or FIRST_LEVEL, FIRST_LEVEL)
-    return LevelProgress(meta.levels, min(stored, len(meta.levels)))
+    return LevelProgress(meta.levels, min(stored, len(meta.levels)), _opened_by(meta.kind))
+
+
+def _opened_by(kind: ProblemKind) -> str:
+    """A project problem's levels open from submissions, a progressive problem's from test runs."""
+    return SUBMIT_COMMAND if kind is ProblemKind.PROJECT else TEST_COMMAND
 
 
 def cases_up_to(cases: Iterable[Case], level: int) -> tuple[Case, ...]:

@@ -1,7 +1,12 @@
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.registry import LanguageRegistry
 from coding_study.adapters.runner_runtime import RunnerRuntime
-from coding_study.application.ports import LanguageRunner, StubGenerator, Toolchains
+from coding_study.application.ports import (
+    LanguageRunner,
+    ProjectTestGenerator,
+    StubGenerator,
+    Toolchains,
+)
 from coding_study.domain.problem import Language
 
 
@@ -18,6 +23,9 @@ class RegistryToolchains:
     def runner(self, language: Language) -> LanguageRunner:
         return self._registry.runner(language, self._context)
 
+    def project_test_generator(self, language: Language) -> ProjectTestGenerator:
+        return self._registry.project_test_generator(language)
+
 
 class RuntimeToolchains:
     """Brings the workspace's runner runtime in step with the content before the first runner of
@@ -31,6 +39,9 @@ class RuntimeToolchains:
 
     def stub_generator(self, language: Language) -> StubGenerator:
         return self._toolchains.stub_generator(language)
+
+    def project_test_generator(self, language: Language) -> ProjectTestGenerator:
+        return self._toolchains.project_test_generator(language)
 
     def runner(self, language: Language) -> LanguageRunner:
         if not self._current:
