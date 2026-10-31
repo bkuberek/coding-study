@@ -1,17 +1,17 @@
 # Spec: Catalog
 
-The binding manifest of every catalog item: 196 DSA problems and 70 non-DSA items (54 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty and kind, and for the planned rows their batch and owner stream.
+The binding manifest of every catalog item: 196 DSA problems and 71 non-DSA items (55 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty and kind, and for the planned rows their batch and owner stream.
 
 | Track | Problems or items | Where |
 |-------|-------------------|-------|
 | `dsa` | 196 (185 planned, 11 added) | `problems/` |
-| `practical` | 24 (6 planned, 16 added, 2 project problems added) | `problems/` |
+| `practical` | 25 (6 planned, 16 added, 3 project problems added) | `problems/` |
 | `lld` | 8 | `problems/` |
 | `concurrency` | 6 | `problems/` |
 | `debugging` | 16 (8 planned, 8 in Go and Rust) | `problems/` |
 | `system-design` | 10 | `tracks/system-design/` |
 | `code-review` | 6 | `tracks/code-review/` |
-| **Total** | **266** (250 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
+| **Total** | **267** (251 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
 
 ## Rules
 
@@ -34,7 +34,7 @@ The binding manifest of every catalog item: 196 DSA problems and 70 non-DSA item
 
 ## Id order
 
-Existing problems keep `0001`–`0003`. New DSA ids run from `0004` to `0185` by batch (1 to 6), then taxonomy order within a batch, then difficulty within a pattern. Non-DSA items in `problems/` continue at `0186`–`0213` in the order practical, lld, concurrency, debugging. Problems added after the plan take the next free ids: `0214`–`0228` practical, `0229`–`0239` DSA, `0240`–`0247` the Go and Rust debugging problems, `0248` practical, and `0249`–`0250` the practical project problems. Items in `tracks/` have slugs and no ids.
+Existing problems keep `0001`–`0003`. New DSA ids run from `0004` to `0185` by batch (1 to 6), then taxonomy order within a batch, then difficulty within a pattern. Non-DSA items in `problems/` continue at `0186`–`0213` in the order practical, lld, concurrency, debugging. Problems added after the plan take the next free ids: `0214`–`0228` practical, `0229`–`0239` DSA, `0240`–`0247` the Go and Rust debugging problems, `0248` practical, and `0249`–`0250` and `0253` the practical project problems. Items in `tracks/` have slugs and no ids.
 
 ## DSA catalog
 
@@ -332,12 +332,13 @@ One more added later is a sibling of `banking-system` whose level 3 replaces the
 |----|------|-------|----------|------|------------|
 | 0248 | `scheduled-transfers-bank` | Scheduled Transfers Bank | `heap` | progressive | hard |
 
-Two [project problems](problem-format.md#project-problems) (kind `project`, one language each) carry `0248`'s behavior and statement wording into a seeded folder. Each is built from scratch, with its own starter, `tests.json` (at least 2 visible and 2 hidden cases per level, covering the rules `0248`'s cases pin down), reference and explanation; both list each other and `scheduled-transfers-bank` in `related`. `0249` is the Python pilot (roadmap Phase 8a) and `0250` the TypeScript one (Phase 8b); both exist in `problems/`.
+Three [project problems](problem-format.md#project-problems) (kind `project`, one language each) carry `0248`'s behavior and statement wording into a seeded folder. Each is built from scratch, with its own starter, `tests.json` (at least 2 visible and 2 hidden cases per level, covering the rules `0248`'s cases pin down), reference and explanation; each lists the others and `scheduled-transfers-bank` in `related`. `0249` is the Python pilot (roadmap Phase 8a), `0250` the TypeScript one (Phase 8b) and `0253` the Go one; all three exist in `problems/`.
 
 | id | slug | title | language | patterns | kind | difficulty |
 |----|------|-------|----------|----------|------|------------|
 | 0249 | `bank-project-python` | Bank Project (Python) | `python` | - | project | hard |
 | 0250 | `bank-project-typescript` | Bank Project (TypeScript) | `typescript` | - | project | hard |
+| 0253 | `bank-project-go` | Bank Project (Go) | `go` | - | project | hard |
 
 ### lld (8, owner L1, kind `design` plus `rubric.md`, `problems/`)
 

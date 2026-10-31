@@ -105,7 +105,7 @@ All problem statements, tests and solutions are original ([ADR 0004](docs/decisi
 | Track | Items | Graded by | Format |
 |-------|------:|-----------|--------|
 | `dsa` | 196 | Tests, in all 6 languages | Functions and data-structure designs across 23 patterns |
-| `practical` | 24 | Tests, level by level where a problem has levels | One class whose API grows over 4 levels, or a business task with money and dates |
+| `practical` | 25 | Tests, level by level where a problem has levels | One class whose API grows over 4 levels, or a business task with money and dates |
 | `lld` | 8 | Tests, then a design rubric | Object-oriented design |
 | `concurrency` | 6 | Stress tests against invariants | Thread-safe classes, per-language models |
 | `debugging` | 16 | Tests | Buggy code to fix, including Go- and Rust-only bugs |

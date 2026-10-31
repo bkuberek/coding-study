@@ -31,5 +31,5 @@ project:
   tests: tests
 approaches:
   - {id: reference, name: Accounts with balance histories and a due-time heap, role: optimal, time: "O(log p) per scheduled transfer; O(1) per balance change; O(log h) per historical read; O(a log a) per ranking", space: "O(a + h + p)", time_class: "n log n", space_class: "n"}
-related: [bank-project-typescript, scheduled-transfers-bank, banking-system]
+related: [bank-project-typescript, bank-project-go, scheduled-transfers-bank, banking-system]
 estimate_minutes: 90
