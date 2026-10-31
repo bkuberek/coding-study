@@ -63,9 +63,14 @@ def _held(candidate: Candidate) -> Candidate:
 
 @dataclass(frozen=True, slots=True)
 class RunningMock:
-    slugs: tuple[str, ...]
-    """The unfinished problems, sorted."""
+    attempts: tuple[Attempt, ...]
+    """The unfinished problems' attempts, in the order they started."""
     ends_at: datetime
+
+    @property
+    def slugs(self) -> tuple[str, ...]:
+        """The unfinished problems, sorted."""
+        return tuple(sorted(attempt.slug for attempt in self.attempts))
 
     def remaining(self, now: datetime) -> timedelta:
         return self.ends_at - now
@@ -75,13 +80,17 @@ def running_mock(in_progress: Sequence[Attempt], now: datetime) -> RunningMock |
     """The mock interview whose timer still runs, from the attempts in progress; None when there
     is none, its timer ended, or every problem is done."""
     ends = {
-        attempt.slug: end
-        for attempt in in_progress
+        attempt: end
+        for attempt in sorted(in_progress, key=_start_order)
         if (end := _mock_end(attempt)) is not None and end > now
     }
     if not ends:
         return None
-    return RunningMock(tuple(sorted(ends)), max(ends.values()))
+    return RunningMock(tuple(ends), max(ends.values()))
+
+
+def _start_order(attempt: Attempt) -> int:
+    return attempt.id
 
 
 def _mock_end(attempt: Attempt) -> datetime | None:

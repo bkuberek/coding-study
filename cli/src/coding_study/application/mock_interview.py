@@ -7,18 +7,20 @@ and another `cstudy mock` are locked.
 """
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from coding_study.application.environment import Environment
 from coding_study.application.next_problem import graded_attempts
-from coding_study.application.practice_catalog import practice_candidates
+from coding_study.application.practice_catalog import is_item, practice_candidates
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.application.start_item import ItemStartRequest, start_item_attempt
-from coding_study.domain.attempts import SECONDS_PER_MINUTE
+from coding_study.domain.attempts import SECONDS_PER_MINUTE, Attempt
 from coding_study.domain.errors import UsageError
+from coding_study.domain.items import ItemMeta
 from coding_study.domain.mock_interview import pick_mock, running_mock
 from coding_study.domain.next_selection import NewPick, NextQuery, NextScope
 from coding_study.domain.precedence import resolve_language
-from coding_study.domain.problem import Language, Track
+from coding_study.domain.problem import Language, ProblemKind, ProblemMeta, Track
 
 DEFAULT_MINUTES = 45
 DEFAULT_COUNT = 2
@@ -35,12 +37,28 @@ class MockRequest:
 
 
 @dataclass(frozen=True, slots=True)
+class MockAttempt:
+    """One problem of a mock interview: its attempt, and the problem or item it practises."""
+
+    attempt: Attempt
+    meta: ProblemMeta | ItemMeta
+
+    @property
+    def is_project(self) -> bool:
+        return isinstance(self.meta, ProblemMeta) and self.meta.kind is ProblemKind.PROJECT
+
+
+@dataclass(frozen=True, slots=True)
 class MockProblem:
     pick: NewPick
+    started: MockAttempt
     user_file: str
     """The stub, the folder of a project problem, or the notes of a non-autograded item."""
     statement: str
-    is_project: bool = False
+
+    @property
+    def is_project(self) -> bool:
+        return self.started.is_project
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +66,22 @@ class MockSession:
     request: MockRequest
     language: Language
     problems: tuple[MockProblem, ...]
+
+    @property
+    def ends_at(self) -> datetime | None:
+        """When the shared timer ends; None when nothing started."""
+        ends = (_ends_at(problem.started.attempt) for problem in self.problems)
+        return max(ends, default=None)
+
+
+@dataclass(frozen=True, slots=True)
+class CurrentMock:
+    """The mock interview that runs, as its lock sees it: its unfinished problems, in the order
+    they started, and its shared timer."""
+
+    attempts: tuple[MockAttempt, ...]
+    ends_at: datetime
+    remaining: timedelta
 
 
 def start_mock(environment: Environment, request: MockRequest) -> MockSession:
@@ -64,6 +98,18 @@ def start_mock(environment: Environment, request: MockRequest) -> MockSession:
     timer_s = request.minutes * SECONDS_PER_MINUTE
     problems = tuple(_start(environment, pick, language, timer_s) for pick in picks)
     return MockSession(request, language, problems)
+
+
+def current_mock(environment: Environment) -> CurrentMock | None:
+    """The mock interview whose timer runs, wherever it started; None when none does."""
+    now = environment.clock.now()
+    mock = running_mock(environment.progress.attempts_in_progress(), now)
+    if mock is None:
+        return None
+    attempts = tuple(
+        MockAttempt(attempt, _meta(environment, attempt.slug)) for attempt in mock.attempts
+    )
+    return CurrentMock(attempts, mock.ends_at, mock.remaining(now))
 
 
 def require_no_running_mock(environment: Environment, command: str) -> None:
@@ -86,8 +132,20 @@ def _start(
     slug = pick.candidate.slug
     if not pick.candidate.autograded:
         item = start_item_attempt(environment, ItemStartRequest(slug, True, timer_s, mock=True))
-        return MockProblem(pick, item.notes_path, item.statement_path)
+        started = MockAttempt(item.attempt, item.meta)
+        return MockProblem(pick, started, item.notes_path, item.statement_path)
     request = StartRequest(slug, language, fresh=True, timer_s=timer_s, mock=True)
-    started = start_attempt(environment, request)
-    is_project = started.project is not None
-    return MockProblem(pick, started.stub_path, started.statement_path, is_project)
+    problem = start_attempt(environment, request)
+    started = MockAttempt(problem.attempt, problem.problem.meta)
+    return MockProblem(pick, started, problem.stub_path, problem.statement_path)
+
+
+def _meta(environment: Environment, slug: str) -> ProblemMeta | ItemMeta:
+    if is_item(environment, slug):
+        return environment.items.load(slug)
+    return environment.problems.load(slug).meta
+
+
+def _ends_at(attempt: Attempt) -> datetime:
+    assert attempt.time_limit_s is not None
+    return attempt.started_at + timedelta(seconds=attempt.time_limit_s)

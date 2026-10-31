@@ -3,17 +3,28 @@
 from coding_study.application.attempt_files import AttemptTree, FileContent, ScopedFile
 from coding_study.application.complete_attempt import FinishedAttempt
 from coding_study.application.environment import Environment
+from coding_study.application.mock_interview import (
+    CurrentMock,
+    MockAttempt,
+    MockProblem,
+    MockSession,
+)
 from coding_study.application.problem_details import ProblemDetails
 from coding_study.application.reveal_hint import HintsLocked, RevealedHint
 from coding_study.domain.cases import JsonValue
-from coding_study.domain.problem import Language, ProblemKind, Track
+from coding_study.domain.items import entry_kind
+from coding_study.domain.problem import Language, ProblemKind, ProblemMeta, Track
 from coding_study.entrypoints.commands._events import EVENTS_VERSION
+from coding_study.entrypoints.commands.mock import NOTHING_TO_PICK
+from coding_study.entrypoints.commands.next_problem import pick_reason
 from coding_study.entrypoints.web.markdown import render_markdown
 
 API_VERSION = 1
 """Changes only when a response changes incompatibly (docs/specs/web-ui.md#api-conventions)."""
 ITEM_KIND = "item"
 """The kind `cstudy list --kind` gives the non-autograded items."""
+MOCK_LOCKS = ("hint", "solution", "mock")
+"""What a running mock interview locks, as `cstudy hint`, `cstudy solution` and `cstudy mock`."""
 
 
 def session_document(environment: Environment, port: int, version: str) -> dict[str, object]:
@@ -112,6 +123,70 @@ def done_document(finished: FinishedAttempt) -> dict[str, JsonValue]:
             "ease": schedule.state.ease,
         },
     }
+
+
+def started_mock_document(session: MockSession) -> dict[str, JsonValue]:
+    """`POST /api/v1/mock`: the problems `cstudy mock` started, each as its report lists it, or
+    its message when nothing was in scope."""
+    request = session.request
+    ends_at = session.ends_at
+    problems: list[JsonValue] = [_mock_problem_value(problem) for problem in session.problems]
+    return {
+        "minutes": request.minutes,
+        "count": request.count,
+        "language": session.language.value,
+        "ends_at": ends_at.isoformat() if ends_at else None,
+        "problems": problems,
+        "message": None if problems else NOTHING_TO_PICK,
+    }
+
+
+def running_mock_document(mock: CurrentMock | None) -> dict[str, JsonValue]:
+    """`GET /api/v1/mock`: the mock whose timer runs, with the unfinished problems its lock
+    names, in the order they started."""
+    if mock is None:
+        return {"running": False}
+    attempts: list[JsonValue] = [_mock_attempt_value(started) for started in mock.attempts]
+    return {
+        "running": True,
+        "ends_at": mock.ends_at.isoformat(),
+        "remaining_s": int(mock.remaining.total_seconds()),
+        "attempts": attempts,
+        "locked": list(MOCK_LOCKS),
+    }
+
+
+def _mock_problem_value(problem: MockProblem) -> JsonValue:
+    candidate = problem.pick.candidate
+    return {
+        "slug": candidate.slug,
+        "title": problem.started.meta.title,
+        "difficulty": candidate.difficulty.value,
+        "group": candidate.group.name,
+        "reason": pick_reason(problem.pick),
+        "attempt_id": problem.started.attempt.id,
+        "kind": _mock_kind(problem.started),
+        "file": problem.user_file,
+        "statement": problem.statement,
+    }
+
+
+def _mock_attempt_value(started: MockAttempt) -> JsonValue:
+    attempt, meta = started.attempt, started.meta
+    return {
+        "attempt_id": attempt.id,
+        "slug": attempt.slug,
+        "title": meta.title,
+        "difficulty": meta.difficulty.value,
+        "kind": _mock_kind(started),
+        "language": attempt.language.value if attempt.language else None,
+    }
+
+
+def _mock_kind(started: MockAttempt) -> str:
+    """As `cstudy list --json` names it: `item` for an item."""
+    meta = started.meta
+    return entry_kind(meta.kind).value if isinstance(meta, ProblemMeta) else ITEM_KIND
 
 
 def _file_value(file: ScopedFile) -> dict[str, JsonValue]:

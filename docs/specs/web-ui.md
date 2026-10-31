@@ -67,6 +67,8 @@ Each practice command maps to one page area, one endpoint and the use case the c
 | `entrypoints/web/notifications.py` | `watchfiles.awatch` over the watched set, as server-sent events |
 | `entrypoints/web/api_*.py` | Route handlers, one module per group of the [endpoint tables](#endpoints) |
 | `entrypoints/web/documents.py` | Builders of the documents no command prints; the others come from the command modules' builders, such as `status_document` |
+| `entrypoints/web/solution_document.py` | The [solution document](#solutions): what `cstudy solution` pages, as Markdown |
+| `entrypoints/web/bodies.py` | The JSON bodies of writes, read by field name and type ([API conventions](#api-conventions)) |
 | `entrypoints/web/static/` | The vendored front end, `manifest.json` and `THIRD_PARTY_LICENSES.txt` ([Front-end assets](#front-end-assets)) |
 | `application/attempt_files.py` | Tree, read, save, create, move and delete within an attempt's [file scope](#file-scope) |
 | `application/problem_history.py` | The history of one problem, shared with `cstudy history` |
@@ -192,8 +194,8 @@ Errors share one document:
 
 | Method and path | Request | Response and use case |
 |-----------------|---------|-----------------------|
-| `GET /api/v1/mock` | | `{"running": false}`, or `{"running": true, "ends_at", "remaining_s", "attempts": [{"attempt_id", "slug", "kind", "language", "status"}], "locked": ["hint", "solution", "mock"]}` from `running_mock` over the attempts in progress |
-| `POST /api/v1/mock` | `minutes` (default 45), `count` (default 2), `tracks` (default `next.tracks`), `language` (default `default_lang`) | 201 with the started session: `{"minutes", "count", "language", "ends_at", "problems": [{"slug", "title", "difficulty", "group", "reason", "attempt_id", "kind", "file", "statement"}], "message"}`; `start_mock`. Nothing in scope: 200 with `problems` empty and `message` `no new medium or hard problems in scope`. A running mock: 422 with the lock message |
+| `GET /api/v1/mock` | | `{"running": false}`, or `{"running": true, "ends_at", "remaining_s", "attempts": [{"attempt_id", "slug", "title", "difficulty", "kind", "language"}], "locked": ["hint", "solution", "mock"]}`; `current_mock`, from `running_mock` over the attempts in progress. `attempts` are the [mock's attempts](#mock-view): those the lock names |
+| `POST /api/v1/mock` | `minutes` (1 to 600, default 45), `count` (1 to 20, default 2), `tracks` (a list, default `next.tracks`), `language` (default `default_lang`) | 201 with the started session: `{"minutes", "count", "language", "ends_at", "problems": [{"slug", "title", "difficulty", "group", "reason", "attempt_id", "kind", "file", "statement"}], "message": null}`, each problem as `cstudy mock` lists it (`reason` as in `cstudy next --json`, `file` the stub, project folder or notes); `start_mock`. Nothing in scope: 200 with `problems` empty, `ends_at` null and `message` `no new medium or hard problems in scope`. A running mock: 422 with the lock message |
 | `GET /api/v1/stats` | `by`, `since` | [`cstudy stats --json`](cli.md#cstudy-stats) |
 | `GET /api/v1/progress/export` | | The document `cstudy export` writes, as a download (`Content-Disposition: attachment; filename="progress-export.json"`); `export_progress`. Nothing is written in the workspace |
 | `POST /api/v1/progress/import` | `{"confirm": true, "export": <the document>}` | `{"imported": {"attempts": 6, …}}`; `import_progress`. Every refusal of `cstudy import` is 422 with its message. Without `confirm`: 409 with `Import this file into progress.db? cstudy imports only into a database that holds no progress yet.` |
@@ -399,6 +401,13 @@ Diagnostics replace the previous run's markers at the next `run_start` of the sa
 | Over | When the timer ends or every problem is done, the lock lifts and the view says so; each unfinished attempt stays in progress until Done, and finishing past the box caps its grade at `hard` |
 
 A mock started in the terminal shows the same way, since the state comes from the attempts in progress. Hint and Solution are disabled during a mock with the lock message as their description; the server refuses them anyway.
+
+| Session rule | Detail |
+|--------------|--------|
+| The mock's attempts | A mock is stored as nothing but its attempts, so the server lists those the lock names: the attempts in progress with mode `mock` whose time box still runs, in the order they started. A problem finished with Done leaves the list, as it leaves the lock message; an attempt left from an earlier mock whose timer ended is in neither |
+| Cards | The view keeps a card for every attempt it has shown in this tab. A card whose attempt left the list shows `finished` (its attempt answers 409 `attempt_ended`); the others link to the Attempt view. A reload shows the unfinished problems only |
+| Over | When `running` turns false, the view says the lock lifted and keeps its cards; each attempt still in progress stays open until Done |
+| Polling | Until the notification stream exists, the page reads `GET /api/v1/mock` on load, every 30 s, when the countdown reaches zero, and after it starts a mock or finishes an attempt |
 
 ### Progress view
 

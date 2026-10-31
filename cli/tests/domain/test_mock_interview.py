@@ -26,11 +26,18 @@ def picked(*candidates: Candidate, count: int = 2) -> list[str]:
 def mock_attempt(slug: str, minutes_ago: int = 0, **fields: object) -> Attempt:
     started = NOW - timedelta(minutes=minutes_ago)
     defaults: dict[str, object] = {
+        "id": 1,
         "status": AttemptStatus.IN_PROGRESS,
         "time_limit_s": FORTY_FIVE_MINUTES,
     }
     defaults.update(fields)
-    return Attempt(1, slug, Language.PYTHON, AttemptMode.MOCK, started_at=started, **defaults)  # type: ignore[arg-type]
+    return Attempt(
+        slug=slug,
+        language=Language.PYTHON,
+        mode=AttemptMode.MOCK,
+        started_at=started,
+        **defaults,  # type: ignore[arg-type]
+    )
 
 
 def test_mock_picks_count_problems():
@@ -83,6 +90,17 @@ def test_a_mock_ends_with_its_timer():
 
 def test_a_mock_ends_when_every_problem_is_done():
     assert running_mock((mock_attempt("a", 10, status=AttemptStatus.PASSED),), NOW) is None
+
+
+def test_a_running_mock_holds_its_unfinished_attempts_in_start_order():
+    attempts = (
+        mock_attempt("b", 10, id=2),
+        mock_attempt("a", 10, id=1),
+        mock_attempt("c", 10, id=3, status=AttemptStatus.PASSED),
+    )
+    mock = running_mock(attempts, NOW)
+    assert mock is not None
+    assert [attempt.id for attempt in mock.attempts] == [1, 2]
 
 
 def test_a_mock_runs_until_its_last_problem_is_done():

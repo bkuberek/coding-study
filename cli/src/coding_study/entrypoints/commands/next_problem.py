@@ -95,7 +95,7 @@ def next_document(recommendation: Recommendation | None) -> dict[str, JsonValue]
         "kind": recommendation.kind.value,
         "difficulty": candidate.difficulty.value,
         "group": candidate.group.name,
-        "reason": _reason(picked),
+        "reason": pick_reason(picked),
         "language": language.value if language else None,
         "start": _start_command(candidate.slug, language),
     }
@@ -119,10 +119,11 @@ def pick_summary(picked: NextPick) -> str:
     """`koko-eating-bananas  (medium · binary-search)  weakest pattern: binary-search (0.75)`."""
     candidate = picked.candidate
     topic = candidate.patterns[0] if candidate.patterns else candidate.track
-    return f"{candidate.slug}  ({candidate.difficulty} · {topic})  {_reason(picked)}"
+    return f"{candidate.slug}  ({candidate.difficulty} · {topic})  {pick_reason(picked)}"
 
 
-def _reason(picked: NextPick) -> str:
+def pick_reason(picked: NextPick) -> str:
+    """The text after the parentheses: `overdue 3d, interval 7d`."""
     match picked:
         case ReviewPick(overdue_days=0, interval_days=interval):
             return f"due today, interval {interval}d"
