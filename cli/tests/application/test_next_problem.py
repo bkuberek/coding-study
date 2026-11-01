@@ -6,6 +6,7 @@ import pytest
 
 from coding_study.application.next_problem import (
     NextRequest,
+    NothingToPick,
     Recommendation,
     next_problem,
     next_source,
@@ -103,8 +104,10 @@ def test_the_same_snapshot_gives_the_same_pick(environment):
     assert next_problem(environment, request) == next_problem(environment, request)
 
 
-def described(recommendation: Recommendation | None) -> tuple[str, EntryKind, Language | None]:
-    assert recommendation is not None
+def described(
+    recommendation: Recommendation | NothingToPick,
+) -> tuple[str, EntryKind, Language | None]:
+    assert isinstance(recommendation, Recommendation)
     return recommendation.title, recommendation.kind, recommendation.language
 
 
@@ -128,7 +131,7 @@ def test_an_item_recommendation_has_no_language(tmp_path, problems):
 
 
 def test_nothing_in_scope_recommends_nothing(environment):
-    assert recommend(environment, NextRequest(tracks=(Track.PRACTICAL,))) is None
+    assert recommend(environment, NextRequest(tracks=(Track.PRACTICAL,))) == NothingToPick()
 
 
 @pytest.mark.parametrize(

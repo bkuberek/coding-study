@@ -1,13 +1,15 @@
 """`cstudy list`: problems with their progress, filtered (docs/specs/cli.md#cstudy-list)."""
 
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 
 from coding_study.application.environment import Environment
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.items import EntryKind, entry_kind
+from coding_study.domain.jdk import SelectedJdk
+from coding_study.domain.jdk_fit import fit_of, listing_reason
 from coding_study.domain.problem import (
     ContentStatus,
     Difficulty,
@@ -57,6 +59,17 @@ class ListedProblem:
     summary: ProblemSummary
     status: ProblemStatus
     due_on: date | None
+    blocked: tuple[Language, ...] = ()
+    """The reference languages that the selected JDK cannot run for this problem: Java and Kotlin,
+    when the JDK is outside the problem's range."""
+
+
+@dataclass(frozen=True, slots=True)
+class JdkNote:
+    """The footer of `cstudy list`: the languages it marked, and why."""
+
+    languages: tuple[Language, ...]
+    reason: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,11 +87,22 @@ def list_problems(
 ) -> tuple[ListedProblem, ...]:
     progress = environment.progress.problem_progress()
     today = environment.clock.local_date(environment.clock.now())
+    selected = environment.jdk.selected()
     listed = (
-        _listed(summary, progress.get(summary.meta.slug, ProblemProgress()), today)
+        _listed(summary, progress.get(summary.meta.slug, ProblemProgress()), today, selected)
         for summary in environment.problems.list_summaries()
     )
     return tuple(item for item in listed if problem_filter.matches(item.summary, item.status))
+
+
+def jdk_note(environment: Environment, problems: Sequence[ListedProblem]) -> JdkNote | None:
+    """None when no language is marked."""
+    blocked = {language for problem in problems for language in problem.blocked}
+    if not blocked:
+        return None
+    jdk = environment.jdk
+    reason = listing_reason(jdk.selected(), jdk.unusable_java_home())
+    return JdkNote(tuple(language for language in Language if language in blocked), reason)
 
 
 def listing_context(environment: Environment) -> ListingContext:
@@ -89,6 +113,9 @@ def listing_context(environment: Environment) -> ListingContext:
     return ListingContext(today, {slug: tuple(found) for slug, found in in_progress.items()})
 
 
-def _listed(summary: ProblemSummary, progress: ProblemProgress, today: date) -> ListedProblem:
+def _listed(
+    summary: ProblemSummary, progress: ProblemProgress, today: date, selected: SelectedJdk | None
+) -> ListedProblem:
     due_on = progress.schedule.due_on if progress.schedule else None
-    return ListedProblem(summary, progress.status(today), due_on)
+    blocked = fit_of(selected, None, summary.meta.jdk).blocked(summary.reference_languages)
+    return ListedProblem(summary, progress.status(today), due_on, blocked)

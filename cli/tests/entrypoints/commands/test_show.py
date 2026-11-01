@@ -6,11 +6,12 @@ from typer.testing import CliRunner
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import show
 from coding_study.entrypoints.shared import ExitCode
-from tests.fakes import make_environment, repository_root
+from tests.fakes import declare_jdk, make_environment, repository_root
 from tests.helpers import FIXTURE_TRACKS
 
 runner = CliRunner()
 PHASE4 = Path(__file__).resolve().parents[2] / "fixtures" / "phase4" / "problems"
+JVM_PROJECTS = Path(__file__).resolve().parents[2] / "fixtures" / "jvm-projects" / "problems"
 
 
 @pytest.fixture
@@ -60,4 +61,27 @@ def test_a_path_outside_the_layout_exits_3(environment):
     assert (invoke(str(path)).exit_code, invoke(str(path)).stderr) == (
         ExitCode.USAGE_ERROR,
         f"error: not a solution file in this workspace: {path}\n",
+    )
+
+
+def test_a_declared_jdk_range_is_named_in_the_metadata_line(environment):
+    declare_jdk(environment.root, "0001-level-store", "{min: 24}")
+    assert invoke("level-store").output.splitlines()[2] == (
+        "medium · practical · Java and Kotlin: JDK 24 or newer · level 1 of 3"
+    )
+
+
+def test_the_default_range_is_not_named(environment):
+    assert "JDK" not in invoke("level-store").output.splitlines()[2]
+
+
+def test_a_java_project_names_its_one_language(tmp_path, monkeypatch):
+    root = repository_root(tmp_path, JVM_PROJECTS)
+    declare_jdk(root, "0001-bank-project-java", "{max: 25}")
+    environment = make_environment(root)
+    monkeypatch.setattr(show, "load_catalog_environment", lambda *_: environment)
+    assert (
+        invoke("bank-project-java")
+        .output.splitlines()[2]
+        .endswith(" · Java: JDK 25 or older · level 1 of 2")
     )

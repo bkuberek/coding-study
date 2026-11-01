@@ -5,7 +5,9 @@ import json
 import pytest
 
 from coding_study.domain.config import Config
+from coding_study.domain.jdk import JdkSource
 from coding_study.domain.problem import Language
+from tests.fakes import FakeJdk, jdk_of
 from tests.web_server import (
     PORT,
     TEST_VERSION,
@@ -47,7 +49,40 @@ def test_the_session_describes_the_server_and_the_workspace(tmp_path, app):
             "behavioral",
         ],
         "kinds": ["function", "design", "progressive", "concurrent", "project", "item"],
+        "selected_jdk": {
+            "version": "21.0.13",
+            "feature": 21,
+            "source": "JAVA_HOME",
+            "supported": True,
+        },
     }
+
+
+def selected_jdk(tmp_path, jdk):
+    environment = web_workspace(tmp_path, jdk=jdk)
+    with session_client(web_app(tmp_path, environment)) as client:
+        return client.get("/api/v1/session").json()["selected_jdk"]
+
+
+def test_the_session_names_the_jdk_the_server_selects(tmp_path):
+    assert selected_jdk(tmp_path, jdk_of(27, JdkSource.PATH)) == {
+        "version": "27.0.1",
+        "feature": 27,
+        "source": "PATH",
+        "supported": False,
+    }
+
+
+def test_the_session_has_no_jdk_when_none_is_found(tmp_path):
+    assert selected_jdk(tmp_path, FakeJdk(None)) is None
+
+
+def test_the_selected_jdk_matches_the_listing_document(tmp_path):
+    environment = web_workspace(tmp_path, jdk=jdk_of(26))
+    with session_client(web_app(tmp_path, environment)) as client:
+        document = client.get("/api/v1/session").json()
+        listed = client.get("/api/v1/problems").json()
+    assert document["selected_jdk"] == listed["selected_jdk"]
 
 
 def test_the_session_reads_the_default_language_from_the_config(tmp_path):

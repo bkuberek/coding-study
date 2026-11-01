@@ -14,6 +14,30 @@
     "state": { "description": "A project file's state; null outside a project", "enum": ["unchanged", "modified", "added", "deleted", null] },
     "child_id": { "description": "A run's or a job's id", "type": "string", "pattern": "^[0-9a-f]{16}$" },
     "timestamp": { "description": "ISO 8601 with its offset", "type": "string", "format": "date-time" },
+    "jdk_range": {
+      "description": "A problem's effective JDK range: the feature releases its Java and Kotlin run on, bounds included",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": { "min": { "type": "integer", "minimum": 1 }, "max": { "type": "integer", "minimum": 1 } }
+    },
+    "selected_jdk": {
+      "description": "The JDK cstudy selects (cstudy.md, the selected JDK), or null when none is found",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "feature", "source", "supported"],
+          "properties": {
+            "version": { "description": "As the JDK's release file spells it, such as 26.0.1", "type": "string", "minLength": 1 },
+            "feature": { "type": "integer", "minimum": 1 },
+            "source": { "enum": ["JAVA_HOME", "PATH"] },
+            "supported": { "description": "The feature release lies in the supported range", "type": "boolean" }
+          }
+        }
+      ]
+    },
     "markdown": {
       "description": "Markdown and the HTML the server renders of it",
       "type": "object",
@@ -26,7 +50,7 @@
       "description": "GET /api/v1/session",
       "type": "object",
       "additionalProperties": false,
-      "required": ["api", "cstudy", "events_version", "workspace", "port", "default_lang", "languages", "tracks", "kinds"],
+      "required": ["api", "cstudy", "events_version", "workspace", "port", "default_lang", "languages", "tracks", "kinds", "selected_jdk"],
       "properties": {
         "api": { "const": 1 },
         "cstudy": { "type": "string" },
@@ -36,7 +60,8 @@
         "default_lang": { "$ref": "#/$defs/language" },
         "languages": { "type": "array", "items": { "$ref": "#/$defs/language" } },
         "tracks": { "type": "array", "items": { "type": "string" } },
-        "kinds": { "type": "array", "items": { "type": "string" } }
+        "kinds": { "type": "array", "items": { "type": "string" } },
+        "selected_jdk": { "$ref": "#/$defs/selected_jdk" }
       }
     },
     "preferences": {
@@ -83,9 +108,13 @@
     "problem": {
       "description": "GET /api/v1/problems/{slug}: the problem's entry of cstudy list --json, which cli.md describes, with these fields added or replaced",
       "type": "object",
-      "required": ["slug", "languages", "approaches", "broken", "levels", "hints_total", "bench", "oracle"],
+      "required": ["slug", "jdk", "languages", "approaches", "broken", "levels", "hints_total", "bench", "oracle"],
       "properties": {
         "slug": { "type": "string" },
+        "jdk": {
+          "description": "The problem's effective JDK range, or null for a problem that lists neither Java nor Kotlin",
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/jdk_range" }]
+        },
         "languages": { "type": "array", "items": { "$ref": "#/$defs/language" } },
         "approaches": {
           "type": "array",

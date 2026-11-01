@@ -7,8 +7,10 @@ from hypothesis import strategies as st
 
 from coding_study.domain.attempts import AttemptStatus, Grade
 from coding_study.domain.items import ItemMeta
+from coding_study.domain.jdk import DeclaredJdk, JdkSource, SelectedJdk
 from coding_study.domain.next_selection import (
     Candidate,
+    JdkScope,
     NewPick,
     NextQuery,
     NextScope,
@@ -410,3 +412,86 @@ def test_repeated_picks_agree(source):
     candidates = (candidate("a", "0001"), candidate("b", "0002", progress=scheduled(0)))
     query = NextQuery(DSA_ONLY, TODAY, source)
     assert pick_next(candidates, (), query) == pick_next(candidates, (), query)
+
+
+# The selected JDK (docs/specs/progress-and-scheduling.md#cstudy-next-selection)
+
+
+def jdk_selected(feature: int, language: Language = Language.JAVA) -> JdkScope:
+    return JdkScope(SelectedJdk(f"{feature}.0.1", feature, JdkSource.JAVA_HOME), language)
+
+
+def in_scope(scope: NextScope, *candidates: Candidate) -> list[str]:
+    return [found.slug for found in candidates if scope.includes(found)]
+
+
+def with_jdk(jdk: JdkScope | None) -> NextScope:
+    return NextScope(frozenset({Track.DSA}), jdk=jdk)
+
+
+def test_without_a_jdk_scope_every_problem_is_in_scope():
+    assert in_scope(with_jdk(None), candidate("two-sum")) == ["two-sum"]
+
+
+@pytest.mark.parametrize("feature", [21, 24, 26])
+def test_a_problem_is_in_scope_on_a_jdk_of_the_range(feature):
+    assert in_scope(with_jdk(jdk_selected(feature)), candidate("two-sum")) == ["two-sum"]
+
+
+@pytest.mark.parametrize("feature", [17, 27])
+def test_a_java_problem_is_out_of_scope_on_a_jdk_outside_the_range(feature):
+    assert in_scope(with_jdk(jdk_selected(feature)), candidate("two-sum")) == []
+
+
+def test_every_java_problem_is_out_of_scope_without_a_jdk():
+    assert in_scope(with_jdk(JdkScope(None, Language.KOTLIN)), candidate("two-sum")) == []
+
+
+def test_the_other_languages_do_not_need_the_jdk():
+    scope = with_jdk(JdkScope(None, Language.PYTHON))
+    assert in_scope(scope, candidate("two-sum")) == ["two-sum"]
+
+
+def test_a_declared_range_decides_for_its_problem():
+    scope = with_jdk(jdk_selected(23))
+    needs_24 = candidate("gatherers", jdk=DeclaredJdk(minimum=24))
+    assert in_scope(scope, needs_24, candidate("two-sum")) == ["two-sum"]
+
+
+def test_a_problem_that_opts_in_to_a_newer_jdk_is_in_scope_on_it():
+    scope = with_jdk(jdk_selected(27))
+    opted_in = candidate("opted-in", jdk=DeclaredJdk(maximum=27))
+    assert in_scope(scope, opted_in, candidate("two-sum")) == ["opted-in"]
+
+
+def test_a_project_problem_starts_in_its_own_language():
+    project = candidate("bank", languages=(Language.JAVA,), project=True)
+    assert in_scope(with_jdk(jdk_selected(27, Language.PYTHON)), project) == []
+
+
+def test_a_project_problem_in_python_needs_no_jdk_whatever_language_starts_the_others():
+    project = candidate("bank", languages=(Language.PYTHON,), project=True)
+    assert in_scope(with_jdk(jdk_selected(27, Language.JAVA)), project) == ["bank"]
+
+
+def test_an_item_is_in_scope_whatever_the_jdk():
+    scope = NextScope(frozenset({Track.SYSTEM_DESIGN}), jdk=JdkScope(None, Language.JAVA))
+    assert in_scope(scope, item("url-shortener")) == ["url-shortener"]
+
+
+def test_the_scope_names_the_jvm_languages_the_jdk_took_out():
+    scope = with_jdk(jdk_selected(27))
+    project = candidate("bank", languages=(Language.KOTLIN,), project=True)
+    assert scope.blocked_languages([candidate("two-sum"), project]) == (
+        Language.JAVA,
+        Language.KOTLIN,
+    )
+
+
+def test_the_scope_names_nothing_the_jdk_took_out_when_it_took_none():
+    assert with_jdk(jdk_selected(26)).blocked_languages([candidate("two-sum")]) == ()
+
+
+def test_a_problem_out_of_scope_for_another_reason_is_not_blamed_on_the_jdk():
+    scope = NextScope(frozenset({Track.PRACTICAL}), jdk=jdk_selected(27))
+    assert scope.blocked_languages([candidate("two-sum")]) == ()

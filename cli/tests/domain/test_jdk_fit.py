@@ -6,7 +6,15 @@ from dataclasses import replace
 import pytest
 
 from coding_study.domain.jdk import DeclaredJdk, JdkRange, JdkSource, SelectedJdk
-from coding_study.domain.jdk_fit import JdkFit, content_release, fit_of, range_text
+from coding_study.domain.jdk_fit import (
+    JdkFit,
+    cannot_run_text,
+    content_release,
+    fit_of,
+    jdk_range_of,
+    listing_reason,
+    range_text,
+)
 from coding_study.domain.problem import Language, ProblemMeta
 from tests.stub_contract import STUB_CASES
 
@@ -140,3 +148,110 @@ def test_content_compiles_at_the_declared_minimum():
 @pytest.mark.parametrize("declared", [None, DeclaredJdk(maximum=23)], ids=["none", "max only"])
 def test_content_compiles_at_the_supported_minimum_without_a_declared_one(declared):
     assert content_release(meta_with(declared)) == 21
+
+
+# `cstudy list`
+
+
+def test_the_jdk_blocks_the_jvm_languages_of_a_problem_it_cannot_run():
+    languages = (Language.PYTHON, Language.JAVA, Language.KOTLIN)
+    assert fit(selected(27)).blocked(languages) == (Language.JAVA, Language.KOTLIN)
+
+
+def test_the_jdk_blocks_nothing_of_a_problem_it_runs():
+    assert fit(selected(26)).blocked(tuple(Language)) == ()
+
+
+def test_the_jdk_blocks_nothing_without_a_jvm_language():
+    assert fit(None).blocked((Language.PYTHON, Language.GO)) == ()
+
+
+@pytest.mark.parametrize(
+    ("jdk", "java_home", "reason"),
+    [
+        (
+            selected(27),
+            None,
+            "not run on JDK 27 (JAVA_HOME): cstudy supports JDK 21 to 26",
+        ),
+        (
+            selected(17, JdkSource.PATH),
+            None,
+            "not run on JDK 17 (PATH): cstudy supports JDK 21 to 26",
+        ),
+        (
+            selected(23),
+            None,
+            "not run on JDK 23 (JAVA_HOME): outside the JDK range the problem declares",
+        ),
+        (None, None, "no JDK was found"),
+        (None, "/opt/jdk", "JAVA_HOME (/opt/jdk) holds no JDK"),
+    ],
+    ids=["above the range", "below the range", "inside the range", "no JDK", "no JDK in JAVA_HOME"],
+)
+def test_the_footer_of_the_list_says_why_the_jdk_runs_nothing(jdk, java_home, reason):
+    assert listing_reason(jdk, java_home) == reason
+
+
+def test_a_problem_that_lists_java_has_a_jdk_range():
+    assert jdk_range_of(meta_with(None)) == JdkRange(21, 26)
+
+
+def test_a_declared_bound_is_in_the_range_of_the_listing():
+    assert jdk_range_of(meta_with(DeclaredJdk(minimum=24))) == JdkRange(24, 26)
+
+
+def test_a_problem_that_lists_neither_java_nor_kotlin_has_no_jdk_range():
+    meta = replace(TWO_SUM, languages=(Language.PYTHON, Language.GO))
+    assert jdk_range_of(meta) is None
+
+
+# `cstudy next` and `cstudy mock`
+
+
+@pytest.mark.parametrize(
+    ("jdk", "java_home", "languages", "text"),
+    [
+        (
+            selected(27),
+            None,
+            (Language.JAVA,),
+            "JDK 27 (JAVA_HOME) cannot run java problems; cstudy supports JDK 21 to 26",
+        ),
+        (
+            selected(17, JdkSource.PATH),
+            None,
+            (Language.KOTLIN,),
+            "JDK 17 (PATH) cannot run kotlin problems; cstudy supports JDK 21 to 26",
+        ),
+        (
+            None,
+            None,
+            (Language.JAVA,),
+            "no JDK was found, so java problems cannot run; cstudy supports JDK 21 to 26",
+        ),
+        (
+            None,
+            "/opt/jdk",
+            (Language.JAVA,),
+            "JAVA_HOME (/opt/jdk) holds no JDK, so java problems cannot run; "
+            "cstudy supports JDK 21 to 26",
+        ),
+        (
+            selected(23),
+            None,
+            (Language.JAVA,),
+            "JDK 23 (JAVA_HOME) is outside the JDK range of the java problems in scope",
+        ),
+    ],
+    ids=["above the range", "below the range", "no JDK", "no JDK in JAVA_HOME", "inside the range"],
+)
+def test_the_message_of_next_says_why_the_jdk_runs_nothing(jdk, java_home, languages, text):
+    assert cannot_run_text(jdk, java_home, languages) == text
+
+
+def test_the_message_names_every_language_the_jdk_took_out():
+    languages = (Language.JAVA, Language.KOTLIN)
+    assert cannot_run_text(selected(27), None, languages).startswith(
+        "JDK 27 (JAVA_HOME) cannot run java and kotlin problems; "
+    )

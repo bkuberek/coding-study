@@ -4,6 +4,7 @@
 tests: two easy problems, lru-cache and group-anagrams (medium), first-missing-positive (hard)
 and the fixture items."""
 
+from dataclasses import replace
 from datetime import timedelta
 
 import pytest
@@ -13,7 +14,14 @@ from coding_study.application.environment import Environment
 from coding_study.application.mock_interview import MockRequest, start_mock
 from coding_study.application.ports import StubGenerator
 from coding_study.domain.problem import Language
-from tests.fakes import NOW, FakeStubGenerator, FakeToolchains, make_environment, repository_root
+from tests.fakes import (
+    NOW,
+    FakeStubGenerator,
+    FakeToolchains,
+    jdk_of,
+    make_environment,
+    repository_root,
+)
 from tests.helpers import FIRST_CATALOG, FIXTURE_TRACKS, copy_catalog_problems
 from tests.web_server import WRITE_HEADERS, session_client, web_app
 
@@ -113,6 +121,16 @@ def test_nothing_in_scope_answers_200_with_the_clis_message(tmp_path, environmen
         200,
         [],
         "no new medium or hard problems in scope",
+    )
+
+
+def test_a_jdk_that_took_out_every_problem_is_named_in_the_message(tmp_path, environment):
+    selecting = replace(environment, jdk=jdk_of(27))
+    document = post(tmp_path, selecting, {"language": "java"}).json()
+    assert (document["problems"], document["message"]) == (
+        [],
+        "no new medium or hard problems in scope: "
+        "JDK 27 (JAVA_HOME) cannot run java problems; cstudy supports JDK 21 to 26",
     )
 
 

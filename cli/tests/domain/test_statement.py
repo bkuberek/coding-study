@@ -1,6 +1,7 @@
 from dataclasses import replace
 
 from coding_study.domain.cases import Case, Expected, FunctionInput, OperationSequence
+from coding_study.domain.jdk import DeclaredJdk
 from coding_study.domain.problem import (
     Approach,
     ApproachRole,
@@ -9,6 +10,7 @@ from coding_study.domain.problem import (
     ComplexityClass,
     ContentStatus,
     Difficulty,
+    Language,
     Level,
     Problem,
     ProblemKind,
@@ -398,3 +400,52 @@ def test_without_problem_md_examples_are_grouped_by_unlocked_level():
 
 def test_without_problem_md_locked_examples_stay_hidden():
     assert "ex3-output" not in progressive(2, None)
+
+
+# The JDK range a problem declares (docs/specs/cli.md#cstudy-show)
+
+
+def metadata_with(declared: DeclaredJdk | None, **fields) -> str:
+    return rendered(meta=replace(META, jdk=declared, **fields)).splitlines()[2]
+
+
+def test_a_problem_without_a_jdk_range_names_none():
+    assert metadata_with(None) == "easy · dsa · arrays-hashing"
+
+
+def test_a_minimum_reads_as_or_newer():
+    assert metadata_with(DeclaredJdk(minimum=24)) == (
+        "easy · dsa · arrays-hashing · Java and Kotlin: JDK 24 or newer"
+    )
+
+
+def test_a_maximum_reads_as_or_older():
+    assert metadata_with(DeclaredJdk(maximum=25)).endswith(" · Java and Kotlin: JDK 25 or older")
+
+
+def test_both_bounds_read_as_a_range():
+    declared = DeclaredJdk(minimum=22, maximum=25)
+    assert metadata_with(declared).endswith(" · Java and Kotlin: JDK 22 to 25")
+
+
+def test_equal_bounds_read_as_one_release():
+    declared = DeclaredJdk(minimum=24, maximum=24)
+    assert metadata_with(declared).endswith(" · Java and Kotlin: JDK 24")
+
+
+def test_the_range_names_the_one_jvm_language_a_problem_lists():
+    metadata = metadata_with(DeclaredJdk(minimum=24), languages=(Language.PYTHON, Language.KOTLIN))
+    assert metadata.endswith(" · Kotlin: JDK 24 or newer")
+
+
+def test_a_track_without_patterns_keeps_the_range_after_the_track():
+    metadata = metadata_with(DeclaredJdk(minimum=24), track=Track.CONCURRENCY, patterns=())
+    assert metadata == "easy · concurrency · Java and Kotlin: JDK 24 or newer"
+
+
+def test_the_range_comes_ahead_of_the_level():
+    problem = replace(PROGRESSIVE, jdk=DeclaredJdk(minimum=24))
+    statement = render_statement(Problem(problem, LEVEL_CASES), PROGRESSIVE_MD, 2)
+    assert statement.splitlines()[2] == (
+        "easy · practical · Java and Kotlin: JDK 24 or newer · level 2 of 3"
+    )

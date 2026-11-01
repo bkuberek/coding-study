@@ -15,7 +15,8 @@ from coding_study.domain.cases import JsonValue
 from coding_study.domain.items import entry_kind
 from coding_study.domain.problem import Language, ProblemKind, ProblemMeta, Track
 from coding_study.entrypoints.commands._events import EVENTS_VERSION
-from coding_study.entrypoints.commands.mock import NOTHING_TO_PICK
+from coding_study.entrypoints.commands.list_problems import selected_jdk_value
+from coding_study.entrypoints.commands.mock import nothing_message
 from coding_study.entrypoints.commands.next_problem import pick_reason
 from coding_study.entrypoints.web.markdown import render_markdown
 
@@ -40,6 +41,7 @@ def session_document(environment: Environment, port: int, version: str) -> dict[
         "languages": [language.value for language in Language],
         "tracks": [track.value for track in Track],
         "kinds": [*(kind.value for kind in ProblemKind), ITEM_KIND],
+        "selected_jdk": selected_jdk_value(environment.jdk.selected()),
     }
 
 
@@ -137,7 +139,7 @@ def started_mock_document(session: MockSession) -> dict[str, JsonValue]:
         "language": session.language.value,
         "ends_at": ends_at.isoformat() if ends_at else None,
         "problems": problems,
-        "message": None if problems else NOTHING_TO_PICK,
+        "message": None if problems else nothing_message(session),
     }
 
 

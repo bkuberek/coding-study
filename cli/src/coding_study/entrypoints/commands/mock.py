@@ -52,7 +52,7 @@ def mock(
     session = start_mock(environment, MockRequest(minutes, count, tuple(tracks or ()), language))
     output = console(context)
     if not session.problems:
-        output.print(NOTHING_TO_PICK)
+        output.print(nothing_message(session))
         return
     for line in _report(session):
         output.print(line)
@@ -61,6 +61,13 @@ def mock(
         refused = environment.editor.open([environment.workspace.absolute(path) for path in files])
         if refused is not None:
             output.print(_line("editor", refused))
+
+
+def nothing_message(session: MockSession) -> str:
+    """`NOTHING_TO_PICK`, with the selected JDK's reason when that left nothing."""
+    if session.jdk_reason is None:
+        return NOTHING_TO_PICK
+    return f"{NOTHING_TO_PICK}: {session.jdk_reason}"
 
 
 def _report(session: MockSession) -> Iterator[Text]:

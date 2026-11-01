@@ -16,7 +16,13 @@ from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.entrypoints.commands.history import history_document
 from coding_study.entrypoints.commands.list_problems import list_document
 from coding_study.entrypoints.commands.next_problem import next_document
-from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
+from tests.fakes import (
+    FakeStubGenerator,
+    FakeToolchains,
+    jdk_of,
+    make_environment,
+    repository_root,
+)
 from tests.helpers import FIXTURE_TRACKS, PROJECT_PROBLEMS
 from tests.web_server import session_client, web_app
 
@@ -246,3 +252,19 @@ def test_new_and_review_together_get_the_clis_422(client):
 
 def test_a_boolean_that_is_not_true_or_false_gets_422(client):
     assert error(client.get("/api/v1/next?new=yes")) == (422, "usage")
+
+
+def test_the_next_pick_says_which_jdk_ran_out_of_problems(tmp_path):
+    environment = make_environment(repository_root(tmp_path, PRACTICE), jdk=jdk_of(27))
+    with session_client(web_app(tmp_path, environment)) as client:
+        document = client.get("/api/v1/next?lang=java").json()
+    assert document == {
+        "pick": None,
+        "message": "nothing to pick: JDK 27 (JAVA_HOME) cannot run java problems; "
+        "cstudy supports JDK 21 to 26",
+    }
+
+
+def test_the_problem_document_carries_the_jdk_range_of_the_listing(client, environment):
+    document = client.get("/api/v1/problems/two-sum").json()
+    assert document["jdk"] == {"min": 21, "max": 26}

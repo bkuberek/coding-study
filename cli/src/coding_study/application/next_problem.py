@@ -5,15 +5,18 @@ content and progress.db. Candidates are the problems in `problems/` and the non-
 in `tracks/` of the tracks in scope.
 """
 
-from dataclasses import dataclass
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass, replace
 
 from coding_study.application.environment import Environment
 from coding_study.application.practice_catalog import practice_candidates
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.errors import UsageError
 from coding_study.domain.items import EntryKind, entry_kind
+from coding_study.domain.jdk_fit import cannot_run_text
 from coding_study.domain.next_selection import (
     Candidate,
+    JdkScope,
     NextPick,
     NextQuery,
     NextScope,
@@ -38,6 +41,15 @@ class NextRequest:
 
 
 @dataclass(frozen=True, slots=True)
+class NothingToPick:
+    """`recommend` found nothing in scope."""
+
+    jdk_reason: str | None = None
+    """Why, when the selected JDK took out the problems that would have been picked; None when
+    the scope itself holds nothing to pick."""
+
+
+@dataclass(frozen=True, slots=True)
 class Recommendation:
     """The pick with what `cstudy next --json` names beside it."""
 
@@ -57,8 +69,24 @@ def next_source(new: bool, review: bool) -> NextSource:
     return NextSource.REVIEWS_ONLY if review else NextSource.ANY
 
 
+@dataclass(frozen=True, slots=True)
+class _Selection:
+    """What `pick_next` takes: the candidates, the graded attempts and the query."""
+
+    candidates: tuple[Candidate, ...]
+    attempts: tuple[GradedAttempt, ...]
+    query: NextQuery
+
+    def pick(self) -> NextPick | None:
+        return pick_next(self.candidates, self.attempts, self.query)
+
+
 def next_problem(environment: Environment, request: NextRequest) -> NextPick | None:
     """Raises UsageError for a pattern outside the taxonomy."""
+    return _selection(environment, request).pick()
+
+
+def _selection(environment: Environment, request: NextRequest) -> _Selection:
     if request.pattern is not None and request.pattern not in PATTERNS:
         raise UsageError(f'unknown pattern "{request.pattern}"; see docs/specs/content.md')
     clock = environment.clock
@@ -67,17 +95,39 @@ def next_problem(environment: Environment, request: NextRequest) -> NextPick | N
         pattern=request.pattern,
         difficulty=request.difficulty,
         language=request.language,
+        jdk=jdk_scope(environment, request.language),
     )
     query = NextQuery(scope, clock.local_date(clock.now()), request.source)
     candidates = practice_candidates(environment, scope.tracks)
-    return pick_next(candidates, graded_attempts(environment), query)
+    return _Selection(candidates, graded_attempts(environment), query)
 
 
-def recommend(environment: Environment, request: NextRequest) -> Recommendation | None:
-    """`next_problem`, with the pick's title, kind and start language."""
-    picked = next_problem(environment, request)
-    if picked is None:
+def jdk_scope(environment: Environment, requested: Language | None) -> JdkScope:
+    """The selected JDK and the language that `cstudy start` would start a problem in."""
+    return JdkScope(environment.jdk.selected(), resolve_language(requested, environment.config))
+
+
+def jdk_reason(
+    environment: Environment,
+    scope: NextScope,
+    candidates: Sequence[Candidate],
+    picks_without_jdk: Callable[[NextScope], bool],
+) -> str | None:
+    """Why the selected JDK left nothing to pick: None when the scope would hold nothing without
+    it (`picks_without_jdk` says whether it would pick anything), or when it took out nothing."""
+    languages = scope.blocked_languages(candidates)
+    jdk = scope.jdk
+    if jdk is None or not languages or not picks_without_jdk(replace(scope, jdk=None)):
         return None
+    return cannot_run_text(jdk.selected, environment.jdk.unusable_java_home(), languages)
+
+
+def recommend(environment: Environment, request: NextRequest) -> Recommendation | NothingToPick:
+    """`next_problem`, with the pick's title, kind and start language, or why there is none."""
+    selection = _selection(environment, request)
+    picked = selection.pick()
+    if picked is None:
+        return NothingToPick(_nothing_because_of_the_jdk(environment, selection))
     candidate = picked.candidate
     if not candidate.autograded:
         item = environment.items.load(candidate.slug)
@@ -85,6 +135,18 @@ def recommend(environment: Environment, request: NextRequest) -> Recommendation 
     meta = environment.problems.load(candidate.slug).meta
     language = _problem_language(environment, meta, request.language)
     return Recommendation(picked, meta.title, entry_kind(meta.kind), language)
+
+
+def _nothing_because_of_the_jdk(environment: Environment, selection: _Selection) -> str | None:
+    query = selection.query
+
+    def picks(scope: NextScope) -> bool:
+        return (
+            pick_next(selection.candidates, selection.attempts, replace(query, scope=scope))
+            is not None
+        )
+
+    return jdk_reason(environment, query.scope, selection.candidates, picks)
 
 
 def graded_attempts(environment: Environment) -> tuple[GradedAttempt, ...]:

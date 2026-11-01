@@ -5,19 +5,23 @@ the flags, never on the order the rows arrive in. Every ordering below ends in a
 """
 
 from collections import defaultdict
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass, replace
 from datetime import date
 from enum import StrEnum
 from fractions import Fraction
 
 from coding_study.domain.items import ItemMeta
+from coding_study.domain.jdk import DeclaredJdk, SelectedJdk
+from coding_study.domain.jdk_fit import fit_of
+from coding_study.domain.layout import JVM_LANGUAGES
 from coding_study.domain.problem import (
     ALL_LANGUAGES,
     DEFAULT_CURRICULUM_ORDER,
     ContentStatus,
     Difficulty,
     Language,
+    ProblemKind,
     ProblemMeta,
     Track,
 )
@@ -45,6 +49,10 @@ class Candidate:
     languages: tuple[Language, ...] = ALL_LANGUAGES
     """The problem's `languages`; items have none and need none."""
     progress: ProblemProgress = _UNTOUCHED
+    jdk: DeclaredJdk | None = None
+    """The JDK range the problem declares for its Java and Kotlin."""
+    project: bool = False
+    """A project problem, which starts in its own language, not in `--lang`."""
 
     @property
     def autograded(self) -> bool:
@@ -53,6 +61,12 @@ class Candidate:
     @property
     def group(self) -> Group:
         return group_of(self.track, self.patterns)
+
+    def start_language(self, chosen: Language) -> Language | None:
+        """The language `cstudy next --start` starts it in; None for an item."""
+        if not self.autograded:
+            return None
+        return self.languages[0] if self.project and self.languages else chosen
 
     @property
     def sort_id(self) -> str:
@@ -75,6 +89,8 @@ def candidate_of(meta: ProblemMeta, progress: ProblemProgress) -> Candidate:
         content=meta.status,
         languages=meta.languages,
         progress=progress,
+        jdk=meta.jdk,
+        project=meta.kind is ProblemKind.PROJECT,
     )
 
 
@@ -92,6 +108,27 @@ def item_candidate_of(meta: ItemMeta, progress: ProblemProgress) -> Candidate:
 
 
 @dataclass(frozen=True, slots=True)
+class JdkScope:
+    """The selected JDK, and the language `cstudy start` starts a problem in (`--lang`, else
+    `default_lang`): a problem whose Java or Kotlin that JDK cannot run is out of scope, so the
+    pick is never one that `cstudy start` would refuse."""
+
+    selected: SelectedJdk | None
+    language: Language
+
+    def admits(self, candidate: Candidate) -> bool:
+        language = candidate.start_language(self.language)
+        if language not in JVM_LANGUAGES:
+            return True
+        return fit_of(self.selected, None, candidate.jdk).runs
+
+    def blocked_language(self, candidate: Candidate) -> Language | None:
+        """The Java or Kotlin that `candidate` would start in, when the JDK cannot run it."""
+        language = candidate.start_language(self.language)
+        return language if language is not None and not self.admits(candidate) else None
+
+
+@dataclass(frozen=True, slots=True)
 class NextScope:
     tracks: frozenset[Track]
     pattern: str | None = None
@@ -99,6 +136,8 @@ class NextScope:
     difficulty: Difficulty | None = None
     language: Language | None = None
     """Problems whose `languages` include it; items stay in scope."""
+    jdk: JdkScope | None = None
+    """None: the selected JDK does not narrow the scope."""
 
     def includes(self, candidate: Candidate) -> bool:
         checks = (
@@ -107,8 +146,23 @@ class NextScope:
             self.pattern is None or self.pattern in candidate.patterns,
             self.difficulty in (None, candidate.difficulty),
             self._offers_language(candidate),
+            self.jdk is None or self.jdk.admits(candidate),
         )
         return all(checks)
+
+    def blocked_languages(self, candidates: Iterable[Candidate]) -> tuple[Language, ...]:
+        """The Java and Kotlin that `candidates` would start in, had the scope not left them out
+        for the selected JDK alone."""
+        if self.jdk is None:
+            return ()
+        open_scope = replace(self, jdk=None)
+        blocked = {
+            language
+            for candidate in candidates
+            if open_scope.includes(candidate)
+            and (language := self.jdk.blocked_language(candidate)) is not None
+        }
+        return tuple(language for language in Language if language in blocked)
 
     def _offers_language(self, candidate: Candidate) -> bool:
         if self.language is None or not candidate.autograded:

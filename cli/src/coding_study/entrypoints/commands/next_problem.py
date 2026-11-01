@@ -10,6 +10,7 @@ from rich.text import Text
 from coding_study.adapters.environment_factory import load_environment
 from coding_study.application.next_problem import (
     NextRequest,
+    NothingToPick,
     Recommendation,
     next_source,
     recommend,
@@ -25,6 +26,8 @@ from coding_study.entrypoints.shared import add_command, command_environ, consol
 NAME = "next"
 LABEL_WIDTH = 8
 NOTHING_TO_PICK = "nothing due and no new problems in scope"
+NOTHING_FOR_THE_JDK = "nothing to pick: "
+"""Before the reason the selected JDK gives, when it left nothing to pick."""
 REVIEW_PICK = "review"
 NEW_PICK = "new"
 
@@ -68,8 +71,8 @@ def next_command(
         typer.echo(json.dumps(next_document(recommendation), indent=2))
         return
     output = console(context)
-    if recommendation is None:
-        output.print(NOTHING_TO_PICK)
+    if isinstance(recommendation, NothingToPick):
+        output.print(nothing_message(recommendation))
         return
     output.print(_pick_line(recommendation.pick))
     slug = recommendation.pick.candidate.slug
@@ -81,10 +84,17 @@ def next_command(
         open_in_editor(output, environment, files)
 
 
-def next_document(recommendation: Recommendation | None) -> dict[str, JsonValue]:
+def nothing_message(nothing: NothingToPick) -> str:
+    """Why there is no pick: the selected JDK's reason, else the scope's."""
+    if nothing.jdk_reason is None:
+        return NOTHING_TO_PICK
+    return f"{NOTHING_FOR_THE_JDK}{nothing.jdk_reason}"
+
+
+def next_document(recommendation: Recommendation | NothingToPick) -> dict[str, JsonValue]:
     """`cstudy next --json`."""
-    if recommendation is None:
-        return {"pick": None, "message": NOTHING_TO_PICK}
+    if isinstance(recommendation, NothingToPick):
+        return {"pick": None, "message": nothing_message(recommendation)}
     picked = recommendation.pick
     candidate = picked.candidate
     language = recommendation.language

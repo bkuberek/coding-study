@@ -95,6 +95,7 @@ def test_json_describes_a_problem(environment):
         "status": "new",
         "due_on": None,
         "in_progress": [],
+        "jdk": {"min": 21, "max": 26},
     }
 
 
@@ -113,6 +114,7 @@ def test_json_describes_an_item(environment):
         "status": "new",
         "due_on": None,
         "in_progress": [],
+        "jdk": None,
     }
 
 

@@ -13,7 +13,7 @@ from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import next_problem
 from coding_study.entrypoints.shared import ExitCode
 from tests.e2e import e2e_environment
-from tests.fakes import NOW, RecordingEditor, repository_root
+from tests.fakes import NOW, RecordingEditor, jdk_of, repository_root
 from tests.helpers import FIRST_CATALOG, copy_catalog_problems
 
 runner = CliRunner()
@@ -179,4 +179,41 @@ def test_json_and_start_together_are_a_usage_error(environment):
 
 def test_json_and_start_together_start_nothing(environment):
     invoke("--json", "--start")
+    assert environment.progress.active_attempt() is None
+
+
+JDK_27_REASON = "JDK 27 (JAVA_HOME) cannot run java problems; cstudy supports JDK 21 to 26"
+
+
+def on_jdk(environment, monkeypatch, jdk) -> None:
+    selecting = replace(environment, jdk=jdk)
+    monkeypatch.setattr(next_problem, "load_environment", lambda *_: selecting)
+
+
+def test_a_jdk_that_cannot_run_java_leaves_nothing_to_pick_in_java(environment, monkeypatch):
+    on_jdk(environment, monkeypatch, jdk_of(27))
+    result = invoke("--lang", "java")
+    assert (result.exit_code, result.output) == (
+        ExitCode.SUCCESS,
+        f"nothing to pick: {JDK_27_REASON}\n",
+    )
+
+
+def test_the_json_message_says_so_too(environment, monkeypatch):
+    on_jdk(environment, monkeypatch, jdk_of(27))
+    assert document("--lang", "java") == {
+        "pick": None,
+        "message": f"nothing to pick: {JDK_27_REASON}",
+    }
+
+
+def test_the_same_jdk_leaves_python_alone(environment, monkeypatch):
+    on_jdk(environment, monkeypatch, jdk_of(27))
+    assert invoke().output.splitlines()[0].startswith("new")
+
+
+def test_start_never_starts_a_problem_the_jdk_cannot_run(environment, monkeypatch):
+    on_jdk(environment, monkeypatch, jdk_of(27))
+    result = invoke("--lang", "java", "--start")
+    assert result.exit_code == ExitCode.SUCCESS
     assert environment.progress.active_attempt() is None

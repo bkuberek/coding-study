@@ -9,6 +9,7 @@ import re
 from collections.abc import Iterator, Sequence
 
 from coding_study.domain.cases import Case, FunctionInput, JsonValue, OperationSequence
+from coding_study.domain.jdk_fit import statement_range
 from coding_study.domain.levels import LevelProgress, level_heading, level_progress
 from coding_study.domain.markdown import MarkdownDocument, MarkdownSection
 from coding_study.domain.problem import ComparatorType, Problem, ProblemMeta
@@ -54,7 +55,7 @@ def render_statement(
 
 
 def metadata_line(meta: ProblemMeta) -> str:
-    parts = (meta.difficulty, meta.track, ", ".join(meta.patterns))
+    parts = (meta.difficulty, meta.track, ", ".join(meta.patterns), statement_range(meta) or "")
     return " · ".join(part for part in parts if part)
 
 

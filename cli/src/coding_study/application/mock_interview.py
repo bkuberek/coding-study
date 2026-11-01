@@ -6,11 +6,11 @@ The picks follow the `cstudy next` rules over new medium and hard problems
 and another `cstudy mock` are locked.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 from coding_study.application.environment import Environment
-from coding_study.application.next_problem import graded_attempts
+from coding_study.application.next_problem import graded_attempts, jdk_reason, jdk_scope
 from coding_study.application.practice_catalog import is_item, practice_candidates
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.application.start_item import ItemStartRequest, start_item_attempt
@@ -66,6 +66,9 @@ class MockSession:
     request: MockRequest
     language: Language
     problems: tuple[MockProblem, ...]
+    jdk_reason: str | None = None
+    """Why nothing started, when the selected JDK took out the problems that would have: the
+    reason `cstudy next` gives."""
 
     @property
     def ends_at(self) -> datetime | None:
@@ -90,11 +93,24 @@ def start_mock(environment: Environment, request: MockRequest) -> MockSession:
     clock = environment.clock
     language = resolve_language(request.language, environment.config)
     scope = NextScope(
-        tracks=frozenset(request.tracks or environment.config.next.tracks), language=language
+        tracks=frozenset(request.tracks or environment.config.next.tracks),
+        language=language,
+        jdk=jdk_scope(environment, language),
     )
     query = NextQuery(scope, clock.local_date(clock.now()))
     candidates = practice_candidates(environment, scope.tracks)
-    picks = pick_mock(candidates, graded_attempts(environment), query, request.count)
+    attempts = graded_attempts(environment)
+    picks = pick_mock(candidates, attempts, query, request.count)
+    if not picks:
+        reason = jdk_reason(
+            environment,
+            scope,
+            candidates,
+            lambda open_scope: bool(
+                pick_mock(candidates, attempts, replace(query, scope=open_scope), 1)
+            ),
+        )
+        return MockSession(request, language, (), reason)
     timer_s = request.minutes * SECONDS_PER_MINUTE
     problems = tuple(_start(environment, pick, language, timer_s) for pick in picks)
     return MockSession(request, language, problems)

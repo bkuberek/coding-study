@@ -11,16 +11,20 @@ from coding_study.adapters.environment_factory import load_catalog_environment
 from coding_study.application.environment import Environment
 from coding_study.application.list_items import ListedItem, list_items
 from coding_study.application.list_problems import (
+    JdkNote,
     ListedProblem,
     ListingContext,
     ProblemFilter,
+    jdk_note,
     list_problems,
     listing_context,
 )
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.items import EntryKind, entry_kind
-from coding_study.domain.problem import ContentStatus, Difficulty, Language, Track
+from coding_study.domain.jdk import SelectedJdk
+from coding_study.domain.jdk_fit import jdk_range_of
+from coding_study.domain.problem import ContentStatus, Difficulty, Language, ProblemMeta, Track
 from coding_study.domain.scheduling import ProblemStatus
 from coding_study.domain.value_text import truncate
 from coding_study.entrypoints.shared import add_command, command_environ, console
@@ -35,6 +39,8 @@ STATUS_WIDTH = 8
 DUE_WIDTH = 10
 NO_VALUE = "-"
 NO_MATCH = "no problems match"
+MARK = "!"
+"""After the label of a language the selected JDK cannot run, and before the footer's list."""
 CATALOG_SOURCE = "catalog"
 WORKSPACE_SOURCE = "workspace"
 REFERENCE_LABELS = {
@@ -94,6 +100,9 @@ def list_command(
     output.print(Text(_row(_HEADER), style="bold"))
     for cells in rows:
         output.print(Text(_row(cells)))
+    note = jdk_note(environment, problems)
+    if note is not None:
+        output.print(Text(_footer(note)))
 
 
 def list_document(environment: Environment, problem_filter: ProblemFilter) -> dict[str, JsonValue]:
@@ -102,7 +111,23 @@ def list_document(environment: Environment, problem_filter: ProblemFilter) -> di
     listing = listing_context(environment)
     entries: list[JsonValue] = [_problem_entry(problem, listing) for problem in problems]
     entries += [_item_entry(item, listing) for item in items]
-    return {"today": listing.today.isoformat(), "entries": entries}
+    return {
+        "today": listing.today.isoformat(),
+        "entries": entries,
+        "selected_jdk": selected_jdk_value(environment.jdk.selected()),
+    }
+
+
+def selected_jdk_value(selected: SelectedJdk | None) -> JsonValue:
+    """The selected JDK as the documents hold it; null when none is found."""
+    if selected is None:
+        return None
+    return {
+        "version": selected.version,
+        "feature": selected.feature,
+        "source": selected.source.value,
+        "supported": selected.supported,
+    }
 
 
 def _entries(
@@ -127,7 +152,13 @@ def _problem_entry(problem: ListedProblem, listing: ListingContext) -> dict[str,
         "status": problem.status.value,
         "due_on": problem.due_on.isoformat() if problem.due_on else None,
         "in_progress": _in_progress(listing, meta.slug),
+        "jdk": _jdk_range_value(meta),
     }
+
+
+def _jdk_range_value(meta: ProblemMeta) -> JsonValue:
+    wanted = jdk_range_of(meta)
+    return None if wanted is None else {"min": wanted.minimum, "max": wanted.maximum}
 
 
 def _item_entry(item: ListedItem, listing: ListingContext) -> dict[str, JsonValue]:
@@ -146,6 +177,7 @@ def _item_entry(item: ListedItem, listing: ListingContext) -> dict[str, JsonValu
         "status": item.status.value,
         "due_on": item.due_on.isoformat() if item.due_on else None,
         "in_progress": _in_progress(listing, meta.slug),
+        "jdk": None,
     }
 
 
@@ -164,7 +196,7 @@ def _attempt_value(attempt: Attempt) -> JsonValue:
 def _cells(item: ListedProblem) -> tuple[str, ...]:
     meta = item.summary.meta
     references = " ".join(
-        REFERENCE_LABELS[language] for language in item.summary.reference_languages
+        _reference_label(language, item) for language in item.summary.reference_languages
     )
     return (
         meta.id,
@@ -175,6 +207,17 @@ def _cells(item: ListedProblem) -> tuple[str, ...]:
         item.due_on.isoformat() if item.due_on else NO_VALUE,
         references or NO_VALUE,
     )
+
+
+def _reference_label(language: Language, item: ListedProblem) -> str:
+    label = REFERENCE_LABELS[language]
+    return f"{label}{MARK}" if language in item.blocked else label
+
+
+def _footer(note: JdkNote) -> str:
+    """`! java, kt: not run on JDK 27 (JAVA_HOME): cstudy supports JDK 21 to 26`."""
+    labels = ", ".join(REFERENCE_LABELS[language] for language in note.languages)
+    return f"{MARK} {labels}: {note.reason}"
 
 
 def _item_cells(item: ListedItem) -> tuple[str, ...]:
