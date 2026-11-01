@@ -82,6 +82,14 @@ def test_the_page_names_the_editors_nonce_option(app):
     assert "createEditor({nonce})" in page
 
 
+def test_the_page_carries_its_icon_inline_as_its_policy_allows(app):
+    """An inline icon spares browsers a request for `/favicon.ico`, which would get 404."""
+    with session_client(app) as client:
+        response = client.get("/")
+    assert '<link rel="icon" href="data:image/svg+xml,' in response.text
+    assert "img-src 'self' data:" in response.headers["content-security-policy"]
+
+
 def test_only_the_root_serves_the_page(app):
     with session_client(app) as client:
         response = client.get("/problems")

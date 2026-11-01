@@ -8,12 +8,14 @@
   cstudy-csrf, the token every POST, PUT and DELETE sends as X-Cstudy-CSRF; and
   cstudy-csp-nonce, the nonce of this response's style-src, which the page's code passes to
   createEditor({nonce}) of the editor module, so CodeMirror's style elements are allowed.
+  The icon is the cstudy mark, inline as img-src data: allows, so no browser asks for /favicon.ico.
   Everything else comes from /assets: app.js and its chunks, and app.css.
 -->
 <meta name="cstudy-csrf" content="{{csrf}}">
 <meta name="cstudy-csp-nonce" content="{{nonce}}">
 <meta name="color-scheme" content="light dark">
 <title>cstudy</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231a1814'/%3E%3Cpath d='M9 10l6 6-6 6' fill='none' stroke='%23f4f1ea' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='17' y='19.5' width='7' height='2.6' rx='.6' fill='%23ff7a45'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/assets/app.css">
 <script type="module" src="/assets/app.js"></script>
 </head>
