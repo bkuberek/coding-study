@@ -81,6 +81,7 @@ export class AttemptRuns implements RunShell {
   readonly #cleanups: (() => void)[] = [];
   #status: AttemptStatus | null = null;
   #problem: ProblemDocument | null = null;
+  #problemRead: Promise<void> | null = null;
   #root = "";
   #session: Promise<RunSession | null> | null = null;
   #saveTimer: number | undefined;
@@ -128,14 +129,30 @@ export class AttemptRuns implements RunShell {
       this.results.show(null, [h("p", { class: "quiet" }, "Items have no runs: answer in the notes.")]);
       return;
     }
-    if (first) this.#problem = await this.host.context.api.get<ProblemDocument>(`/api/v1/problems/${encodeURIComponent(status.slug)}`).catch(() => null);
-    this.toolbar.hidden = false;
-    this.buttons.submit.hidden = status.kind !== "project";
-    this.buttons.bench.hidden = !(this.#problem?.bench && status.language);
+    await this.showToolbar(status);
     this.showCommands();
     if (first) await this.#showLatestRun(status);
     else if (this.#showsRecorded) this.#showRecorded(status);
     else void this.#session?.then((session) => session?.configure());
+  }
+
+  /** Shows the buttons the attempt's kind has, reading once what Bench needs of the problem. The
+   * view waits for it before its first draw: the toolbar shown later would make the header taller
+   * and move the file tree under a pointer about to click it, which then clicks nothing. */
+  async showToolbar(status: AttemptStatus): Promise<void> {
+    if (status.kind === "item") return;
+    this.#problemRead ??= this.host.context.api
+      .get<ProblemDocument>(`/api/v1/problems/${encodeURIComponent(status.slug)}`)
+      .then(
+        (problem) => {
+          this.#problem = problem;
+        },
+        () => {},
+      );
+    await this.#problemRead;
+    this.toolbar.hidden = false;
+    this.buttons.submit.hidden = status.kind !== "project";
+    this.buttons.bench.hidden = !(this.#problem?.bench && status.language);
   }
 
   /** Follows a run another tab started (`run_started`), unless this tab shows one already. */

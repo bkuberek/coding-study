@@ -7,7 +7,8 @@ is in the optional `browser` dependency group: `uv sync --group browser`, then
 not installed is skipped.
 """
 
-from collections.abc import Callable
+import json
+from collections.abc import Callable, Sequence
 from typing import Any
 
 import pytest
@@ -31,6 +32,27 @@ no style and no script; and a performance hint Firefox logs, now and then, when 
 cursor moves while the editor scrolls."""
 
 
+PLACE_RECORDER = """window.__places = {};
+const laidOutTop = (element) => {
+  let top = 0;
+  for (let found = element; found !== null; found = found.offsetParent) top += found.offsetTop;
+  return top;
+};
+const record = () => {
+  for (const selector of SELECTORS) {
+    const found = document.querySelector(selector);
+    if (found === null) continue;
+    const top = laidOutTop(found);
+    const places = (window.__places[selector] ??= []);
+    if (places.at(-1) !== top) places.push(top);
+  }
+  requestAnimationFrame(record);
+};
+requestAnimationFrame(record);"""
+"""Notes, frame by frame, each new place in the page's layout of an element of each selector:
+its distance from the top of the page, which scrolling, as a click's own, leaves alone."""
+
+
 def launched(playwright: Any, engine: str) -> Any:
     """The engine's browser, headless; skips the test when Playwright has no such engine."""
     from playwright.sync_api import Error
@@ -50,6 +72,19 @@ def watched(
     page.on("console", lambda message: _note(problems, message, expected))
     page.on("pageerror", lambda error: problems.append(str(error)))
     return page
+
+
+def placed(page: Any, selectors: Sequence[str]) -> Any:
+    """`page`, noting, frame by frame, each place at which the first element of each of `selectors`
+    is laid out, so a test can tell whether what a user is about to click moved after it showed."""
+    page.add_init_script(PLACE_RECORDER.replace("SELECTORS", json.dumps(list(selectors))))
+    return page
+
+
+def places(page: Any, selector: str) -> list[int]:
+    """The places, in CSS pixels from the top of the page, at which `selector` was laid out so
+    far: where it first showed, then each one it moved to."""
+    return page.evaluate("selector => window.__places[selector] ?? []", selector)
 
 
 def _note(problems: list[str], message: Any, expected: Callable[[Any], bool]) -> None:

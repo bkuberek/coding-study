@@ -1,10 +1,11 @@
 """The page in a real browser (docs/specs/web-ui.md#testing): log in with the printed URL, open
 the problem list, open a project problem with its statement, resume its attempt, open a file of
-its tree in the editor, edit it and save it with Cmd or Ctrl-S, see its state turn `modified`,
-restore it from the tree and see it `unchanged`, run its tests and see their rows while the run goes
-on, cancel that run, run the tests to their end, name a new file in the tree's dialog, and turn Run
-on save on to see a save start a run, under the page's Content Security Policy, in each engine
-of `tests/browsers.py`.
+its tree in the editor, see the list's row and the tree's file stay where they first showed, as a
+click pressed while they moved would click nothing (docs/specs/web-ui.md#page), edit the file and
+save it with Cmd or Ctrl-S, see its state turn `modified`, restore it from the tree and see it
+`unchanged`, run its tests and see their rows while the run goes on, cancel that run, run the
+tests to their end, name a new file in the tree's dialog, and turn Run on save on to see a save
+start a run, under the page's Content Security Policy, in each engine of `tests/browsers.py`.
 
 The workspace shares the session's practice workspace's toolchains, so the project's suite runs
 with the real pytest. Playwright and its engines are set up as `tests/browsers.py` says; without
@@ -21,7 +22,7 @@ from typing import Any, Protocol
 
 import pytest
 
-from tests.browsers import launched, watched
+from tests.browsers import launched, placed, places, watched
 from tests.serve_process import RunningServer, running_server, served_environment
 from tests.workspaces import workspace_like
 
@@ -38,6 +39,10 @@ RUNS_OF_THE_ATTEMPT = """([id, known]) =>
         .then(runs => runs.map(run => run.id).filter(found => !known.includes(found)))"""
 POLL_MS = 250
 WAIT_MS = 60_000
+SETTLED_MS = 1_000
+"""How long after the editor opened the list and the tree are looked at again: the reads a view
+makes after its first draw land well within it."""
+PROBLEM_LINK = f"a.slug[href='#/problems/{PROJECT}']"
 FILE_BUTTON = f"button.tree-file[data-path='{FILE}']"
 OPEN_EDITOR = ".panel:not([hidden]) .cm-content"
 RUN_WAIT_MS = 240_000
@@ -81,6 +86,8 @@ class Visit:
     statement: str = ""
     tree: list[str] = field(default_factory=list[str])
     editor: str = ""
+    problem_link_places: list[int] = field(default_factory=list[int])
+    file_button_places: list[int] = field(default_factory=list[int])
     unsaved_tabs: int = 0
     saved_state: str = ""
     saved_text: str = ""
@@ -124,11 +131,12 @@ def visit(engine: str, server: RunningServer, workspace: Path) -> Visit:
     with sync_api.sync_playwright() as playwright:
         browser = launched(playwright, engine)
         page = watched(browser.new_page(viewport={"width": 1440, "height": 900}), seen.errors)
+        placed(page, [PROBLEM_LINK, FILE_BUTTON])
         page.set_default_timeout(WAIT_MS)
         page.goto(server.login_url)
         page.wait_for_selector("table.problems tbody tr")
         seen.rows = page.locator("table.problems tbody tr").count()
-        page.click(f"a.slug[href='#/problems/{PROJECT}']")
+        page.click(PROBLEM_LINK)
         seen.statement = page.locator(".statement-pane .prose").inner_text()
         page.click("a.button.primary")
         page.wait_for_selector("button.tree-file")
@@ -137,6 +145,9 @@ def visit(engine: str, server: RunningServer, workspace: Path) -> Visit:
         )
         page.click(FILE_BUTTON)
         seen.editor = page.locator(OPEN_EDITOR).inner_text()
+        page.wait_for_timeout(SETTLED_MS)
+        seen.problem_link_places = places(page, PROBLEM_LINK)
+        seen.file_button_places = places(page, FILE_BUTTON)
         _save_an_edit(page, seen)
         seen.saved_text = (workspace / "projects" / PROJECT / FILE).read_text()
         _restore(page, seen)
@@ -239,6 +250,14 @@ def test_resuming_the_attempt_shows_the_projects_tree(visit):
 
 def test_a_file_opens_in_the_editor(visit):
     assert "class Bank" in visit.editor
+
+
+def test_a_problem_of_the_list_stays_where_it_showed(visit):
+    assert visit.problem_link_places[1:] == []
+
+
+def test_a_file_of_the_tree_stays_where_it_showed(visit):
+    assert visit.file_button_places[1:] == []
 
 
 def test_an_edit_marks_its_tab_unsaved(visit):

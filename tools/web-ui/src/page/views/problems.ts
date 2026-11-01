@@ -47,20 +47,25 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
   );
   next.replaceChildren(h("h2", { id: "next-heading", class: "eyebrow" }, "next"), loading("picking…"));
 
-  void api
-    .get<ProblemList>(`/api/v1/problems${queryOf(filters, Object.keys(choices).concat("pattern") as FilterKey[])}`)
-    .then((list) => {
-      shell.setAttempts(list.entries);
-      table.removeAttribute("aria-busy");
-      table.replaceChildren(listing(list.entries));
-      const items = list.entries.filter((entry) => entry.kind === "item").length;
-      shell.setStatus({ mode: "LIST", where: `${list.entries.length - items} problems · ${items} items · ${list.today}` });
-    })
-    .catch((error: unknown) => showFailure(table, error));
-  void api
-    .get<NextPick>(`/api/v1/next${queryOf(filters, NEXT_FILTERS)}`)
-    .then((pick) => next.replaceChildren(h("h2", { id: "next-heading", class: "eyebrow" }, "next"), ...nextPick(pick, filters)))
-    .catch((error: unknown) => showFailure(next, error));
+  // The pick and the table show together: the pick changes the height of the card above the
+  // table, so a table drawn first would move under a pointer about to click a row.
+  void Promise.allSettled([
+    api.get<ProblemList>(`/api/v1/problems${queryOf(filters, Object.keys(choices).concat("pattern") as FilterKey[])}`),
+    api.get<NextPick>(`/api/v1/next${queryOf(filters, NEXT_FILTERS)}`),
+  ]).then(([list, pick]) => {
+    if (pick.status === "fulfilled") next.replaceChildren(h("h2", { id: "next-heading", class: "eyebrow" }, "next"), ...nextPick(pick.value, filters));
+    else showFailure(next, pick.reason);
+    if (list.status === "rejected") {
+      showFailure(table, list.reason);
+      return;
+    }
+    const { entries, today } = list.value;
+    shell.setAttempts(entries);
+    table.removeAttribute("aria-busy");
+    table.replaceChildren(listing(entries));
+    const items = entries.filter((entry) => entry.kind === "item").length;
+    shell.setStatus({ mode: "LIST", where: `${entries.length - items} problems · ${items} items · ${today}` });
+  });
   return () => {};
 }
 

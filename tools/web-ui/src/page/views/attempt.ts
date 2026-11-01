@@ -56,7 +56,11 @@ export function attemptView(context: PageContext, id: number): Cleanup {
   const load = async (statement: boolean) => {
     const [status, tree] = await Promise.all([api.get<AttemptStatus>(`/api/v1/attempts/${id}`), api.get<Tree>(`/api/v1/attempts/${id}/files`)]);
     const reread = shown === null || statement || headKey(status) !== headKey(shown.status);
-    const text = reread ? await api.get<Rendered>(`/api/v1/problems/${encodeURIComponent(status.slug)}/statement`) : shown!.statement;
+    // The header is drawn at its final height, toolbar included, so nothing below it moves later.
+    const [text] = await Promise.all([
+      reread ? api.get<Rendered>(`/api/v1/problems/${encodeURIComponent(status.slug)}/statement`) : shown!.statement,
+      shown === null ? runs.showToolbar(status) : null,
+    ]);
     if (ended) return;
     if (shown) {
       // The hints this tab revealed and the controls live on.
