@@ -13,20 +13,18 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import httpx2
 import pytest
 
 from tests.helpers import CATALOG_PROBLEMS
-from tests.scripted_runs import Frame, eventually, is_alive, read_frames
-from tests.serve_process import RunningServer, running_server, served_environment
+from tests.scripted_runs import Frame, eventually, is_alive
+from tests.serve_page import RUN_SECONDS, opened_page
+from tests.serve_process import running_server, served_environment
 from tests.workspaces import workspace_like
 
 pytestmark = pytest.mark.slow
 
 PROJECT = "bank-project-python"
 REFERENCE = CATALOG_PROBLEMS / "0249-bank-project-python" / "solutions" / "reference"
-RUN_SECONDS = 240
-"""Generous: the machine running the slow tests is often loaded."""
 SLOW_TEST_ID = "tests/test_slow.py::test_slow"
 SLOW_TEST = """import os
 import time
@@ -49,46 +47,6 @@ def cstudy(workspace: Path, *arguments: str) -> None:
         check=True,
         timeout=RUN_SECONDS,
     )
-
-
-@dataclass
-class Page:
-    """What the page does over HTTP: start runs, read their streams, cancel them."""
-
-    client: httpx2.Client
-    headers: dict[str, str]
-    attempts: dict[str, int] = field(default_factory=dict[str, int])
-
-    def start(self, slug: str, command: str = "test") -> httpx2.Response:
-        body = {"attempt_id": self.attempts[slug], "command": command}
-        return self.client.post("/api/v1/runs", json=body, headers=self.headers)
-
-    def started(self, slug: str, command: str = "test") -> str:
-        response = self.start(slug, command)
-        assert response.status_code == 201, response.text
-        return response.json()["id"]
-
-    def stream(self, run_id: str) -> Iterator[Frame]:
-        path = f"/api/v1/runs/{run_id}/events"
-        with self.client.stream("GET", path, timeout=RUN_SECONDS) as response:
-            yield from read_frames(response.iter_lines())
-
-    def played(self, run_id: str) -> list[Frame]:
-        return list(self.stream(run_id))
-
-    def cancel(self, run_id: str) -> httpx2.Response:
-        return self.client.post(f"/api/v1/runs/{run_id}/cancel", headers=self.headers)
-
-
-def opened_page(server: RunningServer) -> Page:
-    client = httpx2.Client(base_url=server.address, timeout=RUN_SECONDS)
-    client.get(server.login_url)
-    csrf = client.get("/").text.split('name="cstudy-csrf" content="')[1].split('"')[0]
-    page = Page(client, {"Origin": server.address, "X-Cstudy-CSRF": csrf})
-    for entry in client.get("/api/v1/problems").json()["entries"]:
-        if entry["in_progress"]:
-            page.attempts[entry["slug"]] = entry["in_progress"][0]["attempt_id"]
-    return page
 
 
 @pytest.fixture(scope="module")
