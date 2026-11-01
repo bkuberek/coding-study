@@ -17,7 +17,7 @@ Everything else is yours: grow or replace `Account.kt`, add classes and packages
 | `src/main/kotlin/bank/Bank.kt` | `Bank`, with level 1's methods to implement |
 | `src/main/kotlin/bank/Account.kt` | `Account`, a first model type |
 | `src/test/kotlin/bank/Level<n>Test.kt` | The examples of each open level, written by `cstudy` when the level opens; yours to edit, never rewritten |
-| `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `gradle/wrapper/gradle-wrapper.properties` | The Gradle build: JDK 21, Kotlin and kotlin.test on JUnit 5, from the workspace |
+| `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `gradle/wrapper/gradle-wrapper.properties` | The Gradle build: the workspace's JDK, Kotlin and kotlin.test on JUnit 5 |
 
 ## Running the tests
 

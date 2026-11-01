@@ -25,7 +25,7 @@ Each method returns what its level describes. A failed call never throws an exce
 - `src/main/java/bank/Bank.java`: the public class `Bank`, with level 1's methods throwing `UnsupportedOperationException`.
 - `src/main/java/bank/Account.java`: an `Account` class to grow or replace.
 - `src/test/java/bank/Level<n>Test.java`: the examples of each open level as JUnit 5 tests, written when the level opens and never rewritten. Edit them, and add your own test classes under `src/test/java/`.
-- `README.md`, and the Gradle build: `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties` and `gradle/wrapper/gradle-wrapper.properties`, which build with the workspace's JDK 21, Gradle and JUnit, offline. Keep them as they are.
+- `README.md`, and the Gradle build: `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties` and `gradle/wrapper/gradle-wrapper.properties`, which build with the workspace's JDK, Gradle and JUnit, offline. Keep them as they are.
 
 The contract: `Bank` stays in `src/main/java/bank/Bank.java`, in package `bank`, public, with a public constructor that takes no arguments; and every method stays public and keeps the name, parameter types and return type its level gives. Each level starts with a line naming the methods it adds. Parameter names are yours.
 

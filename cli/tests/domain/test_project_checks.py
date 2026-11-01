@@ -739,6 +739,100 @@ def test_a_kotlin_build_applies_the_kotlin_plugin(bank):
     assert "    alias(libs.plugins.kotlin.jvm)\n" in build
 
 
+JAVA_BUILD = """\
+// Builds with the workspace's JDK, JUnit 5 and the cstudy runner (the cs.project plugin);
+// keep this file as it is.
+plugins {
+    id("cs.project")
+}
+"""
+KOTLIN_BUILD = """\
+// Builds with the workspace's JDK, Kotlin, kotlin.test on JUnit 5 and the cstudy runner (the
+// cs.project plugin); keep this file as it is.
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+    id("cs.project")
+}
+"""
+JAVA_BUILD_OF_0_9 = """\
+// Builds with JDK 21, JUnit 5 and the cstudy runner (the cs.project plugin); keep this file
+// as it is.
+plugins {
+    id("cs.project")
+}
+"""
+KOTLIN_BUILD_OF_0_9 = """\
+// Builds with JDK 21, Kotlin, kotlin.test on JUnit 5 and the cstudy runner (the cs.project
+// plugin); keep this file as it is.
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+    id("cs.project")
+}
+"""
+BUILD_OF_0_9 = {Language.JAVA: JAVA_BUILD_OF_0_9, Language.KOTLIN: KOTLIN_BUILD_OF_0_9}
+JVM_BUILDS = {Language.JAVA: JAVA_BUILD, Language.KOTLIN: KOTLIN_BUILD}
+BUILD = "build.gradle.kts"
+
+
+def in_workspace(problem):
+    """The problem as one the user wrote in their own workspace."""
+    return replace(problem, meta=replace(problem.meta, workspace=True))
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_a_jvm_build_comment_names_the_workspaces_jdk_and_no_version(language):
+    assert jvm_build_files("bank-project", language)[BUILD] == JVM_BUILDS[language]
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_a_catalog_starter_with_the_build_comment_of_0_9_differs_from_the_template(bank, language):
+    problem = with_starter(jvm(bank, language), text_file(BUILD, BUILD_OF_0_9[language]))
+    assert errors(content(problem)) == [
+        f"{STARTER}/{BUILD}: differs from what cstudy new --from-template project-{language} writes"
+    ]
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_a_workspace_problem_may_keep_the_build_comment_of_0_9(bank, language):
+    problem = with_starter(jvm(bank, language), text_file(BUILD, BUILD_OF_0_9[language]))
+    assert errors(content(in_workspace(problem))) == []
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_a_workspace_problem_may_have_the_current_build_comment(bank, language):
+    problem = with_starter(jvm(bank, language), text_file(BUILD, JVM_BUILDS[language]))
+    assert errors(content(in_workspace(problem))) == []
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_a_workspace_problem_with_an_edited_build_comment_of_0_9_differs_from_the_template(
+    bank, language
+):
+    edited = BUILD_OF_0_9[language] + "// mine\n"
+    problem = in_workspace(with_starter(jvm(bank, language), text_file(BUILD, edited)))
+    assert errors(content(problem)) == [
+        f"{STARTER}/{BUILD}: differs from what cstudy new --from-template project-{language} writes"
+    ]
+
+
+def test_a_workspace_problem_in_kotlin_does_not_take_the_java_build_of_0_9(bank):
+    problem = in_workspace(
+        with_starter(jvm(bank, Language.KOTLIN), text_file(BUILD, JAVA_BUILD_OF_0_9))
+    )
+    assert errors(content(problem)) == [
+        f"{STARTER}/{BUILD}: differs from what cstudy new --from-template project-kotlin writes"
+    ]
+
+
+@pytest.mark.parametrize("path", ["settings.gradle.kts", "gradle.properties"])
+def test_a_workspace_problem_takes_the_old_text_of_the_build_file_only(bank, path):
+    edited = jvm_build_files(bank.meta.slug, Language.JAVA)[path] + "// mine\n"
+    problem = in_workspace(with_starter(jvm(bank), text_file(path, edited)))
+    assert errors(content(problem)) == [
+        f"{STARTER}/{path}: differs from what cstudy new --from-template project-java writes"
+    ]
+
+
 @pytest.mark.parametrize("path", ["gradlew", "gradlew.bat"])
 def test_a_jvm_starter_has_no_wrapper_script(bank, path):
     assert errors(content(with_starter(jvm(bank), text_file(path)))) == [

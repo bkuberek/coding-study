@@ -153,13 +153,28 @@ _JVM_SETTINGS_TAIL = """
 includeBuild(workspace.resolve(".cs/runtime/runners/jvm"))
 """
 _JAVA_BUILD = """\
+// Builds with the workspace's JDK, JUnit 5 and the cstudy runner (the cs.project plugin);
+// keep this file as it is.
+plugins {
+    id("cs.project")
+}
+"""
+_KOTLIN_BUILD = """\
+// Builds with the workspace's JDK, Kotlin, kotlin.test on JUnit 5 and the cstudy runner (the
+// cs.project plugin); keep this file as it is.
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+    id("cs.project")
+}
+"""
+_JAVA_BUILD_OF_0_9 = """\
 // Builds with JDK 21, JUnit 5 and the cstudy runner (the cs.project plugin); keep this file
 // as it is.
 plugins {
     id("cs.project")
 }
 """
-_KOTLIN_BUILD = """\
+_KOTLIN_BUILD_OF_0_9 = """\
 // Builds with JDK 21, Kotlin, kotlin.test on JUnit 5 and the cstudy runner (the cs.project
 // plugin); keep this file as it is.
 plugins {
@@ -167,6 +182,9 @@ plugins {
     id("cs.project")
 }
 """
+"""The `build.gradle.kts` files that `cstudy new --from-template project-java` and `project-kotlin`
+wrote before the comment lost its JDK version (the two constants above). A problem in the user's
+own workspace may keep one (docs/specs/authoring.md S15); a catalog problem may not."""
 _GRADLE_PROPERTIES = """\
 org.gradle.daemon=true
 org.gradle.configuration-cache=true
@@ -195,6 +213,16 @@ def _jvm_build(language: Language) -> str:
             return _JAVA_BUILD
         case Language.KOTLIN:
             return _KOTLIN_BUILD
+        case _:
+            raise ValueError(f"{language} projects have no Gradle build")
+
+
+def _jvm_build_of_0_9(language: Language) -> str:
+    match language:
+        case Language.JAVA:
+            return _JAVA_BUILD_OF_0_9
+        case Language.KOTLIN:
+            return _KOTLIN_BUILD_OF_0_9
         case _:
             raise ValueError(f"{language} projects have no Gradle build")
 
@@ -478,7 +506,9 @@ class _Trees:
             _GoStarter(self._error, starter, slug).check(entry[0].entry if entry else None)
         elif language is not None and language in JVM_LANGUAGES:
             build_files = jvm_build_files(self._content.problem.meta.slug, language)
-            _JvmStarter(self._error, starter, language).check(build_files)
+            _JvmStarter(self._error, starter, language, self._content.problem.meta.workspace).check(
+                build_files
+            )
         elif language is Language.RUST:
             _RustStarter(self._error, starter, self._content).check()
         self._generated_test_names(starter)
@@ -693,22 +723,31 @@ class _JvmStarter:
     """S15: the template's Gradle files, so every folder builds the same way and offline, and no
     wrapper script of its own: the workspace's runs every build."""
 
-    def __init__(self, report: _Report, starter: ProjectTree, language: Language) -> None:
+    def __init__(
+        self, report: _Report, starter: ProjectTree, language: Language, workspace: bool
+    ) -> None:
         self._report = report
         self._starter = starter
         self._template = f"project-{language}"
+        self._build_of_0_9 = _jvm_build_of_0_9(language) if workspace else None
 
     def check(self, build_files: Mapping[str, str]) -> None:
         for path, text in build_files.items():
             file = self._starter.file(path)
             if file is None:
                 self._report(path, "missing")
-            elif file.text is not None and file.text != text:
+            elif file.text is not None and file.text not in self._accepted(path, text):
                 written = f"cstudy new --from-template {self._template} writes"
                 self._report(path, f"differs from what {written}")
         for path in WRAPPER_SCRIPTS:
             if path in self._starter.paths:
                 self._report(path, "is not used: the workspace's jvm/gradlew builds the project")
+
+    def _accepted(self, path: str, template: str) -> tuple[str, ...]:
+        """The template's text, and for a workspace problem's build file the text of 0.9 too."""
+        if path == BUILD_FILE and self._build_of_0_9 is not None:
+            return (template, self._build_of_0_9)
+        return (template,)
 
 
 class _RustStarter:

@@ -17,7 +17,7 @@ Everything else is yours: grow or replace `Account`, add classes to package `ban
 | `src/main/java/bank/Bank.java` | `Bank`, with level 1's methods to implement |
 | `src/main/java/bank/Account.java` | `Account`, a first model type |
 | `src/test/java/bank/Level<n>Test.java` | The examples of each open level as JUnit 5 tests, written by `cstudy` when the level opens; yours to edit, never rewritten |
-| `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `gradle/wrapper/` | This folder's Gradle build, on the workspace's JDK 21, Gradle and JUnit |
+| `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `gradle/wrapper/` | This folder's Gradle build, on the workspace's JDK, Gradle and JUnit |
 
 ## Running the tests
 
