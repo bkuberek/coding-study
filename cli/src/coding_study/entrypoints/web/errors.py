@@ -16,6 +16,7 @@ from starlette.responses import Response
 from starlette.types import ExceptionHandler
 
 from coding_study.domain.errors import (
+    FIX_PREFIX,
     AttemptEndedError,
     FileChangedError,
     FileTooLargeError,
@@ -130,8 +131,22 @@ def exit_code_error(exit_code: int) -> ErrorCode:
         return ErrorCode.INTERNAL
 
 
+def split_fix(text: str) -> tuple[str, str | None]:
+    """The message of an error and the hint on its last line when that line starts with `fix: `
+    (a refusal such as a JDK outside a problem's range ends with the CLI's hint), else the whole
+    text and None."""
+    message, newline, last_line = text.rpartition("\n")
+    fix = last_line.removeprefix(FIX_PREFIX)
+    if not newline or fix == last_line or not fix.strip():
+        return text, None
+    return message, fix
+
+
 async def _domain_error(_request: Request, error: Exception) -> Response:
-    return error_response(domain_error_code(error), str(error))
+    message, fix = split_fix(str(error))
+    return error_response(
+        domain_error_code(error), message, details=None if fix is None else {"fix": fix}
+    )
 
 
 async def _changed_file(_request: Request, error: Exception) -> Response:

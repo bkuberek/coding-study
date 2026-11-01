@@ -40,6 +40,21 @@ test("an item starts without a language", () => {
   assert.equal(defaultLanguage({ kind: "item", languages: [] }, "python"), null);
 });
 
+test("default_lang is skipped for the first language the JDK can run", () => {
+  const blocked = new Set(["java"]);
+  assert.equal(defaultLanguage({ kind: "function", languages: ["java", "kotlin", "python"] }, "java", blocked), "kotlin");
+});
+
+test("a first language that is blocked gives way to the next one", () => {
+  const blocked = new Set(["java", "kotlin"]);
+  assert.equal(defaultLanguage({ kind: "function", languages: ["java", "kotlin", "go"] }, "python", blocked), "go");
+});
+
+test("a problem whose languages are all blocked keeps its usual default", () => {
+  const blocked = new Set(["java", "kotlin"]);
+  assert.equal(defaultLanguage({ kind: "function", languages: ["java", "kotlin"] }, "python", blocked), "java");
+});
+
 test("an empty time box starts without a timer", () => {
   assert.deepEqual(startBody({ slug: "two-sum", language: "python", fresh: false, minutes: " " }), {
     slug: "two-sum",

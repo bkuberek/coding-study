@@ -4,6 +4,8 @@
  * Security Policy refuses; the stylesheet and classes do the styling.
  */
 
+import { fixParts } from "./format.ts";
+
 export type Child = Node | string | number | null | undefined | false;
 type Value = string | number | boolean | null | undefined;
 export type Attributes = Readonly<Record<string, Value | EventListener>>;
@@ -36,6 +38,20 @@ export function nodes(children: readonly Child[]): (Node | string)[] {
 /** A `<code>` that a screen reader reads as a command. */
 export function command(text: string): HTMLElement {
   return h("code", { class: "cmd" }, text);
+}
+
+/** A fix hint of the CLI, which may say what to do in words: it wraps, and a web link in it is a
+ * link. */
+export function fixHint(fix: string): HTMLElement {
+  return h(
+    "code",
+    { class: "fix-hint" },
+    ...fixParts(fix).map((part) =>
+      part.href === undefined
+        ? part.text
+        : h("a", { href: part.href, target: "_blank", rel: "noopener noreferrer" }, part.text),
+    ),
+  );
 }
 
 /** A glyph and its word, so a status never depends on colour alone. */

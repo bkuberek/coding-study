@@ -54,11 +54,11 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 79.9 | 28.2 |
-| Every JavaScript and CSS file but Vim | 940.9 | 338.3 |
-| The editor before any language: the page, the editor and the core | 483.4 | 162.1 |
-| A Python file | 553.8 | 189.0 |
-| A TypeScript or JavaScript file, the largest grammar | 592.3 | 202.6 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 82.2 | 29.0 |
+| Every JavaScript and CSS file but Vim | 943.7 | 339.4 |
+| The editor before any language: the page, the editor and the core | 485.7 | 163.0 |
+| A Python file | 556.1 | 189.9 |
+| A TypeScript or JavaScript file, the largest grammar | 594.7 | 203.5 |
 | Vim keybindings, added on top | 119.7 | 38.1 |
 | The Mock and Progress views together, each fetched when it first opens (Progress with the Start dialog) | 19.8 | 9.1 |
 | The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 10.9 | 5.3 |

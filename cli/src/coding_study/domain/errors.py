@@ -1,6 +1,10 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+FIX_PREFIX = "fix: "
+"""Starts the last line of an error's text when it says how to fix the problem
+(docs/specs/cli.md#rules); the web API moves it to the error document's `fix`."""
+
 
 @dataclass(frozen=True, slots=True)
 class ContentIssue:

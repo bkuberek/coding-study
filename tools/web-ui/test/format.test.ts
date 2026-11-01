@@ -5,6 +5,7 @@ import {
   checkBadge,
   clock,
   fileBadge,
+  fixParts,
   originText,
   problemBadge,
   secondsSince,
@@ -82,4 +83,33 @@ test("a solve time from an hour on is hours and padded minutes, as cstudy done w
 
 test("a solve time under a minute is seconds alone", () => {
   assert.equal(solveTime(42), "42s");
+});
+
+test("a fix hint without a link is one piece of text", () => {
+  assert.deepEqual(fixParts("brew install pnpm"), [{ text: "brew install pnpm" }]);
+});
+
+test("a link in a fix hint is a piece of its own", () => {
+  assert.deepEqual(fixParts("or install JDK 25: https://example.org/guide.md#jdk"), [
+    { text: "or install JDK 25: " },
+    { text: "https://example.org/guide.md#jdk", href: "https://example.org/guide.md#jdk" },
+  ]);
+});
+
+test("the punctuation after a link is not part of it", () => {
+  assert.deepEqual(fixParts("see (https://example.org/a), then retry."), [
+    { text: "see (" },
+    { text: "https://example.org/a", href: "https://example.org/a" },
+    { text: "), then retry." },
+  ]);
+});
+
+test("a fix hint that ends on a link has no empty piece after it", () => {
+  assert.equal(fixParts("see https://example.org/a.").at(-1)?.text, ".");
+});
+
+test("only web links become links", () => {
+  assert.deepEqual(fixParts("open javascript:alert(1) or file:///etc/passwd"), [
+    { text: "open javascript:alert(1) or file:///etc/passwd" },
+  ]);
 });

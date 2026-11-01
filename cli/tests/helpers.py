@@ -111,6 +111,19 @@ def mark_workspace(directory: Path, created_with: str = "0.1.0") -> Path:
     return directory
 
 
+def selecting_jdk(directory: Path, feature: int) -> dict[str, str]:
+    """The variable that makes a `cstudy` select a JDK of release `feature`: `JAVA_HOME` naming a
+    home in `directory` with a `release` file, which the selection reads, and a `java` that is
+    never run."""
+    home = directory / f"jdk-{feature}"
+    (home / "bin").mkdir(parents=True)
+    java = home / "bin" / "java"
+    java.write_text("#!/bin/sh\nexit 1\n")
+    java.chmod(0o755)
+    (home / "release").write_text(f'JAVA_VERSION="{feature}.0.0"\n')
+    return {"JAVA_HOME": str(home)}
+
+
 def progress_database_at(path: Path, version: int) -> None:
     """A progress database migrated up to `version` only, holding the attempt 7 at two-sum."""
     migrations = resources.files(MIGRATIONS_PACKAGE) / MIGRATIONS_DIRECTORY

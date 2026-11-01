@@ -546,6 +546,28 @@ input[type="search"] {
   color: var(--accent);
 }
 
+/* A fix hint of the CLI: monospace like a command, but it says what to do in words and wraps. */
+.fix-hint {
+  padding: 1px 6px;
+  border-radius: 2px;
+  background: var(--paper-sunken);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  font-size: 0.95em;
+  overflow-wrap: anywhere;
+}
+
+.fix-hint a {
+  color: var(--accent);
+}
+
+/* A language of a problem that the selected JDK cannot run: marked with `!`, never by colour alone. */
+.ref-blocked {
+  color: var(--warn);
+  text-decoration: underline dotted;
+  cursor: help;
+}
+
 .badge {
   display: inline-flex;
   align-items: baseline;

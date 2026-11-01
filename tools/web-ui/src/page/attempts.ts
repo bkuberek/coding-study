@@ -36,10 +36,18 @@ export interface DoneChoice {
 }
 
 /** The language `cstudy start` gets `--lang` for: none for a project or an item, else
- * `default_lang` when the problem has it, else its first language. */
-export function defaultLanguage(problem: Pick<ProblemDocument, "kind" | "languages">, defaultLang: string): string | null {
+ * `default_lang` when the problem has it, else its first language. A language in `blocked`, such as
+ * a Java the selected JDK cannot run, gives way to the first one that is not; when every language
+ * is blocked, the usual choice stays. */
+export function defaultLanguage(
+  problem: Pick<ProblemDocument, "kind" | "languages">,
+  defaultLang: string,
+  blocked: ReadonlySet<string> = new Set(),
+): string | null {
   if (problem.kind === PROJECT || problem.languages.length === 0) return null;
-  return problem.languages.includes(defaultLang) ? defaultLang : (problem.languages[0] ?? null);
+  const usual = problem.languages.includes(defaultLang) ? defaultLang : (problem.languages[0] ?? null);
+  if (usual === null || !blocked.has(usual)) return usual;
+  return problem.languages.find((language) => !blocked.has(language)) ?? usual;
 }
 
 /** `POST /api/v1/attempts`; a time box that is not a whole number goes as typed, for the

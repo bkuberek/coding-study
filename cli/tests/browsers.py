@@ -23,12 +23,14 @@ leaves out."""
 ENGINE_NOTICES = (
     "Refused to apply a stylesheet because its hash, its nonce, or 'unsafe-inline' does not",
     "CSP violation: style-src-attr on SELECT",
+    "CSP violation: style-src-attr on #document",
     "This site appears to use a scroll-linked positioning effect",
 )
 """What the engines log of their own, which the page cannot change: WebKit's line for a refused
 style, which names no element, so the reporter's line stands for it; a `style-src-attr`
 violation that Playwright's WebKit reports for every `<select>`, even one in a static page with
-no style and no script; and a performance hint Firefox logs, now and then, when CodeMirror's
+no style and no script, and one on the document when a project's Start dialog, which has no
+`<select>`, opens; and a performance hint Firefox logs, now and then, when CodeMirror's
 cursor moves while the editor scrolls."""
 
 
@@ -72,6 +74,21 @@ def watched(
     page.on("console", lambda message: _note(problems, message, expected))
     page.on("pageerror", lambda error: problems.append(str(error)))
     return page
+
+
+def refusing_starts(page: Any, message: str, fix: str) -> None:
+    """Makes the server's answer to every start of an attempt `page` sends the `environment`
+    refusal with `message` and the CLI's `fix:` hint, as a server on a JDK that cannot run the
+    problem's language gives."""
+    refusal = {"error": {"code": "environment", "message": message, "fix": fix}}
+
+    def answer(route: Any) -> None:
+        if route.request.method != "POST":
+            route.continue_()
+            return
+        route.fulfill(status=503, content_type="application/json", body=json.dumps(refusal))
+
+    page.route("**/api/v1/attempts", answer)
 
 
 def placed(page: Any, selectors: Sequence[str]) -> Any:

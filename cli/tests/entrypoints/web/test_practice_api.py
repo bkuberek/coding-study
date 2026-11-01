@@ -17,13 +17,21 @@ from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.application.start_item import ItemStartRequest, start_item_attempt
 from coding_study.domain.attempts import Attempt, AttemptStatus, RunRecord
 from coding_study.domain.ide import Ide
+from coding_study.domain.jdk import JDK_FIX
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
 from coding_study.domain.submissions import LevelTally, SubmissionRecord
 from coding_study.entrypoints.commands.ide import write_ide_files
 from coding_study.entrypoints.commands.status import status_document
 from coding_study.entrypoints.web.markdown import render_markdown
-from tests.fakes import NOW, FakeStubGenerator, FakeToolchains, make_environment, repository_root
+from tests.fakes import (
+    NOW,
+    FakeStubGenerator,
+    FakeToolchains,
+    jdk_of,
+    make_environment,
+    repository_root,
+)
 from tests.helpers import FIXTURE_TRACKS, RUST_PROJECT_PROBLEMS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
 from tests.web_server import WRITE_HEADERS, session_client, web_app
@@ -169,6 +177,21 @@ def test_an_unknown_language_gets_422(tmp_path, practice):
 
 def test_a_body_that_is_not_an_object_gets_422(tmp_path, practice):
     assert error(post(tmp_path, practice, ATTEMPTS, ["two-sum"])) == (422, "usage")
+
+
+def test_a_start_the_selected_jdk_cannot_run_is_refused_with_the_clis_fix(tmp_path):
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    environment = make_environment(root, jdk=jdk_of(27), toolchains=FakeToolchains())
+    response = post(tmp_path, environment, ATTEMPTS, {"slug": "two-sum", "language": "java"})
+    assert (response.status_code, response.json()["error"]) == (
+        503,
+        {
+            "code": "environment",
+            "message": "two-sum runs its java version on JDK 21 to 26; "
+            "JAVA_HOME selects JDK 27, which cstudy does not support yet",
+            "fix": JDK_FIX,
+        },
+    )
 
 
 # hints

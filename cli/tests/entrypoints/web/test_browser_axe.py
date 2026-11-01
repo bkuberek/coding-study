@@ -2,8 +2,10 @@
 light and dark, 1440 and 390 pixels wide, in each engine of `tests/browsers.py`: the problem list,
 a project problem, its attempt with a file in the editor and a run's results, the file tree's menu,
 its new-file dialog and restore question, the start, done and solution dialogs, the mock view
-before and during a mock, the progress, health and settings views. Each view must have no
-violation of WCAG 2.2 A and AA, nor of axe's best practices.
+before and during a mock, the progress, health and settings views, and, on a server whose JDK
+cannot run Java and Kotlin, the list with its marks, the start dialog of a problem and of a Java
+project with the languages disabled, and a start refused with a `fix:` hint. Each view must have
+no violation of WCAG 2.2 A and AA, nor of axe's best practices.
 
 axe-core comes with `axe-playwright-python`, in the optional `browser` dependency group; Playwright
 and its engines are set up as `tests/browsers.py` says. Without them the test is skipped.
@@ -17,7 +19,8 @@ from typing import Any
 
 import pytest
 
-from tests.browsers import launched
+from tests.browsers import launched, refusing_starts
+from tests.helpers import mark_workspace, selecting_jdk
 from tests.serve_process import RunningServer, running_server, served_environment
 from tests.workspaces import workspace_like
 
@@ -27,6 +30,7 @@ axe_playwright = pytest.importorskip("axe_playwright_python.sync_playwright", re
 
 PROJECT = "bank-project-python"
 SINGLE_FILE = "two-sum"
+JDK_PROJECT = "bank-project-java"
 FILE_BUTTON = "button.tree-file[data-path='bank/bank.py']"
 SHEET = "dialog.sheet[open]"
 WAIT_MS = 60_000
@@ -70,6 +74,17 @@ VIEWS = (
     "health",
     "settings",
 )
+JDK_VIEWS = (
+    "problems on a JDK that cannot run Java",
+    "start dialog on a JDK that cannot run Java",
+    "start dialog of a Java project",
+    "start refused with a fix",
+)
+JDK_REFUSAL = (
+    "two-sum runs its java version on JDK 21 to 26; "
+    "JAVA_HOME selects JDK 27, which cstudy does not support yet"
+)
+JDK_FIX = "select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: https://example.org/guide#jdk"
 
 
 @pytest.fixture(scope="module")
@@ -110,6 +125,55 @@ def violations(engine: str, server: RunningServer) -> dict[str, list[str]]:
             page.set_viewport_size({"width": WIDTHS[0], "height": HEIGHT})
         browser.close()
     return found
+
+
+@pytest.fixture(scope="module")
+def jdk_server(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Iterator[RunningServer]:
+    """A server in a bare workspace whose JDK is a 27, which cstudy does not support yet."""
+    workspace = mark_workspace(tmp_path_factory.mktemp(f"axe-jdk-{engine}") / "ws")
+    jdk = selecting_jdk(tmp_path_factory.mktemp("axe-jdk-home"), 27)
+    with running_server(workspace, variables=jdk) as running:
+        yield running
+
+
+@pytest.fixture(scope="module")
+def jdk_violations(engine: str, jdk_server: RunningServer) -> dict[str, list[str]]:
+    """The violations of the views a JDK that cannot run Java and Kotlin changes."""
+    found: dict[str, list[str]] = {}
+    with sync_api.sync_playwright() as playwright:
+        browser = launched(playwright, engine)
+        page = browser.new_page(viewport={"width": WIDTHS[0], "height": HEIGHT})
+        page.set_default_timeout(WAIT_MS)
+        page.goto(jdk_server.login_url)
+        page.wait_for_selector("table.problems .ref-blocked")
+        refusing_starts(page, JDK_REFUSAL, JDK_FIX)
+        for view, show in _jdk_tour(page):
+            show()
+            found[view] = _checked(page)
+            page.set_viewport_size({"width": WIDTHS[0], "height": HEIGHT})
+        browser.close()
+    return found
+
+
+def _jdk_tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
+    yield JDK_VIEWS[0], lambda: None
+    yield JDK_VIEWS[1], lambda: _start_dialog(page)
+    yield JDK_VIEWS[2], lambda: _java_project_dialog(page)
+    yield JDK_VIEWS[3], lambda: _refused_start(page)
+
+
+def _java_project_dialog(page: Any) -> None:
+    _open(page, f"#/problems/{JDK_PROJECT}", ".practice-actions button.primary")
+    page.click(".practice-actions button.primary")
+    page.wait_for_selector(SHEET)
+
+
+def _refused_start(page: Any) -> None:
+    _open(page, f"#/problems/{SINGLE_FILE}", ".practice-actions button.primary")
+    page.click(".practice-actions button.primary")
+    page.wait_for_selector(SHEET)
+    page.click(f"{SHEET} button[type=submit]")
+    page.wait_for_selector(f"{SHEET} .state-error")
 
 
 def _tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
@@ -215,3 +279,10 @@ def _described(violations: list[dict[str, Any]], where: str) -> list[str]:
 @pytest.mark.parametrize("view", VIEWS)
 def test_the_view_has_no_accessibility_violation(violations, view):
     assert violations[view] == []
+
+
+@pytest.mark.parametrize("view", JDK_VIEWS)
+def test_a_view_a_jdk_that_cannot_run_java_changes_has_no_accessibility_violation(
+    jdk_violations, view
+):
+    assert jdk_violations[view] == []

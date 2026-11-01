@@ -87,6 +87,30 @@ export function solveTime(totalSeconds: number): string {
   return `${seconds}s`;
 }
 
+/** A piece of a fix hint: plain text, or a web link whose `href` is its text. */
+export interface FixPart {
+  readonly text: string;
+  readonly href?: string;
+}
+
+const WEB_LINK = /https?:\/\/[^\s<>"']+/g;
+const LINK_TAIL = /[.,;:!?)\]]+$/;
+
+/** A fix hint (`known.fix` of an error, a `doctor` row's `fix`) cut into text and links, the
+ * punctuation after a link left out of it. */
+export function fixParts(fix: string): FixPart[] {
+  const parts: FixPart[] = [];
+  let from = 0;
+  for (const match of fix.matchAll(WEB_LINK)) {
+    const href = match[0].replace(LINK_TAIL, "");
+    if (match.index > from) parts.push({ text: fix.slice(from, match.index) });
+    parts.push({ text: href, href });
+    from = match.index + href.length;
+  }
+  if (from < fix.length) parts.push({ text: fix.slice(from) });
+  return parts;
+}
+
 /** `2026-10-24 09:12` in local time. */
 export function localMinute(instant: string): string {
   const date = new Date(instant);

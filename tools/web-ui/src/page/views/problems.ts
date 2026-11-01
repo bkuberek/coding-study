@@ -7,6 +7,7 @@ import { listCommand, nextCommand, NEXT_FILTERS, startCommand } from "../command
 import type { Cleanup, PageContext } from "../context.ts";
 import { badge, command, h } from "../dom.ts";
 import { problemBadge } from "../format.ts";
+import { jdkRefusals, type SelectedJdk } from "../jdk.ts";
 import { attemptHash, type FilterKey, type Filters, problemHash, problemsHash } from "../routes.ts";
 import { empty, loading, showFailure } from "../states.ts";
 import type { ListEntry, NextPick, ProblemList } from "../types.ts";
@@ -59,10 +60,10 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
       showFailure(table, list.reason);
       return;
     }
-    const { entries, today } = list.value;
+    const { entries, today, selected_jdk: selectedJdk } = list.value;
     shell.setAttempts(entries);
     table.removeAttribute("aria-busy");
-    table.replaceChildren(listing(entries));
+    table.replaceChildren(listing(entries, selectedJdk));
     const items = entries.filter((entry) => entry.kind === "item").length;
     shell.setStatus({ mode: "LIST", where: `${entries.length - items} problems · ${items} items · ${today}` });
   });
@@ -141,7 +142,7 @@ function filterForm(
   return form;
 }
 
-function listing(entries: readonly ListEntry[]): HTMLElement {
+function listing(entries: readonly ListEntry[], selectedJdk: SelectedJdk | null): HTMLElement {
   if (entries.length === 0) return empty("no problems match", h("a", { href: "#/" }, "clear the filters"));
   const header = ["id", "problem", "diff", "pattern", "kind", "status", "due", "refs", "in progress"];
   return h(
@@ -149,11 +150,35 @@ function listing(entries: readonly ListEntry[]): HTMLElement {
     { class: "problems" },
     h("caption", { class: "sr-only" }, "Problems, then items, matching the filters"),
     h("thead", {}, h("tr", {}, ...header.map((name) => h("th", { scope: "col" }, name)))),
-    h("tbody", {}, ...entries.map(row)),
+    h("tbody", {}, ...entries.map((entry) => row(entry, selectedJdk))),
   );
 }
 
-function row(entry: ListEntry): HTMLTableRowElement {
+/**
+ * The languages of a problem, as `cstudy list` writes them; a Java or Kotlin the selected JDK
+ * cannot run ends in `!`, with the CLI's reason as the tooltip and as text for assistive technology
+ * (docs/specs/web-ui.md#problems-view).
+ */
+function languageRefs(entry: ListEntry, selectedJdk: SelectedJdk | null): Node[] {
+  if (entry.languages.length === 0) return [document.createTextNode("–")];
+  const refusals = jdkRefusals(entry.slug, entry.languages, selectedJdk, entry.jdk);
+  return entry.languages.flatMap((language, index) => {
+    const label = LANGUAGE_LABELS[language] ?? language;
+    const refusal = refusals.get(language);
+    const ref =
+      refusal === undefined
+        ? document.createTextNode(label)
+        : h(
+            "span",
+            { class: "ref-blocked" },
+            h("span", { "aria-hidden": "true", title: refusal }, `${label}!`),
+            h("span", { class: "sr-only" }, `${label}: ${refusal}`),
+          );
+    return index === 0 ? [ref] : [document.createTextNode(" "), ref];
+  });
+}
+
+function row(entry: ListEntry, selectedJdk: SelectedJdk | null): HTMLTableRowElement {
   const status = problemBadge(entry.status);
   const topic = entry.patterns[0] ?? entry.track;
   return h(
@@ -173,7 +198,7 @@ function row(entry: ListEntry): HTMLTableRowElement {
     h("td", { class: "quiet" }, entry.kind),
     h("td", {}, badge(status.glyph, status.text, status.tone)),
     h("td", { class: "num quiet" }, entry.due_on ?? "–"),
-    h("td", { class: "refs quiet" }, entry.languages.map((language) => LANGUAGE_LABELS[language] ?? language).join(" ") || "–"),
+    h("td", { class: "refs quiet" }, ...languageRefs(entry, selectedJdk)),
     h(
       "td",
       { class: "resume" },

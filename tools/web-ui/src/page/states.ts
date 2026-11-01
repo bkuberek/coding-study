@@ -1,7 +1,7 @@
 /** The loading, empty and error states every view shows (docs/specs/web-ui.md#page). */
 
 import { ApiError } from "./api.ts";
-import { command, h } from "./dom.ts";
+import { fixHint, h } from "./dom.ts";
 
 export function loading(text = "loading…"): HTMLElement {
   return h("p", { class: "state state-loading", role: "status" }, h("span", { class: "spinner", "aria-hidden": "true" }), text);
@@ -24,7 +24,7 @@ export function failure(error: unknown): HTMLElement {
     "div",
     { class: "state state-error", role: "alert" },
     h("p", { class: "state-title" }, h("span", { class: "glyph", "aria-hidden": "true" }, "✕ "), "error: ", message),
-    known?.fix ? h("p", {}, "fix: ", command(known.fix)) : null,
+    known?.fix ? h("p", { class: "state-fix" }, "fix: ", fixHint(known.fix)) : null,
     known?.code === "environment" ? h("p", {}, h("a", { href: "#/health" }, "Check the workspace in the Health view")) : null,
   );
 }

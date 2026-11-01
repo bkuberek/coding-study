@@ -32,6 +32,7 @@ function entry(slug: string, status: string, due_on: string | null): ListEntry {
     status,
     due_on,
     in_progress: [],
+    jdk: null,
   };
 }
 

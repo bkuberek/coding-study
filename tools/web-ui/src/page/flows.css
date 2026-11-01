@@ -76,6 +76,20 @@ textarea {
   resize: vertical;
 }
 
+.jdk-note {
+  margin: 0 0 12px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--warn);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.jdk-note p {
+  margin: 2px 0;
+  font-size: var(--text-s);
+  overflow-wrap: anywhere;
+}
+
 .review-note {
   margin: 0 0 10px;
   padding: 6px 10px;

@@ -14,7 +14,12 @@ from coding_study.domain.errors import (
     UsageError,
     VersionControlError,
 )
-from coding_study.entrypoints.web.errors import ErrorCode, domain_error_code, error_status
+from coding_study.entrypoints.web.errors import (
+    ErrorCode,
+    domain_error_code,
+    error_status,
+    split_fix,
+)
 from tests.web_server import WRITE_HEADERS, session_client, web_app
 
 
@@ -123,3 +128,49 @@ def test_each_code_has_the_specs_status(code, status):
 def test_a_working_session_is_not_an_error(tmp_path):
     with session_client(web_app(tmp_path)) as client:
         assert client.get("/api/v1/session").status_code == 200
+
+
+# the CLI's `fix:` hint
+
+JDK_REFUSAL = "two-sum runs its java version on JDK 21 to 26; JAVA_HOME selects JDK 27"
+JDK_FIX = "select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: https://example.org/guide#jdk"
+
+
+def test_a_refusal_with_a_fix_line_puts_the_hint_in_the_fix_field(tmp_path):
+    response = session_error(tmp_path, RunnerStartError(JDK_REFUSAL, (f"fix: {JDK_FIX}",)))
+    assert (response.status_code, response.json()["error"]) == (
+        503,
+        {"code": "environment", "message": JDK_REFUSAL, "fix": JDK_FIX},
+    )
+
+
+def test_a_refusal_without_a_fix_line_keeps_fix_null(tmp_path):
+    response = session_error(tmp_path, RunnerStartError("the runner said nothing"))
+    assert response.json()["error"]["fix"] is None
+
+
+def test_the_lines_before_the_fix_line_stay_in_the_message(tmp_path):
+    error = RunnerStartError("no hello", ("runner: boom", "fix: reinstall"))
+    response = session_error(tmp_path, error)
+    assert response.json()["error"] == {
+        "code": "environment",
+        "message": "no hello\nrunner: boom",
+        "fix": "reinstall",
+    }
+
+
+@pytest.mark.parametrize(
+    ("text", "message", "fix"),
+    [
+        ("no pnpm\nfix: brew install pnpm", "no pnpm", "brew install pnpm"),
+        ("no pnpm", "no pnpm", None),
+        ("a\nb\nfix: c", "a\nb", "c"),
+        ("a; fix: b", "a; fix: b", None),
+        ("a\nfix: b\nmore", "a\nfix: b\nmore", None),
+        ("fix: alone", "fix: alone", None),
+        ("a\nfix: ", "a\nfix: ", None),
+        ("a\nfix: x\nfix: y", "a\nfix: x", "y"),
+    ],
+)
+def test_only_a_trailing_fix_line_is_split_off(text, message, fix):
+    assert split_fix(text) == (message, fix)

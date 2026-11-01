@@ -8,13 +8,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from coding_study.application.environment import Environment
-from coding_study.domain.errors import RunnerStartError
+from coding_study.domain.errors import FIX_PREFIX, RunnerStartError
 from coding_study.domain.jdk import JDK_FIX
 from coding_study.domain.jdk_fit import JdkFit, content_release, fit_of
 from coding_study.domain.layout import JVM_LANGUAGES
 from coding_study.domain.problem import Language, ProblemMeta
-
-FIX_PREFIX = "fix: "
 
 
 @dataclass(frozen=True, slots=True)

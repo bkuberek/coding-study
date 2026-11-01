@@ -3,6 +3,8 @@
  * are that command's `--json` documents (docs/specs/cli.md); only the fields the page uses are typed.
  */
 
+import type { JdkRange, SelectedJdk } from "./jdk.ts";
+
 export type Theme = "system" | "light" | "dark";
 
 export interface Session {
@@ -13,6 +15,8 @@ export interface Session {
   readonly languages: readonly string[];
   readonly tracks: readonly string[];
   readonly kinds: readonly string[];
+  /** The JDK `cstudy` selects in the server's environment, or null when none is found. */
+  readonly selected_jdk: SelectedJdk | null;
 }
 
 export interface Preferences {
@@ -44,11 +48,14 @@ export interface ListEntry {
   readonly status: string;
   readonly due_on: string | null;
   readonly in_progress: readonly AttemptRef[];
+  /** The releases its Java and Kotlin run on; null without either. */
+  readonly jdk: JdkRange | null;
 }
 
 export interface ProblemList {
   readonly today: string;
   readonly entries: readonly ListEntry[];
+  readonly selected_jdk: SelectedJdk | null;
 }
 
 /** `cstudy next --json`. */

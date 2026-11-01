@@ -19,6 +19,7 @@ from coding_study.entrypoints.commands.next_problem import next_document
 from tests.fakes import (
     FakeStubGenerator,
     FakeToolchains,
+    declare_jdk,
     jdk_of,
     make_environment,
     repository_root,
@@ -177,6 +178,24 @@ def test_the_statement_is_the_text_cstudy_show_prints(client, environment):
 def test_the_statement_comes_rendered_as_html(client):
     html = client.get("/api/v1/problems/two-sum/statement").json()["html"]
     assert html.startswith("<h1>Two Sum</h1>")
+
+
+def test_the_statement_names_the_jdk_range_the_problem_declares(tmp_path):
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    declare_jdk(root, "0001-two-sum", "{min: 24}")
+    environment = make_environment(root, toolchains=TOOLCHAINS)
+    with session_client(web_app(tmp_path, environment)) as client:
+        document = client.get("/api/v1/problems/two-sum/statement").json()
+    assert "Java and Kotlin: JDK 24 or newer" in document["html"]
+
+
+def test_the_problem_document_carries_the_range_the_problem_declares(tmp_path):
+    root = repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS)
+    declare_jdk(root, "0001-two-sum", "{min: 24}")
+    environment = make_environment(root, toolchains=TOOLCHAINS)
+    with session_client(web_app(tmp_path, environment)) as client:
+        document = client.get("/api/v1/problems/two-sum").json()
+    assert document["jdk"] == {"min": 24, "max": 26}
 
 
 def test_an_items_statement_is_the_one_cstudy_show_prints(client, environment):
