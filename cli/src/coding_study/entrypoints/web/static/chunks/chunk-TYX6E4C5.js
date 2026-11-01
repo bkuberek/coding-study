@@ -1,1 +1,0 @@
-import{f as t}from"./chunk-LA3PBB42.js";function a(o,n,e){n().then(e).catch(r=>o.shell.announce(`could not open: ${t(r)}`))}async function l(o){return(await import("./dialogs-YUPWA2D3.js")).confirmAction(o)}async function u(o,n){try{return await n()}catch(e){return o(`could not load: ${t(e)}`),null}}export{a,l as b,u as c};

@@ -7,9 +7,10 @@
  */
 
 import { ApiError } from "./api.ts";
+import type { Confirmation } from "./dialogs.ts";
 import { h } from "./dom.ts";
 import { LiveStream } from "./event-stream.ts";
-import { fetchChunk } from "./lazy.ts";
+import { confirmLazily, fetchChunk } from "./lazy.ts";
 import type { JobPanel } from "./jobs.ts";
 import { drawRun } from "./results-draw.ts";
 import { resultsView, RunModel } from "./results-model.ts";
@@ -20,7 +21,13 @@ import { type RunCommandName, runBody, runCommand, type RunOptionsState } from "
 import type { RunShell } from "./runs.ts";
 import { failure } from "./states.ts";
 
-const CANCEL_QUESTION = "Cancel the run? cstudy stops it as Ctrl-C does and records nothing.";
+const CANCEL_QUESTION: Confirmation = {
+  title: "Cancel the run?",
+  message: "cstudy stops it as Ctrl-C does and records nothing.",
+  action: "Cancel the run",
+  dismiss: "Keep it running",
+  destructive: true,
+};
 
 export class RunSession {
   readonly #shell: RunShell;
@@ -226,7 +233,7 @@ export class RunSession {
   #onResultsKey(event: KeyboardEvent): void {
     if (event.key !== "Escape" || this.#stream === null) return;
     event.preventDefault();
-    if (window.confirm(CANCEL_QUESTION)) void this.cancel();
+    void confirmLazily(CANCEL_QUESTION).then((cancel) => (cancel ? this.cancel() : undefined));
   }
 
   #showState(): void {

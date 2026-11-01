@@ -31,6 +31,8 @@ export interface Confirmation {
   readonly destructive: boolean;
   /** The `cstudy` command it matches, named beside it. */
   readonly command?: string;
+  /** The button that answers no; `Cancel` unless the action is itself a cancel. */
+  readonly dismiss?: string;
 }
 
 export interface NameField {
@@ -83,7 +85,7 @@ export function openSheet(title: string, wide = false): Sheet {
 export function confirmAction(confirmation: Confirmation): Promise<boolean> {
   const sheet = openSheet(confirmation.title);
   let answer = false;
-  const cancel = h("button", { type: "button", class: "button" }, "Cancel");
+  const cancel = h("button", { type: "button", class: "button" }, confirmation.dismiss ?? "Cancel");
   const confirm = h("button", { type: "button", class: `button ${confirmation.destructive ? "danger" : "primary"}` }, confirmation.action);
   cancel.addEventListener("click", () => sheet.close());
   confirm.addEventListener("click", () => {

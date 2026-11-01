@@ -8,6 +8,7 @@ import { ApiError } from "./api.ts";
 import type { PageContext } from "./context.ts";
 import { badge, command, h } from "./dom.ts";
 import { LiveStream } from "./event-stream.ts";
+import { confirmLazily } from "./lazy.ts";
 import type { Closed } from "./run-events.ts";
 import { failure } from "./states.ts";
 
@@ -76,7 +77,8 @@ export class JobPanel {
 
   async #refused(error: unknown, body: Readonly<Record<string, unknown>>, shown: string): Promise<void> {
     if (error instanceof ApiError && error.code === "confirmation_required") {
-      if (window.confirm(error.message)) {
+      const question = { title: "confirm", message: error.message, action: "Run", destructive: false, command: shown };
+      if (await confirmLazily(question)) {
         await this.start({ ...body, confirm: true }, shown);
       } else {
         this.element.hidden = true;
