@@ -14,6 +14,7 @@ from datetime import datetime
 from coding_study.application.active_attempt import autograded_language, find_attempt
 from coding_study.application.comparison import problem_comparator
 from coding_study.application.environment import Environment
+from coding_study.application.jdk_requirement import require_jdk
 from coding_study.application.ports import ProgressNotice
 from coding_study.application.project_build_diagnostics import load_error_diagnostics
 from coding_study.application.project_runs import (
@@ -130,6 +131,7 @@ def submit_project(
     problem = environment.problems.load(attempt.slug)
     meta = problem.meta
     require_project(meta)
+    require_jdk(environment, meta, language)
     levels = project_levels(meta, attempt.level_unlocked, request.level)
     folder = project_folder(meta.slug)
     root = environment.workspace.absolute(folder)

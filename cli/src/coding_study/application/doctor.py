@@ -54,7 +54,13 @@ from coding_study.domain.errors import (
     UsageError,
 )
 from coding_study.domain.guides import TOOLCHAINS_GUIDE
-from coding_study.domain.jdk import JDK_FIX, SUPPORTED_JDKS, no_jdk_sentence
+from coding_study.domain.jdk import (
+    GRADLE_JAVA_HOME_ARGUMENT,
+    JAVA_HOME_VARIABLE,
+    JDK_FIX,
+    SUPPORTED_JDKS,
+    no_jdk_sentence,
+)
 from coding_study.domain.layout import (
     GO_PROJECT,
     GO_WORK_FILE,
@@ -232,6 +238,8 @@ class FixStep:
     """What runs when `command` fails; the step's outcome is then the retry's."""
     manual: str | None = None
     """What to do by hand when the step fails."""
+    runs_on_jdk: bool = False
+    """A Gradle wrapper call: it runs on the selected JDK, so that one command uses one JDK."""
 
     def __str__(self) -> str:
         return f"{' '.join(self.command)} (in {self.project})"
@@ -257,6 +265,7 @@ JVM_FIX = FixStep(
         ":kotlin:csClasspath",
         f"-Pcs.only={HANDSHAKE_META.snake_slug}",
     ),
+    runs_on_jdk=True,
 )
 """Builds the runner and support classes and warms the Gradle daemon. Resolving the runtime
 classpath caches the runner's own libraries, without which no JVM problem builds offline; `cs.only`
@@ -280,6 +289,7 @@ JVM_PROJECT_WARMUPS = tuple(
             "--console=plain",
             "csClasspath",
         ),
+        runs_on_jdk=True,
     )
     for language in JVM_PROJECT_LANGUAGES
 )
@@ -351,8 +361,9 @@ def fix_workspace(
     pytest when its venv lacks it."""
     outcomes: list[FixOutcome] = []
     jvm_blocker = _jvm_warm_up_blocker(workspace, jdk)
+    home = jdk.selected_home()
     for step, directory in _fix_plan(workspace, content, jvm_blocker is None):
-        outcome = _run_step(workspace.commands, step, directory, notify)
+        outcome = _run_step(workspace.commands, step, directory, notify, home)
         if outcome is not None:
             outcomes.append(outcome)
     if jvm_blocker is not None:
@@ -375,18 +386,35 @@ def _jvm_warm_up_blocker(workspace: PracticeWorkspace, jdk: JdkSelector) -> str 
 
 
 def _run_step(
-    commands: CommandRunner, step: FixStep, directory: Path, notify: ProgressNotice
+    commands: CommandRunner,
+    step: FixStep,
+    directory: Path,
+    notify: ProgressNotice,
+    jdk_home: Path | None,
 ) -> FixOutcome | None:
-    """None when the step's `unless` check succeeds."""
+    """None when the step's `unless` check succeeds. A Gradle step runs on the JDK at `jdk_home`."""
     if step.unless is not None and _succeeded(commands.run(step.unless, directory)):
         return None
     notify(f"running {step}")
-    outcome = FixOutcome(step, commands.run(step.command, directory))
+    outcome = FixOutcome(step, _run_command(commands, step, directory, jdk_home))
     if outcome.succeeded or step.retry is None:
         return outcome
     retried = replace(step, command=step.retry, retry=None)
     notify(f"running {retried}")
-    return FixOutcome(retried, commands.run(retried.command, directory))
+    return FixOutcome(retried, _run_command(commands, retried, directory, jdk_home))
+
+
+def _run_command(
+    commands: CommandRunner, step: FixStep, directory: Path, jdk_home: Path | None
+) -> ProbeResult | None:
+    """The step's command; a Gradle step names the JDK twice, as every other Gradle call of
+    `cstudy` does: `-Dorg.gradle.java.home`, which outranks a setting in the Gradle home, and
+    `JAVA_HOME` in the environment."""
+    if not step.runs_on_jdk or jdk_home is None:
+        return commands.run(step.command, directory)
+    wrapper, *arguments = step.command
+    command = (wrapper, f"{GRADLE_JAVA_HOME_ARGUMENT}{jdk_home}", *arguments)
+    return commands.run(command, directory, {JAVA_HOME_VARIABLE: str(jdk_home)})
 
 
 def _succeeded(result: ProbeResult | None) -> bool:

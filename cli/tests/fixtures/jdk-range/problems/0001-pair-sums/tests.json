@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"nums": [1, 2, 3, 4]}, "expected": [3, 5, 7]},
+    {"id": "ex2", "visible": true, "input": {"nums": [5]}, "expected": []},
+    {"id": "h1", "input": {"nums": [-3, 3, 0]}, "expected": [0, 3], "note": "negatives and zero"}
+  ]
+}

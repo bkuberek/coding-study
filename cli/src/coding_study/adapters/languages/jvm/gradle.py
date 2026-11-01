@@ -8,19 +8,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from coding_study.adapters.jdk_locator import JAVA_HOME, JdkHome
+from coding_study.adapters.jdk_locator import JdkHome
 from coding_study.adapters.languages.bounded_process import (
     DEFAULT_BUILD_TIMEOUT_SECONDS,
     BoundedProcess,
 )
 from coding_study.adapters.process_liveness import is_alive
 from coding_study.domain.errors import RunnerStartError
+from coding_study.domain.jdk import GRADLE_JAVA_HOME_ARGUMENT, JAVA_HOME_VARIABLE
 
 WRAPPER = "gradlew"
 BUILD_STEP = "Gradle build"
 WRAPPER_PROPERTIES = "gradle/wrapper/gradle-wrapper.properties"
-JAVA_HOME_PROPERTY = "-Dorg.gradle.java.home="
-"""Outranks `org.gradle.java.home` in the user's Gradle home, which `JAVA_HOME` does not."""
 MAX_DIAGNOSTIC_LINES = 40
 OUTPUT_TAIL_LINES = 20
 _DISTRIBUTION_VERSION = re.compile(r"gradle-([0-9][^-/]*(?:-[a-z]+[0-9-]*)?)-(?:bin|all)\.zip")
@@ -93,8 +92,8 @@ class WrapperGradle:
                 f"{wrapper} is missing; run `cstudy doctor` to set up the JVM workspace"
             )
         home = str(self._jdk.home())
-        command = [str(wrapper), f"{JAVA_HOME_PROPERTY}{home}", *arguments]
-        environment = {**os.environ, JAVA_HOME: home}
+        command = [str(wrapper), f"{GRADLE_JAVA_HOME_ARGUMENT}{home}", *arguments]
+        environment = {**os.environ, JAVA_HOME_VARIABLE: home}
         try:
             completed = self._process.run_interleaved(command, self._workspace, environment)
         except OSError as error:

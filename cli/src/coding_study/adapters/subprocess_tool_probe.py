@@ -1,5 +1,6 @@
+import os
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from coding_study.application.ports import ProbeResult
@@ -16,23 +17,29 @@ class SubprocessToolProbe:
         self._timeout_seconds = timeout_seconds
 
     def run(self, command: Sequence[str]) -> ProbeResult | None:
-        return _run(command, None, self._timeout_seconds)
+        return _run(command, None, self._timeout_seconds, None)
 
 
 class SubprocessCommandRunner:
     """Runs setup commands (`uv sync`, `pnpm install`, Gradle) to completion."""
 
-    def run(self, command: Sequence[str], cwd: Path) -> ProbeResult | None:
-        return _run(command, cwd, None)
+    def run(
+        self, command: Sequence[str], cwd: Path, environment: Mapping[str, str] | None = None
+    ) -> ProbeResult | None:
+        return _run(command, cwd, None, environment)
 
 
 def _run(
-    command: Sequence[str], cwd: Path | None, timeout_seconds: float | None
+    command: Sequence[str],
+    cwd: Path | None,
+    timeout_seconds: float | None,
+    environment: Mapping[str, str] | None,
 ) -> ProbeResult | None:
     try:
         completed = subprocess.run(
             list(command),
             cwd=cwd,
+            env=None if environment is None else {**os.environ, **environment},
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,

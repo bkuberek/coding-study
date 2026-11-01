@@ -14,6 +14,7 @@ from typing import Protocol
 
 from coding_study.application.active_attempt import autograded_language, find_attempt
 from coding_study.application.environment import Environment
+from coding_study.application.jdk_requirement import require_jdk
 from coding_study.application.ports import BuildFailed, ProgressNotice
 from coding_study.application.project_build_diagnostics import project_diagnostics
 from coding_study.application.project_runs import (
@@ -169,6 +170,7 @@ def run_project_tests(
     debug = resolve_debug_session(request.debug, language)
     problem = environment.problems.load(attempt.slug)
     meta = problem.meta
+    require_jdk(environment, meta, language)
     levels = project_levels(meta, attempt.level_unlocked, request.level)
     folder = project_folder(meta.slug)
     root = environment.workspace.absolute(folder)

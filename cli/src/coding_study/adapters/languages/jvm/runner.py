@@ -50,6 +50,7 @@ from coding_study.application.ports import (
 )
 from coding_study.domain.debugging import DebugSession
 from coding_study.domain.errors import ContentError, ContentIssue, RunnerStartError
+from coding_study.domain.jdk_fit import content_release
 from coding_study.domain.layout import JVM_PROJECT, reference_build_path, watch_path
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
@@ -66,6 +67,8 @@ JDWP_REFUSED_MARKER = "transport error 202: connect failed"
 GRADLE_FLAGS = ("-q", "--console=plain")
 CLASSPATH_TASK = "csClasspath"
 ONLY_PROPERTY = "cs.only"
+RELEASE_PROPERTY = "cs.release"
+"""The release level of a build; without it, the plugins use the build JDK's feature release."""
 BUILD_OUTPUT = "build"
 """Under each language's subproject: `classes/` for the JVM, `cs/runtime-classpath.txt` for us."""
 CLASSPATH_FILE = f"{BUILD_OUTPUT}/cs/runtime-classpath.txt"
@@ -103,6 +106,8 @@ class _GradleProject:
     sources: str
     """Workspace-relative directory of the problem's sources; compiler lines name it."""
     meta: ProblemMeta
+    release: int | None = None
+    """What the content compiles at; None compiles the user's files at the JDK's level."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -207,7 +212,9 @@ class JvmRunner:
         self._references.materialize(meta, sources, self._language)
         directory = self._references.project_directory
         problem_sources = _reference_sources(meta, sources, self._language)
-        return _GradleProject(directory, ("-p", str(directory)), problem_sources, meta)
+        return _GradleProject(
+            directory, ("-p", str(directory)), problem_sources, meta, content_release(meta)
+        )
 
     def _compile(
         self, project: _GradleProject, preparation: _Preparation
@@ -218,7 +225,8 @@ class JvmRunner:
         task = f":{self._language}:{CLASSPATH_TASK}"
         only = f"-P{ONLY_PROPERTY}={project.meta.snake_slug}"
         with self._runtime.held(lambda: preparation.notify(WAIT_NOTICE)):
-            outcome = self._gradle.run([*project.selector, *GRADLE_FLAGS, task, only])
+            arguments = [*project.selector, *GRADLE_FLAGS, task, only, *_release(project.release)]
+            outcome = self._gradle.run(arguments)
             if outcome.exit_code != 0:
                 return _build_failure(outcome, project.sources)
             classpath = self._classpath(project, preparation.classes)
@@ -296,12 +304,14 @@ class JvmRunner:
         """A suite builds the tests too, and may be debugged; grading builds the main classes
         only, so a test file that does not compile never blocks a submission."""
         match scope:
-            case ProjectSuite(root=root, debug=session, exclude=exclude):
+            case ProjectSuite(root=root, debug=session, exclude=exclude, release=release):
                 debug = _debug_launch(session, preparation.notify)
-                build = _ProjectBuild(root, CLASSPATH_TASK, SUITE_CLASSPATH_FILE, exclude)
-            case ProjectGrading(root=root):
+                build = _ProjectBuild(root, CLASSPATH_TASK, SUITE_CLASSPATH_FILE, exclude, release)
+            case ProjectGrading(root=root, release=release):
                 debug = None
-                build = _ProjectBuild(root, MAIN_CLASSPATH_TASK, GRADING_CLASSPATH_FILE)
+                build = _ProjectBuild(
+                    root, MAIN_CLASSPATH_TASK, GRADING_CLASSPATH_FILE, release=release
+                )
         classpath = self._build_project(build, preparation)
         if isinstance(classpath, BuildFailed):
             return classpath
@@ -353,10 +363,13 @@ class _ProjectBuild:
     classpath_file: str
     """Relative to the root: what `task` writes."""
     exclude: tuple[str, ...] = ()
+    release: int | None = None
+    """What a reference's folder compiles at; None for the user's own folder."""
 
     def arguments(self) -> list[str]:
         excluded = [f"-P{EXCLUDE_PROPERTY}={','.join(self.exclude)}"] if self.exclude else []
-        return ["-p", str(self.root), *GRADLE_FLAGS, OFFLINE_FLAG, self.task, *excluded]
+        release = _release(self.release)
+        return ["-p", str(self.root), *GRADLE_FLAGS, OFFLINE_FLAG, self.task, *release, *excluded]
 
     def lock_name(self) -> str:
         """Named after the folder, and told apart from a folder of that name elsewhere (a
@@ -364,6 +377,10 @@ class _ProjectBuild:
         resolved = str(self.root.resolve())
         digest = hashlib.sha256(resolved.encode()).hexdigest()[:LOCK_DIGEST_LENGTH]
         return f"{PROJECT_LOCK}-{self.root.name}-{digest}.lock"
+
+
+def _release(release: int | None) -> list[str]:
+    return [] if release is None else [f"-P{RELEASE_PROPERTY}={release}"]
 
 
 def _project_build_failure(outcome: GradleOutcome, root: Path) -> BuildFailed:

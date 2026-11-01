@@ -113,9 +113,12 @@ class ToolProbe(Protocol):
 
 
 class CommandRunner(Protocol):
-    def run(self, command: Sequence[str], cwd: Path) -> ProbeResult | None:
+    def run(
+        self, command: Sequence[str], cwd: Path, environment: Mapping[str, str] | None = None
+    ) -> ProbeResult | None:
         """Run a setup command such as `uv sync` to completion, without a time limit; None when
-        the executable is missing."""
+        the executable is missing. `environment` is set for the command on top of the process's
+        own."""
         ...
 
 
@@ -483,6 +486,11 @@ class JdkSelector(Protocol):
         selection does not fall back to `PATH`. None otherwise."""
         ...
 
+    def selected_home(self) -> Path | None:
+        """The selected JDK's home, with every symbolic link resolved; None when nothing is
+        selected."""
+        ...
+
 
 class MachineProbe(Protocol):
     def snapshot(self) -> MachineState:
@@ -767,6 +775,10 @@ class ProjectGrading:
     """The graded problem, for a runner that compiles the project with its grader (Go, Rust)."""
     level: int | None = field(default=None, compare=False)
     """The graded level: such a runner compiles the methods of levels 1 to it only."""
+    release: int | None = None
+    """Java and Kotlin: the release level to compile at (`cs.release`) when `root` holds content,
+    such as a reference's build; None compiles at the selected JDK's level, as for the user's
+    own folder."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -782,6 +794,8 @@ class ProjectSuite:
     exclude: tuple[str, ...] = ()
     """The suite job's `exclude`: test files, relative to the root, that a language which compiles
     its tests leaves out of the build, since they may call methods that do not exist yet."""
+    release: int | None = None
+    """As `ProjectGrading.release`."""
 
 
 type ProjectScope = ProjectGrading | ProjectSuite

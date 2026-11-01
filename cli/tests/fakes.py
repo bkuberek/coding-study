@@ -32,6 +32,7 @@ from coding_study.domain.bench_records import MachineState, PowerSource
 from coding_study.domain.cases import FunctionInput
 from coding_study.domain.config import Config
 from coding_study.domain.errors import LanguageNotSetUpError
+from coding_study.domain.jdk import JdkSource, SelectedJdk
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.runs import (
     CaseOutcome,
@@ -65,6 +66,33 @@ class FakeLanguageRunner:
 class FakeStubGenerator:
     def generate(self, meta: ProblemMeta) -> str:
         return f"# stub for {meta.slug}\n"
+
+
+JDK_21 = SelectedJdk("21.0.13", 21, JdkSource.JAVA_HOME)
+JDK_HOME = Path("/jdks/selected")
+
+
+@dataclass
+class FakeJdk:
+    """The `JdkSelector` of a test: JDK 21 unless the test says otherwise."""
+
+    jdk: SelectedJdk | None = JDK_21
+    java_home_without_jdk: str | None = None
+    home: Path = JDK_HOME
+
+    def selected(self) -> SelectedJdk | None:
+        return self.jdk
+
+    def unusable_java_home(self) -> str | None:
+        return self.java_home_without_jdk
+
+    def selected_home(self) -> Path | None:
+        return None if self.jdk is None else self.home
+
+
+def jdk_of(feature: int, source: JdkSource = JdkSource.JAVA_HOME) -> FakeJdk:
+    """A selector that selects JDK `feature`."""
+    return FakeJdk(SelectedJdk(f"{feature}.0.1", feature, source))
 
 
 DELVE = DebugServer("dlv", "run `go install dlv`", Path("/go/bin/dlv"))
@@ -238,6 +266,12 @@ def repository_root(tmp_path: Path, problems: Path, tracks: Path | None = None) 
     return tmp_path
 
 
+def declare_jdk(root: Path, directory: str, declaration: str) -> None:
+    """Adds `jdk: <declaration>`, such as `{min: 24}`, to a copied problem's meta.yaml."""
+    meta = root / "problems" / directory / "meta.yaml"
+    meta.write_text(f"{meta.read_text()}jdk: {declaration}\n")
+
+
 def make_environment(root: Path, **overrides: object) -> Environment:
     """Real file and database adapters on `root`, the workspace and the content root at once;
     fakes for anything that runs code."""
@@ -249,6 +283,7 @@ def make_environment(root: Path, **overrides: object) -> Environment:
         "files": FsProblemFiles(root),
         "progress": SqliteProgressStore(root / "progress.db"),
         "toolchains": FakeToolchains(),
+        "jdk": FakeJdk(),
         "runner_process": ScriptedRunnerProcess(lambda job, case: _unanswered(case)),
         "workspace": WorkspaceFs(root),
         "content_code": ContentCodeLoader(root),

@@ -1,0 +1,18 @@
+id: "0001"
+slug: pair-sums
+title: Pair Sums
+status: draft
+difficulty: easy
+track: dsa
+kind: function
+patterns: [sliding-window]
+signature:
+  function:
+    name: pairSums
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: gatherer, name: Sliding windows of two, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+estimate_minutes: 10

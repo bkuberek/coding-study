@@ -1,4 +1,4 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
@@ -92,6 +92,7 @@ TOOLCHAINS_GUIDE = "https://github.com/bkuberek/coding-study/blob/main/docs/guid
 SELECT_A_JDK = f"select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: {TOOLCHAINS_GUIDE}#jdk"
 """The fix of docs/specs/cli.md#cstudy-doctor, for any JDK that cannot run Java and Kotlin."""
 JDK_25 = SelectedJdk("25.0.5", 25, JdkSource.JAVA_HOME)
+JDK_HOME = Path("/opt/jdks/25")
 
 
 @dataclass
@@ -101,6 +102,7 @@ class FakeJdk:
     jdk: SelectedJdk | None = JDK_25
     java_home_without_jdk: str | None = None
     asked: int = 0
+    home: Path = JDK_HOME
 
     def selected(self) -> SelectedJdk | None:
         self.asked += 1
@@ -108,6 +110,9 @@ class FakeJdk:
 
     def unusable_java_home(self) -> str | None:
         return self.java_home_without_jdk
+
+    def selected_home(self) -> Path | None:
+        return None if self.jdk is None else self.home
 
 
 @dataclass
@@ -177,9 +182,14 @@ class HelloProcess:
 class FakeCommands:
     results: dict[tuple[str, ...], ProbeResult | None] = field(default_factory=dict)
     ran: list[tuple[tuple[str, ...], Path]] = field(default_factory=list)
+    environments: list[Mapping[str, str] | None] = field(default_factory=list)
+    """The variables each command in `ran` was given on top of the process's own."""
 
-    def run(self, command: Sequence[str], cwd: Path) -> ProbeResult | None:
+    def run(
+        self, command: Sequence[str], cwd: Path, environment: Mapping[str, str] | None = None
+    ) -> ProbeResult | None:
         self.ran.append((tuple(command), cwd))
+        self.environments.append(environment)
         return self.results.get(tuple(command), ProbeResult(0, ""))
 
 
@@ -1106,13 +1116,14 @@ def test_fix_runs_the_setup_command_of_every_workspace_project():
         (
             (
                 "./gradlew",
+                f"-Dorg.gradle.java.home={JDK_HOME}",
                 ":java:csClasspath",
                 ":kotlin:csClasspath",
                 "-Pcs.only=cs_doctor_handshake",
             ),
             Path("/ws/jvm"),
         ),
-        *((step.command, Path("/ws/jvm")) for step in JVM_PROJECT_WARMUPS),
+        *((on_jdk(step.command), Path("/ws/jvm")) for step in JVM_PROJECT_WARMUPS),
     ]
 
 
@@ -1163,6 +1174,11 @@ def gradle_commands(commands: FakeCommands) -> list[tuple[str, ...]]:
     return [command for command, _cwd in commands.ran if command[0] == "./gradlew"]
 
 
+def on_jdk(command: tuple[str, ...], home: Path = JDK_HOME) -> tuple[str, ...]:
+    """`command`, a Gradle wrapper call, as it runs on the JDK at `home`."""
+    return (command[0], f"-Dorg.gradle.java.home={home}", *command[1:])
+
+
 @pytest.mark.parametrize(
     "jdk",
     [
@@ -1190,7 +1206,42 @@ def test_fix_skips_the_gradle_warm_up_without_a_jdk_it_can_build_with(jdk):
 def test_fix_warms_up_gradle_on_any_jdk_it_can_build_with(selected):
     commands = FakeCommands()
     fix(workspace_with(paths={"jvm"}, commands=commands), jdk=FakeJdk(selected))
-    assert gradle_commands(commands) == [JVM_FIX.command, *(s.command for s in JVM_PROJECT_WARMUPS)]
+    assert gradle_commands(commands) == [
+        on_jdk(step.command) for step in (JVM_FIX, *JVM_PROJECT_WARMUPS)
+    ]
+
+
+WARM_UP_STEPS = (JVM_FIX, *JVM_PROJECT_WARMUPS)
+JDK_26 = SelectedJdk("26.0.2", 26, JdkSource.JAVA_HOME)
+HOME_26 = Path("/opt/jdks/26")
+
+
+def warm_up_on_jdk_26() -> FakeCommands:
+    commands = FakeCommands()
+    fix(workspace_with(paths={"jvm"}, commands=commands), jdk=FakeJdk(JDK_26, home=HOME_26))
+    return commands
+
+
+def test_every_gradle_command_of_the_warm_up_names_the_selected_jdk():
+    """One JDK per command: `-Dorg.gradle.java.home` outranks a setting in the Gradle home."""
+    assert gradle_commands(warm_up_on_jdk_26()) == [
+        on_jdk(step.command, HOME_26) for step in WARM_UP_STEPS
+    ]
+
+
+def test_every_gradle_command_of_the_warm_up_runs_with_java_home_set_to_it():
+    commands = warm_up_on_jdk_26()
+    assert commands.environments == [{"JAVA_HOME": str(HOME_26)}] * len(WARM_UP_STEPS)
+
+
+def test_the_other_setup_commands_run_unchanged_and_in_the_process_environment():
+    commands = FakeCommands()
+    fix(workspace_with(paths={"python", "typescript"}, commands=commands))
+    assert commands.environments == [None] * len(commands.ran)
+    assert [command for command, _cwd in commands.ran][:2] == [
+        ("uv", "sync"),
+        IMPORT_PYTEST_IN_PYTHON[0],
+    ]
 
 
 def test_fix_reports_the_warm_up_skipped_for_want_of_a_jdk():

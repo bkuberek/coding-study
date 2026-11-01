@@ -179,6 +179,7 @@ class _ProblemLines:
         if draft:
             line.append(f"{DRAFT_GAP}{draft}", style="dim")
         yield line
+        yield from _details(_skips(self._problem.languages))
         yield from _details(self._failures())
         yield from self._warnings()
 
@@ -241,11 +242,22 @@ class _ProblemLines:
 
 def _language_part(result: LanguageResult) -> str:
     label = REFERENCE_LABELS[result.language]
+    if result.skipped is not None:
+        return f"{label} skipped"
     total = len(result.approaches)
     if total == 0:
         return f"{label} FAIL" if result.problems else f"{label} -"
     status = "ok" if result.passed else "FAIL"
     return f"{label} {result.passing}/{total} {status}"
+
+
+def _skips(results: Iterable[LanguageResult]) -> Iterator[str]:
+    """`skipped  java, kotlin: runs on JDK 24 to 26; JAVA_HOME selects JDK 21`: one line for the
+    languages that the selected JDK cannot run."""
+    skipped = [result for result in results if result.skipped is not None]
+    for reason in dict.fromkeys(result.skipped for result in skipped):
+        languages = ", ".join(result.language for result in skipped if result.skipped == reason)
+        yield f"skipped  {languages}: {reason}"
 
 
 def _language_failures(result: LanguageResult) -> Iterator[str]:
@@ -305,15 +317,20 @@ def _conformance(environment: Environment, request: ConformanceRequest, output: 
 
 def _fixture_lines(result: FixtureVerification, width: int) -> Iterator[Text]:
     line = Text(result.directory.rpartition("/")[2].ljust(width))
-    parts = (
-        f"{REFERENCE_LABELS[language.language]} {'ok' if language.passed else 'FAIL'}"
-        for language in result.languages
-    )
+    parts = (_fixture_part(language) for language in result.languages)
     if result.languages:
         line.append(SEPARATOR.join(parts))
     else:
         line.append("FAIL" if result.errors else NOT_LISTED)
     yield line
     yield from _details(result.errors)
+    yield from _details(_skips(result.languages))
     for language in result.languages:
         yield from _details(_language_failures(language))
+
+
+def _fixture_part(result: LanguageResult) -> str:
+    label = REFERENCE_LABELS[result.language]
+    if result.skipped is not None:
+        return f"{label} skipped"
+    return f"{label} {'ok' if result.passed else 'FAIL'}"

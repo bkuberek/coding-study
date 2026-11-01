@@ -74,6 +74,9 @@ class SuiteRun:
     debug: DebugSession | None = None
     listener: SuiteListener | None = None
     """Hears each test as the runner reports it."""
+    release: int | None = None
+    """Java and Kotlin: the release level of a reference's build (`release_of_content`); None
+    compiles the user's folder at the JDK's level."""
 
 
 def project_levels(meta: ProblemMeta, unlocked: int | None, requested: int | None) -> LevelRun:
@@ -102,7 +105,7 @@ def run_suite(environment: Environment, run: SuiteRun, notify: ProgressNotice) -
     if isinstance(runner, ProjectSuiteHost):
         hosted = HostedSuite(run.meta.slug, job, run.debug, run.listener)
         return runner.run_project_suite(hosted, notify)
-    suite = ProjectSuite(run.root, run.debug, run.meta, job.exclude)
+    suite = ProjectSuite(run.root, run.debug, run.meta, job.exclude, run.release)
     prepared = runner.prepare_project(suite, notify)
     if isinstance(prepared, BuildFailed):
         return SuiteReport(None, load_error=compile_error(prepared))
@@ -169,6 +172,8 @@ class GradingRun:
     level: int
     """Cases of levels 1 to `level` run, against the methods of those levels."""
     listener: CaseVerdictListener | None = None
+    release: int | None = None
+    """As `SuiteRun.release`."""
 
 
 def run_grading(environment: Environment, run: GradingRun, notify: ProgressNotice) -> Judgement:
@@ -184,7 +189,7 @@ def run_grading(environment: Environment, run: GradingRun, notify: ProgressNotic
     cases = CaseMaterializer(environment, notify).runnable_cases(graded)
     job = grading_job(run, cases, environment.config)
     comparator = problem_comparator(environment, run.problem.meta)
-    grading = ProjectGrading(run.root, run.problem.meta, run.level)
+    grading = ProjectGrading(run.root, run.problem.meta, run.level, run.release)
     prepared = runner.prepare_project(grading, notify)
     if isinstance(prepared, BuildFailed):
         return judge(cases, JobReport(job.job_id, load_error=compile_error(prepared)), comparator)

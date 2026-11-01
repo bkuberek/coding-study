@@ -11,6 +11,7 @@ from coding_study.application.ports import (
     EditorOpener,
     GeneratedCaseCache,
     ItemRepository,
+    JdkSelector,
     MachineProbe,
     ProblemFiles,
     ProblemRepository,
@@ -48,6 +49,8 @@ class Environment:
     """The same problems as `problems`: the catalog with the workspace's own overlaid."""
     progress: ProgressStore
     toolchains: Toolchains
+    jdk: JdkSelector
+    """The JDK that Java and Kotlin build and run with: the one the shell selects."""
     runner_process: RunnerProcess
     workspace: Workspace
     content_code: ContentCode

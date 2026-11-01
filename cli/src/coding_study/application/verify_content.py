@@ -20,6 +20,7 @@ from enum import StrEnum
 from coding_study.application.case_materialization import CaseMaterializer
 from coding_study.application.comparison import problem_comparator
 from coding_study.application.environment import Environment
+from coding_study.application.jdk_requirement import JdkSplit, split_by_jdk
 from coding_study.application.language_runs import reference_job_id
 from coding_study.application.ports import ProgressNotice
 from coding_study.application.reference_runs import (
@@ -386,10 +387,11 @@ class _DynamicChecks:
             for language in self._meta.languages
             if self._request.language in (None, language)
         ]
+        split = split_by_jdk(self._environment, self._meta, languages)
         if self._meta.kind is ProblemKind.PROJECT:
-            return self._project(verification, languages)
+            return self._project(verification, split)
         runs = per_language(
-            languages,
+            split.runnable,
             lambda language: self._language(language, cases, oracle_cases, comparator),
             self._request.jobs,
         )
@@ -398,7 +400,12 @@ class _DynamicChecks:
             if generated and self._request.oracle_cases is not None
             else None
         )
-        results = tuple(result for result, _ in runs.values())
+        results = tuple(
+            LanguageResult(language, skipped=split.reason)
+            if language in split.skipped
+            else runs[language][0]
+            for language in languages
+        )
         ladder = self._ladder(results) if generated and self._request.ladder else ()
         margin_errors = _deadline_margin_problems(results) if self._request.require_ready else ()
         return replace(
@@ -407,26 +414,34 @@ class _DynamicChecks:
             oracle=oracle,
             dynamic_errors=tuple(self._errors),
             ladder=ladder,
-            ready_errors=verification.ready_errors + margin_errors,
+            ready_errors=verification.ready_errors + margin_errors + self._skip_errors(split),
             warnings=verification.warnings + self._busy_machine_notes(results, margin_errors),
             skipped=() if generated else self._generator_checks_requested(),
         )
 
-    def _project(
-        self, verification: ProblemVerification, languages: Sequence[Language]
-    ) -> ProblemVerification:
+    def _project(self, verification: ProblemVerification, split: JdkSplit) -> ProblemVerification:
         """D1, D3 and D9 in the project's one language; D2, D4 and D5 do not apply."""
         projects = [
             verify_project(self._environment, self._problem, language, self._notify)
-            for language in languages
+            for language in split.runnable
         ]
+        skipped = tuple(
+            LanguageResult(language, skipped=split.reason) for language in split.skipped
+        )
         return replace(
             verification,
-            languages=tuple(project.language for project in projects),
+            languages=(*(project.language for project in projects), *skipped),
             suite=next((project.suite for project in projects), None),
             dynamic_errors=tuple(self._errors),
+            ready_errors=verification.ready_errors + self._skip_errors(split),
             skipped=self._generator_checks_requested(),
         )
+
+    def _skip_errors(self, split: JdkSplit) -> tuple[str, ...]:
+        """The ready gate counts a skipped language as not passed."""
+        if not (self._request.require_ready and split.skipped):
+            return ()
+        return (f"{', '.join(split.skipped)} skipped: {split.reason}",)
 
     def _busy_machine_notes(
         self, results: Sequence[LanguageResult], margin_errors: Sequence[str]

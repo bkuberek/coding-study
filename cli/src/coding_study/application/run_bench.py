@@ -12,6 +12,7 @@ from dataclasses import dataclass, field, replace
 from coding_study.application.active_attempt import find_attempt
 from coding_study.application.comparison import problem_comparator
 from coding_study.application.environment import Environment
+from coding_study.application.jdk_requirement import require_jdk
 from coding_study.application.language_runs import LanguageRun
 from coding_study.application.ports import BenchCode, BuildFailed, ProgressNotice
 from coding_study.application.reference_runs import approaches_in
@@ -164,6 +165,7 @@ def run_bench(
     issue = bench_issue(problem.meta)
     if issue is not None:
         raise UsageError(issue)
+    require_jdk(environment, problem.meta, language)
     plan = plan_bench(environment, problem, language, request)
     machine = environment.machine.snapshot()
     measured = measure(environment, plan, notify)

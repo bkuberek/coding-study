@@ -7,6 +7,7 @@ progress-and-scheduling.md#attempt-lifecycle.
 from dataclasses import dataclass, replace
 
 from coding_study.application.environment import Environment
+from coding_study.application.jdk_requirement import require_jdk
 from coding_study.application.project_start import (
     ProjectStartRequest,
     StartedProject,
@@ -59,6 +60,7 @@ def start_attempt(environment: Environment, request: StartRequest) -> StartedAtt
         return _start_project(environment, problem, request)
     language = resolve_language(request.language, environment.config)
     _require_language(problem, language)
+    require_jdk(environment, problem.meta, language)
     stub_path = layout.stub_path(problem.meta, language)
     in_progress = environment.progress.in_progress_attempt(request.slug, language)
     if in_progress is not None and not request.fresh:

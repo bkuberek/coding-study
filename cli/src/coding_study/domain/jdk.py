@@ -31,6 +31,10 @@ RECOMMENDED_JDK = 25
 """The newest long-term-support release in the range: the one the toolchains guide and the fix
 name, though any JDK in the range works."""
 
+JAVA_HOME_VARIABLE = "JAVA_HOME"
+GRADLE_JAVA_HOME_ARGUMENT = "-Dorg.gradle.java.home="
+"""Outranks `org.gradle.java.home` in the user's Gradle home, which `JAVA_HOME` does not."""
+
 JDK_FIX = (
     f"select a JDK {SUPPORTED_JDKS.minimum} to {SUPPORTED_JDKS.maximum} with JAVA_HOME, "
     f"or install JDK {RECOMMENDED_JDK}: {TOOLCHAINS_GUIDE}#jdk"

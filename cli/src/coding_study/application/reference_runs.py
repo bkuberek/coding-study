@@ -61,6 +61,9 @@ class LanguageResult:
     """Concurrent problems: D7 per broken reference."""
     stress: tuple[StressCheck, ...] = ()
     """Concurrent problems: every stress verdict of D6 and D7."""
+    skipped: str | None = None
+    """Why nothing ran: the selected JDK is outside the problem's range. A skip is no failure;
+    `--require-ready` counts it as not passed."""
 
     @property
     def passing(self) -> int:

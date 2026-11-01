@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from coding_study.application.environment import Environment
+from coding_study.application.jdk_requirement import release_of_content
 from coding_study.application.ports import ProgressNotice
 from coding_study.application.project_runs import (
     COMPILE_ERROR,
@@ -177,6 +178,7 @@ class _ProjectChecks:
         self._problem = problem
         self._language = language
         self._notify = notify
+        self._release = release_of_content(problem.meta, language)
 
     def verify(self) -> ProjectVerification:
         """The builds first: a case a generated test cannot express fails them both."""
@@ -195,7 +197,9 @@ class _ProjectChecks:
 
     def _starter_problems(self, root: Path) -> Iterator[str]:
         """D1: the starter loads, and neither its cases nor its suite crash the runner."""
-        grading = GradingRun(self._problem, self._language, root, FIRST_LEVEL)
+        grading = GradingRun(
+            self._problem, self._language, root, FIRST_LEVEL, release=self._release
+        )
         judgement = run_grading(self._environment, grading, self._notify)
         if judgement.load_error is not None:
             yield f"starter does not load: {_error_text(judgement.load_error)}"
@@ -212,7 +216,9 @@ class _ProjectChecks:
 
     def _reference_failures(self, root: Path) -> tuple[str, ...]:
         """D3: every case of every level, each failure named with its level."""
-        grading = GradingRun(self._problem, self._language, root, last_level(self._problem))
+        grading = GradingRun(
+            self._problem, self._language, root, last_level(self._problem), release=self._release
+        )
         judgement = run_grading(self._environment, grading, self._notify)
         if judgement.load_error is not None:
             return (f"does not load: {_error_text(judgement.load_error)}",)
@@ -240,7 +246,7 @@ class _ProjectChecks:
         return SuiteCheck(len(passing), len(report.tests), shown(failures))
 
     def _suite_run(self, root: Path, level: int) -> SuiteRun:
-        return SuiteRun(self._problem.meta, self._language, root, level)
+        return SuiteRun(self._problem.meta, self._language, root, level, release=self._release)
 
 
 def _suite_breakdowns(report: SuiteReport) -> Iterator[str]:

@@ -5,11 +5,12 @@ import pytest
 from typer.testing import CliRunner
 
 from coding_study.domain.config import Config
+from coding_study.domain.guides import TOOLCHAINS_GUIDE
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import start
 from coding_study.entrypoints.shared import ExitCode
 from tests.e2e import e2e_environment
-from tests.fakes import RecordingEditor, repository_root
+from tests.fakes import RecordingEditor, jdk_of, repository_root
 
 runner = CliRunner()
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
@@ -146,3 +147,15 @@ def test_a_solution_file_path_starts_its_problem_in_its_language(environment):
         0,
         "two-sum · easy · arrays-hashing · python",
     )
+
+
+def test_a_java_problem_the_selected_jdk_cannot_run_exits_4_with_the_fix(environment, monkeypatch):
+    refusing = replace(environment, jdk=jdk_of(27))
+    monkeypatch.setattr(start, "load_environment", lambda *_: refusing)
+    result = invoke("two-sum", "--lang", "java", "--no-open")
+    assert result.exit_code == ExitCode.ENVIRONMENT_ERROR
+    assert result.output.splitlines() == [
+        "error: two-sum runs its java version on JDK 21 to 26; "
+        "JAVA_HOME selects JDK 27, which cstudy does not support yet",
+        f"fix: select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: {TOOLCHAINS_GUIDE}#jdk",
+    ]

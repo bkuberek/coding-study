@@ -17,9 +17,14 @@ from pathlib import Path
 from typing import Protocol
 
 from coding_study.domain.errors import RunnerStartError
-from coding_study.domain.jdk import JDK_FIX, JdkSource, SelectedJdk, no_jdk_sentence
+from coding_study.domain.jdk import (
+    JAVA_HOME_VARIABLE,
+    JDK_FIX,
+    JdkSource,
+    SelectedJdk,
+    no_jdk_sentence,
+)
 
-JAVA_HOME = "JAVA_HOME"
 JAVA = "java"
 JAVA_LAUNCHER = Path("bin") / JAVA
 RELEASE_FILE = "release"
@@ -78,6 +83,10 @@ class EnvJdkSelector:
     def unusable_java_home(self) -> str | None:
         return self._selected().unusable_java_home
 
+    def selected_home(self) -> Path | None:
+        located = self.located()
+        return None if located is None else located.home
+
     def located(self) -> LocatedJdk | None:
         return self._selected().located
 
@@ -93,7 +102,7 @@ class EnvJdkSelector:
         return self._selection
 
     def _select(self) -> _Selection:
-        java_home = self._environ.get(JAVA_HOME)
+        java_home = self._environ.get(JAVA_HOME_VARIABLE)
         if java_home:
             located = self._in_home(Path(java_home))
             return _Selection(located, None if located else java_home)

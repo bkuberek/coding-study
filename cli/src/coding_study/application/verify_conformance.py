@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 from coding_study.application.comparison import problem_comparator
 from coding_study.application.environment import Environment
+from coding_study.application.jdk_requirement import release_of_content, split_by_jdk
 from coding_study.application.language_runs import reference_job_id
 from coding_study.application.ports import ProgressNotice
 from coding_study.application.project_runs import GradingRun, SuiteRun, run_grading, run_suite
@@ -126,15 +127,22 @@ class _Fixture:
             for language in problem.meta.languages
             if self._request.language in (None, language)
         ]
+        split = split_by_jdk(self._environment, problem.meta, languages)
         run: _FixtureRun | _ProjectFixtureRun = (
             _ProjectFixtureRun(self._environment, problem, self._notify)
             if problem.meta.kind is ProblemKind.PROJECT
             else _FixtureRun(self._environment, problem, comparator, self._notify)
         )
         results = per_language(
-            languages, lambda language: run.language(language, expectations), self._request.jobs
+            split.runnable,
+            lambda language: run.language(language, expectations),
+            self._request.jobs,
         )
-        return FixtureVerification(directory, tuple(results.values()))
+        skipped = {
+            language: LanguageResult(language, skipped=split.reason) for language in split.skipped
+        }
+        ordered = tuple((results | skipped)[language] for language in languages)
+        return FixtureVerification(directory, ordered)
 
 
 class _FixtureRun:
@@ -261,11 +269,12 @@ class _ProjectFixtureRun:
         approach = expectation.approach_id
         root = reference_build(self._environment, self._problem, approach)
         level = last_level(self._problem)
-        grading = GradingRun(self._problem, language, root, level)
+        release = release_of_content(self._problem.meta, language)
+        grading = GradingRun(self._problem, language, root, level, release=release)
         judgement = run_grading(self._environment, grading, self._notify)
         mismatches = _judgement_mismatches(expectation, judgement)
         if expectation.tests:
-            suite = SuiteRun(self._problem.meta, language, root, level)
+            suite = SuiteRun(self._problem.meta, language, root, level, release=release)
             report = run_suite(self._environment, suite, self._notify)
             mismatches += suite_mismatches(expectation.tests, report)
         return ApproachResult(approach, shown(mismatches))

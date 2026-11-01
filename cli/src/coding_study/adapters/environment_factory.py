@@ -104,6 +104,7 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
     config = user.config
     index = DocumentIndex(workspace / INDEX_FILE)
     catalog = FsProblemRepository(content.path, index=index)
+    jdk = EnvJdkSelector(user.environ)
     return Environment(
         root=workspace,
         content_root=content.path,
@@ -111,7 +112,8 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         problems=OverlayProblemRepository(catalog, workspace),
         files=OverlayProblemFiles(FsProblemFiles(content.path), workspace),
         progress=SqliteProgressStore(workspace / config.progress_db),
-        toolchains=workspace_toolchains(content.path, workspace, EnvJdkSelector(user.environ)),
+        toolchains=workspace_toolchains(content.path, workspace, jdk),
+        jdk=jdk,
         runner_process=SubprocessRunner(workspace / RUNS_DIRECTORY),
         workspace=WorkspaceFs(workspace),
         content_code=ContentCodeLoader(content.path),

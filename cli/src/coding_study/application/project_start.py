@@ -13,6 +13,7 @@ from dataclasses import dataclass, replace
 
 from coding_study.application.active_attempt import find_attempt
 from coding_study.application.environment import Environment
+from coding_study.application.jdk_requirement import require_jdk
 from coding_study.application.ports import Workspace
 from coding_study.application.project_manifest import (
     ProjectManifests,
@@ -118,6 +119,7 @@ def start_project(
     """Under the project's lock: a concurrent `cstudy start` resumes the attempt this one begins,
     and a concurrent unlock writes into the folder before or after this, never during it."""
     language = project_start_language(problem, request.language)
+    require_jdk(environment, problem.meta, language)
     slug = problem.meta.slug
     with environment.workspace.locked(project_lock(slug)):
         in_progress = environment.progress.in_progress_attempt(slug, language)

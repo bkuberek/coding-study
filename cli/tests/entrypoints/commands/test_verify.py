@@ -242,3 +242,47 @@ def test_a_starter_that_does_not_load_is_a_language_problem(reported):
         "0249-bank-pro...  static ok · py 1/1 FAIL · suite 14/14",
         f"  py {problem}",
     ]
+
+
+SKIP_REASON = "runs on JDK 24 to 26; JAVA_HOME selects JDK 21"
+JVM_SKIPS = (
+    LanguageResult(Language.JAVA, skipped=SKIP_REASON),
+    LanguageResult(Language.KOTLIN, skipped=SKIP_REASON),
+)
+
+
+def test_skipped_languages_show_on_the_line_and_in_a_skipped_line(reported):
+    ran = LanguageResult(PY, (ApproachResult("reference"),))
+    reported(project_report((ran, *JVM_SKIPS), SuiteCheck(14, 14)))
+    result = invoke("bank-project-python")
+    assert (result.exit_code, result.report[:2]) == (
+        ExitCode.SUCCESS,
+        [
+            "0249-bank-pro...  static ok · py 1/1 ok · java skipped · kt skipped · suite 14/14",
+            f"  skipped  java, kotlin: {SKIP_REASON}",
+        ],
+    )
+
+
+def test_a_skip_is_not_a_failure(reported):
+    reported(project_report(JVM_SKIPS, SuiteCheck(0, 0)))
+    assert invoke("bank-project-python").exit_code == ExitCode.SUCCESS
+
+
+def test_the_ready_gate_lists_a_skip_as_not_ready(reported):
+    problem = ProblemVerification(
+        PROJECT_DIRECTORY,
+        FsProblemRepository(REPOSITORY_ROOT).load("bank-project-python").meta,
+        languages=JVM_SKIPS,
+        ready_errors=(f"java, kotlin skipped: {SKIP_REASON}",),
+    )
+    reported(VerifyReport((problem,), (Coverage(PY, 0, 1),)))
+    result = invoke("bank-project-python", "--require-ready")
+    assert (result.exit_code, result.report[:3]) == (
+        ExitCode.FAILURES,
+        [
+            "0249-bank-pro...  static ok · java skipped · kt skipped · not ready",
+            f"  skipped  java, kotlin: {SKIP_REASON}",
+            f"  not ready: java, kotlin skipped: {SKIP_REASON}",
+        ],
+    )

@@ -21,6 +21,7 @@ from coding_study.application.active_attempt import autograded_language, find_at
 from coding_study.application.case_materialization import CaseMaterializer, python_approaches
 from coding_study.application.comparison import problem_comparator
 from coding_study.application.environment import Environment
+from coding_study.application.jdk_requirement import require_jdk
 from coding_study.application.language_runs import CodeRun, LanguageRun
 from coding_study.application.ports import BuildFailed, PrepareResult, ProgressNotice, UserCode
 from coding_study.application.run_bench import (
@@ -267,6 +268,7 @@ def plan_tests(environment: Environment, request: RunTestsRequest) -> RunTestsPl
     language = autograded_language(attempt)
     debug = resolve_debug_session(request.debug, language)
     problem = environment.problems.load(attempt.slug)
+    require_jdk(environment, problem.meta, language)
     oracle = _oracle_stress(environment, problem, request.stress)
     levels = _level_run(problem, attempt.level_unlocked, request.level)
     covered = _up_to_level(problem, levels)

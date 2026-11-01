@@ -16,6 +16,7 @@ from typing import Self
 
 from coding_study.application.active_attempt import autograded_language, find_attempt
 from coding_study.application.environment import Environment
+from coding_study.application.jdk_requirement import require_jdk
 from coding_study.application.ports import ProgressNotice
 from coding_study.application.project_runs import project_levels
 from coding_study.application.project_testing import (
@@ -98,7 +99,9 @@ class _Subject:
     def find(cls, environment: Environment, request: ProjectTestRequest | SubmitRequest) -> Self:
         """Raises UsageError without an attempt in progress."""
         attempt = find_attempt(environment.progress, request.slug, request.language)
-        return cls(attempt, environment.problems.load(attempt.slug))
+        problem = environment.problems.load(attempt.slug)
+        require_jdk(environment, problem.meta, autograded_language(attempt))
+        return cls(attempt, problem)
 
     def started(self, command: RunCommand, level: int | None, at: datetime) -> RunStarted:
         """Raises UsageError for a level still locked."""
