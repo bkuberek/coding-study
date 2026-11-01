@@ -65,7 +65,7 @@ The files are yours to edit. After upgrading `cstudy`, run `cstudy ide` to bring
 | Load the Gradle project | IntelliJ: click **Load Gradle Project** when it offers to |
 | Python in IntelliJ | With the Python plugin, add `python/.venv` as the module's SDK |
 | Python in VS Code | Run `cstudy doctor --fix` first so `python/.venv` exists; on Windows pick `python\.venv\Scripts\python.exe` with **Python: Select Interpreter** |
-| A JDK for VS Code | The Java extension needs a JDK 21 (`JAVA_HOME`, or its own setting); the workspace does not pin one, since its path differs per machine |
+| A JDK for VS Code | The Java extension needs a JDK 21 to 26 (`JAVA_HOME`, or its own setting); the workspace does not pin one, since its path differs per machine |
 
 ## On a new machine
 

@@ -39,7 +39,7 @@ Upgrade with `uv tool upgrade coding-study` (or `pipx upgrade coding-study`). Ke
 | Python | 3.13 | Required | `uv python install 3.13` |
 | [Node.js](https://nodejs.org/) | 24 or newer | Optional: TypeScript | `brew install fnm`, then `fnm install 24` |
 | [pnpm](https://pnpm.io/) | 9 or newer | Optional: TypeScript | `corepack enable pnpm` |
-| JDK | 21 exactly | Optional: Java and Kotlin (the workspace's Gradle wrapper downloads Gradle and the Kotlin compiler) | [SDKMAN!](https://sdkman.io): `sdk install java` with a Temurin 21 identifier from `sdk list java` |
+| JDK | 21 to 26 (25 recommended) | Optional: Java and Kotlin (the workspace's Gradle wrapper downloads Gradle and the Kotlin compiler) | [SDKMAN!](https://sdkman.io): `sdk install java` with a Temurin 25 identifier from `sdk list java`, or `brew install openjdk@25` (`brew install openjdk` installs JDK 27, which `cstudy` does not support yet) |
 | [Go](https://go.dev/) | 1.24 or newer | Optional: Go (`--lang go`) | `brew install go` |
 | [Rust](https://www.rust-lang.org/) | 1.80 or newer | Optional: Rust (`--lang rust`) | `brew install rustup`, then `rustup-init` |
 | git | any | Optional: versioning your workspace | `xcode-select --install` |

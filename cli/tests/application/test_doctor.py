@@ -48,6 +48,7 @@ from coding_study.domain.errors import (
     RunnerStartError,
     UsageError,
 )
+from coding_study.domain.jdk import JDK_FIX, JdkSource, SelectedJdk
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import RunnerInfo, RunReport, RunRequest
 from coding_study.domain.suite_runs import SuiteJob, SuiteReport
@@ -66,9 +67,6 @@ HEALTHY_TOOLS: dict[tuple[str, ...], ProbeResult] = {
     ("uv", "--version"): ProbeResult(0, "uv 0.10.11 (006b56b12 2026-03-16)\n"),
     ("node", "--version"): ProbeResult(0, "v24.18.0\n"),
     ("pnpm", "--version"): ProbeResult(0, "9.15.9\n"),
-    ("java", "-version"): ProbeResult(
-        0, 'openjdk version "21.0.2" 2024-01-16\nOpenJDK Runtime Environment (build 21.0.2+13)\n'
-    ),
     ("gradle", "--version"): ProbeResult(0, "\n------\nGradle 9.8.2\n------\n"),
     ("go", "version"): ProbeResult(0, "go version go1.25.0 darwin/arm64\n"),
     ("rustc", "--version"): ProbeResult(0, "rustc 1.80.0 (051478957 2024-07-21)\n"),
@@ -91,8 +89,25 @@ IMPORT_PYTEST_IN_PYTHON = ((".venv/bin/python", "-c", "import pytest"), Path("/w
 ADD_PYTEST_OFFLINE = ("uv", "add", "--dev", "--offline", PYTEST_REQUIREMENT)
 ADD_PYTEST = ("uv", "add", "--dev", PYTEST_REQUIREMENT)
 TOOLCHAINS_GUIDE = "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md"
-JAVA_PROBE = (("java", "-version"), Path("/ws/jvm"))
-INSTALL_JDK = f"install JDK 21: {TOOLCHAINS_GUIDE}#jdk-21"
+SELECT_A_JDK = f"select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: {TOOLCHAINS_GUIDE}#jdk"
+"""The fix of docs/specs/cli.md#cstudy-doctor, for any JDK that cannot run Java and Kotlin."""
+JDK_25 = SelectedJdk("25.0.5", 25, JdkSource.JAVA_HOME)
+
+
+@dataclass
+class FakeJdk:
+    """The JDK the shell selects, or why there is none."""
+
+    jdk: SelectedJdk | None = JDK_25
+    java_home_without_jdk: str | None = None
+    asked: int = 0
+
+    def selected(self) -> SelectedJdk | None:
+        self.asked += 1
+        return self.jdk
+
+    def unusable_java_home(self) -> str | None:
+        return self.java_home_without_jdk
 
 
 @dataclass
@@ -273,10 +288,12 @@ def doctor(
     content: ContentLocation | NotFound = BUNDLED,
     debug_servers: FakeDebugServers | None = None,
     web: WebUiInstall | None = None,
+    jdk: FakeJdk | None = None,
 ) -> DoctorReport:
     return run_doctor(
         DoctorEnvironment(
             tools=tools or FakeTools(),
+            jdk=jdk or FakeJdk(),
             debug_servers=debug_servers or FakeDebugServers(),
             config=config or FakeConfigSource(),
             content=content,
@@ -310,7 +327,7 @@ def test_healthy_toolchain_reports_versions():
         ("uv", OK, "0.10.11"),
         ("node", OK, "v24.18.0 (type stripping)"),
         ("pnpm", OK, "9.15.9"),
-        ("java", OK, "21.0.2"),
+        ("java", OK, "25.0.5 (JAVA_HOME)"),
         ("gradle", OK, "9.8.2"),
     ]
 
@@ -328,17 +345,51 @@ def test_node_older_than_24_fails():
 
 
 @pytest.mark.parametrize(
-    ("output", "expected"),
+    ("selected", "expected"),
     [
-        ('openjdk version "21" 2023-09-19', (OK, "21")),
-        ('openjdk version "17.0.9" 2023-10-17', (FAIL, "17.0.9 (need JDK 21)")),
-        ('openjdk version "25.0.1" 2025-10-21', (FAIL, "25.0.1 (need JDK 21)")),
-        ('java version "1.8.0_391"', (FAIL, "1.8.0 (need JDK 21)")),
+        (SelectedJdk("21.0.13", 21, JdkSource.PATH), (OK, "21.0.13 (PATH)")),
+        (SelectedJdk("26.0.1", 26, JdkSource.JAVA_HOME), (OK, "26.0.1 (JAVA_HOME)")),
+        (
+            SelectedJdk("27", 27, JdkSource.JAVA_HOME),
+            (FAIL, "27 (not supported yet: cstudy supports JDK 21 to 26)"),
+        ),
+        (
+            SelectedJdk("17.0.9", 17, JdkSource.PATH),
+            (FAIL, "17.0.9 (too old: cstudy supports JDK 21 to 26)"),
+        ),
+        (None, (FAIL, "not found")),
     ],
+    ids=["21", "26", "27", "17", "none"],
 )
-def test_java_must_be_21(output, expected):
-    tools = tools_with(("java", "-version"), ProbeResult(0, output))
-    assert summary(doctor(tools), "java") == expected
+def test_the_java_row_checks_the_selected_jdk_against_the_supported_range(selected, expected):
+    assert summary(doctor(jdk=FakeJdk(selected)), "java") == expected
+
+
+def test_a_java_home_without_a_jdk_fails_the_java_row():
+    jdk = FakeJdk(None, java_home_without_jdk="/opt/jdk")
+    assert summary(doctor(jdk=jdk), "java") == (FAIL, "JAVA_HOME (/opt/jdk) holds no JDK")
+
+
+@pytest.mark.parametrize(
+    "jdk",
+    [
+        FakeJdk(SelectedJdk("27", 27, JdkSource.JAVA_HOME)),
+        FakeJdk(SelectedJdk("17.0.9", 17, JdkSource.PATH)),
+        FakeJdk(None),
+        FakeJdk(None, java_home_without_jdk="/opt/jdk"),
+    ],
+    ids=["27", "17", "none", "bad JAVA_HOME"],
+)
+def test_a_failing_java_row_says_how_to_select_a_supported_jdk(jdk):
+    assert check(doctor(jdk=jdk), "java").fix == SELECT_A_JDK
+
+
+def test_the_fix_names_the_toolchains_guides_jdk_section():
+    assert JDK_FIX == SELECT_A_JDK
+
+
+def test_a_supported_jdk_needs_no_fix():
+    assert check(doctor(), "java").fix is None
 
 
 def test_missing_tool_fails_with_fix():
@@ -364,7 +415,6 @@ def test_missing_tool_fails_with_fix():
             "node",
             f"install Node 24 or newer: {TOOLCHAINS_GUIDE}#nodejs-and-pnpm",
         ),
-        (("java", "-version"), "java", f"install JDK 21: {TOOLCHAINS_GUIDE}#jdk-21"),
     ],
 )
 def test_missing_toolchain_fix_links_its_install_guide(command, name, fix):
@@ -1041,15 +1091,15 @@ def fix(
     workspace: PracticeWorkspace,
     content: ContentLocation | NotFound = BUNDLED,
     notify: Callable[[str], None] = lambda _line: None,
+    jdk: FakeJdk | None = None,
 ):
-    return fix_workspace(workspace, content, notify)
+    return fix_workspace(workspace, content, jdk or FakeJdk(), notify)
 
 
 def test_fix_runs_the_setup_command_of_every_workspace_project():
     commands = FakeCommands()
     fix(workspace_with(commands=commands))
     assert commands.ran == [
-        JAVA_PROBE,
         (("uv", "sync"), Path("/ws/python")),
         IMPORT_PYTEST_IN_PYTHON,
         (("pnpm", "install"), Path("/ws/typescript")),
@@ -1084,7 +1134,7 @@ def test_the_jvm_warm_up_resolves_the_runtime_classpath():
 def test_fix_installs_the_typescript_runner_of_a_content_checkout():
     commands = FakeCommands()
     fix(workspace_with(commands=commands), CHECKOUT)
-    assert commands.ran[4] == (("pnpm", "install"), Path("/checkout/runners/typescript"))
+    assert commands.ran[3] == (("pnpm", "install"), Path("/checkout/runners/typescript"))
 
 
 def test_fix_skips_projects_that_are_not_set_up():
@@ -1114,29 +1164,56 @@ def gradle_commands(commands: FakeCommands) -> list[tuple[str, ...]]:
 
 
 @pytest.mark.parametrize(
-    "probe",
-    [None, ProbeResult(1, "Unable to locate a Java Runtime")],
-    ids=["no java on PATH", "a java stub that does not run"],
+    "jdk",
+    [
+        FakeJdk(None),
+        FakeJdk(None, java_home_without_jdk="/opt/jdk"),
+        FakeJdk(SelectedJdk("17.0.9", 17, JdkSource.PATH)),
+    ],
+    ids=["no JDK", "a JAVA_HOME without a JDK", "a JDK older than 21"],
 )
-def test_fix_skips_the_gradle_warm_up_without_a_working_java(probe):
-    commands = FakeCommands({JAVA_PROBE[0]: probe})
-    fix(workspace_with(paths={"jvm"}, commands=commands))
+def test_fix_skips_the_gradle_warm_up_without_a_jdk_it_can_build_with(jdk):
+    commands = FakeCommands()
+    fix(workspace_with(paths={"jvm"}, commands=commands), jdk=jdk)
     assert gradle_commands(commands) == []
 
 
-def test_fix_reports_the_skipped_warm_up_with_the_jdk_to_install():
-    commands = FakeCommands({JAVA_PROBE[0]: None})
-    outcome = fix(workspace_with(paths={"jvm"}, commands=commands))[-1]
+@pytest.mark.parametrize(
+    "selected",
+    [
+        SelectedJdk("21.0.13", 21, JdkSource.PATH),
+        SelectedJdk("26.0.1", 26, JdkSource.JAVA_HOME),
+        SelectedJdk("27", 27, JdkSource.JAVA_HOME),
+    ],
+    ids=["21", "26", "27, above the range"],
+)
+def test_fix_warms_up_gradle_on_any_jdk_it_can_build_with(selected):
+    commands = FakeCommands()
+    fix(workspace_with(paths={"jvm"}, commands=commands), jdk=FakeJdk(selected))
+    assert gradle_commands(commands) == [JVM_FIX.command, *(s.command for s in JVM_PROJECT_WARMUPS)]
+
+
+def test_fix_reports_the_warm_up_skipped_for_want_of_a_jdk():
+    outcome = fix(workspace_with(paths={"jvm"}), jdk=FakeJdk(None))[-1]
     assert (outcome.succeeded, outcome.detail, outcome.step.manual) == (
         False,
         "skipped: java is not installed or does not run",
-        INSTALL_JDK,
+        SELECT_A_JDK,
     )
 
 
-def test_fix_still_sets_up_the_other_projects_without_java():
-    commands = FakeCommands({JAVA_PROBE[0]: None})
-    outcomes = fix(workspace_with(commands=commands))
+def test_fix_reports_the_warm_up_skipped_for_a_jdk_too_old():
+    jdk = FakeJdk(SelectedJdk("17.0.9", 17, JdkSource.PATH))
+    outcome = fix(workspace_with(paths={"jvm"}), jdk=jdk)[-1]
+    assert (outcome.succeeded, outcome.detail, outcome.step.manual) == (
+        False,
+        "skipped: JDK 17 is older than 21",
+        SELECT_A_JDK,
+    )
+
+
+def test_fix_still_sets_up_the_other_projects_without_a_jdk():
+    outcomes = fix(workspace_with(commands=FakeCommands()), jdk=FakeJdk(None))
     assert [(outcome.step.project, outcome.succeeded) for outcome in outcomes] == [
         ("python", True),
         ("typescript", True),
@@ -1144,10 +1221,10 @@ def test_fix_still_sets_up_the_other_projects_without_java():
     ]
 
 
-def test_fix_looks_for_java_only_in_a_workspace_with_a_jvm_project():
-    commands = FakeCommands()
-    fix(workspace_with(paths={"python"}, commands=commands))
-    assert JAVA_PROBE[0] not in [command for command, _cwd in commands.ran]
+def test_fix_looks_for_a_jdk_only_in_a_workspace_with_a_jvm_project():
+    jdk = FakeJdk()
+    fix(workspace_with(paths={"python"}), jdk=jdk)
+    assert jdk.asked == 0
 
 
 def test_fix_with_a_missing_tool_fails_that_step():

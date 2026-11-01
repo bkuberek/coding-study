@@ -21,6 +21,7 @@ from coding_study.application.ports import (
     DebugServer,
     DebugServers,
     FolderCheck,
+    JdkSelector,
     LanguageRunner,
     ProbeResult,
     ProgressDatabase,
@@ -53,6 +54,7 @@ from coding_study.domain.errors import (
     UsageError,
 )
 from coding_study.domain.guides import TOOLCHAINS_GUIDE
+from coding_study.domain.jdk import JDK_FIX, SUPPORTED_JDKS, no_jdk_sentence
 from coding_study.domain.layout import (
     GO_PROJECT,
     GO_WORK_FILE,
@@ -84,19 +86,16 @@ from coding_study.domain.workspace_projects import (
 
 PYTHON_VERSION = "3.13"
 MINIMUM_NODE_MAJOR = 24
-JAVA_MAJOR = 21
 MINIMUM_GO = (1, 24)
 MINIMUM_RUSTC = (1, 80)
 INSTALL_UV = f"install uv: {TOOLCHAINS_GUIDE}#python-and-uv"
 INSTALL_PNPM = f"install pnpm: {TOOLCHAINS_GUIDE}#nodejs-and-pnpm"
-INSTALL_JAVA = f"install JDK {JAVA_MAJOR}: {TOOLCHAINS_GUIDE}#jdk-{JAVA_MAJOR}"
 INSTALL_GO = f"needed for --lang go, install Go 1.24 or newer: {TOOLCHAINS_GUIDE}#go"
 INSTALL_RUST = (
     f"needed for --lang rust, install Rust 1.80 or newer with rustup: {TOOLCHAINS_GUIDE}#rust"
 )
 
 _DOTTED_VERSION = re.compile(r"(?P<version>\d+(?:\.\d+)+)")
-_JAVA_VERSION = re.compile(r'version "(?P<version>\d+(?:\.\d+)*)')
 
 
 class CheckStatus(StrEnum):
@@ -155,6 +154,8 @@ class PracticeWorkspace:
 @dataclass(frozen=True, slots=True)
 class DoctorEnvironment:
     tools: ToolProbe
+    jdk: JdkSelector
+    """The JDK the shell selects, which the `java` row reports."""
     debug_servers: DebugServers
     config: ConfigSource
     content: ContentLocation | NotFound
@@ -260,10 +261,11 @@ JVM_FIX = FixStep(
 """Builds the runner and support classes and warms the Gradle daemon. Resolving the runtime
 classpath caches the runner's own libraries, without which no JVM problem builds offline; `cs.only`
 names no practice package, so a half-written practice file never fails the setup."""
-JAVA_PROBE = ("java", "-version")
 NO_JAVA_REASON = "java is not installed or does not run"
-NO_JAVA_FIX = replace(JVM_FIX, manual=INSTALL_JAVA)
-"""The warm-up as it is reported when Java is missing."""
+NO_JAVA_FIX = replace(JVM_FIX, manual=JDK_FIX)
+"""The warm-up as it is reported when there is no JDK it can build with."""
+JAVA_CHECK = "java"
+SUPPORTED_RANGE = f"cstudy supports JDK {SUPPORTED_JDKS.minimum} to {SUPPORTED_JDKS.maximum}"
 JVM_PROJECT_LANGUAGES = (Language.JAVA, Language.KOTLIN)
 PROJECT_WARMUPS = "../.cs/runtime/runners/jvm/project-warmup"
 """From `jvm/`: a project folder per language in the runner runtime, with one test each."""
@@ -339,29 +341,37 @@ def _migrate_progress(progress: ProgressDatabase, notify: ProgressNotice) -> Non
 
 
 def fix_workspace(
-    workspace: PracticeWorkspace, content: ContentLocation | NotFound, notify: ProgressNotice
+    workspace: PracticeWorkspace,
+    content: ContentLocation | NotFound,
+    jdk: JdkSelector,
+    notify: ProgressNotice,
 ) -> tuple[FixOutcome, ...]:
     """Run the setup command of every workspace project that exists, and in a content checkout
     the TypeScript runner's install, before the JVM warm-up. The Python project then gets
     pytest when its venv lacks it."""
     outcomes: list[FixOutcome] = []
-    jvm = _can_warm_up_jvm(workspace)
-    for step, directory in _fix_plan(workspace, content, jvm):
+    jvm_blocker = _jvm_warm_up_blocker(workspace, jdk)
+    for step, directory in _fix_plan(workspace, content, jvm_blocker is None):
         outcome = _run_step(workspace.commands, step, directory, notify)
         if outcome is not None:
             outcomes.append(outcome)
-    if not jvm:
-        outcomes.append(FixOutcome(NO_JAVA_FIX, None, skipped=NO_JAVA_REASON))
+    if jvm_blocker is not None:
+        outcomes.append(FixOutcome(NO_JAVA_FIX, None, skipped=jvm_blocker))
     return tuple(outcomes)
 
 
-def _can_warm_up_jvm(workspace: PracticeWorkspace) -> bool:
-    """False for a workspace with a JVM project when no working `java` is on PATH: Gradle would
-    only fail."""
-    files = workspace.files
-    if not files.exists(JVM_FIX.project):
-        return True
-    return _succeeded(workspace.commands.run(JAVA_PROBE, files.root / JVM_FIX.project))
+def _jvm_warm_up_blocker(workspace: PracticeWorkspace, jdk: JdkSelector) -> str | None:
+    """Why a workspace with a JVM project cannot warm Gradle up: no JDK, or one older than the
+    supported minimum, on which Gradle would only fail. A JDK above the range warms up, so the
+    problems that opt in to it build offline too."""
+    if not workspace.files.exists(JVM_FIX.project):
+        return None
+    selected = jdk.selected()
+    if selected is None:
+        return NO_JAVA_REASON
+    if selected.feature < SUPPORTED_JDKS.minimum:
+        return f"JDK {selected.feature} is older than {SUPPORTED_JDKS.minimum}"
+    return None
 
 
 def _run_step(
@@ -410,7 +420,7 @@ def run_doctor(environment: DoctorEnvironment, notify: ProgressNotice) -> Doctor
         _present_tool(tools, "uv", INSTALL_UV),
         _node(tools),
         _present_tool(tools, "pnpm", INSTALL_PNPM),
-        _java(tools),
+        _java(environment.jdk),
         _gradle(tools),
         _go(tools),
         _rustc(tools),
@@ -489,14 +499,22 @@ def _node(tools: ToolProbe) -> CheckResult:
     return CheckResult("node", CheckStatus.OK, f"v{version} (type stripping)")
 
 
-def _java(tools: ToolProbe) -> CheckResult:
-    version = _version_of(tools, ("java", "-version"), _JAVA_VERSION)
-    if isinstance(version, _Unavailable):
-        return CheckResult("java", CheckStatus.FAIL, version.reason, fix=INSTALL_JAVA)
-    if _major(version) != JAVA_MAJOR:
-        detail = f"{version} (need JDK {JAVA_MAJOR})"
-        return CheckResult("java", CheckStatus.FAIL, detail, fix=INSTALL_JAVA)
-    return CheckResult("java", CheckStatus.OK, version)
+def _java(jdk: JdkSelector) -> CheckResult:
+    """The selected JDK against the supported range (docs/specs/cli.md#cstudy-doctor). A
+    problem's own range is compared where the problem runs, not here."""
+    selected = jdk.selected()
+    if selected is None:
+        java_home = jdk.unusable_java_home()
+        return _java_failure(NOT_FOUND if java_home is None else no_jdk_sentence(java_home))
+    if selected.feature > SUPPORTED_JDKS.maximum:
+        return _java_failure(f"{selected.version} (not supported yet: {SUPPORTED_RANGE})")
+    if selected.feature < SUPPORTED_JDKS.minimum:
+        return _java_failure(f"{selected.version} (too old: {SUPPORTED_RANGE})")
+    return CheckResult(JAVA_CHECK, CheckStatus.OK, f"{selected.version} ({selected.source})")
+
+
+def _java_failure(detail: str) -> CheckResult:
+    return CheckResult(JAVA_CHECK, CheckStatus.FAIL, detail, fix=JDK_FIX)
 
 
 def _gradle(tools: ToolProbe) -> CheckResult:

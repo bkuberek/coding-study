@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.text import Text
 
 from coding_study.adapters.environment_factory import RUNNERS_DIRECTORY
+from coding_study.adapters.jdk_locator import EnvJdkSelector
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.debug_servers import InstalledDebugServers, Machine
 from coding_study.adapters.languages.registry import LANGUAGES
@@ -134,6 +135,7 @@ def doctor_environment(cwd: Path, environ: Mapping[str, str], home: Path) -> Doc
     config = TomlConfigSource(config_path(environ, home))
     return DoctorEnvironment(
         tools=SubprocessToolProbe(),
+        jdk=EnvJdkSelector(environ),
         debug_servers=InstalledDebugServers(Machine(environ, home)),
         config=config,
         content=content,
@@ -188,7 +190,7 @@ def _fix(environment: DoctorEnvironment, output: Console) -> bool:
     if isinstance(workspace, NotFound):
         raise WorkspaceError(workspace.reason)
     repair_workspace(workspace, _notice(output))
-    outcomes = fix_workspace(workspace, environment.content, _notice(output))
+    outcomes = fix_workspace(workspace, environment.content, environment.jdk, _notice(output))
     for outcome in outcomes:
         for line in _fix_lines(outcome):
             output.print(line)

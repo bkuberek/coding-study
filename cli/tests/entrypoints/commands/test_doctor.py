@@ -20,7 +20,8 @@ from coding_study.application.doctor import (
     NotFound,
     PracticeWorkspace,
 )
-from coding_study.application.ports import ProbeResult, ScaffoldOutcome
+from coding_study.application.ports import JdkSelector, ProbeResult, ScaffoldOutcome
+from coding_study.domain.jdk import JdkSource, SelectedJdk
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import doctor
 from coding_study.entrypoints.shared import ExitCode
@@ -45,6 +46,7 @@ def stub_fixes(monkeypatch: pytest.MonkeyPatch, *outcomes: FixOutcome) -> list[s
     def fix(
         workspace: PracticeWorkspace,
         _content: ContentLocation | NotFound,
+        _jdk: JdkSelector,
         _notify: Callable[[str], None],
     ) -> tuple[FixOutcome, ...]:
         asked.append(str(workspace.files.root))
@@ -85,7 +87,10 @@ def test_doctor_exits_0_with_only_ok_and_warn(monkeypatch):
 
 
 def test_doctor_exits_4_on_any_failure(monkeypatch):
-    stub_report(monkeypatch, CheckResult("java", CheckStatus.FAIL, "17.0.9 (need JDK 21)"))
+    stub_report(
+        monkeypatch,
+        CheckResult("java", CheckStatus.FAIL, "17.0.9 (too old: cstudy supports JDK 21 to 26)"),
+    )
     assert runner.invoke(cli.app, ["doctor"]).exit_code == ExitCode.ENVIRONMENT_ERROR == 4
 
 
@@ -204,6 +209,16 @@ def test_doctor_environment_reads_the_marker_version(tmp_path):
     environment = doctor.doctor_environment(tmp_path, {}, tmp_path)
     assert isinstance(environment.workspace, PracticeWorkspace)
     assert environment.workspace.created_with == "0.0.9"
+
+
+def test_doctor_environment_selects_the_jdk_its_environment_names(tmp_path):
+    home = tmp_path / "jdk"
+    (home / "bin").mkdir(parents=True)
+    (home / "bin" / "java").write_text("#!/bin/sh\n")
+    (home / "bin" / "java").chmod(0o755)
+    (home / "release").write_text('JAVA_VERSION="26.0.1"\n')
+    environment = doctor.doctor_environment(tmp_path, {"JAVA_HOME": str(home)}, tmp_path)
+    assert environment.jdk.selected() == SelectedJdk("26.0.1", 26, JdkSource.JAVA_HOME)
 
 
 def test_doctor_environment_finds_the_checkout_content(tmp_path):

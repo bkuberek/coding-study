@@ -6,7 +6,7 @@
 |-----------|---------------------------------|------------|
 | [uv and Python](#python-and-uv) | uv (any version; 0.10 or newer recommended), Python 3.13 found by `uv python find 3.13` | Required: `cstudy` and the Python practice project |
 | [Node.js and pnpm](#nodejs-and-pnpm) | Node 24 or newer, any pnpm (9 or newer recommended) | TypeScript |
-| [JDK 21](#jdk-21) | Exactly major version 21 | Java and Kotlin |
+| [JDK](#jdk) | 21 to 26 (25 recommended); 27 and newer are not supported yet | Java and Kotlin |
 | [Go](#go) | Go 1.24 or newer; Delve (`dlv`, any version, 1.27.2 tested, which debugs Go 1.25 or newer) for `--debug` | Optional: `--lang go` |
 | [Rust](#rust) | `rustc` 1.80 or newer and `cargo`, through rustup; LLDB's `debugserver` (macOS) or `lldb-server` (Linux) for `--debug` | Optional: `--lang rust` |
 | [git](#git) | Any | Optional: versioning your workspace |
@@ -84,9 +84,9 @@ pnpm --version   # 9.0.0 or newer
 
 nvm (`nvm install 24`) works as well as fnm, and on macOS `brew install node pnpm` installs both without a version manager.
 
-## JDK 21
+## JDK
 
-The Java and Kotlin practice projects build with Gradle against a Java 21 toolchain, and `cstudy doctor` requires `java -version` to report major version 21: JDK 17 and JDK 25 both fail. The vendor does not matter. We recommend [SDKMAN!](https://sdkman.io) on macOS and Linux, with Eclipse Temurin.
+`cstudy` builds and runs Java and Kotlin with the JDK your shell selects: the one `JAVA_HOME` names, else the one of the first `java` on `PATH`, as the Gradle wrapper does. It supports JDK 21 to 26. `cstudy doctor` passes any of them, fails JDK 20 and older, and reports JDK 27 and newer as not supported yet: the Kotlin compiler that `cstudy` pins targets JDK 26 at most. The vendor does not matter. We recommend JDK 25, the newest long-term-support release in the range, installed with [SDKMAN!](https://sdkman.io) on macOS and Linux.
 
 1. Install SDKMAN, then open a new terminal:
 
@@ -94,31 +94,41 @@ The Java and Kotlin practice projects build with Gradle against a Java 21 toolch
    curl -s "https://get.sdkman.io" | bash
    ```
 
-2. List the Java builds and pick a Temurin 21 identifier, the line ending in `-tem` whose version starts with `21.`:
+2. List the Java builds and pick a Temurin 25 identifier, the line ending in `-tem` whose version starts with `25.`:
 
    ```bash
    sdk list java
    ```
 
-3. Install it and make it the default `java`. The identifier below was current on October 29, 2026; use the one from your list. A plain `sdk install java` installs the newest release (25 or later), which `cstudy doctor` rejects.
+3. Install it and make it the default `java`. The identifier below was current on November 1, 2026; use the one from your list. A plain `sdk install java` installs SDKMAN's current default, which can be a release above 26.
 
    ```bash
-   sdk install java 21.0.13.0+9-tem
-   sdk default java 21.0.13.0+9-tem
+   sdk install java 25.0.5.0+8-tem
+   sdk default java 25.0.5.0+8-tem
    ```
 
 Check it:
 
 ```bash
-java -version   # openjdk version "21.0.13" ...
+java -version   # openjdk version "25.0.5" ...
+cstudy doctor   # ok    java 25.0.5 (JAVA_HOME)
 ```
+
+On macOS, Homebrew works too, with the versioned formula: `brew install openjdk` installs JDK 27, which `cstudy` does not support yet.
+
+```bash
+brew install openjdk@25
+export JAVA_HOME="$(brew --prefix openjdk@25)/libexec/openjdk.jdk/Contents/Home"   # add to your shell profile
+```
+
+On Linux, your distribution's packages work too: on Debian and Ubuntu, `sudo apt install openjdk-21-jdk`, or `openjdk-25-jdk` where your release has it; on Fedora, `sudo dnf install java-21-openjdk-devel` or `java-25-openjdk-devel`.
+
+Several JDKs can be installed side by side. `cstudy` never looks for them: it uses the one your shell selects, so `sdk use java <identifier>` in one terminal, or a `.sdkmanrc` in a directory, switches it. Switching starts another Gradle daemon and compiles once more. Your Java and Kotlin code compiles at the level of the selected JDK, up to 26, so a newer JDK lets you use its language features and APIs. A problem that needs a newer JDK than 21 says so in its statement, and `cstudy` refuses to start it on an older one.
 
 Nothing else is needed for Java or Kotlin:
 
 - **Gradle**: each workspace ships the Gradle wrapper (`jvm/gradlew`), which downloads its own Gradle on first use. `cstudy doctor` reports a missing system Gradle as `WARN`; only a maintainer who regenerates the wrapper needs one (`brew install gradle`, or `sdk install gradle` on Linux, although the warning names Homebrew).
 - **Kotlin**: the Kotlin Gradle plugin compiles the Kotlin project, and Gradle downloads it with the build, so `kotlinc` is not required. Install it with `sdk install kotlin` only if you want a Kotlin REPL.
-
-Alternatives to SDKMAN: on macOS, `brew install openjdk@21`, then follow its caveats to put it on `PATH`; on Debian and Ubuntu, `sudo apt install openjdk-21-jdk`; on Fedora, `sudo dnf install java-21-openjdk-devel`.
 
 ## Go
 
