@@ -1326,9 +1326,12 @@ input[type="radio"] {
   }
 }
 
+/* Every chunk's styles too: a running run, a save and a dialog stay still, their state in words. */
 @media (prefers-reduced-motion: reduce) {
-  .cursor,
-  .spinner {
-    animation: none;
+  *,
+  ::before,
+  ::after {
+    animation: none !important;
+    transition: none !important;
   }
 }

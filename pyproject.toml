@@ -26,6 +26,7 @@ cstudy = "coding_study.entrypoints.launcher:main"
 
 [dependency-groups]
 browser = [
+    "axe-playwright-python>=0.1.8",
     "playwright>=1.58",
 ]
 dev = [

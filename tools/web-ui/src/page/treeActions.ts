@@ -181,7 +181,8 @@ export class TreeMenu {
     const subject = returnFocus.dataset["path"] ?? returnFocus.dataset["folder"] ?? "the file";
     const menu = h("div", { class: "tree-menu", role: "menu", "aria-label": `Actions for ${subject}` }, ...buttons);
     menu.addEventListener("keydown", (event) => this.#onKey(event, buttons));
-    document.body.append(menu);
+    // Inside the main landmark with the tree, so a screen reader finds it where it acts.
+    (anchor.closest("main") ?? document.body).append(menu);
     const rect = anchor.getBoundingClientRect();
     const x = Math.min(at?.x ?? rect.left, window.innerWidth - menu.offsetWidth - 8);
     const y = Math.min(at?.y ?? rect.bottom + 2, window.innerHeight - menu.offsetHeight - 8);

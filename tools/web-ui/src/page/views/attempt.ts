@@ -229,9 +229,10 @@ function levelSegment(status: AttemptStatus): HTMLElement | null {
 
 function brief(status: AttemptStatus, statement: Rendered, hints: HTMLElement): HTMLElement {
   const levels = status.levels;
+  // Focusable, so the keyboard scrolls the statement in the wide layout, where it scrolls alone.
   return h(
     "aside",
-    { class: "brief", "aria-label": "Statement" },
+    { class: "brief", "aria-label": "Statement", tabindex: "0" },
     levels
       ? h(
           "ol",

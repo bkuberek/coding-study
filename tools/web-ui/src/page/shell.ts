@@ -103,8 +103,8 @@ export function mountShell(root: HTMLElement, version: string, actions: ShellAct
       attemptsMenu,
     ),
     h(
-      "div",
-      { class: "command", role: "note", "aria-label": "The terminal command this view mirrors" },
+      "section",
+      { class: "command", "aria-label": "The terminal command this view mirrors" },
       h("span", { class: "sigil", "aria-hidden": "true" }, "$"),
       commandText,
       h("span", { class: "cursor", "aria-hidden": "true" }),

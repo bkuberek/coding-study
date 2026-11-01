@@ -219,7 +219,8 @@ export class Editor {
         this.#language.of(slots.language),
         this.#theme.of(slots.theme),
         this.#readOnly.of(slots.readOnly),
-        EditorView.contentAttributes.of({ "aria-label": path }),
+        // A tabindex as well as contenteditable, so checkers count the scroller's content focusable.
+        EditorView.contentAttributes.of({ "aria-label": path, tabindex: "0" }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) for (const listener of this.#listeners) listener(this);
         }),

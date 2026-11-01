@@ -45,7 +45,7 @@ export class ResultsPanel {
     this.#showAll = h("input", { type: "checkbox", id: "results-show-all" });
     this.#showAll.addEventListener("change", () => this.update());
     this.#progress = h("progress", { class: "results-progress", "aria-label": "Run progress", hidden: true });
-    this.#body = h("div", { class: "results-body", tabindex: "0", "aria-label": "Run results" });
+    this.#body = h("div", { class: "results-body", role: "region", tabindex: "0", "aria-label": "Run results" });
     this.element = h(
       "section",
       { class: "results", "aria-label": "Results" },

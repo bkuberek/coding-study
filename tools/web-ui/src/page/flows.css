@@ -156,9 +156,3 @@ textarea {
   background: currentColor;
   animation: blink 1.6s steps(1) infinite;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .mock-banner::before {
-    animation: none;
-  }
-}

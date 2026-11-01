@@ -48,7 +48,8 @@ export function badge(glyph: string, text: string, tone: string): HTMLElement {
   );
 }
 
-/** Server-rendered Markdown (docs/specs/web-ui.md#security): raw HTML is escaped on the server. */
+/** Server-rendered Markdown (docs/specs/web-ui.md#security): raw HTML is escaped on the server.
+ * Each code block takes the focus, so the keyboard scrolls the lines too wide for it. */
 export function rendered(html: string, className: string): HTMLElement {
   const container = h("div", { class: className });
   container.innerHTML = html;
@@ -56,5 +57,6 @@ export function rendered(html: string, className: string): HTMLElement {
     link.target = "_blank";
     link.rel = "noopener noreferrer";
   }
+  for (const block of container.querySelectorAll("pre")) block.tabIndex = 0;
   return container;
 }

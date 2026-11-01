@@ -29,7 +29,8 @@
   text-align: right;
 }
 
-.stats-region[aria-busy="true"] {
+/* The figures a new request replaces dim; the loading line stays legible. */
+.stats-region[aria-busy="true"] > :not(.state) {
   opacity: 0.6;
 }
 
