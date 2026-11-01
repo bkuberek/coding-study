@@ -2,7 +2,8 @@
 (docs/specs/web-ui.md#problems-view), in each engine of `tests/browsers.py`: the problem list
 marks `java!` and `kt!` with the CLI's reason as the tooltip and as text for assistive
 technology, the Start dialog disables the two languages and shows the reason beside them, a
-project in Java cannot be started, and a refusal with a `fix:` hint shows the hint, its link a link.
+project in Java cannot be started, a refusal with a `fix:` hint shows the hint, its link a link, and
+the Health view's `java` row wraps its `fix`, link included, where the window is too narrow for it.
 
 The server selects a fake JDK 27, which cstudy does not support yet, so no toolchain is needed:
 the workspace is a bare one, and nothing is built. Playwright and its engines are set up as
@@ -16,6 +17,7 @@ from typing import Any
 
 import pytest
 
+from coding_study.domain.guides import TOOLCHAINS_GUIDE
 from tests.browsers import launched, refusing_starts, watched
 from tests.helpers import mark_workspace, selecting_jdk
 from tests.serve_process import RunningServer, running_server
@@ -37,6 +39,11 @@ REFUSAL = (
 KOTLIN_REFUSAL = REFUSAL.replace("java version", "kotlin version")
 GUIDE = "https://example.org/guide#jdk"
 FIX = f"select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: {GUIDE}"
+HEALTH_GUIDE = f"{TOOLCHAINS_GUIDE}#jdk"
+HEALTH_FIX = f"select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: {HEALTH_GUIDE}"
+JAVA_FIX = "tr.check-fail:has(td.check-name:text-is('java')) td:last-child"
+NARROW = {"width": 1024, "height": 800}
+WIDE = {"width": 1440, "height": 900}
 
 
 @dataclass
@@ -55,6 +62,9 @@ class Visit:
     project_start_disabled: bool = False
     refused: list[str] = field(default_factory=list[str])
     refused_links: list[str] = field(default_factory=list[str])
+    health_fix: str = ""
+    health_fix_links: list[str] = field(default_factory=list[str])
+    health_scrolls_sideways: bool = True
     errors: list[str] = field(default_factory=list[str])
 
 
@@ -76,7 +86,7 @@ def visit(engine: str, server: RunningServer) -> Visit:
     with sync_api.sync_playwright() as playwright:
         browser = launched(playwright, engine)
         page = watched(
-            browser.new_page(viewport={"width": 1440, "height": 900}),
+            browser.new_page(viewport=WIDE),
             seen.errors,
             _is_the_refusal_logged,
         )
@@ -86,6 +96,7 @@ def visit(engine: str, server: RunningServer) -> Visit:
         _read_marks(page, seen)
         _read_start_dialog(page, seen)
         _read_project_dialog(page, seen)
+        _read_health(page, seen)
         _read_refused_start(page, seen)
         browser.close()
     return seen
@@ -131,6 +142,21 @@ def _read_project_dialog(page: Any, seen: Visit) -> None:
     page.wait_for_selector(SHEET)
     seen.project_note = _lines(page.locator(NOTE).inner_text())
     seen.project_start_disabled = page.locator(START).is_disabled()
+
+
+def _read_health(page: Any, seen: Visit) -> None:
+    """The Health view in a window too narrow for the `java` fix on one line."""
+    page.keyboard.press("Escape")
+    page.set_viewport_size(NARROW)
+    page.evaluate("() => { location.hash = '#/health' }")
+    seen.health_fix = page.wait_for_selector(JAVA_FIX).inner_text().strip()
+    seen.health_fix_links = page.locator(f"{JAVA_FIX} a[target=_blank]").evaluate_all(
+        "links => links.map(link => link.href)"
+    )
+    seen.health_scrolls_sideways = page.locator(".checks-region").evaluate(
+        "region => region.scrollWidth > region.clientWidth"
+    )
+    page.set_viewport_size(WIDE)
 
 
 def _read_refused_start(page: Any, seen: Visit) -> None:
@@ -204,6 +230,18 @@ def test_a_refusal_shows_the_clis_fix_on_its_own_line(visit):
 
 def test_the_link_of_a_fix_is_a_link(visit):
     assert visit.refused_links == [GUIDE]
+
+
+def test_the_health_view_shows_the_fix_of_the_java_row(visit):
+    assert visit.health_fix == HEALTH_FIX
+
+
+def test_the_link_of_the_health_views_fix_is_a_link(visit):
+    assert visit.health_fix_links == [HEALTH_GUIDE]
+
+
+def test_the_health_view_wraps_a_long_fix_instead_of_scrolling(visit):
+    assert not visit.health_scrolls_sideways
 
 
 def test_the_page_logs_no_error_on_a_jdk_it_cannot_run(visit):

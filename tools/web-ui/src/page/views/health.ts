@@ -6,7 +6,7 @@
 import "./health.css";
 
 import type { Cleanup, PageContext } from "../context.ts";
-import { badge, command, h } from "../dom.ts";
+import { badge, command, fixHint, h } from "../dom.ts";
 import { checkBadge } from "../format.ts";
 import { JobPanel } from "../jobs.ts";
 import { loading, showFailure } from "../states.ts";
@@ -131,7 +131,7 @@ function table(doctor: Doctor): HTMLElement {
           h("td", {}, badge(status.glyph, status.text, status.tone)),
           h("td", { class: "check-name" }, found.name),
           h("td", { class: "check-detail" }, found.detail),
-          h("td", {}, found.fix ? command(found.fix) : null),
+          h("td", {}, found.fix ? fixHint(found.fix) : null),
         );
       }),
     ),

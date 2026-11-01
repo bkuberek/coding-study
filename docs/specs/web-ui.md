@@ -461,7 +461,7 @@ A mock started in the terminal shows the same way, since the state comes from th
 
 | Area | Content |
 |------|---------|
-| Checks | The `cstudy doctor` rows: status (text and icon), name, detail and `fix`, with Re-check |
+| Checks | The `cstudy doctor` rows: status (text and icon), name, detail and `fix`, with Re-check. A long `fix` wraps instead of scrolling the table, and a web link in it is a link, as in an error's hint |
 | Fix | Runs `doctor_fix` after its confirmation, shows the job's lines live, then re-checks |
 | Your problems | The workspace's own problems with a Verify action (`static`, `oracle`, `ladder`), shown as a job |
 
