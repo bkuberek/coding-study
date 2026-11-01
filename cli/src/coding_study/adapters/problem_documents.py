@@ -21,6 +21,7 @@ from coding_study.domain.cases import (
     OperationSequence,
 )
 from coding_study.domain.errors import ContentError, ContentIssue
+from coding_study.domain.jdk import DeclaredJdk
 from coding_study.domain.problem import (
     ALL_LANGUAGES,
     CORE_LANGUAGES,
@@ -114,6 +115,7 @@ def _meta(document: Document, workspace: bool) -> ProblemMeta:
         approaches=_approaches(document["approaches"]),
         patterns=tuple(document.get("patterns", ())),
         languages=languages,
+        jdk=_jdk(document.get("jdk")),
         stub=StubSource(document.get("stub", StubSource.GENERATED)),
         levels=tuple(Level(level["level"], level["title"]) for level in document.get("levels", ())),
         perf=_perf(document.get("perf", {})),
@@ -128,6 +130,12 @@ def _meta(document: Document, workspace: bool) -> ProblemMeta:
         project=_project(document.get("project")),
         workspace=workspace,
     )
+
+
+def _jdk(jdk: Document | None) -> DeclaredJdk | None:
+    if jdk is None:
+        return None
+    return DeclaredJdk(minimum=jdk.get("min"), maximum=jdk.get("max"))
 
 
 def _project(project: Document | None) -> Project | None:

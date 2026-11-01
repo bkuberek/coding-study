@@ -7,6 +7,7 @@ import pytest
 
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.domain.cases import Case, GeneratedInput, OperationSequence
+from coding_study.domain.jdk import DeclaredJdk
 from coding_study.domain.problem import (
     ComparatorSpec,
     ComparatorType,
@@ -1001,4 +1002,14 @@ def test_a_go_starter_has_no_generated_test_file(bank):
     problem = with_starter(go(bank), text_file("tests/level_1_test.go", "package tests_test\n"))
     assert starter_errors(problem) == [
         f"{STARTER}/tests/level_1_test.go: has the name of a generated test file"
+    ]
+
+
+# S17
+
+
+def test_a_python_project_cannot_declare_a_jdk_range(bank):
+    problem = with_meta(bank, jdk=DeclaredJdk(minimum=24))
+    assert errors(content(problem)) == [
+        f"{META}: jdk: only a problem that lists java or kotlin can declare a JDK range"
     ]

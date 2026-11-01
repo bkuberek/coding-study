@@ -58,6 +58,17 @@ def test_a_problem_may_list_any_subset_of_the_languages(languages):
     assert validator_for_meta_file().violations(meta, SOURCE) == []
 
 
+@pytest.mark.parametrize(
+    "jdk",
+    [{"min": 24}, {"max": 23}, {"min": 22, "max": 25}, {"max": 27}],
+    ids=["minimum only", "maximum only", "both", "a maximum above the supported range"],
+)
+def test_a_problem_may_declare_the_jdk_range_it_runs_on(jdk):
+    meta = load_fixture_meta("0001-two-sum")
+    meta["jdk"] = jdk
+    assert validator_for_meta_file().violations(meta, SOURCE) == []
+
+
 def test_a_problem_lists_at_least_one_language():
     meta = load_fixture_meta("0001-two-sum")
     meta["languages"] = []
@@ -99,6 +110,11 @@ INVALID_META: dict[str, tuple[Mutation, str]] = {
         lambda meta: meta.update(languages=["python", "typescript", "java", "kotlin", "scala"]),
         "languages[4]",
     ),
+    "jdk without bounds": (lambda meta: meta.update(jdk={}), "jdk"),
+    "jdk that is not an object": (lambda meta: meta.update(jdk=24), "jdk"),
+    "unknown jdk key": (lambda meta: meta.update(jdk={"min": 24, "preview": True}), "jdk"),
+    "jdk minimum that is a string": (lambda meta: meta.update(jdk={"min": "24"}), "jdk.min"),
+    "jdk maximum that is not whole": (lambda meta: meta.update(jdk={"max": 24.5}), "jdk.max"),
     "levels on a function problem": (
         lambda meta: meta.update(levels=[{"level": 1, "title": "Basics"}]),
         "",

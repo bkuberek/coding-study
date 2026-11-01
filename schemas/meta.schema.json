@@ -34,6 +34,16 @@
       "uniqueItems": true,
       "items": { "$ref": "#/$defs/language" }
     },
+    "jdk": {
+      "description": "The JDK feature releases the Java and Kotlin code runs on, for a problem that lists java or kotlin (check S17). A missing bound is the bound of the supported range; docs/specs/problem-format.md#jdk-range",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "min": { "description": "The first release the code runs on, when the supported minimum is too old for it", "type": "integer" },
+        "max": { "description": "The last release the problem is known to hold on, or a newer one as an explicit opt-in", "type": "integer" }
+      }
+    },
     "signature": { "$ref": "#/$defs/signature" },
     "comparator": { "$ref": "#/$defs/comparator" },
     "stub": { "enum": ["generated", "buggy"] },

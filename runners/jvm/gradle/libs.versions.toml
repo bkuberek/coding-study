@@ -1,4 +1,8 @@
 [versions]
+# The JDK releases cstudy supports; coding_study/domain/jdk.py defines the same range and a test
+# keeps the two equal.
+jdk-minimum = "21"
+jdk-maximum = "26"
 gson = "2.14.0"
 junit = "5.14.4"
 

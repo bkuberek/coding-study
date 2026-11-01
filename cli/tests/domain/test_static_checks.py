@@ -5,6 +5,7 @@ import pytest
 
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.domain.cases import Case, Expected, FunctionInput, OperationSequence
+from coding_study.domain.jdk import DeclaredJdk
 from coding_study.domain.problem import (
     ComparatorSpec,
     ComparatorType,
@@ -628,3 +629,92 @@ def test_concurrency_and_debugging_problems_list_any_subset(problems, track):
     problem = with_meta(problems, track=track, languages=(Language.PYTHON,))
     issues = errors(content(problems, problem=problem))
     assert [issue for issue in issues if "must list" in issue] == []
+
+
+# S17
+
+
+NO_JVM_LANGUAGES = (Language.PYTHON, Language.TYPESCRIPT)
+MINIMUM_ERROR = (
+    "jdk.min: {} is not above the supported minimum 21, which a missing min already means"
+)
+MAXIMUM_ERROR = (
+    "jdk.max: 26 is the supported maximum: leave it out, so that the problem follows the range "
+    "when it grows"
+)
+
+
+def jdk_errors(problems, declared, languages=tuple(Language)):
+    """The errors of a problem of your own workspace, which may list any languages."""
+    problem = with_meta(problems, jdk=declared, languages=languages, workspace=True)
+    return errors(content(problems, problem=problem))
+
+
+def test_a_problem_that_lists_neither_java_nor_kotlin_cannot_declare_a_jdk_range(problems):
+    assert jdk_errors(problems, DeclaredJdk(minimum=24), NO_JVM_LANGUAGES) == [
+        f"{META}: jdk: only a problem that lists java or kotlin can declare a JDK range"
+    ]
+
+
+@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+def test_a_problem_that_lists_one_jvm_language_can_declare_a_jdk_range(problems, language):
+    assert jdk_errors(problems, DeclaredJdk(minimum=24), (Language.PYTHON, language)) == []
+
+
+def test_a_problem_that_declares_no_jdk_range_passes_whatever_it_lists(problems):
+    assert jdk_errors(problems, None, NO_JVM_LANGUAGES) == []
+
+
+@pytest.mark.parametrize("minimum", [21, 17])
+def test_a_minimum_not_above_the_supported_minimum_is_redundant(problems, minimum):
+    assert jdk_errors(problems, DeclaredJdk(minimum=minimum)) == [
+        f"{META}: " + MINIMUM_ERROR.format(minimum)
+    ]
+
+
+def test_a_minimum_above_the_supported_maximum_is_an_error(problems):
+    assert jdk_errors(problems, DeclaredJdk(minimum=27)) == [
+        f"{META}: jdk.min: 27 is above the supported maximum 26"
+    ]
+
+
+@pytest.mark.parametrize("minimum", [22, 24, 26])
+def test_a_minimum_inside_the_supported_range_passes(problems, minimum):
+    assert jdk_errors(problems, DeclaredJdk(minimum=minimum)) == []
+
+
+def test_a_maximum_equal_to_the_supported_maximum_is_redundant(problems):
+    assert jdk_errors(problems, DeclaredJdk(maximum=26)) == [f"{META}: " + MAXIMUM_ERROR]
+
+
+def test_a_maximum_below_the_minimum_is_an_error(problems):
+    assert jdk_errors(problems, DeclaredJdk(minimum=24, maximum=23)) == [
+        f"{META}: jdk.max: 23 is below the minimum 24"
+    ]
+
+
+def test_a_maximum_below_the_supported_minimum_is_below_the_default_minimum(problems):
+    assert jdk_errors(problems, DeclaredJdk(maximum=20)) == [
+        f"{META}: jdk.max: 20 is below the minimum 21"
+    ]
+
+
+@pytest.mark.parametrize("maximum", [21, 23, 25])
+def test_a_maximum_inside_the_supported_range_passes(problems, maximum):
+    assert jdk_errors(problems, DeclaredJdk(maximum=maximum)) == []
+
+
+@pytest.mark.parametrize("maximum", [27, 30])
+def test_a_maximum_above_the_supported_maximum_is_an_explicit_opt_in(problems, maximum):
+    assert jdk_errors(problems, DeclaredJdk(maximum=maximum)) == []
+
+
+def test_a_range_of_one_release_passes(problems):
+    assert jdk_errors(problems, DeclaredJdk(minimum=24, maximum=24)) == []
+
+
+def test_a_range_that_repeats_both_supported_bounds_reports_both(problems):
+    assert jdk_errors(problems, DeclaredJdk(minimum=21, maximum=26)) == [
+        f"{META}: " + MINIMUM_ERROR.format(21),
+        f"{META}: " + MAXIMUM_ERROR,
+    ]

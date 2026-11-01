@@ -6,6 +6,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from coding_study.domain.cases import Case
+from coding_study.domain.jdk import DeclaredJdk
 from coding_study.domain.signature import Signature
 from coding_study.domain.time_limits import TimeLimit
 
@@ -178,6 +179,9 @@ class ProblemMeta:
     approaches: tuple[Approach, ...]
     patterns: tuple[str, ...] = ()
     languages: tuple[Language, ...] = ALL_LANGUAGES
+    jdk: DeclaredJdk | None = None
+    """The JDK releases its Java and Kotlin code runs on, where that is not the whole supported
+    range (check S17, docs/specs/problem-format.md#jdk-range); None: the supported range."""
     stub: StubSource = StubSource.GENERATED
     levels: tuple[Level, ...] = ()
     perf: Perf = Perf()

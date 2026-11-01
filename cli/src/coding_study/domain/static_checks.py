@@ -1,4 +1,4 @@
-"""`cstudy verify --static` checks S3 to S16 on one problem (docs/specs/authoring.md#static).
+"""`cstudy verify --static` checks S3 to S17 on one problem (docs/specs/authoring.md#static).
 
 S1 (schemas) and S2 (directory name) fail while loading the problem; uniqueness across problems
 needs every problem and is checked by the caller.
@@ -17,8 +17,9 @@ from coding_study.domain.errors import ContentIssue
 from coding_study.domain.explanation import ApproachSection, Explanation
 from coding_study.domain.generated_cases import expected_source
 from coding_study.domain.ide_actions import LANGUAGE_NAMES
+from coding_study.domain.jdk import bound_issues
 from coding_study.domain.language_limits import language_limits
-from coding_study.domain.layout import SOURCE_EXTENSIONS, language_of_extension
+from coding_study.domain.layout import JVM_LANGUAGES, SOURCE_EXTENSIONS, language_of_extension
 from coding_study.domain.levels import has_levels, level_heading
 from coding_study.domain.markdown import MarkdownDocument, MarkdownSection
 from coding_study.domain.naming import (
@@ -122,6 +123,7 @@ def static_checks(content: ProblemContent) -> StaticReport:
     _names(issues, content)
     _case_values(issues, content)
     _language_limits(issues, content)
+    _jdk_range(issues, meta)
     if content.problem_markdown is None:
         issues.error(PROBLEM_FILE, "missing")
     else:
@@ -224,6 +226,19 @@ def _language_limits(issues: _Issues, content: ProblemContent) -> None:
                 issues.error(META_FILE, f"cannot list {language}: {reason}", "languages")
         elif not reasons and _lists_every_language(meta):
             issues.error(META_FILE, f"must list {language}: {EVERY_LANGUAGE}", "languages")
+
+
+def _jdk_range(issues: _Issues, meta: ProblemMeta) -> None:
+    """S17: `jdk` only on a problem that lists Java or Kotlin, with bounds that are not the
+    supported ones (docs/specs/problem-format.md#jdk-range)."""
+    if meta.jdk is None:
+        return
+    if not JVM_LANGUAGES.intersection(meta.languages):
+        message = "only a problem that lists java or kotlin can declare a JDK range"
+        issues.error(META_FILE, message, "jdk")
+        return
+    for issue in bound_issues(meta.jdk):
+        issues.error(META_FILE, issue.message, issue.location)
 
 
 def _lists_every_language(meta: ProblemMeta) -> bool:

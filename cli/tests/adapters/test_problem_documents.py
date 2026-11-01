@@ -9,6 +9,7 @@ from coding_study.domain.cases import (
     OperationSequence,
 )
 from coding_study.domain.errors import ContentError, ContentIssue
+from coding_study.domain.jdk import DeclaredJdk
 from coding_study.domain.problem import (
     ALL_LANGUAGES,
     ApproachRole,
@@ -148,6 +149,25 @@ def test_applies_spec_defaults_for_omitted_fields():
         1000,
         None,
     )
+
+
+def test_a_problem_declares_no_jdk_range_unless_its_document_does():
+    assert two_sum_meta().jdk is None
+
+
+@pytest.mark.parametrize(
+    ("jdk", "declared"),
+    [
+        ({"min": 24}, DeclaredJdk(minimum=24)),
+        ({"max": 23}, DeclaredJdk(maximum=23)),
+        ({"min": 22, "max": 25}, DeclaredJdk(minimum=22, maximum=25)),
+    ],
+    ids=["minimum only", "maximum only", "both"],
+)
+def test_maps_the_jdk_range(jdk, declared):
+    document = load_fixture_meta("0001-two-sum")
+    document["jdk"] = jdk
+    assert meta_from_document(document, META_SOURCE).jdk == declared
 
 
 def test_listed_languages_keep_their_document_order():
