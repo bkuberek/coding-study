@@ -280,6 +280,21 @@ class Child:
         task.add_done_callback(self._tasks.discard)
 
 
+class ChildListener(Protocol):
+    """Hears each run and job start and end, and the server stop."""
+
+    def started(self, child: Child) -> None: ...
+
+    def ended(self, child: Child) -> None:
+        """Once its child exited and its stream closed."""
+        ...
+
+    def stopping(self) -> None:
+        """The server stops: no run or job starts from now on, and the running ones are
+        cancelled."""
+        ...
+
+
 class Children:
     """Every run and job of the server, and their slots: one run per attempt, one job at a time,
     and no run while a job that excludes runs runs."""
@@ -289,8 +304,12 @@ class Children:
         self._report = report
         self._runs: list[Child] = []
         self._jobs: list[Child] = []
+        self._listeners: list[ChildListener] = []
         self._starting = asyncio.Lock()
         self._stopping = False
+
+    def listen(self, listener: ChildListener) -> None:
+        self._listeners.append(listener)
 
     async def start_run(self, start: ChildStart) -> Child:
         """Raises ApiError `conflict` while the attempt's slot is taken."""
@@ -342,6 +361,8 @@ class Children:
         one starts from then on."""
         async with self._starting:
             self._stopping = True
+        for listener in self._listeners:
+            listener.stopping()
         running = [child for child in (*self._runs, *self._jobs) if child.running]
         for child in running:
             child.cancel()
@@ -350,10 +371,14 @@ class Children:
     async def _launch(self, kind: ChildKind, start: ChildStart) -> Child:
         child = Child(kind, start, self._timing)
         await child.launch(self._ended)
+        for listener in self._listeners:
+            listener.started(child)
         return child
 
     def _ended(self, child: Child) -> None:
         self._report(child.kind, child.end_line())
+        for listener in self._listeners:
+            listener.ended(child)
 
     def _refuse_new_child(self) -> None:
         if self._stopping:

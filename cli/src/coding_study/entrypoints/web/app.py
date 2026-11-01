@@ -1,14 +1,17 @@
 """The app factory: routes, error handlers and the security layer around them
 (docs/specs/web-ui.md#server)."""
 
+import asyncio
 from collections.abc import AsyncGenerator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 from starlette.applications import Starlette
 from starlette.types import ASGIApp
 
+from coding_study.application.attempt_changes import WorkspaceSnapshot, workspace_snapshot
 from coding_study.entrypoints.web.api_attempts import attempt_routes
 from coding_study.entrypoints.web.api_browsing import browsing_routes
+from coding_study.entrypoints.web.api_events import event_routes
 from coding_study.entrypoints.web.api_files import file_routes
 from coding_study.entrypoints.web.api_health import health_routes
 from coding_study.entrypoints.web.api_mock import mock_routes
@@ -19,13 +22,23 @@ from coding_study.entrypoints.web.api_session import session_routes
 from coding_study.entrypoints.web.api_solutions import solution_routes
 from coding_study.entrypoints.web.context import ServerSettings, ServerState
 from coding_study.entrypoints.web.errors import exception_handlers
+from coding_study.entrypoints.web.notifications import (
+    ChildNotices,
+    Notifications,
+    WorkspaceWatch,
+)
 from coding_study.entrypoints.web.page import front_end_routes
 from coding_study.entrypoints.web.runs import Children
 from coding_study.entrypoints.web.security import SecurityMiddleware
 
 
-def create_app(settings: ServerSettings, children: Children | None = None) -> ASGIApp:
-    """`children` holds the runs and jobs; the server stops them as it shuts down."""
+def create_app(
+    settings: ServerSettings,
+    children: Children | None = None,
+    notifications: Notifications | None = None,
+) -> ASGIApp:
+    """`children` holds the runs and jobs, and `notifications` the tabs' notification streams;
+    stopping the children, which the server does first as it shuts down, ends those streams."""
     routes = [
         *front_end_routes(settings.static_directory, settings.secrets.csrf),
         *session_routes(),
@@ -38,21 +51,36 @@ def create_app(settings: ServerSettings, children: Children | None = None) -> AS
         *run_routes(),
         *health_routes(),
         *progress_routes(),
+        *event_routes(),
     ]
-    state = ServerState(settings, children=children or Children())
+    state = ServerState(
+        settings,
+        children=children or Children(),
+        notifications=notifications or Notifications(),
+    )
+    state.children.listen(ChildNotices(state.notifications))
     app = Starlette(
-        routes=routes, exception_handlers=exception_handlers(), lifespan=_stopping(state.children)
+        routes=routes, exception_handlers=exception_handlers(), lifespan=_serving(state)
     )
     app.state.server = state
     return SecurityMiddleware(app, settings.port, settings.secrets)
 
 
-def _stopping(
-    children: Children,
-) -> Callable[[Starlette], AbstractAsyncContextManager[None]]:
+def _serving(state: ServerState) -> Callable[[Starlette], AbstractAsyncContextManager[None]]:
+    """Watches the workspace while the server runs; then stops the runs and jobs, which ends
+    the notification streams, and the watch."""
+
+    async def snapshot(previous: WorkspaceSnapshot | None) -> WorkspaceSnapshot:
+        load_environment = state.settings.load_environment
+        return await state.worker.run(lambda: workspace_snapshot(load_environment(), previous))
+
     @asynccontextmanager
     async def lifespan(_app: Starlette) -> AsyncGenerator[None]:
+        watch = WorkspaceWatch(state.notifications, state.settings.watcher, snapshot)
+        watching = asyncio.create_task(watch.run())
         yield
-        await children.stop()
+        await state.children.stop()
+        state.notifications.stop()
+        await watching
 
     return lifespan

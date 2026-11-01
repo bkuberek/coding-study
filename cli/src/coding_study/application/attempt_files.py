@@ -8,7 +8,7 @@ Files are created, moved and deleted only in a project folder and a JVM or Go pa
 """
 
 import hashlib
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Mapping
 from contextlib import AbstractContextManager, contextmanager, nullcontext
 from dataclasses import dataclass
 from enum import StrEnum
@@ -142,6 +142,21 @@ class _Scope:
     """Why no file may be created, moved or deleted; None where they may."""
     lock: str | None = None
     """The lock a change holds, relative to the workspace root: a project's."""
+    recursive: bool = False
+    """Whether files in folders under the root lie in the scope: a project's."""
+
+
+@dataclass(frozen=True, slots=True)
+class AttemptFolder:
+    """What a watch of an attempt's files covers, and their content now
+    (docs/specs/web-ui.md#notifications)."""
+
+    root: str
+    """Relative to the workspace root."""
+    recursive: bool
+    """Whether files in folders under the root lie in the scope: a project's."""
+    digests: Mapping[str, str]
+    """The SHA-256 of each file of the scope on disk, by its path relative to the root."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -155,6 +170,15 @@ class SavedFile:
 def attempt_tree(environment: Environment, attempt: Attempt) -> AttemptTree:
     scope = _scope(environment, attempt)
     return AttemptTree(scope.root, tuple(_tree_file(environment, scope, f) for f in scope.files))
+
+
+def attempt_folder(environment: Environment, attempt: Attempt) -> AttemptFolder:
+    """The attempt's root and the content of each file of its scope on disk; a file the scope
+    names that is missing, or a link, has none."""
+    scope = _scope(environment, attempt)
+    found = ((file.path, _on_disk(environment, scope, file.path)) for file in scope.files)
+    digests = {path: _sha256(content) for path, content in found if content is not None}
+    return AttemptFolder(scope.root, scope.recursive, digests)
 
 
 def read_attempt_file(environment: Environment, attempt: Attempt, path: str) -> FileContent:
@@ -398,15 +422,23 @@ def _project(environment: Environment, problem: Problem, unlocked: int) -> _Scop
         holds=lambda cleaned: not is_untracked(cleaned),
         outside=TOOL_OUTPUT,
         lock=project_lock(slug),
+        recursive=True,
     )
 
 
 def _tree_file(environment: Environment, scope: _Scope, file: ScopedFile) -> TreeFile:
-    try:
-        content = environment.workspace.read_within(scope.root, file.path)
-    except (FileNotFoundError, ValueError):
+    content = _on_disk(environment, scope, file.path)
+    if content is None:
         return TreeFile(file, None, False)
     return TreeFile(file, len(content), _text(content) is not None)
+
+
+def _on_disk(environment: Environment, scope: _Scope, path: str) -> bytes | None:
+    """The file's content; None when it is missing, or a link or not a regular file."""
+    try:
+        return environment.workspace.read_within(scope.root, path)
+    except (FileNotFoundError, ValueError):
+        return None
 
 
 def _text(content: bytes) -> str | None:

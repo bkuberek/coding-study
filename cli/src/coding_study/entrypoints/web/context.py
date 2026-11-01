@@ -7,9 +7,11 @@ from typing import cast
 
 from starlette.requests import Request
 
+from coding_study.adapters.watchfiles_watcher import WatchfilesWatcher
 from coding_study.application.environment import Environment
 from coding_study.application.ports import PreferencesStore
 from coding_study.entrypoints.web.children import ChildCommand
+from coding_study.entrypoints.web.notifications import FolderWatcher, Notifications
 from coding_study.entrypoints.web.runs import Children
 from coding_study.entrypoints.web.security import SessionSecrets
 from coding_study.entrypoints.web.worker import UseCaseWorker
@@ -32,6 +34,8 @@ class ServerSettings:
     child: ChildCommand = field(default_factory=ChildCommand)
     """How the server starts a child `cstudy`."""
     lock_deadline_s: float = LOCK_DEADLINE_S
+    watcher: FolderWatcher = field(default_factory=WatchfilesWatcher)
+    """Watches the folders the notifications cover."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,6 +44,8 @@ class ServerState:
     worker: UseCaseWorker = field(default_factory=UseCaseWorker)
     children: Children = field(default_factory=Children)
     """The runs and jobs."""
+    notifications: Notifications = field(default_factory=Notifications)
+    """The notification streams of the tabs."""
 
 
 def server_state(request: Request) -> ServerState:

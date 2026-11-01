@@ -1,15 +1,18 @@
+import asyncio
 import threading
 from pathlib import Path
 
 import pytest
 
 from coding_study.adapters.watchfiles_watcher import WatchfilesWatcher
+from coding_study.application.attempt_changes import WatchedFolder
 
 pytestmark = pytest.mark.slow
 
 SAVE_AFTER_SECONDS = 0.3
 GIVE_UP_AFTER_SECONDS = 5.0
 QUIET_PERIOD_SECONDS = 1.0
+SETTLE_SECONDS = 1.0
 STOPPED = "stopped"
 
 
@@ -78,3 +81,75 @@ def test_saving_an_untracked_file_of_a_project_folder_is_ignored(project, untrac
     threading.Timer(QUIET_PERIOD_SECONDS, stop.set).start()
     saved = project / untracked
     assert first_change(WatchfilesWatcher(stop_event=stop), project, stop, saved) == STOPPED
+
+
+# several folders at once, for the web UI's notifications (docs/specs/web-ui.md#notifications)
+
+WORKSPACE_FOLDERS = (
+    WatchedFolder("projects/bank-project-python", True),
+    WatchedFolder(".statements", False),
+    WatchedFolder(".", False, frozenset({"progress.db", "progress.db-wal"})),
+)
+
+
+@pytest.fixture
+def workspace(project: Path) -> Path:
+    root = project.parents[1]
+    (root / ".statements").mkdir()
+    (root / ".statements" / "inner").mkdir()
+    return root
+
+
+def folder_change(root: Path, saved: Path, wait_seconds: float) -> str:
+    """`yielded` when `folder_changes` yields within `wait_seconds` after `saved` is written,
+    else STOPPED. It writes once the watch had time to report what the fixture just created,
+    which macOS may still deliver to a new watch."""
+
+    async def watch() -> str:
+        stop = asyncio.Event()
+        written = asyncio.Event()
+
+        async def write_then_stop() -> None:
+            await asyncio.sleep(SETTLE_SECONDS)
+            saved.write_text("changed\n")
+            written.set()
+            await asyncio.sleep(wait_seconds)
+            stop.set()
+
+        writing = asyncio.create_task(write_then_stop())
+        changes = WatchfilesWatcher().folder_changes(root, WORKSPACE_FOLDERS, stop)
+        try:
+            async for _ in changes:
+                if written.is_set():
+                    return "yielded"
+            return STOPPED
+        finally:
+            await changes.aclose()
+            writing.cancel()
+
+    return asyncio.run(watch())
+
+
+@pytest.mark.parametrize(
+    "saved",
+    [
+        "projects/bank-project-python/bank/ledger/entries.py",
+        ".statements/two-sum.md",
+        "progress.db",
+    ],
+)
+def test_saving_in_any_watched_folder_yields(workspace, saved):
+    assert folder_change(workspace, workspace / saved, GIVE_UP_AFTER_SECONDS) == "yielded"
+
+
+@pytest.mark.parametrize(
+    "ignored",
+    [
+        "projects/bank-project-python/node_modules/x.js",
+        ".statements/inner/nested.md",
+        "progress.db-shm",
+        "notes.md",
+    ],
+)
+def test_saving_what_no_watched_folder_covers_is_ignored(workspace, ignored):
+    assert folder_change(workspace, workspace / ignored, QUIET_PERIOD_SECONDS) == STOPPED

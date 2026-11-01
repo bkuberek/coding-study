@@ -10,7 +10,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from starlette.requests import Request
-from starlette.responses import Response, StreamingResponse
+from starlette.responses import Response
 from starlette.routing import BaseRoute, Route
 
 from coding_study.application.environment import Environment
@@ -27,7 +27,7 @@ from coding_study.domain.problem import ProblemKind
 from coding_study.entrypoints.web.context import in_workspace, server_state
 from coding_study.entrypoints.web.errors import ApiError, ErrorCode
 from coding_study.entrypoints.web.queries import positive_integer
-from coding_study.entrypoints.web.responses import JsonResponse, json_body
+from coding_study.entrypoints.web.responses import JsonResponse, event_stream, json_body
 from coding_study.entrypoints.web.run_options import (
     JobCommand,
     JobOptions,
@@ -41,8 +41,6 @@ RUNS = "/api/v1/runs"
 RUN = f"{RUNS}/{{run_id}}"
 JOBS = "/api/v1/jobs"
 JOB = f"{JOBS}/{{job_id}}"
-EVENT_STREAM = "text/event-stream"
-LAST_EVENT_ID = "last-event-id"
 DOCTOR_FIX_QUESTION = (
     "Run cstudy doctor --fix? It writes missing workspace files, refreshes the runner runtime, "
     "migrates progress.db, and runs uv sync, pnpm install and the Gradle warm-up, which may "
@@ -160,7 +158,7 @@ def _child(request: Request, lookup: Lookup) -> Child:
 
 
 def _stream(request: Request, child: Child) -> Response:
-    return StreamingResponse(child.frames(_last_event_id(request)), media_type=EVENT_STREAM)
+    return event_stream(request, child.frames)
 
 
 def _cancel(child: Child) -> Response:
@@ -169,12 +167,6 @@ def _cancel(child: Child) -> Response:
         raise ApiError(ErrorCode.CONFLICT, message, {child.kind: child.id})
     child.cancel()
     return JsonResponse({"id": child.id}, status_code=202)
-
-
-def _last_event_id(request: Request) -> int | None:
-    """The id of the last message a reconnecting stream saw; None for a new stream."""
-    value = request.headers.get(LAST_EVENT_ID, "")
-    return int(value) if value.isdecimal() else None
 
 
 def _run_document(run: Child) -> dict[str, JsonValue]:

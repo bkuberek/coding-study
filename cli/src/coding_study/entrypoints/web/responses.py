@@ -1,11 +1,16 @@
-"""JSON in and out of the API (docs/specs/web-ui.md#api-conventions)."""
+"""JSON in and out of the API (docs/specs/web-ui.md#api-conventions), and its streams of
+server-sent events (docs/specs/web-ui.md#server-sent-events)."""
 
 import json
+from collections.abc import AsyncIterator, Callable
 
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, StreamingResponse
 
 from coding_study.domain.errors import UsageError
+
+EVENT_STREAM = "text/event-stream"
+LAST_EVENT_ID = "last-event-id"
 
 
 class JsonResponse(JSONResponse):
@@ -18,3 +23,13 @@ async def json_body(request: Request) -> object:
         return json.loads(await request.body())
     except ValueError:
         raise UsageError("the request body is not JSON") from None
+
+
+def event_stream(
+    request: Request, frames: Callable[[int | None], AsyncIterator[str]]
+) -> StreamingResponse:
+    """The stream `frames` makes, after the message the request's `Last-Event-ID` names, which
+    a stream that comes back sends; None for a new stream."""
+    value = request.headers.get(LAST_EVENT_ID, "")
+    after = int(value) if value.isdecimal() else None
+    return StreamingResponse(frames(after), media_type=EVENT_STREAM)

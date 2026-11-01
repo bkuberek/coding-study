@@ -1,9 +1,10 @@
 """The web UI's app on a test workspace, and HTTP clients for it (docs/specs/web-ui.md)."""
 
+import asyncio
 import hashlib
 import json
 import shutil
-from collections.abc import Iterator
+from collections.abc import AsyncGenerator, Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -11,10 +12,12 @@ from starlette.testclient import TestClient
 from starlette.types import ASGIApp
 
 from coding_study.adapters.preferences_fs import FsPreferencesStore
+from coding_study.application.attempt_changes import WatchedFolder
 from coding_study.application.environment import Environment
 from coding_study.entrypoints.web.app import create_app
 from coding_study.entrypoints.web.children import ChildCommand
 from coding_study.entrypoints.web.context import ServerSettings
+from coding_study.entrypoints.web.notifications import Notifications
 from coding_study.entrypoints.web.runs import Children
 from coding_study.entrypoints.web.security import SessionSecrets, cookie_name
 from tests.fakes import make_environment
@@ -50,14 +53,28 @@ def web_workspace(root: Path, **overrides: object) -> Environment:
     return make_environment(root, **overrides)
 
 
+class QuietWatcher:
+    """A watch of the workspace's folders that never sees a change, so a test's server reads no
+    file system events."""
+
+    async def folder_changes(
+        self, root: Path, folders: Sequence[WatchedFolder], stop_event: asyncio.Event
+    ) -> AsyncGenerator[None]:
+        await stop_event.wait()
+        return
+        yield
+
+
 def web_app(
     root: Path,
     environment: Environment | None = None,
     child: ChildCommand | None = None,
     children: Children | None = None,
+    notifications: Notifications | None = None,
 ) -> ASGIApp:
     """The app of a server on `PORT` over the workspace `root`; `child` replaces the `cstudy`
-    its children run, and `children` holds its runs and jobs."""
+    its children run, `children` holds its runs and jobs, and `notifications` its notification
+    streams, whose watch of the workspace never sees a change."""
     workspace = environment or web_workspace(root)
     return create_app(
         ServerSettings(
@@ -68,8 +85,10 @@ def web_app(
             load_environment=lambda: workspace,
             preferences=FsPreferencesStore(root),
             child=child or ChildCommand(),
+            watcher=QuietWatcher(),
         ),
         children,
+        notifications,
     )
 
 

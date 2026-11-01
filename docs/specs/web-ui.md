@@ -65,7 +65,7 @@ Each practice command maps to one page area, one endpoint and the use case the c
 | `entrypoints/web/security.py` | Token, cookie, Host, Origin and CSRF checks, the CSP nonce, response headers |
 | `entrypoints/web/runs.py` | The registry of runs and jobs: child processes, buffered lines, slots, cancel |
 | `entrypoints/web/run_options.py` | The [run options](#run-options) and [job options](#jobs), checked by name and type, and the child's argument list they become |
-| `entrypoints/web/notifications.py` | `watchfiles.awatch` over the watched set, as server-sent events |
+| `entrypoints/web/notifications.py` | The [notification](#notifications) streams, the run and job notices, and the watch of the workspace that feeds them |
 | `entrypoints/web/api_*.py` | Route handlers, one module per group of the [endpoint tables](#endpoints) |
 | `entrypoints/web/documents.py` | Builders of the documents no command prints; the others come from the command modules' builders, such as `status_document` |
 | `entrypoints/web/solution_document.py` | The [solution document](#solutions): what `cstudy solution` pages, as Markdown |
@@ -73,12 +73,14 @@ Each practice command maps to one page area, one endpoint and the use case the c
 | `entrypoints/web/static/` | The vendored front end, `manifest.json` and `THIRD_PARTY_LICENSES.txt` ([Front-end assets](#front-end-assets)) |
 | `application/attempt_files.py` | Tree, read, save, create, move and delete within an attempt's [file scope](#file-scope) |
 | `application/problem_history.py` | The history of one problem, shared with `cstudy history` |
+| `application/attempt_changes.py` | Snapshots of what the [notifications](#notifications) watch, and the changes between two |
+| `adapters/watchfiles_watcher.py` | `folder_changes`, beside the watch of `cstudy test --watch`: one burst signal over several folders, some with their subfolders and some without |
 | `application/run_checks.py` | The [pre-checks](#lifecycle) of a run, and the scope check of `verify` jobs |
 | `adapters/workspace_fs.py` | New `Workspace` methods `read_within`, `delete_within` and `move_within` beside `write_within`, none following a link, and `locked_with_deadline`, the project lock that gives up after a deadline ([Lock](#file-scope)) |
 
 ### Shutdown
 
-Ctrl-C (SIGINT) or SIGTERM stops the server: it sends SIGINT to every run and job in progress, closes every stream, waits for the children as [Cancel](#cancel) does, deletes its `--open` redirect file, and exits 130 (143 after SIGTERM). The children are stopped first, before the server waits for its open responses, since a run's stream stays open until its child exits; from then on a new run or job gets 409 `conflict` (`cstudy serve is stopping`).
+Ctrl-C (SIGINT) or SIGTERM stops the server: it sends SIGINT to every run and job in progress, closes every stream (each tab's notification stream ends at once, the watch of the workspace stops, and each run's stream ends once its child exits), waits for the children as [Cancel](#cancel) does, deletes its `--open` redirect file, and exits 130 (143 after SIGTERM). The children are stopped first, before the server waits for its open responses, since a run's stream stays open until its child exits; from then on a new run or job gets 409 `conflict` (`cstudy serve is stopping`).
 
 ## Security
 
@@ -284,17 +286,20 @@ A job is a child `cstudy` command whose text report is relayed line by line: com
 | Message | Data | When |
 |---------|------|------|
 | `file_changed` | `attempt_id`, `path` (relative to the attempt's root), `sha256` (null when deleted) | A file in an attempt's [file scope](#file-scope) was written, created or deleted |
-| `attempt_changed` | `attempt_id`, `slug` | The attempt's manifest (`.cs/projects/<slug>.json`) or statement (`.statements/<slug>.md`) changed: a level opened, a restore, a start |
-| `progress_changed` | `{}` | `progress.db` or its `-wal` file changed: an attempt started, ended or recorded a run, a hint or a reveal, from the page or the terminal |
+| `attempt_changed` | `attempt_id`, `slug` | The attempt's manifest (`.cs/projects/<slug>.json`) or statement (`.statements/<slug>.md`) changed, or the attempt started: a level opened, a restore, a start |
+| `progress_changed` | `{}` | `progress.db` or its `-wal` file changed: an attempt started, ended or recorded a run, a hint or a reveal, from the page or the terminal. A mock is nothing but its attempts, so this is also when the [mock's state](#mock-view) may have changed |
 | `run_started`, `run_ended` | `run_id`, `attempt_id`, `command`, and `exit_code` when ended | A run of any tab started or ended |
 | `job_started`, `job_ended` | `job_id`, `command`, and `exit_code` when ended | A job started or ended |
 
 | Rule | Detail |
 |------|--------|
-| Watched set | The file scope of every attempt in progress, `.cs/projects/`, `.statements/` and the progress database's files, through `watchfiles.awatch` on the server's event loop; the set is recomputed after each `progress_changed` |
-| Debounce | 150 ms, as `cstudy test --watch`; one `progress_changed` per 250 ms at most |
+| Watched set | The folder of every attempt in progress with its subfolders for a project, and without for the others (a package directory, the directory of a single file, a track's notes), `.cs/projects/` and `.statements/` without subfolders, and the progress database and its `-wal` file by name, each only when it exists. `WatchfilesWatcher.folder_changes` watches them in two threads, one per kind of folder, through `watchfiles.watch`, and drops untracked entries (`is_untracked`) and directories |
+| By content | Each burst of events ends in a snapshot on the worker: the SHA-256 of every file in each attempt's scope, of each attempt's manifest and statement, and of the progress database and its `-wal` file. A notice goes out only for what differs from the previous snapshot, so a burst that changes nothing sends nothing. The snapshot reads the attempts in progress only when the database's files changed, so the server's own reads, which touch them, never count. When the attempts' folders change, as after a start, the watch starts again over the new set |
+| Debounce | 150 ms, as `cstudy test --watch`; one `progress_changed` per 250 ms at most, a change within the interval sent at its end |
 | Own saves | A page save comes back as `file_changed` with the SHA-256 the tab already holds, and the tab ignores it |
-| Replay | `id` counts the server's notifications; the last 100 are kept for `Last-Event-ID` |
+| Replay | `id` counts the server's notifications from 0; the last 100 are kept for `Last-Event-ID`. A new stream starts with the next notice |
+| Failures | A snapshot or a watch that fails, as on a database another command holds locked, prints a line on the server's standard error, and the watch goes on with the next burst |
+| Shutdown | Every notification stream ends when the server stops, before it waits for its open responses |
 
 ## File API rules
 
@@ -522,7 +527,8 @@ A missing or unreadable file means the defaults; the server rewrites it whole on
 | Adapter | The new `Workspace` methods never follow a link, with real links in `tmp_path` | Real files | fast |
 | API | Each endpoint's status, and its own documents validated against `schemas/web-api.schema.json` (documents a CLI command also prints are compared with that command's output instead, as `cli.md` describes them); documents equal to the CLI's (`status_document`, `list`, `next`, `stats`); the security matrix: Host, Origin, cookie, CSRF, CSP present, no CORS headers, body limits; confirmations | Starlette's `TestClient` with a test `Environment` | fast |
 | Streaming | SSE framing, ordering, `Last-Event-ID`, `closed`, the 409 slot, cancel to `run_end` `interrupted`, the SIGTERM and SIGKILL escalation, job lines | A scripted child that replays golden NDJSON and waits for signals (`tests/scripted_child.py`, run in place of `python -m coding_study` through the child command's interpreter) | fast |
-| End to end | A real `test --events` and `submit --events` on the Python project pilot, a single-file run in each core language, a concurrent stress run, a level unlock, a cancel, a real file event | The existing slow workspace fixtures; `tests/entrypoints/commands/test_serve_runs_end_to_end.py` covers a Python single-file run, the pilot's tests, a cancel that leaves no test process, the reference's submission opening level 2 and a server stopped during a run so far | slow |
+| Notifications | The stream's numbering, replay, keep-alive and end; progress changes spaced out; run and job notices; the watch turning a burst into notices by content and starting again over new folders; a failed snapshot | The hub's streams read as async generators, a scripted folder watch, the test workspaces; `tests/adapters/test_watchfiles_watcher.py` (slow) watches real folders | fast |
+| End to end | A real `test --events` and `submit --events` on the Python project pilot, a single-file run in each core language, a concurrent stress run, a level unlock, a cancel, a real file event | The existing slow workspace fixtures; `tests/entrypoints/commands/test_serve_runs_end_to_end.py` covers a Python single-file run, the pilot's tests, a cancel that leaves no test process, the reference's submission opening level 2 and a server stopped during a run so far; `tests/entrypoints/commands/test_serve_notifications_end_to_end.py` covers a file edited on disk, an attempt started in the terminal and Ctrl-C with a notification stream open | slow |
 | Browser | Login, the editor under the CSP, a streamed run, cancel, a diagnostic marker, the solution confirmation, Vim loading, no console error | Playwright, in the optional `browser` dependency group (`uv sync --group browser`), skipped when not installed; `tests/entrypoints/web/test_browser_smoke.py` covers login, the problem list, a project's statement and tree, a file in the editor, a save with the shortcut that turns the file `modified`, a restore from the tree that turns it `unchanged`, a project run whose rows show while it goes on, its cancel, a run to its summary, and a new file named in the tree's dialog, and a save that starts a run when Run on save is on so far; `tests/entrypoints/web/test_browser_flows.py` starts a single-file problem with a time box, turns Vim on and finds it after a reload, takes a hint, reveals the solution through its question, finishes with Done, starts a mock and finds Hint locked in its attempt | slow |
 | Bundle | The rebuild matches `manifest.json`; the wheel holds every asset | npm and esbuild; `uv build` | slow |
 | Bundle budget | The committed files meet NFR-12: the whole bundle without Vim, and a file of each language editable within 600 KB raw | A test follows the static `import`s of `app.js` and of the editor and language chunks | fast |
