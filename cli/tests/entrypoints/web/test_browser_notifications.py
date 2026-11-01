@@ -1,10 +1,11 @@
 """Changes from elsewhere in a real browser (docs/specs/web-ui.md#attempt-view): a file edited on
 disk while its tab has no unsaved edits shows the new version in place and keeps the cursor; edited
 again while the tab has unsaved edits, it shows the conflict banner and keeps them; a second tab of
-the same attempt takes a save of the first and shows the run the first started.
+the same attempt takes a save of the first and shows the run the first started, in each engine of
+`tests/browsers.py`.
 
-Playwright is in the optional `browser` dependency group (`uv sync --group browser`, then
-`uv run --group browser playwright install chromium`); without either the test is skipped."""
+Playwright and its engines are set up as `tests/browsers.py` says; without them the test is
+skipped."""
 
 import subprocess
 import sys
@@ -16,6 +17,7 @@ from typing import Any
 
 import pytest
 
+from tests.browsers import launched, watched
 from tests.serve_process import RunningServer, running_server, served_environment
 from tests.workspaces import workspace_like
 
@@ -52,8 +54,12 @@ class Seen:
 
 
 @pytest.fixture(scope="module")
-def workspace(practice_workspace: Path, tmp_path_factory: pytest.TempPathFactory) -> Path:
-    root = workspace_like(practice_workspace, tmp_path_factory.mktemp("notified") / "workspace")
+def workspace(
+    engine: str, practice_workspace: Path, tmp_path_factory: pytest.TempPathFactory
+) -> Path:
+    root = workspace_like(
+        practice_workspace, tmp_path_factory.mktemp(f"notified-{engine}") / "workspace"
+    )
     subprocess.run(
         [sys.executable, "-m", "coding_study", "start", PROJECT, "--no-open"],
         env=served_environment(root),
@@ -72,15 +78,12 @@ def server(workspace: Path) -> Iterator[RunningServer]:
 
 
 @pytest.fixture(scope="module")
-def seen(server: RunningServer, workspace: Path) -> Seen:
+def seen(engine: str, server: RunningServer, workspace: Path) -> Seen:
     found = Seen()
     edited = workspace / "projects" / PROJECT / FILE
     original = edited.read_text()
     with sync_api.sync_playwright() as playwright:
-        try:
-            browser = playwright.chromium.launch()
-        except sync_api.Error as error:
-            pytest.skip(f"no Chromium for Playwright: {error.message.splitlines()[0]}")
+        browser = launched(playwright, engine)
         context = browser.new_context(viewport={"width": 1440, "height": 900})
         first = _opened(context, server, found)
         attempt = first.evaluate("location.hash")
@@ -95,8 +98,7 @@ def seen(server: RunningServer, workspace: Path) -> Seen:
         found.edits_kept = TYPED + THIRD_LINE in first.locator(OPEN_EDITOR).inner_text()
         first.click(f"{CONFLICT} button:has-text('Reload theirs')")
         first.wait_for_selector(CONFLICT, state="detached")
-        second = context.new_page()
-        _watch_console(second, found)
+        second = watched(context.new_page(), found.errors)
         second.set_default_timeout(WAIT_MS)
         second.goto(f"{server.address}/{attempt}")
         second.click(FILE_BUTTON)
@@ -113,9 +115,8 @@ def seen(server: RunningServer, workspace: Path) -> Seen:
 
 def _opened(context: Any, server: RunningServer, found: Seen) -> Any:
     """A tab logged in, on the project's attempt, with the file open in the editor."""
-    page = context.new_page()
+    page = watched(context.new_page(), found.errors)
     page.set_default_timeout(WAIT_MS)
-    _watch_console(page, found)
     page.goto(server.login_url)
     page.wait_for_selector("table.problems tbody tr")
     page.click(f"a.slug[href='#/problems/{PROJECT}']")
@@ -171,16 +172,6 @@ def _save_at_the_end(page: Any) -> None:
     page.keyboard.type(f"\n{SAVED_IN_FIRST_TAB}\n")
     page.keyboard.press("ControlOrMeta+s")
     page.wait_for_selector("[role=tab][aria-selected=true]:not(.is-modified)")
-
-
-def _watch_console(page: Any, found: Seen) -> None:
-    page.on("console", lambda message: _console(found, message))
-    page.on("pageerror", lambda error: found.errors.append(str(error)))
-
-
-def _console(found: Seen, message: Any) -> None:
-    if message.type in ("error", "warning"):
-        found.errors.append(f"{message.type}: {message.text}")
 
 
 def test_a_file_edited_on_disk_shows_in_its_tab(seen):

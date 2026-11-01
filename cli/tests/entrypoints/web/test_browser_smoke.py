@@ -3,12 +3,12 @@ the problem list, open a project problem with its statement, resume its attempt,
 its tree in the editor, edit it and save it with Cmd or Ctrl-S, see its state turn `modified`,
 restore it from the tree and see it `unchanged`, run its tests and see their rows while the run goes
 on, cancel that run, run the tests to their end, name a new file in the tree's dialog, and turn Run
-on save on to see a save start a run, under the page's Content Security Policy.
+on save on to see a save start a run, under the page's Content Security Policy, in each engine
+of `tests/browsers.py`.
 
 The workspace shares the session's practice workspace's toolchains, so the project's suite runs
-with the real pytest. Playwright is in the optional `browser` dependency group: `uv sync --group
-browser`, then `uv run --group browser playwright install chromium`. Without either the test is
-skipped.
+with the real pytest. Playwright and its engines are set up as `tests/browsers.py` says; without
+them the test is skipped.
 """
 
 import subprocess
@@ -21,6 +21,7 @@ from typing import Any, Protocol
 
 import pytest
 
+from tests.browsers import launched, watched
 from tests.serve_process import RunningServer, running_server, served_environment
 from tests.workspaces import workspace_like
 
@@ -43,16 +44,6 @@ RUN_WAIT_MS = 240_000
 """Generous for a run: the machine running the slow tests is often loaded."""
 SLOW_TEST = "tests/test_slow.py"
 SLOW_TEST_TEXT = "import time\n\n\ndef test_slow():\n    time.sleep(120)\n"
-
-
-class ConsoleLine(Protocol):
-    """A message the page logged, as Playwright reports it."""
-
-    @property
-    def type(self) -> str: ...
-
-    @property
-    def text(self) -> str: ...
 
 
 class Keyboard(Protocol):
@@ -104,8 +95,12 @@ class Visit:
 
 
 @pytest.fixture(scope="module")
-def workspace(practice_workspace: Path, tmp_path_factory: pytest.TempPathFactory) -> Path:
-    root = workspace_like(practice_workspace, tmp_path_factory.mktemp("browser") / "workspace")
+def workspace(
+    engine: str, practice_workspace: Path, tmp_path_factory: pytest.TempPathFactory
+) -> Path:
+    root = workspace_like(
+        practice_workspace, tmp_path_factory.mktemp(f"browser-{engine}") / "workspace"
+    )
     subprocess.run(
         [sys.executable, "-m", "coding_study", "start", PROJECT, "--no-open"],
         env=served_environment(root),
@@ -124,17 +119,12 @@ def server(workspace: Path) -> Iterator[RunningServer]:
 
 
 @pytest.fixture(scope="module")
-def visit(server: RunningServer, workspace: Path) -> Visit:
+def visit(engine: str, server: RunningServer, workspace: Path) -> Visit:
     seen = Visit()
     with sync_api.sync_playwright() as playwright:
-        try:
-            browser = playwright.chromium.launch()
-        except sync_api.Error as error:
-            pytest.skip(f"no Chromium for Playwright: {error.message.splitlines()[0]}")
-        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        browser = launched(playwright, engine)
+        page = watched(browser.new_page(viewport={"width": 1440, "height": 900}), seen.errors)
         page.set_default_timeout(WAIT_MS)
-        page.on("console", lambda message: _console(seen, message))
-        page.on("pageerror", lambda error: seen.errors.append(str(error)))
         page.goto(server.login_url)
         page.wait_for_selector("table.problems tbody tr")
         seen.rows = page.locator("table.problems tbody tr").count()
@@ -233,11 +223,6 @@ def _run_and_cancel(page: Any, slow_test: Path, seen: Visit) -> None:
     finally:
         slow_test.unlink(missing_ok=True)
     page.wait_for_selector(".run-button.primary:not([disabled])")
-
-
-def _console(seen: Visit, message: ConsoleLine) -> None:
-    if message.type in ("error", "warning"):
-        seen.errors.append(f"{message.type}: {message.text}")
 
 
 def test_the_problem_list_shows_the_catalog(visit):

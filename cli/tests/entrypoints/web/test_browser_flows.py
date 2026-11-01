@@ -1,10 +1,11 @@
 """The attempt flows in a real browser (docs/specs/web-ui.md#testing): start a single-file problem
 with a time box from its Problem view, turn Vim keybindings on and see them survive a reload, take
 a hint, reveal the solution through its question, finish with Done, then start a mock interview
-and find Hint locked in its attempt, all under the page's Content Security Policy.
+and find Hint locked in its attempt, all under the page's Content Security Policy, in each engine
+of `tests/browsers.py`.
 
-Playwright is in the optional `browser` dependency group: `uv sync --group browser`, then
-`uv run --group browser playwright install chromium`. Without either the test is skipped.
+Playwright and its engines are set up as `tests/browsers.py` says; without them the test is
+skipped.
 """
 
 import json
@@ -15,6 +16,7 @@ from typing import Any, Protocol
 
 import pytest
 
+from tests.browsers import launched, watched
 from tests.helpers import mark_workspace
 from tests.serve_process import RunningServer, running_server
 
@@ -63,24 +65,20 @@ class Practice:
 
 
 @pytest.fixture(scope="module")
-def server(tmp_path_factory: pytest.TempPathFactory) -> Iterator[RunningServer]:
-    workspace = mark_workspace(tmp_path_factory.mktemp("flows") / "workspace")
+def server(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Iterator[RunningServer]:
+    workspace = mark_workspace(tmp_path_factory.mktemp(f"flows-{engine}") / "workspace")
     with running_server(Path(workspace)) as running:
         yield running
 
 
 @pytest.fixture(scope="module")
-def practice(server: RunningServer) -> Practice:
+def practice(engine: str, server: RunningServer) -> Practice:
     seen = Practice()
     with sync_api.sync_playwright() as playwright:
-        try:
-            browser = playwright.chromium.launch()
-        except sync_api.Error as error:
-            pytest.skip(f"no Chromium for Playwright: {error.message.splitlines()[0]}")
+        browser = launched(playwright, engine)
         page = browser.new_page(viewport={"width": 1440, "height": 900})
+        watched(page, seen.errors, expected=_asks_its_question)
         page.set_default_timeout(WAIT_MS)
-        page.on("console", lambda message: _console(seen, message))
-        page.on("pageerror", lambda error: seen.errors.append(str(error)))
         page.goto(server.login_url)
         page.wait_for_selector("table.problems tbody tr")
         _start(page, seen)
@@ -149,11 +147,6 @@ def _mock(page: Any, seen: Practice) -> None:
     page.click(".mock-card a.button")
     hint = page.wait_for_selector(".flow-actions button:disabled", state="attached")
     seen.locked_hint = hint.get_attribute("title") or ""
-
-
-def _console(seen: Practice, message: ConsoleLine) -> None:
-    if message.type in ("error", "warning") and not _asks_its_question(message):
-        seen.errors.append(f"{message.type}: {message.text}")
 
 
 def _asks_its_question(message: ConsoleLine) -> bool:

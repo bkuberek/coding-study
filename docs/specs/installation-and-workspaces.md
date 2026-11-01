@@ -287,7 +287,7 @@ The checkout is content, not a workspace:
 
 - `cstudy init` inside it refuses without `--force`; as a second guard the root `.gitignore` ignores `.cs/`, `.statements/`, `progress.db*` and `progress-export.json` anywhere, and `/workspace/`, `/workspaces/`, `/ws/`, `/python/`, `/typescript/`, `/jvm/`, `/notes/`, `/projects/` and `/.archive/` at the root.
 - Point `CSTUDY_WORKSPACE` (or `--workspace`) at a workspace outside the checkout; `uv run cstudy verify` then reads the checkout's content and builds with that workspace's toolchains.
-- A change to the web UI's front end is rebuilt with `tools/web-ui/build.sh` and committed with its sources ([Web UI assets](#web-ui-assets)); the browser smoke test needs the optional Playwright development group and its Chromium.
+- A change to the web UI's front end is rebuilt with `tools/web-ui/build.sh` and committed with its sources ([Web UI assets](#web-ui-assets)); the browser tests need the optional Playwright development group and its three engines (`uv run --group browser playwright install chromium firefox webkit`), and run in each one ([browser support](web-ui.md#browser-support)).
 - The CLI tests never use a workspace in the checkout: fixtures create temporary workspaces, and the slow tests set one up per session with `cstudy init` and the `cstudy doctor --fix` steps.
 
 ## Replaces
