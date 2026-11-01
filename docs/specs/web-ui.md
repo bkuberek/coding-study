@@ -282,7 +282,7 @@ Measured 2026-10-31 on an Apple Silicon Mac, load average 4.0 to 5.6 (other work
 | `two-sum` | Go | 0.777 s | 0.801 s | +0.024 s |
 | `two-sum` | Rust | 0.820 s | 0.856 s | +0.036 s |
 
-The Go project's terminal run itself took 1.67 s against NFR-1's 1.5 s at that load, so its page run misses NFR-11's absolute target with it; every page run is within 0.1 s of its terminal run but the Kotlin project's first measurement, 12 ms over and inside the JVM's run-to-run spread of about 0.15 s.
+The Go project's terminal run took 1.67 s at that load, within NFR-1's 2 s for Go projects; every page run is within 0.1 s of its terminal run but the Kotlin project's first measurement, 12 ms over and inside the JVM's run-to-run spread of about 0.15 s.
 
 ## Jobs
 
