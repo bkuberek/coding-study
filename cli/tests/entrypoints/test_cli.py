@@ -1,3 +1,4 @@
+import re
 from importlib.metadata import version
 
 import pytest
@@ -21,6 +22,7 @@ from coding_study.entrypoints.commands import doctor
 from coding_study.entrypoints.shared import ExitCode, add_command
 
 runner = CliRunner()
+ANSI_ESCAPES = re.compile(r"\x1b\[[0-9;]*m")
 PHASE_0_COMMANDS = ("doctor", "start", "test", "list", "show", "solution", "done", "verify")
 PHASE_1_COMMANDS = ("next", "hint", "new")
 PHASE_2_COMMANDS = ("bench",)
@@ -65,9 +67,9 @@ def test_usage_errors_exit_3(arguments):
 
 
 def test_usage_errors_explain_themselves_on_stderr():
-    assert (
-        "No such option: --no-such-flag"
-        in runner.invoke(cli.app, ["list", "--no-such-flag"]).stderr
+    # Rich colours the message when it detects CI, which splits it with ANSI codes.
+    assert "No such option: --no-such-flag" in ANSI_ESCAPES.sub(
+        "", runner.invoke(cli.app, ["list", "--no-such-flag"]).stderr
     )
 
 
