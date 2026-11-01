@@ -193,6 +193,8 @@ version = "0.8.0"
 source = { editable = "." }
 dependencies = [
     { name = "jsonschema" },
+    { name = "markdown-it-py" },
+    { name = "pygments" },
     { name = "pyyaml" },
     { name = "rich" },
     { name = "starlette" },
@@ -220,6 +222,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "jsonschema", specifier = ">=4.26" },
+    { name = "markdown-it-py", specifier = ">=4.2" },
+    { name = "pygments", specifier = ">=2.21" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=15.0" },
     { name = "starlette", specifier = ">=1.10" },

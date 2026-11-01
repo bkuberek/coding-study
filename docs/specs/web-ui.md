@@ -521,7 +521,7 @@ A missing or unreadable file means the defaults; the server rewrites it whole on
 | Output | `entrypoints/web/static/`, committed; not a directory named `build`, which the wheel excludes |
 | Manifest | `static/manifest.json` records each file's SHA-256; a slow test rebuilds and compares, a fast test asserts the wheel holds every file it names, and `cstudy doctor` compares the installed files with it |
 | Budget | NFR-12: the whole bundle at most 1 MB raw and 350 KB gzip without the Vim chunk; at most 600 KB raw loaded before the first file of one language is editable, which is `app.js` and the chunks it imports statically, `app.css`, the editor and the language's chunk; a fast test holds the committed files to it |
-| Markdown | Rendered on the server with markdown-it-py and Pygments, which Rich already installs; no Markdown library in the bundle |
+| Markdown | Rendered on the server with markdown-it-py and Pygments, declared as direct dependencies although Rich installs them too; no Markdown library in the bundle |
 
 ## Testing
 
