@@ -3,8 +3,11 @@
  * draws the chrome, and shows the view the URL's fragment names. The editor module and its
  * languages load the first time a file opens.
  */
+// The stylesheets of what the page loads at start; a chunk links its own (scripts/build.ts).
 import "./page/app.css";
 import "./page/flows.css";
+import "./page/runs.css";
+import "./page/files.css";
 
 import { createApi } from "./page/api.ts";
 import type { Cleanup, PageContext, PreferencesListener } from "./page/context.ts";

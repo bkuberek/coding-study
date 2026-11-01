@@ -4,6 +4,8 @@
  * after its confirmation.
  */
 
+import "./stats.css";
+
 import { confirmed } from "./confirmation.ts";
 import type { Cleanup, PageContext } from "./context.ts";
 import { confirmAction } from "./dialogs.ts";

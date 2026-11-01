@@ -1202,7 +1202,7 @@ main:has(.workbench) {
   margin: 4px 0;
 }
 
-/* the Health and Settings views */
+/* the heads of the views fetched when they first open (their own styles come with them), and notices */
 
 .view-head {
   display: flex;
@@ -1218,84 +1218,13 @@ main:has(.workbench) {
   font: 600 30px / 1.1 var(--font-prose);
 }
 
-.health-summary {
-  margin: 0;
-}
-
 .view-head button {
   margin-left: auto;
-}
-
-.checks {
-  max-width: 1200px;
-}
-
-.check-name {
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.check-detail {
-  color: var(--ink-soft);
-  word-break: break-word;
-}
-
-.check-fail td {
-  background: color-mix(in srgb, var(--fail) 7%, transparent);
-}
-
-.settings {
-  max-width: 720px;
-}
-
-.settings-form fieldset {
-  margin: 0 0 18px;
-  padding: 12px 16px;
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  background: var(--paper-raised);
-}
-
-.settings-form legend {
-  padding: 0 6px;
-  color: var(--ink-soft);
-  font-size: var(--text-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.switch {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: 10px;
-  padding: 6px 0;
-}
-
-.switch p {
-  grid-column: 2;
-  margin: 0;
-  font-size: var(--text-s);
-}
-
-.radios {
-  display: flex;
-  gap: 20px;
 }
 
 input[type="checkbox"],
 input[type="radio"] {
   accent-color: var(--accent);
-}
-
-.facts dt {
-  color: var(--ink-soft);
-  font-size: var(--text-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.facts dd {
-  margin: 2px 0 12px;
 }
 
 .notice {

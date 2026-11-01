@@ -5,6 +5,8 @@
  * editable (NFR-12).
  */
 
+import "./results-draw.css";
+
 import { badge, h } from "./dom.ts";
 import { caseFacts, caseLines, durationText, levelLine, stressFacts, testName } from "./results-format.ts";
 import { type CaseRow, headerText, type RowStatus, type RunModel, resultsView, STATUS_WORDS, type StressGroup, type TestRow, type ViewItem } from "./results-model.ts";

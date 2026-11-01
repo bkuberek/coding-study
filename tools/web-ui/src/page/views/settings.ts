@@ -1,5 +1,7 @@
 /** The Settings view (docs/specs/web-ui.md#settings-view): the preferences, each stored at once. */
 
+import "./settings.css";
+
 import type { Cleanup, PageContext } from "../context.ts";
 import { h } from "../dom.ts";
 import { THEMES } from "../shell.ts";

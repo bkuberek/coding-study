@@ -1,7 +1,8 @@
 /*
  * Saving and managing files (docs/specs/web-ui.md#attempt-view): the unsaved dot on a tab, the
- * banners above an editor, and the fields of the dialog that asks for names. A conflict reads
- * like a warning strip taped over the sheet: a hatched edge in the warning hue, never colour alone.
+ * banners above an editor, and the tree's tools and menu buttons (the menu is treeActions.css, the
+ * dialog that asks for names dialogs.css). A conflict reads like a warning strip taped over the
+ * sheet: a hatched edge in the warning hue, never colour alone.
  */
 
 /* an editor tab's panel: the banners, then the editor filling the rest */
@@ -217,92 +218,4 @@
 
 .tree-more:hover {
   color: var(--accent);
-}
-
-.tree-menu {
-  position: fixed;
-  z-index: 20;
-  display: grid;
-  min-width: 220px;
-  padding: 4px;
-  background: var(--paper-raised);
-  border: 1px solid var(--rule);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--radius);
-  box-shadow: 0 12px 30px rgb(0 0 0 / 0.2);
-  font-size: var(--text-s);
-}
-
-.tree-menu [role="menuitem"] {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 4px 8px;
-  border: 0;
-  border-radius: 2px;
-  background: transparent;
-  text-align: left;
-}
-
-.tree-menu [role="menuitem"]:hover,
-.tree-menu [role="menuitem"]:focus-visible {
-  background: var(--accent-soft);
-  outline: none;
-}
-
-.tree-menu .is-destructive {
-  color: var(--fail);
-}
-
-.tree-menu-hint {
-  color: var(--ink-soft);
-  font-size: var(--text-xs);
-}
-
-/* the dialogs that ask for names (the sheet is flows.css) */
-
-.sheet[aria-busy="true"] form {
-  cursor: progress;
-}
-
-.dialog-input {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  background: var(--paper);
-}
-
-.dialog-input:focus-within {
-  border-color: var(--accent);
-}
-
-.dialog-prefix {
-  padding: 5px 0 5px 8px;
-  color: var(--ink-soft);
-  white-space: nowrap;
-}
-
-.dialog-input input {
-  flex: 1;
-  min-width: 0;
-  padding: 5px 8px 5px 2px;
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  outline: none;
-}
-
-.dialog-issue {
-  min-height: 1.4em;
-  margin: 0;
-  color: var(--fail);
-  font-size: var(--text-s);
-}
-
-.button.danger {
-  background: var(--fail);
-  border-color: var(--fail);
-  color: var(--on-accent);
 }

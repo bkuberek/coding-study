@@ -5,11 +5,12 @@ The sources of the front end that `cstudy serve` serves: the page's own code and
 | Path | Holds |
 |------|-------|
 | `package.json`, `pnpm-lock.yaml` | Exact versions and integrity hashes of every package |
-| `src/app.ts`, `src/page/` | The page: its entry point, views, stylesheets (`page/app.css`; `page/flows.css` for the attempt flows, mocks, solutions and progress; `page/files.css` for saving and managing files; `page/runs.css` for runs and jobs) and the pure parts its tests cover |
+| `src/app.ts`, `src/page/` | The page: its entry point, views, stylesheets and the pure parts its tests cover. `app.ts` imports the stylesheets of what the page draws at start (`page/app.css`; `page/flows.css` for the attempt flows and the mock banner; `page/files.css` for saving and the file tree; `page/runs.css` for the run controls and the results panel), which make `app.css`. A module fetched on first use imports its own, named after it (`page/dialogs.css`, `page/results-draw.css`, `page/views/health.css`, …), which it links as it loads |
+| `src/page/stylesheets.ts` | Links a chunk's stylesheet with the page's CSP nonce; the chunk resolves once the stylesheet applies, so nothing it draws shows unstyled |
 | `src/editor.ts` | The editor module, a chunk the page fetches the first time a file opens |
 | `src/grammars/*.ts`, `src/vim.ts` | One chunk per language and one for Vim keybindings, each fetched on first use |
-| `test/*.test.ts` | Unit tests of the pure parts of the page and the editor module, run with `node --test` |
-| `scripts/build.ts` | The esbuild run, the license notice and the digest manifest |
+| `test/*.test.ts` | Unit tests of the pure parts of the page and the editor module, run with `node --test`; `test/stylesheets.ts` makes an imported stylesheet an empty module for them |
+| `scripts/build.ts` | The esbuild run, each chunk's stylesheet, the license notice and the digest manifest. It refuses a stylesheet imported by a module the page loads at start, which `app.ts` must import instead |
 | `build.sh` | Install, type-check, test, build |
 
 ## Rebuild
@@ -43,27 +44,28 @@ The build writes minified ES modules with no runtime network request: the page l
 | File | Content |
 |------|---------|
 | `app.js`, `app.css` | The page's entry point and stylesheet, with fixed names, which `page.html` loads |
-| `chunks/<name>-<hash>.js` | Content-hashed chunks: the shared CodeMirror core, a chunk per language, Vim |
+| `chunks/<name>-<hash>.js` | Content-hashed chunks: the shared CodeMirror core, a chunk per language, Vim, and the views, dialogs and controls fetched on first use |
+| `chunks/<name>-<hash>.css` | The stylesheet of a module fetched on first use, linked by its chunk; esbuild alone would also put it into `app.css` |
 | `THIRD_PARTY_LICENSES.txt` | Name, version, license and license text of every package the chunks contain |
 | `manifest.json` | `entry`, and `files`: each other file's path with its SHA-256 |
 
-Sizes as of the current lockfile, gzip at level 9:
+Sizes as of the current lockfile, gzip at level 9; a row fetched on first use counts the chunks it fetches and the stylesheets they link:
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 86.7 | 28.7 |
-| Every JavaScript and CSS file but Vim | 933.5 | 332.5 |
-| The editor before any language: the page, the editor and the core | 489.8 | 162.5 |
-| A Python file | 560.2 | 189.4 |
-| A TypeScript or JavaScript file, the largest grammar | 598.8 | 203.0 |
-| Vim keybindings, added on top | 119.7 | 38.2 |
-| The Mock and Progress views together, each a chunk fetched when it first opens | 9.5 | 4.2 |
-| The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 8.2 | 3.9 |
-| The run session, fetched when a run first starts or shows: streaming and drawing it, Cancel, diagnostics | 17.8 | 6.6 |
-| The Run options form, fetched when it first opens | 3.2 | 1.4 |
-| The job panel for Bench, fetched when Bench first starts (Health fetches it with its view) | 3.4 | 1.6 |
-| The file tree's menu and actions, fetched when a menu first opens or an action first runs (with the dialog module) | 6.7 | 3.0 |
-| The dialog module (sheets, confirmations, questions that ask for names) and the Start, Done and Solution dialogs, each fetched when first used | 12.1 | 5.8 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 74.6 | 26.5 |
+| Every JavaScript and CSS file but Vim | 935.3 | 336.4 |
+| The editor before any language: the page, the editor and the core | 477.8 | 160.2 |
+| A Python file | 548.2 | 187.1 |
+| A TypeScript or JavaScript file, the largest grammar | 586.7 | 200.7 |
+| Vim keybindings, added on top | 119.7 | 38.1 |
+| The Mock and Progress views together, each fetched when it first opens (Progress with the Start dialog) | 19.8 | 9.1 |
+| The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 10.9 | 5.3 |
+| The run session, fetched when a run first starts or shows: streaming and drawing it, Cancel, diagnostics | 21.6 | 8.0 |
+| The Run options form, fetched when it first opens | 4.1 | 1.8 |
+| The job panel for Bench, fetched when Bench first starts (Health fetches it with its view) | 3.9 | 1.8 |
+| The file tree's menu and actions, fetched when a menu first opens or an action first runs (with the dialog module) | 9.6 | 4.5 |
+| The dialog module (sheets, confirmations, questions that ask for names) and the Start, Done and Solution dialogs, each fetched when first used | 15.8 | 7.7 |
 
 The budget (NFR-12) is 1 MB raw and 350 KB gzip for the whole bundle without Vim, the page's code included, and 600 KB raw loaded before a file of one language is editable. What a view or a control needs only when it is used is a chunk of its own (the rows above), so the page, the largest grammar and the editor stay under the 600 KB; `cli/tests/entrypoints/web/test_bundle_budget.py` holds the committed files to both limits. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
 

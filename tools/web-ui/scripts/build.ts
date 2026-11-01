@@ -4,6 +4,11 @@
  * entry with a fixed name and content-hashed chunks; THIRD_PARTY_LICENSES.txt with the license of
  * every package the chunks contain; and manifest.json with each file's SHA-256. The output
  * directory is the build's own: every file in it is replaced.
+ *
+ * The stylesheets `src/app.ts` imports make app.css. A stylesheet any other module imports is a
+ * content-hashed file of its own, which that module links when it loads (`page/stylesheets.ts`),
+ * so a view's or a control's style comes with its chunk instead of growing what the page loads
+ * at start. esbuild alone would put such a stylesheet into app.css as well.
  */
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -17,6 +22,9 @@ const ROOT = path.resolve(import.meta.dirname, "..");
 const PACKAGE_STATIC = path.resolve(ROOT, "../../cli/src/coding_study/entrypoints/web/static");
 // The page's module; its stylesheet is app.css, and the editor module is a chunk it fetches.
 const ENTRY = "app.js";
+const ENTRY_SOURCE = path.join(ROOT, "src/app.ts");
+const STYLESHEET_LINKER = path.join(ROOT, "src/page/stylesheets.ts");
+const CHUNK_STYLESHEET = "chunk-stylesheet";
 const MANIFEST = "manifest.json";
 const LICENSES = "THIRD_PARTY_LICENSES.txt";
 const LICENSE_FILE = /^(licen[cs]e|copying)(\.(md|txt))?$/i;
@@ -24,6 +32,7 @@ const RULE = "-".repeat(78);
 
 const output = path.resolve(process.argv[2] ?? PACKAGE_STATIC);
 await clearPreviousBuild(output);
+const stylesheetImports = new Map<string, string>();
 const { metafile } = await esbuild.build({
   absWorkingDir: ROOT,
   entryPoints: { [path.parse(ENTRY).name]: "src/app.ts" },
@@ -41,7 +50,9 @@ const { metafile } = await esbuild.build({
   legalComments: "none",
   metafile: true,
   logLevel: "warning",
+  plugins: [chunkStylesheets(output, stylesheetImports)],
 });
+requireLinkedLater(metafile, stylesheetImports);
 await writeFile(path.join(output, LICENSES), await licenseNotice(metafile));
 const files = await digests(output);
 await writeFile(path.join(output, MANIFEST), `${JSON.stringify({ entry: ENTRY, files }, null, 2)}\n`);
@@ -55,6 +66,59 @@ async function clearPreviousBuild(directory: string): Promise<void> {
     throw new Error(`refusing to replace ${directory}: it has no ${MANIFEST}, so no build wrote it`);
   }
   await rm(directory, { recursive: true });
+}
+
+/**
+ * Turns `import "./x.css"` in any module but the entry into a module that links the stylesheet,
+ * built minified and content-hashed into `chunks/`, and waits until it applies. `imports` gets
+ * each such importer with the stylesheet it imports, by path relative to this directory.
+ */
+function chunkStylesheets(outputDirectory: string, imports: Map<string, string>): esbuild.Plugin {
+  return {
+    name: CHUNK_STYLESHEET,
+    setup(build) {
+      build.onResolve({ filter: /\.css$/ }, (args) => {
+        if (args.importer === ENTRY_SOURCE) return undefined;
+        const stylesheet = path.resolve(args.resolveDir, args.path);
+        imports.set(path.relative(ROOT, args.importer), path.relative(ROOT, stylesheet));
+        return { path: path.relative(ROOT, stylesheet), namespace: CHUNK_STYLESHEET };
+      });
+      build.onLoad({ filter: /.*/, namespace: CHUNK_STYLESHEET }, async (args) => {
+        const built = await esbuild.build({
+          absWorkingDir: ROOT,
+          entryPoints: [path.resolve(ROOT, args.path)],
+          outdir: path.join(outputDirectory, "chunks"),
+          bundle: true,
+          minify: true,
+          charset: "utf8",
+          entryNames: "[name]-[hash]",
+          metafile: true,
+          logLevel: "warning",
+        });
+        const [written = ""] = Object.keys(built.metafile.outputs);
+        const href = path.relative(outputDirectory, path.resolve(ROOT, written)).split(path.sep).join("/");
+        const contents = `import { linkStylesheet } from ${JSON.stringify(STYLESHEET_LINKER)};\nawait linkStylesheet(${JSON.stringify(href)});\n`;
+        return { contents, loader: "js", resolveDir: ROOT, watchFiles: [path.resolve(ROOT, args.path)] };
+      });
+    },
+  };
+}
+
+/** Refuses a stylesheet linked by a module the page loads at start: app.ts must import it, so it
+ * is in app.css, which the page loads before it draws anything. */
+function requireLinkedLater(meta: esbuild.Metafile, imports: ReadonlyMap<string, string>): void {
+  const entry = Object.keys(meta.outputs).find((file) => meta.outputs[file]?.entryPoint === path.relative(ROOT, ENTRY_SOURCE));
+  const loaded = new Set<string>();
+  const pending = entry === undefined ? [] : [entry];
+  for (let file = pending.pop(); file !== undefined; file = pending.pop()) {
+    if (loaded.has(file)) continue;
+    loaded.add(file);
+    pending.push(...(meta.outputs[file]?.imports ?? []).filter((found) => found.kind === "import-statement").map((found) => found.path));
+  }
+  const atStart = new Set([...loaded].flatMap((file) => Object.keys(meta.outputs[file]?.inputs ?? {})));
+  for (const [importer, stylesheet] of imports) {
+    if (atStart.has(importer)) throw new Error(`${importer} loads with the page, so src/app.ts must import ${stylesheet}`);
+  }
 }
 
 /** The package directories of every input that put bytes into an output, by package name. */

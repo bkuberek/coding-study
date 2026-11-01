@@ -12,8 +12,6 @@
  * editable (NFR-12).
  */
 
-import "./files.css";
-
 import { badge, h } from "./dom.ts";
 import { creates, fileActions, type FileScope, fileScope, packageExtension } from "./fileRules.ts";
 import type { AttemptFiles } from "./files.ts";

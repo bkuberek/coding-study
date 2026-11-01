@@ -5,6 +5,8 @@
  * when the view first opens.
  */
 
+import "./mock.css";
+
 import { refreshAttemptsMenu } from "../attempts.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { badge, command, h } from "../dom.ts";

@@ -1,0 +1,1 @@
+.solution-controls{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) auto;align-items:end;gap:12px}.solution-pane{margin-top:16px;padding-top:14px;border-top:1px solid var(--rule)}.solution-pane:empty{display:none}.solution-reference .prose pre{max-height:none}@media(max-width:1100px){.solution-controls{grid-template-columns:minmax(0,1fr)}}

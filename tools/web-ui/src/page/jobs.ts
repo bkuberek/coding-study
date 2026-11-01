@@ -4,6 +4,8 @@
  * then its exit code. One job runs at a time in the server: a job already running is shown instead.
  */
 
+import "./jobs.css";
+
 import { ApiError } from "./api.ts";
 import type { PageContext } from "./context.ts";
 import { badge, command, h } from "./dom.ts";

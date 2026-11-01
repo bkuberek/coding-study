@@ -3,6 +3,8 @@
  * `cstudy doctor --fix` as a job and checks again, and Verify of the workspace's own problems.
  */
 
+import "./health.css";
+
 import type { Cleanup, PageContext } from "../context.ts";
 import { badge, command, h } from "../dom.ts";
 import { checkBadge } from "../format.ts";

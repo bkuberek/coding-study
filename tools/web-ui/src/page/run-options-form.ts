@@ -3,6 +3,8 @@
  * language take, and the `cstudy test` command they make, shown as they change.
  */
 
+import "./run-options-form.css";
+
 import { command, h } from "./dom.ts";
 import { applicableOptions, parseCases, type RunContext, runCommand, type RunOptionsState } from "./run-options.ts";
 

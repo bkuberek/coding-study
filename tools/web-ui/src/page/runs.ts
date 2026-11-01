@@ -13,8 +13,6 @@
  * starts or shows, so the page loads less before a file is editable (NFR-12).
  */
 
-import "./runs.css";
-
 import { FILE_SAVED_EVENT, type FileSaved } from "./api.ts";
 import type { PageContext } from "./context.ts";
 import { h } from "./dom.ts";

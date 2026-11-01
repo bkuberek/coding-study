@@ -10,6 +10,8 @@
  * before a file is editable (NFR-12).
  */
 
+import "./dialogs.css";
+
 import { command, h } from "./dom.ts";
 import { messageOf } from "./states.ts";
 

@@ -5,8 +5,6 @@
  * the note on a generated test file.
  */
 
-import "./files.css";
-
 import type { Editor } from "../editor.ts";
 import { ApiError } from "./api.ts";
 import { badge, h, nodes } from "./dom.ts";
