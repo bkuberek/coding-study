@@ -193,6 +193,8 @@ class WorkspaceWatch:
         return None
 
     async def _watch(self, state: WorkspaceSnapshot) -> WorkspaceSnapshot:
+        """Until the folders change; a watch that ends otherwise, failed or not, starts again
+        after a pause, over a new snapshot."""
         folders = state.folders
         changes = self._watcher.folder_changes(state.root, folders, self._notifications.stopped)
         try:
@@ -200,12 +202,13 @@ class WorkspaceWatch:
                 async for _ in changes:
                     state = await self._next(state)
                     if state.folders != folders:
-                        break
-        except OSError as error:
+                        return state
+        except Exception as error:  # the watch starts again rather than end the notifications
             _warn(f"the watch of the workspace stopped: {error}; it starts again")
-            await self._pause()
-            state = await self._next(state)
-        return state
+        if self._notifications.stopped.is_set():
+            return state
+        await self._pause()
+        return await self._next(state)
 
     async def _next(self, state: WorkspaceSnapshot) -> WorkspaceSnapshot:
         try:

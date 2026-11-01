@@ -361,6 +361,36 @@ def test_a_snapshot_that_fails_sends_nothing_and_the_watch_goes_on(project):
     assert asyncio.run(after_failure()) == ["file_changed"]
 
 
+class FailingOnce(ScriptedWatcher):
+    """A watch whose first start fails, as on a folder that went meanwhile."""
+
+    async def folder_changes(
+        self, root: Path, folders: Sequence[WatchedFolder], stop_event: asyncio.Event
+    ) -> AsyncGenerator[None]:
+        if not self.watches:
+            self.watches.append(tuple(folders))
+            raise RuntimeError("the folder went")
+        async for burst in super().folder_changes(root, folders, stop_event):
+            yield burst
+
+
+def test_a_watch_that_fails_starts_again(project):
+    environment, _attempt = project
+
+    async def watches() -> int:
+        notifications = Notifications(SPACED)
+        watcher = FailingOnce()
+        watch = asyncio.create_task(
+            WorkspaceWatch(notifications, watcher, snapshots_of(environment)).run()
+        )
+        await watcher.watching(2)
+        notifications.stop()
+        await asyncio.wait_for(watch, TIMEOUT_S)
+        return len(watcher.watches)
+
+    assert asyncio.run(watches()) == 2
+
+
 # the endpoint
 
 
