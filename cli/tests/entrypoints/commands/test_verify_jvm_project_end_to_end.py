@@ -37,11 +37,13 @@ FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "jvm-projects" / "
 SLUG = "bank-project-java"
 RUNS = 3
 """Runs of each kind."""
-INCREMENTAL_SHARE = 0.6
+INCREMENTAL_SHARE = 0.85
 """Gradle's time in a run over kept builds may be at most this share of its time in a run from
 empty folders. Measured at load averages near 50 on 11 cores: 0.51, and 0.68 when every run still
 rebuilt from empty folders; a single Gradle build of the reference took 1.5 to 3 s over kept
-builds and 4 to 10 s from an empty folder."""
+builds and 4 to 10 s from an empty folder. On a quiet machine (load averages 2 to 3) Gradle needs
+less time from empty folders, 1.9 to 2.2 s against 1.5 s over kept builds: 0.72 to 0.75. The
+class files that are not compiled again are the deterministic check."""
 
 
 @dataclass(frozen=True, slots=True)
