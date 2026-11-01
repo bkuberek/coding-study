@@ -4,9 +4,11 @@
 import os
 import queue
 import signal
+import socket
 import subprocess
 import sys
 import threading
+import time
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -16,6 +18,8 @@ from pathlib import Path
 START_SECONDS = 90
 """Generous: the machine running the slow tests is often loaded."""
 STOP_SECONDS = 30
+LISTEN_POLL_SECONDS = 0.05
+LOOPBACK = "127.0.0.1"
 URL_LABEL = "open"
 
 
@@ -34,6 +38,20 @@ class RunningServer:
     @property
     def port(self) -> int:
         return int(self.address.rsplit(":", 1)[1])
+
+    def wait_until_listening(self) -> None:
+        """`cstudy serve` prints the URL once its socket is bound, a moment before the server
+        listens on it, and a connection in between is refused: on a slow machine, the first
+        request of a test would fail. Probes with a connection that sends nothing."""
+        deadline = time.monotonic() + START_SECONDS
+        while True:
+            try:
+                socket.create_connection((LOOPBACK, self.port), timeout=LISTEN_POLL_SECONDS).close()
+                return
+            except OSError:
+                if self.process.poll() is not None or time.monotonic() > deadline:
+                    raise AssertionError("cstudy serve did not listen on its port") from None
+                time.sleep(LISTEN_POLL_SECONDS)
 
     def stop(self, signal_number: int) -> tuple[int, list[str]]:
         """The exit code and the lines printed after the URL."""

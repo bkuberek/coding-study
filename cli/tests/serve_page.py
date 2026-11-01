@@ -62,6 +62,7 @@ class Page:
 
 def opened_page(server: RunningServer) -> Page:
     """A page logged in with the printed URL, knowing the attempts in progress."""
+    server.wait_until_listening()
     client = httpx2.Client(base_url=server.address, timeout=RUN_SECONDS)
     client.get(server.login_url)
     csrf = client.get("/").text.split('name="cstudy-csrf" content="')[1].split('"')[0]
