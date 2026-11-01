@@ -37,7 +37,7 @@ Waiting under `if` instead of `while` breaks as soon as two workers wait on the 
 
 ### Language notes
 
-Java uses `ReentrantLock` with two `Condition`s; on JDK 21 virtual threads park on them without pinning a carrier. Kotlin uses the same JDK classes with `withLock`; with coroutines the same design is a `Mutex` with a `Channel` or two `Semaphore`s. Python uses `threading.Condition` objects that share one lock; the GIL does not make the check-then-act sequence atomic. TypeScript keeps FIFO queues of pending resolvers: an `await` is the only place another worker can run.
+Java uses `ReentrantLock` with two `Condition`s; virtual threads park on them without pinning a carrier on every JDK. Kotlin uses the same JDK classes with `withLock`; with coroutines the same design is a `Mutex` with a `Channel` or two `Semaphore`s. Python uses `threading.Condition` objects that share one lock; the GIL does not make the check-then-act sequence atomic. TypeScript keeps FIFO queues of pending resolvers: an `await` is the only place another worker can run.
 
 ## Broken: no-lock (Deque without a lock)
 

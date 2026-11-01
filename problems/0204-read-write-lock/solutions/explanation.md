@@ -51,7 +51,7 @@ A read-write lock only pays off when read sections are long or reads vastly outn
 
 ### Language notes
 
-- Java: `ReentrantLock` with two `Condition`s, `readable` and `writable`. Virtual threads park on `Condition.await` without pinning their carrier; `synchronized` with `wait` pins it on JDK 21. The library versions are `ReentrantReadWriteLock` (reentrant, optionally fair) and `StampedLock` (not reentrant, with optimistic reads).
+- Java: `ReentrantLock` with two `Condition`s, `readable` and `writable`. Virtual threads park on `Condition.await` without pinning their carrier on every JDK; `synchronized` with `wait` pins it on JDK 21 to 23 and no longer does from JDK 24 (JEP 491). The library versions are `ReentrantReadWriteLock` (reentrant, optionally fair) and `StampedLock` (not reentrant, with optimistic reads).
 - Kotlin: the same JDK classes with `lock.withLock { }`, plus the `ReentrantReadWriteLock.read { }` and `write { }` extension functions. Coroutines have no read-write mutex in `kotlinx.coroutines`; the usual design is the same state machine guarded by a `Mutex`, with waiting lists of `CompletableDeferred`, so that waiting suspends instead of blocking a thread. Coroutines are not autograded here.
 - Python: two `threading.Condition` objects sharing one `threading.Lock`. The GIL does not make the check of `self._writing` and the update of `self._readers` one atomic step, so the mutex is still needed; the standard library has no read-write lock.
 - TypeScript: one event loop, so the counters need no mutex, but every `await` is a point where other workers run. The reference keeps FIFO lists of waiting readers and writers and updates the state when it admits them, which avoids re-checking after a wake-up.

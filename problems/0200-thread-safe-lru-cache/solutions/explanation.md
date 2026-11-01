@@ -51,7 +51,7 @@ In an interview, write the single-lock version, then discuss these trade-offs; c
 
 ### Language notes
 
-- Java: a `ReentrantLock` with `try`/`finally`. On JDK 21, `synchronized` methods would pin a virtual thread to its carrier while it holds the monitor; with such short critical sections this is harmless, but `ReentrantLock` avoids it entirely. `ConcurrentHashMap` alone does not help, because the map and the list must change together.
+- Java: a `ReentrantLock` with `try`/`finally`. On JDK 21 to 23, a virtual thread that blocks while it holds a `synchronized` monitor pins its carrier thread; from JDK 24 (JEP 491) it does not. With such short critical sections neither matters, and `ReentrantLock` behaves the same on every JDK. `ConcurrentHashMap` alone does not help, because the map and the list must change together.
 - Kotlin: the same JDK lock with `lock.withLock { }`, whose inline lambda allows the early `return -1`. With coroutines the same design uses a `kotlinx.coroutines.sync.Mutex`; holding it never blocks a thread, but it must not be held across a suspending call such as loading a missing value. Coroutines are not autograded here.
 - Python: one `threading.Lock` around each method. Single operations on a `dict` are atomic under the GIL, but the five pointer updates of a move are separate statements, and a thread can be switched out between any two of them.
 - Go: a `sync.Mutex` with `defer c.mu.Unlock()` around the sequential cache's map of `*node` and sentinel list. A plain map must never be written by one goroutine while another reads or writes it: the runtime detects that and ends the process with `fatal error: concurrent map writes`, which `recover` cannot catch.

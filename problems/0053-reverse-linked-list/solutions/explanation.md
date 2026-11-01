@@ -45,7 +45,7 @@ Easy to get right, which makes it the oracle, but it misses the point of the exe
 - Python: `list.pop()` removes from the end in O(1); `pop(0)` would be O(n).
 - TypeScript: `values.pop()!` needs the non-null assertion because `pop` is typed `number | undefined`.
 - Java: an `ArrayDeque<Integer>` used as a stack (`push`, `pop`) returns the values last in, first out; it boxes every value.
-- Kotlin: `values.removeAt(values.lastIndex)` removes the last element; `removeLast()` would also work but resolves to a JDK 21 method on some toolchains, so the index form is the portable choice.
+- Kotlin: `values.removeAt(values.lastIndex)` removes the last element; `removeLast()` would also work, but since JDK 21 it resolves to the JDK's own `List.removeLast()` instead of Kotlin's, which fails on an older runtime, so the index form is the portable choice.
 - Go: the second pass counts an index down from the last value instead of popping, which does the same job without shrinking the slice. Nodes are `*ListNode` values, so writing `node.Val` changes the caller's list.
 - Rust: `Vec::pop` takes the values from the back in O(1). The first walk borrows the list immutably (`&head`), the second mutably (`&mut head`), and `head` itself is returned at the end, because only the values moved, not the nodes.
 

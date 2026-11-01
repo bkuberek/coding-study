@@ -932,7 +932,7 @@ A concurrent problem (`kind: concurrent`, `track: concurrency`) is a class whose
 
 | Language | Model | Variants (each a separate verdict) | Notes |
 |----------|-------|------------------------------------|-------|
-| Java | `threads` | `platform`, `virtual` (from `concurrency.jvm_threads`) | `synchronized`, `volatile`, `java.util.concurrent`. On JDK 21 a virtual thread pins its carrier inside `synchronized` and `Object.wait`: still correct, only slower |
+| Java | `threads` | `platform`, `virtual` (from `concurrency.jvm_threads`) | `synchronized`, `volatile`, `java.util.concurrent`. On JDK 21 to 23 a virtual thread pins its carrier thread inside `synchronized` and `Object.wait`; from JDK 24 ([JEP 491](https://openjdk.org/jeps/491)) it does not. Either way it is correct, and pinning is only slower |
 | Kotlin | `threads` | `platform`, `virtual` | Same JVM runner and JDK APIs (`@Volatile`, `synchronized(lock) {}`, `ReentrantLock.withLock`). Coroutines are not autograded in v1 (PRD Q5); every Kotlin concurrent problem has a coroutine paragraph in its explanation's `### Language notes` |
 | Python | `threads` or `async`, one per problem | `thread` or `async` | CPython 3.13 with the GIL; which races a test can observe: [below](#observable-races-in-python) |
 | TypeScript | `async` only | `async` | Node 24, one event loop; `worker_threads` is not supported (objects cannot be shared between isolates, only `SharedArrayBuffer`). Synchronous methods are atomic, so a problem whose race needs shared-memory threads omits `typescript` from `languages` |

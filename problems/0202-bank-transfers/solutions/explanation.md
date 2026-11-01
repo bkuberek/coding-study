@@ -41,7 +41,7 @@ It is simple and cannot deadlock, because there is only one lock. It also serial
 
 ### Language notes
 
-- Java: `synchronized` methods on the bank; on JDK 21 a virtual thread inside `synchronized` pins its carrier, which is correct but limits parallelism.
+- Java: `synchronized` methods on the bank; on JDK 21 to 23 a virtual thread inside `synchronized` pins its carrier thread, which is correct but limits parallelism; from JDK 24 (JEP 491) it does not.
 - Kotlin: `ReentrantLock.withLock { }`, which does not pin virtual threads. With coroutines the same design is one `Mutex` with `withLock`, whose waiting suspends instead of blocking.
 - Python: one `threading.Lock`. The GIL alone does not make `check, subtract, add` one step, so the lock is required.
 - Go: one `sync.Mutex` with `defer b.mu.Unlock()` in every method.
@@ -89,7 +89,7 @@ Ordering by `System.identityHashCode` or object address is the textbook alternat
 
 ### Language notes
 
-- Java: an array of `ReentrantLock`, with nested `try`/`finally` blocks. Virtual threads park on `ReentrantLock` without pinning their carrier, unlike `synchronized` on JDK 21. `tryLock` with a timeout is the alternative cure for deadlock: back off and retry instead of ordering.
+- Java: an array of `ReentrantLock`, with nested `try`/`finally` blocks. Virtual threads park on `ReentrantLock` without pinning their carrier on every JDK, whereas `synchronized` pins it on JDK 21 to 23 and no longer does from JDK 24 (JEP 491). `tryLock` with a timeout is the alternative cure for deadlock: back off and retry instead of ordering.
 - Kotlin: the same JDK locks with nested `withLock { }`, which unlock on every path. With coroutines, one `Mutex` per account works the same way; ordering matters just as much, because a suspended coroutine holding a `Mutex` blocks others exactly like a thread. Coroutines are not autograded here.
 - Python: a list of `threading.Lock`, nested `with` blocks for the two accounts, and `contextlib.ExitStack` to hold every lock in `total`. Under the GIL only one thread runs Python code at a time, but a thread can be switched out between taking its first and its second lock, so the deadlock is real.
 - Go: a slice of `sync.Mutex` and `defer` for each unlock. A `sync.Mutex` is not reentrant, so a transfer from an account to itself must lock it once; locking it twice blocks the goroutine forever, where Java's `ReentrantLock` would just count the second lock.

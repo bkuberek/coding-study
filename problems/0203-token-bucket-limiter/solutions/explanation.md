@@ -46,7 +46,7 @@ It is short, obviously correct and fast enough for nearly every service: an unco
 
 ### Language notes
 
-- Java: a `ReentrantLock` with `try`/`finally`, which does not pin virtual threads, unlike `synchronized` on JDK 21. The fields need no `volatile`: the lock's acquire and release order every access.
+- Java: a `ReentrantLock` with `try`/`finally`, which never pins virtual threads, whereas `synchronized` does on JDK 21 to 23 and no longer does from JDK 24 (JEP 491). The fields need no `volatile`: the lock's acquire and release order every access.
 - Kotlin: the same JDK lock with `withLock { }`. A coroutine version would guard the same two fields with a `kotlinx.coroutines.sync.Mutex`, or confine the bucket to one coroutine that serves requests from a `Channel`; coroutines are not autograded here.
 - Python: one `threading.Lock`. Each line of the refill is atomic under the GIL, but the sequence of lines is not: a thread can be switched out between updating `_stored` and `_last_refill`, so the lock is required.
 - Go: one `sync.Mutex` with `defer b.mu.Unlock()`; the refill is a helper that runs with the mutex held.
