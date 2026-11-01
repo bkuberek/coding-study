@@ -2,6 +2,342 @@
 
 <!-- version list -->
 
+## v0.9.0 (2026-11-01)
+
+### Bug Fixes
+
+- **cli**: Answer 412 when a page move or delete finds its file deleted on the way
+  ([`6b3f2c0`](https://github.com/bkuberek/coding-study/commit/6b3f2c001b1a7420ae07536bad461df884f45a97))
+
+- **cli**: End a run's processes when cstudy is killed
+  ([`9f745c4`](https://github.com/bkuberek/coding-study/commit/9f745c4fe98eab61c53608d4a787e8ca7aa071a9))
+
+- **cli**: Let cstudy doctor --fix upgrade a workspace from v0.7.0
+  ([`c688fb8`](https://github.com/bkuberek/coding-study/commit/c688fb88f854ccc6db6bdd3fd3ab593ca9274f31))
+
+- **cli**: Open the web ui's event streams at once in Firefox
+  ([`22a5d50`](https://github.com/bkuberek/coding-study/commit/22a5d50c7cf69150cfd32186c54e195d15bb727c))
+
+- **cli**: Pass cstudy serve's --content to the commands it runs
+  ([`b76766f`](https://github.com/bkuberek/coding-study/commit/b76766f7d629e671e2d6039db69203be3d4b0651))
+
+- **cli**: Read compiler diagnostics on cstudy submit
+  ([`825b34b`](https://github.com/bkuberek/coding-study/commit/825b34b95aed94eba36b08821ee151690c8a4742))
+
+- **cli**: Refresh compiled runners' runtime copies under their build locks
+  ([`ec91d63`](https://github.com/bkuberek/coding-study/commit/ec91d633c975a2001b68f2b596f739360d73a75b))
+
+- **cli**: Show the web ui rows in cstudy doctor
+  ([`7feeedc`](https://github.com/bkuberek/coding-study/commit/7feeedc04ffe4c6dbdfd5b64124b2ee5a7233aa4))
+
+- **cli**: Start the workspace watch again after any failure or early end
+  ([`282321b`](https://github.com/bkuberek/coding-study/commit/282321b076a57264f86be04b6bb20ef3d2f63570))
+
+- **doctor**: Skip the Gradle warm-up when no working java is on PATH
+  ([`9397bc9`](https://github.com/bkuberek/coding-study/commit/9397bc9de65d6cd118e1162c7b8a5257fdf8b036))
+
+- **packaging**: Depend on gcc in the Homebrew formula on Linux
+  ([`87fc673`](https://github.com/bkuberek/coding-study/commit/87fc673a02e864a71831bbaea3b6ff7a264fd6e2))
+
+- **runners**: Fail the Go and Rust leak fixture only once its spinner runs
+  ([`1eef800`](https://github.com/bkuberek/coding-study/commit/1eef800cfbb78e7a667ae301e1caf703affca1f6))
+
+- **runners**: Give up the CPU at Python stress yields instead of spinning
+  ([`54a8efa`](https://github.com/bkuberek/coding-study/commit/54a8efa45b3082d3264244114fc804216a2468fe))
+
+- **runners**: Hand the GIL over at Python stress yields on a busy machine
+  ([`5b7c7c7`](https://github.com/bkuberek/coding-study/commit/5b7c7c7287b8639e16293d45df4911a61317fadf))
+
+- **runners**: Keep Python stress yields short on a busy CPU
+  ([`d102db9`](https://github.com/bkuberek/coding-study/commit/d102db984c2372cfbd88ad5f428582604a1f0802))
+
+- **runners**: Run 1000 racy increments per worker in conformance 9014
+  ([`fc88d49`](https://github.com/bkuberek/coding-study/commit/fc88d49dbc8cd270cd62553095b972e530e30e94))
+
+- **runners**: Show Delve's refusal of an older Go as an environment error in a Go project debug run
+  ([`4efb027`](https://github.com/bkuberek/coding-study/commit/4efb02737ef7b3b7b69da1c7ee6df86342568555))
+
+- **runners**: Stop hung Go, Rust, Gradle and tsc builds and keep user build settings out
+  ([`648b368`](https://github.com/bkuberek/coding-study/commit/648b368a5a39f8505a99e09f8cb603f38d4b3f26))
+
+- **runners**: Treat a zombie process as dead when waiting for cleanup
+  ([`55db3ff`](https://github.com/bkuberek/coding-study/commit/55db3ff92d1eaf597038970f1a11e50ac64cc6f4))
+
+- **runners**: Widen the race window of conformance 9014 on compiled runtimes
+  ([`e70be57`](https://github.com/bkuberek/coding-study/commit/e70be5725247cb0f2be2e537ccffa83f5403ae25))
+
+- **rust**: Touch sources replaced by older copies so Cargo rebuilds them
+  ([`108c542`](https://github.com/bkuberek/coding-study/commit/108c5429fa953097dd1d543ead22d18d3479d276))
+
+- **web-ui**: Ask before a run's cancel and doctor --fix in the page's own dialog
+  ([`ac3d666`](https://github.com/bkuberek/coding-study/commit/ac3d666fd42427031ad3cdb3c2eb3211b320f3cd))
+
+- **web-ui**: Draw the list and the attempt header at their final size
+  ([`d20f5b7`](https://github.com/bkuberek/coding-study/commit/d20f5b7db6acea02ee4fdc50122ea75be00915ba))
+
+- **web-ui**: Free the run controls when the server no longer keeps a streamed run
+  ([`ebe7f56`](https://github.com/bkuberek/coding-study/commit/ebe7f56d8cf4ed3663936febb2fda09126585705))
+
+- **web-ui**: Keep the page one window wide on a phone
+  ([`1d7c0e4`](https://github.com/bkuberek/coding-study/commit/1d7c0e45c5136c26222ae76d8a2ae0b966817826))
+
+- **web-ui**: Log in with a page that moves on, so --open keeps the cookie
+  ([`4192fe4`](https://github.com/bkuberek/coding-study/commit/4192fe46238dc3c96f1bc4368e7ffbd66d2edc2b))
+
+- **web-ui**: Pass axe-core and a keyboard-only pass on every view
+  ([`93f8efa`](https://github.com/bkuberek/coding-study/commit/93f8efa4a3c29d938f25ffa36acf9be3286987df))
+
+### Build System
+
+- **cli**: Add the web server libraries and python -m coding_study
+  ([`9d42a11`](https://github.com/bkuberek/coding-study/commit/9d42a11db51656904d3033eee068c05d3a273cd9))
+
+- **cli**: Declare markdown-it-py and Pygments, which the web ui imports
+  ([`347e338`](https://github.com/bkuberek/coding-study/commit/347e33850754b7fce8fe121a4eb337b4bbc48c5a))
+
+### Chores
+
+- **conformance**: Drop the six-language lists that repeat the default
+  ([`f9af95f`](https://github.com/bkuberek/coding-study/commit/f9af95fefa6730d32dac809c9d6daae6ab0bee9d))
+
+### Continuous Integration
+
+- Run the fast checks on Linux on every push and pull request
+  ([`82e3d76`](https://github.com/bkuberek/coding-study/commit/82e3d76008dc6fc809ee9e16b0b55202a6aefa49))
+
+### Documentation
+
+- Accept the local web UI (ADR 0015) and specify it
+  ([`afb2bdf`](https://github.com/bkuberek/coding-study/commit/afb2bdf67674e53c5f69e8b5c416dd607bb1ac8a))
+
+- Add the Linux install notes a Linux container verified
+  ([`779fb8d`](https://github.com/bkuberek/coding-study/commit/779fb8d1c25199fbd9791c3ff0e27ec1bab61b2a))
+
+- Budget verify throughput for six languages and note the workspace-problem languages
+  ([`b4ab94b`](https://github.com/bkuberek/coding-study/commit/b4ab94bcd7a4fb4803ed3a07f96fa97be1633ffb))
+
+- List Workspace.locked_with_deadline among the web adapter's port methods
+  ([`daf2647`](https://github.com/bkuberek/coding-study/commit/daf2647a64d472ca87af6ef0f045cfd3caadc04f))
+
+- Record 405, the stop line, exit 143, httpx2 and the page template
+  ([`5f004d7`](https://github.com/bkuberek/coding-study/commit/5f004d78a6bde9312930ca9ee30a03b8b1be629e))
+
+- Set the Go project test target to 2 s from 0.8.0 and 0.9.0 measurements
+  ([`29d050d`](https://github.com/bkuberek/coding-study/commit/29d050d8c4a4b661068722195cfe9132e087e826))
+
+- **roadmap**: Record the release measurements and the open Go target
+  ([`73e0147`](https://github.com/bkuberek/coding-study/commit/73e0147e04c92dc2a0def72f7556084847d524e0))
+
+- **specs**: Build the web UI assets with pnpm
+  ([`3a44ecb`](https://github.com/bkuberek/coding-study/commit/3a44ecb1cca271c74ea5313e1c256dd18d83afe4))
+
+- **specs**: Describe the Python stress yield as it now works
+  ([`78fd46b`](https://github.com/bkuberek/coding-study/commit/78fd46b7a96b954533974473f7dfdc72343f7b39))
+
+- **specs**: Note the Delve and Go check, the Java-less doctor fix and Linux gcc
+  ([`30cab03`](https://github.com/bkuberek/coding-study/commit/30cab03ad3fb1060ec9856fa8d74db1eb430f7f9))
+
+- **specs**: Propose a local web UI
+  ([`645ff49`](https://github.com/bkuberek/coding-study/commit/645ff49ad7f8735332d7f9d4d737a2dd08b032f1))
+
+- **specs**: Say which web API documents the schema covers
+  ([`d5356f9`](https://github.com/bkuberek/coding-study/commit/d5356f9df465a4598ca02a61f3c63f8581ec2554))
+
+- **web-ui**: Add the cstudy serve guide, its README section and screenshots
+  ([`2f099ea`](https://github.com/bkuberek/coding-study/commit/2f099ea5f8369e47125f990ce04246aefaf256bd))
+
+- **web-ui**: Record NFR-11 timings and tick what U11 verified in Phase 9
+  ([`7e72bc3`](https://github.com/bkuberek/coding-study/commit/7e72bc3a326a4fca8ddb0b11cb3ee5cdd50d9743))
+
+- **web-ui**: Tick the parity criterion and the diagnostic marker in Phase 9
+  ([`7048b9e`](https://github.com/bkuberek/coding-study/commit/7048b9e1f360d4998ec11d084cad2e8639b4597e))
+
+### Features
+
+- **cli**: Add cstudy doctor --json
+  ([`9f24f80`](https://github.com/bkuberek/coding-study/commit/9f24f803fb5214a1bd9aae55b5724e8699e60fbf))
+
+- **cli**: Add cstudy history
+  ([`6fcf525`](https://github.com/bkuberek/coding-study/commit/6fcf525069cef69aeb5227cca443798a454aaa41))
+
+- **cli**: Add cstudy list --kind and --json
+  ([`a249625`](https://github.com/bkuberek/coding-study/commit/a249625cdb0bd3966e4fbbd2baba1d962be13e4e))
+
+- **cli**: Add cstudy next --json
+  ([`639adf4`](https://github.com/bkuberek/coding-study/commit/639adf41f935621277db97883be37f688fceb96e))
+
+- **cli**: Add cstudy serve, the local web UI server and its security layer
+  ([`59e17eb`](https://github.com/bkuberek/coding-study/commit/59e17eb22751d365c382e27f77f00cd7579663e8))
+
+- **cli**: Add diagnostic parsers for javac, kotlinc, go and rustc reports
+  ([`94bf9a3`](https://github.com/bkuberek/coding-study/commit/94bf9a359fd3f1a4972093a3f9e897c14b79c649))
+
+- **cli**: Check the web UI assets and server libraries for cstudy doctor
+  ([`d650d4e`](https://github.com/bkuberek/coding-study/commit/d650d4efcac968a13bb1c7958179fee7a7dd3afd))
+
+- **cli**: Download the progress export from the web ui
+  ([`e76f9ce`](https://github.com/bkuberek/coding-study/commit/e76f9ceeb07428604766a6610c8dd907413f9f17))
+
+- **cli**: End an --events run on SIGTERM with exit code 143
+  ([`54fbd9c`](https://github.com/bkuberek/coding-study/commit/54fbd9cd0ed3b02d222cf32c4c7c048cdf662914))
+
+- **cli**: Keep the web UI preferences in .cs/serve/preferences.json
+  ([`b411dcf`](https://github.com/bkuberek/coding-study/commit/b411dcf9e51f4b559b91b73fe326b3edaa20e3d8))
+
+- **cli**: Keep the web ui's theme in its preferences
+  ([`32e4490`](https://github.com/bkuberek/coding-study/commit/32e4490cc90105733dbb772806d020972fe28fb6))
+
+- **cli**: Move, delete and restore an attempt's files from the web ui
+  ([`d43d187`](https://github.com/bkuberek/coding-study/commit/d43d1872e5b1c9bba7988fbbf7202a637c72685b))
+
+- **cli**: Notify every tab of file, attempt, progress, run and job changes
+  ([`6da421b`](https://github.com/bkuberek/coding-study/commit/6da421be172c7048f13fed487e96bc664b2ce3c7))
+
+- **cli**: Read compiler reports of single files and projects into diagnostics
+  ([`e2dd1a8`](https://github.com/bkuberek/coding-study/commit/e2dd1a8b1b51cb2fc8bffde91593fb57fc9cee6a))
+
+- **cli**: Reveal reference solutions in the web ui behind the cli's question
+  ([`626783a`](https://github.com/bkuberek/coding-study/commit/626783a7978233232362a83b3721eede6f1ad053))
+
+- **cli**: Run tests, submissions and jobs from the web ui as streamed child commands
+  ([`6d32aff`](https://github.com/bkuberek/coding-study/commit/6d32aff3a3b270e9845a2cca31f349369cff2e93))
+
+- **cli**: Save and create an attempt's files from the web ui
+  ([`aa7d844`](https://github.com/bkuberek/coding-study/commit/aa7d844dd16859c8f2efd20f66c2ce902fd47554))
+
+- **cli**: Serve progress stats and import an export in the web ui
+  ([`3b45e5d`](https://github.com/bkuberek/coding-study/commit/3b45e5df1cab98aa006521746cfb0b98851f7141))
+
+- **cli**: Serve the web ui's reads: problems, statements, history, next, status, files and doctor
+  ([`e4b0011`](https://github.com/bkuberek/coding-study/commit/e4b00117b4be81c2dc5245570248a82a3053ca21))
+
+- **cli**: Show cstudy status for every kind of problem and item
+  ([`6009a9d`](https://github.com/bkuberek/coding-study/commit/6009a9d199d6201000639b0d6607a4f99657577b))
+
+- **cli**: Start and show mock interviews from the web ui
+  ([`02188bd`](https://github.com/bkuberek/coding-study/commit/02188bdf2f540c1863bf99725880ab6c9b76986f))
+
+- **cli**: Start attempts, reveal hints and finish attempts from the web ui
+  ([`8822a0d`](https://github.com/bkuberek/coding-study/commit/8822a0d87becefe0bce17991dbb8a3355ffe8d74))
+
+- **cli**: Stream cstudy test --events on every problem kind
+  ([`2ee9382`](https://github.com/bkuberek/coding-study/commit/2ee9382b3823ef47e77601f0f11240002db532c1))
+
+- **cli**: Warn on a busy machine and measure a contradicted ladder again
+  ([`6bb6622`](https://github.com/bkuberek/coding-study/commit/6bb662223aef9400e0ecfb280c94a5e4ebd69860))
+
+- **cli**: Write, move and delete files within a folder atomically and without following links
+  ([`354b587`](https://github.com/bkuberek/coding-study/commit/354b5871cf0b775109bbce701bcb392f14c423bf))
+
+- **doctor**: Warn when the installed Delve refuses the installed Go
+  ([`12db9a7`](https://github.com/bkuberek/coding-study/commit/12db9a7f183613b07108ef127c6bd98f4aed6c8b))
+
+- **rust**: Report the real outcome of a test debugged under lldb-server from libtest's log
+  ([`91b8987`](https://github.com/bkuberek/coding-study/commit/91b8987dbabf0482244c0dcc2e5f65f5582717b4))
+
+- **web-ui**: Add the page shell: problems, problem, attempt, health and settings views
+  ([`714c172`](https://github.com/bkuberek/coding-study/commit/714c1728adab980176d30784b8f1f972978b5f43))
+
+- **web-ui**: Build the CodeMirror 6 editor into the package
+  ([`5550298`](https://github.com/bkuberek/coding-study/commit/5550298bdb23d081b68f90f0f7189599a6e7d8d4))
+
+- **web-ui**: Create, rename, move, delete and restore files from the file tree
+  ([`8f1ffcf`](https://github.com/bkuberek/coding-study/commit/8f1ffcf68cfa673711d9cb904616c204076bd2d6))
+
+- **web-ui**: Follow changes from elsewhere through the notification stream
+  ([`e85976a`](https://github.com/bkuberek/coding-study/commit/e85976af3f8b3573278ffb8550212f699b04a65d))
+
+- **web-ui**: Save files from the editor, with unsaved marks and a conflict banner
+  ([`f85e7ad`](https://github.com/bkuberek/coding-study/commit/f85e7ad51d4e574ac87896ec0600fb5b1edc4704))
+
+- **web-ui**: Start, hint, finish, reveal solutions, run mocks and see progress from the page
+  ([`283aeaf`](https://github.com/bkuberek/coding-study/commit/283aeaf6d9a25dde056d358ea3587d3bc13d17a7))
+
+- **web-ui**: Stream runs and jobs in the page, with cancel, editor diagnostics and run on save
+  ([`ad65afe`](https://github.com/bkuberek/coding-study/commit/ad65afecdab55a60d10976a927fec24d9f77b5ac))
+
+### Performance Improvements
+
+- **cli**: Check each problem schema once per process
+  ([`af988f1`](https://github.com/bkuberek/coding-study/commit/af988f1a27e9359b0854594daf8dcf50d01a2e47))
+
+- **cli**: Sync verify's project builds instead of rebuilding them
+  ([`cd38b0c`](https://github.com/bkuberek/coding-study/commit/cd38b0c91d780845829c35165915ee80d0c1815a))
+
+- **web-ui**: Fetch the run session, the tree actions and the off-path views on first use
+  ([`3744b56`](https://github.com/bkuberek/coding-study/commit/3744b56175fb5add4b0151d019d23408e0faffff))
+
+- **web-ui**: Fetch the start, done, solution and file dialogs when first used
+  ([`c725729`](https://github.com/bkuberek/coding-study/commit/c725729013b3b341acdc3646c8fe8dec12acf513))
+
+- **web-ui**: Link each chunk's stylesheet as it loads, out of app.css
+  ([`425be17`](https://github.com/bkuberek/coding-study/commit/425be1763bfc96001c5143312377efd15b7ff46d))
+
+### Refactoring
+
+- **cli**: Address the web ui's done request by its attempt
+  ([`5ea82dd`](https://github.com/bkuberek/coding-study/commit/5ea82dd3d622976e3fe00e2598bc98dd75d50b47))
+
+- **cli**: Give the run events a module of their own
+  ([`cf88485`](https://github.com/bkuberek/coding-study/commit/cf88485e47cbf50702be58291373aeb65d2f7d46))
+
+- **cli**: Let list_items leave items out for a kind of problem
+  ([`c341dd4`](https://github.com/bkuberek/coding-study/commit/c341dd445cd607dadfaf16c043c4ca640a4e3ce9))
+
+- **cli**: One rule for a test run that passed every case
+  ([`c339637`](https://github.com/bkuberek/coding-study/commit/c3396375c2e228e9aff138531b0b017526e5380f))
+
+- **cli**: Share the stats document and since parser, and drop duplicate next and list checks
+  ([`28100d0`](https://github.com/bkuberek/coding-study/commit/28100d0bbaa95a5d711c3bb8e160eaf1a05384e6))
+
+- **web-ui**: One dialog module for the file tree, solutions and imports
+  ([`937578b`](https://github.com/bkuberek/coding-study/commit/937578b3f2451f5272f1b60d190f38259195b402))
+
+### Testing
+
+- Leave zombies out of the leftover-process checks
+  ([`c9f3162`](https://github.com/bkuberek/coding-study/commit/c9f31623271e2f0768451a46c16a3059c0576c60))
+
+- Skip the rustfmt tests when rustfmt fails to run, as rustup's stub does
+  ([`56cf4b1`](https://github.com/bkuberek/coding-study/commit/56cf4b1dcbf0d090bb1e449ea45581247c5820d8))
+
+- **cli**: Check every read endpoint of a real cstudy serve, and the page in Chromium
+  ([`9bb02f3`](https://github.com/bkuberek/coding-study/commit/9bb02f3ef08f82aaea988a527dc61a306cfa2d32))
+
+- **cli**: Check verify's kept JVM builds by recompiles and Gradle time
+  ([`ee1dfd7`](https://github.com/bkuberek/coding-study/commit/ee1dfd75ddd6230a0b1eb46a3279fcbe9171614d))
+
+- **cli**: Fit the kept-builds Gradle share to a quiet machine
+  ([`d71df96`](https://github.com/bkuberek/coding-study/commit/d71df968d46beebd38acc277a17e6c2ecc3615a0))
+
+- **cli**: Play a compile error of each compiled language through cstudy test --events
+  ([`4104b15`](https://github.com/bkuberek/coding-study/commit/4104b15f8117fd557ada270435ca647ce8be48da))
+
+- **cli**: Save and restore a project file through a real cstudy serve and in Chromium
+  ([`874eb2e`](https://github.com/bkuberek/coding-study/commit/874eb2e98fdd6b4c0622a36dde7662a5906289e9))
+
+- **cli**: Type-check without the optional browser group
+  ([`d98962a`](https://github.com/bkuberek/coding-study/commit/d98962a3d90ef0f6e4e42ac1afd051d856574feb))
+
+- **rust**: Expect lldb-server's unknown outcome for a debugged project test on Linux
+  ([`373aa7b`](https://github.com/bkuberek/coding-study/commit/373aa7b15cfa967ee41888a4e5c66f9892318e2f))
+
+- **web-ui**: Check a diagnostic marker, its jump and its clearing in each engine
+  ([`f3384a2`](https://github.com/bkuberek/coding-study/commit/f3384a26313168739129c683cfd3d3ee71f6f65a))
+
+- **web-ui**: Describe the API's own documents in web-api.schema.json
+  ([`9a95caa`](https://github.com/bkuberek/coding-study/commit/9a95caa33515479ccba5a1aa135b355605b5817b))
+
+- **web-ui**: Run the browser tests in chromium, firefox and webkit
+  ([`f9bb84b`](https://github.com/bkuberek/coding-study/commit/f9bb84bd36b084a3024e934338e3ed92dc4497a3))
+
+- **web-ui**: See a save start a run when Run on save is on, in a real browser
+  ([`d27a1db`](https://github.com/bkuberek/coding-study/commit/d27a1db56ae65ff0a17c3b08e176e31a6fa90664))
+
+- **web-ui**: Walk start, test and done from the page for every kind and language
+  ([`c678037`](https://github.com/bkuberek/coding-study/commit/c67803730297d00d99367d33e4c65930751983b5))
+
+
 ## v0.8.0 (2026-10-31)
 
 ### Bug Fixes
