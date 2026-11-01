@@ -213,7 +213,7 @@ coding-study/
     typescript/             # runner.ts, support.ts
     jvm/                    # Gradle included build: support + runner (Java)
     conformance/            # fixture problems for every DSL type and error path, expectations.json
-  schemas/                  # meta, tests, item, conformance and events JSON Schemas
+  schemas/                  # meta, tests, item, conformance, events and web API JSON Schemas
   tools/ide-launcher/       # source and reproducible build of the IntelliJ open-file launcher (its jar ships in adapters/ide/)
   tools/web-ui/             # sources, lockfile and build of the web UI front end (its bundle ships in entrypoints/web/static/)
   problems/<id>-<slug>/     # autograded content (format: specs/problem-format.md)

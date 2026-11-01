@@ -1,0 +1,441 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cstudy serve API documents",
+  "description": "The documents of the web API that no command prints, one definition each under $defs; a document a command also prints is that command's (docs/specs/cli.md). Spec: docs/specs/web-ui.md#endpoints",
+  "$defs": {
+    "language": { "enum": ["python", "typescript", "java", "kotlin", "go", "rust"] },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "path": { "description": "Relative to the attempt's root, /-separated", "type": "string", "minLength": 1 },
+    "level": { "type": ["integer", "null"], "minimum": 1 },
+    "origin": {
+      "description": "starter, level and yours in a project; stub, notes and yours in another attempt",
+      "enum": ["starter", "level", "yours", "stub", "notes"]
+    },
+    "state": { "description": "A project file's state; null outside a project", "enum": ["unchanged", "modified", "added", "deleted", null] },
+    "child_id": { "description": "A run's or a job's id", "type": "string", "pattern": "^[0-9a-f]{16}$" },
+    "timestamp": { "description": "ISO 8601 with its offset", "type": "string", "format": "date-time" },
+    "markdown": {
+      "description": "Markdown and the HTML the server renders of it",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["markdown", "html"],
+      "properties": { "markdown": { "type": "string" }, "html": { "type": "string" } }
+    },
+
+    "session": {
+      "description": "GET /api/v1/session",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["api", "cstudy", "events_version", "workspace", "port", "default_lang", "languages", "tracks", "kinds"],
+      "properties": {
+        "api": { "const": 1 },
+        "cstudy": { "type": "string" },
+        "events_version": { "const": 1 },
+        "workspace": { "type": "string" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "default_lang": { "$ref": "#/$defs/language" },
+        "languages": { "type": "array", "items": { "$ref": "#/$defs/language" } },
+        "tracks": { "type": "array", "items": { "type": "string" } },
+        "kinds": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "preferences": {
+      "description": "GET and PUT /api/v1/preferences",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "vim", "run_on_save", "typecheck", "theme"],
+      "properties": {
+        "format": { "const": 1 },
+        "vim": { "type": "boolean" },
+        "run_on_save": { "type": "boolean" },
+        "typecheck": { "type": "boolean" },
+        "theme": { "enum": ["system", "light", "dark"] }
+      }
+    },
+    "error": {
+      "description": "Every refusal",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["error"],
+      "properties": {
+        "error": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "message", "fix"],
+          "properties": {
+            "code": {
+              "enum": [
+                "usage", "not_found", "method_not_allowed", "attempt_ended", "conflict", "locked",
+                "confirmation_required", "precondition_failed", "precondition_required", "too_large",
+                "environment", "content", "internal", "unauthorized", "forbidden"
+              ]
+            },
+            "message": { "type": "string", "minLength": 1 },
+            "fix": { "type": ["string", "null"] },
+            "run": { "description": "A conflict's run holding the slot", "$ref": "#/$defs/child_id" },
+            "job": { "description": "A conflict's job holding the slot", "$ref": "#/$defs/child_id" },
+            "sha256": { "description": "precondition_failed: the file's content now, null when it is gone", "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] }
+          }
+        }
+      }
+    },
+
+    "problem": {
+      "description": "GET /api/v1/problems/{slug}: the problem's entry of cstudy list --json, which cli.md describes, with these fields added or replaced",
+      "type": "object",
+      "required": ["slug", "languages", "approaches", "broken", "levels", "hints_total", "bench", "oracle"],
+      "properties": {
+        "slug": { "type": "string" },
+        "languages": { "type": "array", "items": { "$ref": "#/$defs/language" } },
+        "approaches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name", "role"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "role": { "enum": ["brute", "intermediate", "optimal"] }
+            }
+          }
+        },
+        "broken": { "type": "array", "items": { "type": "string" } },
+        "levels": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "object", "additionalProperties": false, "required": ["last"], "properties": { "last": { "type": "integer", "minimum": 1 } } }
+          ]
+        },
+        "hints_total": { "type": "integer", "minimum": 0 },
+        "bench": { "type": "boolean" },
+        "oracle": { "type": "boolean" }
+      }
+    },
+    "statement": { "description": "GET /api/v1/problems/{slug}/statement", "$ref": "#/$defs/markdown" },
+    "hint": {
+      "description": "POST /api/v1/attempts/{id}/hints",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hint"],
+          "properties": {
+            "hint": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["number", "total", "markdown", "html"],
+              "properties": {
+                "number": { "type": "integer", "minimum": 1 },
+                "total": { "type": "integer", "minimum": 1 },
+                "markdown": { "type": "string" },
+                "html": { "type": "string" }
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["locked_until_level"],
+          "properties": { "locked_until_level": { "type": "integer", "minimum": 2 } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["exhausted"],
+          "properties": { "exhausted": { "const": true } }
+        }
+      ]
+    },
+    "done": {
+      "description": "POST /api/v1/attempts/{id}/done: the values of the two lines cstudy done prints",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "language", "status", "levels_finished", "solve_s", "rating", "grade", "caps", "hints_used", "next_review"],
+      "properties": {
+        "slug": { "type": "string" },
+        "language": { "anyOf": [{ "$ref": "#/$defs/language" }, { "type": "null" }] },
+        "status": { "type": "string" },
+        "levels_finished": { "type": ["integer", "null"], "minimum": 0 },
+        "solve_s": { "type": "integer", "minimum": 0 },
+        "rating": { "enum": ["easy", "ok", "hard", null] },
+        "grade": { "type": ["string", "null"] },
+        "caps": { "type": "array", "items": { "enum": ["hint", "time_box", "suboptimal", "levels", "solution"] } },
+        "hints_used": { "type": "integer", "minimum": 0 },
+        "next_review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["due_on", "in_days", "ease"],
+          "properties": {
+            "due_on": { "type": "string", "format": "date" },
+            "in_days": { "type": "integer" },
+            "ease": { "type": "number" }
+          }
+        }
+      }
+    },
+    "solution": {
+      "description": "POST /api/v1/problems/{slug}/solution",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "kind", "language", "approaches", "marked_attempt_id", "markdown", "html"],
+      "properties": {
+        "slug": { "type": "string" },
+        "kind": { "type": "string" },
+        "language": { "anyOf": [{ "$ref": "#/$defs/language" }, { "type": "null" }] },
+        "approaches": { "type": "array", "items": { "type": "string" } },
+        "marked_attempt_id": { "type": ["integer", "null"] },
+        "markdown": { "type": "string" },
+        "html": { "type": "string" }
+      }
+    },
+
+    "file_tree": {
+      "description": "GET /api/v1/attempts/{id}/files",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "entries"],
+      "properties": {
+        "root": { "description": "Relative to the workspace root", "type": "string" },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "origin", "level", "state", "size", "editable"],
+            "properties": {
+              "path": { "$ref": "#/$defs/path" },
+              "origin": { "$ref": "#/$defs/origin" },
+              "level": { "$ref": "#/$defs/level" },
+              "state": { "$ref": "#/$defs/state" },
+              "size": { "description": "null for a file missing on disk", "type": ["integer", "null"], "minimum": 0 },
+              "editable": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "file": {
+      "description": "GET /api/v1/attempts/{id}/files/{path}",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "text", "sha256", "origin", "level", "state", "editable"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "text": { "description": "null when the file is not UTF-8 text or exceeds 1 MiB", "type": ["string", "null"] },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "origin": { "$ref": "#/$defs/origin" },
+        "level": { "$ref": "#/$defs/level" },
+        "state": { "$ref": "#/$defs/state" },
+        "editable": { "type": "boolean" }
+      }
+    },
+    "file_saved": {
+      "description": "PUT /api/v1/attempts/{id}/files/{path} (save and create) and POST …/move",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": { "path": { "$ref": "#/$defs/path" }, "sha256": { "$ref": "#/$defs/sha256" } }
+    },
+    "file_restored": {
+      "description": "POST /api/v1/attempts/{id}/restore",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "origin", "level"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "origin": { "enum": ["starter", "level"] },
+        "level": { "$ref": "#/$defs/level" }
+      }
+    },
+
+    "child_started": {
+      "description": "POST /api/v1/runs and /api/v1/jobs (201), and their cancel (202)",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": { "id": { "$ref": "#/$defs/child_id" } }
+    },
+    "job": {
+      "description": "GET /api/v1/jobs/{id}",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "command", "options", "state", "started_at", "exit_code"],
+      "properties": {
+        "id": { "$ref": "#/$defs/child_id" },
+        "command": { "enum": ["doctor_fix", "verify", "bench"] },
+        "options": { "description": "The job options as the request gave them", "type": "object" },
+        "state": { "enum": ["running", "ended"] },
+        "started_at": { "$ref": "#/$defs/timestamp" },
+        "exit_code": { "description": "null while it runs", "type": ["integer", "null"] }
+      }
+    },
+    "run": {
+      "description": "GET /api/v1/runs/{id}",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "attempt_id", "command", "options", "state", "started_at", "exit_code", "summary"],
+      "properties": {
+        "id": { "$ref": "#/$defs/child_id" },
+        "attempt_id": { "type": "integer", "minimum": 1 },
+        "command": { "enum": ["test", "submit"] },
+        "options": {
+          "description": "The run options but attempt_id and command, with typecheck as the run applied it",
+          "type": "object",
+          "propertyNames": { "enum": ["level", "cases", "typecheck", "stress", "seed", "time_limit", "perf"] }
+        },
+        "state": { "enum": ["running", "ended"] },
+        "started_at": { "$ref": "#/$defs/timestamp" },
+        "exit_code": { "description": "null while it runs", "type": ["integer", "null"] },
+        "summary": { "description": "The run_end summary (docs/specs/cli.md#event-stream), or null", "type": ["object", "null"] }
+      }
+    },
+    "runs": { "description": "GET /api/v1/runs?attempt_id=N, newest first", "type": "array", "items": { "$ref": "#/$defs/run" } },
+    "closed": {
+      "description": "The data of a run's or a job's last event, closed",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exit_code", "signal", "stderr"],
+      "properties": {
+        "exit_code": { "type": "integer" },
+        "signal": { "type": ["string", "null"], "pattern": "^SIG[A-Z]+$" },
+        "stderr": { "type": "array", "maxItems": 20, "items": { "type": "string" } }
+      }
+    },
+    "job_line": {
+      "description": "The data of a job's line event",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stream", "text"],
+      "properties": { "stream": { "enum": ["stdout", "stderr"] }, "text": { "type": "string" } }
+    },
+
+    "mock_state": {
+      "description": "GET /api/v1/mock",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["running"],
+          "properties": { "running": { "const": false } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["running", "ends_at", "remaining_s", "attempts", "locked"],
+          "properties": {
+            "running": { "const": true },
+            "ends_at": { "$ref": "#/$defs/timestamp" },
+            "remaining_s": { "type": "integer", "minimum": 0 },
+            "attempts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["attempt_id", "slug", "title", "difficulty", "kind", "language"],
+                "properties": {
+                  "attempt_id": { "type": "integer", "minimum": 1 },
+                  "slug": { "type": "string" },
+                  "title": { "type": "string" },
+                  "difficulty": { "enum": ["easy", "medium", "hard"] },
+                  "kind": { "type": "string" },
+                  "language": { "anyOf": [{ "$ref": "#/$defs/language" }, { "type": "null" }] }
+                }
+              }
+            },
+            "locked": { "const": ["hint", "solution", "mock"] }
+          }
+        }
+      ]
+    },
+    "mock_started": {
+      "description": "POST /api/v1/mock: the started problems, or none and the message why",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minutes", "count", "language", "ends_at", "problems", "message"],
+      "properties": {
+        "minutes": { "type": "integer", "minimum": 1, "maximum": 600 },
+        "count": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "language": { "$ref": "#/$defs/language" },
+        "ends_at": { "anyOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] },
+        "problems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slug", "title", "difficulty", "group", "reason", "attempt_id", "kind", "file", "statement"],
+            "properties": {
+              "slug": { "type": "string" },
+              "title": { "type": "string" },
+              "difficulty": { "enum": ["easy", "medium", "hard"] },
+              "group": { "type": "string" },
+              "reason": { "type": "string" },
+              "attempt_id": { "type": "integer", "minimum": 1 },
+              "kind": { "type": "string" },
+              "file": { "type": "string" },
+              "statement": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "message": { "type": ["string", "null"] }
+      }
+    },
+    "imported": {
+      "description": "POST /api/v1/progress/import: the rows imported per table",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["imported"],
+      "properties": {
+        "imported": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } }
+      }
+    },
+
+    "file_changed": {
+      "description": "The data of a file_changed notification",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt_id", "path", "sha256"],
+      "properties": {
+        "attempt_id": { "type": "integer", "minimum": 1 },
+        "path": { "$ref": "#/$defs/path" },
+        "sha256": { "description": "null when deleted", "anyOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] }
+      }
+    },
+    "attempt_changed": {
+      "description": "The data of an attempt_changed notification",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt_id", "slug"],
+      "properties": { "attempt_id": { "type": "integer", "minimum": 1 }, "slug": { "type": "string" } }
+    },
+    "progress_changed": {
+      "description": "The data of a progress_changed notification",
+      "type": "object",
+      "additionalProperties": false
+    },
+    "run_notice": {
+      "description": "The data of a run_started or run_ended notification; exit_code when ended",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "attempt_id", "command"],
+      "properties": {
+        "run_id": { "$ref": "#/$defs/child_id" },
+        "attempt_id": { "type": "integer", "minimum": 1 },
+        "command": { "enum": ["test", "submit"] },
+        "exit_code": { "type": ["integer", "null"] }
+      }
+    },
+    "job_notice": {
+      "description": "The data of a job_started or job_ended notification; exit_code when ended",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["job_id", "command"],
+      "properties": {
+        "job_id": { "$ref": "#/$defs/child_id" },
+        "command": { "enum": ["doctor_fix", "verify", "bench"] },
+        "exit_code": { "type": ["integer", "null"] }
+      }
+    }
+  }
+}
