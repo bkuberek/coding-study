@@ -260,6 +260,29 @@ data: {"type": "case_result", "version": 1, "id": "ex1", "visible": true, "gener
 
 `POST /api/v1/runs/{id}/cancel` sends SIGINT to the child, which writes `run_end` with outcome `interrupted`, kills its runner's process group and stores nothing, as Ctrl-C does in the terminal. A child still alive 10 s later gets SIGTERM, which an `--events` run treats as SIGINT ([cli](cli.md#rules)); one still alive 5 s after that gets SIGKILL, with every process still in its process group, and `closed` names the signal. SIGINT and SIGTERM go to the child alone, as its own handlers stop its runner; a second cancel while the first is under way changes nothing.
 
+### Feedback
+
+NFR-11 holds a page run to the terminal's time plus 0.1 s. It is measured as the p50 of 7 warm runs, after one warm-up run each: `cstudy test --events` from its start to its `run_end` line in the terminal, and Run tests from the click to `run_end` reaching the page (an `EventSource` listener), in headless Chromium, with the page at rest for a second before each click, as a person clicks. TypeScript runs in the terminal take `--typecheck`, as the page's runs do by default. Every pre-check loads the problem, so the process keeps each schema's validator: `POST /api/v1/runs` answers in about 16 ms.
+
+Measured 2026-10-31 on an Apple Silicon Mac, load average 4.0 to 5.6 (other work running), the projects at their starter code and two-sum at its reference:
+
+| Problem | Language | Terminal p50 | Page p50 | Page minus terminal |
+|---------|----------|-------------:|---------:|--------------------:|
+| `bank-project-python` | Python | 0.661 s | 0.698 s | +0.038 s |
+| `bank-project-typescript` | TypeScript | 0.983 s | 1.028 s | +0.046 s |
+| `bank-project-java` | Java | 1.137 s | 1.211 s | +0.074 s |
+| `bank-project-kotlin` | Kotlin | 1.179 s | 1.291 s | +0.112 s (+0.088 s measured again) |
+| `bank-project-go` | Go | 1.667 s | 1.726 s | +0.059 s |
+| `bank-project-rust` | Rust | 0.958 s | 0.974 s | +0.016 s |
+| `two-sum` | Python | 0.618 s | 0.628 s | +0.010 s |
+| `two-sum` | TypeScript | 1.048 s | 1.068 s | +0.020 s |
+| `two-sum` | Java | 1.212 s | 1.217 s | +0.006 s |
+| `two-sum` | Kotlin | 1.280 s | 1.361 s | +0.082 s |
+| `two-sum` | Go | 0.777 s | 0.801 s | +0.024 s |
+| `two-sum` | Rust | 0.820 s | 0.856 s | +0.036 s |
+
+The Go project's terminal run itself took 1.67 s against NFR-1's 1.5 s at that load, so its page run misses NFR-11's absolute target with it; every page run is within 0.1 s of its terminal run but the Kotlin project's first measurement, 12 ms over and inside the JVM's run-to-run spread of about 0.15 s.
+
 ## Jobs
 
 A job is a child `cstudy` command whose text report is relayed line by line: commands with no event stream, shown as their terminal output.

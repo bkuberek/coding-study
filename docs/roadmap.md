@@ -140,10 +140,10 @@ Phases 0 to 7 are implemented: every command in the table above exists with its 
 
 **Exit criteria.**
 
-- [ ] Every practice command in the [parity table](specs/web-ui.md#command-parity) works from the page, for every kind, in all six languages.
-- [ ] The API security tests pass: Host, Origin, cookie, CSRF, CSP and the absence of CORS headers, body limits, and every file API path rule (NFR-10).
-- [ ] Every API response validates against its schema, and the documents the CLI also prints equal its `--json` output.
-- [ ] The browser smoke test passes in headless Chromium: login, the editor under the CSP, a streamed run, cancel, a diagnostic marker, the solution confirmation, Vim loading, no console error; a manual check passes in Safari and Firefox.
-- [ ] Warm page runs meet NFR-11 on a quiet machine for the six project pilots and one single-file problem per language.
-- [ ] The bundle meets NFR-12, its rebuild matches `manifest.json`, and the wheel holds every asset.
-- [ ] A user guide, `docs/guides/web-ui.md`, covers starting the server, the views and the keyboard.
+- [ ] Every practice command in the [parity table](specs/web-ui.md#command-parity) works from the page, for every kind, in all six languages. Open: the API tests cover every endpoint, and U11 ran the tests from the page for the six project pilots and a function problem in each language, but no pass has driven every command for every kind in every language from the page.
+- [x] The API security tests pass: Host, Origin, cookie, CSRF, CSP and the absence of CORS headers, body limits, and every file API path rule (NFR-10).
+- [x] Every API response validates against its schema, and the documents the CLI also prints equal its `--json` output.
+- [ ] The browser smoke test passes in headless Chromium: login, the editor under the CSP, a streamed run, cancel, a diagnostic marker, the solution confirmation, Vim loading, no console error; a manual check passes in Safari and Firefox. Open: every browser test passes in Playwright's Chromium, Firefox and WebKit (Safari's engine), but the manual check in the Safari app is pending, and no browser test yet checks a diagnostic marker in the editor.
+- [ ] Warm page runs meet NFR-11 on a quiet machine for the six project pilots and one single-file problem per language. Open: every page run is within 0.1 s of its terminal run ([feedback](specs/web-ui.md#feedback)), but the Go project's terminal run took 1.67 s against NFR-1's 1.5 s at load 4.3 to 4.7; measure it again on an idle machine.
+- [x] The bundle meets NFR-12, its rebuild matches `manifest.json`, and the wheel holds every asset.
+- [x] A user guide, `docs/guides/web-ui.md`, covers starting the server, the views and the keyboard.
