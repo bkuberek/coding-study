@@ -252,3 +252,22 @@ def test_long_messages_are_truncated():
     tests = {"version": 1, "cases": [hidden_case]}
     [issue] = validator_for_tests_file().violations(tests, SOURCE)
     assert len(issue.message) == MAX_MESSAGE_LENGTH
+
+
+def test_a_schema_is_checked_once_however_many_validators_read_it(monkeypatch):
+    """`cstudy serve` loads a problem with a fresh environment on every request, so its
+    validators are new each time; the check of the schema costs tens of milliseconds."""
+    schema = {"$schema": "https://json-schema.org/draft/2020-12/schema", "title": "checked once"}
+    checks: list[object] = []
+    monkeypatch.setattr(Draft202012Validator, "check_schema", checks.append)
+    for _ in range(3):
+        SchemaValidator(schema).violations({}, SOURCE)
+    assert len(checks) == 1
+
+
+def test_a_changed_schema_is_checked_again(monkeypatch):
+    checks: list[object] = []
+    monkeypatch.setattr(Draft202012Validator, "check_schema", checks.append)
+    for title in ("first", "second"):
+        SchemaValidator({"title": f"changed {title}"}).violations({}, SOURCE)
+    assert len(checks) == 2

@@ -2,6 +2,7 @@
 
 import json
 from collections.abc import Mapping
+from functools import cache
 from pathlib import Path
 from typing import Any, Self, cast
 
@@ -20,7 +21,9 @@ _ELLIPSIS = "..."
 
 class SchemaValidator:
     """Builds its validator on the first `violations` call: checking a schema against the
-    metaschema costs tens of milliseconds, which a command that validates nothing never pays."""
+    metaschema costs tens of milliseconds, which a command that validates nothing never pays.
+    The process keeps each schema's validator, so `cstudy serve`, which loads problems with a
+    fresh environment per request, checks each schema once."""
 
     def __init__(self, schema: Mapping[str, Any]) -> None:
         self._schema = schema
@@ -37,9 +40,16 @@ class SchemaValidator:
 
     def _built(self) -> Validator:
         if self._validator is None:
-            Draft202012Validator.check_schema(self._schema)
-            self._validator = Draft202012Validator(self._schema)
+            self._validator = _checked_validator(json.dumps(self._schema, sort_keys=True))
         return self._validator
+
+
+@cache
+def _checked_validator(schema_text: str) -> Validator:
+    """The validator of a schema, by its canonical JSON text, once the metaschema accepted it."""
+    schema = json.loads(schema_text)
+    Draft202012Validator.check_schema(schema)
+    return Draft202012Validator(schema)
 
 
 def _to_issue(error: ValidationError, source: str) -> ContentIssue:
