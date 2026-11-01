@@ -4,8 +4,10 @@ import shutil
 import threading
 import time
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
+from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.jvm.gradle import GradleOutcome
 from coding_study.application.ports import ReferenceSource
 from coding_study.domain.problem import Language
@@ -22,6 +24,23 @@ CLASS_FILE = "Solution.class"
 JAVA_SOURCE = "public class Solution {\n}\n"
 KOTLIN_SOURCE = "class Solution\n"
 ONLY_PROPERTY = "-Pcs.only="
+JDK_HOME = Path("/jdks/jdk-26")
+JAVA = str(JDK_HOME / "bin" / "java")
+"""What the runner launches with `FixedJdk`."""
+
+
+@dataclass(frozen=True, slots=True)
+class FixedJdk:
+    """The selected JDK, at a home that need not exist: no test depends on the machine's JDK."""
+
+    path: Path = JDK_HOME
+
+    def home(self) -> Path:
+        return self.path
+
+
+def jvm_context(root: Path) -> LanguageContext:
+    return LanguageContext(root, root / "runners", FixedJdk())
 
 
 class FakeGradle:

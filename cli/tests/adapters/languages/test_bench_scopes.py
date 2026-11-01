@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.jvm.gradle import GradleOutcome
 from coding_study.adapters.languages.jvm.runner import JvmRunner
 from coding_study.adapters.languages.python.runner import PythonRunner
@@ -20,6 +19,7 @@ from coding_study.application.ports import (
 from coding_study.domain.errors import ContentError
 from coding_study.domain.layout import reference_build_path
 from coding_study.domain.problem import Language
+from tests.adapters.languages.jvm.fake_gradle import jvm_context
 from tests.adapters.languages.jvm.test_jvm_runner import (
     CLASSPATH,
     JAVA_SOURCE,
@@ -110,7 +110,7 @@ def jvm_root(tmp_path: Path) -> Path:
 
 
 def jvm_bench(root: Path, gradle: FakeGradle, references_only: bool = False) -> PrepareResult:
-    runner = JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, gradle)
+    runner = JvmRunner(jvm_context(root), Language.JAVA, gradle)
     scope = BenchCode(TWO_SUM, sources(root / "solutions", "java"), references_only)
     return runner.prepare(scope, ignore)
 

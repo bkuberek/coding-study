@@ -12,13 +12,13 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.testing.Test;
-import org.gradle.jvm.toolchain.JavaLanguageVersion;
 
 /**
  * Configures a Java or Kotlin project problem's folder (docs/specs/runners.md#project-jobs).
  *
  * <ul>
- *   <li>JVM toolchain 21; JUnit Jupiter for the tests, and kotlin.test on JUnit 5 with Kotlin;
+ *   <li>No toolchain: Java and Kotlin compile with the build's JDK at one {@link ReleaseLevel};
+ *       JUnit Jupiter for the tests, and kotlin.test on JUnit 5 with Kotlin;
  *       {@code cs.runner} on the runtime classpath and its JUnit Platform host {@code cs.suite}
  *       on the test runtime classpath, both from the included build {@code runners/jvm}.
  *   <li>{@code -Pcs.exclude=<path>,...} leaves those test files, relative to the project, out of
@@ -37,7 +37,6 @@ public class ProjectPlugin implements Plugin<Project> {
     static final String TEST_CLASSPATH_FILE = "cs/test-classpath.txt";
     /** The JUnit release of the runners' version catalog, whose launcher {@code cs.suite} uses. */
     static final String JUNIT_VERSION = "5.14.4";
-    private static final int JAVA_VERSION = 21;
     private static final String KOTLIN_PLUGIN = "org.jetbrains.kotlin.jvm";
     private static final String KOTLIN_SOURCES = "kotlin";
     private static final String[] TEST_SOURCE_ROOTS = {"src/test/java/", "src/test/kotlin/"};
@@ -47,7 +46,7 @@ public class ProjectPlugin implements Plugin<Project> {
     public void apply(Project project) {
         project.getPluginManager().apply(JavaPlugin.class);
         JavaPluginExtension java = project.getExtensions().getByType(JavaPluginExtension.class);
-        java.getToolchain().getLanguageVersion().set(JavaLanguageVersion.of(JAVA_VERSION));
+        ReleaseLevel.apply(project);
         SourceSet main = java.getSourceSets().getByName(SourceSet.MAIN_SOURCE_SET_NAME);
         SourceSet test = java.getSourceSets().getByName(SourceSet.TEST_SOURCE_SET_NAME);
         excludeTestFiles(project, test);

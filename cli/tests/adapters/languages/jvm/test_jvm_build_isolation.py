@@ -19,7 +19,6 @@ from pathlib import Path
 import pytest
 
 from coding_study.adapters.file_lock import exclusive_lock
-from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.jvm.gradle import GradleOutcome
 from coding_study.adapters.languages.jvm.reference_build import ReferenceBuild
 from coding_study.adapters.languages.jvm.run_classes import (
@@ -50,6 +49,7 @@ from coding_study.domain.runs import RunRequest
 from tests.adapters.languages.jvm.fake_gradle import (
     CLASS_FILE,
     ClassBuildingGradle,
+    jvm_context,
     reference_sources,
 )
 from tests.stub_contract import STUB_CASES
@@ -63,7 +63,7 @@ WAIT_SECONDS = 10.0
 
 
 def runner_on(root: Path, language: Language, gradle: ClassBuildingGradle) -> JvmRunner:
-    return JvmRunner(LanguageContext(root, root / "runners"), language, gradle)
+    return JvmRunner(jvm_context(root), language, gradle)
 
 
 def references(directory: Path, meta: ProblemMeta, language: Language) -> References:

@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from coding_study.adapters.jdk_locator import shell_jdk
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.jvm.gradle import WrapperGradle, default_gradle_user_home
 from coding_study.adapters.languages.jvm.runner import JvmRunner
@@ -315,7 +316,7 @@ class JvmLaunches:
 
     def __call__(self, meta: ProblemMeta, files: Mapping[str, Path]) -> RunnerLaunch:
         if meta.slug not in self._built:
-            gradle = WrapperGradle(self._root / "jvm", default_gradle_user_home())
+            gradle = WrapperGradle(self._root / "jvm", default_gradle_user_home(), shell_jdk())
             runner = JvmRunner(
                 LanguageContext(self._root, self._root / RUNTIME_RUNNERS), Language.JAVA, gradle
             )

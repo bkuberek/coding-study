@@ -16,6 +16,7 @@ from coding_study.adapters.languages.rust.toolchain import SubprocessCargo
 from coding_study.adapters.languages.typescript.runner import PnpmTypeChecker
 from coding_study.adapters.process_liveness import is_alive
 from coding_study.domain.errors import RunnerStartError
+from tests.adapters.languages.jvm.fake_gradle import FixedJdk
 
 LIMIT_SECONDS = 2.0
 CHILD_PID_FILE = "child.pid"
@@ -54,7 +55,7 @@ def hung_rustc(root: Path, monkeypatch: pytest.MonkeyPatch) -> Callable[[], obje
 
 def hung_gradle(root: Path, monkeypatch: pytest.MonkeyPatch) -> Callable[[], object]:
     install_tool(root, "gradlew")
-    return lambda: WrapperGradle(root, root / "gradle-home", LIMIT_SECONDS).run([])
+    return lambda: WrapperGradle(root, root / "gradle-home", FixedJdk(), LIMIT_SECONDS).run([])
 
 
 def hung_tsc(root: Path, monkeypatch: pytest.MonkeyPatch) -> Callable[[], object]:

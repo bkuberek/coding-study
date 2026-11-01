@@ -9,14 +9,14 @@ import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
-import org.gradle.jvm.toolchain.JavaLanguageVersion;
 
 /**
  * Configures a Java or Kotlin practice project (docs/specs/runners.md#jvm-build-details).
  *
  * <ul>
- *   <li>JVM toolchain 21; {@code cs.support} on the compile classpath and {@code cs.runner} on the
- *       runtime classpath, both from the included build {@code runners/jvm}.
+ *   <li>No toolchain: Java and Kotlin compile with the build's JDK at one {@link ReleaseLevel};
+ *       {@code cs.support} on the compile classpath and {@code cs.runner} on the runtime
+ *       classpath, both from the included build {@code runners/jvm}.
  *   <li>{@code -Pcs.only=<snake_slug>} restricts the main source set to that problem's package
  *       ({@code practice/<snake_slug>} or {@code ref/<snake_slug>}), so a broken file for another
  *       problem never blocks this one. IDEs build without it and see everything.
@@ -27,7 +27,6 @@ public class PracticePlugin implements Plugin<Project> {
     static final String ONLY_PROPERTY = "cs.only";
     static final String CLASSPATH_TASK = "csClasspath";
     static final String CLASSPATH_FILE = "cs/runtime-classpath.txt";
-    private static final int JAVA_VERSION = 21;
     private static final String KOTLIN_PLUGIN = "org.jetbrains.kotlin.jvm";
     private static final String KOTLIN_SOURCES = "kotlin";
     private static final Pattern SNAKE_SLUG = Pattern.compile("[a-z][a-z0-9_]*");
@@ -37,7 +36,7 @@ public class PracticePlugin implements Plugin<Project> {
     public void apply(Project project) {
         project.getPluginManager().apply(JavaPlugin.class);
         JavaPluginExtension java = project.getExtensions().getByType(JavaPluginExtension.class);
-        java.getToolchain().getLanguageVersion().set(JavaLanguageVersion.of(JAVA_VERSION));
+        ReleaseLevel.apply(project);
         SourceSet main = java.getSourceSets().getByName(SourceSet.MAIN_SOURCE_SET_NAME);
         restrictToOneProblem(project, main);
         project.getDependencies().add(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME, "cs:support");

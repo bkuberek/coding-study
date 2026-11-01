@@ -9,6 +9,8 @@ the domain or a generator across languages.
 from dataclasses import dataclass
 from enum import StrEnum
 
+from coding_study.domain.guides import TOOLCHAINS_GUIDE
+
 
 @dataclass(frozen=True, slots=True)
 class JdkRange:
@@ -24,6 +26,16 @@ class JdkRange:
 SUPPORTED_JDKS = JdkRange(minimum=21, maximum=26)
 """What cstudy runs Java and Kotlin on. 21 is the first release with final virtual threads, and
 26 the newest one the pinned Kotlin can target. The tested ends are 21 and 26."""
+
+RECOMMENDED_JDK = 25
+"""The newest long-term-support release in the range: the one the toolchains guide and the fix
+name, though any JDK in the range works."""
+
+JDK_FIX = (
+    f"select a JDK {SUPPORTED_JDKS.minimum} to {SUPPORTED_JDKS.maximum} with JAVA_HOME, "
+    f"or install JDK {RECOMMENDED_JDK}: {TOOLCHAINS_GUIDE}#jdk"
+)
+"""What to do when the selected JDK cannot run Java and Kotlin, or there is none."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +76,14 @@ class SelectedJdk:
     @property
     def supported(self) -> bool:
         return SUPPORTED_JDKS.contains(self.feature)
+
+
+def no_jdk_sentence(java_home: str | None) -> str:
+    """Why nothing is selected: a `JAVA_HOME` that holds no JDK, which the selection does not look
+    past, or no JDK at all."""
+    if java_home is None:
+        return "no JDK was found"
+    return f"JAVA_HOME ({java_home}) holds no JDK"
 
 
 class JdkAvailability(StrEnum):

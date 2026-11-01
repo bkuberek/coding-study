@@ -10,15 +10,12 @@ from coding_study.adapters.ide.intellij import IntellijProject
 from coding_study.adapters.ide.launcher import LAUNCHER_IN_RUNTIME
 from coding_study.adapters.runner_runtime import RUNTIME_DIRECTORY
 from coding_study.domain.ide_actions import DEBUG_ATTACH
+from coding_study.domain.jdk import SUPPORTED_JDKS
 from coding_study.domain.layout import JVM_LANGUAGES
-from tests.helpers import REPOSITORY_ROOT
 
 MISC = ".idea/misc.xml"
 GRADLE = ".idea/gradle.xml"
 RUN_CONFIGURATIONS = ".idea/runConfigurations/"
-PRACTICE_PLUGIN = (
-    REPOSITORY_ROOT / "runners/jvm/practice-plugin/src/main/java/cs/gradle/PracticePlugin.java"
-)
 FILES = {file.path: file.content for file in IntellijProject().files()}
 LISTENER = "Debug JVM (listen)"
 """The name `cstudy test --debug --debug-connect` asks you to start when nothing listens."""
@@ -205,13 +202,14 @@ def test_python_and_typescript_have_no_intellij_debugging():
     assert not [name for name in debugging if "Python" in name or "TypeScript" in name]
 
 
-def test_the_project_jdk_is_the_jvm_toolchain_of_the_workspace():
-    toolchain = re.search(r"JAVA_VERSION = (\d+);", PRACTICE_PLUGIN.read_text())
-    assert toolchain is not None
+def test_the_project_jdk_is_the_oldest_supported_jdk():
+    """Until the project JDK follows the selected JDK (docs/decisions/0016-jdk-range.md#ide-files),
+    it is the release every build accepts."""
+    oldest = SUPPORTED_JDKS.minimum
     manager = project_component(MISC, "ProjectRootManager")
     assert (manager.get("project-jdk-name"), manager.get("languageLevel")) == (
-        toolchain[1],
-        f"JDK_{toolchain[1]}",
+        str(oldest),
+        f"JDK_{oldest}",
     )
 
 

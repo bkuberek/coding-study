@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from coding_study.adapters.jdk_locator import JAVA_HOME, JdkHome
 from coding_study.adapters.languages.bounded_process import (
     DEFAULT_BUILD_TIMEOUT_SECONDS,
     BoundedProcess,
@@ -18,6 +19,8 @@ from coding_study.domain.errors import RunnerStartError
 WRAPPER = "gradlew"
 BUILD_STEP = "Gradle build"
 WRAPPER_PROPERTIES = "gradle/wrapper/gradle-wrapper.properties"
+JAVA_HOME_PROPERTY = "-Dorg.gradle.java.home="
+"""Outranks `org.gradle.java.home` in the user's Gradle home, which `JAVA_HOME` does not."""
 MAX_DIAGNOSTIC_LINES = 40
 OUTPUT_TAIL_LINES = 20
 _DISTRIBUTION_VERSION = re.compile(r"gradle-([0-9][^-/]*(?:-[a-z]+[0-9-]*)?)-(?:bin|all)\.zip")
@@ -59,17 +62,20 @@ class DaemonRegistry:
 
 
 class WrapperGradle:
-    """`GradleBuild` backed by the workspace's `jvm/gradlew`, run from that project and stopped
-    when a build outlives `timeout_seconds` (docs/specs/runners.md#build-timeouts)."""
+    """`GradleBuild` backed by the workspace's `jvm/gradlew`, run from that project on the selected
+    JDK (docs/specs/runners.md#the-jdk-and-the-release-level) and stopped when a build outlives
+    `timeout_seconds` (docs/specs/runners.md#build-timeouts)."""
 
     def __init__(
         self,
         workspace: Path,
         gradle_user_home: Path,
+        jdk: JdkHome,
         timeout_seconds: float = DEFAULT_BUILD_TIMEOUT_SECONDS,
     ) -> None:
         self._workspace = workspace
         self._gradle_user_home = gradle_user_home
+        self._jdk = jdk
         self._process = BoundedProcess(BUILD_STEP, timeout_seconds)
 
     def daemon_running(self) -> bool:
@@ -79,15 +85,18 @@ class WrapperGradle:
         )
 
     def run(self, arguments: Sequence[str]) -> GradleOutcome:
+        """The wrapper starts from the selected JDK, and its daemon runs on it, so javac and
+        kotlinc compile against it whatever the Gradle home configures."""
         wrapper = self._workspace / WRAPPER
         if not wrapper.is_file():
             raise RunnerStartError(
                 f"{wrapper} is missing; run `cstudy doctor` to set up the JVM workspace"
             )
+        home = str(self._jdk.home())
+        command = [str(wrapper), f"{JAVA_HOME_PROPERTY}{home}", *arguments]
+        environment = {**os.environ, JAVA_HOME: home}
         try:
-            completed = self._process.run_interleaved(
-                [str(wrapper), *arguments], self._workspace, None
-            )
+            completed = self._process.run_interleaved(command, self._workspace, environment)
         except OSError as error:
             raise RunnerStartError(f"cannot run {wrapper}: {error.strerror or error}") from error
         return GradleOutcome(

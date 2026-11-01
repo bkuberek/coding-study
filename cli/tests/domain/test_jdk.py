@@ -3,7 +3,9 @@
 
 import pytest
 
+from coding_study.domain.guides import TOOLCHAINS_GUIDE
 from coding_study.domain.jdk import (
+    JDK_FIX,
     SUPPORTED_JDKS,
     DeclaredJdk,
     JdkAvailability,
@@ -12,6 +14,7 @@ from coding_study.domain.jdk import (
     SelectedJdk,
     availability,
     effective_range,
+    no_jdk_sentence,
 )
 
 
@@ -126,3 +129,19 @@ def test_a_jdk_above_the_maximum_a_problem_declares_is_newer_than_the_problem_su
 def test_a_jdk_that_the_range_grows_to_cover_runs_a_problem_without_bounds():
     grown = JdkRange(21, 27)
     assert availability(selected(27), effective_range(None, grown)) is JdkAvailability.AVAILABLE
+
+
+# When there is no JDK to run
+
+
+def test_the_jdk_fix_names_the_range_and_the_recommended_jdk():
+    expected = f"select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: {TOOLCHAINS_GUIDE}#jdk"
+    assert expected == JDK_FIX
+
+
+def test_no_jdk_found_is_said_so():
+    assert no_jdk_sentence(None) == "no JDK was found"
+
+
+def test_a_java_home_without_a_jdk_is_named():
+    assert no_jdk_sentence("/opt/jdk") == "JAVA_HOME (/opt/jdk) holds no JDK"

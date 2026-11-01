@@ -1,7 +1,8 @@
 """The JVM `LanguageRunner`, shared by Java and Kotlin (docs/specs/runners.md#jvm-build-details).
 
 `prepare` compiles one problem's package through the Gradle daemon (`csClasspath` with
-`-Pcs.only=<snake_slug>`), then launches a fresh `java` process on the classpath Gradle wrote.
+`-Pcs.only=<snake_slug>`), then launches a fresh JVM of the selected JDK on the classpath Gradle
+wrote (docs/specs/runners.md#the-jdk-and-the-release-level).
 
 Each build narrows the project's output directories to its own problem, so concurrent `cstudy`
 processes on one workspace would delete each other's classes. Per project and language, one
@@ -19,6 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from coding_study.adapters.file_lock import exclusive_lock
+from coding_study.adapters.jdk_locator import JAVA_LAUNCHER
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.debug_port import require_free_port
 from coding_study.adapters.languages.jvm.gradle import (
@@ -56,7 +58,6 @@ WORKSPACE = JVM_PROJECT
 RUNNERS_BUILD = "jvm"
 """The runners' included build, relative to the runners directory."""
 MAIN_CLASS = "cs.runner.Main"
-JAVA_EXECUTABLE = "java"
 JVM_FLAGS = ("-XX:+UseSerialGC", "-Xshare:auto")
 JDWP_LISTENING_MARKER = "Listening for transport dt_socket"
 """JDWP prints this to standard output once it listens for the IDE."""
@@ -125,6 +126,7 @@ class JvmRunner:
     def __init__(self, context: LanguageContext, language: Language, gradle: GradleBuild) -> None:
         self._language = language
         self._gradle = gradle
+        self._jdk = context.jdk
         self._workspace = context.workspace / WORKSPACE
         runners = context.runners / RUNNERS_BUILD
         self._references = ReferenceBuild(context.workspace, self._workspace, runners)
@@ -242,8 +244,9 @@ class JvmRunner:
         debug: DebugLaunch | None,
     ) -> RunnerLaunch:
         agent = () if debug is None else (_jdwp_agent(debug.session),)
+        java = self._jdk.home() / JAVA_LAUNCHER
         return RunnerLaunch(
-            (JAVA_EXECUTABLE, *JVM_FLAGS, *agent, "-cp", classpath, MAIN_CLASS),
+            (str(java), *JVM_FLAGS, *agent, "-cp", classpath, MAIN_CLASS),
             cwd,
             HELLO_TIMEOUT_MS[self._language],
             debug,

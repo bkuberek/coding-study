@@ -23,6 +23,7 @@ from coding_study.domain.debugging import DebugSession
 from coding_study.domain.generated_cases import GeneratedCase
 from coding_study.domain.invariants import StressChecker
 from coding_study.domain.items import ItemMeta
+from coding_study.domain.jdk import SelectedJdk
 from coding_study.domain.problem import Language, Problem, ProblemMeta, ProblemSummary
 from coding_study.domain.progress_export import ProgressSnapshot
 from coding_study.domain.progress_stats import LatestBench
@@ -466,6 +467,20 @@ class ProgressStore(Protocol):
 
     def attempt(self, attempt_id: int) -> Attempt | None:
         """The attempt with this id, in any status; None when there is none."""
+        ...
+
+
+class JdkSelector(Protocol):
+    """The one JDK Java and Kotlin build and run with: the one the shell selects
+    (docs/specs/cli.md#the-selected-jdk)."""
+
+    def selected(self) -> SelectedJdk | None:
+        """None when no JDK is found, or when `JAVA_HOME` is set but holds no JDK."""
+        ...
+
+    def unusable_java_home(self) -> str | None:
+        """`JAVA_HOME` as it is set, when it holds no JDK: nothing is selected then, since the
+        selection does not fall back to `PATH`. None otherwise."""
         ...
 
 

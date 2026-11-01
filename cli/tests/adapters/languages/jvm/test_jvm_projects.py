@@ -11,7 +11,6 @@ from pathlib import Path
 
 import pytest
 
-from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.jvm.gradle import GradleOutcome
 from coding_study.adapters.languages.jvm.runner import (
     COLD_DAEMON_NOTICE,
@@ -33,7 +32,7 @@ from coding_study.domain.errors import RunnerStartError
 from coding_study.domain.problem import Language
 from coding_study.domain.project_checks import jvm_build_files
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
-from tests.adapters.languages.jvm.fake_gradle import LIBRARY, ProjectGradle
+from tests.adapters.languages.jvm.fake_gradle import LIBRARY, ProjectGradle, jvm_context
 from tests.helpers import REPOSITORY_ROOT
 
 GRADLE_FLAGS = ["-q", "--console=plain", "--offline"]
@@ -52,7 +51,7 @@ def folder(tmp_path: Path) -> Path:
 
 
 def runner_on(root: Path, gradle: ProjectGradle, language: Language = Language.JAVA) -> JvmRunner:
-    return JvmRunner(LanguageContext(root, root / "runners"), language, gradle)
+    return JvmRunner(jvm_context(root), language, gradle)
 
 
 def prepare(

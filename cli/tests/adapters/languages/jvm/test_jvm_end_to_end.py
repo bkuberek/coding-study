@@ -17,6 +17,7 @@ import pytest
 from coding_study.adapters.conformance_fixtures import (
     conformance_repository,
 )
+from coding_study.adapters.jdk_locator import shell_jdk
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.jvm import (
     create_java_stub_generator,
@@ -153,7 +154,7 @@ def root(tmp_path_factory: pytest.TempPathFactory, practice_workspace: Path) -> 
 
 
 def runner(root: Path, language: Language) -> JvmRunner:
-    gradle = WrapperGradle(root / "jvm", default_gradle_user_home())
+    gradle = WrapperGradle(root / "jvm", default_gradle_user_home(), shell_jdk())
     return JvmRunner(LanguageContext(root, root / RUNTIME_RUNNERS), language, gradle)
 
 
@@ -389,7 +390,7 @@ def test_every_golden_stub_compiles(root):
             path = root / stub_path(case.meta, language)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(STUB_GENERATORS[language].generate(case.meta))
-    gradle = WrapperGradle(root / "jvm", default_gradle_user_home())
+    gradle = WrapperGradle(root / "jvm", default_gradle_user_home(), shell_jdk())
     outcome = gradle.run(["-q", "--console=plain", ":java:classes", ":kotlin:classes"])
     for case in STUB_CASES:
         for language in JVM_LANGUAGES:

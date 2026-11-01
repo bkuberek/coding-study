@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.jvm import create_java_runner, create_kotlin_runner
 from coding_study.adapters.languages.jvm.gradle import (
     DaemonRegistry,
@@ -36,10 +35,14 @@ from coding_study.domain.problem import Language
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
 from tests.adapters.languages.jvm.fake_gradle import (
     CLASSPATH,
+    JAVA,
     JAVA_SOURCE,
+    JDK_HOME,
     KOTLIN_SOURCE,
     WORKSPACE_FILES,
     FakeGradle,
+    FixedJdk,
+    jvm_context,
     reference_sources,
 )
 from tests.stub_contract import STUB_CASES
@@ -65,16 +68,14 @@ def compile_failure(*lines: str) -> GradleOutcome:
 
 def test_user_code_builds_only_the_problem_package(root):
     gradle = FakeGradle(root)
-    prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, gradle), UserCode(TWO_SUM)
-    )
+    prepare(JvmRunner(jvm_context(root), Language.JAVA, gradle), UserCode(TWO_SUM))
     assert gradle.builds == [("-q", "--console=plain", ":java:csClasspath", "-Pcs.only=two_sum")]
 
 
 def test_kotlin_user_code_builds_the_kotlin_project(root):
     gradle = FakeGradle(root)
     prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.KOTLIN, gradle),
+        JvmRunner(jvm_context(root), Language.KOTLIN, gradle),
         UserCode(TWO_SUM),
     )
     assert gradle.builds[0][2] == ":kotlin:csClasspath"
@@ -82,15 +83,22 @@ def test_kotlin_user_code_builds_the_kotlin_project(root):
 
 def test_launch_runs_main_on_the_built_classpath(root):
     result, _ = prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, FakeGradle(root)),
+        JvmRunner(jvm_context(root), Language.JAVA, FakeGradle(root)),
         UserCode(TWO_SUM),
     )
-    assert prepared(result).launch.command == ("java", *JVM_FLAGS, "-cp", CLASSPATH, MAIN_CLASS)
+    assert prepared(result).launch.command == (JAVA, *JVM_FLAGS, "-cp", CLASSPATH, MAIN_CLASS)
+
+
+def test_launch_runs_the_selected_jdks_java(root):
+    result, _ = prepare(
+        JvmRunner(jvm_context(root), Language.JAVA, FakeGradle(root)), UserCode(TWO_SUM)
+    )
+    assert prepared(result).launch.command[0] == str(JDK_HOME / "bin" / "java")
 
 
 def test_launch_starts_in_the_jvm_workspace(root):
     result, _ = prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, FakeGradle(root)),
+        JvmRunner(jvm_context(root), Language.JAVA, FakeGradle(root)),
         UserCode(TWO_SUM),
     )
     assert prepared(result).launch.cwd == root / "jvm"
@@ -98,7 +106,7 @@ def test_launch_starts_in_the_jvm_workspace(root):
 
 def test_launch_uses_the_jvm_hello_timeout(root):
     result, _ = prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.KOTLIN, FakeGradle(root)),
+        JvmRunner(jvm_context(root), Language.KOTLIN, FakeGradle(root)),
         UserCode(TWO_SUM),
     )
     assert prepared(result).launch.hello_timeout_ms == HELLO_TIMEOUT_MS[Language.KOTLIN]
@@ -110,9 +118,7 @@ def test_jvm_flags_use_the_serial_collector_without_tiering_flags():
 
 def test_cold_daemon_prints_the_warm_up_notice(root):
     _, notices = prepare(
-        JvmRunner(
-            LanguageContext(root, root / "runners"), Language.JAVA, FakeGradle(root, warm=False)
-        ),
+        JvmRunner(jvm_context(root), Language.JAVA, FakeGradle(root, warm=False)),
         UserCode(TWO_SUM),
     )
     assert notices == [COLD_DAEMON_NOTICE]
@@ -120,9 +126,7 @@ def test_cold_daemon_prints_the_warm_up_notice(root):
 
 def test_cold_build_is_noted(root):
     result, _ = prepare(
-        JvmRunner(
-            LanguageContext(root, root / "runners"), Language.JAVA, FakeGradle(root, warm=False)
-        ),
+        JvmRunner(jvm_context(root), Language.JAVA, FakeGradle(root, warm=False)),
         UserCode(TWO_SUM),
     )
     assert prepared(result).build_note == "gradle, cold"
@@ -130,7 +134,7 @@ def test_cold_build_is_noted(root):
 
 def test_warm_daemon_prints_nothing(root):
     _, notices = prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, FakeGradle(root)),
+        JvmRunner(jvm_context(root), Language.JAVA, FakeGradle(root)),
         UserCode(TWO_SUM),
     )
     assert notices == []
@@ -138,7 +142,7 @@ def test_warm_daemon_prints_nothing(root):
 
 def test_warm_build_is_noted(root):
     result, _ = prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, FakeGradle(root)),
+        JvmRunner(jvm_context(root), Language.JAVA, FakeGradle(root)),
         UserCode(TWO_SUM),
     )
     assert prepared(result).build_note == "gradle, warm"
@@ -147,9 +151,7 @@ def test_warm_build_is_noted(root):
 def test_compile_error_in_the_user_file_is_a_build_failure(root):
     error = f"{root}/{USER_FILE}:4: error: ';' expected"
     gradle = FakeGradle(root, outcome=compile_failure(error, "1 error", "FAILURE: Build failed."))
-    result, _ = prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, gradle), UserCode(TWO_SUM)
-    )
+    result, _ = prepare(JvmRunner(jvm_context(root), Language.JAVA, gradle), UserCode(TWO_SUM))
     assert result == BuildFailed((error,))
 
 
@@ -158,9 +160,7 @@ def test_build_failure_keeps_indented_compiler_context(root):
     gradle = FakeGradle(
         root, outcome=compile_failure(error, "        retur 1;", "        ^", "1 error")
     )
-    result, _ = prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, gradle), UserCode(TWO_SUM)
-    )
+    result, _ = prepare(JvmRunner(jvm_context(root), Language.JAVA, gradle), UserCode(TWO_SUM))
     assert result == BuildFailed((error, "        retur 1;", "        ^"))
 
 
@@ -176,18 +176,14 @@ def test_compiler_lines_are_kept_once_when_gradle_repeats_them_under_what_went_w
     gradle = FakeGradle(
         root, outcome=compile_failure(error, "        retur 1;", "        ^", "1 error", *repeated)
     )
-    result, _ = prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, gradle), UserCode(TWO_SUM)
-    )
+    result, _ = prepare(JvmRunner(jvm_context(root), Language.JAVA, gradle), UserCode(TWO_SUM))
     assert result == BuildFailed((error, "        retur 1;", "        ^"))
 
 
 def test_a_report_gradle_gives_only_under_what_went_wrong_is_kept(root):
     error = f"{root}/{USER_FILE}:4: error: x"
     gradle = FakeGradle(root, outcome=compile_failure("* What went wrong:", f"  {error}"))
-    result, _ = prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, gradle), UserCode(TWO_SUM)
-    )
+    result, _ = prepare(JvmRunner(jvm_context(root), Language.JAVA, gradle), UserCode(TWO_SUM))
     assert result == BuildFailed((f"  {error}",))
 
 
@@ -195,7 +191,7 @@ def test_build_failure_without_user_file_lines_is_an_environment_error(root):
     gradle = FakeGradle(root, outcome=compile_failure("Could not resolve cs:runner."))
     with pytest.raises(RunnerStartError, match="Could not resolve cs:runner"):
         prepare(
-            JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, gradle),
+            JvmRunner(jvm_context(root), Language.JAVA, gradle),
             UserCode(TWO_SUM),
         )
 
@@ -203,7 +199,7 @@ def test_build_failure_without_user_file_lines_is_an_environment_error(root):
 def test_references_are_materialized_with_their_package(root, tmp_path):
     sources = reference_sources(tmp_path / "solutions", Language.JAVA, "hash-map")
     prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, FakeGradle(root)),
+        JvmRunner(jvm_context(root), Language.JAVA, FakeGradle(root)),
         References(TWO_SUM, sources),
     )
     materialized = root / reference_build_path(TWO_SUM, "hash-map", Language.JAVA)
@@ -213,7 +209,7 @@ def test_references_are_materialized_with_their_package(root, tmp_path):
 def test_kotlin_references_get_a_package_without_semicolon(root, tmp_path):
     sources = reference_sources(tmp_path / "solutions", Language.KOTLIN, "brute-force")
     prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.KOTLIN, FakeGradle(root)),
+        JvmRunner(jvm_context(root), Language.KOTLIN, FakeGradle(root)),
         References(TWO_SUM, sources),
     )
     materialized = root / reference_build_path(TWO_SUM, "brute-force", Language.KOTLIN)
@@ -221,7 +217,7 @@ def test_kotlin_references_get_a_package_without_semicolon(root, tmp_path):
 
 
 def test_references_drop_approaches_no_longer_requested(root, tmp_path):
-    runner = JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, FakeGradle(root))
+    runner = JvmRunner(jvm_context(root), Language.JAVA, FakeGradle(root))
     solutions = tmp_path / "solutions"
     prepare(runner, References(TWO_SUM, reference_sources(solutions, Language.JAVA, "a", "b")))
     prepare(runner, References(TWO_SUM, reference_sources(solutions, Language.JAVA, "a")))
@@ -231,7 +227,7 @@ def test_references_drop_approaches_no_longer_requested(root, tmp_path):
 def test_reference_build_mirrors_the_workspace_build_files(root, tmp_path):
     sources = reference_sources(tmp_path / "solutions", Language.JAVA, "hash-map")
     prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, FakeGradle(root)),
+        JvmRunner(jvm_context(root), Language.JAVA, FakeGradle(root)),
         References(TWO_SUM, sources),
     )
     build = root / ".cs" / "build" / "jvm"
@@ -241,7 +237,7 @@ def test_reference_build_mirrors_the_workspace_build_files(root, tmp_path):
 def test_reference_build_includes_the_runner_build(root, tmp_path):
     sources = reference_sources(tmp_path / "solutions", Language.JAVA, "hash-map")
     prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, FakeGradle(root)),
+        JvmRunner(jvm_context(root), Language.JAVA, FakeGradle(root)),
         References(TWO_SUM, sources),
     )
     settings = (root / ".cs" / "build" / "jvm" / "settings.gradle.kts").read_text()
@@ -252,7 +248,7 @@ def test_references_build_the_reference_project(root, tmp_path):
     gradle = FakeGradle(root)
     sources = reference_sources(tmp_path / "solutions", Language.JAVA, "hash-map")
     prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, gradle),
+        JvmRunner(jvm_context(root), Language.JAVA, gradle),
         References(TWO_SUM, sources),
     )
     assert gradle.builds[0][:2] == ("-p", str(root / ".cs" / "build" / "jvm"))
@@ -261,7 +257,7 @@ def test_references_build_the_reference_project(root, tmp_path):
 def test_references_launch_on_the_reference_classpath(root, tmp_path):
     sources = reference_sources(tmp_path / "solutions", Language.JAVA, "hash-map")
     result, _ = prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, FakeGradle(root)),
+        JvmRunner(jvm_context(root), Language.JAVA, FakeGradle(root)),
         References(TWO_SUM, sources),
     )
     assert CLASSPATH in prepared(result).launch.command
@@ -274,21 +270,21 @@ def test_reference_compile_error_is_a_build_failure(root, tmp_path):
     gradle = FakeGradle(root, outcome=compile_failure(error))
     sources = reference_sources(tmp_path / "solutions", Language.JAVA, "hash-map")
     result, _ = prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, gradle),
+        JvmRunner(jvm_context(root), Language.JAVA, gradle),
         References(TWO_SUM, sources),
     )
     assert result == BuildFailed((error,))
 
 
 def test_factories_create_jvm_runners(root):
-    context = LanguageContext(root, root / "runners")
+    context = jvm_context(root)
     runners = (create_java_runner(context), create_kotlin_runner(context))
     assert all(isinstance(runner, JvmRunner) for runner in runners)
 
 
 def test_missing_wrapper_is_an_environment_error(tmp_path):
     with pytest.raises(RunnerStartError, match="gradlew"):
-        WrapperGradle(tmp_path / "jvm", tmp_path / "gradle-home").run(["help"])
+        WrapperGradle(tmp_path / "jvm", tmp_path / "gradle-home", FixedJdk()).run(["help"])
 
 
 def test_wrapper_gradle_reports_exit_code_and_combined_output(tmp_path):
@@ -300,8 +296,39 @@ def test_wrapper_gradle_reports_exit_code_and_combined_output(tmp_path):
         "print('out', flush=True)\nprint('err', file=sys.stderr)\nsys.exit(3)\n"
     )
     script.chmod(0o755)
-    outcome = WrapperGradle(workspace, tmp_path / "gradle-home").run(["help"])
+    outcome = WrapperGradle(workspace, tmp_path / "gradle-home", FixedJdk()).run(["help"])
     assert outcome == GradleOutcome(3, "out\nerr\n")
+
+
+def echoing_wrapper(workspace: Path) -> Path:
+    """A `gradlew` that prints its arguments and the `JAVA_HOME` it was started with."""
+    workspace.mkdir(parents=True)
+    script = workspace / "gradlew"
+    script.write_text(
+        f"#!{sys.executable}\nimport os, sys\n"
+        "print(*sys.argv[1:], sep='\\n')\nprint('JAVA_HOME=' + os.environ.get('JAVA_HOME', ''))\n"
+    )
+    script.chmod(0o755)
+    return workspace
+
+
+def test_gradle_runs_on_the_selected_jdk_whatever_the_gradle_home_says(tmp_path):
+    workspace = echoing_wrapper(tmp_path / "jvm")
+    outcome = WrapperGradle(workspace, tmp_path / "gradle-home", FixedJdk()).run(["help"])
+    assert f"-Dorg.gradle.java.home={JDK_HOME}" in outcome.output.splitlines()
+
+
+def test_the_gradle_wrapper_starts_from_the_selected_jdk(tmp_path, monkeypatch):
+    monkeypatch.setenv("JAVA_HOME", str(tmp_path / "another-jdk"))
+    workspace = echoing_wrapper(tmp_path / "jvm")
+    outcome = WrapperGradle(workspace, tmp_path / "gradle-home", FixedJdk()).run(["help"])
+    assert f"JAVA_HOME={JDK_HOME}" in outcome.output.splitlines()
+
+
+def test_the_build_arguments_follow_the_selected_jdk(tmp_path):
+    workspace = echoing_wrapper(tmp_path / "jvm")
+    outcome = WrapperGradle(workspace, tmp_path / "gradle-home", FixedJdk()).run(["help"])
+    assert outcome.output.splitlines()[:2] == [f"-Dorg.gradle.java.home={JDK_HOME}", "help"]
 
 
 def test_diagnostics_keep_only_lines_about_the_source_directory():
@@ -351,7 +378,7 @@ def debugging(
     root: Path, language: Language, session: DebugSession, notices: list[str] | None = None
 ) -> tuple[Prepared, FakeGradle]:
     gradle = FakeGradle(root)
-    runner = JvmRunner(LanguageContext(root, root / "runners"), language, gradle)
+    runner = JvmRunner(jvm_context(root), language, gradle)
     notify = (notices if notices is not None else []).append
     return prepared(runner.prepare(UserCode(TWO_SUM, debug=session), notify)), gradle
 
@@ -360,7 +387,7 @@ def test_the_jvm_listens_for_the_ide_when_it_waits_for_it(root):
     session = DebugSession(Language.JAVA, 5005)
     launch = debugging(root, Language.JAVA, session)[0].launch
     agent = JDWP.format(server="y", port=5005)
-    assert launch.command == ("java", *JVM_FLAGS, agent, "-cp", CLASSPATH, MAIN_CLASS)
+    assert launch.command == (JAVA, *JVM_FLAGS, agent, "-cp", CLASSPATH, MAIN_CLASS)
 
 
 def test_the_jvm_connects_to_the_ide_in_connect_mode(root):
@@ -417,7 +444,7 @@ def test_the_launch_carries_the_session(root):
 
 def test_a_normal_launch_has_no_agent(root):
     result, _ = prepare(
-        JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, FakeGradle(root)),
+        JvmRunner(jvm_context(root), Language.JAVA, FakeGradle(root)),
         UserCode(TWO_SUM),
     )
     assert prepared(result).launch.debug is None
@@ -435,7 +462,7 @@ def test_a_port_in_use_is_reported_before_building(root):
         listener.listen()
         busy = DebugSession(Language.JAVA, listener.getsockname()[1])
         gradle = FakeGradle(root)
-        runner = JvmRunner(LanguageContext(root, root / "runners"), Language.JAVA, gradle)
+        runner = JvmRunner(jvm_context(root), Language.JAVA, gradle)
         with pytest.raises(RunnerStartError, match="--debug-port"):
             runner.prepare(UserCode(TWO_SUM, debug=busy), lambda _line: None)
     assert gradle.builds == []

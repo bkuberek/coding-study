@@ -21,6 +21,7 @@ from coding_study.adapters.fs_item_repository import FsItemRepository
 from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.adapters.fs_study_guides import FsStudyGuides
+from coding_study.adapters.jdk_locator import EnvJdkSelector, JdkHome
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.registry import LANGUAGES
 from coding_study.adapters.locations import (
@@ -76,10 +77,11 @@ def conformance_environment(environment: Environment) -> Environment:
     )
 
 
-def workspace_toolchains(content: Path, workspace: Path) -> Toolchains:
-    """The language toolchains of `workspace`, building against its runner runtime."""
+def workspace_toolchains(content: Path, workspace: Path, jdk: JdkHome) -> Toolchains:
+    """The language toolchains of `workspace`, building against its runner runtime; Java and
+    Kotlin build and run with `jdk`."""
     runtime = RunnerRuntime(content / RUNNERS_DIRECTORY, workspace)
-    context = LanguageContext(workspace, runtime.directory)
+    context = LanguageContext(workspace, runtime.directory, jdk)
     return RuntimeToolchains(RegistryToolchains(LANGUAGES, context), runtime)
 
 
@@ -109,7 +111,7 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         problems=OverlayProblemRepository(catalog, workspace),
         files=OverlayProblemFiles(FsProblemFiles(content.path), workspace),
         progress=SqliteProgressStore(workspace / config.progress_db),
-        toolchains=workspace_toolchains(content.path, workspace),
+        toolchains=workspace_toolchains(content.path, workspace, EnvJdkSelector(user.environ)),
         runner_process=SubprocessRunner(workspace / RUNS_DIRECTORY),
         workspace=WorkspaceFs(workspace),
         content_code=ContentCodeLoader(content.path),

@@ -25,5 +25,5 @@ def create_kotlin_runner(context: LanguageContext) -> LanguageRunner:
 
 
 def _create_runner(context: LanguageContext, language: Language) -> JvmRunner:
-    gradle = WrapperGradle(context.workspace / WORKSPACE, default_gradle_user_home())
+    gradle = WrapperGradle(context.workspace / WORKSPACE, default_gradle_user_home(), context.jdk)
     return JvmRunner(context, language, gradle)

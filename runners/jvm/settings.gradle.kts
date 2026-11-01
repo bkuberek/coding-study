@@ -7,6 +7,10 @@ rootProject.name = "cs-jvm"
 dependencyResolutionManagement {
     repositories {
         mavenCentral()
+        // The Kotlin Gradle plugin's API, which the plugins compile against. A workspace that has
+        // built Kotlin cached it with the Kotlin plugin from the plugin repository, and an offline
+        // build finds a cached module only through the repository that cached it.
+        gradlePluginPortal()
     }
 }
 
