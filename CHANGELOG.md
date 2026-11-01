@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v0.9.1 (2026-11-01)
+
+### Bug Fixes
+
+- **web**: Give the page the cstudy mark as its icon so browsers stop asking for /favicon.ico
+  ([`58ad584`](https://github.com/bkuberek/coding-study/commit/58ad58419cf01465557a28b96a5079ac39157140))
+
+### Documentation
+
+- Add the cstudy header to the README
+  ([`ae7ca04`](https://github.com/bkuberek/coding-study/commit/ae7ca04a11b1bd0d45bc4c285f8b3100ddf44fd4))
+
+### Testing
+
+- **cli**: Read usage errors without the colours Rich adds in CI
+  ([`971f406`](https://github.com/bkuberek/coding-study/commit/971f406962ff32e1dd602fd1f06466759c0ea30b))
+
+
 ## v0.9.0 (2026-11-01)
 
 ### Bug Fixes
