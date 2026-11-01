@@ -14,12 +14,12 @@ test("an error keeps the fields its document adds, such as the run holding a slo
   assert.equal(error.details["run"], "c8a4");
 });
 
-test("saving a file of an attempt tells the page which one", async () => {
+test("saving a file of an attempt tells the page which one, and its SHA-256 now", async () => {
   const events = new EventTarget();
   const saved = heard(events);
-  const { fetcher } = recording(200, '{"path": "bank/bank.py", "sha256": "ab"}');
+  const { fetcher } = recording(200, '{"path": "bank/bank one.py", "sha256": "ab"}');
   await createApi("csrf", fetcher, events).put("/api/v1/attempts/7/files/bank/bank%20one.py", { text: "" });
-  assert.deepEqual(saved, [{ attemptId: 7, path: "bank/bank one.py" }]);
+  assert.deepEqual(saved, [{ attemptId: 7, path: "bank/bank one.py", sha256: "ab" }]);
 });
 
 test("saving a file through send tells the page which one", async () => {
@@ -27,7 +27,15 @@ test("saving a file through send tells the page which one", async () => {
   const saved = heard(events);
   const { fetcher } = recording(200, '{"path": "a.py", "sha256": "ab"}');
   await createApi("csrf", fetcher, events).send("PUT", "/api/v1/attempts/7/files/a.py", { body: { text: "" }, headers: { "If-Match": '"ab"' } });
-  assert.deepEqual(saved, [{ attemptId: 7, path: "a.py" }]);
+  assert.deepEqual(saved, [{ attemptId: 7, path: "a.py", sha256: "ab" }]);
+});
+
+test("a save names the path the server cleaned, as a notification of it does", async () => {
+  const events = new EventTarget();
+  const saved = heard(events);
+  const { fetcher } = recording(201, '{"path": "bank/a.py", "sha256": "ab"}');
+  await createApi("csrf", fetcher, events).put("/api/v1/attempts/7/files/bank/./a.py", { text: "" });
+  assert.equal(saved[0]?.path, "bank/a.py");
 });
 
 test("deleting or moving a file is no save", async () => {

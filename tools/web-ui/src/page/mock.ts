@@ -5,12 +5,15 @@
 
 import { ApiError, type Api } from "./api.ts";
 import { h } from "./dom.ts";
+import type { NotificationStream } from "./notifications.ts";
 import { MOCK_HASH } from "./routes.ts";
 import type { MockAttempt, MockState, StartedMock } from "./types.ts";
 
 const SECONDS_PER_MINUTE = 60;
-const POLL_MS = 30_000;
 const TICK_MS = 1000;
+
+/** What the watch uses of the notification stream. */
+export type NoticeSource = Pick<NotificationStream, "subscribe">;
 /** `cstudy mock`'s defaults. */
 export const DEFAULT_MINUTES = 45;
 export const DEFAULT_COUNT = 2;
@@ -131,23 +134,26 @@ export class MockWatch {
     await this.refresh();
   }
 
-  /** Reads the state now, every 30 s, and when the countdown reaches zero; the function returned
-   * stops. */
-  watch(): () => void {
-    let deadline: number | undefined;
+  /** Reads the state now, after each `progress_changed` of the notification stream (a mock is
+   * nothing but its attempts) and each time the stream opens again, and when the countdown reaches
+   * zero; the function returned stops. */
+  watch(notices: NoticeSource): () => void {
+    let deadline: ReturnType<typeof setTimeout> | undefined;
     const read = () => {
       void this.refresh()
         .then((state) => {
-          window.clearTimeout(deadline);
-          if (state.running) deadline = window.setTimeout(read, state.remaining_s * 1000 + TICK_MS);
+          clearTimeout(deadline);
+          if (state.running) deadline = setTimeout(read, state.remaining_s * 1000 + TICK_MS);
         })
         .catch(() => {});
     };
     read();
-    const poll = window.setInterval(read, POLL_MS);
+    const unsubscribe = notices.subscribe((notice) => {
+      if (notice.type === "progress_changed" || notice.type === "resync") read();
+    });
     return () => {
-      window.clearInterval(poll);
-      window.clearTimeout(deadline);
+      unsubscribe();
+      clearTimeout(deadline);
     };
   }
 

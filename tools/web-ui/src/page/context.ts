@@ -2,6 +2,7 @@
 
 import type { Api } from "./api.ts";
 import type { MockWatch } from "./mock.ts";
+import type { NotificationStream } from "./notifications.ts";
 import type { Shell } from "./shell.ts";
 import type { Preferences, Session } from "./types.ts";
 
@@ -15,6 +16,8 @@ export interface PageContext {
   readonly shell: Shell;
   /** The mock interview that runs, which the banner and the Hint and Solution buttons follow. */
   readonly mock: MockWatch;
+  /** What changed elsewhere: in another tab, the terminal or an editor. */
+  readonly notifications: NotificationStream;
   preferences(): Preferences;
   /** Stores a change of preferences and tells every listener. */
   savePreferences(change: Partial<Omit<Preferences, "format">>): Promise<void>;

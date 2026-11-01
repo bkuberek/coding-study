@@ -26,10 +26,8 @@ class FakeText implements EditedText {
     this.saved = this.text;
   }
 
-  async setDocument(path: string, text: string): Promise<void> {
-    this.path = path;
+  replaceText(text: string): void {
     this.text = text;
-    this.saved = text;
   }
 }
 
@@ -174,6 +172,73 @@ test("reload theirs of a file deleted elsewhere says it is gone", async () => {
   text.text = "# Mine\n";
   await saver.save();
   assert.equal(await saver.reloadTheirs(), "gone");
+});
+
+// a change on disk, which a notification names by the SHA-256 of the file now
+
+test("a change to the version the tab holds is no change", async () => {
+  const { saver, files } = opened();
+  files.read = async () => assert.fail("nothing to read");
+  assert.equal((await saver.follow("first")).kind, "unchanged");
+});
+
+test("a tab with no unsaved edits takes the version on disk", async () => {
+  const { saver, files, text } = opened();
+  files.disk = "theirs";
+  const outcome = await saver.follow("theirs");
+  assert.deepEqual([outcome.kind, text.text, text.modified, saver.sha256], ["reloaded", "theirs\n", false, "theirs"]);
+});
+
+test("a tab that took the version on disk saves over it", async () => {
+  const { saver, files, text } = opened();
+  files.disk = "theirs";
+  await saver.follow("theirs");
+  text.text = "# Mine\n";
+  await saver.save();
+  assert.deepEqual(files.writes, [{ kind: "save", text: "# Mine\n", sha256: "theirs" }]);
+});
+
+test("a tab with unsaved edits keeps them and shows the conflict", async () => {
+  const { saver, files, text } = opened();
+  files.disk = "theirs";
+  text.text = "# Mine\n";
+  const outcome = await saver.follow("theirs");
+  assert.deepEqual([outcome.kind, saver.conflict?.theirs, text.text], ["conflict", "theirs", "# Mine\n"]);
+});
+
+test("overwrite after a change on disk saves over their version on purpose", async () => {
+  const { saver, files, text } = opened();
+  files.disk = "theirs";
+  text.text = "# Mine\n";
+  await saver.follow("theirs");
+  await saver.overwrite();
+  assert.deepEqual(files.writes, [{ kind: "save", text: "# Mine\n", sha256: "theirs" }]);
+});
+
+test("edits typed while the version on disk is read stay, and the change is a conflict", async () => {
+  const { saver, files, text } = opened();
+  files.disk = "theirs";
+  const read = files.read.bind(files);
+  files.read = async (path) => {
+    text.text = "# typed meanwhile\n";
+    return read(path);
+  };
+  const outcome = await saver.follow("theirs");
+  assert.deepEqual([outcome.kind, saver.conflict?.theirs, text.text], ["conflict", "theirs", "# typed meanwhile\n"]);
+});
+
+test("a file deleted on disk is a conflict without their version", async () => {
+  const { saver, files } = opened();
+  files.disk = null;
+  const outcome = await saver.follow(null);
+  assert.deepEqual([outcome.kind, saver.conflict?.theirs], ["conflict", null]);
+});
+
+test("a file deleted on disk before the tab could read it is a conflict without their version", async () => {
+  const { saver, files } = opened();
+  files.disk = null;
+  const outcome = await saver.follow("theirs");
+  assert.deepEqual([outcome.kind, saver.conflict?.theirs], ["conflict", null]);
 });
 
 test("a refusal that is no conflict reaches the caller", async () => {

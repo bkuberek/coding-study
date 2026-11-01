@@ -7,6 +7,7 @@ The sources of the front end that `cstudy serve` serves: the page's own code and
 | `package.json`, `pnpm-lock.yaml` | Exact versions and integrity hashes of every package |
 | `src/app.ts`, `src/page/` | The page: its entry point, views, stylesheets and the pure parts its tests cover. `app.ts` imports the stylesheets of what the page draws at start (`page/app.css`; `page/flows.css` for the attempt flows and the mock banner; `page/files.css` for saving and the file tree; `page/runs.css` for the run controls and the results panel), which make `app.css`. A module fetched on first use imports its own, named after it (`page/dialogs.css`, `page/results-draw.css`, `page/views/health.css`, …), which it links as it loads |
 | `src/page/stylesheets.ts` | Links a chunk's stylesheet with the page's CSP nonce; the chunk resolves once the stylesheet applies, so nothing it draws shows unstyled |
+| `src/page/notifications.ts` | The tab's notification stream (`/api/v1/events`), closed while the tab is hidden; the views follow what changed elsewhere through it |
 | `src/editor.ts` | The editor module, a chunk the page fetches the first time a file opens |
 | `src/grammars/*.ts`, `src/vim.ts` | One chunk per language and one for Vim keybindings, each fetched on first use |
 | `test/*.test.ts` | Unit tests of the pure parts of the page and the editor module, run with `node --test`; `test/stylesheets.ts` makes an imported stylesheet an empty module for them |
@@ -53,11 +54,11 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 74.6 | 26.5 |
-| Every JavaScript and CSS file but Vim | 935.3 | 336.4 |
-| The editor before any language: the page, the editor and the core | 477.8 | 160.2 |
-| A Python file | 548.2 | 187.1 |
-| A TypeScript or JavaScript file, the largest grammar | 586.7 | 200.7 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 79.9 | 28.2 |
+| Every JavaScript and CSS file but Vim | 940.9 | 338.3 |
+| The editor before any language: the page, the editor and the core | 483.4 | 162.1 |
+| A Python file | 553.8 | 189.0 |
+| A TypeScript or JavaScript file, the largest grammar | 592.3 | 202.6 |
 | Vim keybindings, added on top | 119.7 | 38.1 |
 | The Mock and Progress views together, each fetched when it first opens (Progress with the Start dialog) | 19.8 | 9.1 |
 | The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 10.9 | 5.3 |
@@ -65,7 +66,7 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 | The Run options form, fetched when it first opens | 4.1 | 1.8 |
 | The job panel for Bench, fetched when Bench first starts (Health fetches it with its view) | 3.9 | 1.8 |
 | The file tree's menu and actions, fetched when a menu first opens or an action first runs (with the dialog module) | 9.6 | 4.5 |
-| The dialog module (sheets, confirmations, questions that ask for names) and the Start, Done and Solution dialogs, each fetched when first used | 15.8 | 7.7 |
+| The dialog module (sheets, confirmations, questions that ask for names) and the Start, Done and Solution dialogs, each fetched when first used | 15.8 | 7.8 |
 
 The budget (NFR-12) is 1 MB raw and 350 KB gzip for the whole bundle without Vim, the page's code included, and 600 KB raw loaded before a file of one language is editable. What a view or a control needs only when it is used is a chunk of its own (the rows above), so the page, the largest grammar and the editor stay under the 600 KB; `cli/tests/entrypoints/web/test_bundle_budget.py` holds the committed files to both limits. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
 
@@ -77,6 +78,7 @@ The page imports `createEditor` from `editor.ts` when the first file opens. Ever
 |------|------|
 | `createEditor({parent, path, text, nonce, theme, readOnly, vim})` | Shows the file at once; resolves once its language and any Vim keybindings apply |
 | `setDocument(path, text)` | Shows another file with fresh undo history and no diagnostics |
+| `replaceText(text)` | Shows a file's new version on disk in place: only what differs changes (`text-change.ts`), so the cursor, the selection and the scroll stay, and undo takes it back |
 | `text`, `modified`, `markSaved()`, `onChange(listener)` | Read the text, whether it changed since it was set or saved, and each change |
 | `setDiagnostics(diagnostics)` | Lint markers from `cstudy`'s `diagnostic` events for this file; F8 moves to the next one |
 | `jumpTo(line, column)` | Moves the cursor there and focuses the editor |

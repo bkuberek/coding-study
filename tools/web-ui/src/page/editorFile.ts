@@ -39,6 +39,8 @@ export class EditorFile {
   #editor: Editor | null = null;
   #saver: FileSaver | null = null;
   #busy = false;
+  /** A change on disk that came while the tab was busy, to follow once it is not. */
+  #waiting: { readonly theirs: string | null } | null = null;
 
   constructor(panel: HTMLElement, document: FileDocument, files: AttemptFiles, events: EditorFileEvents) {
     this.path = document.path;
@@ -73,20 +75,50 @@ export class EditorFile {
     });
   }
 
-  async #run(step: (saver: FileSaver) => Promise<SaveOutcome>): Promise<void> {
+  /**
+   * Follows a change on disk that a notification names by the file's SHA-256 now
+   * (`FileSaver.follow`): with no unsaved edits the tab takes the new version and keeps the
+   * cursor; with some, or when the file is gone, it shows the conflict banner without taking the
+   * focus. A change that comes while a save or a reload is on its way waits for it, as it may be
+   * that save's own. A failed read says nothing: the view reads the attempt again and shows why.
+   */
+  follow(theirs: string | null): Promise<void> {
+    if (this.#busy) {
+      this.#waiting = { theirs };
+      return Promise.resolve();
+    }
+    return this.#run(
+      (saver) => saver.follow(theirs),
+      (outcome) => this.#settleNotice(outcome),
+      () => {},
+    );
+  }
+
+  async #run(
+    step: (saver: FileSaver) => Promise<SaveOutcome>,
+    settle: (outcome: SaveOutcome) => void = (outcome) => this.#settle(outcome),
+    refused: (error: unknown) => void = (error) => this.#refused(error),
+  ): Promise<void> {
     const saver = this.#saver;
     if (saver === null || this.#busy) return;
     this.#busy = true;
     this.host.parentElement?.setAttribute("aria-busy", "true");
     try {
-      this.#settle(await step(saver));
+      settle(await step(saver));
     } catch (error) {
-      this.#refused(error);
+      refused(error);
     } finally {
       this.#busy = false;
       this.host.parentElement?.removeAttribute("aria-busy");
       this.#events.modified(this.modified);
+      this.#followWaiting();
     }
+  }
+
+  #followWaiting(): void {
+    const waiting = this.#waiting;
+    this.#waiting = null;
+    if (waiting !== null) void this.follow(waiting.theirs);
   }
 
   #settle(outcome: SaveOutcome): void {
@@ -97,15 +129,29 @@ export class EditorFile {
         this.#events.announce(`saved ${this.path}`);
         return;
       case "unchanged":
+      case "reloaded":
         this.#hideBanner();
         return;
       case "conflict":
-        this.#showConflict(outcome.conflict);
+        this.#showConflict(outcome.conflict).focus();
         this.#events.announce(`not saved: ${outcome.conflict.message}`);
     }
   }
 
-  #showConflict(conflict: Conflict): void {
+  /** As `#settle`, for a change from elsewhere: it says what happened, and moves no focus. */
+  #settleNotice(outcome: SaveOutcome): void {
+    if (outcome.kind === "reloaded") {
+      this.#hideBanner();
+      this.#events.announce(`${this.path} changed on disk; the tab shows the new version`);
+    } else if (outcome.kind === "conflict") {
+      this.#showConflict(outcome.conflict);
+      this.#events.announce(`${outcome.conflict.message}; the tab keeps your changes until you choose`);
+    }
+  }
+
+  /** Shows the banner with Reload theirs and Overwrite (Close the tab and Save mine again for a
+   * file that is gone); answers Overwrite's button. */
+  #showConflict(conflict: Conflict): HTMLButtonElement {
     const gone = conflict.theirs === null;
     const reload = h("button", { type: "button" }, gone ? "Close the tab" : "Reload theirs");
     const overwrite = h("button", { type: "button", class: "button primary" }, gone ? "Save mine again" : "Overwrite");
@@ -132,7 +178,7 @@ export class EditorFile {
           : "Reload theirs drops your changes; Overwrite saves yours over the version on disk.",
       ),
     );
-    overwrite.focus();
+    return overwrite;
   }
 
   #refused(error: unknown): void {

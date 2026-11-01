@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import { ApiError, type Api } from "../src/page/api.ts";
 import { bannerText, countdown, lockMessage, mockCommand, MockWatch } from "../src/page/mock.ts";
+import type { Notice, NoticeListener } from "../src/page/notifications.ts";
 import type { MockState } from "../src/page/types.ts";
 
 const GROUP_ANAGRAMS = { attempt_id: 7, slug: "group-anagrams", title: "Group Anagrams", difficulty: "medium", kind: "function", language: "python" };
@@ -96,6 +97,64 @@ test("once the timer ends an unfinished attempt stays in progress", async () => 
   await watch.refresh();
   await watch.refresh();
   assert.deepEqual([watch.state()?.running, watch.cards().map((card) => card.status)], [false, ["in_progress"]]);
+});
+
+/** A notification stream the test drives, and an API that counts the reads of the mock. */
+function following(): { notices: { send(notice: Notice): void; subscribe(listener: NoticeListener): () => void }; reads: () => number; stop: () => void } {
+  const listeners = new Set<NoticeListener>();
+  let reads = 0;
+  const api = scripted([]);
+  const counting: Api = {
+    ...api,
+    get: async <Document>(path: string) => {
+      if (path === "/api/v1/mock") reads += 1;
+      return api.get<Document>(path);
+    },
+  };
+  const notices = {
+    send: (notice: Notice) => listeners.forEach((listener) => listener(notice)),
+    subscribe: (listener: NoticeListener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  };
+  const stop = new MockWatch(counting).watch(notices);
+  return { notices, reads: () => reads, stop };
+}
+
+async function settled(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+test("the mock's state is read when the watch starts", async () => {
+  const { reads, stop } = following();
+  await settled();
+  stop();
+  assert.equal(reads(), 1);
+});
+
+test("a progress change reads the mock's state again, as a mock is its attempts", async () => {
+  const { notices, reads, stop } = following();
+  notices.send({ type: "progress_changed" });
+  await settled();
+  stop();
+  assert.equal(reads(), 2);
+});
+
+test("a stream that opened again reads the mock's state again", async () => {
+  const { notices, reads, stop } = following();
+  notices.send({ type: "resync" });
+  await settled();
+  stop();
+  assert.equal(reads(), 2);
+});
+
+test("a file change leaves the mock's state as it was read", async () => {
+  const { notices, reads, stop } = following();
+  notices.send({ type: "file_changed", attempt_id: 7, path: "a.py", sha256: null });
+  await settled();
+  stop();
+  assert.equal(reads(), 1);
 });
 
 test("each listener hears every state", async () => {

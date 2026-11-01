@@ -23,12 +23,15 @@ export interface EditedText {
   /** Whether the text differs from the text last set or marked saved. */
   readonly modified: boolean;
   markSaved(): void;
-  setDocument(path: string, text: string): Promise<void>;
+  /** Shows `text` in its place, changing only what differs, so the cursor stays put. */
+  replaceText(text: string): void;
 }
 
 export type SaveOutcome =
   | { readonly kind: "saved"; readonly sha256: string }
   | { readonly kind: "unchanged" }
+  /** The tab took the version on disk, which changed elsewhere. */
+  | { readonly kind: "reloaded" }
   | { readonly kind: "conflict"; readonly conflict: Conflict };
 
 const NOT_FOUND = "not_found";
@@ -74,17 +77,50 @@ export class FileSaver {
 
   /** Shows their version in place of the tab's text; "gone" when no file is there any more. */
   async reloadTheirs(): Promise<"reloaded" | "gone"> {
-    let document: FileDocument;
+    const document = await this.#theirs();
+    if (document === null) return "gone";
+    this.#take(document);
+    return "reloaded";
+  }
+
+  /**
+   * Follows a change on disk that a notification names by the SHA-256 of the file now: none
+   * when the tab holds that version already, as after its own save; their version in place of
+   * the tab's text when the tab has no unsaved edits; else a conflict, which keeps the edits.
+   * A file gone from disk is always a conflict, so the tab's text stays until the user chooses.
+   */
+  async follow(theirs: string | null): Promise<SaveOutcome> {
+    if (theirs === this.#sha256) return { kind: "unchanged" };
+    if (theirs === null || this.#text.modified) return this.#conflicted(theirs);
+    const document = await this.#theirs();
+    if (document?.sha256 === this.#sha256) return { kind: "unchanged" };
+    // Text typed while the file was read stays, and the change is then a conflict.
+    if (document === null || this.#text.modified) return this.#conflicted(document?.sha256 ?? null);
+    this.#take(document);
+    return { kind: "reloaded" };
+  }
+
+  #conflicted(theirs: string | null): SaveOutcome {
+    const message = theirs === null ? `${this.#path} was deleted on disk` : `${this.#path} changed on disk`;
+    this.#conflict = { theirs, message };
+    return { kind: "conflict", conflict: this.#conflict };
+  }
+
+  /** The version on disk; null when no file is there. */
+  async #theirs(): Promise<FileDocument | null> {
     try {
-      document = await this.#files.read(this.#path);
+      return await this.#files.read(this.#path);
     } catch (error) {
-      if (error instanceof ApiError && error.code === NOT_FOUND) return "gone";
+      if (error instanceof ApiError && error.code === NOT_FOUND) return null;
       throw error;
     }
-    await this.#text.setDocument(this.#path, document.text ?? "");
+  }
+
+  #take(document: FileDocument): void {
+    this.#text.replaceText(document.text ?? "");
+    this.#text.markSaved();
     this.#sha256 = document.sha256;
     this.#conflict = null;
-    return "reloaded";
   }
 
   async #store(text: string, write: () => Promise<SavedFile>): Promise<SaveOutcome> {

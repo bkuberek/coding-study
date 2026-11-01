@@ -50,11 +50,19 @@ export const FILE_SAVED_EVENT = "cstudy:file-saved";
 
 export interface FileSaved {
   readonly attemptId: number;
-  /** The file's path in the attempt's tree. */
+  /** The file's path in the attempt's tree, as the server cleaned it. */
   readonly path: string;
+  /** Of the content saved, which the notification of the save names too. */
+  readonly sha256: string;
 }
 
-const ATTEMPT_FILE = /^\/api\/v1\/attempts\/(\d+)\/files\/(.+)$/;
+const ATTEMPT_FILE = /^\/api\/v1\/attempts\/(\d+)\/files\/.+$/;
+
+/** What a save of an attempt's file answers. */
+interface SavedDocument {
+  readonly path: string;
+  readonly sha256: string;
+}
 
 export function createApi(
   csrf: string,
@@ -65,15 +73,17 @@ export function createApi(
     const response = await fetcher(path, { ...init, credentials: "same-origin" });
     const body = await response.text();
     if (!response.ok) throw errorOf(response.status, body);
-    if (init.method === "PUT") announceSave(path);
-    return (body === "" ? null : JSON.parse(body)) as Document;
+    const document = (body === "" ? null : JSON.parse(body)) as Document;
+    if (init.method === "PUT") announceSave(path, document as Partial<SavedDocument> | null);
+    return document;
   }
-  /** Every successful PUT of an attempt's file is a save, whether it came through `put` or `send`. */
-  function announceSave(path: string): void {
+  /** Every successful PUT of an attempt's file is a save, whether it came through `put` or `send`;
+   * its answer names the file's path and SHA-256. */
+  function announceSave(path: string, saved: Partial<SavedDocument> | null): void {
     const found = ATTEMPT_FILE.exec(path);
-    if (!found || !events) return;
-    const saved: FileSaved = { attemptId: Number(found[1]), path: (found[2] ?? "").split("/").map(decodeURIComponent).join("/") };
-    events.dispatchEvent(new CustomEvent(FILE_SAVED_EVENT, { detail: saved }));
+    if (!found || !events || typeof saved?.path !== "string" || typeof saved.sha256 !== "string") return;
+    const detail: FileSaved = { attemptId: Number(found[1]), path: saved.path, sha256: saved.sha256 };
+    events.dispatchEvent(new CustomEvent(FILE_SAVED_EVENT, { detail }));
   }
   const writeHeaders = { "Content-Type": "application/json", Accept: "application/json", [CSRF_HEADER]: csrf };
   return {

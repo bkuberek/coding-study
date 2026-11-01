@@ -4,13 +4,14 @@
  * its levels and hints, and the results panel, where runs stream.
  */
 
+import { ApiError } from "../api.ts";
 import { type AttemptFlows, attemptFlows } from "../attempts.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { badge, command, h, rendered } from "../dom.ts";
 import { secondsSince, timerText } from "../format.ts";
 import { problemHash } from "../routes.ts";
 import { AttemptRuns } from "../runs.ts";
-import { loading, showFailure } from "../states.ts";
+import { loading, messageOf, showFailure } from "../states.ts";
 import { FileTreePanel } from "../fileTreePanel.ts";
 import type { AttemptStatus, Rendered, Tree } from "../types.ts";
 import { EditorTabs } from "../workbench.ts";
@@ -31,29 +32,44 @@ export function attemptView(context: PageContext, id: number): Cleanup {
     context,
     attemptId: id,
     tabs,
-    refresh: () => void load().catch((error: unknown) => showFailure(page, error)),
+    refresh: () => refresh(true),
     hasFile: (path) => shown?.files.has(path) ?? false,
   });
   const clock = h("span", { class: "timer", role: "timer", "aria-label": "Time on this attempt" });
   const statusClock = h("span", { class: "segment timer-segment" });
   let timer: number | undefined;
+  let ended = false;
   let shown: {
     readonly head: HTMLElement;
     readonly brief: HTMLElement;
     readonly flows: AttemptFlows;
     readonly files: FileTreePanel;
+    readonly status: AttemptStatus;
+    readonly statement: Rendered;
   } | null = null;
 
-  /** Draws the attempt; once drawn, a second call, after a run opened a level, redraws the header, tree and statement. */
-  const load = async () => {
+  /**
+   * Draws the attempt. Once drawn, a later call, after a level opened or a change from elsewhere,
+   * draws again only what changed: the header, the statement (read again with `statement`, or
+   * when the level changed), and the tree, so the focus and the statement's scroll stay put.
+   */
+  const load = async (statement: boolean) => {
     const [status, tree] = await Promise.all([api.get<AttemptStatus>(`/api/v1/attempts/${id}`), api.get<Tree>(`/api/v1/attempts/${id}/files`)]);
-    const statement = await api.get<Rendered>(`/api/v1/problems/${encodeURIComponent(status.slug)}/statement`);
+    const reread = shown === null || statement || headKey(status) !== headKey(shown.status);
+    const text = reread ? await api.get<Rendered>(`/api/v1/problems/${encodeURIComponent(status.slug)}/statement`) : shown!.statement;
+    if (ended) return;
     if (shown) {
-      // The hints this tab revealed and the controls live on; only what the new level changes is drawn again.
+      // The hints this tab revealed and the controls live on.
       shown.flows.update(status);
-      const next = { ...shown, head: head(status, clock, shown.flows, runs.toolbar), brief: brief(status, statement, shown.flows.hints) };
-      shown.head.replaceWith(next.head);
-      shown.brief.replaceWith(next.brief);
+      const next = { ...shown, status, statement: text };
+      if (headKey(status) !== headKey(shown.status)) {
+        next.head = head(status, clock, shown.flows, runs.toolbar);
+        shown.head.replaceWith(next.head);
+      }
+      if (text.html !== shown.statement.html || briefKey(status) !== briefKey(shown.status)) {
+        next.brief = brief(status, text, shown.flows.hints);
+        shown.brief.replaceWith(next.brief);
+      }
       shown.files.show(tree);
       shown = next;
     } else {
@@ -70,7 +86,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
       const flows = attemptFlows(context, status);
       const files = new FileTreePanel({ attempt: status, tree, tabs, announce: (message) => shell.announce(message) });
       tabs.onSaved(() => void files.refresh().catch(() => {}));
-      shown = { head: head(status, clock, flows, runs.toolbar), brief: brief(status, statement, flows.hints), flows, files };
+      shown = { head: head(status, clock, flows, runs.toolbar), brief: brief(status, text, flows.hints), flows, files, status, statement: text };
       page.removeAttribute("aria-busy");
       page.replaceChildren(shown.head, files.element, tabs.element, shown.brief, runs.panel);
       shell.setCommand(`cstudy status ${status.slug}`);
@@ -85,15 +101,105 @@ export function attemptView(context: PageContext, id: number): Cleanup {
     });
     await runs.setAttempt(status, tree.root);
   };
-  void load().catch((error: unknown) => showFailure(page, error));
+
+  /** Reads the attempt again; once it is no longer in progress, the view says so and stays
+   * read-only. Another failure keeps what shows and is announced, unless nothing shows yet. */
+  const refresh = (statement: boolean) => {
+    if (ended) return;
+    load(statement).catch((error: unknown) => {
+      if (error instanceof ApiError && error.code === ATTEMPT_ENDED) endedElsewhere();
+      else if (shown === null) showFailure(page, error);
+      else shell.announce(`could not read the attempt again: ${messageOf(error)}`);
+    });
+  };
+
+  const endedElsewhere = () => {
+    ended = true;
+    tabs.freeze();
+    runs.freeze();
+    const slug = shown?.status.slug;
+    shown?.head.append(
+      h(
+        "p",
+        { class: "attempt-ended", role: "alert" },
+        "This attempt is no longer in progress: ",
+        command("cstudy done"),
+        " finished it, or a fresh start replaced it. Its files stay read-only here. ",
+        slug ? h("a", { href: problemHash(slug) }, `Open ${slug}`) : null,
+      ),
+    );
+  };
+
+  const treeSoon = settle(() => void shown?.files.refresh().catch(() => {}));
+  const statusSoon = settle(() => refresh(false));
+  const unfollow = context.notifications.subscribe((notice) => {
+    if (ended || shown === null) return;
+    switch (notice.type) {
+      case "file_changed":
+        if (notice.attempt_id !== id) return;
+        void tabs.follow(notice.path, notice.sha256);
+        runs.fileChanged(notice.path, notice.sha256);
+        treeSoon();
+        return;
+      case "attempt_changed":
+        if (notice.attempt_id === id) refresh(true);
+        return;
+      case "progress_changed":
+        statusSoon();
+        return;
+      case "run_started":
+        if (notice.attempt_id === id) runs.attach(notice.run_id);
+        return;
+      case "resync":
+        refresh(true);
+        void tabs.recheck();
+        void runs.catchUp();
+        return;
+      default:
+    }
+  });
+  refresh(true);
 
   return () => {
     window.clearInterval(timer);
     unsubscribe();
+    unfollow();
+    treeSoon.cancel();
+    statusSoon.cancel();
     runs.destroy();
     tabs.destroy();
     shown?.files.destroy();
   };
+}
+
+const ATTEMPT_ENDED = "attempt_ended";
+/** How long the view waits after a change from elsewhere, so a burst of them reads once. */
+const SETTLE_MS = 100;
+
+interface Settled {
+  (): void;
+  cancel(): void;
+}
+
+/** `action` once no call came for a moment. */
+function settle(action: () => void): Settled {
+  let due: number | undefined;
+  const trigger = (() => {
+    window.clearTimeout(due);
+    due = window.setTimeout(action, SETTLE_MS);
+  }) as Settled;
+  trigger.cancel = () => window.clearTimeout(due);
+  return trigger;
+}
+
+/** What the header shows of the attempt. */
+function headKey(status: AttemptStatus): string {
+  return JSON.stringify([status.mode, status.language, status.kind, status.levels?.unlocked, status.levels?.last, status.next]);
+}
+
+/** What the statement pane shows of the attempt besides the statement. */
+function briefKey(status: AttemptStatus): string {
+  return JSON.stringify([status.levels, status.solution_revealed]);
 }
 
 function head(status: AttemptStatus, clock: HTMLElement, flows: AttemptFlows, toolbar: HTMLElement): HTMLElement {

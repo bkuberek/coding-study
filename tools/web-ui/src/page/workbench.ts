@@ -6,6 +6,7 @@
  */
 
 import type { Editor } from "../editor.ts";
+import { ApiError } from "./api.ts";
 import type { PageContext } from "./context.ts";
 import { h } from "./dom.ts";
 import { EditorFile, markTab } from "./editorFile.ts";
@@ -14,6 +15,8 @@ import { confirmLazily } from "./lazy.ts";
 import { isSaveShortcut, saveShortcutLabel, trackUnsaved } from "./save.ts";
 import { failure, loading } from "./states.ts";
 import type { FileDocument, Preferences } from "./types.ts";
+
+const NOT_FOUND = "not_found";
 
 let editorModule: Promise<typeof import("../editor.ts")> | null = null;
 
@@ -46,6 +49,8 @@ export class EditorTabs {
   readonly #untrack: () => void;
   #active: string | null = null;
   #destroyed = false;
+  /** Whether the attempt ended elsewhere, so every editor, also one opened later, is read-only. */
+  #frozen = false;
 
   constructor(context: PageContext, attemptId: number) {
     this.#context = context;
@@ -116,6 +121,33 @@ export class EditorTabs {
     this.#remove(path);
   }
 
+  /** Follows a change on disk of a file a tab shows, which a notification names by the file's
+   * SHA-256 now (`EditorFile.follow`); a file no tab shows needs nothing. */
+  async follow(path: string, sha256: string | null): Promise<void> {
+    await this.#open.get(path)?.view?.follow(sha256);
+  }
+
+  /** Follows whatever changed on disk while the tab could not hear it, as while it was hidden:
+   * each open file is read again and followed; one that fails to read for another reason than
+   * being gone stays as it is, as the view shows why. */
+  async recheck(): Promise<void> {
+    await Promise.all(
+      [...this.#open].map(async ([path, file]) => {
+        const theirs = await this.files.read(path).then(
+          (document) => document.sha256,
+          (error: unknown) => (error instanceof ApiError && error.code === NOT_FOUND ? null : undefined),
+        );
+        if (theirs !== undefined) await file.view?.follow(theirs);
+      }),
+    );
+  }
+
+  /** Makes every editor read-only, as once the attempt ended elsewhere. */
+  freeze(): void {
+    for (const { editor } of this.#open.values()) editor?.setReadOnly(true);
+    this.#frozen = true;
+  }
+
   /** Calls the listener with the path of every file a tab saves. */
   onSaved(listener: SavedListener): () => void {
     this.#savedListeners.add(listener);
@@ -174,7 +206,7 @@ export class EditorTabs {
       text: document.text,
       nonce: this.#context.nonce,
       theme: preferences.theme,
-      readOnly: false,
+      readOnly: this.#frozen,
       vim: preferences.vim,
     });
     if (this.#destroyed || !this.#open.has(path)) {

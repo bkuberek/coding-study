@@ -6,7 +6,14 @@
 
 import { attemptHash } from "./routes.ts";
 import { h } from "./dom.ts";
+import type { StreamState } from "./notifications.ts";
 import type { ListEntry, Preferences, Theme } from "./types.ts";
+
+/** What the top bar says of a notification stream that is down; nothing while it is up. */
+const CONNECTION_TEXTS: Readonly<Partial<Record<StreamState, readonly [string, string]>>> = {
+  reconnecting: ["reconnecting…", "The page lost its connection to cstudy serve and tries again; changes made elsewhere show once it is back"],
+  lost: ["disconnected", "cstudy serve refused the page's notifications, as after a restart: open the URL it printed again"],
+};
 
 export type ViewName = "problems" | "mock" | "progress" | "health" | "settings" | null;
 
@@ -25,6 +32,8 @@ export interface Shell {
   setAttempts(entries: readonly ListEntry[]): void;
   /** Puts the mock interview's banner in the top bar. */
   setBanner(banner: HTMLElement): void;
+  /** Names the notification stream's state in the top bar while it is down. */
+  setConnection(state: StreamState): void;
   showPreferences(preferences: Preferences): void;
   /** Read by screen readers without moving the focus. */
   announce(message: string): void;
@@ -71,6 +80,7 @@ export function mountShell(root: HTMLElement, version: string, actions: ShellAct
   const announcer = h("div", { class: "sr-only", "aria-live": "polite", role: "status" });
   const main = h("main", { id: "main", tabindex: "-1" });
   const bannerSlot = h("span", { class: "banner-slot" });
+  const connection = h("span", { class: "connection", role: "status", hidden: true });
 
   copy.addEventListener("click", () => {
     void navigator.clipboard?.writeText(commandText.textContent ?? "").then(() => shell.announce("command copied"));
@@ -89,6 +99,7 @@ export function mountShell(root: HTMLElement, version: string, actions: ShellAct
       h("a", { class: "brand", href: "#/" }, h("span", { class: "brand-mark", "aria-hidden": "true" }, "❯"), "cstudy"),
       h("nav", { "aria-label": "Views" }, ...links),
       bannerSlot,
+      connection,
       attemptsMenu,
     ),
     h(
@@ -150,6 +161,13 @@ export function mountShell(root: HTMLElement, version: string, actions: ShellAct
     },
     setBanner(banner) {
       bannerSlot.replaceChildren(banner);
+    },
+    setConnection(state) {
+      const [text, title] = CONNECTION_TEXTS[state] ?? ["", ""];
+      connection.hidden = text === "";
+      connection.textContent = text;
+      connection.title = title;
+      connection.dataset["state"] = state;
     },
     showPreferences(preferences) {
       vim.textContent = preferences.vim ? "vim on" : "vim off";

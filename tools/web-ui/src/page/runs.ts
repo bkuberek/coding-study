@@ -24,6 +24,11 @@ import type { AttemptStatus, ProblemDocument } from "./types.ts";
 import type { EditorTabs } from "./workbench.ts";
 
 const RUN_ON_SAVE_DEBOUNCE_MS = 150;
+
+/** A save, as its notice names it. */
+function savedKey(path: string, sha256: string | null): string {
+  return `${path}\n${sha256 ?? ""}`;
+}
 const MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
 const RUN_KEY = MAC ? "⌘↵" : "Ctrl-Enter";
 const SUBMIT_KEY = MAC ? "⌘⇧↵" : "Ctrl-Shift-Enter";
@@ -80,6 +85,11 @@ export class AttemptRuns implements RunShell {
   #session: Promise<RunSession | null> | null = null;
   #saveTimer: number | undefined;
   #destroyed = false;
+  #frozen = false;
+  /** Whether the panel shows the run `cstudy test` last recorded, which a refresh redraws. */
+  #showsRecorded = false;
+  /** The saves this page made and has not heard back as notices yet, by `savedKey`. */
+  readonly #ownSaves = new Set<string>();
 
   constructor(host: RunsHost) {
     this.host = host;
@@ -108,7 +118,8 @@ export class AttemptRuns implements RunShell {
     return this.#root;
   }
 
-  /** Takes the attempt as the view loaded it, or as it is after a level opened. */
+  /** Takes the attempt as the view loaded it, or as it is after a level opened or a change from
+   * elsewhere; a panel that shows the run `cstudy test` last recorded shows the newest one. */
   async setAttempt(status: AttemptStatus, root: string): Promise<void> {
     const first = this.#status === null;
     this.#status = status;
@@ -123,7 +134,35 @@ export class AttemptRuns implements RunShell {
     this.buttons.bench.hidden = !(this.#problem?.bench && status.language);
     this.showCommands();
     if (first) await this.#showLatestRun(status);
+    else if (this.#showsRecorded) this.#showRecorded(status);
     else void this.#session?.then((session) => session?.configure());
+  }
+
+  /** Follows a run another tab started (`run_started`), unless this tab shows one already. */
+  attach(runId: string): void {
+    void this.#use((session) => session.showLatest(runId, true));
+  }
+
+  /** Shows the attempt's newest run the server keeps, live or replayed, unless this tab shows a
+   * run already: one that started while the tab could not hear, as while it was hidden. */
+  async catchUp(): Promise<void> {
+    const runs = await this.host.context.api.get<RunDocument[]>(`/api/v1/runs?attempt_id=${this.host.attemptId}`).catch(() => []);
+    const latest = runs[0];
+    if (latest?.state === "running") this.attach(latest.id);
+  }
+
+  /** Run on save, for a file of the attempt that changed on disk (`file_changed`); the page's
+   * own saves are heard as they are made, so their notices start nothing more. */
+  fileChanged(path: string, sha256: string | null): void {
+    if (this.#ownSaves.delete(savedKey(path, sha256))) return;
+    this.#runOnSave();
+  }
+
+  /** Stops following the attempt's runs, as once it ended elsewhere. */
+  freeze(): void {
+    for (const button of [this.buttons.run, this.buttons.submit, this.buttons.options, this.buttons.bench]) button.disabled = true;
+    window.clearTimeout(this.#saveTimer);
+    this.#frozen = true;
   }
 
   destroy(): void {
@@ -160,14 +199,22 @@ export class AttemptRuns implements RunShell {
     const runs = await this.host.context.api.get<RunDocument[]>(`/api/v1/runs?attempt_id=${this.host.attemptId}`).catch(() => []);
     const latest = runs[0];
     if (latest && (await this.#use((session) => session.showLatest(latest.id, latest.state === "running")))) return;
+    this.#showRecorded(status);
+  }
+
+  /** The run `cstudy test` last recorded, until the run session shows a run. */
+  #showRecorded(status: AttemptStatus): void {
     this.results.show(null, noRunYet(runCommand("test", this.options, this.runContext()), status.last_test_run));
+    this.#showsRecorded = true;
   }
 
   /** Does `act` with the run session, which is fetched the first time; false when it could not be. */
   async #use(act: (session: RunSession) => unknown): Promise<boolean> {
+    if (this.#frozen) return false;
     this.#session ??= this.#openSession();
     const session = await this.#session;
     if (session === null || this.#destroyed) return false;
+    this.#showsRecorded = false;
     await act(session);
     return true;
   }
@@ -183,7 +230,13 @@ export class AttemptRuns implements RunShell {
 
   /** Run on save: a test run 150 ms after a save of the attempt's files. */
   #onSaved(saved: FileSaved): void {
-    if (saved.attemptId !== this.host.attemptId || !this.host.context.preferences().run_on_save) return;
+    if (saved.attemptId !== this.host.attemptId) return;
+    this.#ownSaves.add(savedKey(saved.path, saved.sha256));
+    this.#runOnSave();
+  }
+
+  #runOnSave(): void {
+    if (!this.host.context.preferences().run_on_save) return;
     window.clearTimeout(this.#saveTimer);
     this.#saveTimer = window.setTimeout(() => void this.#use((session) => session.runOnSave()), RUN_ON_SAVE_DEBOUNCE_MS);
   }

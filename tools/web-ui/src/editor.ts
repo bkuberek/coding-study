@@ -9,7 +9,7 @@
  * in which Tab always moves focus. With Vim keybindings on, Vim takes Escape in insert mode, and the
  * toggle stays bound above Vim's keys.
  */
-import { indentWithTab, toggleTabFocusMode } from "@codemirror/commands";
+import { indentWithTab, isolateHistory, toggleTabFocusMode } from "@codemirror/commands";
 import { lintGutter, setDiagnostics } from "@codemirror/lint";
 import { Compartment, EditorSelection, EditorState, type Extension, Prec, type Text } from "@codemirror/state";
 import { EditorView, keymap, runScopeHandlers } from "@codemirror/view";
@@ -19,6 +19,7 @@ import { type FileDiagnostic, lintDiagnostics } from "./diagnostics.ts";
 import { loadLanguage } from "./language-loaders.ts";
 import { languageForPath } from "./languages.ts";
 import { cursorPosition } from "./positions.ts";
+import { textChange } from "./text-change.ts";
 import { type ThemeName, themeExtension } from "./themes.ts";
 
 export type { FileDiagnostic } from "./diagnostics.ts";
@@ -138,6 +139,17 @@ export class Editor {
     this.view.setState(state);
     if (!sameLanguage) this.#languageLoad = this.#loadLanguage(path);
     await this.#languageLoad;
+  }
+
+  /**
+   * Shows `text` in place of the editor's, as a file's new version on disk: only what differs
+   * changes, so the cursor, the selection and the scroll position stay where the text around them
+   * did, and the change is one step that undo takes back. Diagnostics stay; the text is not marked
+   * saved.
+   */
+  replaceText(text: string): void {
+    const change = textChange(this.text, text);
+    if (change !== null) this.view.dispatch({ changes: change, annotations: isolateHistory.of("full") });
   }
 
   /** Records the current text as saved, so `modified` turns false until the next change. */

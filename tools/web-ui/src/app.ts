@@ -10,18 +10,23 @@ import "./page/runs.css";
 import "./page/files.css";
 
 import { createApi } from "./page/api.ts";
+import { refreshAttemptsMenu } from "./page/attempts.ts";
 import type { Cleanup, PageContext, PreferencesListener } from "./page/context.ts";
 import { h } from "./page/dom.ts";
 import { mockBanner, MockWatch } from "./page/mock.ts";
+import { NotificationStream } from "./page/notifications.ts";
 import { parseRoute, type Route } from "./page/routes.ts";
 import { leaveWarning, unsavedPaths } from "./page/save.ts";
 import { mountShell, nextTheme, VIEWS } from "./page/shell.ts";
 import { failure, loading } from "./page/states.ts";
-import type { Preferences, ProblemList, Session } from "./page/types.ts";
+import type { Preferences, Session } from "./page/types.ts";
 import { attemptView } from "./page/views/attempt.ts";
 import { missingView } from "./page/views/elsewhere.ts";
 import { problemView } from "./page/views/problem.ts";
 import { problemsView } from "./page/views/problems.ts";
+
+/** How long the attempts menu waits after a change, so a burst of them reads it once. */
+const MENU_SETTLE_MS = 250;
 
 /** Alt and a view's number opens the view, as the top bar's tabs show. */
 const VIEW_KEYS: Readonly<Record<string, string>> = Object.fromEntries(VIEWS.map(({ key, hash }) => [`Digit${key}`, hash]));
@@ -97,15 +102,17 @@ async function start(root: HTMLElement): Promise<void> {
   });
   applyTheme(preferences);
   shell.showPreferences(preferences);
+  const notifications = new NotificationStream((url) => new EventSource(url), document, (state) => shell.setConnection(state));
   const mock = new MockWatch(api);
   shell.setBanner(mockBanner(mock));
-  mock.watch();
+  mock.watch(notifications);
   const context: PageContext = {
     api,
     session,
     nonce: meta("cstudy-csp-nonce"),
     shell,
     mock,
+    notifications,
     preferences: () => preferences,
     savePreferences,
     onPreferences(listener) {
@@ -140,11 +147,21 @@ async function start(root: HTMLElement): Promise<void> {
     event.preventDefault();
     location.hash = hash;
   });
-  void api
-    .get<ProblemList>("/api/v1/problems")
-    .then((list) => shell.setAttempts(list.entries))
-    .catch(() => {});
+  followAttemptsMenu(context);
   render();
+}
+
+/** The top bar's menu of attempts in progress, read now, and again once progress.db changed
+ * (an attempt started or ended, here or in the terminal) or the stream opened again. */
+function followAttemptsMenu(context: PageContext): void {
+  let due: number | undefined;
+  const read = () => refreshAttemptsMenu(context);
+  read();
+  context.notifications.subscribe((notice) => {
+    if (notice.type !== "progress_changed" && notice.type !== "resync") return;
+    window.clearTimeout(due);
+    due = window.setTimeout(read, MENU_SETTLE_MS);
+  });
 }
 
 const root = document.getElementById("app");
