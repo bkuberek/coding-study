@@ -1,3 +1,5 @@
+![cstudy: practise coding interviews in your own editor](docs/images/readme-header.png)
+
 # coding-study
 
 coding-study is a local, IDE-first practice system for senior and staff software engineering interviews. You solve original problems in your own editor in Python, TypeScript, Java, Kotlin, Go, or Rust, and the `cstudy` command line tests your code, checks whether it is optimal, shows reference solutions, and schedules reviews with spaced repetition. Everything runs on your machine; there is no account and no service.
