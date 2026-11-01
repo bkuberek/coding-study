@@ -109,10 +109,27 @@ def test_the_login_checks_the_host_too(app):
 # Token and cookie
 
 
-def test_the_token_gets_a_303_to_the_page(app):
+def test_the_token_gets_an_html_page(app):
     with anonymous_client(app) as client:
         response = client.get(f"/?token={SECRETS.token}")
-    assert (response.status_code, response.headers["location"]) == (303, "/")
+    assert (response.status_code, response.headers["content-type"]) == (
+        200,
+        "text/html; charset=utf-8",
+    )
+
+
+def test_the_token_page_sends_the_browser_on_to_the_page_without_the_token(app):
+    """Not a redirect: a browser withholds a SameSite=Strict cookie set by a redirect that a
+    navigation from another site, such as the `--open` file, followed."""
+    with anonymous_client(app) as client:
+        page = client.get(f"/?token={SECRETS.token}").text
+    assert '<meta http-equiv="refresh" content="0; url=/">' in page
+
+
+def test_the_token_page_is_never_stored(app):
+    with anonymous_client(app) as client:
+        response = client.get(f"/?token={SECRETS.token}")
+    assert response.headers["cache-control"] == "no-store"
 
 
 def test_the_token_gets_the_session_cookie(app):
@@ -141,7 +158,7 @@ def test_the_token_keeps_working(app):
     with anonymous_client(app) as client:
         client.get(f"/?token={SECRETS.token}")
         response = client.get(f"/?token={SECRETS.token}")
-    assert response.status_code == 303
+    assert session_cookie(response)[cookie_name(PORT)].value == SECRETS.cookie
 
 
 def test_a_wrong_token_gets_401(app):

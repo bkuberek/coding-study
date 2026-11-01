@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, RedirectResponse, Response
+from starlette.responses import HTMLResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from coding_study.entrypoints.web.errors import ErrorCode, error_response
@@ -54,6 +54,14 @@ UNAUTHORIZED_PAGE = f"""<!doctype html>
 <meta charset="utf-8">
 <title>cstudy</title>
 <p>This browser has no session with this server: {OPEN_THE_URL} in your terminal.</p>
+</html>
+"""
+LOGIN_PAGE = f"""<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="0; url={PAGE_PATH}">
+<title>cstudy</title>
+<p><a href="{PAGE_PATH}">Open cstudy</a></p>
 </html>
 """
 
@@ -136,10 +144,13 @@ class SecurityMiddleware:
         return None
 
     def _login(self, token: str) -> Response:
-        """The token buys the cookie, then a redirect takes it out of the address bar."""
+        """The token buys the cookie, then a page that sends the browser on to the page takes it
+        out of the address bar. Not a redirect: after a navigation another site started, as the
+        `--open` file does, a browser withholds a SameSite=Strict cookie from the redirect it
+        follows, and sends it on a navigation this server's own page starts."""
         if not _matches(token, self._session.token):
             return HTMLResponse(UNAUTHORIZED_PAGE, status_code=401)
-        response = RedirectResponse(PAGE_PATH, status_code=303)
+        response = HTMLResponse(LOGIN_PAGE, headers={"cache-control": NO_STORE})
         response.set_cookie(
             self._cookie, self._session.cookie, path=PAGE_PATH, httponly=True, samesite="strict"
         )

@@ -48,11 +48,7 @@ def write_headers(server: RunningServer, browser: httpx2.Client) -> dict[str, st
 
 def test_the_printed_url_buys_the_session_cookie(server, anonymous):
     response = anonymous.get(server.login_url)
-    assert (response.status_code, response.headers["location"], len(anonymous.cookies)) == (
-        303,
-        "/",
-        1,
-    )
+    assert (response.status_code, len(anonymous.cookies)) == (200, 1)
 
 
 def test_the_session_opens_the_api(browser):

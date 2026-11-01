@@ -7,7 +7,7 @@ import signal
 import subprocess
 import sys
 import threading
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from functools import partial
@@ -54,11 +54,14 @@ def served_environment(workspace: Path) -> dict[str, str]:
 
 @contextmanager
 def running_server(
-    workspace: Path, *arguments: str, ignore_interrupts: bool = False
+    workspace: Path,
+    *arguments: str,
+    ignore_interrupts: bool = False,
+    variables: Mapping[str, str] | None = None,
 ) -> Iterator[RunningServer]:
     """`python -m coding_study serve`; with `ignore_interrupts`, started as a shell starts a
-    background job, with SIGINT ignored."""
-    environment = served_environment(workspace)
+    background job, with SIGINT ignored; `variables` are added to its environment."""
+    environment = {**served_environment(workspace), **(variables or {})}
     process = subprocess.Popen(
         [sys.executable, "-m", "coding_study", "serve", *arguments],
         stdin=subprocess.DEVNULL,

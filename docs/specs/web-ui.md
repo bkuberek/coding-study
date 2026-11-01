@@ -89,7 +89,7 @@ The file API and the run API together execute code: whoever can save a file and 
 | Threat | Control |
 |--------|---------|
 | Another machine on the network | The server binds `127.0.0.1` only; no option binds another address |
-| Another program on this machine | A 256-bit session token, new on every start, required before anything but the login redirect is served |
+| Another program on this machine | A 256-bit session token, new on every start, required before anything but the login page is served |
 | A web page in your browser sending requests | The session cookie is `SameSite=Strict`; every `POST`, `PUT` and `DELETE` also needs the CSRF token in an `X-Cstudy-CSRF` header and an `Origin` equal to `http://127.0.0.1:<port>` or `http://localhost:<port>`. No response carries CORS headers, so a cross-origin request with that header fails its preflight |
 | DNS rebinding | A request whose `Host` is not `127.0.0.1:<port>` or `localhost:<port>` gets 403 `forbidden` |
 | Reading responses, framing the page | No CORS headers; `Cross-Origin-Resource-Policy: same-origin`; `frame-ancestors 'none'` |
@@ -99,7 +99,7 @@ The file API and the run API together execute code: whoever can save a file and 
 
 | Session rule | Detail |
 |--------------|--------|
-| Token | `secrets.token_urlsafe(32)`, printed in the URL `http://127.0.0.1:<port>/?token=<token>`. A request to `/` with the right token gets the cookie and a 303 redirect to `/`, which removes the token from the address bar. A wrong token gets 401. The URL keeps working until the server stops |
+| Token | `secrets.token_urlsafe(32)`, printed in the URL `http://127.0.0.1:<port>/?token=<token>`. A request to `/` with the right token gets the cookie and a 200 page, never stored (`Cache-Control: no-store`), that sends the browser on to `/` at once (`<meta http-equiv="refresh" content="0; url=/">`, with a link for a browser that ignores it), which removes the token from the address bar. Not a 303: after a navigation that another site started, such as the `--open` file, browsers withhold a `SameSite=Strict` cookie from the redirect they follow, so the page would answer 401; the page's own navigation to `/` sends it, in every engine the [browser tests](#browser-support) cover. A wrong token gets 401. The URL keeps working until the server stops |
 | Cookie | Named `cstudy-<port>` (cookies ignore ports, so two servers keep their own), a second random value of 256 bits, `HttpOnly`, `SameSite=Strict`, `Path=/`, no expiry |
 | Without the cookie | `/` answers 401 with a short HTML page saying to open the URL `cstudy serve` printed; the API answers 401 `unauthorized` |
 | CSRF token | A third random value, embedded in the page as `<meta name="cstudy-csrf">`, compared in constant time |
