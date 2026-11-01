@@ -81,7 +81,7 @@ jobs:
   jvm:
     name: JVM tests (JDK ${{ matrix.jdk }}, Linux)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
     strategy:
       # A failure on one end of the range says nothing about the other: let both finish.
       fail-fast: false
@@ -128,7 +128,7 @@ jobs:
         run: java -version
 
       - name: JVM tests
-        run: uv run pytest -q -m jvm
+        run: uv run pytest -q -rs -m jvm
 
       - name: Conformance
         env:
