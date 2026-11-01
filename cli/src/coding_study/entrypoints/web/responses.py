@@ -10,6 +10,9 @@ from starlette.responses import JSONResponse, StreamingResponse
 from coding_study.domain.errors import UsageError
 
 EVENT_STREAM = "text/event-stream"
+OPENING = ": open\n\n"
+"""The first thing a stream sends: Firefox fires `open` on an `EventSource` when the first bytes
+arrive, which would be the first notice or the keep-alive otherwise."""
 LAST_EVENT_ID = "last-event-id"
 
 
@@ -32,4 +35,10 @@ def event_stream(
     a stream that comes back sends; None for a new stream."""
     value = request.headers.get(LAST_EVENT_ID, "")
     after = int(value) if value.isdecimal() else None
-    return StreamingResponse(frames(after), media_type=EVENT_STREAM)
+    return StreamingResponse(_opened(frames(after)), media_type=EVENT_STREAM)
+
+
+async def _opened(frames: AsyncIterator[str]) -> AsyncIterator[str]:
+    yield OPENING
+    async for frame in frames:
+        yield frame
