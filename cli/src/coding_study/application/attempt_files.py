@@ -237,6 +237,8 @@ class AttemptFileChanges:
             except FileExistsError:
                 message = f"cannot move {cleaned} to {destination}: it exists"
                 raise PathTakenError(message) from None
+            except FileNotFoundError:
+                raise _deleted_since_read(cleaned) from None
             except ValueError as error:
                 raise UsageError(f"cannot move {cleaned}: {error}") from None
         return SavedFile(destination, _sha256(current))
@@ -253,6 +255,8 @@ class AttemptFileChanges:
             self._unchanged(_Verb.DELETE, cleaned, expected_sha256)
             try:
                 self._environment.workspace.delete_within(self._scope.root, cleaned)
+            except FileNotFoundError:
+                raise _deleted_since_read(cleaned) from None
             except ValueError as error:
                 raise UsageError(f"cannot delete {cleaned}: {error}") from None
 
@@ -268,7 +272,7 @@ class AttemptFileChanges:
         once it is another or the file is gone."""
         current = self._current(verb, cleaned)
         if current is None:
-            raise FileChangedError(f"{cleaned} was deleted since the page read it", None)
+            raise _deleted_since_read(cleaned)
         if _sha256(current) != expected_sha256:
             raise FileChangedError(f"{cleaned} changed since the page read it", _sha256(current))
         return current
@@ -317,6 +321,12 @@ def _scoped_path(scope: _Scope, verb: _Verb, path: str) -> str:
     if not scope.holds(cleaned):
         raise UsageError(f"cannot {verb} {path}: {scope.outside}")
     return cleaned
+
+
+def _deleted_since_read(cleaned: str) -> FileChangedError:
+    """The file went since the page read it: before the change checked it, or after, when another
+    program deleted it before the change could move or delete it, since no lock keeps them out."""
+    return FileChangedError(f"{cleaned} was deleted since the page read it", None)
 
 
 def _require_editable_size(verb: _Verb, cleaned: str, text: str) -> None:

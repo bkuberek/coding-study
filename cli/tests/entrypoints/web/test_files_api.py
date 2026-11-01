@@ -23,6 +23,7 @@ from coding_study.entrypoints.web.context import ServerSettings
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
 from tests.helpers import FIXTURE_TRACKS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
+from tests.racing_workspace import OutsideDeletion
 from tests.web_server import (
     PORT,
     SECRETS,
@@ -373,6 +374,26 @@ def test_a_move_with_a_stale_if_match_gets_412(client, project, project_attempt)
     assert error(response) == (412, "precondition_failed")
 
 
+@pytest.fixture
+def racing_client(tmp_path, project) -> Iterator[TestClient]:
+    """A server whose moves and deletes find their file deleted by another program."""
+    racing = replace(project, workspace=OutsideDeletion(project.root))
+    with session_client(web_app(tmp_path, racing)) as session:
+        yield session
+
+
+def test_a_move_of_a_file_deleted_on_the_way_gets_412_without_a_sha256(
+    racing_client, project, project_attempt
+):
+    expected = etag(project, f"{PROJECT}/README.md")
+    response = move(racing_client, project_attempt, "README.md", "NOTES.md", expected)
+    assert (*error(response), response.json()["error"]["sha256"]) == (
+        412,
+        "precondition_failed",
+        None,
+    )
+
+
 def test_a_move_without_if_match_gets_428(client, project_attempt):
     response = client.post(
         f"{file_url(project_attempt, 'README.md')}/move",
@@ -431,6 +452,18 @@ def test_a_delete_with_a_stale_if_match_gets_412(client, project, project_attemp
     project.workspace.write_text(f"{PROJECT}/README.md", "# Theirs\n")
     response = delete(client, project_attempt, "README.md", stale)
     assert error(response) == (412, "precondition_failed")
+
+
+def test_a_delete_of_a_file_deleted_on_the_way_gets_412_without_a_sha256(
+    racing_client, project, project_attempt
+):
+    expected = etag(project, f"{PROJECT}/README.md")
+    response = delete(racing_client, project_attempt, "README.md", expected)
+    assert (*error(response), response.json()["error"]["sha256"]) == (
+        412,
+        "precondition_failed",
+        None,
+    )
 
 
 def test_a_delete_through_a_link_gets_422(client, project, project_attempt):

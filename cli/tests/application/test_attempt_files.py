@@ -37,6 +37,7 @@ from coding_study.domain.project_manifest import FileOrigin, project_lock
 from tests.fakes import FakeStubGenerator, FakeToolchains, make_environment, repository_root
 from tests.helpers import FIXTURE_TRACKS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
+from tests.racing_workspace import OutsideDeletion
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 STUBS: dict[Language, StubGenerator] = {language: FakeStubGenerator() for language in Language}
@@ -587,6 +588,20 @@ def test_moving_a_single_file_attempts_file_is_refused(python):
         changes(python).move("two_sum.py", "solution.py", sha(STUB_TEXT))
 
 
+def losing_a_race(started_attempt: tuple[Environment, Attempt]) -> AttemptFileChanges:
+    """Changes whose file another program deletes once they checked its content."""
+    environment, attempt = started_attempt
+    racing = replace(environment, workspace=OutsideDeletion(environment.root))
+    return AttemptFileChanges(racing, attempt, DEADLINE_S)
+
+
+def test_moving_a_file_deleted_on_the_way_is_refused_without_a_sha256(project):
+    expected = current_sha(project, "README.md")
+    with pytest.raises(FileChangedError) as refused:
+        losing_a_race(project).move("README.md", "NOTES.md", expected)
+    assert refused.value.sha256 is None
+
+
 def test_moving_waits_at_most_the_deadline_for_the_projects_lock(project, held_lock):
     with pytest.raises(LockBusyError):
         changes(project).move("README.md", "NOTES.md", current_sha(project, "README.md"))
@@ -620,6 +635,13 @@ def test_deleting_a_file_already_gone_is_refused_without_a_sha256(project):
     environment.workspace.absolute(f"{PROJECT}/README.md").unlink()
     with pytest.raises(FileChangedError) as refused:
         changes(project).delete("README.md", stale)
+    assert refused.value.sha256 is None
+
+
+def test_deleting_a_file_deleted_on_the_way_is_refused_without_a_sha256(project):
+    expected = current_sha(project, "README.md")
+    with pytest.raises(FileChangedError) as refused:
+        losing_a_race(project).delete("README.md", expected)
     assert refused.value.sha256 is None
 
 
