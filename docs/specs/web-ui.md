@@ -461,9 +461,10 @@ The [preferences](#preferences), each applied at once and stored, and the paths 
 | Tab | Tab indents. Escape then Tab leaves the editor, and Ctrl-M (Alt-Shift-M on macOS) toggles tab focus mode; with Vim on, only the toggle applies |
 | Shortcuts | Cmd or Ctrl-S saves, Cmd or Ctrl-Enter runs the tests, Cmd or Ctrl-Shift-Enter submits, Escape in the results panel cancels a run after a confirmation, F8 goes to the next diagnostic. Each button names its shortcut and the CLI command it runs |
 | Screen readers | The editor content has an `aria-label` naming the file; a polite live region announces a run's start and summary, not every case; statuses are text and icon, never color alone. Everything the page draws sits in a landmark: the top bar, the command line (a named region), the view in `main` with the file tree's menu, and the status bar |
-| Scrolling | A region that scrolls on its own takes the focus, so the arrow keys scroll it: the editor, the results, the statement beside the editor, and each code block of a statement, hint or solution |
+| Scrolling | A region that scrolls on its own takes the focus, so the arrow keys scroll it: the editor, the results, the statement beside the editor, the statistics and the health checks, and each code block of a statement, hint or solution |
+| Narrow windows | The page reflows to one column and never scrolls sideways (WCAG 1.4.10): below 720 pixels the top bar and the status bar scroll on their own, wide tables scroll in their own box, and long paths and commands wrap |
 | Display | Light and dark follow `prefers-color-scheme` unless the `theme` preference names one; with `prefers-reduced-motion` every animation and transition stops, and the state it showed stays in words |
-| Checks | No violation of WCAG 2.2 A and AA, nor of axe-core's best practices, on any view or dialog, in light and dark, 1440 and 390 pixels wide, in each engine of [Browser support](#browser-support) |
+| Checks | No violation of WCAG 2.2 A and AA, nor of axe-core's best practices, on any view or dialog, in light and dark, 1440 and 390 pixels wide, in each engine of [Browser support](#browser-support); at 390 pixels the page is no wider than the window |
 
 ## Solutions
 

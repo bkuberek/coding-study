@@ -189,9 +189,19 @@ def _checked(page: Any) -> list[str]:
             page.emulate_media(color_scheme=scheme)
             page.set_viewport_size({"width": width, "height": HEIGHT})
             page.evaluate(AT_REST)
+            where = f"in {scheme} at {width}"
             response = axe_playwright.Axe().run(page, options=RULES).response
-            found.extend(_described(response["violations"], f"in {scheme} at {width}"))
+            found.extend(_described(response["violations"], where))
+            found.extend(_reflow(page, where))
     return found
+
+
+def _reflow(page: Any, where: str) -> list[str]:
+    """WCAG 1.4.10, which axe-core does not check: the page never scrolls sideways; a wide table
+    or bar scrolls in its own box."""
+    wide = page.evaluate("document.documentElement.scrollWidth")
+    window = page.evaluate("document.documentElement.clientWidth")
+    return [f"reflow: the page is {wide} pixels wide, {where}"] if wide > window else []
 
 
 def _described(violations: list[dict[str, Any]], where: str) -> list[str]:

@@ -130,6 +130,11 @@ function statistics(context: PageContext): HTMLElement {
 
 function statsTable(stats: StatsDocument): HTMLElement {
   if (stats.groups.length === 0) return empty("no groups with ready content");
+  // Focusable, so the keyboard scrolls the table where it is wider than the window.
+  return h("div", { class: "table-scroll", role: "region", tabindex: "0", "aria-label": "Statistics by group" }, groupTable(stats));
+}
+
+function groupTable(stats: StatsDocument): HTMLElement {
   return h(
     "table",
     { class: "stats-table" },

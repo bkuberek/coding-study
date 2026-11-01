@@ -18,7 +18,8 @@ export function healthView(context: PageContext): Cleanup {
   shell.setCommand("cstudy doctor");
   shell.setStatus({ mode: "HEALTH", where: context.session.workspace });
   const summary = h("p", { class: "health-summary", role: "status" });
-  const rows = h("div", { class: "checks-region" });
+  // Focusable, so the keyboard scrolls the checks where they are wider than the window.
+  const rows = h("div", { class: "checks-region table-scroll", role: "region", tabindex: "0", "aria-label": "Checks" });
   const recheck = h("button", { type: "button", class: "button" }, "Re-check");
   let current = 0;
 

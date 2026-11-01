@@ -125,6 +125,8 @@ body {
 
 #app {
   display: grid;
+  /* One column no wider than the window: the top bar scrolls on its own, the page never sideways. */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: var(--bar) auto minmax(0, 1fr) var(--status);
   min-height: 100vh;
 }
@@ -663,6 +665,11 @@ input[type="search"] {
   font-size: var(--text-l);
 }
 
+.next-card .cmd {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .pick {
   padding: 0 8px;
   background: var(--ink);
@@ -709,6 +716,12 @@ input[type="search"] {
 table {
   width: 100%;
   border-collapse: collapse;
+}
+
+/* A table wider than the window scrolls in its own box, not the page. */
+.listing,
+.table-scroll {
+  overflow-x: auto;
 }
 
 th {
@@ -1311,8 +1324,13 @@ input[type="radio"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .topbar {
+  .topbar,
+  .statusbar {
     overflow-x: auto;
+  }
+
+  .segment.version {
+    display: none;
   }
 
   .workbench {

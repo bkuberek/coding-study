@@ -47,4 +47,5 @@
 
 .facts dd {
   margin: 2px 0 12px;
+  overflow-wrap: anywhere;
 }
