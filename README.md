@@ -73,6 +73,18 @@ You practice in a **workspace**: a directory of your own for your solutions, not
 
 `cstudy done` schedules the next review, and `cstudy next` brings the problem back when it is due. A missing Node.js, pnpm or JDK shows as `FAIL` in `cstudy doctor` and a missing Go or Rust as `WARN`; the other languages still work.
 
+## Practise in the browser
+
+`cstudy serve` opens a page on your own computer with the whole loop: the problem list, the statement, an editor over your files, test runs and submissions whose results arrive as they run, hints, solutions, mock interviews, your progress and the `cstudy doctor` checks. It works on the same workspace and progress as the terminal and your IDE, so you can switch between them at any point.
+
+```bash
+cstudy serve --open                # Ctrl-C stops it
+```
+
+![The attempt view of cstudy serve: the file tree, the editor, a run's results and the statement](docs/images/web-ui-attempt-light.png)
+
+[Practise in your browser](docs/guides/web-ui.md) covers the views, editing and runs, the keyboard, and what keeps the page private to you.
+
 ## Your workspace is your repository
 
 The workspace holds your practice files, notes, previous attempts (`.archive/`) and your own problems. Version it in a git repository of your own, separately from this one: its `.gitignore` already excludes per-machine state such as `progress.db` and build output. Back up progress with `cstudy export`, which writes a JSON file you can commit. On another machine, clone your workspace and run `cstudy doctor --fix`.
@@ -94,6 +106,7 @@ Run `cstudy` anywhere inside the workspace, or point at it with `cstudy --worksp
 | `cstudy bench` | Measures how your solution scales and compares it with the reference approaches |
 | `cstudy list`, `cstudy show <slug>` | Browses the catalog; prints a statement |
 | `cstudy stats`, `cstudy mock` | Shows your progress; runs a timed mock interview |
+| `cstudy serve [--open]` | Serves the practice page on your computer, at `127.0.0.1` ([guide](docs/guides/web-ui.md)) |
 | `cstudy new <slug>`, `cstudy verify <slug>` | Scaffolds a problem of your own; checks it |
 
 Every command and flag: [CLI reference](docs/specs/cli.md). Configuration, such as the default language, lives in `~/.config/coding-study/config.toml` ([configuration](docs/specs/cli.md#configuration)).
@@ -131,6 +144,7 @@ The [authoring guide](docs/specs/authoring.md) covers the workflow and the ready
 |------|-----|
 | [Documentation index](docs/README.md) | The PRD, architecture, specs, and decision records |
 | [CLI reference](docs/specs/cli.md) | Every command, flag, output, and exit code |
+| [Practise in your browser](docs/guides/web-ui.md) | `cstudy serve`: the views, editing and runs, the keyboard, troubleshooting |
 | [Contributing](CONTRIBUTING.md) | Development setup, checks, authoring content, and commit conventions |
 | [Versioning](docs/specs/versioning.md) and [changelog](CHANGELOG.md) | How releases are numbered from Conventional Commits |
 
