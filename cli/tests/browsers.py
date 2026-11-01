@@ -55,7 +55,7 @@ its distance from the top of the page, which scrolling, as a click's own, leaves
 
 def launched(playwright: Any, engine: str) -> Any:
     """The engine's browser, headless; skips the test when Playwright has no such engine."""
-    from playwright.sync_api import Error
+    from playwright.sync_api import Error  # pyright: ignore[reportMissingImports]
 
     try:
         return getattr(playwright, engine).launch()
