@@ -2,6 +2,7 @@
 cstudy like a shell would (docs/decisions/0010-ide-integration.md)."""
 
 import hashlib
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -24,12 +25,32 @@ exit {FAKE_EXIT}
 pytestmark = pytest.mark.slow
 
 
+def jdk_tool(name: str) -> str | None:
+    """`name` of the JDK that JAVA_HOME names, else of the first on PATH: where build.sh looks."""
+    java_home = os.environ.get("JAVA_HOME")
+    if java_home:
+        tool = Path(java_home) / "bin" / name
+        return str(tool) if os.access(tool, os.X_OK) else None
+    return shutil.which(name)
+
+
 def javac_feature_release() -> str | None:
-    if shutil.which("javac") is None or shutil.which("jar") is None:
+    javac = jdk_tool("javac")
+    if javac is None or jdk_tool("jar") is None:
         return None
-    version = subprocess.run(["javac", "-version"], capture_output=True, text=True, check=True)
+    version = subprocess.run([javac, "-version"], capture_output=True, text=True, check=True)
     printed = (version.stdout or version.stderr).strip()
     return printed.removeprefix("javac ").split(".")[0]
+
+
+def jdk_home_reporting(directory: Path, version: str) -> Path:
+    """A JDK home whose `javac` only reports `version`, and whose `jar` is never reached."""
+    for name, body in (("javac", f'echo "javac {version}" >&2'), ("jar", "exit 1")):
+        tool = directory / "bin" / name
+        tool.parent.mkdir(parents=True, exist_ok=True)
+        tool.write_text(f"#!/bin/sh\n{body}\n")
+        tool.chmod(0o755)
+    return directory
 
 
 def run_launcher(arguments: list[str], environment: dict[str, str], tmp_path: Path):
@@ -63,7 +84,10 @@ def bare_environment(tmp_path: Path) -> dict[str, str]:
 def test_a_rebuild_reproduces_the_committed_jar(tmp_path):
     release = javac_feature_release()
     if release != REQUIRED_JAVAC:
-        pytest.skip(f"needs javac {REQUIRED_JAVAC} and jar on PATH (found javac {release})")
+        pytest.skip(
+            f"needs javac {REQUIRED_JAVAC} and jar (found javac {release}); "
+            f"select a JDK {REQUIRED_JAVAC} with JAVA_HOME"
+        )
     rebuilt = tmp_path / "cstudy-launcher.jar"
     subprocess.run(["bash", str(BUILD_SCRIPT), str(rebuilt)], check=True, capture_output=True)
     digests = {hashlib.sha256(data).hexdigest() for data in (rebuilt.read_bytes(), launcher_jar())}
@@ -91,3 +115,37 @@ def test_the_launcher_finds_cstudy_in_the_uv_tool_directory(
 def test_without_cstudy_the_launcher_exits_127(bare_environment, tmp_path):
     completed = run_launcher(["show"], bare_environment, tmp_path)
     assert (completed.returncode, "CSTUDY_EXECUTABLE" in completed.stderr) == (NOT_FOUND, True)
+
+
+def build(java_home: Path | str, tmp_path: Path) -> subprocess.CompletedProcess[str]:
+    environment = {**os.environ, "JAVA_HOME": str(java_home)}
+    command = ["bash", str(BUILD_SCRIPT), str(tmp_path / "cstudy-launcher.jar")]
+    return subprocess.run(command, env=environment, capture_output=True, text=True, check=False)
+
+
+def test_the_build_uses_the_javac_of_java_home(tmp_path):
+    completed = build(jdk_home_reporting(tmp_path / "jdk", "26.0.2"), tmp_path)
+    assert "found: javac 26.0.2" in completed.stderr
+
+
+def test_a_javac_of_another_release_ends_the_build_with_exit_2(tmp_path):
+    completed = build(jdk_home_reporting(tmp_path / "jdk", "26.0.2"), tmp_path)
+    assert (completed.returncode, "needs javac 21" in completed.stderr) == (2, True)
+
+
+def test_a_javac_of_another_release_says_how_to_select_a_jdk_21(tmp_path):
+    completed = build(jdk_home_reporting(tmp_path / "jdk", "26.0.2"), tmp_path)
+    assert "select a JDK 21 with JAVA_HOME" in completed.stderr
+
+
+def test_a_java_home_without_javac_ends_the_build_with_exit_2(tmp_path):
+    assert build(tmp_path / "no-jdk", tmp_path).returncode == 2
+
+
+def test_a_java_home_without_javac_says_where_it_looked(tmp_path):
+    completed = build(tmp_path / "no-jdk", tmp_path)
+    assert f"no javac in {tmp_path / 'no-jdk'}/bin/" in completed.stderr
+
+
+def test_a_java_home_without_javac_says_how_to_select_a_jdk_21(tmp_path):
+    assert "select a JDK 21 with JAVA_HOME" in build(tmp_path / "no-jdk", tmp_path).stderr

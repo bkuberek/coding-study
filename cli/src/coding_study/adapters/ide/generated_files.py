@@ -11,7 +11,10 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import cast
 
+from coding_study.adapters.jdk_locator import shell_jdk
+from coding_study.application.ports import JdkSelector
 from coding_study.domain.ide import content_digest
+from coding_study.domain.jdk import SelectedJdk
 from coding_study.domain.workspace_projects import CARGO_MANIFEST, PROJECTS_DIRECTORY
 
 MANIFEST_FILE = ".cs/ide.json"
@@ -20,9 +23,14 @@ INDENT = 2
 
 
 class FsGeneratedFiles:
-    def __init__(self, root: Path) -> None:
-        """`root` is the workspace root; every path is relative to it."""
+    def __init__(self, root: Path, jdk: JdkSelector | None = None) -> None:
+        """`root` is the workspace root; every path is relative to it. `jdk` selects the JDK the
+        files name; by default the one this process's environment selects."""
         self._root = root
+        self._jdk = jdk or shell_jdk()
+
+    def selected_jdk(self) -> SelectedJdk | None:
+        return self._jdk.selected()
 
     def digest(self, path: str) -> str | None:
         target = self._root / path

@@ -9,8 +9,9 @@ import pytest
 from coding_study.adapters.ide.intellij import IntellijProject
 from coding_study.adapters.ide.launcher import LAUNCHER_IN_RUNTIME
 from coding_study.adapters.runner_runtime import RUNTIME_DIRECTORY
+from coding_study.domain.ide import IdeWorkspace
 from coding_study.domain.ide_actions import DEBUG_ATTACH
-from coding_study.domain.jdk import SUPPORTED_JDKS
+from coding_study.domain.jdk import RECOMMENDED_JDK, JdkSource, SelectedJdk
 from coding_study.domain.layout import JVM_LANGUAGES
 
 MISC = ".idea/misc.xml"
@@ -202,15 +203,55 @@ def test_python_and_typescript_have_no_intellij_debugging():
     assert not [name for name in debugging if "Python" in name or "TypeScript" in name]
 
 
-def test_the_project_jdk_is_the_oldest_supported_jdk():
-    """Until the project JDK follows the selected JDK (docs/decisions/0016-jdk-range.md#ide-files),
-    it is the release every build accepts."""
-    oldest = SUPPORTED_JDKS.minimum
-    manager = project_component(MISC, "ProjectRootManager")
+def misc_manager(workspace: IdeWorkspace) -> ET.Element:
+    """The `ProjectRootManager` of `misc.xml` for `workspace`."""
+    files = {file.path: file.content for file in IntellijProject().files(workspace)}
+    manager = ET.fromstring(files[MISC]).find("component[@name='ProjectRootManager']")
+    assert manager is not None
+    return manager
+
+
+def selecting(feature: int) -> IdeWorkspace:
+    return IdeWorkspace(jdk=SelectedJdk(f"{feature}.0.1", feature, JdkSource.JAVA_HOME))
+
+
+@pytest.mark.parametrize("feature", [21, 25, 26])
+def test_the_project_jdk_is_named_after_the_selected_jdk(feature):
+    manager = misc_manager(selecting(feature))
     assert (manager.get("project-jdk-name"), manager.get("languageLevel")) == (
-        str(oldest),
-        f"JDK_{oldest}",
+        str(feature),
+        f"JDK_{feature}",
     )
+
+
+def test_a_jdk_above_the_range_names_itself_with_the_top_of_the_range_as_language_level():
+    """The build compiles at release 26 on a JDK 27 (docs/specs/runners.md), and so does IntelliJ's
+    Gradle import."""
+    manager = misc_manager(selecting(27))
+    assert (manager.get("project-jdk-name"), manager.get("languageLevel")) == ("27", "JDK_26")
+
+
+def test_without_a_selected_jdk_the_project_jdk_is_the_recommended_one():
+    manager = misc_manager(IdeWorkspace())
+    assert (manager.get("project-jdk-name"), manager.get("languageLevel")) == (
+        str(RECOMMENDED_JDK),
+        f"JDK_{RECOMMENDED_JDK}",
+    )
+
+
+def test_the_files_without_a_workspace_name_the_recommended_jdk():
+    manager = ET.fromstring(FILES[MISC]).find("component[@name='ProjectRootManager']")
+    assert manager is not None
+    assert manager.get("project-jdk-name") == str(RECOMMENDED_JDK)
+
+
+def test_only_misc_xml_depends_on_the_jdk():
+    others = lambda feature: {  # noqa: E731
+        file.path: file.content
+        for file in IntellijProject().files(selecting(feature))
+        if file.path != MISC
+    }
+    assert others(21) == others(27)
 
 
 def test_the_project_jdk_is_a_java_sdk():

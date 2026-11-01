@@ -13,6 +13,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 
+from coding_study.domain.jdk import SelectedJdk
+
 
 class Ide(StrEnum):
     VSCODE = "vscode"
@@ -44,11 +46,14 @@ def content_digest(content: bytes) -> str:
 
 @dataclass(frozen=True, slots=True)
 class IdeWorkspace:
-    """What the generated files depend on in the workspace itself."""
+    """What the generated files depend on in the workspace and the environment around it."""
 
     rust_projects: tuple[str, ...] = ()
     """The manifest of each Rust project folder, `projects/<slug>/Cargo.toml`, in path order:
     rust-analyzer analyses only the Cargo projects `linkedProjects` names."""
+    jdk: SelectedJdk | None = None
+    """The JDK the shell selects, which IntelliJ's project JDK is named after; None when no JDK is
+    found, or when the IDE being generated has no use for it."""
 
 
 NO_PROJECT_FOLDERS = IdeWorkspace()

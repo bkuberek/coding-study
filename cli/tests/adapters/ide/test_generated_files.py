@@ -8,6 +8,9 @@ import pytest
 
 from coding_study.adapters.ide.generated_files import MANIFEST_FILE, FsGeneratedFiles
 from coding_study.domain.ide import content_digest
+from coding_study.domain.jdk import JdkSource, SelectedJdk
+from tests.fakes import jdk_of
+from tests.helpers import selecting_jdk
 
 TASKS = ".vscode/tasks.json"
 
@@ -85,3 +88,24 @@ def test_a_project_folder_with_a_cargo_manifest_is_a_rust_project(files, tmp_pat
 
 def test_a_workspace_without_projects_has_no_rust_projects(files):
     assert files.rust_projects() == ()
+
+
+# the selected JDK
+
+
+def test_the_selected_jdk_is_the_one_the_selector_gives(tmp_path):
+    selector = jdk_of(26)
+    assert FsGeneratedFiles(tmp_path, selector).selected_jdk() == selector.selected()
+
+
+def test_without_a_selector_it_is_the_one_the_shell_selects(tmp_path, monkeypatch):
+    for name, value in selecting_jdk(tmp_path, 24).items():
+        monkeypatch.setenv(name, value)
+    assert FsGeneratedFiles(tmp_path / "ws").selected_jdk() == SelectedJdk(
+        "24.0.0", 24, JdkSource.JAVA_HOME
+    )
+
+
+def test_without_any_jdk_nothing_is_selected(tmp_path, monkeypatch):
+    monkeypatch.setenv("JAVA_HOME", str(tmp_path / "no-jdk-here"))
+    assert FsGeneratedFiles(tmp_path).selected_jdk() is None

@@ -53,7 +53,7 @@ The files are yours to edit. After upgrading `cstudy`, run `cstudy ide` to bring
 
 - Run: pick a configuration in the folders `cstudy: current file`, `cstudy: active attempt`, `cstudy: workspace` and `cstudy: debug`. Current-file configurations start a small launcher, `.cs/runtime/ide/cstudy-launcher.jar`, because IntelliJ's shell configurations cannot pass the open file. With no editor focused, they stop with `open a solution file in the editor first`.
 - Debug Java or Kotlin: set a breakpoint, then **Debug** (not Run) **Debug current file (Java, Kotlin)**. It starts **Debug JVM (listen)**, which waits on port 5005, and `cstudy test --debug --debug-connect`, whose JVM connects to it. The listener restarts itself, so you can keep it running and debug again.
-- Set up for you: the project JDK `21` (`.idea/misc.xml`) and the Gradle project `jvm/`, run with that JDK (`.idea/gradle.xml`).
+- Set up for you: the project JDK, named after the JDK your shell selects when `cstudy ide` writes it (`26` for a JDK 26, `25` when none is found), with the language level of the build (`.idea/misc.xml`), and the Gradle project `jvm/`, run with that JDK (`.idea/gradle.xml`). After you switch JDKs, run `cstudy ide idea`: it updates `misc.xml` while it is as cstudy wrote it, and keeps it, saying so, once IntelliJ or you changed it.
 - Go and Rust run here from the same run configurations; open the workspace root with the Go or Rust plugin (GoLand and RustRover include them); `cstudy` writes no IntelliJ project files for them.
 - Python and TypeScript run here, but debugging them is not set up: Python needs the Python plugin, and attaching to Node needs IntelliJ IDEA Ultimate. Debug them in VS Code.
 
@@ -61,7 +61,7 @@ The files are yours to edit. After upgrading `cstudy`, run `cstudy ide` to bring
 
 | What | How |
 |------|-----|
-| A JDK 21 named `21` | IntelliJ: accept the prompt to set up the missing SDK `21`, or add one in **Project Structure > SDKs**. IDE-wide SDKs cannot come from project files |
+| A JDK named like the project JDK | IntelliJ: accept the prompt to set up the missing SDK named in `.idea/misc.xml` (`26` for a JDK 26), or add a JDK of that release under that name in **Project Structure > SDKs**. IDE-wide SDKs cannot come from project files |
 | Load the Gradle project | IntelliJ: click **Load Gradle Project** when it offers to |
 | Python in IntelliJ | With the Python plugin, add `python/.venv` as the module's SDK |
 | Python in VS Code | Run `cstudy doctor --fix` first so `python/.venv` exists; on Windows pick `python\.venv\Scripts\python.exe` with **Python: Select Interpreter** |

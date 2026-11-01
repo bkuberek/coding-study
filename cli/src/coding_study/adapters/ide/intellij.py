@@ -1,7 +1,8 @@
 """The `.idea/` files of a workspace (docs/specs/installation-and-workspaces.md#ide-files).
 
-- `misc.xml` names the project JDK after the JVM toolchain of the practice projects, and
-  `gradle.xml` links `jvm/` as a Gradle project run with that JDK.
+- `misc.xml` names the project JDK after the JDK the shell selects, with the language level of the
+  build's release level there, and `gradle.xml` links `jvm/` as a Gradle project run with that
+  JDK, so IntelliJ's Gradle import compiles as `cstudy test` does.
 - `runConfigurations/` holds shared run configurations. Actions on the file in the editor start
   the launcher jar, because JAR Application configurations expand `$FilePath$` and Shell Script
   ones expand no macro; actions on the active attempt and on the workspace are Shell Script
@@ -35,6 +36,7 @@ from coding_study.domain.ide_actions import (
     Variant,
     debug_name,
 )
+from coding_study.domain.jdk import RECOMMENDED_JDK, SelectedJdk, release_level
 from coding_study.domain.layout import JVM_PROJECT
 
 DIRECTORY = Ide.IDEA.directory
@@ -43,8 +45,6 @@ PROJECT_DIR = "$PROJECT_DIR$"
 CURRENT_FILE = "$FilePath$"
 """Expanded when the configuration starts; the project directory when no editor has focus."""
 LAUNCHER = f"{PROJECT_DIR}/{RUNTIME_DIRECTORY}/{LAUNCHER_IN_RUNTIME}"
-JDK_VERSION = 21
-"""The JVM toolchain of the practice projects (`JAVA_VERSION` in the runners' PracticePlugin)."""
 XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8"?>\n'
 INDENT = "  "
 FILE_NAME_UNSAFE = re.compile(r"[^A-Za-z0-9_]")
@@ -89,16 +89,21 @@ class _Configuration:
 
 class IntellijProject:
     def files(self, workspace: IdeWorkspace = NO_PROJECT_FOLDERS) -> tuple[GeneratedFile, ...]:
-        """IntelliJ's files depend on nothing in `workspace`: it writes no Rust project files."""
+        """IntelliJ's files depend on the JDK of `workspace` and on nothing else in it: it writes no
+        Rust project files."""
         configurations = (*_action_configurations(), *_debug_configurations())
         return (
-            GeneratedFile(f"{DIRECTORY}/misc.xml", _project_file(_misc())),
+            GeneratedFile(f"{DIRECTORY}/misc.xml", _project_file(_misc(workspace.jdk))),
             GeneratedFile(f"{DIRECTORY}/gradle.xml", _project_file(_gradle())),
             *(configuration.file() for configuration in configurations),
         )
 
 
-def _misc() -> ET.Element:
+def _misc(jdk: SelectedJdk | None) -> ET.Element:
+    """The project JDK is named after the selected JDK's feature release, the recommended one when
+    there is none; the language level is the release level a build on that JDK gets, which a JDK
+    above the supported range shares with the top of it."""
+    feature = RECOMMENDED_JDK if jdk is None else jdk.feature
     project = ET.Element("project", version="4")
     ET.SubElement(
         project, "component", {"name": "ExternalStorageConfigurationManager", "enabled": TRUE}
@@ -109,8 +114,8 @@ def _misc() -> ET.Element:
         {
             "name": "ProjectRootManager",
             "version": "2",
-            "languageLevel": f"JDK_{JDK_VERSION}",
-            "project-jdk-name": str(JDK_VERSION),
+            "languageLevel": f"JDK_{release_level(feature)}",
+            "project-jdk-name": str(feature),
             "project-jdk-type": "JavaSDK",
         },
     )

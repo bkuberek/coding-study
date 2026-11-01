@@ -55,6 +55,12 @@ Changes to content, runners or code generation also need `cstudy verify` (with `
 
 `--ladder` measures timing, so run it on an idle machine on AC power; a busy machine reports lower confidence. Optional: run the problem gate in a `pre-push` git hook.
 
+### Which JDK
+
+Java and Kotlin build and run with the JDK your shell selects, 21 to 26 ([toolchains guide](docs/guides/toolchains.md#jdk)), so the `slow` tests and `cstudy verify` use that one. To try another JDK for one command, set `JAVA_HOME` for it, for example with SDKMAN: `JAVA_HOME="$HOME/.sdkman/candidates/java/<identifier>" uv run pytest -q -m slow`. Before a release that changes the range or the JVM build, the gate runs on JDK 21 and on JDK 26 ([ADR 0016](docs/decisions/0016-jdk-range.md#verification)).
+
+One build wants an exact JDK: `tools/ide-launcher/build.sh`, which rebuilds the IntelliJ launcher jar, needs javac 21, since javac 17 and 21 emit other bytes for the same `--release 17`, and a slow test compares the committed jar with a rebuild. The script uses the JDK that `JAVA_HOME` names, else the first `javac` on `PATH`, and says how to select a 21 when it finds another: `JAVA_HOME="$HOME/.sdkman/candidates/java/<identifier of a 21>" tools/ide-launcher/build.sh`. The test skips itself on any other JDK, so run it with `JAVA_HOME` at a 21 to check the jar.
+
 ## Authoring content
 
 Problem statements, tests, hints and solutions must be original ([ADR 0004](docs/decisions/0004-original-problem-wording.md)); a LeetCode problem appears only as a link in `references.leetcode`.

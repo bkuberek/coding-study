@@ -15,6 +15,7 @@ from coding_study.domain.jdk import (
     availability,
     effective_range,
     no_jdk_sentence,
+    release_level,
 )
 
 
@@ -145,3 +146,20 @@ def test_no_jdk_found_is_said_so():
 
 def test_a_java_home_without_a_jdk_is_named():
     assert no_jdk_sentence("/opt/jdk") == "JAVA_HOME (/opt/jdk) holds no JDK"
+
+
+# The release level of a build
+
+
+@pytest.mark.parametrize("feature", [21, 24, 26])
+def test_a_build_on_a_jdk_of_the_range_compiles_at_its_release(feature):
+    assert release_level(feature) == feature
+
+
+@pytest.mark.parametrize("feature", [27, 30])
+def test_a_build_on_a_jdk_above_the_range_compiles_at_the_top_of_the_range(feature):
+    assert release_level(feature) == SUPPORTED_JDKS.maximum
+
+
+def test_the_top_of_the_range_is_the_cap_of_a_given_range():
+    assert release_level(30, JdkRange(minimum=21, maximum=25)) == 25

@@ -1,5 +1,6 @@
 """`cstudy ide` (docs/specs/cli.md#cstudy-ide)."""
 
+import re
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,7 @@ from typer.testing import CliRunner
 
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.shared import ExitCode
+from tests.helpers import selecting_jdk
 
 runner = CliRunner()
 TASKS = ".vscode/tasks.json"
@@ -15,8 +17,8 @@ LAUNCHER = ".cs/runtime/ide/cstudy-launcher.jar"
 MANIFEST = ".cs/ide.json"
 
 
-def ide(workspace: Path, *arguments: str):
-    return runner.invoke(cli.app, ["--workspace", str(workspace), "ide", *arguments])
+def ide(workspace: Path, *arguments: str, env: dict[str, str] | None = None):
+    return runner.invoke(cli.app, ["--workspace", str(workspace), "ide", *arguments], env=env)
 
 
 @pytest.fixture
@@ -101,3 +103,50 @@ def test_outside_a_workspace_it_exits_3(tmp_path):
 
 def test_an_unknown_ide_is_a_usage_error(workspace):
     assert ide(workspace, "emacs").exit_code == ExitCode.USAGE_ERROR
+
+
+# the project JDK follows the JDK the shell selects
+
+NO_JAVA = {"JAVA_HOME": "/nonexistent/jdk", "PATH": "/nonexistent/bin"}
+
+
+def project_jdk(workspace: Path) -> tuple[str | None, str | None]:
+    """The name and the language level `.idea/misc.xml` gives the project."""
+    text = (workspace / MISC).read_text()
+    name = re.search(r'project-jdk-name="([^"]*)"', text)
+    level = re.search(r'languageLevel="([^"]*)"', text)
+    return (name and name.group(1), level and level.group(1))
+
+
+def test_the_project_jdk_is_named_after_the_selected_jdk(workspace, tmp_path):
+    ide(workspace, "idea", env=selecting_jdk(tmp_path, 24))
+    assert project_jdk(workspace) == ("24", "JDK_24")
+
+
+def test_a_jdk_above_the_range_keeps_the_language_level_at_the_top_of_it(workspace, tmp_path):
+    ide(workspace, "idea", env=selecting_jdk(tmp_path, 27))
+    assert project_jdk(workspace) == ("27", "JDK_26")
+
+
+def test_without_a_jdk_the_project_jdk_is_the_recommended_one(workspace):
+    ide(workspace, "idea", env=NO_JAVA)
+    assert project_jdk(workspace) == ("25", "JDK_25")
+
+
+def test_a_switch_of_jdk_updates_the_file_while_it_is_as_cstudy_wrote_it(workspace, tmp_path):
+    ide(workspace, "idea", env=selecting_jdk(tmp_path / "a", 24))
+    result = ide(workspace, "idea", env=selecting_jdk(tmp_path / "b", 26))
+    assert (project_jdk(workspace), "1 updated" in result.output) == (("26", "JDK_26"), True)
+
+
+def test_a_switch_of_jdk_keeps_the_file_once_it_was_edited(workspace, tmp_path):
+    ide(workspace, "idea", env=selecting_jdk(tmp_path / "a", 24))
+    edited = (
+        (workspace / MISC).read_text().replace('project-jdk-name="24"', 'project-jdk-name="mine"')
+    )
+    (workspace / MISC).write_text(edited)
+    result = ide(workspace, "idea", env=selecting_jdk(tmp_path / "b", 26))
+    assert ((workspace / MISC).read_text() == edited, f"kept {MISC}" in result.output) == (
+        True,
+        True,
+    )

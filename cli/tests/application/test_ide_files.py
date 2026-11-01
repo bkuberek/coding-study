@@ -12,6 +12,7 @@ from coding_study.domain.ide import (
     IdeWorkspace,
     content_digest,
 )
+from coding_study.domain.jdk import JdkSource, SelectedJdk
 
 TASKS = ".vscode/tasks.json"
 MISC = ".idea/misc.xml"
@@ -27,11 +28,15 @@ class FakeRenderer:
         return self._files
 
 
+SELECTED = SelectedJdk("26.0.1", 26, JdkSource.JAVA_HOME)
+
+
 class InMemoryFiles:
     def __init__(self) -> None:
         self.contents: dict[str, str] = {}
         self.recorded: dict[str, str] = {}
         self.manifest_saves = 0
+        self.jdk_asks = 0
 
     def digest(self, path: str) -> str | None:
         content = self.contents.get(path)
@@ -52,6 +57,10 @@ class InMemoryFiles:
 
     def rust_projects(self) -> tuple[str, ...]:
         return ("projects/bank-project-rust/Cargo.toml",)
+
+    def selected_jdk(self) -> SelectedJdk | None:
+        self.jdk_asks += 1
+        return SELECTED
 
 
 RENDERERS = {
@@ -175,3 +184,38 @@ def test_a_rust_start_writes_no_ide_file_where_cstudy_never_wrote_vscode_setting
     store = InMemoryFiles()
     written_by_cstudy(store, MISC, "x\n")
     assert (link_rust_projects(RUST_START, store), set(store.contents)) == (None, {MISC})
+
+
+# the selected JDK
+
+
+def test_intellij_is_given_the_selected_jdk():
+    renderers = {Ide.IDEA: FakeRenderer(GeneratedFile(MISC, "misc\n"))}
+    generate_ide_files(renderers, InMemoryFiles(), IdeRequest((Ide.IDEA,)))
+    assert renderers[Ide.IDEA].workspaces[-1].jdk == SELECTED
+
+
+def test_vs_code_is_not_given_a_jdk():
+    renderers = {Ide.VSCODE: FakeRenderer(GeneratedFile(TASKS, "tasks\n"))}
+    generate_ide_files(renderers, InMemoryFiles(), IdeRequest((Ide.VSCODE,)))
+    assert renderers[Ide.VSCODE].workspaces[-1].jdk is None
+
+
+def test_a_request_without_intellij_never_asks_for_the_jdk():
+    """Asking can start a JVM, for a `java` that names no home."""
+    store = InMemoryFiles()
+    generate_ide_files(RENDERERS, store, IdeRequest((Ide.VSCODE,)))
+    assert store.jdk_asks == 0
+
+
+def test_a_request_with_intellij_asks_for_the_jdk_once():
+    store = InMemoryFiles()
+    generate_ide_files(RENDERERS, store, BOTH)
+    assert store.jdk_asks == 1
+
+
+def test_linking_a_rust_folder_never_asks_for_the_jdk():
+    store = InMemoryFiles()
+    store.recorded = {TASKS: content_digest(b"tasks\n")}
+    link_rust_projects(RENDERERS, store)
+    assert store.jdk_asks == 0

@@ -207,7 +207,7 @@ ok    web server starlette 1.10.0, uvicorn 0.54.0
 cstudy ide [vscode|idea|all] [--force]
 ```
 
-Writes or refreshes the workspace's [IDE files](installation-and-workspaces.md#ide-files) (`.vscode/`, `.idea/`) for the named IDE (default: `all`), and installs the IntelliJ launcher into `.cs/runtime/ide/`. VS Code's `rust-analyzer.linkedProjects` lists the Rust project folders that exist when it runs; [`cstudy start`](#cstudy-start) refreshes VS Code's files the same way when it writes a new Rust project folder in a workspace whose VS Code settings `cstudy` wrote. `cstudy init` does the same unless `--no-ide`; `--ide vscode` or `--ide idea` (repeatable) limits it to those.
+Writes or refreshes the workspace's [IDE files](installation-and-workspaces.md#ide-files) (`.vscode/`, `.idea/`) for the named IDE (default: `all`), and installs the IntelliJ launcher into `.cs/runtime/ide/`. VS Code's `rust-analyzer.linkedProjects` lists the Rust project folders that exist when it runs; [`cstudy start`](#cstudy-start) refreshes VS Code's files the same way when it writes a new Rust project folder in a workspace whose VS Code settings `cstudy` wrote. `cstudy init` does the same unless `--no-ide`; `--ide vscode` or `--ide idea` (repeatable) limits it to those. IntelliJ's project JDK follows [the selected JDK](#the-selected-jdk) (`.idea/misc.xml`), so run `cstudy ide idea` again after switching JDKs: it replaces the file while it is as `cstudy` wrote it and keeps it, with a warning, once IntelliJ or you changed it.
 
 | Rule | Detail |
 |------|--------|

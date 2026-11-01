@@ -31,6 +31,14 @@ RECOMMENDED_JDK = 25
 """The newest long-term-support release in the range: the one the toolchains guide and the fix
 name, though any JDK in the range works."""
 
+
+def release_level(feature: int, supported: JdkRange = SUPPORTED_JDKS) -> int:
+    """The release level a Java and Kotlin build gets on the JDK `feature` when cstudy passes none
+    (docs/specs/runners.md#the-jdk-and-the-release-level): its feature release, capped at the top of
+    the supported range, which the pinned Kotlin can still target. The plugins compute the same."""
+    return min(feature, supported.maximum)
+
+
 JAVA_HOME_VARIABLE = "JAVA_HOME"
 GRADLE_JAVA_HOME_ARGUMENT = "-Dorg.gradle.java.home="
 """Outranks `org.gradle.java.home` in the user's Gradle home, which `JAVA_HOME` does not."""

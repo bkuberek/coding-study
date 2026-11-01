@@ -19,6 +19,7 @@ from coding_study.domain.ide import (
     Step,
     plan_regeneration,
 )
+from coding_study.domain.jdk import SelectedJdk
 
 
 class IdeRenderer(Protocol):
@@ -30,8 +31,8 @@ class IdeRenderer(Protocol):
 
 
 class GeneratedFiles(Protocol):
-    """The workspace's files, by workspace-relative path, and the manifest of those cstudy
-    wrote."""
+    """The workspace's files, by workspace-relative path, the manifest of those cstudy wrote, and
+    what else the generated files depend on."""
 
     def digest(self, path: str) -> str | None:
         """The SHA-256 of the file at `path`, or None when there is none."""
@@ -50,6 +51,11 @@ class GeneratedFiles(Protocol):
     def rust_projects(self) -> tuple[str, ...]:
         """The manifest of each Rust project folder, a folder of `projects/` holding a
         `Cargo.toml`, as `projects/<slug>/Cargo.toml`, in path order."""
+        ...
+
+    def selected_jdk(self) -> SelectedJdk | None:
+        """The JDK the shell selects ([the selected JDK](docs/specs/cli.md#the-selected-jdk)); None
+        when no JDK is found. A `java` that names no home is run to ask for it."""
         ...
 
 
@@ -76,7 +82,9 @@ class IdeReport:
 def generate_ide_files(
     renderers: Mapping[Ide, IdeRenderer], files: GeneratedFiles, request: IdeRequest
 ) -> IdeReport:
-    workspace = IdeWorkspace(files.rust_projects())
+    workspace = IdeWorkspace(
+        files.rust_projects(), files.selected_jdk() if Ide.IDEA in request.ides else None
+    )
     generated = tuple(file for ide in request.ides for file in renderers[ide].files(workspace))
     recorded = files.manifest()
     regeneration = Regeneration(generated, recorded, request.ides, force=request.force)
