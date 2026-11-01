@@ -57,6 +57,7 @@ Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-l
 | `kind` | `function`, `design`, `progressive`, `concurrent`, `project` | yes | `project`: [Project problems](#project-problems) |
 | `patterns` | list of pattern ids | yes for `dsa` | First entry is the primary pattern; ids from [content](content.md#pattern-taxonomy) |
 | `languages` | list of `python`, `typescript`, `java`, `kotlin`, `go`, `rust` | no | Default all six, which every problem lists, except a language that cannot express the problem: Rust where an `Option<Box<ListNode>>` cannot ([S13](authoring.md#static)), so `0055-linked-list-cycle` lists the other five. `concurrency` and `debugging` problems are the exception: they may list any subset of the six languages, so a Go- or Rust-native bug lists just `go` or `rust`, and the original debugging problems list the languages their bugs exist in ([ADR 0012](../decisions/0012-go-and-rust.md)). A `project` problem lists exactly one language, `python` or `typescript` ([Project problems](#project-problems), [ADR 0014](../decisions/0014-project-problems.md)). A problem you write in your own workspace is the exception to the catalog's rule: it lists any non-empty subset, and without a `languages` line it lists the four core languages (`python`, `typescript`, `java`, `kotlin`), what every problem listed before Go and Rust, so a problem written with an older `cstudy` keeps working. `cstudy new` writes the line explicitly. List `languages` in the catalog only where it differs from the default |
+| `jdk` | object | no | `min`, `max` or both: the JDK feature releases (integers) that the problem's Java and Kotlin code runs on. Only for a problem that lists `java` or `kotlin`; a missing field or bound is the bound of the supported range, JDK 21 to 26 ([JDK range](#jdk-range), [ADR 0016](../decisions/0016-jdk-range.md)) |
 | `signature` | object | yes | See [Signatures](#signatures) |
 | `comparator` | object | yes | See [Comparators](#comparators) |
 | `stub` | `generated` or `buggy` | no | Default `generated`; `buggy` copies `buggy/solution.<ext>` instead of codegen. Buggy files follow the reference file conventions (no JVM `package` line) ([authoring](authoring.md#debugging-problems)) |
@@ -72,6 +73,27 @@ Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-l
 | `estimate_minutes` | int | no | Expected interview solve time |
 
 Hints are not in `meta.yaml`; they are the `## Hints` section of `problem.md`, so there is one source.
+
+### JDK range
+
+Java and Kotlin run on JDK 21 to 26, and a problem lists the JDK versions it needs, which matters when its code uses a feature that only some of them have. `jdk` is an object with `min`, `max` or both, each a JDK feature release:
+
+```yaml
+jdk: {min: 24}    # the problem's Java and Kotlin code uses stream gatherers (JDK 24)
+```
+
+| Rule | Detail |
+|------|--------|
+| Supported range | JDK 21 to 26, defined once in Python (`SUPPORTED_JDKS` in `domain/jdk.py`) and once in Gradle (`jdk-minimum` and `jdk-maximum` in `runners/jvm/gradle/libs.versions.toml`); a test keeps the two equal. The tested ends are 21 and 26 ([runners](runners.md#the-jdk-and-the-release-level)) |
+| Defaults | A missing field, or a missing bound, is the bound of the supported range, so a problem without `jdk` runs on 21 to 26 now and on the wider range of a later `cstudy`. An explicit bound stays where it is written. The default is never written into `meta.yaml` |
+| `min` | A release above 21: the code needs a feature of that release (`24` for stream gatherers). At most 26, the supported maximum, which caps every level |
+| `max` | A release below 26: the problem is known not to hold above it. A release above 26: an opt-in, made after the author verified the problem on that newer JDK and before `cstudy` supports it; the problem then starts on that JDK, which `cstudy doctor` otherwise reports as not supported yet. An explicit `max: 26` is a content error, because it would keep the problem from following the range when the range grows. `max` is at least the effective minimum |
+| Languages | Java and Kotlin only, and one range for both. The other languages of the problem are unaffected. A [project problem](#project-problems) lists one language and may declare a range only when that language is Java or Kotlin. A problem of your own workspace follows the same rules |
+| Shape | `schemas/meta.schema.json` checks it: integers, no other keys, at least one of `min` and `max`. Check [S17](authoring.md#what-cstudy-verify-checks) holds the rest |
+| What it describes | What the problem's code needs, or what its cases, stress scenarios and broken references depend on; each of them must hold on every JDK of the range. A problem narrows its range only when no version of its content can hold there. Prose about behavior that changed inside the range names the versions it holds for (`on JDK 21 to 23, ...; from JDK 24, ...`) and does not narrow it |
+| Preview features | `cstudy` never passes `--enable-preview`. A problem's minimum is the release in which the feature it needs became final |
+
+The compile level of a problem's reference, and of your own code, follows the selected JDK and the problem's minimum ([runners](runners.md#the-jdk-and-the-release-level)); `cstudy` refuses or skips a problem whose range does not contain the selected JDK ([cli](cli.md#the-selected-jdk)).
 
 ## Signatures
 
@@ -518,6 +540,7 @@ estimate_minutes: 90
 | `track` | `practical` |
 | `languages` | Exactly one: `python`, `typescript`, `go`, `java`, `kotlin` or `rust` |
 | `slug` | Ends in the language (`bank-project-python`): a version in another language is another problem, and slugs are unique |
+| `jdk` | Only when the language is `java` or `kotlin` ([JDK range](#jdk-range)) |
 | `levels` | Required, as for progressive problems |
 | `signature` | A class signature: the entry class the grader constructs, canonical names, a `level` on every method |
 | `comparator` | `ops`. Every method's comparator, the default `exact` or a `per_method` entry, is `exact`, `unordered` or `float`, because generated tests express only these. Java and Kotlin: on a method that returns an array or a list, `unordered` needs elements of `int`, `long`, `double`, `string` or `date`, which sort naturally, and `float` is not allowed |
@@ -540,7 +563,7 @@ A version in another language is built from scratch: its own id, slug, starter, 
 | `README.md` | States the contract: the module or file and the class that must stay where they are, and how to run the tests with the language's own command |
 | Python build file | `pyproject.toml` with exactly the tool tables below and nothing else: no `[project]` table, no `requires-python`, no `[tool.uv]`. A `requires-python` above the workspace venv's Python makes `uv run` delete the shared venv through the project's `.venv` link ([project folders](installation-and-workspaces.md#project-folders)). No `__init__.py` is needed for packages, and no `pyrightconfig.json` |
 | TypeScript build files | `package.json` with `"type": "module"` and no dependencies; `tsconfig.json` as the workspace's (`module` `nodenext`, `noEmit`, `allowImportingTsExtensions`, `erasableSyntaxOnly`, `verbatimModuleSyntax`, `strict`) with `"types": ["node"]` and `"typeRoots": ["../../typescript/node_modules/@types"]`, so `node:test` and `node:assert` have types (TypeScript 6 loads no `@types` package that `types` does not list). Imports name files with their extension (`../src/bank.ts`); code uses erasable syntax only, since Node strips types and refuses the rest (a parameter property fails with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`) |
-| Java and Kotlin build files | `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties` and `gradle/wrapper/gradle-wrapper.properties`, byte for byte as `cstudy new --from-template project-java` (`project-kotlin`) writes them, with the slug as `rootProject.name`: every project builds the same way, offline, with what `cstudy doctor --fix` cached ([project folders](installation-and-workspaces.md#project-folders)). No `gradlew` of its own: the workspace's runs the build |
+| Java and Kotlin build files | `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties` and `gradle/wrapper/gradle-wrapper.properties`, byte for byte as `cstudy new --from-template project-java` (`project-kotlin`) writes them, with the slug as `rootProject.name`: every project builds the same way, offline, with what `cstudy doctor --fix` cached ([project folders](installation-and-workspaces.md#project-folders)). No `gradlew` of its own: the workspace's runs the build. The comment of `build.gradle.kts` names no JDK: the plugin sets the compile level from the JDK that runs the build ([JDK range](#jdk-range)). A problem of your own workspace that `cstudy new` wrote with `cstudy` 0.9 carries the older comment, which says JDK 21, and S15 accepts that one text as well |
 | Module names | Python: no top-level module or package named after a standard-library module (`random.py`, `types.py`, `typing.py`) or `pytest` |
 | Go build files | `go.mod` at the root with `module <slug>`, the `go 1.24` directive, and no requirement but the vendored modules: `require github.com/shopspring/decimal v1.5.0` with `replace github.com/shopspring/decimal => ../../.cs/runtime/runners/go/third_party/github.com/shopspring/decimal`, which reaches the [runner runtime](installation-and-workspaces.md#runner-runtime)'s copy from `projects/<slug>/`, so no build needs the network or a `go.sum`. No `go.sum`, `go.work` or `go.work.sum`: `cstudy start` writes the folder's `go.work` ([project folders](installation-and-workspaces.md#project-folders)) |
 | Go entry | The entry file declares a package other than `main`, since the grader imports it, and the entry type `<Class>` with its constructor `func New<Class>(...) *<Class>`, the [Go mapping](#go-and-rust-mapping) of a design class; level 1's methods panic with `not implemented` |
@@ -604,16 +627,16 @@ The settings walk up to the workspace marker, rather than naming `../..`, becaus
 `build.gradle.kts`, Java, then Kotlin:
 
 ```kotlin
-// Builds with JDK 21, JUnit 5 and the cstudy runner (the cs.project plugin); keep this file
-// as it is.
+// Builds with the workspace's JDK, JUnit 5 and the cstudy runner (the cs.project plugin);
+// keep this file as it is.
 plugins {
     id("cs.project")
 }
 ```
 
 ```kotlin
-// Builds with JDK 21, Kotlin, kotlin.test on JUnit 5 and the cstudy runner (the cs.project
-// plugin); keep this file as it is.
+// Builds with the workspace's JDK, Kotlin, kotlin.test on JUnit 5 and the cstudy runner (the
+// cs.project plugin); keep this file as it is.
 plugins {
     alias(libs.plugins.kotlin.jvm)
     id("cs.project")
@@ -621,6 +644,8 @@ plugins {
 ```
 
 `gradle.properties` and `gradle/wrapper/gradle-wrapper.properties` are the workspace's `jvm/gradle.properties` and `jvm/gradle/wrapper/gradle-wrapper.properties`, so the folder's builds share the workspace's Gradle version and daemon, and an IDE opening the folder picks the same Gradle.
+
+A project folder keeps the files it was started with, so one started with `cstudy` 0.9 still has the old comment, which says JDK 21 and changes nothing in the build; `cstudy start --restore build.gradle.kts` writes the current text.
 
 ### Statement
 

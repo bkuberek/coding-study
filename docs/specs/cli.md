@@ -52,7 +52,7 @@
 | 1 | Test or verify failures (including `timeout` and `tle`) |
 | 2 | User code failed to build or load (compile error, import error, missing symbol) |
 | 3 | Usage error (bad flags, unknown slug, no active attempt, not autograded) |
-| 4 | Environment error (toolchain missing, runner did not start) |
+| 4 | Environment error (toolchain missing, selected JDK outside a problem's range, runner did not start) |
 | 5 | Content error (schema or static check failure in problem files) |
 | 70 | Internal error (bug in `cstudy` or a runner protocol violation) |
 | 130 | Interrupted |
@@ -107,13 +107,50 @@ auto_commit = false              # reserved (PRD Q3)
 
 `study_guides.root` is the directory that item `references.study_guides` paths are relative to ([study guides](content.md#study-guides)).
 
+## The selected JDK
+
+Java and Kotlin run on one JDK per command: the one your shell selects. `cstudy` supports JDK 21 to 26, and a problem can widen or narrow that range with [`jdk`](problem-format.md#jdk-range) ([ADR 0016](../decisions/0016-jdk-range.md)).
+
+| Rule | Detail |
+|------|--------|
+| Selection | The JDK that `JAVA_HOME` names, else the JDK of the first `java` on `PATH`: the Gradle wrapper's own rule, which version managers set per shell and per directory. A `JAVA_HOME` that is set but holds no JDK selects nothing; it does not fall back to `PATH`. `cstudy` never searches for other JDKs and records no choice of its own |
+| Version | Read from the `release` file in the JDK's home, so the commands that only list problems stay within NFR-2. Only a `java` whose home it cannot see, such as a launcher stub, is run once to ask for its home and version |
+| What it runs | Everything: Gradle's daemon runs on it, javac and kotlinc compile against it, and the runner starts its `bin/java`, not the first `java` on `PATH` ([runners](runners.md#the-jdk-and-the-release-level)) |
+| Range of a problem | Its `jdk` with each missing bound filled from the supported range, 21 to 26. The selected JDK is in range when its feature release lies between the bounds. No JDK at all is outside every range |
+| Where it is compared | Wherever `cstudy` would build or run a problem's Java or Kotlin code. Problems and commands that run no Java or Kotlin code ignore it |
+
+| Surface | The selected JDK is outside the problem's range |
+|---------|-------------------------------------------------|
+| [`start`](#cstudy-start), [`test`](#cstudy-test), [`submit`](#cstudy-submit), [`bench`](#cstudy-bench) | Refused before anything is written or built, exit 4, as for a missing toolchain. The other languages, and the commands that run no code (`show`, `status`, `hint`, `solution`, `done`, `history`), are unaffected. `--json` and `--events` print no document: the refusal ends the command before the run starts |
+| [`verify`](#cstudy-verify) | Skips the problem's Java and Kotlin with a line that names the range and the JDK; `--require-ready` counts a skip as not passed |
+| [`list`](#cstudy-list) | Lists every problem as before and marks Java and Kotlin where the JDK cannot run them; `--lang` still filters by reference language |
+| [`next`](#cstudy-next), [`mock`](#cstudy-mock) | Never pick a problem the JDK cannot run in the chosen language; when that leaves nothing, the message says so |
+| [`show`](#cstudy-show) | Names a declared range in the statement; nothing for the default |
+| [`doctor`](#cstudy-doctor) | Reports the selected JDK in its `java` row |
+
+The refusal names the problem, the range, and where the JDK came from (`JAVA_HOME` or `PATH`), then why it does not fit, and carries the `fix:` hint of `doctor`:
+
+| Case | Reason, after `<source> selects JDK <n>,` |
+|------|--------------------------------------------|
+| Above the supported maximum, and the problem does not reach it | `which cstudy does not support yet` |
+| Above the maximum the problem declares, which is below the supported maximum | `which is newer than the problem supports` |
+| Below the problem's minimum, or below 21 | `which is too old` |
+| No JDK found, or a `JAVA_HOME` that holds no JDK | The sentence is `no JDK was found` or `JAVA_HOME (<path>) holds no JDK`, instead of `<source> selects JDK <n>, ...` |
+
+```text
+error: two-sum runs its java version on JDK 21 to 26; JAVA_HOME selects JDK 27, which cstudy does not support yet
+fix: select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: <toolchains guide>#jdk
+```
+
+A JDK above the supported range is not supported yet. `cstudy` runs on it only the problems that declare a `max` which reaches it, and compiles them at release 26 ([runners](runners.md#the-jdk-and-the-release-level)).
+
 ## cstudy doctor
 
 ```text
 cstudy doctor [--fix | --json]
 ```
 
-Checks Python 3.13, uv, Node 24 or newer, pnpm, JDK 21, Homebrew Gradle, Go 1.24 or newer, `rustc` 1.80 or newer and `cargo` (the Go and Rust toolchains are optional, so these three rows WARN, never FAIL, with a link to the [toolchains guide](../guides/toolchains.md)), Delve (`dlv`, found as [debug mode](runners.md#debug-mode) finds it; the row shows its version, and a release other than the tested 1.27.2 passes with `(cstudy is tested with 1.27.2)`) and Rust's debug server (`debugserver` on macOS, `lldb-server` on Linux; the row shows its path), which only `cstudy test --debug` needs, so they WARN too, with the install step and the guide (``needed for --debug with --lang go, run `go install github.com/go-delve/delve/cmd/dlv@v1.27.2`: <guide>#go``), the config file, the content root, the workspace (core template files FAIL when missing, the optional `go.work`, `go/` and `rust/` files WARN; [workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), the progress database (its schema against the one this `cstudy` migrates to: WARN when older, FAIL when newer), the Gradle wrapper, the workspace venv, `debugpy` and `pytest` in it, the `.venv` links of the Python project folders, the `go.work`, `replace` lines and module paths of the Go project folders, the `.cargo/config.toml` and rust-analyzer link of the Rust ones, the libraries that Java and Kotlin project folders build with offline ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), `node_modules`, and that the runner of each core language (`python`, `typescript`, `java`, `kotlin`; the Go and Rust runners are not handshaken, since that would compile them) answers `hello`: the runner is prepared for a problem with no files (`cs-doctor-handshake`, so the JVM build compiles no practice code) and started with no jobs. Outside a workspace only the toolchains, the config and the content are checked. `--fix` first writes every missing workspace template file (never overwriting one), refreshes the runner runtime and migrates an older `progress.db` to the latest schema (one line, `migrated progress.db from schema 4 to 5`), then runs, in each workspace project that exists, `uv sync` in `python` (followed, when the venv cannot import pytest, by `uv add --dev --offline "pytest>=9.1"`, retried without `--offline` when it fails, so a workspace created before the template listed pytest gets it; when both fail the line is `FAIL` with `fix: once online, run: uv add --dev "pytest>=9.1" --directory python`), `pnpm install` in `typescript` (and, when the content is a checkout, in its `runners/typescript` for the runner's own `tsc` and Node types), and in `jvm`, unless `java -version` fails (then one `FAIL` line, `skipped: java is not installed or does not run`, with the JDK fix, replaces the Gradle steps), the Gradle warm-up: `./gradlew :java:csClasspath :kotlin:csClasspath -Pcs.only=cs_doctor_handshake` (builds the runner and support classes, resolves the runtime classpath so that the runner's own libraries are cached for offline builds, and warms the daemon without compiling practice files), then `./gradlew -p ../.cs/runtime/runners/jvm/project-warmup/java -q --console=plain csClasspath` and the same for `kotlin` (the warm-up projects, which cache what Java and Kotlin project folders build with: [JVM project folders](installation-and-workspaces.md#jvm-project-folders)), printing one line per command and the last 10 output lines of a failed one. `--fix` outside a workspace exits 3.
+Checks Python 3.13, uv, Node 24 or newer, pnpm, the [selected JDK](#the-selected-jdk) (21 to 26), Homebrew Gradle, Go 1.24 or newer, `rustc` 1.80 or newer and `cargo` (the Go and Rust toolchains are optional, so these three rows WARN, never FAIL, with a link to the [toolchains guide](../guides/toolchains.md)), Delve (`dlv`, found as [debug mode](runners.md#debug-mode) finds it; the row shows its version, and a release other than the tested 1.27.2 passes with `(cstudy is tested with 1.27.2)`) and Rust's debug server (`debugserver` on macOS, `lldb-server` on Linux; the row shows its path), which only `cstudy test --debug` needs, so they WARN too, with the install step and the guide (``needed for --debug with --lang go, run `go install github.com/go-delve/delve/cmd/dlv@v1.27.2`: <guide>#go``), the config file, the content root, the workspace (core template files FAIL when missing, the optional `go.work`, `go/` and `rust/` files WARN; [workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), the progress database (its schema against the one this `cstudy` migrates to: WARN when older, FAIL when newer), the Gradle wrapper, the workspace venv, `debugpy` and `pytest` in it, the `.venv` links of the Python project folders, the `go.work`, `replace` lines and module paths of the Go project folders, the `.cargo/config.toml` and rust-analyzer link of the Rust ones, the libraries that Java and Kotlin project folders build with offline ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), `node_modules`, and that the runner of each core language (`python`, `typescript`, `java`, `kotlin`; the Go and Rust runners are not handshaken, since that would compile them) answers `hello`: the runner is prepared for a problem with no files (`cs-doctor-handshake`, so the JVM build compiles no practice code) and started with no jobs. Outside a workspace only the toolchains, the config and the content are checked. `--fix` first writes every missing workspace template file (never overwriting one), refreshes the runner runtime and migrates an older `progress.db` to the latest schema (one line, `migrated progress.db from schema 4 to 5`), then runs, in each workspace project that exists, `uv sync` in `python` (followed, when the venv cannot import pytest, by `uv add --dev --offline "pytest>=9.1"`, retried without `--offline` when it fails, so a workspace created before the template listed pytest gets it; when both fail the line is `FAIL` with `fix: once online, run: uv add --dev "pytest>=9.1" --directory python`), `pnpm install` in `typescript` (and, when the content is a checkout, in its `runners/typescript` for the runner's own `tsc` and Node types), and in `jvm`, unless the selected JDK is older than 21 or missing (then one `FAIL` line, `skipped: java is not installed or does not run` or `skipped: JDK 17 is older than 21`, with the JDK fix, replaces the Gradle steps; a JDK above the range still warms up, so the problems that opt in to it build offline too), the Gradle warm-up: `./gradlew :java:csClasspath :kotlin:csClasspath -Pcs.only=cs_doctor_handshake` (builds the runner and support classes, resolves the runtime classpath so that the runner's own libraries are cached for offline builds, and warms the daemon without compiling practice files), then `./gradlew -p ../.cs/runtime/runners/jvm/project-warmup/java -q --console=plain csClasspath` and the same for `kotlin` (the warm-up projects, which cache what Java and Kotlin project folders build with: [JVM project folders](installation-and-workspaces.md#jvm-project-folders)), printing one line per command and the last 10 output lines of a failed one. `--fix` outside a workspace exits 3.
 
 | Status | Meaning |
 |--------|---------|
@@ -126,7 +163,7 @@ ok    python 3.13.2
 ok    uv 0.10.11
 ok    node v24.18.0 (type stripping)
 ok    pnpm 9.15.9
-ok    java 21.0.2
+ok    java 25.0.5 (JAVA_HOME)
 ok    content /home/me/.local/share/uv/tools/coding-study/lib/python3.13/site-packages/coding_study/content (bundled)
 ok    workspace /home/me/ws (created with cstudy 0.1.0)
 FAIL  python/.venv missing    fix: cstudy doctor --fix
@@ -135,6 +172,16 @@ ok    runner kotlin answers hello: jvm 21.0.2, protocol 1
 ```
 
 Exit 0 when no check reports `FAIL` (and, with `--fix`, every setup command succeeded), else 4.
+
+The `java` row reports the [selected JDK](#the-selected-jdk): its version and where it came from. A problem's own range is compared where the problem runs, not here.
+
+| Selected JDK | Row |
+|--------------|-----|
+| 21 to 26 | `ok    java 26.0.1 (JAVA_HOME)`, or `(PATH)` |
+| Above the range | `FAIL  java 27 (not supported yet: cstudy supports JDK 21 to 26)`, with `fix: select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: <toolchains guide>#jdk` |
+| Below the range, none found, or a `JAVA_HOME` that holds no JDK | `FAIL`, saying which (`java 17 (too old: cstudy supports JDK 21 to 26)`, `java not found`, `java JAVA_HOME (/opt/jdk) holds no JDK`), with the same `fix` |
+
+Any JDK in the range works; JDK 25, the newest long-term-support release in it, is the one the guide and the fix name.
 
 `--json` prints the same checks as one document instead of the rows, and exits as the rows would; with `--fix` it is a usage error (`--json excludes --fix`, exit 3). Each check is one row: `name` (`python`, `workspace`, `runner kotlin`), `status` (`ok`, `warn` or `fail`), `detail` (the rest of the row, such as `3.13.2`, or `""` for a row with nothing after its name) and `fix` (the hint, or null). Progress notices, such as the Gradle warm-up, go to standard error. The page [`cstudy serve`](#cstudy-serve) serves shows it ([web-ui](web-ui.md#health-view)).
 
@@ -190,7 +237,7 @@ cstudy start <slug|file> [--lang L] [--fresh] [--timer DURATION] [--no-open] [--
 | `--no-open` | Do not launch the editor |
 | `--restore` | Project problems: write one file of the folder back as `cstudy` provides it, and do nothing else ([below](#restoring-a-file)) |
 
-Effects: generate or keep the stub ([runners](runners.md#stub-generation)), render `.statements/<slug>.md`, insert an attempt (`in_progress`), and open `$EDITOR <stub> <statement>`. Starting a problem that already has an `in_progress` attempt in the same language resumes it. A progressive problem's new attempt opens level 1, and the statement shows only the unlocked levels; the output adds a `level` line (`level      1 of 4: Set and get`).
+Effects: generate or keep the stub ([runners](runners.md#stub-generation)), render `.statements/<slug>.md`, insert an attempt (`in_progress`), and open `$EDITOR <stub> <statement>`. For Java and Kotlin, the selected JDK must be in the problem's range: otherwise `cstudy start` exits 4 before it writes anything ([the selected JDK](#the-selected-jdk)). Starting a problem that already has an `in_progress` attempt in the same language resumes it. A progressive problem's new attempt opens level 1, and the statement shows only the unlocked levels; the output adds a `level` line (`level      1 of 4: Set and get`).
 
 ```text
 two-sum · easy · arrays-hashing · kotlin
@@ -266,6 +313,8 @@ cstudy test [<slug|file>] [--lang L] [--watch] [--case ID]... [--all] [--level N
 | `--debug` | Start the runner under the language's debug agent and wait for an IDE to attach to it, with every time limit off ([Debugging](#debugging)) |
 | `--debug-port N` | With `--debug`: the agent's port, 1 to 65535. Defaults: Python 5678, TypeScript 9229, Java and Kotlin 5005, Go 2345, Rust 12345 |
 | `--debug-connect` | With `--debug`, Java and Kotlin only: connect to an IDE that is already listening on the port instead of listening for it |
+
+For Java and Kotlin, the selected JDK must be in the problem's range: otherwise `cstudy test` exits 4 before it builds, with `--json`, `--events` and `--debug` too ([the selected JDK](#the-selected-jdk)).
 
 Output rules: visible cases are always listed; passing hidden cases collapse into a count unless `--all`; failing hidden cases show input, expected and actual (PRD Q10); a `TLE` line shows the measured time, the limit and its basis instead. Statuses: `PASS`, `FAIL`, `ERROR`, `TIMEOUT` (hang guard), `TLE` (time limit), `INVALID` (output not serializable as the declared type), `STALLED` (concurrent stress run still unfinished at its deadline), `NOT RUN`.
 
@@ -493,6 +542,7 @@ Grades a [project problem](problem-format.md#project-problems): every case of le
 | Hidden cases, mock | In an attempt with mode `mock`, only the number of failing hidden cases per level: no id, input or output, also with `--json` |
 | Stored | Every submission, in `submissions`, with a tally per level ([progress-and-scheduling](progress-and-scheduling.md#project-attempts)). A submission whose code does not load is stored too, with every graded case counted as errored |
 | No `--debug` | Grading is never debugged: copy a failing case into a test of your own and run `cstudy test --debug` |
+| JDK | A Java or Kotlin project problem needs the selected JDK in its range, else exit 4 before the build ([the selected JDK](#the-selected-jdk)) |
 
 ```text
 $ cstudy submit
@@ -799,7 +849,7 @@ next review  2026-10-27 (in 3 days) · ease 2.50
 cstudy next [--track T]... [--pattern P] [--difficulty D] [--lang L] [--new | --review] [--start | --json]
 ```
 
-Applies the selection algorithm in [progress-and-scheduling](progress-and-scheduling.md#cstudy-next-selection). `--track` is repeatable and reaches non-autograded items, for example `cstudy next --track system-design`; their `start` line has no `--lang`. `--start` runs `cstudy start` on the result, in the `--lang` language (default `default_lang`) for a problem, and in its own language for a project problem, and prints its report instead of the `start` line; it opens the editor when `open_on_start` is on. `--new` together with `--review`, or a `--pattern` outside the [taxonomy](content.md#pattern-taxonomy), is a usage error (exit 3).
+Applies the selection algorithm in [progress-and-scheduling](progress-and-scheduling.md#cstudy-next-selection). `--track` is repeatable and reaches non-autograded items, for example `cstudy next --track system-design`; their `start` line has no `--lang`. `--start` runs `cstudy start` on the result, in the `--lang` language (default `default_lang`) for a problem, and in its own language for a project problem, and prints its report instead of the `start` line; it opens the editor when `open_on_start` is on. `--new` together with `--review`, or a `--pattern` outside the [taxonomy](content.md#pattern-taxonomy), is a usage error (exit 3). It never picks a problem that the [selected JDK](#the-selected-jdk) cannot run in the language `--start` would use (`--lang`, else `default_lang`); when that leaves nothing, the message says why (`nothing to pick: JDK 27 (JAVA_HOME) cannot run java problems; cstudy supports JDK 21 to 26`).
 
 ```text
 review  merge-intervals  (medium · intervals)  overdue 3d, interval 7d
@@ -821,9 +871,9 @@ A review due today reads `due today, interval 3d`; a new pick from a non-`dsa` g
 cstudy list [--track T] [--kind K] [--pattern P] [--difficulty D] [--status S] [--content draft|ready] [--lang L] [--json]
 ```
 
-`--status`: `new`, `attempted`, `passed`, `due`, `mastered` (definitions in [progress-and-scheduling](progress-and-scheduling.md#problem-status)). `--kind`: `function`, `design`, `progressive`, `concurrent`, `project`, or `item` for the non-autograded items. `--lang` filters to problems whose references cover that language. Non-autograded items follow the problems, ordered by track, `order` and slug, with `-` for the id and the references and their track in the pattern column; `--pattern` and `--lang` leave them out, and `--kind` other than `item` leaves them out.
+`--status`: `new`, `attempted`, `passed`, `due`, `mastered` (definitions in [progress-and-scheduling](progress-and-scheduling.md#problem-status)). `--kind`: `function`, `design`, `progressive`, `concurrent`, `project`, or `item` for the non-autograded items. `--lang` filters to problems whose references cover that language. Non-autograded items follow the problems, ordered by track, `order` and slug, with `-` for the id and the references and their track in the pattern column; `--pattern` and `--lang` leave them out, and `--kind` other than `item` leaves them out. The list shows every problem whatever the [selected JDK](#the-selected-jdk): in the `REFS` column `java!` and `kt!` mark a language that the JDK cannot run for that problem, and one footer line names the JDK and the reason (`! java, kt: not run on JDK 27 (JAVA_HOME): cstudy supports JDK 21 to 26`; with no JDK, `! java, kt: no JDK was found`). Without a mark there is no footer.
 
-`--json` prints the same rows as one document, problems then items: `{"today": "2026-10-24", "entries": [...]}`, each entry with `id` (null for an item), `slug`, `title`, `track`, `kind` (`item` for an item), `difficulty`, `patterns`, `languages` (the reference languages, empty for an item), `content` (`draft` or `ready`), `source` (`catalog`, or `workspace` for [your own problems](installation-and-workspaces.md#your-own-problems)), `status`, `due_on` (null without a schedule row) and `in_progress` (each attempt in progress of the slug: `attempt_id`, `language`, `mode`). Exit 0.
+`--json` prints the same rows as one document, problems then items: `{"today": "2026-10-24", "entries": [...]}`, each entry with `id` (null for an item), `slug`, `title`, `track`, `kind` (`item` for an item), `difficulty`, `patterns`, `languages` (the reference languages, empty for an item), `content` (`draft` or `ready`), `source` (`catalog`, or `workspace` for [your own problems](installation-and-workspaces.md#your-own-problems)), `status`, `due_on` (null without a schedule row) and `in_progress` (each attempt in progress of the slug: `attempt_id`, `language`, `mode`) and `jdk`: the problem's effective range, `{"min": 21, "max": 26}`, or null for an item and for a problem that lists neither Java nor Kotlin. The document also holds `selected_jdk`, the [selected JDK](#the-selected-jdk) as `{"version": "26.0.1", "feature": 26, "source": "JAVA_HOME", "supported": true}` (`source`: `JAVA_HOME` or `PATH`; `supported`: the feature release lies in the supported range), or null when no JDK is found. A consumer decides from these fields whether Java and Kotlin can run. Exit 0.
 
 ```text
 ID    SLUG              DIFF    PATTERN          STATUS    DUE         REFS
@@ -832,13 +882,21 @@ ID    SLUG              DIFF    PATTERN          STATUS    DUE         REFS
 0014  koko-eating-...   medium  binary-search    due       2026-10-21  py java
 ```
 
+On JDK 27, the same list marks the languages and adds its footer:
+
+```text
+0001  two-sum           easy    arrays-hashing   passed    2026-10-27  py ts java! kt!
+0014  koko-eating-...   medium  binary-search    due       2026-10-21  py java!
+! java, kt: not run on JDK 27 (JAVA_HOME): cstudy supports JDK 21 to 26
+```
+
 ## cstudy show
 
 ```text
 cstudy show <slug|file> [--level N]
 ```
 
-Prints the rendered statement (title, metadata, sections, examples generated from visible cases, unlocked levels, and for concurrent problems the generated stress-case table; never hints). For a progressive or project problem the unlocked levels are those of the problem's attempt in progress, or level 1 without one, and a project problem's statement uses its language's names and each level's `Methods to add` line; `--level N` shows levels 1 to N and follows the `cstudy test --level` rules. For a non-autograded item it prints the statement `cstudy start` would write (the prompt, the change under review and the located [study guides](content.md#study-guides)) without writing it; `--level` is a usage error.
+Prints the rendered statement (title, metadata, sections, examples generated from visible cases, unlocked levels, and for concurrent problems the generated stress-case table; never hints). For a progressive or project problem the unlocked levels are those of the problem's attempt in progress, or level 1 without one, and a project problem's statement uses its language's names and each level's `Methods to add` line; `--level N` shows levels 1 to N and follows the `cstudy test --level` rules. For a non-autograded item it prints the statement `cstudy start` would write (the prompt, the change under review and the located [study guides](content.md#study-guides)) without writing it; `--level` is a usage error. A problem that declares a [`jdk`](problem-format.md#jdk-range) range adds it to the statement's metadata line, ahead of any level (`hard · concurrency · Java and Kotlin: JDK 24 or newer`): `JDK 24 or newer` for a `min`, `JDK 25 or older` for a `max`, `JDK 22 to 25` for both, and the language Java or Kotlin alone for a project problem; nothing for the default range.
 
 ## cstudy new
 
@@ -882,7 +940,7 @@ cstudy verify [<slug>...] [--changed] [--track T] [--lang L] [--static]
 | `--jobs` | Parallel language runners (default: number of languages). The runners of a concurrent problem's languages still take turns: their builds overlap, but each runs its stress cases alone |
 | `--stress N` | Concurrent problems: runs per stress case and variant for D6 and D7 (default 10); D7 requires failures in at least `ceil(0.9 * N)` runs. The line reports the fewest runs a correct reference passed (`stress 10/10`), the slowest correct run as a share of its deadline (`slowest 8%`) and the (broken reference, language, case, variant) combinations caught (`broken caught 11/11`) |
 
-Checks are listed in [authoring](authoring.md#what-cstudy-verify-checks). A [project problem](problem-format.md#project-problems)'s line shows its one language, its cases (D3) and its native suite (D9): `0249-bank-proj...  static ok · py 1/1 ok · suite 14/14`; `--oracle` and `--ladder` print `n/a` for it, and `--lang` with another language leaves it out.
+Checks are listed in [authoring](authoring.md#what-cstudy-verify-checks). A problem whose [JDK range](#the-selected-jdk) does not contain the selected JDK has its Java and Kotlin skipped: its line shows `java skipped · kt skipped` and a `skipped` line names the range and the JDK (`skipped  java, kotlin: runs on JDK 24 to 26; JAVA_HOME selects JDK 21`); `--require-ready` counts a skip as not passed, and the checks of its other languages run. A [project problem](problem-format.md#project-problems)'s line shows its one language, its cases (D3) and its native suite (D9): `0249-bank-proj...  static ok · py 1/1 ok · suite 14/14`; `--oracle` and `--ladder` print `n/a` for it, and `--lang` with another language leaves it out.
 
 ```text
 0001-two-sum      static ok · py 2/2 ok · ts 1/1 ok · java 1/1 ok · kt 1/1 ok · oracle 200/200
@@ -925,6 +983,7 @@ history   best previous 13.0ms at n=1e5 (2026-09-12) · now 9% faster · 1st of 
 | Correctness | The user's output at every size is compared, with the problem's comparator, to the output of the reference that computes expected values: `perf.expected_from` if it has a file in this language, else the first `optimal` one, else any. A difference or an exception prints `FAIL      wrong answer at n=1e3: expected [3, 7], got [3, 3]` and no verdict |
 | Warnings | `warning   <text>` lines after the verdicts: environment warnings (confidence capped at medium), recovered hangs and crashes, references that did not load, `beats declared optimal: check references` |
 | `--refs-only` | No `you` row and no verdict; stored with `attempt_id` NULL |
+| JDK | Java and Kotlin: the selected JDK must be in the problem's range, else exit 4 before the build ([the selected JDK](#the-selected-jdk)). The references build at the problem's minimum release, as for `cstudy verify` |
 
 Stored in `bench_runs` (a user run whose code does not build or load is not stored). Exit 0 when the bench completed (any verdict), 2 if the user code does not build or load, 1 if the user code fails correctness on a bench input. Concurrent problems have no bench in v1: exit 3 (`bench is not available for concurrent problems`); neither have project problems (`bench is not available for project problems`).
 
@@ -985,7 +1044,7 @@ Picks `count` problems with `cstudy next` rules (new only, medium and hard), sta
 | `--minutes` | The shared timer in minutes (default 45) |
 | `--count` | How many problems (default 2); when the scope runs out, fewer start and the header says `1 of 2 problems` |
 | `--track` | Repeatable, as in `cstudy next`; default `next.tracks`. Non-autograded items take part like problems; their timer never caps the grade |
-| `--lang` | Only problems available in the language, started in it; default `default_lang` |
+| `--lang` | Only problems available in the language, started in it; default `default_lang`. A Java or Kotlin problem that the [selected JDK](#the-selected-jdk) cannot run is not available |
 
 | Rule | Detail |
 |------|--------|

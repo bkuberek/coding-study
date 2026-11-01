@@ -5,6 +5,7 @@
 | Status | Accepted |
 | Date | 2026-10-26 |
 | Spec | [installation-and-workspaces](../specs/installation-and-workspaces.md#ide-files), [cli](../specs/cli.md#cstudy-ide) |
+| Amended by | [ADR 0016](0016-jdk-range.md): the IntelliJ project JDK is no longer `21`; it follows the selected JDK |
 
 ## Context
 

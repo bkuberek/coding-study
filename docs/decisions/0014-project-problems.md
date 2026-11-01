@@ -7,6 +7,7 @@
 | Amended | 2026-10-31: [Go project problems](#go-spike-k5), after spike K5; [Java and Kotlin project problems](#java-and-kotlin-spike-k4), after spike K4 |
 | Spec | [problem-format](../specs/problem-format.md#project-problems), [runners](../specs/runners.md#project-jobs), [cli](../specs/cli.md#cstudy-submit), [authoring](../specs/authoring.md#project-problems), [installation-and-workspaces](../specs/installation-and-workspaces.md#project-folders), [progress-and-scheduling](../specs/progress-and-scheduling.md#project-attempts) |
 | Amends | [ADR 0001](0001-data-driven-tests.md) (native test files generated from the data), [ADR 0012](0012-go-and-rust.md) (a fourth exception to the six-language rule) |
+| Amended by | [ADR 0016](0016-jdk-range.md): `cs.project` no longer pins JDK 21; a project folder builds on the selected JDK, 21 to 26 |
 
 ## Context
 

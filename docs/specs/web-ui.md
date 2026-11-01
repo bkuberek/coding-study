@@ -136,7 +136,7 @@ Errors share one document:
 | `precondition_failed` | 412 | A stale `If-Match`, or `If-None-Match: *` on an existing file. The document adds `sha256`, the SHA-256 of the file's content now (null when no file is there), which is also the response's `ETag` |
 | `precondition_required` | 428 | A save, move or delete without `If-Match`, or a `PUT` with neither `If-Match` nor `If-None-Match: *` |
 | `too_large` | 413 | A body over the limit, or a file over 1 MiB |
-| `environment` | 503 | What exits 4: a missing toolchain or library; `fix` holds the CLI's `fix:` hint when it has one |
+| `environment` | 503 | What exits 4: a missing toolchain or library, or a selected JDK outside the problem's range (`start`, `test`, `submit` and `bench` refuse before they build); `fix` holds the CLI's `fix:` hint when it has one |
 | `content` | 500 | What exits 5: a problem file that fails its schema |
 | `internal` | 500 | What exits 70, or a bug in the server; the message never holds a traceback |
 | `unauthorized` | 401 | No session cookie |
@@ -150,7 +150,7 @@ Errors share one document:
 |-----------------|---------|----------|
 | `GET /` | `?token=` on the first visit | The page, with the CSRF token and a CSP nonce |
 | `GET /assets/{file}` | | A file of the vendored bundle, with `Cache-Control: max-age=31536000, immutable` for content-hashed names |
-| `GET /api/v1/session` | | `{"api": 1, "cstudy": "0.9.0", "events_version": 1, "workspace": "/home/me/ws", "port": 53817, "default_lang": "python", "languages": [...], "tracks": [...], "kinds": [...]}` |
+| `GET /api/v1/session` | | `{"api": 1, "cstudy": "0.9.0", "events_version": 1, "workspace": "/home/me/ws", "port": 53817, "default_lang": "python", "languages": [...], "tracks": [...], "kinds": [...], "selected_jdk": {"version": "26.0.1", "feature": 26, "source": "JAVA_HOME", "supported": true}}`. `selected_jdk` is the [JDK that `cstudy` selects](cli.md#the-selected-jdk) in the server's environment, or null when none is found: the `selected_jdk` of [`cstudy list --json`](cli.md#cstudy-list). The server's child processes run in the same environment, so they select the same JDK |
 | `GET /api/v1/preferences` | | The [preferences](#preferences) |
 | `PUT /api/v1/preferences` | The whole preferences document | The stored document; unknown keys get 422 |
 
@@ -158,7 +158,7 @@ Errors share one document:
 
 | Method and path | Request | Response and use case |
 |-----------------|---------|-----------------------|
-| `GET /api/v1/problems` | `track`, `kind`, `lang`, `difficulty`, `status`, `pattern`, `content`, each optional, with the values of `cstudy list` | [`cstudy list --json`](cli.md#cstudy-list) |
+| `GET /api/v1/problems` | `track`, `kind`, `lang`, `difficulty`, `status`, `pattern`, `content`, each optional, with the values of `cstudy list` | [`cstudy list --json`](cli.md#cstudy-list), with each entry's `jdk` and the document's `selected_jdk` |
 | `GET /api/v1/problems/{slug}` | | The problem's entry of `cstudy list --json`, with `languages` the languages `cstudy start` accepts instead of the reference languages, plus `approaches` (`id`, `name`, `role`), `broken` (the broken reference ids, or empty), `levels` (`last`, or null), `hints_total`, `bench` (whether `cstudy bench` applies) and `oracle` (whether `--stress N` adds oracle inputs). For an item: `languages`, `approaches` and `broken` empty, `levels` null, `hints_total` 0, `bench` and `oracle` false |
 | `GET /api/v1/problems/{slug}/statement` | `level` (optional, as `cstudy show --level`) | `{"markdown": …, "html": …}`: the text `cstudy show` prints, and its HTML; `show_statement` |
 | `GET /api/v1/problems/{slug}/history` | | [`cstudy history --json`](cli.md#cstudy-history) |
@@ -375,9 +375,9 @@ The top bar on every view: the navigation (Problems, Mock, Progress, Health and 
 
 | Area | Behaviour |
 |------|-----------|
-| Next card | The `cstudy next` pick with its reason (`review  merge-intervals  overdue 3d, interval 7d`), filtered by the same track, pattern, difficulty and language as the list; Start opens the start dialog for it. With nothing to pick, the CLI's message |
+| Next card | The `cstudy next` pick with its reason (`review  merge-intervals  overdue 3d, interval 7d`), filtered by the same track, pattern, difficulty and language as the list, and never a problem the selected JDK cannot run in the language; Start opens the start dialog for it. With nothing to pick, the CLI's message |
 | Filters | Track, kind, language, difficulty, status, pattern and content status, the values of `cstudy list`; kept in the route's query (`#/?track=dsa&status=due`) |
-| Table | ID, title, difficulty, pattern or track, kind, status, due date, languages, and a Resume link per attempt in progress; items follow the problems, as in `cstudy list`. A row opens the Problem view |
+| Table | ID, title, difficulty, pattern or track, kind, status, due date, languages, and a Resume link per attempt in progress; items follow the problems, as in `cstudy list`. Java and Kotlin are marked where the [selected JDK](cli.md#the-selected-jdk) cannot run them (the entry's `jdk` against `selected_jdk`), with the CLI's reason as the mark's tooltip and text for assistive technology. A row opens the Problem view |
 
 ### Problem view
 
@@ -388,7 +388,7 @@ The top bar on every view: the navigation (Problems, Mock, Progress, Health and 
 | Actions | Start or Resume; Solution; Bench (when `bench` applies) |
 | History | The review line (due date, interval, ease, reps, lapses) and the attempts of `cstudy history`, newest first, each expanding to its test runs, submissions and bench runs |
 
-Start dialog: the language (the problem's languages; fixed for a project; none for an item), Start fresh (`--fresh`), and a time box in minutes (empty for none). When the problem has a review due, the dialog says `review attempt: your current files move to .archive/`, as `cstudy start` does for review attempts. Start opens the Attempt view.
+Start dialog: the language (the problem's languages, with Java and Kotlin disabled and the CLI's reason shown beside them when the selected JDK is outside the problem's range; fixed for a project; none for an item), Start fresh (`--fresh`), and a time box in minutes (empty for none). When the problem has a review due, the dialog says `review attempt: your current files move to .archive/`, as `cstudy start` does for review attempts. Start opens the Attempt view.
 
 ### Attempt view
 

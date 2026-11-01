@@ -6,6 +6,7 @@
 | Date | 2026-10-24 |
 | Spec | [runners](../specs/runners.md#jvm-build-details) |
 | Amended by | [ADR 0008](0008-installable-tool-and-separate-workspaces.md): the wrapper ships in the workspace template and `jvm/` includes the runners from `.cs/runtime/` |
+| Amended by | [ADR 0016](0016-jdk-range.md): the build reproduces with any supported JDK, 21 to 26, not with JDK 21 only |
 
 ## Context
 

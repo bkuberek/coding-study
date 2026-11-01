@@ -9,7 +9,7 @@ The CLI is a hexagonal application: a pure domain core (problems, attempts, sche
 | CLI | `cli/` | Python 3.13, uv | Commands, domain core, adapters, codegen, comparators, scheduling, bench analysis |
 | Python runner | `runners/python/` | Python | Packages `cs_runner` (runner) and `cs_support` (`ListNode`, `TreeNode`, `GraphNode`) |
 | TypeScript runner | `runners/typescript/` | TypeScript on Node 24 | `runner.ts` and `support.ts` (the node classes and `Decimal`); erasable syntax only |
-| JVM runner | `runners/jvm/` | Java 21, Gradle included build | `cs.runner.Main` and `cs.support.*`; serves Java and Kotlin |
+| JVM runner | `runners/jvm/` | Java, compiled at release 21; Gradle included build | `cs.runner.Main` and `cs.support.*`; serves Java and Kotlin |
 | Content | `problems/`, `tracks/` | YAML, JSON, Markdown, code | Problems, tests, references, explanations, generators |
 | Web UI | `cli/src/coding_study/entrypoints/web/`, sources in `tools/web-ui/` | Python (Starlette on uvicorn); TypeScript and CodeMirror 6, built and committed | `cstudy serve`: the local page, a second driving adapter ([below](#web-adapter), [web-ui](specs/web-ui.md)) |
 | Schemas | `schemas/` | JSON Schema | `meta.schema.json`, `tests.schema.json`, `item.schema.json`, `conformance.schema.json`; hand-maintained source of truth for validation (`jsonschema`) and editor completion. `events.schema.json` describes the lines of `cstudy test --events` and `cstudy submit --events` ([event stream](specs/cli.md#event-stream)) for programs that read them, and `web-api.schema.json` the web API's own documents |
@@ -48,7 +48,7 @@ flowchart LR
   UC --> FS & DB & RUN & GEN & WS & PY & ED & CLK
 ```
 
-Dependencies point inward. Ports are Python `Protocol` classes in `cli/src/coding_study/application/ports.py`; adapters implement them; each command module in `entrypoints/commands/` wires them, and `entrypoints/cli.py` registers the commands. Shared pure rules live in the domain: `naming` (per-language symbol names), `layout` (stub, statement, archive and reference paths, run targets) and `runs` (runner request and per-case outcomes).
+Dependencies point inward. Ports are Python `Protocol` classes in `cli/src/coding_study/application/ports.py`; adapters implement them; each command module in `entrypoints/commands/` wires them, and `entrypoints/cli.py` registers the commands. Shared pure rules live in the domain: `naming` (per-language symbol names), `layout` (stub, statement, archive and reference paths, run targets), `runs` (runner request and per-case outcomes) and `jdk` (the supported JDK range, a problem's effective range and whether the selected JDK can run it, [ADR 0016](decisions/0016-jdk-range.md)).
 
 | Port | Adapter | Notes |
 |------|---------|-------|
@@ -58,6 +58,7 @@ Dependencies point inward. Ports are Python `Protocol` classes in `cli/src/codin
 | `ProgressStore` | `SqliteProgressStore` | Schema in [progress-and-scheduling](specs/progress-and-scheduling.md) |
 | `LanguageRunner` | one per language (`adapters/languages/<python,typescript,jvm,go,rust>/`; the JVM adapter serves Java and Kotlin) | `prepare(scope, notify)` returns `Prepared` (launch command) or `BuildFailed`, building when needed; scope `BenchCode` prepares the user's code and the references for one bench process. Several `cstudy` processes may share a workspace: the JVM, Go and Rust adapters build under a file lock and launch from a private copy of the build output, which `RunnerProcess` removes when the run ends (`RunnerLaunch.scratch`). The JVM adapter copies its class output ([JVM build details](specs/runners.md#jvm-build-details)); Go and Rust share `adapters/languages/compiled_builds.py` (lock, write-on-change generated files, abandoned-run cleanup) and each run gets its own scratch directory `.cs/build/<lang>/run/<pid>-<random>/` holding a copy of the binary ([Go](specs/runners.md#go-build-details), [Rust](specs/runners.md#rust-build-details)) |
 | `RunnerProcess` | `SubprocessRunner` (one for every language) | `run(launch, request) -> RunReport` and `bench(launch, request) -> BenchReport`: request file, event file, hang guard, restarts; protocol in [runners](specs/runners.md) |
+| `JdkSelector` | `EnvJdkSelector` | `selected() -> SelectedJdk \| None`: the JDK that `JAVA_HOME` names, else the JDK of the first `java` on `PATH`, with its version read from the `release` file in the JDK's home, so listing problems starts no JVM ([the selected JDK](specs/cli.md#the-selected-jdk)). The use cases that start, test, submit, bench, list, pick or verify a problem ask it and apply the domain's range rules; the JVM adapter builds and launches with the same JDK |
 | `MachineProbe` | `SystemMachine` | CPU model, power source, load average and core count for a bench run's environment record |
 | `StubGenerator` | one per language | `generate(meta) -> text`; mapping table in [problem-format](specs/problem-format.md#type-dsl) |
 | `Workspace` | `WorkspaceFs` | Stub paths, archive, statement rendering |
@@ -135,8 +136,11 @@ sequenceDiagram
   participant G as KotlinStubGenerator
   participant W as Workspace
   participant S as ProgressStore
+  participant J as JdkSelector
   U->>C: cstudy start two-sum --lang kotlin
   C->>R: load("two-sum")
+  C->>J: selected JDK within the problem's range?
+  Note over C,J: outside it: error, exit 4, nothing written
   C->>W: stub exists?
   alt exists and not --fresh
     C->>W: keep file
@@ -159,8 +163,10 @@ sequenceDiagram
   participant X as ContentCode
   participant L as LanguageRunner
   participant S as ProgressStore
+  participant J as JdkSelector
   C->>S: active attempt (slug, lang)
   C->>R: load meta, tests
+  C->>J: selected JDK within the problem's range? (Java, Kotlin)
   C->>X: materialize generated cases (cached)
   C->>L: prepare (JVM: Gradle compile of one package)
   C->>L: run(request without expected values)
@@ -239,8 +245,8 @@ The repository holds no workspace. A workspace, created by `cstudy init` anywher
 |----------|--------------|-----------|---------|
 | Python | `python/` | `practice/<snake_slug>.py` | `pyproject.toml` (requires-python >= 3.13), `.venv` via `uv sync`, `cs-support` as editable path dependency on `../.cs/runtime/runners/python`, ruff and pyright configured |
 | TypeScript | `typescript/` | `practice/<slug>.ts` | `package.json` with `"type": "module"` and `"imports": {"#support": "./support.ts"}`; `support.ts` re-exports `../.cs/runtime/runners/typescript/support.ts`; `tsconfig.json` with `noEmit`, `allowImportingTsExtensions`, `erasableSyntaxOnly`, `verbatimModuleSyntax`, `strict`; dev deps `typescript`, `@types/node` via pnpm |
-| Java | `jvm/java/` | `src/main/java/practice/<snake_slug>/Solution.java` (or `<ClassName>.java`) | Gradle subproject; Java toolchain 21 |
-| Kotlin | `jvm/kotlin/` | `src/main/kotlin/practice/<snake_slug>/Solution.kt` (or `<ClassName>.kt`) | Gradle subproject; Kotlin JVM plugin, JVM target 21 |
+| Java | `jvm/java/` | `src/main/java/practice/<snake_slug>/Solution.java` (or `<ClassName>.java`) | Gradle subproject; no toolchain: compiles with the selected JDK at its release level, capped at 26 ([runners](specs/runners.md#the-jdk-and-the-release-level)) |
+| Kotlin | `jvm/kotlin/` | `src/main/kotlin/practice/<snake_slug>/Solution.kt` (or `<ClassName>.kt`) | Gradle subproject; Kotlin JVM plugin; `jvmTarget` and `-Xjdk-release` at the same release level as Java |
 | Go | `go/` | `practice/<snake_slug>/<snake_slug>.go` | `go.mod` (module `workspace`, Go 1.24) with one package per problem; `replace cstudy => ../.cs/runtime/runners/go` provides `cstudy/support`. The root `go.work` uses `./go`. Built offline ([ADR 0012](decisions/0012-go-and-rust.md)) |
 | Rust | `rust/` | `practice/<snake_slug>.rs` | `Cargo.toml` (package `practice`, edition 2021) with one `[[example]]` built as a library per started problem, which `cstudy start` adds, `cs_support` from `../.cs/runtime/runners/rust/cs_support` as a dev-dependency, and an empty `lib.rs`. For the editor only: `cstudy` builds solutions offline in `.cs/build/rust` ([ADR 0012](decisions/0012-go-and-rust.md)) |
 
@@ -254,7 +260,7 @@ Project roots are relative to the workspace. `jvm/settings.gradle.kts` uses `inc
 | uv | 0.10 or newer | CLI install (`uv tool install git+https://github.com/bkuberek/coding-study`, or `--editable .` in a checkout), venvs | Everyone |
 | Node | 24 or newer | TypeScript runner via type stripping | TypeScript practice |
 | pnpm | 9 or newer | TypeScript workspace dev deps | TypeScript practice |
-| OpenJDK | 21 | Java and Kotlin compile and run | Java and Kotlin practice |
+| OpenJDK | 21 to 26; 25 is the one to install | Java and Kotlin compile and run, on the JDK that `JAVA_HOME` or `PATH` selects | Java and Kotlin practice |
 | Gradle | Homebrew, used once | Generates the wrapper in the workspace template's `jvm/` | Maintainers regenerating the wrapper (`brew install gradle`) |
 | Gradle wrapper | pinned in `gradle-wrapper.properties` | All JVM builds | Nobody: it ships in the workspace template, and `cstudy init` copies it |
 | Kotlin compiler | pinned Kotlin Gradle plugin in `gradle/libs.versions.toml` | Fetched by Gradle; no global `kotlinc` | Nobody: Gradle fetches it |
