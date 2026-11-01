@@ -6,10 +6,13 @@ the same way before lines (or instructions) of the target file that worker threa
 monitoring callback cannot await, so the async model only yields between ops.
 """
 
-import os
+import ctypes
+import math
 import random
+import select
 import sys
 import threading
+import time
 from collections.abc import Generator
 from contextlib import contextmanager
 from types import CodeType
@@ -17,11 +20,17 @@ from types import CodeType
 from cs_runner.request import Granularity, Perturbation
 
 SWITCH_INTERVAL_SECONDS = 1e-5
+SLEEP_INTERVAL_SECONDS = 1e-4
+"""A thread's yields sleep at most once in this long; the others only release the GIL."""
+SHORTEST_SLEEP_SECONDS = 1e-6
+PR_SET_TIMERSLACK = 29
+"""Linux `prctl` option: the slack the kernel may add to the calling thread's sleeps."""
+SHORTEST_TIMER_SLACK_NS = 1
 TOOL_ID = 3
 TOOL_NAME = "cs-stress"
 
 _worker = threading.local()
-"""`rng` and `perturb` are set on worker threads only."""
+"""`rng` and `perturb` are set on worker threads only; `slept_at` on any thread that yielded."""
 
 
 def yield_count(rng: random.Random, perturb: Perturbation) -> int:
@@ -32,23 +41,51 @@ def yield_count(rng: random.Random, perturb: Perturbation) -> int:
 
 
 def scheduler_yields(count: int) -> None:
-    """Each yield releases the GIL and gives up the CPU. On a busy machine the yielding worker
-    waits for its next turn, and a worker waiting for the GIL takes it meanwhile; on an idle one
-    nothing else is ready on that core, and the call returns at once.
+    """Each yield releases the GIL. A thread's first yield, and its first one after each sleep
+    interval, sleeps for the shortest time the OS allows instead: the CPU is free meanwhile, so a
+    waiting worker that the OS was not running takes the GIL, even on a busy machine, where
+    releases alone let the yielding worker keep it
+    (docs/specs/runners.md#python-yields-give-up-the-cpu).
 
-    `time.sleep(0)` released the GIL without giving up the CPU: on a busy machine a waiting
-    worker was not running during that one system call, and every release restarted its wait,
-    so it never asked for the GIL. The yielding worker kept it and could finish its script
-    alone, and a racy reference passed whole runs (docs/specs/runners.md#perturbation).
+    `os.sched_yield()` handed the GIL over too, but gave up the thread's turn whenever another
+    process wanted the CPU: a whole time slice at every yield on Linux, a scheduler quantum now
+    and then on macOS. On a busy machine correct runs of yield-heavy cases stalled.
     """
     for _ in range(count):
-        os.sched_yield()
+        if _slept_recently():
+            _release_gil()
+        else:
+            _sleep_briefly()
+
+
+def _slept_recently() -> bool:
+    slept_at: float = getattr(_worker, "slept_at", -math.inf)
+    return time.perf_counter() - slept_at < SLEEP_INTERVAL_SECONDS
+
+
+def _release_gil() -> None:
+    """Releases the GIL for a system call that returns at once."""
+    select.select([], [], [], 0)
+
+
+def _sleep_briefly() -> None:
+    time.sleep(SHORTEST_SLEEP_SECONDS)
+    _worker.slept_at = time.perf_counter()
+
+
+def _shorten_sleeps() -> None:
+    """Linux pads each sleep of the thread by its timer slack, 50 µs by default, so a yield's
+    sleep would take ten times what it does on macOS."""
+    if sys.platform == "linux":
+        ctypes.CDLL(None).prctl(PR_SET_TIMERSLACK, SHORTEST_TIMER_SLACK_NS, 0, 0, 0)
 
 
 @contextmanager
 def worker_thread(rng: random.Random, perturb: Perturbation) -> Generator[None]:
-    """Marks the current thread as a worker, so injected yields draw from its PRNG."""
+    """Marks the current thread as a worker, so injected yields draw from its PRNG and sleep
+    as briefly as the OS allows."""
     _worker.rng, _worker.perturb = rng, perturb
+    _shorten_sleeps()
     try:
         yield
     finally:

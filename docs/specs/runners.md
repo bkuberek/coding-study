@@ -420,7 +420,7 @@ Details the procedure settles:
 |---------|--------------------|-------------------|-----------------|---------------------|
 | Worker | `platform`: `new Thread(null, r, "cs-worker-<ordinal>", 0)`, daemon. `virtual`: `Thread.ofVirtual().name("cs-worker-<ordinal>").unstarted(r)` | `threading.Thread(daemon=True)`, created after `threading.stack_size(16 MiB)`, restored afterwards | `asyncio.Task` in a fresh loop per run (`asyncio.run` on the case thread); setup and final run in the same loop | one async function per worker on the runner's loop |
 | Start gate | `CountDownLatch` `ready(n)` then `go(1)` | `threading.Barrier(n + 1)`, then a start line: each worker spins until every worker has passed the gate ([why](#python-yields-give-up-the-cpu)) | `asyncio.Event`, set after every task is created | one shared promise, resolved after every worker started |
-| Scheduler yield | `Thread.yield()` | `os.sched_yield()`, which releases the GIL and gives up the CPU ([why](#python-yields-give-up-the-cpu)) | `await asyncio.sleep(0)` | `await new Promise((resolve) => setImmediate(resolve))` |
+| Scheduler yield | `Thread.yield()` | `select.select([], [], [], 0)`, which releases the GIL; a thread's first yield, and its first one after each 100 µs, sleeps 1 µs instead, which also frees the CPU ([why](#python-yields-give-up-the-cpu)) | `await asyncio.sleep(0)` | `await new Promise((resolve) => setImmediate(resolve))` |
 | Injection inside user code | none: true parallelism | `sys.monitoring` ([Perturbation](#perturbation)) | none | none |
 | Calls | Reflection as for class kinds; an `InterruptedException` caused by the harness interrupt (7b) is not reported | Direct | Result awaited when `inspect.isawaitable` | Result awaited when it is a thenable |
 | Deadline | Coordinator joins each worker with the remaining time | `Thread.join(remaining)` | `asyncio.wait(tasks, timeout=remaining)`, then cancel pending tasks | `Promise.race` against a `setTimeout`, cleared afterwards |
@@ -448,7 +448,7 @@ The PRNG streams need not match across languages; they only make each runtime's 
 | Runtime | Between ops | Inside user code |
 |---------|-------------|------------------|
 | JVM | With probability `yield_probability`, `1 + nextInt(max_yields)` calls of `Thread.yield()` | none (no agent, no bytecode rewriting) |
-| Python `threads` | Same rule with `os.sched_yield()` | See below |
+| Python `threads` | Same rule with its scheduler yield, which sleeps at most once per 100 µs | See below |
 | Go | Same rule with `runtime.Gosched()` | none: true parallelism |
 | Rust | Same rule with `std::thread::yield_now()` | none: true parallelism |
 | `async` (Python, TypeScript) | Same rule with macrotask yields | none: a monitoring callback cannot await |
@@ -462,19 +462,27 @@ Python `threads`, for the duration of each stress run only:
 
 #### Python yields give up the CPU
 
-A Python scheduler yield is `os.sched_yield()`: it releases the GIL and gives up the CPU. On a busy machine the yielding worker waits for its next turn, and a worker waiting for the GIL takes it meanwhile. On an idle machine nothing else is ready on that core, so the call returns at once and costs what `time.sleep(0)` did.
+A Python scheduler yield releases the GIL for a system call that returns at once, `select.select([], [], [], 0)`. A thread's first yield, and its first one after each 100 µs, sleeps for 1 µs instead. The sleep frees the CPU, so on a busy machine a worker waiting for the GIL that the OS was not running gets a turn and takes it. A sleep costs a few microseconds whatever else wants the CPU, since a sleeping thread keeps its scheduler share and wakes on time; at most one per 100 µs keeps that under a tenth of a worker's time. Linux pads every sleep with the thread's timer slack, 50 µs by default, so each worker thread sets its own to 1 ns (`prctl(PR_SET_TIMERSLACK)`), and its 1 µs sleep takes about 5 µs, as on macOS.
 
-The earlier yield, `time.sleep(0)`, released the GIL for one system call but kept the CPU. On a busy machine the waiting worker was rarely running during that call. Each release also woke its wait before the switch interval ran out, so it never asked the holder for the GIL (CPython asks only after a wait times out). The yielding worker kept the GIL and could run its whole script alone. For the same reason the workers wait at a start line after the gate: the gate releases them together, but a busy machine wakes them one at a time, and the first could finish before the others asked for the GIL.
+Releases alone do not hand the GIL over on a busy machine. The waiting worker is rarely running during the call, and each release wakes its wait before the switch interval runs out, so it never asks the holder for the GIL (CPython asks only after a wait times out). The yielding worker keeps the GIL and can run its whole script alone. For the same reason the workers wait at a start line after the gate: the gate releases them together, but a busy machine wakes them one at a time, and the first could finish before the others asked for the GIL.
 
-Measured on 11 cores with other agents and a CPU hog running:
+Earlier yields:
 
-| Yield | Racy `conformance-stress-counter` runs that lost no increment | Slowest correct `read-write-lock` run, share of its deadline (load 6 to 13) |
-|-------|------------------------------------------------------------------|---------------------------------------------------------------------------|
-| `time.sleep(0)` | 12 of 100 (load 29 to 88): 3 of 10 verifies missed the 9 of 10 required | 5% to 7% |
-| A busy wait of one switch interval that keeps the GIL, with the start line | 0 of 100 (load 29 to 88) | 19% to 28%: it spins even while every other worker is blocked |
-| `os.sched_yield()`, with the start line | 0 of 100 (load 29 to 88) | 7% to 8% |
+| Yield | Why it was replaced |
+|-------|---------------------|
+| `time.sleep(0)` | On macOS a release alone: at load 29 to 88 on 11 cores, the racy `conformance-stress-counter` reference lost no increment in 12 of 100 runs, so 3 of 10 verifies missed the 9 of 10 required; traces showed the workers running one after another (0 to 187 µs, 223 to 459 µs, 483 to 771 µs). On Linux a sleep for the timer slack, 55 to 90 µs at every yield: the slowest correct `read-write-lock` run took 94% of its deadline |
+| A busy wait of one switch interval that keeps the GIL, with the start line | It spins even while every other worker is blocked: the slowest correct `read-write-lock` run took 19% to 28% of its deadline on macOS (load 6 to 13) and up to 33% on Linux |
+| `os.sched_yield()`, with the start line | It gives up the thread's turn whenever another process wants the CPU: a whole time slice (3 ms) at every yield on Linux, whose scheduler (EEVDF) moves the yielding thread behind the others, and a 10 ms quantum at about one yield in 100 on macOS. A `read-write-lock` run makes about 40,000 yields, so on a busy machine correct runs stalled at their deadline |
 
-Traces of the runs that lost nothing with `time.sleep(0)` showed the workers running one after another (0 to 187 µs, 223 to 459 µs, 483 to 771 µs).
+Measured in a Linux container (Ubuntu 24.04, kernel 7.0, linux/arm64 on an 11-core M3 Mac) and on that Mac, with CPU hogs (`yes`) for load. Shares are the slowest correct run of 10 to 30 against its deadline; the racy counter's column counts its runs that lost no increment, where `verify` requires at most 1 in 10:
+
+| Machine | `os.sched_yield()` | 1 µs sleep at most once per 100 µs, releases otherwise |
+|---------|--------------------|--------------------------------------------------------|
+| Linux, 11 CPUs, idle | `read-write-lock` 9%, others 10% or less; racy counter 0 of 30 | `read-write-lock` 12%, others 9% or less; racy counter 0 of 30 |
+| Linux, 4 CPUs, 4 hogs | every run of `token-bucket-limiter`, `thread-safe-lru-cache` (`locked-dll`) and `read-write-lock` stalled at its deadline | `read-write-lock` 15%, others 6% or less; racy counter 0 of 50 |
+| Linux, 4 CPUs, 8 hogs | every run of `token-bucket-limiter` and `read-write-lock` stalled; the correct counter took 67% | `read-write-lock` 10% to 40% across five series, as the Mac running the container got busier; `token-bucket-limiter` 6% to 28%; racy counter 0 of 70 |
+| Linux, 4 CPUs, 16 hogs | stalled runs | `read-write-lock` 12%, others 7% or less; racy counter 0 of 50 (10 of 50 with releases alone) |
+| macOS, 11 cores, 22 hogs and other work (load 75 to 215) | `read-write-lock` 81% at the median in one series and stalled in another; `token-bucket-limiter` 43% to 97%; `concurrency-limiter` 30% to 50% | `read-write-lock` 8% to 27%; `token-bucket-limiter` 5% or less; `concurrency-limiter` 30% to 39%; racy counter 0 of 50 |
 
 ### Harness ops
 
