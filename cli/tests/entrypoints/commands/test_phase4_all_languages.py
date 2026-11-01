@@ -19,6 +19,7 @@ from coding_study.domain.layout import SOURCE_EXTENSIONS
 from coding_study.domain.problem import ALL_LANGUAGES, Language
 from coding_study.entrypoints import cli
 from tests.helpers import REPOSITORY_ROOT, SCHEMAS_DIRECTORY
+from tests.toolchains import jvm_marked
 from tests.workspaces import workspace_like
 
 pytestmark = pytest.mark.slow
@@ -87,7 +88,7 @@ def shown_levels(root: Path) -> tuple[str, ...]:
     return tuple(title for title in LEVEL_TITLES if title in statement)
 
 
-@pytest.mark.parametrize("language", ALL_LANGUAGES, ids=str)
+@pytest.mark.parametrize("language", jvm_marked(ALL_LANGUAGES), ids=str)
 def test_levels_unlock_one_at_a_time(root, cstudy, language):
     observed: list[tuple[int, tuple[str, ...]]] = []
     started = cstudy("start", "level-store", "--lang", language, "--no-open")

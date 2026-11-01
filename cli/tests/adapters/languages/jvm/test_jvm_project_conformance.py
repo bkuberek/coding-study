@@ -15,7 +15,7 @@ from coding_study.entrypoints.shared import ExitCode
 from tests.helpers import REPOSITORY_ROOT
 from tests.workspaces import workspace_like
 
-pytestmark = pytest.mark.slow
+pytestmark = [pytest.mark.slow, pytest.mark.jvm]
 
 runner = CliRunner()
 FIXTURES = {

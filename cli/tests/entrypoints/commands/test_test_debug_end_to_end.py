@@ -38,6 +38,7 @@ from tests.debug_clients import (
     run_lldb_client,
 )
 from tests.helpers import REPOSITORY_ROOT, SCHEMAS_DIRECTORY
+from tests.toolchains import jvm_marked
 from tests.workspaces import workspace_like
 
 pytestmark = pytest.mark.slow
@@ -340,7 +341,7 @@ def test_rust_waits_for_the_lldb_server_stops_at_a_breakpoint_and_gives_a_verdic
     assert PASSED_LINE in run.stdout.splitlines()
 
 
-@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
+@pytest.mark.parametrize("language", jvm_marked([Language.JAVA, Language.KOTLIN]))
 def test_the_jvm_waits_for_jdwp_and_runs_after_the_handshake_and_a_resume(debugged, language):
     file = debugged.solved(language)
     port = free_port()
@@ -354,6 +355,7 @@ def test_the_jvm_waits_for_jdwp_and_runs_after_the_handshake_and_a_resume(debugg
     assert PASSED_LINE in run.stdout.splitlines()
 
 
+@pytest.mark.jvm
 def test_the_jvm_connects_to_an_ide_that_starts_listening_late(debugged):
     file = debugged.solved(Language.JAVA)
     port = free_port()

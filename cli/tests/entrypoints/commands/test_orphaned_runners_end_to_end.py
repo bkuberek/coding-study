@@ -306,7 +306,7 @@ def free_port() -> int:
 RUNNERS = [
     Language.PYTHON,
     Language.TYPESCRIPT,
-    Language.JAVA,
+    pytest.param(Language.JAVA, marks=pytest.mark.jvm),
     pytest.param(Language.GO, marks=pytest.mark.skipif(NO_GO, reason="go is not installed")),
     pytest.param(
         Language.RUST, marks=pytest.mark.skipif(NO_CARGO, reason="cargo is not installed")
@@ -328,7 +328,7 @@ PROJECT_SUITES = [
     pytest.param(
         Language.RUST, marks=pytest.mark.skipif(NO_CARGO, reason="cargo is not installed")
     ),
-    Language.JAVA,
+    pytest.param(Language.JAVA, marks=pytest.mark.jvm),
 ]
 
 

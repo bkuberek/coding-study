@@ -18,6 +18,7 @@ import pytest
 from tests.scripted_runs import Frame
 from tests.serve_page import Page, opened_page
 from tests.serve_process import running_server
+from tests.toolchains import jvm_marked
 from tests.workspaces import workspace_like
 
 pytestmark = pytest.mark.slow
@@ -57,6 +58,8 @@ class Row:
 
 
 ROWS = [Row(kind, language) for kind in PROBLEMS for language in LANGUAGES]
+ROW_PARAMS = jvm_marked(ROWS, lambda row: row.language)
+"""The rows as test parameters: `-m jvm` selects the Java and Kotlin ones."""
 
 
 @dataclass
@@ -74,14 +77,25 @@ class Walk:
         return next((frame.data for frame in self.frames if frame.event == "run_end"), {})
 
 
+class Walks(dict[Row, Walk]):
+    """The walk of each row, taken when a test first asks for it, so a run of some rows (`-m jvm`)
+    walks only those and needs only their toolchains."""
+
+    def __init__(self, page: Page) -> None:
+        super().__init__()
+        self._page = page
+
+    def __missing__(self, row: Row) -> Walk:
+        walk = self[row] = _walk(self._page, row)
+        return walk
+
+
 @pytest.fixture(scope="module")
-def walks(
-    practice_workspace: Path, tmp_path_factory: pytest.TempPathFactory
-) -> Iterator[dict[Row, Walk]]:
+def walks(practice_workspace: Path, tmp_path_factory: pytest.TempPathFactory) -> Iterator[Walks]:
     root = workspace_like(practice_workspace, tmp_path_factory.mktemp("parity") / "workspace")
     with running_server(root) as server:
         page = opened_page(server)
-        yield {row: _walk(page, row) for row in ROWS}
+        yield Walks(page)
         page.client.close()
 
 
@@ -104,7 +118,7 @@ def kind_of(document: dict[str, Any]) -> str:
     return DEBUGGING if document.get("track") == DEBUGGING else document.get("kind", "")
 
 
-@pytest.mark.parametrize("row", ROWS, ids=str)
+@pytest.mark.parametrize("row", ROW_PARAMS, ids=str)
 def test_start_from_the_page_opens_an_attempt_of_the_kind(walks, row):
     walk = walks[row]
     assert (walk.started, kind_of(walk.attempt), walk.attempt.get("language")) == (
@@ -114,7 +128,7 @@ def test_start_from_the_page_opens_an_attempt_of_the_kind(walks, row):
     )
 
 
-@pytest.mark.parametrize("row", ROWS, ids=str)
+@pytest.mark.parametrize("row", ROW_PARAMS, ids=str)
 def test_a_run_from_the_page_starts_on_the_attempt(walks, row):
     run_start = walks[row].frames[0].data
     assert (run_start["attempt_id"], kind_of(run_start)) == (
@@ -123,23 +137,23 @@ def test_a_run_from_the_page_starts_on_the_attempt(walks, row):
     )
 
 
-@pytest.mark.parametrize("row", ROWS, ids=str)
+@pytest.mark.parametrize("row", ROW_PARAMS, ids=str)
 def test_a_run_from_the_page_reaches_a_verdict(walks, row):
     assert walks[row].run_end.get("outcome") in VERDICTS
 
 
-@pytest.mark.parametrize("row", ROWS, ids=str)
+@pytest.mark.parametrize("row", ROW_PARAMS, ids=str)
 def test_a_run_from_the_page_streams_its_results(walks, row):
     assert any(frame.event in RESULT_EVENTS for frame in walks[row].frames)
 
 
-@pytest.mark.parametrize("row", ROWS, ids=str)
+@pytest.mark.parametrize("row", ROW_PARAMS, ids=str)
 def test_a_run_from_the_page_closes_with_the_exit_code_of_its_run_end(walks, row):
     closed = walks[row].frames[-1]
     assert (closed.event, closed.data["exit_code"]) == ("closed", walks[row].run_end["exit_code"])
 
 
-@pytest.mark.parametrize("row", ROWS, ids=str)
+@pytest.mark.parametrize("row", ROW_PARAMS, ids=str)
 def test_done_from_the_page_finishes_the_attempt(walks, row):
     walk = walks[row]
     assert (walk.finished, walk.done.get("slug"), walk.done.get("language")) == (

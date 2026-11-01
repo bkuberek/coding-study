@@ -2,10 +2,13 @@
 
 import shutil
 import subprocess
+from collections.abc import Callable, Iterable
+from typing import Any
 
 import pytest
 
 VERSION_TIMEOUT_SECONDS = 30.0
+JVM_LANGUAGES = ("java", "kotlin")
 
 
 def tool_works(name: str) -> bool:
@@ -27,3 +30,12 @@ def tool_works(name: str) -> bool:
 
 
 needs_rustfmt = pytest.mark.skipif(not tool_works("rustfmt"), reason="rustfmt is not installed")
+
+
+def jvm_marked[T](values: Iterable[T], language_of: Callable[[T], str] = str) -> list[Any]:
+    """`values` as test parameters with the Java and Kotlin ones marked `jvm`, for a slow test over
+    every language: CI selects the JVM rows with `-m jvm` and runs them on the JDKs of the range."""
+    return [
+        pytest.param(value, marks=pytest.mark.jvm) if language_of(value) in JVM_LANGUAGES else value
+        for value in values
+    ]

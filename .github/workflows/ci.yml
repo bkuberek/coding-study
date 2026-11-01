@@ -1,12 +1,16 @@
 name: CI
 
-# The fast checks of CONTRIBUTING.md#checks, on Linux: lint, format, types, layer contracts, the
-# tests not marked slow, and the static content checks against a workspace made by the job. The
-# slow tests drive real toolchains (Gradle, Node, Go, Cargo, the debuggers) and stay a local gate.
+# Two jobs, on Linux. "Fast checks" is the fast part of CONTRIBUTING.md#checks: lint, format, types,
+# layer contracts, the tests not marked slow, and the static content checks against a workspace made
+# by the job. "JVM tests" runs the tests marked jvm (the slow tests that drive Gradle, javac, kotlinc
+# or a JVM runner) and the Java and Kotlin conformance suites on the two ends of the supported JDK
+# range, 21 and 26 (ADR 0016). The other slow tests (Node, Go, Cargo, the debuggers, the browsers)
+# stay a local gate.
 # The fast tests need no toolchain but uv and Python 3.13, which uv installs from .python-version:
 # each toolchain is replaced by a fake, and the few tests that call `gofmt`, `rustfmt` or `git`
 # skip without one. Pyright runs on Node, the major version the TypeScript runner needs; without
-# a Node on PATH, pyright's own download of one fails.
+# a Node on PATH, pyright's own download of one fails. The JVM job needs that Node, and pnpm, too:
+# the slow tests set up a workspace the way `cstudy doctor --fix` does, TypeScript project included.
 #
 # CI publishes nothing: it can only read the repository and holds no secret. Versioning and
 # publishing belong to version.yml, which this workflow neither triggers nor waits for. Its
@@ -73,3 +77,64 @@ jobs:
         run: |
           uv run cstudy init "$CSTUDY_WORKSPACE" --no-ide
           uv run cstudy verify --static
+
+  jvm:
+    name: JVM tests (JDK ${{ matrix.jdk }}, Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      # A failure on one end of the range says nothing about the other: let both finish.
+      fail-fast: false
+      matrix:
+        jdk: ["21", "26"]
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-python: true
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      # JAVA_HOME and PATH name this JDK, which is the one cstudy selects. The cache holds Gradle's
+      # downloads, keyed on the files that decide them: the runners' version catalog and builds.
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.jdk }}
+          cache: gradle
+          cache-dependency-path: |
+            runners/jvm/gradle/libs.versions.toml
+            runners/jvm/**/*.gradle.kts
+            cli/src/coding_study/adapters/workspace_template/jvm/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Enable pnpm
+        run: corepack enable pnpm
+
+      - name: Install the development environment
+        run: uv sync --locked
+
+      - name: Selected JDK
+        run: java -version
+
+      - name: JVM tests
+        run: uv run pytest -q -m jvm
+
+      - name: Conformance
+        env:
+          CSTUDY_WORKSPACE: ${{ runner.temp }}/workspace
+        run: |
+          uv run cstudy init "$CSTUDY_WORKSPACE" --no-ide
+          uv run cstudy doctor --fix
+          uv run cstudy verify --conformance --lang java
+          uv run cstudy verify --conformance --lang kotlin

@@ -48,6 +48,7 @@ from coding_study.domain.runs import FileTarget, Raised, RunTarget
 from coding_study.domain.signature import ClassSignature, FunctionSignature, Method, Param, Returns
 from coding_study.domain.type_dsl import ArrayType, Scalar, ScalarType
 from tests.helpers import REPOSITORY_ROOT
+from tests.toolchains import jvm_marked
 from tests.workspaces import workspace_like
 
 pytestmark = pytest.mark.slow
@@ -337,7 +338,7 @@ def jvm_launches(jvm_root: Path) -> JvmLaunches:
     return JvmLaunches(jvm_root)
 
 
-@pytest.fixture(params=[Language.PYTHON, Language.TYPESCRIPT, Language.JAVA], ids=str)
+@pytest.fixture(params=jvm_marked([Language.PYTHON, Language.TYPESCRIPT, Language.JAVA]), ids=str)
 def runtime(request: pytest.FixtureRequest) -> Runtime:
     match request.param:
         case Language.PYTHON:

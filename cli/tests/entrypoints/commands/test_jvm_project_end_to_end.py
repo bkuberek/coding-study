@@ -30,7 +30,7 @@ from coding_study.entrypoints.shared import ExitCode
 from tests.fakes import FakeToolchains, make_environment, repository_root
 from tests.workspaces import workspace_like
 
-pytestmark = pytest.mark.slow
+pytestmark = [pytest.mark.slow, pytest.mark.jvm]
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "jvm-projects" / "problems"
 COMMANDS = (start, test_command, submit, status)

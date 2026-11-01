@@ -65,7 +65,7 @@ from tests.helpers import REPOSITORY_ROOT, RUNNER_TRUNCATION_NOTICE, sequential_
 from tests.stub_contract import STUB_CASES
 from tests.workspaces import workspace_like
 
-pytestmark = pytest.mark.slow
+pytestmark = [pytest.mark.slow, pytest.mark.jvm]
 
 JVM_LANGUAGES = (Language.JAVA, Language.KOTLIN)
 SUITE = sequential_conformance_suite()

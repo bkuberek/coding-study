@@ -23,7 +23,7 @@ from coding_study.domain.jdk import SUPPORTED_JDKS
 from coding_study.domain.problem import Language
 from tests.workspaces import workspace_like
 
-pytestmark = pytest.mark.slow
+pytestmark = [pytest.mark.slow, pytest.mark.jvm]
 
 JVM_LANGUAGES = (Language.JAVA, Language.KOTLIN)
 CLASS_FILE_MAJOR_OF_RELEASE_0 = 44

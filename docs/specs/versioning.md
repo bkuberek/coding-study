@@ -36,7 +36,7 @@ It uses `GITHUB_TOKEN`; the bot commit and tag do not start further workflow run
 
 `cstudy --version` prints the installed version, read from package metadata. The first run on a repository without tags tags the current version, `v0.1.0`, without changing it.
 
-`.github/workflows/ci.yml` is separate: on every push to a branch and every pull request, it runs the fast [checks](../../CONTRIBUTING.md#checks) on `ubuntu-latest` (lint, format, types, layer contracts, `pytest -m "not slow"`, and `cstudy verify --static` against a workspace it creates). It only reads the repository, holds no secret and publishes nothing. It does not gate `version.yml`, and the release commit's `[skip ci]` skips it.
+`.github/workflows/ci.yml` is separate: on every push to a branch and every pull request, it runs two jobs on `ubuntu-latest`. The fast [checks](../../CONTRIBUTING.md#checks) job runs lint, format, types, layer contracts, `pytest -m "not slow"`, and `cstudy verify --static` against a workspace it creates. The JVM job runs on JDK 21 and on JDK 26, the two ends of the [supported range](../decisions/0016-jdk-range.md#the-supported-range) (Temurin builds, one run per JDK): `pytest -m jvm`, which is the slow tests that drive Gradle, javac, kotlinc or a JVM runner, and then `cstudy verify --conformance --lang java` and `--lang kotlin` in a workspace it creates and sets up with `cstudy doctor --fix`. The other slow tests (Node, Go, Cargo, the debuggers, the browsers) stay a local gate. Both jobs only read the repository, hold no secret and publish nothing. The workflow does not gate `version.yml`, and the release commit's `[skip ci]` skips it.
 
 ## GitHub release
 

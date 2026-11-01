@@ -43,7 +43,10 @@ Run the CLI checks from `cli/`; its tool settings live there (`ruff.toml`, `pyri
 | Types (strict on `src/`) | `uv run pyright` |
 | Layer contracts | `uv run lint-imports` |
 | Fast tests | `uv run pytest -q -m "not slow"` |
+| JVM tests | `uv run pytest -q -m jvm` (the `slow` tests that drive Gradle, javac, kotlinc or a JVM runner on the JDK your shell selects) |
 | All tests | `uv run pytest -q` (the `slow` tests drive real Gradle, Node, tsc and a workspace venv in a temporary workspace) |
+
+CI runs two jobs on Linux for every push to a branch and every pull request ([versioning](docs/specs/versioning.md#what-the-workflow-does)). The fast checks are the first six rows, plus `cstudy verify --static`. The JVM job runs the JVM tests and `cstudy verify --conformance` for `--lang java` and for `--lang kotlin`, on JDK 21 and on JDK 26, the two ends of the supported range. The other `slow` tests stay a local gate. A test belongs to the JVM job when it carries the `jvm` marker, together with `slow`: mark a new test that drives the JVM the same way, and a row of a test over every language with `jvm_marked` from `cli/tests/toolchains.py`.
 
 Changes to content, runners or code generation also need `cstudy verify` (with `CSTUDY_WORKSPACE` set):
 
@@ -57,7 +60,7 @@ Changes to content, runners or code generation also need `cstudy verify` (with `
 
 ### Which JDK
 
-Java and Kotlin build and run with the JDK your shell selects, 21 to 26 ([toolchains guide](docs/guides/toolchains.md#jdk)), so the `slow` tests and `cstudy verify` use that one. To try another JDK for one command, set `JAVA_HOME` for it, for example with SDKMAN: `JAVA_HOME="$HOME/.sdkman/candidates/java/<identifier>" uv run pytest -q -m slow`. Before a release that changes the range or the JVM build, the gate runs on JDK 21 and on JDK 26 ([ADR 0016](docs/decisions/0016-jdk-range.md#verification)).
+Java and Kotlin build and run with the JDK your shell selects, 21 to 26 ([toolchains guide](docs/guides/toolchains.md#jdk)), so the `slow` tests and `cstudy verify` use that one. To try another JDK for one command, set `JAVA_HOME` for it, for example with SDKMAN: `JAVA_HOME="$HOME/.sdkman/candidates/java/<identifier>" uv run pytest -q -m slow`. CI runs the JVM tests and the Java and Kotlin conformance suites on JDK 21 and on JDK 26 on every push. Before a release that changes the range or the JVM build, the local gate also runs a full `cstudy verify` of the Java and Kotlin references on both ([ADR 0016](docs/decisions/0016-jdk-range.md#verification)).
 
 One build wants an exact JDK: `tools/ide-launcher/build.sh`, which rebuilds the IntelliJ launcher jar, needs javac 21, since javac 17 and 21 emit other bytes for the same `--release 17`, and a slow test compares the committed jar with a rebuild. The script uses the JDK that `JAVA_HOME` names, else the first `javac` on `PATH`, and says how to select a 21 when it finds another: `JAVA_HOME="$HOME/.sdkman/candidates/java/<identifier of a 21>" tools/ide-launcher/build.sh`. The test skips itself on any other JDK, so run it with `JAVA_HOME` at a 21 to check the jar.
 

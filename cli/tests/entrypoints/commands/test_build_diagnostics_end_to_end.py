@@ -17,6 +17,7 @@ from typer.testing import CliRunner
 
 from coding_study.entrypoints import cli
 from tests.helpers import CATALOG_PROBLEMS, REPOSITORY_ROOT, SCHEMAS_DIRECTORY
+from tests.toolchains import jvm_marked
 from tests.workspaces import workspace_like
 
 pytestmark = pytest.mark.slow
@@ -102,7 +103,11 @@ def practice(
         yield Practice(root)
 
 
-@pytest.fixture(scope="module", params=BROKEN_FILES, ids=lambda broken: broken.language)
+@pytest.fixture(
+    scope="module",
+    params=jvm_marked(BROKEN_FILES, lambda broken: broken.language),
+    ids=lambda broken: broken.language,
+)
 def broken(request: pytest.FixtureRequest) -> BrokenFile:
     if shutil.which(request.param.toolchain) is None:
         pytest.skip(f"{request.param.toolchain} is not installed")

@@ -12,6 +12,7 @@ from coding_study.adapters.environment_factory import conformance_environment, l
 from coding_study.application.verify_conformance import ConformanceRequest, verify_conformance
 from coding_study.domain.problem import Language
 from tests.helpers import REPOSITORY_ROOT
+from tests.toolchains import jvm_marked
 
 pytestmark = pytest.mark.slow
 
@@ -25,7 +26,7 @@ STRESS_FIXTURES = (
 )
 
 
-@pytest.mark.parametrize("language", list(Language))
+@pytest.mark.parametrize("language", jvm_marked(Language))
 def test_every_runner_meets_the_stress_expectations(language, practice_workspace):
     environ = {"CSTUDY_CONTENT": str(REPOSITORY_ROOT), "CSTUDY_WORKSPACE": str(practice_workspace)}
     environment = load_environment(practice_workspace, environ, practice_workspace)

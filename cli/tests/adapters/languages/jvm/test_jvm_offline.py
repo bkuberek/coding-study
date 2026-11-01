@@ -21,7 +21,7 @@ from coding_study.application.doctor import JVM_FIX, JVM_PROJECT_WARMUPS
 from tests.helpers import REPOSITORY_ROOT
 from tests.workspaces import TEST_VERSION
 
-pytestmark = pytest.mark.slow
+pytestmark = [pytest.mark.slow, pytest.mark.jvm]
 
 DISTRIBUTIONS = Path("wrapper") / "dists"
 PROJECTS = Path(__file__).resolve().parents[3] / "fixtures" / "jvm-projects" / "problems"
