@@ -7,7 +7,7 @@ from dataclasses import replace
 import pytest
 
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
-from coding_study.domain import virtual_clock
+from coding_study.domain import project_checks, virtual_clock
 from coding_study.domain.cases import Case, Expected, GeneratedInput, OperationSequence
 from coding_study.domain.jdk import DeclaredJdk
 from coding_study.domain.problem import (
@@ -1255,6 +1255,34 @@ def test_a_typescript_clock_helper_that_drifted_fails(bank):
         f"{STARTER}/tests/virtual-clock.ts: is not the clock helper that the template writes; "
         "copy runners/typescript/lib/virtual-clock.ts again"
     ]
+
+
+EARLIER_HELPER = CLOCK_HELPER_TEXT.replace("now: 0", "now: 1")
+"""Stands in for a copy of the helper that an earlier cstudy wrote into a starter."""
+
+
+@pytest.fixture
+def earlier_helper(monkeypatch):
+    digest = hashlib.sha256(EARLIER_HELPER.encode()).hexdigest()
+    monkeypatch.setattr(project_checks, "EARLIER_TYPESCRIPT_CLOCK_HELPER_DIGESTS", (digest,))
+
+
+@pytest.mark.usefixtures("graded_clock_runners", "earlier_helper")
+def test_a_workspace_problem_may_keep_a_clock_helper_an_earlier_cstudy_wrote(bank):
+    problem = with_meta(typescript_on_the_clock(bank, EARLIER_HELPER), workspace=True)
+    assert starter_errors(problem) == []
+
+
+@pytest.mark.usefixtures("graded_clock_runners", "earlier_helper")
+def test_a_catalog_problem_holds_the_clock_helper_of_this_cstudy(bank):
+    assert starter_errors(typescript_on_the_clock(bank, EARLIER_HELPER)) == [
+        f"{STARTER}/tests/virtual-clock.ts: is not the clock helper that the template writes; "
+        "copy runners/typescript/lib/virtual-clock.ts again"
+    ]
+
+
+def test_no_earlier_cstudy_wrote_another_clock_helper_yet():
+    assert project_checks.EARLIER_TYPESCRIPT_CLOCK_HELPER_DIGESTS == ()
 
 
 def test_the_clock_helper_digest_is_the_runners_file():
