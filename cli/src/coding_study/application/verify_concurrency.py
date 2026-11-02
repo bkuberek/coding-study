@@ -150,7 +150,7 @@ class _Checks:
                 check = StressCheck(approach, False, verdict, 0)
                 self.stress_checks += (check,)
                 if not check.ok:
-                    failures.append(_stress_failure(verdict))
+                    failures.append(stress_failure(verdict))
         return ApproachResult(approach, shown(failures))
 
     def broken(self, broken: BrokenReference, planned: Sequence[PlannedRun]) -> ApproachResult:
@@ -183,7 +183,7 @@ class _Checks:
         return judge_stress(planned, job, self._judging)
 
 
-def _stress_failure(verdict: StressVerdict) -> str:
+def stress_failure(verdict: StressVerdict) -> str:
     """`s1 virtual 7/10 runs passed; run 3 seed 1003: <reason>`."""
     passed = f"{verdict.runs_passed}/{len(verdict.runs)} runs passed"
     head = f"{verdict.case_id} {verdict.variant} {passed}"

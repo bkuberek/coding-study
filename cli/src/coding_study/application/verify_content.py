@@ -424,21 +424,31 @@ class _DynamicChecks:
         )
 
     def _project(self, verification: ProblemVerification, split: JdkSplit) -> ProblemVerification:
-        """D1, D3 and D9 in the project's one language; D2, D4 and D5 do not apply."""
+        """D1, D3, D9, and D6, D7 and D10 where they apply, in the project's one language; D2, D4
+        and D5 do not apply."""
         projects = [
-            verify_project(self._environment, self._problem, language, self._notify)
+            verify_project(
+                self._environment,
+                self._problem,
+                language,
+                self._notify,
+                self._request.stress_runs,
+            )
             for language in split.runnable
         ]
         skipped = tuple(
             LanguageResult(language, skipped=split.reason) for language in split.skipped
         )
+        results = tuple(project.language for project in projects)
+        margin_errors = _deadline_margin_problems(results) if self._request.require_ready else ()
         return replace(
             verification,
-            languages=(*(project.language for project in projects), *skipped),
+            languages=(*results, *skipped),
             suite=next((project.suite for project in projects), None),
             determinism=next((project.determinism for project in projects), None),
             dynamic_errors=tuple(self._errors),
-            ready_errors=verification.ready_errors + self._skip_errors(split),
+            ready_errors=verification.ready_errors + margin_errors + self._skip_errors(split),
+            warnings=verification.warnings + self._busy_machine_notes(results, margin_errors),
             skipped=self._generator_checks_requested(),
         )
 

@@ -219,11 +219,15 @@ class ScriptedProjectProcess:
 
 @dataclass
 class ScriptedBuilds:
-    """What `cstudy verify` runs: D1's copy of the starter and a reference, each with a script of
-    its own; a job runs the script of the build it launches in."""
+    """What `cstudy verify` runs: D1's copy of the starter, a reference and each broken overlay
+    (by its folder, `broken-<id>`), each with a script of its own; a job runs the script of the
+    build it launches in."""
 
     starter: ScriptedProjectProcess
     reference: ScriptedProjectProcess
+    broken: dict[str, ScriptedProjectProcess] = field(
+        default_factory=dict[str, ScriptedProjectProcess]
+    )
 
     def run(
         self, launch: RunnerLaunch, request: RunRequest, listener: CaseListener | None = None
@@ -237,7 +241,9 @@ class ScriptedBuilds:
 
     def _script(self, launch: RunnerLaunch) -> ScriptedProjectProcess:
         in_the_starters_build = STARTER_BUILDS in launch.cwd.as_posix()
-        return self.starter if in_the_starters_build else self.reference
+        if in_the_starters_build:
+            return self.starter
+        return self.broken.get(launch.cwd.name, self.reference)
 
 
 def scripted_builds(*problems: Problem, passing: Sequence[str] = ()) -> ScriptedBuilds:
