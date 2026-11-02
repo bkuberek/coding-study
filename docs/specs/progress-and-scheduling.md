@@ -141,7 +141,7 @@ A [project problem](problem-format.md#project-problems)'s attempt is graded from
 | Item | Rule |
 |------|------|
 | Counted submission | The latest submission with `every_level = 1`. Submissions with a lower `--level` never count |
-| Levels finished | The largest L such that the counted submission passed every case of levels 1 to L; 0 without a counted submission |
+| Levels finished | The largest L such that the counted submission passed every case of levels 1 to L; 0 without a counted submission. A [stress verdict](problem-format.md#stress-cases-in-projects) counts as a hidden case of its level, in `hidden_total` and `hidden_passed` of the level's tally |
 | `cstudy done` | A rating is required when levels finished is at least 1, `--gave-up` otherwise |
 | Level cap | Applied with the caps above, the minimum winning: every level finished, no cap; all but the last, `hard` (1); fewer, `again` (0) |
 | Time box | Soft, as for every problem: finishing over `--timer` caps at `hard`; submissions are never refused |

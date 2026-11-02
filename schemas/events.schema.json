@@ -253,7 +253,7 @@
       }
     },
     "stress_run_start": {
-      "description": "`cstudy test` on a concurrent problem: the runner started one stress run",
+      "description": "`cstudy test` on a concurrent problem, and `cstudy submit` on a project with stress cases: the runner started one stress run",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "version", "id", "variant", "run", "seed"],
@@ -263,11 +263,12 @@
         "id": { "description": "The stress case", "type": "string", "minLength": 1 },
         "variant": { "$ref": "#/$defs/variant" },
         "run": { "description": "0-based", "$ref": "#/$defs/count" },
-        "seed": { "type": "integer" }
+        "seed": { "type": "integer" },
+        "level": { "description": "`cstudy submit` only: the level of the stress case", "$ref": "#/$defs/level" }
       }
     },
     "stress_run": {
-      "description": "`cstudy test` on a concurrent problem: one stress run, judged against its invariants",
+      "description": "`cstudy test` on a concurrent problem, and `cstudy submit` on a project with stress cases: one stress run, judged against its invariants",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -294,11 +295,12 @@
           "description": "As the report prints them; empty on `pass`",
           "type": "array",
           "items": { "type": "string" }
-        }
+        },
+        "level": { "description": "`cstudy submit` only: the level of the stress case", "$ref": "#/$defs/level" }
       }
     },
     "stress_result": {
-      "description": "`cstudy test` on a concurrent problem: one stress case and variant, as an entry of `stress` in `cstudy test --json`",
+      "description": "`cstudy test` on a concurrent problem, and `cstudy submit` on a project with stress cases: one stress case and variant, as an entry of `stress` in `cstudy test --json`",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -334,7 +336,8 @@
               "reasons": { "type": "array", "items": { "type": "string" } }
             }
           }
-        }
+        },
+        "level": { "description": "`cstudy submit` only: the level of the stress case", "$ref": "#/$defs/level" }
       }
     },
     "diagnostic": {

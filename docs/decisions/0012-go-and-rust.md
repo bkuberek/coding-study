@@ -5,6 +5,7 @@
 | Status | Accepted |
 | Date | 2026-10-29 |
 | Spec | [problem-format](../specs/problem-format.md#type-mapping), [runners](../specs/runners.md#invocation) |
+| Amended by | [ADR 0017](0017-async-project-problems.md): Go 1.25 or newer, not 1.24, because `testing/synctest.Test` is Go 1.25 API |
 
 ## Context
 

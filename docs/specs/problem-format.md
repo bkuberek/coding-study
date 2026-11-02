@@ -62,11 +62,11 @@ Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-l
 | `comparator` | object | yes | See [Comparators](#comparators) |
 | `stub` | `generated` or `buggy` | no | Default `generated`; `buggy` copies `buggy/solution.<ext>` instead of codegen. Buggy files follow the reference file conventions (no JVM `package` line) ([authoring](authoring.md#debugging-problems)) |
 | `levels` | list | `progressive` and `project` only | See [Progressive problems](#progressive-problems) |
-| `project` | object | `project` only | `entry` (required) and `tests`; see [Project problems](#project-problems) |
+| `project` | object | `project` only | `entry` (required), `tests` and `clock`; see [Project problems](#project-problems) |
 | `approaches` | list | yes, at least 1; exactly 1 for `project` | See [Approaches](#approaches-and-complexity) |
 | `perf` | object | no | See [Performance block](#performance-block) |
-| `limits.hang_guard_ms` | int | no | Overrides the per-case hang guard (default 10000) |
-| `concurrency` | object | `concurrent` only | See [Concurrent problems](#concurrent-problems) |
+| `limits.hang_guard_ms` | int | no | Overrides the per-case hang guard (default 10000). A [virtual-clock](#asynchronous-code-and-the-virtual-clock) problem lowers it to a few seconds, since a correct case takes milliseconds |
+| `concurrency` | object | `concurrent` (required); `project` (optional, with stress cases) | See [Concurrent problems](#concurrent-problems) and [Stress cases in projects](#stress-cases-in-projects) |
 | `references` | object | no | `leetcode: {number, url}`, `links: [url]` |
 | `related` | list of slugs | no | |
 | `order` | int | no | Curriculum order within the primary pattern (default 1000) |
@@ -137,8 +137,9 @@ signature:
 | `no_alias_with: <param>` | node-typed `returns` | Fail with `invalid_output` if any returned node object is also reachable from `<param>` (deep-copy problems) |
 | `level: <n>` | method | `progressive` and `project` only: the level that introduces the method |
 | `blocking: true` | method | `concurrent` only: the method may wait for another worker. Async model: generated as an async method; threads model: Java adds `throws InterruptedException` ([Concurrent problems](#stubs-for-concurrent-problems)) |
+| `async: true` | method | `project` only, with `project.clock: virtual`: the method returns the language's awaitable (`async def`, a `Promise`, `suspend fun`, `async fn`), and the grader awaits it before the next operation ([Asynchronous code and the virtual clock](#asynchronous-code-and-the-virtual-clock)) |
 
-Loading a problem rejects (content error) a modifier that names a parameter missing from its own function, constructor or method, or that sits on the wrong type: `ref_of` and `of` must name a parameter of the same node type, `output_from` needs a `void` return, `as` a node-typed return, and `blocking` a method of a `concurrent` problem.
+Loading a problem rejects (content error) a modifier that names a parameter missing from its own function, constructor or method, or that sits on the wrong type: `ref_of` and `of` must name a parameter of the same node type, `output_from` needs a `void` return, `as` a node-typed return, `blocking` a method of a `concurrent` problem, and `async` a method of any problem but a `project` one ([S18](authoring.md#what-cstudy-verify-checks) holds the rest).
 
 ### Naming rules
 
@@ -362,11 +363,11 @@ Validated against `schemas/tests.schema.json`.
 | `id` | string `^[a-z0-9-]+$` | yes | Unique; convention `ex1` (visible), `h1` (hidden), `g1` (generated) |
 | `visible` | bool | no | Default `false`; visible cases are the statement's examples |
 | `input` | object | `function` kind | Keys are canonical param names; values use the JSON encoding of the param type |
-| `ops`, `args` | arrays | class kinds | [Operation sequences](#operation-sequences-design-problems) |
-| `stress` | object | `concurrent` only | A concurrent scenario instead of `ops`/`args` ([Stress cases](#stress-cases)); always hidden |
+| `ops`, `args` | arrays | class kinds | [Operation sequences](#operation-sequences-design-problems); in a [virtual-clock](#asynchronous-code-and-the-virtual-clock) project they may hold the harness operations `@advance`, `@spawn`, `@join` and `@now` |
+| `stress` | object | `concurrent`, and `project` with a `concurrency` block | A concurrent scenario instead of `ops`/`args` ([Stress cases](#stress-cases), [in projects](#stress-cases-in-projects)); always hidden |
 | `expected` | any | yes, except `generate`, `stress` and `checker` cases | Checker problems may include one valid answer for display |
 | `generate` | `{n, seed}` | no | Input from `generator.py`; expected computed by `perf.expected_from`; always hidden |
-| `level` | int | `progressive` and `project` only | |
+| `level` | int | `progressive` and `project` only | A project's stress case carries one too |
 | `hang_guard_ms` | int | no | Per-case override |
 | `note` | string | no | Author note shown on failure |
 
@@ -383,7 +384,7 @@ All comparison happens in the CLI core on canonical JSON values. Equality is typ
 | `unordered-nested` | Top level is a multiset of inner arrays, each inner array also compared as a multiset (depth 2) | 3Sum, Group Anagrams, Subsets |
 | `float` | Every number satisfies `abs(a - e) <= tol * max(1, abs(e))`; structure otherwise exact | Averages, probabilities, geometry; `tolerance` default `1e-6` |
 | `checker` | `checker.py` returns `None` | Any valid topological order, any valid path, any valid partition |
-| `ops` | Per-operation outputs equal; `per_method` overrides a method's comparator (`exact`, `unordered`, `unordered-nested`, `float`) | Design, progressive and project problems |
+| `ops` | Per-operation outputs equal; `per_method` overrides a method's comparator (`exact`, `unordered`, `unordered-nested`, `float`); the output of a `@join` is compared with the comparator of the method its task called | Design, progressive and project problems |
 
 ```yaml
 comparator: {type: float, tolerance: 1.0e-5}
@@ -415,7 +416,7 @@ LeetCode-compatible. `ops[0]` is the class name (constructor) and `args[i]` are 
 }
 ```
 
-Content rules: design APIs report absence with sentinel values (for example `-1`), not exceptions; time-dependent behavior takes timestamps as explicit arguments and never reads a clock.
+Content rules: design APIs report absence with sentinel values (for example `-1`), not exceptions; time-dependent behavior takes timestamps as explicit arguments and never reads a clock, except in a [project with the virtual clock](#asynchronous-code-and-the-virtual-clock), whose code waits and reads time through the clock the harness controls.
 
 If op `k` throws, the case fails at op `k`; the report shows the ops prefix and the partial outputs.
 
@@ -454,7 +455,7 @@ Project problems share these rules, except the stub, the unlock and the language
 
 ## Project problems
 
-A project problem (`kind: project`, `track: practical`) is a folder of seeded files in one language. `cstudy start` copies the folder into the workspace, you edit its files or add new ones, and the problem opens in levels that build on the same code. Levels, level cases and the `ops` comparator work as for [progressive problems](#progressive-problems); what differs is the code (a folder, not a generated stub), the language (exactly one), the visible tests (native test files generated from `tests.json`) and what opens a level (`cstudy submit`, not `cstudy test`). Decision record: [ADR 0014](../decisions/0014-project-problems.md).
+A project problem (`kind: project`, `track: practical`) is a folder of seeded files in one language. `cstudy start` copies the folder into the workspace, you edit its files or add new ones, and the problem opens in levels that build on the same code. Levels, level cases and the `ops` comparator work as for [progressive problems](#progressive-problems); what differs is the code (a folder, not a generated stub), the language (exactly one), the visible tests (native test files generated from `tests.json`) and what opens a level (`cstudy submit`, not `cstudy test`). Decision record: [ADR 0014](../decisions/0014-project-problems.md). A project can also wait on a virtual clock and be stressed in parallel: [Asynchronous code and the virtual clock](#asynchronous-code-and-the-virtual-clock), [Stress cases in projects](#stress-cases-in-projects) ([ADR 0017](../decisions/0017-async-project-problems.md)).
 
 | Language | Project problems |
 |----------|------------------|
@@ -500,7 +501,7 @@ problems/<id>-bank-project-java/
   solutions/reference/src/main/java/bank/Bank.java
 ```
 
-A Kotlin project has `src/main/kotlin/` and `src/test/kotlin/` instead. A Rust project has `Cargo.toml`, `.cargo/config.toml`, `src/lib.rs` and its modules, and `tests/` ([Rust projects](#rust-projects)).
+A Kotlin project has `src/main/kotlin/` and `src/test/kotlin/` instead. A Rust project has `Cargo.toml`, `.cargo/config.toml`, `src/lib.rs` and its modules, and `tests/` ([Rust projects](#rust-projects)). A project with stress cases also holds `solutions/broken/<id>/`, one overlay per broken reference ([Stress cases in projects](#stress-cases-in-projects)).
 
 ### meta.yaml
 
@@ -542,13 +543,15 @@ estimate_minutes: 90
 | `slug` | Ends in the language (`bank-project-python`): a version in another language is another problem, and slugs are unique |
 | `jdk` | Only when the language is `java` or `kotlin` ([JDK range](#jdk-range)) |
 | `levels` | Required, as for progressive problems |
-| `signature` | A class signature: the entry class the grader constructs, canonical names, a `level` on every method |
+| `signature` | A class signature: the entry class the grader constructs, canonical names, a `level` on every method, and `async: true` on a method that returns the language's awaitable (a method's `returns` is the type its awaitable resolves to) |
 | `comparator` | `ops`. Every method's comparator, the default `exact` or a `per_method` entry, is `exact`, `unordered` or `float`, because generated tests express only these. Java and Kotlin: on a method that returns an array or a list, `unordered` needs elements of `int`, `long`, `double`, `string` or `date`, which sort naturally, and `float` is not allowed |
 | Types | Scalars, arrays and lists. No node types; no `decimal` in TypeScript, whose `Decimal` class comes from the runner's support module, which a project folder does not reach. Go takes `decimal` (the vendored `decimal.Decimal`, which the starter's `go.mod` reaches) and `date` (`time.Time`) Java and Kotlin: a method's result holds no array inside an array or a list, and no `decimal` inside either, since a generated test compares `BigDecimal` by its canonical text and arrays only through `assertArrayEquals` or `assertContentEquals`; parameters may take any of these types |
 | `project.entry` | Python: the dotted module that defines the entry class (`bank.bank`), a file `bank/bank.py` or `bank/bank/__init__.py` under the project root. TypeScript: the path, relative to the root, of the file that exports the entry class by name (`src/bank.ts`). Go: the path, relative to the root, of the `.go` file that declares the entry type and its constructor `New<Class>` (`bank.go`, `bank/bank.go`), not a `_test.go` file; its directory is the package that `cstudy submit` grades Java and Kotlin: the fully qualified name of the entry class (`bank.Bank`), in a named package, whose simple name is the signature's class; the file is `src/main/java/bank/Bank.java` (Kotlin: `src/main/kotlin/bank/Bank.kt`). Rust: the crate, the starter's package name (`bank`), whose root `src/lib.rs` makes the entry class public at the crate root |
 | `project.tests` | The directory, relative to the root, where `cstudy` writes the generated test files; default `tests`. Go: its last directory name is a Go identifier, because the generated files declare `package <name>_test` Java and Kotlin: a package directory under `src/test/java/` (Kotlin: `src/test/kotlin/`), such as `src/test/java/bank`; the default does not apply. Rust: `tests`, the directory Cargo takes integration tests from |
+| `project.clock` | `virtual`, or absent for the real clock: every case of every level runs on the virtual clock, in grading and in the generated tests ([Asynchronous code and the virtual clock](#asynchronous-code-and-the-virtual-clock)). Go, Python, TypeScript, Kotlin and Rust only |
 | `approaches` | Exactly one, with role `optimal` |
-| Not allowed | `generator.py`, `checker.py`, `stress_checker.py`, `buggy/`, `stub`, `perf`, `concurrency`, `oracle`, and `generate` or `stress` cases |
+| `concurrency` | Optional, with stress cases and broken overlays: [Stress cases in projects](#stress-cases-in-projects) |
+| Not allowed | `generator.py`, `checker.py`, `buggy/`, `stub`, `perf`, `oracle`, and `generate` cases. `stress_checker.py` is allowed only for a `checker` invariant of a stress case |
 | `related` | Lists every sibling in another language, and may list the problems it builds on |
 
 A version in another language is built from scratch: its own id, slug, starter, `tests.json`, reference and explanation. Only the statement wording may be reused, with that language's names. Nothing is shared or inherited between siblings.
@@ -565,7 +568,8 @@ A version in another language is built from scratch: its own id, slug, starter, 
 | TypeScript build files | `package.json` with `"type": "module"` and no dependencies; `tsconfig.json` as the workspace's (`module` `nodenext`, `noEmit`, `allowImportingTsExtensions`, `erasableSyntaxOnly`, `verbatimModuleSyntax`, `strict`) with `"types": ["node"]` and `"typeRoots": ["../../typescript/node_modules/@types"]`, so `node:test` and `node:assert` have types (TypeScript 6 loads no `@types` package that `types` does not list). Imports name files with their extension (`../src/bank.ts`); code uses erasable syntax only, since Node strips types and refuses the rest (a parameter property fails with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`) |
 | Java and Kotlin build files | `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties` and `gradle/wrapper/gradle-wrapper.properties`, byte for byte as `cstudy new --from-template project-java` (`project-kotlin`) writes them, with the slug as `rootProject.name`: every project builds the same way, offline, with what `cstudy doctor --fix` cached ([project folders](installation-and-workspaces.md#project-folders)). No `gradlew` of its own: the workspace's runs the build. The comment of `build.gradle.kts` names no JDK: the plugin sets the compile level from the JDK that runs the build ([JDK range](#jdk-range)). A problem of your own workspace that `cstudy new` wrote with `cstudy` 0.9 carries the older comment, which says JDK 21, and S15 accepts that one text as well |
 | Module names | Python: no top-level module or package named after a standard-library module (`random.py`, `types.py`, `typing.py`) or `pytest` |
-| Go build files | `go.mod` at the root with `module <slug>`, the `go 1.24` directive, and no requirement but the vendored modules: `require github.com/shopspring/decimal v1.5.0` with `replace github.com/shopspring/decimal => ../../.cs/runtime/runners/go/third_party/github.com/shopspring/decimal`, which reaches the [runner runtime](installation-and-workspaces.md#runner-runtime)'s copy from `projects/<slug>/`, so no build needs the network or a `go.sum`. No `go.sum`, `go.work` or `go.work.sum`: `cstudy start` writes the folder's `go.work` ([project folders](installation-and-workspaces.md#project-folders)) |
+| Virtual clock | A starter of a virtual-clock project carries the clock pieces of its language. Go: `go.mod` says `go 1.25`. Python: `pyproject.toml` loads the pytest plugin `cs_support.virtual_clock` (`-p cs_support.virtual_clock` in `addopts`), since the runner turns plugin autoloading off. TypeScript: `tests/virtual-clock.ts`, a copy of the template's file that the generated tests import and your own tests can (a project folder reaches no `#support` module). Kotlin: the starter applies the `cs.coroutines` plugin. Rust: `tokio` is allowed in `Cargo.toml`, at the vendored version and declared as the runner declares it. The template (`cstudy new --from-template project-<language> --virtual-clock`) writes them |
+| Go build files | `go.mod` at the root with `module <slug>`, the `go 1.24` directive (`go 1.25` for a virtual-clock project), and no requirement but the vendored modules: `require github.com/shopspring/decimal v1.5.0` with `replace github.com/shopspring/decimal => ../../.cs/runtime/runners/go/third_party/github.com/shopspring/decimal`, which reaches the [runner runtime](installation-and-workspaces.md#runner-runtime)'s copy from `projects/<slug>/`, so no build needs the network or a `go.sum`. No `go.sum`, `go.work` or `go.work.sum`: `cstudy start` writes the folder's `go.work` ([project folders](installation-and-workspaces.md#project-folders)) |
 | Go entry | The entry file declares a package other than `main`, since the grader imports it, and the entry type `<Class>` with its constructor `func New<Class>(...) *<Class>`, the [Go mapping](#go-and-rust-mapping) of a design class; level 1's methods panic with `not implemented` |
 
 The Python starter's `pyproject.toml`:
@@ -650,6 +654,8 @@ A project folder keeps the files it was started with, so one started with `cstud
 ### Statement
 
 `problem.md` has the progressive sections ([authoring](authoring.md#problemmd)) plus a required `## Project` section after `## Output`: what the starter holds, the entry contract, and how to run the tests natively. Its text uses the problem language's names (`create_account` in Python), and so does the rendered statement: example markers render operations with the language's method names, and each `## Level <n>` section starts with a generated line naming the methods that level adds, in the language's names, with parameter names and types as the language spells them (`Methods to add: create_account(timestamp: int, account_id: str) -> bool`; in Go, `CreateAccount(timestamp int64, accountId string) bool`; Java `boolean createAccount(long timestamp, String accountId)`; Kotlin `createAccount(timestamp: Long, accountId: String): Boolean`, without a return type for a `void` method). `## Statement`, `## Input`, `## Output`, `## Project` and `## Constraints` show at every level, so they describe only what holds for all levels and never a later level's methods.
+
+A virtual-clock project's statement spells an `async` method in its `Methods to add:` line as the language declares it (`async def`, `Promise<T>`, `suspend fun`, `async fn`) and renders the harness operations of an example in words: `r1 = receive(5000) starts`, `1000 ms pass`, `r1 returns "a"`, `the clock reads 1000 ms`. Its `## Project` section gains a generated line that names the virtual clock, and a level section with stress cases gains the stress table that a concurrent problem's `## Concurrency` section has.
 
 ### Generated test files
 
@@ -895,7 +901,7 @@ fn ex1() {
 |------|--------|
 | Carry-over | One folder for every level: level 2 extends the code of level 1. Nothing is reset or replaced when a level opens |
 | Native tests | `cstudy test` runs the generated files of the unlocked levels, the starter's test files and your own. Their verdict is feedback: no comparator runs on it, nothing is stored as a grade, and no level opens from it |
-| Grading | `cstudy submit` sends the inputs of every case of levels 1 to the unlocked level, visible and hidden, to the runner, which constructs the entry class and calls the operations; the core's `ops` comparator judges each output, with the hang guard and failure rules of every case. Visible cases are graded from `tests.json` too, so editing a generated test file never changes a grade |
+| Grading | `cstudy submit` sends the inputs of every case of levels 1 to the unlocked level, visible and hidden, to the runner, which constructs the entry class and calls the operations; the core's `ops` comparator judges each output, with the hang guard and failure rules of every case. Visible cases are graded from `tests.json` too, so editing a generated test file never changes a grade. A project with stress cases also runs those of levels 1 to the unlocked level, and each (stress case, variant) counts as one hidden case of its level ([Stress cases in projects](#stress-cases-in-projects)) |
 | Graded API | The runner checks only the methods of the levels it grades, so a method of a locked level never has to exist |
 | Unlock | `cstudy start` opens level 1 on a new attempt; a resumed attempt keeps its level, and a `--fresh` or review attempt starts again at level 1. A submission of every case of levels 1 to the unlocked level (no lower `--level`) that passes them all opens the next level: it rewrites the statement and writes that level's test file. One submission opens at most one level |
 | Every submission regrades | A submission at level N grades levels 1 to N again, because later rules change earlier results (a scheduled transfer that runs counts toward top spenders) |
@@ -904,11 +910,98 @@ fn ex1() {
 
 ### Reference
 
-The one approach's reference is the directory `solutions/<approach-id>/`, an overlay on `starter/` that holds the changed and added files only and implements every level. `cstudy verify` copies `starter/`, then the overlay, into `.cs/build/projects/<slug>/<approach-id>/`, writes the generated test file of every level into the copy, and runs it ([runners](runners.md#project-jobs)). An overlay path stays inside the tree, and an overlay never deletes a starter file. `solutions/explanation.md` has the one approach section with every required subsection plus `### Design`: the files of the reference and what each is responsible for ([authoring](authoring.md#explanationmd)).
+The one approach's reference is the directory `solutions/<approach-id>/`, an overlay on `starter/` that holds the changed and added files only and implements every level. `cstudy verify` copies `starter/`, then the overlay, into `.cs/build/projects/<slug>/<approach-id>/`, writes the generated test file of every level into the copy, and runs it ([runners](runners.md#project-jobs)). An overlay path stays inside the tree, and an overlay never deletes a starter file. `solutions/explanation.md` has the one approach section with every required subsection plus `### Design`: the files of the reference and what each is responsible for ([authoring](authoring.md#explanationmd)). `solutions/broken/` holds the broken overlays of a project with stress cases, which are not approaches ([Stress cases in projects](#stress-cases-in-projects)).
+
+### Asynchronous code and the virtual clock
+
+A project can grade code that waits (sleeps, timers, timeouts, retries and background tasks) and, in four languages, methods that return the language's awaitable. It runs on a virtual clock, so a 30-second timeout takes microseconds and the same code gives the same result on every run. Decision record: [ADR 0017](../decisions/0017-async-project-problems.md).
+
+| Behavior | What it grades | How it stays reliable | Languages |
+|----------|----------------|-----------------------|-----------|
+| Asynchronous methods | A method returns the language's awaitable; the grader awaits it before the next operation | As a synchronous call does: on the virtual clock, which a project with an asynchronous method must declare | Python, TypeScript, Kotlin, Rust; not Go, whose methods block, nor Java |
+| The virtual clock | Code that sleeps, sets timers, times out, retries and runs background tasks, observed once it has settled | Time moves only when every task waits; no expected value depends on the order of events due at the same instant | Go, Python (asyncio), TypeScript, Kotlin (coroutines), Rust (tokio); not Java |
+| Stress | Safety under real parallelism: lost updates, broken invariants, deadlocks ([below](#stress-cases-in-projects)) | It is not deterministic: every one of N runs must pass, and broken overlays prove that the cases catch their bug classes | All six |
+
+| Declaration | Rule |
+|-------------|------|
+| `project.clock: virtual` | Every case of every level runs on the virtual clock, in grading and in the generated tests, from the constructor on, so a level that adds a timer to a level-1 method needs no other harness. `virtual` is the only value; the real clock is the default and is never written. A project without it runs on the real clock: its cases hold no harness operation and call no asynchronous method |
+| `async: true` | On a method of the signature: it returns the language's awaitable, `async def` in Python, a `Promise` in TypeScript, `suspend fun` in Kotlin, `async fn` in Rust. The starter, the statement's `Methods to add:` line and the generated tests spell it so. The method's `returns` is the type the awaitable resolves to. A project with an asynchronous method declares `project.clock: virtual`, because on the real clock every sleep and timeout would be a real wait, so there is one mode and not two |
+| Languages | `project.clock: virtual` in Go, Python, TypeScript, Kotlin and Rust; `async: true` in Python, TypeScript, Kotlin and Rust. Go's methods block instead of returning an awaitable, and nothing in the JDK replaces Java's clock, so Java has neither. The languages arrive one family at a time ([scope and order](../decisions/0017-async-project-problems.md#scope-and-order)), and [S18](authoring.md#what-cstudy-verify-checks) rejects a declaration in a language whose runner has not reached it |
+
+`tests.json` allows four harness operations in the `ops` of a sequential case of a virtual-clock project. They begin with `@`, as a stress case's harness ops do, so no method name can clash with one, and they mean the same in every language that has the clock.
+
+| Operation | Arguments | Output | Effect |
+|-----------|-----------|--------|--------|
+| `@advance` | `[ms]` | `null` | The clock moves `ms` milliseconds forward; each timer due on the way fires at its own time, and the code settles after each |
+| `@spawn` | `[task, method, ...arguments]` | `null` | Starts the call without waiting for it, as the task named `task`: an asyncio task, a pending Promise, an `async` coroutine in the test scope, a spawned tokio task, or a goroutine in Go |
+| `@join` | `[task]` | The call's result | Waits for the task, the clock advancing while every task waits; compared with the comparator of the method the task called |
+| `@now` | `[]` | An integer | The virtual milliseconds since the case started |
+
+```json
+{"id": "ex3", "visible": true, "level": 2,
+ "note": "a waiting receive takes a message published while it waits; an empty log answers after the wait",
+ "ops": ["MessageLog", "@spawn", "@advance", "publish", "@join", "@now", "receive", "@now"],
+ "args": [[30000], ["r1", "receive", 5000], [1000], ["a"], ["r1"], [], [2000], []],
+ "expected": [null, null, null, 1, "a", 1000, "", 3000]}
+```
+
+| Rule | Detail |
+|------|--------|
+| `@advance` | One whole number of milliseconds from 1 to 2,147,483,647, the largest delay Node accepts for a timer |
+| `@spawn` | A task name that is unique in its case, then a method of the case's level or below, then that method's arguments, typed by its parameters. Outside Go the method is asynchronous, because only Go blocks a call instead of returning an awaitable |
+| `@join` | A task spawned earlier and not joined yet. Every spawned task is joined |
+| `@now` | No arguments |
+| Expected values | `null` for the constructor, `@advance` and `@spawn`; the method's result type for `@join`; an integer for `@now` |
+| Comparators | No new one. Settled code produces values, and `unordered` covers results without an order. The `ops` comparator takes the comparator of an operation's method, and of a `@join` the comparator of the method its task called |
+| Elsewhere | A harness operation outside a virtual-clock project's sequential cases is a content error. A stress case's steps use only the stress harness ops ([Harness ops](#harness-ops)) |
+
+#### Semantics of a case on the virtual clock
+
+| # | Rule |
+|---|------|
+| 1 | **Every operation settles.** The grader calls the operation, awaits its result when the method is asynchronous, then waits until every task of the case is blocked (on the clock, on another task or on a pending call) before the next operation reads anything. Generated tests take the same step between operations |
+| 2 | **The clock moves only when every task waits.** While an operation waits for a result, time jumps to the next due timer, fires every timer due then, lets the code settle, and repeats until the result is ready. `@advance` moves the clock by its argument the same way |
+| 3 | **A deadlock is a verdict.** An operation that waits while no task can run and no timer is due ends the case at once as `stalled`, with its operation and the virtual time (`op 4 (@join r1): deadlock at 3000 ms`). Code that waits on what the clock cannot see (a lock whose holder waits, a busy loop, a thread, real I/O) never lets time move, and meets the hang guard as `timeout` |
+| 4 | **Simultaneous events have no order.** No expected value may depend on the order of events due at the same virtual instant. Go shuffles them at random, asyncio leaves their order undefined and Node does not guarantee it |
+| 5 | **Durations, not dates.** Each language's clock starts at its own epoch, so expected values hold durations from the case's start, which `@now` reads, never a reading of the clock. The problem's code reads time only through the clock that the language's facility controls: Go's `time` package, `loop.time()` in asyncio, `Date.now()` in TypeScript, the coroutine scheduler's time in Kotlin, tokio's `Instant` in Rust |
+| 6 | **A case ends as the language's test facility ends a test.** Go fails a case that leaves goroutines alive (the facility reports them as a deadlock), and Kotlin one that leaves coroutines active; Python, TypeScript and Rust drop pending tasks. Content stops background work through the API before a case ends, and joins every task it spawns |
+
+Rules 4 to 6 are content rules that no static check can see; D10 finds the ties that the language shuffles ([authoring](authoring.md#dynamic)). The mechanism each language uses, and the status of a deadlock in the runner's events, are in [runners](runners.md#virtual-clock-and-stress-in-project-jobs).
+
+#### Generated tests on the virtual clock
+
+The generated files use the clock their language tests with, so the visible cases run natively as they are graded. Yours can use the same helpers.
+
+| Language | Test body |
+|----------|-----------|
+| Go | `synctest.Test(t, func(t *testing.T) { ... })` around the body, `synctest.Wait()` between operations, `time.Sleep` then `synctest.Wait()` for `@advance`, a goroutine and a channel for `@spawn` and `@join` |
+| Python | `async def` tests, which the pytest plugin of `cs_support.virtual_clock` runs on the grader's loop, with the helpers `advance`, `settle` and `now` |
+| TypeScript | `tests/virtual-clock.ts`, built on `node:test`'s mock timers, with the same three helpers |
+| Kotlin | `runTest { }`, `runCurrent()` between operations, `advanceTimeBy` then `runCurrent()` for `@advance`, `async { }` for `@spawn` |
+| Rust | `#[tokio::test(start_paused = true)]`, with a settle helper defined once in the file |
+
+A native deadlock shows as the framework reports it. In Go the test binary panics with `deadlock: all goroutines in bubble are blocked`, which the suite reports as that test's `error`.
+
+### Stress cases in projects
+
+A project can grade safety under real parallelism: lost updates, broken invariants and deadlocks in code that several threads or tasks share. It uses the machinery of [concurrent problems](#concurrent-problems), with the project's entry class as the class under test. A pass is evidence, not proof.
+
+| Item | Rule |
+|------|------|
+| `concurrency` block | Optional. Its fields are those of [concurrent problems](#concurrency-block-in-metayaml), and `model` is one string valid for the project's language ([language table](#models-and-language-support)), since a project lists one language. TypeScript, and Python with asynchronous methods, use `async`. Java and Kotlin run each variant that `jvm_threads` lists |
+| Stress cases | `stress` instead of `ops`/`args` ([Stress cases](#stress-cases)), plus `level`. A stress case calls only methods of its level and below, and may appear from the level whose statement first shares the instance between threads or tasks. It stays hidden and is never generated as a native test. Its level keeps at least 2 visible and 2 hidden sequential cases, which the statement's examples and the generated tests come from. `stress_checker.py` is allowed only when a case uses a `checker` invariant |
+| Clock | Stress runs use the real clock. In a virtual-clock project, a stress scenario calls only methods that wait on no timer |
+| Rust | The bridge registers the entry class as concurrent: its methods take `&self` from the level that adds stress cases, and a `&mut self` method is a load error that says why |
+| Python | Perturbation yields in every file under the project root, not only in the entry's |
+| Go | Stress workers keep reflection, as for single files |
+| Broken overlays | `solutions/broken/<id>/`, declared in `concurrency.broken` ([Broken references](#broken-references)). An overlay holds the changed files only and is applied on top of the reference's overlay. `cstudy verify` builds each in `.cs/build/projects/<slug>/broken-<id>/` (the starter, the reference's overlay, then the broken one) |
+| Proof | As for concurrent problems: D7 requires a broken overlay to pass every sequential case and to fail each of its `caught_by` stress cases in at least 9 of 10 runs, and D6 requires the reference to pass every stress case in 10 of 10 runs, the slowest under 25% of its deadline. On the JVM, a stress case and a broken overlay must hold on every JDK of the problem's range ([JDK range](#jdk-range)) |
+| Explanation | `## Broken: <id> (<name>)` sections, as for concurrent problems; `cstudy solution --broken` shows them |
+| Verdicts | One verdict per (stress case, variant), as in [Evaluating a run and a case](#evaluating-a-run-and-a-case). In `cstudy submit`, each counts as a hidden case of its level in the level's tally, and a mock attempt counts failing ones and shows nothing else |
 
 ## Concurrent problems
 
-A concurrent problem (`kind: concurrent`, `track: concurrency`) is a class whose methods several workers call at the same time. Decision record: [ADR 0006](../decisions/0006-concurrency-stress-testing.md).
+A concurrent problem (`kind: concurrent`, `track: concurrency`) is a class whose methods several workers call at the same time. Decision record: [ADR 0006](../decisions/0006-concurrency-stress-testing.md). A [project problem](#project-problems) can have stress cases too ([Stress cases in projects](#stress-cases-in-projects)).
 
 | Case type | Runs | Passes when |
 |-----------|------|-------------|
@@ -1133,7 +1226,7 @@ In the `async` model a failing seed reproduces exactly: `cstudy test --case s1 -
 
 ### Broken references
 
-Deliberately wrong references prove that each scenario can catch the bugs it was written for. They live in `solutions/broken/<id>.<ext>` and are declared in `concurrency.broken`.
+Deliberately wrong references prove that each scenario can catch the bugs it was written for. They live in `solutions/broken/<id>.<ext>` and are declared in `concurrency.broken`. A project's broken reference is an overlay, `solutions/broken/<id>/`, applied on top of the reference's overlay ([Stress cases in projects](#stress-cases-in-projects)).
 
 | Field | Required | Notes |
 |-------|----------|-------|

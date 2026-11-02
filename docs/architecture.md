@@ -264,7 +264,7 @@ Project roots are relative to the workspace. `jvm/settings.gradle.kts` uses `inc
 | Gradle | Homebrew, used once | Generates the wrapper in the workspace template's `jvm/` | Maintainers regenerating the wrapper (`brew install gradle`) |
 | Gradle wrapper | pinned in `gradle-wrapper.properties` | All JVM builds | Nobody: it ships in the workspace template, and `cstudy init` copies it |
 | Kotlin compiler | pinned Kotlin Gradle plugin in `gradle/libs.versions.toml` | Fetched by Gradle; no global `kotlinc` | Nobody: Gradle fetches it |
-| Go | 1.24 or newer | Go runner and the `go/` practice project, built offline | Go practice (optional; `cstudy doctor` warns when missing) |
+| Go | 1.25 or newer | Go runner and the `go/` practice project, built offline | Go practice (optional; `cstudy doctor` warns when missing) |
 | Rust | `rustc` 1.80 or newer, through rustup | Rust runner and the `rust/` practice project, built offline | Rust practice (optional; `cstudy doctor` warns when missing) |
 
 `cstudy doctor` checks every row and `cstudy doctor --fix` restores missing workspace files, refreshes the runner runtime, then runs `uv sync`, `pnpm install` and a Gradle warm-up build.

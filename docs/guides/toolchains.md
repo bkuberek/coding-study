@@ -7,7 +7,7 @@
 | [uv and Python](#python-and-uv) | uv (any version; 0.10 or newer recommended), Python 3.13 found by `uv python find 3.13` | Required: `cstudy` and the Python practice project |
 | [Node.js and pnpm](#nodejs-and-pnpm) | Node 24 or newer, any pnpm (9 or newer recommended) | TypeScript |
 | [JDK](#jdk) | 21 to 26 (25 recommended); 27 and newer are not supported yet | Java and Kotlin |
-| [Go](#go) | Go 1.24 or newer; Delve (`dlv`, any version, 1.27.2 tested, which debugs Go 1.25 or newer) for `--debug` | Optional: `--lang go` |
+| [Go](#go) | Go 1.25 or newer; Delve (`dlv`, any version, 1.27.2 tested) for `--debug` | Optional: `--lang go` |
 | [Rust](#rust) | `rustc` 1.80 or newer and `cargo`, through rustup; LLDB's `debugserver` (macOS) or `lldb-server` (Linux) for `--debug` | Optional: `--lang rust` |
 | [git](#git) | Any | Optional: versioning your workspace |
 
@@ -134,18 +134,18 @@ Nothing else is needed for Java or Kotlin:
 
 ## Go
 
-The Go toolchain is optional: only `--lang go` builds with it, and `cstudy doctor` warns, without failing, when it is missing. The workspace's Go project (`go/`) is a module that needs Go 1.24 or newer, the first release whose `go build -json` output `cstudy` parses. The standard installers all work: Homebrew on macOS, or the installer or archive from [go.dev/dl](https://go.dev/dl/) on macOS and Linux (follow [go.dev/doc/install](https://go.dev/doc/install) for the archive).
+The Go toolchain is optional: only `--lang go` builds with it, and `cstudy doctor` warns, without failing, when it is missing. The workspace's Go project (`go/`) is a module that needs Go 1.25 or newer: Go 1.24 introduced the `go build -json` output that `cstudy` parses, and Go 1.25 added `testing/synctest.Test`, which grades the projects that wait on a virtual clock ([ADR 0017](../decisions/0017-async-project-problems.md)). Go 1.24 is past its upstream support. A workspace on Go 1.24 upgrades before its next Go run, and a `go.mod` that says `go 1.24` keeps building. The standard installers all work: Homebrew on macOS, or the installer or archive from [go.dev/dl](https://go.dev/dl/) on macOS and Linux (follow [go.dev/doc/install](https://go.dev/doc/install) for the archive).
 
 ```bash
 brew install go   # macOS
 ```
 
-On Linux, prefer the go.dev archive: the Go package of a distribution is often older than 1.24.
+On Linux, prefer the go.dev archive: the Go package of a distribution is often older than 1.25.
 
 Check it:
 
 ```bash
-go version   # go version go1.24.0 or newer
+go version   # go version go1.25.0 or newer
 ```
 
 Nothing else is needed: the runner uses the standard library, and the one module a solution may import, `github.com/shopspring/decimal` for `decimal`, ships with `cstudy` and is reached through a `replace` in `go/go.mod`. So `cstudy` never downloads a module, gopls finds the package offline, and `cstudy doctor --fix` has no Go step.
@@ -153,7 +153,7 @@ Nothing else is needed: the runner uses the standard library, and the one module
 - **`GOTOOLCHAIN=local`**: since Go 1.21 the `go` command downloads the toolchain a `go.mod` asks for, and `go/go.mod` says `go 1.24`. `cstudy` builds with `GOTOOLCHAIN=local` and never downloads one, so with an older Go it stops with an error instead. Export `GOTOOLCHAIN=local` in your shell as well if you want your own `go` commands, and your editor, to behave the same way.
 - **Your Go settings**: `cstudy` pins its own build environment (`GOENV=off`, `GOFLAGS=-mod=readonly`, `GOPROXY=off`, and your `GOOS`, `GOARCH` and `GOWORK` removed), so `go env -w` values and shell variables never change how it builds. They still apply to the `go` commands you run yourself. The Go build cache is kept, so the standard library compiles once per machine.
 - **Editor**: the `go.work` file at the workspace root lets gopls find the module in `go/`, so open the workspace root. The workspace's VS Code files recommend the Go extension (`golang.go`) and run its tools with `GOTOOLCHAIN=local`; `cstudy ide` adds them to a workspace created earlier.
-- **Debugging**: `cstudy test --debug` runs the Go runner under [Delve](https://github.com/go-delve/delve). Install the release `cstudy` is tested with, `go install github.com/go-delve/delve/cmd/dlv@v1.27.2`, and check it with `dlv version`. `go install` puts `dlv` in `GOBIN`, or in `bin` of your `GOPATH` (`~/go/bin`), where `cstudy` finds it even when that directory is not on `PATH`. Delve 1.27.2 debugs only programs built with Go 1.25 or newer, and refuses older ones (`Go version go1.24.x is too old for this version of Delve`), so debugging Go needs Go 1.25 or newer even though building needs only 1.24; `cstudy test --debug` then exits 4 and shows Delve's message, for a single file and for a project. On macOS Delve runs your code through Xcode's `debugserver`, so it needs the Command Line Tools and the permission to debug described under [Rust](#rust). In VS Code, **Debug current file (Go)** starts the run and attaches the Go extension. `cstudy doctor` warns while `dlv` is missing, and while your Go is older than the Go that your Delve debugs (the `dlv` row then names the Go to install).
+- **Debugging**: `cstudy test --debug` runs the Go runner under [Delve](https://github.com/go-delve/delve). Install the release `cstudy` is tested with, `go install github.com/go-delve/delve/cmd/dlv@v1.27.2`, and check it with `dlv version`. `go install` puts `dlv` in `GOBIN`, or in `bin` of your `GOPATH` (`~/go/bin`), where `cstudy` finds it even when that directory is not on `PATH`. Delve 1.27.2 debugs only programs built with Go 1.25 or newer, and refuses older ones (`Go version go1.24.x is too old for this version of Delve`), so debugging Go needs Go 1.25 or newer, the same minimum as building; on an older Go `cstudy test --debug` exits 4 and shows Delve's message, for a single file and for a project. On macOS Delve runs your code through Xcode's `debugserver`, so it needs the Command Line Tools and the permission to debug described under [Rust](#rust). In VS Code, **Debug current file (Go)** starts the run and attaches the Go extension. `cstudy doctor` warns while `dlv` is missing, and while your Go is older than the Go that your Delve debugs (the `dlv` row then names the Go to install).
 
 ## Rust
 

@@ -6,6 +6,7 @@
 | Date | 2026-10-24 |
 | Spec | [problem-format](../specs/problem-format.md#concurrent-problems), [runners](../specs/runners.md#concurrent-jobs) |
 | Closes | PRD Q5, Q6 |
+| Amended by | [ADR 0017](0017-async-project-problems.md): stress cases and broken references reach project problems (as overlays), and Kotlin coroutines are graded in Kotlin projects |
 
 ## Context
 
