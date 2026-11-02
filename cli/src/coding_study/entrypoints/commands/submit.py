@@ -1,10 +1,11 @@
 """`cstudy submit` (docs/specs/cli.md#cstudy-submit).
 
 One line per graded level with its passed count, then the visible cases with their status and the
-failing hidden ones with their input, expected and actual; a mock attempt names no hidden case and
-only counts the failing ones per level. A submission that opens a level names the methods it adds,
-its test file and the rewritten statement. `--events` writes the submission as JSON events instead
-(docs/specs/cli.md#event-stream).
+failing hidden ones with their input, expected and actual, then each stress case and variant with
+its level, its runs and its failing seeds; a mock attempt names no hidden case, stress cases
+included, and only counts the failing ones per level. A submission that opens a level names the
+methods it adds, its test file and the rewritten statement. `--events` writes the submission as JSON
+events instead (docs/specs/cli.md#event-stream).
 """
 
 import json
@@ -28,9 +29,11 @@ from coding_study.application.submit_project import (
     submit_project,
 )
 from coding_study.domain.cases import OperationSequence
+from coding_study.domain.concurrency import StressVariant
 from coding_study.domain.judging import CaseStatus, CaseVerdict
 from coding_study.domain.levels import FIRST_LEVEL
 from coding_study.domain.project import in_language_operations
+from coding_study.domain.stress_verdict import StressVerdict
 from coding_study.domain.submissions import LevelTally
 from coding_study.entrypoints.commands._events import (
     RunSummary,
@@ -44,6 +47,7 @@ from coding_study.entrypoints.commands.report_text import (
     case_details,
     clock_text,
     detail_line,
+    duration_text,
     error_text,
     levels_text,
     status_line,
@@ -63,6 +67,10 @@ LEVEL_WIDTH = 9
 MIN_ID_WIDTH = 6
 DID_NOT_LOAD = "the code did not load"
 HIDDEN = "hidden"
+STRESS_EVIDENCE = "stress runs found no race (not a proof of thread safety)"
+FAILED_RUN_INDENT = " " * 9
+"""A failing stress run's line starts under the case id."""
+NANOSECONDS_PER_MILLISECOND = 1_000_000
 
 
 def register(app: typer.Typer) -> None:
@@ -138,8 +146,11 @@ class SubmitReport:
         yield Text("")
         yield from (self._level_line(tally) for tally in self._result.level_tallies)
         yield from self._cases()
+        yield from self._stress()
         yield Text("")
         yield Text(self._summary())
+        if self._found_no_race():
+            yield Text(STRESS_EVIDENCE, style="dim")
         yield from self._after()
 
     def _header(self) -> str:
@@ -179,6 +190,27 @@ class SubmitReport:
         for verdict in judgement.verdicts:
             if self._shown(verdict):
                 yield from self._verdict(verdict)
+
+    def _stress(self) -> Iterator[Text]:
+        """Stress cases are hidden but always printed in practice, under their level: their
+        scenario is the exercise (docs/specs/cli.md#cstudy-submit)."""
+        if self._result.is_mock or self._result.judgement.load_error is not None:
+            return
+        for verdict in self._result.judgement.stress:
+            status = verdict.status
+            line = status_line(
+                status.value, STATUS_STYLES[status], verdict.case_id.ljust(self._id_width)
+            )
+            line.append(_stress_label(verdict), style="dim")
+            yield line
+            for run in verdict.failures:
+                reasons = run.reasons or ("failed",)
+                yield Text(f"{FAILED_RUN_INDENT}run {run.run} · seed {run.seed}  {reasons[0]}")
+
+    def _found_no_race(self) -> bool:
+        """Every stress verdict passed: evidence, not proof."""
+        stress = self._result.judgement.stress
+        return bool(stress) and all(verdict.status is CaseStatus.PASS for verdict in stress)
 
     def _shown(self, verdict: CaseVerdict) -> bool:
         """Visible cases always; failing hidden ones only in practice."""
@@ -234,6 +266,25 @@ class SubmitReport:
             yield from _opened_lines(result.opened)
         elif result.finished_every_level:
             yield Text(EVERY_LEVEL_DONE, style="green")
+
+
+def _stress_label(verdict: StressVerdict) -> str:
+    """`level 2 · 3/3 runs · median 38ms`, or `level 2 · virtual · 1/3 runs passed`: a JVM thread
+    kind names its variant, the one model of another language does not."""
+    runs = len(verdict.runs)
+    parts = [f"level {verdict.case.level or FIRST_LEVEL}"]
+    if verdict.variant in (StressVariant.PLATFORM, StressVariant.VIRTUAL):
+        parts.append(verdict.variant.value)
+    if verdict.status is CaseStatus.PASS:
+        parts.append(f"{runs}/{runs} runs")
+        median = verdict.median_ms
+        if median is not None:
+            parts.append(f"median {duration_text(round(median * NANOSECONDS_PER_MILLISECOND))}")
+    else:
+        parts.append(f"{verdict.runs_passed}/{runs} runs passed")
+    if verdict.status is CaseStatus.STALLED:
+        parts.append(f"deadline {verdict.deadline_ms}ms")
+    return " · ".join(parts)
 
 
 def _opened_lines(opened: OpenedLevel) -> Iterator[Text]:

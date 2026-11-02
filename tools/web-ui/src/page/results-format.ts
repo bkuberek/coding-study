@@ -78,11 +78,15 @@ export function caseLines(result: CaseResult | TestResult | null): [string, stri
 }
 
 /** `virtual · 1/3 runs passed · median 38ms`. */
-export function stressFacts(variant: string, result: Pick<StressResult, "runs" | "runs_passed" | "median_ms"> | null): string {
-  if (!result) return variant;
+export function stressFacts(variant: string, result: Pick<StressResult, "runs" | "runs_passed" | "median_ms"> | null, level: number | null = null): string {
+  const named = level === null ? [variant] : [`level ${level}`, ...(THREAD_KINDS.includes(variant) ? [variant] : [])];
+  if (!result) return named.join(" · ");
   const median = result.median_ms === null ? [] : [`median ${millisecondsText(result.median_ms)}`];
-  return [variant, `${result.runs_passed}/${result.runs} runs passed`, ...median].join(" · ");
+  return [...named, `${result.runs_passed}/${result.runs} runs passed`, ...median].join(" · ");
 }
+
+/** A project's stress case names its variant only on the JVM, whose thread kinds are verdicts of their own. */
+const THREAD_KINDS: readonly string[] = ["platform", "virtual"];
 
 /** `4/5 (2 visible, 3 hidden)`; a mock submission counts its failing hidden cases, which it never shows. */
 export function levelLine(level: LevelResult, mock: boolean): string {

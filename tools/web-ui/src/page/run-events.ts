@@ -117,6 +117,8 @@ export interface StressRunStart {
   readonly variant: string;
   readonly run: number;
   readonly seed: number;
+  /** `cstudy submit` on a project: the stress case's level. */
+  readonly level?: number;
 }
 
 export interface StressRun {
@@ -128,6 +130,7 @@ export interface StressRun {
   readonly status: CaseStatus;
   readonly duration_ns: number;
   readonly reasons: readonly string[];
+  readonly level?: number;
 }
 
 export interface StressResult {
@@ -139,6 +142,7 @@ export interface StressResult {
   readonly runs_passed: number;
   readonly median_ms: number | null;
   readonly failures: readonly { readonly run: number; readonly seed: number; readonly status: string; readonly reasons: readonly string[] }[];
+  readonly level?: number;
 }
 
 /** Where code does not load, build or type-check (docs/specs/cli.md#diagnostics). */

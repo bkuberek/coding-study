@@ -109,16 +109,19 @@ function stressItem(group: StressGroup, model: RunModel, actions: ResultsActions
     { class: `result-row result-stress status-${status}` },
     statusBadge(status),
     h("span", { class: "result-id" }, group.id),
-    h("span", { class: "result-facts" }, stressFacts(group.variant, group.result)),
+    h("span", { class: "result-facts" }, stressFacts(group.variant, group.result, group.level)),
     h("span", { class: "stress-dots", "aria-hidden": "true" }, ...dots),
     failures.length
       ? h(
           "ul",
           { class: "stress-failures" },
           ...failures.slice(0, 3).map((failure) => {
+            const reason = h("span", { class: "result-reason" }, failure.reasons.join("; ") || failure.status);
+            // A submission's stress case reruns with the submission: `cstudy test` runs a project's own tests.
+            if (group.level !== null) return h("li", {}, `run ${failure.run} · seed ${failure.seed}  `, reason);
             const rerun = h("button", { type: "button", class: "ghost", title: `cstudy test --case ${group.id} --stress 1 --seed ${failure.seed}` }, "Rerun");
             rerun.addEventListener("click", () => actions.rerun(group.id, failure.seed));
-            return h("li", {}, `run ${failure.run} · seed ${failure.seed}  `, h("span", { class: "result-reason" }, failure.reasons.join("; ") || failure.status), " ", rerun);
+            return h("li", {}, `run ${failure.run} · seed ${failure.seed}  `, reason, " ", rerun);
           }),
         )
       : null,

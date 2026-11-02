@@ -199,10 +199,10 @@ class GradingRun:
 def grading_stress_plan(
     problem: Problem, language: Language, level: int, selection: StressSelection
 ) -> tuple[PlannedRun, ...]:
-    """The runs of the stress cases of levels 1 to `level`: each case `selection.runs` times
-    (default `concurrency.runs`) per variant."""
-    graded = replace(problem, cases=cases_up_to(problem.cases, level))
-    return plan_runs(graded, language, selection)
+    """The runs of the stress cases of levels 1 to `level`, level by level: each case
+    `selection.runs` times (default `concurrency.runs`) per variant."""
+    by_level = sorted(cases_up_to(problem.cases, level), key=lambda case: case.level or 0)
+    return plan_runs(replace(problem, cases=tuple(by_level)), language, selection)
 
 
 def shares_the_entry_class(problem: Problem, level: int) -> bool:

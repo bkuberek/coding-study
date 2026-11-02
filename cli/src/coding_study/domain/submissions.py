@@ -12,7 +12,12 @@ from datetime import datetime
 from coding_study.domain.attempts import Grade
 from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.cases import Case
+from coding_study.domain.concurrency import StressVariant
 from coding_study.domain.judging import Judgement, Tally
+from coding_study.domain.stress import StressScenario
+
+type StressSlot = tuple[Case, StressVariant]
+"""One (stress case, variant): one verdict, and one hidden case of the stress case's level."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,26 +86,49 @@ class LevelUnlock:
     unlocked_at: datetime
 
 
-def level_tallies(cases: Sequence[Case], judgement: Judgement) -> tuple[LevelTally, ...]:
-    """The graded `cases` counted per level, in level order; a case passed when its verdict says
-    so, so code that did not load passes none."""
+def level_tallies(
+    cases: Sequence[Case], judgement: Judgement, stress: Sequence[StressSlot] = ()
+) -> tuple[LevelTally, ...]:
+    """The graded `cases` counted per level, in level order, with each (stress case, variant) of
+    `stress` as a hidden case of its stress case's level; a case passed when its verdict says so,
+    so code that did not load passes none."""
     passed = {
         verdict.case.id for verdict in judgement.verdicts if verdict.status is CaseStatus.PASS
     }
+    passed_stress = {
+        (verdict.case_id, verdict.variant)
+        for verdict in judgement.stress
+        if verdict.status is CaseStatus.PASS
+    }
+    sequential = [case for case in cases if not isinstance(case.input, StressScenario)]
     levels = sorted({case.level for case in cases if case.level is not None})
-    return tuple(_level_tally(level, cases, passed) for level in levels)
+    return tuple(
+        _level_tally(level, sequential, passed, _stress_counts(level, stress, passed_stress))
+        for level in levels
+    )
 
 
-def _level_tally(level: int, cases: Sequence[Case], passed: set[str]) -> LevelTally:
+def _stress_counts(
+    level: int, stress: Sequence[StressSlot], passed: set[tuple[str, StressVariant]]
+) -> tuple[int, int]:
+    """How many (stress case, variant) of `level` there are, and how many passed."""
+    in_level = [(case.id, variant) for case, variant in stress if case.level == level]
+    return len(in_level), sum(1 for slot in in_level if slot in passed)
+
+
+def _level_tally(
+    level: int, cases: Sequence[Case], passed: set[str], stress: tuple[int, int]
+) -> LevelTally:
     in_level = [case for case in cases if case.level == level]
     visible = [case for case in in_level if case.visible]
     hidden = [case for case in in_level if not case.visible]
+    stress_total, stress_passed = stress
     return LevelTally(
         level=level,
         visible_total=len(visible),
         visible_passed=sum(1 for case in visible if case.id in passed),
-        hidden_total=len(hidden),
-        hidden_passed=sum(1 for case in hidden if case.id in passed),
+        hidden_total=len(hidden) + stress_total,
+        hidden_passed=sum(1 for case in hidden if case.id in passed) + stress_passed,
     )
 
 

@@ -58,7 +58,7 @@ function describe(item: ViewItem): string {
     case "file":
       return `file ${item.path}`;
     case "stress":
-      return `stress ${item.group.id} ${item.group.variant} ${item.group.runs.join(",")}`;
+      return `stress ${item.group.id} ${item.group.variant} ${item.group.runs.join(",")}${item.group.level === null ? "" : ` level ${item.group.level}`}`;
     case "level":
       return `level ${item.result.level} ${item.result.status}`;
   }
@@ -336,4 +336,38 @@ test("the latest output notice is the run's status line", () => {
 test("the notice clears once results come", () => {
   const model = played({ type: "output", text: "computing expected values" }, result("ex1"));
   assert.equal(resultsView(model, false).notice, null);
+});
+
+// a project's stress cases in a submission
+
+function submission(...events: RunEvent[]): RunModel {
+  const model = new RunModel();
+  const submitting = start({ command: "submit", kind: "project", planned: null, levels: { up_to: 2, unlocked: 2, last: 2 } });
+  for (const event of [submitting, ...events]) model.apply(event);
+  return model;
+}
+
+function leveledRun(id: string, level: number, run: number): RunEvent {
+  return { type: "stress_run", id, variant: "thread", run, seed: 1000 + run, status: "pass", duration_ns: 1, reasons: [], level };
+}
+
+test("a project's stress case keeps its level", () => {
+  const model = submission({ type: "stress_run_start", id: "s1", variant: "thread", run: 0, seed: 1000, level: 2 });
+  assert.deepEqual(shown(model), ["stress s1 thread running level 2"]);
+});
+
+test("a submission draws each stress case inside its level's group", () => {
+  const model = submission(
+    result("ex1", { visible: true, level: 1 }),
+    result("ex2", { visible: true, level: 2 }),
+    result("h2", { level: 2, status: "fail" }),
+    leveledRun("s1", 2, 0),
+    result("h1", { level: 1, status: "fail" }),
+  );
+  assert.deepEqual(shown(model), ["pass ex1", "fail h1", "pass ex2", "fail h2", "stress s1 thread pass level 2"]);
+});
+
+test("a submission without stress cases keeps its rows in run order", () => {
+  const model = submission(result("ex1", { visible: true, level: 1 }), result("ex2", { visible: true, level: 2 }), result("h1", { level: 1, status: "fail" }));
+  assert.deepEqual(shown(model), ["pass ex1", "pass ex2", "fail h1"]);
 });

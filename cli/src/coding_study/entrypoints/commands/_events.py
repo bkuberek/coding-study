@@ -176,13 +176,14 @@ def event_value(event: RunEvent) -> dict[str, JsonValue]:
             return _event("case_result", graded | _oracle_fields(oracle))
         case CaseRevised(verdict=verdict, level=level):
             return _event("case_revised", case_value(verdict) | {"level": level})
-        case StressRunStarted(planned=planned):
-            return _event("stress_run_start", _stress_run_fields(planned))
-        case StressRunJudged(planned=planned, result=result):
+        case StressRunStarted(planned=planned, level=level):
+            return _event("stress_run_start", _stress_run_fields(planned) | _level_field(level))
+        case StressRunJudged(planned=planned, result=result, level=level):
             judged = stress_run_value(result) | {"duration_ns": result.duration_ns}
-            return _event("stress_run", _stress_run_fields(planned) | judged)
-        case StressGraded(verdict=verdict):
-            return _event("stress_result", stress_value(verdict))
+            fields = _stress_run_fields(planned) | judged | _level_field(level)
+            return _event("stress_run", fields)
+        case StressGraded(verdict=verdict, level=level):
+            return _event("stress_result", stress_value(verdict) | _level_field(level))
         case DiagnosticFound(diagnostic=diagnostic):
             return _event("diagnostic", diagnostic_value(diagnostic))
         case LevelGraded(tally=tally):
@@ -245,6 +246,11 @@ def _oracle_fields(oracle: OracleInput | None) -> dict[str, JsonValue]:
     if oracle is None:
         return {}
     return {"oracle": True, "seed": oracle.seed, "n": oracle.n}
+
+
+def _level_field(level: int | None) -> dict[str, JsonValue]:
+    """A project's stress event names its level; a concurrent problem's has none."""
+    return {} if level is None else {"level": level}
 
 
 def _stress_run_fields(planned: PlannedRun) -> dict[str, JsonValue]:

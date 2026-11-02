@@ -2,7 +2,9 @@
 (docs/specs/cli.md#cstudy-submit, progress-and-scheduling.md#project-attempts).
 
 Every case of levels 1 to the unlocked level, visible and hidden, runs through the grading job and
-is judged by the problem's comparator. Every submission is stored. One that graded every unlocked
+is judged by the problem's comparator; then each stress case of those levels runs
+`concurrency.runs` times per variant, and each (stress case, variant) counts as one hidden case of
+its level. Every submission is stored. One that graded every unlocked
 level and passed every case opens the next level: it records the unlock, writes the level's test
 file and rewrites the statement; at the last level it is the full pass. The time box is soft: a
 submission is never refused.
@@ -20,6 +22,7 @@ from coding_study.application.project_build_diagnostics import load_error_diagno
 from coding_study.application.project_runs import (
     CaseVerdictListener,
     GradingRun,
+    grading_stress_plan,
     project_levels,
     run_grading,
 )
@@ -36,6 +39,7 @@ from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemM
 from coding_study.domain.project import level_methods, method_text
 from coding_study.domain.project_manifest import project_lock
 from coding_study.domain.signature import ClassSignature
+from coding_study.domain.stress_runs import StressSelection, stress_verdict_slots
 from coding_study.domain.submissions import (
     LevelTally,
     LevelUnlock,
@@ -135,9 +139,11 @@ def submit_project(
     levels = project_levels(meta, attempt.level_unlocked, request.level)
     folder = project_folder(meta.slug)
     root = environment.workspace.absolute(folder)
-    run = GradingRun(problem, language, root, levels.ran_up_to, request.listener)
+    plan = grading_stress_plan(problem, language, levels.ran_up_to, StressSelection())
+    run = GradingRun(problem, language, root, levels.ran_up_to, request.listener, stress_plan=plan)
     judgement = run_grading(environment, run, notify)
     graded = cases_up_to(problem.cases, levels.ran_up_to)
+    slots = stress_verdict_slots(replace(problem, cases=graded), language)
     duration = clock.monotonic() - started
     submission = SubmissionRecord(
         attempt_id=attempt.id,
@@ -145,7 +151,7 @@ def submit_project(
         code_hash=environment.workspace.content_hash(folder),
         graded_up_to=levels.ran_up_to,
         every_level=levels.ran_up_to == levels.unlocked,
-        levels=level_tallies(graded, judgement),
+        levels=level_tallies(graded, judgement, slots),
         tally=judgement.tally(),
         duration_ms=round(duration * MILLISECONDS_PER_SECOND),
     )

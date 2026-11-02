@@ -15,6 +15,7 @@ from coding_study.entrypoints.commands.run_document import (
     case_value,
     error_value,
     levels_value,
+    stress_value,
     tally_value,
     timer_value,
 )
@@ -116,7 +117,8 @@ def _stdout(verdict: SuiteTestVerdict) -> str:
 
 
 def submit_document(result: SubmitResult, exit_code: int) -> dict[str, JsonValue]:
-    """In a mock attempt hidden cases are left out of `cases`; `level_tallies` counts them."""
+    """In a mock attempt hidden cases are left out of `cases`, and stress verdicts, which are
+    hidden, out of `stress`; `level_tallies` counts them."""
     load_error = result.judgement.load_error
     levels = {case.id: case.level for case in result.cases}
     shown = [
@@ -145,6 +147,12 @@ def submit_document(result: SubmitResult, exit_code: int) -> dict[str, JsonValue
         "diagnostics": [diagnostic_value(diagnostic) for diagnostic in result.diagnostics],
         "cases": [
             case_value(verdict) | {"level": levels.get(verdict.case.id)} for verdict in shown
+        ],
+        "stress": []
+        if result.is_mock
+        else [
+            stress_value(verdict) | {"level": verdict.case.level}
+            for verdict in result.judgement.stress
         ],
         "tally": tally_value(result.submission.tally),
         "duration_s": round(result.duration_seconds, DECIMALS),

@@ -134,9 +134,12 @@ class CaseRevised:
 
 @dataclass(frozen=True, slots=True)
 class StressRunStarted:
-    """The runner started one stress run of a concurrent problem."""
+    """The runner started one stress run of a concurrent problem, or of a project's stress case
+    in `cstudy submit`."""
 
     planned: PlannedRun
+    level: int | None = None
+    """A project's stress case: its level; None for a concurrent problem."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,6 +148,8 @@ class StressRunJudged:
 
     planned: PlannedRun
     result: StressRunResult
+    level: int | None = None
+    """As `StressRunStarted.level`."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,6 +157,8 @@ class StressGraded:
     """Every run of one stress case and variant was judged."""
 
     verdict: StressVerdict
+    level: int | None = None
+    """As `StressRunStarted.level`."""
 
 
 @dataclass(frozen=True, slots=True)

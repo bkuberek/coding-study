@@ -43,6 +43,8 @@ export interface TestRow {
 export interface StressGroup {
   readonly id: string;
   readonly variant: string;
+  /** A project's stress case in a submission: its level; null for a concurrent problem's. */
+  readonly level: number | null;
   /** Each run's status by its number, filled in as runs end. */
   readonly runs: RowStatus[];
   readonly failures: StressRun[];
@@ -153,16 +155,16 @@ export class RunModel {
         this.tests.set(event.id, { id: event.id, status: event.status, result: event });
         return;
       case "stress_run_start":
-        this.#group(event.id, event.variant).runs[event.run] = "running";
+        this.#group(event.id, event.variant, event.level).runs[event.run] = "running";
         return;
       case "stress_run": {
-        const group = this.#group(event.id, event.variant);
+        const group = this.#group(event.id, event.variant, event.level);
         group.runs[event.run] = event.status;
         if (event.status !== "pass") group.failures.push(event);
         return;
       }
       case "stress_result":
-        this.#group(event.id, event.variant).result = event;
+        this.#group(event.id, event.variant, event.level).result = event;
         return;
       case "diagnostic":
         this.diagnostics.push(event);
@@ -187,11 +189,11 @@ export class RunModel {
     this.notice = null;
   }
 
-  #group(id: string, variant: string): StressGroup {
+  #group(id: string, variant: string, level: number | undefined): StressGroup {
     const key = `${id}\u0000${variant}`;
     let group = this.stress.get(key);
     if (!group) {
-      group = { id, variant, runs: [], failures: [], result: null };
+      group = { id, variant, level: level ?? null, runs: [], failures: [], result: null };
       this.stress.set(key, group);
     }
     return group;
@@ -216,11 +218,13 @@ export function resultsView(model: RunModel, showAll: boolean): ResultsView {
   const cases = [...model.cases.values()];
   const tests = [...model.tests.values()];
   const running = [...cases, ...tests].filter((row) => row.status === "running").map((row) => row.id);
+  const ended = cases.filter((row) => !row.oracle && row.status !== "running");
+  const groups = [...model.stress.values()];
   return {
     items: [
-      ...caseItems(cases.filter((row) => !row.oracle && row.status !== "running"), showAll),
+      ...(groups.some((group) => group.level !== null) ? levelGroupItems(ended, groups, showAll) : caseItems(ended, showAll)),
       ...oracleItems(cases.filter((row) => row.oracle && row.status !== "running"), showAll),
-      ...[...model.stress.values()].map((group): ViewItem => ({ kind: "stress", group })),
+      ...groups.filter((group) => group.level === null).map((group): ViewItem => ({ kind: "stress", group })),
       ...testItems(tests.filter((row) => row.status !== "running")),
       ...model.levels.map((result): ViewItem => ({ kind: "level", result })),
     ],
@@ -229,6 +233,15 @@ export function resultsView(model: RunModel, showAll: boolean): ResultsView {
     progress: { done: finishedCount(model), planned: plannedCount(model.start) },
     summary: summary(model),
   };
+}
+
+/** A submission with stress cases, level by level: the level's cases, then its stress cases. */
+function levelGroupItems(rows: readonly CaseRow[], groups: readonly StressGroup[], showAll: boolean): ViewItem[] {
+  const levels = [...new Set([...rows.map((row) => row.level), ...groups.map((group) => group.level)])].sort((a, b) => (a ?? 0) - (b ?? 0));
+  return levels.flatMap((level) => [
+    ...caseItems(rows.filter((row) => row.level === level), showAll),
+    ...groups.filter((group) => group.level === level).map((group): ViewItem => ({ kind: "stress", group })),
+  ]);
 }
 
 function caseItems(rows: readonly CaseRow[], showAll: boolean): ViewItem[] {

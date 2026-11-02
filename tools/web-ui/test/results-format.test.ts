@@ -67,6 +67,16 @@ test("a stress case's facts count its runs and give the median", () => {
   assert.equal(facts, "virtual · 1/3 runs passed · median 38ms");
 });
 
+test("a project's stress case names its level and the one model of its language not at all", () => {
+  const facts = stressFacts("thread", { runs: 3, runs_passed: 3, median_ms: 38 }, 2);
+  assert.equal(facts, "level 2 · 3/3 runs passed · median 38ms");
+});
+
+test("a project's stress case on the JVM names its level and its thread kind", () => {
+  const facts = stressFacts("virtual", { runs: 3, runs_passed: 1, median_ms: null }, 2);
+  assert.equal(facts, "level 2 · virtual · 1/3 runs passed");
+});
+
 test("a submission's level line counts visible and hidden cases", () => {
   assert.equal(levelLine(LEVEL, false), "4/5 (2 visible, 3 hidden)");
 });
