@@ -131,6 +131,7 @@ Nothing else is needed for Java or Kotlin:
 
 - **Gradle**: each workspace ships the Gradle wrapper (`jvm/gradlew`), which downloads its own Gradle on first use. `cstudy doctor` reports a missing system Gradle as `WARN`; only a maintainer who regenerates the wrapper needs one (`brew install gradle`, or `sdk install gradle` on Linux, although the warning names Homebrew).
 - **Kotlin**: the Kotlin Gradle plugin compiles the Kotlin project, and Gradle downloads it with the build, so `kotlinc` is not required. Install it with `sdk install kotlin` only if you want a Kotlin REPL.
+- **kotlinx-coroutines**: a Kotlin project problem on the virtual clock builds with `kotlinx-coroutines-core` and `kotlinx-coroutines-test` (1.11.0), which `cstudy doctor --fix` caches with JUnit, online once. A workspace set up before them gets them from its next `cstudy doctor --fix`; until then `cstudy doctor` warns on `kotlin project libraries`.
 
 ## Go
 

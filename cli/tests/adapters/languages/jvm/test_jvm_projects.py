@@ -6,6 +6,7 @@ one. Separate `JvmRunner`s on one workspace root stand in for separate `cstudy` 
 """
 
 import os
+import tomllib
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -36,6 +37,8 @@ from tests.adapters.languages.jvm.fake_gradle import LIBRARY, ProjectGradle, jvm
 from tests.helpers import REPOSITORY_ROOT
 
 GRADLE_FLAGS = ["-q", "--console=plain", "--no-watch-fs", "--offline"]
+COROUTINES_VERSION = "1.11.0"
+"""The runners' version catalog's release of kotlinx-coroutines."""
 OFFLINE_FAILURE = """\
 * What went wrong:
 Could not resolve all dependencies for configuration ':testRuntimeClasspath'.
@@ -244,6 +247,67 @@ def test_libraries_are_cached_while_the_warm_ups_classpath_exists(tmp_path):
     assert runner_on(tmp_path, ProjectGradle()).uncached_project_libraries() is None
 
 
+def coroutine_jars(tmp_path: Path, version: str = COROUTINES_VERSION) -> list[Path]:
+    jars = [
+        tmp_path / "caches" / f"kotlinx-coroutines-{kind}-jvm-{version}.jar"
+        for kind in ("core", "test")
+    ]
+    for jar in jars:
+        jar.parent.mkdir(exist_ok=True)
+        jar.write_text("jar")
+    return jars
+
+
+def runtime_catalog(tmp_path: Path, version: str = COROUTINES_VERSION) -> None:
+    """The runtime's version catalog, which names the release of the coroutine libraries."""
+    catalog = tmp_path / "runners" / "jvm" / "gradle" / "libs.versions.toml"
+    catalog.parent.mkdir(parents=True)
+    catalog.write_text(f'[versions]\nkotlinx-coroutines = "{version}"\n')
+
+
+def test_kotlin_libraries_are_uncached_until_the_warm_up_caches_kotlinx_coroutines(tmp_path):
+    """A workspace warmed up before Kotlin projects had the virtual clock lacks them."""
+    runtime_catalog(tmp_path)
+    jar = tmp_path / "caches" / "kotlin-test-2.4.21.jar"
+    jar.parent.mkdir()
+    jar.write_text("jar")
+    warmed_up(tmp_path, Language.KOTLIN, jar)
+    assert runner_on(tmp_path, ProjectGradle(), Language.KOTLIN).uncached_project_libraries() == (
+        f"the kotlin warm-up project has not cached kotlinx-coroutines {COROUTINES_VERSION} yet "
+        "(Kotlin projects on the virtual clock build with it)"
+    )
+
+
+def test_kotlin_libraries_are_uncached_until_the_warm_up_caches_the_catalogs_release(tmp_path):
+    runtime_catalog(tmp_path)
+    warmed_up(tmp_path, Language.KOTLIN, *coroutine_jars(tmp_path, "1.10.2"))
+    missing = runner_on(tmp_path, ProjectGradle(), Language.KOTLIN).uncached_project_libraries()
+    assert missing is not None
+    assert f"kotlinx-coroutines {COROUTINES_VERSION}" in missing
+
+
+def test_kotlin_libraries_are_cached_once_the_warm_up_built_with_kotlinx_coroutines(tmp_path):
+    runtime_catalog(tmp_path)
+    warmed_up(tmp_path, Language.KOTLIN, *coroutine_jars(tmp_path))
+    runner = runner_on(tmp_path, ProjectGradle(), Language.KOTLIN)
+    assert runner.uncached_project_libraries() is None
+
+
+def test_java_libraries_need_no_coroutines(tmp_path):
+    runtime_catalog(tmp_path)
+    jar = tmp_path / "caches" / "junit-jupiter-5.14.4.jar"
+    jar.parent.mkdir()
+    jar.write_text("jar")
+    warmed_up(tmp_path, Language.JAVA, jar)
+    assert runner_on(tmp_path, ProjectGradle()).uncached_project_libraries() is None
+
+
+def test_the_runtime_catalog_names_the_coroutine_libraries_release():
+    catalog = REPOSITORY_ROOT / "runners" / "jvm" / "gradle" / "libs.versions.toml"
+    versions = tomllib.loads(catalog.read_text(encoding="utf-8"))["versions"]
+    assert versions["kotlinx-coroutines"] == COROUTINES_VERSION
+
+
 def test_libraries_removed_from_gradles_cache_are_uncached(tmp_path):
     gone = tmp_path / "caches" / "kotlin-test-junit5-2.4.21.jar"
     warmed_up(tmp_path, Language.JAVA, gone, tmp_path / "caches" / "opentest4j-1.3.0.jar")
@@ -266,9 +330,12 @@ def test_any_other_failure_is_an_environment_error_with_gradles_output(tmp_path,
     assert raised.value.stderr_tail == ("Daemon died unexpectedly",)
 
 
-@pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
-def test_a_warm_up_project_builds_like_any_project_folder(language):
-    """It caches exactly what a folder needs only while its build files are the template's."""
+@pytest.mark.parametrize(
+    ("language", "virtual_clock"), [(Language.JAVA, False), (Language.KOTLIN, True)]
+)
+def test_a_warm_up_project_builds_like_any_project_folder(language, virtual_clock):
+    """It caches exactly what a folder needs only while its build files are the template's; the
+    Kotlin one's are a virtual-clock project's, which builds with kotlinx-coroutines too."""
     folder = REPOSITORY_ROOT / "runners" / "jvm" / "project-warmup" / language
-    expected = jvm_build_files(f"project-warmup-{language}", language)
+    expected = jvm_build_files(f"project-warmup-{language}", language, virtual_clock=virtual_clock)
     assert {path: (folder / path).read_text() for path in expected} == expected

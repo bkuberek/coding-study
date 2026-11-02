@@ -7,9 +7,14 @@ gson = "2.14.0"
 junit = "5.14.4"
 # The workspace's Kotlin (its jvm/gradle/libs.versions.toml); a test keeps the two equal.
 kotlin = "2.4.21"
+# The coroutine libraries of Kotlin projects on the virtual clock (the cs.coroutines plugin): the
+# newest release the pinned Kotlin builds with, whose class files load on every supported JDK.
+kotlinx-coroutines = "1.11.0"
 
 [libraries]
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 kotlin-gradle-plugin-api = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin-api", version.ref = "kotlin" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }

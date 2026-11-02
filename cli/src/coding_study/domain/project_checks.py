@@ -191,6 +191,18 @@ plugins {
     id("cs.project")
 }
 """
+_KOTLIN_CLOCK_BUILD = """\
+// Builds with the workspace's JDK, Kotlin, kotlin.test on JUnit 5, kotlinx-coroutines and the
+// cstudy runner (the cs.project and cs.coroutines plugins); keep this file as it is.
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+    id("cs.project")
+    id("cs.coroutines")
+}
+"""
+"""A Kotlin project on the virtual clock: `cs.coroutines` adds the coroutine libraries and the
+runner's bridge to their test scheduler (docs/specs/runners.md#virtual-clock-and-stress-in-project-
+jobs)."""
 _JAVA_BUILD_OF_0_9 = """\
 // Builds with JDK 21, JUnit 5 and the cstudy runner (the cs.project plugin); keep this file
 // as it is.
@@ -231,12 +243,14 @@ zipStorePath=wrapper/dists
 uses the workspace's Gradle."""
 
 
-def _jvm_build(language: Language) -> str:
+def _jvm_build(language: Language, *, virtual_clock: bool) -> str:
     match language:
+        case Language.JAVA if virtual_clock:
+            raise ValueError(f"{language} projects have no virtual clock")
         case Language.JAVA:
             return _JAVA_BUILD
         case Language.KOTLIN:
-            return _KOTLIN_BUILD
+            return _KOTLIN_CLOCK_BUILD if virtual_clock else _KOTLIN_BUILD
         case _:
             raise ValueError(f"{language} projects have no Gradle build")
 
@@ -267,15 +281,18 @@ type _Report = Callable[[str, str], None]
 """Reports a message on a path of the starter."""
 
 
-def jvm_build_files(slug: str, language: Language) -> Mapping[str, str]:
+def jvm_build_files(
+    slug: str, language: Language, *, virtual_clock: bool = False
+) -> Mapping[str, str]:
     """The build files of a Java or Kotlin project, by path, as the language's `cstudy new`
-    template writes them (docs/specs/problem-format.md#starter).
+    template writes them (docs/specs/problem-format.md#starter); on the virtual clock, a Kotlin
+    project's build applies `cs.coroutines` too.
 
-    Raises ValueError for another language.
+    Raises ValueError for another language, and for Java on the virtual clock.
     """
     return {
         SETTINGS_FILE: f'{_JVM_SETTINGS_HEAD}rootProject.name = "{slug}"\n{_JVM_SETTINGS_TAIL}',
-        BUILD_FILE: _jvm_build(language),
+        BUILD_FILE: _jvm_build(language, virtual_clock=virtual_clock),
         GRADLE_PROPERTIES_FILE: _GRADLE_PROPERTIES,
         WRAPPER_PROPERTIES_FILE: _WRAPPER_PROPERTIES,
     }

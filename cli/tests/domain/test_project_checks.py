@@ -780,6 +780,15 @@ plugins {
     id("cs.project")
 }
 """
+KOTLIN_CLOCK_BUILD = """\
+// Builds with the workspace's JDK, Kotlin, kotlin.test on JUnit 5, kotlinx-coroutines and the
+// cstudy runner (the cs.project and cs.coroutines plugins); keep this file as it is.
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+    id("cs.project")
+    id("cs.coroutines")
+}
+"""
 BUILD_OF_0_9 = {Language.JAVA: JAVA_BUILD_OF_0_9, Language.KOTLIN: KOTLIN_BUILD_OF_0_9}
 JVM_BUILDS = {Language.JAVA: JAVA_BUILD, Language.KOTLIN: KOTLIN_BUILD}
 BUILD = "build.gradle.kts"
@@ -793,6 +802,24 @@ def in_workspace(problem):
 @pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])
 def test_a_jvm_build_comment_names_the_workspaces_jdk_and_no_version(language):
     assert jvm_build_files("bank-project", language)[BUILD] == JVM_BUILDS[language]
+
+
+def test_a_kotlin_build_on_the_virtual_clock_applies_the_coroutines_plugin():
+    build = jvm_build_files("bank-project", Language.KOTLIN, virtual_clock=True)[BUILD]
+    assert build == KOTLIN_CLOCK_BUILD
+
+
+def test_the_other_kotlin_build_files_do_not_change_on_the_virtual_clock():
+    plain = dict(jvm_build_files("bank-project", Language.KOTLIN))
+    clock = dict(jvm_build_files("bank-project", Language.KOTLIN, virtual_clock=True))
+    assert {path: text for path, text in clock.items() if path != BUILD} == {
+        path: text for path, text in plain.items() if path != BUILD
+    }
+
+
+def test_a_java_project_has_no_build_on_the_virtual_clock():
+    with pytest.raises(ValueError, match="java projects have no virtual clock"):
+        jvm_build_files("bank-project", Language.JAVA, virtual_clock=True)
 
 
 @pytest.mark.parametrize("language", [Language.JAVA, Language.KOTLIN])

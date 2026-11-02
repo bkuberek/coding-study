@@ -1,5 +1,6 @@
-// The `cs.practice` plugin applied by a workspace's jvm/java and jvm/kotlin projects, and the
-// `cs.project` plugin applied by a Java or Kotlin project problem's folder.
+// The `cs.practice` plugin applied by a workspace's jvm/java and jvm/kotlin projects, the
+// `cs.project` plugin applied by a Java or Kotlin project problem's folder, and the
+// `cs.coroutines` plugin applied by a Kotlin project problem on the virtual clock.
 plugins {
     `java-gradle-plugin`
 }
@@ -25,8 +26,19 @@ val jdkRange = tasks.register<WriteProperties>("jdkRange") {
     property("maximum", libs.versions.jdk.maximum.get())
 }
 
+// The release of the coroutine libraries that `cs.coroutines` adds, from the version catalog.
+val coroutinesVersion = tasks.register<WriteProperties>("coroutinesVersion") {
+    description = "Writes the coroutine libraries' release for the cs.coroutines plugin."
+    destinationFile =
+        layout.buildDirectory.file("generated/coroutines/cs/gradle/coroutines.properties")
+    property("kotlinx-coroutines", libs.versions.kotlinx.coroutines.get())
+}
+
 sourceSets.main {
     resources.srcDir(files(layout.buildDirectory.dir("generated/jdk-range")).builtBy(jdkRange))
+    resources.srcDir(
+        files(layout.buildDirectory.dir("generated/coroutines")).builtBy(coroutinesVersion)
+    )
 }
 
 gradlePlugin {
@@ -38,6 +50,10 @@ gradlePlugin {
         create("project") {
             id = "cs.project"
             implementationClass = "cs.gradle.ProjectPlugin"
+        }
+        create("coroutines") {
+            id = "cs.coroutines"
+            implementationClass = "cs.gradle.CoroutinesPlugin"
         }
     }
 }

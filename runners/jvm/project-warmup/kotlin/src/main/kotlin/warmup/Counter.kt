@@ -1,8 +1,11 @@
 package warmup
 
+import kotlinx.coroutines.delay
+
 /**
  * The warm-up project's code: `cstudy doctor --fix` builds this folder online once, so every
- * library a Kotlin project problem builds with is cached for its offline builds.
+ * library a Kotlin project problem builds with, kotlinx-coroutines included, is cached for its
+ * offline builds.
  */
 class Counter {
     private var count = 0
@@ -10,5 +13,10 @@ class Counter {
     fun add(amount: Int): Int {
         count += amount
         return count
+    }
+
+    suspend fun addLater(amount: Int, delayMs: Long): Int {
+        delay(delayMs)
+        return add(amount)
     }
 }

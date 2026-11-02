@@ -15,6 +15,8 @@ listening for the IDE, or, with `--debug-connect`, connecting to an IDE that lis
 
 import hashlib
 import os
+import tomllib
+from collections.abc import Iterable
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -92,6 +94,12 @@ WARMUP_PROJECTS = "project-warmup"
 """In the runtime's `jvm/`: a project folder per language that `cstudy doctor --fix` builds."""
 WARMUP_CLASSPATH = SUITE_CLASSPATH_FILE
 JAR_SUFFIX = ".jar"
+RUNTIME_CATALOG = "gradle/libs.versions.toml"
+"""In the runtime's `jvm/`: the runners' version catalog."""
+COROUTINES_VERSION_KEY = "kotlinx-coroutines"
+COROUTINE_LIBRARIES = ("kotlinx-coroutines-core-jvm", "kotlinx-coroutines-test-jvm")
+"""What a Kotlin project on the virtual clock builds with (the `cs.coroutines` plugin), at the
+catalog's release; the Kotlin warm-up project applies the plugin, so its build caches them."""
 LOCK_DIGEST_LENGTH = 12
 REFERENCES_LOCK = "references"
 PRACTICE_LOCK = "practice"
@@ -292,14 +300,37 @@ class JvmRunner:
                 f"the {self._language} warm-up project has not built yet "
                 "(it caches what project folders build with)"
             )
-        jars = (Path(entry) for entry in classpath.split(os.pathsep) if entry.endswith(JAR_SUFFIX))
+        jars = [Path(entry) for entry in classpath.split(os.pathsep) if entry.endswith(JAR_SUFFIX)]
         gone = [jar for jar in jars if not jar.exists()]
-        if not gone:
+        if gone:
+            return (
+                f"{len(gone)} libraries the {self._language} warm-up project built with are gone, "
+                f"such as {gone[0].name}"
+            )
+        return self._uncached_coroutines(jars)
+
+    def _uncached_coroutines(self, jars: Iterable[Path]) -> str | None:
+        """A workspace warmed up before Kotlin projects had the virtual clock, or before the
+        catalog moved to another release, lacks the coroutine libraries that `cs.coroutines`
+        adds. Nothing to check for Java, or without a readable catalog."""
+        version = self._coroutines_version() if self._language is Language.KOTLIN else None
+        if version is None:
+            return None
+        names = {jar.name for jar in jars}
+        if all(f"{library}-{version}{JAR_SUFFIX}" in names for library in COROUTINE_LIBRARIES):
             return None
         return (
-            f"{len(gone)} libraries the {self._language} warm-up project built with are gone, "
-            f"such as {gone[0].name}"
+            f"the {self._language} warm-up project has not cached kotlinx-coroutines {version} "
+            "yet (Kotlin projects on the virtual clock build with it)"
         )
+
+    def _coroutines_version(self) -> str | None:
+        try:
+            catalog = (self._runtime.directory / RUNTIME_CATALOG).read_text(encoding="utf-8")
+            version = tomllib.loads(catalog)["versions"][COROUTINES_VERSION_KEY]
+        except (OSError, tomllib.TOMLDecodeError, KeyError, TypeError):
+            return None
+        return version if isinstance(version, str) else None
 
     def _prepare_project(
         self, scope: ProjectScope, preparation: _Preparation
