@@ -556,8 +556,10 @@ class _Trees:
                 entry[0].entry if entry else None
             )
         elif language is not None and language in JVM_LANGUAGES:
-            build_files = jvm_build_files(self._content.problem.meta.slug, language)
-            _JvmStarter(self._error, starter, language, self._content.problem.meta.workspace).check(
+            meta = self._content.problem.meta
+            clock = virtual and language is Language.KOTLIN
+            build_files = jvm_build_files(meta.slug, language, virtual_clock=clock)
+            _JvmStarter(self._error, starter, language, meta.workspace, virtual_clock=clock).check(
                 build_files
             )
         elif language is Language.RUST:
@@ -829,15 +831,24 @@ def _vendored_go_modules() -> str:
 
 class _JvmStarter:
     """S15: the template's Gradle files, so every folder builds the same way and offline, and no
-    wrapper script of its own: the workspace's runs every build."""
+    wrapper script of its own: the workspace's runs every build. A Kotlin project on the virtual
+    clock applies `cs.coroutines` too, which no build of 0.9 did."""
 
     def __init__(
-        self, report: _Report, starter: ProjectTree, language: Language, workspace: bool
+        self,
+        report: _Report,
+        starter: ProjectTree,
+        language: Language,
+        workspace: bool,
+        *,
+        virtual_clock: bool,
     ) -> None:
         self._report = report
         self._starter = starter
-        self._template = f"project-{language}"
-        self._build_of_0_9 = _jvm_build_of_0_9(language) if workspace else None
+        clock_flag = " --virtual-clock" if virtual_clock else ""
+        self._template = f"project-{language}{clock_flag}"
+        keeps_0_9 = workspace and not virtual_clock
+        self._build_of_0_9 = _jvm_build_of_0_9(language) if keeps_0_9 else None
 
     def check(self, build_files: Mapping[str, str]) -> None:
         for path, text in build_files.items():

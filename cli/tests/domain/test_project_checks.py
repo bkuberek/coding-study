@@ -1325,3 +1325,41 @@ def test_a_harness_operation_without_the_clock_fails_the_static_checks(bank):
     assert clock_errors(advancing(bank, 1000)) == [
         f"{TESTS}: cases[6] c1: ops[1]: @advance needs project.clock: virtual"
     ]
+
+
+def kotlin_on_the_clock(problem, build: str | None = None):
+    """The Kotlin fixture on the virtual clock, its starter's build file `build`, else the one of a
+    Kotlin project on the virtual clock."""
+    clocked = jvm(problem, Language.KOTLIN)
+    clocked = with_meta(clocked, project=replace(clocked.meta.project, clock=ProjectClock.VIRTUAL))
+    text = build if build is not None else KOTLIN_CLOCK_BUILD
+    return with_starter(clocked, text_file(BUILD, text))
+
+
+@pytest.mark.usefixtures("graded_clock_runners")
+def test_a_kotlin_starter_on_the_virtual_clock_applies_the_coroutines_plugin(bank):
+    assert starter_errors(kotlin_on_the_clock(bank)) == []
+
+
+@pytest.mark.usefixtures("graded_clock_runners")
+def test_a_kotlin_starter_on_the_virtual_clock_without_the_coroutines_plugin_fails(bank):
+    assert starter_errors(kotlin_on_the_clock(bank, KOTLIN_BUILD)) == [
+        f"{STARTER}/{BUILD}: differs from what cstudy new --from-template project-kotlin "
+        "--virtual-clock writes"
+    ]
+
+
+@pytest.mark.usefixtures("graded_clock_runners")
+def test_a_workspace_kotlin_clock_starter_may_not_keep_the_build_of_0_9(bank):
+    problem = in_workspace(kotlin_on_the_clock(bank, KOTLIN_BUILD_OF_0_9))
+    assert errors(content(problem)) == [
+        f"{STARTER}/{BUILD}: differs from what cstudy new --from-template project-kotlin "
+        "--virtual-clock writes"
+    ]
+
+
+def test_a_kotlin_starter_on_the_real_clock_may_not_apply_the_coroutines_plugin(bank):
+    problem = with_starter(jvm(bank, Language.KOTLIN), text_file(BUILD, KOTLIN_CLOCK_BUILD))
+    assert starter_errors(problem) == [
+        f"{STARTER}/{BUILD}: differs from what cstudy new --from-template project-kotlin writes"
+    ]

@@ -410,7 +410,8 @@ class _Annotated:
     parameter_separator: str = ": "
     """Between a parameter's name and its type."""
     keyword: str = ""
-    """Before the name: `async def ` for an asynchronous Python method."""
+    """Before the name: `async def ` for an asynchronous Python method, `suspend fun ` for a
+    Kotlin one."""
     returns_format: str = "{}"
     """The return type in its setting: `Promise<{}>` for an asynchronous TypeScript method."""
 
@@ -704,9 +705,11 @@ def _java_declaration(
     return f"{_java_type(returns)} {name}({listed})"
 
 
-def _jvm_language(sources: str, suffix: str, declare: _Declare) -> _ProjectLanguage:
+def _jvm_language(
+    sources: str, suffix: str, declare: _Declare, declare_async: _Declare | None = None
+) -> _ProjectLanguage:
     """Java's or Kotlin's rules, the sources of the language under `src/main/<sources>` and
-    `src/test/<sources>`."""
+    `src/test/<sources>`; a Kotlin `suspend` method is its asynchronous one."""
     test_sources = f"src/test/{sources}"
     return _ProjectLanguage(
         _jvm_entry_issue,
@@ -716,6 +719,7 @@ def _jvm_language(sources: str, suffix: str, declare: _Declare) -> _ProjectLangu
         declare,
         lambda tests: _package_directory_issue(tests, test_sources),
         test_sources,
+        declare_async,
     )
 
 
@@ -737,7 +741,12 @@ _PROJECT_LANGUAGES: Mapping[Language, _ProjectLanguage] = {
         declare_async=_Annotated(_typescript_type, ": ", returns_format="Promise<{}>"),
     ),
     Language.JAVA: _jvm_language("java", ".java", _java_declaration),
-    Language.KOTLIN: _jvm_language("kotlin", ".kt", _Annotated(_kotlin_type, ": ")),
+    Language.KOTLIN: _jvm_language(
+        "kotlin",
+        ".kt",
+        _Annotated(_kotlin_type, ": "),
+        _Annotated(_kotlin_type, ": ", keyword="suspend fun "),
+    ),
     Language.GO: _ProjectLanguage(
         _go_entry_issue,
         lambda entry: (entry,),

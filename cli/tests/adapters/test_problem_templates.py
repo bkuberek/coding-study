@@ -1,6 +1,8 @@
 import pytest
 
 from coding_study.adapters.problem_templates import PackagedProblemTemplates
+from coding_study.domain.problem import Language
+from coding_study.domain.project_checks import jvm_build_files
 from coding_study.domain.scaffold import TemplateName
 from coding_study.domain.workspace_projects import RUST_CARGO_CONFIG
 from tests.helpers import REPOSITORY_ROOT
@@ -180,3 +182,18 @@ def test_a_file_that_is_code_only_once_filled_in_drops_its_template_suffix():
 def test_files_hold_the_template_text():
     files = PackagedProblemTemplates().files(TemplateName.ARRAY)
     assert files["problem.md"].startswith("# {{title}}\n")
+
+
+def test_the_kotlin_virtual_clock_template_has_the_files_of_the_kotlin_project_template():
+    clock = set(PackagedProblemTemplates().files("project-kotlin-clock"))
+    assert clock == set(PackagedProblemTemplates().files(TemplateName.PROJECT_KOTLIN))
+
+
+def test_the_kotlin_virtual_clock_starter_builds_on_the_virtual_clock():
+    build = PackagedProblemTemplates().files("project-kotlin-clock")["starter/build.gradle.kts"]
+    assert build == jvm_build_files("any", Language.KOTLIN, virtual_clock=True)["build.gradle.kts"]
+
+
+def test_the_kotlin_virtual_clock_template_declares_the_clock_and_a_suspend_method():
+    meta = PackagedProblemTemplates().files("project-kotlin-clock")["meta.yaml"]
+    assert ("  clock: virtual\n" in meta, "async: true" in meta) == (True, True)

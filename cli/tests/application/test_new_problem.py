@@ -667,3 +667,53 @@ def test_a_typescript_clock_starter_with_an_edited_helper_fails_static_checks(en
         f"problems/0003-{TYPESCRIPT_CLOCK_SLUG}/starter/tests/virtual-clock.ts: is not the clock "
         "helper that the template writes; copy runners/typescript/lib/virtual-clock.ts again",
     )
+
+
+# a Kotlin project on the virtual clock
+
+KOTLIN_CLOCK_SLUG = "waiter-project-kotlin"
+
+
+def create_kotlin_clock(environment):
+    request = ScaffoldRequest(KOTLIN_CLOCK_SLUG, TemplateName.PROJECT_KOTLIN, virtual_clock=True)
+    return create_problem(environment, TEMPLATES, request)
+
+
+def test_a_kotlin_clock_projects_build_applies_the_coroutines_plugin(environment):
+    created = create_kotlin_clock(environment)
+    expected = jvm_build_files(created.slug, Language.KOTLIN, virtual_clock=True)
+    for path, text in expected.items():
+        assert clock_file(environment, created, f"starter/{path}") == text
+
+
+def test_a_kotlin_clock_projects_level_2_method_is_a_suspend_function(environment):
+    created = create_kotlin_clock(environment)
+    reference = f"solutions/reference/{jvm_entry(Language.KOTLIN, 'WaiterProjectKotlin')}"
+    text = clock_file(environment, created, reference)
+    assert "    suspend fun waitFor(key: String, waitMs: Long): String {\n" in text
+
+
+def test_a_kotlin_clock_projects_readme_teaches_testing_on_the_clock(environment):
+    created = create_kotlin_clock(environment)
+    readme = clock_file(environment, created, "starter/README.md")
+    assert "## Testing on the virtual clock" in readme
+    assert "import kotlinx.coroutines.test.runTest" in readme
+
+
+def test_a_kotlin_clock_project_passes_static_checks_after_replacing_the_placeholders(
+    environment,
+):
+    created = create_kotlin_clock(environment)
+    replace_placeholders(environment.root / created.directory)
+    assert static_errors(environment, KOTLIN_CLOCK_SLUG) == ()
+
+
+def test_a_kotlin_clock_starter_without_the_coroutines_plugin_fails_static_checks(environment):
+    created = create_kotlin_clock(environment)
+    replace_placeholders(environment.root / created.directory)
+    build = environment.root / created.directory / "starter" / "build.gradle.kts"
+    build.write_text(jvm_build_files(created.slug, Language.KOTLIN)["build.gradle.kts"])
+    assert static_errors(environment, KOTLIN_CLOCK_SLUG) == (
+        f"problems/0003-{KOTLIN_CLOCK_SLUG}/starter/build.gradle.kts: differs from what "
+        "cstudy new --from-template project-kotlin --virtual-clock writes",
+    )

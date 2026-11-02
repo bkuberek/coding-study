@@ -1,0 +1,29 @@
+// The class that `cstudy submit` and the tests drive.
+//
+// TODO: replace this sketch with the reference of every level.
+package app
+
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeoutOrNull
+
+class {{class_name}} {
+    private val values = mutableMapOf<String, String>()
+    private val waiters = mutableMapOf<String, MutableList<CompletableDeferred<String>>>()
+
+    fun put(key: String, value: String): String {
+        val previous = values.put(key, value) ?: ""
+        waiters.remove(key)?.forEach { waiter -> waiter.complete(value) }
+        return previous
+    }
+
+    suspend fun waitFor(key: String, waitMs: Long): String {
+        values[key]?.let { return it }
+        val waiter = CompletableDeferred<String>()
+        waiters.getOrPut(key) { mutableListOf() }.add(waiter)
+        try {
+            return withTimeoutOrNull(waitMs) { waiter.await() } ?: ""
+        } finally {
+            waiters[key]?.remove(waiter)
+        }
+    }
+}

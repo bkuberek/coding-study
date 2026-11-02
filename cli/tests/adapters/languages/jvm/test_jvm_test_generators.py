@@ -16,6 +16,7 @@ from coding_study.domain.project import Project
 from coding_study.domain.project_tests import level_tests
 from coding_study.domain.signature import ClassSignature, Method, Param
 from coding_study.domain.type_dsl import parse_value_type
+from coding_study.domain.virtual_clock import ProjectClock
 from tests.project_builders import OPS, method, ops_case, project_meta, project_problem
 
 JAVA, KOTLIN = Language.JAVA, Language.KOTLIN
@@ -557,3 +558,213 @@ def test_every_line_fits_the_column_limit_when_it_can(language):
         meta=project_meta(signature=ClassSignature("Bank", (), (found,)), language=language),
     )
     assert max(len(line) for line in text.splitlines()) <= limit
+
+
+# the virtual clock (docs/specs/problem-format.md#generated-tests-on-the-virtual-clock)
+
+PUBLISH = method("publish", 1, "body: string", "int")
+RECEIVE = replace(method("receive", 1, "waitMs: long", "string"), is_async=True)
+LEAVE = replace(method("leave", 1, "", "void"), is_async=True)
+INBOX = ClassSignature("Inbox", (), (PUBLISH, RECEIVE, LEAVE))
+KOTLIN_CLOCK_EXAMPLE = """\
+// Level 1 examples of bank-project-kotlin, written by `cstudy start`.
+// Yours to edit and extend: cstudy never rewrites this file.
+package bank
+
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.currentTime
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class Level1Test {
+    // A waiting receive takes a message published while it waits.
+    @Test
+    fun ex1() =
+        runTest {
+            val inbox = Inbox()
+            runCurrent()
+            val r1 = async { inbox.receive(5000L) }
+            runCurrent()
+            advanceTimeBy(1000)
+            runCurrent()
+            assertEquals(1, inbox.publish("a"))
+            runCurrent()
+            assertEquals("a", r1.await())
+            runCurrent()
+            assertEquals(1000L, currentTime)
+            assertEquals("", inbox.receive(2000L))
+            runCurrent()
+            assertEquals(3000L, currentTime)
+        }
+}
+"""
+CLOCK_EX1 = ops_case(
+    "ex1",
+    1,
+    ("@spawn", ["r1", "receive", 5000], None),
+    ("@advance", [1000], None),
+    ("publish", ["a"], 1),
+    ("@join", ["r1"], "a"),
+    ("@now", [], 1000),
+    ("receive", [2000], ""),
+    ("@now", [], 3000),
+    note="a waiting receive takes a message published while it waits",
+    class_name="Inbox",
+)
+
+
+def clock_meta(signature: ClassSignature = INBOX, comparator: ComparatorSpec = OPS):
+    return project_meta(signature, comparator, KOTLIN, clock=ProjectClock.VIRTUAL)
+
+
+def on_the_clock(*calls, meta=None, class_name: str = "Inbox") -> str:
+    case = ops_case("ex1", 1, *calls, class_name=class_name)
+    return generated(KOTLIN, case, meta=meta or clock_meta())
+
+
+def clock_body(text: str) -> str:
+    """The lines inside the one test's `runTest`."""
+    return text.split("        runTest {\n", 1)[1].removesuffix("        }\n}\n")
+
+
+def test_a_kotlin_level_on_the_virtual_clock_matches_the_spec_example():
+    assert generated(KOTLIN, CLOCK_EX1, meta=clock_meta()) == KOTLIN_CLOCK_EXAMPLE
+
+
+def test_generation_on_the_virtual_clock_is_byte_stable():
+    first = generated(KOTLIN, CLOCK_EX1, meta=clock_meta())
+    assert first == generated(KOTLIN, CLOCK_EX1, meta=clock_meta())
+
+
+def test_a_test_of_calls_alone_settles_between_them():
+    text = on_the_clock(("publish", ["a"], 1), ("publish", ["b"], 2))
+    assert clock_body(text) == (
+        "            val inbox = Inbox()\n"
+        "            runCurrent()\n"
+        '            assertEquals(1, inbox.publish("a"))\n'
+        "            runCurrent()\n"
+        '            assertEquals(2, inbox.publish("b"))\n'
+    )
+
+
+def test_a_constructor_alone_still_runs_in_run_test():
+    assert clock_body(on_the_clock()) == "            Inbox()\n"
+
+
+def test_a_suspend_call_is_made_as_any_call_is():
+    text = on_the_clock(("receive", [5], "a"))
+    assert clock_body(text).endswith('            assertEquals("a", inbox.receive(5L))\n')
+
+
+def test_a_suspend_call_that_returns_nothing_stands_alone():
+    assert clock_body(on_the_clock(("leave", [], None))).endswith("            inbox.leave()\n")
+
+
+def test_advance_settles_itself_and_now_runs_nothing():
+    text = on_the_clock(("@advance", [5], None), ("@now", [], 5), ("publish", ["a"], 1))
+    assert clock_body(text) == (
+        "            val inbox = Inbox()\n"
+        "            runCurrent()\n"
+        "            advanceTimeBy(5)\n"
+        "            runCurrent()\n"
+        "            assertEquals(5L, currentTime)\n"
+        '            assertEquals(1, inbox.publish("a"))\n'
+    )
+
+
+def test_spawn_keeps_the_async_call_in_a_variable_named_after_the_task():
+    text = on_the_clock(("@spawn", ["r1", "receive", 5], None), ("@join", ["r1"], ""))
+    assert "            val r1 = async { inbox.receive(5L) }\n            runCurrent()\n" in text
+
+
+def test_join_awaits_the_task_and_checks_its_result():
+    text = on_the_clock(("@spawn", ["r1", "receive", 5], None), ("@join", ["r1"], "x"))
+    assert clock_body(text).endswith('            assertEquals("x", r1.await())\n')
+
+
+def test_join_of_a_task_that_returns_nothing_only_awaits():
+    text = on_the_clock(("@spawn", ["l", "leave"], None), ("@join", ["l"], None))
+    assert clock_body(text).endswith("            l.await()\n")
+
+
+def test_join_sorts_an_unordered_result_first():
+    names = replace(method("names", 1, "", "list<string>"), is_async=True)
+    comparator = compared("names", ComparatorType.UNORDERED)
+    meta = clock_meta(ClassSignature("Inbox", (), (names,)), comparator)
+    text = on_the_clock(("@spawn", ["n", "names"], None), ("@join", ["n"], ["b", "a"]), meta=meta)
+    assert clock_body(text).endswith(
+        '            assertEquals(listOf("a", "b"), n.await().sorted())\n'
+    )
+
+
+def test_join_of_a_float_result_allows_the_tolerance():
+    ratio = replace(method("ratio", 1, "", "double"), is_async=True)
+    meta = clock_meta(
+        ClassSignature("Inbox", (), (ratio,)), compared("ratio", ComparatorType.FLOAT)
+    )
+    text = on_the_clock(("@spawn", ["x", "ratio"], None), ("@join", ["x"], 0.5), meta=meta)
+    assert clock_body(text).endswith("            assertEquals(0.5, x.await(), 1e-06)\n")
+
+
+def test_a_task_name_becomes_a_kotlin_identifier_in_camel_case():
+    text = on_the_clock(
+        ("@spawn", ["slow-reader", "receive", 5], None), ("@join", ["slow-reader"], "")
+    )
+    assert "            val slowReader = async { inbox.receive(5L) }\n" in text
+    assert '            assertEquals("", slowReader.await())\n' in text
+
+
+def test_a_task_never_takes_a_name_the_test_uses_or_kotlin_reserves():
+    text = on_the_clock(
+        ("@spawn", ["currentTime", "receive", 5], None),
+        ("@join", ["currentTime"], ""),
+        ("@spawn", ["inbox", "receive", 5], None),
+        ("@join", ["inbox"], ""),
+        ("@spawn", ["val", "receive", 5], None),
+        ("@join", ["val"], ""),
+    )
+    assert "            val task1 = async { inbox.receive(5L) }\n" in text
+    assert "            val task2 = async { inbox.receive(5L) }\n" in text
+    assert "            val task3 = async { inbox.receive(5L) }\n" in text
+
+
+def test_the_instance_never_takes_a_name_the_clock_uses():
+    signature = ClassSignature("CurrentTime", (), (PUBLISH,))
+    text = on_the_clock(
+        ("publish", ["a"], 1), ("@now", [], 0), meta=clock_meta(signature), class_name="CurrentTime"
+    )
+    assert "            val currentTime_ = CurrentTime()\n" in text
+    assert "            assertEquals(0L, currentTime)\n" in text
+
+
+def test_a_long_spawn_puts_the_call_on_a_line_of_its_own():
+    wait = replace(method("waitFor", 1, "key: string", "string"), is_async=True)
+    meta = clock_meta(ClassSignature("Inbox", (), (wait,)))
+    key = long_name(100)
+    text = on_the_clock(("@spawn", ["w", "waitFor", key], None), ("@join", ["w"], ""), meta=meta)
+    assert (
+        "            val w = async {\n"
+        f'                inbox.waitFor("{key}")\n'
+        "            }\n"
+        "            runCurrent()\n"
+    ) in text
+
+
+def test_a_level_without_visible_cases_on_the_clock_is_an_empty_class():
+    meta = clock_meta()
+    text = generated(KOTLIN, ops_case("h1", 1, ("publish", ["a"], 1), visible=False), meta=meta)
+    assert text.endswith("package bank\n\nclass Level1Test\n")
+
+
+def test_the_real_clock_keeps_plain_kotlin_tests():
+    meta = project_meta(INBOX, language=KOTLIN)
+    text = generated(
+        KOTLIN, ops_case("ex1", 1, ("publish", ["a"], 1), class_name="Inbox"), meta=meta
+    )
+    assert "    fun ex1() {\n        val inbox = Inbox()\n" in text
+    assert "runTest" not in text

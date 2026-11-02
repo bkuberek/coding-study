@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "{{id}}"
+slug: {{slug}}
+title: {{title_yaml}}
+status: draft
+difficulty: {{difficulty}}
+track: {{track}}
+kind: project
+{{patterns}}
+languages: [kotlin]
+levels:
+  - {level: 1, title: Store values}
+  - {level: 2, title: Wait for values}
+signature:
+  class:
+    name: {{class_name}}
+    constructor: {params: []}
+    methods:
+      - {name: put, level: 1, params: [{name: key, type: string}, {name: value, type: string}], returns: {type: string}}
+      - {name: waitFor, level: 2, async: true, params: [{name: key, type: string}, {name: waitMs, type: long}], returns: {type: string}}
+comparator: {type: ops}
+limits: {hang_guard_ms: 3000}
+project:
+  entry: app.{{class_name}}
+  tests: src/test/kotlin/app
+  clock: virtual
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "O(1) per op", space: "O(n)", time_class: "n", space_class: "n"}

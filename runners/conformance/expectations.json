@@ -162,6 +162,12 @@
       "task-error": {"status": "error", "message": "conformance failure", "op_index": 3, "partial_output": [null, null, null]},
       "jam": {"status": "timeout"},
       "leftover": {"status": "stalled", "message": "op 2 (@now): the case ended with coroutines still active at 0 ms", "op_index": 2, "partial_output": [null, null]}
+    }, "tests": {
+      "src/test/kotlin/inbox/Level1Test.kt::ex1": {"status": "ok"},
+      "src/test/kotlin/inbox/Level1Test.kt::advance": {"status": "ok"},
+      "src/test/kotlin/inbox/Level1Test.kt::spawn-join": {"status": "ok"},
+      "src/test/kotlin/inbox/Level1Test.kt::chain": {"status": "ok"},
+      "src/test/kotlin/inbox/Level1Test.kt::ties": {"status": "ok"}
     }}
   ]
 }

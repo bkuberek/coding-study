@@ -100,6 +100,12 @@ def test_the_virtual_clock_flag_writes_a_typescript_project_on_the_virtual_clock
     assert (result.exit_code, meta.project.clock) == (0, "virtual")  # type: ignore[union-attr]
 
 
+def test_the_virtual_clock_flag_writes_a_kotlin_project_on_the_virtual_clock(environment):
+    result = invoke("waiter-project-kotlin", "--from-template", "project-kotlin", "--virtual-clock")
+    meta = environment.problems.load("waiter-project-kotlin").meta
+    assert (result.exit_code, meta.project.clock) == (0, "virtual")  # type: ignore[union-attr]
+
+
 def test_a_virtual_clock_project_says_so_in_its_first_line(environment):
     result = invoke("waiter-project-go", "--from-template", "project-go", "--virtual-clock")
     assert result.output.splitlines()[0] == (
@@ -133,10 +139,7 @@ def test_a_virtual_clock_project_still_ends_with_the_ready_gate(environment):
     [
         (["--from-template", "array"], "--virtual-clock applies to the project-* templates"),
         (["--from-template", "project-java"], "Java has no virtual clock"),
-        (
-            ["--from-template", "project-kotlin"],
-            "cstudy does not write kotlin tests on the virtual clock",
-        ),
+        (["--from-template", "project-rust"], "the rust runner does not grade the virtual clock"),
     ],
 )
 def test_the_virtual_clock_flag_exits_3_where_it_does_not_apply(environment, arguments, message):
@@ -145,7 +148,7 @@ def test_the_virtual_clock_flag_exits_3_where_it_does_not_apply(environment, arg
 
 
 def test_the_virtual_clock_flag_writes_nothing_where_it_does_not_apply(environment):
-    invoke("waiter", "--from-template", "project-kotlin", "--virtual-clock")
+    invoke("waiter", "--from-template", "project-rust", "--virtual-clock")
     assert not environment.workspace.exists("problems/0003-waiter")
 
 

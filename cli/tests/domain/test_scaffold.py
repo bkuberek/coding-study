@@ -198,11 +198,6 @@ def test_the_virtual_clock_variant_keeps_the_practical_track():
             "--virtual-clock is not available for project-java: Java has no virtual clock",
         ),
         (
-            TemplateName.PROJECT_KOTLIN,
-            "--virtual-clock is not available for project-kotlin yet: "
-            "cstudy does not write kotlin tests on the virtual clock",
-        ),
-        (
             TemplateName.PROJECT_RUST,
             "--virtual-clock is not available for project-rust yet: "
             "the rust runner does not grade the virtual clock",
@@ -216,7 +211,12 @@ def test_the_virtual_clock_is_a_usage_error_where_it_does_not_apply(template, me
 
 @pytest.mark.parametrize(
     "template",
-    [TemplateName.PROJECT_GO, TemplateName.PROJECT_PYTHON, TemplateName.PROJECT_TYPESCRIPT],
+    [
+        TemplateName.PROJECT_GO,
+        TemplateName.PROJECT_PYTHON,
+        TemplateName.PROJECT_TYPESCRIPT,
+        TemplateName.PROJECT_KOTLIN,
+    ],
 )
 def test_the_virtual_clock_variant_is_a_template_of_its_own(template):
     request = ScaffoldRequest("waiter", template, virtual_clock=True)

@@ -39,7 +39,9 @@ FIRST_LEVEL_WRITER = "cstudy start"
 LATER_LEVEL_WRITER = "cstudy submit"
 """The command that writes a level's file: start for level 1, the submission that opens a later
 level for the others."""
-HARNESS_TEST_LANGUAGES = frozenset({Language.GO, Language.PYTHON, Language.TYPESCRIPT})
+HARNESS_TEST_LANGUAGES = frozenset(
+    {Language.GO, Language.PYTHON, Language.TYPESCRIPT, Language.KOTLIN}
+)
 """The languages whose generated tests express the harness operations of the virtual clock. Each
 step of docs/decisions/0017-async-project-problems.md#scope-and-order adds its languages."""
 

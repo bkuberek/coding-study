@@ -9,13 +9,22 @@ rest, with a `decimal` compared by its canonical text, since `BigDecimal.equals`
 scale too. `unordered` sorts the result and compares it with a literal already sorted as Java sorts
 it, and `float` passes the tolerance that the core's comparator allows that value.
 
+A Kotlin project on the virtual clock gets tests that run each case in `runTest`, on the test
+scheduler the grader uses (docs/specs/problem-format.md#generated-tests-on-the-virtual-clock): a
+`suspend` method is called as any method is, `runCurrent()` settles between operations as the
+grader does, except after `@advance`, which is `advanceTimeBy` then `runCurrent()`, and `@now`,
+which runs nothing. `@spawn` keeps an `async` call in a variable named after the task in camelCase,
+`@join` checks its `await()` with the method's comparator, and `@now` checks `currentTime`.
+
 The text already matches Google Java style with 4-space indents (Java) and ktlint's official style
 (Kotlin), as the stubs do, so no formatter runs. A statement too long for its line breaks its
 outermost call's arguments: Java puts them on one continuation line 8 columns deeper, or else one
 per line; Kotlin puts each on its own line 4 columns deeper, with a trailing comma and the closing
-parenthesis on a line of its own. Arguments that are still too long break the same way.
+parenthesis on a line of its own. Arguments that are still too long break the same way, and a
+lambda's body goes to a line of its own.
 """
 
+import itertools
 import re
 import textwrap
 import unicodedata
@@ -29,8 +38,18 @@ from coding_study.domain.cases import JsonValue
 from coding_study.domain.naming import NameRole, is_reserved, member_name
 from coding_study.domain.problem import ComparatorType, Language
 from coding_study.domain.project import project_tests_package
-from coding_study.domain.project_tests import EDIT_NOTICE, Call, LevelTest, LevelTests
-from coding_study.domain.signature import output_type
+from coding_study.domain.project_tests import (
+    EDIT_NOTICE,
+    Advance,
+    Call,
+    Join,
+    LevelTest,
+    LevelTests,
+    Now,
+    Operation,
+    Spawn,
+)
+from coding_study.domain.signature import Method, output_type
 from coding_study.domain.type_dsl import ArrayType, ListType, Scalar, ScalarType, ValueType
 
 COMMENT = "// "
@@ -49,6 +68,21 @@ _BIG_DECIMAL = "java.math.BigDecimal"
 _LOCAL_DATE = "java.time.LocalDate"
 _CANONICAL_DECIMAL = ".stripTrailingZeros().toPlainString()"
 """The runner's text of a `BigDecimal` (docs/specs/runners.md#execution-environment)."""
+_COROUTINES = "kotlinx.coroutines"
+_COROUTINES_TEST = f"{_COROUTINES}.test"
+_RUN_TEST = "runTest"
+_RUN_CURRENT = "runCurrent"
+_ADVANCE_TIME_BY = "advanceTimeBy"
+_CURRENT_TIME = "currentTime"
+_ASYNC = "async"
+_AWAIT = ".await()"
+_EXPERIMENTAL = f"{_COROUTINES}.ExperimentalCoroutinesApi"
+_OPT_IN = "@OptIn(ExperimentalCoroutinesApi::class)"
+"""`runCurrent`, `advanceTimeBy` and `currentTime` are experimental in kotlinx-coroutines-test."""
+_NAMES_ON_THE_CLOCK = frozenset({_RUN_TEST, _RUN_CURRENT, _ADVANCE_TIME_BY, _CURRENT_TIME, _ASYNC})
+"""The names a Kotlin test on the virtual clock uses as well, which a local name would hide."""
+_FALLBACK_TASK = "task"
+_NOT_IDENTIFIER = re.compile(r"[^0-9A-Za-z_]+")
 
 
 class JavaTestGenerator:
@@ -88,7 +122,17 @@ class _Suffixed:
     """What follows it, such as `.stream().sorted().toList()`."""
 
 
-type _Expression = _Atom | _Call | _Suffixed
+@dataclass(frozen=True, slots=True)
+class _Lambda:
+    """A call that takes one lambda, `async { body }`; broken, the body goes to a line of its
+    own."""
+
+    opening: str
+    """Up to and including the opening brace: `async {`."""
+    body: "_Expression"
+
+
+type _Expression = _Atom | _Call | _Suffixed | _Lambda
 
 
 def _flat(expression: _Expression) -> str:
@@ -99,6 +143,8 @@ def _flat(expression: _Expression) -> str:
             return opening + ", ".join(_flat(argument) for argument in arguments) + closing
         case _Suffixed(inner, suffix):
             return _flat(inner) + suffix
+        case _Lambda(opening, body):
+            return f"{opening} {_flat(body)} }}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +176,10 @@ class _Printer:
                 return self._lines(inner, indent, column, suffix + after)
             case _Call() if expression.arguments:
                 return self._broken(expression, indent, after)
+            case _Lambda(opening, body):
+                inner = indent + self.continuation
+                first, *rest = self._lines(body, inner, _width(inner), "")
+                return [opening, inner + first, *rest, f"{indent}}}{after}"]
             case _:
                 return [flat]
 
@@ -207,6 +257,8 @@ class _LevelFile(ABC):
         self._instance = _instance_name(self._class_name, self.language)
         self._assertions: set[str] = set()
         self._classes: set[str] = set()
+        self._indent = INDENT * 2
+        """Of a test's statements."""
 
     def text(self) -> str:
         tests = [self._test(test) for test in self._tests.tests]
@@ -243,33 +295,41 @@ class _LevelFile(ABC):
         name = self._tests.path.rpartition("/")[2].partition(_PACKAGE_SEPARATOR)[0]
         if not members:
             return [self._empty_class(name)]
-        return [f"class {name} {{", *members, "}"]
+        return [*self._class_annotations(), f"class {name} {{", *members, "}"]
+
+    def _class_annotations(self) -> list[str]:
+        """The lines above the class declaration of a level with tests."""
+        return []
 
     def _test(self, test: LevelTest) -> list[str]:
-        body = self._construction(test)
+        body = self._construction(test, bool(test.calls))
         for call in test.calls:
             body += self._statement("", self._call_statement(call))
         notes = _comment_lines(test.note, self.printer.column_limit)
         return [*notes, *self._test_lines(self._test_name(test.case_id), body)]
 
-    def _construction(self, test: LevelTest) -> list[str]:
-        """`Bank bank = new Bank(...)`, or the construction alone when no call follows."""
+    def _construction(self, test: LevelTest, uses_instance: bool) -> list[str]:
+        """`Bank bank = new Bank(...)`, or the construction alone when nothing follows that uses
+        the instance."""
         params = self._tests.signature.constructor_params
         arguments = self._arguments(test.constructor_arguments, [param.type for param in params])
         construction = self._constructor_call(arguments)
-        prefix = self._declaration() if test.calls else ""
+        prefix = self._declaration() if uses_instance else ""
         return self._statement(prefix, construction)
 
     def _statement(self, prefix: str, expression: _Expression) -> list[str]:
-        return self.printer.statement(INDENT * 2, prefix, expression, self.statement_end)
+        return self.printer.statement(self._indent, prefix, expression, self.statement_end)
 
     def _call_statement(self, call: Call) -> _Expression:
-        name = member_name(call.method.name, self.language, NameRole.METHOD)
-        types = [param.type for param in call.method.params]
-        invocation = _Call(f"{self._instance}.{name}(", self._arguments(call.arguments, types))
+        invocation = self._invocation(call.method, call.arguments)
         if not call.returns_value:
             return invocation
         return self._assertion(call, invocation)
+
+    def _invocation(self, method: Method, arguments: Sequence[JsonValue]) -> _Expression:
+        name = member_name(method.name, self.language, NameRole.METHOD)
+        types = [param.type for param in method.params]
+        return _Call(f"{self._instance}.{name}(", self._arguments(arguments, types))
 
     def _assertion(self, call: Call, invocation: _Expression) -> _Expression:
         expected, declared = call.expected, output_type(call.method)
@@ -522,6 +582,72 @@ class _KotlinFile(_LevelFile):
     _IMPORTS_LAST = ("java.", "javax.", "kotlin.")
     """ktlint's import layout: every other import, then these, each group in ASCII order."""
 
+    def __init__(self, tests: LevelTests) -> None:
+        super().__init__(tests)
+        self._clock = tests.virtual_clock
+        if self._clock:
+            self._indent = INDENT * 3
+            if self._instance in _NAMES_ON_THE_CLOCK:
+                self._instance = f"{self._instance}_"
+
+    def _class_annotations(self) -> list[str]:
+        if not self._clock:
+            return []
+        self._classes.add(_EXPERIMENTAL)
+        return [_OPT_IN]
+
+    def _test(self, test: LevelTest) -> list[str]:
+        """On the virtual clock, the constructor, then a statement per operation, with
+        `runCurrent()` after each but the last, unless the operation settles itself or runs
+        nothing."""
+        if not self._clock:
+            return super()._test(test)
+        uses_instance = any(isinstance(op, Call | Spawn) for op in test.operations)
+        steps = [(self._construction(test, uses_instance), True)]
+        names = _TaskNames(frozenset({self._instance, *_NAMES_ON_THE_CLOCK}))
+        steps += (
+            (self._operation(op, names), not isinstance(op, Advance | Now))
+            for op in test.operations
+        )
+        body: list[str] = []
+        for index, (lines, settles) in enumerate(steps):
+            body += lines
+            if settles and index < len(steps) - 1:
+                body.append(self._settled())
+        self._classes.add(f"{_COROUTINES_TEST}.{_RUN_TEST}")
+        notes = _comment_lines(test.note, self.printer.column_limit)
+        name = self._test_name(test.case_id)
+        test_lines = [f"{INDENT}@Test", f"{INDENT}fun {name}() =", f"{INDENT * 2}{_RUN_TEST} {{"]
+        return [*notes, *test_lines, *body, f"{INDENT * 2}}}"]
+
+    def _operation(self, operation: Operation, names: "_TaskNames") -> list[str]:
+        match operation:
+            case Call():
+                return self._statement("", self._call_statement(operation))
+            case Advance(milliseconds):
+                self._classes.add(f"{_COROUTINES_TEST}.{_ADVANCE_TIME_BY}")
+                advance = f"{self._indent}{_ADVANCE_TIME_BY}({milliseconds})"
+                return [advance, self._settled()]
+            case Spawn(task, method, arguments):
+                self._classes.add(f"{_COROUTINES}.{_ASYNC}")
+                spawned = _Lambda(f"{_ASYNC} {{", self._invocation(method, arguments))
+                return self._statement(f"val {names.assign(task)} = ", spawned)
+            case Join(task, call):
+                joined = _Atom(f"{names.variable(task)}{_AWAIT}")
+                checked = self._assertion(call, joined) if call.returns_value else joined
+                return self._statement("", checked)
+            case Now(expected):
+                self._classes.add(f"{_COROUTINES_TEST}.{_CURRENT_TIME}")
+                elapsed = _Atom(self._long_literal(expected))
+                return self._statement(
+                    "", self._assert(_ASSERT_EQUALS, elapsed, _Atom(_CURRENT_TIME))
+                )
+
+    def _settled(self) -> str:
+        """`runCurrent()`: every coroutine that can run at this instant has run."""
+        self._classes.add(f"{_COROUTINES_TEST}.{_RUN_CURRENT}")
+        return f"{self._indent}{_RUN_CURRENT}()"
+
     def _test_name(self, case_id: str) -> str:
         """The case id, in backticks when it is no identifier or is a keyword."""
         valid = _IDENTIFIER.fullmatch(case_id) and not is_reserved(case_id, Language.KOTLIN)
@@ -584,6 +710,36 @@ def _java_sorted(values: JsonValue, element: Scalar) -> JsonValue:
     if element is Scalar.STRING:
         return sorted(values, key=lambda value: str(value).encode("utf-16-be"))
     return sorted(values, key=lambda value: value if isinstance(value, int | float) else str(value))
+
+
+class _TaskNames:
+    """The variables of one Kotlin test's tasks: the task's name as an identifier in camelCase
+    (`consumer-1` as `consumer1`, `slow-reader` as `slowReader`), else `task1`, `task2`, unless
+    the test already uses the name or Kotlin reserves it."""
+
+    def __init__(self, taken: frozenset[str]) -> None:
+        self._taken = set(taken)
+        self._variables: dict[str, str] = {}
+
+    def assign(self, task: str) -> str:
+        first, *others = _NOT_IDENTIFIER.split(task)
+        spelled = first + "".join(word[:1].upper() + word[1:] for word in others)
+        fallbacks = (f"{_FALLBACK_TASK}{number}" for number in itertools.count(1))
+        candidates = itertools.chain([spelled], fallbacks)
+        variable = next(name for name in candidates if self._usable(name))
+        self._taken.add(variable)
+        self._variables[task] = variable
+        return variable
+
+    def variable(self, task: str) -> str:
+        return self._variables[task]
+
+    def _usable(self, name: str) -> bool:
+        return (
+            bool(_IDENTIFIER.fullmatch(name))
+            and name not in self._taken
+            and not is_reserved(name, Language.KOTLIN)
+        )
 
 
 def _instance_name(class_name: str, language: Language) -> str:
