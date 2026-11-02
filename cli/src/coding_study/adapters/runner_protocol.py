@@ -267,6 +267,8 @@ def _job(job: RunJob) -> JsonObject:
     }
     if job.model is not None:
         encoded["model"] = job.model.value
+    if job.clock is not None:
+        encoded["clock"] = job.clock.value
     return encoded
 
 
@@ -311,6 +313,8 @@ def _signature(signature: Signature) -> JsonObject:
             encoded["level"] = method.level
         if method.blocking:
             encoded["blocking"] = True
+        if method.is_async:
+            encoded["async"] = True
         methods.append(encoded)
     return {
         "class": {
@@ -607,8 +611,15 @@ def _stress_failure(fields: _Fields) -> StressFailure | None:
 
 
 def _stalled(fields: _Fields) -> Stalled:
+    """A stress run lists its waiting workers; a case on the virtual clock names the operation
+    that deadlocked, why, and the outputs before it."""
     return Stalled(
-        _progress(fields), fields.integer("duration_ns"), fields.optional_string("stdout")
+        _progress(fields),
+        fields.integer("duration_ns"),
+        fields.optional_string("stdout"),
+        op_index=fields.optional_integer("op_index"),
+        reason=fields.optional_string("reason"),
+        partial_output=fields.optional_array("partial_output"),
     )
 
 

@@ -55,6 +55,8 @@ type loader struct {
 	// broken holds the targets whose code did not compile, with the compiler's error: a project
 	// built without them (docs/specs/runners.md#go-project-jobs).
 	broken map[string]*userError
+	// clock is the virtual clock of a test binary (clock.go), nil in any other binary.
+	clock *Clock
 }
 
 // lookup finds a registered symbol of a target, or explains why it is missing.

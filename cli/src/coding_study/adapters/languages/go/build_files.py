@@ -70,6 +70,11 @@ REGISTRATION_VARIABLE = "CsTargets"
 THUNK_FILE = "zz_cs_thunks.go"
 """The thunk file's name; the runner leaves the frames of this file out of traces."""
 THUNKS_VARIABLE = "CsThunks"
+CLOCK_MAIN_FILE = "zz_cs_main_test.go"
+"""The test file that makes a virtual-clock project's test binary the runner, in the entry's
+package (docs/specs/runners.md#go-project-jobs)."""
+GRADING_TEST = "TestCsGrading"
+"""Its one test, which `runner.MainOnClock` selects and which runs the request."""
 RUNNER_PACKAGE = "cstudy/runner"
 THIRD_PARTY_DIRECTORY = "third_party"
 VENDORED_MODULES: Mapping[str, str] = GO_VENDORED_MODULES
@@ -210,6 +215,33 @@ def main_source(targets: Sequence[GoPackage], unavailable: Mapping[str, str]) ->
     )
 
 
+def clock_main_source(target: GoPackage, unavailable: Mapping[str, str]) -> str:
+    """The test file of a virtual-clock project's grading binary, in the entry's package: its
+    TestMain hands the runner the registration, the thunks and the test framework's run, and its
+    grading test hands it the bubble of `testing/synctest`, so the runner never imports `testing`.
+    The imports take names of their own, which a package's identifiers (a `runner` type of a
+    build-graph project) cannot clash with."""
+    registry = (
+        f"csrunner.Registry{{\n\t\t{_go_string(target.target_id)}: {REGISTRATION_VARIABLE},\n\t}}"
+    )
+    reasons = _unavailable_literal([target], unavailable, "csrunner")
+    thunks = (
+        f"csrunner.Thunks{{\n\t\t{_go_string(target.target_id)}: {THUNKS_VARIABLE},\n\t}}"
+        if target.thunks is not None
+        else "nil"
+    )
+    return (
+        f"{GENERATED_HEADER}\n\npackage {target.package}\n\n"
+        'import (\n\tcstesting "testing"\n\tcssynctest "testing/synctest"\n\n'
+        f'\tcsrunner "{RUNNER_PACKAGE}"\n)\n\n'
+        f"func TestMain(m *cstesting.M) {{\n\tcsrunner.MainOnClock({registry}, {reasons}, {thunks},"
+        " m.Run)\n}\n\n"
+        f"func {GRADING_TEST}(t *cstesting.T) {{\n\tcsrunner.GradeOnClock(csrunner.Clock{{\n"
+        "\t\tBubble: func(body func()) { cssynctest.Test(t, func(*cstesting.T) { body() }) },\n"
+        "\t\tSettle: cssynctest.Wait,\n\t})\n}\n"
+    )
+
+
 def _thunks_literal(targets: Sequence[GoPackage]) -> str:
     entries = "".join(
         f"\t\t{_go_string(t.target_id)}: t{index}.{THUNKS_VARIABLE},\n"
@@ -219,7 +251,10 @@ def _thunks_literal(targets: Sequence[GoPackage]) -> str:
     return f"runner.Thunks{{\n{entries}\t}}" if entries else "nil"
 
 
-def _unavailable_literal(targets: Sequence[GoPackage], unavailable: Mapping[str, str]) -> str:
+def _unavailable_literal(
+    targets: Sequence[GoPackage], unavailable: Mapping[str, str], runner: str = "runner"
+) -> str:
+    """`runner` is the name the file imports the runner package as."""
     if not unavailable:
         return "nil"
     symbols = {target.target_id: target.symbol for target in targets}
@@ -227,7 +262,7 @@ def _unavailable_literal(targets: Sequence[GoPackage], unavailable: Mapping[str,
         f"\t\t{_go_string(target_id)}: {{{_go_string(symbols[target_id])}: {_go_string(why)}}},\n"
         for target_id, why in unavailable.items()
     )
-    return f"runner.Unavailable{{\n{entries}\t}}"
+    return f"{runner}.Unavailable{{\n{entries}\t}}"
 
 
 def _go_string(text: str) -> str:
@@ -235,9 +270,12 @@ def _go_string(text: str) -> str:
     return json.dumps(text)
 
 
-def overlay_document(replacements: Mapping[Path, Path]) -> str:
-    """`go build -overlay`: each virtual file and the real file that stands in for it."""
-    files = {str(virtual): str(real) for virtual, real in replacements.items()}
+def overlay_document(replacements: Mapping[Path, Path | None]) -> str:
+    """`go build -overlay`: each virtual file and the real file that stands in for it; a file
+    mapped to None is left out of the build."""
+    files = {
+        str(virtual): "" if real is None else str(real) for virtual, real in replacements.items()
+    }
     return json.dumps({"Replace": files}, indent=2) + "\n"
 
 

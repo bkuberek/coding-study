@@ -38,7 +38,7 @@ from coding_study.domain.conformance import (
     ExpectedStatus,
 )
 from coding_study.domain.conformance_check import (
-    outcome_mismatch,
+    case_mismatch,
     stress_mismatch,
     suite_mismatches,
 )
@@ -294,5 +294,9 @@ def _judgement_mismatches(expectation: ConformanceExpectation, judgement: Judgem
     return [
         f"{verdict.case.id}: {mismatch}"
         for verdict in judgement.verdicts
-        if (mismatch := outcome_mismatch(expectation.outcome_for(verdict.case.id), verdict))
+        if (
+            mismatch := case_mismatch(
+                expectation.outcome_for(verdict.case.id), verdict, judgement.restarted_after
+            )
+        )
     ]

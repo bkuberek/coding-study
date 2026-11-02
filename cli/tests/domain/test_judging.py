@@ -110,6 +110,11 @@ def test_verdicts_expose_the_measured_duration(outcome, duration):
     assert judged(outcome).verdicts[0].duration_ns == duration
 
 
+def test_the_judgement_keeps_the_cases_after_which_the_runner_restarted():
+    report = JobReport("job", (CaseReport("c0", Returned(1, 1)),), restarted_after=("c0",))
+    assert judge([runnable("c0")], report, EXACT).restarted_after == ("c0",)
+
+
 def test_load_error_replaces_every_verdict():
     error = UserError("ImportError", "no module")
     judgement = judge([runnable("c0")], JobReport("job", load_error=error), EXACT)

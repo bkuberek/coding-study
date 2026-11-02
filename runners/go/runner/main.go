@@ -4,7 +4,8 @@
 //
 //	runner.Main(runner.Registry{"user": two_sum.CsTargets, "ref/hash-map": hash_map.CsTargets}, nil, nil)
 //
-// A suite job needs no target: it runs a project's tests with `go test` (suite.go).
+// A suite job needs no target: it runs a project's tests with `go test` (suite.go). A
+// virtual-clock project's grading binary is a test binary, which calls MainOnClock (clock.go).
 //
 // Exit codes: 0 once `bye` is written; 2 for a request that cannot be run; 3 after
 // `restart_requested`; 1 after a test crashed its test binary, with that test in progress.
@@ -20,7 +21,8 @@ import (
 const (
 	exitCompleted  = 0
 	exitBadRequest = 2
-	// exitRestart follows restart_requested: a stress run left worker goroutines running.
+	// exitRestart follows restart_requested: a stress run left worker goroutines running, or a
+	// case on the virtual clock left goroutines blocked.
 	exitRestart = 3
 	// exitTestCrashed leaves the test that crashed its test binary in progress, for the CLI to
 	// report as a crash.
@@ -67,7 +69,7 @@ func run(l *loader, argv []string, stderr io.Writer) int {
 	}
 	defer out.Close()
 	events := &writer{out: out}
-	events.hello()
+	events.hello(l.features())
 	req, err := readRequest(*requestPath)
 	if err != nil {
 		fmt.Fprintln(stderr, "cs-go-runner: bad request:", err)

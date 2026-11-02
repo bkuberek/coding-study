@@ -61,9 +61,18 @@ def test_the_languages_with_awaitable_methods_are_those_with_a_clock_but_go():
     assert set(ASYNC_LANGUAGES) == set(CLOCK_LANGUAGES) - {Language.GO}
 
 
-def test_no_runner_grades_the_virtual_clock_yet():
-    """The first one to land adds its language here, with its runner's `clock` feature."""
-    assert not GRADED_CLOCK_LANGUAGES
+def test_the_go_runner_grades_the_virtual_clock():
+    """Each runner that lands adds its language here, with its runner's `clock` feature."""
+    assert sorted(GRADED_CLOCK_LANGUAGES) == [Language.GO]
+
+
+def test_a_go_project_can_declare_the_virtual_clock(bank_meta):
+    assert clock_declaration_issues(declared(bank_meta, Language.GO, clock=True)) == ()
+
+
+def test_a_go_project_on_the_clock_still_has_no_async_methods(bank_meta):
+    meta = declared(bank_meta, Language.GO, clock=True, async_methods=(0,))
+    assert [issue.location for issue in clock_declaration_issues(meta)] == [FIRST_METHOD_ASYNC]
 
 
 def test_the_real_clock_is_the_default():
@@ -91,7 +100,9 @@ def test_java_has_no_virtual_clock(bank_meta):
     )
 
 
-@pytest.mark.parametrize("language", CLOCK_LANGUAGES)
+@pytest.mark.parametrize(
+    "language", [language for language in CLOCK_LANGUAGES if language is not Language.GO]
+)
 def test_a_declaration_waits_for_the_runner_that_grades_it(bank_meta, language):
     meta = declared(bank_meta, language, clock=True)
     assert clock_declaration_issues(meta) == (
@@ -102,10 +113,11 @@ def test_a_declaration_waits_for_the_runner_that_grades_it(bank_meta, language):
 
 
 def test_a_runner_that_lands_opens_its_language_alone(bank_meta, monkeypatch):
-    monkeypatch.setattr(virtual_clock, "GRADED_CLOCK_LANGUAGES", frozenset({Language.GO}))
-    graded = clock_declaration_issues(declared(bank_meta, Language.GO, clock=True))
-    waiting = clock_declaration_issues(declared(bank_meta, Language.PYTHON, clock=True))
-    assert (graded, len(waiting)) == ((), 1)
+    graded = frozenset({Language.GO, Language.PYTHON})
+    monkeypatch.setattr(virtual_clock, "GRADED_CLOCK_LANGUAGES", graded)
+    opened = clock_declaration_issues(declared(bank_meta, Language.PYTHON, clock=True))
+    waiting = clock_declaration_issues(declared(bank_meta, Language.TYPESCRIPT, clock=True))
+    assert (opened, len(waiting)) == ((), 1)
 
 
 def test_a_project_on_the_real_clock_declares_nothing(bank_meta):

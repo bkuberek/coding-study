@@ -47,6 +47,7 @@ from coding_study.domain.runs import (
 )
 from coding_study.domain.signature import ClassSignature
 from coding_study.domain.suite_runs import SuiteFramework, SuiteJob, SuiteReport, SuiteTest
+from coding_study.domain.virtual_clock import ProjectClock
 from tests.fakes import FakeToolchains, ScriptedRunnerProcess, make_environment, repository_root
 from tests.helpers import PROJECT_PROBLEMS
 
@@ -301,6 +302,19 @@ def test_grading_is_one_class_job_of_the_project_kind_under_the_slug(
 ):
     job = graded_job(grading_environment, grading_run(problem), grading_process)
     assert (job.job_id, job.kind) == (SLUG, ProblemKind.PROJECT)
+
+
+def test_grading_on_the_real_clock_names_no_clock(grading_environment, grading_process, problem):
+    assert graded_job(grading_environment, grading_run(problem), grading_process).clock is None
+
+
+def test_grading_a_virtual_clock_project_says_so(grading_environment, grading_process, problem):
+    project = problem.meta.project
+    assert project is not None
+    on_clock = replace(project, clock=ProjectClock.VIRTUAL)
+    problem = replace(problem, meta=replace(problem.meta, project=on_clock))
+    job = graded_job(grading_environment, grading_run(problem), grading_process)
+    assert job.clock is ProjectClock.VIRTUAL
 
 
 def test_grading_targets_the_project_folder_and_its_entry_module(

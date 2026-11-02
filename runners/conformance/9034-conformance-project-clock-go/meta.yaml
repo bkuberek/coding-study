@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9034"
+slug: conformance-project-clock-go
+title: "Conformance: a Go project on the virtual clock"
+status: ready
+difficulty: easy
+track: practical
+kind: project
+languages: [go]
+levels:
+  - {level: 1, title: Waiting on the virtual clock}
+signature:
+  class:
+    name: Inbox
+    constructor: {params: []}
+    methods:
+      - {name: publish, level: 1, params: [{name: body, type: string}], returns: {type: int}}
+      - {name: receive, level: 1, params: [{name: waitMs, type: int}], returns: {type: string}}
+      - {name: sleep, level: 1, params: [{name: ms, type: int}], returns: {type: long}}
+      - {name: hold, level: 1, params: [], returns: {type: string}}
+      - {name: jam, level: 1, params: [], returns: {type: string}}
+      - {name: leave, level: 1, params: [], returns: {type: void}}
+comparator: {type: ops}
+limits: {hang_guard_ms: 1000}
+project:
+  entry: inbox.go
+  tests: tests
+  clock: virtual
+approaches:
+  - {id: reference, name: "Goroutines that wait on timers, a channel nobody sends to, a mutex held twice and a goroutine left behind", role: optimal, time: "O(1)", space: "O(n)", time_class: "1", space_class: "n"}

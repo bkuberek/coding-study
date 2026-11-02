@@ -76,6 +76,11 @@ class FakeGo:
             binary.chmod(0o755)
         return outcome
 
+    def compile_tests(
+        self, arguments: Sequence[str], cwd: Path, environment: Mapping[str, str]
+    ) -> GoOutcome:
+        raise AssertionError("a single-file problem is built with go build")
+
 
 @pytest.fixture
 def workspace(tmp_path: Path) -> Path:

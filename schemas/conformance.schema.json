@@ -51,19 +51,19 @@
       "required": ["status"],
       "properties": {
         "status": {
-          "description": "pass: runner status ok and the problem's comparator accepts the output; load_error applies to the whole job; fail and stalled: stress cases only",
+          "description": "pass: runner status ok and the problem's comparator accepts the output; load_error applies to the whole job; fail: stress cases only; stalled: stress cases, and cases on the virtual clock that deadlock or leave goroutines behind",
           "enum": ["pass", "error", "invalid_output", "timeout", "load_error", "fail", "stalled"]
         },
-        "message": { "description": "error: the exact exception message", "type": "string" },
-        "op_index": { "description": "error in a class kind: the failing operation", "type": "integer", "minimum": 0 },
-        "partial_output": { "description": "error in a class kind: outputs before the failing operation", "type": "array" },
+        "message": { "description": "error: the exact exception message; stalled on the virtual clock: the exact reason", "type": "string" },
+        "op_index": { "description": "error in a class kind, or stalled on the virtual clock: the failing operation", "type": "integer", "minimum": 0 },
+        "partial_output": { "description": "error in a class kind, or stalled on the virtual clock: outputs before the failing operation", "type": "array" },
         "stdout": { "description": "pass: the exact captured standard output", "type": "string" },
         "runs": { "description": "Stress cases: runs per variant (default 10)", "type": "integer", "minimum": 1, "maximum": 100 },
         "min_failed": { "description": "Stress cases: at least this many runs fail with status (default: every run)", "type": "integer", "minimum": 0 },
         "max_failed": { "description": "Stress cases: at most this many runs fail (default 0 with pass)", "type": "integer", "minimum": 0 },
         "phase": { "description": "Stress error: the failing phase", "enum": ["setup", "worker", "final"] },
         "deterministic": { "description": "Stress cases: a repeated seed gives an identical run record, and different seeds give at least two distinct records", "type": "boolean" },
-        "restart_requested": { "description": "Stress cases: the runner asked to be restarted after a run of the case", "type": "boolean" }
+        "restart_requested": { "description": "The runner asked to be restarted after a run of a stress case, or after a case on the virtual clock", "type": "boolean" }
       }
     }
   }

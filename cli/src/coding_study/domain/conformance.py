@@ -23,14 +23,15 @@ class ExpectedStatus(StrEnum):
     FAIL = "fail"
     """Stress cases: the run completed but broke an invariant or `final.expected`."""
     STALLED = "stalled"
-    """Stress cases: workers were still unfinished at the deadline."""
+    """Stress cases: workers were still unfinished at the deadline. A case on the virtual clock:
+    it deadlocked, or ended with goroutines left behind."""
 
 
 @dataclass(frozen=True, slots=True)
 class ExpectedOutcome:
     status: ExpectedStatus
     message: str | None = None
-    """`error`: the exact exception message."""
+    """`error`: the exact exception message; `stalled` on the virtual clock, the exact reason."""
     op_index: int | None = None
     partial_output: tuple[JsonValue, ...] | None = None
     stdout: str | None = None
@@ -46,7 +47,8 @@ class ExpectedOutcome:
     deterministic: bool = False
     """Stress cases: a repeated seed gives an identical run record, and the runs differ."""
     restart_requested: bool = False
-    """Stress cases: the runner asked to be restarted after the case's runs."""
+    """The runner asked to be restarted after the case's runs, or after a case on the virtual
+    clock."""
 
 
 class ExpectedTestStatus(StrEnum):

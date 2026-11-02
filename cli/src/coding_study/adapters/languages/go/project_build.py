@@ -5,7 +5,11 @@ Each project root, the user's folder or a reference's build copy, gets a `go.wor
 module and the vendored modules with the runtime's copies, so a root at any depth builds. The
 grading binary links the entry's package with a registration and thunks that enter it through
 `go build -overlay`, as a practice file's do, with the thunks of the graded levels' methods only.
-A project that does not compile gets a binary that reports the compiler's errors as a load error.
+A virtual-clock project's grading binary is the test binary of the entry's package instead
+(`go test -c`), whose generated test file runs the runner in a `testing/synctest` bubble per case;
+the package's own test files are left out of it, so that one that does not compile never blocks a
+submission. A project that does not compile gets a binary that reports the compiler's errors as a
+load error.
 The suite binary is the runner with no target: it runs `go test` in the root, whose environment
 the launch sets.
 """
@@ -23,6 +27,7 @@ from coding_study.adapters.languages.debug_servers import require_installed
 from coding_study.adapters.languages.go.build_files import (
     BUILD_PASSES,
     BUILD_PROJECT,
+    CLOCK_MAIN_FILE,
     COLD_NOTICE,
     DELVE_READY_MARKER,
     DELVE_REFUSAL_MARKER,
@@ -44,6 +49,7 @@ from coding_study.adapters.languages.go.build_files import (
     ThunkFile,
     build_diagnostics,
     build_module_source,
+    clock_main_source,
     main_source,
     output_text,
     overlay_document,
@@ -72,6 +78,7 @@ from coding_study.domain.naming import constructor_name
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.runner_grading import graded_signature
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
+from coding_study.domain.virtual_clock import ProjectClock
 from coding_study.domain.workspace_projects import GoModuleFile, go_module_file
 
 PROJECT_BUILDS = "project"
@@ -85,6 +92,10 @@ TEST_FRAMEWORK_PACKAGES = ("testing", "testing/internal/testdeps")
 """What every test binary links beyond the runner's packages; compiled once, before the first
 suite, so that a cold build cache does not stall `go test` under the hang guard."""
 OVERLAY_FILE = "overlay.json"
+TEST_FILES = "*_test.go"
+NO_VET = "-vet=off"
+"""`go test -c` runs vet, which `go build` does not: a vet finding in the project would fail
+the grading build of a virtual-clock project only."""
 OUTSIDE_WORKSPACE = "outside"
 """The directory of the builds of roots outside the workspace, by their absolute path."""
 DEBUG_LISTEN = "CSTUDY_GO_DEBUG_LISTEN"
@@ -180,6 +191,12 @@ class GoProjectBuilds:
     def build(self, arguments: list[str], root: _Root) -> GoOutcome:
         """`go build <arguments>` in the build directory, against the root's `go.work`."""
         return self._toolchain.build(
+            arguments, self._build_directory, {"GOWORK": str(root.work_file)}
+        )
+
+    def compile_tests(self, arguments: list[str], root: _Root) -> GoOutcome:
+        """`go test -c <arguments>`, as `build`."""
+        return self._toolchain.compile_tests(
             arguments, self._build_directory, {"GOWORK": str(root.work_file)}
         )
 
@@ -283,6 +300,8 @@ class _GradingBuild:
             ThunkFile(root.directory / THUNK_FILE, signature),
         )
         self._thunk_file = root.directory / THUNK_FILE
+        self._on_clock = meta.project.clock is ProjectClock.VIRTUAL
+        self._clock_main = root.directory / CLOCK_MAIN_FILE
         directory = builds.build_directory
         self._main = directory / "cmd" / PROJECT_BINARIES / meta.snake_slug / "main.go"
         self._binary = directory / "bin" / PROJECT_BINARIES / meta.snake_slug
@@ -292,7 +311,7 @@ class _GradingBuild:
         with_thunks = True
         for _ in range(BUILD_PASSES):
             self._generate(unavailable, with_thunks=with_thunks)
-            outcome = self._builds.build(self._arguments(overlay=True), self._root)
+            outcome = self._compile()
             if outcome.exit_code == 0:
                 return self._binary
             directory = self._builds.build_directory
@@ -321,12 +340,30 @@ class _GradingBuild:
         thunks = package.thunks
         assert thunks is not None
         write_if_changed(thunks.path, thunk_source(thunks, package.package, with_thunks))
-        overlay = {
+        overlay: dict[Path, Path | None] = {
             self._package_directory / REGISTRATION_FILE: package.registration,
             self._package_directory / THUNK_FILE: thunks.path,
         }
+        if self._on_clock:
+            write_if_changed(self._clock_main, clock_main_source(package, unavailable))
+            overlay |= dict.fromkeys(self._package_tests())
+            overlay[self._package_directory / CLOCK_MAIN_FILE] = self._clock_main
+        else:
+            write_if_changed(self._main, main_source([package], unavailable))
         write_if_changed(self._root.directory / OVERLAY_FILE, overlay_document(overlay))
-        write_if_changed(self._main, main_source([package], unavailable))
+
+    def _package_tests(self) -> list[Path]:
+        """The test files of the entry's package, which the overlay leaves out of its test
+        binary."""
+        found = self._package_directory.glob(TEST_FILES)
+        return sorted(path for path in found if path.name != CLOCK_MAIN_FILE)
+
+    def _compile(self) -> GoOutcome:
+        if not self._on_clock:
+            return self._builds.build(self._arguments(overlay=True), self._root)
+        overlay = f"-overlay={self._root.directory / OVERLAY_FILE}"
+        arguments = ["-json", NO_VET, overlay, "-o", str(self._binary), self._package.import_path]
+        return self._builds.compile_tests(arguments, self._root)
 
     def _arguments(self, *, overlay: bool) -> list[str]:
         overlay_flag = [f"-overlay={self._root.directory / OVERLAY_FILE}"] if overlay else []

@@ -18,10 +18,11 @@ crash is reported on the test in progress, if any, and the restart leaves out ev
 so far. A run's listener hears each case or test as it starts and as its outcome is recorded,
 while the run goes on; cases left not run when restarts run out are only in the report.
 
-After a stress run that left threads alive, a runner writes `restart_requested` and exits with
-code 3 (docs/specs/runners.md#exit-codes-hang-guard-and-restarts-additions): it restarts for the
-remaining cases without using up the crash-restart budget. Each stress run can ask once, so these
-restarts are bounded by the stress runs in the request.
+After a stress run that left threads alive, or a case on the virtual clock that left goroutines
+or threads behind, a runner writes `restart_requested` and exits with code 3
+(docs/specs/runners.md#exit-codes-hang-guard-and-restarts-additions): it restarts for the
+remaining cases without using up the crash-restart budget. Each stress run and each case on the
+clock can ask once, so these restarts are bounded by the cases in the request.
 
 A launch with a debug agent (docs/specs/runners.md#debug-mode) waits for the IDE: no phase has a
 limit, the runner is never restarted, and its standard output is kept, because the agent says there
@@ -119,7 +120,9 @@ RESTART_EXIT_CODE = 3
 STRESS_FEATURE = "stress"
 PROJECT_FEATURE = "project"
 SUITE_FEATURE = "suite"
+CLOCK_FEATURE = "clock"
 PROJECT_PROBLEMS = "project problems"
+CLOCK_PROJECTS = "virtual-clock projects"
 POLL_INTERVAL_SECONDS = 0.005
 EXIT_GRACE_SECONDS = 5.0
 MILLISECONDS_PER_SECOND = 1000
@@ -280,11 +283,14 @@ class _RunProgress:
         self._said_hello = False
         self._current_job: str | None = None
         self._case_in_progress: tuple[str, RunCase] | None = None
-        self._last_stress_result: tuple[str, str] | None = None
+        self._restartable_result: tuple[str, str] | None = None
+        """The result just reported, when the runner may ask for a restart after it: a stress run
+        or a case on the virtual clock."""
         self._restart_requested = False
         self._restarted_after: dict[str, list[str]] = {job.job_id: [] for job in request.jobs}
         self._needs_stress = any(job.kind is ProblemKind.CONCURRENT for job in request.jobs)
         self._needs_project = any(job.kind is ProblemKind.PROJECT for job in request.jobs)
+        self._needs_clock = any(job.clock is not None for job in request.jobs)
 
     @property
     def said_hello(self) -> bool:
@@ -311,7 +317,7 @@ class _RunProgress:
         self._said_hello = False
         self._current_job = None
         self._case_in_progress = None
-        self._last_stress_result = None
+        self._restartable_result = None
         self._restart_requested = False
         return encode_request(pending)
 
@@ -375,13 +381,16 @@ class _RunProgress:
         return JobReport(job.job_id, cases, self._load_errors.get(job.job_id), restarted_after)
 
     def _hello(self, hello: Hello) -> None:
-        """A concurrent job needs a runner with the `stress` feature (runners.md#capability), and
-        a project job one with `project` (runners.md#project-jobs)."""
+        """A concurrent job needs a runner with the `stress` feature (runners.md#capability), a
+        project job one with `project` (runners.md#project-jobs), and a job on the virtual clock
+        one with `clock`."""
         accepted = accepted_hello(hello, self._said_hello)
         if self._needs_stress:
             _require_feature(accepted, STRESS_FEATURE, "concurrent problems")
         if self._needs_project:
             _require_feature(accepted, PROJECT_FEATURE, PROJECT_PROBLEMS)
+        if self._needs_clock:
+            _require_feature(accepted, CLOCK_FEATURE, CLOCK_PROJECTS)
         self._runner = self._runner or accepted
         self._said_hello = True
 
@@ -406,23 +415,27 @@ class _RunProgress:
             raise RunnerProtocolError(f'case_result for "{job_id}/{case_id}" without case_start')
         if isinstance(outcome, Passed | AssertionFailed | Skipped):
             raise RunnerProtocolError(f'case_result for "{job_id}/{case_id}" is not a case result')
-        problem = _result_problem(in_progress[1], outcome)
+        on_clock = self._attempt_job(job_id).clock is not None
+        problem = _result_problem(in_progress[1], outcome, on_clock=on_clock)
         if problem is not None:
             raise RunnerProtocolError(f'case_result for "{job_id}/{case_id}": {problem}')
         self._case_in_progress = None
         self._record(job_id, case_id, outcome)
-        is_stress = isinstance(in_progress[1].input, StressRun)
-        self._last_stress_result = (job_id, case_id) if is_stress else None
+        restartable = on_clock or isinstance(in_progress[1].input, StressRun)
+        self._restartable_result = (job_id, case_id) if restartable else None
 
     def _record(self, job_id: str, case_id: str, outcome: CaseOutcome) -> None:
         self._outcomes[job_id][case_id] = outcome
         self._listener.case_finished(job_id, CaseReport(case_id, outcome))
 
     def _restart(self) -> None:
-        """Only right after a stress run's result; the runner exits with code 3 next."""
-        if self._last_stress_result is None:
-            raise RunnerProtocolError("restart_requested without a stress run result before it")
-        job_id, case_id = self._last_stress_result
+        """Only right after the result of a stress run or of a case on the virtual clock; the
+        runner exits with code 3 next."""
+        if self._restartable_result is None:
+            raise RunnerProtocolError(
+                "restart_requested without a stress run or virtual-clock result before it"
+            )
+        job_id, case_id = self._restartable_result
         self._restarted_after[job_id].append(case_id)
         self._restart_requested = True
 
@@ -866,13 +879,18 @@ def _no_debugger_message(session: DebugSession) -> str:
     )
 
 
-def _result_problem(case: RunCase, outcome: ReportedOutcome) -> str | None:
+def _result_problem(case: RunCase, outcome: ReportedOutcome, *, on_clock: bool) -> str | None:
     """Why `outcome` cannot be the result of `case`, or None: stress runs report the outputs of
-    every script op, and only stress runs complete as stress runs or stall."""
+    every script op, only stress runs complete as stress runs, and only stress runs and cases on
+    the virtual clock stall, a case on the clock at the operation it names."""
     run = case.input
     if not isinstance(run, StressRun):
-        is_stress_outcome = isinstance(outcome, StressCompleted | Stalled)
-        return "a stress run result for a case that is no stress run" if is_stress_outcome else None
+        stalls_on_clock = on_clock and isinstance(outcome, Stalled)
+        if isinstance(outcome, StressCompleted | Stalled) and not stalls_on_clock:
+            return "a stress run result for a case that is no stress run"
+        if isinstance(outcome, Stalled) and outcome.op_index is None:
+            return "a stall on the virtual clock names its operation"
+        return None
     if not isinstance(outcome, StressCompleted):
         is_plain_result = isinstance(outcome, Returned)
         return "a stress run result needs its sections" if is_plain_result else None

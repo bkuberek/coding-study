@@ -236,6 +236,7 @@ def grading_job(run: GradingRun, cases: Sequence[RunnableCase], config: Config) 
         names=symbol_names(signature, run.language),
         signature=signature,
         cases=tuple(_run_case(case, meta, config) for case in cases),
+        clock=meta.project.clock,
     )
 
 

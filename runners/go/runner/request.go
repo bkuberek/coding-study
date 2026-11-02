@@ -43,9 +43,11 @@ type request struct {
 // job is a test job (target, names, cases), a bench job (targets, inputs, settings) or a suite
 // job (framework, root, exclude, select, skip).
 type job struct {
-	JobID     string        `json:"job_id"`
-	Kind      string        `json:"kind"`
-	Model     string        `json:"model"`
+	JobID string `json:"job_id"`
+	Kind  string `json:"kind"`
+	Model string `json:"model"`
+	// Clock is "virtual" for a project job on the virtual clock (clock.go).
+	Clock     string        `json:"clock"`
 	Target    targetRef     `json:"target"`
 	Names     names         `json:"names"`
 	Signature signature     `json:"signature"`
@@ -89,6 +91,8 @@ type member struct {
 	Name    string  `json:"name"`
 	Params  []param `json:"params"`
 	Returns returns `json:"returns"`
+	// Async marks a method that returns an awaitable, which Go methods never do.
+	Async bool `json:"async"`
 }
 
 type param struct {
@@ -219,6 +223,9 @@ func checkJob(j *job, mode string) error {
 	if j.Kind != kindConcurrent && slices.ContainsFunc(j.Cases, isStress) {
 		return fmt.Errorf("only a concurrent job has stress cases")
 	}
+	if err := checkClock(j); err != nil {
+		return err
+	}
 	if mode == modeBench && len(j.Targets) == 0 {
 		return fmt.Errorf("a bench job needs targets")
 	}
@@ -254,7 +261,23 @@ func checkConcurrent(j *job, mode string) error {
 	return nil
 }
 
+// checkClock allows the virtual clock in project jobs only, and refuses asynchronous methods:
+// a Go method that waits blocks its goroutine instead of returning an awaitable.
+func checkClock(j *job) error {
+	switch {
+	case j.Clock != "" && j.Clock != clockVirtual:
+		return fmt.Errorf("unknown clock %q", j.Clock)
+	case j.Clock != "" && j.Kind != kindProject:
+		return fmt.Errorf("only a project job runs on the virtual clock")
+	case j.Signature.Class != nil && slices.ContainsFunc(j.Signature.Class.Methods, isAsync):
+		return fmt.Errorf("a Go method cannot be async: it blocks its goroutine")
+	}
+	return nil
+}
+
 func isStress(c testCase) bool { return c.Stress != nil }
+
+func isAsync(m member) bool { return m.Async }
 
 // isClass reports whether the job is one of the class kinds (an operation sequence per case).
 func (j *job) isClass() bool { return j.Signature.Class != nil }

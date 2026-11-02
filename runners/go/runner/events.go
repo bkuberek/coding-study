@@ -11,7 +11,8 @@ import (
 const runnerName = "go"
 
 // stressFeature tells the CLI that this runner runs concurrent jobs, and projectFeature and
-// suiteFeature that it runs a project's grading and suite jobs (docs/specs/runners.md#capability).
+// suiteFeature that it runs a project's grading and suite jobs (docs/specs/runners.md#capability);
+// clockFeature (clock.go), that it grades a project on the virtual clock.
 const (
 	stressFeature  = "stress"
 	projectFeature = "project"
@@ -58,10 +59,10 @@ func runtimeVersion() string {
 	return strings.TrimPrefix(runtime.Version(), "go")
 }
 
-func (w *writer) hello() {
+func (w *writer) hello(features []string) {
 	w.emit(field{"event", "hello"}, field{"runner", runnerName},
 		field{"protocol", protocolVersion}, field{"runtime", runtimeVersion()},
-		field{"features", []string{stressFeature, projectFeature, suiteFeature}})
+		field{"features", features})
 }
 
 func (w *writer) jobStart(jobID string) {
@@ -91,8 +92,9 @@ func (w *writer) targetLoadError(jobID, targetID string, err *userError) {
 
 func (w *writer) bye() { w.emit(field{"event", "bye"}) }
 
-// restartRequested follows a stress run's case_result when its worker goroutines still run; the
-// runner then exits with exitRestart, without bye.
+// restartRequested follows the case_result of a stress run whose worker goroutines still run, or
+// of a case on the virtual clock that left goroutines; the runner then exits with exitRestart,
+// without bye.
 func (w *writer) restartRequested(reason string) {
 	w.emit(field{"event", "restart_requested"}, field{"reason", reason})
 }
@@ -101,7 +103,8 @@ const (
 	statusOK            = "ok"
 	statusError         = "error"
 	statusInvalidOutput = "invalid_output"
-	// statusStalled is a stress run whose workers were unfinished at its deadline.
+	// statusStalled is a stress run whose workers were unfinished at its deadline, or a case on
+	// the virtual clock that deadlocked.
 	statusStalled = "stalled"
 )
 
@@ -111,7 +114,8 @@ type outcome struct {
 	output any
 	err    *userError
 	reason string
-	// opIndex is the failing operation of a class kind (with partialOutput), -1 otherwise.
+	// opIndex is the failing or stalled operation of a class kind (with partialOutput), -1
+	// otherwise.
 	opIndex       int
 	partialOutput []any
 	durationNS    int64
@@ -168,6 +172,11 @@ func (o outcome) fields() []field {
 		}
 	case statusInvalidOutput:
 		fields = append(fields, field{"reason", o.reason})
+	case statusStalled:
+		if o.stress == nil {
+			fields = append(fields, field{"op_index", o.opIndex}, field{"reason", o.reason},
+				field{"partial_output", o.partialOutput})
+		}
 	}
 	if o.stress != nil {
 		fields = append(fields, o.stress.fields(o.status)...)

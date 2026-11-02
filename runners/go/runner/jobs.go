@@ -11,28 +11,43 @@ const constructorOp = 0
 
 // runTestJobs runs the cases of each job (docs/specs/runners.md#event-stream). Inputs are
 // decoded fresh for every case; duration_ns covers only the calls into user code. It returns
-// false right after a stress run that left worker goroutines running and asked for a restart:
-// the runner then exits without bye.
+// false right after a stress run, or a case on the virtual clock, that left goroutines running and
+// asked for a restart: the runner then exits without bye.
 func runTestJobs(l *loader, jobs []job, events *writer) bool {
 	for i := range jobs {
 		j := &jobs[i]
 		events.jobStart(j.JobID)
 		target, failure := l.bind(j.Target, j.Names, &j.Signature)
+		if failure == nil {
+			failure = l.clockFailure(j)
+		}
 		if failure != nil {
 			events.loadError(j.JobID, failure)
 		} else {
 			for k := range j.Cases {
 				c := &j.Cases[k]
 				events.caseStart(j.JobID, c.ID)
-				if c.Stress == nil {
-					events.caseResult(j.JobID, c.ID, target.run(&c.callInput))
-				} else if !runStressCase(j.JobID, c, target, events) {
+				if !runCase(l, j, c, target, events) {
 					return false
 				}
 			}
 		}
 		events.jobEnd(j.JobID)
 	}
+	return true
+}
+
+// runCase reports one case: a stress run, a case on the virtual clock or a case on the real
+// clock. It returns false when the runner asked for a restart.
+func runCase(l *loader, j *job, c *testCase, target caseRunner, events *writer) bool {
+	switch {
+	case c.Stress != nil:
+		return runStressCase(j.JobID, c, target, events)
+	case l.onClock(j):
+		// checkJob requires signature.class of a project job, so its target is a class.
+		return runClockCase(j.JobID, c, target.(*classTarget), l.clock, events)
+	}
+	events.caseResult(j.JobID, c.ID, target.run(&c.callInput))
 	return true
 }
 
@@ -96,6 +111,8 @@ type operations struct {
 	instance reflect.Value
 	outputs  []any
 	duration int64
+	// clock is the case's virtual clock, nil on the real clock.
+	clock *clockCase
 }
 
 func (t *classTarget) run(input *callInput) outcome {
@@ -114,11 +131,19 @@ func (o *operations) run(input *callInput) outcome {
 		return o.failed(constructorOp, fmt.Errorf("a class job takes an operation sequence, not arguments"))
 	}
 	for index, op := range input.Ops {
-		if result, done := o.operation(index, op, input.Args[index]); done {
+		if result, done := o.step(index, op, input.Args[index]); done {
 			return result
 		}
 	}
 	return returned(o.outputs, o.duration)
+}
+
+// step runs one operation, on the case's virtual clock when it has one.
+func (o *operations) step(index int, op string, args []json.RawMessage) (outcome, bool) {
+	if o.clock != nil {
+		return o.clock.step(o, index, op, args)
+	}
+	return o.operation(index, op, args)
 }
 
 // operation runs one operation; done when it ends the case.

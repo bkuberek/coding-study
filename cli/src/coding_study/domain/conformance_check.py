@@ -37,7 +37,18 @@ _STATUS_OUTCOMES = {
     ExpectedStatus.ERROR: Raised,
     ExpectedStatus.INVALID_OUTPUT: InvalidOutput,
     ExpectedStatus.TIMEOUT: TimedOut,
+    ExpectedStatus.STALLED: Stalled,
 }
+
+
+def case_mismatch(
+    expected: ExpectedOutcome, verdict: CaseVerdict, restarted_after: Collection[str]
+) -> str | None:
+    """`outcome_mismatch`, and for a case expected to leave goroutines or threads behind, that
+    the runner asked to be restarted after it (`restarted_after`: case ids)."""
+    if expected.restart_requested and verdict.case.id not in restarted_after:
+        return "expected restart_requested after the case"
+    return outcome_mismatch(expected, verdict)
 
 
 def outcome_mismatch(expected: ExpectedOutcome, verdict: CaseVerdict) -> str | None:
@@ -53,6 +64,8 @@ def outcome_mismatch(expected: ExpectedOutcome, verdict: CaseVerdict) -> str | N
         return f"expected {expected.status.value}, {got}"
     if isinstance(verdict.outcome, Raised):
         return _error_mismatch(expected, verdict.outcome)
+    if isinstance(verdict.outcome, Stalled):
+        return _stall_mismatch(expected, verdict.outcome)
     return None
 
 
@@ -69,6 +82,19 @@ def _error_mismatch(expected: ExpectedOutcome, outcome: Raised) -> str | None:
     message = outcome.error.message
     if expected.message is not None and message != expected.message:
         return f"expected message {json_text(expected.message)}, got {json_text(message)}"
+    if expected.op_index is not None and outcome.op_index != expected.op_index:
+        return f"expected op_index {expected.op_index}, got {outcome.op_index}"
+    partial = expected.partial_output
+    if partial is not None and outcome.partial_output != partial:
+        wanted, actual = value_text(list(partial)), value_text(list(outcome.partial_output))
+        return f"expected partial_output {wanted}, got {actual}"
+    return None
+
+
+def _stall_mismatch(expected: ExpectedOutcome, outcome: Stalled) -> str | None:
+    """A case on the virtual clock: the exact reason, operation and outputs before it."""
+    if expected.message is not None and outcome.reason != expected.message:
+        return f"expected message {json_text(expected.message)}, got {json_text(outcome.reason)}"
     if expected.op_index is not None and outcome.op_index != expected.op_index:
         return f"expected op_index {expected.op_index}, got {outcome.op_index}"
     partial = expected.partial_output

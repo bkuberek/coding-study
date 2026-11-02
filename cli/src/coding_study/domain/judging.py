@@ -124,6 +124,9 @@ class Judgement:
     load_error: UserError | None = None
     stress: tuple[StressVerdict, ...] = ()
     """Concurrent problems: one verdict per (stress case, variant)."""
+    restarted_after: tuple[str, ...] = ()
+    """The cases after which the runner asked to be restarted: goroutines or threads were left
+    behind."""
 
     @property
     def passed(self) -> bool:
@@ -213,7 +216,7 @@ def judge(cases: Sequence[RunnableCase], job: JobReport, comparator: Comparator)
         return Judgement(len(cases), load_error=job.load_error)
     outcomes = {report.case_id: report.outcome for report in job.cases}
     verdicts = (_verdict(case, outcomes.get(case.id, _MISSING), comparator) for case in cases)
-    return Judgement(len(cases), tuple(verdicts))
+    return Judgement(len(cases), tuple(verdicts), restarted_after=job.restarted_after)
 
 
 def with_time_limits(judgement: Judgement, limits: TimeLimits) -> Judgement:

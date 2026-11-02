@@ -223,6 +223,12 @@ class CountingGo:
         self.builds += 1
         return self.real.build(arguments, cwd, environment)
 
+    def compile_tests(
+        self, arguments: Sequence[str], cwd: Path, environment: Mapping[str, str]
+    ) -> GoOutcome:
+        self.builds += 1
+        return self.real.compile_tests(arguments, cwd, environment)
+
 
 def prepare_class(root: Path, go: CountingGo) -> PrepareResult:
     runner = GoRunner(

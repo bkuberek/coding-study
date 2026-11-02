@@ -13,6 +13,7 @@ from coding_study.domain.concurrency import ConcurrencyModel, Perturbation, Thre
 from coding_study.domain.naming import SymbolNames
 from coding_study.domain.problem import Language, ProblemKind
 from coding_study.domain.signature import Signature
+from coding_study.domain.virtual_clock import ProjectClock
 
 PROTOCOL_VERSION = 1
 
@@ -111,6 +112,9 @@ class RunJob:
     cases: tuple[RunCase, ...]
     model: ConcurrencyModel | None = None
     """Concurrent jobs only."""
+    clock: ProjectClock | None = None
+    """A project's grading job on the virtual clock (docs/specs/runners.md#virtual-clock-and-
+    stress-in-project-jobs); None on the real clock."""
 
     def __post_init__(self) -> None:
         _require_unique((case.id for case in self.cases), f"case id in job {self.job_id}")
@@ -223,11 +227,21 @@ class StressCompleted:
 
 @dataclass(frozen=True, slots=True)
 class Stalled:
-    """`stalled`: workers were still unfinished at the run's deadline."""
+    """`stalled`: a stress run's workers were still unfinished at its deadline, or a case on the
+    virtual clock deadlocked (docs/specs/runners.md#virtual-clock-and-stress-in-project-jobs)."""
 
     progress: tuple[WorkerProgress, ...]
+    """Stress runs only."""
     duration_ns: int
     stdout: str = ""
+    op_index: int | None = None
+    """A case on the virtual clock: the operation that deadlocked, or the last one when the case
+    ended with goroutines or threads left behind."""
+    reason: str = ""
+    """A case on the virtual clock: the operation and the virtual time, such as
+    `op 4 (@join r1): deadlock at 3000 ms`."""
+    partial_output: tuple[JsonValue, ...] = ()
+    """A case on the virtual clock: the outputs of the operations before `op_index`."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -270,7 +284,8 @@ class JobReport:
     cases: tuple[CaseReport, ...] = ()
     load_error: UserError | None = None
     restarted_after: tuple[str, ...] = ()
-    """Stress runs after which the runner asked to be restarted (leftover threads)."""
+    """Stress runs, and cases on the virtual clock, after which the runner asked to be restarted
+    (leftover threads or goroutines)."""
 
 
 @dataclass(frozen=True, slots=True)

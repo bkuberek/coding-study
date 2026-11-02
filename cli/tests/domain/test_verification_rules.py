@@ -7,7 +7,7 @@ from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.domain.cases import Case, Expected, FunctionInput, GeneratedInput
 from coding_study.domain.comparators import comparator_for
 from coding_study.domain.conformance import ExpectedOutcome, ExpectedStatus
-from coding_study.domain.conformance_check import outcome_mismatch
+from coding_study.domain.conformance_check import case_mismatch, outcome_mismatch
 from coding_study.domain.judging import RunnableCase, judge, verdict_summary
 from coding_study.domain.layout import reference_file_name
 from coding_study.domain.problem import (
@@ -23,6 +23,7 @@ from coding_study.domain.runs import (
     JobReport,
     Raised,
     Returned,
+    Stalled,
     TimedOut,
     UserError,
 )
@@ -33,6 +34,8 @@ from tests.fakes import repository_root
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 EXACT = comparator_for(ComparatorSpec(ComparatorType.EXACT))
 CASE = RunnableCase("c1", FunctionInput({"value": 1}), Expected(1))
+DEADLOCK = "op 3 (@join r1): deadlock at 2000 ms"
+STALLED_AT_JOIN = Stalled((), 5, op_index=3, reason=DEADLOCK, partial_output=(None, None, None))
 
 
 def verdict(outcome, case=CASE):
@@ -54,6 +57,11 @@ def verdict(outcome, case=CASE):
         ),
         (ExpectedOutcome(ExpectedStatus.INVALID_OUTPUT), InvalidOutput("cyclic", 5)),
         (ExpectedOutcome(ExpectedStatus.TIMEOUT), TimedOut(500)),
+        (ExpectedOutcome(ExpectedStatus.STALLED), STALLED_AT_JOIN),
+        (
+            ExpectedOutcome(ExpectedStatus.STALLED, DEADLOCK, 3, (None, None, None)),
+            STALLED_AT_JOIN,
+        ),
     ],
 )
 def test_matching_outcomes(expected, outcome):
@@ -92,12 +100,39 @@ def test_matching_outcomes(expected, outcome):
             "expected invalid_output, got PASS",
         ),
         (ExpectedOutcome(ExpectedStatus.LOAD_ERROR), Returned(1, 5), "expected load_error"),
+        (ExpectedOutcome(ExpectedStatus.STALLED), Returned(1, 5), "expected stalled, got PASS"),
+        (
+            ExpectedOutcome(ExpectedStatus.STALLED, "op 3 (@join r1): deadlock at 1 ms"),
+            STALLED_AT_JOIN,
+            f'expected message "op 3 (@join r1): deadlock at 1 ms", got "{DEADLOCK}"',
+        ),
+        (
+            ExpectedOutcome(ExpectedStatus.STALLED, op_index=2),
+            STALLED_AT_JOIN,
+            "expected op_index 2, got 3",
+        ),
     ],
 )
 def test_mismatched_outcomes(expected, outcome, message):
     mismatch = outcome_mismatch(expected, verdict(outcome))
     assert mismatch is not None
     assert mismatch.startswith(message)
+
+
+def test_a_case_expected_to_restart_the_runner_matches_when_it_did():
+    expected = ExpectedOutcome(ExpectedStatus.STALLED, restart_requested=True)
+    assert case_mismatch(expected, verdict(STALLED_AT_JOIN), ("c1",)) is None
+
+
+def test_a_case_expected_to_restart_the_runner_fails_when_it_did_not():
+    expected = ExpectedOutcome(ExpectedStatus.STALLED, restart_requested=True)
+    mismatch = case_mismatch(expected, verdict(STALLED_AT_JOIN), ())
+    assert mismatch == "expected restart_requested after the case"
+
+
+def test_a_case_without_an_expected_restart_is_judged_by_its_outcome():
+    expected = ExpectedOutcome(ExpectedStatus.PASS)
+    assert case_mismatch(expected, verdict(Returned(2, 5)), ("c1",)) == "expected pass, got FAIL"
 
 
 # verdict summaries

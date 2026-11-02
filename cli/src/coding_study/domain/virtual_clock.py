@@ -28,10 +28,11 @@ CLOCK_LANGUAGES = (
 """The languages that can declare `project.clock: virtual`."""
 ASYNC_LANGUAGES = (Language.PYTHON, Language.TYPESCRIPT, Language.KOTLIN, Language.RUST)
 """The languages that can declare `async: true`: those whose methods return an awaitable."""
-GRADED_CLOCK_LANGUAGES: frozenset[Language] = frozenset()
+GRADED_CLOCK_LANGUAGES: frozenset[Language] = frozenset({Language.GO})
 """The languages whose runner grades the virtual clock and its harness operations. Each step of
 docs/decisions/0017-async-project-problems.md#scope-and-order adds its languages here, together
-with the runner's `clock` feature."""
+with the runner's `clock` feature: Go's grading binary is a test binary that runs each case in a
+`testing/synctest` bubble."""
 
 
 class ProjectClock(StrEnum):

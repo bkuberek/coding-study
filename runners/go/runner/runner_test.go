@@ -22,6 +22,7 @@ var registry = Registry{
 		"wrong": fixture.Wrong, "NewTally": fixture.NewTally, "NewGate": fixture.NewGate,
 		"third": fixture.Third, "price": fixture.Price, "strict": fixture.Strict,
 		"NewLedger": fixture.NewLedger, "NewShelf": fixture.NewShelf,
+		"NewMailbox": fixture.NewMailbox,
 	},
 	"ref/new-node": {"pickNode": fixture.NewNode},
 }

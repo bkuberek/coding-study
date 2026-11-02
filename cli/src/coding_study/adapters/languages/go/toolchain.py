@@ -41,6 +41,7 @@ USER_GO_PREFIXES = ("CGO_",)
 """Variables of the user's environment that would build for another platform or workspace, or
 configure cgo; the build leaves them out (it sets its own GOWORK and CGO_ENABLED)."""
 BUILD_STEP = "go build"
+TEST_BUILD_STEP = "go test -c"
 MISSING_GO = "go was not found on PATH; --lang go needs Go 1.24 or newer"
 
 
@@ -63,6 +64,12 @@ class GoToolchain(Protocol):
         """
         ...
 
+    def compile_tests(
+        self, arguments: Sequence[str], cwd: Path, environment: Mapping[str, str]
+    ) -> GoOutcome:
+        """`go test -c <arguments>`, otherwise as `build`."""
+        ...
+
 
 class SubprocessGo:
     """`GoToolchain` backed by the `go` command on PATH, stopped when a build outlives
@@ -70,23 +77,34 @@ class SubprocessGo:
 
     def __init__(self, timeout_seconds: float = DEFAULT_BUILD_TIMEOUT_SECONDS) -> None:
         self._process = BoundedProcess(BUILD_STEP, timeout_seconds)
+        self._test_process = BoundedProcess(TEST_BUILD_STEP, timeout_seconds)
 
     def build(
         self, arguments: Sequence[str], cwd: Path, environment: Mapping[str, str]
     ) -> GoOutcome:
-        try:
-            completed = self._process.run(
-                [GO, "build", *arguments], cwd, build_environment(os.environ, environment)
-            )
-        except FileNotFoundError:
-            raise RunnerStartError(MISSING_GO) from None
-        except OSError as error:
-            raise RunnerStartError(f"cannot run go: {error.strerror or error}") from error
-        return GoOutcome(
-            completed.returncode,
-            completed.stdout.decode("utf-8", errors="replace"),
-            completed.stderr.decode("utf-8", errors="replace"),
-        )
+        return _go(self._process, ["build", *arguments], cwd, environment)
+
+    def compile_tests(
+        self, arguments: Sequence[str], cwd: Path, environment: Mapping[str, str]
+    ) -> GoOutcome:
+        return _go(self._test_process, ["test", "-c", *arguments], cwd, environment)
+
+
+def _go(
+    process: BoundedProcess, arguments: Sequence[str], cwd: Path, environment: Mapping[str, str]
+) -> GoOutcome:
+    """Raises RunnerStartError when `go` cannot be started at all."""
+    try:
+        completed = process.run([GO, *arguments], cwd, build_environment(os.environ, environment))
+    except FileNotFoundError:
+        raise RunnerStartError(MISSING_GO) from None
+    except OSError as error:
+        raise RunnerStartError(f"cannot run go: {error.strerror or error}") from error
+    return GoOutcome(
+        completed.returncode,
+        completed.stdout.decode("utf-8", errors="replace"),
+        completed.stderr.decode("utf-8", errors="replace"),
+    )
 
 
 def build_environment(inherited: Mapping[str, str], build: Mapping[str, str]) -> dict[str, str]:

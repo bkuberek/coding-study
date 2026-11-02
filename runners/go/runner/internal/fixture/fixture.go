@@ -172,3 +172,45 @@ func (*Shelf) Locate(head *ListNode, node *ListNode) *ListNode { return node }
 
 // Mistyped takes an int64 where the signature declares an int.
 func (*Shelf) Mistyped(value int64) int { return int(value) }
+
+// Mailbox is a class for the virtual clock: Receive waits for a message published meanwhile or
+// for its wait to end, Hold waits for a message nobody sends, Leave starts a goroutine that never
+// ends, and Fail panics.
+type Mailbox struct {
+	messages  chan string
+	published int
+	never     chan string
+}
+
+func NewMailbox() *Mailbox {
+	return &Mailbox{messages: make(chan string, 16), never: make(chan string)}
+}
+
+// Publish hands a message to a waiting or later Receive and returns how many were published.
+func (m *Mailbox) Publish(body string) int {
+	m.messages <- body
+	m.published++
+	return m.published
+}
+
+// Receive returns the next message, or "" once waitMs milliseconds have passed without one.
+func (m *Mailbox) Receive(waitMs int) string {
+	select {
+	case body := <-m.messages:
+		return body
+	case <-time.After(time.Duration(waitMs) * time.Millisecond):
+		return ""
+	}
+}
+
+// Hold waits for a message on a channel nobody sends to.
+func (m *Mailbox) Hold() string { return <-m.never }
+
+// Leave starts a goroutine that waits for good, and returns.
+func (m *Mailbox) Leave() { go func() { <-m.never }() }
+
+// Fail panics after waiting 500 milliseconds.
+func (m *Mailbox) Fail() string {
+	time.Sleep(500 * time.Millisecond)
+	panic("mailbox closed")
+}
