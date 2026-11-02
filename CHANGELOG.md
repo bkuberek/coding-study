@@ -2,6 +2,81 @@
 
 <!-- version list -->
 
+## v0.10.0 (2026-11-02)
+
+### Bug Fixes
+
+- **web**: Listen before printing the URL so the first request is never refused
+  ([`807346b`](https://github.com/bkuberek/coding-study/commit/807346bc0389c8fda9f9843b9d88bde224a9e658))
+
+- **web**: Wrap long fix hints in the health view
+  ([`0af140e`](https://github.com/bkuberek/coding-study/commit/0af140e503fb3f1980439bf4f83fa4c5a7e872a2))
+
+### Continuous Integration
+
+- Run the Java and Kotlin tests on JDK 21 and JDK 26
+  ([`a69f579`](https://github.com/bkuberek/coding-study/commit/a69f579ed6ffd0593e65c133b136b59b7c32e2cb))
+
+- Show why a JVM test is skipped and shorten the job limit
+  ([`9f5822a`](https://github.com/bkuberek/coding-study/commit/9f5822a241f98fc6c002ffafc8d709540d1efa54))
+
+### Documentation
+
+- Accept ADR 0016 and specify the supported JDK range
+  ([`66461bf`](https://github.com/bkuberek/coding-study/commit/66461bfe832a82e9ac726705826e9a7d6253ac35))
+
+- List ADR 0016 in the docs index
+  ([`10ce6e1`](https://github.com/bkuberek/coding-study/commit/10ce6e1f521d27d91963c2a00a62cff71afe2525))
+
+- Note that Kotlin reference builds fail on JDK 22.0.0
+  ([`9d0b7c3`](https://github.com/bkuberek/coding-study/commit/9d0b7c345effcdb36fdfd283967189bb1a8d5c16))
+
+- Retake the web UI screenshots on 0.9.1
+  ([`d0a96ba`](https://github.com/bkuberek/coding-study/commit/d0a96bac6b8bdca65529951556a5b15fc4a56137))
+
+- **cli**: List the jvm test selection
+  ([`814db78`](https://github.com/bkuberek/coding-study/commit/814db78fe3a6c86ca8a9789ddc00f92427f2f3a5))
+
+- **content**: Note where virtual-thread behaviour differs from JDK 24
+  ([`6b59ae1`](https://github.com/bkuberek/coding-study/commit/6b59ae170d63c6fe082e076b1558cc23f1ae0dfe))
+
+### Features
+
+- Refuse Java and Kotlin problems outside the selected JDK's range
+  ([`9391860`](https://github.com/bkuberek/coding-study/commit/9391860eac042dd7fad09a318f004b1dc9bf8027))
+
+- **cli**: Show which problems the selected JDK can run
+  ([`a890c32`](https://github.com/bkuberek/coding-study/commit/a890c32dd069ea3b63c8d89f2d529b6dfdb6bcac))
+
+- **content**: Let a problem declare the JDK range it needs
+  ([`09a3fa0`](https://github.com/bkuberek/coding-study/commit/09a3fa0233406260665e7ad4c16583c0f37bae76))
+
+- **doctor**: Accept JDK 21 to 26 and say when a JDK is not supported yet
+  ([`292f4a3`](https://github.com/bkuberek/coding-study/commit/292f4a3738ee8e88bb7c5990f8e940240dd251fe))
+
+- **ide**: Name the IntelliJ project JDK after the selected JDK
+  ([`5538996`](https://github.com/bkuberek/coding-study/commit/5538996e9584a778675a4ecf6556340a08d831c9))
+
+- **runners**: Build Java and Kotlin with the selected JDK at one release level
+  ([`fdb87f5`](https://github.com/bkuberek/coding-study/commit/fdb87f56f5023c87e97c7a3d76e611bf9567233a))
+
+- **web**: Show which languages the selected JDK can run
+  ([`861c9f4`](https://github.com/bkuberek/coding-study/commit/861c9f4fdd4566f0e2161396fc18599359790fbc))
+
+### Refactoring
+
+- **content**: Drop the JDK version from the starter build comment
+  ([`435dd0e`](https://github.com/bkuberek/coding-study/commit/435dd0ec0d560ad543774f44da5aaaecf6ae6b07))
+
+### Testing
+
+- Keep the wall-clock Gradle test out of the CI selection
+  ([`95bfe2a`](https://github.com/bkuberek/coding-study/commit/95bfe2ad7b6ef7e6bcf32f28390a320ae9ace2e2))
+
+- Wait for the server to listen before the first request
+  ([`9e74f18`](https://github.com/bkuberek/coding-study/commit/9e74f189c9aee1496c3e5b15bcb3c9077517890f))
+
+
 ## v0.9.1 (2026-11-01)
 
 ### Bug Fixes
