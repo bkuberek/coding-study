@@ -1,8 +1,11 @@
 """Concurrent jobs: sequential cases, then stress runs (docs/specs/runners.md#concurrent-jobs).
 
 Sequential cases run like a design problem's; in the `async` model each runs in its own event
-loop and awaitable results are awaited. A stress run that leaves worker threads alive ends the
-runner with a restart request, so leftover threads never disturb later runs.
+loop and awaitable results are awaited. A project's grading job with stress runs is one too: its
+class comes from the project's entry module, and its sequential cases run on its virtual clock
+when it has one (docs/specs/runners.md#stress-in-project-jobs). A stress run that leaves worker
+threads alive ends the runner with a restart request, so leftover threads never disturb later
+runs.
 """
 
 import asyncio
@@ -12,27 +15,25 @@ from collections.abc import Sequence
 
 from cs_runner.calls import bind
 from cs_runner.capture import capture_output
+from cs_runner.clock import run_clock_case
 from cs_runner.errors import CaseInputError, InvalidOutputError
 from cs_runner.events import CaseOutcome, EventWriter, InvalidOutput, Raised, Returned
 from cs_runner.failures import UserError, describe
 from cs_runner.jobs import ClassTarget, arguments_by_name, input_error, member_of
 from cs_runner.json_value import Json
-from cs_runner.loading import TargetLoadError, find_class, load_module
-from cs_runner.request import ConcurrentJob, Model, OperationCase, StressCase
+from cs_runner.loading import TargetLoadError, find_class, load_entry_class, load_module
+from cs_runner.request import ClassJob, ConcurrentJob, Model, OperationCase, ProjectJob, StressCase
+from cs_runner.restarts import RestartRequestError
 from cs_runner.stress import run_stress
 
 CONSTRUCTOR_INDEX = 0
-
-
-class RestartRequestError(Exception):
-    """A stress run left worker threads alive; the runner must exit with code 3."""
 
 
 def run_concurrent_job(job: ConcurrentJob, events: EventWriter) -> None:
     """Raises RestartRequestError after writing `restart_requested`."""
     events.job_start(job.job_id)
     try:
-        design = find_class(load_module(job.path), job.as_class_job())
+        design = _load(job)
     except TargetLoadError as failure:
         events.load_error(job.job_id, failure.error)
         events.job_end(job.job_id)
@@ -41,9 +42,20 @@ def run_concurrent_job(job: ConcurrentJob, events: EventWriter) -> None:
         events.case_start(job.job_id, case.case_id)
         if isinstance(case, StressCase):
             _stress(design, job, case, events)
+        elif isinstance(job.design, ProjectJob) and job.design.clock is not None:
+            run_clock_case(job.design, design, case, events)
         else:
             events.case_result(job.job_id, case.case_id, _sequential(design, job, case))
     events.job_end(job.job_id)
+
+
+def _load(job: ConcurrentJob) -> type:
+    """The class from its file, or from a project's entry module."""
+    match job.design:
+        case ClassJob() as design:
+            return find_class(load_module(design.path), design)
+        case ProjectJob() as project:
+            return load_entry_class(project)
 
 
 def _stress(design: type, job: ConcurrentJob, case: StressCase, events: EventWriter) -> None:
@@ -57,7 +69,7 @@ def _stress(design: type, job: ConcurrentJob, case: StressCase, events: EventWri
 
 def _sequential(design: type, job: ConcurrentJob, case: OperationCase) -> CaseOutcome:
     if job.model is Model.THREADS:
-        return ClassTarget(job.as_class_job(), design).run(case)
+        return ClassTarget(job.design, design).run(case)
     with capture_output() as output:
         outcome = asyncio.run(_AsyncSequence(job, design).run(case))
     return _with_stdout(outcome, output.text())
@@ -82,7 +94,7 @@ class _AsyncSequence:
 
     async def _operation(self, index: int, op: str, args: Sequence[Json]) -> CaseOutcome | None:
         try:
-            member = member_of(self._job.as_class_job(), index, op)
+            member = member_of(self._job.design, index, op)
             call = bind(member, arguments_by_name(member, args))
         except CaseInputError as error:
             return self._raised(input_error(error), index)

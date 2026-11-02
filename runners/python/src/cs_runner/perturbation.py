@@ -2,11 +2,13 @@
 
 Between ops, a worker yields with probability `yield_probability`, 1 to `max_yields` times. In the
 threads model the runner also lowers the switch interval and, through `sys.monitoring`, yields
-the same way before lines (or instructions) of the target file that worker threads execute. A
-monitoring callback cannot await, so the async model only yields between ops.
+the same way before lines (or instructions) of the user's code that worker threads execute: the
+target file, or every file under a project's root. A monitoring callback cannot await, so the
+async model only yields between ops.
 """
 
 import ctypes
+import functools
 import math
 import random
 import select
@@ -17,6 +19,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from types import CodeType
 
+from cs_runner.failures import UserCode
 from cs_runner.request import Granularity, Perturbation
 
 SWITCH_INTERVAL_SECONDS = 1e-5
@@ -93,13 +96,14 @@ def worker_thread(rng: random.Random, perturb: Perturbation) -> Generator[None]:
 
 
 @contextmanager
-def thread_perturbation(perturb: Perturbation, target_file: str) -> Generator[None]:
-    """For the duration of one threads-model run: the switch interval and injected yields."""
+def thread_perturbation(perturb: Perturbation, code: UserCode) -> Generator[None]:
+    """For the duration of one threads-model run: the switch interval and injected yields in
+    `code`."""
     previous_interval = sys.getswitchinterval()
     sys.setswitchinterval(SWITCH_INTERVAL_SECONDS)
     event = _monitoring_event(perturb.granularity)
     if event is not None:
-        _start_monitoring(event, target_file)
+        _start_monitoring(event, code)
     try:
         yield
     finally:
@@ -119,11 +123,14 @@ def _monitoring_event(granularity: Granularity) -> int | None:
             return None
 
 
-def _start_monitoring(event: int, target_file: str) -> None:
+def _start_monitoring(event: int, user_code: UserCode) -> None:
+    """Each code location outside `user_code` is disabled at its first event; a file's answer is
+    remembered, so a location in user code pays one lookup per event."""
     monitoring = sys.monitoring
+    owns = functools.cache(user_code.owns)
 
     def maybe_yield(code: CodeType, _location: int) -> object:
-        if code.co_filename != target_file:
+        if not owns(code.co_filename):
             return monitoring.DISABLE
         rng: random.Random | None = getattr(_worker, "rng", None)
         if rng is not None:

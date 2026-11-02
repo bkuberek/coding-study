@@ -111,6 +111,25 @@ def test_a_result_of_another_type_names_both_types():
     )
 
 
+def test_a_mutable_receiver_on_a_shared_class_says_why_methods_take_self():
+    error = CompilerError(
+        BRIDGE_FILE,
+        40,
+        5,
+        "E0596",
+        "cannot borrow `*instance` as mutable, as it is behind a `&` reference",
+        "`instance` is a `&` reference, so the data it refers to cannot be borrowed as mutable",
+        (),
+        "instance",
+    )
+    assert load_error(error, "user", "two_sum.rs") == Unavailable(
+        "SignatureMismatch",
+        "cannot borrow `*instance` as mutable, as it is behind a `&` reference; the worker "
+        "threads of the stress cases share the instance, so its methods take &self, not "
+        "&mut self",
+    )
+
+
 def test_an_error_shows_its_location_message_and_label():
     assert only_error("user-error").shown("rust/practice/two_sum.rs") == (
         "rust/practice/two_sum.rs:11:5: error[E0425]: cannot find value `nil` in this scope",

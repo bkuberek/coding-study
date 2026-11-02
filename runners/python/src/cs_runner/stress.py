@@ -135,7 +135,7 @@ class _Plan:
                 ops.append(_Op(op, args))
                 continue
             try:
-                member = member_of(job.as_class_job(), index + first, op)
+                member = member_of(job.design, index + first, op)
                 call = bind(member, arguments_by_name(member, args))
             except CaseInputError as error:
                 failure = Raised(UserError(type(error).__name__, str(error)), 0)
@@ -270,7 +270,7 @@ class _ThreadRun(_Base):
         workers = len(self._plan.workers)
         gate = threading.Barrier(workers + 1)
         threads = self._threads(gate, StartLine(workers))
-        with thread_perturbation(self._case.perturb, self._job.path):
+        with thread_perturbation(self._case.perturb, self._job.user_code):
             for thread in threads:
                 thread.start()
             gate.wait()

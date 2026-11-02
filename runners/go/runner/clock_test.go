@@ -185,7 +185,7 @@ func TestHarnessOperationsCheckTheirArguments(t *testing.T) {
 
 func TestTheTestBinaryAnnouncesTheClock(t *testing.T) {
 	_, events := runOnClock(t)
-	if asJSON(events[0]["features"]) != `["stress","project","suite","clock"]` {
+	if asJSON(events[0]["features"]) != `["stress","project","suite","project-stress","clock"]` {
 		t.Errorf("hello: %v", events[0])
 	}
 }

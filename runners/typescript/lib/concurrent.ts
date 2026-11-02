@@ -1,5 +1,7 @@
 // Concurrent jobs in the async model (docs/specs/runners.md#concurrent-jobs): sequential cases,
-// then stress runs whose workers are async functions on the runner's one event loop.
+// then stress runs whose workers are async functions on the runner's one event loop. A project's
+// grading job with stress runs is one too, whose sequential cases run on its virtual clock when it
+// has one (docs/specs/runners.md#stress-in-project-jobs).
 //
 // Every stress run is independent: fresh decoding, a fresh instance, fresh probe sections and
 // fresh PRNGs. Workers start together once a shared gate opens; between ops a worker yields with
@@ -7,6 +9,7 @@
 // seed, so a failing seed reproduces exactly.
 
 import { OutputCapture } from "./capture.ts";
+import { clockCase } from "./clock.ts";
 import { InvalidInput, InvalidOutput } from "./codec.ts";
 import {
   type Constructor,
@@ -47,7 +50,9 @@ export async function runConcurrentJob(
       const result =
         "seed" in testCase
           ? await runStress(loaded.target, job, testCase)
-          : await runSequential(loaded.target, job, testCase);
+          : job.design.onVirtualClock
+            ? await clockCase(loaded.target, job.design, testCase)
+            : await runSequential(loaded.target, job, testCase);
       events.write({ event: "case_result", ...ids, ...result });
     }
   }

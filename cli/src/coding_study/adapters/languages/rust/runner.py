@@ -199,7 +199,7 @@ class RustRunner:
         """
         match scope:
             case ProjectGrading(meta=ProblemMeta() as meta, level=int() as level):
-                return self._prepare_grading(scope.root, meta, level, notify)
+                return self._prepare_grading(scope, meta, level, notify)
             case ProjectGrading():
                 raise ValueError("a Rust grading builds its bridge from the graded problem")
             case ProjectSuite():
@@ -231,16 +231,16 @@ class RustRunner:
                 rmtree(built.scratch, ignore_errors=True)
 
     def _prepare_grading(
-        self, root: Path, meta: ProblemMeta, level: int, notify: ProgressNotice
+        self, scope: ProjectGrading, meta: ProblemMeta, level: int, notify: ProgressNotice
     ) -> RunnerLaunch | BuildFailed:
-        build = RustProjectBuild(self._settings(), meta.slug, root)
+        build = RustProjectBuild(self._settings(), meta.slug, scope.root)
         if not build.warm:
             notify(COLD_NOTICE)
-        binary = build.harness(graded_signature(meta.signature, level))
+        binary = build.harness(graded_signature(meta.signature, level), shared=scope.shared)
         if isinstance(binary, BuildFailed):
             return binary
         timeout = HELLO_TIMEOUT_MS[Language.RUST]
-        return RunnerLaunch((str(binary),), root, timeout, scratch=binary.parent)
+        return RunnerLaunch((str(binary),), scope.root, timeout, scratch=binary.parent)
 
     def _debug_target(self, session: DebugSession, notify: ProgressNotice) -> DebugTarget:
         server = self._debug_servers.lldb_server()

@@ -7,7 +7,9 @@ every argument's type, decodes it, calls the code and hands back the result for 
 Class kinds get a constructor function and a `match` on the operation name. A concurrent class
 is shared by the worker threads of its stress runs: its methods take `&self`, every decoded call
 is `Send`, and the constructor hands the instance to `cs_runner::shared`, whose `Send + Sync`
-bound is where the compiler rejects a class that is not thread-safe.
+bound is where the compiler rejects a class that is not thread-safe. A project's entry class is
+shared the same way from the level of its first stress case
+(docs/specs/runners.md#stress-in-project-jobs).
 
 Because every type is spelled, a solution with another signature fails to compile in the bridge,
 not in its own file. The bridge records which target owns each of its lines, so the runner can
@@ -94,8 +96,14 @@ class Bridge:
 
 
 def bridge_source(
-    signature: Signature, targets: Sequence[BridgeTarget], *, kind: ProblemKind
+    signature: Signature,
+    targets: Sequence[BridgeTarget],
+    *,
+    kind: ProblemKind,
+    shared: bool = False,
 ) -> Bridge:
+    """`shared`: a project's graded levels have stress cases, whose worker threads share its
+    entry class, as a concurrent problem's class is shared."""
     lines = _Lines()
     lines.add(None, GENERATED_HEADER, "#![allow(unused)]", "")
     lines.add(None, *_imports(signature))
@@ -113,7 +121,7 @@ def bridge_source(
         if unavailable is not None:
             entries.append((target, _unavailable_entry(unavailable)))
             continue
-        items, entry = _target_items(signature, target.module, kind)
+        items, entry = _target_items(signature, target.module, kind, shared=shared)
         lines.add(target.target_id, *items)
         entries.append((target, entry))
     lines.add(None, "static TARGETS: &[cs_runner::Target] = &[")
@@ -222,7 +230,9 @@ _SHARED = _ClassForm(
 )
 
 
-def _target_items(signature: Signature, module: str, kind: ProblemKind) -> tuple[list[str], str]:
+def _target_items(
+    signature: Signature, module: str, kind: ProblemKind, *, shared: bool
+) -> tuple[list[str], str]:
     """The bridge functions of one target and its `Entry`."""
     if isinstance(signature, FunctionSignature):
         name = rust_name(signature.name, NameRole.FUNCTION)
@@ -239,7 +249,7 @@ def _target_items(signature: Signature, module: str, kind: ProblemKind) -> tuple
             "",
         ]
         return items, f"cs_runner::Entry::Function({module}_call)"
-    form = _SHARED if kind is ProblemKind.CONCURRENT else _OWNED
+    form = _SHARED if kind is ProblemKind.CONCURRENT or shared else _OWNED
     return _class_items(signature, module, form)
 
 

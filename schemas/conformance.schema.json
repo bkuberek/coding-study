@@ -17,7 +17,7 @@
       "required": ["problem", "approach", "outcome"],
       "properties": {
         "problem": { "description": "Fixture slug under runners/conformance/", "type": "string" },
-        "approach": { "description": "Approach id declared in the fixture's meta.yaml", "type": "string" },
+        "approach": { "description": "Approach id declared in the fixture's meta.yaml, or broken-<id> for a project fixture's broken overlay in solutions/broken/<id>/", "type": "string" },
         "outcome": { "description": "Expected for every case unless cases overrides it", "$ref": "#/$defs/outcome" },
         "cases": {
           "description": "Per-case overrides, keyed by case id",

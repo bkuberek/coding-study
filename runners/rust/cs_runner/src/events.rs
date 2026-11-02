@@ -12,6 +12,8 @@ const RUNNER_NAME: &str = "rust";
 const STRESS_FEATURE: &str = "stress";
 /// Grading jobs of project problems, whose crate the harness links (runners.md#rust-projects).
 const PROJECT_FEATURE: &str = "project";
+/// A project's grading job may hold stress runs (runners.md#stress-in-project-jobs).
+const PROJECT_STRESS_FEATURE: &str = "project-stress";
 
 /// The `error` object of an event.
 #[derive(Clone, Debug, PartialEq)]
@@ -198,7 +200,11 @@ impl Events {
             ("runtime", text(env!("CS_RUSTC_VERSION"))),
             (
                 "features",
-                Json::Array(vec![text(STRESS_FEATURE), text(PROJECT_FEATURE)]),
+                Json::Array(vec![
+                    text(STRESS_FEATURE),
+                    text(PROJECT_FEATURE),
+                    text(PROJECT_STRESS_FEATURE),
+                ]),
             ),
         ]);
     }

@@ -3,7 +3,7 @@ generator, and an environment on the fixture project problem
 (docs/specs/runners.md#project-jobs)."""
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from coding_study.adapters.languages.python.test_generator import PythonTestGenerator
@@ -19,7 +19,7 @@ from coding_study.application.ports import (
     SuiteListener,
 )
 from coding_study.application.verify_projects import STARTER_BUILDS
-from coding_study.domain.cases import JsonValue
+from coding_study.domain.cases import JsonValue, OperationSequence
 from coding_study.domain.problem import Language, Problem
 from coding_study.domain.project_tests import LevelTests
 from coding_study.domain.runs import (
@@ -33,6 +33,8 @@ from coding_study.domain.runs import (
     RunnerInfo,
     RunReport,
     RunRequest,
+    StressCompleted,
+    StressRun,
     UserError,
 )
 from coding_study.domain.suite_runs import Passed, SuiteJob, SuiteReport, SuiteTest
@@ -100,6 +102,63 @@ def expected_answers(*problems: Problem) -> GradingAnswer:
         for problem in problems
     }
     return lambda job, case: Returned(expected[job.job_id][case.id], 1_000)
+
+
+class TallyModel:
+    """The stress fixture's `Tally` run one call at a time: what a correct project returns."""
+
+    def __init__(self) -> None:
+        self._counts: dict[str, int] = {}
+
+    def call(self, op: str, args: tuple[JsonValue, ...]) -> JsonValue:
+        key = args[0]
+        assert isinstance(key, str)
+        if op == "count":
+            return self._counts.get(key, 0)
+        amount = args[1]
+        assert isinstance(amount, int)
+        count = self._counts.get(key, 0)
+        if op == "add":
+            self._counts[key] = count + amount
+            return count + amount
+        if count < amount:
+            return False
+        self._counts[key] = count - amount
+        return True
+
+    def outputs(self, ops: OperationSequence, first: int) -> tuple[JsonValue, ...]:
+        """The outputs of `ops`, the first `first` of them constructors or harness ops."""
+        calls = zip(ops.ops[first:], ops.args[first:], strict=True)
+        return (None,) * first + tuple(self.call(op, args) for op, args in calls)
+
+
+def correct_stress(run: StressRun) -> StressCompleted:
+    """A stress run of the stress fixture as a correct project completes it: its workers' calls
+    one after another."""
+    model = TallyModel()
+    setup = model.outputs(run.setup, 1)
+    workers = tuple(model.outputs(worker, 0) for worker in run.workers)
+    final = model.outputs(run.final, 0) if run.final else ()
+    return StressCompleted(setup, workers, final, {}, 2_000_000)
+
+
+def tally_answers(problem: Problem, *, racy: bool = False) -> GradingAnswer:
+    """Every case of the stress fixture as a correct project answers it; a racy one returns the
+    same count twice in every run of `s1`."""
+    expected = {case.id: case.expected for case in problem.cases}
+
+    def answer(job: RunJob, case: RunCase) -> CaseOutcome:
+        if isinstance(case.input, StressRun):
+            completed = correct_stress(case.input)
+            if racy and case.id.startswith("s1"):
+                first, *rest = completed.workers
+                completed = replace(completed, workers=((first[1], *first[1:]), *rest))
+            return completed
+        wanted = expected[case.id]
+        assert wanted is not None
+        return Returned(wanted.value, 1_000)
+
+    return answer
 
 
 @dataclass

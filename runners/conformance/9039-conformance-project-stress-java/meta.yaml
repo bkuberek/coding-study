@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9039"
+slug: conformance-project-stress-java
+title: "Conformance: a Java project with a stress case and a broken overlay"
+status: ready
+difficulty: easy
+track: practical
+kind: project
+languages: [java]
+levels:
+  - {level: 1, title: Counts}
+  - {level: 2, title: Shared counts}
+signature:
+  class:
+    name: Tally
+    constructor: {params: []}
+    methods:
+      - {name: add, level: 1, params: [{name: key, type: string}, {name: amount, type: int}], returns: {type: int}}
+      - {name: count, level: 1, params: [{name: key, type: string}], returns: {type: int}}
+      - {name: take, level: 2, params: [{name: key, type: string}, {name: amount, type: int}], returns: {type: bool}}
+comparator: {type: ops}
+project:
+  entry: tally.Tally
+  tests: src/test/java/tally
+concurrency:
+  model: threads
+  jvm_threads: [platform, virtual]
+  broken:
+    - {id: unlocked-add, name: Add outside the lock, bug: "add reads a count, yields, then writes it, without the lock", caught_by: [s1]}
+approaches:
+  - {id: reference, name: "Counts under the tally's monitor, in a class the entry uses", role: optimal, time: "O(1)", space: "O(n)", time_class: "1", space_class: "n"}

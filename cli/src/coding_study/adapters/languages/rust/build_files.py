@@ -78,6 +78,12 @@ USER_CRATE = "user"
 SYMBOL_CODES = frozenset({"E0412", "E0422", "E0425", "E0433", "E0583", "E0599", "E0603", "E0624"})
 """Errors that mean the target does not define a symbol the bridge calls (or keeps it private)."""
 PRIVATE_CODES = frozenset({"E0603", "E0624"})
+MUTABLE_BORROW_CODE = "E0596"
+"""A `&mut self` method that the bridge calls on a shared instance."""
+SHARED_RECEIVER = (
+    "the worker threads of the stress cases share the instance, so its methods take &self, not "
+    "&mut self"
+)
 LABELLED_CODES = frozenset({"E0308"})
 """Errors whose primary span's label says what the message does not: `expected i32, found
 i64`."""
@@ -278,6 +284,8 @@ def load_error(error: CompilerError, module: str, file_name: str) -> Unavailable
         message = "; ".join([message, *helps])
     if error.code in PRIVATE_CODES:
         message += "; declare it pub"
+    if error.code == MUTABLE_BORROW_CODE:
+        message += f"; {SHARED_RECEIVER}"
     message = (
         message.replace(f"module `{module}`", f"`{file_name}`")
         .replace(f"crate `{module}`", f"`{file_name}`")

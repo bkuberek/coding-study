@@ -4,8 +4,9 @@ Each fixture's reference approaches run in every language the fixture lists and 
 outcomes in expectations.json; the generated stub of every fixture must build and load
 (docs/specs/runners.md#conformance-suite). Stress cases run `runs` times per variant (default
 10), and their expectations bound how many runs fail and how (runners.md#conformance-fixtures-
-phase-5). A project fixture runs as a reference's build, graded at its last level, and a suite
-fixture's native suite must report the expected outcome of every test.
+phase-5). A project fixture runs as a reference's build, graded at its last level with its stress
+cases, a broken overlay as approach `broken-<id>`, and a suite fixture's native suite must report
+the expected outcome of every test.
 """
 
 from collections.abc import Sequence
@@ -26,8 +27,10 @@ from coding_study.application.reference_runs import (
     shown,
 )
 from coding_study.application.verify_projects import (
+    broken_build,
     last_level,
     project_approaches,
+    project_brokens,
     reference_build,
 )
 from coding_study.domain.comparators import Comparator
@@ -194,21 +197,7 @@ class _FixtureRun:
     def _plan(
         self, expectation: ConformanceExpectation, language: Language
     ) -> tuple[PlannedRun, ...]:
-        """Each stress case `runs` times per variant; a `deterministic` case repeats its first
-        seed once more at the end, so two runs share a seed."""
-        concurrency = self._problem.meta.concurrency
-        if concurrency is None:
-            return ()
-        planned: list[PlannedRun] = []
-        for case in stress_cases(self._problem):
-            assert isinstance(case.input, StressScenario)
-            outcome = expectation.outcome_for(case.id)
-            seeds = [case.input.seed + run for run in range(outcome.runs or VERIFY_RUNS)]
-            if outcome.deterministic:
-                seeds.append(seeds[0])
-            for variant in concurrency.variants(language):
-                planned += CaseRuns(case, concurrency, language, variant).plan(seeds)
-        return tuple(planned)
+        return stress_plan(self._problem, expectation, language)
 
     def _approach(
         self,
@@ -243,18 +232,20 @@ class _FixtureRun:
 
 
 class _ProjectFixtureRun:
-    """A project fixture: each approach's build is graded at the last level, and its native
-    suite runs when the expectation lists its tests. A project has no generated stub."""
+    """A project fixture: each approach's build, or a broken overlay's (`broken-<id>`), is graded
+    at the last level with its stress cases, and its native suite runs when the expectation lists
+    its tests. A project has no generated stub."""
 
     def __init__(self, environment: Environment, problem: Problem, notify: ProgressNotice) -> None:
         self._environment = environment
         self._problem = problem
         self._notify = notify
+        self._brokens = {broken.approach_id: broken.id for broken in project_brokens(problem)}
 
     def language(
         self, language: Language, expectations: Sequence[ConformanceExpectation]
     ) -> LanguageResult:
-        available = set(project_approaches(self._problem))
+        available = {*project_approaches(self._problem), *self._brokens}
         missing = tuple(
             f"no {language} reference for {item.approach_id}"
             for item in expectations
@@ -267,17 +258,54 @@ class _ProjectFixtureRun:
 
     def _approach(self, expectation: ConformanceExpectation, language: Language) -> ApproachResult:
         approach = expectation.approach_id
-        root = reference_build(self._environment, self._problem, approach)
+        broken = self._brokens.get(approach)
+        root = (
+            reference_build(self._environment, self._problem, approach)
+            if broken is None
+            else broken_build(self._environment, self._problem, broken)
+        )
         level = last_level(self._problem)
         release = release_of_content(self._problem.meta, language)
-        grading = GradingRun(self._problem, language, root, level, release=release)
+        plan = stress_plan(self._problem, expectation, language)
+        grading = GradingRun(
+            self._problem, language, root, level, release=release, stress_plan=plan
+        )
         judgement = run_grading(self._environment, grading, self._notify)
         mismatches = _judgement_mismatches(expectation, judgement)
+        mismatches += [
+            mismatch
+            for verdict in judgement.stress
+            if (
+                mismatch := stress_mismatch(
+                    expectation.outcome_for(verdict.case_id), verdict, judgement.restarted_after
+                )
+            )
+        ]
         if expectation.tests:
             suite = SuiteRun(self._problem.meta, language, root, level, release=release)
             report = run_suite(self._environment, suite, self._notify)
             mismatches += suite_mismatches(expectation.tests, report)
         return ApproachResult(approach, shown(mismatches))
+
+
+def stress_plan(
+    problem: Problem, expectation: ConformanceExpectation, language: Language
+) -> tuple[PlannedRun, ...]:
+    """Each stress case `runs` times per variant; a `deterministic` case repeats its first seed
+    once more at the end, so two runs share a seed."""
+    concurrency = problem.meta.concurrency
+    if concurrency is None:
+        return ()
+    planned: list[PlannedRun] = []
+    for case in stress_cases(problem):
+        assert isinstance(case.input, StressScenario)
+        outcome = expectation.outcome_for(case.id)
+        seeds = [case.input.seed + run for run in range(outcome.runs or VERIFY_RUNS)]
+        if outcome.deterministic:
+            seeds.append(seeds[0])
+        for variant in concurrency.variants(language):
+            planned += CaseRuns(case, concurrency, language, variant).plan(seeds)
+    return tuple(planned)
 
 
 def _judgement_mismatches(expectation: ConformanceExpectation, judgement: Judgement) -> list[str]:

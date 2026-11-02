@@ -210,21 +210,27 @@ class StressCase:
 
 @dataclass(frozen=True, slots=True)
 class ConcurrentJob:
+    """A concurrent job, or a project's grading job with stress runs
+    (docs/specs/runners.md#stress-in-project-jobs)."""
+
     job_id: str
-    path: str
-    constructor: Member
-    methods: Mapping[str, Member]
+    design: "ClassJob | ProjectJob"
+    """The class job, or the project's, without cases: what loads the class and calls its
+    members, so sequential cases run as that job's do."""
     model: Model
     cases: tuple["OperationCase | StressCase", ...]
     """Sequential cases first, then the stress runs."""
 
     @property
-    def user_code(self) -> UserFile:
-        return UserFile(self.path)
+    def user_code(self) -> UserFile | UserFolder:
+        """The code a trace keeps and injected yields reach: the file, or every file under the
+        project root."""
+        return self.design.user_code
 
-    def as_class_job(self) -> ClassJob:
-        """The job without its cases, so sequential cases run like a design problem's."""
-        return ClassJob(self.job_id, self.path, self.constructor, self.methods, ())
+    @property
+    def clock(self) -> Clock | None:
+        """A project's virtual clock, on which its sequential cases run; stress runs never do."""
+        return self.design.clock if isinstance(self.design, ProjectJob) else None
 
 
 type SequentialJob = FunctionJob | ClassJob
@@ -407,7 +413,10 @@ def _job(job: _Fields) -> Job:
     if job.has("clock") and not is_project:
         raise BadRequestError(f"{job.location}: only a project job runs on the virtual clock")
     if kind == CONCURRENT_KIND:
-        return _concurrent_job(parts, _model(job))
+        return _concurrent_job(_class_job(replace(parts, cases=())), parts.cases, _model(job))
+    if is_project and job.has("model"):
+        project = _project_job(replace(parts, cases=()), _clock(job))
+        return _concurrent_job(project, parts.cases, _model(job))
     if is_project:
         return _project_job(parts, _clock(job))
     return _parser(job)(parts)
@@ -461,15 +470,14 @@ def _model(job: _Fields) -> Model:
     return Model(model)
 
 
-def _concurrent_job(parts: _JobParts, model: Model) -> ConcurrentJob:
-    design = _class_job(replace(parts, cases=()))
-    cases = tuple(
+def _concurrent_job(
+    design: ClassJob | ProjectJob, cases: tuple[_Fields, ...], model: Model
+) -> ConcurrentJob:
+    parsed = tuple(
         _stress_case(case) if case.has("stress") else _operation_case(case, case.string("id"))
-        for case in parts.cases
+        for case in cases
     )
-    return ConcurrentJob(
-        design.job_id, design.path, design.constructor, design.methods, model, cases
-    )
+    return ConcurrentJob(design.job_id, design, model, parsed)
 
 
 def _stress_case(case: _Fields) -> StressCase:

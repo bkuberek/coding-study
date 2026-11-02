@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9038"
+slug: conformance-project-stress-typescript
+title: "Conformance: a TypeScript project on the virtual clock with a stress case and a broken overlay"
+status: ready
+difficulty: easy
+track: practical
+kind: project
+languages: [typescript]
+levels:
+  - {level: 1, title: Counts}
+  - {level: 2, title: Shared counts}
+signature:
+  class:
+    name: Tally
+    constructor: {params: []}
+    methods:
+      - {name: add, level: 1, async: true, params: [{name: key, type: string}, {name: amount, type: int}], returns: {type: int}}
+      - {name: count, level: 1, params: [{name: key, type: string}], returns: {type: int}}
+      - {name: take, level: 2, params: [{name: key, type: string}, {name: amount, type: int}], returns: {type: bool}}
+comparator: {type: ops}
+limits: {hang_guard_ms: 3000}
+project:
+  entry: src/tally.ts
+  tests: tests
+  clock: virtual
+concurrency:
+  model: async
+  broken:
+    - {id: unlocked-add, name: Add across an await, bug: "add reads a count, awaits, then writes it, so another task's add in between is lost", caught_by: [s1]}
+approaches:
+  - {id: reference, name: "Read and write a count with no await between them", role: optimal, time: "O(1)", space: "O(n)", time_class: "1", space_class: "n"}

@@ -54,8 +54,40 @@ const tallySetup = `{"ops": ["Tally"], "args": [[]]}`
 
 func TestHelloAnnouncesTheStressProjectAndSuiteFeatures(t *testing.T) {
 	events := runJobs(t)
-	if asJSON(events[0]["features"]) != `["stress","project","suite"]` {
+	if asJSON(events[0]["features"]) != `["stress","project","suite","project-stress"]` {
 		t.Errorf("hello: %v", events[0])
+	}
+}
+
+// projectTally is tallyJob as a project's grading job: its stress runs follow its cases
+// (docs/specs/runners.md#stress-in-project-jobs).
+var projectTally = strings.Replace(tallyJob, `"kind": "concurrent"`, `"kind": "project"`, 1)
+
+func TestAProjectJobRunsItsStressRunsAfterItsCases(t *testing.T) {
+	increments := repeated("increment", "[]", 25)
+	job := withCases(projectTally,
+		`{"id": "ex1", "ops": ["Tally", "increment"], "args": [[], []]}`,
+		stress("s1:thread:0", "5000", tallySetup, []string{increments, increments},
+			`{"ops": ["increment"], "args": [[]]}`))
+	results := named(runJobs(t, job), "case_result")
+	if len(results) != 2 || asJSON(results[0]["output"]) != "[null,1]" || results[1]["status"] != "ok" {
+		t.Fatalf("got %v", results)
+	}
+	if output := results[1]["output"].(map[string]any); asJSON(output["final"]) != "[51]" {
+		t.Errorf("output %s", asJSON(output))
+	}
+}
+
+func TestAProjectJobWithStressCasesRunsTheThreadsModel(t *testing.T) {
+	increments := repeated("increment", "[]", 1)
+	run := stress("s1", "5000", tallySetup, []string{increments, increments}, "")
+	withoutModel := strings.Replace(withCases(projectTally, run), `"model": "threads", `, "", 1)
+	asyncModel := strings.Replace(withCases(projectTally, run), `"model": "threads"`, `"model": "async"`, 1)
+	for _, job := range []string{withoutModel, asyncModel} {
+		code, _ := runRequest(t, &loader{registry: registry}, testRequest(job))
+		if code != exitBadRequest {
+			t.Errorf("exit %d for %s", code, job)
+		}
 	}
 }
 

@@ -217,3 +217,42 @@ def test_outputs_that_do_not_match_the_scripts_are_a_protocol_error(tmp_path):
 def test_a_runner_without_the_stress_feature_cannot_run_concurrent_jobs(tmp_path):
     with pytest.raises(RunnerStartError, match="runner fake does not support concurrent problems"):
         run(tmp_path, sequential("ex1"), startup="no-stress")
+
+
+def project_job(*cases: RunCase) -> RunJob:
+    return RunJob(
+        "j",
+        ProblemKind.PROJECT,
+        FileTarget("/w/fake.py"),
+        NAMES,
+        SIGNATURE,
+        cases,
+        ConcurrencyModel.THREADS,
+    )
+
+
+def run_project(tmp_path: Path, *cases: RunCase, startup: str) -> RunReport:
+    launch = RunnerLaunch((sys.executable, str(FAKE), "--startup", startup), FAKE.parent, 5_000)
+    return SubprocessRunner(tmp_path / "runs").run(launch, RunRequest((project_job(*cases),)))
+
+
+def test_a_project_job_with_stress_runs_needs_the_project_stress_feature(tmp_path):
+    with pytest.raises(
+        RunnerStartError, match="runner fake does not support project problems with stress cases"
+    ):
+        run_project(tmp_path, stress("s1:thread:0", "ok"), startup="project")
+
+
+def test_a_project_job_runs_its_stress_runs_on_a_runner_that_has_the_feature(tmp_path):
+    report = run_project(tmp_path, stress("s1:thread:0", "ok"), startup="project-stress")
+    assert isinstance(outcomes(report)[0], StressCompleted)
+
+
+def test_a_project_job_without_stress_runs_needs_no_project_stress_feature(tmp_path):
+    report = run_project(tmp_path, sequential("ex1"), startup="project")
+    assert outcomes(report) == [Returned(2, 1000)]
+
+
+def test_a_project_job_with_stress_runs_sends_its_model():
+    encoded: Any = encode_request(RunRequest((project_job(stress("s1:thread:0", "ok")),)))
+    assert (encoded["jobs"][0]["kind"], encoded["jobs"][0]["model"]) == ("project", "threads")

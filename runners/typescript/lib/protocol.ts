@@ -106,12 +106,14 @@ export interface StressCase {
   readonly final: Script | null;
 }
 
-/** A concurrent job: sequential cases, then stress runs; TypeScript runs the async model only. */
+/** A concurrent job, or a project's grading job with stress runs: sequential cases, then stress
+ * runs; TypeScript runs the async model only. */
 export interface ConcurrentJob {
   readonly shape: "concurrent";
   readonly jobId: string;
   readonly path: string;
-  /** The class as a design job without cases, so it loads like one. */
+  /** The class as a design or project job without cases, so it loads like one; a project's
+   * sequential cases run on its virtual clock when it has one, its stress runs never do. */
   readonly design: ClassJob;
   readonly cases: readonly (OperationCase | StressCase)[];
 }
@@ -232,12 +234,21 @@ function parseTestJob(job: Record<string, unknown>): TestJob {
   if (kind === SUITE_KIND) {
     return suiteJob(job);
   }
+  const stressed =
+    kind === CONCURRENT_KIND ||
+    (kind === PROJECT_KIND && field(job, "model") !== undefined);
+  if (stressed) {
+    return concurrentJob(job);
+  }
   if (field(job, "clock") !== undefined) {
     return clockJob(job);
   }
-  if (kind !== CONCURRENT_KIND) {
-    return parseJob(job);
-  }
+  return parseJob(job);
+}
+
+/** A concurrent job, or a project's grading job with stress runs (docs/specs/runners.md#stress-
+ * in-project-jobs). */
+function concurrentJob(job: Record<string, unknown>): ConcurrentJob {
   const jobId = string(job, "job_id", "job");
   const where = `job "${jobId}"`;
   if (field(job, "model") !== ASYNC_MODEL) {
@@ -248,7 +259,9 @@ function parseTestJob(job: Record<string, unknown>): TestJob {
   const cases = array(job, "cases", where).map((value, index) =>
     object(value, `${where} cases[${index}]`),
   );
-  const design = parseJob({ ...job, cases: [] });
+  const withoutCases = { ...job, cases: [] };
+  const design =
+    field(job, "clock") === undefined ? parseJob(withoutCases) : clockJob(withoutCases);
   if (design.shape !== "class") {
     throw new BadRequest(`${where}: a concurrent job needs a class signature`);
   }

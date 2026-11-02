@@ -24,6 +24,7 @@ public final class Main {
     private static final String OUT_FLAG = "--out";
     private static final String STRESS_FEATURE = "stress";
     private static final String PROJECT_FEATURE = "project";
+    private static final String PROJECT_STRESS_FEATURE = "project-stress";
 
     private Main() {
     }
@@ -58,11 +59,13 @@ public final class Main {
     }
 
     /**
-     * Stress runs and project grading always; suite jobs when a test framework host is on the
-     * classpath, as on a project's test runtime classpath (docs/specs/runners.md#capability).
+     * Stress runs, project grading and a project's stress runs always; suite jobs when a test
+     * framework host is on the classpath, as on a project's test runtime classpath
+     * (docs/specs/runners.md#capability).
      */
     private static List<String> features() {
-        List<String> features = new ArrayList<>(List.of(STRESS_FEATURE, PROJECT_FEATURE));
+        List<String> features = new ArrayList<>(
+                List.of(STRESS_FEATURE, PROJECT_FEATURE, PROJECT_STRESS_FEATURE));
         if (SuiteRun.available()) {
             features.add(SuiteRun.SUITE_FEATURE);
         }

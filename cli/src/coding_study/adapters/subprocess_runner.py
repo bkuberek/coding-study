@@ -121,8 +121,10 @@ STRESS_FEATURE = "stress"
 PROJECT_FEATURE = "project"
 SUITE_FEATURE = "suite"
 CLOCK_FEATURE = "clock"
+PROJECT_STRESS_FEATURE = "project-stress"
 PROJECT_PROBLEMS = "project problems"
 CLOCK_PROJECTS = "virtual-clock projects"
+STRESS_PROJECTS = "project problems with stress cases"
 POLL_INTERVAL_SECONDS = 0.005
 EXIT_GRACE_SECONDS = 5.0
 MILLISECONDS_PER_SECOND = 1000
@@ -291,6 +293,11 @@ class _RunProgress:
         self._needs_stress = any(job.kind is ProblemKind.CONCURRENT for job in request.jobs)
         self._needs_project = any(job.kind is ProblemKind.PROJECT for job in request.jobs)
         self._needs_clock = any(job.clock is not None for job in request.jobs)
+        self._needs_project_stress = any(
+            job.kind is ProblemKind.PROJECT
+            and any(isinstance(case.input, StressRun) for case in job.cases)
+            for job in request.jobs
+        )
 
     @property
     def said_hello(self) -> bool:
@@ -382,8 +389,8 @@ class _RunProgress:
 
     def _hello(self, hello: Hello) -> None:
         """A concurrent job needs a runner with the `stress` feature (runners.md#capability), a
-        project job one with `project` (runners.md#project-jobs), and a job on the virtual clock
-        one with `clock`."""
+        project job one with `project` (runners.md#project-jobs), a job on the virtual clock one
+        with `clock`, and a project job with stress runs one with `project-stress`."""
         accepted = accepted_hello(hello, self._said_hello)
         if self._needs_stress:
             _require_feature(accepted, STRESS_FEATURE, "concurrent problems")
@@ -391,6 +398,8 @@ class _RunProgress:
             _require_feature(accepted, PROJECT_FEATURE, PROJECT_PROBLEMS)
         if self._needs_clock:
             _require_feature(accepted, CLOCK_FEATURE, CLOCK_PROJECTS)
+        if self._needs_project_stress:
+            _require_feature(accepted, PROJECT_STRESS_FEATURE, STRESS_PROJECTS)
         self._runner = self._runner or accepted
         self._said_hello = True
 

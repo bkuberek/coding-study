@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9041"
+slug: conformance-project-stress-go
+title: "Conformance: a Go project on the virtual clock with a stress case and a broken overlay"
+status: ready
+difficulty: easy
+track: practical
+kind: project
+languages: [go]
+levels:
+  - {level: 1, title: Counts}
+  - {level: 2, title: Shared counts}
+signature:
+  class:
+    name: Tally
+    constructor: {params: []}
+    methods:
+      - {name: add, level: 1, params: [{name: key, type: string}, {name: amount, type: int}], returns: {type: int}}
+      - {name: count, level: 1, params: [{name: key, type: string}], returns: {type: int}}
+      - {name: take, level: 2, params: [{name: key, type: string}, {name: amount, type: int}], returns: {type: bool}}
+comparator: {type: ops}
+limits: {hang_guard_ms: 3000}
+project:
+  entry: tally.go
+  tests: tests
+  clock: virtual
+concurrency:
+  model: threads
+  broken:
+    - {id: unlocked-add, name: Add across two lock holds, bug: "add reads a count under the mutex, lets it go, then writes it under the mutex again", caught_by: [s1]}
+approaches:
+  - {id: reference, name: "Counts under one mutex, in a file the entry's package holds", role: optimal, time: "O(1)", space: "O(n)", time_class: "1", space_class: "n"}

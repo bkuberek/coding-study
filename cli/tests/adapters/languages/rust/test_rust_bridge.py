@@ -66,6 +66,18 @@ def test_a_project_crate_keeps_trace_frames_in_every_file_of_its_folder():
     assert 'file: "/ws/projects/bank-project-rust/",' in bridge
 
 
+def test_a_project_shares_its_entry_class_from_the_level_of_its_stress_cases():
+    signature = stub_signature("lru-cache")
+    bridge = bridge_source(signature, (PROJECT,), kind=ProblemKind.PROJECT, shared=True).text
+    assert "cs_runner::shared_instance::<user::LRUCache>(object);" in bridge
+    assert 'cs_runner::Entry::Concurrent(cs_runner::Concurrent { name: "LRUCache",' in bridge
+
+
+def test_a_project_owns_its_entry_class_below_that_level():
+    bridge = text(stub_signature("lru-cache"), PROJECT, kind=ProblemKind.PROJECT)
+    assert 'cs_runner::Entry::Class(cs_runner::Class { name: "LRUCache",' in bridge
+
+
 def test_a_project_crate_names_its_library_root_in_messages():
     assert (PROJECT.shown_name, USER.shown_name) == ("src/lib.rs", "two_sum.rs")
 

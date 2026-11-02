@@ -21,7 +21,7 @@ import { runSuiteJob } from "./lib/suite.ts";
 
 const RUNNER_NAME = "typescript";
 /** Protocol additions this runner implements (docs/specs/runners.md#capability). */
-const FEATURES = ["stress", "project", "suite", "clock"];
+const FEATURES = ["stress", "project", "suite", "clock", "project-stress"];
 const BAD_REQUEST_EXIT_CODE = 2;
 
 interface Options {

@@ -81,7 +81,7 @@ func GradeOnClock(clock Clock) {
 // features are what this binary announces in hello. A test binary has the virtual clock, and a
 // project that did not build answers every job, a virtual-clock one too, with its errors.
 func (l *loader) features() []string {
-	features := []string{stressFeature, projectFeature, suiteFeature}
+	features := []string{stressFeature, projectFeature, suiteFeature, projectStressFeature}
 	if l.clock != nil || l.broken != nil {
 		features = append(features, clockFeature)
 	}

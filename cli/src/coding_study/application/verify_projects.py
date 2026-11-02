@@ -31,13 +31,18 @@ from coding_study.domain.clock_determinism import (
     DeterminismVerdict,
     judge_determinism,
 )
+from coding_study.domain.concurrency import BROKEN_PREFIX, BrokenReference
 from coding_study.domain.errors import ContentError, ContentIssue
 from coding_study.domain.judging import Judgement, outcome_summary, verdict_summary
 from coding_study.domain.layout import BUILD_DIRECTORY
 from coding_study.domain.levels import FIRST_LEVEL
 from coding_study.domain.precedence import resolve_hang_guard_ms
 from coding_study.domain.problem import Language, Problem
-from coding_study.domain.problem_files import SOLUTIONS_DIRECTORY, STARTER_DIRECTORY
+from coding_study.domain.problem_files import (
+    BROKEN_DIRECTORY,
+    SOLUTIONS_DIRECTORY,
+    STARTER_DIRECTORY,
+)
 from coding_study.domain.project import (
     NO_PROJECT_FILES,
     ProjectTree,
@@ -111,6 +116,31 @@ def reference_build(environment: Environment, problem: Problem, approach_id: str
     }
     folder = f"{PROJECT_BUILDS}/{problem.meta.slug}/{approach_id}"
     return _ProjectBuild(environment, problem).write(folder, trees, last_level(problem))
+
+
+def broken_build(environment: Environment, problem: Problem, broken_id: str) -> Path:
+    """A broken overlay's build: the starter, the reference's overlay over it, the broken overlay
+    over both, then the generated test file of every level, in
+    `<PROJECT_BUILDS>/<slug>/broken-<id>/` (docs/specs/problem-format.md#stress-cases-in-
+    projects); returns the absolute root."""
+    files = problem.project_files or NO_PROJECT_FILES
+    reference = problem.meta.approaches[0].id if problem.meta.approaches else ""
+    trees = {
+        STARTER_DIRECTORY: files.starter or _NO_FILES,
+        f"{SOLUTIONS_DIRECTORY}/{reference}": files.overlays.get(reference, _NO_FILES),
+        f"{BROKEN_DIRECTORY}/{broken_id}": files.broken.get(broken_id, _NO_FILES),
+    }
+    folder = f"{PROJECT_BUILDS}/{problem.meta.slug}/{BROKEN_PREFIX}{broken_id}"
+    return _ProjectBuild(environment, problem).write(folder, trees, last_level(problem))
+
+
+def project_brokens(problem: Problem) -> tuple[BrokenReference, ...]:
+    """The broken references whose overlay holds at least one file, in meta.yaml order."""
+    concurrency = problem.meta.concurrency
+    broken = (problem.project_files or NO_PROJECT_FILES).broken
+    if concurrency is None:
+        return ()
+    return tuple(found for found in concurrency.broken if broken.get(found.id, _NO_FILES).files)
 
 
 def starter_build(environment: Environment, problem: Problem) -> Path:

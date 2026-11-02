@@ -779,6 +779,10 @@ class ProjectGrading:
     """Java and Kotlin: the release level to compile at (`cs.release`) when `root` holds content,
     such as a reference's build; None compiles at the selected JDK's level, as for the user's
     own folder."""
+    shared: bool = field(default=False, compare=False)
+    """The graded levels have stress cases, so worker threads share the entry class: Rust's
+    bridge then calls its methods through `&self` (docs/specs/runners.md#stress-in-project-
+    jobs)."""
 
 
 @dataclass(frozen=True, slots=True)

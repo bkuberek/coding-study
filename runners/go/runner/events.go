@@ -10,13 +10,15 @@ import (
 
 const runnerName = "go"
 
-// stressFeature tells the CLI that this runner runs concurrent jobs, and projectFeature and
-// suiteFeature that it runs a project's grading and suite jobs (docs/specs/runners.md#capability);
-// clockFeature (clock.go), that it grades a project on the virtual clock.
+// stressFeature tells the CLI that this runner runs concurrent jobs, projectFeature and
+// suiteFeature that it runs a project's grading and suite jobs, and projectStressFeature that a
+// grading job may hold stress runs (docs/specs/runners.md#capability); clockFeature (clock.go),
+// that it grades a project on the virtual clock.
 const (
-	stressFeature  = "stress"
-	projectFeature = "project"
-	suiteFeature   = "suite"
+	stressFeature        = "stress"
+	projectFeature       = "project"
+	suiteFeature         = "suite"
+	projectStressFeature = "project-stress"
 )
 
 // field keeps event keys in the order the spec shows them.

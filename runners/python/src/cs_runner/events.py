@@ -14,7 +14,7 @@ from cs_runner.json_value import Json
 from cs_runner.request import PROTOCOL_VERSION
 
 RUNNER_NAME = "python"
-FEATURES = ["stress", "project", "suite", "clock"]
+FEATURES = ["stress", "project", "suite", "clock", "project-stress"]
 """Protocol additions this runner implements (docs/specs/runners.md#capability and
 #project-jobs)."""
 

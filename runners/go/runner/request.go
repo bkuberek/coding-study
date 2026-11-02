@@ -220,8 +220,8 @@ func checkJob(j *job, mode string) error {
 	default:
 		return fmt.Errorf("unknown kind %q", j.Kind)
 	}
-	if j.Kind != kindConcurrent && slices.ContainsFunc(j.Cases, isStress) {
-		return fmt.Errorf("only a concurrent job has stress cases")
+	if err := checkStressCases(j); err != nil {
+		return err
 	}
 	if err := checkClock(j); err != nil {
 		return err
@@ -244,6 +244,24 @@ func checkSuite(j *job, mode string) error {
 	return nil
 }
 
+// checkStressCases allows stress cases in concurrent jobs and in a project's grading job, which
+// runs them as a concurrent job does, in the threads model
+// (docs/specs/runners.md#stress-in-project-jobs).
+func checkStressCases(j *job) error {
+	if !slices.ContainsFunc(j.Cases, isStress) {
+		return nil
+	}
+	switch {
+	case j.Kind == kindProject && j.Model != modelThreads:
+		return fmt.Errorf("a project's stress cases run the threads model, not %q", j.Model)
+	case j.Kind == kindProject:
+		return checkStressSetups(j)
+	case j.Kind != kindConcurrent:
+		return fmt.Errorf("only a concurrent or project job has stress cases")
+	}
+	return nil
+}
+
 func checkConcurrent(j *job, mode string) error {
 	switch {
 	case j.Model != modelThreads:
@@ -253,6 +271,10 @@ func checkConcurrent(j *job, mode string) error {
 	case j.Signature.Class == nil:
 		return fmt.Errorf("a concurrent job needs signature.class")
 	}
+	return checkStressSetups(j)
+}
+
+func checkStressSetups(j *job) error {
 	for _, c := range j.Cases {
 		if c.Stress != nil && len(c.Stress.Setup.Ops) == 0 {
 			return fmt.Errorf("stress case %q has no constructor in its setup", c.ID)

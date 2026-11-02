@@ -65,7 +65,8 @@ export async function runClockJob(
   events.write({ event: "job_end", job_id: job.jobId });
 }
 
-async function clockCase(
+/** One case on a clock of its own, from the constructor on. */
+export async function clockCase(
   Target: Constructor,
   job: ClassJob,
   testCase: OperationCase,

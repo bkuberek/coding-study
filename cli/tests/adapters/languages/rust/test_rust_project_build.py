@@ -231,6 +231,13 @@ def test_the_bridge_calls_the_crate_through_its_root(workspace):
     assert "let instance: user::Bank = user::Bank::new();" in bridge
 
 
+def test_a_shared_entry_class_is_called_through_a_shared_instance(workspace):
+    build, _ = project_build(workspace, BUILT)
+    build.harness(SIGNATURE, shared=True)
+    bridge = (build_directory(workspace) / "harness/main.rs").read_text()
+    assert "cs_runner::shared_instance::<user::Bank>(object);" in bridge
+
+
 def test_a_first_build_is_cold_and_a_later_one_warm(workspace):
     build, _ = project_build(workspace, BUILT)
     cold = build.warm

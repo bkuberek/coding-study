@@ -143,9 +143,10 @@ class RustProjectBuild:
     def warm(self) -> bool:
         return (self._directory / WARM_MARKER).is_file()
 
-    def harness(self, signature: ClassSignature) -> Path | BuildFailed:
-        """A private copy of the harness binary, whose bridge calls the methods of `signature`;
-        BuildFailed when the project's own code does not compile.
+    def harness(self, signature: ClassSignature, *, shared: bool = False) -> Path | BuildFailed:
+        """A private copy of the harness binary, whose bridge calls the methods of `signature`,
+        through a shared instance when `shared` (the graded levels have stress cases); BuildFailed
+        when the project's own code does not compile.
 
         Raises RunnerStartError when the build fails for a reason outside the project.
         """
@@ -155,7 +156,7 @@ class RustProjectBuild:
             except ProjectBuildError as error:
                 return BuildFailed(_lines(error.error))
             target = BridgeTarget(COMPILED_USER_TARGET, USER_CRATE, self._root, crate=True)
-            built = self._harness_binary(signature, crate, [target])
+            built = self._harness_binary(signature, crate, [target], shared=shared)
             if isinstance(built, BuildFailed):
                 return built
             (self._directory / WARM_MARKER).touch()
@@ -203,11 +204,11 @@ class RustProjectBuild:
             yield
 
     def _harness_binary(
-        self, signature: ClassSignature, crate: str, targets: list[BridgeTarget]
+        self, signature: ClassSignature, crate: str, targets: list[BridgeTarget], *, shared: bool
     ) -> Path | BuildFailed:
         bridge_file = (self._directory / HARNESS_DIRECTORY / BRIDGE_FILE).resolve()
         for _ in range(BUILD_PASSES):
-            bridge = bridge_source(signature, targets, kind=ProblemKind.PROJECT)
+            bridge = bridge_source(signature, targets, kind=ProblemKind.PROJECT, shared=shared)
             self._write(crate, bridge.text)
             outcome = self._cargo(self._package, ())
             if outcome.exit_code == 0:

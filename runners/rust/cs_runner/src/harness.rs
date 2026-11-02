@@ -191,7 +191,9 @@ pub fn elapsed_ns(started: Instant) -> u64 {
     u64::try_from(started.elapsed().as_nanos()).unwrap_or(u64::MAX)
 }
 
-/// A target that can run a job of `kind`, or the job's `load_error`.
+/// A target that can run a job of `kind`, or the job's `load_error`. A shared class runs class
+/// jobs too: a project's bridge shares its entry class from the level of its first stress case,
+/// whether or not a grading job holds stress runs.
 pub fn bind<'a>(targets: &'a [Target], id: &str, kind: Kind) -> Result<&'a Target, UserError> {
     let target = targets
         .iter()
@@ -212,7 +214,7 @@ pub fn bind<'a>(targets: &'a [Target], id: &str, kind: Kind) -> Result<&'a Targe
         ) => Err(UserError::new(error_type, *message)),
         (Entry::Function(_), Kind::Function)
         | (Entry::Class(_), Kind::Class)
-        | (Entry::Concurrent(_), Kind::Concurrent) => Ok(target),
+        | (Entry::Concurrent(_), Kind::Concurrent | Kind::Class) => Ok(target),
         _ => Err(UserError::new(
             "LoadError",
             format!("target \"{id}\" was built for another kind of problem"),
@@ -424,7 +426,36 @@ impl<'a> Operations<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{function, user_trace};
+    use super::{bind, function, user_trace};
+    use crate::request::Kind;
+    use crate::{Args, Concurrent, Entry, InputError, SharedConstruct, SharedMethod, Target};
+
+    fn no_construct(_: &Args) -> Result<SharedConstruct, InputError> {
+        Err(InputError("not called".into()))
+    }
+
+    fn no_method(op: &str, _: &Args) -> Result<SharedMethod, InputError> {
+        Err(InputError::unknown_op(op))
+    }
+
+    static SHARED: &[Target] = &[Target {
+        id: "user",
+        file: "/ws/projects/tally/",
+        entry: Entry::Concurrent(Concurrent {
+            name: "Tally",
+            construct: no_construct,
+            method: no_method,
+        }),
+    }];
+
+    /// From the level of a project's first stress case its bridge shares the entry class, and a
+    /// grading job without stress runs still runs its cases on it.
+    #[test]
+    fn a_shared_class_runs_a_class_job_and_a_concurrent_one() {
+        assert!(bind(SHARED, "user", Kind::Class).is_ok());
+        assert!(bind(SHARED, "user", Kind::Concurrent).is_ok());
+        assert!(bind(SHARED, "user", Kind::Function).is_err());
+    }
 
     const FILE: &str = "/ws/rust/practice/lru_cache.rs";
     /// The shape of a release build's backtrace: `touch` was inlined into `get` and has no

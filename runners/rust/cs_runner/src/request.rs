@@ -162,6 +162,12 @@ fn parse_job(job: &Json, mode: &Mode) -> Result<Job, String> {
     let context = |error: String| format!("job \"{job_id}\": {error}");
     let kind = match job.get("kind").and_then(Json::as_str) {
         Some("function") => Kind::Function,
+        // A project's grading job with stress runs names its model and runs as a concurrent job
+        // (docs/specs/runners.md#stress-in-project-jobs).
+        Some("project") if job.get("model").is_some() => {
+            check_concurrent(job, mode).map_err(context)?;
+            Kind::Concurrent
+        }
         Some("design" | "progressive" | "project") => Kind::Class,
         Some("concurrent") => {
             check_concurrent(job, mode).map_err(context)?;
@@ -192,7 +198,9 @@ fn parse_job(job: &Json, mode: &Mode) -> Result<Job, String> {
         .iter()
         .any(|case| matches!(case.input, CallInput::Stress(_)));
     if stress && kind != Kind::Concurrent {
-        return Err(context("only a concurrent job has stress cases".into()));
+        return Err(context(
+            "only a concurrent job, or a project's with its model, has stress cases".into(),
+        ));
     }
     Ok(Job {
         job_id,
@@ -453,6 +461,21 @@ mod tests {
         assert!(errors[0].contains("threads model only"), "{}", errors[0]);
         assert!(errors[1].contains("no bench"), "{}", errors[1]);
         assert!(errors[2].contains("only a concurrent job"), "{}", errors[2]);
+    }
+
+    #[test]
+    fn a_project_job_with_stress_cases_is_a_concurrent_job() {
+        let project = concurrent("threads", "test", STRESS_CASE).replace("concurrent", "project");
+        let request = parse_request(&project);
+        assert!(request.is_ok(), "{:?}", request.err());
+        assert_eq!(request.unwrap().jobs[0].kind, Kind::Concurrent);
+    }
+
+    #[test]
+    fn a_project_job_runs_its_stress_cases_in_the_threads_model() {
+        let project = concurrent("async", "test", STRESS_CASE).replace("concurrent", "project");
+        let error = parse_request(&project).err().unwrap_or_default();
+        assert!(error.contains("threads model only"), "{error}");
     }
 
     #[test]

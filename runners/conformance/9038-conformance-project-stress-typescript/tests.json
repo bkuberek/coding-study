@@ -1,0 +1,10 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "level": 1, "ops": ["Tally", "add", "add", "count"], "args": [[], ["a", 2], ["a", 3], ["a"]], "expected": [null, 2, 5, 5]},
+    {"id": "clock", "level": 1, "ops": ["Tally", "@advance", "add", "@now"], "args": [[], [1000], ["a", 1], []], "expected": [null, null, 1, 1000]},
+    {"id": "ex2", "visible": true, "level": 2, "ops": ["Tally", "add", "take", "take", "count"], "args": [[], ["a", 5], ["a", 3], ["a", 3], ["a"]], "expected": [null, 5, true, false, 2]},
+    {"id": "s1", "level": 2, "note": "4 tasks add to one key", "stress": {"seed": 1000, "setup": {"ops": ["Tally"], "args": [[]]}, "workers": [{"group": "adder", "count": 4, "repeat": 200, "steps": [{"op": "add", "args": ["k", 1]}]}], "final": {"ops": ["count"], "args": [["k"]], "expected": [800]}, "invariants": [{"type": "distinct", "values": {"op": "add"}}]}}
+  ]
+}

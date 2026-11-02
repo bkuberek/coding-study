@@ -23,7 +23,6 @@ from dataclasses import dataclass, replace
 
 from cs_runner.calls import BoundCall, bind
 from cs_runner.capture import capture_output
-from cs_runner.concurrent import RestartRequestError
 from cs_runner.errors import CaseInputError, InvalidOutputError
 from cs_runner.events import (
     ClockOutcome,
@@ -43,7 +42,8 @@ from cs_runner.jobs import (
 )
 from cs_runner.json_value import Json, is_int
 from cs_runner.loading import TargetLoadError, load_entry_class
-from cs_runner.request import Clock, Member, OperationCase, ProjectJob
+from cs_runner.request import Member, OperationCase, ProjectJob
+from cs_runner.restarts import RestartRequestError
 from cs_support.virtual_clock import DeadlockError, advance, now, run, settle
 
 HARNESS_PREFIX = "@"
@@ -51,8 +51,11 @@ ADVANCE, SPAWN, JOIN, NOW = "@advance", "@spawn", "@join", "@now"
 LEFTOVER_GRACE_SECONDS = 0.2
 
 
-def run_clock_job(job: ProjectJob, clock: Clock, events: EventWriter) -> None:
-    """Raises RestartRequestError after writing `restart_requested`."""
+def run_clock_job(job: ProjectJob, events: EventWriter) -> None:
+    """Runs a job on its clock, which it must have.
+
+    Raises RestartRequestError after writing `restart_requested`.
+    """
     events.job_start(job.job_id)
     try:
         design = load_entry_class(job)
@@ -62,14 +65,23 @@ def run_clock_job(job: ProjectJob, clock: Clock, events: EventWriter) -> None:
         return
     for case in job.cases:
         events.case_start(job.job_id, case.case_id)
-        threads = frozenset(threading.enumerate())
-        outcome = _ClockCase(job, design).run(case, clock.seed)
-        events.case_result(job.job_id, case.case_id, outcome)
-        left = _threads_left(threads)
-        if left:
-            events.restart_requested(f"{left} threads of {case.case_id} are still running")
-            raise RestartRequestError
+        run_clock_case(job, design, case, events)
     events.job_end(job.job_id)
+
+
+def run_clock_case(job: ProjectJob, design: type, case: OperationCase, events: EventWriter) -> None:
+    """Writes the case's result on the job's clock, which it must have.
+
+    Raises RestartRequestError after writing `restart_requested`.
+    """
+    assert job.clock is not None
+    threads = frozenset(threading.enumerate())
+    outcome = _ClockCase(job, design).run(case, job.clock.seed)
+    events.case_result(job.job_id, case.case_id, outcome)
+    left = _threads_left(threads)
+    if left:
+        events.restart_requested(f"{left} threads of {case.case_id} are still running")
+        raise RestartRequestError
 
 
 def _threads_left(before: frozenset[threading.Thread]) -> int:

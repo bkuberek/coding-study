@@ -10,7 +10,8 @@ Each stress run's setup argument says what the run does (docs/specs/runners.md#c
     "mismatch"  "ok" with one output missing from worker 0
 
 Sequential cases of a concurrent job return their ops' count. `--startup no-stress` says hello
-without features.
+without features, `--startup project` with `stress` and `project`, and `--startup
+project-stress` with `project-stress` too.
 """
 
 import argparse
@@ -19,6 +20,11 @@ import sys
 from pathlib import Path
 
 RESTART_EXIT_CODE = 3
+STARTUP_FEATURES = {
+    "no-stress": [],
+    "project": ["stress", "project"],
+    "project-stress": ["stress", "project", "project-stress"],
+}
 
 
 def main() -> int:
@@ -33,7 +39,7 @@ def main() -> int:
             out.write(json.dumps(event) + "\n")
             out.flush()
 
-        features = [] if arguments.startup == "no-stress" else ["stress"]
+        features = STARTUP_FEATURES.get(arguments.startup, ["stress"])
         emit(event="hello", runner="fake", protocol=1, runtime="0.1", features=features)
         request = json.loads(Path(arguments.request).read_text(encoding="utf-8"))
         for job in request["jobs"]:

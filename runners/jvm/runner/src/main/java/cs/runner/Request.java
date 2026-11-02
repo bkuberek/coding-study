@@ -20,6 +20,7 @@ record Request(List<Job> jobs) implements RunnerRequest {
     static final int PROTOCOL = 1;
     private static final String FUNCTION_KIND = "function";
     private static final String CONCURRENT_KIND = "concurrent";
+    private static final String PROJECT_KIND = "project";
     private static final String SUITE_KIND = "suite";
     private static final String THREADS_MODEL = "threads";
     private static final String PLATFORM = "platform";
@@ -60,8 +61,9 @@ record Request(List<Job> jobs) implements RunnerRequest {
     }
 
     /**
-     * A concurrent job (docs/specs/runners.md#concurrent-jobs): sequential {@link OperationsCase}s,
-     * then {@link StressCase}s; the JVM runs the threads model only.
+     * A concurrent job (docs/specs/runners.md#concurrent-jobs), or a project's grading job with
+     * stress runs (docs/specs/runners.md#stress-in-project-jobs): sequential {@link
+     * OperationsCase}s, then {@link StressCase}s; the JVM runs the threads model only.
      */
     record ConcurrentJob(
             String id,
@@ -143,7 +145,8 @@ record Request(List<Job> jobs) implements RunnerRequest {
                 Json.string(names, "class"), Json.object(classSignature, "constructor"));
         Map<String, Member> methods =
                 methods(Json.array(classSignature, "methods"), Json.object(names, "methods"));
-        if (CONCURRENT_KIND.equals(Json.string(job, "kind"))) {
+        String kind = Json.string(job, "kind");
+        if (CONCURRENT_KIND.equals(kind) || (PROJECT_KIND.equals(kind) && job.has("model"))) {
             String model = Json.string(job, "model");
             if (!THREADS_MODEL.equals(model)) {
                 throw new BadRequestException("the JVM runs the threads model only, not " + model);

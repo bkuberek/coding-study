@@ -17,6 +17,7 @@ from coding_study.domain.conformance import (
     ExpectedTestStatus,
 )
 from coding_study.domain.errors import ContentError
+from coding_study.domain.problem import ProblemKind
 from coding_study.domain.signature import ClassSignature
 from tests.helpers import MAPPING_TABLE_TYPES, REPOSITORY_ROOT, SCHEMAS_DIRECTORY
 
@@ -55,8 +56,13 @@ def test_every_fixture_has_an_expectation():
 
 @pytest.mark.parametrize("expectation", SUITE.expectations, ids=lambda e: e.approach_id)
 def test_expectations_name_declared_approaches(expectation):
+    """An approach, or a project's broken overlay as `broken-<id>`."""
     meta = REPOSITORY.load(expectation.slug).meta
-    assert expectation.approach_id in {approach.id for approach in meta.approaches}
+    brokens = (
+        meta.concurrency.broken if meta.kind is ProblemKind.PROJECT and meta.concurrency else ()
+    )
+    declared = {approach.id for approach in meta.approaches}
+    assert expectation.approach_id in declared | {broken.approach_id for broken in brokens}
 
 
 @pytest.mark.parametrize("expectation", SUITE.expectations, ids=lambda e: e.approach_id)
