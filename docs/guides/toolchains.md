@@ -125,6 +125,8 @@ On Linux, your distribution's packages work too: on Debian and Ubuntu, `sudo apt
 
 Several JDKs can be installed side by side. `cstudy` never looks for them: it uses the one your shell selects, so `sdk use java <identifier>` in one terminal, or a `.sdkmanrc` in a directory, switches it. Switching starts another Gradle daemon and compiles once more. Your Java and Kotlin code compiles at the level of the selected JDK, up to 26, so a newer JDK lets you use its language features and APIs. A problem that needs a newer JDK than 21 says so in its statement, and `cstudy` refuses to start it on an older one.
 
+One known gap is JDK 22. With the JDK 22.0.0 build we test, the Kotlin compiler cannot read that JDK's API signatures when it compiles a problem's reference solution at JDK 21's level. So `cstudy bench` and `cstudy verify` fail for Kotlin problems, while your own Kotlin code and every Java command work. JDK 22 no longer receives updates, so select JDK 25 instead.
+
 Nothing else is needed for Java or Kotlin:
 
 - **Gradle**: each workspace ships the Gradle wrapper (`jvm/gradlew`), which downloads its own Gradle on first use. `cstudy doctor` reports a missing system Gradle as `WARN`; only a maintainer who regenerates the wrapper needs one (`brew install gradle`, or `sdk install gradle` on Linux, although the warning names Homebrew).
