@@ -20,6 +20,7 @@ from coding_study.adapters.languages.rust.build_files import (
     load_error,
     package_manifest,
     profile_arguments,
+    project_harness_manifest,
     toolchain_arguments,
     vendored_source_arguments,
     workspace_manifest,
@@ -132,8 +133,8 @@ def test_a_mutable_receiver_on_a_shared_class_says_why_methods_take_self():
     assert load_error(error, "user", "two_sum.rs") == Unavailable(
         "SignatureMismatch",
         "cannot borrow `*instance` as mutable, as it is behind a `&` reference; the worker "
-        "threads of the stress cases share the instance, so its methods take &self, not "
-        "&mut self",
+        "threads of the stress cases or the tasks of @spawn share the instance, so its methods "
+        "take &self, not &mut self",
     )
 
 
@@ -187,6 +188,15 @@ def test_a_harness_package_links_the_runner_crates_of_the_runtime():
     assert document["bin"] == [{"name": "test_two_sum", "path": "main.rs"}]
     assert document["dependencies"]["cs_runner"] == {
         "path": "../../../runtime/runners/rust/cs_runner"
+    }
+
+
+def test_a_clock_projects_harness_turns_on_the_runners_clock_feature():
+    runtime = "../../../runtime/runners/rust"
+    manifest = project_harness_manifest("project_inbox", "inbox", "../../x", runtime, clock=True)
+    assert tomllib.loads(manifest)["dependencies"]["cs_runner"] == {
+        "path": f"{runtime}/cs_runner",
+        "features": ["clock"],
     }
 
 

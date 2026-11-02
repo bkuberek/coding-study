@@ -30,6 +30,10 @@
 //! bridge registers an [`Entry::Concurrent`]: methods take `&self`, every decoded call is `Send`,
 //! and [`shared`] requires the class to be `Send + Sync`.
 //!
+//! With the `clock` feature, a project on the virtual clock registers an `Entry::Clock`: each
+//! case runs on a paused-clock tokio runtime of its own, and each call is a future the runner
+//! awaits there (`virtual_clock`). Only such a project's harness turns the feature on.
+//!
 //! Exit codes: 0 once `bye` is written; 2 for a request that cannot be run; 3 after
 //! `restart_requested`.
 
@@ -45,6 +49,8 @@ pub mod json;
 mod nodes;
 mod request;
 mod stress;
+#[cfg(any(feature = "clock", test))]
+mod virtual_clock;
 
 use std::any::Any;
 use std::cell::RefCell;
@@ -55,6 +61,11 @@ use std::sync::Arc;
 pub use alloc::retaining;
 pub use codec::{Decode, Encode};
 pub use nodes::{Identity, IndexIn, NoAlias, Nodes, Shared, Single, ValueOf};
+#[cfg(any(feature = "clock", test))]
+pub use virtual_clock::{
+    block_on, owned_call, sendable, shared_call, ClockClass, OwnedCall, OwnedFuture, SendOutput,
+    SharedCall, SharedFuture,
+};
 
 use events::Events;
 use json::Json;
@@ -119,6 +130,9 @@ pub enum Entry {
     Function(Function),
     Class(Class),
     Concurrent(Concurrent),
+    /// The entry class of a project on the virtual clock.
+    #[cfg(any(feature = "clock", test))]
+    Clock(ClockClass),
     /// A target that cannot run: its bridge code did not compile (a missing symbol, another
     /// signature) or it uses a type Rust does not support yet. The CLI built the binary without
     /// it, and each of its jobs gets this `load_error`.

@@ -215,6 +215,10 @@ pub fn bind<'a>(targets: &'a [Target], id: &str, kind: Kind) -> Result<&'a Targe
         (Entry::Function(_), Kind::Function)
         | (Entry::Class(_), Kind::Class)
         | (Entry::Concurrent(_), Kind::Concurrent | Kind::Class) => Ok(target),
+        #[cfg(any(feature = "clock", test))]
+        (Entry::Clock(_), Kind::Class) => Ok(target),
+        #[cfg(any(feature = "clock", test))]
+        (Entry::Clock(clock), Kind::Concurrent) if clock.concurrent().is_some() => Ok(target),
         _ => Err(UserError::new(
             "LoadError",
             format!("target \"{id}\" was built for another kind of problem"),
@@ -236,7 +240,7 @@ pub fn run_test_jobs(targets: &[Target], jobs: &[Job], events: &mut Events) -> b
                         events.case_result(&job.job_id, &case.id, run_case(target, &case.input));
                         continue;
                     };
-                    let Entry::Concurrent(class) = &target.entry else {
+                    let Some(class) = concurrent(target) else {
                         unreachable!("bind gives a concurrent job, the only one with stress cases, a concurrent target")
                     };
                     let (outcome, workers) = stress::run(target.file, class, stress);
@@ -254,6 +258,16 @@ pub fn run_test_jobs(targets: &[Target], jobs: &[Job], events: &mut Events) -> b
         events.job_end(&job.job_id);
     }
     true
+}
+
+/// The class whose methods the worker threads of a stress run call.
+fn concurrent(target: &Target) -> Option<&Concurrent> {
+    match &target.entry {
+        Entry::Concurrent(class) => Some(class),
+        #[cfg(any(feature = "clock", test))]
+        Entry::Clock(clock) => clock.concurrent(),
+        _ => None,
+    }
 }
 
 /// One case as `cstudy test` runs it, capturing what the code prints. Bench check calls run the
@@ -279,6 +293,10 @@ pub fn run_case(target: &Target, input: &CallInput) -> Outcome {
         }
         (Entry::Concurrent(class), CallInput::Ops { ops, args }) => {
             Operations::new(target.file, class).run(ops, args)
+        }
+        #[cfg(any(feature = "clock", test))]
+        (Entry::Clock(clock), CallInput::Ops { ops, args }) => {
+            crate::virtual_clock::run(target.file, clock, ops, args)
         }
         (Entry::Function(_), CallInput::Ops { .. }) => Outcome::raised(
             UserError::invalid_input("a function job takes arguments, not an operation sequence"),

@@ -106,6 +106,7 @@ from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.runner_grading import graded_signature
 from coding_study.domain.runs import HELLO_TIMEOUT_MS, PROTOCOL_VERSION, RunnerInfo
 from coding_study.domain.suite_runs import SuiteReport
+from coding_study.domain.virtual_clock import ProjectClock
 
 RUNNER_DIRECTORY = "rust"
 """The runner crates inside the runners directory."""
@@ -236,7 +237,9 @@ class RustRunner:
         build = RustProjectBuild(self._settings(), meta.slug, scope.root)
         if not build.warm:
             notify(COLD_NOTICE)
-        binary = build.harness(graded_signature(meta.signature, level), shared=scope.shared)
+        signature = graded_signature(meta.signature, level)
+        clock = meta.project is not None and meta.project.clock is ProjectClock.VIRTUAL
+        binary = build.harness(signature, shared=scope.shared, clock=clock)
         if isinstance(binary, BuildFailed):
             return binary
         timeout = HELLO_TIMEOUT_MS[Language.RUST]

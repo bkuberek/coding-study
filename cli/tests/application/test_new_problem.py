@@ -11,6 +11,7 @@ from coding_study.adapters.workspace_fs import WorkspaceFs
 from coding_study.application.environment import ProblemDestination
 from coding_study.application.new_problem import create_problem
 from coding_study.application.verify_content import VerifyRequest, verify_content
+from coding_study.domain import scaffold
 from coding_study.domain.cases import OperationSequence
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import ALL_LANGUAGES, ContentStatus, Language, ProblemKind, Track
@@ -539,7 +540,10 @@ def test_the_virtual_clock_flag_on_another_template_writes_nothing(environment):
     assert not environment.workspace.exists("problems/0003-max-gap")
 
 
-def test_the_virtual_clock_flag_on_a_language_without_a_graded_clock_writes_nothing(environment):
+def test_the_virtual_clock_flag_on_a_language_without_a_graded_clock_writes_nothing(
+    environment, monkeypatch
+):
+    monkeypatch.setattr(scaffold, "GRADED_CLOCK_LANGUAGES", frozenset[Language]())
     request = ScaffoldRequest("waiter-project-rust", TemplateName.PROJECT_RUST, virtual_clock=True)
     with pytest.raises(UsageError, match="does not grade the virtual clock"):
         create_problem(environment, TEMPLATES, request)

@@ -238,6 +238,30 @@ def test_a_shared_entry_class_is_called_through_a_shared_instance(workspace):
     assert "cs_runner::shared_instance::<user::Bank>(object);" in bridge
 
 
+def test_a_harness_on_the_virtual_clock_turns_on_the_runners_clock(workspace):
+    build, _ = project_build(workspace, BUILT)
+    build.harness(SIGNATURE, clock=True)
+    dependencies = harness_manifest(workspace)["dependencies"]
+    assert isinstance(dependencies, dict)
+    assert dependencies["cs_runner"]["features"] == ["clock"]
+
+
+def test_a_harness_on_the_real_clock_leaves_tokio_out(workspace):
+    build, _ = project_build(workspace, BUILT)
+    build.harness(SIGNATURE)
+    dependencies = harness_manifest(workspace)["dependencies"]
+    assert isinstance(dependencies, dict)
+    assert "features" not in dependencies["cs_runner"]
+
+
+def test_the_suite_keeps_the_clock_the_grading_built_the_harness_with(workspace):
+    build, _ = project_build(workspace, BUILT, SUITE)
+    build.harness(SIGNATURE, clock=True)
+    manifest = (build_directory(workspace) / "harness/Cargo.toml").read_text()
+    build.tests(())
+    assert (build_directory(workspace) / "harness/Cargo.toml").read_text() == manifest
+
+
 def test_a_first_build_is_cold_and_a_later_one_warm(workspace):
     build, _ = project_build(workspace, BUILT)
     cold = build.warm

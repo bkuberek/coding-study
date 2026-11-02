@@ -61,14 +61,9 @@ def test_the_languages_with_awaitable_methods_are_those_with_a_clock_but_go():
     assert set(ASYNC_LANGUAGES) == set(CLOCK_LANGUAGES) - {Language.GO}
 
 
-def test_the_go_python_typescript_and_kotlin_runners_grade_the_virtual_clock():
-    """Each runner that lands adds its language here, with its runner's `clock` feature."""
-    assert sorted(GRADED_CLOCK_LANGUAGES) == [
-        Language.GO,
-        Language.KOTLIN,
-        Language.PYTHON,
-        Language.TYPESCRIPT,
-    ]
+def test_every_runner_with_a_clock_grades_it():
+    """Each runner that landed added its language here, with its runner's `clock` feature."""
+    assert frozenset(CLOCK_LANGUAGES) == GRADED_CLOCK_LANGUAGES
 
 
 def test_a_go_project_can_declare_the_virtual_clock(bank_meta):
@@ -105,10 +100,9 @@ def test_java_has_no_virtual_clock(bank_meta):
     )
 
 
-@pytest.mark.parametrize(
-    "language", [language for language in CLOCK_LANGUAGES if language not in GRADED_CLOCK_LANGUAGES]
-)
-def test_a_declaration_waits_for_the_runner_that_grades_it(bank_meta, language):
+@pytest.mark.parametrize("language", CLOCK_LANGUAGES)
+def test_a_declaration_waits_for_the_runner_that_grades_it(bank_meta, language, monkeypatch):
+    monkeypatch.setattr(virtual_clock, "GRADED_CLOCK_LANGUAGES", frozenset[Language]())
     meta = declared(bank_meta, language, clock=True)
     assert clock_declaration_issues(meta) == (
         SignatureIssue(

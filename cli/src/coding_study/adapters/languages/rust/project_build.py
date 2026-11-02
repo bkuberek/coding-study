@@ -41,6 +41,7 @@ from coding_study.adapters.languages.rust.build_files import (
     marked_unavailable,
     profile_arguments,
     project_harness_manifest,
+    runs_on_the_clock,
     target_errors,
     toolchain_arguments,
     vendored_source_arguments,
@@ -143,10 +144,13 @@ class RustProjectBuild:
     def warm(self) -> bool:
         return (self._directory / WARM_MARKER).is_file()
 
-    def harness(self, signature: ClassSignature, *, shared: bool = False) -> Path | BuildFailed:
+    def harness(
+        self, signature: ClassSignature, *, shared: bool = False, clock: bool = False
+    ) -> Path | BuildFailed:
         """A private copy of the harness binary, whose bridge calls the methods of `signature`,
-        through a shared instance when `shared` (the graded levels have stress cases); BuildFailed
-        when the project's own code does not compile.
+        through a shared instance when `shared` (the graded levels have stress cases or spawn
+        tasks), on the virtual clock when `clock`; BuildFailed when the project's own code does
+        not compile.
 
         Raises RunnerStartError when the build fails for a reason outside the project.
         """
@@ -156,7 +160,7 @@ class RustProjectBuild:
             except ProjectBuildError as error:
                 return BuildFailed(_lines(error.error))
             target = BridgeTarget(COMPILED_USER_TARGET, USER_CRATE, self._root, crate=True)
-            built = self._harness_binary(signature, crate, [target], shared=shared)
+            built = self._harness_binary(signature, crate, [target], _Bridging(shared, clock))
             if isinstance(built, BuildFailed):
                 return built
             (self._directory / WARM_MARKER).touch()
@@ -173,7 +177,7 @@ class RustProjectBuild:
         excluded = frozenset(exclude)
         with self._locked():
             crate = self._crate()
-            self._write(crate, None)
+            self._write(crate, None, clock=self._clock_of_last_grading())
             outcome = self._cargo(crate, SUITE_TARGETS)
             binaries = {
                 path: binary
@@ -204,12 +208,22 @@ class RustProjectBuild:
             yield
 
     def _harness_binary(
-        self, signature: ClassSignature, crate: str, targets: list[BridgeTarget], *, shared: bool
+        self,
+        signature: ClassSignature,
+        crate: str,
+        targets: list[BridgeTarget],
+        bridging: "_Bridging",
     ) -> Path | BuildFailed:
         bridge_file = (self._directory / HARNESS_DIRECTORY / BRIDGE_FILE).resolve()
         for _ in range(BUILD_PASSES):
-            bridge = bridge_source(signature, targets, kind=ProblemKind.PROJECT, shared=shared)
-            self._write(crate, bridge.text)
+            bridge = bridge_source(
+                signature,
+                targets,
+                kind=ProblemKind.PROJECT,
+                shared=bridging.shared,
+                clock=bridging.clock,
+            )
+            self._write(crate, bridge.text, clock=bridging.clock)
             outcome = self._cargo(self._package, ())
             if outcome.exit_code == 0:
                 return self._binary(outcome)
@@ -240,12 +254,12 @@ class RustProjectBuild:
             raise ProjectBuildError(UserError(CARGO_ERROR, message))
         return name
 
-    def _write(self, crate: str, bridge: str | None) -> None:
+    def _write(self, crate: str, bridge: str | None, *, clock: bool) -> None:
         """The workspace and the harness; without a bridge, the harness keeps the one it has."""
         harness = self._directory / HARNESS_DIRECTORY
         runtime = relative(self._settings.runtime, harness)
         root = relative(self._root, harness)
-        manifest = project_harness_manifest(self._package, crate, root, runtime)
+        manifest = project_harness_manifest(self._package, crate, root, runtime, clock=clock)
         write_if_changed(harness / MANIFEST_FILE, manifest)
         if bridge is not None:
             write_if_changed(harness / BRIDGE_FILE, bridge)
@@ -253,6 +267,16 @@ class RustProjectBuild:
             write_if_changed(harness / BRIDGE_FILE, PLACEHOLDER_BRIDGE)
         manifest_file = self._directory / MANIFEST_FILE
         write_if_changed(manifest_file, workspace_manifest([HARNESS_DIRECTORY]))
+
+    def _clock_of_last_grading(self) -> bool:
+        """Whether the last grading built the harness on the virtual clock: a suite build keeps
+        its manifest so, since a manifest that changed would rebuild the harness at the next
+        grading."""
+        manifest = self._directory / HARNESS_DIRECTORY / MANIFEST_FILE
+        try:
+            return runs_on_the_clock(manifest.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError):
+            return False
 
     def _cargo(self, package: str, targets: tuple[str, ...]) -> CargoOutcome:
         settings = self._settings
@@ -328,6 +352,14 @@ class RustProjectBuild:
         if resolved.is_relative_to(self._root):
             return resolved.relative_to(self._root).as_posix()
         return str(path)
+
+
+@dataclass(frozen=True, slots=True)
+class _Bridging:
+    """How the bridge reaches the entry class."""
+
+    shared: bool
+    clock: bool
 
 
 def _lines(error: UserError) -> tuple[str, ...]:

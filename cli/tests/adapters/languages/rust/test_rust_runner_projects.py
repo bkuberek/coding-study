@@ -1,6 +1,8 @@
 """The Rust runner's project jobs (docs/specs/runners.md#rust-projects): a grading launches the
 harness built from the job, and a suite runs in the runner itself."""
 
+import tomllib
+
 import pytest
 
 from coding_study.adapters.languages.context import LanguageContext
@@ -19,6 +21,7 @@ from coding_study.domain.errors import RunnerStartError
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import RunnerInfo, UserError
 from coding_study.domain.suite_runs import SuiteFramework, SuiteJob
+from coding_study.domain.virtual_clock import ProjectClock
 from tests.adapters.languages.rust.test_rust_project_build import (
     BUILT,
     MANIFEST,
@@ -82,6 +85,17 @@ def test_the_first_grading_says_the_runner_compiles(workspace):
 
 def test_a_grading_of_a_project_that_does_not_compile_fails_its_build(workspace):
     assert isinstance(grading(workspace, (101, "project-harness-user-error", "")), BuildFailed)
+
+
+def test_a_grading_on_the_virtual_clock_builds_the_harness_with_the_clock(workspace):
+    cargo = ReplayedCargo(workspace, [BUILT])
+    meta = project_meta(language=Language.RUST, clock=ProjectClock.VIRTUAL)
+    scope = ProjectGrading(workspace / "projects" / SLUG, meta, 2)
+    rust_runner(workspace, cargo).prepare_project(scope, [].append)
+    build = workspace / ".cs/build/rust-projects" / SLUG / "harness"
+    manifest = tomllib.loads((build / "Cargo.toml").read_text())
+    assert manifest["dependencies"]["cs_runner"]["features"] == ["clock"]
+    assert "cs_runner::Entry::Clock(" in (build / "main.rs").read_text()
 
 
 def test_a_grading_without_its_job_cannot_build_a_bridge(workspace):

@@ -14,6 +14,9 @@ const STRESS_FEATURE: &str = "stress";
 const PROJECT_FEATURE: &str = "project";
 /// A project's grading job may hold stress runs (runners.md#stress-in-project-jobs).
 const PROJECT_STRESS_FEATURE: &str = "project-stress";
+/// Virtual-clock projects: the clock's harness operations and `async fn` methods, in a harness
+/// built with the `clock` feature (runners.md#virtual-clock-and-stress-in-project-jobs).
+const CLOCK_FEATURE: &str = "clock";
 
 /// The `error` object of an event.
 #[derive(Clone, Debug, PartialEq)]
@@ -61,6 +64,15 @@ pub enum Status {
     InvalidOutput(String),
     /// A stress run whose workers were unfinished at its deadline.
     Stalled,
+    /// A case on the virtual clock whose operation waited while no task could run and no timer
+    /// was due.
+    #[cfg_attr(not(any(feature = "clock", test)), allow(dead_code))]
+    Deadlocked {
+        /// The operation and the virtual time: `op 3 (@join r1): deadlock at 2000 ms`.
+        reason: String,
+        /// The operation's index and the outputs before it.
+        op: (usize, Vec<Json>),
+    },
 }
 
 /// What one call sequence produced: a case, or a bench check call.
@@ -121,6 +133,15 @@ impl Outcome {
                 fields.push(("reason", Json::String(reason)));
             }
             Status::Stalled => fields.push(("status", text("stalled"))),
+            Status::Deadlocked {
+                reason,
+                op: (index, partial),
+            } => {
+                fields.push(("status", text("stalled")));
+                fields.push(("op_index", Json::Int(index as i64)));
+                fields.push(("reason", Json::String(reason)));
+                fields.push(("partial_output", Json::Array(partial)));
+            }
         }
         fields.extend(self.stress);
         fields.push(("duration_ns", nanoseconds(self.duration_ns)));
@@ -129,6 +150,16 @@ impl Outcome {
         }
         fields
     }
+}
+
+/// What this runner runs besides function and class jobs.
+fn features() -> Vec<Json> {
+    let clock = cfg!(any(feature = "clock", test)).then_some(CLOCK_FEATURE);
+    [STRESS_FEATURE, PROJECT_FEATURE, PROJECT_STRESS_FEATURE]
+        .into_iter()
+        .chain(clock)
+        .map(text)
+        .collect()
 }
 
 fn text(value: &str) -> Json {
@@ -198,14 +229,7 @@ impl Events {
             ("runner", text(RUNNER_NAME)),
             ("protocol", Json::Int(PROTOCOL_VERSION)),
             ("runtime", text(env!("CS_RUSTC_VERSION"))),
-            (
-                "features",
-                Json::Array(vec![
-                    text(STRESS_FEATURE),
-                    text(PROJECT_FEATURE),
-                    text(PROJECT_STRESS_FEATURE),
-                ]),
-            ),
+            ("features", Json::Array(features())),
         ]);
     }
 
@@ -308,7 +332,7 @@ impl Events {
 
 #[cfg(test)]
 mod tests {
-    use super::{Outcome, Status, UserError};
+    use super::{features, text, Outcome, Status, UserError};
     use crate::json::Json;
 
     fn line(outcome: Outcome) -> String {
@@ -330,6 +354,28 @@ mod tests {
             line(outcome),
             r#"{"status":"ok","output":3,"duration_ns":41,"stdout":"hi\n"}"#
         );
+    }
+
+    #[test]
+    fn a_deadlock_on_the_virtual_clock_is_stalled_at_its_operation() {
+        let outcome = Outcome {
+            status: Status::Deadlocked {
+                reason: "op 3 (@join r1): deadlock at 2000 ms".into(),
+                op: (3, vec![Json::Null, Json::Null, Json::Null]),
+            },
+            duration_ns: 5,
+            stdout: String::new(),
+            stress: Vec::new(),
+        };
+        assert_eq!(
+            line(outcome),
+            r#"{"status":"stalled","op_index":3,"reason":"op 3 (@join r1): deadlock at 2000 ms","partial_output":[null,null,null],"duration_ns":5}"#
+        );
+    }
+
+    #[test]
+    fn a_harness_with_the_virtual_clock_says_so() {
+        assert!(features().contains(&text("clock")));
     }
 
     #[test]

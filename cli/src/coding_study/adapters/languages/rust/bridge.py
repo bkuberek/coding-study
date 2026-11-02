@@ -9,7 +9,14 @@ is shared by the worker threads of its stress runs: its methods take `&self`, ev
 is `Send`, and the constructor hands the instance to `cs_runner::shared`, whose `Send + Sync`
 bound is where the compiler rejects a class that is not thread-safe. A project's entry class is
 shared the same way from the level of its first stress case
-(docs/specs/runners.md#stress-in-project-jobs).
+(docs/specs/runners.md#stress-in-project-jobs), or of its first case that spawns a task.
+
+A project on the virtual clock registers its class as `Entry::Clock`, and each operation's call
+is a future the runner awaits on the case's runtime: an `async fn` is awaited inside it, any other
+method called. An owned instance's call borrows it; a shared instance's call holds an `Arc` of
+it, so `@spawn` can hand the call to `tokio::spawn`, and its result must be `Send`. The worker
+threads of a shared class's stress runs call the same methods, blocking on an `async fn` on the
+real clock (docs/specs/runners.md#virtual-clock-and-stress-in-project-jobs).
 
 Because every type is spelled, a solution with another signature fails to compile in the bridge,
 not in its own file. The bridge records which target owns each of its lines, so the runner can
@@ -18,7 +25,7 @@ for each of them instead.
 """
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from coding_study.adapters.languages.rust.types import (
@@ -101,9 +108,11 @@ def bridge_source(
     *,
     kind: ProblemKind,
     shared: bool = False,
+    clock: bool = False,
 ) -> Bridge:
     """`shared`: a project's graded levels have stress cases, whose worker threads share its
-    entry class, as a concurrent problem's class is shared."""
+    entry class, as a concurrent problem's class is shared, or spawn tasks, which share it too.
+    `clock`: the project is on the virtual clock."""
     lines = _Lines()
     lines.add(None, GENERATED_HEADER, "#![allow(unused)]", "")
     lines.add(None, *_imports(signature))
@@ -121,7 +130,7 @@ def bridge_source(
         if unavailable is not None:
             entries.append((target, _unavailable_entry(unavailable)))
             continue
-        items, entry = _target_items(signature, target.module, kind, shared=shared)
+        items, entry = _target_items(signature, target.module, kind, shared=shared, clock=clock)
         lines.add(target.target_id, *items)
         entries.append((target, entry))
     lines.add(None, "static TARGETS: &[cs_runner::Target] = &[")
@@ -231,7 +240,7 @@ _SHARED = _ClassForm(
 
 
 def _target_items(
-    signature: Signature, module: str, kind: ProblemKind, *, shared: bool
+    signature: Signature, module: str, kind: ProblemKind, *, shared: bool, clock: bool
 ) -> tuple[list[str], str]:
     """The bridge functions of one target and its `Entry`."""
     if isinstance(signature, FunctionSignature):
@@ -250,13 +259,27 @@ def _target_items(
         ]
         return items, f"cs_runner::Entry::Function({module}_call)"
     form = _SHARED if kind is ProblemKind.CONCURRENT or shared else _OWNED
+    if clock:
+        return _clock_items(signature, module, form)
     return _class_items(signature, module, form)
 
 
 def _class_items(signature: ClassSignature, module: str, form: _ClassForm) -> tuple[list[str], str]:
+    entry = (
+        f"cs_runner::Entry::{form.entry}(cs_runner::{form.entry} {{ "
+        f"name: {rust_string(signature.name)}, "
+        f"construct: {module}_construct, method: {module}_method }})"
+    )
+    return [
+        *_construct_items(signature, module, form),
+        *_method_items(signature, module, form),
+    ], entry
+
+
+def _construct_items(signature: ClassSignature, module: str, form: _ClassForm) -> list[str]:
     class_type = f"{module}::{signature.name}"
     constructor = _decoding(signature.constructor_params, None, signature.name)
-    construct = [
+    return [
         f"fn {module}_construct(args: &cs_runner::Args) -> "
         f"Result<{form.construct}, cs_runner::InputError> {{",
         *constructor,
@@ -268,10 +291,18 @@ def _class_items(signature: ClassSignature, module: str, form: _ClassForm) -> tu
         "}",
         "",
     ]
+
+
+def _method_items(signature: ClassSignature, module: str, form: _ClassForm) -> list[str]:
+    """The `match` on the operation name, each arm a call on the instance; an `async fn` blocks
+    the calling thread, a stress worker's, on the real clock."""
+    class_type = f"{module}::{signature.name}"
     arms: list[str] = []
     for method in signature.methods:
         name = rust_name(method.name, NameRole.METHOD)
         body = _call(method.params, method.returns, f"instance.{name}", method.name)
+        if method.is_async:
+            body = replace(body, call=f"cs_runner::block_on({body.call})")
         arms += [
             f"{INDENT * 2}{rust_string(method.name)} => {{",
             *(f"{INDENT * 2}{line}" for line in body.decoding),
@@ -281,9 +312,13 @@ def _class_items(signature: ClassSignature, module: str, form: _ClassForm) -> tu
             f"{INDENT * 3}}}))",
             f"{INDENT * 2}}}",
         ]
-    methods = [
-        f"fn {module}_method(op: &str, args: &cs_runner::Args) -> "
-        f"Result<{form.method}, cs_runner::InputError> {{",
+    return _match(f"{module}_method", form.method, arms)
+
+
+def _match(function: str, returned: str, arms: list[str]) -> list[str]:
+    return [
+        f"fn {function}(op: &str, args: &cs_runner::Args) -> "
+        f"Result<{returned}, cs_runner::InputError> {{",
         f"{INDENT}match op {{",
         *arms,
         f"{INDENT * 2}_ => Err(cs_runner::InputError::unknown_op(op)),",
@@ -291,12 +326,88 @@ def _class_items(signature: ClassSignature, module: str, form: _ClassForm) -> tu
         "}",
         "",
     ]
+
+
+def _clock_items(signature: ClassSignature, module: str, form: _ClassForm) -> tuple[list[str], str]:
+    """The constructor, the calls the runner awaits on a case's runtime, and for a shared
+    instance the methods its stress workers call."""
+    name = rust_string(signature.name)
+    construct = _construct_items(signature, module, form)
+    if form is _OWNED:
+        entry = (
+            f"cs_runner::Entry::Clock(cs_runner::ClockClass::Owned {{ name: {name}, "
+            f"construct: {module}_construct, call: {module}_call }})"
+        )
+        return [*construct, *_clock_calls(signature, module, _OWNED_CALL)], entry
     entry = (
-        f"cs_runner::Entry::{form.entry}(cs_runner::{form.entry} {{ "
-        f"name: {rust_string(signature.name)}, "
-        f"construct: {module}_construct, method: {module}_method }})"
+        "cs_runner::Entry::Clock(cs_runner::ClockClass::Shared { class: "
+        f"cs_runner::Concurrent {{ name: {name}, construct: {module}_construct, "
+        f"method: {module}_method }}, call: {module}_call }})"
     )
-    return [*construct, *methods], entry
+    stress = _method_items(signature, module, form)
+    return [*construct, *stress, *_clock_calls(signature, module, _SHARED_CALL)], entry
+
+
+_CLASS_TYPE = "{class_type}"
+"""Stands for the entry class in a `_ClockForm`'s lines."""
+
+
+@dataclass(frozen=True, slots=True)
+class _ClockForm:
+    """How an operation's call on the virtual clock reaches the runner: a future that borrows an
+    owned instance, or one that holds a shared instance and whose result a task can hand back."""
+
+    call: str
+    """The type of the boxed call."""
+    opening: tuple[str, ...]
+    """The lines that open the call, indented relative to it, with `_CLASS_TYPE` for the entry
+    class; the last line's indentation is the future's body's."""
+    result: str
+    """The future's last statement, which boxes the output."""
+    closing: tuple[str, ...]
+
+
+_OWNED_CALL = _ClockForm(
+    "cs_runner::OwnedCall",
+    (
+        "Ok(cs_runner::owned_call(move |object| {",
+        f"{INDENT}Box::pin(async move {{",
+        f"{INDENT * 2}let instance = cs_runner::instance::<{_CLASS_TYPE}>(object);",
+    ),
+    "cs_runner::output(output)",
+    (f"{INDENT}}})", "}))"),
+)
+_SHARED_CALL = _ClockForm(
+    "cs_runner::SharedCall",
+    (
+        "Ok(cs_runner::shared_call(move |object| async move {",
+        f"{INDENT}let instance = cs_runner::shared_instance::<{_CLASS_TYPE}>(&*object);",
+    ),
+    "cs_runner::sendable(output)",
+    ("}))",),
+)
+
+
+def _clock_calls(signature: ClassSignature, module: str, form: _ClockForm) -> list[str]:
+    """Each operation's call as a future: an `async fn` awaited, any other method called."""
+    class_type = f"{module}::{signature.name}"
+    arm = INDENT * 3
+    body = arm + form.opening[-1][: len(form.opening[-1]) - len(form.opening[-1].lstrip())]
+    arms: list[str] = []
+    for method in signature.methods:
+        name = rust_name(method.name, NameRole.METHOD)
+        call = _call(method.params, method.returns, f"instance.{name}", method.name)
+        awaited = f"{call.call}.await" if method.is_async else call.call
+        arms += [
+            f"{INDENT * 2}{rust_string(method.name)} => {{",
+            *(f"{INDENT * 2}{line}" for line in call.decoding),
+            *(f"{arm}{line.replace(_CLASS_TYPE, class_type)}" for line in form.opening),
+            f"{body}let output: {call.output_type} = {awaited};",
+            f"{body}{form.result}",
+            *(f"{arm}{line}" for line in form.closing),
+            f"{INDENT * 2}}}",
+        ]
+    return _match(f"{module}_call", form.call, arms)
 
 
 @dataclass(frozen=True, slots=True)

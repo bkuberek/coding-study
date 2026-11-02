@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-from coding_study.domain import project_tests
+from coding_study.domain import project_tests, scaffold
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.domain.scaffold import (
@@ -200,7 +200,7 @@ def test_the_virtual_clock_variant_keeps_the_practical_track():
         (
             TemplateName.PROJECT_RUST,
             "--virtual-clock is not available for project-rust yet: "
-            "the rust runner does not grade the virtual clock",
+            "cstudy does not write rust tests on the virtual clock",
         ),
     ],
 )
@@ -221,6 +221,16 @@ def test_the_virtual_clock_is_a_usage_error_where_it_does_not_apply(template, me
 def test_the_virtual_clock_variant_is_a_template_of_its_own(template):
     request = ScaffoldRequest("waiter", template, virtual_clock=True)
     assert template_directory(request) == f"{template}-clock"
+
+
+def test_the_virtual_clock_waits_for_the_runner_that_grades_it(monkeypatch):
+    monkeypatch.setattr(scaffold, "GRADED_CLOCK_LANGUAGES", frozenset({Language.GO}))
+    message = (
+        "--virtual-clock is not available for project-python yet: "
+        "the python runner does not grade the virtual clock"
+    )
+    with pytest.raises(UsageError, match=re.escape(message)):
+        plan(slug="waiter", template=TemplateName.PROJECT_PYTHON, virtual_clock=True)
 
 
 def test_the_virtual_clock_waits_for_the_generated_tests_that_run_on_it(monkeypatch):

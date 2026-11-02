@@ -9,6 +9,7 @@ error itself is in the bridge, and only the bridge's errors become `load_error`s
 import json
 import re
 import sys
+import tomllib
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -81,9 +82,13 @@ PRIVATE_CODES = frozenset({"E0603", "E0624"})
 MUTABLE_BORROW_CODE = "E0596"
 """A `&mut self` method that the bridge calls on a shared instance."""
 SHARED_RECEIVER = (
-    "the worker threads of the stress cases share the instance, so its methods take &self, not "
-    "&mut self"
+    "the worker threads of the stress cases or the tasks of @spawn share the instance, so its "
+    "methods take &self, not &mut self"
 )
+CLOCK_FEATURE = "clock"
+"""The runner crate's feature that grades the virtual clock on tokio, which only the harness of a
+project on the virtual clock turns on (docs/specs/runners.md#virtual-clock-and-stress-in-project-
+jobs)."""
 LABELLED_CODES = frozenset({"E0308"})
 """Errors whose primary span's label says what the message does not: `expected i32, found
 i64`."""
@@ -164,12 +169,32 @@ def package_manifest(name: str, runtime: str) -> str:
     )
 
 
-def project_harness_manifest(name: str, crate: str, root: str, runtime: str) -> str:
+def project_harness_manifest(
+    name: str, crate: str, root: str, runtime: str, *, clock: bool = False
+) -> str:
     """A project's harness package `name`, depending on the crate `crate` at the relative path
     `root` under the name `user`, and on the runner crates at `runtime`, the relative path to the
-    runtime's `rust/` directory (docs/specs/runners.md#rust-projects)."""
+    runtime's `rust/` directory (docs/specs/runners.md#rust-projects); `clock` turns on the
+    runner's virtual clock."""
     user = f'{USER_CRATE} = {{ package = "{crate}", path = {json.dumps(root)} }}\n'
-    return package_manifest(name, runtime).replace("[dependencies]\n", f"[dependencies]\n{user}")
+    manifest = package_manifest(name, runtime).replace(
+        "[dependencies]\n", f"[dependencies]\n{user}"
+    )
+    if not clock:
+        return manifest
+    runner = f'cs_runner = {{ path = "{runtime}/cs_runner" }}\n'
+    with_clock = f'cs_runner = {{ path = "{runtime}/cs_runner", features = ["{CLOCK_FEATURE}"] }}\n'
+    return manifest.replace(runner, with_clock)
+
+
+def runs_on_the_clock(harness_manifest: str) -> bool:
+    """Whether a harness manifest, as `project_harness_manifest` wrote it, turns the clock on."""
+    try:
+        document = tomllib.loads(harness_manifest)
+    except tomllib.TOMLDecodeError:
+        return False
+    dependencies = _object(document.get("dependencies"))
+    return CLOCK_FEATURE in _list(_object(dependencies.get("cs_runner")).get("features"))
 
 
 def profile_arguments(profile: str = RELEASE) -> list[str]:

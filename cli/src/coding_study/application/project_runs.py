@@ -28,6 +28,7 @@ from coding_study.application.ports import (
     Toolchains,
 )
 from coding_study.application.stress_judging import sequential_cases, stress_judging
+from coding_study.domain.cases import Case, HarnessOp, OperationSequence
 from coding_study.domain.comparators import Comparator
 from coding_study.domain.config import Config
 from coding_study.domain.debugging import DebugSession
@@ -206,8 +207,19 @@ def grading_stress_plan(
 
 
 def shares_the_entry_class(problem: Problem, level: int) -> bool:
-    """Whether the graded levels have stress cases, whose workers share the entry class."""
-    return any(isinstance(case.input, StressScenario) for case in cases_up_to(problem.cases, level))
+    """Whether the graded levels have stress cases, whose workers share the entry class, or
+    cases that `@spawn` a task, which shares it with the rest of its case."""
+    return any(_shares_the_instance(case) for case in cases_up_to(problem.cases, level))
+
+
+def _shares_the_instance(case: Case) -> bool:
+    match case.input:
+        case StressScenario():
+            return True
+        case OperationSequence(ops=ops):
+            return HarnessOp.SPAWN in ops
+        case _:
+            return False
 
 
 def run_grading(environment: Environment, run: GradingRun, notify: ProgressNotice) -> Judgement:

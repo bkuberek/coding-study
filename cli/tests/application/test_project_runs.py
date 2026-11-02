@@ -25,6 +25,7 @@ from coding_study.application.project_runs import (
     project_runner,
     run_grading,
     run_suite,
+    shares_the_entry_class,
     suite_job,
 )
 from coding_study.domain.case_status import CaseStatus
@@ -50,6 +51,7 @@ from coding_study.domain.suite_runs import SuiteFramework, SuiteJob, SuiteReport
 from coding_study.domain.virtual_clock import ProjectClock
 from tests.fakes import FakeToolchains, ScriptedRunnerProcess, make_environment, repository_root
 from tests.helpers import PROJECT_PROBLEMS
+from tests.project_builders import ops_case, project_problem
 
 SLUG = "bank-project-python"
 LAUNCH = RunnerLaunch(("python", "-P", "-m", "cs_runner"), Path("/ws/projects/bank"), 5_000)
@@ -514,3 +516,14 @@ def test_a_grading_hands_the_graded_problem_and_level_to_the_runner(grading_envi
     (scope,) = hosting_runner.scopes
     assert isinstance(scope, ProjectGrading)
     assert (scope.root, scope.meta, scope.level) == (ROOT, problem.meta, 2)
+
+
+def test_a_case_that_spawns_a_task_shares_the_entry_class_from_its_level():
+    problem = project_problem(
+        ops_case("ex1", 1, ("deposit", [1, "a", 5], 5)),
+        ops_case("ex2", 2, ("@spawn", ["t1", "deposit", 2, "a", 1], None), ("@join", ["t1"], 6)),
+    )
+    assert (shares_the_entry_class(problem, 1), shares_the_entry_class(problem, 2)) == (
+        False,
+        True,
+    )

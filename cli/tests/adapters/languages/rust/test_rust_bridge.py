@@ -14,7 +14,8 @@ from coding_study.adapters.languages.rust.bridge import (
 )
 from coding_study.adapters.problem_documents import meta_from_document
 from coding_study.domain.problem import ProblemKind, ProblemMeta
-from coding_study.domain.signature import Signature
+from coding_study.domain.signature import ClassSignature, Method, Param, Returns, Signature
+from coding_study.domain.type_dsl import parse_return_type, parse_value_type
 from tests.helpers import REPOSITORY_ROOT
 from tests.stub_contract import STUB_CASES
 
@@ -76,6 +77,55 @@ def test_a_project_shares_its_entry_class_from_the_level_of_its_stress_cases():
 def test_a_project_owns_its_entry_class_below_that_level():
     bridge = text(stub_signature("lru-cache"), PROJECT, kind=ProblemKind.PROJECT)
     assert 'cs_runner::Entry::Class(cs_runner::Class { name: "LRUCache",' in bridge
+
+
+PUBLISH = Method(
+    "publish", (Param("body", parse_value_type("string")),), Returns(parse_return_type("int"))
+)
+RECEIVE = Method(
+    "receive",
+    (Param("waitMs", parse_value_type("long")),),
+    Returns(parse_return_type("string")),
+    is_async=True,
+)
+INBOX = ClassSignature("Inbox", (), (PUBLISH, RECEIVE))
+
+
+def on_the_clock(*, shared: bool = False) -> str:
+    return bridge_source(
+        INBOX, (PROJECT,), kind=ProblemKind.PROJECT, shared=shared, clock=True
+    ).text
+
+
+def test_a_project_on_the_virtual_clock_awaits_its_async_methods_on_an_owned_instance():
+    bridge = on_the_clock()
+    assert "Result<cs_runner::OwnedCall, cs_runner::InputError> {" in bridge
+    assert "Ok(cs_runner::owned_call(move |object| {\n" in bridge
+    assert "let instance = cs_runner::instance::<user::Inbox>(object);" in bridge
+    assert "let output: String = instance.receive(arg_wait_ms).await;" in bridge
+    assert "let output: i32 = instance.publish(arg_body);" in bridge
+    assert (
+        'entry: cs_runner::Entry::Clock(cs_runner::ClockClass::Owned { name: "Inbox", '
+        "construct: user_construct, call: user_call })," in bridge
+    )
+
+
+def test_a_shared_project_on_the_clock_hands_its_tasks_the_instance():
+    bridge = on_the_clock(shared=True)
+    assert "Result<cs_runner::SharedCall, cs_runner::InputError> {" in bridge
+    assert "Ok(cs_runner::shared_call(move |object| async move {\n" in bridge
+    assert "let instance = cs_runner::shared_instance::<user::Inbox>(&*object);" in bridge
+    assert "cs_runner::sendable(output)" in bridge
+    assert (
+        "entry: cs_runner::Entry::Clock(cs_runner::ClockClass::Shared { class: "
+        'cs_runner::Concurrent { name: "Inbox", construct: user_construct, '
+        "method: user_method }, call: user_call })," in bridge
+    )
+
+
+def test_a_stress_worker_blocks_on_an_async_method_on_the_real_clock():
+    bridge = on_the_clock(shared=True)
+    assert "let output: String = cs_runner::block_on(instance.receive(arg_wait_ms));" in bridge
 
 
 def test_a_project_crate_names_its_library_root_in_messages():
