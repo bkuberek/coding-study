@@ -200,7 +200,7 @@ def test_the_virtual_clock_variant_keeps_the_practical_track():
         (
             TemplateName.PROJECT_KOTLIN,
             "--virtual-clock is not available for project-kotlin yet: "
-            "the kotlin runner does not grade the virtual clock",
+            "cstudy does not write kotlin tests on the virtual clock",
         ),
         (
             TemplateName.PROJECT_RUST,

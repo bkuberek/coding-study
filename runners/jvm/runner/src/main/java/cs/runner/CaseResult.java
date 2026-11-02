@@ -6,7 +6,7 @@ import com.google.gson.JsonObject;
 
 /**
  * The outcome of one case: {@code case_result} statuses ok, error and invalid_output, and for
- * stress runs also stalled (docs/specs/runners.md#events).
+ * stress runs and cases on the virtual clock also stalled (docs/specs/runners.md#events).
  */
 sealed interface CaseResult {
     long durationNs();
@@ -82,6 +82,21 @@ sealed interface CaseResult {
                 event.addProperty("worker", worker);
                 event.add("progress", progress);
             }
+        }
+    }
+
+    /**
+     * A case on the virtual clock that deadlocked at operation {@code opIndex}, or ended with
+     * coroutines still active: {@code reason} names the operation and the virtual time.
+     */
+    record ClockStalled(String reason, int opIndex, JsonArray partialOutput, long durationNs)
+            implements CaseResult {
+        @Override
+        public void describe(JsonObject event) {
+            event.addProperty("status", "stalled");
+            event.addProperty("op_index", opIndex);
+            event.addProperty("reason", reason);
+            event.add("partial_output", partialOutput);
         }
     }
 

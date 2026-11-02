@@ -540,12 +540,10 @@ def test_the_virtual_clock_flag_on_another_template_writes_nothing(environment):
 
 
 def test_the_virtual_clock_flag_on_a_language_without_a_graded_clock_writes_nothing(environment):
-    request = ScaffoldRequest(
-        "waiter-project-kotlin", TemplateName.PROJECT_KOTLIN, virtual_clock=True
-    )
+    request = ScaffoldRequest("waiter-project-rust", TemplateName.PROJECT_RUST, virtual_clock=True)
     with pytest.raises(UsageError, match="does not grade the virtual clock"):
         create_problem(environment, TEMPLATES, request)
-    assert not environment.workspace.exists("problems/0003-waiter-project-kotlin")
+    assert not environment.workspace.exists("problems/0003-waiter-project-rust")
 
 
 # a Python project on the virtual clock

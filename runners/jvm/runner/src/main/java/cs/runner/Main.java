@@ -60,7 +60,8 @@ public final class Main {
 
     /**
      * Stress runs, project grading and a project's stress runs always; suite jobs when a test
-     * framework host is on the classpath, as on a project's test runtime classpath
+     * framework host is on the classpath, as on a project's test runtime classpath; the virtual
+     * clock when its host is, as on the classpath of a project that applies {@code cs.coroutines}
      * (docs/specs/runners.md#capability).
      */
     private static List<String> features() {
@@ -68,6 +69,9 @@ public final class Main {
                 List.of(STRESS_FEATURE, PROJECT_FEATURE, PROJECT_STRESS_FEATURE));
         if (SuiteRun.available()) {
             features.add(SuiteRun.SUITE_FEATURE);
+        }
+        if (Suspending.host().isPresent()) {
+            features.add(Suspending.CLOCK_FEATURE);
         }
         return features;
     }

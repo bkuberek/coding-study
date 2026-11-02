@@ -24,6 +24,8 @@ record Request(List<Job> jobs) implements RunnerRequest {
     private static final String SUITE_KIND = "suite";
     private static final String THREADS_MODEL = "threads";
     private static final String PLATFORM = "platform";
+    private static final String CLOCK = "clock";
+    private static final String VIRTUAL_CLOCK = "virtual";
 
     /** The input of one call: function arguments or an operation sequence. */
     sealed interface Case permits FunctionCase, OperationsCase, StressCase {
@@ -51,29 +53,34 @@ record Request(List<Job> jobs) implements RunnerRequest {
     /**
      * @param className the fully qualified class from {@code target.class}
      * @param methods keyed by canonical method name, as {@code ops} names them
+     * @param virtualClock a project on the virtual clock ({@code "clock": "virtual"}), whose cases
+     *     run on it (docs/specs/runners.md#virtual-clock-and-stress-in-project-jobs)
      */
     record ClassJob(
             String id,
             String className,
             Member constructor,
             Map<String, Member> methods,
-            List<OperationsCase> cases) implements Job {
+            List<OperationsCase> cases,
+            boolean virtualClock) implements Job {
     }
 
     /**
      * A concurrent job (docs/specs/runners.md#concurrent-jobs), or a project's grading job with
      * stress runs (docs/specs/runners.md#stress-in-project-jobs): sequential {@link
-     * OperationsCase}s, then {@link StressCase}s; the JVM runs the threads model only.
+     * OperationsCase}s, on the virtual clock when the project has it, then {@link StressCase}s,
+     * which run on the real clock; the JVM runs the threads model only.
      */
     record ConcurrentJob(
             String id,
             String className,
             Member constructor,
             Map<String, Member> methods,
-            List<Case> cases) implements Job {
+            List<Case> cases,
+            boolean virtualClock) implements Job {
         /** The class as a design job without cases, so it loads like one. */
         ClassJob design() {
-            return new ClassJob(id, className, constructor, methods, List.of());
+            return new ClassJob(id, className, constructor, methods, List.of(), virtualClock);
         }
     }
 
@@ -146,14 +153,35 @@ record Request(List<Job> jobs) implements RunnerRequest {
         Map<String, Member> methods =
                 methods(Json.array(classSignature, "methods"), Json.object(names, "methods"));
         String kind = Json.string(job, "kind");
+        boolean virtualClock = virtualClock(job, kind);
         if (CONCURRENT_KIND.equals(kind) || (PROJECT_KIND.equals(kind) && job.has("model"))) {
             String model = Json.string(job, "model");
             if (!THREADS_MODEL.equals(model)) {
                 throw new BadRequestException("the JVM runs the threads model only, not " + model);
             }
-            return new ConcurrentJob(id, className, constructor, methods, concurrentCases(cases));
+            List<Case> parsed = concurrentCases(cases);
+            return new ConcurrentJob(id, className, constructor, methods, parsed, virtualClock);
         }
-        return new ClassJob(id, className, constructor, methods, operationsCases(cases));
+        List<OperationsCase> parsed = operationsCases(cases);
+        return new ClassJob(id, className, constructor, methods, parsed, virtualClock);
+    }
+
+    /**
+     * {@code "clock": "virtual"}, which only a project job has; {@code clock_seed} is not read,
+     * since the test scheduler runs simultaneous tasks in the order they were scheduled.
+     */
+    private static boolean virtualClock(JsonObject job, String kind) {
+        if (!job.has(CLOCK)) {
+            return false;
+        }
+        String clock = Json.string(job, CLOCK);
+        if (!VIRTUAL_CLOCK.equals(clock)) {
+            throw new BadRequestException("\"clock\": \"" + clock + "\" is not supported");
+        }
+        if (!PROJECT_KIND.equals(kind)) {
+            throw new BadRequestException("only a project job runs on the virtual clock");
+        }
+        return true;
     }
 
     private static SuiteJob suiteJob(JsonObject job, String id) {

@@ -10,9 +10,12 @@ import java.util.List;
  * A function, constructor or method from the request signature, with modifiers.
  *
  * @param name the JVM name to look up (from the request's {@code names})
+ * @param async a Kotlin {@code suspend} method ({@code "async": true}), whose JVM signature takes
+ *     a continuation after the declared parameters
  */
-record Member(String name, List<Param> params, Returns returns) {
+record Member(String name, List<Param> params, Returns returns, boolean async) {
     static final String VOID = "void";
+    private static final String ASYNC = "async";
 
     record Param(String name, DslType type, String refOf) {
     }
@@ -35,11 +38,12 @@ record Member(String name, List<Param> params, Returns returns) {
 
     static Member parse(String name, JsonObject signature) {
         List<Param> params = parseParams(Json.array(signature, "params"));
-        return new Member(name, params, parseReturns(signature));
+        return new Member(name, params, parseReturns(signature), parseAsync(signature));
     }
 
     static Member constructor(String name, JsonObject signature) {
-        return new Member(name, parseParams(Json.array(signature, "params")), Returns.NOTHING);
+        List<Param> params = parseParams(Json.array(signature, "params"));
+        return new Member(name, params, Returns.NOTHING, false);
     }
 
     Param param(String paramName) {
@@ -49,6 +53,17 @@ record Member(String name, List<Param> params, Returns returns) {
             }
         }
         throw new BadRequestException("no parameter \"" + paramName + "\" in " + name);
+    }
+
+    private static boolean parseAsync(JsonObject signature) {
+        if (!signature.has(ASYNC)) {
+            return false;
+        }
+        JsonElement async = signature.get(ASYNC);
+        if (!Json.isBoolean(async)) {
+            throw new BadRequestException("\"" + ASYNC + "\" must be a boolean");
+        }
+        return async.getAsBoolean();
     }
 
     private static List<Param> parseParams(JsonArray encoded) {

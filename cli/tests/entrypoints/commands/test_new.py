@@ -135,7 +135,7 @@ def test_a_virtual_clock_project_still_ends_with_the_ready_gate(environment):
         (["--from-template", "project-java"], "Java has no virtual clock"),
         (
             ["--from-template", "project-kotlin"],
-            "the kotlin runner does not grade the virtual clock",
+            "cstudy does not write kotlin tests on the virtual clock",
         ),
     ],
 )

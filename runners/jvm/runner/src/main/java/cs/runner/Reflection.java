@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 final class Reflection {
     private static final String NO_SUCH_METHOD = "NoSuchMethodException";
     private static final String CLASS_NOT_FOUND = "ClassNotFoundException";
+    private static final String CONTINUATION = "kotlin.coroutines.Continuation";
 
     private Reflection() {
     }
@@ -54,20 +55,32 @@ final class Reflection {
         }
     }
 
+    /**
+     * The method {@code member} names; for an {@code async} member, the {@code suspend} method,
+     * whose JVM signature takes a {@code kotlin.coroutines.Continuation} after its parameters.
+     */
     static Method method(Class<?> type, Member member) throws LoadException {
         for (Class<?> owner = type;
                 owner != null && owner != Object.class;
                 owner = owner.getSuperclass()) {
             for (Method method : owner.getDeclaredMethods()) {
                 boolean candidate = !method.isSynthetic() && method.getName().equals(member.name());
-                if (candidate && accepts(method, member.params())) {
+                if (candidate && accepts(method, member)) {
                     method.setAccessible(true);
                     return method;
                 }
             }
         }
+        String kind = member.async() ? "suspend method " : "method ";
         String expected = member.name() + describe(member.params());
-        throw new LoadException(NO_SUCH_METHOD, "no method " + expected + " in " + type.getName());
+        throw new LoadException(NO_SUCH_METHOD, "no " + kind + expected + " in " + type.getName());
+    }
+
+    /** Whether {@code method} is a {@code suspend} method: its last parameter is a continuation. */
+    static boolean isSuspending(Method method) {
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        return parameterTypes.length > 0
+                && parameterTypes[parameterTypes.length - 1].getName().equals(CONTINUATION);
     }
 
     static Constructor<?> constructor(Class<?> type, List<Member.Param> params)
@@ -137,12 +150,23 @@ final class Reflection {
         return lastDot < 0 ? "" : className.substring(0, lastDot);
     }
 
+    private static boolean accepts(Method method, Member member) {
+        if (!member.async()) {
+            return accepts(method, member.params());
+        }
+        return isSuspending(method) && accepts(method.getParameterTypes(), member.params(), 1);
+    }
+
     private static boolean accepts(Executable executable, List<Member.Param> params) {
-        Class<?>[] parameterTypes = executable.getParameterTypes();
-        if (parameterTypes.length != params.size()) {
+        return accepts(executable.getParameterTypes(), params, 0);
+    }
+
+    /** Whether the parameter types, but the last {@code extra}, receive {@code params}. */
+    private static boolean accepts(Class<?>[] parameterTypes, List<Member.Param> params, int extra) {
+        if (parameterTypes.length != params.size() + extra) {
             return false;
         }
-        for (int index = 0; index < parameterTypes.length; index++) {
+        for (int index = 0; index < params.size(); index++) {
             if (!accepts(parameterTypes[index], params.get(index).type())) {
                 return false;
             }

@@ -1,4 +1,5 @@
-"""The Java and Kotlin project fixtures 9026 to 9029 through `cstudy verify --conformance`.
+"""The Java and Kotlin project fixtures 9026 to 9029, and the Kotlin project on the virtual clock
+9043, through `cstudy verify --conformance`.
 
 Marked `slow`: each fixture's folder builds with Gradle, grades on the main runtime classpath and
 runs its JUnit Platform suite in a JVM, as a user's project does, in a copy of the session's
@@ -20,7 +21,11 @@ pytestmark = [pytest.mark.slow, pytest.mark.jvm]
 runner = CliRunner()
 FIXTURES = {
     "java": ("conformance-project-java", "conformance-suite-junit-java"),
-    "kotlin": ("conformance-project-kotlin", "conformance-suite-junit-kotlin"),
+    "kotlin": (
+        "conformance-project-kotlin",
+        "conformance-suite-junit-kotlin",
+        "conformance-project-clock-kotlin",
+    ),
 }
 RESULTS = {
     "java": [
@@ -28,8 +33,9 @@ RESULTS = {
         "9028-conformance-suite-junit-java  java ok",
     ],
     "kotlin": [
-        "9027-conformance-project-kotlin      kt ok",
-        "9029-conformance-suite-junit-kotlin  kt ok",
+        "9027-conformance-project-kotlin        kt ok",
+        "9029-conformance-suite-junit-kotlin    kt ok",
+        "9043-conformance-project-clock-kotlin  kt ok",
     ],
 }
 
@@ -44,7 +50,8 @@ def test_the_jvm_runner_meets_the_project_expectations(
     monkeypatch.setenv("CSTUDY_CONFIG", str(tmp_path / "absent-config.toml"))
     arguments = ["verify", "--conformance", "--lang", language, *FIXTURES[language]]
     result = runner.invoke(cli.app, arguments)
-    assert (result.exit_code, result.output.splitlines()[:2]) == (
+    expected = RESULTS[language]
+    assert (result.exit_code, result.output.splitlines()[: len(expected)]) == (
         ExitCode.SUCCESS,
-        RESULTS[language],
+        expected,
     )

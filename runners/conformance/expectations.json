@@ -156,6 +156,12 @@
     {"problem": "conformance-project-stress-rust", "approach": "reference", "outcome": {"status": "pass"},
      "cases": {"s1": {"status": "pass", "runs": 10}}},
     {"problem": "conformance-project-stress-rust", "approach": "broken-unlocked-add", "outcome": {"status": "pass"},
-     "cases": {"s1": {"status": "fail", "runs": 10, "min_failed": 9}}}
+     "cases": {"s1": {"status": "fail", "runs": 10, "min_failed": 9}}},
+    {"problem": "conformance-project-clock-kotlin", "approach": "reference", "outcome": {"status": "pass"}, "cases": {
+      "deadlock": {"status": "stalled", "message": "op 3 (@join r1): deadlock at 2000 ms", "op_index": 3, "partial_output": [null, null, null]},
+      "task-error": {"status": "error", "message": "conformance failure", "op_index": 3, "partial_output": [null, null, null]},
+      "jam": {"status": "timeout"},
+      "leftover": {"status": "stalled", "message": "op 2 (@now): the case ended with coroutines still active at 0 ms", "op_index": 2, "partial_output": [null, null]}
+    }}
   ]
 }

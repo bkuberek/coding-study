@@ -44,20 +44,33 @@ final class JobRunner {
             case Request.ClassJob design -> runCases(
                     design.id(),
                     design.cases(),
-                    ClassTarget.load(design),
+                    sequential(design, ClassTarget.load(design)),
                     Request.OperationsCase::id);
             case Request.ConcurrentJob concurrent -> runConcurrent(concurrent);
             case Request.SuiteJob suite -> throw new IllegalStateException("a suite job has no cases");
         }
     }
 
-    /** Sequential cases like a design problem's, then stress runs (runners.md#concurrent-jobs). */
+    /**
+     * The target of a job's sequential cases: on the virtual clock when the project has it
+     * (docs/specs/runners.md#virtual-clock-and-stress-in-project-jobs).
+     */
+    private static Target<Request.OperationsCase> sequential(
+            Request.ClassJob design, ClassTarget target) throws LoadException {
+        return design.virtualClock() ? ClockTarget.on(target) : target;
+    }
+
+    /**
+     * Sequential cases like a design problem's, on the virtual clock when the project has it,
+     * then stress runs on the real clock (runners.md#concurrent-jobs).
+     */
     private void runConcurrent(Request.ConcurrentJob job) throws LoadException {
         ClassTarget target = ClassTarget.load(job.design());
+        Target<Request.OperationsCase> sequential = sequential(job.design(), target);
         for (Request.Case testCase : job.cases()) {
             switch (testCase) {
-                case Request.OperationsCase sequence ->
-                        runCases(job.id(), List.of(sequence), target, Request.OperationsCase::id);
+                case Request.OperationsCase sequence -> runCases(
+                        job.id(), List.of(sequence), sequential, Request.OperationsCase::id);
                 case Request.StressCase stress -> runStress(job.id(), target, stress);
                 case Request.FunctionCase function ->
                         throw new BadRequestException("a concurrent job has no function cases");

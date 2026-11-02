@@ -16,7 +16,8 @@ import java.util.Map;
 final class ClassTarget implements Target<Request.OperationsCase> {
     private static final int CONSTRUCTOR_OP = 0;
 
-    private record BoundMethod(Member member, Method method) {
+    /** A method of the signature and the JVM method that implements it. */
+    record BoundMethod(Member member, Method method) {
     }
 
     private final Member constructorMember;
@@ -89,6 +90,24 @@ final class ClassTarget implements Target<Request.OperationsCase> {
         return new PreparedOp(bound.member(), bound.method(), arguments);
     }
 
+    /** The constructor's member and its JVM constructor. */
+    Member constructorMember() {
+        return constructorMember;
+    }
+
+    Constructor<?> constructor() {
+        return constructor;
+    }
+
+    /** The method {@code op} names; an unknown one is a bad request. */
+    BoundMethod method(String op) {
+        BoundMethod method = methods.get(op);
+        if (method == null) {
+            throw new BadRequestException("unknown operation \"" + op + "\"");
+        }
+        return method;
+    }
+
     Object construct(JsonArray args) throws Reflection.UserCodeException {
         return Reflection.create(constructor, Arguments.decode(constructorMember, args.asList()));
     }
@@ -110,14 +129,6 @@ final class ClassTarget implements Target<Request.OperationsCase> {
             calls.add(call);
             arguments.add(Arguments.decode(member, testCase.args().get(op).asList()));
         }
-    }
-
-    private BoundMethod method(String op) {
-        BoundMethod method = methods.get(op);
-        if (method == null) {
-            throw new BadRequestException("unknown operation \"" + op + "\"");
-        }
-        return method;
     }
 
     private CaseResult run(List<String> ops, List<BoundMethod> calls, List<Object[]> arguments) {
