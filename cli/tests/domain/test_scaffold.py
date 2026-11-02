@@ -214,6 +214,12 @@ def test_the_virtual_clock_is_a_usage_error_where_it_does_not_apply(template, me
         plan(slug="waiter", template=template, virtual_clock=True)
 
 
+@pytest.mark.parametrize("template", [TemplateName.PROJECT_GO, TemplateName.PROJECT_PYTHON])
+def test_the_virtual_clock_variant_is_a_template_of_its_own(template):
+    request = ScaffoldRequest("waiter", template, virtual_clock=True)
+    assert template_directory(request) == f"{template}-clock"
+
+
 def test_the_virtual_clock_waits_for_the_generated_tests_that_run_on_it(monkeypatch):
     """The template's examples hold harness operations, which its generated tests must express."""
     monkeypatch.setattr(project_tests, "HARNESS_TEST_LANGUAGES", frozenset({Language.GO}))

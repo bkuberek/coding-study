@@ -234,8 +234,12 @@ def project_language(meta: ProblemMeta) -> Language:
 def method_text(method: Method, language: Language) -> str:
     """`method` as `language` declares it: `create_account(timestamp: int, account_id: str) ->
     bool` in Python, `createAccount(timestamp: number, accountId: string): boolean` in TypeScript,
-    `boolean createAccount(long timestamp, String accountId)` in Java."""
-    declare = _project_language(language).declare
+    `boolean createAccount(long timestamp, String accountId)` in Java. An asynchronous method reads
+    as the language declares one: `async def wait_for(key: str) -> str` in Python."""
+    spelled = _project_language(language)
+    declare = (
+        spelled.declare_async if method.is_async and spelled.declare_async else spelled.declare
+    )
     params = tuple(
         (member_name(param.name, language, NameRole.PARAMETER), param.type)
         for param in method.params
@@ -386,6 +390,8 @@ class _ProjectLanguage:
     test_sources: str | None = None
     """Java and Kotlin: the directory of the test sources, where the generated tests go to a
     package directory; None where they may go to any directory."""
+    declare_async: _Declare | None = None
+    """An asynchronous method (`async: true`); None in a language without them."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -399,6 +405,8 @@ class _Annotated:
     (Go's and Kotlin's `void`) has neither."""
     parameter_separator: str = ": "
     """Between a parameter's name and its type."""
+    keyword: str = ""
+    """Before the name: `async def ` for an asynchronous Python method."""
 
     def __call__(
         self, name: str, params: tuple[tuple[str, ValueType], ...], returns: ReturnType
@@ -407,7 +415,7 @@ class _Annotated:
             f"{param}{self.parameter_separator}{self.type_text(declared)}"
             for param, declared in params
         )
-        declared = f"{name}({listed})"
+        declared = f"{self.keyword}{name}({listed})"
         returned = self.type_text(returns)
         return f"{declared}{self.returns_separator}{returned}" if returned else declared
 
@@ -712,6 +720,7 @@ _PROJECT_LANGUAGES: Mapping[Language, _ProjectLanguage] = {
         "test_level_",
         ".py",
         _Annotated(_python_type, " -> "),
+        declare_async=_Annotated(_python_type, " -> ", keyword="async def "),
     ),
     Language.TYPESCRIPT: _ProjectLanguage(
         _typescript_entry_issue,

@@ -1139,10 +1139,19 @@ def test_a_python_project_cannot_declare_a_jdk_range(bank):
 # S18
 
 
+CLOCK_PYPROJECT = (
+    "[tool.pytest.ini_options]\n"
+    'testpaths = ["tests"]\n'
+    'pythonpath = ["."]\n'
+    'addopts = "--import-mode=importlib -p no:cacheprovider -p cs_support.virtual_clock"\n'
+)
+
+
 def on_the_virtual_clock(problem):
-    """The bank on the virtual clock, with a case that moves it by `ms` milliseconds."""
+    """The bank on the virtual clock, whose starter loads the clock's pytest plugin."""
     project = replace(problem.meta.project, clock=ProjectClock.VIRTUAL)
-    return with_meta(problem, project=project)
+    clocked = with_starter(problem, text_file("pyproject.toml", CLOCK_PYPROJECT))
+    return with_meta(clocked, project=project)
 
 
 def advancing(problem, milliseconds: int):
@@ -1175,6 +1184,35 @@ def test_a_harness_operation_out_of_range_fails_the_static_checks(bank):
     assert clock_errors(problem) == [
         f"{TESTS}: cases[6] c1: ops[1]: @advance moves the clock 1 to 2147483647 ms, not 0"
     ]
+
+
+@pytest.mark.usefixtures("graded_clock_runners")
+def test_a_python_starter_on_the_virtual_clock_loads_its_pytest_plugin(bank):
+    pyproject = CLOCK_PYPROJECT.replace(" -p cs_support.virtual_clock", "")
+    problem = with_starter(on_the_virtual_clock(bank), text_file("pyproject.toml", pyproject))
+    assert starter_errors(problem) == [
+        f"{STARTER}/pyproject.toml: loads no cs_support.virtual_clock; a virtual-clock project's "
+        "addopts holds -p cs_support.virtual_clock"
+    ]
+
+
+@pytest.mark.usefixtures("graded_clock_runners")
+@pytest.mark.parametrize(
+    "addopts",
+    [
+        '["--import-mode=importlib", "-p", "cs_support.virtual_clock"]',
+        '"-pcs_support.virtual_clock"',
+    ],
+    ids=["list", "joined"],
+)
+def test_the_plugin_may_be_loaded_in_either_spelling(bank, addopts):
+    pyproject = f"[tool.pytest.ini_options]\naddopts = {addopts}\n"
+    problem = with_starter(on_the_virtual_clock(bank), text_file("pyproject.toml", pyproject))
+    assert starter_errors(problem) == []
+
+
+def test_a_python_starter_on_the_real_clock_needs_no_plugin(bank):
+    assert starter_errors(bank) == []
 
 
 def test_a_harness_operation_without_the_clock_fails_the_static_checks(bank):

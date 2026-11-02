@@ -85,6 +85,21 @@ def test_the_go_virtual_clock_template_declares_the_clock():
     assert "  clock: virtual\n" in meta
 
 
+def test_the_python_virtual_clock_template_has_the_files_of_the_python_project_template():
+    clock = set(PackagedProblemTemplates().files("project-python-clock"))
+    assert clock == set(PackagedProblemTemplates().files(TemplateName.PROJECT_PYTHON))
+
+
+def test_the_python_virtual_clock_starter_loads_the_clock_plugin():
+    files = PackagedProblemTemplates().files("project-python-clock")
+    assert "-p cs_support.virtual_clock" in files["starter/pyproject.toml"]
+
+
+def test_the_python_virtual_clock_template_declares_the_clock_and_an_async_method():
+    meta = PackagedProblemTemplates().files("project-python-clock")["meta.yaml"]
+    assert ("  clock: virtual\n" in meta, "async: true" in meta) == (True, True)
+
+
 def test_the_go_starters_module_is_named_after_the_slug():
     files = PackagedProblemTemplates().files(TemplateName.PROJECT_GO)
     assert files["starter/go.mod"].startswith("module {{slug}}\n")

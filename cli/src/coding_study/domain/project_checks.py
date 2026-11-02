@@ -82,6 +82,9 @@ MAX_STARTER_KIB = 256
 MAX_STARTER_BYTES = MAX_STARTER_KIB * 1024
 README_FILE = "README.md"
 PYPROJECT_FILE = "pyproject.toml"
+CLOCK_PLUGIN = "cs_support.virtual_clock"
+"""The pytest plugin that runs a virtual-clock project's `async def` tests."""
+PLUGIN_OPTION = "-p"
 PACKAGE_FILE = "package.json"
 TSCONFIG_FILE = "tsconfig.json"
 OUTPUT_SECTION = "Output"
@@ -501,15 +504,15 @@ class _Trees:
         self._limits(starter)
         self._contents(starter)
         language = _language(self._content)
+        project = self._content.problem.meta.project
+        virtual = project is not None and project.clock is ProjectClock.VIRTUAL
         if language is Language.PYTHON:
-            _PythonStarter(self._error, starter).check()
+            _PythonStarter(self._error, starter, virtual_clock=virtual).check()
         elif language is Language.TYPESCRIPT:
             _TypeScriptStarter(self._error, starter).check()
         elif language is Language.GO:
             entry = _well_formed_entry(self._content)
             slug = self._content.problem.meta.slug
-            project = self._content.problem.meta.project
-            virtual = project is not None and project.clock is ProjectClock.VIRTUAL
             _GoStarter(self._error, starter, slug, virtual_clock=virtual).check(
                 entry[0].entry if entry else None
             )
@@ -583,12 +586,14 @@ def _cache_path(path: str) -> str | None:
 
 
 class _PythonStarter:
-    """S15: a `pyproject.toml` of tool settings only, and no top-level module that hides one the
-    native tests import, since the project root comes first on `sys.path`."""
+    """S15: a `pyproject.toml` of tool settings only, which on the virtual clock loads the pytest
+    plugin that runs `async def` tests on it, and no top-level module that hides one the native
+    tests import, since the project root comes first on `sys.path`."""
 
-    def __init__(self, report: _Report, starter: ProjectTree) -> None:
+    def __init__(self, report: _Report, starter: ProjectTree, *, virtual_clock: bool) -> None:
         self._report = report
         self._starter = starter
+        self._virtual_clock = virtual_clock
 
     def check(self) -> None:
         self._pyproject()
@@ -618,6 +623,34 @@ class _PythonStarter:
             self._report(PYPROJECT_FILE, "has a [tool.uv] table")
         if _sets(document, REQUIRES_PYTHON):
             self._report(PYPROJECT_FILE, f"sets {REQUIRES_PYTHON}")
+        if self._virtual_clock and not _loads_clock_plugin(document):
+            message = (
+                f"loads no {CLOCK_PLUGIN}; a virtual-clock project's addopts holds "
+                f"-p {CLOCK_PLUGIN}"
+            )
+            self._report(PYPROJECT_FILE, message)
+
+
+def _loads_clock_plugin(document: Mapping[str, object]) -> bool:
+    """Whether pytest's `addopts`, a string or a list, names the clock's plugin with `-p`, as
+    `-p <plugin>` or `-p<plugin>`; the runner turns plugin autoloading off."""
+    tool = _table(document.get("tool")) or {}
+    pytest = _table(tool.get("pytest")) or {}
+    options = _table(pytest.get("ini_options")) or {}
+    addopts = options.get("addopts")
+    if isinstance(addopts, str):
+        arguments = addopts.split()
+    elif isinstance(addopts, list):
+        listed = cast(list[object], addopts)
+        arguments = [argument for argument in listed if isinstance(argument, str)]
+    else:
+        return False
+    pairs = zip(arguments, [*arguments[1:], ""], strict=True)
+    return any(
+        argument == f"{PLUGIN_OPTION}{CLOCK_PLUGIN}"
+        or (argument == PLUGIN_OPTION and following == CLOCK_PLUGIN)
+        for argument, following in pairs
+    )
 
 
 def _table(value: object) -> Mapping[str, object] | None:

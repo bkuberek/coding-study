@@ -2,9 +2,11 @@
 grader on real projects.
 
 ruff runs with the starter's own settings (its `pyproject.toml`) on the level files of the
-fixture project, the catalog's Python project problems and a seeded random corpus that reaches
+fixture project, the catalog's Python project problems, the conformance suite's Python project on
+the virtual clock and seeded random corpora, on the real clock and on the virtual one, that reach
 the long-line layouts. The level files of each project then run with pytest on its reference
-(every one passes) and on its bare starter (level 1 fails only with `NotImplementedError`).
+(every one passes) and on its bare starter (level 1 fails only with `NotImplementedError`); the
+runner's sources are on the path, for the virtual clock's plugin.
 """
 
 import random
@@ -25,7 +27,8 @@ from coding_study.domain.project import ProjectTree
 from coding_study.domain.project_tests import level_tests
 from coding_study.domain.signature import ClassSignature, Method, Param, Returns
 from coding_study.domain.type_dsl import parse_return_type, parse_value_type
-from tests.helpers import CATALOG_PROBLEMS, PROJECT_PROBLEMS, SCHEMAS_DIRECTORY
+from coding_study.domain.virtual_clock import ProjectClock
+from tests.helpers import CATALOG_PROBLEMS, PROJECT_PROBLEMS, REPOSITORY_ROOT, SCHEMAS_DIRECTORY
 from tests.project_builders import ops_case, project_meta, project_problem
 
 pytestmark = pytest.mark.slow
@@ -37,23 +40,35 @@ STARTER_SETTINGS = '[tool.ruff]\ntarget-version = "py313"\n'
 CORPUS_FILES = 150
 CORPUS_SEED = 249
 NOT_IMPLEMENTED = "NotImplementedError"
+CONFORMANCE = REPOSITORY_ROOT / "runners" / "conformance"
+RUNNER_SOURCES = REPOSITORY_ROOT / "runners" / "python" / "src"
 
 
 def python_projects() -> list[Path]:
-    """The directories of the fixture's and the catalog's Python project problems."""
+    """The directories of the fixture's and the catalog's Python project problems, and of the
+    conformance suite's on the virtual clock."""
     return [
-        directory
-        for problems in (PROJECT_PROBLEMS, CATALOG_PROBLEMS)
-        for directory in sorted(problems.iterdir())
-        if is_python_project(directory / "meta.yaml")
+        *(
+            directory
+            for problems in (PROJECT_PROBLEMS, CATALOG_PROBLEMS)
+            for directory in sorted(problems.iterdir())
+            if is_python_project(directory / "meta.yaml")
+        ),
+        *(
+            directory
+            for directory in sorted(CONFORMANCE.iterdir())
+            if is_python_project(directory / "meta.yaml", on_the_clock=True)
+        ),
     ]
 
 
-def is_python_project(meta_file: Path) -> bool:
+def is_python_project(meta_file: Path, *, on_the_clock: bool = False) -> bool:
     if not meta_file.is_file():
         return False
     meta = yaml.safe_load(meta_file.read_text())
-    return meta.get("kind") == "project" and meta.get("languages") == ["python"]
+    clock = (meta.get("project") or {}).get("clock")
+    project = meta.get("kind") == "project" and meta.get("languages") == ["python"]
+    return project and (clock == "virtual" or not on_the_clock)
 
 
 PROJECTS = python_projects()
@@ -93,7 +108,11 @@ def ruff(root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
 def pytest_run(root: Path, *files: str) -> subprocess.CompletedProcess[str]:
     """pytest as `.venv/bin/pytest` would run it in the project: its own settings, no plugins,
     the project root off `sys.path` until `pythonpath` puts it there."""
-    environment = {"PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1", "PYTHONDONTWRITEBYTECODE": "1"}
+    environment = {
+        "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONPATH": str(RUNNER_SOURCES),
+    }
     return subprocess.run(
         [sys.executable, "-P", "-m", "pytest", "-q", "-rf", "--tb=line", *files],
         cwd=root,
@@ -109,10 +128,12 @@ def pytest_run(root: Path, *files: str) -> subprocess.CompletedProcess[str]:
 
 class Corpus:
     """Random level files: long names and values reach every layout, notes wrap, strings hold
-    quotes and escapes."""
+    quotes and escapes. On the virtual clock, methods are asynchronous at random and the cases
+    move and read the clock and spawn and join calls."""
 
-    def __init__(self, seed: int) -> None:
+    def __init__(self, seed: int, *, clock: bool = False) -> None:
         self._random = random.Random(seed)
+        self._clock = clock
 
     def problem(self) -> Problem:
         methods = tuple(self._method(index) for index in range(self._random.randint(1, 4)))
@@ -129,7 +150,8 @@ class Corpus:
         signature = ClassSignature(
             self._random.choice(["Bank", "LRUCache", "Ledger"]), constructor, methods
         )
-        meta = project_meta(signature, comparator, levels=(Level(1, "One"),))
+        clock = ProjectClock.VIRTUAL if self._clock else None
+        meta = project_meta(signature, comparator, levels=(Level(1, "One"),), clock=clock)
         cases = [self._case(signature, index) for index in range(self._random.randint(1, 3))]
         return project_problem(*cases, meta=meta)
 
@@ -139,7 +161,14 @@ class Corpus:
         )
         returns = self._random.choice(["void", *VALUE_TYPES])
         params = self._params(self._random.randint(0, 5))
-        return Method(f"{name}{index}", params, Returns(parse_return_type(returns)), level=1)
+        is_async = self._clock and self._random.random() < 0.5
+        return Method(
+            f"{name}{index}",
+            params,
+            Returns(parse_return_type(returns)),
+            level=1,
+            is_async=is_async,
+        )
 
     def _params(self, count: int) -> tuple[Param, ...]:
         return tuple(
@@ -158,6 +187,8 @@ class Corpus:
                 else self._value(str(method.returns.type))
             )
             calls.append((method.name, arguments, expected))
+            if self._clock:
+                calls += self._harness(method, arguments, expected)
         constructor = [self._value(str(param.type)) for param in signature.constructor_params]
         note = self._note() if self._random.random() < 0.6 else None
         return ops_case(
@@ -168,6 +199,25 @@ class Corpus:
             constructor=constructor,
             class_name=signature.name,
         )
+
+    def _harness(
+        self, method: Method, arguments: list[JsonValue], expected: JsonValue
+    ) -> list[tuple[str, list[JsonValue], JsonValue]]:
+        """Harness operations after a call: the clock moves or is read, or the call runs again as
+        a task that is joined at once."""
+        match self._random.randint(0, 3):
+            case 0:
+                return [("@advance", [self._random.choice([1, 250, 2147483647])], None)]
+            case 1:
+                return [("@now", [], self._random.choice([0, 1500, 9007199254740991]))]
+            case 2 if method.is_async:
+                task = self._random.choice(["r1", "consumer-1", self._word(), "now"])
+                return [
+                    ("@spawn", [task, method.name, *arguments], None),
+                    ("@join", [task], expected),
+                ]
+            case _:
+                return []
 
     def _value(self, type_text: str) -> JsonValue:
         if type_text.endswith("[]") or type_text.startswith("list<"):
@@ -223,13 +273,21 @@ def generated_files(tmp_path_factory: pytest.TempPathFactory) -> Path:
     (root / "pyproject.toml").write_text(STARTER_SETTINGS)
     (root / "bank").mkdir()
     (root / "bank" / "bank.py").write_text("")
-    corpus = Corpus(CORPUS_SEED)
+    corpus, clock_corpus = Corpus(CORPUS_SEED), Corpus(CORPUS_SEED, clock=True)
     for index in range(CORPUS_FILES):
         (root / f"test_corpus_{index}.py").write_text(
             GENERATOR.generate(level_tests(corpus.problem(), 1))
         )
+        (root / f"test_clock_corpus_{index}.py").write_text(
+            GENERATOR.generate(level_tests(clock_corpus.problem(), 1))
+        )
     for directory in PROJECTS:
         problem = load(directory, tmp_path_factory.mktemp("repository"))
+        assert problem.meta.project is not None
+        entry = root / f"{problem.meta.project.entry.replace('.', '/')}.py"
+        entry.parent.mkdir(parents=True, exist_ok=True)
+        entry.touch()
+        """The entry module is first-party, as in the project folder, for ruff's import order."""
         for path, text in level_files(problem).items():
             (root / f"{problem.meta.slug}_{Path(path).name}").write_text(text)
     return root
@@ -270,8 +328,9 @@ def build(root: Path, problem: Problem, overlay: str | None) -> Path:
     return root
 
 
-def test_the_pilot_is_among_the_projects_checked():
-    assert "0249-bank-project-python" in {directory.name for directory in PROJECTS}
+def test_the_pilot_and_the_clock_fixture_are_among_the_projects_checked():
+    checked = {directory.name for directory in PROJECTS}
+    assert {"0249-bank-project-python", "9035-conformance-project-clock-python"} <= checked
 
 
 def test_every_level_file_passes_on_the_reference(project, tmp_path):

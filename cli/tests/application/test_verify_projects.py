@@ -439,11 +439,15 @@ MS = 1_000_000
 @pytest.fixture
 def on_the_clock(root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The fixture project on the virtual clock, whose runner is the Python one that the fakes
-    stand in for; its hang guard is one second."""
+    stand in for, and whose starter loads the clock's pytest plugin; its hang guard is one
+    second."""
     meta = root / "problems" / BANK_PROJECT / "meta.yaml"
     text = meta.read_text()
     text = text.replace("  entry: bank.bank\n", "  entry: bank.bank\n  clock: virtual\n")
     meta.write_text(text.replace("comparator:", "limits: {hang_guard_ms: 1000}\ncomparator:"))
+    pyproject = root / "problems" / BANK_PROJECT / "starter" / "pyproject.toml"
+    plugin = '-p no:cacheprovider -p cs_support.virtual_clock"'
+    pyproject.write_text(pyproject.read_text().replace('-p no:cacheprovider"', plugin))
     monkeypatch.setattr(virtual_clock, "GRADED_CLOCK_LANGUAGES", frozenset({Language.PYTHON}))
 
 

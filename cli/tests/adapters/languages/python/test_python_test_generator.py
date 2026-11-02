@@ -15,7 +15,10 @@ from coding_study.domain.project import Project
 from coding_study.domain.project_tests import level_tests
 from coding_study.domain.signature import ClassSignature, Method, Param
 from coding_study.domain.type_dsl import parse_value_type
+from coding_study.domain.virtual_clock import ProjectClock
 from tests.project_builders import BANK, OPS, method, ops_case, project_meta, project_problem
+
+VIRTUAL = ProjectClock.VIRTUAL
 
 GENERATOR = PythonTestGenerator()
 SPEC_EXAMPLE = '''\
@@ -451,3 +454,209 @@ def test_a_constructor_too_long_without_arguments_to_break_is_parenthesized():
         "        BankAccountWithAnExtremelyLongNameThatNeedsParentheses()\n"
         "    )\n"
     ) in text
+
+
+# the virtual clock (docs/specs/problem-format.md#generated-tests-on-the-virtual-clock)
+
+PUBLISH = method("publish", 1, "body: string", "int")
+RECEIVE = replace(method("receive", 1, "waitMs: int", "string"), is_async=True)
+LEAVE = replace(method("leave", 1, "", "void"), is_async=True)
+INBOX = ClassSignature("Inbox", (), (PUBLISH, RECEIVE, LEAVE))
+CLOCK_EXAMPLE = '''\
+"""Level 1 examples of bank-project-python, written by `cstudy start`.
+
+Yours to edit and extend: cstudy never rewrites this file.
+"""
+
+import asyncio
+
+from cs_support.virtual_clock import advance, now, settle
+
+from bank.bank import Inbox
+
+
+async def test_ex1() -> None:
+    """A waiting receive takes a message published while it waits."""
+    inbox = Inbox()
+    await settle()
+    r1 = asyncio.create_task(inbox.receive(5000))
+    await settle()
+    await advance(1000)
+    assert inbox.publish("a") == 1
+    await settle()
+    assert await r1 == "a"
+    await settle()
+    assert now() == 1000
+    assert await inbox.receive(2000) == ""
+    await settle()
+    assert now() == 3000
+'''
+CLOCK_EX1 = ops_case(
+    "ex1",
+    1,
+    ("@spawn", ["r1", "receive", 5000], None),
+    ("@advance", [1000], None),
+    ("publish", ["a"], 1),
+    ("@join", ["r1"], "a"),
+    ("@now", [], 1000),
+    ("receive", [2000], ""),
+    ("@now", [], 3000),
+    note="a waiting receive takes a message published while it waits",
+    class_name="Inbox",
+)
+
+
+def clock_meta(signature: ClassSignature = INBOX, comparator: ComparatorSpec = OPS):
+    return project_meta(signature, comparator, levels=(Level(1, "Waiting"),), clock=VIRTUAL)
+
+
+def on_the_clock(*calls, meta=None, class_name: str = "Inbox") -> str:
+    case = ops_case("ex1", 1, *calls, class_name=class_name)
+    return generated(case, meta=meta or clock_meta())
+
+
+def clock_body(text: str) -> str:
+    """The lines of the one test, after its `def` line."""
+    return text.split("async def test_ex1() -> None:\n", 1)[1]
+
+
+def test_a_level_on_the_virtual_clock_matches_the_spec_example():
+    assert generated(CLOCK_EX1, meta=clock_meta()) == CLOCK_EXAMPLE
+
+
+def test_generation_on_the_virtual_clock_is_byte_stable():
+    assert generated(CLOCK_EX1, meta=clock_meta()) == generated(CLOCK_EX1, meta=clock_meta())
+
+
+def test_a_test_of_calls_alone_settles_between_them():
+    text = on_the_clock(("publish", ["a"], 1), ("publish", ["b"], 2))
+    assert clock_body(text) == (
+        "    inbox = Inbox()\n"
+        "    await settle()\n"
+        '    assert inbox.publish("a") == 1\n'
+        "    await settle()\n"
+        '    assert inbox.publish("b") == 2\n'
+    )
+
+
+def test_a_constructor_alone_needs_no_helper():
+    text = on_the_clock()
+    assert (clock_body(text), "cs_support" in text) == ("    Inbox()\n", False)
+
+
+def test_only_the_helpers_a_test_uses_are_imported():
+    text = on_the_clock(("@advance", [5], None), ("publish", ["a"], 1))
+    assert "\nfrom cs_support.virtual_clock import advance, settle\n\nfrom bank.bank" in text
+
+
+def test_asyncio_is_imported_only_to_spawn():
+    assert "import asyncio" not in on_the_clock(("@advance", [5], None))
+
+
+def test_an_async_call_is_awaited():
+    text = on_the_clock(("receive", [5], "a"))
+    assert clock_body(text).endswith('    assert await inbox.receive(5) == "a"\n')
+
+
+def test_an_async_call_that_returns_nothing_is_awaited_alone():
+    assert clock_body(on_the_clock(("leave", [], None))).endswith("    await inbox.leave()\n")
+
+
+def test_advance_and_now_need_no_settling_after_them():
+    text = on_the_clock(("@advance", [5], None), ("@now", [], 5), ("publish", ["a"], 1))
+    assert clock_body(text) == (
+        "    inbox = Inbox()\n"
+        "    await settle()\n"
+        "    await advance(5)\n"
+        "    assert now() == 5\n"
+        '    assert inbox.publish("a") == 1\n'
+    )
+
+
+def test_spawn_starts_a_task_named_after_it():
+    text = on_the_clock(("@spawn", ["r1", "receive", 5], None), ("@join", ["r1"], ""))
+    assert "    r1 = asyncio.create_task(inbox.receive(5))\n    await settle()\n" in text
+
+
+def test_join_awaits_the_task_and_checks_its_result():
+    text = on_the_clock(("@spawn", ["r1", "receive", 5], None), ("@join", ["r1"], "x"))
+    assert clock_body(text).endswith('    assert await r1 == "x"\n')
+
+
+def test_join_of_a_task_that_returns_nothing_only_awaits_it():
+    text = on_the_clock(("@spawn", ["l", "leave"], None), ("@join", ["l"], None))
+    assert clock_body(text).endswith(
+        "    l = asyncio.create_task(inbox.leave())\n    await settle()\n    await l\n"
+    )
+
+
+def test_join_sorts_an_unordered_result_first():
+    names = replace(method("names", 1, "", "list<string>"), is_async=True)
+    comparator = ComparatorSpec(ComparatorType.OPS, per_method={"names": ComparatorType.UNORDERED})
+    meta = clock_meta(ClassSignature("Inbox", (), (names,)), comparator)
+    text = on_the_clock(("@spawn", ["n", "names"], None), ("@join", ["n"], ["b", "a"]), meta=meta)
+    assert clock_body(text).endswith('    assert sorted(await n) == ["a", "b"]\n')
+
+
+def test_join_of_a_float_result_allows_the_tolerance():
+    ratio = replace(method("ratio", 1, "", "double"), is_async=True)
+    comparator = ComparatorSpec(ComparatorType.OPS, per_method={"ratio": ComparatorType.FLOAT})
+    meta = clock_meta(ClassSignature("Inbox", (), (ratio,)), comparator)
+    text = on_the_clock(("@spawn", ["x", "ratio"], None), ("@join", ["x"], 0.5), meta=meta)
+    assert clock_body(text).endswith(
+        "    assert await x == pytest.approx(0.5, rel=1e-06, abs=1e-06)\n"
+    )
+
+
+def test_join_of_true_checks_identity():
+    ready = replace(method("ready", 1, "", "bool"), is_async=True)
+    meta = clock_meta(ClassSignature("Inbox", (), (ready,)))
+    text = on_the_clock(("@spawn", ["r", "ready"], None), ("@join", ["r"], True), meta=meta)
+    assert clock_body(text).endswith("    assert await r is True\n")
+
+
+def test_a_task_name_becomes_a_python_identifier():
+    text = on_the_clock(
+        ("@spawn", ["consumer-1", "receive", 5], None), ("@join", ["consumer-1"], "")
+    )
+    assert "    consumer_1 = asyncio.create_task(" in text
+    assert '    assert await consumer_1 == ""\n' in text
+
+
+def test_a_task_never_takes_a_name_the_test_uses():
+    text = on_the_clock(
+        ("@spawn", ["now", "receive", 5], None),
+        ("@join", ["now"], ""),
+        ("@spawn", ["inbox", "receive", 5], None),
+        ("@join", ["inbox"], ""),
+    )
+    assert "    task1 = asyncio.create_task(" in text
+    assert "    task2 = asyncio.create_task(" in text
+
+
+def test_the_instance_never_takes_a_helpers_name():
+    signature = ClassSignature("Settle", (), (PUBLISH,))
+    text = on_the_clock(("publish", ["a"], 1), meta=clock_meta(signature), class_name="Settle")
+    assert "    settle_ = Settle()\n" in text
+
+
+def test_the_real_clock_keeps_plain_tests():
+    text = generated(
+        ops_case("ex1", 1, ("publish", ["a"], 1), class_name="Inbox"), meta=project_meta(INBOX)
+    )
+    assert "\ndef test_ex1() -> None:\n    inbox = Inbox()\n" in text
+
+
+def test_a_long_awaited_assertion_keeps_ruffs_layout():
+    long_name = replace(
+        method("receiveTheNextMessageFromTheQueueAfterAWait", 1, "waitMs: int", "string"),
+        is_async=True,
+    )
+    meta = clock_meta(ClassSignature("Inbox", (), (long_name,)))
+    text = on_the_clock((long_name.name, [5000], "a message long enough to wrap"), meta=meta)
+    assert clock_body(text).endswith(
+        "    assert (\n"
+        "        await inbox.receive_the_next_message_from_the_queue_after_a_wait(5000)\n"
+        '        == "a message long enough to wrap"\n'
+        "    )\n"
+    )

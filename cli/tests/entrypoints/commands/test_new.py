@@ -86,6 +86,12 @@ def test_the_virtual_clock_flag_writes_a_go_project_on_the_virtual_clock(environ
     assert (result.exit_code, meta.project.clock) == (0, "virtual")  # type: ignore[union-attr]
 
 
+def test_the_virtual_clock_flag_writes_a_python_project_on_the_virtual_clock(environment):
+    result = invoke("waiter-project-python", "--from-template", "project-python", "--virtual-clock")
+    meta = environment.problems.load("waiter-project-python").meta
+    assert (result.exit_code, meta.project.clock) == (0, "virtual")  # type: ignore[union-attr]
+
+
 def test_a_virtual_clock_project_says_so_in_its_first_line(environment):
     result = invoke("waiter-project-go", "--from-template", "project-go", "--virtual-clock")
     assert result.output.splitlines()[0] == (

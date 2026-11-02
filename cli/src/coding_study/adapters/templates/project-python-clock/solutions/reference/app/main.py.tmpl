@@ -1,0 +1,30 @@
+"""The class that `cstudy submit` and the tests drive.
+
+TODO: replace this sketch with the reference of every level.
+"""
+
+import asyncio
+
+MILLISECONDS_PER_SECOND = 1000
+
+
+class {{class_name}}:
+    def __init__(self) -> None:
+        self._values: dict[str, str] = {}
+        self._changed = asyncio.Event()
+
+    def put(self, key: str, value: str) -> str:
+        previous = self._values.get(key, "")
+        self._values[key] = value
+        self._changed.set()
+        self._changed = asyncio.Event()
+        return previous
+
+    async def wait_for(self, key: str, wait_ms: int) -> str:
+        try:
+            async with asyncio.timeout(wait_ms / MILLISECONDS_PER_SECOND):
+                while key not in self._values:
+                    await self._changed.wait()
+        except TimeoutError:
+            return ""
+        return self._values[key]

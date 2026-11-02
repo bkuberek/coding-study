@@ -9,6 +9,14 @@ assertion with the method's comparator: `is` for `True`, `False` and `None` and 
 for `decimal` and `date`, imported when used; a whole decimal is `Decimal(10)`, since ruff's
 default rules (FURB157) flag `Decimal("10")`.
 
+On the virtual clock (docs/specs/problem-format.md#generated-tests-on-the-virtual-clock) each test
+is an `async def`, which the pytest plugin `cs_support.virtual_clock` runs on the grader's event
+loop, and settles between operations as the grader does (`await settle()`), except after `@advance`,
+which settles itself, and `@now`, which runs nothing. An asynchronous method's call is awaited.
+`@advance` is `await advance(ms)`, `@spawn` an `asyncio.create_task` assigned to a variable named
+after the task, `@join` an `await` of that variable, checked as any call is, and `@now` an
+assertion on `now()`.
+
 The text already matches `ruff format` with its default line length, so no formatter runs. A
 statement too long for one line is laid out by the printer of test_printer.py, of the same family
 as ruff's: each pair of brackets is a group that keeps its content on one line when it fits, and
@@ -18,6 +26,7 @@ is wrapped in parentheses, broken before its operator, unless its right side end
 its own.
 """
 
+import itertools
 import keyword
 import re
 import textwrap
@@ -46,17 +55,35 @@ from coding_study.adapters.languages.test_printer import (
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.naming import NameRole, member_name, snake_case
 from coding_study.domain.problem import ComparatorType, Language
-from coding_study.domain.project_tests import EDIT_NOTICE, Call, LevelTest, LevelTests
-from coding_study.domain.signature import output_type
+from coding_study.domain.project_tests import (
+    EDIT_NOTICE,
+    Advance,
+    Call,
+    Join,
+    LevelTest,
+    LevelTests,
+    Now,
+    Operation,
+    Spawn,
+)
+from coding_study.domain.signature import Method, output_type
 from coding_study.domain.type_dsl import ArrayType, ListType, Scalar, ScalarType, ValueType
 
+ASYNCIO_IMPORT = "import asyncio"
 DATE_IMPORT = "from datetime import date"
 DECIMAL_IMPORT = "from decimal import Decimal"
 PYTEST_IMPORT = "import pytest"
-_STANDARD_LIBRARY_IMPORTS = (DATE_IMPORT, DECIMAL_IMPORT)
-"""In isort order: sorted by module."""
+CLOCK_MODULE = "cs_support.virtual_clock"
+ADVANCE, NOW, SETTLE = "advance", "now", "settle"
+"""The helpers of the virtual clock's module that a test calls."""
+FALLBACK_TASK = "task"
+_STANDARD_LIBRARY_IMPORTS = (ASYNCIO_IMPORT, DATE_IMPORT, DECIMAL_IMPORT)
+"""In isort order: straight imports first, then the others sorted by module."""
 _NAMES_IN_TESTS = frozenset({*keyword.kwlist, "sorted", "pytest", "date"})
 """What the instance may not be called: keywords, and the names a test body uses."""
+_NAMES_ON_THE_CLOCK = frozenset({"asyncio", ADVANCE, NOW, SETTLE})
+"""The names a test on the virtual clock uses as well."""
+_NOT_IDENTIFIER = re.compile(r"[^0-9A-Za-z_]")
 _QUOTE = '"'
 _ALTERNATE_QUOTE = "'"
 _DOCSTRING_QUOTES = '"""'
@@ -156,8 +183,12 @@ class PythonTestGenerator:
 class _LevelFile:
     def __init__(self, tests: LevelTests) -> None:
         self._tests = tests
-        self._instance = _instance_name(tests.signature.name)
+        self._clock = tests.virtual_clock
+        self._taken = _NAMES_IN_TESTS | _NAMES_ON_THE_CLOCK if self._clock else _NAMES_IN_TESTS
+        self._instance = _instance_name(tests.signature.name, self._taken)
         self._values = _Values(tests.tolerance)
+        self._helpers: set[str] = set()
+        """The clock's helpers that the tests call."""
 
     def text(self) -> str:
         functions = [self._function(test) for test in self._tests.tests]
@@ -169,34 +200,88 @@ class _LevelFile:
 
     def _imports(self) -> str:
         used = self._values.imports
+        helpers = ", ".join(sorted(self._helpers))
+        third_party = [
+            PYTEST_IMPORT if PYTEST_IMPORT in used else "",
+            f"from {CLOCK_MODULE} import {helpers}" if helpers else "",
+        ]
         blocks = [
             "\n".join(line for line in _STANDARD_LIBRARY_IMPORTS if line in used),
-            PYTEST_IMPORT if PYTEST_IMPORT in used else "",
+            "\n".join(line for line in third_party if line),
             f"from {self._tests.entry} import {self._tests.signature.name}",
         ]
         return "\n\n".join(block for block in blocks if block)
 
     def _function(self, test: LevelTest) -> str:
-        lines = [f"def test_{test.case_id.replace('-', '_')}() -> None:"]
+        definition = "async def" if self._clock else "def"
+        lines = [f"{definition} test_{test.case_id.replace('-', '_')}() -> None:"]
         lines += _docstring(test.note or "")
-        lines.append(layout(self._construction(test), _STYLE, INDENT))
-        lines += (layout(self._statement(call), _STYLE, INDENT) for call in test.calls)
+        lines += (layout(statement, _STYLE, INDENT) for statement in self._body(test))
         return "\n".join(lines)
 
-    def _construction(self, test: LevelTest) -> Doc:
+    def _body(self, test: LevelTest) -> list[Doc]:
+        """The constructor, then a statement per operation. On the virtual clock the test settles
+        after each one but the last, unless the operation settles itself or runs nothing."""
+        if not self._clock:
+            calls = test.calls
+            return [self._construction(test, bool(calls)), *map(self._call, calls)]
+        uses_instance = any(isinstance(op, Call | Spawn) for op in test.operations)
+        steps: list[tuple[Doc, bool]] = [(self._construction(test, uses_instance), True)]
+        names = _TaskNames(self._taken | {self._instance})
+        steps += (
+            (self._operation(op, names), not isinstance(op, Advance | Now))
+            for op in test.operations
+        )
+        body: list[Doc] = []
+        for index, (statement, settles) in enumerate(steps):
+            body.append(statement)
+            if settles and index < len(steps) - 1:
+                body.append(self._helper_call(SETTLE))
+        return body
+
+    def _construction(self, test: LevelTest, uses_instance: bool) -> Doc:
         """`bank = Bank(...)`, or `Bank(...)` alone when no call follows to use the instance."""
         params = self._tests.signature.constructor_params
         types = [param.type for param in params]
         arguments = self._values.arguments(test.constructor_arguments, types)
         construction = _call(self._tests.signature.name, arguments)
-        return _assignment(self._instance, construction) if test.calls else construction
+        return _assignment(self._instance, construction) if uses_instance else construction
 
-    def _statement(self, call: Call) -> Doc:
-        name = member_name(call.method.name, Language.PYTHON, NameRole.METHOD)
-        types = [param.type for param in call.method.params]
-        invocation = _call(
-            f"{self._instance}.{name}", self._values.arguments(call.arguments, types)
-        )
+    def _operation(self, operation: Operation, names: "_TaskNames") -> Doc:
+        match operation:
+            case Call():
+                return self._call(operation)
+            case Advance(milliseconds):
+                return self._helper_call(ADVANCE, Text(str(milliseconds)))
+            case Spawn(task, method, arguments):
+                self._values.imports.add(ASYNCIO_IMPORT)
+                started = _call("asyncio.create_task", [self._invocation(method, arguments)])
+                return _assignment(names.assign(task), started)
+            case Join(task, call):
+                return self._checked((Text(f"await {names.variable(task)}"),), call)
+            case Now(expected):
+                self._helpers.add(NOW)
+                return _assertion(Text(f"{NOW}()"), "==", Text(_literal(expected)))
+
+    def _helper_call(self, helper: str, *arguments: Doc) -> Doc:
+        """`await helper(...)`: `settle` and `advance` are coroutines."""
+        self._helpers.add(helper)
+        return (Text("await "), _call(helper, arguments))
+
+    def _call(self, call: Call) -> Doc:
+        invocation = self._invocation(call.method, call.arguments)
+        if self._clock and call.method.is_async:
+            invocation = (Text("await "), invocation)
+        return self._checked(invocation, call)
+
+    def _invocation(self, method: Method, arguments: Sequence[JsonValue]) -> Doc:
+        name = member_name(method.name, Language.PYTHON, NameRole.METHOD)
+        types = [param.type for param in method.params]
+        return _call(f"{self._instance}.{name}", self._values.arguments(arguments, types))
+
+    def _checked(self, invocation: Doc, call: Call) -> Doc:
+        """The invocation alone for a `void` method, else an assertion on its result with the
+        method's comparator."""
         if not call.returns_value:
             return invocation
         expected, declared = call.expected, output_type(call.method)
@@ -320,10 +405,33 @@ def _escaped(character: str, quote: str) -> str:
     return character if character.isprintable() else repr(character)[1:-1]
 
 
-def _instance_name(class_name: str) -> str:
-    """The class in snake_case: `bank` for `Bank`, `lru_cache` for `LRUCache`."""
+def _instance_name(class_name: str, taken: frozenset[str]) -> str:
+    """The class in snake_case: `bank` for `Bank`, `lru_cache` for `LRUCache`; with a trailing `_`
+    when the test uses that name otherwise."""
     name = snake_case(class_name)
-    return f"{name}_" if name in _NAMES_IN_TESTS else name
+    return f"{name}_" if name in taken else name
+
+
+class _TaskNames:
+    """The variables of one test's tasks: the task's name as a Python identifier (`consumer-1` as
+    `consumer_1`), else `task1`, `task2`, unless the test already uses the name."""
+
+    def __init__(self, taken: frozenset[str]) -> None:
+        self._taken = set(taken)
+        self._variables: dict[str, str] = {}
+
+    def assign(self, task: str) -> str:
+        spelled = _NOT_IDENTIFIER.sub("_", task)
+        fallbacks = (f"{FALLBACK_TASK}{number}" for number in itertools.count(1))
+        candidates = itertools.chain([spelled], fallbacks)
+        usable = (name for name in candidates if name and not name[0].isdigit())
+        variable = next(name for name in usable if name not in self._taken)
+        self._taken.add(variable)
+        self._variables[task] = variable
+        return variable
+
+    def variable(self, task: str) -> str:
+        return self._variables[task]
 
 
 def _module_docstring(title: str) -> str:

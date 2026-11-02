@@ -546,3 +546,78 @@ def test_the_virtual_clock_flag_on_a_language_without_a_graded_clock_writes_noth
     with pytest.raises(UsageError, match="does not grade the virtual clock"):
         create_problem(environment, TEMPLATES, request)
     assert not environment.workspace.exists("problems/0003-waiter-project-kotlin")
+
+
+# a Python project on the virtual clock
+
+PYTHON_CLOCK_SLUG = "waiter-project-python"
+
+
+def create_python_clock(environment):
+    request = ScaffoldRequest(PYTHON_CLOCK_SLUG, TemplateName.PROJECT_PYTHON, virtual_clock=True)
+    return create_problem(environment, TEMPLATES, request)
+
+
+def test_a_python_clock_project_gets_its_starter_and_overlay(environment):
+    assert create_python_clock(environment).files == (
+        "meta.yaml",
+        "problem.md",
+        "solutions/explanation.md",
+        "solutions/reference/app/main.py",
+        "starter/README.md",
+        "starter/app/main.py",
+        "starter/pyproject.toml",
+        "tests.json",
+    )
+
+
+def test_a_python_clock_projects_level_2_method_is_async(environment):
+    create_python_clock(environment)
+    signature = environment.problems.load(PYTHON_CLOCK_SLUG).meta.signature
+    assert isinstance(signature, ClassSignature)
+    assert [(method.name, method.is_async) for method in signature.methods] == [
+        ("put", False),
+        ("waitFor", True),
+    ]
+
+
+def test_a_python_clock_projects_overlay_awaits_in_its_waiting_method(environment):
+    created = create_python_clock(environment)
+    text = clock_file(environment, created, "solutions/reference/app/main.py")
+    assert "    async def wait_for(self, key: str, wait_ms: int) -> str:\n" in text
+
+
+def test_a_python_clock_projects_starter_declares_level_ones_method_only(environment):
+    created = create_python_clock(environment)
+    text = clock_file(environment, created, "starter/app/main.py")
+    assert ("    def put(self, key: str, value: str) -> str:\n" in text, "wait_for" in text) == (
+        True,
+        False,
+    )
+
+
+def test_a_python_clock_projects_readme_teaches_testing_on_the_clock(environment):
+    created = create_python_clock(environment)
+    readme = clock_file(environment, created, "starter/README.md")
+    assert "## Testing on the virtual clock" in readme
+    assert "from cs_support.virtual_clock import advance, now, settle" in readme
+
+
+def test_a_python_clock_project_passes_static_checks_after_replacing_the_placeholders(
+    environment,
+):
+    created = create_python_clock(environment)
+    replace_placeholders(environment.root / created.directory)
+    assert static_errors(environment, PYTHON_CLOCK_SLUG) == ()
+
+
+def test_a_python_clock_starter_without_the_plugin_fails_static_checks(environment):
+    created = create_python_clock(environment)
+    replace_placeholders(environment.root / created.directory)
+    pyproject = environment.root / created.directory / "starter" / "pyproject.toml"
+    pyproject.write_text(pyproject.read_text().replace(" -p cs_support.virtual_clock", ""))
+    assert static_errors(environment, PYTHON_CLOCK_SLUG) == (
+        f"problems/0003-{PYTHON_CLOCK_SLUG}/starter/pyproject.toml: loads no "
+        "cs_support.virtual_clock; a virtual-clock project's addopts holds "
+        "-p cs_support.virtual_clock",
+    )

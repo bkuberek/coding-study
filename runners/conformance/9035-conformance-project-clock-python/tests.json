@@ -3,9 +3,9 @@
   "version": 1,
   "cases": [
     {"id": "ex1", "visible": true, "level": 1, "note": "an asynchronous method's result is awaited", "ops": ["Inbox", "publish", "publish", "receive"], "args": [[], ["a"], ["b"], [10]], "expected": [null, 1, 2, "a"]},
-    {"id": "advance", "level": 1, "note": "@advance moves the clock, and a method's own sleep reads the virtual time", "ops": ["Inbox", "@now", "@advance", "@now", "sleep", "@now"], "args": [[], [], [1500], [], [2500], []], "expected": [null, 0, null, 1500, 2500, 4000]},
-    {"id": "spawn-join", "level": 1, "note": "a waiting receive takes a message published while it waits; an empty inbox answers after the wait", "ops": ["Inbox", "@spawn", "@advance", "publish", "@join", "@now", "receive", "@now"], "args": [[], ["r1", "receive", 5000], [1000], ["a"], ["r1"], [], [2000], []], "expected": [null, null, null, 1, "a", 1000, "", 3000]},
-    {"id": "ties", "level": 1, "note": "four tasks wake at the same instant, in the order that seed 0 gives", "ops": ["Inbox", "race", "@now"], "args": [[], ["abcd"], []], "expected": [null, "bacd", 10]},
+    {"id": "advance", "visible": true, "level": 1, "note": "@advance moves the clock, and a method's own sleep reads the virtual time", "ops": ["Inbox", "@now", "@advance", "@now", "sleep", "@now"], "args": [[], [], [1500], [], [2500], []], "expected": [null, 0, null, 1500, 2500, 4000]},
+    {"id": "spawn-join", "visible": true, "level": 1, "note": "a waiting receive takes a message published while it waits; an empty inbox answers after the wait", "ops": ["Inbox", "@spawn", "@advance", "publish", "@join", "@now", "receive", "@now"], "args": [[], ["r1", "receive", 5000], [1000], ["a"], ["r1"], [], [2000], []], "expected": [null, null, null, 1, "a", 1000, "", 3000]},
+    {"id": "ties", "visible": true, "level": 1, "note": "four tasks wake at the same instant, in the order that seed 0 gives", "ops": ["Inbox", "race", "@now"], "args": [[], ["abcd"], []], "expected": [null, "bacd", 10]},
     {"id": "deadlock", "level": 1, "note": "the joined call waits on an event nobody sets while no timer is due", "ops": ["Inbox", "@advance", "@spawn", "@join"], "args": [[], [2000], ["r1", "hold"], ["r1"]], "expected": [null, null, null, ""]},
     {"id": "after-deadlock", "level": 1, "ops": ["Inbox", "@advance", "@now"], "args": [[], [10], []], "expected": [null, null, 10]},
     {"id": "jam", "level": 1, "note": "a lock that its holder takes again blocks the loop's thread, so the clock stops", "ops": ["Inbox", "jam"], "args": [[], []], "expected": [null, ""]},

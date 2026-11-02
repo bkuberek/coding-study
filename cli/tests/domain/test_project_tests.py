@@ -14,6 +14,7 @@ from coding_study.domain.problem import (
     ProblemKind,
 )
 from coding_study.domain.project_tests import (
+    HARNESS_TEST_LANGUAGES,
     Advance,
     Call,
     Join,
@@ -159,7 +160,11 @@ def test_an_operation_missing_from_the_signature_is_rejected():
 @pytest.mark.parametrize("operation", ["@advance", "@spawn", "@join", "@now"])
 @pytest.mark.parametrize(
     "language",
-    [Language.PYTHON, Language.TYPESCRIPT, Language.JAVA, Language.KOTLIN, Language.RUST],
+    [
+        language
+        for language in (Language.TYPESCRIPT, Language.JAVA, Language.KOTLIN, Language.RUST)
+        if language not in HARNESS_TEST_LANGUAGES
+    ],
 )
 def test_a_harness_operation_is_named_as_one_the_generated_tests_do_not_express_yet(
     operation, language
