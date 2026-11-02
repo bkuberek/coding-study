@@ -261,6 +261,7 @@ JVM_FIX = FixStep(
     "jvm",
     (
         "./gradlew",
+        "--no-watch-fs",
         ":java:csClasspath",
         ":kotlin:csClasspath",
         f"-Pcs.only={HANDSHAKE_META.snake_slug}",
@@ -287,6 +288,7 @@ JVM_PROJECT_WARMUPS = tuple(
             f"{PROJECT_WARMUPS}/{language}",
             "-q",
             "--console=plain",
+            "--no-watch-fs",
             "csClasspath",
         ),
         runs_on_jdk=True,

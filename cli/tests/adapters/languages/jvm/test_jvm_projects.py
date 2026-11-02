@@ -35,7 +35,7 @@ from coding_study.domain.runs import HELLO_TIMEOUT_MS
 from tests.adapters.languages.jvm.fake_gradle import LIBRARY, ProjectGradle, jvm_context
 from tests.helpers import REPOSITORY_ROOT
 
-GRADLE_FLAGS = ["-q", "--console=plain", "--offline"]
+GRADLE_FLAGS = ["-q", "--console=plain", "--no-watch-fs", "--offline"]
 OFFLINE_FAILURE = """\
 * What went wrong:
 Could not resolve all dependencies for configuration ':testRuntimeClasspath'.
@@ -81,6 +81,12 @@ def test_a_suite_builds_the_folder_offline_with_its_test_classes(tmp_path, folde
     gradle = ProjectGradle()
     prepare(runner_on(tmp_path, gradle), ProjectSuite(folder))
     assert gradle.builds == [("-p", str(folder), *GRADLE_FLAGS, "csClasspath")]
+
+
+def test_a_project_build_rereads_the_sources_cstudy_just_wrote(tmp_path, folder):
+    gradle = ProjectGradle()
+    prepare(runner_on(tmp_path, gradle), ProjectSuite(folder))
+    assert all("--no-watch-fs" in build for build in gradle.builds)
 
 
 def test_grading_builds_the_main_classes_only(tmp_path, folder):

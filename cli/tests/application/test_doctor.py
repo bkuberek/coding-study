@@ -1117,6 +1117,7 @@ def test_fix_runs_the_setup_command_of_every_workspace_project():
             (
                 "./gradlew",
                 f"-Dorg.gradle.java.home={JDK_HOME}",
+                "--no-watch-fs",
                 ":java:csClasspath",
                 ":kotlin:csClasspath",
                 "-Pcs.only=cs_doctor_handshake",
@@ -1133,7 +1134,15 @@ def test_the_jvm_warm_up_builds_a_project_folder_per_language(language):
     needs, so a warm-up project of each language caches them."""
     commands = {step.command for step in JVM_PROJECT_WARMUPS}
     warmup = f"../.cs/runtime/runners/jvm/project-warmup/{language}"
-    assert ("./gradlew", "-p", warmup, "-q", "--console=plain", "csClasspath") in commands
+    assert (
+        "./gradlew",
+        "-p",
+        warmup,
+        "-q",
+        "--console=plain",
+        "--no-watch-fs",
+        "csClasspath",
+    ) in commands
 
 
 def test_the_jvm_warm_up_resolves_the_runtime_classpath():
@@ -1212,6 +1221,13 @@ def test_fix_warms_up_gradle_on_any_jdk_it_can_build_with(selected):
 
 
 WARM_UP_STEPS = (JVM_FIX, *JVM_PROJECT_WARMUPS)
+
+
+@pytest.mark.parametrize("step", WARM_UP_STEPS, ids=lambda step: step.command[-1])
+def test_the_warm_up_rereads_the_runtime_it_just_refreshed(step):
+    assert "--no-watch-fs" in step.command
+
+
 JDK_26 = SelectedJdk("26.0.2", 26, JdkSource.JAVA_HOME)
 HOME_26 = Path("/opt/jdks/26")
 
@@ -1375,7 +1391,8 @@ def test_fix_announces_each_command_before_running_it():
     lines: list[str] = []
     fix(workspace_with(paths={"jvm"}), notify=lines.append)
     assert lines == [
-        "running ./gradlew :java:csClasspath :kotlin:csClasspath -Pcs.only=cs_doctor_handshake "
+        "running ./gradlew --no-watch-fs :java:csClasspath :kotlin:csClasspath "
+        "-Pcs.only=cs_doctor_handshake "
         "(in jvm)",
         *(f"running {step}" for step in JVM_PROJECT_WARMUPS),
     ]

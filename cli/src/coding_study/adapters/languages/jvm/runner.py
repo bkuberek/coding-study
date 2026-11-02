@@ -64,7 +64,10 @@ JDWP_LISTENING_MARKER = "Listening for transport dt_socket"
 """JDWP prints this to standard output once it listens for the IDE."""
 JDWP_REFUSED_MARKER = "transport error 202: connect failed"
 """JDWP prints this to standard error, then the JVM exits, when no IDE listens to connect to."""
-GRADLE_FLAGS = ("-q", "--console=plain")
+GRADLE_FLAGS = ("-q", "--console=plain", "--no-watch-fs")
+"""Without file-system watching, every build reads the sources from disk: on macOS the watch
+events for files written just before a build can arrive late, and Gradle then reports the compile
+task up to date over the changed sources."""
 CLASSPATH_TASK = "csClasspath"
 ONLY_PROPERTY = "cs.only"
 RELEASE_PROPERTY = "cs.release"

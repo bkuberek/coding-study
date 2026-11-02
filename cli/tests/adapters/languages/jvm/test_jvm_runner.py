@@ -69,7 +69,17 @@ def compile_failure(*lines: str) -> GradleOutcome:
 def test_user_code_builds_only_the_problem_package(root):
     gradle = FakeGradle(root)
     prepare(JvmRunner(jvm_context(root), Language.JAVA, gradle), UserCode(TWO_SUM))
-    assert gradle.builds == [("-q", "--console=plain", ":java:csClasspath", "-Pcs.only=two_sum")]
+    assert gradle.builds == [
+        ("-q", "--console=plain", "--no-watch-fs", ":java:csClasspath", "-Pcs.only=two_sum")
+    ]
+
+
+def test_every_build_rereads_the_sources_cstudy_just_wrote(root):
+    """Gradle's file-system watching can miss writes made a moment before a build on macOS, and
+    then reports the compile task up to date over changed sources."""
+    gradle = FakeGradle(root)
+    prepare(JvmRunner(jvm_context(root), Language.JAVA, gradle), UserCode(TWO_SUM))
+    assert all("--no-watch-fs" in build for build in gradle.builds)
 
 
 def test_kotlin_user_code_builds_the_kotlin_project(root):
@@ -78,7 +88,7 @@ def test_kotlin_user_code_builds_the_kotlin_project(root):
         JvmRunner(jvm_context(root), Language.KOTLIN, gradle),
         UserCode(TWO_SUM),
     )
-    assert gradle.builds[0][2] == ":kotlin:csClasspath"
+    assert ":kotlin:csClasspath" in gradle.builds[0]
 
 
 def test_launch_runs_main_on_the_built_classpath(root):
@@ -452,7 +462,9 @@ def test_a_normal_launch_has_no_agent(root):
 
 def test_a_debug_run_is_built_like_any_other(root):
     _, gradle = debugging(root, Language.JAVA, DebugSession(Language.JAVA, 5005))
-    assert gradle.builds == [("-q", "--console=plain", ":java:csClasspath", "-Pcs.only=two_sum")]
+    assert gradle.builds == [
+        ("-q", "--console=plain", "--no-watch-fs", ":java:csClasspath", "-Pcs.only=two_sum")
+    ]
 
 
 def test_a_port_in_use_is_reported_before_building(root):

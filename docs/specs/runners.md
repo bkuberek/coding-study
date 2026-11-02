@@ -20,8 +20,8 @@ A runner is a small program per runtime that loads one target (the user's file, 
 |--------|---------------------------|---------|-----|
 | Python | none (`cstudy doctor --fix` runs `uv sync` once) | `python/.venv/bin/python -m cs_runner --request R --out O` | `python` |
 | TypeScript | none | `node .cs/runtime/runners/typescript/runner.ts --request R --out O` | `typescript` |
-| Java | `./gradlew -q --console=plain :java:csClasspath -Pcs.only=<snake_slug>` | `java -cp <classpath> cs.runner.Main --request R --out O` | `jvm` |
-| Kotlin | `./gradlew -q --console=plain :kotlin:csClasspath -Pcs.only=<snake_slug>` | same as Java | `jvm` |
+| Java | `./gradlew -q --console=plain --no-watch-fs :java:csClasspath -Pcs.only=<snake_slug>` | `java -cp <classpath> cs.runner.Main --request R --out O` | `jvm` |
+| Kotlin | `./gradlew -q --console=plain --no-watch-fs :kotlin:csClasspath -Pcs.only=<snake_slug>` | same as Java | `jvm` |
 | Go | `go build -json [-overlay gen/<snake_slug>/overlay.json] -o bin/<scope>/<snake_slug> ./cmd/<scope>/<snake_slug>` in `.cs/build/go` ([Go build details](#go-build-details)) | `.cs/build/go/run/<pid>-<random>/<snake_slug> --request R --out O`, a private copy of the binary | `.cs/build/go` |
 | Rust | `cargo build --offline --release --message-format=json --target <host> -p <scope>_<snake_slug>` in `.cs/build/rust`, with one shared `CARGO_TARGET_DIR` ([Rust build details](#rust-build-details)) | `.cs/build/rust/run/<pid>-<random>/<scope>_<snake_slug> --request R --out O`, a private copy of the binary | `.cs/build/rust` |
 
@@ -35,7 +35,7 @@ A [project job](#project-jobs) starts in the project root instead: the Python ru
 |------|------|
 | `-Pcs.only=<snake_slug>` | Restricts the main source set to `practice/<snake_slug>/**`, so a broken file for another problem never blocks this one. IntelliJ builds without the property and sees everything. |
 | `csClasspath` task | Depends on `classes`; writes the runtime classpath (classes dir plus runner and support jars) to `build/cs/runtime-classpath.txt` |
-| Gradle settings | Daemon on, configuration cache on, `org.gradle.console=plain` |
+| Gradle settings | Daemon on, configuration cache on, `org.gradle.console=plain`. Every build `cstudy` runs passes `--no-watch-fs`, so Gradle reads the sources from disk: on macOS, watch events for files written just before a build can arrive late, and Gradle then reports the compile task up to date over the changed sources |
 | JVM flags | `-XX:+UseSerialGC -Xshare:auto`; no tiering flags (they distort performance cases) |
 | Compile errors | Gradle exit code non-zero: the CLI prints compiler lines mentioning the user's file (max 40 lines) and exits 2. Gradle prints them twice, the second time indented under its failure report: the first copy is kept (the second only when it is the only one). Each error is a [diagnostic](cli.md#diagnostics) at the line and column the compiler names, from the absolute path or `file://` URL it prints |
 | Cold start | If no daemon is running, the CLI prints `warming Gradle daemon (first run)` before building |
@@ -597,7 +597,7 @@ A Java or Kotlin project folder is a Gradle build of its own ([starter](problem-
 
 | Item | Rule |
 |------|------|
-| Command | `jvm/gradlew -p <root> -q --console=plain --offline <task>`, run in `jvm` like every JVM build, so it uses the workspace's Gradle and its daemon, on [the selected JDK](#the-jdk-and-the-release-level). `--offline`: a project build never reaches the network; `cstudy doctor --fix` caches what it needs |
+| Command | `jvm/gradlew -p <root> -q --console=plain --no-watch-fs --offline <task>`, run in `jvm` like every JVM build, so it uses the workspace's Gradle and its daemon, on [the selected JDK](#the-jdk-and-the-release-level). `--offline`: a project build never reaches the network; `cstudy doctor --fix` caches what it needs |
 | Tasks | A suite job builds `csClasspath`: the main and test classes, and both runtime classpaths, in `build/cs/main-classpath.txt` and `build/cs/test-classpath.txt`. A grading job builds `csMainClasspath`: the main classes and `build/cs/main-classpath.txt` only, so a test file that does not compile, such as a level's generated tests before its methods exist, never blocks a submission |
 | Locked levels | `-Pcs.exclude=<path>,...` names the generated test files of the levels above `cstudy test --level N`, relative to the root, and the plugin leaves them out of the test compile: they may call methods that do not exist yet. The runner reads no `exclude` |
 | Concurrent `cstudy` processes | One process at a time builds a folder and copies what it built: an exclusive `flock` on `.cs/build/jvm-locks/project-<folder name>-<digest of its absolute path>.lock`, held around the build, the read of the classpath file and the copy, with the runtime lock of [JVM build details](#jvm-build-details) inside it. Two folders, or a folder and a single-file problem, build side by side |
