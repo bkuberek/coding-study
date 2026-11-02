@@ -1,11 +1,13 @@
-"""`cstudy verify` on a project problem: D1, D3 and D9 (docs/specs/authoring.md#dynamic).
+"""`cstudy verify` on a project problem: D1, D3, D9 and D10 (docs/specs/authoring.md#dynamic).
 
 D1: the starter, copied with level 1's generated tests as `cstudy start` seeds a folder, loads: a
 grading job of level 1 reports every case without a load error (the cases may fail), and its
 native suite runs to its end without crashing the runner. D3: the reference, the starter with its
 overlay and the generated tests of every level (docs/specs/runners.md#reference-materialization),
-passes every case of every level. D9: the reference passes its native suite. Every job gets a
-runner of its own (docs/specs/runners.md#project-jobs).
+passes every case of every level. D9: the reference passes its native suite. D10, for a project on
+the virtual clock: the reference is graded again and again, and every case gives the same outputs
+in every run, within a quarter of its hang guard. Every job gets a runner of its own
+(docs/specs/runners.md#project-jobs).
 """
 
 from collections.abc import Iterator, Mapping
@@ -24,10 +26,16 @@ from coding_study.application.project_runs import (
 )
 from coding_study.application.reference_runs import ApproachResult, LanguageResult, shown
 from coding_study.domain.case_status import CaseStatus
+from coding_study.domain.clock_determinism import (
+    DETERMINISM_RUNS,
+    DeterminismVerdict,
+    judge_determinism,
+)
 from coding_study.domain.errors import ContentError, ContentIssue
 from coding_study.domain.judging import Judgement, outcome_summary, verdict_summary
 from coding_study.domain.layout import BUILD_DIRECTORY
 from coding_study.domain.levels import FIRST_LEVEL
+from coding_study.domain.precedence import resolve_hang_guard_ms
 from coding_study.domain.problem import Language, Problem
 from coding_study.domain.problem_files import SOLUTIONS_DIRECTORY, STARTER_DIRECTORY
 from coding_study.domain.project import (
@@ -46,6 +54,7 @@ from coding_study.domain.suite_runs import (
     SuiteReport,
     SuiteTest,
 )
+from coding_study.domain.virtual_clock import ProjectClock
 
 PROJECT_BUILDS = f"{BUILD_DIRECTORY}/projects"
 """A reference's build: `<PROJECT_BUILDS>/<slug>/<approach>/`."""
@@ -77,12 +86,14 @@ class ProjectVerification:
     language: LanguageResult
     """D3 as the project's one approach; D1 as the language's problems."""
     suite: SuiteCheck
+    determinism: DeterminismVerdict | None = None
+    """D10; None for a project on the real clock, and when the reference did not run."""
 
 
 def verify_project(
     environment: Environment, problem: Problem, language: Language, notify: ProgressNotice
 ) -> ProjectVerification:
-    """D1, D3 and D9 in `language`, the problem's one language.
+    """D1, D3, D9 and, on the virtual clock, D10 in `language`, the problem's one language.
 
     Raises LanguageNotSetUpError without a test generator for the language, RunnerStartError
     when its runner cannot run project jobs, and ContentError for a project file that is not text.
@@ -191,9 +202,11 @@ class _ProjectChecks:
             result = LanguageResult(self._language, (failed,))
             return ProjectVerification(result, SuiteCheck(0, 0, (NOT_RUN,)))
         starter_problems = tuple(self._starter_problems(starter))
-        approach = ApproachResult(approach_id, self._reference_failures(root))
+        graded = self._grade_reference(root)
+        approach = ApproachResult(approach_id, self._reference_failures(graded))
         result = LanguageResult(self._language, (approach,), starter_problems)
-        return ProjectVerification(result, self._suite(root))
+        determinism = self._determinism(root) if graded.load_error is None else None
+        return ProjectVerification(result, self._suite(root), determinism)
 
     def _starter_problems(self, root: Path) -> Iterator[str]:
         """D1: the starter loads, and neither its cases nor its suite crash the runner."""
@@ -214,15 +227,36 @@ class _ProjectChecks:
         report = run_suite(self._environment, self._suite_run(root, FIRST_LEVEL), self._notify)
         yield from _suite_breakdowns(report)
 
-    def _reference_failures(self, root: Path) -> tuple[str, ...]:
-        """D3: every case of every level, each failure named with its level."""
+    def _grade_reference(self, root: Path) -> Judgement:
+        """The reference at its last level: every case of every level."""
         grading = GradingRun(
             self._problem, self._language, root, last_level(self._problem), release=self._release
         )
-        judgement = run_grading(self._environment, grading, self._notify)
+        return run_grading(self._environment, grading, self._notify)
+
+    def _reference_failures(self, judgement: Judgement) -> tuple[str, ...]:
+        """D3: every case of every level, each failure named with its level."""
         if judgement.load_error is not None:
             return (f"does not load: {_error_text(judgement.load_error)}",)
         return shown(self._failed_cases(judgement))
+
+    def _determinism(self, root: Path) -> DeterminismVerdict | None:
+        """D10: the reference graded `DETERMINISM_RUNS` more times, each run in a runner of its own,
+        so that nothing one run left behind reaches the next."""
+        meta = self._problem.meta
+        if meta.project is None or meta.project.clock is not ProjectClock.VIRTUAL:
+            return None
+        runs = [self._grade_reference(root) for _ in range(DETERMINISM_RUNS)]
+        config = self._environment.config
+        guards = {
+            verdict.case.id: resolve_hang_guard_ms(
+                config, verdict.case.hang_guard_ms, meta.hang_guard_ms
+            )
+            for run in runs
+            for verdict in run.verdicts
+        }
+        levels = {case.id: case.level for case in self._problem.cases}
+        return judge_determinism(runs, guards, levels)
 
     def _failed_cases(self, judgement: Judgement) -> list[str]:
         levels = {case.id: case.level for case in self._problem.cases}

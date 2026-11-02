@@ -31,7 +31,8 @@ MIN_HIDDEN_CASES_PER_LEVEL = 2
 MIN_CONCURRENT_HIDDEN_CASES = 4
 MIN_STRESS_CASES = 2
 MAX_SLOWEST_SHARE = 0.25
-"""Concurrent problems: the slowest correct run uses at most this share of its deadline."""
+"""Concurrent problems: the slowest correct run uses at most this share of its deadline. A case on
+the virtual clock keeps its slowest run within this share of its hang guard (D10)."""
 
 
 def ready_problems(content: ProblemContent) -> tuple[str, ...]:

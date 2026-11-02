@@ -11,6 +11,7 @@ from coding_study.application.case_materialization import EXPECTED_VALUES_NOTICE
 from coding_study.application.reference_runs import ApproachResult, LanguageResult
 from coding_study.application.verify_content import Coverage, ProblemVerification, VerifyReport
 from coding_study.application.verify_projects import SuiteCheck
+from coding_study.domain.clock_determinism import DeterminismVerdict
 from coding_study.domain.problem import Language
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import verify
@@ -194,10 +195,19 @@ def test_conformance_failures_exit_1(conformance_root):
 PROJECT_DIRECTORY = "problems/0249-bank-project-python"
 
 
-def project_report(languages: tuple[LanguageResult, ...], suite: SuiteCheck) -> VerifyReport:
+def project_report(
+    languages: tuple[LanguageResult, ...],
+    suite: SuiteCheck,
+    determinism: DeterminismVerdict | None = None,
+) -> VerifyReport:
     meta = FsProblemRepository(REPOSITORY_ROOT).load("bank-project-python").meta
     problem = ProblemVerification(
-        PROJECT_DIRECTORY, meta, languages=languages, suite=suite, reference_languages=(PY,)
+        PROJECT_DIRECTORY,
+        meta,
+        languages=languages,
+        suite=suite,
+        determinism=determinism,
+        reference_languages=(PY,),
     )
     return VerifyReport((problem,), (Coverage(PY, 1 if problem.passed else 0, 1),))
 
@@ -231,6 +241,36 @@ def test_a_failing_suite_lists_its_failures_and_exits_1(reported):
     assert (result.exit_code, result.report[:2]) == (
         ExitCode.FAILURES,
         ["0249-bank-pro...  static ok · py 1/1 ok · suite 13/14", f"  suite: {failure}"],
+    )
+
+
+def test_a_virtual_clock_project_line_shows_its_agreeing_runs_and_its_slowest_share(reported):
+    passing = (LanguageResult(PY, (ApproachResult("reference"),)),)
+    reported(project_report(passing, SuiteCheck(14, 14), DeterminismVerdict(10, 10, 0.0021)))
+    assert invoke("bank-project-python").report[0] == (
+        "0249-bank-pro...  static ok · py 1/1 ok · suite 14/14 · clock 10/10 · slowest 0.2%"
+    )
+
+
+def test_a_clock_without_a_measured_run_shows_no_share(reported):
+    passing = (LanguageResult(PY, (ApproachResult("reference"),)),)
+    reported(project_report(passing, SuiteCheck(14, 14), DeterminismVerdict(10, 10, None)))
+    assert invoke("bank-project-python").report[0].endswith("suite 14/14 · clock 10/10")
+
+
+def test_runs_that_differ_list_their_failures_and_exit_1(reported):
+    failure = "level 2 h3: outputs differ between runs: returned 1 in 9 of 10 runs, returned 2 in 1"
+    passing = (LanguageResult(PY, (ApproachResult("reference"),)),)
+    reported(
+        project_report(passing, SuiteCheck(14, 14), DeterminismVerdict(10, 9, 0.01, (failure,)))
+    )
+    result = invoke("bank-project-python")
+    assert (result.exit_code, result.report[:2]) == (
+        ExitCode.FAILURES,
+        [
+            "0249-bank-pro...  static ok · py 1/1 ok · suite 14/14 · clock 9/10 · slowest 1.0%",
+            f"  clock: {failure}",
+        ],
     )
 
 

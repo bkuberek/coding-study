@@ -29,6 +29,7 @@ from coding_study.application.verify_content import (
     verify_content,
 )
 from coding_study.application.verify_ladder import LadderResult
+from coding_study.domain.clock_determinism import DeterminismVerdict
 from coding_study.domain.errors import UsageError
 from coding_study.domain.generated_cases import DEFAULT_ORACLE_CASES
 from coding_study.domain.problem import ContentStatus, Language, Track
@@ -190,6 +191,7 @@ class _ProblemLines:
         suite = self._problem.suite
         if suite is not None:
             yield f"suite {suite.passing}/{suite.total}"
+        yield from _clock_parts(self._problem.determinism)
         oracle = self._problem.oracle
         if oracle is not None:
             yield f"oracle {oracle.agreed}/{oracle.total}"
@@ -209,6 +211,8 @@ class _ProblemLines:
             yield from _language_failures(result)
         if problem.suite is not None:
             yield from (f"suite: {failure}" for failure in problem.suite.failures)
+        if problem.determinism is not None:
+            yield from (f"clock: {failure}" for failure in problem.determinism.failures)
         if problem.oracle is not None:
             yield from (f"oracle: {failure}" for failure in problem.oracle.failures)
         for ladder in problem.ladder:
@@ -279,6 +283,16 @@ def _load_text(ladders: Iterable[LadderResult]) -> str:
         if ladder.machine is not None and ladder.machine.load_1m is not None
     ]
     return f" (load {max(loads):.1f})" if loads else ""
+
+
+def _clock_parts(determinism: DeterminismVerdict | None) -> Iterator[str]:
+    """D10: `clock 10/10 · slowest 0.2%`, the runs that agree on every case's outputs and the
+    slowest run as a share of its hang guard."""
+    if determinism is None:
+        return
+    yield f"clock {determinism.agreeing}/{determinism.runs}"
+    if determinism.slowest_share is not None:
+        yield f"slowest {determinism.slowest_share:.1%}"
 
 
 def _stress_parts(results: Iterable[LanguageResult]) -> Iterator[str]:

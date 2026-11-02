@@ -1,6 +1,7 @@
 """`cstudy verify` on a project problem (docs/specs/authoring.md#project-problems): coverage from
-the overlay, then D1 (the starter loads), D3 (the reference passes every case of every level) and
-D9 (the reference passes its native suite), each through a runner of its own."""
+the overlay, then D1 (the starter loads), D3 (the reference passes every case of every level), D9
+(the reference passes its native suite) and, on the virtual clock, D10 (the reference gives the
+same outputs in every run), each through a runner of its own."""
 
 import os
 import shutil
@@ -24,6 +25,9 @@ from coding_study.application.verify_projects import (
     STARTER_BUILDS,
     SuiteCheck,
 )
+from coding_study.domain import virtual_clock
+from coding_study.domain.cases import JsonValue
+from coding_study.domain.clock_determinism import DETERMINISM_RUNS, DeterminismVerdict
 from coding_study.domain.errors import LanguageNotSetUpError
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import Crashed, Raised, Returned, UserError
@@ -425,3 +429,153 @@ def test_a_project_suite_is_prepared_as_a_suite(environment, root):
     toolchains = project_toolchains(FakeTestGenerator(), runner)
     verify(replace(environment, toolchains=toolchains))
     assert ProjectSuite(root / REFERENCE_BUILD) in runner.scopes
+
+
+# D10: the virtual clock
+
+MS = 1_000_000
+
+
+@pytest.fixture
+def on_the_clock(root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The fixture project on the virtual clock, whose runner is the Python one that the fakes
+    stand in for; its hang guard is one second."""
+    meta = root / "problems" / BANK_PROJECT / "meta.yaml"
+    text = meta.read_text()
+    text = text.replace("  entry: bank.bank\n", "  entry: bank.bank\n  clock: virtual\n")
+    meta.write_text(text.replace("comparator:", "limits: {hang_guard_ms: 1000}\ncomparator:"))
+    monkeypatch.setattr(virtual_clock, "GRADED_CLOCK_LANGUAGES", frozenset({Language.PYTHON}))
+
+
+def vary(process: ScriptedBuilds, case_id: str, *, in_call: int, output: JsonValue) -> None:
+    """The reference answers `case_id` with `output` the `in_call`th time it is asked, counting
+    from 1, and correctly otherwise."""
+    correct = process.reference.answer
+    asked: list[str] = []
+
+    def answer(job, case):
+        if case.id == case_id:
+            asked.append(case_id)
+            if len(asked) == in_call:
+                return Returned(output, 1_000)
+        return correct(job, case)
+
+    process.reference.answer = answer
+
+
+def slow(process: ScriptedBuilds, case_id: str, milliseconds: int) -> None:
+    correct = process.reference.answer
+
+    def answer(job, case):
+        found = correct(job, case)
+        if case.id == case_id and isinstance(found, Returned):
+            return Returned(found.output, milliseconds * MS)
+        return found
+
+    process.reference.answer = answer
+
+
+def determined(problem: ProblemVerification) -> DeterminismVerdict:
+    assert problem.determinism is not None
+    return problem.determinism
+
+
+def determinism(environment: Environment) -> DeterminismVerdict:
+    return determined(verify(environment))
+
+
+def test_a_project_on_the_real_clock_has_no_determinism_check(environment, process):
+    problem = verify(environment)
+    assert (problem.determinism, len(process.reference.gradings)) == (None, 1)
+
+
+def test_the_reference_of_a_virtual_clock_project_is_graded_ten_more_times(
+    environment, process, on_the_clock
+):
+    verify(environment)
+    assert len(process.reference.gradings) == 1 + DETERMINISM_RUNS
+
+
+def test_every_determinism_run_gets_a_runner_of_its_own(environment, process, on_the_clock):
+    verify(environment)
+    assert [len(request.jobs) for request in process.reference.requests] == [1] * 11
+
+
+def test_every_determinism_run_grades_every_case_of_every_level(environment, process, on_the_clock):
+    verify(environment)
+    last = process.reference.gradings[-1]
+    assert [case.id for case in last.cases] == [
+        case.id for case in process.reference.gradings[0].cases
+    ]
+
+
+def test_runs_that_agree_pass_d10(environment, on_the_clock):
+    problem = verify(environment)
+    verdict = determined(problem)
+    assert (problem.passed, verdict.passed, verdict.agreeing) == (True, True, DETERMINISM_RUNS)
+
+
+def test_d10_counts_its_runs_and_reports_the_slowest_share_of_the_hang_guard(
+    environment, process, on_the_clock
+):
+    slow(process, "h1", 100)
+    verdict = determinism(environment)
+    assert (verdict.runs, verdict.slowest_share) == (10, pytest.approx(0.1))
+
+
+def test_a_case_that_gives_another_output_in_one_run_fails_the_problem(
+    environment, process, on_the_clock
+):
+    vary(process, "h3", in_call=5, output=[None, True, 0])
+    problem = verify(environment)
+    verdict = determined(problem)
+    assert (problem.passed, verdict.agreeing, verdict.failures) == (
+        False,
+        9,
+        (
+            "level 2 h3: outputs differ between runs: returned [null, true, -1] in 9 of 10 "
+            "runs, returned [null, true, 0] in 1 of 10 runs",
+        ),
+    )
+
+
+def test_a_run_over_a_quarter_of_the_hang_guard_fails_the_problem(
+    environment, process, on_the_clock
+):
+    slow(process, "ex1", 300)
+    problem = verify(environment)
+    assert (problem.passed, determined(problem).failures) == (
+        False,
+        (
+            "level 1 ex1: the slowest run took 300 ms, 30% of its hang guard of 1000 ms; "
+            "at most 25%",
+        ),
+    )
+
+
+def test_a_case_with_a_hang_guard_of_its_own_is_held_to_it(
+    environment, process, root, on_the_clock
+):
+    tests = root / "problems" / BANK_PROJECT / "tests.json"
+    tests.write_text(
+        tests.read_text().replace('"id": "ex1",', '"id": "ex1", "hang_guard_ms": 4000,')
+    )
+    slow(process, "ex1", 300)
+    assert determinism(environment).passed
+
+
+def test_d10_does_not_run_when_the_reference_does_not_load(environment, process, on_the_clock):
+    process.reference.load_error = UserError("SymbolNotFound", "bank.bank has no class Bank")
+    problem = verify(environment)
+    assert (problem.determinism, len(process.reference.gradings)) == (None, 1)
+
+
+def test_d10_does_not_run_when_the_reference_does_not_build(
+    environment, process, on_the_clock, inexpressible_case
+):
+    assert verify(environment).determinism is None
+
+
+def test_d10_does_not_run_with_static_checks_only(environment, process, on_the_clock):
+    problem = verify(environment, static_only=True)
+    assert (problem.determinism, process.reference.gradings) == (None, [])

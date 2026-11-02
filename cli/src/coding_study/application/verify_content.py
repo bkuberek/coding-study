@@ -42,6 +42,7 @@ from coding_study.application.verify_items import (
 from coding_study.application.verify_ladder import LadderResult, verify_ladder
 from coding_study.application.verify_projects import SuiteCheck, verify_project
 from coding_study.domain.cases import Expected, GeneratedInput, JsonValue
+from coding_study.domain.clock_determinism import DeterminismVerdict
 from coding_study.domain.comparators import Comparator
 from coding_study.domain.errors import ContentError, ContentIssue, UnknownProblemError
 from coding_study.domain.generated_cases import (
@@ -138,6 +139,8 @@ class ProblemVerification:
     """Requested checks that need generator.py, which this problem does not have."""
     suite: SuiteCheck | None = None
     """Project problems: D9, the reference's native suite; None when it did not run."""
+    determinism: DeterminismVerdict | None = None
+    """Projects on the virtual clock: D10, the reference's runs; None when they did not run."""
 
     @property
     def passed(self) -> bool:
@@ -149,6 +152,7 @@ class ProblemVerification:
             and (self.oracle is None or not self.oracle.failures)
             and all(result.passed for result in self.ladder)
             and (self.suite is None or self.suite.passed)
+            and (self.determinism is None or self.determinism.passed)
         )
 
     def covers(self, language: Language) -> bool:
@@ -432,6 +436,7 @@ class _DynamicChecks:
             verification,
             languages=(*(project.language for project in projects), *skipped),
             suite=next((project.suite for project in projects), None),
+            determinism=next((project.determinism for project in projects), None),
             dynamic_errors=tuple(self._errors),
             ready_errors=verification.ready_errors + self._skip_errors(split),
             skipped=self._generator_checks_requested(),
