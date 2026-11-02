@@ -92,6 +92,14 @@ def test_the_virtual_clock_flag_writes_a_python_project_on_the_virtual_clock(env
     assert (result.exit_code, meta.project.clock) == (0, "virtual")  # type: ignore[union-attr]
 
 
+def test_the_virtual_clock_flag_writes_a_typescript_project_on_the_virtual_clock(environment):
+    result = invoke(
+        "waiter-project-typescript", "--from-template", "project-typescript", "--virtual-clock"
+    )
+    meta = environment.problems.load("waiter-project-typescript").meta
+    assert (result.exit_code, meta.project.clock) == (0, "virtual")  # type: ignore[union-attr]
+
+
 def test_a_virtual_clock_project_says_so_in_its_first_line(environment):
     result = invoke("waiter-project-go", "--from-template", "project-go", "--virtual-clock")
     assert result.output.splitlines()[0] == (

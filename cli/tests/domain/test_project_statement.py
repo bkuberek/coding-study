@@ -113,6 +113,17 @@ def test_an_async_python_method_reads_as_python_declares_it():
     ]
 
 
+def test_an_async_typescript_method_returns_a_promise():
+    waits = replace(method("waitFor", 1, "key: string; waitMs: long", "string"), is_async=True)
+    signature = ClassSignature("Bank", (), (waits,))
+    meta = project_meta(signature=signature, language=Language.TYPESCRIPT, levels=(Level(1, "W"),))
+    markdown = "# Bank\n\n## Level 1: W\n"
+    assert lines_after("## Level 1: W", rendered(1, project_problem(meta=meta), markdown), 2) == [
+        "",
+        "Methods to add: waitFor(key: string, waitMs: number): Promise<string>",
+    ]
+
+
 def test_expected_outputs_keep_their_method_types():
     balance_on = method("balanceOn", 1, "day: date", "decimal")
     signature = ClassSignature("Bank", (), (balance_on,))

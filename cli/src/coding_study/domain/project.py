@@ -407,6 +407,8 @@ class _Annotated:
     """Between a parameter's name and its type."""
     keyword: str = ""
     """Before the name: `async def ` for an asynchronous Python method."""
+    returns_format: str = "{}"
+    """The return type in its setting: `Promise<{}>` for an asynchronous TypeScript method."""
 
     def __call__(
         self, name: str, params: tuple[tuple[str, ValueType], ...], returns: ReturnType
@@ -416,7 +418,7 @@ class _Annotated:
             for param, declared in params
         )
         declared = f"{self.keyword}{name}({listed})"
-        returned = self.type_text(returns)
+        returned = self.returns_format.format(self.type_text(returns))
         return f"{declared}{self.returns_separator}{returned}" if returned else declared
 
 
@@ -728,6 +730,7 @@ _PROJECT_LANGUAGES: Mapping[Language, _ProjectLanguage] = {
         "level-",
         ".test.ts",
         _Annotated(_typescript_type, ": "),
+        declare_async=_Annotated(_typescript_type, ": ", returns_format="Promise<{}>"),
     ),
     Language.JAVA: _jvm_language("java", ".java", _java_declaration),
     Language.KOTLIN: _jvm_language("kotlin", ".kt", _Annotated(_kotlin_type, ": ")),

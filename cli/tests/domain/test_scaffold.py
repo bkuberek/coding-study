@@ -214,7 +214,10 @@ def test_the_virtual_clock_is_a_usage_error_where_it_does_not_apply(template, me
         plan(slug="waiter", template=template, virtual_clock=True)
 
 
-@pytest.mark.parametrize("template", [TemplateName.PROJECT_GO, TemplateName.PROJECT_PYTHON])
+@pytest.mark.parametrize(
+    "template",
+    [TemplateName.PROJECT_GO, TemplateName.PROJECT_PYTHON, TemplateName.PROJECT_TYPESCRIPT],
+)
 def test_the_virtual_clock_variant_is_a_template_of_its_own(template):
     request = ScaffoldRequest("waiter", template, virtual_clock=True)
     assert template_directory(request) == f"{template}-clock"

@@ -18,6 +18,7 @@ from coding_study.domain.project import Project
 from coding_study.domain.project_tests import level_tests
 from coding_study.domain.signature import ClassSignature, Method, Param
 from coding_study.domain.type_dsl import parse_value_type
+from coding_study.domain.virtual_clock import ProjectClock
 from tests.project_builders import OPS, method, ops_case, project_meta, project_problem
 
 GENERATOR = TypeScriptTestGenerator()
@@ -455,3 +456,196 @@ def test_a_constructor_too_long_for_its_line_moves_after_the_equals_sign():
     assert (
         f"  const bankAccountWithAnExtremelyLongNameThatNeedsItsOwnLine =\n    new {name}();\n"
     ) in text
+
+
+# the virtual clock (docs/specs/problem-format.md#generated-tests-on-the-virtual-clock)
+
+PUBLISH = method("publish", 1, "body: string", "int")
+RECEIVE = replace(method("receive", 1, "waitMs: int", "string"), is_async=True)
+LEAVE = replace(method("leave", 1, "", "void"), is_async=True)
+INBOX = ClassSignature("Inbox", (), (PUBLISH, RECEIVE, LEAVE))
+CLOCK_EXAMPLE = """\
+// Level 1 examples of bank-project-typescript, written by `cstudy start`.
+// Yours to edit and extend: cstudy never rewrites this file.
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import { Inbox } from "../src/bank.ts";
+import { virtualClock } from "./virtual-clock.ts";
+
+// a waiting receive takes a message published while it waits
+test("ex1", async (t) => {
+  const clock = virtualClock(t);
+  const inbox = new Inbox();
+  await clock.settle();
+  const r1 = inbox.receive(5000);
+  await clock.settle();
+  await clock.advance(1000);
+  assert.equal(inbox.publish("a"), 1);
+  await clock.settle();
+  assert.equal(await clock.wait(r1), "a");
+  await clock.settle();
+  assert.equal(clock.now(), 1000);
+  assert.equal(await clock.wait(inbox.receive(2000)), "");
+  await clock.settle();
+  assert.equal(clock.now(), 3000);
+});
+"""
+CLOCK_EX1 = ops_case(
+    "ex1",
+    1,
+    ("@spawn", ["r1", "receive", 5000], None),
+    ("@advance", [1000], None),
+    ("publish", ["a"], 1),
+    ("@join", ["r1"], "a"),
+    ("@now", [], 1000),
+    ("receive", [2000], ""),
+    ("@now", [], 3000),
+    note="a waiting receive takes a message published while it waits",
+    class_name="Inbox",
+)
+
+
+def clock_meta(signature: ClassSignature = INBOX, comparator: ComparatorSpec = OPS):
+    return project_meta(
+        signature,
+        comparator,
+        Language.TYPESCRIPT,
+        (Level(1, "Waiting"),),
+        clock=ProjectClock.VIRTUAL,
+    )
+
+
+def on_the_clock(*calls, meta=None, class_name: str = "Inbox") -> str:
+    case = ops_case("ex1", 1, *calls, class_name=class_name)
+    return generated(case, meta=meta or clock_meta())
+
+
+def clock_body(text: str) -> str:
+    """The lines of the one test, after its first line."""
+    return text.split('test("ex1", async (t) => {\n', 1)[1].removesuffix("});\n")
+
+
+def test_a_level_on_the_virtual_clock_matches_the_spec_example():
+    assert generated(CLOCK_EX1, meta=clock_meta()) == CLOCK_EXAMPLE
+
+
+def test_generation_on_the_virtual_clock_is_byte_stable():
+    assert generated(CLOCK_EX1, meta=clock_meta()) == generated(CLOCK_EX1, meta=clock_meta())
+
+
+def test_a_test_of_calls_alone_settles_between_them():
+    text = on_the_clock(("publish", ["a"], 1), ("publish", ["b"], 2))
+    assert clock_body(text) == (
+        "  const clock = virtualClock(t);\n"
+        "  const inbox = new Inbox();\n"
+        "  await clock.settle();\n"
+        '  assert.equal(inbox.publish("a"), 1);\n'
+        "  await clock.settle();\n"
+        '  assert.equal(inbox.publish("b"), 2);\n'
+    )
+
+
+def test_a_constructor_alone_still_runs_on_the_clock():
+    assert clock_body(on_the_clock()) == "  virtualClock(t);\n  new Inbox();\n"
+
+
+def test_the_helper_is_imported_from_the_starters_tests_directory():
+    meta = replace(
+        clock_meta(), project=Project("src/bank.ts", "tests/levels", ProjectClock.VIRTUAL)
+    )
+    text = on_the_clock(("publish", ["a"], 1), meta=meta)
+    assert 'import { virtualClock } from "../virtual-clock.ts";\n' in text
+
+
+def test_an_async_call_is_awaited_while_the_clock_moves():
+    text = on_the_clock(("receive", [5], "a"))
+    assert clock_body(text).endswith('  assert.equal(await clock.wait(inbox.receive(5)), "a");\n')
+
+
+def test_an_async_call_that_returns_nothing_is_awaited_alone():
+    text = on_the_clock(("leave", [], None))
+    assert clock_body(text).endswith("  await clock.wait(inbox.leave());\n")
+
+
+def test_advance_and_now_need_no_settling_after_them():
+    text = on_the_clock(("@advance", [5], None), ("@now", [], 5), ("publish", ["a"], 1))
+    assert clock_body(text) == (
+        "  const clock = virtualClock(t);\n"
+        "  const inbox = new Inbox();\n"
+        "  await clock.settle();\n"
+        "  await clock.advance(5);\n"
+        "  assert.equal(clock.now(), 5);\n"
+        '  assert.equal(inbox.publish("a"), 1);\n'
+    )
+
+
+def test_spawn_keeps_the_pending_promise_in_a_variable_named_after_the_task():
+    text = on_the_clock(("@spawn", ["r1", "receive", 5], None), ("@join", ["r1"], ""))
+    assert "  const r1 = inbox.receive(5);\n  await clock.settle();\n" in text
+
+
+def test_join_waits_for_the_promise_and_checks_its_result():
+    text = on_the_clock(("@spawn", ["r1", "receive", 5], None), ("@join", ["r1"], "x"))
+    assert clock_body(text).endswith('  assert.equal(await clock.wait(r1), "x");\n')
+
+
+def test_join_of_a_task_that_returns_nothing_only_waits():
+    text = on_the_clock(("@spawn", ["l", "leave"], None), ("@join", ["l"], None))
+    assert clock_body(text).endswith("  await clock.wait(l);\n")
+
+
+def test_join_sorts_an_unordered_result_first():
+    names = replace(method("names", 1, "", "list<string>"), is_async=True)
+    comparator = ComparatorSpec(ComparatorType.OPS, per_method={"names": ComparatorType.UNORDERED})
+    meta = clock_meta(ClassSignature("Inbox", (), (names,)), comparator)
+    text = on_the_clock(("@spawn", ["n", "names"], None), ("@join", ["n"], ["b", "a"]), meta=meta)
+    assert clock_body(text).endswith(
+        '  assert.deepEqual([...(await clock.wait(n))].sort(), ["a", "b"]);\n'
+    )
+
+
+def test_join_of_a_float_result_allows_the_tolerance():
+    ratio = replace(method("ratio", 1, "", "double"), is_async=True)
+    comparator = ComparatorSpec(ComparatorType.OPS, per_method={"ratio": ComparatorType.FLOAT})
+    meta = clock_meta(ClassSignature("Inbox", (), (ratio,)), comparator)
+    text = on_the_clock(("@spawn", ["x", "ratio"], None), ("@join", ["x"], 0.5), meta=meta)
+    assert clock_body(text).endswith("  assertClose(await clock.wait(x), 0.5, 0.000001);\n")
+
+
+def test_a_task_name_becomes_a_typescript_identifier():
+    text = on_the_clock(
+        ("@spawn", ["consumer-1", "receive", 5], None), ("@join", ["consumer-1"], "")
+    )
+    assert "  const consumer1 = inbox.receive(5);\n" in text
+    assert '  assert.equal(await clock.wait(consumer1), "");\n' in text
+
+
+def test_a_task_name_with_words_becomes_camel_case():
+    text = on_the_clock(
+        ("@spawn", ["slow-reader", "receive", 5], None), ("@join", ["slow-reader"], "")
+    )
+    assert "  const slowReader = inbox.receive(5);\n" in text
+
+
+def test_a_task_never_takes_a_name_the_test_uses():
+    text = on_the_clock(
+        ("@spawn", ["clock", "receive", 5], None),
+        ("@join", ["clock"], ""),
+        ("@spawn", ["inbox", "receive", 5], None),
+        ("@join", ["inbox"], ""),
+    )
+    assert "  const task1 = inbox.receive(5);\n" in text
+    assert "  const task2 = inbox.receive(5);\n" in text
+
+
+def test_the_instance_never_takes_the_clocks_name():
+    signature = ClassSignature("Clock", (), (PUBLISH,))
+    text = on_the_clock(("publish", ["a"], 1), meta=clock_meta(signature), class_name="Clock")
+    assert "  const clock_ = new Clock();\n" in text
+
+
+def test_the_real_clock_keeps_plain_tests():
+    meta = project_meta(INBOX, language=Language.TYPESCRIPT)
+    text = generated(ops_case("ex1", 1, ("publish", ["a"], 1), class_name="Inbox"), meta=meta)
+    assert 'test("ex1", () => {\n  const inbox = new Inbox();\n' in text

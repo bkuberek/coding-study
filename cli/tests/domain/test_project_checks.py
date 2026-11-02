@@ -1,6 +1,7 @@
 """Static checks on project problems: S13's exception, S14 to S16, and the progressive checks
 (S5, S6, S7, S10) as they apply to them."""
 
+import hashlib
 from dataclasses import replace
 
 import pytest
@@ -17,7 +18,7 @@ from coding_study.domain.problem import (
     Track,
 )
 from coding_study.domain.project import Project, ProjectFile, ProjectFiles, ProjectTree
-from coding_study.domain.project_checks import jvm_build_files
+from coding_study.domain.project_checks import TYPESCRIPT_CLOCK_HELPER_DIGEST, jvm_build_files
 from coding_study.domain.ready_criteria import ready_problems
 from coding_study.domain.signature import ClassSignature, Param, Returns
 from coding_study.domain.static_checks import ProblemContent, static_checks
@@ -25,7 +26,7 @@ from coding_study.domain.stress import StressScenario
 from coding_study.domain.type_dsl import parse_return_type, parse_value_type
 from coding_study.domain.virtual_clock import ProjectClock
 from tests.fakes import repository_root
-from tests.helpers import BANK_PROJECT, PROJECT_PROBLEMS, WORKSPACE_TEMPLATE
+from tests.helpers import BANK_PROJECT, PROJECT_PROBLEMS, REPOSITORY_ROOT, WORKSPACE_TEMPLATE
 
 FIXTURE = PROJECT_PROBLEMS / BANK_PROJECT
 DIRECTORY = f"problems/{BANK_PROJECT}"
@@ -1209,6 +1210,48 @@ def test_the_plugin_may_be_loaded_in_either_spelling(bank, addopts):
     pyproject = f"[tool.pytest.ini_options]\naddopts = {addopts}\n"
     problem = with_starter(on_the_virtual_clock(bank), text_file("pyproject.toml", pyproject))
     assert starter_errors(problem) == []
+
+
+CLOCK_HELPER_TEXT = (
+    REPOSITORY_ROOT / "runners" / "typescript" / "lib" / "virtual-clock.ts"
+).read_text()
+
+
+def typescript_on_the_clock(problem, helper: str | None = CLOCK_HELPER_TEXT):
+    """The TypeScript fixture on the virtual clock, its starter holding `helper` as the copy of
+    the clock helper."""
+    clocked = typescript(problem)
+    project = replace(clocked.meta.project, clock=ProjectClock.VIRTUAL)
+    clocked = with_meta(clocked, project=project)
+    if helper is None:
+        return clocked
+    return with_starter(clocked, text_file("tests/virtual-clock.ts", helper))
+
+
+@pytest.mark.usefixtures("graded_clock_runners")
+def test_a_typescript_starter_on_the_virtual_clock_holds_the_clock_helper(bank):
+    assert starter_errors(typescript_on_the_clock(bank)) == []
+
+
+@pytest.mark.usefixtures("graded_clock_runners")
+def test_a_typescript_starter_on_the_virtual_clock_without_the_helper_fails(bank):
+    assert starter_errors(typescript_on_the_clock(bank, helper=None)) == [
+        f"{STARTER}/tests/virtual-clock.ts: missing; a virtual-clock project's tests import it"
+    ]
+
+
+@pytest.mark.usefixtures("graded_clock_runners")
+def test_a_typescript_clock_helper_that_drifted_fails(bank):
+    helper = CLOCK_HELPER_TEXT.replace("now: 0", "now: 1")
+    assert starter_errors(typescript_on_the_clock(bank, helper)) == [
+        f"{STARTER}/tests/virtual-clock.ts: is not the clock helper that the template writes; "
+        "copy runners/typescript/lib/virtual-clock.ts again"
+    ]
+
+
+def test_the_clock_helper_digest_is_the_runners_file():
+    """A change to runners/typescript/lib/virtual-clock.ts moves its digest in the domain too."""
+    assert hashlib.sha256(CLOCK_HELPER_TEXT.encode()).hexdigest() == TYPESCRIPT_CLOCK_HELPER_DIGEST
 
 
 def test_a_python_starter_on_the_real_clock_needs_no_plugin(bank):

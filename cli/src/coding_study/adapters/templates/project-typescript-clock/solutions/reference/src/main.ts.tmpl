@@ -1,0 +1,45 @@
+// The class that `cstudy submit` and the tests drive.
+//
+// TODO: replace this sketch with the reference of every level.
+
+export class {{class_name}} {
+  readonly #values = new Map<string, string>();
+  #waiters: (() => void)[] = [];
+
+  put(key: string, value: string): string {
+    const previous = this.#values.get(key) ?? "";
+    this.#values.set(key, value);
+    const waiters = this.#waiters;
+    this.#waiters = [];
+    for (const wake of waiters) {
+      wake();
+    }
+    return previous;
+  }
+
+  async waitFor(key: string, waitMs: number): Promise<string> {
+    const deadline = Date.now() + waitMs;
+    while (!this.#values.has(key)) {
+      const left = deadline - Date.now();
+      if (left <= 0 || !(await this.#changed(left))) {
+        return "";
+      }
+    }
+    return this.#values.get(key) ?? "";
+  }
+
+  /** True when a value arrives within `ms` milliseconds, false once they passed. */
+  #changed(ms: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const wake = (): void => {
+        clearTimeout(timer);
+        resolve(true);
+      };
+      const timer = setTimeout(() => {
+        this.#waiters = this.#waiters.filter((waiter) => waiter !== wake);
+        resolve(false);
+      }, ms);
+      this.#waiters.push(wake);
+    });
+  }
+}

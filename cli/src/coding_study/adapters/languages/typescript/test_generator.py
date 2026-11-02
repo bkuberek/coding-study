@@ -18,6 +18,15 @@ fails against `0`, where the core sees `0`, since JSON has no negative zero. And
 leaves items with the same text in the order it found them, so an `unordered` list of lists whose
 different items join to the same text (`["a,b"]` and `["a", "b"]`) can fail.
 
+On the virtual clock (docs/specs/problem-format.md#generated-tests-on-the-virtual-clock) each test
+is `async (t)`, starts the clock of `tests/virtual-clock.ts` (the starter's copy of the runner's
+helper) with `virtualClock(t)`, and settles between operations as the grader does
+(`await clock.settle()`), except after `@advance`, which settles itself, and `@now`, which runs
+nothing. An asynchronous method's promise is awaited through `clock.wait`, which moves the clock
+while it is pending. `@advance` is `await clock.advance(ms)`, `@spawn` keeps the pending promise
+in a variable named after the task, `@join` waits for it, checked as any call is, and `@now`
+checks `clock.now()`.
+
 The text already matches Prettier 3 with its default options (80 columns, two-space indentation,
 double quotes, trailing commas everywhere), so no formatter runs. Statements are documents built as
 Prettier's printer for JavaScript builds them for the few constructs a test uses, laid out by the
@@ -27,7 +36,9 @@ lines; a list of several lists of several items always breaks; a declaration bre
 when the construction does not fit up to its first bracket.
 """
 
+import itertools
 import posixpath
+import re
 import textwrap
 import unicodedata
 from collections.abc import Sequence
@@ -54,7 +65,18 @@ from coding_study.domain.cases import JsonValue
 from coding_study.domain.naming import RESERVED_WORDS, NameRole, member_name, snake_case
 from coding_study.domain.problem import ComparatorType, Language
 from coding_study.domain.project import PATH_SEPARATOR, Project
-from coding_study.domain.project_tests import EDIT_NOTICE, Call, LevelTest, LevelTests
+from coding_study.domain.project_tests import (
+    EDIT_NOTICE,
+    Advance,
+    Call,
+    Join,
+    LevelTest,
+    LevelTests,
+    Now,
+    Operation,
+    Spawn,
+)
+from coding_study.domain.signature import Method
 
 ASSERT_IMPORT = 'import assert from "node:assert/strict";'
 TEST_IMPORT = 'import { test } from "node:test";'
@@ -87,6 +109,15 @@ _NAMES_IN_TESTS = RESERVED_WORDS[Language.TYPESCRIPT] | {
     ASSERT_CLOSE,
 }
 """What the instance may not be called: reserved words, and the names a test body uses."""
+CLOCK = "clock"
+CLOCK_FACTORY = "virtualClock"
+CLOCK_HELPER = "tests/virtual-clock.ts"
+"""The starter's copy of the clock helper, relative to the project root."""
+TEST_CONTEXT = "t"
+FALLBACK_TASK = "task"
+_NAMES_ON_THE_CLOCK = frozenset({CLOCK, CLOCK_FACTORY, TEST_CONTEXT})
+"""The names a test on the virtual clock uses as well."""
+_NOT_IDENTIFIER = re.compile(r"[^0-9A-Za-z_$]+")
 _PARENT_DIRECTORY = f"..{PATH_SEPARATOR}"
 _CURRENT_DIRECTORY = f".{PATH_SEPARATOR}"
 _QUOTE = '"'
@@ -114,7 +145,9 @@ class TypeScriptTestGenerator:
 class _LevelFile:
     def __init__(self, tests: LevelTests) -> None:
         self._tests = tests
-        self._instance = _instance_name(tests.signature.name)
+        self._clock = tests.virtual_clock
+        self._taken = _NAMES_IN_TESTS | _NAMES_ON_THE_CLOCK if self._clock else _NAMES_IN_TESTS
+        self._instance = _instance_name(tests.signature.name, self._taken)
         self._tolerance = _number(tests.tolerance)
         self._asserts = False
         self._compares_floats = False
@@ -126,33 +159,85 @@ class _LevelFile:
         tests = [self._test(test) for test in self._tests.tests]
         imports = [ASSERT_IMPORT] if self._asserts else []
         entry = _entry_path(self._tests.project)
+        helper = (
+            [f'import {{ {CLOCK_FACTORY} }} from "{_clock_helper_path(self._tests.project)}";']
+            if self._clock
+            else []
+        )
         blocks = [
             "\n".join([*header, *imports, TEST_IMPORT]),
-            f'import {{ {self._tests.signature.name} }} from "{entry}";',
+            "\n".join([f'import {{ {self._tests.signature.name} }} from "{entry}";', *helper]),
             *([ASSERT_CLOSE_FUNCTION] if self._compares_floats else []),
             *tests,
         ]
         return "\n\n".join(blocks) + "\n"
 
     def _test(self, test: LevelTest) -> str:
-        lines = [*_comment(test.note or ""), f"test({_string(test.case_id)}, () => {{"]
-        lines.append(layout(self._construction(test), _STYLE, INDENT))
-        lines += (layout(self._statement(call), _STYLE, INDENT) for call in test.calls)
+        callback = f"async ({TEST_CONTEXT}) =>" if self._clock else "() =>"
+        lines = [*_comment(test.note or ""), f"test({_string(test.case_id)}, {callback} {{"]
+        lines += (layout(statement, _STYLE, INDENT) for statement in self._body(test))
         return "\n".join([*lines, "});"])
 
-    def _construction(self, test: LevelTest) -> Doc:
+    def _body(self, test: LevelTest) -> list[Doc]:
+        """The constructor, then a statement per operation. On the virtual clock the test starts
+        the clock first, and settles after each operation but the last, unless the operation
+        settles itself or runs nothing."""
+        if not self._clock:
+            calls = test.calls
+            return [self._construction(test, bool(calls)), *map(self._call, calls)]
+        uses_instance = any(isinstance(op, Call | Spawn) for op in test.operations)
+        steps: list[tuple[Doc, bool]] = [(self._construction(test, uses_instance), True)]
+        names = _TaskNames(self._taken | {self._instance})
+        steps += (
+            (self._operation(op, names), not isinstance(op, Advance | Now))
+            for op in test.operations
+        )
+        body: list[Doc] = []
+        for index, (statement, settles) in enumerate(steps):
+            body.append(statement)
+            if settles and index < len(steps) - 1:
+                body.append(Text(f"await {CLOCK}.settle();"))
+        start = f"{CLOCK_FACTORY}({TEST_CONTEXT})"
+        uses_clock = len(body) > 1
+        return [Text(f"const {CLOCK} = {start};" if uses_clock else f"{start};"), *body]
+
+    def _construction(self, test: LevelTest, uses_instance: bool) -> Doc:
         """`const bank = new Bank(...);`, or `new Bank(...);` alone when no call follows to use
         the instance."""
         arguments = [_value(value) for value in test.constructor_arguments]
         construction = (Text(f"new {self._tests.signature.name}"), _arguments(arguments))
-        if not test.calls:
+        if not uses_instance:
             return (construction, Text(";"))
         return _declaration(self._instance, construction)
 
-    def _statement(self, call: Call) -> Doc:
-        name = member_name(call.method.name, Language.TYPESCRIPT, NameRole.METHOD)
-        arguments = [_value(value) for value in call.arguments]
-        invocation = _member_call(Text(f"{self._instance}.{name}"), arguments)
+    def _operation(self, operation: Operation, names: "_TaskNames") -> Doc:
+        match operation:
+            case Call():
+                return self._call(operation)
+            case Advance(milliseconds):
+                return Text(f"await {CLOCK}.advance({milliseconds});")
+            case Spawn(task, method, arguments):
+                return _declaration(names.assign(task), self._invocation(method, arguments))
+            case Join(task, call):
+                return self._checked(_waited(Text(names.variable(task))), call)
+            case Now(expected):
+                now = _member_call(Text(f"{CLOCK}.now"), [])
+                return _assertion("assert.equal", now, _value(expected))
+
+    def _call(self, call: Call) -> Doc:
+        invocation = self._invocation(call.method, call.arguments)
+        if self._clock and call.method.is_async:
+            invocation = _waited(invocation)
+        return self._checked(invocation, call)
+
+    def _invocation(self, method: Method, arguments: Sequence[JsonValue]) -> Doc:
+        name = member_name(method.name, Language.TYPESCRIPT, NameRole.METHOD)
+        values = [_value(value) for value in arguments]
+        return _member_call(Text(f"{self._instance}.{name}"), values)
+
+    def _checked(self, invocation: Doc, call: Call) -> Doc:
+        """The invocation alone for a `void` method, else an assertion on its result with the
+        method's comparator."""
         if not call.returns_value:
             return (invocation, Text(";"))
         expected = call.expected
@@ -163,7 +248,7 @@ class _LevelFile:
             return (Text(ASSERT_CLOSE), _arguments(compared), Text(";"))
         self._asserts = True
         if call.comparator is ComparatorType.UNORDERED and isinstance(expected, list):
-            spread = _array([_Expression((Text("..."), invocation))])
+            spread = _array([_Expression((Text("..."), _spread_operand(invocation)))])
             sorted_copy = _member_call((spread.doc, Text(".sort")), [])
             in_order = sorted(expected, key=_sort_key)
             return _assertion("assert.deepEqual", sorted_copy, _value(in_order))
@@ -293,6 +378,17 @@ def _member_call(callee: Doc, arguments: Sequence[_Expression]) -> Doc:
     return Group((callee, _arguments(arguments)))
 
 
+def _waited(promise: Doc) -> Doc:
+    """`await clock.wait(promise)`: the promise's value, the clock moving while it is pending."""
+    return (Text("await "), _member_call(Text(f"{CLOCK}.wait"), [_Expression(promise)]))
+
+
+def _spread_operand(expression: Doc) -> Doc:
+    """An `await` spread in an array takes parentheses, as Prettier prints it."""
+    awaited = isinstance(expression, tuple) and expression[:1] == (Text("await "),)
+    return (Text("("), expression, Text(")")) if awaited else expression
+
+
 def _assertion(function: str, actual: Doc, expected: _Expression) -> Doc:
     """`assert.<function>(actual, expected);`."""
     return (_member_call(Text(function), [_Expression(actual), expected]), Text(";"))
@@ -402,11 +498,42 @@ def _holds_numbers(value: JsonValue) -> bool:
 # Names, paths and comments
 
 
-def _instance_name(class_name: str) -> str:
-    """The class in camelCase: `bank` for `Bank`, `lruCache` for `LRUCache`."""
+def _instance_name(class_name: str, taken: frozenset[str]) -> str:
+    """The class in camelCase: `bank` for `Bank`, `lruCache` for `LRUCache`; with a trailing `_`
+    when the test uses that name otherwise."""
     first, *others = snake_case(class_name).split("_")
     name = first + "".join(word.capitalize() for word in others)
-    return f"{name}_" if name in _NAMES_IN_TESTS or name == class_name else name
+    return f"{name}_" if name in taken or name == class_name else name
+
+
+class _TaskNames:
+    """The variables of one test's tasks: the task's name as a TypeScript identifier in
+    camelCase (`consumer-1` as `consumer1`, `slow-reader` as `slowReader`), else `task1`, `task2`,
+    unless the test already uses the name."""
+
+    def __init__(self, taken: frozenset[str]) -> None:
+        self._taken = set(taken)
+        self._variables: dict[str, str] = {}
+
+    def assign(self, task: str) -> str:
+        first, *others = _NOT_IDENTIFIER.split(task)
+        spelled = first + "".join(word[:1].upper() + word[1:] for word in others)
+        fallbacks = (f"{FALLBACK_TASK}{number}" for number in itertools.count(1))
+        candidates = itertools.chain([spelled], fallbacks)
+        usable = (name for name in candidates if name and not name[0].isdigit())
+        variable = next(name for name in usable if name not in self._taken)
+        self._taken.add(variable)
+        self._variables[task] = variable
+        return variable
+
+    def variable(self, task: str) -> str:
+        return self._variables[task]
+
+
+def _clock_helper_path(project: Project) -> str:
+    """The starter's clock helper relative to the test files, as an import names it."""
+    path = posixpath.relpath(CLOCK_HELPER, project.tests)
+    return path if path.startswith(_PARENT_DIRECTORY) else f"{_CURRENT_DIRECTORY}{path}"
 
 
 def _entry_path(project: Project) -> str:

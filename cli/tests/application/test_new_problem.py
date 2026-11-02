@@ -621,3 +621,51 @@ def test_a_python_clock_starter_without_the_plugin_fails_static_checks(environme
         "cs_support.virtual_clock; a virtual-clock project's addopts holds "
         "-p cs_support.virtual_clock",
     )
+
+
+# a TypeScript project on the virtual clock
+
+TYPESCRIPT_CLOCK_SLUG = "waiter-project-typescript"
+
+
+def create_typescript_clock(environment):
+    request = ScaffoldRequest(
+        TYPESCRIPT_CLOCK_SLUG, TemplateName.PROJECT_TYPESCRIPT, virtual_clock=True
+    )
+    return create_problem(environment, TEMPLATES, request)
+
+
+def test_a_typescript_clock_project_gets_the_clock_helper_in_its_starter(environment):
+    assert "starter/tests/virtual-clock.ts" in create_typescript_clock(environment).files
+
+
+def test_a_typescript_clock_projects_level_2_method_returns_a_promise(environment):
+    created = create_typescript_clock(environment)
+    text = clock_file(environment, created, "solutions/reference/src/main.ts")
+    assert "  async waitFor(key: string, waitMs: number): Promise<string> {\n" in text
+
+
+def test_a_typescript_clock_projects_readme_teaches_testing_on_the_clock(environment):
+    created = create_typescript_clock(environment)
+    readme = clock_file(environment, created, "starter/README.md")
+    assert "## Testing on the virtual clock" in readme
+    assert 'import { virtualClock } from "./virtual-clock.ts";' in readme
+
+
+def test_a_typescript_clock_project_passes_static_checks_after_replacing_the_placeholders(
+    environment,
+):
+    created = create_typescript_clock(environment)
+    replace_placeholders(environment.root / created.directory)
+    assert static_errors(environment, TYPESCRIPT_CLOCK_SLUG) == ()
+
+
+def test_a_typescript_clock_starter_with_an_edited_helper_fails_static_checks(environment):
+    created = create_typescript_clock(environment)
+    replace_placeholders(environment.root / created.directory)
+    helper = environment.root / created.directory / "starter" / "tests" / "virtual-clock.ts"
+    helper.write_text(helper.read_text() + "// mine\n")
+    assert static_errors(environment, TYPESCRIPT_CLOCK_SLUG) == (
+        f"problems/0003-{TYPESCRIPT_CLOCK_SLUG}/starter/tests/virtual-clock.ts: is not the clock "
+        "helper that the template writes; copy runners/typescript/lib/virtual-clock.ts again",
+    )

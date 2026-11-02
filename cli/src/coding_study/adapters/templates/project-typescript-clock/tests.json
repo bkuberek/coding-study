@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "ex1",
+      "visible": true,
+      "level": 1,
+      "ops": ["{{class_name}}", "put", "put"],
+      "args": [[], ["a", "x"], ["a", "y"]],
+      "expected": [null, "", "x"]
+    },
+    {
+      "id": "ex2",
+      "visible": true,
+      "level": 2,
+      "note": "a wait that a put ends, then a wait that times out",
+      "ops": ["{{class_name}}", "@spawn", "@advance", "put", "@join", "@now", "waitFor", "@now"],
+      "args": [[], ["w1", "waitFor", "a", 5000], [1000], ["a", "x"], ["w1"], [], ["b", 2000], []],
+      "expected": [null, null, null, "", "x", 1000, "", 3000]
+    }
+  ]
+}

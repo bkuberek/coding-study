@@ -3,6 +3,7 @@ import pytest
 from coding_study.adapters.problem_templates import PackagedProblemTemplates
 from coding_study.domain.scaffold import TemplateName
 from coding_study.domain.workspace_projects import RUST_CARGO_CONFIG
+from tests.helpers import REPOSITORY_ROOT
 
 TEMPLATE_FILES = {
     "generator.py",
@@ -97,6 +98,33 @@ def test_the_python_virtual_clock_starter_loads_the_clock_plugin():
 
 def test_the_python_virtual_clock_template_declares_the_clock_and_an_async_method():
     meta = PackagedProblemTemplates().files("project-python-clock")["meta.yaml"]
+    assert ("  clock: virtual\n" in meta, "async: true" in meta) == (True, True)
+
+
+CLOCK_HELPER = REPOSITORY_ROOT / "runners" / "typescript" / "lib" / "virtual-clock.ts"
+
+
+def test_the_typescript_virtual_clock_template_adds_the_clock_helper_to_the_project_template():
+    clock = set(PackagedProblemTemplates().files("project-typescript-clock"))
+    plain = set(PackagedProblemTemplates().files(TemplateName.PROJECT_TYPESCRIPT))
+    assert clock == plain | {"starter/tests/virtual-clock.ts"}
+
+
+def test_the_typescript_virtual_clock_helper_is_the_runners_file_byte_for_byte():
+    files = PackagedProblemTemplates().files("project-typescript-clock")
+    assert files["starter/tests/virtual-clock.ts"] == CLOCK_HELPER.read_text()
+
+
+def test_every_typescript_clock_fixture_holds_the_runners_helper():
+    fixtures = sorted(
+        (REPOSITORY_ROOT / "runners" / "conformance").glob("*/starter/tests/virtual-clock.ts")
+    )
+    assert fixtures
+    assert all(fixture.read_text() == CLOCK_HELPER.read_text() for fixture in fixtures)
+
+
+def test_the_typescript_virtual_clock_template_declares_the_clock_and_an_async_method():
+    meta = PackagedProblemTemplates().files("project-typescript-clock")["meta.yaml"]
     assert ("  clock: virtual\n" in meta, "async: true" in meta) == (True, True)
 
 

@@ -8,6 +8,7 @@ in the explanation; S18 the virtual clock (`clock_checks`). The schema refuses `
 links in the trees fail while loading the problem, so no listed path leaves its folder.
 """
 
+import hashlib
 import json
 import sys
 import tomllib
@@ -82,6 +83,13 @@ MAX_STARTER_KIB = 256
 MAX_STARTER_BYTES = MAX_STARTER_KIB * 1024
 README_FILE = "README.md"
 PYPROJECT_FILE = "pyproject.toml"
+TYPESCRIPT_CLOCK_HELPER = "tests/virtual-clock.ts"
+"""A TypeScript virtual-clock starter's copy of the runner's clock helper, which the generated
+tests import (docs/specs/problem-format.md#starter)."""
+TYPESCRIPT_CLOCK_HELPER_SOURCE = "runners/typescript/lib/virtual-clock.ts"
+TYPESCRIPT_CLOCK_HELPER_DIGEST = "ca2fc1290acd5dae49750367db98aace091a8a9ec7a22ff950da998ce33109df"
+"""The SHA-256 of TYPESCRIPT_CLOCK_HELPER_SOURCE, which the copy must match byte for byte. A test
+compares it with the runner's file, so a change to the helper moves it here too."""
 CLOCK_PLUGIN = "cs_support.virtual_clock"
 """The pytest plugin that runs a virtual-clock project's `async def` tests."""
 PLUGIN_OPTION = "-p"
@@ -509,7 +517,7 @@ class _Trees:
         if language is Language.PYTHON:
             _PythonStarter(self._error, starter, virtual_clock=virtual).check()
         elif language is Language.TYPESCRIPT:
-            _TypeScriptStarter(self._error, starter).check()
+            _TypeScriptStarter(self._error, starter, virtual_clock=virtual).check()
         elif language is Language.GO:
             entry = _well_formed_entry(self._content)
             slug = self._content.problem.meta.slug
@@ -676,16 +684,35 @@ def _top_level_modules(starter: ProjectTree) -> dict[str, str]:
 
 
 class _TypeScriptStarter:
-    """S15: an ES module package that installs nothing, and a `tsconfig.json`."""
+    """S15: an ES module package that installs nothing, a `tsconfig.json`, and on the virtual
+    clock the runner's clock helper, byte for byte, where the generated tests import it."""
 
-    def __init__(self, report: _Report, starter: ProjectTree) -> None:
+    def __init__(self, report: _Report, starter: ProjectTree, *, virtual_clock: bool) -> None:
         self._report = report
         self._starter = starter
+        self._virtual_clock = virtual_clock
 
     def check(self) -> None:
         self._package()
         if TSCONFIG_FILE not in self._starter.paths:
             self._report(TSCONFIG_FILE, "missing")
+        if self._virtual_clock:
+            self._clock_helper()
+
+    def _clock_helper(self) -> None:
+        helper = self._starter.file(TYPESCRIPT_CLOCK_HELPER)
+        if helper is None:
+            message = "missing; a virtual-clock project's tests import it"
+            self._report(TYPESCRIPT_CLOCK_HELPER, message)
+            return
+        if helper.text is None:
+            return
+        if hashlib.sha256(helper.text.encode()).hexdigest() != TYPESCRIPT_CLOCK_HELPER_DIGEST:
+            message = (
+                "is not the clock helper that the template writes; "
+                f"copy {TYPESCRIPT_CLOCK_HELPER_SOURCE} again"
+            )
+            self._report(TYPESCRIPT_CLOCK_HELPER, message)
 
     def _package(self) -> None:
         file = self._starter.file(PACKAGE_FILE)

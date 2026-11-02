@@ -2,7 +2,8 @@
 them, and they agree with the grader on real projects.
 
 Prettier 3 runs with its defaults on the level files of the TypeScript project problems (the
-fixture's and the catalog's) and on a seeded random corpus that reaches the long-line layouts. The
+fixture's, the catalog's and the conformance suite's on the virtual clock) and on seeded random
+corpora, on the real clock and on the virtual one, that reach the long-line layouts. The
 level files of each project then run with `node --test`, which strips their types, on its
 reference (every one passes) and on its bare starter (level 1 fails only with "Not implemented"),
 and type-check with the workspace's `tsc`, with the reference, in a project folder of a workspace.
@@ -32,7 +33,8 @@ from coding_study.domain.project import ProjectTree
 from coding_study.domain.project_tests import level_tests
 from coding_study.domain.signature import ClassSignature, Method, Param, Returns
 from coding_study.domain.type_dsl import parse_return_type, parse_value_type
-from tests.helpers import CATALOG_PROBLEMS, SCHEMAS_DIRECTORY
+from coding_study.domain.virtual_clock import ProjectClock
+from tests.helpers import CATALOG_PROBLEMS, REPOSITORY_ROOT, SCHEMAS_DIRECTORY
 from tests.project_builders import ops_case, project_meta, project_problem
 from tests.workspaces import workspace_like
 
@@ -52,23 +54,34 @@ CORPUS_FILES = 150
 CORPUS_SEED = 250
 NOT_IMPLEMENTED = "Not implemented"
 TAP_FAILURE = "not ok "
+CONFORMANCE = REPOSITORY_ROOT / "runners" / "conformance"
 
 
 def typescript_projects() -> list[Path]:
-    """The directories of the fixture's and the catalog's TypeScript project problems."""
+    """The directories of the fixture's and the catalog's TypeScript project problems, and of the
+    conformance suite's on the virtual clock."""
     return [
-        directory
-        for problems in (FIXTURE_PROBLEMS, CATALOG_PROBLEMS)
-        for directory in sorted(problems.iterdir())
-        if is_typescript_project(directory / "meta.yaml")
+        *(
+            directory
+            for problems in (FIXTURE_PROBLEMS, CATALOG_PROBLEMS)
+            for directory in sorted(problems.iterdir())
+            if is_typescript_project(directory / "meta.yaml")
+        ),
+        *(
+            directory
+            for directory in sorted(CONFORMANCE.iterdir())
+            if is_typescript_project(directory / "meta.yaml", on_the_clock=True)
+        ),
     ]
 
 
-def is_typescript_project(meta_file: Path) -> bool:
+def is_typescript_project(meta_file: Path, *, on_the_clock: bool = False) -> bool:
     if not meta_file.is_file():
         return False
     meta = yaml.safe_load(meta_file.read_text())
-    return meta.get("kind") == "project" and meta.get("languages") == ["typescript"]
+    clock = (meta.get("project") or {}).get("clock")
+    project = meta.get("kind") == "project" and meta.get("languages") == ["typescript"]
+    return project and (clock == "virtual" or not on_the_clock)
 
 
 PROJECTS = typescript_projects()
@@ -117,10 +130,12 @@ needs_prettier = pytest.mark.skipif(
 
 class Corpus:
     """Random level files: long names and values reach every layout, notes wrap, strings hold
-    quotes, escapes and wide characters."""
+    quotes, escapes and wide characters. On the virtual clock, methods are asynchronous at random
+    and the cases move and read the clock and spawn and join calls."""
 
-    def __init__(self, seed: int) -> None:
+    def __init__(self, seed: int, *, clock: bool = False) -> None:
         self._random = random.Random(seed)
+        self._clock = clock
 
     def problem(self) -> Problem:
         methods = tuple(self._method(index) for index in range(self._random.randint(1, 4)))
@@ -136,7 +151,11 @@ class Corpus:
         )
         signature = ClassSignature(self._random.choice(CLASS_NAMES), constructor, methods)
         meta = project_meta(
-            signature, comparator, language=Language.TYPESCRIPT, levels=(Level(1, "One"),)
+            signature,
+            comparator,
+            language=Language.TYPESCRIPT,
+            levels=(Level(1, "One"),),
+            clock=ProjectClock.VIRTUAL if self._clock else None,
         )
         cases = [self._case(signature, index) for index in range(self._random.randint(1, 3))]
         return project_problem(*cases, meta=meta)
@@ -147,7 +166,14 @@ class Corpus:
         )
         returns = self._random.choice(["void", *VALUE_TYPES])
         params = self._params(self._random.randint(0, 5))
-        return Method(f"{name}{index}", params, Returns(parse_return_type(returns)), level=1)
+        is_async = self._clock and self._random.random() < 0.5
+        return Method(
+            f"{name}{index}",
+            params,
+            Returns(parse_return_type(returns)),
+            level=1,
+            is_async=is_async,
+        )
 
     def _params(self, count: int) -> tuple[Param, ...]:
         return tuple(
@@ -163,6 +189,8 @@ class Corpus:
             returns = str(method.returns.type)
             expected = None if returns == "void" else self._value(returns)
             calls.append((method.name, arguments, expected))
+            if self._clock:
+                calls += self._harness(method, arguments, expected)
         constructor = [self._value(str(param.type)) for param in signature.constructor_params]
         note = self._note() if self._random.random() < 0.6 else None
         return ops_case(
@@ -173,6 +201,25 @@ class Corpus:
             constructor=constructor,
             class_name=signature.name,
         )
+
+    def _harness(
+        self, method: Method, arguments: list[JsonValue], expected: JsonValue
+    ) -> list[tuple[str, list[JsonValue], JsonValue]]:
+        """Harness operations after a call: the clock moves or is read, or the call runs again as
+        a task that is joined at once."""
+        match self._random.randint(0, 3):
+            case 0:
+                return [("@advance", [self._random.choice([1, 250, 2147483647])], None)]
+            case 1:
+                return [("@now", [], self._random.choice([0, 1500, 9007199254740991]))]
+            case 2 if method.is_async:
+                task = self._random.choice(["r1", "slow-reader-1", self._word(), "clock"])
+                return [
+                    ("@spawn", [task, method.name, *arguments], None),
+                    ("@join", [task], expected),
+                ]
+            case _:
+                return []
 
     def _value(self, type_text: str) -> JsonValue:
         if type_text.endswith("[]") or type_text.startswith("list<"):
@@ -223,10 +270,12 @@ VALUE_TYPES = (
 @pytest.fixture(scope="module")
 def generated_files(tmp_path_factory: pytest.TempPathFactory) -> Path:
     root = tmp_path_factory.mktemp("generated")
-    corpus = Corpus(CORPUS_SEED)
+    corpus, clock_corpus = Corpus(CORPUS_SEED), Corpus(CORPUS_SEED, clock=True)
     for index in range(CORPUS_FILES):
         text = GENERATOR.generate(level_tests(corpus.problem(), 1))
         (root / f"corpus-{index}.test.ts").write_text(text)
+        text = GENERATOR.generate(level_tests(clock_corpus.problem(), 1))
+        (root / f"clock-corpus-{index}.test.ts").write_text(text)
     for directory in PROJECTS:
         problem = load(directory, tmp_path_factory.mktemp("repository"))
         for path, text in level_files(problem).items():
@@ -257,8 +306,9 @@ def test_every_generated_file_is_prettier_formatted(generated_files):
 # node --test and tsc on the projects
 
 
-def test_the_fixture_is_among_the_projects_checked():
-    assert FIXTURE in {directory.name for directory in PROJECTS}
+def test_the_fixture_and_the_clock_fixture_are_among_the_projects_checked():
+    checked = {directory.name for directory in PROJECTS}
+    assert {FIXTURE, "9036-conformance-project-clock-typescript"} <= checked
 
 
 @pytest.fixture(params=PROJECTS, ids=[directory.name for directory in PROJECTS])
