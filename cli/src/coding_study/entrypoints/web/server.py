@@ -46,6 +46,8 @@ def bind_loopback(port: int) -> socket.socket:
         if error.errno == errno.EADDRINUSE:
             raise PortInUseError(port) from None
         raise
+    # Listening now lets a client that reads the printed URL connect before uvicorn starts.
+    listener.listen()
     return listener
 
 

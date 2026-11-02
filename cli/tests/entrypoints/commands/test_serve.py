@@ -159,6 +159,16 @@ def test_serve_listens_on_the_port_asked_for(workspace, monkeypatch):
     assert loop.address == ("127.0.0.1", port)
 
 
+def test_the_port_accepts_connections_before_the_url_is_printed():
+    """The URL is printed between binding and serving, so a client may connect in between."""
+    listener = server.bind_loopback(0)
+    try:
+        with socket.create_connection(listener.getsockname(), timeout=1):
+            pass
+    finally:
+        listener.close()
+
+
 def test_serve_prints_its_version_workspace_and_the_url_with_the_token(workspace, monkeypatch):
     loop = ServerLoop(KeyboardInterrupt)
     lines = serving(monkeypatch, loop).stdout.splitlines()
