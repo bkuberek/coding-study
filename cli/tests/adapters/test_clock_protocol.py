@@ -3,6 +3,7 @@ stress-in-project-jobs): the request says so, a case can stall at an operation, 
 restarts after a case that left goroutines or threads behind."""
 
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -73,6 +74,17 @@ def test_a_job_on_the_virtual_clock_says_so():
 def test_a_job_on_the_real_clock_names_no_clock():
     encoded: Any = encode_request(RunRequest((job(case("ex1"), clock=None),)))
     assert "clock" not in encoded["jobs"][0]
+
+
+def test_a_job_on_the_clock_names_the_seed_of_its_ties():
+    """`cstudy verify` grades with seeds 0 to 9 (D10); Python's loop orders tied timers by it."""
+    encoded: Any = encode_request(RunRequest((replace(job(case("ex1")), clock_seed=3),)))
+    assert encoded["jobs"][0]["clock_seed"] == 3
+
+
+def test_seed_zero_goes_without_saying():
+    encoded: Any = encode_request(RunRequest((job(case("ex1")),)))
+    assert "clock_seed" not in encoded["jobs"][0]
 
 
 def test_async_methods_are_marked_in_the_signature():

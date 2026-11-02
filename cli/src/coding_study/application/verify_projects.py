@@ -227,10 +227,15 @@ class _ProjectChecks:
         report = run_suite(self._environment, self._suite_run(root, FIRST_LEVEL), self._notify)
         yield from _suite_breakdowns(report)
 
-    def _grade_reference(self, root: Path) -> Judgement:
+    def _grade_reference(self, root: Path, clock_seed: int = 0) -> Judgement:
         """The reference at its last level: every case of every level."""
         grading = GradingRun(
-            self._problem, self._language, root, last_level(self._problem), release=self._release
+            self._problem,
+            self._language,
+            root,
+            last_level(self._problem),
+            release=self._release,
+            clock_seed=clock_seed,
         )
         return run_grading(self._environment, grading, self._notify)
 
@@ -242,11 +247,12 @@ class _ProjectChecks:
 
     def _determinism(self, root: Path) -> DeterminismVerdict | None:
         """D10: the reference graded `DETERMINISM_RUNS` more times, each run in a runner of its own,
-        so that nothing one run left behind reaches the next."""
+        so that nothing one run left behind reaches the next, and each with a seed of its own, by
+        which Python's loop orders the timers due at the same instant."""
         meta = self._problem.meta
         if meta.project is None or meta.project.clock is not ProjectClock.VIRTUAL:
             return None
-        runs = [self._grade_reference(root) for _ in range(DETERMINISM_RUNS)]
+        runs = [self._grade_reference(root, seed) for seed in range(DETERMINISM_RUNS)]
         config = self._environment.config
         guards = {
             verdict.case.id: resolve_hang_guard_ms(

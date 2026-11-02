@@ -1,4 +1,4 @@
-"""The Python project fixtures 9022 and 9024 through `cstudy verify --conformance`.
+"""The Python project fixtures 9022, 9024 and 9035 through `cstudy verify --conformance`.
 
 Marked `slow`: the workspace venv's Python runs the grading jobs and hosts pytest for the suite
 job, as for a user's project, in a copy of the session's practice workspace over this checkout's
@@ -18,7 +18,11 @@ from tests.workspaces import workspace_like
 pytestmark = pytest.mark.slow
 
 runner = CliRunner()
-PROJECT_FIXTURES = ("conformance-project-python", "conformance-suite-pytest")
+PROJECT_FIXTURES = (
+    "conformance-project-python",
+    "conformance-suite-pytest",
+    "conformance-project-clock-python",
+)
 
 
 def test_the_python_runner_meets_the_project_expectations(
@@ -30,10 +34,11 @@ def test_the_python_runner_meets_the_project_expectations(
     monkeypatch.setenv("CSTUDY_CONFIG", str(tmp_path / "absent-config.toml"))
     arguments = ["verify", "--conformance", "--lang", "python", *PROJECT_FIXTURES]
     result = runner.invoke(cli.app, arguments)
-    assert (result.exit_code, result.output.splitlines()[:2]) == (
+    assert (result.exit_code, result.output.splitlines()[:3]) == (
         ExitCode.SUCCESS,
         [
-            "9022-conformance-project-python  py ok",
-            "9024-conformance-suite-pytest    py ok",
+            "9022-conformance-project-python        py ok",
+            "9024-conformance-suite-pytest          py ok",
+            "9035-conformance-project-clock-python  py ok",
         ],
     )

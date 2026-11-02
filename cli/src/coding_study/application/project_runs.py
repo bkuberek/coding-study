@@ -174,6 +174,8 @@ class GradingRun:
     listener: CaseVerdictListener | None = None
     release: int | None = None
     """As `SuiteRun.release`."""
+    clock_seed: int = 0
+    """On the virtual clock: the seed of the order of simultaneous timers (`RunJob.clock_seed`)."""
 
 
 def run_grading(environment: Environment, run: GradingRun, notify: ProgressNotice) -> Judgement:
@@ -237,6 +239,7 @@ def grading_job(run: GradingRun, cases: Sequence[RunnableCase], config: Config) 
         signature=signature,
         cases=tuple(_run_case(case, meta, config) for case in cases),
         clock=meta.project.clock,
+        clock_seed=run.clock_seed,
     )
 
 

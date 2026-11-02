@@ -11,6 +11,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
+from coding_study.domain import project_tests
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.domain.problem_files import RUBRIC_FILE
@@ -161,7 +162,8 @@ def template_directory(request: ScaffoldRequest) -> str:
     """The packaged template the request writes: the template's own, or its virtual-clock variant.
 
     Raises UsageError for `--virtual-clock` on a template of another kind, in a language without
-    a virtual clock, or whose runner does not grade it yet.
+    a virtual clock, or whose runner does not grade it or whose generated tests do not express it
+    yet: the variant's examples hold harness operations.
     """
     template = request.template
     if not request.virtual_clock:
@@ -178,6 +180,11 @@ def template_directory(request: ScaffoldRequest) -> str:
         raise UsageError(
             f"--virtual-clock is not available for {template} yet: "
             f"the {language} runner does not grade the virtual clock"
+        )
+    if language not in project_tests.HARNESS_TEST_LANGUAGES:
+        raise UsageError(
+            f"--virtual-clock is not available for {template} yet: "
+            f"cstudy does not write {language} tests on the virtual clock"
         )
     return f"{template}{CLOCK_TEMPLATE_SUFFIX}"
 

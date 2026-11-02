@@ -3,7 +3,7 @@
 
 import pytest
 
-from cs_runner.program import BAD_REQUEST_EXIT_CODE
+from cs_runner.program import BAD_REQUEST_EXIT_CODE, RESTART_EXIT_CODE
 from tests.project_harness import (
     conformance_cases,
     conformance_project,
@@ -11,7 +11,14 @@ from tests.project_harness import (
     run_project,
     write_project,
 )
-from tests.runner_harness import COUNTER_SOURCE, class_job, run_jobs, write_source
+from tests.runner_harness import (
+    COUNTER_SOURCE,
+    Event,
+    RunnerRun,
+    class_job,
+    run_jobs,
+    write_source,
+)
 
 COUNTS = {"id": "counts", "ops": ["Counter", "add", "add"], "args": [[1], [2], [3]]}
 SPLIT_COUNTER = {
@@ -160,3 +167,191 @@ def test_the_conformance_project_passes_its_cases(tmp_path):
         [None, 3, 5, "pens: 5"],
         [None, "ink: 0"],
     ]
+
+
+# The virtual clock (docs/specs/runners.md#virtual-clock-and-stress-in-project-jobs)
+
+CLOCK_FIXTURE = "conformance-project-clock-python"
+
+
+def _method(name: str, params: dict[str, str], returns: str) -> Event:
+    declared = [{"name": param, "type": kind} for param, kind in params.items()]
+    return {"name": name, "params": declared, "returns": {"type": returns}}
+
+
+INBOX_SIGNATURE: Event = {
+    "class": {
+        "name": "Inbox",
+        "constructor": {"params": []},
+        "methods": [
+            _method("publish", {"body": "string"}, "int"),
+            _method("receive", {"waitMs": "int"}, "string") | {"async": True},
+            _method("sleep", {"ms": "int"}, "long") | {"async": True},
+            _method("race", {"names": "string"}, "string") | {"async": True},
+            _method("hold", {}, "string") | {"async": True},
+            _method("jam", {}, "string"),
+            _method("leave", {}, "void"),
+            _method("strand", {}, "void"),
+        ],
+    }
+}
+CLOCKED_COUNTER = {
+    "counter/counter.py": """
+        import asyncio
+
+
+        class Counter:
+            def __init__(self, start):
+                self.total = start
+
+            async def add(self, amount):
+                await asyncio.sleep(abs(amount) / 1000)
+                if amount < 0:
+                    raise ValueError("negative amount")
+                self.total += amount
+                return self.total
+
+            def reset(self):
+                print("reset")
+                self.total = 0
+    """,
+}
+
+
+def on_the_clock(job: Event, seed: int | None = None) -> Event:
+    clock: Event = {"clock": "virtual"}
+    return job | clock | ({} if seed is None else {"clock_seed": seed})
+
+
+@pytest.fixture
+def inbox(tmp_path):
+    return conformance_project(CLOCK_FIXTURE, "reference", tmp_path / "project")
+
+
+def clock_cases(*case_ids: str) -> list[Event]:
+    cases = {case["id"]: case for case in conformance_cases(CLOCK_FIXTURE)}
+    return [cases[case_id] for case_id in case_ids]
+
+
+def grade_inbox(root, *case_ids: str, seed: int | None = None) -> RunnerRun:
+    job = project_job(root, "inbox.inbox", clock_cases(*case_ids), INBOX_SIGNATURE)
+    return run_project(root, on_the_clock(job, seed))
+
+
+@pytest.fixture
+def counter(tmp_path):
+    return write_project(tmp_path / "project", CLOCKED_COUNTER)
+
+
+def grade_counter(root, *cases: Event) -> RunnerRun:
+    return run_project(root, on_the_clock(project_job(root, "counter.counter", list(cases))))
+
+
+def test_the_runner_announces_the_clock(inbox):
+    (hello,) = grade_inbox(inbox, "ex1").named("hello")
+    assert "clock" in hello["features"]
+
+
+def test_each_case_runs_on_a_virtual_clock_of_its_own(inbox):
+    run = grade_inbox(inbox, "ex1", "advance", "spawn-join", "after-deadlock", "last")
+    assert [result["output"] for result in run.named("case_result")] == [
+        [None, 1, 2, "a"],
+        [None, 0, None, 1500, 2500, 4000],
+        [None, None, None, 1, "a", 1000, "", 3000],
+        [None, None, 10],
+        [None, 1],
+    ]
+
+
+def test_ties_fire_in_the_order_of_seed_zero_by_default(inbox):
+    assert grade_inbox(inbox, "ties").only_result()["output"] == [None, "bacd", 10]
+
+
+def test_the_job_names_the_seed_that_orders_ties(inbox):
+    outputs = {grade_inbox(inbox, "ties", seed=seed).only_result()["output"][1] for seed in (1, 2)}
+    assert outputs == {"dabc", "cbda"}
+
+
+def test_a_join_that_waits_for_good_is_stalled_at_once(inbox):
+    run = grade_inbox(inbox, "deadlock", "after-deadlock")
+    stalled, after = run.named("case_result")
+    assert {key: stalled[key] for key in ("status", "op_index", "reason", "partial_output")} == {
+        "status": "stalled",
+        "op_index": 3,
+        "reason": "op 3 (@join r1): deadlock at 2000 ms",
+        "partial_output": [None, None, None],
+    }
+    assert (after["output"], run.named("restart_requested"), run.exit_code) == (
+        [None, None, 10],
+        [],
+        0,
+    )
+
+
+def test_an_awaited_call_that_waits_for_good_is_stalled_at_its_operation(inbox):
+    case = {"id": "holds", "ops": ["Inbox", "@advance", "hold"], "args": [[], [5], []]}
+    job = project_job(inbox, "inbox.inbox", [case], INBOX_SIGNATURE)
+    result = run_project(inbox, on_the_clock(job)).only_result()
+    assert (result["status"], result["reason"]) == ("stalled", "op 2 (hold): deadlock at 5 ms")
+
+
+def test_a_task_left_waiting_is_cancelled_when_the_case_ends(inbox):
+    run = grade_inbox(inbox, "leftover", "last")
+    assert [result["output"] for result in run.named("case_result")] == [[None, None, 0], [None, 1]]
+
+
+def test_a_thread_left_running_makes_the_runner_ask_for_a_restart(inbox):
+    run = grade_inbox(inbox, "strand", "last")
+    assert run.only_result()["output"] == [None, None, 0]
+    assert (run.named("restart_requested")[0]["reason"], run.exit_code) == (
+        "1 threads of strand are still running",
+        RESTART_EXIT_CODE,
+    )
+
+
+def test_an_async_result_is_awaited_while_the_clock_moves(counter):
+    case = {"id": "adds", "ops": ["Counter", "add", "add", "@now"], "args": [[0], [5], [10], []]}
+    assert grade_counter(counter, case).only_result()["output"] == [None, 5, 15, 15]
+
+
+def test_a_spawned_call_that_raises_fails_its_join(counter):
+    case = {
+        "id": "fails",
+        "ops": ["Counter", "@spawn", "@join"],
+        "args": [[0], ["t", "add", -1], ["t"]],
+    }
+    result = grade_counter(counter, case).only_result()
+    assert {key: result[key] for key in ("status", "op_index", "partial_output")} == {
+        "status": "error",
+        "op_index": 2,
+        "partial_output": [None, None],
+    }
+    assert result["error"]["message"] == "negative amount"
+
+
+def test_a_join_of_a_task_never_spawned_is_an_input_error(counter):
+    case = {"id": "joins", "ops": ["Counter", "@join"], "args": [[0], ["t"]]}
+    result = grade_counter(counter, case).only_result()
+    assert (result["status"], result["op_index"], result["error"]["type"]) == (
+        "error",
+        1,
+        "CaseInputError",
+    )
+
+
+def test_what_a_case_prints_is_its_output(counter):
+    case = {"id": "prints", "ops": ["Counter", "reset"], "args": [[0], []]}
+    result = grade_counter(counter, case).only_result()
+    assert (result["output"], result["stdout"]) == ([None, None], "reset\n")
+
+
+def test_an_unknown_clock_is_a_bad_request(counter):
+    job = project_job(counter, "counter.counter", [COUNTS]) | {"clock": "real"}
+    assert run_project(counter, job).exit_code == BAD_REQUEST_EXIT_CODE
+
+
+def test_only_a_project_job_runs_on_the_clock(tmp_path):
+    path = write_source(tmp_path, COUNTER_SOURCE)
+    assert run_jobs(tmp_path, on_the_clock(class_job(path, [COUNTS]))).exit_code == (
+        BAD_REQUEST_EXIT_CODE
+    )

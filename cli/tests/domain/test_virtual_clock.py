@@ -61,9 +61,9 @@ def test_the_languages_with_awaitable_methods_are_those_with_a_clock_but_go():
     assert set(ASYNC_LANGUAGES) == set(CLOCK_LANGUAGES) - {Language.GO}
 
 
-def test_the_go_runner_grades_the_virtual_clock():
+def test_the_go_and_python_runners_grade_the_virtual_clock():
     """Each runner that lands adds its language here, with its runner's `clock` feature."""
-    assert sorted(GRADED_CLOCK_LANGUAGES) == [Language.GO]
+    assert sorted(GRADED_CLOCK_LANGUAGES) == [Language.GO, Language.PYTHON]
 
 
 def test_a_go_project_can_declare_the_virtual_clock(bank_meta):
@@ -101,7 +101,7 @@ def test_java_has_no_virtual_clock(bank_meta):
 
 
 @pytest.mark.parametrize(
-    "language", [language for language in CLOCK_LANGUAGES if language is not Language.GO]
+    "language", [language for language in CLOCK_LANGUAGES if language not in GRADED_CLOCK_LANGUAGES]
 )
 def test_a_declaration_waits_for_the_runner_that_grades_it(bank_meta, language):
     meta = declared(bank_meta, language, clock=True)

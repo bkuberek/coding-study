@@ -496,6 +496,12 @@ def test_the_reference_of_a_virtual_clock_project_is_graded_ten_more_times(
     assert len(process.reference.gradings) == 1 + DETERMINISM_RUNS
 
 
+def test_the_determinism_runs_order_ties_by_seeds_0_to_9(environment, process, on_the_clock):
+    """The first grading is D3's, with the seed of `cstudy submit`."""
+    verify(environment)
+    assert [job.clock_seed for job in process.reference.gradings] == [0, *range(DETERMINISM_RUNS)]
+
+
 def test_every_determinism_run_gets_a_runner_of_its_own(environment, process, on_the_clock):
     verify(environment)
     assert [len(request.jobs) for request in process.reference.requests] == [1] * 11

@@ -14,7 +14,7 @@ from cs_runner.json_value import Json
 from cs_runner.request import PROTOCOL_VERSION
 
 RUNNER_NAME = "python"
-FEATURES = ["stress", "project", "suite"]
+FEATURES = ["stress", "project", "suite", "clock"]
 """Protocol additions this runner implements (docs/specs/runners.md#capability and
 #project-jobs)."""
 
@@ -153,6 +153,28 @@ class Stalled:
 
 
 @dataclass(frozen=True, slots=True)
+class Deadlocked:
+    """`stalled` of a case on the virtual clock: an operation waited while no task could run and
+    no timer was due."""
+
+    reason: str
+    """The operation and the virtual time: `op 3 (@join r1): deadlock at 2000 ms`."""
+    op_index: int
+    partial_output: list[Json]
+    duration_ns: int
+    stdout: str = ""
+
+    def fields(self) -> dict[str, Json]:
+        fields: dict[str, Json] = {
+            "status": "stalled",
+            "op_index": self.op_index,
+            "reason": self.reason,
+            "partial_output": self.partial_output,
+        }
+        return fields | _measured(self.duration_ns, self.stdout)
+
+
+@dataclass(frozen=True, slots=True)
 class Passed:
     """`ok` of a suite job's test, which has no output (docs/specs/runners.md#suite-job)."""
 
@@ -193,7 +215,11 @@ type SequentialOutcome = Returned | Raised | InvalidOutput
 """What one call sequence produced: a function or design case, or a bench check call."""
 type SuiteOutcome = Passed | AssertionFailed | Raised | Skipped
 """What one test of a suite job came to."""
-type CaseOutcome = SequentialOutcome | StressReturned | StressFailed | Stalled | SuiteOutcome
+type ClockOutcome = SequentialOutcome | Deadlocked
+"""What one case on the virtual clock came to."""
+type CaseOutcome = (
+    SequentialOutcome | Deadlocked | StressReturned | StressFailed | Stalled | SuiteOutcome
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -292,7 +318,8 @@ class EventWriter:
         self._emit(point.fields("bench_budget_exceeded") | {"wall_ns": wall_ns})
 
     def restart_requested(self, reason: str) -> None:
-        """After a stress run's result, when its worker threads are still alive."""
+        """After a stress run's result, when its worker threads are still alive, or after a case
+        on the virtual clock that left threads running."""
         self._emit({"event": "restart_requested", "reason": reason})
 
     def bye(self) -> None:

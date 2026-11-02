@@ -1,8 +1,8 @@
 """`python -m cs_runner --request R --out O` (docs/specs/runners.md#invocation).
 
 Exit codes: 0 once `bye` is written, whatever the case outcomes; 2 for a request that cannot be
-run; 3 after `restart_requested` (a stress run left worker threads alive); anything else is a
-crash, which the CLI reports on the case in progress.
+run; 3 after `restart_requested` (a stress run, or a case on the virtual clock, left threads
+alive); anything else is a crash, which the CLI reports on the case in progress.
 """
 
 import argparse
@@ -12,11 +12,19 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from cs_runner.bench import run_bench_jobs
+from cs_runner.clock import run_clock_job
 from cs_runner.concurrent import RestartRequestError, run_concurrent_job
 from cs_runner.errors import BadRequestError
 from cs_runner.events import EventWriter
 from cs_runner.jobs import run_job
-from cs_runner.request import BenchRequest, ConcurrentJob, SuiteJob, TestRequest, parse_request
+from cs_runner.request import (
+    BenchRequest,
+    ConcurrentJob,
+    ProjectJob,
+    SuiteJob,
+    TestRequest,
+    parse_request,
+)
 from cs_runner.suite import run_suite_job
 
 COMPLETED_EXIT_CODE = 0
@@ -53,6 +61,8 @@ def _run(request: TestRequest | BenchRequest, events: EventWriter) -> None:
                         run_concurrent_job(job, events)
                     case SuiteJob():
                         run_suite_job(job, events)
+                    case ProjectJob(clock=clock) if clock is not None:
+                        run_clock_job(job, clock, events)
                     case _:
                         run_job(job, events)
         case BenchRequest(jobs):

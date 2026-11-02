@@ -98,7 +98,8 @@ def test_maps_the_virtual_clock(graded_clock_runners):
     )
 
 
-def test_a_clock_in_a_language_whose_runner_does_not_grade_it_yet_is_refused():
+def test_a_clock_in_a_language_whose_runner_does_not_grade_it_yet_is_refused(monkeypatch):
+    monkeypatch.setattr(virtual_clock, "GRADED_CLOCK_LANGUAGES", frozenset({Language.GO}))
     document = project_document()
     document["project"]["clock"] = "virtual"
     with pytest.raises(ContentError) as raised:

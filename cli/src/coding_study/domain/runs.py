@@ -115,6 +115,9 @@ class RunJob:
     clock: ProjectClock | None = None
     """A project's grading job on the virtual clock (docs/specs/runners.md#virtual-clock-and-
     stress-in-project-jobs); None on the real clock."""
+    clock_seed: int = 0
+    """On the virtual clock: the seed of the order of timers due at the same instant, which
+    Python's loop shuffles. `cstudy submit` grades with 0, D10 with 0 to 9."""
 
     def __post_init__(self) -> None:
         _require_unique((case.id for case in self.cases), f"case id in job {self.job_id}")

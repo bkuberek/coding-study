@@ -29,6 +29,7 @@ PROJECT_KIND = "project"
 SUITE_KIND = "suite"
 TEST_MODE = "test"
 BENCH_MODE = "bench"
+VIRTUAL_CLOCK = "virtual"
 NANOSECONDS_PER_MILLISECOND = 1_000_000
 
 
@@ -112,6 +113,15 @@ class ClassJob:
 
 
 @dataclass(frozen=True, slots=True)
+class Clock:
+    """A grading job on the virtual clock (docs/specs/runners.md#virtual-clock-and-stress-in-
+    project-jobs)."""
+
+    seed: int
+    """Orders the timers due at the same instant: 0 unless `cstudy verify` (D10) names another."""
+
+
+@dataclass(frozen=True, slots=True)
 class ProjectJob:
     """A grading job: a class job whose target is a project folder and the dotted module of its
     entry class (docs/specs/runners.md#grading-job)."""
@@ -124,6 +134,8 @@ class ProjectJob:
     methods: Mapping[str, Member]
     """Only the methods of the levels being graded."""
     cases: tuple[OperationCase, ...]
+    clock: Clock | None = None
+    """None on the real clock."""
 
     @property
     def user_code(self) -> UserFolder:
@@ -391,14 +403,17 @@ def _job(job: _Fields) -> Job:
         job.object("signature"),
         tuple(job.objects("cases")),
     )
+    is_project = kind == PROJECT_KIND and parts.target.has(PROJECT_KIND)
+    if job.has("clock") and not is_project:
+        raise BadRequestError(f"{job.location}: only a project job runs on the virtual clock")
     if kind == CONCURRENT_KIND:
         return _concurrent_job(parts, _model(job))
-    if kind == PROJECT_KIND and parts.target.has(PROJECT_KIND):
-        return _project_job(parts)
+    if is_project:
+        return _project_job(parts, _clock(job))
     return _parser(job)(parts)
 
 
-def _project_job(parts: _JobParts) -> ProjectJob:
+def _project_job(parts: _JobParts, clock: Clock | None) -> ProjectJob:
     design = _class_parts(parts)
     return ProjectJob(
         parts.job_id,
@@ -407,7 +422,18 @@ def _project_job(parts: _JobParts) -> ProjectJob:
         design.constructor,
         design.methods,
         design.cases,
+        clock,
     )
+
+
+def _clock(job: _Fields) -> Clock | None:
+    """`"clock": "virtual"`, with the seed of the tie shuffle in `clock_seed` (default 0)."""
+    clock = job.optional_string("clock")
+    if clock is None:
+        return None
+    if clock != VIRTUAL_CLOCK:
+        raise BadRequestError(f'{job.location}.clock "{clock}" is not supported')
+    return Clock(job.integer("clock_seed") if job.has("clock_seed") else 0)
 
 
 def _suite_job(job: _Fields) -> SuiteJob:

@@ -6,6 +6,7 @@ from dataclasses import replace
 import pytest
 
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
+from coding_study.domain import virtual_clock
 from coding_study.domain.cases import Case, Expected, GeneratedInput, OperationSequence
 from coding_study.domain.jdk import DeclaredJdk
 from coding_study.domain.problem import (
@@ -1156,7 +1157,8 @@ def clock_errors(problem) -> list[str]:
     ]
 
 
-def test_a_runner_that_does_not_grade_the_clock_yet_refuses_the_declaration(bank):
+def test_a_runner_that_does_not_grade_the_clock_yet_refuses_the_declaration(bank, monkeypatch):
+    monkeypatch.setattr(virtual_clock, "GRADED_CLOCK_LANGUAGES", frozenset({Language.GO}))
     assert clock_errors(on_the_virtual_clock(bank)) == [
         f"{META}: project.clock: the python runner does not grade the virtual clock yet"
     ]

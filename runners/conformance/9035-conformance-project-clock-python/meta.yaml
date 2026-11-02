@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9035"
+slug: conformance-project-clock-python
+title: "Conformance: a Python project on the virtual clock"
+status: ready
+difficulty: easy
+track: practical
+kind: project
+languages: [python]
+levels:
+  - {level: 1, title: Waiting on the virtual clock}
+signature:
+  class:
+    name: Inbox
+    constructor: {params: []}
+    methods:
+      - {name: publish, level: 1, params: [{name: body, type: string}], returns: {type: int}}
+      - {name: receive, level: 1, async: true, params: [{name: waitMs, type: int}], returns: {type: string}}
+      - {name: sleep, level: 1, async: true, params: [{name: ms, type: int}], returns: {type: long}}
+      - {name: race, level: 1, async: true, params: [{name: names, type: string}], returns: {type: string}}
+      - {name: hold, level: 1, async: true, params: [], returns: {type: string}}
+      - {name: jam, level: 1, params: [], returns: {type: string}}
+      - {name: leave, level: 1, params: [], returns: {type: void}}
+      - {name: strand, level: 1, params: [], returns: {type: void}}
+comparator: {type: ops}
+limits: {hang_guard_ms: 1000}
+project:
+  entry: inbox.inbox
+  tests: tests
+  clock: virtual
+approaches:
+  - {id: reference, name: "Tasks that wait on asyncio's clock, an event nobody sets, a lock held twice, a task and a thread left behind", role: optimal, time: "O(1)", space: "O(n)", time_class: "1", space_class: "n"}

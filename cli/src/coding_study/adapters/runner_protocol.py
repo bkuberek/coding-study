@@ -269,6 +269,8 @@ def _job(job: RunJob) -> JsonObject:
         encoded["model"] = job.model.value
     if job.clock is not None:
         encoded["clock"] = job.clock.value
+        if job.clock_seed:
+            encoded["clock_seed"] = job.clock_seed
     return encoded
 
 

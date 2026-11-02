@@ -96,7 +96,7 @@ def _call(target: Callable[..., object], arguments: Sequence[object]) -> _TimedC
     return _TimedCall(value, None, time.perf_counter_ns() - started)
 
 
-def _fresh_decimal_context() -> AbstractContextManager[Context]:
+def fresh_decimal_context() -> AbstractContextManager[Context]:
     """The current thread's decimal context becomes a default one until the block ends."""
     return localcontext(Context())
 
@@ -128,7 +128,7 @@ class FunctionTarget:
             call = bind(self._job.function, case.values)
         except CaseInputError as error:
             return Raised(input_error(error), duration_ns=0)
-        with _fresh_decimal_context(), capture_output() as output:
+        with fresh_decimal_context(), capture_output() as output:
             timed = _call(self._function, call.arguments)
         stdout = output.text()
         if timed.error is not None:
@@ -150,7 +150,7 @@ class ClassTarget:
 
     def run(self, case: BenchCase) -> SequentialOutcome:
         """One case as `cstudy test` runs it; raises CaseInputError for function arguments."""
-        with _fresh_decimal_context(), capture_output() as output:
+        with fresh_decimal_context(), capture_output() as output:
             outcome = _OperationSequence(self._job, self._design).run(_operation_case(case))
         return replace(outcome, stdout=output.text())
 
