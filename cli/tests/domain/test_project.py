@@ -168,7 +168,9 @@ def test_a_rust_entry_that_is_a_keyword_is_rejected(entry):
     assert entry_issue(entry, Language.RUST) == f'"{entry}" is a Rust keyword'
 
 
-@pytest.mark.parametrize("entry", ["std", "core", "test", "user", "cs_runner", "rust_decimal"])
+@pytest.mark.parametrize(
+    "entry", ["std", "core", "test", "user", "cs_runner", "rust_decimal", "tokio", "syn"]
+)
 def test_a_rust_entry_that_names_a_crate_of_the_build_is_rejected(entry):
     assert entry_issue(entry, Language.RUST) == (
         f'"{entry}" is a crate the build or the tests already name'

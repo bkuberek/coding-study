@@ -15,3 +15,10 @@ cs_support = { path = "../cs_support" }
 # no default features: those would pull serde, the system clock and their dependencies.
 chrono = { version = "=0.4.45", default-features = false, features = ["std"] }
 rust_decimal = { version = "=1.43.0", default-features = false, features = ["maths"] }
+# The runtime and paused clock of virtual-clock projects (docs/specs/runners.md#virtual-clock-and-
+# stress-in-project-jobs), as a project's `Cargo.toml` declares it. Only the harness of such a
+# project turns `clock` on, so no other build compiles tokio.
+tokio = { version = "=1.53.3", default-features = false, features = ["macros", "rt", "sync", "test-util", "time"], optional = true }
+
+[features]
+clock = ["dep:tokio"]

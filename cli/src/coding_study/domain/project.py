@@ -69,6 +69,8 @@ RUST_NAMED_CRATES = frozenset(
         *("std", "core", "alloc", "proc_macro", "test"),
         *("user", "cs_runner", "cs_support"),
         *("rust_decimal", "chrono", "arrayvec", "num_traits", "autocfg"),
+        *("tokio", "tokio_macros", "pin_project_lite", "proc_macro2", "quote", "syn"),
+        "unicode_ident",
     }
 )
 """Crates the harness or a test already names: the standard library's, the bridge's alias of the
@@ -80,6 +82,17 @@ RUST_VENDORED_CRATES: Mapping[str, str] = {
 """The crates of `decimal` and `date`, vendored with the runner, and the only ones a Rust project
 may depend on: declared exactly as the runner declares them, so a project, the harness and the
 runner share one copy of each."""
+RUST_CLOCK_CRATES: Mapping[str, str] = {
+    "tokio": (
+        '{ version = "=1.53.3", default-features = false, '
+        'features = ["macros", "rt", "sync", "test-util", "time"] }'
+    ),
+}
+"""tokio, vendored with the runner for projects on the virtual clock
+(docs/decisions/0017-async-project-problems.md#runners): the newest release whose MSRV is within
+Rust 1.80, with the runtime, its paused clock (`test-util`), its synchronization types and its
+macros. The runner's `clock` feature declares it so, and the harness of a clock project turns that
+feature on, so a project's crate and the runner share one copy."""
 RUST_SCALAR_CRATES: Mapping[Scalar, str] = {
     Scalar.DECIMAL: "rust_decimal",
     Scalar.DATE: "chrono",

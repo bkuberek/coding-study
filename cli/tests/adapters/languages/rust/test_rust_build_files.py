@@ -1,6 +1,8 @@
 """Cargo's JSON output, recorded from real builds of two-sum (tests/.../rust/recorded): the
 workspace path is written `{root}`."""
 
+import hashlib
+import json
 import sys
 import tomllib
 from pathlib import Path
@@ -23,8 +25,10 @@ from coding_study.adapters.languages.rust.build_files import (
     workspace_manifest,
     workspace_members,
 )
+from coding_study.adapters.runner_runtime import SKIPPED_DIRECTORIES
 from coding_study.adapters.workspace_setup import TEMPLATE_DIRECTORY
 from coding_study.application.doctor import MINIMUM_RUSTC
+from coding_study.domain.project import RUST_CLOCK_CRATES
 from tests.helpers import REPOSITORY_ROOT
 
 RECORDED = Path(__file__).parent / "recorded"
@@ -32,6 +36,9 @@ ROOT = Path("/ws")
 BUILD = ROOT / ".cs/build/rust"
 USER_FILE = ROOT / "rust/practice/two_sum.rs"
 BRIDGE_FILE = BUILD / "test/two_sum/main.rs"
+VENDOR = REPOSITORY_ROOT / "runners/rust/vendor"
+CHECKSUM_FILE = ".cargo-checksum.json"
+TOKIO = "tokio"
 
 
 def recorded(name: str) -> str:
@@ -227,6 +234,39 @@ def test_every_locked_crate_is_vendored():
         if "source" in package:
             manifest = tomllib.loads((vendor / package["name"] / "Cargo.toml").read_text())
             assert manifest["package"]["version"] == package["version"]
+
+
+def vendored_crates() -> list[Path]:
+    return sorted(path.parent for path in VENDOR.glob(f"*/{CHECKSUM_FILE}"))
+
+
+def test_every_file_a_vendored_checksum_lists_reaches_the_workspace_runtime():
+    """Cargo checks every file a crate's checksum lists, and the runtime refresh skips some
+    directories (`tests` among them) at any depth: a listed file there would fail every build."""
+    for crate in vendored_crates():
+        listed = json.loads((crate / CHECKSUM_FILE).read_text())["files"]
+        for name, digest in listed.items():
+            assert not SKIPPED_DIRECTORIES.intersection(Path(name).parts[:-1]), (crate, name)
+            assert hashlib.sha256((crate / name).read_bytes()).hexdigest() == digest, (crate, name)
+
+
+def test_every_vendored_crate_builds_with_the_minimum_rust_version():
+    """Each crate's `rust-version` is at most cstudy's minimum, which no compiler here may be."""
+    for crate in vendored_crates():
+        package = tomllib.loads((crate / "Cargo.toml").read_text())["package"]
+        declared = tuple(int(part) for part in str(package.get("rust-version", "1.0")).split("."))
+        assert declared <= MINIMUM_RUSTC, (crate.name, declared)
+
+
+def test_the_runner_declares_tokio_for_the_virtual_clock_as_projects_do():
+    """Only a clock project's harness turns `clock` on, so other builds never compile tokio; the
+    declaration is the one a project's `Cargo.toml` may hold, so they share one copy."""
+    runner = tomllib.loads((REPOSITORY_ROOT / "runners/rust/cs_runner/Cargo.toml").read_text())
+    declared = tomllib.loads(f"value = {RUST_CLOCK_CRATES[TOKIO]}")["value"]
+    assert runner["dependencies"][TOKIO] == {**declared, "optional": True}
+    assert runner["features"] == {"clock": [f"dep:{TOKIO}"]}
+    manifest = tomllib.loads((VENDOR / TOKIO / "Cargo.toml").read_text())
+    assert manifest["package"]["version"] == declared["version"].removeprefix("=")
 
 
 def test_the_release_profile_keeps_the_symbols_and_debug_info_of_this_platform():
