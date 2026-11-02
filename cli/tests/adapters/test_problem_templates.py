@@ -70,6 +70,21 @@ def test_the_go_project_template_has_a_starter_and_an_overlay_instead_of_a_gener
     }
 
 
+def test_the_go_virtual_clock_template_has_the_files_of_the_go_project_template():
+    clock = set(PackagedProblemTemplates().files("project-go-clock"))
+    assert clock == set(PackagedProblemTemplates().files(TemplateName.PROJECT_GO))
+
+
+def test_the_go_virtual_clock_starter_says_go_1_25():
+    files = PackagedProblemTemplates().files("project-go-clock")
+    assert files["starter/go.mod"].startswith("module {{slug}}\n\ngo 1.25\n")
+
+
+def test_the_go_virtual_clock_template_declares_the_clock():
+    meta = PackagedProblemTemplates().files("project-go-clock")["meta.yaml"]
+    assert "  clock: virtual\n" in meta
+
+
 def test_the_go_starters_module_is_named_after_the_slug():
     files = PackagedProblemTemplates().files(TemplateName.PROJECT_GO)
     assert files["starter/go.mod"].startswith("module {{slug}}\n")

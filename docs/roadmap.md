@@ -14,6 +14,7 @@ Each phase ends only when every exit criterion is observed. Phases run in order;
 | 7 | Progress polish | `stats`, `mock`, `export`, `import`, `test --stress` for oracle inputs, `test --json` |
 | 8 | Project problems: Python, then TypeScript | project kind, `submit`, `status` |
 | 9 | Local web UI with full practice parity | `serve`, `history`, `test --events` for every kind, `--json` for `list`, `next` and `doctor` |
+| 10 | Async and concurrent project problems | harness operations, `new --virtual-clock` and `--stress`, `verify` S18 and D10 |
 
 ## Status
 
@@ -147,3 +148,17 @@ Phases 0 to 7 are implemented: every command in the table above exists with its 
 - [x] Warm page runs meet NFR-11 on a quiet machine for the six project pilots and one single-file problem per language: every page run is within 0.1 s of its terminal run ([feedback](specs/web-ui.md#feedback)). Measured before the release on an Apple Silicon Mac at load averages 3.4 to 5.5: the Go project's terminal p50 of 7 is 1.64 to 1.74 s (v0.8.0: 1.61 to 1.65 s), within NFR-1's Go project target, raised from 1.5 s to 2 s for 0.9.0; the Rust project 0.98 s, the Python project 0.64 s, `two-sum` in Go 0.78 s and in Python 0.58 s are within theirs.
 - [x] The bundle meets NFR-12, its rebuild matches `manifest.json`, and the wheel holds every asset.
 - [x] A user guide, `docs/guides/web-ui.md`, covers starting the server, the views and the keyboard.
+
+## Phase 10: Async and concurrent project problems
+
+**Scope.** [ADR 0017](decisions/0017-async-project-problems.md) and its spec amendments ([problem-format](specs/problem-format.md#asynchronous-code-and-the-virtual-clock), [runners](specs/runners.md#virtual-clock-and-stress-in-project-jobs), [authoring](specs/authoring.md#what-cstudy-verify-checks), [cli](specs/cli.md#cstudy-new)): `async` methods, `project.clock: virtual` and its harness operations `@advance`, `@spawn`, `@join` and `@now`, `stalled` project cases, generated tests on the virtual clock, checks S18 and D10, `cstudy new --virtual-clock`, stress cases and broken overlays in projects, and Go 1.25. One language family per step, each proved by a pilot problem before the next starts: 1 the Go virtual clock, 2 Python and TypeScript asynchronous methods, 3 stress cases in all six languages, 4 Kotlin coroutines (spike K7), 5 Rust async on tokio (spike K8).
+
+**Exit criteria.** A step ends when its runner passes `cstudy verify --conformance` with its fixtures, `cstudy verify <slug> --require-ready` exits 0 for its pilot, and a manual run through all its levels, from `cstudy start` to `cstudy done`, works.
+
+- [x] The ADR is accepted and the specs amended before any runner work starts.
+- [x] Step 1, Go, tooling: fixture 9034 (`9034-conformance-project-clock-go`) passes, with its `advance` and `spawn-join` cases also run as generated `synctest` tests; a project scaffolded by `cstudy new --virtual-clock` passes `cstudy verify <slug> --static` once its `TODO` text is replaced and `cstudy verify <slug>` (D1, D3, D9, D10) on Go 1.27.3 (the oldest release of the Go 1.25 minimum is not yet observed).
+- [ ] Step 1, Go, pilot: the build-graph runner on goroutines.
+- [ ] Step 2, Python and TypeScript, pilot: the event pipeline.
+- [ ] Step 3, stress cases and broken overlays in projects in all six languages, pilot: the message log.
+- [ ] Step 4, Kotlin coroutines, pilot: the coroutine service.
+- [ ] Step 5, Rust async on tokio, pilot: the async component.

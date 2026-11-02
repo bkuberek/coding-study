@@ -16,10 +16,11 @@ from coding_study.application.ports import Workspace
 from coding_study.domain import layout
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.errors import ContentError, ContentIssue, UsageError
-from coding_study.domain.problem import Problem
+from coding_study.domain.problem import Language, Problem
 from coding_study.domain.problem_files import STARTER_DIRECTORY
 from coding_study.domain.project import ProjectTree
 from coding_study.domain.workspace_projects import (
+    GO_MODULE_FILE,
     folder_language,
     project_folder,
     toolchain_files,
@@ -110,13 +111,20 @@ def _starter_source(problem: Problem) -> str:
     return f"{problem.meta.directory_name}/{STARTER_DIRECTORY}"
 
 
+def _go_module(workspace: Workspace, folder: str, language: Language) -> str | None:
+    """The text of a Go folder's `go.mod`, which sets the `go` line of its `go.work`."""
+    path = f"{folder}/{GO_MODULE_FILE}"
+    if language is not Language.GO or not workspace.exists(path):
+        return None
+    return workspace.read_text(path)
+
+
 def _link(workspace: Workspace, problem: Problem, folder: str) -> bool:
     language = folder_language(problem.meta)
     if language is None:
         return False
-    missing = [
-        file for file in toolchain_files(language) if not workspace.exists(f"{folder}/{file.path}")
-    ]
+    files = toolchain_files(language, _go_module(workspace, folder, language))
+    missing = [file for file in files if not workspace.exists(f"{folder}/{file.path}")]
     for file in missing:
         workspace.write_text(f"{folder}/{file.path}", file.text)
     link = toolchain_link(language)

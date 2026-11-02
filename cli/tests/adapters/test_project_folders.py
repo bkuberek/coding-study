@@ -153,6 +153,14 @@ def test_the_missing_go_work_files_are_written(go_workspace):
     assert (written, work) == (("projects/bank-project-go",), "go 1.24\n\nuse .\n")
 
 
+def test_the_missing_go_work_follows_the_go_line_of_the_folders_module(go_workspace):
+    module = go_workspace / "projects/bank-project-go/go.mod"
+    module.write_text(GO_MODULE.replace("go 1.24", "go 1.25"))
+    (go_workspace / "projects/bank-project-go/go.work").unlink()
+    write_missing_go_work_files(go_workspace)
+    assert (go_workspace / "projects/bank-project-go/go.work").read_text() == "go 1.25\n\nuse .\n"
+
+
 def test_a_go_work_of_yours_is_never_rewritten(go_workspace):
     (go_workspace / "projects/bank-project-go/go.work").write_text("go 1.25\n\nuse .\n")
     assert write_missing_go_work_files(go_workspace) == ()

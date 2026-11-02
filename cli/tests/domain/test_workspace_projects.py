@@ -27,6 +27,7 @@ from coding_study.domain.workspace_projects import (
     go_module_file,
     go_vendored_replacement,
     is_untracked,
+    newer_go_version,
     project_folder,
     project_slug,
     toolchain_files,
@@ -78,6 +79,56 @@ def test_other_folders_need_no_link(language):
 
 def test_a_go_folder_gets_a_go_work_file_of_its_own():
     assert toolchain_files(Language.GO) == (ToolchainFile("go.work", "go 1.24\n\nuse .\n"),)
+
+
+def go_mod(go_line: str) -> str:
+    return f"module bank-project-go\n\ngo {go_line}\n"
+
+
+def go_work(go_line: str) -> tuple[ToolchainFile, ...]:
+    return (ToolchainFile("go.work", f"go {go_line}\n\nuse .\n"),)
+
+
+@pytest.mark.parametrize(
+    ("module_go", "work_go"),
+    [
+        ("1.25", "1.25"),
+        ("1.25.3", "1.25.3"),
+        ("1.26", "1.26"),
+        ("1.24", "1.24"),
+        ("1.23", "1.24"),
+        ("1.9", "1.24"),
+    ],
+)
+def test_the_go_work_is_the_higher_of_1_24_and_the_go_line_of_the_folders_module(
+    module_go, work_go
+):
+    assert toolchain_files(Language.GO, go_mod(module_go)) == go_work(work_go)
+
+
+@pytest.mark.parametrize("text", [None, "", "module bank-project-go\n"])
+def test_a_go_folder_without_a_go_line_gets_the_go_work_of_1_24(text):
+    assert toolchain_files(Language.GO, text) == go_work("1.24")
+
+
+def test_another_languages_files_do_not_depend_on_a_go_module():
+    assert toolchain_files(Language.RUST, go_mod("1.25")) == toolchain_files(Language.RUST)
+
+
+@pytest.mark.parametrize(
+    ("version", "minimum", "newer"),
+    [
+        ("1.25", "1.24", "1.25"),
+        ("1.9", "1.24", "1.24"),
+        ("1.24", "1.24", "1.24"),
+        ("1.25.0", "1.25", "1.25.0"),
+        ("1.25rc1", "1.24", "1.25rc1"),
+        (None, "1.24", "1.24"),
+        ("tip", "1.24", "1.24"),
+    ],
+)
+def test_the_newer_of_two_go_lines_compares_numbers_not_text(version, minimum, newer):
+    assert newer_go_version(version, minimum) == newer
 
 
 def test_a_rust_folder_reaches_the_vendored_crates_through_its_cargo_config():

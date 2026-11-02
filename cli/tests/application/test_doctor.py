@@ -488,23 +488,36 @@ def test_missing_optional_toolchain_only_warns_and_links_its_install_guide(
 @pytest.mark.parametrize(
     ("output", "expected"),
     [
-        ("go version go1.24 linux/amd64", OK),
-        ("go version go1.25rc1 linux/amd64", OK),
+        ("go version go1.25 linux/amd64", OK),
+        ("go version go1.25.0 linux/amd64", OK),
+        ("go version go1.26rc1 linux/amd64", OK),
         ("go version devel go1.26-abc123 Mon Jan 1 00:00:00 2026 darwin/arm64", OK),
+        ("go version go1.24.13 linux/arm64", WARN),
         ("go version go1.23.9 darwin/arm64", WARN),
         ("go version go1.9.7 linux/amd64", WARN),
     ],
 )
-def test_go_must_be_1_24_or_newer(output, expected):
+def test_go_must_be_1_25_or_newer(output, expected):
     tools = tools_with(("go", "version"), ProbeResult(0, output))
     assert check(doctor(tools), "go").status is expected
 
 
 def test_old_go_says_cstudy_never_downloads_a_toolchain():
-    tools = tools_with(("go", "version"), ProbeResult(0, "go version go1.23.9 darwin/arm64"))
+    tools = tools_with(("go", "version"), ProbeResult(0, "go version go1.24.13 darwin/arm64"))
     assert summary(doctor(tools), "go") == (
         WARN,
-        "1.23.9 (need 1.24 or newer; cstudy builds with GOTOOLCHAIN=local and never downloads one)",
+        "1.24.13 (need 1.25 or newer; "
+        "cstudy builds with GOTOOLCHAIN=local and never downloads one)",
+    )
+
+
+@pytest.mark.parametrize(
+    "probe", [None, ProbeResult(0, "go version go1.24.13 darwin/arm64")], ids=["missing", "old"]
+)
+def test_the_go_fix_asks_for_go_1_25(probe):
+    tools = tools_with(("go", "version"), probe)
+    assert check(doctor(tools), "go").fix == (
+        f"needed for --lang go, install Go 1.25 or newer: {TOOLCHAINS_GUIDE}#go"
     )
 
 

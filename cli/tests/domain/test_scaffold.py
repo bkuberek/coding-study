@@ -1,3 +1,5 @@
+import re
+
 import pytest
 
 from coding_study.domain.errors import UsageError
@@ -9,6 +11,7 @@ from coding_study.domain.scaffold import (
     next_problem_id,
     plan_scaffold,
     render_template,
+    template_directory,
 )
 
 
@@ -161,3 +164,50 @@ def test_blank_lines_without_placeholders_stay():
 def test_an_unknown_placeholder_is_an_error():
     with pytest.raises(KeyError):
         render_template("{{nope}}", {})
+
+
+# the virtual clock
+
+
+def test_a_template_is_its_own_directory():
+    request = ScaffoldRequest("bank-project-go", TemplateName.PROJECT_GO)
+    assert template_directory(request) == "project-go"
+
+
+def test_a_go_project_on_the_virtual_clock_has_a_template_of_its_own():
+    request = ScaffoldRequest("waiter-project-go", TemplateName.PROJECT_GO, virtual_clock=True)
+    assert template_directory(request) == "project-go-clock"
+
+
+def test_the_virtual_clock_variant_keeps_the_practical_track():
+    scaffold = plan(slug="waiter-project-go", template=TemplateName.PROJECT_GO, virtual_clock=True)
+    assert (scaffold.track, scaffold.patterns) == (Track.PRACTICAL, ())
+
+
+@pytest.mark.parametrize(
+    ("template", "message"),
+    [
+        (TemplateName.ARRAY, "--virtual-clock applies to the project-* templates, not array"),
+        (
+            TemplateName.CONCURRENT,
+            "--virtual-clock applies to the project-* templates, not concurrent",
+        ),
+        (
+            TemplateName.PROJECT_JAVA,
+            "--virtual-clock is not available for project-java: Java has no virtual clock",
+        ),
+        (
+            TemplateName.PROJECT_PYTHON,
+            "--virtual-clock is not available for project-python yet: "
+            "the python runner does not grade the virtual clock",
+        ),
+        (
+            TemplateName.PROJECT_RUST,
+            "--virtual-clock is not available for project-rust yet: "
+            "the rust runner does not grade the virtual clock",
+        ),
+    ],
+)
+def test_the_virtual_clock_is_a_usage_error_where_it_does_not_apply(template, message):
+    with pytest.raises(UsageError, match=re.escape(message)):
+        plan(slug="waiter", template=template, virtual_clock=True)

@@ -37,6 +37,7 @@ from coding_study.domain.problem_files import (
 from coding_study.domain.project import (
     NO_PROJECT_FILES,
     PATH_SEPARATOR,
+    PROJECT_SECTION,
     RUST_SCALAR_CRATES,
     RUST_VENDORED_CRATES,
     Project,
@@ -61,9 +62,11 @@ from coding_study.domain.type_dsl import (
     VoidType,
     scalars_of,
 )
+from coding_study.domain.virtual_clock import ProjectClock
 from coding_study.domain.workspace_projects import (
     CARGO_CONFIG_FILE,
     CARGO_MANIFEST,
+    GO_CLOCK_VERSION,
     GO_MODULE_FILE,
     GO_VENDORED_MODULES,
     GO_WORK_FILE,
@@ -81,7 +84,6 @@ README_FILE = "README.md"
 PYPROJECT_FILE = "pyproject.toml"
 PACKAGE_FILE = "package.json"
 TSCONFIG_FILE = "tsconfig.json"
-PROJECT_SECTION = "Project"
 OUTPUT_SECTION = "Output"
 DESIGN_SUBSECTION = "Design"
 ALGORITHM_SUBSECTION = "Algorithm"
@@ -506,7 +508,11 @@ class _Trees:
         elif language is Language.GO:
             entry = _well_formed_entry(self._content)
             slug = self._content.problem.meta.slug
-            _GoStarter(self._error, starter, slug).check(entry[0].entry if entry else None)
+            project = self._content.problem.meta.project
+            virtual = project is not None and project.clock is ProjectClock.VIRTUAL
+            _GoStarter(self._error, starter, slug, virtual_clock=virtual).check(
+                entry[0].entry if entry else None
+            )
         elif language is not None and language in JVM_LANGUAGES:
             build_files = jvm_build_files(self._content.problem.meta.slug, language)
             _JvmStarter(self._error, starter, language, self._content.problem.meta.workspace).check(
@@ -676,10 +682,14 @@ class _GoStarter:
     through the runtime's copies; the folder's `go.work` left to `cstudy start`; and an entry
     package that the grader can import."""
 
-    def __init__(self, report: _Report, starter: ProjectTree, slug: str) -> None:
+    def __init__(
+        self, report: _Report, starter: ProjectTree, slug: str, *, virtual_clock: bool
+    ) -> None:
         self._report = report
         self._starter = starter
         self._slug = slug
+        self._go_version = GO_CLOCK_VERSION if virtual_clock else GO_WORK_VERSION
+        self._what = "a virtual-clock project" if virtual_clock else "a project"
 
     def check(self, entry: str | None) -> None:
         self._module()
@@ -702,8 +712,8 @@ class _GoStarter:
                 f'declares module "{module.module}"; a project\'s module is its slug, {self._slug}'
             )
             self._report(GO_MODULE_FILE, message)
-        if module.go != GO_WORK_VERSION:
-            message = f'says "go {module.go}"; a project\'s go.mod says go {GO_WORK_VERSION}'
+        if module.go != self._go_version:
+            message = f'says "go {module.go}"; {self._what}\'s go.mod says go {self._go_version}'
             self._report(GO_MODULE_FILE, message)
         for required, version in module.requires.items():
             if GO_VENDORED_MODULES.get(required) != version:

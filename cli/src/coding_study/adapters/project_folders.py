@@ -130,7 +130,10 @@ def write_missing_go_work_files(root: Path) -> tuple[str, ...]:
     for found in go_project_folders(root):
         if found.has_work_file:
             continue
-        for file in toolchain_files(Language.GO):
+        module = (root / found.folder / GO_MODULE_FILE).read_text(
+            encoding="utf-8", errors="replace"
+        )
+        for file in toolchain_files(Language.GO, module):
             path = root / found.folder / file.path
             if not path.exists():
                 path.write_text(file.text, encoding="utf-8")

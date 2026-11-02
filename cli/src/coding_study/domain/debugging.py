@@ -30,7 +30,8 @@ DELVE_VERSION = "1.27.2"
 DELVE_REQUIRING_NEWER_GO = (1, 27)
 DELVE_MINIMUM_GO = (1, 25)
 """From Delve 1.27 on, the oldest Go it debugs: it refuses a binary built with an older one
-(`Go version go1.24.x is too old for this version of Delve`), though building needs only 1.24."""
+(`Go version go1.24.x is too old for this version of Delve`). It is cstudy's own minimum, so a Go
+that Delve refuses is one the Go row already warns about."""
 DEBUGSERVER = "debugserver"
 LLDB_SERVER = "lldb-server"
 """Rust's debug server: Xcode's `debugserver` on macOS, LLDB's `lldb-server` on Linux."""

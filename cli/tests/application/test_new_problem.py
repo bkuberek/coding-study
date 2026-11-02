@@ -11,10 +11,13 @@ from coding_study.adapters.workspace_fs import WorkspaceFs
 from coding_study.application.environment import ProblemDestination
 from coding_study.application.new_problem import create_problem
 from coding_study.application.verify_content import VerifyRequest, verify_content
+from coding_study.domain.cases import OperationSequence
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import ALL_LANGUAGES, ContentStatus, Language, ProblemKind, Track
 from coding_study.domain.project_checks import jvm_build_files
 from coding_study.domain.scaffold import WORKSPACE_FIRST_ID, ScaffoldRequest, TemplateName
+from coding_study.domain.signature import ClassSignature
+from coding_study.domain.virtual_clock import ProjectClock
 from tests.fakes import make_environment
 from tests.helpers import FIXTURE_TRACKS
 
@@ -392,3 +395,154 @@ def test_a_rust_projects_overlay_implements_every_level(environment):
     overlay = environment.root / created.directory / "solutions" / "reference" / "src" / "lib.rs"
     text = overlay.read_text()
     assert ("    pub fn put(" in text, "    pub fn get(" in text) == (True, True)
+
+
+# a Go project on the virtual clock
+
+CLOCK_SLUG = "waiter-project-go"
+
+
+def create_clock(environment, slug: str = CLOCK_SLUG):
+    request = ScaffoldRequest(slug, TemplateName.PROJECT_GO, virtual_clock=True)
+    return create_problem(environment, TEMPLATES, request)
+
+
+def clock_file(environment, created, path: str) -> str:
+    return (environment.root / created.directory / path).read_text()
+
+
+def test_a_go_clock_project_gets_its_starter_and_overlay_and_no_reference_file(environment):
+    created = create_clock(environment)
+    assert created.files == (
+        "meta.yaml",
+        "problem.md",
+        "solutions/explanation.md",
+        "solutions/reference/app.go",
+        "starter/README.md",
+        "starter/app.go",
+        "starter/go.mod",
+        "tests.json",
+    )
+
+
+def test_a_go_clock_project_reports_that_it_is_on_the_virtual_clock(environment):
+    created = create_clock(environment)
+    assert (created.template, created.virtual_clock) == (TemplateName.PROJECT_GO, True)
+
+
+def test_a_go_project_without_the_flag_is_on_the_real_clock(environment):
+    created = create(environment, "bank-project-go", TemplateName.PROJECT_GO)
+    assert (created.virtual_clock, "clock" in clock_file(environment, created, "meta.yaml")) == (
+        False,
+        False,
+    )
+
+
+def test_a_go_clock_project_declares_the_virtual_clock_in_go(environment):
+    meta = environment.problems.load(create_clock(environment).slug).meta
+    assert (meta.languages, meta.project.clock) == ((Language.GO,), ProjectClock.VIRTUAL)  # type: ignore[union-attr]
+
+
+def test_a_go_clock_projects_level_2_method_waits(environment):
+    create_clock(environment)
+    signature = environment.problems.load(CLOCK_SLUG).meta.signature
+    assert isinstance(signature, ClassSignature)
+    assert [(method.name, method.level) for method in signature.methods] == [
+        ("put", 1),
+        ("waitFor", 2),
+    ]
+
+
+def test_a_go_clock_projects_hang_guard_is_a_few_seconds(environment):
+    create_clock(environment)
+    assert environment.problems.load(CLOCK_SLUG).meta.hang_guard_ms == 3_000
+
+
+def test_a_go_clock_projects_example_spawns_advances_joins_and_reads_the_clock(environment):
+    create_clock(environment)
+    cases = {case.id: case for case in environment.problems.load(CLOCK_SLUG).cases}
+    sequence = cases["ex2"].input
+    assert isinstance(sequence, OperationSequence)
+    assert sequence.ops == (
+        "WaiterProjectGo",
+        "@spawn",
+        "@advance",
+        "put",
+        "@join",
+        "@now",
+        "waitFor",
+        "@now",
+    )
+
+
+def test_a_go_clock_projects_starter_says_go_1_25(environment):
+    created = create_clock(environment)
+    assert "\ngo 1.25\n" in clock_file(environment, created, "starter/go.mod")
+
+
+def test_a_go_clock_projects_module_is_its_slug(environment):
+    created = create_clock(environment)
+    assert clock_file(environment, created, "starter/go.mod").startswith(f"module {CLOCK_SLUG}\n")
+
+
+def test_a_go_clock_projects_starter_declares_level_ones_method_only(environment):
+    created = create_clock(environment)
+    text = clock_file(environment, created, "starter/app.go")
+    assert ("func (a *WaiterProjectGo) Put(" in text, "WaitFor" in text) == (True, False)
+
+
+def test_a_go_clock_projects_overlay_implements_every_level(environment):
+    created = create_clock(environment)
+    text = clock_file(environment, created, "solutions/reference/app.go")
+    assert (
+        "func (a *WaiterProjectGo) Put(" in text,
+        "func (a *WaiterProjectGo) WaitFor(" in text,
+    ) == (
+        True,
+        True,
+    )
+
+
+def test_a_go_clock_projects_readme_teaches_testing_on_the_clock(environment):
+    created = create_clock(environment)
+    readme = clock_file(environment, created, "starter/README.md")
+    assert "## Testing on the virtual clock" in readme
+    assert "synctest.Test(t, func(t *testing.T) {" in readme
+
+
+def test_a_go_clock_project_passes_static_checks_after_replacing_the_placeholders(environment):
+    created = create_clock(environment)
+    replace_placeholders(environment.root / created.directory)
+    assert static_errors(environment, CLOCK_SLUG) == ()
+
+
+def test_a_go_clock_project_fails_static_checks_until_the_placeholders_are_replaced(environment):
+    create_clock(environment)
+    assert any("TODO" in error for error in static_errors(environment, CLOCK_SLUG))
+
+
+def test_a_go_clock_project_with_a_real_clock_go_mod_fails_static_checks(environment):
+    created = create_clock(environment)
+    replace_placeholders(environment.root / created.directory)
+    go_mod = environment.root / created.directory / "starter" / "go.mod"
+    go_mod.write_text(go_mod.read_text().replace("go 1.25", "go 1.24"))
+    assert static_errors(environment, CLOCK_SLUG) == (
+        f'problems/0003-{CLOCK_SLUG}/starter/go.mod: says "go 1.24"; '
+        "a virtual-clock project's go.mod says go 1.25",
+    )
+
+
+def test_the_virtual_clock_flag_on_another_template_writes_nothing(environment):
+    request = ScaffoldRequest("max-gap", TemplateName.ARRAY, virtual_clock=True)
+    with pytest.raises(UsageError, match="applies to the project-"):
+        create_problem(environment, TEMPLATES, request)
+    assert not environment.workspace.exists("problems/0003-max-gap")
+
+
+def test_the_virtual_clock_flag_on_a_language_without_a_graded_clock_writes_nothing(environment):
+    request = ScaffoldRequest(
+        "waiter-project-python", TemplateName.PROJECT_PYTHON, virtual_clock=True
+    )
+    with pytest.raises(UsageError, match="does not grade the virtual clock"):
+        create_problem(environment, TEMPLATES, request)
+    assert not environment.workspace.exists("problems/0003-waiter-project-python")

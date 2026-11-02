@@ -63,6 +63,13 @@ PROJECT_WORKFLOW = (
     ),
 )
 """docs/specs/authoring.md#project-problems, from step 2: a project problem's own workflow."""
+CLOCK_STEP = (
+    "Check that every case gives the same outputs in every run, and fix the expected values "
+    "that depend on a tie",
+    "cstudy verify {slug}",
+)
+CLOCK_WORKFLOW = (*PROJECT_WORKFLOW[:3], CLOCK_STEP, *PROJECT_WORKFLOW[3:])
+"""A project on the virtual clock adds step 4v, D10 (docs/specs/authoring.md#project-problems)."""
 PROJECT_TEMPLATES = frozenset(
     {
         TemplateName.PROJECT_PYTHON,
@@ -102,9 +109,16 @@ def new(
     pattern: Annotated[
         str | None, typer.Option("--pattern", help="Primary pattern; default: the template's.")
     ] = None,
+    virtual_clock: Annotated[
+        bool,
+        typer.Option(
+            "--virtual-clock",
+            help="A project template's variant for code that waits, on a virtual clock.",
+        ),
+    ] = False,
 ) -> None:
     """Scaffold a new problem."""
-    request = ScaffoldRequest(slug, template, track, title, difficulty, pattern)
+    request = ScaffoldRequest(slug, template, track, title, difficulty, pattern, virtual_clock)
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     created = create_problem(environment, PackagedProblemTemplates(), request)
     output = console(context)
@@ -113,10 +127,15 @@ def new(
 
 
 def _report(created: CreatedProblem) -> Iterator[Text]:
-    yield Text(f"created  {created.directory}  ({created.template} template, draft)", "bold")
+    variant = " with the virtual clock" if created.virtual_clock else ""
+    yield Text(
+        f"created  {created.directory}  ({created.template} template{variant}, draft)", "bold"
+    )
     if created.template in PROJECT_TEMPLATES:
         yield Text("next steps (docs/specs/authoring.md#project-problems)")
-        yield from _steps(PROJECT_WORKFLOW, created.slug)
+        yield from _steps(
+            CLOCK_WORKFLOW if created.virtual_clock else PROJECT_WORKFLOW, created.slug
+        )
         return
     yield Text(LANGUAGES_HINT)
     yield Text("next steps (docs/specs/authoring.md#workflow)")

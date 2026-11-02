@@ -1,0 +1,54 @@
+// Package app holds the type that `cstudy submit` and the tests drive.
+//
+// TODO: replace this sketch with the reference of every level.
+package app
+
+import (
+	"sync"
+	"time"
+)
+
+// {{class_name}} keeps the values by key and wakes the callers that wait for one.
+type {{class_name}} struct {
+	mu      sync.Mutex
+	values  map[string]string
+	changed chan struct{}
+}
+
+// New{{class_name}} returns an empty {{class_name}}.
+func New{{class_name}}() *{{class_name}} {
+	return &{{class_name}}{values: map[string]string{}, changed: make(chan struct{})}
+}
+
+// Put stores value under key and wakes the waiters; returns the previous value of key, or "" when
+// there was none.
+func (a *{{class_name}}) Put(key string, value string) string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	previous := a.values[key]
+	a.values[key] = value
+	close(a.changed)
+	a.changed = make(chan struct{})
+	return previous
+}
+
+// WaitFor returns the value of key as soon as there is one, or "" once waitMs milliseconds passed
+// without one.
+func (a *{{class_name}}) WaitFor(key string, waitMs int64) string {
+	timeout := time.NewTimer(time.Duration(waitMs) * time.Millisecond)
+	defer timeout.Stop()
+	for {
+		a.mu.Lock()
+		value, found := a.values[key]
+		changed := a.changed
+		a.mu.Unlock()
+		if found {
+			return value
+		}
+		select {
+		case <-changed:
+		case <-timeout.C:
+			return ""
+		}
+	}
+}

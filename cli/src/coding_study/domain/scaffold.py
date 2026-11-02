@@ -12,10 +12,11 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from coding_study.domain.errors import UsageError
-from coding_study.domain.problem import Difficulty, Track
+from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.domain.problem_files import RUBRIC_FILE
 from coding_study.domain.rubric import LLD_RUBRIC_SECTIONS, rubric_skeleton
 from coding_study.domain.taxonomy import PATTERNS
+from coding_study.domain.virtual_clock import CLOCK_LANGUAGES, GRADED_CLOCK_LANGUAGES
 
 ID_DIGITS = 4
 WORKSPACE_FIRST_ID = 5001
@@ -45,6 +46,20 @@ class TemplateName(StrEnum):
     """A project problem in Go: a starter module and the reference's overlay on it."""
     PROJECT_RUST = "project-rust"
     """A project problem in Rust: a starter crate and the reference's overlay on it."""
+
+
+PROJECT_TEMPLATE_LANGUAGES: Mapping[TemplateName, Language] = {
+    TemplateName.PROJECT_PYTHON: Language.PYTHON,
+    TemplateName.PROJECT_TYPESCRIPT: Language.TYPESCRIPT,
+    TemplateName.PROJECT_JAVA: Language.JAVA,
+    TemplateName.PROJECT_KOTLIN: Language.KOTLIN,
+    TemplateName.PROJECT_GO: Language.GO,
+    TemplateName.PROJECT_RUST: Language.RUST,
+}
+"""The one language of each project template."""
+CLOCK_TEMPLATE_SUFFIX = "-clock"
+"""A project template's virtual-clock variant is a template directory of its own, named after the
+template with this suffix; `--from-template` never names it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +94,9 @@ class ScaffoldRequest:
     difficulty: Difficulty | None = None
     pattern: str | None = None
     """The primary pattern; None: the template's pattern, if any."""
+    virtual_clock: bool = False
+    """`--virtual-clock`: the project template's variant for code that waits
+    (docs/decisions/0017-async-project-problems.md)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,7 +135,9 @@ class Scaffold:
 
 
 def plan_scaffold(request: ScaffoldRequest, problem_id: str) -> Scaffold:
-    """Raises UsageError for an invalid slug, title, track or pattern."""
+    """Raises UsageError for an invalid slug, title, track or pattern, and for `--virtual-clock`
+    on a template that has no such variant."""
+    template_directory(request)
     if not SLUG_PATTERN.fullmatch(request.slug):
         raise UsageError(
             f'invalid slug "{request.slug}": use lowercase words joined by "-", e.g. two-sum'
@@ -135,6 +155,31 @@ def plan_scaffold(request: ScaffoldRequest, problem_id: str) -> Scaffold:
         track=track,
         patterns=_patterns(request.pattern or defaults.pattern, track),
     )
+
+
+def template_directory(request: ScaffoldRequest) -> str:
+    """The packaged template the request writes: the template's own, or its virtual-clock variant.
+
+    Raises UsageError for `--virtual-clock` on a template of another kind, in a language without
+    a virtual clock, or whose runner does not grade it yet.
+    """
+    template = request.template
+    if not request.virtual_clock:
+        return template
+    language = PROJECT_TEMPLATE_LANGUAGES.get(template)
+    if language is None:
+        raise UsageError(f"--virtual-clock applies to the project-* templates, not {template}")
+    if language not in CLOCK_LANGUAGES:
+        raise UsageError(
+            f"--virtual-clock is not available for {template}: "
+            f"{language.title()} has no virtual clock"
+        )
+    if language not in GRADED_CLOCK_LANGUAGES:
+        raise UsageError(
+            f"--virtual-clock is not available for {template} yet: "
+            f"the {language} runner does not grade the virtual clock"
+        )
+    return f"{template}{CLOCK_TEMPLATE_SUFFIX}"
 
 
 def next_problem_id(directory_names: Sequence[str], first_id: int = 1) -> str:

@@ -42,7 +42,7 @@ USER_GO_PREFIXES = ("CGO_",)
 configure cgo; the build leaves them out (it sets its own GOWORK and CGO_ENABLED)."""
 BUILD_STEP = "go build"
 TEST_BUILD_STEP = "go test -c"
-MISSING_GO = "go was not found on PATH; --lang go needs Go 1.24 or newer"
+MISSING_GO = "go was not found on PATH; --lang go needs Go 1.25 or newer"
 
 
 @dataclass(frozen=True, slots=True)

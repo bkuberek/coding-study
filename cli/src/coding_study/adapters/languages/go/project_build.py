@@ -16,7 +16,6 @@ the launch sets.
 
 import json
 import posixpath
-import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -79,7 +78,7 @@ from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.runner_grading import graded_signature
 from coding_study.domain.runs import HELLO_TIMEOUT_MS
 from coding_study.domain.virtual_clock import ProjectClock
-from coding_study.domain.workspace_projects import GoModuleFile, go_module_file
+from coding_study.domain.workspace_projects import GoModuleFile, go_module_file, newer_go_version
 
 PROJECT_BUILDS = "project"
 """Below the build directory: one directory per project root, mirroring its path."""
@@ -101,7 +100,6 @@ OUTSIDE_WORKSPACE = "outside"
 DEBUG_LISTEN = "CSTUDY_GO_DEBUG_LISTEN"
 DEBUG_DELVE = "CSTUDY_GO_DELVE"
 DEBUG_PACKAGE = "CSTUDY_GO_DEBUG_PACKAGE"
-_GO_VERSION_PARTS = re.compile(r"\d+")
 
 
 @dataclass(frozen=True, slots=True)
@@ -250,7 +248,7 @@ class GoProjectBuilds:
         )
         write_if_changed(
             root.work_file,
-            f"go {_newer(go, GO_VERSION)}\n\nuse (\n{uses})\n\n"
+            f"go {newer_go_version(go, GO_VERSION)}\n\nuse (\n{uses})\n\n"
             f"replace {RUNNER_MODULE} => {runners}\n{replaces}",
         )
 
@@ -400,15 +398,6 @@ def _build_failure_main(message: str, trace: str) -> str:
         f'{GENERATED_HEADER}\n\npackage main\n\nimport "{RUNNER_PACKAGE}"\n\n'
         f"func main() {{\n\trunner.MainBuildFailed({arguments})\n}}\n"
     )
-
-
-def _newer(version: str | None, minimum: str) -> str:
-    """The newer of two `go` lines; `minimum` when `version` is missing."""
-    if version is None:
-        return minimum
-    found = [int(part) for part in _GO_VERSION_PARTS.findall(version)]
-    least = [int(part) for part in _GO_VERSION_PARTS.findall(minimum)]
-    return version if found > least else minimum
 
 
 def _read(path: Path) -> str:

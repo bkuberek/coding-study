@@ -22,6 +22,7 @@ from coding_study.domain.scaffold import (
     next_problem_id,
     plan_scaffold,
     render_template,
+    template_directory,
 )
 
 
@@ -31,6 +32,8 @@ class CreatedProblem:
     directory: str
     """Relative to the destination root, e.g. `problems/0004-max-gap`."""
     template: TemplateName
+    virtual_clock: bool
+    """Written from the template's variant for code that waits."""
     files: tuple[str, ...]
     """Relative to `directory`, in the order written."""
 
@@ -44,10 +47,11 @@ def create_problem(
     problems = destination.files
     problem_id = next_problem_id(problems.directory_names(), destination.first_id)
     scaffold = plan_scaffold(request, problem_id)
+    template = template_directory(request)
     directory = f"{problems.directory}/{scaffold.directory_name}"
     placeholders = scaffold.placeholders()
     written: list[str] = []
-    for template_path, text in sorted(templates.files(request.template).items()):
+    for template_path, text in sorted(templates.files(template).items()):
         name = render_template(template_path, placeholders)
         destination.writer.write_text(f"{directory}/{name}", render_template(text, placeholders))
         written.append(name)
@@ -58,7 +62,9 @@ def create_problem(
     for name in _empty_references(meta):
         destination.writer.write_text(f"{directory}/{name}", "")
         written.append(name)
-    return CreatedProblem(scaffold.slug, directory, request.template, tuple(written))
+    return CreatedProblem(
+        scaffold.slug, directory, request.template, request.virtual_clock, tuple(written)
+    )
 
 
 def _empty_references(meta: ProblemMeta) -> list[str]:

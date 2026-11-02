@@ -31,8 +31,10 @@ from coding_study.domain.problem import Language
 from coding_study.domain.signature import ClassSignature, Method
 from coding_study.domain.workspace_projects import GO_VENDORED_MODULES
 
-GO_VERSION = "1.24"
-"""The `go` line of the generated module and workspaces; `go build -json` needs Go 1.24."""
+GO_VERSION = "1.25"
+"""The `go` line of the generated module and workspaces. A `go.work` must name at least the `go`
+line of every module it uses, and the runner module says `go 1.25`, the release that has
+`testing/synctest.Test`."""
 RUNNER_MODULE = "cstudy"
 RUNNER_DIRECTORY = "go"
 """The runner module inside the runners directory."""

@@ -160,6 +160,14 @@ def test_the_build_workspace_joins_the_practice_module_and_the_runner_runtime(wo
     assert "replace cstudy => ../../runtime/runners/go\n" in work
 
 
+def test_the_build_module_and_workspace_say_go_1_25_like_the_runner_module(workspace):
+    prepare_user(workspace, FakeGo())
+    build = workspace / ".cs/build/go"
+    assert "\ngo 1.25\n" in (build / "go.mod").read_text()
+    assert (build / "go.work").read_text().startswith("go 1.25\n")
+    assert "\ngo 1.25\n" in (REPOSITORY_ROOT / "runners/go/go.mod").read_text()
+
+
 def test_the_build_requires_the_vendored_modules_from_the_runner_runtime(workspace):
     prepare_user(workspace, FakeGo())
     module = (workspace / ".cs/build/go/go.mod").read_text()

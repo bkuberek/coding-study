@@ -1044,6 +1044,31 @@ def test_a_go_module_says_go_1_24(bank):
     ]
 
 
+def go_clock(problem):
+    """The Go fixture on the virtual clock, whose starter says go 1.25."""
+    clock = go(problem)
+    meta = replace(clock.meta, project=Project("bank.go", clock=ProjectClock.VIRTUAL))
+    return with_go_module(replace(clock, meta=meta), GO_MODULE.replace("go 1.24", "go 1.25"))
+
+
+def test_a_virtual_clock_go_fixture_passes(bank):
+    assert errors(content(go_clock(bank))) == []
+
+
+def test_a_virtual_clock_go_module_says_go_1_25(bank):
+    problem = with_go_module(go_clock(bank), GO_MODULE)
+    assert starter_errors(problem) == [
+        f'{STARTER}/go.mod: says "go 1.24"; a virtual-clock project\'s go.mod says go 1.25'
+    ]
+
+
+def test_a_go_module_on_the_real_clock_does_not_say_go_1_25(bank):
+    problem = with_go_module(go(bank), GO_MODULE.replace("go 1.24", "go 1.25"))
+    assert starter_errors(problem) == [
+        f'{STARTER}/go.mod: says "go 1.25"; a project\'s go.mod says go 1.24'
+    ]
+
+
 def test_a_go_module_requires_no_module_that_is_not_vendored(bank):
     text = GO_MODULE.replace("v1.5.0", "v1.5.0\nrequire example.com/money v1.0.0")
     assert starter_errors(with_go_module(go(bank), text)) == [

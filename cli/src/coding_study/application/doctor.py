@@ -92,11 +92,11 @@ from coding_study.domain.workspace_projects import (
 
 PYTHON_VERSION = "3.13"
 MINIMUM_NODE_MAJOR = 24
-MINIMUM_GO = (1, 24)
+MINIMUM_GO = (1, 25)
 MINIMUM_RUSTC = (1, 80)
 INSTALL_UV = f"install uv: {TOOLCHAINS_GUIDE}#python-and-uv"
 INSTALL_PNPM = f"install pnpm: {TOOLCHAINS_GUIDE}#nodejs-and-pnpm"
-INSTALL_GO = f"needed for --lang go, install Go 1.24 or newer: {TOOLCHAINS_GUIDE}#go"
+INSTALL_GO = f"needed for --lang go, install Go 1.25 or newer: {TOOLCHAINS_GUIDE}#go"
 INSTALL_RUST = (
     f"needed for --lang rust, install Rust 1.80 or newer with rustup: {TOOLCHAINS_GUIDE}#rust"
 )

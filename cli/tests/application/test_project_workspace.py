@@ -127,6 +127,23 @@ def test_a_go_folder_gets_a_go_work_of_its_own(workspace, problem):
     assert workspace.read_text(GO_WORK) == "go 1.24\n\nuse .\n"
 
 
+@pytest.mark.parametrize(("module_go", "work_go"), [("1.25", "1.25"), ("1.24", "1.24")])
+def test_the_go_work_follows_the_go_line_of_the_folders_module(
+    workspace, problem, module_go, work_go
+):
+    workspace.write_text(f"{FOLDER}/go.mod", f"module {SLUG}\n\ngo {module_go}\n")
+    seed_project(workspace, go(problem))
+    assert workspace.read_text(GO_WORK) == f"go {work_go}\n\nuse .\n"
+
+
+def test_a_resumed_go_attempt_writes_the_go_work_its_module_needs(workspace, problem):
+    workspace.write_text(f"{FOLDER}/go.mod", f"module {SLUG}\n\ngo 1.25\n")
+    seed_project(workspace, go(problem))
+    workspace.absolute(GO_WORK).unlink()
+    resume_project(workspace, go(problem))
+    assert workspace.read_text(GO_WORK) == "go 1.25\n\nuse .\n"
+
+
 def test_writing_the_go_work_links_the_go_folder(workspace, problem):
     assert seed_project(workspace, go(problem)).linked
 

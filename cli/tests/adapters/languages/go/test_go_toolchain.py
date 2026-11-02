@@ -3,8 +3,10 @@ import pytest
 from coding_study.adapters.languages.go.toolchain import (
     GO_ENVIRONMENT,
     UNSET_PLATFORM_SETTINGS,
+    SubprocessGo,
     build_environment,
 )
+from coding_study.domain.errors import RunnerStartError
 
 USER = {"PATH": "/usr/bin", "GOOS": "windows", "GOARCH": "386", "GOFLAGS": "-mod=mod"}
 
@@ -49,3 +51,9 @@ def test_a_process_started_later_blanks_the_platform_settings():
         {"GOOS", "GOARCH", "GOEXPERIMENT", "GOAMD64"},
         {""},
     )
+
+
+def test_a_missing_go_says_which_release_to_install(tmp_path, monkeypatch):
+    monkeypatch.setenv("PATH", str(tmp_path))
+    with pytest.raises(RunnerStartError, match=r"--lang go needs Go 1\.25 or newer"):
+        SubprocessGo().build(["./..."], tmp_path, {})

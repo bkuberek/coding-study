@@ -36,7 +36,11 @@ GO_MODULE_FILE = "go.mod"
 GO_WORK_FILE = "go.work"
 GO_WORK_SUM_FILE = "go.work.sum"
 GO_WORK_VERSION = "1.24"
-"""The `go` line of a folder's `go.work`, and the one a Go starter's `go.mod` declares."""
+"""The `go` line of a Go starter's `go.mod`, and the lowest `go` line of a folder's `go.work`: a
+`go.mod` that says `go 1.24` keeps building under the Go 1.25 that cstudy requires."""
+GO_CLOCK_VERSION = "1.25"
+"""The `go` line of a virtual-clock Go starter's `go.mod`: `testing/synctest.Test`, which grades and
+tests it, is Go 1.25 API (docs/decisions/0017-async-project-problems.md)."""
 UNTRACKED_ROOT_FILES = frozenset({"uv.lock", GO_WORK_FILE, GO_WORK_SUM_FILE, "Cargo.lock"})
 """Untracked at the root of a folder only: a plain `uv run` there writes a `uv.lock`,
 `cstudy start` a Go folder's `go.work`, and the native `cargo test` a `Cargo.lock`."""
@@ -49,6 +53,7 @@ _FOLDER_TO_WORKSPACE_ROOT = "../.."
 _GO_THIRD_PARTY = ".cs/runtime/runners/go/third_party"
 """The vendored Go modules' copies, relative to the workspace root."""
 _GO_COMMENT = re.compile(r"//.*")
+_GO_VERSION_PARTS = re.compile(r"\d+")
 _GO_BLOCK_END = ")"
 _GO_REPLACEMENT_ARROW = "=>"
 CARGO_MANIFEST = "Cargo.toml"
@@ -134,15 +139,28 @@ def toolchain_link(language: Language) -> ToolchainLink | None:
     return None
 
 
-def toolchain_files(language: Language) -> tuple[ToolchainFile, ...]:
+def toolchain_files(language: Language, go_module: str | None = None) -> tuple[ToolchainFile, ...]:
     """A Go folder holds a `go.work` of its own, so the workspace's root `go.work` never claims
-    it; a Rust folder reaches the vendored crates through `.cargo/config.toml`; the others need
-    none."""
+    it; its `go` line is the higher of `GO_WORK_VERSION` and the folder's `go.mod` (`go_module`,
+    its text), since a `go.work` older than a module it uses stops every go command. A Rust folder
+    reaches the vendored crates through `.cargo/config.toml`; the others need none."""
     if language is Language.GO:
-        return (ToolchainFile(GO_WORK_FILE, f"go {GO_WORK_VERSION}\n\nuse .\n"),)
+        declared = go_module_file(go_module).go if go_module is not None else None
+        version = newer_go_version(declared, GO_WORK_VERSION)
+        return (ToolchainFile(GO_WORK_FILE, f"go {version}\n\nuse .\n"),)
     if language is Language.RUST:
         return (ToolchainFile(CARGO_CONFIG_FILE, RUST_CARGO_CONFIG),)
     return ()
+
+
+def newer_go_version(version: str | None, minimum: str) -> str:
+    """The newer of two `go` lines, compared number by number (`1.9` is older than `1.24`);
+    `minimum` when `version` is missing or holds no number."""
+    if version is None:
+        return minimum
+    found = [int(part) for part in _GO_VERSION_PARTS.findall(version)]
+    least = [int(part) for part in _GO_VERSION_PARTS.findall(minimum)]
+    return version if found > least else minimum
 
 
 def go_vendored_replacement(module: str) -> str:

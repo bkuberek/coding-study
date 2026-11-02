@@ -1,6 +1,6 @@
 module cstudy
 
-go 1.22
+go 1.25
 
 require github.com/shopspring/decimal v1.5.0
 
