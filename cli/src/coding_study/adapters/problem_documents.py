@@ -55,12 +55,14 @@ from coding_study.domain.signature import (
     Param,
     Returns,
     Signature,
+    async_issues,
     blocking_issues,
     modifier_issues,
 )
 from coding_study.domain.stress import StressScenario
 from coding_study.domain.time_limits import AbsoluteTimeLimit, FactorTimeLimit, TimeLimit
 from coding_study.domain.type_dsl import TypeSyntaxError, parse_return_type, parse_value_type
+from coding_study.domain.virtual_clock import ProjectClock, clock_declaration_issues
 
 type Document = Mapping[str, Any]
 
@@ -82,6 +84,10 @@ def meta_from_document(document: Document, source: str, workspace: bool = False)
     issues = modifier_issues(meta.signature)
     if meta.kind is not ProblemKind.CONCURRENT:
         issues += blocking_issues(meta.signature)
+    if meta.kind is ProblemKind.PROJECT:
+        issues += clock_declaration_issues(meta)
+    else:
+        issues += async_issues(meta.signature)
     if issues:
         raise ContentError(
             [ContentIssue(source, issue.location, issue.message) for issue in issues]
@@ -141,7 +147,12 @@ def _jdk(jdk: Document | None) -> DeclaredJdk | None:
 def _project(project: Document | None) -> Project | None:
     if project is None:
         return None
-    return Project(entry=project["entry"], tests=project.get("tests", DEFAULT_TESTS_DIRECTORY))
+    clock = project.get("clock")
+    return Project(
+        entry=project["entry"],
+        tests=project.get("tests", DEFAULT_TESTS_DIRECTORY),
+        clock=ProjectClock(clock) if clock is not None else None,
+    )
 
 
 def _signature(signature: Document) -> Signature:
@@ -178,6 +189,7 @@ def _method(method: Document, location: str) -> Method:
         returns=_returns(method["returns"], f"{location}.returns"),
         level=method.get("level"),
         blocking=method.get("blocking", False),
+        is_async=method.get("async", False),
     )
 
 

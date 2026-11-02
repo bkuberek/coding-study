@@ -9,7 +9,15 @@ from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
-from coding_study.domain.cases import Expected, FunctionInput, JsonValue, OperationSequence
+from coding_study.domain.cases import (
+    Expected,
+    FunctionInput,
+    HarnessOp,
+    JsonValue,
+    OperationSequence,
+    joined_task,
+    spawned_call,
+)
 from coding_study.domain.problem import ComparatorSpec, ComparatorType
 from coding_study.domain.runs import RunInput
 from coding_study.domain.value_text import value_text
@@ -203,7 +211,10 @@ def _checker_input(case_input: RunInput) -> dict[str, JsonValue]:
 
 
 class OpsComparator:
-    """`ops`: one output per operation; `per_method` overrides a method's comparator."""
+    """`ops`: one output per operation; `per_method` overrides a method's comparator. The output
+    of a `@join` is compared as the method that its task called (docs/specs/problem-format.md
+    #asynchronous-code-and-the-virtual-clock); the other harness operations output null or a
+    number, which `exact` compares."""
 
     def __init__(self, spec: ComparatorSpec) -> None:
         self._exact = _value_comparator(ComparatorType.EXACT, spec.tolerance)
@@ -226,16 +237,43 @@ class OpsComparator:
             return Mismatch("expected an array")
         if len(actual) != len(expected_outputs):
             return Mismatch(f"{len(actual)} outputs for {len(expected_outputs)} operations")
-        outputs = zip(case_input.ops, expected_outputs, actual, strict=False)
-        for index, (operation, expected_output, actual_output) in enumerate(outputs):
-            comparator = self._per_method.get(operation, self._exact)
+        calls = _CalledMethods()
+        outputs = zip(case_input.ops, case_input.args, expected_outputs, actual, strict=False)
+        for index, (operation, arguments, expected_output, actual_output) in enumerate(outputs):
+            calls.note(operation, arguments)
+            comparator = self._per_method.get(calls.method_of(operation, arguments), self._exact)
             if comparator.compare(Expected(expected_output), actual_output, _NO_INPUT) is not None:
                 detail = (
-                    f"op {index} {operation}: "
+                    f"op {index} {calls.label(operation, arguments)}: "
                     f"expected {value_text(expected_output)}, got {value_text(actual_output)}"
                 )
                 return Mismatch(detail, first_difference=index)
         return None
+
+
+class _CalledMethods:
+    """The method each task of a case calls, learned from its `@spawn`s as the operations go by,
+    so that a `@join` is compared as the method it waits for."""
+
+    def __init__(self) -> None:
+        self._by_task: dict[str, str] = {}
+
+    def note(self, operation: str, arguments: Sequence[JsonValue]) -> None:
+        """Learns the task that a well-formed `@spawn` starts and the method it calls."""
+        if operation == HarnessOp.SPAWN and (call := spawned_call(arguments)) is not None:
+            self._by_task[call.task] = call.method
+
+    def method_of(self, operation: str, arguments: Sequence[JsonValue]) -> str:
+        """The method whose comparator judges the output of `operation`: itself for a method,
+        the spawned method for a `@join`. A name no `per_method` entry has compares `exact`."""
+        if operation == HarnessOp.JOIN:
+            return self._by_task.get(joined_task(arguments) or "", operation)
+        return operation
+
+    def label(self, operation: str, arguments: Sequence[JsonValue]) -> str:
+        """`operation` as a failure names it; a `@join` also names its task."""
+        task = joined_task(arguments) if operation == HarnessOp.JOIN else None
+        return operation if task is None else f"{operation} {task}"
 
 
 _NO_INPUT = FunctionInput({})

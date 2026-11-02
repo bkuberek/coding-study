@@ -209,6 +209,46 @@ def test_only_a_project_problem_has_a_project_block(directory_name):
     assert "" in locations_after(validator_for_meta_file(), meta, add_project)
 
 
+def first_method_is(**values: Any) -> Mutation:
+    def mutate(meta: dict[str, Any]) -> None:
+        meta["signature"]["class"]["methods"][0].update(values)
+
+    return mutate
+
+
+def test_a_project_method_may_be_async():
+    meta = project_meta()
+    first_method_is(**{"async": True})(meta)
+    assert validator_for_meta_file().violations(meta, SOURCE) == []
+
+
+def test_a_project_may_declare_the_virtual_clock():
+    meta = project_meta()
+    meta["project"]["clock"] = "virtual"
+    assert validator_for_meta_file().violations(meta, SOURCE) == []
+
+
+INVALID_CLOCK_META: dict[str, tuple[Mutation, str]] = {
+    "async that is not a boolean": (
+        first_method_is(**{"async": "yes"}),
+        "signature.class.methods[0].async",
+    ),
+    "the real clock written out": (
+        lambda meta: meta["project"].update(clock="real"),
+        "project.clock",
+    ),
+    "a clock that is a boolean": (lambda meta: meta["project"].update(clock=True), "project.clock"),
+    "an empty clock": (lambda meta: meta["project"].update(clock=""), "project.clock"),
+}
+
+
+@pytest.mark.parametrize(
+    ("mutate", "location"), INVALID_CLOCK_META.values(), ids=list(INVALID_CLOCK_META)
+)
+def test_an_invalid_clock_declaration_is_reported_at_its_location(mutate, location):
+    assert location in locations_after(validator_for_meta_file(), project_meta(), mutate)
+
+
 def first_case(**values: Any) -> Mutation:
     def mutate(tests: dict[str, Any]) -> None:
         tests["cases"][0].update(values)
@@ -244,6 +284,60 @@ def test_invalid_tests_are_reported_at_their_location(mutate, location):
     assert location in locations_after(
         validator_for_tests_file(), load_fixture_tests("0001-two-sum"), mutate
     )
+
+
+def project_tests() -> dict[str, Any]:
+    return json.loads((PROJECT_PROBLEMS / BANK_PROJECT / "tests.json").read_text())
+
+
+def first_project_case_runs(*operations: str) -> Mutation:
+    """The first case with its operations after the constructor replaced by `operations`."""
+
+    def mutate(tests: dict[str, Any]) -> None:
+        case = tests["cases"][0]
+        case["ops"] = [case["ops"][0], *operations]
+        case["args"] = [case["args"][0], *([[]] * len(operations))]
+        case["expected"] = [None] * len(case["ops"])
+
+    return mutate
+
+
+@pytest.mark.parametrize(
+    "operations",
+    [
+        ["@advance"],
+        ["@spawn", "@join", "@now"],
+        ["createAccount", "@advance", "@now"],
+    ],
+    ids=["one", "all but the method", "mixed with a method"],
+)
+def test_a_case_may_hold_the_harness_operations(operations):
+    tests = project_tests()
+    first_project_case_runs(*operations)(tests)
+    assert validator_for_tests_file().violations(tests, SOURCE) == []
+
+
+@pytest.mark.parametrize(
+    "operation",
+    ["@", "@Advance", "@1", "@now now", "@advance!", "advance@", "@@now", " @now"],
+)
+def test_an_operation_that_is_neither_a_method_nor_a_harness_operation_is_refused(operation):
+    tests = project_tests()
+    first_project_case_runs(operation)(tests)
+    assert "cases[0].ops[1]" in [
+        issue.location for issue in validator_for_tests_file().violations(tests, SOURCE)
+    ]
+
+
+def test_a_stress_scenario_keeps_its_setup_to_methods():
+    scenario = {
+        "setup": {"ops": ["@now"], "args": [[]]},
+        "workers": [{"group": "w", "count": 2, "repeat": 1, "steps": [{"op": "put", "args": []}]}],
+        "final": {"ops": ["size"], "args": [[]], "expected": [0]},
+    }
+    tests = {"version": 1, "cases": [{"id": "s1", "stress": scenario}]}
+    locations = [issue.location for issue in validator_for_tests_file().violations(tests, SOURCE)]
+    assert locations == ["cases[0].stress.setup.ops[0]"]
 
 
 def test_reports_every_violation_not_just_the_first():

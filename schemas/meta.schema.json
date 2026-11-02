@@ -260,7 +260,8 @@
                   "params": { "$ref": "#/$defs/params" },
                   "returns": { "$ref": "#/$defs/returns" },
                   "level": { "description": "Progressive and project problems: the level that introduces the method", "$ref": "#/$defs/positiveInteger" },
-                  "blocking": { "description": "Concurrent problems: the method may wait for another worker", "type": "boolean" }
+                  "blocking": { "description": "Concurrent problems: the method may wait for another worker", "type": "boolean" },
+                  "async": { "description": "Project problems on the virtual clock: the method returns the language's awaitable, and the grader awaits it (docs/specs/problem-format.md#asynchronous-code-and-the-virtual-clock)", "type": "boolean" }
                 }
               }
             }
@@ -404,6 +405,10 @@
           "description": "The directory, relative to the project root, that receives the generated level tests (default tests); in Java and Kotlin a package directory of the test sources (src/test/java/bank)",
           "type": "string",
           "minLength": 1
+        },
+        "clock": {
+          "description": "virtual puts every case of every level on the virtual clock, in grading and in the generated tests; without it the real clock (check S18, docs/specs/problem-format.md#asynchronous-code-and-the-virtual-clock)",
+          "const": "virtual"
         }
       }
     },

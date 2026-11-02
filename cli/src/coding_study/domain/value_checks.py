@@ -4,7 +4,10 @@ Ranges, char length, `decimal` and `date` strings (problem-format.md#decimal-and
 encodings (problem-format.md#serialization-of-linked-structures), op names and arities, and
 `long` at most 2^53-1. Inputs may encode a cyclic ListNode; expected outputs never do, and
 expected trees have their trailing nulls trimmed like serialized ones. Inputs keep the scale of a
-decimal; expected decimals are written in canonical form, as the runners encode them.
+decimal; expected decimals are written in canonical form, as the runners encode them. The harness
+operations of a project on the virtual clock are typed here too (`@spawn` takes the arguments of
+the method it calls, and `@join` returns that method's result); whether the clock is declared and
+whether the tasks pair up is S18's (`clock_checks`).
 """
 
 import re
@@ -12,7 +15,16 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 
-from coding_study.domain.cases import Case, FunctionInput, JsonValue, OperationSequence
+from coding_study.domain.cases import (
+    Case,
+    FunctionInput,
+    HarnessOp,
+    JsonValue,
+    OperationSequence,
+    is_harness_operation,
+    joined_task,
+    spawned_call,
+)
 from coding_study.domain.signature import (
     ClassSignature,
     FunctionSignature,
@@ -45,6 +57,8 @@ DECIMAL_PATTERN = re.compile(r"-?(0|[1-9][0-9]*)(\.[0-9]+)?")
 DATE_PATTERN = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 CYCLE_VALUES = "values"
 CYCLE_AT = "cycle_at"
+SPAWN_FIXED_ARGUMENTS = 2
+"""A `@spawn` starts with its task and its method; the method's arguments follow."""
 
 
 def input_value_issues(value: JsonValue, value_type: ValueType) -> list[str]:
@@ -314,15 +328,42 @@ def _class_case(signature: ClassSignature, case: Case) -> list[str]:
     if not isinstance(case.input, OperationSequence):
         return []
     sequence = case.input
-    methods = {method.name: method for method in signature.methods}
+    methods = _Methods.of(signature, sequence)
     issues = _operation_issues(signature, sequence, methods)
     if case.expected is not None:
         issues += _expected_outputs_issues(case.expected.value, sequence, methods)
     return issues
 
 
+@dataclass(frozen=True, slots=True)
+class _Methods:
+    """The methods of a class, and the method that each task of a case calls."""
+
+    by_name: Mapping[str, Method]
+    spawned: Mapping[str, Method]
+    """Each task a well-formed `@spawn` of the case starts, with the method it calls."""
+
+    @classmethod
+    def of(cls, signature: ClassSignature, sequence: OperationSequence) -> "_Methods":
+        by_name = {method.name: method for method in signature.methods}
+        spawned: dict[str, Method] = {}
+        for operation, arguments in zip(sequence.ops, sequence.args, strict=False):
+            call = spawned_call(arguments) if operation == HarnessOp.SPAWN else None
+            if call is not None and call.method in by_name:
+                spawned.setdefault(call.task, by_name[call.method])
+        return cls(by_name, spawned)
+
+
+_HARNESS_PARAMS: Mapping[HarnessOp, tuple[Param, ...]] = {
+    HarnessOp.ADVANCE: (Param("ms", ScalarType(Scalar.LONG)),),
+    HarnessOp.JOIN: (Param("task", ScalarType(Scalar.STRING)),),
+    HarnessOp.NOW: (),
+}
+"""The arguments of the harness operations that take a fixed list; `@spawn` takes a method's."""
+
+
 def _operation_issues(
-    signature: ClassSignature, sequence: OperationSequence, methods: dict[str, Method]
+    signature: ClassSignature, sequence: OperationSequence, methods: _Methods
 ) -> list[str]:
     issues: list[str] = []
     for index, (operation, arguments) in enumerate(zip(sequence.ops, sequence.args, strict=False)):
@@ -331,8 +372,11 @@ def _operation_issues(
                 issues.append(f'ops[0]: expected the class name "{signature.name}"')
                 continue
             params, label = signature.constructor_params, signature.name
-        elif operation in methods:
-            params, label = methods[operation].params, operation
+        elif is_harness_operation(operation):
+            issues += _harness_issues(operation, arguments, index, methods)
+            continue
+        elif operation in methods.by_name:
+            params, label = methods.by_name[operation].params, operation
         else:
             issues.append(f'ops[{index}]: no method "{operation}"')
             continue
@@ -340,22 +384,75 @@ def _operation_issues(
     return issues
 
 
-def _arguments_issues(
-    params: tuple[Param, ...], arguments: tuple[JsonValue, ...], path: str, label: str
+def _harness_issues(
+    operation: str, arguments: tuple[JsonValue, ...], index: int, methods: _Methods
 ) -> list[str]:
-    if len(arguments) != len(params):
-        noun = "argument" if len(params) == 1 else "arguments"
-        return [f"{path}: {label} takes {len(params)} {noun}, got {len(arguments)}"]
+    path = f"args[{index}]"
+    match operation:
+        case HarnessOp.SPAWN:
+            return _spawn_issues(arguments, path, methods)
+        case HarnessOp.ADVANCE | HarnessOp.JOIN | HarnessOp.NOW:
+            params = _HARNESS_PARAMS[HarnessOp(operation)]
+            return _arguments_issues(params, arguments, path, operation)
+        case _:
+            return [f'ops[{index}]: no harness operation "{operation}"']
+
+
+def _spawn_issues(arguments: tuple[JsonValue, ...], path: str, methods: _Methods) -> list[str]:
+    """`[task, method, ...arguments]`, the arguments being the method's."""
+    if len(arguments) < SPAWN_FIXED_ARGUMENTS:
+        return [f"{path}: @spawn takes a task, a method and its arguments"]
+    task, method_name, *call_arguments = arguments
+    issues = _task_name_issues(task, f"{path}[0]")
+    if not isinstance(method_name, str):
+        message = f"expected a method name (string), got {value_text(method_name)}"
+        return [*issues, _issue(f"{path}[1]", message)]
+    method = methods.by_name.get(method_name)
+    if method is None:
+        return [*issues, f'{path}[1]: no method "{method_name}"']
+    if arity := _arity_issue(method.params, call_arguments, path, method_name):
+        return [*issues, arity]
+    typed = _typed_arguments_issues(method.params, call_arguments, path, SPAWN_FIXED_ARGUMENTS)
+    return [*issues, *typed]
+
+
+def _task_name_issues(task: JsonValue, path: str) -> list[str]:
+    if not isinstance(task, str):
+        return [_issue(path, f"expected a task name (string), got {value_text(task)}")]
+    return [] if task else [_issue(path, "a task name is not empty")]
+
+
+def _arguments_issues(
+    params: tuple[Param, ...], arguments: Sequence[JsonValue], path: str, label: str
+) -> list[str]:
+    arity = _arity_issue(params, arguments, path, label)
+    return [arity] if arity else _typed_arguments_issues(params, arguments, path, 0)
+
+
+def _arity_issue(
+    params: tuple[Param, ...], arguments: Sequence[JsonValue], path: str, label: str
+) -> str | None:
+    if len(arguments) == len(params):
+        return None
+    noun = "argument" if len(params) == 1 else "arguments"
+    return f"{path}: {label} takes {len(params)} {noun}, got {len(arguments)}"
+
+
+def _typed_arguments_issues(
+    params: tuple[Param, ...], arguments: Sequence[JsonValue], path: str, first_position: int
+) -> list[str]:
+    """The arguments against `params`, the first one at `first_position` of the path's list."""
     inputs = _Rules(output=False)
+    positions = enumerate(zip(params, arguments, strict=True), start=first_position)
     return [
         issue
-        for position, (param, argument) in enumerate(zip(params, arguments, strict=True))
+        for position, (param, argument) in positions
         for issue in inputs.issues(argument, param.type, f"{path}[{position}]")
     ]
 
 
 def _expected_outputs_issues(
-    expected: JsonValue, sequence: OperationSequence, methods: dict[str, Method]
+    expected: JsonValue, sequence: OperationSequence, methods: _Methods
 ) -> list[str]:
     if not isinstance(expected, list):
         return [_issue("expected", _got("an array", expected))]
@@ -365,6 +462,32 @@ def _expected_outputs_issues(
     if expected and expected[0] is not None:
         issues.append("expected[0]: the constructor expects null")
     for index, (operation, value) in enumerate(zip(sequence.ops, expected, strict=True)):
-        if index and operation in methods:
-            issues += _returns_issues(value, methods[operation], f"expected[{index}]")
+        if index:
+            arguments = sequence.args[index] if index < len(sequence.args) else ()
+            issues += _output_issues(operation, arguments, value, f"expected[{index}]", methods)
     return issues
+
+
+def _output_issues(
+    operation: str,
+    arguments: tuple[JsonValue, ...],
+    value: JsonValue,
+    path: str,
+    methods: _Methods,
+) -> list[str]:
+    """What an operation outputs: a method its result, `@join` the result of the call its task
+    made, `@now` the milliseconds since the case started, and `@advance` and `@spawn` null."""
+    match operation:
+        case HarnessOp.ADVANCE | HarnessOp.SPAWN:
+            return [] if value is None else [_issue(path, f"{operation} expects null")]
+        case HarnessOp.JOIN:
+            task = joined_task(arguments)
+            method = methods.spawned.get(task) if task is not None else None
+            return _returns_issues(value, method, path) if method else []
+        case HarnessOp.NOW:
+            problem = _integer_problem(value, Scalar.LONG)
+            return [_issue(path, problem)] if problem else []
+        case _ if operation in methods.by_name:
+            return _returns_issues(value, methods.by_name[operation], path)
+        case _:
+            return []

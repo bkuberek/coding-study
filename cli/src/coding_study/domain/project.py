@@ -16,7 +16,13 @@ import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 
-from coding_study.domain.cases import OperationSequence
+from coding_study.domain.cases import (
+    HarnessOp,
+    JsonValue,
+    OperationSequence,
+    is_harness_operation,
+    spawned_call,
+)
 from coding_study.domain.levels import level_heading
 from coding_study.domain.markdown import MarkdownDocument
 from coding_study.domain.naming import RESERVED_WORDS, NameRole, is_reserved, member_name
@@ -33,6 +39,7 @@ from coding_study.domain.type_dsl import (
     ValueType,
     VoidType,
 )
+from coding_study.domain.virtual_clock import ProjectClock
 
 DEFAULT_TESTS_DIRECTORY = "tests"
 METHODS_TO_ADD = "Methods to add:"
@@ -88,6 +95,9 @@ class Project:
     Kotlin (`bank.Bank`)."""
     tests: str = DEFAULT_TESTS_DIRECTORY
     """The directory, relative to the project root, that receives the generated level tests."""
+    clock: ProjectClock | None = None
+    """`virtual` puts every case on the virtual clock; None is the real clock
+    (docs/specs/problem-format.md#asynchronous-code-and-the-virtual-clock)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -313,11 +323,29 @@ def _named_params(params: tuple[Param, ...], language: Language) -> tuple[Param,
 
 
 def in_language_operations(sequence: OperationSequence, language: Language) -> OperationSequence:
-    """`sequence` with its methods named as `language` names them; the constructor keeps the
-    class's name."""
+    """`sequence` with its methods named as `language` names them, the method a `@spawn` calls
+    included; the constructor keeps the class's name and the harness operations theirs."""
     constructor, *operations = sequence.ops
-    named = (constructor, *(_method_name(operation, language) for operation in operations))
-    return replace(sequence, ops=named)
+    named_operations = (constructor, *(_operation_name(op, language) for op in operations))
+    named_arguments = tuple(
+        _named_arguments(operation, arguments, language)
+        for operation, arguments in zip(sequence.ops, sequence.args, strict=False)
+    )
+    return replace(sequence, ops=named_operations, args=named_arguments)
+
+
+def _operation_name(operation: str, language: Language) -> str:
+    return operation if is_harness_operation(operation) else _method_name(operation, language)
+
+
+def _named_arguments(
+    operation: str, arguments: tuple[JsonValue, ...], language: Language
+) -> tuple[JsonValue, ...]:
+    """A `@spawn` names the method it calls in its second argument."""
+    call = spawned_call(arguments) if operation == HarnessOp.SPAWN else None
+    if call is None:
+        return arguments
+    return (call.task, _method_name(call.method, language), *call.arguments)
 
 
 def _method_name(canonical: str, language: Language) -> str:

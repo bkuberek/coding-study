@@ -293,6 +293,77 @@ def test_ops_requires_an_operation_sequence():
         OPS.compare(Expected([None]), [None], NO_INPUT)
 
 
+# ops on the virtual clock: a @join is compared as the method its task called
+
+DRAIN_UNORDERED = comparator_for(
+    ComparatorSpec(ComparatorType.OPS, per_method={"drain": ComparatorType.UNORDERED})
+)
+SPAWN_AND_JOIN = OperationSequence(
+    ("Queue", "@spawn", "@advance", "@join"),
+    ((), ("t1", "drain"), (1000,), ("t1",)),
+)
+
+
+def test_a_join_takes_the_comparator_of_the_method_its_task_called():
+    assert accepts(
+        DRAIN_UNORDERED, [None, None, None, [1, 2]], [None, None, None, [2, 1]], SPAWN_AND_JOIN
+    )
+
+
+def test_a_join_of_a_method_without_an_override_stays_exact():
+    ops = OperationSequence(("Queue", "@spawn", "@join"), ((), ("t1", "peek"), ("t1",)))
+    assert not accepts(DRAIN_UNORDERED, [None, None, [1, 2]], [None, None, [2, 1]], ops)
+
+
+def test_a_join_reports_its_task_when_it_fails():
+    mismatch = DRAIN_UNORDERED.compare(
+        Expected([None, None, None, [1, 2]]), [None, None, None, [1, 3]], SPAWN_AND_JOIN
+    )
+    assert mismatch == Mismatch("op 3 @join t1: expected [1, 2], got [1, 3]", first_difference=3)
+
+
+def test_each_task_is_joined_as_its_own_method():
+    spec = ComparatorSpec(
+        ComparatorType.OPS,
+        per_method={"drain": ComparatorType.UNORDERED, "mean": ComparatorType.FLOAT},
+        tolerance=0.1,
+    )
+    ops = OperationSequence(
+        ("Queue", "@spawn", "@spawn", "@join", "@join"),
+        ((), ("a", "drain"), ("b", "mean"), ("b",), ("a",)),
+    )
+    assert accepts(
+        comparator_for(spec), [None, None, None, 1.0, [1, 2]], [None, None, None, 1.05, [2, 1]], ops
+    )
+
+
+def test_a_task_is_joined_as_the_method_of_the_spawn_that_started_it():
+    ops = OperationSequence(
+        ("Queue", "@spawn", "@join", "@spawn", "@join"),
+        ((), ("t", "drain"), ("t",), ("t", "peek"), ("t",)),
+    )
+    expected = [None, None, [1, 2], None, [1, 2]]
+    actual = [None, None, [2, 1], None, [2, 1]]
+    mismatch = DRAIN_UNORDERED.compare(Expected(expected), actual, ops)
+    assert mismatch == Mismatch("op 4 @join t: expected [1, 2], got [2, 1]", first_difference=4)
+
+
+def test_a_join_of_a_task_nobody_spawned_compares_exactly():
+    ops = OperationSequence(("Queue", "@join"), ((), ("ghost",)))
+    assert not accepts(DRAIN_UNORDERED, [None, [1, 2]], [None, [2, 1]], ops)
+
+
+def test_a_spawn_without_a_method_does_not_stop_the_comparison():
+    ops = OperationSequence(("Queue", "@spawn", "@join"), ((), ("t",), ("t",)))
+    assert accepts(DRAIN_UNORDERED, [None, None, 3], [None, None, 3], ops)
+
+
+def test_advance_and_spawn_output_null_and_now_an_integer():
+    ops = OperationSequence(("Queue", "@spawn", "@advance", "@now"), ((), ("t", "drain"), (5,), ()))
+    mismatch = DRAIN_UNORDERED.compare(Expected([None, None, None, 5]), [None, None, None, 4], ops)
+    assert mismatch == Mismatch("op 3 @now: expected 5, got 4", first_difference=3)
+
+
 @pytest.mark.parametrize(
     ("comparator_type", "label"),
     [

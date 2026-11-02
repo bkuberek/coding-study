@@ -141,6 +141,14 @@ def test_an_operation_missing_from_the_signature_is_rejected():
         generated(project_problem(case))
 
 
+@pytest.mark.parametrize("operation", ["@advance", "@spawn", "@join", "@now"])
+def test_a_harness_operation_is_named_as_one_the_generated_tests_do_not_express_yet(operation):
+    case = ops_case("ex1", 1, ("createAccount", [1, "ivy"], True), (operation, [], None))
+    message = f"case ex1 uses {operation}, which the generated tests do not express yet"
+    with pytest.raises(ValueError, match=message):
+        generated(project_problem(case))
+
+
 def test_a_case_without_operations_is_rejected():
     case = Case("ex1", FunctionInput({"timestamp": 1}), visible=True, level=1)
     with pytest.raises(ValueError, match="case ex1 has no operation sequence"):

@@ -1,10 +1,11 @@
-"""`cstudy verify --static` checks S14 to S16 on project problems (docs/specs/authoring.md#static).
+"""`cstudy verify --static` checks S14 to S16 and S18 on project problems
+(docs/specs/authoring.md#static).
 
 S14 covers meta.yaml, the cases and the files a project problem may not have; S15 the starter and
 the reference overlays; S16 the generated test names, `## Project` in problem.md and `### Design`
-in the explanation. The schema refuses `stub`, `perf` and `concurrency` on a project problem,
-since only it sees them at their default values. Symbolic links in the trees fail while loading
-the problem, so no listed path leaves its folder.
+in the explanation; S18 the virtual clock (`clock_checks`). The schema refuses `stub`, `perf` and
+`concurrency` on a project problem, since only it sees them at their default values. Symbolic
+links in the trees fail while loading the problem, so no listed path leaves its folder.
 """
 
 import json
@@ -15,6 +16,7 @@ from dataclasses import dataclass
 from typing import cast
 
 from coding_study.domain.cases import GeneratedInput
+from coding_study.domain.clock_checks import clock_issues
 from coding_study.domain.errors import ContentIssue
 from coding_study.domain.explanation import Explanation
 from coding_study.domain.layout import JVM_LANGUAGES
@@ -272,17 +274,18 @@ class ProjectContent:
 
 
 def project_issues(content: ProjectContent) -> tuple[ContentIssue, ...]:
-    """S14 to S16; for any other kind, only that it has no `project` block."""
+    """S14 to S16 and S18; for any other kind, that it has no `project` block (S14) and no
+    `async` method or harness operation (S18)."""
     issues = _Issues(content.directory)
     meta = content.problem.meta
     if meta.kind is not ProblemKind.PROJECT:
         if meta.project is not None:
             issues.error(META_FILE, "only project problems have one", "project")
-        return tuple(issues.errors)
+        return (*issues.errors, *clock_issues(content.directory, content.problem))
     _Settings(issues, content).check()
     _Trees(issues, content).check()
     _Documents(issues, content).check()
-    return tuple(issues.errors)
+    return (*issues.errors, *clock_issues(content.directory, content.problem))
 
 
 class _Issues:

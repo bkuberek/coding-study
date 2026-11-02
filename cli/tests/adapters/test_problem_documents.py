@@ -1,6 +1,7 @@
 import pytest
 
 from coding_study.adapters.problem_documents import cases_from_document, meta_from_document
+from coding_study.domain import virtual_clock
 from coding_study.domain.cases import (
     Case,
     Expected,
@@ -39,6 +40,7 @@ from coding_study.domain.type_dsl import (
     ScalarType,
     VoidType,
 )
+from coding_study.domain.virtual_clock import ProjectClock
 from tests.helpers import BANK_PROJECT, PROJECT_PROBLEMS, load_fixture_meta, load_fixture_tests
 
 META_SOURCE = "problems/0001-two-sum/meta.yaml"
@@ -60,6 +62,12 @@ def project_document():
     return load_fixture_meta(BANK_PROJECT, PROJECT_PROBLEMS)
 
 
+@pytest.fixture
+def graded_clock_runners(monkeypatch):
+    """The Python runner grades the virtual clock, as the first runners to land will."""
+    monkeypatch.setattr(virtual_clock, "GRADED_CLOCK_LANGUAGES", frozenset({Language.PYTHON}))
+
+
 def test_maps_the_project_kind():
     assert meta_from_document(project_document(), META_SOURCE).kind is ProblemKind.PROJECT
 
@@ -74,6 +82,55 @@ def test_the_generated_tests_go_to_tests_unless_the_project_block_says_otherwise
     assert meta_from_document(project_document(), META_SOURCE).project == Project(
         "bank.bank", "tests"
     )
+
+
+def test_the_real_clock_is_the_default_of_a_project():
+    project = meta_from_document(project_document(), META_SOURCE).project
+    assert project is not None
+    assert project.clock is None
+
+
+def test_maps_the_virtual_clock(graded_clock_runners):
+    document = project_document()
+    document["project"]["clock"] = "virtual"
+    assert meta_from_document(document, META_SOURCE).project == Project(
+        "bank.bank", "tests", ProjectClock.VIRTUAL
+    )
+
+
+def test_a_clock_in_a_language_whose_runner_does_not_grade_it_yet_is_refused():
+    document = project_document()
+    document["project"]["clock"] = "virtual"
+    with pytest.raises(ContentError) as raised:
+        meta_from_document(document, META_SOURCE)
+    assert raised.value.issues == (
+        ContentIssue(
+            META_SOURCE, "project.clock", "the python runner does not grade the virtual clock yet"
+        ),
+    )
+
+
+def test_maps_an_async_method(graded_clock_runners):
+    document = project_document()
+    document["project"]["clock"] = "virtual"
+    document["signature"]["class"]["methods"][1]["async"] = True
+    signature = meta_from_document(document, META_SOURCE).signature
+    assert isinstance(signature, ClassSignature)
+    assert [method.is_async for method in signature.methods] == [False, True, False]
+
+
+def test_an_async_method_needs_the_virtual_clock(graded_clock_runners):
+    document = project_document()
+    document["signature"]["class"]["methods"][1]["async"] = True
+    with pytest.raises(ContentError, match=r"needs project\.clock: virtual"):
+        meta_from_document(document, META_SOURCE)
+
+
+def test_an_async_method_is_refused_outside_project_problems():
+    document = load_fixture_meta("0002-lru-cache")
+    document["signature"]["class"]["methods"][0]["async"] = True
+    with pytest.raises(ContentError, match="only allowed in project problems"):
+        meta_from_document(document, META_SOURCE)
 
 
 def test_other_kinds_have_no_project_block():

@@ -348,3 +348,173 @@ def test_operation_results_are_typed():
 def test_class_problems_need_operations():
     case = function_case({"capacity": 1}, None)
     assert case_issues(LRU, case) == ("a class problem's cases need ops and args, not input",)
+
+
+MESSAGE_LOG = ClassSignature(
+    "MessageLog",
+    (Param("visibilityMs", typed("long")),),
+    (
+        Method(
+            "publish",
+            (Param("body", typed("string")),),
+            Returns(typed("long")),
+            level=1,
+            is_async=True,
+        ),
+        Method(
+            "receive",
+            (Param("waitMs", typed("long")),),
+            Returns(typed("string")),
+            level=2,
+            is_async=True,
+        ),
+        Method("clear", (), Returns(VoidType()), level=1),
+    ),
+)
+
+
+# harness operations
+
+
+def test_the_virtual_clock_example_of_the_format_conforms():
+    case = ops_case(
+        ["MessageLog", "@spawn", "@advance", "publish", "@join", "@now", "receive", "@now"],
+        [[30000], ["r1", "receive", 5000], [1000], ["a"], ["r1"], [], [2000], []],
+        [None, None, None, 1, "a", 1000, "", 3000],
+    )
+    assert case_issues(MESSAGE_LOG, case) == ()
+
+
+def test_a_joined_void_method_expects_null():
+    case = ops_case(
+        ["MessageLog", "@spawn", "@join"], [[1], ["c", "clear"], ["c"]], [None, None, None]
+    )
+    assert case_issues(MESSAGE_LOG, case) == ()
+
+
+def test_advance_takes_one_integer():
+    case = ops_case(["MessageLog", "@advance"], [[1], ["1000"]], [None, None])
+    assert case_issues(MESSAGE_LOG, case) == ('args[1][0]: expected long, got "1000"',)
+
+
+def test_advance_takes_no_fraction():
+    case = ops_case(["MessageLog", "@advance"], [[1], [2.5]], [None, None])
+    assert case_issues(MESSAGE_LOG, case) == ("args[1][0]: expected long, got 2.5",)
+
+
+def test_advance_arity_is_checked():
+    case = ops_case(["MessageLog", "@advance"], [[1], []], [None, None])
+    assert case_issues(MESSAGE_LOG, case) == ("args[1]: @advance takes 1 argument, got 0",)
+
+
+def test_advance_leaves_its_range_to_the_clock_check():
+    case = ops_case(["MessageLog", "@advance", "@advance"], [[1], [0], [-5]], [None, None, None])
+    assert case_issues(MESSAGE_LOG, case) == ()
+
+
+@pytest.mark.parametrize("operation", ["@advance", "@spawn"])
+def test_advance_and_spawn_expect_null(operation):
+    arguments = [1000] if operation == "@advance" else ["r1", "clear"]
+    case = ops_case(["MessageLog", operation], [[1], arguments], [None, 5])
+    assert case_issues(MESSAGE_LOG, case) == (f"expected[1]: {operation} expects null",)
+
+
+def test_spawn_calls_a_method_with_its_arguments():
+    case = ops_case(["MessageLog", "@spawn"], [[1], ["r1", "receive", 5000]], [None, None])
+    assert case_issues(MESSAGE_LOG, case) == ()
+
+
+def test_spawn_names_a_task_a_method_and_the_call():
+    case = ops_case(["MessageLog", "@spawn"], [[1], ["r1"]], [None, None])
+    assert case_issues(MESSAGE_LOG, case) == (
+        "args[1]: @spawn takes a task, a method and its arguments",
+    )
+
+
+def test_the_task_of_a_spawn_is_a_string():
+    case = ops_case(["MessageLog", "@spawn"], [[1], [5, "clear"]], [None, None])
+    assert case_issues(MESSAGE_LOG, case) == ("args[1][0]: expected a task name (string), got 5",)
+
+
+def test_the_task_of_a_spawn_is_not_empty():
+    case = ops_case(["MessageLog", "@spawn"], [[1], ["", "clear"]], [None, None])
+    assert case_issues(MESSAGE_LOG, case) == ("args[1][0]: a task name is not empty",)
+
+
+def test_the_method_of_a_spawn_is_a_string():
+    case = ops_case(["MessageLog", "@spawn"], [[1], ["r1", 7]], [None, None])
+    assert case_issues(MESSAGE_LOG, case) == ("args[1][1]: expected a method name (string), got 7",)
+
+
+def test_the_method_of_a_spawn_exists():
+    case = ops_case(["MessageLog", "@spawn"], [[1], ["r1", "evict"]], [None, None])
+    assert case_issues(MESSAGE_LOG, case) == ('args[1][1]: no method "evict"',)
+
+
+def test_the_arguments_of_a_spawn_are_the_methods():
+    case = ops_case(["MessageLog", "@spawn"], [[1], ["r1", "receive"]], [None, None])
+    assert case_issues(MESSAGE_LOG, case) == ("args[1]: receive takes 1 argument, got 0",)
+
+
+def test_the_arguments_of_a_spawn_are_typed_by_the_method():
+    case = ops_case(["MessageLog", "@spawn"], [[1], ["r1", "receive", "soon"]], [None, None])
+    assert case_issues(MESSAGE_LOG, case) == ('args[1][2]: expected long, got "soon"',)
+
+
+def test_join_takes_one_task():
+    case = ops_case(["MessageLog", "@join"], [[1], []], [None, None])
+    assert case_issues(MESSAGE_LOG, case) == ("args[1]: @join takes 1 argument, got 0",)
+
+
+def test_the_task_of_a_join_is_a_string():
+    case = ops_case(["MessageLog", "@join"], [[1], [4]], [None, None])
+    assert case_issues(MESSAGE_LOG, case) == ("args[1][0]: expected string, got 4",)
+
+
+def test_a_join_expects_the_result_of_the_method_its_task_called():
+    case = ops_case(
+        ["MessageLog", "@spawn", "@join"], [[1], ["r1", "receive", 10], ["r1"]], [None, None, 7]
+    )
+    assert case_issues(MESSAGE_LOG, case) == ("expected[2]: expected string, got 7",)
+
+
+def test_a_join_of_a_void_method_expects_null():
+    case = ops_case(
+        ["MessageLog", "@spawn", "@join"], [[1], ["c", "clear"], ["c"]], [None, None, 1]
+    )
+    assert case_issues(MESSAGE_LOG, case) == ("expected[2]: void returns expect null",)
+
+
+def test_a_join_of_a_task_nobody_spawned_has_no_type_to_check():
+    case = ops_case(["MessageLog", "@join"], [[1], ["ghost"]], [None, "anything"])
+    assert case_issues(MESSAGE_LOG, case) == ()
+
+
+def test_now_takes_no_arguments():
+    case = ops_case(["MessageLog", "@now"], [[1], [0]], [None, 0])
+    assert case_issues(MESSAGE_LOG, case) == ("args[1]: @now takes 0 arguments, got 1",)
+
+
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        ("soon", 'expected long, got "soon"'),
+        (1.5, "expected long, got 1.5"),
+        (None, "expected long, got null"),
+        (2**53, "beyond 2^53-1"),
+    ],
+)
+def test_now_expects_an_integer(value, message):
+    case = ops_case(["MessageLog", "@now"], [[1], []], [None, value])
+    [issue] = case_issues(MESSAGE_LOG, case)
+    assert message in issue
+
+
+def test_now_may_expect_zero():
+    case = ops_case(["MessageLog", "@now"], [[1], []], [None, 0])
+    assert case_issues(MESSAGE_LOG, case) == ()
+
+
+def test_an_unknown_harness_operation_is_named_as_one():
+    case = ops_case(["MessageLog", "@settle"], [[1], []], [None, None])
+    assert case_issues(MESSAGE_LOG, case) == ('ops[1]: no harness operation "@settle"',)

@@ -29,10 +29,10 @@
           "propertyNames": { "pattern": "^[a-z][A-Za-z0-9]*$" }
         },
         "ops": {
-          "description": "ops[0] is the class name (constructor), then method names",
+          "description": "ops[0] is the class name (constructor), then method names and, in a project on the virtual clock, the harness operations @advance, @spawn, @join and @now",
           "type": "array",
           "minItems": 1,
-          "items": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*$" }
+          "items": { "type": "string", "pattern": "^([A-Za-z][A-Za-z0-9]*|@[a-z]+)$" }
         },
         "args": {
           "description": "args[i] are the arguments of ops[i]",
@@ -54,7 +54,7 @@
           }
         },
         "stress": { "$ref": "#/$defs/stress" },
-        "level": { "description": "Progressive problems only", "type": "integer", "minimum": 1 },
+        "level": { "description": "Progressive and project problems only", "type": "integer", "minimum": 1 },
         "hang_guard_ms": { "type": "integer", "minimum": 1 },
         "note": { "description": "Author note shown on failure", "type": "string" }
       },

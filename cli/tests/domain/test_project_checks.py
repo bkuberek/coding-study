@@ -6,7 +6,7 @@ from dataclasses import replace
 import pytest
 
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
-from coding_study.domain.cases import Case, GeneratedInput, OperationSequence
+from coding_study.domain.cases import Case, Expected, GeneratedInput, OperationSequence
 from coding_study.domain.jdk import DeclaredJdk
 from coding_study.domain.problem import (
     ComparatorSpec,
@@ -22,6 +22,7 @@ from coding_study.domain.signature import ClassSignature, Param, Returns
 from coding_study.domain.static_checks import ProblemContent, static_checks
 from coding_study.domain.stress import StressScenario
 from coding_study.domain.type_dsl import parse_return_type, parse_value_type
+from coding_study.domain.virtual_clock import ProjectClock
 from tests.fakes import repository_root
 from tests.helpers import BANK_PROJECT, PROJECT_PROBLEMS, WORKSPACE_TEMPLATE
 
@@ -1106,4 +1107,50 @@ def test_a_python_project_cannot_declare_a_jdk_range(bank):
     problem = with_meta(bank, jdk=DeclaredJdk(minimum=24))
     assert errors(content(problem)) == [
         f"{META}: jdk: only a problem that lists java or kotlin can declare a JDK range"
+    ]
+
+
+# S18
+
+
+def on_the_virtual_clock(problem):
+    """The bank on the virtual clock, with a case that moves it by `ms` milliseconds."""
+    project = replace(problem.meta.project, clock=ProjectClock.VIRTUAL)
+    return with_meta(problem, project=project)
+
+
+def advancing(problem, milliseconds: int):
+    ops = OperationSequence(("Bank", "@advance"), ((), (milliseconds,)))
+    case = Case("c1", ops, Expected([None, None]), level=1)
+    return replace(problem, cases=(*problem.cases, case))
+
+
+def clock_errors(problem) -> list[str]:
+    return [
+        issue for issue in errors(content(problem)) if "c1" in issue or "project.clock" in issue
+    ]
+
+
+def test_a_runner_that_does_not_grade_the_clock_yet_refuses_the_declaration(bank):
+    assert clock_errors(on_the_virtual_clock(bank)) == [
+        f"{META}: project.clock: the python runner does not grade the virtual clock yet"
+    ]
+
+
+@pytest.mark.usefixtures("graded_clock_runners")
+def test_a_declared_clock_and_a_harness_operation_in_range_pass(bank):
+    assert errors(content(advancing(on_the_virtual_clock(bank), 1000))) == []
+
+
+@pytest.mark.usefixtures("graded_clock_runners")
+def test_a_harness_operation_out_of_range_fails_the_static_checks(bank):
+    problem = advancing(on_the_virtual_clock(bank), 0)
+    assert clock_errors(problem) == [
+        f"{TESTS}: cases[6] c1: ops[1]: @advance moves the clock 1 to 2147483647 ms, not 0"
+    ]
+
+
+def test_a_harness_operation_without_the_clock_fails_the_static_checks(bank):
+    assert clock_errors(advancing(bank, 1000)) == [
+        f"{TESTS}: cases[6] c1: ops[1]: @advance needs project.clock: virtual"
     ]

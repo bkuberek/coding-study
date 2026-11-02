@@ -6,6 +6,7 @@ from coding_study.domain.signature import (
     Param,
     Returns,
     SignatureIssue,
+    async_issues,
     modifier_issues,
 )
 from coding_study.domain.type_dsl import (
@@ -152,3 +153,39 @@ def test_method_modifiers_resolve_against_the_method_params():
             "signature.class.methods[0].returns.output_from", 'no parameter named "head"'
         ),
     )
+
+
+# async
+
+
+def async_method(name: str, *, is_async: bool) -> Method:
+    return Method(name, (), Returns(INT), level=1, is_async=is_async)
+
+
+def test_a_method_is_not_async_unless_it_says_so():
+    assert Method("size", (), Returns(INT)).is_async is False
+
+
+def test_every_async_method_is_listed_at_its_own_position():
+    signature = ClassSignature(
+        "Log",
+        (),
+        (
+            async_method("publish", is_async=True),
+            async_method("size", is_async=False),
+            async_method("receive", is_async=True),
+        ),
+    )
+    assert async_issues(signature) == (
+        SignatureIssue("signature.class.methods[0].async", "only allowed in project problems"),
+        SignatureIssue("signature.class.methods[2].async", "only allowed in project problems"),
+    )
+
+
+def test_a_class_without_async_methods_has_no_async_issues():
+    signature = ClassSignature("Log", (), (async_method("size", is_async=False),))
+    assert async_issues(signature) == ()
+
+
+def test_a_function_has_no_async_issues():
+    assert async_issues(function(Param("nums", INT), returns=Returns(INT))) == ()

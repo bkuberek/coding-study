@@ -3,6 +3,8 @@
 
 from dataclasses import replace
 
+import pytest
+
 from coding_study.domain.cases import OperationSequence
 from coding_study.domain.problem import ComparatorSpec, ComparatorType, Language
 from coding_study.domain.project import in_language_names, render_project_statement
@@ -122,6 +124,52 @@ def test_operations_are_renamed_but_the_constructor_keeps_the_class_name():
     named = in_language_names(PROBLEM).cases[0].input
     assert isinstance(named, OperationSequence)
     assert named.ops == ("Bank", "create_account", "deposit")
+
+
+CLOCK_CASE = ops_case(
+    "ex3",
+    2,
+    ("@spawn", ["t1", "createAccount", 1, "ivy"], None),
+    ("@advance", [1000], None),
+    ("@join", ["t1"], True),
+    ("@now", [], 1000),
+)
+
+
+def named_clock_case(language: Language) -> OperationSequence:
+    problem = project_problem(CLOCK_CASE, meta=project_meta(language=language))
+    named = in_language_names(problem).cases[0].input
+    assert isinstance(named, OperationSequence)
+    return named
+
+
+def test_harness_operations_keep_their_names():
+    assert named_clock_case(Language.GO).ops == ("Bank", "@spawn", "@advance", "@join", "@now")
+
+
+@pytest.mark.parametrize(
+    ("language", "method_name"),
+    [
+        (Language.PYTHON, "create_account"),
+        (Language.RUST, "create_account"),
+        (Language.TYPESCRIPT, "createAccount"),
+        (Language.KOTLIN, "createAccount"),
+        (Language.GO, "CreateAccount"),
+    ],
+)
+def test_a_spawn_names_its_method_as_the_language_does(language, method_name):
+    assert named_clock_case(language).args[1] == ("t1", method_name, 1, "ivy")
+
+
+def test_the_other_harness_arguments_are_left_alone():
+    assert named_clock_case(Language.PYTHON).args[2:] == ((1000,), ("t1",), ())
+
+
+def test_a_malformed_spawn_is_left_for_the_checks_to_report():
+    case = ops_case("ex3", 2, ("@spawn", ["t1"], None))
+    named = in_language_names(project_problem(case)).cases[0].input
+    assert isinstance(named, OperationSequence)
+    assert named.args[1] == ("t1",)
 
 
 def test_methods_and_parameters_are_renamed():

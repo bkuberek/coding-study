@@ -45,6 +45,9 @@ class Method:
     level: int | None = None
     blocking: bool = False
     """Concurrent problems: the method may wait for another worker."""
+    is_async: bool = False
+    """Project problems on the virtual clock: the method returns the language's awaitable, and the
+    grader awaits it (`async: true` in meta.yaml)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +117,20 @@ def blocking_issues(signature: Signature) -> tuple[SignatureIssue, ...]:
         )
         for index, method in enumerate(signature.methods)
         if method.blocking
+    )
+
+
+def async_issues(signature: Signature) -> tuple[SignatureIssue, ...]:
+    """`async` marks methods of project problems only; the caller knows the kind. What a project
+    needs for it is S18's (`virtual_clock.clock_declaration_issues`)."""
+    if isinstance(signature, FunctionSignature):
+        return ()
+    return tuple(
+        SignatureIssue(
+            f"signature.class.methods[{index}].async", "only allowed in project problems"
+        )
+        for index, method in enumerate(signature.methods)
+        if method.is_async
     )
 
 

@@ -11,7 +11,7 @@ native test framework (the `ProjectTestGenerator` port).
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from coding_study.domain.cases import Case, JsonValue, OperationSequence
+from coding_study.domain.cases import Case, JsonValue, OperationSequence, is_harness_operation
 from coding_study.domain.levels import FIRST_LEVEL
 from coding_study.domain.problem import ComparatorType, Language, Problem, ProblemKind
 from coding_study.domain.project import Project, level_test_file, project_language
@@ -118,6 +118,11 @@ class _TestBuilder:
 
     def test(self, case: Case) -> LevelTest:
         sequence, outputs = _operations(case)
+        for operation in sequence.ops[1:]:
+            if is_harness_operation(operation):
+                raise ValueError(
+                    f"case {case.id} uses {operation}, which the generated tests do not express yet"
+                )
         operations = zip(sequence.ops[1:], sequence.args[1:], outputs[1:], strict=True)
         calls = tuple(
             Call(self._method(case.id, name), arguments, expected, self._comparator(name))
