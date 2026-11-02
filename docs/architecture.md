@@ -9,7 +9,7 @@ The CLI is a hexagonal application: a pure domain core (problems, attempts, sche
 | CLI | `cli/` | Python 3.13, uv | Commands, domain core, adapters, codegen, comparators, scheduling, bench analysis |
 | Python runner | `runners/python/` | Python | Packages `cs_runner` (runner) and `cs_support` (`ListNode`, `TreeNode`, `GraphNode`) |
 | TypeScript runner | `runners/typescript/` | TypeScript on Node 24 | `runner.ts` and `support.ts` (the node classes and `Decimal`); erasable syntax only |
-| JVM runner | `runners/jvm/` | Java, compiled at release 21; Gradle included build | `cs.runner.Main` and `cs.support.*`; serves Java and Kotlin |
+| JVM runner | `runners/jvm/` | Java, compiled at release 21; Gradle included build | `cs.runner.Main` and `cs.support.*`; serves Java and Kotlin. The module `cs.coroutines`, in Kotlin, is the bridge to the coroutine test scheduler that grades Kotlin projects on the virtual clock |
 | Content | `problems/`, `tracks/` | YAML, JSON, Markdown, code | Problems, tests, references, explanations, generators |
 | Web UI | `cli/src/coding_study/entrypoints/web/`, sources in `tools/web-ui/` | Python (Starlette on uvicorn); TypeScript and CodeMirror 6, built and committed | `cstudy serve`: the local page, a second driving adapter ([below](#web-adapter), [web-ui](specs/web-ui.md)) |
 | Schemas | `schemas/` | JSON Schema | `meta.schema.json`, `tests.schema.json`, `item.schema.json`, `conformance.schema.json`; hand-maintained source of truth for validation (`jsonschema`) and editor completion. `events.schema.json` describes the lines of `cstudy test --events` and `cstudy submit --events` ([event stream](specs/cli.md#event-stream)) for programs that read them, and `web-api.schema.json` the web API's own documents |
