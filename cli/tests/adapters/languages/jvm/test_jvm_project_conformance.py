@@ -1,5 +1,5 @@
-"""The Java and Kotlin project fixtures 9026 to 9029, and the Kotlin project on the virtual clock
-9043, through `cstudy verify --conformance`.
+"""The Java and Kotlin project fixtures 9026 to 9029, and the Kotlin projects on the virtual clock
+9043 and 9044 (whose stress workers call suspend methods), through `cstudy verify --conformance`.
 
 Marked `slow`: each fixture's folder builds with Gradle, grades on the main runtime classpath and
 runs its JUnit Platform suite in a JVM, as a user's project does, in a copy of the session's
@@ -25,6 +25,7 @@ FIXTURES = {
         "conformance-project-kotlin",
         "conformance-suite-junit-kotlin",
         "conformance-project-clock-kotlin",
+        "conformance-project-stress-clock-kotlin",
     ),
 }
 RESULTS = {
@@ -33,9 +34,10 @@ RESULTS = {
         "9028-conformance-suite-junit-java  java ok",
     ],
     "kotlin": [
-        "9027-conformance-project-kotlin        kt ok",
-        "9029-conformance-suite-junit-kotlin    kt ok",
-        "9043-conformance-project-clock-kotlin  kt ok",
+        "9027-conformance-project-kotlin               kt ok",
+        "9029-conformance-suite-junit-kotlin           kt ok",
+        "9043-conformance-project-clock-kotlin         kt ok",
+        "9044-conformance-project-stress-clock-kotlin  kt ok",
     ],
 }
 

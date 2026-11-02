@@ -168,6 +168,10 @@
       "src/test/kotlin/inbox/Level1Test.kt::spawn-join": {"status": "ok"},
       "src/test/kotlin/inbox/Level1Test.kt::chain": {"status": "ok"},
       "src/test/kotlin/inbox/Level1Test.kt::ties": {"status": "ok"}
-    }}
+    }},
+    {"problem": "conformance-project-stress-clock-kotlin", "approach": "reference", "outcome": {"status": "pass"},
+     "cases": {"s1": {"status": "pass", "runs": 10}}},
+    {"problem": "conformance-project-stress-clock-kotlin", "approach": "broken-unlocked-add", "outcome": {"status": "pass"},
+     "cases": {"s1": {"status": "fail", "runs": 10, "min_failed": 9}}}
   ]
 }

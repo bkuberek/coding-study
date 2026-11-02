@@ -15,6 +15,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.job
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
 
@@ -31,9 +32,15 @@ import kotlinx.coroutines.test.TestCoroutineScheduler
  * case, as they are of a `runTest` body, so a case that leaves one active ends as `runTest` fails
  * a test that does. `@spawn` starts a task under a supervisor, so the task's failure is the error
  * of its `@join`. What a case leaves is cancelled before the next case starts.
+ *
+ * Outside the clock, a stress worker calls a `suspend` method in `runBlocking`, which blocks its
+ * thread until the call returns and waits on the real clock.
  */
 class TestSchedulerClock : ClockHost {
     override fun run(steps: ClockSteps): ClockEnd = ClockCase(steps).run()
+
+    override fun callBlocking(method: Method, instance: Any?, arguments: Array<Any?>): Any? =
+        runBlocking { callSuspending(method, instance, arguments) }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

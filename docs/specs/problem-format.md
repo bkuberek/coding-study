@@ -1044,7 +1044,7 @@ A project can grade safety under real parallelism: lost updates, broken invarian
 |------|------|
 | `concurrency` block | Optional. Its fields are those of [concurrent problems](#concurrency-block-in-metayaml), and `model` is one string valid for the project's language ([language table](#models-and-language-support)), since a project lists one language. TypeScript, and Python with asynchronous methods, use `async`. Java and Kotlin run each variant that `jvm_threads` lists |
 | Stress cases | `stress` instead of `ops`/`args` ([Stress cases](#stress-cases)), plus `level`. A stress case calls only methods of its level and below, and may appear from the level whose statement first shares the instance between threads or tasks. It stays hidden and is never generated as a native test. Its level keeps at least 2 visible and 2 hidden sequential cases, which the statement's examples and the generated tests come from. `stress_checker.py` is allowed only when a case uses a `checker` invariant |
-| Clock | Stress runs use the real clock. In a virtual-clock project, a stress scenario calls only methods that wait on no timer |
+| Clock | Stress runs use the real clock. In a virtual-clock project, a stress scenario calls only methods that wait on no timer. In Kotlin a worker thread calls a `suspend` method and blocks until it returns (`runBlocking`), so the threads model grades code that suspends, a coroutine `Mutex` included |
 | Rust | The bridge registers the entry class as concurrent: its methods take `&self` from the level that adds stress cases, and a `&mut self` method is a load error that says why |
 | Python | Perturbation yields in every file under the project root, not only in the entry's |
 | Go | Stress workers keep reflection, as for single files |

@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9044"
+slug: conformance-project-stress-clock-kotlin
+title: "Conformance: a Kotlin project on the virtual clock whose suspend methods are stressed"
+status: ready
+difficulty: easy
+track: practical
+kind: project
+languages: [kotlin]
+levels:
+  - {level: 1, title: Counts}
+  - {level: 2, title: Shared counts}
+signature:
+  class:
+    name: Tally
+    constructor: {params: []}
+    methods:
+      - {name: add, level: 1, async: true, params: [{name: key, type: string}, {name: amount, type: int}], returns: {type: int}}
+      - {name: count, level: 1, async: true, params: [{name: key, type: string}], returns: {type: int}}
+      - {name: take, level: 2, async: true, params: [{name: key, type: string}, {name: amount, type: int}], returns: {type: bool}}
+comparator: {type: ops}
+project:
+  entry: tally.Tally
+  tests: src/test/kotlin/tally
+  clock: virtual
+concurrency:
+  model: threads
+  jvm_threads: [platform, virtual]
+  broken:
+    - {id: unlocked-add, name: Add outside the lock, bug: "add reads a count, yields, then writes it, without the mutex", caught_by: [s1]}
+approaches:
+  - {id: reference, name: "Counts under one mutex, in suspend functions", role: optimal, time: "O(1)", space: "O(n)", time_class: "1", space_class: "n"}

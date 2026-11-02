@@ -1,7 +1,9 @@
 package cs.runner;
 
+import java.lang.reflect.Method;
+
 /**
- * The virtual clock of a Kotlin project, which calls its {@code suspend} methods
+ * The virtual clock of a Kotlin project and the caller of its {@code suspend} methods
  * (docs/specs/runners.md#virtual-clock-and-stress-in-project-jobs).
  *
  * <p>The runner finds it with {@link java.util.ServiceLoader}: the module {@code cs.coroutines}
@@ -16,4 +18,11 @@ public interface ClockHost {
      * thread; whatever the case leaves behind is cancelled before this returns.
      */
     ClockEnd run(ClockSteps steps);
+
+    /**
+     * Calls a {@code suspend} method on the real clock and blocks the calling thread until it
+     * returns: a stress worker's call, or a call outside the virtual clock. Throws what the
+     * method throws.
+     */
+    Object callBlocking(Method method, Object instance, Object[] arguments) throws Throwable;
 }

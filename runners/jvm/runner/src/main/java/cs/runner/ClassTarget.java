@@ -18,6 +18,20 @@ final class ClassTarget implements Target<Request.OperationsCase> {
 
     /** A method of the signature and the JVM method that implements it. */
     record BoundMethod(Member member, Method method) {
+        /** Calls the method, blocking until a {@code suspend} method returns. */
+        Object call(Object instance, Object[] arguments) throws Reflection.UserCodeException {
+            return member.async()
+                    ? Suspending.call(method, instance, arguments)
+                    : Reflection.call(method, instance, arguments);
+        }
+
+        /** Calls the method as {@link #call} does, timing the call. */
+        Reflection.Timed invoke(Object instance, Object[] arguments)
+                throws Reflection.UserCodeException {
+            return member.async()
+                    ? Suspending.invoke(method, instance, arguments)
+                    : Reflection.invoke(method, instance, arguments);
+        }
     }
 
     private final Member constructorMember;
@@ -43,6 +57,9 @@ final class ClassTarget implements Target<Request.OperationsCase> {
         for (Map.Entry<String, Member> entry : job.methods().entrySet()) {
             Member member = entry.getValue();
             methods.put(entry.getKey(), new BoundMethod(member, Reflection.method(type, member)));
+            if (member.async()) {
+                Suspending.required("the suspend method " + member.name());
+            }
         }
         String userPackage = Reflection.packageOf(job.className());
         return new ClassTarget(job.constructor(), constructor, methods, userPackage);
@@ -68,7 +85,7 @@ final class ClassTarget implements Target<Request.OperationsCase> {
             Object[] results = new Object[calls.size()];
             results[CONSTRUCTOR_OP] = instance;
             for (int op = CONSTRUCTOR_OP + 1; op < calls.size(); op++) {
-                results[op] = Reflection.call(calls.get(op).method(), instance, arguments.get(op));
+                results[op] = calls.get(op).call(instance, arguments.get(op));
             }
             return results;
         };
@@ -80,14 +97,16 @@ final class ClassTarget implements Target<Request.OperationsCase> {
     }
 
     /** One decoded op of a stress script: the method and fresh arguments for one call. */
-    record PreparedOp(Member member, Method method, Object[] arguments) {
+    record PreparedOp(BoundMethod bound, Object[] arguments) {
+        Member member() {
+            return bound.member();
+        }
     }
 
     /** Decodes the arguments of one call of {@code op}; a malformed input is a bad request. */
     PreparedOp prepareOp(String op, JsonArray args) {
         BoundMethod bound = method(op);
-        Object[] arguments = Arguments.decode(bound.member(), args.asList());
-        return new PreparedOp(bound.member(), bound.method(), arguments);
+        return new PreparedOp(bound, Arguments.decode(bound.member(), args.asList()));
     }
 
     /** The constructor's member and its JVM constructor. */
@@ -116,7 +135,7 @@ final class ClassTarget implements Target<Request.OperationsCase> {
     static com.google.gson.JsonElement call(PreparedOp op, Object instance)
             throws Reflection.UserCodeException, InvalidOutputException {
         Outputs.Snapshot snapshot = Outputs.beforeCall(op.member(), op.arguments());
-        Object value = Reflection.call(op.method(), instance, op.arguments());
+        Object value = op.bound().call(instance, op.arguments());
         return Outputs.serialize(op.member(), op.arguments(), value, snapshot);
     }
 
@@ -147,8 +166,7 @@ final class ClassTarget implements Target<Request.OperationsCase> {
                 Member member = calls.get(op).member();
                 Object[] opArguments = arguments.get(op);
                 Outputs.Snapshot snapshot = Outputs.beforeCall(member, opArguments);
-                Method method = calls.get(op).method();
-                Reflection.Timed call = Reflection.invoke(method, instance, opArguments);
+                Reflection.Timed call = calls.get(op).invoke(instance, opArguments);
                 durationNs += call.durationNs();
                 outputs.add(Outputs.serialize(member, opArguments, call.value(), snapshot));
             } catch (Reflection.UserCodeException error) {
