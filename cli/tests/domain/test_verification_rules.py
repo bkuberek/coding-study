@@ -142,6 +142,10 @@ def test_wrong_answer_summary():
     assert verdict_summary(verdict(Returned(2, 5))) == "c1 FAIL: expected 1, got 2"
 
 
+def test_a_deadlock_summary_names_the_operation_and_the_virtual_time():
+    assert verdict_summary(verdict(STALLED_AT_JOIN)) == f"c1 STALLED: {DEADLOCK}"
+
+
 def test_error_summary():
     summary = verdict_summary(verdict(Raised(UserError("KeyError", "3"), 5)))
     assert summary == "c1 ERROR: KeyError: 3"

@@ -172,7 +172,9 @@ def failed_to_run(case_count: int) -> Tally:
 
 
 def outcome_summary(outcome: CaseOutcome) -> str:
-    """One line describing what the code did, for reports about reference code."""
+    """One line describing what the code did, for reports about reference code. A case on the
+    virtual clock that deadlocked is the runner's reason, which names the operation and the
+    virtual time."""
     match outcome:
         case Returned(output=output):
             return f"returned {value_text(output)}"
@@ -189,8 +191,10 @@ def outcome_summary(outcome: CaseOutcome) -> str:
             return f"not run: {reason}"
         case StressCompleted():
             return "completed a stress run"
-        case Stalled(progress=progress):
+        case Stalled(op_index=None, progress=progress):
             return f"stalled with {len(progress)} unfinished workers"
+        case Stalled(reason=reason):
+            return reason or "stalled"
 
 
 SUMMARY_VALUE_LIMIT = 80

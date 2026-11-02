@@ -26,6 +26,7 @@ from coding_study.domain.runs import (
     Returned,
     RunCase,
     RunJob,
+    Stalled,
     TimedOut,
     UserError,
 )
@@ -81,6 +82,13 @@ def correct(job: RunJob, case: RunCase) -> CaseOutcome:
 
 def wrong_on_h1(job: RunJob, case: RunCase) -> CaseOutcome:
     return Returned(["wrong"], 1000) if case.id == "h1" else correct(job, case)
+
+
+def deadlocked_on_h1(job: RunJob, case: RunCase) -> CaseOutcome:
+    """A project on the virtual clock whose case h1 deadlocks at its deposit."""
+    reason = "op 1 (deposit): deadlock at 0 ms"
+    stalled = Stalled((), 7, op_index=1, reason=reason, partial_output=(None,))
+    return stalled if case.id == "h1" else correct(job, case)
 
 
 @dataclass
@@ -338,6 +346,32 @@ def test_a_graded_case_is_the_json_documents_case(environment):
         "duration_ns": 1000,
         "level": 1,
     }
+
+
+def test_a_stalled_case_is_graded_with_its_operation_and_why(environment, process):
+    process.answer = deadlocked_on_h1
+    stalled = next(
+        event for event in events("submit") if event.get("id") == "h1" and "status" in event
+    )
+    assert stalled == {
+        "type": "case_result",
+        "version": 1,
+        "id": "h1",
+        "visible": False,
+        "generated": False,
+        "status": "stalled",
+        "duration_ns": None,
+        "input": {"ops": ["Bank", "deposit"], "args": [[], [1, "ann", 5]]},
+        "op_index": 1,
+        "reason": "op 1 (deposit): deadlock at 0 ms",
+        "level": 1,
+    }
+
+
+def test_a_stalled_case_matches_the_schema(environment, process):
+    process.answer = deadlocked_on_h1
+    validator = Draft202012Validator(EVENTS_SCHEMA)
+    assert [event for event in events("submit") if not validator.is_valid(event)] == []
 
 
 def test_a_level_result_counts_the_level_with_its_status(environment, process):

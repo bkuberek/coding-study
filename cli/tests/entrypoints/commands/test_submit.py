@@ -7,7 +7,7 @@ from typer.testing import CliRunner
 
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.problem import Language
-from coding_study.domain.runs import CaseOutcome, Returned, RunCase, RunJob, UserError
+from coding_study.domain.runs import CaseOutcome, Returned, RunCase, RunJob, Stalled, UserError
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import submit as submit_command
 from coding_study.entrypoints.shared import ExitCode
@@ -33,6 +33,16 @@ def wrong_on(*case_ids: str):
         return Returned(["wrong"], 1000) if case.id in case_ids else correct(job, case)
 
     return answer
+
+
+DEADLOCK = Stalled(
+    (), 7, op_index=2, reason="op 2 (deposit): deadlock at 0 ms", partial_output=(None, True)
+)
+
+
+def deadlocked_on_h2(job: RunJob, case: RunCase) -> CaseOutcome:
+    """A project on the virtual clock whose case h2 deadlocks at its first deposit."""
+    return DEADLOCK if case.id == "h2" else correct(job, case)
 
 
 @pytest.fixture
@@ -176,6 +186,22 @@ def test_another_kind_of_problem_exits_3(tmp_path, monkeypatch):
     )
 
 
+def test_a_case_that_deadlocked_prints_its_input_up_to_the_operation_and_why(environment, process):
+    process.answer = deadlocked_on_h2
+    assert lines() == [
+        HEADER,
+        "",
+        "level 1  FAIL     2/3 (1 visible, 2 hidden)",
+        "PASS     ex1   level 1",
+        "STALLED  h2    hidden · level 1",
+        '         input     ops=["Bank", "create_account", "deposit"]  '
+        'args=[[], [1, "bo"], [2, "bo", 10]]',
+        "         reason    op 2 (deposit): deadlock at 0 ms",
+        "",
+        "2/3 passed · level 2 opens when level 1 passes",
+    ]
+
+
 def test_json_describes_the_submission(environment):
     found = document()
     assert {key: found[key] for key in ("slug", "mode", "outcome", "exit_code", "every_level")} == {
@@ -217,6 +243,25 @@ def test_json_cases_carry_their_level(environment):
         ("h1", 1),
         ("h2", 1),
     ]
+
+
+def test_json_of_a_stalled_case_names_its_operation_and_why(environment, process):
+    process.answer = deadlocked_on_h2
+    stalled = next(case for case in document()["cases"] if case["id"] == "h2")
+    assert stalled == {
+        "id": "h2",
+        "visible": False,
+        "generated": False,
+        "status": "stalled",
+        "duration_ns": None,
+        "input": {
+            "ops": ["Bank", "createAccount", "deposit"],
+            "args": [[], [1, "bo"], [2, "bo", 10]],
+        },
+        "op_index": 2,
+        "reason": "op 2 (deposit): deadlock at 0 ms",
+        "level": 1,
+    }
 
 
 def test_json_of_a_mock_attempt_leaves_hidden_cases_out(environment, process):

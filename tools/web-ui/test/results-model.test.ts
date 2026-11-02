@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { caseLines } from "../src/page/results-format.ts";
 import { headerText, RunModel, resultsView, STATUS_WORDS, type ViewItem } from "../src/page/results-model.ts";
 import type { CaseResult, Planned, RunEvent, RunStart, StressRun } from "../src/page/run-events.ts";
 
@@ -124,6 +125,32 @@ test("a failing hidden case shows", () => {
 test("a revision gives a case its time-limit verdict", () => {
   const model = played(result("g1", { generated: true }), { ...result("g1"), type: "case_revised", status: "tle", time_limit_ms: 95 });
   assert.deepEqual(shown(model), ["tle g1"]);
+});
+
+test("a case on the virtual clock that deadlocked is a STALLED row that names the operation and the virtual time", () => {
+  const stalled = result("h4", {
+    status: "stalled",
+    level: 2,
+    input: { ops: ["MessageLog", "@spawn", "@advance", "@join"], args: [[30000], ["r1", "receive", 5000], [2000], ["r1"]] },
+    op_index: 3,
+    reason: "op 3 (@join r1): deadlock at 2000 ms",
+  });
+  assert.deepEqual(shown(played(stalled)), ["stalled h4"]);
+  assert.deepEqual(caseLines(stalled), [
+    ["input", 'ops ["MessageLog", "@spawn", "@advance", "@join"]  args [[30000], ["r1", "receive", 5000], [2000], ["r1"]]'],
+    ["reason", "op 3 (@join r1): deadlock at 2000 ms"],
+  ]);
+});
+
+test("a stalled case counts in the summary as the report counts it", () => {
+  const model = played(result("h4", { status: "stalled", op_index: 1, reason: "op 1 (hold): deadlock at 0 ms" }), {
+    type: "run_end",
+    outcome: "failed",
+    exit_code: 1,
+    message: null,
+    summary: null,
+  });
+  assert.equal(resultsView(model, false).summary?.text, "0/1 passed · 1 stalled");
 });
 
 test("a progressive case keeps its level", () => {

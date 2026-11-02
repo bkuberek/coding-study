@@ -16,7 +16,7 @@ from coding_study.domain.diagnostics import load_diagnostic
 from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import CaseVerdict, RunnableCase, Tally
 from coding_study.domain.problem import Language
-from coding_study.domain.runs import CaseOutcome, Returned, RunCase, RunJob, UserError
+from coding_study.domain.runs import CaseOutcome, Returned, RunCase, RunJob, Stalled, UserError
 from coding_study.domain.submissions import LevelTally, LevelUnlock
 from tests.fakes import NOW, FakeStubGenerator, FakeToolchains, make_environment, repository_root
 from tests.helpers import FIXTURE_PROBLEMS, PROJECT_PROBLEMS
@@ -35,6 +35,9 @@ LEVEL_1 = ["ex1", "h1", "h2"]
 LEVEL_2_TESTS = f"{PROJECT_FOLDER}/tests/test_level_2.py"
 STATEMENT = f".statements/{PROJECT_SLUG}.md"
 TRANSFER = "transfer(timestamp: int, source_id: str, target_id: str, amount: int) -> int"
+DEADLOCK = Stalled(
+    (), 7, op_index=1, reason="op 1 (deposit): deadlock at 0 ms", partial_output=(None,)
+)
 
 
 def correct(job: RunJob, case: RunCase) -> CaseOutcome:
@@ -44,6 +47,15 @@ def correct(job: RunJob, case: RunCase) -> CaseOutcome:
 def wrong_on(*case_ids: str):
     def answer(job: RunJob, case: RunCase) -> CaseOutcome:
         return Returned(["wrong"], 1000) if case.id in case_ids else correct(job, case)
+
+    return answer
+
+
+def deadlocked_on(*case_ids: str):
+    """A project on the virtual clock whose cases `case_ids` deadlock."""
+
+    def answer(job: RunJob, case: RunCase) -> CaseOutcome:
+        return DEADLOCK if case.id in case_ids else correct(job, case)
 
     return answer
 
@@ -157,6 +169,26 @@ def test_a_failing_submission_is_stored_too(environment, process):
     submit(environment)
     (stored,) = environment.progress.submissions(attempt(environment).id)
     assert stored.tally == Tally(total=3, passed=2, failed=1)
+
+
+def test_a_case_that_deadlocked_on_the_virtual_clock_is_stalled(environment, process):
+    process.answer = deadlocked_on("h2")
+    verdicts = {verdict.case.id: verdict for verdict in submit(environment).judgement.verdicts}
+    assert (verdicts["h2"].status, verdicts["h2"].outcome) == (CaseStatus.STALLED, DEADLOCK)
+
+
+def test_a_stalled_case_fails_its_level_and_opens_nothing(environment, process):
+    process.answer = deadlocked_on("h2")
+    result = submit(environment)
+    (level,) = result.level_tallies
+    assert (level.passed, level.total, result.opened) == (2, 3, None)
+
+
+def test_a_stalled_case_is_stored_as_timed_out(environment, process):
+    process.answer = deadlocked_on("h2")
+    submit(environment)
+    (stored,) = environment.progress.submissions(attempt(environment).id)
+    assert stored.tally == Tally(total=3, passed=2, timed_out=1)
 
 
 def test_a_locked_level_is_a_usage_error(environment):

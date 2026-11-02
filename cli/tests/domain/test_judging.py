@@ -28,8 +28,10 @@ from coding_study.domain.runs import (
     NotRun,
     Raised,
     Returned,
+    Stalled,
     TimedOut,
     UserError,
+    WorkerProgress,
 )
 from coding_study.domain.time_limits import (
     AbsoluteTimeLimit,
@@ -41,6 +43,10 @@ from coding_study.domain.time_limits import (
 
 EXACT = comparator_for(ComparatorSpec(ComparatorType.EXACT))
 INPUT = FunctionInput({"value": 1})
+DEADLOCK = "op 3 (@join r1): deadlock at 2000 ms"
+STALLED_ON_THE_CLOCK = Stalled(
+    (), 7, op_index=3, reason=DEADLOCK, partial_output=(None, None, None)
+)
 
 
 def runnable(case_id: str, expected: JsonValue = 1, *, visible: bool = False) -> RunnableCase:
@@ -69,6 +75,7 @@ def statuses(judgement) -> list[CaseStatus]:
         (TimedOut(10_000), CaseStatus.TIMEOUT),
         (Crashed(137, ("killed",)), CaseStatus.ERROR),
         (NotRun("restarted 3 times"), CaseStatus.NOT_RUN),
+        (STALLED_ON_THE_CLOCK, CaseStatus.STALLED),
     ],
 )
 def test_each_runner_outcome_gets_a_status(outcome, status):
@@ -134,6 +141,10 @@ def test_tally_counts_each_kind_of_result():
     assert judgement.tally() == Tally(total=7, passed=1, failed=2, errored=3, timed_out=1)
 
 
+def test_a_case_that_deadlocked_on_the_virtual_clock_counts_as_timed_out():
+    assert judged(Returned(1, 1), STALLED_ON_THE_CLOCK).tally() == Tally(2, passed=1, timed_out=1)
+
+
 def test_tally_of_a_load_error_counts_every_case_as_errored():
     judgement = judge(
         [runnable("a"), runnable("b")], JobReport("job", load_error=UserError("E", "m")), EXACT
@@ -186,6 +197,8 @@ def test_concrete_case_rejects_generated_inputs():
         (TimedOut(500), "timed out after 500 ms"),
         (Crashed(137), "runner crashed with exit code 137"),
         (NotRun("restarted"), "not run: restarted"),
+        (Stalled((WorkerProgress(0, 0, True),), 7), "stalled with 1 unfinished workers"),
+        (STALLED_ON_THE_CLOCK, DEADLOCK),
     ],
 )
 def test_outcome_summaries(outcome, summary):

@@ -178,7 +178,7 @@
       "dependentRequired": { "oracle": ["seed", "n"] }
     },
     "case_result": {
-      "description": "One graded case or oracle input, as an entry of `cases` (or `oracle.inputs`) in `cstudy submit --json` or `cstudy test --json`; never `tle`",
+      "description": "One graded case or oracle input, as an entry of `cases` (or `oracle.inputs`) in `cstudy submit --json` or `cstudy test --json`; never `tle`. A project case on the virtual clock that deadlocked is `stalled`, with the operation as `op_index`, the operation and the virtual time as `reason`, and `input` up to that operation",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "version", "id", "visible", "generated", "status", "duration_ns", "level"],

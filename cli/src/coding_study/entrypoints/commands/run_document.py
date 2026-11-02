@@ -172,6 +172,12 @@ def _details(verdict: CaseVerdict) -> dict[str, JsonValue]:
             return {"input": _input(run_input), "exit_code": exit_code, "stderr": list(stderr_tail)}
         case NotRun(reason=reason):
             return {"reason": reason}
+        case Stalled(op_index=int() as op_index, reason=reason):
+            return {
+                "input": _input(operations_up_to(run_input, op_index)),
+                "op_index": op_index,
+                "reason": reason,
+            }
         case StressCompleted() | Stalled() as outcome:
             return {"reason": outcome_summary(outcome)}
 

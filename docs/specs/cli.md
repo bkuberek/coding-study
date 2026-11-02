@@ -316,7 +316,7 @@ cstudy test [<slug|file>] [--lang L] [--watch] [--case ID]... [--all] [--level N
 
 For Java and Kotlin, the selected JDK must be in the problem's range: otherwise `cstudy test` exits 4 before it builds, with `--json`, `--events` and `--debug` too ([the selected JDK](#the-selected-jdk)).
 
-Output rules: visible cases are always listed; passing hidden cases collapse into a count unless `--all`; failing hidden cases show input, expected and actual (PRD Q10); a `TLE` line shows the measured time, the limit and its basis instead. Statuses: `PASS`, `FAIL`, `ERROR`, `TIMEOUT` (hang guard), `TLE` (time limit), `INVALID` (output not serializable as the declared type), `STALLED` (concurrent stress run still unfinished at its deadline), `NOT RUN`.
+Output rules: visible cases are always listed; passing hidden cases collapse into a count unless `--all`; failing hidden cases show input, expected and actual (PRD Q10); a `TLE` line shows the measured time, the limit and its basis instead. Statuses: `PASS`, `FAIL`, `ERROR`, `TIMEOUT` (hang guard), `TLE` (time limit), `INVALID` (output not serializable as the declared type), `STALLED` (concurrent stress run still unfinished at its deadline, or a project case on the [virtual clock](problem-format.md#asynchronous-code-and-the-virtual-clock) that deadlocked), `NOT RUN`.
 
 ```text
 $ cstudy test --time-limit
@@ -516,7 +516,7 @@ cstudy: connecting to debugger at 127.0.0.1:5005 (kotlin)
 |-------|------|
 | `outcome` | `passed`, `failed`, `build_failed` (with `build.diagnostics`) or `load_failed` (with `load_error`: `type`, `message`, `trace`); `cases` and `stress` are empty in the last two |
 | `status` | The text status in lower case: `pass`, `fail`, `error`, `timeout`, `tle`, `invalid`, `stalled`, `not_run` |
-| `cases` | Every case in run order, passing hidden ones included. A case that did not pass adds what the report prints: `input` (the `tests.json` encoding: arguments by name, or `ops` and `args`, cut after the failing operation), and `expected`, `actual` and `reason` for a wrong answer; `error`, `op_index` and `partial_output` for an exception; `reason` for invalid output or a case not run; `hang_guard_ms` for a timeout; `exit_code` and `stderr` for a crash; `time_limit_ms` and `time_limit_basis` (null for an absolute limit) instead of the input for `tle`. `note` and `stdout` appear when set |
+| `cases` | Every case in run order, passing hidden ones included. A case that did not pass adds what the report prints: `input` (the `tests.json` encoding: arguments by name, or `ops` and `args`, cut after the failing operation), and `expected`, `actual` and `reason` for a wrong answer; `error`, `op_index` and `partial_output` for an exception; `op_index` and `reason` for a project case on the virtual clock that stalled; `reason` for invalid output or a case not run; `hang_guard_ms` for a timeout; `exit_code` and `stderr` for a crash; `time_limit_ms` and `time_limit_basis` (null for an absolute limit) instead of the input for `tle`. `note` and `stdout` appear when set |
 | `stress` | Concurrent problems: the shape [above](#concurrent-problems), with every failing run rather than the first 3 |
 | `oracle` | With `--stress N` on other problems: `{"approach": "brute-force", "inputs": [...]}`, each input a case object plus its `seed` and `n`, in seed order (empty when the code did not build or load); else null. Oracle inputs are not in `cases` |
 | `levels` | Progressive problems: `ran_up_to`, `last`, `unlocked`, `newly_unlocked`; else null |
@@ -541,7 +541,7 @@ Grades a [project problem](problem-format.md#project-problems): every case of le
 | Last level | A submission that passes every case of every level is the full pass (`first_pass_at`) and prints `all passed · every level done. Next: cstudy done --rating easy\|ok\|hard` |
 | Visible cases | Listed with their status; a failing one shows input, expected and actual |
 | Hidden cases, practice | Passing ones collapse into a count per level; a failing one shows its id, input, expected and actual (PRD Q10) |
-| Virtual clock | A case on the [virtual clock](problem-format.md#asynchronous-code-and-the-virtual-clock) prints as any case. One that deadlocks is a `STALLED` row that names the operation and the virtual time (`op 4 (@join r1): deadlock at 3000 ms`) |
+| Virtual clock | A case on the [virtual clock](problem-format.md#asynchronous-code-and-the-virtual-clock) prints as any case. One that deadlocks is a `STALLED` row: its input up to the operation, and as its `reason` the operation and the virtual time (`op 4 (@join r1): deadlock at 3000 ms`), or, for a case that ended with goroutines or threads left behind, its last operation (`op 4 (@now): the case ended with goroutines still blocked at 3000 ms`). It counts as a failing case of its level, and in `timed_out` |
 | Stress cases | A project's [stress cases](problem-format.md#stress-cases-in-projects) are hidden but always printed, under their level, one line per case and variant with its runs and its failing seeds, as `cstudy test` prints them for a concurrent problem. Each counts as one hidden case of its level in the tallies, and the summary adds `stress runs found no race (not a proof of thread safety)`. A mock attempt counts the failing hidden cases, stress cases included, and shows nothing else |
 | Hidden cases, mock | In an attempt with mode `mock`, only the number of failing hidden cases per level: no id, input or output, also with `--json` |
 | Stored | Every submission, in `submissions`, with a tally per level ([progress-and-scheduling](progress-and-scheduling.md#project-attempts)). A submission whose code does not load is stored too, with every graded case counted as errored |
@@ -583,7 +583,7 @@ level 1  PASS     5/5 (2 visible, 3 hidden)
 level 2  FAIL     4/6 (2 visible, 4 hidden)
 STALLED  h4    hidden · level 2
          input     ops ["MessageLog", "@spawn", "@advance", "@join"]  args [[30000], ["r1", "receive", 5000], [2000], ["r1"]]
-         op 3 (@join r1): deadlock at 2000 ms
+         reason    op 3 (@join r1): deadlock at 2000 ms
 PASS     s1    level 2 · 3/3 runs · median 38ms
 FAIL     s2    level 2 · 1/3 runs passed
          run 0 · seed 1000  distinct receive: "b" (2 times)

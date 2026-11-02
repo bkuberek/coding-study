@@ -69,6 +69,9 @@ export interface CaseResult {
   readonly actual?: unknown;
   readonly reason?: string | null;
   readonly error?: ErrorDetail | null;
+  /** The operation that raised, or on the virtual clock deadlocked, which `reason` then names. */
+  readonly op_index?: number | null;
+  readonly partial_output?: readonly unknown[];
   readonly stdout?: string | null;
   readonly note?: string | null;
   readonly time_limit_ms?: number;

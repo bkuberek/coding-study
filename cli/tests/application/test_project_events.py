@@ -32,6 +32,7 @@ from coding_study.application.run_events import (
 )
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.application.submit_project import SubmitRequest
+from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.diagnostics import load_diagnostic
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Language
@@ -43,6 +44,7 @@ from coding_study.domain.runs import (
     RunJob,
     RunReport,
     RunRequest,
+    Stalled,
     UserError,
 )
 from coding_study.domain.suite_runs import Passed, SuiteJob, SuiteReport, SuiteTest
@@ -72,6 +74,16 @@ def correct(job: RunJob, case: RunCase) -> CaseOutcome:
 
 def wrong_on_h1(job: RunJob, case: RunCase) -> CaseOutcome:
     return Returned(["wrong"], 1000) if case.id == "h1" else correct(job, case)
+
+
+DEADLOCK = Stalled(
+    (), 7, op_index=1, reason="op 1 (deposit): deadlock at 0 ms", partial_output=(None,)
+)
+
+
+def deadlocked_on_h1(job: RunJob, case: RunCase) -> CaseOutcome:
+    """A project on the virtual clock whose case h1 deadlocks."""
+    return DEADLOCK if case.id == "h1" else correct(job, case)
 
 
 @dataclass
@@ -259,6 +271,25 @@ def test_the_opened_level_is_the_next(environment):
 def test_a_failing_submission_opens_nothing(environment, process):
     process.answer = wrong_on_h1
     assert kinds(streamed_submission(environment))[-1] is LevelGraded
+
+
+def test_a_case_that_deadlocked_on_the_virtual_clock_is_graded_stalled_as_it_ends(
+    environment, process
+):
+    process.answer = deadlocked_on_h1
+    events = streamed_submission(environment)
+    graded = {
+        event.verdict.case.id: event.verdict for event in events if isinstance(event, CaseGraded)
+    }
+    assert (graded["h1"].status, graded["h1"].outcome) == (CaseStatus.STALLED, DEADLOCK)
+
+
+def test_a_stalled_case_counts_against_its_level(environment, process):
+    process.answer = deadlocked_on_h1
+    (level,) = [
+        event.tally for event in streamed_submission(environment) if isinstance(event, LevelGraded)
+    ]
+    assert (level.passed, level.total) == (2, 3)
 
 
 def test_a_mock_attempt_names_no_hidden_case(environment, process):

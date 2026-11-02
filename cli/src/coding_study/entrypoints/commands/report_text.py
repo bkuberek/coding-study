@@ -71,6 +71,9 @@ def case_details(verdict: CaseVerdict, comparator_label: str | None) -> Iterator
             yield from (("", line) for line in stderr_tail)
         case NotRun(reason=reason):
             yield ("reason", reason)
+        case Stalled(op_index=int() as op_index):
+            yield ("input", input_text(operations_up_to(case.input, op_index)))
+            yield ("reason", outcome_summary(outcome))
         case StressCompleted() | Stalled():
             yield ("reason", outcome_summary(outcome))
     if case.note:
