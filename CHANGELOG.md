@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v0.10.1 (2026-11-02)
+
+### Bug Fixes
+
+- **jvm**: Read the sources from disk on every Gradle build
+  ([`b9a310d`](https://github.com/bkuberek/coding-study/commit/b9a310d6c8daafa44177df4033e72e46d1102793))
+
+### Documentation
+
+- Link the README to coding-study.com
+  ([`a071fc0`](https://github.com/bkuberek/coding-study/commit/a071fc0a0ba99e9fdded38cf5192fa03e1cb8c39))
+
+
 ## v0.10.0 (2026-11-02)
 
 ### Bug Fixes
