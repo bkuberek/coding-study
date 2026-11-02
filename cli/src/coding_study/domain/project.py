@@ -23,6 +23,7 @@ from coding_study.domain.cases import (
     is_harness_operation,
     spawned_call,
 )
+from coding_study.domain.clock_statement import VIRTUAL_CLOCK_NOTICE
 from coding_study.domain.levels import level_heading
 from coding_study.domain.markdown import MarkdownDocument
 from coding_study.domain.naming import RESERVED_WORDS, NameRole, is_reserved, member_name
@@ -44,6 +45,7 @@ from coding_study.domain.virtual_clock import ProjectClock
 DEFAULT_TESTS_DIRECTORY = "tests"
 METHODS_TO_ADD = "Methods to add:"
 """Opens each level of a project problem's statement, before the methods the level adds."""
+PROJECT_SECTION = "Project"
 PATH_SEPARATOR = "/"
 _PARENT_SEGMENT = ".."
 _CURRENT_SEGMENT = "."
@@ -281,23 +283,37 @@ def render_project_statement(
     language = project_language(problem.meta)
     markdown = problem_markdown
     if markdown is not None and isinstance(problem.meta.signature, ClassSignature):
-        markdown = _with_methods_to_add(markdown, problem.meta.signature, language)
+        markdown = _with_generated_lines(markdown, problem, language)
     return render_statement(in_language_names(problem), markdown, unlocked_level)
 
 
-def _with_methods_to_add(markdown: str, signature: ClassSignature, language: Language) -> str:
+def _with_generated_lines(markdown: str, problem: Problem, language: Language) -> str:
+    """`markdown` with the lines that `cstudy` writes under the headings of its sections: the
+    methods a level adds, and the virtual clock under `## Project`."""
+    signature = problem.meta.signature
+    assert isinstance(signature, ClassSignature)
     document = MarkdownDocument(markdown)
     lines = list(document.lines)
     for section in reversed(document.sections(2)):
         number = level_heading(section.title)
         methods = level_methods(signature, number) if number is not None else ()
-        if not methods:
-            continue
-        added = ", ".join(method_text(method, language) for method in methods)
-        after = section.start + 1
-        separated = after < len(lines) and not lines[after].strip()
-        lines[after:after] = ["", f"{METHODS_TO_ADD} {added}", *([] if separated else [""])]
+        if methods:
+            added = ", ".join(method_text(method, language) for method in methods)
+            _insert_under_heading(lines, section.start, f"{METHODS_TO_ADD} {added}")
+        elif section.title == PROJECT_SECTION and _on_virtual_clock(problem.meta):
+            _insert_under_heading(lines, section.start, VIRTUAL_CLOCK_NOTICE)
     return "\n".join(lines) + "\n"
+
+
+def _insert_under_heading(lines: list[str], heading: int, text: str) -> None:
+    """`text` as a paragraph right under the heading, set apart from what follows it."""
+    after = heading + 1
+    separated = after < len(lines) and not lines[after].strip()
+    lines[after:after] = ["", text, *([] if separated else [""])]
+
+
+def _on_virtual_clock(meta: ProblemMeta) -> bool:
+    return meta.project is not None and meta.project.clock is ProjectClock.VIRTUAL
 
 
 def _named_signature(signature: Signature, language: Language) -> Signature:

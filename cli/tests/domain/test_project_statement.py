@@ -6,9 +6,11 @@ from dataclasses import replace
 import pytest
 
 from coding_study.domain.cases import OperationSequence
-from coding_study.domain.problem import ComparatorSpec, ComparatorType, Language
+from coding_study.domain.problem import ComparatorSpec, ComparatorType, Language, Level
 from coding_study.domain.project import in_language_names, render_project_statement
-from coding_study.domain.signature import ClassSignature
+from coding_study.domain.signature import ClassSignature, Param
+from coding_study.domain.type_dsl import Scalar, ScalarType
+from coding_study.domain.virtual_clock import ProjectClock
 from tests.project_builders import BANK, method, ops_case, project_meta, project_problem
 
 EX1 = ops_case("ex1", 1, ("createAccount", [1, "ivy"], True), ("deposit", [2, "ivy", 800], 800))
@@ -193,3 +195,134 @@ def test_the_locked_notice_names_cstudy_submit():
         "> Level 2 is locked. Pass every case up to level 1 with `cstudy submit` to unlock it."
         in rendered(unlocked=1)
     )
+
+
+# the virtual clock, in words
+
+PUBLISH = method("publish", 1, "body: string", "long")
+RECEIVE = method("receive", 1, "waitMs: long", "string")
+LEAVE = method("leave", 1, "", "void")
+PRICE = method("price", 1, "on: date; amount: decimal", "decimal")
+INBOX = ClassSignature(
+    "Inbox", (Param("visibilityMs", ScalarType(Scalar.LONG)),), (PUBLISH, RECEIVE, LEAVE, PRICE)
+)
+SPOKEN_CASE = ops_case(
+    "ex3",
+    1,
+    ("@spawn", ["r1", "receive", 5000], None),
+    ("@advance", [1000], None),
+    ("publish", ["a"], 1),
+    ("@join", ["r1"], "a"),
+    ("@now", [], 1000),
+    ("receive", [2000], ""),
+    ("@now", [], 3000),
+    constructor=[30000],
+    class_name="Inbox",
+)
+SPOKEN = """\
+```text
+Operations:
+  0  Inbox(30000)
+  1  r1 = Receive(5000) starts
+  2  1000 ms pass
+  3  Publish("a") returns 1
+  4  r1 returns "a"
+  5  the clock reads 1000 ms
+  6  Receive(2000) returns ""
+  7  the clock reads 3000 ms
+```
+"""
+CLOCK_MD = """\
+# Inbox
+
+## Statement
+
+Hand messages to receivers.
+
+## Project
+
+Keep `Inbox` in `inbox.go`.
+
+## Level 1: Waiting
+
+### Example 1
+
+<!-- case: ex3 -->
+"""
+CLOCK_LINE = (
+    "The project runs on a virtual clock: time moves only while every task waits, so a wait of "
+    "any length takes no real time. A wait that nothing can end is a deadlock, which "
+    "`cstudy submit` reports as `STALLED`. In the examples, `N ms pass` moves the clock and "
+    "`the clock reads N ms` reads it."
+)
+
+
+def clock_meta(clock: ProjectClock | None = ProjectClock.VIRTUAL):
+    return project_meta(INBOX, language=Language.GO, levels=(Level(1, "Waiting"),), clock=clock)
+
+
+def clock_rendered(*cases, clock: ProjectClock | None = ProjectClock.VIRTUAL, markdown=CLOCK_MD):
+    problem = project_problem(*cases, meta=clock_meta(clock))
+    return render_project_statement(problem, markdown, 1)
+
+
+def test_harness_operations_are_spoken_in_the_languages_names():
+    assert SPOKEN in clock_rendered(SPOKEN_CASE)
+
+
+def test_a_void_call_and_its_join_name_no_result():
+    case = ops_case(
+        "ex3",
+        1,
+        ("@spawn", ["l", "leave"], None),
+        ("leave", [], None),
+        ("@join", ["l"], None),
+        constructor=[5],
+        class_name="Inbox",
+    )
+    spoken = clock_rendered(case)
+    assert "  1  l = Leave() starts\n  2  Leave()\n  3  l finishes\n" in spoken
+
+
+def test_decimals_and_dates_are_spoken_unquoted():
+    case = ops_case(
+        "ex3",
+        1,
+        ("@spawn", ["p", "price", "2026-01-01", "2500.50"], None),
+        ("@join", ["p"], "10.25"),
+        constructor=[5],
+        class_name="Inbox",
+    )
+    spoken = clock_rendered(case)
+    assert "  1  p = Price(2026-01-01, 2500.50) starts\n  2  p returns 10.25\n" in spoken
+
+
+def test_steps_are_numbered_as_the_reports_number_the_operations():
+    steps = [("@advance", [1], None)] * 10
+    case = ops_case("ex3", 1, *steps, constructor=[5], class_name="Inbox")
+    spoken = clock_rendered(case)
+    assert "\n   0  Inbox(5)\n   1  1 ms pass\n" in spoken
+    assert "\n  10  1 ms pass\n" in spoken
+
+
+def test_a_case_without_harness_operations_keeps_the_operations_arguments_and_output_lines():
+    case = ops_case("ex3", 1, ("publish", ["a"], 1), constructor=[30000], class_name="Inbox")
+    spoken = clock_rendered(case)
+    assert 'Operations: ["Inbox", "Publish"]' in spoken
+    assert "\n  0  Inbox(30000)" not in spoken
+
+
+def test_the_project_section_names_the_virtual_clock():
+    lines = clock_rendered(SPOKEN_CASE).splitlines()
+    start = lines.index("## Project")
+    assert lines[start + 1 : start + 5] == ["", CLOCK_LINE, "", "Keep `Inbox` in `inbox.go`."]
+
+
+def test_a_project_on_the_real_clock_says_nothing_of_a_clock():
+    case = ops_case("ex3", 1, ("publish", ["a"], 1), constructor=[30000], class_name="Inbox")
+    assert "virtual clock" not in clock_rendered(case, clock=None)
+
+
+def test_the_clock_line_is_not_added_when_the_statement_has_no_project_section():
+    markdown = CLOCK_MD.replace("## Project\n\nKeep `Inbox` in `inbox.go`.\n\n", "")
+    assert "virtual clock" not in clock_rendered(SPOKEN_CASE, markdown=markdown)

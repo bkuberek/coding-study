@@ -6,9 +6,24 @@ from dataclasses import replace
 import pytest
 
 from coding_study.domain.cases import Case, Expected, FunctionInput
-from coding_study.domain.problem import ComparatorSpec, ComparatorType, Language, ProblemKind
-from coding_study.domain.project_tests import Call, LevelTest, level_tests
+from coding_study.domain.problem import (
+    ComparatorSpec,
+    ComparatorType,
+    Language,
+    Level,
+    ProblemKind,
+)
+from coding_study.domain.project_tests import (
+    Advance,
+    Call,
+    Join,
+    LevelTest,
+    Now,
+    Spawn,
+    level_tests,
+)
 from coding_study.domain.signature import ClassSignature
+from coding_study.domain.virtual_clock import ProjectClock
 from tests.project_builders import (
     BANK,
     CREATE_ACCOUNT,
@@ -142,11 +157,26 @@ def test_an_operation_missing_from_the_signature_is_rejected():
 
 
 @pytest.mark.parametrize("operation", ["@advance", "@spawn", "@join", "@now"])
-def test_a_harness_operation_is_named_as_one_the_generated_tests_do_not_express_yet(operation):
+@pytest.mark.parametrize(
+    "language",
+    [Language.PYTHON, Language.TYPESCRIPT, Language.JAVA, Language.KOTLIN, Language.RUST],
+)
+def test_a_harness_operation_is_named_as_one_the_generated_tests_do_not_express_yet(
+    operation, language
+):
     case = ops_case("ex1", 1, ("createAccount", [1, "ivy"], True), (operation, [], None))
+    meta = project_meta(language=language, clock=ProjectClock.VIRTUAL)
     message = f"case ex1 uses {operation}, which the generated tests do not express yet"
     with pytest.raises(ValueError, match=message):
-        generated(project_problem(case))
+        generated(project_problem(case, meta=meta))
+
+
+def test_a_harness_operation_without_the_virtual_clock_is_named_the_same_way():
+    case = ops_case("ex1", 1, ("@advance", [5], None))
+    meta = project_meta(language=Language.GO)
+    message = "case ex1 uses @advance, which the generated tests do not express yet"
+    with pytest.raises(ValueError, match=message):
+        generated(project_problem(case, meta=meta))
 
 
 def test_a_case_without_operations_is_rejected():
@@ -167,3 +197,135 @@ def test_a_level_without_visible_cases_has_no_tests():
 
 def test_tests_of_a_transfer_level_use_the_transfer_method():
     assert generated(level=2)[0].calls[0].method == TRANSFER
+
+
+# the virtual clock
+
+RECEIVE = method("receive", 1, "waitMs: int", "string")
+SIZE = method("size", 1, "", "int")
+LEAVE = method("leave", 1, "", "void")
+INBOX = ClassSignature("Inbox", (), (RECEIVE, SIZE, LEAVE))
+
+
+def clock_problem(*calls, per_method: dict[str, ComparatorType] | None = None):
+    comparator = ComparatorSpec(ComparatorType.OPS, per_method=per_method or {})
+    meta = project_meta(
+        INBOX, comparator, Language.GO, (Level(1, "Waiting"),), clock=ProjectClock.VIRTUAL
+    )
+    return project_problem(ops_case("ex1", 1, *calls, class_name="Inbox"), meta=meta)
+
+
+def clock_operations(*calls, per_method: dict[str, ComparatorType] | None = None):
+    return generated(clock_problem(*calls, per_method=per_method))[0].operations
+
+
+def test_the_tests_of_a_virtual_clock_project_know_the_clock():
+    assert level_tests(clock_problem(("size", [], 0)), 1).virtual_clock
+
+
+def test_the_tests_of_a_project_on_the_real_clock_do_not():
+    assert not level_tests(PROBLEM, 1).virtual_clock
+
+
+def test_advance_moves_the_clock_by_its_milliseconds():
+    assert clock_operations(("@advance", [1500], None)) == (Advance(1500),)
+
+
+def test_spawn_names_the_task_and_the_call_it_starts():
+    assert clock_operations(("@spawn", ["r1", "receive", 5000], None), ("@join", ["r1"], "a"))[
+        0
+    ] == Spawn("r1", RECEIVE, (5000,))
+
+
+def test_join_expects_the_result_of_the_call_its_task_started():
+    operations = clock_operations(("@spawn", ["r1", "receive", 5000], None), ("@join", ["r1"], "a"))
+    assert operations[1] == Join("r1", Call(RECEIVE, (5000,), "a", ComparatorType.EXACT))
+
+
+def test_join_compares_with_the_comparator_of_the_spawned_method():
+    operations = clock_operations(
+        ("@spawn", ["r1", "receive", 5000], None),
+        ("@join", ["r1"], "a"),
+        per_method={"receive": ComparatorType.UNORDERED},
+    )
+    assert isinstance(operations[1], Join)
+    assert operations[1].call.comparator is ComparatorType.UNORDERED
+
+
+def test_join_of_a_void_method_expects_nothing():
+    operations = clock_operations(("@spawn", ["l", "leave"], None), ("@join", ["l"], None))
+    assert isinstance(operations[1], Join)
+    assert not operations[1].call.returns_value
+
+
+def test_now_expects_the_milliseconds_since_the_case_started():
+    assert clock_operations(("@now", [], 1000)) == (Now(1000),)
+
+
+def test_calls_and_harness_operations_keep_the_order_of_the_case():
+    operations = clock_operations(
+        ("@spawn", ["r1", "receive", 5000], None),
+        ("@advance", [1000], None),
+        ("size", [], 0),
+        ("@join", ["r1"], ""),
+        ("@now", [], 1000),
+    )
+    assert [type(operation) for operation in operations] == [Spawn, Advance, Call, Join, Now]
+
+
+def test_calls_are_the_operations_of_a_test_on_the_real_clock():
+    assert generated(clock_problem(("size", [], 0)))[0].calls == (
+        Call(SIZE, (), 0, ComparatorType.EXACT),
+    )
+
+
+def test_a_test_with_harness_operations_has_no_calls_to_list():
+    test = generated(clock_problem(("@advance", [5], None)))[0]
+    with pytest.raises(ValueError, match="holds harness operations"):
+        assert test.calls
+
+
+def test_a_spawn_of_a_method_the_class_lacks_is_rejected():
+    case = ("@spawn", ["r1", "withdraw", 5], None)
+    with pytest.raises(ValueError, match="case ex1 calls withdraw, which Inbox does not declare"):
+        clock_operations(case)
+
+
+@pytest.mark.parametrize(
+    ("call", "message"),
+    [
+        (("@advance", [], None), "case ex1: @advance takes one whole number of milliseconds"),
+        (("@advance", ["1"], None), "case ex1: @advance takes one whole number of milliseconds"),
+        (("@advance", [True], None), "case ex1: @advance takes one whole number of milliseconds"),
+        (
+            ("@spawn", ["r1"], None),
+            "case ex1: @spawn takes a task name, a method and its arguments",
+        ),
+        (("@join", ["r1"], ""), "case ex1: @join of r1, which no @spawn started"),
+        (("@join", [], ""), "case ex1: @join takes the name of one spawned task"),
+        (("@now", [1], 0), "case ex1: @now takes no arguments"),
+        (("@now", [], "0"), "case ex1: @now expects a whole number of milliseconds"),
+        (("@now", [], True), "case ex1: @now expects a whole number of milliseconds"),
+        (("@bogus", [], None), "case ex1 uses @bogus, which is not a harness operation"),
+    ],
+)
+def test_a_malformed_harness_operation_is_rejected_with_its_reason(call, message):
+    with pytest.raises(ValueError, match=message):
+        clock_operations(call)
+
+
+def test_a_task_joined_twice_is_rejected():
+    spawned = ("@spawn", ["r1", "size"], None)
+    with pytest.raises(ValueError, match="case ex1: @join of r1, which no @spawn started"):
+        clock_operations(spawned, ("@join", ["r1"], 0), ("@join", ["r1"], 0))
+
+
+def test_a_task_name_spawned_twice_before_its_join_is_rejected():
+    spawned = ("@spawn", ["r1", "size"], None)
+    with pytest.raises(ValueError, match="case ex1: @spawn of r1, which is running already"):
+        clock_operations(spawned, spawned)
+
+
+def test_a_task_that_is_never_joined_is_rejected():
+    with pytest.raises(ValueError, match="case ex1: @spawn of r1 is never joined"):
+        clock_operations(("@spawn", ["r1", "size"], None), ("@advance", [5], None))

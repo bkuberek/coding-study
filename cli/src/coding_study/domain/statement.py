@@ -9,6 +9,7 @@ import re
 from collections.abc import Iterator, Sequence
 
 from coding_study.domain.cases import Case, FunctionInput, JsonValue, OperationSequence
+from coding_study.domain.clock_statement import spoken_example
 from coding_study.domain.jdk_fit import statement_range
 from coding_study.domain.levels import LevelProgress, level_heading, level_progress
 from coding_study.domain.markdown import MarkdownDocument, MarkdownSection
@@ -153,9 +154,13 @@ def example_block(meta: ProblemMeta, case: Case) -> tuple[str, ...]:
     """A fenced block with the case's input and expected output.
 
     Values print as JSON, except `decimal` and `date` values, which print unquoted by the types
-    the signature declares (`premium = 2500.50`, `[2026-01-01, 2026-07-01]`).
+    the signature declares (`premium = 2500.50`, `[2026-01-01, 2026-07-01]`). A case on the virtual
+    clock that holds harness operations prints its steps in words instead.
     """
     signature = meta.signature
+    spoken = spoken_example(signature, case) if isinstance(signature, ClassSignature) else None
+    if spoken is not None:
+        return ("```text", *spoken, "```")
     return ("```text", *_input_lines(signature, case), *_output_lines(meta, case), "```")
 
 

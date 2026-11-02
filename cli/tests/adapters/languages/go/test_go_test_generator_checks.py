@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 
+from coding_study.adapters.conformance_fixtures import conformance_repository
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.adapters.languages.go.stub_generator import GoStubGenerator
 from coding_study.adapters.languages.go.test_generator import GoTestGenerator
@@ -37,6 +38,7 @@ pytestmark = [
 GENERATOR = GoTestGenerator()
 FIXTURE_PROBLEMS = Path(__file__).resolve().parents[3] / "fixtures" / "project_go" / "problems"
 SLUG = "bank-project-go"
+CLOCK_SLUG = "conformance-project-clock-go"
 GO_RUNTIME = Path(".cs/runtime/runners/go")
 NOT_IMPLEMENTED = "panic: not implemented"
 CORPUS_RETURNS: dict[str, JsonValue] = {
@@ -181,3 +183,32 @@ def test_level_1_fails_on_the_starter_only_because_nothing_is_implemented(
     write_level_files(folder, fixture_problem, range(1, 2))
     tested = go("test", "-count=1", "./...", cwd=folder)
     assert (tested.returncode, NOT_IMPLEMENTED in tested.stdout) == (1, True), tested.stdout
+
+
+@pytest.fixture(scope="module")
+def clock_solved(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """The conformance project on the virtual clock, solved, with its generated level file."""
+    problem = conformance_repository(REPOSITORY_ROOT).load(CLOCK_SLUG)
+    files = problem.project_files
+    assert files is not None
+    assert files.starter is not None
+    base = tmp_path_factory.mktemp("clock")
+    folder = project_folder(base, files.starter, files.overlays["reference"])
+    write_level_files(folder, problem, range(1, 2))
+    return folder
+
+
+def test_gofmt_leaves_the_virtual_clock_level_file_as_it_is(clock_solved):
+    assert go("fmt", "./...", cwd=clock_solved).stdout == ""
+
+
+def test_the_virtual_clock_level_file_passes_go_vet(clock_solved):
+    vetted = go("vet", "./...", cwd=clock_solved)
+    assert vetted.returncode == 0, vetted.stdout + vetted.stderr
+
+
+def test_every_virtual_clock_test_passes_on_the_reference_as_the_grader_judges_it(clock_solved):
+    tested = go("test", "-count=1", "-v", "./...", cwd=clock_solved)
+    assert tested.returncode == 0, tested.stdout + tested.stderr
+    passed = re.findall(r"^--- PASS: (\w+)", tested.stdout, flags=re.MULTILINE)
+    assert passed == ["TestEx1", "TestAdvance", "TestSpawn_join"]

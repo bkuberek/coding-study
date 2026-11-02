@@ -657,6 +657,22 @@ A project folder keeps the files it was started with, so one started with `cstud
 
 A virtual-clock project's statement spells an `async` method in its `Methods to add:` line as the language declares it (`async def`, `Promise<T>`, `suspend fun`, `async fn`) and renders the harness operations of an example in words: `r1 = receive(5000) starts`, `1000 ms pass`, `r1 returns "a"`, `the clock reads 1000 ms`. Its `## Project` section gains a generated line that names the virtual clock, and a level section with stress cases gains the stress table that a concurrent problem's `## Concurrency` section has.
 
+An example that holds harness operations lists its steps instead of the `Operations`, `Arguments` and `Output` lines. Each step has the number that the runner gives its operation (the constructor is 0), so `op 4 (@join r1)` in a report names line 4 of the example, and a call shows its result after `returns` (a `void` call shows none), in the language's method names with `decimal` and `date` values unquoted:
+
+```text
+Operations:
+  0  MessageLog(30000)
+  1  r1 = Receive(5000) starts
+  2  1000 ms pass
+  3  Publish("a") returns 1
+  4  r1 returns "a"
+  5  the clock reads 1000 ms
+  6  Receive(2000) returns ""
+  7  the clock reads 3000 ms
+```
+
+A joined task whose method returns nothing reads `r1 finishes`. An example without harness operations keeps the three lines, and the generated line under `## Project` reads: `The project runs on a virtual clock: time moves only while every task waits, so a wait of any length takes no real time. A wait that nothing can end is a deadlock, which `cstudy submit` reports as `STALLED`. In the examples, `N ms pass` moves the clock and `the clock reads N ms` reads it.`
+
 ### Generated test files
 
 `cstudy` writes one native test file per level from that level's visible cases, in `project.tests` under the project root. It writes level 1's file when an attempt starts and each next level's file when that level opens, never over an existing file: the files are yours to edit and extend, and a missing file of an unlocked level is written again when the attempt resumes ([cli](cli.md#cstudy-start)).
@@ -829,6 +845,44 @@ func TestEx1(t *testing.T) {
 	if got := b.Deposit(4, "ivy", 800); got != 800 {
 		t.Errorf(`b.Deposit(4, "ivy", 800) = %v, want 800`, got)
 	}
+}
+```
+
+On the virtual clock ([generated tests](#generated-tests-on-the-virtual-clock)) every test, whatever its operations, runs its body in `synctest.Test`, as the grader runs a case in a bubble of its own, with the same `t` shadowed inside. The file imports `testing/synctest`, and `time` when a test moves or reads the clock; the three come in the standard-library group in gofmt's order (`testing`, `testing/synctest`, `time`).
+
+| Operation | Go |
+|-----------|----|
+| Between operations | `synctest.Wait()` after each operation but the last, as the grader settles after each |
+| Start | `start := time.Now()` as the first statement of a test that holds `@now`, before the instance is built, as the grader reads the start before the constructor |
+| Constructor | As above, inside the bubble. An instance that no call or `@spawn` uses is built as a statement alone, so no variable goes unused |
+| `@advance` | `time.Sleep(1500 * time.Millisecond)` |
+| `@spawn` | `r1 := make(chan string, 1)` of the method's Go type, then `go func() { r1 <- b.Receive(5000) }()`; a `void` method makes `chan struct{}` and closes it after the call. The variable is the task's name without characters that Go identifiers lack, unless the test already uses that name (`t`, `got`, `start`, the instance, an import's name or a keyword), a clash or an empty name, which becomes `task1`, `task2`, in order |
+| `@join` | The call's check with `<-r1` for the call: `if got := <-r1; got != "a" {` and `t.Errorf` naming `<-r1`, with the comparator of the spawned method (`unordered` sorts, `float` calls `closeTo`); `<-r1` alone for a `void` method |
+| `@now` | `if got := time.Since(start).Milliseconds(); got != 1000 {` |
+
+```go
+func TestEx3(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		start := time.Now()
+		m := log.NewMessageLog(30000)
+		synctest.Wait()
+		r1 := make(chan string, 1)
+		go func() { r1 <- m.Receive(5000) }()
+		synctest.Wait()
+		time.Sleep(1000 * time.Millisecond)
+		synctest.Wait()
+		if got := m.Publish("a"); got != 1 {
+			t.Errorf(`m.Publish("a") = %v, want 1`, got)
+		}
+		synctest.Wait()
+		if got := <-r1; got != "a" {
+			t.Errorf(`<-r1 = %v, want "a"`, got)
+		}
+		synctest.Wait()
+		if got := time.Since(start).Milliseconds(); got != 1000 {
+			t.Errorf(`time.Since(start).Milliseconds() = %v, want 1000`, got)
+		}
+	})
 }
 ```
 

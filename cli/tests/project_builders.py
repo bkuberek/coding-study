@@ -1,6 +1,7 @@
 """Project problems built in code, for the generated level tests and the project statement."""
 
 from collections.abc import Sequence
+from dataclasses import replace
 
 from coding_study.domain.cases import Case, Expected, JsonValue, OperationSequence
 from coding_study.domain.problem import (
@@ -21,6 +22,7 @@ from coding_study.domain.problem import (
 from coding_study.domain.project import Project
 from coding_study.domain.signature import ClassSignature, Method, Param, Returns
 from coding_study.domain.type_dsl import parse_return_type, parse_value_type
+from coding_study.domain.virtual_clock import ProjectClock
 
 type Call = tuple[str, Sequence[JsonValue], JsonValue]
 """An operation of a case: the canonical method, its arguments and its expected output."""
@@ -59,6 +61,7 @@ def project_meta(
     comparator: ComparatorSpec = OPS,
     language: Language = Language.PYTHON,
     levels: tuple[Level, ...] = LEVELS,
+    clock: ProjectClock | None = None,
 ) -> ProblemMeta:
     return ProblemMeta(
         id="0001",
@@ -83,7 +86,7 @@ def project_meta(
         ),
         languages=(language,),
         levels=levels,
-        project=PROJECTS[language],
+        project=replace(PROJECTS[language], clock=clock),
     )
 
 

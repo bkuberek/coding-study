@@ -14,16 +14,24 @@ lists of decimals; `unordered` sorts the result first (`slices.Sorted`, or `slic
 that way; `float` calls `closeTo`, defined once in the file when used, which holds exactly when
 `abs(a - e) <= tol * max(1, abs(e))`.
 
+On the virtual clock (docs/specs/problem-format.md#generated-tests-on-the-virtual-clock) each test
+runs its body in `synctest.Test`, as the grader runs a case in a bubble of its own, and calls
+`synctest.Wait()` between operations, as the grader settles after each. `@advance` is `time.Sleep`,
+`@spawn` a goroutine that sends the call's result on a channel of the task's name (closing it for a
+`void` method), `@join` a receive from that channel, checked as any call is, and `@now` the
+milliseconds since the `start` the test read before it built the instance.
+
 gofmt never breaks or joins lines, so a file needs only gofmt's spacing, tab indentation and
 import grouping to be as gofmt leaves it: standard-library imports first, then the others, each
 group sorted by path.
 """
 
+import itertools
 import json
 import posixpath
 import re
 import textwrap
-from collections.abc import Iterator, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
@@ -40,11 +48,23 @@ from coding_study.domain.naming import (
 )
 from coding_study.domain.problem import ComparatorType, Language
 from coding_study.domain.project import PATH_SEPARATOR
-from coding_study.domain.project_tests import EDIT_NOTICE, Call, LevelTest, LevelTests
+from coding_study.domain.project_tests import (
+    EDIT_NOTICE,
+    Advance,
+    Call,
+    Join,
+    LevelTest,
+    LevelTests,
+    Now,
+    Operation,
+    Spawn,
+)
+from coding_study.domain.signature import Method
 from coding_study.domain.type_dsl import (
     ArrayType,
     ListType,
     NodeType,
+    ReturnType,
     Scalar,
     ScalarType,
     ValueType,
@@ -55,15 +75,19 @@ COMMENT = "// "
 COMMENT_WIDTH = 100
 TEST_PACKAGE_SUFFIX = "_test"
 TESTING = "testing"
+SYNCTEST = "testing/synctest"
 MATH = "math"
 SLICES = "slices"
 TIME = "time"
 DECIMAL = "github.com/shopspring/decimal"
 CLOSE_TO = "closeTo"
 GOT = "got"
+START = "start"
+"""The time the test of a virtual-clock project read before it built the instance."""
 FALLBACK_ALIAS = "entry"
 FALLBACK_INSTANCE = "subject"
-_STANDARD_LIBRARY = frozenset({TESTING, MATH, SLICES, TIME})
+FALLBACK_TASK = "task"
+_STANDARD_LIBRARY = frozenset({TESTING, SYNCTEST, MATH, SLICES, TIME})
 _ORDERED = frozenset({Scalar.INT, Scalar.LONG, Scalar.DOUBLE, Scalar.STRING, Scalar.CHAR})
 """What `cmp.Ordered` covers, so `slices.Sorted` and `slices.Compare` take it."""
 _ESCAPES = {
@@ -79,6 +103,8 @@ _MONTHS = (
     *("July", "August", "September", "October", "November", "December"),
 )
 _SORT_FUNCTIONS = {Scalar.DECIMAL: "decimal.Decimal.Cmp", Scalar.DATE: "time.Time.Compare"}
+_SCALAR_IMPORTS = {Scalar.DECIMAL: DECIMAL, Scalar.DATE: TIME}
+"""The package whose type a scalar is in Go."""
 
 
 class GoTestGenerator:
@@ -101,7 +127,7 @@ class _LevelFile:
         self._tests = tests
         self._alias = _entry_alias(tests.entry)
         self._instance = _instance_name(tests.signature.name, self._alias)
-        self._imports: set[str] = {TESTING}
+        self._imports: set[str] = {TESTING, *([SYNCTEST] if tests.virtual_clock else [])}
         self._compares_floats = False
 
     def text(self) -> str:
@@ -130,48 +156,108 @@ class _LevelFile:
             *_comment(test.note or ""),
             f"func Test{_test_name(test.case_id)}(t *testing.T) {{",
         ]
-        lines += (f"{INDENT}{line}" for line in self._body(test))
+        body = self._body(test)
+        if self._tests.virtual_clock:
+            body = ["synctest.Test(t, func(t *testing.T) {", *_indented(body), "})"]
+        lines += _indented(body)
         return "\n".join([*lines, "}"])
 
-    def _body(self, test: LevelTest) -> Iterator[str]:
+    def _body(self, test: LevelTest) -> list[str]:
+        """The test's statements, a group per operation, the constructor's first. On the virtual
+        clock the case settles between two operations."""
+        names = _TaskNames(self._instance, self._alias)
+        groups = [self._construction(test), *(self._operation(op, names) for op in test.operations)]
+        if not self._tests.virtual_clock:
+            return [line for group in groups for line in group]
+        settled = [line for group in groups[:-1] for line in (*group, "synctest.Wait()")]
+        return [*self._clock_start(test), *settled, *groups[-1]]
+
+    def _clock_start(self, test: LevelTest) -> list[str]:
+        if not any(isinstance(operation, Now) for operation in test.operations):
+            return []
+        self._imports.add(TIME)
+        return [f"{START} := {TIME}.Now()"]
+
+    def _construction(self, test: LevelTest) -> list[str]:
         signature = self._tests.signature
         arguments = self._arguments(
             test.constructor_arguments, [param.type for param in signature.constructor_params]
         )
         constructor = constructor_name(signature.name, Language.GO) or f"New{signature.name}"
         construction = f"{self._alias}.{constructor}({arguments})"
-        if not test.calls:
-            yield construction
-            return
-        yield f"{self._instance} := {construction}"
-        for call in test.calls:
-            yield from self._statement(call)
+        uses_instance = any(isinstance(op, Call | Spawn) for op in test.operations)
+        return [f"{self._instance} := {construction}" if uses_instance else construction]
 
-    def _statement(self, call: Call) -> Iterator[str]:
-        name = member_name(call.method.name, Language.GO, NameRole.METHOD)
-        types = [param.type for param in call.method.params]
-        invocation = f"{self._instance}.{name}({self._arguments(call.arguments, types)})"
+    def _operation(self, operation: Operation, names: "_TaskNames") -> list[str]:
+        match operation:
+            case Call():
+                return self._call(operation)
+            case Advance(milliseconds):
+                self._imports.add(TIME)
+                return [f"time.Sleep({milliseconds} * time.Millisecond)"]
+            case Spawn():
+                return self._spawn(operation, names)
+            case Join(task, call):
+                return self._checked(f"<-{names.variable(task)}", call)
+            case Now(expected):
+                self._imports.add(TIME)
+                found = ScalarType(Scalar.LONG)
+                reading = f"{TIME}.Since({START}).Milliseconds()"
+                return self._check_result(reading, found, expected, ComparatorType.EXACT)
+
+    def _call(self, call: Call) -> list[str]:
+        return self._checked(self._invocation(call.method, call.arguments), call)
+
+    def _invocation(self, method: Method, arguments: Sequence[JsonValue]) -> str:
+        name = member_name(method.name, Language.GO, NameRole.METHOD)
+        types = [param.type for param in method.params]
+        return f"{self._instance}.{name}({self._arguments(arguments, types)})"
+
+    def _spawn(self, spawn: Spawn, names: "_TaskNames") -> list[str]:
+        variable = names.assign(spawn.task)
+        invocation = self._invocation(spawn.method, spawn.arguments)
+        returns = spawn.method.returns.type
+        if isinstance(returns, VoidType):
+            return [
+                f"{variable} := make(chan struct{{}})",
+                f"go func() {{ {invocation}; close({variable}) }}()",
+            ]
+        self._imports |= _type_imports(returns)
+        return [
+            f"{variable} := make(chan {go_type(returns)}, 1)",
+            f"go func() {{ {variable} <- {invocation} }}()",
+        ]
+
+    def _checked(self, invocation: str, call: Call) -> list[str]:
+        """`invocation` alone when the method returns nothing, otherwise its result checked."""
         if not call.returns_value:
-            yield invocation
-            return
+            return [invocation]
         returns = call.method.returns.type
+        return self._check_result(invocation, returns, call.expected, call.comparator)
+
+    def _check_result(
+        self, invocation: str, returns: ReturnType, expected: JsonValue, comparator: ComparatorType
+    ) -> list[str]:
         assert not isinstance(returns, VoidType)
-        check = self._check(call, returns)
+        check = self._check(expected, comparator, returns)
         tested = check.sorting.applied(invocation) if check.sorting else invocation
-        yield f"if {GOT} := {tested}; {check.mismatch} {{"
         called = f"{invocation} sorted" if check.sorting else invocation
         message = _format_string(called, f"{check.expected}{check.within}")
-        yield f"{INDENT}t.Errorf({message}, {GOT})"
-        yield "}"
+        return [
+            f"if {GOT} := {tested}; {check.mismatch} {{",
+            f"{INDENT}t.Errorf({message}, {GOT})",
+            "}",
+        ]
 
-    def _check(self, call: Call, returns: ValueType) -> "_Check":
-        expected = call.expected
-        floats = call.comparator is ComparatorType.FLOAT and _holds_numbers(expected)
+    def _check(
+        self, expected: JsonValue, comparator: ComparatorType, returns: ValueType
+    ) -> "_Check":
+        floats = comparator is ComparatorType.FLOAT and _holds_numbers(expected)
         if floats:
             self._compares_floats = True
             self._imports.add(MATH)
         sorting = None
-        if call.comparator is ComparatorType.UNORDERED and isinstance(expected, list):
+        if comparator is ComparatorType.UNORDERED and isinstance(expected, list):
             sorting = self._sorting(_element(returns))
             in_order: list[JsonValue] = sorted(expected, key=lambda item: _sort_key(item, returns))
             expected = in_order
@@ -406,15 +492,59 @@ def _entry_alias(entry: str) -> str:
     return alias if usable else FALLBACK_ALIAS
 
 
+def _used_names(alias: str) -> set[str]:
+    """The names a test already uses, which its instance and its tasks must not take."""
+    taken = {"t", GOT, START, alias, CLOSE_TO, *RESERVED_WORDS[Language.GO]}
+    return taken | {posixpath.basename(path) for path in (*_STANDARD_LIBRARY, DECIMAL)}
+
+
 def _instance_name(class_name: str, alias: str) -> str:
     """The class's first letter in lower case (`b` for `Bank`), unless a name the test uses
     takes it: then the class in lowerCamelCase, then `subject`."""
     words = snake_case(class_name).split("_")
     camel = words[0] + "".join(word.capitalize() for word in words[1:])
-    taken = {"t", GOT, alias, CLOSE_TO, *RESERVED_WORDS[Language.GO]}
-    taken |= {posixpath.basename(path) for path in (*_STANDARD_LIBRARY, DECIMAL)}
+    taken = _used_names(alias)
     candidates = (class_name[:1].lower(), camel, FALLBACK_INSTANCE)
     return next(name for name in candidates if name and name not in taken)
+
+
+class _TaskNames:
+    """The variables of one test's tasks, each the channel its goroutine answers on: the task's
+    name as a Go identifier, else `task1`, `task2`, unless the test already uses the name."""
+
+    def __init__(self, instance: str, alias: str) -> None:
+        self._taken = _used_names(alias) | {instance}
+        self._variables: dict[str, str] = {}
+
+    def assign(self, task: str) -> str:
+        spelled = _NOT_IDENTIFIER.sub("", task)
+        fallbacks = (f"{FALLBACK_TASK}{number}" for number in itertools.count(1))
+        candidates = itertools.chain([spelled], fallbacks)
+        usable = (name for name in candidates if name and not name[0].isdigit())
+        variable = next(name for name in usable if name not in self._taken)
+        self._taken.add(variable)
+        self._variables[task] = variable
+        return variable
+
+    def variable(self, task: str) -> str:
+        return self._variables[task]
+
+
+def _type_imports(declared: ValueType) -> frozenset[str]:
+    """The packages whose types `go_type(declared)` spells."""
+    match declared:
+        case ScalarType(scalar):
+            return (
+                frozenset({_SCALAR_IMPORTS[scalar]}) if scalar in _SCALAR_IMPORTS else frozenset()
+            )
+        case ArrayType(element) | ListType(element):
+            return _type_imports(element)
+        case NodeType():
+            return frozenset()
+
+
+def _indented(lines: Sequence[str]) -> list[str]:
+    return [f"{INDENT}{line}" for line in lines]
 
 
 def _comment(text: str) -> list[str]:

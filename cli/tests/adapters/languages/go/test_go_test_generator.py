@@ -12,10 +12,11 @@ import pytest
 
 from coding_study.adapters.languages.go.test_generator import GoTestGenerator
 from coding_study.domain.cases import JsonValue
-from coding_study.domain.problem import ComparatorSpec, ComparatorType, Language
+from coding_study.domain.problem import ComparatorSpec, ComparatorType, Language, Level
 from coding_study.domain.project import Project
 from coding_study.domain.project_tests import level_tests
 from coding_study.domain.signature import ClassSignature, Method
+from coding_study.domain.virtual_clock import ProjectClock
 from tests.project_builders import OPS, method, ops_case, project_meta, project_problem
 
 GENERATOR = GoTestGenerator()
@@ -299,3 +300,251 @@ def test_the_instance_avoids_the_testing_parameter():
 def test_the_instance_avoids_the_package_name():
     meta = replace(GO_META, project=Project("b.go"))
     assert "\tbank := b.NewBank()\n" in generated(SPEC_EX1, meta=meta)
+
+
+# the virtual clock
+
+PUBLISH = method("publish", 1, "body: string", "int")
+RECEIVE = method("receive", 1, "waitMs: int", "string")
+LEAVE = method("leave", 1, "", "void")
+INBOX = ClassSignature("Inbox", (), (PUBLISH, RECEIVE, LEAVE))
+CLOCK_EXAMPLE = """\
+// Level 1 examples of bank-project-go, written by `cstudy start`.
+// Yours to edit and extend: cstudy never rewrites this file.
+
+package tests_test
+
+import (
+\t"testing"
+\t"testing/synctest"
+\t"time"
+
+\tbank "bank-project-go"
+)
+
+// a waiting receive takes a message published while it waits
+func TestEx1(t *testing.T) {
+\tsynctest.Test(t, func(t *testing.T) {
+\t\tstart := time.Now()
+\t\ti := bank.NewInbox()
+\t\tsynctest.Wait()
+\t\tr1 := make(chan string, 1)
+\t\tgo func() { r1 <- i.Receive(5000) }()
+\t\tsynctest.Wait()
+\t\ttime.Sleep(1000 * time.Millisecond)
+\t\tsynctest.Wait()
+\t\tif got := i.Publish("a"); got != 1 {
+\t\t\tt.Errorf(`i.Publish("a") = %v, want 1`, got)
+\t\t}
+\t\tsynctest.Wait()
+\t\tif got := <-r1; got != "a" {
+\t\t\tt.Errorf(`<-r1 = %v, want "a"`, got)
+\t\t}
+\t\tsynctest.Wait()
+\t\tif got := time.Since(start).Milliseconds(); got != 1000 {
+\t\t\tt.Errorf(`time.Since(start).Milliseconds() = %v, want 1000`, got)
+\t\t}
+\t})
+}
+"""
+CLOCK_EX1 = ops_case(
+    "ex1",
+    1,
+    ("@spawn", ["r1", "receive", 5000], None),
+    ("@advance", [1000], None),
+    ("publish", ["a"], 1),
+    ("@join", ["r1"], "a"),
+    ("@now", [], 1000),
+    note="a waiting receive takes a message published while it waits",
+    class_name="Inbox",
+)
+
+
+def clock_meta(signature: ClassSignature = INBOX, comparator: ComparatorSpec = OPS):
+    return project_meta(
+        signature, comparator, Language.GO, (Level(1, "Waiting"),), clock=ProjectClock.VIRTUAL
+    )
+
+
+def on_the_clock(*calls, meta=None, note: str | None = None, class_name: str = "Inbox") -> str:
+    case = ops_case("ex1", 1, *calls, note=note, class_name=class_name)
+    return generated(case, meta=meta or clock_meta())
+
+
+def body(text: str) -> str:
+    """The lines of the one test, inside its `synctest.Test`."""
+    inner = text.split("\tsynctest.Test(t, func(t *testing.T) {\n", 1)[1]
+    return inner.split("\t})\n}\n", 1)[0]
+
+
+def test_a_level_on_the_virtual_clock_matches_the_spec_example():
+    assert generated(CLOCK_EX1, meta=clock_meta()) == CLOCK_EXAMPLE
+
+
+def test_generation_on_the_virtual_clock_is_byte_stable():
+    assert generated(CLOCK_EX1, meta=clock_meta()) == generated(CLOCK_EX1, meta=clock_meta())
+
+
+def test_a_test_of_calls_alone_still_runs_in_a_bubble():
+    text = on_the_clock(("publish", ["a"], 1), ("publish", ["b"], 2))
+    assert body(text) == (
+        "\t\ti := bank.NewInbox()\n"
+        "\t\tsynctest.Wait()\n"
+        '\t\tif got := i.Publish("a"); got != 1 {\n'
+        '\t\t\tt.Errorf(`i.Publish("a") = %v, want 1`, got)\n'
+        "\t\t}\n"
+        "\t\tsynctest.Wait()\n"
+        '\t\tif got := i.Publish("b"); got != 2 {\n'
+        '\t\t\tt.Errorf(`i.Publish("b") = %v, want 2`, got)\n'
+        "\t\t}\n"
+    )
+
+
+def test_the_bubble_closes_over_a_constructor_alone():
+    assert body(on_the_clock()) == "\t\tbank.NewInbox()\n"
+
+
+def test_the_bubble_is_the_one_the_standard_library_offers():
+    assert imports(on_the_clock(("publish", ["a"], 1))) == (
+        '\t"testing"\n\t"testing/synctest"\n\n\tbank "bank-project-go"'
+    )
+
+
+def test_the_clock_is_imported_when_the_test_moves_or_reads_it():
+    text = on_the_clock(("@advance", [5], None))
+    assert (
+        imports(text) == '\t"testing"\n\t"testing/synctest"\n\t"time"\n\n\tbank "bank-project-go"'
+    )
+
+
+def test_advance_sleeps_in_the_bubble():
+    text = on_the_clock(("@advance", [1500], None))
+    assert "\t\ttime.Sleep(1500 * time.Millisecond)\n" in text
+
+
+def test_the_start_is_read_only_when_a_test_reads_the_clock():
+    text = on_the_clock(("@advance", [5], None))
+    assert "start := " not in text
+
+
+def test_the_start_is_read_before_the_instance_is_built():
+    text = on_the_clock(("@now", [], 0), ("publish", ["a"], 1))
+    assert body(text).startswith("\t\tstart := time.Now()\n\t\ti := bank.NewInbox()\n")
+
+
+def test_now_compares_the_elapsed_milliseconds():
+    text = on_the_clock(("@now", [], 250))
+    assert body(text).endswith(
+        "\t\tif got := time.Since(start).Milliseconds(); got != 250 {\n"
+        "\t\t\tt.Errorf(`time.Since(start).Milliseconds() = %v, want 250`, got)\n"
+        "\t\t}\n"
+    )
+
+
+def test_harness_operations_alone_leave_the_instance_unnamed():
+    assert "\t\tbank.NewInbox()\n\t\tsynctest.Wait()\n\t\ttime.Sleep(" in on_the_clock(
+        ("@advance", [5], None)
+    )
+
+
+def test_spawn_starts_a_goroutine_that_sends_the_result():
+    text = on_the_clock(("@spawn", ["r1", "receive", 5], None), ("@join", ["r1"], ""))
+    assert (
+        "\t\tr1 := make(chan string, 1)\n\t\tgo func() { r1 <- i.Receive(5) }()\n"
+        "\t\tsynctest.Wait()\n"
+    ) in text
+
+
+def test_spawn_of_a_void_method_closes_its_channel():
+    text = on_the_clock(("@spawn", ["l", "leave"], None), ("@join", ["l"], None))
+    assert "\t\tl := make(chan struct{})\n\t\tgo func() { i.Leave(); close(l) }()\n" in text
+
+
+def test_join_of_a_void_method_only_waits():
+    text = on_the_clock(("@spawn", ["l", "leave"], None), ("@join", ["l"], None))
+    assert body(text).endswith("\t\tsynctest.Wait()\n\t\t<-l\n")
+
+
+def test_join_compares_the_received_result():
+    text = on_the_clock(("@spawn", ["r1", "receive", 5], None), ("@join", ["r1"], "x"))
+    assert body(text).endswith(
+        '\t\tif got := <-r1; got != "x" {\n\t\t\tt.Errorf(`<-r1 = %v, want "x"`, got)\n\t\t}\n'
+    )
+
+
+def test_join_sorts_an_unordered_result_first():
+    names = method("names", 1, "", "list<string>")
+    comparator = ComparatorSpec(ComparatorType.OPS, per_method={"names": ComparatorType.UNORDERED})
+    meta = clock_meta(ClassSignature("Inbox", (), (names,)), comparator)
+    text = on_the_clock(("@spawn", ["n", "names"], None), ("@join", ["n"], ["b", "a"]), meta=meta)
+    assert (
+        "\t\tif got := slices.Sorted(slices.Values(<-n)); "
+        '!slices.Equal(got, []string{"a", "b"}) {\n'
+        '\t\t\tt.Errorf(`<-n sorted = %v, want []string{"a", "b"}`, got)\n'
+    ) in text
+
+
+def test_join_of_a_float_result_allows_the_tolerance():
+    ratio = method("ratio", 1, "", "double")
+    comparator = ComparatorSpec(ComparatorType.OPS, per_method={"ratio": ComparatorType.FLOAT})
+    meta = clock_meta(ClassSignature("Inbox", (), (ratio,)), comparator)
+    text = on_the_clock(("@spawn", ["x", "ratio"], None), ("@join", ["x"], 0.5), meta=meta)
+    assert "if got := <-x; !closeTo(got, 0.5) {" in text
+    assert text.count("func closeTo(") == 1
+
+
+@pytest.mark.parametrize(
+    ("returns", "value", "channel", "extra_import"),
+    [
+        ("list<int>", [1], "chan []int", ""),
+        ("decimal", "2.5", "chan decimal.Decimal", '\t"github.com/shopspring/decimal"'),
+        ("date", "2026-01-02", "chan time.Time", ""),
+    ],
+)
+def test_the_channel_carries_the_type_the_method_returns(returns, value, channel, extra_import):
+    report = method("report", 1, "", returns)
+    meta = clock_meta(ClassSignature("Inbox", (), (report,)))
+    text = on_the_clock(("@spawn", ["x", "report"], None), ("@join", ["x"], value), meta=meta)
+    assert f"\t\tx := make({channel}, 1)\n" in text
+    assert ("time" in imports(text)) == (returns == "date")
+    assert extra_import in imports(text)
+
+
+def test_a_task_name_becomes_a_go_identifier():
+    text = on_the_clock(
+        ("@spawn", ["consumer-1", "receive", 5], None), ("@join", ["consumer-1"], "")
+    )
+    assert "\t\tconsumer1 := make(chan string, 1)\n" in text
+    assert "<-consumer1" in text
+
+
+@pytest.mark.parametrize("task", ["t", "got", "i", "bank", "start", "time", "range", "1", ""])
+def test_a_task_name_that_the_test_already_uses_gets_another_name(task):
+    text = on_the_clock(("@spawn", [task, "receive", 5], None), ("@join", [task], ""))
+    assert "\t\ttask1 := make(chan string, 1)\n" in text
+    assert "<-task1" in text
+
+
+def test_two_tasks_that_become_one_identifier_get_two_names():
+    text = on_the_clock(
+        ("@spawn", ["a-b", "receive", 5], None),
+        ("@spawn", ["a b", "receive", 6], None),
+        ("@spawn", ["ab", "receive", 7], None),
+        ("@join", ["a-b"], ""),
+        ("@join", ["a b"], ""),
+        ("@join", ["ab"], ""),
+    )
+    assert "\t\tab := make(chan string, 1)\n\t\tgo func() { ab <- i.Receive(5) }()\n" in text
+    assert "\t\ttask1 := make(chan string, 1)\n\t\tgo func() { task1 <- i.Receive(6) }()\n" in text
+    assert "\t\ttask2 := make(chan string, 1)\n\t\tgo func() { task2 <- i.Receive(7) }()\n" in text
+
+
+def test_a_task_name_is_free_again_in_the_next_test():
+    first = ops_case("ex1", 1, ("@spawn", ["r", "receive", 5], None), ("@join", ["r"], ""))
+    second = ops_case("ex2", 1, ("@spawn", ["r", "receive", 5], None), ("@join", ["r"], ""))
+    text = generated(first, second, meta=clock_meta())
+    assert text.count("\t\tr := make(chan string, 1)\n") == 2
+
+
+def test_the_files_of_the_real_clock_are_not_wrapped_in_a_bubble():
+    assert "synctest" not in generated(SPEC_EX1)
