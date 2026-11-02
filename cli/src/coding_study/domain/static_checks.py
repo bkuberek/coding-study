@@ -55,6 +55,7 @@ from coding_study.domain.project_checks import ProjectContent, project_issues
 from coding_study.domain.rubric import LLD_RUBRIC_SECTIONS, rubric_issues
 from coding_study.domain.signature import ClassSignature, FunctionSignature, Method, output_type
 from coding_study.domain.statement import example_marker
+from coding_study.domain.stress import StressScenario
 from coding_study.domain.type_dsl import Scalar, scalars_of
 from coding_study.domain.value_checks import case_issues
 
@@ -108,7 +109,7 @@ class ProblemContent:
     rubric: str | None = None
     """rubric.md, when the problem has one."""
     broken_files: tuple[str, ...] = ()
-    """Concurrent problems: file names in solutions/broken/."""
+    """File names in solutions/broken/: a concurrent problem's broken references."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,6 +154,7 @@ def _concurrency_content(content: ProblemContent) -> ConcurrencyContent:
         explanation=content.explanation,
         files=content.files,
         broken_files=content.broken_files,
+        broken_overlays=(content.problem.project_files or NO_PROJECT_FILES).broken,
     )
 
 
@@ -294,7 +296,8 @@ def _reference_files(issues: _Issues, content: ProblemContent) -> None:
 
 def _overlays(issues: _Issues, content: ProblemContent) -> None:
     """S7 for a project problem: every directory in solutions/ is the declared approach, an
-    overlay on the starter with at least one file, and no reference file exists."""
+    overlay on the starter with at least one file, or `broken/`, which S12 checks; and no
+    reference file exists."""
     problem = content.problem
     overlays = (problem.project_files or NO_PROJECT_FILES).overlays
     for name in content.solution_files:
@@ -442,12 +445,25 @@ def _case_level_problems(
         return
     if isinstance(case.input, GeneratedInput) and case.level != level_count:
         yield f"a generate case belongs to the last level ({level_count})"
-    if not isinstance(case.input, OperationSequence):
-        return
-    for operation in dict.fromkeys(case.input.ops[1:]):
+    for operation in dict.fromkeys(_called_methods(case)):
         level = method_levels.get(operation)
         if level is not None and level > case.level:
             yield f"{operation} is introduced at level {level}"
+
+
+def _called_methods(case: Case) -> Iterator[str]:
+    """The operations a case calls after its constructor; a stress case's in its setup, its
+    workers' steps and its final sequence."""
+    match case.input:
+        case OperationSequence(ops=ops):
+            yield from ops[1:]
+        case StressScenario(setup=setup, workers=workers, final=final):
+            yield from setup.ops[1:]
+            yield from (step.op for group in workers for step in group.steps)
+            if final is not None:
+                yield from final.ops
+        case _:
+            return
 
 
 class _ProblemMarkdown:

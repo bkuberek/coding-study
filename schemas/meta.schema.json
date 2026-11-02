@@ -116,12 +116,15 @@
       "else": { "not": { "required": ["levels"] } }
     },
     {
-      "description": "Project problems: a project block and exactly one language; no stub or perf, even at their defaults (check S14)",
+      "description": "Project problems: a project block and exactly one language; no stub or perf, even at their defaults (check S14); a concurrency block names one model, since a project lists one language",
       "if": { "required": ["kind"], "properties": { "kind": { "const": "project" } } },
       "then": {
         "required": ["project", "languages"],
         "not": { "anyOf": [{ "required": ["stub"] }, { "required": ["perf"] }] },
-        "properties": { "languages": { "maxItems": 1 } }
+        "properties": {
+          "languages": { "maxItems": 1 },
+          "concurrency": { "properties": { "model": { "$ref": "#/$defs/concurrencyModel" } } }
+        }
       },
       "else": { "not": { "required": ["project"] } }
     },
@@ -131,7 +134,7 @@
       "else": { "properties": { "signature": { "required": ["class"] } } }
     },
     {
-      "description": "Concurrent problems: a concurrency block, the ops comparator, no perf block and no complexity classes or oracle; every other kind declares complexity classes",
+      "description": "Concurrent problems: a concurrency block, the ops comparator, no perf block and no complexity classes or oracle; every other kind declares complexity classes, and only a project may also have a concurrency block",
       "if": { "required": ["kind"], "properties": { "kind": { "const": "concurrent" } } },
       "then": {
         "required": ["concurrency"],
@@ -147,9 +150,13 @@
         }
       },
       "else": {
-        "not": { "required": ["concurrency"] },
         "properties": { "approaches": { "items": { "required": ["time_class", "space_class"] } } }
       }
+    },
+    {
+      "description": "A concurrency block belongs to a concurrent problem or a project with stress cases (docs/specs/problem-format.md#stress-cases-in-projects)",
+      "if": { "required": ["kind"], "properties": { "kind": { "enum": ["concurrent", "project"] } } },
+      "else": { "not": { "required": ["concurrency"] } }
     }
   ],
   "$defs": {
@@ -332,7 +339,7 @@
       }
     },
     "concurrency": {
-      "description": "Concurrent problems only (docs/specs/problem-format.md#concurrency-block-in-metayaml)",
+      "description": "Concurrent problems, and project problems with stress cases (docs/specs/problem-format.md#concurrency-block-in-metayaml)",
       "type": "object",
       "additionalProperties": false,
       "required": ["model"],

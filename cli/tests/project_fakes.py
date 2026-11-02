@@ -37,9 +37,11 @@ from coding_study.domain.runs import (
 )
 from coding_study.domain.suite_runs import Passed, SuiteJob, SuiteReport, SuiteTest
 from tests.fakes import FakeToolchains, make_environment, repository_root
-from tests.helpers import PROJECT_PROBLEMS
+from tests.helpers import PROJECT_PROBLEMS, PROJECT_STRESS_PROBLEMS
 
 PROJECT_SLUG = "bank-project-python"
+TALLY_SLUG = "tally-project-python"
+"""The project with stress cases (`stress_project_environment`)."""
 PROJECT_FOLDER = f"projects/{PROJECT_SLUG}"
 PROJECT_RUNNER = RunnerInfo("python", 1, "3.13", ("project", "suite"))
 LEVEL_1_TEST = SuiteTest("tests/test_level_1.py::test_ex1", Passed(1000))
@@ -193,7 +195,20 @@ def project_environment(
     tmp_path: Path, process: ScriptedProjectProcess, **overrides: object
 ) -> Environment:
     """The fixture project problem, its Python runner faked and its tests generated for real."""
+    return _environment(repository_root(tmp_path, PROJECT_PROBLEMS), process, overrides)
+
+
+def stress_project_environment(
+    tmp_path: Path, process: ScriptedProjectProcess, **overrides: object
+) -> Environment:
+    """The fixture project problem with stress cases and a broken overlay
+    (`TALLY_SLUG`), as `project_environment` sets up the bank project."""
+    return _environment(repository_root(tmp_path, PROJECT_STRESS_PROBLEMS), process, overrides)
+
+
+def _environment(
+    root: Path, process: ScriptedProjectProcess, overrides: Mapping[str, object]
+) -> Environment:
     toolchains = project_toolchains(PythonTestGenerator())
     parts: Mapping[str, object] = {"toolchains": toolchains, "runner_process": process}
-    root = repository_root(tmp_path, PROJECT_PROBLEMS)
     return make_environment(root, **{**parts, **overrides})

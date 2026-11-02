@@ -14,7 +14,9 @@ from coding_study.adapters.schema_validation import (
 from tests.helpers import (
     BANK_PROJECT,
     PROJECT_PROBLEMS,
+    PROJECT_STRESS_PROBLEMS,
     SCHEMAS_DIRECTORY,
+    TALLY_PROJECT,
     load_fixture_meta,
     load_fixture_tests,
 )
@@ -226,6 +228,36 @@ def test_a_project_may_declare_the_virtual_clock():
     meta = project_meta()
     meta["project"]["clock"] = "virtual"
     assert validator_for_meta_file().violations(meta, SOURCE) == []
+
+
+def stress_project_meta() -> dict[str, Any]:
+    return load_fixture_meta(TALLY_PROJECT, PROJECT_STRESS_PROBLEMS)
+
+
+def test_a_project_may_have_a_concurrency_block():
+    assert validator_for_meta_file().violations(stress_project_meta(), SOURCE) == []
+
+
+def test_a_project_names_one_concurrency_model():
+    meta = stress_project_meta()
+    meta["concurrency"]["model"] = {"python": "threads"}
+    assert "concurrency.model" in [
+        issue.location for issue in validator_for_meta_file().violations(meta, SOURCE)
+    ]
+
+
+@pytest.mark.parametrize("directory_name", ["0001-two-sum", "0002-lru-cache"])
+def test_only_concurrent_and_project_problems_have_a_concurrency_block(directory_name):
+    def add_concurrency(meta: dict[str, Any]) -> None:
+        meta["concurrency"] = {"model": "threads"}
+
+    meta = load_fixture_meta(directory_name)
+    assert "" in locations_after(validator_for_meta_file(), meta, add_concurrency)
+
+
+def test_a_project_stress_case_has_a_level():
+    tests = load_fixture_tests(TALLY_PROJECT, PROJECT_STRESS_PROBLEMS)
+    assert validator_for_tests_file().violations(tests, SOURCE) == []
 
 
 INVALID_CLOCK_META: dict[str, tuple[Mutation, str]] = {

@@ -61,10 +61,11 @@ def _problem_blocks(view: SolutionView) -> Iterator[str]:
         yield view.overview
     for part in view.approaches:
         yield from _approach(part, view.language)
+    if view.broken is not None:
+        yield from _broken(view.broken, view.language, view.project_files)
+        return
     for file in view.project_files:
         yield from _reference_file(file, view.language)
-    if view.broken is not None:
-        yield from _broken(view.broken, view.language)
 
 
 def _approach(part: ApproachSolution, language: Language) -> Iterator[str]:
@@ -76,17 +77,24 @@ def _approach(part: ApproachSolution, language: Language) -> Iterator[str]:
 
 
 def _reference_file(file: ReferenceFile, language: Language) -> Iterator[str]:
-    """An added file in full, a changed one as its diff against the starter."""
+    """An added file in full, a changed one as its diff against the starter (a broken overlay's,
+    against the reference)."""
     yield f"**{file.path}** ({'added' if file.added else 'changed'})"
     yield _fenced(file.text, LEXERS[language] if file.added else DIFF_LEXER)
 
 
-def _broken(part: BrokenSolution, language: Language) -> Iterator[str]:
+def _broken(
+    part: BrokenSolution, language: Language, files: tuple[ReferenceFile, ...]
+) -> Iterator[str]:
+    """The broken reference's file, or a project's broken overlay as the files it changes on the
+    reference, then its explanation section."""
     broken = part.broken
     yield f"**broken reference {broken.id}: {broken.bug}**"
+    for file in files:
+        yield from _reference_file(file, language)
     if part.code is not None:
         yield _fenced(part.code, LEXERS[language])
-    elif part.available:
+    elif part.available and not files:
         yield _note(f"no {language} file for {broken.id}; available: {', '.join(part.available)}")
     if part.explanation:
         yield part.explanation

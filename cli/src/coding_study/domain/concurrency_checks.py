@@ -1,13 +1,16 @@
-"""`cstudy verify --static` checks S11 and S12 on concurrent problems
-(docs/specs/authoring.md#static).
+"""`cstudy verify --static` checks S11 and S12 on concurrent problems, and on project problems
+with stress cases (docs/specs/authoring.md#static).
 
 S11 covers the problem: kind and track, models per language, files a concurrent problem may not
 have, and the `## Concurrency` section. S12 covers the stress cases (steps, templates, harness
-ops, selectors, limits) and the broken references with their explanation sections.
+ops, selectors, limits) and the broken references with their explanation sections. A project's
+broken references are overlays, `solutions/broken/<id>/`, and it needs no `## Concurrency`
+section: each level's statement says what its stress cases share
+(docs/specs/problem-format.md#stress-cases-in-projects).
 """
 
-from collections.abc import Iterator, Sequence
-from dataclasses import dataclass
+from collections.abc import Iterator, Mapping, Sequence
+from dataclasses import dataclass, field
 
 from coding_study.domain.cases import Case, JsonValue, OperationSequence
 from coding_study.domain.concurrency import BROKEN_PREFIX, Concurrency, model_problems
@@ -17,6 +20,7 @@ from coding_study.domain.layout import SOURCE_EXTENSIONS, language_of_extension
 from coding_study.domain.markdown import MarkdownDocument
 from coding_study.domain.problem import ProblemKind, ProblemMeta, Track
 from coding_study.domain.problem_files import (
+    BROKEN_DIRECTORY,
     EXPLANATION_FILE,
     GENERATOR_FILE,
     META_FILE,
@@ -25,6 +29,7 @@ from coding_study.domain.problem_files import (
     TESTS_FILE,
     broken_file,
 )
+from coding_study.domain.project import ProjectTree
 from coding_study.domain.signature import ClassSignature, Method
 from coding_study.domain.stress import (
     HARNESS_ARITY,
@@ -55,6 +60,8 @@ MIN_WORKERS = 2
 MAX_WORKERS = 64
 MAX_OPS_PER_RUN = 20_000
 _INTEGER_SCALARS = (Scalar.INT, Scalar.LONG)
+STRESS_CHECKER_UNUSED = "present but no stress case has a checker invariant"
+PROJECT_BROKEN_DIRECTORY = "a project's broken reference is a directory, solutions/broken/<id>/"
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,12 +77,17 @@ class ConcurrencyContent:
     """File names directly in the problem directory."""
     broken_files: tuple[str, ...]
     """File names in solutions/broken/."""
+    broken_overlays: Mapping[str, ProjectTree] = field(default_factory=dict[str, ProjectTree])
+    """A project problem: each directory in solutions/broken/ by name."""
 
 
 def concurrency_issues(content: ConcurrencyContent) -> tuple[ContentIssue, ...]:
-    """S11 and S12; nothing for problems that are neither concurrent nor in that track."""
+    """S11 and S12; nothing for problems that are neither concurrent, nor in that track, nor
+    projects."""
     meta = content.meta
     is_concurrent = meta.kind is ProblemKind.CONCURRENT
+    if meta.kind is ProblemKind.PROJECT:
+        return _project_issues(content)
     if not is_concurrent and meta.track is not Track.CONCURRENCY:
         return ()
     issues = _Issues(content.directory)
@@ -85,12 +97,35 @@ def concurrency_issues(content: ConcurrencyContent) -> tuple[ContentIssue, ...]:
     if concurrency is None or not isinstance(meta.signature, ClassSignature):
         return tuple(issues.errors)
     _Problem(issues, content, concurrency).check()
-    stress = _Stress(issues, meta, meta.signature)
+    _stress_cases(issues, content, meta.signature)
+    return tuple(issues.errors)
+
+
+def _project_issues(content: ConcurrencyContent) -> tuple[ContentIssue, ...]:
+    """S11 and S12 on a project: its stress cases and broken overlays need the `concurrency`
+    block, and stress_checker.py a `checker` invariant."""
+    issues = _Issues(content.directory)
+    meta, concurrency = content.meta, content.meta.concurrency
+    if concurrency is not None and isinstance(meta.signature, ClassSignature):
+        _Problem(issues, content, concurrency).check()
+        _stress_cases(issues, content, meta.signature)
+        return tuple(issues.errors)
+    if content.broken_overlays or content.broken_files:
+        message = "only a project with a concurrency block has broken overlays"
+        issues.error(BROKEN_DIRECTORY, message)
+    if STRESS_CHECKER_FILE in content.files:
+        issues.error(STRESS_CHECKER_FILE, STRESS_CHECKER_UNUSED)
+    return tuple(issues.errors)
+
+
+def _stress_cases(
+    issues: "_Issues", content: ConcurrencyContent, signature: ClassSignature
+) -> None:
+    stress = _Stress(issues, content.meta, signature)
     for index, case in enumerate(content.cases):
         if isinstance(case.input, StressScenario):
             stress.check(f"cases[{index}] {case.id}", case.input)
     stress.check_checker_file(content)
-    return tuple(issues.errors)
 
 
 class _Issues:
@@ -112,13 +147,18 @@ class _Problem:
 
     def check(self) -> None:
         meta = self._content.meta
+        is_project = meta.kind is ProblemKind.PROJECT
         for problem in model_problems(self._concurrency, meta.languages):
             self._issues.error(META_FILE, problem, "concurrency.model")
-        if GENERATOR_FILE in self._content.files:
+        if GENERATOR_FILE in self._content.files and not is_project:
             self._issues.error(GENERATOR_FILE, "concurrent problems have no generator")
-        self._concurrency_section()
+        if not is_project:
+            self._concurrency_section()
         self._broken_ids()
-        self._broken_files()
+        if is_project:
+            self._broken_overlays()
+        else:
+            self._broken_files()
         self._broken_sections()
 
     def _concurrency_section(self) -> None:
@@ -185,6 +225,25 @@ class _Problem:
             self._issues.error(broken_file(name), message)
         for name in sorted(expected - present):
             self._issues.error(broken_file(name), "missing (declared in concurrency.broken)")
+
+    def _broken_overlays(self) -> None:
+        """A project's broken reference is an overlay with at least one file, in the project's
+        one language unless the broken reference names none of it."""
+        for name in self._content.broken_files:
+            self._issues.error(broken_file(name), PROJECT_BROKEN_DIRECTORY)
+        overlays = self._content.broken_overlays
+        for name in sorted(overlays):
+            if self._concurrency.broken_reference(name) is None:
+                message = "maps to no broken reference in concurrency.broken"
+                self._issues.error(broken_file(name), message)
+        languages = self._content.meta.languages
+        for broken in self._concurrency.broken:
+            if not any(broken.covers(language, languages) for language in languages):
+                continue
+            overlay = overlays.get(broken.id)
+            if overlay is None or not overlay.files:
+                message = "missing (declared in concurrency.broken)"
+                self._issues.error(f"{broken_file(broken.id)}/", message)
 
     def _broken_sections(self) -> None:
         text = self._content.explanation
@@ -257,9 +316,7 @@ class _Stress:
                 STRESS_CHECKER_FILE, "missing (a stress case has a checker invariant)"
             )
         if present and not self._uses_checker:
-            self._issues.error(
-                STRESS_CHECKER_FILE, "present but no stress case has a checker invariant"
-            )
+            self._issues.error(STRESS_CHECKER_FILE, STRESS_CHECKER_UNUSED)
 
     def _setup(self, setup: OperationSequence) -> Iterator[str]:
         if setup.ops[0] != self._signature.name:

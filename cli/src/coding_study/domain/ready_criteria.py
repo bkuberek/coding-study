@@ -3,7 +3,9 @@
 `cstudy verify --require-ready` enforces these on top of the static and dynamic checks.
 """
 
-from coding_study.domain.cases import GeneratedInput
+from collections.abc import Sequence
+
+from coding_study.domain.cases import Case, GeneratedInput
 from coding_study.domain.concurrency import Concurrency
 from coding_study.domain.layout import SOURCE_EXTENSIONS, reference_file_name
 from coding_study.domain.levels import has_levels
@@ -49,7 +51,11 @@ def ready_problems(content: ProblemContent) -> tuple[str, ...]:
         problems += _dsa_problems(content)
     if has_levels(meta.kind):
         problems += _level_problems(content)
-    if meta.concurrency is not None:
+    if meta.kind is ProblemKind.PROJECT:
+        problems += _case_problems(content)
+        if meta.concurrency is not None:
+            problems += _stress_problems(content, meta.concurrency)
+    elif meta.concurrency is not None:
         problems += _concurrent_problems(content, meta.concurrency)
     else:
         problems += _case_problems(content)
@@ -108,7 +114,8 @@ def _dsa_problems(content: ProblemContent) -> list[str]:
 
 
 def _case_problems(content: ProblemContent) -> list[str]:
-    cases = content.problem.cases
+    """The hand-written and generated cases; a project's stress cases are counted apart."""
+    cases = _sequential(content.problem.cases)
     visible = sum(1 for case in cases if case.visible)
     generated = [case.input for case in cases if isinstance(case.input, GeneratedInput)]
     hidden = len(cases) - visible - len(generated)
@@ -126,12 +133,14 @@ def _case_problems(content: ProblemContent) -> list[str]:
     return problems
 
 
+def _sequential(cases: Sequence[Case]) -> list[Case]:
+    return [case for case in cases if not isinstance(case.input, StressScenario)]
+
+
 def _concurrent_problems(content: ProblemContent, concurrency: Concurrency) -> list[str]:
     """Sequential cases, stress cases and a broken reference per language; D7 and the deadline
     margin are dynamic and checked by `cstudy verify`."""
-    cases = content.problem.cases
-    stress = [case for case in cases if isinstance(case.input, StressScenario)]
-    sequential = [case for case in cases if not isinstance(case.input, StressScenario)]
+    sequential = _sequential(content.problem.cases)
     visible = sum(1 for case in sequential if case.visible)
     hidden = len(sequential) - visible
     problems: list[str] = []
@@ -141,6 +150,14 @@ def _concurrent_problems(content: ProblemContent, concurrency: Concurrency) -> l
         problems.append(
             f"needs at least {MIN_CONCURRENT_HIDDEN_CASES} hidden sequential cases (has {hidden})"
         )
+    return problems + _stress_problems(content, concurrency)
+
+
+def _stress_problems(content: ProblemContent, concurrency: Concurrency) -> list[str]:
+    """Stress cases and a broken reference per language, a project's being an overlay."""
+    cases = content.problem.cases
+    stress = [case for case in cases if isinstance(case.input, StressScenario)]
+    problems: list[str] = []
     if len(stress) < MIN_STRESS_CASES:
         problems.append(f"needs at least {MIN_STRESS_CASES} stress cases (has {len(stress)})")
     languages = content.problem.meta.languages
@@ -170,7 +187,9 @@ def _level_problems(content: ProblemContent) -> list[str]:
         cases = [case for case in content.problem.cases if case.level == level.number]
         visible = sum(1 for case in cases if case.visible)
         hidden = sum(
-            1 for case in cases if not case.visible and not isinstance(case.input, GeneratedInput)
+            1
+            for case in cases
+            if not case.visible and not isinstance(case.input, GeneratedInput | StressScenario)
         )
         if visible < minimum_visible:
             problems.append(

@@ -142,8 +142,12 @@ class ProjectFiles:
     starter: ProjectTree | None
     """`starter/`, or None when the problem has none."""
     overlays: Mapping[str, ProjectTree] = field(default_factory=dict[str, ProjectTree])
-    """Every directory in `solutions/` by name: the reference of the approach it names, as the
-    files it changes or adds on the starter."""
+    """Every directory in `solutions/` by name but `broken/`: the reference of the approach it
+    names, as the files it changes or adds on the starter."""
+    broken: Mapping[str, ProjectTree] = field(default_factory=dict[str, ProjectTree])
+    """Every directory in `solutions/broken/` by name: the broken reference of that id, as the
+    files it changes or adds on the reference's overlay
+    (docs/specs/problem-format.md#stress-cases-in-projects)."""
 
 
 NO_PROJECT_FILES = ProjectFiles(None)

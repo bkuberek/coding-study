@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "level": 1, "ops": ["Tally", "add", "add", "count", "count"], "args": [[], ["a", 2], ["a", 3], ["a"], ["b"]], "expected": [null, 2, 5, 5, 0]},
+    {"id": "ex2", "visible": true, "level": 1, "ops": ["Tally", "add", "add", "count"], "args": [[], ["a", 1], ["b", 4], ["b"]], "expected": [null, 1, 4, 4]},
+    {"id": "h1", "level": 1, "ops": ["Tally", "count"], "args": [[], ["z"]], "expected": [null, 0]},
+    {"id": "h2", "level": 1, "ops": ["Tally", "add", "add", "add"], "args": [[], ["a", 1], ["a", 1], ["a", 1]], "expected": [null, 1, 2, 3]},
+    {"id": "h3", "level": 1, "ops": ["Tally", "add", "count", "count"], "args": [[], ["x", 7], ["x"], ["y"]], "expected": [null, 7, 7, 0]},
+    {"id": "h4", "level": 1, "ops": ["Tally", "add", "add", "count"], "args": [[], ["x", 10], ["y", 5], ["x"]], "expected": [null, 10, 5, 10]},
+    {"id": "ex3", "visible": true, "level": 2, "ops": ["Tally", "add", "take", "take", "count"], "args": [[], ["a", 5], ["a", 3], ["a", 3], ["a"]], "expected": [null, 5, true, false, 2]},
+    {"id": "ex4", "visible": true, "level": 2, "ops": ["Tally", "take", "add", "take"], "args": [[], ["a", 1], ["a", 1], ["a", 1]], "expected": [null, false, 1, true]},
+    {"id": "h5", "level": 2, "ops": ["Tally", "add", "take", "count"], "args": [[], ["a", 4], ["a", 4], ["a"]], "expected": [null, 4, true, 0]},
+    {"id": "h6", "level": 2, "ops": ["Tally", "add", "add", "take", "count", "count"], "args": [[], ["a", 2], ["b", 2], ["a", 2], ["a"], ["b"]], "expected": [null, 2, 2, true, 0, 2]},
+    {"id": "h7", "level": 2, "ops": ["Tally", "take"], "args": [[], ["q", 1]], "expected": [null, false]},
+    {"id": "h8", "level": 2, "ops": ["Tally", "add", "take", "add", "count"], "args": [[], ["a", 3], ["a", 1], ["a", 1], ["a"]], "expected": [null, 3, true, 3, 3]},
+    {"id": "s1", "level": 2, "note": "4 workers add to one key", "stress": {"seed": 1000, "setup": {"ops": ["Tally"], "args": [[]]}, "workers": [{"group": "adder", "count": 4, "repeat": 300, "steps": [{"op": "add", "args": ["k", 1]}]}], "final": {"ops": ["count"], "args": [["k"]], "expected": [1200]}, "invariants": [{"type": "distinct", "values": {"op": "add"}}]}},
+    {"id": "s2", "level": 2, "note": "4 workers take from a stocked key", "stress": {"seed": 2000, "setup": {"ops": ["Tally", "add"], "args": [[], ["k", 1000]]}, "workers": [{"group": "taker", "count": 4, "repeat": 200, "steps": [{"op": "take", "args": ["k", 1]}]}], "final": {"ops": ["count"], "args": [["k"]], "expected": [200]}}}
+  ]
+}

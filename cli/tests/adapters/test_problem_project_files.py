@@ -141,3 +141,36 @@ def test_every_refused_entry_is_reported(problem):
     (problem / "starter" / "one").symlink_to("README.md")
     (problem / "solutions" / "reference" / "two").symlink_to("bank")
     assert len(issues_for(problem)) == 2
+
+
+def broken_overlay(problem: Path, broken_id: str) -> Path:
+    folder = problem / "solutions" / "broken" / broken_id / "bank"
+    folder.mkdir(parents=True)
+    (folder / "bank.py").write_text("class Bank: ...\n")
+    return folder
+
+
+def test_each_directory_in_solutions_broken_is_a_broken_overlay(problem):
+    broken_overlay(problem, "unlocked")
+    broken_overlay(problem, "no-check")
+    files = read_project_files(problem, SOURCE)
+    assert set(files.broken) == {"no-check", "unlocked"}
+    assert files.broken["unlocked"].paths == {"bank/bank.py"}
+
+
+def test_broken_is_not_an_approach_overlay(problem):
+    broken_overlay(problem, "unlocked")
+    assert set(read_project_files(problem, SOURCE).overlays) == {"reference"}
+
+
+def test_a_problem_without_broken_overlays_has_none(problem):
+    assert read_project_files(problem, SOURCE).broken == {}
+
+
+def test_a_link_in_a_broken_overlay_is_refused(problem):
+    folder = broken_overlay(problem, "unlocked")
+    (folder / "copy.py").symlink_to(folder / "bank.py")
+    assert issues_for(problem) == [
+        f"{SOURCE}/solutions/broken/unlocked/bank/copy.py: is a symbolic link: a project folder "
+        "holds plain files only"
+    ]

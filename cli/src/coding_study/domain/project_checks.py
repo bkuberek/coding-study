@@ -2,10 +2,12 @@
 (docs/specs/authoring.md#static).
 
 S14 covers meta.yaml, the cases and the files a project problem may not have; S15 the starter and
-the reference overlays; S16 the generated test names, `## Project` in problem.md and `### Design`
-in the explanation; S18 the virtual clock (`clock_checks`). The schema refuses `stub`, `perf` and
-`concurrency` on a project problem, since only it sees them at their default values. Symbolic
-links in the trees fail while loading the problem, so no listed path leaves its folder.
+the reference and broken overlays; S16 the generated test names, `## Project` in problem.md and
+`### Design` in the explanation; S18 the virtual clock (`clock_checks`). The schema refuses `stub`
+and `perf` on a project problem, since only it sees them at their default values, and a
+`concurrency.model` that is not one string. Stress cases, the `concurrency` block and broken
+overlays are S11's and S12's (`concurrency_checks`). Symbolic links in the trees fail while
+loading the problem, so no listed path leaves its folder.
 """
 
 import hashlib
@@ -24,6 +26,7 @@ from coding_study.domain.layout import JVM_LANGUAGES
 from coding_study.domain.markdown import MarkdownDocument, MarkdownSection
 from coding_study.domain.problem import ComparatorType, Language, Problem, ProblemKind, Track
 from coding_study.domain.problem_files import (
+    BROKEN_DIRECTORY,
     BUGGY_DIRECTORY,
     CHECKER_FILE,
     EXPLANATION_FILE,
@@ -32,7 +35,6 @@ from coding_study.domain.problem_files import (
     PROBLEM_FILE,
     SOLUTIONS_DIRECTORY,
     STARTER_DIRECTORY,
-    STRESS_CHECKER_FILE,
     TESTS_FILE,
 )
 from coding_study.domain.project import (
@@ -100,7 +102,9 @@ DESIGN_SUBSECTION = "Design"
 ALGORITHM_SUBSECTION = "Algorithm"
 GENERATED_TEST_COMPARATORS = (ComparatorType.EXACT, ComparatorType.UNORDERED, ComparatorType.FLOAT)
 """What a generated test can assert."""
-FORBIDDEN_FILES = (GENERATOR_FILE, CHECKER_FILE, STRESS_CHECKER_FILE)
+FORBIDDEN_FILES = (GENERATOR_FILE, CHECKER_FILE)
+"""`stress_checker.py` is S12's: a project has one exactly when a stress case has a `checker`
+invariant."""
 CACHE_DIRECTORIES = frozenset(
     {
         *("__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", ".venv", "node_modules"),
@@ -440,8 +444,9 @@ class _Settings:
             location = f"cases[{index}] {case.id}"
             if isinstance(case.input, GeneratedInput):
                 self._issues.error(TESTS_FILE, "a project problem has no generate cases", location)
-            elif isinstance(case.input, StressScenario):
-                self._issues.error(TESTS_FILE, "a project problem has no stress cases", location)
+            elif isinstance(case.input, StressScenario) and self._meta.concurrency is None:
+                message = "a stress case needs the concurrency block in meta.yaml"
+                self._issues.error(TESTS_FILE, message, location)
 
 
 def _jvm_result_issue(returns: ReturnType) -> str | None:
@@ -498,10 +503,13 @@ class _Trees:
         files = content.problem.project_files or NO_PROJECT_FILES
         self._starter = files.starter
         self._overlays = files.overlays
+        self._broken = files.broken
 
     def check(self) -> None:
         for name, overlay in self._overlays.items():
             self._text_only(f"{SOLUTIONS_DIRECTORY}/{name}", overlay.files)
+        for name, overlay in self._broken.items():
+            self._text_only(f"{BROKEN_DIRECTORY}/{name}", overlay.files)
         starter = self._starter
         if starter is None:
             self._error("", "missing (kind: project)")

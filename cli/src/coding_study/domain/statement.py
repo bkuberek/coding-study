@@ -74,17 +74,15 @@ class _StatementView:
             for index in _line_range(section)
         }
         notice_at = locked[0].start if locked else None
-        table = stress_table(_problem_of(self._meta, cases))
-        concurrency = document.section(CONCURRENCY_SECTION)
-        table_at = concurrency.end if table and concurrency else None
+        tables = self._stress_tables(document, cases)
         if document.title is None:
             yield from (f"# {self._meta.title}", "", self._metadata(), "")
         title_seen = False
         for index, line in enumerate(document.lines):
             if index == notice_at:
                 yield from (self._locked_notice(), "")
-            if index == table_at:
-                yield from (*table, "")
+            if index in tables:
+                yield from (*tables[index], "")
             if index in hidden:
                 continue
             case = by_id.get(example_marker(line) or "")
@@ -92,8 +90,28 @@ class _StatementView:
             if not title_seen and line.startswith("# "):
                 title_seen = True
                 yield from ("", self._metadata())
-        if table_at == len(document.lines):
-            yield from ("", *table)
+        if len(document.lines) in tables:
+            yield from ("", *tables[len(document.lines)])
+
+    def _stress_tables(
+        self, document: MarkdownDocument, cases: Sequence[Case]
+    ) -> dict[int, tuple[str, ...]]:
+        """Where each stress table goes, by the line it comes before: a concurrent problem's at
+        the end of `## Concurrency`, a project's at the end of each open level's section, with
+        that level's stress cases (docs/specs/problem-format.md#statement)."""
+        if self._progress is None:
+            table = stress_table(_problem_of(self._meta, cases))
+            concurrency = document.section(CONCURRENCY_SECTION)
+            return {concurrency.end: table} if table and concurrency else {}
+        tables: dict[int, tuple[str, ...]] = {}
+        for section in document.sections(2):
+            number = level_heading(section.title)
+            if number is None or number in self._progress.locked:
+                continue
+            in_level = [case for case in cases if case.level == number]
+            if table := stress_table(_problem_of(self._meta, in_level)):
+                tables[section.end] = table
+        return tables
 
     def from_cases(self, cases: Sequence[Case]) -> Iterator[str]:
         yield from (f"# {self._meta.title}", "", self._metadata())

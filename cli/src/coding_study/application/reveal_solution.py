@@ -1,11 +1,12 @@
 """`cstudy solution`: reference code with its explanation (docs/specs/cli.md#cstudy-solution).
 
 Problems with a rubric.md (low-level design) also show it: the design criteria for self-review
-and the reference design. Concurrent problems can show a deliberately broken reference instead,
-as a "spot the bug" exercise. Revealing the solution of an attempt that has not passed yet grades
-it `again` (docs/specs/progress-and-scheduling.md#grade).
+and the reference design. Concurrent problems, and projects with stress cases, can show a
+deliberately broken reference instead, as a "spot the bug" exercise. Revealing the solution of an
+attempt that has not passed yet grades it `again` (docs/specs/progress-and-scheduling.md#grade).
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 
 from coding_study.application.environment import Environment
@@ -33,7 +34,10 @@ from coding_study.domain.problem_files import (
     broken_file,
     solution_file,
 )
-from coding_study.domain.project_reference import ReferenceFile, reference_files
+from coding_study.domain.project import NO_PROJECT_FILES, ProjectTree
+from coding_study.domain.project_reference import ReferenceFile, broken_files, reference_files
+
+BROKEN_PROBLEMS = "concurrent problems and projects with stress cases only"
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,7 +105,12 @@ def show_solution(environment: Environment, request: SolutionRequest) -> Solutio
     overview = explanation.overview if explanation else None
     parts = _Parts(environment, meta, explanation)
     if request.broken is not None:
-        broken = _selected_broken(environment, meta, request, language)
+        files = set(environment.files.file_names(meta.slug, BROKEN_DIRECTORY))
+        broken = _selected_broken(
+            meta,
+            request,
+            lambda found: layout.reference_file_name(found.id, language) in files,
+        )
         return SolutionView(
             meta, language, None, (), broken=parts.broken(broken, request, language)
         )
@@ -123,13 +132,13 @@ def _project_solution(
     """A project's one approach with `### Design`, then its overlay on the starter, in its one
     language (docs/specs/cli.md#cstudy-solution)."""
     meta = problem.meta
-    if request.broken is not None:
-        raise UsageError(f"{meta.slug} has no broken references (concurrent problems only)")
     language = project_start_language(problem, request.language)
     text = environment.files.read_text(meta.slug, EXPLANATION_FILE)
     explanation = Explanation(text) if text is not None else None
     overview = explanation.overview if explanation else None
     parts = _Parts(environment, meta, explanation)
+    if request.broken is not None:
+        return _project_broken(problem, request, language, parts)
     approaches = tuple(
         ApproachSolution(approach, parts.section(approach.id), None, (language,))
         for approach in _selected(meta, request)
@@ -140,6 +149,41 @@ def _project_solution(
         overview=overview.text if overview else None,
         approaches=approaches,
         project_files=() if request.explanation_only else _overlay_files(problem, approaches),
+    )
+
+
+def _project_broken(
+    problem: Problem, request: SolutionRequest, language: Language, parts: "_Parts"
+) -> SolutionView:
+    """A project's broken overlay, as the files it changes on the reference
+    (docs/specs/problem-format.md#stress-cases-in-projects)."""
+    meta = problem.meta
+    files = problem.project_files or NO_PROJECT_FILES
+    broken = _selected_broken(meta, request, lambda found: found.id in files.broken)
+    shown = BrokenSolution(
+        broken,
+        parts.broken_section(broken.id),
+        None,
+        (language,) if broken.id in files.broken else (),
+    )
+    overlay = files.broken.get(broken.id)
+    changed = (
+        broken_files(files.starter, _reference_overlay(problem), overlay)
+        if overlay is not None and not request.explanation_only
+        else ()
+    )
+    return SolutionView(meta, language, None, (), broken=shown, project_files=changed)
+
+
+def _reference_overlay(problem: Problem) -> ProjectTree | None:
+    files = problem.project_files or NO_PROJECT_FILES
+    return next(
+        (
+            files.overlays[approach.id]
+            for approach in problem.meta.approaches
+            if approach.id in files.overlays
+        ),
+        None,
     )
 
 
@@ -171,26 +215,21 @@ def mark_revealed(environment: Environment, attempt: Attempt) -> None:
 
 
 def _selected_broken(
-    environment: Environment, meta: ProblemMeta, request: SolutionRequest, language: Language
+    meta: ProblemMeta, request: SolutionRequest, has_code: Callable[[BrokenReference], bool]
 ) -> BrokenReference:
+    """The broken reference `--broken` names; a bare `--broken`, the first with code."""
     if request.approach_id is not None or request.all_approaches:
         raise UsageError("--broken shows one broken reference; drop --approach and --all")
     concurrency = meta.concurrency
     if concurrency is None or not concurrency.broken:
-        raise UsageError(f"{meta.slug} has no broken references (concurrent problems only)")
+        raise UsageError(f"{meta.slug} has no broken references ({BROKEN_PROBLEMS})")
     if request.broken:
         chosen = concurrency.broken_reference(request.broken)
         if chosen is None:
             known = ", ".join(broken.id for broken in concurrency.broken)
             raise UsageError(f'no broken reference "{request.broken}" in {meta.slug}; {known}')
         return chosen
-    files = set(environment.files.file_names(meta.slug, BROKEN_DIRECTORY))
-    with_file = (
-        broken
-        for broken in concurrency.broken
-        if layout.reference_file_name(broken.id, language) in files
-    )
-    return next(with_file, concurrency.broken[0])
+    return next(filter(has_code, concurrency.broken), concurrency.broken[0])
 
 
 def _selected(meta: ProblemMeta, request: SolutionRequest) -> tuple[Approach, ...]:
@@ -242,7 +281,7 @@ class _Parts:
         if not request.explanation_only and language in available:
             name = broken_file(layout.reference_file_name(broken.id, language))
             code = self._environment.files.read_text(self._meta.slug, name)
-        return BrokenSolution(broken, self._broken_section(broken.id), code, available)
+        return BrokenSolution(broken, self.broken_section(broken.id), code, available)
 
     def section(self, approach_id: str) -> str | None:
         """The approach's section of explanation.md, heading included."""
@@ -251,7 +290,8 @@ class _Parts:
         found = self._explanation.approach(approach_id)
         return self._explanation.section_text(found.section) if found else None
 
-    def _broken_section(self, broken_id: str) -> str | None:
+    def broken_section(self, broken_id: str) -> str | None:
+        """The broken reference's section of explanation.md, heading included."""
         if self._explanation is None:
             return None
         found = next(

@@ -1,0 +1,30 @@
+id: "0001"
+slug: tally-project-python
+title: Tally Project (Python)
+status: draft
+difficulty: medium
+track: practical
+kind: project
+languages: [python]
+levels:
+  - {level: 1, title: Counts}
+  - {level: 2, title: Shared counts}
+signature:
+  class:
+    name: Tally
+    constructor: {params: []}
+    methods:
+      - {name: add, level: 1, params: [{name: key, type: string}, {name: amount, type: int}], returns: {type: int}}
+      - {name: count, level: 1, params: [{name: key, type: string}], returns: {type: int}}
+      - {name: take, level: 2, params: [{name: key, type: string}, {name: amount, type: int}], returns: {type: bool}}
+comparator: {type: ops}
+project:
+  entry: tally.tally
+concurrency:
+  model: threads
+  runs: 3
+  broken:
+    - {id: unlocked-add, name: Add outside the lock, bug: "add reads and writes a count on separate lines without the lock", caught_by: [s1]}
+approaches:
+  - {id: reference, name: Counts under one lock, role: optimal, time: "O(1) per operation", space: "O(n)", time_class: "n", space_class: "n"}
+estimate_minutes: 30

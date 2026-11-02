@@ -35,6 +35,11 @@ CONCURRENCY_PROBLEMS = Path(__file__).resolve().parent / "fixtures" / "concurren
 PROJECT_PROBLEMS = Path(__file__).resolve().parent / "fixtures" / "project" / "problems"
 """A Python project fixture problem: a starter tree and a reference overlay."""
 BANK_PROJECT = "0001-bank-project-python"
+PROJECT_STRESS_PROBLEMS = (
+    Path(__file__).resolve().parent / "fixtures" / "project_stress" / "problems"
+)
+"""A Python project fixture problem with stress cases at level 2 and a broken overlay."""
+TALLY_PROJECT = "0001-tally-project-python"
 TYPESCRIPT_PROJECT_PROBLEMS = (
     Path(__file__).resolve().parent / "fixtures" / "typescript-project" / "problems"
 )
@@ -84,8 +89,8 @@ def load_fixture_meta(directory_name: str, problems: Path = FIXTURE_PROBLEMS) ->
     return yaml.safe_load((problems / directory_name / "meta.yaml").read_text())
 
 
-def load_fixture_tests(directory_name: str) -> dict[str, Any]:
-    return json.loads((FIXTURE_PROBLEMS / directory_name / "tests.json").read_text())
+def load_fixture_tests(directory_name: str, problems: Path = FIXTURE_PROBLEMS) -> dict[str, Any]:
+    return json.loads((problems / directory_name / "tests.json").read_text())
 
 
 MAPPING_TABLE_TYPES = frozenset(

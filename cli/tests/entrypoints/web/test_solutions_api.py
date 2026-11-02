@@ -145,7 +145,8 @@ def test_broken_on_a_problem_without_broken_references_gets_422(tmp_path, practi
     assert error(post(tmp_path, practice, {"broken": True})) == (
         422,
         "usage",
-        "two-sum has no broken references (concurrent problems only)",
+        "two-sum has no broken references (concurrent problems and projects with stress "
+        "cases only)",
     )
 
 

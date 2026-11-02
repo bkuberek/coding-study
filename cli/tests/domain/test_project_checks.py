@@ -323,10 +323,19 @@ def test_a_project_problem_has_no_oracle(bank):
     assert f"{META}: approaches[0]: a project problem has no oracle" in errors(content(problem))
 
 
-@pytest.mark.parametrize("name", ["generator.py", "checker.py", "stress_checker.py"])
+@pytest.mark.parametrize("name", ["generator.py", "checker.py"])
 def test_a_project_problem_has_no_generator_or_checker(bank, name):
     found = errors(content(bank, files=("meta.yaml", "problem.md", "tests.json", name)))
     assert f"{DIRECTORY}/{name}: a project problem has none" in found
+
+
+def test_a_project_has_stress_checker_only_for_a_checker_invariant(bank):
+    files = ("meta.yaml", "problem.md", "tests.json", "stress_checker.py")
+    found = errors(content(bank, files=files))
+    assert (
+        f"{DIRECTORY}/stress_checker.py: present but no stress case has a checker invariant"
+        in found
+    )
 
 
 def test_a_project_problem_has_no_buggy_stub(bank):
@@ -341,12 +350,11 @@ def test_a_project_problem_has_no_generate_cases(bank):
     )
 
 
-def test_a_project_problem_has_no_stress_cases(bank):
+def test_a_project_stress_case_needs_a_concurrency_block(bank):
     stress = StressScenario(OperationSequence(("Bank",), ((),)), ())
     problem = replace(bank, cases=(*bank.cases, Case("s1", stress, level=2)))
-    assert f"{TESTS}: cases[6] s1: a project problem has no stress cases" in errors(
-        content(problem)
-    )
+    message = "a stress case needs the concurrency block in meta.yaml"
+    assert f"{TESTS}: cases[6] s1: {message}" in errors(content(problem))
 
 
 # S15

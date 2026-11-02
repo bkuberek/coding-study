@@ -1,5 +1,5 @@
-"""The trees of a project problem: `starter/` and each directory in `solutions/`
-(docs/specs/problem-format.md#project-problems).
+"""The trees of a project problem: `starter/`, each directory in `solutions/` and each broken
+overlay in `solutions/broken/` (docs/specs/problem-format.md#project-problems).
 
 Only plain files are listed. A symbolic link is refused wherever it points and never followed, so
 no listed path leads out of its folder; a special file is refused without being read.
@@ -9,12 +9,18 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from coding_study.domain.errors import ContentError, ContentIssue
-from coding_study.domain.problem_files import SOLUTIONS_DIRECTORY, STARTER_DIRECTORY
+from coding_study.domain.problem_files import (
+    BROKEN_DIRECTORY,
+    SOLUTIONS_DIRECTORY,
+    STARTER_DIRECTORY,
+)
 from coding_study.domain.project import ProjectFile, ProjectFiles, ProjectTree
 
 LINK_REFUSED = "is a symbolic link: a project folder holds plain files only"
 SPECIAL_FILE_REFUSED = "is not a plain file"
 _NUL = b"\0"
+BROKEN_FOLDER = BROKEN_DIRECTORY.rpartition("/")[2]
+"""`solutions/broken/` holds broken overlays, not an approach's."""
 
 
 def read_project_files(directory: Path, source: str) -> ProjectFiles:
@@ -28,11 +34,17 @@ def read_project_files(directory: Path, source: str) -> ProjectFiles:
     overlays = {
         folder.name: tree
         for folder in _overlay_folders(solutions)
-        if (tree := reader.tree(folder, f"{source}/{SOLUTIONS_DIRECTORY}/{folder.name}"))
+        if folder.name != BROKEN_FOLDER
+        and (tree := reader.tree(folder, f"{source}/{SOLUTIONS_DIRECTORY}/{folder.name}"))
+    }
+    broken = {
+        folder.name: tree
+        for folder in _overlay_folders(directory / BROKEN_DIRECTORY)
+        if (tree := reader.tree(folder, f"{source}/{BROKEN_DIRECTORY}/{folder.name}"))
     }
     if reader.issues:
         raise ContentError(reader.issues)
-    return ProjectFiles(starter, overlays)
+    return ProjectFiles(starter, overlays, broken)
 
 
 def _overlay_folders(solutions: Path) -> list[Path]:

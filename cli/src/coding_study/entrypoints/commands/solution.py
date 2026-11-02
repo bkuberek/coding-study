@@ -127,18 +127,25 @@ def _renderables(view: SolutionView) -> Iterator[RenderableType]:
         yield Markdown(view.overview)
     for part in view.approaches:
         yield from _approach(part, view.language)
+    if view.broken is not None:
+        yield from _broken(view.broken, view.language, view.project_files)
+        return
     for file in view.project_files:
         yield from _reference_file(file, view.language)
-    if view.broken is not None:
-        yield from _broken(view.broken, view.language)
 
 
-def _broken(part: BrokenSolution, language: Language) -> Iterator[RenderableType]:
+def _broken(
+    part: BrokenSolution, language: Language, files: tuple[ReferenceFile, ...]
+) -> Iterator[RenderableType]:
+    """The broken reference's file, or a project's broken overlay as the files it changes on the
+    reference, then its explanation section."""
     broken = part.broken
     yield Text(f"broken reference {broken.id}: {broken.bug}", style="bold yellow")
+    for file in files:
+        yield from _reference_file(file, language)
     if part.code is not None:
         yield Syntax(part.code, LEXERS[language], line_numbers=False)
-    elif part.available:
+    elif part.available and not files:
         available = ", ".join(part.available)
         yield Text(f"no {language} file for {broken.id}; available: {available}", style="dim")
     if part.explanation:
@@ -160,7 +167,8 @@ def _approach(part: ApproachSolution, language: Language) -> Iterator[Renderable
 
 
 def _reference_file(file: ReferenceFile, language: Language) -> Iterator[RenderableType]:
-    """An added file in full, a changed one as its diff against the starter."""
+    """An added file in full, a changed one as its diff against the starter (a broken overlay's,
+    against the reference)."""
     yield Text("")
     yield Text(f"{file.path} ({'added' if file.added else 'changed'})", style="bold")
     yield Syntax(file.text, LEXERS[language] if file.added else DIFF_LEXER, line_numbers=False)
