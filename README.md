@@ -1,8 +1,10 @@
-![cstudy: practise coding interviews in your own editor](docs/images/readme-header.png)
+[![cstudy: practise coding interviews in your own editor](docs/images/readme-header.png)](https://coding-study.com/?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=header)
 
 # coding-study
 
 coding-study is a local, IDE-first practice system for senior and staff software engineering interviews. You solve original problems in your own editor in Python, TypeScript, Java, Kotlin, Go, or Rust, and the `cstudy` command line tests your code, checks whether it is optimal, shows reference solutions, and schedules reviews with spaced repetition. Everything runs on your machine; there is no account and no service.
+
+The website, [coding-study.com](https://coding-study.com/?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=intro), has the [install guide](https://coding-study.com/install?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=intro) and the [usage docs](https://coding-study.com/docs?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=intro).
 
 - **Your editor, real toolchains.** Each language is an ordinary project (uv, pnpm, Gradle) that your editor and its language server open directly.
 - **More than algorithms.** Data structures and algorithms, multi-level practical problems, low-level design, concurrency, debugging, system design, and code review.
@@ -144,6 +146,7 @@ The [authoring guide](docs/specs/authoring.md) covers the workflow and the ready
 
 | Read | For |
 |------|-----|
+| [coding-study.com](https://coding-study.com/docs?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=docs-table) | Install and usage guides on the website |
 | [Documentation index](docs/README.md) | The PRD, architecture, specs, and decision records |
 | [CLI reference](docs/specs/cli.md) | Every command, flag, output, and exit code |
 | [Practise in your browser](docs/guides/web-ui.md) | `cstudy serve`: the views, editing and runs, the keyboard, troubleshooting |
