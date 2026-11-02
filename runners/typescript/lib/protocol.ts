@@ -9,6 +9,8 @@ export const PROTOCOL_VERSION = 1;
 const TEST_MODE = "test";
 const CONCURRENT_KIND = "concurrent";
 const SUITE_KIND = "suite";
+const PROJECT_KIND = "project";
+const VIRTUAL_CLOCK = "virtual";
 /** The one test framework this runner hosts in a suite job. */
 const NODE_TEST_FRAMEWORK = "node-test";
 const ASYNC_MODEL = "async";
@@ -74,6 +76,9 @@ export interface ClassJob {
   /** Keyed by canonical method name, as operations name them. */
   readonly methods: ReadonlyMap<string, MethodSpec>;
   readonly cases: readonly OperationCase[];
+  /** A project's grading job on the virtual clock (`"clock": "virtual"`). Ties fire in the order
+   * they were set, so the job's `clock_seed` changes nothing here. */
+  readonly onVirtualClock: boolean;
 }
 
 export type Job = FunctionJob | ClassJob;
@@ -227,6 +232,9 @@ function parseTestJob(job: Record<string, unknown>): TestJob {
   if (kind === SUITE_KIND) {
     return suiteJob(job);
   }
+  if (field(job, "clock") !== undefined) {
+    return clockJob(job);
+  }
   if (kind !== CONCURRENT_KIND) {
     return parseJob(job);
   }
@@ -257,6 +265,25 @@ function parseTestJob(job: Record<string, unknown>): TestJob {
         : stressCase(object(stress, `${where} ${id} stress`), id, where);
     }),
   };
+}
+
+/** A project's grading job on the virtual clock (docs/specs/runners.md#virtual-clock-and-stress-
+ * in-project-jobs). */
+function clockJob(job: Record<string, unknown>): ClassJob {
+  const where = `job "${string(job, "job_id", "job")}"`;
+  const clock = field(job, "clock");
+  if (clock !== VIRTUAL_CLOCK) {
+    throw new BadRequest(
+      `${where}: clock ${JSON.stringify(clock)} is not supported`,
+    );
+  }
+  const parsed = parseJob(job);
+  if (field(job, "kind") !== PROJECT_KIND || parsed.shape !== "class") {
+    throw new BadRequest(
+      `${where}: only a project job runs on the virtual clock`,
+    );
+  }
+  return { ...parsed, onVirtualClock: true };
 }
 
 function suiteJob(job: Record<string, unknown>): SuiteJob {
@@ -375,6 +402,7 @@ function parseJob(job: Record<string, unknown>): Job {
     cases: cases.map((value) =>
       operationCase(value, string(value, "id", where), where),
     ),
+    onVirtualClock: false,
   };
 }
 

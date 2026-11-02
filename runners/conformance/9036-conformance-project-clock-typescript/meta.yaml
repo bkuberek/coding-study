@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../../schemas/meta.schema.json
+id: "9036"
+slug: conformance-project-clock-typescript
+title: "Conformance: a TypeScript project on the virtual clock"
+status: ready
+difficulty: easy
+track: practical
+kind: project
+languages: [typescript]
+levels:
+  - {level: 1, title: Waiting on the virtual clock}
+signature:
+  class:
+    name: Inbox
+    constructor: {params: []}
+    methods:
+      - {name: publish, level: 1, params: [{name: body, type: string}], returns: {type: int}}
+      - {name: receive, level: 1, async: true, params: [{name: waitMs, type: int}], returns: {type: string}}
+      - {name: sleep, level: 1, async: true, params: [{name: ms, type: int}], returns: {type: long}}
+      - {name: steps, level: 1, async: true, params: [{name: count, type: int}, {name: ms, type: int}], returns: {type: "list<long>"}}
+      - {name: race, level: 1, async: true, params: [{name: names, type: string}], returns: {type: string}}
+      - {name: hold, level: 1, async: true, params: [], returns: {type: string}}
+      - {name: spin, level: 1, params: [], returns: {type: string}}
+      - {name: leave, level: 1, params: [], returns: {type: void}}
+comparator: {type: ops}
+limits: {hang_guard_ms: 1000}
+project:
+  entry: src/inbox.ts
+  tests: tests
+  clock: virtual
+approaches:
+  - {id: reference, name: "Promises that wait on the mocked timers, a promise nobody settles, a busy loop, and a promise and a timer left behind", role: optimal, time: "O(1)", space: "O(n)", time_class: "1", space_class: "n"}

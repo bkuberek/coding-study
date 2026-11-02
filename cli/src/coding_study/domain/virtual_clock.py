@@ -28,12 +28,15 @@ CLOCK_LANGUAGES = (
 """The languages that can declare `project.clock: virtual`."""
 ASYNC_LANGUAGES = (Language.PYTHON, Language.TYPESCRIPT, Language.KOTLIN, Language.RUST)
 """The languages that can declare `async: true`: those whose methods return an awaitable."""
-GRADED_CLOCK_LANGUAGES: frozenset[Language] = frozenset({Language.GO, Language.PYTHON})
+GRADED_CLOCK_LANGUAGES: frozenset[Language] = frozenset(
+    {Language.GO, Language.PYTHON, Language.TYPESCRIPT}
+)
 """The languages whose runner grades the virtual clock and its harness operations. Each step of
 docs/decisions/0017-async-project-problems.md#scope-and-order adds its languages here, together
 with the runner's `clock` feature: Go's grading binary is a test binary that runs each case in a
-`testing/synctest` bubble, and Python's runner runs each case on an asyncio loop of
-`cs_support.virtual_clock`."""
+`testing/synctest` bubble, Python's runner runs each case on an asyncio loop of
+`cs_support.virtual_clock`, and TypeScript's on `node:test`'s mock timers, which
+`runners/typescript/lib/virtual-clock.ts` drives."""
 
 
 class ProjectClock(StrEnum):

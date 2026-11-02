@@ -7,6 +7,7 @@
 
 import { runBenchJob } from "./lib/bench.ts";
 import { blockProcessExit } from "./lib/capture.ts";
+import { runClockJob } from "./lib/clock.ts";
 import { runConcurrentJob } from "./lib/concurrent.ts";
 import { runJob } from "./lib/execute.ts";
 import {
@@ -20,7 +21,7 @@ import { runSuiteJob } from "./lib/suite.ts";
 
 const RUNNER_NAME = "typescript";
 /** Protocol additions this runner implements (docs/specs/runners.md#capability). */
-const FEATURES = ["stress", "project", "suite"];
+const FEATURES = ["stress", "project", "suite", "clock"];
 const BAD_REQUEST_EXIT_CODE = 2;
 
 interface Options {
@@ -46,6 +47,10 @@ async function runTestJob(job: TestJob, events: EventWriter): Promise<void> {
       return runConcurrentJob(job, events);
     case "suite":
       return runSuiteJob(job, events);
+    case "class":
+      return job.onVirtualClock
+        ? runClockJob(job, events)
+        : runJob(job, events);
     default:
       return runJob(job, events);
   }

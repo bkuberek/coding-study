@@ -122,6 +122,10 @@
       "tests/test_level_1.py::test_advance": {"status": "ok"},
       "tests/test_level_1.py::test_spawn_join": {"status": "ok"},
       "tests/test_level_1.py::test_ties": {"status": "ok"}
+    }},
+    {"problem": "conformance-project-clock-typescript", "approach": "reference", "outcome": {"status": "pass"}, "cases": {
+      "deadlock": {"status": "stalled", "message": "op 3 (@join r1): deadlock at 2000 ms", "op_index": 3, "partial_output": [null, null, null]},
+      "spin": {"status": "timeout"}
     }}
   ]
 }

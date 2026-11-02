@@ -1,4 +1,4 @@
-"""The TypeScript project fixtures 9023 and 9025 through the conformance suite.
+"""The TypeScript project fixtures 9023, 9025 and 9036 through the conformance suite.
 
 Marked `slow`: the real TypeScript runner grades each reference build and hosts `node:test` for the
 suite fixture (docs/specs/runners.md#conformance-suite). The first tests stand in for the generated
@@ -39,8 +39,13 @@ pytestmark = [
 ]
 
 CONFORMANCE = REPOSITORY_ROOT / "runners" / "conformance"
-FIXTURES = ("9023-conformance-project-typescript", "9025-conformance-suite-node-test")
+FIXTURES = (
+    "9023-conformance-project-typescript",
+    "9025-conformance-suite-node-test",
+    "9036-conformance-project-clock-typescript",
+)
 GRADING, SUITE = "conformance-project-typescript", "conformance-suite-node-test"
+CLOCK = "conformance-project-clock-typescript"
 
 
 class EmptyLevelTests:
@@ -69,7 +74,9 @@ def environment(tmp_path_factory: pytest.TempPathFactory) -> Environment:
         shutil.copytree(CONFORMANCE / directory, fixtures / directory)
     expectations = json.loads((CONFORMANCE / "expectations.json").read_text())
     expectations["expectations"] = [
-        entry for entry in expectations["expectations"] if entry["problem"] in (GRADING, SUITE)
+        entry
+        for entry in expectations["expectations"]
+        if entry["problem"] in (GRADING, SUITE, CLOCK)
     ]
     (fixtures / "expectations.json").write_text(json.dumps(expectations))
     runner = TypeScriptRunner(root, REPOSITORY_ROOT / "runners", PnpmTypeChecker())
@@ -111,6 +118,10 @@ def test_the_typescript_runner_reports_every_status_of_a_node_test_suite(environ
     assert failures(conformance(environment, SUITE)) == ()
 
 
+def test_the_typescript_runner_grades_the_virtual_clock(environment):
+    assert failures(conformance(environment, CLOCK)) == ()
+
+
 NO_GENERATOR = "the TypeScript project test generator is not set up"
 
 
@@ -122,12 +133,13 @@ def test_the_typescript_runner_meets_the_project_expectations(
     monkeypatch.setenv("CSTUDY_CONTENT", str(REPOSITORY_ROOT))
     monkeypatch.setenv("CSTUDY_WORKSPACE", str(root))
     monkeypatch.setenv("CSTUDY_CONFIG", str(tmp_path / "absent-config.toml"))
-    arguments = ["verify", "--conformance", "--lang", "typescript", GRADING, SUITE]
+    arguments = ["verify", "--conformance", "--lang", "typescript", GRADING, SUITE, CLOCK]
     result = CliRunner().invoke(cli.app, arguments)
-    assert (result.exit_code, result.output.splitlines()[:2]) == (
+    assert (result.exit_code, result.output.splitlines()[:3]) == (
         ExitCode.SUCCESS,
         [
-            "9023-conformance-project-typescript  ts ok",
-            "9025-conformance-suite-node-test     ts ok",
+            "9023-conformance-project-typescript        ts ok",
+            "9025-conformance-suite-node-test           ts ok",
+            "9036-conformance-project-clock-typescript  ts ok",
         ],
     )
