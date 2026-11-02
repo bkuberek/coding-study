@@ -49,6 +49,7 @@ The tool settings live in `cli/`: `ruff.toml`, `pyrightconfig.json`, `pytest.ini
 | Tests | `uv run pytest -q` |
 | Fast tests (no real Gradle, Node, tsc or workspace venv) | `uv run pytest -q -m "not slow"` |
 | Slow tests | `uv run pytest -q -m slow`: they set up one temporary workspace per session (`uv sync`, `pnpm install`, a Gradle build), never one in the checkout |
+| JVM tests | `uv run pytest -q -m jvm`: the slow tests that drive Gradle, javac, kotlinc or a JVM runner on the JDK your shell selects; CI runs them on JDK 21 and on JDK 26 |
 | Lint and format | `uv run ruff check` and `uv run ruff format --check` |
 | Types (strict on `src/`) | `uv run pyright` |
 | Layer contracts | `uv run lint-imports` |
