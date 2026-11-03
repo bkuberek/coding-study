@@ -1,0 +1,30 @@
+// The class that `cstudy submit` and the tests drive.
+//
+// TODO: replace this sketch with the reference of every level.
+package app;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class {{class_name}} {
+    private final Map<String, Integer> counts = new HashMap<>();
+
+    public synchronized int add(String key, int amount) {
+        int count = counts.getOrDefault(key, 0) + amount;
+        counts.put(key, count);
+        return count;
+    }
+
+    public synchronized int count(String key) {
+        return counts.getOrDefault(key, 0);
+    }
+
+    public synchronized boolean take(String key, int amount) {
+        int count = counts.getOrDefault(key, 0);
+        if (count < amount) {
+            return false;
+        }
+        counts.put(key, count - amount);
+        return true;
+    }
+}

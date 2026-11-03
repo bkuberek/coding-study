@@ -12,7 +12,7 @@ from coding_study.domain.scaffold import (
     next_problem_id,
     plan_scaffold,
     render_template,
-    template_directory,
+    template_directories,
 )
 
 
@@ -172,12 +172,12 @@ def test_an_unknown_placeholder_is_an_error():
 
 def test_a_template_is_its_own_directory():
     request = ScaffoldRequest("bank-project-go", TemplateName.PROJECT_GO)
-    assert template_directory(request) == "project-go"
+    assert template_directories(request) == ("project-go",)
 
 
 def test_a_go_project_on_the_virtual_clock_has_a_template_of_its_own():
     request = ScaffoldRequest("waiter-project-go", TemplateName.PROJECT_GO, virtual_clock=True)
-    assert template_directory(request) == "project-go-clock"
+    assert template_directories(request) == ("project-go-clock",)
 
 
 def test_the_virtual_clock_variant_keeps_the_practical_track():
@@ -216,7 +216,7 @@ def test_the_virtual_clock_is_a_usage_error_where_it_does_not_apply(template, me
 )
 def test_the_virtual_clock_variant_is_a_template_of_its_own(template):
     request = ScaffoldRequest("waiter", template, virtual_clock=True)
-    assert template_directory(request) == f"{template}-clock"
+    assert template_directories(request) == (f"{template}-clock",)
 
 
 def test_the_virtual_clock_waits_for_the_runner_that_grades_it(monkeypatch):
@@ -238,3 +238,76 @@ def test_the_virtual_clock_waits_for_the_generated_tests_that_run_on_it(monkeypa
     )
     with pytest.raises(UsageError, match=re.escape(message)):
         plan(slug="waiter", template=TemplateName.PROJECT_PYTHON, virtual_clock=True)
+
+
+# stress cases
+
+STRESS_TEMPLATES = [
+    TemplateName.PROJECT_PYTHON,
+    TemplateName.PROJECT_JAVA,
+    TemplateName.PROJECT_KOTLIN,
+    TemplateName.PROJECT_GO,
+    TemplateName.PROJECT_RUST,
+]
+"""The templates whose stress variant needs no virtual clock: TypeScript's stress cases run in the
+async model, where only an asynchronous method can be interrupted."""
+STRESS_CLOCK_TEMPLATES = [
+    TemplateName.PROJECT_GO,
+    TemplateName.PROJECT_PYTHON,
+    TemplateName.PROJECT_TYPESCRIPT,
+    TemplateName.PROJECT_KOTLIN,
+    TemplateName.PROJECT_RUST,
+]
+
+
+@pytest.mark.parametrize("template", STRESS_TEMPLATES)
+def test_a_stress_project_adds_an_overlay_to_the_project_template(template):
+    request = ScaffoldRequest("tally", template, stress=True)
+    assert template_directories(request) == (template, f"{template}-stress")
+
+
+@pytest.mark.parametrize("template", STRESS_CLOCK_TEMPLATES)
+def test_a_stress_project_on_the_virtual_clock_adds_its_overlay_to_the_clock_template(template):
+    request = ScaffoldRequest("tally", template, virtual_clock=True, stress=True)
+    assert template_directories(request) == (f"{template}-clock", f"{template}-clock-stress")
+
+
+def test_a_stress_project_keeps_the_practical_track():
+    scaffold = plan(slug="tally-project-go", template=TemplateName.PROJECT_GO, stress=True)
+    assert (scaffold.track, scaffold.patterns) == (Track.PRACTICAL, ())
+
+
+@pytest.mark.parametrize(
+    ("template", "message"),
+    [
+        (TemplateName.ARRAY, "--stress applies to the project-* templates, not array"),
+        (TemplateName.CONCURRENT, "--stress applies to the project-* templates, not concurrent"),
+    ],
+)
+def test_stress_is_a_usage_error_where_it_does_not_apply(template, message):
+    with pytest.raises(UsageError, match=re.escape(message)):
+        plan(slug="tally", template=template, stress=True)
+
+
+def test_typescript_stress_needs_the_virtual_clock():
+    """Synchronous TypeScript methods are atomic on one event loop, and an asynchronous method
+    needs the clock, so a stress case on the real clock could never catch a bug."""
+    message = (
+        "--stress is not available for project-typescript without --virtual-clock: "
+        "its stress cases run in the async model, where only an asynchronous method can be "
+        "interrupted, and asynchronous methods need the virtual clock"
+    )
+    with pytest.raises(UsageError, match=re.escape(message)):
+        plan(slug="tally", template=TemplateName.PROJECT_TYPESCRIPT, stress=True)
+
+
+def test_java_stress_is_a_usage_error_with_the_virtual_clock():
+    message = "--virtual-clock is not available for project-java: Java has no virtual clock"
+    with pytest.raises(UsageError, match=re.escape(message)):
+        plan(slug="tally", template=TemplateName.PROJECT_JAVA, virtual_clock=True, stress=True)
+
+
+def test_stress_does_not_lift_the_virtual_clocks_own_gate(monkeypatch):
+    monkeypatch.setattr(scaffold, "GRADED_CLOCK_LANGUAGES", frozenset[Language]())
+    with pytest.raises(UsageError, match="does not grade the virtual clock"):
+        plan(slug="tally", template=TemplateName.PROJECT_GO, virtual_clock=True, stress=True)

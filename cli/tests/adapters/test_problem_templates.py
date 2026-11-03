@@ -217,3 +217,87 @@ def test_the_kotlin_virtual_clock_starter_builds_on_the_virtual_clock():
 def test_the_kotlin_virtual_clock_template_declares_the_clock_and_a_suspend_method():
     meta = PackagedProblemTemplates().files("project-kotlin-clock")["meta.yaml"]
     assert ("  clock: virtual\n" in meta, "async: true" in meta) == (True, True)
+
+
+# stress overlays
+
+STRESS_ENTRIES = {
+    "project-python": "app/main.py",
+    "project-typescript": "src/main.ts",
+    "project-java": "src/main/java/app/{{class_name}}.java",
+    "project-kotlin": "src/main/kotlin/app/{{class_name}}.kt",
+    "project-go": "app.go",
+    "project-rust": "src/lib.rs",
+}
+STRESS_OVERLAYS = [
+    f"{template}{variant}-stress"
+    for template in STRESS_ENTRIES
+    for variant in ("", "-clock")
+    if (template, variant) != ("project-java", "-clock")
+    if (template, variant) != ("project-typescript", "")
+]
+S15_COMPARED_FILES = {
+    "starter/pyproject.toml",
+    "starter/package.json",
+    "starter/tsconfig.json",
+    "starter/go.mod",
+    "starter/Cargo.toml",
+    "starter/.cargo/config.toml",
+    "starter/settings.gradle.kts",
+    "starter/build.gradle.kts",
+    "starter/gradle.properties",
+    "starter/gradle/wrapper/gradle-wrapper.properties",
+    "starter/tests/virtual-clock.ts",
+}
+"""The starter files that check S15 compares byte for byte with the template's, or whose content it
+inspects (docs/specs/authoring.md#what-cstudy-verify-checks)."""
+
+
+def overlay_entry(overlay: str) -> str:
+    return STRESS_ENTRIES[overlay.removesuffix("-stress").removesuffix("-clock")]
+
+
+@pytest.mark.parametrize("overlay", STRESS_OVERLAYS)
+def test_a_stress_overlay_holds_what_a_stress_problem_changes(overlay):
+    entry = overlay_entry(overlay)
+    files = set(PackagedProblemTemplates().files(overlay))
+    expected = TEMPLATE_FILES - {"generator.py"} | {
+        f"starter/{entry}",
+        f"solutions/reference/{entry}",
+        f"solutions/broken/lost-update/{entry}",
+    }
+    assert files - {"starter/README.md"} == expected
+
+
+@pytest.mark.parametrize("overlay", STRESS_OVERLAYS)
+def test_a_stress_overlay_repeats_no_file_that_check_s15_compares(overlay):
+    assert not set(PackagedProblemTemplates().files(overlay)) & S15_COMPARED_FILES
+
+
+@pytest.mark.parametrize("overlay", STRESS_OVERLAYS)
+def test_a_stress_overlay_replaces_files_of_the_template_underneath(overlay):
+    base = overlay.removesuffix("-stress")
+    files = set(PackagedProblemTemplates().files(overlay))
+    layered = set(PackagedProblemTemplates().files(base))
+    assert {"meta.yaml", "problem.md", "tests.json"} <= files & layered
+
+
+@pytest.mark.parametrize("overlay", STRESS_OVERLAYS)
+def test_a_stress_overlay_declares_the_stress_case_and_its_broken_overlay(overlay):
+    files = PackagedProblemTemplates().files(overlay)
+    assert "  broken:\n    - {id: lost-update," in files["meta.yaml"]
+    assert '"stress"' in files["tests.json"]
+    assert "## Broken: lost-update (" in files["solutions/explanation.md"]
+
+
+@pytest.mark.parametrize("overlay", [name for name in STRESS_OVERLAYS if "-clock-" in name])
+def test_a_clock_stress_overlay_keeps_the_clock_declaration(overlay):
+    meta = PackagedProblemTemplates().files(overlay)["meta.yaml"]
+    assert "  clock: virtual\n" in meta
+    assert "limits: {hang_guard_ms: 3000}\n" in meta
+
+
+@pytest.mark.parametrize("overlay", [name for name in STRESS_OVERLAYS if "-clock-" not in name])
+def test_a_stress_overlay_on_the_real_clock_declares_no_clock(overlay):
+    meta = PackagedProblemTemplates().files(overlay)["meta.yaml"]
+    assert "clock" not in meta

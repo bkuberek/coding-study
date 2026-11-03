@@ -1,0 +1,32 @@
+// The reference with `add` across two monitor holds: another add between its read and its
+// write is lost.
+package app;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class {{class_name}} {
+    private final Map<String, Integer> counts = new HashMap<>();
+
+    public int add(String key, int amount) {
+        int count = count(key) + amount;
+        Thread.yield();
+        synchronized (this) {
+            counts.put(key, count);
+        }
+        return count;
+    }
+
+    public synchronized int count(String key) {
+        return counts.getOrDefault(key, 0);
+    }
+
+    public synchronized boolean take(String key, int amount) {
+        int count = counts.getOrDefault(key, 0);
+        if (count < amount) {
+            return false;
+        }
+        counts.put(key, count - amount);
+        return true;
+    }
+}

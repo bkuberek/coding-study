@@ -1,0 +1,40 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "ex1",
+      "visible": true,
+      "level": 1,
+      "ops": ["{{class_name}}", "add", "add", "count"],
+      "args": [[], ["a", 2], ["a", 3], ["a"]],
+      "expected": [null, 2, 5, 5]
+    },
+    {
+      "id": "ex2",
+      "visible": true,
+      "level": 2,
+      "note": "a wait that an add ends, then a wait that times out",
+      "ops": ["{{class_name}}", "@spawn", "@advance", "add", "@join", "@now", "waitFor", "@now"],
+      "args": [[], ["w1", "waitFor", "a", 3, 5000], [1000], ["a", 3], ["w1"], [], ["b", 1, 2000], []],
+      "expected": [null, null, null, 3, 3, 1000, 0, 3000]
+    },
+    {
+      "id": "s1",
+      "level": 2,
+      "note": "4 goroutines add to one key",
+      "stress": {
+        "seed": 1000,
+        "setup": {"ops": ["{{class_name}}"], "args": [[]]},
+        "workers": [
+          {"group": "adder", "count": 4, "repeat": 1000,
+           "steps": [{"op": "add", "args": ["k", 1]}]}
+        ],
+        "final": {"ops": ["count"], "args": [["k"]], "expected": [4000]},
+        "invariants": [
+          {"type": "distinct", "values": {"op": "add"}}
+        ]
+      }
+    }
+  ]
+}

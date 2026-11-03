@@ -1,0 +1,53 @@
+// The reference with `add` across an await: another task's add between its read and its
+// write is lost.
+
+export class {{class_name}} {
+  readonly #counts = new Map<string, number>();
+  #waiters: (() => void)[] = [];
+
+  async add(key: string, amount: number): Promise<number> {
+    const count = (this.#counts.get(key) ?? 0) + amount;
+    await Promise.resolve();
+    this.#counts.set(key, count);
+    this.#wake();
+    return count;
+  }
+
+  count(key: string): number {
+    return this.#counts.get(key) ?? 0;
+  }
+
+  async waitFor(key: string, atLeast: number, waitMs: number): Promise<number> {
+    const deadline = Date.now() + waitMs;
+    while (this.count(key) < atLeast) {
+      const left = deadline - Date.now();
+      if (left <= 0 || !(await this.#changed(left))) {
+        break;
+      }
+    }
+    return this.count(key);
+  }
+
+  #wake(): void {
+    const waiters = this.#waiters;
+    this.#waiters = [];
+    for (const wake of waiters) {
+      wake();
+    }
+  }
+
+  /** True when an add arrives within `ms` milliseconds, false once they passed. */
+  #changed(ms: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const wake = (): void => {
+        clearTimeout(timer);
+        resolve(true);
+      };
+      const timer = setTimeout(() => {
+        this.#waiters = this.#waiters.filter((waiter) => waiter !== wake);
+        resolve(false);
+      }, ms);
+      this.#waiters.push(wake);
+    });
+  }
+}

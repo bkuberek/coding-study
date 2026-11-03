@@ -1,0 +1,45 @@
+// The class that `cstudy submit` and the tests drive.
+//
+// TODO: replace this sketch with the reference of every level.
+package app
+
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeoutOrNull
+
+class {{class_name}} {
+    private val lock = ReentrantLock()
+    private val counts = HashMap<String, Int>()
+    private val waiters = mutableListOf<CompletableDeferred<Unit>>()
+
+    fun add(key: String, amount: Int): Int = lock.withLock {
+        val count = counts.getOrDefault(key, 0) + amount
+        counts[key] = count
+        wakeWaiters()
+        count
+    }
+
+    fun count(key: String): Int = lock.withLock { counts.getOrDefault(key, 0) }
+
+    suspend fun waitFor(key: String, atLeast: Int, waitMs: Long): Int {
+        withTimeoutOrNull(waitMs) {
+            while (true) {
+                val changed = lock.withLock {
+                    if (counts.getOrDefault(key, 0) >= atLeast) {
+                        null
+                    } else {
+                        CompletableDeferred<Unit>().also { waiters.add(it) }
+                    }
+                } ?: break
+                changed.await()
+            }
+        }
+        return count(key)
+    }
+
+    private fun wakeWaiters() {
+        waiters.forEach { waiter -> waiter.complete(Unit) }
+        waiters.clear()
+    }
+}

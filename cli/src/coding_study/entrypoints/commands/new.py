@@ -68,8 +68,12 @@ CLOCK_STEP = (
     "that depend on a tie",
     "cstudy verify {slug}",
 )
-CLOCK_WORKFLOW = (*PROJECT_WORKFLOW[:3], CLOCK_STEP, *PROJECT_WORKFLOW[3:])
-"""A project on the virtual clock adds step 4v, D10 (docs/specs/authoring.md#project-problems)."""
+STRESS_STEP = (
+    "Write the broken overlays in solutions/broken/<id>/ and tune the stress cases until each "
+    "overlay is caught",
+    "cstudy verify {slug}",
+)
+"""Stress cases add step 4s, for D6 and D7 (docs/specs/authoring.md#project-problems)."""
 PROJECT_TEMPLATES = frozenset(
     {
         TemplateName.PROJECT_PYTHON,
@@ -116,9 +120,19 @@ def new(
             help="A project template's variant for code that waits, on a virtual clock.",
         ),
     ] = False,
+    stress: Annotated[
+        bool,
+        typer.Option(
+            "--stress",
+            help="A project template's variant with a stress case and a broken overlay, for code "
+            "that several threads or tasks share.",
+        ),
+    ] = False,
 ) -> None:
     """Scaffold a new problem."""
-    request = ScaffoldRequest(slug, template, track, title, difficulty, pattern, virtual_clock)
+    request = ScaffoldRequest(
+        slug, template, track, title, difficulty, pattern, virtual_clock, stress
+    )
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     created = create_problem(environment, PackagedProblemTemplates(), request)
     output = console(context)
@@ -127,19 +141,40 @@ def new(
 
 
 def _report(created: CreatedProblem) -> Iterator[Text]:
-    variant = " with the virtual clock" if created.virtual_clock else ""
     yield Text(
-        f"created  {created.directory}  ({created.template} template{variant}, draft)", "bold"
+        f"created  {created.directory}  ({created.template} template{_variant(created)}, draft)",
+        "bold",
     )
     if created.template in PROJECT_TEMPLATES:
         yield Text("next steps (docs/specs/authoring.md#project-problems)")
-        yield from _steps(
-            CLOCK_WORKFLOW if created.virtual_clock else PROJECT_WORKFLOW, created.slug
-        )
+        yield from _steps(_project_workflow(created), created.slug)
         return
     yield Text(LANGUAGES_HINT)
     yield Text("next steps (docs/specs/authoring.md#workflow)")
     yield from _steps(WORKFLOW, created.slug)
+
+
+def _variant(created: CreatedProblem) -> str:
+    """` with the virtual clock`, ` with stress cases` or both."""
+    parts = [
+        text
+        for text, written in (
+            ("the virtual clock", created.virtual_clock),
+            ("stress cases", created.stress),
+        )
+        if written
+    ]
+    return f" with {' and '.join(parts)}" if parts else ""
+
+
+def _project_workflow(created: CreatedProblem) -> tuple[tuple[str, str], ...]:
+    """A project's steps, with the determinism step 4v after its reference for the virtual clock,
+    and the broken-overlay step 4s after that for stress cases."""
+    extra = (
+        *((CLOCK_STEP,) if created.virtual_clock else ()),
+        *((STRESS_STEP,) if created.stress else ()),
+    )
+    return (*PROJECT_WORKFLOW[:3], *extra, *PROJECT_WORKFLOW[3:])
 
 
 def _steps(workflow: Iterable[tuple[str, str]], slug: str) -> Iterator[Text]:

@@ -1,0 +1,20 @@
+// Package app holds the type that `cstudy submit` and the tests drive.
+package app
+
+// {{class_name}} TODO: what it keeps.
+type {{class_name}} struct{}
+
+// New{{class_name}} returns an empty {{class_name}}.
+func New{{class_name}}() *{{class_name}} {
+	return &{{class_name}}{}
+}
+
+// Add TODO: what it does; returns the new count of key.
+func (a *{{class_name}}) Add(key string, amount int) int {
+	panic("not implemented")
+}
+
+// Count TODO: what it does; returns the count of key, or 0 when nothing was added to it.
+func (a *{{class_name}}) Count(key string) int {
+	panic("not implemented")
+}

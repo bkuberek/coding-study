@@ -1,0 +1,43 @@
+// Package app holds the type that `cstudy submit` and the tests drive.
+//
+// TODO: replace this sketch with the reference of every level.
+package app
+
+import "sync"
+
+// {{class_name}} keeps a count per key; goroutines share it from level 2.
+type {{class_name}} struct {
+	mu     sync.Mutex
+	counts map[string]int
+}
+
+// New{{class_name}} returns a {{class_name}} in which every key counts 0.
+func New{{class_name}}() *{{class_name}} {
+	return &{{class_name}}{counts: map[string]int{}}
+}
+
+// Add adds amount to the count of key and returns the new count.
+func (a *{{class_name}}) Add(key string, amount int) int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.counts[key] += amount
+	return a.counts[key]
+}
+
+// Count returns the count of key.
+func (a *{{class_name}}) Count(key string) int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.counts[key]
+}
+
+// Take removes amount from the count of key, unless the count is lower.
+func (a *{{class_name}}) Take(key string, amount int) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.counts[key] < amount {
+		return false
+	}
+	a.counts[key] -= amount
+	return true
+}

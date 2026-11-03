@@ -3,9 +3,11 @@
 Writes the template files with their placeholders filled in and the files the track needs (an
 `lld` rubric), then one empty reference file per declared approach and language, read back from
 the new meta.yaml, and for concurrent problems one empty broken reference file per broken id and
-language; a project template holds its starter and its reference overlay instead. Slugs are
-unique across problems/ and tracks/. The problem goes to the environment's destination: an
-editable content checkout, or the workspace's own problems/ numbered from 5001.
+language; a project template holds its starter and its reference overlay instead, and a stress
+variant lays the files a stress problem changes over them (a later template directory's file
+replaces an earlier one's). Slugs are unique across problems/ and tracks/. The problem goes to the
+environment's destination: an editable content checkout, or the workspace's own problems/ numbered
+from 5001.
 """
 
 from dataclasses import dataclass
@@ -22,7 +24,7 @@ from coding_study.domain.scaffold import (
     next_problem_id,
     plan_scaffold,
     render_template,
-    template_directory,
+    template_directories,
 )
 
 
@@ -34,6 +36,8 @@ class CreatedProblem:
     template: TemplateName
     virtual_clock: bool
     """Written from the template's variant for code that waits."""
+    stress: bool
+    """Written with a stress case and a broken overlay."""
     files: tuple[str, ...]
     """Relative to `directory`, in the order written."""
 
@@ -47,11 +51,11 @@ def create_problem(
     problems = destination.files
     problem_id = next_problem_id(problems.directory_names(), destination.first_id)
     scaffold = plan_scaffold(request, problem_id)
-    template = template_directory(request)
+    layers = template_directories(request)
     directory = f"{problems.directory}/{scaffold.directory_name}"
     placeholders = scaffold.placeholders()
     written: list[str] = []
-    for template_path, text in sorted(templates.files(template).items()):
+    for template_path, text in sorted(_layered_files(templates, layers).items()):
         name = render_template(template_path, placeholders)
         destination.writer.write_text(f"{directory}/{name}", render_template(text, placeholders))
         written.append(name)
@@ -63,8 +67,20 @@ def create_problem(
         destination.writer.write_text(f"{directory}/{name}", "")
         written.append(name)
     return CreatedProblem(
-        scaffold.slug, directory, request.template, request.virtual_clock, tuple(written)
+        scaffold.slug,
+        directory,
+        request.template,
+        request.virtual_clock,
+        request.stress,
+        tuple(written),
     )
+
+
+def _layered_files(templates: ProblemTemplates, layers: tuple[str, ...]) -> dict[str, str]:
+    files: dict[str, str] = {}
+    for layer in layers:
+        files |= templates.files(layer)
+    return files
 
 
 def _empty_references(meta: ProblemMeta) -> list[str]:

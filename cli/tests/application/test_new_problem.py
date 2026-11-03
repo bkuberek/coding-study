@@ -1,3 +1,4 @@
+import re
 import shutil
 from pathlib import Path
 
@@ -13,12 +14,19 @@ from coding_study.application.new_problem import create_problem
 from coding_study.application.verify_content import VerifyRequest, verify_content
 from coding_study.domain import scaffold
 from coding_study.domain.cases import OperationSequence
+from coding_study.domain.concurrency import ConcurrencyModel, ThreadKind
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import ALL_LANGUAGES, ContentStatus, Language, ProblemKind, Track
 from coding_study.domain.project import RUST_CLOCK_CRATES
 from coding_study.domain.project_checks import jvm_build_files
-from coding_study.domain.scaffold import WORKSPACE_FIRST_ID, ScaffoldRequest, TemplateName
+from coding_study.domain.scaffold import (
+    WORKSPACE_FIRST_ID,
+    ScaffoldRequest,
+    TemplateName,
+    render_template,
+)
 from coding_study.domain.signature import ClassSignature
+from coding_study.domain.stress import StressScenario
 from coding_study.domain.virtual_clock import ProjectClock
 from tests.fakes import make_environment
 from tests.helpers import FIXTURE_TRACKS
@@ -768,3 +776,214 @@ def test_a_rust_clock_starter_without_tokio_fails_static_checks(environment):
         f"problems/0003-{RUST_CLOCK_SLUG}/starter/Cargo.toml: a virtual-clock project's "
         f"[dependencies] needs tokio = {RUST_CLOCK_CRATES['tokio']}",
     )
+
+
+# a project with stress cases
+
+STRESS_SLUG = "tally-counter"
+STRESS_CLASS = "TallyCounter"
+STRESS_ENTRIES = {
+    Language.PYTHON: "app/main.py",
+    Language.TYPESCRIPT: "src/main.ts",
+    Language.JAVA: f"src/main/java/app/{STRESS_CLASS}.java",
+    Language.KOTLIN: f"src/main/kotlin/app/{STRESS_CLASS}.kt",
+    Language.GO: "app.go",
+    Language.RUST: "src/lib.rs",
+}
+STRESS_COMBINATIONS = [
+    (template, clock)
+    for clock, templates in (
+        (
+            False,
+            (
+                TemplateName.PROJECT_PYTHON,
+                TemplateName.PROJECT_JAVA,
+                TemplateName.PROJECT_KOTLIN,
+                TemplateName.PROJECT_GO,
+                TemplateName.PROJECT_RUST,
+            ),
+        ),
+        (
+            True,
+            (
+                TemplateName.PROJECT_PYTHON,
+                TemplateName.PROJECT_TYPESCRIPT,
+                TemplateName.PROJECT_KOTLIN,
+                TemplateName.PROJECT_GO,
+                TemplateName.PROJECT_RUST,
+            ),
+        ),
+    )
+    for template in templates
+]
+JVM_STRESS_TEMPLATES = (TemplateName.PROJECT_JAVA, TemplateName.PROJECT_KOTLIN)
+STRESS_IDS = [f"{template}{'-clock' if clock else ''}" for template, clock in STRESS_COMBINATIONS]
+
+
+def create_stress(environment, template: TemplateName, clock: bool):
+    request = ScaffoldRequest(STRESS_SLUG, template, virtual_clock=clock, stress=True)
+    return create_problem(environment, TEMPLATES, request)
+
+
+def entry_of(template: TemplateName) -> str:
+    return STRESS_ENTRIES[scaffold.PROJECT_TEMPLATE_LANGUAGES[template]]
+
+
+stress_combinations = pytest.mark.parametrize(
+    ("template", "clock"), STRESS_COMBINATIONS, ids=STRESS_IDS
+)
+
+
+@stress_combinations
+def test_a_stress_project_reports_what_it_was_written_with(environment, template, clock):
+    created = create_stress(environment, template, clock)
+    assert (created.template, created.virtual_clock, created.stress) == (template, clock, True)
+
+
+@stress_combinations
+def test_a_stress_project_keeps_a_reference_overlay_and_a_broken_one_beside_it(
+    environment, template, clock
+):
+    created = create_stress(environment, template, clock)
+    entry = entry_of(template)
+    assert {f"solutions/reference/{entry}", f"solutions/broken/lost-update/{entry}"} <= set(
+        created.files
+    )
+
+
+@stress_combinations
+def test_a_stress_projects_broken_overlay_changes_the_reference(environment, template, clock):
+    created = create_stress(environment, template, clock)
+    entry = entry_of(template)
+    reference = clock_file(environment, created, f"solutions/reference/{entry}")
+    broken = clock_file(environment, created, f"solutions/broken/lost-update/{entry}")
+    assert broken != reference
+
+
+@stress_combinations
+def test_a_stress_project_declares_the_broken_overlay_and_the_case_that_catches_it(
+    environment, template, clock
+):
+    create_stress(environment, template, clock)
+    problem = environment.problems.load(STRESS_SLUG)
+    broken = problem.meta.concurrency.broken  # type: ignore[union-attr]
+    stress_cases = [case for case in problem.cases if isinstance(case.input, StressScenario)]
+    assert [(b.id, b.caught_by) for b in broken] == [("lost-update", ("s1",))]
+    assert [(case.id, case.level, case.visible) for case in stress_cases] == [("s1", 2, False)]
+
+
+@stress_combinations
+def test_a_stress_project_keeps_two_sequential_cases_at_each_level_in_view(
+    environment, template, clock
+):
+    create_stress(environment, template, clock)
+    cases = environment.problems.load(STRESS_SLUG).cases
+    visible = [(case.id, case.level) for case in cases if case.visible]
+    assert visible == [("ex1", 1), ("ex2", 2)]
+
+
+@stress_combinations
+def test_a_stress_project_is_on_the_clock_it_was_asked_for(environment, template, clock):
+    create_stress(environment, template, clock)
+    meta = environment.problems.load(STRESS_SLUG).meta
+    declared = meta.project.clock  # type: ignore[union-attr]
+    assert declared == (ProjectClock.VIRTUAL if clock else None)
+
+
+EXPECTED_MODELS = {
+    (TemplateName.PROJECT_PYTHON, False): ConcurrencyModel.THREADS,
+    (TemplateName.PROJECT_PYTHON, True): ConcurrencyModel.ASYNC,
+    (TemplateName.PROJECT_TYPESCRIPT, True): ConcurrencyModel.ASYNC,
+    (TemplateName.PROJECT_JAVA, False): ConcurrencyModel.THREADS,
+    (TemplateName.PROJECT_KOTLIN, False): ConcurrencyModel.THREADS,
+    (TemplateName.PROJECT_KOTLIN, True): ConcurrencyModel.THREADS,
+    (TemplateName.PROJECT_GO, False): ConcurrencyModel.THREADS,
+    (TemplateName.PROJECT_GO, True): ConcurrencyModel.THREADS,
+    (TemplateName.PROJECT_RUST, False): ConcurrencyModel.THREADS,
+    (TemplateName.PROJECT_RUST, True): ConcurrencyModel.THREADS,
+}
+
+
+@stress_combinations
+def test_a_stress_project_runs_in_the_model_its_language_and_methods_need(
+    environment, template, clock
+):
+    create_stress(environment, template, clock)
+    concurrency = environment.problems.load(STRESS_SLUG).meta.concurrency
+    language = scaffold.PROJECT_TEMPLATE_LANGUAGES[template]
+    assert concurrency.model_for(language) is EXPECTED_MODELS[(template, clock)]  # type: ignore[union-attr]
+
+
+@pytest.mark.parametrize(
+    ("template", "clock"),
+    [combination for combination in STRESS_COMBINATIONS if combination[0] in JVM_STRESS_TEMPLATES],
+)
+def test_a_jvm_stress_project_runs_every_thread_kind(environment, template, clock):
+    create_stress(environment, template, clock)
+    concurrency = environment.problems.load(STRESS_SLUG).meta.concurrency
+    assert concurrency.jvm_threads == (ThreadKind.PLATFORM, ThreadKind.VIRTUAL)  # type: ignore[union-attr]
+
+
+@stress_combinations
+def test_a_stress_project_passes_static_checks_after_replacing_the_placeholders(
+    environment, template, clock
+):
+    created = create_stress(environment, template, clock)
+    replace_placeholders(environment.root / created.directory)
+    assert static_errors(environment, STRESS_SLUG) == ()
+
+
+@stress_combinations
+def test_a_stress_project_fails_static_checks_until_the_placeholders_are_replaced(
+    environment, template, clock
+):
+    create_stress(environment, template, clock)
+    assert any("TODO" in error for error in static_errors(environment, STRESS_SLUG))
+
+
+@stress_combinations
+def test_a_stress_project_writes_the_build_files_of_its_base_template(environment, template, clock):
+    """Check S15 compares them with the template's, so the stress overlay must not alter them."""
+    created = create_stress(environment, template, clock)
+    request = ScaffoldRequest(STRESS_SLUG, template, virtual_clock=clock)
+    placeholders = scaffold.plan_scaffold(request, "0003").placeholders()
+    base = scaffold.template_directories(request)[0]
+    changed = {f"starter/{entry_of(template)}", "starter/README.md"}
+    for name, text in TEMPLATES.files(base).items():
+        path = render_template(name, placeholders)
+        if path.startswith("starter/") and path not in changed:
+            assert clock_file(environment, created, path) == render_template(text, placeholders)
+
+
+def test_a_rust_stress_project_shares_the_instance_through_shared_receivers(environment):
+    created = create_stress(environment, TemplateName.PROJECT_RUST, False)
+    text = clock_file(environment, created, "solutions/reference/src/lib.rs")
+    assert ("&self" in text, "&mut self" in text) == (True, False)
+
+
+def test_a_rust_stress_projects_readme_says_why_methods_take_a_shared_receiver(environment):
+    created = create_stress(environment, TemplateName.PROJECT_RUST, False)
+    readme = clock_file(environment, created, "starter/README.md")
+    assert "every method takes `&self`" in readme
+
+
+def test_a_python_stress_projects_reference_locks_what_the_broken_overlay_does_not(environment):
+    created = create_stress(environment, TemplateName.PROJECT_PYTHON, False)
+    reference = clock_file(environment, created, "solutions/reference/app/main.py")
+    broken = clock_file(environment, created, "solutions/broken/lost-update/app/main.py")
+    assert (reference.count("with self._lock:"), broken.count("with self._lock:")) == (3, 2)
+
+
+@pytest.mark.parametrize(
+    ("template", "clock", "message"),
+    [
+        (TemplateName.ARRAY, False, "--stress applies to the project-* templates"),
+        (TemplateName.PROJECT_TYPESCRIPT, False, "without --virtual-clock"),
+        (TemplateName.PROJECT_JAVA, True, "Java has no virtual clock"),
+    ],
+)
+def test_stress_where_it_does_not_apply_writes_nothing(environment, template, clock, message):
+    request = ScaffoldRequest("tally-counter", template, virtual_clock=clock, stress=True)
+    with pytest.raises(UsageError, match=re.escape(message)):
+        create_problem(environment, TEMPLATES, request)
+    assert not environment.workspace.exists("problems/0003-tally-counter")

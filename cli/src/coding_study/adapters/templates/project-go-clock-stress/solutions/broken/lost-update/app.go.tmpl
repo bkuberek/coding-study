@@ -1,0 +1,61 @@
+// Package app holds the reference with Add across two mutex holds: another add between its read
+// and its write is lost.
+package app
+
+import (
+	"runtime"
+	"sync"
+	"time"
+)
+
+// {{class_name}} keeps a count per key; goroutines share it from level 2.
+type {{class_name}} struct {
+	mu      sync.Mutex
+	counts  map[string]int
+	changed chan struct{}
+}
+
+// New{{class_name}} returns a {{class_name}} in which every key counts 0.
+func New{{class_name}}() *{{class_name}} {
+	return &{{class_name}}{counts: map[string]int{}, changed: make(chan struct{})}
+}
+
+// Add adds amount to the count of key, wakes the waiters and returns the new count.
+func (a *{{class_name}}) Add(key string, amount int) int {
+	count := a.Count(key) + amount
+	runtime.Gosched()
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.counts[key] = count
+	close(a.changed)
+	a.changed = make(chan struct{})
+	return count
+}
+
+// Count returns the count of key.
+func (a *{{class_name}}) Count(key string) int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.counts[key]
+}
+
+// WaitFor returns the count of key as soon as it is at least atLeast, or its count once waitMs
+// milliseconds passed without it getting there.
+func (a *{{class_name}}) WaitFor(key string, atLeast int, waitMs int64) int {
+	timeout := time.NewTimer(time.Duration(waitMs) * time.Millisecond)
+	defer timeout.Stop()
+	for {
+		a.mu.Lock()
+		count := a.counts[key]
+		changed := a.changed
+		a.mu.Unlock()
+		if count >= atLeast {
+			return count
+		}
+		select {
+		case <-changed:
+		case <-timeout.C:
+			return a.Count(key)
+		}
+	}
+}

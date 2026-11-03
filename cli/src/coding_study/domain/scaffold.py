@@ -1,4 +1,5 @@
-"""What `cstudy new` writes (docs/specs/cli.md#cstudy-new): a draft problem from one of 8 templates.
+"""What `cstudy new` writes (docs/specs/cli.md#cstudy-new): a draft problem from a template, which
+a project template's `--virtual-clock` and `--stress` variants replace files of.
 
 Template files hold `{{name}}` placeholders (`Scaffold.placeholders`); everything else in them
 is literal, including the `TODO` text that `cstudy verify --static` rejects in problem.md until
@@ -12,6 +13,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from coding_study.domain import project_tests
+from coding_study.domain.concurrency import ALLOWED_MODELS, ConcurrencyModel
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.domain.problem_files import RUBRIC_FILE
@@ -61,6 +63,11 @@ PROJECT_TEMPLATE_LANGUAGES: Mapping[TemplateName, Language] = {
 CLOCK_TEMPLATE_SUFFIX = "-clock"
 """A project template's virtual-clock variant is a template directory of its own, named after the
 template with this suffix; `--from-template` never names it."""
+STRESS_TEMPLATE_SUFFIX = "-stress"
+"""`--stress` lays a directory of changed files over the template it applies to (the base template,
+or its virtual-clock variant), named after that template with this suffix. Only what a stress
+problem changes lives there, so the build files that check S15 compares byte for byte exist once,
+in the template underneath."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +105,9 @@ class ScaffoldRequest:
     virtual_clock: bool = False
     """`--virtual-clock`: the project template's variant for code that waits
     (docs/decisions/0017-async-project-problems.md)."""
+    stress: bool = False
+    """`--stress`: a `concurrency` block, a stress case at level 2 and a broken overlay, for code
+    that several threads or tasks share."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,8 +147,8 @@ class Scaffold:
 
 def plan_scaffold(request: ScaffoldRequest, problem_id: str) -> Scaffold:
     """Raises UsageError for an invalid slug, title, track or pattern, and for `--virtual-clock`
-    on a template that has no such variant."""
-    template_directory(request)
+    or `--stress` on a template that has no such variant."""
+    template_directories(request)
     if not SLUG_PATTERN.fullmatch(request.slug):
         raise UsageError(
             f'invalid slug "{request.slug}": use lowercase words joined by "-", e.g. two-sum'
@@ -158,13 +168,39 @@ def plan_scaffold(request: ScaffoldRequest, problem_id: str) -> Scaffold:
     )
 
 
-def template_directory(request: ScaffoldRequest) -> str:
-    """The packaged template the request writes: the template's own, or its virtual-clock variant.
+def template_directories(request: ScaffoldRequest) -> tuple[str, ...]:
+    """The packaged templates the request writes, in the order they are laid down: a file of a
+    later directory replaces the same path of an earlier one. The template's own, or its
+    virtual-clock variant, then for `--stress` the directory of what a stress problem changes.
 
     Raises UsageError for `--virtual-clock` on a template of another kind, in a language without
     a virtual clock, or whose runner does not grade it or whose generated tests do not express it
-    yet: the variant's examples hold harness operations.
+    yet: the variant's examples hold harness operations. And for `--stress` on a template of
+    another kind, or in TypeScript without the virtual clock.
     """
+    directory = _variant_directory(request)
+    if not request.stress:
+        return (directory,)
+    template = request.template
+    language = PROJECT_TEMPLATE_LANGUAGES.get(template)
+    if language is None:
+        raise UsageError(f"--stress applies to the project-* templates, not {template}")
+    if not request.virtual_clock and _only_runs_async(language):
+        raise UsageError(
+            f"--stress is not available for {template} without --virtual-clock: its stress cases "
+            f"run in the {ConcurrencyModel.ASYNC} model, where only an asynchronous method can be "
+            "interrupted, and asynchronous methods need the virtual clock"
+        )
+    return (directory, f"{directory}{STRESS_TEMPLATE_SUFFIX}")
+
+
+def _only_runs_async(language: Language) -> bool:
+    """Whether the async model is the language's only one, so a synchronous method runs to its end
+    before another task starts and no stress case can interrupt it."""
+    return ALLOWED_MODELS[language] == frozenset({ConcurrencyModel.ASYNC})
+
+
+def _variant_directory(request: ScaffoldRequest) -> str:
     template = request.template
     if not request.virtual_clock:
         return template

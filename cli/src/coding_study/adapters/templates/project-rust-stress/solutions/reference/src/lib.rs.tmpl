@@ -1,0 +1,45 @@
+//! The struct that `cstudy submit` and the tests drive.
+//!
+//! TODO: replace this sketch with the reference of every level.
+
+use std::collections::HashMap;
+use std::sync::Mutex;
+
+pub struct {{class_name}} {
+    counts: Mutex<HashMap<String, i32>>,
+}
+
+impl Default for {{class_name}} {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl {{class_name}} {
+    pub fn new() -> Self {
+        {{class_name}} {
+            counts: Mutex::new(HashMap::new()),
+        }
+    }
+
+    pub fn add(&self, key: String, amount: i32) -> i32 {
+        let mut counts = self.counts.lock().unwrap();
+        let count = counts.entry(key).or_insert(0);
+        *count += amount;
+        *count
+    }
+
+    pub fn count(&self, key: String) -> i32 {
+        *self.counts.lock().unwrap().get(&key).unwrap_or(&0)
+    }
+
+    pub fn take(&self, key: String, amount: i32) -> bool {
+        let mut counts = self.counts.lock().unwrap();
+        let count = counts.entry(key).or_insert(0);
+        if *count < amount {
+            return false;
+        }
+        *count -= amount;
+        true
+    }
+}

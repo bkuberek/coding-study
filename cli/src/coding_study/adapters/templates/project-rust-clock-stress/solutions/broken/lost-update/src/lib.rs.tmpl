@@ -1,0 +1,55 @@
+//! The reference with `add` across two mutex holds: another add between its read and its write
+//! is lost.
+
+use std::collections::HashMap;
+use std::sync::Mutex;
+use std::time::Duration;
+
+use tokio::sync::Notify;
+
+pub struct {{class_name}} {
+    counts: Mutex<HashMap<String, i32>>,
+    changed: Notify,
+}
+
+impl Default for {{class_name}} {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl {{class_name}} {
+    pub fn new() -> Self {
+        {{class_name}} {
+            counts: Mutex::new(HashMap::new()),
+            changed: Notify::new(),
+        }
+    }
+
+    pub fn add(&self, key: String, amount: i32) -> i32 {
+        let count = self.count(key.clone()) + amount;
+        std::thread::yield_now();
+        self.counts.lock().unwrap().insert(key, count);
+        self.changed.notify_waiters();
+        count
+    }
+
+    pub fn count(&self, key: String) -> i32 {
+        *self.counts.lock().unwrap().get(&key).unwrap_or(&0)
+    }
+
+    pub async fn wait_for(&self, key: String, at_least: i32, wait_ms: i64) -> i32 {
+        let reached = async {
+            loop {
+                let changed = self.changed.notified();
+                if self.count(key.clone()) >= at_least {
+                    return;
+                }
+                changed.await;
+            }
+        };
+        let wait = Duration::from_millis(u64::try_from(wait_ms).unwrap_or(0));
+        let _ = tokio::time::timeout(wait, reached).await;
+        self.count(key)
+    }
+}

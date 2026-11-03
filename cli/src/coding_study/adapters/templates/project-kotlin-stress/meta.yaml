@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "{{id}}"
+slug: {{slug}}
+title: {{title_yaml}}
+status: draft
+difficulty: {{difficulty}}
+track: {{track}}
+kind: project
+{{patterns}}
+languages: [kotlin]
+levels:
+  - {level: 1, title: Keep counts}
+  - {level: 2, title: Share the counts}
+signature:
+  class:
+    name: {{class_name}}
+    constructor: {params: []}
+    methods:
+      - {name: add, level: 1, params: [{name: key, type: string}, {name: amount, type: int}], returns: {type: int}}
+      - {name: count, level: 1, params: [{name: key, type: string}], returns: {type: int}}
+      - {name: take, level: 2, params: [{name: key, type: string}, {name: amount, type: int}], returns: {type: bool}}
+comparator: {type: ops}
+project:
+  entry: app.{{class_name}}
+  tests: src/test/kotlin/app
+concurrency:
+  model: threads
+  jvm_threads: [platform, virtual]
+  broken:
+    - {id: lost-update, name: Add across two lock holds, bug: "add reads a count under the lock, lets it go, then writes it under the lock again, so another add in between is lost", caught_by: [s1]}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "O(1) per op", space: "O(n)", time_class: "n", space_class: "n"}

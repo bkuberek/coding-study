@@ -151,6 +151,112 @@ def test_the_virtual_clock_flag_writes_nothing_where_it_does_not_apply(environme
     assert not environment.workspace.exists("problems/0003-waiter")
 
 
+STRESS_TEMPLATES = (
+    "project-python",
+    "project-java",
+    "project-kotlin",
+    "project-go",
+    "project-rust",
+)
+
+
+@pytest.mark.parametrize("template", STRESS_TEMPLATES)
+def test_the_stress_flag_writes_a_project_with_a_broken_overlay(environment, template):
+    result = invoke(f"tally-{template}", "--from-template", template, "--stress")
+    concurrency = environment.problems.load(f"tally-{template}").meta.concurrency
+    broken = [reference.id for reference in concurrency.broken]  # type: ignore[union-attr]
+    assert (result.exit_code, broken) == (0, ["lost-update"])
+
+
+@pytest.mark.parametrize("template", ["project-python", "project-typescript", "project-kotlin"])
+def test_the_stress_flag_combines_with_the_virtual_clock(environment, template):
+    result = invoke(f"tally-{template}", "--from-template", template, "--virtual-clock", "--stress")
+    meta = environment.problems.load(f"tally-{template}").meta
+    broken = [reference.id for reference in meta.concurrency.broken]  # type: ignore[union-attr]
+    assert (result.exit_code, meta.project.clock, broken) == (  # type: ignore[union-attr]
+        0,
+        "virtual",
+        ["lost-update"],
+    )
+
+
+def test_a_stress_project_says_so_in_its_first_line(environment):
+    result = invoke("tally-go", "--from-template", "project-go", "--stress")
+    assert result.output.splitlines()[0] == (
+        "created  problems/0003-tally-go  (project-go template with stress cases, draft)"
+    )
+
+
+def test_a_stress_project_on_the_virtual_clock_says_both_in_its_first_line(environment):
+    result = invoke("tally-go", "--from-template", "project-go", "--virtual-clock", "--stress")
+    assert result.output.splitlines()[0] == (
+        "created  problems/0003-tally-go  "
+        "(project-go template with the virtual clock and stress cases, draft)"
+    )
+
+
+def test_a_stress_project_adds_the_broken_overlay_step_to_the_workflow(environment):
+    lines = invoke("tally-go", "--from-template", "project-go", "--stress").output.splitlines()
+    assert lines[6:10] == [
+        "  4. Write the reference overlay in solutions/<approach>/, level by level",
+        "     cstudy verify tally-go",
+        "  5. Write the broken overlays in solutions/broken/<id>/ and tune the stress cases until "
+        "each overlay is caught",
+        "     cstudy verify tally-go",
+    ]
+
+
+def test_a_stress_project_on_the_virtual_clock_checks_determinism_before_the_broken_overlays(
+    environment,
+):
+    lines = invoke("tally-go", "--from-template", "project-go", "--virtual-clock", "--stress")
+    steps = [line for line in lines.output.splitlines() if line[:3].strip().rstrip(".").isdigit()]
+    assert [step[5:30] for step in steps] == [
+        "Write problem.md, with ##",
+        "Shape the starter: the en",
+        "Write the reference overl",
+        "Check that every case giv",
+        "Write the broken overlays",
+        "Write solutions/explanati",
+    ]
+
+
+@pytest.mark.parametrize("flags", [("--stress",), ("--virtual-clock", "--stress")])
+def test_a_stress_project_still_ends_with_the_ready_gate(environment, flags):
+    lines = invoke("tally-go", "--from-template", "project-go", *flags).output.splitlines()
+    assert lines[-1] == "     cstudy verify tally-go --require-ready"
+
+
+@pytest.mark.parametrize(
+    ("arguments", "message"),
+    [
+        (["--from-template", "array"], "--stress applies to the project-* templates"),
+        (["--from-template", "project-typescript"], "without --virtual-clock"),
+        (["--from-template", "project-java", "--virtual-clock"], "Java has no virtual clock"),
+    ],
+)
+def test_the_stress_flag_exits_3_where_it_does_not_apply(environment, arguments, message):
+    result = invoke("tally", *arguments, "--stress")
+    assert (result.exit_code, message in result.output) == (ExitCode.USAGE_ERROR, True)
+
+
+def test_the_stress_flag_writes_nothing_where_it_does_not_apply(environment):
+    invoke("tally", "--from-template", "project-typescript", "--stress")
+    assert not environment.workspace.exists("problems/0003-tally")
+
+
+@pytest.mark.parametrize("flags", [("--stress",), ("--virtual-clock", "--stress")])
+def test_cs_verify_static_passes_once_the_placeholders_are_replaced_in_a_stress_project(
+    environment, flags
+):
+    invoke("scaffolded", "--from-template", "project-go", *flags)
+    for path in (environment.root / "problems" / "0003-scaffolded").rglob("*"):
+        if path.is_file():
+            path.write_text(path.read_text().replace("TODO", "Written"))
+    result = runner.invoke(cli.app, ["verify", "scaffolded", "--static"])
+    assert (result.exit_code, "warning" in result.output) == (0, False)
+
+
 def test_flags_reach_the_scaffold(environment):
     invoke("same-tree", "--from-template", "tree", "--title", "Same Tree?", "--difficulty", "easy")
     meta = environment.problems.load("same-tree").meta
