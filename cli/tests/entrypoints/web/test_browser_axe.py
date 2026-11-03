@@ -257,6 +257,7 @@ def _checked(page: Any) -> list[str]:
             response = axe_playwright.Axe().run(page, options=RULES).response
             found.extend(_described(response["violations"], where))
             found.extend(_reflow(page, where))
+            found.extend(_squeezed_segments(page, where))
     return found
 
 
@@ -266,6 +267,21 @@ def _reflow(page: Any, where: str) -> list[str]:
     wide = page.evaluate("document.documentElement.scrollWidth")
     window = page.evaluate("document.documentElement.clientWidth")
     return [f"reflow: the page is {wide} pixels wide, {where}"] if wide > window else []
+
+
+SQUEEZED_SEGMENTS = """[...document.querySelectorAll('.statusbar .segment')]
+  .filter((s) => s.offsetParent !== null
+    && s.clientWidth + 1 < Math.min(s.scrollWidth, window.innerWidth / 2))
+  .map((s) => s.className)"""
+"""Status bar segments narrower than their text or half the window: a narrow window scrolls the
+bar instead of squeezing a segment."""
+
+
+def _squeezed_segments(page: Any, where: str) -> list[str]:
+    return [
+        f"squeezed: status bar segment .{name.replace(' ', '.')}, {where}"
+        for name in page.evaluate(SQUEEZED_SEGMENTS)
+    ]
 
 
 def _described(violations: list[dict[str, Any]], where: str) -> list[str]:

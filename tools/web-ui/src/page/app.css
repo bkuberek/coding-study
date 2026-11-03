@@ -1355,6 +1355,12 @@ input[type="radio"] {
     display: none;
   }
 
+  /* The bar scrolls instead: a squeezed segment would cut its text to a few letters. */
+  .statusbar .segment,
+  .statusbar .segment-group {
+    flex-shrink: 0;
+  }
+
   .workbench {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "head" "files" "editors" "results" "brief";
