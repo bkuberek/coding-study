@@ -31,6 +31,20 @@ test("a server that wrote output that is not LSP says so", () => {
   assert.equal((closeOutcome(4002, "bad output: a message without Content-Length") as { why: string }).why, "bad output");
 });
 
+test("a server that stopped reading its input says it is stuck", () => {
+  const reason = "stuck: the server does not read its input";
+  assert.deepEqual(closeOutcome(4002, reason), { kind: "stopped", why: "stuck", reason });
+});
+
+test("a message of the server over 4 MiB says it is bad output", () => {
+  assert.equal((closeOutcome(4002, "bad output: a message over 4 MiB") as { why: string }).why, "bad output");
+});
+
+test("a page that read none of the server's messages is stopped with no cause", () => {
+  const reason = "the page does not read the server's messages";
+  assert.deepEqual(closeOutcome(1008, reason), { kind: "stopped", why: "", reason });
+});
+
 test("a fifth server says how many run", () => {
   const reason = "at most 4 code intelligence sessions run at once; close one in another tab";
   assert.deepEqual(closeOutcome(4003, reason), { kind: "stopped", why: "4 sessions running", reason });
