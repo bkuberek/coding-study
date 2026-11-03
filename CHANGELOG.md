@@ -2,6 +2,39 @@
 
 <!-- version list -->
 
+## v0.12.0 (2026-11-03)
+
+### Bug Fixes
+
+- **ide**: Stop passing --keep-going to rust-analyzer twice
+  ([`42fa839`](https://github.com/bkuberek/coding-study/commit/42fa8395f33f2b4d25fbb6eadd1bf8a56e740a90))
+
+- **start**: Wrap the starter header comment at 100 columns
+  ([`6ce14b9`](https://github.com/bkuberek/coding-study/commit/6ce14b98974bd4e30873a27b06b5075397461000))
+
+- **web**: Say that a review start deletes nothing
+  ([`9cbf73c`](https://github.com/bkuberek/coding-study/commit/9cbf73cf7031b2f7fc165f63251aca0283d36ccc))
+
+### Documentation
+
+- **web-ui**: Refresh the bundle size table and add the past-code chunk
+  ([`6e57eba`](https://github.com/bkuberek/coding-study/commit/6e57ebaab2b6dbc33e1b794c82a348f5bd677e5b))
+
+### Features
+
+- **doctor**: Report more than one cstudy install and name the running one in the reinstall fix
+  ([`6a9251f`](https://github.com/bkuberek/coding-study/commit/6a9251f28082e43efe55419f8333aed9a8606c58))
+
+- **serve**: Name the running install in the reinstall hint
+  ([`498e78d`](https://github.com/bkuberek/coding-study/commit/498e78d0f03e41d18a6142cc54d2bf86a55db13d))
+
+- **web**: Read the files of a past attempt through the API
+  ([`b772858`](https://github.com/bkuberek/coding-study/commit/b772858a560e285802c006bb9a880d886ae9b62d))
+
+- **web**: Show a past attempt's code read-only in History
+  ([`8680a3b`](https://github.com/bkuberek/coding-study/commit/8680a3bd0149ae19c4bbcc1c0c20c49fc093eed0))
+
+
 ## v0.11.1 (2026-11-03)
 
 ### Bug Fixes
