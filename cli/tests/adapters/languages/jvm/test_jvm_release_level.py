@@ -54,7 +54,7 @@ CLASS_DIRECTORIES = {Language.JAVA: "classes/java/main", Language.KOTLIN: "class
 WARMUP_PROJECTS = Path("jvm") / "project-warmup"
 WARMUP_CLASS = "warmup/Counter.class"
 SUPPORT_CLASS = Path("jvm/support/build/classes/java/main/cs/support/ListNode.class")
-GRADLE_FLAGS = ("-q", "--console=plain")
+GRADLE_FLAGS = ("-q", "--console=plain", "--no-watch-fs")
 
 
 @pytest.fixture(scope="module")
