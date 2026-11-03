@@ -13,6 +13,7 @@ that reads none of the server's messages, ends the session.
 
 import asyncio
 import json
+import os
 import sys
 from collections.abc import Callable
 from contextlib import suppress
@@ -30,6 +31,7 @@ from coding_study.entrypoints.web.language_server import (
     LanguageTiming,
     ServerProcess,
     ServerStartError,
+    environment_hiding,
 )
 from coding_study.entrypoints.web.notifications import Notifications
 
@@ -270,8 +272,12 @@ class LanguageSessions:
             refusal = self._refusal()
             if refusal is None:
                 arguments = self.command.arguments(target.server, target.lsp_directory)
+                needed = (target.directory, target.lsp_directory)
+                environment = environment_hiding(os.environ, target.hidden, needed)
                 try:
-                    process = await ServerProcess.start(arguments, target.directory, self.timing)
+                    process = await ServerProcess.start(
+                        arguments, target.directory, self.timing, environment
+                    )
                 except ServerStartError as error:
                     refusal = Closing(CloseCode.SERVER_EXITED, f"cannot start: {error}")
                 else:

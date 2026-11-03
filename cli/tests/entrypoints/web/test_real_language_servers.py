@@ -5,6 +5,9 @@ undefined name is an error, `sorted` has documentation, and the definition of `s
 item resolves through its token, and an item the page made up, naming a reference solution as the
 module to document, is refused instead of documenting it. typescript-language-server resolves
 the items of a completion through the `cacheId` it keeps in their `data`, which the broker holds.
+A page document that imports a reference solution, by `import`, `/// <reference path>` or
+`import()`, finds it missing in both servers, whatever is asked of them; a control that lets the
+servers see the reference shows what each would have answered.
 
 Needs Node, pnpm and, the first time, the network for the packages of the pinned lock; the tests
 are skipped where the servers cannot be installed."""
@@ -28,6 +31,7 @@ from coding_study.adapters.subprocess_tool_probe import (
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.preferences import Preferences, preferences_document
 from coding_study.domain.problem import Language
+from coding_study.entrypoints.web import code_intelligence
 from coding_study.entrypoints.web.code_intelligence import LanguageSessions
 from tests.fakes import FakeToolchains, make_environment, repository_root
 from tests.helpers import FIXTURE_TRACKS
@@ -151,11 +155,15 @@ def played(practice_workspace: Path, installed: Path, tmp_path_factory) -> Playe
     )
 
 
-def _reports(message: dict[str, Any], document: str, name: str) -> bool:
+def _reports(message: dict[str, Any], document: str, *names: str) -> bool:
+    """Whether `message` publishes diagnostics of `document`, with one that says any of `names`
+    if there are any."""
     if message.get("method") != "textDocument/publishDiagnostics":
         return False
     params = message["params"]
-    return params["uri"] == document and any(name in d["message"] for d in params["diagnostics"])
+    if params["uri"] != document:
+        return False
+    return not names or any(name in d["message"] for d in params["diagnostics"] for name in names)
 
 
 def _items(result: Any) -> list[dict[str, Any]]:
@@ -293,3 +301,202 @@ def test_a_typescript_item_resolves_again_with_the_same_token(played_typescript)
 
 def test_a_typescript_item_with_a_cache_id_of_the_pages_own_is_refused(played_typescript):
     assert played_typescript.guessed["error"]["code"] == -32602
+
+
+# a page document that imports a reference solution
+
+
+class Page:
+    """A page's side of a session, which keeps everything it was sent."""
+
+    def __init__(self, websocket: WebSocketTestSession) -> None:
+        self.websocket = websocket
+        self.seen: list[dict[str, Any]] = []
+
+    def until(self, matches: Callable[[dict[str, Any]], bool]) -> dict[str, Any]:
+        while True:
+            message = received(self.websocket, SERVER_SECONDS)
+            self.seen.append(message)
+            if matches(message):
+                return message
+
+    def ask(self, message: dict[str, Any]) -> dict[str, Any]:
+        self.websocket.send_json(message)
+        return self.until(lambda found: found.get("id") == message["id"])
+
+    @property
+    def text(self) -> str:
+        return json.dumps(self.seen)
+
+
+TYPESCRIPT_REFERENCE = """\
+/** REFERENCE-DOC: one pass with a Map of complements. */
+export function twoSum(nums: number[], target: number): [number, number] {
+  return [0, 1];
+}
+export const HIDDEN_TABLE = [3, 1, 4, 1, 5] as const;
+export interface SecretShape {
+  secretField: string;
+}
+"""
+IMPORTS_REFERENCE = """\
+/// <reference path="../../.cs/build/typescript/ref/two-sum/hash_map.ts" />
+import { twoSum, HIDDEN_TABLE } from "../../.cs/build/typescript/ref/two-sum/hash_map.ts";
+const found = twoSum([1], 2);
+const table = HIDDEN_TABLE;
+const wrong: 1 = table;
+let shaped: import("../../.cs/build/typescript/ref/two-sum/hash_map.ts").SecretShape;
+found.
+"""
+TYPESCRIPT_LEAKS = ("REFERENCE-DOC", "readonly [3, 1, 4, 1, 5]")
+"""What only the reference says: the documentation of a function, and the type of a constant,
+which a diagnostic quotes."""
+PYTHON_REFERENCE = f'''"""The module {REFERENCE_DOCSTRING}"""
+
+
+def two_sum(nums: list[int], target: int) -> list[int]:
+    """{REFERENCE_DOCSTRING}"""
+    return []
+'''
+IMPORTS_PYTHON_REFERENCE = "from ref.two_sum.hash_map import two_sum\n\nresult = two_sum([1], 2)\n"
+
+
+def asks_about_a_typescript_document(page: Page, document: str) -> None:
+    position = {"textDocument": {"uri": document}}
+    for number, (line, character) in enumerate([(2, 15), (3, 15), (5, 20)]):
+        at = {**position, "position": {"line": line, "character": character}}
+        page.ask(request(10 + number, "textDocument/hover", at))
+        page.ask(request(20 + number, "textDocument/definition", at))
+    at = {**position, "position": {"line": 6, "character": 6}}
+    page.ask(request(30, "textDocument/completion", at))
+
+
+def what_the_page_is_told_of_a_typescript_reference(root: Path) -> str:
+    reference = root / ".cs" / "build" / "typescript" / "ref" / "two-sum" / "hash_map.ts"
+    reference.parent.mkdir(parents=True, exist_ok=True)
+    reference.write_text(TYPESCRIPT_REFERENCE)
+    app, attempt_id = typescript_attempt(root)
+    document = (root / "typescript" / "practice" / "imports.ts").as_uri()
+    with session_client(app) as client, session(client, f"?attempt_id={attempt_id}") as websocket:
+        page = Page(websocket)
+        page.ask(request(1, "initialize", {"capabilities": {}}))
+        websocket.send_json(notification("initialized", {}))
+        opened = {
+            "uri": document,
+            "languageId": "typescript",
+            "version": 1,
+            "text": IMPORTS_REFERENCE,
+        }
+        websocket.send_json(notification("textDocument/didOpen", {"textDocument": opened}))
+        page.until(lambda m: _reports(m, document, "Cannot find module", "is not assignable"))
+        asks_about_a_typescript_document(page, document)
+    return page.text
+
+
+@pytest.fixture(scope="module")
+def typescript_with_the_reference_visible(typescript_root: Path) -> str:
+    """The control: servers that are not kept from the reference."""
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(code_intelligence, "environment_hiding", _unchanged)
+        return what_the_page_is_told_of_a_typescript_reference(typescript_root)
+
+
+@pytest.fixture(scope="module")
+def typescript_told(typescript_root: Path, typescript_with_the_reference_visible: str) -> str:
+    return what_the_page_is_told_of_a_typescript_reference(typescript_root)
+
+
+def _unchanged(environment: Any, _hidden: Any, _needed: Any) -> dict[str, str]:
+    return dict(environment)
+
+
+def test_without_the_script_typescript_tells_the_page_what_the_reference_declares(
+    typescript_with_the_reference_visible,
+):
+    told = typescript_with_the_reference_visible
+    assert [leak in told for leak in TYPESCRIPT_LEAKS] == [True] * len(TYPESCRIPT_LEAKS)
+
+
+def test_a_typescript_import_of_a_reference_is_a_module_that_is_not_found(typescript_told):
+    assert "Cannot find module" in typescript_told
+
+
+def test_nothing_the_page_asks_of_typescript_shows_what_a_reference_declares(typescript_told):
+    assert [leak in typescript_told for leak in TYPESCRIPT_LEAKS] == [False] * len(TYPESCRIPT_LEAKS)
+
+
+def python_root(tmp_path_factory, installed: Path) -> Path:
+    """A workspace whose `python/` project reaches `.cs/build/python` by `extraPaths`, as a
+    project folder's `pyproject.toml` could be made to say."""
+    root = repository_root(tmp_path_factory.mktemp("real-python-imports"), PRACTICE, FIXTURE_TRACKS)
+    (root / "python").mkdir()
+    (root / "python" / "pyproject.toml").write_text(
+        '[tool.pyright]\ninclude = ["practice"]\nextraPaths = ["../.cs/build/python"]\n'
+        'pythonVersion = "3.13"\ntypeCheckingMode = "standard"\n'
+    )
+    (root / ".cs").mkdir()
+    (root / ".cs" / "lsp").symlink_to(installed, target_is_directory=True)
+    reference = root / ".cs" / "build" / "python" / "ref" / "two_sum" / "hash_map.py"
+    reference.parent.mkdir(parents=True)
+    reference.write_text(PYTHON_REFERENCE)
+    return root
+
+
+def what_the_page_is_told_of_a_python_reference(root: Path) -> str:
+    environment = make_environment(
+        root,
+        toolchains=FakeToolchains(stub_generators=STUBS),
+        language_servers=LspDirectory(root, SubprocessToolProbe(), SubprocessCommandRunner()),
+        content_root=root.parent / "reference-content",
+    )
+    FsPreferencesStore(root).write(preferences_document(Preferences(code_intelligence=True)))
+    attempt = start_attempt(environment, StartRequest("two-sum", Language.PYTHON)).attempt
+    app = web_app(root, environment, sessions=LanguageSessions())
+    document = (root / "python" / "practice" / "imports.py").as_uri()
+    at = {"textDocument": {"uri": document}, "position": {"line": 2, "character": 10}}
+    with session_client(app) as client, session(client, f"?attempt_id={attempt.id}") as websocket:
+        page = Page(websocket)
+        page.ask(request(1, "initialize", {"capabilities": {}}))
+        websocket.send_json(notification("initialized", {}))
+        opened = {
+            "uri": document,
+            "languageId": "python",
+            "version": 1,
+            "text": IMPORTS_PYTHON_REFERENCE,
+        }
+        websocket.send_json(notification("textDocument/didOpen", {"textDocument": opened}))
+        page.until(lambda m: _reports(m, document))
+        page.ask(request(2, "textDocument/hover", at))
+        page.ask(request(3, "textDocument/definition", at))
+        in_import = {**at, "position": {"line": 0, "character": 20}}
+        page.ask(request(4, "textDocument/hover", in_import))
+        after_import = {**at, "position": {"line": 0, "character": 30}}
+        page.ask(request(5, "textDocument/completion", after_import))
+    return page.text
+
+
+@pytest.fixture(scope="module")
+def python_with_the_reference_visible(tmp_path_factory, installed: Path) -> str:
+    """The control: a server that is not kept from the reference."""
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(code_intelligence, "environment_hiding", _unchanged)
+        return what_the_page_is_told_of_a_python_reference(python_root(tmp_path_factory, installed))
+
+
+@pytest.fixture(scope="module")
+def python_told(tmp_path_factory, installed: Path, python_with_the_reference_visible: str) -> str:
+    return what_the_page_is_told_of_a_python_reference(python_root(tmp_path_factory, installed))
+
+
+def test_without_the_script_basedpyright_tells_the_page_what_the_reference_documents(
+    python_with_the_reference_visible,
+):
+    assert REFERENCE_DOCSTRING in python_with_the_reference_visible
+
+
+def test_a_python_import_of_a_reference_is_a_module_that_cannot_be_resolved(python_told):
+    assert "could not be resolved" in python_told
+
+
+def test_nothing_the_page_asks_of_basedpyright_shows_what_a_reference_documents(python_told):
+    assert REFERENCE_DOCSTRING not in python_told

@@ -3,6 +3,7 @@ scripted server: `initialize` rebuilt, the server's requests answered without th
 documentation sent as HTML, library files read, and the workspace's changes passed on. The rules
 message by message are in `test_language_broker.py`."""
 
+import json
 import os
 from collections.abc import Callable, Iterator
 
@@ -352,6 +353,19 @@ def test_a_definition_into_the_content_root_is_left_out(lab, client):
             [],
             "not_a_definition",
         )
+
+
+def test_the_server_starts_with_the_hidden_directories_to_hide_from_it(lab, client):
+    lab.server.play()
+    with session(client, lab.query):
+        eventually(lab.server.calls, bool)
+    (call,) = lab.server.calls()
+    assert json.loads(call["hidden"]) == [
+        str(lab.root / ".cs" / "build"),
+        str(lab.root / ".cs" / "cases"),
+        str(lab.root / ".cs" / "runs"),
+        str(lab.environment.content_root),
+    ]
 
 
 # changes on disk

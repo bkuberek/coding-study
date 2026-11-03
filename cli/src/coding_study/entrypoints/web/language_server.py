@@ -5,7 +5,9 @@ The server runs with no shell, in a session of its own so its whole process grou
 its standard input and output the LSP stream (`Content-Length` framing, which the WebSocket
 messages go without) and its standard error kept. Stopping it is `shutdown`, `exit`, standard
 input closed, then SIGTERM and SIGKILL to the group, as a cancelled run escalates; whatever the
-server does not read, the stop reaches SIGTERM and SIGKILL on time.
+server does not read, the stop reaches SIGTERM and SIGKILL on time. A Node server also starts with
+`hide_paths.cjs` preloaded, which keeps the hidden directories from it
+(docs/specs/web-ui.md#hidden-directories).
 """
 
 import asyncio
@@ -13,7 +15,7 @@ import json
 import os
 import signal
 from collections import deque
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,6 +31,10 @@ MESSAGE_LIMIT = 4 * 1024 * 1024
 the message is read."""
 UNREAD_LIMIT = 8 * MESSAGE_LIMIT
 """How many bytes of the server's messages may wait unread, because the page reads slowly."""
+PRELOAD = Path(__file__).with_name("hide_paths.cjs")
+"""The script that makes the hidden directories not exist for a Node process."""
+HIDDEN_VARIABLE = "CSTUDY_HIDDEN_DIRECTORIES"
+"""The variable that names those directories to the script: a JSON array of paths."""
 SHUTDOWN_ID = "cstudy-shutdown"
 """The id of the broker's own `shutdown` request: ids of its own start with `cstudy-`."""
 STDERR_LINES = 20
@@ -97,12 +103,22 @@ class ServerProcess:
 
     @classmethod
     async def start(
-        cls, arguments: Sequence[str], directory: Path, timing: LanguageTiming
+        cls,
+        arguments: Sequence[str],
+        directory: Path,
+        timing: LanguageTiming,
+        environment: Mapping[str, str] | None = None,
     ) -> "ServerProcess":
-        """Raises ServerStartError, naming what is missing. The server runs in the environment of
-        `cstudy serve`, as a language server finds its tools as the user's shell does."""
+        """Raises ServerStartError, naming what is missing. The server runs in `environment`, by
+        default that of `cstudy serve`, as a language server finds its tools as the user's shell
+        does."""
         try:
-            child = await start_process(arguments, directory, os.environ, asyncio.subprocess.PIPE)
+            child = await start_process(
+                arguments,
+                directory,
+                os.environ if environment is None else environment,
+                asyncio.subprocess.PIPE,
+            )
         except OSError as error:
             raise ServerStartError(_why(error, arguments[0], directory)) from None
         return cls(child, timing)
@@ -242,6 +258,33 @@ class ServerProcess:
             if not raw:
                 return
             self._stderr.append(raw.decode(errors="replace").rstrip("\r\n"))
+
+
+def environment_hiding(
+    environment: Mapping[str, str], hidden: Sequence[Path], needed: Sequence[Path]
+) -> dict[str, str]:
+    """`environment` for a Node server that cannot open the `hidden` directories: `PRELOAD` is
+    required by every Node process it starts, and told the directories. A hidden directory that
+    holds a `needed` one, such as a content root that holds the workspace, is left out, since the
+    server could not work without it."""
+    kept = [path for path in hidden if not any(_holds(path, inside) for inside in needed)]
+    if not kept:
+        return dict(environment)
+    options = [environment.get("NODE_OPTIONS", ""), f'--require="{_escaped(PRELOAD)}"']
+    return {
+        **environment,
+        "NODE_OPTIONS": " ".join(option for option in options if option),
+        HIDDEN_VARIABLE: json.dumps([str(path) for path in kept]),
+    }
+
+
+def _holds(directory: Path, inside: Path) -> bool:
+    return Path(os.path.realpath(inside)).is_relative_to(os.path.realpath(directory))
+
+
+def _escaped(path: Path) -> str:
+    """`path` for inside the double quotes of a value of NODE_OPTIONS."""
+    return str(path).replace("\\", "\\\\").replace('"', '\\"')
 
 
 async def _read_frame(stream: asyncio.StreamReader) -> bytes | None:

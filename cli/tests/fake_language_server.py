@@ -3,9 +3,10 @@ streams and plays a script, as `tests/scripted_child.py` plays one for a child `
 
     python fake_language_server.py <script.json> [<server script>] [--stdio | --version]
 
-It appends its pid, arguments and current directory as one JSON line to `<script>.calls` and
-every message it reads as one JSON line to `<script>.received`, then plays the script's steps in
-order, each an object with one key:
+It appends its pid, arguments, current directory and the two environment variables that hide
+directories from a Node server (`NODE_OPTIONS`, `CSTUDY_HIDDEN_DIRECTORIES`) as one JSON line to
+`<script>.calls` and every message it reads as one JSON line to `<script>.received`, then plays the
+script's steps in order, each an object with one key:
 
     {"send": <message>}                      writes a message to standard output
     {"reply": "<method>", "result": <value>} waits for a request of that method and answers it;
@@ -231,6 +232,8 @@ def main(script_path: str, arguments: list[str]) -> None:
             "pid": os.getpid(),
             "arguments": arguments,
             "cwd": str(Path.cwd()),
+            "node_options": os.environ.get("NODE_OPTIONS"),
+            "hidden": os.environ.get("CSTUDY_HIDDEN_DIRECTORIES"),
         }
         calls.write(json.dumps(record) + "\n")
     server = Server(script)

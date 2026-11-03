@@ -1,6 +1,7 @@
 """The front end committed under entrypoints/web/static/: its manifest records every file's SHA-256,
 the wheel ships every file, and a rebuild from tools/web-ui/ gives the same bytes
-(docs/specs/web-ui.md#front-end-assets)."""
+(docs/specs/web-ui.md#front-end-assets). The wheel also ships the script that keeps the hidden
+directories from a language server (docs/specs/web-ui.md#hidden-directories)."""
 
 import hashlib
 import json
@@ -18,6 +19,7 @@ STATIC = REPOSITORY_ROOT / "cli" / "src" / "coding_study" / "entrypoints" / "web
 MANIFEST_NAME = "manifest.json"
 LICENSE_NOTICE = "THIRD_PARTY_LICENSES.txt"
 BUILD_SCRIPT = REPOSITORY_ROOT / "tools" / "web-ui" / "build.sh"
+HIDE_PATHS = PurePosixPath("cli/src/coding_study/entrypoints/web/hide_paths.cjs")
 REQUIRED_NODE = 24
 """build.sh's `required_node`."""
 
@@ -79,6 +81,21 @@ def test_the_static_files_carry_the_third_party_license_notice():
 
 def test_the_wheel_settings_select_every_static_file():
     assert [path for path in repository_paths() if not wheel_selects(path)] == []
+
+
+def test_the_wheel_ships_the_script_that_hides_directories_from_a_language_server():
+    assert (wheel_selects(HIDE_PATHS), (REPOSITORY_ROOT / HIDE_PATHS).is_file()) == (True, True)
+
+
+def test_git_does_not_ignore_the_script_that_hides_directories_from_a_language_server():
+    ignored = subprocess.run(
+        ["git", "check-ignore", "--no-index", str(HIDE_PATHS)],
+        cwd=REPOSITORY_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert ignored.stdout.split() == []
 
 
 def test_git_ignores_no_static_file():

@@ -17,11 +17,14 @@ import pytest
 from coding_study.domain.code_intelligence import BASEDPYRIGHT
 from coding_study.entrypoints.web import language_server
 from coding_study.entrypoints.web.language_server import (
+    HIDDEN_VARIABLE,
     MESSAGE_LIMIT,
+    PRELOAD,
     LanguageServerCommand,
     LanguageTiming,
     ServerProcess,
     ServerStartError,
+    environment_hiding,
 )
 from tests.language_server_scripts import (
     QUICK,
@@ -469,3 +472,59 @@ def test_the_sends_that_wait_for_a_server_that_reads_nothing_end_when_it_is_stop
 ):
     server.play({"deaf": True})
     assert stop_of_a_deaf_server(server, tmp_path).waiting == 0
+
+
+# hiding directories from a Node server
+
+
+def test_the_preload_is_a_file_of_the_package():
+    assert PRELOAD.is_file()
+
+
+def test_a_node_server_gets_the_preload_and_the_directories_to_hide_in_its_environment(tmp_path):
+    hidden = [tmp_path / ".cs" / "build", tmp_path / ".cs" / "cases"]
+    environment = environment_hiding({"PATH": "/bin"}, hidden, [tmp_path / "python"])
+    assert (
+        environment["PATH"],
+        environment["NODE_OPTIONS"],
+        json.loads(environment[HIDDEN_VARIABLE]),
+    ) == ("/bin", f'--require="{PRELOAD}"', [str(path) for path in hidden])
+
+
+def test_the_options_the_user_set_for_node_stay(tmp_path):
+    environment = environment_hiding(
+        {"NODE_OPTIONS": "--max-old-space-size=4096"}, [tmp_path / "hidden"], [tmp_path / "python"]
+    )
+    assert environment["NODE_OPTIONS"] == f'--max-old-space-size=4096 --require="{PRELOAD}"'
+
+
+def test_a_quote_or_a_backslash_in_a_path_of_the_options_is_escaped(tmp_path, monkeypatch):
+    monkeypatch.setattr(language_server, "PRELOAD", tmp_path / 'a "b" \\ c' / "hide_paths.cjs")
+    environment = environment_hiding({}, [tmp_path / "hidden"], [tmp_path / "python"])
+    assert environment["NODE_OPTIONS"] == (
+        f'--require="{tmp_path}/a \\"b\\" \\\\ c/hide_paths.cjs"'
+    )
+
+
+def test_a_hidden_directory_that_holds_what_the_server_needs_is_left_out(tmp_path):
+    """A content root that holds the workspace, as in a checkout of the repository: hiding it
+    would hide the server's own root."""
+    root = tmp_path / "ws" / "python"
+    root.mkdir(parents=True)
+    hidden = [tmp_path / "ws" / ".cs" / "build", tmp_path]
+    environment = environment_hiding({}, hidden, [root, tmp_path / "ws" / ".cs" / "lsp"])
+    assert json.loads(environment[HIDDEN_VARIABLE]) == [str(tmp_path / "ws" / ".cs" / "build")]
+
+
+def test_a_link_to_a_directory_that_holds_what_the_server_needs_is_left_out(tmp_path):
+    root = tmp_path / "ws" / "python"
+    root.mkdir(parents=True)
+    (tmp_path / "content").symlink_to(tmp_path, target_is_directory=True)
+    environment = environment_hiding({}, [tmp_path / "content"], [root])
+    assert HIDDEN_VARIABLE not in environment
+
+
+def test_nothing_to_hide_leaves_the_environment_as_it_is(tmp_path):
+    root = tmp_path / "python"
+    root.mkdir()
+    assert environment_hiding({"PATH": "/bin"}, [tmp_path], [root]) == {"PATH": "/bin"}
