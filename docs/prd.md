@@ -6,7 +6,7 @@ A local, IDE-first interview-prep system for senior and staff engineer loops. Yo
 |-------|-------|
 | Status | Implemented through Phase 7; open validation items in the [roadmap](roadmap.md#status) |
 | Users | One engineer per installation, practicing on their own machine |
-| Platform | macOS, local only |
+| Platform | macOS and Linux, local only |
 | Languages practiced | Python, TypeScript, Java, Kotlin, Go and Rust ([ADR 0012](decisions/0012-go-and-rust.md)); a project problem is in one language ([ADR 0014](decisions/0014-project-problems.md)) |
 | Related | [Architecture](architecture.md), [Roadmap](roadmap.md), [Specs](README.md#specs) |
 
@@ -64,7 +64,7 @@ cstudy next  ->  cstudy start <slug> --lang kotlin  ->  edit in editor  ->  cstu
 - No AI grading of code, designs or behavioral answers.
 - No copying of LeetCode statements or test data ([ADR 0004](decisions/0004-original-problem-wording.md)).
 - No languages beyond Python, TypeScript, Java and Kotlin in v1, except Go and Rust, which are added after v1 ([ADR 0012](decisions/0012-go-and-rust.md)).
-- No Windows or Linux support commitment (macOS only; nothing deliberately prevents Linux).
+- No Windows support. macOS and Linux are supported: CI runs on Ubuntu, and the [toolchains guide](guides/toolchains.md) covers both.
 
 ## 3. AI system requirements
 
