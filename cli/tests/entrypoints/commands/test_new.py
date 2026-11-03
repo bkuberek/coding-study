@@ -138,7 +138,10 @@ def test_a_virtual_clock_project_still_ends_with_the_ready_gate(environment):
     ("arguments", "message"),
     [
         (["--from-template", "array"], "--virtual-clock applies to the project-* templates"),
-        (["--from-template", "project-java"], "Java has no virtual clock"),
+        (
+            ["--from-template", "project-java"],
+            "--virtual-clock is not available for project-java: Java has no virtual clock\n",
+        ),
     ],
 )
 def test_the_virtual_clock_flag_exits_3_where_it_does_not_apply(environment, arguments, message):
@@ -232,7 +235,10 @@ def test_a_stress_project_still_ends_with_the_ready_gate(environment, flags):
     [
         (["--from-template", "array"], "--stress applies to the project-* templates"),
         (["--from-template", "project-typescript"], "without --virtual-clock"),
-        (["--from-template", "project-java", "--virtual-clock"], "Java has no virtual clock"),
+        (
+            ["--from-template", "project-java", "--virtual-clock"],
+            "--virtual-clock is not available for project-java: Java has no virtual clock\n",
+        ),
     ],
 )
 def test_the_stress_flag_exits_3_where_it_does_not_apply(environment, arguments, message):
