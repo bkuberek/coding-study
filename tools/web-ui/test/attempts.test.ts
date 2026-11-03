@@ -6,6 +6,8 @@ import {
   doneCommand,
   doneLines,
   hintText,
+  REVIEW_DIALOG_NOTE,
+  REVIEW_PRACTISE_NOTE,
   startBody,
   startLine,
 } from "../src/page/attempts.ts";
@@ -139,4 +141,22 @@ test("an item's outcome has no language", () => {
 test("a review a day away reads in 1 day", () => {
   const tomorrow = { ...PASSED, next_review: { due_on: "2026-10-25", in_days: 1, ease: 2.36 } };
   assert.equal(doneLines(tomorrow, null)[1], "next review  2026-10-25 (in 1 day) · ease 2.36");
+});
+
+test("the Start dialog says a review moves the files, deletes nothing, and History keeps them readable", () => {
+  assert.equal(
+    REVIEW_DIALOG_NOTE,
+    "review attempt: your current files move to .archive/ — nothing is deleted, and History keeps them readable",
+  );
+});
+
+test("the Practise line says the same of a start", () => {
+  assert.equal(
+    REVIEW_PRACTISE_NOTE,
+    "a start is a review attempt: your current files move to .archive/ — nothing is deleted, and History keeps them readable",
+  );
+});
+
+test("neither note says the files are lost", () => {
+  assert.deepEqual([REVIEW_DIALOG_NOTE, REVIEW_PRACTISE_NOTE].map((note) => /\bnothing is deleted\b/.test(note)), [true, true]);
 });

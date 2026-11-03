@@ -5,7 +5,7 @@
  * It is a chunk of its own, fetched when the first Start control is used (NFR-12).
  */
 
-import { defaultLanguage, refreshAttemptsMenu, startBody, startLine, type StartChoice } from "./attempts.ts";
+import { defaultLanguage, refreshAttemptsMenu, REVIEW_DIALOG_NOTE, startBody, startLine, type StartChoice } from "./attempts.ts";
 import type { PageContext } from "./context.ts";
 import { openSheet } from "./dialogs.ts";
 import { h } from "./dom.ts";
@@ -74,7 +74,7 @@ export function openStartDialog(context: PageContext, problem: ProblemDocument, 
       minutes,
       h("p", { class: "quiet" }, "empty for none; finishing past the box caps the grade at hard"),
     ),
-    scheduled ? h("p", { class: "review-note tone-info" }, "review attempt: your current files move to .archive/") : null,
+    scheduled ? h("p", { class: "review-note tone-info" }, REVIEW_DIALOG_NOTE) : null,
     resumeNote,
     h("p", { class: "sheet-command" }, line),
     problemArea,

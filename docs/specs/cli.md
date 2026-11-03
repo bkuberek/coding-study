@@ -269,7 +269,7 @@ cstudy start <slug|file> [--lang L] [--fresh] [--timer DURATION] [--no-open] [--
 | Flag | Effect |
 |------|--------|
 | `--lang` | Language; default `default_lang` |
-| `--fresh` | Archive the existing file and write a new stub (implied for review attempts) |
+| `--fresh` | Archive the existing file and write a new stub (implied for review attempts). Nothing is deleted: the file moves to `.archive/<slug>/<attempt_id>-<lang>/`, where the web UI's History reads it |
 | `--timer` | Time box, for example `25m` or `1h`; shown by `cstudy test`; finishing over time caps the grade at `hard` |
 | `--no-open` | Do not launch the editor |
 | `--restore` | Project problems: write one file of the folder back as `cstudy` provides it, and do nothing else ([below](#restoring-a-file)) |

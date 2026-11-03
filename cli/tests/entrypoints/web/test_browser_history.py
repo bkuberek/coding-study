@@ -32,6 +32,11 @@ ROWS = "ol.attempts > li"
 VIEWER = f"{SHEET} .cm-content"
 NBSP = chr(0xA0)
 CLOSE = "esc " + chr(0xD7)
+PRACTISE = "section[aria-labelledby=practice-heading]"
+ARCHIVE_NOTE = (
+    "your current files move to .archive/ \N{EM DASH} "
+    "nothing is deleted, and History keeps them readable"
+)
 BUTTONS_OF_A_RUN = ".run-button, .save-hint, .flow-actions"
 
 
@@ -57,6 +62,10 @@ class Viewed:
     archived_text: str = ""
     current_source: str = ""
     current_text: str = ""
+    first_practise: str = ""
+    first_start_note: str = ""
+    review_practise: str = ""
+    review_start_note: str = ""
     errors: list[str] = field(default_factory=list[str])
 
 
@@ -78,11 +87,11 @@ def viewed(engine: str, server: RunningServer) -> Viewed:
         page.set_default_timeout(WAIT_MS)
         page.goto(server.login_url)
         page.wait_for_selector("table.problems tbody tr")
-        _start(page)
+        seen.first_practise, seen.first_start_note = _start(page)
         (workspace / PRACTICE_FILE).write_text(SOLVED)
         _done(page)
         _first_attempt(page, seen)
-        _start(page)
+        seen.review_practise, seen.review_start_note = _start(page)
         _running_attempt(page, seen)
         _done(page)
         _both_attempts(page, seen)
@@ -95,11 +104,18 @@ def _problem(page: Any) -> None:
     page.wait_for_selector(".practice-actions button.primary")
 
 
-def _start(page: Any) -> None:
+def _start(page: Any) -> tuple[str, str]:
+    """Starts from the Problem view; answers the Practise panel's text and the Start dialog's
+    review note, empty for a start that is no review."""
     _problem(page)
+    practise = page.locator(PRACTISE).inner_text()
     page.click(".practice-actions button.primary")
+    page.wait_for_selector(f"{SHEET} form")
+    notes = page.locator(f"{SHEET} .review-note")
+    note = notes.inner_text() if notes.count() else ""
     page.click(f"{SHEET} button[type=submit]")
     page.wait_for_selector(".attempt-head .flow-actions")
+    return practise, note
 
 
 def _done(page: Any) -> None:
@@ -237,6 +253,21 @@ def test_the_review_reads_the_files_as_they_are(viewed):
 def test_the_review_shows_its_own_stub(viewed):
     assert STUB_MARK in viewed.current_text
     assert "return [0, 1]" not in viewed.current_text
+
+
+def test_a_start_of_a_problem_never_finished_is_no_review(viewed):
+    assert viewed.first_start_note == ""
+    assert "review attempt" not in viewed.first_practise
+
+
+def test_the_start_dialog_of_a_review_says_nothing_is_deleted(viewed):
+    assert viewed.review_start_note == f"review attempt: {ARCHIVE_NOTE}"
+
+
+def test_the_practise_panel_of_a_review_says_the_same(viewed):
+    assert f"a start is a review attempt: {ARCHIVE_NOTE}" in viewed.review_practise.replace(
+        "\n", " "
+    )
 
 
 def test_the_page_logs_no_error_under_its_content_security_policy(viewed):

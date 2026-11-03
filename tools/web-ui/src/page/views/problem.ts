@@ -4,7 +4,7 @@
  * with a way to read its code (`pastFiles.ts`).
  */
 
-import { defaultLanguage } from "../attempts.ts";
+import { defaultLanguage, REVIEW_PRACTISE_NOTE } from "../attempts.ts";
 import { startCommand } from "../commands.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { solutionButton } from "../solution.ts";
@@ -97,7 +97,7 @@ function practice(context: PageContext, problem: ProblemDocument, scheduled: boo
     h("h2", { id: "practice-heading", class: "eyebrow" }, "practise"),
     resumes.length ? h("ul", { class: "plain" }, ...resumes) : null,
     h("p", { class: "practice-actions" }, start, solution),
-    scheduled ? h("p", { class: "quiet" }, "a start is a review attempt: your current files move to .archive/") : null,
+    scheduled ? h("p", { class: "quiet" }, REVIEW_PRACTISE_NOTE) : null,
     problem.hints_total ? h("p", { class: "quiet" }, `${problem.hints_total} hints · any hint caps the review grade at ok`) : null,
     problem.levels ? h("p", { class: "quiet" }, `${problem.levels.last} levels, each opened by passing the one before`) : null,
   );
