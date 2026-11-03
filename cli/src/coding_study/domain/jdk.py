@@ -43,10 +43,25 @@ JAVA_HOME_VARIABLE = "JAVA_HOME"
 GRADLE_JAVA_HOME_ARGUMENT = "-Dorg.gradle.java.home="
 """Outranks `org.gradle.java.home` in the user's Gradle home, which `JAVA_HOME` does not."""
 
-JDK_FIX = (
-    f"select a JDK {SUPPORTED_JDKS.minimum} to {SUPPORTED_JDKS.maximum} with JAVA_HOME, "
-    f"or install JDK {RECOMMENDED_JDK}: {TOOLCHAINS_GUIDE}#jdk"
-)
+
+def range_text(wanted: JdkRange) -> str:
+    """`JDK 21 to 26`, or `JDK 24` for a range of one release."""
+    if wanted.minimum == wanted.maximum:
+        return f"JDK {wanted.minimum}"
+    return f"JDK {wanted.minimum} to {wanted.maximum}"
+
+
+def jdk_fix(wanted: JdkRange) -> str:
+    """What to do when the selected JDK is outside `wanted`: select one inside it, and install the
+    recommended JDK only when that one is inside it too."""
+    selection = range_text(wanted)
+    if wanted.minimum != wanted.maximum:
+        selection = f"a {selection}"
+    install = f", or install JDK {RECOMMENDED_JDK}" if wanted.contains(RECOMMENDED_JDK) else ""
+    return f"select {selection} with JAVA_HOME{install}: {TOOLCHAINS_GUIDE}#jdk"
+
+
+JDK_FIX = jdk_fix(SUPPORTED_JDKS)
 """What to do when the selected JDK cannot run Java and Kotlin, or there is none."""
 
 

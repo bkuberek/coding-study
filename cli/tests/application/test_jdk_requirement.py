@@ -7,6 +7,7 @@ import pytest
 
 from coding_study.application.jdk_requirement import require_jdk, split_by_jdk
 from coding_study.domain.errors import RunnerStartError
+from coding_study.domain.guides import TOOLCHAINS_GUIDE
 from coding_study.domain.jdk import DeclaredJdk, JdkSource
 from coding_study.domain.problem import Language
 from tests.fakes import FakeJdk, jdk_of, make_environment
@@ -17,6 +18,10 @@ FIX = (
     "fix: select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: "
     "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#jdk"
 )
+
+
+def fix_of(advice: str) -> str:
+    return f"fix: {advice}: {TOOLCHAINS_GUIDE}#jdk"
 
 
 def refusal(environment, meta, language=Language.JAVA) -> str:
@@ -44,6 +49,29 @@ def test_a_default_problem_refuses_jdk_27(environment):
 
 def test_the_refusal_carries_the_fix_of_doctor(environment):
     assert refusal(on(environment, jdk_of(27)), TWO_SUM).splitlines()[1] == FIX
+
+
+def test_a_problem_with_a_minimum_of_24_names_its_own_range_in_the_fix(environment):
+    meta = replace(TWO_SUM, jdk=DeclaredJdk(minimum=24))
+    assert refusal(on(environment, jdk_of(23)), meta).splitlines()[1] == fix_of(
+        "select a JDK 24 to 26 with JAVA_HOME, or install JDK 25"
+    )
+
+
+def test_a_problem_with_a_maximum_of_24_names_its_own_range_in_the_fix(environment):
+    meta = replace(TWO_SUM, jdk=DeclaredJdk(maximum=24))
+    assert refusal(on(environment, jdk_of(25)), meta).splitlines()[1] == fix_of(
+        "select a JDK 21 to 24 with JAVA_HOME"
+    )
+
+
+@pytest.mark.parametrize(
+    "jdk",
+    [FakeJdk(None), FakeJdk(None, java_home_without_jdk="/opt/jdk")],
+    ids=["none", "empty home"],
+)
+def test_no_jdk_keeps_the_fix_of_the_default_range(environment, jdk):
+    assert refusal(on(environment, jdk), TWO_SUM).splitlines()[1] == FIX
 
 
 def test_a_problem_with_a_minimum_of_24_refuses_jdk_23(environment):

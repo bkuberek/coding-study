@@ -128,7 +128,7 @@ Java and Kotlin run on one JDK per command: the one your shell selects. `cstudy`
 | [`show`](#cstudy-show) | Names a declared range in the statement; nothing for the default |
 | [`doctor`](#cstudy-doctor) | Reports the selected JDK in its `java` row |
 
-The refusal names the problem, the range, and where the JDK came from (`JAVA_HOME` or `PATH`), then why it does not fit, and carries the `fix:` hint of `doctor`:
+The refusal names the problem, the range, and where the JDK came from (`JAVA_HOME` or `PATH`), then why it does not fit, and carries a `fix:` hint that names the problem's own range: `select a JDK 21 to 26 with JAVA_HOME, or install JDK 25` for a problem without a `jdk`, and for a problem that declares `jdk: {min: 24}` `select a JDK 24 to 26 with JAVA_HOME, or install JDK 25`. The hint recommends JDK 25 only when the range holds it (`jdk: {max: 24}` gives `select a JDK 21 to 24 with JAVA_HOME`), and a range of one release reads `select JDK 24 with JAVA_HOME`. With no JDK found the hint is the one for the problem's range too. `doctor`, which has no problem, prints the hint for the supported range:
 
 | Case | Reason, after `<source> selects JDK <n>,` |
 |------|--------------------------------------------|

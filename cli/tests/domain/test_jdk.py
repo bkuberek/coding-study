@@ -14,6 +14,7 @@ from coding_study.domain.jdk import (
     SelectedJdk,
     availability,
     effective_range,
+    jdk_fix,
     no_jdk_sentence,
     release_level,
 )
@@ -138,6 +139,36 @@ def test_a_jdk_that_the_range_grows_to_cover_runs_a_problem_without_bounds():
 def test_the_jdk_fix_names_the_range_and_the_recommended_jdk():
     expected = f"select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: {TOOLCHAINS_GUIDE}#jdk"
     assert expected == JDK_FIX
+
+
+def test_the_jdk_fix_of_the_default_range_is_the_jdk_fix_of_doctor():
+    assert jdk_fix(SUPPORTED_JDKS) == JDK_FIX
+
+
+@pytest.mark.parametrize(
+    ("wanted", "expected"),
+    [
+        pytest.param(
+            JdkRange(24, 26), "select a JDK 24 to 26 with JAVA_HOME, or install JDK 25", id="min 24"
+        ),
+        pytest.param(JdkRange(21, 24), "select a JDK 21 to 24 with JAVA_HOME", id="max 24"),
+        pytest.param(JdkRange(21, 23), "select a JDK 21 to 23 with JAVA_HOME", id="max 23"),
+        pytest.param(
+            JdkRange(25, 26), "select a JDK 25 to 26 with JAVA_HOME, or install JDK 25", id="min 25"
+        ),
+        pytest.param(JdkRange(26, 26), "select JDK 26 with JAVA_HOME", id="one release"),
+        pytest.param(
+            JdkRange(25, 25),
+            "select JDK 25 with JAVA_HOME, or install JDK 25",
+            id="the recommended one",
+        ),
+        pytest.param(
+            JdkRange(24, 27), "select a JDK 24 to 27 with JAVA_HOME, or install JDK 25", id="opt-in"
+        ),
+    ],
+)
+def test_the_jdk_fix_names_the_range_of_the_problem(wanted, expected):
+    assert jdk_fix(wanted) == f"{expected}: {TOOLCHAINS_GUIDE}#jdk"
 
 
 def test_no_jdk_found_is_said_so():

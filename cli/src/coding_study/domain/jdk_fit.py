@@ -12,7 +12,9 @@ from coding_study.domain.jdk import (
     SelectedJdk,
     availability,
     effective_range,
+    jdk_fix,
     no_jdk_sentence,
+    range_text,
 )
 from coding_study.domain.layout import JVM_LANGUAGES
 from coding_study.domain.problem import Language, ProblemMeta
@@ -22,13 +24,6 @@ _WHY_NOT_RUN = {
     JdkAvailability.NEWER_THAN_THE_PROBLEM: "which is newer than the problem supports",
     JdkAvailability.TOO_OLD: "which is too old",
 }
-
-
-def range_text(wanted: JdkRange) -> str:
-    """`JDK 21 to 26`, or `JDK 24` for a range of one release."""
-    if wanted.minimum == wanted.maximum:
-        return f"JDK {wanted.minimum}"
-    return f"JDK {wanted.minimum} to {wanted.maximum}"
 
 
 def selection_text(selected: SelectedJdk) -> str:
@@ -57,6 +52,11 @@ class JdkFit:
     def refusal(self, slug: str, language: Language) -> str:
         """Why `cstudy start`, `test`, `submit` or `bench` refuses `slug` in `language`."""
         return f"{slug} runs its {language} version on {range_text(self.wanted)}; {self._why()}"
+
+    @property
+    def fix(self) -> str:
+        """How to select a JDK that runs the problem."""
+        return jdk_fix(self.wanted)
 
     def skip_reason(self) -> str:
         """Why `cstudy verify` skips the problem's Java and Kotlin."""

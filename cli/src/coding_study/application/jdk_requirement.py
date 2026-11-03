@@ -9,7 +9,6 @@ from dataclasses import dataclass
 
 from coding_study.application.environment import Environment
 from coding_study.domain.errors import FIX_PREFIX, RunnerStartError
-from coding_study.domain.jdk import JDK_FIX
 from coding_study.domain.jdk_fit import JdkFit, content_release, fit_of
 from coding_study.domain.layout import JVM_LANGUAGES
 from coding_study.domain.problem import Language, ProblemMeta
@@ -45,7 +44,7 @@ def require_jdk(environment: Environment, meta: ProblemMeta, language: Language)
         return
     fit = jdk_fit(environment, meta)
     if not fit.runs:
-        raise RunnerStartError(fit.refusal(meta.slug, language), (f"{FIX_PREFIX}{JDK_FIX}",))
+        raise RunnerStartError(fit.refusal(meta.slug, language), (f"{FIX_PREFIX}{fit.fix}",))
 
 
 def split_by_jdk(

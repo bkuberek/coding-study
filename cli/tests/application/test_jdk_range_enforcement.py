@@ -35,6 +35,11 @@ JVM_PROJECTS = Path(__file__).resolve().parents[1] / "fixtures" / "jvm-projects"
 JAVA_STUB = "jvm/java/src/main/java/practice/two_sum/Solution.java"
 STATEMENT = ".statements/two-sum.md"
 FIX = "fix: select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: "
+FIXES = {
+    None: FIX,
+    "{min: 24}": "fix: select a JDK 24 to 26 with JAVA_HOME, or install JDK 25: ",
+    "{max: 24}": "fix: select a JDK 21 to 24 with JAVA_HOME: ",
+}
 RANGE_26 = "two-sum runs its java version on JDK 21 to 26; "
 REFUSALS = [
     pytest.param(
@@ -104,7 +109,7 @@ def test_start_refuses_a_java_problem_the_jdk_cannot_run(tmp_path, runner, decla
     with pytest.raises(RunnerStartError) as error:
         start_attempt(environment, StartRequest("two-sum", Language.JAVA))
     assert refused(error)[0] == message
-    assert refused(error)[1].startswith(FIX)
+    assert refused(error)[1].startswith(FIXES[declared])
 
 
 def test_start_refuses_a_kotlin_problem_the_jdk_cannot_run(tmp_path, runner):
