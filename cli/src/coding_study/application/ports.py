@@ -7,6 +7,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
+from coding_study.application.installs import InstallScan
 from coding_study.domain.attempts import Attempt, NewAttempt, RunRecord
 from coding_study.domain.bench_records import (
     BenchOutcome,
@@ -993,3 +994,10 @@ class WebUiInstall(Protocol):
     def assets(self) -> WebUiAssets: ...
 
     def server_libraries(self) -> WebServerLibraries: ...
+
+
+class CstudyInstalls(Protocol):
+    """The `cstudy` installs on `PATH` and the one that runs
+    (docs/specs/cli.md#cstudy-doctor)."""
+
+    def scan(self) -> InstallScan: ...

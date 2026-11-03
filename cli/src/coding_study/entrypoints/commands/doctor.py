@@ -1,6 +1,7 @@
 """`cstudy doctor` (docs/specs/cli.md#cstudy-doctor)."""
 
 import json
+import sys
 from collections.abc import Iterator, Mapping
 from pathlib import Path
 from typing import Annotated
@@ -9,6 +10,7 @@ import typer
 from rich.console import Console
 from rich.text import Text
 
+from coding_study.adapters.cstudy_installs import PathCstudyInstalls
 from coding_study.adapters.environment_factory import RUNNERS_DIRECTORY
 from coding_study.adapters.jdk_locator import EnvJdkSelector
 from coding_study.adapters.languages.context import LanguageContext
@@ -133,6 +135,7 @@ def _error_notice(line: str) -> None:
 def doctor_environment(cwd: Path, environ: Mapping[str, str], home: Path) -> DoctorEnvironment:
     content = _content(environ)
     config = TomlConfigSource(config_path(environ, home))
+    version = tool_version()
     return DoctorEnvironment(
         tools=SubprocessToolProbe(),
         jdk=EnvJdkSelector(environ),
@@ -140,8 +143,9 @@ def doctor_environment(cwd: Path, environ: Mapping[str, str], home: Path) -> Doc
         config=config,
         content=content,
         workspace=_workspace(cwd, environ, content, config),
-        version=tool_version(),
+        version=version,
         web=InstalledWebUi(STATIC_DIRECTORY),
+        installs=PathCstudyInstalls(environ, home, Path(sys.prefix), version),
     )
 
 

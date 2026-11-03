@@ -147,7 +147,7 @@ A few things stay in the terminal: `cstudy init`, `cstudy ide`, `cstudy new`, `c
 | `port … is already in use` | Another program holds the port: pick another with `--port`, or leave it out to get a free one |
 | `reconnecting…` in the top bar | The page lost the server for a moment and tries again |
 | `disconnected` in the top bar | The server stopped or restarted: start it again and open the new URL |
-| `cstudy serve` exits 4, or `cstudy doctor` warns on `web ui assets` or `web server` | The page's files or the web server libraries are missing or damaged: reinstall `cstudy` |
+| `cstudy serve` exits 4, or `cstudy doctor` warns on `web ui assets` or `web server` | The page's files or the web server libraries are missing or damaged: reinstall `cstudy` with the command `cstudy doctor` prints, which names the install that runs; if it also warns on `installs`, keep one install first |
 | A language fails in the Health view | Install its toolchain ([toolchains](toolchains.md)), then use **Fix**, which runs `cstudy doctor --fix` |
 | The first Java or Kotlin run is slow | Gradle warms up on the first build, as in the terminal |
 | <kbd>Tab</kbd> skips buttons and links in Safari | Use <kbd>Option</kbd>+<kbd>Tab</kbd>, or turn on "Press Tab to highlight each item on a webpage" in Safari's Advanced settings |

@@ -29,7 +29,7 @@ uv tool install git+https://github.com/bkuberek/coding-study
 # or: pipx install git+https://github.com/bkuberek/coding-study
 ```
 
-Upgrade with `uv tool upgrade coding-study` (or `pipx upgrade coding-study`). Keep one of these installs: when several exist, the `cstudy` whose directory comes first on `PATH` runs (`which -a cstudy` lists them).
+Upgrade with `uv tool upgrade coding-study` (or `pipx upgrade coding-study`). Keep one of these installs: when several exist, the `cstudy` whose directory comes first on `PATH` runs (`which -a cstudy` lists them, and `cstudy doctor` reports duplicates with the command that removes each).
 
 ## Install the language toolchains
 

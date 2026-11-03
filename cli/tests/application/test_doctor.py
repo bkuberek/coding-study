@@ -20,6 +20,7 @@ from coding_study.application.doctor import (
     repair_workspace,
     run_doctor,
 )
+from coding_study.application.installs import Install, InstallKind, InstallScan
 from coding_study.application.ports import (
     BuildFailed,
     BuildScope,
@@ -270,6 +271,31 @@ def healthy_runners() -> dict[Language, LanguageRunner]:
     }
 
 
+HOMEBREW_INSTALL = Install(
+    InstallKind.HOMEBREW,
+    Path("/opt/homebrew/Cellar/cstudy/0.1.0/libexec"),
+    Path("/opt/homebrew/bin/cstudy"),
+    "0.1.0",
+)
+UV_INSTALL = Install(
+    InstallKind.UV_TOOL,
+    Path("/home/me/.local/share/uv/tools/coding-study"),
+    Path("/home/me/.local/bin/cstudy"),
+    "0.0.9",
+)
+
+
+@dataclass
+class FakeInstalls:
+    """One Homebrew install, which is also the running one, unless told otherwise."""
+
+    on_path: tuple[Install, ...] = (HOMEBREW_INSTALL,)
+    running: Install = HOMEBREW_INSTALL
+
+    def scan(self) -> InstallScan:
+        return InstallScan(self.on_path, self.running, Path("/home/me"))
+
+
 def workspace_with(
     paths: set[str] | None = None,
     runners: dict[Language, LanguageRunner] | None = None,
@@ -299,6 +325,7 @@ def doctor(
     debug_servers: FakeDebugServers | None = None,
     web: WebUiInstall | None = None,
     jdk: FakeJdk | None = None,
+    installs: FakeInstalls | None = None,
 ) -> DoctorReport:
     return run_doctor(
         DoctorEnvironment(
@@ -310,6 +337,7 @@ def doctor(
             workspace=workspace or workspace_with(),
             version=RUNNING_VERSION,
             web=web or FakeWebUi(),
+            installs=installs or FakeInstalls(),
         ),
         lambda _line: None,
     )
@@ -1594,7 +1622,7 @@ def test_web_ui_assets_that_do_not_match_their_manifest_only_warn():
     web = FakeWebUi(assets_found=WebUiAssets(0, "missing editor.js"))
     report = doctor(web=web)
     assert (check(report, "web ui assets"), report.passed) == (
-        CheckResult("web ui assets", WARN, "missing editor.js", "reinstall cstudy"),
+        CheckResult("web ui assets", WARN, "missing editor.js", "brew reinstall cstudy"),
         True,
     )
 
@@ -1603,7 +1631,9 @@ def test_web_server_libraries_that_do_not_import_only_warn():
     web = FakeWebUi(libraries=WebServerLibraries((), "uvicorn does not import: no uvicorn"))
     report = doctor(web=web)
     assert (check(report, "web server"), report.passed) == (
-        CheckResult("web server", WARN, "uvicorn does not import: no uvicorn", "reinstall cstudy"),
+        CheckResult(
+            "web server", WARN, "uvicorn does not import: no uvicorn", "brew reinstall cstudy"
+        ),
         True,
     )
 
@@ -1611,3 +1641,59 @@ def test_web_server_libraries_that_do_not_import_only_warn():
 def test_the_web_ui_is_checked_in_a_workspace_only():
     report = doctor(workspace=NotFound("no workspace here"), web=FakeWebUi())
     assert web_rows(report) == []
+
+
+def installs_row(report: DoctorReport) -> CheckResult:
+    return check(report, "installs")
+
+
+def test_a_single_install_passes_and_names_its_kind_version_and_path():
+    assert installs_row(doctor()) == CheckResult(
+        "installs", OK, "Homebrew 0.1.0 (/opt/homebrew/bin/cstudy)"
+    )
+
+
+def test_several_installs_only_warn_and_tell_which_to_remove():
+    installs = FakeInstalls((UV_INSTALL, HOMEBREW_INSTALL), UV_INSTALL)
+    report = doctor(installs=installs)
+    row = installs_row(report)
+    assert (row.status, report.passed) == (WARN, True)
+    assert row.detail == (
+        "2 cstudy installs on PATH: uv tool 0.0.9 (~/.local/bin/cstudy) runs first; "
+        "Homebrew 0.1.0 (/opt/homebrew/bin/cstudy) is shadowed"
+    )
+    assert row.fix == (
+        "keep Homebrew 0.1.0, the newest (uv tool 0.0.9 runs first and is older); "
+        "uninstall the others: uv tool uninstall coding-study"
+    )
+
+
+def test_the_installs_row_follows_the_content_row_and_precedes_the_workspace():
+    names = [result.name for result in doctor().results]
+    assert names[names.index("content") + 1 : names.index("workspace")] == ["installs"]
+
+
+def test_the_installs_row_is_there_outside_a_workspace_too():
+    report = doctor(workspace=NotFound("no workspace here"))
+    assert installs_row(report).status is OK
+
+
+def test_the_reinstall_hint_names_the_install_that_is_running():
+    web = FakeWebUi(libraries=WebServerLibraries((), "starlette does not import: no starlette"))
+    report = doctor(web=web, installs=FakeInstalls((HOMEBREW_INSTALL,), HOMEBREW_INSTALL))
+    assert check(report, "web server").fix == "brew reinstall cstudy"
+
+
+def test_the_web_ui_assets_hint_names_the_running_install_too():
+    web = FakeWebUi(assets_found=WebUiAssets(0, "missing editor.js"))
+    report = doctor(web=web, installs=FakeInstalls((UV_INSTALL,), UV_INSTALL))
+    assert check(report, "web ui assets").fix == "uv tool install --reinstall coding-study"
+
+
+def test_the_reinstall_hint_does_not_send_the_user_to_a_shadowed_copy():
+    web = FakeWebUi(libraries=WebServerLibraries((), "starlette does not import: no starlette"))
+    installs = FakeInstalls((UV_INSTALL, HOMEBREW_INSTALL), UV_INSTALL)
+    fix = check(doctor(web=web, installs=installs), "web server").fix
+    assert fix == (
+        "uv tool install --reinstall coding-study (several cstudy installs: see the installs row)"
+    )

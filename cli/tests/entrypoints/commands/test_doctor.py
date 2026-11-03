@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
@@ -230,6 +231,39 @@ def test_doctor_environment_finds_the_checkout_content(tmp_path):
 def test_doctor_environment_checks_the_installed_web_ui(tmp_path):
     web = doctor.doctor_environment(tmp_path, {}, tmp_path).web
     assert web.assets() == InstalledWebUi(STATIC_DIRECTORY).assets()
+
+
+def make_cstudy(prefix: Path, version: str) -> Path:
+    script = prefix / "bin" / "cstudy"
+    script.parent.mkdir(parents=True)
+    script.write_text("#!/bin/sh\n")
+    script.chmod(0o755)
+    (prefix / "pyvenv.cfg").write_text("home = /usr/bin\n")
+    dist_info = (
+        prefix / "lib" / "python3.13" / "site-packages" / f"coding_study-{version}.dist-info"
+    )
+    dist_info.mkdir(parents=True)
+    (dist_info / "METADATA").write_text(f"Name: coding-study\nVersion: {version}\n")
+    return script
+
+
+def test_doctor_environment_scans_the_path_its_environment_names(tmp_path):
+    first = make_cstudy(tmp_path / "uv" / "tools" / "coding-study", "0.1.0")
+    second = make_cstudy(tmp_path / "Cellar" / "cstudy" / "0.11.1" / "libexec", "0.11.1")
+    environ = {
+        "PATH": f"{first.parent}:{second.parent}",
+        "UV_TOOL_DIR": str(tmp_path / "uv" / "tools"),
+    }
+    scan = doctor.doctor_environment(tmp_path, environ, tmp_path).installs.scan()
+    assert [(i.kind.value, i.version) for i in scan.on_path] == [
+        ("uv tool", "0.1.0"),
+        ("Homebrew", "0.11.1"),
+    ]
+
+
+def test_doctor_environment_names_the_running_install(tmp_path):
+    running = doctor.doctor_environment(tmp_path, {}, tmp_path).installs.scan().running
+    assert running.prefix == Path(sys.prefix).resolve()
 
 
 def test_a_failed_fix_prints_what_to_do_by_hand(monkeypatch, tmp_path):

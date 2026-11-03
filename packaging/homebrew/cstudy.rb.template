@@ -55,7 +55,8 @@ class Cstudy < Formula
         https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md
 
       A cstudy installed with uv or pipx runs instead of this one when its directory
-      comes first on PATH; `which -a cstudy` lists every copy.
+      comes first on PATH; `which -a cstudy` lists every copy, and `cstudy doctor` reports
+      duplicates.
     EOS
   end
 

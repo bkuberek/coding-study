@@ -14,10 +14,17 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TypeGuard
 
+from coding_study.application.installs import (
+    INSTALLS_CHECK,
+    InstallScan,
+    installs_advice,
+    reinstall_command,
+)
 from coding_study.application.ports import (
     BuildFailed,
     CommandRunner,
     ConfigSource,
+    CstudyInstalls,
     DebugServer,
     DebugServers,
     FolderCheck,
@@ -170,6 +177,8 @@ class DoctorEnvironment:
     """The running `cstudy` version."""
     web: WebUiInstall
     """What `cstudy serve` needs, for the `web ui assets` and `web server` rows."""
+    installs: CstudyInstalls
+    """The `cstudy` installs on PATH, for the `installs` row and the reinstall hint."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -207,7 +216,6 @@ VENV_LOCATION_CHECK = f"{PYTHON_PROJECT}/{PYTHON_VENV} location"
 VENV_RECREATE_COMMAND = f"rm -rf {PYTHON_PROJECT}/{PYTHON_VENV} && {FIX_COMMAND}"
 WEB_ASSETS_CHECK = "web ui assets"
 WEB_SERVER_CHECK = "web server"
-REINSTALL_COMMAND = "reinstall cstudy"
 BYTES_PER_MB = 1_000_000
 RUNNER_TYPESCRIPT = "runners/typescript"
 """In a content checkout, `--fix` also installs the TypeScript runner's own `tsc` and types."""
@@ -445,6 +453,7 @@ def _is_checkout(content: ContentLocation | NotFound) -> TypeGuard[ContentLocati
 
 def run_doctor(environment: DoctorEnvironment, notify: ProgressNotice) -> DoctorReport:
     tools = environment.tools
+    installs = environment.installs.scan()
     results = [
         _python(tools),
         _present_tool(tools, "uv", INSTALL_UV),
@@ -459,7 +468,8 @@ def run_doctor(environment: DoctorEnvironment, notify: ProgressNotice) -> Doctor
         _lldb_server(environment.debug_servers.lldb_server()),
         _config(environment.config),
         _content(environment.content),
-        *_workspace(environment, notify),
+        _installs(installs),
+        *_workspace(environment, installs, notify),
     ]
     return DoctorReport(tuple(results))
 
@@ -663,7 +673,17 @@ def _content(content: ContentLocation | NotFound) -> CheckResult:
     return CheckResult("content", CheckStatus.OK, f"{content.files.root} ({kind})")
 
 
-def _workspace(environment: DoctorEnvironment, notify: ProgressNotice) -> list[CheckResult]:
+def _installs(installs: InstallScan) -> CheckResult:
+    """Several installs on PATH may all work, so they warn: the first one runs, and fixing another
+    changes nothing."""
+    advice = installs_advice(installs)
+    status = CheckStatus.OK if advice.fix is None else CheckStatus.WARN
+    return CheckResult(INSTALLS_CHECK, status, advice.detail, advice.fix)
+
+
+def _workspace(
+    environment: DoctorEnvironment, installs: InstallScan, notify: ProgressNotice
+) -> list[CheckResult]:
     workspace = environment.workspace
     if isinstance(workspace, NotFound):
         if workspace.unusable:
@@ -687,7 +707,7 @@ def _workspace(environment: DoctorEnvironment, notify: ProgressNotice) -> list[C
         *_venv_location(workspace),
         *(_runner(workspace, language, notify) for language in CORE_LANGUAGES),
         *_project_libraries(workspace),
-        *_web_ui(environment.web),
+        *_web_ui(environment.web, reinstall_command(installs)),
     ]
 
 
@@ -890,22 +910,22 @@ def _project_libraries(workspace: PracticeWorkspace) -> list[CheckResult]:
     return results
 
 
-def _web_ui(web: WebUiInstall) -> list[CheckResult]:
+def _web_ui(web: WebUiInstall, reinstall: str) -> list[CheckResult]:
     """Only `cstudy serve` needs these, so a broken install warns: practice in the terminal
-    works without them."""
-    return [_web_assets(web.assets()), _web_server(web.server_libraries())]
+    works without them. The fix reinstalls the `cstudy` that runs."""
+    return [_web_assets(web.assets(), reinstall), _web_server(web.server_libraries(), reinstall)]
 
 
-def _web_assets(assets: WebUiAssets) -> CheckResult:
+def _web_assets(assets: WebUiAssets, reinstall: str) -> CheckResult:
     if assets.problem is not None:
-        return CheckResult(WEB_ASSETS_CHECK, CheckStatus.WARN, assets.problem, REINSTALL_COMMAND)
+        return CheckResult(WEB_ASSETS_CHECK, CheckStatus.WARN, assets.problem, reinstall)
     size = f"{assets.size_bytes / BYTES_PER_MB:.1f} MB"
     return CheckResult(WEB_ASSETS_CHECK, CheckStatus.OK, f"{size}, digest matches")
 
 
-def _web_server(libraries: WebServerLibraries) -> CheckResult:
+def _web_server(libraries: WebServerLibraries, reinstall: str) -> CheckResult:
     if libraries.problem is not None:
-        return CheckResult(WEB_SERVER_CHECK, CheckStatus.WARN, libraries.problem, REINSTALL_COMMAND)
+        return CheckResult(WEB_SERVER_CHECK, CheckStatus.WARN, libraries.problem, reinstall)
     return CheckResult(WEB_SERVER_CHECK, CheckStatus.OK, ", ".join(libraries.versions))
 
 
