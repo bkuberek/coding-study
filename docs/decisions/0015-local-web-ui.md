@@ -6,6 +6,7 @@
 | Date | 2026-10-31 |
 | Spec | [web-ui](../specs/web-ui.md), [cli](../specs/cli.md#cstudy-serve) (`cstudy serve`, the [event stream](../specs/cli.md#event-stream) for every kind, `cstudy history`, the new `--json` documents), [installation-and-workspaces](../specs/installation-and-workspaces.md#web-ui-assets), [architecture](../architecture.md#web-adapter) |
 | Amends | [PRD](../prd.md) (the web UI leaves the non-goals: FR-16, NFR-10 to NFR-12), [ADR 0014](0014-project-problems.md) (its web interface revisit trigger) |
+| Amended by | [ADR 0018](0018-editor-code-intelligence.md): the editor gains a language service from local language servers, behind a setting; one WebSocket route, for language-server sessions only; the revisit trigger for a language-server bridge is closed |
 | Builds on | [ADR 0008](0008-installable-tool-and-separate-workspaces.md), [ADR 0010](0010-ide-integration.md), [ADR 0013](0013-homebrew-distribution.md), [ADR 0014](0014-project-problems.md) |
 
 ## Context

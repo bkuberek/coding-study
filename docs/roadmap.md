@@ -15,6 +15,7 @@ Each phase ends only when every exit criterion is observed. Phases run in order;
 | 8 | Project problems: Python, then TypeScript | project kind, `submit`, `status` |
 | 9 | Local web UI with full practice parity | `serve`, `history`, `test --events` for every kind, `--json` for `list`, `next` and `doctor` |
 | 10 | Async and concurrent project problems | harness operations, `new --virtual-clock` and `--stress`, `verify` S18 and D10 |
+| 11 | Editor code intelligence in the web UI | `doctor` and `doctor --fix` for language servers; the `code_intelligence` and `autocomplete` preferences |
 
 ## Status
 
@@ -168,3 +169,15 @@ Phases 0 to 7 are implemented: every command in the table above exists with its 
 - [ ] Step 5, Rust async on tokio, pilot: the async component.
 
 The pilots are written with the next project problems.
+
+## Phase 11: Editor code intelligence
+
+**Scope.** [ADR 0018](decisions/0018-editor-code-intelligence.md) and its spec amendments ([web-ui](specs/web-ui.md#code-intelligence-sessions), [cli](specs/cli.md#cstudy-doctor), [installation-and-workspaces](specs/installation-and-workspaces.md#layout), [architecture](architecture.md#web-adapter)): the `code_intelligence` and `autocomplete` preferences and the Settings view; Alt-Shift-click for a second cursor; the server catalog, the `code intelligence` doctor rows and `.cs/lsp/` installed by `cstudy doctor --fix`; the WebSocket session route on wsproto with its security rules and the broker; and, in the page's editor, live diagnostics, hover, go to definition with read-only library tabs, and, behind `autocomplete`, completion and signature help, which also governs the editor's own completion. One step per ADR phase, each with its slow tests against the real servers: 1 Python (basedpyright) and TypeScript (typescript-language-server), 2 Go and Rust with pull diagnostics and documentation links that open library tabs, 3 Java on JDK 25 or 26 after a spike, 4 Kotlin once its server reaches beta and a spike passes.
+
+**Exit criteria.** A step ends when its languages pass the slow real-server tests, every browser test passes in Playwright's Chromium, Firefox and WebKit against the fake server, the bundle meets NFR-12 and the code-intelligence chunk its own budget, and a manual run in the page shows an error as you type, a hover's documentation, a definition in the standard library and, with `autocomplete` on, a completion with its documentation.
+
+- [x] The ADR is accepted and the specs amended before any implementation starts.
+- [ ] Step 1, Python and TypeScript.
+- [ ] Step 2, Go and Rust.
+- [ ] Step 3, Java.
+- [ ] Step 4, Kotlin.

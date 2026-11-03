@@ -108,7 +108,7 @@ Not applicable. The product contains no AI features.
 | NFR-9 | Honest measurement | Performance verdicts always carry a confidence level and never claim more precision than the data supports. |
 | NFR-10 | Local page security | `cstudy serve` binds `127.0.0.1` only; every request needs the session cookie, every unsafe request also the CSRF header and an allowed `Origin`, every request an allowed `Host`; no response carries CORS headers; the page runs under a CSP without `unsafe-inline` or `unsafe-eval`; the file API never leaves an attempt's files or follows a link. Each rule has an API test ([web-ui](specs/web-ui.md#security)). |
 | NFR-11 | Page feedback | A run started from the page: warm p50 from `POST /api/v1/runs` to its `run_end` reaching the page within the NFR-1 target of the same command, kind and language plus 0.1 s; the first `case_start` or `test_start` reaches the page within 50 ms of the child writing it. Measured on a quiet machine for the six project pilots and one single-file problem per language. |
-| NFR-12 | Page weight | No request leaves the machine (the CSP's `default-src 'self'`, NFR-6); the vendored bundle is at most 1 MB raw and 350 KB gzip without the optional Vim chunk, and at most 600 KB raw is loaded before a file of one language is editable. |
+| NFR-12 | Page weight | No request leaves the machine (the CSP's `default-src 'self'`, NFR-6); the vendored bundle is at most 1 MB raw and 350 KB gzip without the optional Vim and code-intelligence chunks, and at most 600 KB raw is loaded before a file of one language is editable; the code-intelligence chunk, loaded only after a file is editable, is at most 64 KB raw and 24 KB gzip ([ADR 0018](decisions/0018-editor-code-intelligence.md)). |
 
 ## 5. Technical overview
 

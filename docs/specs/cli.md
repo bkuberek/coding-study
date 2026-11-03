@@ -198,7 +198,7 @@ The `web ui assets` and `web server` rows check what `cstudy serve` needs ([inst
 
 ```text
 ok    web ui assets 0.8 MB, digest matches
-ok    web server starlette 1.10.0, uvicorn 0.54.0
+ok    web server starlette 1.10.0, uvicorn 0.54.0, wsproto 1.3.2
 ```
 
 When one of them WARNs, its `fix:` names the install that is running, as the [`installs` row](#the-installs-row) tells it apart, not a generic "reinstall":
@@ -211,6 +211,18 @@ When one of them WARNs, its `fix:` names the install that is running, as the [`i
 | other (a virtual environment or a checkout) | `reinstall cstudy` |
 
 With several installs on `PATH` the hint ends with `(several cstudy installs: see the installs row)`: reinstalling a copy that does not run changes nothing.
+
+While the `code_intelligence` preference of the web UI is on ([web-ui](web-ui.md#preferences), stored in `.cs/serve/preferences.json`), `cstudy doctor` adds a `code intelligence <language>` row for each language with a server in this phase, Python and TypeScript, and `cstudy doctor --fix` installs those servers; with it off there are no such rows and `--fix` downloads nothing for them ([ADR 0018](../decisions/0018-editor-code-intelligence.md)). A row checks by running the server's version command with `node`, as the [catalog](web-ui.md#language-servers) defines it. Both rows WARN, never FAIL, since practice does not need them:
+
+| State | Row |
+|-------|-----|
+| Installed, the pinned version | `ok    code intelligence python basedpyright 1.40.2`, `ok    code intelligence typescript typescript-language-server 6.0.3` |
+| Not in `.cs/lsp/` | `WARN  code intelligence python basedpyright is not installed`, with `fix: cstudy doctor --fix` |
+| Another version | `WARN  code intelligence python basedpyright 1.39.0 installed; cstudy needs 1.40.2`, with `fix: cstudy doctor --fix` |
+| The version command fails | `WARN` with its first line of standard error, and `fix: cstudy doctor --fix` |
+| TypeScript without `typescript/node_modules/typescript/lib/tsserver.js` | `WARN  code intelligence typescript typescript/node_modules missing`, with `fix: cstudy doctor --fix` |
+
+`--fix`, with the preference on and after `pnpm install` in `typescript`, copies `package.json` and `pnpm-lock.yaml` from the package data in `adapters/language_servers/` into the workspace's `.cs/lsp/` when they differ, and runs `pnpm install --frozen-lockfile --ignore-scripts` there, printing one line; a failure prints `FAIL`, the last 10 output lines and `fix: once online, run: cstudy doctor --fix`, and `--fix` exits 4. The manifest pins basedpyright 1.40.2 and typescript-language-server 6.0.3 with their integrity hashes, so the install needs the network once and nothing afterwards ([layout](installation-and-workspaces.md#layout)). The Health view's Fix runs the same command, so it installs the servers under the same rule. In `--json`, the rows are named `code intelligence python` and `code intelligence typescript`.
 
 ### The installs row
 
@@ -1211,6 +1223,6 @@ stop       Ctrl-C
 | Workspace | Needed, as for every practice command: exit 3 without one |
 | Address | `127.0.0.1` only; there is no option to bind another address |
 | Output | The version and workspace, the URL with its session token once, then one line per finished run and job, and a last `stop` line naming what stopped it, `Ctrl-C` or `SIGTERM`; no request log. The token is printed nowhere else |
-| Stop | Ctrl-C (SIGINT) or SIGTERM sends SIGINT to every run and job in progress, closes the streams, removes the redirect file and exits 130 (143 after SIGTERM) |
+| Stop | Ctrl-C (SIGINT) or SIGTERM sends SIGINT to every run and job in progress, stops every language server of the page's [code intelligence sessions](web-ui.md#lifecycle-and-limits), closes the streams, removes the redirect file and exits 130 (143 after SIGTERM) |
 | Exit 4 | The port is in use (`port 53817 on 127.0.0.1 is already in use; choose another with --port`), or the web server libraries or the page's assets are missing or do not match their manifest (`fix:` names the install that is running, as for [`cstudy doctor`](#cstudy-doctor): `brew reinstall cstudy`, `uv tool install --reinstall coding-study`, `pipx reinstall coding-study`, else `reinstall cstudy`, and with several installs on `PATH` it ends with `(several cstudy installs: see cstudy doctor)`; found only when the check fails, so a healthy start costs nothing); `cstudy doctor` shows both as `WARN` rows |
-| Import cost | Only `cstudy serve` imports the web server, so every other command starts as before (NFR-2) |
+| Import cost | Only `cstudy serve` imports the web server and wsproto, so every other command starts as before (NFR-2) |

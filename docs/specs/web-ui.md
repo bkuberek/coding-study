@@ -6,7 +6,7 @@
 
 | Rule | Detail |
 |------|--------|
-| Parity, never more | The page never gets behaviour the CLI lacks. When the page needs a value no command prints, the CLI gains it first, in the same or an earlier change ([cli](cli.md)) |
+| Parity, never more | The page never gets behaviour the CLI lacks. When the page needs a value no command prints, the CLI gains it first, in the same or an earlier change ([cli](cli.md)). Editing aids belong to the editor, not to practice: [code intelligence](#code-intelligence-sessions), like highlighting, grades nothing, records nothing and writes no file, and terminal users get the same from the language servers their IDE runs on the workspace ([ADR 0018](../decisions/0018-editor-code-intelligence.md)); the CLI's part is installing and checking the servers ([`cstudy doctor`](cli.md#cstudy-doctor)) |
 | One judge | Runs are child `cstudy` processes; the page never runs user code itself and never judges an output |
 | Same documents | An endpoint that has a matching `--json` document returns it unchanged, so one JSON Schema serves both |
 | No state of its own | Files live in the workspace and progress in `progress.db`; the terminal, the IDE and the page always agree. The only page-owned file is the preferences file ([Preferences](#preferences)) |
@@ -49,7 +49,7 @@ Each practice command maps to one page area, one endpoint and the use case the c
 | Item | Rule |
 |------|------|
 | Command | [`cstudy serve [--port N] [--open]`](cli.md#cstudy-serve) |
-| Stack | Starlette on uvicorn (without the `standard` extra), in `entrypoints/web/`; `entrypoints/commands/serve.py` imports it inside the command function only |
+| Stack | Starlette on uvicorn (without the `standard` extra), in `entrypoints/web/`; `entrypoints/commands/serve.py` imports it inside the command function only. uvicorn starts with `ws="wsproto"` (wsproto 1.3.2), per-message compression off and at most 4 MiB per WebSocket message, for the one WebSocket route ([Code intelligence sessions](#code-intelligence-sessions)); naming the implementation keeps an installed `websockets` package from replacing it |
 | In-process calls | Handlers call use cases through one worker thread (an anyio `CapacityLimiter` of 1), each call with a fresh `Environment`, so use cases never run concurrently inside the server |
 | Child processes | `sys.executable -m coding_study --workspace <root> [--content <root>] <command> …`, the argument list built by the server with no shell. `--content` is passed when the server was started with it. Each child starts in a session of its own, with standard input from `/dev/null`, the workspace root as its current directory, and `NO_COLOR=1` and `COLUMNS=120` added to the server's environment |
 | `python -m coding_study` | `coding_study/__main__.py` calls the console script's `main`, so a child is always the same install as the server |
@@ -77,11 +77,16 @@ Each practice command maps to one page area, one endpoint and the use case the c
 | `application/attempt_changes.py` | Snapshots of what the [notifications](#notifications) watch, and the changes between two |
 | `adapters/watchfiles_watcher.py` | `folder_changes`, beside the watch of `cstudy test --watch`: one burst signal over several folders, some with their subfolders and some without |
 | `application/run_checks.py` | The [pre-checks](#lifecycle) of a run, and the scope check of `verify` jobs |
+| `entrypoints/web/code_intelligence.py` | The [session route](#sessions): its checks, the CSRF message, the session limit and the server's process |
+| `entrypoints/web/language_broker.py` | The [broker](#the-broker) between a session's socket and its server's standard streams |
+| `domain/code_intelligence.py` | The [catalog of servers](#language-servers): per language the command, version command, root rule, initialization options, client capabilities, settings and idle time |
+| `application/code_intelligence.py` | `language_server_states` (the doctor rows and `GET /api/v1/code-intelligence/languages`) and `install_language_servers` (`cstudy doctor --fix`) |
+| `adapters/language_servers/` | The shipped `.cs/lsp/` manifest (`package.json`, `pnpm-lock.yaml`, package data) and `LspDirectory`, which locates the installed servers and installs them ([layout](installation-and-workspaces.md#layout)) |
 | `adapters/workspace_fs.py` | New `Workspace` methods `read_within`, `delete_within` and `move_within` beside `write_within`, none following a link, and `locked_with_deadline`, the project lock that gives up after a deadline ([Lock](#file-scope)) |
 
 ### Shutdown
 
-Ctrl-C (SIGINT) or SIGTERM stops the server: it sends SIGINT to every run and job in progress, closes every stream (each tab's notification stream ends at once, the watch of the workspace stops, and each run's stream ends once its child exits), waits for the children as [Cancel](#cancel) does, deletes its `--open` redirect file, and exits 130 (143 after SIGTERM). The children are stopped first, before the server waits for its open responses, since a run's stream stays open until its child exits; from then on a new run or job gets 409 `conflict` (`cstudy serve is stopping`).
+Ctrl-C (SIGINT) or SIGTERM stops the server: it sends SIGINT to every run and job in progress, ends every [code intelligence session](#lifecycle-and-limits) (its socket closes with 1001 and its server stops as when a socket closes), closes every stream (each tab's notification stream ends at once, the watch of the workspace stops, and each run's stream ends once its child exits), waits for the children as [Cancel](#cancel) does, deletes its `--open` redirect file, and exits 130 (143 after SIGTERM). The children are stopped first, before the server waits for its open responses, since a run's stream stays open until its child exits; from then on a new run or job gets 409 `conflict` (`cstudy serve is stopping`).
 
 ## Security
 
@@ -94,9 +99,10 @@ The file API and the run API together execute code: whoever can save a file and 
 | A web page in your browser sending requests | The session cookie is `SameSite=Strict`; every `POST`, `PUT` and `DELETE` also needs the CSRF token in an `X-Cstudy-CSRF` header and an `Origin` equal to `http://127.0.0.1:<port>` or `http://localhost:<port>`. No response carries CORS headers, so a cross-origin request with that header fails its preflight |
 | DNS rebinding | A request whose `Host` is not `127.0.0.1:<port>` or `localhost:<port>` gets 403 `forbidden` |
 | Reading responses, framing the page | No CORS headers; `Cross-Origin-Resource-Policy: same-origin`; `frame-ancestors 'none'` |
-| Script injection | `Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'nonce-<per page>'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'` on the page; `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer` on every response; `Cache-Control: no-store` on the API. File content is shown only in the editor, never as HTML. Markdown is rendered on the server with raw HTML disabled and no `style` attribute: code blocks carry Pygments classes (`tok-k`) and aligned table cells a class (`align-right`) |
+| Script injection | `Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'nonce-<per page>'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'` on the page; `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer` on every response; `Cache-Control: no-store` on the API. File content is shown only in the editor, never as HTML. Markdown is rendered on the server with raw HTML disabled and no `style` attribute: code blocks carry Pygments classes (`tok-k`) and aligned table cells a class (`align-right`). Language-server documentation follows the same rule, and the page inserts no other server text as HTML ([Documentation](#documentation)). `connect-src 'self'` also covers the code-intelligence session's `ws:` URL, which has the page's host and port |
 | Leaving the attempt's files | The [file API rules](#file-api-rules) |
 | Running other commands | Runs and jobs take a command from a fixed set and options by name and type; the server builds the child's argument list, with no shell |
+| Language-server sessions | The WebSocket handshake needs an allowed `Host` and `Origin` and the cookie, and the session's first message the CSRF token; the broker keeps documents inside the session's root and reads a library file only when the server named it as a definition ([Session security](#session-security)) |
 
 | Session rule | Detail |
 |--------------|--------|
@@ -113,7 +119,7 @@ The file API and the run API together execute code: whoever can save a file and 
 |------|------|
 | Base | `/api/v1/`. JSON in and out (`application/json; charset=utf-8`), except the export download, file reads with `?raw` and the SSE streams (`text/event-stream`) |
 | Version | `api` 1 changes only when a response changes incompatibly: a field removed, renamed or given another type. New endpoints, fields, error codes and SSE message types keep it |
-| Schemas | Documents that a command prints are described where the command is ([cli](cli.md)); the others in `schemas/web-api.schema.json`, one definition each under `$defs`: the session, the preferences, the error document, a problem's additions to its list entry, the statement, a hint, Done's values, a solution, the file tree, a file, a past attempt's files and one of them, a save, a restore, a started run or job, a run, a job, the `closed` and `line` events, the mock's state and a started mock, an import's counts, and the data of each notification. A fast test validates real responses of every definition against it; the tests of each endpoint compare the documents a command also prints with that command's output |
+| Schemas | Documents that a command prints are described where the command is ([cli](cli.md)); the others in `schemas/web-api.schema.json`, one definition each under `$defs`: the session, the preferences, the error document, a problem's additions to its list entry, the statement, a hint, Done's values, a solution, the file tree, a file, a past attempt's files and one of them, a save, a restore, a started run or job, a run, a job, the `closed` and `line` events, the mock's state and a started mock, an import's counts, the data of each notification, and the code-intelligence languages. A fast test validates real responses of every definition against it; the tests of each endpoint compare the documents a command also prints with that command's output |
 | Attempts | An attempt is addressed by its id. A request on an attempt that is no longer `in_progress`, or that another attempt of the same problem and language replaced, gets 409 `attempt_ended`. The server calls the use case with the attempt's slug and language. The [past-files endpoints](#past-attempt-files) are the exception: they read attempts that are over and refuse the one in progress |
 | Refusals | Where the CLI refuses, the API refuses with the CLI's message: a use case's usage error is 422 `usage` with the same text |
 | Bodies | A write's body is a JSON object; one that is not, a missing required field (`the request needs slug`), or a value of another type or outside its range (`invalid timer_minutes 0: use an integer from 1 to 600`) gets 422 `usage`. A boolean left out or null is false |
@@ -210,6 +216,13 @@ A 409 `conflict` for a taken slot names what holds it inside the error document:
 | `POST /api/v1/progress/import` | `{"confirm": true, "export": <the document>}` | `{"imported": {"attempts": 6, …}}`, the rows per table `cstudy import` reports; `import_progress_document`, the part of `import_progress` after reading the file. Every refusal of `cstudy import` is 422 with its message; a body without `export` is 422 `the request needs export`. Without `confirm`: 409 with `Import this file into progress.db? cstudy imports only into a database that holds no progress yet.`, before the document is checked |
 | `GET /api/v1/doctor` | | [`cstudy doctor --json`](cli.md#cstudy-doctor), from a child process with a 180 s deadline (503 `environment` past it). Exit 0 and 4 answer the document; a child that prints none gets the error of its exit code with its `error:` line as the message |
 | `GET /api/v1/events` | `Last-Event-ID` | [Notifications](#notifications) as SSE |
+
+### Code intelligence
+
+| Method and path | Request | Response and use case |
+|-----------------|---------|-----------------------|
+| `GET /api/v1/code-intelligence/languages` | | `{"languages": [{"language": "python", "server": "basedpyright", "version": "1.40.2", "state": "installed", "detail": "basedpyright 1.40.2", "idle_s": 60}, …]}`, one entry per language in `cstudy list`'s order; `language_server_states`, the use case of the `code intelligence` rows of [`cstudy doctor`](cli.md#cstudy-doctor), whatever the preference says. `state` is `installed`, `not_installed` (`detail` `not installed: run cstudy doctor --fix`, or the version command's failure) or `not_available` (`detail` `not available yet`; `server` and `version` null). `version` is the pinned version; `idle_s` the catalog's idle time, null without a server |
+| `GET /api/v1/code-intelligence?attempt_id=N` | A WebSocket upgrade | A [language-server session](#sessions) for the attempt's root |
 
 ## Runs
 
@@ -380,6 +393,158 @@ History shows the code of an attempt that is over, read-only ([Problem view](#pr
 
 The terminal has no command that lists these files, and the page adds no value it lacks: they are workspace files, which any editor or `cat` reads. A follow-up could add `cstudy history <slug> --files`, which names each attempt's source and root, or `cstudy show <slug> --attempt N`; neither is built.
 
+## Code intelligence sessions
+
+With the `code_intelligence` [preference](#preferences) on, the editor gets live diagnostics, hover documentation and go to definition from a language server on this machine, and with `autocomplete` also on, completion and signature help ([ADR 0018](../decisions/0018-editor-code-intelligence.md)). Each server is a child of `cstudy serve`, one per session, and talks to one tab over one WebSocket through a broker in the web adapter. Phase 1 covers Python and TypeScript; Go and Rust come in phase 2, Java in phase 3 and Kotlin in phase 4. What the page draws is in [Code intelligence in the editor](#code-intelligence-in-the-editor).
+
+### Sessions
+
+| Rule | Detail |
+|------|--------|
+| Route | `GET /api/v1/code-intelligence?attempt_id=N`, upgraded to a WebSocket on the page's own host and port (`ws://127.0.0.1:<port>/api/v1/code-intelligence?attempt_id=N`). The server derives the language and the root from the attempt ([Language servers](#language-servers)). The page opens one session per root it shows files of; a later attempt in the same root reuses it |
+| Before the upgrade | Checked in this order; each refusal is an HTTP response with the [error document](#api-conventions) instead of the upgrade: a `Host` not allowed, 403 `forbidden`; no session cookie, 401 `unauthorized`; an `Origin` missing or other than `http://127.0.0.1:<port>` or `http://localhost:<port>`, 403 `forbidden`; `attempt_id` missing or not an integer, 422 `usage`; no such attempt, 404 `not_found`; an attempt no longer in progress, 409 `attempt_ended`; `code_intelligence` off, 422 `usage` (`code intelligence is off: turn it on in Settings`); a language without a server in this phase, 422 `usage` (`no code intelligence for go yet`); a server not installed, 503 `environment` with `fix` `cstudy doctor --fix`. A browser reports any refusal as a close with code 1006 and no status, so the page reads [the languages](#code-intelligence) before it connects and connects only for an installed server |
+| First message | `{"csrf": "<the page's CSRF token>"}`, compared in constant time. A wrong token, any other first message, or none within 10 s of the upgrade closes the socket with 1008 `bad CSRF token`. The server starts only after this message |
+| Messages | Each text message carries one JSON-RPC 2.0 message, without the `Content-Length` header that standard streams use. A binary message closes the socket with 1003; a message over 4 MiB closes it with 1009, as uvicorn enforces. A text message that is not one JSON object gets JSON-RPC's parse error (`-32700`, `id` null) and the session goes on |
+| Ids | The page numbers its own requests. The broker's own requests to the server use string ids that start with `cstudy-`, and the broker answers every request the server sends, so no request crosses from the server to the page |
+| Positions | UTF-16 offsets, LSP's default and CodeMirror's own |
+
+| Close code | When | The page's status bar |
+|------------|------|-----------------------|
+| 1000 | The page closed the session | Nothing; the session is gone |
+| 1001 | `cstudy serve` is stopping | `stopped · Restart` |
+| 1003, 1008, 1009 | A binary message, a bad CSRF message, a message over 4 MiB | `stopped · Restart` |
+| 4002 | The server exited on its own, or could not start. The reason is `exit <code>: <last line of its standard error>` (`exit 1: Error: Cannot find module …`; a signal counts as 128 plus its number, as for runs) or `cannot start: <why>` (`cannot start: node not found`), cut at a character boundary to WebSocket's 123 bytes | `stopped: exit 1 · Restart`, or `stopped: cannot start · Restart` |
+| 4003 | A fifth server would start: `at most 4 code intelligence sessions run at once; close one in another tab` | `stopped: 4 sessions running · Restart` |
+| Any other, such as 1006 after a dropped connection or a refused handshake | | Tries again after 1, 2 and 5 s, showing `reconnecting…`, then `stopped · Restart` |
+
+Restart opens the session again, as a reconnect does: the page initializes again and opens its files again, so nothing is replayed.
+
+### Session security
+
+The session lets the page open documents, ask the server about them and read the files it names. Each control keeps other pages and programs out:
+
+| Threat | Control |
+|--------|---------|
+| Another web page, including one on another `127.0.0.1` port | The handshake needs a `Host` and an `Origin` from the allow-lists, refused with 403 before the upgrade. The cookie alone does not keep out a page on another port, since cookies ignore ports, and browsers send it |
+| A request forged from a page | The CSRF token in the session's first message, compared in constant time. A WebSocket cannot carry the `X-Cstudy-CSRF` header, and the session reads files and starts processes, as unsafe requests do |
+| Another program on this machine | The session cookie, refused with 401 before the upgrade, as on every route |
+| Files outside the attempt | Text documents only inside the session's root ([The broker](#the-broker)); a library file only when the server named it as a definition in this session, only as a regular UTF-8 file up to 4 MiB, never under `.cs/build/` or the content root ([Definitions and library files](#definitions-and-library-files)) |
+| Script injection through documentation | Documentation is rendered on the server with raw HTML disabled and no `style` attribute; the page inserts no other server text as HTML ([Documentation](#documentation)) |
+| Edits from the server | `workspace/applyEdit` is refused; the page sends no method beyond the list the broker forwards |
+| Large or many messages | 4 MiB per message, document text up to 1 MiB, no compression, at most four servers |
+| Code the servers run | They run as you, on your code. basedpyright and typescript-language-server run no workspace code; from phase 2, rust-analyzer runs build scripts and procedural macros, and from phase 3 JDT LS runs Gradle scripts, as `cstudy test` builds do |
+
+The Content Security Policy is unchanged: `connect-src 'self'` covers the session's `ws:` URL in every engine of [Browser support](#browser-support).
+
+### The broker
+
+`entrypoints/web/language_broker.py` sits between the socket and the server's standard streams.
+
+| Message | What the broker does |
+|---------|----------------------|
+| `initialize` from the page | Sends it to the server with its parameters rebuilt: `processId` the PID of `cstudy serve`; `rootUri` the root, and `workspaceFolders` one folder, the root, named after its directory; `clientInfo` `{"name": "cstudy", "version": "<cstudy's version>"}`; `initializationOptions` and `capabilities` from the [catalog](#language-servers). Nothing else of the page's parameters reaches the server. The answer goes back unchanged. A second `initialize` in the session gets `-32600` |
+| Other page messages | Only these reach the server: `initialized`, `textDocument/didOpen`, `textDocument/didChange`, `textDocument/didClose`, `textDocument/didSave`, `textDocument/hover`, `textDocument/definition`, `textDocument/completion`, `completionItem/resolve`, `textDocument/signatureHelp` and `$/cancelRequest`. The broker answers `cstudy/libraryFile` itself ([Definitions and library files](#definitions-and-library-files)). Any other request gets `-32601` (method not found); any other notification, and any response, is dropped. The page never sends `shutdown` or `exit`: it closes the socket |
+| Documents | Every text document a page message names (`textDocument.uri`) must be a `file:` URI whose path, percent-decoded, is absolute, has no `.` or `..` segment, lies inside the root and has no segment that `is_untracked` names (`node_modules`, `.venv`, caches, build output). A request that names another gets `-32602` (`file:///…/x.py is outside the session's root`); a notification is dropped. A `didOpen` or `didChange` that carries more than 1 MiB of text, the file API's limit, is dropped |
+| Requests from the server | Answered by the broker and never forwarded: `workspace/configuration` with, for each item, the catalog's settings under its `section`, or null when the catalog has none; `workspace/workspaceFolders` with the root; `client/registerCapability` and `client/unregisterCapability` with null, keeping whether a `workspace/didChangeWatchedFiles` registration is active; `window/workDoneProgress/create` with null; `window/showMessageRequest` with null; each `workspace/…/refresh` with null; `workspace/applyEdit` with `{"applied": false, "failureReason": "cstudy applies no edits from a language server"}`; any other with `-32601` |
+| Notifications from the server | `textDocument/publishDiagnostics` is forwarded when its URI is inside the root. Every other (`window/logMessage`, `window/showMessage`, `$/progress`, `$/logTrace`, `telemetry/event`) is dropped |
+| Answers from the server | Forwarded, with documentation rendered ([Documentation](#documentation)) and the targets of definition answers recorded. An answer over 4 MiB reaches the page as `-32803` (`answer over 4 MiB`) instead |
+| Watched files | While a `workspace/didChangeWatchedFiles` registration is active, each [`file_changed`](#notifications) inside the root goes to the server as `workspace/didChangeWatchedFiles`: type 3 (deleted) when `sha256` is null, 1 (created) when the previous snapshot lacked the file, else 2 (changed). The registration's glob patterns are not matched; the server filters |
+| Standard error | The last 20 lines are kept for the 4002 reason; nothing is printed |
+
+The client capabilities the catalog declares, the same for both phase 1 servers:
+
+| Capability | Value |
+|------------|-------|
+| `general.positionEncodings` | `["utf-16"]` |
+| `textDocument.synchronization` | `didSave` true, no dynamic registration |
+| `textDocument.publishDiagnostics` | `tagSupport.valueSet` `[1, 2]` (Unnecessary, Deprecated), `relatedInformation` false |
+| `textDocument.hover` | `contentFormat` `["markdown", "plaintext"]` |
+| `textDocument.definition` | `linkSupport` true |
+| `textDocument.completion` | `contextSupport` true; `completionItem`: `snippetSupport` false, `documentationFormat` `["markdown", "plaintext"]`, `resolveSupport.properties` `["documentation", "detail"]`, `labelDetailsSupport` true |
+| `textDocument.signatureHelp` | `contextSupport` true; `signatureInformation`: `documentationFormat` `["markdown", "plaintext"]`, `parameterInformation.labelOffsetSupport` true, `activeParameterSupport` true |
+| `workspace` | `configuration` true, `workspaceFolders` true, `didChangeWatchedFiles.dynamicRegistration` true |
+| `window` | `workDoneProgress` false |
+
+Every session declares completion and signature help, whatever `autocomplete` says, and the page asks for them only while autocomplete applies, so turning it on or off never restarts a server.
+
+### Documentation
+
+The broker renders every documentation value of these answers and sends it as `{"kind": "cstudy-html", "value": "<html>"}` in place of the server's value:
+
+| Answer | Fields |
+|--------|--------|
+| `textDocument/hover` | `contents` |
+| `completionItem/resolve` | `documentation` |
+| `textDocument/completion` | `documentation` of any item that has one (the measured servers send none in lists) |
+| `textDocument/signatureHelp` | `documentation` of each signature and of each of its parameters |
+
+| Server value | HTML |
+|--------------|------|
+| `MarkupContent` of kind `markdown`, or a string `MarkedString` | markdown-it-py with raw HTML disabled and no `style` attribute, code blocks highlighted by Pygments in the fence's language with the `tok-` classes of statements; a fence with no language, or one Pygments does not know, is an escaped code block |
+| `MarkupContent` of kind `plaintext` | The text escaped, in one `<pre class="doc-plain">` |
+| `MarkedString` `{"language", "value"}` | A code block in that language |
+| A list of the above | Each rendered, in order, separated by `<hr>` |
+| A link | `http:` and `https:` links stay links. In phase 1 every other link, `file:` included, renders as its text alone; from phase 2 a `file:` link becomes a button that opens the library tab |
+| An image | Its alt text alone, so the page requests nothing |
+| Nothing left | A hover whose `contents` render to nothing is answered as null |
+
+The page inserts HTML only from a `cstudy-html` value in those fields. Every other server string is text: completion labels, details and label details, signature labels, diagnostic messages, and any documentation value that is not `cstudy-html`.
+
+### Definitions and library files
+
+The broker records the target of every location in each `textDocument/definition` answer of the session (a `Location`'s `uri`, a `LocationLink`'s `targetUri`), for as long as the session lasts. The page reads a target that is not a file of the attempt with a request the broker answers itself and never forwards:
+
+```json
+{"jsonrpc": "2.0", "id": 7, "method": "cstudy/libraryFile", "params": {"uri": "file:///home/me/ws/.cs/lsp/node_modules/basedpyright/dist/typeshed-fallback/stdlib/builtins.pyi"}}
+{"jsonrpc": "2.0", "id": 7, "result": {"uri": "file:///home/me/ws/.cs/lsp/…/builtins.pyi", "path": ".cs/lsp/node_modules/basedpyright/dist/typeshed-fallback/stdlib/builtins.pyi", "text": "…"}}
+```
+
+`uri` is the request's; `path` is the URI's path relative to the workspace root when the file is inside it, else absolute with the home directory written `~`; `text` is the file's content. A refusal is JSON-RPC error `-32803` with `message` and `data` `{"reason", "path"}`, checked in this order:
+
+| `reason` | `message` | When |
+|----------|-----------|------|
+| `not_a_definition` | `not a definition target of this session` | No definition answer of the session named the URI |
+| `not_a_file_uri` | `not a file: URI` | Another scheme, such as JDT LS's `jdt://` in phase 3 |
+| `build_area` | `not shown: cstudy's build area` | The path, or the path with its links resolved, is under the workspace's `.cs/build/` or the content root, so a reference solution shows only through the Solution pane and its question |
+| `missing` | `no such file` | Nothing at the resolved path |
+| `not_a_file` | `not a regular file` | A directory, a pipe or another kind of file, after links are resolved |
+| `too_large` | `over 4 MiB` | |
+| `not_text` | `not UTF-8 text` | |
+
+Links are followed, so a project folder's `.venv` link reaches `python/.venv`; the refusals apply to the resolved path as well as to the named one. The file is read once per request and never watched.
+
+### Lifecycle and limits
+
+| Step | Rule |
+|------|------|
+| Start | Once the CSRF message arrives, unless four servers already run in this `cstudy serve`: then the socket closes with 4003. The catalog's command runs with no shell, the root as its current directory, in a session of its own so its whole process group can be stopped, its standard input and output as the LSP stream, its standard error kept, in the server's environment |
+| Limit | At most four servers at once across every tab; a server counts until its process has exited |
+| End | When the socket closes, for any reason, the broker sends `shutdown`, then `exit` once `shutdown` is answered or 1 s has passed, then closes standard input. 3 s after the socket closed, any process left in the server's process group gets SIGTERM, and 2 s after that SIGKILL, as [Cancel](#cancel) escalates |
+| Server exit | A server that exits while its socket is open closes the socket with 4002; its process group is still stopped as above |
+| Orphans | If `cstudy serve` dies, the server sees end of file on its standard input; a server that follows LSP's `processId` rule also exits when that PID is gone |
+| Shutdown | Ctrl-C or SIGTERM ends every session (1001) and stops its server as above, together with the runs and jobs, before the server waits for its open responses ([Shutdown](#shutdown)) |
+| The attempt | Checked at the upgrade only: a session stays open after its attempt ends, until the page closes it |
+| Idle | The page closes (1000) a session whose files have all been closed for the language's `idle_s` (60 s for Python and TypeScript), and every session of a hidden tab after 5 minutes; showing the tab opens them again |
+| Connections | A WebSocket takes none of the six HTTP/1.1 connections per host that [the streams](#server-sent-events) count in Chromium and Firefox; a browser test holds two visible tabs, each with its streams and a session, and saves a file from each, in every engine |
+
+### Language servers
+
+`domain/code_intelligence.py` is the catalog. The servers are installed in the workspace's `.cs/lsp/` by `cstudy doctor --fix` while `code_intelligence` is on ([layout](installation-and-workspaces.md#layout), [`cstudy doctor`](cli.md#cstudy-doctor)), and run with the `node` on `PATH`, the Node 24 that TypeScript practice needs. Each command runs the script that the package's `package.json` names as its `bin`, never a `.bin/` shim.
+
+| Language | Server | Root | Command | Settings |
+|----------|--------|------|---------|----------|
+| Python | basedpyright 1.40.2 | `python/` for a single-file attempt, the project folder for a project | `node <basedpyright-langserver> --stdio` | basedpyright reads `[tool.pyright]` from the root's `pyproject.toml`, so it checks in the workspace's `standard` mode and resolves imports through `python/.venv`. `workspace/configuration` answers `basedpyright.analysis` with `autoImportCompletions` false and `typeCheckingMode` `standard`, which a `[tool.pyright]` overrides |
+| TypeScript | typescript-language-server 6.0.3 | `typescript/` for a single-file attempt, the project folder for a project | `node <typescript-language-server> --stdio` | `initializationOptions`: `tsserver.path` the workspace's `typescript/node_modules/typescript/lib`, the compiler `--typecheck` runs; `disableAutomaticTypingAcquisition` true; `preferences.includeCompletionsForModuleExports` false |
+| Go, Rust, Java, Kotlin | None in phase 1 | | | `not available yet` |
+
+| Rule | Detail |
+|------|--------|
+| Roots | A root is a practice project or a project folder, never the workspace root or `.cs/`, so the materialized references in `.cs/build/` are never indexed, hovered or offered as a definition |
+| Installed | The package is in `.cs/lsp/node_modules/` and its version command prints the pinned version: `node <basedpyright> --version`, whose first line is `basedpyright 1.40.2`, and `node <typescript-language-server> --version`, which prints `6.0.3`. TypeScript also needs `typescript/node_modules/typescript/lib/tsserver.js`. Otherwise the language is `not_installed`, with the reason as `detail`: `not installed: run cstudy doctor --fix`, `basedpyright 1.39.0 installed; cstudy needs 1.40.2: run cstudy doctor --fix`, `typescript/node_modules missing: run cstudy doctor --fix`, or the version command's first line of standard error |
+| Idle time | 60 s for both |
+| Offline | No server reaches the network (NFR-6): tsserver's automatic type acquisition is off |
+| No imports added | Completions that add an import are off in both servers, since adding an import is a quick fix, which stays out of scope |
+
 ## Page
 
 One page, with views addressed by the URL's fragment, so the server serves only `/`. Every view works with the keyboard alone.
@@ -435,7 +600,7 @@ Opening the History row of an attempt that is over reads [`GET …/past-files`](
 | Timer | Elapsed of the time box (`12:31 / 25:00`), counted from the attempt's `started_at`; past the box it shows `over by 3:10` and the Done dialog says the grade is capped at `hard`. Without a box, elapsed time only |
 | Statement pane | The statement of the unlocked levels, a banner when a level opens (its title, the methods to add, its test file), the hints revealed in this tab, and the hint notice `any hint caps the review grade at ok` |
 | File tree | The [scope](#file-scope); for a project each file's state (`modified`, `added`, `deleted`) and origin (starter, level N test, yours), with New file and New folder (a folder comes with its first file, since the tree lists files), Rename or move, Delete (after a confirmation that says whether Restore can bring the file back) and Restore (a modified or deleted starter or test file; a modified one asks first) where the scope allows them. Each file's actions open from its menu button, a right click, Shift-F10 or the context menu key; F2 renames and Delete deletes. A file whose tab has unsaved edits is not renamed until they are saved or dropped. The tree reads its files again after every change, so the states follow |
-| Editor tabs | One CodeMirror view per open file, an unsaved marker, diagnostics as underlines, gutter markers and tooltips |
+| Editor tabs | One CodeMirror view per open file, an unsaved marker, diagnostics as underlines, gutter markers and tooltips; with code intelligence on, live diagnostics, hover, go to definition and read-only library tabs ([Code intelligence in the editor](#code-intelligence-in-the-editor)) |
 | Results panel | The run as it streams: the header from `run_start` (counts, time limit, timer), the build line, a row per case, test, oracle input or stress result, diagnostics with jump-to-line, the `--perf` verdict, and the summary from `run_end` |
 
 | Kind | What changes |
@@ -464,7 +629,7 @@ Opening the History row of an attempt that is over reads [`GET …/past-files`](
 | The view opens, or the page reloads | The results panel shows the attempt's newest retained run (`GET /api/v1/runs?attempt_id=N`), live while it runs, else its replay; with none, the run `cstudy test` last recorded |
 | Run tests or Submit while the attempt's slot is taken | The 409 names the run holding it, and the panel attaches to that run |
 
-Diagnostics replace the previous run's markers at the next `run_start` of the same attempt. Jump-to-line opens the file when it is not open and moves the focus to the editor on purpose; nothing else a run does moves the focus. A diagnostic whose file is not in the attempt's tree is listed in the results without a jump.
+A run's diagnostics replace the previous run's markers at the next `run_start` of the same attempt; live diagnostics from a language server are a second source beside them ([Code intelligence in the editor](#code-intelligence-in-the-editor)). Jump-to-line opens the file when it is not open and moves the focus to the editor on purpose; nothing else a run does moves the focus. A diagnostic whose file is not in the attempt's tree is listed in the results without a jump.
 
 **Run on save.** With the `run_on_save` preference on, a save from the page, or a `file_changed` in the attempt's scope, starts a test run with the last run options after a 150 ms debounce, as `cstudy test --watch` re-runs. A change during a run queues one more run, started when the run closes; further changes join that queued run. The page hears its own saves through a `cstudy:file-saved` event on `window` (`detail`: `attemptId`, and the `path` and `sha256` the save answered), which the API client dispatches after every successful `PUT` of an attempt's file, whichever part of the page sent it; the `file_changed` of such a save names the same path and SHA-256 and starts nothing more.
 
@@ -498,7 +663,7 @@ A mock started in the terminal shows the same way, since the state comes from th
 
 | Area | Content |
 |------|---------|
-| Checks | The `cstudy doctor` rows: status (text and icon), name, detail and `fix`, with Re-check. A long `fix` wraps instead of scrolling the table, and a web link in it is a link, as in an error's hint |
+| Checks | The `cstudy doctor` rows: status (text and icon), name, detail and `fix`, with Re-check. While `code_intelligence` is on, they include the `code intelligence python` and `code intelligence typescript` rows, and Fix installs their servers. A long `fix` wraps instead of scrolling the table, and a web link in it is a link, as in an error's hint |
 | Fix | Runs `doctor_fix` after its confirmation, shows the job's lines live, then re-checks |
 | Your problems | The workspace's own problems with a Verify action (`static`, `oracle`, `ladder`), shown as a job |
 
@@ -506,27 +671,133 @@ A mock started in the terminal shows the same way, since the state comes from th
 
 The [preferences](#preferences), each applied at once and stored, and the paths of the workspace and the config file for reference.
 
+| Control | Behaviour |
+|---------|-----------|
+| Code intelligence | A checkbox for `code_intelligence`: `Live diagnostics, hover documentation and go to definition from language servers on this machine`. Under it, one line per language from [`GET /api/v1/code-intelligence/languages`](#code-intelligence), in `cstudy list`'s order, whatever the checkbox says: `Python  basedpyright 1.40.2`, `TypeScript  not installed: run cstudy doctor --fix`, `Go  not available yet`; a language that is not installed links to the Health view. The page reads the list when the view opens and after each `job_ended` of a `doctor_fix` job |
+| Autocomplete | A checkbox for `autocomplete`, under Code intelligence: `Completion and signature help. Off, the editor offers no completion at all`. While `code_intelligence` is off it is disabled, shows its stored value and has the note `Turn on code intelligence first`, tied to it with `aria-describedby`; turning code intelligence off or on never changes it |
+
 ### Editor
 
 | Item | Rule |
 |------|------|
-| Languages | Python, TypeScript, Java, Kotlin, Go, Rust, JSON, TOML and Markdown highlighting, each loaded the first time a file needs it; no language service: the page relies on the CLI's diagnostics |
+| Languages | Python, TypeScript, Java, Kotlin, Go, Rust, JSON, TOML and Markdown highlighting, each loaded the first time a file needs it. Without code intelligence the page relies on the CLI's diagnostics; with it, a language server adds live diagnostics, hover and go to definition ([Code intelligence in the editor](#code-intelligence-in-the-editor)) |
+| Setup | `editor.ts` builds its setup from `basicSetup`'s parts, so that adding a cursor is Alt-Shift-click (Option-Shift-click) for every user, Alt-drag stays rectangular selection, and Cmd-click and Ctrl-click never add a cursor: they go to the definition while code intelligence applies to the file, and act as a plain click otherwise. Completion sits in a compartment of its own ([Autocomplete](#autocomplete)) |
+| Completion | Only while autocomplete applies: `code_intelligence` and `autocomplete` both on. Otherwise the editor offers no completion list at all, neither as you type nor on Ctrl-Space, and no signature help. This changes what every user had before code intelligence: `basicSetup` gave every editor CodeMirror's completion, and with both preferences at their defaults it is gone. Bracket closing, from the same package, is not completion and stays |
 | CSP | Every view gets `EditorView.cspNonce` with the page's nonce |
 | Vim | With the `vim` preference on, `codemirror-vim` loads as a chunk of its own and applies to every editor; `:w` saves |
 | Read-only | The [past attempt code](#past-attempt-code) dialog opens the same editor with `readOnly` on, which no preference and no response turns off: its content stays focusable and selectable and says `aria-readonly` to screen readers |
 | Save | Explicit only (Cmd or Ctrl-S, anywhere in the Attempt view, for the active tab); no autosave. A tab with unsaved edits shows a dot in place of its close button and says so to screen readers; a generated test file opens with a note that editing it never changes a grade |
+
+### Code intelligence in the editor
+
+Code intelligence applies to a tab while `code_intelligence` is on, the tab shows a file of an attempt, and the file's language has an installed server ([Language servers](#language-servers)); every other tab behaves as it does without it. With `code_intelligence` off, nothing below loads, and the page opens no session.
+
+| Item | Rule |
+|------|------|
+| Loading | The code-intelligence chunk loads when the preference is on and a file of a language with an installed server opens, after the editor is editable ([Front-end assets](#front-end-assets)). The page reads [the languages](#code-intelligence) when the chunk loads and after each `job_ended` of a `doctor_fix` job |
+| Sessions | One per root the tab shows files of ([Sessions](#sessions)); `ready` once `initialize` is answered and `initialized` sent |
+| URIs | `file://` followed by the session's `workspace`, the tree's `root` and the file's path, each segment percent-encoded as `encodeURIComponent` does |
+| Open documents | The tabs' files: `didOpen` with the tab's text, unsaved edits included; `didChange` 500 ms after the last change and before every request; `didClose` when the tab closes; `didSave` after each save the page makes, from the `cstudy:file-saved` event. The server reads every other file from disk |
+| Changes on disk | A tab without unsaved edits takes the new version, which reaches the server as a change, like typing; under the conflict banner the server keeps checking what the tab shows. Files no tab shows reach the server through the broker's watched-file events |
+
+#### Live diagnostics
+
+| Item | Rule |
+|------|------|
+| Two sources | `Editor` holds the last run's diagnostics, cleared at the next `run_start` as before, and the server's, replaced by each `textDocument/publishDiagnostics` for the file. Together they are the file's one lint set; a run diagnostic and a live one on the same line with the same message show once. `@codemirror/lsp-client`'s `serverDiagnostics()` is not used, since it replaces the whole set |
+| Severity | An error is underlined in red with a gutter marker, a warning in yellow and information in blue; a hint has no underline and no marker |
+| Tags | Unnecessary shows as faded text, Deprecated as struck through |
+| Source | Each diagnostic's tooltip names its source: the server's `source` and `code` (`basedpyright reportUndefinedVariable`, `ts 2304`), or `last run` |
+| Counts | The status bar shows the active file's errors, warnings and information after de-duplication (`2 errors · 1 warning`), hints left out, and nothing when there are none |
+
+#### Hover
+
+| Item | Rule |
+|------|------|
+| Opening | With the pointer at rest over a symbol (CodeMirror's 300 ms), or at the cursor with Cmd or Ctrl-K, then Cmd or Ctrl-I; `K` under Vim. Escape closes it, as does moving the pointer away from a hover the pointer opened |
+| Content | The page's own tooltip, not `@codemirror/lsp-client`'s: the `cstudy-html` of the answer ([Documentation](#documentation)). A diagnostic under the pointer shows in the same tooltip box, above the documentation. In phase 1, `file:` links show as their text |
+| Nothing | An answer of null opens no tooltip |
+| Screen readers | A hover opened from the keyboard is read out by the polite live region: its first paragraph, as plain text |
+
+#### Go to definition
+
+Cmd-click on macOS, Ctrl-click elsewhere (on macOS Ctrl-click opens the context menu), F12, and Vim's `gd` and `Ctrl-]` go to the definition of the symbol at that position, through `@codemirror/lsp-client`'s `jumpToDefinition` and the page's `Workspace.displayFile`. While Cmd or Ctrl is held over the editor, the word under the pointer is underlined and the pointer becomes a hand; nothing is requested until the click. Each jump pushes where it started on a stack of the last 50 origins; Ctrl-Minus goes back to the newest, reopening its file's tab if it was closed and skipping an origin in a library tab that was closed. Under Vim a jump also enters Vim's jump list (`Vim.getVimGlobalState_().jumpList`), so `Ctrl-o` goes back.
+
+| Target | What happens |
+|--------|--------------|
+| The same file | The cursor moves there, scrolled into view |
+| Another file of the attempt (in the attempt's [tree](#file-scope)), such as a project's module or a generated test file | Its tab opens, or comes forward, at the definition |
+| Any other `file:` URI: the standard library, typeshed, `node_modules`, `.venv`, the runner's support code, another practice file | The page asks for it with `cstudy/libraryFile` ([Definitions and library files](#definitions-and-library-files)) and opens a library tab at the definition: read-only, with a `library` badge and the file's `path`, highlighted by its extension, with no session in phases 1 and 2. It cannot be saved and closes like any tab. A second jump to the same file reads it again |
+| A refusal for `missing`, `not_a_file`, `too_large`, `not_text` or `not_a_file_uri` | No tab: a note at the click names the file, the line and the reason (`python/.venv/lib/python3.13/site-packages/big.py:120 · over 4 MiB`), and closes on the next key or click |
+| A refusal for `build_area` | The same note: `not shown: cstudy's build area` |
+| Several locations, as for an overloaded function | The first, as the client chooses |
+| No location | Nothing moves; the status bar says `no definition found` |
+
+The position is the location's `range.start`, or a `LocationLink`'s `targetSelectionRange.start`. The library tab's editor names its path and `read-only` for screen readers.
+
+#### Autocomplete
+
+Autocomplete applies while `code_intelligence` and `autocomplete` are both on; the preferences document may hold `autocomplete: true` with `code_intelligence: false`, which keeps the stored choice and applies nothing.
+
+| State | Completion | Signature help |
+|-------|------------|----------------|
+| Autocomplete does not apply (the default) | None: no list as you type or on Ctrl-Space | None |
+| Applies, the file's session is ready | The server's, from the page's own completion source | The server's |
+| Applies, the session is starting, reconnecting or stopped, the server is not installed, or the language has no server yet | CodeMirror's completion from the language support (Python's builtins and the file's names, TypeScript's snippets and the file's names) | None |
+
+| Item | Rule |
+|------|------|
+| Triggers | As you type, on a word character or one of the server's trigger characters (`completionProvider.triggerCharacters` of the `initialize` answer; `.` in both servers), after CodeMirror's 100 ms; and on Ctrl-Space at any time (on macOS also Option-` and Option-I) |
+| The list | Each item's label and kind icon, filtered and ranked by CodeMirror as you type. The page asks the server again only when the server marked its list incomplete, as basedpyright does, or the typed text leaves the list's range. A newer request cancels an older one with `$/cancelRequest` |
+| Info panel | The selected item's `detail` (as text) and documentation (its `cstudy-html`), from `completionItem/resolve`, beside the list; each item is resolved once per list |
+| Accepting | Enter inserts the item's `textEdit.newText`, else its `insertText`, else its label, as plain text; an item marked as a snippet inserts its label. Tab is not an accept key: it indents |
+| Signature help | The page's own tooltip, not `@codemirror/lsp-client`'s: it opens when you type one of the server's signature trigger characters (`(` and `,` in a call) and on Cmd or Ctrl-Shift-Space, follows the active parameter, shows the signature's label as text and its documentation as `cstudy-html`, and closes when the cursor leaves the call or on Escape |
+| Vim | Completion and signature help work in insert mode with the same keys; normal mode opens neither. One Escape closes the list or the signature help and leaves insert mode |
+| Switching | Turning `autocomplete` or `code_intelligence` on or off takes effect at once in every open editor and never restarts a session |
+
+#### Status bar
+
+The status bar shows the active file's code intelligence while `code_intelligence` is on:
+
+| State | Segment |
+|-------|---------|
+| Starting | `python · basedpyright · starting` |
+| Ready | `python · basedpyright · ready`, then the counts (`2 errors · 1 warning`) |
+| Reconnecting | `python · basedpyright · reconnecting…` |
+| Stopped | `python · basedpyright · stopped: exit 1 · Restart`, or another reason from the close codes of [Sessions](#sessions) |
+| Not installed | `no code intelligence for Python: basedpyright is not installed · Health`, linking to the Health view |
+| No server yet | `no code intelligence for Go yet` |
+| No definition | `no definition found`, for 3 s after a jump that found none |
+
+A file in a language without a server works as it does without code intelligence.
 
 ### Keyboard and accessibility
 
 | Area | Behaviour |
 |------|-----------|
 | Tab | Tab indents. Escape then Tab leaves the editor, and Ctrl-M (Alt-Shift-M on macOS) toggles tab focus mode; with Vim on, only the toggle applies |
-| Shortcuts | Cmd or Ctrl-S saves, Cmd or Ctrl-Enter runs the tests, Cmd or Ctrl-Shift-Enter submits, Escape in the results panel cancels a run after a confirmation, F8 goes to the next diagnostic. Each button names its shortcut and the CLI command it runs |
-| Screen readers | The editor content has an `aria-label` naming the file; a polite live region announces a run's start and summary, not every case; statuses are text and icon, never color alone. Everything the page draws sits in a landmark: the top bar, the command line (a named region), the view in `main` with the file tree's menu, and the status bar |
+| Shortcuts | Cmd or Ctrl-S saves, Cmd or Ctrl-Enter runs the tests, Cmd or Ctrl-Shift-Enter submits, Escape in the results panel cancels a run after a confirmation, F8 and Shift-F8 go to the next and previous diagnostic, skipping hints, and Cmd or Ctrl-Shift-M opens CodeMirror's lint panel, the file's diagnostics as a list. Each button names its shortcut and the CLI command it runs. Code intelligence adds the keys of the table below |
+| Clicks | Alt-Shift-click (Option-Shift-click) adds a cursor and Alt-drag selects a rectangle, whatever the preferences; Cmd-click and Ctrl-click never add a cursor |
+| Screen readers | The editor content has an `aria-label` naming the file; a polite live region announces a run's start and summary, not every case; statuses are text and icon, never color alone. Everything the page draws sits in a landmark: the top bar, the command line (a named region), the view in `main` with the file tree's menu, and the status bar. A hover opened from the keyboard is read out by the live region (its first paragraph, as plain text); a library tab's editor names its path and `read-only`; the status bar's code-intelligence segment is text |
 | Scrolling | A region that scrolls on its own takes the focus, so the arrow keys scroll it: the editor, the results, the statement beside the editor, the statistics and the health checks, and each code block of a statement, hint or solution |
 | Narrow windows | The page reflows to one column and never scrolls sideways (WCAG 1.4.10): below 720 pixels the top bar and the status bar scroll on their own, wide tables scroll in their own box, and long paths and commands wrap |
 | Display | Light and dark follow `prefers-color-scheme` unless the `theme` preference names one; with `prefers-reduced-motion` every animation and transition stops, and the state it showed stays in words |
-| Checks | No violation of WCAG 2.2 A and AA, nor of axe-core's best practices, on any view or dialog, in light and dark, 1440 and 390 pixels wide, in each engine of [Browser support](#browser-support); at 390 pixels the page is no wider than the window |
+| Checks | No violation of WCAG 2.2 A and AA, nor of axe-core's best practices, on any view or dialog, in light and dark, 1440 and 390 pixels wide, in each engine of [Browser support](#browser-support); at 390 pixels the page is no wider than the window. The hover tooltip, the completion list and the library tab are checked too |
+
+The keys of [code intelligence](#code-intelligence-in-the-editor). Go to definition, Back and hover work while code intelligence applies to the tab; the diagnostic keys and adding a cursor work for every user; completion and signature help work while autocomplete applies:
+
+| Action | Keys | With Vim, in normal mode |
+|--------|------|--------------------------|
+| Go to definition | F12; Cmd-click (macOS) or Ctrl-click | `gd`, `Ctrl-]`; F12 and the click work too |
+| Back to where the last jump started | Ctrl-Minus, VS Code's binding on macOS. On Linux and Windows it is also the browser's zoom-out key, which the editor takes while it has the focus; the browser tests check each engine | `Ctrl-o`, through Vim's jump list |
+| Hover at the cursor | Cmd or Ctrl-K, then Cmd or Ctrl-I; Escape closes it | `K` |
+| Next and previous diagnostic | F8 and Shift-F8, skipping hints | `]d` and `[d` |
+| The file's diagnostics as a list | Cmd or Ctrl-Shift-M, CodeMirror's lint panel | The same |
+| Completion, with autocomplete on (off, no key opens a list) | As you type, or Ctrl-Space; on macOS also Option-` and Option-I, CodeMirror's, since macOS may take Ctrl-Space to switch input sources. The arrows, PageUp and PageDown move; Enter accepts; Escape closes | In insert mode the same, except that Escape closes the list and leaves insert mode |
+| Signature help, with autocomplete on | Opens on `(` and `,` in a call, or with Cmd or Ctrl-Shift-Space; Escape closes it | In insert mode the same, except that Escape closes it and leaves insert mode |
+| Add a cursor, whether the setting is on or off | Alt-Shift-click (Option-Shift-click), IntelliJ IDEA's binding; Alt-drag stays rectangular selection. Cmd-click and Ctrl-click never add a cursor: with code intelligence off they move the cursor like a plain click | The same |
+
+The Vim keys (`gd`, `Ctrl-]`, `K`, `]d`, `[d`) are those of LazyVim; they are mapped with `Vim.mapCommand` while code intelligence is on, and unmapped when it turns off. A click under Vim moves the cursor and stays in normal mode.
 
 ## Solutions
 
@@ -565,7 +836,7 @@ sequenceDiagram
 `.cs/serve/preferences.json` in the workspace, ignored with the rest of `.cs/`:
 
 ```json
-{"format": 1, "vim": false, "run_on_save": false, "typecheck": true, "theme": "system"}
+{"format": 1, "vim": false, "run_on_save": false, "typecheck": true, "theme": "system", "code_intelligence": false, "autocomplete": false}
 ```
 
 | Key | Default | Effect |
@@ -574,19 +845,22 @@ sequenceDiagram
 | `run_on_save` | false | [Run on save](#attempt-view) |
 | `typecheck` | true | `typecheck` of TypeScript runs, so type errors reach the editor as markers |
 | `theme` | `system` | `light` or `dark` for the page and its editors; `system` follows `prefers-color-scheme` |
+| `code_intelligence` | false | Live diagnostics, hover documentation and go to definition from language servers ([Code intelligence in the editor](#code-intelligence-in-the-editor)); the `code intelligence` rows of `cstudy doctor`, and `cstudy doctor --fix` installing their servers ([cli](cli.md#cstudy-doctor)) |
+| `autocomplete` | false | Completion and signature help, while `code_intelligence` is also on. While autocomplete does not apply, the editor offers no completion at all ([Autocomplete](#autocomplete)) |
 
-A missing or unreadable file means the defaults; the server rewrites it whole on `PUT`.
+A missing or unreadable file means the defaults, and a key the stored file leaves out takes its default, so the format stays 1. The server rewrites the file whole on `PUT`, which stores any combination of `code_intelligence` and `autocomplete`: turning code intelligence off keeps `autocomplete` as stored, and the page applies autocomplete only while both are true.
 
 ## Front-end assets
 
 | Item | Rule |
 |------|------|
 | Sources | `tools/web-ui/`: `package.json` with exact versions, `pnpm-lock.yaml` with integrity hashes, `src/**/*.ts`, `src/page/app.css`, `build.sh`. Outside `cli/src`, so the wheel and the sdist leave it out |
-| Build | `pnpm install --frozen-lockfile --ignore-scripts` (run from `tools/web-ui/`, so Corepack reads the pinned pnpm), then esbuild: minified ES modules, content-hashed chunk names, legal comments gathered into `THIRD_PARTY_LICENSES.txt`. The page's code is TypeScript compiled by the same run, without a UI framework: `app.js` and `app.css` with fixed names, which `page.html` loads, the editor module as a chunk fetched when the first file opens, the Mock, Progress, Health and Settings views as chunks fetched when each first opens, the Start, Done and Solution dialogs and the one dialog module that confirmations and name questions share as chunks fetched when each is first used, the run session (streaming and drawing a run, Cancel, diagnostics) as a chunk fetched when a run first starts or shows, the Run options form, the job panel and the file tree's menu and actions as chunks fetched when each is first used, and the code of a past attempt (`pastFiles`) as a chunk fetched when the History row of an attempt that is over first opens. `app.css` holds the styles of what the page draws at start; each chunk's own styles are a content-hashed stylesheet that the chunk links, with the page's CSP nonce, as it loads, and the chunk resolves once it applies, so nothing shows unstyled |
+| Build | `pnpm install --frozen-lockfile --ignore-scripts` (run from `tools/web-ui/`, so Corepack reads the pinned pnpm), then esbuild: minified ES modules, content-hashed chunk names, legal comments gathered into `THIRD_PARTY_LICENSES.txt`. The page's code is TypeScript compiled by the same run, without a UI framework: `app.js` and `app.css` with fixed names, which `page.html` loads, the editor module as a chunk fetched when the first file opens, the Mock, Progress, Health and Settings views as chunks fetched when each first opens, the Start, Done and Solution dialogs and the one dialog module that confirmations and name questions share as chunks fetched when each is first used, the run session (streaming and drawing a run, Cancel, diagnostics) as a chunk fetched when a run first starts or shows, the Run options form, the job panel and the file tree's menu and actions as chunks fetched when each is first used, the code of a past attempt (`pastFiles`) as a chunk fetched when the History row of an attempt that is over first opens, and the code-intelligence chunk as described below. `app.css` holds the styles of what the page draws at start; each chunk's own styles are a content-hashed stylesheet that the chunk links, with the page's CSP nonce, as it loads, and the chunk resolves once it applies, so nothing shows unstyled |
 | Output | `entrypoints/web/static/`, committed; not a directory named `build`, which the wheel excludes |
 | Manifest | `static/manifest.json` records each file's SHA-256; a slow test rebuilds and compares, a fast test asserts the wheel holds every file it names, and `cstudy doctor` compares the installed files with it |
-| Budget | NFR-12: the whole bundle at most 1 MB raw and 350 KB gzip without the Vim chunk; at most 600 KB raw loaded before the first file of one language is editable, which is `app.js` and the chunks it imports statically, `app.css`, the editor and the language's chunk; a fast test holds the committed files to it |
-| Markdown | Rendered on the server with markdown-it-py and Pygments, declared as direct dependencies although Rich installs them too; no Markdown library in the bundle |
+| Code-intelligence chunk | `src/code-intelligence.ts`, imported dynamically, becomes `chunks/code-intelligence-<hash>.js`, with its stylesheet and any chunk only it imports. It holds `@codemirror/lsp-client` 6.3.0 (the client, the plugin, the workspace class, the definition commands; `vscode-languageserver-protocol` adds types only) and the page's own transport, workspace, diagnostics, hover, click handling, completion source, signature tooltip and status. It imports `@codemirror/autocomplete` from the main bundle, which already holds it through the editor. It loads when `code_intelligence` is on and a file of a language with an installed server opens, after the editor is editable |
+| Budget | NFR-12: the whole bundle at most 1 MB raw and 350 KB gzip without the Vim and code-intelligence chunks; at most 600 KB raw loaded before the first file of one language is editable, which is `app.js` and the chunks it imports statically, `app.css`, the editor and the language's chunk; the code-intelligence chunk at most 64 KB raw and 24 KB gzip. A fast test holds the committed files to each |
+| Markdown | Rendered on the server with markdown-it-py and Pygments, declared as direct dependencies although Rich installs them too; no Markdown library in the bundle. `@codemirror/lsp-client` imports `marked`; `scripts/build.ts` aliases it to an escaping stand-in, `src/code-intelligence/marked-stand-in.ts`, which exports what the package imports and returns its input with `&`, `<`, `>`, `"` and `'` escaped, and a fast test checks that the chunk holds no `marked` |
 
 ## Browser support
 
@@ -616,10 +890,17 @@ Each browser test runs once per engine (`tests/browsers.py`), and each engine co
 | API | Each endpoint's status, and its own documents validated against `schemas/web-api.schema.json` (`tests/entrypoints/web/test_api_schema.py`, over the responses of a project attempt from start to done, an import, a mock and a watch of the workspace; documents a CLI command also prints are compared with that command's output instead, as `cli.md` describes them); documents equal to the CLI's (`status_document`, `list`, `next`, `stats`); the security matrix: Host, Origin, cookie, CSRF, CSP present, no CORS headers, body limits; confirmations; the past-files endpoints (`tests/entrypoints/web/test_past_files_api.py`): the sources, the refusals, the limits, the cookie, the Host, `no-store` and the writes they refuse | Starlette's `TestClient` with a test `Environment` | fast |
 | Streaming | SSE framing, ordering, `Last-Event-ID`, `closed`, the 409 slot, cancel to `run_end` `interrupted`, the SIGTERM and SIGKILL escalation, job lines | A scripted child that replays golden NDJSON and waits for signals (`tests/scripted_child.py`, run in place of `python -m coding_study` through the child command's interpreter) | fast |
 | Notifications | The stream's numbering, replay, keep-alive and end; progress changes spaced out; run and job notices; the watch turning a burst into notices by content and starting again over new folders; a failed snapshot | The hub's streams read as async generators, a scripted folder watch, the test workspaces; `tests/adapters/test_watchfiles_watcher.py` (slow) watches real folders | fast |
+| Code intelligence broker | Framing; the rewritten `initialize`, without snippet support; the page methods forwarded and refused; the housekeeping answers; documents outside the root refused; the CSRF first message and its 10 s; `cstudy-html` for hover, resolved completion items and signature help, with raw HTML escaped and `file:` links shown as their text; library reads (definition targets only, `.cs/build/` and the content root refused also through a link, the 4 MiB limit, UTF-8 only, links followed); the four-server limit (4003); a server exit (4002 with its reason); end of file and the SIGTERM and SIGKILL escalation; Ctrl-C | A fake language server (`tests/fake_language_server.py`, scripted as `tests/scripted_child.py` is) under Starlette's `TestClient.websocket_connect`, which runs in-process and needs no wsproto | fast |
+| Code intelligence security matrix | Refused before the upgrade: a bad `Host`, an `Origin` on another port or none, no cookie; then a wrong or missing CSRF message (1008); an ended attempt, the preference off, a language without a server, a server not installed | The same | fast |
+| Code intelligence status | The `code intelligence` doctor rows and `--fix`: missing, installed, another version, a version command that fails, `typescript/node_modules` missing, the preference off (no rows, nothing installed); `GET /api/v1/code-intelligence/languages` | Fakes, as in `tests/application/`; the route under `TestClient` | fast |
+| Preferences | `code_intelligence` and `autocomplete` default to false, a stored file without them reads them as false, and `PUT` stores any combination | Unit tests of `domain/preferences.py` and of the preferences route | fast |
+| Front end | The merge of run and live diagnostics, tags to classes, URIs to tree paths, the definition targets of [Go to definition](#go-to-definition), Cmd or Ctrl by platform, the reconnect delays; completion items to options (ranges, kinds, incomplete lists), resolve once per item, `autocompleteApplies` true only while both preferences are on, no completion at all while it is false, and the editor's own completion replaced only while the session is ready | `node --test` in `tools/web-ui/test/*.test.ts`, run by `build.sh` | fast |
+| Real servers | basedpyright and typescript-language-server installed in `.cs/lsp/` of the test workspace: both version commands; an undefined name is an error, `sorted` has documentation, the definition of `sorted` is `builtins.pyi`, read through `cstudy/libraryFile`; completion after `heapq.` offers `heappush` and after `Math.` offers `max`, each with resolved documentation | The slow workspace fixtures, skipped while `.cs/lsp/` is not installed | slow |
 | End to end | A real `test --events` and `submit --events` on the Python project pilot, a single-file run in each core language, a concurrent stress run, a level unlock, a cancel, a real file event | The existing slow workspace fixtures; `tests/entrypoints/commands/test_serve_runs_end_to_end.py` covers a Python single-file run, the pilot's tests, a cancel that leaves no test process, the reference's submission opening level 2 and a server stopped during a run so far; `tests/entrypoints/commands/test_serve_notifications_end_to_end.py` covers a file edited on disk, an attempt started in the terminal and Ctrl-C with a notification stream open; `tests/entrypoints/commands/test_serve_parity_end_to_end.py` starts one problem of each kind (function, design, progressive, concurrent, a debugging problem, project) in each of the six languages, runs its tests in a child `cstudy test --events` and finishes it with Done, all through the page's API | slow |
 | Browser | Login, the editor under the CSP, a streamed run, cancel, a diagnostic marker, the solution confirmation, Vim loading, no console error, in each engine of [Browser support](#browser-support) | Playwright, in the optional `browser` dependency group (`uv sync --group browser`, then `uv run --group browser playwright install chromium firefox webkit`), skipped when not installed; `tests/entrypoints/web/test_browser_login.py` opens the `--open` redirect file and lands on the page logged in; `tests/entrypoints/web/test_browser_axe.py` runs axe-core (from `axe-playwright-python`, in the same group) over every view and dialog in light and dark at 1440 and 390 pixels; `tests/entrypoints/web/test_browser_keyboard.py` follows the keyboard alone: the skip link, a view's shortcut, a visible focus on every stop, a dialog that keeps the focus and gives it back on Escape, the file tree's menu, the way out of the editor, the live region's announcements and Escape cancelling a run; `tests/entrypoints/web/test_browser_smoke.py` covers login, the problem list, a project's statement and tree, a row of the list and a file of the tree that stay where they showed, a file in the editor, a save with the shortcut that turns the file `modified`, a restore from the tree that turns it `unchanged`, a project run whose rows show while it goes on, its cancel, a run to its summary, and a new file named in the tree's dialog, and a save that starts a run when Run on save is on so far; `tests/entrypoints/web/test_browser_flows.py` starts a single-file problem with a time box, turns Vim on and finds it after a reload, takes a hint, reveals the solution through its question, finishes with Done, starts a mock and finds Hint locked in its attempt; `tests/entrypoints/web/test_browser_jdk.py` runs the page on a server whose JDK is a 27: the list's `java!` and `kt!` marks with the reason as tooltip and assistive text, the Start dialog with Java and Kotlin disabled and the reason beside them, a Java project that cannot start, and a refusal whose `fix:` hint and link show; `tests/entrypoints/web/test_browser_notifications.py` edits an open file on disk and sees its tab take the new version with the cursor kept, edits it again under unsaved edits and sees the conflict banner keep them, and opens a second tab that takes the first tab's save and shows the run the first started; `tests/entrypoints/web/test_browser_history.py` finishes an attempt, expands its History row and opens its file read-only with no save and no run, starts the review, and finds the first attempt reading from `.archive/` and the second from its current files; `tests/entrypoints/web/test_browser_diagnostics.py` saves a syntax error from the editor, runs the tests and sees the error's line marked in the editor and its gutter, jumps to that line from the results, then fixes it and sees the next run clear the marker | slow |
+| Browser, code intelligence | In each engine, against the fake language server: the underline and gutter marker, faded unused code, hover by mouse and by keys with the live region, Cmd-click or Ctrl-click and F12 in the file, into another tab and into a library tab, Alt-Shift-click adding a cursor, Ctrl-Minus back, Vim's `gd`, `K` and `Ctrl-o`; with autocomplete off, no list on Ctrl-Space; with it on, the list on `.` and on Ctrl-Space with its info panel, Enter accepting, signature help on `(`, and one Escape under Vim closing the list and leaving insert mode; the Autocomplete checkbox disabled while code intelligence is off; two visible tabs that each hold a session and still save; no CSP violation; axe on the tooltip, the completion list and the library tab | Playwright, in the optional `browser` group; `tests/entrypoints/web/test_browser_diagnostics.py` covers the live diagnostics, `test_browser_keyboard.py` the clicks and keys, and a Settings test the two checkboxes | slow |
 | Bundle | The rebuild matches `manifest.json`; the wheel holds every asset | npm and esbuild; `uv build` | slow |
-| Bundle budget | The committed files meet NFR-12: the whole bundle without Vim, and a file of each language editable within 600 KB raw | A test follows the static `import`s of `app.js` and of the editor and language chunks | fast |
-| Import cost | `import coding_study.entrypoints.cli` loads neither Starlette nor uvicorn | A subprocess checks `sys.modules` | fast |
+| Bundle budget | The committed files meet NFR-12: the whole bundle without the Vim and code-intelligence chunks, and a file of each language editable within 600 KB raw; the code-intelligence chunk within 64 KB raw and 24 KB gzip, and without `marked` | A test follows the static `import`s of `app.js` and of the editor and language chunks | fast |
+| Import cost | `import coding_study.entrypoints.cli` loads neither Starlette, uvicorn nor wsproto | A subprocess checks `sys.modules` | fast |
 
-The fast tests also run in the CI workflow that task F9 adds (lint, types, contracts, fast tests); the slow and browser tests run locally before a release, through the existing `slow` marker. The release job builds the wheel without Node, because the bundle is committed.
+The fast tests also run in the CI workflow that task F9 adds (lint, types, contracts, fast tests); the slow and browser tests run locally before a release, through the existing `slow` marker. The fake language server keeps the fast and browser tests of code intelligence deterministic: they wait for what the page draws, never for time; the real servers stay in the local gate. The release job builds the wheel without Node, because the bundle is committed.
