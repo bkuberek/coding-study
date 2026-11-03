@@ -54,16 +54,17 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 82.2 | 29.0 |
-| Every JavaScript and CSS file but Vim | 943.7 | 339.4 |
-| The editor before any language: the page, the editor and the core | 485.7 | 163.0 |
-| A Python file | 556.1 | 189.9 |
-| A TypeScript or JavaScript file, the largest grammar | 594.7 | 203.5 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 82.7 | 29.2 |
+| Every JavaScript and CSS file but Vim | 948.5 | 341.6 |
+| The editor before any language: the page, the editor and the core | 486.2 | 163.2 |
+| A Python file | 556.6 | 190.1 |
+| A TypeScript or JavaScript file, the largest grammar | 595.1 | 203.7 |
 | Vim keybindings, added on top | 119.7 | 38.1 |
 | The Mock and Progress views together, each fetched when it first opens (Progress with the Start dialog) | 19.8 | 9.1 |
 | The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 10.9 | 5.3 |
 | The run session, fetched when a run first starts or shows: streaming and drawing it, Cancel, diagnostics | 21.6 | 8.0 |
 | The Run options form, fetched when it first opens | 4.1 | 1.8 |
+| The code of a past attempt, fetched when the History row of an attempt that is over first opens (the dialog module comes with it, and the editor once a file shows) | 3.9 | 2.0 |
 | The job panel for Bench, fetched when Bench first starts (Health fetches it with its view) | 3.9 | 1.8 |
 | The file tree's menu and actions, fetched when a menu first opens or an action first runs (with the dialog module) | 9.6 | 4.5 |
 | The dialog module (sheets, confirmations, questions that ask for names) and the Start, Done and Solution dialogs, each fetched when first used | 15.8 | 7.8 |
