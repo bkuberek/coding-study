@@ -22,6 +22,7 @@ from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.adapters.fs_study_guides import FsStudyGuides
 from coding_study.adapters.jdk_locator import EnvJdkSelector, JdkHome
+from coding_study.adapters.language_servers.lsp_directory import LspDirectory
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.registry import LANGUAGES
 from coding_study.adapters.locations import (
@@ -35,6 +36,10 @@ from coding_study.adapters.problem_overlay import OverlayProblemFiles, OverlayPr
 from coding_study.adapters.runner_runtime import RunnerRuntime
 from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
 from coding_study.adapters.subprocess_runner import SubprocessRunner
+from coding_study.adapters.subprocess_tool_probe import (
+    SubprocessCommandRunner,
+    SubprocessToolProbe,
+)
 from coding_study.adapters.system_clock import SystemClock
 from coding_study.adapters.system_machine import SystemMachine
 from coding_study.adapters.toml_config import TomlConfigSource, config_path
@@ -126,6 +131,7 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         machine=SystemMachine(),
         new_problems=_new_problems(content, workspace),
         study_guides=FsStudyGuides.from_setting(config.study_guides.root, user.home),
+        language_servers=LspDirectory(workspace, SubprocessToolProbe(), SubprocessCommandRunner()),
     )
 
 

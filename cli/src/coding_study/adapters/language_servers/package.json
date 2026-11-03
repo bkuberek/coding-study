@@ -1,0 +1,12 @@
+{
+  "name": "coding-study-language-servers",
+  "private": true,
+  "description": "The language servers of cstudy's code intelligence, installed by cstudy doctor --fix",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "basedpyright": "1.40.2",
+    "typescript-language-server": "6.0.3"
+  }
+}

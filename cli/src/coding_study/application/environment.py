@@ -12,6 +12,7 @@ from coding_study.application.ports import (
     GeneratedCaseCache,
     ItemRepository,
     JdkSelector,
+    LanguageServerLocator,
     MachineProbe,
     ProblemFiles,
     ProblemRepository,
@@ -64,3 +65,5 @@ class Environment:
     machine: MachineProbe
     new_problems: ProblemDestination
     study_guides: StudyGuides
+    language_servers: LanguageServerLocator
+    """The code-intelligence servers in the workspace's `.cs/lsp/`."""

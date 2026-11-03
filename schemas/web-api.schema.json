@@ -79,6 +79,30 @@
         "autocomplete": { "type": "boolean" }
       }
     },
+    "code_intelligence_languages": {
+      "description": "GET /api/v1/code-intelligence/languages",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["languages"],
+      "properties": {
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["language", "server", "version", "state", "detail", "idle_s"],
+            "properties": {
+              "language": { "$ref": "#/$defs/language" },
+              "server": { "type": ["string", "null"] },
+              "version": { "type": ["string", "null"] },
+              "state": { "enum": ["installed", "not_installed", "not_available"] },
+              "detail": { "type": "string", "minLength": 1 },
+              "idle_s": { "type": ["integer", "null"], "minimum": 1 }
+            }
+          }
+        }
+      }
+    },
     "error": {
       "description": "Every refusal",
       "type": "object",

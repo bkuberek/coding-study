@@ -13,6 +13,7 @@ from rich.text import Text
 from coding_study.adapters.cstudy_installs import PathCstudyInstalls
 from coding_study.adapters.environment_factory import RUNNERS_DIRECTORY
 from coding_study.adapters.jdk_locator import EnvJdkSelector
+from coding_study.adapters.language_servers.lsp_directory import LspDirectory
 from coding_study.adapters.languages.context import LanguageContext
 from coding_study.adapters.languages.debug_servers import InstalledDebugServers, Machine
 from coding_study.adapters.languages.registry import LANGUAGES
@@ -24,6 +25,7 @@ from coding_study.adapters.locations import (
     find_workspace,
     workspace_directory,
 )
+from coding_study.adapters.preferences_fs import FsPreferencesStore
 from coding_study.adapters.runner_runtime import RUNTIME_RUNNERS
 from coding_study.adapters.serve_install import InstalledWebUi
 from coding_study.adapters.sqlite.progress_database import SqliteProgressDatabase
@@ -168,6 +170,7 @@ def _workspace(
     except WorkspaceError as error:
         return NotFound(str(error), unusable=has_marker(workspace_directory(cwd, environ)))
     content_root = content.files.root if isinstance(content, ContentLocation) else root
+    language_servers = LspDirectory(root, SubprocessToolProbe(), SubprocessCommandRunner())
     return PracticeWorkspace(
         files=FsRepositoryFiles(root),
         created_with=read_marker(root).created_with,
@@ -177,6 +180,9 @@ def _workspace(
         commands=SubprocessCommandRunner(),
         project_links=FsProjectLinks(),
         progress=SqliteProgressDatabase(root / _progress_db(config)),
+        preferences=FsPreferencesStore(root),
+        language_servers=language_servers,
+        language_server_installer=language_servers,
     )
 
 

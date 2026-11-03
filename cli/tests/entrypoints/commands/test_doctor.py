@@ -21,7 +21,14 @@ from coding_study.application.doctor import (
     NotFound,
     PracticeWorkspace,
 )
-from coding_study.application.ports import JdkSelector, ProbeResult, ScaffoldOutcome
+from coding_study.application.ports import (
+    JdkSelector,
+    NotInstalled,
+    ProbeResult,
+    ScaffoldOutcome,
+)
+from coding_study.application.preferences import read_preferences
+from coding_study.domain.code_intelligence import BASEDPYRIGHT
 from coding_study.domain.jdk import JdkSource, SelectedJdk
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import doctor
@@ -231,6 +238,30 @@ def test_doctor_environment_finds_the_checkout_content(tmp_path):
 def test_doctor_environment_checks_the_installed_web_ui(tmp_path):
     web = doctor.doctor_environment(tmp_path, {}, tmp_path).web
     assert web.assets() == InstalledWebUi(STATIC_DIRECTORY).assets()
+
+
+def test_doctor_environment_reads_the_preferences_of_the_workspace(tmp_path):
+    mark_workspace(tmp_path)
+    preferences = tmp_path / ".cs" / "serve" / "preferences.json"
+    preferences.parent.mkdir(parents=True)
+    preferences.write_text('{"format": 1, "code_intelligence": true}\n')
+    workspace = doctor.doctor_environment(tmp_path, {}, tmp_path).workspace
+    assert isinstance(workspace, PracticeWorkspace)
+    assert read_preferences(workspace.preferences).code_intelligence is True
+
+
+def test_doctor_environment_locates_the_servers_in_the_workspaces_lsp_directory(tmp_path):
+    mark_workspace(tmp_path)
+    workspace = doctor.doctor_environment(tmp_path, {}, tmp_path).workspace
+    assert isinstance(workspace, PracticeWorkspace)
+    assert workspace.language_servers.probe(BASEDPYRIGHT) == NotInstalled()
+
+
+def test_doctor_environment_installs_the_servers_with_the_same_adapter(tmp_path):
+    mark_workspace(tmp_path)
+    workspace = doctor.doctor_environment(tmp_path, {}, tmp_path).workspace
+    assert isinstance(workspace, PracticeWorkspace)
+    assert workspace.language_server_installer is workspace.language_servers
 
 
 def make_cstudy(prefix: Path, version: str) -> Path:

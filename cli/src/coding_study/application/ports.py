@@ -18,6 +18,7 @@ from coding_study.domain.bench_records import (
 from coding_study.domain.bench_runs import BenchReport, BenchRequest
 from coding_study.domain.bench_verdict import PastRun
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.code_intelligence import LanguageServer
 from coding_study.domain.comparators import Checker
 from coding_study.domain.config import Config
 from coding_study.domain.debugging import DebugSession
@@ -965,6 +966,54 @@ class PreferencesStore(Protocol):
 
     def write(self, document: dict[str, object]) -> None:
         """Replaces the whole file."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class NotInstalled:
+    """The server's package is not in `.cs/lsp/node_modules/`."""
+
+
+@dataclass(frozen=True, slots=True)
+class FileMissing:
+    """The package is there, but a workspace file the server needs is not."""
+
+    path: str
+    """Relative to the workspace root."""
+
+
+@dataclass(frozen=True, slots=True)
+class VersionPrinted:
+    """The server's version command exited 0."""
+
+    output: str
+    """Standard output and standard error, combined."""
+
+
+@dataclass(frozen=True, slots=True)
+class VersionFailed:
+    """The version command did not run or did not exit 0."""
+
+    reason: str
+    """The first line of its standard error, or why it did not start."""
+
+
+type ServerProbe = NotInstalled | FileMissing | VersionPrinted | VersionFailed
+
+
+class LanguageServerLocator(Protocol):
+    """The servers in the workspace's `.cs/lsp/` (docs/specs/web-ui.md#language-servers)."""
+
+    def probe(self, server: LanguageServer) -> ServerProbe:
+        """Whether `.cs/lsp/` holds `server` and what its version command prints."""
+        ...
+
+
+class LanguageServerInstaller(Protocol):
+    def install(self) -> ProbeResult | None:
+        """Copy the shipped `package.json` and `pnpm-lock.yaml` into `.cs/lsp/` when they differ,
+        then run `pnpm install --frozen-lockfile --ignore-scripts` there; None when `pnpm` is
+        missing."""
         ...
 
 

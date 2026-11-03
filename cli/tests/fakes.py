@@ -21,15 +21,20 @@ from coding_study.application.ports import (
     CaseListener,
     DebugServer,
     LanguageRunner,
+    NotInstalled,
     Prepared,
     PrepareResult,
+    ProbeResult,
     ProgressNotice,
     ProjectTestGenerator,
     RunnerLaunch,
+    ServerProbe,
     StubGenerator,
+    VersionPrinted,
 )
 from coding_study.domain.bench_records import MachineState, PowerSource
 from coding_study.domain.cases import FunctionInput
+from coding_study.domain.code_intelligence import LanguageServer
 from coding_study.domain.config import Config
 from coding_study.domain.errors import LanguageNotSetUpError
 from coding_study.domain.jdk import JdkSource, SelectedJdk
@@ -296,6 +301,7 @@ def make_environment(root: Path, **overrides: object) -> Environment:
         "machine": FakeMachine(),
         "new_problems": ProblemDestination(FsProblemFiles(root), WorkspaceFs(root)),
         "study_guides": FsStudyGuides(None),
+        "language_servers": FakeLanguageServers(),
     }
     parts.update(overrides)
     return Environment(**parts)  # type: ignore[arg-type]
@@ -303,3 +309,51 @@ def make_environment(root: Path, **overrides: object) -> Environment:
 
 def _unanswered(case: RunCase) -> CaseOutcome:
     raise AssertionError(f"no scripted answer for case {case.id}")
+
+
+class MemoryPreferences:
+    """The web UI's preferences file, in memory."""
+
+    def __init__(self, document: object = None) -> None:
+        self.document = document
+
+    def read(self) -> object:
+        return self.document
+
+    def write(self, document: dict[str, object]) -> None:
+        self.document = document
+
+
+CODE_INTELLIGENCE_ON = MemoryPreferences({"format": 1, "code_intelligence": True})
+
+
+PNPM_SUCCEEDED = ProbeResult(0, "")
+
+
+class FakeLanguageServers:
+    """Locates and installs the servers of the catalog from a table of probes, one per name;
+    a server without an entry is not installed."""
+
+    def __init__(
+        self,
+        probes: Mapping[str, ServerProbe] | None = None,
+        installation: ProbeResult | None = PNPM_SUCCEEDED,
+    ) -> None:
+        self.probes = dict(probes or {})
+        self.installation = installation
+        self.probed: list[str] = []
+        self.installs = 0
+
+    def probe(self, server: LanguageServer) -> ServerProbe:
+        self.probed.append(server.name)
+        return self.probes.get(server.name, NotInstalled())
+
+    def install(self) -> ProbeResult | None:
+        self.installs += 1
+        return self.installation
+
+
+INSTALLED_SERVERS: Mapping[str, ServerProbe] = {
+    "basedpyright": VersionPrinted("basedpyright 1.40.2\nbased on pyright 1.40.2\n"),
+    "typescript-language-server": VersionPrinted("6.0.3\n"),
+}

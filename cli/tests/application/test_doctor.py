@@ -54,7 +54,15 @@ from coding_study.domain.problem import Language
 from coding_study.domain.runs import RunnerInfo, RunReport, RunRequest
 from coding_study.domain.suite_runs import SuiteJob, SuiteReport
 from coding_study.domain.workspace_projects import PYTEST_REQUIREMENT
-from tests.fakes import DEBUGSERVER, DELVE, FakeDebugServers, FakeLanguageRunner, FakeToolchains
+from tests.fakes import (
+    DEBUGSERVER,
+    DELVE,
+    FakeDebugServers,
+    FakeLanguageRunner,
+    FakeLanguageServers,
+    FakeToolchains,
+    MemoryPreferences,
+)
 
 OK, WARN, FAIL = CheckStatus.OK, CheckStatus.WARN, CheckStatus.FAIL
 PYTHON_PATH = "/py/bin/python3.13"
@@ -304,7 +312,10 @@ def workspace_with(
     setup: FakeSetup | None = None,
     links: FakeProjectLinks | None = None,
     progress: FakeProgress | None = None,
+    preferences: MemoryPreferences | None = None,
+    language_servers: FakeLanguageServers | None = None,
 ) -> PracticeWorkspace:
+    servers = language_servers or FakeLanguageServers()
     return PracticeWorkspace(
         files=FakeFiles(set(COMPLETE_WORKSPACE) if paths is None else paths),
         created_with=RUNNING_VERSION,
@@ -314,6 +325,9 @@ def workspace_with(
         commands=commands or FakeCommands(),
         project_links=links or FakeProjectLinks(),
         progress=progress or FakeProgress(),
+        preferences=preferences or MemoryPreferences(),
+        language_servers=servers,
+        language_server_installer=servers,
     )
 
 

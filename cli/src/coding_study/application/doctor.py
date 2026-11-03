@@ -14,6 +14,12 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TypeGuard
 
+from coding_study.application.code_intelligence import (
+    LanguageServerState,
+    ServerStatus,
+    install_language_servers,
+    language_server_states,
+)
 from coding_study.application.installs import (
     INSTALLS_CHECK,
     InstallScan,
@@ -30,6 +36,9 @@ from coding_study.application.ports import (
     FolderCheck,
     JdkSelector,
     LanguageRunner,
+    LanguageServerInstaller,
+    LanguageServerLocator,
+    PreferencesStore,
     ProbeResult,
     ProgressDatabase,
     ProgressNotice,
@@ -48,6 +57,8 @@ from coding_study.application.ports import (
     WebUiInstall,
     WorkspaceSetup,
 )
+from coding_study.application.preferences import read_preferences
+from coding_study.domain.code_intelligence import LSP_DIRECTORY, LSP_INSTALL_COMMAND
 from coding_study.domain.debugging import (
     DEBUGPY_INSTALL_COMMAND,
     DELVE_VERSION,
@@ -162,6 +173,11 @@ class PracticeWorkspace:
     commands: CommandRunner
     project_links: ProjectLinks
     progress: ProgressDatabase
+    preferences: PreferencesStore
+    """The web UI's preferences: `code_intelligence` turns the language server rows and install
+    on."""
+    language_servers: LanguageServerLocator
+    language_server_installer: LanguageServerInstaller
 
 
 @dataclass(frozen=True, slots=True)
@@ -265,6 +281,12 @@ PYTEST_FIX = FixStep(
 whenever uv's cache holds pytest; online only when it does not."""
 TYPESCRIPT_FIX = FixStep("typescript", ("pnpm", "install"))
 RUNNER_TYPESCRIPT_FIX = FixStep(RUNNER_TYPESCRIPT, ("pnpm", "install"))
+LANGUAGE_SERVERS_FIX = FixStep(
+    LSP_DIRECTORY, LSP_INSTALL_COMMAND, manual=f"once online, run: {FIX_COMMAND}"
+)
+"""Installs the language servers of the web UI's code intelligence from the shipped manifest,
+while the `code_intelligence` preference is on. The installer copies the manifest first, so this
+step is never run as a plain command."""
 JVM_FIX = FixStep(
     "jvm",
     (
@@ -373,7 +395,10 @@ def fix_workspace(
     jvm_blocker = _jvm_warm_up_blocker(workspace, jdk)
     home = jdk.selected_home()
     for step, directory in _fix_plan(workspace, content, jvm_blocker is None):
-        outcome = _run_step(workspace.commands, step, directory, notify, home)
+        if step is LANGUAGE_SERVERS_FIX:
+            outcome = _install_language_servers(workspace, notify)
+        else:
+            outcome = _run_step(workspace.commands, step, directory, notify, home)
         if outcome is not None:
             outcomes.append(outcome)
     if jvm_blocker is not None:
@@ -393,6 +418,12 @@ def _jvm_warm_up_blocker(workspace: PracticeWorkspace, jdk: JdkSelector) -> str 
     if selected.feature < SUPPORTED_JDKS.minimum:
         return f"JDK {selected.feature} is older than {SUPPORTED_JDKS.minimum}"
     return None
+
+
+def _install_language_servers(workspace: PracticeWorkspace, notify: ProgressNotice) -> FixOutcome:
+    notify(f"running {LANGUAGE_SERVERS_FIX}")
+    result = install_language_servers(workspace.language_server_installer)
+    return FixOutcome(LANGUAGE_SERVERS_FIX, result)
 
 
 def _run_step(
@@ -442,9 +473,15 @@ def _fix_plan(
     ]
     if _is_checkout(content) and content.files.exists(RUNNER_TYPESCRIPT):
         plan.append((RUNNER_TYPESCRIPT_FIX, content.files.root / RUNNER_TYPESCRIPT))
+    if _code_intelligence_on(workspace):
+        plan.append((LANGUAGE_SERVERS_FIX, files.root / LSP_DIRECTORY))
     if jvm and files.exists(JVM_FIX.project):
         plan += [(step, files.root / step.project) for step in (JVM_FIX, *JVM_PROJECT_WARMUPS)]
     return plan
+
+
+def _code_intelligence_on(workspace: PracticeWorkspace) -> bool:
+    return read_preferences(workspace.preferences).code_intelligence
 
 
 def _is_checkout(content: ContentLocation | NotFound) -> TypeGuard[ContentLocation]:
@@ -708,6 +745,7 @@ def _workspace(
         *(_runner(workspace, language, notify) for language in CORE_LANGUAGES),
         *_project_libraries(workspace),
         *_web_ui(environment.web, reinstall_command(installs)),
+        *_language_servers(workspace),
     ]
 
 
@@ -954,3 +992,19 @@ def _hello(
         return workspace.runner_process.run(prepared.launch, RunRequest(())).runner
     except (RunnerStartError, RunnerProtocolError, LanguageNotSetUpError) as error:
         return _Unavailable(str(error).splitlines()[0])
+
+
+def _language_servers(workspace: PracticeWorkspace) -> list[CheckResult]:
+    """One row per language with a server, only while the `code_intelligence` preference is on;
+    only the page's code intelligence needs them, so a missing or wrong one warns."""
+    if not _code_intelligence_on(workspace):
+        return []
+    states = language_server_states(workspace.language_servers)
+    return [_language_server_row(state) for state in states if state.server is not None]
+
+
+def _language_server_row(state: LanguageServerState) -> CheckResult:
+    name = f"code intelligence {state.language}"
+    if state.status is ServerStatus.INSTALLED:
+        return CheckResult(name, CheckStatus.OK, state.detail)
+    return CheckResult(name, CheckStatus.WARN, state.problem or state.detail, fix=FIX_COMMAND)
