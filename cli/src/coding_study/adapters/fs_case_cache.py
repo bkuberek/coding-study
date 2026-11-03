@@ -11,9 +11,9 @@ from typing import Any
 
 from coding_study.domain.cases import Expected, FunctionInput, JsonValue, OperationSequence
 from coding_study.domain.generated_cases import GeneratedCase
+from coding_study.domain.layout import CASES_DIRECTORY
 from coding_study.domain.runs import RunInput
 
-CASES_DIRECTORY = ".cs/cases"
 FORMAT_VERSION = 1
 
 

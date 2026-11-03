@@ -55,6 +55,7 @@ from coding_study.application.ports import ProgressNotice
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.config import Config
 from coding_study.domain.errors import ConfigError, UsageError
+from coding_study.domain.layout import RUNS_DIRECTORY
 from coding_study.entrypoints.shared import ExitCode, add_command, command_environ, console
 from coding_study.entrypoints.web import STATIC_DIRECTORY
 
@@ -62,7 +63,6 @@ NAME = "doctor"
 STATUS_LABEL_WIDTH = 6
 FIX_SEPARATOR = "    fix: "
 FIX_OUTPUT_LINES = 10
-RUNS_DIRECTORY = Path(".cs") / "runs"
 _STATUS_STYLES = {
     CheckStatus.OK: ("ok", "green"),
     CheckStatus.WARN: ("WARN", "yellow"),

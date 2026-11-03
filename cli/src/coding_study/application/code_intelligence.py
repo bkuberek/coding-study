@@ -30,6 +30,7 @@ from coding_study.domain.code_intelligence import (
     server_for,
 )
 from coding_study.domain.errors import LanguageServerNotInstalledError, UsageError
+from coding_study.domain.layout import BUILD_DIRECTORY, CASES_DIRECTORY, RUNS_DIRECTORY
 from coding_study.domain.preferences import Preferences
 from coding_study.domain.problem import Language, ProblemKind
 from coding_study.domain.workspace_projects import project_folder
@@ -88,6 +89,18 @@ class SessionTarget:
     @property
     def lsp_directory(self) -> Path:
         return self.workspace / LSP_DIRECTORY
+
+    @property
+    def hidden(self) -> tuple[Path, ...]:
+        """Where the reference solutions, the generated cases with their expected values, the run
+        data and the content root are: no library file is read from them, no answer names a place
+        in them and a Node server cannot open them (docs/specs/web-ui.md#hidden-directories)."""
+        return (
+            self.workspace / BUILD_DIRECTORY,
+            self.workspace / CASES_DIRECTORY,
+            self.workspace / RUNS_DIRECTORY,
+            self.content_root,
+        )
 
 
 def session_target(

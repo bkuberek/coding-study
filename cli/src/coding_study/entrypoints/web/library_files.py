@@ -1,9 +1,10 @@
 """The files a definition names outside the attempt: the standard library, typeshed, `node_modules`,
 `.venv`, the runner's support code (docs/specs/web-ui.md#definitions-and-library-files).
 
-A file is read as it is, over links, as UTF-8 text up to 4 MiB. Never from cstudy's build area or
-the content root, where the reference solutions are: the refusal applies to the path as named and
-to the path its links lead to, and finds a directory by what it is (its device and inode), so
+A file is read as it is, over links, as UTF-8 text up to 4 MiB. Never from the hidden directories
+(docs/specs/web-ui.md#hidden-directories): cstudy's build area, where the reference solutions are,
+the generated cases, the run data and the content root. The refusal applies to the path as named
+and to the path its links lead to, and finds a directory by what it is (its device and inode), so
 neither a link nor another spelling of the same directory on a case-insensitive file system gets
 past it. The checks come in the order the spec fixes.
 """
@@ -82,6 +83,16 @@ def read_library_file(uri: str, workspace: Path, hidden: Sequence[Path]) -> Libr
     if _under_any(resolved, hidden):
         raise LibraryRefusalError(Reason.BUILD_AREA, shown)
     return LibraryFile(uri, shown, _text(resolved, shown))
+
+
+def is_hidden(uri: str, hidden: Sequence[Path]) -> bool:
+    """Whether `uri` names a file that lies in one of the `hidden` directories, as named or with
+    its links resolved. A URI that is no file of this machine, or that no file can have, is not."""
+    try:
+        named = file_path(uri)
+        return _under_any(named, hidden) or _under_any(Path(os.path.realpath(named)), hidden)
+    except (LibraryRefusalError, ValueError):
+        return False
 
 
 def local_path(uri: str) -> str:

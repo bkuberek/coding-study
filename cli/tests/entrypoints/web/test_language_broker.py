@@ -565,6 +565,54 @@ def test_diagnostics_for_any_other_uri_are_dropped(broker, uri):
 
 
 @pytest.mark.parametrize(
+    "uri",
+    [
+        "file:///ws/python/../other/x.py",
+        "file:///ws/python/../.cs/build/python/ref/x.py",
+        "file:///ws/python/./a.py",
+        "file:///ws/python/%2e%2e/other/x.py",
+        "file:///ws/python/%2E%2E/other/x.py",
+        "file:///ws/python/a/..",
+        "file:///ws/python/practice/../../other/x.py",
+    ],
+)
+def test_diagnostics_for_a_path_with_dot_segments_are_dropped(broker, uri):
+    assert from_server(broker, diagnostics(uri)) == NOTHING
+
+
+def test_the_related_information_of_diagnostics_is_left_out(broker):
+    related = [
+        {"location": {"uri": "file:///ws/.cs/build/python/x.py", "range": {}}, "message": "m"}
+    ]
+    message = notification(
+        "textDocument/publishDiagnostics",
+        {
+            "uri": INSIDE,
+            "version": 3,
+            "diagnostics": [
+                {"message": "a", "relatedInformation": related, "severity": 1},
+                {"message": "b"},
+                "not a diagnostic",
+            ],
+        },
+    )
+    (reply,) = from_server(broker, message).to_page
+    assert reply["params"] == {
+        "uri": INSIDE,
+        "version": 3,
+        "diagnostics": [{"message": "a", "severity": 1}, {"message": "b"}, "not a diagnostic"],
+    }
+
+
+@pytest.mark.parametrize("diagnostics_value", [None, "x", {"a": 1}])
+def test_diagnostics_that_are_no_list_pass_through_as_they_are(broker, diagnostics_value):
+    message = notification(
+        "textDocument/publishDiagnostics", {"uri": INSIDE, "diagnostics": diagnostics_value}
+    )
+    assert from_server(broker, message) == Delivery(to_page=(message,))
+
+
+@pytest.mark.parametrize(
     "method",
     [
         "window/logMessage",
@@ -935,9 +983,11 @@ def test_what_the_server_writes_that_is_not_one_json_object_is_dropped(broker, t
 # definitions and library files
 
 
-def definition(broker: LanguageBroker, result: Any, uri: str = INSIDE) -> None:
+def definition(broker: LanguageBroker, result: Any, uri: str = INSIDE) -> Any:
+    """Sends a definition request and the server's answer `result`; what the page receives."""
     page_asks(broker, 20, "textDocument/definition", uri=uri)
-    from_server(broker, answer(20, result))
+    (reply,) = from_server(broker, answer(20, result)).to_page
+    return reply["result"]
 
 
 def inside(workspace: Path) -> str:
@@ -1045,30 +1095,108 @@ def test_a_library_file_is_read_and_answered_with_its_path_and_text(tmp_path):
     )
 
 
-def test_a_definition_into_the_build_area_is_not_shown(tmp_path):
-    workspace = tmp_path / "ws"
-    solution = workspace / ".cs" / "build" / "python" / "x.py"
-    solution.parent.mkdir(parents=True)
-    solution.write_text("secret = 1\n")
-    broker = broker_for(workspace=workspace)
-    definition(broker, [{"uri": solution.as_uri()}], inside(workspace))
-    reply = library_request(broker, solution.as_uri())
-    assert reply["error"] == {
-        "code": -32803,
-        "message": "not shown: cstudy's build area",
-        "data": {"reason": "build_area", "path": ".cs/build/python/x.py"},
-    }
+HIDDEN_PLACES = (
+    ".cs/build/python/ref/two_sum/hash_map.py",
+    ".cs/cases/two-sum/0123abcd.json",
+    ".cs/runs/42-abc/request.json",
+)
+"""Where a reference solution, the generated cases and the run data are in a workspace."""
+PUBLIC = "file:///lib/builtins.pyi"
 
 
-def test_a_definition_into_the_content_root_is_not_shown(tmp_path):
+def hidden_places(tmp_path: Path) -> tuple[Path, Path, LanguageBroker]:
+    """A workspace with a file in each hidden place and in the content root, the content root,
+    and a broker over them."""
     workspace, content = tmp_path / "ws", tmp_path / "content"
+    for place in (*HIDDEN_PLACES, "lib/public.py"):
+        written = workspace / place
+        written.parent.mkdir(parents=True, exist_ok=True)
+        written.write_text("secret = 1\n")
     reference = content / "problems" / "reference.py"
     reference.parent.mkdir(parents=True)
     reference.write_text("secret = 1\n")
-    workspace.mkdir()
-    broker = LanguageBroker(SessionTarget(BASEDPYRIGHT, workspace, "python", content), VERSION, PID)
-    definition(broker, [{"uri": reference.as_uri()}], inside(workspace))
-    assert library_request(broker, reference.as_uri())["error"]["data"]["reason"] == "build_area"
+    target = SessionTarget(BASEDPYRIGHT, workspace, "python", content)
+    return workspace, content, LanguageBroker(target, VERSION, PID)
+
+
+@pytest.mark.parametrize("place", HIDDEN_PLACES)
+def test_a_location_in_a_hidden_directory_is_left_out_of_a_definition_answer(tmp_path, place):
+    workspace, _content, broker = hidden_places(tmp_path)
+    found = [{"uri": (workspace / place).as_uri(), "range": {}}, {"uri": PUBLIC}]
+    assert definition(broker, found, inside(workspace)) == [{"uri": PUBLIC}]
+
+
+def test_a_location_in_the_content_root_is_left_out_of_a_definition_answer(tmp_path):
+    workspace, content, broker = hidden_places(tmp_path)
+    found = [{"uri": (content / "problems" / "reference.py").as_uri()}, {"uri": PUBLIC}]
+    assert definition(broker, found, inside(workspace)) == [{"uri": PUBLIC}]
+
+
+def test_a_location_link_into_a_hidden_directory_is_left_out_of_a_definition_answer(tmp_path):
+    workspace, _content, broker = hidden_places(tmp_path)
+    hidden = {"targetUri": (workspace / HIDDEN_PLACES[0]).as_uri(), "targetRange": {}}
+    shown = {"targetUri": PUBLIC, "targetRange": {}}
+    assert definition(broker, [hidden, shown], inside(workspace)) == [shown]
+
+
+def test_a_single_location_in_a_hidden_directory_is_answered_null(tmp_path):
+    workspace, _content, broker = hidden_places(tmp_path)
+    found = {"uri": (workspace / HIDDEN_PLACES[0]).as_uri(), "range": {}}
+    assert definition(broker, found, inside(workspace)) is None
+
+
+def test_locations_that_are_all_hidden_are_answered_with_none(tmp_path):
+    workspace, _content, broker = hidden_places(tmp_path)
+    found = [{"uri": (workspace / place).as_uri()} for place in HIDDEN_PLACES]
+    assert definition(broker, found, inside(workspace)) == []
+
+
+def test_a_location_that_reaches_a_hidden_directory_through_a_link_is_left_out(tmp_path):
+    workspace, _content, broker = hidden_places(tmp_path)
+    (workspace / "python").mkdir()
+    (workspace / "python" / "shortcut").symlink_to(workspace / ".cs" / "build", True)
+    through_link = workspace / "python" / "shortcut" / "python" / "ref" / "two_sum" / "hash_map.py"
+    assert definition(broker, [{"uri": through_link.as_uri()}], inside(workspace)) == []
+
+
+def test_a_location_that_is_not_a_file_of_this_machine_passes_through(tmp_path):
+    workspace, _content, broker = hidden_places(tmp_path)
+    found = [{"uri": "jdt://contents/java.base/String.class"}]
+    assert definition(broker, found, inside(workspace)) == found
+
+
+def test_a_location_that_hides_nothing_is_a_definition_target(tmp_path):
+    workspace, _content, broker = hidden_places(tmp_path)
+    public = (workspace / "lib" / "public.py").as_uri()
+    definition(broker, [{"uri": public}], inside(workspace))
+    assert library_request(broker, public)["result"]["text"] == "secret = 1\n"
+
+
+@pytest.mark.parametrize("place", HIDDEN_PLACES)
+def test_a_hidden_location_is_never_a_target_the_page_may_read(tmp_path, place):
+    workspace, _content, broker = hidden_places(tmp_path)
+    uri = (workspace / place).as_uri()
+    definition(broker, [{"uri": uri}], inside(workspace))
+    assert library_request(broker, uri)["error"]["data"]["reason"] == "not_a_definition"
+
+
+@pytest.mark.parametrize("hidden", [".cs/build", ".cs/cases", ".cs/runs"])
+def test_a_directory_that_became_a_link_to_a_hidden_one_after_the_answer_is_still_refused(
+    tmp_path, hidden
+):
+    """Defence in depth: the read checks again, by name and with links resolved."""
+    workspace, _content, broker = hidden_places(tmp_path)
+    place = next(place for place in HIDDEN_PLACES if place.startswith(hidden))
+    swapped = workspace / "lib" / "swapped"
+    swapped.mkdir()
+    (swapped / Path(place).name).write_text("secret = 1\n")
+    uri = (swapped / Path(place).name).as_uri()
+    definition(broker, [{"uri": uri}], inside(workspace))
+    (swapped / Path(place).name).unlink()
+    swapped.rmdir()
+    swapped.symlink_to((workspace / place).parent, target_is_directory=True)
+    reply = library_request(broker, uri)
+    assert reply["error"]["data"]["reason"] == "build_area"
 
 
 def test_a_file_that_is_gone_since_the_definition_is_missing(tmp_path):

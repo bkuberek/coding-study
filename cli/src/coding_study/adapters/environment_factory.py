@@ -50,9 +50,9 @@ from coding_study.adapters.workspace_marker import has_marker
 from coding_study.application.environment import Environment, ProblemDestination
 from coding_study.application.ports import Toolchains
 from coding_study.domain.config import Config
+from coding_study.domain.layout import RUNS_DIRECTORY
 from coding_study.domain.scaffold import WORKSPACE_FIRST_ID
 
-RUNS_DIRECTORY = Path(".cs") / "runs"
 RUNNERS_DIRECTORY = "runners"
 
 

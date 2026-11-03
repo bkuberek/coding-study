@@ -13,10 +13,12 @@ from coding_study.entrypoints.web.library_files import (
     LibraryRefusalError,
     Reason,
     display_path,
+    is_hidden,
     read_library_file,
 )
 
 BUILD = ".cs/build"
+HIDDEN_DIRECTORIES = (".cs/build", ".cs/cases", ".cs/runs")
 REFERENCE = "def solve():\n    return 42\n"
 BUILTINS = ".cs/lsp/node_modules/basedpyright/dist/typeshed-fallback/stdlib/builtins.pyi"
 
@@ -298,3 +300,69 @@ def test_every_reason_has_the_message_of_the_spec():
 
 def test_a_displayed_path_is_relative_to_the_workspace_when_inside_it(workspace):
     assert display_path(workspace / "python" / "x.py", workspace) == "python/x.py"
+
+
+# hidden directories, for the places a server names
+
+
+def hidden_by(workspace: Path, content: Path) -> tuple[Path, ...]:
+    return (*(workspace / directory for directory in HIDDEN_DIRECTORIES), content)
+
+
+@pytest.mark.parametrize("directory", HIDDEN_DIRECTORIES)
+def test_a_file_in_a_hidden_directory_is_hidden(workspace, content, directory):
+    path = written(workspace / directory / "python" / "x.py")
+    assert is_hidden(path.as_uri(), hidden_by(workspace, content)) is True
+
+
+def test_a_file_in_the_content_root_is_hidden(workspace, content):
+    reference = content / "problems" / "0001-two-sum" / "reference.py"
+    assert is_hidden(reference.as_uri(), hidden_by(workspace, content)) is True
+
+
+def test_a_hidden_directory_itself_is_hidden(workspace, content):
+    (workspace / BUILD).mkdir(parents=True)
+    assert is_hidden((workspace / BUILD).as_uri(), hidden_by(workspace, content)) is True
+
+
+def test_a_file_that_is_not_there_yet_under_a_hidden_directory_is_hidden(workspace, content):
+    gone = workspace / ".cs" / "cases" / "two-sum" / "later.json"
+    assert is_hidden(gone.as_uri(), hidden_by(workspace, content)) is True
+
+
+def test_a_file_elsewhere_is_not_hidden(workspace, content):
+    path = written(workspace / BUILTINS)
+    assert is_hidden(path.as_uri(), hidden_by(workspace, content)) is False
+
+
+def test_a_directory_named_like_a_hidden_one_in_another_place_is_not_hidden(workspace, content):
+    path = written(workspace / "python" / ".cs" / "build" / "x.py")
+    assert is_hidden(path.as_uri(), hidden_by(workspace, content)) is False
+
+
+def test_a_link_into_a_hidden_directory_hides_what_it_leads_to(tmp_path, workspace, content):
+    target = written(workspace / ".cs" / "runs" / "42" / "request.json")
+    (workspace / "shortcut").symlink_to(target.parent, target_is_directory=True)
+    path = workspace / "shortcut" / "request.json"
+    assert is_hidden(path.as_uri(), hidden_by(workspace, content)) is True
+
+
+def test_another_spelling_of_a_hidden_directory_is_hidden(tmp_path, workspace, content):
+    """The same directory under a path with a link in it: the spelling differs, the device and
+    inode do not."""
+    written(workspace / BUILD / "x.py")
+    (tmp_path / "alias").symlink_to(workspace, target_is_directory=True)
+    path = tmp_path / "alias" / BUILD / "x.py"
+    assert is_hidden(path.as_uri(), (workspace / BUILD,)) is True
+
+
+@pytest.mark.parametrize(
+    "uri",
+    ["jdt://contents/java.base/String.class", "http://example.com/x", "file://remote/x", "x", ""],
+)
+def test_a_uri_that_is_no_file_of_this_machine_hides_nothing(workspace, content, uri):
+    assert is_hidden(uri, hidden_by(workspace, content)) is False
+
+
+def test_a_path_the_system_cannot_open_hides_nothing(workspace, content):
+    assert is_hidden("file:///nul%00l/x.py", hidden_by(workspace, content)) is False

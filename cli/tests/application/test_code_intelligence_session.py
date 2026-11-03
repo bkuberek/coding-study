@@ -179,3 +179,16 @@ def test_only_the_attempts_server_is_probed(practice):
     attempt = started(practice, Language.PYTHON)
     target(practice, attempt)
     assert practice.language_servers.probed == ["basedpyright"]  # type: ignore[attr-defined]
+
+
+def test_the_places_no_server_or_library_file_may_show_are_the_references_cases_runs_and_content(
+    practice,
+):
+    found = target(practice, started(practice, Language.PYTHON))
+    workspace = found.workspace
+    assert found.hidden == (
+        workspace / ".cs" / "build",
+        workspace / ".cs" / "cases",
+        workspace / ".cs" / "runs",
+        found.content_root,
+    )

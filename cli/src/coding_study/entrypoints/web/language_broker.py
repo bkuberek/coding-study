@@ -6,8 +6,9 @@ rebuilt from the catalog, every document must lie in the session's root, a reque
 the id of one that waits for its answer, and a completion item is resolved only if the server
 wrote it. The server's requests are answered here and never reach the page; its documentation is
 rendered to HTML the page may insert; the places its definitions name are remembered so the page
-can read them as library files; the workspace's file changes reach it as watched-file events. The
-broker holds no socket and no process: it is given a message and says what to send where.
+can read them as library files, once those in a hidden directory are left out; the workspace's
+file changes reach it as watched-file events. The broker holds no socket and no process: it is
+given a message and says what to send where.
 """
 
 import asyncio
@@ -20,7 +21,6 @@ from typing import Any, cast
 from coding_study.application.attempt_changes import FileChanged
 from coding_study.application.attempt_files import EDITABLE_BYTES
 from coding_study.application.code_intelligence import SessionTarget
-from coding_study.domain.layout import BUILD_DIRECTORY
 from coding_study.domain.workspace_projects import is_untracked
 from coding_study.entrypoints.web.completion_items import CompletionItems, with_token
 from coding_study.entrypoints.web.documentation import CSTUDY_HTML, documentation_html, hover_html
@@ -29,6 +29,7 @@ from coding_study.entrypoints.web.library_files import (
     Reason,
     display_path,
     file_path,
+    is_hidden,
     local_path,
     read_library_file,
 )
@@ -102,7 +103,7 @@ class LanguageBroker:
         self._pid = pid
         self._root = PurePosixPath(str(target.directory))
         self._root_uri = target.directory.as_uri()
-        self._hidden = (target.workspace / BUILD_DIRECTORY, target.content_root)
+        self._hidden = target.hidden
         self._initialized = False
         self._pending: dict[Id, _Sent] = {}
         """The requests the page sent that the server has not answered, by id: the broker's own
@@ -243,13 +244,8 @@ class LanguageBroker:
     def _is_in_root(self, uri: str) -> bool:
         """A `file:` URI whose path, percent-decoded, is absolute, has no `.` or `..` segment,
         lies inside the root and in no path a tool wrote."""
-        try:
-            path = local_path(uri)
-        except LibraryRefusalError:
-            return False
-        if any(segment in (".", "..") for segment in path.split("/")):
-            return False
-        inside = self._relative(PurePosixPath(path))
+        path = _plain_path(uri)
+        inside = None if path is None else self._relative(PurePosixPath(path))
         return inside is not None and not is_untracked(inside.as_posix())
 
     def _relative(self, path: PurePosixPath) -> PurePosixPath | None:
@@ -311,15 +307,12 @@ class LanguageBroker:
             return Delivery()
         uri = _fields(message.get("params")).get("uri")
         if isinstance(uri, str) and self._is_in_root_file(uri):
-            return Delivery(to_page=(message,))
+            return Delivery(to_page=(_without_related_information(message),))
         return Delivery()
 
     def _is_in_root_file(self, uri: str) -> bool:
-        try:
-            inside = self._relative(PurePosixPath(local_path(uri)))
-        except LibraryRefusalError:
-            return False
-        return inside is not None
+        path = _plain_path(uri)
+        return path is not None and self._relative(PurePosixPath(path)) is not None
 
     def _answer(self, message: Fields) -> Delivery:
         request_id = message["id"]
@@ -343,10 +336,48 @@ class LanguageBroker:
             case "textDocument/signatureHelp":
                 return _signature_help(result)
             case "textDocument/definition":
-                self._definitions.update(_targets(result))
-                return result
+                shown = self._visible(result)
+                self._definitions.update(_targets(shown))
+                return shown
             case _:
                 return result
+
+    def _visible(self, result: Any) -> Any:
+        """The definition answer `result` without the locations in a hidden directory: a list
+        keeps the others, a single location that is hidden becomes null."""
+        if isinstance(result, list):
+            return [found for found in cast(list[object], result) if not self._is_hidden(found)]
+        return None if self._is_hidden(result) else result
+
+    def _is_hidden(self, location: object) -> bool:
+        return any(is_hidden(uri, self._hidden) for uri in _targets(location))
+
+
+def _plain_path(uri: str) -> str | None:
+    """The path of a `file:` URI of this machine, percent-decoded, with no `.` or `..` segment;
+    None for any other URI."""
+    try:
+        path = local_path(uri)
+    except LibraryRefusalError:
+        return None
+    return None if any(segment in (".", "..") for segment in path.split("/")) else path
+
+
+def _without_related_information(message: Fields) -> Fields:
+    """A `publishDiagnostics` notification without the `relatedInformation` of its diagnostics:
+    the client declares none, and the locations in them could name any file."""
+    params = _fields(message.get("params"))
+    if not isinstance(params.get("diagnostics"), list):
+        return message
+    diagnostics = [_without_related(found) for found in _list(params["diagnostics"])]
+    return {**message, "params": {**params, "diagnostics": diagnostics}}
+
+
+def _without_related(diagnostic: object) -> object:
+    fields = _fields(diagnostic)
+    if not fields:
+        return diagnostic
+    return {name: value for name, value in fields.items() if name != "relatedInformation"}
 
 
 def _hover(result: Any) -> Any:

@@ -321,30 +321,37 @@ def test_a_file_the_server_never_named_is_not_read(lab, client):
     assert (error["code"], error["data"]["reason"]) == (-32803, "not_a_definition")
 
 
-def test_a_definition_into_the_build_area_is_not_shown(lab, client):
+def test_a_definition_into_the_build_area_is_left_out_and_cannot_be_read(lab, client):
     uri = definition_to(lab, ".cs/build/python/reference/x.py", "secret = 1\n")
     with session(client, lab.query) as websocket:
         websocket.send_json(ask(lab, 1, "textDocument/definition"))
-        received(websocket)
+        located = received(websocket)
         websocket.send_json(request(2, "cstudy/libraryFile", {"uri": uri}))
         error = received(websocket)["error"]
-    assert error == {
-        "code": -32803,
-        "message": "not shown: cstudy's build area",
-        "data": {"reason": "build_area", "path": ".cs/build/python/reference/x.py"},
-    }
+    assert (located["result"], error["data"]["reason"]) == ([], "not_a_definition")
 
 
-def test_a_definition_into_the_content_root_is_not_shown(lab, client):
+@pytest.mark.parametrize("directory", [".cs/cases", ".cs/runs"])
+def test_a_definition_into_the_generated_cases_or_the_run_data_is_left_out(lab, client, directory):
+    definition_to(lab, f"{directory}/two-sum/expected.json", '{"expected": [0, 1]}\n')
+    with session(client, lab.query) as websocket:
+        websocket.send_json(ask(lab, 1, "textDocument/definition"))
+        assert received(websocket)["result"] == []
+
+
+def test_a_definition_into_the_content_root_is_left_out(lab, client):
     reference = lab.environment.content_root / "problems" / "reference.py"
     reference.parent.mkdir(parents=True)
     reference.write_text("secret = 1\n")
     lab.server.play({"reply": "textDocument/definition", "result": [{"uri": reference.as_uri()}]})
     with session(client, lab.query) as websocket:
         websocket.send_json(ask(lab, 1, "textDocument/definition"))
-        received(websocket)
+        located = received(websocket)
         websocket.send_json(request(2, "cstudy/libraryFile", {"uri": reference.as_uri()}))
-        assert received(websocket)["error"]["data"]["reason"] == "build_area"
+        assert (located["result"], received(websocket)["error"]["data"]["reason"]) == (
+            [],
+            "not_a_definition",
+        )
 
 
 # changes on disk
