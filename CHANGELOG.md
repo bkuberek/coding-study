@@ -2,6 +2,126 @@
 
 <!-- version list -->
 
+## v0.11.0 (2026-11-03)
+
+### Bug Fixes
+
+- **content**: Accept earlier virtual-clock helper digests in TypeScript starters
+  ([`af65037`](https://github.com/bkuberek/coding-study/commit/af65037d0b1d85897433b4f81e8080f801651fb1))
+
+- **rust**: Measure a lone list item's room from its line
+  ([`05c2929`](https://github.com/bkuberek/coding-study/commit/05c2929ffb3d6c135ee9c212678ea158e3c159be))
+
+### Build System
+
+- **jvm**: Cache kotlinx-coroutines for Kotlin clock projects
+  ([`73def1d`](https://github.com/bkuberek/coding-study/commit/73def1d9426bb54e89a3568e1c523cbf7f56df6b))
+
+- **rust**: Vendor tokio for Rust clock projects
+  ([`02d45bc`](https://github.com/bkuberek/coding-study/commit/02d45bc2e75fea6a32b6a828caa7cc1814d6f6ac))
+
+### Chores
+
+- **go**: Remove the runner file for Go before 1.23
+  ([`3c24328`](https://github.com/bkuberek/coding-study/commit/3c24328be833170a351ac82fd89ba2c82d2f4c37))
+
+### Documentation
+
+- Accept ADR 0017 and specify async and concurrent project problems
+  ([`fab6401`](https://github.com/bkuberek/coding-study/commit/fab640198ad37b025b873e5fb5ce590d4d2078f6))
+
+- Answer PRD Q5 with ADR 0017
+  ([`3f5375b`](https://github.com/bkuberek/coding-study/commit/3f5375b5d84bcc1d1c5ffec9c15525f19224d899))
+
+- Name the coroutine bridge among the JVM runner's parts
+  ([`46bf3f1`](https://github.com/bkuberek/coding-study/commit/46bf3f1f734a61b3bbb2273aad759350db7b37cf))
+
+- Note that tokio's select! picks among ready branches at random
+  ([`b2ba6c2`](https://github.com/bkuberek/coding-study/commit/b2ba6c2fdf9c54d2fcd41bd67c5d42f6e9f949f9))
+
+- Note the TypeScript clock's wait helper in ADR 0017
+  ([`27389f0`](https://github.com/bkuberek/coding-study/commit/27389f0529664acae488f1c6ad44634bf74ff309))
+
+- Record the async project tooling in the roadmap and ADR 0017
+  ([`284df1f`](https://github.com/bkuberek/coding-study/commit/284df1f124711e2af376190f08df8ad27a97158f))
+
+- Record the Kotlin coroutines spike in ADR 0017
+  ([`3d1ed96`](https://github.com/bkuberek/coding-study/commit/3d1ed96b81275e34b598c7f29b8ce014483b16a6))
+
+- **new**: Describe the stress project scaffold
+  ([`459d4d7`](https://github.com/bkuberek/coding-study/commit/459d4d714a3513441957df394c042901067d8cfd))
+
+### Features
+
+- **go**: Generate synctest level tests and render harness operations
+  ([`45fb5f3`](https://github.com/bkuberek/coding-study/commit/45fb5f3dd04eab89a7ecb3011a546c804dc20514))
+
+- **go**: Grade virtual-clock projects in a synctest test binary
+  ([`16cd441`](https://github.com/bkuberek/coding-study/commit/16cd4415d927aaedbfef8380ad9de527ef326682))
+
+- **go**: Require Go 1.25 and add the virtual-clock project template
+  ([`4ff231f`](https://github.com/bkuberek/coding-study/commit/4ff231f6fff46e5499eb9cce83b741fca52b29c7))
+
+- **kotlin**: Generate virtual-clock level tests and the clock starter
+  ([`19823e7`](https://github.com/bkuberek/coding-study/commit/19823e7d7c2cfc6d6f95ece5277acc40990027e2))
+
+- **kotlin**: Grade virtual-clock and suspend projects
+  ([`6eb0226`](https://github.com/bkuberek/coding-study/commit/6eb02268d99ba273ef400e142b003f851f50f1a7))
+
+- **kotlin**: Run suspend stress workers
+  ([`9b5ee69`](https://github.com/bkuberek/coding-study/commit/9b5ee69a84ef57ae4e424b546cdc671b86ab6ec4))
+
+- **new**: Scaffold stress project problems
+  ([`c72785e`](https://github.com/bkuberek/coding-study/commit/c72785e8de2b654b99688e591dfd0db0acc20c46))
+
+- **projects**: Allow stress cases and broken references in project problems
+  ([`5c0dd48`](https://github.com/bkuberek/coding-study/commit/5c0dd48436ee91074c1b9570f9d7ebb34ebf036a))
+
+- **projects**: Declare async methods, the virtual clock and harness operations
+  ([`4101a4f`](https://github.com/bkuberek/coding-study/commit/4101a4f41a36117f0af7a53d0a2ef49d163abb00))
+
+- **python**: Generate virtual-clock level tests and the clock starter
+  ([`ddbaaa7`](https://github.com/bkuberek/coding-study/commit/ddbaaa781e6e5cbc7f036ca138540c92146d044d))
+
+- **python**: Grade virtual-clock and async projects
+  ([`321461c`](https://github.com/bkuberek/coding-study/commit/321461c9016628aef69ce75d9fd7e7d6b855acd7))
+
+- **runners**: Run project stress cases in every runner
+  ([`4c3550a`](https://github.com/bkuberek/coding-study/commit/4c3550a55999d2b60977ff1673fe6485104b631a))
+
+- **rust**: Generate virtual-clock level tests and the clock starter
+  ([`c04f7e2`](https://github.com/bkuberek/coding-study/commit/c04f7e2365abf5ce2222bf424ecc4dcd778a8eb8))
+
+- **rust**: Grade virtual-clock and async projects
+  ([`b409799`](https://github.com/bkuberek/coding-study/commit/b409799793b615b596a79fa8dd5dfb9c832d05e1))
+
+- **submit**: Judge stalled project cases
+  ([`d31b207`](https://github.com/bkuberek/coding-study/commit/d31b2079603254a5f6a36a0fd57ea0e4aa9738cd))
+
+- **submit**: Report stress verdicts per level
+  ([`5f9ea5b`](https://github.com/bkuberek/coding-study/commit/5f9ea5b7aa52c30bcfe1c2220cc8c443e7afeebc))
+
+- **typescript**: Generate virtual-clock level tests and the clock starter
+  ([`dd38e13`](https://github.com/bkuberek/coding-study/commit/dd38e13857728b5f9a0560eaa5ef1b00123d10b2))
+
+- **typescript**: Grade virtual-clock and async projects
+  ([`889b9b5`](https://github.com/bkuberek/coding-study/commit/889b9b5e4903b51027d6a727526791a3fb3f988a))
+
+- **verify**: Check virtual-clock determinism (D10)
+  ([`f2291b6`](https://github.com/bkuberek/coding-study/commit/f2291b670502befb80ab499cb5f25621f98715cb))
+
+- **verify**: Prove project stress cases catch their broken references (D6/D7)
+  ([`98e54ec`](https://github.com/bkuberek/coding-study/commit/98e54ecf93ef97e165605d1047957419bf26596e))
+
+### Testing
+
+- **jvm**: Read the sources from disk in the release-level builds
+  ([`265ccd6`](https://github.com/bkuberek/coding-study/commit/265ccd6a18a80d2718cb0493c6e0b45b0a73666d))
+
+- **rust**: Grade stress workers that block on an async method
+  ([`d5f554b`](https://github.com/bkuberek/coding-study/commit/d5f554b1080d01d4a98e740c430cc7f8045838a7))
+
+
 ## v0.10.1 (2026-11-02)
 
 ### Bug Fixes
