@@ -6,7 +6,7 @@
  * small: everything that needs `@codemirror/lsp-client` is in the chunk.
  */
 
-import type { Attachment } from "../code-intelligence.ts";
+import type { Attachment, Navigator } from "../code-intelligence.ts";
 import { languageIdFor, serverLanguageFor } from "../code-intelligence/documents.ts";
 import type { Editor } from "../editor.ts";
 import type { PageContext } from "./context.ts";
@@ -14,12 +14,15 @@ import { h } from "./dom.ts";
 import type { SessionState } from "./intelligence-state.ts";
 import { type FileIntelligence, type Segment, segmentOf } from "./intelligence-status.ts";
 import { fetchChunk } from "./lazy.ts";
+import { LibraryTabs } from "./library-tabs.ts";
 import type { LanguageState, LanguageStates } from "./types.ts";
 import type { EditorTabs } from "./workbench.ts";
 
 const LANGUAGES = "/api/v1/code-intelligence/languages";
 const DOCTOR_FIX = "doctor_fix";
 const STARTING: SessionState = { kind: "starting" };
+/** How long the status bar's segment says what a jump found. */
+const NOTICE_MS = 3000;
 
 export type Decision =
   /** The file works as it does without code intelligence. */
@@ -56,6 +59,8 @@ interface Tracked {
 export class IntelligenceLink {
   readonly #context: PageContext;
   readonly #attemptId: number;
+  readonly #tabs: EditorTabs;
+  readonly #libraries: LibraryTabs;
   readonly #tracked = new Map<string, Tracked>();
   readonly #undo: (() => void)[] = [];
   #language: string | null = null;
@@ -64,12 +69,16 @@ export class IntelligenceLink {
   #reading: Promise<void> | null = null;
   #active: string | null = null;
   #chunk: Promise<typeof import("../code-intelligence.ts") | null> | null = null;
+  #notice: string | null = null;
+  #noticeTimer: ReturnType<typeof setTimeout> | undefined;
   #destroyed = false;
   /** The preference as the last change left it, so an unrelated change (the theme) does nothing. */
   #wasEnabled: boolean;
 
   constructor(context: PageContext, tabs: EditorTabs, attemptId: number) {
     this.#context = context;
+    this.#tabs = tabs;
+    this.#libraries = new LibraryTabs(tabs, context);
     this.#attemptId = attemptId;
     this.#wasEnabled = context.preferences().code_intelligence;
     this.#undo.push(
@@ -78,7 +87,11 @@ export class IntelligenceLink {
         this.#active = path;
         this.#render();
       }),
-      tabs.onClosed((path) => this.#untrack(path)),
+      tabs.onClosed((path) => {
+        this.#untrack(path);
+        this.#libraries.closed(path);
+      }),
+      context.onPreferences((preferences) => this.#libraries.apply(preferences)),
       context.onPreferences(() => this.#preferencesChanged()),
       context.notifications.subscribe((notice) => {
         if (notice.type === "job_ended" && notice.command === DOCTOR_FIX && this.#enabled()) void this.#reread();
@@ -99,6 +112,8 @@ export class IntelligenceLink {
   /** Takes the code intelligence out of every editor; the sessions stay for their idle time. */
   destroy(): void {
     this.#destroyed = true;
+    clearTimeout(this.#noticeTimer);
+    this.#libraries.destroy();
     for (const undo of this.#undo.splice(0)) undo();
     for (const tracked of this.#tracked.values()) {
       this.#release(tracked);
@@ -141,7 +156,8 @@ export class IntelligenceLink {
       tracked.turn += 1;
       this.#release(tracked);
     }
-        this.#render();
+    this.#libraries.release();
+    this.#render();
   }
 
   #considerAll(): void {
@@ -195,6 +211,7 @@ export class IntelligenceLink {
       root,
       idleS: decision.idleS,
       announce: (message) => this.#context.shell.announce(message),
+      navigator: this.#navigator,
     });
     tracked.attachment = attachment;
     tracked.unsubscribe = attachment.onState(() => this.#render());
@@ -245,13 +262,44 @@ export class IntelligenceLink {
     return this.#chunk;
   }
 
+  /** What a jump asks of the page's tabs. */
+  readonly #navigator: Navigator = {
+    paths: async () => new Set((await this.#tabs.files.tree()).entries.map((entry) => entry.path)),
+    openFile: async (path) => {
+      await this.#tabs.open(path);
+      return this.#tabs.editors().get(path) ?? null;
+    },
+    openLibrary: async (file) => {
+      const chunk = await this.#loadChunk();
+      return chunk === null ? null : this.#libraries.open(file, chunk.libraryNavigation(this.#navigator));
+    },
+    showLibrary: (uri) => this.#libraries.show(uri),
+    say: (text) => this.#say(text),
+  };
+
+  /** The status bar says what a jump found for a few seconds. */
+  #say(text: string): void {
+    clearTimeout(this.#noticeTimer);
+    this.#notice = text;
+    this.#render();
+    this.#noticeTimer = setTimeout(() => {
+      this.#notice = null;
+      this.#render();
+    }, NOTICE_MS);
+  }
+
   #render(): void {
     if (this.#destroyed) return;
     const tracked = this.#active === null ? undefined : this.#tracked.get(this.#active);
     const found = tracked === undefined || !this.#enabled() ? null : foundOf(tracked);
     const counts = tracked?.editor.diagnosticCounts;
-    this.#context.shell.setIntelligence(found === null ? null : segmentElement(segmentOf(found, counts), () => tracked?.attachment?.restart()));
+    const segment = found === null ? null : this.#notice === null ? segmentOf(found, counts) : noticeSegment(this.#notice);
+    this.#context.shell.setIntelligence(segment === null ? null : segmentElement(segment, () => tracked?.attachment?.restart()));
   }
+}
+
+function noticeSegment(text: string): Segment {
+  return { text, action: null, title: "", state: "notice" };
 }
 
 function foundOf(tracked: Tracked): FileIntelligence | null {

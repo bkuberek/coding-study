@@ -69,6 +69,11 @@ export class Session {
     return this.#state;
   }
 
+  /** The URI of the session's root, which the URIs of its files are under. */
+  get rootUri(): string {
+    return this.#options.rootUri;
+  }
+
   /** Calls the listener after each change of state; the function returned removes it. */
   onState(listener: StateListener): () => void {
     this.#listeners.add(listener);

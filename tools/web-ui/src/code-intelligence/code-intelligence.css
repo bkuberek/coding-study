@@ -119,3 +119,20 @@
 .cs-hover .tok-kt {
   color: var(--warn);
 }
+
+/* Go to definition: the word under the pointer while Cmd or Ctrl is held, and the note at a refused jump */
+.cs-definition-link {
+  text-decoration: underline;
+}
+
+.cs-link-ready,
+.cs-link-ready .cm-line {
+  cursor: pointer;
+}
+
+.cs-note {
+  max-width: min(80ch, calc(100vw - 32px));
+  padding: 4px 8px;
+  font: var(--text-s) / 1.4 var(--font-mono);
+  overflow-wrap: anywhere;
+}

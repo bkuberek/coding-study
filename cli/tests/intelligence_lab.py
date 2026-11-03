@@ -61,22 +61,24 @@ def intelligence_lab(
     *,
     files: Mapping[str, str | bytes] | None = None,
     preferences: Preferences | None = None,
+    problems: Sequence[tuple[str, str | None]] = (PYTHON,),
 ) -> Iterator[Lab]:
     """A server over a copy of the practice workspace with the Python practice problem started,
     a basedpyright that is the fake playing `steps` (or what `steps` makes of the workspace's
     path, for a script that names files by URI), `files` written (paths from the workspace,
     which may replace the starter file) and `preferences` stored (code intelligence on, unless
-    told otherwise)."""
+    told otherwise). `problems` are started, each as a slug and a language (None for a project)."""
     workspace = workspace_like(practice_workspace, base / "workspace")
-    slug, language = PYTHON
-    subprocess.run(
-        [sys.executable, "-m", "coding_study", "start", slug, "--lang", language, "--no-open"],
-        env=served_environment(workspace),
-        cwd=workspace,
-        stdin=subprocess.DEVNULL,
-        capture_output=True,
-        check=True,
-    )
+    for slug, language in problems:
+        language_option = ["--lang", language] if language is not None else []
+        subprocess.run(
+            [sys.executable, "-m", "coding_study", "start", slug, *language_option, "--no-open"],
+            env=served_environment(workspace),
+            cwd=workspace,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            check=True,
+        )
     for name, content in (files or {}).items():
         path = workspace / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -96,10 +98,11 @@ def store(lab: Lab, preferences: Preferences) -> None:
     FsPreferencesStore(lab.workspace).write(preferences_document(preferences))
 
 
-def open_attempt(page: Any, lab: Lab) -> None:
-    """The Python attempt's view, with its first file in the editor."""
-    page.evaluate("id => { location.hash = `#/attempts/${id}` }", lab.attempts[PYTHON[0]])
-    page.wait_for_selector(EDITOR)
+def open_attempt(page: Any, lab: Lab, slug: str = PYTHON[0], *, with_file: bool = True) -> None:
+    """The attempt's view; a single-file attempt has its file in the editor, a project's tree
+    waits for a click (`with_file` false)."""
+    page.evaluate("id => { location.hash = `#/attempts/${id}` }", lab.attempts[slug])
+    page.wait_for_selector(EDITOR if with_file else "button.tree-file")
 
 
 def wait_for_status(page: Any, text: str) -> str:

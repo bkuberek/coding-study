@@ -1,0 +1,11 @@
+/* The tab of a library file (library-tabs.ts): its badge beside the name, and the line above the code. */
+
+[role="tab"] .badge {
+  margin-left: 6px;
+  font-size: var(--text-xs);
+}
+
+.library-note {
+  margin: 0;
+  border-bottom: 1px solid var(--rule);
+}

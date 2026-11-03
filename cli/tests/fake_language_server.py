@@ -30,9 +30,9 @@ script's steps in order, each an object with one key:
     {"spawn_sleeper": "<path>"}              starts a process that ignores SIGINT and SIGTERM in
                                              this one's process group, and writes its pid
 
-In what it sends and answers, the text `$uri` stands for the URI of the file of the last
-`textDocument/didOpen` it read, and `$dir` for the folder that file is in, so a script can point
-at the tab's file before the test knows where the workspace is.
+In what it sends and answers, and in the `when` of a case, the text `$uri` stands for the URI
+of the file of the last `textDocument/didOpen` it read, and `$dir` for the folder that file is
+in, so a script can point at the tab's file before the test knows where the workspace is.
 
 After the last step it creates `<script>.ready`, answers `shutdown` with null, exits on `exit`
 and at the end of its standard input, answers any other request with -32601 and ignores
@@ -175,12 +175,11 @@ class Server:
             error = {"code": METHOD_NOT_FOUND, "message": f"no {method}"}
             send({"jsonrpc": "2.0", "id": message["id"], "error": error})
 
-    @staticmethod
-    def result_for(answer: Any, params: Any) -> Any:
+    def result_for(self, answer: Any, params: Any) -> Any:
         if not (isinstance(answer, dict) and "cases" in answer):
             return answer
         for case in answer["cases"]:
-            if "when" not in case or contains(params, case["when"]):
+            if "when" not in case or contains(params, self.filled(case["when"])):
                 return case["result"]
         return None
 

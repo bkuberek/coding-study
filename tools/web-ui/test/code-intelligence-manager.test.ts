@@ -45,6 +45,7 @@ function request(overrides: Partial<AttachRequest> = {}): AttachRequest {
     root: "python/practice",
     idleS: 60,
     announce() {},
+    navigator: {} as AttachRequest["navigator"],
     ...overrides,
   };
 }

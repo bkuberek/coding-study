@@ -26,7 +26,7 @@ function loadEditorModule(): Promise<typeof import("../editor.ts")> {
   return editorModule;
 }
 
-interface OpenFile {
+export interface OpenFile {
   readonly tab: HTMLButtonElement;
   readonly panel: HTMLElement;
   editor: Editor | null;
@@ -87,12 +87,12 @@ export class EditorTabs {
   async open(path: string): Promise<void> {
     const opened = this.#open.get(path);
     if (opened) {
-      this.#activate(path);
+      this.activate(path);
       opened.editor?.focus();
       return;
     }
-    const file = this.#addTab(path);
-    this.#activate(path);
+    const file = this.addTab(path);
+    this.activate(path);
     try {
       const document = await this.files.read(path);
       if (this.#destroyed) return;
@@ -248,7 +248,8 @@ export class EditorTabs {
     for (const listener of this.#editorListeners) listener(path, editor);
   }
 
-  #addTab(path: string): OpenFile {
+  /** Adds the tab of `path`, which `activate` brings forward; its panel waits for what the caller shows in it. */
+  addTab(path: string): OpenFile {
     const id = `tab-${this.#open.size}-${path.replace(/[^\w-]/g, "_")}`;
     const name = path.slice(path.lastIndexOf("/") + 1);
     const close = h("span", { class: "tab-close", "aria-hidden": "true", title: "Close" }, "×");
@@ -261,7 +262,7 @@ export class EditorTabs {
     const panel = h("div", { role: "tabpanel", id: `${id}-panel`, "aria-labelledby": id, class: "panel", hidden: true }, loading(`opening ${path}…`));
     tab.addEventListener("click", (event) => {
       if ((event.target as Element).closest(".tab-close, .tab-dot")) void this.#close(path);
-      else this.#activate(path);
+      else this.activate(path);
     });
     tab.addEventListener("auxclick", (event) => {
       if (event.button === 1) void this.#close(path);
@@ -273,7 +274,7 @@ export class EditorTabs {
     return file;
   }
 
-  #activate(path: string): void {
+  activate(path: string): void {
     this.#active = path;
     this.#placeholder.hidden = true;
     for (const [openPath, { tab, panel }] of this.#open) {
@@ -312,7 +313,7 @@ export class EditorTabs {
     if (this.#active !== path) return;
     const next = paths[index + 1] ?? paths[index - 1];
     if (next !== undefined && next !== path) {
-      this.#activate(next);
+      this.activate(next);
       this.#open.get(next)?.tab.focus();
     } else {
       this.#active = null;
@@ -334,7 +335,7 @@ export class EditorTabs {
     const path = target === undefined ? undefined : paths[target];
     if (path === undefined) return;
     event.preventDefault();
-    this.#activate(path);
+    this.activate(path);
     this.#open.get(path)?.tab.focus();
   }
 

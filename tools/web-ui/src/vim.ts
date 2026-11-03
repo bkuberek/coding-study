@@ -3,7 +3,7 @@
 import type { Extension } from "@codemirror/state";
 import { Prec } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { Vim, vim } from "@replit/codemirror-vim";
+import { getCM, Vim, vim } from "@replit/codemirror-vim";
 
 import { type CommandName, runNamedCommand } from "./editor-commands.ts";
 
@@ -12,6 +12,8 @@ const KEYS: readonly { readonly keys: string; readonly action: string; readonly 
   { keys: "]d", action: "cstudyNextDiagnostic", command: "cursorToNextDiagnostic" },
   { keys: "[d", action: "cstudyPreviousDiagnostic", command: "cursorToPreviousDiagnostic" },
   { keys: "K", action: "cstudyHover", command: "hover" },
+  { keys: "gd", action: "cstudyDefinition", command: "definition" },
+  { keys: "<C-]>", action: "cstudyDefinitionKey", command: "definition" },
 ];
 
 let mapped = false;
@@ -48,4 +50,14 @@ const DISMISS: Extension = Prec.highest(
 export function vimKeybindings(): Extension {
   mapKeys();
   return [DISMISS, vim()];
+}
+
+/**
+ * Puts a jump inside the file in Vim's jump list, so `Ctrl-o` goes back to where it started. A
+ * jump into another file is Back's (Ctrl-Minus): a jump list holds places of one editor.
+ */
+export function recordJump(view: EditorView, from: number, to: number): void {
+  const cm = getCM(view);
+  if (cm === null) return;
+  Vim.getVimGlobalState_().jumpList.add(cm, cm.posFromIndex(from), cm.posFromIndex(to));
 }

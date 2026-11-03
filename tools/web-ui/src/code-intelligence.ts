@@ -6,3 +6,5 @@
  */
 
 export { type Attachment, type AttachRequest, codeIntelligence, type PageHooks } from "./code-intelligence/manager.ts";
+export { type LibraryFile, type Navigator } from "./code-intelligence/definition.ts";
+export { libraryNavigation } from "./code-intelligence/extension.ts";

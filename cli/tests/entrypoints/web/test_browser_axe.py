@@ -8,8 +8,9 @@ whose JDK cannot run Java and Kotlin, the list with its marks, the start dialog 
 a Java project with the languages disabled, and a start refused with a `fix:` hint; and, with code
 intelligence on against the scripted language server, the status bar's segment ready, stopped with
 its Restart and for a language whose server is not installed, the hover tooltip with a diagnostic
-and its documentation, and the Health view with the `code intelligence` rows. Each view must
-have no violation of WCAG 2.2 A and AA, nor of axe's best practices.
+and its documentation, a library file open in its read-only tab, and the Health view with the
+`code intelligence` rows. Each view must have no violation of WCAG 2.2 A and AA, nor of axe's best
+practices.
 
 axe-core comes with `axe-playwright-python`, in the optional `browser` dependency group; Playwright
 and its engines are set up as `tests/browsers.py` says. Without them the test is skipped.
@@ -104,6 +105,7 @@ INTELLIGENCE_VIEWS = (
     "code intelligence not installed",
     "health with code intelligence rows",
     "hover tooltip",
+    "library tab",
 )
 SEGMENT = ".statusbar .code-intelligence"
 HEALTH_ROW = "table.checks td.check-name:has-text('code intelligence python')"
@@ -112,6 +114,20 @@ HOVER_DOCUMENTATION = (
     "Finds the **two** numbers that add up to the target; see [the docs](https://example.org/x) "
     "for `nums` and `target`.\n\n```python\ntwo_sum([2, 7], 9)  # [0, 1]\n```\n"
 )
+LIBRARY_FILE = ".cs/lsp/library/stdlib.pyi"
+LIBRARY_TEXT = "\n".join(f"def function_{number}(value: int) -> int: ..." for number in range(60))
+
+
+def intelligence_script(workspace: Path) -> tuple[dict[str, object], ...]:
+    """The scripted server: documentation to hover, an error to underline, and a definition in a
+    file outside the practice folder, which opens as a library tab."""
+    library = {
+        "uri": (workspace / LIBRARY_FILE).as_uri(),
+        "range": {"start": {"line": 20, "character": 4}, "end": {"line": 20, "character": 14}},
+    }
+    return (*INTELLIGENCE_SCRIPT, {"answer": {"textDocument/definition": [library]}})
+
+
 INTELLIGENCE_SCRIPT: tuple[dict[str, object], ...] = (
     CAPABLE,
     {
@@ -235,6 +251,7 @@ class Intelligence:
     server: RunningServer
     script: ScriptedServer
     attempts: dict[str, int]
+    workspace: Path
 
 
 @pytest.fixture(scope="module")
@@ -255,9 +272,11 @@ def intelligence(
     install_fake_basedpyright(root)
     FsPreferencesStore(root).write(preferences_document(Preferences(code_intelligence=True)))
     script = ScriptedServer(base / "server.json")
-    script.play(*INTELLIGENCE_SCRIPT)
+    script.play(*intelligence_script(root.resolve()))
+    (root / LIBRARY_FILE).parent.mkdir(parents=True)
+    (root / LIBRARY_FILE).write_text(LIBRARY_TEXT)
     with running_server(root, variables={"PATH": fake_node(base / "bin", script)}) as running:
-        yield Intelligence(running, script, opened_page(running).attempts)
+        yield Intelligence(running, script, opened_page(running).attempts, root.resolve())
 
 
 @pytest.fixture(scope="module")
@@ -286,6 +305,7 @@ def _intelligence_tour(
     yield INTELLIGENCE_VIEWS[2], lambda: _segment(page, intelligence, "lru-cache", "Health")
     yield INTELLIGENCE_VIEWS[3], lambda: _open(page, "#/health", HEALTH_ROW, RUN_WAIT_MS)
     yield INTELLIGENCE_VIEWS[4], lambda: _hover_tooltip(page, intelligence)
+    yield INTELLIGENCE_VIEWS[5], lambda: _library_tab(page, intelligence)
 
 
 def _segment(page: Any, intelligence: Intelligence, slug: str, word: str) -> None:
@@ -296,7 +316,7 @@ def _segment(page: Any, intelligence: Intelligence, slug: str, word: str) -> Non
 def _hover_tooltip(page: Any, intelligence: Intelligence) -> None:
     """The tooltip a keyboard hover opens on the underlined name: the diagnostic above the
     documentation, a link and two code blocks in it."""
-    intelligence.script.play(*INTELLIGENCE_SCRIPT)
+    intelligence.script.play(*intelligence_script(intelligence.workspace))
     page.reload()
     _segment(page, intelligence, SINGLE_FILE, "1 error")
     page.click(".panel:not([hidden]) .cm-content")
@@ -309,6 +329,23 @@ def _hover_tooltip(page: Any, intelligence: Intelligence) -> None:
     page.keyboard.press("ControlOrMeta+i")
     page.wait_for_selector(".cm-tooltip-hover .cs-hover")
     page.wait_for_selector(".cm-tooltip-hover .cm-tooltip-lint")
+
+
+def _library_tab(page: Any, intelligence: Intelligence) -> None:
+    """F12 on the underlined name: the definition is in a file the tree does not list."""
+    intelligence.script.play(*intelligence_script(intelligence.workspace))
+    page.reload()
+    _segment(page, intelligence, SINGLE_FILE, "1 error")
+    page.click(".panel:not([hidden]) .cm-content")
+    page.keyboard.press("ControlOrMeta+Home")
+    for _ in range(3):
+        page.keyboard.press("ArrowDown")
+    for _ in range(6):
+        page.keyboard.press("ArrowRight")
+    page.keyboard.press("F12")
+    page.wait_for_selector("[role=tab][aria-selected=true] .badge")
+    page.wait_for_selector(".panel:not([hidden]) .library-note")
+    page.wait_for_selector(".panel:not([hidden]) .cm-content")
 
 
 def _stopped_segment(page: Any, intelligence: Intelligence) -> None:
