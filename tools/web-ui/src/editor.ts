@@ -13,12 +13,12 @@ import { indentWithTab, isolateHistory, toggleTabFocusMode } from "@codemirror/c
 import { lintGutter, setDiagnostics } from "@codemirror/lint";
 import { Compartment, EditorSelection, EditorState, type Extension, Prec, type Text } from "@codemirror/state";
 import { EditorView, keymap, runScopeHandlers } from "@codemirror/view";
-import { basicSetup } from "codemirror";
 
 import { type FileDiagnostic, lintDiagnostics } from "./diagnostics.ts";
 import { loadLanguage } from "./language-loaders.ts";
 import { languageForPath } from "./languages.ts";
 import { cursorPosition } from "./positions.ts";
+import { completion, editorSetup } from "./setup.ts";
 import { textChange } from "./text-change.ts";
 import { type ThemeName, themeExtension } from "./themes.ts";
 
@@ -41,6 +41,8 @@ export interface EditorOptions {
   readonly theme?: ThemePreference;
   readonly readOnly?: boolean;
   readonly vim?: boolean;
+  /** Whether the `autocomplete` preference applies (`autocompleteApplies`); false by default. */
+  readonly autocomplete?: boolean;
 }
 
 export type ChangeListener = (editor: Editor) => void;
@@ -61,6 +63,7 @@ interface Slots {
   readonly vim: Extension;
   readonly theme: Extension;
   readonly readOnly: Extension;
+  readonly completion: Extension;
 }
 
 /** Creates an editor; the promise resolves once the file's language and any Vim keybindings apply. */
@@ -74,6 +77,7 @@ export class Editor {
   readonly #theme = new Compartment();
   readonly #readOnly = new Compartment();
   readonly #vim = new Compartment();
+  readonly #completion = new Compartment();
   readonly #nonce: Extension;
   readonly #listeners = new Set<ChangeListener>();
   readonly #systemScheme = window.matchMedia(DARK_SCHEME);
@@ -101,6 +105,7 @@ export class Editor {
       vim: [],
       theme: themeExtension(this.#themeName()),
       readOnly: readOnlyExtension(options.readOnly ?? false),
+      completion: completion(options.autocomplete ?? false),
     });
     this.#saved = state.doc;
     this.view = new EditorView({ parent: options.parent, state });
@@ -133,6 +138,7 @@ export class Editor {
       vim: this.#vim.get(current) ?? [],
       theme: this.#theme.get(current) ?? [],
       readOnly: this.#readOnly.get(current) ?? [],
+      completion: this.#completion.get(current) ?? [],
     });
     this.#path = path;
     this.#saved = state.doc;
@@ -188,6 +194,11 @@ export class Editor {
     this.#reconfigure(this.#theme, themeExtension(this.#themeName()));
   }
 
+  /** Turns CodeMirror's completion on or off with the `autocomplete` preference. */
+  setAutocomplete(applies: boolean): void {
+    this.#reconfigure(this.#completion, completion(applies));
+  }
+
   /** Turns Vim keybindings on or off; the first time on fetches their chunk. */
   async setVim(enabled: boolean): Promise<void> {
     const request = ++this.#vimRequest;
@@ -213,7 +224,8 @@ export class Editor {
         Prec.highest(TAB_FOCUS_TOGGLE),
         // Vim's keys must come before every other key binding.
         Prec.highest(this.#vim.of(slots.vim)),
-        basicSetup,
+        editorSetup,
+        this.#completion.of(slots.completion),
         keymap.of([indentWithTab]),
         lintGutter(),
         this.#language.of(slots.language),

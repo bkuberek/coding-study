@@ -12,6 +12,7 @@ import { h } from "./dom.ts";
 import { EditorFile, markTab } from "./editorFile.ts";
 import { AttemptFiles } from "./files.ts";
 import { confirmLazily } from "./lazy.ts";
+import { autocompleteApplies } from "./preferences.ts";
 import { isSaveShortcut, saveShortcutLabel, trackUnsaved } from "./save.ts";
 import { failure, loading } from "./states.ts";
 import type { FileDocument, Preferences } from "./types.ts";
@@ -158,6 +159,7 @@ export class EditorTabs {
     for (const { editor } of this.#open.values()) {
       editor?.setTheme(preferences.theme);
       void editor?.setVim(preferences.vim);
+      editor?.setAutocomplete(autocompleteApplies(preferences));
     }
   }
 
@@ -208,6 +210,7 @@ export class EditorTabs {
       theme: preferences.theme,
       readOnly: this.#frozen,
       vim: preferences.vim,
+      autocomplete: autocompleteApplies(preferences),
     });
     if (this.#destroyed || !this.#open.has(path)) {
       editor.destroy();

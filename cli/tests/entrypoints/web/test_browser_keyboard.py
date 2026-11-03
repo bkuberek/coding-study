@@ -1,8 +1,9 @@
 """The page with the keyboard alone (docs/specs/web-ui.md#keyboard-and-accessibility), in each
 engine of `tests/browsers.py`: the skip link, a view's shortcut, a visible focus on every stop,
 a dialog that keeps the focus, closes on Escape and gives the focus back, the file tree's menu,
-the editor's name and the way out of it, the live region that announces a run's start and
-summary, and Escape in the results panel cancelling a run after its question.
+the editor's name and the way out of it, Alt-Shift-click adding a cursor while Cmd-click and
+Ctrl-click do not and Alt-drag still selects a rectangle, the live region that announces a run's
+start and summary, and Escape in the results panel cancelling a run after its question.
 
 WebKit moves the focus to links and buttons with Option-Tab, as Safari does unless its setting
 "Press Tab to highlight each item" is on, so the steps press Alt+Tab there.
@@ -34,6 +35,8 @@ WAIT_MS = 60_000
 RUN_WAIT_MS = 240_000
 """Generous for a run: the machine running the slow tests is often loaded."""
 TAB_STOPS = 20
+CLICK_INDENT = 40
+"""Pixels from a line's left edge: inside the text of a starter file's first lines."""
 DIALOG_TABS = 12
 SLOW_TEST = "tests/test_slow.py"
 SLOW_TEST_TEXT = "import time\n\n\ndef test_slow():\n    time.sleep(120)\n"
@@ -53,6 +56,8 @@ FOCUS = """() => {
     };
 }"""
 """What has the focus, and whether an outline or a ring shows it."""
+TWO_FRAMES = "() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))"
+"""The editor draws its cursors in a measure step after the event: a count waits two frames."""
 ANNOUNCED = "() => document.querySelector('.sr-only[aria-live=polite]').textContent"
 
 
@@ -70,6 +75,11 @@ class Keys:
     focus_after_menu: str = ""
     editor_name: str = ""
     left_editor: bool = False
+    cursors_after_plain_click: int = 0
+    cursors_after_alt_shift_click: int = 0
+    cursors_after_meta_click: int = 0
+    cursors_after_control_click: int = 0
+    cursors_after_alt_drag: int = 0
     announced_start: str = ""
     announced_end: str = ""
     cancel_question: str = ""
@@ -112,6 +122,7 @@ def keys(engine: str, server: RunningServer, workspace: Path) -> Keys:
         _focus_rings(page, tab, found)
         _dialog(page, tab, found)
         _tree_and_editor(page, tab, found)
+        _clicks(page, found)
         _announcements(page, found)
         _escape_cancels(page, workspace / "projects" / PROJECT / SLOW_TEST, found)
         browser.close()
@@ -172,6 +183,47 @@ def _tree_and_editor(page: Any, tab: str, found: Keys) -> None:
     page.keyboard.press("Escape")
     page.keyboard.press(tab)
     found.left_editor = not _focus(page)["inEditor"]
+
+
+def _clicks(page: Any, found: Keys) -> None:
+    lines = page.locator(f"{EDITOR} .cm-line")
+    first, third = lines.nth(0).bounding_box(), lines.nth(2).bounding_box()
+    assert first is not None
+    assert third is not None
+    at_first = (first["x"] + CLICK_INDENT, first["y"] + first["height"] / 2)
+    at_third = (third["x"] + CLICK_INDENT, third["y"] + third["height"] / 2)
+    _click(page, at_first)
+    found.cursors_after_plain_click = _cursors(page)
+    for modifier, name in (
+        ("Alt+Shift", "cursors_after_alt_shift_click"),
+        ("Meta", "cursors_after_meta_click"),
+        ("Control", "cursors_after_control_click"),
+    ):
+        _click(page, at_first)
+        _click(page, at_third, *modifier.split("+"))
+        setattr(found, name, _cursors(page))
+    _click(page, at_first)
+    page.keyboard.down("Alt")
+    page.mouse.move(*at_first)
+    page.mouse.down()
+    page.mouse.move(*at_third, steps=4)
+    page.mouse.up()
+    page.keyboard.up("Alt")
+    found.cursors_after_alt_drag = _cursors(page)
+    _click(page, at_first)
+
+
+def _click(page: Any, at: tuple[float, float], *held: str) -> None:
+    for key in held:
+        page.keyboard.down(key)
+    page.mouse.click(*at)
+    for key in reversed(held):
+        page.keyboard.up(key)
+
+
+def _cursors(page: Any) -> int:
+    page.evaluate(TWO_FRAMES)
+    return page.locator(".panel:not([hidden]) .cm-cursor").count()
 
 
 def _announcements(page: Any, found: Keys) -> None:
@@ -250,6 +302,26 @@ def test_the_editor_is_named_after_its_file(keys):
 
 def test_escape_then_tab_leaves_the_editor(keys):
     assert keys.left_editor
+
+
+def test_a_click_places_one_cursor(keys):
+    assert keys.cursors_after_plain_click == 1
+
+
+def test_alt_shift_click_adds_a_cursor(keys):
+    assert keys.cursors_after_alt_shift_click == 2
+
+
+def test_cmd_click_is_a_plain_click(keys):
+    assert keys.cursors_after_meta_click == 1
+
+
+def test_ctrl_click_is_a_plain_click(keys):
+    assert keys.cursors_after_control_click == 1
+
+
+def test_alt_drag_selects_a_rectangle(keys):
+    assert keys.cursors_after_alt_drag == 3
 
 
 def test_a_screen_reader_hears_a_run_start(keys):
