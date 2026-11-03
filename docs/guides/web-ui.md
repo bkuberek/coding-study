@@ -44,7 +44,7 @@ The top bar holds the views, the attempts in progress, and the mock banner while
 | View | Opens with | Shows |
 |------|------------|-------|
 | Problems | <kbd>Alt</kbd>+<kbd>1</kbd> | The `cstudy next` pick, the filters of `cstudy list` (track, kind, language, difficulty, status, pattern, content status), and every problem with its status and due date |
-| Problem | A row of the list | The statement, Start or Resume, Solution, and the problem's history: its review schedule, attempts, runs and submissions |
+| Problem | A row of the list | The statement, Start or Resume, Solution, and the problem's history: its review schedule, attempts, runs and submissions, and the code of each attempt that is over |
 | Attempt | Start, Resume, or the in-progress menu | The file tree, the editor, the results of the latest run, and the statement with its levels and hints |
 | Mock | <kbd>Alt</kbd>+<kbd>2</kbd> | The start form, or the running mock's countdown and problems |
 | Progress | <kbd>Alt</kbd>+<kbd>3</kbd> | `cstudy stats`, the reviews due, export and import |
@@ -90,6 +90,18 @@ For a project problem, the tree shows every file of the project folder with its 
 | Restore a starter or test file | The file's actions, as `cstudy start --restore`; a modified file asks first |
 
 For other problems the tree shows the files you may edit: the stub `cstudy start` wrote, and for Java, Kotlin and Go any other file in the problem's package.
+
+## Read an earlier attempt
+
+An attempt you finished is not lost when you start the review: its files stay in your workspace, and the Problem view's **History** opens them. Expand an attempt's row, then choose **View** to read its code in a dialog, with the same highlighting as the editor and no way to change it.
+
+| What the row says | Where the files are read from |
+|-------------------|-------------------------------|
+| `archived` | `.archive/<slug>/<attempt id>-<language>/`, where the next start moved them. A review attempt and `--fresh` both do that; nothing is deleted |
+| `current files` | Your practice file, project folder or notes, where the attempt left them. Only the latest attempt of a problem and language can read from there, and you may have edited them since it ended |
+| `not available` | An older attempt whose files were never archived, or that you deleted |
+
+An attempt still in progress links to its Attempt view instead, where its files are editable.
 
 ## Hints, solutions and Done
 

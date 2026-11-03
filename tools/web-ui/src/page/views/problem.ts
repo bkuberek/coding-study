@@ -1,6 +1,7 @@
 /**
  * The Problem view (docs/specs/web-ui.md#problem-view): the header, the `cstudy show` statement,
- * how to start or resume it, its approaches, and its `cstudy history`.
+ * how to start or resume it, its approaches, and its `cstudy history`, each attempt that is over
+ * with a way to read its code (`pastFiles.ts`).
  */
 
 import { defaultLanguage } from "../attempts.ts";
@@ -13,6 +14,8 @@ import { openLazily } from "../lazy.ts";
 import { attemptHash } from "../routes.ts";
 import { empty, loading, showFailure } from "../states.ts";
 import type { History, PastAttempt, ProblemDocument, Rendered } from "../types.ts";
+
+const IN_PROGRESS = "in_progress";
 
 export function problemView(context: PageContext, slug: string): Cleanup {
   const { api, shell } = context;
@@ -67,7 +70,7 @@ function side(context: PageContext, problem: ProblemDocument, history: History):
     { class: "problem-side", "aria-label": "Practice" },
     practice(context, problem, history.schedule !== null),
     problem.approaches.length ? approaches(problem) : null,
-    historySection(problem.slug, history),
+    historySection(context, problem.slug, history),
   );
 }
 
@@ -116,7 +119,7 @@ function approaches(problem: ProblemDocument): HTMLElement {
   );
 }
 
-function historySection(slug: string, history: History): HTMLElement {
+function historySection(context: PageContext, slug: string, history: History): HTMLElement {
   const schedule = history.schedule;
   const review = schedule
     ? `due ${schedule.due_on} · interval ${schedule.interval_days}d · ease ${schedule.ease.toFixed(2)} · reps ${schedule.reps} · lapses ${schedule.lapses}`
@@ -127,35 +130,40 @@ function historySection(slug: string, history: History): HTMLElement {
     h("h2", { id: "history-heading", class: "eyebrow" }, "history"),
     h("p", { class: "review-line" }, h("span", { class: "quiet" }, "review "), review),
     history.attempts.length
-      ? h("ol", { class: "plain attempts" }, ...history.attempts.map(pastAttempt))
+      ? h("ol", { class: "plain attempts" }, ...history.attempts.map((attempt) => pastAttempt(context, slug, attempt)))
       : empty("no attempts yet", h("p", { class: "quiet" }, command(`cstudy history ${slug}`))),
   );
 }
 
-function pastAttempt(attempt: PastAttempt): HTMLElement {
+function pastAttempt(context: PageContext, slug: string, attempt: PastAttempt): HTMLElement {
   const runs = attempt.submissions.length
     ? attempt.submissions.map((run) => `${localMinute(run.submitted_at)}  submit ${run.passed}/${run.total}`)
     : attempt.test_runs.map((run) => `${localMinute(run.ran_at)}  test ${run.passed}/${run.total}`);
   const bench = attempt.bench_runs.map((run) => `${localMinute(run.ran_at)}  bench ${run.verdict}`);
   const grade = [attempt.grade, attempt.solution_revealed ? "solution" : null].filter(Boolean).join(" ");
-  return h(
-    "li",
+  const files = h("div", { class: "past-files" });
+  const details = h(
+    "details",
     {},
     h(
-      "details",
+      "summary",
       {},
-      h(
-        "summary",
-        {},
-        h("span", { class: "num" }, `#${attempt.attempt_id}`),
-        ` ${attempt.language ?? "-"} · ${attempt.mode} · ${attempt.status}`,
-        h("span", { class: "quiet" }, ` · ${localMinute(attempt.started_at)}`),
-        attempt.solve_s !== null ? h("span", { class: "quiet" }, ` · ${solveTime(attempt.solve_s)}`) : null,
-        grade ? h("span", { class: "quiet" }, ` · ${grade}`) : null,
-      ),
-      runs.length || bench.length
-        ? h("pre", { class: "runs" }, [...runs, ...bench].join("\n"))
-        : h("p", { class: "quiet" }, "no runs recorded"),
+      h("span", { class: "num" }, `#${attempt.attempt_id}`),
+      ` ${attempt.language ?? "-"} · ${attempt.mode} · ${attempt.status}`,
+      h("span", { class: "quiet" }, ` · ${localMinute(attempt.started_at)}`),
+      attempt.solve_s !== null ? h("span", { class: "quiet" }, ` · ${solveTime(attempt.solve_s)}`) : null,
+      grade ? h("span", { class: "quiet" }, ` · ${grade}`) : null,
     ),
+    runs.length || bench.length
+      ? h("pre", { class: "runs" }, [...runs, ...bench].join("\n"))
+      : h("p", { class: "quiet" }, "no runs recorded"),
+    attempt.status === IN_PROGRESS ? h("p", {}, h("a", { href: attemptHash(attempt.attempt_id) }, "Open it in the Attempt view")) : files,
   );
+  let asked = false;
+  details.addEventListener("toggle", () => {
+    if (!details.open || asked || attempt.status === IN_PROGRESS) return;
+    asked = true;
+    openLazily(context, () => import("../pastFiles.ts"), (module) => module.showPastFiles(context, slug, attempt, files));
+  });
+  return h("li", {}, details);
 }

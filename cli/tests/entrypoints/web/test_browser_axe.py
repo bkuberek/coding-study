@@ -1,11 +1,12 @@
 """axe-core over every view of the page (docs/specs/web-ui.md#keyboard-and-accessibility), in
 light and dark, 1440 and 390 pixels wide, in each engine of `tests/browsers.py`: the problem list,
 a project problem, its attempt with a file in the editor and a run's results, the file tree's menu,
-its new-file dialog and restore question, the start, done and solution dialogs, the mock view
-before and during a mock, the progress, health and settings views, and, on a server whose JDK
-cannot run Java and Kotlin, the list with its marks, the start dialog of a problem and of a Java
-project with the languages disabled, and a start refused with a `fix:` hint. Each view must have
-no violation of WCAG 2.2 A and AA, nor of axe's best practices.
+its new-file dialog and restore question, the start, done and solution dialogs, the History of a
+problem with a finished attempt, expanded, and the dialog that shows that attempt's code read-only,
+the mock view before and during a mock, the progress, health and settings views, and, on a server
+whose JDK cannot run Java and Kotlin, the list with its marks, the start dialog of a problem and of
+a Java project with the languages disabled, and a start refused with a `fix:` hint. Each view must
+have no violation of WCAG 2.2 A and AA, nor of axe's best practices.
 
 axe-core comes with `axe-playwright-python`, in the optional `browser` dependency group; Playwright
 and its engines are set up as `tests/browsers.py` says. Without them the test is skipped.
@@ -33,6 +34,7 @@ SINGLE_FILE = "two-sum"
 JDK_PROJECT = "bank-project-java"
 FILE_BUTTON = "button.tree-file[data-path='bank/bank.py']"
 SHEET = "dialog.sheet[open]"
+HISTORY_ROW = "ol.attempts > li"
 WAIT_MS = 60_000
 RUN_WAIT_MS = 240_000
 """Generous for a run or the health checks: the machine running the slow tests is often loaded."""
@@ -68,6 +70,8 @@ VIEWS = (
     "start dialog",
     "done dialog",
     "solution dialog",
+    "history",
+    "past code dialog",
     "mock",
     "mock running",
     "progress",
@@ -91,15 +95,22 @@ JDK_FIX = "select a JDK 21 to 26 with JAVA_HOME, or install JDK 25: https://exam
 def workspace(
     engine: str, practice_workspace: Path, tmp_path_factory: pytest.TempPathFactory
 ) -> Path:
+    """A workspace with the project in progress and a single-file problem given up on, whose
+    History has an attempt to show."""
     root = workspace_like(practice_workspace, tmp_path_factory.mktemp(f"axe-{engine}") / "ws")
-    subprocess.run(
-        [sys.executable, "-m", "coding_study", "start", PROJECT, "--no-open"],
-        env=served_environment(root),
-        cwd=root,
-        stdin=subprocess.DEVNULL,
-        capture_output=True,
-        check=True,
-    )
+    for command in (
+        ("start", PROJECT, "--no-open"),
+        ("start", SINGLE_FILE, "--lang", "python", "--no-open"),
+        ("done", SINGLE_FILE, "--gave-up"),
+    ):
+        subprocess.run(
+            [sys.executable, "-m", "coding_study", *command],
+            env=served_environment(root),
+            cwd=root,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            check=True,
+        )
     return root
 
 
@@ -187,6 +198,8 @@ def _tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
     yield "done dialog", lambda: _sheet(page, ".flow-actions button:has-text('Done')")
     yield "solution dialog", lambda: _sheet(page, ".flow-actions button:has-text('Solution')")
     yield "start dialog", lambda: _start_dialog(page)
+    yield "history", lambda: _history(page)
+    yield "past code dialog", lambda: _past_code_dialog(page)
     yield "mock", lambda: _open(page, "#/mock", ".mock-form")
     yield "progress", lambda: _open(page, "#/progress", ".stats-summary")
     yield "health", lambda: _open(page, "#/health", "table.checks", RUN_WAIT_MS)
@@ -237,6 +250,18 @@ def _start_dialog(page: Any) -> None:
     _open(page, f"#/problems/{SINGLE_FILE}", ".practice-actions button.primary")
     page.click(".practice-actions button.primary")
     page.wait_for_selector(SHEET)
+
+
+def _history(page: Any) -> None:
+    """The first attempt's row opened, with where its files come from."""
+    _open(page, f"#/problems/{SINGLE_FILE}", ".statement-pane .prose")
+    page.click(f"{HISTORY_ROW} summary")
+    page.wait_for_selector(f"{HISTORY_ROW} .past-source")
+
+
+def _past_code_dialog(page: Any) -> None:
+    page.click(f"{HISTORY_ROW} .past-open button")
+    page.wait_for_selector(f"{SHEET} .cm-content")
 
 
 def _mock_running(page: Any) -> None:

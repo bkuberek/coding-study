@@ -186,6 +186,26 @@ export interface FileDocument {
   readonly editable: boolean;
 }
 
+/** Where the files of an attempt that is over come from (docs/specs/web-ui.md#past-attempt-files). */
+export type FilesSource = "archive" | "current" | "missing";
+
+/** `GET /api/v1/attempts/{id}/past-files`. */
+export interface PastFilesDocument {
+  readonly source: FilesSource;
+  /** Relative to the workspace root; null when the files are missing. */
+  readonly root: string | null;
+  readonly entries: readonly { readonly path: string; readonly size: number }[];
+}
+
+/** `GET /api/v1/attempts/{id}/past-files/{path}`. */
+export interface PastFileDocument {
+  readonly path: string;
+  readonly source: "archive" | "current";
+  readonly size: number;
+  /** Null when the file is not UTF-8 text or exceeds 1 MiB. */
+  readonly text: string | null;
+}
+
 /** `POST /api/v1/attempts/{id}/hints`. */
 export type HintResult =
   | { readonly hint: { readonly number: number; readonly total: number } & Rendered }
