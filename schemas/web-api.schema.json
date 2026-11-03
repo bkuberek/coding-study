@@ -260,6 +260,41 @@
         "editable": { "type": "boolean" }
       }
     },
+    "past_files": {
+      "description": "GET /api/v1/attempts/{id}/past-files: the files of an attempt that is over, read-only",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "root", "entries"],
+      "properties": {
+        "source": {
+          "description": "archive: the folder the next start moved them to; current: the latest attempt's files as they are now; missing: none to show",
+          "enum": ["archive", "current", "missing"]
+        },
+        "root": { "description": "Relative to the workspace root; null when missing", "type": ["string", "null"] },
+        "entries": {
+          "description": "In path order; empty when missing",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "size"],
+            "properties": { "path": { "$ref": "#/$defs/path" }, "size": { "type": "integer", "minimum": 0 } }
+          }
+        }
+      }
+    },
+    "past_file": {
+      "description": "GET /api/v1/attempts/{id}/past-files/{path}",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "source", "size", "text"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "source": { "enum": ["archive", "current"] },
+        "size": { "type": "integer", "minimum": 0 },
+        "text": { "description": "null when the file is not UTF-8 text or exceeds 1 MiB", "type": ["string", "null"] }
+      }
+    },
     "file_saved": {
       "description": "PUT /api/v1/attempts/{id}/files/{path} (save and create) and POST …/move",
       "type": "object",

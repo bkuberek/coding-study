@@ -42,6 +42,8 @@ DOCUMENTS = (
     "solution",
     "file_tree",
     "file",
+    "past_files",
+    "past_file",
     "file_saved",
     "file_restored",
     "child_started",
@@ -144,6 +146,7 @@ def _practice(root: Path, record: Recorder) -> dict[str, Any]:
             client.post(f"/api/v1/attempts/{attempt}/done", json=done, headers=WRITE_HEADERS),
         )
         record("error", client.get(f"/api/v1/attempts/{attempt}"))
+        _past_files(client, record, attempt)
         export = client.get("/api/v1/progress/export").json()
         assert client.portal is not None, "the client runs the app in a loop of its own"
         record.notices(client.portal.call(_everything_sent, notifications))
@@ -168,6 +171,14 @@ def _files(client: TestClient, record: Recorder, attempt: int) -> None:
     record("error", client.post(f"{files}/bank/kept.py/move", json=to_kept, headers=moving))
     restore = f"/api/v1/attempts/{attempt}/restore"
     record("file_restored", client.post(restore, json={"path": FILE}, headers=WRITE_HEADERS))
+
+
+def _past_files(client: TestClient, record: Recorder, attempt: int) -> None:
+    """The finished attempt's files, which are the project folder as it is now."""
+    past = f"/api/v1/attempts/{attempt}/past-files"
+    record("past_files", client.get(past))
+    record("past_file", client.get(f"{past}/{FILE}"))
+    record("error", client.get(f"{past}/no/such/file.py"))
 
 
 def _run(client: TestClient, record: Recorder, script: Script, attempt: int) -> None:

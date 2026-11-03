@@ -9,6 +9,7 @@ from coding_study.application.mock_interview import (
     MockProblem,
     MockSession,
 )
+from coding_study.application.past_attempt_files import PastFile, PastFiles
 from coding_study.application.problem_details import ProblemDetails
 from coding_study.application.reveal_hint import HintsLocked, RevealedHint
 from coding_study.domain.cases import JsonValue
@@ -90,6 +91,24 @@ def file_document(content: FileContent) -> dict[str, JsonValue]:
         "level": value["level"],
         "state": value["state"],
         "editable": content.editable,
+    }
+
+
+def past_files_document(files: PastFiles) -> dict[str, JsonValue]:
+    """`GET /api/v1/attempts/{id}/past-files`: where the files of an attempt that is over come
+    from, and their paths and sizes in path order."""
+    entries: list[JsonValue] = [{"path": entry.path, "size": entry.size} for entry in files.entries]
+    return {"source": files.source.value, "root": files.root, "entries": entries}
+
+
+def past_file_document(found: PastFile) -> dict[str, JsonValue]:
+    """`GET /api/v1/attempts/{id}/past-files/{path}`."""
+    content = found.content
+    return {
+        "path": content.file.path,
+        "source": found.source.value,
+        "size": len(content.content),
+        "text": content.text,
     }
 
 
