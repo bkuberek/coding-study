@@ -10,6 +10,7 @@ The website, [coding-study.com](https://coding-study.com/?utm_source=github&utm_
 - **More than algorithms.** Data structures and algorithms, multi-level practical problems, low-level design, concurrency, debugging, system design, and code review.
 - **Optimality, not only correctness.** `cstudy bench` measures how your solution grows with input size and compares it with the reference approaches.
 - **Spaced repetition.** `cstudy next` brings back what is due and picks new problems from your weakest pattern.
+- **Code intelligence in the browser, when you want it.** The practice page can show errors as you type, documentation on hover, go to definition and completion for Python and TypeScript from language servers on your computer. Each is a setting, off by default, so you can also practise without any help.
 
 ## Install
 
@@ -87,7 +88,9 @@ cstudy serve --open                # Ctrl-C stops it
 
 ![The attempt view of cstudy serve: the file tree, the editor, a run's results and the statement](docs/images/web-ui-attempt-light.png)
 
-[Practise in your browser](docs/guides/web-ui.md) covers the views, editing and runs, the keyboard, and what keeps the page private to you.
+The editor can also show errors as you type, documentation on hover, go to definition and, behind a second setting, completion and signature help, for Python and TypeScript now, with Java and Kotlin, then Go and Rust, to follow. Both settings are off by default, and with autocomplete off the editor offers no completion at all, so you can practise recall; `cstudy doctor --fix` installs the language servers once (about 46 MB), and practice works offline after that.
+
+[Practise in your browser](docs/guides/web-ui.md) covers the views, editing and runs, [code intelligence and autocomplete](docs/guides/web-ui.md#code-intelligence-and-autocomplete), the keyboard, and what keeps the page private to you.
 
 ## Your workspace is your repository
 
@@ -149,7 +152,7 @@ The [authoring guide](docs/specs/authoring.md) covers the workflow and the ready
 | [coding-study.com](https://coding-study.com/docs?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=docs-table) | Install and usage guides on the website |
 | [Documentation index](docs/README.md) | The PRD, architecture, specs, and decision records |
 | [CLI reference](docs/specs/cli.md) | Every command, flag, output, and exit code |
-| [Practise in your browser](docs/guides/web-ui.md) | `cstudy serve`: the views, editing and runs, the keyboard, troubleshooting |
+| [Practise in your browser](docs/guides/web-ui.md) | `cstudy serve`: the views, editing and runs, code intelligence and autocomplete, the keyboard, troubleshooting |
 | [Contributing](CONTRIBUTING.md) | Development setup, checks, authoring content, and commit conventions |
 | [Versioning](docs/specs/versioning.md) and [changelog](CHANGELOG.md) | How releases are numbered from Conventional Commits |
 

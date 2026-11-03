@@ -31,7 +31,7 @@ coding-study is a local, IDE-first interview-prep system: original problems stor
 | Guide | Covers | Read when |
 |-------|--------|-----------|
 | [toolchains](guides/toolchains.md) | Installing and checking uv and Python 3.13, Node.js and pnpm, and a JDK 21 to 26 on macOS and Linux | Setting up a machine, or when `cstudy doctor` reports a missing toolchain |
-| [web-ui](guides/web-ui.md) | `cstudy serve`: starting it, the views, editing and runs, project files, hints, solutions and mocks, preferences, the keyboard, troubleshooting and security | Practising in the browser |
+| [web-ui](guides/web-ui.md) | `cstudy serve`: starting it, the views, editing and runs, project files, hints, solutions and mocks, preferences, code intelligence and autocomplete (live errors, hover, go to definition, completion), the keyboard, troubleshooting and security | Practising in the browser, or turning the editor's help on or off |
 
 ## Decisions
 

@@ -62,7 +62,79 @@ Open a file by choosing it in the tree; each opens in a tab of its own.
 - **Leaving asks first.** Closing a tab, leaving the view or closing the page with unsaved edits asks before anything is lost.
 - **Generated test files** of a project are editable, as in the terminal, but editing one never changes a grade.
 
-The editor highlights Python, TypeScript, Java, Kotlin, Go, Rust, JSON, TOML and Markdown. It has no code completion: errors come from the runs, as underlines and gutter markers on the lines they name.
+The editor highlights Python, TypeScript, Java, Kotlin, Go, Rust, JSON, TOML and Markdown. Errors from a run show as underlines and gutter markers on the lines they name. Turn on [code intelligence and autocomplete](#code-intelligence-and-autocomplete) for live errors, documentation on hover, go to definition and completion; until you do, the editor offers no completion list at all.
+
+## Code intelligence and autocomplete
+
+Two settings give the editor what an IDE gives: errors as you type, documentation, jumps to definitions, and completion. They use language servers that run on your computer, and both are off by default, so the editor stays as plain as a notepad until you turn them on.
+
+| Setting | What it does |
+|---------|--------------|
+| Code intelligence | Live errors, warnings and unused code; documentation when you hover; go to definition into your files and into read-only library sources |
+| Autocomplete | Completion as you type or with <kbd>Ctrl</kbd>+<kbd>Space</kbd>, and signature help when you open a call |
+
+**Autocomplete controls all completion.** With it off, the editor offers no completion list and no signature help, not even the basic completion of earlier versions of the page. That is the reason for the setting: you can practise recalling names and signatures with nothing to prompt you, and turn the help on when you want it. Closing brackets as you type is not completion and stays.
+
+### Turn them on
+
+1. Choose **Settings** and check **Code intelligence**. **Autocomplete** is greyed out with `Turn on code intelligence first` until you do; it keeps its choice if you turn code intelligence off, and does nothing until both are on.
+2. Install the language servers once. In the terminal, run:
+
+   ```bash
+   cstudy doctor --fix
+   ```
+
+   (or choose **Fix** in the Health view). This downloads about 46 MB into `.cs/lsp/` in your workspace, and needs the network that one time. After that practice works offline: nothing else is downloaded and no server reaches the network. Deleting `.cs/lsp/` is safe; `--fix` installs it again.
+3. Check the result. `cstudy doctor` shows a row per language while code intelligence is on, and the Settings view lists each language's state:
+
+   ```text
+   ok    code intelligence python      basedpyright 1.40.2
+   ok    code intelligence typescript  typescript-language-server 6.0.3
+   ```
+
+4. Open a file. The status bar under the editor shows `python · basedpyright · ready` when its server is up, and **Restart** if it stopped.
+
+If a server is not installed, or starts slowly, the editor works as it does without code intelligence, and with Autocomplete on it falls back to the editor's own basic completion until the server is ready.
+
+### What you see
+
+- **Errors and warnings.** They are underlined about half a second after you stop typing in Python and about a second in TypeScript, with a marker in the gutter and counts in the status bar. Unused code fades, deprecated code is struck through, and hints get no underline. The errors of your last run stay, marked `last run`, and a run error that the server repeats shows once.
+- **Hover documentation.** Rest the pointer on a name, or press the keys below, to read its type and documentation. An error on that name shows above the documentation.
+- **Go to definition.** A name in your own file jumps within it; a name from another file of the attempt opens that file's tab; a name from the standard library or a package opens a **library** tab, read-only, with the file's path beside the code. A library tab cannot be saved, and closing it loses nothing. <kbd>Ctrl</kbd>+<kbd>-</kbd> goes back to where the jump started.
+- **Reference solutions stay hidden.** A definition never opens a reference solution, and the servers cannot read the folders that hold them: an import of one fails as an import of a missing file. You see a solution only through **Solution…**, and its question.
+
+### Autocomplete in the editor
+
+- **Completion.** The list opens as you type a name or a `.`, and with <kbd>Ctrl</kbd>+<kbd>Space</kbd>. Move with the arrows, accept with <kbd>Enter</kbd>, close with <kbd>Escape</kbd>. The selected item's documentation shows beside the list. Accepting inserts plain text: no snippets with placeholders, and no imports added for you.
+- **Signature help.** Typing `(` or `,` in a call shows the signature with the current parameter in bold. <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> opens it inside a call.
+
+### Keys and mouse
+
+Read <kbd>Ctrl</kbd> for <kbd>Cmd</kbd> on Linux and Windows. These work while code intelligence applies to the file, except where the last column says otherwise.
+
+| Do | Keys or mouse | With Vim, in normal mode |
+|----|---------------|--------------------------|
+| Go to definition | <kbd>Cmd</kbd>-click on macOS, <kbd>Ctrl</kbd>-click elsewhere, or <kbd>F12</kbd> | <kbd>g</kbd><kbd>d</kbd>, <kbd>Ctrl</kbd>+<kbd>]</kbd>; the click and <kbd>F12</kbd> work too |
+| Back to where the jump started | <kbd>Ctrl</kbd>+<kbd>-</kbd> | <kbd>Ctrl</kbd>+<kbd>o</kbd> |
+| Hover documentation | Rest the pointer; or <kbd>Cmd</kbd>+<kbd>K</kbd> then <kbd>Cmd</kbd>+<kbd>I</kbd>; <kbd>Escape</kbd> closes it | <kbd>K</kbd> |
+| Next and previous error | <kbd>F8</kbd> and <kbd>Shift</kbd>+<kbd>F8</kbd>, skipping hints | <kbd>]</kbd><kbd>d</kbd> and <kbd>[</kbd><kbd>d</kbd> |
+| List the file's errors | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> | The same |
+| Completion (Autocomplete on) | Type, or <kbd>Ctrl</kbd>+<kbd>Space</kbd>; on macOS also <kbd>Option</kbd>+<kbd>`</kbd> and <kbd>Option</kbd>+<kbd>I</kbd>, since macOS may take <kbd>Ctrl</kbd>+<kbd>Space</kbd> for its input sources | In insert mode the same; <kbd>Escape</kbd> closes the list and leaves insert mode |
+| Signature help (Autocomplete on) | <kbd>(</kbd> or <kbd>,</kbd> in a call, or <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> | In insert mode the same |
+| Add a second cursor, with the settings on or off | <kbd>Alt</kbd>+<kbd>Shift</kbd>-click (<kbd>Option</kbd>+<kbd>Shift</kbd>-click on macOS) | The same |
+
+<kbd>Cmd</kbd>-click and <kbd>Ctrl</kbd>-click never add a cursor any more: with code intelligence on they go to the definition, and with it off they are a plain click. Adding a cursor is <kbd>Alt</kbd>+<kbd>Shift</kbd>-click in both modes, so turning a setting on or off never changes what a click does to your selection.
+
+### Languages
+
+| Language | Server | State |
+|----------|--------|-------|
+| Python | basedpyright | Available |
+| TypeScript | typescript-language-server | Available |
+| Java and Kotlin | | Next. Kotlin starts from a check of its server; if that falls short, Java comes alone |
+| Go and Rust | | After that |
+
+A file in a language without a server shows a one-line notice in the status bar and works as it does without code intelligence. A language's state also shows in Settings.
 
 ## Run the tests and submit
 
@@ -125,6 +197,8 @@ Settings apply at once and are stored in `.cs/serve/preferences.json` in the wor
 | Run on save | off | Each save, from the page or from your IDE, runs the tests again, as `cstudy test --watch` does |
 | Type-check TypeScript | on | TypeScript runs type-check, so type errors show in the editor |
 | Theme | system | Light or dark, or follow your system |
+| Code intelligence | off | Live errors, hover documentation and go to definition from a language server on your computer; needs `cstudy doctor --fix` once ([details](#code-intelligence-and-autocomplete)) |
+| Autocomplete | off | Completion and signature help, while code intelligence is also on. Off, the editor offers no completion at all |
 
 ## Keyboard
 
@@ -137,7 +211,9 @@ Every view works with the keyboard alone. On Linux, read <kbd>Ctrl</kbd> for <kb
 | <kbd>Cmd</kbd>+<kbd>Enter</kbd> | Run the tests |
 | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> | Submit a project level |
 | <kbd>Escape</kbd> in the results | Cancel the run, after a question |
-| <kbd>F8</kbd> | Go to the next error in the editor |
+| <kbd>F8</kbd>, <kbd>Shift</kbd>+<kbd>F8</kbd> | Go to the next and the previous error in the editor |
+| <kbd>F12</kbd>, <kbd>Cmd</kbd>-click, <kbd>Ctrl</kbd>+<kbd>-</kbd> | Go to a definition, and back: [code intelligence](#code-intelligence-and-autocomplete) |
+| <kbd>Alt</kbd>+<kbd>Shift</kbd>-click in the editor | Add a second cursor |
 | <kbd>Tab</kbd> in the editor | Indent; <kbd>Escape</kbd> then <kbd>Tab</kbd> moves on to the next control |
 | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> (<kbd>Ctrl</kbd>+<kbd>M</kbd> on Linux) | Make <kbd>Tab</kbd> move the focus out of the editor until pressed again |
 | <kbd>Shift</kbd>+<kbd>F10</kbd>, <kbd>F2</kbd>, <kbd>Delete</kbd> in the tree | A file's actions, rename, delete |
@@ -162,6 +238,9 @@ A few things stay in the terminal: `cstudy init`, `cstudy ide`, `cstudy new`, `c
 | `cstudy serve` exits 4, or `cstudy doctor` warns on `web ui assets` or `web server` | The page's files or the web server libraries are missing or damaged: reinstall `cstudy` with the command `cstudy doctor` prints, which names the install that runs; if it also warns on `installs`, keep one install first |
 | A language fails in the Health view | Install its toolchain ([toolchains](toolchains.md)), then use **Fix**, which runs `cstudy doctor --fix` |
 | The first Java or Kotlin run is slow | Gradle warms up on the first build, as in the terminal |
+| `not installed: run cstudy doctor --fix` in Settings, or `not installed` in the status bar | Run `cstudy doctor --fix` once, with the network on, then open the file again |
+| `stopped: exit 1` in the status bar | The language server ended: choose **Restart**, or run `cstudy doctor` to check the install |
+| Ctrl-Space shows nothing | Autocomplete is off, or code intelligence is: turn both on in Settings. With Autocomplete off the editor offers no completion at all |
 | <kbd>Tab</kbd> skips buttons and links in Safari | Use <kbd>Option</kbd>+<kbd>Tab</kbd>, or turn on "Press Tab to highlight each item on a webpage" in Safari's Advanced settings |
 
 ## Security, in plain words
@@ -171,4 +250,5 @@ A few things stay in the terminal: `cstudy init`, `cstudy ide`, `cstudy new`, `c
 - **Other websites cannot use it.** The page refuses requests that come from other sites, even from tabs in the same browser.
 - **It runs your code, as `cstudy test` does.** Saving a file and running it executes that code as you, which is why the page asks for the token.
 - **It touches only your attempt's files.** The page edits the files of the attempts in progress and nothing else, and never follows a link out of them.
+- **Language servers stay on your computer.** With code intelligence on, the servers run as you, one per tab and project, and read only what a definition names, as read-only text. They cannot reach the network or the folders that hold reference solutions.
 - **Nothing leaves your machine.** The page loads everything from the server and sends nothing elsewhere.
