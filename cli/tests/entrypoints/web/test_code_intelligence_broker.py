@@ -21,6 +21,8 @@ from tests.web_server import TEST_VERSION, session_client
 HTML = "cstudy-html"
 MIB = 1024 * 1024
 OUTSIDE = "file:///etc/passwd"
+SENT_ITEM = {"label": "sorted", "data": {"uri": OUTSIDE, "moduleUri": "file:///lib/builtins.pyi"}}
+"""A completion item as the server writes it, whose `data` the page never sees."""
 
 
 @pytest.fixture
@@ -200,15 +202,66 @@ def test_resolved_documentation_is_html_and_the_detail_stays_text(lab, client):
         "detail": "(x) -> <b>list</b>",
         "documentation": {"kind": "markdown", "value": "**Sort**"},
     }
-    lab.server.play({"reply": "completionItem/resolve", "result": item})
+    lab.server.play(
+        {"reply": "textDocument/completion", "result": {"items": [SENT_ITEM]}},
+        {"reply": "completionItem/resolve", "result": item},
+    )
     with session(client, lab.query) as websocket:
-        websocket.send_json(request(1, "completionItem/resolve", {"label": "sorted"}))
+        websocket.send_json(ask(lab, 1, "textDocument/completion"))
+        (listed,) = received(websocket)["result"]["items"]
+        websocket.send_json(request(2, "completionItem/resolve", listed))
         result = received(websocket)["result"]
-    assert result == {
+    assert {name: value for name, value in result.items() if name != "data"} == {
         "label": "sorted",
         "detail": "(x) -> <b>list</b>",
         "documentation": {"kind": HTML, "value": "<p><strong>Sort</strong></p>\n"},
     }
+
+
+def test_a_resolve_reaches_the_server_with_the_data_the_server_sent(lab, client):
+    lab.server.play(
+        {"reply": "textDocument/completion", "result": {"items": [SENT_ITEM]}},
+        {"reply": "completionItem/resolve", "result": SENT_ITEM},
+    )
+    with session(client, lab.query) as websocket:
+        websocket.send_json(ask(lab, 1, "textDocument/completion"))
+        (listed,) = received(websocket)["result"]["items"]
+        websocket.send_json(request(2, "completionItem/resolve", {**listed, "label": "other"}))
+        received(websocket)
+    resolve = next(m for m in lab.server.received() if m.get("method") == "completionItem/resolve")
+    assert (listed["data"] != SENT_ITEM["data"], resolve["params"]) == (True, SENT_ITEM)
+
+
+def test_a_resolve_of_an_item_the_server_never_sent_gets_32602_and_the_server_never_sees_it(
+    lab, client
+):
+    lab.server.play({"reply": "textDocument/hover", "result": None})
+    forged = {"label": "x", "data": {"uri": lab.document, "moduleUri": "file:///etc/passwd"}}
+    with session(client, lab.query) as websocket:
+        websocket.send_json(request(1, "completionItem/resolve", forged))
+        error = received(websocket)["error"]
+        websocket.send_json(ask(lab, 2, "textDocument/hover"))
+        received(websocket)
+    assert (error["code"], stopped_methods(lab)) == (-32602, ["textDocument/hover"])
+
+
+def test_a_request_with_the_id_of_a_pending_request_gets_32600_and_the_pending_one_is_answered(
+    lab, client
+):
+    lab.server.play(
+        {"await": "textDocument/hover"},
+        {"wait_for": str(lab.server.gate("answer"))},
+        {"send": answer(1, None)},
+    )
+    with session(client, lab.query) as websocket:
+        websocket.send_json(ask(lab, 1, "textDocument/hover"))
+        eventually(lab.server.methods, lambda methods: methods == ["textDocument/hover"])
+        websocket.send_json(ask(lab, 1, "textDocument/definition"))
+        refusal = received(websocket)
+        lab.server.gate("answer").touch()
+        answered = received(websocket)
+    assert (refusal["id"], refusal["error"]["code"], answered) == (None, -32600, answer(1, None))
+    assert stopped_methods(lab) == ["textDocument/hover"]
 
 
 def test_an_answer_over_4_mib_arrives_as_an_error(lab, client):

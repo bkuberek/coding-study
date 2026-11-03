@@ -2,11 +2,12 @@
 (docs/specs/web-ui.md#the-broker): what each message from the page and from the server becomes.
 
 The page's messages are checked: only a short list of methods reaches the server, `initialize` is
-rebuilt from the catalog, and every document must lie in the session's root. The server's requests
-are answered here and never reach the page; its documentation is rendered to HTML the page may
-insert; the places its definitions name are remembered so the page can read them as library
-files; the workspace's file changes reach it as watched-file events. The broker holds no socket
-and no process: it is given a message and says what to send where.
+rebuilt from the catalog, every document must lie in the session's root, a request cannot reuse
+the id of one that waits for its answer, and a completion item is resolved only if the server
+wrote it. The server's requests are answered here and never reach the page; its documentation is
+rendered to HTML the page may insert; the places its definitions name are remembered so the page
+can read them as library files; the workspace's file changes reach it as watched-file events. The
+broker holds no socket and no process: it is given a message and says what to send where.
 """
 
 import asyncio
@@ -21,6 +22,7 @@ from coding_study.application.attempt_files import EDITABLE_BYTES
 from coding_study.application.code_intelligence import SessionTarget
 from coding_study.domain.layout import BUILD_DIRECTORY
 from coding_study.domain.workspace_projects import is_untracked
+from coding_study.entrypoints.web.completion_items import CompletionItems, with_token
 from coding_study.entrypoints.web.documentation import CSTUDY_HTML, documentation_html, hover_html
 from coding_study.entrypoints.web.library_files import (
     LibraryRefusalError,
@@ -41,6 +43,7 @@ INVALID_PARAMS = -32602
 REQUEST_FAILED = -32803
 LIBRARY_FILE = "cstudy/libraryFile"
 INITIALIZE = "initialize"
+RESOLVE = "completionItem/resolve"
 WATCHED_FILES = "workspace/didChangeWatchedFiles"
 CLIENT_NAME = "cstudy"
 NO_EDITS = "cstudy applies no edits from a language server"
@@ -53,8 +56,8 @@ DOCUMENT_REQUESTS = frozenset(
         "textDocument/signatureHelp",
     }
 )
-REQUESTS = DOCUMENT_REQUESTS | {"completionItem/resolve"}
-"""The requests of the page that reach the server."""
+REQUESTS = DOCUMENT_REQUESTS | {RESOLVE}
+"""The requests of the page that reach the server, `RESOLVE` only for an item the server wrote."""
 DOCUMENT_NOTIFICATIONS = frozenset(
     {
         "textDocument/didOpen",
@@ -71,6 +74,15 @@ _REFRESH = re.compile(r"workspace/\w+/refresh")
 
 type Id = int | str
 type Fields = dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class _Sent:
+    """A request of the page that the server has not answered."""
+
+    method: str
+    item: str | None = None
+    """For `RESOLVE`, the token of the item it resolves."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,8 +105,10 @@ class LanguageBroker:
         self._root_uri = target.directory.as_uri()
         self._hidden = (target.workspace / BUILD_DIRECTORY, target.content_root)
         self._initialized = False
-        self._pending: dict[Id, str] = {}
-        """The method of each request the page sent that the server has not answered."""
+        self._pending: dict[Id, _Sent] = {}
+        """The requests the page sent that the server has not answered, by id: the broker's own
+        record of what was sent, which decides what an answer is."""
+        self._items = CompletionItems()
         self._definitions: set[str] = set()
         self._watching: set[str] = set()
         """The ids of the server's `workspace/didChangeWatchedFiles` registrations."""
@@ -150,18 +164,34 @@ class LanguageBroker:
         return Delivery(to_server=(message,))
 
     async def _page_request(self, message: Fields, request_id: Id, method: str) -> Delivery:
+        if request_id in self._pending:
+            pending = f"the id {json.dumps(request_id)} is still pending"
+            return _error(None, INVALID_REQUEST, pending)
         if method == INITIALIZE:
             return self._initialize(request_id)
         if method == LIBRARY_FILE:
             return await self._library_file(request_id, message.get("params"))
         if method not in REQUESTS:
             return _error(request_id, METHOD_NOT_FOUND, f"{method} is not supported")
+        if method == RESOLVE:
+            return self._resolve(request_id, message.get("params"))
         if method in DOCUMENT_REQUESTS:
             refusal = self._document_refusal(message.get("params"))
             if refusal is not None:
                 return _error(request_id, INVALID_PARAMS, refusal)
-        self._pending[request_id] = method
+        self._pending[request_id] = _Sent(method)
         return Delivery(to_server=(message,))
+
+    def _resolve(self, request_id: Id, item: object) -> Delivery:
+        """The server is sent the item it wrote under the token the page's item names, never the
+        page's own item, so nothing the page made up reaches a server that trusts its `data`."""
+        named = self._items.named_by(item)
+        if named is None:
+            reason = f"{RESOLVE} needs an item that a completion answer of this session carried"
+            return _error(request_id, INVALID_PARAMS, reason)
+        token, written = named
+        self._pending[request_id] = _Sent(RESOLVE, token)
+        return Delivery(to_server=(_request(request_id, RESOLVE, written),))
 
     def _initialize(self, request_id: Id) -> Delivery:
         """The parameters are the broker's, not the page's: the PID of `cstudy serve`, the root,
@@ -169,7 +199,7 @@ class LanguageBroker:
         if self._initialized:
             return _error(request_id, INVALID_REQUEST, "initialize was already sent")
         self._initialized = True
-        self._pending[request_id] = INITIALIZE
+        self._pending[request_id] = _Sent(INITIALIZE)
         server = self._target.server
         params = {
             "processId": self._pid,
@@ -297,23 +327,23 @@ class LanguageBroker:
         request_id = message["id"]
         if not _is_page_id(request_id):
             return Delivery()
-        method = self._pending.pop(request_id, None)
-        if method is None:
+        sent = self._pending.pop(request_id, None)
+        if sent is None:
             return Delivery()
         if too_big:
             return _error(request_id, REQUEST_FAILED, "answer over 4 MiB")
         if "result" in message:
-            message = {**message, "result": self._rendered(method, message["result"])}
+            message = {**message, "result": self._rendered(sent, message["result"])}
         return Delivery(to_page=(message,))
 
-    def _rendered(self, method: str, result: Any) -> Any:
-        match method:
+    def _rendered(self, sent: _Sent, result: Any) -> Any:
+        match sent.method:
             case "textDocument/hover":
                 return _hover(result)
             case "textDocument/completion":
-                return _completion(result)
+                return _completion(self._items.issued(result))
             case "completionItem/resolve":
-                return _documented(result)
+                return with_token(sent.item, _documented(result))
             case "textDocument/signatureHelp":
                 return _signature_help(result)
             case "textDocument/definition":

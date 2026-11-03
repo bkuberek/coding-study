@@ -1,14 +1,18 @@
 """The real language servers behind a session (docs/specs/web-ui.md#testing): basedpyright,
 installed in `.cs/lsp/` from the shipped lock, answers a page that opens a practice file: an
 undefined name is an error, `sorted` has documentation, and the definition of `sorted` is
-`builtins.pyi`, which the broker reads for the page through `cstudy/libraryFile`.
+`builtins.pyi`, which the broker reads for the page through `cstudy/libraryFile`; a completion
+item resolves through its token, and an item the page made up, naming a reference solution as the
+module to document, is refused instead of documenting it. typescript-language-server resolves
+the items of a completion through the `cacheId` it keeps in their `data`, which the broker holds.
 
 Needs Node, pnpm and, the first time, the network for the packages of the pinned lock; the tests
 are skipped where the servers cannot be installed."""
 
+import json
 import shutil
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +34,7 @@ from tests.helpers import FIXTURE_TRACKS
 from tests.language_server_scripts import notification, request
 from tests.language_sessions import PRACTICE, STUBS, received, session
 from tests.web_server import session_client, web_app
+from tests.workspaces import TYPESCRIPT_PROJECT_FILES
 
 pytestmark = [
     pytest.mark.slow,
@@ -45,6 +50,9 @@ SOURCE = "total = undefined_name + 1\nprint(sorted([3, 1, 2]))\n"
 SORTED = {"line": 1, "character": 8}
 """Inside `sorted` on the second line."""
 HTML = "cstudy-html"
+REFERENCE_DOCSTRING = "REFERENCE-SOLUTION: one pass with a dict of complements"
+MATH = "Math.\n"
+AFTER_MATH_DOT = {"line": 0, "character": 5}
 
 
 @pytest.fixture(scope="module")
@@ -66,6 +74,11 @@ class Played:
     definition: Any
     library: dict[str, Any]
     document: str
+    listed: dict[str, Any] = field(default_factory=dict)
+    """The completion item for `sorted`, as the page received it."""
+    resolved: dict[str, Any] = field(default_factory=dict)
+    forged: dict[str, Any] = field(default_factory=dict)
+    """The answer to a resolve of an item the page made up."""
 
 
 def ask(websocket: WebSocketTestSession, message: dict[str, Any]) -> dict[str, Any]:
@@ -92,6 +105,11 @@ def played(practice_workspace: Path, installed: Path, tmp_path_factory) -> Playe
     (python / ".venv").symlink_to(practice_workspace / "python" / ".venv", target_is_directory=True)
     (root / ".cs").mkdir()
     (root / ".cs" / "lsp").symlink_to(installed, target_is_directory=True)
+    reference = root / ".cs" / "build" / "python" / "ref" / "two_sum" / "hash_map.py"
+    reference.parent.mkdir(parents=True)
+    reference.write_text(
+        f'"""{REFERENCE_DOCSTRING}"""\n\n\ndef two_sum(nums, target):\n    return []\n'
+    )
     environment = make_environment(
         root,
         toolchains=FakeToolchains(stub_generators=STUBS),
@@ -116,7 +134,21 @@ def played(practice_workspace: Path, installed: Path, tmp_path_factory) -> Playe
         library = ask(
             websocket, request(4, "cstudy/libraryFile", {"uri": _target(definition["result"])})
         )
-    return Played([published], hover, definition["result"], library, document)
+        completion = ask(websocket, request(5, "textDocument/completion", position))
+        listed = next(item for item in _items(completion["result"]) if item["label"] == "sorted")
+        resolved = ask(websocket, request(6, "completionItem/resolve", listed))
+        forged_data = {
+            "uri": document,
+            "position": {"line": 0, "character": 0},
+            "symbolLabel": "two_sum",
+            "moduleUri": reference.as_uri(),
+        }
+        forged = ask(
+            websocket, request(7, "completionItem/resolve", {**listed, "data": forged_data})
+        )
+    return Played(
+        [published], hover, definition["result"], library, document, listed, resolved, forged
+    )
 
 
 def _reports(message: dict[str, Any], document: str, name: str) -> bool:
@@ -124,6 +156,10 @@ def _reports(message: dict[str, Any], document: str, name: str) -> bool:
         return False
     params = message["params"]
     return params["uri"] == document and any(name in d["message"] for d in params["diagnostics"])
+
+
+def _items(result: Any) -> list[dict[str, Any]]:
+    return result["items"] if isinstance(result, dict) else result
 
 
 def _target(result: Any) -> str:
@@ -156,3 +192,104 @@ def test_builtins_pyi_is_read_through_the_broker(played):
         True,
         True,
     )
+
+
+def test_a_completion_item_reaches_the_page_without_the_servers_data(played):
+    assert (isinstance(played.listed["data"], str), "moduleUri" in json.dumps(played.listed)) == (
+        True,
+        False,
+    )
+
+
+def test_a_completion_item_resolves_through_its_token(played):
+    documentation = played.resolved["result"]["documentation"]
+    assert (documentation["kind"], "new list" in documentation["value"]) == (HTML, True)
+
+
+def test_an_item_the_page_made_up_does_not_document_a_reference_solution(played):
+    """The reviewer's proof: basedpyright 1.40.2 documents the module `data.moduleUri` names."""
+    assert (played.forged["error"]["code"], REFERENCE_DOCSTRING in json.dumps(played.forged)) == (
+        -32602,
+        False,
+    )
+
+
+# typescript-language-server
+
+
+@dataclass
+class PlayedTypeScript:
+    listed: dict[str, Any]
+    resolved: dict[str, Any]
+    resolved_again: dict[str, Any]
+    guessed: dict[str, Any]
+    """The answer to a resolve of an item that carries a `cacheId` of the page's own."""
+
+
+@pytest.fixture(scope="module")
+def typescript_root(practice_workspace: Path, installed: Path, tmp_path_factory) -> Path:
+    """A workspace whose `typescript/` project is the practice workspace's, with the servers."""
+    root = repository_root(tmp_path_factory.mktemp("real-typescript"), PRACTICE, FIXTURE_TRACKS)
+    project = root / "typescript"
+    project.mkdir()
+    for name in TYPESCRIPT_PROJECT_FILES:
+        shutil.copyfile(practice_workspace / "typescript" / name, project / name)
+    modules = practice_workspace / "typescript" / "node_modules"
+    (project / "node_modules").symlink_to(modules, target_is_directory=True)
+    (root / ".cs").mkdir()
+    (root / ".cs" / "lsp").symlink_to(installed, target_is_directory=True)
+    return root
+
+
+def typescript_attempt(root: Path) -> tuple[Any, int]:
+    environment = make_environment(
+        root,
+        toolchains=FakeToolchains(stub_generators=STUBS),
+        language_servers=LspDirectory(root, SubprocessToolProbe(), SubprocessCommandRunner()),
+        content_root=root.parent / "reference-content",
+    )
+    FsPreferencesStore(root).write(preferences_document(Preferences(code_intelligence=True)))
+    attempt = start_attempt(environment, StartRequest("two-sum", Language.TYPESCRIPT)).attempt
+    return web_app(root, environment, sessions=LanguageSessions()), attempt.id
+
+
+@pytest.fixture(scope="module")
+def played_typescript(typescript_root: Path) -> PlayedTypeScript:
+    app, attempt_id = typescript_attempt(typescript_root)
+    document = (typescript_root / "typescript" / "practice" / "probe.ts").as_uri()
+    position = {"textDocument": {"uri": document}, "position": AFTER_MATH_DOT}
+    with session_client(app) as client, session(client, f"?attempt_id={attempt_id}") as websocket:
+        ask(websocket, request(1, "initialize", {"capabilities": {}}))
+        websocket.send_json(notification("initialized", {}))
+        opened = {"uri": document, "languageId": "typescript", "version": 1, "text": MATH}
+        websocket.send_json(notification("textDocument/didOpen", {"textDocument": opened}))
+        completion = ask(websocket, request(2, "textDocument/completion", position))
+        listed = next(item for item in _items(completion["result"]) if item["label"] == "max")
+        resolved = ask(websocket, request(3, "completionItem/resolve", listed))
+        again = ask(websocket, request(4, "completionItem/resolve", listed))
+        made_up = {**listed, "data": {"cacheId": 1}}
+        guessed = ask(websocket, request(5, "completionItem/resolve", made_up))
+    return PlayedTypeScript(listed, resolved, again, guessed)
+
+
+def test_typescripts_cache_id_stays_with_the_broker(played_typescript):
+    data = played_typescript.listed["data"]
+    assert (isinstance(data, str), "cacheId" in json.dumps(played_typescript.listed)) == (
+        True,
+        False,
+    )
+
+
+def test_a_typescript_item_resolves_through_the_cache_id_the_broker_holds(played_typescript):
+    documentation = played_typescript.resolved["result"]["documentation"]
+    assert (documentation["kind"], "larger" in documentation["value"]) == (HTML, True)
+
+
+def test_a_typescript_item_resolves_again_with_the_same_token(played_typescript):
+    first = played_typescript.resolved["result"]
+    again = played_typescript.resolved_again["result"]
+    assert (again["documentation"], again["data"]) == (first["documentation"], first["data"])
+
+
+def test_a_typescript_item_with_a_cache_id_of_the_pages_own_is_refused(played_typescript):
+    assert played_typescript.guessed["error"]["code"] == -32602

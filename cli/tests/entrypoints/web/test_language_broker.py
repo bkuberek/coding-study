@@ -12,6 +12,7 @@ import pytest
 from coding_study.application.attempt_changes import FileChanged
 from coding_study.application.code_intelligence import SessionTarget
 from coding_study.domain.code_intelligence import BASEDPYRIGHT, TYPESCRIPT_LANGUAGE_SERVER
+from coding_study.entrypoints.web.completion_items import ANSWERS_KEPT
 from coding_study.entrypoints.web.language_broker import Delivery, LanguageBroker
 from tests.language_server_scripts import answer, notification, request
 
@@ -167,7 +168,6 @@ def test_a_second_initialize_is_refused_with_32600(broker):
         request(1, "textDocument/hover", {**document(INSIDE), "position": {"line": 0}}),
         request(2, "textDocument/definition", {**document(INSIDE), "position": {"line": 0}}),
         request(3, "textDocument/completion", {**document(INSIDE), "position": {"line": 0}}),
-        request(4, "completionItem/resolve", {"label": "sorted", "data": 7}),
         request(5, "textDocument/signatureHelp", {**document(INSIDE), "position": {"line": 0}}),
         notification("$/cancelRequest", {"id": 3}),
     ],
@@ -238,6 +238,93 @@ def test_a_request_with_an_id_the_page_may_not_use_gets_32600(broker, request_id
 def test_ids_that_are_integers_or_other_strings_are_the_pages_own(broker, request_id):
     message = request(request_id, "textDocument/hover", document(INSIDE))
     assert from_page(broker, message) == Delivery(to_server=(message,))
+
+
+# request ids that are still pending
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        "textDocument/hover",
+        "textDocument/definition",
+        "textDocument/completion",
+        "textDocument/signatureHelp",
+        "completionItem/resolve",
+        "cstudy/libraryFile",
+        "initialize",
+        "textDocument/rename",
+    ],
+)
+def test_a_request_whose_id_is_still_pending_gets_32600_with_a_null_id(broker, method):
+    page_asks(broker, 9, "textDocument/hover")
+    delivery = from_page(broker, request(9, method, {**document(INSIDE), "uri": INSIDE}))
+    (reply,) = delivery.to_page
+    assert (delivery.to_server, reply["id"], reply["error"]) == (
+        (),
+        None,
+        {"code": -32600, "message": "the id 9 is still pending"},
+    )
+
+
+def test_a_string_id_that_is_still_pending_is_refused_too(broker):
+    initialized(broker)
+    from_page(broker, request("a", "textDocument/hover", document(INSIDE)))
+    delivery = from_page(broker, request("a", "textDocument/definition", document(INSIDE)))
+    assert (delivery.to_server, error_of(delivery)["message"]) == (
+        (),
+        'the id "a" is still pending',
+    )
+
+
+def test_the_id_of_the_initialize_that_waits_for_its_answer_is_pending_too(broker):
+    from_page(broker, request(0, "initialize", {}))
+    delivery = from_page(broker, request(0, "textDocument/hover", document(INSIDE)))
+    assert (delivery.to_server, error_of(delivery)["code"]) == ((), -32600)
+
+
+def test_a_refused_initialize_does_not_count_as_the_sessions_initialize(broker):
+    from_page(broker, request(9, "textDocument/hover", document(INSIDE)))
+    from_page(broker, request(9, "initialize", {}))
+    delivery = from_page(broker, request(10, "initialize", {}))
+    assert [message["method"] for message in delivery.to_server] == ["initialize"]
+
+
+def test_an_id_is_free_again_once_the_server_answered_it(broker):
+    page_asks(broker, 9, "textDocument/hover")
+    from_server(broker, answer(9, None))
+    message = request(9, "textDocument/definition", document(INSIDE))
+    assert from_page(broker, message) == Delivery(to_server=(message,))
+
+
+def test_the_pending_request_keeps_its_answer_when_its_id_is_reused(broker):
+    page_asks(broker, 9, "textDocument/hover")
+    from_page(broker, request(9, "textDocument/definition", document(INSIDE)))
+    contents = {"kind": "markdown", "value": "**sorted**(x)"}
+    assert answered(broker, 9, {"contents": contents})["contents"]["kind"] == HTML
+
+
+def test_an_answer_to_a_request_with_a_reused_id_is_not_filed_as_a_definition(broker):
+    """The attack: a request with an id of a pending request of another kind, so that the
+    server's answer to the first is taken for a definition."""
+    page_asks(broker, 9, "textDocument/hover")
+    from_page(broker, request(9, "textDocument/definition", document(INSIDE)))
+    from_server(broker, answer(9, [{"uri": "file:///etc/passwd"}]))
+    reply = library_request(broker, "file:///etc/passwd")
+    assert reply["error"]["data"]["reason"] == "not_a_definition"
+
+
+def test_a_forged_resolve_cannot_make_its_echo_a_definition_target(broker):
+    """The reviewer's script: a resolve whose item names a file, then a definition request with
+    the same id, then the server echoing the item."""
+    initialized(broker)
+    forged = request(9, "completionItem/resolve", {"label": "x", "uri": "file:///etc/passwd"})
+    resolve = from_page(broker, forged)
+    from_page(broker, request(9, "textDocument/definition", document(INSIDE)))
+    for sent in resolve.to_server:
+        from_server(broker, answer(9, sent["params"]))
+    reply = library_request(broker, "file:///etc/passwd")
+    assert reply["error"]["data"]["reason"] == "not_a_definition"
 
 
 # documents
@@ -507,6 +594,19 @@ def answered(broker: LanguageBroker, request_id: int, result: Any) -> Any:
     return reply["result"]
 
 
+def completed(broker: LanguageBroker, items: list[Any], request_id: int = 40) -> list[Any]:
+    """The items of a completion answer that carries `items`, as the page receives them."""
+    page_asks(broker, request_id, "textDocument/completion")
+    return answered(broker, request_id, {"isIncomplete": False, "items": items})["items"]
+
+
+def without_data(found: Any) -> Any:
+    """An item, or a list of them, without the `data` the broker holds for the server."""
+    if isinstance(found, list):
+        return [without_data(item) for item in found]
+    return {name: value for name, value in found.items() if name != "data"}
+
+
 def test_an_answer_goes_to_the_page_with_its_id(broker):
     page_asks(broker, 4, "textDocument/hover")
     assert from_server(broker, answer(4, None)) == Delivery(to_page=(answer(4, None),))
@@ -576,6 +676,7 @@ def test_documentation_of_a_completion_list_is_html_and_the_rest_is_unchanged(br
         {"label": "nlargest"},
     ]
     result = answered(broker, 5, {"isIncomplete": True, "items": items})
+    result["items"] = without_data(result["items"])
     assert result == {
         "isIncomplete": True,
         "items": [
@@ -600,23 +701,181 @@ def test_documentation_of_a_completion_list_is_html_and_the_rest_is_unchanged(br
 def test_a_completion_answer_that_is_a_bare_array_is_rendered_too(broker):
     page_asks(broker, 5, "textDocument/completion")
     items = [{"label": "a", "documentation": {"kind": "plaintext", "value": "x"}}]
-    assert answered(broker, 5, items) == [
+    assert without_data(answered(broker, 5, items)) == [
         {"label": "a", "documentation": {"kind": HTML, "value": '<pre class="doc-plain">x</pre>'}}
     ]
 
 
 def test_a_resolved_item_has_html_documentation_and_a_detail_that_stays_text(broker):
-    page_asks(broker, 6, "completionItem/resolve", {"label": "sorted"})
+    (listed,) = completed(broker, [{"label": "sorted"}])
+    page_asks(broker, 6, "completionItem/resolve", listed)
     item = {
         "label": "sorted",
         "detail": "(x) -> list",
         "documentation": {"kind": "markdown", "value": "Sort."},
     }
-    assert answered(broker, 6, item) == {
+    assert without_data(answered(broker, 6, item)) == {
         "label": "sorted",
         "detail": "(x) -> list",
         "documentation": {"kind": HTML, "value": "<p>Sort.</p>\n"},
     }
+
+
+# completion items: what the page may resolve
+
+SENT = {
+    "label": "sorted",
+    "kind": 3,
+    "data": {"uri": INSIDE, "symbolLabel": "sorted", "moduleUri": "file:///lib/builtins.pyi"},
+}
+
+
+def resolve(broker: LanguageBroker, item: Any, request_id: int = 50) -> Delivery:
+    return from_page(broker, request(request_id, "completionItem/resolve", item))
+
+
+def test_the_data_of_a_completion_item_stays_with_the_broker(broker):
+    (listed,) = completed(broker, [SENT])
+    assert (isinstance(listed["data"], str), "moduleUri" in json.dumps(listed)) == (True, False)
+
+
+def test_every_item_of_an_answer_gets_a_token_of_its_own_with_or_without_data(broker):
+    listed = completed(broker, [SENT, {"label": "heappush"}, {**SENT, "label": "heappop"}])
+    tokens = [item["data"] for item in listed]
+    assert len(set(tokens)) == 3
+
+
+def test_what_is_not_an_item_passes_through_a_completion_answer(broker):
+    assert completed(broker, [7, "x", None]) == [7, "x", None]
+
+
+def test_the_items_of_a_bare_array_answer_get_tokens_too(broker):
+    page_asks(broker, 5, "textDocument/completion")
+    (listed,) = answered(broker, 5, [SENT])
+    assert isinstance(listed["data"], str)
+
+
+def test_a_resolve_reaches_the_server_with_the_item_as_the_server_sent_it(broker):
+    (listed,) = completed(broker, [SENT])
+    delivery = resolve(broker, listed, 51)
+    assert delivery == Delivery(to_server=(request(51, "completionItem/resolve", SENT),))
+
+
+def test_the_pages_changes_to_an_item_never_reach_the_server(broker):
+    (listed,) = completed(broker, [SENT])
+    forged = {**listed, "label": "x", "uri": "file:///etc/passwd", "textEdit": {"newText": "y"}}
+    delivery = resolve(broker, forged)
+    assert delivery.to_server[0]["params"] == SENT
+
+
+def test_an_item_without_data_is_resolved_as_the_server_sent_it(broker):
+    (listed,) = completed(broker, [{"label": "heappush"}])
+    delivery = resolve(broker, listed)
+    assert delivery.to_server[0]["params"] == {"label": "heappush"}
+
+
+@pytest.mark.parametrize(
+    "item",
+    [
+        {"label": "x"},
+        {"label": "x", "data": None},
+        {"label": "x", "data": 7},
+        {"label": "x", "data": {"uri": "file:///etc/passwd"}},
+        {
+            "label": "x",
+            "data": {"uri": INSIDE, "moduleUri": "file:///ws/.cs/build/python/ref/a.py"},
+        },
+        {"label": "x", "data": "cstudy-item-1.0"},
+        {"label": "x", "data": ["cstudy-item-1.0"]},
+        {"label": "x", "data": {"x": 1}, "uri": "file:///etc/passwd"},
+        None,
+        [1],
+        "x",
+    ],
+    ids=lambda item: json.dumps(item)[:40],
+)
+def test_an_item_no_completion_answer_carried_is_never_resolved(broker, item):
+    delivery = resolve(broker, item)
+    assert (delivery.to_server, error_of(delivery)["code"]) == ((), -32602)
+
+
+def test_the_error_of_a_refused_resolve_says_why_and_keeps_the_pages_id(broker):
+    delivery = resolve(broker, {"label": "x", "data": {"uri": "file:///etc/passwd"}}, 77)
+    (reply,) = delivery.to_page
+    assert (reply["id"], reply["error"]["message"]) == (
+        77,
+        "completionItem/resolve needs an item that a completion answer of this session carried",
+    )
+
+
+def test_a_refused_resolve_leaves_its_id_free(broker):
+    resolve(broker, {"label": "x"}, 9)
+    message = request(9, "textDocument/definition", document(INSIDE))
+    assert from_page(broker, message) == Delivery(to_server=(message,))
+
+
+def test_a_resolved_item_goes_back_with_the_token_and_not_the_servers_data(broker):
+    (listed,) = completed(broker, [SENT])
+    resolve(broker, listed, 51)
+    resolved = {**SENT, "detail": "(x) -> list", "documentation": "Sort."}
+    assert answered(broker, 51, resolved)["data"] == listed["data"]
+
+
+def test_a_resolved_item_without_data_in_the_answer_still_carries_the_token(broker):
+    (listed,) = completed(broker, [SENT])
+    resolve(broker, listed, 51)
+    assert answered(broker, 51, {"label": "sorted", "detail": "d"})["data"] == listed["data"]
+
+
+def test_a_resolve_answer_that_is_no_item_goes_back_as_it_is(broker):
+    (listed,) = completed(broker, [SENT])
+    resolve(broker, listed, 51)
+    assert answered(broker, 51, None) is None
+
+
+def test_an_item_may_be_resolved_again(broker):
+    (listed,) = completed(broker, [SENT])
+    resolve(broker, listed, 51)
+    answered(broker, 51, SENT)
+    assert resolve(broker, listed, 52).to_server[0]["params"] == SENT
+
+
+def test_the_answer_to_a_resolve_is_filed_under_the_token_of_that_resolve(broker):
+    first, second = completed(broker, [SENT, {**SENT, "label": "sum"}])
+    resolve(broker, first, 51)
+    resolve(broker, second, 52)
+    answers = (answered(broker, 52, {"label": "sum"}), answered(broker, 51, {"label": "sorted"}))
+    assert [reply["data"] for reply in answers] == [second["data"], first["data"]]
+
+
+def test_the_items_of_the_latest_answers_may_be_resolved_and_the_older_are_forgotten(broker):
+    first = completed(broker, [{**SENT, "label": "first"}], 40)[0]
+    for number in range(ANSWERS_KEPT):
+        completed(broker, [SENT], 41 + number)
+    delivery = resolve(broker, first)
+    assert (delivery.to_server, error_of(delivery)["code"]) == ((), -32602)
+
+
+def test_an_answer_is_still_resolvable_while_it_is_among_the_latest(broker):
+    first = completed(broker, [{**SENT, "label": "first"}], 40)[0]
+    for number in range(ANSWERS_KEPT - 1):
+        completed(broker, [SENT], 41 + number)
+    assert resolve(broker, first).to_server[0]["params"]["label"] == "first"
+
+
+def test_a_token_of_another_session_means_nothing(broker):
+    (listed,) = completed(broker, [SENT])
+    elsewhere = initialized(broker_for())
+    delivery = resolve(elsewhere, listed)
+    assert (delivery.to_server, error_of(delivery)["code"]) == ((), -32602)
+
+
+def test_typescripts_cache_id_survives_the_round_trip(broker):
+    """typescript-language-server keeps the details of a list under `data.cacheId`, which it
+    reads back from the item."""
+    sent = {"label": "map", "data": {"cacheId": 3, "file": INSIDE, "entryNames": ["map"]}}
+    (listed,) = completed(broker, [sent])
+    assert resolve(broker, listed).to_server[0]["params"]["data"] == sent["data"]
 
 
 def test_signature_and_parameter_documentation_are_html(broker):
