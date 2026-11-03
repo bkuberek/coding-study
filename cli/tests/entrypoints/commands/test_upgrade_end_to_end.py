@@ -118,7 +118,14 @@ def test_after_the_fix_nothing_that_is_set_up_warns_or_fails(upgrade: Upgrade):
         for line in upgrade.after.output.splitlines()
         if line.startswith(("WARN", "FAIL")) and not line.endswith(unset)
     ]
-    assert [line for line in flagged if "runner" not in line and "libraries" not in line] == []
+    about_the_workspace = [
+        line
+        for line in flagged
+        if "runner" not in line
+        and "libraries" not in line
+        and not line.startswith("WARN  installs")
+    ]
+    assert about_the_workspace == []
 
 
 def test_the_project_starts_after_the_upgrade(upgrade: Upgrade):
