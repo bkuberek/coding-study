@@ -33,7 +33,7 @@ pytestmark = pytest.mark.slow
 
 MIB = 1024 * 1024
 PATH = "/api/v1/code-intelligence"
-PING = {"reply": "ping", "result": "pong"}
+PING = {"reply": "textDocument/hover", "result": "pong"}
 STOPS_ONLY_FOR_SIGNALS = {"ignore": ["shutdown", "exit", "eof"]}
 
 
@@ -107,6 +107,12 @@ def authorise(page: Page, websocket: WebSocketClient) -> None:
     websocket.send_text(json.dumps({"csrf": page.headers["X-Cstudy-CSRF"]}))
 
 
+def hover(lab: Lab) -> dict[str, object]:
+    """A hover request for a file inside the Python session's root."""
+    document = {"uri": (lab.workspace / "python" / "x.py").as_uri()}
+    return request(1, "textDocument/hover", {"textDocument": document})
+
+
 def started_server(lab: Lab) -> int:
     return eventually(lab.script.pids, bool)[0]
 
@@ -119,7 +125,7 @@ def test_a_page_talks_to_a_server_through_a_real_socket(lab, served):
     lab.script.play(PING)
     with connect(server, page) as websocket:
         authorise(page, websocket)
-        websocket.send_text(json.dumps(request(1, "ping")))
+        websocket.send_text(json.dumps(hover(lab)))
         assert json.loads(str(websocket.receive())) == answer(1, "pong")
 
 
@@ -202,7 +208,7 @@ def test_a_tab_that_vanishes_without_a_close_frame_stops_its_server(lab, served)
     lab.script.play(PING)
     with connect(server, page) as websocket:
         authorise(page, websocket)
-        websocket.send_text(json.dumps(request(1, "ping")))
+        websocket.send_text(json.dumps(hover(lab)))
         websocket.receive()
         pid = started_server(lab)
         websocket.drop()
@@ -243,7 +249,7 @@ def test_a_server_that_dies_leaves_its_language_server_the_end_of_its_input(lab,
     lab.script.play(PING)
     with connect(server, page) as websocket:
         authorise(page, websocket)
-        websocket.send_text(json.dumps(request(1, "ping")))
+        websocket.send_text(json.dumps(hover(lab)))
         websocket.receive()
         pid = started_server(lab)
         server.process.kill()

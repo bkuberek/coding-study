@@ -54,6 +54,8 @@ class LanguageServer:
     """The server's `initializationOptions` for the workspace at the given absolute path."""
     settings: Mapping[str, JsonValue]
     """What `workspace/configuration` answers, by section."""
+    capabilities: Mapping[str, JsonValue]
+    """The client capabilities the broker declares in `initialize`."""
     requirement: Requirement | None = None
     idle_s: int = IDLE_SECONDS
 
@@ -68,6 +70,45 @@ class LanguageServer:
         first_line = output.strip().partition("\n")[0]
         found = _VERSION.search(first_line)
         return found[0] if found else None
+
+
+_DOCUMENTATION_FORMATS: list[JsonValue] = ["markdown", "plaintext"]
+
+CLIENT_CAPABILITIES: dict[str, JsonValue] = {
+    "general": {"positionEncodings": ["utf-16"]},
+    "textDocument": {
+        "synchronization": {"dynamicRegistration": False, "didSave": True},
+        "publishDiagnostics": {"tagSupport": {"valueSet": [1, 2]}, "relatedInformation": False},
+        "hover": {"contentFormat": _DOCUMENTATION_FORMATS},
+        "definition": {"linkSupport": True},
+        "completion": {
+            "contextSupport": True,
+            "completionItem": {
+                "snippetSupport": False,
+                "documentationFormat": _DOCUMENTATION_FORMATS,
+                "resolveSupport": {"properties": ["documentation", "detail"]},
+                "labelDetailsSupport": True,
+            },
+        },
+        "signatureHelp": {
+            "contextSupport": True,
+            "signatureInformation": {
+                "documentationFormat": _DOCUMENTATION_FORMATS,
+                "parameterInformation": {"labelOffsetSupport": True},
+                "activeParameterSupport": True,
+            },
+        },
+    },
+    "workspace": {
+        "configuration": True,
+        "workspaceFolders": True,
+        "didChangeWatchedFiles": {"dynamicRegistration": True},
+    },
+    "window": {"workDoneProgress": False},
+}
+"""What the broker implements (docs/specs/web-ui.md#the-broker): the same for every server. Every
+session declares completion and signature help, whatever the `autocomplete` preference says, and
+no snippet support, so an item never leaves placeholders to step through."""
 
 
 def _no_options(_workspace: str) -> dict[str, JsonValue]:
@@ -100,6 +141,7 @@ BASEDPYRIGHT = LanguageServer(
             "typeCheckingMode": "standard",
         }
     },
+    capabilities=CLIENT_CAPABILITIES,
 )
 
 TYPESCRIPT_LANGUAGE_SERVER = LanguageServer(
@@ -111,6 +153,7 @@ TYPESCRIPT_LANGUAGE_SERVER = LanguageServer(
     root_project=TYPESCRIPT_PROJECT,
     initialization_options=_typescript_options,
     settings={},
+    capabilities=CLIENT_CAPABILITIES,
     requirement=Requirement(TSSERVER_SCRIPT, f"{TYPESCRIPT_PROJECT}/node_modules missing"),
 )
 

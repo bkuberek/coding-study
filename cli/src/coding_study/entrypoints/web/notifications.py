@@ -56,6 +56,7 @@ class Notifications:
         self._wakeup = asyncio.Event()
         self._progress_sent: float | None = None
         self._progress_due: asyncio.TimerHandle | None = None
+        self._file_listeners: list[Callable[[FileChanged], None]] = []
 
     def publish(self, event: str, document: Mapping[str, JsonValue]) -> None:
         if self.stopped.is_set():
@@ -64,11 +65,18 @@ class Notifications:
         self._count += 1
         self._notify()
 
+    def on_file_changed(self, listener: Callable[[FileChanged], None]) -> Callable[[], None]:
+        """`listener` hears each file change, with its root and whether the file is new, until
+        the function returned is called. One that fails is reported and the others still hear."""
+        self._file_listeners.append(listener)
+        return lambda: self._remove_file_listener(listener)
+
     def notice(self, change: WorkspaceChange) -> None:
         match change:
             case FileChanged(attempt_id, path, sha256):
                 document = {"attempt_id": attempt_id, "path": path, "sha256": sha256}
                 self.publish("file_changed", document)
+                self._tell_file_listeners(change)
             case AttemptChanged(attempt_id, slug):
                 self.publish("attempt_changed", {"attempt_id": attempt_id, "slug": slug})
             case ProgressChanged():
@@ -113,6 +121,19 @@ class Notifications:
                 await asyncio.wait_for(wakeup.wait(), self.timing.keep_alive_s)
             except TimeoutError:
                 yield KEEP_ALIVE
+
+    def _tell_file_listeners(self, change: FileChanged) -> None:
+        if self.stopped.is_set():
+            return
+        for listener in [*self._file_listeners]:
+            try:
+                listener(change)
+            except Exception as error:  # the other listeners and the streams go on
+                _warn(f"a listener of file changes failed: {error}")
+
+    def _remove_file_listener(self, listener: Callable[[FileChanged], None]) -> None:
+        with suppress(ValueError):
+            self._file_listeners.remove(listener)
 
     def _send_progress(self) -> None:
         self._progress_due = None

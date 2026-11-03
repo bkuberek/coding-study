@@ -67,6 +67,7 @@ def create_app(
         sessions=sessions or LanguageSessions(),
     )
     state.children.listen(ChildNotices(state.notifications))
+    state.sessions.watch(state.notifications)
     app = Starlette(
         routes=routes, exception_handlers=exception_handlers(), lifespan=_serving(state)
     )

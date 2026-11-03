@@ -10,6 +10,7 @@ server; each refusal is an HTTP response in place of the upgrade. The page then 
 
 import asyncio
 import json
+import os
 from typing import cast
 
 from starlette.requests import Request
@@ -29,6 +30,7 @@ from coding_study.domain.errors import UsageError
 from coding_study.entrypoints.web.code_intelligence import bad_csrf
 from coding_study.entrypoints.web.context import ServerState, in_workspace, server_state
 from coding_study.entrypoints.web.errors import refusal
+from coding_study.entrypoints.web.language_broker import LanguageBroker
 from coding_study.entrypoints.web.queries import positive_integer
 from coding_study.entrypoints.web.responses import JsonResponse
 from coding_study.entrypoints.web.security import matches
@@ -56,7 +58,8 @@ async def session(websocket: WebSocket) -> None:
         return
     await websocket.accept()
     if await _carries_token(websocket, server):
-        await server.sessions.serve(websocket, target)
+        broker = LanguageBroker(target, server.settings.version, os.getpid())
+        await server.sessions.serve(websocket, target, broker)
 
 
 def code_intelligence_routes() -> list[BaseRoute]:

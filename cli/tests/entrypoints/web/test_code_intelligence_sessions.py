@@ -28,7 +28,8 @@ PARSE_ERROR = {
     "id": None,
     "error": {"code": -32700, "message": "not one JSON object"},
 }
-PING = {"reply": "ping", "result": "pong"}
+PING = {"reply": "textDocument/hover", "result": "pong"}
+"""A server that answers a hover with "pong", which crosses the broker as it is."""
 LIMIT_REASON = "at most 4 code intelligence sessions run at once; close one in another tab"
 
 
@@ -59,27 +60,51 @@ def all_gone(lab: Rig) -> bool:
 # relaying
 
 
+def hover(lab: Rig, request_id: int, **extra: object) -> dict[str, object]:
+    """A hover request for a file inside the session's root."""
+    return request(
+        request_id, "textDocument/hover", {"textDocument": {"uri": lab.document}, **extra}
+    )
+
+
 def test_a_request_reaches_the_server_and_its_answer_reaches_the_page(lab, client):
-    lab.server.play({"reply": "textDocument/hover", "result": {"contents": "docs"}})
+    lab.server.play(PING)
     with session(client, lab.query) as websocket:
-        websocket.send_json(request(7, "textDocument/hover", {"position": {"line": 1}}))
-        assert received(websocket) == answer(7, {"contents": "docs"})
-    assert lab.server.received()[0] == request(7, "textDocument/hover", {"position": {"line": 1}})
+        websocket.send_json(hover(lab, 7, position={"line": 1}))
+        assert received(websocket) == answer(7, "pong")
+    assert lab.server.received()[0] == hover(lab, 7, position={"line": 1})
 
 
 def test_what_the_server_writes_reaches_the_page_in_order(lab, client):
-    methods = ["one", "two", "three", "four"]
-    lab.server.play(*({"send": notification(method)} for method in methods))
+    messages = [
+        notification(
+            "textDocument/publishDiagnostics",
+            {"uri": lab.document, "diagnostics": [{"message": str(number)}]},
+        )
+        for number in range(4)
+    ]
+    lab.server.play(*({"send": message} for message in messages))
     with session(client, lab.query) as websocket:
-        assert [received(websocket)["method"] for _ in methods] == methods
+        assert [received(websocket) for _ in messages] == messages
 
 
 def test_text_beyond_ascii_crosses_both_ways_unchanged(lab, client):
-    lab.server.play({"reply": "echo", "result": "héllo 🌍"})
+    lab.server.play(
+        PING,
+        {
+            "send": notification(
+                "textDocument/publishDiagnostics",
+                {"uri": lab.document, "diagnostics": [{"message": "é 🌍"}]},
+            )
+        },
+    )
     with session(client, lab.query) as websocket:
-        websocket.send_json(request(1, "echo", "héllo 🌍"))
-        assert received(websocket) == answer(1, "héllo 🌍")
-    assert lab.server.received()[0]["params"] == "héllo 🌍"
+        websocket.send_json(hover(lab, 1, note="héllo 🌍"))
+        replies = [received(websocket), received(websocket)]
+    assert (
+        lab.server.received()[0]["params"]["note"],
+        replies[1]["params"]["diagnostics"][0]["message"],
+    ) == ("héllo 🌍", "é 🌍")
 
 
 @pytest.mark.parametrize(
@@ -94,10 +119,10 @@ def test_text_that_is_not_one_json_object_gets_a_parse_error_and_the_session_goe
     with session(client, lab.query) as websocket:
         websocket.send_text(text)
         assert received(websocket) == PARSE_ERROR
-        websocket.send_json(request(1, "ping"))
+        websocket.send_json(hover(lab, 1))
         assert received(websocket) == answer(1, "pong")
     eventually(lab.server.methods, lambda methods: methods[-2:] == ["shutdown", "exit"])
-    assert lab.server.received()[:-2] == [request(1, "ping")]
+    assert lab.server.received()[:-2] == [hover(lab, 1)]
 
 
 def test_a_binary_message_closes_the_socket_with_1003(lab, client):
@@ -145,7 +170,7 @@ def test_a_session_outlives_the_attempt_it_was_opened_for(lab, client):
     with session(client, lab.query) as websocket:
         wait_for_servers(lab, 1)
         lab.environment.progress.update_attempt(replace(lab.attempt, status=AttemptStatus.PASSED))
-        websocket.send_json(request(1, "ping"))
+        websocket.send_json(hover(lab, 1))
         assert received(websocket) == answer(1, "pong")
 
 
@@ -253,7 +278,7 @@ def test_a_fifth_session_closes_with_4003_naming_the_limit(lab, client):
         with session(client, lab.query) as fifth:
             assert closed_with(fifth) == (4003, LIMIT_REASON)
         for number, websocket in enumerate(sessions):
-            websocket.send_json(request(number, "ping"))
+            websocket.send_json(hover(lab, number))
             assert received(websocket) == answer(number, "pong")
     assert started_servers(lab) == 4
 
@@ -291,7 +316,7 @@ def test_a_session_that_ended_frees_its_slot(tmp_path):
 def test_a_server_that_stops_closes_every_socket_with_1001_and_stops_the_servers(lab, client):
     lab.server.play(PING)
     with session(client, lab.query) as websocket:
-        websocket.send_json(request(1, "ping"))
+        websocket.send_json(hover(lab, 1))
         received(websocket)
         stopped(client, lab.sessions)
         assert closed_with(websocket) == (1001, "cstudy serve is stopping")

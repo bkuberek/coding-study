@@ -63,6 +63,15 @@ class FileChanged:
     """Relative to the attempt's root."""
     sha256: str | None
     """Of the file's content now; None once it is gone."""
+    root: str = ""
+    """The attempt's root, relative to the workspace root, which `path` is relative to."""
+    created: bool = False
+    """The earlier snapshot lacked the file: it is new, not changed."""
+
+    @property
+    def workspace_path(self) -> str:
+        """The file's path relative to the workspace root."""
+        return f"{self.root}/{self.path}" if self.root else self.path
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,7 +118,11 @@ def workspace_changes(
         if then is None or then.documents != now.documents:
             attempts.append(AttemptChanged(now.attempt.id, now.attempt.slug))
         if then is not None:
-            files.extend(_file_changes(now.attempt.id, then.folder.digests, now.folder.digests))
+            files.extend(
+                _file_changes(
+                    now.attempt.id, now.folder.root, then.folder.digests, now.folder.digests
+                )
+            )
     progress = [ProgressChanged()] if before.progress != after.progress else []
     return (*files, *attempts, *progress)
 
@@ -126,11 +139,11 @@ def _watched(environment: Environment, attempt: Attempt) -> WatchedAttempt | Non
 
 
 def _file_changes(
-    attempt_id: int, then: Mapping[str, str], now: Mapping[str, str]
+    attempt_id: int, root: str, then: Mapping[str, str], now: Mapping[str, str]
 ) -> list[FileChanged]:
     paths = sorted(then.keys() | now.keys())
     return [
-        FileChanged(attempt_id, path, now.get(path))
+        FileChanged(attempt_id, path, now.get(path), root, created=path not in then)
         for path in paths
         if then.get(path) != now.get(path)
     ]

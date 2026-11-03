@@ -11,6 +11,7 @@ order, each an object with one key:
     {"reply": "<method>", "result": <value>} waits for a request of that method and answers it;
                                              with "error": <object> in place of "result", an error
     {"await": "<method>"}                    waits for a message of that method
+    {"await_response": <id>}                 waits for the answer to the request with that id
     {"err": "<line>"}                        writes a line to standard error
     {"raw": "<text>"}                        writes the text to standard output as it is
     {"wait_for": "<path>"}                   waits until the file exists
@@ -158,6 +159,10 @@ def step_await(server: Server, method: Any, _step: dict[str, Any]) -> None:
     server.wait_for_message(lambda m: m.get("method") == method)
 
 
+def step_await_response(server: Server, request_id: Any, _step: dict[str, Any]) -> None:
+    server.wait_for_message(lambda m: m.get("id") == request_id and "method" not in m)
+
+
 def step_err(_server: Server, line: Any, _step: dict[str, Any]) -> None:
     print(line, file=sys.stderr, flush=True)
 
@@ -193,6 +198,7 @@ STEPS = {
     "send": step_send,
     "reply": step_reply,
     "await": step_await,
+    "await_response": step_await_response,
     "err": step_err,
     "raw": step_raw,
     "wait_for": step_wait_for,

@@ -112,3 +112,50 @@ def test_python_needs_nothing_beyond_its_package():
 
 def test_the_install_never_runs_package_scripts_and_never_edits_the_lock():
     assert LSP_INSTALL_COMMAND == ("pnpm", "install", "--frozen-lockfile", "--ignore-scripts")
+
+
+# the client capabilities of docs/specs/web-ui.md#the-broker
+
+
+def test_both_servers_get_the_same_client_capabilities():
+    assert BASEDPYRIGHT.capabilities == TYPESCRIPT.capabilities
+
+
+def test_the_client_capabilities_are_the_ones_the_broker_implements():
+    assert BASEDPYRIGHT.capabilities == {
+        "general": {"positionEncodings": ["utf-16"]},
+        "textDocument": {
+            "synchronization": {"dynamicRegistration": False, "didSave": True},
+            "publishDiagnostics": {"tagSupport": {"valueSet": [1, 2]}, "relatedInformation": False},
+            "hover": {"contentFormat": ["markdown", "plaintext"]},
+            "definition": {"linkSupport": True},
+            "completion": {
+                "contextSupport": True,
+                "completionItem": {
+                    "snippetSupport": False,
+                    "documentationFormat": ["markdown", "plaintext"],
+                    "resolveSupport": {"properties": ["documentation", "detail"]},
+                    "labelDetailsSupport": True,
+                },
+            },
+            "signatureHelp": {
+                "contextSupport": True,
+                "signatureInformation": {
+                    "documentationFormat": ["markdown", "plaintext"],
+                    "parameterInformation": {"labelOffsetSupport": True},
+                    "activeParameterSupport": True,
+                },
+            },
+        },
+        "workspace": {
+            "configuration": True,
+            "workspaceFolders": True,
+            "didChangeWatchedFiles": {"dynamicRegistration": True},
+        },
+        "window": {"workDoneProgress": False},
+    }
+
+
+def test_completion_declares_no_snippet_support_so_an_item_never_leaves_placeholders():
+    completion = BASEDPYRIGHT.capabilities["textDocument"]["completion"]  # type: ignore[index]
+    assert completion["completionItem"]["snippetSupport"] is False  # type: ignore[index]

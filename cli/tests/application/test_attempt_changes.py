@@ -110,17 +110,19 @@ def test_nothing_changed_is_no_change(project):
 
 def test_a_saved_file_is_a_file_change_with_its_sha256(project):
     changes = changes_after(project, lambda started: started.write(f"{PROJECT}/bank/bank.py", "x"))
-    assert changes == (FileChanged(project.attempt.id, "bank/bank.py", sha("x")),)
+    assert changes == (FileChanged(project.attempt.id, "bank/bank.py", sha("x"), PROJECT),)
 
 
 def test_a_deleted_file_is_a_file_change_without_a_sha256(project):
     changes = changes_after(project, lambda started: started.remove(f"{PROJECT}/README.md"))
-    assert changes == (FileChanged(project.attempt.id, "README.md", None),)
+    assert changes == (FileChanged(project.attempt.id, "README.md", None, PROJECT),)
 
 
 def test_a_new_file_of_a_project_is_a_file_change(project):
     changes = changes_after(project, lambda started: started.write(f"{PROJECT}/bank/ledger.py", ""))
-    assert changes == (FileChanged(project.attempt.id, "bank/ledger.py", sha("")),)
+    assert changes == (
+        FileChanged(project.attempt.id, "bank/ledger.py", sha(""), PROJECT, created=True),
+    )
 
 
 @pytest.mark.parametrize("path", ["bank/__pycache__/bank.cpython-313.pyc", ".pytest_cache/x"])
@@ -135,7 +137,7 @@ def test_a_file_beside_a_single_file_attempts_file_is_no_change(python):
 
 def test_a_single_file_attempts_saved_file_is_a_file_change(python):
     changes = changes_after(python, lambda started: started.write(python.attempt.stub_path, "x\n"))
-    assert changes == (FileChanged(python.attempt.id, "two_sum.py", sha("x\n")),)
+    assert changes == (FileChanged(python.attempt.id, "two_sum.py", sha("x\n"), "python/practice"),)
 
 
 def test_a_changed_statement_is_an_attempt_change(project):
@@ -187,3 +189,20 @@ def test_a_snapshot_reads_the_attempts_only_once_progress_db_changed(project):
     project.write(f"{PROJECT}/bank/bank.py", "x\n")
     workspace_snapshot(environment, first)
     assert counting.reads == 1
+
+
+def test_a_change_names_the_root_of_the_attempt_it_belongs_to(python):
+    (change,) = changes_after(
+        python, lambda started: started.write(python.attempt.stub_path, "x\n")
+    )
+    assert change.root == "python/practice"  # type: ignore[attr-defined]
+
+
+def test_a_file_that_was_there_before_is_not_created(project):
+    (change,) = changes_after(project, lambda started: started.write(f"{PROJECT}/README.md", "x"))
+    assert change.created is False  # type: ignore[attr-defined]
+
+
+def test_a_file_that_is_gone_was_not_created(project):
+    (change,) = changes_after(project, lambda started: started.remove(f"{PROJECT}/README.md"))
+    assert change.created is False  # type: ignore[attr-defined]

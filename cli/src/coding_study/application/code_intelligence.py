@@ -77,6 +77,8 @@ class SessionTarget:
     root: str
     """The session's root relative to the workspace, `/`-separated: the practice project of the
     attempt's language, or its project folder."""
+    content_root: Path
+    """Where the reference solutions are, which a library file is never read from."""
 
     @property
     def directory(self) -> Path:
@@ -104,7 +106,8 @@ def session_target(
     problem = _located(server, environment.language_servers.probe(server)).problem
     if problem is not None:
         raise LanguageServerNotInstalledError(problem, FIX_COMMAND)
-    return SessionTarget(server, environment.root, _root(environment, attempt, server))
+    root = _root(environment, attempt, server)
+    return SessionTarget(server, environment.root, root, environment.content_root)
 
 
 def install_language_servers(installer: LanguageServerInstaller) -> ProbeResult | None:

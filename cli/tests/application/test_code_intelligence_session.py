@@ -77,6 +77,12 @@ def test_a_project_attempt_is_rooted_in_its_folder(tmp_path):
     assert (found.server.name, found.root) == ("basedpyright", f"projects/{PROJECT_SLUG}")
 
 
+def test_the_target_names_the_content_root_a_library_file_is_never_read_from(practice):
+    assert (
+        target(practice, started(practice, Language.PYTHON)).content_root == practice.content_root
+    )
+
+
 def test_the_target_names_the_directory_the_server_runs_in_and_the_servers_install(practice):
     found = target(practice, started(practice, Language.PYTHON))
     assert (found.directory, found.lsp_directory) == (

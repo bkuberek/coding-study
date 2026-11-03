@@ -3,29 +3,33 @@ docs/specs/web-ui.md#lifecycle-and-limits).
 
 A session is one WebSocket and the language server behind it, started once the page's CSRF message
 arrived. Each text message of the socket carries one JSON-RPC message, which this module frames for
-the server's standard input and unframes from its standard output. At most four servers run at
-once. A session ends when the socket closes, the server exits or the server stops; the stop
-sequence of the server runs as a task of its own, so a socket that goes away mid-request never
-leaves a process behind.
+the server's standard input and unframes from its standard output; what each becomes is the
+session's broker's to say (`language_broker.py`). At most four servers run at once. A session ends
+when the socket closes, the server exits or the server stops; the stop sequence of the server runs
+as a task of its own, so a socket that goes away mid-request never leaves a process behind.
 """
 
 import asyncio
 import json
 import sys
+from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Any
+from typing import Any, cast
 
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
+from coding_study.application.attempt_changes import FileChanged
 from coding_study.application.code_intelligence import SessionTarget
+from coding_study.entrypoints.web.language_broker import Delivery, LanguageBroker
 from coding_study.entrypoints.web.language_server import (
     LanguageServerCommand,
     LanguageTiming,
     ServerProcess,
     ServerStartError,
 )
+from coding_study.entrypoints.web.notifications import Notifications
 
 MAX_SESSIONS = 4
 MIB = 1024 * 1024
@@ -67,16 +71,24 @@ def bad_csrf() -> Closing:
 
 
 class LanguageSession:
-    """A socket and its server, relayed until one of them ends."""
+    """A socket and its server, relayed until one of them ends, through the broker."""
 
-    def __init__(self, websocket: WebSocket, process: ServerProcess) -> None:
+    def __init__(
+        self, websocket: WebSocket, process: ServerProcess, broker: LanguageBroker
+    ) -> None:
         self.websocket = websocket
         self.process = process
         self.finished = asyncio.Event()
         """Set once the session is over: its socket closed and its relays cancelled."""
         self.relays: list[asyncio.Task[Any]] = []
+        self.stop_listening: Callable[[], None] = _nothing
+        """Ends the session's hearing of the workspace's file changes."""
+        self._broker = broker
         self._ending: Closing | None = None
         self._wakeup = asyncio.Event()
+        self._outbox: asyncio.Queue[str] = asyncio.Queue()
+        """What goes to the server, in order: the page's messages, the broker's answers to the
+        server's requests, and the file changes."""
 
     def end(self, closing: Closing) -> None:
         """Closes the socket with `closing`, whatever the session is waiting for."""
@@ -84,16 +96,24 @@ class LanguageSession:
         self._wakeup.set()
 
     def cancel(self) -> None:
+        """Ends the relays and the hearing of file changes; once is enough."""
+        stop, self.stop_listening = self.stop_listening, _nothing
+        stop()
         for relay in self.relays:
             relay.cancel()
+
+    def file_changed(self, change: FileChanged) -> None:
+        """A file of an attempt changed on disk; the server hears of it if it asked to."""
+        self._send_to_server(self._broker.file_changed(change))
 
     async def run(self) -> None:
         """Until the socket closes, the server ends or `end` is called; closes the socket if
         the end is not the page's own."""
         page = asyncio.create_task(self._from_page())
         server = asyncio.create_task(self._from_server())
+        writing = asyncio.create_task(self._to_server())
         woken = asyncio.create_task(self._wakeup.wait())
-        self.relays = [page, server, woken]
+        self.relays = [page, server, writing, woken]
         try:
             await asyncio.wait(self.relays, return_when=asyncio.FIRST_COMPLETED)
             closing = self._closing(page, server)
@@ -121,19 +141,37 @@ class LanguageSession:
                 return Closing(CloseCode.UNSUPPORTED_DATA, "binary messages are not accepted")
             if len(text.encode()) > MESSAGE_LIMIT:
                 return Closing(CloseCode.MESSAGE_TOO_BIG, "message over 4 MiB")
-            if not _is_object(text):
+            fields = _object(text)
+            if fields is None:
                 await self._reply_parse_error()
                 continue
-            await self.process.send(text)
+            if not await self._deliver(await self._broker.from_page(fields)):
+                return None
 
     async def _from_server(self) -> Closing | None:
         """None once the page is gone; otherwise the server ended."""
         while (text := await self.process.receive()) is not None:
-            try:
-                await self.websocket.send_text(text)
-            except (WebSocketDisconnect, RuntimeError, OSError):
+            if not await self._deliver(self._broker.from_server(text)):
                 return None
         return Closing(CloseCode.SERVER_EXITED, await self._why_it_ended())
+
+    async def _to_server(self) -> None:
+        while True:
+            await self.process.send(await self._outbox.get())
+
+    async def _deliver(self, delivery: Delivery) -> bool:
+        """False once the page is gone."""
+        self._send_to_server(delivery)
+        try:
+            for message in delivery.to_page:
+                await self.websocket.send_text(json.dumps(message))
+        except (WebSocketDisconnect, RuntimeError, OSError):
+            return False
+        return True
+
+    def _send_to_server(self, delivery: Delivery) -> None:
+        for message in delivery.to_server:
+            self._outbox.put_nowait(json.dumps(message))
 
     async def _why_it_ended(self) -> str:
         """`exit 1: Error: Cannot find module …`; the output the server wrote that is not LSP."""
@@ -168,12 +206,19 @@ class LanguageSessions:
         self._servers: set[ServerProcess] = set()
         self._sessions: set[LanguageSession] = set()
         self._stoppers: set[asyncio.Task[None]] = set()
+        self._notifications: Notifications | None = None
 
-    async def serve(self, websocket: WebSocket, target: SessionTarget) -> None:
-        """Starts the target's server and relays the socket to it until either ends; the socket
-        closes with 4003 while `limit` servers run, 4002 when the server cannot start and 1001
-        once the server is stopping."""
-        session = await self._open(websocket, target)
+    def watch(self, notifications: Notifications) -> None:
+        """From now on each session hears the file changes of `notifications`."""
+        self._notifications = notifications
+
+    async def serve(
+        self, websocket: WebSocket, target: SessionTarget, broker: LanguageBroker
+    ) -> None:
+        """Starts the target's server and relays the socket to it, through `broker`, until either
+        ends; the socket closes with 4003 while `limit` servers run, 4002 when the server cannot
+        start and 1001 once the server is stopping."""
+        session = await self._open(websocket, target, broker)
         if session is None:
             return
         try:
@@ -196,7 +241,9 @@ class LanguageSessions:
         while self._stoppers:
             await asyncio.gather(*self._stoppers)
 
-    async def _open(self, websocket: WebSocket, target: SessionTarget) -> LanguageSession | None:
+    async def _open(
+        self, websocket: WebSocket, target: SessionTarget, broker: LanguageBroker
+    ) -> LanguageSession | None:
         async with self._starting:
             refusal = self._refusal()
             if refusal is None:
@@ -206,7 +253,7 @@ class LanguageSessions:
                 except ServerStartError as error:
                     refusal = Closing(CloseCode.SERVER_EXITED, f"cannot start: {error}")
                 else:
-                    return self._admit(LanguageSession(websocket, process))
+                    return self._admit(LanguageSession(websocket, process, broker))
         await refusal.close(websocket)
         return None
 
@@ -221,6 +268,8 @@ class LanguageSessions:
     def _admit(self, session: LanguageSession) -> LanguageSession:
         self._servers.add(session.process)
         self._sessions.add(session)
+        if self._notifications is not None:
+            session.stop_listening = self._notifications.on_file_changed(session.file_changed)
         return session
 
     def _release(self, session: LanguageSession) -> None:
@@ -248,11 +297,17 @@ async def _finished(sessions: list[LanguageSession]) -> None:
     await asyncio.gather(*(session.finished.wait() for session in sessions))
 
 
-def _is_object(text: str) -> bool:
+def _object(text: str) -> dict[str, Any] | None:
+    """The JSON object `text` carries; None if it carries anything else."""
     try:
-        return isinstance(json.loads(text), dict)
+        document: object = json.loads(text)
     except (ValueError, RecursionError):
-        return False
+        return None
+    return cast(dict[str, Any], document) if isinstance(document, dict) else None
+
+
+def _nothing() -> None:
+    pass
 
 
 def _fitted(reason: str) -> str:
