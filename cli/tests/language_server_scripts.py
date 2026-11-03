@@ -5,6 +5,7 @@ page and a server exchange, and the clocks of a session cut to a fraction of a s
 import json
 import os
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -41,7 +42,7 @@ class ScriptedServer:
 
     path: Path
 
-    def play(self, *steps: dict[str, object]) -> None:
+    def play(self, *steps: Mapping[str, object]) -> None:
         self.path.write_text(json.dumps(steps), encoding="utf-8")
 
     @property

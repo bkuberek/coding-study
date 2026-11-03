@@ -34,7 +34,7 @@ function newManager(): CodeIntelligence {
 }
 
 function request(overrides: Partial<AttachRequest> = {}): AttachRequest {
-  const editor = { setIntelligence() {} } as unknown as AttachRequest["editor"];
+  const editor = { setIntelligence() {}, setLiveDiagnostics() {} } as unknown as AttachRequest["editor"];
   return {
     editor,
     csrf: "token",

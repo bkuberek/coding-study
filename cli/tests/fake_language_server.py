@@ -9,6 +9,12 @@ directories from a Node server (`NODE_OPTIONS`, `CSTUDY_HIDDEN_DIRECTORIES`) as 
 script's steps in order, each an object with one key:
 
     {"send": <message>}                      writes a message to standard output
+    {"answer": {"<method>": <result>, …}}    from now on answers every request of each method
+                                             with its result, however often and whenever it
+                                             comes; a value {"cases": [{"when": <subset of the
+                                             request's params>, "result": …}, …]} answers with
+                                             the first case whose `when` the params contain (a
+                                             case without `when` always matches), else null
     {"reply": "<method>", "result": <value>} waits for a request of that method and answers it;
                                              with "error": <object> in place of "result", an error
     {"await": "<method>"}                    waits for a message of that method
@@ -23,6 +29,10 @@ script's steps in order, each an object with one key:
                                              was sent is answered, `shutdown` and `exit` included
     {"spawn_sleeper": "<path>"}              starts a process that ignores SIGINT and SIGTERM in
                                              this one's process group, and writes its pid
+
+In what it sends and answers, the text `$uri` stands for the URI of the file of the last
+`textDocument/didOpen` it read, and `$dir` for the folder that file is in, so a script can point
+at the tab's file before the test knows where the workspace is.
 
 After the last step it creates `<script>.ready`, answers `shutdown` with null, exits on `exit`
 and at the end of its standard input, answers any other request with -32601 and ignores
@@ -106,6 +116,27 @@ class Server:
         self.ready = script.with_suffix(".ready")
         self.ignored: set[str] = set()
         self.inbox = Inbox(script.with_suffix(".received"))
+        self.answers: dict[str, Any] = {}
+        self.opened = ""
+        """The URI of the file of the last `didOpen`."""
+
+    def next(self) -> Message | None:
+        message = self.inbox.get()
+        if message is not None and message.get("method") == "textDocument/didOpen":
+            document = (message.get("params") or {}).get("textDocument") or {}
+            self.opened = document.get("uri", self.opened)
+        return message
+
+    def filled(self, value: Any) -> Any:
+        """`value` with `$uri` and `$dir` replaced in every string."""
+        if isinstance(value, str):
+            folder = self.opened.rsplit("/", 1)[0]
+            return value.replace("$uri", self.opened).replace("$dir", folder)
+        if isinstance(value, list):
+            return [self.filled(item) for item in value]
+        if isinstance(value, dict):
+            return {key: self.filled(item) for key, item in value.items()}
+        return value
 
     def play(self, steps: list[dict[str, Any]]) -> None:
         for step in steps:
@@ -115,11 +146,11 @@ class Server:
     def run(self) -> None:
         self.ready.touch()
         while True:
-            self.handle(self.inbox.get())
+            self.handle(self.next())
 
     def wait_for_message(self, matches: Any) -> Message:
         while True:
-            message = self.inbox.get()
+            message = self.next()
             if message is not None and matches(message):
                 return message
             self.handle(message)
@@ -137,9 +168,31 @@ class Server:
         elif method == "shutdown":
             if "shutdown" not in self.ignored:
                 send({"jsonrpc": "2.0", "id": message["id"], "result": None})
+        elif "id" in message and method in self.answers:
+            result = self.filled(self.result_for(self.answers[method], message.get("params")))
+            send({"jsonrpc": "2.0", "id": message["id"], "result": result})
         elif "id" in message and method is not None:
             error = {"code": METHOD_NOT_FOUND, "message": f"no {method}"}
             send({"jsonrpc": "2.0", "id": message["id"], "error": error})
+
+    @staticmethod
+    def result_for(answer: Any, params: Any) -> Any:
+        if not (isinstance(answer, dict) and "cases" in answer):
+            return answer
+        for case in answer["cases"]:
+            if "when" not in case or contains(params, case["when"]):
+                return case["result"]
+        return None
+
+
+def contains(actual: Any, expected: Any) -> bool:
+    """Whether `actual` holds everything `expected` names: the same value, or for an object the
+    same values at its keys, whatever else it has."""
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        return all(
+            key in actual and contains(actual[key], value) for key, value in expected.items()
+        )
+    return bool(actual == expected)
 
 
 def send(message: Message) -> None:
@@ -153,14 +206,18 @@ def exit_with(code: int) -> NoReturn:
     os._exit(code)
 
 
-def step_send(_server: Server, message: Any, _step: dict[str, Any]) -> None:
-    send(message)
+def step_send(server: Server, message: Any, _step: dict[str, Any]) -> None:
+    send(server.filled(message))
+
+
+def step_answer(server: Server, answers: Any, _step: dict[str, Any]) -> None:
+    server.answers.update(answers)
 
 
 def step_reply(server: Server, method: Any, step: dict[str, Any]) -> None:
     request = server.wait_for_message(lambda m: m.get("method") == method and "id" in m)
     answer = {"error": step["error"]} if "error" in step else {"result": step.get("result")}
-    send({"jsonrpc": "2.0", "id": request["id"], **answer})
+    send({"jsonrpc": "2.0", "id": request["id"], **server.filled(answer)})
 
 
 def step_await(server: Server, method: Any, _step: dict[str, Any]) -> None:
@@ -208,6 +265,7 @@ def step_spawn_sleeper(_server: Server, pid_path: Any, _step: dict[str, Any]) ->
 
 STEPS = {
     "send": step_send,
+    "answer": step_answer,
     "reply": step_reply,
     "await": step_await,
     "await_response": step_await_response,

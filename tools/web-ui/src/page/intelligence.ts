@@ -49,6 +49,8 @@ interface Tracked {
   found: FileIntelligence | null;
   attachment: Attachment | null;
   unsubscribe: (() => void) | null;
+  /** Stops hearing the editor's diagnostics, whose counts the segment shows. */
+  readonly stopCounting: () => void;
 }
 
 export class IntelligenceLink {
@@ -98,7 +100,10 @@ export class IntelligenceLink {
   destroy(): void {
     this.#destroyed = true;
     for (const undo of this.#undo.splice(0)) undo();
-    for (const tracked of this.#tracked.values()) this.#release(tracked);
+    for (const tracked of this.#tracked.values()) {
+      this.#release(tracked);
+      tracked.stopCounting();
+    }
     this.#tracked.clear();
     this.#context.shell.setIntelligence(null);
   }
@@ -108,7 +113,10 @@ export class IntelligenceLink {
   }
 
   #track(path: string, editor: Editor): void {
-    this.#tracked.set(path, { editor, turn: 0, found: null, attachment: null, unsubscribe: null });
+    const stopCounting = editor.onDiagnostics(() => {
+      if (this.#active === path) this.#render();
+    });
+    this.#tracked.set(path, { editor, turn: 0, found: null, attachment: null, unsubscribe: null, stopCounting });
     void this.#consider(path);
   }
 
@@ -117,6 +125,7 @@ export class IntelligenceLink {
     if (tracked === undefined) return;
     tracked.turn += 1;
     this.#release(tracked);
+    tracked.stopCounting();
     this.#tracked.delete(path);
     this.#render();
   }
@@ -239,7 +248,8 @@ export class IntelligenceLink {
     if (this.#destroyed) return;
     const tracked = this.#active === null ? undefined : this.#tracked.get(this.#active);
     const found = tracked === undefined || !this.#enabled() ? null : foundOf(tracked);
-    this.#context.shell.setIntelligence(found === null ? null : segmentElement(segmentOf(found), () => tracked?.attachment?.restart()));
+    const counts = tracked?.editor.diagnosticCounts;
+    this.#context.shell.setIntelligence(found === null ? null : segmentElement(segmentOf(found, counts), () => tracked?.attachment?.restart()));
   }
 }
 

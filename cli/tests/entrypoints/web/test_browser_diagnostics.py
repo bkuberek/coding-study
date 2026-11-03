@@ -1,10 +1,17 @@
-"""A run's diagnostic in a real browser (docs/specs/web-ui.md#attempt-view): a syntax error saved
-from the editor and run from the page marks its line in the editor, the diagnostic in the results
-jumps to that line, and a run once it is fixed clears the marker, in each engine of
-`tests/browsers.py`.
+"""Diagnostics in a real browser, in each engine of `tests/browsers.py`.
 
-The workspace shares the session's practice workspace's toolchains, so the project's suite runs
-with the real pytest, whose collection error `cstudy test --events` reports as a `diagnostic`.
+A run's diagnostic (docs/specs/web-ui.md#attempt-view): a syntax error saved from the editor and
+run from the page marks its line in the editor, the diagnostic in the results jumps to that
+line, and a run once it is fixed clears the marker. The workspace shares the session's practice
+workspace's toolchains, so the project's suite runs with the real pytest, whose collection error
+`cstudy test --events` reports as a `diagnostic`.
+
+Live diagnostics (docs/specs/web-ui.md#live-diagnostics), against the scripted fake language
+server: an error is underlined and has a gutter marker, a warning and information their own,
+a hint has neither, unused code is faded and deprecated code struck through, the tooltip names
+the source, the status bar counts, F8 and Shift-F8 skip hints, Cmd or Ctrl-Shift-M lists them
+all, and under Vim `]d` and `[d` do what F8 and Shift-F8 do.
+
 Playwright and its engines are set up as `tests/browsers.py` says; without them the test is
 skipped."""
 
@@ -17,7 +24,18 @@ from typing import Any
 
 import pytest
 
+from coding_study.domain.preferences import Preferences
 from tests.browsers import launched, watched
+from tests.intelligence_lab import (
+    EDITOR,
+    SERVES,
+    Lab,
+    intelligence_lab,
+    open_attempt,
+    store,
+    wait_for_status,
+)
+from tests.language_server_scripts import notification
 from tests.serve_process import RunningServer, running_server, served_environment
 from tests.workspaces import workspace_like
 
@@ -159,3 +177,253 @@ def test_a_run_after_the_fix_clears_the_marker(seen):
 
 def test_the_page_logs_no_error_under_its_content_security_policy(seen):
     assert seen.errors == []
+
+
+TYPED = "total = 1\nlegacy = 2\nplain = 3\n"
+"""Lines 6 to 8 of the starter file, which has five lines and a last empty one (6 lines)."""
+PUBLISHED = [
+    {
+        "range": {"start": {"line": 3, "character": 4}, "end": {"line": 3, "character": 11}},
+        "severity": 1,
+        "source": "basedpyright",
+        "code": "reportUndefinedVariable",
+        "message": '"two_sum" is not defined',
+    },
+    {
+        "range": {"start": {"line": 4, "character": 4}, "end": {"line": 4, "character": 9}},
+        "severity": 2,
+        "source": "basedpyright",
+        "code": "reportUnreachable",
+        "message": "Code is unreachable",
+    },
+    {
+        "range": {"start": {"line": 0, "character": 3}, "end": {"line": 0, "character": 6}},
+        "severity": 3,
+        "source": "basedpyright",
+        "message": "Docstring starts with a capital",
+    },
+    {
+        "range": {"start": {"line": 5, "character": 0}, "end": {"line": 5, "character": 5}},
+        "severity": 4,
+        "tags": [1],
+        "source": "basedpyright",
+        "message": '"total" is not accessed',
+    },
+    {
+        "range": {"start": {"line": 6, "character": 0}, "end": {"line": 6, "character": 6}},
+        "severity": 4,
+        "tags": [2],
+        "source": "basedpyright",
+        "message": '"legacy" is deprecated',
+    },
+]
+FIRST_THREE = PUBLISHED[:3]
+OPENED: dict[str, object] = {"await": "textDocument/didOpen"}
+
+
+def publication(diagnostics: list[dict[str, Any]]) -> dict[str, object]:
+    params = {"uri": "$uri", "diagnostics": diagnostics}
+    return {"send": notification("textDocument/publishDiagnostics", params)}
+
+
+LIVE_SCRIPT = (
+    SERVES,
+    OPENED,
+    {"await": "textDocument/didChange"},
+    publication(PUBLISHED),
+)
+VIM_SCRIPT = (SERVES, OPENED, publication(FIRST_THREE))
+CURSOR_LINE_NUMBER = f"{EDITOR.rsplit(' ', 1)[0]} .cm-lineNumbers .cm-activeLineGutter"
+PANEL_ITEMS = ".cm-panel-lint li"
+SELECTED_TEXT = "() => window.getSelection()?.toString() ?? ''"
+LINT_RANGE_STYLE = """selector => {
+  const style = getComputedStyle(document.querySelector(selector));
+  return {
+    image: style.backgroundImage,
+    opacity: style.opacity,
+    decoration: style.textDecorationLine,
+  };
+}"""
+
+
+@dataclass
+class LiveSeen:
+    status: str = ""
+    underlined: dict[str, int] = field(default_factory=dict[str, int])
+    gutter_markers: dict[str, int] = field(default_factory=dict[str, int])
+    all_gutter_markers: int = -1
+    faded: dict[str, str] = field(default_factory=dict[str, str])
+    struck: dict[str, str] = field(default_factory=dict[str, str])
+    hint_image: str = ""
+    tooltip: str = ""
+    visits: list[str] = field(default_factory=list[str])
+    visits_back: list[str] = field(default_factory=list[str])
+    panel_items: int = -1
+    vim_lines: list[str] = field(default_factory=list[str])
+    errors: list[str] = field(default_factory=list[str])
+
+
+@pytest.fixture(scope="module")
+def live_lab(
+    engine: str, practice_workspace: Path, tmp_path_factory: pytest.TempPathFactory
+) -> Iterator[Lab]:
+    base = tmp_path_factory.mktemp(f"live-{engine}")
+    with intelligence_lab(practice_workspace, base, LIVE_SCRIPT) as lab:
+        yield lab
+
+
+@pytest.fixture(scope="module")
+def live(engine: str, live_lab: Lab) -> LiveSeen:
+    found = LiveSeen()
+    with sync_api.sync_playwright() as playwright:
+        browser = launched(playwright, engine)
+        page = watched(browser.new_page(viewport={"width": 1440, "height": 900}), found.errors)
+        page.set_default_timeout(WAIT_MS)
+        page.goto(live_lab.server.login_url)
+        page.wait_for_selector("table.problems tbody tr")
+        _typed_and_published(page, live_lab, found)
+        _underlines_and_markers(page, found)
+        _tooltip(page, found)
+        _keys(page, found)
+        _vim_keys(browser, live_lab, found)
+        browser.close()
+    return found
+
+
+def _typed_and_published(page: Any, lab: Lab, found: LiveSeen) -> None:
+    """Types three lines, which the fake server waits for before it publishes."""
+    open_attempt(page, lab)
+    wait_for_status(page, "python · basedpyright · ready")
+    page.click(EDITOR)
+    page.keyboard.press("ControlOrMeta+End")
+    page.keyboard.insert_text(TYPED)
+    found.status = wait_for_status(page, "python · basedpyright · ready · 1 error")
+
+
+def _underlines_and_markers(page: Any, found: LiveSeen) -> None:
+    panel = ".panel:not([hidden])"
+    for severity in ("error", "warning", "info", "hint"):
+        found.underlined[severity] = page.locator(f"{panel} .cm-lintRange-{severity}").count()
+    for severity in ("error", "warning", "info"):
+        found.gutter_markers[severity] = page.locator(f"{panel} .cm-lint-marker-{severity}").count()
+    found.all_gutter_markers = page.locator(f"{panel} .cm-lint-marker").count()
+    found.faded = page.evaluate(LINT_RANGE_STYLE, f"{panel} .cstudy-unnecessary")
+    found.struck = page.evaluate(LINT_RANGE_STYLE, f"{panel} .cstudy-deprecated")
+    found.hint_image = page.evaluate(LINT_RANGE_STYLE, f"{panel} .cm-lintRange-hint")["image"]
+
+
+def _tooltip(page: Any, found: LiveSeen) -> None:
+    page.hover(".panel:not([hidden]) .cm-lintRange-error")
+    page.wait_for_selector(".cm-tooltip-lint")
+    found.tooltip = page.locator(".cm-tooltip-lint").first.inner_text()
+    page.mouse.move(0, 0)
+
+
+def _keys(page: Any, found: LiveSeen) -> None:
+    page.click(EDITOR)
+    page.keyboard.press("ControlOrMeta+Home")
+    found.visits = _visits(page, "F8", 4)
+    found.visits_back = _visits(page, "Shift+F8", 4)
+    page.keyboard.press("ControlOrMeta+Shift+m")
+    page.wait_for_selector(PANEL_ITEMS)
+    found.panel_items = page.locator(PANEL_ITEMS).count()
+    page.keyboard.press("Escape")
+
+
+def _visits(page: Any, key: str, times: int) -> list[str]:
+    """The text each press of `key` selects. The keys fetch their code at the first press, so a
+    press is answered a moment later: each waits for the selection to differ from the last."""
+    visited: list[str] = []
+    previous = page.evaluate(SELECTED_TEXT)
+    for _ in range(times):
+        page.keyboard.press(key)
+        page.wait_for_function(
+            "previous => (window.getSelection()?.toString() ?? '') !== previous", arg=previous
+        )
+        previous = page.evaluate(SELECTED_TEXT)
+        visited.append(previous)
+    return visited
+
+
+def _vim_keys(browser: Any, lab: Lab, found: LiveSeen) -> None:
+    """With Vim on, `]d` and `[d` move the cursor to the next and previous diagnostic."""
+    lab.script.play(*VIM_SCRIPT)
+    store(lab, Preferences(code_intelligence=True, vim=True))
+    page = watched(browser.new_page(viewport={"width": 1440, "height": 900}), found.errors)
+    page.set_default_timeout(WAIT_MS)
+    page.goto(lab.server.login_url)
+    page.wait_for_selector("table.problems tbody tr")
+    open_attempt(page, lab)
+    wait_for_status(page, "python · basedpyright · ready · 1 error")
+    page.click(EDITOR)
+    page.keyboard.press("Escape")
+    page.keyboard.press("g")
+    page.keyboard.press("g")
+    for keys, line in ((("]", "d"), "1"), (("]", "d"), "4"), (("]", "d"), "5"), (("[", "d"), "4")):
+        for key in keys:
+            page.keyboard.press(key)
+        page.wait_for_function(
+            "([selector, line]) => document.querySelector(selector)?.textContent === line",
+            arg=[CURSOR_LINE_NUMBER, line],
+        )
+        found.vim_lines.append(page.locator(CURSOR_LINE_NUMBER).inner_text())
+
+
+def test_the_status_bar_counts_errors_warnings_and_information(live):
+    assert live.status == "python · basedpyright · ready · 1 error · 1 warning · 1 info"
+
+
+def test_an_error_is_underlined(live):
+    assert live.underlined["error"] == 1
+
+
+def test_a_warning_is_underlined(live):
+    assert live.underlined["warning"] == 1
+
+
+def test_information_is_underlined(live):
+    assert live.underlined["info"] == 1
+
+
+def test_a_hint_is_drawn_without_an_underline(live):
+    assert live.hint_image == "none"
+
+
+def test_each_severity_has_its_gutter_marker(live):
+    assert live.gutter_markers == {"error": 1, "warning": 1, "info": 1}
+
+
+def test_a_hint_has_no_gutter_marker(live):
+    assert live.all_gutter_markers == 3
+
+
+def test_unused_code_is_faded(live):
+    assert float(live.faded["opacity"]) < 1
+
+
+def test_deprecated_code_is_struck_through(live):
+    assert "line-through" in live.struck["decoration"]
+
+
+def test_the_tooltip_names_the_servers_source_and_code(live):
+    assert "basedpyright reportUndefinedVariable" in live.tooltip
+
+
+def test_f8_visits_the_diagnostics_in_order_skips_hints_and_wraps(live):
+    assert live.visits == ["Two", "two_sum", "raise", "Two"]
+
+
+def test_shift_f8_visits_them_backwards_and_wraps(live):
+    assert live.visits_back == ["raise", "two_sum", "Two", "raise"]
+
+
+def test_the_lint_panel_lists_every_diagnostic_hints_too(live):
+    assert live.panel_items == 5
+
+
+def test_under_vim_the_diagnostic_keys_move_the_cursor(live):
+    assert live.vim_lines == ["1", "4", "5", "4"]
+
+
+def test_the_page_logs_no_error_for_live_diagnostics(live):
+    assert live.errors == []

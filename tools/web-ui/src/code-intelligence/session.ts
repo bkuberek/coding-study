@@ -11,6 +11,7 @@ import { EditorView } from "@codemirror/view";
 
 import { closeOutcome, retryDelay, type SessionState } from "../page/intelligence-state.ts";
 import { ServerClient } from "./client.ts";
+import { publishDiagnostics } from "./publish.ts";
 import { type Origin, SocketTransport, sessionUrl } from "./transport.ts";
 import { SessionWorkspace } from "./workspace.ts";
 
@@ -58,6 +59,7 @@ export class Session {
     this.client = new ServerClient({
       rootUri: options.rootUri,
       timeout: REQUEST_TIMEOUT_MS,
+      notificationHandlers: { "textDocument/publishDiagnostics": publishDiagnostics },
       workspace: (client) => new SessionWorkspace(client, (count) => this.filesChanged(count)),
       extensions: [{ editorExtension: EditorView.updateListener.of((update) => update.docChanged && this.#scheduleSync()) }],
     });

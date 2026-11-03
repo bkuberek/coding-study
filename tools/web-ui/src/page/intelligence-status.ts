@@ -3,6 +3,7 @@
  * active file's session is doing, or why it has none.
  */
 
+import type { DiagnosticCounts } from "../diagnostics.ts";
 import type { SessionState } from "./intelligence-state.ts";
 import type { LanguageState } from "./types.ts";
 
@@ -34,7 +35,23 @@ export function languageName(language: string): string {
   return NAMES[language] ?? language;
 }
 
-export function segmentOf(found: FileIntelligence): Segment {
+/** `2 errors · 1 warning`: the severities that have some, errors first; nothing when none has. */
+export function countsText(counts: DiagnosticCounts): string {
+  return [
+    plural(counts.errors, "error", "errors"),
+    plural(counts.warnings, "warning", "warnings"),
+    plural(counts.infos, "info", "infos"),
+  ]
+    .filter((part) => part !== "")
+    .join(" · ");
+}
+
+function plural(count: number, one: string, many: string): string {
+  if (count === 0) return "";
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+export function segmentOf(found: FileIntelligence, counts?: DiagnosticCounts): Segment {
   switch (found.kind) {
     case "no-server":
       return { text: `no code intelligence for ${languageName(found.language)} yet`, action: null, title: "", state: "no-server" };
@@ -46,23 +63,28 @@ export function segmentOf(found: FileIntelligence): Segment {
         state: "not-installed",
       };
     case "session":
-      return sessionSegment(found);
+      return sessionSegment(found, counts);
   }
 }
 
-function sessionSegment(found: Extract<FileIntelligence, { kind: "session" }>): Segment {
+function sessionSegment(found: Extract<FileIntelligence, { kind: "session" }>, counts?: DiagnosticCounts): Segment {
   const head = `${found.language} · ${found.server} · `;
   const { state } = found;
   switch (state.kind) {
     case "starting":
       return { text: `${head}starting`, action: null, title: "", state: "starting" };
     case "ready":
-      return { text: `${head}ready`, action: null, title: "", state: "ready" };
+      return { text: `${head}ready${readyCounts(counts)}`, action: null, title: "", state: "ready" };
     case "reconnecting":
       return { text: `${head}reconnecting…`, action: null, title: "", state: "reconnecting" };
     case "stopped":
       return { text: `${head}stopped${state.why ? `: ${state.why}` : ""}`, action: "restart", title: state.reason, state: "stopped" };
   }
+}
+
+function readyCounts(counts: DiagnosticCounts | undefined): string {
+  const text = counts === undefined ? "" : countsText(counts);
+  return text === "" ? "" : ` · ${text}`;
 }
 
 export interface LanguageRow {

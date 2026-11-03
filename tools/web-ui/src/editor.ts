@@ -10,11 +10,19 @@
  * toggle stays bound above Vim's keys.
  */
 import { indentWithTab, isolateHistory, toggleTabFocusMode } from "@codemirror/commands";
-import { lintGutter, setDiagnostics } from "@codemirror/lint";
+import { type Diagnostic, lintGutter } from "@codemirror/lint";
 import { Compartment, EditorSelection, EditorState, type Extension, Prec, type Text } from "@codemirror/state";
 import { EditorView, keymap, runScopeHandlers } from "@codemirror/view";
 
-import { type FileDiagnostic, lintDiagnostics } from "./diagnostics.ts";
+import {
+  type DiagnosticCounts,
+  diagnosticCounts,
+  diagnosticSources,
+  type FileDiagnostic,
+  liveDiagnosticsSpec,
+  replacedDiagnostics,
+  runDiagnosticsSpec,
+} from "./diagnostics.ts";
 import { loadLanguage } from "./language-loaders.ts";
 import { languageForPath } from "./languages.ts";
 import { cursorPosition } from "./positions.ts";
@@ -46,6 +54,9 @@ export interface EditorOptions {
 }
 
 export type ChangeListener = (editor: Editor) => void;
+
+/** Called with the counts of the file's errors, warnings and information after either source of diagnostics changed. */
+export type DiagnosticsListener = (counts: DiagnosticCounts) => void;
 
 const DARK_SCHEME = "(prefers-color-scheme: dark)";
 const TAB_FOCUS_SCOPE = "cstudy-tab-focus";
@@ -82,6 +93,7 @@ export class Editor {
   readonly #intelligence = new Compartment();
   readonly #nonce: Extension;
   readonly #listeners = new Set<ChangeListener>();
+  readonly #diagnosticListeners = new Set<DiagnosticsListener>();
   readonly #systemScheme = window.matchMedia(DARK_SCHEME);
   #themePreference: ThemePreference;
   #path: string;
@@ -175,10 +187,28 @@ export class Editor {
     return () => this.#listeners.delete(listener);
   }
 
-  /** Replaces the lint markers with the diagnostics of this file. */
+  /**
+   * Makes `diagnostics` the last run's for this file, replacing the previous run's. The language
+   * server's stay (docs/specs/web-ui.md#live-diagnostics).
+   */
   setDiagnostics(diagnostics: readonly FileDiagnostic[]): void {
-    const state = this.view.state;
-    this.view.dispatch(setDiagnostics(state, lintDiagnostics(state.doc, diagnostics)));
+    this.view.dispatch(runDiagnosticsSpec(this.view.state, diagnostics));
+  }
+
+  /** Makes `diagnostics` the language server's for this file, replacing its previous ones. The last run's stay. */
+  setLiveDiagnostics(diagnostics: readonly Diagnostic[]): void {
+    if (!this.#destroyed) this.view.dispatch(liveDiagnosticsSpec(this.view.state, diagnostics));
+  }
+
+  /** The file's errors, warnings and information now, after the merge of the two sources. */
+  get diagnosticCounts(): DiagnosticCounts {
+    return diagnosticCounts(this.view.state);
+  }
+
+  /** Calls the listener after either source of diagnostics changed; the function returned removes it. */
+  onDiagnostics(listener: DiagnosticsListener): () => void {
+    this.#diagnosticListeners.add(listener);
+    return () => this.#diagnosticListeners.delete(listener);
   }
 
   /** Moves the cursor to a 1-based line and column, scrolls it into view and focuses the editor. */
@@ -229,6 +259,7 @@ export class Editor {
     this.#destroyed = true;
     this.#systemScheme.removeEventListener("change", this.#followSystemScheme);
     this.#listeners.clear();
+    this.#diagnosticListeners.clear();
     this.view.destroy();
   }
 
@@ -244,7 +275,9 @@ export class Editor {
         this.#completion.of(slots.completion),
         this.#intelligence.of(slots.intelligence),
         keymap.of([indentWithTab]),
-        lintGutter(),
+        diagnosticSources,
+        // A hint has no marker, as it has no underline.
+        lintGutter({ markerFilter: (found) => found.filter((diagnostic) => diagnostic.severity !== "hint") }),
         this.#language.of(slots.language),
         this.#theme.of(slots.theme),
         this.#readOnly.of(slots.readOnly),
@@ -252,6 +285,10 @@ export class Editor {
         EditorView.contentAttributes.of({ "aria-label": path, tabindex: "0" }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) for (const listener of this.#listeners) listener(this);
+          if (replacedDiagnostics(update.transactions)) {
+            const counts = diagnosticCounts(update.state);
+            for (const listener of this.#diagnosticListeners) listener(counts);
+          }
         }),
       ],
     });

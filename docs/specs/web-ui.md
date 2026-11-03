@@ -736,10 +736,12 @@ Code intelligence applies to a tab while `code_intelligence` is on, the tab show
 | Item | Rule |
 |------|------|
 | Two sources | `Editor` holds the last run's diagnostics, cleared at the next `run_start` as before, and the server's, replaced by each `textDocument/publishDiagnostics` for the file. Together they are the file's one lint set; a run diagnostic and a live one on the same line with the same message show once. `@codemirror/lsp-client`'s `serverDiagnostics()` is not used, since it replaces the whole set |
-| Severity | An error is underlined in red with a gutter marker, a warning in yellow and information in blue; a hint has no underline and no marker |
-| Tags | Unnecessary shows as faded text, Deprecated as struck through |
-| Source | Each diagnostic's tooltip names its source: the server's `source` and `code` (`basedpyright reportUndefinedVariable`, `ts 2304`), or `last run` |
-| Counts | The status bar shows the active file's errors, warnings and information after de-duplication (`2 errors · 1 warning`), hints left out, and nothing when there are none |
+| Severity | An error is underlined in red with a gutter marker, a warning in yellow and information in blue; a hint has no underline and no marker, and shows only in the lint panel, in its tooltip and, for Unnecessary and Deprecated, as the fade or the strike |
+| Tags | Unnecessary shows as faded text (`opacity` 0.7, which keeps the text above WCAG AA's 4.5:1 contrast), Deprecated as struck through; the tags are LSP's `DiagnosticTag` 1 and 2 |
+| Source | Each diagnostic's tooltip names its source: the server's `source` and `code` (`basedpyright reportUndefinedVariable`, `ts 2304`; the `value` of a code that carries a link), or `last run`, followed by the code or source the run gave (`last run · TS2304`) |
+| Publications | Each `textDocument/publishDiagnostics` for a file with a tab replaces the server's diagnostics for that file at once. One for a file with no tab, or for a document version the page has since replaced (the server publishes again for the newer one), is ignored. Positions are those of the text last sent, kept inside the document and carried through what was typed since. Diagnostics stay after the session stops, and go when code intelligence turns off |
+| Counts | The status bar shows the active file's errors, warnings and information after de-duplication (`2 errors · 1 warning · 1 info`; `infos` for two or more), hints left out, and nothing when there are none. They follow the ready segment (`python · basedpyright · ready · 2 errors`) |
+| Keys | F8 and Shift-F8 select the next and previous diagnostic, skipping hints and wrapping around, and open its tooltip; Cmd or Ctrl-Shift-M opens CodeMirror's lint panel, which lists hints too. Under Vim, `]d` and `[d` do the same but only put the cursor at the diagnostic's start, since a selection would turn normal mode into visual mode. The keys' code is fetched at the first press, so a file is editable without it |
 
 #### Hover
 
@@ -828,7 +830,7 @@ The keys of [code intelligence](#code-intelligence-in-the-editor). Go to definit
 | Signature help, with autocomplete on | Opens on `(` and `,` in a call, or with Cmd or Ctrl-Shift-Space; Escape closes it | In insert mode the same, except that Escape closes it and leaves insert mode |
 | Add a cursor, whether the setting is on or off | Alt-Shift-click (Option-Shift-click), IntelliJ IDEA's binding; Alt-drag stays rectangular selection. Cmd-click and Ctrl-click never add a cursor: with code intelligence off they move the cursor like a plain click | The same |
 
-The Vim keys (`gd`, `Ctrl-]`, `K`, `]d`, `[d`) are those of LazyVim; they are mapped with `Vim.mapCommand` while code intelligence is on, and unmapped when it turns off. A click under Vim moves the cursor and stays in normal mode.
+The Vim keys (`gd`, `Ctrl-]`, `K`, `]d`, `[d`) are those of LazyVim. They are mapped once, with `Vim.mapCommand` in normal mode, when the Vim chunk loads, and each runs the command of its name that the editor offers (`src/editor-commands.ts`): `]d` and `[d` are the editor's own, the others come with code intelligence. In an editor that has no such command, because code intelligence does not apply to its file, the key does nothing. A click under Vim moves the cursor and stays in normal mode.
 
 ## Solutions
 

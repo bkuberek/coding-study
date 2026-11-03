@@ -1,8 +1,8 @@
 /**
  * The editor's standing extensions (docs/specs/web-ui.md#editor): `basicSetup`'s parts, copied as
- * its documentation advises, with two changes. Adding a cursor is Alt-Shift-click for every user,
- * and completion is not here: `completion` holds it in a compartment of the editor, so that the
- * `autocomplete` preference governs all of it.
+ * its documentation advises, with three changes. Adding a cursor is Alt-Shift-click for every user,
+ * completion is not here (`completion` holds it in a compartment of the editor, so that the
+ * `autocomplete` preference governs all of it), and F8 and Shift-F8 skip hints.
  */
 import { closeBrackets, closeBracketsKeymap, autocompletion } from "@codemirror/autocomplete";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
@@ -14,7 +14,6 @@ import {
   indentOnInput,
   syntaxHighlighting,
 } from "@codemirror/language";
-import { lintKeymap } from "@codemirror/lint";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { EditorState, type Extension } from "@codemirror/state";
 import {
@@ -29,6 +28,9 @@ import {
   lineNumbers,
   rectangularSelection,
 } from "@codemirror/view";
+
+import { cursorToNextDiagnostic, cursorToPreviousDiagnostic, diagnosticKeymap } from "./diagnostics.ts";
+import { namedCommands } from "./editor-commands.ts";
 
 /** The modifier keys of a pointer event. */
 export interface Modifiers {
@@ -64,7 +66,8 @@ export const editorSetup: Extension = [
   crosshairCursor(),
   highlightActiveLine(),
   highlightSelectionMatches(),
-  keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...foldKeymap, ...lintKeymap]),
+  namedCommands.of({ cursorToNextDiagnostic, cursorToPreviousDiagnostic }),
+  keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...foldKeymap, ...diagnosticKeymap]),
 ];
 
 /**

@@ -94,6 +94,7 @@ export class CodeIntelligence {
       detach: () => {
         this.#attached.delete(attached);
         request.editor.setIntelligence([]);
+        request.editor.setLiveDiagnostics([]);
       },
     };
   }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { languageName, languageRow, segmentOf } from "../src/page/intelligence-status.ts";
+import { countsText, languageName, languageRow, segmentOf } from "../src/page/intelligence-status.ts";
 
 const PYTHON = { language: "python", server: "basedpyright" };
 
@@ -79,4 +79,35 @@ test("a language that is not installed links to the Health view", () => {
 test("a language with no server yet does not link", () => {
   const row = languageRow({ language: "go", server: null, version: null, state: "not_available", detail: "not available yet", idle_s: null });
   assert.deepEqual(row, { name: "Go", detail: "not available yet", health: false });
+});
+
+test("counts name each severity that has some, errors first", () => {
+  assert.equal(countsText({ errors: 2, warnings: 1, infos: 0 }), "2 errors · 1 warning");
+});
+
+test("one of each is singular", () => {
+  assert.equal(countsText({ errors: 1, warnings: 1, infos: 1 }), "1 error · 1 warning · 1 info");
+});
+
+test("several pieces of information are plural", () => {
+  assert.equal(countsText({ errors: 0, warnings: 0, infos: 3 }), "3 infos");
+});
+
+test("no diagnostics make no counts", () => {
+  assert.equal(countsText({ errors: 0, warnings: 0, infos: 0 }), "");
+});
+
+test("a ready session shows the counts after ready", () => {
+  const counts = { errors: 2, warnings: 1, infos: 0 };
+  assert.equal(segmentOf({ kind: "session", ...PYTHON, state: { kind: "ready" } }, counts).text, "python · basedpyright · ready · 2 errors · 1 warning");
+});
+
+test("a ready session with nothing to count says only ready", () => {
+  const counts = { errors: 0, warnings: 0, infos: 0 };
+  assert.equal(segmentOf({ kind: "session", ...PYTHON, state: { kind: "ready" } }, counts).text, "python · basedpyright · ready");
+});
+
+test("a session that is not ready shows no counts", () => {
+  const counts = { errors: 2, warnings: 0, infos: 0 };
+  assert.equal(segmentOf({ kind: "session", ...PYTHON, state: { kind: "reconnecting" } }, counts).text, "python · basedpyright · reconnecting…");
 });
