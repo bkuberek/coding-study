@@ -18,8 +18,8 @@ from coding_study.adapters.languages.rust.types import (
     rust_name,
     rust_type,
 )
+from coding_study.adapters.languages.starter_header import comment_header
 from coding_study.domain.concurrency import model_text
-from coding_study.domain.layout import statement_path
 from coding_study.domain.naming import NameRole
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.signature import ClassSignature, FunctionSignature, Method, Param
@@ -36,7 +36,7 @@ class RustStubGenerator:
     """`StubGenerator` for `rust/practice/<snake_slug>.rs`."""
 
     def generate(self, meta: ProblemMeta) -> str:
-        lines = [_header(meta)]
+        lines = _header(meta)
         if meta.concurrency is not None:
             lines.append(f"// Concurrency: {model_text(meta.concurrency, Language.RUST)}")
         lines += _imports(meta)
@@ -48,8 +48,8 @@ class RustStubGenerator:
         return "\n".join(lines) + "\n"
 
 
-def _header(meta: ProblemMeta) -> str:
-    return f"// {meta.title}. Statement: {statement_path(meta.slug)}. Run: cstudy test {meta.slug}"
+def _header(meta: ProblemMeta) -> list[str]:
+    return comment_header(f"{meta.title}.", meta.slug)
 
 
 def _imports(meta: ProblemMeta) -> list[str]:

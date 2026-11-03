@@ -1,4 +1,6 @@
-// Conformance: decimal and date round-trip. Statement: .statements/conformance-decimal-date-types.md. Run: cstudy test conformance-decimal-date-types
+// Conformance: decimal and date round-trip.
+// Statement: .statements/conformance-decimal-date-types.md.
+// Run: cstudy test conformance-decimal-date-types
 
 use chrono::NaiveDate;
 use rust_decimal::Decimal;

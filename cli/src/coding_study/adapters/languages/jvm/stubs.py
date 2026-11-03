@@ -14,8 +14,9 @@ from coding_study.adapters.languages.jvm.jvm_types import (
     kotlin_return_type,
     kotlin_type,
 )
+from coding_study.adapters.languages.starter_header import comment_header
 from coding_study.domain.concurrency import model_text
-from coding_study.domain.layout import USER_PACKAGE, jvm_class_name, statement_path
+from coding_study.domain.layout import USER_PACKAGE, jvm_class_name
 from coding_study.domain.naming import NameRole, member_name
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.signature import ClassSignature, Param
@@ -68,7 +69,7 @@ class _Routine:
 class _JvmStub:
     """What a Java or Kotlin stub declares, independent of syntax."""
 
-    header: tuple[str, str]
+    header: tuple[str, ...]
     """The header's two sentences: title and statement path, then the run command."""
     package: str
     class_name: str
@@ -106,7 +107,7 @@ class _JvmStub:
             *(routine.returns for routine in routines),
         ]
         return cls(
-            header=_header(meta),
+            header=tuple(comment_header(f"{meta.title}.", meta.slug)),
             package=f"{USER_PACKAGE}.{meta.snake_slug}",
             class_name=jvm_class_name(meta),
             constructor_params=constructor,
@@ -123,9 +124,9 @@ class _JvmStub:
     def scalar_imports(self, imports: tuple[tuple[Scalar, str], ...]) -> list[str]:
         return [line for scalar, line in imports if scalar in self.scalars]
 
-    def header_lines(self, column_limit: int) -> list[str]:
+    def header_lines(self) -> list[str]:
         concurrency = [] if self.concurrency is None else [f"// Concurrency: {self.concurrency}"]
-        return [*_comment_lines(self.header, column_limit), *concurrency]
+        return [*self.header, *concurrency]
 
 
 class JavaStubGenerator:
@@ -139,7 +140,7 @@ class JavaStubGenerator:
             imports = (*imports, *JAVA_CONCURRENCY_IMPORTS)
         blocks = [*self._constructor(stub), *(self._method(routine) for routine in stub.routines)]
         lines = [
-            *stub.header_lines(JAVA_COLUMN_LIMIT),
+            *stub.header_lines(),
             "",
             f"package {stub.package};",
             "",
@@ -179,7 +180,7 @@ class KotlinStubGenerator:
         if imports:
             imports.append("")
         lines = [
-            *stub.header_lines(KOTLIN_COLUMN_LIMIT),
+            *stub.header_lines(),
             "",
             f"package {stub.package}",
             "",
@@ -206,19 +207,6 @@ class KotlinStubGenerator:
             f"{INDENT * 2}{KOTLIN_NOT_IMPLEMENTED}",
             f"{INDENT}}}",
         ]
-
-
-def _header(meta: ProblemMeta) -> tuple[str, str]:
-    """Title, statement path and run command (docs/specs/runners.md#stub-generation)."""
-    return f"{meta.title}. Statement: {statement_path(meta.slug)}.", f"Run: cstudy test {meta.slug}"
-
-
-def _comment_lines(sentences: tuple[str, ...], column_limit: int) -> list[str]:
-    """One `//` line, or one line per sentence when one line would pass the column limit."""
-    single_line = f"// {' '.join(sentences)}"
-    if len(single_line) <= column_limit:
-        return [single_line]
-    return [f"// {sentence}" for sentence in sentences]
 
 
 def _named(params: Iterable[Param], language: Language) -> tuple[tuple[str, ValueType], ...]:

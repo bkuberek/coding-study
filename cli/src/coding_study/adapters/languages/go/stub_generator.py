@@ -12,8 +12,8 @@ gofmt-clean, so no formatter needs to run.
 import re
 from collections.abc import Iterable, Iterator, Mapping
 
+from coding_study.adapters.languages.starter_header import comment_header
 from coding_study.domain.concurrency import model_text
-from coding_study.domain.layout import statement_path
 from coding_study.domain.naming import NameRole, constructor_name, member_name
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.signature import (
@@ -65,7 +65,7 @@ class GoStubGenerator:
     """`StubGenerator` for `go/practice/<snake_slug>/<snake_slug>.go` (`layout.go_file_name`)."""
 
     def generate(self, meta: ProblemMeta) -> str:
-        lines = [_header(meta)]
+        lines = _header(meta)
         if meta.concurrency is not None:
             lines.append(f"// Concurrency: {model_text(meta.concurrency, Language.GO)}")
         lines += ["", f"package {meta.snake_slug}", *_imports(meta), *_aliases(meta), ""]
@@ -91,8 +91,8 @@ def go_type(declared: ReturnType, node_package: str = "") -> str:
             return ""
 
 
-def _header(meta: ProblemMeta) -> str:
-    return f"// {meta.title}. Statement: {statement_path(meta.slug)}. Run: cstudy test {meta.slug}"
+def _header(meta: ProblemMeta) -> list[str]:
+    return comment_header(f"{meta.title}.", meta.slug)
 
 
 def _imports(meta: ProblemMeta) -> list[str]:

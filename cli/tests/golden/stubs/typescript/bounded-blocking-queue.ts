@@ -1,4 +1,5 @@
-// Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md. Run: cstudy test bounded-blocking-queue
+// Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md.
+// Run: cstudy test bounded-blocking-queue
 // Concurrency: async
 export class BoundedBlockingQueue {
   constructor(capacity: number) {}

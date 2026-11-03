@@ -1465,7 +1465,8 @@ Generated stubs:
 
 ```python
 # python/practice/bounded_blocking_queue.py
-"""Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md. Run: cstudy test bounded-blocking-queue
+"""Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md.
+Run: cstudy test bounded-blocking-queue
 
 Concurrency: threads
 """
@@ -1487,7 +1488,8 @@ class BoundedBlockingQueue:
 
 ```typescript
 // typescript/practice/bounded-blocking-queue.ts
-// Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md. Run: cstudy test bounded-blocking-queue
+// Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md.
+// Run: cstudy test bounded-blocking-queue
 // Concurrency: async
 export class BoundedBlockingQueue {
   constructor(capacity: number) {}
@@ -1508,7 +1510,8 @@ export class BoundedBlockingQueue {
 
 ```java
 // jvm/java/src/main/java/practice/bounded_blocking_queue/BoundedBlockingQueue.java
-// Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md. Run: cstudy test bounded-blocking-queue
+// Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md.
+// Run: cstudy test bounded-blocking-queue
 // Concurrency: threads (platform and virtual)
 
 package practice.bounded_blocking_queue;
@@ -1537,7 +1540,8 @@ public class BoundedBlockingQueue {
 
 ```kotlin
 // jvm/kotlin/src/main/kotlin/practice/bounded_blocking_queue/BoundedBlockingQueue.kt
-// Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md. Run: cstudy test bounded-blocking-queue
+// Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md.
+// Run: cstudy test bounded-blocking-queue
 // Concurrency: threads (platform and virtual)
 
 package practice.bounded_blocking_queue

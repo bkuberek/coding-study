@@ -1,4 +1,5 @@
-// Invert Binary Tree. Statement: .statements/invert-binary-tree.md. Run: cstudy test invert-binary-tree
+// Invert Binary Tree. Statement: .statements/invert-binary-tree.md.
+// Run: cstudy test invert-binary-tree
 
 use std::cell::RefCell;
 use std::rc::Rc;

@@ -7,8 +7,8 @@ comma when a declaration is wider), so no formatter needs to run.
 
 from collections.abc import Iterator, Mapping
 
+from coding_study.adapters.languages.starter_header import comment_header
 from coding_study.domain.concurrency import model_text
-from coding_study.domain.layout import statement_path
 from coding_study.domain.naming import NameRole, member_name
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.signature import (
@@ -58,7 +58,7 @@ class TypeScriptStubGenerator:
     """`StubGenerator` for `typescript/practice/<slug>.ts`."""
 
     def generate(self, meta: ProblemMeta) -> str:
-        lines = [_header(meta)]
+        lines = _header(meta)
         if meta.concurrency is not None:
             lines.append(f"// Concurrency: {model_text(meta.concurrency, Language.TYPESCRIPT)}")
         import_line = _support_import(meta)
@@ -89,8 +89,8 @@ def _element_type(element: ValueType) -> str:
     return f"({text})" if isinstance(element, NodeType) else text
 
 
-def _header(meta: ProblemMeta) -> str:
-    return f"// {meta.title}. Statement: {statement_path(meta.slug)}. Run: cstudy test {meta.slug}"
+def _header(meta: ProblemMeta) -> list[str]:
+    return comment_header(f"{meta.title}.", meta.slug)
 
 
 def _support_import(meta: ProblemMeta) -> str | None:

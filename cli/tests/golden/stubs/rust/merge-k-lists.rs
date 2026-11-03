@@ -1,4 +1,5 @@
-// Merge k Sorted Lists. Statement: .statements/merge-k-sorted-lists.md. Run: cstudy test merge-k-sorted-lists
+// Merge k Sorted Lists. Statement: .statements/merge-k-sorted-lists.md.
+// Run: cstudy test merge-k-sorted-lists
 
 use cs_support::ListNode;
 
