@@ -41,6 +41,8 @@ export interface AttachRequest {
 /** What the manager asks of the page: whether code intelligence is on, and to hear when that changes. */
 export interface PageHooks {
   enabled(): boolean;
+  /** Whether autocomplete applies (`autocompleteApplies`): both preferences are on. */
+  autocomplete(): boolean;
   onPreferences(listener: () => void): () => void;
 }
 
@@ -72,10 +74,12 @@ export class CodeIntelligence {
   #hidden: ReturnType<typeof setTimeout> | undefined;
   #suspended = false;
 
+  readonly #page: PageHooks;
   readonly #environment: Environment | undefined;
   readonly #unfollow: () => void;
 
   constructor(page: PageHooks, environment?: Environment) {
+    this.#page = page;
     this.#environment = environment;
     // The manager outlives the Attempt view, so it hears the preference itself: turning code
     // intelligence off closes every session at once, whatever view is open.
@@ -91,7 +95,19 @@ export class CodeIntelligence {
     const uri = fileUri(request.workspace, request.root, request.path);
     const attached: Attached = { session, uri, attemptId: request.attemptId, path: request.path };
     this.#attached.add(attached);
-    request.editor.setIntelligence(intelligenceExtension(session, uri, request.languageId, { announce: request.announce, navigator: request.navigator, path: request.path }));
+    const intelligence = intelligenceExtension(session, uri, request.languageId, {
+      announce: request.announce,
+      navigator: request.navigator,
+      path: request.path,
+    });
+    request.editor.setIntelligence(intelligence.extension);
+    // The server's completion and signature help follow the preferences and the session's state,
+    // and never restart the session.
+    const completion = (): void =>
+      request.editor.dispatch({ effects: intelligence.completion(this.#page.autocomplete(), session.state.kind === "ready") });
+    completion();
+    const stopState = session.onState(completion);
+    const stopPreferences = this.#page.onPreferences(completion);
     return {
       get state() {
         return session.state;
@@ -100,6 +116,8 @@ export class CodeIntelligence {
       restart: () => session.restart(),
       detach: () => {
         this.#attached.delete(attached);
+        stopState();
+        stopPreferences();
         request.editor.setIntelligence([]);
         request.editor.setLiveDiagnostics([]);
       },

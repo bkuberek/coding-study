@@ -120,6 +120,32 @@
   color: var(--warn);
 }
 
+/* Completion's info panel and signature help */
+.cs-info {
+  max-width: 48ch;
+  max-height: 18em;
+}
+
+.cs-detail {
+  display: block;
+  margin-bottom: 6px;
+  font: var(--text-s) / 1.45 var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.cs-signature-label {
+  display: block;
+  margin-bottom: 6px;
+  font: var(--text-s) / 1.45 var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cs-active-parameter {
+  color: var(--accent);
+  font-weight: 700;
+}
+
 /* Go to definition: the word under the pointer while Cmd or Ctrl is held, and the note at a refused jump */
 .cs-definition-link {
   text-decoration: underline;

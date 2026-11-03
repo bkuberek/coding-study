@@ -122,3 +122,27 @@ def active_path(page: Any) -> str:
 def document(page: Any) -> list[str]:
     """The lines of the editor in front, as CodeMirror draws them."""
     return page.locator(f"{EDITOR} .cm-line").all_inner_texts()
+
+
+POINT_AT = """([line, column]) => {
+  const element = document.querySelectorAll('.panel:not([hidden]) .cm-line')[line];
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  let remaining = column;
+  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+    if (remaining <= node.length) {
+      const range = document.createRange();
+      range.setStart(node, remaining);
+      range.setEnd(node, Math.min(remaining + 1, node.length));
+      const box = range.getBoundingClientRect();
+      return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+    }
+    remaining -= node.length;
+  }
+  throw new Error(`no column ${column} on line ${line}`);
+}"""
+
+
+def point_at(page: Any, line: int, column: int) -> dict[str, float]:
+    """The middle of the character at a 0-based line and column of the editor in front, in the
+    page's coordinates."""
+    return page.evaluate(POINT_AT, [line, column])

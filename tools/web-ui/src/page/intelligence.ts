@@ -15,6 +15,7 @@ import type { SessionState } from "./intelligence-state.ts";
 import { type FileIntelligence, type Segment, segmentOf } from "./intelligence-status.ts";
 import { fetchChunk } from "./lazy.ts";
 import { LibraryTabs } from "./library-tabs.ts";
+import { autocompleteApplies } from "./preferences.ts";
 import type { LanguageState, LanguageStates } from "./types.ts";
 import type { EditorTabs } from "./workbench.ts";
 
@@ -200,7 +201,11 @@ export class IntelligenceLink {
       return;
     }
     const attachment = chunk
-      .codeIntelligence({ enabled: () => this.#enabled(), onPreferences: (listener) => this.#context.onPreferences(listener) })
+      .codeIntelligence({
+        enabled: () => this.#enabled(),
+        autocomplete: () => autocompleteApplies(this.#context.preferences()),
+        onPreferences: (listener) => this.#context.onPreferences(listener),
+      })
       .attach({
       editor: tracked.editor,
       csrf: this.#context.csrf,

@@ -11,7 +11,7 @@
  */
 import { indentWithTab, isolateHistory, toggleTabFocusMode } from "@codemirror/commands";
 import { type Diagnostic, lintGutter } from "@codemirror/lint";
-import { Compartment, EditorSelection, EditorState, type Extension, Prec, type Text } from "@codemirror/state";
+import { Compartment, EditorSelection, EditorState, type Extension, Prec, type Text, type TransactionSpec } from "@codemirror/state";
 import { EditorView, keymap, runScopeHandlers } from "@codemirror/view";
 
 import {
@@ -233,6 +233,11 @@ export class Editor {
   /** Turns CodeMirror's completion on or off with the `autocomplete` preference. */
   setAutocomplete(applies: boolean): void {
     this.#reconfigure(this.#completion, completion(applies));
+  }
+
+  /** Applies a change to the editor's state, unless the editor is already destroyed. */
+  dispatch(spec: TransactionSpec): void {
+    if (!this.#destroyed) this.view.dispatch(spec);
   }
 
   /**

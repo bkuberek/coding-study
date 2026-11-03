@@ -31,6 +31,7 @@ from tests.intelligence_lab import (
     Steps,
     intelligence_lab,
     open_attempt,
+    point_at,
     store,
     wait_for_status,
 )
@@ -69,22 +70,6 @@ LIBRARY_FILE = ".cs/lsp/library/typeshed/stdlib/builtins.pyi"
 LIBRARY_LINE = 20
 TARGET_WORD = (LINE_OF["same"], 11)
 """The line and column at which `target` starts in `use_same = target()`."""
-POINT_AT = """([line, column]) => {
-  const element = document.querySelectorAll('.panel:not([hidden]) .cm-line')[line];
-  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-  let remaining = column;
-  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-    if (remaining <= node.length) {
-      const range = document.createRange();
-      range.setStart(node, remaining);
-      range.setEnd(node, Math.min(remaining + 1, node.length));
-      const box = range.getBoundingClientRect();
-      return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-    }
-    remaining -= node.length;
-  }
-  throw new Error(`no column ${column} on line ${line}`);
-}"""
 
 
 def location(uri: str, line: int) -> dict[str, object]:
@@ -191,12 +176,8 @@ def seen(engine: str, lab: Lab) -> Seen:
     return found
 
 
-def _point(page: Any, line: int, column: int) -> dict[str, float]:
-    return page.evaluate(POINT_AT, [line, column])
-
-
 def _click_with_the_key(page: Any, line: int, column: int) -> None:
-    point = _point(page, line, column)
+    point = point_at(page, line, column)
     page.keyboard.down("ControlOrMeta")
     page.mouse.click(point["x"], point["y"])
     page.keyboard.up("ControlOrMeta")
@@ -303,7 +284,7 @@ def _refused(page: Any, found: Seen) -> None:
 
 
 def _the_link_while_the_key_is_held(page: Any, lab: Lab, found: Seen) -> None:
-    point = _point(page, *TARGET_WORD)
+    point = point_at(page, *TARGET_WORD)
     page.mouse.move(point["x"], point["y"])
     page.keyboard.down("ControlOrMeta")
     page.mouse.move(point["x"] + 1, point["y"])
@@ -316,7 +297,7 @@ def _the_link_while_the_key_is_held(page: Any, lab: Lab, found: Seen) -> None:
     page.keyboard.up("ControlOrMeta")
     page.wait_for_selector(".cs-definition-link", state="detached")
     found.link_after_release = page.locator(".cs-definition-link").count()
-    point = _point(page, LINE_OF["same"], 12)
+    point = point_at(page, LINE_OF["same"], 12)
     page.mouse.click(point["x"], point["y"])
     found.plain_click_line = _wait_for_line(page, LINE_OF["same"] + 1)
     _alt_shift_click(page, lab, found)
@@ -325,7 +306,7 @@ def _the_link_while_the_key_is_held(page: Any, lab: Lab, found: Seen) -> None:
 def _alt_shift_click(page: Any, lab: Lab, found: Seen) -> None:
     """Whatever the setting says, Alt-Shift-click adds a cursor and asks for no definition."""
     asked = _definition_requests(lab)
-    point = _point(page, LINE_OF["library"], 3)
+    point = point_at(page, LINE_OF["library"], 3)
     page.keyboard.down("Alt")
     page.keyboard.down("Shift")
     page.mouse.click(point["x"], point["y"])

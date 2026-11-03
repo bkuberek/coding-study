@@ -8,9 +8,9 @@ whose JDK cannot run Java and Kotlin, the list with its marks, the start dialog 
 a Java project with the languages disabled, and a start refused with a `fix:` hint; and, with code
 intelligence on against the scripted language server, the status bar's segment ready, stopped with
 its Restart and for a language whose server is not installed, the hover tooltip with a diagnostic
-and its documentation, a library file open in its read-only tab, and the Health view with the
-`code intelligence` rows. Each view must have no violation of WCAG 2.2 A and AA, nor of axe's best
-practices.
+and its documentation, a library file open in its read-only tab, the completion list with its
+panel, a signature help, and the Health view with the `code intelligence` rows. Each view must
+have no violation of WCAG 2.2 A and AA, nor of axe's best practices.
 
 axe-core comes with `axe-playwright-python`, in the optional `browser` dependency group; Playwright
 and its engines are set up as `tests/browsers.py` says. Without them the test is skipped.
@@ -106,6 +106,8 @@ INTELLIGENCE_VIEWS = (
     "health with code intelligence rows",
     "hover tooltip",
     "library tab",
+    "completion list",
+    "signature help",
 )
 SEGMENT = ".statusbar .code-intelligence"
 HEALTH_ROW = "table.checks td.check-name:has-text('code intelligence python')"
@@ -125,9 +127,36 @@ def intelligence_script(workspace: Path) -> tuple[dict[str, object], ...]:
         "uri": (workspace / LIBRARY_FILE).as_uri(),
         "range": {"start": {"line": 20, "character": 4}, "end": {"line": 20, "character": 14}},
     }
-    return (*INTELLIGENCE_SCRIPT, {"answer": {"textDocument/definition": [library]}})
+    return (*INTELLIGENCE_SCRIPT, {"answer": {"textDocument/definition": [library]}}, COMPLETIONS)
 
 
+COMPLETIONS: dict[str, object] = {
+    "answer": {
+        "textDocument/completion": {
+            "isIncomplete": False,
+            "items": [
+                {"label": "heappush", "kind": 3, "sortText": "1"},
+                {"label": "heappop", "kind": 3, "sortText": "2"},
+            ],
+        },
+        "completionItem/resolve": {
+            "label": "heappush",
+            "detail": "(heap: list[T], item: T) -> None",
+            "documentation": {"kind": "markdown", "value": "Push *item* onto the `heap`."},
+        },
+        "textDocument/signatureHelp": {
+            "signatures": [
+                {
+                    "label": "heappush(heap, item)",
+                    "parameters": [{"label": "heap"}, {"label": "item"}],
+                    "documentation": {"kind": "markdown", "value": "Push `item` onto `heap`."},
+                }
+            ],
+            "activeSignature": 0,
+            "activeParameter": 0,
+        },
+    }
+}
 INTELLIGENCE_SCRIPT: tuple[dict[str, object], ...] = (
     CAPABLE,
     {
@@ -270,7 +299,9 @@ def intelligence(
             check=True,
         )
     install_fake_basedpyright(root)
-    FsPreferencesStore(root).write(preferences_document(Preferences(code_intelligence=True)))
+    FsPreferencesStore(root).write(
+        preferences_document(Preferences(code_intelligence=True, autocomplete=True))
+    )
     script = ScriptedServer(base / "server.json")
     script.play(*intelligence_script(root.resolve()))
     (root / LIBRARY_FILE).parent.mkdir(parents=True)
@@ -306,6 +337,8 @@ def _intelligence_tour(
     yield INTELLIGENCE_VIEWS[3], lambda: _open(page, "#/health", HEALTH_ROW, RUN_WAIT_MS)
     yield INTELLIGENCE_VIEWS[4], lambda: _hover_tooltip(page, intelligence)
     yield INTELLIGENCE_VIEWS[5], lambda: _library_tab(page, intelligence)
+    yield INTELLIGENCE_VIEWS[6], lambda: _completion_list(page, intelligence)
+    yield INTELLIGENCE_VIEWS[7], lambda: _signature_help(page)
 
 
 def _segment(page: Any, intelligence: Intelligence, slug: str, word: str) -> None:
@@ -346,6 +379,24 @@ def _library_tab(page: Any, intelligence: Intelligence) -> None:
     page.wait_for_selector("[role=tab][aria-selected=true] .badge")
     page.wait_for_selector(".panel:not([hidden]) .library-note")
     page.wait_for_selector(".panel:not([hidden]) .cm-content")
+
+
+def _completion_list(page: Any, intelligence: Intelligence) -> None:
+    """A word typed at the end of the file: the list, with the panel of its selected item."""
+    intelligence.script.play(*intelligence_script(intelligence.workspace))
+    page.reload()
+    _segment(page, intelligence, SINGLE_FILE, "1 error")
+    page.click(".panel:not([hidden]) .cm-content")
+    page.keyboard.press("ControlOrMeta+End")
+    page.keyboard.type("hea")
+    page.wait_for_selector(".cm-completionInfo")
+
+
+def _signature_help(page: Any) -> None:
+    """A call opened after the list is closed: the signature help, its parameter in bold."""
+    page.keyboard.press("Escape")
+    page.keyboard.type("push(")
+    page.wait_for_selector(".cs-signature .cs-active-parameter")
 
 
 def _stopped_segment(page: Any, intelligence: Intelligence) -> None:

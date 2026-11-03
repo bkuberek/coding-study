@@ -10,6 +10,8 @@ const MINUTE_MS = 60_000;
 let sockets: FakeSocket[];
 let preferenceListeners: Set<() => void>;
 let enabled: boolean;
+let autocomplete: boolean;
+let dispatched: number;
 let page: EventTarget & { hidden: boolean };
 let manager: CodeIntelligence;
 
@@ -17,6 +19,7 @@ function newManager(): CodeIntelligence {
   return new CodeIntelligence(
     {
       enabled: () => enabled,
+      autocomplete: () => autocomplete,
       onPreferences: (listener) => {
         preferenceListeners.add(listener);
         return () => preferenceListeners.delete(listener);
@@ -34,7 +37,13 @@ function newManager(): CodeIntelligence {
 }
 
 function request(overrides: Partial<AttachRequest> = {}): AttachRequest {
-  const editor = { setIntelligence() {}, setLiveDiagnostics() {} } as unknown as AttachRequest["editor"];
+  const editor = {
+    setIntelligence() {},
+    setLiveDiagnostics() {},
+    dispatch() {
+      dispatched += 1;
+    },
+  } as unknown as AttachRequest["editor"];
   return {
     editor,
     csrf: "token",
@@ -77,6 +86,8 @@ beforeEach(() => {
   sockets = [];
   preferenceListeners = new Set();
   enabled = true;
+  autocomplete = false;
+  dispatched = 0;
   page = Object.assign(new EventTarget(), { hidden: false });
   Object.assign(globalThis, { document: page, window: new EventTarget() });
   manager = newManager();
@@ -186,4 +197,31 @@ test("Restart on an attachment opens its session again", () => {
   sockets[0]?.drop(4002, "exit 1: boom");
   attachment.restart();
   assert.equal(sockets.length, 2);
+});
+
+test("an attached editor is given its completion once, as it attaches", () => {
+  manager.attach(request());
+  assert.equal(dispatched, 1);
+});
+
+test("a change of preferences gives the editor its completion again", () => {
+  manager.attach(request());
+  autocomplete = true;
+  for (const listener of preferenceListeners) listener();
+  assert.equal(dispatched, 2);
+});
+
+test("a session that becomes ready gives the editor its completion again", async () => {
+  manager.attach(request());
+  await ready(sockets[0] as FakeSocket);
+  assert.equal(dispatched, 2);
+});
+
+test("a detached editor hears no more of the preferences or the session", async () => {
+  manager.attach(request()).detach();
+  const before = dispatched;
+  autocomplete = true;
+  for (const listener of preferenceListeners) listener();
+  await ready(sockets[0] as FakeSocket);
+  assert.equal(dispatched, before);
 });

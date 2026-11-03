@@ -54,10 +54,14 @@ async function ask(plugin: LSPPlugin, pos: number): Promise<Found | null> {
   });
 }
 
+/** The documentation of a hover, a completion item or a signature: HTML the broker rendered, else text. */
+export function documentation(content: HoverContent): HTMLElement {
+  return content.kind === "html" ? rendered(content.html, "cs-doc") : h("pre", { class: "doc-plain" }, content.text);
+}
+
 function element(content: HoverContent): HTMLElement {
-  const body = content.kind === "html" ? rendered(content.html, "cs-doc") : h("pre", { class: "doc-plain" }, content.text);
   // Focusable, so the keyboard scrolls documentation too long for the box (WCAG 2.1.1).
-  return h("div", { class: "cs-hover", tabindex: 0, role: "region", "aria-label": "Documentation" }, body);
+  return h("div", { class: "cs-hover", tabindex: 0, role: "region", "aria-label": "Documentation" }, documentation(content));
 }
 
 function spoken(content: HoverContent): string {
