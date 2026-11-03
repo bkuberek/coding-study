@@ -54,6 +54,7 @@ coding-study is a local, IDE-first interview-prep system: original problems stor
 | [0015](decisions/0015-local-web-ui.md) | A local web UI, `cstudy serve`, with full practice parity: every action calls the CLI's use case or runs its command, and runs stream live for every kind |
 | [0016](decisions/0016-jdk-range.md) | Java and Kotlin run on JDK 21 to 26, within the range each problem declares |
 | [0017](decisions/0017-async-project-problems.md) | Project problems grade asynchronous code on a virtual clock and concurrent code under stress: `async` methods, harness operations, stress cases with broken overlays, and Go 1.25 |
+| [0018](decisions/0018-editor-code-intelligence.md) | The page's editor gets code intelligence from local language servers behind a setting, and completion behind a second one: live diagnostics, hover documentation and go to definition over one WebSocket per tab and root |
 
 ## Conventions
 

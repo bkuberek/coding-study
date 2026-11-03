@@ -1,0 +1,271 @@
+# ADR 0018: The page's editor gets code intelligence from local language servers, behind a setting
+
+| Field | Value |
+|-------|-------|
+| Status | Accepted |
+| Date | 2026-11-03 |
+| Spec | [web-ui](../specs/web-ui.md#editor) (the `code_intelligence` and `autocomplete` preferences, the session route and its security rules, the keyboard table, the bundle budget, testing), [cli](../specs/cli.md#cstudy-doctor) (the `code intelligence` rows and what `--fix` installs), [installation-and-workspaces](../specs/installation-and-workspaces.md#layout) (`.cs/lsp/`), [architecture](../architecture.md#web-adapter) |
+| Amends | [ADR 0015](0015-local-web-ui.md) (the editor gains a language service; one WebSocket route, for language-server sessions only; its revisit trigger for a language-server bridge is closed), [PRD](../prd.md) (NFR-12: the whole-bundle budget leaves out the code-intelligence chunk, as it leaves out the Vim chunk) |
+| Builds on | [ADR 0008](0008-installable-tool-and-separate-workspaces.md), [ADR 0010](0010-ide-integration.md), [ADR 0012](0012-go-and-rust.md), [ADR 0013](0013-homebrew-distribution.md), [ADR 0016](0016-jdk-range.md) |
+
+## Context
+
+The owner asked (2026-11-03) for language intelligence in the page's editor, as a setting each user turns on and off: hovering a symbol shows its documentation; errors are marked as you type, such as a call to a function that was never imported; and, when on, the editor behaves like IntelliJ IDEA, marking errors, type errors and other issues. A follow-up asked for Cmd-click (Ctrl-click on Linux) to go to a definition: within the file, into another workspace file opened in a tab, and into library or standard-library sources, with a keyboard equivalent and a defined behavior under Vim. Answering the draft's questions the same day, the owner made autocomplete a second setting, which can be turned on only while code intelligence is on.
+
+What the code base shows:
+
+- The editor has no language service: [web-ui](../specs/web-ui.md#editor) says the page relies on the CLI's diagnostics. A run's `diagnostic` events reach the editor through `tools/web-ui/src/page/run-session.ts` (cleared at `run_start`, set for each open file), and `Editor.setDiagnostics` in `tools/web-ui/src/editor.ts` replaces the editor's whole lint set through `@codemirror/lint`'s `setDiagnostics`.
+- `basicSetup` binds Cmd-click (macOS) and Ctrl-click (elsewhere) to adding a cursor, and gives every Alt-mousedown to rectangular selection (`addsSelectionRange` and `rectangularSelection` in `@codemirror/view` 6.43.15).
+- The editor already completes, without a server. `basicSetup` includes `@codemirror/autocomplete` 6.20.4, a 35.3 KB raw chunk of the committed bundle: Ctrl-Space (on macOS also Option-` and Option-I) opens the list as you type, Escape closes it and Enter accepts. The language supports feed it: Python's adds the builtins (`isinstance`, `memoryview`) and the file's names, and TypeScript's adds snippets (`function ${name}`, `for (let ${index}`) and the file's names. No spec mentions it.
+- The bundle has little room. Without the Vim chunk it is 944.3 KB raw of NFR-12's 1,024 KB and 339.5 KB gzip of its 350 KB, as `cli/tests/entrypoints/web/test_bundle_budget.py` counts the committed files.
+- ADR 0015 rejected WebSocket because every client action was an ordinary request, and named "a need the editor cannot meet, such as code completion from a language server" as the trigger for a language-server bridge. uvicorn runs without its `standard` extra, so it has no WebSocket implementation today.
+- The workspace already carries editor tooling: `python/` lists pyright 1.1.414 as a dev dependency, configured by `[tool.pyright]` with `typeCheckingMode = "standard"`; `typescript/` pins TypeScript `~6.0.3`, the compiler that `--typecheck` runs; `go.work` and `rust/Cargo.toml` exist for gopls and rust-analyzer ([IDE files](../specs/installation-and-workspaces.md#ide-files)). IDEs run language servers on this workspace today ([ADR 0010](0010-ide-integration.md)).
+- Stubs throw (`raise NotImplementedError`, `throw new Error("Not implemented")`, `panic("not implemented")`, `todo!()`, `TODO("Not implemented")`), so a fresh stub has no missing-return error; its parameters are unused.
+
+Spikes (scratch code and installs outside the repository and the workspace), on the maintainer's laptop (arm64 macOS, 18 GiB) at a load average of 4 to 6. Times count from `didOpen` unless stated; memory is the resident size of the server's process tree:
+
+| Spike | Result |
+|-------|--------|
+| `@codemirror/lsp-client` 6.3.0 (MIT, 2026-09-17), bundled with esbuild 0.28.2, CodeMirror packages external | Client, hover and definition: 50.7 KB raw, 16.1 KB gzip, of which `marked` is 37.6 KB. With `marked` replaced at build time by an escaping stand-in: 13.1 KB raw, 4.9 KB gzip. Every feature of the package: 65.4 KB raw, 20.7 KB gzip. The protocol types add nothing |
+| `@codemirror/lsp-client`, read from its source | `serverDiagnostics()` replaces the editor's whole lint set, so it would erase run diagnostics; hover renders Markdown with `marked` into `innerHTML`, filtered only by an optional `sanitizeHTML`; `jumpToDefinition` is bound to F12 only, takes the first location and crosses files through `Workspace.displayFile`; no pull diagnostics, although the capability is declared; requests from the server get `MethodNotFound`; `processId` is null; a reconnect sends `didOpen` again for every open file. Its `serverCompletion` and `signatureHelp` never send `completionItem/resolve`, and render completion and signature documentation with `marked` as hover does |
+| Completion and signature help, with `@codemirror/lsp-client` 6.3.0's client capabilities | Both servers declare `resolveProvider`, and no item of any list carries documentation or a detail. basedpyright: 23 items after `heapq.` in 0.652 s (the session's first request), 84 after `"a b c".` in 0.023 s, 211 when invoked on `sorted` in 0.077 s, each list marked incomplete. typescript-language-server: 40 items after `["a", "b"].` in 0.067 s and 45 after `Math.` in 0.016 s, complete lists. `completionItem/resolve` returns Markdown documentation in 3 to 13 ms; typescript-language-server adds the signature as `detail`, basedpyright puts it in the documentation's code block. Signature help inside `heapq.heappush(heap, 3)` and `Math.max(1, 2)`: one signature, with its documentation, in 2 to 7 ms. Each server has a setting for completions that add an import: basedpyright's `autoImportCompletions`, and typescript-language-server's `includeCompletionsForModuleExports`, which it turns on by default |
+| Python: the workspace's pyright 1.1.414 (its wheel bundles the server; run with the Node that TypeScript practice needs) | Initialize 0.125 s, diagnostics 0.226 s, 151 MB. `"sqrt" is not defined` and `"math" is not defined` (`reportUndefinedVariable`), the type error (`reportAssignmentType`), unused names as hints tagged Unnecessary. Hover shows signatures without documentation for `sorted`, `heapq.heappush`, `str.split` and `len` |
+| Python: basedpyright 1.40.2 (npm: 6.2 MB download, 42 MB installed, no dependencies) | Initialize 0.176 s, diagnostics 0.285 s, 174 MB; the same diagnostics, with rule names on the unused ones; hover adds the documentation of `sorted`, `heappush`, `str.split` and `len`, from docstrings it scrapes from compiled builtins ([basedpyright](https://docs.basedpyright.com/latest/benefits-over-pyright/pylance-features/)). Its PyPI wheel (13.7 MB) requires a 56 MB wheel holding a second Node |
+| TypeScript: typescript-language-server 6.0.3 (0.5 MB download, no dependencies) over TypeScript 6.0.3's tsserver | Initialize 0.063 s, diagnostics 0.994 s, 171 MB; TS2322, `Cannot find name 'sqrt'` (TS2304), and TS6133 tagged Unnecessary; hover with the JSDoc of the standard library; definitions into `node_modules/typescript/lib/*.d.ts` and `@types/node` |
+| TypeScript: TypeScript 7.0.2's own `tsc --lsp --stdio` (a 24 MB native binary) | 40 MB; diagnostics only on request (`textDocument/diagnostic`), the same three codes in 0.03 s; it ignored `exit` until killed |
+| Go: gopls v0.24.0 (`go install` in 17.5 s; 43 MB binary) | Initialize 0.199 s, diagnostics 0.442 s, 69 MB; `undefined: strings`, the type error, and the unused import and variable as errors tagged Unnecessary; hover with documentation; definitions into GOROOT. Hover adds web links to package documentation unless `linksInHover` is off, and links inside the documentation are `file://` links into GOROOT. gopls v0.24.0 needs Go 1.27 to build, v0.23.0 Go 1.26, v0.21.1 Go 1.25 |
+| Rust: rust-analyzer of 2026-11-02 (14.3 MB download). The rustup proxy on PATH answers `Unknown binary 'rust-analyzer'` while the component is missing | Hover and definitions into `core/src/slice/mod.rs` at once; no diagnostics for the unsaved file. After `didSave`, `cargo check` reports `use of undeclared type HashMap` (E0433, with the `use` line to add) and E0308 at 3.0 s, 200 MB. With the workspace's VS Code setting `check.extraArgs: ["--keep-going"]`, `cargo check` fails (`the argument '--keep-going' cannot be used multiple times`), because rust-analyzer has passed the flag itself since July 2024 ([#17561](https://github.com/rust-lang/rust-analyzer/pull/17561)), so no `cargo check` diagnostic shows at all |
+| Java: Eclipse JDT LS (not run) | Release tag 1.63.0; the 1.64.0 snapshot archive is 50.3 MB; it runs on Java 25 or newer ([README](https://github.com/eclipse-jdtls/eclipse.jdt.ls)); Gradle import through Buildship |
+| Kotlin: Kotlin LSP v263.7084.0 (not run) | Its README: "The project is currently in the Alpha state"; the standalone archive is 360 to 369 MB per platform; the older community server's README calls it deprecated |
+| The bridge: a Starlette 1.10.0 WebSocket on uvicorn 0.54.0 with wsproto 1.3.2 (pure Python, needs only h11; 192 KB installed), relaying pyright's standard streams | In Playwright's Chromium, Firefox and WebKit, under the page's CSP (`connect-src 'self'`): no violation, the `SameSite=Strict` cookie on the handshake, `initialize` answered in 110 to 332 ms, first diagnostics 0.78 to 1.03 s after connecting, hover and definition answered. A page on another `127.0.0.1` port sent the cookie too, since cookies ignore ports ([RFC 6265 §8.5](https://www.rfc-editor.org/rfc/rfc6265#section-8.5)), and only the Origin check refused it. pyright exited on its own when its standard input closed |
+| Browser rules | Chromium pools at most 6 HTTP/1.1 connections per host and, separately, 255 WebSockets (Firefox: 200), per `net/socket/client_socket_pool_manager.cc`. CSP Level 3 matches `'self'` to a `ws:` URL on an `http:` page with the same host and port ([§6.7.2.8](https://www.w3.org/TR/CSP3/)) |
+| A TypeScript language service in the browser | TypeScript 6.0.3's `typescript.js` alone is 8.7 MiB raw, 1.6 MiB gzip |
+
+## Decision
+
+### Owner answers
+
+| # | Question | Answer (2026-11-03) |
+|---|----------|---------------------|
+| O1 | Completion and signature help: in scope? | Yes, as a second setting, `autocomplete`, off by default and available only while code intelligence is on ([Autocomplete](#autocomplete)). References, rename and quick fixes stay out of scope |
+| O2 | Java and Kotlin | Java in phase 3, on JDK 25 or 26 only. Kotlin waits for a beta server and a spike |
+
+### The settings
+
+- **`code_intelligence`, a preference, off by default.** When it is on, a file whose language has an installed server gets live diagnostics, hover documentation and go to definition; any other file behaves as today. One switch serves every language. The Settings view lists each language's state: `basedpyright 1.40.2`, `not installed: run cstudy doctor --fix`, `needs JDK 25 or 26`, or `not available yet`.
+- **Part of the editor, not a practice command.** Like highlighting, code intelligence grades nothing, records nothing and writes no file, so it needs no command of its own; terminal users get the same through the IDEs of [ADR 0010](0010-ide-integration.md), which run language servers on the same workspace. What the CLI gains first is installing and checking the servers ([Without a server](#without-a-server)).
+- **`autocomplete`, a second preference, off by default.** It adds completion and signature help from the server, and takes effect only while `code_intelligence` is on ([Autocomplete](#autocomplete)).
+- **"Like IntelliJ IDEA" in the first phases** means: errors, warnings and type errors underlined as you type, with gutter markers and counts in the status bar; unused code faded and deprecated code struck through; documentation on hover, by mouse and by keyboard; go to definition by Cmd-click or Ctrl-click, F12 and Vim keys; and, with `autocomplete` on, completion and signature help. References, rename and quick fixes stay out of scope ([Revisit](#revisit)).
+
+### Servers
+
+One server per language, chosen for the documentation it shows, the diagnostics it gives on unsaved text, and an install that works offline afterwards:
+
+| Language | Server | Installed by | Root | Notes |
+|----------|--------|--------------|------|-------|
+| Python | basedpyright 1.40.2 | `cstudy doctor --fix`, from npm into `.cs/lsp/` | `python/`, or the project folder | Reads `[tool.pyright]`, so it checks in the workspace's `standard` mode and resolves imports through `python/.venv`, as the workspace's pyright does; hover documents the standard library, which pyright does not |
+| TypeScript | typescript-language-server 6.0.3 | The same | `typescript/`, or the project folder | Runs the tsserver of the workspace's own TypeScript (`typescript/node_modules/typescript/lib`), the compiler `--typecheck` runs; automatic type acquisition off |
+| Go (phase 2) | gopls, by the selected Go: v0.21.1 on 1.25, v0.23.0 on 1.26, v0.24.0 on 1.27 | `cstudy doctor --fix`: `go install` with `GOBIN=.cs/lsp/bin` and `GOTOOLCHAIN=local`, online once | `go/`, found through the root `go.work`, or the project folder, through its own `go.work` | `linksInHover` off |
+| Rust (phase 2) | rust-analyzer from rustup, or any `rust-analyzer` on PATH whose `--version` runs | You: `rustup component add rust-analyzer`. `cstudy doctor --fix` never changes the Rust toolchain, as it never runs `cargo` | `rust/`, or the project folder | `check.allTargets` on and no `--keep-going` of ours; a target directory of its own, so it never waits for an IDE's `cargo check`; `CARGO_NET_OFFLINE=true`; `cargo check` errors come after each save |
+| Java (phase 3) | Eclipse JDT LS, a pinned milestone checked by SHA-256 | `cstudy doctor --fix`, a download into `.cs/lsp/jdtls/` | `jvm/`, or the project folder | Runs on the selected JDK only when it is 25 or 26, since cstudy never searches for another JDK ([ADR 0016](0016-jdk-range.md)); the Gradle import runs offline after the warm-up; data under `.cs/lsp/jdtls-data/` |
+| Kotlin | None yet | | | Kotlin LSP is in alpha and 360 MB; Kotlin keeps run diagnostics only |
+
+- **Pinned and tested.** `.cs/lsp/` is an npm project whose `package.json` and `pnpm-lock.yaml`, with exact versions and integrity hashes, ship with cstudy. `cstudy doctor --fix` installs it with `pnpm install --frozen-lockfile --ignore-scripts`, and the Node 24 that TypeScript practice needs runs both servers. A cstudy release moves the versions; supported means the slow tests pass with them.
+- **Offline.** Nothing is downloaded after `cstudy doctor --fix`, and no server reaches the network: tsserver's automatic type acquisition is off, gopls's web links are off, and cargo runs offline over the vendored crates.
+- **Roots.** A session's root is a practice project or a project folder, never the workspace root or `.cs/`, so the materialized references in `.cs/build/` are never indexed, hovered or offered as a definition.
+
+### Sessions: one WebSocket per tab and root
+
+- **Route.** `GET /api/v1/code-intelligence?attempt_id=N`, upgraded to a WebSocket. The server derives the language and the root from the attempt, which must be in progress, and the page opens one session per root it shows files of; a later attempt in the same root reuses it. Each text message carries one JSON-RPC message, without the `Content-Length` header that standard streams use.
+- **WebSocket here only.** A language-server session is one ordered stream in both directions, mostly started by the server, and lives as long as the tab. In Chromium and Firefox a WebSocket costs none of the six HTTP/1.1 connections per host that [web-ui](../specs/web-ui.md#server-sent-events) budgets for streams; WebKit's pooling is not verified, so a browser test holds two visible tabs, each with its streams and a session, and saves a file from each. A closed tab ends its sessions at once. Every other client action stays an ordinary request, as ADR 0015 decided.
+- **wsproto.** uvicorn starts with `ws="wsproto"`, per-message compression off and at most 4 MiB per message. Naming the implementation keeps an installed `websockets` package from replacing it.
+- **One server per session.** Tabs share nothing: LSP has one client per server (one `initialize`, document versions the client owns, server requests addressed to that client). The servers measured take 40 to 200 MB on practice-sized projects, so `cstudy serve` runs at most four; a fifth session closes with code 4003 and a message that names the limit.
+- **The broker.** Between the socket and the server's standard streams, the web adapter:
+
+  1. Rewrites `initialize`: `processId` becomes the server's own PID, `rootUri` and `workspaceFolders` become the root, and the initialization options and the client capabilities the broker implements come from cstudy's catalog of servers.
+  2. Answers the server's housekeeping requests itself: `workspace/configuration` from the catalog, `client/registerCapability` (it keeps file-watch registrations), `window/workDoneProgress/create` and `window/showMessageRequest`. It refuses `workspace/applyEdit`, since nothing in the first phases edits through the server.
+  3. Checks every text document the page names: a `file:` URI inside the root, outside untracked paths (`node_modules`, `.venv`, caches, build output). Any other document gets an error response, or is dropped for a notification.
+  4. Renders the Markdown documentation of hover answers, resolved completion items and signature help to HTML ([Hover](#hover), [Autocomplete](#autocomplete)), and records the locations that definition answers name ([Go to definition](#go-to-definition)).
+  5. Forwards the [notification](../specs/web-ui.md#notifications) hub's file changes inside the root as `workspace/didChangeWatchedFiles`.
+
+- **Lifecycle.** A session starts its server once the CSRF message arrives and ends it when the socket closes: `shutdown` and `exit`, then standard input closed, SIGTERM to the server's process group 3 s later and SIGKILL 2 s after that, as [Cancel](../specs/web-ui.md#cancel) escalates. The page closes a session whose files have all been closed for 60 s, and a hidden tab's sessions after 5 minutes; showing the tab opens them again. A server that exits on its own closes the socket with code 4002, its exit code and its last line of standard error, and the page offers Restart. Ctrl-C in `cstudy serve` stops every language server before it waits for its open responses, as it stops runs.
+- **Orphans.** Each server starts in a session of its own, so its whole process group is stopped. If `cstudy serve` dies, the server sees end of file on its standard input, and a server that follows LSP's `processId` rule also exits when that PID is gone.
+- **Reconnects.** After an unexpected close the page tries again after 1, 2 and 5 s; the client initializes again and opens its files again, so nothing needs replaying.
+
+### Security
+
+The session lets the page open documents, ask the server about them and read the files it names. Each control keeps other pages and programs out:
+
+| Threat | Control |
+|--------|---------|
+| Another web page, including one on another `127.0.0.1` port | The handshake needs a `Host` and an `Origin` from the allow-lists. The cookie alone does not keep out a page on another port: the spike's browsers sent it. A refusal comes before the upgrade, as 403 |
+| A request forged from a page | The CSRF token in the session's first message, compared in constant time. A WebSocket cannot carry the `X-Cstudy-CSRF` header, and the session reads files and starts processes, as unsafe requests do |
+| Another program on this machine | The session cookie, as for every route |
+| Files outside the attempt | Text documents only inside the root ([The broker](#sessions-one-websocket-per-tab-and-root)). A library file is read only when the server named it as a definition in this session, only as a regular UTF-8 file up to 4 MiB, and never under `.cs/build/` or the content root |
+| Script injection through documentation | Hover, completion and signature documentation is rendered on the server with raw HTML disabled and no `style` attribute, as statements are; the page inserts no other server text as HTML, so completion labels, details and signature labels are text |
+| Large or many messages | 4 MiB per message; document text up to 1 MiB, the file API's limit; no compression |
+| Code the servers run | They run as you, on your code. rust-analyzer runs build scripts and procedural macros, and JDT LS runs Gradle scripts, as `cstudy test` builds do; the others run no workspace code |
+
+The Content Security Policy is unchanged: `connect-src 'self'` covers the session's `ws:` URL in every engine the browser tests cover.
+
+### Documents: buffers, disk and the watcher
+
+- The tabs' files are the server's open documents: `didOpen` with the tab's text, unsaved edits included; `didChange` 500 ms after the last change and before every request; `didClose` when the tab closes; and `didSave` after each save the page makes, through the existing `cstudy:file-saved` event. The server reads every other file from disk. Positions are UTF-16 offsets, LSP's default and CodeMirror's own.
+- A change on disk reaches the server as it reaches the tab: a tab without unsaved edits takes the new version, which is a change like typing, and under the conflict banner the server keeps checking what the tab shows. Files no tab shows, such as a level's new test file or a module edited in an IDE, reach it through the forwarded file-watch events.
+
+### Diagnostics
+
+- **Two sources, one lint set.** The editor keeps the last run's diagnostics as today, cleared at the next `run_start`, and the server's, replaced by each publication. A run diagnostic and a live one on the same line with the same message show once. `Editor` gains a second source in place of `setDiagnostics` replacing everything, and `@codemirror/lsp-client`'s `serverDiagnostics()` is not used.
+- **What each shows.** An error is underlined in red with a gutter marker, a warning in yellow, information in blue; a hint has no underline and no marker. A diagnostic tagged Unnecessary shows as faded text and one tagged Deprecated as struck through, as LSP 3.17 allows. Each names its source: `basedpyright reportUndefinedVariable`, `ts 2304`, `go`, `rustc E0433`, or `last run`.
+- **Pull and push.** The page reads pushed diagnostics (`textDocument/publishDiagnostics`) and, from phase 2, asks a server that only answers requests (`textDocument/diagnostic`), as TypeScript 7's does.
+- **What a learner meets.** Errors show about half a second after typing stops for Python and Go and about a second for TypeScript, as measured. Rust's `cargo check` errors show after each save. A fresh stub's unused parameters are faded hints, not errors. A Rust stub's parameters draw rustc's `unused variable` warning; phase 2 checks that rust-analyzer tags it Unnecessary, so it shows faded too. A newly unlocked level's test file shows errors for the methods the level asks for until they exist, as an IDE shows them.
+
+### Hover
+
+- With the pointer at rest (CodeMirror's 300 ms), or with Cmd or Ctrl-K, then Cmd or Ctrl-I at the cursor, the page asks for the hover and shows the HTML the broker rendered: markdown-it-py with raw HTML disabled and Pygments code blocks, the renderer and classes of statements and hints. `file:` links in documentation become buttons that open the library tab; web links stay links. A diagnostic under the pointer shows in the same tooltip box, above the documentation.
+- `@codemirror/lsp-client`'s own Markdown renderer is not used. The package imports one Markdown library, `marked`, and the build replaces it with an escaping stand-in, so the bundle still holds no Markdown library; a fast test checks that the chunk holds none.
+
+### Go to definition
+
+Cmd-click on macOS, Ctrl-click elsewhere (on macOS Ctrl-click is the context menu), F12, or Vim's `gd` and `Ctrl-]` go to the definition of the symbol at that position, through `@codemirror/lsp-client`'s `jumpToDefinition` and the page's `Workspace.displayFile`. With Cmd or Ctrl held, the word under the pointer is underlined and the pointer becomes a hand, as in IntelliJ IDEA; nothing is requested until the click. A jump records where it started.
+
+| Target | What happens |
+|--------|--------------|
+| The same file | The cursor moves there, scrolled into view |
+| Another file of the attempt, such as a project's module or a generated test file | Its tab opens, or comes forward, at the definition |
+| A file outside the attempt: the standard library, typeshed, `node_modules`, `.venv`, GOROOT, the Rust sources, the runner's support code, another practice file | A read-only tab with a library badge and the file's path, at the definition. It cannot be saved, has no language session in phases 1 and 2, and closes like any tab |
+| A file over 4 MiB, not UTF-8, or not a `file:` URI (JDT LS's `jdt://` class files, in phase 3) | No tab: a note at the click names the file and the line |
+| A file under `.cs/build/` or the content root | Refused with `not shown: cstudy's build area`, so a reference solution is shown only through the Solution pane and its question |
+| Several locations, as for an overloaded function | The first, as the client chooses; a chooser comes later |
+| No location | Nothing moves; the status bar says `no definition found` |
+
+Library sources open read-only rather than refusing them or showing a hover alone: in single-file practice the most frequent target is the standard library (`sorted`, `heapq`, `Map.prototype.get`), and installed packages are no place for edits.
+
+### Autocomplete
+
+- **A second preference that needs the first.** `autocomplete` is off by default. The Settings view shows it under `code_intelligence`, disabled with the note `Turn on code intelligence first` while that is off. Turning `code_intelligence` off stops completion and signature help at once and keeps `autocomplete` as stored, so turning it on again brings them back as they were. The preferences document holds both values as set and `PUT` accepts any combination; the page applies autocomplete only while both are true.
+- **What it covers.** Completion from the server as you type, on a word character or one of the server's trigger characters (`.` in both servers), after CodeMirror's 100 ms; completion on Ctrl-Space at any time; and signature help, which opens when you type a call's `(` or `,` and on Cmd or Ctrl-Shift-Space, follows the active parameter, and closes when the cursor leaves the call or on Escape. Signature help belongs to the same setting because it too suggests what to write, as IntelliJ IDEA's parameter info does while you type.
+- **What the list shows.** Each item's label and kind icon, filtered and ranked by CodeMirror as you type. The page asks the server again only when the server marked its list incomplete, as basedpyright does, or the typed prefix leaves the list's range; a newer request cancels an older one with `$/cancelRequest`. The selected item's signature and documentation show in the info panel beside the list, from `completionItem/resolve`, the only way the measured servers deliver them; each item is resolved once per list.
+- **What accepting inserts.** The item's text, as plain text. The broker declares no snippet support, so an item never leaves placeholders to step through. Completions that add an import are off (basedpyright's `autoImportCompletions`, typescript-language-server's `includeCompletionsForModuleExports`), since adding an import is a quick fix, which stays out of scope. Tab is not an accept key: it indents, as today.
+- **The page's own completion source and signature tooltip.** They are written against `@codemirror/autocomplete` and CodeMirror's tooltips, not `@codemirror/lsp-client`'s `serverCompletion` and `signatureHelp`: those never resolve an item, so the measured servers' items would show labels without a signature or documentation, and they render documentation with `marked`, which the build replaces. The broker renders the documentation of a resolved completion item and of each signature as it renders hover: markdown-it-py with raw HTML disabled and Pygments code blocks.
+- **Beside the editor's own completion.** CodeMirror's completion from the language supports (Python's builtins and the file's names, TypeScript's snippets and the file's names) stays as it is today for every user, whatever the two settings say: it needs no server and is not code intelligence. While `autocomplete` applies and the file's session is ready, the server's completion replaces it in that file, so no name is offered twice; while the session is starting, has stopped or has no server, the editor's own completion is what shows.
+- **No restart.** Every session declares completion and signature help to its server, and the page asks for them only while `autocomplete` applies, so turning it on or off never restarts a server.
+- **Vim.** Completion and signature help work in insert mode as they do without Vim, with the same keys; normal mode inserts no text, so it opens neither. One Escape closes the list or the signature help and leaves insert mode, as in LazyVim.
+- **Phase 1, with Python and TypeScript.** `@codemirror/autocomplete` is already in the main bundle through `basicSetup`, so autocomplete adds only the page's completion source and signature tooltip to the code-intelligence chunk, within its budget. Go and Rust get autocomplete in their phase.
+
+### Keyboard, mouse and Vim
+
+| Action | Keys | With Vim, in normal mode |
+|--------|------|--------------------------|
+| Go to definition | F12; Cmd-click (macOS) or Ctrl-click | `gd`, `Ctrl-]`; F12 and the click work too |
+| Back to where the last jump started | Ctrl-Minus, VS Code's binding on macOS. On Linux and Windows it is also the browser's zoom-out key, which the editor takes while it has the focus; the browser tests check each engine | `Ctrl-o`, through Vim's jump list |
+| Hover at the cursor | Cmd or Ctrl-K, then Cmd or Ctrl-I; Escape closes it | `K` |
+| Next and previous diagnostic | F8 (as today) and Shift-F8, skipping hints | `]d` and `[d` |
+| The file's diagnostics as a list | Cmd or Ctrl-Shift-M, CodeMirror's lint panel | The same |
+| Completion, with `autocomplete` on | As you type, or Ctrl-Space; on macOS also Option-` and Option-I, CodeMirror's, since macOS may take Ctrl-Space to switch input sources. The arrows, PageUp and PageDown move; Enter accepts; Escape closes | In insert mode the same, except that Escape closes the list and leaves insert mode |
+| Signature help, with `autocomplete` on | Opens on `(` and `,` in a call, or with Cmd or Ctrl-Shift-Space; Escape closes it | In insert mode the same, except that Escape closes it and leaves insert mode |
+| Add a cursor, whether the setting is on or off | Alt-Shift-click (Option-Shift-click), IntelliJ IDEA's binding; Alt-drag stays rectangular selection. Cmd-click and Ctrl-click never add a cursor: with the setting off they move the cursor like a plain click | The same |
+
+- The Vim keys are those of the owner's editor (LazyVim: `gd`, `K`, `]d` and `[d`). They are mapped with `Vim.mapCommand` while the setting is on, and a jump enters Vim's jump list through `Vim.getVimGlobalState_().jumpList`. A click under Vim moves the cursor and stays in normal mode.
+- Adding a cursor moves to Alt-Shift-click in both modes (owner, 2026-11-03), so turning the setting on or off never changes what a click does to the selection. With the setting off, every other click and key behaves as today.
+- A hover opened from the keyboard is read out by the page's polite live region (its first paragraph, as plain text). The library tab's editor names its path and `read-only` for screen readers. The status bar shows the active file's session (`python · basedpyright · ready`, `starting`, `not installed`, `stopped: exit 1 · Restart`) and its counts (`2 errors · 1 warning`).
+
+### Without a server
+
+- **`cstudy doctor`** gains a `code intelligence <language>` row for each language while the preference is on: `ok` with the server and its version; `WARN` with the fix when it is missing (`fix: cstudy doctor --fix`; for Rust, `fix: rustup component add rust-analyzer`); `WARN` naming the JDK for Java below 25; and `not available yet` for Kotlin. A row checks by running the server's version command, because a rustup proxy can exist without its component. The Health view shows the rows, and its Fix job installs.
+- **`cstudy doctor --fix`** installs what those rows need, only while the preference is on, so a user who never turns it on downloads nothing. Its confirmation already says it may need the network.
+- **In the editor,** a language without a server shows one line in the status bar (`no code intelligence for Go: gopls is not installed · Health`), and the file works as it does today.
+
+### Front end and bundle
+
+- The page's code-intelligence chunk holds `@codemirror/lsp-client` (the client, the plugin, the workspace class, the definition commands) and the page's own transport, workspace, diagnostics, hover, click handling, completion source, signature tooltip and status. It imports `@codemirror/autocomplete` from the main bundle, which already holds it. It loads when the preference is on and a file of a language with a server opens, after the editor is editable, so NFR-12's 600 KB budget before a first file is editable is unchanged.
+- NFR-12's whole-bundle budget leaves the chunk out, as it leaves out the Vim chunk, and the chunk gets a budget of its own: at most 64 KB raw and 24 KB gzip.
+- `editor.ts` builds its setup from `basicSetup`'s parts, so adding a cursor moves to Alt-Shift-click for every user and Alt-drag stays rectangular selection.
+
+### Testing
+
+| Layer | What it proves | How | Marker |
+|-------|----------------|-----|--------|
+| Broker | Framing; the rewritten `initialize`, without snippet support; the housekeeping answers; documents outside the root refused; the CSRF first message; hover, resolved-completion and signature HTML with raw HTML escaped, and hover's `file:` links turned into buttons; library reads (definition targets only, `.cs/build/` and the content root refused, the size limit, links followed); the four-server limit; the idle end; end of file and the SIGTERM and SIGKILL escalation; Ctrl-C | A fake language server (`tests/fake_language_server.py`, scripted as `tests/scripted_child.py` is) under Starlette's `TestClient.websocket_connect`, which runs in-process and needs no wsproto | fast |
+| Security matrix | The handshake refused for a bad `Host`, an `Origin` on another port, no cookie, and a wrong or missing CSRF message | The same | fast |
+| Doctor | The rows and the fix: missing, installed, a rustup proxy without the component, a JDK below 25, the preference off | Fakes, as in `tests/application/` | fast |
+| Preferences | `code_intelligence` and `autocomplete` default to false, a stored file without them reads them as false, and `PUT` stores any combination | Unit tests of `domain/preferences.py` and of the preferences route | fast |
+| Front end | The merge of run and live diagnostics, tags to classes, URIs to tree paths, the definition targets of the table above, Cmd or Ctrl by platform, the reconnect delays; completion items to options (ranges, kinds, incomplete lists), resolve once per item, autocomplete applied only while both preferences are on, and the editor's own completion replaced only while the session is ready | `node --test`, run by `build.sh` | fast |
+| Bundle | The chunk within its budget and without `marked`; NFR-12 without the Vim and code-intelligence chunks | The committed files | fast |
+| Real servers | basedpyright and typescript-language-server on the test workspace: an undefined name is an error, `sorted` has documentation, a definition opens `builtins.pyi` read-only, completion after `heapq.` offers `heappush` and its resolved item has documentation, and the same for `Math.max` in TypeScript | The slow workspace fixtures, skipped while `.cs/lsp/` is not installed | slow |
+| Browser | In each engine, against the fake server: the underline and gutter marker, faded unused code, hover by mouse and by keys with the live region, Cmd-click or Ctrl-click and F12 in the file, into another tab and into a library tab, Alt-Shift-click adding a cursor, Ctrl-Minus back, Vim's `gd`, `K` and `Ctrl-o`; with `autocomplete` on, the list on `.` and on Ctrl-Space with its info panel, Enter accepting, signature help on `(`, and one Escape under Vim closing the list and leaving insert mode; the `autocomplete` checkbox disabled while code intelligence is off; two visible tabs that each hold a session and still save, no CSP violation, and axe on the tooltip, the completion list and the library tab | Playwright, in the optional `browser` group | slow |
+
+The fake server keeps the fast and browser tests deterministic: they wait for what the page draws, never for time. CI runs the fast tests, as task F9's workflow does; the real servers and the browsers stay in the local gate, with the slow and browser tests.
+
+### Phases
+
+| Phase | Scope |
+|-------|-------|
+| 1 | The two preferences, the Settings view, the doctor rows and their fix, the session route with wsproto, and Python and TypeScript: live diagnostics, hover by mouse and keyboard, go to definition into the file, the attempt's files and read-only library sources, with Vim keys, and, behind `autocomplete`, completion and signature help |
+| 2 | Go and Rust, autocomplete included; pull diagnostics; documentation links that open library sources |
+| 3 | Java on JDK 25 and 26 only (25 is the JDK to install), after a spike that measures JDT LS's start and memory on `jvm/` and a project folder |
+| 4 | Kotlin, once its server reaches beta and a spike passes on `jvm/kotlin` and a Kotlin project folder |
+| Not planned | References, rename, and quick fixes such as adding a missing import, with the completions that add one ([Revisit](#revisit)) |
+
+## Consequences
+
+- The page's editor marks errors as you type, documents what you hover and goes to definitions in Python and TypeScript once the setting is on and `cstudy doctor --fix` has run online once, and completes from the server with `autocomplete` on; Go and Rust follow, then Java. Grades, runs and the files on disk are unaffected.
+- The preferences document gains `code_intelligence` and `autocomplete`, both false, and stays at format 1: `parse_preferences` already gives a key a stored file leaves out its default.
+- The editor's own completion, which every user has today, is unchanged with both settings off.
+- A new runtime dependency: wsproto 1.3.2, a pure-Python wheel that needs only h11, which uvicorn already needs; it reaches the Homebrew formula through `requirements.txt` with no template change ([ADR 0013](0013-homebrew-distribution.md)). The import contracts forbid wsproto wherever they forbid uvicorn.
+- A new front-end dependency: `@codemirror/lsp-client` 6.3.0, which brings `vscode-languageserver-protocol` for types only; `scripts/build.ts` aliases `marked` to the stand-in.
+- NFR-12 and `test_bundle_budget.py` leave out the code-intelligence chunk and hold it to its own budget.
+- The workspace's `.cs/lsp/` takes about 44 MB for Python and TypeScript (a 6.7 MB download), plus 43 MB for gopls and about 50 MB downloaded for JDT LS. Each running server takes 40 to 200 MB on practice-sized projects, at most four at once.
+- Reference solutions stay hidden: no root holds them, and the library tab refuses `.cs/build/` and the content root.
+- New code: a catalog of servers in the domain (`domain/code_intelligence.py`: command, initialization options, settings, idle time and root rule per language); a status and installation use case in the application, behind ports that locate and install servers and read the preference; their adapter; and the session route with its broker in `entrypoints/web/`, where runs already start child processes.
+- `editor.ts` builds its setup from `basicSetup`'s parts, and `Editor` holds two diagnostic sources and lets the code-intelligence chunk replace the language supports' completion in its file.
+- Specs change with the behavior: [web-ui](../specs/web-ui.md) (the Editor row, Security, Preferences with both keys, the Settings view, Keyboard and accessibility with the completion and signature keys, Front-end assets, Testing), [cli](../specs/cli.md#cstudy-doctor), [installation-and-workspaces](../specs/installation-and-workspaces.md) (`.cs/lsp/`) and [architecture](../architecture.md#web-adapter).
+- Found by the spike, outside this decision: `rust-analyzer.check.extraArgs: ["--keep-going"]` in `adapters/ide/vscode.py` makes rust-analyzer's `cargo check` fail in VS Code with current rust-analyzer, so VS Code shows no `cargo check` diagnostic for Rust. Removing the key is a separate fix; ADR 0010's rewriting rule then updates every `.vscode/settings.json` still as cstudy wrote it.
+
+## Revisit
+
+| Trigger | What to reconsider |
+|---------|--------------------|
+| The workspace moves to TypeScript 7 | Its own `tsc --lsp --stdio` (40 MB measured) in place of typescript-language-server, with pull diagnostics |
+| Kotlin LSP reaches beta | Kotlin, after a spike on `jvm/kotlin` and a Kotlin project folder |
+| Servers per tab outgrow users' memory, or JDT LS's start makes reloads slow | One server per root shared by every tab, behind a broker that rewrites request ids and hands documents over |
+| The owner asks for references, rename or quick fixes | A phase where the page applies the server's edits (`workspace/applyEdit`), with completions that add an import |
+| `@codemirror/lsp-client` resolves completion items and lets the page render documentation | Its `serverCompletion` and `signatureHelp` in place of the page's own |
+| `@codemirror/lsp-client` changes how it imports `marked` | The stand-in, or rendering in the browser |
+| Users practicing recall want no completion at all | A way to turn off the editor's own completion as well |
+| ty reaches 1.0 with standard-library documentation and pyright's configuration | The Python server |
+| A browser test finds Ctrl-Minus held by an engine | Another Back binding |
+| gopls drops the oldest Go that cstudy supports | The pinned table, or cstudy's Go minimum |
+
+## Alternatives considered
+
+| Alternative | Why rejected |
+|-------------|--------------|
+| codemirror-languageserver 1.23.0, or its community fork 2.0.1 | Each brings its own transport and document handling; the official package does the same behind a transport interface, maintained with CodeMirror, and unpacks to 0.29 MB against 1.79 MB |
+| Monaco with a language client | ADR 0015 measured six times the raw size of CodeMirror, plus a worker |
+| A TypeScript language service in a browser worker | 8.7 MiB of compiler for one language, which cannot see the workspace's `node_modules` without shipping it |
+| No language server: run checkers on save and mark their output | Errors only after a save, no documentation and no definitions; Run on save with `--typecheck` already gives TypeScript this |
+| Server-sent events and `POST`s instead of a WebSocket | A tab's language stream would take one of the six HTTP/1.1 connections per host, so two visible tabs could hold all six with their run streams; each message would be a request that must keep its order; a closed tab is noticed only at the next write |
+| One server shared by every tab | LSP has one client per server; sharing needs a broker that rewrites ids, arbitrates documents and routes server requests. At 40 to 200 MB per server, a limit of four serves practice |
+| The workspace's pyright for Python | No documentation for the standard library on hover, the owner's first request (measured) |
+| basedpyright from PyPI in `python/`'s dev group | It brings a 56 MB wheel holding a second Node, and changes your tracked `pyproject.toml` and lock |
+| ty, or python-lsp-server | ty 0.0.96 is not 1.0 yet; python-lsp-server reports no type errors without plugins |
+| TypeScript 7's built-in server now | The workspace pins TypeScript 6, so its diagnostics would come from another compiler than `--typecheck`, and it only answers requests for diagnostics |
+| vtsls | Version 0.3.0, built on the internals of an editor's extension; typescript-language-server is the common choice and has no dependencies |
+| The community Kotlin language server | Its README calls it deprecated |
+| Servers installed globally (`npm -g`, `go install` into `GOPATH/bin`) | Changes your machine outside the workspace, with versions cstudy does not test |
+| `cstudy doctor --fix` installing servers whether or not the setting is on | Downloads for users who never turn it on |
+| A new flag, `cstudy doctor --fix --code-intelligence` | Asks you to remember a flag the preference already states; the Health view's Fix would need to pass it anyway |
+| Hover, completion and signature Markdown rendered in the browser with `marked` and a sanitizer | 37.6 KB raw more, a second Markdown renderer with its own rules, and a sanitizer to maintain |
+| Completion and signature help under the one `code_intelligence` switch | The owner made autocomplete a setting of its own: hover documents what you wrote, while completion suggests what to write, which some practice wants without |
+| Completion only, with signature help left out or given a third setting | Signature help also suggests what to write; one switch covers the help that writes with you |
+| `autocomplete` set to false in storage when code intelligence turns off | Turning code intelligence back on would lose the choice the user made |
+| `PUT` refusing `autocomplete: true` while `code_intelligence` is false | The document must hold `autocomplete: true` beside `code_intelligence: false` to keep the stored choice, so the rule belongs to the page |
+| `@codemirror/lsp-client`'s `serverCompletion` and `signatureHelp` | They never send `completionItem/resolve`, so both servers' items would show without a signature or documentation (measured), and they render documentation with `marked` |
+| Snippet completions | Placeholders that Tab, which indents, and Vim would both have to step through; plain text inserts the name, and signature help shows the parameters |
+| `autocomplete` also turning off the editor's own completion | Every user has that completion today, with or without a server; a default-off setting would take it away from all of them |
+| Autocomplete in a later phase | `@codemirror/autocomplete` is already in the bundle, both servers answer in milliseconds, and the page's source and tooltip are small |
+| Cmd-click and Ctrl-click keep adding a cursor; definition on another gesture | The owner asked for IntelliJ IDEA's Cmd-click |
+| Alt-Shift-click adds a cursor only while the setting is on | A click that changes meaning with a setting confuses (owner, 2026-11-03) |
+| Refusing definitions outside the attempt, or showing them as a hover only | The most frequent target in single-file practice is the standard library, whose source is what the learner wants to read |
+| Library files opened editable | They belong to installed packages and the toolchain; an edit would change every project |
