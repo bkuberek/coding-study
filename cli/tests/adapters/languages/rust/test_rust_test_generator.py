@@ -15,7 +15,8 @@ from coding_study.adapters.languages.rust.test_generator import RustTestGenerato
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.problem import ComparatorSpec, ComparatorType, Language
 from coding_study.domain.project_tests import level_tests
-from coding_study.domain.signature import ClassSignature, Method
+from coding_study.domain.signature import ClassSignature, Method, Param
+from coding_study.domain.type_dsl import parse_value_type
 from coding_study.domain.virtual_clock import ProjectClock
 from tests.project_builders import OPS, method, ops_case, project_meta, project_problem
 
@@ -579,3 +580,33 @@ def test_a_long_awaited_call_breaks_into_a_chain_one_link_per_line():
 def test_a_case_named_like_a_helper_is_prefixed(case_id):
     case = ops_case(case_id, 1, ("@advance", [5], None), class_name="Inbox")
     assert f"async fn case_{case_id}() {{\n" in generated(case, meta=CLOCK_META)
+
+
+def test_a_lone_list_item_that_fits_after_its_bracket_has_no_trailing_comma():
+    nested = Param("rows", parse_value_type("list<list<string>>"))
+    meta = rust_meta(ClassSignature("LRUCache", (nested,), (SIZE,)))
+    case = ops_case("ex1", 1, SIZE_CALL, constructor=[[["a" * 38]]], class_name="LRUCache")
+    assert (
+        '    let mut lru_cache = LRUCache::new(vec![vec![\n        "'
+        + "a" * 38
+        + '".to_string()\n    ]]);\n'
+    ) in generated(case, meta=meta)
+
+
+def test_a_lone_list_item_too_wide_for_the_room_after_its_bracket_keeps_its_comma():
+    accounts = Param("accounts", parse_value_type("list<string>"))
+    signature = ClassSignature("InventoryOfThingsAndStuff", (accounts,), (RECEIVE,))
+    meta = project_meta(signature, OPS, Language.RUST, clock=ProjectClock.VIRTUAL)
+    case = ops_case(
+        "ex1",
+        1,
+        ("@spawn", ["r1", "receive", 5], None),
+        ("@join", ["r1"], ""),
+        constructor=[["account-number-1"]],
+        class_name="InventoryOfThingsAndStuff",
+    )
+    assert (
+        "    let inventory_of_things_and_stuff = Arc::new(InventoryOfThingsAndStuff::new(vec![\n"
+        '        "account-number-1".to_string(),\n'
+        "    ]));\n"
+    ) in generated(case, meta=meta)

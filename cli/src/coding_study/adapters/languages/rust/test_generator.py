@@ -356,8 +356,8 @@ def _broken(call: _Call, shape: _Shape) -> str:
     else:
         item_shape = _Shape(nested, MAX_WIDTH - nested - 1, in_macro=in_macro)
         laid_out = [_layout(argument, item_shape) for argument in call.arguments]
-        room = shape.width - _width(call.callee) - len(opening) - len(closing)
-        if _horizontal_lone_item(call, laid_out, room):
+        column = shape.indent + shape.offset + _width(call.callee) + len(opening)
+        if _horizontal_lone_item(call, laid_out, MAX_WIDTH - column):
             trailing = ""
         lines = [f"{text}," for text in laid_out[:-1]] + [laid_out[-1] + trailing]
     body = "\n".join(_indented(line, nested) for line in lines)
@@ -365,10 +365,10 @@ def _broken(call: _Call, shape: _Shape) -> str:
 
 
 def _horizontal_lone_item(call: _Call, laid_out: Sequence[str], room: int) -> bool:
-    """A list's one item, on one line of at most 60 columns that would fit in the `room` after
-    the list's opening bracket: rustfmt puts it on a line of its own without the trailing comma
-    of a vertical list. A list that opens further right, deep in calls it overflows, is
-    vertical."""
+    """A list's one item, on one line of at most 60 columns that would fit in the `room` left on
+    the line after the list's opening bracket: rustfmt puts it on a line of its own without the
+    trailing comma of a vertical list. A list that opens further right, deep in calls it
+    overflows, is vertical."""
     (item, *others) = laid_out
     one_line = "\n" not in item and _width(item) <= min(CALL_WIDTH, room)
     return call.list and not others and one_line
