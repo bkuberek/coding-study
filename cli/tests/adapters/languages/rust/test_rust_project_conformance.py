@@ -1,7 +1,7 @@
-"""The Rust project fixtures 9032, 9033, 9042 and 9045 through `cstudy verify --conformance`.
+"""The Rust project fixtures 9032, 9033, 9042, 9045 and 9046 through `cstudy verify --conformance`.
 
-Marked `slow`: cargo builds each fixture's harness offline, 9045's with the runner's virtual clock
-on tokio, in a copy of the session's practice workspace over this checkout's content
+Marked `slow`: cargo builds each fixture's harness offline, 9045's and 9046's with the runner's
+virtual clock on tokio, in a copy of the session's practice workspace over this checkout's content
 (docs/specs/runners.md#conformance-suite).
 """
 
@@ -27,6 +27,7 @@ PROJECT_FIXTURES = {
     "conformance-suite-cargo": "9033",
     "conformance-project-stress-rust": "9042",
     "conformance-project-clock-rust": "9045",
+    "conformance-project-stress-clock-rust": "9046",
 }
 
 

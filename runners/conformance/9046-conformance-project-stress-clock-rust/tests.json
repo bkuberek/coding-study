@@ -1,0 +1,9 @@
+{
+  "$schema": "../../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "level": 1, "ops": ["Tally", "add", "add", "count"], "args": [[], ["a", 2], ["a", 3], ["a"]], "expected": [null, 2, 5, 5]},
+    {"id": "ex2", "visible": true, "level": 2, "ops": ["Tally", "add", "take", "take", "count"], "args": [[], ["a", 5], ["a", 3], ["a", 3], ["a"]], "expected": [null, 5, true, false, 2]},
+    {"id": "s1", "level": 2, "note": "4 threads add to one key", "stress": {"seed": 1000, "setup": {"ops": ["Tally"], "args": [[]]}, "workers": [{"group": "adder", "count": 4, "repeat": 1000, "steps": [{"op": "add", "args": ["k", 1]}]}], "final": {"ops": ["count"], "args": [["k"]], "expected": [4000]}, "invariants": [{"type": "distinct", "values": {"op": "add"}}]}}
+  ]
+}

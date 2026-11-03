@@ -1,0 +1,5 @@
+[source.crates-io]
+replace-with = "cstudy-vendor"
+
+[source.cstudy-vendor]
+directory = "../../.cs/runtime/runners/rust/vendor"

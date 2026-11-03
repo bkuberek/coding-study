@@ -1,0 +1,9 @@
+[package]
+name = "tally"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+publish = false
+
+[dependencies]
+tokio = { version = "=1.53.3", default-features = false, features = ["macros", "rt", "sync", "test-util", "time"] }
