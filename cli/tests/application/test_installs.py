@@ -217,6 +217,11 @@ def test_the_reinstall_hint_points_at_the_installs_row_when_several_exist():
     )
 
 
+def test_the_reinstall_hint_can_point_at_cstudy_doctor_instead():
+    command = reinstall_command(scan(UV_OLD, HOMEBREW, running=UV_OLD), "see cstudy doctor")
+    assert command.endswith("(several cstudy installs: see cstudy doctor)")
+
+
 def test_the_reinstall_hint_names_the_running_install_even_when_it_is_shadowed():
     assert reinstall_command(scan(UV_OLD, HOMEBREW, running=HOMEBREW)).startswith(
         "brew reinstall cstudy"

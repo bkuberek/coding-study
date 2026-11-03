@@ -17,7 +17,8 @@ HOMEBREW_CELLAR = "Cellar"
 PIPX_VENVS = "venvs"
 INSTALLS_CHECK = "installs"
 GENERIC_REINSTALL = "reinstall cstudy"
-SEVERAL_INSTALLS_NOTE = " (several cstudy installs: see the installs row)"
+INSTALLS_ROW_POINTER = "see the installs row"
+DOCTOR_POINTER = "see cstudy doctor"
 _NUMERIC_VERSION = re.compile(r"\d+(?:\.\d+)*")
 
 
@@ -100,10 +101,11 @@ def installs_advice(scan: InstallScan) -> InstallsAdvice:
     return InstallsAdvice(detail + _running_note(scan, first), _removal_advice(installs))
 
 
-def reinstall_command(scan: InstallScan) -> str:
-    """The reinstall that repairs the install that runs, whichever others `PATH` holds."""
+def reinstall_command(scan: InstallScan, pointer: str = INSTALLS_ROW_POINTER) -> str:
+    """The reinstall that repairs the install that runs, whichever others `PATH` holds; with
+    several, it ends with a note that says where to look at them (`pointer`)."""
     command = _reinstall(scan.running)
-    return command + SEVERAL_INSTALLS_NOTE if len(scan.on_path) > 1 else command
+    return f"{command} (several cstudy installs: {pointer})" if len(scan.on_path) > 1 else command
 
 
 def _reinstall(install: Install) -> str:

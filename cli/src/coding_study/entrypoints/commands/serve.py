@@ -6,6 +6,7 @@ The web stack is imported inside the command, so no other command loads Starlett
 
 import html
 import os
+import sys
 import webbrowser
 from collections.abc import Callable, Mapping
 from pathlib import Path
@@ -15,12 +16,14 @@ import typer
 from rich.console import Console
 from rich.text import Text
 
+from coding_study.adapters.cstudy_installs import PathCstudyInstalls
 from coding_study.adapters.environment_factory import load_environment
 from coding_study.adapters.locations import WORKSPACE_VARIABLE
 from coding_study.adapters.preferences_fs import SERVE_DIRECTORY, FsPreferencesStore
 from coding_study.adapters.serve_install import InstalledWebUi
 from coding_study.adapters.workspace_marker import tool_version
 from coding_study.application.environment import Environment
+from coding_study.application.installs import DOCTOR_POINTER, reinstall_command
 from coding_study.application.ports import WebUiInstall
 from coding_study.entrypoints.shared import (
     ExitCode,
@@ -36,7 +39,6 @@ MAX_PORT = 65535
 LABEL_WIDTH = 11
 TERMINATED_EXIT_CODE = 143
 """128 + SIGTERM, as a shell reports a process that SIGTERM ended."""
-REINSTALL = "reinstall cstudy"
 OWNER_ONLY = 0o600
 
 
@@ -68,7 +70,13 @@ def serve(
     root = load_environment(Path.cwd(), environ, home).root
     from coding_study.entrypoints.web import STATIC_DIRECTORY
 
-    _require_installed(InstalledWebUi(STATIC_DIRECTORY))
+    _require_installed(
+        InstalledWebUi(STATIC_DIRECTORY),
+        lambda: reinstall_command(
+            PathCstudyInstalls(environ, home, Path(sys.prefix), tool_version()).scan(),
+            DOCTOR_POINTER,
+        ),
+    )
     from coding_study.entrypoints.web import server
     from coding_study.entrypoints.web.app import create_app
     from coding_study.entrypoints.web.children import ChildCommand
@@ -110,19 +118,21 @@ def serve(
     raise typer.Exit(ExitCode.INTERNAL_ERROR)
 
 
-def _require_installed(web: WebUiInstall) -> None:
+def _require_installed(web: WebUiInstall, reinstall: Callable[[], str]) -> None:
+    """`reinstall` names the install that runs; only a broken install pays for finding it."""
     libraries = web.server_libraries()
     if libraries.problem is not None:
         _environment_error(
             WebUiNotInstalledError(
-                f"the web server libraries are missing: {libraries.problem}; fix: {REINSTALL}"
+                f"the web server libraries are missing: {libraries.problem}; fix: {reinstall()}"
             )
         )
     assets = web.assets()
     if assets.problem is not None:
         _environment_error(
             WebUiNotInstalledError(
-                f"the page's assets do not match their manifest: {assets.problem}; fix: {REINSTALL}"
+                "the page's assets do not match their manifest: "
+                f"{assets.problem}; fix: {reinstall()}"
             )
         )
 

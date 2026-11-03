@@ -15,6 +15,7 @@ from starlette.types import ASGIApp
 from typer.testing import CliRunner
 
 from coding_study.adapters.workspace_marker import tool_version
+from coding_study.application.installs import Install, InstallKind, InstallScan
 from coding_study.application.ports import WebServerLibraries, WebUiAssets
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import serve
@@ -38,6 +39,35 @@ class FakeWebUi:
 
     def server_libraries(self) -> WebServerLibraries:
         return self._libraries
+
+
+HOME = Path("/home/me")
+BREW = Install(InstallKind.HOMEBREW, Path("/opt/homebrew/Cellar/cstudy/1.0"), None, "1.0")
+UV = Install(InstallKind.UV_TOOL, HOME / ".local/share/uv/tools/coding-study", None, "1.0")
+PIPX = Install(InstallKind.PIPX, HOME / ".local/pipx/venvs/coding-study", None, "1.0")
+CHECKOUT = Install(InstallKind.OTHER, Path("/src/cli/.venv"), None, None)
+
+
+class FakeInstalls:
+    def __init__(self, scan: InstallScan) -> None:
+        self._scan = scan
+        self.scans = 0
+
+    def scan(self) -> InstallScan:
+        self.scans += 1
+        return self._scan
+
+
+def running_install(monkeypatch, *on_path: Install, running: Install) -> FakeInstalls:
+    """The installs `serve` finds: `on_path` in order, and the one that runs."""
+    installs = FakeInstalls(InstallScan(on_path, running, HOME))
+    monkeypatch.setattr(serve, "PathCstudyInstalls", lambda *_: installs)
+    return installs
+
+
+def web_ui_without_libraries(monkeypatch) -> None:
+    web = FakeWebUi(WebUiAssets(1), WebServerLibraries((), "uvicorn does not import: gone"))
+    monkeypatch.setattr(serve, "InstalledWebUi", lambda _directory: web)
 
 
 class ServerLoop:
@@ -125,6 +155,7 @@ def test_a_port_in_use_exits_4_naming_it(workspace):
 def test_assets_that_do_not_match_their_manifest_exit_4(workspace, monkeypatch):
     web = FakeWebUi(WebUiAssets(0, "missing editor.js"), WebServerLibraries(("starlette 1",)))
     monkeypatch.setattr(serve, "InstalledWebUi", lambda _directory: web)
+    running_install(monkeypatch, CHECKOUT, running=CHECKOUT)
     result = runner.invoke(cli.app, ["serve"])
     assert (result.exit_code, result.stderr) == (
         ExitCode.ENVIRONMENT_ERROR,
@@ -134,14 +165,49 @@ def test_assets_that_do_not_match_their_manifest_exit_4(workspace, monkeypatch):
 
 
 def test_server_libraries_that_do_not_import_exit_4(workspace, monkeypatch):
-    web = FakeWebUi(WebUiAssets(1), WebServerLibraries((), "uvicorn does not import: gone"))
-    monkeypatch.setattr(serve, "InstalledWebUi", lambda _directory: web)
+    web_ui_without_libraries(monkeypatch)
+    running_install(monkeypatch, CHECKOUT, running=CHECKOUT)
     result = runner.invoke(cli.app, ["serve"])
     assert (result.exit_code, result.stderr) == (
         ExitCode.ENVIRONMENT_ERROR,
         "error: the web server libraries are missing: uvicorn does not import: gone; "
         "fix: reinstall cstudy\n",
     )
+
+
+@pytest.mark.parametrize(
+    ("running", "command"),
+    [
+        (BREW, "brew reinstall cstudy"),
+        (UV, "uv tool install --reinstall coding-study"),
+        (PIPX, "pipx reinstall coding-study"),
+    ],
+)
+def test_the_reinstall_hint_names_the_running_install(workspace, monkeypatch, running, command):
+    web_ui_without_libraries(monkeypatch)
+    running_install(monkeypatch, running, running=running)
+    result = runner.invoke(cli.app, ["serve"])
+    assert result.stderr.endswith(f"fix: {command}\n")
+
+
+def test_the_reinstall_hint_names_the_running_install_when_another_runs_first(
+    workspace, monkeypatch
+):
+    web = FakeWebUi(WebUiAssets(0, "missing editor.js"), WebServerLibraries(("starlette 1",)))
+    monkeypatch.setattr(serve, "InstalledWebUi", lambda _directory: web)
+    running_install(monkeypatch, BREW, PIPX, running=PIPX)
+    result = runner.invoke(cli.app, ["serve"])
+    assert result.stderr.endswith(
+        "fix: pipx reinstall coding-study (several cstudy installs: see cstudy doctor)\n"
+    )
+
+
+def test_nothing_scans_the_installs_when_the_web_ui_is_whole(workspace, monkeypatch):
+    web = FakeWebUi(WebUiAssets(1), WebServerLibraries(("starlette 1",)))
+    monkeypatch.setattr(serve, "InstalledWebUi", lambda _directory: web)
+    installs = running_install(monkeypatch, BREW, running=BREW)
+    serving(monkeypatch, ServerLoop(KeyboardInterrupt))
+    assert installs.scans == 0
 
 
 def test_serve_listens_on_the_loopback_address_only(workspace, monkeypatch):
