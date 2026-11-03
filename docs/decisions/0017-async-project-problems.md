@@ -153,7 +153,7 @@ Each language uses the virtual time its own ecosystem tests with, so the generat
 
 ### Authoring and checks
 
-- `cstudy new --from-template project-<language>` keeps its synchronous two-level template. `--virtual-clock` writes the variant: `project.clock: virtual`, a level-2 method that waits (asynchronous where the language has the form), an example with `@spawn`, `@advance`, `@join` and `@now`, the starter's clock pieces and a README section on testing on the clock. `--stress` adds a `concurrency` block, one stress case at level 2 and one broken overlay. Each flag exits 3 for a language its step has not reached.
+- `cstudy new --from-template project-<language>` keeps its synchronous two-level template. `--virtual-clock` writes the variant: `project.clock: virtual`, a level-2 method that waits (asynchronous where the language has the form), an example with `@spawn`, `@advance`, `@join` and `@now`, the starter's clock pieces and a README section on testing on the clock. `--stress` adds a `concurrency` block, one stress case at level 2 and one broken overlay, as a directory of changed files laid over the template (or its clock variant), so the build files that S15 compares exist once. Each flag exits 3 for a language its step has not reached, and `--stress` for TypeScript without `--virtual-clock`: its stress cases run in the `async` model, where a synchronous method is atomic and an asynchronous one needs the clock.
 
 The checks, new and changed:
 

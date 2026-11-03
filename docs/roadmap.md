@@ -158,7 +158,13 @@ Phases 0 to 7 are implemented: every command in the table above exists with its 
 - [x] The ADR is accepted and the specs amended before any runner work starts.
 - [x] Step 1, Go, tooling: fixture 9034 (`9034-conformance-project-clock-go`) passes, with its `advance` and `spawn-join` cases also run as generated `synctest` tests; a project scaffolded by `cstudy new --virtual-clock` passes `cstudy verify <slug> --static` once its `TODO` text is replaced and `cstudy verify <slug>` (D1, D3, D9, D10) on Go 1.27.3 (the oldest release of the Go 1.25 minimum is not yet observed).
 - [ ] Step 1, Go, pilot: the build-graph runner on goroutines.
+- [x] Step 2, Python and TypeScript, tooling: fixtures 9035 and 9036 pass, and a project scaffolded by `cstudy new --virtual-clock` passes `cstudy verify <slug>` with `clock 10/10`.
 - [ ] Step 2, Python and TypeScript, pilot: the event pipeline.
-- [ ] Step 3, stress cases and broken overlays in projects in all six languages, pilot: the message log.
+- [x] Step 3, stress in projects, tooling: fixtures 9037 to 9042 pass in all six languages, and every combination `cstudy new --stress` supports (all six languages; with `--virtual-clock` for Go, Python, TypeScript, Kotlin and Rust; TypeScript only with the clock) passes `cstudy verify <slug>` with its broken overlay caught.
+- [ ] Step 3, stress cases and broken overlays in projects, pilot: the message log.
+- [x] Step 4, Kotlin coroutines, tooling: spike K7, fixtures 9043 and 9044 pass, and a scaffolded clock project passes `cstudy verify <slug>` with `clock 10/10`.
 - [ ] Step 4, Kotlin coroutines, pilot: the coroutine service.
+- [x] Step 5, Rust async on tokio, tooling: spike K8, fixtures 9045 and 9046 pass, and a scaffolded clock project passes `cstudy verify <slug>` with `clock 10/10`.
 - [ ] Step 5, Rust async on tokio, pilot: the async component.
+
+The pilots are written with the next project problems.
