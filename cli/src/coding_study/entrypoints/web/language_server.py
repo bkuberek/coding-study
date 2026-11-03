@@ -4,7 +4,8 @@
 The server runs with no shell, in a session of its own so its whole process group can be stopped,
 its standard input and output the LSP stream (`Content-Length` framing, which the WebSocket
 messages go without) and its standard error kept. Stopping it is `shutdown`, `exit`, standard
-input closed, then SIGTERM and SIGKILL to the group, as a cancelled run escalates.
+input closed, then SIGTERM and SIGKILL to the group, as a cancelled run escalates; whatever the
+server does not read, the stop reaches SIGTERM and SIGKILL on time.
 """
 
 import asyncio
@@ -23,6 +24,11 @@ from coding_study.entrypoints.web.children import StreamedChild, start_process
 from coding_study.entrypoints.web.runs import SIGNAL_EXIT_BASE
 
 CONTENT_LENGTH = "content-length"
+MESSAGE_LIMIT = 4 * 1024 * 1024
+"""The most a message of the server may carry; a longer `Content-Length` ends the output before
+the message is read."""
+UNREAD_LIMIT = 8 * MESSAGE_LIMIT
+"""How many bytes of the server's messages may wait unread, because the page reads slowly."""
 SHUTDOWN_ID = "cstudy-shutdown"
 """The id of the broker's own `shutdown` request: ids of its own start with `cstudy-`."""
 STDERR_LINES = 20
@@ -74,7 +80,11 @@ class ServerProcess:
     def __init__(self, child: StreamedChild, timing: LanguageTiming) -> None:
         self._child = child
         self._timing = timing
-        self._messages: asyncio.Queue[str | None] = asyncio.Queue()
+        self._messages: asyncio.Queue[tuple[str, int] | None] = asyncio.Queue()
+        """The server's messages not yet received, each with its size in bytes."""
+        self._unread = 0
+        self.backlog = asyncio.Event()
+        """Set once more than `UNREAD_LIMIT` bytes of messages waited unread: the output ends."""
         self._stderr: deque[str] = deque(maxlen=STDERR_LINES)
         self._output_ended = False
         self.output_problem: str | None = None
@@ -114,13 +124,18 @@ class ServerProcess:
         """The next message the server wrote, as the JSON text it carries; None once its output
         has ended, which is when it exited (after its last messages were read) or wrote what is
         not LSP."""
-        message = await self._messages.get()
-        if message is None:
+        waiting = await self._messages.get()
+        if waiting is None:
             self._messages.put_nowait(None)
-        return message
+            return None
+        text, size = waiting
+        self._unread -= size
+        return text
 
     async def send(self, text: str) -> None:
-        """Writes one message, framed. A server that is gone gets nothing."""
+        """Writes one message, framed, and waits until the pipe has taken it, which a server that
+        reads nothing never lets it: whoever calls it bounds the wait. A server that is gone gets
+        nothing, and a stop ends the wait."""
         body = text.encode()
         self._child.stdin.write(b"Content-Length: %d\r\n\r\n" % len(body) + body)
         with suppress(ConnectionError):
@@ -134,13 +149,16 @@ class ServerProcess:
 
     async def stop(self) -> None:
         """Asks the server to exit: `shutdown`, then `exit` once it answered or
-        `shutdown_wait_s` passed, then standard input closed. A process group that still holds a
-        process `terminate_after_s` after the start gets SIGTERM, and `kill_after_s` later
-        SIGKILL, though the server itself is gone."""
+        `shutdown_wait_s` passed, then standard input closed, all of it within `terminate_after_s`
+        of the start, however little the server reads. A process group that still holds a process
+        then gets SIGTERM, and `kill_after_s` later SIGKILL, though the server itself is gone."""
         loop = asyncio.get_running_loop()
-        begun = loop.time()
-        await self._ask_to_exit()
-        if not await self._group_gone(begun + self._timing.terminate_after_s):
+        terminate_at = loop.time() + self._timing.terminate_after_s
+        with suppress(TimeoutError):
+            async with asyncio.timeout_at(terminate_at):
+                await self._ask_to_exit()
+        self._child.stdin.close()
+        if not await self._group_gone(terminate_at):
             self._child.signal_group(signal.SIGTERM)
             if not await self._group_gone(loop.time() + self._timing.kill_after_s):
                 self._child.signal_group(signal.SIGKILL)
@@ -153,7 +171,6 @@ class ServerProcess:
             await self.send(json.dumps(shutdown))
             await self._until_answered(self._timing.shutdown_wait_s)
             await self.send(json.dumps({"jsonrpc": "2.0", "method": "exit"}))
-        self._child.stdin.close()
 
     async def _until_answered(self, seconds: float) -> None:
         """Reads, and drops, what the server writes until it answers `shutdown`, its output
@@ -188,6 +205,14 @@ class ServerProcess:
             task.cancel()
         self._end_output()
 
+    def _drop_backlog(self) -> None:
+        """The page does not keep up: what waits is dropped, and the output ends."""
+        while not self._messages.empty():
+            self._messages.get_nowait()
+        self._unread = 0
+        self.backlog.set()
+        self._end_output()
+
     def _end_output(self) -> None:
         if not self._output_ended:
             self._output_ended = True
@@ -195,8 +220,13 @@ class ServerProcess:
 
     async def _read_messages(self) -> None:
         try:
-            while (text := await _read_frame(self._child.stdout)) is not None:
-                self._messages.put_nowait(text)
+            while (body := await _read_frame(self._child.stdout)) is not None:
+                text = _decoded(body)
+                if self._unread + len(body) > UNREAD_LIMIT:
+                    self._drop_backlog()
+                    return
+                self._unread += len(body)
+                self._messages.put_nowait((text, len(body)))
         except _FramingError as error:
             self.output_problem = str(error)
             self._end_output()
@@ -214,8 +244,9 @@ class ServerProcess:
             self._stderr.append(raw.decode(errors="replace").rstrip("\r\n"))
 
 
-async def _read_frame(stream: asyncio.StreamReader) -> str | None:
-    """The body of the next message; None at the end of the output."""
+async def _read_frame(stream: asyncio.StreamReader) -> bytes | None:
+    """The body of the next message; None at the end of the output. A `Content-Length` over
+    `MESSAGE_LIMIT` is refused before any of the body is read."""
     length: int | None = None
     while True:
         try:
@@ -232,7 +263,10 @@ async def _read_frame(stream: asyncio.StreamReader) -> str | None:
             length = _length(value.strip())
     if length is None:
         raise _FramingError("a message without Content-Length")
-    body = await stream.readexactly(length)
+    return await stream.readexactly(length)
+
+
+def _decoded(body: bytes) -> str:
     try:
         return body.decode()
     except UnicodeDecodeError:
@@ -242,6 +276,8 @@ async def _read_frame(stream: asyncio.StreamReader) -> str | None:
 def _length(value: str) -> int:
     if not value.isdecimal():
         raise _FramingError(f"a Content-Length that is not a number: {value}")
+    if len(value.lstrip("0")) > len(str(MESSAGE_LIMIT)) or int(value) > MESSAGE_LIMIT:
+        raise _FramingError("a message over 4 MiB")
     return int(value)
 
 

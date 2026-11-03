@@ -36,7 +36,6 @@ from coding_study.entrypoints.web.library_files import (
 JSONRPC = "2.0"
 RESERVED_ID_PREFIX = "cstudy-"
 """The broker's own requests to the server have string ids that start with this."""
-MESSAGE_LIMIT = 4 * 1024 * 1024
 INVALID_REQUEST = -32600
 METHOD_NOT_FOUND = -32601
 INVALID_PARAMS = -32602
@@ -129,7 +128,6 @@ class LanguageBroker:
 
     def from_server(self, text: str) -> Delivery:
         """One message the server wrote, as the JSON it carries."""
-        too_big = _over_the_limit(text)
         message = _parsed(text)
         if message is None:
             return Delivery()
@@ -137,9 +135,9 @@ class LanguageBroker:
         if isinstance(method, str):
             if "id" in message:
                 return self._server_request(message, method)
-            return Delivery() if too_big else self._server_notification(message, method)
+            return self._server_notification(message, method)
         if "id" in message and ("result" in message or "error" in message):
-            return self._answer(message, too_big)
+            return self._answer(message)
         return Delivery()
 
     def file_changed(self, change: FileChanged) -> Delivery:
@@ -323,15 +321,13 @@ class LanguageBroker:
             return False
         return inside is not None
 
-    def _answer(self, message: Fields, too_big: bool) -> Delivery:
+    def _answer(self, message: Fields) -> Delivery:
         request_id = message["id"]
         if not _is_page_id(request_id):
             return Delivery()
         sent = self._pending.pop(request_id, None)
         if sent is None:
             return Delivery()
-        if too_big:
-            return _error(request_id, REQUEST_FAILED, "answer over 4 MiB")
         if "result" in message:
             message = {**message, "result": self._rendered(sent, message["result"])}
         return Delivery(to_page=(message,))
@@ -437,13 +433,6 @@ def _is_page_id(request_id: object) -> bool:
     if isinstance(request_id, int):
         return True
     return isinstance(request_id, str) and not request_id.startswith(RESERVED_ID_PREFIX)
-
-
-def _over_the_limit(text: str) -> bool:
-    """Whether `text` is over 4 MiB in UTF-8, without encoding what cannot be over."""
-    if len(text) > MESSAGE_LIMIT:
-        return True
-    return len(text) * 4 > MESSAGE_LIMIT and len(text.encode()) > MESSAGE_LIMIT
 
 
 def _parsed(text: str) -> Fields | None:

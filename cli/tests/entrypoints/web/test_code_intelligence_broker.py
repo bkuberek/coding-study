@@ -15,7 +15,7 @@ from coding_study.entrypoints.web.code_intelligence import MESSAGE_LIMIT
 from coding_study.entrypoints.web.notifications import Notifications
 from tests.language_server_scripts import answer, notification, request
 from tests.language_sessions import Rig, closed_with, noticed, received, rig, session
-from tests.scripted_runs import eventually
+from tests.scripted_runs import eventually, is_alive
 from tests.web_server import TEST_VERSION, session_client
 
 HTML = "cstudy-html"
@@ -49,6 +49,11 @@ def message_of(diagnostic: dict[str, object]) -> str:
 def ask(lab: Rig, request_id: int, method: str, **extra: object) -> dict[str, object]:
     params = {"textDocument": {"uri": lab.document}, "position": {"line": 0}, **extra}
     return request(request_id, method, params)
+
+
+def all_gone(lab: Rig) -> bool:
+    eventually(lambda: [is_alive(pid) for pid in lab.server.pids()], lambda alive: not any(alive))
+    return True
 
 
 def stopped_methods(lab: Rig) -> list[str]:
@@ -264,12 +269,12 @@ def test_a_request_with_the_id_of_a_pending_request_gets_32600_and_the_pending_o
     assert stopped_methods(lab) == ["textDocument/hover"]
 
 
-def test_an_answer_over_4_mib_arrives_as_an_error(lab, client):
+def test_a_message_of_the_server_over_4_mib_closes_the_session_with_4002(lab, client):
     lab.server.play({"reply": "textDocument/hover", "result": "x" * (MESSAGE_LIMIT + 10)})
     with session(client, lab.query) as websocket:
         websocket.send_json(ask(lab, 1, "textDocument/hover"))
-        reply = received(websocket)
-    assert reply["error"] == {"code": -32803, "message": "answer over 4 MiB"}
+        assert closed_with(websocket) == (4002, "bad output: a message over 4 MiB")
+    assert all_gone(lab)
 
 
 # definitions and library files

@@ -12,6 +12,7 @@ import json
 import signal
 import subprocess
 import sys
+import time
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,6 +27,7 @@ from tests.language_server_scripts import (
     answer,
     fake_node,
     install_fake_basedpyright,
+    notification,
     request,
 )
 from tests.scripted_runs import eventually, is_alive
@@ -40,6 +42,8 @@ MIB = 1024 * 1024
 PATH = "/api/v1/code-intelligence"
 PING = {"reply": "textDocument/hover", "result": "pong"}
 STOPS_ONLY_FOR_SIGNALS = {"ignore": ["shutdown", "exit", "eof"]}
+SIGINT_STOP_SECONDS = 15
+"""The stop sequence ends in about three seconds after the sockets closed; the sockets, 2."""
 
 
 def cstudy(workspace: Path, *arguments: str) -> None:
@@ -233,6 +237,28 @@ def test_stopping_the_server_closes_every_socket_with_1001_and_leaves_no_languag
         f"stop       {how}",
     )
     assert not any(is_alive(pid) for pid in pids)
+
+
+def test_ctrl_c_does_not_wait_for_a_language_server_that_reads_no_input(lab):
+    """The server stopped reading while messages waited for it, so no `shutdown` and no `exit`
+    could be written; the stop escalates to SIGTERM and SIGKILL on time all the same."""
+    lab.script.play({"deaf": True})
+    with running_server(lab.workspace, variables=lab.variables) as server:
+        page = opened_page(server)
+        with connect(server, page) as websocket:
+            authorise(page, websocket)
+            eventually(lab.script.ready, bool)
+            for _ in range(6):
+                padding = {"padding": "x" * 300_000}
+                websocket.send_text(json.dumps(notification("initialized", padding)))
+            time.sleep(0.5)
+            pid = started_server(lab)
+            page.client.close()
+            begun = time.monotonic()
+            code, _printed = server.stop(signal.SIGINT)
+            took = time.monotonic() - begun
+            websocket.receive()
+    assert (code, took < SIGINT_STOP_SECONDS, is_alive(pid)) == (130, True, False)
 
 
 def test_a_server_that_dies_leaves_its_language_server_the_end_of_its_input(lab, served):

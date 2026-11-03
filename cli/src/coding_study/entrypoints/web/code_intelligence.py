@@ -6,7 +6,9 @@ arrived. Each text message of the socket carries one JSON-RPC message, which thi
 the server's standard input and unframes from its standard output; what each becomes is the
 session's broker's to say (`language_broker.py`). At most four servers run at once. A session ends
 when the socket closes, the server exits or the server stops; the stop sequence of the server runs
-as a task of its own, so a socket that goes away mid-request never leaves a process behind.
+as a task of its own, so a socket that goes away mid-request never leaves a process behind. What
+waits for a side that stopped reading is bounded: a server that reads none of its input, or a page
+that reads none of the server's messages, ends the session.
 """
 
 import asyncio
@@ -35,12 +37,16 @@ MAX_SESSIONS = 4
 MIB = 1024 * 1024
 MESSAGE_LIMIT = 4 * MIB
 """The most a message may carry; uvicorn enforces it on the wire, and the session again."""
+OUTBOX_LIMIT = 8 * MESSAGE_LIMIT
+"""How many bytes of messages may wait for a server that does not read its input."""
 REASON_BYTES = 123
 """The most a WebSocket close reason may hold."""
 CLOSE_WAIT_S = 2.0
 """How long a server that stops waits for its sockets to close."""
 BAD_CSRF = "bad CSRF token"
 STOPPING = "cstudy serve is stopping"
+SERVER_STUCK = "stuck: the server does not read its input"
+PAGE_LAGGING = "the page does not read the server's messages"
 PARSE_ERROR = -32700
 
 
@@ -89,6 +95,8 @@ class LanguageSession:
         self._outbox: asyncio.Queue[str] = asyncio.Queue()
         """What goes to the server, in order: the page's messages, the broker's answers to the
         server's requests, and the file changes."""
+        self._queued = 0
+        """The bytes in the outbox: over `OUTBOX_LIMIT` the session ends."""
 
     def end(self, closing: Closing) -> None:
         """Closes the socket with `closing`, whatever the session is waiting for."""
@@ -113,7 +121,8 @@ class LanguageSession:
         server = asyncio.create_task(self._from_server())
         writing = asyncio.create_task(self._to_server())
         woken = asyncio.create_task(self._wakeup.wait())
-        self.relays = [page, server, writing, woken]
+        lagging = asyncio.create_task(self._end_when_page_lags())
+        self.relays = [page, server, writing, woken, lagging]
         try:
             await asyncio.wait(self.relays, return_when=asyncio.FIRST_COMPLETED)
             closing = self._closing(page, server)
@@ -157,7 +166,13 @@ class LanguageSession:
 
     async def _to_server(self) -> None:
         while True:
-            await self.process.send(await self._outbox.get())
+            text = await self._outbox.get()
+            self._queued -= len(text)
+            await self.process.send(text)
+
+    async def _end_when_page_lags(self) -> None:
+        await self.process.backlog.wait()
+        self.end(Closing(CloseCode.POLICY_VIOLATION, PAGE_LAGGING))
 
     async def _deliver(self, delivery: Delivery) -> bool:
         """False once the page is gone."""
@@ -171,7 +186,14 @@ class LanguageSession:
 
     def _send_to_server(self, delivery: Delivery) -> None:
         for message in delivery.to_server:
-            self._outbox.put_nowait(json.dumps(message))
+            text = json.dumps(message)
+            if self._ending is not None:
+                return
+            if self._queued + len(text) > OUTBOX_LIMIT:
+                self.end(Closing(CloseCode.SERVER_EXITED, SERVER_STUCK))
+                return
+            self._queued += len(text)
+            self._outbox.put_nowait(text)
 
     async def _why_it_ended(self) -> str:
         """`exit 1: Error: Cannot find module …`; the output the server wrote that is not LSP."""

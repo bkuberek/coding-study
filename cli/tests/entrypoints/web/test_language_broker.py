@@ -927,33 +927,6 @@ def test_other_answers_are_not_rendered(broker):
     assert answered(broker, 9, result) == result
 
 
-# answers over 4 MiB
-
-
-def test_an_answer_over_4_mib_reaches_the_page_as_an_error(broker):
-    page_asks(broker, 4, "textDocument/hover")
-    text = json.dumps(answer(4, {"contents": "x" * (4 * MIB)}))
-    (reply,) = from_server(broker, text).to_page
-    assert reply == {
-        "jsonrpc": "2.0",
-        "id": 4,
-        "error": {"code": -32803, "message": "answer over 4 MiB"},
-    }
-
-
-def test_a_notification_over_4_mib_is_dropped(broker):
-    text = json.dumps(
-        notification("textDocument/publishDiagnostics", {"uri": INSIDE, "x": "y" * (4 * MIB)})
-    )
-    assert from_server(broker, text) == NOTHING
-
-
-def test_an_answer_of_4_mib_less_a_little_is_delivered(broker):
-    page_asks(broker, 4, "textDocument/definition")
-    text = json.dumps(answer(4, "z" * (4 * MIB - 100)))
-    assert len(from_server(broker, text).to_page) == 1
-
-
 @pytest.mark.parametrize("text", ["", "not json", "[1, 2]", "3", "null", "[" * 100_000])
 def test_what_the_server_writes_that_is_not_one_json_object_is_dropped(broker, text):
     assert from_server(broker, text) == NOTHING

@@ -17,6 +17,9 @@ order, each an object with one key:
     {"wait_for": "<path>"}                   waits until the file exists
     {"exit": <code>}                         exits
     {"ignore": ["shutdown", "exit", "eof", "SIGTERM"]}   stops honouring what it names
+    {"deaf": true}                           stops reading its standard input after the message
+                                             it is reading, so the pipe fills and nothing it
+                                             was sent is answered, `shutdown` and `exit` included
     {"spawn_sleeper": "<path>"}              starts a process that ignores SIGINT and SIGTERM in
                                              this one's process group, and writes its pid
 
@@ -56,14 +59,18 @@ class Inbox:
     def __init__(self, log: Path) -> None:
         self._log = log
         self._messages: queue.Queue[Message | None] = queue.Queue()
+        self._deaf = threading.Event()
         threading.Thread(target=self._read, daemon=True).start()
 
     def get(self) -> Message | None:
         return self._messages.get()
 
+    def go_deaf(self) -> None:
+        self._deaf.set()
+
     def _read(self) -> None:
         stream = sys.stdin.buffer
-        while True:
+        while not self._deaf.is_set():
             length = _content_length(stream)
             if length is None:
                 self._messages.put(None)
@@ -187,6 +194,10 @@ def step_ignore(server: Server, names: Any, _step: dict[str, Any]) -> None:
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
 
 
+def step_deaf(server: Server, _value: Any, _step: dict[str, Any]) -> None:
+    server.inbox.go_deaf()
+
+
 def step_spawn_sleeper(_server: Server, pid_path: Any, _step: dict[str, Any]) -> None:
     process = subprocess.Popen(
         [sys.executable, "-c", SLEEPER], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
@@ -204,6 +215,7 @@ STEPS = {
     "wait_for": step_wait_for,
     "exit": step_exit,
     "ignore": step_ignore,
+    "deaf": step_deaf,
     "spawn_sleeper": step_spawn_sleeper,
 }
 
@@ -215,7 +227,11 @@ def main(script_path: str, arguments: list[str]) -> None:
         print(VERSIONS[pinned])
         return
     with script.with_suffix(".calls").open("a", encoding="utf-8") as calls:
-        record = {"pid": os.getpid(), "arguments": arguments, "cwd": str(Path.cwd())}
+        record = {
+            "pid": os.getpid(),
+            "arguments": arguments,
+            "cwd": str(Path.cwd()),
+        }
         calls.write(json.dumps(record) + "\n")
     server = Server(script)
     server.play(json.loads(script.read_text(encoding="utf-8")))

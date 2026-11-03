@@ -148,6 +148,13 @@ def stopped(client: TestClient, sessions: LanguageSessions) -> None:
     portal.call(sessions.stop)
 
 
+def stopped_within(client: TestClient, sessions: LanguageSessions, seconds: float) -> None:
+    """Like `stopped`, but fails instead of waiting for ever for a stop that hangs."""
+    portal = client.portal
+    assert portal is not None
+    portal.start_task_soon(sessions.stop).result(timeout=seconds)
+
+
 def noticed(client: TestClient, hub: Notifications, change: WorkspaceChange) -> None:
     """The workspace watch tells the hub of a change, on the server's event loop."""
     portal = client.portal

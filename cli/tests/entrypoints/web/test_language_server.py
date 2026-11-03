@@ -8,13 +8,16 @@ import os
 import signal
 import time
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
 from coding_study.domain.code_intelligence import BASEDPYRIGHT
+from coding_study.entrypoints.web import language_server
 from coding_study.entrypoints.web.language_server import (
+    MESSAGE_LIMIT,
     LanguageServerCommand,
     LanguageTiming,
     ServerProcess,
@@ -30,6 +33,9 @@ from tests.language_server_scripts import (
 from tests.scripted_runs import eventually, gone, is_alive, kill
 
 WAIT_S = 5.0
+STOP_BOUND_S = 10.0
+"""A stop that takes this long has hung: the sequence ends in about three seconds."""
+MIB = 1024 * 1024
 LOG = notification("window/logMessage", {"message": "héllo 🌍", "type": 3})
 NEVER = "never"
 SIGTERM_EXIT = 128 + signal.SIGTERM
@@ -137,6 +143,61 @@ def test_a_message_that_is_not_utf8_ends_the_output_and_says_why(server, tmp_pat
             return process.output_problem
 
     assert asyncio.run(read()) == "a message that is not UTF-8"
+
+
+def test_a_message_longer_than_4_mib_is_refused_before_its_body_is_read(server, tmp_path):
+    """The header alone ends the output; the body, which never comes, is not waited for."""
+    server.play(
+        {"raw": f"Content-Length: {MESSAGE_LIMIT + 1}\r\n\r\n"},
+        {"wait_for": str(server.gate(NEVER))},
+    )
+
+    async def read() -> tuple[str | None, str | None]:
+        async with running(server, tmp_path) as process:
+            return await next_text(process), process.output_problem
+
+    assert asyncio.run(read()) == (None, "a message over 4 MiB")
+
+
+def test_a_message_of_exactly_4_mib_is_read(server, tmp_path):
+    empty = notification("padded", {"padding": ""})
+    padding = MESSAGE_LIMIT - len(json.dumps(empty))
+    server.play({"send": notification("padded", {"padding": "x" * padding})})
+
+    async def read() -> int:
+        async with running(server, tmp_path) as process:
+            return len((await next_text(process) or "").encode())
+
+    assert asyncio.run(read()) == MESSAGE_LIMIT
+
+
+# output nobody reads
+
+
+def test_output_left_unread_over_the_limit_ends_the_output(server, tmp_path, monkeypatch):
+    monkeypatch.setattr(language_server, "UNREAD_LIMIT", 100_000)
+    big = notification("big", {"text": "x" * 30_000})
+    server.play(*({"send": big} for _ in range(8)), {"wait_for": str(server.gate(NEVER))})
+
+    async def lag() -> str | None:
+        async with running(server, tmp_path) as process:
+            await asyncio.wait_for(process.backlog.wait(), WAIT_S)
+            return await next_text(process)
+
+    assert asyncio.run(lag()) is None
+
+
+def test_output_that_is_read_as_it_comes_is_never_a_backlog(server, tmp_path, monkeypatch):
+    monkeypatch.setattr(language_server, "UNREAD_LIMIT", 100_000)
+    big = notification("big", {"text": "x" * 30_000})
+    server.play(*({"send": big} for _ in range(20)))
+
+    async def read_all() -> tuple[int, bool]:
+        async with running(server, tmp_path) as process:
+            texts = [await next_text(process) for _ in range(20)]
+            return len([text for text in texts if text]), process.backlog.is_set()
+
+    assert asyncio.run(read_all()) == (20, False)
 
 
 # exit and standard error
@@ -353,3 +414,58 @@ def test_messages_written_while_the_server_stops_are_read_and_dropped(server, tm
     )
     stopped(server, tmp_path, ready=False)
     assert server.methods() == ["shutdown", "exit"]
+
+
+# a server that reads nothing
+
+
+@dataclass
+class DeafStop:
+    took: float
+    code: int
+    waiting: int
+    """Sends still waiting for the server once the stop returned."""
+
+
+def stop_of_a_deaf_server(server: ScriptedServer, directory: Path) -> DeafStop:
+    """Stops a server that reads no input while messages it never read wait in the stream, which
+    is what leaves a `drain` waiting: the reviewer's proof of a stop that never ends."""
+
+    async def stop() -> DeafStop:
+        process = await ServerProcess.start(server.arguments, directory, QUICK)
+        eventually(server.ready, bool)
+        sends = [asyncio.create_task(process.send("x" * MIB)) for _ in range(3)]
+        await asyncio.sleep(0.2)
+        begun = time.monotonic()
+        try:
+            await asyncio.wait_for(process.stop(), STOP_BOUND_S)
+        finally:
+            with suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGKILL)
+        took = time.monotonic() - begun
+        _, waiting = await asyncio.wait(sends, timeout=WAIT_S)
+        return DeafStop(took, await asyncio.wait_for(process.exited(), WAIT_S), len(waiting))
+
+    return asyncio.run(stop())
+
+
+def test_a_server_that_reads_no_input_still_gets_sigterm_when_the_deadline_comes(server, tmp_path):
+    server.play({"deaf": True})
+    stopped = stop_of_a_deaf_server(server, tmp_path)
+    assert (stopped.code, stopped.took >= QUICK.terminate_after_s) == (SIGTERM_EXIT, True)
+
+
+def test_a_server_that_reads_no_input_and_ignores_sigterm_gets_sigkill_2_s_later(server, tmp_path):
+    server.play({"deaf": True}, {"ignore": ["SIGTERM"]})
+    stopped = stop_of_a_deaf_server(server, tmp_path)
+    assert (stopped.code, stopped.took >= QUICK.terminate_after_s + QUICK.kill_after_s) == (
+        SIGKILL_EXIT,
+        True,
+    )
+
+
+def test_the_sends_that_wait_for_a_server_that_reads_nothing_end_when_it_is_stopped(
+    server, tmp_path
+):
+    server.play({"deaf": True})
+    assert stop_of_a_deaf_server(server, tmp_path).waiting == 0
