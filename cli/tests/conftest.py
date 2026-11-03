@@ -1,3 +1,4 @@
+import os
 import shutil
 from pathlib import Path
 
@@ -5,6 +6,12 @@ import pytest
 
 from tests.helpers import FIXTURE_PROBLEMS, SCHEMAS_DIRECTORY
 from tests.workspaces import set_up_workspace
+
+GRADLE_DAEMON_IDLE_MS = 60_000
+"""The slow tests start Gradle daemons that would otherwise idle for three hours after the run."""
+os.environ["GRADLE_OPTS"] = (
+    f"{os.environ.get('GRADLE_OPTS', '')} -Dorg.gradle.daemon.idletimeout={GRADLE_DAEMON_IDLE_MS}"
+).strip()
 
 
 @pytest.fixture
