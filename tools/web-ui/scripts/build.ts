@@ -25,6 +25,7 @@ const ENTRY = "app.js";
 const ENTRY_SOURCE = path.join(ROOT, "src/app.ts");
 const STYLESHEET_LINKER = path.join(ROOT, "src/page/stylesheets.ts");
 const CHUNK_STYLESHEET = "chunk-stylesheet";
+const MARKED_STAND_IN = path.join(ROOT, "src/code-intelligence/marked-stand-in.ts");
 const MANIFEST = "manifest.json";
 const LICENSES = "THIRD_PARTY_LICENSES.txt";
 const LICENSE_FILE = /^(licen[cs]e|copying)(\.(md|txt))?$/i;
@@ -50,6 +51,8 @@ const { metafile } = await esbuild.build({
   legalComments: "none",
   metafile: true,
   logLevel: "warning",
+  // The server renders all documentation, so the client's Markdown renderer is never wanted.
+  alias: { marked: MARKED_STAND_IN },
   plugins: [chunkStylesheets(output, stylesheetImports)],
 });
 requireLinkedLater(metafile, stylesheetImports);

@@ -83,7 +83,8 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 async function start(root: HTMLElement): Promise<void> {
-  const api = createApi(meta("cstudy-csrf"));
+  const csrf = meta("cstudy-csrf");
+  const api = createApi(csrf);
   const [session, stored] = await Promise.all([
     api.get<Session>("/api/v1/session"),
     api.get<Preferences>("/api/v1/preferences"),
@@ -110,6 +111,7 @@ async function start(root: HTMLElement): Promise<void> {
     api,
     session,
     nonce: meta("cstudy-csp-nonce"),
+    csrf,
     shell,
     mock,
     notifications,

@@ -64,6 +64,7 @@ interface Slots {
   readonly theme: Extension;
   readonly readOnly: Extension;
   readonly completion: Extension;
+  readonly intelligence: Extension;
 }
 
 /** Creates an editor; the promise resolves once the file's language and any Vim keybindings apply. */
@@ -78,6 +79,7 @@ export class Editor {
   readonly #readOnly = new Compartment();
   readonly #vim = new Compartment();
   readonly #completion = new Compartment();
+  readonly #intelligence = new Compartment();
   readonly #nonce: Extension;
   readonly #listeners = new Set<ChangeListener>();
   readonly #systemScheme = window.matchMedia(DARK_SCHEME);
@@ -88,6 +90,7 @@ export class Editor {
   #languageRequest = 0;
   #languageLoad: Promise<void> = Promise.resolve();
   #vimRequest = 0;
+  #destroyed = false;
 
   static async create(options: EditorOptions): Promise<Editor> {
     const editor = new Editor(options);
@@ -106,6 +109,7 @@ export class Editor {
       theme: themeExtension(this.#themeName()),
       readOnly: readOnlyExtension(options.readOnly ?? false),
       completion: completion(options.autocomplete ?? false),
+      intelligence: [],
     });
     this.#saved = state.doc;
     this.view = new EditorView({ parent: options.parent, state });
@@ -139,6 +143,8 @@ export class Editor {
       theme: this.#theme.get(current) ?? [],
       readOnly: this.#readOnly.get(current) ?? [],
       completion: this.#completion.get(current) ?? [],
+      // Bound to the file it was made for.
+      intelligence: [],
     });
     this.#path = path;
     this.#saved = state.doc;
@@ -199,6 +205,15 @@ export class Editor {
     this.#reconfigure(this.#completion, completion(applies));
   }
 
+  /**
+   * Puts a code-intelligence session's extension in the editor, or takes it out with `[]`
+   * (docs/specs/web-ui.md#code-intelligence-in-the-editor). The extension is made for this file's
+   * URI, so a new document starts without one. An editor already destroyed ignores the call.
+   */
+  setIntelligence(extension: Extension): void {
+    if (!this.#destroyed) this.#reconfigure(this.#intelligence, extension);
+  }
+
   /** Turns Vim keybindings on or off; the first time on fetches their chunk. */
   async setVim(enabled: boolean): Promise<void> {
     const request = ++this.#vimRequest;
@@ -211,6 +226,7 @@ export class Editor {
   }
 
   destroy(): void {
+    this.#destroyed = true;
     this.#systemScheme.removeEventListener("change", this.#followSystemScheme);
     this.#listeners.clear();
     this.view.destroy();
@@ -226,6 +242,7 @@ export class Editor {
         Prec.highest(this.#vim.of(slots.vim)),
         editorSetup,
         this.#completion.of(slots.completion),
+        this.#intelligence.of(slots.intelligence),
         keymap.of([indentWithTab]),
         lintGutter(),
         this.#language.of(slots.language),

@@ -3,6 +3,7 @@
 page and a server exchange, and the clocks of a session cut to a fraction of a second."""
 
 import json
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -77,3 +78,23 @@ class ScriptedServer:
     def gate(self, name: str) -> Path:
         """A file a `wait_for` step waits on; the test creates it to let the server go on."""
         return self.path.with_name(name)
+
+
+def fake_node(directory: Path, script: ScriptedServer) -> str:
+    """A `node` that runs the fake language server on the script, in a new `directory`; the new
+    `PATH`. The doctor's version command and the session's server command both run it."""
+    directory.mkdir()
+    node = directory / "node"
+    node.write_text(
+        f'#!/bin/sh\nexec "{sys.executable}" "{FAKE_LANGUAGE_SERVER}" "{script.path}" "$@"\n'
+    )
+    node.chmod(0o755)
+    return f"{directory}{os.pathsep}{os.environ['PATH']}"
+
+
+def install_fake_basedpyright(workspace: Path) -> None:
+    """The two files `cstudy` looks for in `.cs/lsp/`, so that Python counts as installed."""
+    package = workspace / ".cs" / "lsp" / "node_modules" / "basedpyright"
+    package.mkdir(parents=True)
+    for name in ("index.js", "langserver.index.js"):
+        (package / name).write_text("")

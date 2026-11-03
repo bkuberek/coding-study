@@ -13,6 +13,8 @@ export interface PageContext {
   readonly session: Session;
   /** The CSP nonce of this page, for the editor's style elements. */
   readonly nonce: string;
+  /** The page's CSRF token, which a code-intelligence session sends as its first message. */
+  readonly csrf: string;
   readonly shell: Shell;
   /** The mock interview that runs, which the banner and the Hint and Solution buttons follow. */
   readonly mock: MockWatch;

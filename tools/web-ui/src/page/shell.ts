@@ -30,6 +30,9 @@ export interface Shell {
   setView(name: ViewName): void;
   setStatus(line: StatusLine): void;
   setAttempts(entries: readonly ListEntry[]): void;
+  /** Puts the active file's code intelligence in the status bar (docs/specs/web-ui.md#status-bar),
+   * or nothing for null; `src/page/intelligence.ts` builds it. */
+  setIntelligence(segment: HTMLElement | null): void;
   /** Puts the mock interview's banner in the top bar. */
   setBanner(banner: HTMLElement): void;
   /** Names the notification stream's state in the top bar while it is down. */
@@ -75,6 +78,7 @@ export function mountShell(root: HTMLElement, version: string, actions: ShellAct
   const mode = h("span", { class: "segment mode" });
   const where = h("span", { class: "segment where" });
   const extra = h("span", { class: "segment-group" });
+  const intelligence = h("span", { class: "segment-group" });
   const vim = h("button", { type: "button", class: "segment toggle", "aria-pressed": "false" }, "vim");
   const theme = h("button", { type: "button", class: "segment toggle" }, "theme");
   const announcer = h("div", { class: "sr-only", "aria-live": "polite", role: "status" });
@@ -117,6 +121,7 @@ export function mountShell(root: HTMLElement, version: string, actions: ShellAct
       mode,
       where,
       extra,
+      intelligence,
       h("span", { class: "spacer" }),
       vim,
       theme,
@@ -158,6 +163,9 @@ export function mountShell(root: HTMLElement, version: string, actions: ShellAct
       );
       attemptsCount.textContent = String(attempts.length);
       attemptsList.replaceChildren(...(attempts.length ? attempts : [h("li", { class: "menu-empty" }, "none")]));
+    },
+    setIntelligence(segment) {
+      intelligence.replaceChildren(...(segment === null ? [] : [segment]));
     },
     setBanner(banner) {
       bannerSlot.replaceChildren(banner);

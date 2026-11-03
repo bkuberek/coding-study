@@ -30,6 +30,22 @@ export interface Preferences {
   readonly autocomplete: boolean;
 }
 
+/** One language of `GET /api/v1/code-intelligence/languages`. */
+export interface LanguageState {
+  readonly language: string;
+  /** Null for a language with no server yet. */
+  readonly server: string | null;
+  readonly version: string | null;
+  readonly state: "installed" | "not_installed" | "not_available";
+  /** `basedpyright 1.40.2`, `not installed: run cstudy doctor --fix` or `not available yet`. */
+  readonly detail: string;
+  readonly idle_s: number | null;
+}
+
+export interface LanguageStates {
+  readonly languages: readonly LanguageState[];
+}
+
 export interface AttemptRef {
   readonly attempt_id: number;
   readonly language: string | null;

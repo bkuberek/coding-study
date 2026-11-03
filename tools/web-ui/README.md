@@ -9,6 +9,8 @@ The sources of the front end that `cstudy serve` serves: the page's own code and
 | `src/page/stylesheets.ts` | Links a chunk's stylesheet with the page's CSP nonce; the chunk resolves once the stylesheet applies, so nothing it draws shows unstyled |
 | `src/page/notifications.ts` | The tab's notification stream (`/api/v1/events`), closed while the tab is hidden; the views follow what changed elsewhere through it |
 | `src/editor.ts` | The editor module, a chunk the page fetches the first time a file opens |
+| `src/page/intelligence-start.ts`, `src/page/intelligence.ts` | Code intelligence in the Attempt view. The start module is in the page; it fetches the link (`intelligence.ts`) as a chunk once `code_intelligence` is on. The link decides what each file gets (a session, or a reason in the status bar), reads the languages and loads the code-intelligence chunk only for a file of a language with an installed server. `intelligence-state.ts` and `intelligence-status.ts` hold the close codes, the reconnect delays and the status bar's text, which the tests cover |
+| `src/code-intelligence.ts`, `src/code-intelligence/` | The code-intelligence chunk: `@codemirror/lsp-client` and the sessions over it (the WebSocket transport, the client, the workspace, the session with its tries, Restart and idle close, and the manager that keeps one session per root). `marked-stand-in.ts` stands in for `marked`, which `scripts/build.ts` aliases to it |
 | `src/grammars/*.ts`, `src/vim.ts` | One chunk per language and one for Vim keybindings, each fetched on first use |
 | `test/*.test.ts` | Unit tests of the pure parts of the page and the editor module, run with `node --test`; `test/stylesheets.ts` makes an imported stylesheet an empty module for them |
 | `scripts/build.ts` | The esbuild run, each chunk's stylesheet, the license notice and the digest manifest. It refuses a stylesheet imported by a module the page loads at start, which `app.ts` must import instead |
@@ -54,12 +56,14 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 82.7 | 29.2 |
-| Every JavaScript and CSS file but Vim | 948.5 | 341.6 |
-| The editor before any language: the page, the editor and the core | 486.2 | 163.2 |
-| A Python file | 556.6 | 190.1 |
-| A TypeScript or JavaScript file, the largest grammar | 595.1 | 203.7 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 83.9 | 29.7 |
+| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 957.3 | 345.7 |
+| The editor before any language: the page, the editor and the core | 488.3 | 164.4 |
+| A Python file | 558.7 | 191.3 |
+| A TypeScript or JavaScript file, the largest grammar | 597.3 | 204.9 |
 | Vim keybindings, added on top | 119.7 | 38.1 |
+| The link between the editors and the sessions, fetched when `code_intelligence` is on (it counts in the whole bundle) | 3.8 | 1.6 |
+| The code-intelligence chunk, fetched when a file of a language with an installed server opens (its own budget: 64 KB raw, 24 KB gzip; `@codemirror/lsp-client` with `marked` aliased to a stand-in) | 17.5 | 6.4 |
 | The Mock and Progress views together, each fetched when it first opens (Progress with the Start dialog) | 19.8 | 9.1 |
 | The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 10.9 | 5.3 |
 | The run session, fetched when a run first starts or shows: streaming and drawing it, Cancel, diagnostics | 21.6 | 8.0 |
@@ -69,7 +73,7 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 | The file tree's menu and actions, fetched when a menu first opens or an action first runs (with the dialog module) | 9.6 | 4.5 |
 | The dialog module (sheets, confirmations, questions that ask for names) and the Start, Done and Solution dialogs, each fetched when first used | 15.8 | 7.8 |
 
-The budget (NFR-12) is 1 MB raw and 350 KB gzip for the whole bundle without Vim, the page's code included, and 600 KB raw loaded before a file of one language is editable. What a view or a control needs only when it is used is a chunk of its own (the rows above), so the page, the largest grammar and the editor stay under the 600 KB; `cli/tests/entrypoints/web/test_bundle_budget.py` holds the committed files to both limits. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
+The budget (NFR-12) is 1 MB raw and 350 KB gzip for the whole bundle without Vim and the code-intelligence chunk, the page's code included, and 600 KB raw loaded before a file of one language is editable. What a view or a control needs only when it is used is a chunk of its own (the rows above), so the page, the largest grammar and the editor stay under the 600 KB; `cli/tests/entrypoints/web/test_bundle_budget.py` holds the committed files to both limits. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
 
 ## Editor module
 
@@ -86,6 +90,7 @@ The page imports `createEditor` from `editor.ts` when the first file opens. Ever
 | `setReadOnly(readOnly)` | Refuses edits; the text stays focusable and selectable |
 | `setTheme("light" \| "dark" \| "system")` | `system` follows `prefers-color-scheme` as it changes |
 | `setVim(enabled)` | Fetches the Vim chunk the first time it is turned on |
+| `setIntelligence(extension)` | Puts a code-intelligence session's extension in the editor, or takes it out with `[]` |
 | `languageForPath(path)` | The language of a file name, or `null` |
 
 | Concern | Behavior |

@@ -49,3 +49,20 @@
   margin: 2px 0 12px;
   overflow-wrap: anywhere;
 }
+
+.languages {
+  margin: 0 0 6px;
+  padding: 0 0 0 28px;
+  list-style: none;
+  font-size: var(--text-s);
+}
+
+.languages li {
+  padding: 2px 0;
+}
+
+.language-name {
+  display: inline-block;
+  min-width: 6em;
+  font-weight: 700;
+}

@@ -470,6 +470,24 @@ main:focus {
   color: var(--accent);
 }
 
+.statusbar .segment-action {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--chrome-ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.statusbar .segment-action:hover {
+  color: #ffffff;
+}
+
+.statusbar .code-intelligence[data-state="stopped"] {
+  color: #ff8f87;
+}
+
 .timer-segment.is-over,
 .timer.is-over {
   color: var(--fail);

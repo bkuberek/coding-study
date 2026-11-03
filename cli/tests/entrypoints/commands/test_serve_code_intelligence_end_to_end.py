@@ -9,7 +9,6 @@ real command of the catalog and the real process handling run. The real servers 
 separately (`tests/entrypoints/web/test_real_language_servers.py`)."""
 
 import json
-import os
 import signal
 import subprocess
 import sys
@@ -22,7 +21,13 @@ from wsproto.extensions import PerMessageDeflate
 
 from coding_study.adapters.preferences_fs import FsPreferencesStore
 from coding_study.domain.preferences import Preferences, preferences_document
-from tests.language_server_scripts import FAKE_LANGUAGE_SERVER, ScriptedServer, answer, request
+from tests.language_server_scripts import (
+    ScriptedServer,
+    answer,
+    fake_node,
+    install_fake_basedpyright,
+    request,
+)
 from tests.scripted_runs import eventually, is_alive
 from tests.serve_page import RUN_SECONDS, Page, opened_page
 from tests.serve_process import LOOPBACK, RunningServer, running_server, served_environment
@@ -61,25 +66,11 @@ class Lab:
 def lab(practice_workspace: Path, tmp_path: Path) -> Lab:
     workspace = workspace_like(practice_workspace, tmp_path / "workspace")
     cstudy(workspace, "start", "two-sum", "--lang", "python", "--no-open")
-    package = workspace / ".cs" / "lsp" / "node_modules" / "basedpyright"
-    package.mkdir(parents=True)
-    for name in ("index.js", "langserver.index.js"):
-        (package / name).write_text("")
+    install_fake_basedpyright(workspace)
     FsPreferencesStore(workspace).write(preferences_document(Preferences(code_intelligence=True)))
     script = ScriptedServer(tmp_path / "server.json")
     script.play()
     return Lab(workspace, script, {"PATH": fake_node(tmp_path / "bin", script)})
-
-
-def fake_node(directory: Path, script: ScriptedServer) -> str:
-    """A `node` that runs the fake language server on the script; the new `PATH`."""
-    directory.mkdir()
-    node = directory / "node"
-    node.write_text(
-        f'#!/bin/sh\nexec "{sys.executable}" "{FAKE_LANGUAGE_SERVER}" "{script.path}" "$@"\n'
-    )
-    node.chmod(0o755)
-    return f"{directory}{os.pathsep}{os.environ['PATH']}"
 
 
 @pytest.fixture

@@ -8,6 +8,7 @@ import { ApiError } from "../api.ts";
 import { type AttemptFlows, attemptFlows } from "../attempts.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { badge, command, h, rendered } from "../dom.ts";
+import { startIntelligence } from "../intelligence-start.ts";
 import { secondsSince, timerText } from "../format.ts";
 import { problemHash } from "../routes.ts";
 import { AttemptRuns } from "../runs.ts";
@@ -28,6 +29,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
 
   const tabs = new EditorTabs(context, id);
   const unsubscribe = context.onPreferences((preferences) => tabs.applyPreferences(preferences));
+  const intelligence = startIntelligence(context, tabs, id);
   const runs = new AttemptRuns({
     context,
     attemptId: id,
@@ -93,6 +95,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
       shown = { head: head(status, clock, flows, runs.toolbar), brief: brief(status, text, flows.hints), flows, files, status, statement: text };
       page.removeAttribute("aria-busy");
       page.replaceChildren(shown.head, files.element, tabs.element, shown.brief, runs.panel);
+      intelligence.configure(status.language, tree.root);
       shell.setCommand(`cstudy status ${status.slug}`);
       document.title = `${status.slug} · cstudy`;
       const first = tree.entries.find((entry) => entry.origin === "stub" || entry.origin === "notes");
@@ -167,6 +170,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
   return () => {
     window.clearInterval(timer);
     unsubscribe();
+    intelligence.destroy();
     unfollow();
     treeSoon.cancel();
     statusSoon.cancel();

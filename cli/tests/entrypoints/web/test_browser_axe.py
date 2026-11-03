@@ -5,8 +5,11 @@ its new-file dialog and restore question, the start, done and solution dialogs, 
 problem with a finished attempt, expanded, and the dialog that shows that attempt's code read-only,
 the mock view before and during a mock, the progress, health and settings views, and, on a server
 whose JDK cannot run Java and Kotlin, the list with its marks, the start dialog of a problem and of
-a Java project with the languages disabled, and a start refused with a `fix:` hint. Each view must
-have no violation of WCAG 2.2 A and AA, nor of axe's best practices.
+a Java project with the languages disabled, and a start refused with a `fix:` hint; and, with code
+intelligence on against the scripted language server, the status bar's segment ready, stopped with
+its Restart and for a language whose server is not installed, and the Health view with the
+`code intelligence` rows. Each view must have no violation of WCAG 2.2 A and AA, nor of axe's
+best practices.
 
 axe-core comes with `axe-playwright-python`, in the optional `browser` dependency group; Playwright
 and its engines are set up as `tests/browsers.py` says. Without them the test is skipped.
@@ -15,13 +18,18 @@ and its engines are set up as `tests/browsers.py` says. Without them the test is
 import subprocess
 import sys
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from coding_study.adapters.preferences_fs import FsPreferencesStore
+from coding_study.domain.preferences import Preferences, preferences_document
 from tests.browsers import launched, refusing_starts
 from tests.helpers import mark_workspace, selecting_jdk
+from tests.language_server_scripts import ScriptedServer, fake_node, install_fake_basedpyright
+from tests.serve_page import opened_page
 from tests.serve_process import RunningServer, running_server, served_environment
 from tests.workspaces import workspace_like
 
@@ -83,6 +91,20 @@ JDK_VIEWS = (
     "start dialog on a JDK that cannot run Java",
     "start dialog of a Java project",
     "start refused with a fix",
+)
+INTELLIGENCE_VIEWS = (
+    "code intelligence ready",
+    "code intelligence stopped",
+    "code intelligence not installed",
+    "health with code intelligence rows",
+)
+SEGMENT = ".statusbar .code-intelligence"
+HEALTH_ROW = "table.checks td.check-name:has-text('code intelligence python')"
+SERVES = {"reply": "initialize", "result": {"capabilities": {"textDocumentSync": 2}}}
+EXITS: tuple[dict[str, object], ...] = (
+    {"reply": "initialize", "result": {"capabilities": {}}},
+    {"err": "boom"},
+    {"exit": 3},
 )
 JDK_REFUSAL = (
     "two-sum runs its java version on JDK 21 to 26; "
@@ -166,6 +188,77 @@ def jdk_violations(engine: str, jdk_server: RunningServer) -> dict[str, list[str
     return found
 
 
+@dataclass
+class Intelligence:
+    """A server with code intelligence on, whose language server is the scripted fake."""
+
+    server: RunningServer
+    script: ScriptedServer
+    attempts: dict[str, int]
+
+
+@pytest.fixture(scope="module")
+def intelligence(
+    engine: str, practice_workspace: Path, tmp_path_factory: pytest.TempPathFactory
+) -> Iterator[Intelligence]:
+    base = tmp_path_factory.mktemp(f"axe-intelligence-{engine}")
+    root = workspace_like(practice_workspace, base / "ws")
+    for slug, language in ((SINGLE_FILE, "python"), ("lru-cache", "typescript")):
+        subprocess.run(
+            [sys.executable, "-m", "coding_study", "start", slug, "--lang", language, "--no-open"],
+            env=served_environment(root),
+            cwd=root,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            check=True,
+        )
+    install_fake_basedpyright(root)
+    FsPreferencesStore(root).write(preferences_document(Preferences(code_intelligence=True)))
+    script = ScriptedServer(base / "server.json")
+    script.play(SERVES)
+    with running_server(root, variables={"PATH": fake_node(base / "bin", script)}) as running:
+        yield Intelligence(running, script, opened_page(running).attempts)
+
+
+@pytest.fixture(scope="module")
+def intelligence_violations(engine: str, intelligence: Intelligence) -> dict[str, list[str]]:
+    """The violations of the status bar's code-intelligence segment in each of its states."""
+    found: dict[str, list[str]] = {}
+    with sync_api.sync_playwright() as playwright:
+        browser = launched(playwright, engine)
+        page = browser.new_page(viewport={"width": WIDTHS[0], "height": HEIGHT})
+        page.set_default_timeout(WAIT_MS)
+        page.goto(intelligence.server.login_url)
+        page.wait_for_selector("table.problems tbody tr")
+        for view, show in _intelligence_tour(page, intelligence):
+            show()
+            found[view] = _checked(page)
+            page.set_viewport_size({"width": WIDTHS[0], "height": HEIGHT})
+        browser.close()
+    return found
+
+
+def _intelligence_tour(
+    page: Any, intelligence: Intelligence
+) -> Iterator[tuple[str, Callable[[], None]]]:
+    yield INTELLIGENCE_VIEWS[0], lambda: _segment(page, intelligence, SINGLE_FILE, "ready")
+    yield INTELLIGENCE_VIEWS[1], lambda: _stopped_segment(page, intelligence)
+    yield INTELLIGENCE_VIEWS[2], lambda: _segment(page, intelligence, "lru-cache", "Health")
+    yield INTELLIGENCE_VIEWS[3], lambda: _open(page, "#/health", HEALTH_ROW, RUN_WAIT_MS)
+
+
+def _segment(page: Any, intelligence: Intelligence, slug: str, word: str) -> None:
+    _open(page, f"#/attempts/{intelligence.attempts[slug]}", ".panel:not([hidden]) .cm-content")
+    page.wait_for_selector(f"{SEGMENT}:has-text('{word}')")
+
+
+def _stopped_segment(page: Any, intelligence: Intelligence) -> None:
+    """A server that exits after initializing: a reload opens the session again, against it."""
+    intelligence.script.play(*EXITS)
+    page.reload()
+    _segment(page, intelligence, SINGLE_FILE, "Restart")
+
+
 def _jdk_tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
     yield JDK_VIEWS[0], lambda: None
     yield JDK_VIEWS[1], lambda: _start_dialog(page)
@@ -203,7 +296,7 @@ def _tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
     yield "mock", lambda: _open(page, "#/mock", ".mock-form")
     yield "progress", lambda: _open(page, "#/progress", ".stats-summary")
     yield "health", lambda: _open(page, "#/health", "table.checks", RUN_WAIT_MS)
-    yield "settings", lambda: _open(page, "#/settings", "#pref-vim")
+    yield "settings", lambda: _open(page, "#/settings", "ul.languages .language-name")
     yield "mock running", lambda: _mock_running(page)
 
 
@@ -320,6 +413,13 @@ def _described(violations: list[dict[str, Any]], where: str) -> list[str]:
 @pytest.mark.parametrize("view", VIEWS)
 def test_the_view_has_no_accessibility_violation(violations, view):
     assert violations[view] == []
+
+
+@pytest.mark.parametrize("view", INTELLIGENCE_VIEWS)
+def test_the_code_intelligence_segment_has_no_accessibility_violation(
+    intelligence_violations, view
+):
+    assert intelligence_violations[view] == []
 
 
 @pytest.mark.parametrize("view", JDK_VIEWS)

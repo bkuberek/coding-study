@@ -4,8 +4,10 @@ import "./settings.css";
 
 import type { Cleanup, PageContext } from "../context.ts";
 import { h } from "../dom.ts";
+import { languageRow } from "../intelligence-status.ts";
+import { messageOf } from "../states.ts";
 import { THEMES } from "../shell.ts";
-import type { Preferences } from "../types.ts";
+import type { LanguageStates, Preferences } from "../types.ts";
 
 type Switch = "vim" | "run_on_save" | "typecheck" | "code_intelligence" | "autocomplete";
 interface SwitchSpec {
@@ -30,6 +32,8 @@ const AUTOCOMPLETE: SwitchSpec = {
   help: "Completion and signature help. Off, the editor offers no completion at all.",
 };
 const AUTOCOMPLETE_NOTE = "Turn on code intelligence first";
+const LANGUAGES = "/api/v1/code-intelligence/languages";
+const DOCTOR_FIX = "doctor_fix";
 
 export function settingsView(context: PageContext): Cleanup {
   const { shell } = context;
@@ -75,6 +79,7 @@ export function settingsView(context: PageContext): Cleanup {
   };
   codeIntelligence.input.addEventListener("change", gateAutocomplete);
   gateAutocomplete();
+  const languages = languageList(context);
   const themes = THEMES.map((theme) => {
     const input = h("input", { type: "radio", name: "theme", id: `theme-${theme}`, value: theme, checked: preferences.theme === theme });
     input.addEventListener("change", () => save({ theme }));
@@ -89,12 +94,54 @@ export function settingsView(context: PageContext): Cleanup {
         "form",
         { class: "settings-form" },
         h("fieldset", {}, h("legend", {}, "editor and runs"), ...switches),
-        h("fieldset", {}, h("legend", {}, "code intelligence"), codeIntelligence.row, autocomplete.row),
+        h("fieldset", {}, h("legend", {}, "code intelligence"), codeIntelligence.row, languages.element, autocomplete.row),
         h("fieldset", {}, h("legend", {}, "theme"), h("div", { class: "radios" }, ...themes)),
       ),
       saved,
       h("dl", { class: "facts" }, h("dt", {}, "workspace"), h("dd", {}, h("code", {}, context.session.workspace))),
     ),
   );
-  return () => {};
+  return languages.stop;
+}
+
+/**
+ * One line per language and the state of its server, whatever the checkbox says
+ * (docs/specs/web-ui.md#settings-view), read when the view opens and after each `doctor_fix` job.
+ */
+function languageList(context: PageContext): { readonly element: HTMLElement; readonly stop: Cleanup } {
+  const element = h("ul", { class: "languages", "aria-label": "Language servers" }, h("li", { class: "quiet" }, "reading the languages…"));
+  let current = 0;
+  const read = () => {
+    const request = ++current;
+    context.api
+      .get<LanguageStates>(LANGUAGES)
+      .then((found) => {
+        if (request !== current) return;
+        element.replaceChildren(
+          ...found.languages.map(languageRow).map((row) =>
+            h(
+              "li",
+              {},
+              h("span", { class: "language-name" }, row.name),
+              " ",
+              row.health ? h("a", { href: "#/health" }, row.detail) : h("span", { class: "quiet" }, row.detail),
+            ),
+          ),
+        );
+      })
+      .catch((error: unknown) => {
+        if (request === current) element.replaceChildren(h("li", { class: "quiet" }, `could not read the languages: ${messageOf(error)}`));
+      });
+  };
+  read();
+  const unsubscribe = context.notifications.subscribe((notice) => {
+    if (notice.type === "job_ended" && notice.command === DOCTOR_FIX) read();
+  });
+  return {
+    element,
+    stop: () => {
+      current += 1;
+      unsubscribe();
+    },
+  };
 }

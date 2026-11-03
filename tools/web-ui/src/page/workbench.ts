@@ -37,6 +37,11 @@ export type SavedListener = (path: string) => void;
 
 export type EditorListener = (path: string, editor: Editor) => void;
 
+/** The path of the tab that came forward, or null once no tab is open. */
+export type ActiveListener = (path: string | null) => void;
+
+export type ClosedListener = (path: string) => void;
+
 export class EditorTabs {
   readonly element: HTMLElement;
   readonly files: AttemptFiles;
@@ -47,6 +52,8 @@ export class EditorTabs {
   readonly #open = new Map<string, OpenFile>();
   readonly #savedListeners = new Set<SavedListener>();
   readonly #editorListeners = new Set<EditorListener>();
+  readonly #activeListeners = new Set<ActiveListener>();
+  readonly #closedListeners = new Set<ClosedListener>();
   readonly #untrack: () => void;
   #active: string | null = null;
   #destroyed = false;
@@ -169,6 +176,8 @@ export class EditorTabs {
     window.removeEventListener("beforeunload", this.#onUnload);
     this.#untrack();
     this.#savedListeners.clear();
+    this.#activeListeners.clear();
+    this.#closedListeners.clear();
     for (const { editor } of this.#open.values()) editor?.destroy();
     this.#open.clear();
   }
@@ -182,6 +191,23 @@ export class EditorTabs {
   onEditor(listener: EditorListener): () => void {
     this.#editorListeners.add(listener);
     return () => this.#editorListeners.delete(listener);
+  }
+
+  /** Calls `listener` whenever another tab comes forward, or none is left. */
+  onActive(listener: ActiveListener): () => void {
+    this.#activeListeners.add(listener);
+    return () => this.#activeListeners.delete(listener);
+  }
+
+  /** Calls `listener` with the path of each tab that closes, after its editor is destroyed. */
+  onClosed(listener: ClosedListener): () => void {
+    this.#closedListeners.add(listener);
+    return () => this.#closedListeners.delete(listener);
+  }
+
+  /** The path of the tab in front, or null. */
+  get active(): string | null {
+    return this.#active;
   }
 
   async #show(file: OpenFile, document: FileDocument): Promise<void> {
@@ -256,6 +282,7 @@ export class EditorTabs {
       tab.tabIndex = active ? 0 : -1;
       panel.hidden = !active;
     }
+    for (const listener of this.#activeListeners) listener(path);
   }
 
   /** Closes the tab, once its unsaved changes, if any, may go. */
@@ -281,6 +308,7 @@ export class EditorTabs {
     file.tab.remove();
     file.panel.remove();
     this.#open.delete(path);
+    for (const listener of this.#closedListeners) listener(path);
     if (this.#active !== path) return;
     const next = paths[index + 1] ?? paths[index - 1];
     if (next !== undefined && next !== path) {
@@ -289,6 +317,7 @@ export class EditorTabs {
     } else {
       this.#active = null;
       this.#placeholder.hidden = false;
+      for (const listener of this.#activeListeners) listener(null);
     }
   }
 
