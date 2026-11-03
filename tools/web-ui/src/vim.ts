@@ -1,6 +1,8 @@
 // Vim keybindings are opt-in, so they are a chunk of their own, fetched when first turned on
 // (docs/specs/web-ui.md#keyboard-and-accessibility).
 import type { Extension } from "@codemirror/state";
+import { Prec } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import { Vim, vim } from "@replit/codemirror-vim";
 
 import { type CommandName, runNamedCommand } from "./editor-commands.ts";
@@ -9,6 +11,7 @@ import { type CommandName, runNamedCommand } from "./editor-commands.ts";
 const KEYS: readonly { readonly keys: string; readonly action: string; readonly command: CommandName }[] = [
   { keys: "]d", action: "cstudyNextDiagnostic", command: "cursorToNextDiagnostic" },
   { keys: "[d", action: "cstudyPreviousDiagnostic", command: "cursorToPreviousDiagnostic" },
+  { keys: "K", action: "cstudyHover", command: "hover" },
 ];
 
 let mapped = false;
@@ -28,7 +31,21 @@ function mapKeys(): void {
   }
 }
 
+/**
+ * Vim takes Escape in a DOM handler that runs before every key binding, so what an Escape closes
+ * (the hover, and the completion list and signature help) is closed from a handler placed before
+ * it; Vim then leaves insert mode in the same press.
+ */
+const DISMISS: Extension = Prec.highest(
+  EditorView.domEventHandlers({
+    keydown(event, view) {
+      if (event.key === "Escape") runNamedCommand(view, "dismiss");
+      return false;
+    },
+  }),
+);
+
 export function vimKeybindings(): Extension {
   mapKeys();
-  return vim();
+  return [DISMISS, vim()];
 }

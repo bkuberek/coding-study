@@ -30,9 +30,6 @@ interface Palette {
   readonly operator: string;
   readonly meta: string;
   readonly invalid: string;
-  /** Warning and information underlines and markers. */
-  readonly warning: string;
-  readonly information: string;
 }
 
 const LIGHT: Palette = {
@@ -55,8 +52,6 @@ const LIGHT: Palette = {
   operator: "#4e545d",
   meta: "#76592b",
   invalid: "#b3261e",
-  warning: "#b07d00",
-  information: "#1d5b89",
 };
 
 const DARK: Palette = {
@@ -79,16 +74,7 @@ const DARK: Palette = {
   operator: "#aeb6c1",
   meta: "#c9a36b",
   invalid: "#ff8f87",
-  warning: "#e8c36a",
-  information: "#86c1f0",
 };
-
-/** The wavy underline of a lint range, as `@codemirror/lint` draws it, in another colour. */
-function squiggle(color: string): string {
-  const path = `<path d="m0 2.5 l2 -1.5 l1 0 l2 1.5 l1 0" stroke="${color}" fill="none" stroke-width=".7"/>`;
-  return `url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="6" height="3">${encodeURIComponent(path)}</svg>')`;
-}
-
 
 const MONOSPACE =
   'ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, "Liberation Mono", monospace';
@@ -119,13 +105,6 @@ function chrome(palette: Palette, dark: boolean): Extension {
       ".cm-panels.cm-panels-top": { borderBottom: `1px solid ${palette.border}` },
       ".cm-panels.cm-panels-bottom": { borderTop: `1px solid ${palette.border}` },
       ".cm-tooltip": { backgroundColor: palette.panel, color: foreground, border: `1px solid ${palette.border}` },
-      // A hint has no underline (docs/specs/web-ui.md#live-diagnostics); unused code fades and
-      // deprecated code is struck through.
-      ".cm-lintRange-hint": { backgroundImage: "none" },
-      ".cm-lintRange-warning": { backgroundImage: squiggle(palette.warning) },
-      ".cm-lintRange-info": { backgroundImage: squiggle(palette.information) },
-      ".cstudy-unnecessary": { opacity: "0.7" },
-      ".cstudy-deprecated": { textDecoration: "line-through" },
       ".cm-tooltip-autocomplete > ul > li[aria-selected]": { backgroundColor: palette.selection, color: foreground },
     },
     { dark },

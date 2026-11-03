@@ -7,7 +7,7 @@
 import { EditorState, Facet } from "@codemirror/state";
 import type { Command, EditorView } from "@codemirror/view";
 
-export type CommandName = "cursorToNextDiagnostic" | "cursorToPreviousDiagnostic" | "definition" | "back" | "hover";
+export type CommandName = "cursorToNextDiagnostic" | "cursorToPreviousDiagnostic" | "definition" | "back" | "hover" | "dismiss";
 
 export type NamedCommands = Partial<Record<CommandName, Command>>;
 

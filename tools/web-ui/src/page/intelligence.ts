@@ -194,6 +194,7 @@ export class IntelligenceLink {
       workspace: this.#context.session.workspace,
       root,
       idleS: decision.idleS,
+      announce: (message) => this.#context.shell.announce(message),
     });
     tracked.attachment = attachment;
     tracked.unsubscribe = attachment.onState(() => this.#render());

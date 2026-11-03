@@ -7,9 +7,9 @@ the mock view before and during a mock, the progress, health and settings views,
 whose JDK cannot run Java and Kotlin, the list with its marks, the start dialog of a problem and of
 a Java project with the languages disabled, and a start refused with a `fix:` hint; and, with code
 intelligence on against the scripted language server, the status bar's segment ready, stopped with
-its Restart and for a language whose server is not installed, and the Health view with the
-`code intelligence` rows. Each view must have no violation of WCAG 2.2 A and AA, nor of axe's
-best practices.
+its Restart and for a language whose server is not installed, the hover tooltip with a diagnostic
+and its documentation, and the Health view with the `code intelligence` rows. Each view must
+have no violation of WCAG 2.2 A and AA, nor of axe's best practices.
 
 axe-core comes with `axe-playwright-python`, in the optional `browser` dependency group; Playwright
 and its engines are set up as `tests/browsers.py` says. Without them the test is skipped.
@@ -28,7 +28,13 @@ from coding_study.adapters.preferences_fs import FsPreferencesStore
 from coding_study.domain.preferences import Preferences, preferences_document
 from tests.browsers import launched, refusing_starts
 from tests.helpers import mark_workspace, selecting_jdk
-from tests.language_server_scripts import ScriptedServer, fake_node, install_fake_basedpyright
+from tests.intelligence_lab import SERVES as CAPABLE
+from tests.language_server_scripts import (
+    ScriptedServer,
+    fake_node,
+    install_fake_basedpyright,
+    notification,
+)
 from tests.serve_page import opened_page
 from tests.serve_process import RunningServer, running_server, served_environment
 from tests.workspaces import workspace_like
@@ -97,10 +103,44 @@ INTELLIGENCE_VIEWS = (
     "code intelligence stopped",
     "code intelligence not installed",
     "health with code intelligence rows",
+    "hover tooltip",
 )
 SEGMENT = ".statusbar .code-intelligence"
 HEALTH_ROW = "table.checks td.check-name:has-text('code intelligence python')"
-SERVES = {"reply": "initialize", "result": {"capabilities": {"textDocumentSync": 2}}}
+HOVER_DOCUMENTATION = (
+    "```python\n(function) def two_sum(nums: list[int], target: int) -> list[int]\n```\n---\n"
+    "Finds the **two** numbers that add up to the target; see [the docs](https://example.org/x) "
+    "for `nums` and `target`.\n\n```python\ntwo_sum([2, 7], 9)  # [0, 1]\n```\n"
+)
+INTELLIGENCE_SCRIPT: tuple[dict[str, object], ...] = (
+    CAPABLE,
+    {
+        "answer": {
+            "textDocument/hover": {"contents": {"kind": "markdown", "value": HOVER_DOCUMENTATION}}
+        }
+    },
+    {"await": "textDocument/didOpen"},
+    {
+        "send": notification(
+            "textDocument/publishDiagnostics",
+            {
+                "uri": "$uri",
+                "diagnostics": [
+                    {
+                        "range": {
+                            "start": {"line": 3, "character": 4},
+                            "end": {"line": 3, "character": 11},
+                        },
+                        "severity": 1,
+                        "source": "basedpyright",
+                        "code": "reportUndefinedVariable",
+                        "message": '"two_sum" is not defined',
+                    }
+                ],
+            },
+        )
+    },
+)
 EXITS: tuple[dict[str, object], ...] = (
     {"reply": "initialize", "result": {"capabilities": {}}},
     {"err": "boom"},
@@ -215,7 +255,7 @@ def intelligence(
     install_fake_basedpyright(root)
     FsPreferencesStore(root).write(preferences_document(Preferences(code_intelligence=True)))
     script = ScriptedServer(base / "server.json")
-    script.play(SERVES)
+    script.play(*INTELLIGENCE_SCRIPT)
     with running_server(root, variables={"PATH": fake_node(base / "bin", script)}) as running:
         yield Intelligence(running, script, opened_page(running).attempts)
 
@@ -245,11 +285,30 @@ def _intelligence_tour(
     yield INTELLIGENCE_VIEWS[1], lambda: _stopped_segment(page, intelligence)
     yield INTELLIGENCE_VIEWS[2], lambda: _segment(page, intelligence, "lru-cache", "Health")
     yield INTELLIGENCE_VIEWS[3], lambda: _open(page, "#/health", HEALTH_ROW, RUN_WAIT_MS)
+    yield INTELLIGENCE_VIEWS[4], lambda: _hover_tooltip(page, intelligence)
 
 
 def _segment(page: Any, intelligence: Intelligence, slug: str, word: str) -> None:
     _open(page, f"#/attempts/{intelligence.attempts[slug]}", ".panel:not([hidden]) .cm-content")
     page.wait_for_selector(f"{SEGMENT}:has-text('{word}')")
+
+
+def _hover_tooltip(page: Any, intelligence: Intelligence) -> None:
+    """The tooltip a keyboard hover opens on the underlined name: the diagnostic above the
+    documentation, a link and two code blocks in it."""
+    intelligence.script.play(*INTELLIGENCE_SCRIPT)
+    page.reload()
+    _segment(page, intelligence, SINGLE_FILE, "1 error")
+    page.click(".panel:not([hidden]) .cm-content")
+    page.keyboard.press("ControlOrMeta+Home")
+    for _ in range(3):
+        page.keyboard.press("ArrowDown")
+    for _ in range(6):
+        page.keyboard.press("ArrowRight")
+    page.keyboard.press("ControlOrMeta+k")
+    page.keyboard.press("ControlOrMeta+i")
+    page.wait_for_selector(".cm-tooltip-hover .cs-hover")
+    page.wait_for_selector(".cm-tooltip-hover .cm-tooltip-lint")
 
 
 def _stopped_segment(page: Any, intelligence: Intelligence) -> None:

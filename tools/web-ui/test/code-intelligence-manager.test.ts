@@ -44,6 +44,7 @@ function request(overrides: Partial<AttachRequest> = {}): AttachRequest {
     workspace: "/ws",
     root: "python/practice",
     idleS: 60,
+    announce() {},
     ...overrides,
   };
 }

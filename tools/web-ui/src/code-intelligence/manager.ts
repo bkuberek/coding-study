@@ -9,7 +9,9 @@
 import type { Editor } from "../editor.ts";
 import { FILE_SAVED_EVENT, type FileSaved } from "../page/api.ts";
 import type { SessionState } from "../page/intelligence-state.ts";
+import "./code-intelligence.css";
 import { fileUri, rootUri } from "./documents.ts";
+import { intelligenceExtension } from "./extension.ts";
 import { Session, type StateListener } from "./session.ts";
 import type { Origin } from "./transport.ts";
 
@@ -29,6 +31,8 @@ export interface AttachRequest {
   readonly root: string;
   /** The catalog's `idle_s` for the language. */
   readonly idleS: number;
+  /** Read by screen readers without moving the focus. */
+  readonly announce: (message: string) => void;
 }
 
 /** What the manager asks of the page: whether code intelligence is on, and to hear when that changes. */
@@ -84,7 +88,7 @@ export class CodeIntelligence {
     const uri = fileUri(request.workspace, request.root, request.path);
     const attached: Attached = { session, uri, attemptId: request.attemptId, path: request.path };
     this.#attached.add(attached);
-    request.editor.setIntelligence(session.plugin(uri, request.languageId));
+    request.editor.setIntelligence(intelligenceExtension(session, uri, request.languageId, { announce: request.announce }));
     return {
       get state() {
         return session.state;
