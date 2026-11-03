@@ -2,6 +2,31 @@
 
 <!-- version list -->
 
+## v0.11.1 (2026-11-03)
+
+### Bug Fixes
+
+- **jdk**: Name the problem's own JDK range in the fix line
+  ([`34b2478`](https://github.com/bkuberek/coding-study/commit/34b247800e95be6c4c321f3a6e9edf9327c2b17d))
+
+- **web**: Scroll the status bar instead of squeezing its segments in a narrow window
+  ([`836c0ca`](https://github.com/bkuberek/coding-study/commit/836c0ca9a7ca58ce60b75a5089f0170063fd4f01))
+
+### Documentation
+
+- List Linux among the supported platforms in the PRD
+  ([`4ee4eeb`](https://github.com/bkuberek/coding-study/commit/4ee4eeb1d998f00e9c097c4f4426463882e74913))
+
+- Retake the web UI screenshots on 0.11.0
+  ([`b54f308`](https://github.com/bkuberek/coding-study/commit/b54f308a0bec15b7f3f19f370759cbad3346d496))
+
+- Say which commands refresh the runner runtime
+  ([`19ba2ca`](https://github.com/bkuberek/coding-study/commit/19ba2ca8fa753acbb1a645308eb56a1de146e930))
+
+- State the Java --virtual-clock refusal text exactly
+  ([`732c0fa`](https://github.com/bkuberek/coding-study/commit/732c0fa7882c360157f1b4ab7e8ee32bc4176930))
+
+
 ## v0.11.0 (2026-11-03)
 
 ### Bug Fixes
