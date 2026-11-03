@@ -25,7 +25,6 @@ from coding_study.application.project_runs import (
     project_runner,
     run_grading,
     run_suite,
-    shares_the_entry_class,
     suite_job,
 )
 from coding_study.domain.case_status import CaseStatus
@@ -36,6 +35,7 @@ from coding_study.domain.judging import CaseVerdict, RunnableCase
 from coding_study.domain.naming import ClassNames
 from coding_study.domain.precedence import DEFAULT_HANG_GUARD_MS
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
+from coding_study.domain.project import shares_the_entry_class
 from coding_study.domain.runs import (
     CaseOutcome,
     ProjectTarget,

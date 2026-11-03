@@ -136,6 +136,34 @@ def test_an_async_kotlin_method_is_a_suspend_function():
     ]
 
 
+def test_an_async_rust_method_is_an_async_fn():
+    waits = replace(method("waitFor", 1, "key: string; waitMs: long", "string"), is_async=True)
+    signature = ClassSignature("Bank", (), (method("put", 1, "key: string", "string"), waits))
+    meta = project_meta(signature=signature, language=Language.RUST, levels=(Level(1, "W"),))
+    markdown = "# Bank\n\n## Level 1: W\n"
+    assert lines_after("## Level 1: W", rendered(1, project_problem(meta=meta), markdown), 2) == [
+        "",
+        "Methods to add: put(&mut self, key: String) -> String, "
+        "async fn wait_for(&mut self, key: String, wait_ms: i64) -> String",
+    ]
+
+
+def test_a_rust_level_whose_cases_spawn_a_task_takes_its_methods_by_shared_reference():
+    waits = replace(method("waitFor", 2, "key: string; waitMs: long", "string"), is_async=True)
+    signature = ClassSignature("Bank", (), (method("put", 1, "key: string", "string"), waits))
+    levels = (Level(1, "Store"), Level(2, "Wait"))
+    meta = project_meta(signature=signature, language=Language.RUST, levels=levels)
+    spawning = ops_case("ex2", 2, ("@spawn", ["w", "waitFor", "a", 5], None), ("@join", ["w"], ""))
+    markdown = "# Bank\n\n## Level 1: Store\n\n## Level 2: Wait\n"
+    text = rendered(2, project_problem(spawning, meta=meta), markdown)
+    assert lines_after("## Level 1: Store", text, 2)[1] == (
+        "Methods to add: put(&mut self, key: String) -> String"
+    )
+    assert lines_after("## Level 2: Wait", text, 2)[1] == (
+        "Methods to add: async fn wait_for(&self, key: String, wait_ms: i64) -> String"
+    )
+
+
 def test_expected_outputs_keep_their_method_types():
     balance_on = method("balanceOn", 1, "day: date", "decimal")
     signature = ClassSignature("Bank", (), (balance_on,))

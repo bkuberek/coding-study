@@ -7,6 +7,7 @@ files to keep the two in step.
 """
 
 from collections.abc import Sequence
+from dataclasses import replace
 
 import pytest
 
@@ -15,6 +16,7 @@ from coding_study.domain.cases import JsonValue
 from coding_study.domain.problem import ComparatorSpec, ComparatorType, Language
 from coding_study.domain.project_tests import level_tests
 from coding_study.domain.signature import ClassSignature, Method
+from coding_study.domain.virtual_clock import ProjectClock
 from tests.project_builders import OPS, method, ops_case, project_meta, project_problem
 
 GENERATOR = RustTestGenerator()
@@ -386,3 +388,194 @@ def test_a_list_argument_overflows_its_call():
         '        "kim".to_string(),\n'
         "    ]);\n"
     )
+
+
+# the virtual clock (docs/specs/problem-format.md#generated-tests-on-the-virtual-clock)
+
+PUBLISH = method("publish", 1, "body: string", "int")
+RECEIVE = replace(method("receive", 1, "waitMs: long", "string"), is_async=True)
+LEAVE = replace(method("leave", 1, "", "void"), is_async=True)
+INBOX = ClassSignature("Inbox", (), (PUBLISH, RECEIVE, LEAVE))
+RUST_CLOCK_EXAMPLE = """\
+//! Level 1 examples of bank-project-rust, written by `cstudy start`.
+//!
+//! Yours to edit and extend: cstudy never rewrites this file.
+
+use std::sync::Arc;
+use std::time::Duration;
+
+use bank::Inbox;
+use tokio::time::Instant;
+
+/// Lets every task run until each one waits, without moving the clock. The runtime parks when
+/// no task can run, and a blocking task, while it runs, keeps the paused clock still.
+async fn settle() {
+    let metrics = tokio::runtime::Handle::current().metrics();
+    let parked = metrics.worker_park_count(0);
+    tokio::task::spawn_blocking(move || {
+        while metrics.worker_park_count(0) == parked {
+            std::thread::yield_now();
+        }
+    })
+    .await
+    .unwrap();
+}
+
+/// Moves the clock `ms` milliseconds: each timer due on the way fires at its own time.
+async fn advance(ms: u64) {
+    tokio::time::sleep(Duration::from_millis(ms)).await;
+    settle().await;
+}
+
+/// A waiting receive takes a message published while it waits.
+#[tokio::test(start_paused = true)]
+async fn ex1() {
+    let start = Instant::now();
+    let inbox = Arc::new(Inbox::new());
+    settle().await;
+    let r1 = tokio::spawn({
+        let inbox = Arc::clone(&inbox);
+        async move { inbox.receive(5000).await }
+    });
+    settle().await;
+    advance(1000).await;
+    assert_eq!(inbox.publish("a".to_string()), 1);
+    settle().await;
+    assert_eq!(r1.await.unwrap(), "a");
+    settle().await;
+    assert_eq!(start.elapsed().as_millis(), 1000);
+    assert_eq!(inbox.receive(2000).await, "");
+    settle().await;
+    assert_eq!(start.elapsed().as_millis(), 3000);
+}
+"""
+CLOCK_EX1 = ops_case(
+    "ex1",
+    1,
+    ("@spawn", ["r1", "receive", 5000], None),
+    ("@advance", [1000], None),
+    ("publish", ["a"], 1),
+    ("@join", ["r1"], "a"),
+    ("@now", [], 1000),
+    ("receive", [2000], ""),
+    ("@now", [], 3000),
+    note="a waiting receive takes a message published while it waits",
+    class_name="Inbox",
+)
+CLOCK_META = project_meta(INBOX, OPS, Language.RUST, clock=ProjectClock.VIRTUAL)
+
+
+def on_the_clock(*calls, meta=CLOCK_META) -> str:
+    return generated(ops_case("ex1", 1, *calls, class_name="Inbox"), meta=meta)
+
+
+def clock_body(text: str) -> str:
+    """The lines inside the one test."""
+    return text.split("async fn ex1() {\n", 1)[1].removesuffix("}\n")
+
+
+def test_a_rust_level_on_the_virtual_clock_matches_the_spec_example():
+    assert generated(CLOCK_EX1, meta=CLOCK_META) == RUST_CLOCK_EXAMPLE
+
+
+def test_generation_on_the_virtual_clock_is_byte_stable():
+    assert generated(CLOCK_EX1, meta=CLOCK_META) == generated(CLOCK_EX1, meta=CLOCK_META)
+
+
+def test_a_test_settles_between_calls_but_not_after_the_last():
+    text = on_the_clock(("publish", ["a"], 1), ("publish", ["b"], 2))
+    assert clock_body(text) == (
+        "    let mut inbox = Inbox::new();\n"
+        "    settle().await;\n"
+        '    assert_eq!(inbox.publish("a".to_string()), 1);\n'
+        "    settle().await;\n"
+        '    assert_eq!(inbox.publish("b".to_string()), 2);\n'
+    )
+
+
+def test_a_test_of_the_constructor_alone_needs_no_helper():
+    text = on_the_clock()
+    assert (clock_body(text), "async fn settle" in text) == ("    Inbox::new();\n", False)
+
+
+def test_an_async_call_is_awaited():
+    assert clock_body(on_the_clock(("receive", [5], "a"))).endswith(
+        '    assert_eq!(inbox.receive(5).await, "a");\n'
+    )
+
+
+def test_an_async_void_call_is_awaited_alone():
+    assert clock_body(on_the_clock(("leave", [], None))).endswith("    inbox.leave().await;\n")
+
+
+def test_a_level_that_shares_the_instance_binds_it_without_mut():
+    spawning = ops_case(
+        "ex2", 1, ("@spawn", ["r1", "receive", 5], None), ("@join", ["r1"], ""), class_name="Inbox"
+    )
+    calling = ops_case("ex1", 1, ("publish", ["a"], 1), class_name="Inbox")
+    text = generated(calling, spawning, meta=CLOCK_META)
+    assert "    let inbox = Inbox::new();\n" in text
+    assert "    let inbox = Arc::new(Inbox::new());\n" in text
+
+
+def test_a_spawned_task_is_named_after_its_task_and_joined_by_that_name():
+    text = on_the_clock(
+        ("@spawn", ["slow-reader", "receive", 5], None), ("@join", ["slow-reader"], "")
+    )
+    assert "    let slow_reader = tokio::spawn({\n" in text
+    assert '    assert_eq!(slow_reader.await.unwrap(), "");\n' in text
+
+
+def test_a_task_named_like_the_instance_falls_back_to_a_numbered_name():
+    text = on_the_clock(("@spawn", ["inbox", "receive", 5], None), ("@join", ["inbox"], ""))
+    assert "    let task1 = tokio::spawn({\n" in text
+
+
+def test_a_joined_void_call_stands_alone():
+    text = on_the_clock(("@spawn", ["t", "leave"], None), ("@join", ["t"], None))
+    assert clock_body(text).endswith("    t.await.unwrap();\n")
+
+
+def test_advance_settles_itself_and_now_runs_nothing():
+    text = on_the_clock(("@advance", [5], None), ("@now", [], 5), ("publish", ["a"], 1))
+    assert clock_body(text) == (
+        "    let start = Instant::now();\n"
+        "    let mut inbox = Inbox::new();\n"
+        "    settle().await;\n"
+        "    advance(5).await;\n"
+        "    assert_eq!(start.elapsed().as_millis(), 5);\n"
+        '    assert_eq!(inbox.publish("a".to_string()), 1);\n'
+    )
+
+
+def test_a_long_awaited_call_breaks_into_a_chain_one_link_per_line():
+    long = replace(
+        method("receiveFromTheMailbox", 1, "waitMs: long; label: string", "string"),
+        is_async=True,
+    )
+    meta = project_meta(
+        ClassSignature("InventoryOfThingsAndStuff", (), (long,)),
+        OPS,
+        Language.RUST,
+        clock=ProjectClock.VIRTUAL,
+    )
+    case = ops_case(
+        "ex1",
+        1,
+        ("receiveFromTheMailbox", [10, "abc"], "a"),
+        class_name="InventoryOfThingsAndStuff",
+    )
+    assert clock_body(generated(case, meta=meta)).endswith(
+        "    assert_eq!(\n"
+        "        inventory_of_things_and_stuff\n"
+        '            .receive_from_the_mailbox(10, "abc".to_string())\n'
+        "            .await,\n"
+        '        "a"\n'
+        "    );\n"
+    )
+
+
+@pytest.mark.parametrize("case_id", ["advance", "settle", "sorted", "assert_close"])
+def test_a_case_named_like_a_helper_is_prefixed(case_id):
+    case = ops_case(case_id, 1, ("@advance", [5], None), class_name="Inbox")
+    assert f"async fn case_{case_id}() {{\n" in generated(case, meta=CLOCK_META)

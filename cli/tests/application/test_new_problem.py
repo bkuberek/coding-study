@@ -15,6 +15,7 @@ from coding_study.domain import scaffold
 from coding_study.domain.cases import OperationSequence
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import ALL_LANGUAGES, ContentStatus, Language, ProblemKind, Track
+from coding_study.domain.project import RUST_CLOCK_CRATES
 from coding_study.domain.project_checks import jvm_build_files
 from coding_study.domain.scaffold import WORKSPACE_FIRST_ID, ScaffoldRequest, TemplateName
 from coding_study.domain.signature import ClassSignature
@@ -720,4 +721,50 @@ def test_a_kotlin_clock_starter_without_the_coroutines_plugin_fails_static_check
     assert static_errors(environment, KOTLIN_CLOCK_SLUG) == (
         f"problems/0003-{KOTLIN_CLOCK_SLUG}/starter/build.gradle.kts: differs from what "
         "cstudy new --from-template project-kotlin --virtual-clock writes",
+    )
+
+
+# a Rust project on the virtual clock
+
+RUST_CLOCK_SLUG = "waiter-project-rust"
+
+
+def create_rust_clock(environment):
+    request = ScaffoldRequest(RUST_CLOCK_SLUG, TemplateName.PROJECT_RUST, virtual_clock=True)
+    return create_problem(environment, TEMPLATES, request)
+
+
+def test_a_rust_clock_projects_level_2_method_is_an_async_fn(environment):
+    created = create_rust_clock(environment)
+    text = clock_file(environment, created, "solutions/reference/src/lib.rs")
+    assert "    pub async fn wait_for(&self, key: String, wait_ms: i64) -> String {\n" in text
+
+
+def test_a_rust_clock_projects_starter_depends_on_tokio(environment):
+    created = create_rust_clock(environment)
+    manifest = clock_file(environment, created, "starter/Cargo.toml")
+    assert f"[dependencies]\ntokio = {RUST_CLOCK_CRATES['tokio']}\n" in manifest
+
+
+def test_a_rust_clock_projects_readme_teaches_testing_on_the_clock(environment):
+    created = create_rust_clock(environment)
+    readme = clock_file(environment, created, "starter/README.md")
+    assert "## Testing on the virtual clock" in readme
+    assert "#[tokio::test(start_paused = true)]" in readme
+
+
+def test_a_rust_clock_project_passes_static_checks_after_replacing_the_placeholders(environment):
+    created = create_rust_clock(environment)
+    replace_placeholders(environment.root / created.directory)
+    assert static_errors(environment, RUST_CLOCK_SLUG) == ()
+
+
+def test_a_rust_clock_starter_without_tokio_fails_static_checks(environment):
+    created = create_rust_clock(environment)
+    replace_placeholders(environment.root / created.directory)
+    manifest = environment.root / created.directory / "starter" / "Cargo.toml"
+    manifest.write_text(manifest.read_text().partition("[dependencies]")[0])
+    assert static_errors(environment, RUST_CLOCK_SLUG) == (
+        f"problems/0003-{RUST_CLOCK_SLUG}/starter/Cargo.toml: a virtual-clock project's "
+        f"[dependencies] needs tokio = {RUST_CLOCK_CRATES['tokio']}",
     )

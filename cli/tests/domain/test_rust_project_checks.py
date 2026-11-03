@@ -6,10 +6,17 @@ from dataclasses import replace
 import pytest
 
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
-from coding_study.domain.project import Project, ProjectFile, ProjectFiles, ProjectTree
+from coding_study.domain.project import (
+    RUST_CLOCK_CRATES,
+    Project,
+    ProjectFile,
+    ProjectFiles,
+    ProjectTree,
+)
 from coding_study.domain.signature import ClassSignature, Param
 from coding_study.domain.static_checks import ProblemContent, static_checks
 from coding_study.domain.type_dsl import parse_value_type
+from coding_study.domain.virtual_clock import ProjectClock
 from tests.fakes import repository_root
 from tests.helpers import RUST_BANK_PROJECT, RUST_PROJECT_PROBLEMS
 
@@ -29,6 +36,7 @@ publish = false
 """
 DECIMAL = 'rust_decimal = { version = "=1.43.0", default-features = false, features = ["maths"] }'
 CHRONO = 'chrono = { version = "=0.4.45", default-features = false, features = ["std"] }'
+TOKIO = f"tokio = {RUST_CLOCK_CRATES['tokio']}"
 
 
 @pytest.fixture(scope="module")
@@ -58,6 +66,12 @@ def errors_on(problem, prefix: str) -> list[str]:
 
 def with_meta(problem, **changes):
     return replace(problem, meta=replace(problem.meta, **changes))
+
+
+def with_clock(problem):
+    project = problem.meta.project
+    assert project is not None
+    return with_meta(problem, project=replace(project, clock=ProjectClock.VIRTUAL))
 
 
 def text_file(path: str, text: str = "") -> ProjectFile:
@@ -210,8 +224,29 @@ def test_a_rust_manifest_lists_no_other_crate(bank, table):
     problem = with_manifest(bank, f'{MANIFEST}\n[{table}]\nserde = "1"\n')
     assert errors(problem) == [
         f"{CARGO}: [{table}] lists serde: a project crate may use only the vendored "
-        "rust_decimal and chrono"
+        "rust_decimal and chrono, and tokio on the virtual clock"
     ]
+
+
+def test_a_rust_project_on_the_real_clock_does_not_depend_on_tokio(bank):
+    problem = with_manifest(bank, f"{MANIFEST}\n[dependencies]\n{TOKIO}\n")
+    assert errors(problem) == [
+        f"{CARGO}: [dependencies] lists tokio: a project crate may use only the vendored "
+        "rust_decimal and chrono, and tokio on the virtual clock"
+    ]
+
+
+def test_a_rust_project_on_the_virtual_clock_depends_on_tokio_as_the_runner_does(bank):
+    on_the_clock = with_clock(bank)
+    assert (
+        errors_on(with_manifest(on_the_clock, f"{MANIFEST}\n[dependencies]\n{TOKIO}\n"), CARGO),
+        errors_on(with_manifest(on_the_clock, f'{MANIFEST}\n[dependencies]\ntokio = "1"\n'), CARGO),
+        errors_on(with_manifest(on_the_clock, MANIFEST), CARGO),
+    ) == (
+        [],
+        [f"{CARGO}: [dependencies] declares tokio otherwise than the runner: {TOKIO}"],
+        [f"{CARGO}: a virtual-clock project's [dependencies] needs {TOKIO}"],
+    )
 
 
 def test_a_rust_manifest_declares_a_vendored_crate_as_the_runner_does(bank):

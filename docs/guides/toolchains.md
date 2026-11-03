@@ -184,7 +184,7 @@ rustc --version   # rustc 1.80.0 or newer
 cargo --version
 ```
 
-Nothing else is needed: the runner crates' only dependencies, `rust_decimal` and `chrono` for `decimal` and `date`, ship with `cstudy` as vendored crates, so builds run with `cargo --offline`, never contact crates.io, and `cstudy doctor --fix` has no Rust step.
+Nothing else is needed: the runner crates' only dependencies, `rust_decimal` and `chrono` for `decimal` and `date`, and tokio 1.53.3 for the Rust projects that wait on a virtual clock, ship with `cstudy` as vendored crates, so builds run with `cargo --offline`, never contact crates.io, and `cstudy doctor --fix` has no Rust step. tokio 1.53 is the newest release that builds with Rust 1.80; a workspace set up before it gets it with the runner runtime that the next `cstudy` command refreshes.
 
 - **Your Cargo setup**: `cstudy` ignores your Cargo configuration for its builds. `RUSTFLAGS`, rustc wrappers such as `sccache`, `CARGO_TARGET_DIR`, `CARGO_BUILD_*` and `CARGO_PROFILE_*` do not reach them, and crates.io always resolves to the vendored crates, so none can break a build or change what it measures. They still apply to the `cargo` commands you run yourself. Builds go to `.cs/build/rust` in the workspace.
 - **Copied files**: Cargo rebuilds a crate only when a source is newer than the last build, so a file replaced by a copy that keeps an older time (`rsync -a`, `cp -p`) would run the old code. `cstudy` records a digest of your practice file, or of the Rust files and `Cargo.toml` of a project folder, at each build, and touches the ones that changed before Cargo runs, so the new code always builds. Nothing else is needed; your own `cargo` commands in `rust/` do not get this and still go by times.

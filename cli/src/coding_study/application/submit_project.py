@@ -36,7 +36,7 @@ from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Judgement
 from coding_study.domain.levels import LevelRun, cases_up_to
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
-from coding_study.domain.project import level_methods, method_text
+from coding_study.domain.project import level_methods, method_text, shares_the_entry_class
 from coding_study.domain.project_manifest import project_lock
 from coding_study.domain.signature import ClassSignature
 from coding_study.domain.stress_runs import StressSelection, stress_verdict_slots
@@ -220,16 +220,25 @@ class _Opener:
         opened = OpenedLevel(
             level=level,
             title=result.levels.progress.title(level),
-            methods=level_method_texts(self._problem.meta, level, self._language),
+            methods=level_method_texts(
+                self._problem.meta,
+                level,
+                self._language,
+                shared=shares_the_entry_class(self._problem, level),
+            ),
             tests=tests,
             statement=statement,
         )
         return replace(result, attempt=attempt, opened=opened)
 
 
-def level_method_texts(meta: ProblemMeta, level: int, language: Language) -> tuple[str, ...]:
-    """The methods `level` adds, as `language` declares them; none for a function."""
+def level_method_texts(
+    meta: ProblemMeta, level: int, language: Language, *, shared: bool = False
+) -> tuple[str, ...]:
+    """The methods `level` adds, as `language` declares them, of a `shared` instance (a Rust
+    method then takes `&self`); none for a function."""
     signature = meta.signature
     if not isinstance(signature, ClassSignature):
         return ()
-    return tuple(method_text(method, language) for method in level_methods(signature, level))
+    methods = level_methods(signature, level)
+    return tuple(method_text(method, language, shared=shared) for method in methods)

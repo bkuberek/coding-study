@@ -17,6 +17,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 
 from coding_study.domain.cases import (
+    Case,
     HarnessOp,
     JsonValue,
     OperationSequence,
@@ -24,12 +25,13 @@ from coding_study.domain.cases import (
     spawned_call,
 )
 from coding_study.domain.clock_statement import VIRTUAL_CLOCK_NOTICE
-from coding_study.domain.levels import level_heading
+from coding_study.domain.levels import cases_up_to, level_heading
 from coding_study.domain.markdown import MarkdownDocument
 from coding_study.domain.naming import RESERVED_WORDS, NameRole, is_reserved, member_name
 from coding_study.domain.problem import Language, Problem, ProblemMeta
 from coding_study.domain.signature import ClassSignature, Method, Param, Signature
 from coding_study.domain.statement import render_statement
+from coding_study.domain.stress import StressScenario
 from coding_study.domain.type_dsl import (
     ArrayType,
     ListType,
@@ -238,6 +240,23 @@ def go_package_name(source: str) -> str | None:
     return match.group(1) if match else None
 
 
+def shares_the_entry_class(problem: Problem, level: int) -> bool:
+    """Whether levels 1 to `level` have stress cases, whose worker threads share the entry class,
+    or cases that `@spawn` a task, which shares it with the rest of its case: a Rust project's
+    methods then take `&self` (docs/specs/runners.md#stress-in-project-jobs)."""
+    return any(_shares_the_instance(case) for case in cases_up_to(problem.cases, level))
+
+
+def _shares_the_instance(case: Case) -> bool:
+    match case.input:
+        case StressScenario():
+            return True
+        case OperationSequence(ops=ops):
+            return HarnessOp.SPAWN in ops
+        case _:
+            return False
+
+
 def project_language(meta: ProblemMeta) -> Language:
     """The one language a project problem is solved in.
 
@@ -248,15 +267,18 @@ def project_language(meta: ProblemMeta) -> Language:
     return meta.languages[0]
 
 
-def method_text(method: Method, language: Language) -> str:
+def method_text(method: Method, language: Language, *, shared: bool = False) -> str:
     """`method` as `language` declares it: `create_account(timestamp: int, account_id: str) ->
     bool` in Python, `createAccount(timestamp: number, accountId: string): boolean` in TypeScript,
     `boolean createAccount(long timestamp, String accountId)` in Java. An asynchronous method reads
-    as the language declares one: `async def wait_for(key: str) -> str` in Python."""
+    as the language declares one: `async def wait_for(key: str) -> str` in Python. `shared`: the
+    instance is shared at the method's level (`shares_the_entry_class`), so a Rust method takes
+    `&self`."""
     spelled = _project_language(language)
-    declare = (
-        spelled.declare_async if method.is_async and spelled.declare_async else spelled.declare
-    )
+    plain, asynchronous = spelled.declare, spelled.declare_async
+    if shared and spelled.shared_declarations is not None:
+        plain, asynchronous = spelled.shared_declarations
+    declare = asynchronous if method.is_async and asynchronous else plain
     params = tuple(
         (member_name(param.name, language, NameRole.PARAMETER), param.type)
         for param in method.params
@@ -319,7 +341,8 @@ def _with_generated_lines(markdown: str, problem: Problem, language: Language) -
         number = level_heading(section.title)
         methods = level_methods(signature, number) if number is not None else ()
         if methods:
-            added = ", ".join(method_text(method, language) for method in methods)
+            shared = number is not None and shares_the_entry_class(problem, number)
+            added = ", ".join(method_text(method, language, shared=shared) for method in methods)
             _insert_under_heading(lines, section.start, f"{METHODS_TO_ADD} {added}")
         elif section.title == PROJECT_SECTION and _on_virtual_clock(problem.meta):
             _insert_under_heading(lines, section.start, VIRTUAL_CLOCK_NOTICE)
@@ -409,6 +432,9 @@ class _ProjectLanguage:
     package directory; None where they may go to any directory."""
     declare_async: _Declare | None = None
     """An asynchronous method (`async: true`); None in a language without them."""
+    shared_declarations: tuple[_Declare, _Declare] | None = None
+    """A method and an asynchronous one whose instance tasks or worker threads share; None where
+    sharing spells a method no differently (Rust's take `&self`)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -494,15 +520,27 @@ def _rust_level_tests_directory_issue(tests: str) -> str | None:
     return f'"{tests}" is not {RUST_TESTS_DIRECTORY}, where Cargo finds integration tests'
 
 
-def _rust_declaration(
-    name: str, params: tuple[tuple[str, ValueType], ...], returns: ReturnType
-) -> str:
-    """As the single-file stubs declare a method: `&mut self` first, no `->` for `void`."""
-    listed = ", ".join(
-        ("&mut self", *(f"{param}: {_rust_type(declared)}" for param, declared in params))
-    )
-    returned = _rust_type(returns)
-    return f"{name}({listed}) -> {returned}" if returned else f"{name}({listed})"
+@dataclass(frozen=True, slots=True)
+class _RustDeclaration:
+    """As the single-file stubs declare a method: the receiver first, no `->` for `void`; an
+    asynchronous method is an `async fn`."""
+
+    receiver: str = "&mut self"
+    keyword: str = ""
+
+    def __call__(
+        self, name: str, params: tuple[tuple[str, ValueType], ...], returns: ReturnType
+    ) -> str:
+        listed = ", ".join(
+            (self.receiver, *(f"{param}: {_rust_type(declared)}" for param, declared in params))
+        )
+        returned = _rust_type(returns)
+        declared = f"{self.keyword}{name}({listed})"
+        return f"{declared} -> {returned}" if returned else declared
+
+
+_RUST_ASYNC = "async fn "
+_RUST_SHARED_RECEIVER = "&self"
 
 
 _PYTHON_SCALARS: Mapping[Scalar, str] = {
@@ -773,8 +811,13 @@ _PROJECT_LANGUAGES: Mapping[Language, _ProjectLanguage] = {
         lambda _entry: (RUST_LIBRARY_ROOT,),
         "level_",
         ".rs",
-        _rust_declaration,
+        _RustDeclaration(),
         _rust_level_tests_directory_issue,
+        declare_async=_RustDeclaration(keyword=_RUST_ASYNC),
+        shared_declarations=(
+            _RustDeclaration(_RUST_SHARED_RECEIVER),
+            _RustDeclaration(_RUST_SHARED_RECEIVER, _RUST_ASYNC),
+        ),
     ),
 }
 PROJECT_LANGUAGES = tuple(_PROJECT_LANGUAGES)

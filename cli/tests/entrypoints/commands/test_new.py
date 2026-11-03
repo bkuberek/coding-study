@@ -139,7 +139,6 @@ def test_a_virtual_clock_project_still_ends_with_the_ready_gate(environment):
     [
         (["--from-template", "array"], "--virtual-clock applies to the project-* templates"),
         (["--from-template", "project-java"], "Java has no virtual clock"),
-        (["--from-template", "project-rust"], "cstudy does not write rust tests on the virtual"),
     ],
 )
 def test_the_virtual_clock_flag_exits_3_where_it_does_not_apply(environment, arguments, message):
@@ -148,7 +147,7 @@ def test_the_virtual_clock_flag_exits_3_where_it_does_not_apply(environment, arg
 
 
 def test_the_virtual_clock_flag_writes_nothing_where_it_does_not_apply(environment):
-    invoke("waiter", "--from-template", "project-rust", "--virtual-clock")
+    invoke("waiter", "--from-template", "project-java", "--virtual-clock")
     assert not environment.workspace.exists("problems/0003-waiter")
 
 

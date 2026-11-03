@@ -28,7 +28,6 @@ from coding_study.application.ports import (
     Toolchains,
 )
 from coding_study.application.stress_judging import sequential_cases, stress_judging
-from coding_study.domain.cases import Case, HarnessOp, OperationSequence
 from coding_study.domain.comparators import Comparator
 from coding_study.domain.config import Config
 from coding_study.domain.debugging import DebugSession
@@ -38,7 +37,7 @@ from coding_study.domain.levels import LevelRun, cases_up_to, level_run
 from coding_study.domain.naming import symbol_names
 from coding_study.domain.precedence import resolve_hang_guard_ms
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
-from coding_study.domain.project import level_test_file
+from coding_study.domain.project import level_test_file, shares_the_entry_class
 from coding_study.domain.runner_grading import graded_signature, grading_target
 from coding_study.domain.runs import (
     CaseReport,
@@ -48,7 +47,6 @@ from coding_study.domain.runs import (
     RunRequest,
     UserError,
 )
-from coding_study.domain.stress import StressScenario
 from coding_study.domain.stress_runs import PlannedRun, StressSelection, plan_runs
 from coding_study.domain.stress_verdict import (
     StressJudging,
@@ -204,22 +202,6 @@ def grading_stress_plan(
     `selection.runs` times (default `concurrency.runs`) per variant."""
     by_level = sorted(cases_up_to(problem.cases, level), key=lambda case: case.level or 0)
     return plan_runs(replace(problem, cases=tuple(by_level)), language, selection)
-
-
-def shares_the_entry_class(problem: Problem, level: int) -> bool:
-    """Whether the graded levels have stress cases, whose workers share the entry class, or
-    cases that `@spawn` a task, which shares it with the rest of its case."""
-    return any(_shares_the_instance(case) for case in cases_up_to(problem.cases, level))
-
-
-def _shares_the_instance(case: Case) -> bool:
-    match case.input:
-        case StressScenario():
-            return True
-        case OperationSequence(ops=ops):
-            return HarnessOp.SPAWN in ops
-        case _:
-            return False
 
 
 def run_grading(environment: Environment, run: GradingRun, notify: ProgressNotice) -> Judgement:

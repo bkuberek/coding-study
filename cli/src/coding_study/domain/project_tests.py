@@ -27,7 +27,12 @@ from coding_study.domain.cases import (
 )
 from coding_study.domain.levels import FIRST_LEVEL
 from coding_study.domain.problem import ComparatorType, Language, Problem, ProblemKind
-from coding_study.domain.project import Project, level_test_file, project_language
+from coding_study.domain.project import (
+    Project,
+    level_test_file,
+    project_language,
+    shares_the_entry_class,
+)
 from coding_study.domain.project_checks import GENERATED_TEST_COMPARATORS
 from coding_study.domain.signature import ClassSignature, Method
 from coding_study.domain.type_dsl import VoidType
@@ -40,10 +45,10 @@ LATER_LEVEL_WRITER = "cstudy submit"
 """The command that writes a level's file: start for level 1, the submission that opens a later
 level for the others."""
 HARNESS_TEST_LANGUAGES = frozenset(
-    {Language.GO, Language.PYTHON, Language.TYPESCRIPT, Language.KOTLIN}
+    {Language.GO, Language.PYTHON, Language.TYPESCRIPT, Language.KOTLIN, Language.RUST}
 )
 """The languages whose generated tests express the harness operations of the virtual clock. Each
-step of docs/decisions/0017-async-project-problems.md#scope-and-order adds its languages."""
+step of docs/decisions/0017-async-project-problems.md#scope-and-order added its languages."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,6 +142,9 @@ class LevelTests:
     tolerance: float
     """Of the `float` comparator."""
     tests: tuple[LevelTest, ...]
+    shared: bool = False
+    """The level or one below has stress cases or spawns a task, so the instance is shared: a
+    Rust method takes `&self` (`shares_the_entry_class`)."""
 
     @property
     def entry(self) -> str:
@@ -185,6 +193,7 @@ def level_tests(problem: Problem, level: int) -> LevelTests:
         signature=signature,
         tolerance=meta.comparator.tolerance,
         tests=tuple(builder.test(case) for case in cases),
+        shared=shares_the_entry_class(problem, level),
     )
 
 

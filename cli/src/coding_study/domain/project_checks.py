@@ -41,6 +41,7 @@ from coding_study.domain.project import (
     NO_PROJECT_FILES,
     PATH_SEPARATOR,
     PROJECT_SECTION,
+    RUST_CLOCK_CRATES,
     RUST_SCALAR_CRATES,
     RUST_VENDORED_CRATES,
     Project,
@@ -905,7 +906,9 @@ class _RustStarter:
                 )
         for table in RUST_DEPENDENCY_TABLES:
             self._dependencies(table, _table(document.get(table)) or {})
-        self._crates_of_the_signature(_table(document.get(RUST_DEPENDENCY_TABLES[0])) or {})
+        dependencies = _table(document.get(RUST_DEPENDENCY_TABLES[0])) or {}
+        self._crates_of_the_signature(dependencies)
+        self._crates_of_the_clock(dependencies)
 
     def _package(self, package: Mapping[str, object]) -> None:
         well_formed = _well_formed_entry(self._content)
@@ -921,13 +924,14 @@ class _RustStarter:
                 self._report(CARGO_MANIFEST, f"[{RUST_PACKAGE_TABLE}] sets {key}")
 
     def _dependencies(self, table: str, dependencies: Mapping[str, object]) -> None:
+        allowed = {**RUST_VENDORED_CRATES, **(RUST_CLOCK_CRATES if self._on_the_clock else {})}
         for crate, declared in dependencies.items():
-            expected = RUST_VENDORED_CRATES.get(crate)
+            expected = allowed.get(crate)
             if expected is None:
                 self._report(
                     CARGO_MANIFEST,
                     f"[{table}] lists {crate}: a project crate may use only the vendored "
-                    "rust_decimal and chrono",
+                    "rust_decimal and chrono, and tokio on the virtual clock",
                 )
             elif declared != tomllib.loads(f"value = {expected}")["value"]:
                 self._report(
@@ -947,6 +951,20 @@ class _RustStarter:
             if scalar in used and crate not in dependencies:
                 message = f"the signature uses {scalar}: [dependencies] needs {crate}"
                 self._report(CARGO_MANIFEST, message)
+
+    def _crates_of_the_clock(self, dependencies: Mapping[str, object]) -> None:
+        """A project on the virtual clock runs on tokio, as the grader and the tests do."""
+        if not self._on_the_clock:
+            return
+        for crate, expected in RUST_CLOCK_CRATES.items():
+            if crate not in dependencies:
+                message = f"a virtual-clock project's [dependencies] needs {crate} = {expected}"
+                self._report(CARGO_MANIFEST, message)
+
+    @property
+    def _on_the_clock(self) -> bool:
+        project = self._content.problem.meta.project
+        return project is not None and project.clock is ProjectClock.VIRTUAL
 
     def _config(self) -> None:
         document = self._toml(CARGO_CONFIG_FILE, report_invalid=False)

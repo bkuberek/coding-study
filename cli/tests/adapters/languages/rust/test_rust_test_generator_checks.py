@@ -12,18 +12,31 @@ import os
 import random
 import shutil
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
+from coding_study.adapters.conformance_fixtures import conformance_repository
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.adapters.languages.rust.test_generator import RustTestGenerator
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.problem import ComparatorSpec, ComparatorType, Language, Problem
 from coding_study.domain.project import ProjectTree
-from coding_study.domain.project_tests import Call, LevelTest, LevelTests, level_tests
+from coding_study.domain.project_tests import (
+    Advance,
+    Call,
+    Join,
+    LevelTest,
+    LevelTests,
+    Now,
+    Operation,
+    Spawn,
+    level_tests,
+)
 from coding_study.domain.signature import ClassSignature, Method, Param, Returns
 from coding_study.domain.type_dsl import parse_return_type, parse_value_type
+from coding_study.domain.virtual_clock import ProjectClock
 from tests.fakes import repository_root
 from tests.helpers import REPOSITORY_ROOT, RUST_PROJECT_PROBLEMS
 from tests.project_builders import method, ops_case, project_meta, project_problem
@@ -47,6 +60,7 @@ WORDS = (
     *("top", "spenders", "merge", "history", "balance", "schedule", "with", "long", "name"),
 )
 CLASSES = ("Bank", "LRUCache", "Kv", "InventoryOfThingsAndStuff", "Ledger")
+TASKS = ("r1", "slow-reader", "consumer_2", "a-reader-whose-name-is-long-enough", "kv", "1st")
 NOT_IMPLEMENTED = "not yet implemented"
 
 
@@ -127,11 +141,65 @@ class _Corpus:
         return self._random.choice(choices[type_text])
 
 
+class _ClockCorpus(_Corpus):
+    """Random level files on the virtual clock: async methods awaited, tasks spawned and joined,
+    the clock moved and read, between the calls of `_Corpus`. A task calls an async method, as S18
+    requires outside Go."""
+
+    def level_tests(self, index: int) -> LevelTests:
+        tests = super().level_tests(index)
+        methods = tuple(
+            replace(method, is_async=self._random.random() < 0.6)
+            for method in tests.signature.methods
+        )
+        signature = replace(tests.signature, methods=methods)
+        project = replace(tests.project, clock=ProjectClock.VIRTUAL)
+        clock_tests = tuple(self._on_the_clock(test, signature) for test in tests.tests)
+        shared = self._random.random() < 0.5
+        return replace(
+            tests, project=project, signature=signature, tests=clock_tests, shared=shared
+        )
+
+    def _on_the_clock(self, test: LevelTest, signature: ClassSignature) -> LevelTest:
+        by_name = {method.name: method for method in signature.methods}
+        operations: list[Operation] = []
+        for call in test.calls:
+            operations.append(replace(call, method=by_name[call.method.name]))
+            operations += self._harness(signature)
+        return replace(test, operations=tuple(operations))
+
+    def _harness(self, signature: ClassSignature) -> list[Operation]:
+        choice = self._random.choice(("none", "none", "advance", "now", "spawn"))
+        if choice == "advance":
+            return [Advance(self._random.choice((1, 5, 1000, 2147483647)))]
+        if choice == "now":
+            return [Now(self._random.choice((0, 30, 1500, 9007199254740991)))]
+        awaitable = [method for method in signature.methods if method.is_async]
+        if choice == "spawn" and awaitable:
+            found = self._random.choice(awaitable)
+            task = self._random.choice(TASKS)
+            arguments = tuple(self._value(str(param.type)) for param in found.params)
+            returns = str(found.returns.type)
+            expected = None if returns == "void" else self._value(returns)
+            joined = Call(found, arguments, expected, self._comparator(returns))
+            return [Spawn(task, found, arguments), Join(task, joined)]
+        return []
+
+
 @needs_rustfmt
 def test_rustfmt_leaves_a_random_corpus_as_it_is(tmp_path):
     corpus = _Corpus(CORPUS_SEED)
     for index in range(CORPUS_FILES):
         (tmp_path / f"corpus_{index}.rs").write_text(GENERATOR.generate(corpus.level_tests(index)))
+    checked = rustfmt_check(tmp_path)
+    assert checked.returncode == 0, checked.stdout[-4000:]
+
+
+@needs_rustfmt
+def test_rustfmt_leaves_a_random_corpus_on_the_virtual_clock_as_it_is(tmp_path):
+    corpus = _ClockCorpus(CORPUS_SEED)
+    for index in range(CORPUS_FILES):
+        (tmp_path / f"clock_{index}.rs").write_text(GENERATOR.generate(corpus.level_tests(index)))
     checked = rustfmt_check(tmp_path)
     assert checked.returncode == 0, checked.stdout[-4000:]
 
@@ -209,6 +277,32 @@ def test_the_bare_starter_fails_level_1_only_as_not_implemented(bank, tmp_path):
     assert tested.returncode != 0
     assert NOT_IMPLEMENTED in tested.stdout + tested.stderr
     assert "error[" not in tested.stderr
+
+
+@pytest.fixture(scope="module")
+def inbox() -> Problem:
+    return conformance_repository(REPOSITORY_ROOT).load("conformance-project-clock-rust")
+
+
+@needs_rustfmt
+def test_the_clock_fixtures_level_files_are_as_rustfmt_lays_them_out(inbox, tmp_path):
+    root = crate(tmp_path, inbox, "reference")
+    checked = rustfmt_check(root / "tests")
+    assert checked.returncode == 0, checked.stdout
+
+
+def test_the_clock_fixtures_reference_passes_its_level_files_on_the_paused_clock(inbox, tmp_path):
+    tested = cargo(crate(tmp_path, inbox, "reference"), "test")
+    assert tested.returncode == 0, tested.stdout + tested.stderr
+    assert "test result: ok. 5 passed" in tested.stdout
+
+
+def test_the_clock_fixtures_level_files_are_clippy_clean(inbox, tmp_path):
+    root = crate(tmp_path, inbox, "reference")
+    linted = cargo(
+        root, "clippy", "--tests", "--", "-D", "warnings", "-A", "clippy::new_without_default"
+    )
+    assert linted.returncode == 0, linted.stderr[-4000:]
 
 
 VALUES_LIBRARY = """\

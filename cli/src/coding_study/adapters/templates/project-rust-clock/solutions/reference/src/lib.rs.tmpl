@@ -1,0 +1,50 @@
+//! The struct that `cstudy submit` and the tests drive.
+//!
+//! TODO: replace this sketch with the reference of every level.
+
+use std::collections::HashMap;
+use std::sync::Mutex;
+use std::time::Duration;
+
+use tokio::sync::Notify;
+
+pub struct {{class_name}} {
+    values: Mutex<HashMap<String, String>>,
+    stored: Notify,
+}
+
+impl Default for {{class_name}} {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl {{class_name}} {
+    pub fn new() -> Self {
+        {{class_name}} {
+            values: Mutex::new(HashMap::new()),
+            stored: Notify::new(),
+        }
+    }
+
+    pub fn put(&self, key: String, value: String) -> String {
+        let previous = self.values.lock().unwrap().insert(key, value);
+        self.stored.notify_waiters();
+        previous.unwrap_or_default()
+    }
+
+    pub async fn wait_for(&self, key: String, wait_ms: i64) -> String {
+        let value = async {
+            loop {
+                let stored = self.stored.notified();
+                let value = self.values.lock().unwrap().get(&key).cloned();
+                if let Some(value) = value {
+                    return value;
+                }
+                stored.await;
+            }
+        };
+        let wait = Duration::from_millis(u64::try_from(wait_ms).unwrap_or(0));
+        tokio::time::timeout(wait, value).await.unwrap_or_default()
+    }
+}

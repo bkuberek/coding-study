@@ -197,11 +197,6 @@ def test_the_virtual_clock_variant_keeps_the_practical_track():
             TemplateName.PROJECT_JAVA,
             "--virtual-clock is not available for project-java: Java has no virtual clock",
         ),
-        (
-            TemplateName.PROJECT_RUST,
-            "--virtual-clock is not available for project-rust yet: "
-            "cstudy does not write rust tests on the virtual clock",
-        ),
     ],
 )
 def test_the_virtual_clock_is_a_usage_error_where_it_does_not_apply(template, message):
@@ -216,6 +211,7 @@ def test_the_virtual_clock_is_a_usage_error_where_it_does_not_apply(template, me
         TemplateName.PROJECT_PYTHON,
         TemplateName.PROJECT_TYPESCRIPT,
         TemplateName.PROJECT_KOTLIN,
+        TemplateName.PROJECT_RUST,
     ],
 )
 def test_the_virtual_clock_variant_is_a_template_of_its_own(template):

@@ -1,7 +1,10 @@
+import tomllib
+
 import pytest
 
 from coding_study.adapters.problem_templates import PackagedProblemTemplates
 from coding_study.domain.problem import Language
+from coding_study.domain.project import RUST_CLOCK_CRATES
 from coding_study.domain.project_checks import jvm_build_files
 from coding_study.domain.scaffold import TemplateName
 from coding_study.domain.workspace_projects import RUST_CARGO_CONFIG
@@ -167,6 +170,23 @@ def test_the_rust_project_template_has_a_starter_and_an_overlay_instead_of_a_gen
 def test_the_rust_starters_cargo_config_is_the_vendored_source():
     files = PackagedProblemTemplates().files(TemplateName.PROJECT_RUST)
     assert files["starter/.cargo/config.toml"] == RUST_CARGO_CONFIG
+
+
+def test_the_rust_virtual_clock_template_has_the_files_of_the_rust_project_template():
+    clock = set(PackagedProblemTemplates().files("project-rust-clock"))
+    assert clock == set(PackagedProblemTemplates().files(TemplateName.PROJECT_RUST))
+
+
+def test_the_rust_virtual_clock_starter_depends_on_tokio_as_the_runner_declares_it():
+    files = PackagedProblemTemplates().files("project-rust-clock")
+    manifest = tomllib.loads(files["starter/Cargo.toml"].replace("{{crate_name}}", "waiter"))
+    declared = tomllib.loads(f"value = {RUST_CLOCK_CRATES['tokio']}")["value"]
+    assert manifest["dependencies"] == {"tokio": declared}
+
+
+def test_the_rust_virtual_clock_template_declares_the_clock_and_an_async_method():
+    meta = PackagedProblemTemplates().files("project-rust-clock")["meta.yaml"]
+    assert ("  clock: virtual\n" in meta, "async: true" in meta) == (True, True)
 
 
 def test_the_typescript_starters_build_files_drop_their_template_suffix():

@@ -12,6 +12,16 @@ helper is defined once in the file when used. Values are Rust literals: a `Strin
 `decimal` is `Decimal::from_str_exact("2.50").unwrap()`, a `date`
 `NaiveDate::from_ymd_opt(2026, 1, 1).unwrap()`, and an expected empty list `Vec::<T>::new()`.
 
+On the virtual clock (docs/specs/problem-format.md#generated-tests-on-the-virtual-clock) each test
+is an `async fn` under `#[tokio::test(start_paused = true)]`, the runtime the grader runs a case
+on, and settles between operations as the grader does (`settle().await`), except after `@advance`,
+which settles itself, and `@now`, which runs nothing. `settle`, defined once in the file, waits
+until the runtime parks with nothing to run: `#[tokio::test]` takes no park hook, so a blocking
+task, which keeps the paused clock still while it runs, watches the runtime's park count. An
+`async fn` call is awaited, `@advance` is `advance(ms).await` (a sleep, then settling), `@spawn`
+hands the call to `tokio::spawn` on an `Arc` of the instance, `@join` awaits the task's handle and
+`@now` reads `start.elapsed()`. A level whose instance is shared binds it without `mut`.
+
 The text already matches rustfmt with its default options, so no formatter runs. rustfmt lays out
 a statement that does not fit its 100 columns, or a call whose arguments are wider than 60 columns
 (`fn_call_width`, `array_width`), in a few ways that the expressions of a test use:
@@ -24,9 +34,16 @@ a statement that does not fit its 100 columns, or a call whose arguments are wid
   list of such items stays on one line whenever it fits, whatever its width;
 - a call on a receiver longer than four columns (`lru_cache.get(...)`) moves the call to a line of
   its own when that takes fewer lines than breaking its arguments;
-- `let mut x = ...` moves the constructor to the next line when it then fits on one.
+- `let mut x = ...` moves the constructor to the next line when it then fits on one;
+- a chain `x.call(...).await` stays on one line when it fits in 60 columns (`chain_width`), else
+  each link goes on a line of its own, four columns in; a receiver at most four columns wide takes
+  the call onto its line, and `.await` then follows on the next line, or right below the call's
+  closing bracket when its arguments broke;
+- `async move { ... }` stays on one line when its body does.
 """
 
+import itertools
+import re
 import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
@@ -38,7 +55,17 @@ from coding_study.adapters.languages.rust.types import rust_name, rust_type
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.naming import RESERVED_WORDS, NameRole, rust_identifier, snake_case
 from coding_study.domain.problem import ComparatorType, Language
-from coding_study.domain.project_tests import EDIT_NOTICE, Call, LevelTest, LevelTests
+from coding_study.domain.project_tests import (
+    EDIT_NOTICE,
+    Advance,
+    Call,
+    Join,
+    LevelTest,
+    LevelTests,
+    Now,
+    Operation,
+    Spawn,
+)
 from coding_study.domain.signature import output_type
 from coding_study.domain.type_dsl import ArrayType, ListType, Scalar, ScalarType, ValueType
 
@@ -46,6 +73,11 @@ MAX_WIDTH = 100
 INDENT = "    "
 CALL_WIDTH = 60
 """rustfmt's `fn_call_width` and `array_width`: wider arguments are not kept on one line."""
+CHAIN_WIDTH = 60
+"""rustfmt's `chain_width`: a wider chain of two links or more puts each link on a line of its
+own."""
+AWAIT = ".await"
+ASYNC_BLOCK = "async move "
 SHORT_ITEM_WIDTH = 10
 """rustfmt's `short_array_element_width_threshold`: items this narrow may share lines."""
 JOINED_RECEIVER_WIDTH = len(INDENT)
@@ -60,7 +92,36 @@ DECIMAL_IMPORT = "use rust_decimal::Decimal;"
 SORTED = "sorted"
 ASSERT_CLOSE = "assert_close"
 ASSERT_ALL_CLOSE = "assert_all_close"
+SETTLE = "settle"
+ADVANCE = "advance"
+CLOCK_TEST = "#[tokio::test(start_paused = true)]"
+ARC_IMPORT = "use std::sync::Arc;"
+DURATION_IMPORT = "use std::time::Duration;"
+INSTANT_IMPORT = "use tokio::time::Instant;"
+START = "start"
+ELAPSED = f"{START}.elapsed().as_millis()"
+FALLBACK_TASK = "task"
 HELPERS = {
+    SETTLE: """\
+/// Lets every task run until each one waits, without moving the clock. The runtime parks when
+/// no task can run, and a blocking task, while it runs, keeps the paused clock still.
+async fn settle() {
+    let metrics = tokio::runtime::Handle::current().metrics();
+    let parked = metrics.worker_park_count(0);
+    tokio::task::spawn_blocking(move || {
+        while metrics.worker_park_count(0) == parked {
+            std::thread::yield_now();
+        }
+    })
+    .await
+    .unwrap();
+}""",
+    ADVANCE: """\
+/// Moves the clock `ms` milliseconds: each timer due on the way fires at its own time.
+async fn advance(ms: u64) {
+    tokio::time::sleep(Duration::from_millis(ms)).await;
+    settle().await;
+}""",
     SORTED: """\
 fn sorted<T: Ord>(mut items: Vec<T>) -> Vec<T> {
     items.sort();
@@ -87,9 +148,11 @@ fn assert_all_close(actual: Vec<f64>, expected: Vec<f64>, tolerance: f64) {
 }""",
 }
 """Each helper as rustfmt lays it out, in the order the file defines them."""
-_HELPERS_NEEDED = {ASSERT_ALL_CLOSE: (ASSERT_CLOSE,)}
-_NAMES_IN_TESTS = frozenset({*RESERVED_WORDS[Language.RUST], *HELPERS})
-"""What the instance may not be called: keywords, and the helpers a test calls."""
+_HELPERS_NEEDED = {ASSERT_ALL_CLOSE: (ASSERT_CLOSE,), ADVANCE: (SETTLE,)}
+_NAMES_IN_TESTS = frozenset({*RESERVED_WORDS[Language.RUST], *HELPERS, START, "tokio", "std"})
+"""What the instance and a task may not be called: keywords, the helpers a test calls, the start
+of its clock and the crates whose paths it names."""
+_NOT_IDENTIFIER = re.compile(r"[^0-9A-Za-z_]")
 _SENTENCE_ENDINGS = (".", "!", "?")
 _CHAR_ESCAPES = {"\\": "\\\\", "'": "\\'", "\n": "\\n", "\r": "\\r", "\t": "\\t", "\0": "\\0"}
 
@@ -131,7 +194,14 @@ class _MethodCall:
     """The call, its callee the method's name."""
 
 
-type _Expression = _Atom | _Call | _Not | _MethodCall
+@dataclass(frozen=True, slots=True)
+class _Awaited:
+    """`receiver.method(...).await`, a call chain of two links."""
+
+    call: _MethodCall
+
+
+type _Expression = _Atom | _Call | _Not | _MethodCall | _Awaited
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,6 +236,8 @@ def _flat(expression: _Expression) -> str:
             return f"!{_flat(operand)}"
         case _MethodCall(receiver, call):
             return f"{receiver}.{_flat(call)}"
+        case _Awaited(call):
+            return f"{_flat(call)}{AWAIT}"
         case _Call():
             opening, closing = _delimiters(expression)
             inner = ", ".join(_flat(argument) for argument in expression.arguments)
@@ -185,6 +257,8 @@ def _layout(expression: _Expression, shape: _Shape, *, one_line_chain: bool = Fa
             return "!" + _layout(operand, shape.moved(1), one_line_chain=one_line_chain)
         case _MethodCall():
             return _method_call(expression, shape, one_line_chain=one_line_chain)
+        case _Awaited():
+            return _awaited(expression, shape)
         case _Call():
             return _call(expression, shape)
 
@@ -282,18 +356,22 @@ def _broken(call: _Call, shape: _Shape) -> str:
     else:
         item_shape = _Shape(nested, MAX_WIDTH - nested - 1, in_macro=in_macro)
         laid_out = [_layout(argument, item_shape) for argument in call.arguments]
-        if _horizontal_lone_item(call, laid_out):
+        room = shape.width - _width(call.callee) - len(opening) - len(closing)
+        if _horizontal_lone_item(call, laid_out, room):
             trailing = ""
         lines = [f"{text}," for text in laid_out[:-1]] + [laid_out[-1] + trailing]
     body = "\n".join(_indented(line, nested) for line in lines)
     return f"{call.callee}{opening}\n{body}\n{' ' * shape.indent}{closing}"
 
 
-def _horizontal_lone_item(call: _Call, laid_out: Sequence[str]) -> bool:
-    """A list's one item, on one line of at most 60 columns: rustfmt puts it on a line of its
-    own without the trailing comma of a vertical list."""
+def _horizontal_lone_item(call: _Call, laid_out: Sequence[str], room: int) -> bool:
+    """A list's one item, on one line of at most 60 columns that would fit in the `room` after
+    the list's opening bracket: rustfmt puts it on a line of its own without the trailing comma
+    of a vertical list. A list that opens further right, deep in calls it overflows, is
+    vertical."""
     (item, *others) = laid_out
-    return call.list and not others and "\n" not in item and _width(item) <= CALL_WIDTH
+    one_line = "\n" not in item and _width(item) <= min(CALL_WIDTH, room)
+    return call.list and not others and one_line
 
 
 def _inner_macro(call: _Call, shape: _Shape) -> bool:
@@ -328,6 +406,42 @@ def _method_call(method: _MethodCall, shape: _Shape, *, one_line_chain: bool = F
                 raise _UnfitError
             return own_line
     return same_line
+
+
+def _awaited(awaited: _Awaited, shape: _Shape) -> str:
+    """`receiver.method(...).await` on one line when it fits in `chain_width`, else a link per
+    line. A receiver at most four columns wide takes the call onto its line, as for one link,
+    and `.await` goes below it: right below the closing bracket when the arguments broke."""
+    receiver, call = awaited.call.receiver, awaited.call.call
+    budget = min(shape.width, CHAIN_WIDTH)
+    child_indent = shape.indent + len(INDENT)
+    if _width(receiver) <= JOINED_RECEIVER_WIDTH - shape.offset:
+        joined = _Call(f"{receiver}.{call.callee}", call.arguments, call.macro, call.list)
+        root = _layout(joined, shape)
+        if "\n" in root:
+            return f"{root}\n{' ' * shape.indent}{AWAIT}"
+        if _width(root) + len(AWAIT) <= budget:
+            return f"{root}{AWAIT}"
+        return f"{root}\n{' ' * child_indent}{AWAIT}"
+    link_shape = _Shape(child_indent, MAX_WIDTH - child_indent - len("."), 1, shape.in_macro, 0)
+    link = f".{_layout(call, link_shape)}"
+    if "\n" not in link and _width(receiver) + _width(link) + len(AWAIT) <= budget:
+        return f"{receiver}{link}{AWAIT}"
+    pad = " " * child_indent
+    return f"{receiver}\n{pad}{link}\n{pad}{AWAIT}"
+
+
+def _async_block(body: _Expression, indent: int) -> str:
+    """`async move { body }` as the tail of a block at `indent`: on one line when the body fits
+    on one, else the body on lines of its own, four columns in."""
+    shape = _Shape(indent, MAX_WIDTH - indent - len(ASYNC_BLOCK), len(ASYNC_BLOCK))
+    inline = _layout(body, shape)
+    single = f"{ASYNC_BLOCK}{{ {inline} }}"
+    if "\n" not in inline and _width(single) <= MAX_WIDTH - indent:
+        return f"{' ' * indent}{single}"
+    nested = indent + len(INDENT)
+    inner = _layout(body, _Shape(nested, MAX_WIDTH - nested))
+    return f"{' ' * indent}{ASYNC_BLOCK}{{\n{' ' * nested}{inner}\n{' ' * indent}}}"
 
 
 def _packed(items: Sequence[str], width: int, trailing: str) -> list[str]:
@@ -367,7 +481,7 @@ def _method_chain(expression: _Expression) -> bool:
             return _method_chain(operand)
         case _MethodCall():
             return True
-        case _Atom() | _Call():
+        case _Atom() | _Call() | _Awaited():
             return False
 
 
@@ -378,17 +492,18 @@ def _nested_call(expression: _Expression) -> bool:
             return _nested_call(operand)
         case _Call():
             return True
-        case _Atom() | _MethodCall():
+        case _Atom() | _MethodCall() | _Awaited():
             return False
 
 
 def _overflows(expression: _Expression) -> bool:
+    """A call or a method call; a chain that ends in `.await` goes on a line of its own."""
     match expression:
         case _Not(operand):
             return _overflows(operand)
         case _Call() | _MethodCall():
             return True
-        case _Atom():
+        case _Atom() | _Awaited():
             return False
 
 
@@ -406,11 +521,11 @@ def _statement(expression: _Expression) -> str:
     return f"{INDENT}{_layout(expression, _Shape(indent, MAX_WIDTH - indent - 1))};"
 
 
-def _declaration(name: str, value: _Expression) -> str:
-    """`let mut name = value;`, with the value on the next line when it then fits on one and
-    does not on the first."""
+def _declaration(name: str, value: _Expression, *, mutable: bool = True) -> str:
+    """`let mut name = value;` (`let name` unless `mutable`), with the value on the next line when
+    it then fits on one and does not on the first."""
     indent = len(INDENT)
-    head = f"let mut {name} ="
+    head = f"let mut {name} =" if mutable else f"let {name} ="
     shape = _Shape(indent, MAX_WIDTH - indent - len(head) - 2, len(head) + 1)
     same_line = _layout(value, shape)
     if "\n" not in same_line and _width(same_line) <= shape.width:
@@ -441,6 +556,8 @@ class RustTestGenerator:
 @dataclass
 class _Uses:
     imports: set[str] = field(default_factory=set[str])
+    """Of crates, in the group after the standard library's."""
+    std_imports: set[str] = field(default_factory=set[str])
     helpers: set[str] = field(default_factory=set[str])
 
 
@@ -468,34 +585,108 @@ class _LevelFile:
         return used
 
     def _imports(self) -> str:
+        """The standard library's group, then the crates'."""
         entry = f"use {self._tests.entry}::{self._class};"
-        return "\n".join(sorted({entry, *self._uses.imports}))
+        crates = "\n".join(sorted({entry, *self._uses.imports}))
+        if not self._uses.std_imports:
+            return crates
+        return "\n".join(sorted(self._uses.std_imports)) + "\n\n" + crates
 
     def _function(self, test: LevelTest) -> str:
         lines = [f"{DOC_PREFIX} {sentence}" for sentence in _note(test.note)]
-        lines += ["#[test]", f"fn {_test_name(test.case_id)}() {{", self._construction(test)]
-        lines += [self._statement(call) for call in test.calls]
+        name = _test_name(test.case_id)
+        if self._tests.virtual_clock:
+            lines += [CLOCK_TEST, f"async fn {name}() {{", *self._clock_body(test)]
+        else:
+            lines += ["#[test]", f"fn {name}() {{", self._construction(test, bool(test.calls))]
+            lines += [self._statement(call) for call in test.calls]
         lines.append("}")
         return "\n".join(lines)
 
-    def _construction(self, test: LevelTest) -> str:
-        """`let mut bank = Bank::new(...);`, or the constructor alone when no call follows to use
-        the instance."""
+    def _construction(self, test: LevelTest, uses_instance: bool, *, spawns: bool = False) -> str:
+        """`let mut bank = Bank::new(...);`, without `mut` when the instance is shared, in an
+        `Arc` when tasks share it, or the constructor alone when nothing uses the instance."""
         types = [param.type for param in self._tests.signature.constructor_params]
         arguments = self._values.arguments(test.constructor_arguments, types)
         construction = _Call(f"{self._class}::new", arguments)
-        if not test.calls:
+        if not uses_instance:
             return _statement(construction)
-        return _declaration(self._instance, construction)
+        if spawns:
+            self._uses.std_imports.add(ARC_IMPORT)
+            return _declaration(self._instance, _Call("Arc::new", (construction,)), mutable=False)
+        return _declaration(self._instance, construction, mutable=not self._tests.shared)
 
     def _statement(self, call: Call) -> str:
+        """The call, awaited when it is an `async fn` on the virtual clock, alone when it returns
+        nothing, else in an assertion."""
         name = rust_name(call.method.name, NameRole.METHOD)
         types = [param.type for param in call.method.params]
         arguments = self._values.arguments(call.arguments, types)
-        invocation = _MethodCall(self._instance, _Call(name, arguments))
+        method = _MethodCall(self._instance, _Call(name, arguments))
+        invocation = self._awaited(method, call.method.is_async)
         if not call.returns_value:
             return _statement(invocation)
         return _statement(self._assertion(invocation, call))
+
+    def _awaited(self, method: _MethodCall, is_async: bool) -> _Expression:
+        return _Awaited(method) if self._tests.virtual_clock and is_async else method
+
+    def _clock_body(self, test: LevelTest) -> list[str]:
+        """The constructor, then a statement per operation, settling after each one but the
+        last, unless the operation settles itself (`@advance`) or runs nothing (`@now`)."""
+        operations = test.operations
+        lines: list[str] = []
+        if any(isinstance(operation, Now) for operation in operations):
+            self._uses.imports.add(INSTANT_IMPORT)
+            lines.append(f"{INDENT}let {START} = Instant::now();")
+        uses_instance = any(isinstance(operation, Call | Spawn) for operation in operations)
+        spawns = any(isinstance(operation, Spawn) for operation in operations)
+        steps = [(self._construction(test, uses_instance, spawns=spawns), True)]
+        names = _TaskNames(_NAMES_IN_TESTS | {self._instance})
+        steps += [self._operation(operation, names) for operation in operations]
+        for index, (statement, settles) in enumerate(steps):
+            lines.append(statement)
+            if settles and index < len(steps) - 1:
+                self._uses.helpers.add(SETTLE)
+                lines.append(f"{INDENT}{SETTLE}(){AWAIT};")
+        return lines
+
+    def _operation(self, operation: Operation, names: "_TaskNames") -> tuple[str, bool]:
+        """One statement, and whether the test settles after it."""
+        match operation:
+            case Call():
+                return self._statement(operation), True
+            case Advance(milliseconds):
+                self._uses.helpers.add(ADVANCE)
+                self._uses.std_imports.add(DURATION_IMPORT)
+                return f"{INDENT}{ADVANCE}({milliseconds}){AWAIT};", False
+            case Spawn():
+                return self._spawn(operation, names), True
+            case Join(task, call):
+                joined = _Atom(f"{names.variable(task)}{AWAIT}.unwrap()", simple=False)
+                if not call.returns_value:
+                    return _statement(joined), True
+                return _statement(self._assertion(joined, call)), True
+            case Now(expected):
+                elapsed = _Atom(ELAPSED, simple=False)
+                compared = _Call("assert_eq!", (elapsed, _Atom(str(expected))), macro=True)
+                return _statement(compared), False
+
+    def _spawn(self, spawn: Spawn, names: "_TaskNames") -> str:
+        """`let r1 = tokio::spawn({ ... });`: the task holds a clone of the instance's `Arc`."""
+        name = rust_name(spawn.method.name, NameRole.METHOD)
+        types = [param.type for param in spawn.method.params]
+        arguments = self._values.arguments(spawn.arguments, types)
+        method = _MethodCall(self._instance, _Call(name, arguments))
+        nested = INDENT * 2
+        return "\n".join(
+            [
+                f"{INDENT}let {names.assign(spawn.task)} = tokio::spawn({{",
+                f"{nested}let {self._instance} = Arc::clone(&{self._instance});",
+                _async_block(self._awaited(method, spawn.method.is_async), len(nested)),
+                f"{INDENT}}});",
+            ]
+        )
 
     def _assertion(self, invocation: _Expression, call: Call) -> _Expression:
         expected, declared = call.expected, output_type(call.method)
@@ -680,6 +871,31 @@ def _char_literal(value: JsonValue) -> str:
     return f"'{value}'"
 
 
+class _TaskNames:
+    """The variables of one test's tasks: the task's name in snake case (`slow-reader` as
+    `slow_reader`), else `task1`, `task2`, unless the test already uses the name."""
+
+    def __init__(self, taken: frozenset[str]) -> None:
+        self._taken = set(taken)
+        self._variables: dict[str, str] = {}
+
+    def assign(self, task: str) -> str:
+        spelled = _NOT_IDENTIFIER.sub("_", task).lower()
+        fallbacks = (f"{FALLBACK_TASK}{number}" for number in itertools.count(1))
+        variable = next(
+            name for name in itertools.chain([spelled], fallbacks) if self._usable(name)
+        )
+        self._taken.add(variable)
+        self._variables[task] = variable
+        return variable
+
+    def variable(self, task: str) -> str:
+        return self._variables[task]
+
+    def _usable(self, name: str) -> bool:
+        return bool(name) and not name[0].isdigit() and name not in self._taken
+
+
 def _instance_name(class_name: str) -> str:
     """The class in snake case: `bank` for `Bank`, `lru_cache` for `LRUCache`."""
     name = snake_case(class_name)
@@ -688,9 +904,10 @@ def _instance_name(class_name: str) -> str:
 
 def _test_name(case_id: str) -> str:
     """The case id as a function name: `-` as `_`, with `case_` before an id that is not a
-    Rust identifier on its own."""
+    Rust identifier on its own or that names a helper of the file (`case_advance`)."""
     name = case_id.replace("-", "_")
-    if name[0].isdigit() or rust_identifier(name) != name or name in RESERVED_WORDS[Language.RUST]:
+    taken = name in RESERVED_WORDS[Language.RUST] or name in HELPERS
+    if name[0].isdigit() or rust_identifier(name) != name or taken:
         return f"{TEST_PREFIX}{name}"
     return name
 
