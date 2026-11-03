@@ -25,6 +25,9 @@ export interface Preferences {
   readonly run_on_save: boolean;
   readonly typecheck: boolean;
   readonly theme: Theme;
+  readonly code_intelligence: boolean;
+  /** Stored as set; it applies only while `code_intelligence` is on (`autocompleteApplies`). */
+  readonly autocomplete: boolean;
 }
 
 export interface AttemptRef {

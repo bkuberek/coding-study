@@ -19,7 +19,15 @@ from tests.web_server import (
 
 PREFERENCES = "/api/v1/preferences"
 PREFERENCES_FILE = ".cs/serve/preferences.json"
-DEFAULTS = {"format": 1, "vim": False, "run_on_save": False, "typecheck": True, "theme": "system"}
+DEFAULTS = {
+    "format": 1,
+    "vim": False,
+    "run_on_save": False,
+    "typecheck": True,
+    "theme": "system",
+    "code_intelligence": False,
+    "autocomplete": False,
+}
 
 
 @pytest.fixture
@@ -114,6 +122,22 @@ def test_saved_preferences_are_read_back(app):
         client.put(PREFERENCES, json={**DEFAULTS, "typecheck": False}, headers=WRITE_HEADERS)
         document = client.get(PREFERENCES).json()
     assert document == {**DEFAULTS, "typecheck": False}
+
+
+def test_autocomplete_is_stored_while_code_intelligence_is_off(app):
+    with session_client(app) as client:
+        client.put(PREFERENCES, json={"autocomplete": True}, headers=WRITE_HEADERS)
+        document = client.get(PREFERENCES).json()
+    assert (document["code_intelligence"], document["autocomplete"]) == (False, True)
+
+
+def test_turning_code_intelligence_off_keeps_autocomplete(app):
+    both = {"code_intelligence": True, "autocomplete": True}
+    with session_client(app) as client:
+        client.put(PREFERENCES, json=both, headers=WRITE_HEADERS)
+        client.put(PREFERENCES, json={**both, "code_intelligence": False}, headers=WRITE_HEADERS)
+        document = client.get(PREFERENCES).json()
+    assert (document["code_intelligence"], document["autocomplete"]) == (False, True)
 
 
 def test_saved_preferences_are_written_to_the_workspace(tmp_path, app):

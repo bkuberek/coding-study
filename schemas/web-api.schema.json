@@ -68,13 +68,15 @@
       "description": "GET and PUT /api/v1/preferences",
       "type": "object",
       "additionalProperties": false,
-      "required": ["format", "vim", "run_on_save", "typecheck", "theme"],
+      "required": ["format", "vim", "run_on_save", "typecheck", "theme", "code_intelligence", "autocomplete"],
       "properties": {
         "format": { "const": 1 },
         "vim": { "type": "boolean" },
         "run_on_save": { "type": "boolean" },
         "typecheck": { "type": "boolean" },
-        "theme": { "enum": ["system", "light", "dark"] }
+        "theme": { "enum": ["system", "light", "dark"] },
+        "code_intelligence": { "type": "boolean" },
+        "autocomplete": { "type": "boolean" }
       }
     },
     "error": {

@@ -27,6 +27,11 @@ class Preferences:
     typecheck: bool = True
     """TypeScript runs type-check, so type errors reach the editor as markers."""
     theme: Theme = Theme.SYSTEM
+    code_intelligence: bool = False
+    """Live diagnostics, hover and go to definition from language servers (ADR 0018)."""
+    autocomplete: bool = False
+    """Completion and signature help, all of it: applies only while `code_intelligence` is on, but
+    is stored as set, so turning code intelligence off keeps it."""
 
 
 PREFERENCE_KEYS = tuple(field.name for field in fields(Preferences))
@@ -34,7 +39,8 @@ THEMES = ", ".join(Theme).rpartition(", ")
 
 
 def preferences_document(preferences: Preferences) -> dict[str, object]:
-    """`{"format": 1, "vim": false, "run_on_save": false, "typecheck": true, "theme": "system"}`."""
+    """`{"format": 1, "vim": false, "run_on_save": false, "typecheck": true, "theme": "system",
+    "code_intelligence": false, "autocomplete": false}`."""
     document = asdict(preferences)
     return {FORMAT_KEY: PREFERENCES_FORMAT, **document, THEME_KEY: preferences.theme.value}
 

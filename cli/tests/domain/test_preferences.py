@@ -14,6 +14,8 @@ DEFAULT_DOCUMENT = {
     "run_on_save": False,
     "typecheck": True,
     "theme": "system",
+    "code_intelligence": False,
+    "autocomplete": False,
 }
 
 
@@ -24,6 +26,11 @@ def test_the_defaults_are_the_specs():
 def test_a_whole_document_parses():
     document = {"format": 1, "vim": True, "run_on_save": True, "typecheck": False}
     assert parse_preferences(document) == Preferences(vim=True, run_on_save=True, typecheck=False)
+
+
+def test_code_intelligence_and_autocomplete_parse_in_any_combination():
+    document = {"code_intelligence": False, "autocomplete": True}
+    assert parse_preferences(document) == Preferences(autocomplete=True)
 
 
 def test_a_missing_key_keeps_its_default():
@@ -59,10 +66,11 @@ def test_the_theme_is_written_by_name():
     assert preferences_document(Preferences(theme=Theme.DARK))["theme"] == "dark"
 
 
+@pytest.mark.parametrize("key", ["vim", "code_intelligence", "autocomplete"])
 @pytest.mark.parametrize("value", [1, 0, "true", None, [True]])
-def test_a_preference_that_is_not_a_boolean_is_refused(value):
-    with pytest.raises(UsageError, match='preference "vim" must be true or false'):
-        parse_preferences({"vim": value})
+def test_a_preference_that_is_not_a_boolean_is_refused(key, value):
+    with pytest.raises(UsageError, match=f'preference "{key}" must be true or false'):
+        parse_preferences({key: value})
 
 
 @pytest.mark.parametrize("value", [2, 0, True, 1.0, "1"])

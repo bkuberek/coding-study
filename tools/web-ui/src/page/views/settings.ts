@@ -7,13 +7,29 @@ import { h } from "../dom.ts";
 import { THEMES } from "../shell.ts";
 import type { Preferences } from "../types.ts";
 
-type Switch = "vim" | "run_on_save" | "typecheck";
+type Switch = "vim" | "run_on_save" | "typecheck" | "code_intelligence" | "autocomplete";
+interface SwitchSpec {
+  readonly key: Switch;
+  readonly label: string;
+  readonly help: string;
+}
 
-const SWITCHES: readonly { readonly key: Switch; readonly label: string; readonly help: string }[] = [
+const SWITCHES: readonly SwitchSpec[] = [
   { key: "vim", label: "Vim keybindings", help: "In every editor; loaded the first time you turn them on." },
   { key: "run_on_save", label: "Run on save", help: "Re-runs the tests after a save, as cstudy test --watch does." },
   { key: "typecheck", label: "Type-check TypeScript", help: "Runs tsc with the tests, so type errors reach the editor." },
 ];
+const CODE_INTELLIGENCE: SwitchSpec = {
+  key: "code_intelligence",
+  label: "Code intelligence",
+  help: "Live diagnostics, hover documentation and go to definition from language servers on this machine.",
+};
+const AUTOCOMPLETE: SwitchSpec = {
+  key: "autocomplete",
+  label: "Autocomplete",
+  help: "Completion and signature help. Off, the editor offers no completion at all.",
+};
+const AUTOCOMPLETE_NOTE = "Turn on code intelligence first";
 
 export function settingsView(context: PageContext): Cleanup {
   const { shell } = context;
@@ -33,17 +49,32 @@ export function settingsView(context: PageContext): Cleanup {
       });
   };
   const preferences = context.preferences();
-  const switches = SWITCHES.map(({ key, label, help }) => {
-    const input = h("input", { type: "checkbox", id: `pref-${key}`, checked: preferences[key], "aria-describedby": `pref-${key}-help` });
+  const switchFor = ({ key, label, help }: SwitchSpec, ...notes: HTMLElement[]) => {
+    const input = h("input", { type: "checkbox", id: `pref-${key}`, checked: preferences[key] });
+    input.setAttribute("aria-describedby", [`pref-${key}-help`, ...notes.map((note) => note.id)].join(" "));
     input.addEventListener("change", () => save({ [key]: input.checked }));
-    return h(
+    const row = h(
       "div",
       { class: "switch" },
       input,
       h("label", { for: `pref-${key}` }, label),
       h("p", { id: `pref-${key}-help`, class: "quiet" }, help),
+      ...notes,
     );
-  });
+    return { input, row };
+  };
+  const switches = SWITCHES.map((spec) => switchFor(spec).row);
+  const note = h("p", { id: "pref-autocomplete-note", class: "quiet" }, AUTOCOMPLETE_NOTE);
+  const codeIntelligence = switchFor(CODE_INTELLIGENCE);
+  const autocomplete = switchFor(AUTOCOMPLETE, note);
+  // Disabled, not cleared: the stored value comes back when code intelligence does.
+  const gateAutocomplete = () => {
+    const off = !codeIntelligence.input.checked;
+    autocomplete.input.disabled = off;
+    note.hidden = !off;
+  };
+  codeIntelligence.input.addEventListener("change", gateAutocomplete);
+  gateAutocomplete();
   const themes = THEMES.map((theme) => {
     const input = h("input", { type: "radio", name: "theme", id: `theme-${theme}`, value: theme, checked: preferences.theme === theme });
     input.addEventListener("change", () => save({ theme }));
@@ -58,6 +89,7 @@ export function settingsView(context: PageContext): Cleanup {
         "form",
         { class: "settings-form" },
         h("fieldset", {}, h("legend", {}, "editor and runs"), ...switches),
+        h("fieldset", {}, h("legend", {}, "code intelligence"), codeIntelligence.row, autocomplete.row),
         h("fieldset", {}, h("legend", {}, "theme"), h("div", { class: "radios" }, ...themes)),
       ),
       saved,

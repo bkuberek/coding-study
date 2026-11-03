@@ -47,6 +47,8 @@ def test_saving_writes_the_whole_document():
         "run_on_save": False,
         "typecheck": True,
         "theme": "system",
+        "code_intelligence": False,
+        "autocomplete": False,
     }
 
 
