@@ -398,7 +398,7 @@ The terminal has no command that lists these files, and the page adds no value i
 
 ## Code intelligence sessions
 
-With the `code_intelligence` [preference](#preferences) on, the editor gets live diagnostics, hover documentation and go to definition from a language server on this machine, and with `autocomplete` also on, completion and signature help ([ADR 0018](../decisions/0018-editor-code-intelligence.md)). Each server is a child of `cstudy serve`, one per session, and talks to one tab over one WebSocket through a broker in the web adapter. Phase 1 covers Python and TypeScript; Go and Rust come in phase 2, Java in phase 3 and Kotlin in phase 4. What the page draws is in [Code intelligence in the editor](#code-intelligence-in-the-editor).
+With the `code_intelligence` [preference](#preferences) on, the editor gets live diagnostics, hover documentation and go to definition from a language server on this machine, and with `autocomplete` also on, completion and signature help ([ADR 0018](../decisions/0018-editor-code-intelligence.md)). Each server is a child of `cstudy serve`, one per session, and talks to one tab over one WebSocket through a broker in the web adapter. Phase 1 covers Python and TypeScript; Java and Kotlin come in phase 2 (Kotlin after a spike of its server; if the spike fails, Java ships alone), then Go and Rust in phase 3. What the page draws is in [Code intelligence in the editor](#code-intelligence-in-the-editor).
 
 ### Sessions
 
@@ -437,7 +437,7 @@ The session lets the page open documents, ask the server about them and read the
 | Script injection through documentation | Documentation is rendered on the server with raw HTML disabled and no `style` attribute; the page inserts no other server text as HTML ([Documentation](#documentation)) |
 | Edits from the server | `workspace/applyEdit` is refused; the page sends no method beyond the list the broker forwards |
 | Large or many messages | 4 MiB per message, in both directions and checked before a server's message is read; document text up to 1 MiB, no compression, at most four servers; at most 32 MiB of messages waiting for a server that reads nothing or unread by a page that reads nothing, each of which ends the session ([Lifecycle and limits](#lifecycle-and-limits)) |
-| Code the servers run | They run as you, on your code. basedpyright and typescript-language-server run no workspace code; from phase 2, rust-analyzer runs build scripts and procedural macros, and from phase 3 JDT LS runs Gradle scripts, as `cstudy test` builds do |
+| Code the servers run | They run as you, on your code. basedpyright and typescript-language-server run no workspace code; from phase 2, JDT LS runs Gradle scripts, as `cstudy test` builds do, and from phase 3 rust-analyzer runs build scripts and procedural macros |
 
 Accepted as they are, since each needs write access to the workspace, which the user already has: a hard link to a single reference file, and the race between the check of a library file and its read.
 
@@ -501,7 +501,7 @@ The broker renders every documentation value of these answers and sends it as `{
 | `MarkupContent` of kind `plaintext`, of any kind but `markdown`, or a string `documentation` | The text escaped, in one `<pre class="doc-plain">`. A `MarkedString` that is a string, in a hover, is markdown; a `documentation` that is a string is plain text, as LSP defines them |
 | `MarkedString` `{"language", "value"}` | A code block in that language |
 | A list of the above | Each rendered, in order, separated by `<hr>` |
-| A link | `http:` and `https:` links stay links, opening in a new tab with `rel="noopener noreferrer"`. In phase 1 every other link, `file:` included, and a link with no scheme, renders as its text alone, whatever its spelling or case (`javascript:`, `data:`, `mailto:`); from phase 2 a `file:` link becomes a button that opens the library tab |
+| A link | `http:` and `https:` links stay links, opening in a new tab with `rel="noopener noreferrer"`. In phase 1 every other link, `file:` included, and a link with no scheme, renders as its text alone, whatever its spelling or case (`javascript:`, `data:`, `mailto:`); from phase 3 a `file:` link becomes a button that opens the library tab |
 | An image | Its alt text alone, so the page requests nothing |
 | Nothing left | A hover whose `contents` render to nothing is answered as null; a `documentation` that renders to nothing is left out of its item, signature or parameter |
 
@@ -521,7 +521,7 @@ The broker records the target of every location in each `textDocument/definition
 | `reason` | `message` | When |
 |----------|-----------|------|
 | `not_a_definition` | `not a definition target of this session` | No definition answer of the session named the URI |
-| `not_a_file_uri` | `not a file: URI` | Another scheme, such as JDT LS's `jdt://` in phase 3; a host other than `localhost`; a query or a fragment; a path that is not absolute |
+| `not_a_file_uri` | `not a file: URI` | Another scheme, such as JDT LS's `jdt://` in phase 2; a host other than `localhost`; a query or a fragment; a path that is not absolute |
 | `build_area` | `not shown: cstudy's build area` | The path, or the path with its links resolved, is under the workspace's `.cs/build/`, `.cs/cases/` or `.cs/runs/`, or the content root, so a reference solution shows only through the Solution pane and its question. The definition answers leave such a place out, so this is the check again at the read. A directory is recognised by what it is on the disk (its device and inode) as well as by its name, so another spelling of it on a case-insensitive file system, a `..` in the path or a link does not get past, and a file that is not there under it is refused the same way |
 | `missing` | `no such file` | Nothing at the resolved path, or nothing the server may open (a path with a NUL, a permission denied) |
 | `not_a_file` | `not a regular file` | A directory, a pipe or another kind of file, after links are resolved |
@@ -541,7 +541,7 @@ Four places hold what the page must never see through a language server: the ref
 | Diagnostics | A diagnostic's `relatedInformation` is left out ([The broker](#the-broker)) |
 | Library files | Refused with `build_area` ([Definitions and library files](#definitions-and-library-files)) |
 
-A server that is not a Node program, such as gopls, rust-analyzer and JDT LS in the later phases, does not run the script; each of those phases must keep these directories from its server, and until then the other three controls are all there is.
+A server that is not a Node program, such as JDT LS and the Kotlin LSP in phase 2 and gopls and rust-analyzer in phase 3, does not run the script; each of those phases must keep these directories from its server in its own way, and tests it with a reference in `.cs/build/` before it ships. Until then the other three controls are all there is.
 
 ### Lifecycle and limits
 
@@ -761,7 +761,7 @@ Cmd-click on macOS, Ctrl-click elsewhere (on macOS Ctrl-click opens the context 
 |--------|--------------|
 | The same file | The cursor moves there, scrolled into view |
 | Another file of the attempt (in the attempt's [tree](#file-scope)), such as a project's module or a generated test file | Its tab opens, or comes forward, at the definition |
-| Any other URI: a file inside the root that the tree does not list, or outside it (the standard library, typeshed, `node_modules`, `.venv`, the runner's support code, another practice file) | The page asks for it with `cstudy/libraryFile` ([Definitions and library files](#definitions-and-library-files)) and opens a library tab at the definition: read-only, with a `library` badge on the tab and above the code beside the file's `path`, highlighted by its extension, with no session in phases 1 and 2. It cannot be saved and closes like any tab; Ctrl-Minus works in it. A second jump to the same file reads it again and brings its tab forward |
+| Any other URI: a file inside the root that the tree does not list, or outside it (the standard library, typeshed, `node_modules`, `.venv`, the runner's support code, another practice file) | The page asks for it with `cstudy/libraryFile` ([Definitions and library files](#definitions-and-library-files)) and opens a library tab at the definition: read-only, with a `library` badge on the tab and above the code beside the file's `path`, highlighted by its extension, with no session in phases 1 to 3. It cannot be saved and closes like any tab; Ctrl-Minus works in it. A second jump to the same file reads it again and brings its tab forward |
 | A refusal for `missing`, `not_a_file`, `too_large`, `not_text` or `not_a_file_uri` | No tab: a note at the click names the file, the line and the reason (`python/.venv/lib/python3.13/site-packages/big.py:120 · over 4 MiB`), and closes on the next key or click |
 | A refusal for `build_area` | The same note: `not shown: cstudy's build area`. The broker leaves a location in a [hidden directory](#hidden-directories) out of the answer, so a definition into one is no location (`no definition found`) and the refusal shows only if the page asks for the file itself |
 | Several locations, as for an overloaded function | The first |
