@@ -240,12 +240,12 @@ def test_rust_analyzer_links_each_rust_project_folder_after_the_template():
     ]
 
 
-def test_rust_analyzer_checks_every_target_and_keeps_going_past_a_broken_problem():
-    settings = document(SETTINGS)
-    assert (
-        settings["rust-analyzer.check.allTargets"],
-        settings["rust-analyzer.check.extraArgs"],
-    ) == (True, ["--keep-going"])
+def test_rust_analyzer_checks_every_target():
+    assert document(SETTINGS)["rust-analyzer.check.allTargets"] is True
+
+
+def test_rust_analyzer_gets_no_extra_check_arguments_because_it_passes_keep_going_itself():
+    assert "rust-analyzer.check.extraArgs" not in document(SETTINGS)
 
 
 def test_the_go_tools_never_download_a_toolchain():

@@ -55,7 +55,6 @@ SETTINGS: JsonObject = {
     "go.toolsEnvVars": {"GOTOOLCHAIN": "local"},
     "rust-analyzer.linkedProjects": [f"{RUST_PROJECT}/Cargo.toml"],
     "rust-analyzer.check.allTargets": True,
-    "rust-analyzer.check.extraArgs": ["--keep-going"],
     "files.watcherExclude": {
         "**/.gradle/**": True,
         "**/.kotlin/**": True,
@@ -78,8 +77,9 @@ Gradle project in `jvm/` itself; the JDK is left to the user's setup, since
 `java.jdt.ls.java.home` would pin a machine-specific path. gopls finds `go/` through the
 workspace's `go.work`; the Go tools run with `GOTOOLCHAIN=local`, as `cstudy` does, so they never
 download a toolchain. rust-analyzer needs the link because `Cargo.toml` is in `rust/`, checks every
-target because each problem is an `[[example]]`, and `--keep-going` keeps one broken problem from
-hiding the errors of the others."""
+target because each problem is an `[[example]]`. It passes `--keep-going` to `cargo check` itself,
+which keeps one broken problem from hiding the errors of the others; passing it again through
+`rust-analyzer.check.extraArgs` makes cargo fail and VS Code show no Rust diagnostics."""
 EXTENSIONS: JsonObject = {
     "recommendations": [
         "ms-python.python",
