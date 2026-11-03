@@ -14,7 +14,7 @@ from typing import cast
 from coding_study.application.ports import WebServerLibraries, WebUiAssets
 
 MANIFEST_FILE = "manifest.json"
-SERVER_LIBRARIES = ("starlette", "uvicorn")
+SERVER_LIBRARIES = ("starlette", "uvicorn", "wsproto")
 
 
 class InstalledWebUi:

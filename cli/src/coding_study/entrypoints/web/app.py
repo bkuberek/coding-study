@@ -22,6 +22,7 @@ from coding_study.entrypoints.web.api_progress import progress_routes
 from coding_study.entrypoints.web.api_runs import run_routes
 from coding_study.entrypoints.web.api_session import session_routes
 from coding_study.entrypoints.web.api_solutions import solution_routes
+from coding_study.entrypoints.web.code_intelligence import LanguageSessions
 from coding_study.entrypoints.web.context import ServerSettings, ServerState
 from coding_study.entrypoints.web.errors import exception_handlers
 from coding_study.entrypoints.web.notifications import (
@@ -38,9 +39,11 @@ def create_app(
     settings: ServerSettings,
     children: Children | None = None,
     notifications: Notifications | None = None,
+    sessions: LanguageSessions | None = None,
 ) -> ASGIApp:
-    """`children` holds the runs and jobs, and `notifications` the tabs' notification streams;
-    stopping the children, which the server does first as it shuts down, ends those streams."""
+    """`children` holds the runs and jobs, `notifications` the tabs' notification streams and
+    `sessions` the code-intelligence sessions; stopping the children, which the server does first
+    as it shuts down, ends those streams."""
     routes = [
         *front_end_routes(settings.static_directory, settings.secrets.csrf),
         *session_routes(),
@@ -61,6 +64,7 @@ def create_app(
         settings,
         children=children or Children(),
         notifications=notifications or Notifications(),
+        sessions=sessions or LanguageSessions(),
     )
     state.children.listen(ChildNotices(state.notifications))
     app = Starlette(
@@ -72,7 +76,7 @@ def create_app(
 
 def _serving(state: ServerState) -> Callable[[Starlette], AbstractAsyncContextManager[None]]:
     """Watches the workspace while the server runs; then stops the runs and jobs, which ends
-    the notification streams, and the watch."""
+    the notification streams, the code-intelligence sessions, and the watch."""
 
     async def snapshot(previous: WorkspaceSnapshot | None) -> WorkspaceSnapshot:
         load_environment = state.settings.load_environment
@@ -84,6 +88,7 @@ def _serving(state: ServerState) -> Callable[[Starlette], AbstractAsyncContextMa
         watching = asyncio.create_task(watch.run())
         yield
         await state.children.stop()
+        await state.sessions.stop()
         state.notifications.stop()
         await watching
 

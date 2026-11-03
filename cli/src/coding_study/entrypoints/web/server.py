@@ -13,12 +13,15 @@ from typing import Any
 import uvicorn
 from starlette.types import ASGIApp
 
-from coding_study.entrypoints.web.security import LOOPBACK
+from coding_study.entrypoints.web.security import LOOPBACK, MIB
 
 STOP_SIGNALS = frozenset({signal.SIGINT, signal.SIGTERM})
 
+WEBSOCKET_MESSAGE_LIMIT = 4 * MIB
+
 type Stopping = Callable[[], Coroutine[Any, Any, None]]
-"""What the server does first as it shuts down: stop the runs and jobs."""
+"""What the server does first as it shuts down: stop the runs and jobs and end the
+code-intelligence sessions."""
 
 
 async def _nothing() -> None:
@@ -73,17 +76,17 @@ def stop_signals() -> Generator[None]:
                 signal.signal(number, handler)
 
 
-def serve_forever(app: ASGIApp, listener: socket.socket, stopping: Stopping = _nothing) -> None:
-    """Serves, inside `stop_signals`, until one of them stops the server; returns only when the
-    server did not start. uvicorn handles the signal by shutting down, then raises it again for
-    the handlers of `stop_signals`. `stopping` runs first as it shuts down.
-
-    No access log and no `server` header; proxy headers are ignored, since every connection
-    comes from this machine."""
-    config = uvicorn.Config(
+def uvicorn_config(app: ASGIApp) -> uvicorn.Config:
+    """No access log and no `server` header; proxy headers are ignored, since every connection
+    comes from this machine. The one WebSocket route runs on wsproto, named so that an installed
+    `websockets` package never replaces it, without compression and with messages of at most
+    4 MiB."""
+    return uvicorn.Config(
         app,
         http="h11",
-        ws="none",
+        ws="wsproto",
+        ws_max_size=WEBSOCKET_MESSAGE_LIMIT,
+        ws_per_message_deflate=False,
         loop="asyncio",
         lifespan="on",
         log_config=None,
@@ -92,7 +95,13 @@ def serve_forever(app: ASGIApp, listener: socket.socket, stopping: Stopping = _n
         proxy_headers=False,
         server_header=False,
     )
-    _Server(config, stopping).run(sockets=[listener])
+
+
+def serve_forever(app: ASGIApp, listener: socket.socket, stopping: Stopping = _nothing) -> None:
+    """Serves, inside `stop_signals`, until one of them stops the server; returns only when the
+    server did not start. uvicorn handles the signal by shutting down, then raises it again for
+    the handlers of `stop_signals`. `stopping` runs first as it shuts down."""
+    _Server(uvicorn_config(app), stopping).run(sockets=[listener])
 
 
 class _Server(uvicorn.Server):
@@ -102,7 +111,8 @@ class _Server(uvicorn.Server):
 
     async def shutdown(self, sockets: list[socket.socket] | None = None) -> None:
         """Runs `stopping` before uvicorn waits for the open responses: a run's stream stays
-        open until its child exits, and the children stop only once they are told to."""
+        open until its child exits, and the children stop only once they are told to. It closes
+        the code-intelligence sockets with 1001, before uvicorn closes any with 1012."""
         await self._stopping()
         await super().shutdown(sockets)
 

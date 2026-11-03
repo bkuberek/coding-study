@@ -2,14 +2,15 @@
 
 A child is the same install as the server, given the server's workspace and content, started in a
 session of its own, in the workspace, with nothing on its standard input, no colour and 120
-columns. The argument list is built here, never by a shell.
+columns. The argument list is built here, never by a shell. `start_process` also starts the
+language servers of the code-intelligence sessions, in the same way.
 """
 
 import asyncio
 import os
 import signal
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -102,6 +103,16 @@ class StreamedChild:
         return self.protocol.stderr
 
     @property
+    def stdin(self) -> asyncio.StreamWriter:
+        """The writer of a process started with a pipe for standard input."""
+        assert self.protocol.stdin is not None
+        return self.protocol.stdin
+
+    @property
+    def pid(self) -> int:
+        return self.transport.get_pid()
+
+    @property
     def returncode(self) -> int | None:
         """The process's status once it exited: negative for the signal that ended it."""
         return self.transport.get_returncode()
@@ -125,6 +136,22 @@ class StreamedChild:
             with suppress(ProcessLookupError):
                 os.killpg(self.transport.get_pid(), signal.SIGKILL)
 
+    def group_alive(self) -> bool:
+        """Whether any process is left in the child's process group: the child itself, or one it
+        started and left running after it exited."""
+        try:
+            os.killpg(self.pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        return True
+
+    def signal_group(self, number: signal.Signals) -> None:
+        """A signal to everything in the process group, whether or not the child itself runs."""
+        with suppress(ProcessLookupError):
+            os.killpg(self.pid, number)
+
     def close(self) -> None:
         """Closes the pipes, which a process the child left behind may still hold."""
         self.transport.close()
@@ -133,16 +160,30 @@ class StreamedChild:
 async def start_child(
     child: ChildCommand, workspace: Path, command: Sequence[str]
 ) -> StreamedChild:
+    return await start_process(
+        child.arguments(workspace, command),
+        workspace,
+        {**os.environ, **CHILD_ENVIRONMENT},
+        asyncio.subprocess.DEVNULL,
+    )
+
+
+async def start_process(
+    arguments: Sequence[str], directory: Path, environment: Mapping[str, str], stdin: int
+) -> StreamedChild:
+    """`arguments` in `directory`, in a session of its own, so its whole process group can be
+    stopped; `stdin` is `asyncio.subprocess.PIPE` or `DEVNULL`. Raises OSError when it cannot
+    start."""
     loop = asyncio.get_running_loop()
     protocol = _ExitProtocol(loop)
     transport, _ = await loop.subprocess_exec(
         lambda: protocol,
-        *child.arguments(workspace, command),
-        stdin=asyncio.subprocess.DEVNULL,
+        *arguments,
+        stdin=stdin,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
-        cwd=workspace,
-        env={**os.environ, **CHILD_ENVIRONMENT},
+        cwd=directory,
+        env=dict(environment),
         start_new_session=True,
     )
     return StreamedChild(transport, protocol)

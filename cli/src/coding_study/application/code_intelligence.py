@@ -1,13 +1,17 @@
 """The state of the language servers and their installation: the `code intelligence` rows of
 `cstudy doctor`, `cstudy doctor --fix`, and `GET /api/v1/code-intelligence/languages`
-(docs/specs/web-ui.md#language-servers).
+(docs/specs/web-ui.md#language-servers); and which server and root a session gets from an
+attempt (docs/specs/web-ui.md#sessions).
 
 Like highlighting, code intelligence grades nothing and records nothing.
 """
 
 from dataclasses import dataclass
 from enum import StrEnum
+from pathlib import Path
 
+from coding_study.application.active_attempt import attempt_in_progress
+from coding_study.application.environment import Environment
 from coding_study.application.ports import (
     FileMissing,
     LanguageServerInstaller,
@@ -18,10 +22,21 @@ from coding_study.application.ports import (
     VersionFailed,
     VersionPrinted,
 )
-from coding_study.domain.code_intelligence import NOT_AVAILABLE_YET, LanguageServer, server_for
-from coding_study.domain.problem import Language
+from coding_study.domain.attempts import Attempt
+from coding_study.domain.code_intelligence import (
+    LSP_DIRECTORY,
+    NOT_AVAILABLE_YET,
+    LanguageServer,
+    server_for,
+)
+from coding_study.domain.errors import LanguageServerNotInstalledError, UsageError
+from coding_study.domain.preferences import Preferences
+from coding_study.domain.problem import Language, ProblemKind
+from coding_study.domain.workspace_projects import project_folder
 
-FIX_HINT = "run cstudy doctor --fix"
+FIX_COMMAND = "cstudy doctor --fix"
+FIX_HINT = f"run {FIX_COMMAND}"
+OFF = "code intelligence is off: turn it on in Settings"
 
 
 class ServerStatus(StrEnum):
@@ -52,10 +67,65 @@ def language_server_states(locator: LanguageServerLocator) -> tuple[LanguageServ
     return tuple(_state(language, locator) for language in Language)
 
 
+@dataclass(frozen=True, slots=True)
+class SessionTarget:
+    """What a session runs: a server, in a root of the workspace."""
+
+    server: LanguageServer
+    workspace: Path
+    """The workspace root, where `.cs/lsp/` is."""
+    root: str
+    """The session's root relative to the workspace, `/`-separated: the practice project of the
+    attempt's language, or its project folder."""
+
+    @property
+    def directory(self) -> Path:
+        """The server's current directory."""
+        return self.workspace / self.root
+
+    @property
+    def lsp_directory(self) -> Path:
+        return self.workspace / LSP_DIRECTORY
+
+
+def session_target(
+    environment: Environment, preferences: Preferences, attempt_id: int
+) -> SessionTarget:
+    """The server and root for a session of the attempt, checked in the order the route's
+    refusals come.
+
+    Raises UnknownAttemptError, AttemptEndedError, UsageError (the preference is off, the attempt
+    has no code, its language has no server yet) and LanguageServerNotInstalledError.
+    """
+    attempt = attempt_in_progress(environment.progress, attempt_id)
+    if not preferences.code_intelligence:
+        raise UsageError(OFF)
+    server = _server_of(attempt)
+    problem = _located(server, environment.language_servers.probe(server)).problem
+    if problem is not None:
+        raise LanguageServerNotInstalledError(problem, FIX_COMMAND)
+    return SessionTarget(server, environment.root, _root(environment, attempt, server))
+
+
 def install_language_servers(installer: LanguageServerInstaller) -> ProbeResult | None:
     """Put the shipped manifest in `.cs/lsp/` and install it; None when `pnpm` is missing. The
     caller decides, from the `code_intelligence` preference, whether to."""
     return installer.install()
+
+
+def _server_of(attempt: Attempt) -> LanguageServer:
+    if attempt.language is None:
+        raise UsageError(f"{attempt.slug} has no code")
+    server = server_for(attempt.language)
+    if server is None:
+        raise UsageError(f"no code intelligence for {attempt.language.value} yet")
+    return server
+
+
+def _root(environment: Environment, attempt: Attempt, server: LanguageServer) -> str:
+    if environment.problems.load(attempt.slug).meta.kind is ProblemKind.PROJECT:
+        return project_folder(attempt.slug)
+    return server.root_project
 
 
 def _state(language: Language, locator: LanguageServerLocator) -> LanguageServerState:

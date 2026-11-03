@@ -67,6 +67,7 @@ def test_the_server_libraries_report_their_versions(tmp_path):
     assert InstalledWebUi(tmp_path).server_libraries().versions == (
         f"starlette {version('starlette')}",
         f"uvicorn {version('uvicorn')}",
+        f"wsproto {version('wsproto')}",
     )
 
 
@@ -74,3 +75,9 @@ def test_a_library_that_does_not_import_is_named(tmp_path, monkeypatch):
     monkeypatch.setitem(sys.modules, "uvicorn", None)
     problem = InstalledWebUi(tmp_path).server_libraries().problem or ""
     assert problem.startswith("uvicorn does not import: ")
+
+
+def test_wsproto_is_one_of_the_libraries_the_server_needs(tmp_path, monkeypatch):
+    monkeypatch.setitem(sys.modules, "wsproto", None)
+    problem = InstalledWebUi(tmp_path).server_libraries().problem or ""
+    assert problem.startswith("wsproto does not import: ")

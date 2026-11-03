@@ -52,6 +52,14 @@ class LanguageNotSetUpError(Exception):
         self.component = component
 
 
+class LanguageServerNotInstalledError(Exception):
+    """The language server a code-intelligence session needs is missing or is not the pinned
+    version (exit code 4); its text ends with the fix."""
+
+    def __init__(self, problem: str, fix: str) -> None:
+        super().__init__(f"{problem}\n{FIX_PREFIX}{fix}")
+
+
 class RunnerStartError(Exception):
     """A runner that could not be launched or did not say hello in time (exit code 4)."""
 

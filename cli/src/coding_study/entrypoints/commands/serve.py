@@ -1,9 +1,10 @@
 """`cstudy serve` (docs/specs/cli.md#cstudy-serve): the local web UI, on 127.0.0.1 only.
 
-The web stack is imported inside the command, so no other command loads Starlette or uvicorn
-(NFR-2, docs/architecture.md#web-adapter).
+The web stack is imported inside the command, so no other command loads Starlette, uvicorn or
+wsproto (NFR-2, docs/architecture.md#web-adapter).
 """
 
+import asyncio
 import html
 import os
 import sys
@@ -80,6 +81,7 @@ def serve(
     from coding_study.entrypoints.web import server
     from coding_study.entrypoints.web.app import create_app
     from coding_study.entrypoints.web.children import ChildCommand
+    from coding_study.entrypoints.web.code_intelligence import LanguageSessions
     from coding_study.entrypoints.web.context import ServerSettings
     from coding_study.entrypoints.web.runs import Children
     from coding_study.entrypoints.web.security import SessionSecrets, login_url
@@ -105,8 +107,16 @@ def serve(
         output.print(_line("open", url))
         redirect = _open_in_browser(root, settings.port, url) if open_browser else None
         children = Children(report=lambda label, text: output.print(_line(label, text)))
+        sessions = LanguageSessions()
+
+        async def stopping() -> None:
+            """The runs and jobs, and every language server with its socket, stop together."""
+            await asyncio.gather(children.stop(), sessions.stop())
+
         try:
-            server.serve_forever(create_app(settings, children), listener, children.stop)
+            server.serve_forever(
+                create_app(settings, children, sessions=sessions), listener, stopping
+            )
         except KeyboardInterrupt:
             _stop(output, "Ctrl-C", ExitCode.INTERRUPTED)
         except server.Terminated:

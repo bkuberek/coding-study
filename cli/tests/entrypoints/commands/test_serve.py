@@ -21,6 +21,7 @@ from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import serve
 from coding_study.entrypoints.shared import ExitCode
 from coding_study.entrypoints.web import app, server
+from coding_study.entrypoints.web.code_intelligence import LanguageSessions
 from coding_study.entrypoints.web.context import ServerSettings
 from coding_study.entrypoints.web.runs import Children
 from tests.web_server import web_workspace
@@ -291,6 +292,21 @@ def test_ctrl_c_exits_130_saying_how_it_stopped(workspace, monkeypatch):
     )
 
 
+def test_ctrl_c_stops_every_language_server_with_the_runs_and_jobs(workspace, monkeypatch):
+    stopped: list[str] = []
+
+    async def sessions_stop(_self) -> None:
+        stopped.append("sessions")
+
+    async def children_stop(_self) -> None:
+        stopped.append("children")
+
+    monkeypatch.setattr(LanguageSessions, "stop", sessions_stop)
+    monkeypatch.setattr(Children, "stop", children_stop)
+    serving(monkeypatch, ServerLoop(KeyboardInterrupt))
+    assert sorted(stopped) == ["children", "sessions"]
+
+
 def test_sigterm_exits_143(workspace, monkeypatch):
     result = serving(monkeypatch, ServerLoop(server.Terminated))
     assert (result.exit_code, result.stdout.splitlines()[-1]) == (143, "stop       SIGTERM")
@@ -343,9 +359,13 @@ def served_settings(monkeypatch) -> list[ServerSettings]:
     built: list[ServerSettings] = []
     create_app = app.create_app
 
-    def recorded(settings: ServerSettings, children: Children | None = None) -> ASGIApp:
+    def recorded(
+        settings: ServerSettings,
+        children: Children | None = None,
+        sessions: LanguageSessions | None = None,
+    ) -> ASGIApp:
         built.append(settings)
-        return create_app(settings, children)
+        return create_app(settings, children, sessions=sessions)
 
     monkeypatch.setattr(app, "create_app", recorded)
     return built
@@ -400,10 +420,11 @@ def test_the_redirect_file_is_removed_when_the_server_stops(workspace, monkeypat
 
 
 def test_importing_the_cli_loads_no_web_server():
-    """NFR-2: only `cstudy serve` pays for Starlette and uvicorn."""
+    """NFR-2: only `cstudy serve` pays for Starlette, uvicorn and wsproto."""
     script = (
         "import sys, coding_study.entrypoints.cli; "
-        "print(sorted({m.split('.')[0] for m in sys.modules} & {'starlette', 'uvicorn'}))"
+        "print(sorted({m.split('.')[0] for m in sys.modules} "
+        "& {'starlette', 'uvicorn', 'wsproto'}))"
     )
     finished = subprocess.run(
         [sys.executable, "-c", script], capture_output=True, text=True, check=True

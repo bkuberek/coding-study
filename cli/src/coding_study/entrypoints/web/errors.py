@@ -143,6 +143,10 @@ def split_fix(text: str) -> tuple[str, str | None]:
 
 
 async def _domain_error(_request: Request, error: Exception) -> Response:
+    return _domain_response(error)
+
+
+def _domain_response(error: Exception) -> JsonResponse:
     message, fix = split_fix(str(error))
     return error_response(
         domain_error_code(error), message, details=None if fix is None else {"fix": fix}
@@ -167,7 +171,21 @@ def entity_tag(sha256: str) -> str:
 
 async def _api_error(_request: Request, error: Exception) -> Response:
     assert isinstance(error, ApiError)
+    return _api_response(error)
+
+
+def _api_response(error: ApiError) -> JsonResponse:
     return error_response(error.code, str(error), details=error.details)
+
+
+def refusal(error: Exception) -> Response | None:
+    """The response a handler gives `error`, for a route that refuses before an upgrade, where
+    no exception handler can answer; None for an error that is a bug."""
+    if isinstance(error, ApiError):
+        return _api_response(error)
+    if type(error) in ERROR_EXIT_CODES or type(error) in _LOOKUP_ERRORS:
+        return _domain_response(error)
+    return None
 
 
 async def _http_error(request: Request, error: Exception) -> Response:

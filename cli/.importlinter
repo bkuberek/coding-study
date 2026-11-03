@@ -28,6 +28,7 @@ forbidden_modules =
     subprocess
     starlette
     uvicorn
+    wsproto
 
 [importlinter:contract:application]
 name = Application depends on ports, not on libraries or process and database I/O
@@ -44,6 +45,7 @@ forbidden_modules =
     subprocess
     starlette
     uvicorn
+    wsproto
 
 [importlinter:contract:adapters]
 name = Only the web adapter, an entrypoint, imports the web server libraries
@@ -53,3 +55,4 @@ source_modules =
 forbidden_modules =
     starlette
     uvicorn
+    wsproto

@@ -1605,7 +1605,7 @@ def test_repair_writes_what_the_languages_folders_lack_and_names_it():
 
 
 INSTALLED_ASSETS = WebUiAssets(812_345)
-INSTALLED_LIBRARIES = WebServerLibraries(("starlette 1.10.0", "uvicorn 0.54.0"))
+INSTALLED_LIBRARIES = WebServerLibraries(("starlette 1.10.0", "uvicorn 0.54.0", "wsproto 1.3.2"))
 
 
 @dataclass
@@ -1628,7 +1628,7 @@ def web_rows(report: DoctorReport) -> list[tuple[str, CheckStatus, str, str | No
 def test_an_installed_web_ui_reports_its_size_and_server_versions():
     assert web_rows(doctor(web=FakeWebUi())) == [
         ("web ui assets", OK, "0.8 MB, digest matches", None),
-        ("web server", OK, "starlette 1.10.0, uvicorn 0.54.0", None),
+        ("web server", OK, "starlette 1.10.0, uvicorn 0.54.0, wsproto 1.3.2", None),
     ]
 
 

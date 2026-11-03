@@ -16,6 +16,7 @@ from coding_study.application.attempt_changes import WatchedFolder
 from coding_study.application.environment import Environment
 from coding_study.entrypoints.web.app import create_app
 from coding_study.entrypoints.web.children import ChildCommand
+from coding_study.entrypoints.web.code_intelligence import LanguageSessions
 from coding_study.entrypoints.web.context import ServerSettings
 from coding_study.entrypoints.web.notifications import Notifications
 from coding_study.entrypoints.web.runs import Children
@@ -71,10 +72,12 @@ def web_app(
     child: ChildCommand | None = None,
     children: Children | None = None,
     notifications: Notifications | None = None,
+    sessions: LanguageSessions | None = None,
 ) -> ASGIApp:
     """The app of a server on `PORT` over the workspace `root`; `child` replaces the `cstudy`
-    its children run, `children` holds its runs and jobs, and `notifications` its notification
-    streams, whose watch of the workspace never sees a change."""
+    its children run, `children` holds its runs and jobs, `notifications` its notification
+    streams, whose watch of the workspace never sees a change, and `sessions` its
+    code-intelligence sessions."""
     workspace = environment or web_workspace(root)
     return create_app(
         ServerSettings(
@@ -89,6 +92,7 @@ def web_app(
         ),
         children,
         notifications,
+        sessions,
     )
 
 
