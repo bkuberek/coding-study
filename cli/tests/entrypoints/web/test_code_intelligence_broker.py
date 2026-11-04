@@ -147,7 +147,7 @@ def test_what_the_page_sends_reaches_the_server_in_order(lab, client):
 
 def test_the_servers_requests_are_answered_and_never_reach_the_page(lab, client):
     configuration = request(
-        "h1", "workspace/configuration", {"items": [{"section": "basedpyright.analysis"}]}
+        "h1", "workspace/configuration", {"items": [{"section": "basedpyright"}]}
     )
     lab.server.play(
         {"send": configuration},
@@ -160,7 +160,7 @@ def test_the_servers_requests_are_answered_and_never_reach_the_page(lab, client)
         assert message_of(received(websocket)) == "first message the page sees"
     answers = [message for message in lab.server.received() if "result" in message]
     assert answers == [
-        answer("h1", [BASEDPYRIGHT.settings["basedpyright.analysis"]]),
+        answer("h1", [BASEDPYRIGHT.settings["basedpyright"]]),
         answer("h2", None),
     ]
 

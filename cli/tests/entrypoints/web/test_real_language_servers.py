@@ -3,7 +3,8 @@ installed in `.cs/lsp/` from the shipped lock, answers a page that opens a pract
 undefined name is an error, `sorted` has documentation, and the definition of `sorted` is
 `builtins.pyi`, which the broker reads for the page through `cstudy/libraryFile`; a completion
 item resolves through its token, and an item the page made up, naming a reference solution as the
-module to document, is refused instead of documenting it. typescript-language-server resolves
+module to document, is refused instead of documenting it. No completion either server lists adds
+an import: that is a quick fix, which is out of scope. typescript-language-server resolves
 the items of a completion through the `cacheId` it keeps in their `data`, which the broker holds.
 A page document that imports a reference solution, by `import`, `/// <reference path>` or
 `import()`, finds it missing in both servers, whatever is asked of them; a control that lets the
@@ -12,6 +13,7 @@ servers see the reference shows what each would have answered.
 Needs Node, pnpm and, the first time, the network for the packages of the pinned lock; the tests
 are skipped where the servers cannot be installed."""
 
+import itertools
 import json
 import shutil
 from collections.abc import Callable
@@ -57,6 +59,13 @@ HTML = "cstudy-html"
 REFERENCE_DOCSTRING = "REFERENCE-SOLUTION: one pass with a dict of complements"
 MATH = "Math.\n"
 AFTER_MATH_DOT = {"line": 0, "character": 5}
+PYTHON_PREFIX = "sor"
+TYPESCRIPT_PREFIX = "readFileS"
+"""`readFileSync` is no global, only an export of the module `node:fs`."""
+IMPORT_MARK = "auto-import"
+LAST_SORT_TEXT = "\uffff"
+REQUEST_IDS = itertools.count(90)
+"""Ids for the requests no test names, apart from those the fixtures number by hand."""
 
 
 @pytest.fixture(scope="module")
@@ -83,6 +92,8 @@ class Played:
     resolved: dict[str, Any] = field(default_factory=dict)
     forged: dict[str, Any] = field(default_factory=dict)
     """The answer to a resolve of an item the page made up."""
+    typed: list[dict[str, Any]] = field(default_factory=list)
+    """The completion items for a prefix of `sorted` typed in a document of its own."""
 
 
 def ask(websocket: WebSocketTestSession, message: dict[str, Any]) -> dict[str, Any]:
@@ -150,8 +161,44 @@ def played(practice_workspace: Path, installed: Path, tmp_path_factory) -> Playe
         forged = ask(
             websocket, request(7, "completionItem/resolve", {**listed, "data": forged_data})
         )
+        typed = _items(
+            _completion_after(websocket, python / "practice" / "typed.py", "python", PYTHON_PREFIX)[
+                "result"
+            ]
+        )
     return Played(
-        [published], hover, definition["result"], library, document, listed, resolved, forged
+        [published],
+        hover,
+        definition["result"],
+        library,
+        document,
+        listed,
+        resolved,
+        forged,
+        typed,
+    )
+
+
+def _completion_after(
+    websocket: WebSocketTestSession, file: Path, language: str, prefix: str
+) -> dict[str, Any]:
+    """The answer to a completion request at the end of a document of `file` that is `prefix`,
+    asked once the server has loaded the project and reported on the document: before that a
+    server answers from the globals alone, with no export of a module in it."""
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text(prefix)
+    document = file.as_uri()
+    opened = {"uri": document, "languageId": language, "version": 1, "text": prefix}
+    websocket.send_json(notification("textDocument/didOpen", {"textDocument": opened}))
+    until(websocket, lambda message: _reports(message, document))
+    at = {"line": 0, "character": len(prefix)}
+    return ask(
+        websocket,
+        request(
+            next(REQUEST_IDS),
+            "textDocument/completion",
+            {"textDocument": {"uri": document}, "position": at},
+        ),
     )
 
 
@@ -214,6 +261,23 @@ def test_a_completion_item_resolves_through_its_token(played):
     assert (documentation["kind"], "new list" in documentation["value"]) == (HTML, True)
 
 
+def _adds_an_import(item: dict[str, Any]) -> bool:
+    """Whether `item` is marked as a completion that adds an import: by a detail or a label
+    detail that says so (basedpyright), or by the sort text typescript-language-server puts last
+    for an export of another module."""
+    marks = [item.get("detail"), *map(str, (item.get("labelDetails") or {}).values())]
+    marked = any(IMPORT_MARK in str(mark).lower() for mark in marks if mark)
+    return marked or str(item.get("sortText", "")).startswith(LAST_SORT_TEXT)
+
+
+def test_python_offers_sorted_while_sor_is_typed(played):
+    assert "sorted" in [item["label"] for item in played.typed]
+
+
+def test_python_offers_no_completion_that_adds_an_import(played):
+    assert [item["label"] for item in played.typed if _adds_an_import(item)] == []
+
+
 def test_an_item_the_page_made_up_does_not_document_a_reference_solution(played):
     """The reviewer's proof: basedpyright 1.40.2 documents the module `data.moduleUri` names."""
     assert (played.forged["error"]["code"], REFERENCE_DOCSTRING in json.dumps(played.forged)) == (
@@ -232,6 +296,10 @@ class PlayedTypeScript:
     resolved_again: dict[str, Any]
     guessed: dict[str, Any]
     """The answer to a resolve of an item that carries a `cacheId` of the page's own."""
+    typed: list[dict[str, Any]]
+    """The completion items for a prefix of `readFileSync` typed in a document of its own."""
+    global_typed: list[dict[str, Any]]
+    """The same for a prefix of `parseInt`, which is a global."""
 
 
 @pytest.fixture(scope="module")
@@ -277,7 +345,12 @@ def played_typescript(typescript_root: Path) -> PlayedTypeScript:
         again = ask(websocket, request(4, "completionItem/resolve", listed))
         made_up = {**listed, "data": {"cacheId": 1}}
         guessed = ask(websocket, request(5, "completionItem/resolve", made_up))
-    return PlayedTypeScript(listed, resolved, again, guessed)
+        practice = typescript_root / "typescript" / "practice"
+        typed = _completion_after(websocket, practice / "typed.ts", "typescript", TYPESCRIPT_PREFIX)
+        global_typed = _completion_after(websocket, practice / "global.ts", "typescript", "parseI")
+    return PlayedTypeScript(
+        listed, resolved, again, guessed, _items(typed["result"]), _items(global_typed["result"])
+    )
 
 
 def test_typescripts_cache_id_stays_with_the_broker(played_typescript):
@@ -301,6 +374,21 @@ def test_a_typescript_item_resolves_again_with_the_same_token(played_typescript)
 
 def test_a_typescript_item_with_a_cache_id_of_the_pages_own_is_refused(played_typescript):
     assert played_typescript.guessed["error"]["code"] == -32602
+
+
+def test_typescript_offers_a_global_while_its_prefix_is_typed(played_typescript):
+    assert "parseInt" in [item["label"] for item in played_typescript.global_typed]
+
+
+def test_typescript_does_not_offer_an_export_of_a_module_while_its_prefix_is_typed(
+    played_typescript,
+):
+    assert "readFileSync" not in [item["label"] for item in played_typescript.typed]
+
+
+def test_typescript_offers_no_completion_that_adds_an_import(played_typescript):
+    items = played_typescript.typed + played_typescript.global_typed
+    assert [item["label"] for item in items if _adds_an_import(item)] == []
 
 
 # a page document that imports a reference solution

@@ -481,11 +481,11 @@ def reply_to(delivery: Delivery) -> dict[str, Any]:
 
 
 def test_configuration_answers_each_section_from_the_catalog_and_null_for_the_rest(broker):
-    items = [{"section": "basedpyright.analysis"}, {"section": "python"}, {"scopeUri": ROOT}]
+    items = [{"section": "basedpyright"}, {"section": "python"}, {"scopeUri": ROOT}]
     delivery = from_server(broker, configuration(items))
     assert (delivery.to_page, reply_to(delivery)) == (
         (),
-        answer("s1", [BASEDPYRIGHT.settings["basedpyright.analysis"], None, None]),
+        answer("s1", [BASEDPYRIGHT.settings["basedpyright"], None, None]),
     )
 
 

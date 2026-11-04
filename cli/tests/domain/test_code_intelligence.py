@@ -72,8 +72,12 @@ def test_the_version_is_read_from_the_first_line_of_the_version_command(server, 
 
 
 def test_python_checks_in_the_workspaces_standard_mode_without_auto_imports():
+    """Under `basedpyright`, the section the server asks for, with `analysis` inside it: a key
+    `basedpyright.analysis` is a section the server never asks for, so it would never be read."""
     assert BASEDPYRIGHT.settings == {
-        "basedpyright.analysis": {"autoImportCompletions": False, "typeCheckingMode": "standard"}
+        "basedpyright": {
+            "analysis": {"autoImportCompletions": False, "typeCheckingMode": "standard"}
+        }
     }
 
 

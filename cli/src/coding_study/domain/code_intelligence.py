@@ -53,7 +53,8 @@ class LanguageServer:
     initialization_options: Callable[[str], dict[str, JsonValue]]
     """The server's `initializationOptions` for the workspace at the given absolute path."""
     settings: Mapping[str, JsonValue]
-    """What `workspace/configuration` answers, by section."""
+    """What `workspace/configuration` answers, by the section the server asks for: basedpyright asks
+    for `basedpyright`, `pyright` and `python`, never for a dotted `basedpyright.analysis`."""
     capabilities: Mapping[str, JsonValue]
     """The client capabilities the broker declares in `initialize`."""
     requirement: Requirement | None = None
@@ -136,9 +137,11 @@ BASEDPYRIGHT = LanguageServer(
     root_project=PYTHON_PROJECT,
     initialization_options=_no_options,
     settings={
-        "basedpyright.analysis": {
-            "autoImportCompletions": False,
-            "typeCheckingMode": "standard",
+        "basedpyright": {
+            "analysis": {
+                "autoImportCompletions": False,
+                "typeCheckingMode": "standard",
+            }
         }
     },
     capabilities=CLIENT_CAPABILITIES,
