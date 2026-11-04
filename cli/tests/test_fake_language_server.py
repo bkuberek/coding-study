@@ -116,3 +116,10 @@ def test_dir_stands_for_the_folder_of_that_file(tmp_path: Path):
         client.open_file()
         result = client.ask(1, "textDocument/definition", hover_at(0))["result"]
     assert result == [{"uri": "file:///ws/python/practice/other.py"}]
+
+
+def test_a_message_the_server_is_still_writing_to_its_log_is_not_read_yet(tmp_path: Path):
+    script = ScriptedServer(tmp_path / "server.json")
+    log = script.path.with_suffix(".received")
+    log.write_text(json.dumps({"method": "done"}) + '\n{"method": "half wri', encoding="utf-8")
+    assert script.methods() == ["done"]

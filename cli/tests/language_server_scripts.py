@@ -54,20 +54,14 @@ class ScriptedServer:
         return LanguageServerCommand(self.arguments)
 
     def calls(self) -> list[dict[str, Any]]:
-        calls = self.path.with_suffix(".calls")
-        if not calls.exists():
-            return []
-        return [json.loads(line) for line in calls.read_text(encoding="utf-8").splitlines()]
+        return _records(self.path.with_suffix(".calls"))
 
     def pids(self) -> list[int]:
         return [call["pid"] for call in self.calls()]
 
     def received(self) -> list[dict[str, Any]]:
         """Every message the servers read, in the order they read them."""
-        received = self.path.with_suffix(".received")
-        if not received.exists():
-            return []
-        return [json.loads(line) for line in received.read_text(encoding="utf-8").splitlines()]
+        return _records(self.path.with_suffix(".received"))
 
     def methods(self) -> list[str]:
         return [message["method"] for message in self.received() if "method" in message]
@@ -79,6 +73,15 @@ class ScriptedServer:
     def gate(self, name: str) -> Path:
         """A file a `wait_for` step waits on; the test creates it to let the server go on."""
         return self.path.with_name(name)
+
+
+def _records(log: Path) -> list[dict[str, Any]]:
+    """The complete lines of a log a server is still appending to; a message of hundreds of
+    kilobytes reaches the file in several writes, so the last line may be half there."""
+    if not log.exists():
+        return []
+    *complete, _unfinished = log.read_text(encoding="utf-8").split("\n")
+    return [json.loads(line) for line in complete]
 
 
 def fake_node(directory: Path, script: ScriptedServer) -> str:
