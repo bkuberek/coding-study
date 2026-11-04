@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v0.13.1 (2026-11-04)
+
+### Bug Fixes
+
+- **web**: Offer no auto-import completions, as autocomplete promises
+  ([`d868b4a`](https://github.com/bkuberek/coding-study/commit/d868b4a8fef085861711ba44c334784aa677faea))
+
+### Documentation
+
+- Showcase code intelligence and autocomplete on 0.13.0
+  ([`bddce83`](https://github.com/bkuberek/coding-study/commit/bddce83e4d935ad84c8a4fcd01ab8f55363f0a24))
+
+
 ## v0.13.0 (2026-11-04)
 
 ### Bug Fixes
