@@ -90,6 +90,10 @@ cstudy serve --open                # Ctrl-C stops it
 
 The editor can also show errors as you type, documentation on hover, go to definition and, behind a second setting, completion and signature help, for Python and TypeScript now, with Java and Kotlin, then Go and Rust, to follow. Both settings are off by default, and with autocomplete off the editor offers no completion at all, so you can practise recall; `cstudy doctor --fix` installs the language servers once (about 46 MB), and practice works offline after that.
 
+![Code intelligence in the editor: an undefined name is underlined and fixed, hovering shows documentation, and a Cmd-click opens a read-only library tab](docs/images/code-intelligence-demo.gif)
+
+![Autocomplete: the completion list with the documentation of the selected item](docs/images/autocomplete-list-light.png)
+
 [Practise in your browser](docs/guides/web-ui.md) covers the views, editing and runs, [code intelligence and autocomplete](docs/guides/web-ui.md#code-intelligence-and-autocomplete), the keyboard, and what keeps the page private to you.
 
 ## Your workspace is your repository

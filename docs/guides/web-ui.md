@@ -75,6 +75,8 @@ Two settings give the editor what an IDE gives: errors as you type, documentatio
 
 **Autocomplete controls all completion.** With it off, the editor offers no completion list and no signature help, not even the basic completion of earlier versions of the page. That is the reason for the setting: you can practise recalling names and signatures with nothing to prompt you, and turn the help on when you want it. Closing brackets as you type is not completion and stays.
 
+![Code intelligence in the editor: an undefined name is underlined and fixed, hovering shows documentation, and a Cmd-click opens a read-only library tab](../images/code-intelligence-demo.gif)
+
 ### Turn them on
 
 1. Choose **Settings** and check **Code intelligence**. **Autocomplete** is greyed out with `Turn on code intelligence first` until you do; it keeps its choice if you turn code intelligence off, and does nothing until both are on.
@@ -103,10 +105,14 @@ If a server is not installed, or starts slowly, the editor works as it does with
 - **Go to definition.** A name in your own file jumps within it; a name from another file of the attempt opens that file's tab; a name from the standard library or a package opens a **library** tab, read-only, with the file's path beside the code. A library tab cannot be saved, and closing it loses nothing. <kbd>Ctrl</kbd>+<kbd>-</kbd> goes back to where the jump started.
 - **Reference solutions stay hidden.** A definition never opens a reference solution, and the servers cannot read the folders that hold them: an import of one fails as an import of a missing file. You see a solution only through **Solution…**, and its question.
 
+![Hovering over sorted shows its signature and documentation](../images/code-intelligence-hover-light.png)
+
 ### Autocomplete in the editor
 
 - **Completion.** The list opens as you type a name or a `.`, and with <kbd>Ctrl</kbd>+<kbd>Space</kbd>. Move with the arrows, accept with <kbd>Enter</kbd>, close with <kbd>Escape</kbd>. The selected item's documentation shows beside the list. Accepting inserts plain text: no snippets with placeholders, and no imports added for you.
 - **Signature help.** Typing `(` or `,` in a call shows the signature with the current parameter in bold. <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> opens it inside a call.
+
+![The completion list in the dark theme, with the documentation of the selected item beside it](../images/autocomplete-list-dark.png)
 
 ### Keys and mouse
 
