@@ -1,3 +1,4 @@
+import re
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -37,6 +38,7 @@ from coding_study.entrypoints.web import STATIC_DIRECTORY
 from tests.helpers import REPOSITORY_ROOT, mark_workspace, progress_database_at
 
 runner = CliRunner()
+ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def stub_report(monkeypatch: pytest.MonkeyPatch, *results: CheckResult) -> None:
@@ -149,7 +151,7 @@ def test_fix_outside_a_workspace_is_a_usage_error(monkeypatch, tmp_path):
 
 def test_the_fix_help_says_it_installs_the_language_servers():
     output = runner.invoke(cli.app, ["doctor", "--help"]).output
-    help_text = " ".join(output.replace("│", " ").split())
+    help_text = " ".join(ANSI_ESCAPE.sub("", output).replace("│", " ").split())
     assert (
         "While the code_intelligence preference is on, also install the language servers "
         "for code intelligence into .cs/lsp/." in help_text
