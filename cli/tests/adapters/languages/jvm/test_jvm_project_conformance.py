@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from coding_study.adapters.languages.jvm.runner import COLD_DAEMON_NOTICE
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.shared import ExitCode
 from tests.helpers import REPOSITORY_ROOT
@@ -53,7 +54,5 @@ def test_the_jvm_runner_meets_the_project_expectations(
     arguments = ["verify", "--conformance", "--lang", language, *FIXTURES[language]]
     result = runner.invoke(cli.app, arguments)
     expected = RESULTS[language]
-    assert (result.exit_code, result.output.splitlines()[: len(expected)]) == (
-        ExitCode.SUCCESS,
-        expected,
-    )
+    lines = [line for line in result.output.splitlines() if line != COLD_DAEMON_NOTICE]
+    assert (result.exit_code, lines[: len(expected)]) == (ExitCode.SUCCESS, expected)
