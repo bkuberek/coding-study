@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v0.13.2 (2026-11-04)
+
+### Bug Fixes
+
+- **test**: Read only complete lines of the fake language server's logs
+  ([`5f18790`](https://github.com/bkuberek/coding-study/commit/5f18790c2a3c649f6e5b1bc43f8b80586876f51a))
+
+### Documentation
+
+- Retake the autocomplete media on 0.13.1
+  ([`6e78dfc`](https://github.com/bkuberek/coding-study/commit/6e78dfc8f72185241901591a823cc46734eeec9b))
+
+### Testing
+
+- Keep the slow tests' Gradle daemons for ten minutes and ignore the warm-up notice
+  ([`ef8b166`](https://github.com/bkuberek/coding-study/commit/ef8b16614072a4503c7ce6efc5c451781cb20db8))
+
+
 ## v0.13.1 (2026-11-04)
 
 ### Bug Fixes
