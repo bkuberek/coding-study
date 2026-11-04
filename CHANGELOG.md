@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v0.13.3 (2026-11-04)
+
+### Bug Fixes
+
+- **doctor**: Say in --fix's help that it installs the language servers for code intelligence
+  ([`6a712eb`](https://github.com/bkuberek/coding-study/commit/6a712eb1f562309e70152595f9f2bcbffbb45640))
+
+### Documentation
+
+- Match the doctor's real output, size the web ui assets at 1.2 MB and note basedpyright's
+  type-checking mode in 0.13.1
+  ([`4f3098d`](https://github.com/bkuberek/coding-study/commit/4f3098d14f41b5e54011a6f1351eff7cd72c6051))
+
+### Testing
+
+- Give the bench budget test a budget far above a cold runtime's first call
+  ([`91d7815`](https://github.com/bkuberek/coding-study/commit/91d7815ff978f6647d9ed944a43bf4e85f8e8479))
+
+
 ## v0.13.2 (2026-11-04)
 
 ### Bug Fixes
