@@ -27,6 +27,10 @@
 - **web**: Offer no auto-import completions, as autocomplete promises
   ([`d868b4a`](https://github.com/bkuberek/coding-study/commit/d868b4a8fef085861711ba44c334784aa677faea))
 
+- **web**: Apply basedpyright's configured type-checking mode (`standard`). Before this release the
+  server never read its settings key, so neither `autoImportCompletions` nor `typeCheckingMode`
+  applied.
+
 ### Documentation
 
 - Showcase code intelligence and autocomplete on 0.13.0

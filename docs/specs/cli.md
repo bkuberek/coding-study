@@ -197,7 +197,7 @@ Any JDK in the range works; JDK 25, the newest long-term-support release in it, 
 The `web ui assets` and `web server` rows check what `cstudy serve` needs ([installation-and-workspaces](installation-and-workspaces.md#web-ui-assets)). Both WARN, never FAIL, since practice in the terminal does not need them:
 
 ```text
-ok    web ui assets 0.8 MB, digest matches
+ok    web ui assets 1.2 MB, digest matches
 ok    web server starlette 1.10.0, uvicorn 0.54.0, wsproto 1.3.2
 ```
 

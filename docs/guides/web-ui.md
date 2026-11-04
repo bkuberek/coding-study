@@ -90,8 +90,8 @@ Two settings give the editor what an IDE gives: errors as you type, documentatio
 3. Check the result. `cstudy doctor` shows a row per language while code intelligence is on, and the Settings view lists each language's state:
 
    ```text
-   ok    code intelligence python      basedpyright 1.40.2
-   ok    code intelligence typescript  typescript-language-server 6.0.3
+   ok    code intelligence python basedpyright 1.40.2
+   ok    code intelligence typescript typescript-language-server 6.0.3
    ```
 
 4. Open a file. The status bar under the editor shows `python · basedpyright · ready` when its server is up, and **Restart** if it stopped.
