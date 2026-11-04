@@ -431,12 +431,19 @@ def test_output_targets_report_each_check_call(bench):
     assert [m.output.value for m in report.target("a").sizes if m.output] == [1, 2, 3]
 
 
+BUDGET_MS = 1_000
+"""Far above a cold runtime's first call, even on a loaded machine."""
+OVER_BUDGET_SIZE = 2_500
+"""The `slow` approach waits this many milliseconds, so it is always far over `BUDGET_MS`."""
+
+
 def test_a_call_over_the_budget_stops_the_target(bench):
-    settings = replace(SETTINGS, budget_ms=10)
-    report = bench.run(ECHO, {"a": "slow"}, echo_inputs(1, 30, 40), settings)
+    settings = replace(SETTINGS, budget_ms=BUDGET_MS)
+    inputs = echo_inputs(1, OVER_BUDGET_SIZE, OVER_BUDGET_SIZE + 10)
+    report = bench.run(ECHO, {"a": "slow"}, inputs, settings)
     assert [(m.size, m.exceeded_ns is not None) for m in report.target("a").sizes] == [
         (1, False),
-        (30, True),
+        (OVER_BUDGET_SIZE, True),
     ]
 
 
