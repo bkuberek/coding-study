@@ -82,7 +82,9 @@ def doctor(
             "--fix",
             help=(
                 "First run uv sync (and add pytest when the venv lacks it), pnpm install and the "
-                "Gradle build in the workspace projects, and migrate progress.db."
+                "Gradle build in the workspace projects, and migrate progress.db. While the "
+                "code_intelligence preference is on, also install the language servers for code "
+                "intelligence into .cs/lsp/."
             ),
         ),
     ] = False,

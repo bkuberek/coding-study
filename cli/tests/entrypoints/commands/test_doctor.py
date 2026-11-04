@@ -147,6 +147,15 @@ def test_fix_outside_a_workspace_is_a_usage_error(monkeypatch, tmp_path):
     assert runner.invoke(cli.app, ["doctor", "--fix"]).exit_code == ExitCode.USAGE_ERROR
 
 
+def test_the_fix_help_says_it_installs_the_language_servers():
+    output = runner.invoke(cli.app, ["doctor", "--help"]).output
+    help_text = " ".join(output.replace("│", " ").split())
+    assert (
+        "While the code_intelligence preference is on, also install the language servers "
+        "for code intelligence into .cs/lsp/." in help_text
+    )
+
+
 def test_the_workspace_flag_picks_the_workspace_to_fix(monkeypatch, tmp_path):
     workspace = mark_workspace(tmp_path / "ws")
     stub_report(monkeypatch)
