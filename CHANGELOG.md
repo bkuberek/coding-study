@@ -2,6 +2,83 @@
 
 <!-- version list -->
 
+## v0.13.0 (2026-11-04)
+
+### Bug Fixes
+
+- **web**: Bound the stop of a language server, its frames and its queues
+  ([`d14d57f`](https://github.com/bkuberek/coding-study/commit/d14d57f70485712cd34895ef002d8b28632c9a71))
+
+- **web**: Keep cases and run data out of definition answers and the library
+  ([`010ec79`](https://github.com/bkuberek/coding-study/commit/010ec7993a1fc2e629066345076644c301fcaeae))
+
+- **web**: Keep the reference directories from the language server's reach
+  ([`c500b18`](https://github.com/bkuberek/coding-study/commit/c500b18c0d7c9520eab219d3bc3c21fb9ed9682a))
+
+- **web**: Refuse reused request ids and forged resolve data in the code intelligence broker
+  ([`85a4946`](https://github.com/bkuberek/coding-study/commit/85a49466a8ed65b7349e9d599d83649700b92b54))
+
+### Documentation
+
+- Guide to code intelligence and autocomplete
+  ([`af72767`](https://github.com/bkuberek/coding-study/commit/af7276798d65e1b0b4001fe6913650fd453e47db))
+
+- Hidden directories and the release order of code intelligence
+  ([`cd0bb52`](https://github.com/bkuberek/coding-study/commit/cd0bb52c706b695811268438150b91c5bb282592))
+
+- The language servers take 46 MB in .cs/lsp/, as measured
+  ([`19c61bc`](https://github.com/bkuberek/coding-study/commit/19c61bc363cbe1467e9b45bd778570e28c2e5290))
+
+- **adr**: Accept 0018, editor code intelligence
+  ([`d9d6395`](https://github.com/bkuberek/coding-study/commit/d9d639501494f44e8681228e79ebdeb06141300b))
+
+- **specs**: Code intelligence and autocomplete for slice 1
+  ([`1df0e62`](https://github.com/bkuberek/coding-study/commit/1df0e62ff001bdfe42f31174b925f9549c069ab2))
+
+### Features
+
+- **doctor**: Install and check the language servers for code intelligence
+  ([`73f32d4`](https://github.com/bkuberek/coding-study/commit/73f32d43aac218f0cfdcf8bc2d3c42edb6ccbea7))
+
+- **web**: Alt-Shift-click adds a cursor, and autocomplete governs all completion
+  ([`92c884e`](https://github.com/bkuberek/coding-study/commit/92c884eb0960c157c2e4ec294910bd5a29c11cb6))
+
+- **web**: Broker between a code intelligence session and its language server
+  ([`9b91af4`](https://github.com/bkuberek/coding-study/commit/9b91af48cf97db6494261d2e9efbd799a478440b))
+
+- **web**: Code intelligence and autocomplete preferences with their Settings checkboxes
+  ([`b73e448`](https://github.com/bkuberek/coding-study/commit/b73e448423e6aaba91587812084500c4536ac5a1))
+
+- **web**: Code intelligence client with sessions, status bar and the languages in Settings
+  ([`3503fe7`](https://github.com/bkuberek/coding-study/commit/3503fe706c6e8c14848bb2b919baee64e6b596cb))
+
+- **web**: Code intelligence session route with its security checks and server lifecycle
+  ([`00b9318`](https://github.com/bkuberek/coding-study/commit/00b931887f88e32a21700bfc9be038c8de93dd30))
+
+- **web**: Completion and signature help from the language server, behind the autocomplete setting
+  ([`4bfbd3d`](https://github.com/bkuberek/coding-study/commit/4bfbd3dc6412fe459ba66b6324de4ceec4c542aa))
+
+- **web**: Go to definition by click and key, and read-only library tabs
+  ([`1cbb3cc`](https://github.com/bkuberek/coding-study/commit/1cbb3cc34120cf44602af6e85d7b7924eaa10b9c))
+
+- **web**: Hover documentation by pointer and keyboard, read out by a live region
+  ([`cbcc75c`](https://github.com/bkuberek/coding-study/commit/cbcc75ce60b726b999778f5355793e6a1351b7eb))
+
+- **web**: Live diagnostics from the language server beside the last run's
+  ([`631a817`](https://github.com/bkuberek/coding-study/commit/631a8172b4425dc6f657ca1ca961341d5782b121))
+
+### Testing
+
+- Leave the installs row of the host out of the upgrade test's workspace check
+  ([`95cdffe`](https://github.com/bkuberek/coding-study/commit/95cdffee5463a0e978caa2cf5d80ad47a77c1a33))
+
+- Let the slow tests' Gradle daemons idle out after a minute
+  ([`1ea12a3`](https://github.com/bkuberek/coding-study/commit/1ea12a343b995ac5ae1cc27ebfcbef29f3228475))
+
+- **web**: The status bar names the broker's new close reasons
+  ([`cf8fe09`](https://github.com/bkuberek/coding-study/commit/cf8fe09c4f3d107ebc2cdbf78f8f7961b6c57e13))
+
+
 ## v0.12.0 (2026-11-03)
 
 ### Bug Fixes
