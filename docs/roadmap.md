@@ -16,6 +16,7 @@ Each phase ends only when every exit criterion is observed. Phases run in order;
 | 9 | Local web UI with full practice parity | `serve`, `history`, `test --events` for every kind, `--json` for `list`, `next` and `doctor` |
 | 10 | Async and concurrent project problems | harness operations, `new --virtual-clock` and `--stress`, `verify` S18 and D10 |
 | 11 | Editor code intelligence in the web UI | `doctor` and `doctor --fix` for language servers; the `code_intelligence` and `autocomplete` preferences |
+| 12 | Service projects (planned, not started) | `dev`, `start --yes`, `list --needs`, `verify` S19 to S23 and D11 |
 
 ## Status
 
@@ -182,3 +183,20 @@ The pilots are written with the next project problems.
 - [ ] Step 1, Python and TypeScript, release: the screenshots and animated GIFs, made from the released build, and the website message.
 - [ ] Step 2, Java and Kotlin: Java first on JDK 25 or 26 after a spike on `jvm/` and a project folder; Kotlin from a spike of the Kotlin LSP, and Java alone if it fails.
 - [ ] Step 3, Go and Rust.
+
+## Phase 12: Service projects
+
+**Status.** Planned, not started. It runs after the releases of Phase 11, unless the owner reorders it.
+
+**Scope.** [ADR 0019](decisions/0019-service-projects.md) and [its spec](specs/service-projects.md): project problems that run a real local app with their own dependencies, standard lifecycle commands, one Python mock server, backing services through Docker for the problems that declare them, grading over HTTP, and a list of what each problem depends on. One step per ADR phase, each with its docs and a website message at release: P1 lifecycle commands, install and lock rules; P2 the mock server and `cstudy dev`; P3 the HTTP grader with `verify` and CI; P4 the first problem in TypeScript; P5 its Python version; P6 Web UI mock server status and scenario picker; P7 the Docker services spike; P8 Docker services; P9 data-driven problems; P10 Kotlin and Java; P11 Go; P12 Rust (maybe, decided when reached).
+
+**Exit criteria.** A step ends when its [checks](specs/service-projects.md#checks) pass and, for a problem, `cstudy verify <slug> --require-ready` exits 0 and a manual run through all its levels works, from `cstudy start` to `cstudy done`.
+
+- [ ] P1 to P3: tooling.
+- [ ] P4: the first problem in TypeScript.
+- [ ] P5: the first problem in Python.
+- [ ] P6: Web UI.
+- [ ] P7: the Docker services spike; if it fails, the owner decides before anything is built.
+- [ ] P8: Docker services.
+- [ ] P9: data-driven problems.
+- [ ] P10 to P12: Kotlin and Java, Go, Rust (maybe).

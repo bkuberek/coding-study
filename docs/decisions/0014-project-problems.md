@@ -9,6 +9,7 @@
 | Amends | [ADR 0001](0001-data-driven-tests.md) (native test files generated from the data), [ADR 0012](0012-go-and-rust.md) (a fourth exception to the six-language rule) |
 | Amended by | [ADR 0016](0016-jdk-range.md): `cs.project` no longer pins JDK 21; a project folder builds on the selected JDK, 21 to 26 |
 | Amended by | [ADR 0017](0017-async-project-problems.md): a project may declare asynchronous methods and a virtual clock, grade them with harness operations, and have stress cases and broken overlays |
+| Superseded in part by | [ADR 0019](0019-service-projects.md), planned and not built: for service projects only, a project may have its own dependencies, so the rejection of a venv or `node_modules` per project and of Vitest and Jest for needing a network install no longer holds for that kind of problem. Existing problems do not change |
 
 ## Context
 

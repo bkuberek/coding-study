@@ -602,6 +602,8 @@ The top bar on every view: the navigation (Problems, Mock, Progress, Health and 
 
 ### Problem view
 
+Planned: this view, the Problems view and the Start dialog list [what a problem depends on](service-projects.md#what-a-problem-depends-on). See also the [Web UI plan for service projects](service-projects.md#web-ui).
+
 | Area | Behaviour |
 |------|-----------|
 | Header | Title, id, difficulty, track, pattern, kind, languages |
@@ -691,6 +693,8 @@ A mock started in the terminal shows the same way, since the state comes from th
 | Import | A file picker, then the confirmation, then the counts imported or the CLI's refusal |
 
 ### Health view
+
+Planned: the Docker rows and their install message. See [Docker states](service-projects.md#docker-states).
 
 | Area | Content |
 |------|---------|

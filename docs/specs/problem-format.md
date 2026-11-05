@@ -466,6 +466,8 @@ A project problem (`kind: project`, `track: practical`) is a folder of seeded fi
 | Kotlin | Supported; native tests run with kotlin.test on JUnit 5 |
 | Rust | Supported; native tests are libtest's `#[test]` functions, one process per test ([Rust projects](#rust-projects)) |
 
+Planned: a project that runs as a local service with its own dependencies, graded over HTTP. See [service projects](service-projects.md).
+
 ### Content tree
 
 ```text

@@ -102,7 +102,7 @@ Not applicable. The product contains no AI features.
 | NFR-3 | Verify throughput | Full `cstudy verify --require-ready` (no oracle, no ladder) over the whole catalog in all six languages (270 items) in at most 30 min, measured at about 25 min for v0.8.0 and 21 min for the 263 items of v0.6.0, the first release with Go and Rust; the budget grew from 10 min for 200 problems in the four core languages because Go adds roughly 0.5 to 1.5 s per problem and Rust 1.5 to 4 s ([ADR 0012](decisions/0012-go-and-rust.md)). `cstudy verify <slug>` in at most 30 s warm: the mean over ten sample problems with `--lang` was 4.2 s for Python, 1.3 s for TypeScript, 4.9 s for Java, 5.5 s for Kotlin, 1.7 s for Go and 2.5 s for Rust, each including the 0.4 s start of `cstudy`, with the machine loaded (load average 23 to 40). |
 | NFR-4 | Determinism | Same inputs, database and seed produce the same `cstudy next` choice, generated cases and oracle cases. |
 | NFR-5 | Isolation | A crash, infinite loop or `System.exit` in user code never crashes the CLI; it is reported as a case or runner error. |
-| NFR-6 | Offline | All commands work offline after the one-time toolchain setup. |
+| NFR-6 | Offline | cstudy runs on your machine and needs the internet only for the obvious reasons: installing the app and its dependencies, such as the toolchains and language servers that `cstudy doctor --fix` sets up. After those installs, every command works with no internet. Installing a dependency does not break this rule ([ADR 0019](decisions/0019-service-projects.md)). |
 | NFR-7 | Editor integration | Each practice project of a workspace (`python/`, `typescript/`, `jvm/`) is a standard project (uv, pnpm, Gradle) that LazyVim LSPs and IntelliJ open without custom configuration. |
 | NFR-8 | Architecture | Domain core has no imports of I/O, subprocess, SQLite or filesystem modules; enforced by an import contract test. |
 | NFR-9 | Honest measurement | Performance verdicts always carry a confidence level and never claim more precision than the data supports. |
@@ -121,7 +121,7 @@ See [architecture](architecture.md) for components and data flows.
 | Storage | Content in files (YAML, JSON, Markdown); progress in SQLite `progress.db` |
 | Integration | Subprocess plus JSON files between CLI and runners ([runners](specs/runners.md)) |
 | Web UI | `cstudy serve`: Starlette on uvicorn on `127.0.0.1`, a vendored CodeMirror 6 front end, runs as child `cstudy` commands relayed as server-sent events ([ADR 0015](decisions/0015-local-web-ui.md)) |
-| Security and privacy | Local only; no network at runtime; content code (generators, checkers) is trusted repository code; user code runs as the user with a hang guard but no sandbox |
+| Security and privacy | Local only; no network at runtime, after the installs of NFR-6 (planned: a [service project](specs/service-projects.md) installs its own dependencies when it starts); content code (generators, checkers) is trusted repository code; user code runs as the user with a hang guard but no sandbox |
 
 ## 6. Risks
 

@@ -150,6 +150,8 @@ A JDK above the supported range is not supported yet. `cstudy` runs on it only t
 cstudy doctor [--fix | --json]
 ```
 
+Planned: `docker` and `docker leftovers` rows, which `WARN` and never `FAIL`. See [Docker states](service-projects.md#docker-states) and [Leftovers](service-projects.md#leftovers).
+
 Checks Python 3.13, uv, Node 24 or newer, pnpm, the [selected JDK](#the-selected-jdk) (21 to 26), Homebrew Gradle, Go 1.25 or newer, `rustc` 1.80 or newer and `cargo` (the Go and Rust toolchains are optional, so these three rows WARN, never FAIL, with a link to the [toolchains guide](../guides/toolchains.md)), Delve (`dlv`, found as [debug mode](runners.md#debug-mode) finds it; the row shows its version, and a release other than the tested 1.27.2 passes with `(cstudy is tested with 1.27.2)`) and Rust's debug server (`debugserver` on macOS, `lldb-server` on Linux; the row shows its path), which only `cstudy test --debug` needs, so they WARN too, with the install step and the guide (``needed for --debug with --lang go, run `go install github.com/go-delve/delve/cmd/dlv@v1.27.2`: <guide>#go``), the config file, the content root, the [`cstudy` installs on `PATH`](#the-installs-row), the workspace (core template files FAIL when missing, the optional `go.work`, `go/` and `rust/` files WARN; [workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), the progress database (its schema against the one this `cstudy` migrates to: WARN when older, FAIL when newer), the Gradle wrapper, the workspace venv, `debugpy` and `pytest` in it, the `.venv` links of the Python project folders, the `go.work`, `replace` lines and module paths of the Go project folders, the `.cargo/config.toml` and rust-analyzer link of the Rust ones, the libraries that Java and Kotlin project folders build with offline ([workspace checks](installation-and-workspaces.md#cstudy-doctor-in-a-workspace)), `node_modules`, and that the runner of each core language (`python`, `typescript`, `java`, `kotlin`; the Go and Rust runners are not handshaken, since that would compile them) answers `hello`: the runner is prepared for a problem with no files (`cs-doctor-handshake`, so the JVM build compiles no practice code) and started with no jobs. Outside a workspace only the toolchains, the config, the content and the installs are checked. `--fix` first writes every missing workspace template file (never overwriting one), refreshes the runner runtime and migrates an older `progress.db` to the latest schema (one line, `migrated progress.db from schema 4 to 5`), then runs, in each workspace project that exists, `uv sync` in `python` (followed, when the venv cannot import pytest, by `uv add --dev --offline "pytest>=9.1"`, retried without `--offline` when it fails, so a workspace created before the template listed pytest gets it; when both fail the line is `FAIL` with `fix: once online, run: uv add --dev "pytest>=9.1" --directory python`), `pnpm install` in `typescript` (and, when the content is a checkout, in its `runners/typescript` for the runner's own `tsc` and Node types), and in `jvm`, unless the selected JDK is older than 21 or missing (then one `FAIL` line, `skipped: java is not installed or does not run` or `skipped: JDK 17 is older than 21`, with the JDK fix, replaces the Gradle steps; a JDK above the range still warms up, so the problems that opt in to it build offline too), the Gradle warm-up: `./gradlew --no-watch-fs :java:csClasspath :kotlin:csClasspath -Pcs.only=cs_doctor_handshake` (builds the runner and support classes, resolves the runtime classpath so that the runner's own libraries are cached for offline builds, and warms the daemon without compiling practice files), then `./gradlew -p ../.cs/runtime/runners/jvm/project-warmup/java -q --console=plain --no-watch-fs csClasspath` and the same for `kotlin` (the warm-up projects, which cache what Java and Kotlin project folders build with: [JVM project folders](installation-and-workspaces.md#jvm-project-folders)), printing one line per command and the last 10 output lines of a failed one. Each Gradle command runs on the [selected JDK](#the-selected-jdk), like every other Gradle call of `cstudy`: it passes `-Dorg.gradle.java.home=<home>` and sets `JAVA_HOME`, so one command uses one JDK whatever the Gradle home configures; the lines above print the command without them. `--fix` outside a workspace exits 3.
 
 | Status | Meaning |
@@ -277,6 +279,8 @@ warning  kept .vscode/tasks.json: edited, or not written by cstudy (cstudy ide -
 ```text
 cstudy start <slug|file> [--lang L] [--fresh] [--timer DURATION] [--no-open] [--restore PATH]
 ```
+
+Planned: a service project's start shows [what the problem depends on](service-projects.md#at-start) before any download, then installs its dependencies, starts a stopped Docker engine if it needs one, and takes `--yes`.
 
 | Flag | Effect |
 |------|--------|
@@ -579,6 +583,8 @@ cstudy: connecting to debugger at 127.0.0.1:5005 (kotlin)
 ```text
 cstudy submit [<slug|file>] [--level N] [--json | --events]
 ```
+
+Planned: a service project is graded over HTTP, and `cstudy test` calls its `test` command. See [service projects](service-projects.md#how-you-reach-them).
 
 Grades a [project problem](problem-format.md#project-problems): every case of levels 1 to the unlocked level, visible and hidden, through the runner ([grading job](runners.md#grading-job)), judged by the core with the problem's comparator. A submission that passes every case of every unlocked level opens the next level.
 
@@ -969,6 +975,8 @@ On JDK 27, the same list marks the languages and adds its footer:
 ```text
 cstudy show <slug|file> [--level N]
 ```
+
+Planned: `cstudy show` and `cstudy list` list [what a problem depends on](service-projects.md#what-a-problem-depends-on), and `cstudy list` gains `--needs`.
 
 Prints the rendered statement (title, metadata, sections, examples generated from visible cases, unlocked levels, and for concurrent problems the generated stress-case table; never hints). For a progressive or project problem the unlocked levels are those of the problem's attempt in progress, or level 1 without one, and a project problem's statement uses its language's names and each level's `Methods to add` line; `--level N` shows levels 1 to N and follows the `cstudy test --level` rules. For a non-autograded item it prints the statement `cstudy start` would write (the prompt, the change under review and the located [study guides](content.md#study-guides)) without writing it; `--level` is a usage error. A problem that declares a [`jdk`](problem-format.md#jdk-range) range adds it to the statement's metadata line, ahead of any level (`hard · concurrency · Java and Kotlin: JDK 24 or newer`): `JDK 24 or newer` for a `min`, `JDK 25 or older` for a `max`, `JDK 22 to 25` for both, and the language Java or Kotlin alone for a project problem; nothing for the default range.
 

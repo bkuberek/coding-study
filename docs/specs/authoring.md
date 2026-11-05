@@ -239,6 +239,8 @@ The starter is what the user sees first, so it states the contract and nothing m
 
 A project whose code waits declares `project.clock: virtual` and writes its waiting cases with the [harness operations](problem-format.md#asynchronous-code-and-the-virtual-clock); a project whose code is shared between threads or tasks has [stress cases](problem-format.md#stress-cases-in-projects). Time-dependent behavior takes timestamps as arguments only in a project without the virtual clock.
 
+Planned: authoring a service project, with lifecycle commands, mock configs and its own [checks and ready rules](service-projects.md#checks).
+
 ## Ready criteria
 
 `status: ready` requires all of the following; `cstudy verify --require-ready` enforces them.

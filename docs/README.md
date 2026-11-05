@@ -21,6 +21,7 @@ coding-study is a local, IDE-first interview-prep system: original problems stor
 | [performance-analysis](specs/performance-analysis.md) | Optional time limits, size ladder, measurement, complexity classification, verdicts and confidence | Building `cstudy bench` or time limits |
 | [content](specs/content.md) | Tracks, pattern taxonomy and targets, batches, non-autograded items, copyright policy | Planning content |
 | [catalog](specs/catalog.md) | Binding manifest of every item: ids, slugs, titles, patterns, difficulty, kind, batch, owner stream | Writing content in a stream, or adding to the catalog |
+| [service-projects](specs/service-projects.md) | Planned, not built: problems that run a real local app with lifecycle commands, built-in mock servers, Docker services, HTTP grading and a dependency list shown before starting | Working on ADR 0019's phases |
 | [versioning](specs/versioning.md) | Commit types and version bumps, the version workflow, `CHANGELOG.md`, `cstudy --version`, the GitHub release and the Homebrew tap | Committing, or changing how releases are versioned or published |
 | [authoring](specs/authoring.md) | Authoring workflow, `problem.md` and `explanation.md` formats, ready criteria, every `cstudy verify` check | Writing or reviewing a problem |
 | [web-ui](specs/web-ui.md) | `cstudy serve`: the local page, its API v1, runs and jobs as server-sent events, the security model, file API rules, code intelligence sessions with language servers, page behaviour, mocks, solutions, preferences and assets | Building or changing the web UI |
@@ -55,6 +56,7 @@ coding-study is a local, IDE-first interview-prep system: original problems stor
 | [0016](decisions/0016-jdk-range.md) | Java and Kotlin run on JDK 21 to 26, within the range each problem declares |
 | [0017](decisions/0017-async-project-problems.md) | Project problems grade asynchronous code on a virtual clock and concurrent code under stress: `async` methods, harness operations, stress cases with broken overlays, and Go 1.25 |
 | [0018](decisions/0018-editor-code-intelligence.md) | The page's editor gets code intelligence from local language servers behind a setting, and completion behind a second one: live diagnostics, hover documentation and go to definition over one WebSocket per tab and root |
+| [0019](decisions/0019-service-projects.md) | Planned, not built: service projects run a real local app against mock servers and optional Docker services, and are graded over HTTP |
 
 ## Conventions
 
