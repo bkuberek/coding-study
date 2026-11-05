@@ -259,6 +259,8 @@ Planned: authoring a service project, with lifecycle commands, mock configs and 
 
 ### Static (`--static` runs only these)
 
+Planned: a check on catalog labels, and a language rule next to S13. See [ADR 0020](../decisions/0020-catalog-labels.md#rule-changes).
+
 | Id | Check |
 |----|-------|
 | S1 | `meta.yaml` valid against `schemas/meta.schema.json`; `tests.json` against `schemas/tests.schema.json`; `item.yaml` against `schemas/item.schema.json` ([items](#items)) |

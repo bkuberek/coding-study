@@ -13,6 +13,8 @@ The binding manifest of every catalog item: 196 DSA problems and 74 non-DSA item
 | `code-review` | 6 | `tracks/code-review/` |
 | **Total** | **270** (254 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
 
+Planned: `domains`, `job_roles` and `scope` for every row, and this file's prose `scope` column renamed `covers`, since `scope` becomes a label. See [ADR 0020](../decisions/0020-catalog-labels.md#where-the-labels-show).
+
 ## Rules
 
 | Rule | Detail |

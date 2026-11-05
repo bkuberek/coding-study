@@ -166,6 +166,8 @@ How runners apply the node modifiers of [problem-format](problem-format.md#modif
 
 ## Execution environment
 
+Planned: a runner inherits your environment today; an allowlist replaces that for every problem, so tokens do not reach user code. See [ADR 0019](../decisions/0019-service-projects.md#phases), P2.
+
 | Concern | Python | TypeScript | JVM | Go | Rust |
 |---------|--------|------------|-----|----|------|
 | Deep recursion | cases run in a worker thread created after `threading.stack_size(256 MiB)`; `sys.setrecursionlimit(10**6)` | Node default stack; content keeps depth at or under 3000 | cases run in a `Thread` with 256 MiB stack size | cases run on the main goroutine, whose stack grows on demand up to Go's 1 GB limit | cases run on a thread named `cs-runner-cases` with a 256 MiB stack; a stack overflow aborts the process (a crash) |
@@ -575,7 +577,7 @@ Added to `runners/conformance/` before any concurrent problem merges. `expectati
 
 A [project problem](problem-format.md#project-problems) is a folder, not one file, and its native tests run inside the runner. Two kinds of job serve it: a **grading job** (`cstudy submit`, and `cstudy verify` D1 and D3), an ordinary class job whose target is the project, and a **suite job** (`cstudy test`, and D1 and D9), which runs the project's native test framework in-process. The Python, TypeScript and JVM (Java and Kotlin) runners support both. The Go runner supports both too, running the tests as a child process ([Go project jobs](#go-project-jobs)). The Rust runner runs grading jobs, and `cstudy` runs a Rust project's suite itself, one process per test ([Rust projects](#rust-projects)).
 
-Planned: a service project is graded over HTTP by the core, with no runner job. See [service projects](service-projects.md#http-grading).
+Planned: a service project runs in Docker and is graded over HTTP by the core, with no runner job. See [service projects](service-projects.md#http-grading).
 
 ### Capability
 

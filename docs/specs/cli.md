@@ -280,7 +280,7 @@ warning  kept .vscode/tasks.json: edited, or not written by cstudy (cstudy ide -
 cstudy start <slug|file> [--lang L] [--fresh] [--timer DURATION] [--no-open] [--restore PATH]
 ```
 
-Planned: a service project's start shows [what the problem depends on](service-projects.md#at-start) before any download, then installs its dependencies, starts a stopped Docker engine if it needs one, and takes `--yes`.
+Planned: a service project's start shows [what the problem depends on](service-projects.md#at-start) before any download, starts a stopped Docker engine, installs its dependencies in a container, and takes `--yes`.
 
 | Flag | Effect |
 |------|--------|
@@ -584,7 +584,7 @@ cstudy: connecting to debugger at 127.0.0.1:5005 (kotlin)
 cstudy submit [<slug|file>] [--level N] [--json | --events]
 ```
 
-Planned: a service project is graded over HTTP, and `cstudy test` calls its `test` command. See [service projects](service-projects.md#how-you-reach-them).
+Planned: a service project runs in Docker and is graded over HTTP, and `cstudy test` calls its `test` command in its container. See [service projects](service-projects.md#how-you-reach-them).
 
 Grades a [project problem](problem-format.md#project-problems): every case of levels 1 to the unlocked level, visible and hidden, through the runner ([grading job](runners.md#grading-job)), judged by the core with the problem's comparator. A submission that passes every case of every unlocked level opens the next level.
 
@@ -925,6 +925,8 @@ next review  2026-10-27 (in 3 days) · ease 2.50
 
 ## cstudy next
 
+Planned: `--domain`, `--role` and `--scope` filters. See [ADR 0020](../decisions/0020-catalog-labels.md#where-the-labels-show).
+
 ```text
 cstudy next [--track T]... [--pattern P] [--difficulty D] [--lang L] [--new | --review] [--start | --json]
 ```
@@ -946,6 +948,8 @@ A review due today reads `due today, interval 3d`; a new pick from a non-`dsa` g
 `--json` prints the pick as one document instead: `{"pick": "review" or "new", "slug", "title", "kind", "difficulty", "group", "reason", "language", "start"}`, where `kind` is as in [`cstudy list --json`](#cstudy-list) (`item` for an item), `group` the pick's [weakness group](progress-and-scheduling.md#weakness-score) (the primary pattern of a `dsa` problem, else the track), `reason` the text after the parentheses (`overdue 3d, interval 7d`), `language` the language `--start` would use (null for an item) and `start` the command of the `start` line; with nothing to pick, `{"pick": null, "message": ...}` with the text the report prints. `--json` with `--start` is a usage error (exit 3).
 
 ## cstudy list
+
+Planned: `--domain`, `--role` and `--scope` filters, and the same fields in `--json`. See [ADR 0020](../decisions/0020-catalog-labels.md#where-the-labels-show).
 
 ```text
 cstudy list [--track T] [--kind K] [--pattern P] [--difficulty D] [--status S] [--content draft|ready] [--lang L] [--json]

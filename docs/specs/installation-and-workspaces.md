@@ -132,7 +132,7 @@ Because the wiring is relative, a workspace keeps working when it moves or is cl
 
 ## Project folders
 
-Planned: a service project installs dependencies into its own folder. See [service projects](service-projects.md#dependencies).
+Planned: a service project runs in Docker with only this folder mounted, installs dependencies into it, and uses none of the links below. See [service projects](service-projects.md#mounts).
 
 A [project problem](problem-format.md#project-problems) is solved in `projects/<slug>/`: one self-contained folder per started project, which `cstudy start` fills from the problem's `starter/` tree and which you track like practice files ([ADR 0014](../decisions/0014-project-problems.md)). It opens as an editor root of its own. Nothing is installed per project: the folder reaches the workspace's toolchain installs by relative path, so a project starts offline (NFR-6), on the JVM once `cstudy doctor --fix` has cached the test libraries ([below](#jvm-project-folders)), and survives a move or a clone of the workspace.
 

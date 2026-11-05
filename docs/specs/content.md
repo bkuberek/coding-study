@@ -6,6 +6,8 @@ What the catalog contains: tracks, the DSA pattern taxonomy with Phase targets, 
 
 DSA is roughly a third of a senior or staff loop, so the catalog covers the other rounds too.
 
+Planned: three labels independent of the track, `domains`, `job_roles` and `scope`, and new security and AI/LLM problems. See [ADR 0020](../decisions/0020-catalog-labels.md).
+
 | Track id | Name | Autograded | Location | Format | Target |
 |----------|------|------------|----------|--------|--------|
 | `dsa` | Data structures and algorithms | yes | `problems/` | `function` or `design` | 185 (Phases 1 and 3) |
@@ -47,6 +49,8 @@ The 6 Phase 5 problems and their model per language (`-`: not listed in `languag
 `worker-pool` and `async-promise-pool` from earlier drafts are folded into `concurrency-limiter`: the type DSL has no function values, so a pool that runs caller-supplied tasks cannot be expressed, and limiting concurrency is the part interviews probe. TypeScript is omitted where a correct and a broken solution behave identically on one event loop (synchronous methods are atomic there).
 
 ## Non-autograded item format
+
+Planned: these items, self-reviewed today, gain optional AI review, with no change for those who do not use it. See [ADR 0021](../decisions/0021-ai-reviewed-problems.md).
 
 ```text
 tracks/system-design/<slug>/

@@ -594,6 +594,8 @@ The top bar on every view: the navigation (Problems, Mock, Progress, Health and 
 
 ### Problems view
 
+Planned: Domain, Role and Scope filters and a Scope column. See [ADR 0020](../decisions/0020-catalog-labels.md#where-the-labels-show).
+
 | Area | Behaviour |
 |------|-----------|
 | Next card | The `cstudy next` pick with its reason (`review  merge-intervals  overdue 3d, interval 7d`), filtered by the same track, pattern, difficulty and language as the list, and never a problem the selected JDK cannot run in the language; Start opens the start dialog for it. With nothing to pick, the CLI's message |
@@ -703,6 +705,8 @@ Planned: the Docker rows and their install message. See [Docker states](service-
 | Your problems | The workspace's own problems with a Verify action (`static`, `oracle`, `ladder`), shown as a job |
 
 ### Settings view
+
+Planned: an opt-in for AI review with your own key, which the local server process uses and the page never sees again. See [ADR 0021](../decisions/0021-ai-reviewed-problems.md).
 
 The [preferences](#preferences), each applied at once and stored, and the paths of the workspace and the config file for reference.
 

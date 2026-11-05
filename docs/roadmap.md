@@ -186,17 +186,41 @@ The pilots are written with the next project problems.
 
 ## Phase 12: Service projects
 
-**Status.** Planned, not started. It runs after the releases of Phase 11, unless the owner reorders it.
+**Status.** Planned, not started. It runs after or around the releases of Phase 11, unless the owner reorders it.
 
-**Scope.** [ADR 0019](decisions/0019-service-projects.md) and [its spec](specs/service-projects.md): project problems that run a real local app with their own dependencies, standard lifecycle commands, one Python mock server, backing services through Docker for the problems that declare them, grading over HTTP, and a list of what each problem depends on. One step per ADR phase, each with its docs and a website message at release: P1 lifecycle commands, install and lock rules; P2 the mock server and `cstudy dev`; P3 the HTTP grader with `verify` and CI; P4 the first problem in TypeScript; P5 its Python version; P6 Web UI mock server status and scenario picker; P7 the Docker services spike; P8 Docker services; P9 data-driven problems; P10 Kotlin and Java; P11 Go; P12 Rust (maybe, decided when reached).
+**Scope.** [ADR 0019](decisions/0019-service-projects.md) and [its spec](specs/service-projects.md): project problems that always run in a Docker sandbox, with their own dependencies, standard lifecycle commands, one Python mock server, optional backing services, grading over HTTP, and a list of what each problem depends on. Existing problems stay native and need no Docker. One step per ADR phase, each with its docs and a website message at release: P1 the spike; P2 the environment allowlist, for all problems; P3 the sandbox runtime; P4 lifecycle commands, TypeScript and Python templates, install and lock rules; P5 the mock server and `cstudy dev`; P6 the HTTP grader with `verify` and CI; P7 the first problem in TypeScript; P8 its Python version; P9 code intelligence in the container and the Web UI; P10 data-driven problems; P11 mock server extensions and multi-step cases, with project-size security and AI problems; P12 Kotlin and Java; P13 Go; P14 Rust (maybe, decided when reached).
 
 **Exit criteria.** A step ends when its [checks](specs/service-projects.md#checks) pass and, for a problem, `cstudy verify <slug> --require-ready` exits 0 and a manual run through all its levels works, from `cstudy start` to `cstudy done`.
 
-- [ ] P1 to P3: tooling.
-- [ ] P4: the first problem in TypeScript.
-- [ ] P5: the first problem in Python.
-- [ ] P6: Web UI.
-- [ ] P7: the Docker services spike; if it fails, the owner decides before anything is built.
-- [ ] P8: Docker services.
-- [ ] P9: data-driven problems.
-- [ ] P10 to P12: Kotlin and Java, Go, Rust (maybe).
+- [ ] P1: the spike on macOS and Linux; if it fails, the owner decides before anything is built.
+- [ ] P2: the environment allowlist.
+- [ ] P3 to P6: tooling.
+- [ ] P7: the first problem in TypeScript.
+- [ ] P8: the first problem in Python.
+- [ ] P9: code intelligence and Web UI.
+- [ ] P10: data-driven problems.
+- [ ] P11: mock server extensions, multi-step cases, project-size security and AI problems.
+- [ ] P12 to P14: Kotlin and Java, Go, Rust (maybe).
+
+## Phase 13: Catalog labels and new catalogs
+
+**Status.** Planned, not started. Its first two steps need no Docker, so the owner may order them before Phase 12.
+
+**Scope.** [ADR 0020](decisions/0020-catalog-labels.md): `domains`, `job_roles` and `scope` on problems and items, in closed lists; a one-pass backfill of the 270 existing entries; filters in `cstudy list`, `cstudy next` and the Problems view; then a first wave of function-size security and AI/LLM problems in Python and TypeScript.
+
+**Exit criteria.** Every catalog entry passes the new static check, the filters give the same rows in the CLI and the page, and each new problem passes `cstudy verify <slug> --require-ready`.
+
+- [ ] Step 1: labels, backfill and filters.
+- [ ] Step 2: the first wave of function-size problems.
+- [ ] Step 3: later waves: project-size problems need Phase 12, and system-size ones need later design.
+
+## Phase 14: AI-reviewed problems
+
+**Status.** Planned for the future, not started, with no commitment beyond this order. It sits after Phases 12 and 13, unless the owner reorders it.
+
+**Scope.** [ADR 0021](decisions/0021-ai-reviewed-problems.md): an opt-in class of problems reviewed by a live LLM with your own key. It needs the environment allowlist of Phase 12's P2.
+
+- [ ] Step 1: provider port and keys.
+- [ ] Step 2: written answers on existing items.
+- [ ] Step 3: simulated interview.
+- [ ] Step 4: whiteboard, after its spike.

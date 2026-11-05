@@ -44,6 +44,8 @@ problems/0001-two-sum/
 
 ## meta.yaml
 
+Planned: `domains`, `job_roles` and `scope`, for problems and items. See [ADR 0020](../decisions/0020-catalog-labels.md).
+
 Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-language-server: $schema=../../schemas/meta.schema.json` for editor completion.
 
 | Field | Type | Required | Notes |
@@ -466,7 +468,7 @@ A project problem (`kind: project`, `track: practical`) is a folder of seeded fi
 | Kotlin | Supported; native tests run with kotlin.test on JUnit 5 |
 | Rust | Supported; native tests are libtest's `#[test]` functions, one process per test ([Rust projects](#rust-projects)) |
 
-Planned: a project that runs as a local service with its own dependencies, graded over HTTP. See [service projects](service-projects.md).
+Planned: a project that runs as a service in a Docker sandbox, with its own dependencies, graded over HTTP. See [service projects](service-projects.md).
 
 ### Content tree
 
