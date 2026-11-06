@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0265"
+slug: debug-pagination-query-strings
+title: "Debug: Pagination Query Strings"
+status: ready
+difficulty: medium
+track: debugging
+kind: function
+domains: [backend]
+job_roles: [backend]
+scope: function
+languages: [typescript]
+stub: buggy
+signature:
+  function:
+    name: pageWindow
+    params:
+      - {name: queryString, type: string}
+      - {name: maxPerPageSetting, type: string}
+      - {name: totalItems, type: int}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: numbers-at-the-edge, name: Convert to numbers at the edge, role: optimal, time: "O(1)", space: "O(1)", time_class: "1", space_class: "1"}
+related: [debug-sorted-report-rows, debug-falsy-plan-update, loan-pipeline-service-typescript]
+estimate_minutes: 10

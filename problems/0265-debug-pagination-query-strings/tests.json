@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"queryString": "", "maxPerPageSetting": "50", "totalItems": 60}, "expected": [0, 20, 2]},
+    {"id": "ex2", "visible": true, "input": {"queryString": "perPage=10", "maxPerPageSetting": "50", "totalItems": 45}, "expected": [0, 10, 2]},
+    {"id": "h1", "input": {"queryString": "page=2&perPage=10", "maxPerPageSetting": "50", "totalItems": 45}, "expected": [10, 10, 3], "note": "a middle page: offset + perPage must add, not join text, and page + 1 must be 3, not 21"},
+    {"id": "h2", "input": {"queryString": "page=2", "maxPerPageSetting": "50", "totalItems": 100}, "expected": [20, 20, 3], "note": "page from the query with the default size: \"2\" + 1 joins to \"21\""},
+    {"id": "h3", "input": {"queryString": "perPage=9", "maxPerPageSetting": "50", "totalItems": 45}, "expected": [0, 9, 2], "note": "as text, \"9\" > \"50\", so 9 would be capped up to 50"},
+    {"id": "h4", "input": {"queryString": "perPage=100", "maxPerPageSetting": "50", "totalItems": 500}, "expected": [0, 50, 2], "note": "as text, \"100\" < \"50\", so 100 would escape the cap"},
+    {"id": "h5", "input": {"queryString": "page=3&perPage=500", "maxPerPageSetting": "50", "totalItems": 500}, "expected": [100, 50, 4], "note": "the cap applies before the offset is worked out, and the numbers stay numbers"},
+    {"id": "h6", "input": {"queryString": "page=10&perPage=9", "maxPerPageSetting": "100", "totalItems": 100}, "expected": [81, 9, 11], "note": "a page number of two digits, and a size with fewer digits than the setting"},
+    {"id": "h7", "input": {"queryString": "page=5&perPage=10", "maxPerPageSetting": "50", "totalItems": 50}, "expected": [40, 10, 0], "note": "the last page exactly: nothing remains"},
+    {"id": "h8", "input": {"queryString": "page=4&perPage=10", "maxPerPageSetting": "50", "totalItems": 50}, "expected": [30, 10, 5], "note": "one page before the last"},
+    {"id": "h9", "input": {"queryString": "page=9&perPage=10", "maxPerPageSetting": "50", "totalItems": 45}, "expected": [80, 10, 0], "note": "past the end: nothing remains, and it is not an error here"},
+    {"id": "h10", "input": {"queryString": "page=&perPage=", "maxPerPageSetting": "50", "totalItems": 60}, "expected": [0, 20, 2], "note": "empty values take the defaults: ?? only replaces null and undefined, and an empty string is neither"},
+    {"id": "h11", "input": {"queryString": "page=2&perPage=", "maxPerPageSetting": "5", "totalItems": 60}, "expected": [5, 5, 3], "note": "the default size is capped like any other, and the setting can be below the default"},
+    {"id": "h12", "input": {"queryString": "sort=name&page=2&perPage=25&tag=9", "maxPerPageSetting": "50", "totalItems": 60}, "expected": [25, 25, 3], "note": "other parameters are ignored"},
+    {"id": "h13", "input": {"queryString": "", "maxPerPageSetting": "50", "totalItems": 0}, "expected": [0, 20, 0], "note": "an empty list"},
+    {"id": "h14", "input": {"queryString": "perPage=20", "maxPerPageSetting": "20", "totalItems": 20}, "expected": [0, 20, 0], "note": "exactly at the cap, and exactly the whole list"}
+  ]
+}
