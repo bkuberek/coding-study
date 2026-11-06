@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"bodyJson": "{\"priceCents\":2900,\"trialDays\":30,\"label\":\"Pro\",\"seats\":10,\"active\":true,\"capCents\":2500}"}, "expected": "price=2500 trial=30 label=Pro seats=10 active=true"},
+    {"id": "ex2", "visible": true, "input": {"bodyJson": "{}"}, "expected": "price=1900 trial=14 label=Standard seats=5 active=true"},
+    {"id": "h1", "input": {"bodyJson": "{\"priceCents\":0}"}, "expected": "price=0 trial=14 label=Standard seats=5 active=true", "note": "a free plan: || treats 0 as missing"},
+    {"id": "h2", "input": {"bodyJson": "{\"trialDays\":0}"}, "expected": "price=1900 trial=0 label=Standard seats=5 active=true", "note": "no trial at all"},
+    {"id": "h3", "input": {"bodyJson": "{\"label\":\"\"}"}, "expected": "price=1900 trial=14 label= seats=5 active=true", "note": "an empty label is a value too"},
+    {"id": "h4", "input": {"bodyJson": "{\"seats\":0}"}, "expected": "price=1900 trial=14 label=Standard seats=0 active=true", "note": "zero seats"},
+    {"id": "h5", "input": {"bodyJson": "{\"active\":false}"}, "expected": "price=1900 trial=14 label=Standard seats=5 active=false", "note": "x || true can only ever be truthy"},
+    {"id": "h6", "input": {"bodyJson": "{\"capCents\":0}"}, "expected": "price=0 trial=14 label=Standard seats=5 active=true", "note": "if (body.capCents) skips a cap of zero, the billing freeze in the report"},
+    {"id": "h7", "input": {"bodyJson": "{\"priceCents\":null,\"trialDays\":null,\"label\":null,\"seats\":null,\"active\":null,\"capCents\":null}"}, "expected": "price=1900 trial=14 label=Standard seats=5 active=true", "note": "null takes the default like a missing field: !== undefined lets it through, and Math.min(1900, null) is 0"},
+    {"id": "h8", "input": {"bodyJson": "{\"priceCents\":0,\"trialDays\":0,\"label\":\"\",\"seats\":0,\"active\":false,\"capCents\":0}"}, "expected": "price=0 trial=0 label= seats=0 active=false", "note": "every falsy value at once"},
+    {"id": "h9", "input": {"bodyJson": "{\"capCents\":5000}"}, "expected": "price=1900 trial=14 label=Standard seats=5 active=true", "note": "a cap above the price changes nothing"},
+    {"id": "h10", "input": {"bodyJson": "{\"priceCents\":0,\"capCents\":100}"}, "expected": "price=0 trial=14 label=Standard seats=5 active=true", "note": "the cap is an upper bound: a free plan stays free"},
+    {"id": "h11", "input": {"bodyJson": "{\"active\":true}"}, "expected": "price=1900 trial=14 label=Standard seats=5 active=true", "note": "active stays true when asked, so testing body.active === true for missing is no fix"},
+    {"id": "h12", "input": {"bodyJson": "{\"capCents\":null,\"priceCents\":500}"}, "expected": "price=500 trial=14 label=Standard seats=5 active=true", "note": "a null cap is no cap"}
+  ]
+}

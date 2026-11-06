@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0271"
+slug: debug-falsy-plan-update
+title: "Debug: Falsy Plan Update"
+status: ready
+difficulty: easy
+track: debugging
+kind: function
+domains: [backend]
+job_roles: [backend]
+scope: function
+languages: [typescript]
+stub: buggy
+signature:
+  function:
+    name: applyPlanUpdate
+    params:
+      - {name: bodyJson, type: string}
+    returns: {type: string}
+comparator: {type: exact}
+approaches:
+  - {id: nullish-checks, name: "Ask whether a value is present, not whether it is truthy", role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+related: [debug-pagination-query-strings, debug-shared-default-config, warehouse-work-orders-typescript]
+estimate_minutes: 8
