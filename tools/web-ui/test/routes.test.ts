@@ -18,6 +18,12 @@ test("the problems view keeps its filters in the fragment's query", () => {
   });
 });
 
+test("the label filters are kept in the fragment's query", () => {
+  const filters = { domain: "backend", role: "platform", scope: "function" };
+  assert.deepEqual(parseRoute("#/?scope=function&role=platform&domain=backend"), { view: "problems", filters });
+  assert.equal(problemsHash(filters), "#/?domain=backend&role=platform&scope=function");
+});
+
 test("a query key that is no filter is dropped", () => {
   assert.deepEqual(parseRoute("#/?sort=title&kind=item"), { view: "problems", filters: { kind: "item" } });
 });

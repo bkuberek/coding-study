@@ -10,6 +10,13 @@ test("the list command names each filter with its cstudy list flag", () => {
   );
 });
 
+test("the list command names the label filters with their cstudy list flags", () => {
+  assert.equal(
+    listCommand({ scope: "function", role: "platform", domain: "backend" }),
+    "cstudy list --domain backend --role platform --scope function",
+  );
+});
+
 test("the list command without filters is bare", () => {
   assert.equal(listCommand({}), "cstudy list");
 });
@@ -18,6 +25,13 @@ test("the next command takes only the filters cstudy next has", () => {
   assert.equal(
     nextCommand({ track: "dsa", status: "due", kind: "function", difficulty: "easy" }),
     "cstudy next --track dsa --difficulty easy",
+  );
+});
+
+test("the next command takes the label filters", () => {
+  assert.equal(
+    nextCommand({ scope: "project", status: "due", domain: "fintech" }),
+    "cstudy next --domain fintech --scope project",
   );
 });
 

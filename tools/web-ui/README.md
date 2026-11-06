@@ -56,11 +56,11 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 83.9 | 29.7 |
-| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 957.3 | 345.7 |
-| The editor before any language: the page, the editor and the core | 488.3 | 164.4 |
-| A Python file | 558.7 | 191.3 |
-| A TypeScript or JavaScript file, the largest grammar | 597.3 | 204.9 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 84.1 | 29.8 |
+| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 963.2 | 349.0 |
+| The editor before any language: the page, the editor and the core | 490.9 | 166.3 |
+| A Python file | 561.3 | 193.2 |
+| A TypeScript or JavaScript file, the largest grammar | 599.8 | 206.8 |
 | Vim keybindings, added on top | 119.7 | 38.1 |
 | The link between the editors and the sessions, fetched when `code_intelligence` is on (it counts in the whole bundle) | 3.8 | 1.6 |
 | The code-intelligence chunk, fetched when a file of a language with an installed server opens (its own budget: 64 KB raw, 24 KB gzip; `@codemirror/lsp-client` with `marked` aliased to a stand-in) | 17.5 | 6.4 |

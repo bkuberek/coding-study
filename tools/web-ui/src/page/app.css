@@ -730,7 +730,7 @@ input[type="search"] {
 
 .filters {
   display: grid;
-  grid-template-columns: repeat(6, minmax(110px, 1fr)) minmax(180px, 2fr) auto;
+  grid-template-columns: repeat(6, minmax(110px, 1fr));
   gap: 10px;
   align-items: end;
   margin-bottom: 18px;
@@ -739,6 +739,10 @@ input[type="search"] {
 .filter {
   display: grid;
   gap: 3px;
+}
+
+.filter-wide {
+  grid-column: span 2;
 }
 
 .filter-name {
@@ -1384,8 +1388,8 @@ input[type="radio"] {
     grid-template-areas: "head" "files" "editors" "results" "brief";
   }
 
-  .problems th:nth-child(n + 7),
-  .problems td:nth-child(n + 7) {
+  .problems th:nth-child(n + 8),
+  .problems td:nth-child(n + 8) {
     display: none;
   }
 }

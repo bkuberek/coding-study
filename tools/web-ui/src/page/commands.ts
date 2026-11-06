@@ -5,18 +5,8 @@
 
 import { FILTER_KEYS, type FilterKey, type Filters } from "./routes.ts";
 
-const LIST_FLAGS: Readonly<Record<FilterKey, string>> = {
-  track: "--track",
-  kind: "--kind",
-  lang: "--lang",
-  difficulty: "--difficulty",
-  status: "--status",
-  content: "--content",
-  pattern: "--pattern",
-};
-
-/** The filters `cstudy next` takes from the list's: track, pattern, difficulty and language. */
-export const NEXT_FILTERS: readonly FilterKey[] = ["track", "pattern", "difficulty", "lang"];
+/** The filters `cstudy next` takes from the list's: track, pattern, difficulty, language and the labels. */
+export const NEXT_FILTERS: readonly FilterKey[] = ["track", "pattern", "difficulty", "lang", "domain", "role", "scope"];
 
 export function listCommand(filters: Filters): string {
   return withFlags("cstudy list", filters, FILTER_KEYS);
@@ -31,10 +21,11 @@ export function startCommand(slug: string, language: string | null): string {
   return language === null ? `cstudy start ${slug}` : `cstudy start ${slug} --lang ${language}`;
 }
 
+/** Each filter is the flag of its key (`track`, `--track`), which a test holds to the real flags. */
 function withFlags(command: string, filters: Filters, keys: readonly FilterKey[]): string {
   const flags = keys.flatMap((key) => {
     const value = filters[key];
-    return value ? [`${LIST_FLAGS[key]} ${quoted(value)}`] : [];
+    return value ? [`--${key} ${quoted(value)}`] : [];
   });
   return [command, ...flags].join(" ");
 }

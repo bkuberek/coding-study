@@ -4,7 +4,7 @@
  */
 
 /** The filters of the Problems view, as `cstudy list` names them. */
-export const FILTER_KEYS = ["track", "kind", "lang", "difficulty", "status", "content", "pattern"] as const;
+export const FILTER_KEYS = ["track", "kind", "lang", "difficulty", "status", "content", "domain", "role", "scope", "pattern"] as const;
 export type FilterKey = (typeof FILTER_KEYS)[number];
 export type Filters = Partial<Record<FilterKey, string>>;
 

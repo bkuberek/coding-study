@@ -39,6 +39,9 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
     difficulty: DIFFICULTIES,
     status: STATUSES,
     content: CONTENT,
+    domain: session.domains,
+    role: session.job_roles,
+    scope: session.scopes,
   };
   shell.main.replaceChildren(
     h("h1", { class: "sr-only" }, "Problems"),
@@ -144,7 +147,7 @@ function filterForm(
 
 function listing(entries: readonly ListEntry[], selectedJdk: SelectedJdk | null): HTMLElement {
   if (entries.length === 0) return empty("no problems match", h("a", { href: "#/" }, "clear the filters"));
-  const header = ["id", "problem", "diff", "pattern", "kind", "status", "due", "refs", "in progress"];
+  const header = ["id", "problem", "diff", "pattern", "kind", "scope", "status", "due", "refs", "in progress"];
   return h(
     "table",
     { class: "problems" },
@@ -196,6 +199,7 @@ function row(entry: ListEntry, selectedJdk: SelectedJdk | null): HTMLTableRowEle
     h("td", { class: `diff diff-${entry.difficulty}` }, entry.difficulty),
     h("td", {}, topic),
     h("td", { class: "quiet" }, entry.kind),
+    h("td", { class: "quiet" }, entry.scope ?? "–"),
     h("td", {}, badge(status.glyph, status.text, status.tone)),
     h("td", { class: "num quiet" }, entry.due_on ?? "–"),
     h("td", { class: "refs quiet" }, ...languageRefs(entry, selectedJdk)),

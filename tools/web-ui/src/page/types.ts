@@ -15,6 +15,9 @@ export interface Session {
   readonly languages: readonly string[];
   readonly tracks: readonly string[];
   readonly kinds: readonly string[];
+  readonly domains: readonly string[];
+  readonly job_roles: readonly string[];
+  readonly scopes: readonly string[];
   /** The JDK `cstudy` selects in the server's environment, or null when none is found. */
   readonly selected_jdk: SelectedJdk | null;
 }
@@ -61,6 +64,11 @@ export interface ListEntry {
   readonly kind: string;
   readonly difficulty: string;
   readonly patterns: readonly string[];
+  /** What the entry is about, and who it is for; both empty on a problem of your own that leaves them out. */
+  readonly domains: readonly string[];
+  readonly job_roles: readonly string[];
+  /** How big the thing you work on is; null likewise. */
+  readonly scope: string | null;
   readonly languages: readonly string[];
   readonly content: string;
   readonly source: string;
