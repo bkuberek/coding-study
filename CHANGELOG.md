@@ -2,6 +2,33 @@
 
 <!-- version list -->
 
+## v0.17.0 (2026-11-06)
+
+### Bug Fixes
+
+- **web**: Leave an empty fix hint of a Health row empty
+  ([`7839ceb`](https://github.com/bkuberek/coding-study/commit/7839ceb9477eac818a0950f593f266f620bb36ae))
+
+### Documentation
+
+- Update the front end's size table for the sticky bar, headers and Fix buttons
+  ([`13d383c`](https://github.com/bkuberek/coding-study/commit/13d383c6cea18a02ff09cfea0296e0fbd1f231f7))
+
+### Features
+
+- **cli**: Say when doctor --fix skips the language servers
+  ([`253e1a8`](https://github.com/bkuberek/coding-study/commit/253e1a81347bb6ae0dbed049c33f1e7c05b15259))
+
+- **cli**: Show a problem with an attempt in progress as in_progress
+  ([`6047a3b`](https://github.com/bkuberek/coding-study/commit/6047a3b8cd437a8ef3191c0c8999e96d145570d5))
+
+- **web**: Give each Health row whose fix is cstudy doctor --fix a Fix button
+  ([`ef80242`](https://github.com/bkuberek/coding-study/commit/ef802429d56c462aaf18ae9111d1c663de78b053))
+
+- **web**: Keep the top bar and the table headers in view while scrolling
+  ([`9f54d49`](https://github.com/bkuberek/coding-study/commit/9f54d4998c356b03c31c669f0f04510d4585fc7c))
+
+
 ## v0.16.0 (2026-11-06)
 
 ### Documentation
