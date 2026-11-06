@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0264"
+slug: debug-sorted-report-rows
+title: "Debug: Sorted Report Rows"
+status: ready
+difficulty: medium
+track: debugging
+kind: function
+domains: [backend]
+job_roles: [backend]
+scope: function
+languages: [typescript]
+stub: buggy
+signature:
+  function:
+    name: topRegions
+    params:
+      - {name: regions, type: "string[]"}
+      - {name: totalsCents, type: "int[]"}
+      - {name: limit, type: int}
+    returns: {type: "string[]"}
+comparator: {type: exact}
+approaches:
+  - {id: sorted-indices, name: Sort indices with a numeric comparator, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+related: [debug-sort-comparator, debug-pagination-query-strings]
+estimate_minutes: 10

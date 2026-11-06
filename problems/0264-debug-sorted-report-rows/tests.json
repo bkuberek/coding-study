@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"regions": ["north", "east", "west"], "totalsCents": [900, 500, 300], "limit": 3}, "expected": ["north: 900", "east: 500", "west: 300"]},
+    {"id": "ex2", "visible": true, "input": {"regions": ["north", "east", "west"], "totalsCents": [750, 640, 120], "limit": 1}, "expected": ["north: 750"]},
+    {"id": "h1", "input": {"regions": ["west", "north"], "totalsCents": [120, 900], "limit": 2}, "expected": ["north: 900", "west: 120"], "note": "same digit count, not in order: a total must stay beside its region, so the sort cannot change the array that indexOf searches"},
+    {"id": "h2", "input": {"regions": ["alpha", "beta", "gamma"], "totalsCents": [1000, 90, 5], "limit": 3}, "expected": ["alpha: 1000", "beta: 90", "gamma: 5"], "note": "already in order, but as text 90 and 5 come after 1000: the default sort compares strings"},
+    {"id": "h3", "input": {"regions": ["alpha", "beta", "gamma"], "totalsCents": [5, 1000, 90], "limit": 2}, "expected": ["beta: 1000", "gamma: 90"], "note": "both bugs at once, and a limit"},
+    {"id": "h4", "input": {"regions": ["kiln", "fern", "dune"], "totalsCents": [700, 700, 300], "limit": 3}, "expected": ["fern: 700", "kiln: 700", "dune: 300"], "note": "equal totals: indexOf finds the first one twice, so one region would appear twice and the other not at all"},
+    {"id": "h5", "input": {"regions": ["zed", "yak", "xen", "wok"], "totalsCents": [50, 50, 50, 50], "limit": 4}, "expected": ["wok: 50", "xen: 50", "yak: 50", "zed: 50"], "note": "every total equal: names decide, and the input order is not the answer"},
+    {"id": "h6", "input": {"regions": ["refunds", "steady", "growth"], "totalsCents": [-250, 0, 1200], "limit": 3}, "expected": ["growth: 1200", "steady: 0", "refunds: -250"], "note": "a negative total sorts below zero"},
+    {"id": "h7", "input": {"regions": ["a", "b", "c", "d"], "totalsCents": [-5, -100, -20, -3], "limit": 4}, "expected": ["d: -3", "a: -5", "c: -20", "b: -100"], "note": "all negative: as text, -100 sorts next to -1"},
+    {"id": "h8", "input": {"regions": ["solo"], "totalsCents": [0], "limit": 1}, "expected": ["solo: 0"], "note": "one region, with a total of zero"},
+    {"id": "h9", "input": {"regions": ["a", "b"], "totalsCents": [1, 2], "limit": 0}, "expected": [], "note": "a limit of zero asks for nothing"},
+    {"id": "h10", "input": {"regions": ["a", "b"], "totalsCents": [1, 2], "limit": 10}, "expected": ["b: 2", "a: 1"], "note": "a limit above the number of regions returns them all"},
+    {"id": "h11", "input": {"regions": ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c10", "c11", "c12"], "totalsCents": [3, 11, 7, 1, 12, 5, 9, 2, 10, 4, 8, 6], "limit": 12}, "expected": ["c5: 12", "c2: 11", "c9: 10", "c7: 9", "c11: 8", "c3: 7", "c12: 6", "c6: 5", "c10: 4", "c1: 3", "c8: 2", "c4: 1"], "note": "a longer list: a comparator that returns a boolean, (a, b) => a < b, never says negative and leaves it out of order"},
+    {"id": "h12", "input": {"regions": ["big", "bigger"], "totalsCents": [999999999, 1000000000], "limit": 2}, "expected": ["bigger: 1000000000", "big: 999999999"], "note": "large totals with different digit counts"}
+  ]
+}
