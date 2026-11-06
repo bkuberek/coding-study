@@ -131,7 +131,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
         { class: "attempt-ended", role: "alert" },
         "This attempt is no longer in progress: ",
         command("cstudy done"),
-        " finished it, a fresh start replaced it, or a reset deleted it. Its files stay read-only here. ",
+        " finished it, abort ended it, a fresh start replaced it, or a reset deleted it. Its files stay read-only here. ",
         slug ? h("a", { href: problemHash(slug) }, `Open ${slug}`) : null,
       ),
     );

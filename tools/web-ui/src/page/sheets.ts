@@ -4,6 +4,7 @@
  * together they weigh less than each on its own would (NFR-12).
  */
 
+export { abortAttempt } from "./abortDialog.ts";
 export { askNames, confirmAction, openSheet } from "./dialogs.ts";
 export { openDoneDialog } from "./doneDialog.ts";
 export { showPastFiles } from "./pastFiles.ts";

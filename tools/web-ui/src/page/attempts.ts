@@ -217,6 +217,8 @@ export function attemptFlows(context: PageContext, status: AttemptStatus): Attem
   context.mock.follow(HINT_COMMAND, hints.button, (lock) => hints.setLock(lock));
   const done = h("button", { type: "button", class: "button", title: `cstudy done ${status.slug}: finish and schedule the review` }, "Done…");
   done.addEventListener("click", () => openLazily(context, () => import("./sheets.ts"), (dialog) => dialog.openDoneDialog(context, status)));
-  const actions = h("span", { class: "flow-actions", role: "group", "aria-label": "Attempt" }, hints.button, solutionButton(context, status.slug), done);
+  const abort = h("button", { type: "button", class: "button", title: `cstudy abort ${status.slug}: stop working on this problem; your files stay` }, "Abort…");
+  abort.addEventListener("click", () => openLazily(context, () => import("./sheets.ts"), (dialog) => void dialog.abortAttempt(context, status)));
+  const actions = h("span", { class: "flow-actions", role: "group", "aria-label": "Attempt" }, hints.button, solutionButton(context, status.slug), done, abort);
   return { actions, hints: hints.panel, update: (status) => hints.update(status) };
 }
