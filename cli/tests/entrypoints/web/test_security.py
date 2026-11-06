@@ -499,3 +499,66 @@ def test_an_import_body_streamed_over_64_mib_gets_413():
 def test_the_import_limit_is_only_for_the_import():
     declared = (b"content-length", str(BODY_LIMIT + 1).encode())
     assert status(post(write_scope("/api/v1/attempts", declared), [])) == 413
+
+
+# The writes of Settings: the config file and the reset
+
+
+CONFIG = "/api/v1/config"
+RESET = "/api/v1/reset"
+SETTINGS_WRITES = (
+    (CONFIG, {"changes": {"bench.reps": 3}}),
+    (RESET, {"confirm": "reset"}),
+)
+
+
+def written(root) -> bool:
+    return (root / "config.toml").exists()
+
+
+@pytest.mark.parametrize(("path", "body"), SETTINGS_WRITES)
+def test_a_settings_write_for_another_host_gets_403(app, tmp_path, path, body):
+    with session_client(app) as client:
+        response = client.post(
+            path, json=body, headers={**WRITE_HEADERS, "Host": f"rebound.example:{PORT}"}
+        )
+    assert (response.status_code, error_code(response), written(tmp_path)) == (
+        403,
+        "forbidden",
+        False,
+    )
+
+
+@pytest.mark.parametrize(("path", "body"), SETTINGS_WRITES)
+def test_a_settings_write_from_another_origin_gets_403(app, tmp_path, path, body):
+    with session_client(app) as client:
+        response = client.post(
+            path, json=body, headers={**WRITE_HEADERS, "Origin": "http://evil.example"}
+        )
+    assert (response.status_code, error_code(response), written(tmp_path)) == (
+        403,
+        "forbidden",
+        False,
+    )
+
+
+@pytest.mark.parametrize(("path", "body"), SETTINGS_WRITES)
+def test_a_settings_write_without_the_cookie_gets_401(app, tmp_path, path, body):
+    with anonymous_client(app) as client:
+        response = client.post(path, json=body, headers=WRITE_HEADERS)
+    assert (response.status_code, error_code(response), written(tmp_path)) == (
+        401,
+        "unauthorized",
+        False,
+    )
+
+
+@pytest.mark.parametrize(("path", "body"), SETTINGS_WRITES)
+def test_a_settings_write_without_the_csrf_token_gets_403(app, tmp_path, path, body):
+    with session_client(app) as client:
+        response = client.post(path, json=body, headers={"Origin": ORIGIN})
+    assert (response.status_code, error_code(response), written(tmp_path)) == (
+        403,
+        "forbidden",
+        False,
+    )

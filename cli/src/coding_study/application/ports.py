@@ -21,6 +21,7 @@ from coding_study.domain.cases import JsonValue
 from coding_study.domain.code_intelligence import LanguageServer
 from coding_study.domain.comparators import Checker
 from coding_study.domain.config import Config
+from coding_study.domain.config_keys import ConfigView
 from coding_study.domain.debugging import DebugSession
 from coding_study.domain.generated_cases import GeneratedCase
 from coding_study.domain.invariants import StressChecker
@@ -957,6 +958,25 @@ class ProgressDatabase(Protocol):
         ...
 
 
+class ConfigFile(Protocol):
+    """The user's `config.toml` as Settings edits it (docs/specs/web-ui.md#settings-view)."""
+
+    @property
+    def location(self) -> str: ...
+
+    def read(self) -> ConfigView:
+        """A file that is missing, or that does not parse, still reads: it says so."""
+        ...
+
+    def apply(self, changes: Mapping[str, object]) -> tuple[str, ...]:
+        """Writes each value by the key's dotted name, null removing the key, and returns the
+        names of those that changed, keeping everything else in the file. Raises UsageError,
+        writing nothing, for a key the file can't take or a value the CLI would refuse, and
+        ConfigError, overwriting nothing, for a file that does not parse."""
+        ...
+
+
+@runtime_checkable
 class PreferencesStore(Protocol):
     """The web UI's `.cs/serve/preferences.json` (docs/specs/web-ui.md#preferences)."""
 

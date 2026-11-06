@@ -420,11 +420,11 @@ def test_the_redirect_file_is_removed_when_the_server_stops(workspace, monkeypat
 
 
 def test_importing_the_cli_loads_no_web_server():
-    """NFR-2: only `cstudy serve` pays for Starlette, uvicorn and wsproto."""
+    """NFR-2: only `cstudy serve` pays for Starlette, uvicorn, wsproto and tomlkit."""
     script = (
         "import sys, coding_study.entrypoints.cli; "
         "print(sorted({m.split('.')[0] for m in sys.modules} "
-        "& {'starlette', 'uvicorn', 'wsproto'}))"
+        "& {'starlette', 'tomlkit', 'uvicorn', 'wsproto'}))"
     )
     finished = subprocess.run(
         [sys.executable, "-c", script], capture_output=True, text=True, check=True

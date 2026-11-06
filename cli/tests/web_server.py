@@ -12,6 +12,7 @@ from starlette.testclient import TestClient
 from starlette.types import ASGIApp
 
 from coding_study.adapters.preferences_fs import FsPreferencesStore
+from coding_study.adapters.toml_config_file import TomlConfigFile
 from coding_study.application.attempt_changes import WatchedFolder
 from coding_study.application.environment import Environment
 from coding_study.entrypoints.web.app import create_app
@@ -87,6 +88,7 @@ def web_app(
             static_directory=static_directory(root),
             load_environment=lambda: workspace,
             preferences=FsPreferencesStore(root),
+            config_file=TomlConfigFile(root / "config.toml"),
             child=child or ChildCommand(),
             watcher=QuietWatcher(),
         ),

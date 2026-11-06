@@ -1,9 +1,13 @@
-/** The Settings view (docs/specs/web-ui.md#settings-view): the preferences, each stored at once. */
+/**
+ * The Settings view (docs/specs/web-ui.md#settings-view): the workspace's preferences, each stored
+ * at once, and the user's `config.toml`.
+ */
 
 import "./settings.css";
 
 import type { Cleanup, PageContext } from "../context.ts";
 import { h } from "../dom.ts";
+import { configForm } from "./config-form.ts";
 import { languageRow } from "../intelligence-status.ts";
 import { messageOf } from "../states.ts";
 import { THEMES } from "../shell.ts";
@@ -38,7 +42,7 @@ const DOCTOR_FIX = "doctor_fix";
 export function settingsView(context: PageContext): Cleanup {
   const { shell } = context;
   shell.setView("settings");
-  shell.setCommand("cstudy serve");
+  shell.setCommand("cstudy config edit");
   shell.setStatus({ mode: "SETTINGS", where: ".cs/serve/preferences.json" });
   const saved = h("p", { class: "quiet", role: "status" });
   const save = (change: Partial<Omit<Preferences, "format">>) => {
@@ -90,6 +94,8 @@ export function settingsView(context: PageContext): Cleanup {
       "section",
       { class: "settings", "aria-labelledby": "settings-heading" },
       h("header", { class: "view-head" }, h("h1", { id: "settings-heading" }, "settings")),
+      h("h2", { class: "eyebrow" }, "this workspace"),
+      h("p", { class: "quiet" }, "Stored in .cs/serve/preferences.json, and applied at once."),
       h(
         "form",
         { class: "settings-form" },
@@ -99,6 +105,8 @@ export function settingsView(context: PageContext): Cleanup {
       ),
       saved,
       h("dl", { class: "facts" }, h("dt", {}, "workspace"), h("dd", {}, h("code", {}, context.session.workspace))),
+      h("h2", { class: "eyebrow" }, "all your workspaces"),
+      configForm(context),
     ),
   );
   return languages.stop;

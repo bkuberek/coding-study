@@ -49,7 +49,7 @@ The top bar holds the views, the attempts in progress, and the mock banner while
 | Mock | <kbd>Alt</kbd>+<kbd>2</kbd> | The start form, or the running mock's countdown and problems |
 | Progress | <kbd>Alt</kbd>+<kbd>3</kbd> | `cstudy stats`, the reviews due, export and import |
 | Health | <kbd>Alt</kbd>+<kbd>4</kbd> | The `cstudy doctor` checks, a **Fix** button on each row that `cstudy doctor --fix` repairs, and Verify for your own problems |
-| Settings | <kbd>Alt</kbd>+<kbd>5</kbd> | The preferences, and where the workspace and the settings file are |
+| Settings | <kbd>Alt</kbd>+<kbd>5</kbd> | This workspace's preferences, and your `config.toml`, which every workspace reads |
 
 ![The problem list in the light theme](../images/web-ui-problems-light.png)
 
@@ -206,6 +206,12 @@ Settings apply at once and are stored in `.cs/serve/preferences.json` in the wor
 | Theme | system | Light or dark, or follow your system |
 | Code intelligence | off | Live errors, hover documentation and go to definition from a language server on your computer; needs `cstudy doctor --fix` once ([details](#code-intelligence-and-autocomplete)) |
 | Autocomplete | off | Completion and signature help, while code intelligence is also on. Off, the editor offers no completion at all |
+
+## Your configuration
+
+Below the preferences, **Settings** edits `config.toml`, the file every `cstudy` command reads, for all your workspaces. Each key shows its value, its default and when a change applies. **Save** writes only what you changed and keeps your comments; empty a field to return it to its default. A value `cstudy` would refuse is refused here too, by the key's name, and nothing is written.
+
+The review intervals are here too, under `schedule`. A new interval applies to reviews scheduled from then on: dates already set do not move.
 
 ## Keyboard
 

@@ -12,6 +12,7 @@ from starlette.types import ASGIApp
 
 from coding_study.adapters.file_lock import exclusive_lock
 from coding_study.adapters.preferences_fs import FsPreferencesStore
+from coding_study.adapters.toml_config_file import TomlConfigFile
 from coding_study.application.environment import Environment
 from coding_study.application.ports import StubGenerator
 from coding_study.application.start_attempt import StartRequest, start_attempt
@@ -86,6 +87,7 @@ def impatient_app(root: Path, environment: Environment) -> ASGIApp:
             static_directory=static_directory(root),
             load_environment=lambda: environment,
             preferences=FsPreferencesStore(root),
+            config_file=TomlConfigFile(root / "config.toml"),
             lock_deadline_s=SHORT_DEADLINE_S,
         )
     )

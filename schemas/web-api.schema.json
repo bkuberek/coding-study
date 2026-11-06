@@ -67,6 +67,39 @@
         "selected_jdk": { "$ref": "#/$defs/selected_jdk" }
       }
     },
+    "config": {
+      "description": "GET and POST /api/v1/config: the keys of config.toml, each as the parser reads it",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "exists", "writable", "issues", "keys"],
+      "properties": {
+        "path": { "type": "string" },
+        "exists": { "type": "boolean" },
+        "writable": { "description": "False when the file does not parse, so nothing may overwrite it", "type": "boolean" },
+        "issues": { "description": "What keeps the file from loading", "type": "array", "items": { "type": "string" } },
+        "changed": { "description": "After a POST: the keys it wrote", "type": "array", "items": { "type": "string" } },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "kind", "value", "default", "set", "help", "applies", "choices", "example", "reserved"],
+            "properties": {
+              "name": { "description": "Dotted: schedule.max_interval_days", "type": "string" },
+              "kind": { "enum": ["boolean", "integer", "text", "choice", "choices"] },
+              "value": { "description": "As the file holds it, else the default" },
+              "default": { "description": "Null: unset by default" },
+              "set": { "description": "Whether the file holds the key", "type": "boolean" },
+              "help": { "type": "string" },
+              "applies": { "description": "When a change takes effect, in words", "type": "string" },
+              "choices": { "type": "array", "items": { "type": "string" } },
+              "example": { "description": "What a key without a default may hold" },
+              "reserved": { "description": "Accepted in the file, refused here, does nothing yet", "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
     "preferences": {
       "description": "GET and PUT /api/v1/preferences",
       "type": "object",

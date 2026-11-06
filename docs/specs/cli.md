@@ -114,6 +114,20 @@ auto_commit = false              # reserved (PRD Q3)
 
 `study_guides.root` is the directory that item `references.study_guides` paths are relative to ([study guides](content.md#study-guides)). The `[schedule]` intervals are the fixed ones of the [scheduling table](progress-and-scheduling.md#scheduling-algorithm): a change applies to reviews scheduled after it, and dates already set do not move; the ease multipliers are not configurable.
 
+The [Settings view](web-ui.md#settings-view) of `cstudy serve` edits this file too, keeping your comments ([ADR 0022](../decisions/0022-settings-and-reset.md)). Every command reads the file as it starts, and the server reads it for each request, so no key needs `cstudy serve` restarted, with one exception:
+
+| Keys | A change applies |
+|------|------------------|
+| `default_lang` | At the next command; an open page, which read it with the session, after a reload |
+| `open_on_start`, `next.tracks`, `study_guides.root` | At the next command. The page never opens an editor |
+| `progress_db` | At the next command and the page's next request. Restart `cstudy serve`: its live updates watch the old file until then |
+| `time_limit.*`, `hang_guard.ms` | At the next run, in the terminal or the page |
+| `bench.*` | At the next bench |
+| `schedule.penalize_suboptimal` | At the next `cstudy done` |
+| The `schedule` intervals and `max_interval_days` | For reviews scheduled from then on; dates already set do not move |
+| `schedule.mastered_interval_days` | At once, for every problem: it is read each time a status shows |
+| `done.auto_commit` | Never: it is reserved |
+
 ## The selected JDK
 
 Java and Kotlin run on one JDK per command: the one your shell selects. `cstudy` supports JDK 21 to 26, and a problem can widen or narrow that range with [`jdk`](problem-format.md#jdk-range) ([ADR 0016](../decisions/0016-jdk-range.md)).

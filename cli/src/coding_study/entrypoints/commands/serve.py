@@ -22,6 +22,7 @@ from coding_study.adapters.environment_factory import load_environment
 from coding_study.adapters.locations import WORKSPACE_VARIABLE
 from coding_study.adapters.preferences_fs import SERVE_DIRECTORY, FsPreferencesStore
 from coding_study.adapters.serve_install import InstalledWebUi
+from coding_study.adapters.toml_config import config_path
 from coding_study.adapters.workspace_marker import tool_version
 from coding_study.application.environment import Environment
 from coding_study.application.installs import DOCTOR_POINTER, reinstall_command
@@ -69,6 +70,7 @@ def serve(
     environ = command_environ(context)
     home = Path.home()
     root = load_environment(Path.cwd(), environ, home).root
+    from coding_study.adapters.toml_config_file import TomlConfigFile
     from coding_study.entrypoints.web import STATIC_DIRECTORY
 
     _require_installed(
@@ -97,8 +99,9 @@ def serve(
             version=tool_version(),
             secrets=secrets,
             static_directory=STATIC_DIRECTORY,
-            load_environment=_workspace_environment(root, environ, home),
+            load_environment=workspace_environment(root, environ, home),
             preferences=FsPreferencesStore(root),
+            config_file=TomlConfigFile(config_path(environ, home)),
             child=ChildCommand(content=context.ensure_object(GlobalOptions).content),
         )
         output = console(context)
@@ -152,7 +155,7 @@ def _environment_error(error: Exception) -> NoReturn:
     raise typer.Exit(ExitCode.ENVIRONMENT_ERROR)
 
 
-def _workspace_environment(
+def workspace_environment(
     root: Path, environ: Mapping[str, str], home: Path
 ) -> Callable[[], Environment]:
     """A fresh Environment of the server's workspace for each use case call, with the workspace

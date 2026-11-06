@@ -9,7 +9,7 @@ from starlette.requests import HTTPConnection
 
 from coding_study.adapters.watchfiles_watcher import WatchfilesWatcher
 from coding_study.application.environment import Environment
-from coding_study.application.ports import PreferencesStore
+from coding_study.application.ports import ConfigFile, PreferencesStore
 from coding_study.entrypoints.web.children import ChildCommand
 from coding_study.entrypoints.web.code_intelligence import LanguageSessions
 from coding_study.entrypoints.web.notifications import FolderWatcher, Notifications
@@ -32,6 +32,8 @@ class ServerSettings:
     load_environment: Callable[[], Environment]
     """A fresh Environment of the server's workspace, for each use case call."""
     preferences: PreferencesStore
+    config_file: ConfigFile
+    """The user's `config.toml`, which Settings edits."""
     child: ChildCommand = field(default_factory=ChildCommand)
     """How the server starts a child `cstudy`."""
     lock_deadline_s: float = LOCK_DEADLINE_S

@@ -59,6 +59,7 @@ coding-study is a local, IDE-first study tool for software engineers: original p
 | [0019](decisions/0019-service-projects.md) | Planned, not built: service projects always run in a Docker sandbox, a real app against mock servers and optional backing services, graded over HTTP |
 | [0020](decisions/0020-catalog-labels.md) | Problems and items have three independent labels, domain, role and scope, with filters in `cstudy list`, `cstudy next` and the Problems view; the first seven security and AI/LLM problems, in Python and TypeScript |
 | [0021](decisions/0021-ai-reviewed-problems.md) | Planned, not built: an opt-in class of problems reviewed by a live LLM with your own key; "works on your own machine" replaces "works offline" |
+| [0022](decisions/0022-settings-and-reset.md) | The Settings view edits the whole `config.toml` with tomlkit, keeping the user's comments, from a description of each key held by the parser |
 
 ## Conventions
 

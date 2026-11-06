@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.13"
 
 [[package]]
@@ -210,6 +210,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "rich" },
     { name = "starlette" },
+    { name = "tomlkit" },
     { name = "typer" },
     { name = "uvicorn" },
     { name = "watchfiles" },
@@ -241,6 +242,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=15.0" },
     { name = "starlette", specifier = ">=1.10" },
+    { name = "tomlkit", specifier = ">=0.15" },
     { name = "typer", specifier = ">=0.27" },
     { name = "uvicorn", specifier = ">=0.54" },
     { name = "watchfiles", specifier = ">=1.1" },

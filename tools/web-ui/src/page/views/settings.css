@@ -35,7 +35,33 @@
 
 .radios {
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+}
+
+.config-key {
+  padding: 6px 0;
+}
+
+.config-key > label {
+  display: block;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.config-key input[type="text"] {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font: inherit;
+}
+
+.config-key p {
+  margin: 2px 0 0;
+  font-size: var(--text-s);
 }
 
 .facts dt {

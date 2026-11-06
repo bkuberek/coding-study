@@ -34,6 +34,7 @@ SCHEMA = json.loads((SCHEMAS_DIRECTORY / "web-api.schema.json").read_text())
 DOCUMENTS = (
     "session",
     "preferences",
+    "config",
     "code_intelligence_languages",
     "error",
     "problem",
@@ -76,6 +77,7 @@ MOCK_CATALOG = (*FIRST_CATALOG, "0007-group-anagrams", "0014-first-missing-posit
 STUBS: dict[Language, StubGenerator] = {language: FakeStubGenerator() for language in Language}
 FILE = "bank/bank.py"
 PREFERENCES = "/api/v1/preferences"
+CONFIG = "/api/v1/config"
 LANGUAGES = "/api/v1/code-intelligence/languages"
 REFUSED = 400
 
@@ -128,6 +130,9 @@ def _practice(root: Path, record: Recorder) -> dict[str, Any]:
         record("session", client.get("/api/v1/session"))
         record("preferences", client.get(PREFERENCES))
         record("preferences", client.put(PREFERENCES, json={"vim": True}, headers=WRITE_HEADERS))
+        record("config", client.get(CONFIG))
+        change = {"changes": {"bench.reps": 3}}
+        record("config", client.post(CONFIG, json=change, headers=WRITE_HEADERS))
         record("code_intelligence_languages", client.get(LANGUAGES))
         record("error", client.delete("/api/v1/session", headers=WRITE_HEADERS))
         record("error", client.post(PREFERENCES, json={}, headers={"Origin": "http://evil"}))
