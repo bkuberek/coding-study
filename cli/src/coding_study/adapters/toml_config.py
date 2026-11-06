@@ -62,6 +62,15 @@ class TomlConfigSource:
     def exists(self) -> bool:
         return self._path.is_file()
 
+    def create_from_template(self) -> bool:
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with self._path.open("x", encoding="utf-8") as file:
+                file.write(config_template())
+        except FileExistsError:
+            return False
+        return True
+
     def load(self) -> Config:
         if not self.exists():
             return Config()

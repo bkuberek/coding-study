@@ -34,13 +34,14 @@ Each practice command maps to one page area, one endpoint and the use case the c
 | `cstudy stats` | Progress view | `GET /api/v1/stats` | `show_stats` |
 | `cstudy export` | Progress view, Export | `GET /api/v1/progress/export` | `export_progress` |
 | `cstudy import` | Progress view, Import | `POST /api/v1/progress/import` | `import_progress` |
+| `cstudy config edit` | Settings view, the file's form | `GET` and `POST /api/v1/config` | `TomlConfigFile`, by the parser that loads the file |
 | `cstudy doctor` | Health view | `GET /api/v1/doctor` | Child `cstudy doctor --json`: `run_doctor` |
 | `cstudy doctor --fix` | Health view, Fix | `POST /api/v1/jobs`, `command: doctor_fix` | Child `cstudy doctor --fix`: `fix_workspace` |
 | `cstudy verify` | Health view, your problems | `POST /api/v1/jobs`, `command: verify` | Child `cstudy verify`: `verify_content` |
 | `cstudy bench` | Problem and attempt views, Bench | `POST /api/v1/jobs`, `command: bench` | Child `cstudy bench`: `run_bench` |
 | Your editor | Editor tabs, file tree | `/api/v1/attempts/{id}/files…` | `attempt_files` (new): tree, read, save, create, move, delete |
 
-`cstudy init`, `cstudy ide`, `cstudy serve`, `cstudy new`, `cstudy verify` on catalog problems, `cstudy test --debug` and `--watch`, and the path arguments of `export` and `import` stay in the terminal, for the reasons [ADR 0015](../decisions/0015-local-web-ui.md#commands-that-stay-in-the-terminal) gives. The page names the command to run where it meets one, such as `cstudy init` when the server's workspace is gone.
+`cstudy init`, `cstudy ide`, `cstudy serve`, `cstudy config path`, `cstudy new`, `cstudy verify` on catalog problems, `cstudy test --debug` and `--watch`, and the path arguments of `export` and `import` stay in the terminal, for the reasons [ADR 0015](../decisions/0015-local-web-ui.md#commands-that-stay-in-the-terminal) gives. The page names the command to run where it meets one, such as `cstudy init` when the server's workspace is gone.
 
 ## Server
 
@@ -718,6 +719,7 @@ Two groups on one page, under headings that say which is which, since they do no
 |---------|-----------|
 | Code intelligence | A checkbox for `code_intelligence`: `Live diagnostics, hover documentation and go to definition from language servers on this machine`. Under it, one line per language from [`GET /api/v1/code-intelligence/languages`](#code-intelligence), in `cstudy list`'s order, whatever the checkbox says: `Python  basedpyright 1.40.2`, `TypeScript  not installed: run cstudy doctor --fix`, `Go  not available yet`; a language that is not installed links to the Health view, where its row has a Fix button (the link's tooltip says so). The page reads the list when the view opens and after each `job_ended` of a `doctor_fix` job |
 | Autocomplete | A checkbox for `autocomplete`, under Code intelligence: `Completion and signature help. Off, the editor offers no completion at all`. While `code_intelligence` is off it is disabled, shows its stored value and has the note `Turn on code intelligence first`, tied to it with `aria-describedby`; turning code intelligence off or on never changes it |
+| Command strip | `cstudy config edit`, what the file's form mirrors, since `cstudy serve` has already run by the time the view shows |
 | Config file | A form with a section per table, drawn from [`GET /api/v1/config`](#session-and-preferences) alone, so a new key needs nothing in the page: each key's name, a control for its kind (a checkbox, a text field, a list, a multiple list), its help, its default and when a change applies. An empty field returns a key to its default. `done.auto_commit`, reserved, shows disabled. Save sends only what changed and says, per key, when it applies; a refusal shows the parser's wording. The file's path heads the form. A file that does not parse shows the parser's message with Save disabled |
 
 ### Editor

@@ -47,6 +47,7 @@ class Seen:
     help_text: str = ""
     headings: list[str] = field(default_factory=list[str])
     reserved_disabled: bool = False
+    command_strip: str = ""
     saved_file: str = ""
     saved_note: str = ""
     focus_on_save: bool = False
@@ -103,6 +104,7 @@ def _read_the_form(page: Any, found: Seen) -> None:
     found.help_text = page.locator(f"{MAX_INTERVAL} ~ p").inner_text()
     found.headings = page.locator(".settings h2").all_inner_texts()
     found.reserved_disabled = page.is_disabled(RESERVED)
+    found.command_strip = page.locator(".command-text").inner_text()
 
 
 def _saved(page: Any) -> str:
@@ -157,6 +159,10 @@ def test_the_page_tells_the_workspace_from_every_workspace(seen):
 
 def test_the_reserved_key_cannot_be_changed(seen):
     assert seen.reserved_disabled
+
+
+def test_the_command_strip_shows_the_command_the_form_mirrors(seen):
+    assert seen.command_strip == "cstudy config edit"
 
 
 def test_a_change_reaches_the_file_and_keeps_its_comments(seen):

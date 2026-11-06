@@ -958,6 +958,17 @@ class ProgressDatabase(Protocol):
         ...
 
 
+class EditableConfig(Protocol):
+    """The user's `config.toml` as `cstudy config edit` opens it."""
+
+    @property
+    def location(self) -> str: ...
+
+    def create_from_template(self) -> bool:
+        """Writes the commented template when no file is there; True when it did."""
+        ...
+
+
 class ConfigFile(Protocol):
     """The user's `config.toml` as Settings edits it (docs/specs/web-ui.md#settings-view)."""
 

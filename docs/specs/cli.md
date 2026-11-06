@@ -28,6 +28,7 @@
 | [`cstudy mock`](#cstudy-mock) | Timed mock interview | 7 |
 | [`cstudy export`](#cstudy-export) | Back up progress as JSON | 7 |
 | [`cstudy import`](#cstudy-import) | Restore an export into an empty `progress.db` | 7 |
+| [`cstudy config edit`, `cstudy config path`](#cstudy-config) | Open your `config.toml` in your editor; print its path | 9 |
 
 `<file>` is a [solution file path](#solution-file-targets). Commands that take an optional `<slug>` default to the active attempt: the most recent attempt with status `in_progress`. If none exists, they exit 3. Every command but `cstudy init`, `cstudy doctor`, `cstudy list` and `cstudy show` needs a workspace and exits 3 without one, pointing at `cstudy init`. The [IDE files](installation-and-workspaces.md#ide-files) run these commands on the file in the editor or on the active attempt.
 
@@ -1225,6 +1226,20 @@ into      progress.db
 ```
 
 Exits 3, importing nothing, when the database already holds an attempt, test run, schedule entry, bench run, submission or level unlock (merging is [PRD Q12](../prd.md#8-open-questions)), when the file is missing, not JSON or not an export, when its `schema_version` is newer than this `cstudy`, or when a table, column or row does not fit the schema. Exit 0 otherwise.
+
+## cstudy config
+
+```text
+cstudy config edit
+cstudy config path
+```
+
+Neither needs a workspace, and both find the file as every command does ([Configuration](#configuration)).
+
+| Command | Effect |
+|---------|--------|
+| `config path` | Prints the path and creates nothing |
+| `config edit` | Opens the file in `$VISUAL`, else `$EDITOR`, the way `cstudy start` opens a stub, and waits for it. A missing file is first made from a commented template that lists every key at its default with what it does, so it loads as the defaults until a line is uncommented, and an existing one is never changed. It prints `created <path>` or `config <path>`. With no editor set it says so on an `editor` line, `set $VISUAL or $EDITOR to open the files automatically`, and exits 0, the path printed for you to open; an editor that does not run says why the same way |
 
 ## cstudy serve
 

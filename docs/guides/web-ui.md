@@ -211,6 +211,8 @@ Settings apply at once and are stored in `.cs/serve/preferences.json` in the wor
 
 Below the preferences, **Settings** edits `config.toml`, the file every `cstudy` command reads, for all your workspaces. Each key shows its value, its default and when a change applies. **Save** writes only what you changed and keeps your comments; empty a field to return it to its default. A value `cstudy` would refuse is refused here too, by the key's name, and nothing is written.
 
+In the terminal, `cstudy config edit` opens the same file in your editor, making it from a commented template if you have none, and `cstudy config path` prints where it is.
+
 The review intervals are here too, under `schedule`. A new interval applies to reviews scheduled from then on: dates already set do not move.
 
 ## Keyboard
