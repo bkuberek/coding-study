@@ -31,7 +31,8 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
   shell.setStatus({ mode: "LIST", where: "problems" });
 
   const next = h("section", { class: "next-card", "aria-labelledby": "next-heading" });
-  const table = h("section", { class: "listing", "aria-label": "Problems", "aria-busy": "true" }, loading());
+  // Focusable, so the keyboard scrolls the table where a narrow window gives it a box of its own.
+  const table = h("section", { class: "listing table-scroll", "aria-label": "Problems", "aria-busy": "true", tabindex: "0" }, loading());
   const choices: Readonly<Record<Exclude<FilterKey, "pattern">, readonly string[]>> = {
     track: session.tracks,
     kind: session.kinds,

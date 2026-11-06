@@ -15,7 +15,6 @@
   --text-s: 12.5px;
   --text-m: 13.5px;
   --text-l: 16px;
-  --gap: 16px;
   --radius: 3px;
   --bar: 40px;
   --status: 26px;
@@ -105,6 +104,8 @@ html,
 body {
   margin: 0;
   height: 100%;
+  /* The top bar and a table's header, one bar high each, stay over whatever is scrolled to. */
+  scroll-padding-top: calc(var(--bar) * 2);
 }
 
 body {
@@ -205,6 +206,9 @@ h3 {
 /* the top bar: a terminal window's title row, the views as its tabs */
 
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
   display: flex;
   align-items: stretch;
   gap: 4px;
@@ -762,15 +766,17 @@ table {
   border-collapse: collapse;
 }
 
-/* A table wider than the window scrolls in its own box, not the page. */
-.listing,
-.table-scroll {
-  overflow-x: auto;
+/* A table's header stays under the top bar while the page scrolls. Its rule is a shadow: the
+   border of a collapsed table stays behind a stuck cell. */
+.table-scroll th {
+  position: sticky;
+  top: var(--bar);
+  background: var(--paper);
 }
 
 th {
   padding: 8px 10px;
-  border-bottom: 2px solid var(--ink);
+  box-shadow: inset 0 -2px var(--ink);
   color: var(--ink-soft);
   font-size: var(--text-xs);
   font-weight: 600;
@@ -853,7 +859,7 @@ tbody tr:hover {
 
 .problem-side {
   position: sticky;
-  top: 16px;
+  top: calc(var(--bar) + 16px);
   display: grid;
   gap: 18px;
 }
@@ -1029,7 +1035,8 @@ main:has(.workbench) {
     "head head head"
     "files editors brief"
     "files results brief";
-  height: calc(100vh - var(--bar) - var(--status) - 41px);
+  /* The window between the bars: 44px is the command line's height, so the page itself never scrolls. */
+  height: calc(100vh - var(--bar) - var(--status) - 44px);
   min-height: 520px;
 }
 
@@ -1332,6 +1339,18 @@ input[type="radio"] {
 /* narrower windows */
 
 @media (max-width: 1100px) {
+  /* A table wider than the window scrolls in its own box, not the page, and the box is no taller
+     than the window: its header sticks to the top of the box. */
+  .table-scroll {
+    max-height: calc(100vh - var(--bar) - var(--status) - 40px);
+    overflow: auto;
+    scroll-padding-top: var(--bar);
+  }
+
+  .table-scroll th {
+    top: 0;
+  }
+
   .filters {
     grid-template-columns: repeat(4, minmax(110px, 1fr));
   }

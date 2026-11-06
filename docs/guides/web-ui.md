@@ -39,7 +39,7 @@ The page is made for current Chrome, Edge, Firefox and Safari. Its tests run in 
 
 ## The views
 
-The top bar holds the views, the attempts in progress, and the mock banner while a mock runs. Under it, a command line shows the `cstudy` command that the view mirrors, with a button that copies it. The status bar at the bottom switches Vim keybindings and the theme.
+The top bar holds the views, the attempts in progress, and the mock banner while a mock runs; it stays at the top of the window when you scroll, and so do the header rows of the tables. Under it, a command line shows the `cstudy` command that the view mirrors, with a button that copies it. The status bar at the bottom switches Vim keybindings and the theme.
 
 | View | Opens with | Shows |
 |------|------------|-------|

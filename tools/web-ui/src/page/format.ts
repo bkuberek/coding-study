@@ -33,8 +33,10 @@ export interface Badge {
   readonly tone: string;
 }
 
-/** A `cstudy list` status's glyph and tone; the badge's text is the status, as the CLI writes it. */
-const PROBLEM_STATUSES: Readonly<Record<string, readonly [glyph: string, tone: string]>> = {
+/** The glyph and tone that mark a word, by the word: a status of `cstudy list` or a file's state. */
+type Marks = Readonly<Record<string, readonly [glyph: string, tone: string]>>;
+
+const PROBLEM_STATUSES: Marks = {
   new: ["○", "quiet"],
   in_progress: ["▸", "info"],
   attempted: ["◐", "warn"],
@@ -43,11 +45,11 @@ const PROBLEM_STATUSES: Readonly<Record<string, readonly [glyph: string, tone: s
   mastered: ["◆", "info"],
 };
 
-const FILE_STATES: Readonly<Record<string, Badge>> = {
-  unchanged: { glyph: "", text: "unchanged", tone: "quiet" },
-  modified: { glyph: "M", text: "modified", tone: "warn" },
-  added: { glyph: "A", text: "added", tone: "ok" },
-  deleted: { glyph: "D", text: "deleted", tone: "fail" },
+const FILE_STATES: Marks = {
+  unchanged: ["", "quiet"],
+  modified: ["M", "warn"],
+  added: ["A", "ok"],
+  deleted: ["D", "fail"],
 };
 
 const CHECKS: Readonly<Record<string, Badge>> = {
@@ -56,16 +58,20 @@ const CHECKS: Readonly<Record<string, Badge>> = {
   fail: { glyph: "✕", text: "FAIL", tone: "fail" },
 };
 
+/** The badge of a word as the CLI writes it; a word the table does not know gets `unknown` as its glyph. */
+function wordBadge(marks: Marks, word: string, unknown: string): Badge {
+  const [glyph, tone] = marks[word] ?? [unknown, "quiet"];
+  return { glyph, text: word, tone };
+}
+
 /** A `cstudy list` status. */
 export function problemBadge(status: string): Badge {
-  const [glyph, tone] = PROBLEM_STATUSES[status] ?? ["·", "quiet"];
-  return { glyph, text: status, tone };
+  return wordBadge(PROBLEM_STATUSES, status, "·");
 }
 
 /** A project file's state against what `cstudy` provided, or none for other attempts. */
 export function fileBadge(state: string | null): Badge | null {
-  if (state === null) return null;
-  return FILE_STATES[state] ?? { glyph: "?", text: state, tone: "quiet" };
+  return state === null ? null : wordBadge(FILE_STATES, state, "?");
 }
 
 /** A `cstudy doctor` row's status. */

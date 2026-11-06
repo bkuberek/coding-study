@@ -69,6 +69,18 @@ test("a modified file is marked M", () => {
   assert.equal(fileBadge("modified")?.glyph, "M");
 });
 
+test("a file state has its glyph, its word and its tone", () => {
+  assert.deepEqual(fileBadge("deleted"), { glyph: "D", text: "deleted", tone: "fail" });
+});
+
+test("an unchanged file shows no glyph", () => {
+  assert.equal(fileBadge("unchanged")?.glyph, "");
+});
+
+test("an unknown file state keeps its word", () => {
+  assert.deepEqual(fileBadge("moved"), { glyph: "?", text: "moved", tone: "quiet" });
+});
+
 test("a failing check says FAIL", () => {
   assert.equal(checkBadge("fail").text, "FAIL");
 });
