@@ -43,7 +43,7 @@
     },
     "scope": { "description": "How big the thing you work on is; check S24 ties it to kind", "$ref": "#/$defs/scope" },
     "languages": {
-      "description": "Default all six in the catalog (check S13 requires every language that can express the problem, except on the concurrency and debugging tracks) and the core four in a workspace problem, which may list any non-empty subset; a project problem lists exactly one",
+      "description": "Default all six in the catalog (check S13 requires every language that can express the problem, except on the concurrency and debugging tracks and in the security, identity and ai-llm domains) and the core four in a workspace problem, which may list any non-empty subset; a project problem lists exactly one",
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,

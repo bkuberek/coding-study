@@ -568,8 +568,8 @@ def test_valid_progressive_problem(problems):
 
 WITHOUT_RUST = tuple(language for language in Language if language is not Language.RUST)
 MUST_LIST = (
-    "every problem outside the concurrency and debugging tracks lists every language that can "
-    "express it"
+    "every problem outside the concurrency and debugging tracks and the security, identity and "
+    "ai-llm domains lists every language that can express it"
 )
 
 
@@ -630,6 +630,48 @@ def test_concurrency_and_debugging_problems_list_any_subset(problems, track):
     problem = with_meta(problems, track=track, languages=(Language.PYTHON,))
     issues = errors(content(problems, problem=problem))
     assert [issue for issue in issues if "must list" in issue] == []
+
+
+@pytest.mark.parametrize("domain", ["security", "identity", "ai-llm"])
+def test_a_problem_in_a_subset_domain_lists_any_subset(problems, domain):
+    labels = replace(problems["two-sum"].meta.labels, domains=(domain,))
+    problem = with_meta(problems, labels=labels, languages=(Language.PYTHON, Language.TYPESCRIPT))
+    assert errors(content(problems, problem=problem)) == []
+
+
+def test_one_subset_domain_among_its_domains_is_enough(problems):
+    labels = replace(problems["two-sum"].meta.labels, domains=("backend", "security"))
+    problem = with_meta(problems, labels=labels, languages=WITHOUT_RUST)
+    assert errors(content(problems, problem=problem)) == []
+
+
+@pytest.mark.parametrize("domain", ["algorithms", "backend", "fintech"])
+def test_a_problem_in_another_domain_lists_every_language(problems, domain):
+    labels = replace(problems["two-sum"].meta.labels, domains=(domain,))
+    problem = with_meta(problems, labels=labels, languages=WITHOUT_RUST)
+    assert errors(content(problems, problem=problem)) == [
+        f"{META}: languages: must list rust: {MUST_LIST}"
+    ]
+
+
+def test_a_subset_domain_still_cannot_list_a_language_that_cannot_express_it(problems):
+    problem = list_problem(problems, {"values": [1, 2], "cycle_at": 0})
+    labels = replace(problem.meta.labels, domains=("security",))
+    problem = replace(problem, meta=replace(problem.meta, labels=labels))
+    assert any("cannot list rust" in issue for issue in errors(content(problems, problem=problem)))
+
+
+def test_a_subset_domain_does_not_let_an_approach_name_its_languages(problems):
+    labels = replace(problems["two-sum"].meta.labels, domains=("security",))
+    approaches = tuple(
+        replace(approach, languages=(Language.PYTHON,))
+        for approach in problems["two-sum"].meta.approaches
+    )
+    problem = with_meta(problems, labels=labels, approaches=approaches)
+    assert any(
+        "only concurrency and debugging approaches" in issue
+        for issue in errors(content(problems, problem=problem))
+    )
 
 
 # S24
