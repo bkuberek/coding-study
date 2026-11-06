@@ -4,7 +4,7 @@
  * completion is not here (`completion` holds it in a compartment of the editor, so that the
  * `autocomplete` preference governs all of it), and F8 and Shift-F8 skip hints.
  */
-import { closeBrackets, closeBracketsKeymap, autocompletion } from "@codemirror/autocomplete";
+import { acceptCompletion, closeBrackets, closeBracketsKeymap, autocompletion } from "@codemirror/autocomplete";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import {
   bracketMatching,
@@ -15,7 +15,7 @@ import {
   syntaxHighlighting,
 } from "@codemirror/language";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
-import { EditorState, type Extension } from "@codemirror/state";
+import { EditorState, type Extension, Prec } from "@codemirror/state";
 import {
   crosshairCursor,
   drawSelection,
@@ -73,8 +73,10 @@ export const editorSetup: Extension = [
 /**
  * CodeMirror's completion, with its key bindings, while the `autocomplete` preference applies;
  * nothing otherwise: no list as you type or on Ctrl-Space. Closing brackets is not completion and
- * stays in `editorSetup`.
+ * stays in `editorSetup`. Tab accepts as Enter does, above the Tab that indents: `acceptCompletion`
+ * declines with no list open, so Tab then indents. The server's completion, which replaces only the
+ * sources of this one, keeps the key.
  */
 export function completion(applies: boolean): Extension {
-  return applies ? autocompletion() : [];
+  return applies ? [autocompletion(), Prec.high(keymap.of([{ key: "Tab", run: acceptCompletion }]))] : [];
 }

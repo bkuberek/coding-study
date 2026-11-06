@@ -4,7 +4,7 @@
  * `cstudy` diagnostics as lint markers; light and dark themes; opt-in Vim keybindings, fetched
  * when first turned on; and a keyboard path out of the editor.
  *
- * Tab indents. Escape, then Tab within two seconds, moves focus out of the editor, as CodeMirror
+ * Tab accepts an open completion list's item, and otherwise indents. Escape, then Tab within two seconds, moves focus out of the editor, as CodeMirror
  * does for an Escape no key binding takes; Ctrl-M (Shift-Alt-M on macOS) toggles tab focus mode,
  * in which Tab always moves focus. With Vim keybindings on, Vim takes Escape in insert mode, and the
  * toggle stays bound above Vim's keys.

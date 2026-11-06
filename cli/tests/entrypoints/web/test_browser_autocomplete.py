@@ -5,10 +5,12 @@ fake language server.
 With `autocomplete` off, typing and Ctrl-Space open no list and ask the server for nothing. With
 both preferences on: typing a word, a trigger character and Ctrl-Space ask the server and show its
 list; the selected item's panel shows the resolved detail and documentation, each item resolved
-once however often it is selected; Enter accepts and inserts the item's text, and Tab does not;
+once however often it is selected; Enter and Tab each accept and insert the item's text, while
+with no list open Tab indents and Shift-Tab takes it back;
 `(` and `,` in a call open the signature help, whose bold parameter follows the cursor, which
 Escape closes and Cmd or Ctrl-Shift-Space opens again. While the session has stopped, the editor's
-own completion stands in. Under Vim one Escape closes the list and leaves insert mode.
+own completion stands in, and Tab accepts from it too. Under Vim one Escape closes the list and
+leaves insert mode, and Tab in insert mode accepts as it does without Vim.
 
 Playwright and its engines are set up as `tests/browsers.py` says; without them the test is
 skipped.
@@ -45,6 +47,9 @@ INFO = ".cm-completionInfo"
 SIGNATURE = ".cs-signature"
 ACTIVE_PARAMETER = f"{SIGNATURE} .cs-active-parameter"
 LAST_LINE = f"{EDITOR} .cm-line:last-child"
+INTERACTION_MS = 100
+"""How long a key waits after the list shows: CodeMirror's `interactionDelay`, 75 ms, keeps a key
+pressed as the list appears from accepting by accident, for Enter and Tab alike."""
 SETTLE_MS = 700
 """What a list that is not coming is given to show up in."""
 ITEMS = [
@@ -115,6 +120,9 @@ class Seen:
     resolved_pop: int = -1
     accepted_line: str = ""
     tab_line: str = ""
+    tab_list_after: int = -1
+    tab_without_list: str = ""
+    shift_tab_without_list: str = ""
     dot_requests: int = -1
     ctrl_space_options: int = -1
     ctrl_space_requests: int = -1
@@ -126,6 +134,8 @@ class Seen:
     signature_by_key: int = -1
     fallback_options: list[str] = field(default_factory=list[str])
     fallback_requests: int = -1
+    fallback_tab_line: str = ""
+    vim_tab_line: str = ""
     vim_list: int = -1
     vim_list_after_escape: int = -1
     vim_normal_after_escape: int = -1
@@ -236,10 +246,15 @@ def _accepting(page: Any, found: Seen) -> None:
     page.keyboard.press("Enter")
     page.keyboard.type("hea")
     page.wait_for_selector(LIST)
+    page.wait_for_timeout(INTERACTION_MS)
     page.keyboard.press("Tab")
-    page.wait_for_timeout(SETTLE_MS)
+    page.wait_for_selector(LIST, state="detached")
     found.tab_line = page.locator(LAST_LINE).inner_text()
-    page.keyboard.press("Escape")
+    found.tab_list_after = page.locator(LIST).count()
+    page.keyboard.press("Tab")
+    found.tab_without_list = page.locator(LAST_LINE).inner_text()
+    page.keyboard.press("Shift+Tab")
+    found.shift_tab_without_list = page.locator(LAST_LINE).inner_text()
 
 
 def _triggers(page: Any, lab: Lab, found: Seen) -> None:
@@ -290,12 +305,19 @@ def _signature(page: Any, found: Seen) -> None:
 
 
 def _vim(page: Any, found: Seen) -> None:
-    """One Escape closes the list and leaves insert mode."""
+    """Tab in insert mode accepts; one Escape closes the list and leaves insert mode."""
     page.click(EDITOR)
     page.mouse.move(5, 5)
     page.keyboard.press("Escape")
     page.keyboard.press("G")
     page.keyboard.press("o")
+    page.keyboard.type("hea")
+    page.wait_for_selector(LIST)
+    page.wait_for_timeout(INTERACTION_MS)
+    page.keyboard.press("Tab")
+    page.wait_for_selector(LIST, state="detached")
+    found.vim_tab_line = page.locator(LAST_LINE).inner_text()
+    page.keyboard.press("Enter")
     page.keyboard.type("hea")
     page.wait_for_selector(LIST)
     found.vim_list = page.locator(LIST).count()
@@ -319,7 +341,10 @@ def _stopped(browser: Any, lab: Lab, found: Seen) -> None:
     page.wait_for_selector(LIST)
     found.fallback_options = page.locator(f"{LIST} .cm-completionLabel").all_inner_texts()
     found.fallback_requests = len(_requests(lab, "textDocument/completion"))
-    page.keyboard.press("Escape")
+    page.wait_for_timeout(INTERACTION_MS)
+    page.keyboard.press("Tab")
+    page.wait_for_selector(LIST, state="detached")
+    found.fallback_tab_line = page.locator(LAST_LINE).inner_text()
 
 
 def test_with_autocomplete_off_typing_opens_no_list(seen):
@@ -359,9 +384,28 @@ def test_enter_inserts_the_items_text_in_place_of_the_typed_word(seen):
     assert seen.accepted_line == "heappush"
 
 
-def test_tab_does_not_accept_a_completion(seen):
-    assert seen.tab_line.strip() != "heappush"
-    assert seen.tab_line.strip().startswith("hea")
+def test_tab_accepts_the_selected_item_in_place_of_the_typed_word(seen):
+    assert seen.tab_line == "heappush"
+
+
+def test_tab_closes_the_list_it_accepts_from(seen):
+    assert seen.tab_list_after == 0
+
+
+def test_with_no_list_open_tab_indents_the_line(seen):
+    assert seen.tab_without_list == "    heappush"
+
+
+def test_with_no_list_open_shift_tab_takes_the_indent_back(seen):
+    assert seen.shift_tab_without_list == "heappush"
+
+
+def test_tab_accepts_from_the_editors_own_completion_while_the_session_has_stopped(seen):
+    assert seen.fallback_tab_line.startswith("print")
+
+
+def test_tab_in_vim_insert_mode_accepts_the_selected_item(seen):
+    assert seen.vim_tab_line == "heappush"
 
 
 def test_a_trigger_character_asks_as_a_trigger(seen):

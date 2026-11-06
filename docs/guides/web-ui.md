@@ -110,7 +110,7 @@ If a server is not installed, or starts slowly, the editor works as it does with
 
 ### Autocomplete in the editor
 
-- **Completion.** The list opens as you type a name or a `.`, and with <kbd>Ctrl</kbd>+<kbd>Space</kbd>. Move with the arrows, accept with <kbd>Enter</kbd>, close with <kbd>Escape</kbd>. The selected item's documentation shows beside the list. Accepting inserts plain text: no snippets with placeholders, and no imports added for you.
+- **Completion.** The list opens as you type a name or a `.`, and with <kbd>Ctrl</kbd>+<kbd>Space</kbd>. Move with the arrows, accept with <kbd>Enter</kbd> or <kbd>Tab</kbd>, close with <kbd>Escape</kbd>. The selected item's documentation shows beside the list. Accepting inserts plain text: no snippets with placeholders, and no imports added for you.
 - **Signature help.** Typing `(` or `,` in a call shows the signature with the current parameter in bold. <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> opens it inside a call.
 
 ![The completion list in the dark theme, with the documentation of the selected item beside it](../images/autocomplete-list-dark.png)
@@ -221,7 +221,7 @@ Every view works with the keyboard alone. On Linux, read <kbd>Ctrl</kbd> for <kb
 | <kbd>F8</kbd>, <kbd>Shift</kbd>+<kbd>F8</kbd> | Go to the next and the previous error in the editor |
 | <kbd>F12</kbd>, <kbd>Cmd</kbd>-click, <kbd>Ctrl</kbd>+<kbd>-</kbd> | Go to a definition, and back: [code intelligence](#code-intelligence-and-autocomplete) |
 | <kbd>Alt</kbd>+<kbd>Shift</kbd>-click in the editor | Add a second cursor |
-| <kbd>Tab</kbd> in the editor | Indent; <kbd>Escape</kbd> then <kbd>Tab</kbd> moves on to the next control |
+| <kbd>Tab</kbd> in the editor | Accept the selected completion when the list is open, otherwise indent; <kbd>Escape</kbd> then <kbd>Tab</kbd> moves on to the next control |
 | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> (<kbd>Ctrl</kbd>+<kbd>M</kbd> on Linux) | Make <kbd>Tab</kbd> move the focus out of the editor until pressed again |
 | <kbd>Shift</kbd>+<kbd>F10</kbd>, <kbd>F2</kbd>, <kbd>Delete</kbd> in the tree | A file's actions, rename, delete |
 | <kbd>Escape</kbd> in a dialog | Close it; the focus returns where it was |

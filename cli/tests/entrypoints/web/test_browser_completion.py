@@ -1,7 +1,8 @@
 """The `autocomplete` preference governs all completion in the editor
 (docs/specs/web-ui.md#autocomplete), in each engine of `tests/browsers.py`: with the defaults, and
 with code intelligence off whatever `autocomplete` holds, Ctrl-Space and typing offer no list;
-with both on, CodeMirror's own completion offers one. Bracket closing stays in every case.
+with both on, CodeMirror's own completion offers one, and Tab accepts from it; with no list, and
+with autocomplete off, Tab indents. Bracket closing stays in every case.
 
 Playwright and its engines are set up as `tests/browsers.py` says; without them the test is
 skipped.
@@ -30,6 +31,9 @@ EDITOR = ".panel:not([hidden]) .cm-editor"
 CONTENT = f"{EDITOR} .cm-content"
 LIST = ".cm-tooltip-autocomplete"
 LOOKED_FOR = "\nprin"
+INTERACTION_MS = 100
+"""How long a key waits after the list shows: CodeMirror's `interactionDelay`, 75 ms, keeps a key
+pressed as the list appears from accepting by accident, for Enter and Tab alike."""
 SETTLE_MS = 600
 """What a list that is not coming is given to show up in: the completion source answers in the
 same task, and the list is drawn within a frame or two."""
@@ -44,6 +48,9 @@ class Completion:
     autocomplete_only: int = -1
     both: int = -1
     brackets_closed: str = ""
+    tab_when_off: str = ""
+    tab_with_a_list: str = ""
+    tab_without_a_list: str = ""
 
 
 @pytest.fixture(scope="module")
@@ -68,10 +75,13 @@ def completion(engine: str, server: RunningServer) -> Completion:
         seen.defaults = _list_on_ctrl_space(page)
         seen.typed_by_default = _list_after_typing(page)
         seen.brackets_closed = _closed_bracket(page)
+        seen.tab_when_off = _tab_on_a_new_line(page)
         _store(workspace, code_intelligence=False, autocomplete=True)
         seen.autocomplete_only = _after_reload(page, _list_on_ctrl_space)
         _store(workspace, code_intelligence=True, autocomplete=True)
         seen.both = _after_reload(page, _list_on_ctrl_space)
+        seen.tab_with_a_list = _tab_accepting(page)
+        seen.tab_without_a_list = _tab_on_a_new_line(page)
         browser.close()
     return seen
 
@@ -133,6 +143,32 @@ def _closed_bracket(page: Any) -> str:
     return typed
 
 
+def _tab_on_a_new_line(page: Any) -> str:
+    """Tab with no list open, on an empty line at the end of the file; the typing is undone."""
+    _at_the_end(page)
+    page.keyboard.insert_text("\nx = 1")
+    page.keyboard.press("Tab")
+    line = page.locator(f"{CONTENT} .cm-line").last.inner_text()
+    page.keyboard.press("Shift+Tab")
+    page.keyboard.press("ControlOrMeta+z")
+    return line
+
+
+def _tab_accepting(page: Any) -> str:
+    """Tab with the list open, from the file's end; the typing is undone."""
+    _at_the_end(page)
+    page.keyboard.insert_text(LOOKED_FOR)
+    page.keyboard.press("Control+Space")
+    page.wait_for_selector(LIST)
+    page.wait_for_timeout(INTERACTION_MS)
+    page.keyboard.press("Tab")
+    page.wait_for_selector(LIST, state="detached")
+    line = page.locator(f"{CONTENT} .cm-line").last.inner_text()
+    page.keyboard.press("ControlOrMeta+z")
+    page.keyboard.press("ControlOrMeta+z")
+    return line
+
+
 def test_ctrl_space_offers_no_list_at_the_defaults(completion):
     assert completion.defaults == 0
 
@@ -151,3 +187,15 @@ def test_autocomplete_alone_offers_no_list(completion):
 
 def test_both_preferences_offer_the_editors_own_list(completion):
     assert completion.both == 1
+
+
+def test_tab_accepts_the_selected_option_of_the_editors_own_list(completion):
+    assert completion.tab_with_a_list.startswith("print")
+
+
+def test_with_no_list_open_tab_indents_by_the_languages_unit(completion):
+    assert completion.tab_without_a_list == "    x = 1"
+
+
+def test_with_autocomplete_off_tab_indents(completion):
+    assert completion.tab_when_off == "    x = 1"

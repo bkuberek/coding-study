@@ -97,7 +97,7 @@ The page imports `createEditor` from `editor.ts` when the first file opens. Ever
 |---------|----------|
 | Languages | Python, TypeScript and JavaScript (with TSX and JSX), Java, Kotlin, Go, Rust, JSON, TOML, YAML and Markdown, by extension; any other file opens as plain text |
 | CSP | Pass the page's nonce: CodeMirror adds style elements, which `style-src 'self' 'nonce-…'` blocks otherwise |
-| Keyboard | Tab indents. Escape, then Tab, moves focus out; Ctrl-M (Shift-Alt-M on macOS) toggles tab focus mode, and works with Vim on |
+| Keyboard | Tab accepts an open completion list's item, and otherwise indents. Escape, then Tab, moves focus out; Ctrl-M (Shift-Alt-M on macOS) toggles tab focus mode, and works with Vim on |
 | Themes | Text meets WCAG AA (4.5:1) in both. The page may set `--cs-editor-background`, `--cs-editor-foreground`, `--cs-editor-font` and `--cs-editor-font-size` |
 | Screen readers | The editor is labelled with the file's path, and a read-only one is marked `aria-readonly` |
 
