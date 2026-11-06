@@ -49,6 +49,21 @@ def test_fixture_meta_is_valid(directory_name):
     assert validator_for_meta_file().violations(load_fixture_meta(directory_name), SOURCE) == []
 
 
+def test_a_problem_may_carry_a_summary_for_its_starter_header():
+    meta = load_fixture_meta("0001-two-sum")
+    meta["summary"] = "Pair up two numbers that reach a target."
+    assert validator_for_meta_file().violations(meta, SOURCE) == []
+
+
+@pytest.mark.parametrize("summary", ["", "x" * 241, 7], ids=["empty", "too long", "not text"])
+def test_a_summary_must_be_text_of_one_to_240_characters(summary):
+    meta = load_fixture_meta("0001-two-sum")
+    meta["summary"] = summary
+    assert [issue.location for issue in validator_for_meta_file().violations(meta, SOURCE)] == [
+        "summary"
+    ]
+
+
 @pytest.mark.parametrize(
     "languages",
     [["python"], ["rust", "python"], ["go", "rust"], ["python", "typescript", "java", "kotlin"]],

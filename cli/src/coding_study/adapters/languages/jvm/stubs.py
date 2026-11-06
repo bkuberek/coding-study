@@ -70,7 +70,7 @@ class _JvmStub:
     """What a Java or Kotlin stub declares, independent of syntax."""
 
     header: tuple[str, ...]
-    """The header's two sentences: title and statement path, then the run command."""
+    """The header's comment lines: title, summary, statement path and run command."""
     package: str
     class_name: str
     constructor_params: tuple[tuple[str, ValueType], ...] | None
@@ -107,7 +107,7 @@ class _JvmStub:
             *(routine.returns for routine in routines),
         ]
         return cls(
-            header=tuple(comment_header(f"{meta.title}.", meta.slug)),
+            header=tuple(comment_header(meta)),
             package=f"{USER_PACKAGE}.{meta.snake_slug}",
             class_name=jvm_class_name(meta),
             constructor_params=constructor,

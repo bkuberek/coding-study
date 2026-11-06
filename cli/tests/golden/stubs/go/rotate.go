@@ -1,4 +1,7 @@
-// Rotate Array. Statement: .statements/rotate-array.md. Run: cstudy test rotate-array
+// Rotate Array.
+//
+// Statement: .statements/rotate-array.md
+// Run: cstudy test rotate-array
 
 package rotate_array
 

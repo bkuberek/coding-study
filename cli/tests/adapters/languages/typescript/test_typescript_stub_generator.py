@@ -10,13 +10,27 @@ from coding_study.domain.type_dsl import parse_return_type, parse_value_type
 from tests.stub_contract import STUB_CASES, StubCase, check_stub, stub_cases
 
 TWO_SUM_SPEC_EXAMPLE = """\
-// Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum
+// Two Sum.
+//
+// Given a list of numbers and a target, return the positions of the
+// two numbers that add up to the target.
+//
+// Statement: .statements/two-sum.md
+// Run: cstudy test two-sum
 export function twoSum(nums: number[], target: number): number[] {
   throw new Error("Not implemented");
 }
 """
 
-LRU_CACHE_HEADER = "// LRU Cache. Statement: .statements/lru-cache.md. Run: cstudy test lru-cache\n"
+LRU_CACHE_HEADER = """\
+// LRU Cache.
+//
+// Build a key-value cache with a fixed number of slots that discards
+// the entry unused for the longest time when it is full.
+//
+// Statement: .statements/lru-cache.md
+// Run: cstudy test lru-cache
+"""
 LRU_CACHE_SPEC_EXAMPLE = """\
 export class LRUCache {
   constructor(capacity: number) {}

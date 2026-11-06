@@ -1,4 +1,6 @@
-// Invert Binary Tree. Statement: .statements/invert-binary-tree.md.
+// Invert Binary Tree.
+//
+// Statement: .statements/invert-binary-tree.md
 // Run: cstudy test invert-binary-tree
 
 package invert_binary_tree

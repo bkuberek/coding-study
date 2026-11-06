@@ -143,6 +143,7 @@ def _meta(document: Document, workspace: bool) -> ProblemMeta:
         related=tuple(document.get("related", ())),
         order=document.get("order", DEFAULT_CURRICULUM_ORDER),
         estimate_minutes=document.get("estimate_minutes"),
+        summary=document.get("summary"),
         concurrency=(
             concurrency_from_document(concurrency, languages) if concurrency is not None else None
         ),

@@ -199,6 +199,9 @@ class ProblemMeta:
     related: tuple[str, ...] = ()
     order: int = DEFAULT_CURRICULUM_ORDER
     estimate_minutes: int | None = None
+    summary: str | None = None
+    """Replaces the summary a starter's header takes from the opening of the statement
+    (docs/specs/problem-format.md#starter-header)."""
     concurrency: "Concurrency | None" = None
     """Concurrent problems only (docs/specs/problem-format.md#concurrent-problems)."""
     project: "Project | None" = None

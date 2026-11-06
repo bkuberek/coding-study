@@ -221,6 +221,16 @@ def test_maps_references_and_related():
     )
 
 
+def test_maps_the_summary_of_the_starter_header():
+    document = load_fixture_meta("0001-two-sum")
+    document["summary"] = "Pair up two numbers."
+    assert meta_from_document(document, META_SOURCE).summary == "Pair up two numbers."
+
+
+def test_a_problem_without_a_summary_has_none():
+    assert two_sum_meta().summary is None
+
+
 def test_applies_spec_defaults_for_omitted_fields():
     meta = two_sum_meta()
     assert (meta.languages, meta.stub, meta.levels, meta.order, meta.hang_guard_ms) == (

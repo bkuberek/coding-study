@@ -74,8 +74,33 @@ Validated against `schemas/meta.schema.json`. The first line may carry `# yaml-l
 | `related` | list of slugs | no | |
 | `order` | int | no | Curriculum order within the primary pattern (default 1000) |
 | `estimate_minutes` | int | no | Expected interview solve time |
+| `summary` | string, 1 to 240 characters | no | The summary in the [starter header](#starter-header), in place of the one taken from the statement; for a problem whose opening reads badly there, or gives away the approach |
 
 Hints are not in `meta.yaml`; they are the `## Hints` section of `problem.md`, so there is one source.
+
+### Starter header
+
+The comment at the top of a generated starter holds the problem's title, a short summary of it, the path of its statement and the command that runs it, over several lines so that nothing needs horizontal scrolling. Python writes it as the module's docstring and the other languages as `//` lines:
+
+```python
+"""Two Sum.
+
+Given a list of numbers and a target, return the positions of the
+two numbers that add up to the target.
+
+Statement: .statements/two-sum.md
+Run: cstudy test two-sum
+"""
+```
+
+| Rule | Detail |
+|------|--------|
+| Wrapping | The title and the summary break between words at 68 characters of text, so a `// ` line stays under 72 columns. The statement path and the run command each take a line of their own and are never split |
+| The summary | `summary` of `meta.yaml` when the problem has one. Otherwise the opening of the `## Statement` section: the sentences of its first paragraph that fit 200 characters, with the Markdown taken out (code spans, emphasis, links and tags). A sentence is never cut, so a first sentence over the cap, a paragraph that ends in a colon before a list, and a statement that opens with a list give no summary, and the header then has no summary paragraph |
+| What a summary says | What the problem asks, never how to solve it: it names no technique, pattern or data structure that the statement itself keeps for the hints and the explanation. A catalog problem whose opening would say so, or would be cut short, carries a `summary` |
+| Concurrent problems | The model follows, as `Concurrency: threads` after an empty line in Python, and on the line after the run command in the other languages |
+| Existing files | Only a new start writes a header. `cstudy` never rewrites a practice file, so a file started earlier keeps the header it has |
+| Project problems and items | Neither has a generated stub, so neither has this header: a project problem copies its `starter/` tree, and an item's notes file keeps its own one-line comment ([cli](cli.md#cstudy-start)) |
 
 ### JDK range
 
@@ -1470,7 +1495,9 @@ Generated stubs:
 
 ```python
 # python/practice/bounded_blocking_queue.py
-"""Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md.
+"""Bounded Blocking Queue.
+
+Statement: .statements/bounded-blocking-queue.md
 Run: cstudy test bounded-blocking-queue
 
 Concurrency: threads
@@ -1493,7 +1520,9 @@ class BoundedBlockingQueue:
 
 ```typescript
 // typescript/practice/bounded-blocking-queue.ts
-// Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md.
+// Bounded Blocking Queue.
+//
+// Statement: .statements/bounded-blocking-queue.md
 // Run: cstudy test bounded-blocking-queue
 // Concurrency: async
 export class BoundedBlockingQueue {
@@ -1515,7 +1544,9 @@ export class BoundedBlockingQueue {
 
 ```java
 // jvm/java/src/main/java/practice/bounded_blocking_queue/BoundedBlockingQueue.java
-// Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md.
+// Bounded Blocking Queue.
+//
+// Statement: .statements/bounded-blocking-queue.md
 // Run: cstudy test bounded-blocking-queue
 // Concurrency: threads (platform and virtual)
 
@@ -1545,7 +1576,9 @@ public class BoundedBlockingQueue {
 
 ```kotlin
 // jvm/kotlin/src/main/kotlin/practice/bounded_blocking_queue/BoundedBlockingQueue.kt
-// Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md.
+// Bounded Blocking Queue.
+//
+// Statement: .statements/bounded-blocking-queue.md
 // Run: cstudy test bounded-blocking-queue
 // Concurrency: threads (platform and virtual)
 
@@ -1708,7 +1741,14 @@ Generated stubs:
 
 ```python
 # python/practice/two_sum.py
-"""Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum"""
+"""Two Sum.
+
+Given a list of numbers and a target, return the positions of the
+two numbers that add up to the target.
+
+Statement: .statements/two-sum.md
+Run: cstudy test two-sum
+"""
 
 
 def two_sum(nums: list[int], target: int) -> list[int]:
@@ -1717,7 +1757,13 @@ def two_sum(nums: list[int], target: int) -> list[int]:
 
 ```typescript
 // typescript/practice/two-sum.ts
-// Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum
+// Two Sum.
+//
+// Given a list of numbers and a target, return the positions of the
+// two numbers that add up to the target.
+//
+// Statement: .statements/two-sum.md
+// Run: cstudy test two-sum
 export function twoSum(nums: number[], target: number): number[] {
   throw new Error("Not implemented");
 }
@@ -1725,7 +1771,13 @@ export function twoSum(nums: number[], target: number): number[] {
 
 ```java
 // jvm/java/src/main/java/practice/two_sum/Solution.java
-// Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum
+// Two Sum.
+//
+// Given a list of numbers and a target, return the positions of the
+// two numbers that add up to the target.
+//
+// Statement: .statements/two-sum.md
+// Run: cstudy test two-sum
 
 package practice.two_sum;
 
@@ -1740,7 +1792,13 @@ public class Solution {
 
 ```kotlin
 // jvm/kotlin/src/main/kotlin/practice/two_sum/Solution.kt
-// Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum
+// Two Sum.
+//
+// Given a list of numbers and a target, return the positions of the
+// two numbers that add up to the target.
+//
+// Statement: .statements/two-sum.md
+// Run: cstudy test two-sum
 
 package practice.two_sum
 
@@ -1753,7 +1811,13 @@ class Solution {
 
 ```go
 // go/practice/two_sum/two_sum.go
-// Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum
+// Two Sum.
+//
+// Given a list of numbers and a target, return the positions of the
+// two numbers that add up to the target.
+//
+// Statement: .statements/two-sum.md
+// Run: cstudy test two-sum
 
 package two_sum
 
@@ -1764,7 +1828,13 @@ func twoSum(nums []int, target int) []int {
 
 ```rust
 // rust/practice/two_sum.rs
-// Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum
+// Two Sum.
+//
+// Given a list of numbers and a target, return the positions of the
+// two numbers that add up to the target.
+//
+// Statement: .statements/two-sum.md
+// Run: cstudy test two-sum
 
 pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {
     todo!()
@@ -1807,7 +1877,14 @@ Stubs (constructors never throw, so the first failing op points at an unimplemen
 
 ```python
 # python/practice/lru_cache.py
-"""LRU Cache. Statement: .statements/lru-cache.md. Run: cstudy test lru-cache"""
+"""LRU Cache.
+
+Build a key-value cache with a fixed number of slots that discards
+the entry unused for the longest time when it is full.
+
+Statement: .statements/lru-cache.md
+Run: cstudy test lru-cache
+"""
 
 
 class LRUCache:
@@ -1823,7 +1900,13 @@ class LRUCache:
 
 ```typescript
 // typescript/practice/lru-cache.ts
-// LRU Cache. Statement: .statements/lru-cache.md. Run: cstudy test lru-cache
+// LRU Cache.
+//
+// Build a key-value cache with a fixed number of slots that discards
+// the entry unused for the longest time when it is full.
+//
+// Statement: .statements/lru-cache.md
+// Run: cstudy test lru-cache
 export class LRUCache {
   constructor(capacity: number) {}
 
@@ -1839,7 +1922,13 @@ export class LRUCache {
 
 ```java
 // jvm/java/src/main/java/practice/lru_cache/LRUCache.java
-// LRU Cache. Statement: .statements/lru-cache.md. Run: cstudy test lru-cache
+// LRU Cache.
+//
+// Build a key-value cache with a fixed number of slots that discards
+// the entry unused for the longest time when it is full.
+//
+// Statement: .statements/lru-cache.md
+// Run: cstudy test lru-cache
 
 package practice.lru_cache;
 
@@ -1861,7 +1950,13 @@ public class LRUCache {
 
 ```kotlin
 // jvm/kotlin/src/main/kotlin/practice/lru_cache/LRUCache.kt
-// LRU Cache. Statement: .statements/lru-cache.md. Run: cstudy test lru-cache
+// LRU Cache.
+//
+// Build a key-value cache with a fixed number of slots that discards
+// the entry unused for the longest time when it is full.
+//
+// Statement: .statements/lru-cache.md
+// Run: cstudy test lru-cache
 
 package practice.lru_cache
 
@@ -1878,7 +1973,13 @@ class LRUCache(capacity: Int) {
 
 ```go
 // go/practice/lru_cache/lru_cache.go
-// LRU Cache. Statement: .statements/lru-cache.md. Run: cstudy test lru-cache
+// LRU Cache.
+//
+// Build a key-value cache with a fixed number of slots that discards
+// the entry unused for the longest time when it is full.
+//
+// Statement: .statements/lru-cache.md
+// Run: cstudy test lru-cache
 
 package lru_cache
 
@@ -1899,7 +2000,13 @@ func (c *LRUCache) Put(key int, value int) {
 
 ```rust
 // rust/practice/lru_cache.rs
-// LRU Cache. Statement: .statements/lru-cache.md. Run: cstudy test lru-cache
+// LRU Cache.
+//
+// Build a key-value cache with a fixed number of slots that discards
+// the entry unused for the longest time when it is full.
+//
+// Statement: .statements/lru-cache.md
+// Run: cstudy test lru-cache
 
 pub struct LRUCache {}
 

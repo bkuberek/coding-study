@@ -35,11 +35,8 @@ from collections.abc import Sequence
 from decimal import Decimal
 from typing import Any
 
-from coding_study.adapters.languages.python.stub_generator import (
-    INDENT,
-    LINE_LENGTH,
-    SENTENCE_ENDINGS,
-)
+from coding_study.adapters.languages.python.stub_generator import INDENT, LINE_LENGTH
+from coding_study.adapters.languages.starter_header import SENTENCE_ENDINGS
 from coding_study.adapters.languages.test_printer import (
     SOFT_LINE,
     SPACE_OR_LINE,

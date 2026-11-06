@@ -1,4 +1,6 @@
-// Conformance: every DSL type round-trips. Statement: .statements/conformance-types.md.
+// Conformance: every DSL type round-trips.
+//
+// Statement: .statements/conformance-types.md
 // Run: cstudy test conformance-types
 
 package conformance_types

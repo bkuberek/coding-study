@@ -24,3 +24,4 @@ perf:
   expected_from: hash-map-dll
 references:
   leetcode: {number: 146, url: "https://leetcode.com/problems/lru-cache/"}
+summary: Build a key-value cache with a fixed number of slots that discards the entry unused for the longest time when it is full.

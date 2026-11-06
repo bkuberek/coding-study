@@ -49,7 +49,7 @@ class RustStubGenerator:
 
 
 def _header(meta: ProblemMeta) -> list[str]:
-    return comment_header(f"{meta.title}.", meta.slug)
+    return comment_header(meta)
 
 
 def _imports(meta: ProblemMeta) -> list[str]:

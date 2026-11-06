@@ -1,4 +1,8 @@
-"""Clone Graph. Statement: .statements/clone-graph.md. Run: cstudy test clone-graph"""
+"""Clone Graph.
+
+Statement: .statements/clone-graph.md
+Run: cstudy test clone-graph
+"""
 
 from cs_support import GraphNode
 

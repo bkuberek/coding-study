@@ -22,6 +22,8 @@ from coding_study.domain.levels import FIRST_LEVEL, LevelProgress, level_progres
 from coding_study.domain.practice_manifests import practice_manifest, with_problem
 from coding_study.domain.precedence import resolve_language
 from coding_study.domain.problem import Language, Problem, ProblemKind, StubSource
+from coding_study.domain.problem_files import PROBLEM_FILE
+from coding_study.domain.starter_summary import starter_summary
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,7 +135,9 @@ def _list_in_manifest(environment: Environment, problem: Problem, language: Lang
 def _stub_text(environment: Environment, problem: Problem, language: Language) -> str:
     meta = problem.meta
     if meta.stub is StubSource.GENERATED:
-        return environment.toolchains.stub_generator(language).generate(meta)
+        statement = environment.files.read_text(meta.slug, PROBLEM_FILE) or ""
+        summarized = replace(meta, summary=starter_summary(meta, statement))
+        return environment.toolchains.stub_generator(language).generate(summarized)
     name = buggy_file(language)
     text = environment.files.read_text(meta.slug, name)
     if text is None:

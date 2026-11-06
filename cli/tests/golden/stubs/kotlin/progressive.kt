@@ -1,4 +1,7 @@
-// In-Memory Database. Statement: .statements/in-memory-db.md. Run: cstudy test in-memory-db
+// In-Memory Database.
+//
+// Statement: .statements/in-memory-db.md
+// Run: cstudy test in-memory-db
 
 package practice.in_memory_db
 

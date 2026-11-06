@@ -18,7 +18,7 @@ CASES = {case.name: case for case in STUB_CASES}
 JAVA_LINE_LIMIT = 100
 KOTLIN_LINE_LIMIT = 140
 
-# docs/specs/problem-format.md, worked examples; every stub adds a header line and a blank line.
+# docs/specs/problem-format.md, worked examples; every stub adds a header and a blank line.
 TWO_SUM_JAVA = """package practice.two_sum;
 
 import java.util.*;
@@ -66,7 +66,15 @@ class LRUCache(capacity: Int) {
     }
 }
 """
-TWO_SUM_HEADER = "// Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum\n\n"
+TWO_SUM_HEADER = """// Two Sum.
+//
+// Given a list of numbers and a target, return the positions of the
+// two numbers that add up to the target.
+//
+// Statement: .statements/two-sum.md
+// Run: cstudy test two-sum
+
+"""
 
 # docs/specs/problem-format.md#type-mapping: DSL, Java, Kotlin.
 MAPPING_TABLE = (
@@ -152,7 +160,7 @@ def test_kotlin_stub_matches_its_golden(stub_case: StubCase) -> None:
     ],
 )
 def test_stub_below_the_header_is_the_worked_example(language, case_name, example):
-    _header, _blank, body = generated(language, case_name).split("\n", 2)
+    _header, body = generated(language, case_name).split("\n\n", 1)
     assert body == example
 
 
@@ -161,12 +169,14 @@ def test_header_names_title_statement_and_run_command(language):
     assert generated(language, "two-sum").startswith(TWO_SUM_HEADER)
 
 
-def test_java_header_longer_than_the_column_limit_puts_the_run_command_on_its_own_line():
-    lines = generated(Language.JAVA, "merge-k-lists").splitlines()
-    assert lines[:2] == [
-        "// Merge k Sorted Lists. Statement: .statements/merge-k-sorted-lists.md.",
-        "// Run: cstudy test merge-k-sorted-lists",
-    ]
+def test_a_header_without_a_summary_goes_from_the_title_to_the_command():
+    header = generated(Language.JAVA, "merge-k-lists").split("\n\n", 1)[0]
+    assert header == (
+        "// Merge k Sorted Lists.\n"
+        "//\n"
+        "// Statement: .statements/merge-k-sorted-lists.md\n"
+        "// Run: cstudy test merge-k-sorted-lists"
+    )
 
 
 def test_java_imports_support_classes_only_when_used():

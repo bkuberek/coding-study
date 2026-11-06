@@ -90,7 +90,7 @@ def _element_type(element: ValueType) -> str:
 
 
 def _header(meta: ProblemMeta) -> list[str]:
-    return comment_header(f"{meta.title}.", meta.slug)
+    return comment_header(meta)
 
 
 def _support_import(meta: ProblemMeta) -> str | None:

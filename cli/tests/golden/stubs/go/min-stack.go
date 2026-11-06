@@ -1,4 +1,7 @@
-// Min Stack. Statement: .statements/min-stack.md. Run: cstudy test min-stack
+// Min Stack.
+//
+// Statement: .statements/min-stack.md
+// Run: cstudy test min-stack
 
 package min_stack
 

@@ -16,6 +16,17 @@ from tests.fakes import repository_root as copy_repository
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 STUB = "python/practice/two_sum.py"
 STATEMENT = ".statements/two-sum.md"
+OPENING = (
+    "You get an integer array nums and an integer target. Exactly two positions hold values "
+    "that add up to target. Return those two positions in any order."
+)
+
+
+class SummaryStubGenerator:
+    """A stub that is the summary the header would carry."""
+
+    def generate(self, meta) -> str:
+        return f"{meta.summary}\n"
 
 
 @pytest.fixture
@@ -187,3 +198,30 @@ def test_a_resumed_rust_attempt_lists_the_problem_too(rust_environment):
 def test_without_a_rust_manifest_none_is_created(rust_environment):
     start(rust_environment, language=Language.RUST)
     assert not rust_environment.workspace.exists(RUST_MANIFEST)
+
+
+def test_the_stub_generator_gets_the_summary_the_statement_opens_with(tmp_path):
+    root = copy_repository(tmp_path, PRACTICE)
+    toolchains = FakeToolchains(stub_generators={Language.PYTHON: SummaryStubGenerator()})
+    environment = make_environment(root, toolchains=toolchains, clock=FakeClock())
+    start(environment)
+    assert environment.workspace.read_text(STUB) == f"{OPENING}\n"
+
+
+def test_the_summary_of_meta_yaml_reaches_the_stub_generator_in_place_of_the_statements(tmp_path):
+    root = copy_repository(tmp_path, PRACTICE)
+    meta = root / "problems" / "0001-two-sum" / "meta.yaml"
+    meta.write_text(meta.read_text() + "summary: Pair up two numbers.\n")
+    toolchains = FakeToolchains(stub_generators={Language.PYTHON: SummaryStubGenerator()})
+    environment = make_environment(root, toolchains=toolchains, clock=FakeClock())
+    start(environment)
+    assert environment.workspace.read_text(STUB) == "Pair up two numbers.\n"
+
+
+def test_a_practice_file_with_the_old_header_is_not_rewritten_for_a_new_attempt(environment):
+    environment.workspace.write_text(STUB, '"""Two Sum. Statement: .statements/two-sum.md."""\n')
+    start(environment)
+    assert (
+        environment.workspace.read_text(STUB)
+        == '"""Two Sum. Statement: .statements/two-sum.md."""\n'
+    )

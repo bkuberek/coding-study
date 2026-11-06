@@ -33,6 +33,12 @@ def stub_lines(meta: ProblemMeta) -> list[str]:
     return GENERATOR.generate(meta).splitlines()
 
 
+def after_header(meta: ProblemMeta) -> list[str]:
+    """The lines after the header's docstring, starting with the empty line that follows it."""
+    lines = stub_lines(meta)
+    return lines[lines.index('"""') + 1 :]
+
+
 @stub_cases
 def test_python_stub_matches_its_golden(stub_case: StubCase):
     check_stub(Language.PYTHON, stub_case, GENERATOR.generate(stub_case.meta))
@@ -72,19 +78,25 @@ def test_void_maps_to_none():
 
 
 def test_header_names_title_statement_and_run_command():
-    assert stub_lines(TWO_SUM)[0] == (
-        '"""Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum"""'
-    )
+    meta = replace(TWO_SUM, summary=None)
+    assert stub_lines(meta)[:6] == [
+        '"""Two Sum.',
+        "",
+        "Statement: .statements/two-sum.md",
+        "Run: cstudy test two-sum",
+        '"""',
+        "",
+    ]
 
 
 def test_header_keeps_a_title_that_already_ends_a_sentence():
     meta = replace(TWO_SUM, title="Is It Sorted?")
-    assert stub_lines(meta)[0].startswith('"""Is It Sorted? Statement:')
+    assert stub_lines(meta)[0] == '"""Is It Sorted?'
 
 
 def test_header_escapes_quotes_in_the_title():
     meta = replace(TWO_SUM, title='Say "Hi"')
-    assert stub_lines(meta)[0].startswith('"""Say \\"Hi\\". Statement:')
+    assert stub_lines(meta)[0] == '"""Say \\"Hi\\".'
 
 
 def test_stub_without_node_types_imports_nothing():
@@ -98,7 +110,7 @@ def test_imports_only_the_node_classes_in_use_sorted():
 
 def test_imports_the_decimal_and_date_types_in_use_from_the_standard_library():
     meta = function_meta(("amounts", "list<decimal>"), ("day", "date"), returns="decimal")
-    assert stub_lines(meta)[2:6] == [
+    assert after_header(meta)[1:5] == [
         "from datetime import date",
         "from decimal import Decimal",
         "",
@@ -108,17 +120,17 @@ def test_imports_the_decimal_and_date_types_in_use_from_the_standard_library():
 
 def test_imports_only_decimal_when_only_decimal_is_used():
     meta = function_meta(("amount", "decimal[][]"), returns="int")
-    assert stub_lines(meta)[2:5] == ["from decimal import Decimal", "", ""]
+    assert after_header(meta)[1:4] == ["from decimal import Decimal", "", ""]
 
 
 def test_imports_only_date_when_only_date_is_used():
     meta = function_meta(("day", "int"), returns="date[]")
-    assert stub_lines(meta)[2:5] == ["from datetime import date", "", ""]
+    assert after_header(meta)[1:4] == ["from datetime import date", "", ""]
 
 
 def test_standard_library_imports_come_before_the_support_import_in_their_own_block():
     meta = function_meta(("amount", "decimal"), ("head", "ListNode"), returns="date")
-    assert stub_lines(meta)[2:7] == [
+    assert after_header(meta)[1:6] == [
         "from datetime import date",
         "from decimal import Decimal",
         "",
@@ -148,7 +160,7 @@ def test_progressive_methods_carry_their_level():
 def test_a_long_signature_puts_parameters_on_their_own_line():
     matrix = "list<list<double>>"
     meta = function_meta(("firstNumbers", matrix), ("secondNumbers", matrix), returns=matrix)
-    assert stub_lines(meta)[3:6] == [
+    assert after_header(meta)[2:5] == [
         "def solve(",
         "    first_numbers: list[list[float]], second_numbers: list[list[float]]",
         ") -> list[list[float]]:",
@@ -157,8 +169,8 @@ def test_a_long_signature_puts_parameters_on_their_own_line():
 
 def test_parameters_too_long_for_one_line_get_one_line_each():
     params = [(f"parameterNumber{index}", "list<list<string>>") for index in range(4)]
-    lines = stub_lines(function_meta(*params))
-    assert lines[4:9] == [
+    lines = after_header(function_meta(*params))
+    assert lines[3:8] == [
         *(f"    parameter_number{index}: list[list[str]]," for index in range(4)),
         ") -> int:",
     ]

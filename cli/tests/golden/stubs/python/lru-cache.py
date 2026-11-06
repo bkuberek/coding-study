@@ -1,4 +1,11 @@
-"""LRU Cache. Statement: .statements/lru-cache.md. Run: cstudy test lru-cache"""
+"""LRU Cache.
+
+Build a key-value cache with a fixed number of slots that discards
+the entry unused for the longest time when it is full.
+
+Statement: .statements/lru-cache.md
+Run: cstudy test lru-cache
+"""
 
 
 class LRUCache:

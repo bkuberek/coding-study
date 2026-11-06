@@ -1,5 +1,8 @@
-"""Conformance: every DSL type round-trips. Statement: .statements/conformance-types.md.
-Run: cstudy test conformance-types"""
+"""Conformance: every DSL type round-trips.
+
+Statement: .statements/conformance-types.md
+Run: cstudy test conformance-types
+"""
 
 from cs_support import GraphNode, ListNode, TreeNode
 

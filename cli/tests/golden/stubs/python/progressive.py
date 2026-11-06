@@ -1,4 +1,8 @@
-"""In-Memory Database. Statement: .statements/in-memory-db.md. Run: cstudy test in-memory-db"""
+"""In-Memory Database.
+
+Statement: .statements/in-memory-db.md
+Run: cstudy test in-memory-db
+"""
 
 
 class InMemoryDb:

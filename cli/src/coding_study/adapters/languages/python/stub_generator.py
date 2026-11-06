@@ -11,7 +11,7 @@ support classes after a blank line.
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from coding_study.adapters.languages.starter_header import COLUMN_LIMIT, sentences, wrapped
+from coding_study.adapters.languages.starter_header import header_text
 from coding_study.domain.concurrency import ConcurrencyModel, model_text
 from coding_study.domain.naming import NameRole, member_name
 from coding_study.domain.problem import Language, ProblemMeta
@@ -42,7 +42,6 @@ METHOD_BODY = "raise NotImplementedError"
 CONSTRUCTOR_BODY = "pass"
 """Constructors never raise, so the first failing operation names an unimplemented method."""
 INSTANCE = "self"
-SENTENCE_ENDINGS = (".", "?", "!")
 DOCSTRING_QUOTES = '"""'
 
 _SCALARS: Mapping[Scalar, str] = {
@@ -112,23 +111,13 @@ class _DefinitionLine:
 
 
 def _header(meta: ProblemMeta) -> str:
-    """A docstring naming the problem: one line when it fits, else lines that break between its
-    sentences, the closing quotes ending the last line when they fit there. Concurrent problems add
-    a paragraph naming the model, and the closing quotes go on their own line."""
-    title = meta.title if meta.title.endswith(SENTENCE_ENDINGS) else f"{meta.title}."
-    parts = tuple(_escaped(part) for part in sentences(title, meta.slug))
-    one_line = " ".join(parts)
-    if meta.concurrency is None and len(one_line) <= COLUMN_LIMIT - 2 * len(DOCSTRING_QUOTES):
-        return f"{DOCSTRING_QUOTES}{one_line}{DOCSTRING_QUOTES}"
-    lines = wrapped(parts, COLUMN_LIMIT - len(DOCSTRING_QUOTES))
+    """A docstring with the header's lines, which are not indented, and the closing quotes on
+    a line of their own. Concurrent problems add a paragraph naming the model."""
+    lines = header_text(meta)
     if meta.concurrency is not None:
-        model = _escaped(f"Concurrency: {model_text(meta.concurrency, Language.PYTHON)}")
-        lines += ["", model]
-    closing_beside = (
-        meta.concurrency is None and len(lines[-1]) + len(DOCSTRING_QUOTES) <= COLUMN_LIMIT
-    )
-    separator = "" if closing_beside else "\n"
-    return DOCSTRING_QUOTES + "\n".join(lines) + separator + DOCSTRING_QUOTES
+        lines += ["", f"Concurrency: {model_text(meta.concurrency, Language.PYTHON)}"]
+    escaped = "\n".join(_escaped(line) for line in lines)
+    return f"{DOCSTRING_QUOTES}{escaped}\n{DOCSTRING_QUOTES}"
 
 
 def _escaped(text: str) -> str:

@@ -1,4 +1,8 @@
-"""Keyword Names. Statement: .statements/keyword-names.md. Run: cstudy test keyword-names"""
+"""Keyword Names.
+
+Statement: .statements/keyword-names.md
+Run: cstudy test keyword-names
+"""
 
 
 class Robot:

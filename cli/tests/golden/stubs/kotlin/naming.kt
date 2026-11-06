@@ -1,4 +1,7 @@
-// Naming Rules. Statement: .statements/naming-rules.md. Run: cstudy test naming-rules
+// Naming Rules.
+//
+// Statement: .statements/naming-rules.md
+// Run: cstudy test naming-rules
 
 package practice.naming_rules
 

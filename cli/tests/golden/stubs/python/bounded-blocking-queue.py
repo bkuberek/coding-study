@@ -1,4 +1,6 @@
-"""Bounded Blocking Queue. Statement: .statements/bounded-blocking-queue.md.
+"""Bounded Blocking Queue.
+
+Statement: .statements/bounded-blocking-queue.md
 Run: cstudy test bounded-blocking-queue
 
 Concurrency: threads

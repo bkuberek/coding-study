@@ -1,5 +1,6 @@
 // Conformance: decimal and date round-trip.
-// Statement: .statements/conformance-decimal-date-types.md.
+//
+// Statement: .statements/conformance-decimal-date-types.md
 // Run: cstudy test conformance-decimal-date-types
 import { Decimal, type IsoDate } from "#support";
 

@@ -1,4 +1,7 @@
-// Keyword Names. Statement: .statements/keyword-names.md. Run: cstudy test keyword-names
+// Keyword Names.
+//
+// Statement: .statements/keyword-names.md
+// Run: cstudy test keyword-names
 export class Robot {
   constructor(ref: number) {}
 
