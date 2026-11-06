@@ -61,6 +61,7 @@ Open a file by choosing it in the tree; each opens in a tab of its own.
 - **Changes from elsewhere show up.** When your IDE or the terminal changes a file, a tab without unsaved edits takes the new version in place and keeps your cursor. A tab with unsaved edits shows a banner instead: **Reload theirs** drops your edits, **Overwrite** saves yours over the file.
 - **Leaving asks first.** Closing a tab, leaving the view or closing the page with unsaved edits asks before anything is lost.
 - **Generated test files** of a project are editable, as in the terminal, but editing one never changes a grade.
+- **Indentation follows the language.** Four spaces in Python, Java, Kotlin and Rust, a tab in Go, two spaces in TypeScript and everything else. <kbd>Enter</kbd> lands on the right column, one level in after `def f():` or a `{`, and at the previous line's indentation where the language has no rule. <kbd>Tab</kbd> indents the line by one level.
 
 The editor highlights Python, TypeScript, Java, Kotlin, Go, Rust, JSON, TOML and Markdown. Errors from a run show as underlines and gutter markers on the lines they name. Turn on [code intelligence and autocomplete](#code-intelligence-and-autocomplete) for live errors, documentation on hover, go to definition and completion; until you do, the editor offers no completion list at all.
 
