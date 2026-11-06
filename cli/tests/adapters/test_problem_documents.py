@@ -11,6 +11,7 @@ from coding_study.domain.cases import (
 )
 from coding_study.domain.errors import ContentError, ContentIssue
 from coding_study.domain.jdk import DeclaredJdk
+from coding_study.domain.labels import Labels
 from coding_study.domain.problem import (
     ALL_LANGUAGES,
     ApproachRole,
@@ -31,6 +32,7 @@ from coding_study.domain.signature import (
     Param,
     Returns,
 )
+from coding_study.domain.taxonomy import Scope
 from coding_study.domain.time_limits import FactorTimeLimit
 from coding_study.domain.type_dsl import (
     ArrayType,
@@ -166,6 +168,27 @@ def test_maps_identity_and_classification():
         ProblemKind.FUNCTION,
         ("arrays-hashing",),
     )
+
+
+def test_maps_the_labels():
+    document = {
+        **load_fixture_meta("0001-two-sum"),
+        "domains": ["backend", "fintech"],
+        "job_roles": ["backend", "platform"],
+        "scope": "project",
+    }
+    assert meta_from_document(document, META_SOURCE).labels == Labels(
+        domains=("backend", "fintech"), job_roles=("backend", "platform"), scope=Scope.PROJECT
+    )
+
+
+def test_a_problem_without_labels_has_none():
+    document = {
+        key: value
+        for key, value in load_fixture_meta("0001-two-sum").items()
+        if key not in ("domains", "job_roles", "scope")
+    }
+    assert meta_from_document(document, META_SOURCE, workspace=True).labels == Labels()
 
 
 def test_maps_comparator():

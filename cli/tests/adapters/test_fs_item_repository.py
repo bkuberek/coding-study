@@ -6,7 +6,9 @@ import pytest
 from coding_study.adapters.fs_item_repository import FsItemRepository
 from coding_study.domain.errors import ContentError, UnknownProblemError
 from coding_study.domain.items import ItemMeta, ItemReferences
+from coding_study.domain.labels import Labels
 from coding_study.domain.problem import ContentStatus, Difficulty, Track
+from coding_study.domain.taxonomy import Scope
 from tests.helpers import FIXTURE_TRACKS, SCHEMAS_DIRECTORY
 
 URL_SHORTENER = ItemMeta(
@@ -17,6 +19,7 @@ URL_SHORTENER = ItemMeta(
     estimate_minutes=45,
     status=ContentStatus.READY,
     order=1,
+    labels=Labels(domains=("backend",), job_roles=("backend", "platform"), scope=Scope.SYSTEM),
     references=ItemReferences(
         study_guides=("distributed-systems-study-guide.md#databases",),
         links=("https://en.wikipedia.org/wiki/URL_shortening",),

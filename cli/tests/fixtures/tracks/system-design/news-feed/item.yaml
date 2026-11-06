@@ -3,5 +3,8 @@ slug: news-feed
 title: News Feed
 track: system-design
 difficulty: hard
+domains: [backend]
+job_roles: [backend, platform]
+scope: system
 estimate_minutes: 60
 status: draft

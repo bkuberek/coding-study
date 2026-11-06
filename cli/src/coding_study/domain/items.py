@@ -5,9 +5,10 @@ user answers in a notes file; `cstudy done` takes a self-graded rating. The rubr
 `coding_study.domain.problem_files.RUBRIC_FILE`, shared with `lld` problems.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 
+from coding_study.domain.labels import Labels
 from coding_study.domain.problem import (
     DEFAULT_CURRICULUM_ORDER,
     ContentStatus,
@@ -69,6 +70,8 @@ class ItemMeta:
     estimate_minutes: int
     status: ContentStatus
     order: int = DEFAULT_CURRICULUM_ORDER
+    labels: Labels = field(default_factory=Labels)
+    """Domains, job roles and scope (check S24, docs/specs/content.md)."""
     references: ItemReferences = ItemReferences()
     related: tuple[str, ...] = ()
 

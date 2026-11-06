@@ -3,6 +3,9 @@ slug: url-shortener
 title: URL Shortener
 track: system-design
 difficulty: medium
+domains: [backend]
+job_roles: [backend, platform]
+scope: system
 estimate_minutes: 45
 status: ready
 order: 1

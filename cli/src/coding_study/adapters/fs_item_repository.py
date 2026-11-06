@@ -9,6 +9,7 @@ from typing import Any
 
 from coding_study.adapters.document_index import DocumentIndex, file_stamp, index_key
 from coding_study.adapters.fs_problem_repository import parse_yaml, read_content_file
+from coding_study.adapters.problem_documents import labels_from_document
 from coding_study.adapters.schema_validation import (
     ITEM_SCHEMA_FILE,
     SCHEMAS_DIRECTORY,
@@ -134,6 +135,7 @@ def _item_meta(document: Any) -> ItemMeta:
         estimate_minutes=document["estimate_minutes"],
         status=ContentStatus(document["status"]),
         order=document.get("order", DEFAULT_CURRICULUM_ORDER),
+        labels=labels_from_document(document),
         references=ItemReferences(
             study_guides=tuple(references.get("study_guides", ())),
             links=tuple(references.get("links", ())),

@@ -22,6 +22,7 @@ from coding_study.domain.cases import (
 )
 from coding_study.domain.errors import ContentError, ContentIssue
 from coding_study.domain.jdk import DeclaredJdk
+from coding_study.domain.labels import Labels
 from coding_study.domain.problem import (
     ALL_LANGUAGES,
     CORE_LANGUAGES,
@@ -60,6 +61,7 @@ from coding_study.domain.signature import (
     modifier_issues,
 )
 from coding_study.domain.stress import StressScenario
+from coding_study.domain.taxonomy import Scope
 from coding_study.domain.time_limits import AbsoluteTimeLimit, FactorTimeLimit, TimeLimit
 from coding_study.domain.type_dsl import TypeSyntaxError, parse_return_type, parse_value_type
 from coding_study.domain.virtual_clock import ProjectClock, clock_declaration_issues
@@ -72,6 +74,16 @@ class _DocumentError(Exception):
         super().__init__(message)
         self.location = location
         self.message = message
+
+
+def labels_from_document(document: Document) -> Labels:
+    """The `domains`, `job_roles` and `scope` of a `meta.yaml` or `item.yaml` document."""
+    scope = document.get("scope")
+    return Labels(
+        domains=tuple(document.get("domains", ())),
+        job_roles=tuple(document.get("job_roles", ())),
+        scope=Scope(scope) if scope is not None else None,
+    )
 
 
 def meta_from_document(document: Document, source: str, workspace: bool = False) -> ProblemMeta:
@@ -120,6 +132,7 @@ def _meta(document: Document, workspace: bool) -> ProblemMeta:
         comparator=_comparator(document["comparator"]),
         approaches=_approaches(document["approaches"]),
         patterns=tuple(document.get("patterns", ())),
+        labels=labels_from_document(document),
         languages=languages,
         jdk=_jdk(document.get("jdk")),
         stub=StubSource(document.get("stub", StubSource.GENERATED)),

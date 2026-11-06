@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from coding_study.domain.cases import Case
 from coding_study.domain.jdk import DeclaredJdk
+from coding_study.domain.labels import Labels
 from coding_study.domain.signature import Signature
 from coding_study.domain.time_limits import TimeLimit
 
@@ -178,6 +179,8 @@ class ProblemMeta:
     comparator: ComparatorSpec
     approaches: tuple[Approach, ...]
     patterns: tuple[str, ...] = ()
+    labels: Labels = field(default_factory=Labels)
+    """Domains, job roles and scope (check S24, docs/specs/problem-format.md#metayaml)."""
     languages: tuple[Language, ...] = ALL_LANGUAGES
     jdk: DeclaredJdk | None = None
     """The JDK releases its Java and Kotlin code runs on, where that is not the whole supported
