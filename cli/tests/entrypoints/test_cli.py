@@ -29,11 +29,15 @@ PHASE_2_COMMANDS = ("bench",)
 PHASE_7_COMMANDS = ("stats", "export", "import", "mock")
 WORKSPACE_COMMANDS = ("init", "ide")
 PHASE_8_COMMANDS = ("submit", "status")
-PHASE_9_COMMANDS = ("history", "serve")
+PHASE_9_COMMANDS = ("history", "serve", "reset")
 
 
 def registered_commands() -> set[str | None]:
     return {command.name for command in cli.app.registered_commands}
+
+
+def test_config_is_a_group_of_commands():
+    assert [group.name for group in cli.app.registered_groups] == ["config"]
 
 
 def test_every_command_so_far_is_registered():
