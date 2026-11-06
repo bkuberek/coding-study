@@ -48,8 +48,8 @@ test("archived files say the folder they were moved to", () => {
   );
 });
 
-test("current files say they may have been edited after the attempt ended", () => {
-  assert.equal(sourceDetail({ source: "current", root: "python/practice" }), "they may have been edited after this attempt ended");
+test("current files say they may have changed since the attempt ended", () => {
+  assert.equal(sourceDetail({ source: "current", root: "python/practice" }), "which may have changed since this attempt ended");
 });
 
 test("files that are not available say why", () => {
@@ -59,12 +59,12 @@ test("files that are not available say why", () => {
 test("every source has a word for its mark, so colour is never the only sign", () => {
   assert.deepEqual(
     (["archive", "current", "missing"] as const).map((source) => sourceBadge(source).text),
-    ["archived", "current files", "not available"],
+    ["archived", "current files,", "not available"],
   );
 });
 
 test("current files are marked as a warning", () => {
-  assert.deepEqual(sourceBadge("current"), { glyph: "!", text: "current files", tone: "warn" });
+  assert.deepEqual(sourceBadge("current"), { glyph: "!", text: "current files,", tone: "warn" });
 });
 
 test("the button of one file names it", () => {

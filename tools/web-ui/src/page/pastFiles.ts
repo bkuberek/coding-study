@@ -29,7 +29,7 @@ export function sourceDetail(files: Pick<PastFilesDocument, "source" | "root">):
     case "archive":
       return `moved to ${files.root ?? ".archive/"} when the next attempt started`;
     case "current":
-      return "they may have been edited after this attempt ended";
+      return "which may have changed since this attempt ended";
     case "missing":
       return "they were never archived, or were deleted";
   }
@@ -41,7 +41,8 @@ export function sourceBadge(source: FilesSource): { readonly glyph: string; read
     case "archive":
       return { glyph: "", text: "archived", tone: "info" };
     case "current":
-      return { glyph: "!", text: "current files", tone: "warn" };
+      // The comma belongs to the sentence the detail ends.
+      return { glyph: "!", text: "current files,", tone: "warn" };
     case "missing":
       return { glyph: "", text: "not available", tone: "quiet" };
   }

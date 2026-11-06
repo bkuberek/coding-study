@@ -191,8 +191,7 @@ def _both_attempts(page: Any, seen: Viewed) -> None:
 
 
 def test_a_finished_attempt_says_its_files_are_the_current_ones(viewed):
-    assert "current files" in viewed.first_source
-    assert "may have been edited after this attempt ended" in viewed.first_source
+    assert "current files, which may have changed since this attempt ended" in viewed.first_source
 
 
 def test_the_row_names_the_file_it_opens(viewed):
