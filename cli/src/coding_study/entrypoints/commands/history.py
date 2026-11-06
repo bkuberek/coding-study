@@ -105,7 +105,7 @@ def history_document(found: ProblemHistory) -> dict[str, JsonValue]:
 def _header(found: ProblemHistory) -> str:
     """The primary pattern, or the track of a problem without patterns and of an item."""
     topic = found.patterns[0] if found.patterns else found.track.value
-    return " · ".join((found.slug, found.difficulty, topic, found.status))
+    return " · ".join((found.slug, found.difficulty, topic, found.status.label))
 
 
 def _review(found: ProblemHistory) -> str:

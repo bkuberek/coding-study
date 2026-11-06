@@ -21,6 +21,7 @@ from coding_study.application.list_problems import (
 )
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.errors import UsageError
 from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.jdk import SelectedJdk
 from coding_study.domain.jdk_fit import jdk_range_of
@@ -37,7 +38,7 @@ ID_WIDTH = 4
 SLUG_WIDTH = 16
 DIFFICULTY_WIDTH = 6
 PATTERN_WIDTH = 15
-STATUS_WIDTH = max(len(status) for status in ProblemStatus)
+STATUS_WIDTH = max(len(status.label) for status in ProblemStatus)
 DUE_WIDTH = 10
 NO_VALUE = "-"
 NO_MATCH = "no problems match"
@@ -71,7 +72,12 @@ def list_command(
         Difficulty | None, typer.Option("--difficulty", help="Only this difficulty.")
     ] = None,
     status: Annotated[
-        ProblemStatus | None, typer.Option("--status", help="Only problems in this status.")
+        str | None,
+        typer.Option(
+            "--status",
+            help="Only problems in this status: new, in_progress (or in-progress), attempted, "
+            "passed, due or mastered.",
+        ),
     ] = None,
     content: Annotated[
         ContentStatus | None, typer.Option("--content", help="Content status: draft or ready.")
@@ -99,7 +105,7 @@ def list_command(
     """Browse problems with filters."""
     labels = LabelFilter(domain, role, scope)
     problem_filter = ProblemFilter(
-        track, pattern, difficulty, status, content, language, kind, labels
+        track, pattern, difficulty, problem_status(status), content, language, kind, labels
     )
     environment = load_catalog_environment(Path.cwd(), command_environ(context), Path.home())
     if as_json:
@@ -117,6 +123,16 @@ def list_command(
     note = jdk_note(environment, problems)
     if note is not None:
         output.print(Text(_footer(note)))
+
+
+def problem_status(text: str | None) -> ProblemStatus | None:
+    """The status `--status` names: a value of `ProblemStatus`, with `-` allowed for `_`."""
+    if text is None:
+        return None
+    try:
+        return ProblemStatus(text.replace("-", "_"))
+    except ValueError:
+        raise UsageError(f"unknown status {text}; use {', '.join(ProblemStatus)}") from None
 
 
 def list_document(environment: Environment, problem_filter: ProblemFilter) -> dict[str, JsonValue]:
@@ -228,7 +244,7 @@ def _cells(item: ListedProblem) -> tuple[str, ...]:
         meta.slug,
         meta.difficulty,
         meta.patterns[0] if meta.patterns else NO_VALUE,
-        item.status,
+        item.status.label,
         item.due_on.isoformat() if item.due_on else NO_VALUE,
         references or NO_VALUE,
     )
@@ -249,7 +265,7 @@ def _item_cells(item: ListedItem) -> tuple[str, ...]:
     """Items have no id, pattern or references; their track takes the pattern column."""
     meta = item.meta
     due = item.due_on.isoformat() if item.due_on else NO_VALUE
-    return (NO_VALUE, meta.slug, meta.difficulty, meta.track, item.status, due, NO_VALUE)
+    return (NO_VALUE, meta.slug, meta.difficulty, meta.track, item.status.label, due, NO_VALUE)
 
 
 def _row(cells: tuple[str, ...]) -> str:

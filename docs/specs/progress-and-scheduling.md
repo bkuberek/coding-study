@@ -205,7 +205,7 @@ Worked sequence with the defaults (ok, ok, ok, hard, again, ok):
 | `mastered` | `schedule.interval_days >=` the config's `schedule.mastered_interval_days` (default 21) and `last_grade >= 2` |
 | `due` | `schedule.due_on <= today` (shown instead of `passed` or `mastered`) |
 
-Only the display of `cstudy list` and its web page, and the `--status` filter, read the status. `cstudy next` and the weakness score read the attempts themselves: a problem with an attempt in progress is still left out of the picks and still counts in its group, and a problem with no finished attempt is still `new` there. A review in progress shows `in_progress` rather than `due`, so `cstudy list --status due` lists the due problems that have no attempt open.
+Only the display of `cstudy list` and its web page, and the `--status` filter, read the status. People read `in_progress` as `in progress` (the table, the badge and the Status filter of the page, the first line of `cstudy history`); the value `in_progress` stays in `--json`, the API and the route's query. `cstudy next` and the weakness score read the attempts themselves: a problem with an attempt in progress is still left out of the picks and still counts in its group, and a problem with no finished attempt is still `new` there. A review in progress shows `in_progress` rather than `due`, so `cstudy list --status due` lists the due problems that have no attempt open.
 
 ## Weakness score
 

@@ -185,6 +185,12 @@ def test_an_attempt_in_progress_has_no_time(environment):
     assert lines("two-sum")[4].split()[3:7] == ["in_progress", *local(NOW).split(), "-"]
 
 
+def test_the_header_reads_in_progress_in_words_and_the_json_keeps_the_value(environment):
+    attempt(environment, Language.PYTHON, AttemptMode.NEW, NOW)
+    assert lines("two-sum")[0] == "two-sum · easy · arrays-hashing · in progress"
+    assert document("two-sum")["status"] == "in_progress"
+
+
 def test_json_describes_the_problem(environment):
     schedule(environment, date(2026, 10, 27))
     found = document("two-sum")

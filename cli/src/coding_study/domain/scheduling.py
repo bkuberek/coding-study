@@ -130,6 +130,11 @@ class ProblemStatus(StrEnum):
     DUE = "due"
     MASTERED = "mastered"
 
+    @property
+    def label(self) -> str:
+        """The status as people read it, `in progress`; the value is for `--json` and the API."""
+        return self.value.replace("_", " ")
+
 
 @dataclass(frozen=True, slots=True)
 class ProblemProgress:

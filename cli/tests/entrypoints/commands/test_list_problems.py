@@ -53,16 +53,27 @@ def test_shows_progress_status_and_due_date(environment):
     assert row == "0001  two-sum           easy    arrays-hashing   passed       2026-10-27  py"
 
 
-def test_a_problem_with_an_attempt_in_progress_reads_in_progress(environment):
+def test_a_problem_with_an_attempt_in_progress_reads_in_progress_in_words(environment):
     environment.progress.add_attempt(NewAttempt("two-sum", Language.PYTHON, AttemptMode.NEW, NOW))
     row = invoke().output.splitlines()[1]
-    assert row == "0001  two-sum           easy    arrays-hashing   in_progress  -           py"
+    assert row == "0001  two-sum           easy    arrays-hashing   in progress  -           py"
 
 
-def test_the_status_filter_takes_in_progress(environment):
+@pytest.mark.parametrize("spelling", ["in_progress", "in-progress"])
+def test_the_status_filter_takes_in_progress_spelled_either_way(environment, spelling):
     environment.progress.add_attempt(NewAttempt("two-sum", Language.PYTHON, AttemptMode.NEW, NOW))
-    rows = invoke("--status", "in_progress").output.splitlines()[1:]
+    rows = invoke("--status", spelling).output.splitlines()[1:]
     assert [row.split()[1] for row in rows] == ["two-sum"]
+
+
+def test_the_status_filter_does_not_take_the_spaced_words(environment):
+    assert invoke("--status", "in progress").exit_code == ExitCode.USAGE_ERROR
+
+
+def test_an_unknown_status_is_a_usage_error_that_lists_the_statuses(environment):
+    result = invoke("--status", "finished")
+    assert result.exit_code == ExitCode.USAGE_ERROR
+    assert "in_progress" in result.output
 
 
 def test_the_status_filter_new_leaves_a_problem_in_progress_out(environment):
