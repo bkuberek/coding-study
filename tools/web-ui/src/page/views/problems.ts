@@ -6,7 +6,7 @@
 import { listCommand, nextCommand, NEXT_FILTERS, startCommand } from "../commands.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { badge, command, h } from "../dom.ts";
-import { problemBadge } from "../format.ts";
+import { problemBadge, statusWords } from "../format.ts";
 import { jdkRefusals, type SelectedJdk } from "../jdk.ts";
 import { attemptHash, type FilterKey, type Filters, problemHash, problemsHash } from "../routes.ts";
 import { empty, loading, showFailure } from "../states.ts";
@@ -117,7 +117,7 @@ function filterForm(
       "select",
       { id: `filter-${key}`, name: key },
       h("option", { value: "" }, "any"),
-      ...choices[key].map((value) => h("option", { value, selected: filters[key] === value }, value)),
+      ...choices[key].map((value) => h("option", { value, selected: filters[key] === value }, key === "status" ? statusWords(value) : value)),
     );
     select.addEventListener("change", () => apply(key, select.value));
     return h("label", { class: "filter", for: `filter-${key}` }, h("span", { class: "filter-name" }, key), select);

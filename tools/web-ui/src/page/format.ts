@@ -58,10 +58,15 @@ const CHECKS: Readonly<Record<string, Badge>> = {
   fail: { glyph: "✕", text: "FAIL", tone: "fail" },
 };
 
+/** A status as people read it: `in progress` for the value `in_progress`, which `--json`, the API and the route keep. */
+export function statusWords(status: string): string {
+  return status.replace("_", " ");
+}
+
 /** The badge of a word as the CLI writes it; a word the table does not know gets `unknown` as its glyph. */
 function wordBadge(marks: Marks, word: string, unknown: string): Badge {
   const [glyph, tone] = marks[word] ?? [unknown, "quiet"];
-  return { glyph, text: word, tone };
+  return { glyph, text: statusWords(word), tone };
 }
 
 /** A `cstudy list` status. */

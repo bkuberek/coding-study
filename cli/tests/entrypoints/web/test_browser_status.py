@@ -1,8 +1,9 @@
-"""A problem with an attempt in progress reads `in_progress` in a real browser
+"""A problem with an attempt in progress reads `in progress` in a real browser
 (docs/specs/progress-and-scheduling.md#problem-status, docs/specs/web-ui.md#problems-view), in each
 engine of `tests/browsers.py`: before the attempt the row is `new`; once an attempt is open,
-`cstudy list` and the Problems view both say `in_progress`, the Status filter offers it and lists
-just that problem, and the problem's Resume link is still there.
+`cstudy list` and the Problems view both say `in progress`, the Status filter offers it, with the
+value `in_progress` that the route keeps, and lists just that problem, and the problem's Resume
+link is still there.
 
 The workspace is a bare one over the catalog of the checkout; the attempt is a row of its progress
 database, as `cstudy start` leaves one. Playwright and its engines are set up as
@@ -38,6 +39,7 @@ SLUGS = "table.problems tbody tr a.slug"
 STATUS_CELL = f"{ROWS}:has(a.slug[href='#/problems/{SLUG}']) td:nth-child(7)"
 RESUME_CELL = f"{ROWS}:has(a.slug[href='#/problems/{SLUG}']) td.resume a"
 IN_PROGRESS = "in_progress"
+IN_WORDS = "in progress"
 
 
 @dataclass
@@ -50,6 +52,7 @@ class Visit:
     status_after: str = ""
     resume_links: int = 0
     choices: list[str] = field(default_factory=list[str])
+    choice_labels: list[str] = field(default_factory=list[str])
     filtered_slugs: list[str] = field(default_factory=list[str])
     fragment: str = ""
     problems: list[str] = field(default_factory=list[str])
@@ -85,6 +88,7 @@ def visit(engine: str, server: RunningServer, workspace: Path) -> Visit:
         seen.choices = page.locator(f"{STATUS_FILTER} option").evaluate_all(
             "options => options.map(option => option.value)"
         )
+        seen.choice_labels = page.locator(f"{STATUS_FILTER} option").all_inner_texts()
         page.select_option(STATUS_FILTER, IN_PROGRESS)
         sync_api.expect(page.locator(ROWS)).to_have_count(1)
         seen.filtered_slugs = page.locator(SLUGS).all_inner_texts()
@@ -116,38 +120,42 @@ def _cli(workspace: Path) -> tuple[str, list[str]]:
         return done.stdout.splitlines()[1:]
 
     row = next(line for line in listing() if f" {SLUG} " in line)
-    return row, [line.split()[1] for line in listing("--status", IN_PROGRESS)]
+    return row, [line.split()[1] for line in listing("--status", "in-progress")]
 
 
 def test_an_untouched_problem_reads_new(visit):
     assert visit.status_before == "○new"
 
 
-def test_cstudy_list_says_in_progress_for_a_started_problem(visit):
-    assert IN_PROGRESS in visit.cli_row.split()
+def test_cstudy_list_says_in_progress_in_words_for_a_started_problem(visit):
+    assert f" {IN_WORDS} " in visit.cli_row
 
 
-def test_cstudy_list_filters_by_in_progress(visit):
+def test_cstudy_list_filters_by_in_progress_written_with_a_hyphen(visit):
     assert visit.cli_filtered == [SLUG]
 
 
-def test_the_problems_view_says_in_progress_for_a_started_problem(visit):
-    assert visit.status_after == f"▸{IN_PROGRESS}"
+def test_the_problems_view_says_in_progress_in_words_for_a_started_problem(visit):
+    assert visit.status_after == f"▸{IN_WORDS}"
 
 
 def test_the_started_problem_keeps_its_resume_link(visit):
     assert visit.resume_links == 1
 
 
-def test_the_status_filter_offers_in_progress(visit):
+def test_the_status_filter_keeps_in_progress_as_the_value_of_its_option(visit):
     assert IN_PROGRESS in visit.choices
+
+
+def test_the_status_filter_reads_in_progress_in_words(visit):
+    assert IN_WORDS in visit.choice_labels
 
 
 def test_the_status_filter_lists_just_the_started_problem(visit):
     assert visit.filtered_slugs == [SLUG]
 
 
-def test_the_filter_is_kept_in_the_route(visit):
+def test_the_filter_is_kept_in_the_route_by_its_value(visit):
     assert visit.fragment == f"#/?status={IN_PROGRESS}"
 
 
