@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0255"
+slug: token-claim-validator
+title: Token Claim Validator
+status: ready
+difficulty: medium
+track: practical
+kind: function
+patterns: [arrays-hashing]
+domains: [security, identity]
+job_roles: [security-engineer, backend]
+scope: function
+languages: [python, typescript]
+signature:
+  function:
+    name: validateClaims
+    params:
+      - {name: claims, type: "string[][]"}
+      - {name: now, type: long}
+      - {name: clockSkewSeconds, type: int}
+      - {name: expectedIssuer, type: string}
+      - {name: expectedAudience, type: string}
+      - {name: requiredScopes, type: "string[]"}
+    returns: {type: string}
+comparator: {type: exact}
+approaches:
+  - {id: ordered-checks, name: Index the claims and run the rules in their stated order, role: optimal, time: "O(c + s)", space: "O(c)", time_class: "n", space_class: "n"}
+estimate_minutes: 25
