@@ -2,10 +2,10 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Phase 1 implemented. Phases 2 and 3 are planned, and nothing of them is built. The owner took R1 to R7 under [Open to confirm](#open-to-confirm) as recommended on 2026-11-06 |
+| Status | Phases 1 and 2 implemented. Phase 3 is planned, and nothing of it is built. The owner took R1 to R7 under [Open to confirm](#open-to-confirm) as recommended on 2026-11-06 |
 | Date | 2026-11-05 |
-| Spec | [content](../specs/content.md#labels), [catalog](../specs/catalog.md), [problem-format](../specs/problem-format.md#metayaml), [authoring](../specs/authoring.md#static) (S24), [cli](../specs/cli.md#cstudy-list) and [web-ui](../specs/web-ui.md#problems-view) describe phase 1. The rule changes of phase 2 in [authoring](../specs/authoring.md#static) carry a forward pointer until they land |
-| Will amend | [PRD](../prd.md) (FR-3, its description and persona, when the first new problems ship), [ADR 0012](0012-go-and-rust.md) (every language on every problem, by the [language rule](#rule-changes)) |
+| Spec | [content](../specs/content.md#labels), [catalog](../specs/catalog.md), [problem-format](../specs/problem-format.md#metayaml), [authoring](../specs/authoring.md#static) (S24), [cli](../specs/cli.md#cstudy-list) and [web-ui](../specs/web-ui.md#problems-view) describe phase 1. [catalog](../specs/catalog.md#practical-35-problems) lists the first wave, and [S13](../specs/authoring.md#static) holds the language rule of phase 2 |
+| Amends | [PRD](../prd.md) (FR-3, its description and persona), [ADR 0012](0012-go-and-rust.md) (every language on every problem, by the [language rule](#rule-changes)) |
 | Builds on | [ADR 0001](0001-data-driven-tests.md), [ADR 0004](0004-original-problem-wording.md), [ADR 0014](0014-project-problems.md), [ADR 0019](0019-service-projects.md). Reviewed items are [ADR 0021](0021-ai-reviewed-problems.md) |
 
 ## Context
@@ -109,7 +109,7 @@ One pass over the 270, in one commit: a throwaway script writes the three fields
 | Track `code-review` | 6 | `backend` | `backend` | `function` |
 | **Total** | **270** | | | |
 
-0214 to 0228 are insurance tasks: [catalog](../specs/catalog.md#practical-28-problems) calls them that, and their titles agree (premium rating, unearned premium, coverage gaps, loss ratio).
+0214 to 0228 are insurance tasks: [catalog](../specs/catalog.md#practical-35-problems) calls them that, and their titles agree (premium rating, unearned premium, coverage gaps, loss ratio).
 
 Proposed overrides, to confirm in R3:
 
@@ -195,7 +195,7 @@ Recommended by the assistant. The owner took all seven as recommended when phase
 | Phase | Scope |
 |-------|-------|
 | 1 | Labels and backfill: the schemas, `domain/taxonomy.py`, S24 and its test; the one-pass backfill; `cstudy list`, `cstudy next`, the Problems view filters; catalog columns, with `scope` renamed `covers`; specs and guides (built) |
-| 2 | The [first wave](#the-first-wave) of function-size problems, with the [rule changes](#rule-changes), in Python and TypeScript |
+| 2 | The [first wave](#the-first-wave) of function-size problems, with the [rule changes](#rule-changes), in Python and TypeScript (built: `0255` to `0261`). A problem with any one of `security`, `identity` or `ai-llm` among its `domains` may list any subset of the languages that can express it; S13 is the only check this changes |
 | 3 | Later waves. Project-size problems depend on [ADR 0019](0019-service-projects.md) (its P11); system-size ones need later design |
 
 Phases 1 and 2 need no Docker and can run before ADR 0019 unless the owner orders otherwise. Each phase gets its docs and, at release, a website message.

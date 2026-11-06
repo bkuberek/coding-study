@@ -1,17 +1,17 @@
 # Spec: Catalog
 
-The binding manifest of every catalog item: 196 DSA problems and 74 non-DSA items (58 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
+The binding manifest of every catalog item: 196 DSA problems and 81 non-DSA items (65 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
 
 | Track | Problems or items | Where |
 |-------|-------------------|-------|
 | `dsa` | 196 (185 planned, 11 added) | `problems/` |
-| `practical` | 28 (6 planned, 16 added, 6 project problems added) | `problems/` |
+| `practical` | 35 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added) | `problems/` |
 | `lld` | 8 | `problems/` |
 | `concurrency` | 6 | `problems/` |
 | `debugging` | 16 (8 planned, 8 in Go and Rust) | `problems/` |
 | `system-design` | 10 | `tracks/system-design/` |
 | `code-review` | 6 | `tracks/code-review/` |
-| **Total** | **270** (254 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
+| **Total** | **277** (261 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
 
 Every row has three [labels](content.md#labels): `domains`, `job_roles` and `scope` ([S24](authoring.md#static), [ADR 0020](../decisions/0020-catalog-labels.md)). Their values repeat across hundreds of rows, so each section below states them once, with its exceptions, instead of in three columns; a table added later carries them as columns, which are binding as `kind` is. The prose column that says what a row covers is `covers`, since `scope` is a label.
 
@@ -36,7 +36,7 @@ Every row has three [labels](content.md#labels): `domains`, `job_roles` and `sco
 
 ## Id order
 
-Existing problems keep `0001`–`0003`. New DSA ids run from `0004` to `0185` by batch (1 to 6), then taxonomy order within a batch, then difficulty within a pattern. Non-DSA items in `problems/` continue at `0186`–`0213` in the order practical, lld, concurrency, debugging. Problems added after the plan take the next free ids: `0214`–`0228` practical, `0229`–`0239` DSA, `0240`–`0247` the Go and Rust debugging problems, `0248` practical, and `0249`–`0254` the practical project problems. Items in `tracks/` have slugs and no ids.
+Existing problems keep `0001`–`0003`. New DSA ids run from `0004` to `0185` by batch (1 to 6), then taxonomy order within a batch, then difficulty within a pattern. Non-DSA items in `problems/` continue at `0186`–`0213` in the order practical, lld, concurrency, debugging. Problems added after the plan take the next free ids: `0214`–`0228` practical, `0229`–`0239` DSA, `0240`–`0247` the Go and Rust debugging problems, `0248` practical, `0249`–`0254` the practical project problems, and `0255`–`0261` the first wave of security and AI/LLM problems. Items in `tracks/` have slugs and no ids.
 
 ## DSA catalog
 
@@ -297,9 +297,9 @@ Each stream owns whole patterns, so one stream holds all problems of a pattern a
 
 ## Non-DSA catalog
 
-### practical (28, `problems/`)
+### practical (35, `problems/`)
 
-Labels: `0186` to `0191` and `0248` (the 7 `progressive` rows, `domains: [backend]`, `job_roles: [backend]`, `scope: function`); `0214` to `0228` (the 15 insurance rows, `domains: [fintech]`, `job_roles: [backend]`, `scope: function`); `0249` to `0254` (the 6 project problems, `domains: [backend, fintech]`, `job_roles: [backend]`, `scope: project`). Exceptions: `banking-system` and `scheduled-transfers-bank` also have `fintech`, and `api-gateway` also has the role `platform`.
+Labels: `0186` to `0191` and `0248` (the 7 `progressive` rows, `domains: [backend]`, `job_roles: [backend]`, `scope: function`); `0214` to `0228` (the 15 insurance rows, `domains: [fintech]`, `job_roles: [backend]`, `scope: function`); `0249` to `0254` (the 6 project problems, `domains: [backend, fintech]`, `job_roles: [backend]`, `scope: project`). Exceptions: `banking-system` and `scheduled-transfers-bank` also have `fintech`, and `api-gateway` also has the role `platform`. `0255` to `0261` carry their labels as columns.
 
 The six planned rows (owner P1) are `progressive`:
 
@@ -348,6 +348,18 @@ Six [project problems](problem-format.md#project-problems) (kind `project`, one 
 | 0252 | `bank-project-kotlin` | Bank Project (Kotlin) | `kotlin` | - | project | hard |
 | 0253 | `bank-project-go` | Bank Project (Go) | `go` | - | project | hard |
 | 0254 | `bank-project-rust` | Bank Project (Rust) | `rust` | - | project | hard |
+
+The first wave of security and AI/LLM problems ([ADR 0020](../decisions/0020-catalog-labels.md#the-first-wave)) is original, function-size and needs no service. Each lists Python and TypeScript, under the [Languages rule](#rules). The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0255 | `token-claim-validator` | Token Claim Validator | `arrays-hashing` | function | medium | `python`, `typescript` | `security`, `identity` | `security-engineer`, `backend` | function |
+| 0256 | `refresh-token-rotation` | Refresh Token Rotation | `arrays-hashing` | design | medium | `python`, `typescript` | `security`, `identity` | `security-engineer`, `backend` | function |
+| 0257 | `authorization-policy-engine` | Authorization Policy Engine | `graphs` | design | medium | `python`, `typescript` | `security` | `security-engineer`, `backend` | function |
+| 0258 | `calibration-metrics` | Calibration Metrics | `arrays-hashing` | function | easy | `python`, `typescript` | `ai-llm` | `ml-engineer`, `ai-engineer` | function |
+| 0259 | `token-cost-reconciler` | Token Cost Reconciler | `arrays-hashing` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer` | function |
+| 0260 | `bm25-hybrid-ranker` | BM25 Hybrid Ranker | `arrays-hashing` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `ml-engineer` | function |
+| 0261 | `stream-reassembler` | Stream Reassembler | `arrays-hashing` | design | medium | `python`, `typescript` | `ai-llm` | `ai-engineer` | function |
 
 ### lld (8, owner L1, kind `design` plus `rubric.md`, `problems/`)
 

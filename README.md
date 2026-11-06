@@ -34,7 +34,7 @@ Upgrade with `uv tool upgrade coding-study` (or `pipx upgrade coding-study`). Ke
 
 ## Install the language toolchains
 
-`cstudy` runs your solutions with the real toolchain of each language, which you install yourself. uv and Python are required; Node.js, the JDK, Go and Rust are needed only for the languages that use them. Problems have reference solutions in all six languages, except where a language cannot express one or a bug exists in some languages only ([catalog](docs/specs/catalog.md)), so you can practice in any of them. The recommended install on macOS:
+`cstudy` runs your solutions with the real toolchain of each language, which you install yourself. uv and Python are required; Node.js, the JDK, Go and Rust are needed only for the languages that use them. Problems have reference solutions in all six languages, except where a language cannot express one, a bug exists in some languages only, or a security or AI/LLM problem starts in Python and TypeScript ([catalog](docs/specs/catalog.md)), so you can practice in any of them. The recommended install on macOS:
 
 | Tool | Version | Needed for | Install on macOS |
 |------|---------|------------|------------------|
@@ -129,7 +129,7 @@ All problem statements, tests and solutions are original ([ADR 0004](docs/decisi
 | Track | Items | Graded by | Format |
 |-------|------:|-----------|--------|
 | `dsa` | 196 | Tests, in all 6 languages | Functions and data-structure designs across 23 patterns |
-| `practical` | 28 | Tests, level by level where a problem has levels | One class whose API grows over 4 levels, or a business task with money and dates |
+| `practical` | 35 | Tests, level by level where a problem has levels | One class whose API grows over 4 levels, a business task with money and dates, or a security or AI/LLM task, in Python and TypeScript |
 | `lld` | 8 | Tests, then a design rubric | Object-oriented design |
 | `concurrency` | 6 | Stress tests against invariants | Thread-safe classes, per-language models |
 | `debugging` | 16 | Tests | Buggy code to fix, including Go- and Rust-only bugs |

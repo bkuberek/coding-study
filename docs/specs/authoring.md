@@ -221,6 +221,8 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 | References | Every approach, implementing every level, in every language the problem lists (all six by default) | Every approach in every language the problem lists |
 | Optional | `generator.py` (then `generate` cases at the last level, one at the largest ladder size), `patterns`, more approaches | Same |
 
+A `function` or `design` problem on the `practical` track, such as the business tasks from `0214` and the security and AI/LLM problems from `0255`, has no levels and uses the usual sections with `## Examples`, and the ready criteria for its kind. `solutions/broken/` is for concurrent problems and projects with stress cases, and every approach must pass every case, so a wrong answer cannot be stored with such a problem: name it under `### Pitfalls and edge cases`, with the hidden case that catches it.
+
 ### Project problems
 
 A [project problem](problem-format.md#project-problems) (`kind: project`, track `practical`) is a seeded folder in one language ([ADR 0014](../decisions/0014-project-problems.md)). A version in another language is a new problem, authored from scratch: only the statement wording may be reused, with that language's names, and both problems list each other in `related`.

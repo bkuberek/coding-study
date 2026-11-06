@@ -1,20 +1,20 @@
 # Product Requirements: coding-study
 
-A local, IDE-first interview-prep system for senior and staff engineer loops. You solve problems in your own editor, and a CLI (`cstudy`) does everything a practice website would: it picks the next problem, scaffolds a stub, runs tests, reveals solutions, analyzes performance and tracks progress. `cstudy serve` also serves the same loop as a page in your browser, on your own machine ([ADR 0015](decisions/0015-local-web-ui.md)).
+A local, IDE-first study system for engineers, with many problems categorized by domain and role at a range of complexity levels. It began as interview preparation for senior and staff engineer loops, which stays at its core. You solve problems in your own editor, and a CLI (`cstudy`) does everything a practice website would: it picks the next problem, scaffolds a stub, runs tests, reveals solutions, analyzes performance and tracks progress. `cstudy serve` also serves the same loop as a page in your browser, on your own machine ([ADR 0015](decisions/0015-local-web-ui.md)).
 
 | Field | Value |
 |-------|-------|
 | Status | Implemented through Phase 7; open validation items in the [roadmap](roadmap.md#status) |
 | Users | One engineer per installation, practicing on their own machine |
 | Platform | macOS and Linux, local only |
-| Languages practiced | Python, TypeScript, Java, Kotlin, Go and Rust ([ADR 0012](decisions/0012-go-and-rust.md)); a project problem is in one language ([ADR 0014](decisions/0014-project-problems.md)) |
+| Languages practiced | Python, TypeScript, Java, Kotlin, Go and Rust ([ADR 0012](decisions/0012-go-and-rust.md)); a project problem is in one language ([ADR 0014](decisions/0014-project-problems.md)), and the first security and AI/LLM problems are in Python and TypeScript ([ADR 0020](decisions/0020-catalog-labels.md)) |
 | Related | [Architecture](architecture.md), [Roadmap](roadmap.md), [Specs](README.md#specs) |
 
 ## 1. Executive summary
 
 **Problem.** Browser-based practice sites force a foreign editor, give no control over content, cover DSA only, and treat each language as a separate silo. Senior and staff loops also test practical multi-level coding, object-oriented design, concurrency, system design, code review and behavioral skills, which those sites do not cover.
 
-**Solution.** A CLI that ships with a catalog of original, data-defined problems. You write code in your editor, such as LazyVim or IntelliJ, inside real per-language projects in a workspace of your own (LSP and debugger work). The CLI executes that code against language-neutral test data, compares behavior, measures performance against a ladder of reference approaches, and schedules reviews with spaced repetition weighted toward weak patterns.
+**Solution.** A CLI that ships with a catalog of original, data-defined problems. You write code in your editor, such as LazyVim or IntelliJ, inside real per-language projects in a workspace of your own (LSP and debugger work). The CLI executes that code against language-neutral test data, compares behavior, measures performance against a ladder of reference approaches, and schedules reviews with spaced repetition weighted toward weak patterns. Each problem says what it is about, who it is for and how big it is ([ADR 0020](decisions/0020-catalog-labels.md)), so you can study a domain such as security or AI/LLM engineering, or the problems for your role.
 
 **Success criteria.**
 
@@ -30,7 +30,7 @@ A local, IDE-first interview-prep system for senior and staff engineer loops. Yo
 
 ### Persona
 
-A senior or staff engineer preparing for interviews, practicing alone. Works in a terminal editor such as Neovim (LazyVim) inside a terminal multiplexer, or in IntelliJ for JVM code, and prefers keyboard-driven tools.
+An engineer practicing alone, either preparing for senior or staff interviews or building skill in a domain such as security or AI/LLM engineering. Works in a terminal editor such as Neovim (LazyVim) inside a terminal multiplexer, or in IntelliJ for JVM code, and prefers keyboard-driven tools.
 
 ### Core loop
 
@@ -98,8 +98,8 @@ Not applicable. The product contains no AI features. Planned, not built: opt-in 
 | ID | Requirement | Measure |
 |----|-------------|---------|
 | NFR-1 | Fast feedback | `cstudy test` warm p50: Python and TypeScript 1.0 s, Java 3 s, Kotlin 5 s, and, once their runners exist, Go 1.0 s and Rust 2 s, for at most 50 cases of an O(n log n) solution; for a Python or TypeScript project problem, `cstudy test` and `cstudy submit` each within 1.0 s, for a Go project problem each within 2 s, since `go test` builds and runs a test binary per package (measured 1.6 to 1.7 s on an Apple Silicon Mac for 0.8.0 and 0.9.0) ([ADR 0014](decisions/0014-project-problems.md#go-spike-k5)), and for a Rust one each within 2 s, since each test runs as a process of its own ([ADR 0014](decisions/0014-project-problems.md#rust-spike-k6)). JVM cold start (first build after daemon stop) up to 60 s is accepted and printed as "warming Gradle daemon". |
-| NFR-2 | Fast CLI | `cstudy list`, `cstudy next`, `cstudy stats` complete in at most 500 ms with 250 problems (index cache). |
-| NFR-3 | Verify throughput | Full `cstudy verify --require-ready` (no oracle, no ladder) over the whole catalog in all six languages (270 items) in at most 30 min, measured at about 25 min for v0.8.0 and 21 min for the 263 items of v0.6.0, the first release with Go and Rust; the budget grew from 10 min for 200 problems in the four core languages because Go adds roughly 0.5 to 1.5 s per problem and Rust 1.5 to 4 s ([ADR 0012](decisions/0012-go-and-rust.md)). `cstudy verify <slug>` in at most 30 s warm: the mean over ten sample problems with `--lang` was 4.2 s for Python, 1.3 s for TypeScript, 4.9 s for Java, 5.5 s for Kotlin, 1.7 s for Go and 2.5 s for Rust, each including the 0.4 s start of `cstudy`, with the machine loaded (load average 23 to 40). |
+| NFR-2 | Fast CLI | `cstudy list`, `cstudy next`, `cstudy stats` complete in at most 500 ms with 261 problems (index cache). |
+| NFR-3 | Verify throughput | Full `cstudy verify --require-ready` (no oracle, no ladder) over the whole catalog, each problem in the languages it lists (277 items), in at most 30 min, measured at about 25 min for v0.8.0 and 21 min for the 263 items of v0.6.0, the first release with Go and Rust; the budget grew from 10 min for 200 problems in the four core languages because Go adds roughly 0.5 to 1.5 s per problem and Rust 1.5 to 4 s ([ADR 0012](decisions/0012-go-and-rust.md)). `cstudy verify <slug>` in at most 30 s warm: the mean over ten sample problems with `--lang` was 4.2 s for Python, 1.3 s for TypeScript, 4.9 s for Java, 5.5 s for Kotlin, 1.7 s for Go and 2.5 s for Rust, each including the 0.4 s start of `cstudy`, with the machine loaded (load average 23 to 40). |
 | NFR-4 | Determinism | Same inputs, database and seed produce the same `cstudy next` choice, generated cases and oracle cases. |
 | NFR-5 | Isolation | A crash, infinite loop or `System.exit` in user code never crashes the CLI; it is reported as a case or runner error. |
 | NFR-6 | Works on your own machine | cstudy works on your own machine, with no account and no cstudy server. It needs the internet only to install the app and its dependencies, such as the toolchains and language servers that `cstudy doctor --fix` sets up, and, once built, for opt-in AI review with your own key ([ADR 0021](decisions/0021-ai-reviewed-problems.md)). Today, after those installs, every command works with no internet. Installing a dependency does not break this rule ([ADR 0019](decisions/0019-service-projects.md)). |

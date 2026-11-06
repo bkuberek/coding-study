@@ -57,7 +57,7 @@ coding-study is a local, IDE-first interview-prep system: original problems stor
 | [0017](decisions/0017-async-project-problems.md) | Project problems grade asynchronous code on a virtual clock and concurrent code under stress: `async` methods, harness operations, stress cases with broken overlays, and Go 1.25 |
 | [0018](decisions/0018-editor-code-intelligence.md) | The page's editor gets code intelligence from local language servers behind a setting, and completion behind a second one: live diagnostics, hover documentation and go to definition over one WebSocket per tab and root |
 | [0019](decisions/0019-service-projects.md) | Planned, not built: service projects always run in a Docker sandbox, a real app against mock servers and optional backing services, graded over HTTP |
-| [0020](decisions/0020-catalog-labels.md) | Problems and items have three independent labels, domain, role and scope, with filters in `cstudy list`, `cstudy next` and the Problems view; the first security and AI/LLM problems are planned |
+| [0020](decisions/0020-catalog-labels.md) | Problems and items have three independent labels, domain, role and scope, with filters in `cstudy list`, `cstudy next` and the Problems view; the first seven security and AI/LLM problems, in Python and TypeScript |
 | [0021](decisions/0021-ai-reviewed-problems.md) | Planned, not built: an opt-in class of problems reviewed by a live LLM with your own key; "works on your own machine" replaces "works offline" |
 
 ## Conventions

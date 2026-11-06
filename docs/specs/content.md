@@ -6,12 +6,12 @@ What the catalog contains: tracks, the DSA pattern taxonomy with Phase targets, 
 
 DSA is roughly a third of a senior or staff loop, so the catalog covers the other rounds too.
 
-Every problem and item also has three [labels](#labels) that are independent of the track: `domains`, `job_roles` and `scope`. Planned: new security and AI/LLM problems that use them ([ADR 0020](../decisions/0020-catalog-labels.md#the-first-wave)).
+Every problem and item also has three [labels](#labels) that are independent of the track: `domains`, `job_roles` and `scope`. The first security and AI/LLM problems use them: `0255` to `0261` in the [catalog](catalog.md#practical-35-problems), in Python and TypeScript ([ADR 0020](../decisions/0020-catalog-labels.md#the-first-wave)).
 
 | Track id | Name | Autograded | Location | Format | Target |
 |----------|------|------------|----------|--------|--------|
 | `dsa` | Data structures and algorithms | yes | `problems/` | `function` or `design` | 185 (Phases 1 and 3) |
-| `practical` | Practical multi-level | yes, level by level | `problems/` | `progressive`, or `project` (a seeded folder in one language) | 6 (Phase 4); one banking project problem per language (Phase 8) |
+| `practical` | Practical multi-level | yes, level by level | `problems/` | `progressive`, `function` or `design`, or `project` (a seeded folder in one language) | 6 (Phase 4); one banking project problem per language (Phase 8); 7 security and AI/LLM problems (Phase 13) |
 | `lld` | Object-oriented and low-level design | API by ops tests; design by rubric | `problems/` | `design` plus `rubric.md` | 8 (Phase 4) |
 | `concurrency` | Concurrency | yes, per language subset | `problems/` | `concurrent` | 6 (Phase 5) |
 | `debugging` | Debugging | yes | `problems/` | `function` or `design` with `stub: buggy` | 8 (Phase 6) |
