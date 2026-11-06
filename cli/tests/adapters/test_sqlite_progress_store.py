@@ -7,7 +7,11 @@ from pathlib import Path
 import pytest
 
 from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
-from coding_study.adapters.sqlite.schema import MIGRATIONS_DIRECTORY, MIGRATIONS_PACKAGE
+from coding_study.adapters.sqlite.schema import (
+    MIGRATIONS_DIRECTORY,
+    MIGRATIONS_PACKAGE,
+    latest_schema_version,
+)
 from coding_study.domain.attempts import (
     AttemptMode,
     AttemptStatus,
@@ -302,3 +306,60 @@ def test_finished_attempts_are_the_passed_and_failed_ones_by_end_time(store):
         AttemptStatus.PASSED,
         AttemptStatus.FAILED,
     ]
+
+
+# Reset
+
+
+def fill(store: SqliteProgressStore) -> None:
+    attempt = store.add_attempt(new_attempt())
+    store.add_test_run(
+        RunRecord(attempt.id, attempt.started_at, "hash", Tally(total=1, passed=1), 10)
+    )
+    store.save_schedule_entry(schedule_entry())
+
+
+def test_clearing_empties_every_table(store):
+    fill(store)
+    store.clear()
+    assert set(store.snapshot().row_counts().values()) == {0}
+
+
+def test_clearing_keeps_the_database_at_its_schema(store, tmp_path):
+    fill(store)
+    store.clear()
+    assert store.snapshot().schema_version == latest_schema_version()
+
+
+def test_an_attempt_after_clearing_takes_an_id_above_the_old_ones(store):
+    """`.archive/<slug>/<attempt_id>-<lang>/` may keep the old ones' files."""
+    old = store.add_attempt(new_attempt())
+    store.clear()
+    assert store.add_attempt(new_attempt()).id == old.id + 1
+
+
+def test_clearing_twice_keeps_the_ids_rising(store):
+    old = store.add_attempt(new_attempt())
+    store.clear()
+    store.clear()
+    assert store.add_attempt(new_attempt()).id == old.id + 1
+
+
+def test_ids_rise_as_they_did_without_a_reset(store):
+    first = store.add_attempt(new_attempt())
+    assert store.add_attempt(new_attempt()).id == first.id + 1
+
+
+def test_a_clear_that_fails_midway_changes_nothing_and_leaves_the_database_whole(store, tmp_path):
+    fill(store)
+    connection = sqlite3.connect(tmp_path / "progress.db")
+    connection.execute(
+        "CREATE TRIGGER stop_it BEFORE DELETE ON attempts BEGIN SELECT RAISE(ABORT, 'stopped'); END"
+    )
+    connection.commit()
+    with pytest.raises(sqlite3.Error):
+        store.clear()
+    rows = connection.execute("SELECT COUNT(*) FROM schedule").fetchone()[0]
+    check = connection.execute("PRAGMA integrity_check").fetchone()[0]
+    connection.close()
+    assert (rows, check, store.snapshot().row_counts()["attempts"]) == (1, "ok", 1)

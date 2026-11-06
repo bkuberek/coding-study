@@ -65,6 +65,13 @@ WHERE attempt_id IS NOT NULL AND id = (
 )
 ORDER BY slug, lang
 """
+ATTEMPT_ID_FLOOR_KEY = "attempt_id_floor"
+"""In `meta`: the highest attempt id a reset deleted."""
+_ATTEMPT_ID_FLOOR = f"SELECT CAST(value AS INTEGER) FROM meta WHERE key = '{ATTEMPT_ID_FLOOR_KEY}'"
+_HIGHEST_ATTEMPT_ID = (
+    f"MAX(COALESCE((SELECT MAX(id) FROM attempts), 0), COALESCE(({_ATTEMPT_ID_FLOOR}), 0))"
+)
+_NEXT_ATTEMPT_ID = f"SELECT {_HIGHEST_ATTEMPT_ID} + 1"
 _SCHEDULE_UPSERT = """
 INSERT OR REPLACE INTO schedule (slug, ease, interval_days, reps, lapses, due_on, last_grade,
   updated_at)
@@ -83,8 +90,8 @@ class SqliteProgressStore:
     def add_attempt(self, attempt: NewAttempt) -> Attempt:
         with self._connection() as connection:
             cursor = connection.execute(
-                "INSERT INTO attempts (slug, lang, mode, status, started_at, time_limit_s, "
-                "stub_path) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                f"INSERT INTO attempts (id, slug, lang, mode, status, started_at, time_limit_s, "
+                f"stub_path) VALUES (({_NEXT_ATTEMPT_ID}), ?, ?, ?, ?, ?, ?, ?)",
                 (
                     attempt.slug,
                     attempt.language,
@@ -257,6 +264,16 @@ class SqliteProgressStore:
                 columns = _columns(connection, table)
                 for number, row in enumerate(snapshot.tables.get(table, ()), start=1):
                     _insert_row(connection, table, columns, number, row)
+
+    def clear(self) -> None:
+        with self._connection() as connection:
+            connection.execute(
+                f"INSERT OR REPLACE INTO {META_TABLE} (key, value) "
+                f"VALUES (?, {_HIGHEST_ATTEMPT_ID})",
+                (ATTEMPT_ID_FLOOR_KEY,),
+            )
+            for table in reversed(_data_tables(connection)):
+                connection.execute(f'DELETE FROM "{table}"')
 
     def attempt(self, attempt_id: int) -> Attempt | None:
         return self._one_attempt("id = ?", (attempt_id,))

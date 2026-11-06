@@ -447,6 +447,12 @@ class ProgressStore(Protocol):
         and language."""
         ...
 
+    def clear(self) -> None:
+        """Deletes every row of progress in one transaction, keeping the database at its schema;
+        a failure changes nothing. A later attempt's id stays above every id deleted, since
+        `.archive/<slug>/<attempt_id>-<lang>/` may keep their files."""
+        ...
+
     def snapshot(self) -> ProgressSnapshot:
         """Every row of every table but `meta`, as stored (`cstudy export`)."""
         ...
@@ -696,6 +702,22 @@ class Workspace(Protocol):
         deleted, as is a directory that leaves empty. Untracked entries
         (`workspace_projects.is_untracked`), what build tools wrote, are kept. A link is never
         followed: one at `path`, or among the tracked entries, is removed."""
+        ...
+
+    def entries(self, path: str) -> tuple[str, ...]:
+        """The names in the directory `path`, links included, in name order; nothing when it is
+        not a directory."""
+        ...
+
+    def leaving_entry(self, path: str) -> str | None:
+        """The first of `path` and what is under it that resolves outside the workspace root,
+        through a link on the way to it or a link in it; None when all of it stays inside. A link
+        in a directory is read, never followed."""
+        ...
+
+    def remove_entry(self, path: str) -> None:
+        """Deletes the file or the directory `path` with all it holds. A link is removed, never
+        followed. Nothing happens when nothing is there."""
         ...
 
     def read_within(self, folder: str, path: str) -> bytes:
@@ -955,6 +977,14 @@ class ProgressDatabase(Protocol):
     def migrate(self) -> None:
         """Brings the file to the latest schema, as the first command to open it would; raises
         UsageError when it cannot."""
+        ...
+
+
+class RunActivity(Protocol):
+    """Whether something is running that a reset would pull the files from under."""
+
+    def active_run(self) -> str | None:
+        """Says what is active, or None."""
         ...
 
 

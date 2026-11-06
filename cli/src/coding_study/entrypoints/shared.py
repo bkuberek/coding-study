@@ -26,11 +26,13 @@ from coding_study.domain.errors import (
     ContentError,
     LanguageNotSetUpError,
     LanguageServerNotInstalledError,
+    ResetNotConfirmedError,
     RunnerProtocolError,
     RunnerStartError,
     UnknownProblemError,
     UsageError,
     VersionControlError,
+    WorkspaceBusyError,
 )
 
 
@@ -59,6 +61,8 @@ ERROR_EXIT_CODES: Mapping[type[Exception], ExitCode] = {
     ContentRootError: ExitCode.USAGE_ERROR,
     WorkspaceError: ExitCode.USAGE_ERROR,
     VersionControlError: ExitCode.ENVIRONMENT_ERROR,
+    ResetNotConfirmedError: ExitCode.USAGE_ERROR,
+    WorkspaceBusyError: ExitCode.USAGE_ERROR,
 }
 ERROR_PREFIX = "error: "
 CLICK_USAGE_EXIT_CODE = 2

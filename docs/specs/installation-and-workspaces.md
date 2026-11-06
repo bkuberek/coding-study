@@ -93,6 +93,28 @@ A language server never sees what holds a reference solution or generated data: 
 
 Every path `cstudy` prints for a workspace file is relative to the workspace root (`python/practice/two_sum.py`, `.statements/two-sum.md`). `progress_db` in the config file is relative to it too; changing it moves no data ([configuration](cli.md#configuration)).
 
+### What `cstudy reset` deletes
+
+[`cstudy reset`](cli.md#cstudy-reset) goes by what a path holds: what you practised goes, and what `cstudy doctor --fix` would have to install again stays.
+
+| Path | Holds | A reset |
+|------|-------|---------|
+| `progress.db` | Attempts, test runs, scheduled reviews, bench runs, submissions, level unlocks | Empties every table in one transaction; the file, its schema and `meta` stay |
+| `.cs/runs/` | The data of runs | Deletes each run's folder |
+| `.statements/` | Statements rendered for the attempts | Deletes them; `cstudy start` renders them again |
+| `python/practice/`, `typescript/practice/`, `jvm/*/src/main/*/practice/`, `go/practice/`, `rust/practice/` | Your practice files | With `--files`: deletes all but `.gitkeep`, and takes the problems out of `rust/Cargo.toml` |
+| `projects/`, `.cs/projects/` | Your project folders, their manifests and locks | With `--files`: deletes all but `.gitkeep`, and refreshes VS Code's linked projects when `cstudy` wrote them |
+| `notes/` | Your answers to items | With `--files`: deletes all but `.gitkeep` |
+| `.archive/` | The files of earlier attempts | With `--archive` only |
+| `config.toml`, `.cs/serve/` | Your configuration and preferences | Keeps |
+| `.cs/workspace.toml`, `.cs/ide.json`, `.vscode/`, `.idea/`, `.gitignore`, `README.md` | The marker and the project files | Keeps |
+| `.cs/runtime/`, `.cs/lsp/`, `python/.venv`, `node_modules/`, the Gradle wrapper | Toolchains and language servers | Keeps: `cstudy doctor --fix` would have to install them again |
+| `.cs/build/`, `.cs/cases/`, `.cs/calibration/`, the index | Caches of the content | Keeps: they hold nothing of yours and cost time to build |
+| `problems/` | Your own problems | Keeps: you wrote them; they are not practice |
+| `progress-export.json` | Your backup | Keeps |
+
+A project folder that stays keeps its manifest, so a later `cstudy start` copies only the starter files it lacks. Kept practice files stay as they are, too: `cstudy start` reopens them.
+
 ## cstudy init
 
 ```text

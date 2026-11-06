@@ -29,6 +29,7 @@
 | [`cstudy export`](#cstudy-export) | Back up progress as JSON | 7 |
 | [`cstudy import`](#cstudy-import) | Restore an export into an empty `progress.db` | 7 |
 | [`cstudy config edit`, `cstudy config path`](#cstudy-config) | Open your `config.toml` in your editor; print its path | 9 |
+| [`cstudy reset`](#cstudy-reset) | Delete progress and state, after a preview and a typed word | 9 |
 
 `<file>` is a [solution file path](#solution-file-targets). Commands that take an optional `<slug>` default to the active attempt: the most recent attempt with status `in_progress`. If none exists, they exit 3. Every command but `cstudy init`, `cstudy doctor`, `cstudy list` and `cstudy show` needs a workspace and exits 3 without one, pointing at `cstudy init`. The [IDE files](installation-and-workspaces.md#ide-files) run these commands on the file in the editor or on the active attempt.
 
@@ -1242,6 +1243,31 @@ Neither needs a workspace, and both find the file as every command does ([Config
 |---------|--------|
 | `config path` | Prints the path and creates nothing |
 | `config edit` | Opens the file in `$VISUAL`, else `$EDITOR`, the way `cstudy start` opens a stub, and waits for it. A missing file is first made from a commented template that lists every key at its default with what it does, so it loads as the defaults until a line is uncommented, and an existing one is never changed. It prints `created <path>` or `config <path>`. With no editor set it says so on an `editor` line, `set $VISUAL or $EDITOR to open the files automatically`, and exits 0, the path printed for you to open; an editor that does not run says why the same way. Once the editor closes, an edit that changed `progress_db` adds a line, `progress_db Changing progress_db does not move your data: it stays in progress.db. No database exists at other.db, so cstudy will start an empty one there.` (`A database exists at other.db, and cstudy will use it.`; outside a workspace, `The new path, other.db, is relative to each workspace's root.`), and an edit that leaves the file unable to load exits 4 with the parser's message. A file that did not load before still opens |
+
+## cstudy reset
+
+```text
+cstudy reset [--files] [--archive] [--yes]
+```
+
+Deletes what you have practised in this workspace, as if you had just run `cstudy init`, so you can start again ([ADR 0022](../decisions/0022-settings-and-reset.md)). It prints what will go, with counts, then what stays, then `This can't be undone.` and asks you to type `reset`. [What each part covers](installation-and-workspaces.md#what-cstudy-reset-deletes).
+
+| Option | Deletes as well |
+|--------|-----------------|
+| (none) | Every row of `progress.db`, an open attempt included, `.cs/runs/` and `.statements/` |
+| `--files` | Practice files, project folders and notes. Off by default: this is your code |
+| `--archive` | `.archive/`, the files of earlier attempts. Off by default too, and separate from `--files` |
+| `--yes` | Nothing more: it answers the question, for a shell with no one to type |
+
+| Case | Result |
+|------|--------|
+| Any answer but `reset` | `that is not the word; nothing was deleted`, exit 3 |
+| Standard input is not a terminal, without `--yes` | `cstudy reset asks you to type a word; in a script, pass --yes`, exit 3, after the preview |
+| A run or a job is active | `cstudy reset waits until it ends: …`, exit 3, nothing deleted. It sees a runner on this workspace, whichever process started it, and a child of `cstudy serve`; a `cstudy test` still building, before its runner starts, is not seen |
+| A target, or a link in one, resolves outside the workspace | `<path> leaves the workspace, so cstudy reset deleted nothing; remove the link first`, exit 3. Every target is checked before anything goes |
+| Done | `deleted attempts 6 · test runs 4 · …`, exit 0 |
+
+`progress.db` stays valid and at its schema: its rows go in one transaction, so a reset interrupted there changes nothing, and one interrupted later leaves files the next reset finds. A later attempt's id stays above every id deleted ([schema](progress-and-scheduling.md#schema)).
 
 ## cstudy serve
 

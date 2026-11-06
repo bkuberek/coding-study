@@ -71,6 +71,32 @@ class WorkspaceFs:
         elif folder.is_dir():
             shutil.rmtree(folder)
 
+    def entries(self, path: str) -> tuple[str, ...]:
+        directory = self.absolute(path)
+        return (
+            tuple(sorted(entry.name for entry in directory.iterdir())) if directory.is_dir() else ()
+        )
+
+    def leaving_entry(self, path: str) -> str | None:
+        root = self._root.resolve()
+        target = self.absolute(path)
+        if not target.resolve().is_relative_to(root):
+            return path
+        if target.is_symlink() or not target.is_dir():
+            return None
+        for folder, directories, names in os.walk(target):
+            for entry in (Path(folder) / name for name in (*directories, *names)):
+                if entry.is_symlink() and not entry.resolve().is_relative_to(root):
+                    return entry.relative_to(self._root).as_posix()
+        return None
+
+    def remove_entry(self, path: str) -> None:
+        target = self.absolute(path)
+        if target.is_symlink() or target.is_file():
+            target.unlink(missing_ok=True)
+        elif target.is_dir():
+            shutil.rmtree(target)
+
     def ensure_link(self, path: str, target: str) -> bool:
         link = self.absolute(path)
         if link.exists():

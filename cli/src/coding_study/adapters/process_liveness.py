@@ -135,6 +135,25 @@ def _listed_commands() -> Iterator[tuple[int, str]]:
             yield int(pid), command_line
 
 
+def processes_naming(*texts: str) -> list[int]:
+    """Every other process whose command line holds one of `texts`; none where neither `/proc` nor
+    `ps` can say what is running."""
+    lines = _proc_command_lines(PROC_ROOT) if PROC_ROOT.is_dir() else _listed_commands()
+    return [
+        pid
+        for pid, command in lines
+        if pid != os.getpid() and any(text in command for text in texts)
+    ]
+
+
+def _proc_command_lines(proc_root: Path) -> Iterator[tuple[int, str]]:
+    for entry in proc_root.iterdir():
+        if entry.name.isdigit():
+            with suppress(OSError):
+                line = (entry / "cmdline").read_bytes().replace(b"\0", b" ")
+                yield int(entry.name), line.decode(errors="replace")
+
+
 class OrphanGuard:
     """A process of its own that kills the process groups it watches, and every process started
     from `directory`, once `cstudy` dies, however it dies: SIGKILL and a crash included.

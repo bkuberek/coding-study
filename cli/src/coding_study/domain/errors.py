@@ -76,6 +76,14 @@ class UsageError(Exception):
     """A request the command cannot honor, such as no active attempt (exit code 3)."""
 
 
+class ResetNotConfirmedError(Exception):
+    """`cstudy reset` without its confirming word (exit code 3)."""
+
+
+class WorkspaceBusyError(Exception):
+    """A run or a job is active, so the workspace can't be reset (exit code 3)."""
+
+
 class VersionControlError(Exception):
     """git is missing, or cannot compare the repository with a branch (exit code 4)."""
 

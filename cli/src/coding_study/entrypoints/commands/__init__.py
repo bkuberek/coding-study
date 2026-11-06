@@ -19,6 +19,7 @@ from coding_study.entrypoints.commands import (
     mock,
     new,
     next_problem,
+    reset,
     serve,
     show,
     solution,
@@ -54,4 +55,5 @@ COMMAND_REGISTRATIONS: tuple[Callable[[typer.Typer], None], ...] = (
     import_progress.register,
     mock.register,
     config.register,
+    reset.register,
 )

@@ -45,6 +45,19 @@ def with_problem(manifest: str, meta: ProblemMeta) -> str:
     return f"{manifest}{separator}{entry}" if manifest else entry
 
 
+def without_problems(manifest: str) -> str:
+    """`rust/Cargo.toml` with no `[[example]]`, as `cstudy reset --files` leaves `rust/practice`,
+    keeping every other table as it is written."""
+    kept: list[str] = []
+    in_example = False
+    for line in manifest.splitlines(keepends=True):
+        if line.startswith("["):
+            in_example = line.strip() == f"[[{EXAMPLE_TABLE}]]"
+        if not in_example:
+            kept.append(line)
+    return "".join(kept).rstrip("\n") + "\n"
+
+
 def _tables(examples: object) -> list[dict[str, object]]:
     if not isinstance(examples, list):
         return []

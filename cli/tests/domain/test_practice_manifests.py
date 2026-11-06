@@ -2,7 +2,7 @@ import tomllib
 
 import pytest
 
-from coding_study.domain.practice_manifests import practice_manifest, with_problem
+from coding_study.domain.practice_manifests import practice_manifest, with_problem, without_problems
 from coding_study.domain.problem import Language
 from tests.stub_contract import STUB_CASES
 
@@ -42,3 +42,21 @@ def test_a_manifest_without_a_final_newline_gets_a_blank_line():
 
 def test_a_manifest_that_does_not_parse_is_unchanged():
     assert with_problem("[package\n", TWO_SUM) == "[package\n"
+
+
+def test_without_problems_takes_out_every_example_and_keeps_the_rest():
+    manifest = (
+        '[package]\nname = "practice"\n\n[lib]\npath = "lib.rs"\n\n'
+        '[[example]]\nname = "two_sum"\npath = "practice/two_sum.rs"\n\n'
+        '[[example]]\nname = "lru"\npath = "practice/lru.rs"\n'
+    )
+    assert without_problems(manifest) == '[package]\nname = "practice"\n\n[lib]\npath = "lib.rs"\n'
+
+
+def test_without_problems_keeps_a_table_after_the_examples():
+    manifest = '[[example]]\nname = "a"\n\n[dependencies]\nx = "1"\n'
+    assert without_problems(manifest) == '[dependencies]\nx = "1"\n'
+
+
+def test_without_problems_leaves_a_manifest_with_none():
+    assert without_problems('[package]\nname = "practice"\n') == '[package]\nname = "practice"\n'
