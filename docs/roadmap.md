@@ -204,13 +204,13 @@ The pilots are written with the next project problems.
 
 ## Phase 13: Catalog labels and new catalogs
 
-**Status.** Step 1 is built except the Problems view's filters and Scope column; steps 2 and 3 are planned, not started. The first two steps need no Docker, so the owner may order them before Phase 12.
+**Status.** Step 1 is built; steps 2 and 3 are planned, not started. The first two steps need no Docker, so the owner may order them before Phase 12.
 
 **Scope.** [ADR 0020](decisions/0020-catalog-labels.md): `domains`, `job_roles` and `scope` on problems and items, in closed lists; a one-pass backfill of the 270 existing entries; filters in `cstudy list`, `cstudy next` and the Problems view; then a first wave of function-size security and AI/LLM problems in Python and TypeScript.
 
 **Exit criteria.** Every catalog entry passes the new static check, the filters give the same rows in the CLI and the page, and each new problem passes `cstudy verify <slug> --require-ready`.
 
-- [ ] Step 1: labels, backfill and filters. Done: the vocabularies and schemas, S24, the backfill of the 270 entries, `--domain`, `--role` and `--scope` in `cstudy list` and `cstudy next`, and the web API parameters. To do: the Problems view's filters and Scope column.
+- [x] Step 1: labels, backfill and filters: the vocabularies and schemas, S24, the backfill of the 270 entries, `--domain`, `--role` and `--scope` in `cstudy list` and `cstudy next`, and the web API parameters, with the Problems view's filters and Scope column.
 - [ ] Step 2: the first wave of function-size problems.
 - [ ] Step 3: later waves: project-size problems need Phase 12, and system-size ones need later design.
 

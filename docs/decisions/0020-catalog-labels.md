@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Phase 1 implemented, except the Problems view's filters and Scope column. Phases 2 and 3 are planned, and nothing of them is built. The owner took R1 to R7 under [Open to confirm](#open-to-confirm) as recommended on 2026-11-06 |
+| Status | Phase 1 implemented. Phases 2 and 3 are planned, and nothing of them is built. The owner took R1 to R7 under [Open to confirm](#open-to-confirm) as recommended on 2026-11-06 |
 | Date | 2026-11-05 |
-| Spec | [content](../specs/content.md#labels), [catalog](../specs/catalog.md), [problem-format](../specs/problem-format.md#metayaml), [authoring](../specs/authoring.md#static) (S24), [cli](../specs/cli.md#cstudy-list) and [web-ui](../specs/web-ui.md#endpoints) describe phase 1. The Problems view in [web-ui](../specs/web-ui.md#problems-view) and the rule changes in [authoring](../specs/authoring.md#static) carry a forward pointer until they land |
+| Spec | [content](../specs/content.md#labels), [catalog](../specs/catalog.md), [problem-format](../specs/problem-format.md#metayaml), [authoring](../specs/authoring.md#static) (S24), [cli](../specs/cli.md#cstudy-list) and [web-ui](../specs/web-ui.md#problems-view) describe phase 1. The rule changes of phase 2 in [authoring](../specs/authoring.md#static) carry a forward pointer until they land |
 | Will amend | [PRD](../prd.md) (FR-3, its description and persona, when the first new problems ship), [ADR 0012](0012-go-and-rust.md) (every language on every problem, by the [language rule](#rule-changes)) |
 | Builds on | [ADR 0001](0001-data-driven-tests.md), [ADR 0004](0004-original-problem-wording.md), [ADR 0014](0014-project-problems.md), [ADR 0019](0019-service-projects.md). Reviewed items are [ADR 0021](0021-ai-reviewed-problems.md) |
 
@@ -194,7 +194,7 @@ Recommended by the assistant. The owner took all seven as recommended when phase
 
 | Phase | Scope |
 |-------|-------|
-| 1 | Labels and backfill: the schemas, `domain/taxonomy.py`, S24 and its test; the one-pass backfill; `cstudy list`, `cstudy next`, the Problems view filters; catalog columns, with `scope` renamed `covers`; specs and guides. Built, except the Problems view's filters and Scope column: the web API takes `domain`, `role` and `scope`, and the page waits |
+| 1 | Labels and backfill: the schemas, `domain/taxonomy.py`, S24 and its test; the one-pass backfill; `cstudy list`, `cstudy next`, the Problems view filters; catalog columns, with `scope` renamed `covers`; specs and guides (built) |
 | 2 | The [first wave](#the-first-wave) of function-size problems, with the [rule changes](#rule-changes), in Python and TypeScript |
 | 3 | Later waves. Project-size problems depend on [ADR 0019](0019-service-projects.md) (its P11); system-size ones need later design |
 
