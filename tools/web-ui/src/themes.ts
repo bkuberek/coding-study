@@ -16,6 +16,7 @@ interface Palette {
   readonly gutter: string;
   readonly border: string;
   readonly panel: string;
+  /** Translucent: the line paints over the selection, which `drawSelection` draws behind the text. */
   readonly activeLine: string;
   readonly selection: string;
   readonly searchMatch: string;
@@ -38,7 +39,7 @@ const LIGHT: Palette = {
   gutter: "#686c74",
   border: "#e2dacb",
   panel: "#f3eee3",
-  activeLine: "#f3ede1",
+  activeLine: "#ad8c4b1a",
   selection: "#d6e2ee",
   searchMatch: "#f5dd9c",
   accent: "#a63f18",
@@ -60,7 +61,7 @@ const DARK: Palette = {
   gutter: "#8f96a0",
   border: "#2a2f37",
   panel: "#1c2026",
-  activeLine: "#1e2228",
+  activeLine: "#6471801a",
   selection: "#25334a",
   searchMatch: "#5b4a1d",
   accent: "#f0915a",
