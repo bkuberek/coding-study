@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0261"
+slug: stream-reassembler
+title: Stream Reassembler
+status: ready
+difficulty: medium
+track: practical
+kind: design
+patterns: [arrays-hashing]
+domains: [ai-llm]
+job_roles: [ai-engineer]
+scope: function
+languages: [python, typescript]
+signature:
+  class:
+    name: StreamReassembler
+    constructor: {params: []}
+    methods:
+      - {name: delta, params: [{name: sequence, type: int}, {name: fragment, type: string}], returns: {type: string}}
+      - {name: finish, params: [{name: lastSequence, type: int}], returns: {type: bool}}
+      - {name: close, params: [], returns: {type: void}}
+      - {name: status, params: [], returns: {type: string}}
+      - {name: text, params: [], returns: {type: string}}
+      - {name: missing, params: [], returns: {type: "int[]"}}
+comparator: {type: ops}
+approaches:
+  - {id: release-contiguous, name: Release the contiguous prefix and hold everything above the first gap, role: optimal, time: "O(1 + r) per delta, O(g) per missing, O(s) per text", space: "O(s)", time_class: "n^2", space_class: "n"}
+estimate_minutes: 30
