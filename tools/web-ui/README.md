@@ -56,20 +56,20 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 84.1 | 29.8 |
-| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 963.2 | 349.0 |
-| The editor before any language: the page, the editor and the core | 490.9 | 166.3 |
-| A Python file | 561.3 | 193.2 |
-| A TypeScript or JavaScript file, the largest grammar | 599.8 | 206.8 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 84.2 | 29.9 |
+| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 963.8 | 349.3 |
+| The editor before any language: the page, the editor and the core | 491.0 | 166.3 |
+| A Python file | 561.4 | 193.2 |
+| A TypeScript or JavaScript file, the largest grammar | 599.9 | 206.9 |
 | Vim keybindings, added on top | 119.7 | 38.1 |
 | The link between the editors and the sessions, fetched when `code_intelligence` is on (it counts in the whole bundle) | 3.8 | 1.6 |
 | The code-intelligence chunk, fetched when a file of a language with an installed server opens (its own budget: 64 KB raw, 24 KB gzip; `@codemirror/lsp-client` with `marked` aliased to a stand-in) | 17.5 | 6.4 |
 | The Mock and Progress views together, each fetched when it first opens (Progress with the Start dialog) | 19.8 | 9.1 |
-| The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 10.9 | 5.3 |
+| The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 11.4 | 5.6 |
 | The run session, fetched when a run first starts or shows: streaming and drawing it, Cancel, diagnostics | 21.6 | 8.0 |
 | The Run options form, fetched when it first opens | 4.1 | 1.8 |
 | The code of a past attempt, fetched when the History row of an attempt that is over first opens (the dialog module comes with it, and the editor once a file shows) | 3.9 | 2.0 |
-| The job panel for Bench, fetched when Bench first starts (Health fetches it with its view) | 3.9 | 1.8 |
+| The job panel for Bench, fetched when Bench first starts (Health fetches it with its view) | 4.0 | 1.8 |
 | The file tree's menu and actions, fetched when a menu first opens or an action first runs (with the dialog module) | 9.6 | 4.5 |
 | The dialog module (sheets, confirmations, questions that ask for names) and the Start, Done and Solution dialogs, each fetched when first used | 15.8 | 7.8 |
 
