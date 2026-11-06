@@ -5,6 +5,9 @@ status: draft
 difficulty: medium
 track: practical
 kind: project
+domains: [backend]
+job_roles: [backend]
+scope: project
 languages: [go]
 levels:
   - {level: 1, title: Accounts and deposits}

@@ -2,7 +2,7 @@
 
 The schema and the directory rules (I1, I2) fail while loading `item.yaml`; slug uniqueness needs
 every problem and item and is checked by the caller. This module checks the Markdown files and
-the change under review (I3 to I7) and what `status: ready` adds.
+the change under review (I3 to I7), the labels (S24) and what `status: ready` adds.
 """
 
 import re
@@ -13,6 +13,7 @@ from coding_study.domain.errors import ContentIssue
 from coding_study.domain.items import (
     CHANGE_DIRECTORY,
     CHANGE_FILE,
+    ITEM_FILE,
     NOTES_TITLE_SUFFIX,
     PROMPT_FILE,
     REFERENCE_FILE,
@@ -20,6 +21,7 @@ from coding_study.domain.items import (
     TEMPLATE_FILE,
     ItemMeta,
 )
+from coding_study.domain.label_checks import item_label_issues
 from coding_study.domain.markdown import MarkdownDocument
 from coding_study.domain.problem import ContentStatus, Track
 from coding_study.domain.problem_files import RUBRIC_FILE
@@ -69,6 +71,7 @@ class ItemContent:
 def item_static_checks(content: ItemContent) -> tuple[ContentIssue, ...]:
     issues = _Issues(content.directory)
     title = content.meta.title
+    _labels(issues, content.meta)
     prompt = issues.document(PROMPT_FILE, content.prompt, title)
     if prompt is not None:
         _required_sections(issues.at(PROMPT_FILE), prompt, PROMPT_SECTIONS[content.meta.track])
@@ -100,6 +103,12 @@ def item_ready_problems(content: ItemContent) -> tuple[str, ...]:
     if meta.track is Track.SYSTEM_DESIGN and not (references.links or references.study_guides):
         problems.append("system-design items need at least one reference (links or study_guides)")
     return tuple(problems)
+
+
+def _labels(issues: "_Issues", meta: ItemMeta) -> None:
+    """S24: an item has `domains`, `job_roles` and a `scope` that fits its track."""
+    for issue in item_label_issues(meta):
+        issues.error(ITEM_FILE, f"{issue.location}: {issue.message}")
 
 
 class _FileIssues:

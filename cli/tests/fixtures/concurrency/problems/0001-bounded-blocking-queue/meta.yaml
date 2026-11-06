@@ -6,6 +6,9 @@ status: ready
 difficulty: medium
 track: concurrency
 kind: concurrent
+domains: [backend]
+job_roles: [backend]
+scope: function
 languages: [java, kotlin, python, typescript]
 signature:
   class:

@@ -1,4 +1,5 @@
-"""`cstudy verify --static` checks S3 to S17 on one problem (docs/specs/authoring.md#static).
+"""`cstudy verify --static` checks S3 to S17 and S24 on one problem
+(docs/specs/authoring.md#static).
 
 S1 (schemas) and S2 (directory name) fail while loading the problem; uniqueness across problems
 needs every problem and is checked by the caller.
@@ -18,6 +19,7 @@ from coding_study.domain.explanation import ApproachSection, Explanation
 from coding_study.domain.generated_cases import expected_source
 from coding_study.domain.ide_actions import LANGUAGE_NAMES
 from coding_study.domain.jdk import bound_issues
+from coding_study.domain.label_checks import problem_label_issues
 from coding_study.domain.language_limits import language_limits
 from coding_study.domain.layout import JVM_LANGUAGES, SOURCE_EXTENSIONS, language_of_extension
 from coding_study.domain.levels import has_levels, level_heading
@@ -125,6 +127,7 @@ def static_checks(content: ProblemContent) -> StaticReport:
     _case_values(issues, content)
     _language_limits(issues, content)
     _jdk_range(issues, meta)
+    _labels(issues, meta)
     if content.problem_markdown is None:
         issues.error(PROBLEM_FILE, "missing")
     else:
@@ -240,6 +243,12 @@ def _jdk_range(issues: _Issues, meta: ProblemMeta) -> None:
         issues.error(META_FILE, message, "jdk")
         return
     for issue in bound_issues(meta.jdk):
+        issues.error(META_FILE, issue.message, issue.location)
+
+
+def _labels(issues: _Issues, meta: ProblemMeta) -> None:
+    """S24: a catalog problem has `domains`, `job_roles` and a `scope` that fits its kind."""
+    for issue in problem_label_issues(meta):
         issues.error(META_FILE, issue.message, issue.location)
 
 

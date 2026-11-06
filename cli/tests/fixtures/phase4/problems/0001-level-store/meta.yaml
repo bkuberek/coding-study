@@ -5,6 +5,9 @@ status: ready
 difficulty: medium
 track: practical
 kind: progressive
+domains: [backend]
+job_roles: [backend]
+scope: function
 levels:
   - {level: 1, title: Put and get}
   - {level: 2, title: Remove and size}

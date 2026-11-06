@@ -6,6 +6,7 @@ import pytest
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.domain.cases import Case, Expected, FunctionInput, OperationSequence
 from coding_study.domain.jdk import DeclaredJdk
+from coding_study.domain.labels import Labels
 from coding_study.domain.problem import (
     ComparatorSpec,
     ComparatorType,
@@ -629,6 +630,23 @@ def test_concurrency_and_debugging_problems_list_any_subset(problems, track):
     problem = with_meta(problems, track=track, languages=(Language.PYTHON,))
     issues = errors(content(problems, problem=problem))
     assert [issue for issue in issues if "must list" in issue] == []
+
+
+# S24
+
+
+def test_a_catalog_problem_without_labels_fails(problems):
+    problem = with_meta(problems, labels=Labels())
+    assert errors(content(problems, problem=problem)) == [
+        f"{META}: domains: required in the catalog",
+        f"{META}: job_roles: required in the catalog",
+        f"{META}: scope: required in the catalog",
+    ]
+
+
+def test_a_workspace_problem_may_leave_the_labels_out(problems):
+    problem = with_meta(problems, labels=Labels(), workspace=True)
+    assert errors(content(problems, problem=problem)) == []
 
 
 # S17

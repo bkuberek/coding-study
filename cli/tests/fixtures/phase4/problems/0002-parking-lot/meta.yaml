@@ -5,6 +5,9 @@ status: ready
 difficulty: easy
 track: lld
 kind: design
+domains: [backend]
+job_roles: [backend]
+scope: function
 signature:
   class:
     name: ParkingLot

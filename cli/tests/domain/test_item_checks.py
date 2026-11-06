@@ -4,7 +4,9 @@ import pytest
 
 from coding_study.domain.item_checks import ItemContent, item_ready_problems, item_static_checks
 from coding_study.domain.items import ItemMeta, ItemReferences
+from coding_study.domain.labels import Labels
 from coding_study.domain.problem import ContentStatus, Difficulty, Track
+from coding_study.domain.taxonomy import Scope
 from tests.helpers import FIXTURE_TRACKS
 
 SYSTEM_DESIGN = "tracks/system-design/url-shortener"
@@ -16,6 +18,7 @@ URL_SHORTENER = ItemMeta(
     difficulty=Difficulty.MEDIUM,
     estimate_minutes=45,
     status=ContentStatus.READY,
+    labels=Labels(domains=("backend",), job_roles=("backend",), scope=Scope.SYSTEM),
     references=ItemReferences(study_guides=("guide.md#databases",)),
 )
 RETRY_WRAPPER = ItemMeta(
@@ -25,6 +28,7 @@ RETRY_WRAPPER = ItemMeta(
     difficulty=Difficulty.EASY,
     estimate_minutes=20,
     status=ContentStatus.READY,
+    labels=Labels(domains=("backend",), job_roles=("backend",), scope=Scope.FUNCTION),
 )
 
 
@@ -72,6 +76,23 @@ def test_complete_system_design_item_passes(system_design):
 
 def test_complete_code_review_item_passes(code_review):
     assert messages(code_review) == []
+
+
+def test_an_item_without_labels_fails(system_design):
+    content = replace(system_design, meta=replace(system_design.meta, labels=Labels()))
+    assert messages(content) == [
+        f"{SYSTEM_DESIGN}/item.yaml: domains: required in the catalog",
+        f"{SYSTEM_DESIGN}/item.yaml: job_roles: required in the catalog",
+        f"{SYSTEM_DESIGN}/item.yaml: scope: required in the catalog",
+    ]
+
+
+def test_an_item_with_a_scope_its_track_does_not_allow_fails(code_review):
+    labels = Labels(domains=("backend",), job_roles=("backend",), scope=Scope.SYSTEM)
+    content = replace(code_review, meta=replace(code_review.meta, labels=labels))
+    assert messages(content) == [
+        f"{CODE_REVIEW}/item.yaml: scope: system does not fit track code-review: use function"
+    ]
 
 
 @pytest.mark.parametrize("field", ["prompt", "rubric", "reference", "template"])
