@@ -57,20 +57,21 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 84.2 | 29.9 |
-| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 963.8 | 349.3 |
-| The editor before any language: the page, the editor and the core | 491.0 | 166.3 |
-| A Python file | 561.4 | 193.2 |
-| A TypeScript or JavaScript file, the largest grammar | 599.9 | 206.9 |
-| Vim keybindings, added on top | 119.7 | 38.1 |
-| The link between the editors and the sessions, fetched when `code_intelligence` is on (it counts in the whole bundle) | 3.8 | 1.6 |
-| The code-intelligence chunk, fetched when a file of a language with an installed server opens (its own budget: 64 KB raw, 24 KB gzip; `@codemirror/lsp-client` with `marked` aliased to a stand-in) | 17.5 | 6.4 |
-| The Mock and Progress views together, each fetched when it first opens (Progress with the Start dialog) | 19.8 | 9.1 |
-| The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 11.4 | 5.6 |
-| The run session, fetched when a run first starts or shows: streaming and drawing it, Cancel, diagnostics | 21.6 | 8.0 |
-| The Run options form, fetched when it first opens | 4.1 | 1.8 |
-| The job panel for Bench, fetched when Bench first starts (Health fetches it with its view) | 4.0 | 1.8 |
-| Every dialog, fetched when a control first opens one: sheets, confirmations, questions that ask for names, the Start, Done and Solution dialogs, the code of a past attempt (the editor comes once a file shows), and the file tree's menu and actions | 23.2 | 8.9 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 80.8 | 29.0 |
+| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 963.6 | 347.4 |
+| The editor before any language: the page, the editor and the core | 487.7 | 165.4 |
+| A Python file | 558.1 | 192.3 |
+| A TypeScript or JavaScript file, the largest grammar | 596.6 | 205.9 |
+| Vim keybindings, added on top | 120.5 | 38.4 |
+| The link between the editors and the sessions, fetched when `code_intelligence` is on (it counts in the whole bundle) | 8.7 | 3.9 |
+| The code-intelligence chunk, fetched when a file of a language with an installed server opens (its own budget: 64 KB raw, 24 KB gzip; `@codemirror/lsp-client` with `marked` aliased to a stand-in) | 35.4 | 12.9 |
+| The Problem view, fetched when it first opens | 4.3 | 1.8 |
+| The Mock and Progress views together, each fetched when it first opens (Progress with the dialogs, for Start and Import) | 35.3 | 14.2 |
+| The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 14.4 | 6.9 |
+| The run session, fetched when a run first starts or shows: streaming and drawing it, Cancel, diagnostics | 22.4 | 8.3 |
+| The Run options form, fetched when it first opens | 4.5 | 2.1 |
+| The job panel for Bench, fetched when Bench first starts (Health fetches it with its view) | 5.1 | 2.4 |
+| Every dialog, fetched when a control first opens one: sheets, confirmations, questions that ask for names, the Start, Done and Solution dialogs, the code of a past attempt (the editor comes once a file shows), and the file tree's menu and actions | 23.4 | 9.0 |
 
 The budget (NFR-12) is 1 MB raw and 350 KB gzip for the whole bundle without Vim and the code-intelligence chunk, the page's code included, and 600 KB raw loaded before a file of one language is editable. What a view or a control needs only when it is used is a chunk of its own (the rows above), so the page, the largest grammar and the editor stay under the 600 KB; `cli/tests/entrypoints/web/test_bundle_budget.py` holds the committed files to both limits. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
 
