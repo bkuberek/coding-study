@@ -67,6 +67,15 @@ export class EditorFile {
     return this.#run((saver) => saver.save());
   }
 
+  /**
+   * Before a run: saves the tab's edits as `save` does, unless a conflict waits for the user's
+   * choice in its banner. Answers why the tab still differs from its file, or null when it does not.
+   */
+  async saveForRun(): Promise<string | null> {
+    if (this.modified && !this.#saver?.conflict) await this.save();
+    return this.#saver?.conflict?.message ?? (this.modified ? `${this.path} is not saved` : null);
+  }
+
   /** Shows the file as it is on disk now, as after a restore, dropping the tab's changes. */
   reload(): Promise<void> {
     return this.#run(async (saver) => {

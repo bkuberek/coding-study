@@ -10,6 +10,7 @@ import { openSheet } from "./dialogs.ts";
 import { command, h } from "./dom.ts";
 import { secondsSince } from "./format.ts";
 import { problemHash } from "./routes.ts";
+import { unsavedPaths } from "./save.ts";
 import { failure } from "./states.ts";
 import type { AttemptStatus, DoneDocument } from "./types.ts";
 
@@ -52,6 +53,11 @@ export function openDoneDialog(context: PageContext, status: AttemptStatus): voi
   form.querySelector("[data-close]")?.addEventListener("click", () => sheet.close());
   form.addEventListener("submit", (event) => {
     event.preventDefault();
+    const unsaved = unsavedPaths();
+    if (unsaved.length > 0) {
+      problemArea.replaceChildren(failure(new Error(`${unsaved.join(", ")}: not saved. Done grades the latest run, not what the editor shows, so save and run first`)));
+      return;
+    }
     submit.disabled = true;
     problemArea.replaceChildren();
     const picked = choice();

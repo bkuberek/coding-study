@@ -1,8 +1,8 @@
 /**
  * The Attempt view's editor tabs (docs/specs/web-ui.md#attempt-view): one CodeMirror view per open
  * file, fetched with the editor module the first time a file opens. Text the page edits opens
- * writable and saves with Cmd or Ctrl-S (`EditorFile`); a tab with unsaved changes asks before it
- * closes, and so do the view and the page.
+ * writable and saves with Cmd or Ctrl-S (`EditorFile`), and before a run; a tab with unsaved changes
+ * asks before it closes, and so do the view and the page.
  */
 
 import type { Editor } from "../editor.ts";
@@ -69,7 +69,7 @@ export class EditorTabs {
       "div",
       { class: "editor-empty" },
       h("p", {}, "Open a file from the tree."),
-      h("p", { class: "quiet" }, `${shortcut} saves the open file; the page never saves on its own.`),
+      h("p", { class: "quiet" }, `${shortcut} saves the open file; a run saves every open file first.`),
     );
     this.#panels = h("div", { class: "panels" }, this.#placeholder);
     this.#tablist.addEventListener("keydown", (event) => this.#onTabKey(event));
@@ -117,6 +117,12 @@ export class EditorTabs {
   /** Saves the file of the active tab. */
   async saveActive(): Promise<void> {
     if (this.#active !== null) await this.#open.get(this.#active)?.view?.save();
+  }
+
+  /** Before a run: saves every tab's edits; answers why the tabs that still differ from their files do. */
+  async saveForRun(): Promise<string[]> {
+    const found = await Promise.all([...this.#open.values()].map(({ view }) => view?.saveForRun()));
+    return found.filter((why) => why != null);
   }
 
   /** Shows the file as it is on disk now, dropping the tab's changes. */

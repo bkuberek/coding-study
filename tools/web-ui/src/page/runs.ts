@@ -69,6 +69,8 @@ export interface RunShell {
   options: RunOptionsState;
   runContext(): RunContext;
   showCommands(): void;
+  /** Drops the run on save of saves just made, which the run about to start holds. */
+  forgetSaves(): void;
 }
 
 export class AttemptRuns implements RunShell {
@@ -180,6 +182,10 @@ export class AttemptRuns implements RunShell {
     for (const button of [this.buttons.run, this.buttons.submit, this.buttons.options, this.buttons.bench]) button.disabled = true;
     window.clearTimeout(this.#saveTimer);
     this.#frozen = true;
+  }
+
+  forgetSaves(): void {
+    window.clearTimeout(this.#saveTimer);
   }
 
   destroy(): void {

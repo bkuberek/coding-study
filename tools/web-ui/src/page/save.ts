@@ -1,6 +1,6 @@
 /**
- * Saving an open file (docs/specs/web-ui.md#file-api-rules, docs/specs/web-ui.md#editor): only
- * when asked, with Cmd or Ctrl-S, over the version the tab last read or saved. When the file
+ * Saving an open file (docs/specs/web-ui.md#file-api-rules, docs/specs/web-ui.md#editor): when
+ * asked, with Cmd or Ctrl-S, or before a run, over the version the tab last read or saved. When the file
  * changed or went elsewhere since, the save is a conflict, and the tab offers to reload their
  * version or to overwrite it with the tab's on purpose. Unsaved files are tracked across the page,
  * so leaving the view or the page asks first.

@@ -78,10 +78,26 @@ export class RunSession {
     if (!this.#running) this.#attach(runId, live);
   }
 
-  /** Run on save: a test run, or one more after the run in progress. */
+  /** Run on save: a test run, or one more after the run in progress. A run still starting sees the save. */
   runOnSave(): void {
+    if (this.#starting) return;
     if (this.#running) this.#queued = true;
     else void this.start("test");
+  }
+
+  /**
+   * A run tests what the editors show: every tab's edits are saved first, through the save the
+   * shortcut uses. When one can't be, or a tab has a conflict with the file on disk, no run starts:
+   * its banner offers the way on, and the results say which file and why.
+   */
+  async #savedForRun(): Promise<boolean> {
+    const problems = await this.#shell.host.tabs.saveForRun();
+    this.#shell.forgetSaves();
+    if (problems.length === 0) return true;
+    const refusal = `not run: ${problems.join("; ")}. Settle it in its tab, then run again`;
+    this.#shell.results.show(null, [failure(new Error(refusal))]);
+    this.#announce(refusal);
+    return false;
   }
 
   async start(command: RunCommandName, change: Partial<RunOptionsState> = {}): Promise<void> {
@@ -93,6 +109,7 @@ export class RunSession {
     this.#starting = true;
     this.#showState();
     try {
+      if (!(await this.#savedForRun())) return;
       const { id } = await this.#shell.host.context.api.post<{ id: string }>("/api/v1/runs", runBody(this.#shell.host.attemptId, command, options, context));
       this.#shell.host.context.shell.announce(`running ${runCommand(command, options, context)}`);
       this.#attach(id, true);
@@ -130,7 +147,7 @@ export class RunSession {
 
   async startBench(): Promise<void> {
     const status = this.#shell.status;
-    if (!status?.language) return;
+    if (!status?.language || !(await this.#savedForRun())) return;
     const bench = await this.#benchPanel();
     await bench?.start({ command: "bench", slug: status.slug, language: status.language }, `cstudy bench ${status.slug} --lang ${status.language}`);
   }

@@ -57,7 +57,7 @@ The top bar holds the views, the attempts in progress, and the mock banner while
 
 Open a file by choosing it in the tree; each opens in a tab of its own.
 
-- **Saving is explicit.** <kbd>Cmd</kbd>+<kbd>S</kbd> saves the active tab, or `:w` with Vim on. The page never saves on its own. A tab with unsaved edits shows a dot in place of its close button.
+- **Saving.** <kbd>Cmd</kbd>+<kbd>S</kbd> saves the active tab, or `:w` with Vim on. A run saves every tab with unsaved edits first, so it always tests what you see; the page saves at no other time. A tab with unsaved edits shows a dot in place of its close button.
 - **Changes from elsewhere show up.** When your IDE or the terminal changes a file, a tab without unsaved edits takes the new version in place and keeps your cursor. A tab with unsaved edits shows a banner instead: **Reload theirs** drops your edits, **Overwrite** saves yours over the file.
 - **Leaving asks first.** Closing a tab, leaving the view or closing the page with unsaved edits asks before anything is lost.
 - **Generated test files** of a project are editable, as in the terminal, but editing one never changes a grade.
@@ -154,7 +154,7 @@ A file in a language without a server shows a one-line notice in the status bar 
 
 Results arrive as the run goes: one row per case or test, the build line, errors with a link to their line, and the summary. **Run options** sets what `cstudy test` takes as flags: chosen cases, a level, stress runs and a seed, the time limit, `--perf`, and type-checking for TypeScript. A submission that passes a level opens the next one: the statement, the tree and the header follow at once.
 
-Only one run per attempt runs at a time. A run started in another tab shows in this one too, and either tab can cancel it.
+Run tests, Submit and Bench save every tab with unsaved edits first. If a file changed or was deleted on disk, or a save is refused, nothing runs: the results name the file and why, and its tab's banner offers the way on. Only one run per attempt runs at a time. A run started in another tab shows in this one too, and either tab can cancel it.
 
 ## Project files
 
@@ -188,7 +188,7 @@ An attempt still in progress links to its Attempt view instead, where its files 
 |--------|--------------|
 | Hint | Shows the next hint under the statement. Any hint caps the review grade at `ok` |
 | Solution… | Asks first when an unsolved attempt is in progress, since the attempt is then graded as `again`; the reference opens in a read-only pane, never in your files |
-| Done… | Finishes the attempt with a rating (`easy`, `ok`, `hard`) or as given up, and optional notes; it shows the lines `cstudy done` prints, with the next review date |
+| Done… | Finishes the attempt with a rating (`easy`, `ok`, `hard`) or as given up, and optional notes; it shows the lines `cstudy done` prints, with the next review date. It grades the latest run, so it refuses while a tab has unsaved edits: save and run first |
 
 ## Mock interviews
 
