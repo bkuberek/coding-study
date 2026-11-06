@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0258"
+slug: calibration-metrics
+title: Calibration Metrics
+status: ready
+difficulty: easy
+track: practical
+kind: function
+patterns: [arrays-hashing]
+domains: [ai-llm]
+job_roles: [ml-engineer, ai-engineer]
+scope: function
+languages: [python, typescript]
+signature:
+  function:
+    name: calibrationReport
+    params:
+      - {name: probabilities, type: "double[]"}
+      - {name: outcomes, type: "bool[]"}
+      - {name: sliceNames, type: "string[]"}
+      - {name: reportSlices, type: "string[]"}
+      - {name: binCount, type: int}
+    returns: {type: "double[][]"}
+comparator: {type: float, tolerance: 1.0e-9}
+approaches:
+  - {id: per-bin-sums, name: Keep two running sums per bin for each group, role: optimal, time: "O(q (n + b))", space: "O(n + b)", time_class: "n", space_class: "n"}
+estimate_minutes: 25
