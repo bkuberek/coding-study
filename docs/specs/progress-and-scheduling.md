@@ -179,11 +179,14 @@ Worked sequence (ok, ok, ok, hard, again, ok):
 
 | Status | Definition |
 |--------|------------|
-| `new` | No attempt with status `passed` or `failed` |
+| `in_progress` | An attempt with status `in_progress` is open, in any language. It comes ahead of every status below, `due` included, and lasts while the attempt is open: `cstudy done` or `cstudy start --fresh` ends it, and an `abandoned` attempt never counts |
+| `new` | No attempt with status `passed` or `failed`, and none open |
 | `attempted` | Finished attempts exist, none `passed` |
 | `passed` | At least one `passed` attempt; not mastered |
 | `mastered` | `schedule.interval_days >= 21` and `last_grade >= 2` |
 | `due` | `schedule.due_on <= today` (shown instead of `passed` or `mastered`) |
+
+Only the display of `cstudy list` and its web page, and the `--status` filter, read the status. `cstudy next` and the weakness score read the attempts themselves: a problem with an attempt in progress is still left out of the picks and still counts in its group, and a problem with no finished attempt is still `new` there. A review in progress shows `in_progress` rather than `due`, so `cstudy list --status due` lists the due problems that have no attempt open.
 
 ## Weakness score
 

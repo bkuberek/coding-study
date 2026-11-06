@@ -79,6 +79,15 @@ test("reviews ahead are the due ones, then the next 14 days by date", () => {
   ]);
 });
 
+test("a due review with an attempt in progress stays among the reviews due", () => {
+  const entries = [entry("under-review", "in_progress", "2026-10-20"), entry("open-later", "in_progress", "2026-10-30")];
+  const ahead = reviewsAhead(entries, "2026-10-24");
+  assert.deepEqual([ahead.due.map((item) => item.slug), ahead.upcoming.map((item) => item.slug)], [
+    ["under-review"],
+    ["open-later"],
+  ]);
+});
+
 test("the imported rows read as cstudy import counts them", () => {
   assert.equal(importedText({ attempts: 6, test_runs: 4, schedule: 3 }), "attempts 6 · test_runs 4 · schedule 3");
 });

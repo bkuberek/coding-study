@@ -89,9 +89,40 @@ def test_untouched_problem_is_new():
     assert ProblemProgress().status(TODAY) is ProblemStatus.NEW
 
 
-def test_abandoned_and_unfinished_attempts_keep_a_problem_new():
-    progress = ProblemProgress(frozenset({AttemptStatus.ABANDONED, AttemptStatus.IN_PROGRESS}))
+def test_abandoned_attempts_keep_a_problem_new():
+    progress = ProblemProgress(frozenset({AttemptStatus.ABANDONED}))
     assert progress.status(TODAY) is ProblemStatus.NEW
+
+
+def test_an_attempt_in_progress_makes_a_problem_in_progress():
+    progress = ProblemProgress(frozenset({AttemptStatus.IN_PROGRESS}))
+    assert progress.status(TODAY) is ProblemStatus.IN_PROGRESS
+
+
+@pytest.mark.parametrize(
+    "finished",
+    [
+        frozenset(),
+        frozenset({AttemptStatus.ABANDONED}),
+        frozenset({AttemptStatus.FAILED}),
+        frozenset({AttemptStatus.PASSED}),
+    ],
+    ids=["none", "abandoned", "failed", "passed"],
+)
+def test_an_attempt_in_progress_comes_ahead_of_what_the_other_attempts_say(finished):
+    progress = ProblemProgress(finished | {AttemptStatus.IN_PROGRESS})
+    assert progress.status(TODAY) is ProblemStatus.IN_PROGRESS
+
+
+def test_an_attempt_in_progress_comes_ahead_of_a_due_review():
+    due = schedule(date(2026, 10, 1), interval=30)
+    progress = ProblemProgress(frozenset({AttemptStatus.PASSED, AttemptStatus.IN_PROGRESS}), due)
+    assert progress.status(TODAY) is ProblemStatus.IN_PROGRESS
+
+
+def test_an_attempt_in_progress_leaves_the_problem_new_for_the_next_selection():
+    progress = ProblemProgress(frozenset({AttemptStatus.IN_PROGRESS}))
+    assert (progress.is_new, progress.has_passed) == (True, False)
 
 
 def test_only_failed_attempts_is_attempted():

@@ -117,6 +117,38 @@ def test_status_comes_from_progress(environment):
     assert slugs(environment, status=ProblemStatus.ATTEMPTED) == ["two-sum"]
 
 
+def test_an_attempt_in_progress_makes_the_problem_in_progress(environment):
+    environment.progress.add_attempt(NewAttempt("two-sum", Language.PYTHON, AttemptMode.NEW, NOW))
+    assert slugs(environment, status=ProblemStatus.IN_PROGRESS) == ["two-sum"]
+
+
+def test_an_attempt_in_progress_in_any_language_counts(environment):
+    environment.progress.add_attempt(NewAttempt("two-sum", Language.KOTLIN, AttemptMode.NEW, NOW))
+    assert slugs(environment, status=ProblemStatus.IN_PROGRESS) == ["two-sum"]
+
+
+def test_a_problem_in_progress_is_no_longer_listed_as_new(environment):
+    environment.progress.add_attempt(NewAttempt("two-sum", Language.PYTHON, AttemptMode.NEW, NOW))
+    assert slugs(environment, status=ProblemStatus.NEW) == ["lru-cache"]
+
+
+def test_an_abandoned_attempt_does_not_count(environment):
+    finish(environment, AttemptStatus.ABANDONED)
+    assert slugs(environment, status=ProblemStatus.IN_PROGRESS) == []
+
+
+def test_a_review_attempt_in_progress_comes_ahead_of_due(environment):
+    finish(environment, AttemptStatus.PASSED)
+    overdue = NOW.date() - timedelta(days=1)
+    environment.progress.save_schedule_entry(
+        ScheduleEntry("two-sum", ReviewState(interval_days=3, reps=1), overdue, Grade.OK, NOW)
+    )
+    environment.progress.add_attempt(
+        NewAttempt("two-sum", Language.PYTHON, AttemptMode.REVIEW, NOW)
+    )
+    assert slugs(environment, status=ProblemStatus.DUE) == []
+
+
 def test_due_date_comes_from_the_schedule(environment):
     finish(environment, AttemptStatus.PASSED)
     due = date(2026, 10, 27)

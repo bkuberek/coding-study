@@ -53,6 +53,10 @@ test("a problem status has a glyph and its word", () => {
   assert.deepEqual(problemBadge("due"), { glyph: "●", text: "due", tone: "fail" });
 });
 
+test("a problem with an open attempt reads in_progress, as the CLI writes it", () => {
+  assert.deepEqual(problemBadge("in_progress"), { glyph: "▸", text: "in_progress", tone: "info" });
+});
+
 test("an unknown problem status keeps its word", () => {
   assert.equal(problemBadge("archived").text, "archived");
 });

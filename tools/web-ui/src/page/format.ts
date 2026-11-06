@@ -33,12 +33,14 @@ export interface Badge {
   readonly tone: string;
 }
 
-const PROBLEM_STATUSES: Readonly<Record<string, Badge>> = {
-  new: { glyph: "○", text: "new", tone: "quiet" },
-  attempted: { glyph: "◐", text: "attempted", tone: "warn" },
-  passed: { glyph: "✓", text: "passed", tone: "ok" },
-  due: { glyph: "●", text: "due", tone: "fail" },
-  mastered: { glyph: "◆", text: "mastered", tone: "info" },
+/** A `cstudy list` status's glyph and tone; the badge's text is the status, as the CLI writes it. */
+const PROBLEM_STATUSES: Readonly<Record<string, readonly [glyph: string, tone: string]>> = {
+  new: ["○", "quiet"],
+  in_progress: ["▸", "info"],
+  attempted: ["◐", "warn"],
+  passed: ["✓", "ok"],
+  due: ["●", "fail"],
+  mastered: ["◆", "info"],
 };
 
 const FILE_STATES: Readonly<Record<string, Badge>> = {
@@ -56,7 +58,8 @@ const CHECKS: Readonly<Record<string, Badge>> = {
 
 /** A `cstudy list` status. */
 export function problemBadge(status: string): Badge {
-  return PROBLEM_STATUSES[status] ?? { glyph: "·", text: status, tone: "quiet" };
+  const [glyph, tone] = PROBLEM_STATUSES[status] ?? ["·", "quiet"];
+  return { glyph, text: status, tone };
 }
 
 /** A project file's state against what `cstudy` provided, or none for other attempts. */

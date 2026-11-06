@@ -92,6 +92,7 @@ def _round_half_up(value: float) -> int:
 
 class ProblemStatus(StrEnum):
     NEW = "new"
+    IN_PROGRESS = "in_progress"
     ATTEMPTED = "attempted"
     PASSED = "passed"
     DUE = "due"
@@ -107,6 +108,8 @@ class ProblemProgress:
 
     def status(self, today: date) -> ProblemStatus:
         """docs/specs/progress-and-scheduling.md#problem-status"""
+        if self.in_progress:
+            return ProblemStatus.IN_PROGRESS
         if self.is_due(today):
             return ProblemStatus.DUE
         if self.has_passed:

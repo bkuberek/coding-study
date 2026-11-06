@@ -6,11 +6,13 @@ import pytest
 
 from coding_study.application.list_items import list_items
 from coding_study.application.list_problems import ProblemFilter
+from coding_study.domain.attempts import AttemptMode, NewAttempt
 from coding_study.domain.items import EntryKind
 from coding_study.domain.labels import LabelFilter
 from coding_study.domain.problem import Track
+from coding_study.domain.scheduling import ProblemStatus
 from coding_study.domain.taxonomy import Scope
-from tests.fakes import make_environment, repository_root
+from tests.fakes import NOW, make_environment, repository_root
 from tests.helpers import FIXTURE_TRACKS
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
@@ -70,3 +72,13 @@ def test_a_scope_lists_the_items_of_that_scope(environment):
 
 def test_a_label_no_item_names_lists_none(environment):
     assert slugs(environment, labels=LabelFilter(domain="security")) == []
+
+
+def test_an_item_with_an_attempt_in_progress_is_in_progress(environment):
+    environment.progress.add_attempt(NewAttempt("url-shortener", None, AttemptMode.NEW, NOW))
+    assert slugs(environment, status=ProblemStatus.IN_PROGRESS) == ["url-shortener"]
+
+
+def test_the_other_items_stay_new(environment):
+    environment.progress.add_attempt(NewAttempt("url-shortener", None, AttemptMode.NEW, NOW))
+    assert slugs(environment, status=ProblemStatus.NEW) == ["news-feed", "retry-wrapper"]

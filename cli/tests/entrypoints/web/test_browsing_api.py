@@ -62,6 +62,18 @@ def test_the_problem_list_shows_attempts_in_progress(client, environment):
     assert client.get("/api/v1/problems").json() == list_document(environment, ProblemFilter())
 
 
+def test_the_problem_list_filters_by_the_in_progress_status(client, environment):
+    start_attempt(environment, StartRequest("two-sum", Language.PYTHON))
+    found = client.get("/api/v1/problems?status=in_progress").json()
+    assert [entry["slug"] for entry in found["entries"]] == ["two-sum"]
+
+
+def test_a_started_problem_reads_in_progress_in_the_list(client, environment):
+    start_attempt(environment, StartRequest("two-sum", Language.PYTHON))
+    entries = client.get("/api/v1/problems").json()["entries"]
+    assert {entry["slug"]: entry["status"] for entry in entries}["two-sum"] == "in_progress"
+
+
 @pytest.mark.parametrize(
     ("query", "problem_filter"),
     [

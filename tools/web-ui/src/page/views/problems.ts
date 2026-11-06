@@ -13,7 +13,7 @@ import { empty, loading, showFailure } from "../states.ts";
 import type { ListEntry, NextPick, ProblemList } from "../types.ts";
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
-const STATUSES = ["new", "attempted", "passed", "due", "mastered"];
+const STATUSES = ["new", "in_progress", "attempted", "passed", "due", "mastered"];
 const CONTENT = ["draft", "ready"];
 const LANGUAGE_LABELS: Readonly<Record<string, string>> = {
   python: "py",

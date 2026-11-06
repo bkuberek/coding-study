@@ -23,7 +23,6 @@ const NO_VALUE = "-";
 const PERCENT = 100;
 const REVIEW_DAYS = 14;
 const DAY_MS = 86_400_000;
-const DUE = "due";
 
 export interface ReviewsAhead {
   /** Due today or overdue, oldest first. */
@@ -57,10 +56,9 @@ export function summaryLines(stats: StatsDocument): [string, string][] {
 export function reviewsAhead(entries: readonly ListEntry[], today: string): ReviewsAhead {
   const byDue = (a: ListEntry, b: ListEntry) => (a.due_on ?? "").localeCompare(b.due_on ?? "");
   const horizon = new Date(Date.parse(today) + REVIEW_DAYS * DAY_MS).toISOString().slice(0, 10);
-  const due = entries.filter((entry) => entry.status === DUE).sort(byDue);
-  const upcoming = entries
-    .filter((entry) => entry.status !== DUE && entry.due_on !== null && entry.due_on > today && entry.due_on <= horizon)
-    .sort(byDue);
+  const isDue = (entry: ListEntry) => entry.due_on !== null && entry.due_on <= today;
+  const due = entries.filter(isDue).sort(byDue);
+  const upcoming = entries.filter((entry) => entry.due_on !== null && entry.due_on > today && entry.due_on <= horizon).sort(byDue);
   return { due, upcoming };
 }
 

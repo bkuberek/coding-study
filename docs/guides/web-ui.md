@@ -43,7 +43,7 @@ The top bar holds the views, the attempts in progress, and the mock banner while
 
 | View | Opens with | Shows |
 |------|------------|-------|
-| Problems | <kbd>Alt</kbd>+<kbd>1</kbd> | The `cstudy next` pick, the filters of `cstudy list` (track, kind, language, difficulty, status, content status, domain, role, scope and pattern), and every problem with its scope, status and due date |
+| Problems | <kbd>Alt</kbd>+<kbd>1</kbd> | The `cstudy next` pick, the filters of `cstudy list` (track, kind, language, difficulty, status, content status, domain, role, scope and pattern), and every problem with its scope, status (`in_progress` while you have an attempt open) and due date |
 | Problem | A row of the list | The statement, Start or Resume, Solution, and the problem's history: its review schedule, attempts, runs and submissions, and the code of each attempt that is over |
 | Attempt | Start, Resume, or the in-progress menu | The file tree, the editor, the results of the latest run, and the statement with its levels and hints |
 | Mock | <kbd>Alt</kbd>+<kbd>2</kbd> | The start form, or the running mock's countdown and problems |

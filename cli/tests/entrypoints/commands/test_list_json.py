@@ -169,6 +169,22 @@ def test_json_names_an_items_attempt_in_progress_without_a_language(environment)
     ]
 
 
+def test_json_marks_a_problem_with_an_attempt_in_progress(environment):
+    environment.progress.add_attempt(NewAttempt("two-sum", Language.KOTLIN, AttemptMode.NEW, NOW))
+    assert entry("two-sum")["status"] == "in_progress"
+
+
+def test_json_marks_an_item_with_an_attempt_in_progress(environment):
+    environment.progress.add_attempt(NewAttempt("url-shortener", None, AttemptMode.NEW, NOW))
+    assert entry("url-shortener")["status"] == "in_progress"
+
+
+def test_json_filters_by_the_in_progress_status(environment):
+    environment.progress.add_attempt(NewAttempt("two-sum", Language.PYTHON, AttemptMode.NEW, NOW))
+    found = document("--status", "in_progress")["entries"]
+    assert [item["slug"] for item in found] == ["two-sum"]
+
+
 def test_json_has_the_status_and_due_date(environment):
     attempt = environment.progress.add_attempt(
         NewAttempt("two-sum", Language.PYTHON, AttemptMode.NEW, NOW)

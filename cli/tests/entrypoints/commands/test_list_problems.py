@@ -15,7 +15,7 @@ from tests.fakes import NOW, make_environment, repository_root
 
 runner = CliRunner()
 PRACTICE = Path(__file__).resolve().parents[2] / "fixtures" / "practice" / "problems"
-HEADER = "ID    SLUG              DIFF    PATTERN          STATUS    DUE         REFS"
+HEADER = "ID    SLUG              DIFF    PATTERN          STATUS       DUE         REFS"
 
 
 @pytest.fixture
@@ -32,8 +32,8 @@ def invoke(*arguments: str):
 def test_lists_every_problem(environment):
     assert invoke().output.splitlines() == [
         HEADER,
-        "0001  two-sum           easy    arrays-hashing   new       -           py",
-        "0002  lru-cache         medium  linked-list      new       -           py",
+        "0001  two-sum           easy    arrays-hashing   new          -           py",
+        "0002  lru-cache         medium  linked-list      new          -           py",
     ]
 
 
@@ -50,7 +50,34 @@ def test_shows_progress_status_and_due_date(environment):
         ScheduleEntry("two-sum", ReviewState(interval_days=3), date(2026, 10, 27), Grade.OK, NOW)
     )
     row = invoke().output.splitlines()[1]
-    assert row == "0001  two-sum           easy    arrays-hashing   passed    2026-10-27  py"
+    assert row == "0001  two-sum           easy    arrays-hashing   passed       2026-10-27  py"
+
+
+def test_a_problem_with_an_attempt_in_progress_reads_in_progress(environment):
+    environment.progress.add_attempt(NewAttempt("two-sum", Language.PYTHON, AttemptMode.NEW, NOW))
+    row = invoke().output.splitlines()[1]
+    assert row == "0001  two-sum           easy    arrays-hashing   in_progress  -           py"
+
+
+def test_the_status_filter_takes_in_progress(environment):
+    environment.progress.add_attempt(NewAttempt("two-sum", Language.PYTHON, AttemptMode.NEW, NOW))
+    rows = invoke("--status", "in_progress").output.splitlines()[1:]
+    assert [row.split()[1] for row in rows] == ["two-sum"]
+
+
+def test_the_status_filter_new_leaves_a_problem_in_progress_out(environment):
+    environment.progress.add_attempt(NewAttempt("two-sum", Language.PYTHON, AttemptMode.NEW, NOW))
+    rows = invoke("--status", "new").output.splitlines()[1:]
+    assert [row.split()[1] for row in rows] == ["lru-cache"]
+
+
+def test_attempted_is_written_in_full(environment):
+    attempt = environment.progress.add_attempt(
+        NewAttempt("two-sum", Language.PYTHON, AttemptMode.NEW, NOW)
+    )
+    environment.progress.update_attempt(replace(attempt, status=AttemptStatus.FAILED))
+    row = invoke().output.splitlines()[1]
+    assert row == "0001  two-sum           easy    arrays-hashing   attempted    -           py"
 
 
 def test_long_slugs_and_patterns_are_truncated(environment):
@@ -70,7 +97,7 @@ def test_long_slugs_and_patterns_are_truncated(environment):
 
 def test_filters(environment):
     assert invoke("--difficulty", "medium").output.splitlines()[1:] == [
-        "0002  lru-cache         medium  linked-list      new       -           py"
+        "0002  lru-cache         medium  linked-list      new          -           py"
     ]
 
 
