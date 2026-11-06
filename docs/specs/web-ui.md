@@ -9,7 +9,7 @@
 | Parity, never more | The page never gets behaviour the CLI lacks. When the page needs a value no command prints, the CLI gains it first, in the same or an earlier change ([cli](cli.md)). Editing aids belong to the editor, not to practice: [code intelligence](#code-intelligence-sessions), like highlighting, grades nothing, records nothing and writes no file, and terminal users get the same from the language servers their IDE runs on the workspace ([ADR 0018](../decisions/0018-editor-code-intelligence.md)); the CLI's part is installing and checking the servers ([`cstudy doctor`](cli.md#cstudy-doctor)) |
 | One judge | Runs are child `cstudy` processes; the page never runs user code itself and never judges an output |
 | Same documents | An endpoint that has a matching `--json` document returns it unchanged, so one JSON Schema serves both |
-| No state of its own | Files live in the workspace and progress in `progress.db`; the terminal, the IDE and the page always agree. The only page-owned file is the preferences file ([Preferences](#preferences)) |
+| No state of its own | Files live in the workspace and progress in `progress.db`; the terminal, the IDE and the page always agree. The only page-owned file is the preferences file ([Preferences](#preferences)); the user's [config file](cli.md#configuration) it writes only when Settings is asked to, keeping the rest of the file |
 | Local | The server binds `127.0.0.1` only and makes no network request; the page loads nothing from anywhere but the server |
 
 ## Command parity
