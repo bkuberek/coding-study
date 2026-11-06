@@ -2,6 +2,7 @@
 id: "0089"
 slug: task-scheduler
 title: Task Scheduler
+summary: "Given tasks labelled by letter, where two tasks with the same label must be at least a cooldown number of slots apart, return the fewest time slots needed to run them all."
 status: ready
 difficulty: medium
 track: dsa

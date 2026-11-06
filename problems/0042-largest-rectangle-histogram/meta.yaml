@@ -2,6 +2,7 @@
 id: "0042"
 slug: largest-rectangle-histogram
 title: Largest Rectangle in Histogram
+summary: "Given the heights of histogram bars of width 1, return the area of the largest rectangle that fits entirely inside the bars."
 status: ready
 difficulty: hard
 track: dsa

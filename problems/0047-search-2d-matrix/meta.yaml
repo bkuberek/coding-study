@@ -2,6 +2,7 @@
 id: "0047"
 slug: search-2d-matrix
 title: Search a Sorted Matrix
+summary: "Given a grid whose rows are sorted and whose first value in each row exceeds the last value of the row above, decide whether a target occurs in it."
 status: ready
 difficulty: medium
 track: dsa

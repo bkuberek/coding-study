@@ -2,6 +2,7 @@
 id: "0205"
 slug: concurrency-limiter
 title: Concurrency Limiter
+summary: "Implement a counting semaphore that lets at most a given number of workers hold a permit at the same time and makes the others wait their turn."
 status: ready
 difficulty: medium
 track: concurrency

@@ -2,6 +2,7 @@
 id: "0049"
 slug: first-last-position
 title: First and Last Position
+summary: "Given a sorted array and a target, return the first and the last index at which the target occurs, or [-1, -1] if it does not occur."
 status: ready
 difficulty: medium
 track: dsa

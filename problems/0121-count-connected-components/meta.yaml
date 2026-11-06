@@ -2,6 +2,7 @@
 id: "0121"
 slug: count-connected-components
 title: Count Connected Components
+summary: "Given n nodes and a list of undirected edges, return the number of connected components."
 status: ready
 difficulty: medium
 track: dsa

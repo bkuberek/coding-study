@@ -2,6 +2,7 @@
 id: "0165"
 slug: min-obstacle-removal
 title: Minimum Obstacle Removal
+summary: "Given a grid of empty cells and removable obstacles, return the fewest obstacles to remove so that a route exists from the top-left to the bottom-right cell."
 status: ready
 difficulty: hard
 track: dsa

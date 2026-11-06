@@ -2,6 +2,7 @@
 id: "0231"
 slug: remove-covered-intervals
 title: Remove Covered Intervals
+summary: "Given a list of distinct intervals, remove every interval covered by another and return how many intervals remain."
 status: ready
 difficulty: medium
 track: dsa

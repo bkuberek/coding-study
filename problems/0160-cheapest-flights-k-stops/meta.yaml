@@ -2,6 +2,7 @@
 id: "0160"
 slug: cheapest-flights-k-stops
 title: Cheapest Flights Within K Stops
+summary: "Given one-way flights with prices, return the lowest price of a trip from src to dst with at most k stops, or -1 if there is none."
 status: ready
 difficulty: medium
 track: dsa

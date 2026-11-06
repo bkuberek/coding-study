@@ -2,6 +2,7 @@
 id: "0098"
 slug: word-search
 title: Word Search
+summary: "Given a grid of letters and a word, decide whether the word can be spelled by stepping between adjacent cells (up, down, left, right) without using a cell twice."
 status: ready
 difficulty: medium
 track: dsa

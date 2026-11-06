@@ -2,6 +2,7 @@
 id: "0100"
 slug: combination-sum-no-reuse
 title: Combination Sum Without Reuse
+summary: "Given candidate numbers that may repeat and a target, list every distinct combination of them that adds up to the target, using each entry at most once."
 status: ready
 difficulty: medium
 track: dsa

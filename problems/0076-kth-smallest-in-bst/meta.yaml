@@ -2,6 +2,7 @@
 id: "0076"
 slug: kth-smallest-in-bst
 title: Kth Smallest in a BST
+summary: "Given the root of a binary search tree with distinct values and a number k, return the k-th smallest value, counting from 1."
 status: ready
 difficulty: medium
 track: dsa

@@ -2,6 +2,7 @@
 id: "0037"
 slug: daily-temperatures
 title: Daily Temperatures
+summary: "Given each day's temperature, return for every day how many days you wait until a strictly warmer one, or 0 when none comes."
 status: ready
 difficulty: medium
 track: dsa

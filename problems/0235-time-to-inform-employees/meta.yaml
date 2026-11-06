@@ -2,6 +2,7 @@
 id: "0235"
 slug: time-to-inform-employees
 title: Time to Inform All Employees
+summary: "Given each employee's manager and the minutes they need to inform their direct reports, return the minutes until every employee has heard the head's news."
 status: ready
 difficulty: medium
 track: dsa

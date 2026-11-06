@@ -2,6 +2,7 @@
 id: "0107"
 slug: pacific-atlantic-water-flow
 title: Pacific Atlantic Water Flow
+summary: "Given a grid of land heights with the Pacific along the top and left edges and the Atlantic along the bottom and right, return every cell from which rain can reach both oceans."
 status: ready
 difficulty: medium
 track: dsa

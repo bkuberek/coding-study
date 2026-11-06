@@ -2,6 +2,7 @@
 id: "0078"
 slug: right-side-view
 title: Right Side View
+summary: "Given a binary tree, return the values you see when looking at it from the right, the rightmost node of each level, from the top level to the bottom."
 status: ready
 difficulty: medium
 track: dsa

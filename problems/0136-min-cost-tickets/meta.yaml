@@ -2,6 +2,7 @@
 id: "0136"
 slug: min-cost-tickets
 title: Minimum Cost for Tickets
+summary: "Given the days you will travel and the prices of 1-day, 7-day and 30-day passes, return the least total cost that covers every travel day."
 status: ready
 difficulty: medium
 track: dsa

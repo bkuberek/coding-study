@@ -2,6 +2,7 @@
 id: "0183"
 slug: range-sum-mutable
 title: Range Sum Query With Updates
+summary: "Build a class for an array that supports overwriting one value and returning the sum of the values between two positions, both quickly."
 status: ready
 difficulty: medium
 track: dsa

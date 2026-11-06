@@ -2,6 +2,7 @@
 id: "0102"
 slug: phone-letter-combinations
 title: Phone Letter Combinations
+summary: "Given a string of digits 2 to 9, list every word that can be spelled on a phone keypad by choosing one of each digit's letters, in order."
 status: ready
 difficulty: medium
 track: dsa

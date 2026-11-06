@@ -2,6 +2,7 @@
 id: "0140"
 slug: edit-distance
 title: Edit Distance
+summary: "Given two words, return the fewest single-character insertions, deletions and replacements that turn the first into the second."
 status: ready
 difficulty: medium
 track: dsa

@@ -2,6 +2,7 @@
 id: "0115"
 slug: word-ladder
 title: Word Ladder
+summary: "Given a start word, an end word and a dictionary, return the number of words on the shortest ladder that changes one letter at a time, or 0 if there is none."
 status: ready
 difficulty: hard
 track: dsa

@@ -2,6 +2,7 @@
 id: "0035"
 slug: decode-string
 title: Decode String
+summary: "Given a string in which k[content] means content repeated k times, with groups possibly nested, expand every group and return the decoded string."
 status: ready
 difficulty: medium
 track: dsa

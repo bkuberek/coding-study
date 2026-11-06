@@ -2,6 +2,7 @@
 id: "0046"
 slug: koko-eating-bananas
 title: Koko Eating Bananas
+summary: "Given piles of bananas and h hours, return the smallest whole eating speed k, in bananas per hour, that finishes every pile within h hours."
 status: ready
 difficulty: medium
 track: dsa

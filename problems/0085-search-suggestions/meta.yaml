@@ -2,6 +2,7 @@
 id: "0085"
 slug: search-suggestions
 title: Search Suggestions
+summary: "Given product names and a search word typed one letter at a time, return after each letter up to three names that start with what is typed so far, in alphabetical order."
 status: ready
 difficulty: medium
 track: dsa

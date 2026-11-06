@@ -2,6 +2,7 @@
 id: "0114"
 slug: open-the-lock
 title: Open the Lock
+summary: "Given a four-wheel lock that shows 0000, a list of dead ends and a target, return the fewest single-wheel turns that reach the target without showing a dead end, or -1."
 status: ready
 difficulty: medium
 track: dsa

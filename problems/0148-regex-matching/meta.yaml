@@ -2,6 +2,7 @@
 id: "0148"
 slug: regex-matching
 title: Regular Expression Matching
+summary: "Given a pattern of letters, . (any letter) and x* (zero or more of x), and a string, decide whether the pattern matches the whole string."
 status: ready
 difficulty: hard
 track: dsa

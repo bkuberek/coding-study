@@ -2,6 +2,7 @@
 id: "0063"
 slug: insert-interval
 title: Insert Interval
+summary: "Given sorted, non-overlapping closed intervals and one more interval, add it, combining everything it overlaps or touches, and return the list."
 status: ready
 difficulty: medium
 track: dsa

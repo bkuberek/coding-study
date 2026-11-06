@@ -2,6 +2,7 @@
 id: "0233"
 slug: employee-importance
 title: Employee Importance
+summary: "Given employee records with an importance score and direct subordinates, return the total importance of an employee and everyone below them."
 status: ready
 difficulty: medium
 track: dsa

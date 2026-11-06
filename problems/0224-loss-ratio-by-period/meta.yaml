@@ -2,6 +2,7 @@
 id: "0224"
 slug: loss-ratio-by-period
 title: Loss Ratio by Period
+summary: "Given dated earned-premium postings and dated incurred losses, return the loss ratio of each period of a given number of months, over the range of two dates."
 status: ready
 difficulty: medium
 track: practical

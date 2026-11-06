@@ -2,6 +2,7 @@
 id: "0116"
 slug: shortest-path-with-removals
 title: Shortest Path With Obstacle Removals
+summary: "Given a grid with obstacles, return the fewest moves from the top-left to the bottom-right cell if up to k obstacles may be removed, or -1 if it cannot be done."
 status: ready
 difficulty: hard
 track: dsa

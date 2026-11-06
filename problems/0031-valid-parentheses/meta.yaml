@@ -2,6 +2,7 @@
 id: "0031"
 slug: valid-parentheses
 title: Valid Parentheses
+summary: "Given a string made of the six bracket characters ( ) [ ] { }, decide whether every bracket is closed by one of the same kind, in the right order."
 status: ready
 difficulty: easy
 track: dsa

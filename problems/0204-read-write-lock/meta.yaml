@@ -2,6 +2,7 @@
 id: "0204"
 slug: read-write-lock
 title: Read-Write Lock
+summary: "Implement a read-write lock: any number of readers may hold it together, a writer needs it alone, and a waiting writer is not starved by later readers."
 status: ready
 difficulty: hard
 track: concurrency

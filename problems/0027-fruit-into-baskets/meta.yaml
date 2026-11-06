@@ -2,6 +2,7 @@
 id: "0027"
 slug: fruit-into-baskets
 title: Fruit Into Baskets
+summary: "Given a row of trees by fruit type, start anywhere and pick one fruit from each tree going right into two baskets that each hold one type; return the most fruits you can pick."
 status: ready
 difficulty: medium
 track: dsa

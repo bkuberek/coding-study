@@ -2,6 +2,7 @@
 id: "0111"
 slug: bipartite-graph
 title: Is the Graph Bipartite
+summary: "Given an undirected graph as an adjacency list, decide whether its nodes can be split into two teams so that every edge joins the two teams."
 status: ready
 difficulty: medium
 track: dsa

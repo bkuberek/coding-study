@@ -2,6 +2,7 @@
 id: "0005"
 slug: valid-anagram
 title: Valid Anagram
+summary: "Given two strings of lowercase letters, s and t, decide whether t is an anagram of s: the same letters with the same counts, in any order."
 status: ready
 difficulty: easy
 track: dsa

@@ -2,6 +2,7 @@
 id: "0194"
 slug: cache-service
 title: Cache Service
+summary: "Design an in-process cache service with a fixed capacity, optional expiry, a pluggable eviction policy and hit, miss, eviction and expiration counts."
 status: ready
 difficulty: medium
 track: lld

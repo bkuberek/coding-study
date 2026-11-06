@@ -2,6 +2,7 @@
 id: "0196"
 slug: vending-machine
 title: Vending Machine
+summary: "Design the controller of a coin-operated vending machine that sells from named slots, keeps coins to give change, never sells without exact change and keeps its state explicit."
 status: ready
 difficulty: medium
 track: lld

@@ -2,6 +2,7 @@
 id: "0166"
 slug: range-sum-immutable
 title: Range Sum Query
+summary: "Build a class for a fixed array of integers that quickly answers the sum of the values between two positions."
 status: ready
 difficulty: easy
 track: dsa

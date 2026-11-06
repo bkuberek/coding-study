@@ -2,6 +2,7 @@
 id: "0237"
 slug: tax-brackets
 title: Tax Owed Under Brackets
+summary: "Given tax brackets, each with an upper limit and a rate that applies only to the income inside it, return the total tax on an income."
 status: ready
 difficulty: easy
 track: dsa

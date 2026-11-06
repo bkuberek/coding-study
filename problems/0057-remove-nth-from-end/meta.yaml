@@ -2,6 +2,7 @@
 id: "0057"
 slug: remove-nth-from-end
 title: Remove Nth Node From End
+summary: "Given the head of a singly linked list and a number n, remove the n-th node counted from the end and return the head of the shortened list."
 status: ready
 difficulty: medium
 track: dsa

@@ -2,6 +2,7 @@
 id: "0110"
 slug: surrounded-regions
 title: Surrounded Regions
+summary: "Given a grid of X and O cells, change in place every region of O that does not touch the edge of the board into X."
 status: ready
 difficulty: medium
 track: dsa

@@ -2,6 +2,7 @@
 id: "0124"
 slug: smallest-string-with-swaps
 title: Smallest String With Swaps
+summary: "Given a string and a list of index pairs whose characters may be swapped any number of times, return the lexicographically smallest string you can reach."
 status: ready
 difficulty: medium
 track: dsa

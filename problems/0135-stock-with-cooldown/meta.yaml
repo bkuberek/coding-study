@@ -2,6 +2,7 @@
 id: "0135"
 slug: stock-with-cooldown
 title: Stock Trading With Cooldown
+summary: "Given a stock's price on each day, return the largest profit from buying and selling as often as you like, holding one share at a time and never buying the day after a sale."
 status: ready
 difficulty: medium
 track: dsa

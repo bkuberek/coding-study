@@ -2,6 +2,7 @@
 id: "0239"
 slug: sorted-insertion-cost
 title: Sorted Insertion Cost
+summary: "Insert values one by one into a sorted container, each insertion costing the smaller of the counts of values strictly less and strictly greater than it; return the total cost."
 status: ready
 difficulty: hard
 track: dsa

@@ -2,6 +2,7 @@
 id: "0223"
 slug: certificate-expiry-alerts
 title: Certificate Expiry Alerts
+summary: "Given insurance certificates with expiry dates, list the subcontractors whose coverage has expired or will expire within a number of days, using each one's latest expiry."
 status: ready
 difficulty: easy
 track: practical

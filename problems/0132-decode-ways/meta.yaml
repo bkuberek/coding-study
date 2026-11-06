@@ -2,6 +2,7 @@
 id: "0132"
 slug: decode-ways
 title: Decode Ways
+summary: "Given a digit string that encodes a message by letter position (A is 1, B is 2, up to Z as 26), count the ways to decode it into letters."
 status: ready
 difficulty: medium
 track: dsa

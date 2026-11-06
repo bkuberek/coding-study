@@ -2,6 +2,7 @@
 id: "0065"
 slug: min-meeting-rooms
 title: Minimum Meeting Rooms
+summary: "Given the start and end time of each of a day's meetings, return the smallest number of rooms that can host them all."
 status: ready
 difficulty: medium
 track: dsa

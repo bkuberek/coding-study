@@ -2,6 +2,7 @@
 id: "0143"
 slug: maximal-square
 title: Maximal Square
+summary: "Given a grid of 1 and 0 cells, return the area of the largest square made only of 1 cells."
 status: ready
 difficulty: medium
 track: dsa

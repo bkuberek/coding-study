@@ -2,6 +2,7 @@
 id: "0020"
 slug: two-sum-sorted
 title: Two Sum on Sorted Input
+summary: "Given a sorted array of integers and a target, return the two positions, smaller first, of the one pair of values that add up to the target."
 status: ready
 difficulty: medium
 track: dsa

@@ -2,6 +2,7 @@
 id: "0170"
 slug: car-pooling
 title: Car Pooling
+summary: "Given bookings of passengers picked up and dropped off along a one-way route, decide whether a shuttle with a given number of seats can serve all of them."
 status: ready
 difficulty: medium
 track: dsa

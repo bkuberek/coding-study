@@ -2,6 +2,7 @@
 id: "0154"
 slug: hand-of-straights
 title: Hand of Straights
+summary: "Given a hand of cards and a group size, decide whether the hand splits into groups of exactly that size, each a run of consecutive numbers."
 status: ready
 difficulty: medium
 track: dsa

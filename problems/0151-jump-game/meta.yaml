@@ -2,6 +2,7 @@
 id: "0151"
 slug: jump-game
 title: Jump Game
+summary: "Given an array where each value is the longest jump allowed from that index, decide whether you can reach the last index starting from index 0."
 status: ready
 difficulty: medium
 track: dsa

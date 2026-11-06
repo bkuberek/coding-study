@@ -2,6 +2,7 @@
 id: "0228"
 slug: effective-dated-history
 title: Effective-Dated History
+summary: "Build RecordHistory, which stores every field of a contractor's record over time with effective dates, late entries and corrections of earlier entries."
 status: ready
 difficulty: medium
 track: practical

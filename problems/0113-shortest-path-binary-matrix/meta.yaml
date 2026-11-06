@@ -2,6 +2,7 @@
 id: "0113"
 slug: shortest-path-binary-matrix
 title: Shortest Path in a Binary Grid
+summary: "Given a grid of open and blocked cells, return the length of the shortest path from the top-left to the bottom-right cell, moving in eight directions, or -1."
 status: ready
 difficulty: medium
 track: dsa

@@ -2,6 +2,7 @@
 id: "0215"
 slug: versioned-rate-table
 title: Versioned Rate Table
+summary: "Implement RateTable, a rate table that is never edited in place: each change is a new version with an effective date, and older versions stay available."
 status: ready
 difficulty: medium
 track: practical

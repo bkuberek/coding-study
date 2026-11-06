@@ -2,6 +2,7 @@
 id: "0117"
 slug: course-schedule
 title: Course Schedule
+summary: "Given the number of courses and a list of prerequisite pairs, decide whether you can complete every course."
 status: ready
 difficulty: medium
 track: dsa

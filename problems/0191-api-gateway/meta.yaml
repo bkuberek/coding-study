@@ -2,6 +2,7 @@
 id: "0191"
 slug: api-gateway
 title: API Gateway
+summary: "Build ApiGateway, the front door of backend services: it routes each request to an upstream and protects both sides with rate limits, quotas and circuit breakers."
 status: ready
 difficulty: hard
 track: practical

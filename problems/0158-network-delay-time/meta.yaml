@@ -2,6 +2,7 @@
 id: "0158"
 slug: network-delay-time
 title: Network Delay Time
+summary: "Given one-way links with travel times and a source node k, return the time at which the last node receives the signal, or -1 if some node never does."
 status: ready
 difficulty: medium
 track: dsa

@@ -2,6 +2,7 @@
 id: "0017"
 slug: almost-palindrome
 title: Palindrome With One Deletion
+summary: "Given a string of lowercase letters, decide whether deleting at most one character, anywhere, can leave a palindrome."
 status: ready
 difficulty: easy
 track: dsa

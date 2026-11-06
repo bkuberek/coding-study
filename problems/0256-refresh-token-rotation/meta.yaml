@@ -2,6 +2,7 @@
 id: "0256"
 slug: refresh-token-rotation
 title: Refresh Token Rotation
+summary: "Implement refresh-token rotation: each use of a token issues a new one and retires the old one, a replayed token ends the whole login, and a short grace window forgives a lost reply."
 status: ready
 difficulty: medium
 track: practical

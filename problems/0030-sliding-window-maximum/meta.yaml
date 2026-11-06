@@ -2,6 +2,7 @@
 id: "0030"
 slug: sliding-window-maximum
 title: Sliding Window Maximum
+summary: "Given an array and a window width k that moves one position at a time from the left end to the right end, return the largest value in each window, in order."
 status: ready
 difficulty: hard
 track: dsa

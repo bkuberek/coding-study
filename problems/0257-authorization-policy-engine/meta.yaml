@@ -2,6 +2,7 @@
 id: "0257"
 slug: authorization-policy-engine
 title: Authorization Policy Engine
+summary: "Implement PolicyEngine: decide whether a principal may perform an action on a resource from rules written as data, answering the same in any rule order and failing closed."
 status: ready
 difficulty: medium
 track: practical

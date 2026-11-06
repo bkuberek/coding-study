@@ -2,6 +2,7 @@
 id: "0129"
 slug: longest-increasing-subsequence
 title: Longest Increasing Subsequence
+summary: "Given an integer array, return the length of the longest subsequence whose values are strictly increasing."
 status: ready
 difficulty: medium
 track: dsa

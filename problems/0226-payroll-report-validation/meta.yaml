@@ -2,6 +2,7 @@
 id: "0226"
 slug: payroll-report-validation
 title: Payroll Report Validation
+summary: "Validate a payroll report of rows of text, listing every error at once as row:field:reason instead of stopping at the first."
 status: ready
 difficulty: medium
 track: practical

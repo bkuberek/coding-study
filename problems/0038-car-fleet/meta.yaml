@@ -2,6 +2,7 @@
 id: "0038"
 slug: car-fleet
 title: Car Fleet
+summary: "Cars drive toward a destination on a one-lane road where nobody can overtake and a car that catches a slower one follows it; return the number of fleets that arrive."
 status: ready
 difficulty: medium
 track: dsa

@@ -2,6 +2,7 @@
 id: "0077"
 slug: tree-from-preorder-inorder
 title: Tree From Preorder and Inorder
+summary: "Given the pre-order and in-order walks of a binary tree with distinct values, rebuild the tree and return its root."
 status: ready
 difficulty: medium
 track: dsa

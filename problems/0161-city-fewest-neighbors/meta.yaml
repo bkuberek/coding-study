@@ -2,6 +2,7 @@
 id: "0161"
 slug: city-fewest-neighbors
 title: City With Fewest Reachable Neighbors
+summary: "Given cities joined by weighted roads and a distance threshold, return the city that reaches the fewest other cities within it, the largest number if tied."
 status: ready
 difficulty: medium
 track: dsa

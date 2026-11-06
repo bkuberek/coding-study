@@ -2,6 +2,7 @@
 id: "0094"
 slug: maximize-capital
 title: Maximize Capital
+summary: "Starting with capital w, complete at most k projects, each needing a minimum capital to start and adding its profit when done; return the largest final capital."
 status: ready
 difficulty: hard
 track: dsa

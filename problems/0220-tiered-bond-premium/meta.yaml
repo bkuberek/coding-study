@@ -2,6 +2,7 @@
 id: "0220"
 slug: tiered-bond-premium
 title: Tiered Bond Premium
+summary: "Price a performance bond from the contract price using bands, where each band's rate applies only to the part of the price that lies inside that band."
 status: ready
 difficulty: easy
 track: practical

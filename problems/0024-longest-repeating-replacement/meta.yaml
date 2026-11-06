@@ -2,6 +2,7 @@
 id: "0024"
 slug: longest-repeating-replacement
 title: Longest Repeating Replacement
+summary: "Given a string of uppercase letters and a budget k, overwrite at most k characters and return the length of the longest run of one repeated letter you can get."
 status: ready
 difficulty: medium
 track: dsa

@@ -2,6 +2,7 @@
 id: "0011"
 slug: encode-decode-strings
 title: Encode and Decode Strings
+summary: "Pack a list of strings into one string and unpack it again without losing anything: the count, the order, empty strings or any character inside them."
 status: ready
 difficulty: medium
 track: dsa

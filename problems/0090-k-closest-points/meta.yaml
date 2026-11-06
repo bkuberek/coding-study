@@ -2,6 +2,7 @@
 id: "0090"
 slug: k-closest-points
 title: K Closest Points to Origin
+summary: "Given points on a plane and an integer k, return the k points nearest to the origin (0, 0) by straight-line distance."
 status: ready
 difficulty: medium
 track: dsa

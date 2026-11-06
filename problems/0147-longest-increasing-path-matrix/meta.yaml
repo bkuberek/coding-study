@@ -2,6 +2,7 @@
 id: "0147"
 slug: longest-increasing-path-matrix
 title: Longest Increasing Path in a Matrix
+summary: "Given a grid of integers, return the number of cells on the longest path that moves up, down, left or right and strictly increases at every step."
 status: ready
 difficulty: hard
 track: dsa

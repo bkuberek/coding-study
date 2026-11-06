@@ -2,6 +2,7 @@
 id: "0225"
 slug: rate-change-impact
 title: Rate Change Impact
+summary: "Compare an old and a new class-rate table and report each class code whose rate changed, with the percent change, each code that is new and each that was dropped."
 status: ready
 difficulty: medium
 track: practical

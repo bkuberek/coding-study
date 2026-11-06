@@ -2,6 +2,7 @@
 id: "0109"
 slug: rotting-oranges
 title: Rotting Oranges
+summary: "Given a grid of empty cells, fresh oranges and rotten ones, where rot spreads to side neighbors each minute, return the minutes until none is fresh, or -1 if some never rots."
 status: ready
 difficulty: medium
 track: dsa

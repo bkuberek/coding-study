@@ -2,6 +2,7 @@
 id: "0138"
 slug: unique-paths
 title: Unique Paths
+summary: "Count the routes a robot can take from the top-left to the bottom-right of an m by n grid moving only right or down, modulo 10^9 + 7."
 status: ready
 difficulty: medium
 track: dsa

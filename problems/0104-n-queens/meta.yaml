@@ -2,6 +2,7 @@
 id: "0104"
 slug: n-queens
 title: N-Queens
+summary: "Given n, list every way to place n queens on an n by n chessboard so that no two of them attack each other."
 status: ready
 difficulty: hard
 track: dsa

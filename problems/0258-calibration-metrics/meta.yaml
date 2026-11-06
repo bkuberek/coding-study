@@ -2,6 +2,7 @@
 id: "0258"
 slug: calibration-metrics
 title: Calibration Metrics
+summary: "Write calibrationReport: measure how well a classifier's predicted probabilities are calibrated, overall and per slice."
 status: ready
 difficulty: easy
 track: practical

@@ -2,6 +2,7 @@
 id: "0007"
 slug: group-anagrams
 title: Group Anagrams
+summary: "Given a list of lowercase words, split it into groups so that two words share a group exactly when they are anagrams of each other, and return the groups."
 status: ready
 difficulty: medium
 track: dsa

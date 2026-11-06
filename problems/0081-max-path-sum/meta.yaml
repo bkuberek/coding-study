@@ -2,6 +2,7 @@
 id: "0081"
 slug: max-path-sum
 title: Binary Tree Maximum Path Sum
+summary: "Given a binary tree of integers, possibly negative, return the largest sum of any path of parent-child steps; a path may start and end at any node."
 status: ready
 difficulty: hard
 track: dsa

@@ -2,6 +2,7 @@
 id: "0221"
 slug: earned-premium-as-of
 title: Earned Premium As Of
+summary: "Given a book of policies and a valuation date, return the total premium earned by that date, each policy earning evenly over the days of its term."
 status: ready
 difficulty: easy
 track: practical

@@ -2,6 +2,7 @@
 id: "0229"
 slug: can-attend-meetings
 title: Can Attend All Meetings
+summary: "Given a day's meetings as start and end times, decide whether one person can attend them all, walking straight from a meeting that ends at t into one that starts at t."
 status: ready
 difficulty: easy
 track: dsa

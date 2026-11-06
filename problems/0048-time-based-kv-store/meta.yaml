@@ -2,6 +2,7 @@
 id: "0048"
 slug: time-based-kv-store
 title: Time-Based Key-Value Store
+summary: "Implement TimeMap, a store that keeps every version of every key: a write records a value at a time, and a read returns the latest value written at or before a given time."
 status: ready
 difficulty: medium
 track: dsa

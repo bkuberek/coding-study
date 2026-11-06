@@ -2,6 +2,7 @@
 id: "0195"
 slug: event-bus
 title: Event Bus
+summary: "Design an in-process event bus: publishers send events to topics, subscribers register topic patterns with wildcards, and events nobody takes go to a dead-letter queue."
 status: ready
 difficulty: medium
 track: lld

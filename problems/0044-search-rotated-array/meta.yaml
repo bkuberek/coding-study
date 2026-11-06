@@ -2,6 +2,7 @@
 id: "0044"
 slug: search-rotated-array
 title: Search in Rotated Sorted Array
+summary: "Given a sorted array of distinct integers that was rotated by an unknown amount, and a target, return the target's index, or -1 if it is absent."
 status: ready
 difficulty: medium
 track: dsa

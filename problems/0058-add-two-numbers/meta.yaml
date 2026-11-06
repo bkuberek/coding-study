@@ -2,6 +2,7 @@
 id: "0058"
 slug: add-two-numbers
 title: Add Two Numbers
+summary: "Two non-negative integers are stored as linked lists of digits, least significant digit first; add them and return the sum in the same form."
 status: ready
 difficulty: medium
 track: dsa

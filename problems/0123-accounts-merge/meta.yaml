@@ -2,6 +2,7 @@
 id: "0123"
 slug: accounts-merge
 title: Accounts Merge
+summary: "Given user accounts (a name and email addresses), merge those that share an email, directly or through a chain, and return each person's name with their sorted emails."
 status: ready
 difficulty: medium
 track: dsa

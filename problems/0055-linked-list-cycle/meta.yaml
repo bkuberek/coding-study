@@ -2,6 +2,7 @@
 id: "0055"
 slug: linked-list-cycle
 title: Linked List Cycle
+summary: "Given the head of a singly linked list, decide whether following the next links goes around a loop forever instead of ending."
 status: ready
 difficulty: easy
 track: dsa

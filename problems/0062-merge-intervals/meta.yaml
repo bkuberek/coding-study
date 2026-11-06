@@ -2,6 +2,7 @@
 id: "0062"
 slug: merge-intervals
 title: Merge Intervals
+summary: "Given a list of closed intervals in no particular order, merge every group of overlapping intervals into one and return the result."
 status: ready
 difficulty: medium
 track: dsa

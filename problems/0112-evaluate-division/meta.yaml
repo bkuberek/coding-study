@@ -2,6 +2,7 @@
 id: "0112"
 slug: evaluate-division
 title: Evaluate Division
+summary: "Given equations of the form a / b = value, answer each query c / d from them, or -1.0 when the equations do not determine it."
 status: ready
 difficulty: medium
 track: dsa

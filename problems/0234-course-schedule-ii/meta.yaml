@@ -2,6 +2,7 @@
 id: "0234"
 slug: course-schedule-ii
 title: Course Schedule II
+summary: "Given the number of courses and prerequisite pairs, return an order in which to take all the courses, or an empty array if there is none."
 status: ready
 difficulty: medium
 track: dsa

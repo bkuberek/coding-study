@@ -2,6 +2,7 @@
 id: "0108"
 slug: max-area-of-island
 title: Max Area of Island
+summary: "Given a grid of 0 (water) and 1 (land), return the area of the largest island, a group of land squares connected up, down, left or right, or 0 if there is no land."
 status: ready
 difficulty: medium
 track: dsa

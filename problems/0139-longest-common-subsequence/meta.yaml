@@ -2,6 +2,7 @@
 id: "0139"
 slug: longest-common-subsequence
 title: Longest Common Subsequence
+summary: "Given two strings, return the length of the longest string that is a subsequence of both."
 status: ready
 difficulty: medium
 track: dsa

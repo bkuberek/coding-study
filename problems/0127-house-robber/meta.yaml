@@ -2,6 +2,7 @@
 id: "0127"
 slug: house-robber
 title: House Robber
+summary: "Given the cash hidden in a row of houses, return the most you can collect without taking from two neighboring houses."
 status: ready
 difficulty: medium
 track: dsa

@@ -2,6 +2,7 @@
 id: "0045"
 slug: min-in-rotated-array
 title: Minimum in Rotated Sorted Array
+summary: "Given a sorted array of distinct integers that was rotated by an unknown amount, return its smallest value."
 status: ready
 difficulty: medium
 track: dsa

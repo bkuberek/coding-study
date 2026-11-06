@@ -2,6 +2,7 @@
 id: "0086"
 slug: word-search-ii
 title: Word Search II
+summary: "Given a board of letters and a list of words, return every word that can be spelled by stepping between adjacent cells (up, down, left, right) without reusing a cell."
 status: ready
 difficulty: hard
 track: dsa

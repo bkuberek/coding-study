@@ -2,6 +2,7 @@
 id: "0087"
 slug: last-stone-weight
 title: Last Stone Weight
+summary: "Repeatedly smash the two heaviest stones of a pile together, the lighter one vanishing and the heavier one losing that weight; return the weight of the last stone, or 0."
 status: ready
 difficulty: easy
 track: dsa

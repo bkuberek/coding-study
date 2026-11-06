@@ -2,6 +2,7 @@
 id: "0080"
 slug: vertical-order-traversal
 title: Vertical Order Traversal
+summary: "Give every binary tree node a column (root 0, a left child one column left of its parent, a right child one right) and report the values column by column, left to right."
 status: ready
 difficulty: medium
 track: dsa

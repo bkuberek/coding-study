@@ -2,6 +2,7 @@
 id: "0144"
 slug: target-sum
 title: Target Sum
+summary: "Given non-negative integers and a target, put a plus or minus sign before every number and count the sign assignments whose total is exactly the target."
 status: ready
 difficulty: medium
 track: dsa

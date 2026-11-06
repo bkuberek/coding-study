@@ -2,6 +2,7 @@
 id: "0008"
 slug: longest-consecutive-sequence
 title: Longest Consecutive Run
+summary: "Given an unsorted array of integers, return the length of the longest run of consecutive values (x, x + 1, x + 2, ...) that all occur in it, repeats counting once."
 status: ready
 difficulty: medium
 track: dsa

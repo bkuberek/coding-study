@@ -2,6 +2,7 @@
 id: "0041"
 slug: remove-k-digits
 title: Remove K Digits
+summary: "Given a number as a string of digits and an integer k, delete exactly k digits and return the smallest number you can make, without leading zeros."
 status: ready
 difficulty: medium
 track: dsa

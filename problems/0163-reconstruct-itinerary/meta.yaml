@@ -2,6 +2,7 @@
 id: "0163"
 slug: reconstruct-itinerary
 title: Reconstruct Itinerary
+summary: "Given a traveler's one-way tickets, all used exactly once starting from JFK, rebuild the itinerary, choosing the one first in dictionary order."
 status: ready
 difficulty: hard
 track: dsa

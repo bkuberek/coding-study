@@ -2,6 +2,7 @@
 id: "0103"
 slug: generate-parentheses
 title: Generate Parentheses
+summary: "Given n, list every correctly nested string made of exactly n opening and n closing brackets."
 status: ready
 difficulty: medium
 track: dsa

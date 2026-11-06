@@ -2,6 +2,7 @@
 id: "0261"
 slug: stream-reassembler
 title: Stream Reassembler
+summary: "Implement StreamReassembler: put the out-of-order, duplicated fragments of a streamed answer back in order, and never treat a cut-off stream as complete."
 status: ready
 difficulty: medium
 track: practical

@@ -2,6 +2,7 @@
 id: "0260"
 slug: bm25-hybrid-ranker
 title: BM25 Hybrid Ranker
+summary: "Write hybridRank: combine a keyword search with the already-run vector search into one ranked list of articles, merging their ranks rather than their scores."
 status: ready
 difficulty: medium
 track: practical

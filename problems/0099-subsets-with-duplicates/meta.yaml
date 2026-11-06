@@ -2,6 +2,7 @@
 id: "0099"
 slug: subsets-with-duplicates
 title: Subsets With Duplicates
+summary: "Given an array of integers that may repeat, list every distinct subset, where two subsets are the same if they hold each value the same number of times."
 status: ready
 difficulty: medium
 track: dsa

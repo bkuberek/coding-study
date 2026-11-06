@@ -2,6 +2,7 @@
 id: "0137"
 slug: job-scheduling-max-profit
 title: Job Scheduling for Maximum Profit
+summary: "Given jobs with a start time, an end time and a profit, return the largest total profit of a set of jobs in which no two overlap."
 status: ready
 difficulty: hard
 track: dsa

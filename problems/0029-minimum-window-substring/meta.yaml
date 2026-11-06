@@ -2,6 +2,7 @@
 id: "0029"
 slug: minimum-window-substring
 title: Minimum Window Substring
+summary: "Given strings s and t, return the shortest substring of s that contains every letter of t, repeats included, or the empty string if there is none."
 status: ready
 difficulty: hard
 track: dsa

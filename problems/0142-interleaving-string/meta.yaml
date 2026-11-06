@@ -2,6 +2,7 @@
 id: "0142"
 slug: interleaving-string
 title: Interleaving String
+summary: "Given strings s1, s2 and s3, decide whether s3 is an interleaving of s1 and s2 that uses every character of both while keeping each string's order."
 status: ready
 difficulty: medium
 track: dsa

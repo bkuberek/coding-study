@@ -2,6 +2,7 @@
 id: "0118"
 slug: parallel-courses
 title: Parallel Courses
+summary: "Given courses and prerequisite pairs, with any number of courses allowed per semester, return the fewest semesters needed to finish them all, or -1 if it is impossible."
 status: ready
 difficulty: medium
 track: dsa

@@ -2,6 +2,7 @@
 id: "0052"
 slug: split-array-largest-sum
 title: Split Array Largest Sum
+summary: "Cut an array of non-negative integers into exactly k non-empty runs of consecutive elements and return the smallest possible value of the largest run sum."
 status: ready
 difficulty: hard
 track: dsa

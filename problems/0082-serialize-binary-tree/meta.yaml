@@ -2,6 +2,7 @@
 id: "0082"
 slug: serialize-binary-tree
 title: Serialize and Deserialize a Binary Tree
+summary: "Design a text format that turns any binary tree into one string and back into an identical tree, with the same shape and the same value at every position."
 status: ready
 difficulty: hard
 track: dsa

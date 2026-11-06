@@ -2,6 +2,7 @@
 id: "0092"
 slug: single-threaded-cpu
 title: Single-Threaded CPU
+summary: "Tasks become available over time and a single core runs them one at a time under a fixed policy; return the order in which the tasks are processed, as task indexes."
 status: ready
 difficulty: medium
 track: dsa

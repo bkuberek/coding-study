@@ -2,6 +2,7 @@
 id: "0056"
 slug: reorder-list
 title: Reorder List
+summary: "Rearrange the nodes of a singly linked list L0, L1, ..., Ln-1 into the order L0, Ln-1, L1, Ln-2, L2, Ln-3, and so on."
 status: ready
 difficulty: medium
 track: dsa

@@ -2,6 +2,7 @@
 id: "0203"
 slug: token-bucket-limiter
 title: Token Bucket Limiter
+summary: "Implement a thread-safe token bucket that refills over time up to a capacity and allows a request costing n tokens only if it holds at least n."
 status: ready
 difficulty: medium
 track: concurrency

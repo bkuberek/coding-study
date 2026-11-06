@@ -2,6 +2,7 @@
 id: "0162"
 slug: swim-rising-water
 title: Swim in Rising Water
+summary: "Given a grid of floor heights where the water stands at height t at time t, return the earliest time at which you can reach the bottom-right cell from the top-left one."
 status: ready
 difficulty: hard
 track: dsa

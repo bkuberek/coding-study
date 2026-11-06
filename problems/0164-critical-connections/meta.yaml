@@ -2,6 +2,7 @@
 id: "0164"
 slug: critical-connections
 title: Critical Connections
+summary: "Given servers joined by two-way cables, return every cable whose loss alone would split the network."
 status: ready
 difficulty: hard
 track: dsa

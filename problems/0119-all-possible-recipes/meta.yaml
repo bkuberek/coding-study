@@ -2,6 +2,7 @@
 id: "0119"
 slug: all-possible-recipes
 title: All Possible Recipes
+summary: "Given recipes, their ingredients and the starting supplies, return every recipe that can be prepared, where an ingredient may itself be a recipe."
 status: ready
 difficulty: medium
 track: dsa

@@ -2,6 +2,7 @@
 id: "0066"
 slug: interval-list-intersections
 title: Interval List Intersections
+summary: "Given two sorted lists of pairwise separate closed intervals, return every non-empty intersection of an interval from one list with an interval from the other, sorted by start."
 status: ready
 difficulty: medium
 track: dsa

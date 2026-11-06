@@ -2,6 +2,7 @@
 id: "0149"
 slug: maximal-rectangle
 title: Maximal Rectangle
+summary: "Given a grid of 1 and 0 cells, return the area of the largest rectangle made only of 1 cells."
 status: ready
 difficulty: hard
 track: dsa

@@ -2,6 +2,7 @@
 id: "0120"
 slug: alien-dictionary
 title: Alien Dictionary
+summary: "Given a list of words claimed to be sorted in an alien alphabet, recover a letter order that explains it, or return the empty string if none does."
 status: ready
 difficulty: hard
 track: dsa

@@ -2,6 +2,7 @@
 id: "0157"
 slug: candy-distribution
 title: Candy Distribution
+summary: "Children in a line each get at least one candy, and one with a higher score than a neighbor gets more than that neighbor; return the smallest total number of candies."
 status: ready
 difficulty: hard
 track: dsa

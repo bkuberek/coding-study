@@ -2,6 +2,7 @@
 id: "0255"
 slug: token-claim-validator
 title: Token Claim Validator
+summary: "validateClaims checks the decoded claims of an access token against what this service expects and returns ok, or the reason for the first rule that fails."
 status: ready
 difficulty: medium
 track: practical

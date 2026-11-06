@@ -2,6 +2,7 @@
 id: "0156"
 slug: valid-parenthesis-string
 title: Parentheses With Wildcards
+summary: "Given a string of ( ) and * where each * may stand for (, ) or nothing, decide whether some choice of replacements makes it balanced."
 status: ready
 difficulty: medium
 track: dsa

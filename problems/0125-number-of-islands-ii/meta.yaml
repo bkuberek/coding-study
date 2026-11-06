@@ -2,6 +2,7 @@
 id: "0125"
 slug: number-of-islands-ii
 title: Number of Islands II
+summary: "Given a grid of water and a list of cells that turn into land one at a time, return the number of islands after each operation."
 status: ready
 difficulty: hard
 track: dsa

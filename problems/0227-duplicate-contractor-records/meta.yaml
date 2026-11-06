@@ -2,6 +2,7 @@
 id: "0227"
 slug: duplicate-contractor-records
 title: Duplicate Contractor Records
+summary: "Group the records that belong to the same subcontractor: names that match after normalizing, or tax ids that do, and matches are transitive."
 status: ready
 difficulty: medium
 track: practical

@@ -2,6 +2,7 @@
 id: "0152"
 slug: gas-station
 title: Gas Station
+summary: "Given the fuel each circular-road station gives and the fuel needed to reach the next one, return the station to start from to complete the circuit, or -1."
 status: ready
 difficulty: medium
 track: dsa

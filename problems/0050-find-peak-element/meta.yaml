@@ -2,6 +2,7 @@
 id: "0050"
 slug: find-peak-element
 title: Find a Peak Element
+summary: "Given an array in which no two neighbors are equal, return the index of any peak: an element strictly greater than both of its neighbors."
 status: ready
 difficulty: medium
 track: dsa

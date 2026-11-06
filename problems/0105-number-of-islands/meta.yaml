@@ -2,6 +2,7 @@
 id: "0105"
 slug: number-of-islands
 title: Number of Islands
+summary: "Given a grid of 1 (land) and 0 (water), return the number of islands, the groups of land squares connected up, down, left or right."
 status: ready
 difficulty: medium
 track: dsa

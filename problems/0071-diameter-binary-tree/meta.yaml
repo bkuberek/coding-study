@@ -2,6 +2,7 @@
 id: "0071"
 slug: diameter-binary-tree
 title: Diameter of a Binary Tree
+summary: "Given a binary tree, return its diameter: the number of edges on the longest path between any two of its nodes."
 status: ready
 difficulty: easy
 track: dsa

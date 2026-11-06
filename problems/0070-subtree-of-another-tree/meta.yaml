@@ -2,6 +2,7 @@
 id: "0070"
 slug: subtree-of-another-tree
 title: Subtree of Another Tree
+summary: "Given the roots of two binary trees, decide whether the second occurs inside the first as a complete subtree: some node together with all of its descendants."
 status: ready
 difficulty: easy
 track: dsa

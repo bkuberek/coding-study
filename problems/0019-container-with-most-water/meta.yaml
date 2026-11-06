@@ -2,6 +2,7 @@
 id: "0019"
 slug: container-with-most-water
 title: Container With Most Water
+summary: "Given the heights of vertical bars standing one unit apart, pick two bars as walls and return the largest amount of water that fits between them."
 status: ready
 difficulty: medium
 track: dsa

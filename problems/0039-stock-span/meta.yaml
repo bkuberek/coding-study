@@ -2,6 +2,7 @@
 id: "0039"
 slug: stock-span
 title: Stock Span
+summary: "Implement StockSpanner: fed a stock's closing price once a day, return each day's span, the number of consecutive days up to today with a price at most today's."
 status: ready
 difficulty: medium
 track: dsa

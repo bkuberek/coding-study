@@ -2,6 +2,7 @@
 id: "0012"
 slug: valid-sudoku
 title: Valid Sudoku
+summary: "Given a partially filled 9 x 9 Sudoku board, decide whether its filled cells follow the rules: no digit twice in a row, in a column or in a 3 x 3 box."
 status: ready
 difficulty: medium
 track: dsa

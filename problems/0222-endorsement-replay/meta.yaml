@@ -2,6 +2,7 @@
 id: "0222"
 slug: endorsement-replay
 title: Endorsement Replay
+summary: "Implement EndorsedPolicy: a policy whose premium is changed by endorsements, which may be back-dated, and that reports the premium in force on a day and the written and earned premium."
 status: ready
 difficulty: medium
 track: practical

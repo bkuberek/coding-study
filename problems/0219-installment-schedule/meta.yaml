@@ -2,6 +2,7 @@
 id: "0219"
 slug: installment-schedule
 title: Installment Schedule
+summary: "Split a policy's premium into monthly installments of whole cents, each with a due date, so that the amounts add up exactly to the premium."
 status: ready
 difficulty: medium
 track: practical

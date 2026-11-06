@@ -2,6 +2,7 @@
 id: "0067"
 slug: min-interval-per-query
 title: Smallest Interval per Query
+summary: "Given closed integer intervals and a list of query points, return for each point the size of the smallest interval that contains it, or -1 if none does."
 status: ready
 difficulty: hard
 track: dsa

@@ -2,6 +2,7 @@
 id: "0064"
 slug: non-overlapping-intervals
 title: Non-Overlapping Intervals
+summary: "Given a list of intervals, return the fewest to remove so that no two of the remaining ones overlap; touching at an endpoint is allowed."
 status: ready
 difficulty: medium
 track: dsa

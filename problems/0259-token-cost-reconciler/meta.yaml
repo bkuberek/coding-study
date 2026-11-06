@@ -2,6 +2,7 @@
 id: "0259"
 slug: token-cost-reconciler
 title: Token Cost Reconciler
+summary: "Compare the gateway's per-call token logs with the monthly billing report and flag every model where they disagree."
 status: ready
 difficulty: medium
 track: practical

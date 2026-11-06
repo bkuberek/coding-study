@@ -2,6 +2,7 @@
 id: "0214"
 slug: premium-rating-breakdown
 title: Premium Rating Breakdown
+summary: "Rate a construction policy in five fixed steps and return both the premium and the trail that shows how it was reached."
 status: ready
 difficulty: medium
 track: practical

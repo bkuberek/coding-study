@@ -2,6 +2,7 @@
 id: "0146"
 slug: burst-balloons
 title: Burst Balloons
+summary: "Burst a row of balloons in any order, each burst earning the product of its number and its current neighbors' numbers (1 at an end); return the most coins you can earn."
 status: ready
 difficulty: hard
 track: dsa

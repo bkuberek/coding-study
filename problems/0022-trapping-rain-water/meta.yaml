@@ -2,6 +2,7 @@
 id: "0022"
 slug: trapping-rain-water
 title: Trapping Rain Water
+summary: "Given the heights of bars standing side by side, return the total amount of rain water the terrain holds once a long rain has filled every dip."
 status: ready
 difficulty: hard
 track: dsa

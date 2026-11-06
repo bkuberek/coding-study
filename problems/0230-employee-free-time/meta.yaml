@@ -2,6 +2,7 @@
 id: "0230"
 slug: employee-free-time
 title: Employee Free Time
+summary: "Given each employee's sorted working intervals, return the spans during which nobody works, between the earliest start and the latest end."
 status: ready
 difficulty: hard
 track: dsa

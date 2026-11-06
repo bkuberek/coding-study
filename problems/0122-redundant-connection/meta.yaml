@@ -2,6 +2,7 @@
 id: "0122"
 slug: redundant-connection
 title: Redundant Connection
+summary: "Given the edges of a tree plus one extra edge, return an edge whose removal gives a tree again; if several qualify, the one that appears last."
 status: ready
 difficulty: medium
 track: dsa

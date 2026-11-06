@@ -2,6 +2,7 @@
 id: "0033"
 slug: evaluate-rpn
 title: Evaluate Reverse Polish Notation
+summary: "Given an expression in reverse Polish notation as a list of tokens (integers and + - * /), evaluate it and return its value."
 status: ready
 difficulty: medium
 track: dsa

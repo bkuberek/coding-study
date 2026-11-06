@@ -2,6 +2,7 @@
 id: "0095"
 slug: subsets
 title: Subsets
+summary: "Given an array of distinct integers, return its power set: every collection formed by keeping some of the values, including none and all, each exactly once."
 status: ready
 difficulty: medium
 track: dsa

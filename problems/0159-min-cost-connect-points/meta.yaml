@@ -2,6 +2,7 @@
 id: "0159"
 slug: min-cost-connect-points
 title: Minimum Cost to Connect Points
+summary: "Given points on a grid, connect them all with cables that cost the Manhattan distance between their ends, and return the smallest possible total cost."
 status: ready
 difficulty: medium
 track: dsa
