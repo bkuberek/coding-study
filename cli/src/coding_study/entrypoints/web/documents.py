@@ -15,6 +15,7 @@ from coding_study.application.reveal_hint import HintsLocked, RevealedHint
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.items import entry_kind
 from coding_study.domain.problem import Language, ProblemKind, ProblemMeta, Track
+from coding_study.domain.taxonomy import DOMAINS, JOB_ROLES, Scope
 from coding_study.entrypoints.commands._events import EVENTS_VERSION
 from coding_study.entrypoints.commands.list_problems import selected_jdk_value
 from coding_study.entrypoints.commands.mock import nothing_message
@@ -42,6 +43,9 @@ def session_document(environment: Environment, port: int, version: str) -> dict[
         "languages": [language.value for language in Language],
         "tracks": [track.value for track in Track],
         "kinds": [*(kind.value for kind in ProblemKind), ITEM_KIND],
+        "domains": list(DOMAINS),
+        "job_roles": list(JOB_ROLES),
+        "scopes": [scope.value for scope in Scope],
         "selected_jdk": selected_jdk_value(environment.jdk.selected()),
     }
 

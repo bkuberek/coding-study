@@ -57,6 +57,16 @@ def test_the_session_describes_the_server_and_the_workspace(tmp_path, app):
             "behavioral",
         ],
         "kinds": ["function", "design", "progressive", "concurrent", "project", "item"],
+        "domains": ["algorithms", "backend", "security", "identity", "ai-llm", "fintech"],
+        "job_roles": [
+            "general",
+            "backend",
+            "platform",
+            "security-engineer",
+            "ai-engineer",
+            "ml-engineer",
+        ],
+        "scopes": ["function", "project", "system"],
         "selected_jdk": {
             "version": "21.0.13",
             "feature": 21,

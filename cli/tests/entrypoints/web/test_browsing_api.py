@@ -11,8 +11,10 @@ from coding_study.application.problem_history import problem_history
 from coding_study.application.show_statement import ShowRequest, show_statement
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.items import EntryKind
+from coding_study.domain.labels import LabelFilter
 from coding_study.domain.next_selection import NextSource
 from coding_study.domain.problem import Difficulty, Language, Track
+from coding_study.domain.taxonomy import Scope
 from coding_study.entrypoints.commands.history import history_document
 from coding_study.entrypoints.commands.list_problems import list_document
 from coding_study.entrypoints.commands.next_problem import next_document
@@ -72,6 +74,13 @@ def test_the_problem_list_shows_attempts_in_progress(client, environment):
             ProblemFilter(pattern="arrays-hashing", language=Language.PYTHON),
         ),
         ("status=new&content=ready", ProblemFilter(status="new", content="ready")),  # type: ignore[arg-type]
+        ("domain=backend", ProblemFilter(labels=LabelFilter(domain="backend"))),
+        ("role=platform", ProblemFilter(labels=LabelFilter(role="platform"))),
+        ("scope=function", ProblemFilter(labels=LabelFilter(scope=Scope.FUNCTION))),
+        (
+            "domain=backend&role=general&scope=function",
+            ProblemFilter(labels=LabelFilter("backend", "general", Scope.FUNCTION)),
+        ),
     ],
 )
 def test_the_problem_list_takes_the_filters_of_cstudy_list(
@@ -87,6 +96,19 @@ def test_an_unknown_filter_value_gets_422_usage(client):
         (422, "usage"),
         'invalid track "chess": use one of dsa, practical, lld, concurrency, debugging, '
         "system-design, code-review, behavioral",
+    )
+
+
+def test_the_problem_list_filters_by_label_as_cstudy_list_does(client):
+    entries = client.get("/api/v1/problems?domain=backend&role=general").json()["entries"]
+    assert [entry["slug"] for entry in entries] == ["lru-cache"]
+
+
+def test_an_unknown_scope_gets_422_usage(client):
+    response = client.get("/api/v1/problems?scope=galaxy")
+    assert (error(response), response.json()["error"]["message"]) == (
+        (422, "usage"),
+        'invalid scope "galaxy": use one of function, project, system',
     )
 
 
@@ -252,6 +274,21 @@ def test_the_next_pick_takes_the_options_of_cstudy_next(client, environment):
     assert client.get(f"/api/v1/next?{query}").json() == next_document(
         recommend(environment, request)
     )
+
+
+def test_the_next_pick_takes_the_label_filters_of_cstudy_next(client, environment):
+    request = NextRequest(labels=LabelFilter(role="platform", scope=Scope.SYSTEM))
+    assert client.get("/api/v1/next?role=platform&scope=system").json() == next_document(
+        recommend(environment, request)
+    )
+
+
+def test_a_label_filter_on_the_next_pick_searches_every_track(client):
+    assert client.get("/api/v1/next?role=platform").json()["slug"] == "url-shortener"
+
+
+def test_an_unknown_domain_on_the_next_pick_gets_422_usage(client):
+    assert error(client.get("/api/v1/next?domain=chess")) == (422, "usage")
 
 
 def test_nothing_to_pick_is_the_clis_message(client):

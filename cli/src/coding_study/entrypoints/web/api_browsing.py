@@ -2,6 +2,7 @@
 (docs/specs/web-ui.md#browsing). Each answers the `--json` document of the command it mirrors,
 built by that command's own builder from the use case the command calls."""
 
+from starlette.datastructures import QueryParams
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import BaseRoute, Route
@@ -15,8 +16,10 @@ from coding_study.application.show_statement import ShowRequest, show_statement
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import UnknownProblemError
 from coding_study.domain.items import EntryKind
+from coding_study.domain.labels import LabelFilter
 from coding_study.domain.problem import ContentStatus, Difficulty, Language, Track
 from coding_study.domain.scheduling import ProblemStatus
+from coding_study.domain.taxonomy import Scope
 from coding_study.entrypoints.commands.history import history_document
 from coding_study.entrypoints.commands.list_problems import list_document
 from coding_study.entrypoints.commands.next_problem import next_document
@@ -38,6 +41,7 @@ async def problems(request: Request) -> Response:
         content=choice(query, "content", ContentStatus),
         language=choice(query, "lang", Language),
         kind=choice(query, "kind", EntryKind),
+        labels=_labels(query),
     )
     return JsonResponse(await in_workspace(request, list_document, problem_filter))
 
@@ -63,6 +67,7 @@ async def next_pick(request: Request) -> Response:
         difficulty=choice(query, "difficulty", Difficulty),
         language=choice(query, "lang", Language),
         source=next_source(switch(query, "new"), switch(query, "review")),
+        labels=_labels(query),
     )
     return JsonResponse(await in_workspace(request, _next, next_request))
 
@@ -75,6 +80,10 @@ def browsing_routes() -> list[BaseRoute]:
         Route(f"{PROBLEMS}/{{slug}}/history", history, methods=["GET"]),
         Route("/api/v1/next", next_pick, methods=["GET"]),
     ]
+
+
+def _labels(query: QueryParams) -> LabelFilter:
+    return LabelFilter(query.get("domain"), query.get("role"), choice(query, "scope", Scope))
 
 
 def _slug(request: Request) -> str:
