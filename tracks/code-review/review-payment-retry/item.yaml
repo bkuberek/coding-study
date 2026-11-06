@@ -3,6 +3,9 @@ slug: review-payment-retry
 title: "Review: Payment Retry"
 track: code-review
 difficulty: hard
+domains: [backend, fintech]
+job_roles: [backend]
+scope: function
 estimate_minutes: 40
 status: ready
 order: 6

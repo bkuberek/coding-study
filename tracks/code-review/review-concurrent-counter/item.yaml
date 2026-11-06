@@ -3,6 +3,9 @@ slug: review-concurrent-counter
 title: "Review: Concurrent Counter Service"
 track: code-review
 difficulty: medium
+domains: [backend]
+job_roles: [backend]
+scope: function
 estimate_minutes: 30
 status: ready
 order: 1

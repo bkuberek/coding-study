@@ -3,6 +3,9 @@ slug: payments-ledger
 title: Payments Ledger
 track: system-design
 difficulty: hard
+domains: [backend, fintech]
+job_roles: [backend, platform]
+scope: system
 estimate_minutes: 60
 status: ready
 order: 8

@@ -7,6 +7,9 @@ difficulty: medium
 track: practical
 kind: design
 patterns: [binary-search]
+domains: [fintech]
+job_roles: [backend]
+scope: function
 signature:
   class:
     name: RateTable

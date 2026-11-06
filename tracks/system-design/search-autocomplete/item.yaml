@@ -3,6 +3,9 @@ slug: search-autocomplete
 title: Search Autocomplete
 track: system-design
 difficulty: medium
+domains: [backend]
+job_roles: [backend, platform]
+scope: system
 estimate_minutes: 45
 status: ready
 order: 3

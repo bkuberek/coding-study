@@ -3,6 +3,9 @@ slug: distributed-kv-store
 title: Distributed Key-Value Store
 track: system-design
 difficulty: hard
+domains: [backend]
+job_roles: [backend, platform]
+scope: system
 estimate_minutes: 60
 status: ready
 order: 6

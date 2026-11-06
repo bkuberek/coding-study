@@ -7,6 +7,9 @@ difficulty: hard
 track: dsa
 kind: function
 patterns: [segment-tree-fenwick, binary-search]
+domains: [algorithms]
+job_roles: [general]
+scope: function
 signature:
   function:
     name: countSmaller

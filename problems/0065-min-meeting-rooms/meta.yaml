@@ -7,6 +7,9 @@ difficulty: medium
 track: dsa
 kind: function
 patterns: [intervals, heap]
+domains: [algorithms]
+job_roles: [general]
+scope: function
 signature:
   function:
     name: minMeetingRooms

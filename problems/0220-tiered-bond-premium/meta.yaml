@@ -6,6 +6,9 @@ status: ready
 difficulty: easy
 track: practical
 kind: function
+domains: [fintech]
+job_roles: [backend]
+scope: function
 signature:
   function:
     name: bondPremium

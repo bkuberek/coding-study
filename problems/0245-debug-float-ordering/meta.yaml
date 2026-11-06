@@ -6,6 +6,9 @@ status: ready
 difficulty: medium
 track: debugging
 kind: function
+domains: [algorithms]
+job_roles: [general]
+scope: function
 languages: [rust]
 stub: buggy
 signature:

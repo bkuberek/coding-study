@@ -7,6 +7,9 @@ difficulty: medium
 track: dsa
 kind: design
 patterns: [trees, stack]
+domains: [algorithms]
+job_roles: [general]
+scope: function
 signature:
   class:
     name: BSTIterator

@@ -6,6 +6,9 @@ status: ready
 difficulty: hard
 track: concurrency
 kind: concurrent
+domains: [backend]
+job_roles: [backend, platform]
+scope: function
 signature:
   class:
     name: ReadWriteLock

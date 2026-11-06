@@ -7,6 +7,9 @@ difficulty: medium
 track: practical
 kind: progressive
 patterns: [binary-search]
+domains: [fintech]
+job_roles: [backend]
+scope: function
 levels:
   - {level: 1, title: Effective-dated values}
   - {level: 2, title: As known at a time}

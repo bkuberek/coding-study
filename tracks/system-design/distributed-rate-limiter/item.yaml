@@ -3,6 +3,9 @@ slug: distributed-rate-limiter
 title: Distributed Rate Limiter
 track: system-design
 difficulty: medium
+domains: [backend]
+job_roles: [backend, platform]
+scope: system
 estimate_minutes: 45
 status: ready
 order: 2

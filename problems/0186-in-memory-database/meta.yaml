@@ -6,6 +6,9 @@ status: ready
 difficulty: hard
 track: practical
 kind: progressive
+domains: [backend]
+job_roles: [backend]
+scope: function
 levels:
   - {level: 1, title: Records and fields}
   - {level: 2, title: Field scans}

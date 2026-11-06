@@ -6,6 +6,9 @@ status: ready
 difficulty: easy
 track: debugging
 kind: design
+domains: [algorithms]
+job_roles: [general]
+scope: function
 languages: [go]
 stub: buggy
 signature:

@@ -6,6 +6,9 @@ status: ready
 difficulty: medium
 track: practical
 kind: progressive
+domains: [backend]
+job_roles: [backend]
+scope: function
 levels:
   - {level: 1, title: Keys and value counts}
   - {level: 2, title: Begin and rollback}

@@ -7,6 +7,9 @@ difficulty: easy
 track: dsa
 kind: function
 patterns: [math-geometry]
+domains: [algorithms]
+job_roles: [general]
+scope: function
 signature:
   function:
     name: calculateTax

@@ -7,6 +7,9 @@ difficulty: hard
 track: practical
 kind: progressive
 patterns: [heap]
+domains: [backend, fintech]
+job_roles: [backend]
+scope: function
 levels:
   - {level: 1, title: Accounts and transfers}
   - {level: 2, title: Top spenders}

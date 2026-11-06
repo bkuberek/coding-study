@@ -6,6 +6,9 @@ status: ready
 difficulty: hard
 track: practical
 kind: project
+domains: [backend, fintech]
+job_roles: [backend]
+scope: project
 languages: [rust]
 levels:
   - {level: 1, title: Accounts and transfers}

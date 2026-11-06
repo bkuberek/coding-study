@@ -7,6 +7,9 @@ difficulty: easy
 track: dsa
 kind: design
 patterns: [prefix-sum]
+domains: [algorithms]
+job_roles: [general]
+scope: function
 signature:
   class:
     name: NumArray

@@ -8,6 +8,9 @@ track: dsa
 kind: function
 languages: [python, typescript, java, kotlin, go]
 patterns: [linked-list, two-pointers]
+domains: [algorithms]
+job_roles: [general]
+scope: function
 signature:
   function:
     name: hasCycle

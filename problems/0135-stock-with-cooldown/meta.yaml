@@ -7,6 +7,9 @@ difficulty: medium
 track: dsa
 kind: function
 patterns: [dp-1d]
+domains: [algorithms]
+job_roles: [general]
+scope: function
 signature:
   function:
     name: maxProfit

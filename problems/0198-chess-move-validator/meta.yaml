@@ -6,6 +6,9 @@ status: ready
 difficulty: hard
 track: lld
 kind: design
+domains: [backend]
+job_roles: [backend]
+scope: function
 signature:
   class:
     name: ChessGame

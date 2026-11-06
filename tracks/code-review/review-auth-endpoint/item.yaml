@@ -3,6 +3,9 @@ slug: review-auth-endpoint
 title: "Review: Login Endpoint"
 track: code-review
 difficulty: medium
+domains: [backend, security, identity]
+job_roles: [backend, security-engineer]
+scope: function
 estimate_minutes: 30
 status: ready
 order: 2

@@ -3,6 +3,9 @@ slug: review-report-query
 title: "Review: Report Query"
 track: code-review
 difficulty: medium
+domains: [backend]
+job_roles: [backend]
+scope: function
 estimate_minutes: 30
 status: ready
 order: 4

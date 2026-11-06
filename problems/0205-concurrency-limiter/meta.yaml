@@ -6,6 +6,9 @@ status: ready
 difficulty: medium
 track: concurrency
 kind: concurrent
+domains: [backend]
+job_roles: [backend, platform]
+scope: function
 signature:
   class:
     name: ConcurrencyLimiter

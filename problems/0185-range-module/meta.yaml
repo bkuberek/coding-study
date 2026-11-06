@@ -7,6 +7,9 @@ difficulty: hard
 track: dsa
 kind: design
 patterns: [segment-tree-fenwick, intervals]
+domains: [algorithms]
+job_roles: [general]
+scope: function
 signature:
   class:
     name: RangeModule

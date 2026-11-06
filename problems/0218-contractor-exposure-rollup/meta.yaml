@@ -7,6 +7,9 @@ difficulty: medium
 track: practical
 kind: function
 patterns: [graphs]
+domains: [fintech]
+job_roles: [backend]
+scope: function
 signature:
   function:
     name: totalExposure

@@ -6,6 +6,9 @@ status: ready
 difficulty: medium
 track: concurrency
 kind: concurrent
+domains: [backend, fintech]
+job_roles: [backend, platform]
+scope: function
 languages: [java, kotlin, python, go, rust]
 signature:
   class:
