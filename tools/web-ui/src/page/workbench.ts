@@ -49,6 +49,7 @@ export class EditorTabs {
   readonly #tablist: HTMLElement;
   readonly #panels: HTMLElement;
   readonly #placeholder: HTMLElement;
+  readonly #save: HTMLButtonElement;
   readonly #open = new Map<string, OpenFile>();
   readonly #savedListeners = new Set<SavedListener>();
   readonly #editorListeners = new Set<EditorListener>();
@@ -72,11 +73,13 @@ export class EditorTabs {
       h("p", { class: "quiet" }, `${shortcut} saves the open file; a run saves every open file first.`),
     );
     this.#panels = h("div", { class: "panels" }, this.#placeholder);
+    this.#save = h("button", { type: "button", class: "chip save-hint", title: "Save the open file", "aria-label": "Save", disabled: true }, h("kbd", {}, shortcut), " save");
+    this.#save.addEventListener("click", () => void this.#saveFromButton());
     this.#tablist.addEventListener("keydown", (event) => this.#onTabKey(event));
     this.element = h(
       "section",
       { class: "editors", "aria-label": "Editor" },
-      h("div", { class: "tabbar" }, this.#tablist, h("span", { class: "chip save-hint", title: "Save the open file" }, h("kbd", {}, shortcut), " save")),
+      h("div", { class: "tabbar" }, this.#tablist, this.#save),
       this.#panels,
     );
     document.addEventListener("keydown", this.#onSaveKey);
@@ -160,6 +163,7 @@ export class EditorTabs {
   freeze(): void {
     for (const { editor } of this.#open.values()) editor?.setReadOnly(true);
     this.#frozen = true;
+    this.#showSave();
   }
 
   /** Calls the listener with the path of every file a tab saves. */
@@ -225,7 +229,10 @@ export class EditorTabs {
     }
     const path = document.path;
     const view = new EditorFile(file.panel, document, this.files, {
-      modified: (modified) => markTab(file.tab, path, modified),
+      modified: (modified) => {
+        markTab(file.tab, path, modified);
+        this.#showSave();
+      },
       saved: () => {
         for (const listener of this.#savedListeners) listener(path);
       },
@@ -289,6 +296,7 @@ export class EditorTabs {
       tab.tabIndex = active ? 0 : -1;
       panel.hidden = !active;
     }
+    this.#showSave();
     for (const listener of this.#activeListeners) listener(path);
   }
 
@@ -324,6 +332,7 @@ export class EditorTabs {
     } else {
       this.#active = null;
       this.#placeholder.hidden = false;
+      this.#showSave();
       for (const listener of this.#activeListeners) listener(null);
     }
   }
@@ -343,6 +352,19 @@ export class EditorTabs {
     event.preventDefault();
     this.activate(path);
     this.#open.get(path)?.tab.focus();
+  }
+
+  /** The Save button: named for the active tab, and disabled while it has nothing to save. */
+  #showSave(): void {
+    const active = this.#active;
+    this.#save.disabled = this.#frozen || active === null || !this.isModified(active);
+    this.#save.setAttribute("aria-label", active === null ? "Save" : `Save ${active.slice(active.lastIndexOf("/") + 1)}`);
+  }
+
+  /** A save that leaves the button disabled gives the focus back to the editor; a conflict's banner takes it. */
+  async #saveFromButton(): Promise<void> {
+    await this.saveActive();
+    if (this.#save.disabled && this.#active !== null) this.#open.get(this.#active)?.editor?.focus();
   }
 
   /** Cmd or Ctrl-S anywhere in the view saves the active tab, never the browser's page. */

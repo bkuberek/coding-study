@@ -57,7 +57,7 @@ The top bar holds the views, the attempts in progress, and the mock banner while
 
 Open a file by choosing it in the tree; each opens in a tab of its own.
 
-- **Saving.** <kbd>Cmd</kbd>+<kbd>S</kbd> saves the active tab, or `:w` with Vim on. A run saves every tab with unsaved edits first, so it always tests what you see; the page saves at no other time. A tab with unsaved edits shows a dot in place of its close button.
+- **Saving.** <kbd>Cmd</kbd>+<kbd>S</kbd>, the **save** button at the end of the tab bar, or `:w` with Vim on saves the active tab. A run saves every tab with unsaved edits first, so it always tests what you see; the page saves at no other time. A tab with unsaved edits shows a dot in place of its close button.
 - **Changes from elsewhere show up.** When your IDE or the terminal changes a file, a tab without unsaved edits takes the new version in place and keeps your cursor. A tab with unsaved edits shows a banner instead: **Reload theirs** drops your edits, **Overwrite** saves yours over the file.
 - **Leaving asks first.** Closing a tab, leaving the view or closing the page with unsaved edits asks before anything is lost.
 - **Generated test files** of a project are editable, as in the terminal, but editing one never changes a grade.
