@@ -4,6 +4,7 @@ import pytest
 
 from coding_study.domain import project_tests, scaffold
 from coding_study.domain.errors import UsageError
+from coding_study.domain.labels import Labels
 from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.domain.scaffold import (
     Scaffold,
@@ -14,6 +15,7 @@ from coding_study.domain.scaffold import (
     render_template,
     template_directories,
 )
+from coding_study.domain.taxonomy import Scope
 
 
 def plan(**fields: object) -> Scaffold:
@@ -99,6 +101,26 @@ def test_the_rust_project_template_defaults_to_the_practical_track():
     assert (scaffold.track, scaffold.patterns) == (Track.PRACTICAL, ())
 
 
+ALGORITHMS = Labels(("algorithms",), ("general",), Scope.FUNCTION)
+BACKEND_FUNCTION = Labels(("backend",), ("backend",), Scope.FUNCTION)
+BACKEND_PROJECT = Labels(("backend",), ("backend",), Scope.PROJECT)
+
+
+@pytest.mark.parametrize(
+    ("template", "labels"),
+    [
+        (TemplateName.ARRAY, ALGORITHMS),
+        (TemplateName.TREE, ALGORITHMS),
+        (TemplateName.DESIGN, ALGORITHMS),
+        (TemplateName.PROGRESSIVE, BACKEND_FUNCTION),
+        (TemplateName.CONCURRENT, Labels(("backend",), ("backend", "platform"), Scope.FUNCTION)),
+        *((template, BACKEND_PROJECT) for template in scaffold.PROJECT_TEMPLATE_LANGUAGES),
+    ],
+)
+def test_a_template_defaults_the_labels(template, labels):
+    assert plan(slug="a-problem", template=template).labels == labels
+
+
 def test_the_difficulty_defaults_to_medium():
     assert plan(slug="two-sum").difficulty is Difficulty.MEDIUM
 
@@ -147,6 +169,12 @@ def test_the_yaml_title_is_quoted():
 
 def test_the_patterns_line_lists_the_patterns():
     assert placeholders(slug="x")["patterns"] == "patterns: [arrays-hashing]"
+
+
+def test_the_labels_placeholder_writes_the_three_labels():
+    assert placeholders(slug="x")["labels"] == (
+        "domains: [algorithms]\njob_roles: [general]\nscope: function"
+    )
 
 
 def test_rendering_replaces_placeholders():

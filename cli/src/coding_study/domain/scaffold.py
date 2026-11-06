@@ -15,10 +15,11 @@ from enum import StrEnum
 from coding_study.domain import project_tests
 from coding_study.domain.concurrency import ALLOWED_MODELS, ConcurrencyModel
 from coding_study.domain.errors import UsageError
+from coding_study.domain.labels import Labels
 from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.domain.problem_files import RUBRIC_FILE
 from coding_study.domain.rubric import LLD_RUBRIC_SECTIONS, rubric_skeleton
-from coding_study.domain.taxonomy import PATTERNS
+from coding_study.domain.taxonomy import PATTERNS, Scope
 from coding_study.domain.virtual_clock import CLOCK_LANGUAGES, GRADED_CLOCK_LANGUAGES
 
 ID_DIGITS = 4
@@ -74,21 +75,27 @@ in the template underneath."""
 class TemplateDefaults:
     track: Track
     pattern: str | None
+    labels: Labels
 
 
+_ALGORITHMS = Labels(("algorithms",), ("general",), Scope.FUNCTION)
+_BACKEND_FUNCTION = Labels(("backend",), ("backend",), Scope.FUNCTION)
+_BACKEND_PROJECT = Labels(("backend",), ("backend",), Scope.PROJECT)
 TEMPLATE_DEFAULTS: Mapping[TemplateName, TemplateDefaults] = {
-    TemplateName.ARRAY: TemplateDefaults(Track.DSA, "arrays-hashing"),
-    TemplateName.TREE: TemplateDefaults(Track.DSA, "trees"),
-    TemplateName.DESIGN: TemplateDefaults(Track.DSA, "arrays-hashing"),
-    TemplateName.PROGRESSIVE: TemplateDefaults(Track.PRACTICAL, None),
-    TemplateName.CONCURRENT: TemplateDefaults(Track.CONCURRENCY, None),
-    TemplateName.PROJECT_PYTHON: TemplateDefaults(Track.PRACTICAL, None),
-    TemplateName.PROJECT_TYPESCRIPT: TemplateDefaults(Track.PRACTICAL, None),
-    TemplateName.PROJECT_JAVA: TemplateDefaults(Track.PRACTICAL, None),
-    TemplateName.PROJECT_KOTLIN: TemplateDefaults(Track.PRACTICAL, None),
-    TemplateName.PROJECT_GO: TemplateDefaults(Track.PRACTICAL, None),
-    TemplateName.PROJECT_RUST: TemplateDefaults(Track.PRACTICAL, None),
+    TemplateName.ARRAY: TemplateDefaults(Track.DSA, "arrays-hashing", _ALGORITHMS),
+    TemplateName.TREE: TemplateDefaults(Track.DSA, "trees", _ALGORITHMS),
+    TemplateName.DESIGN: TemplateDefaults(Track.DSA, "arrays-hashing", _ALGORITHMS),
+    TemplateName.PROGRESSIVE: TemplateDefaults(Track.PRACTICAL, None, _BACKEND_FUNCTION),
+    TemplateName.CONCURRENT: TemplateDefaults(
+        Track.CONCURRENCY, None, Labels(("backend",), ("backend", "platform"), Scope.FUNCTION)
+    ),
+    **{
+        template: TemplateDefaults(Track.PRACTICAL, None, _BACKEND_PROJECT)
+        for template in PROJECT_TEMPLATE_LANGUAGES
+    },
 }
+"""What `cstudy new` writes when the request leaves it out. An author edits the labels to fit the
+problem, and check S24 requires them in the catalog."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,6 +125,7 @@ class Scaffold:
     difficulty: Difficulty
     track: Track
     patterns: tuple[str, ...]
+    labels: Labels
 
     @property
     def directory_name(self) -> str:
@@ -133,6 +141,7 @@ class Scaffold:
             "difficulty": self.difficulty.value,
             "track": self.track.value,
             "patterns": f"patterns: [{', '.join(self.patterns)}]" if self.patterns else "",
+            "labels": _labels_text(self.labels),
             "function_name": words[0] + "".join(word.capitalize() for word in words[1:]),
             "class_name": "".join(word.capitalize() for word in words),
             "crate_name": "_".join(words),
@@ -165,6 +174,7 @@ def plan_scaffold(request: ScaffoldRequest, problem_id: str) -> Scaffold:
         difficulty=request.difficulty or DEFAULT_DIFFICULTY,
         track=track,
         patterns=_patterns(request.pattern or defaults.pattern, track),
+        labels=defaults.labels,
     )
 
 
@@ -263,3 +273,12 @@ def _patterns(pattern: str | None, track: Track) -> tuple[str, ...]:
     if pattern not in PATTERNS:
         raise UsageError(f'unknown pattern "{pattern}"; see docs/specs/content.md')
     return (pattern,)
+
+
+def _labels_text(labels: Labels) -> str:
+    """The `domains`, `job_roles` and `scope` lines of a `meta.yaml`."""
+    return (
+        f"domains: [{', '.join(labels.domains)}]\n"
+        f"job_roles: [{', '.join(labels.job_roles)}]\n"
+        f"scope: {labels.scope}"
+    )
