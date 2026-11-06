@@ -19,10 +19,9 @@
 .stats-table th[scope="row"] {
   padding: 7px 10px;
   border-bottom: 1px solid var(--rule);
-  color: var(--ink);
-  font-size: inherit;
-  letter-spacing: 0;
-  text-transform: none;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
 }
 
 .stats-table .num {
