@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0256"
+slug: refresh-token-rotation
+title: Refresh Token Rotation
+status: ready
+difficulty: medium
+track: practical
+kind: design
+patterns: [arrays-hashing]
+domains: [security, identity]
+job_roles: [security-engineer, backend]
+scope: function
+languages: [python, typescript]
+signature:
+  class:
+    name: RefreshTokenStore
+    constructor: {params: [{name: ttlSeconds, type: int}, {name: graceSeconds, type: int}]}
+    methods:
+      - {name: issue, params: [{name: familyId, type: string}, {name: tokenId, type: string}, {name: now, type: long}], returns: {type: bool}}
+      - {name: rotate, params: [{name: tokenId, type: string}, {name: newTokenId, type: string}, {name: now, type: long}], returns: {type: string}}
+      - {name: activeToken, params: [{name: familyId, type: string}, {name: now, type: long}], returns: {type: string}}
+comparator: {type: ops}
+approaches:
+  - {id: family-records, name: One record per family and a lookup from token to family, role: optimal, time: "O(1) per call", space: "O(t)", time_class: "n", space_class: "n"}
+related: [token-claim-validator]
+estimate_minutes: 35
