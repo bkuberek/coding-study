@@ -6,7 +6,7 @@ the flags, never on the order the rows arrive in. Every ordering below ends in a
 
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import date
 from enum import StrEnum
 from fractions import Fraction
@@ -14,6 +14,7 @@ from fractions import Fraction
 from coding_study.domain.items import ItemMeta
 from coding_study.domain.jdk import DeclaredJdk, SelectedJdk
 from coding_study.domain.jdk_fit import fit_of
+from coding_study.domain.labels import LabelFilter, Labels
 from coding_study.domain.layout import JVM_LANGUAGES
 from coding_study.domain.problem import (
     ALL_LANGUAGES,
@@ -53,6 +54,7 @@ class Candidate:
     """The JDK range the problem declares for its Java and Kotlin."""
     project: bool = False
     """A project problem, which starts in its own language, not in `--lang`."""
+    labels: Labels = field(default_factory=Labels)
 
     @property
     def autograded(self) -> bool:
@@ -91,6 +93,7 @@ def candidate_of(meta: ProblemMeta, progress: ProblemProgress) -> Candidate:
         progress=progress,
         jdk=meta.jdk,
         project=meta.kind is ProblemKind.PROJECT,
+        labels=meta.labels,
     )
 
 
@@ -104,6 +107,7 @@ def item_candidate_of(meta: ItemMeta, progress: ProblemProgress) -> Candidate:
         content=meta.status,
         languages=(),
         progress=progress,
+        labels=meta.labels,
     )
 
 
@@ -138,6 +142,8 @@ class NextScope:
     """Problems whose `languages` include it; items stay in scope."""
     jdk: JdkScope | None = None
     """None: the selected JDK does not narrow the scope."""
+    labels: LabelFilter = field(default_factory=LabelFilter)
+    """`--domain`, `--role` and `--scope`; items and problems both carry labels."""
 
     def includes(self, candidate: Candidate) -> bool:
         checks = (
@@ -146,6 +152,7 @@ class NextScope:
             self.pattern is None or self.pattern in candidate.patterns,
             self.difficulty in (None, candidate.difficulty),
             self._offers_language(candidate),
+            self.labels.matches(candidate.labels),
             self.jdk is None or self.jdk.admits(candidate),
         )
         return all(checks)

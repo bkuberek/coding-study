@@ -18,8 +18,10 @@ from coding_study.application.next_problem import (
 from coding_study.application.start_attempt import StartRequest
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import UsageError
+from coding_study.domain.labels import LabelFilter
 from coding_study.domain.next_selection import NewPick, NextPick, ReviewPick
 from coding_study.domain.problem import Difficulty, Language, Track
+from coding_study.domain.taxonomy import Scope
 from coding_study.entrypoints.commands.start import open_in_editor, start_and_report
 from coding_study.entrypoints.shared import add_command, command_environ, console
 
@@ -40,7 +42,11 @@ def next_command(
     context: typer.Context,
     tracks: Annotated[
         list[Track] | None,
-        typer.Option("--track", help="Only this track (repeatable); default: config next.tracks."),
+        typer.Option(
+            "--track",
+            help="Only this track (repeatable); default: config next.tracks, or every track "
+            "with --domain, --role or --scope.",
+        ),
     ] = None,
     pattern: Annotated[
         str | None, typer.Option("--pattern", help="Problems that list this pattern.")
@@ -51,6 +57,15 @@ def next_command(
     language: Annotated[
         Language | None,
         typer.Option("--lang", help="Problems available in it; the language for cstudy start."),
+    ] = None,
+    domain: Annotated[
+        str | None, typer.Option("--domain", help="Problems that list this domain.")
+    ] = None,
+    role: Annotated[
+        str | None, typer.Option("--role", help="Problems that list this job role.")
+    ] = None,
+    scope: Annotated[
+        Scope | None, typer.Option("--scope", help="Only this scope: function, project or system.")
     ] = None,
     new: Annotated[bool, typer.Option("--new", help="Skip reviews.")] = False,
     review: Annotated[bool, typer.Option("--review", help="Skip new problems.")] = False,
@@ -63,7 +78,12 @@ def next_command(
     if as_json and start:
         raise UsageError("--json excludes --start")
     request = NextRequest(
-        tuple(tracks or ()), pattern, difficulty, language, next_source(new, review)
+        tuple(tracks or ()),
+        pattern,
+        difficulty,
+        language,
+        next_source(new, review),
+        LabelFilter(domain, role, scope),
     )
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     recommendation = recommend(environment, request)

@@ -6,8 +6,8 @@ difficulty: medium
 track: dsa
 kind: design
 patterns: [linked-list]
-domains: [algorithms]
-job_roles: [general]
+domains: [algorithms, backend]
+job_roles: [general, backend]
 scope: function
 signature:
   class:

@@ -1,4 +1,4 @@
-"""`cstudy list --kind` and `cstudy list --json` (docs/specs/cli.md#cstudy-list)."""
+"""The filters and `--json` of `cstudy list` (docs/specs/cli.md#cstudy-list)."""
 
 import json
 from dataclasses import replace
@@ -66,6 +66,37 @@ def test_an_unknown_kind_is_a_usage_error(environment):
     assert invoke("--kind", "puzzle").exit_code != 0
 
 
+def test_a_domain_lists_the_problems_and_items_that_name_it(environment):
+    assert listed_slugs("--domain", "backend") == [
+        "lru-cache",
+        "url-shortener",
+        "news-feed",
+        "retry-wrapper",
+    ]
+
+
+def test_a_role_lists_the_problems_and_items_that_name_it(environment):
+    assert listed_slugs("--role", "platform") == ["url-shortener", "news-feed"]
+
+
+def test_a_scope_lists_the_problems_and_items_of_that_scope(environment):
+    assert listed_slugs("--scope", "function") == ["two-sum", "lru-cache", "retry-wrapper"]
+
+
+def test_the_label_filters_combine_with_each_other_and_with_the_others(environment):
+    assert listed_slugs("--domain", "backend", "--role", "general", "--kind", "design") == [
+        "lru-cache"
+    ]
+
+
+def test_an_unknown_scope_is_a_usage_error(environment):
+    assert invoke("--scope", "galaxy").exit_code != 0
+
+
+def test_a_label_no_entry_names_matches_nothing(environment):
+    assert invoke("--domain", "security").output.strip() == "no problems match"
+
+
 def test_json_is_dated_today(environment):
     assert document()["today"] == NOW.date().isoformat()
 
@@ -89,6 +120,9 @@ def test_json_describes_a_problem(environment):
         "kind": "function",
         "difficulty": "easy",
         "patterns": ["arrays-hashing"],
+        "domains": ["algorithms"],
+        "job_roles": ["general"],
+        "scope": "function",
         "languages": ["python"],
         "content": "ready",
         "source": "catalog",
@@ -108,6 +142,9 @@ def test_json_describes_an_item(environment):
         "kind": "item",
         "difficulty": "medium",
         "patterns": [],
+        "domains": ["backend"],
+        "job_roles": ["backend", "platform"],
+        "scope": "system",
         "languages": [],
         "content": "ready",
         "source": "catalog",

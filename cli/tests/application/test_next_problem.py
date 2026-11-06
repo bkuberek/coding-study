@@ -16,6 +16,7 @@ from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewA
 from coding_study.domain.config import Config, NextSettings
 from coding_study.domain.errors import UsageError
 from coding_study.domain.items import EntryKind
+from coding_study.domain.labels import LabelFilter
 from coding_study.domain.next_selection import NewPick, NextSource, ReviewPick
 from coding_study.domain.problem import Language, Track
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
@@ -91,6 +92,36 @@ def test_tracks_given_replace_the_configured_ones(tmp_path, problems):
     config = Config(next=NextSettings(tracks=(Track.PRACTICAL,)))
     environment = make_environment(copy_repository(tmp_path, problems), config=config)
     assert picked(environment, tracks=(Track.DSA,)) == "two-sum"
+
+
+@pytest.fixture
+def with_items(tmp_path: Path, problems: Path):
+    return make_environment(copy_repository(tmp_path, problems, FIXTURE_TRACKS))
+
+
+def test_a_label_filter_searches_every_track(with_items):
+    assert picked(with_items, labels=LabelFilter(role="platform")) == "url-shortener"
+
+
+def test_tracks_given_narrow_a_label_filter(with_items):
+    labels = LabelFilter(role="platform")
+    assert picked(with_items, tracks=(Track.DSA,), labels=labels) is None
+
+
+def test_without_a_label_filter_the_configured_tracks_apply(with_items):
+    assert picked(with_items, tracks=()) == "two-sum"
+
+
+def test_a_label_no_entry_names_picks_nothing(with_items):
+    assert picked(with_items, labels=LabelFilter(domain="security")) is None
+
+
+@pytest.mark.parametrize(
+    "labels", [LabelFilter(domain="no-such-domain"), LabelFilter(role="no-such-role")]
+)
+def test_a_label_outside_the_lists_is_a_usage_error(environment, labels):
+    with pytest.raises(UsageError):
+        next_problem(environment, NextRequest(labels=labels))
 
 
 def test_the_pattern_filter(environment):

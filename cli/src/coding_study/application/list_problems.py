@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 
 from coding_study.application.environment import Environment
@@ -10,6 +10,7 @@ from coding_study.domain.attempts import Attempt
 from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.jdk import SelectedJdk
 from coding_study.domain.jdk_fit import fit_of, listing_reason
+from coding_study.domain.labels import LabelFilter
 from coding_study.domain.problem import (
     ContentStatus,
     Difficulty,
@@ -34,6 +35,8 @@ class ProblemFilter:
     """Problems with a reference in this language."""
     kind: EntryKind | None = None
     """`item` keeps the non-autograded items only; a kind of problem leaves them out."""
+    labels: LabelFilter = field(default_factory=LabelFilter)
+    """`--domain`, `--role` and `--scope`; an entry without labels matches none that is set."""
 
     @property
     def lists_items(self) -> bool:
@@ -50,6 +53,7 @@ class ProblemFilter:
             self.content in (None, meta.status),
             self.language is None or self.language in summary.reference_languages,
             self.kind in (None, entry_kind(meta.kind)),
+            self.labels.matches(meta.labels),
         )
         return all(checks)
 

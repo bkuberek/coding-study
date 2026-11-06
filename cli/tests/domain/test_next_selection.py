@@ -8,6 +8,7 @@ from hypothesis import strategies as st
 from coding_study.domain.attempts import AttemptStatus, Grade
 from coding_study.domain.items import ItemMeta
 from coding_study.domain.jdk import DeclaredJdk, JdkSource, SelectedJdk
+from coding_study.domain.labels import LabelFilter, Labels
 from coding_study.domain.next_selection import (
     Candidate,
     JdkScope,
@@ -21,6 +22,7 @@ from coding_study.domain.next_selection import (
 )
 from coding_study.domain.problem import ContentStatus, Difficulty, Language, Track
 from coding_study.domain.scheduling import ProblemProgress, ReviewState, ScheduleEntry
+from coding_study.domain.taxonomy import Scope
 from coding_study.domain.weakness import GradedAttempt, Group
 
 TODAY = date(2026, 10, 24)
@@ -233,6 +235,53 @@ def test_the_pattern_filter_excludes_other_patterns():
 def test_the_difficulty_filter():
     scope = NextScope(frozenset({Track.DSA}), difficulty=Difficulty.MEDIUM)
     assert picked_slug(candidate("easy"), scope=scope) is None
+
+
+SECURITY_LABELS = Labels(("security", "identity"), ("security-engineer", "backend"), Scope.PROJECT)
+
+
+def labelled_scope(**fields: object) -> NextScope:
+    return NextScope(frozenset({Track.DSA}), labels=LabelFilter(**fields))  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "fields", [{"domain": "identity"}, {"role": "backend"}, {"scope": Scope.PROJECT}]
+)
+def test_a_label_filter_keeps_a_problem_that_has_the_label(fields):
+    labelled = candidate("labelled", labels=SECURITY_LABELS)
+    assert picked_slug(labelled, scope=labelled_scope(**fields)) == "labelled"
+
+
+@pytest.mark.parametrize(
+    "fields", [{"domain": "fintech"}, {"role": "general"}, {"scope": Scope.FUNCTION}]
+)
+def test_a_label_filter_drops_a_problem_that_lacks_the_label(fields):
+    labelled = candidate("labelled", labels=SECURITY_LABELS)
+    assert picked_slug(labelled, scope=labelled_scope(**fields)) is None
+
+
+def test_a_problem_without_labels_is_out_of_a_label_scope():
+    assert picked_slug(candidate("plain"), scope=labelled_scope(domain="backend")) is None
+
+
+def test_a_label_filter_keeps_an_item_that_has_the_label():
+    scope = NextScope(frozenset({Track.SYSTEM_DESIGN}), labels=LabelFilter(scope=Scope.SYSTEM))
+    system = item("url-shortener", labels=Labels(("backend",), ("backend",), Scope.SYSTEM))
+    assert picked_slug(system, scope=scope) == "url-shortener"
+
+
+def test_an_item_candidate_carries_the_labels_of_its_item():
+    labels = Labels(("backend",), ("backend",), Scope.SYSTEM)
+    meta = ItemMeta(
+        "url-shortener",
+        "URL Shortener",
+        Track.SYSTEM_DESIGN,
+        Difficulty.MEDIUM,
+        45,
+        ContentStatus.READY,
+        labels=labels,
+    )
+    assert item_candidate_of(meta, NEW).labels == labels
 
 
 def test_the_language_filter_uses_the_problem_languages():

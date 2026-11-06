@@ -126,6 +126,46 @@ def test_an_unknown_pattern_is_a_usage_error(environment):
     assert invoke("--pattern", "no-such-pattern").exit_code == ExitCode.USAGE_ERROR
 
 
+@pytest.fixture
+def with_a_practical_problem(tmp_path, editor, monkeypatch, tmp_path_factory):
+    """The first catalog problems and the banking system, a `practical` problem."""
+    problems = copy_catalog_problems(
+        tmp_path_factory.mktemp("catalog"), (*FIRST_CATALOG, "0187-banking-system")
+    )
+    environment = e2e_environment(repository_root(tmp_path, problems), editor=editor)
+    monkeypatch.setattr(next_problem, "load_environment", lambda *_: environment)
+    return environment
+
+
+def test_a_domain_searches_every_track(with_a_practical_problem):
+    assert invoke("--domain", "fintech").output.splitlines() == [
+        "new     banking-system  (hard · practical)  weakest track: practical (0.75)",
+        "start   cstudy start banking-system --lang python",
+    ]
+
+
+def test_a_role_searches_every_track(with_a_practical_problem):
+    assert invoke("--role", "backend").output.splitlines()[0].startswith("new     banking-system")
+
+
+def test_a_scope_searches_every_track(with_a_practical_problem):
+    assert invoke("--scope", "function").output.splitlines()[0].startswith("new     two-sum")
+
+
+def test_a_track_given_narrows_a_label_filter(with_a_practical_problem):
+    result = invoke("--domain", "fintech", "--track", "dsa")
+    assert result.output == "nothing due and no new problems in scope\n"
+
+
+def test_a_domain_no_problem_names_finds_nothing(with_a_practical_problem):
+    assert invoke("--domain", "security").output == "nothing due and no new problems in scope\n"
+
+
+@pytest.mark.parametrize("flag", ["--domain", "--role", "--scope"])
+def test_a_label_outside_its_list_is_a_usage_error(environment, flag):
+    assert invoke(flag, "no-such-value").exit_code == ExitCode.USAGE_ERROR
+
+
 def test_command_is_registered():
     assert "next" in {command.name for command in cli.app.registered_commands}
 

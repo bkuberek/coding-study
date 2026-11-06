@@ -6,7 +6,7 @@ in `tracks/` of the tracks in scope.
 """
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 
 from coding_study.application.environment import Environment
 from coding_study.application.practice_catalog import practice_candidates
@@ -14,6 +14,7 @@ from coding_study.domain.attempts import Attempt
 from coding_study.domain.errors import UsageError
 from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.jdk_fit import cannot_run_text
+from coding_study.domain.labels import LabelFilter
 from coding_study.domain.next_selection import (
     Candidate,
     JdkScope,
@@ -26,18 +27,19 @@ from coding_study.domain.next_selection import (
 from coding_study.domain.precedence import resolve_language
 from coding_study.domain.problem import Difficulty, Language, ProblemKind, ProblemMeta, Track
 from coding_study.domain.project import project_language
-from coding_study.domain.taxonomy import PATTERNS
+from coding_study.domain.taxonomy import DOMAINS, JOB_ROLES, PATTERNS
 from coding_study.domain.weakness import GradedAttempt
 
 
 @dataclass(frozen=True, slots=True)
 class NextRequest:
     tracks: tuple[Track, ...] = ()
-    """Empty: the config's `next.tracks`."""
+    """Empty: the config's `next.tracks`, or every track when `labels` is set."""
     pattern: str | None = None
     difficulty: Difficulty | None = None
     language: Language | None = None
     source: NextSource = NextSource.ANY
+    labels: LabelFilter = field(default_factory=LabelFilter)
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,24 +84,42 @@ class _Selection:
 
 
 def next_problem(environment: Environment, request: NextRequest) -> NextPick | None:
-    """Raises UsageError for a pattern outside the taxonomy."""
+    """Raises UsageError for a pattern, domain or job role outside its list."""
     return _selection(environment, request).pick()
 
 
 def _selection(environment: Environment, request: NextRequest) -> _Selection:
-    if request.pattern is not None and request.pattern not in PATTERNS:
-        raise UsageError(f'unknown pattern "{request.pattern}"; see docs/specs/content.md')
+    _reject_unknown_values(request)
     clock = environment.clock
     scope = NextScope(
-        tracks=frozenset(request.tracks or environment.config.next.tracks),
+        tracks=frozenset(_tracks_in_scope(environment, request)),
         pattern=request.pattern,
         difficulty=request.difficulty,
         language=request.language,
         jdk=jdk_scope(environment, request.language),
+        labels=request.labels,
     )
     query = NextQuery(scope, clock.local_date(clock.now()), request.source)
     candidates = practice_candidates(environment, scope.tracks)
     return _Selection(candidates, graded_attempts(environment), query)
+
+
+def _reject_unknown_values(request: NextRequest) -> None:
+    if request.pattern is not None and request.pattern not in PATTERNS:
+        raise UsageError(f'unknown pattern "{request.pattern}"; see docs/specs/content.md')
+    domain, role = request.labels.domain, request.labels.role
+    if domain is not None and domain not in DOMAINS:
+        raise UsageError(f'unknown domain "{domain}"; use one of {", ".join(DOMAINS)}')
+    if role is not None and role not in JOB_ROLES:
+        raise UsageError(f'unknown job role "{role}"; use one of {", ".join(JOB_ROLES)}')
+
+
+def _tracks_in_scope(environment: Environment, request: NextRequest) -> Sequence[Track]:
+    """`--track` as given; else every track for a label filter, since the configured tracks
+    (`dsa`, by default) would leave out what a domain, role or scope names; else the config's."""
+    if request.tracks:
+        return request.tracks
+    return tuple(Track) if request.labels.is_set else environment.config.next.tracks
 
 
 def jdk_scope(environment: Environment, requested: Language | None) -> JdkScope:

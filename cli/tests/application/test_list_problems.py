@@ -7,8 +7,10 @@ import pytest
 from coding_study.application.list_problems import ProblemFilter, list_problems, listing_context
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
 from coding_study.domain.items import EntryKind
+from coding_study.domain.labels import LabelFilter
 from coding_study.domain.problem import ContentStatus, Difficulty, Language, Track
 from coding_study.domain.scheduling import ProblemStatus, ReviewState, ScheduleEntry
+from coding_study.domain.taxonomy import Scope
 from tests.fakes import NOW, make_environment
 from tests.fakes import repository_root as copy_repository
 from tests.helpers import PROJECT_PROBLEMS
@@ -59,6 +61,24 @@ def test_filter_by_reference_language(environment):
 
 def test_filter_by_language_without_references(environment):
     assert slugs(environment, language=Language.KOTLIN) == []
+
+
+def test_filter_by_domain_matches_any_listed_domain(environment):
+    assert slugs(environment, labels=LabelFilter(domain="backend")) == ["lru-cache"]
+
+
+def test_filter_by_role_matches_any_listed_job_role(environment):
+    assert slugs(environment, labels=LabelFilter(role="general")) == ["two-sum", "lru-cache"]
+
+
+def test_filter_by_scope(environment):
+    assert slugs(environment, labels=LabelFilter(scope=Scope.PROJECT)) == []
+
+
+def test_the_label_filters_combine_by_and(environment):
+    assert slugs(environment, labels=LabelFilter(domain="algorithms", role="backend")) == [
+        "lru-cache"
+    ]
 
 
 def test_filter_by_kind(environment):

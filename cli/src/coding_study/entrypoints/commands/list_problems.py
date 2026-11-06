@@ -24,8 +24,10 @@ from coding_study.domain.cases import JsonValue
 from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.jdk import SelectedJdk
 from coding_study.domain.jdk_fit import jdk_range_of
+from coding_study.domain.labels import LabelFilter, Labels
 from coding_study.domain.problem import ContentStatus, Difficulty, Language, ProblemMeta, Track
 from coding_study.domain.scheduling import ProblemStatus
+from coding_study.domain.taxonomy import Scope
 from coding_study.domain.value_text import truncate
 from coding_study.entrypoints.shared import add_command, command_environ, console
 
@@ -81,12 +83,24 @@ def list_command(
         EntryKind | None,
         typer.Option("--kind", help="Only this kind of problem, or item for the items."),
     ] = None,
+    domain: Annotated[
+        str | None, typer.Option("--domain", help="Problems that list this domain.")
+    ] = None,
+    role: Annotated[
+        str | None, typer.Option("--role", help="Problems that list this job role.")
+    ] = None,
+    scope: Annotated[
+        Scope | None, typer.Option("--scope", help="Only this scope: function, project or system.")
+    ] = None,
     as_json: Annotated[
         bool, typer.Option("--json", help="One JSON document instead of the table.")
     ] = False,
 ) -> None:
     """Browse problems with filters."""
-    problem_filter = ProblemFilter(track, pattern, difficulty, status, content, language, kind)
+    labels = LabelFilter(domain, role, scope)
+    problem_filter = ProblemFilter(
+        track, pattern, difficulty, status, content, language, kind, labels
+    )
     environment = load_catalog_environment(Path.cwd(), command_environ(context), Path.home())
     if as_json:
         typer.echo(json.dumps(list_document(environment, problem_filter), indent=2))
@@ -146,6 +160,7 @@ def _problem_entry(problem: ListedProblem, listing: ListingContext) -> dict[str,
         "kind": entry_kind(meta.kind).value,
         "difficulty": meta.difficulty.value,
         "patterns": list(meta.patterns),
+        **_label_fields(meta.labels),
         "languages": [language.value for language in problem.summary.reference_languages],
         "content": meta.status.value,
         "source": WORKSPACE_SOURCE if meta.workspace else CATALOG_SOURCE,
@@ -153,6 +168,15 @@ def _problem_entry(problem: ListedProblem, listing: ListingContext) -> dict[str,
         "due_on": problem.due_on.isoformat() if problem.due_on else None,
         "in_progress": _in_progress(listing, meta.slug),
         "jdk": _jdk_range_value(meta),
+    }
+
+
+def _label_fields(labels: Labels) -> dict[str, JsonValue]:
+    """`domains`, `job_roles` and `scope`; a workspace problem without labels has none."""
+    return {
+        "domains": list(labels.domains),
+        "job_roles": list(labels.job_roles),
+        "scope": labels.scope.value if labels.scope else None,
     }
 
 
@@ -171,6 +195,7 @@ def _item_entry(item: ListedItem, listing: ListingContext) -> dict[str, JsonValu
         "kind": EntryKind.ITEM.value,
         "difficulty": meta.difficulty.value,
         "patterns": [],
+        **_label_fields(meta.labels),
         "languages": [],
         "content": meta.status.value,
         "source": CATALOG_SOURCE,
