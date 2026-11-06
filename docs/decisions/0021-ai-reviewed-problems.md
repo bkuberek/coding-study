@@ -22,6 +22,7 @@ Some skills cannot be graded deterministically: a written answer, how you answer
 | O2 | You provide your own key for OpenAI, Anthropic, Google or OpenRouter, any or all of them |
 | O3 | It is a special use case that not everyone will use. The rest of the app needs no internet |
 | O4 | Drop "works offline" as a product statement and focus on "works on your own machine". [NFR-6](../prd.md#non-functional-requirements) says this now |
+| O5 | You configure your keys in the Web UI's Settings page or in the configuration file |
 
 ### Names
 
@@ -37,7 +38,7 @@ Recommended by the assistant and not contradicted by the owner.
 | # | Area | Recommendation |
 |---|------|----------------|
 | R1 | Opt-in | On in Settings, off by default. A problem declares that it needs a review provider, and that appears in the [requirements list](../specs/service-projects.md#what-a-problem-depends-on) planned by ADR 0019. With no key you still see the rubric and self-review, and nothing breaks |
-| R2 | Keys | Read from environment variables, or stored in the OS keychain. Never in the workspace, `.cs/`, logs, transcripts or archives; never passed to runners, language servers or containers. The web API accepts a key but never returns one, only whether one is set |
+| R2 | Keys | Stored only in the user-level configuration file, whichever way you set them ([below](#keys-in-practice)). Never in the workspace, `.cs/`, logs, transcripts or archives; never passed to runners, language servers or containers. The web API accepts a key but never returns one, only whether one is set |
 | R3 | Who calls | The local server process, never the page, so the page's CSP does not change. **There is no cstudy server between you and the provider** |
 | R4 | Consent and cost | Nothing is sent automatically. Before the first send, cstudy shows the provider, the model and exactly what will be sent. It shows an estimated cost if knowable, and actual usage afterwards, with a token cap. You pick the model; cstudy hardcodes no model ids |
 | R5 | Verdict | A problem ships a rubric with items. A review returns schema-validated structured output per item: score, evidence quoted from your answer, and gaps. The stored result records provider, model, rubric version and time |
@@ -52,10 +53,12 @@ Recommended by the assistant and not contradicted by the owner.
 
 | Item | Finding |
 |------|---------|
-| macOS | The Keychain, through the Python [`keyring`](https://pypi.org/project/keyring/) library (read 2026-11-05) or `/usr/bin/security`, which is present here. To verify at implementation: `security add-generic-password -w` takes the secret as an argument, visible to other processes, so the library looks safer |
-| Linux | `keyring` uses the Freedesktop Secret Service or KWallet. A desktop session has one. A headless machine needs a D-Bus session and an unlocked keyring daemon, which is not practical, so **environment variables are the fallback there** |
-| New dependency | `keyring` would be a new requirement of `cstudy`, for an opt-in feature. Worth an optional extra, decided at implementation |
-| Environment variables | Must not reach user code. Today they would: `_environment` in `adapters/subprocess_runner.py` passes on `os.environ`. So **ADR 0019's allowlist, its P2, is a hard prerequisite for this ADR** |
+| Where | The existing [configuration file](../specs/cli.md#configuration), `~/.config/coding-study/config.toml`, in a table of its own such as `[ai.keys]`. It is user-level and outside every workspace, so a workspace's Git repository cannot pick it up. Settings writes to this same file, so there is one store and one thing to reason about. `.cs/serve/preferences.json` holds the page's other preferences, but it sits in the workspace, so keys never go there |
+| Plain text | The key sits unencrypted on disk, which is the trade-off of this choice. cstudy creates the file with mode `0600`, and `cstudy doctor` warns when a file holding keys is readable by others |
+| Accidents | `CSTUDY_CONFIG` can point the file anywhere, so `cstudy doctor` warns when a file holding keys is inside a workspace or a Git repository. Many people keep `~/.config` in a dotfiles repository, so the guide says so. To verify at implementation: no existing command or error message prints this file's values |
+| Writing from Settings | Must keep your other settings and comments in the file. Python's `tomllib` only reads, so this needs a TOML writer that preserves formatting. Chosen at implementation |
+| What the sandbox covers | A service project cannot read the file, because only its project folder is mounted ([ADR 0019](0019-service-projects.md)). A bank problem runs natively as you, with no sandbox, so your code there could read it. That code is your own, so this is accepted and stated plainly. The language servers' hidden paths should include this file |
+| Environment variables | Not read for keys. Any key you already export is still exposed to user code today, because `_environment` in `adapters/subprocess_runner.py` passes on `os.environ`, which ADR 0019's allowlist, its P2, fixes. That phase is worth doing, but this ADR no longer depends on it |
 
 ### Whiteboard
 
@@ -79,7 +82,7 @@ No phase commitments beyond an order, and it sits after ADRs 0019 and 0020 unles
 
 | Step | Scope |
 |------|-------|
-| 1 | Provider port and keys, including ADR 0019's P2 if it has not shipped |
+| 1 | Provider port and keys, set in Settings or the configuration file |
 | 2 | Written answers on existing items |
 | 3 | Simulated interview |
 | 4 | Whiteboard, after its spike |
@@ -105,6 +108,7 @@ No phase commitments beyond an order, and it sits after ADRs 0019 and 0020 unles
 | Alternative | Trade-off |
 |-------------|-----------|
 | Self-review only, as today | No keys, no cost and no variation, and it stays the default for anyone who does not opt in. It gives no second opinion and cannot ask a follow-up question |
+| The OS keychain or environment variables for keys | A keychain encrypts keys at rest, but it adds a dependency for an opt-in feature and is impractical on a headless Linux machine. Environment variables reach user code until ADR 0019's allowlist ships. Neither is what the owner asked for (O5); either can be added later if plain text proves a problem |
 | A local model | No key and no data leaving your machine, but heavy for an 18 GB machine, and weaker. It can be added later behind the same port. OpenAI-compatible local endpoints are a possible later adapter |
 | Shipping cstudy's own reviewer service | Rejected by O2 and by the product's shape: there is no cstudy server |
 | Reviewing code with an LLM too | Code has a deterministic verdict, and a second judge is what ADR 0010 and ADR 0014 rejected |
