@@ -1,0 +1,17 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"orderIds": [], "batchSize": 2}, "expected": []},
+    {"id": "ex2", "visible": true, "input": {"orderIds": ["a", "b"], "batchSize": 2}, "expected": ["batch 1: a+b through row 2"]},
+    {"id": "h1", "input": {"orderIds": ["a", "b", "c", "d", "e"], "batchSize": 2}, "expected": ["batch 1: a+b through row 2", "batch 2: c+d through row 4", "batch 3: e through row 5"], "note": "the report: three batches, each with its own number, ids and row"},
+    {"id": "h2", "input": {"orderIds": ["a", "b", "c", "d"], "batchSize": 2}, "expected": ["batch 1: a+b through row 2", "batch 2: c+d through row 4"], "note": "a full last batch: nothing left over"},
+    {"id": "h3", "input": {"orderIds": ["a", "b", "c"], "batchSize": 1}, "expected": ["batch 1: a through row 1", "batch 2: b through row 2", "batch 3: c through row 3"], "note": "every id alone"},
+    {"id": "h4", "input": {"orderIds": ["a", "b", "c"], "batchSize": 3}, "expected": ["batch 1: a+b+c through row 3"], "note": "exactly one batch"},
+    {"id": "h5", "input": {"orderIds": ["a", "b"], "batchSize": 5}, "expected": ["batch 1: a+b through row 2"], "note": "fewer ids than a batch holds: a batch of leftovers only"},
+    {"id": "h6", "input": {"orderIds": ["only"], "batchSize": 1}, "expected": ["batch 1: only through row 1"], "note": "one id"},
+    {"id": "h7", "input": {"orderIds": ["o-1", "o-2", "o-3", "o-4", "o-5", "o-6", "o-7"], "batchSize": 3}, "expected": ["batch 1: o-1+o-2+o-3 through row 3", "batch 2: o-4+o-5+o-6 through row 6", "batch 3: o-7 through row 7"], "note": "a longer run: emptying the batch with batch.length = 0 would empty what every callback holds"},
+    {"id": "h8", "input": {"orderIds": ["a", "a", "b", "a"], "batchSize": 2}, "expected": ["batch 1: a+a through row 2", "batch 2: b+a through row 4"], "note": "the same id more than once: an id cannot stand in for its position"},
+    {"id": "h9", "input": {"orderIds": ["a", "b", "c", "d", "e", "f"], "batchSize": 4}, "expected": ["batch 1: a+b+c+d through row 4", "batch 2: e+f through row 6"], "note": "batches of different lengths"}
+  ]
+}

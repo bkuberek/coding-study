@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0268"
+slug: debug-stale-closure-callbacks
+title: "Debug: Stale Closure Callbacks"
+status: ready
+difficulty: medium
+track: debugging
+kind: function
+domains: [backend]
+job_roles: [backend]
+scope: function
+languages: [typescript]
+stub: buggy
+signature:
+  function:
+    name: notifyAfterCommit
+    params:
+      - {name: orderIds, type: "string[]"}
+      - {name: batchSize, type: int}
+    returns: {type: "string[]"}
+comparator: {type: exact}
+approaches:
+  - {id: capture-per-batch, name: Capture each batch in constants of its own, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+related: [debug-async-batch-typescript, debug-shared-default-config]
+estimate_minutes: 10
