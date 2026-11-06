@@ -706,7 +706,7 @@ Planned: the Docker rows and their install message. See [Docker states](service-
 
 ### Settings view
 
-Planned: an opt-in for AI review with your own key, set here or in the [configuration file](cli.md#configuration), which the local server process uses and the page never sees again. See [ADR 0021](../decisions/0021-ai-reviewed-problems.md).
+Planned: an opt-in for AI review with your own key, set here or in `credentials.toml` next to the [configuration file](cli.md#configuration), which the local server process uses and the page never sees again. See [ADR 0021](../decisions/0021-ai-reviewed-problems.md).
 
 The [preferences](#preferences), each applied at once and stored, and the paths of the workspace and the config file for reference.
 

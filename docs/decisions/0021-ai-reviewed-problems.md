@@ -22,7 +22,7 @@ Some skills cannot be graded deterministically: a written answer, how you answer
 | O2 | You provide your own key for OpenAI, Anthropic, Google or OpenRouter, any or all of them |
 | O3 | It is a special use case that not everyone will use. The rest of the app needs no internet |
 | O4 | Drop "works offline" as a product statement and focus on "works on your own machine". [NFR-6](../prd.md#non-functional-requirements) says this now |
-| O5 | You configure your keys in the Web UI's Settings page or in the configuration file |
+| O5 | You configure your keys in the Web UI's Settings page or by hand in `credentials.toml`, a file of keys only that sits next to the configuration file. Engineers do not share their computer, so permission warnings are not needed |
 
 ### Names
 
@@ -38,7 +38,7 @@ Recommended by the assistant and not contradicted by the owner.
 | # | Area | Recommendation |
 |---|------|----------------|
 | R1 | Opt-in | On in Settings, off by default. A problem declares that it needs a review provider, and that appears in the [requirements list](../specs/service-projects.md#what-a-problem-depends-on) planned by ADR 0019. With no key you still see the rubric and self-review, and nothing breaks |
-| R2 | Keys | Stored only in the user-level configuration file, whichever way you set them ([below](#keys-in-practice)). Never in the workspace, `.cs/`, logs, transcripts or archives; never passed to runners, language servers or containers. The web API accepts a key but never returns one, only whether one is set |
+| R2 | Keys | Stored only in `credentials.toml`, whichever way you set them ([below](#keys-in-practice)). Never in the workspace, `.cs/`, logs, transcripts or archives; never passed to runners, language servers or containers. The web API accepts a key but never returns one, only whether one is set |
 | R3 | Who calls | The local server process, never the page, so the page's CSP does not change. **There is no cstudy server between you and the provider** |
 | R4 | Consent and cost | Nothing is sent automatically. Before the first send, cstudy shows the provider, the model and exactly what will be sent. It shows an estimated cost if knowable, and actual usage afterwards, with a token cap. You pick the model; cstudy hardcodes no model ids |
 | R5 | Verdict | A problem ships a rubric with items. A review returns schema-validated structured output per item: score, evidence quoted from your answer, and gaps. The stored result records provider, model, rubric version and time |
@@ -53,10 +53,10 @@ Recommended by the assistant and not contradicted by the owner.
 
 | Item | Finding |
 |------|---------|
-| Where | The existing [configuration file](../specs/cli.md#configuration), `~/.config/coding-study/config.toml`, in a table of its own such as `[ai.keys]`. It is user-level and outside every workspace, so a workspace's Git repository cannot pick it up. Settings writes to this same file, so there is one store and one thing to reason about. `.cs/serve/preferences.json` holds the page's other preferences, but it sits in the workspace, so keys never go there |
-| Plain text | The key sits unencrypted on disk, which is the trade-off of this choice. cstudy creates the file with mode `0600`, and `cstudy doctor` warns when a file holding keys is readable by others |
-| Accidents | `CSTUDY_CONFIG` can point the file anywhere, so `cstudy doctor` warns when a file holding keys is inside a workspace or a Git repository. Many people keep `~/.config` in a dotfiles repository, so the guide says so. To verify at implementation: no existing command or error message prints this file's values |
-| Writing from Settings | Must keep your other settings and comments in the file. Python's `tomllib` only reads, so this needs a TOML writer that preserves formatting. Chosen at implementation |
+| Where | `credentials.toml`, in the same directory as the [configuration file](../specs/cli.md#configuration): by default `~/.config/coding-study/`, the same split as `~/.aws/config` and `~/.aws/credentials`. It holds keys and nothing else, and it is user-level and outside every workspace, so a workspace's Git repository does not pick it up. `config.toml` stays free of secrets. `.cs/serve/preferences.json` holds the page's other preferences, but it sits in the workspace, so keys never go there |
+| Plain text | The key sits unencrypted on disk, which is the trade-off of this choice and is acceptable on a computer you do not share. cstudy creates the file with mode `0600` and does not warn about permissions |
+| Accidents | You can commit `config.toml` to a dotfiles repository and ignore this one file, and the guide says so. `cstudy doctor` warns when `credentials.toml` is inside a Git repository, which also covers a `CSTUDY_CONFIG` that moves it into one. To verify at implementation: no existing command or error message prints this file's values |
+| Writing from Settings | Settings rewrites only `credentials.toml`, which holds nothing of yours but keys, so `config.toml` and its comments are never touched and no TOML writer that preserves formatting is needed. Comments you add by hand to `credentials.toml` do not survive a save from Settings, and the guide says so |
 | What the sandbox covers | A service project cannot read the file, because only its project folder is mounted ([ADR 0019](0019-service-projects.md)). A bank problem runs natively as you, with no sandbox, so your code there could read it. That code is your own, so this is accepted and stated plainly. The language servers' hidden paths should include this file |
 | Environment variables | Not read for keys. Any key you already export is still exposed to user code today, because `_environment` in `adapters/subprocess_runner.py` passes on `os.environ`, which ADR 0019's allowlist, its P2, fixes. That phase is worth doing, but this ADR no longer depends on it |
 
@@ -82,7 +82,7 @@ No phase commitments beyond an order, and it sits after ADRs 0019 and 0020 unles
 
 | Step | Scope |
 |------|-------|
-| 1 | Provider port and keys, set in Settings or the configuration file |
+| 1 | Provider port and keys, set in Settings or `credentials.toml` |
 | 2 | Written answers on existing items |
 | 3 | Simulated interview |
 | 4 | Whiteboard, after its spike |
