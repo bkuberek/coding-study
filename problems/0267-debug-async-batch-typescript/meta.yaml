@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0267"
+slug: debug-async-batch-typescript
+title: "Debug: Async Batch (TypeScript)"
+status: ready
+difficulty: medium
+track: practical
+kind: project
+domains: [backend]
+job_roles: [backend]
+scope: project
+languages: [typescript]
+levels:
+  - {level: 1, title: Finished means finished}
+  - {level: 2, title: Bad rows and double starts}
+signature:
+  class:
+    name: BatchImporter
+    constructor: {params: []}
+    methods:
+      - {name: importAll, level: 1, async: true, params: [{name: skus, type: "string[]"}], returns: {type: int}}
+      - {name: state, level: 1, params: [], returns: {type: string}}
+      - {name: savedSkus, level: 1, params: [], returns: {type: "string[]"}}
+      - {name: auditLog, level: 1, params: [], returns: {type: "string[]"}}
+      - {name: failedSkus, level: 2, params: [], returns: {type: "string[]"}}
+comparator: {type: ops}
+limits: {hang_guard_ms: 3000}
+project:
+  entry: src/importer.ts
+  tests: tests
+  clock: virtual
+approaches:
+  - {id: reference, name: A for-of loop that awaits each write, role: optimal, time: "O(n) per batch", space: "O(n)", time_class: "n", space_class: "n"}
+related: [debug-stale-closure-callbacks, warehouse-work-orders-typescript]
+estimate_minutes: 15
