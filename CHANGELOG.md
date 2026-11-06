@@ -2,6 +2,45 @@
 
 <!-- version list -->
 
+## v0.17.1 (2026-11-06)
+
+### Bug Fixes
+
+- **web**: Indent each language by its own unit
+  ([`4f6c4b3`](https://github.com/bkuberek/coding-study/commit/4f6c4b3c8d54890390018b7740203d4d05d27df0))
+
+- **web**: Keep column header styles off the row headers of a table
+  ([`38c815e`](https://github.com/bkuberek/coding-study/commit/38c815effdfb3f6c816ab1a1cb132457b7b92b24))
+
+- **web**: Let Tab accept the selected completion
+  ([`3c0c40c`](https://github.com/bkuberek/coding-study/commit/3c0c40c035a2a8b2b977f706ef5d90ebb0a7201b))
+
+- **web**: Make the save hint a real button
+  ([`9b66db6`](https://github.com/bkuberek/coding-study/commit/9b66db65279b6b026364239461b9a0d1534d57d7))
+
+- **web**: Reword where a past attempt's current files come from
+  ([`c746980`](https://github.com/bkuberek/coding-study/commit/c7469804e34b82f396fbe793f5fcc3d43310c934))
+
+- **web**: Save every open tab before a run
+  ([`4746bab`](https://github.com/bkuberek/coding-study/commit/4746bab1466bb4aac778bec8adc776087c91bb2b))
+
+- **web**: Show a selection on the cursor's line
+  ([`a89f0d4`](https://github.com/bkuberek/coding-study/commit/a89f0d4f94be983f27cd88e59526d2d275260087))
+
+### Documentation
+
+- Update the front end's size table for the editor fixes
+  ([`319c552`](https://github.com/bkuberek/coding-study/commit/319c5528d9df0d8835e8b663a8b0aac47b3a6845))
+
+### Refactoring
+
+- **web**: Fetch the Problem view when it first opens
+  ([`0a8e1c6`](https://github.com/bkuberek/coding-study/commit/0a8e1c6467a6357ee95df8135433291713601a1e))
+
+- **web**: Fold the dialogs into one chunk and one stylesheet
+  ([`9cd9a70`](https://github.com/bkuberek/coding-study/commit/9cd9a701bd025d4167586040c0d394be33223e95))
+
+
 ## v0.17.0 (2026-11-06)
 
 ### Bug Fixes
