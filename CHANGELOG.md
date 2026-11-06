@@ -2,6 +2,43 @@
 
 <!-- version list -->
 
+## v0.15.0 (2026-11-06)
+
+### Documentation
+
+- Describe cstudy as a study tool for engineers and note the domain language rule
+  ([`337bcc2`](https://github.com/bkuberek/coding-study/commit/337bcc226ebe8a2c15d2ea2a01a7ad1f1f9a161f))
+
+- List the first wave with its labels, and update counts, the PRD and ADR 0020
+  ([`a52914b`](https://github.com/bkuberek/coding-study/commit/a52914b20321e579fb5a32a4ebd35c3bb31b2390))
+
+### Features
+
+- **catalog**: Add Authorization Policy Engine
+  ([`64fb64d`](https://github.com/bkuberek/coding-study/commit/64fb64d55e5ce6303ed2a78f8698fa1d77f23ee8))
+
+- **catalog**: Add BM25 Hybrid Ranker
+  ([`1b13bcb`](https://github.com/bkuberek/coding-study/commit/1b13bcbe130e2388d9d02db184f32c658822206c))
+
+- **catalog**: Add Calibration Metrics
+  ([`0ab912f`](https://github.com/bkuberek/coding-study/commit/0ab912fcaa973123914482128b6fe595e75c4fa3))
+
+- **catalog**: Add Refresh Token Rotation
+  ([`1e813b6`](https://github.com/bkuberek/coding-study/commit/1e813b620a83f127acc7f0cea99d9b0f8ec8b59e))
+
+- **catalog**: Add Stream Reassembler
+  ([`fe44b3a`](https://github.com/bkuberek/coding-study/commit/fe44b3adfc74016413937bf4964393ba84f4757a))
+
+- **catalog**: Add Token Claim Validator
+  ([`e4b44d2`](https://github.com/bkuberek/coding-study/commit/e4b44d24a744a6a081e3a1bded29722be7651f61))
+
+- **catalog**: Add Token Cost Reconciler
+  ([`4d0b12e`](https://github.com/bkuberek/coding-study/commit/4d0b12eac2e568d76b1afdf46798f75138681cd4))
+
+- **catalog**: Let the security, identity and AI domains list a language subset
+  ([`ee5a82b`](https://github.com/bkuberek/coding-study/commit/ee5a82bfe3ebcfad14d9fbbee59a3bd8225c8990))
+
+
 ## v0.14.0 (2026-11-06)
 
 ### Documentation
