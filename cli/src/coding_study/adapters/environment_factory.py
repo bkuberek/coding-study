@@ -116,7 +116,9 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         config=config,
         problems=OverlayProblemRepository(catalog, workspace),
         files=OverlayProblemFiles(FsProblemFiles(content.path), workspace),
-        progress=SqliteProgressStore(workspace / config.progress_db),
+        progress=SqliteProgressStore(
+            workspace / config.progress_db, config.schedule.mastered_interval_days
+        ),
         toolchains=workspace_toolchains(content.path, workspace, jdk),
         jdk=jdk,
         runner_process=SubprocessRunner(workspace / RUNS_DIRECTORY),

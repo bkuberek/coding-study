@@ -15,6 +15,7 @@ from coding_study.domain.config import (
 )
 from coding_study.domain.errors import ConfigError
 from coding_study.domain.problem import Language, Track
+from coding_study.domain.scheduling import ReviewIntervals
 from coding_study.domain.time_limits import FactorTimeLimit
 
 HOME = Path("/home/user")
@@ -127,6 +128,26 @@ def test_every_key_is_read(tmp_path):
         ("[hang_guard]\nms = -1", "hang_guard.ms: expected a positive integer"),
         ("[bench]\nreps = true", "bench.reps: expected a positive integer"),
         ("[schedule]\nmax_interval_days = 1.5", "schedule.max_interval_days: expected a positive"),
+        (
+            "[schedule]\nagain_interval_days = 0",
+            "schedule.again_interval_days: expected a positive",
+        ),
+        (
+            "[schedule]\nhard_first_interval_days = -2",
+            "schedule.hard_first_interval_days: expected",
+        ),
+        ('[schedule]\nok_first_interval_days = "3"', "schedule.ok_first_interval_days: expected"),
+        ("[schedule]\nok_second_interval_days = 1.5", "schedule.ok_second_interval_days: expected"),
+        (
+            "[schedule]\neasy_first_interval_days = true",
+            "schedule.easy_first_interval_days: expect",
+        ),
+        ("[schedule]\neasy_second_interval_days = 0", "schedule.easy_second_interval_days: expect"),
+        ("[schedule]\nmastered_interval_days = 0", "schedule.mastered_interval_days: expected"),
+        (
+            "[schedule]\nmastered_interval_days = 200",
+            "schedule.mastered_interval_days: 200 is above schedule.max_interval_days (180)",
+        ),
         ("[done]\nauto_commit = 1", "done.auto_commit: expected true or false"),
         (
             '[study_guides]\nroot = "guides"',
@@ -161,3 +182,32 @@ def test_config_error_names_the_file(tmp_path):
     with pytest.raises(ConfigError) as raised:
         source.load()
     assert raised.value.source == source.location
+
+
+def test_the_review_intervals_are_read_from_the_schedule_table(tmp_path):
+    text = """
+[schedule]
+again_interval_days = 2
+hard_first_interval_days = 3
+ok_first_interval_days = 4
+ok_second_interval_days = 8
+easy_first_interval_days = 6
+easy_second_interval_days = 14
+mastered_interval_days = 30
+"""
+    assert write_config(tmp_path, text).load().schedule == ScheduleSettings(
+        intervals=ReviewIntervals(
+            again=2, hard_first=3, ok_first=4, ok_second=8, easy_first=6, easy_second=14
+        ),
+        mastered_interval_days=30,
+    )
+
+
+def test_a_low_maximum_with_the_default_mastered_threshold_still_loads(tmp_path):
+    config = write_config(tmp_path, "[schedule]\nmax_interval_days = 14\n").load()
+    assert config.schedule.max_interval_days == 14
+
+
+def test_a_mastered_threshold_equal_to_the_maximum_is_reachable(tmp_path):
+    text = "[schedule]\nmax_interval_days = 30\nmastered_interval_days = 30\n"
+    assert write_config(tmp_path, text).load().schedule.mastered_interval_days == 30

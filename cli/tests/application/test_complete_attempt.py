@@ -13,7 +13,7 @@ from coding_study.domain.config import Config, ScheduleSettings
 from coding_study.domain.errors import UsageError
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
-from coding_study.domain.scheduling import ReviewState
+from coding_study.domain.scheduling import ReviewIntervals, ReviewState
 from tests.fakes import NOW, FakeClock, FakeStubGenerator, FakeToolchains, make_environment
 from tests.fakes import repository_root as copy_repository
 
@@ -109,6 +109,25 @@ def test_later_reviews_build_on_the_previous_schedule(environment, clock):
     start_attempt(environment, StartRequest("two-sum"))
     record_run(environment, passed=4)
     assert done(environment, rating=Rating.OK).schedule.state.interval_days == 7
+
+
+def test_the_configured_first_interval_schedules_the_review(environment):
+    record_run(environment, passed=4)
+    configured = replace(
+        environment,
+        config=Config(schedule=ScheduleSettings(intervals=ReviewIntervals(ok_first=9))),
+    )
+    assert done(configured, rating=Rating.OK).schedule.state.interval_days == 9
+
+
+def test_a_due_date_already_set_does_not_move_when_the_interval_changes(environment):
+    record_run(environment, passed=4)
+    entry = done(environment, rating=Rating.OK).schedule
+    changed = replace(
+        environment,
+        config=Config(schedule=ScheduleSettings(intervals=ReviewIntervals(ok_first=9))),
+    )
+    assert changed.progress.schedule_entry("two-sum").due_on == entry.due_on
 
 
 def test_rating_after_a_failing_run_is_a_usage_error(environment):

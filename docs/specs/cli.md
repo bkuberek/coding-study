@@ -96,7 +96,14 @@ memory = true
 
 [schedule]
 penalize_suboptimal = true
-max_interval_days = 180
+max_interval_days = 180          # no review is scheduled further away than this
+again_interval_days = 1          # the next review after `again`
+hard_first_interval_days = 2     # the first review rated `hard`
+ok_first_interval_days = 3       # the first review rated `ok`
+ok_second_interval_days = 7      # the second review rated `ok`
+easy_first_interval_days = 5     # the first review rated `easy`
+easy_second_interval_days = 12   # the second review rated `easy`
+mastered_interval_days = 21      # a problem is mastered from this interval on
 
 [done]
 auto_commit = false              # reserved (PRD Q3)
@@ -105,7 +112,7 @@ auto_commit = false              # reserved (PRD Q3)
 # root = "~/study-guides"        # unset by default: no study-guide links; absolute or "~/" path
 ```
 
-`study_guides.root` is the directory that item `references.study_guides` paths are relative to ([study guides](content.md#study-guides)).
+`study_guides.root` is the directory that item `references.study_guides` paths are relative to ([study guides](content.md#study-guides)). The `[schedule]` intervals are the fixed ones of the [scheduling table](progress-and-scheduling.md#scheduling-algorithm): a change applies to reviews scheduled after it, and dates already set do not move; the ease multipliers are not configurable.
 
 ## The selected JDK
 

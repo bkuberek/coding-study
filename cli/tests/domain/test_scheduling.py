@@ -6,6 +6,7 @@ from coding_study.domain.attempts import AttemptStatus, Grade
 from coding_study.domain.scheduling import (
     ProblemProgress,
     ProblemStatus,
+    ReviewIntervals,
     ReviewState,
     ScheduleEntry,
     next_review_state,
@@ -151,3 +152,77 @@ def test_long_interval_after_a_hard_grade_is_not_mastered():
 def test_due_review_shows_instead_of_passed(due_on):
     progress = ProblemProgress(frozenset({AttemptStatus.PASSED}), schedule(due_on, interval=30))
     assert progress.status(TODAY) is ProblemStatus.DUE
+
+
+# Configured intervals and the mastered threshold
+
+
+@pytest.mark.parametrize(
+    ("grade", "intervals", "interval"),
+    [
+        (Grade.AGAIN, ReviewIntervals(again=4), 4),
+        (Grade.HARD, ReviewIntervals(hard_first=6), 6),
+        (Grade.OK, ReviewIntervals(ok_first=8), 8),
+        (Grade.EASY, ReviewIntervals(easy_first=9), 9),
+    ],
+)
+def test_the_first_interval_of_each_grade_can_be_configured(grade, intervals, interval):
+    state = next_review_state(ReviewState(), grade, MAX_INTERVAL, intervals)
+    assert state.interval_days == interval
+
+
+@pytest.mark.parametrize(
+    ("grade", "intervals", "interval"),
+    [
+        (Grade.OK, ReviewIntervals(ok_second=11), 11),
+        (Grade.EASY, ReviewIntervals(easy_second=13), 13),
+    ],
+)
+def test_the_second_interval_of_each_grade_can_be_configured(grade, intervals, interval):
+    state = ReviewState(reps=1, interval_days=3)
+    assert next_review_state(state, grade, MAX_INTERVAL, intervals).interval_days == interval
+
+
+def test_an_again_after_a_long_interval_uses_the_configured_interval():
+    state = ReviewState(reps=5, interval_days=90)
+    lapsed = next_review_state(state, Grade.AGAIN, MAX_INTERVAL, ReviewIntervals(again=2))
+    assert lapsed.interval_days == 2
+
+
+def test_a_configured_interval_stays_under_the_maximum():
+    state = next_review_state(ReviewState(), Grade.OK, 4, ReviewIntervals(ok_first=30))
+    assert state.interval_days == 4
+
+
+def test_later_reviews_grow_from_the_configured_interval():
+    first = next_review_state(ReviewState(), Grade.OK, MAX_INTERVAL, ReviewIntervals(ok_first=10))
+    second = next_review_state(first, Grade.OK, MAX_INTERVAL, ReviewIntervals(ok_second=20))
+    third = next_review_state(second, Grade.OK, MAX_INTERVAL)
+    assert third.interval_days == 50
+
+
+def test_the_default_intervals_are_the_ones_of_the_scheduling_table():
+    assert ReviewIntervals() == ReviewIntervals(
+        again=1, hard_first=2, ok_first=3, ok_second=7, easy_first=5, easy_second=12
+    )
+
+
+def mastered_by(threshold: int, interval: int) -> bool:
+    entry = schedule(date(2026, 12, 24), interval=interval, grade=Grade.OK)
+    return ProblemProgress(
+        frozenset({AttemptStatus.PASSED}), entry, mastered_interval_days=threshold
+    ).is_mastered
+
+
+def test_the_mastered_threshold_can_be_lowered():
+    assert mastered_by(threshold=10, interval=10)
+
+
+def test_the_mastered_threshold_can_be_raised():
+    assert not mastered_by(threshold=30, interval=29)
+
+
+def test_the_status_reads_the_configured_threshold():
+    entry = schedule(date(2026, 12, 24), interval=10, grade=Grade.OK)
+    progress = ProblemProgress(frozenset({AttemptStatus.PASSED}), entry, mastered_interval_days=10)
+    assert progress.status(TODAY) is ProblemStatus.MASTERED

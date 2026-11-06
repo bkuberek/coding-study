@@ -3,6 +3,11 @@
 from dataclasses import dataclass
 
 from coding_study.domain.problem import Language, Track
+from coding_study.domain.scheduling import (
+    DEFAULT_REVIEW_INTERVALS,
+    MASTERED_INTERVAL_DAYS,
+    ReviewIntervals,
+)
 from coding_study.domain.time_limits import TimeLimit
 
 DEFAULT_PROGRESS_DB = "progress.db"
@@ -38,6 +43,8 @@ class BenchSettings:
 class ScheduleSettings:
     penalize_suboptimal: bool = True
     max_interval_days: int = DEFAULT_MAX_INTERVAL_DAYS
+    intervals: ReviewIntervals = DEFAULT_REVIEW_INTERVALS
+    mastered_interval_days: int = MASTERED_INTERVAL_DAYS
 
 
 @dataclass(frozen=True, slots=True)

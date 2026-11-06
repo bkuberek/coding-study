@@ -1,7 +1,8 @@
 """Spaced repetition and problem status (docs/specs/progress-and-scheduling.md).
 
 A simplified SM-2 per problem, language-agnostic: the interval uses the old ease, which is
-updated afterwards.
+updated afterwards. The fixed intervals and the mastered threshold are the user's to set
+(`schedule` in docs/specs/cli.md#configuration); the ease and its multipliers are not.
 """
 
 import math
@@ -21,8 +22,34 @@ HARD_GROWTH = 1.2
 EASY_BONUS = 1.3
 EASE_DECIMALS = 2
 MASTERED_INTERVAL_DAYS = 21
-_FIRST_INTERVALS = {Grade.AGAIN: 1, Grade.HARD: 2, Grade.OK: 3, Grade.EASY: 5}
-_SECOND_INTERVALS = {Grade.OK: 7, Grade.EASY: 12}
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewIntervals:
+    """The fixed intervals of the scheduling table, in days: the first review after a new start
+    or a lapse, and the second, which `hard` and `again` have no row for."""
+
+    again: int = 1
+    hard_first: int = 2
+    ok_first: int = 3
+    ok_second: int = 7
+    easy_first: int = 5
+    easy_second: int = 12
+
+    def first(self, grade: Grade) -> int:
+        match grade:
+            case Grade.HARD:
+                return self.hard_first
+            case Grade.EASY:
+                return self.easy_first
+            case _:
+                return self.ok_first
+
+    def second(self, grade: Grade) -> int:
+        return self.easy_second if grade is Grade.EASY else self.ok_second
+
+
+DEFAULT_REVIEW_INTERVALS = ReviewIntervals()
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,29 +72,34 @@ class ScheduleEntry:
     updated_at: datetime
 
 
-def next_review_state(state: ReviewState, grade: Grade, max_interval_days: int) -> ReviewState:
+def next_review_state(
+    state: ReviewState,
+    grade: Grade,
+    max_interval_days: int,
+    intervals: ReviewIntervals = DEFAULT_REVIEW_INTERVALS,
+) -> ReviewState:
     if grade is Grade.AGAIN:
         return ReviewState(
             ease=_ease(state.ease - EASE_STEP_AGAIN),
-            interval_days=min(_FIRST_INTERVALS[grade], max_interval_days),
+            interval_days=min(intervals.again, max_interval_days),
             reps=0,
             lapses=state.lapses + 1,
         )
     return ReviewState(
         ease=_ease(_next_ease(state.ease, grade)),
-        interval_days=min(_next_interval(state, grade), max_interval_days),
+        interval_days=min(_next_interval(state, grade, intervals), max_interval_days),
         reps=state.reps + 1,
         lapses=state.lapses,
     )
 
 
-def _next_interval(state: ReviewState, grade: Grade) -> int:
+def _next_interval(state: ReviewState, grade: Grade, intervals: ReviewIntervals) -> int:
     if state.reps == 0:
-        return _FIRST_INTERVALS[grade]
+        return intervals.first(grade)
     if grade is Grade.HARD:
         return max(state.interval_days + 1, _round_half_up(state.interval_days * HARD_GROWTH))
     if state.reps == 1:
-        return _SECOND_INTERVALS[grade]
+        return intervals.second(grade)
     bonus = EASY_BONUS if grade is Grade.EASY else 1
     return _round_half_up(state.interval_days * state.ease * bonus)
 
@@ -105,6 +137,7 @@ class ProblemProgress:
 
     attempt_statuses: frozenset[AttemptStatus] = frozenset()
     schedule: ScheduleEntry | None = None
+    mastered_interval_days: int = MASTERED_INTERVAL_DAYS
 
     def status(self, today: date) -> ProblemStatus:
         """docs/specs/progress-and-scheduling.md#problem-status"""
@@ -140,6 +173,6 @@ class ProblemProgress:
         entry = self.schedule
         return (
             entry is not None
-            and entry.state.interval_days >= MASTERED_INTERVAL_DAYS
+            and entry.state.interval_days >= self.mastered_interval_days
             and entry.last_grade >= Grade.OK
         )

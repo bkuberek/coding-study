@@ -164,7 +164,26 @@ A simplified SM-2, per problem and language-agnostic (the algorithm is what must
 
 Then `interval = min(interval, schedule.max_interval_days)` (default 180) and `due_on = local_date(ended_at) + interval`.
 
-Worked sequence (ok, ok, ok, hard, again, ok):
+The fixed intervals in this table and the [mastered](#problem-status) threshold are the user's to change, under [`[schedule]`](cli.md#configuration). The defaults are the values above, so a config without these keys schedules exactly as this table reads.
+
+| Table entry | Key | Default |
+|-------------|-----|---------|
+| again | `again_interval_days` | 1 |
+| hard, `reps == 0` | `hard_first_interval_days` | 2 |
+| ok, `reps == 0` | `ok_first_interval_days` | 3 |
+| ok, `reps == 1` | `ok_second_interval_days` | 7 |
+| easy, `reps == 0` | `easy_first_interval_days` | 5 |
+| easy, `reps == 1` | `easy_second_interval_days` | 12 |
+| the cap | `max_interval_days` | 180 |
+| [mastered](#problem-status) | `mastered_interval_days` | 21 |
+
+| Rule | Detail |
+|------|--------|
+| Values | Positive integers; anything else stops the command with an error that names the key. No order is enforced between the intervals: a second interval shorter than the first still schedules, and the cap still applies to each. A `mastered_interval_days` you set above `max_interval_days` is refused (`schedule.mastered_interval_days: 200 is above schedule.max_interval_days (180), so no problem could ever be mastered`), since no interval passes the cap. Left unset, a low `max_interval_days` stays valid and no problem is mastered, as before these keys existed |
+| When a change applies | A new interval applies to reviews scheduled after the change: the next `cstudy done` of a problem. A `due_on` already stored never moves. `mastered_interval_days` is read each time a status is shown, so it applies at once, to every problem |
+| Not configurable | The ease and its multipliers: the initial `2.5`, the bounds `1.3` and `3.0`, the steps `0.20`, `0.15` and `0.10`, the `1.2` of `hard` and the `1.3` of `easy`. These are what make it SM-2, and a wrong value would pull every later interval with it |
+
+Worked sequence with the defaults (ok, ok, ok, hard, again, ok):
 
 | # | Grade | Interval | Ease after | Reps after |
 |---|-------|----------|------------|------------|
@@ -183,7 +202,7 @@ Worked sequence (ok, ok, ok, hard, again, ok):
 | `new` | No attempt with status `passed` or `failed`, and none open |
 | `attempted` | Finished attempts exist, none `passed` |
 | `passed` | At least one `passed` attempt; not mastered |
-| `mastered` | `schedule.interval_days >= 21` and `last_grade >= 2` |
+| `mastered` | `schedule.interval_days >=` the config's `schedule.mastered_interval_days` (default 21) and `last_grade >= 2` |
 | `due` | `schedule.due_on <= today` (shown instead of `passed` or `mastered`) |
 
 Only the display of `cstudy list` and its web page, and the `--status` filter, read the status. `cstudy next` and the weakness score read the attempts themselves: a problem with an attempt in progress is still left out of the picks and still counts in its group, and a problem with no finished attempt is still `new` there. A review in progress shows `in_progress` rather than `due`, so `cstudy list --status due` lists the due problems that have no attempt open.

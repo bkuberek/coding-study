@@ -30,7 +30,12 @@ from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
 from coding_study.domain.progress_export import ColumnValue, ProgressSnapshot
 from coding_study.domain.progress_stats import LatestBench
-from coding_study.domain.scheduling import ProblemProgress, ReviewState, ScheduleEntry
+from coding_study.domain.scheduling import (
+    MASTERED_INTERVAL_DAYS,
+    ProblemProgress,
+    ReviewState,
+    ScheduleEntry,
+)
 from coding_study.domain.submissions import LevelUnlock, SubmissionRecord
 
 META_TABLE = "meta"
@@ -70,8 +75,9 @@ VALUES (:slug, :ease, :interval_days, :reps, :lapses, :due_on, :last_grade, :upd
 class SqliteProgressStore:
     """`ProgressStore`; one short-lived connection per call."""
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, mastered_interval_days: int = MASTERED_INTERVAL_DAYS) -> None:
         self._path = path
+        self._mastered_interval_days = mastered_interval_days
         self._migrated = False
 
     def add_attempt(self, attempt: NewAttempt) -> Attempt:
@@ -184,7 +190,9 @@ class SqliteProgressStore:
             by_slug[row["slug"]].add(AttemptStatus(row["status"]))
         entries = {row["slug"]: _schedule_entry(row) for row in schedules}
         return {
-            slug: ProblemProgress(frozenset(by_slug.get(slug, ())), entries.get(slug))
+            slug: ProblemProgress(
+                frozenset(by_slug.get(slug, ())), entries.get(slug), self._mastered_interval_days
+            )
             for slug in sorted(by_slug.keys() | entries.keys())
         }
 

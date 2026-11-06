@@ -1,3 +1,4 @@
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -8,9 +9,13 @@ from coding_study.adapters.environment_factory import (
     load_environment,
 )
 from coding_study.adapters.locations import WorkspaceError
+from coding_study.domain.attempts import Grade
 from coding_study.domain.errors import ConfigError
 from coding_study.domain.scaffold import WORKSPACE_FIRST_ID
+from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from tests.helpers import SCHEMAS_DIRECTORY, mark_workspace
+
+NOW = datetime(2026, 11, 1, tzinfo=UTC)
 
 
 @pytest.fixture
@@ -52,6 +57,17 @@ def test_progress_database_lives_at_the_configured_path_in_the_workspace(environ
     environment = load_environment(workspace, {**environ, "CSTUDY_CONFIG": str(config)}, workspace)
     environment.progress.active_attempt()
     assert (workspace / "state" / "progress.db").is_file()
+
+
+def test_the_mastered_threshold_of_the_config_reaches_the_progress_store(environ, workspace):
+    config = workspace / "config.toml"
+    config.write_text("[schedule]\nmastered_interval_days = 5\n")
+    environment = load_environment(
+        workspace, {**environ, "CSTUDY_CONFIG": str(config)}, Path.home()
+    )
+    entry = ScheduleEntry("two-sum", ReviewState(interval_days=5), date(2026, 12, 1), Grade.OK, NOW)
+    environment.progress.save_schedule_entry(entry)
+    assert environment.progress.problem_progress()["two-sum"].is_mastered
 
 
 def test_invalid_config_is_reported(environ, workspace):

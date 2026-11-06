@@ -281,6 +281,12 @@ def test_problem_progress_is_empty_without_attempts(store):
     assert store.problem_progress() == {}
 
 
+def test_problem_progress_carries_the_store_s_mastered_threshold(tmp_path):
+    store = SqliteProgressStore(tmp_path / "progress.db", mastered_interval_days=5)
+    store.save_schedule_entry(schedule_entry(interval=5))
+    assert store.problem_progress()["two-sum"].is_mastered
+
+
 def finish(store: SqliteProgressStore, status: AttemptStatus, minutes: int) -> None:
     attempt = store.add_attempt(new_attempt(minutes=minutes))
     ended = STARTED + timedelta(minutes=minutes + 5)

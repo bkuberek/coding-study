@@ -177,10 +177,12 @@ def _reschedule(environment: Environment, attempt: Attempt) -> ScheduleEntry:
     assert attempt.grade is not None
     assert attempt.ended_at is not None
     previous = environment.progress.schedule_entry(attempt.slug)
+    schedule = environment.config.schedule
     state = next_review_state(
         previous.state if previous else ReviewState(),
         attempt.grade,
-        environment.config.schedule.max_interval_days,
+        schedule.max_interval_days,
+        schedule.intervals,
     )
     ended_on = environment.clock.local_date(attempt.ended_at)
     entry = ScheduleEntry(

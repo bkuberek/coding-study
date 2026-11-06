@@ -23,6 +23,7 @@ from coding_study.domain.config import (
 )
 from coding_study.domain.errors import ConfigError
 from coding_study.domain.problem import Language, Track
+from coding_study.domain.scheduling import ReviewIntervals
 from coding_study.domain.time_limits import TimeLimit, parse_time_limit
 
 CONFIG_PATH_VARIABLE = "CSTUDY_CONFIG"
@@ -113,14 +114,43 @@ def _bench_settings(table: "_TableReader") -> BenchSettings:
 
 def _schedule_settings(table: "_TableReader") -> ScheduleSettings:
     defaults = ScheduleSettings()
-    return ScheduleSettings(
+    intervals = defaults.intervals
+    settings = ScheduleSettings(
         penalize_suboptimal=table.read(
             "penalize_suboptimal", defaults.penalize_suboptimal, _boolean
         ),
         max_interval_days=table.read(
             "max_interval_days", defaults.max_interval_days, _positive_int
         ),
+        intervals=ReviewIntervals(
+            again=table.read("again_interval_days", intervals.again, _positive_int),
+            hard_first=table.read("hard_first_interval_days", intervals.hard_first, _positive_int),
+            ok_first=table.read("ok_first_interval_days", intervals.ok_first, _positive_int),
+            ok_second=table.read("ok_second_interval_days", intervals.ok_second, _positive_int),
+            easy_first=table.read("easy_first_interval_days", intervals.easy_first, _positive_int),
+            easy_second=table.read(
+                "easy_second_interval_days", intervals.easy_second, _positive_int
+            ),
+        ),
+        mastered_interval_days=table.read(
+            "mastered_interval_days", defaults.mastered_interval_days, _positive_int
+        ),
     )
+    _require_mastered_reachable(table, settings)
+    return settings
+
+
+def _require_mastered_reachable(table: "_TableReader", settings: ScheduleSettings) -> None:
+    """No interval passes `max_interval_days`, so a higher threshold could never be reached. Only
+    a threshold set on purpose is refused: a config from before the key, with a low maximum, keeps
+    loading as it did."""
+    mastered, maximum = settings.mastered_interval_days, settings.max_interval_days
+    if table.holds("mastered_interval_days") and mastered > maximum:
+        table.report(
+            "mastered_interval_days",
+            f"{mastered} is above schedule.max_interval_days ({maximum}), "
+            "so no problem could ever be mastered",
+        )
 
 
 def _done_settings(table: "_TableReader") -> DoneSettings:
@@ -148,7 +178,7 @@ class _TableReader:
         try:
             return convert(self._values[key])
         except ValueError as error:
-            self._issues.append(f"{self._prefix}{key}: {error}")
+            self.report(key, str(error))
             return default
 
     def table(self, key: str) -> Self:
@@ -160,6 +190,12 @@ class _TableReader:
         child = type(self)(cast(_Table, values), f"{self._prefix}{key}.", self._issues)
         self._children.append(child)
         return child
+
+    def holds(self, key: str) -> bool:
+        return key in self._values
+
+    def report(self, key: str, issue: str) -> None:
+        self._issues.append(f"{self._prefix}{key}: {issue}")
 
     def report_unknown_keys(self) -> None:
         for key in sorted(self._values.keys() - self._known_keys):
