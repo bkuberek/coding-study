@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0270"
+slug: debug-shared-default-config
+title: "Debug: Shared Default Config"
+status: ready
+difficulty: medium
+track: debugging
+kind: design
+domains: [backend]
+job_roles: [backend]
+scope: function
+languages: [typescript]
+stub: buggy
+signature:
+  class:
+    name: TenantSettings
+    constructor: {params: []}
+    methods:
+      - {name: setRetries, params: [{name: tenant, type: string}, {name: retries, type: int}], returns: {type: void}}
+      - {name: setRequestsPerMinute, params: [{name: tenant, type: string}, {name: requestsPerMinute, type: int}], returns: {type: void}}
+      - {name: setRouteLimit, params: [{name: tenant, type: string}, {name: route, type: string}, {name: limit, type: int}], returns: {type: void}}
+      - {name: addChannel, params: [{name: tenant, type: string}, {name: channel, type: string}], returns: {type: void}}
+      - {name: reset, params: [{name: tenant, type: string}], returns: {type: void}}
+      - {name: retries, params: [{name: tenant, type: string}], returns: {type: int}}
+      - {name: requestsPerMinute, params: [{name: tenant, type: string}], returns: {type: int}}
+      - {name: routeLimit, params: [{name: tenant, type: string}, {name: route, type: string}], returns: {type: int}}
+      - {name: channels, params: [{name: tenant, type: string}], returns: {type: "string[]"}}
+comparator: {type: ops}
+approaches:
+  - {id: deep-copy-per-tenant, name: A deep copy of the defaults per tenant, role: optimal, time: "O(1) per call, with a settings object of fixed size", space: "O(t)", time_class: "1", space_class: "n"}
+related: [debug-stale-closure-callbacks, debug-falsy-plan-update]
+estimate_minutes: 10
