@@ -2,6 +2,49 @@
 
 <!-- version list -->
 
+## v0.16.0 (2026-11-06)
+
+### Documentation
+
+- List the TypeScript backend problems with their labels, and update counts, the PRD and the roadmap
+  ([`c741c42`](https://github.com/bkuberek/coding-study/commit/c741c42d7edd928365cfe3d57e5dfa5bcb8af7aa))
+
+- Remove a later level's hint and a framework's name from two problem texts
+  ([`dc89659`](https://github.com/bkuberek/coding-study/commit/dc896594e17144e673d597287ed4b369194ab358))
+
+### Features
+
+- **catalog**: Add Debug: Async Batch (TypeScript)
+  ([`a705092`](https://github.com/bkuberek/coding-study/commit/a705092ebb50eb94cea15ccf3c1e3acd3fa64cb7))
+
+- **catalog**: Add Debug: Falsy Plan Update
+  ([`de4ca34`](https://github.com/bkuberek/coding-study/commit/de4ca342378591b7fcf17f889c3cd6bb59014e8e))
+
+- **catalog**: Add Debug: Invoice Total Cents
+  ([`69320f8`](https://github.com/bkuberek/coding-study/commit/69320f8e296946dc04721044f7ec7bbd13b41175))
+
+- **catalog**: Add Debug: Local Day Boundaries
+  ([`11f1f29`](https://github.com/bkuberek/coding-study/commit/11f1f294848e3576ae32f3f53e8b7cb229c18141))
+
+- **catalog**: Add Debug: Pagination Query Strings
+  ([`f6ff343`](https://github.com/bkuberek/coding-study/commit/f6ff3430c4029dd9bef2a26ff408c5929fbe1f0f))
+
+- **catalog**: Add Debug: Shared Default Config
+  ([`ff8635e`](https://github.com/bkuberek/coding-study/commit/ff8635ea401eef2a5fd2326290d8c29aeba70e20))
+
+- **catalog**: Add Debug: Sorted Report Rows
+  ([`d128404`](https://github.com/bkuberek/coding-study/commit/d1284049ccdc3242119f8f07a6cd7d5c5103459f))
+
+- **catalog**: Add Debug: Stale Closure Callbacks
+  ([`a78987d`](https://github.com/bkuberek/coding-study/commit/a78987defedf6d92c22ef7a48a5eac1a5f9335d3))
+
+- **catalog**: Add Loan Pipeline Service (TypeScript)
+  ([`6e2c813`](https://github.com/bkuberek/coding-study/commit/6e2c813ae6644d0ae4728aab54243ffdd7c117fd))
+
+- **catalog**: Add Warehouse Work Orders (TypeScript)
+  ([`4212317`](https://github.com/bkuberek/coding-study/commit/42123176d5bcab1a17d2ce1574c4d7eae1729e62))
+
+
 ## v0.15.0 (2026-11-06)
 
 ### Documentation
