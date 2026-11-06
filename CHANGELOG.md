@@ -2,6 +2,57 @@
 
 <!-- version list -->
 
+## v0.14.0 (2026-11-06)
+
+### Documentation
+
+- Configure AI review keys in Settings or the configuration file (ADR 0021)
+  ([`41e7b94`](https://github.com/bkuberek/coding-study/commit/41e7b94dcf7e6d904302b5f0fc86a15c5ff2c6fb))
+
+- Describe the catalog labels, their filters and check S24 as current
+  ([`094db98`](https://github.com/bkuberek/coding-study/commit/094db98d4e5edce4676c88a47051863f009908aa))
+
+- Keep AI review keys in a credentials file of their own (ADR 0021)
+  ([`881fe4a`](https://github.com/bkuberek/coding-study/commit/881fe4ad0262b6927c4cc53fa0d41d53e32978aa))
+
+- Mark ADR 0020 phase 1 implemented and describe the Problems view filters
+  ([`700ceb4`](https://github.com/bkuberek/coding-study/commit/700ceb43b0ab66243c884cc0ebaaa942378632a7))
+
+- Plan service projects with mock servers, Docker services and HTTP grading (ADR 0019)
+  ([`2ce25e8`](https://github.com/bkuberek/coding-study/commit/2ce25e884a68c372b3af5c88a73e6f0117a853f3))
+
+- Run service projects in Docker and plan catalog labels and AI review (ADR 0019, 0020, 0021)
+  ([`644b61b`](https://github.com/bkuberek/coding-study/commit/644b61b8ceaf93dbda43aacc18c9534e151e02cf))
+
+### Features
+
+- **catalog**: Add the domain, job role and scope vocabularies to the schemas and the model
+  ([`007bab1`](https://github.com/bkuberek/coding-study/commit/007bab145d40ecb74823faba54e4c0f286afaa26))
+
+- **catalog**: Cstudy new writes the labels of its template
+  ([`0ddfd1e`](https://github.com/bkuberek/coding-study/commit/0ddfd1ec6468ec06a9a0fc0ac3390d14ef11b463))
+
+- **catalog**: Filter cstudy list and cstudy next by domain, role and scope
+  ([`3151669`](https://github.com/bkuberek/coding-study/commit/315166946a6674a92fdf80c49b9db85387d49935))
+
+- **catalog**: Filter the Problems view by domain, role and scope
+  ([`3ea1c97`](https://github.com/bkuberek/coding-study/commit/3ea1c97c11444154ee256b019de624338d31e17b))
+
+- **catalog**: Filter the web API's problem list and next pick by domain, role and scope
+  ([`37050a8`](https://github.com/bkuberek/coding-study/commit/37050a86810999f48d69f49d7cb7e9e4d11310b5))
+
+- **catalog**: Label all 270 entries with their domains, job roles and scope
+  ([`2325531`](https://github.com/bkuberek/coding-study/commit/23255311a1c88e904d5c81c65fb704ecb82735ad))
+
+- **catalog**: Require the labels of a catalog entry in check S24
+  ([`efb7f91`](https://github.com/bkuberek/coding-study/commit/efb7f91b65fd1f3b00d549395ccf8f15321db89c))
+
+### Testing
+
+- Strip the color codes that CI forces from the doctor help before reading it
+  ([`0003ff0`](https://github.com/bkuberek/coding-study/commit/0003ff02b8a1295d958dd7b990730f3d370f645c))
+
+
 ## v0.13.3 (2026-11-04)
 
 ### Bug Fixes
