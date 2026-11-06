@@ -5,8 +5,6 @@
  * own, fetched when a Solution button is first used (NFR-12).
  */
 
-import "./solutionPane.css";
-
 import { confirmed } from "./confirmation.ts";
 import type { PageContext } from "./context.ts";
 import { confirmAction, openSheet } from "./dialogs.ts";

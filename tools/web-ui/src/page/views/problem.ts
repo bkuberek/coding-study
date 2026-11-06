@@ -77,7 +77,7 @@ function side(context: PageContext, problem: ProblemDocument, history: History):
 function practice(context: PageContext, problem: ProblemDocument, scheduled: boolean): HTMLElement {
   const language = defaultLanguage(problem, context.session.default_lang);
   const start = h("button", { type: "button", class: "button primary", title: `${startCommand(problem.slug, language)} --no-open` }, "Start…");
-  start.addEventListener("click", () => openLazily(context, () => import("../startDialog.ts"), (dialog) => dialog.openStartDialog(context, problem, scheduled)));
+  start.addEventListener("click", () => openLazily(context, () => import("../sheets.ts"), (dialog) => dialog.openStartDialog(context, problem, scheduled)));
   const solution = solutionButton(context, problem.slug);
   const resumes = problem.in_progress.map((attempt) =>
     h(
@@ -163,7 +163,7 @@ function pastAttempt(context: PageContext, slug: string, attempt: PastAttempt): 
   details.addEventListener("toggle", () => {
     if (!details.open || asked || attempt.status === IN_PROGRESS) return;
     asked = true;
-    openLazily(context, () => import("../pastFiles.ts"), (module) => module.showPastFiles(context, slug, attempt, files));
+    openLazily(context, () => import("../sheets.ts"), (module) => module.showPastFiles(context, slug, attempt, files));
   });
   return h("li", {}, details);
 }

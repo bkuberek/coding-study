@@ -5,7 +5,8 @@ The sources of the front end that `cstudy serve` serves: the page's own code and
 | Path | Holds |
 |------|-------|
 | `package.json`, `pnpm-lock.yaml` | Exact versions and integrity hashes of every package |
-| `src/app.ts`, `src/page/` | The page: its entry point, views, stylesheets and the pure parts its tests cover. `app.ts` imports the stylesheets of what the page draws at start (`page/app.css`; `page/flows.css` for the attempt flows and the mock banner; `page/files.css` for saving and the file tree; `page/runs.css` for the run controls and the results panel), which make `app.css`. A module fetched on first use imports its own, named after it (`page/dialogs.css`, `page/results-draw.css`, `page/views/health.css`, …), which it links as it loads |
+| `src/app.ts`, `src/page/` | The page: its entry point, views, stylesheets and the pure parts its tests cover. `app.ts` imports the stylesheets of what the page draws at start (`page/app.css`; `page/flows.css` for the attempt flows and the mock banner; `page/files.css` for saving and the file tree; `page/runs.css` for the run controls and the results panel), which make `app.css`. A module fetched on first use imports its own, named after it (`page/results-draw.css`, `page/views/health.css`, …), which it links as it loads; every dialog shares `page/dialogs.css` |
+| `src/page/sheets.ts` | Every dialog as one chunk (the dialog module, the Start, Done and Solution dialogs, the code of a past attempt, the file tree's menu and actions): they share most of their code and words, so together they weigh less than apart |
 | `src/page/stylesheets.ts` | Links a chunk's stylesheet with the page's CSP nonce; the chunk resolves once the stylesheet applies, so nothing it draws shows unstyled |
 | `src/page/notifications.ts` | The tab's notification stream (`/api/v1/events`), closed while the tab is hidden; the views follow what changed elsewhere through it |
 | `src/editor.ts` | The editor module, a chunk the page fetches the first time a file opens |
@@ -68,10 +69,8 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 | The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 11.4 | 5.6 |
 | The run session, fetched when a run first starts or shows: streaming and drawing it, Cancel, diagnostics | 21.6 | 8.0 |
 | The Run options form, fetched when it first opens | 4.1 | 1.8 |
-| The code of a past attempt, fetched when the History row of an attempt that is over first opens (the dialog module comes with it, and the editor once a file shows) | 3.9 | 2.0 |
 | The job panel for Bench, fetched when Bench first starts (Health fetches it with its view) | 4.0 | 1.8 |
-| The file tree's menu and actions, fetched when a menu first opens or an action first runs (with the dialog module) | 9.6 | 4.5 |
-| The dialog module (sheets, confirmations, questions that ask for names) and the Start, Done and Solution dialogs, each fetched when first used | 15.8 | 7.8 |
+| Every dialog, fetched when a control first opens one: sheets, confirmations, questions that ask for names, the Start, Done and Solution dialogs, the code of a past attempt (the editor comes once a file shows), and the file tree's menu and actions | 23.2 | 8.9 |
 
 The budget (NFR-12) is 1 MB raw and 350 KB gzip for the whole bundle without Vim and the code-intelligence chunk, the page's code included, and 600 KB raw loaded before a file of one language is editable. What a view or a control needs only when it is used is a chunk of its own (the rows above), so the page, the largest grammar and the editor stay under the 600 KB; `cli/tests/entrypoints/web/test_bundle_budget.py` holds the committed files to both limits. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
 

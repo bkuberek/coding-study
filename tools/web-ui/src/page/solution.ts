@@ -12,7 +12,7 @@ export const SOLUTION_COMMAND = "cstudy solution";
 /** The Solution button: opens the pane, and is disabled with the lock message during a mock. */
 export function solutionButton(context: PageContext, slug: string): HTMLButtonElement {
   const button = h("button", { type: "button", class: "button" }, "Solution…");
-  button.addEventListener("click", () => openLazily(context, () => import("./solutionPane.ts"), (pane) => pane.openSolution(context, slug)));
+  button.addEventListener("click", () => openLazily(context, () => import("./sheets.ts"), (pane) => pane.openSolution(context, slug)));
   context.mock.follow(SOLUTION_COMMAND, button, (lock) => {
     button.disabled = lock !== null;
     button.title = lock ?? `${SOLUTION_COMMAND} ${slug}: the reference, behind its question`;

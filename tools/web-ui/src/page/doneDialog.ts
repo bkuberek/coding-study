@@ -4,8 +4,6 @@
  * (NFR-12).
  */
 
-import "./doneDialog.css";
-
 import { doneCommand, doneLines, type DoneChoice, refreshAttemptsMenu } from "./attempts.ts";
 import type { PageContext } from "./context.ts";
 import { openSheet } from "./dialogs.ts";

@@ -5,8 +5,6 @@
  * chunk of its own, fetched when the row of an attempt that is over is first opened (NFR-12).
  */
 
-import "./pastFiles.css";
-
 import type { Editor, EditorOptions } from "../editor.ts";
 import type { Api } from "./api.ts";
 import type { PageContext } from "./context.ts";

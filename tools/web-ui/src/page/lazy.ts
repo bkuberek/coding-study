@@ -14,9 +14,9 @@ export function openLazily<Module>(context: PageContext, load: () => Promise<Mod
     .catch((error: unknown) => context.shell.announce(`could not open: ${messageOf(error)}`));
 }
 
-/** `confirmAction` of `dialogs.ts`, which is fetched the first time a question is asked. */
+/** `confirmAction` of the dialogs, which is fetched the first time a question is asked. */
 export async function confirmLazily(confirmation: Confirmation): Promise<boolean> {
-  return (await import("./dialogs.ts")).confirmAction(confirmation);
+  return (await import("./sheets.ts")).confirmAction(confirmation);
 }
 
 /** The module `load` fetches, or null when the fetch failed, which `announce` says. */

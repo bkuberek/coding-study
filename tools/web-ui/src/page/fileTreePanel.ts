@@ -214,7 +214,7 @@ export class FileTreePanel {
   }
 
   async #fetchActions(): Promise<TreeActions | null> {
-    const module = await fetchChunk(this.#setup.announce, () => import("./treeActions.ts"));
+    const module = await fetchChunk(this.#setup.announce, () => import("./sheets.ts"));
     if (module === null) {
       this.#actions = null;
       return null;

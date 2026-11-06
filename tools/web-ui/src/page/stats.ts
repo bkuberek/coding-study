@@ -8,11 +8,10 @@ import "./stats.css";
 
 import { confirmed } from "./confirmation.ts";
 import type { Cleanup, PageContext } from "./context.ts";
-import { confirmAction } from "./dialogs.ts";
 import { command, h } from "./dom.ts";
 import { solveTime } from "./format.ts";
 import { problemHash } from "./routes.ts";
-import { openStartDialog } from "./startDialog.ts";
+import { confirmAction, openStartDialog } from "./sheets.ts";
 import { empty, failure, loading, showFailure } from "./states.ts";
 import type { ListEntry, ProblemDocument, ProblemList, StatsDocument, StatsGroup } from "./types.ts";
 

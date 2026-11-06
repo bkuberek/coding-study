@@ -5,8 +5,6 @@
  * less before a file is editable (NFR-12).
  */
 
-import "./treeActions.css";
-
 import { h } from "./dom.ts";
 import { askNames, confirmAction, type NameField } from "./dialogs.ts";
 import type { MenuItem, TreeTabs } from "./fileTreePanel.ts";
