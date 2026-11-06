@@ -1,6 +1,6 @@
 /**
  * The Settings view (docs/specs/web-ui.md#settings-view): the workspace's preferences, each stored
- * at once, and the user's `config.toml`.
+ * at once, the user's `config.toml`, and resetting progress.
  */
 
 import "./settings.css";
@@ -8,6 +8,7 @@ import "./settings.css";
 import type { Cleanup, PageContext } from "../context.ts";
 import { h } from "../dom.ts";
 import { configForm } from "./config-form.ts";
+import { dangerSection } from "./reset-dialog.ts";
 import { languageRow } from "../intelligence-status.ts";
 import { messageOf } from "../states.ts";
 import { THEMES } from "../shell.ts";
@@ -107,6 +108,7 @@ export function settingsView(context: PageContext): Cleanup {
       h("dl", { class: "facts" }, h("dt", {}, "workspace"), h("dd", {}, h("code", {}, context.session.workspace))),
       h("h2", { class: "eyebrow" }, "all your workspaces"),
       configForm(context),
+      ...dangerSection(context),
     ),
   );
   return languages.stop;

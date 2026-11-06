@@ -109,12 +109,12 @@ export function attemptView(context: PageContext, id: number): Cleanup {
     await runs.setAttempt(status, tree.root);
   };
 
-  /** Reads the attempt again; once it is no longer in progress, the view says so and stays
-   * read-only. Another failure keeps what shows and is announced, unless nothing shows yet. */
+  /** Reads the attempt again; once it is no longer in progress, or a reset deleted it, the view says
+   * so and stays read-only. Another failure keeps what shows and is announced, unless nothing shows yet. */
   const refresh = (statement: boolean) => {
     if (ended) return;
     load(statement).catch((error: unknown) => {
-      if (error instanceof ApiError && error.code === ATTEMPT_ENDED) endedElsewhere();
+      if (error instanceof ApiError && (error.code === ATTEMPT_ENDED || (error.code === NOT_FOUND && shown !== null))) endedElsewhere();
       else if (shown === null) showFailure(page, error);
       else shell.announce(`could not read the attempt again: ${messageOf(error)}`);
     });
@@ -131,7 +131,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
         { class: "attempt-ended", role: "alert" },
         "This attempt is no longer in progress: ",
         command("cstudy done"),
-        " finished it, or a fresh start replaced it. Its files stay read-only here. ",
+        " finished it, a fresh start replaced it, or a reset deleted it. Its files stay read-only here. ",
         slug ? h("a", { href: problemHash(slug) }, `Open ${slug}`) : null,
       ),
     );
@@ -180,6 +180,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
   };
 }
 
+const NOT_FOUND = "not_found";
 const ATTEMPT_ENDED = "attempt_ended";
 /** How long the view waits after a change from elsewhere, so a burst of them reads once. */
 const SETTLE_MS = 100;

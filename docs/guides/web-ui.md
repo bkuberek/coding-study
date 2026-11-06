@@ -217,6 +217,12 @@ Changing `progress_db` moves nothing: your data stays in the old file, and `cstu
 
 The review intervals are here too, under `schedule`. A new interval applies to reviews scheduled from then on: dates already set do not move.
 
+## Start over
+
+The **danger** section of Settings, or `cstudy reset` in the terminal, deletes your progress in this workspace: attempts, scheduled reviews, bench runs, run folders and rendered statements. You see what goes, with counts, before anything does. It can't be undone, so you type `reset` to confirm. It refuses while a run or a job is active. Run `cstudy export` first if you may want your progress back.
+
+Your practice files, project folders and notes stay unless you tick that box, or pass `--files`. `.archive/` stays unless you tick its own, or pass `--archive`. Your settings, toolchains, language servers and your own problems always stay. A reset ends an open attempt along with the rest: the attempts menu empties at once, and a tab that was showing that attempt says it ended and turns read-only.
+
 ## Keyboard
 
 Every view works with the keyboard alone. On Linux, read <kbd>Ctrl</kbd> for <kbd>Cmd</kbd>.

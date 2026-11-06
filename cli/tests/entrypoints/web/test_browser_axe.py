@@ -92,6 +92,7 @@ VIEWS = (
     "progress",
     "health",
     "settings",
+    "reset dialog",
 )
 JDK_VIEWS = (
     "problems on a JDK that cannot run Java",
@@ -444,7 +445,15 @@ def _tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
     yield "progress", lambda: _open(page, "#/progress", ".stats-summary")
     yield "health", lambda: _open(page, "#/health", "table.checks", RUN_WAIT_MS)
     yield "settings", lambda: _open(page, "#/settings", "ul.languages .language-name")
+    yield "reset dialog", lambda: _reset_dialog(page)
     yield "mock running", lambda: _mock_running(page)
+
+
+def _reset_dialog(page: Any) -> None:
+    """The dialog stays open: nothing here confirms it."""
+    _open(page, "#/settings", "ul.languages .language-name")
+    page.click("button:has-text('Reset progress')")
+    page.wait_for_selector("dialog.sheet[open] input[type=text]")
 
 
 def _open(page: Any, route: str, shown: str, timeout: int = WAIT_MS) -> None:

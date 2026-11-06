@@ -184,7 +184,7 @@ def test_a_review_interval_says_dates_already_set_do_not_move(seen):
 
 
 def test_the_page_tells_the_workspace_from_every_workspace(seen):
-    assert seen.headings == ["THIS WORKSPACE", "ALL YOUR WORKSPACES"]
+    assert seen.headings[:2] == ["THIS WORKSPACE", "ALL YOUR WORKSPACES"]
 
 
 def test_the_reserved_key_cannot_be_changed(seen):

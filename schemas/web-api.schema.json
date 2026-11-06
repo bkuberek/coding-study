@@ -100,6 +100,47 @@
         }
       }
     },
+    "reset_preview": {
+      "description": "GET /api/v1/reset: what POST would delete and keep",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["word", "warning", "busy", "kept", "groups"],
+      "properties": {
+        "word": { "description": "The word POST needs as confirm", "const": "reset" },
+        "warning": { "type": "string" },
+        "busy": { "description": "Why POST would be refused now, or null", "type": ["string", "null"] },
+        "kept": { "type": "array", "items": { "type": "string" } },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["option", "title", "entries"],
+            "properties": {
+              "option": { "description": "The switch of POST that deletes the group; null: always", "enum": [null, "files", "archive"] },
+              "title": { "type": "string" },
+              "entries": { "$ref": "#/$defs/reset_entries" }
+            }
+          }
+        }
+      }
+    },
+    "reset_done": {
+      "description": "POST /api/v1/reset: what it deleted",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deleted"],
+      "properties": { "deleted": { "$ref": "#/$defs/reset_entries" } }
+    },
+    "reset_entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "count"],
+        "properties": { "label": { "type": "string" }, "count": { "type": "integer", "minimum": 0 } }
+      }
+    },
     "preferences": {
       "description": "GET and PUT /api/v1/preferences",
       "type": "object",

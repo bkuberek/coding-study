@@ -17,7 +17,8 @@ import secrets
 import signal
 import sys
 from collections import deque
-from collections.abc import AsyncIterator, Callable, Coroutine, Mapping
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Coroutine, Mapping
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -343,6 +344,21 @@ class Children:
             job = await self._launch(ChildKind.JOB, start)
             self._jobs = _retained([*self._jobs, job], lambda _kept: True)
             return job
+
+    def active(self) -> Child | None:
+        """A run or a job that is running; the first found."""
+        return _first([*self._runs, *self._jobs], lambda child: child.running)
+
+    @asynccontextmanager
+    async def none_running(self, refused_by: str) -> AsyncGenerator[None]:
+        """No run or job starts during the block. Raises ApiError `conflict`, naming what holds it,
+        while one runs."""
+        async with self._starting:
+            busy = self.active()
+            if busy is not None:
+                message = f"{refused_by} waits until it ends: {busy.start.title} is in progress"
+                raise ApiError(ErrorCode.CONFLICT, message, {busy.kind.value: busy.id})
+            yield
 
     def run(self, run_id: str) -> Child:
         """Raises ApiError `not_found` for an id no retained run has."""

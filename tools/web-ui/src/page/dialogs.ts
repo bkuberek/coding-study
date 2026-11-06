@@ -49,6 +49,10 @@ export interface NameField {
 export interface NameRequest {
   readonly title: string;
   readonly note?: string;
+  /** Shown before the fields: what the question is about. */
+  readonly content?: readonly Node[];
+  /** Whether it loses work; the button then shows in the fail colour. */
+  readonly destructive?: boolean;
   readonly fields: readonly NameField[];
   readonly action: string;
   /** Does it with the fields' values; answers a refusal to show, or null once done. */
@@ -115,12 +119,13 @@ export function askNames(request: NameRequest): Promise<boolean> {
       "aria-describedby": issue.id,
     }),
   );
-  const submit = h("button", { type: "submit", class: "button primary" }, request.action);
+  const submit = h("button", { type: "submit", class: `button ${request.destructive ? "danger" : "primary"}` }, request.action);
   const cancel = h("button", { type: "button", class: "button" }, "Cancel");
   const form = h(
     "form",
     { novalidate: true },
     request.note ? h("p", { class: "quiet" }, request.note) : null,
+    ...(request.content ?? []),
     ...request.fields.map((field, index) =>
       h(
         "div",

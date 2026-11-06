@@ -22,9 +22,11 @@ from coding_study.domain.errors import (
     FileTooLargeError,
     LockBusyError,
     PathTakenError,
+    ResetNotConfirmedError,
     UnknownAttemptError,
     UnknownFileError,
     UnknownProblemError,
+    WorkspaceBusyError,
 )
 from coding_study.entrypoints.shared import ERROR_EXIT_CODES, ExitCode
 from coding_study.entrypoints.web.responses import JsonResponse
@@ -84,9 +86,11 @@ _LOOKUP_ERRORS: Mapping[type[Exception], ErrorCode] = {
     PathTakenError: ErrorCode.CONFLICT,
     LockBusyError: ErrorCode.LOCKED,
     FileTooLargeError: ErrorCode.TOO_LARGE,
+    ResetNotConfirmedError: ErrorCode.CONFIRMATION_REQUIRED,
+    WorkspaceBusyError: ErrorCode.CONFLICT,
 }
 """Errors whose code is not their exit code's: what the API addresses that is missing or over,
-and the refusals of a change to an attempt's files."""
+and the refusals of a change to an attempt's files or of a reset."""
 INTERNAL_MESSAGE = "internal error; the terminal running cstudy serve shows its traceback"
 
 

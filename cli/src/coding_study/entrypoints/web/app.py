@@ -20,6 +20,7 @@ from coding_study.entrypoints.web.api_mock import mock_routes
 from coding_study.entrypoints.web.api_past_files import past_file_routes
 from coding_study.entrypoints.web.api_practice import practice_routes
 from coding_study.entrypoints.web.api_progress import progress_routes
+from coding_study.entrypoints.web.api_reset import reset_routes
 from coding_study.entrypoints.web.api_runs import run_routes
 from coding_study.entrypoints.web.api_session import session_routes
 from coding_study.entrypoints.web.api_solutions import solution_routes
@@ -60,6 +61,7 @@ def create_app(
         *health_routes(),
         *code_intelligence_routes(),
         *progress_routes(),
+        *reset_routes(),
         *event_routes(),
     ]
     state = ServerState(

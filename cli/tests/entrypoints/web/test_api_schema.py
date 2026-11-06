@@ -35,6 +35,8 @@ DOCUMENTS = (
     "session",
     "preferences",
     "config",
+    "reset_preview",
+    "reset_done",
     "code_intelligence_languages",
     "error",
     "problem",
@@ -115,6 +117,7 @@ def documents(tmp_path_factory: pytest.TempPathFactory) -> Documents:
     _import(tmp_path_factory.mktemp("import"), export, record)
     _mock(tmp_path_factory.mktemp("mock"), record)
     _watch(tmp_path_factory.mktemp("watch"), record)
+    _reset(tmp_path_factory.mktemp("reset"), record)
     return record.documents
 
 
@@ -227,6 +230,15 @@ def _import(root: Path, export: dict[str, Any], record: Recorder) -> None:
         record("error", anonymous.get("/api/v1/session"))
     with session_client(app) as client:
         record("imported", client.post("/api/v1/progress/import", json=body, headers=WRITE_HEADERS))
+
+
+def _reset(root: Path, record: Recorder) -> None:
+    with session_client(web_app(root)) as client:
+        record("reset_preview", client.get("/api/v1/reset"))
+        record(
+            "reset_done",
+            client.post("/api/v1/reset", json={"confirm": "reset"}, headers=WRITE_HEADERS),
+        )
 
 
 def _mock(root: Path, record: Recorder) -> None:
