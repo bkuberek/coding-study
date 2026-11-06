@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0262"
+slug: loan-pipeline-service-typescript
+title: Loan Pipeline Service (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [backend, fintech]
+job_roles: [backend]
+scope: project
+languages: [typescript]
+levels:
+  - {level: 1, title: New fields end to end}
+  - {level: 2, title: Validation and safe errors}
+  - {level: 3, title: Filter search and sort}
+  - {level: 4, title: Pagination}
+  - {level: 5, title: Stage transitions}
+  - {level: 6, title: Conditions}
+signature:
+  class:
+    name: LoanApi
+    constructor: {params: []}
+    methods:
+      - {name: request, level: 1, params: [{name: method, type: string}, {name: path, type: string}, {name: body, type: string}], returns: {type: "string[]"}}
+comparator: {type: ops}
+project:
+  entry: src/app.ts
+  tests: tests
+approaches:
+  - {id: reference, name: Layered service with a pure listing pipeline and a stage table, role: optimal, time: "O(n log n) per list request; O(n) per other request", space: "O(n + c)", time_class: "n log n", space_class: "n"}
+related: [bank-project-typescript, warehouse-work-orders-typescript]
+estimate_minutes: 120
