@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0260"
+slug: bm25-hybrid-ranker
+title: BM25 Hybrid Ranker
+status: ready
+difficulty: medium
+track: practical
+kind: function
+patterns: [arrays-hashing]
+domains: [ai-llm]
+job_roles: [ai-engineer, ml-engineer]
+scope: function
+languages: [python, typescript]
+signature:
+  function:
+    name: hybridRank
+    params:
+      - {name: documents, type: "string[][]"}
+      - {name: query, type: "string[]"}
+      - {name: vectorHits, type: "int[]"}
+      - {name: vectorScores, type: "double[]"}
+      - {name: k1, type: double}
+      - {name: b, type: double}
+      - {name: rrfK, type: int}
+      - {name: topN, type: int}
+    returns: {type: "int[]"}
+comparator: {type: exact}
+approaches:
+  - {id: postings-and-fusion, name: Build postings for the query terms and fuse the two rankings by rank, role: optimal, time: "O(t + q + n log n + h log h)", space: "O(t + h + q)", time_class: "n log n", space_class: "n"}
+estimate_minutes: 35
