@@ -2,6 +2,39 @@
 
 <!-- version list -->
 
+## v0.18.0 (2026-11-06)
+
+### Documentation
+
+- Update the front end's size table for Settings
+  ([`661e9d7`](https://github.com/bkuberek/coding-study/commit/661e9d7cb1969ed8e39def883aeed53810854d2e))
+
+### Features
+
+- **cli**: Add cstudy config edit and path
+  ([`2798c0c`](https://github.com/bkuberek/coding-study/commit/2798c0ceefd660877757bf3b913a609283323850))
+
+- **cli**: Add cstudy reset, with a preview and a typed word
+  ([`af11b60`](https://github.com/bkuberek/coding-study/commit/af11b60261679527dbbafc15b8df63c45903b284))
+
+- **config**: Let Settings edit every key of config.toml, keeping comments
+  ([`6a09677`](https://github.com/bkuberek/coding-study/commit/6a096771d1416d247ccc57433ed69aca83413cbb))
+
+- **config**: Review intervals and the mastered threshold under [schedule]
+  ([`1ed0a00`](https://github.com/bkuberek/coding-study/commit/1ed0a0038e2b67b1e1f89130e0842c2cafaf7ece))
+
+- **config**: Say a new progress_db moves no data, and ask first
+  ([`19707c3`](https://github.com/bkuberek/coding-study/commit/19707c30cbca94431deb6e04834a308db07abb4b))
+
+- **web**: Add a Danger section to Settings that resets progress
+  ([`0c6fb2e`](https://github.com/bkuberek/coding-study/commit/0c6fb2e24d15547b376c223c275766d7a69e0bc9))
+
+### Testing
+
+- List cstudy reset and the config group among the commands
+  ([`9900cd4`](https://github.com/bkuberek/coding-study/commit/9900cd4e15d1fcf27cbb3c7e0dfddd27b0e05e49))
+
+
 ## v0.17.1 (2026-11-06)
 
 ### Bug Fixes
