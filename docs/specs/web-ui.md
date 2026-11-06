@@ -160,7 +160,7 @@ Errors share one document:
 |-----------------|---------|----------|
 | `GET /` | `?token=` on the first visit | The page, with the CSRF token and a CSP nonce |
 | `GET /assets/{file}` | | A file of the vendored bundle, with `Cache-Control: max-age=31536000, immutable` for content-hashed names |
-| `GET /api/v1/session` | | `{"api": 1, "cstudy": "0.9.0", "events_version": 1, "workspace": "/home/me/ws", "port": 53817, "default_lang": "python", "languages": [...], "tracks": [...], "kinds": [...], "selected_jdk": {"version": "26.0.1", "feature": 26, "source": "JAVA_HOME", "supported": true}}`. `selected_jdk` is the [JDK that `cstudy` selects](cli.md#the-selected-jdk) in the server's environment, or null when none is found: the `selected_jdk` of [`cstudy list --json`](cli.md#cstudy-list). The server's child processes run in the same environment, so they select the same JDK |
+| `GET /api/v1/session` | | `{"api": 1, "cstudy": "0.9.0", "events_version": 1, "workspace": "/home/me/ws", "port": 53817, "default_lang": "python", "languages": [...], "tracks": [...], "kinds": [...], "domains": [...], "job_roles": [...], "scopes": [...], "selected_jdk": {"version": "26.0.1", "feature": 26, "source": "JAVA_HOME", "supported": true}}`. `domains`, `job_roles` and `scopes` are the values of the [labels](content.md#labels), the choices of the filters. `selected_jdk` is the [JDK that `cstudy` selects](cli.md#the-selected-jdk) in the server's environment, or null when none is found: the `selected_jdk` of [`cstudy list --json`](cli.md#cstudy-list). The server's child processes run in the same environment, so they select the same JDK |
 | `GET /api/v1/preferences` | | The [preferences](#preferences) |
 | `PUT /api/v1/preferences` | The whole preferences document | The stored document; unknown keys get 422 |
 
@@ -168,11 +168,11 @@ Errors share one document:
 
 | Method and path | Request | Response and use case |
 |-----------------|---------|-----------------------|
-| `GET /api/v1/problems` | `track`, `kind`, `lang`, `difficulty`, `status`, `pattern`, `content`, each optional, with the values of `cstudy list` | [`cstudy list --json`](cli.md#cstudy-list), with each entry's `jdk` and the document's `selected_jdk` |
+| `GET /api/v1/problems` | `track`, `kind`, `lang`, `difficulty`, `status`, `pattern`, `content`, `domain`, `role`, `scope`, each optional, with the values of `cstudy list` | [`cstudy list --json`](cli.md#cstudy-list), with each entry's `jdk` and the document's `selected_jdk` |
 | `GET /api/v1/problems/{slug}` | | The problem's entry of `cstudy list --json`, with `languages` the languages `cstudy start` accepts instead of the reference languages, plus `approaches` (`id`, `name`, `role`), `broken` (the broken reference ids, or empty), `levels` (`last`, or null), `hints_total`, `bench` (whether `cstudy bench` applies) and `oracle` (whether `--stress N` adds oracle inputs). For an item: `languages`, `approaches` and `broken` empty, `levels` null, `hints_total` 0, `bench` and `oracle` false |
 | `GET /api/v1/problems/{slug}/statement` | `level` (optional, as `cstudy show --level`) | `{"markdown": …, "html": …}`: the text `cstudy show` prints, and its HTML; `show_statement` |
 | `GET /api/v1/problems/{slug}/history` | | [`cstudy history --json`](cli.md#cstudy-history) |
-| `GET /api/v1/next` | `track` (repeatable), `pattern`, `difficulty`, `lang`, `new` or `review` (booleans) | [`cstudy next --json`](cli.md#cstudy-next) |
+| `GET /api/v1/next` | `track` (repeatable), `pattern`, `difficulty`, `lang`, `domain`, `role`, `scope`, `new` or `review` (booleans) | [`cstudy next --json`](cli.md#cstudy-next) |
 
 ### Attempts
 
@@ -594,7 +594,7 @@ The top bar on every view: the navigation (Problems, Mock, Progress, Health and 
 
 ### Problems view
 
-Planned: Domain, Role and Scope filters and a Scope column. See [ADR 0020](../decisions/0020-catalog-labels.md#where-the-labels-show).
+Planned: Domain, Role and Scope filters and a Scope column, over the `domain`, `role` and `scope` parameters of the endpoints above. See [ADR 0020](../decisions/0020-catalog-labels.md#where-the-labels-show).
 
 | Area | Behaviour |
 |------|-----------|

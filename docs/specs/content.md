@@ -6,7 +6,7 @@ What the catalog contains: tracks, the DSA pattern taxonomy with Phase targets, 
 
 DSA is roughly a third of a senior or staff loop, so the catalog covers the other rounds too.
 
-Planned: three labels independent of the track, `domains`, `job_roles` and `scope`, and new security and AI/LLM problems. See [ADR 0020](../decisions/0020-catalog-labels.md).
+Every problem and item also has three [labels](#labels) that are independent of the track: `domains`, `job_roles` and `scope`. Planned: new security and AI/LLM problems that use them ([ADR 0020](../decisions/0020-catalog-labels.md#the-first-wave)).
 
 | Track id | Name | Autograded | Location | Format | Target |
 |----------|------|------------|----------|--------|--------|
@@ -72,6 +72,9 @@ slug: url-shortener
 title: URL Shortener
 track: system-design          # system-design or code-review; equals the parent directory
 difficulty: medium
+domains: [backend]            # what it is about; required in the catalog (S24), see Labels
+job_roles: [backend, platform]  # who it is for; required in the catalog
+scope: system                 # system for system-design, function for code-review; required in the catalog
 estimate_minutes: 45
 status: draft                 # draft or ready
 order: 1                      # optional curriculum order within the track (default 1000)
@@ -98,6 +101,53 @@ A code review item carries exactly one of `change.diff` (a unified diff, not emp
 Study guides are your own notes, kept outside this repository and never copied into it. Set their directory as `root` in the `[study_guides]` table of the [user config](cli.md#configuration); `references.study_guides` paths are relative to it. The bundled items reference sections of `distributed-systems-study-guide.md`; any guide file you place at that path under your root is linked.
 
 When the root is set, `cstudy start` and `cstudy show` list every referenced guide whose file exists under it, in a final `## Study guides` section of the statement, as a `file://` link that keeps the `#section` anchor; `cstudy start` also prints one `guide` line per link. Without a root, or for a missing file, nothing is shown and nothing fails.
+
+## Labels
+
+Three labels say what a problem or item is about, who it is for and how big the thing you work on is. They are independent of the track, of `kind` and of `difficulty`: a project can be easy and a function hard, and a security problem is `practical` or `debugging` with `domains: [security]`, not a track of its own. The lists are closed, since free-form tags drift into near-duplicates. A value is added deliberately, by a change to its table here, to `DOMAINS`, `JOB_ROLES` or `Scope` in `domain/taxonomy.py` and to the `$defs` of `schemas/meta.schema.json` and `schemas/item.schema.json`; a fast test holds the module and both schemas equal ([ADR 0020](../decisions/0020-catalog-labels.md)).
+
+| Label | Field | How many | Answers |
+|-------|-------|----------|---------|
+| Domain | `domains` | One or more | What subject is it about? |
+| Role | `job_roles` | One or more | Who is it for? |
+| Scope | `scope` | Exactly one | How big is the thing you work on? |
+
+| `domains` value | Meaning |
+|-----------------|---------|
+| `algorithms` | Data structures and algorithms, language pitfalls |
+| `backend` | Services, APIs, data, design of backend components |
+| `security` | Authorization, tenancy, validation, defensive engineering |
+| `identity` | Tokens, sessions, login flows, provisioning |
+| `ai-llm` | The code around models: clients, retrieval, evaluation, cost |
+| `fintech` | Money, ledgers, insurance |
+
+| `job_roles` value | Meaning |
+|-------------------|---------|
+| `general` | Any software engineer, so that the 212 algorithm rows need not list every role |
+| `backend` | Backend engineers |
+| `platform` | Platform and infrastructure engineers |
+| `security-engineer` | Security engineers |
+| `ai-engineer` | Engineers who build on models |
+| `ml-engineer` | Engineers who train and evaluate models |
+
+| `scope` value | Meaning | Fits |
+|---------------|---------|------|
+| `function` | One function or class, in one file, with no folder or process of yours | `kind` `function`, `design`, `progressive` or `concurrent`, and code review items |
+| `project` | A folder of files | `kind: project` |
+| `system` | Several services; today the design discussions of the `system-design` items | `system-design` items, and a `kind: project` problem that builds several services (none yet) |
+
+`cstudy list` and `cstudy next` filter by them with `--domain`, `--role` and `--scope`, each one value that matches any listed value ([cli](cli.md#cstudy-list)), and the Problems view does the same ([web-ui](web-ui.md#problems-view)). `--role X` matches only entries that list `X`, so an entry for security engineers keeps a short list and the filter stays useful.
+
+In the schemas the fields are optional, and check S24 requires them on catalog content only ([authoring](authoring.md#static)): a problem of your own in the workspace works without them and is listed with `-` for each. When it names a scope, the scope has to fit its `kind`. `cstudy new` writes the labels of its template, which you edit to fit the problem:
+
+| Template | `domains` | `job_roles` | `scope` |
+|----------|-----------|-------------|---------|
+| `array`, `tree`, `design` | `algorithms` | `general` | `function` |
+| `progressive` | `backend` | `backend` | `function` |
+| `concurrent` | `backend` | `backend`, `platform` | `function` |
+| `project-*` | `backend` | `backend` | `project` |
+
+The [catalog](catalog.md) lists the labels of every row.
 
 ## Pattern taxonomy
 

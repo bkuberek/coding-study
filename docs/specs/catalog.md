@@ -1,6 +1,6 @@
 # Spec: Catalog
 
-The binding manifest of every catalog item: 196 DSA problems and 74 non-DSA items (58 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty and kind, and for the planned rows their batch and owner stream.
+The binding manifest of every catalog item: 196 DSA problems and 74 non-DSA items (58 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
 
 | Track | Problems or items | Where |
 |-------|-------------------|-------|
@@ -13,7 +13,7 @@ The binding manifest of every catalog item: 196 DSA problems and 74 non-DSA item
 | `code-review` | 6 | `tracks/code-review/` |
 | **Total** | **270** (254 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
 
-Planned: `domains`, `job_roles` and `scope` for every row, and this file's prose `scope` column renamed `covers`, since `scope` becomes a label. See [ADR 0020](../decisions/0020-catalog-labels.md#where-the-labels-show).
+Every row has three [labels](content.md#labels): `domains`, `job_roles` and `scope` ([S24](authoring.md#static), [ADR 0020](../decisions/0020-catalog-labels.md)). Their values repeat across hundreds of rows, so each section below states them once, with its exceptions, instead of in three columns; a table added later carries them as columns, which are binding as `kind` is. The prose column that says what a row covers is `covers`, since `scope` is a label.
 
 ## Rules
 
@@ -22,7 +22,7 @@ Planned: `domains`, `job_roles` and `scope` for every row, and this file's prose
 | Binding | `id`, `slug`, `title`, primary pattern, `kind` and `batch` in this file are binding. A stream creates exactly the rows it owns, at `problems/<id>-<slug>/` (or `tracks/<track>/<slug>/`), and touches no other row |
 | Slugs | Unique across `problems/` and `tracks/` and immutable once merged, because `progress.db` keys on the slug |
 | Ids | Fixed here, not by `cstudy new`. `cstudy new` assigns max + 1, which collides across parallel worktrees, so after scaffolding the author sets `meta.yaml` `id` to the catalog value and renames the directory to match |
-| `meta.yaml` | `patterns` is the primary pattern followed by the secondary patterns in the listed order; `difficulty` and `kind` match the row; `references.leetcode.number` is the `lc` column |
+| `meta.yaml` | `patterns` is the primary pattern followed by the secondary patterns in the listed order; `difficulty` and `kind` match the row; `domains`, `job_roles` and `scope` are the section's labels, with its exceptions; `references.leetcode.number` is the `lc` column |
 | Changes | A stream that cannot build a row as listed stops and reports. The catalog is amended in the main checkout first, never inside a stream worktree |
 | Wording | Statements, examples, tests, hints and explanations are original ([ADR 0004](../decisions/0004-original-problem-wording.md)). Common titles are allowed; LeetCode appears only as a link in `references.leetcode` |
 | Merge | A batch merges only when all its problems are `ready` and pass `cstudy verify --oracle` (and `--ladder` from Phase 2 on), as [content](content.md#content-batches) states |
@@ -39,6 +39,8 @@ Planned: `domains`, `job_roles` and `scope` for every row, and this file's prose
 Existing problems keep `0001`–`0003`. New DSA ids run from `0004` to `0185` by batch (1 to 6), then taxonomy order within a batch, then difficulty within a pattern. Non-DSA items in `problems/` continue at `0186`–`0213` in the order practical, lld, concurrency, debugging. Problems added after the plan take the next free ids: `0214`–`0228` practical, `0229`–`0239` DSA, `0240`–`0247` the Go and Rust debugging problems, `0248` practical, and `0249`–`0254` the practical project problems. Items in `tracks/` have slugs and no ids.
 
 ## DSA catalog
+
+Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on all 196 rows, with no exceptions.
 
 196 problems: 185 planned in six batches, and 11 [added later](#later-dsa-additions). Columns: `id`, `slug`, `title`, `primary` pattern, `secondary` patterns, `difficulty`, `lc` (LeetCode reference number, reference only), `kind`, `batch`, `stream`. Rows marked `existing` are already in `problems/`; their stream owns any revision but they do not count toward its quota.
 
@@ -297,9 +299,11 @@ Each stream owns whole patterns, so one stream holds all problems of a pattern a
 
 ### practical (28, `problems/`)
 
+Labels: `0186` to `0191` and `0248` (the 7 `progressive` rows, `domains: [backend]`, `job_roles: [backend]`, `scope: function`); `0214` to `0228` (the 15 insurance rows, `domains: [fintech]`, `job_roles: [backend]`, `scope: function`); `0249` to `0254` (the 6 project problems, `domains: [backend, fintech]`, `job_roles: [backend]`, `scope: project`). Exceptions: `banking-system` and `scheduled-transfers-bank` also have `fintech`, and `api-gateway` also has the role `platform`.
+
 The six planned rows (owner P1) are `progressive`:
 
-| id | slug | title | scope | difficulty |
+| id | slug | title | covers | difficulty |
 |----|------|-------|-------|------------|
 | 0186 | `in-memory-database` | In-Memory Database | Records with fields; then prefix scans; then per-field TTL; then point-in-time reads over history | hard |
 | 0187 | `banking-system` | Banking System | Accounts, deposits and transfers; then top spenders; then scheduled payments with cashback; then account merges with historical balances | hard |
@@ -347,7 +351,9 @@ Six [project problems](problem-format.md#project-problems) (kind `project`, one 
 
 ### lld (8, owner L1, kind `design` plus `rubric.md`, `problems/`)
 
-| id | slug | title | scope | difficulty |
+Labels: `domains: [backend]`, `job_roles: [backend]` and `scope: function` on all 8 rows, with no exceptions.
+
+| id | slug | title | covers | difficulty |
 |----|------|-------|-------|------------|
 | 0192 | `parking-lot` | Parking Lot | Levels, spot sizes, vehicle types, tickets and fees; pricing as an extension point | medium |
 | 0193 | `elevator-system` | Elevator System | Multiple cars, request dispatching, direction state machine; dispatch strategy as an extension point | hard |
@@ -360,7 +366,9 @@ Six [project problems](problem-format.md#project-problems) (kind `project`, one 
 
 ### concurrency (6, owner K1, kind `concurrent`, `problems/`)
 
-| id | slug | title | scope | difficulty | languages |
+Labels: `domains: [backend]`, `job_roles: [backend, platform]` and `scope: function`. Exception: `bank-transfers` also has `fintech`.
+
+| id | slug | title | covers | difficulty | languages |
 |----|------|-------|-------|------------|-----------|
 | 0200 | `thread-safe-lru-cache` | Thread-Safe LRU Cache | Make a compound structure atomic under concurrent get and put; lock granularity trade-offs | hard | java, kotlin, python, go, rust |
 | 0201 | `bounded-blocking-queue` | Bounded Blocking Queue | Fixed-capacity queue with blocking put and take; condition waits with `while` re-checks, no lost wakeups | medium | all |
@@ -371,9 +379,11 @@ Six [project problems](problem-format.md#project-problems) (kind `project`, one 
 
 ### debugging (16, kind `function` or `design` with `stub: buggy`, `problems/`)
 
+Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on all 16 rows, with no exceptions.
+
 The eight planned rows (owner B1) port one bug to the languages it exists in; 0240 to 0247 are bugs native to Go and Rust ([ADR 0012](../decisions/0012-go-and-rust.md)).
 
-| id | slug | title | scope | difficulty | languages |
+| id | slug | title | covers | difficulty | languages |
 |----|------|-------|-------|------------|-----------|
 | 0206 | `debug-binary-search-bounds` | Debug: Binary Search Bounds | Off-by-one loop condition and midpoint update that skip the last element or loop forever | easy | python, typescript, java, kotlin |
 | 0207 | `debug-grid-aliasing` | Debug: Grid Aliasing | Rows that share one list and a shallow copy of BFS state, so one write changes many cells | medium | python, typescript, java, kotlin |
@@ -394,7 +404,9 @@ The eight planned rows (owner B1) port one bug to the languages it exists in; 02
 
 ### system-design (10, owner S1, `tracks/system-design/`)
 
-| slug | title | scope | difficulty |
+Labels: `domains: [backend]`, `job_roles: [backend, platform]` and `scope: system`. Exception: `payments-ledger` also has `fintech`.
+
+| slug | title | covers | difficulty |
 |------|-------|-------|------------|
 | `url-shortener` | URL Shortener | Key generation, redirects at read-heavy scale, custom aliases, expiry, analytics | medium |
 | `news-feed` | News Feed | Fan-out on write versus read, celebrity accounts, ranking, pagination, cache tiers | hard |
@@ -409,7 +421,9 @@ The eight planned rows (owner B1) port one bug to the languages it exists in; 02
 
 ### code-review (6, owner S1, `tracks/code-review/`)
 
-| slug | title | scope | difficulty |
+Labels: `domains: [backend]`, `job_roles: [backend]` and `scope: function`. Exceptions: `review-auth-endpoint` also has `security` and `identity` and the role `security-engineer`, and `review-payment-retry` also has `fintech`.
+
+| slug | title | covers | difficulty |
 |------|-------|-------|------------|
 | `review-concurrent-counter` | Review: Concurrent Counter Service | Check-then-act race, unsynchronized map, lock held across I/O | medium |
 | `review-auth-endpoint` | Review: Login Endpoint | SQL built by concatenation, non-constant-time comparison, secrets in logs, missing rate limit | medium |

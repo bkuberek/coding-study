@@ -8,7 +8,7 @@ User-authored problems are first-class: the shipped catalog and your own problem
 |------|--------|-------|
 | 1 | `cstudy new <slug> --from-template array --pattern <id> --difficulty medium` | directory created with `status: draft` |
 | 2 | Write `problem.md`: statement, input, output, constraints, in original wording | `cstudy verify <slug> --static` |
-| 3 | Set `signature` and `comparator` in `meta.yaml` | `--static` type-checks tests against the signature |
+| 3 | Set `signature` and `comparator` in `meta.yaml`, and edit the [labels](content.md#labels) `cstudy new` wrote from its template (`domains`, `job_roles`, `scope`) to fit the problem | `--static` type-checks tests against the signature, and S24 the labels |
 | 4 | Add visible examples to `tests.json` and their explanations in `problem.md`; add hidden edge cases | `--static` |
 | 5 | Write the brute-force approach in Python with `oracle: true` | `cstudy verify <slug>` |
 | 6 | Write `generator.py` (and `validate`) | `cstudy verify <slug> --oracle` |
@@ -259,7 +259,7 @@ Planned: authoring a service project, with lifecycle commands, mock configs and 
 
 ### Static (`--static` runs only these)
 
-Planned: a check on catalog labels, and a language rule next to S13. See [ADR 0020](../decisions/0020-catalog-labels.md#rule-changes).
+Planned: a language rule next to S13 ([ADR 0020](../decisions/0020-catalog-labels.md#rule-changes)).
 
 | Id | Check |
 |----|-------|
@@ -281,6 +281,7 @@ Planned: a check on catalog labels, and a language rule next to S13. See [ADR 00
 | S16 | Project: no starter file under `project.tests` has the name of a generated test file (`test_level_<n>.py`, `level-<n>.test.ts`, `level_<n>_test.go`, `Level<n>Test.java`, `Level<n>Test.kt`, `level_<n>.rs`); `problem.md` has a non-empty `## Project` section; the explanation has `### Design` |
 | S17 | `jdk` ([JDK range](problem-format.md#jdk-range)): present only on a problem that lists `java` or `kotlin`. `min`, when given, is above the supported minimum (21) and at most the supported maximum (26), which caps every level. `max`, when given, is at least the effective minimum (`min`, else 21) and differs from the supported maximum (26), because an explicit 26 would keep the problem from following the range when it grows; a `max` above 26 is an opt-in and passes. When the supported range grows, S17 flags each `max` that the new range reaches. The schema (S1) holds the shape: integers, no other keys, at least one of `min` and `max` |
 | S18 | Virtual clock ([project problems](problem-format.md#asynchronous-code-and-the-virtual-clock)): `async` only on methods of a project in Python, TypeScript, Kotlin or Rust, and only with `project.clock: virtual`; `project.clock: virtual` only in Go, Python, TypeScript, Kotlin or Rust, and only in a language whose runner grades it ([scope and order](../decisions/0017-async-project-problems.md#scope-and-order)). Harness operations only with the virtual clock, with valid arguments: `@advance` from 1 to 2,147,483,647 ms (Node's largest timer delay); `@spawn` a task name unique in its case and a method of the case's level or below with its arguments, an asynchronous method outside Go; `@join` a task spawned earlier and not yet joined; `@now` none. Every spawned task is joined. Expected values: `null` for `@advance` and `@spawn`, the method's result type for `@join`, an integer for `@now`. Ties are content's to avoid; no static check finds them, and D10 finds those that Go and Python shuffle |
+| S24 | Labels ([content](content.md#labels)): a catalog problem has `domains`, `job_roles` and `scope`, and `scope` fits `kind`: `project` or `system` for `kind: project`, `function` for any other kind. A problem in your own workspace may leave all three out, and one that names a `scope` still has to fit it. An item has the same three, with `scope: system` for a `system-design` item and `function` for a `code-review` item ([items](#items)) |
 
 ### Dynamic
 
@@ -329,6 +330,7 @@ System design and code review items (`tracks/<track>/<slug>/`, format in [conten
 | I5 | `reference.md`: `# <title>: Reference`; system design: required sections, non-empty and in order; code review: severity sections only, in order, each listing `- ` issues; no `TODO` |
 | I6 | `template.md`: `# <title>: Notes` and at least one `##` section |
 | I7 | Code review: exactly one of `change.diff` (not empty) or `files/`; other tracks: neither |
+| S24 | `item.yaml` has `domains`, `job_roles` and `scope`, and `scope` is `system` for a `system-design` item and `function` for a `code-review` item ([content](content.md#labels)) |
 
 `related` slugs that name no problem or item are warnings. `status: ready` additionally requires, for system design, at least one reference: a `references.links` or a `references.study_guides` entry. Study-guide paths are relative to the user's study-guides root ([study guides](content.md#study-guides)); `cstudy verify` checks their form, not that the files exist.
 
@@ -336,7 +338,7 @@ System design and code review items (`tracks/<track>/<slug>/`, format in [conten
 
 | Step | Action | Check |
 |------|--------|-------|
-| 1 | Create `tracks/<track>/<slug>/` with `item.yaml` (`status: draft`) | `cstudy verify <slug> --static` |
+| 1 | Create `tracks/<track>/<slug>/` with `item.yaml` (`status: draft`, and the [labels](content.md#labels)) | `cstudy verify <slug> --static` |
 | 2 | Write `prompt.md`, then `reference.md` | `--static` |
 | 3 | Write `rubric.md` from the reference: one criterion per point a strong answer makes | `--static` |
 | 4 | Write `template.md` with the reference's sections | `--static` |
