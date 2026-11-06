@@ -1416,11 +1416,16 @@ def test_fix_fails_the_pytest_step_with_the_manual_fix_when_offline_without_a_ca
     )
 
 
+def commands_announced(lines: list[str]) -> list[str]:
+    """The lines that announce a command, not the note of a step left out."""
+    return [line for line in lines if line.startswith("running ")]
+
+
 def test_fix_announces_each_attempt_to_add_pytest():
     lines: list[str] = []
     results = {**pytest_missing(), ADD_PYTEST_OFFLINE: ProbeResult(2, "")}
     fix(workspace_with(paths={"python"}, commands=FakeCommands(results)), notify=lines.append)
-    assert lines[1:] == [
+    assert commands_announced(lines)[1:] == [
         "running uv add --dev --offline pytest>=9.1 (in python)",
         "running uv add --dev pytest>=9.1 (in python)",
     ]
@@ -1445,7 +1450,7 @@ def test_a_step_without_a_manual_fix_has_none():
 def test_fix_announces_each_command_before_running_it():
     lines: list[str] = []
     fix(workspace_with(paths={"jvm"}), notify=lines.append)
-    assert lines == [
+    assert commands_announced(lines) == [
         "running ./gradlew --no-watch-fs :java:csClasspath :kotlin:csClasspath "
         "-Pcs.only=cs_doctor_handshake "
         "(in jvm)",

@@ -887,7 +887,7 @@ sequenceDiagram
 | `run_on_save` | false | [Run on save](#attempt-view) |
 | `typecheck` | true | `typecheck` of TypeScript runs, so type errors reach the editor as markers |
 | `theme` | `system` | `light` or `dark` for the page and its editors; `system` follows `prefers-color-scheme` |
-| `code_intelligence` | false | Live diagnostics, hover documentation and go to definition from language servers ([Code intelligence in the editor](#code-intelligence-in-the-editor)); the `code intelligence` rows of `cstudy doctor`, and `cstudy doctor --fix` installing their servers ([cli](cli.md#cstudy-doctor)) |
+| `code_intelligence` | false | Live diagnostics, hover documentation and go to definition from language servers ([Code intelligence in the editor](#code-intelligence-in-the-editor)); the `code intelligence` rows of `cstudy doctor`, and `cstudy doctor --fix` installing their servers, or saying that it skipped them while the preference is off ([cli](cli.md#cstudy-doctor)) |
 | `autocomplete` | false | Completion and signature help, while `code_intelligence` is also on. While autocomplete does not apply, the editor offers no completion at all ([Autocomplete](#autocomplete)) |
 
 A missing or unreadable file means the defaults, and a key the stored file leaves out takes its default, so the format stays 1. The server rewrites the file whole on `PUT`, which stores any combination of `code_intelligence` and `autocomplete`: turning code intelligence off keeps `autocomplete` as stored, and the page applies autocomplete only while both are true.

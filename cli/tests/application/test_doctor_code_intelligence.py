@@ -30,6 +30,11 @@ BASEDPYRIGHT = "basedpyright"
 TYPESCRIPT = "typescript-language-server"
 FIX = "cstudy doctor --fix"
 INSTALL_STEP = "pnpm install --frozen-lockfile --ignore-scripts (in .cs/lsp)"
+SKIPPED_NOTE = (
+    "skipped the language servers: code intelligence is off; "
+    "turn it on in Settings of cstudy serve, then run cstudy doctor --fix again"
+)
+OFF = MemoryPreferences({"format": 1, "code_intelligence": False})
 
 
 def code_intelligence_rows(servers: FakeLanguageServers, preferences=CODE_INTELLIGENCE_ON):
@@ -192,3 +197,41 @@ def test_fix_installs_into_a_workspace_without_a_typescript_project():
     servers = FakeLanguageServers()
     fix_with(servers, paths=set(COMPLETE_WORKSPACE) - {"typescript"})
     assert servers.installs == 1
+
+
+def fix_notices(servers: FakeLanguageServers, preferences) -> list[str]:
+    lines: list[str] = []
+    fix(workspace_with(preferences=preferences, language_servers=servers), notify=lines.append)
+    return [line for line in lines if "language servers" in line]
+
+
+def test_fix_says_it_skipped_the_servers_while_the_preference_is_off():
+    assert fix_notices(FakeLanguageServers(), OFF) == [SKIPPED_NOTE]
+
+
+def test_fix_says_it_skipped_the_servers_without_a_preferences_file():
+    assert fix_notices(FakeLanguageServers(), MemoryPreferences()) == [SKIPPED_NOTE]
+
+
+def test_fix_still_installs_nothing_when_it_says_it_skipped_the_servers():
+    servers = FakeLanguageServers()
+    fix_notices(servers, OFF)
+    assert servers.installs == 0
+
+
+def test_fix_says_it_skipped_the_servers_when_only_one_is_installed():
+    probes = {BASEDPYRIGHT: INSTALLED_SERVERS[BASEDPYRIGHT]}
+    assert fix_notices(FakeLanguageServers(probes), OFF) == [SKIPPED_NOTE]
+
+
+def test_fix_says_nothing_of_the_servers_that_are_already_installed():
+    assert fix_notices(FakeLanguageServers(INSTALLED_SERVERS), OFF) == []
+
+
+def test_fix_says_nothing_of_the_servers_while_the_preference_is_on():
+    assert fix_notices(FakeLanguageServers(), CODE_INTELLIGENCE_ON) == []
+
+
+def test_the_skipped_note_is_no_outcome_of_the_fix():
+    outcomes = fix_with(FakeLanguageServers(), OFF)
+    assert [o for o in outcomes if o.step.project == ".cs/lsp"] == []

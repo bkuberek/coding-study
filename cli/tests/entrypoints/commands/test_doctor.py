@@ -123,6 +123,16 @@ def test_fix_runs_before_the_checks_and_reports_each_command(monkeypatch, tmp_pa
     assert lines[0] == "ok    uv sync (in python)"
 
 
+def test_a_notice_of_the_fix_goes_to_standard_output_where_a_job_relays_it(monkeypatch, tmp_path):
+    monkeypatch.setenv("CSTUDY_WORKSPACE", str(mark_workspace(tmp_path)))
+    stub_report(monkeypatch)
+    note = "skipped the language servers: code intelligence is off"
+    monkeypatch.setattr(doctor, "repair_workspace", lambda *_: ScaffoldOutcome((), ()))
+    monkeypatch.setattr(doctor, "fix_workspace", lambda _w, _c, _j, notify: notify(note) or ())
+    result = runner.invoke(cli.app, ["doctor", "--fix"])
+    assert (note in result.stdout, note in result.stderr) == (True, False)
+
+
 def test_failed_fix_prints_the_end_of_its_output(monkeypatch, tmp_path):
     monkeypatch.setenv("CSTUDY_WORKSPACE", str(mark_workspace(tmp_path)))
     stub_report(monkeypatch)

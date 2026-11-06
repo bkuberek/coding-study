@@ -86,7 +86,7 @@ Two settings give the editor what an IDE gives: errors as you type, documentatio
    cstudy doctor --fix
    ```
 
-   (or choose **Fix** in the Health view, on the row of each language or at the top). This installs about 46 MB into `.cs/lsp/` in your workspace, a download of about 7 MB, and needs the network that one time. After that practice needs no internet: nothing else is downloaded and no server reaches the network. Deleting `.cs/lsp/` is safe; `--fix` installs it again.
+   (or choose **Fix** in the Health view, on the row of each language or at the top). This installs about 46 MB into `.cs/lsp/` in your workspace, a download of about 7 MB, and needs the network that one time. After that practice needs no internet: nothing else is downloaded and no server reaches the network. Deleting `.cs/lsp/` is safe; `--fix` installs it again. With **Code intelligence** off, `--fix` installs nothing for the editor and says so (`skipped the language servers: code intelligence is off; turn it on in Settings…`), unless the servers are installed already.
 3. Check the result. `cstudy doctor` shows a row per language while code intelligence is on, and the Settings view lists each language's state:
 
    ```text

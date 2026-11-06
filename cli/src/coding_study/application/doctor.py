@@ -287,6 +287,10 @@ LANGUAGE_SERVERS_FIX = FixStep(
 """Installs the language servers of the web UI's code intelligence from the shipped manifest,
 while the `code_intelligence` preference is on. The installer copies the manifest first, so this
 step is never run as a plain command."""
+SERVERS_SKIPPED_NOTE = (
+    "skipped the language servers: code intelligence is off; "
+    "turn it on in Settings of cstudy serve, then run cstudy doctor --fix again"
+)
 JVM_FIX = FixStep(
     "jvm",
     (
@@ -403,7 +407,17 @@ def fix_workspace(
             outcomes.append(outcome)
     if jvm_blocker is not None:
         outcomes.append(FixOutcome(NO_JAVA_FIX, None, skipped=jvm_blocker))
+    if not _code_intelligence_on(workspace):
+        _note_skipped_servers(workspace, notify)
     return tuple(outcomes)
+
+
+def _note_skipped_servers(workspace: PracticeWorkspace, notify: ProgressNotice) -> None:
+    """One line saying the servers were left out and how to turn them on, unless they are all
+    installed already, when there is nothing to miss."""
+    states = language_server_states(workspace.language_servers)
+    if any(state.status is not ServerStatus.INSTALLED for state in states if state.server):
+        notify(SERVERS_SKIPPED_NOTE)
 
 
 def _jvm_warm_up_blocker(workspace: PracticeWorkspace, jdk: JdkSelector) -> str | None:
