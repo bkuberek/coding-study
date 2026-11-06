@@ -127,7 +127,7 @@ function yourProblems(context: PageContext, job: JobPanel): HTMLElement {
 
 /** A Fix button for a row whose fix is the command itself, text for any other hint. */
 function fixCell(found: Check, startFix: () => void): Node | null {
-  if (found.fix === null) return null;
+  if (!found.fix) return null;
   if (found.fix !== FIX_COMMAND) return fixHint(found.fix);
   const button = h("button", { type: "button", class: "button row-fix", "aria-label": `Fix ${found.name}`, title: FIX_TITLE }, "Fix");
   button.addEventListener("click", startFix);
