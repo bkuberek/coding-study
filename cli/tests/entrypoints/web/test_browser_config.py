@@ -36,6 +36,9 @@ REPS = "#config-bench-reps"
 MEMORY = "#config-bench-memory"
 TRACKS = "#config-next-tracks"
 RESERVED = "#config-done-auto_commit"
+PROGRESS_DB = "#config-progress_db"
+SHEET = "dialog.sheet[open]"
+QUESTION = f"{SHEET} .question"
 SAVE = "form:has(#config-bench-reps) button[type=submit]"
 STATUS = "form:has(#config-bench-reps) p[role=status]"
 
@@ -55,6 +58,11 @@ class Seen:
     refused_file: str = ""
     emptied_file: str = ""
     emptied_shows_default: str = ""
+    question: str = ""
+    file_after_declining: str = ""
+    note_after_declining: str = ""
+    file_after_confirming: str = ""
+    database_kept: bool = False
     logged: list[str] = field(default_factory=list[str])
     errors_before_the_refusal: list[str] = field(default_factory=list[str])
 
@@ -79,7 +87,7 @@ def server(workspace: Path, config_file: Path) -> Iterator[RunningServer]:
 
 
 @pytest.fixture(scope="module")
-def seen(engine: str, server: RunningServer, config_file: Path) -> Seen:
+def seen(engine: str, server: RunningServer, config_file: Path, workspace: Path) -> Seen:
     found = Seen()
     with sync_api.sync_playwright() as playwright:
         browser = launched(playwright, engine)
@@ -94,6 +102,7 @@ def seen(engine: str, server: RunningServer, config_file: Path) -> Seen:
         found.errors_before_the_refusal = list(found.logged)
         _refuse_a_value(page, config_file, found)
         _empty_a_field(page, config_file, found)
+        _a_new_database_path_asks_first(page, config_file, workspace, found)
         browser.close()
     return found
 
@@ -135,6 +144,27 @@ def _empty_a_field(page: Any, config_file: Path, found: Seen) -> None:
     _saved(page)
     found.emptied_file = config_file.read_text()
     found.emptied_shows_default = page.input_value(REPS)
+
+
+def _a_new_database_path_asks_first(
+    page: Any, config_file: Path, workspace: Path, found: Seen
+) -> None:
+    database = workspace / "progress.db"
+    database.write_bytes(database.read_bytes() if database.exists() else b"")
+    kept = database.read_bytes()
+    page.fill(PROGRESS_DB, "moved/other.db")
+    page.click(SAVE)
+    page.wait_for_selector(QUESTION)
+    found.question = page.locator(QUESTION).inner_text()
+    page.click(f"{SHEET} button:has-text('Cancel')")
+    page.wait_for_selector(f"{STATUS}:has-text('not saved')")
+    found.file_after_declining = config_file.read_text()
+    found.note_after_declining = page.locator(STATUS).inner_text()
+    page.click(SAVE)
+    page.click(f"{SHEET} button:has-text('Change it')")
+    page.wait_for_selector(f"{STATUS}:has-text('saved:')")
+    found.file_after_confirming = config_file.read_text()
+    found.database_kept = database.read_bytes() == kept
 
 
 def test_the_form_shows_every_key_of_the_file(seen):
@@ -191,6 +221,26 @@ def test_an_empty_field_removes_the_key(seen):
 
 def test_an_empty_field_shows_the_default_again(seen):
     assert seen.emptied_shows_default == "7"
+
+
+def test_a_new_database_path_says_the_data_does_not_move(seen):
+    assert "does not move your data" in seen.question
+
+
+def test_a_new_database_path_says_whether_a_database_is_there(seen):
+    assert "No database exists at moved/other.db" in seen.question
+
+
+def test_declining_writes_nothing(seen):
+    assert (seen.note_after_declining, "moved" in seen.file_after_declining) == ("not saved", False)
+
+
+def test_confirming_writes_the_path(seen):
+    assert 'progress_db = "moved/other.db"' in seen.file_after_confirming
+
+
+def test_confirming_leaves_the_old_database_where_it_is(seen):
+    assert seen.database_kept
 
 
 def test_the_page_logs_no_error_under_its_content_security_policy(seen):

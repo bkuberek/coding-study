@@ -112,6 +112,67 @@ def test_an_invalid_value_gets_422_naming_the_key(app, file):
     assert not file.exists()
 
 
+# progress_db: a new path moves nothing, so it asks first
+
+
+def test_a_new_progress_db_asks_first_and_writes_nothing(app, file):
+    with session_client(app) as client:
+        response = post(client, {"progress_db": "other.db"})
+    assert (response.status_code, response.json()["error"]["code"], file.exists()) == (
+        409,
+        "confirmation_required",
+        False,
+    )
+
+
+def test_the_question_says_the_data_does_not_move(app):
+    with session_client(app) as client:
+        message = post(client, {"progress_db": "other.db"}).json()["error"]["message"]
+    assert "does not move your data: it stays in progress.db" in message
+
+
+def test_the_question_says_when_no_database_is_at_the_new_path(app):
+    with session_client(app) as client:
+        message = post(client, {"progress_db": "other.db"}).json()["error"]["message"]
+    assert "No database exists at other.db" in message
+
+
+def test_the_question_says_when_a_database_is_at_the_new_path(tmp_path, app):
+    (tmp_path / "other.db").write_text("")
+    with session_client(app) as client:
+        message = post(client, {"progress_db": "other.db"}).json()["error"]["message"]
+    assert "A database exists at other.db" in message
+
+
+def test_a_confirmed_progress_db_is_written(app, file):
+    with session_client(app) as client:
+        response = post(client, {"progress_db": "other.db"}, confirm=True)
+    assert (response.json()["changed"], tomllib.loads(file.read_text())) == (
+        ["progress_db"],
+        {"progress_db": "other.db"},
+    )
+
+
+def test_a_confirmed_progress_db_moves_no_database(tmp_path, app):
+    database = tmp_path / "progress.db"
+    database.write_bytes(b"mine")
+    with session_client(app) as client:
+        post(client, {"progress_db": "other.db"}, confirm=True)
+    assert (database.read_bytes(), (tmp_path / "other.db").exists()) == (b"mine", False)
+
+
+def test_the_path_in_force_asks_nothing(app, file):
+    with session_client(app) as client:
+        response = post(client, {"progress_db": "progress.db"})
+    assert (response.status_code, file.exists()) == (200, False)
+
+
+def test_a_progress_db_the_parser_refuses_gets_its_refusal_not_the_question(app):
+    with session_client(app) as client:
+        response = post(client, {"progress_db": 5})
+    assert response.json()["error"]["message"] == "progress_db: expected a non-empty string"
+
+
 def test_a_body_without_changes_gets_422(app):
     with session_client(app) as client:
         response = client.post(CONFIG, json={}, headers=WRITE_HEADERS)

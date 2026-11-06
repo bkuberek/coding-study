@@ -968,6 +968,10 @@ class EditableConfig(Protocol):
         """Writes the commented template when no file is there; True when it did."""
         ...
 
+    def load(self) -> Config:
+        """The defaults for a missing file; raises ConfigError for one that does not load."""
+        ...
+
 
 class ConfigFile(Protocol):
     """The user's `config.toml` as Settings edits it (docs/specs/web-ui.md#settings-view)."""

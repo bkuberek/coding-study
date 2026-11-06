@@ -91,7 +91,7 @@ created_with = "0.1.0"
 
 A language server never sees what holds a reference solution or generated data: `.cs/build/` (the materialized references), `.cs/cases/` (generated cases with their expected outputs), `.cs/runs/` (the data of runs) and the content root. Both phase 1 servers are Node programs, so `cstudy serve` starts them with `NODE_OPTIONS=--require=<hide_paths.cjs>` and the four directories in `CSTUDY_HIDDEN_DIRECTORIES`; in them, and in every Node process they start, a path in those directories fails as a file that is not there does, whatever the document names. The broker also leaves them out of definition answers and refuses them as library files. A content root that holds the workspace is left out of the list, since the server could not work without it. A server that is not a Node program must keep them out in its own way ([web-ui](web-ui.md#hidden-directories), [ADR 0018](../decisions/0018-editor-code-intelligence.md#phases)).
 
-Every path `cstudy` prints for a workspace file is relative to the workspace root (`python/practice/two_sum.py`, `.statements/two-sum.md`). `progress_db` in the config file is relative to it too.
+Every path `cstudy` prints for a workspace file is relative to the workspace root (`python/practice/two_sum.py`, `.statements/two-sum.md`). `progress_db` in the config file is relative to it too; changing it moves no data ([configuration](cli.md#configuration)).
 
 ## cstudy init
 

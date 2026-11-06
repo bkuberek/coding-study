@@ -115,6 +115,8 @@ auto_commit = false              # reserved (PRD Q3)
 
 `study_guides.root` is the directory that item `references.study_guides` paths are relative to ([study guides](content.md#study-guides)). The `[schedule]` intervals are the fixed ones of the [scheduling table](progress-and-scheduling.md#scheduling-algorithm): a change applies to reviews scheduled after it, and dates already set do not move; the ease multipliers are not configurable.
 
+Changing `progress_db` moves nothing: your data stays in the old file, and `cstudy` uses the file at the new path, or starts an empty one there. No command moves, copies or deletes a database for this. The template of [`cstudy config edit`](#cstudy-config) says so beside the key, the command says so again after an edit that changed it, with whether a database exists at the new path, and the [Settings view](web-ui.md#settings-view) asks before it writes.
+
 The [Settings view](web-ui.md#settings-view) of `cstudy serve` edits this file too, keeping your comments ([ADR 0022](../decisions/0022-settings-and-reset.md)). Every command reads the file as it starts, and the server reads it for each request, so no key needs `cstudy serve` restarted, with one exception:
 
 | Keys | A change applies |
@@ -1239,7 +1241,7 @@ Neither needs a workspace, and both find the file as every command does ([Config
 | Command | Effect |
 |---------|--------|
 | `config path` | Prints the path and creates nothing |
-| `config edit` | Opens the file in `$VISUAL`, else `$EDITOR`, the way `cstudy start` opens a stub, and waits for it. A missing file is first made from a commented template that lists every key at its default with what it does, so it loads as the defaults until a line is uncommented, and an existing one is never changed. It prints `created <path>` or `config <path>`. With no editor set it says so on an `editor` line, `set $VISUAL or $EDITOR to open the files automatically`, and exits 0, the path printed for you to open; an editor that does not run says why the same way |
+| `config edit` | Opens the file in `$VISUAL`, else `$EDITOR`, the way `cstudy start` opens a stub, and waits for it. A missing file is first made from a commented template that lists every key at its default with what it does, so it loads as the defaults until a line is uncommented, and an existing one is never changed. It prints `created <path>` or `config <path>`. With no editor set it says so on an `editor` line, `set $VISUAL or $EDITOR to open the files automatically`, and exits 0, the path printed for you to open; an editor that does not run says why the same way. Once the editor closes, an edit that changed `progress_db` adds a line, `progress_db Changing progress_db does not move your data: it stays in progress.db. No database exists at other.db, so cstudy will start an empty one there.` (`A database exists at other.db, and cstudy will use it.`; outside a workspace, `The new path, other.db, is relative to each workspace's root.`), and an edit that leaves the file unable to load exits 4 with the parser's message. A file that did not load before still opens |
 
 ## cstudy serve
 

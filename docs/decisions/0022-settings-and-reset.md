@@ -34,6 +34,10 @@ The owner wants to configure the whole app from the Settings view, including the
 
 tomlkit is a runtime dependency in `pyproject.toml`, so `uv.lock` pins it. The release builds its hashed `requirements.txt` from the lock with `uv export`, and the Homebrew formula installs that file with `--require-hashes --only-binary=:all:`. tomlkit publishes a `py3-none-any` wheel, so that install needs no build and no new formula step. `uv tool install` and pipx resolve it from the wheel's metadata.
 
+### `progress_db` moves nothing
+
+A new path changes where `cstudy` looks, not where the data is. The page asks first, with the API's `confirm`, naming whether a database exists at the new path, and the terminal says the same after the edit, since a file open in an editor can't ask before it saves. No code moves, copies or deletes a database for this.
+
 ### Two files, one page
 
 Preferences stay per workspace and apply at once; the config stays per user and applies as each key says. The view shows both, under headings that say which is which. They do not merge: a preference is what a page shows, and `cstudy` reads none of them but `code_intelligence` for `doctor`.

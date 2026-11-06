@@ -213,6 +213,8 @@ Below the preferences, **Settings** edits `config.toml`, the file every `cstudy`
 
 In the terminal, `cstudy config edit` opens the same file in your editor, making it from a commented template if you have none, and `cstudy config path` prints where it is.
 
+Changing `progress_db` moves nothing: your data stays in the old file, and `cstudy` uses the file at the new path, or starts an empty one there. Settings asks first and says whether a database exists at the new path, and `cstudy config edit` says so once you close your editor.
+
 The review intervals are here too, under `schedule`. A new interval applies to reviews scheduled from then on: dates already set do not move.
 
 ## Keyboard

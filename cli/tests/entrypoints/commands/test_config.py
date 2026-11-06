@@ -10,6 +10,7 @@ from coding_study.adapters.toml_config import config_from_mapping
 from coding_study.domain.config import Config
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.shared import ExitCode
+from tests.helpers import mark_workspace
 
 runner = CliRunner()
 KEPT = '# mine\ndefault_lang = "go"\n'
@@ -56,7 +57,7 @@ def test_config_path_creates_nothing(path):
 
 def test_config_alone_shows_its_commands():
     result = config([], {})
-    assert "edit" in result.output and "path" in result.output
+    assert all(command in result.output for command in ("edit", "path"))
 
 
 def test_config_edit_opens_the_file_in_the_editor(tmp_path, path):
@@ -97,3 +98,77 @@ def test_with_no_editor_it_prints_the_path_and_says_so(path):
 def test_an_editor_that_does_not_run_is_said(path):
     result = config(["edit"], {"CSTUDY_CONFIG": str(path), "VISUAL": "/no/such/editor"})
     assert "cannot run $VISUAL" in result.stdout
+
+
+# progress_db: the path changed, the data did not move
+
+
+@pytest.fixture
+def changing_editor(tmp_path: Path) -> str:
+    """A `$VISUAL` that points the file it is given at another database."""
+    script = tmp_path / "edit.sh"
+    script.write_text('#!/bin/sh\nprintf \'progress_db = "other.db"\\n\' > "$1"\n')
+    script.chmod(0o755)
+    return str(script)
+
+
+def in_workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    workspace = Path(mark_workspace(tmp_path / "workspace"))
+    monkeypatch.chdir(workspace)
+    return workspace
+
+
+def test_a_changed_progress_db_says_the_data_did_not_move(
+    tmp_path, path, changing_editor, monkeypatch
+):
+    in_workspace(tmp_path, monkeypatch)
+    environ = {"CSTUDY_CONFIG": str(path), "VISUAL": changing_editor, "CSTUDY_WORKSPACE": ""}
+    assert "does not move your data" in config(["edit"], environ).stdout
+
+
+def test_a_changed_progress_db_says_when_no_database_is_at_the_new_path(
+    tmp_path, path, changing_editor, monkeypatch
+):
+    in_workspace(tmp_path, monkeypatch)
+    environ = {"CSTUDY_CONFIG": str(path), "VISUAL": changing_editor, "CSTUDY_WORKSPACE": ""}
+    assert "No database exists at other.db" in config(["edit"], environ).stdout
+
+
+def test_a_changed_progress_db_says_when_a_database_is_at_the_new_path(
+    tmp_path, path, changing_editor, monkeypatch
+):
+    workspace = in_workspace(tmp_path, monkeypatch)
+    (workspace / "other.db").write_text("")
+    environ = {"CSTUDY_CONFIG": str(path), "VISUAL": changing_editor, "CSTUDY_WORKSPACE": ""}
+    assert "A database exists at other.db" in config(["edit"], environ).stdout
+
+
+def test_outside_a_workspace_it_says_the_path_is_relative_to_each(
+    tmp_path, path, changing_editor, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    environ = {"CSTUDY_CONFIG": str(path), "VISUAL": changing_editor, "CSTUDY_WORKSPACE": ""}
+    assert "relative to each workspace" in config(["edit"], environ).stdout
+
+
+def test_an_edit_that_leaves_progress_db_alone_says_nothing_of_it(tmp_path, path):
+    editor, _ = recording_editor(tmp_path)
+    assert (
+        "progress_db" not in config(["edit"], {"CSTUDY_CONFIG": str(path), "VISUAL": editor}).stdout
+    )
+
+
+def test_an_edit_that_breaks_the_file_says_so(tmp_path, path):
+    script = tmp_path / "break.sh"
+    script.write_text('#!/bin/sh\nprintf "reps = = 3\\n" > "$1"\n')
+    script.chmod(0o755)
+    result = config(["edit"], {"CSTUDY_CONFIG": str(path), "VISUAL": str(script)})
+    assert result.exit_code == ExitCode.ENVIRONMENT_ERROR
+
+
+def test_a_file_already_broken_still_opens(tmp_path, path):
+    path.parent.mkdir(parents=True)
+    path.write_text("reps = = 3\n")
+    editor, record = recording_editor(tmp_path)
+    config(["edit"], {"CSTUDY_CONFIG": str(path), "VISUAL": editor})
+    assert record.read_text() == str(path)
