@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0257"
+slug: authorization-policy-engine
+title: Authorization Policy Engine
+status: ready
+difficulty: medium
+track: practical
+kind: design
+patterns: [graphs]
+domains: [security]
+job_roles: [security-engineer, backend]
+scope: function
+languages: [python, typescript]
+signature:
+  class:
+    name: PolicyEngine
+    constructor: {params: []}
+    methods:
+      - {name: inherit, params: [{name: role, type: string}, {name: parentRole, type: string}], returns: {type: void}}
+      - {name: assignRole, params: [{name: principal, type: string}, {name: role, type: string}], returns: {type: void}}
+      - {name: addRule, params: [{name: role, type: string}, {name: effect, type: string}, {name: action, type: string}, {name: resource, type: string}], returns: {type: void}}
+      - {name: check, params: [{name: principal, type: string}, {name: action, type: string}, {name: resource, type: string}], returns: {type: string}}
+comparator: {type: ops}
+approaches:
+  - {id: walk-per-check, name: Walk the roles once per check and compare each rule against the resource's ancestors, role: optimal, time: "O(r + e + k + d) per check, O(1) per other call", space: "O(r + e + k)", time_class: "n^2", space_class: "n"}
+related: [token-claim-validator, refresh-token-rotation]
+estimate_minutes: 40
