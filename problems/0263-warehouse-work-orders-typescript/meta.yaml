@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0263"
+slug: warehouse-work-orders-typescript
+title: Warehouse Work Orders (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [backend]
+job_roles: [backend]
+scope: project
+languages: [typescript]
+levels:
+  - {level: 1, title: Idempotent create}
+  - {level: 2, title: Partial updates}
+  - {level: 3, title: Cost in whole cents}
+  - {level: 4, title: Soft delete}
+  - {level: 5, title: Optimistic locking}
+  - {level: 6, title: Site cost report}
+signature:
+  class:
+    name: WorkOrderApi
+    constructor: {params: []}
+    methods:
+      - {name: request, level: 1, params: [{name: method, type: string}, {name: path, type: string}, {name: headers, type: "string[]"}, {name: body, type: string}], returns: {type: "string[]"}}
+comparator: {type: ops}
+project:
+  entry: src/server.ts
+  tests: tests
+approaches:
+  - {id: reference, name: Feature folders with a frozen replay cache and costs computed on read, role: optimal, time: "O(n + p) per report or list request; O(p) per other request", space: "O(n + p + k)", time_class: "n", space_class: "n"}
+related: [loan-pipeline-service-typescript, bank-project-typescript]
+estimate_minutes: 120
