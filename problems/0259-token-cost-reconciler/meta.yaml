@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0259"
+slug: token-cost-reconciler
+title: Token Cost Reconciler
+status: ready
+difficulty: medium
+track: practical
+kind: function
+patterns: [arrays-hashing]
+domains: [ai-llm]
+job_roles: [ai-engineer]
+scope: function
+languages: [python, typescript]
+signature:
+  function:
+    name: reconcileUsage
+    params:
+      - {name: priceModels, type: "string[]"}
+      - {name: prices, type: "decimal[][]"}
+      - {name: callModels, type: "string[]"}
+      - {name: callTokens, type: "long[][]"}
+      - {name: reportedModels, type: "string[]"}
+      - {name: reportedTokens, type: "long[][]"}
+      - {name: reportedCosts, type: "decimal[]"}
+      - {name: tolerance, type: decimal}
+    returns: {type: "string[][]"}
+comparator: {type: exact}
+approaches:
+  - {id: totals-per-model, name: Total the tokens per model and price each total once, role: optimal, time: "O(n log n)", space: "O(n)", time_class: "n log n", space_class: "n"}
+related: [versioned-rate-table]
+estimate_minutes: 30
