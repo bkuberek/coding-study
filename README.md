@@ -2,7 +2,7 @@
 
 # coding-study
 
-coding-study is a local, IDE-first practice system for senior and staff software engineering interviews. You solve original problems in your own editor in Python, TypeScript, Java, Kotlin, Go, or Rust, and the `cstudy` command line tests your code, checks whether it is optimal, shows reference solutions, and schedules reviews with spaced repetition. Everything runs on your machine; there is no account and no service.
+coding-study is a local, IDE-first study tool for software engineers, from algorithms and backend design for senior and staff interviews to security and AI problems. You solve original problems in your own editor in Python, TypeScript, Java, Kotlin, Go, or Rust, and the `cstudy` command line tests your code, checks whether it is optimal, shows reference solutions, and schedules reviews with spaced repetition. Everything runs on your machine; there is no account and no service.
 
 The website, [coding-study.com](https://coding-study.com/?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=intro), has the [install guide](https://coding-study.com/install?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=intro) and the [usage docs](https://coding-study.com/docs?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=intro).
 

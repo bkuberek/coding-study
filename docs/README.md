@@ -1,6 +1,6 @@
 # coding-study documentation
 
-coding-study is a local, IDE-first interview-prep system: original problems stored as data, solved in your own editor in Python, TypeScript, Java, Kotlin, Go or Rust, and driven by a CLI (`cstudy`) that tests, benchmarks, explains and schedules reviews, in the terminal or through the local page `cstudy serve` serves. To install it and start practicing, read the [README](../README.md); to change it, read [CONTRIBUTING](../CONTRIBUTING.md).
+coding-study is a local, IDE-first study tool for software engineers: original problems stored as data, solved in your own editor in Python, TypeScript, Java, Kotlin, Go or Rust, and driven by a CLI (`cstudy`) that tests, benchmarks, explains and schedules reviews, in the terminal or through the local page `cstudy serve` serves. To install it and start practicing, read the [README](../README.md); to change it, read [CONTRIBUTING](../CONTRIBUTING.md).
 
 ## Reading order
 
