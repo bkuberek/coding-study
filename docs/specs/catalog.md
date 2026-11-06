@@ -5,13 +5,13 @@ The binding manifest of every catalog item: 196 DSA problems and 81 non-DSA item
 | Track | Problems or items | Where |
 |-------|-------------------|-------|
 | `dsa` | 196 (185 planned, 11 added) | `problems/` |
-| `practical` | 35 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added) | `problems/` |
+| `practical` | 38 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 3 backend TypeScript projects added) | `problems/` |
 | `lld` | 8 | `problems/` |
 | `concurrency` | 6 | `problems/` |
-| `debugging` | 16 (8 planned, 8 in Go and Rust) | `problems/` |
+| `debugging` | 23 (8 planned, 8 in Go and Rust, 7 JavaScript traps in TypeScript) | `problems/` |
 | `system-design` | 10 | `tracks/system-design/` |
 | `code-review` | 6 | `tracks/code-review/` |
-| **Total** | **277** (261 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
+| **Total** | **287** (271 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
 
 Every row has three [labels](content.md#labels): `domains`, `job_roles` and `scope` ([S24](authoring.md#static), [ADR 0020](../decisions/0020-catalog-labels.md)). Their values repeat across hundreds of rows, so each section below states them once, with its exceptions, instead of in three columns; a table added later carries them as columns, which are binding as `kind` is. The prose column that says what a row covers is `covers`, since `scope` is a label.
 
@@ -297,7 +297,7 @@ Each stream owns whole patterns, so one stream holds all problems of a pattern a
 
 ## Non-DSA catalog
 
-### practical (35, `problems/`)
+### practical (38, `problems/`)
 
 Labels: `0186` to `0191` and `0248` (the 7 `progressive` rows, `domains: [backend]`, `job_roles: [backend]`, `scope: function`); `0214` to `0228` (the 15 insurance rows, `domains: [fintech]`, `job_roles: [backend]`, `scope: function`); `0249` to `0254` (the 6 project problems, `domains: [backend, fintech]`, `job_roles: [backend]`, `scope: project`). Exceptions: `banking-system` and `scheduled-transfers-bank` also have `fintech`, and `api-gateway` also has the role `platform`. `0255` to `0261` carry their labels as columns.
 
@@ -361,6 +361,14 @@ The first wave of security and AI/LLM problems ([ADR 0020](../decisions/0020-cat
 | 0260 | `bm25-hybrid-ranker` | BM25 Hybrid Ranker | `arrays-hashing` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `ml-engineer` | function |
 | 0261 | `stream-reassembler` | Stream Reassembler | `arrays-hashing` | design | medium | `python`, `typescript` | `ai-llm` | `ai-engineer` | function |
 
+Three more TypeScript project problems train work on code you did not write, on the engine as it is. `0262` and `0263` are small working services, laid out differently on purpose, by type and by feature, and each level changes one. There is no HTTP server, since a project has no dependencies: an entry class takes what a request would carry and answers `[status, json]`, with the keys of the JSON sorted in one place. `0267` is a debugging exercise in all but its track: `await` only finishes in a project on the virtual clock ([ADR 0017](../decisions/0017-async-project-problems.md)), so its starter holds the bug instead of a `buggy/` file.
+
+| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|------|------------|-----------|---------|-----------|-------|
+| 0262 | `loan-pipeline-service-typescript` | Loan Pipeline Service (TypeScript) | project | hard | `typescript` | `backend`, `fintech` | `backend` | project |
+| 0263 | `warehouse-work-orders-typescript` | Warehouse Work Orders (TypeScript) | project | hard | `typescript` | `backend` | `backend` | project |
+| 0267 | `debug-async-batch-typescript` | Debug: Async Batch (TypeScript) | project | medium | `typescript` | `backend` | `backend` | project |
+
 ### lld (8, owner L1, kind `design` plus `rubric.md`, `problems/`)
 
 Labels: `domains: [backend]`, `job_roles: [backend]` and `scope: function` on all 8 rows, with no exceptions.
@@ -389,9 +397,9 @@ Labels: `domains: [backend]`, `job_roles: [backend, platform]` and `scope: funct
 | 0204 | `read-write-lock` | Read-Write Lock | Many readers or one writer; writer preference to avoid starvation | hard | all |
 | 0205 | `concurrency-limiter` | Concurrency Limiter | Counting semaphore with at most k holders and FIFO fairness | medium | all |
 
-### debugging (16, kind `function` or `design` with `stub: buggy`, `problems/`)
+### debugging (23, kind `function` or `design` with `stub: buggy`, `problems/`)
 
-Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on all 16 rows, with no exceptions.
+Labels: `domains: [algorithms]`, `job_roles: [general]` and `scope: function` on the first 16 rows, with no exceptions. `0264` to `0271` carry theirs in their own table.
 
 The eight planned rows (owner B1) port one bug to the languages it exists in; 0240 to 0247 are bugs native to Go and Rust ([ADR 0012](../decisions/0012-go-and-rust.md)).
 
@@ -413,6 +421,18 @@ The eight planned rows (owner B1) port one bug to the languages it exists in; 02
 | 0245 | `debug-float-ordering` | Debug: Float Ordering | A never-shown creative's rate of `0 / 0` is NaN, and the `partial_cmp(...).unwrap()` sort panics on it | medium | rust |
 | 0246 | `debug-char-boundary` | Debug: Char Boundary | Truncation by byte index, which panics inside a multi-byte character | medium | rust |
 | 0247 | `debug-clone-mutation` | Debug: Clone Mutation | A clone added to satisfy the borrow checker takes the credit, so transfers credit nobody | medium | rust |
+
+`0264` to `0271`, without `0267`, which is a project under [practical](#practical-38-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
+
+| id | slug | title | covers | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|-------|------------|-----------|---------|-----------|-------|
+| 0264 | `debug-sorted-report-rows` | Debug: Sorted Report Rows | `.sort()` compares as strings and sorts in place, and `indexOf` then pairs totals with the wrong regions | medium | typescript | `backend` | `backend` | function |
+| 0265 | `debug-pagination-query-strings` | Debug: Pagination Query Strings | Query values are strings, so `+` joins them and `>` compares them as text, while the numeric defaults hide it | medium | typescript | `backend` | `backend` | function |
+| 0266 | `debug-invoice-total-cents` | Debug: Invoice Total Cents | Binary floats for money: `19.99 * 100` is not 1999, and rounding the total misses exact half cents | medium | typescript | `backend`, `fintech` | `backend` | function |
+| 0268 | `debug-stale-closure-callbacks` | Debug: Stale Closure Callbacks | After-commit callbacks capture variables, not values: a `var` in a loop and `let`s outside it | medium | typescript | `backend` | `backend` | function |
+| 0269 | `debug-local-day-boundaries` | Debug: Local Day Boundaries | `new Date("2026-11-05")` is midnight UTC, so a shop's local day opens at the wrong instant | medium | typescript | `backend` | `backend` | function |
+| 0270 | `debug-shared-default-config` | Debug: Shared Default Config | A spread is a shallow copy, so one tenant's change reaches the module-level defaults | medium | typescript | `backend` | `backend` | function |
+| 0271 | `debug-falsy-plan-update` | Debug: Falsy Plan Update | `\|\|` and a bare `if` eat `0`, `""` and `false`; `??` and an explicit check do not | easy | typescript | `backend` | `backend` | function |
 
 ### system-design (10, owner S1, `tracks/system-design/`)
 

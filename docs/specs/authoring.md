@@ -221,7 +221,7 @@ What a content stream writes for the `practical` and `lld` tracks, beyond what e
 | References | Every approach, implementing every level, in every language the problem lists (all six by default) | Every approach in every language the problem lists |
 | Optional | `generator.py` (then `generate` cases at the last level, one at the largest ladder size), `patterns`, more approaches | Same |
 
-A `function` or `design` problem on the `practical` track, such as the business tasks from `0214` and the security and AI/LLM problems from `0255`, has no levels and uses the usual sections with `## Examples`, and the ready criteria for its kind. `solutions/broken/` is for concurrent problems and projects with stress cases, and every approach must pass every case, so a wrong answer cannot be stored with such a problem: name it under `### Pitfalls and edge cases`, with the hidden case that catches it.
+A `function` or `design` problem on the `practical` track, such as the business tasks from `0214` and the security and AI/LLM problems from `0255`, has no levels and uses the usual sections with `## Examples`, and the ready criteria for its kind. `solutions/broken/` is for concurrent problems and projects with stress cases, and every approach must pass every case, so a wrong answer cannot be stored with such a problem: name it under `### Pitfalls and edge cases`, with the hidden case that catches it. A project without stress cases does the same: S12 refuses its `solutions/broken/`, and D7 requires a broken overlay to pass every sequential case, which is what a logic bug does not do.
 
 ### Project problems
 
@@ -237,7 +237,7 @@ A [project problem](problem-format.md#project-problems) (`kind: project`, track 
 | 4s | With stress cases: write the broken overlays in `solutions/broken/<id>/` and tune the cases until each is caught | `cstudy verify <slug> --require-ready` (D6, D7) |
 | 5 | Write `solutions/explanation.md` with `### Design`; set `status: ready` | `cstudy verify <slug> --require-ready` |
 
-The starter is what the user sees first, so it states the contract and nothing more: level 1's methods with "not implemented" bodies, no hint of later levels, and seeded files that a real codebase would have (model types, a test fixture) rather than a solution's structure.
+The starter is what the user sees first, so it states the contract and nothing more: level 1's methods with "not implemented" bodies, no hint of later levels, and seeded files that a real codebase would have (model types, a test fixture) rather than a solution's structure. A project that trains working in code you did not write (`0262`, `0263`) starts from a service that already runs instead, and level 1 asks for a change to it, so the untouched starter still fails level 1. Its later levels may add no method, so they have no `Methods to add:` line. Fields a later level adds to a response break the earlier levels' exact cases, so the starter's response already has that shape, or the level adds a route.
 
 A project whose code waits declares `project.clock: virtual` and writes its waiting cases with the [harness operations](problem-format.md#asynchronous-code-and-the-virtual-clock); a project whose code is shared between threads or tasks has [stress cases](problem-format.md#stress-cases-in-projects). Time-dependent behavior takes timestamps as arguments only in a project without the virtual clock.
 
@@ -315,6 +315,7 @@ A debugging problem is an ordinary problem (`track: debugging`, `stub: buggy`) w
 - `buggy/solution.<ext>` for each language in `languages`, written like a reference file (no JVM `package` line), with the same symbols the signature declares.
 - The bug makes at least one case fail in every language (D8); visible examples may pass, so the user has to find the failing input.
 - `solutions/` holds the fixed code as the `optimal` approach; `explanation.md` names the bug in `### Intuition` and the general trap in `### Pitfalls and edge cases`.
+- A debugging problem is graded synchronously, so a fix that needs a real `await` cannot pass one: `async` is for projects only (S18), and a Promise result is `invalid_output`. Such a bug is a project on the virtual clock whose starter holds it (`0267`).
 - A language-specific bug (integer overflow, mutable default arguments, boxed equality) restricts `languages` to the languages that have it. Go and Rust get bugs of their own (append aliasing, nil map writes, `usize` underflow, NaN ordering and others), each listing only `go` or `rust`, rather than ports of the core-language problems ([ADR 0012](../decisions/0012-go-and-rust.md)).
 
 ## Items

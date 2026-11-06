@@ -11,10 +11,10 @@ Every problem and item also has three [labels](#labels) that are independent of 
 | Track id | Name | Autograded | Location | Format | Target |
 |----------|------|------------|----------|--------|--------|
 | `dsa` | Data structures and algorithms | yes | `problems/` | `function` or `design` | 185 (Phases 1 and 3) |
-| `practical` | Practical multi-level | yes, level by level | `problems/` | `progressive`, `function` or `design`, or `project` (a seeded folder in one language) | 6 (Phase 4); one banking project problem per language (Phase 8); 7 security and AI/LLM problems (Phase 13) |
+| `practical` | Practical multi-level | yes, level by level | `problems/` | `progressive`, `function` or `design`, or `project` (a seeded folder in one language) | 6 (Phase 4); one banking project problem per language (Phase 8); 7 security and AI/LLM problems and 3 backend TypeScript projects (Phase 13) |
 | `lld` | Object-oriented and low-level design | API by ops tests; design by rubric | `problems/` | `design` plus `rubric.md` | 8 (Phase 4) |
 | `concurrency` | Concurrency | yes, per language subset | `problems/` | `concurrent` | 6 (Phase 5) |
-| `debugging` | Debugging | yes | `problems/` | `function` or `design` with `stub: buggy` | 8 (Phase 6) |
+| `debugging` | Debugging | yes | `problems/` | `function` or `design` with `stub: buggy` | 8 (Phase 6); 7 JavaScript traps (Phase 13) |
 | `system-design` | System design | no (rubric) | `tracks/system-design/` | item | 10 (Phase 6) |
 | `code-review` | Code review | no (rubric) | `tracks/code-review/` | item | 6 (Phase 6) |
 | `behavioral` | Behavioral | no | `tracks/behavioral/README.md` | guidance only | 0 items |
