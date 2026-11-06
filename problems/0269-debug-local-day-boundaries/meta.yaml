@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0269"
+slug: debug-local-day-boundaries
+title: "Debug: Local Day Boundaries"
+status: ready
+difficulty: medium
+track: debugging
+kind: function
+domains: [backend]
+job_roles: [backend]
+scope: function
+languages: [typescript]
+stub: buggy
+signature:
+  function:
+    name: ordersOnLocalDay
+    params:
+      - {name: orderIds, type: "string[]"}
+      - {name: placedAt, type: "string[]"}
+      - {name: day, type: string}
+      - {name: utcOffsetMinutes, type: int}
+    returns: {type: "string[]"}
+comparator: {type: exact}
+approaches:
+  - {id: local-midnight-in-utc, name: Local midnight as an instant, role: optimal, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n"}
+related: [debug-pagination-query-strings, debug-invoice-total-cents]
+estimate_minutes: 10

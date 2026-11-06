@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {"id": "ex1", "visible": true, "input": {"orderIds": ["a", "b"], "placedAt": ["2026-11-05T17:00:00Z", "2026-11-06T17:00:00Z"], "day": "2026-11-05", "utcOffsetMinutes": -300}, "expected": ["a"]},
+    {"id": "ex2", "visible": true, "input": {"orderIds": ["a", "b", "c"], "placedAt": ["2026-11-04T23:59:59Z", "2026-11-05T00:00:00Z", "2026-11-06T00:00:00Z"], "day": "2026-11-05", "utcOffsetMinutes": 0}, "expected": ["b"]},
+    {"id": "h1", "input": {"orderIds": ["sunday-night", "monday"], "placedAt": ["2026-11-05T02:00:00Z", "2026-11-05T12:00:00Z"], "day": "2026-11-05", "utcOffsetMinutes": -300}, "expected": ["monday"], "note": "the report: 02:00 UTC is 21:00 the evening before at -300; new Date(day) is midnight UTC, not local midnight"},
+    {"id": "h2", "input": {"orderIds": ["early", "noon"], "placedAt": ["2026-11-04T16:00:00Z", "2026-11-05T03:00:00Z"], "day": "2026-11-05", "utcOffsetMinutes": 540}, "expected": ["early", "noon"], "note": "16:00 UTC on the 4th is 01:00 on the 5th at +540; a machine's own zone can match at most one of h1 and h2, so T00:00:00 without a zone fails on any machine"},
+    {"id": "h3", "input": {"orderIds": ["before", "start", "last", "after"], "placedAt": ["2026-11-05T04:59:59Z", "2026-11-05T05:00:00Z", "2026-11-06T04:59:59Z", "2026-11-06T05:00:00Z"], "day": "2026-11-05", "utcOffsetMinutes": -300}, "expected": ["start", "last"], "note": "both edges at -300: local midnight is included, the next one is not"},
+    {"id": "h4", "input": {"orderIds": ["before", "start", "last", "after"], "placedAt": ["2026-11-04T14:59:59Z", "2026-11-04T15:00:00Z", "2026-11-05T14:59:59Z", "2026-11-05T15:00:00Z"], "day": "2026-11-05", "utcOffsetMinutes": 540}, "expected": ["start", "last"], "note": "both edges at +540: local midnight falls on the UTC day before"},
+    {"id": "h5", "input": {"orderIds": ["before", "start", "last", "after"], "placedAt": ["2026-11-04T18:29:59Z", "2026-11-04T18:30:00Z", "2026-11-05T18:29:59Z", "2026-11-05T18:30:00Z"], "day": "2026-11-05", "utcOffsetMinutes": 330}, "expected": ["start", "last"], "note": "an offset of 5 hours 30 minutes: offsets are not whole hours"},
+    {"id": "h6", "input": {"orderIds": ["same-offset", "tokyo-text"], "placedAt": ["2026-11-05T23:30:00-05:00", "2026-11-05T01:00:00+09:00"], "day": "2026-11-05", "utcOffsetMinutes": -300}, "expected": ["same-offset"], "note": "a timestamp's own offset counts: the second reads 2026-11-05 as text, and at -300 it is still the 4th"},
+    {"id": "h7", "input": {"orderIds": ["utc-text", "local"], "placedAt": ["2026-11-06T03:00:00Z", "2026-11-05T12:00:00+02:00"], "day": "2026-11-05", "utcOffsetMinutes": -300}, "expected": ["utc-text", "local"], "note": "the first reads as the 6th in text, and is 22:00 on the 5th at -300"},
+    {"id": "h8", "input": {"orderIds": ["last", "next-year"], "placedAt": ["2027-01-01T07:59:00Z", "2027-01-01T08:00:00Z"], "day": "2026-12-31", "utcOffsetMinutes": -480}, "expected": ["last"], "note": "the day's end falls in the next UTC year"},
+    {"id": "h9", "input": {"orderIds": ["before", "start", "last", "after"], "placedAt": ["2028-02-28T22:59:59Z", "2028-02-28T23:00:00Z", "2028-02-29T22:59:59Z", "2028-02-29T23:00:00Z"], "day": "2028-02-29", "utcOffsetMinutes": 60}, "expected": ["start", "last"], "note": "a leap day, an hour ahead of UTC"},
+    {"id": "h10", "input": {"orderIds": ["c", "a", "b"], "placedAt": ["2026-11-05T20:00:00Z", "2026-11-05T10:00:00Z", "2026-11-05T15:00:00Z"], "day": "2026-11-05", "utcOffsetMinutes": -300}, "expected": ["c", "a", "b"], "note": "input order, not time order"},
+    {"id": "h11", "input": {"orderIds": [], "placedAt": [], "day": "2026-11-05", "utcOffsetMinutes": 540}, "expected": [], "note": "no orders"},
+    {"id": "h12", "input": {"orderIds": ["line", "next"], "placedAt": ["2026-11-05T09:59:00Z", "2026-11-05T10:00:00Z"], "day": "2026-11-05", "utcOffsetMinutes": 840}, "expected": ["line"], "note": "the far edge of the zones, 14 hours ahead"}
+  ]
+}
