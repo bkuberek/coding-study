@@ -27,7 +27,7 @@ A new feature gets a folder of its own under `src/`. Its routes join the table i
 
 ## There is no real HTTP server
 
-No dependencies are allowed, so `request` stands in for the network. The method and the path arrive as they would in an HTTP request line, the path with its query string. `headers` is a list of `"Name: value"` strings, and the body is the raw text a client sent. Header names reach a handler in lower case, as they do in Node's own HTTP server, so a handler reads `request.headers.get("if-match")`.
+No dependencies are allowed, so `request` stands in for the network. The method and the path arrive as they would in an HTTP request line, the path with its query string. `headers` is a list of `"Name: value"` strings, and the body is the raw text a client sent. Header names reach a handler in lower case, as they do in Node's own HTTP server, so a handler reads `request.headers.get("x-request-id")`.
 
 `WorkOrderApi.request` serializes every answer with `canonicalJson`, so the order in which you build an object's keys never matters.
 

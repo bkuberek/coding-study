@@ -67,4 +67,4 @@ Once the values are converted, every operator means what it reads as. `Math.min`
 
 ### Language notes
 
-Express and similar frameworks type `req.query` values loosely, which is exactly how this `any` usually arrives. `process.env` values are always strings or `undefined`. Node's `URLSearchParams.get` returns `string | null`, which the reference uses so that the compiler checks the conversion.
+Web frameworks often type query values loosely, which is exactly how this `any` usually arrives. `process.env` values are always strings or `undefined`. Node's `URLSearchParams.get` returns `string | null`, which the reference uses so that the compiler checks the conversion.
