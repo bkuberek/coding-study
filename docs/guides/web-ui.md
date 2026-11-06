@@ -48,7 +48,7 @@ The top bar holds the views, the attempts in progress, and the mock banner while
 | Attempt | Start, Resume, or the in-progress menu | The file tree, the editor, the results of the latest run, and the statement with its levels and hints |
 | Mock | <kbd>Alt</kbd>+<kbd>2</kbd> | The start form, or the running mock's countdown and problems |
 | Progress | <kbd>Alt</kbd>+<kbd>3</kbd> | `cstudy stats`, the reviews due, export and import |
-| Health | <kbd>Alt</kbd>+<kbd>4</kbd> | The `cstudy doctor` checks, Fix, and Verify for your own problems |
+| Health | <kbd>Alt</kbd>+<kbd>4</kbd> | The `cstudy doctor` checks, a **Fix** button on each row that `cstudy doctor --fix` repairs, and Verify for your own problems |
 | Settings | <kbd>Alt</kbd>+<kbd>5</kbd> | The preferences, and where the workspace and the settings file are |
 
 ![The problem list in the light theme](../images/web-ui-problems-light.png)
@@ -86,7 +86,7 @@ Two settings give the editor what an IDE gives: errors as you type, documentatio
    cstudy doctor --fix
    ```
 
-   (or choose **Fix** in the Health view). This installs about 46 MB into `.cs/lsp/` in your workspace, a download of about 7 MB, and needs the network that one time. After that practice needs no internet: nothing else is downloaded and no server reaches the network. Deleting `.cs/lsp/` is safe; `--fix` installs it again.
+   (or choose **Fix** in the Health view, on the row of each language or at the top). This installs about 46 MB into `.cs/lsp/` in your workspace, a download of about 7 MB, and needs the network that one time. After that practice needs no internet: nothing else is downloaded and no server reaches the network. Deleting `.cs/lsp/` is safe; `--fix` installs it again.
 3. Check the result. `cstudy doctor` shows a row per language while code intelligence is on, and the Settings view lists each language's state:
 
    ```text
@@ -242,7 +242,7 @@ A few things stay in the terminal: `cstudy init`, `cstudy ide`, `cstudy new`, `c
 | `reconnecting…` in the top bar | The page lost the server for a moment and tries again |
 | `disconnected` in the top bar | The server stopped or restarted: start it again and open the new URL |
 | `cstudy serve` exits 4, or `cstudy doctor` warns on `web ui assets` or `web server` | The page's files or the web server libraries are missing or damaged: reinstall `cstudy` with the command `cstudy doctor` prints, which names the install that runs; if it also warns on `installs`, keep one install first |
-| A language fails in the Health view | Install its toolchain ([toolchains](toolchains.md)), then use **Fix**, which runs `cstudy doctor --fix` |
+| A language fails in the Health view | Install its toolchain ([toolchains](toolchains.md)), then use **Fix**, on its row or at the top of the view, which runs `cstudy doctor --fix` |
 | The first Java or Kotlin run is slow | Gradle warms up on the first build, as in the terminal |
 | `not installed: run cstudy doctor --fix` in Settings, or `not installed` in the status bar | Run `cstudy doctor --fix` once, with the network on, then open the file again |
 | `stopped: exit 1` in the status bar | The language server ended: choose **Restart**, or run `cstudy doctor` to check the install |

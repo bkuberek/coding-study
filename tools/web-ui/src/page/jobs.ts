@@ -22,8 +22,10 @@ interface JobLine {
 }
 
 export interface JobPanelOptions {
-  /** Called once the job's child exited. */
+  /** Called once the job's child exited, after `busy(false)`. */
   readonly ended?: (closed: Closed) => void;
+  /** Called when the panel starts or stops following a job, and `running` has changed. */
+  readonly busy?: (busy: boolean) => void;
 }
 
 export class JobPanel {
@@ -110,8 +112,10 @@ export class JobPanel {
         this.#stream = null;
         this.#cancel.disabled = true;
         this.#state.replaceChildren(badge("?", "the server no longer keeps this job", "quiet"));
+        this.#options.busy?.(false);
       },
     });
+    this.#options.busy?.(true);
   }
 
   #append(line: JobLine): void {
@@ -127,6 +131,7 @@ export class JobPanel {
     const text = closed.signal ? `stopped by ${closed.signal}` : `exit ${closed.exit_code}`;
     this.#state.replaceChildren(badge(ok ? "✓" : "✕", text, ok ? "ok" : "fail"));
     this.#context.shell.announce(`job ended: ${text}`);
+    this.#options.busy?.(false);
     this.#options.ended?.(closed);
   }
 

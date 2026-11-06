@@ -1,6 +1,7 @@
 /**
  * The Health view (docs/specs/web-ui.md#health-view): the `cstudy doctor` rows, Fix, which runs
- * `cstudy doctor --fix` as a job and checks again, and Verify of the workspace's own problems.
+ * `cstudy doctor --fix` as a job and checks again, from the top of the view and from each row whose
+ * fix it is, and Verify of the workspace's own problems.
  */
 
 import "./health.css";
@@ -10,7 +11,10 @@ import { badge, command, fixHint, h } from "../dom.ts";
 import { checkBadge } from "../format.ts";
 import { JobPanel } from "../jobs.ts";
 import { loading, showFailure } from "../states.ts";
-import type { Doctor, ProblemList } from "../types.ts";
+import type { Check, Doctor, ProblemList } from "../types.ts";
+
+const FIX_COMMAND = "cstudy doctor --fix";
+const FIX_TITLE = `${FIX_COMMAND}, after its question`;
 
 export function healthView(context: PageContext): Cleanup {
   const { api, shell } = context;
@@ -38,7 +42,8 @@ export function healthView(context: PageContext): Cleanup {
           doctor.passed ? badge("✓", "passed", "ok") : badge("✕", "failing", "fail"),
           ` ${doctor.checks.length} checks · ${failed} fail · ${warned} warn`,
         );
-        rows.replaceChildren(table(doctor));
+        rows.replaceChildren(table(doctor, startFix));
+        showBusy();
         context.shell.announce(doctor.passed ? "every check passed" : `${failed} checks fail`);
       })
       .catch((error: unknown) => showFailure(rows, error))
@@ -47,16 +52,22 @@ export function healthView(context: PageContext): Cleanup {
       });
   };
   recheck.addEventListener("click", check);
-  const fixJob = new JobPanel(context, { ended: check });
-  const fix = h("button", { type: "button", class: "button", title: "cstudy doctor --fix, after its question" }, "Fix");
-  fix.addEventListener("click", () => void fixJob.start({ command: "doctor_fix" }, "cstudy doctor --fix"));
-  const verifyJob = new JobPanel(context);
+  const fixJob = new JobPanel(context, { ended: check, busy: () => showBusy() });
+  const verifyJob = new JobPanel(context, { busy: () => showBusy() });
+  const startFix = () => void fixJob.start({ command: "doctor_fix" }, FIX_COMMAND);
+  const fix = h("button", { type: "button", class: "button", title: FIX_TITLE }, "Fix");
+  fix.addEventListener("click", startFix);
+  // The server runs one job at a time, so no Fix can start another while any job runs.
+  const showBusy = () => {
+    const busy = fixJob.running || verifyJob.running;
+    for (const button of [fix, ...rows.querySelectorAll<HTMLButtonElement>(".row-fix")]) button.disabled = busy;
+  };
   shell.main.replaceChildren(
     h(
       "section",
       { class: "health", "aria-labelledby": "health-heading" },
       h("header", { class: "view-head" }, h("h1", { id: "health-heading" }, "health"), summary, recheck),
-      h("p", { class: "health-fix" }, fix, h("span", { class: "quiet" }, " repairs what fails: ", command("cstudy doctor --fix"))),
+      h("p", { class: "health-fix" }, fix, h("span", { class: "quiet" }, " repairs what fails or warns: ", command(FIX_COMMAND))),
       fixJob.element,
       rows,
       yourProblems(context, verifyJob),
@@ -114,7 +125,16 @@ function yourProblems(context: PageContext, job: JobPanel): HTMLElement {
   );
 }
 
-function table(doctor: Doctor): HTMLElement {
+/** A Fix button for a row whose fix is the command itself, text for any other hint. */
+function fixCell(found: Check, startFix: () => void): Node | null {
+  if (found.fix === null) return null;
+  if (found.fix !== FIX_COMMAND) return fixHint(found.fix);
+  const button = h("button", { type: "button", class: "button row-fix", "aria-label": `Fix ${found.name}`, title: FIX_TITLE }, "Fix");
+  button.addEventListener("click", startFix);
+  return button;
+}
+
+function table(doctor: Doctor, startFix: () => void): HTMLElement {
   return h(
     "table",
     { class: "checks" },
@@ -131,7 +151,7 @@ function table(doctor: Doctor): HTMLElement {
           h("td", {}, badge(status.glyph, status.text, status.tone)),
           h("td", { class: "check-name" }, found.name),
           h("td", { class: "check-detail" }, found.detail),
-          h("td", {}, found.fix ? fixHint(found.fix) : null),
+          h("td", {}, fixCell(found, startFix)),
         );
       }),
     ),

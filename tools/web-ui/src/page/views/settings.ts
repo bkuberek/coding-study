@@ -124,7 +124,7 @@ function languageList(context: PageContext): { readonly element: HTMLElement; re
               {},
               h("span", { class: "language-name" }, row.name),
               " ",
-              row.health ? h("a", { href: "#/health" }, row.detail) : h("span", { class: "quiet" }, row.detail),
+              row.health ? h("a", { href: "#/health", title: "Opens Health, where Fix installs it" }, row.detail) : h("span", { class: "quiet" }, row.detail),
             ),
           ),
         );

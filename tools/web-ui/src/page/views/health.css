@@ -22,6 +22,18 @@
   background: color-mix(in srgb, var(--fail) 7%, transparent);
 }
 
+/* A hint that is not the command of the Fix button is text: no chip, nothing that looks pressable. */
+.checks .fix-hint {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+}
+
+.row-fix {
+  padding: 1px 10px;
+}
+
 .health-fix {
   display: flex;
   align-items: center;
