@@ -2,7 +2,7 @@
 
 import re
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from enum import IntEnum, StrEnum
 
@@ -101,6 +101,11 @@ class Attempt:
     def solve_time(self, ended_at: datetime) -> timedelta:
         """Wall clock since the start; there is no pause."""
         return ended_at - self.started_at
+
+    def abandoned(self, ended_at: datetime) -> "Attempt":
+        """The attempt over as `abandoned`: only its status and end change, so it has no grade
+        and no rating, and it counts toward no schedule."""
+        return replace(self, status=AttemptStatus.ABANDONED, ended_at=ended_at)
 
     def is_over_time(self, ended_at: datetime) -> bool:
         if self.time_limit_s is None:

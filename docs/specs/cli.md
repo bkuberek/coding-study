@@ -20,6 +20,7 @@
 | [`cstudy list`](#cstudy-list) | Browse problems with filters | 0 (status columns in 1) |
 | [`cstudy show`](#cstudy-show) | Print the rendered statement | 0 |
 | [`cstudy done`](#cstudy-done) | Finish an attempt and schedule review | 1 |
+| [`cstudy abort`](#cstudy-abort) | Stop working on a problem: the attempt ends as abandoned | 9 |
 | [`cstudy next`](#cstudy-next) | Pick what to practice | 1 |
 | [`cstudy hint`](#cstudy-hint) | Reveal the next hint | 1 |
 | [`cstudy new`](#cstudy-new) | Scaffold a new problem | 1 |
@@ -315,7 +316,7 @@ Planned: a service project's start shows [what the problem depends on](service-p
 | `--no-open` | Do not launch the editor |
 | `--restore` | Project problems: write one file of the folder back as `cstudy` provides it, and do nothing else ([below](#restoring-a-file)) |
 
-Effects: generate or keep the stub ([runners](runners.md#stub-generation)), render `.statements/<slug>.md`, insert an attempt (`in_progress`), and open `$EDITOR <stub> <statement>`. For Java and Kotlin, the selected JDK must be in the problem's range: otherwise `cstudy start` exits 4 before it writes anything ([the selected JDK](#the-selected-jdk)). Starting a problem that already has an `in_progress` attempt in the same language resumes it. A progressive problem's new attempt opens level 1, and the statement shows only the unlocked levels; the output adds a `level` line (`level      1 of 4: Set and get`).
+Effects: generate or keep the stub ([runners](runners.md#stub-generation)), render `.statements/<slug>.md`, insert an attempt (`in_progress`), and open `$EDITOR <stub> <statement>`. For Java and Kotlin, the selected JDK must be in the problem's range: otherwise `cstudy start` exits 4 before it writes anything ([the selected JDK](#the-selected-jdk)). Starting a problem that already has an `in_progress` attempt in the same language resumes it; one whose attempt [`cstudy abort`](#cstudy-abort) ended begins a new attempt. A progressive problem's new attempt opens level 1, and the statement shows only the unlocked levels; the output adds a `level` line (`level      1 of 4: Set and get`).
 
 ```text
 two-sum · easy · arrays-hashing · kotlin
@@ -946,6 +947,29 @@ cstudy done [<slug|file>] (--rating easy|ok|hard | --gave-up) [--notes TEXT]
 ```text
 two-sum · kotlin · passed · 18m 40s · rating ok · hints 0
 next review  2026-10-27 (in 3 days) · ease 2.50
+```
+
+## cstudy abort
+
+```text
+cstudy abort [<slug|file>] [--yes]
+```
+
+Stops working on a problem without finishing it. `cstudy done` closes an attempt with a rating and schedules its review; `cstudy abort` closes it as `abandoned`, the status a `--fresh` start gives the attempt it replaces, and which no other command set before.
+
+| Rule | Detail |
+|------|--------|
+| Target | The attempt in progress for `<slug|file>`, by default the active one, as `cstudy done` finds it. With none in progress it exits 3 |
+| Question | `Abort two-sum in python? The attempt ends as abandoned. Your files stay; progress and the review schedule do not change. [y/N]`. `--yes` does not ask. A no, or just Enter, prints `not aborted` and exits 0 with the attempt as it was |
+| Effects | `status` becomes `abandoned` and `ended_at` is set, which stops the timer. No grade, no rating and no `schedule` row changes, and the problem's status reads as if the attempt had not been made ([problem status](progress-and-scheduling.md#problem-status)): an `abandoned` attempt never counts. The attempt leaves the menu of the attempts in progress. Its hints and test runs stay in `cstudy history` |
+| Files | Nothing is deleted or moved: the practice file, the project folder or the notes file stays where it is |
+| Refusal | While a run or a job is active in the workspace, whichever terminal or page started it, it exits 3 and changes nothing: `cstudy abort waits until it ends: a run or a job is in progress (process 4242)` |
+| After | `cstudy start` of the same problem begins a new attempt, with a new id, and does not resume the aborted one. It goes on in the file that stayed: a start that is not a review, a `--fresh` or a mock writes a stub only when the file is missing. For a problem with a review scheduled, or with `--fresh`, the file moves to `.archive/<slug>/<attempt_id>-<lang>/` first, under the aborted attempt, where the page's History reads it ([`cstudy start`](#cstudy-start)). Nothing is deleted |
+
+```text
+two-sum · python · abandoned · 18m 40s
+kept    python/practice/two_sum.py
+next    cstudy start two-sum
 ```
 
 ## cstudy next

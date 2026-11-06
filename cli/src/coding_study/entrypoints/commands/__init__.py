@@ -5,6 +5,7 @@ from collections.abc import Callable
 import typer
 
 from coding_study.entrypoints.commands import (
+    abort,
     bench,
     config,
     doctor,
@@ -45,6 +46,7 @@ COMMAND_REGISTRATIONS: tuple[Callable[[typer.Typer], None], ...] = (
     show.register,
     solution.register,
     done.register,
+    abort.register,
     verify.register,
     next_problem.register,
     hint.register,

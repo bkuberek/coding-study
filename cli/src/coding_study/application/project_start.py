@@ -27,7 +27,7 @@ from coding_study.application.project_workspace import (
     seed_project,
 )
 from coding_study.application.statement_file import write_statement
-from coding_study.domain.attempts import Attempt, AttemptMode, AttemptStatus, NewAttempt
+from coding_study.domain.attempts import Attempt, AttemptMode, NewAttempt
 from coding_study.domain.errors import UsageError
 from coding_study.domain.levels import FIRST_LEVEL
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
@@ -199,10 +199,7 @@ class _ProjectStarter:
             raise
 
     def _abandon(self, attempt: Attempt) -> None:
-        ended = replace(
-            attempt, status=AttemptStatus.ABANDONED, ended_at=self._environment.clock.now()
-        )
-        self._environment.progress.update_attempt(ended)
+        self._environment.progress.update_attempt(attempt.abandoned(self._environment.clock.now()))
 
     def _started(self, tests: LevelTestFile) -> StartedProject:
         signature = self._problem.meta.signature

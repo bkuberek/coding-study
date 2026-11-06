@@ -119,6 +119,7 @@ CREATE TABLE level_unlocks (           -- project problems: when each level open
 | `cstudy hint` | `hints_used += 1` |
 | `cstudy solution` before a full pass | `solution_revealed = 1` |
 | `cstudy done` | Set `ended_at`, `status` (`passed` or `failed`), `rating`, `grade`; update `schedule` |
+| `cstudy abort` | Set `ended_at` and `status` `abandoned`: no grade, no rating and no change to `schedule`; refused while a run or a job is active. The files stay, and the next `cstudy start` begins a new attempt |
 
 Solve time is `ended_at - started_at` (wall clock; there is no pause).
 
@@ -198,7 +199,7 @@ Worked sequence with the defaults (ok, ok, ok, hard, again, ok):
 
 | Status | Definition |
 |--------|------------|
-| `in_progress` | An attempt with status `in_progress` is open, in any language. It comes ahead of every status below, `due` included, and lasts while the attempt is open: `cstudy done` or `cstudy start --fresh` ends it, and an `abandoned` attempt never counts |
+| `in_progress` | An attempt with status `in_progress` is open, in any language. It comes ahead of every status below, `due` included, and lasts while the attempt is open: `cstudy done`, `cstudy abort` or `cstudy start --fresh` ends it, and an `abandoned` attempt never counts |
 | `new` | No attempt with status `passed` or `failed`, and none open |
 | `attempted` | Finished attempts exist, none `passed` |
 | `passed` | At least one `passed` attempt; not mastered |

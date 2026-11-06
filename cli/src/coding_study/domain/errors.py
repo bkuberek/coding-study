@@ -81,7 +81,8 @@ class ResetNotConfirmedError(Exception):
 
 
 class WorkspaceBusyError(Exception):
-    """A run or a job is active, so the workspace can't be reset (exit code 3)."""
+    """A run or a job is active, so the workspace can't be reset and an attempt can't be aborted
+    (exit code 3)."""
 
 
 class VersionControlError(Exception):

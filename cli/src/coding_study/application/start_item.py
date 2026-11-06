@@ -11,7 +11,7 @@ from coding_study.application.environment import Environment
 from coding_study.application.item_statement_file import guide_links, write_item_statement
 from coding_study.application.start_attempt import attempt_mode
 from coding_study.domain import layout
-from coding_study.domain.attempts import Attempt, AttemptMode, AttemptStatus, NewAttempt
+from coding_study.domain.attempts import Attempt, AttemptMode, NewAttempt
 from coding_study.domain.errors import ContentError, ContentIssue
 from coding_study.domain.item_statement import notes_text
 from coding_study.domain.items import TEMPLATE_FILE, GuideLink, ItemMeta
@@ -66,8 +66,7 @@ class _ItemStart:
         template = self._notes.template()
         previous = progress.latest_attempt(slug, None)
         if in_progress is not None:
-            abandoned = replace(in_progress, status=AttemptStatus.ABANDONED, ended_at=clock.now())
-            progress.update_attempt(abandoned)
+            progress.update_attempt(in_progress.abandoned(clock.now()))
         attempt = progress.add_attempt(
             NewAttempt(slug, None, mode, clock.now(), self._request.timer_s, self._notes.path)
         )

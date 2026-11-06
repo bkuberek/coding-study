@@ -133,3 +133,13 @@ def test_timer_durations(text, seconds):
 def test_invalid_timer_durations(text):
     with pytest.raises(ValueError, match="invalid timer"):
         parse_timer(text)
+
+
+def test_an_abandoned_attempt_is_over_at_the_moment_it_was_abandoned():
+    ended = ATTEMPT.abandoned(ENDED)
+    assert (ended.status, ended.ended_at) == (AttemptStatus.ABANDONED, ENDED)
+
+
+def test_abandoning_changes_nothing_but_the_status_and_the_end():
+    ended = ATTEMPT.abandoned(ENDED)
+    assert replace(ended, status=ATTEMPT.status, ended_at=None) == ATTEMPT

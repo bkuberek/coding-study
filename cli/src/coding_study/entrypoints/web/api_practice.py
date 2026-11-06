@@ -1,6 +1,7 @@
-"""Starting an attempt, revealing its hints and finishing it (docs/specs/web-ui.md#attempts),
-through the use cases `cstudy start --no-open`, `cstudy hint` and `cstudy done` call. Hints and
-done address the attempt by its id and call the use case with its slug and language."""
+"""Starting an attempt, revealing its hints and finishing or aborting it
+(docs/specs/web-ui.md#attempts), through the use cases `cstudy start --no-open`, `cstudy hint`,
+`cstudy done` and `cstudy abort` call. Hints, done and abort address the attempt by its id and call
+the use case with its slug and language."""
 
 from dataclasses import replace
 
@@ -9,6 +10,8 @@ from starlette.responses import Response
 from starlette.routing import BaseRoute, Route
 
 from coding_study.adapters.ide.generated_files import FsGeneratedFiles
+from coding_study.adapters.run_activity import ProcessRunActivity
+from coding_study.application.abort_attempt import abort_attempt
 from coding_study.application.active_attempt import attempt_in_progress
 from coding_study.application.attempt_status import attempt_status
 from coding_study.application.complete_attempt import DoneRequest, complete_attempt
@@ -22,6 +25,7 @@ from coding_study.domain.attempts import SECONDS_PER_MINUTE, Attempt, Rating
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Language
+from coding_study.entrypoints.commands.abort import abort_question
 from coding_study.entrypoints.commands.ide import RENDERERS
 from coding_study.entrypoints.commands.status import status_document
 from coding_study.entrypoints.web.api_attempts import ATTEMPT
@@ -33,11 +37,13 @@ from coding_study.entrypoints.web.bodies import (
     required_text,
     switch,
 )
-from coding_study.entrypoints.web.context import in_workspace
-from coding_study.entrypoints.web.documents import done_document, hint_document
+from coding_study.entrypoints.web.context import in_workspace, server_state
+from coding_study.entrypoints.web.documents import abort_document, done_document, hint_document
+from coding_study.entrypoints.web.errors import ApiError, ErrorCode
 from coding_study.entrypoints.web.responses import JsonResponse
 
 ATTEMPTS = "/api/v1/attempts"
+ABORT_COMMAND = "cstudy abort"
 CREATED = 201
 TIMER_MINUTES = (1, 600)
 
@@ -60,6 +66,17 @@ async def hint(request: Request) -> Response:
     return JsonResponse(await in_workspace(request, _hint, _attempt_id(request)))
 
 
+async def abort(request: Request) -> Response:
+    """`cstudy abort`: the question first, then no run or job during the abort."""
+    body = await object_body(request)
+    server = server_state(request)
+    async with server.children.none_running(ABORT_COMMAND):
+        document = await in_workspace(
+            request, _abort, _attempt_id(request), switch(body, "confirm")
+        )
+    return JsonResponse(document)
+
+
 async def done(request: Request) -> Response:
     body = await object_body(request)
     done_request = DoneRequest(
@@ -75,6 +92,7 @@ def practice_routes() -> list[BaseRoute]:
         Route(ATTEMPTS, start, methods=["POST"]),
         Route(f"{ATTEMPT}/hints", hint, methods=["POST"]),
         Route(f"{ATTEMPT}/done", done, methods=["POST"]),
+        Route(f"{ATTEMPT}/abort", abort, methods=["POST"]),
     ]
 
 
@@ -122,3 +140,11 @@ def _done(environment: Environment, attempt_id: int, request: DoneRequest) -> di
     attempt = attempt_in_progress(environment.progress, attempt_id)
     addressed = replace(request, slug=attempt.slug, language=attempt.language)
     return done_document(complete_attempt(environment, addressed))
+
+
+def _abort(environment: Environment, attempt_id: int, confirmed: bool) -> dict[str, JsonValue]:
+    attempt = attempt_in_progress(environment.progress, attempt_id)
+    if not confirmed:
+        raise ApiError(ErrorCode.CONFIRMATION_REQUIRED, abort_question(attempt))
+    activity = ProcessRunActivity(environment.root)
+    return abort_document(abort_attempt(environment, attempt, activity))

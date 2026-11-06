@@ -42,6 +42,7 @@ DOCUMENTS = (
     "problem",
     "statement",
     "hint",
+    "abort",
     "done",
     "solution",
     "file_tree",
@@ -118,6 +119,7 @@ def documents(tmp_path_factory: pytest.TempPathFactory) -> Documents:
     _mock(tmp_path_factory.mktemp("mock"), record)
     _watch(tmp_path_factory.mktemp("watch"), record)
     _reset(tmp_path_factory.mktemp("reset"), record)
+    _abort(tmp_path_factory.mktemp("abort"), record)
     return record.documents
 
 
@@ -239,6 +241,18 @@ def _reset(root: Path, record: Recorder) -> None:
             "reset_done",
             client.post("/api/v1/reset", json={"confirm": "reset"}, headers=WRITE_HEADERS),
         )
+
+
+def _abort(root: Path, record: Recorder) -> None:
+    """An attempt aborted: the question first, then the abort."""
+    problems = copy_catalog_problems(root / "catalog", FIRST_CATALOG)
+    workspace = repository_root(root / "workspace", problems, FIXTURE_TRACKS)
+    environment = make_environment(workspace, toolchains=FakeToolchains(stub_generators=STUBS))
+    attempt = start_attempt(environment, StartRequest("two-sum", Language.PYTHON)).attempt.id
+    path = f"/api/v1/attempts/{attempt}/abort"
+    with session_client(web_app(workspace, environment)) as client:
+        record("error", client.post(path, json={}, headers=WRITE_HEADERS))
+        record("abort", client.post(path, json={"confirm": True}, headers=WRITE_HEADERS))
 
 
 def _mock(root: Path, record: Recorder) -> None:

@@ -12,6 +12,7 @@ from coding_study.application.mock_interview import (
 from coding_study.application.past_attempt_files import PastFile, PastFiles
 from coding_study.application.problem_details import ProblemDetails
 from coding_study.application.reveal_hint import HintsLocked, RevealedHint
+from coding_study.domain.attempts import Attempt
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.items import entry_kind
 from coding_study.domain.problem import Language, ProblemKind, ProblemMeta, Track
@@ -147,6 +148,18 @@ def done_document(finished: FinishedAttempt) -> dict[str, JsonValue]:
             "in_days": (schedule.due_on - finished.today).days,
             "ease": schedule.state.ease,
         },
+    }
+
+
+def abort_document(aborted: Attempt) -> dict[str, JsonValue]:
+    """`POST /api/v1/attempts/{id}/abort`: the attempt as `cstudy abort` leaves it, and the file
+    or folder of the user's that stays."""
+    return {
+        "attempt_id": aborted.id,
+        "slug": aborted.slug,
+        "language": aborted.language.value if aborted.language else None,
+        "status": aborted.status.value,
+        "kept": aborted.stub_path,
     }
 
 

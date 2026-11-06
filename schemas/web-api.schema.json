@@ -280,6 +280,19 @@
         }
       ]
     },
+    "abort": {
+      "description": "POST /api/v1/attempts/{id}/abort: the attempt as cstudy abort leaves it, and the file or folder of the user's that stays",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt_id", "slug", "language", "status", "kept"],
+      "properties": {
+        "attempt_id": { "type": "integer", "minimum": 1 },
+        "slug": { "type": "string" },
+        "language": { "anyOf": [{ "$ref": "#/$defs/language" }, { "type": "null" }] },
+        "status": { "const": "abandoned" },
+        "kept": { "description": "The practice file, project folder or notes file; null for an attempt started before the path was recorded", "type": ["string", "null"] }
+      }
+    },
     "done": {
       "description": "POST /api/v1/attempts/{id}/done: the values of the two lines cstudy done prints",
       "type": "object",

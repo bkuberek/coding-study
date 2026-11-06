@@ -15,7 +15,7 @@ from coding_study.application.project_start import (
 )
 from coding_study.application.statement_file import write_statement
 from coding_study.domain import layout
-from coding_study.domain.attempts import Attempt, AttemptMode, AttemptStatus, NewAttempt
+from coding_study.domain.attempts import Attempt, AttemptMode, NewAttempt
 from coding_study.domain.buggy_stubs import buggy_as_stub, buggy_file
 from coding_study.domain.errors import ContentError, ContentIssue, UsageError
 from coding_study.domain.levels import FIRST_LEVEL, LevelProgress, level_progress
@@ -201,10 +201,7 @@ class _Start:
         return FIRST_LEVEL if level_progress(self._problem.meta, None) else None
 
     def _abandon(self, attempt: Attempt) -> None:
-        ended = replace(
-            attempt, status=AttemptStatus.ABANDONED, ended_at=self._environment.clock.now()
-        )
-        self._environment.progress.update_attempt(ended)
+        self._environment.progress.update_attempt(attempt.abandoned(self._environment.clock.now()))
 
     def _archive(self, owner: Attempt) -> str:
         """Moves the stub into the archive directory of the attempt that wrote it."""
