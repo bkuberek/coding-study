@@ -4,8 +4,8 @@ built page directory."""
 
 import pytest
 
+from coding_study.adapters.installed_packages import NOTICE_FILE
 from coding_study.domain.about import SPONSOR_LINKS, WEBSITE
-from coding_study.entrypoints.installed_packages import NOTICE_FILE
 from tests.web_server import (
     TEST_VERSION,
     WRITE_HEADERS,

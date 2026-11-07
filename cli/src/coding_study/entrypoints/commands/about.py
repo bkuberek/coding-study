@@ -6,12 +6,12 @@ from typing import Annotated
 import typer
 from rich.text import Text
 
+from coding_study.adapters.installed_packages import InstalledSoftware
 from coding_study.adapters.workspace_marker import tool_version
 from coding_study.application.about import read_about, read_license_texts
 from coding_study.domain.about import About, CreditSection
 from coding_study.domain.errors import UsageError
 from coding_study.entrypoints.commands.export import labelled
-from coding_study.entrypoints.installed_packages import InstalledSoftware
 from coding_study.entrypoints.shared import add_command, console
 from coding_study.entrypoints.web import STATIC_DIRECTORY
 

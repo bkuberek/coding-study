@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from coding_study.entrypoints.installed_packages import (
+from coding_study.adapters.installed_packages import (
     NOTICE_FILE,
     InstalledSoftware,
     declared_license,

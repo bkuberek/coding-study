@@ -77,7 +77,7 @@ Each practice command maps to one page area, one endpoint and the use case the c
 | `adapters/toml_config.py`, `domain/config_keys.py` | Every key of the [config file](cli.md#configuration) once: how the parser reads it and what `GET /api/v1/config` says of it; `KEY_TITLES` holds each key's label and section, which a test holds equal to the keys |
 | `adapters/toml_config_file.py` | `config.toml` as Settings reads and writes it, with tomlkit, keeping its comments ([ADR 0022](../decisions/0022-settings-and-reset.md)); only the server imports it |
 | `application/about.py`, `domain/about.py` | [`cstudy about`](cli.md#cstudy-about) and the [About view](#about-view): the version, the license, the links and the credits, built once for both |
-| `entrypoints/installed_packages.py` | What this install holds of the software cstudy uses: the Python packages it needs and their license files, from the installed metadata, and `THIRD_PARTY_LICENSES.txt` from the static directory |
+| `adapters/installed_packages.py` | What this install holds of the software cstudy uses: the Python packages it needs and their license files, from the installed metadata, and `THIRD_PARTY_LICENSES.txt` from the static directory |
 | `entrypoints/web/documents.py` | Builders of the documents no command prints; the others come from the command modules' builders, such as `status_document` |
 | `entrypoints/web/solution_document.py` | The [solution document](#solutions): what `cstudy solution` pages, as Markdown |
 | `entrypoints/web/bodies.py` | The JSON bodies of writes, read by field name and type ([API conventions](#api-conventions)) |

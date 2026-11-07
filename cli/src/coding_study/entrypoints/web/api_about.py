@@ -5,9 +5,9 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import BaseRoute, Route
 
+from coding_study.adapters.installed_packages import InstalledSoftware
 from coding_study.application.about import read_about, read_license_texts
 from coding_study.domain.cases import JsonValue
-from coding_study.entrypoints.installed_packages import InstalledSoftware
 from coding_study.entrypoints.web.context import ServerSettings, server_state
 from coding_study.entrypoints.web.documents import about_document
 from coding_study.entrypoints.web.responses import JsonResponse
