@@ -1314,3 +1314,103 @@ def test_the_resume_panel_is_two_lines_tall(next_panel):
 
 def test_the_panel_logs_no_problem(next_panel):
     assert next_panel.problems == []
+
+
+# P6: `in progress` in the top bar
+
+
+ATTEMPTS_MENU = ".attempts-menu"
+ATTEMPT_LINKS = f"{ATTEMPTS_MENU} .menu-list a"
+HARD_ONLY = "#/?difficulty=hard"
+
+
+@dataclass
+class TopBar:
+    at_rest: bool = True
+    at_rest_on_another_view: bool = True
+    after_opening_one: bool = False
+    count: str = ""
+    filtered_count: str = ""
+    filtered_links: int = 0
+    after_ending_it: bool = True
+    problems: list[str] = field(default_factory=list[str])
+
+
+@pytest.fixture(scope="module")
+def top_bar(engine: str, tmp_path_factory: pytest.TempPathFactory) -> TopBar:
+    seen = TopBar()
+    workspace = bare_workspace(tmp_path_factory, f"bar-{engine}")
+    with opened_page(engine, workspace, seen.problems) as page:
+        seen.at_rest = page.locator(ATTEMPTS_MENU).is_visible()
+        page.evaluate("location.hash = '#/settings'")
+        page.wait_for_selector(".settings")
+        seen.at_rest_on_another_view = page.locator(ATTEMPTS_MENU).is_visible()
+        page.evaluate(BACK_HOME)
+        page.wait_for_selector(ROWS)
+        _open_one_elsewhere(page, workspace, seen)
+        _filter_it_out(page, seen)
+        _end_it_elsewhere(page, workspace, seen)
+    return seen
+
+
+def _open_one_elsewhere(page: Any, workspace: Path, seen: TopBar) -> None:
+    """As a start in the terminal: the page hears of it, and nothing here reloads it."""
+    start_an_attempt(workspace, TWO_SUM)
+    page.wait_for_selector(ATTEMPTS_MENU, state="visible")
+    seen.after_opening_one = page.locator(ATTEMPTS_MENU).is_visible()
+    seen.count = page.locator(f"{ATTEMPTS_MENU} .count").inner_text()
+
+
+def _filter_it_out(page: Any, seen: TopBar) -> None:
+    """The easy problem the attempt is on is not a row of this list, and the menu still lists it."""
+    page.evaluate(f"location.hash = '{HARD_ONLY}'")
+    page.wait_for_selector(f"{COUNT}:has-text('of')")
+    page.wait_for_selector(ROWS)
+    seen.filtered_count = page.locator(f"{ATTEMPTS_MENU} .count").inner_text()
+    seen.filtered_links = page.locator(ATTEMPT_LINKS).count()
+
+
+def _end_it_elsewhere(page: Any, workspace: Path, seen: TopBar) -> None:
+    subprocess.run(
+        [sys.executable, "-m", "coding_study", "abort", TWO_SUM, "--yes"],
+        env=served_environment(workspace),
+        cwd=workspace,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    page.wait_for_selector(ATTEMPTS_MENU, state="hidden")
+    seen.after_ending_it = page.locator(ATTEMPTS_MENU).is_visible()
+
+
+def test_with_nothing_open_the_top_bar_has_no_menu_of_attempts(top_bar):
+    assert not top_bar.at_rest
+
+
+def test_with_nothing_open_no_view_shows_the_menu_of_attempts(top_bar):
+    assert not top_bar.at_rest_on_another_view
+
+
+def test_the_menu_shows_when_an_attempt_opens_without_a_reload(top_bar):
+    assert top_bar.after_opening_one
+
+
+def test_the_menu_counts_the_attempt(top_bar):
+    assert top_bar.count == "1"
+
+
+def test_the_filters_do_not_narrow_the_count_of_attempts(top_bar):
+    assert top_bar.filtered_count == "1"
+
+
+def test_the_filters_do_not_narrow_the_menu_of_attempts(top_bar):
+    assert top_bar.filtered_links == 1
+
+
+def test_the_menu_hides_when_the_last_attempt_ends_without_a_reload(top_bar):
+    assert not top_bar.after_ending_it
+
+
+def test_the_top_bar_logs_no_problem(top_bar):
+    assert top_bar.problems == []

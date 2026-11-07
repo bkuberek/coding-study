@@ -355,13 +355,8 @@ h3 {
   background: var(--accent-soft);
 }
 
-.menu-meta,
-.menu-empty {
+.menu-meta {
   color: var(--ink-soft);
-}
-
-.menu-empty {
-  padding: 6px 8px;
 }
 
 /* the command line under the top bar */

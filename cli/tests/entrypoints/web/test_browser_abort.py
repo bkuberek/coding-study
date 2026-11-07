@@ -154,7 +154,7 @@ def _abort(page: Any, seen: Aborting, workspace: Path) -> None:
     page.click(f"{SHEET} button.danger")
     page.wait_for_function("() => location.hash === '#/problems/two-sum'")
     seen.hash_after = page.evaluate("location.hash")
-    page.wait_for_selector(".attempts-menu .menu-empty", state="attached")
+    page.wait_for_selector(".attempts-menu", state="hidden")
     seen.menu_after = page.locator(MENU_LINKS).count()
     seen.status_after = _status(workspace, seen.first_attempt)
     seen.file_after = (workspace / PRACTICE_FILE).read_text()

@@ -70,7 +70,7 @@ export function mountShell(root: HTMLElement, version: string, actions: ShellAct
   const attemptsList = h("ul", { class: "menu-list" });
   const attemptsMenu = h(
     "details",
-    { class: "attempts-menu" },
+    { class: "attempts-menu", hidden: true },
     h("summary", {}, "in progress ", attemptsCount),
     attemptsList,
   );
@@ -163,7 +163,9 @@ export function mountShell(root: HTMLElement, version: string, actions: ShellAct
         ),
       );
       attemptsCount.textContent = String(attempts.length);
-      attemptsList.replaceChildren(...(attempts.length ? attempts : [h("li", { class: "menu-empty" }, "none")]));
+      attemptsList.replaceChildren(...attempts);
+      attemptsMenu.hidden = attempts.length === 0;
+      attemptsMenu.open &&= attempts.length > 0;
     },
     setIntelligence(segment) {
       intelligence.replaceChildren(...(segment === null ? [] : [segment]));

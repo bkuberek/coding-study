@@ -265,11 +265,21 @@ def _attempt_view(page: Any, seen: Visit) -> None:
 def _middle_window(page: Any, seen: Visit) -> None:
     _window(page, MIDDLE)
     _open(page, "#/", ROWS)
+    _turn_on_every_column(page)
     seen.middle = _region(page, LISTING)
     _focus_a_link_in_the_box(page, seen)
     _scroll_page(page)
     seen.middle_page = _places(page)
     _scroll_page(page, 0)
+
+
+def _turn_on_every_column(page: Any) -> None:
+    """The table starts with few enough columns to fit this window; with all of them it does not."""
+    page.click(".columns-menu > summary")
+    for column in ("kind", "scope", "domain", "role", "sets"):
+        page.check(f"#column-{column}")
+    page.wait_for_selector(f"{ROWS} .set-control")
+    page.keyboard.press("Escape")
 
 
 def _focus_a_link_in_the_box(page: Any, seen: Visit) -> None:
