@@ -1,5 +1,5 @@
 """The Problems view's label filters in a real browser (docs/specs/web-ui.md#problems-view), in
-each engine of `tests/browsers.py`: choose a Domain, a Role and a Scope in the filter form and see
+each engine of `tests/browsers.py`: choose a Domain, and a Role and a Scope under More, and see
 the table show the rows that `cstudy list --domain X --role Y --scope Z` lists, a Scope column
 that names each row's scope, the filters in the route's query and in the command above the view,
 the `cstudy next` pick of the same filters on the next card, and the filters again after a reload.
@@ -36,6 +36,7 @@ LISTED = ".listing:not([aria-busy]) table.problems"
 SLUGS = "table.problems tbody tr a.slug"
 SCOPE_CELLS = "table.problems tbody tr td:nth-child(6)"
 COMMAND = ".command-text"
+MORE = ".filter-more > summary"
 NEXT_SLUG = ".next-card a.next-slug"
 NEXT_START = ".next-card .next-start"
 COMMAND_IS = "expected => document.querySelector('.command-text')?.textContent === expected"
@@ -122,14 +123,17 @@ def _read_the_unfiltered_list(page: Any, seen: Visit) -> None:
 
 
 def _choices(page: Any, key: str) -> list[str]:
-    return page.locator(f"#filter-{key} option").all_inner_texts()
+    return page.locator(f"#filter-{key} option").all_text_contents()
 
 
 def _filter(page: Any) -> None:
     """Chooses the three filters one after the other, as a user does; each choice draws the view
     again, with the filters so far in the command above it."""
+    page.select_option("#filter-domain", DOMAIN)
+    page.wait_for_function(COMMAND_IS, arg=f"cstudy list --domain {DOMAIN}")
+    page.wait_for_selector(LISTED)
+    page.click(MORE)
     for key, value, command in (
-        ("domain", DOMAIN, f"cstudy list --domain {DOMAIN}"),
         ("role", ROLE, f"cstudy list --domain {DOMAIN} --role {ROLE}"),
         ("scope", SCOPE, FILTERED_COMMAND),
     ):
@@ -176,7 +180,7 @@ def test_the_scope_column_names_the_scope_of_each_row(visit):
 
 def test_the_filters_offer_the_values_of_the_labels(visit):
     assert (visit.domain_choices, visit.role_choices, visit.scope_choices) == (
-        ["any", *DOMAINS],
+        ["domain", *DOMAINS],
         ["any", *JOB_ROLES],
         ["any", *(scope.value for scope in Scope)],
     )

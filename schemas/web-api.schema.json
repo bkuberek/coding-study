@@ -50,7 +50,7 @@
       "description": "GET /api/v1/session",
       "type": "object",
       "additionalProperties": false,
-      "required": ["api", "cstudy", "events_version", "workspace", "port", "default_lang", "languages", "tracks", "kinds", "domains", "job_roles", "scopes", "selected_jdk"],
+      "required": ["api", "cstudy", "events_version", "workspace", "port", "default_lang", "languages", "tracks", "kinds", "domains", "job_roles", "scopes", "patterns", "selected_jdk"],
       "properties": {
         "api": { "const": 1 },
         "cstudy": { "type": "string" },
@@ -64,6 +64,7 @@
         "domains": { "description": "The values of cstudy list --domain", "type": "array", "items": { "type": "string" } },
         "job_roles": { "description": "The values of cstudy list --role", "type": "array", "items": { "type": "string" } },
         "scopes": { "description": "The values of cstudy list --scope", "type": "array", "items": { "type": "string" } },
+        "patterns": { "description": "The patterns of the taxonomy, for cstudy list --pattern", "type": "array", "items": { "type": "string" } },
         "selected_jdk": { "$ref": "#/$defs/selected_jdk" }
       }
     },

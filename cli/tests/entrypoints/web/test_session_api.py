@@ -7,6 +7,7 @@ import pytest
 from coding_study.domain.config import Config
 from coding_study.domain.jdk import JdkSource
 from coding_study.domain.problem import Language
+from coding_study.domain.taxonomy import PATTERNS
 from tests.fakes import FakeJdk, jdk_of
 from tests.web_server import (
     PORT,
@@ -67,6 +68,7 @@ def test_the_session_describes_the_server_and_the_workspace(tmp_path, app):
             "ml-engineer",
         ],
         "scopes": ["function", "project", "system"],
+        "patterns": list(PATTERNS),
         "selected_jdk": {
             "version": "21.0.13",
             "feature": 21,

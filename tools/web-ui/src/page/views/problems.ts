@@ -7,10 +7,10 @@ import "./problems.css";
 
 import { listCommand, nextCommand, NEXT_FILTERS, startCommand } from "../commands.ts";
 import type { Cleanup, PageContext } from "../context.ts";
-import { badge, command, h, isTyping } from "../dom.ts";
-import { problemBadge, statusWords } from "../format.ts";
+import { badge, type Child, command, h, isTyping } from "../dom.ts";
+import { problemBadge } from "../format.ts";
 import { jdkRefusals, type SelectedJdk } from "../jdk.ts";
-import { matchesSearch } from "../problems-model.ts";
+import { activeFilters, choiceWords, countWords, matchesSearch } from "../problems-model.ts";
 import { attemptHash, FILTER_KEYS, type FilterKey, type Filters, problemHash, problemsHash } from "../routes.ts";
 import { setControl, setsHolding } from "../setControl.ts";
 import { empty, failure, loading, showFailure } from "../states.ts";
@@ -20,6 +20,13 @@ const DIFFICULTIES = ["easy", "medium", "hard"];
 const STATUSES = ["new", "in_progress", "attempted", "passed", "due", "mastered"];
 /** The filters the server answers; the search narrows the rows already here. */
 const LIST_FILTERS = FILTER_KEYS.filter((key) => key !== "search");
+const ROW_FILTERS = ["status", "difficulty", "domain", "lang"] as const;
+const MORE_FILTERS = ["track", "kind", "role", "scope", "pattern", "content", "set"] as const;
+const SEARCH_FIELD = "filter-search";
+type ChoiceKey = Exclude<FilterKey, "search">;
+
+/** The field to focus once a change of the filters has drawn the view again. */
+let focusAfterDraw: string | null = null;
 const CONTENT = ["draft", "ready"];
 const LANGUAGE_LABELS: Readonly<Record<string, string>> = {
   python: "py",
@@ -39,8 +46,8 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
   const next = h("section", { class: "next-card", "aria-labelledby": "next-heading" });
   // Focusable, so the keyboard scrolls the table where a narrow window gives it a box of its own.
   const table = h("section", { class: "listing table-scroll", "aria-label": "Problems", "aria-busy": "true", tabindex: "0" }, loading());
-  const choices: Readonly<Record<Exclude<FilterKey, "pattern" | "search">, readonly string[]>> = {
-    set: filters.set ? [filters.set] : [],
+  const choices: Readonly<Record<ChoiceKey, readonly string[]>> = {
+    set: [],
     track: session.tracks,
     kind: session.kinds,
     lang: session.languages,
@@ -50,23 +57,33 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
     domain: session.domains,
     role: session.job_roles,
     scope: session.scopes,
+    pattern: session.patterns,
   };
   let searched = filters.search ?? "";
   const route = (): Filters => ({ ...filters, search: searched.trim() });
-  let narrow: (text: string) => void = () => {};
+  const count = h("span", { class: "filter-count" });
+  const summary = filterSummary(route, count);
+  let narrow: () => void = () => {};
+  const showRoute = () => {
+    summary.hidden = activeFilters(route()).length === 0 && !route().search;
+    shell.setCommand(listCommand(route()));
+  };
   const form = filterForm(route, choices, (text) => {
     searched = text;
     history.replaceState(null, "", problemsHash(route()));
-    shell.setCommand(listCommand(route()));
-    narrow(text);
+    showRoute();
+    narrow();
   });
+  showRoute();
   shell.main.replaceChildren(
     h("h1", { class: "sr-only" }, "Problems"),
     next,
-    form,
+    h("div", { class: "filter-bar" }, form),
+    summary,
     table,
   );
   next.replaceChildren(h("h2", { id: "next-heading", class: "eyebrow" }, "next"), loading("picking…"));
+  takeTheFocus(shell.main);
 
   // The pick and the table show together: the pick changes the height of the card above the
   // table, so a table drawn first would move under a pointer about to click a row.
@@ -75,18 +92,21 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
       api.get<ProblemList>(`/api/v1/problems${queryOf(filters, LIST_FILTERS)}`),
       api.get<NextPick>(`/api/v1/next${queryOf(filters, NEXT_FILTERS)}`),
       api.get<SetList>("/api/v1/sets"),
-    ]).then(([list, pick, sets]) => {
+      // What the count is out of, and the attempts in progress whatever the filters leave out.
+      LIST_FILTERS.some((key) => filters[key]) ? api.get<ProblemList>("/api/v1/problems") : undefined,
+    ]).then(([list, pick, sets, whole]) => {
       if (pick.status === "fulfilled") next.replaceChildren(h("h2", { id: "next-heading", class: "eyebrow" }, "next"), ...nextPick(pick.value, filters));
       else showFailure(next, pick.reason);
       const known = sets.status === "fulfilled" ? sets.value.sets : [];
       fillSetChoices(form, known, filters.set);
       const brokenSets = sets.status === "rejected" ? [failure(sets.reason)] : [];
+      const everything = whole.status === "rejected" ? null : (whole.value ?? (list.status === "fulfilled" ? list.value : null));
+      if (everything !== null) shell.setAttempts(everything.entries);
       if (list.status === "rejected") {
         showFailure(table, list.reason);
         return;
       }
       const { entries, today, selected_jdk: selectedJdk, set: inSet } = list.value;
-      shell.setAttempts(entries);
       table.removeAttribute("aria-busy");
       // Unticking the set a row is listed under takes the row out, once its dialog closes.
       const drawControl = (slug: string) =>
@@ -105,12 +125,14 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
         ...(inSet?.missing.length ? [h("p", { class: "quiet" }, `missing from the catalog: ${inSet.missing.join(", ")}`)] : []),
         ...rows.nodes,
       );
-      narrow = (text) => {
-        const found = rows.narrow(text);
+      narrow = () => {
+        const found = rows.narrow(searched);
         const items = found.filter((entry) => entry.kind === "item").length;
         shell.setStatus({ mode: "LIST", where: `${found.length - items} problems · ${items} items · ${today}` });
+        count.textContent = countWords(found.length, everything?.entries.length ?? null);
+        if (!summary.hidden) shell.announce(`${count.textContent} problems`);
       };
-      narrow(searched);
+      narrow();
     });
   load();
   const focusSearch = (event: KeyboardEvent) => {
@@ -118,8 +140,17 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
     event.preventDefault();
     form.querySelector<HTMLInputElement>("#filter-search")?.focus();
   };
+  const closeMenus = (event: MouseEvent) => {
+    for (const menu of shell.main.querySelectorAll<HTMLDetailsElement>(".filter-menu[open]")) {
+      if (!menu.contains(event.target as Node)) menu.open = false;
+    }
+  };
   document.addEventListener("keydown", focusSearch);
-  return () => document.removeEventListener("keydown", focusSearch);
+  document.addEventListener("click", closeMenus);
+  return () => {
+    document.removeEventListener("keydown", focusSearch);
+    document.removeEventListener("click", closeMenus);
+  };
 }
 
 /** The sets arrive after the form is drawn; the filter keeps what the route names. */
@@ -171,11 +202,40 @@ export function nextPick(pick: NextPick, filters: Filters): Node[] {
   ];
 }
 
-function filterForm(
-  route: () => Filters,
-  choices: Readonly<Record<Exclude<FilterKey, "pattern" | "search">, readonly string[]>>,
-  searched: (text: string) => void,
-): HTMLFormElement {
+/** A filter's list; the value the route names stays a choice, whatever the list holds. */
+function filterSelect(key: ChoiceKey, chosen: string | undefined, choices: readonly string[], blank: string, apply: (key: FilterKey, value: string) => void): HTMLSelectElement {
+  const values = chosen && !choices.includes(chosen) ? [chosen, ...choices] : choices;
+  const select = h(
+    "select",
+    { id: `filter-${key}`, name: key, class: chosen ? "is-set" : null },
+    h("option", { value: "" }, blank),
+    ...values.map((value) => h("option", { value, selected: chosen === value }, choiceWords(key, value))),
+  );
+  select.addEventListener("change", () => {
+    focusAfterDraw = select.id;
+    apply(key, select.value);
+  });
+  return select;
+}
+
+/** A menu that a click elsewhere, Escape and the focus leaving it close. */
+function filterMenu(name: string, label: readonly Child[], ...content: Child[]): HTMLDetailsElement {
+  const summary = h("summary", {}, ...label);
+  const menu = h("details", { class: `filter-menu ${name}` }, summary, h("div", { class: "filter-panel" }, ...content));
+  menu.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !menu.open) return;
+    event.preventDefault();
+    menu.open = false;
+    summary.focus();
+  });
+  menu.addEventListener("focusout", (event) => {
+    if (event.relatedTarget instanceof Node && !menu.contains(event.relatedTarget)) menu.open = false;
+  });
+  return menu;
+}
+
+/** The slim row: the search, the filters used most, and More for the others. */
+function filterForm(route: () => Filters, choices: Readonly<Record<ChoiceKey, readonly string[]>>, searched: (text: string) => void): HTMLFormElement {
   const filters = route();
   const apply = (key: FilterKey, value: string) => {
     location.hash = problemsHash({ ...route(), [key]: value });
@@ -191,39 +251,51 @@ function filterForm(
     "aria-keyshortcuts": "/",
   });
   search.addEventListener("input", () => searched(search.value));
-  const selects = (Object.keys(choices) as Exclude<FilterKey, "pattern" | "search">[]).map((key) => {
-    const select = h(
-      "select",
-      { id: `filter-${key}`, name: key },
-      h("option", { value: "" }, "any"),
-      ...choices[key].map((value) => h("option", { value, selected: filters[key] === value }, key === "status" ? statusWords(value) : value)),
-    );
-    select.addEventListener("change", () => apply(key, select.value));
-    return h("label", { class: "filter", for: `filter-${key}` }, h("span", { class: "filter-name" }, key), select);
-  });
-  const pattern = h("input", {
-    id: "filter-pattern",
-    name: "pattern",
-    type: "search",
-    value: filters.pattern ?? "",
-    placeholder: "arrays-hashing",
-    spellcheck: "false",
-    autocomplete: "off",
-  });
+  const inMore = MORE_FILTERS.filter((key) => filters[key]).length;
   const form = h(
     "form",
     { class: "filters", role: "search", "aria-label": "Filter problems" },
-    h("label", { class: "filter filter-wide", for: "filter-search" }, h("span", { class: "filter-name" }, "search"), search),
-    ...selects,
-    h("label", { class: "filter filter-wide", for: "filter-pattern" }, h("span", { class: "filter-name" }, "pattern"), pattern),
-    Object.keys(filters).length ? h("a", { href: "#/", class: "clear" }, "clear filters") : null,
+    h("label", { class: "filter-search", for: search.id }, h("span", { class: "sr-only" }, "Search problems by title or slug"), h("span", { class: "filter-prompt", "aria-hidden": "true" }, ">"), search),
+    ...ROW_FILTERS.map((key) =>
+      h("label", { class: "filter", for: `filter-${key}` }, h("span", { class: "sr-only" }, key), filterSelect(key, filters[key], choices[key], key, apply)),
+    ),
+    filterMenu(
+      "filter-more",
+      ["more", inMore ? h("span", { class: "filter-more-count" }, inMore, h("span", { class: "sr-only" }, " active")) : null],
+      ...MORE_FILTERS.map((key) =>
+        h("label", { class: "filter-field", for: `filter-${key}` }, h("span", { class: "filter-name" }, key), filterSelect(key, filters[key], choices[key], "any", apply)),
+      ),
+    ),
   );
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    apply("pattern", pattern.value.trim());
-  });
-  pattern.addEventListener("change", () => apply("pattern", pattern.value.trim()));
+  form.addEventListener("submit", (event) => event.preventDefault());
   return form;
+}
+
+/** What the filters leave: a chip per filter, the count and Clear. It takes no space with none. */
+function filterSummary(route: () => Filters, count: HTMLElement): HTMLElement {
+  const active = activeFilters(route());
+  const chips = active.map(({ key, words }, index) => {
+    const chip = h("button", { type: "button", id: `chip-${key}`, class: "filter-chip", "aria-label": `Remove the filter ${words}` }, words, " ", h("span", { "aria-hidden": "true" }, "×"));
+    const neighbour = active[index + 1] ?? active[index - 1];
+    chip.addEventListener("click", () => {
+      focusAfterDraw = neighbour === undefined ? SEARCH_FIELD : `chip-${neighbour.key}`;
+      location.hash = problemsHash({ ...route(), [key]: "" });
+    });
+    return chip;
+  });
+  const clear = h("a", { href: "#/", class: "clear" }, "clear");
+  clear.addEventListener("click", () => {
+    focusAfterDraw = SEARCH_FIELD;
+  });
+  return h("div", { class: "filter-summary" }, ...chips, h("span", { class: "filter-tally" }, count, h("span", { class: "quiet" }, " · "), clear));
+}
+
+/** Gives the field a change left the focus on, in the form the change drew again. */
+function takeTheFocus(root: HTMLElement): void {
+  const target = focusAfterDraw === null ? null : root.querySelector<HTMLElement>(`#${focusAfterDraw}`);
+  focusAfterDraw = null;
+  target?.closest("details")?.setAttribute("open", "");
+  target?.focus({ preventScroll: true });
 }
 
 /** The table and what it says with no row to show; `narrow` keeps the rows a search finds. */

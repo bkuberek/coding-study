@@ -18,6 +18,7 @@ export interface Session {
   readonly domains: readonly string[];
   readonly job_roles: readonly string[];
   readonly scopes: readonly string[];
+  readonly patterns: readonly string[];
   /** The JDK `cstudy` selects in the server's environment, or null when none is found. */
   readonly selected_jdk: SelectedJdk | null;
 }
