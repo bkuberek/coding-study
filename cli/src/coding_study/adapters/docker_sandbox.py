@@ -38,6 +38,7 @@ from coding_study.domain.sandbox import (
     APP_SERVICE,
     BOOTSTRAP_SERVICE,
     CONTROL_PORT,
+    EGRESS_PROBE_SERVICE,
     FORWARD_SERVICE,
     FORWARDER_FILE,
     GRADE_SETUP_SERVICE,
@@ -49,6 +50,7 @@ from coding_study.domain.sandbox import (
     MOCK_CODE_DIRECTORY,
     MOCK_CONFIG_FILE,
     PASSWD_FILE,
+    RESET_PREPARE_SERVICE,
     STACK_FILE,
     CommandOutcome,
     InstallPlan,
@@ -90,6 +92,8 @@ HTTP_OK_FIRST = 200
 HTTP_OK_LAST = 299
 READABLE_FILE = 0o644
 READABLE_DIRECTORY = 0o755
+MILLISECONDS_PER_SECOND = 1000
+EGRESS_PROBE_LIMIT_S = 60.0
 _COMPOSE = (DOCKER, "compose", "--ansi", "never")
 _PULL_NEVER = ("--pull", "never")
 _LABEL_FILTER = ("--filter", f"label={LABEL_KIND}")
@@ -113,6 +117,7 @@ _NOT_YOUR_CODE = "This says nothing about your code, and no result changes."
 _FORWARDER_SOURCE = Path(__file__).with_name("sandbox_forward.py")
 _MOCK_CODE_SOURCE = Path(__file__).with_name(MOCK_CODE_DIRECTORY)
 _PERMISSION_REFUSED = "permission denied"
+_ENDING_SIGNALS = (signal.SIGINT, signal.SIGTERM)
 
 type HealthProbe = Callable[[int, str], bool]
 
@@ -407,8 +412,25 @@ class DockerSandbox:
         return StackStartError(
             StartupFailure.APP_EXITED,
             f"your app exited with code {exit_code} before it answered {plan.app.health}",
-            self._logs(plan, APP_SERVICE),
+            self._app_output(plan),
         )
+
+    def _app_output(self, plan: StackPlan) -> str:
+        """The app's last lines, after what the engine knows and they cannot say."""
+        logs = self._logs(plan, APP_SERVICE)
+        if not self._ran_out_of_memory(plan):
+            return logs
+        return f"the container hit its memory limit of {plan.app.mem_limit}\n{logs}"
+
+    def _ran_out_of_memory(self, plan: StackPlan) -> bool:
+        listed = self._compose(plan, ("ps", "-a", "-q", APP_SERVICE), ENGINE_QUERY_S)
+        container = listed.output.strip() if listed is not None else ""
+        if not container:
+            return False
+        state = self._runner.run(
+            (DOCKER, "inspect", "--format", "{{.State.OOMKilled}}", container), ENGINE_QUERY_S
+        )
+        return state is not None and state.output.strip() == "true"
 
     def _health_timeout(self, plan: StackPlan, port: int, budget: StartupBudget) -> StackStartError:
         app = plan.app
@@ -430,12 +452,13 @@ class DockerSandbox:
                 StartupFailure.GRADE_SETUP,
                 "grade_setup failed: the problem is at fault, not your code",
             )
-        if (bootstrap := states.get(BOOTSTRAP_SERVICE)) and bootstrap.failed:
-            return StackStartError(
-                StartupFailure.BOOTSTRAP,
-                f"bootstrap exited with code {bootstrap.exit_code}",
-                self._logs(plan, BOOTSTRAP_SERVICE),
-            )
+        for service, name in ((BOOTSTRAP_SERVICE, "bootstrap"), (RESET_PREPARE_SERVICE, "reset")):
+            if (one_shot := states.get(service)) and one_shot.failed:
+                return StackStartError(
+                    StartupFailure.BOOTSTRAP,
+                    f"{name} exited with code {one_shot.exit_code}",
+                    self._logs(plan, service),
+                )
         if app is not None and app.exited:
             return self._app_exited(plan, app.exit_code)
         return StackStartError(StartupFailure.SERVICE, _service_failure(up, budget))
@@ -461,7 +484,8 @@ class DockerSandbox:
         return self._stopped(plan.identity, plan.paths)
 
     def _stopped(self, identity: StackIdentity, paths: SandboxPaths) -> str | None:
-        down = self._down(identity.name, identity.kind.removes_volumes)
+        with _signals_held_off():
+            down = self._down(identity.name, identity.kind.removes_volumes)
         clear_setuid_bits(Path(paths.project))
         if not down:
             return f"could not take {identity.name} down; the next run or doctor --fix will"
@@ -491,6 +515,49 @@ class DockerSandbox:
     ) -> CommandOutcome:
         result = self._compose(plan, arguments, command.timeout_s, command.on_output)
         return _outcome(result)
+
+    def restart_app(self, plan: StackPlan, ready: ReadyStack, budget: StartupBudget) -> None:
+        self.stop_app(plan)
+        self.start_app(plan, ready, budget)
+
+    def stop_app(self, plan: StackPlan) -> None:
+        stopped = self._compose(plan, ("stop", APP_SERVICE), STOP_TIMEOUT_S)
+        if stopped is None or stopped.exit_code != 0:
+            output = stopped.output.strip() if stopped is not None else "docker is not installed"
+            raise StackStartError(
+                StartupFailure.SERVICE, f"could not stop the app: {output}. {_NOT_YOUR_CODE}"
+            )
+
+    def start_app(self, plan: StackPlan, ready: ReadyStack, budget: StartupBudget) -> None:
+        started = self._compose(plan, ("start", APP_SERVICE), budget.up_s)
+        if started is None or started.exit_code != 0:
+            output = started.output.strip() if started is not None else "docker is not installed"
+            raise StackStartError(
+                StartupFailure.SERVICE, f"could not start the app: {output}. {_NOT_YOUR_CODE}"
+            )
+        self._wait_for_health(plan, ready.app_port, budget)
+
+    def app_exit(self, plan: StackPlan, within_ms: int) -> CommandOutcome | None:
+        deadline = self._monotonic() + within_ms / MILLISECONDS_PER_SECOND
+        while True:
+            state = self._service_states(plan).get(APP_SERVICE)
+            if state is not None and state.exited:
+                return CommandOutcome(state.exit_code, self._app_output(plan))
+            if self._monotonic() >= deadline:
+                return None
+            self._sleep(HEALTH_POLL_S)
+
+    def follow_app(self, plan: StackPlan, on_line: Callable[[str], None]) -> None:
+        self._compose(
+            plan,
+            ("logs", "--follow", "--no-color", "--no-log-prefix", APP_SERVICE),
+            None,
+            on_line,
+        )
+
+    def probe_egress(self, plan: StackPlan) -> CommandOutcome:
+        arguments = ("run", "--rm", "-T", "--no-deps", *_PULL_NEVER, EGRESS_PROBE_SERVICE)
+        return _outcome(self._compose(plan, arguments, EGRESS_PROBE_LIMIT_S))
 
     def install(
         self, plan: InstallPlan, timeout_s: float, on_output: Callable[[str], None] | None
@@ -533,6 +600,22 @@ def _parsed_states(output: str) -> dict[str, _ServiceState]:
                     entry = cast(dict[str, object], document)
                     states[str(entry.get("Service"))] = _ServiceState(entry)
     return states
+
+
+@contextmanager
+def _signals_held_off() -> Generator[None]:
+    """A second Ctrl-C during `down` would leave half a stack behind. Off the main thread, where no
+    handler can be set, signals never arrive anyway."""
+    try:
+        held = {number: signal.signal(number, signal.SIG_IGN) for number in _ENDING_SIGNALS}
+    except ValueError:
+        yield
+        return
+    try:
+        yield
+    finally:
+        for number, previous in held.items():
+            signal.signal(number, previous)
 
 
 def _service_failure(up: ProbeResult, budget: StartupBudget) -> str:
@@ -651,6 +734,8 @@ def _copy_mock_code(target: Path) -> None:
             dirs_exist_ok=True,
             ignore=shutil.ignore_patterns("__pycache__"),
         )
+        for found in target.rglob("*"):
+            found.chmod(READABLE_DIRECTORY if found.is_dir() else READABLE_FILE)
 
 
 def _remove_folder(folder: Path) -> None:

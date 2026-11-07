@@ -151,6 +151,8 @@ class SubmitReport:
         yield Text(self._summary())
         if self._found_no_race():
             yield Text(STRESS_EVIDENCE, style="dim")
+        if self._result.startup_seconds is not None:
+            yield Text(_two_clocks(self._result), style="dim")
         yield from self._after()
 
     def _header(self) -> str:
@@ -266,6 +268,14 @@ class SubmitReport:
             yield from _opened_lines(result.opened)
         elif result.finished_every_level:
             yield Text(EVERY_LEVEL_DONE, style="green")
+
+
+def _two_clocks(result: SubmitResult) -> str:
+    """A service project's stack takes time to start, and no limit or result counts that."""
+    return (
+        f"startup {result.startup_seconds:.1f} s, not counted · "
+        f"cases {result.duration_seconds:.1f} s"
+    )
 
 
 def _stress_label(verdict: StressVerdict) -> str:

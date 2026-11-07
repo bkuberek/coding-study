@@ -6,6 +6,7 @@ The conformance suite uses the same format under runners/conformance/ (docs/spec
 import copy
 import json
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -14,8 +15,10 @@ import yaml
 from coding_study.adapters.document_index import DocumentIndex, file_stamp, index_key
 from coding_study.adapters.problem_documents import cases_from_document, meta_from_document
 from coding_study.adapters.problem_project_files import read_project_files
+from coding_study.adapters.service_files import mock_files
 from coding_study.adapters.schema_validation import (
     META_SCHEMA_FILE,
+    MOCK_SCHEMA_FILE,
     SCHEMAS_DIRECTORY,
     TESTS_SCHEMA_FILE,
     SchemaValidator,
@@ -29,7 +32,9 @@ from coding_study.domain.problem import (
     ProblemMeta,
     ProblemSummary,
 )
-from coding_study.domain.project import ProjectFiles
+from coding_study.domain.mock_configs import MockFiles
+from coding_study.domain.project import ProjectFiles, relative_path_issue
+from coding_study.domain.service_project import ServiceProject, service_of
 
 PROBLEMS_DIRECTORY = "problems"
 META_FILE = "meta.yaml"
@@ -58,6 +63,7 @@ class FsProblemRepository:
         self._meta_schema_stamp = file_stamp(schemas / META_SCHEMA_FILE)
         self._meta_schema = SchemaValidator.from_file(schemas / META_SCHEMA_FILE)
         self._tests_schema = SchemaValidator.from_file(schemas / TESTS_SCHEMA_FILE)
+        self._mock_schema = SchemaValidator.from_file(schemas / MOCK_SCHEMA_FILE)
 
     def over(self, root: Path) -> "FsProblemRepository":
         """These schemas and this index over `root`'s problems/ (a workspace's own problems)."""
@@ -128,7 +134,46 @@ class FsProblemRepository:
     def _project_files(self, directory: Path, meta: ProblemMeta) -> ProjectFiles | None:
         if meta.kind is not ProblemKind.PROJECT:
             return None
-        return read_project_files(directory, self._source(directory))
+        files = read_project_files(directory, self._source(directory))
+        service = service_of(meta)
+        return files if service is None else self._with_service_files(directory, service, files)
+
+    def _with_service_files(
+        self, directory: Path, service: ServiceProject, files: ProjectFiles
+    ) -> ProjectFiles:
+        """A service project's other trusted files, checked as meta.yaml and tests.json are.
+
+        Raises ContentError naming each file that is missing, does not parse or breaks its schema.
+        """
+        issues: list[ContentIssue] = []
+        mocks: dict[str, MockFiles] = {}
+        for mock in service.mocks:
+            document, found = self._problem_document(directory, mock.config, self._mock_schema)
+            issues += found
+            if not found:
+                mocks[mock.name] = mock_files(directory / mock.config, document)
+        backing: Any = None
+        if service.services is not None:
+            backing, found = self._problem_document(directory, service.services, None)
+            issues += found
+        if issues:
+            raise ContentError(issues)
+        return replace(files, mocks=mocks, backing_services=backing)
+
+    def _problem_document(
+        self, directory: Path, name: str, schema: SchemaValidator | None
+    ) -> tuple[Any, list[ContentIssue]]:
+        """A YAML file of the problem's own, named from its meta.yaml."""
+        path = directory / name
+        if (issue := relative_path_issue(name)) is not None:
+            return None, [ContentIssue(self._source(directory / META_FILE), "project", f"{name} {issue}")]
+        if schema is not None:
+            return self._validated(path, parse_yaml, schema)
+        source = self._source(path)
+        try:
+            return parse_yaml(read_content_file(path, source), source), []
+        except ContentError as error:
+            return None, list(error.issues)
 
     def _directory_of(self, slug: str) -> Path:
         for directory in self._problem_directories():

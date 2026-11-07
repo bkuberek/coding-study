@@ -10,11 +10,13 @@ from coding_study.domain.sandbox import (
     BOOTSTRAP_SERVICE,
     CONTROL_PORT,
     DATA_OWNER_SERVICE,
+    EGRESS_PROBE_SERVICE,
     FORWARD_SERVICE,
     GRADE_SETUP_SERVICE,
     INSTALL_SERVICE,
     LABEL_OWNER,
     MOCK_SERVICE,
+    RESET_PREPARE_SERVICE,
     PYTHON_IMAGE,
     AppContainer,
     GradeSetup,
@@ -48,7 +50,6 @@ IDENTITY = StackIdentity("cstudy-t-41-abc", StackKind.TEST, "d1g3st", "rooms", 4
 APP = AppContainer(IMAGE, ("node", "src/server.ts"), 8000, {"PORT": "8000"})
 MOCKS = MockServerInput(
     aliases=("room-vendor", "second-vendor"),
-    command=("python", "-I", "/cstudy/mock_server/run.py"),
     control_token="secret",
     rendered_config="{}",
 )
@@ -226,12 +227,53 @@ def test_the_mock_code_and_configs_are_mounted_read_only_from_the_run_folder():
     assert all(volume["read_only"] and volume["source"].startswith(RUN) for volume in volumes)
 
 
-def test_the_control_token_reaches_the_mock_container_only():
-    found = services(mocks=MOCKS)
+def test_the_control_token_is_in_no_compose_file_only_in_the_rendered_config():
+    assert "secret" not in json.dumps(services(mocks=MOCKS))
 
-    assert found[MOCK_SERVICE]["environment"]["CONTROL_TOKEN"] == "secret"
-    assert "secret" not in json.dumps(found[APP_SERVICE])
-    assert "secret" not in json.dumps(found[FORWARD_SERVICE])
+
+def test_the_mock_container_runs_the_program_from_its_folder_on_its_config():
+    command = services(mocks=MOCKS)[MOCK_SERVICE]["command"]
+
+    assert command == ["python", "-I", "/cstudy/mock_server", "/cstudy/mocks.json"]
+
+
+def test_nothing_of_the_mock_servers_is_mounted_in_the_app():
+    app = services(mocks=MOCKS)[APP_SERVICE]
+
+    assert "mock" not in json.dumps(app["volumes"])
+
+
+def test_the_app_and_its_commands_wait_for_the_mock_servers():
+    found = services(mocks=MOCKS, bootstrap=OneShot(("node", "m.ts")))
+
+    assert found[APP_SERVICE]["depends_on"][MOCK_SERVICE] == {"condition": "service_healthy"}
+    assert found[BOOTSTRAP_SERVICE]["depends_on"][MOCK_SERVICE] == {"condition": "service_healthy"}
+
+
+def test_reset_prepare_runs_after_bootstrap_and_before_the_app():
+    found = services(
+        bootstrap=OneShot(("node", "m.ts")), reset_prepare=OneShot(("node", "reset.ts"))
+    )
+
+    assert found[RESET_PREPARE_SERVICE]["environment"]["CSTUDY_RESET_PHASE"] == "prepare"
+    assert BOOTSTRAP_SERVICE in found[RESET_PREPARE_SERVICE]["depends_on"]
+    assert RESET_PREPARE_SERVICE in found[APP_SERVICE]["depends_on"]
+    assert BOOTSTRAP_SERVICE not in found[APP_SERVICE]["depends_on"]
+
+
+def test_the_egress_probe_is_on_the_internal_network_only_and_stays_out_of_up():
+    probe = services()[EGRESS_PROBE_SERVICE]
+
+    assert probe["networks"] == ["sandbox"]
+    assert probe["profiles"] == [EGRESS_PROBE_SERVICE]
+
+
+def test_the_egress_probe_is_hardened_like_a_helper():
+    probe = services()[EGRESS_PROBE_SERVICE]
+
+    assert probe["read_only"] is True
+    assert probe["cap_drop"] == ["ALL"]
+    assert probe["user"] == "65534:65534"
 
 
 def test_the_app_waits_for_the_volume_owner():

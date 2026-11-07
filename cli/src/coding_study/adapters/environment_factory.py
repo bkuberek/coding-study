@@ -14,6 +14,7 @@ from coding_study.adapters.conformance_fixtures import (
 )
 from coding_study.adapters.content_code_loader import ContentCodeLoader
 from coding_study.adapters.docker_sandbox import DockerSandbox
+from coding_study.adapters.http_grader.clients import open_stack_clients
 from coding_study.adapters.document_index import INDEX_FILE, DocumentIndex
 from coding_study.adapters.env_editor import EnvEditorOpener
 from coding_study.adapters.fs_calibration_cache import FsCalibrationCache, local_machine_id
@@ -137,6 +138,7 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         study_guides=FsStudyGuides.from_setting(config.study_guides.root, user.home),
         language_servers=LspDirectory(workspace, SubprocessToolProbe(), SubprocessCommandRunner()),
         sandbox=DockerSandbox(runs_directory=workspace / RUNS_DIRECTORY),
+        stack_clients=open_stack_clients,
         problem_sets=YamlProblemSets(WorkspaceFs(workspace)),
     )
 

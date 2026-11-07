@@ -1,5 +1,7 @@
 """`cstudy start`, `show`, `test` and `submit` on a service project, through a fake engine."""
 
+import json
+
 import pytest
 from typer.testing import CliRunner
 
@@ -223,13 +225,23 @@ def test_the_flags_of_a_native_run_exit_3(environment, flag):
     assert flag[0] in result.stderr
 
 
-def test_submit_says_the_grader_is_not_built_yet(environment):
+def test_submit_grades_over_http_and_reports_the_two_clocks(environment, engine):
     start_it()
 
     result = invoke("submit", SLUG)
 
-    assert result.exit_code == ExitCode.USAGE_ERROR
-    assert "HTTP grader" in result.stderr
+    assert result.exit_code == ExitCode.SUCCESS, result.stderr
+    assert "startup 2.5 s, not counted" in result.stdout
+    assert "cstudy.owner_pid" not in result.stdout
+
+
+def test_submit_json_says_startup_apart_from_the_duration(environment):
+    start_it()
+
+    document = json.loads(invoke("submit", SLUG, "--json").stdout)
+
+    assert document["startup_s"] == 2.5
+    assert document["duration_s"] < 2.5
 
 
 def test_a_bank_problem_never_asks_the_engine_anything(tmp_path, monkeypatch, engine):

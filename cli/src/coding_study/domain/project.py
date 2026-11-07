@@ -27,6 +27,7 @@ from coding_study.domain.cases import (
 from coding_study.domain.clock_statement import VIRTUAL_CLOCK_NOTICE
 from coding_study.domain.levels import cases_up_to, level_heading
 from coding_study.domain.markdown import MarkdownDocument
+from coding_study.domain.mock_configs import MockFiles
 from coding_study.domain.naming import RESERVED_WORDS, NameRole, is_reserved, member_name
 from coding_study.domain.problem import Language, Problem, ProblemMeta
 from coding_study.domain.service_project import ServiceProject
@@ -169,6 +170,10 @@ class ProjectFiles:
     """Every directory in `solutions/broken/` by name: the broken reference of that id, as the
     files it changes or adds on the reference's overlay
     (docs/specs/problem-format.md#stress-cases-in-projects)."""
+    mocks: Mapping[str, MockFiles] = field(default_factory=dict[str, MockFiles])
+    """A service project's mock servers by name; none for any other problem."""
+    backing_services: Mapping[str, object] | None = None
+    """A service project's compose file (`project.services`), parsed; None without one."""
 
 
 NO_PROJECT_FILES = ProjectFiles(None)

@@ -1,6 +1,7 @@
 """A service project's lifecycle through a fake engine: start, install rules, and `cstudy test` on
 two clocks."""
 
+import json
 from dataclasses import replace
 
 import pytest
@@ -15,7 +16,11 @@ from coding_study.application.service_lifecycle import (
     run_service_tests,
     service_needs_of,
 )
-from coding_study.application.service_lifecycle import (
+from coding_study.application.service_stacks import (
+    dev_stack_plan,
+    graded_stack_plan,
+)
+from coding_study.application.service_stacks import (
     test_stack_plan as stack_plan_for_test,
 )
 from coding_study.application.start_attempt import StartRequest, start_attempt
@@ -35,6 +40,7 @@ from coding_study.domain.sandbox import (
 from tests.fakes import make_environment
 from tests.sandbox_fakes import FakeSandbox
 from tests.service_problems import (
+    CONFIG,
     FOLDER,
     IMAGE,
     INSTALL,
@@ -42,6 +48,7 @@ from tests.service_problems import (
     SLUG,
     make_content,
     meta_document,
+    write_mock,
     write_problem,
 )
 
@@ -445,7 +452,9 @@ def test_run_time_excludes_startup(environment, engine):
 
     assert result.startup_seconds == 63.0
     assert result.test_seconds == pytest.approx(0.25)
-    assert result.total_seconds == pytest.approx(63.25)
+    assert result.total_seconds == pytest.approx(
+        result.startup_seconds + result.test_seconds + result.cases_seconds
+    )
 
 
 @pytest.mark.parametrize(
@@ -512,19 +521,111 @@ def test_cstudy_test_sweeps_first(environment, engine):
     assert names.index("inventory") < names.index("start")
 
 
-def test_mock_servers_wait_for_the_mock_server_phase(tmp_path, engine):
+def with_vendor(tmp_path, engine):
     root = make_content(tmp_path)
-    write_problem(root, meta_document(mocks=[{"name": "room-vendor", "config": "m.yaml"}]))
+    write_problem(root, meta_document(mocks=[{"name": "room-vendor", "config": CONFIG}]))
+    write_mock(root)
+    environment = make_environment(root, sandbox=engine)
+    started(environment)
+    return environment
+
+
+def test_a_test_stack_renders_visible_scenarios_only(tmp_path, engine):
+    environment = with_vendor(tmp_path, engine)
+
+    plan = stack_plan_for_test(environment, problem_of(environment))
+
+    assert plan.mocks is not None
+    scenarios = json.loads(plan.mocks.rendered_config)["mocks"]["room-vendor"]["scenarios"]
+    assert sorted(scenarios) == ["outage"]
+
+
+def test_a_graded_stack_renders_every_scenario(tmp_path, engine):
+    environment = with_vendor(tmp_path, engine)
+
+    plan = graded_stack_plan(environment, problem_of(environment), 1)
+
+    assert plan.mocks is not None
+    scenarios = json.loads(plan.mocks.rendered_config)["mocks"]["room-vendor"]["scenarios"]
+    assert sorted(scenarios) == ["outage", "rate_limited"]
+
+
+def test_each_stack_has_a_control_token_of_its_own(tmp_path, engine):
+    environment = with_vendor(tmp_path, engine)
+    problem = problem_of(environment)
+
+    first, second = (stack_plan_for_test(environment, problem) for _ in range(2))
+
+    assert first.mocks is not None and second.mocks is not None
+    assert first.mocks.control_token != second.mocks.control_token
+
+
+def test_each_mock_server_is_an_alias_of_the_container(tmp_path, engine):
+    environment = with_vendor(tmp_path, engine)
+
+    plan = stack_plan_for_test(environment, problem_of(environment))
+
+    assert plan.mocks is not None
+    assert plan.mocks.aliases == ("room-vendor",)
+
+
+def test_a_test_stack_gives_commands_test_its_control_interface(tmp_path, engine):
+    environment = with_vendor(tmp_path, engine)
+
+    run_tests(environment)
+
+    command = engine.called("exec_app")[0]
+    assert set(command.environment) == {"CSTUDY_MOCK_CONTROL_URL", "CSTUDY_MOCK_CONTROL_TOKEN"}
+
+
+def test_a_graded_stack_prepares_its_reset_after_bootstrap(environment):
+    started(environment)
+
+    plan = graded_stack_plan(environment, problem_of(environment), 1)
+
+    assert plan.reset_prepare is not None
+    assert plan.reset_prepare.command == ("node", "scripts/reset.ts")
+
+
+def test_a_dev_stack_has_no_reset_to_prepare(environment):
+    started(environment)
+
+    assert dev_stack_plan(environment, problem_of(environment)).reset_prepare is None
+
+
+def test_a_dev_stack_has_a_stable_name_and_keeps_its_data(environment):
+    started(environment)
+    problem = problem_of(environment)
+
+    plan = dev_stack_plan(environment, problem)
+
+    assert plan.identity.name == dev_stack_plan(environment, problem).identity.name
+    assert not plan.identity.kind.removes_volumes
+
+
+def test_grade_setup_expands_the_problems_folder(tmp_path, engine):
+    root = make_content(tmp_path)
+    document = meta_document()
+    commands = document["project"]["commands"]  # type: ignore[index]
+    commands["grade_setup"] = ["node", "{problem}/grading/setup.ts"]  # type: ignore[index]
+    write_problem(root, document)
     environment = make_environment(root, sandbox=engine)
     started(environment)
 
-    with pytest.raises(SandboxError, match="mock server"):
-        run_tests(environment)
+    plan = graded_stack_plan(environment, problem_of(environment), 2)
+
+    assert plan.grade_setup is not None
+    assert plan.grade_setup.command == ("node", "/cstudy/problem/grading/setup.ts")
+    assert plan.grade_setup.graded_level == 2
+    assert plan.grade_setup.grading_directory.endswith("/grading")
 
 
 def test_backing_services_wait_for_their_phase(tmp_path, engine):
     root = make_content(tmp_path)
     write_problem(root, meta_document(services="services/compose.yaml"))
+    compose = root / "problems" / f"0901-{SLUG}" / "services" / "compose.yaml"
+    compose.parent.mkdir()
+    compose.write_text("services: {}\n")
     environment = make_environment(root, sandbox=engine)
     started(environment)
 

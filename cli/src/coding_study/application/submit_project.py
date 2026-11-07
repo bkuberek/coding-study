@@ -27,6 +27,7 @@ from coding_study.application.project_runs import (
     run_grading,
 )
 from coding_study.application.project_tests import LevelTestFile, LevelTestWriter
+from coding_study.application.service_grading import ServiceGrading, grade_service_project
 from coding_study.application.statement_file import write_statement
 from coding_study.domain.attempts import Attempt, AttemptMode
 from coding_study.domain.cases import Case
@@ -91,6 +92,9 @@ class SubmitResult:
     submission: SubmissionRecord
     opened: OpenedLevel | None
     duration_seconds: float
+    """On a service project, from the moment its stack was ready: no startup counts."""
+    startup_seconds: float | None = None
+    """A service project's startup, which no limit or result counts; None for any other problem."""
 
     @property
     def level_tallies(self) -> tuple[LevelTally, ...]:
@@ -139,13 +143,25 @@ def submit_project(
     require_jdk(environment, meta, language)
     levels = project_levels(meta, attempt.level_unlocked, request.level)
     folder = project_folder(meta.slug)
-    root = environment.workspace.absolute(folder)
-    plan = grading_stress_plan(problem, language, levels.ran_up_to, StressSelection())
-    run = GradingRun(problem, language, root, levels.ran_up_to, request.listener, stress_plan=plan)
-    judgement = run_grading(environment, run, notify)
+    startup: float | None = None
+    if service_of(meta) is not None:
+        grading = ServiceGrading(problem, levels.ran_up_to, request.listener, attempt.mode)
+        run_on_stack = grade_service_project(environment, grading, notify)
+        judgement, startup, duration = (
+            run_on_stack.judgement,
+            run_on_stack.startup_seconds,
+            run_on_stack.grading_seconds,
+        )
+    else:
+        root = environment.workspace.absolute(folder)
+        plan = grading_stress_plan(problem, language, levels.ran_up_to, StressSelection())
+        run = GradingRun(
+            problem, language, root, levels.ran_up_to, request.listener, stress_plan=plan
+        )
+        judgement = run_grading(environment, run, notify)
+        duration = clock.monotonic() - started
     graded = cases_up_to(problem.cases, levels.ran_up_to)
     slots = stress_verdict_slots(replace(problem, cases=graded), language)
-    duration = clock.monotonic() - started
     submission = SubmissionRecord(
         attempt_id=attempt.id,
         submitted_at=clock.now(),
@@ -168,6 +184,7 @@ def submit_project(
         submission=submission,
         opened=None,
         duration_seconds=duration,
+        startup_seconds=startup,
     )
     if not (submission.every_level and judgement.passed):
         return result
@@ -176,15 +193,9 @@ def submit_project(
 
 
 def require_project(meta: ProblemMeta) -> None:
-    """Raises UsageError for a problem of another kind, which `cstudy test` grades, and for a
-    service project, which needs the HTTP grader (P6): its seam is `service_lifecycle`'s stack."""
+    """Raises UsageError for a problem of another kind, which `cstudy test` grades."""
     if meta.kind is not ProblemKind.PROJECT:
         raise UsageError(f"cstudy submit is for project problems; cstudy test grades {meta.slug}")
-    if service_of(meta) is not None:
-        raise UsageError(
-            f"{meta.slug} is a service project, whose HTTP grader is not built yet; "
-            "cstudy test runs its commands.test"
-        )
 
 
 class _Opener:
@@ -220,9 +231,7 @@ class _Opener:
         attempt = replace(result.attempt, level_unlocked=level)
         environment.progress.update_attempt(attempt)
         environment.progress.add_level_unlock(LevelUnlock(attempt.id, level, result.submitted_at))
-        generator = environment.toolchains.project_test_generator(self._language)
-        writer = LevelTestWriter(environment.workspace, generator)
-        tests = writer.write_level(self._problem, project_folder(self._problem.meta.slug), level)
+        tests = self._level_tests(level)
         statement = write_statement(environment, self._problem, level)
         opened = OpenedLevel(
             level=level,
@@ -237,6 +246,15 @@ class _Opener:
             statement=statement,
         )
         return replace(result, attempt=attempt, opened=opened)
+
+    def _level_tests(self, level: int) -> LevelTestFile | None:
+        """A service project has no generated tests: the level's cases run over HTTP."""
+        if service_of(self._problem.meta) is not None:
+            return None
+        environment = self._environment
+        generator = environment.toolchains.project_test_generator(self._language)
+        writer = LevelTestWriter(environment.workspace, generator)
+        return writer.write_level(self._problem, project_folder(self._problem.meta.slug), level)
 
 
 def level_method_texts(

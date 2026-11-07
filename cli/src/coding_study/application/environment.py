@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from coding_study.application.http_grading_ports import OpenStackClients
 from coding_study.application.ports import (
     CalibrationCache,
     ChangeWatcher,
@@ -71,5 +72,7 @@ class Environment:
     """The code-intelligence servers in the workspace's `.cs/lsp/`."""
     sandbox: SandboxEngine
     """The container engine of service projects; nothing else ever reaches it."""
+    stack_clients: OpenStackClients
+    """Opens the HTTP clients of a ready stack, for the grader and for `cstudy dev`."""
     problem_sets: ProblemSetStore
     """The workspace's `sets.yaml`."""

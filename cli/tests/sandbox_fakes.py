@@ -50,6 +50,13 @@ class FakeSandbox:
     plans: list[StackPlan] = field(default_factory=list[StackPlan])
     after_install: Callable[[], None] | None = None
     install_timeouts: list[float] = field(default_factory=list[float])
+    one_off_outcome: CommandOutcome = field(default_factory=lambda: CommandOutcome(0, "ok\n"))
+    start_app_error: StackStartError | None = None
+    app_ended: CommandOutcome | None = None
+    app_lines: tuple[str, ...] = ()
+    probe_outcome: CommandOutcome = field(default_factory=lambda: CommandOutcome(0, "reached []\n"))
+    on_follow: Callable[[], None] | None = None
+    """What happens while `follow_app` would block: a test raises KeyboardInterrupt here."""
 
     def state(self) -> EngineState:
         self.calls.append(("state", None))
@@ -125,7 +132,35 @@ class FakeSandbox:
 
     def run_one_off(self, plan: StackPlan, command: ContainerCommand) -> CommandOutcome:
         self.calls.append(("run_one_off", command))
-        return self.exec_outcome
+        return self.one_off_outcome
+
+    def restart_app(self, plan: StackPlan, ready: ReadyStack, budget: StartupBudget) -> None:
+        self.calls.append(("restart_app", budget))
+        if self.start_app_error is not None:
+            raise self.start_app_error
+
+    def stop_app(self, plan: StackPlan) -> None:
+        self.calls.append(("stop_app", plan.identity.name))
+
+    def start_app(self, plan: StackPlan, ready: ReadyStack, budget: StartupBudget) -> None:
+        self.calls.append(("start_app", budget))
+        if self.start_app_error is not None:
+            raise self.start_app_error
+
+    def app_exit(self, plan: StackPlan, within_ms: int) -> CommandOutcome | None:
+        self.calls.append(("app_exit", within_ms))
+        return self.app_ended
+
+    def follow_app(self, plan: StackPlan, on_line: Callable[[str], None]) -> None:
+        self.calls.append(("follow_app", plan.identity.name))
+        for line in self.app_lines:
+            on_line(line)
+        if self.on_follow is not None:
+            self.on_follow()
+
+    def probe_egress(self, plan: StackPlan) -> CommandOutcome:
+        self.calls.append(("probe_egress", plan.identity.name))
+        return self.probe_outcome
 
     def install(
         self, plan: InstallPlan, timeout_s: float, on_output: Callable[[str], None] | None

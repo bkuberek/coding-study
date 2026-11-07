@@ -288,7 +288,7 @@ def test_start_writes_the_rendered_mock_config_with_mock_servers(tmp_path, paths
     docker = ScriptedDocker()
     published(docker)
     published(docker, 9000, "127.0.0.1:56224")
-    mocks = MockServerInput(("room-vendor",), ("python", "m.py"), "secret", '{"a": 1}')
+    mocks = MockServerInput(("room-vendor",), "secret", '{"a": 1}')
 
     sandbox(docker, tmp_path).start(plan_of(paths, mocks=mocks), BUDGET)
 
@@ -389,7 +389,7 @@ def test_ready_has_a_control_port_with_mock_servers(tmp_path, paths):
     docker = ScriptedDocker()
     published(docker)
     published(docker, 9000, "127.0.0.1:56224")
-    mocks = MockServerInput(("room-vendor",), ("python", "m.py"), "secret", "{}")
+    mocks = MockServerInput(("room-vendor",), "secret", "{}")
 
     ready = sandbox(docker, tmp_path).start(plan_of(paths, mocks=mocks), BUDGET)
 

@@ -12,6 +12,7 @@ from coding_study.adapters.concurrency_documents import (
     concurrency_from_document,
     stress_from_document,
 )
+from coding_study.adapters.http_grader.case_document import http_case_input
 from coding_study.domain.cases import (
     Case,
     CaseInput,
@@ -385,6 +386,8 @@ def _case(case: Document, comparator: ComparatorSpec, location: str) -> Case:
 
 
 def _case_input(case: Document) -> CaseInput:
+    if "request" in case:
+        return http_case_input(case)
     if "stress" in case:
         return stress_from_document(case["stress"])
     if "generate" in case:

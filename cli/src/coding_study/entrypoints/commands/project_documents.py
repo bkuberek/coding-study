@@ -156,7 +156,15 @@ def submit_document(result: SubmitResult, exit_code: int) -> dict[str, JsonValue
         ],
         "tally": tally_value(result.submission.tally),
         "duration_s": round(result.duration_seconds, DECIMALS),
+        **_startup_field(result),
     }
+
+
+def _startup_field(result: SubmitResult) -> dict[str, JsonValue]:
+    """A service project's startup, which `duration_s` leaves out."""
+    if result.startup_seconds is None:
+        return {}
+    return {"startup_s": round(result.startup_seconds, DECIMALS)}
 
 
 def level_tally_value(tally: LevelTally) -> JsonValue:

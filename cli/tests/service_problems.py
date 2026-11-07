@@ -1,5 +1,6 @@
 """A small service project problem on disk, for tests that go through the real loader."""
 
+import json
 from pathlib import Path
 
 import yaml
@@ -12,6 +13,21 @@ IMAGE = "node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab
 LOCK = "pnpm-lock.yaml"
 FOLDER = f"projects/{SLUG}"
 INSTALL = ["corepack", "pnpm", "install", "--frozen-lockfile", "--ignore-scripts"]
+CONFIG = "mocks/room-vendor.yaml"
+VENDOR_CONFIG: dict[str, object] = {
+    "routes": [
+        {
+            "id": "rooms",
+            "method": "GET",
+            "path": "/rooms",
+            "response": {"status": 200, "body": {"rooms": []}},
+        }
+    ],
+    "scenarios": {
+        "outage": {"visible": True, "status": 503},
+        "rate_limited": {"status": 429, "headers": {"Retry-After": "1"}},
+    },
+}
 
 
 def make_content(tmp_path: Path) -> Path:
@@ -55,6 +71,19 @@ def meta_document(**project: object) -> dict[str, object]:
     }
 
 
+def write_mock(root: Path, config: dict[str, object] | None = None) -> None:
+    """The mock server `meta_document(mocks=[{"name": "room-vendor", "config": CONFIG}])` names."""
+    path = root / "problems" / f"0901-{SLUG}" / CONFIG
+    path.parent.mkdir()
+    path.write_text(yaml.safe_dump(config or VENDOR_CONFIG))
+
+
+def write_cases(root: Path, cases: list[dict[str, object]]) -> None:
+    (root / "problems" / f"0901-{SLUG}" / "tests.json").write_text(
+        json.dumps({"version": 1, "cases": cases})
+    )
+
+
 def write_problem(root: Path, document: dict[str, object] | None = None) -> None:
     directory = root / "problems" / f"0901-{SLUG}"
     (directory / "starter" / "src").mkdir(parents=True)
@@ -63,7 +92,7 @@ def write_problem(root: Path, document: dict[str, object] | None = None) -> None
     (directory / "tests.json").write_text('{"version": 1, "cases": []}')
     (directory / "problem.md").write_text(
         "# Rooms\n\n## Statement\n\nS\n\n## Input\n\nI\n\n## Output\n\nO\n\n## Project\n\nP\n\n"
-        "## Level 1: One\n\nL\n"
+        "## Level 1: One\n\nL\n\n## Level 2: Two\n\nL\n"
     )
     (directory / "solutions" / "explanation.md").write_text("# Rooms: Explanation\n")
     (directory / "solutions" / "reference" / "src" / "server.ts").write_text("// reference\n")

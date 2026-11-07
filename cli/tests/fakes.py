@@ -13,6 +13,7 @@ from coding_study.adapters.fs_item_repository import FsItemRepository
 from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.adapters.fs_study_guides import FsStudyGuides
+from coding_study.adapters.http_grader.clients import open_stack_clients
 from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
 from coding_study.adapters.workspace_fs import WorkspaceFs
 from coding_study.adapters.yaml_problem_sets import YamlProblemSets
@@ -305,6 +306,7 @@ def make_environment(root: Path, **overrides: object) -> Environment:
         "study_guides": FsStudyGuides(None),
         "language_servers": FakeLanguageServers(),
         "sandbox": FakeSandbox(),
+        "stack_clients": open_stack_clients,
         "problem_sets": YamlProblemSets(WorkspaceFs(root)),
     }
     parts.update(overrides)

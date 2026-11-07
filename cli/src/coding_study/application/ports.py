@@ -1248,6 +1248,34 @@ class SandboxEngine(Protocol):
         """Runs `command` in a new container of the app's image, on the stack's network."""
         ...
 
+    def restart_app(self, plan: StackPlan, ready: ReadyStack, budget: StartupBudget) -> None:
+        """`stop_app`, then `start_app`, for a case that hung the app."""
+        ...
+
+    def stop_app(self, plan: StackPlan) -> None:
+        """Stops the `app` container and nothing else. Raises StackStartError when it cannot."""
+        ...
+
+    def start_app(self, plan: StackPlan, ready: ReadyStack, budget: StartupBudget) -> None:
+        """Starts the stopped `app` container; its ports stay, since the forwarder holds them.
+        Returns once its health path answers, on the first clock: raises StackStartError when it
+        does not."""
+        ...
+
+    def app_exit(self, plan: StackPlan, within_ms: int) -> CommandOutcome | None:
+        """How the `app` container ended, with its last lines; None if it still runs after waiting
+        up to `within_ms`."""
+        ...
+
+    def follow_app(self, plan: StackPlan, on_line: Callable[[str], None]) -> None:
+        """`on_line` hears each line the app prints, until the `app` container ends."""
+        ...
+
+    def probe_egress(self, plan: StackPlan) -> CommandOutcome:
+        """From a one-off on `sandbox` alone, tries to reach what no app may: exit 0 when it
+        reached none of them, and otherwise names those it did."""
+        ...
+
     def install(
         self, plan: InstallPlan, timeout_s: float, on_output: Callable[[str], None] | None
     ) -> CommandOutcome:

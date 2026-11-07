@@ -28,6 +28,8 @@ multi-architecture index holds on arm64 and amd64."""
 APP_SERVICE = "app"
 BOOTSTRAP_SERVICE = "bootstrap"
 GRADE_SETUP_SERVICE = "grade_setup"
+RESET_PREPARE_SERVICE = "reset-prepare"
+EGRESS_PROBE_SERVICE = "cstudy-egress-probe"
 DATA_OWNER_SERVICE = "data-owner"
 CACHE_OWNER_SERVICE = "cache-owner"
 INSTALL_SERVICE = "install"
@@ -38,6 +40,8 @@ RESERVED_SERVICES = frozenset(
         APP_SERVICE,
         BOOTSTRAP_SERVICE,
         GRADE_SETUP_SERVICE,
+        RESET_PREPARE_SERVICE,
+        EGRESS_PROBE_SERVICE,
         DATA_OWNER_SERVICE,
         CACHE_OWNER_SERVICE,
         INSTALL_SERVICE,
@@ -69,6 +73,10 @@ MOCK_CODE_DIRECTORY = "mock_server"
 MOCK_CODE_PATH = f"/cstudy/{MOCK_CODE_DIRECTORY}"
 MOCK_CONFIG_FILE = "mocks.json"
 MOCK_CONFIG_PATH = f"/cstudy/{MOCK_CONFIG_FILE}"
+MOCK_COMMAND = ("python", "-I", MOCK_CODE_PATH, MOCK_CONFIG_PATH)
+RESET_PHASE_VARIABLE = "CSTUDY_RESET_PHASE"
+RESET_PHASE_PREPARE = "prepare"
+RESET_PHASE_APPLY = "apply"
 PASSWD_FILE = "passwd"
 STACK_FILE = "stack.yaml"
 DEVCONTAINER_DIRECTORY = ".devcontainer"
@@ -99,6 +107,21 @@ HEALTH_TIMINGS: Mapping[str, str | int] = {
 """Fast while waiting, nothing while idle, and patient on a loaded machine: a check that succeeds
 ends the start period, so a long one costs nothing when all is well."""
 COMPLETED = {"condition": "service_completed_successfully"}
+HEALTHY = {"condition": "service_healthy"}
+EGRESS_TARGETS = (("1.1.1.1", 443), ("192.168.1.1", 80), ("10.0.0.1", 80), ("169.254.169.254", 80))
+"""A public address, two LAN addresses and the cloud metadata address, which D11 must not reach."""
+EGRESS_PROBE_TIMEOUT_S = 2
+EGRESS_PROBE = "\n".join(
+    (
+        "import socket, sys",
+        f"socket.setdefaulttimeout({EGRESS_PROBE_TIMEOUT_S})",
+        f"reached = [to for to in {EGRESS_TARGETS!r} if socket.socket().connect_ex(to) == 0]",
+        "print('reached', reached)",
+        "sys.exit(1 if reached else 0)",
+    )
+)
+"""Standard library only, run from the pinned Python image, on `sandbox` alone. A connection that
+fails or times out proves what D11 asks; one that succeeds is named."""
 
 _KIND_LETTERS: Mapping["StackKind", str] = {}
 _DIGEST_LENGTH = 8
@@ -244,8 +267,8 @@ class MockServerInput:
 
     aliases: tuple[str, ...]
     """Each mock server's name, as a network alias of the one container."""
-    command: tuple[str, ...]
     control_token: str
+    """Already in `rendered_config`; held here for the grader and for `commands.test`."""
     rendered_config: str
     """The JSON written to `.cs/runs/<run>/mocks.json` and mounted read-only."""
 
@@ -259,6 +282,8 @@ class StackPlan:
     mocks: MockServerInput | None = None
     bootstrap: OneShot | None = None
     grade_setup: GradeSetup | None = None
+    reset_prepare: OneShot | None = None
+    """`commands.reset` with its `prepare` phase: once, after `bootstrap`, before `app`."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -280,11 +305,14 @@ def stack_document(plan: StackPlan) -> dict[str, object]:
         DATA_OWNER_SERVICE: _volume_owner(plan.identity, plan.user, "data", DATA_DIRECTORY),
         APP_SERVICE: _app(plan),
         FORWARD_SERVICE: _forwarder(plan),
+        EGRESS_PROBE_SERVICE: _egress_probe(plan),
     }
     if plan.grade_setup is not None:
         services[GRADE_SETUP_SERVICE] = _grade_setup(plan, plan.grade_setup)
     if plan.bootstrap is not None:
         services[BOOTSTRAP_SERVICE] = _bootstrap(plan, plan.bootstrap)
+    if plan.reset_prepare is not None:
+        services[RESET_PREPARE_SERVICE] = _reset_prepare(plan, plan.reset_prepare)
     if plan.mocks is not None:
         services[MOCK_SERVICE] = _mock_server(plan, plan.mocks)
     labels = plan.identity.stable_labels
@@ -414,24 +442,55 @@ def _app_like(plan: StackPlan) -> dict[str, object]:
     }
 
 
+def _ready_for_commands(plan: StackPlan) -> dict[str, object]:
+    """What every command of the app's image waits for: its data, and the mock servers, which it
+    may call as it starts."""
+    needs: dict[str, object] = {DATA_OWNER_SERVICE: COMPLETED}
+    if plan.mocks is not None:
+        needs[MOCK_SERVICE] = HEALTHY
+    return needs
+
+
+def _after(plan: StackPlan, *earlier: tuple[str, object | None]) -> dict[str, object]:
+    """`_ready_for_commands`, then the nearest one-shot that is declared: each waits for the one
+    before it, so a failure stops what comes after and every one-shot has a service depending on
+    it, which `up --wait` needs."""
+    needs = _ready_for_commands(plan)
+    declared = next((name for name, one_shot in earlier if one_shot is not None), None)
+    return needs if declared is None else {**needs, declared: COMPLETED}
+
+
 def _app(plan: StackPlan) -> dict[str, object]:
     """`app` has no compose healthcheck: its image may hold no client to probe with, so
     `cstudy` asks the health path through the published port and reads the container's state, for
     any language alike."""
-    depends_on = {DATA_OWNER_SERVICE: COMPLETED}
-    if plan.bootstrap is not None:
-        depends_on[BOOTSTRAP_SERVICE] = COMPLETED
-    elif plan.grade_setup is not None:
-        depends_on[GRADE_SETUP_SERVICE] = COMPLETED
+    depends_on = _after(
+        plan,
+        (RESET_PREPARE_SERVICE, plan.reset_prepare),
+        (BOOTSTRAP_SERVICE, plan.bootstrap),
+        (GRADE_SETUP_SERVICE, plan.grade_setup),
+    )
     command = plan.app.command if plan.app.command is not None else ("sleep", "infinity")
     return {**_app_like(plan), "command": list(command), "depends_on": depends_on}
 
 
 def _bootstrap(plan: StackPlan, bootstrap: OneShot) -> dict[str, object]:
-    depends_on = {DATA_OWNER_SERVICE: COMPLETED}
-    if plan.grade_setup is not None:
-        depends_on[GRADE_SETUP_SERVICE] = COMPLETED
+    depends_on = _after(plan, (GRADE_SETUP_SERVICE, plan.grade_setup))
     return {**_app_like(plan), "command": list(bootstrap.command), "depends_on": depends_on}
+
+
+def _reset_prepare(plan: StackPlan, prepare: OneShot) -> dict[str, object]:
+    return {
+        **_app_like(plan),
+        "command": list(prepare.command),
+        "environment": {
+            **_app_environment(plan.app.environment),
+            RESET_PHASE_VARIABLE: RESET_PHASE_PREPARE,
+        },
+        "depends_on": _after(
+            plan, (BOOTSTRAP_SERVICE, plan.bootstrap), (GRADE_SETUP_SERVICE, plan.grade_setup)
+        ),
+    }
 
 
 def _grade_setup(plan: StackPlan, setup: GradeSetup) -> dict[str, object]:
@@ -450,7 +509,7 @@ def _grade_setup(plan: StackPlan, setup: GradeSetup) -> dict[str, object]:
             _bind(paths.in_run(PASSWD_FILE), "/etc/passwd", read_only=True),
             f"data:{DATA_DIRECTORY}",
         ],
-        "depends_on": {DATA_OWNER_SERVICE: COMPLETED},
+        "depends_on": _ready_for_commands(plan),
     }
 
 
@@ -475,14 +534,25 @@ def _mock_server(plan: StackPlan, mocks: MockServerInput) -> dict[str, object]:
     paths = plan.paths
     return {
         **_helper(plan.identity),
-        "command": list(mocks.command),
-        "environment": {"CONTROL_TOKEN": mocks.control_token, "HOME": TEMPORARY_DIRECTORY},
+        "command": list(MOCK_COMMAND),
+        "environment": {"HOME": TEMPORARY_DIRECTORY},
         "volumes": [
             _bind(paths.in_run(MOCK_CODE_DIRECTORY), MOCK_CODE_PATH, read_only=True),
             _bind(paths.in_run(MOCK_CONFIG_FILE), MOCK_CONFIG_PATH, read_only=True),
         ],
         "networks": {"sandbox": {"aliases": list(mocks.aliases)}},
         "healthcheck": _listens(CONTROL_PORT),
+    }
+
+
+def _egress_probe(plan: StackPlan) -> dict[str, object]:
+    """On `sandbox` alone, as the app is. A profile keeps it out of `up`, and only D11 runs it."""
+    return {
+        **_helper(plan.identity),
+        "profiles": [EGRESS_PROBE_SERVICE],
+        "command": ["python", "-I", "-c", EGRESS_PROBE],
+        "environment": {"HOME": TEMPORARY_DIRECTORY},
+        "networks": ["sandbox"],
     }
 
 

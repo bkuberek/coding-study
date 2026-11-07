@@ -46,8 +46,7 @@ NAME = "start"
 LABEL_WIDTH = 11
 NEXT_STEP = "cstudy test --watch"
 PROJECT_NEXT_STEP = "cstudy test --watch, then cstudy submit"
-SERVICE_NEXT_STEP = "cstudy test"
-"""It will be `cstudy dev` once that exists (P5), and the spec says so."""
+SERVICE_NEXT_STEP = "cstudy dev, then cstudy test and cstudy submit"
 PROJECT_KIND = "project"
 RESTORE_EXCLUDES = "--restore excludes --fresh and --timer"
 

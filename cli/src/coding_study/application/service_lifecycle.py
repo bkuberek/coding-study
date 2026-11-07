@@ -7,12 +7,13 @@ result. The limit on `commands.test`, and the run time this reports, start at th
 """
 
 import json
-import secrets
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from coding_study.application.active_attempt import find_attempt
 from coding_study.application.environment import Environment
+from coding_study.application.graded_stack import RunningStack, SandboxGradedStack
+from coding_study.application.http_grading import HttpCaseListener, HttpGradingRun, run_http_grading
 from coding_study.application.ports import ContainerCommand, ProgressNotice
 from coding_study.application.sandbox import (
     ensure_engine,
@@ -21,30 +22,26 @@ from coding_study.application.sandbox import (
     running_stack,
     sweep_leftovers,
 )
+from coding_study.application.service_stacks import (
+    images,
+    install_plan,
+    service_project,
+    test_stack_plan,
+    workspace_id,
+)
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.docker_engine import INSTALL_REACHES
 from coding_study.domain.errors import SandboxError, UsageError
-from coding_study.domain.layout import RUNS_DIRECTORY
+from coding_study.domain.judging import Judgement
+from coding_study.domain.levels import FIRST_LEVEL
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
 from coding_study.domain.project_manifest import MANIFESTS_DIRECTORY, project_lock
 from coding_study.domain.sandbox import (
-    APP_MEMORY,
     CONTROL_PORT,
     MOCK_SERVICE,
-    PYTHON_IMAGE,
-    AppContainer,
     CommandOutcome,
-    InstallPlan,
-    MockServerInput,
-    OneShot,
-    SandboxPaths,
-    StackIdentity,
-    StackKind,
     StackPlan,
     StackStartError,
-    install_stack_name,
-    run_stack_name,
-    workspace_digest,
 )
 from coding_study.domain.service_project import (
     INSTALLED_DIRECTORIES,
@@ -57,7 +54,6 @@ from coding_study.domain.workspace_projects import project_folder
 
 INSTALL_RECORD_SUFFIX = ".install.json"
 RECORD_LOCK_KEY = "lock_sha256"
-RUN_ID_BYTES = 4
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,11 +77,11 @@ def preview_service_start(
     Raises SandboxError, with the state's message, when the engine cannot be used."""
     engine = environment.sandbox
     ensure_engine(engine, notify)
-    sweep_leftovers(engine, _workspace(environment), notify)
-    service = _service(problem.meta)
+    sweep_leftovers(engine, workspace_id(environment), notify)
+    service = service_project(problem)
     return ServiceStartPreview(
         needs=service_needs(problem.meta, service, engine.state(), engine.platform()),
-        missing_images=missing_images(engine, _images(service)),
+        missing_images=missing_images(engine, images(service)),
         installs=needs_install(environment, problem),
     )
 
@@ -95,7 +91,7 @@ def finish_service_start(
 ) -> None:
     """Pulls what is missing and installs what the lock file names; nothing else starts. Raises
     SandboxError when either fails, and keeps the attempt: `cstudy start` retries."""
-    pull_images(environment.sandbox, _images(_service(problem.meta)), notify)
+    pull_images(environment.sandbox, images(service_project(problem)), notify)
     if needs_install(environment, problem):
         install_dependencies(environment, problem, notify)
 
@@ -114,7 +110,7 @@ def service_needs_of(environment: Environment, slug: str) -> tuple[NeedRow, ...]
 def needs_install(environment: Environment, problem: Problem) -> bool:
     """Whether the lock file differs from what the last install recorded, or what it installed is
     gone. A problem with no install needs none."""
-    service = _service(problem.meta)
+    service = service_project(problem)
     lock = service.requires.lock
     if service.commands.install is None or lock is None:
         return False
@@ -131,25 +127,38 @@ def needs_install(environment: Environment, problem: Problem) -> bool:
 def install_dependencies(
     environment: Environment, problem: Problem, notify: ProgressNotice
 ) -> None:
+    """`commands.install` in the project folder, and the record of the lock file it installed, only
+    after it succeeded. Raises as `install_in_folder`."""
+    slug = problem.meta.slug
+    digest = install_in_folder(environment, problem, project_folder(slug), notify)
+    if digest is not None:
+        environment.workspace.write_text(
+            _record_path(slug), json.dumps({RECORD_LOCK_KEY: digest}) + "\n"
+        )
+
+
+def install_in_folder(
+    environment: Environment, problem: Problem, folder: str, notify: ProgressNotice
+) -> str | None:
     """`commands.install`, in a stack of its own, under the project's lock. It says what an install
-    can reach, and the record holds the lock file's digest only after it succeeded.
+    can reach. Returns the lock file's digest; None for a problem with no install.
 
     Raises SandboxError when it fails or changes its lock file, and keeps the attempt.
     """
     slug = problem.meta.slug
-    service = _service(problem.meta)
+    service = service_project(problem)
     command, lock = service.commands.install, service.requires.lock
     if command is None or lock is None:
-        return
+        return None
     workspace = environment.workspace
-    lock_path = f"{project_folder(slug)}/{lock}"
+    lock_path = f"{folder}/{lock}"
     if not workspace.exists(lock_path):
         raise SandboxError(f"{lock} is missing. Run: cstudy start --restore {lock}")
     with workspace.locked(project_lock(slug)):
         before = workspace.content_hash(lock_path)
         notify(f"installing dependencies: {' '.join(command)}")
         notify(INSTALL_REACHES)
-        outcome = _run_install(environment, problem, service, notify)
+        outcome = _run_install(environment, problem, folder, notify)
         if outcome.exit_code != 0:
             raise SandboxError(_install_failure(command, outcome, slug, service))
         if workspace.content_hash(lock_path) != before:
@@ -157,17 +166,17 @@ def install_dependencies(
                 f"the install changed its lock file {lock}: it must use the lock exactly. "
                 f"Run: cstudy start --restore {lock}"
             )
-        workspace.write_text(_record_path(slug), json.dumps({RECORD_LOCK_KEY: before}) + "\n")
+        return before
 
 
 def _run_install(
-    environment: Environment, problem: Problem, service: ServiceProject, notify: ProgressNotice
+    environment: Environment, problem: Problem, folder: str, notify: ProgressNotice
 ) -> CommandOutcome:
     engine = environment.sandbox
-    plan = _install_plan(environment, problem, service)
+    plan = install_plan(environment, problem, folder)
     with engine.guard(plan.identity):
         try:
-            return engine.install(plan, service.timeouts.install, notify)
+            return engine.install(plan, service_project(problem).timeouts.install, notify)
         finally:
             problem_stopping = engine.stop_install(plan)
             if problem_stopping is not None:
@@ -205,86 +214,6 @@ def _recorded_lock(environment: Environment, slug: str) -> str | None:
     return None
 
 
-def _workspace(environment: Environment) -> str:
-    return workspace_digest(str(environment.root.resolve()))
-
-
-def _service(meta: ProblemMeta) -> ServiceProject:
-    service = service_of(meta)
-    if service is None:
-        raise ValueError(f"{meta.slug} is not a service project")
-    return service
-
-
-def _images(service: ServiceProject) -> tuple[str, ...]:
-    """Backing services' images come with project.services, in P10."""
-    return (service.image, PYTHON_IMAGE)
-
-
-def _paths(environment: Environment, slug: str, stack: str) -> SandboxPaths:
-    workspace = environment.workspace
-    return SandboxPaths(
-        project=str(workspace.absolute(project_folder(slug)).resolve()),
-        run=str(workspace.absolute(f"{RUNS_DIRECTORY}/{stack}").resolve()),
-    )
-
-
-def _install_plan(
-    environment: Environment, problem: Problem, service: ServiceProject
-) -> InstallPlan:
-    engine = environment.sandbox
-    slug = problem.meta.slug
-    digest = _workspace(environment)
-    name = install_stack_name(slug, digest)
-    command = service.commands.install
-    assert command is not None
-    return InstallPlan(
-        identity=StackIdentity(name, StackKind.INSTALL, digest, slug, engine.owner_pid()),
-        user=engine.host_user(),
-        paths=_paths(environment, slug, name),
-        image=service.image,
-        command=command,
-        environment=service.install_env,
-    )
-
-
-def test_stack_plan(environment: Environment, problem: Problem) -> StackPlan:
-    """The stack of one `cstudy test`: a fresh name, and data that goes with it."""
-    engine = environment.sandbox
-    slug = problem.meta.slug
-    service = _service(problem.meta)
-    owner = engine.owner_pid()
-    name = run_stack_name(StackKind.TEST, owner, secrets.token_hex(RUN_ID_BYTES))
-    identity = StackIdentity(name, StackKind.TEST, _workspace(environment), slug, owner)
-    commands = service.commands
-    return StackPlan(
-        identity=identity,
-        user=engine.host_user(),
-        paths=_paths(environment, slug, name),
-        app=AppContainer(
-            image=service.image,
-            command=commands.run,
-            port=service.app.port,
-            environment=service.env,
-            mem_limit=service.app.mem_limit or APP_MEMORY,
-            health=service.app.health,
-            port_env=service.app.port_env,
-        ),
-        mocks=_mock_server(service),
-        bootstrap=OneShot(commands.bootstrap) if commands.bootstrap is not None else None,
-    )
-
-
-def _mock_server(service: ServiceProject) -> MockServerInput | None:
-    """The seam for the mock server (P5): its config rendered to JSON, its token, and the command
-    that starts it. Until then a problem that declares one cannot run."""
-    if service.mocks:
-        raise SandboxError("this problem's mock servers need the mock server, which is not built")
-    if service.services is not None:
-        raise SandboxError("this problem's backing services arrive with project.services (P10)")
-    return None
-
-
 def _test_environment(plan: StackPlan) -> dict[str, str]:
     """Only a test stack hands its control interface to `commands.test`; it holds visible scenarios
     only, and a graded stack never does this."""
@@ -302,6 +231,8 @@ class ServiceTestRequest:
     language: Language | None = None
     on_output: Callable[[str], None] | None = None
     """Hears each line `commands.test` prints."""
+    listener: HttpCaseListener | None = None
+    """Hears each visible case as it starts and as it is judged."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -317,14 +248,18 @@ class ServiceTestResult:
     test_seconds: float = 0.0
     """The second clock: `commands.test`, from that moment."""
     limit_s: int = 0
+    cases: Judgement = Judgement(0)
+    """The visible HTTP cases of the unlocked levels, as feedback; nothing keeps it."""
+    cases_seconds: float = 0.0
+    """The second clock: those cases."""
 
     @property
     def passed(self) -> bool:
-        return self.outcome is not None and self.outcome.exit_code == 0
+        return self.outcome is not None and self.outcome.exit_code == 0 and self.cases.passed
 
     @property
     def total_seconds(self) -> float:
-        return self.startup_seconds + self.test_seconds
+        return self.startup_seconds + self.test_seconds + self.cases_seconds
 
 
 def service_attempt(
@@ -341,9 +276,9 @@ def service_attempt(
 def run_service_tests(
     environment: Environment, request: ServiceTestRequest, notify: ProgressNotice
 ) -> ServiceTestResult:
-    """`cstudy test` on a service project: a fresh stack, `commands.test` in its running app, and
-    the stack gone again. It stores nothing and opens nothing; the visible HTTP cases come with
-    the grader (P6), which gets its stack the same way.
+    """`cstudy test` on a service project: a fresh stack, `commands.test` in its running app, the
+    visible HTTP cases of the unlocked levels as feedback, and the stack gone again. It stores
+    nothing and opens nothing.
 
     Raises SandboxError or StackStartError when the sandbox failed and your code is not to blame:
     the exit code 4 of `Failure reporting`.
@@ -352,8 +287,8 @@ def run_service_tests(
     problem = environment.problems.load(attempt.slug)
     if problem.meta.kind is not ProblemKind.PROJECT:
         raise UsageError(f"{problem.meta.slug} is not a service project")
-    service = _service(problem.meta)
-    _prepare(environment, problem, notify)
+    service = service_project(problem)
+    prepare_service_run(environment, problem, notify)
     plan = test_stack_plan(environment, problem)
     try:
         return _tests_in(environment, attempt, problem, plan, request, notify)
@@ -365,11 +300,15 @@ def run_service_tests(
         )
 
 
-def _prepare(environment: Environment, problem: Problem, notify: ProgressNotice) -> None:
+def prepare_service_run(
+    environment: Environment, problem: Problem, notify: ProgressNotice
+) -> None:
+    """What a stack needs before it starts: the engine up, no leftovers of this workspace, its
+    images here and its dependencies installed for the lock file as it stands."""
     engine = environment.sandbox
     ensure_engine(engine, notify)
-    sweep_leftovers(engine, _workspace(environment), notify)
-    pull_images(engine, _images(_service(problem.meta)), notify)
+    sweep_leftovers(engine, workspace_id(environment), notify)
+    pull_images(engine, images(service_project(problem)), notify)
     if needs_install(environment, problem):
         install_dependencies(environment, problem, notify)
 
@@ -382,7 +321,7 @@ def _tests_in(
     request: ServiceTestRequest,
     notify: ProgressNotice,
 ) -> ServiceTestResult:
-    service = _service(problem.meta)
+    service = service_project(problem)
     limit = service.timeouts.test
     engine = environment.sandbox
     clock = environment.clock
@@ -395,6 +334,14 @@ def _tests_in(
             ),
         )
         test_seconds = clock.monotonic() - run_began
+        cases_began = clock.monotonic()
+        cases = _visible_cases(
+            environment,
+            (attempt, problem),
+            SandboxGradedStack(engine, RunningStack(plan, ready), service),
+            request.listener,
+        )
+        cases_seconds = clock.monotonic() - cases_began
     return ServiceTestResult(
         problem.meta,
         attempt,
@@ -402,4 +349,23 @@ def _tests_in(
         startup_seconds=ready.startup_seconds,
         test_seconds=test_seconds,
         limit_s=limit,
+        cases=cases,
+        cases_seconds=cases_seconds,
     )
+
+
+def _visible_cases(
+    environment: Environment,
+    subject: tuple[Attempt, Problem],
+    stack: SandboxGradedStack,
+    listener: HttpCaseListener | None,
+) -> Judgement:
+    attempt, problem = subject
+    visible = tuple(case for case in problem.cases if case.visible)
+    run = HttpGradingRun(
+        replace(problem, cases=visible),
+        attempt.level_unlocked or FIRST_LEVEL,
+        environment.config,
+        listener,
+    )
+    return run_http_grading(run, stack, environment.stack_clients)
