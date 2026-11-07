@@ -2,7 +2,7 @@ import pytest
 
 from coding_study.application.preferences import read_preferences, save_preferences
 from coding_study.domain.errors import UsageError
-from coding_study.domain.preferences import Preferences
+from coding_study.domain.preferences import DEFAULT_PROBLEM_COLUMNS, Preferences
 
 
 class MemoryPreferencesStore:
@@ -49,6 +49,7 @@ def test_saving_writes_the_whole_document():
         "theme": "system",
         "code_intelligence": False,
         "autocomplete": False,
+        "problem_columns": list(DEFAULT_PROBLEM_COLUMNS),
     }
 
 
