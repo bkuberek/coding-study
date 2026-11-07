@@ -98,6 +98,12 @@ NOBODY = "65534:65534"
 STOP_GRACE = "2s"
 """Without `init: true` and a short grace, Node as PID 1 ignores SIGTERM and each `down` costs
 10 s."""
+LOG_LIMITS: Mapping[str, object] = {
+    "driver": "json-file",
+    "options": {"max-size": "10m", "max-file": "3"},
+}
+"""So a chatty app cannot fill your disk through the engine's logs. Per container, since an engine's
+own settings are yours, and with the driver named, since these options mean nothing to another."""
 HEALTH_TIMINGS: Mapping[str, str | int] = {
     "interval": "30s",
     "timeout": "10s",
@@ -389,6 +395,7 @@ def _hardened(identity: StackIdentity) -> dict[str, object]:
         "cap_drop": ["ALL"],
         "security_opt": ["no-new-privileges:true"],
         "stop_grace_period": STOP_GRACE,
+        "logging": LOG_LIMITS,
         "labels": identity.container_labels,
     }
 

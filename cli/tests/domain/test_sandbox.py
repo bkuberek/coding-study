@@ -32,9 +32,9 @@ from coding_study.domain.sandbox import (
     StackPlan,
     StackResource,
     dev_stack_name,
-    is_stack_name,
     install_document,
     install_stack_name,
+    is_stack_name,
     leftovers_in,
     render_compose,
     run_stack_name,
@@ -331,6 +331,19 @@ def test_an_idle_app_has_no_command_of_its_own():
     app = AppContainer(IMAGE, None, 8000, {})
 
     assert services(app=app)[APP_SERVICE]["command"] == ["sleep", "infinity"]
+
+
+def test_every_container_caps_its_log_on_your_disk():
+    """Per container: the engine's own settings are yours."""
+    services = {
+        **stack_document(plan(mocks=MOCKS))["services"],
+        **install_document(install_plan())["services"],
+    }
+
+    assert {name: service["logging"] for name, service in services.items()} == {
+        name: {"driver": "json-file", "options": {"max-size": "10m", "max-file": "3"}}
+        for name in services
+    }
 
 
 def test_the_owner_pid_is_on_every_container():

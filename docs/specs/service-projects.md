@@ -74,6 +74,7 @@ On every container cstudy generates, the app first (R23):
 | Setuid bits | Your code can set them on files that show as yours on your machine, so `cstudy` takes them off every regular file in the project folder before and after a stack: no link is followed, a file nobody can read or a folder nobody can enter hides none, and such a folder gets its mode back |
 | Limits | `mem_limit` and `pids_limit`, per container: app 512m and 256 pids, a helper 64m and 32, an install 1g and 512. A problem may declare `app.mem_limit` |
 | Stopping | `init: true` and a 2 s grace, or each `down` costs 10 s with Node as PID 1 |
+| Logs | `json-file` with `max-size: 10m` and `max-file: 3`, per container, so a chatty app cannot fill your disk through the engine's logs: an app that printed 50 MiB kept 24 MiB (measured). `cstudy` changes no engine setting for this |
 | Environment | [Explicit only](#environment). Nothing from your machine leaks in, especially real API keys |
 
 A problem-owned service gets `no-new-privileges` and the limits, since an engine such as Postgres needs its own user and writable paths.

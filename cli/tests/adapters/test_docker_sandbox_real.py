@@ -325,6 +325,52 @@ def test_every_kind_of_resource_carries_the_labels(stack):
     assert all(item.owner_pid == os.getpid() for item in inventory.containers if item.stack == name)
 
 
+CHATTY = (
+    "python",
+    "-I",
+    "-c",
+    "import sys\nfor _ in range(50 * 1024):\n    sys.stdout.write('x' * 1023 + chr(10))",
+)
+MEGABYTE = 1024 * 1024
+KEPT_BY_THE_LIMITS = 30 * MEGABYTE
+"""`max-size` times `max-file`: the most the engine keeps of one container's output."""
+
+
+def test_a_chatty_one_off_keeps_no_more_log_than_its_limits(stack):
+    """50 MiB of output, past the 30 MiB the limits allow; `docker logs` reads what is kept."""
+    _, plan, _ = stack
+    name = f"{plan.identity.name}-chatty"
+
+    arguments = (
+        *("compose", "--ansi", "never", "-p", plan.identity.name),
+        *("-f", plan.paths.in_run("stack.yaml")),
+        *("run", "-d", "--no-deps", "--pull", "never", "--name", name, "app", *CHATTY),
+    )
+    try:
+        started = docker(*arguments)
+        assert started.returncode == 0, started.stderr
+        waited = docker("wait", name)
+        assert waited.stdout.strip() == "0", waited.stderr
+
+        kept = subprocess.run(
+            ["docker", "logs", name],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=GENEROUS_WAIT_S,
+            check=False,
+        ).stdout
+        config = docker("inspect", "--format", "{{json .HostConfig.LogConfig}}", name).stdout
+
+        assert 10 * MEGABYTE < len(kept) <= KEPT_BY_THE_LIMITS
+        assert json.loads(config) == {
+            "Type": "json-file",
+            "Config": {"max-file": "3", "max-size": "10m"},
+        }
+    finally:
+        docker("rm", "-f", "-v", name)
+
+
 def test_a_stopped_stack_leaves_nothing(engine, tmp_path):
     name = stack_name("stops")
     plan = plan_of(tmp_path, name)
