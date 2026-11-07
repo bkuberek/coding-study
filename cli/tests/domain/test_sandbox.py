@@ -1,0 +1,530 @@
+"""The generated compose file, stack names and what counts as a leftover."""
+
+import json
+from typing import Any
+
+import pytest
+
+from coding_study.domain.sandbox import (
+    APP_SERVICE,
+    BOOTSTRAP_SERVICE,
+    CONTROL_PORT,
+    DATA_OWNER_SERVICE,
+    FORWARD_SERVICE,
+    GRADE_SETUP_SERVICE,
+    INSTALL_SERVICE,
+    LABEL_OWNER,
+    MOCK_SERVICE,
+    PYTHON_IMAGE,
+    AppContainer,
+    GradeSetup,
+    InstallPlan,
+    MockServerInput,
+    OneShot,
+    SandboxInventory,
+    SandboxPaths,
+    SandboxUser,
+    StackContainer,
+    StackIdentity,
+    StackKind,
+    StackPlan,
+    StackResource,
+    dev_stack_name,
+    install_document,
+    install_stack_name,
+    leftovers_in,
+    render_compose,
+    run_stack_name,
+    stack_document,
+    workspace_digest,
+)
+
+PROJECT = "/work/projects/rooms"
+RUN = "/work/.cs/runs/cstudy-t-41-abc"
+IMAGE = "node:24-slim@sha256:0123"
+USER = SandboxUser(501, 20)
+PATHS = SandboxPaths(project=PROJECT, run=RUN)
+IDENTITY = StackIdentity("cstudy-t-41-abc", StackKind.TEST, "d1g3st", "rooms", 41)
+APP = AppContainer(IMAGE, ("node", "src/server.ts"), 8000, {"PORT": "8000"})
+MOCKS = MockServerInput(
+    aliases=("room-vendor", "second-vendor"),
+    command=("python", "-I", "/cstudy/mock_server/run.py"),
+    control_token="secret",
+    rendered_config="{}",
+)
+
+
+def plan(**changes: Any) -> StackPlan:
+    return StackPlan(**{"identity": IDENTITY, "user": USER, "paths": PATHS, "app": APP, **changes})
+
+
+def services(**changes: Any) -> dict[str, Any]:
+    return stack_document(plan(**changes))["services"]
+
+
+def install_plan() -> InstallPlan:
+    return InstallPlan(
+        identity=StackIdentity("cstudy-i-rooms-d1g3st", StackKind.INSTALL, "d1g3st", "rooms", 41),
+        user=USER,
+        paths=PATHS,
+        image=IMAGE,
+        command=("corepack", "pnpm", "install", "--frozen-lockfile", "--ignore-scripts"),
+        environment={"COREPACK_HOME": "/cache/corepack"},
+    )
+
+
+def test_the_file_names_its_project_at_the_top():
+    assert stack_document(plan())["name"] == "cstudy-t-41-abc"
+
+
+@pytest.mark.parametrize(
+    "service", [APP_SERVICE, DATA_OWNER_SERVICE, FORWARD_SERVICE, MOCK_SERVICE, BOOTSTRAP_SERVICE]
+)
+def test_every_generated_container_is_hardened(service):
+    found = services(mocks=MOCKS, bootstrap=OneShot(("node", "migrate.ts")))[service]
+
+    assert found["cap_drop"] == ["ALL"]
+    assert found["security_opt"] == ["no-new-privileges:true"]
+    assert found["read_only"] is True
+    assert found["init"] is True
+    assert found["stop_grace_period"] == "2s"
+    assert found["mem_limit"]
+    assert found["pids_limit"]
+
+
+def test_only_the_volume_owner_keeps_a_capability():
+    assert services()[DATA_OWNER_SERVICE]["cap_add"] == ["CHOWN"]
+    assert "cap_add" not in services()[APP_SERVICE]
+
+
+def test_the_app_runs_as_the_host_user_in_the_project_folder():
+    app = services()[APP_SERVICE]
+
+    assert app["user"] == "501:20"
+    assert app["working_dir"] == PROJECT
+
+
+def test_the_app_runs_its_command_as_the_container_command():
+    assert services()[APP_SERVICE]["command"] == ["node", "src/server.ts"]
+
+
+def test_the_project_folder_is_mounted_at_its_own_path():
+    assert {
+        "type": "bind",
+        "source": PROJECT,
+        "target": PROJECT,
+    } in services()[APP_SERVICE]["volumes"]
+
+
+def test_the_devcontainer_folder_is_a_read_only_sub_mount():
+    assert {
+        "type": "bind",
+        "source": f"{PROJECT}/.devcontainer",
+        "target": f"{PROJECT}/.devcontainer",
+        "read_only": True,
+    } in services()[APP_SERVICE]["volumes"]
+
+
+def test_a_one_line_passwd_is_mounted_read_only_for_the_host_uid():
+    assert {
+        "type": "bind",
+        "source": f"{RUN}/passwd",
+        "target": "/etc/passwd",
+        "read_only": True,
+    } in services()[APP_SERVICE]["volumes"]
+
+
+def test_nothing_above_the_project_folder_is_mounted():
+    sources = [
+        volume["source"]
+        for volume in services()[APP_SERVICE]["volumes"]
+        if isinstance(volume, dict)
+    ]
+
+    assert all(source.startswith((PROJECT, RUN)) for source in sources)
+
+
+def test_the_docker_socket_is_never_mounted():
+    text = render_compose(stack_document(plan(mocks=MOCKS)))
+
+    assert "docker.sock" not in text
+
+
+def test_home_and_temporary_files_live_on_a_tmpfs_of_the_user():
+    app = services()[APP_SERVICE]
+
+    assert app["environment"]["HOME"] == "/tmp/home"
+    assert app["environment"]["TMPDIR"] == "/tmp"
+    assert app["tmpfs"] == ["/tmp:size=128m,uid=501,gid=20,mode=1777"]
+
+
+def test_the_app_environment_is_the_declared_one_and_the_fixed_variables():
+    assert services()[APP_SERVICE]["environment"] == {
+        "PORT": "8000",
+        "CSTUDY_DATA_DIR": "/data",
+        "HOME": "/tmp/home",
+        "TMPDIR": "/tmp",
+    }
+
+
+def test_the_app_is_on_the_sandbox_network_only():
+    assert services()[APP_SERVICE]["networks"] == ["sandbox"]
+
+
+def test_the_sandbox_network_is_internal_and_the_edge_is_not():
+    networks = stack_document(plan())["networks"]
+
+    assert networks["sandbox"]["internal"] is True
+    assert "internal" not in networks["edge"]
+
+
+def test_the_forwarder_joins_both_networks():
+    assert services()[FORWARD_SERVICE]["networks"] == ["sandbox", "edge"]
+
+
+def test_the_forwarder_publishes_the_app_on_loopback_with_a_dynamic_port():
+    assert services()[FORWARD_SERVICE]["ports"] == ["127.0.0.1::8000"]
+
+
+def test_the_forwarder_relays_the_app_port():
+    assert services()[FORWARD_SERVICE]["command"] == [
+        "python",
+        "-I",
+        "/cstudy/forward.py",
+        "8000=app:8000",
+    ]
+
+
+def test_the_forwarder_also_publishes_the_control_port_with_mock_servers():
+    forward = services(mocks=MOCKS)[FORWARD_SERVICE]
+
+    assert forward["ports"] == ["127.0.0.1::8000", f"127.0.0.1::{CONTROL_PORT}"]
+    assert forward["command"][-1] == f"{CONTROL_PORT}=cstudy-mocks:{CONTROL_PORT}"
+
+
+def test_only_the_forwarder_publishes_anything():
+    published = [
+        name for name, service in services(mocks=MOCKS).items() if service.get("ports") is not None
+    ]
+
+    assert published == [FORWARD_SERVICE]
+
+
+def test_the_stack_has_no_mock_container_without_mock_servers():
+    assert MOCK_SERVICE not in services()
+
+
+def test_each_mock_server_name_is_an_alias_of_one_container():
+    mocks = services(mocks=MOCKS)[MOCK_SERVICE]
+
+    assert mocks["networks"] == {"sandbox": {"aliases": ["room-vendor", "second-vendor"]}}
+
+
+def test_the_mock_code_and_configs_are_mounted_read_only_from_the_run_folder():
+    volumes = services(mocks=MOCKS)[MOCK_SERVICE]["volumes"]
+
+    assert all(volume["read_only"] and volume["source"].startswith(RUN) for volume in volumes)
+
+
+def test_the_control_token_reaches_the_mock_container_only():
+    found = services(mocks=MOCKS)
+
+    assert found[MOCK_SERVICE]["environment"]["CONTROL_TOKEN"] == "secret"
+    assert "secret" not in json.dumps(found[APP_SERVICE])
+    assert "secret" not in json.dumps(found[FORWARD_SERVICE])
+
+
+def test_the_app_waits_for_the_volume_owner():
+    assert services()[APP_SERVICE]["depends_on"] == {
+        DATA_OWNER_SERVICE: {"condition": "service_completed_successfully"}
+    }
+
+
+def test_bootstrap_is_a_one_shot_the_app_depends_on():
+    found = services(bootstrap=OneShot(("node", "migrate.ts")))
+
+    assert found[BOOTSTRAP_SERVICE]["command"] == ["node", "migrate.ts"]
+    assert found[APP_SERVICE]["depends_on"][BOOTSTRAP_SERVICE] == {
+        "condition": "service_completed_successfully"
+    }
+
+
+def test_grade_setup_runs_before_bootstrap_with_the_project_read_only():
+    found = services(
+        bootstrap=OneShot(("node", "migrate.ts")),
+        grade_setup=GradeSetup(("node", "/cstudy/problem/grading/s.ts"), "/content/p/grading", 2),
+    )
+    setup = found[GRADE_SETUP_SERVICE]
+
+    assert found[BOOTSTRAP_SERVICE]["depends_on"][GRADE_SETUP_SERVICE] == {
+        "condition": "service_completed_successfully"
+    }
+    assert {
+        "type": "bind",
+        "source": PROJECT,
+        "target": PROJECT,
+        "read_only": True,
+    } in setup["volumes"]
+    assert setup["environment"]["CSTUDY_PROBLEM_DIR"] == "/cstudy/problem"
+    assert setup["environment"]["CSTUDY_GRADED_LEVEL"] == "2"
+
+
+def test_the_grading_folder_never_reaches_the_app():
+    found = services(grade_setup=GradeSetup(("node", "s.ts"), "/content/p/grading", 1))
+
+    assert "/content/p/grading" not in json.dumps(found[APP_SERVICE])
+    assert "/content/p/grading" in json.dumps(found[GRADE_SETUP_SERVICE])
+
+
+def test_an_idle_app_has_no_command_of_its_own():
+    app = AppContainer(IMAGE, None, 8000, {})
+
+    assert services(app=app)[APP_SERVICE]["command"] == ["sleep", "infinity"]
+
+
+def test_the_owner_pid_is_on_every_container():
+    found = services(mocks=MOCKS, bootstrap=OneShot(("x",)))
+
+    assert all(service["labels"][LABEL_OWNER] == "41" for service in found.values())
+
+
+def test_networks_carry_stable_labels_without_the_owner():
+    networks = stack_document(plan())["networks"]
+
+    assert all(
+        network["labels"]
+        == {"cstudy.kind": "test", "cstudy.workspace": "d1g3st", "cstudy.slug": "rooms"}
+        for network in networks.values()
+    )
+
+
+def test_volumes_carry_stable_labels_without_the_owner():
+    assert stack_document(plan())["volumes"]["data"]["labels"] == {
+        "cstudy.kind": "test",
+        "cstudy.workspace": "d1g3st",
+        "cstudy.slug": "rooms",
+    }
+
+
+def test_the_rendered_file_has_no_interpolation():
+    app = AppContainer(IMAGE, ("sh", "-c", "echo ${HOME} $1"), 8000, {"PATTERN": "$PATH"})
+
+    text = render_compose(stack_document(plan(app=app)))
+
+    assert "${HOME}" not in text.replace("$${HOME}", "")
+    assert '"echo $${HOME} $$1"' in text
+    assert '"$$PATH"' in text
+
+
+def test_the_rendered_file_is_json_which_compose_reads_as_yaml():
+    assert json.loads(render_compose(stack_document(plan())))["name"] == "cstudy-t-41-abc"
+
+
+def test_the_helpers_use_the_pinned_python_image():
+    found = services(mocks=MOCKS)
+
+    assert found[FORWARD_SERVICE]["image"] == PYTHON_IMAGE
+    assert found[MOCK_SERVICE]["image"] == PYTHON_IMAGE
+    assert found[DATA_OWNER_SERVICE]["image"] == PYTHON_IMAGE
+    assert "@sha256:" in PYTHON_IMAGE
+
+
+def test_install_runs_on_its_own_ordinary_network():
+    document = install_document(install_plan())
+
+    assert document["services"][INSTALL_SERVICE]["networks"] == ["egress"]
+    assert "internal" not in document["networks"]["egress"]
+
+
+def test_install_holds_no_mock_server_app_or_service():
+    assert set(install_document(install_plan())["services"]) == {
+        "cache-owner",
+        INSTALL_SERVICE,
+    }
+
+
+def test_install_runs_hardened_as_the_host_user():
+    install = install_document(install_plan())["services"][INSTALL_SERVICE]
+
+    assert install["user"] == "501:20"
+    assert install["cap_drop"] == ["ALL"]
+    assert install["read_only"] is True
+
+
+def test_install_mounts_the_project_and_its_cache_and_nothing_else():
+    install = install_document(install_plan())["services"][INSTALL_SERVICE]
+
+    assert {"type": "bind", "source": PROJECT, "target": PROJECT} in install["volumes"]
+    assert "cache:/cache" in install["volumes"]
+    assert f"{RUN}/passwd" in json.dumps(install["volumes"])
+    assert len(install["volumes"]) == 4
+
+
+def test_install_cannot_rewrite_the_devcontainer_folder():
+    install = install_document(install_plan())["services"][INSTALL_SERVICE]
+
+    assert {
+        "type": "bind",
+        "source": f"{PROJECT}/.devcontainer",
+        "target": f"{PROJECT}/.devcontainer",
+        "read_only": True,
+    } in install["volumes"]
+
+
+def test_install_waits_for_its_cache_to_be_owned():
+    install = install_document(install_plan())["services"][INSTALL_SERVICE]
+
+    assert install["depends_on"] == {"cache-owner": {"condition": "service_completed_successfully"}}
+
+
+def test_the_install_cache_carries_stable_labels():
+    assert install_document(install_plan())["volumes"]["cache"]["labels"]["cstudy.kind"] == (
+        "install"
+    )
+
+
+def test_a_run_name_holds_its_kind_and_its_owner():
+    assert run_stack_name(StackKind.TEST, 41, "abc") == "cstudy-t-41-abc"
+    assert run_stack_name(StackKind.GRADED, 41, "abc") == "cstudy-g-41-abc"
+
+
+def test_a_dev_name_is_stable_per_project_and_workspace():
+    assert dev_stack_name("rooms", "d1g3st") == "cstudy-d-rooms-d1g3st"
+
+
+def test_an_install_name_is_stable_per_project_and_workspace():
+    assert install_stack_name("rooms", "d1g3st") == "cstudy-i-rooms-d1g3st"
+
+
+def test_a_workspace_digest_is_short_and_depends_on_the_path():
+    assert len(workspace_digest("/a")) == 8
+    assert workspace_digest("/a") != workspace_digest("/b")
+
+
+def test_only_test_and_graded_stacks_remove_their_volumes():
+    assert StackKind.TEST.removes_volumes
+    assert StackKind.GRADED.removes_volumes
+    assert not StackKind.DEV.removes_volumes
+    assert not StackKind.INSTALL.removes_volumes
+
+
+def container(stack: str, kind: str = "test", owner: int | None = 41) -> StackContainer:
+    return StackContainer(stack, kind, "d1g3st", owner)
+
+
+def alive(*pids: int):
+    return lambda pid: pid in pids
+
+
+def test_a_stack_whose_owner_is_gone_is_a_leftover():
+    inventory = SandboxInventory(containers=(container("cstudy-t-41-abc"),))
+
+    found = leftovers_in(inventory, alive())
+
+    assert [stack.name for stack in found.stacks] == ["cstudy-t-41-abc"]
+
+
+def test_a_stack_whose_owner_lives_is_kept():
+    inventory = SandboxInventory(containers=(container("cstudy-t-41-abc"),))
+
+    assert not leftovers_in(inventory, alive(41))
+
+
+def test_a_stack_with_one_container_of_a_live_owner_is_kept():
+    inventory = SandboxInventory(
+        containers=(container("cstudy-t-41-abc", owner=7), container("cstudy-t-41-abc", owner=41))
+    )
+
+    assert not leftovers_in(inventory, alive(41))
+
+
+def test_a_container_with_an_unreadable_owner_counts_as_gone():
+    inventory = SandboxInventory(containers=(container("cstudy-t-41-abc", owner=None),))
+
+    assert leftovers_in(inventory, alive(41)).stacks
+
+
+def test_a_test_leftover_loses_its_volumes():
+    inventory = SandboxInventory(containers=(container("cstudy-t-41-abc"),))
+
+    assert leftovers_in(inventory, alive()).stacks[0].removes_volumes
+
+
+def test_a_dev_leftover_keeps_its_volumes():
+    inventory = SandboxInventory(containers=(container("cstudy-d-rooms-x", kind="dev"),))
+
+    assert not leftovers_in(inventory, alive()).stacks[0].removes_volumes
+
+
+def test_an_unknown_kind_keeps_its_volumes():
+    inventory = SandboxInventory(containers=(container("cstudy-x", kind="later"),))
+
+    assert not leftovers_in(inventory, alive()).stacks[0].removes_volumes
+
+
+def resource(name: str, stack: str, kind: str = "test") -> StackResource:
+    return StackResource(name, stack, kind, "d1g3st")
+
+
+def test_a_network_of_a_dead_run_with_no_container_is_a_stray():
+    inventory = SandboxInventory(networks=(resource("n", "cstudy-t-41-abc"),))
+
+    assert leftovers_in(inventory, alive()).networks == ("n",)
+
+
+def test_a_volume_of_a_dead_run_with_no_container_is_a_stray():
+    inventory = SandboxInventory(volumes=(resource("v", "cstudy-g-41-abc", "graded"),))
+
+    assert leftovers_in(inventory, alive()).volumes == ("v",)
+
+
+def test_a_network_of_a_live_run_is_kept_while_its_containers_are_being_made():
+    inventory = SandboxInventory(networks=(resource("n", "cstudy-t-41-abc"),))
+
+    assert not leftovers_in(inventory, alive(41))
+
+
+def test_a_network_of_a_stack_with_containers_goes_with_the_stack():
+    inventory = SandboxInventory(
+        containers=(container("cstudy-t-41-abc"),),
+        networks=(resource("n", "cstudy-t-41-abc"),),
+    )
+
+    assert leftovers_in(inventory, alive()).networks == ()
+
+
+def test_a_dev_volume_is_never_a_stray():
+    inventory = SandboxInventory(volumes=(resource("v", "cstudy-d-rooms-x", "dev"),))
+
+    assert not leftovers_in(inventory, alive())
+
+
+def test_an_install_cache_is_never_a_stray():
+    inventory = SandboxInventory(volumes=(resource("v", "cstudy-i-rooms-x", "install"),))
+
+    assert not leftovers_in(inventory, alive())
+
+
+def test_the_sweep_of_a_workspace_leaves_other_workspaces_alone():
+    inventory = SandboxInventory(
+        containers=(StackContainer("cstudy-t-41-abc", "test", "other", 41),),
+        networks=(StackResource("n", "cstudy-t-9-abc", "test", "other"),),
+    )
+
+    assert not leftovers_in(inventory, alive(), "d1g3st")
+
+
+def test_without_a_workspace_every_workspace_counts():
+    inventory = SandboxInventory(containers=(StackContainer("cstudy-t-41-abc", "test", "o", 41),))
+
+    assert leftovers_in(inventory, alive()).stacks
+
+
+def test_leftovers_are_counted_for_the_doctor_row():
+    inventory = SandboxInventory(
+        containers=(container("cstudy-t-41-abc"),),
+        networks=(resource("n", "cstudy-t-9-abc"),),
+        volumes=(resource("v", "cstudy-t-9-abc"),),
+    )
+
+    assert leftovers_in(inventory, alive()).count == 3

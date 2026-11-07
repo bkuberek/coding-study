@@ -68,6 +68,11 @@ class RunnerStartError(Exception):
         super().__init__("\n".join((message, *self.stderr_tail)))
 
 
+class SandboxError(Exception):
+    """Docker is missing or refused, a pull failed, or a stack cannot start (exit 4):
+    docs/specs/service-projects.md#failure-reporting."""
+
+
 class RunnerProtocolError(Exception):
     """A runner that broke the protocol in docs/specs/runners.md (exit code 70)."""
 
