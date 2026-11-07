@@ -103,9 +103,7 @@ def _theme(value: object) -> Theme:
 
 def _columns(value: object) -> tuple[str, ...]:
     """A list of known columns, each once, that holds the ones that cannot be hidden."""
-    if not isinstance(value, list) or not all(isinstance(column, str) for column in value):
-        raise UsageError(f'preference "{COLUMNS_KEY}" must be a list of columns')
-    columns = tuple(cast(list[str], value))
+    columns = _column_names(value)
     for column in columns:
         if column not in PROBLEM_COLUMNS:
             raise UsageError(f'unknown column "{column}"')
@@ -115,6 +113,14 @@ def _columns(value: object) -> tuple[str, ...]:
         if required not in columns:
             raise UsageError(f'column "{required}" cannot be hidden')
     return columns
+
+
+def _column_names(value: object) -> tuple[str, ...]:
+    if isinstance(value, list):
+        names = tuple(cast(list[object], value))
+        if all(isinstance(name, str) for name in names):
+            return cast(tuple[str, ...], names)
+    raise UsageError(f'preference "{COLUMNS_KEY}" must be a list of columns')
 
 
 def _check_format(value: object) -> None:
