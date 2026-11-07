@@ -9,7 +9,7 @@ The website, [coding-study.com](https://coding-study.com/?utm_source=github&utm_
 - **Your editor, real toolchains.** Each language is an ordinary project (uv, pnpm, Gradle) that your editor and its language server open directly.
 - **More than algorithms.** Data structures and algorithms, multi-level practical problems, low-level design, concurrency, debugging, system design, and code review.
 - **Optimality, not only correctness.** `cstudy bench` measures how your solution grows with input size and compares it with the reference approaches.
-- **Spaced repetition.** `cstudy next` brings back what is due and picks new problems from your weakest pattern.
+- **Spaced repetition.** `cstudy next` resumes what you have open, brings back what is due and picks new problems from your weakest pattern.
 - **Code intelligence in the browser, when you want it.** The practice page can show errors as you type, documentation on hover, go to definition and completion for Python and TypeScript from language servers on your computer. Each is a setting, off by default, so you can also practise without any help.
 
 ## Install
