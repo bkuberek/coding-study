@@ -1,8 +1,8 @@
 """The Settings view's code intelligence and autocomplete checkboxes in a real browser
 (docs/specs/web-ui.md#settings-view), in each engine of `tests/browsers.py`: both start off,
 Autocomplete is disabled with its note while Code intelligence is off, turning Code intelligence
-on enables it, a stored Autocomplete survives Code intelligence going off and on, and both are
-stored in `.cs/serve/preferences.json`.
+on enables it, before any Save, a stored Autocomplete survives Code intelligence going off and on,
+and a Save stores both in `.cs/serve/preferences.json`.
 
 Playwright and its engines are set up as `tests/browsers.py` says; without them the test is
 skipped.
@@ -16,7 +16,7 @@ from typing import Any
 
 import pytest
 
-from tests.browsers import launched
+from tests.browsers import launched, save_preferences
 from tests.helpers import mark_workspace
 from tests.serve_process import RunningServer, running_server
 
@@ -28,7 +28,6 @@ PREFERENCES = Path(".cs") / "serve" / "preferences.json"
 CODE_INTELLIGENCE = "#pref-code_intelligence"
 AUTOCOMPLETE = "#pref-autocomplete"
 NOTE = "#pref-autocomplete-note"
-SAVED = "p.quiet[role=status]"
 NOTE_TEXT = "Turn on code intelligence first"
 
 
@@ -80,10 +79,6 @@ def _stored(workspace: Path) -> dict[str, object]:
     return json.loads((workspace / PREFERENCES).read_text())
 
 
-def _saved(page: Any) -> None:
-    page.wait_for_selector(f"{SAVED}:has-text('saved in')")
-
-
 def _defaults(page: Any, seen: Gate) -> None:
     seen.default_checked = (page.is_checked(CODE_INTELLIGENCE), page.is_checked(AUTOCOMPLETE))
     seen.off_disabled = page.is_disabled(AUTOCOMPLETE)
@@ -94,17 +89,16 @@ def _defaults(page: Any, seen: Gate) -> None:
 
 def _turn_on(page: Any, seen: Gate, workspace: Path) -> None:
     page.check(CODE_INTELLIGENCE)
-    _saved(page)
     seen.on_disabled = page.is_disabled(AUTOCOMPLETE)
     seen.on_note_visible = page.is_visible(NOTE)
     page.check(AUTOCOMPLETE)
-    _saved(page)
+    save_preferences(page)
     seen.autocomplete_stored = _stored(workspace)["autocomplete"]
 
 
 def _turn_off_again(page: Any, seen: Gate) -> None:
     page.uncheck(CODE_INTELLIGENCE)
-    _saved(page)
+    save_preferences(page)
     seen.off_again_checked = page.is_checked(AUTOCOMPLETE)
     seen.off_again_disabled = page.is_disabled(AUTOCOMPLETE)
 

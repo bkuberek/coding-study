@@ -23,7 +23,7 @@ from typing import Any, Protocol
 
 import pytest
 
-from tests.browsers import launched, placed, places, watched
+from tests.browsers import launched, placed, places, save_preferences, watched
 from tests.serve_process import RunningServer, running_server, served_environment
 from tests.workspaces import workspace_like
 
@@ -203,6 +203,7 @@ def _save_with_run_on_save(page: Any, seen: Visit) -> None:
     known = _runs_of(page, attempt_id, [])
     page.evaluate("location.hash = '#/settings'")
     page.click("#pref-run_on_save")
+    save_preferences(page)
     page.evaluate("hash => { location.hash = hash }", attempt)
     page.click(FILE_BUTTON)
     page.click(OPEN_EDITOR)

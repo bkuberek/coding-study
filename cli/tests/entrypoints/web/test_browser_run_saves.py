@@ -15,7 +15,7 @@ from typing import Any
 
 import pytest
 
-from tests.browsers import launched, watched
+from tests.browsers import launched, save_preferences, watched
 from tests.serve_process import RunningServer, running_server, served_environment
 from tests.workspaces import workspace_like
 
@@ -240,7 +240,7 @@ def _run_on_save_runs_once(page: Any, found: Seen) -> None:
     hash_of_the_view = page.evaluate("location.hash")
     page.evaluate("location.hash = '#/settings'")
     page.click("#pref-run_on_save")
-    page.wait_for_selector("p.quiet[role=status]:has-text('saved in')")
+    save_preferences(page)
     page.evaluate("hash => { location.hash = hash }", hash_of_the_view)
     page.click(FILE_BUTTON)
     page.wait_for_selector(OPEN_EDITOR)
@@ -257,7 +257,7 @@ def _run_on_save_runs_once(page: Any, found: Seen) -> None:
     found.run_on_save_runs_started = page.evaluate(RUNS_OF_THE_ATTEMPT) - runs
     page.evaluate("location.hash = '#/settings'")
     page.click("#pref-run_on_save")
-    page.wait_for_selector("p.quiet[role=status]:has-text('saved in')")
+    save_preferences(page)
     page.evaluate("hash => { location.hash = hash }", hash_of_the_view)
     page.click(FILE_BUTTON)
     page.wait_for_selector(OPEN_EDITOR)

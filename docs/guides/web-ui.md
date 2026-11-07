@@ -81,7 +81,7 @@ Two settings give the editor what an IDE gives: errors as you type, documentatio
 
 ### Turn them on
 
-1. Choose **Settings** and check **Code intelligence**. **Autocomplete** is greyed out with `Turn on code intelligence first` until you do; it keeps its choice if you turn code intelligence off, and does nothing until both are on.
+1. Choose **Settings**, check **Code intelligence** and choose **Save**. **Autocomplete** is greyed out with `Turn on code intelligence first` until you check it; it keeps its choice if you turn code intelligence off, and does nothing until both are on.
 2. Install the language servers once. In the terminal, run:
 
    ```bash
@@ -217,7 +217,7 @@ The Mock view starts a mock as `cstudy mock` does: new medium and hard problems,
 
 ## Preferences
 
-Settings apply at once and are stored in `.cs/serve/preferences.json` in the workspace, so they follow the workspace, not the browser.
+Preferences are stored in `.cs/serve/preferences.json` in the workspace, so they follow the workspace, not the browser. Nothing in **Settings** applies until you choose **Save** in the bar at the top, which stays on screen as you scroll: it shows how many changes you have, and **Reset** undoes all of them. The theme previews as you pick it. Leaving with unsaved changes asks first. The `vim` and `theme` switches in the status bar still apply at once.
 
 | Preference | Default | Effect |
 |------------|---------|--------|
@@ -230,7 +230,7 @@ Settings apply at once and are stored in `.cs/serve/preferences.json` in the wor
 
 ## Your configuration
 
-Below the preferences, **Settings** edits `config.toml`, the file every `cstudy` command reads, for all your workspaces. Each key shows its value, its default and when a change applies. **Save** writes only what you changed and keeps your comments; empty a field to return it to its default. A value `cstudy` would refuse is refused here too, by the key's name, and nothing is written.
+Beside the preferences, or below them in a narrow window, **Settings** edits `config.toml`, the file every `cstudy` command reads, for all your workspaces. Each key shows a friendly label with its name in the file beside it, so a search of the page finds either, its value, its default and when a change applies. **Save** writes only what you changed and keeps your comments; empty a field to return it to its default. A value `cstudy` would refuse is refused here too, by the key's name, and nothing is written to that file. Save covers both places, and if one fails it says which and keeps those changes unsaved, while the other's stay saved.
 
 In the terminal, `cstudy config edit` opens the same file in your editor, making it from a commented template if you have none, and `cstudy config path` prints where it is.
 
@@ -240,7 +240,7 @@ The review intervals are here too, under `schedule`. A new interval applies to r
 
 ## Start over
 
-The **danger** section of Settings, or `cstudy reset` in the terminal, deletes your progress in this workspace: attempts, scheduled reviews, bench runs, run folders and rendered statements. You see what goes, with counts, before anything does. It can't be undone, so you type `reset` to confirm. It refuses while a run or a job is active. Run `cstudy export` first if you may want your progress back.
+**Reset progress…**, the red button in the **danger** section of Settings, which the bar's **Reset** never touches, or `cstudy reset` in the terminal, deletes your progress in this workspace: attempts, scheduled reviews, bench runs, run folders and rendered statements. You see what goes, with counts, before anything does. It can't be undone, so you type `reset` to confirm. It refuses while a run or a job is active. Run `cstudy export` first if you may want your progress back.
 
 Your practice files, project folders and notes stay unless you tick that box, or pass `--files`. `.archive/` stays unless you tick its own, or pass `--archive`. Your settings, toolchains, language servers, your own problems and your [sets](#problem-sets) always stay. A reset ends an open attempt along with the rest: the attempts menu empties at once, and a tab that was showing that attempt says it ended and turns read-only.
 

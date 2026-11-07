@@ -65,6 +65,12 @@ def launched(playwright: Any, engine: str) -> Any:
         pytest.skip(f"no {engine} for Playwright: {error.message.splitlines()[0]}")
 
 
+def save_preferences(page: Any) -> None:
+    """Clicks the Settings view's Save and waits until the preferences it staged are stored."""
+    page.click(".settings-bar button[type=submit]")
+    page.wait_for_selector(".settings-bar p[role=status]:has-text('preferences saved in')")
+
+
 def watched(
     page: Any, problems: list[str], expected: Callable[[Any], bool] = lambda _: False
 ) -> Any:

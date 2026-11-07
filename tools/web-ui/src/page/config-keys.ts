@@ -51,11 +51,13 @@ export function shownValue(value: ConfigValue): string {
   return Array.isArray(value) ? value.join(", ") : String(value);
 }
 
-/** Only the keys whose field differs from the value in force, as `POST /api/v1/config` takes them. */
-export function changedKeys(fields: readonly (readonly [ConfigKey, ConfigValue])[]): Record<string, ConfigValue> {
+/** Only the keys whose field differs from how it was drawn, as `POST /api/v1/config` takes them. A
+ * field is held to itself, not to the file: a list in another order than the file's, or a field
+ * that cannot show what the file holds, is no change until the user makes one. */
+export function changedKeys(fields: readonly (readonly [key: ConfigKey, now: ConfigValue, drawn: ConfigValue])[]): Record<string, ConfigValue> {
   return Object.fromEntries(
     fields
-      .filter(([key, value]) => !key.reserved && JSON.stringify(value) !== JSON.stringify(key.value))
-      .map(([key, value]) => [key.name, value]),
+      .filter(([key, now, drawn]) => !key.reserved && JSON.stringify(now) !== JSON.stringify(drawn))
+      .map(([key, now]) => [key.name, now]),
   );
 }

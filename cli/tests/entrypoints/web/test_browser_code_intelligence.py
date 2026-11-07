@@ -25,7 +25,7 @@ import pytest
 
 from coding_study.adapters.preferences_fs import FsPreferencesStore
 from coding_study.domain.preferences import Preferences, preferences_document
-from tests.browsers import launched, watched
+from tests.browsers import launched, save_preferences, watched
 from tests.language_server_scripts import ScriptedServer, fake_node, install_fake_basedpyright
 from tests.scripted_runs import eventually
 from tests.serve_page import opened_page
@@ -283,6 +283,7 @@ def _turned_off(page: Any, lab: Lab, found: Seen) -> None:
     page.evaluate("location.hash = '#/settings'")
     page.wait_for_selector(PREFERENCE)
     page.uncheck(PREFERENCE)
+    save_preferences(page)
     found.exits_when_turned_off = (
         len(eventually(lambda: _messages(lab, "exit"), lambda m: len(m) > exits)) - exits
     )

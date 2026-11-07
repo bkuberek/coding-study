@@ -40,8 +40,8 @@ RESERVED = "#config-done-auto_commit"
 PROGRESS_DB = "#config-progress_db"
 SHEET = "dialog.sheet[open]"
 QUESTION = f"{SHEET} .question"
-SAVE = "form:has(#config-bench-reps) button[type=submit]"
-STATUS = "form:has(#config-bench-reps) p[role=status]"
+SAVE = ".settings-bar button[type=submit]"
+STATUS = ".settings-bar p[role=status]"
 
 
 @dataclass
@@ -56,7 +56,7 @@ class Seen:
     command_strip: str = ""
     saved_file: str = ""
     saved_note: str = ""
-    focus_on_save: bool = False
+    focus_after_save: str = ""
     refusal: str = ""
     refused_file: str = ""
     emptied_file: str = ""
@@ -122,7 +122,7 @@ def _read_the_form(page: Any, found: Seen) -> None:
 
 
 def _saved(page: Any) -> str:
-    page.wait_for_selector(f"{STATUS}:has-text('saved')")
+    page.wait_for_selector(f"{STATUS}:has-text('config.toml saved')")
     return page.locator(STATUS).inner_text()
 
 
@@ -131,14 +131,14 @@ def _save_a_change(page: Any, config_file: Path, found: Seen) -> None:
     page.click(SAVE)
     found.saved_note = _saved(page)
     found.saved_file = config_file.read_text()
-    found.focus_on_save = page.evaluate("() => document.activeElement?.type === 'submit'")
+    found.focus_after_save = page.evaluate("document.activeElement?.id")
 
 
 def _refuse_a_value(page: Any, config_file: Path, found: Seen) -> None:
     """The browser logs the 422 of this save."""
     page.fill(REPS, "many")
     page.click(SAVE)
-    page.wait_for_selector(f"{STATUS}:has-text('error')")
+    page.wait_for_selector(f"{STATUS}:has-text('not saved')")
     found.refusal = page.locator(STATUS).inner_text()
     found.refused_file = config_file.read_text()
 
@@ -167,7 +167,7 @@ def _a_new_database_path_asks_first(
     found.note_after_declining = page.locator(STATUS).inner_text()
     page.click(SAVE)
     page.click(f"{SHEET} button:has-text('Change it')")
-    page.wait_for_selector(f"{STATUS}:has-text('saved:')")
+    _saved(page)
     found.file_after_confirming = config_file.read_text()
     found.database_kept = database.read_bytes() == kept
 
@@ -216,12 +216,12 @@ def test_the_page_says_when_a_change_applies(seen):
     assert "schedule.max_interval_days applies for reviews scheduled" in seen.saved_note
 
 
-def test_the_focus_stays_on_save(seen):
-    assert seen.focus_on_save
+def test_a_save_that_disables_save_leaves_the_focus_on_the_title(seen):
+    assert seen.focus_after_save == "settings-heading"
 
 
 def test_a_value_the_cli_refuses_is_refused_by_its_key(seen):
-    assert seen.refusal == "error: bench.reps: expected a positive integer"
+    assert seen.refusal == "config.toml not saved: bench.reps: expected a positive integer"
 
 
 def test_a_refused_value_writes_nothing(seen):

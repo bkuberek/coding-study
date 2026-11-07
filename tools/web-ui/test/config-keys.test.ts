@@ -59,24 +59,28 @@ test("a value is shown as the file would hold it", () => {
   );
 });
 
-test("only the keys whose field differs from the value in force change", () => {
+test("only the keys whose field differs from how it was drawn change", () => {
   const same = key({ name: "bench.reps" });
   const other = key({ name: "bench.memory", kind: "boolean", value: true });
   assert.deepEqual(
     changedKeys([
-      [same, 7],
-      [other, false],
+      [same, 7, 7],
+      [other, false, true],
     ]),
     { "bench.memory": false },
   );
 });
 
-test("a list that holds the same choices has not changed", () => {
-  const tracks = key({ name: "next.tracks", kind: "choices", value: ["dsa", "lld"] });
-  assert.deepEqual(changedKeys([[tracks, ["dsa", "lld"]]]), {});
+test("a list in another order than the file's is no change", () => {
+  const tracks = key({ name: "next.tracks", kind: "choices", value: ["lld", "dsa"] });
+  assert.deepEqual(changedKeys([[tracks, ["dsa", "lld"], ["dsa", "lld"]]]), {});
+});
+
+test("a field changed back is no change", () => {
+  assert.deepEqual(changedKeys([[key({}), 7, 7]]), {});
 });
 
 test("a reserved key never changes", () => {
   const reserved = key({ name: "done.auto_commit", kind: "boolean", value: false, reserved: true });
-  assert.deepEqual(changedKeys([[reserved, true]]), {});
+  assert.deepEqual(changedKeys([[reserved, true, false]]), {});
 });

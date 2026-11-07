@@ -1,8 +1,54 @@
-/* The Settings view (settings.ts): this workspace beside all your workspaces, which stack where
-   they do not both fit. The view fills the page; a line of text stays readable within it. */
+/* The Settings view (settings.ts): the bar with Save, then this workspace beside all your
+   workspaces, which stack where they do not both fit. The view fills the page; a line of text stays
+   readable within it. */
+
+/* An anchor or the focus scrolls clear of the top bar and of this view's taller bar. */
+html:has(.settings-bar) {
+  scroll-padding-top: calc(var(--bar) + 64px);
+}
 
 .settings code {
   overflow-wrap: anywhere;
+}
+
+/* The width of the window over main's padding, stuck under the top bar as a table's header is. */
+.settings-bar {
+  position: sticky;
+  top: var(--bar);
+  z-index: 2;
+  align-items: center;
+  gap: 4px 12px;
+  margin: -24px -28px 20px;
+  padding: 8px 28px;
+  background: var(--paper);
+}
+
+.settings-bar button {
+  margin-left: 0;
+}
+
+.settings-count {
+  color: var(--accent);
+  font-size: var(--text-s);
+}
+
+.settings .settings-status {
+  flex: 1 0 100%;
+  max-width: none;
+  margin: 0;
+  font-size: var(--text-s);
+}
+
+.settings-status:empty {
+  display: none;
+}
+
+.settings-status span {
+  display: block;
+}
+
+.settings-status .failed {
+  color: var(--fail);
 }
 
 .settings-columns {
@@ -12,10 +58,12 @@
   align-items: start;
 }
 
-.settings p,
-.config-key input[type="text"],
-.config-key select {
+.settings p {
   max-width: 72ch;
+}
+
+.config-key {
+  max-width: 80ch;
 }
 
 .workspace-path {
@@ -48,11 +96,25 @@
   text-transform: uppercase;
 }
 
+/* A row a Save would write is marked in the gutter, as an editor marks a changed line. */
+.switch,
+.radios,
+.config-key {
+  margin-left: -12px;
+  padding-left: 10px;
+  border-left: 2px solid transparent;
+}
+
+.settings .changed {
+  border-left-color: var(--accent);
+}
+
 .switch {
   display: grid;
   grid-template-columns: auto 1fr;
   column-gap: 10px;
-  padding: 6px 0;
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
 
 .switch p {
@@ -76,7 +138,8 @@
 }
 
 .config-key {
-  padding: 6px 0;
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
 
 .config-head {
@@ -157,5 +220,22 @@
 @media (max-width: 1100px) {
   .settings-columns {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  /* A window too narrow for one row gives the bar a second. */
+  html:has(.settings-bar) {
+    scroll-padding-top: calc(var(--bar) + 96px);
+  }
+
+  .settings-bar {
+    gap: 4px 8px;
+    margin: -16px -16px 16px;
+    padding: 6px 16px;
+  }
+
+  .settings-bar h1 {
+    font-size: 24px;
   }
 }

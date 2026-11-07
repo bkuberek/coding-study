@@ -1,24 +1,33 @@
 /**
- * The Settings view (docs/specs/web-ui.md#settings-view): the workspace's preferences, each stored
- * at once, the user's `config.toml`, and resetting progress.
+ * The Settings view (docs/specs/web-ui.md#settings-view): the workspace's preferences and the user's
+ * `config.toml`, whose changes both stage until the bar's Save, and resetting progress, which does not.
  */
 
 import "./settings.css";
 
 import type { Cleanup, PageContext } from "../context.ts";
 import { h } from "../dom.ts";
-import { configForm } from "./config-form.ts";
-import { dangerSection } from "./reset-dialog.ts";
 import { languageRow } from "../intelligence-status.ts";
 import { messageOf } from "../states.ts";
+import { trackUnsaved } from "../save.ts";
+import { changesText, type SaveLine, saveLines, type StoreOutcome } from "../settings-model.ts";
 import { THEMES } from "../shell.ts";
-import type { LanguageStates, Preferences } from "../types.ts";
+import type { LanguageStates, Preferences, Theme } from "../types.ts";
+import { configStage } from "./config-form.ts";
+import { dangerSection } from "./reset-dialog.ts";
 
 type Switch = "vim" | "run_on_save" | "typecheck" | "code_intelligence" | "autocomplete";
+type StagedKey = Switch | "theme";
 interface SwitchSpec {
   readonly key: Switch;
   readonly label: string;
   readonly help: string;
+}
+/** A preference's control, which holds a change until the bar's Save. */
+interface Control {
+  readonly row: HTMLElement;
+  read(): boolean | Theme;
+  write(value: boolean | Theme): void;
 }
 
 const SWITCHES: readonly SwitchSpec[] = [
@@ -40,29 +49,133 @@ const AUTOCOMPLETE_NOTE = "Turn on code intelligence first";
 const LANGUAGES = "/api/v1/code-intelligence/languages";
 const DOCTOR_FIX = "doctor_fix";
 const COPIED_MS = 1500;
+const PREFERENCES_FILE = ".cs/serve/preferences.json";
+/** What the question before leaving calls the view. */
+const LEAVING = "Settings";
 
 export function settingsView(context: PageContext): Cleanup {
   const { shell } = context;
   shell.setView("settings");
   shell.setCommand("cstudy config edit");
-  shell.setStatus({ mode: "SETTINGS", where: ".cs/serve/preferences.json" });
-  const saved = h("p", { class: "quiet", role: "status" });
-  const save = (change: Partial<Omit<Preferences, "format">>) => {
-    saved.textContent = "saving…";
-    void context
-      .savePreferences(change)
-      .then(() => {
-        saved.textContent = "saved in .cs/serve/preferences.json";
-      })
-      .catch((error: unknown) => {
-        saved.textContent = `error: ${error instanceof Error ? error.message : String(error)}`;
-      });
+  shell.setStatus({ mode: "SETTINGS", where: PREFERENCES_FILE });
+  const preferences = preferencesStage(context);
+  const config = configStage(context);
+  const title = h("h1", { id: "settings-heading", tabindex: "-1" }, "settings");
+  const count = h("span", { class: "settings-count" });
+  const undo = h("button", { type: "button", class: "button", title: "Undo every unsaved change" }, "Reset");
+  const save = h("button", { type: "submit", class: "button primary" }, "Save");
+  const status = h("p", { class: "quiet settings-status", role: "status" });
+  let saving = false;
+  const unsaved = () => Object.keys(preferences.changes()).length + Object.keys(config.changes()).length;
+  const refresh = () => {
+    preferences.sync();
+    config.mark();
+    const changes = unsaved();
+    count.textContent = changesText(changes);
+    count.hidden = changes === 0;
+    undo.hidden = changes === 0;
+    undo.disabled = saving;
+    save.disabled = saving || changes === 0;
   };
-  const preferences = context.preferences();
+  const say = (lines: readonly SaveLine[]) => {
+    status.replaceChildren(...lines.map(({ text, failed }) => h("span", { class: failed ? "failed" : null }, text)));
+  };
+  /** A Save or a Reset can disable, hide or draw again the control that held the focus. */
+  const settle = (lines: readonly SaveLine[]) => {
+    saving = false;
+    say(lines);
+    refresh();
+    const active = document.activeElement;
+    if (active === null || active === document.body || active.matches(":disabled, [hidden]")) title.focus({ preventScroll: true });
+  };
+  const saveAll = async () => {
+    saving = true;
+    say([{ text: "saving…", failed: false }]);
+    refresh();
+    let configOutcome: StoreOutcome = null;
+    // First, so its question can still stop the Save before anything is written.
+    if (Object.keys(config.changes()).length > 0) {
+      try {
+        const note = await config.save();
+        if (note === null) {
+          settle([{ text: "not saved", failed: false }]);
+          return;
+        }
+        configOutcome = { saved: note };
+      } catch (error) {
+        configOutcome = { error: messageOf(error) };
+      }
+    }
+    let preferencesOutcome: StoreOutcome = null;
+    const staged = preferences.changes();
+    if (Object.keys(staged).length > 0) {
+      try {
+        await context.savePreferences(staged);
+        preferencesOutcome = { saved: `saved in ${PREFERENCES_FILE}` };
+      } catch (error) {
+        preferencesOutcome = { error: messageOf(error) };
+      }
+    }
+    settle(saveLines(configOutcome, preferencesOutcome));
+  };
+  undo.addEventListener("click", () => {
+    preferences.undo();
+    config.undo();
+    settle([{ text: "changes undone", failed: false }]);
+  });
+  const form = h(
+    "form",
+    { class: "settings-form" },
+    h("header", { class: "view-head settings-bar" }, title, count, h("span", { class: "spacer" }), undo, save, status),
+    h(
+      "div",
+      { class: "settings-columns" },
+      h(
+        "div",
+        { class: "settings-column" },
+        h("h2", { class: "eyebrow" }, "this workspace"),
+        workspacePath(context),
+        h("p", { class: "quiet" }, `Stored in ${PREFERENCES_FILE}.`),
+        ...preferences.sections,
+        dangerSection(context),
+      ),
+      h("div", { class: "settings-column" }, h("h2", { class: "eyebrow" }, "all your workspaces"), config.element),
+    ),
+  );
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void saveAll();
+  });
+  form.addEventListener("input", () => {
+    say([]);
+    refresh();
+  });
+  shell.main.replaceChildren(h("section", { class: "settings", "aria-labelledby": "settings-heading" }, form));
+  refresh();
+  const stopFollowing = context.onPreferences((stored) => {
+    preferences.follow(stored);
+    refresh();
+  });
+  const untrack = trackUnsaved(() => (unsaved() > 0 ? [LEAVING] : []));
+  const onUnload = (event: BeforeUnloadEvent) => {
+    if (unsaved() > 0) event.preventDefault();
+  };
+  window.addEventListener("beforeunload", onUnload);
+  return () => {
+    window.removeEventListener("beforeunload", onUnload);
+    untrack();
+    stopFollowing();
+    preferences.stop();
+  };
+}
+
+/** The workspace's preferences, whose controls hold a change until the bar's Save. */
+function preferencesStage(context: PageContext) {
+  const initial = context.preferences();
+  const controls = new Map<StagedKey, Control>();
   const switchFor = ({ key, label, help }: SwitchSpec, ...notes: HTMLElement[]) => {
-    const input = h("input", { type: "checkbox", id: `pref-${key}`, checked: preferences[key] });
+    const input = h("input", { type: "checkbox", id: `pref-${key}`, checked: initial[key] });
     input.setAttribute("aria-describedby", [`pref-${key}-help`, ...notes.map((note) => note.id)].join(" "));
-    input.addEventListener("change", () => save({ [key]: input.checked }));
     const row = h(
       "div",
       { class: "switch" },
@@ -71,68 +184,86 @@ export function settingsView(context: PageContext): Cleanup {
       h("p", { id: `pref-${key}-help`, class: "quiet" }, help),
       ...notes,
     );
+    controls.set(key, {
+      row,
+      read: () => input.checked,
+      write: (value) => {
+        input.checked = value === true;
+      },
+    });
     return { input, row };
   };
   const switches = SWITCHES.map((spec) => switchFor(spec).row);
   const note = h("p", { id: "pref-autocomplete-note", class: "quiet" }, AUTOCOMPLETE_NOTE);
   const codeIntelligence = switchFor(CODE_INTELLIGENCE);
   const autocomplete = switchFor(AUTOCOMPLETE, note);
-  // Disabled, not cleared: the stored value comes back when code intelligence does.
-  const gateAutocomplete = () => {
-    const off = !codeIntelligence.input.checked;
-    autocomplete.input.disabled = off;
-    note.hidden = !off;
-  };
-  codeIntelligence.input.addEventListener("change", gateAutocomplete);
-  gateAutocomplete();
   const languages = languageList(context);
-  const themes = THEMES.map((theme) => {
-    const input = h("input", { type: "radio", name: "theme", id: `theme-${theme}`, value: theme, checked: preferences.theme === theme });
-    input.addEventListener("change", () => save({ theme }));
-    return h("div", { class: "radio" }, input, h("label", { for: `theme-${theme}` }, theme));
+  const radios = THEMES.map((theme) => h("input", { type: "radio", name: "theme", id: `theme-${theme}`, value: theme, checked: initial.theme === theme }));
+  const themes = h("div", { class: "radios" }, ...radios.map((radio) => h("div", { class: "radio" }, radio, h("label", { for: radio.id }, radio.value))));
+  const stagedTheme = () => (radios.find((radio) => radio.checked)?.value ?? context.preferences().theme) as Theme;
+  controls.set("theme", {
+    row: themes,
+    read: stagedTheme,
+    write: (value) => {
+      for (const radio of radios) radio.checked = radio.value === value;
+    },
   });
-  shell.main.replaceChildren(
-    h(
-      "section",
-      { class: "settings", "aria-labelledby": "settings-heading" },
-      h("header", { class: "view-head" }, h("h1", { id: "settings-heading" }, "settings")),
-      h(
-        "div",
-        { class: "settings-columns" },
-        h(
-          "div",
-          { class: "settings-column" },
-          h("h2", { class: "eyebrow" }, "this workspace"),
-          workspacePath(context),
-          h("p", { class: "quiet" }, "Stored in .cs/serve/preferences.json, and applied at once."),
-          h(
-            "form",
-            { class: "settings-form" },
-            h("fieldset", {}, h("legend", {}, "editor and runs"), ...switches),
-            h("fieldset", {}, h("legend", {}, "code intelligence"), codeIntelligence.row, languages.element, autocomplete.row),
-            h("fieldset", {}, h("legend", {}, "theme"), h("div", { class: "radios" }, ...themes)),
-          ),
-          saved,
-          dangerSection(context),
-        ),
-        h("div", { class: "settings-column" }, h("h2", { class: "eyebrow" }, "all your workspaces"), configForm(context)),
-      ),
-    ),
-  );
-  return languages.stop;
+  /** The page's theme, and the status bar's word for it, whether stored or still staged. */
+  const showTheme = (theme: Theme) => {
+    document.documentElement.dataset["theme"] = theme;
+    context.shell.showPreferences({ ...context.preferences(), theme });
+  };
+  const differs = (key: StagedKey, control: Control) => control.read() !== context.preferences()[key];
+  let known = initial;
+  return {
+    sections: [
+      h("fieldset", {}, h("legend", {}, "editor and runs"), ...switches),
+      h("fieldset", {}, h("legend", {}, "code intelligence"), codeIntelligence.row, languages.element, autocomplete.row),
+      h("fieldset", {}, h("legend", {}, "theme"), themes),
+    ],
+    changes(): Partial<Omit<Preferences, "format">> {
+      return Object.fromEntries([...controls].filter(([key, control]) => differs(key, control)).map(([key, control]) => [key, control.read()]));
+    },
+    /** Brings what follows from the controls up to them. */
+    sync() {
+      for (const [key, control] of controls) control.row.classList.toggle("changed", differs(key, control));
+      // Disabled, not cleared: the stored value comes back when code intelligence does.
+      const off = !codeIntelligence.input.checked;
+      autocomplete.input.disabled = off;
+      note.hidden = !off;
+      showTheme(stagedTheme());
+    },
+    undo() {
+      const stored = context.preferences();
+      for (const [key, control] of controls) control.write(stored[key]);
+    },
+    /** A value stored elsewhere, by the status bar's switches, wins over what was staged for it. */
+    follow(stored: Preferences) {
+      for (const [key, control] of controls) if (stored[key] !== known[key]) control.write(stored[key]);
+      known = stored;
+    },
+    stop() {
+      languages.stop();
+      showTheme(context.preferences().theme);
+    },
+  };
 }
 
 /** Where this workspace is, with a way to take the path to a terminal. */
 function workspacePath({ session, shell }: PageContext): HTMLElement {
   const copy = h("button", { type: "button", class: "button", "aria-label": "Copy the workspace path" }, "copy");
+  const said = (word: string) => {
+    shell.announce(`path ${word}`);
+    copy.textContent = word;
+    window.setTimeout(() => {
+      copy.textContent = "copy";
+    }, COPIED_MS);
+  };
   copy.addEventListener("click", () => {
-    void navigator.clipboard?.writeText(session.workspace).then(() => {
-      shell.announce("path copied");
-      copy.textContent = "copied";
-      window.setTimeout(() => {
-        copy.textContent = "copy";
-      }, COPIED_MS);
-    });
+    void navigator.clipboard?.writeText(session.workspace).then(
+      () => said("copied"),
+      () => said("not copied"),
+    );
   });
   return h("p", { class: "workspace-path" }, h("code", {}, session.workspace), copy);
 }

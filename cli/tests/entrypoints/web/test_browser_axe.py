@@ -473,6 +473,7 @@ def _tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
     yield "progress", lambda: _open(page, "#/progress", ".stats-summary")
     yield "health", lambda: _open(page, "#/health", "table.checks", RUN_WAIT_MS)
     yield "settings", lambda: _open(page, "#/settings", "ul.languages .language-name")
+    yield "settings with unsaved changes", lambda: _settings_with_changes(page)
     yield "reset dialog", lambda: _reset_dialog(page)
     yield "mock running", lambda: _mock_running(page)
 
@@ -489,9 +490,17 @@ def _set_dialog(page: Any) -> None:
     page.wait_for_selector(f"{SHEET} input[type=checkbox]")
 
 
-def _reset_dialog(page: Any) -> None:
-    """The dialog stays open: nothing here confirms it."""
+def _settings_with_changes(page: Any) -> None:
     _open(page, "#/settings", "ul.languages .language-name")
+    page.click("#pref-vim")
+    page.wait_for_selector(".settings-count:not([hidden])")
+
+
+def _reset_dialog(page: Any) -> None:
+    """The dialog stays open: nothing here confirms it. The change staged before goes first, or
+    leaving this view would ask."""
+    _open(page, "#/settings", "ul.languages .language-name")
+    page.click(".settings-bar button:has-text('Reset')")
     page.click("button:has-text('Reset progress')")
     page.wait_for_selector("dialog.sheet[open] input[type=text]")
 
