@@ -149,7 +149,7 @@ A file in a language without a server shows a one-line notice in the status bar 
 |--------|--------|------|---------|
 | Run the tests | Run tests | <kbd>Cmd</kbd>+<kbd>Enter</kbd> | `cstudy test` |
 | Submit a project level | Submit | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> | `cstudy submit` |
-| Cancel a run | Cancel | <kbd>Escape</kbd> in the results, after a question | Ctrl-C in the terminal |
+| Cancel a run | The button that started it, which reads Cancel while the run is active | <kbd>Escape</kbd> in the results; both ask a question first | Ctrl-C in the terminal |
 | Go to the next error | | <kbd>F8</kbd> | |
 
 Results arrive as the run goes: one row per case or test, the build line, errors with a link to their line, and the summary. **Run options** sets what `cstudy test` takes as flags: chosen cases, a level, stress runs and a seed, the time limit, `--perf`, and type-checking for TypeScript. A submission that passes a level opens the next one: the statement, the tree and the header follow at once.
@@ -182,13 +182,14 @@ An attempt you finished is not lost when you start the review: its files stay in
 
 An attempt still in progress links to its Attempt view instead, where its files are editable.
 
-## Hints, solutions and Done
+## Hints, solutions, Done and Abort
 
 | Button | What happens |
 |--------|--------------|
 | Hint | Shows the next hint under the statement. Any hint caps the review grade at `ok` |
 | Solution… | Asks first when an unsolved attempt is in progress, since the attempt is then graded as `again`; the reference opens in a read-only pane, never in your files |
 | Done… | Finishes the attempt with a rating (`easy`, `ok`, `hard`) or as given up, and optional notes; it shows the lines `cstudy done` prints, with the next review date. It grades the latest run, so it refuses while a tab has unsaved edits: save and run first |
+| Abort… | Stops working on the problem, as `cstudy abort` does, after a question: the attempt ends as abandoned, leaves the menu of attempts in progress, and the page opens the problem. Your files stay, and your progress and review schedule do not change; a new Start begins a fresh attempt in the same file (for a problem with a review due, the file first moves to `.archive/`). It refuses while a run is active and while a tab has unsaved edits |
 
 ## Mock interviews
 

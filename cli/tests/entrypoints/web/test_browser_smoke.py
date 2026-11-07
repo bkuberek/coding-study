@@ -3,7 +3,8 @@ the problem list, open a project problem with its statement, resume its attempt,
 its tree in the editor, see the list's row and the tree's file stay where they first showed, as a
 click pressed while they moved would click nothing (docs/specs/web-ui.md#page), edit the file and
 save it with Cmd or Ctrl-S, see its state turn `modified`, restore it from the tree and see it
-`unchanged`, run its tests and see their rows while the run goes on, cancel that run, run the
+`unchanged`, run its tests and see their rows while the run goes on, cancel that run (the Run
+button turns into Cancel, which asks first), run the
 tests to their end, name a new file in the tree's dialog, and turn Run on save on to see a save
 start a run, under the page's Content Security Policy, in each engine of `tests/browsers.py`.
 
@@ -228,7 +229,8 @@ def _run_and_cancel(page: Any, slow_test: Path, seen: Visit) -> None:
         page.click(".run-button.primary")
         page.wait_for_selector(".result-running:has-text('test_slow')", timeout=RUN_WAIT_MS)
         seen.rows_while_running = page.locator(".result-row .result-id").all_inner_texts()
-        page.click(".cancel-button")
+        page.click(".run-button.is-cancel")
+        page.click("dialog.sheet[open] button.danger")
         page.wait_for_selector(".result-summary", timeout=RUN_WAIT_MS)
         seen.cancelled = page.locator(".result-summary-text").inner_text()
     finally:

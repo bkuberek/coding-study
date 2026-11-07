@@ -1,8 +1,8 @@
 /**
  * Runs on the Attempt view (docs/specs/web-ui.md#attempt-view, docs/specs/web-ui.md#runs): Run
- * tests and Submit with their options, Cancel, the results panel fed by the run's stream,
- * diagnostics as editor markers with jump-to-line, a refresh once a run opened a level, Bench as a
- * job, and run on save.
+ * tests and Submit with their options, each turning into Cancel while its run is active, the
+ * results panel fed by the run's stream, diagnostics as editor markers with jump-to-line, a refresh
+ * once a run opened a level, Bench as a job, and run on save.
  *
  * The page never judges: every row comes from the child `cstudy` the server started. A run another
  * tab started, or the one a reload left, shows again from its stream's replay.
@@ -48,10 +48,10 @@ export interface RunsHost {
   hasFile(path: string): boolean;
 }
 
+/** Run tests and Submit each turn into Cancel while their run is active (`run-session.ts`). */
 export interface RunButtons {
   readonly run: HTMLButtonElement;
   readonly submit: HTMLButtonElement;
-  readonly cancel: HTMLButtonElement;
   readonly options: HTMLButtonElement;
   readonly bench: HTMLButtonElement;
 }
@@ -96,17 +96,18 @@ export class AttemptRuns implements RunShell {
 
   constructor(host: RunsHost) {
     this.host = host;
-    const run = h("button", { type: "button", class: "button primary run-button" }, h("span", { "aria-hidden": "true" }, "▶"), "Run tests", h("kbd", {}, RUN_KEY));
-    const submit = h("button", { type: "button", class: "button run-button", hidden: true }, "Submit", h("kbd", {}, SUBMIT_KEY));
-    const cancel = h("button", { type: "button", class: "button cancel-button", disabled: true, title: "Stop the run as Ctrl-C does (Escape in the results)" }, h("span", { "aria-hidden": "true" }, "■"), "Cancel");
+    // Two labels in one button: the stylesheet shows Cancel in place of the other while `is-cancel` is set.
+    const labeled = (classes: string, ...label: (Node | string)[]) => h("button", { type: "button", class: classes }, h("span", { class: "run-label" }, ...label), h("span", { class: "cancel-label" }, h("span", { "aria-hidden": "true" }, "■"), "Cancel"));
+    const run = labeled("button primary run-button", h("span", { "aria-hidden": "true" }, "▶"), "Run tests", h("kbd", {}, RUN_KEY));
+    const submit = labeled("button run-button", "Submit", h("kbd", {}, SUBMIT_KEY));
+    submit.hidden = true;
     const options = h("button", { type: "button", class: "button ghost", "aria-expanded": "false" }, "Run options");
     const bench = h("button", { type: "button", class: "button ghost", hidden: true }, "Bench");
-    this.buttons = { run, submit, cancel, options, bench };
-    this.toolbar = h("div", { class: "run-toolbar", role: "toolbar", "aria-label": "Runs", hidden: true }, run, submit, cancel, options, bench);
+    this.buttons = { run, submit, options, bench };
+    this.toolbar = h("div", { class: "run-toolbar", role: "toolbar", "aria-label": "Runs", hidden: true }, run, submit, options, bench);
     this.panel = this.results.element;
-    run.addEventListener("click", () => void this.#use((session) => session.start("test")));
-    submit.addEventListener("click", () => void this.#use((session) => session.start("submit")));
-    cancel.addEventListener("click", () => void this.#use((session) => session.cancel()));
+    run.addEventListener("click", () => void this.#use((session) => session.press("test")));
+    submit.addEventListener("click", () => void this.#use((session) => session.press("submit")));
     options.addEventListener("click", () => void this.#use((session) => session.flipOptions()));
     bench.addEventListener("click", () => void this.#use((session) => session.startBench()));
     this.#listen(document, "keydown", (event) => this.#onKey(event as KeyboardEvent), true);

@@ -325,7 +325,7 @@ def test_alt_drag_selects_a_rectangle(keys):
 
 
 def test_a_screen_reader_hears_a_run_start(keys):
-    assert keys.announced_start == f"running cstudy test {PROJECT}"
+    assert keys.announced_start == f"running cstudy test {PROJECT}; the same button now cancels it"
 
 
 def test_a_screen_reader_hears_a_run_summary(keys):

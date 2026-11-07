@@ -27,21 +27,47 @@
   opacity: 0.7;
 }
 
-.run-button span[aria-hidden="true"],
-.cancel-button span[aria-hidden="true"] {
+.run-button span[aria-hidden="true"] {
   font-size: 0.85em;
 }
 
-.cancel-button:not(:disabled) {
+/* Run tests and Submit are also the Cancel of their own run: one button, two labels. */
+
+/* Both labels share the button's cell, so it is as wide as the wider one in either state and the
+   buttons after it do not move when a run starts or ends. */
+
+.run-button {
+  display: inline-grid;
+  justify-items: center;
+}
+
+.run-button > span {
+  display: inline-flex;
+  grid-area: 1 / 1;
+  align-items: center;
+  gap: 6px;
+}
+
+.run-button .cancel-label,
+.run-button.is-cancel .run-label {
+  visibility: hidden;
+}
+
+.run-button.is-cancel .cancel-label {
+  visibility: visible;
+}
+
+.run-toolbar .run-button.is-cancel {
   border-color: var(--fail);
+  background: var(--paper-raised);
   color: var(--fail);
 }
 
-.run-toolbar.is-running .run-button.primary {
+.run-toolbar.is-running .run-button.is-cancel {
   background-image: repeating-linear-gradient(
     -45deg,
     transparent 0 6px,
-    color-mix(in srgb, var(--on-accent) 18%, transparent) 6px 12px
+    color-mix(in srgb, var(--fail) 12%, transparent) 6px 12px
   );
   background-size: 34px 34px;
   animation: run-stripes 0.9s linear infinite;
@@ -152,7 +178,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .results-progress:indeterminate,
-  .run-toolbar.is-running .run-button.primary {
+  .run-toolbar.is-running .run-button.is-cancel {
     animation: none;
   }
 }

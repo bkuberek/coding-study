@@ -1,6 +1,6 @@
 /**
  * What an Attempt view does with a run (docs/specs/web-ui.md#runs): starts it, follows its stream
- * into the results panel, cancels it, marks its diagnostics in the editors, starts Bench as a job,
+ * into the results panel, cancels it through the button that started it, marks its diagnostics in the editors, starts Bench as a job,
  * and runs again after a save that came during a run. It is a chunk of its own, with the run's
  * model and drawing, fetched the first time a run starts or shows (`AttemptRuns` in `runs.ts`), so
  * the page loads less before a file is editable (NFR-12).
@@ -21,6 +21,7 @@ import { type RunCommandName, runBody, runCommand, type RunOptionsState } from "
 import type { RunShell } from "./runs.ts";
 import { failure } from "./states.ts";
 
+const CANCEL_TITLE = "Stop the run as Ctrl-C does; asks first (Escape in the results too)";
 const CANCEL_QUESTION: Confirmation = {
   title: "Cancel the run?",
   message: "cstudy stops it as Ctrl-C does and records nothing.",
@@ -38,6 +39,9 @@ export class RunSession {
   #stream: LiveStream | null = null;
   #runId: string | null = null;
   #starting = false;
+  /** The command whose button cancels the run in progress: the one that started it, else Run tests. */
+  #active: RunCommandName | null = null;
+  #cancelling = false;
   #queued = false;
   #refreshOnUnlock = false;
   #byPath = new Map<string, Diagnostic[]>();
@@ -107,32 +111,43 @@ export class RunSession {
     const options = { ...this.#shell.options, ...change };
     const context = this.#shell.runContext();
     this.#starting = true;
+    this.#active = command;
     this.#showState();
     try {
       if (!(await this.#savedForRun())) return;
       const { id } = await this.#shell.host.context.api.post<{ id: string }>("/api/v1/runs", runBody(this.#shell.host.attemptId, command, options, context));
-      this.#shell.host.context.shell.announce(`running ${runCommand(command, options, context)}`);
+      this.#announce(`running ${runCommand(command, options, context)}; the same button now cancels it`);
       this.#attach(id, true);
     } catch (error) {
       const active = error instanceof ApiError && error.code === "conflict" ? error.details["run"] : undefined;
       if (typeof active === "string") {
+        this.#active = null;
         this.#attach(active, true);
         return;
       }
       this.#shell.results.show(null, [failure(error)]);
     } finally {
       this.#starting = false;
+      if (this.#stream === null) this.#active = null;
       this.#showState();
     }
   }
 
+  /** What Run tests and Submit do when pressed: the one whose run is active cancels it. */
+  press(command: RunCommandName): Promise<void> {
+    return this.#stream !== null && this.#active === command ? this.cancel() : this.start(command);
+  }
+
+  /** Stops the run in progress, after the question Escape in the results asks too. */
   async cancel(): Promise<void> {
-    if (this.#runId === null || this.#stream === null) return;
-    this.#shell.buttons.cancel.disabled = true;
+    if (this.#runId === null || this.#stream === null || this.#cancelling) return;
+    if (!(await confirmLazily(CANCEL_QUESTION)) || this.#stream === null) return;
+    this.#cancelling = true;
     try {
       await this.#shell.host.context.api.post(`/api/v1/runs/${this.#runId}/cancel`, {});
-      this.#shell.host.context.shell.announce("cancelling the run");
+      this.#announce("cancelling the run");
     } catch (error) {
+      this.#cancelling = false;
       if (!(error instanceof ApiError && error.code === "conflict")) this.#shell.results.show(this.#model, [failure(error)]);
     }
   }
@@ -158,6 +173,7 @@ export class RunSession {
     const { results } = this.#shell;
     this.#stream?.close();
     this.#runId = runId;
+    this.#active ??= "test";
     this.#refreshOnUnlock = live;
     this.#model = new RunModel();
     results.show(this.#model);
@@ -168,18 +184,25 @@ export class RunSession {
       },
       message: (_name, data) => this.#onEvent(data as RunEvent),
       closed: (closed) => {
-        this.#stream = null;
+        this.#stopped();
         this.#model?.close(closed);
         results.update();
         this.#ended();
       },
       lost: () => {
-        this.#stream = null;
+        this.#stopped();
         results.show(null, [h("p", { class: "quiet" }, "The server no longer keeps this run, as after a restart; run the tests again.")]);
         this.#showState();
       },
     });
     this.#showState();
+  }
+
+  /** The stream of the run ended: nothing is left to cancel. */
+  #stopped(): void {
+    this.#stream = null;
+    this.#active = null;
+    this.#cancelling = false;
   }
 
   #onEvent(event: RunEvent): void {
@@ -196,7 +219,7 @@ export class RunSession {
     const model = this.#model;
     if (model) {
       const summary = resultsView(model, false).summary;
-      this.#shell.host.context.shell.announce(summary ? `run ended: ${summary.text}` : "run ended");
+      this.#announce(summary ? `run ended: ${summary.text}` : "run ended");
       if (model.unlocked && this.#refreshOnUnlock) this.#shell.host.refresh();
     }
     if (this.#queued) {
@@ -250,15 +273,21 @@ export class RunSession {
   #onResultsKey(event: KeyboardEvent): void {
     if (event.key !== "Escape" || this.#stream === null) return;
     event.preventDefault();
-    void confirmLazily(CANCEL_QUESTION).then((cancel) => (cancel ? this.cancel() : undefined));
+    void this.cancel();
   }
 
+  /** Run tests and Submit: the one whose run is active reads Cancel, in its own place, and keeps
+   * the focus; the other waits disabled. A run still starting disables only the other, since a
+   * disabled button loses the focus. */
   #showState(): void {
-    const running = this.#running;
     const { buttons, toolbar } = this.#shell;
-    buttons.run.disabled = running;
-    buttons.submit.disabled = running;
-    buttons.cancel.disabled = this.#stream === null;
-    toolbar.classList.toggle("is-running", running);
+    this.#shell.showCommands();
+    for (const [command, button] of [["test", buttons.run], ["submit", buttons.submit]] as const) {
+      const cancels = this.#stream !== null && this.#active === command;
+      button.classList.toggle("is-cancel", cancels);
+      button.disabled = this.#running && this.#active !== command;
+      if (cancels) button.title = CANCEL_TITLE;
+    }
+    toolbar.classList.toggle("is-running", this.#running);
   }
 }
