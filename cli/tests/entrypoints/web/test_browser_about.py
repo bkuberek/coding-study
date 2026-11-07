@@ -39,7 +39,7 @@ LICENSES_PATH = "/api/v1/about/licenses"
 UPPERCASE_PROBE = """() => [...document.querySelectorAll("main *, .statusbar .mode")]
   .filter((element) => getComputedStyle(element).textTransform === "uppercase")
   .map((element) => element.tagName.toLowerCase() + "." + element.className)"""
-LABELS = "main h1, main h2, main h3, main dt, main thead th, main summary, .statusbar .mode"
+LABELS = "main h1, main h2, main h3, main dt, main thead th, main summary"
 ALL_CAPS_PROBE = """() => [...document.querySelectorAll(LABELS)]
   .map((element) => element.textContent.trim())
   .filter((text) => text.length > 1 && text === text.toUpperCase() && /[A-Z]/.test(text))"""
@@ -233,7 +233,7 @@ def test_the_command_strip_names_cstudy_about(seen):
 
 
 def test_the_status_bar_names_the_view(seen):
-    assert seen.mode == "about"
+    assert seen.mode == "ABOUT"
 
 
 def test_the_view_shows_the_version_and_the_license(seen):

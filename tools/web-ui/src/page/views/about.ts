@@ -82,7 +82,7 @@ export function aboutView(context: PageContext): Cleanup {
   const { api, shell } = context;
   shell.setView("about");
   shell.setCommand("cstudy about");
-  shell.setStatus({ mode: "about", where: "credits and licenses" });
+  shell.setStatus({ mode: "ABOUT", where: "credits and licenses" });
   const body = h("div", { class: "about-body" }, loading());
   shell.main.replaceChildren(
     h("section", { class: "about", "aria-labelledby": "about-heading" }, h("header", { class: "view-head" }, h("h1", { id: "about-heading" }, "about")), body),
