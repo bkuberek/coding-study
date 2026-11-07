@@ -56,6 +56,7 @@ def session_document(environment: Environment, port: int, version: str) -> dict[
 def about_document(about: About) -> dict[str, JsonValue]:
     """`GET /api/v1/about`: what `cstudy about` and `cstudy about --credits` print."""
     return {
+        "author": {"name": about.author.name, "link": _link_value(about.author.link)},
         "version": about.version,
         "license": about.license,
         "website": _link_value(about.website),

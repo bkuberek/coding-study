@@ -93,9 +93,12 @@
   overflow-wrap: anywhere;
 }
 
+.about-author {
+  margin: 0 0 4px;
+  font-size: var(--text-l);
+}
+
 .about-sponsor {
-  margin-top: 36px;
-  padding-top: 12px;
-  border-top: 1px solid var(--rule);
+  margin: 0 0 24px;
   font-size: var(--text-s);
 }

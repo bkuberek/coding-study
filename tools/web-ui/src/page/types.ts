@@ -389,6 +389,7 @@ export interface AboutCredit {
 
 /** `GET /api/v1/about`: what `cstudy about` prints, and its credits. */
 export interface About {
+  readonly author: { readonly name: string; readonly link: AboutLink };
   readonly version: string;
   readonly license: string;
   readonly website: AboutLink;

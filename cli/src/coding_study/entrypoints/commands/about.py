@@ -48,14 +48,17 @@ def about(
 
 def _summary_lines(found: About) -> list[Text]:
     return [
-        Text(f"cstudy {found.version}"),
-        labelled("license", found.license),
-        labelled(found.website.label.lower(), found.website.url),
-        *(labelled(link.label.lower(), link.url) for link in found.links),
+        Text(found.author.name),
+        Text(found.author.link.url),
         *(
             labelled("sponsor" if index == 0 else "", link.url)
             for index, link in enumerate(found.sponsor)
         ),
+        Text(),
+        Text(f"cstudy {found.version}"),
+        labelled("license", found.license),
+        labelled(found.website.label.lower(), found.website.url),
+        *(labelled(link.label.lower(), link.url) for link in found.links),
         Text(),
         labelled("credits", "cstudy about --credits"),
         labelled("licenses", "cstudy about --licenses"),

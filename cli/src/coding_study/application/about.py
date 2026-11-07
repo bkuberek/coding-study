@@ -3,6 +3,8 @@
 
 from coding_study.application.ports import InstalledPackages
 from coding_study.domain.about import (
+    AUTHOR_LINK,
+    AUTHOR_NAME,
     LICENSE_NAME,
     NOTICE_RULE_WIDTH,
     PROJECT_LINKS,
@@ -10,6 +12,7 @@ from coding_study.domain.about import (
     TOOLCHAINS,
     WEBSITE_LINK,
     About,
+    Author,
     Credit,
     CreditSection,
     web_ui_credits,
@@ -22,6 +25,7 @@ _RULE = "-" * NOTICE_RULE_WIDTH
 
 def read_about(version: str, packages: InstalledPackages) -> About:
     return About(
+        author=Author(AUTHOR_NAME, AUTHOR_LINK),
         version=version,
         license=LICENSE_NAME,
         website=WEBSITE_LINK,

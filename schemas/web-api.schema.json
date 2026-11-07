@@ -114,8 +114,15 @@
       "description": "GET /api/v1/about: what `cstudy about` prints, with the credits of `--credits`",
       "type": "object",
       "additionalProperties": false,
-      "required": ["version", "license", "website", "links", "sponsor", "credits"],
+      "required": ["author", "version", "license", "website", "links", "sponsor", "credits"],
       "properties": {
+        "author": {
+          "description": "Who made cstudy, with a link to their site; the address carries fixed utm tags only",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "link"],
+          "properties": { "name": { "type": "string", "minLength": 1 }, "link": { "$ref": "#/$defs/about_link" } }
+        },
         "version": { "type": "string", "minLength": 1 },
         "license": { "type": "string", "minLength": 1 },
         "website": { "$ref": "#/$defs/about_link" },

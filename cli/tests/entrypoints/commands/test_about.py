@@ -6,11 +6,12 @@ from importlib import metadata
 import pytest
 from typer.testing import CliRunner
 
-from coding_study.domain.about import SPONSOR_LINKS, WEBSITE
+from coding_study.domain.about import AUTHOR_LINK, SPONSOR_LINKS, WEBSITE
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.shared import ExitCode
 
 runner = CliRunner()
+AUTHOR_URL = AUTHOR_LINK.url
 
 
 def about(*arguments: str):
@@ -19,6 +20,25 @@ def about(*arguments: str):
 
 def test_about_exits_with_success():
     assert about().exit_code == ExitCode.SUCCESS
+
+
+def test_about_names_the_author_first():
+    assert about().stdout.splitlines()[0] == "Bastian Kuberek"
+
+
+def test_about_links_to_the_authors_site_with_its_tags():
+    assert AUTHOR_URL in about().stdout.splitlines()[1]
+
+
+def test_about_puts_the_sponsor_links_below_the_author_and_above_the_version():
+    lines = about().stdout.splitlines()
+    version = next(i for i, line in enumerate(lines) if line.startswith("cstudy "))
+    sponsors = [
+        i for i, line in enumerate(lines) if "github.com/sponsors" in line or "ko-fi" in line
+    ]
+    assert len(sponsors) == len(SPONSOR_LINKS)
+    assert min(sponsors) > 1
+    assert max(sponsors) < version
 
 
 def test_about_names_the_installed_version():

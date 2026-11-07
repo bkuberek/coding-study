@@ -1379,7 +1379,7 @@ Needs no workspace and reads no configuration. The [About view](web-ui.md#about-
 
 | Form | Prints |
 |------|--------|
-| `about` | `cstudy <version>`, then the license (`MIT`), the website (`https://coding-study.com`), the source and issues pages, the two sponsor links of `.github/FUNDING.yml` (GitHub Sponsors and Ko-fi) on `sponsor` lines, and the two commands below. It asks for nothing and opens nothing |
+| `about` | `Bastian Kuberek` and the address of his site, `https://bkuberek.com/?utm_source=cstudy&utm_medium=app&utm_campaign=about` (fixed tags, nothing of the version or the machine); the two sponsor links of `.github/FUNDING.yml` (GitHub Sponsors and Ko-fi) on `sponsor` lines; then `cstudy <version>`, the license (`MIT`), the website (`https://coding-study.com`), the source and issues pages, and the two commands below. It asks for nothing and opens nothing |
 | `about --credits` | The software cstudy uses, in sections: the Python packages it needs to run, with each one's installed version and declared license, read from the installed metadata; the packages the web page bundles, read from `THIRD_PARTY_LICENSES.txt`; the language servers it pins; and the toolchains it runs from your machine |
 | `about --licenses` | The full license text: cstudy's own, then each Python package's, then `THIRD_PARTY_LICENSES.txt` whole. A package that ships no text says so |
 

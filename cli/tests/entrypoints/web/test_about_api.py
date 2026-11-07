@@ -5,7 +5,7 @@ built page directory."""
 import pytest
 
 from coding_study.adapters.installed_packages import NOTICE_FILE
-from coding_study.domain.about import SPONSOR_LINKS, WEBSITE
+from coding_study.domain.about import AUTHOR_LINK, SPONSOR_LINKS, WEBSITE
 from tests.web_server import (
     TEST_VERSION,
     WRITE_HEADERS,
@@ -44,6 +44,14 @@ def read(app, path: str):
 
 def test_about_answers(app):
     assert read(app, ABOUT).status_code == 200
+
+
+def test_about_names_the_author_and_links_to_the_authors_site(app):
+    author = read(app, ABOUT).json()["author"]
+    assert author == {
+        "name": "Bastian Kuberek",
+        "link": {"label": "bkuberek.com", "url": AUTHOR_LINK.url},
+    }
 
 
 def test_about_names_the_servers_version(app):

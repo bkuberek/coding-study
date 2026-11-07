@@ -18,7 +18,7 @@ from typing import Any
 
 import pytest
 
-from coding_study.domain.about import SPONSOR_LINKS, WEBSITE
+from coding_study.domain.about import AUTHOR_LINK, SPONSOR_LINKS, WEBSITE
 from tests.browsers import launched, watched
 from tests.helpers import mark_workspace
 from tests.serve_process import RunningServer, running_server
@@ -63,7 +63,10 @@ class Seen:
     section_titles: list[str] = field(default_factory=list[str])
     python_packages: list[str] = field(default_factory=list[str])
     sponsor_hrefs: list[str] = field(default_factory=list[str])
-    sponsor_is_last: bool = False
+    body_order: list[str] = field(default_factory=list[str])
+    author_text: str = ""
+    author_link_text: str = ""
+    author_link: dict[str, str | None] = field(default_factory=dict[str, str | None])
     requests_before_open: list[str] = field(default_factory=list[str])
     requests_to_other_sites: list[str] = field(default_factory=list[str])
     license_requests_before_open: int = -1
@@ -154,8 +157,14 @@ def _read_the_view(page: Any, found: Seen, server: RunningServer) -> None:
     found.sponsor_hrefs = page.eval_on_selector_all(
         SPONSOR_LINKS_SELECTOR, "links => links.map(link => link.href)"
     )
-    found.sponsor_is_last = page.evaluate(
-        "document.querySelector('.about-body').lastElementChild.classList.contains('about-sponsor')"
+    found.body_order = page.eval_on_selector_all(
+        ".about-body > *", "items => items.map(item => item.classList[0])"
+    )
+    found.author_text = page.inner_text(".about-author")
+    found.author_link_text = page.inner_text(".about-author a")
+    found.author_link = page.eval_on_selector(
+        ".about-author a",
+        "link => ({href: link.href, target: link.target, rel: link.getAttribute('rel')})",
     )
     found.uppercase = page.evaluate(UPPERCASE_PROBE)
     found.all_caps = page.evaluate(ALL_CAPS_PROBE.replace("LABELS", repr(LABELS)))
@@ -276,8 +285,30 @@ def test_the_sponsor_links_are_the_targets_of_funding_yml(seen):
     assert seen.sponsor_hrefs == [link.url for link in SPONSOR_LINKS]
 
 
-def test_the_sponsor_line_comes_last(seen):
-    assert seen.sponsor_is_last
+def test_the_author_comes_first_then_the_sponsor_line_then_the_rest(seen):
+    assert seen.body_order == [
+        "about-author",
+        "about-sponsor",
+        "about-facts",
+        "about-credits",
+        "about-licenses",
+    ]
+
+
+def test_the_author_is_named(seen):
+    assert seen.author_text.startswith("Bastian Kuberek")
+
+
+def test_the_author_link_reads_bkuberek_com(seen):
+    assert seen.author_link_text == "bkuberek.com"
+
+
+def test_the_author_link_has_the_static_utm_tags_and_opens_safely(seen):
+    assert seen.author_link == {
+        "href": AUTHOR_LINK.url,
+        "target": "_blank",
+        "rel": "noopener noreferrer",
+    }
 
 
 def test_nothing_is_requested_from_another_site(seen):

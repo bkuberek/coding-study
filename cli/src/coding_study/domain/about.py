@@ -15,6 +15,11 @@ class Link:
     url: str
 
 
+AUTHOR_NAME = "Bastian Kuberek"
+AUTHOR_LINK = Link(
+    "bkuberek.com", "https://bkuberek.com/?utm_source=cstudy&utm_medium=app&utm_campaign=about"
+)
+"""The tags are fixed text: the address carries nothing of the version, the user or the machine."""
 WEBSITE_LINK = Link("Website", WEBSITE)
 PROJECT_LINKS = (
     Link("Source", SOURCE),
@@ -47,7 +52,14 @@ class CreditSection:
 
 
 @dataclass(frozen=True, slots=True)
+class Author:
+    name: str
+    link: Link
+
+
+@dataclass(frozen=True, slots=True)
 class About:
+    author: Author
     version: str
     license: str
     website: Link

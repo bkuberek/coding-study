@@ -9,6 +9,7 @@ import yaml
 
 from coding_study.application.about import read_about, read_license_texts
 from coding_study.domain.about import (
+    AUTHOR_NAME,
     LICENSE_NAME,
     SPONSOR_LINKS,
     WEBSITE,
@@ -64,6 +65,23 @@ def sections(notice: str | None = NOTICE):
     return {section.title: section for section in read_about("1.2.3", FakePackages(notice)).credits}
 
 
+def test_about_names_the_author():
+    assert read_about("1.2.3", FakePackages()).author.name == AUTHOR_NAME == "Bastian Kuberek"
+
+
+def test_the_author_link_reads_bkuberek_com():
+    assert read_about("1.2.3", FakePackages()).author.link.label == "bkuberek.com"
+
+
+def test_the_author_link_carries_static_utm_tags_only():
+    url = read_about("1.2.3", FakePackages()).author.link.url
+    assert url == "https://bkuberek.com/?utm_source=cstudy&utm_medium=app&utm_campaign=about"
+
+
+def test_the_author_link_carries_nothing_of_the_version():
+    assert "1.2.3" not in read_about("1.2.3", FakePackages()).author.link.url
+
+
 def test_about_names_the_version_it_is_given():
     assert read_about("1.2.3", FakePackages()).version == "1.2.3"
 
@@ -102,7 +120,7 @@ def test_about_offers_the_sponsor_links():
 
 def test_every_link_is_https():
     about = read_about("1.2.3", FakePackages())
-    links = (about.website, *about.links, *about.sponsor)
+    links = (about.author.link, about.website, *about.links, *about.sponsor)
     assert all(link.url.startswith("https://") for link in links)
 
 

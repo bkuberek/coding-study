@@ -1,7 +1,7 @@
 /**
  * The About view (docs/specs/web-ui.md#about-view): the version, the license, the links and the
- * credits `cstudy about` prints, the full license texts one click away, and, last and quiet, where
- * to sponsor cstudy. The status bar's version opens it; the top bar does not list it.
+ * credits `cstudy about` prints, the full license texts one click away, headed by the author and,
+ * quiet, where to sponsor cstudy. The status bar's version opens it; the top bar does not list it.
  */
 
 import "./about.css";
@@ -15,6 +15,12 @@ import type { About, AboutCredit, AboutLicenses, AboutLink } from "../types.ts";
  * gets neither the opener nor the referrer. */
 function outside(link: AboutLink): HTMLAnchorElement {
   return h("a", { href: link.url, target: "_blank", rel: "noopener noreferrer" }, link.url.replace(/^https:\/\//, ""));
+}
+
+/** The author, first: the name and a plain link to their site, whose text is the label, not the address. */
+function author(about: About): HTMLElement {
+  const { name, link } = about.author;
+  return h("p", { class: "about-author" }, name, " · ", h("a", { href: link.url, target: "_blank", rel: "noopener noreferrer" }, link.label));
 }
 
 function facts(about: About): HTMLElement {
@@ -75,7 +81,7 @@ function licenseTexts(context: PageContext): HTMLElement {
 
 function sponsor(about: About): HTMLElement {
   const links = about.sponsor.flatMap((link, index) => [index > 0 ? " · " : null, h("a", { href: link.url, target: "_blank", rel: "noopener noreferrer" }, link.label)]);
-  return h("p", { class: "quiet about-sponsor" }, "cstudy is free. If it helps you, you can support its work on ", ...links, ".");
+  return h("p", { class: "about-sponsor quiet" }, "cstudy is free. If it helps you, you can support its work on ", ...links, ".");
 }
 
 export function aboutView(context: PageContext): Cleanup {
@@ -91,7 +97,7 @@ export function aboutView(context: PageContext): Cleanup {
   void api
     .get<About>("/api/v1/about")
     .then((about) => {
-      if (!left) body.replaceChildren(facts(about), credits(about), licenseTexts(context), sponsor(about));
+      if (!left) body.replaceChildren(author(about), sponsor(about), facts(about), credits(about), licenseTexts(context));
     })
     .catch((error: unknown) => {
       if (!left) showFailure(body, error);

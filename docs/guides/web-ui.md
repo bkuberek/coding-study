@@ -51,7 +51,7 @@ The top bar holds the views, the attempts in progress while one is open, and the
 | Progress | <kbd>Alt</kbd>+<kbd>4</kbd> | `cstudy stats`, the reviews due, export and import |
 | Health | <kbd>Alt</kbd>+<kbd>5</kbd> | The `cstudy doctor` checks, a **Fix** button on each row that `cstudy doctor --fix` repairs, and Verify for your own problems |
 | Settings | <kbd>Alt</kbd>+<kbd>6</kbd> | This workspace's preferences, and your `config.toml`, which every workspace reads |
-| About | The version in the status bar | The version, the license, the website and project links, and the credits, with the full license texts one click away; `cstudy about` prints the same. At the foot, two plain links say where to sponsor cstudy if you want to. It is not in the top bar, and has no number key |
+| About | The version in the status bar | Who made cstudy, with a link to his site, and below it two plain links that say where to sponsor cstudy if you want to; then the version, the license, the website and project links, and the credits, with the full license texts one click away. `cstudy about` prints the same, in the same order. It is not in the top bar, and has no number key |
 
 ![The problem list in the light theme](../images/web-ui-problems-light.png)
 
