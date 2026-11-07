@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from coding_study.application.installs import InstallScan
+from coding_study.domain.about import Credit
 from coding_study.domain.attempts import Attempt, NewAttempt, RunRecord
 from coding_study.domain.bench_records import (
     BenchOutcome,
@@ -1288,4 +1289,25 @@ class SandboxEngine(Protocol):
 
     def stop_install(self, plan: InstallPlan) -> str | None:
         """`down`, keeping the install cache; what went wrong, or None."""
+        ...
+
+
+class InstalledPackages(Protocol):
+    """What the install holds of cstudy and the software it uses, for `cstudy about`
+    (docs/specs/cli.md#cstudy-about)."""
+
+    def own_license_text(self) -> str:
+        """The full text of cstudy's own license."""
+        ...
+
+    def python_packages(self) -> tuple[Credit, ...]:
+        """The installed Python packages cstudy needs to run, with what each declares, by name."""
+        ...
+
+    def python_license_texts(self) -> Mapping[str, str]:
+        """The license text each of those packages ships, by name; one with none has no entry."""
+        ...
+
+    def web_ui_notice(self) -> str | None:
+        """`THIRD_PARTY_LICENSES.txt` of the built web page; None when it is not there."""
         ...

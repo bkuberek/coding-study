@@ -120,6 +120,7 @@ Run `cstudy` anywhere inside the workspace, or point at it with `cstudy --worksp
 | `cstudy stats`, `cstudy mock` | Shows your progress; runs a timed mock interview |
 | `cstudy serve [--open]` | Serves the practice page on your computer, at `127.0.0.1` ([guide](docs/guides/web-ui.md)) |
 | `cstudy new <slug>`, `cstudy verify <slug>` | Scaffolds a problem of your own; checks it |
+| `cstudy about` | Shows the version, license, links and credits |
 
 Every command and flag: [CLI reference](docs/specs/cli.md). Configuration, such as the default language, lives in `~/.config/coding-study/config.toml` ([configuration](docs/specs/cli.md#configuration)).
 

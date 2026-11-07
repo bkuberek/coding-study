@@ -103,6 +103,66 @@
         }
       }
     },
+    "about_link": {
+      "description": "A link the About view shows: its label and an https address",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "url"],
+      "properties": { "label": { "type": "string", "minLength": 1 }, "url": { "type": "string", "pattern": "^https://" } }
+    },
+    "about": {
+      "description": "GET /api/v1/about: what `cstudy about` prints, with the credits of `--credits`",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["author", "version", "license", "website", "links", "sponsor", "credits"],
+      "properties": {
+        "author": {
+          "description": "Who made cstudy, with a link to their site; the address carries fixed utm tags only",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "credit", "link"],
+          "properties": { "name": { "type": "string", "minLength": 1 }, "credit": { "description": "The line that credits them: Created by, then the name", "type": "string", "minLength": 1 }, "link": { "$ref": "#/$defs/about_link" } }
+        },
+        "version": { "type": "string", "minLength": 1 },
+        "license": { "type": "string", "minLength": 1 },
+        "website": { "$ref": "#/$defs/about_link" },
+        "links": { "type": "array", "items": { "$ref": "#/$defs/about_link" } },
+        "sponsor": { "description": "The targets of .github/FUNDING.yml; nothing is fetched from them", "type": "array", "items": { "$ref": "#/$defs/about_link" } },
+        "credits": {
+          "description": "The sections that have credits, in order",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["title", "credits"],
+            "properties": {
+              "title": { "type": "string", "minLength": 1 },
+              "credits": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["name", "version", "license"],
+                  "properties": {
+                    "name": { "type": "string", "minLength": 1 },
+                    "version": { "description": "Empty for what cstudy does not pin", "type": "string" },
+                    "license": { "description": "As the package declares it; empty when unknown", "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "about_licenses": {
+      "description": "GET /api/v1/about/licenses: the full license texts of `cstudy about --licenses`",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": { "text": { "type": "string", "minLength": 1 } }
+    },
     "reset_preview": {
       "description": "GET /api/v1/reset: what POST would delete and keep",
       "type": "object",

@@ -58,6 +58,8 @@ function show(context: PageContext, route: Route): Cleanup {
       return lazyView(context, () => import("./page/views/health.ts").then((module) => module.healthView));
     case "settings":
       return lazyView(context, () => import("./page/views/settings.ts").then((module) => module.settingsView));
+    case "about":
+      return lazyView(context, () => import("./page/views/about.ts").then((module) => module.aboutView));
     case "missing":
       return missingView(context, route.fragment);
   }

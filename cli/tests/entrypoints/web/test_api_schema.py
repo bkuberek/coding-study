@@ -33,6 +33,8 @@ from tests.web_server import WRITE_HEADERS, anonymous_client, session_client, we
 SCHEMA = json.loads((SCHEMAS_DIRECTORY / "web-api.schema.json").read_text())
 DOCUMENTS = (
     "session",
+    "about",
+    "about_licenses",
     "preferences",
     "config",
     "reset_preview",
@@ -139,6 +141,8 @@ def _practice(root: Path, record: Recorder) -> dict[str, Any]:
     app = web_app(root, environment, script.child, Children(QUICK), notifications)
     with session_client(app) as client:
         record("session", client.get("/api/v1/session"))
+        record("about", client.get("/api/v1/about"))
+        record("about_licenses", client.get("/api/v1/about/licenses"))
         record("preferences", client.get(PREFERENCES))
         record("preferences", client.put(PREFERENCES, json={"vim": True}, headers=WRITE_HEADERS))
         record("config", client.get(CONFIG))

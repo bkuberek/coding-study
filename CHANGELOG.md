@@ -2,6 +2,47 @@
 
 <!-- version list -->
 
+## v0.27.0 (2026-11-07)
+
+### Features
+
+- **web**: Say who created cstudy on the About view
+  ([`9796df7`](https://github.com/bkuberek/coding-study/commit/9796df78250e83db18f0462dbbc8105171846551))
+
+- **web**: Widen the About text so the sponsor line stays on one line
+  ([`e1a96f6`](https://github.com/bkuberek/coding-study/commit/e1a96f6b40aeb2ba6531b618758c3b137b32493e))
+
+
+## v0.26.0 (2026-11-07)
+
+### Features
+
+- **web**: Credit the author at the top of About
+  ([`b6bfd8a`](https://github.com/bkuberek/coding-study/commit/b6bfd8af0f6e360e460707b00a82104da3716a93))
+
+
+## v0.25.0 (2026-11-07)
+
+### Features
+
+- **cli**: Add cstudy about with the version, license, links and credits
+  ([`cfcc626`](https://github.com/bkuberek/coding-study/commit/cfcc6264248117fb3c2230810d646d52b6ac9f41))
+
+- **web**: Add an About view opened by the status bar's version
+  ([`c097405`](https://github.com/bkuberek/coding-study/commit/c09740544630947e146ba9cc7f315e07eca47441))
+
+- **web**: Describe the About endpoints in the API schema
+  ([`2cf9ca5`](https://github.com/bkuberek/coding-study/commit/2cf9ca5ec13a00df5f00a5221224d9e19efa079e))
+
+- **web**: Read ABOUT in the status bar, as the other views do
+  ([`7361ca2`](https://github.com/bkuberek/coding-study/commit/7361ca291a947999d695b3127eea0fa6915f589d))
+
+### Refactoring
+
+- Move the installed-packages reader from entrypoints to adapters
+  ([`2662e54`](https://github.com/bkuberek/coding-study/commit/2662e54c1c676d01bb844972397ceaf825660f77))
+
+
 ## v0.24.0 (2026-11-07)
 
 ### Bug Fixes

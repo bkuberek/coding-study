@@ -18,10 +18,11 @@ export type Route =
   | { readonly view: "progress" }
   | { readonly view: "health" }
   | { readonly view: "settings" }
+  | { readonly view: "about" }
   | { readonly view: "missing"; readonly fragment: string };
 
 /** The views addressed by one segment, such as `#/health`. */
-const SINGLE_VIEWS = ["sets", "mock", "progress", "health", "settings"] as const;
+const SINGLE_VIEWS = ["sets", "mock", "progress", "health", "settings", "about"] as const;
 type SingleView = (typeof SINGLE_VIEWS)[number];
 
 function isSingleView(segment: string): segment is SingleView {
@@ -58,6 +59,8 @@ export function problemsHash(filters: Filters): string {
 export const problemHash = (slug: string): string => `#/problems/${encodeURIComponent(slug)}`;
 export const attemptHash = (id: number): string => `#/attempts/${id}`;
 export const MOCK_HASH = "#/mock";
+/** The About view is linked from the status bar's version, not listed among the top bar's views. */
+export const ABOUT_HASH = "#/about";
 export const SETS_HASH = "#/sets";
 export const setHash = (name: string): string => `${SETS_HASH}/${encodeURIComponent(name)}`;
 
