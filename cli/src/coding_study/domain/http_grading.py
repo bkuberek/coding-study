@@ -7,6 +7,7 @@ report cuts the expected and actual values short.
 import json
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
+from enum import StrEnum
 from itertools import islice, pairwise
 from typing import NoReturn
 
@@ -31,6 +32,8 @@ CONTENT_TYPE_HEADER = "content-type"
 SUCCESS_STATUSES = range(200, 300)
 
 _MULTISET_COMPARATORS = frozenset({ComparatorType.UNORDERED, ComparatorType.UNORDERED_NESTED})
+HTTP_COMPARATORS = frozenset({ComparatorType.EXACT, ComparatorType.FLOAT, *_MULTISET_COMPARATORS})
+"""What can judge a response body: `checker` and `ops` need a runner's output."""
 _NO_INPUT = FunctionInput({})
 
 
@@ -42,6 +45,24 @@ class HttpResponse:
     body: bytes
     duration_ns: int = 0
     """From sending the request to the end of the response."""
+
+
+class ExchangeFailure(StrEnum):
+    """Why a request brought back no HTTP answer to judge."""
+
+    TIMED_OUT = "timed out"
+    REFUSED = "connection refused"
+    DROPPED = "connection dropped"
+    NOT_HTTP = "not HTTP"
+    TOO_LARGE = "too large"
+
+
+@dataclass(frozen=True, slots=True)
+class ExchangeFailed:
+    failure: ExchangeFailure
+    detail: str
+    """A sentence for a learner: what was asked of whom, and what happened."""
+    duration_ns: int = 0
 
 
 @dataclass(frozen=True, slots=True)
