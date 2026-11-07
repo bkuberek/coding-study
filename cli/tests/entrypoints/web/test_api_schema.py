@@ -37,6 +37,11 @@ DOCUMENTS = (
     "config",
     "reset_preview",
     "reset_done",
+    "sets",
+    "set",
+    "set_added",
+    "set_removed",
+    "set_deleted",
     "code_intelligence_languages",
     "error",
     "problem",
@@ -119,6 +124,7 @@ def documents(tmp_path_factory: pytest.TempPathFactory) -> Documents:
     _mock(tmp_path_factory.mktemp("mock"), record)
     _watch(tmp_path_factory.mktemp("watch"), record)
     _reset(tmp_path_factory.mktemp("reset"), record)
+    _sets(tmp_path_factory.mktemp("sets"), record)
     _abort(tmp_path_factory.mktemp("abort"), record)
     return record.documents
 
@@ -240,6 +246,36 @@ def _reset(root: Path, record: Recorder) -> None:
         record(
             "reset_done",
             client.post("/api/v1/reset", json={"confirm": "reset"}, headers=WRITE_HEADERS),
+        )
+
+
+def _sets(root: Path, record: Recorder) -> None:
+    """A set created, filled, reordered, renamed and deleted, with a slug the catalog lost."""
+    problems = copy_catalog_problems(root / "catalog", FIRST_CATALOG)
+    workspace = repository_root(root / "workspace", problems, FIXTURE_TRACKS)
+    sets = "/api/v1/sets"
+    loop = f"{sets}/backend-loop"
+    with session_client(web_app(workspace, make_environment(workspace))) as client:
+        record("sets", client.get(sets))
+        created = {"name": "backend-loop", "description": "The loop"}
+        record("set", client.post(sets, json=created, headers=WRITE_HEADERS))
+        add = {"slugs": ["two-sum", "url-shortener", "two-sum"]}
+        record("set_added", client.post(f"{loop}/add", json=add, headers=WRITE_HEADERS))
+        (workspace / "sets.yaml").write_text(
+            (workspace / "sets.yaml").read_text() + "      - gone\n"
+        )
+        record("sets", client.get(sets))
+        record("set", client.get(loop))
+        move = {"slug": "url-shortener", "position": 1}
+        record("set", client.post(f"{loop}/move", json=move, headers=WRITE_HEADERS))
+        remove = {"slugs": ["gone", "lru-cache"]}
+        record("set_removed", client.post(f"{loop}/remove", json=remove, headers=WRITE_HEADERS))
+        record("set", client.post(f"{loop}/rename", json={"to": "other"}, headers=WRITE_HEADERS))
+        record(
+            "set_deleted",
+            client.request(
+                "DELETE", f"{sets}/other", json={"confirm": True}, headers=WRITE_HEADERS
+            ),
         )
 
 

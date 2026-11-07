@@ -12,6 +12,7 @@ from coding_study.application.list_problems import ProblemFilter
 from coding_study.application.next_problem import NextRequest, next_source, recommend
 from coding_study.application.problem_details import problem_details
 from coding_study.application.problem_history import problem_history
+from coding_study.application.problem_sets import in_named_set
 from coding_study.application.show_statement import ShowRequest, show_statement
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import UnknownProblemError
@@ -43,7 +44,7 @@ async def problems(request: Request) -> Response:
         kind=choice(query, "kind", EntryKind),
         labels=_labels(query),
     )
-    return JsonResponse(await in_workspace(request, list_document, problem_filter))
+    return JsonResponse(await in_workspace(request, _problems, problem_filter, _set_name(query)))
 
 
 async def problem(request: Request) -> Response:
@@ -68,6 +69,7 @@ async def next_pick(request: Request) -> Response:
         language=choice(query, "lang", Language),
         source=next_source(switch(query, "new"), switch(query, "review")),
         labels=_labels(query),
+        set_name=_set_name(query),
     )
     return JsonResponse(await in_workspace(request, _next, next_request))
 
@@ -84,6 +86,16 @@ def browsing_routes() -> list[BaseRoute]:
 
 def _labels(query: QueryParams) -> LabelFilter:
     return LabelFilter(query.get("domain"), query.get("role"), choice(query, "scope", Scope))
+
+
+def _set_name(query: QueryParams) -> str | None:
+    return query.get("set") or None
+
+
+def _problems(
+    environment: Environment, problem_filter: ProblemFilter, set_name: str | None
+) -> dict[str, JsonValue]:
+    return list_document(environment, in_named_set(environment, problem_filter, set_name))
 
 
 def _slug(request: Request) -> str:

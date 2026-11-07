@@ -562,3 +562,72 @@ def test_a_settings_write_without_the_csrf_token_gets_403(app, tmp_path, path, b
         "forbidden",
         False,
     )
+
+
+# The writes of the sets
+
+
+SET_FILE = "sets:\n  backend-loop:\n    problems:\n      - two-sum\n"
+SET_WRITES = (
+    ("POST", "/api/v1/sets", {"name": "other"}),
+    ("POST", "/api/v1/sets/backend-loop/add", {"slugs": ["lru-cache"]}),
+    ("POST", "/api/v1/sets/backend-loop/remove", {"slugs": ["two-sum"]}),
+    ("POST", "/api/v1/sets/backend-loop/move", {"slug": "two-sum", "position": 1}),
+    ("POST", "/api/v1/sets/backend-loop/rename", {"to": "other"}),
+    ("DELETE", "/api/v1/sets/backend-loop", {"confirm": True}),
+)
+
+
+@pytest.fixture
+def sets_file(tmp_path):
+    file = tmp_path / "sets.yaml"
+    file.write_text(SET_FILE)
+    return file
+
+
+@pytest.mark.parametrize(("method", "path", "body"), SET_WRITES)
+def test_a_set_write_for_another_host_gets_403(app, sets_file, method, path, body):
+    with session_client(app) as client:
+        response = client.request(
+            method, path, json=body, headers={**WRITE_HEADERS, "Host": f"rebound.example:{PORT}"}
+        )
+    assert (response.status_code, error_code(response), sets_file.read_text()) == (
+        403,
+        "forbidden",
+        SET_FILE,
+    )
+
+
+@pytest.mark.parametrize(("method", "path", "body"), SET_WRITES)
+def test_a_set_write_from_another_origin_gets_403(app, sets_file, method, path, body):
+    with session_client(app) as client:
+        response = client.request(
+            method, path, json=body, headers={**WRITE_HEADERS, "Origin": "http://evil.example"}
+        )
+    assert (response.status_code, error_code(response), sets_file.read_text()) == (
+        403,
+        "forbidden",
+        SET_FILE,
+    )
+
+
+@pytest.mark.parametrize(("method", "path", "body"), SET_WRITES)
+def test_a_set_write_without_the_cookie_gets_401(app, sets_file, method, path, body):
+    with anonymous_client(app) as client:
+        response = client.request(method, path, json=body, headers=WRITE_HEADERS)
+    assert (response.status_code, error_code(response), sets_file.read_text()) == (
+        401,
+        "unauthorized",
+        SET_FILE,
+    )
+
+
+@pytest.mark.parametrize(("method", "path", "body"), SET_WRITES)
+def test_a_set_write_without_the_csrf_token_gets_403(app, sets_file, method, path, body):
+    with session_client(app) as client:
+        response = client.request(method, path, json=body, headers={"Origin": ORIGIN})
+    assert (response.status_code, error_code(response), sets_file.read_text()) == (
+        403,
+        "forbidden",
+        SET_FILE,
+    )

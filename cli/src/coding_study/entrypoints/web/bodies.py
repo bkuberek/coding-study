@@ -35,6 +35,34 @@ def optional_text(body: Body, name: str) -> str | None:
     raise UsageError(f"invalid {name} {_shown(value)}: use a string")
 
 
+def required_text_list(body: Body, name: str) -> tuple[str, ...]:
+    found = body.get(name)
+    if found is None:
+        raise UsageError(f"the request needs {name}")
+    values = _text_list(found)
+    if values is None:
+        raise UsageError(f"invalid {name} {_shown(found)}: use a list of strings")
+    return values
+
+
+def _text_list(found: object) -> tuple[str, ...] | None:
+    if not isinstance(found, list):
+        return None
+    values = cast(list[object], found)
+    return (
+        tuple(cast(list[str], values)) if all(isinstance(value, str) for value in values) else None
+    )
+
+
+def required_integer(body: Body, name: str) -> int:
+    value = body.get(name)
+    if value is None:
+        raise UsageError(f"the request needs {name}")
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise UsageError(f"invalid {name} {_shown(value)}: use an integer")
+    return value
+
+
 def switch(body: Body, name: str) -> bool:
     """`true` or `false`; false when absent or null, as a flag left off."""
     value = body.get(name)

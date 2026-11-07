@@ -23,6 +23,7 @@ from coding_study.entrypoints.web.api_progress import progress_routes
 from coding_study.entrypoints.web.api_reset import reset_routes
 from coding_study.entrypoints.web.api_runs import run_routes
 from coding_study.entrypoints.web.api_session import session_routes
+from coding_study.entrypoints.web.api_sets import set_routes
 from coding_study.entrypoints.web.api_solutions import solution_routes
 from coding_study.entrypoints.web.code_intelligence import LanguageSessions
 from coding_study.entrypoints.web.context import ServerSettings, ServerState
@@ -51,6 +52,7 @@ def create_app(
         *session_routes(),
         *config_routes(),
         *browsing_routes(),
+        *set_routes(),
         *attempt_routes(),
         *file_routes(),
         *past_file_routes(),
