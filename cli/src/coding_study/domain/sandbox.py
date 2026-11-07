@@ -12,6 +12,7 @@ says so and changes no result. A limit on a test or a case starts at `ReadyStack
 
 import hashlib
 import json
+import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -125,6 +126,7 @@ fails or times out proves what D11 asks; one that succeeds is named."""
 
 _KIND_LETTERS: Mapping["StackKind", str] = {}
 _DIGEST_LENGTH = 8
+_STACK_NAME = re.compile(r"cstudy-[dtgi]-[a-z0-9][a-z0-9_-]*")
 
 
 class StackKind(StrEnum):
@@ -159,6 +161,13 @@ def dev_stack_name(slug: str, workspace: str) -> str:
 
 def install_stack_name(slug: str, workspace: str) -> str:
     return f"cstudy-i-{slug}-{workspace}"
+
+
+def is_stack_name(name: str) -> bool:
+    """Whether `name` has the form cstudy gives a stack, or a network or a volume compose named
+    after one. A compose label says whatever the container's creator wrote: anything else is no
+    stack of cstudy's, and reaches neither `docker compose -p` nor a path."""
+    return _STACK_NAME.fullmatch(name) is not None
 
 
 def _owner_in_name(stack: str) -> int | None:
@@ -599,7 +608,8 @@ class StackResource:
 
 @dataclass(frozen=True, slots=True)
 class SandboxInventory:
-    """Everything that carries cstudy's labels, and nothing that does not."""
+    """Everything that carries cstudy's labels, and nothing that does not. Anyone can write those
+    labels, so `leftovers_in` trusts only a name of cstudy's own form."""
 
     containers: tuple[StackContainer, ...] = ()
     networks: tuple[StackResource, ...] = ()
@@ -635,11 +645,13 @@ def leftovers_in(
     """The stacks with no live owner, whole, and the networks and volumes of a dead run with no
     container left. A run's own volumes and networks go with a `down`, and an anonymous volume
     only that way, so a container is never removed alone. A dev stack's data and an install's
-    cache are not leftovers. `workspace` None looks at every workspace."""
+    cache are not leftovers. A name that is not `is_stack_name` is no leftover at all. `workspace`
+    None looks at every workspace."""
     containers = _of_workspace(inventory.containers, workspace)
     by_stack: dict[str, list[StackContainer]] = {}
     for found in containers:
-        by_stack.setdefault(found.stack, []).append(found)
+        if is_stack_name(found.stack):
+            by_stack.setdefault(found.stack, []).append(found)
     stacks = tuple(
         LeftoverStack(stack, found[0].workspace, _removes_volumes(found[0].kind))
         for stack, found in sorted(by_stack.items())
@@ -675,7 +687,9 @@ def _strays(
         sorted(
             resource.name
             for resource in resources
-            if resource.stack not in used
+            if is_stack_name(resource.stack)
+            and is_stack_name(resource.name)
+            and resource.stack not in used
             and _removes_volumes(resource.kind)
             and not _lives(_owner_in_name(resource.stack), is_alive)
         )

@@ -496,6 +496,37 @@ def test_the_sweep_removes_a_dead_owners_stack_and_nothing_unlabelled(engine, tm
         docker("volume", "rm", volume)
 
 
+def test_the_sweep_ignores_a_container_labelled_with_a_path(engine, tmp_path):
+    """Anyone can run a container with cstudy's labels: this one names a folder to delete."""
+    victim = tmp_path / "victim"
+    victim.mkdir()
+    (victim / "kept").write_text("x")
+    container = f"decoy-path-{os.getpid()}"
+    label = os.path.relpath(victim, tmp_path / "runs")
+    created = docker(
+        "create",
+        "--name",
+        container,
+        "--label",
+        "cstudy.kind=test",
+        "--label",
+        "cstudy.workspace=testworkspace",
+        "--label",
+        f"com.docker.compose.project={label}",
+        PYTHON_IMAGE,
+        "true",
+    )
+    assert created.returncode == 0, created.stderr
+    try:
+        found = sweep_leftovers(engine, "testworkspace", lambda _line: None)
+
+        assert [stack.name for stack in found.stacks] == []
+        assert (victim / "kept").exists()
+        assert docker("inspect", container).returncode == 0
+    finally:
+        docker("rm", "-f", container)
+
+
 def plan_with_identity(plan: StackPlan, identity: StackIdentity) -> StackPlan:
     return StackPlan(identity, plan.user, plan.paths, plan.app)
 

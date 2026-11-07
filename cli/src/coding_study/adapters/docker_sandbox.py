@@ -67,6 +67,7 @@ from coding_study.domain.sandbox import (
     StartupBudget,
     StartupFailure,
     install_document,
+    is_stack_name,
     render_compose,
     stack_document,
 )
@@ -321,16 +322,18 @@ class DockerSandbox:
         return is_alive(pid)
 
     def remove_stack(self, stack: LeftoverStack) -> bool:
+        if not is_stack_name(stack.name):
+            return False
         removed = self._down(stack.name, stack.removes_volumes)
         if removed and self._runs_directory is not None:
-            _remove_folder(self._runs_directory / stack.name)
+            _remove_run_folder(self._runs_directory, stack.name)
         return removed
 
     def remove_network(self, name: str) -> bool:
-        return self._succeeded((DOCKER, "network", "rm", name))
+        return is_stack_name(name) and self._succeeded((DOCKER, "network", "rm", name))
 
     def remove_volume(self, name: str) -> bool:
-        return self._succeeded((DOCKER, "volume", "rm", name))
+        return is_stack_name(name) and self._succeeded((DOCKER, "volume", "rm", name))
 
     def _succeeded(self, command: tuple[str, ...]) -> bool:
         result = self._runner.run(command, INVENTORY_TIMEOUT_S)
@@ -744,6 +747,13 @@ def _copy_mock_code(target: Path) -> None:
         )
         for found in target.rglob("*"):
             found.chmod(READABLE_DIRECTORY if found.is_dir() else READABLE_FILE)
+
+
+def _remove_run_folder(runs: Path, name: str) -> None:
+    """The folder of a stack named by a label, which must lie directly under `runs`."""
+    folder = runs / name
+    if folder.parent.resolve().is_relative_to(runs.resolve()):
+        _remove_folder(folder)
 
 
 def _remove_folder(folder: Path) -> None:

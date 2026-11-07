@@ -32,6 +32,7 @@ from coding_study.domain.sandbox import (
     StackPlan,
     StackResource,
     dev_stack_name,
+    is_stack_name,
     install_document,
     install_stack_name,
     leftovers_in,
@@ -505,7 +506,7 @@ def test_a_dev_leftover_keeps_its_volumes():
 
 
 def test_an_unknown_kind_keeps_its_volumes():
-    inventory = SandboxInventory(containers=(container("cstudy-x", kind="later"),))
+    inventory = SandboxInventory(containers=(container("cstudy-t-41-abc", kind="later"),))
 
     assert not leftovers_in(inventory, alive()).stacks[0].removes_volumes
 
@@ -514,16 +515,20 @@ def resource(name: str, stack: str, kind: str = "test") -> StackResource:
     return StackResource(name, stack, kind, "d1g3st")
 
 
-def test_a_network_of_a_dead_run_with_no_container_is_a_stray():
-    inventory = SandboxInventory(networks=(resource("n", "cstudy-t-41-abc"),))
+NETWORK = "cstudy-t-41-abc_sandbox"
+VOLUME = "cstudy-g-41-abc_data"
 
-    assert leftovers_in(inventory, alive()).networks == ("n",)
+
+def test_a_network_of_a_dead_run_with_no_container_is_a_stray():
+    inventory = SandboxInventory(networks=(resource(NETWORK, "cstudy-t-41-abc"),))
+
+    assert leftovers_in(inventory, alive()).networks == (NETWORK,)
 
 
 def test_a_volume_of_a_dead_run_with_no_container_is_a_stray():
-    inventory = SandboxInventory(volumes=(resource("v", "cstudy-g-41-abc", "graded"),))
+    inventory = SandboxInventory(volumes=(resource(VOLUME, "cstudy-g-41-abc", "graded"),))
 
-    assert leftovers_in(inventory, alive()).volumes == ("v",)
+    assert leftovers_in(inventory, alive()).volumes == (VOLUME,)
 
 
 def test_a_network_of_a_live_run_is_kept_while_its_containers_are_being_made():
@@ -535,7 +540,7 @@ def test_a_network_of_a_live_run_is_kept_while_its_containers_are_being_made():
 def test_a_network_of_a_stack_with_containers_goes_with_the_stack():
     inventory = SandboxInventory(
         containers=(container("cstudy-t-41-abc"),),
-        networks=(resource("n", "cstudy-t-41-abc"),),
+        networks=(resource(NETWORK, "cstudy-t-41-abc"),),
     )
 
     assert leftovers_in(inventory, alive()).networks == ()
@@ -571,8 +576,77 @@ def test_without_a_workspace_every_workspace_counts():
 def test_leftovers_are_counted_for_the_doctor_row():
     inventory = SandboxInventory(
         containers=(container("cstudy-t-41-abc"),),
-        networks=(resource("n", "cstudy-t-9-abc"),),
-        volumes=(resource("v", "cstudy-t-9-abc"),),
+        networks=(resource("cstudy-t-9-abc_sandbox", "cstudy-t-9-abc"),),
+        volumes=(resource("cstudy-t-9-abc_data", "cstudy-t-9-abc"),),
     )
 
     assert leftovers_in(inventory, alive()).count == 3
+
+
+NOT_OUR_NAMES = (
+    "../../../victim",
+    "/tmp/victim",
+    "",
+    "cstudy-t-1-a/../../victim",
+    "cstudy-t-1-a/b",
+    "cstudy-t-",
+    "cstudy-x-1-a",
+    "cstudy",
+    "other-project",
+    "cstudy-t-1-A",
+    "cstudy-t-1-a\n",
+)
+
+
+@pytest.mark.parametrize("name", NOT_OUR_NAMES)
+def test_only_a_generated_name_is_a_stack_name(name):
+    assert not is_stack_name(name)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        run_stack_name(StackKind.TEST, 41, "abc"),
+        run_stack_name(StackKind.GRADED, 41, "abc"),
+        dev_stack_name("5901-fixture-rooms", "d1g3st"),
+        install_stack_name("5901-fixture-rooms", "d1g3st"),
+        "cstudy-t-41-abc_sandbox",
+    ],
+)
+def test_every_generated_name_is_a_stack_name(name):
+    assert is_stack_name(name)
+
+
+@pytest.mark.parametrize("name", NOT_OUR_NAMES)
+def test_a_container_labelled_with_another_name_is_no_stack(name):
+    inventory = SandboxInventory(containers=(container(name, owner=None),))
+
+    assert not leftovers_in(inventory, alive()).stacks
+
+
+@pytest.mark.parametrize("name", NOT_OUR_NAMES)
+def test_a_network_labelled_with_another_stack_is_no_stray(name):
+    inventory = SandboxInventory(networks=(resource("cstudy-t-1-a_sandbox", name),))
+
+    assert not leftovers_in(inventory, alive()).networks
+
+
+@pytest.mark.parametrize("name", NOT_OUR_NAMES)
+def test_a_volume_labelled_with_another_stack_is_no_stray(name):
+    inventory = SandboxInventory(volumes=(resource("cstudy-t-1-a_data", name),))
+
+    assert not leftovers_in(inventory, alive()).volumes
+
+
+@pytest.mark.parametrize("name", NOT_OUR_NAMES)
+def test_a_network_of_another_name_is_no_stray(name):
+    inventory = SandboxInventory(networks=(resource(name, "cstudy-t-1-a"),))
+
+    assert not leftovers_in(inventory, alive()).networks
+
+
+@pytest.mark.parametrize("name", NOT_OUR_NAMES)
+def test_a_volume_of_another_name_is_no_stray(name):
+    inventory = SandboxInventory(volumes=(resource(name, "cstudy-t-1-a"),))
+
+    assert not leftovers_in(inventory, alive()).volumes

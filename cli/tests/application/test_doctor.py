@@ -1772,7 +1772,7 @@ def test_the_leftovers_row_counts_and_names_the_fix():
     engine = FakeSandbox(
         inventory_found=SandboxInventory(
             containers=(StackContainer("cstudy-t-1-a", "test", "w", 1),),
-            networks=(StackResource("n", "cstudy-t-2-a", "test", "w"),),
+            networks=(StackResource("cstudy-t-2-a_sandbox", "cstudy-t-2-a", "test", "w"),),
         )
     )
 

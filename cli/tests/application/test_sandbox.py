@@ -106,14 +106,14 @@ def test_the_sweep_keeps_a_stack_with_a_live_owner():
 
 
 def test_the_sweep_removes_strays():
-    stray = StackResource("n", "cstudy-t-9-abc", "test", "digest")
-    volume = StackResource("v", "cstudy-t-9-abc", "test", "digest")
+    stray = StackResource("cstudy-t-9-abc_sandbox", "cstudy-t-9-abc", "test", "digest")
+    volume = StackResource("cstudy-t-9-abc_data", "cstudy-t-9-abc", "test", "digest")
     engine = FakeSandbox(inventory_found=SandboxInventory(networks=(stray,), volumes=(volume,)))
 
     sweep_leftovers(engine, "digest", noted().append)
 
-    assert engine.called("remove_network") == ["n"]
-    assert engine.called("remove_volume") == ["v"]
+    assert engine.called("remove_network") == ["cstudy-t-9-abc_sandbox"]
+    assert engine.called("remove_volume") == ["cstudy-t-9-abc_data"]
 
 
 def test_the_sweep_says_what_it_removed():

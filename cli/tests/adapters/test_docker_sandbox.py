@@ -9,7 +9,11 @@ from pathlib import Path
 
 import pytest
 
-from coding_study.adapters.docker_sandbox import STOP_TIMEOUT_S, DockerSandbox
+from coding_study.adapters.docker_sandbox import (
+    STOP_TIMEOUT_S,
+    DockerSandbox,
+    _remove_run_folder,
+)
 from coding_study.application.ports import ContainerCommand, ProbeResult
 from coding_study.domain.docker_engine import EngineState, EngineStatus
 from coding_study.domain.errors import SandboxError
@@ -742,10 +746,87 @@ def test_strays_are_removed_by_name(tmp_path):
     docker = ScriptedDocker()
     engine = sandbox(docker, tmp_path)
 
-    assert engine.remove_network("n")
-    assert engine.remove_volume("v")
+    assert engine.remove_network(f"{NAME}_sandbox")
+    assert engine.remove_volume(f"{NAME}_data")
 
-    assert docker.commands == [("docker", "network", "rm", "n"), ("docker", "volume", "rm", "v")]
+    assert docker.commands == [
+        ("docker", "network", "rm", f"{NAME}_sandbox"),
+        ("docker", "volume", "rm", f"{NAME}_data"),
+    ]
+
+
+@pytest.mark.parametrize("label", ["../../../victim", "/tmp/victim", "", "other-project"])
+def test_a_stack_name_cstudy_did_not_generate_reaches_no_command(tmp_path, label):
+    docker = ScriptedDocker()
+
+    removed = sandbox(docker, tmp_path).remove_stack(LeftoverStack(label, "d", removes_volumes=True))
+
+    assert not removed
+    assert docker.commands == []
+
+
+def test_a_stack_name_that_climbs_out_of_the_runs_folder_removes_nothing(tmp_path):
+    victim = tmp_path / "victim"
+    victim.mkdir()
+    (tmp_path / ".cs" / "runs").mkdir(parents=True)
+
+    sandbox(ScriptedDocker(), tmp_path).remove_stack(
+        LeftoverStack("../../victim", "d", removes_volumes=True)
+    )
+
+    assert victim.is_dir()
+
+
+def test_an_absolute_stack_name_removes_nothing(tmp_path):
+    victim = tmp_path / "victim"
+    victim.mkdir()
+
+    sandbox(ScriptedDocker(), tmp_path).remove_stack(
+        LeftoverStack(str(victim), "d", removes_volumes=True)
+    )
+
+    assert victim.is_dir()
+
+
+def test_a_run_folder_is_only_ever_removed_under_the_runs_folder(tmp_path):
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    victim = tmp_path / "victim"
+    victim.mkdir()
+
+    _remove_run_folder(runs, "../victim")
+
+    assert victim.is_dir()
+
+
+def test_a_link_in_the_runs_folder_is_removed_and_not_followed(tmp_path):
+    runs = tmp_path / "runs"
+    runs.mkdir()
+    victim = tmp_path / "victim"
+    victim.mkdir()
+    (victim / "kept").write_text("x")
+    (runs / NAME).symlink_to(victim)
+
+    _remove_run_folder(runs, NAME)
+
+    assert not (runs / NAME).is_symlink()
+    assert (victim / "kept").exists()
+
+
+@pytest.mark.parametrize("name", ["../x", "/tmp/x", "", "important-network", "-f"])
+def test_a_network_of_another_name_is_never_removed(tmp_path, name):
+    docker = ScriptedDocker()
+
+    assert not sandbox(docker, tmp_path).remove_network(name)
+    assert docker.commands == []
+
+
+@pytest.mark.parametrize("name", ["../x", "/tmp/x", "", "important-volume", "-f"])
+def test_a_volume_of_another_name_is_never_removed(tmp_path, name):
+    docker = ScriptedDocker()
+
+    assert not sandbox(docker, tmp_path).remove_volume(name)
+    assert docker.commands == []
 
 
 def test_nothing_is_ever_pruned(tmp_path, paths):
