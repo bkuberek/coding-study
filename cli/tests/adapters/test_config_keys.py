@@ -14,7 +14,7 @@ from coding_study.adapters.toml_config import (
     parsed_key_names,
 )
 from coding_study.domain.config import Config
-from coding_study.domain.config_keys import ConfigKey, KeyKind
+from coding_study.domain.config_keys import KEY_TITLES, ConfigKey, KeyKind
 
 SOURCE = "test"
 KEY_LINE = re.compile(r"^# \w+ = ")
@@ -32,6 +32,15 @@ def nested(values: Mapping[str, object]) -> dict[str, object]:
 
 def test_the_description_holds_exactly_the_keys_the_parser_reads():
     assert {key.name for key in CONFIG_KEYS} == parsed_key_names()
+
+
+def test_every_key_has_a_title_and_no_title_outlives_its_key():
+    assert set(KEY_TITLES) == {key.name for key in CONFIG_KEYS}
+
+
+def test_no_two_keys_of_a_section_read_the_same():
+    labels = [(title.section, title.label) for title in KEY_TITLES.values()]
+    assert len(labels) == len(set(labels))
 
 
 def test_every_key_has_help_and_says_when_it_applies():

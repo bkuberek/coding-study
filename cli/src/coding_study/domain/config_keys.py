@@ -47,6 +47,45 @@ class ConfigKey:
 
 
 @dataclass(frozen=True, slots=True)
+class KeyTitle:
+    """What Settings calls a key. Its own name stays beside it: the CLI and the file use that."""
+
+    label: str
+    section: str
+    """Related keys together, whichever tables of the file they live in."""
+
+
+_GENERAL = "general"
+_RUNS = "runs"
+_BENCHMARKS = "benchmarks"
+_SCHEDULE = "review schedule"
+KEY_TITLES = {
+    "default_lang": KeyTitle("Default language", _GENERAL),
+    "open_on_start": KeyTitle("Open my editor on start", _GENERAL),
+    "progress_db": KeyTitle("Progress database", _GENERAL),
+    "next.tracks": KeyTitle("Tracks to pick from", _GENERAL),
+    "done.auto_commit": KeyTitle("Commit on done", _GENERAL),
+    "study_guides.root": KeyTitle("Study guides folder", _GENERAL),
+    "time_limit.enabled": KeyTitle("Apply time limits", _RUNS),
+    "time_limit.value": KeyTitle("Time limit", _RUNS),
+    "time_limit.floor_ms": KeyTitle("Lowest time limit, in ms", _RUNS),
+    "hang_guard.ms": KeyTitle("Hang guard, in ms", _RUNS),
+    "bench.reps": KeyTitle("Repetitions per size", _BENCHMARKS),
+    "bench.memory": KeyTitle("Measure memory", _BENCHMARKS),
+    "schedule.penalize_suboptimal": KeyTitle("Cap the grade of a suboptimal run", _SCHEDULE),
+    "schedule.max_interval_days": KeyTitle("Longest interval, in days", _SCHEDULE),
+    "schedule.again_interval_days": KeyTitle("After an again, in days", _SCHEDULE),
+    "schedule.hard_first_interval_days": KeyTitle("After a first hard, in days", _SCHEDULE),
+    "schedule.ok_first_interval_days": KeyTitle("After a first ok, in days", _SCHEDULE),
+    "schedule.ok_second_interval_days": KeyTitle("After a second ok, in days", _SCHEDULE),
+    "schedule.easy_first_interval_days": KeyTitle("After a first easy, in days", _SCHEDULE),
+    "schedule.easy_second_interval_days": KeyTitle("After a second easy, in days", _SCHEDULE),
+    "schedule.mastered_interval_days": KeyTitle("Mastered from, in days", _SCHEDULE),
+}
+"""By key name. A test holds it equal to the keys the parser reads."""
+
+
+@dataclass(frozen=True, slots=True)
 class ConfigKeyState:
     key: ConfigKey
     value: object

@@ -74,6 +74,12 @@ def test_a_key_shows_its_allowed_values(app):
     assert (key["kind"], key["choices"][0], key["applies"] != "") == ("choice", "python", True)
 
 
+def test_a_key_shows_a_friendly_label_and_the_section_it_belongs_to(app):
+    with session_client(app) as client:
+        key = by_name(client.get(CONFIG).json())["schedule.max_interval_days"]
+    assert (key["label"], key["section"]) == ("Longest interval, in days", "review schedule")
+
+
 def test_saving_writes_the_changed_key_and_keeps_the_comments(app, file):
     file.write_text(KEPT)
     with session_client(app) as client:

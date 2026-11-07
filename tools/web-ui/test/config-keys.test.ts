@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { changedKeys, type ConfigKey, shownValue, tablesOf, typedValue } from "../src/page/config-keys.ts";
+import { changedKeys, type ConfigKey, shownValue, sectionsOf, typedValue } from "../src/page/config-keys.ts";
 
 function key(fields: Partial<ConfigKey>): ConfigKey {
   return {
     name: "bench.reps",
+    label: "Repetitions per size",
+    section: "benchmarks",
     kind: "integer",
     value: 7,
     default: 7,
@@ -19,13 +21,17 @@ function key(fields: Partial<ConfigKey>): ConfigKey {
   };
 }
 
-test("the keys group by their table, the top-level ones first", () => {
-  const keys = [key({ name: "default_lang" }), key({ name: "bench.reps" }), key({ name: "bench.memory" })];
+test("the keys group by their section, each where it first shows, whatever their table", () => {
+  const keys = [
+    key({ name: "default_lang", section: "general" }),
+    key({ name: "bench.reps" }),
+    key({ name: "done.auto_commit", section: "general" }),
+  ];
   assert.deepEqual(
-    tablesOf(keys).map(([table, members]) => [table, members.map((member) => member.name)]),
+    sectionsOf(keys).map(([section, members]) => [section, members.map((member) => member.name)]),
     [
-      ["", ["default_lang"]],
-      ["bench", ["bench.reps", "bench.memory"]],
+      ["general", ["default_lang", "done.auto_commit"]],
+      ["benchmarks", ["bench.reps"]],
     ],
   );
 });

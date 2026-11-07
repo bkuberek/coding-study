@@ -5,6 +5,10 @@ export type ConfigValue = boolean | number | string | readonly string[] | null;
 export interface ConfigKey {
   /** Dotted: `schedule.max_interval_days`. */
   readonly name: string;
+  /** What Settings calls the key, with `name` beside it. */
+  readonly label: string;
+  /** The group of related keys it shows under. */
+  readonly section: string;
   readonly kind: "boolean" | "integer" | "text" | "choice" | "choices";
   readonly value: ConfigValue;
   readonly default: ConfigValue;
@@ -27,14 +31,11 @@ export interface ConfigDocument {
   readonly changed?: readonly string[];
 }
 
-/** The keys by table, in file order; a top-level key's table is empty. */
-export function tablesOf(keys: readonly ConfigKey[]): [string, ConfigKey[]][] {
-  const tables = new Map<string, ConfigKey[]>();
-  for (const key of keys) {
-    const table = key.name.split(".").slice(0, -1).join(".");
-    tables.set(table, [...(tables.get(table) ?? []), key]);
-  }
-  return [...tables];
+/** The keys by section, in file order. */
+export function sectionsOf(keys: readonly ConfigKey[]): [string, ConfigKey[]][] {
+  const sections = new Map<string, ConfigKey[]>();
+  for (const key of keys) sections.set(key.section, [...(sections.get(key.section) ?? []), key]);
+  return [...sections];
 }
 
 /** What a field's text means for its key: empty returns the key to its default, and words in a

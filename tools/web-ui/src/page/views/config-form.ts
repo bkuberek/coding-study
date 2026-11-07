@@ -3,7 +3,7 @@
  * server describes of each key, so a new key needs nothing here.
  */
 
-import { changedKeys, type ConfigDocument, type ConfigKey, type ConfigValue, shownValue, tablesOf, typedValue } from "../config-keys.ts";
+import { changedKeys, type ConfigDocument, type ConfigKey, type ConfigValue, sectionsOf, shownValue, typedValue } from "../config-keys.ts";
 import { confirmed } from "../confirmation.ts";
 import type { PageContext } from "../context.ts";
 import { command, h } from "../dom.ts";
@@ -23,7 +23,7 @@ export function configForm(context: PageContext): HTMLElement {
     const form = h(
       "form",
       { class: "settings-form" },
-      ...tablesOf(document.keys).map(([table, keys]) => h("fieldset", {}, h("legend", {}, table || "general"), ...keys.map((key) => row(key, fields)))),
+      ...sectionsOf(document.keys).map(([section, keys]) => h("fieldset", {}, h("legend", {}, section), ...keys.map((key) => row(key, fields)))),
       save,
       status,
     );
@@ -73,12 +73,14 @@ function savedNote(document: ConfigDocument): string {
 function row(key: ConfigKey, fields: ReadonlyMap<ConfigKey, Field>): HTMLElement {
   const id = idOf(key);
   const control = fields.get(key)?.[0] ?? null;
-  control?.setAttribute("aria-describedby", `${id}-help`);
+  control?.setAttribute("aria-describedby", `${id}-name ${id}-help`);
+  const label = h("label", { for: id }, key.label);
+  const boxed = key.kind === "boolean";
   return h(
     "div",
     { class: "config-key" },
-    h("label", { for: id }, key.name),
-    control,
+    h("div", { class: "config-head" }, boxed ? h("span", { class: "config-check" }, control, label) : label, h("code", { id: `${id}-name`, class: "config-name" }, key.name)),
+    boxed ? null : control,
     h("p", { id: `${id}-help`, class: "quiet" }, `${key.help} Default: ${shownValue(key.default)}. Applies ${key.applies}.`),
   );
 }

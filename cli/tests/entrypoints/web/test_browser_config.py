@@ -15,6 +15,7 @@ from typing import Any
 import pytest
 
 from coding_study.adapters.toml_config import CONFIG_KEYS
+from coding_study.domain.config_keys import KEY_TITLES
 from tests.browsers import launched, watched
 from tests.helpers import mark_workspace
 from tests.serve_process import RunningServer, running_server
@@ -46,6 +47,8 @@ STATUS = "form:has(#config-bench-reps) p[role=status]"
 @dataclass
 class Seen:
     labels: list[str] = field(default_factory=list[str])
+    names: list[str] = field(default_factory=list[str])
+    legends: list[str] = field(default_factory=list[str])
     value: str = ""
     help_text: str = ""
     headings: list[str] = field(default_factory=list[str])
@@ -108,7 +111,9 @@ def seen(engine: str, server: RunningServer, config_file: Path, workspace: Path)
 
 
 def _read_the_form(page: Any, found: Seen) -> None:
-    found.labels = page.locator(".config-key > label").all_inner_texts()
+    found.labels = page.locator(".config-key label").all_inner_texts()
+    found.names = page.locator(".config-key .config-name").all_inner_texts()
+    found.legends = page.locator("fieldset:has(.config-key) > legend").all_inner_texts()
     found.value = page.input_value(MAX_INTERVAL)
     found.help_text = page.locator(f"{MAX_INTERVAL} ~ p").inner_text()
     found.headings = page.locator(".settings h2").all_inner_texts()
@@ -167,8 +172,16 @@ def _a_new_database_path_asks_first(
     found.database_kept = database.read_bytes() == kept
 
 
-def test_the_form_shows_every_key_of_the_file(seen):
-    assert seen.labels == [key.name for key in CONFIG_KEYS]
+def test_the_form_shows_every_key_of_the_file_by_its_name(seen):
+    assert sorted(seen.names) == sorted(key.name for key in CONFIG_KEYS)
+
+
+def test_each_key_has_a_friendly_label(seen):
+    assert sorted(seen.labels) == sorted(title.label for title in KEY_TITLES.values())
+
+
+def test_related_keys_share_a_section(seen):
+    assert seen.legends == ["GENERAL", "RUNS", "BENCHMARKS", "REVIEW SCHEDULE"]
 
 
 def test_a_key_shows_its_value(seen):

@@ -48,9 +48,29 @@
   padding: 6px 0;
 }
 
-.config-key > label {
-  display: block;
+.config-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 12px;
+  margin-bottom: 2px;
+}
+
+.config-head label {
   font-weight: 700;
+}
+
+.config-check {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+/* The name the CLI and the file use: it stays visible, and a search of the page finds it. */
+.config-name {
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
   overflow-wrap: anywhere;
 }
 

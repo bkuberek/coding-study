@@ -9,7 +9,7 @@ from starlette.responses import Response
 from starlette.routing import BaseRoute, Route
 
 from coding_study.application.progress_db_change import progress_db_question
-from coding_study.domain.config_keys import ConfigKeyState, ConfigView
+from coding_study.domain.config_keys import KEY_TITLES, ConfigKeyState, ConfigView
 from coding_study.domain.errors import UsageError
 from coding_study.entrypoints.web.bodies import object_body, switch
 from coding_study.entrypoints.web.context import in_workspace, server_state
@@ -61,8 +61,11 @@ def config_document(view: ConfigView) -> dict[str, object]:
 
 def _key_document(state: ConfigKeyState) -> dict[str, object]:
     key = state.key
+    title = KEY_TITLES[key.name]
     return {
         "name": key.name,
+        "label": title.label,
+        "section": title.section,
         "kind": key.kind.value,
         "value": state.value,
         "default": key.default,

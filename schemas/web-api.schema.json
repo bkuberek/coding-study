@@ -84,9 +84,11 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["name", "kind", "value", "default", "set", "help", "applies", "choices", "example", "reserved"],
+            "required": ["name", "label", "section", "kind", "value", "default", "set", "help", "applies", "choices", "example", "reserved"],
             "properties": {
               "name": { "description": "Dotted: schedule.max_interval_days", "type": "string" },
+              "label": { "description": "What Settings calls the key, with the name beside it", "type": "string" },
+              "section": { "description": "The group of related keys it shows under", "type": "string" },
               "kind": { "enum": ["boolean", "integer", "text", "choice", "choices"] },
               "value": { "description": "As the file holds it, else the default" },
               "default": { "description": "Null: unset by default" },
