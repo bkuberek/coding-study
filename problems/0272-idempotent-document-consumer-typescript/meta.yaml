@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0272"
+slug: idempotent-document-consumer-typescript
+title: Idempotent Document Consumer (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [backend]
+job_roles: [backend, platform]
+scope: project
+languages: [typescript]
+levels:
+  - {level: 1, title: A duplicate changes nothing}
+  - {level: 2, title: The key is content plus version}
+  - {level: 3, title: Out of order}
+  - {level: 4, title: Poison messages}
+  - {level: 5, title: A crash before the ack}
+signature:
+  class:
+    name: DocumentConsumer
+    constructor: {params: []}
+    methods:
+      - {name: deliver, level: 1, params: [{name: delivery, type: string}], returns: {type: string}}
+      - {name: document, level: 1, params: [{name: documentId, type: string}], returns: {type: string}}
+      - {name: ledger, level: 1, params: [], returns: {type: "string[]"}}
+      - {name: failExtractions, level: 4, params: [{name: times, type: int}], returns: {type: void}}
+      - {name: deadLetters, level: 4, params: [], returns: {type: "string[]"}}
+      - {name: crashAt, level: 5, params: [{name: point, type: string}], returns: {type: void}}
+      - {name: restart, level: 5, params: [], returns: {type: void}}
+comparator: {type: ops}
+project:
+  entry: src/consumer.ts
+  tests: tests
+approaches:
+  - {id: reference, name: One transaction for the effect and its key with the ack sent last, role: optimal, time: "O(b + t) per delivery", space: "O(k + d)", time_class: "n", space_class: "n"}
+related: [transactional-outbox-typescript, debug-async-batch-typescript, warehouse-work-orders-typescript]
+estimate_minutes: 100
