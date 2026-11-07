@@ -37,6 +37,8 @@ ACTIVE_TAB = "[role=tab][aria-selected=true]"
 SAVED_TAB = f"{ACTIVE_TAB}:not(.is-modified)"
 MODIFIED_TAB = f"{ACTIVE_TAB}.is-modified"
 RUN = ".run-button.primary"
+RUNNING = ".run-toolbar.is-running"
+IDLE = ".run-toolbar:not(.is-running)"
 SUBMIT = ".run-button:not(.primary)"
 SUMMARY = ".result-summary-text"
 BANNER = ".panel:not([hidden]) .file-banner.is-conflict"
@@ -248,10 +250,10 @@ def _run_on_save_runs_once(page: Any, found: Seen) -> None:
     page.keyboard.type("# once\n")
     page.wait_for_selector(MODIFIED_TAB)
     page.click(RUN)
-    page.wait_for_selector(".cancel-button:not(:disabled)")
-    page.wait_for_selector(".cancel-button:disabled", timeout=RUN_WAIT_MS)
+    page.wait_for_selector(RUNNING)
+    page.wait_for_selector(IDLE, timeout=RUN_WAIT_MS)
     page.wait_for_timeout(SETTLE_MS)
-    page.wait_for_selector(".cancel-button:disabled", timeout=RUN_WAIT_MS)
+    page.wait_for_selector(IDLE, timeout=RUN_WAIT_MS)
     found.run_on_save_runs_started = page.evaluate(RUNS_OF_THE_ATTEMPT) - runs
     page.evaluate("location.hash = '#/settings'")
     page.click("#pref-run_on_save")
