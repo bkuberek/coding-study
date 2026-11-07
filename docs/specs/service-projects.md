@@ -343,7 +343,7 @@ DATABASE_URL=postgres://app:app@db:5432/app
 | When it is written | Wherever a starter lands: a new attempt, a resumed attempt whose folder is gone, `--fresh` and review attempts, and `cstudy verify`'s builds of the starter and the reference. A resumed attempt with a folder keeps what is there, as for any file |
 | What it is | From then on, a file like any other: tracked, in `code_hash`, in the folder's manifest and in archives, and restored by `cstudy start --restore .env` from what `project.env` says now. A new attempt's `.env` counts as unchanged, so `cstudy status` and a submission never call it your edit |
 | Why it exists | Your app's own loader finds what its environment already holds, and you can read how the stack is wired |
-| Static check | S15 refuses a `.env` in a service project's starter |
+| Static check | S15 refuses a `.env` in any starter |
 | What it is not | A place for real keys. No problem needs one: a key in `project.env` is a fake, since nothing can reach a real provider from `sandbox` |
 | Editing it | It is your file. Nothing reads it to start your app, whose environment is `project.env`, so an edit changes only what your own loader finds. A URL you change that way sends your app elsewhere, and the case fails on the request log |
 

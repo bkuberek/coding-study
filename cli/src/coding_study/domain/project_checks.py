@@ -61,7 +61,7 @@ from coding_study.domain.service_content_checks import (
     http_case_issues,
     mock_config_issues,
 )
-from coding_study.domain.service_project import service_of
+from coding_study.domain.service_project import ENV_FILE, service_of
 from coding_study.domain.signature import ClassSignature, declared_types
 from coding_study.domain.starter_files import LOCK_FILES, cache_path
 from coding_study.domain.stress import StressScenario
@@ -623,7 +623,9 @@ class _Trees:
             self._error("", message)
 
     def _contents(self, starter: ProjectTree) -> None:
-        """Caches and build output, lock files, and files that are not text."""
+        """Caches and build output, lock files, a `.env`, and files that are not text."""
+        if ENV_FILE in starter.paths:
+            self._error(ENV_FILE, "a starter holds no .env")
         caches = dict.fromkeys(cache_path(file.path) for file in starter.files)
         for cache in caches:
             if cache is not None:

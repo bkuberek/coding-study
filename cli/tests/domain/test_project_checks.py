@@ -454,6 +454,16 @@ def test_the_starter_holds_no_lock_files(bank, name):
     assert errors(content(problem)) == [f"{STARTER}/{name}: is a lock file"]
 
 
+def test_the_starter_holds_no_env_file(bank):
+    problem = with_starter(bank, text_file(".env"))
+    assert errors(content(problem)) == [f"{STARTER}/.env: a starter holds no .env"]
+
+
+def test_a_nested_env_file_is_the_projects_own(bank):
+    problem = with_starter(bank, text_file("config/.env"))
+    assert errors(content(problem)) == []
+
+
 def test_a_python_starter_has_a_pyproject(bank):
     assert errors(content(without_starter_files(bank, "pyproject.toml"))) == [
         f"{STARTER}/pyproject.toml: missing"
