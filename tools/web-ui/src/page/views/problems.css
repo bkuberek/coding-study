@@ -358,8 +358,10 @@ tr:hover > td > .problem-link {
   top: 0;
 }
 
+/* In a box that scrolls sideways a title can keep more room than a window's width would leave it. */
 .has-more-columns .title-cell {
   width: auto;
+  min-width: 24ch;
 }
 
 .title {
@@ -389,6 +391,10 @@ tr:hover > td > .problem-link {
 
 /* Below this the row wraps, so an open menu takes a line of its own instead of covering the next. */
 @media (max-width: 1100px) {
+  .problem-rows .title-cell {
+    min-width: 24ch;
+  }
+
   .filter-menu[open] {
     flex-basis: 100%;
   }

@@ -58,7 +58,7 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
 | The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 74.6 | 26.9 |
-| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 994.0 | 359.9 |
+| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 994.1 | 360.0 |
 | The editor before any language: the page, the editor and the core | 481.4 | 163.4 |
 | A Python file | 551.9 | 190.3 |
 | A TypeScript or JavaScript file, the largest grammar | 590.4 | 203.9 |

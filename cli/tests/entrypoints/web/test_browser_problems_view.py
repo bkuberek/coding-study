@@ -651,6 +651,8 @@ DEFAULT_HEADERS = ["id", "problem", "difficulty", "pattern", "status", "due", "l
 OPTIONAL_COLUMNS = ["kind", "scope", "domain", "role"]
 PREFERENCES_FILE = ".cs/serve/preferences.json"
 NARROW = {"width": 390, "height": 844}
+NARROW_TITLE_PX = 190
+"""Most titles of the catalog in one line of the page's monospace face."""
 JUST_WIDER_THAN_THE_BOX_RULE = {"width": 1110, "height": 800}
 PAGE_FITS = "document.documentElement.scrollWidth <= window.innerWidth"
 
@@ -680,6 +682,7 @@ class Columns:
     page_fits_with_more_columns: bool = False
     narrow_headers: list[str] = field(default_factory=list[str])
     narrow_page_fits: bool = False
+    narrow_title_width: float = 0
     narrow_box_scrolls: bool = False
     narrow_last_column_reachable: bool = False
     narrow_menu_fits: bool = False
@@ -775,6 +778,9 @@ def _narrow_window(page: Any, seen: Columns) -> None:
     page.wait_for_selector(ROWS)
     seen.narrow_headers = _headers(page)
     seen.narrow_page_fits = page.evaluate(PAGE_FITS)
+    seen.narrow_title_width = page.locator(f"{ROWS} td[data-column=problem]").first.evaluate(
+        "cell => cell.getBoundingClientRect().width"
+    )
     box = page.locator(".listing")
     seen.narrow_box_scrolls = box.evaluate("e => e.scrollWidth > e.clientWidth")
     page.locator(f"{ROWS} .set-control").first.scroll_into_view_if_needed()
@@ -890,6 +896,10 @@ def test_a_narrow_window_keeps_every_chosen_column(columns):
 
 def test_a_narrow_window_does_not_scroll_sideways(columns):
     assert columns.narrow_page_fits
+
+
+def test_a_narrow_window_keeps_room_for_a_title_on_a_line(columns):
+    assert columns.narrow_title_width >= NARROW_TITLE_PX
 
 
 def test_a_narrow_window_scrolls_the_table_in_its_box(columns):
