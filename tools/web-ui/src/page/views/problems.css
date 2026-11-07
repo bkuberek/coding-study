@@ -1,27 +1,55 @@
 /* The Problems view, and the Next card and the rows that the Sets view shares with it. */
 
+/* The Next panel: the action, then two lines beside it. It keeps their height while it picks, so
+   the filters under it stay where they are. */
+
 .next-card {
   display: grid;
-  gap: 4px;
-  max-width: 1100px;
-  margin-bottom: 20px;
-  padding: 14px 18px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 16px;
+  align-items: center;
+  min-height: 62px;
+  margin-bottom: 14px;
+  padding: 8px 14px;
   background: var(--paper-raised);
   border: 1px solid var(--rule);
   border-left: 4px solid var(--accent);
   border-radius: var(--radius);
 }
 
+.next-card > .state,
+.next-card > .next-line {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 .next-card p {
   margin: 0;
+}
+
+.next-action {
+  white-space: nowrap;
+}
+
+.next-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 
 .next-line {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 12px;
-  font-size: var(--text-l);
+  gap: 2px 10px;
+}
+
+.next-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  color: var(--ink-soft);
+  font-size: var(--text-s);
 }
 
 .next-card .cmd {
@@ -44,6 +72,7 @@
 }
 
 .next-slug {
+  color: var(--ink);
   font-weight: 700;
 }
 
@@ -289,6 +318,11 @@ tr:hover > td > .problem-link {
 }
 
 @media (max-width: 720px) {
+  .next-card {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+  }
+
   .filter-search {
     flex-basis: 100%;
     max-width: none;

@@ -1126,3 +1126,191 @@ def test_in_progress_opens_the_attempt(rows):
 
 def test_the_rows_log_no_problem(rows):
     assert rows.problems == []
+
+
+# P5: the Next panel
+
+
+CARD = ".next-card"
+ACTION = f"{CARD} .next-action"
+SHEET = "dialog.sheet[open]"
+PANEL_HEIGHT_PX = 76
+REVIEW_PICK = {
+    "pick": "review",
+    "slug": TWO_SUM,
+    "title": TITLE,
+    "kind": "function",
+    "difficulty": "easy",
+    "group": "arrays-hashing",
+    "reason": "overdue 3d, interval 7d",
+    "language": "python",
+    "start": f"cstudy start {TWO_SUM} --lang python",
+}
+FONT_SIZE = "e => parseFloat(getComputedStyle(e).fontSize)"
+
+
+@dataclass
+class NextPanel:
+    start_tag: str = ""
+    start_words: str = ""
+    start_is_primary: bool = False
+    height: float = 0
+    command: str = ""
+    command_is_small: bool = False
+    dialog_title: str = ""
+    dialog_command: str = ""
+    focus_after_escape: bool = False
+    hash_after_starting: str = ""
+    review_note: str = ""
+    resume_tag: str = ""
+    resume_words: str = ""
+    resume_target: str = ""
+    hash_after_resuming: str = ""
+    resume_height: float = 0
+    attempt: int = 0
+    slash_with_a_dialog_open: str = ""
+    problems: list[str] = field(default_factory=list[str])
+
+
+@pytest.fixture(scope="module")
+def next_panel(engine: str, tmp_path_factory: pytest.TempPathFactory) -> NextPanel:
+    seen = NextPanel()
+    workspace = bare_workspace(tmp_path_factory, f"next-{engine}")
+    with opened_page(engine, workspace, seen.problems) as page:
+        page.wait_for_selector(ACTION)
+        _read_the_start(page, seen)
+        _open_the_dialog(page, seen)
+        _review(page, seen)
+        _start_from_the_panel(page, seen)
+        _home(page)
+        _resume(page, seen)
+    return seen
+
+
+def _read_the_start(page: Any, seen: NextPanel) -> None:
+    action = page.locator(ACTION)
+    seen.start_tag = action.evaluate("e => e.tagName")
+    seen.start_words = action.inner_text()
+    seen.start_is_primary = action.evaluate("e => e.classList.contains('primary')")
+    seen.height = page.locator(CARD).evaluate("e => e.getBoundingClientRect().height")
+    command = page.locator(f"{CARD} .next-start .cmd")
+    seen.command = command.inner_text()
+    seen.command_is_small = command.evaluate(FONT_SIZE) < page.locator(
+        f"{CARD} .next-line"
+    ).evaluate(FONT_SIZE)
+
+
+def _open_the_dialog(page: Any, seen: NextPanel) -> None:
+    page.click(ACTION)
+    page.wait_for_selector(SHEET)
+    seen.dialog_title = page.locator(f"{SHEET} h2").inner_text()
+    seen.dialog_command = page.locator(f"{SHEET} .sheet-command").inner_text()
+    page.keyboard.press("/")
+    seen.slash_with_a_dialog_open = page.evaluate(FOCUSED)
+    page.keyboard.press("Escape")
+    page.wait_for_selector(SHEET, state="detached")
+    seen.focus_after_escape = page.evaluate(
+        "() => document.activeElement?.classList.contains('next-action')"
+    )
+
+
+def _review(page: Any, seen: NextPanel) -> None:
+    page.route("**/api/v1/next*", lambda route: route.fulfill(json=REVIEW_PICK))
+    page.reload()
+    page.wait_for_selector(ACTION)
+    page.click(ACTION)
+    page.wait_for_selector(f"{SHEET} .review-note")
+    seen.review_note = page.locator(f"{SHEET} .review-note").inner_text()
+    page.keyboard.press("Escape")
+    page.wait_for_selector(SHEET, state="detached")
+    page.unroute("**/api/v1/next*")
+    page.reload()
+    page.wait_for_selector(ACTION)
+
+
+def _start_from_the_panel(page: Any, seen: NextPanel) -> None:
+    page.click(ACTION)
+    page.click(f"{SHEET} button[type=submit]")
+    page.wait_for_function("() => location.hash.startsWith('#/attempts/')")
+    seen.hash_after_starting = page.evaluate("location.hash")
+    seen.attempt = int(seen.hash_after_starting.rsplit("/", 1)[-1])
+
+
+def _resume(page: Any, seen: NextPanel) -> None:
+    page.wait_for_selector(f"{ACTION}:has-text('Resume')")
+    action = page.locator(ACTION)
+    seen.resume_tag = action.evaluate("e => e.tagName")
+    seen.resume_words = action.inner_text()
+    seen.resume_target = action.get_attribute("href") or ""
+    seen.resume_height = page.locator(CARD).evaluate("e => e.getBoundingClientRect().height")
+    action.click()
+    page.wait_for_function("target => location.hash === target", arg=seen.resume_target)
+    seen.hash_after_resuming = page.evaluate("location.hash")
+
+
+def test_the_panel_offers_a_real_start_button(next_panel):
+    assert next_panel.start_tag == "BUTTON"
+
+
+def test_the_button_says_it_starts_and_asks_first(next_panel):
+    assert next_panel.start_words == "Start…"
+
+
+def test_the_button_is_the_panels_primary_action(next_panel):
+    assert next_panel.start_is_primary
+
+
+def test_the_panel_is_two_lines_tall(next_panel):
+    assert next_panel.height <= PANEL_HEIGHT_PX
+
+
+def test_the_command_stays_beside_the_button(next_panel):
+    assert next_panel.command.startswith("cstudy start ")
+
+
+def test_the_command_is_small_text(next_panel):
+    assert next_panel.command_is_small
+
+
+def test_start_opens_the_start_dialog_of_the_pick(next_panel):
+    assert next_panel.dialog_title == f"start · {next_panel.command.split()[2]}"
+
+
+def test_the_dialog_names_the_command_it_runs(next_panel):
+    assert next_panel.command in next_panel.dialog_command
+
+
+def test_the_slash_key_stays_in_an_open_dialog(next_panel):
+    assert next_panel.slash_with_a_dialog_open != SEARCH.removeprefix("#")
+
+
+def test_escape_gives_the_focus_back_to_the_button(next_panel):
+    assert next_panel.focus_after_escape
+
+
+def test_a_review_pick_opens_the_dialog_of_a_review(next_panel):
+    assert "review attempt" in next_panel.review_note
+
+
+def test_the_dialog_starts_the_attempt_and_opens_it(next_panel):
+    assert next_panel.attempt > 0
+
+
+def test_a_resume_pick_is_a_link_in_the_look_of_a_button(next_panel):
+    assert next_panel.resume_tag == "A"
+
+
+def test_a_resume_pick_says_resume(next_panel):
+    assert next_panel.resume_words == "Resume"
+
+
+def test_resume_opens_the_attempt(next_panel):
+    assert next_panel.hash_after_resuming == f"#/attempts/{next_panel.attempt}"
+
+
+def test_the_resume_panel_is_two_lines_tall(next_panel):
+    assert next_panel.resume_height <= PANEL_HEIGHT_PX
+
+
+def test_the_panel_logs_no_problem(next_panel):
+    assert next_panel.problems == []

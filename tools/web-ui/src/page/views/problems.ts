@@ -25,7 +25,7 @@ import {
 import { attemptHash, FILTER_KEYS, type FilterKey, type Filters, problemHash, problemsHash } from "../routes.ts";
 import { setControl, setsHolding } from "../setControl.ts";
 import { empty, failure, loading, messageOf, showFailure } from "../states.ts";
-import type { AttemptRef, ListEntry, NextPick, ProblemList, SetList, SetSummary } from "../types.ts";
+import type { AttemptRef, ListEntry, NextPick, ProblemDocument, ProblemList, SetList, SetSummary } from "../types.ts";
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
 const STATUSES = ["new", "in_progress", "attempted", "passed", "due", "mastered"];
@@ -35,6 +35,7 @@ const ROW_FILTERS = ["status", "difficulty", "domain", "lang"] as const;
 const MORE_FILTERS = ["track", "kind", "role", "scope", "pattern", "content", "set"] as const;
 const SEARCH_FIELD = "filter-search";
 type ChoiceKey = Exclude<FilterKey, "search">;
+type Picked = Exclude<NextPick, { readonly pick: null }>;
 
 /** The field to focus once a change of the filters has drawn the view again. */
 let focusAfterDraw: string | null = null;
@@ -94,7 +95,8 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
     summary,
     table,
   );
-  next.replaceChildren(h("h2", { id: "next-heading", class: "eyebrow" }, "next"), loading("picking…"));
+  const nextHeading = () => h("h2", { id: "next-heading", class: "sr-only" }, "next");
+  next.replaceChildren(nextHeading(), loading("picking…"));
   takeTheFocus(shell.main);
 
   // The pick and the table show together: the pick changes the height of the card above the
@@ -107,7 +109,7 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
       // What the count is out of, and the attempts in progress whatever the filters leave out.
       LIST_FILTERS.some((key) => filters[key]) ? api.get<ProblemList>("/api/v1/problems") : undefined,
     ]).then(([list, pick, sets, whole]) => {
-      if (pick.status === "fulfilled") next.replaceChildren(h("h2", { id: "next-heading", class: "eyebrow" }, "next"), ...nextPick(pick.value, filters));
+      if (pick.status === "fulfilled") next.replaceChildren(nextHeading(), ...nextPick(context, pick.value, filters));
       else showFailure(next, pick.reason);
       const known = sets.status === "fulfilled" ? sets.value.sets : [];
       fillSetChoices(form, known, filters.set);
@@ -190,35 +192,59 @@ function queryOf(filters: Filters, keys: readonly FilterKey[]): string {
   return text ? `?${text}` : "";
 }
 
-/** The pick; a resume links to its attempt, and the others in progress follow it, to pick another. */
-export function nextPick(pick: NextPick, filters: Filters): Node[] {
+/** What the Next panel does with a pick: a resume opens its attempt, and a start opens the dialog
+ * every Start control opens, in the dialogs' chunk. */
+function nextAction(context: PageContext, pick: Picked): HTMLElement {
+  const line = startCommand(pick.slug, pick.language);
+  if (pick.attempt_id !== undefined) return h("a", { href: attemptHash(pick.attempt_id), class: "button primary next-action", title: line }, "Resume");
+  const start = h("button", { type: "button", class: "button primary next-action", title: `${line} --no-open` }, "Start…");
+  let opening = false;
+  start.addEventListener("click", () => {
+    if (opening) return;
+    opening = true;
+    // The dialog gives the focus back to what had it, and a click leaves it elsewhere in some browsers.
+    start.focus();
+    Promise.all([context.api.get<ProblemDocument>(`/api/v1/problems/${encodeURIComponent(pick.slug)}`), import("../sheets.ts")])
+      .then(([problem, sheets]) => sheets.openStartDialog(context, problem, pick.pick === "review"))
+      .catch((error: unknown) => start.replaceWith(failure(error)))
+      .finally(() => {
+        opening = false;
+      });
+  });
+  return start;
+}
+
+/** The pick and its action, two lines tall: what it is and why, then its command in small text, and
+ * the other attempts in progress, to pick another. */
+export function nextPick(context: PageContext, pick: NextPick, filters: Filters): Node[] {
   if (pick.pick === null) return [h("p", { class: "next-line" }, pick.message)];
   return [
+    nextAction(context, pick),
     h(
-      "p",
-      { class: "next-line" },
-      h("span", { class: `pick pick-${pick.pick}` }, pick.pick),
-      h("a", { href: pick.attempt_id === undefined ? problemHash(pick.slug) : attemptHash(pick.attempt_id), class: "next-slug" }, pick.slug),
-      h("span", { class: "quiet" }, `(${pick.difficulty} · ${pick.group})`),
-      h("span", { class: "next-reason" }, pick.reason),
+      "div",
+      { class: "next-body" },
+      h(
+        "p",
+        { class: "next-line" },
+        h("span", { class: `pick pick-${pick.pick}` }, pick.pick),
+        h("a", { href: pick.attempt_id === undefined ? problemHash(pick.slug) : attemptHash(pick.attempt_id), class: "next-slug" }, pick.slug),
+        h("span", { class: "quiet" }, `(${pick.difficulty} · ${pick.group})`),
+        h("span", { class: "next-reason" }, pick.reason),
+      ),
+      h(
+        "div",
+        { class: "next-foot" },
+        h("p", { class: "next-start" }, command(startCommand(pick.slug, pick.language)), h("span", { class: "quiet" }, ` · same as ${nextCommand(filters)}`)),
+        pick.also_open?.length
+          ? h(
+              "p",
+              { class: "next-also" },
+              h("span", { class: "quiet" }, "or pick up "),
+              ...pick.also_open.map((other) => h("a", { href: attemptHash(other.attempt_id), class: "resume-link" }, `↻ ${other.slug}${other.language ? ` (${other.language})` : ""}`)),
+            )
+          : null,
+      ),
     ),
-    h(
-      "p",
-      { class: "next-start" },
-      h("span", { class: "quiet" }, "start "),
-      command(startCommand(pick.slug, pick.language)),
-      h("span", { class: "quiet" }, ` · same as ${nextCommand(filters)}`),
-    ),
-    ...(pick.also_open?.length
-      ? [
-          h(
-            "p",
-            { class: "next-also" },
-            h("span", { class: "quiet" }, "or pick up "),
-            ...pick.also_open.map((other) => h("a", { href: attemptHash(other.attempt_id), class: "resume-link" }, `↻ ${other.slug}${other.language ? ` (${other.language})` : ""}`)),
-          ),
-        ]
-      : []),
   ];
 }
 

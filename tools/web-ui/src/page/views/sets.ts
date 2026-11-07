@@ -175,9 +175,9 @@ export function setView(context: PageContext, name: string): Cleanup {
   };
 
   const pickSection = (found: SetDocument, pick: PromiseSettledResult<NextPick>): HTMLElement => {
-    const card = h("section", { class: "next-card", "aria-labelledby": "set-next-heading" }, h("h2", { id: "set-next-heading", class: "eyebrow" }, "next"));
+    const card = h("section", { class: "next-card", "aria-labelledby": "set-next-heading" }, h("h2", { id: "set-next-heading", class: "sr-only" }, "next"));
     if (pick.status === "rejected") card.append(failure(pick.reason));
-    else card.append(...nextPick(pick.value, { set: found.name }));
+    else card.append(...nextPick(context, pick.value, { set: found.name }));
     return card;
   };
 
