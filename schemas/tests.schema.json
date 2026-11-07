@@ -78,7 +78,9 @@
           "properties": {
             "type": { "enum": ["exact", "unordered", "unordered-nested", "float"] },
             "tolerance": { "description": "Relative tolerance for float comparison (default 1e-6)", "type": "number", "exclusiveMinimum": 0 }
-          }
+          },
+          "if": { "required": ["tolerance"] },
+          "then": { "properties": { "type": { "const": "float" } } }
         },
         "log": {
           "description": "What the mock servers' request logs must show",
@@ -126,7 +128,7 @@
       "required": ["method", "path"],
       "properties": {
         "method": { "type": "string", "pattern": "^[A-Z]+$" },
-        "path": { "description": "Starts with /; the query goes in query", "type": "string", "pattern": "^/[^\\s?#]*$" },
+        "path": { "description": "Starts with /, in the printable ASCII a request line can carry, percent-encoded past that; the query goes in query", "type": "string", "pattern": "^/[!\"$->@-~]*$" },
         "query": {
           "description": "A key with several values is sent once per value",
           "type": "object",
