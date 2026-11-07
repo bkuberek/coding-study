@@ -114,7 +114,7 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
       if (pick.status === "fulfilled") next.replaceChildren(nextHeading(), ...nextPick(context, pick.value, filters));
       else showFailure(next, pick.reason);
       const known = sets.status === "fulfilled" ? sets.value.sets : [];
-      fillSetChoices(form, known, filters.set);
+      fillSetChoices(form, known);
       const brokenSets = sets.status === "rejected" ? [failure(sets.reason)] : [];
       const everything = whole.status === "rejected" ? null : (whole.value ?? (list.status === "fulfilled" ? list.value : null));
       if (everything !== null) shell.setAttempts(everything.entries);
@@ -179,11 +179,14 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
   };
 }
 
-/** The sets arrive after the form is drawn; the filter keeps what the route names. */
-function fillSetChoices(form: HTMLFormElement, sets: readonly SetSummary[], chosen: string | undefined): void {
-  const select = form.querySelector("#filter-set");
-  const names = sets.map((found) => found.name).filter((name) => name !== chosen);
-  select?.append(...names.map((value) => h("option", { value }, value)));
+/** The sets arrive after the form is drawn, and again each time the list reads again; the filter
+ * lists what it does not hold yet, so it keeps what the route names and lists each set once. */
+function fillSetChoices(form: HTMLFormElement, sets: readonly SetSummary[]): void {
+  const select = form.querySelector<HTMLSelectElement>("#filter-set");
+  if (select === null) return;
+  const listed = new Set([...select.options].map((option) => option.value));
+  const names = sets.map((found) => found.name).filter((name) => !listed.has(name));
+  select.append(...names.map((value) => h("option", { value }, value)));
 }
 
 function queryOf(filters: Filters, keys: readonly FilterKey[]): string {

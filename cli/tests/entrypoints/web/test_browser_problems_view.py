@@ -1496,3 +1496,76 @@ def test_the_menu_hides_when_the_last_attempt_ends_without_a_reload(top_bar):
 
 def test_the_top_bar_logs_no_problem(top_bar):
     assert top_bar.problems == []
+
+
+# The Set filter's choices
+
+
+LOOP = "backend-loop"
+OTHER_LOOP = "data-loop"
+SECOND_MEMBER = "lru-cache"
+
+
+@dataclass
+class SetChoices:
+    before: list[str] = field(default_factory=list[str])
+    rows_after_leaving: int = 0
+    after: list[str] = field(default_factory=list[str])
+    still_chosen: str = ""
+    problems: list[str] = field(default_factory=list[str])
+
+
+@pytest.fixture(scope="module")
+def set_choices(engine: str, tmp_path_factory: pytest.TempPathFactory) -> SetChoices:
+    seen = SetChoices()
+    workspace = bare_workspace(tmp_path_factory, f"set-choices-{engine}")
+    cstudy(workspace, "set", "create", LOOP)
+    cstudy(workspace, "set", "create", OTHER_LOOP)
+    cstudy(workspace, "set", "add", LOOP, TWO_SUM, SECOND_MEMBER)
+    with opened_page(engine, workspace, seen.problems) as page:
+        page.evaluate(f"location.hash = '#/?set={LOOP}'")
+        wait_for_rows(page, 2)
+        page.wait_for_selector(f"#filter-set option[value={OTHER_LOOP}]", state="attached")
+        seen.before = _set_options(page)
+        _leave_the_set(page)
+        wait_for_rows(page, 1)
+        page.wait_for_selector(f"{ROWS} .set-control")
+        seen.rows_after_leaving = page.locator(ROWS).count()
+        seen.after = _set_options(page)
+        seen.still_chosen = page.locator("#filter-set").input_value()
+    return seen
+
+
+def _set_options(page: Any) -> list[str]:
+    return page.locator("#filter-set option").evaluate_all(
+        "options => options.map((option) => option.value)"
+    )
+
+
+def _leave_the_set(page: Any) -> None:
+    page.click(f"{ROWS}:has(a[href='#/problems/{TWO_SUM}']) .set-control")
+    page.wait_for_selector(f"{SHEET} input[type=checkbox]")
+    page.uncheck(f"{SHEET} label:has-text('{LOOP}')")
+    page.wait_for_selector(f"{SHEET} .set-said:has-text('remove {LOOP}')")
+    page.keyboard.press("Escape")
+    page.wait_for_selector(SHEET, state="detached")
+
+
+def test_the_set_filter_lists_each_set_once(set_choices):
+    assert sorted(set_choices.before) == ["", LOOP, OTHER_LOOP]
+
+
+def test_a_row_that_leaves_its_set_leaves_the_list(set_choices):
+    assert set_choices.rows_after_leaving == 1
+
+
+def test_the_set_filter_still_lists_each_set_once_after_the_list_reads_again(set_choices):
+    assert sorted(set_choices.after) == ["", LOOP, OTHER_LOOP]
+
+
+def test_the_set_filter_keeps_its_choice_after_the_list_reads_again(set_choices):
+    assert set_choices.still_chosen == LOOP
+
+
+def test_leaving_a_set_logs_no_problem(set_choices):
+    assert set_choices.problems == []

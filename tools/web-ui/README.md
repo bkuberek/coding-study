@@ -58,16 +58,16 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
 | The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 74.6 | 26.9 |
-| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 993.7 | 359.9 |
+| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 994.0 | 359.9 |
 | The editor before any language: the page, the editor and the core | 481.4 | 163.4 |
 | A Python file | 551.9 | 190.3 |
 | A TypeScript or JavaScript file, the largest grammar | 590.4 | 203.9 |
 | Vim keybindings, added on top | 120.5 | 38.4 |
 | The link between the editors and the sessions, fetched when `code_intelligence` is on (it counts in the whole bundle) | 9.1 | 4.1 |
 | The code-intelligence chunk, fetched when a file of a language with an installed server opens (its own budget: 64 KB raw, 24 KB gzip; `@codemirror/lsp-client` with `marked` aliased to a stand-in) | 35.4 | 12.9 |
-| The Problems view, the landing view, fetched when it first opens | 18.1 | 7.3 |
+| The Problems view, the landing view, fetched when it first opens | 18.5 | 7.4 |
 | The Problem view, fetched when it first opens | 6.8 | 3.3 |
-| The Sets view, fetched when it first opens (with the Problems view, for its pick, and the dialogs, for its questions and Start) | 52.7 | 20.5 |
+| The Sets view, fetched when it first opens (with the Problems view, for its pick, and the dialogs, for its questions and Start) | 53.0 | 20.6 |
 | The Mock and Progress views together, each fetched when it first opens (Progress with the dialogs, for Start and Import) | 40.1 | 16.3 |
 | The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 19.2 | 8.9 |
 | The run session, fetched when a run first starts or shows: streaming and drawing it, Cancel, diagnostics | 22.7 | 8.4 |
