@@ -2,6 +2,83 @@
 
 <!-- version list -->
 
+## v0.22.0 (2026-11-07)
+
+### Bug Fixes
+
+- **web**: Keep room for a title where the Problems table scrolls in its own box
+  ([`924a57b`](https://github.com/bkuberek/coding-study/commit/924a57b0952faa71748e554d1ba844636a3370e8))
+
+- **web**: Keep the Problems rows on one line and the filter row compact in narrow windows
+  ([`83d7a4b`](https://github.com/bkuberek/coding-study/commit/83d7a4b994e1d7b86abf2bc44f93b400bee8ce97))
+
+- **web**: List each set once in the Set filter after a row leaves its set
+  ([`f95d212`](https://github.com/bkuberek/coding-study/commit/f95d2127543c3660eb22d1edabc29a49f7ea2e43))
+
+- **web**: Meet the axe checks with the filter chips, and keep hidden row text from widening a
+  narrow page
+  ([`d5d460d`](https://github.com/bkuberek/coding-study/commit/d5d460dc619f55764cfe872c5e4e4ab79d348d33))
+
+- **web**: Type the columns preference for pyright
+  ([`8e5edbd`](https://github.com/bkuberek/coding-study/commit/8e5edbdf3e1efea7d5181504f0fd53c13e6ea26d))
+
+### Documentation
+
+- Add --search to the cstudy list spec
+  ([`d0a66c3`](https://github.com/bkuberek/coding-study/commit/d0a66c3cdbbf4b161a3082226148d59ccba4bc7c))
+
+- Name the slash key among the page's shortcuts
+  ([`7501d86`](https://github.com/bkuberek/coding-study/commit/7501d8612e9cf56174970dc163c85d6108ab631e))
+
+### Features
+
+- **web**: Choose the Problems table's columns in a menu stored in the preferences
+  ([`87cdc1d`](https://github.com/bkuberek/coding-study/commit/87cdc1dcbe32c44157855c8edf8cb41420a0341d))
+
+- **web**: Give the Next panel a real Start or Resume button and shrink it to two lines
+  ([`b3f9d69`](https://github.com/bkuberek/coding-study/commit/b3f9d69ce6ef091363eb7ff789b51c6187ee082c))
+
+- **web**: Hide the attempts menu in the top bar while nothing is open
+  ([`ffee13c`](https://github.com/bkuberek/coding-study/commit/ffee13c572e08b7f3b9f80f85decb3b3b7968d4b))
+
+- **web**: Lead each row with its title, merge In Progress into Status, and open a row on a click
+  ([`76463f9`](https://github.com/bkuberek/coding-study/commit/76463f9fb5830ad0cb36598c3cf0a51e131a5422))
+
+- **web**: Put the filters in one slim row with More, removable chips, a count and Clear
+  ([`e350d49`](https://github.com/bkuberek/coding-study/commit/e350d49ec253b3cf100e3809abc9bd2d0ef9216c))
+
+- **web**: Search the Problems view by title and slug as you type, and add cstudy list --search
+  ([`b62a602`](https://github.com/bkuberek/coding-study/commit/b62a602adf4b0b44d09f927151e75b64a2c2abea))
+
+- **web**: Show the Sets column in the Problems table by default
+  ([`0148ce3`](https://github.com/bkuberek/coding-study/commit/0148ce3554744a8f3c2d883581931df65775fb0c))
+
+### Refactoring
+
+- **web**: Fetch the Problems and Problem views' styles and the landing view as chunks
+  ([`04a0da9`](https://github.com/bkuberek/coding-study/commit/04a0da98fba13c736ddd949ff8fd2fa0dbd25c72))
+
+### Testing
+
+- **web**: Bring each header cell into view before reading what is on top of it
+  ([`0bba7e8`](https://github.com/bkuberek/coding-study/commit/0bba7e85a4033d3b55f9145cf46f0b2534ea8dbf))
+
+- **web**: Check the slash key on another view, and read the columns preference in one place
+  ([`c28ad68`](https://github.com/bkuberek/coding-study/commit/c28ad68b16b86242755a28661ed405dc751f8cdd))
+
+- **web**: Pin the columns in the document preferences save
+  ([`b3753eb`](https://github.com/bkuberek/coding-study/commit/b3753eb289407a43d1073730151ff76bac37d77b))
+
+- **web**: Pin what the preferences route says of the columns
+  ([`df85e31`](https://github.com/bkuberek/coding-study/commit/df85e31431d2f5b59e94dde4f0a964dc779e62f7))
+
+- **web**: Publish the live diagnostics on the starter file's current lines
+  ([`0df3127`](https://github.com/bkuberek/coding-study/commit/0df3127922ae6438fc0f10a5e98186fce8f458ee))
+
+- **web**: Wait on the run toolbar's current marker in the run on save test
+  ([`f951754`](https://github.com/bkuberek/coding-study/commit/f951754495a1163e96ca73526fa84bde9d6b3b03))
+
+
 ## v0.21.0 (2026-11-07)
 
 ### Documentation
