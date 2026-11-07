@@ -36,8 +36,8 @@ def registered_commands() -> set[str | None]:
     return {command.name for command in cli.app.registered_commands}
 
 
-def test_config_is_a_group_of_commands():
-    assert [group.name for group in cli.app.registered_groups] == ["config"]
+def test_config_and_set_are_the_groups_of_commands():
+    assert [group.name for group in cli.app.registered_groups] == ["set", "config"]
 
 
 def test_every_command_so_far_is_registered():

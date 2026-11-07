@@ -85,6 +85,8 @@ class YamlProblemSets:
             text = self._workspace.read_text(SETS_FILE)
         except UnicodeDecodeError:
             raise ConfigError(SETS_FILE, [_NOT_TEXT]) from None
+        except OSError as error:
+            raise ConfigError(SETS_FILE, [f"it can't be read: {error.strerror}"]) from None
         return text if not text or text.endswith("\n") else f"{text}\n"
 
     def _write(self, text: str, expected: Sequence[ProblemSet]) -> None:

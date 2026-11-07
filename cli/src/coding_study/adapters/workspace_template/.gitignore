@@ -1,4 +1,4 @@
-# coding-study workspace: commit your practice files, notes, .archive/ and problems/.
+# coding-study workspace: commit your practice files, notes, .archive/, problems/ and sets.yaml.
 # Everything below is generated per machine; `cstudy doctor --fix` recreates it. The marker and
 # the record of the IDE files cstudy wrote (.cs/ide.json) stay tracked.
 /.cs/*

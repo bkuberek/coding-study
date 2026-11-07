@@ -9,6 +9,7 @@ from typer.testing import CliRunner
 
 from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
 from coding_study.domain.problem import Language
+from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import list_problems, next_problem, problem_sets
 from coding_study.entrypoints.shared import ExitCode
@@ -334,6 +335,30 @@ def test_next_set_says_when_the_set_is_finished(environment):
         ExitCode.SUCCESS,
         f"{LOOP} is finished: 1 of 1 passed",
     )
+
+
+def test_next_set_says_the_set_is_finished_when_only_a_review_is_left(environment):
+    looped("two-sum")
+    finish(environment, "two-sum")
+    state = ReviewState(interval_days=3, reps=1)
+    environment.progress.save_schedule_entry(
+        ScheduleEntry("two-sum", state, NOW.date(), Grade.OK, NOW)
+    )
+    assert runner.invoke(cli.app, ["next", "--set", LOOP]).output.splitlines() == [
+        "review  two-sum  (easy · arrays-hashing)  due today, interval 3d",
+        "start   cstudy start two-sum --lang python",
+        f"set     {LOOP}  finished: 1 of 1 passed",
+    ]
+
+
+def test_next_set_start_starts_the_pick_and_says_how_the_set_stands(environment):
+    looped("url-shortener")
+    result = runner.invoke(cli.app, ["next", "--set", LOOP, "--start"])
+    assert (result.exit_code, f"set     {LOOP}  0 of 1 passed" in result.output) == (
+        ExitCode.SUCCESS,
+        True,
+    )
+    assert environment.progress.attempts_in_progress()[0].slug == "url-shortener"
 
 
 def test_next_set_says_when_the_set_is_empty(environment):

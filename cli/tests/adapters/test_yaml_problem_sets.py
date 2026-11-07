@@ -99,6 +99,12 @@ def test_a_file_that_is_wrong_is_refused_saying_why(file, store, text, named):
         store.read()
 
 
+def test_a_directory_in_its_place_is_refused(file, store):
+    file.mkdir()
+    with pytest.raises(ConfigError, match="can't be read"):
+        store.read()
+
+
 def test_a_file_that_is_not_text_is_refused(file, store):
     file.write_bytes(b"\xff\xfe\x00bad")
     with pytest.raises(ConfigError, match="UTF-8"):
