@@ -37,6 +37,7 @@ cstudy generates the compose file, `.cs/runs/<run>/stack.yaml`, and merges the p
 | What sandboxed code leaves there | The folder shows on your machine as your code left it, so a file `cstudy` reads there can be a link to anything, a named pipe, a device or a huge file. `cstudy` reads `pyproject.toml` and `go.mod` with no link followed, only as a regular file, and only their first MiB, and writes a missing `go.work` through no link |
 | Parent folders, `.cs/`, your home | Not visible |
 | Toolchain links | The links and relative paths of [existing project folders](installation-and-workspaces.md#project-folders) (`.venv` to the shared venv, `go.work`, `.cargo/config.toml`, the workspace's `node_modules`) do not apply: the image is the toolchain, and dependencies are installed into the folder |
+| Links | A bind mount follows a link to wherever it points on your machine, so `cstudy` refuses to start a stack when `.devcontainer` or a problem's `grading` folder is a link |
 | Docker socket | Never mounted |
 | Data | `CSTUDY_DATA_DIR` is `/data`: a persistent named volume in `dev`, a fresh one per `test` or `graded` stack. A SQLite problem keeps its file here |
 | Dependencies | `node_modules` and `.venv` stay in the project folder on the bind mount, so your editor can read them. P1 measured it about as fast as a volume for an install (R30) |

@@ -413,6 +413,8 @@ class DockerSandbox:
     def start(self, plan: StackPlan, budget: StartupBudget) -> ReadyStack:
         started_at = self._monotonic()
         _prepare_project(plan.paths)
+        if plan.grade_setup is not None:
+            _refuse_link(Path(plan.grade_setup.grading_directory))
         _write_stack_files(plan)
         up = self._compose(
             plan,
@@ -767,19 +769,24 @@ def _fields(line: str, count: int) -> list[str]:
 
 
 def _prepare_project(paths: SandboxPaths) -> None:
-    """The read-only sub-mount needs its folder. Sandboxed code can leave a link there, and a bind
-    mount would follow it to wherever it points on your machine, so a link is refused."""
+    """The read-only sub-mount needs its folder, and a link there is refused."""
     devcontainer = Path(paths.devcontainer)
-    if devcontainer.is_symlink():
-        raise SandboxError(
-            f"{devcontainer} is a symbolic link, and cstudy does not mount what a link names. "
-            "Delete it, then run the command again."
-        )
+    _refuse_link(devcontainer)
     try:
         devcontainer.mkdir(exist_ok=True)
     except FileExistsError:
         raise SandboxError(f"{devcontainer} is not a directory; move it aside") from None
     clear_setuid_bits(Path(paths.project))
+
+
+def _refuse_link(mounted: Path) -> None:
+    """A bind mount follows a link to wherever it points on your machine, and sandboxed code can
+    leave one in a project folder."""
+    if mounted.is_symlink():
+        raise SandboxError(
+            f"{mounted} is a symbolic link, and cstudy does not mount what a link names. "
+            "Delete it, then run the command again."
+        )
 
 
 def _run_folder(paths: SandboxPaths) -> Path:

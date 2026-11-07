@@ -20,6 +20,7 @@ from coding_study.domain.docker_engine import EngineState, EngineStatus
 from coding_study.domain.errors import SandboxError
 from coding_study.domain.sandbox import (
     AppContainer,
+    GradeSetup,
     InstallPlan,
     LeftoverStack,
     MockServerInput,
@@ -321,6 +322,33 @@ def test_start_refuses_a_devcontainer_link_rather_than_mount_what_it_names(tmp_p
         sandbox(docker, tmp_path).start(plan_of(paths), BUDGET)
 
     assert not docker.ran("up")
+
+
+def test_start_refuses_a_grading_link_rather_than_mount_what_it_names(tmp_path, paths):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    grading = tmp_path / "grading"
+    grading.symlink_to(outside, target_is_directory=True)
+    setup = GradeSetup(("true",), str(grading), 1)
+    docker = ScriptedDocker()
+
+    with pytest.raises(SandboxError, match="symbolic link"):
+        sandbox(docker, tmp_path).start(plan_of(paths, grade_setup=setup), BUDGET)
+
+    assert not docker.ran("up")
+
+
+def test_start_mounts_a_grading_folder_that_is_a_folder(tmp_path, paths):
+    grading = tmp_path / "grading"
+    grading.mkdir()
+    docker = ScriptedDocker()
+    published(docker)
+
+    sandbox(docker, tmp_path).start(
+        plan_of(paths, grade_setup=GradeSetup(("true",), str(grading), 1)), BUDGET
+    )
+
+    assert docker.ran("up")
 
 
 def test_start_clears_a_setuid_bit_left_in_the_project(tmp_path, paths):
