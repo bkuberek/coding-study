@@ -26,7 +26,7 @@ from typing import IO, Protocol, cast
 from coding_study.adapters.process_environment import docker_environment
 from coding_study.adapters.process_liveness import is_alive
 from coding_study.adapters.project_folders import clear_setuid_bits
-from coding_study.adapters.stack_guard import DOCKER, StackGuard
+from coding_study.adapters.stack_guard import DOCKER, StackGuard, one_off_filters
 from coding_study.application.ports import ContainerCommand, ProbeResult, ProgressNotice
 from coding_study.domain.docker_engine import (
     DID_NOT_START,
@@ -562,13 +562,22 @@ class DockerSandbox:
         return None
 
     def _down(self, name: str, removes_volumes: bool) -> bool:
+        self._remove_one_offs(name)
         flags = ("-v",) if removes_volumes else ()
         down = self._runner.run((*_COMPOSE, "-p", name, "down", *flags), STOP_TIMEOUT_S)
         return down is not None and down.exit_code == 0
 
+    def _remove_one_offs(self, stack: str) -> None:
+        found = self._runner.run(
+            (DOCKER, "ps", "-aq", *one_off_filters(stack)), INVENTORY_TIMEOUT_S
+        )
+        one_offs = found.output.split() if found is not None and found.exit_code == 0 else []
+        if one_offs:
+            self._runner.run((DOCKER, "rm", "-f", "-v", *one_offs), STOP_TIMEOUT_S)
+
     def exec_app(self, plan: StackPlan, command: ContainerCommand) -> CommandOutcome:
         arguments = ("exec", "-T", *_environment_flags(command), APP_SERVICE, *command.command)
-        return self._command(plan, arguments, command)
+        return _outcome(self._compose(plan, arguments, command.timeout_s, command.on_output))
 
     def run_one_off(self, plan: StackPlan, command: ContainerCommand) -> CommandOutcome:
         arguments = (
@@ -577,13 +586,21 @@ class DockerSandbox:
             APP_SERVICE,
             *command.command,
         )
-        return self._command(plan, arguments, command)
+        return self._one_off(plan, arguments, command.timeout_s, command.on_output)
 
-    def _command(
-        self, plan: StackPlan, arguments: tuple[str, ...], command: ContainerCommand
+    def _one_off(
+        self,
+        plan: StackPlan | InstallPlan,
+        arguments: tuple[str, ...],
+        timeout_s: float,
+        on_output: Callable[[str], None] | None = None,
     ) -> CommandOutcome:
-        result = self._compose(plan, arguments, command.timeout_s, command.on_output)
-        return _outcome(result)
+        """`docker compose run`. Past its limit the client is killed and the container runs on
+        without it, on the data of whatever comes next, so it goes at once."""
+        outcome = _outcome(self._compose(plan, arguments, timeout_s, on_output))
+        if outcome.timed_out:
+            self._remove_one_offs(plan.identity.name)
+        return outcome
 
     def restart_app(self, plan: StackPlan, ready: ReadyStack, budget: StartupBudget) -> None:
         self.stop_app(plan)
@@ -625,7 +642,7 @@ class DockerSandbox:
 
     def probe_egress(self, plan: StackPlan) -> CommandOutcome:
         arguments = ("run", "--rm", "-T", "--no-deps", *_PULL_NEVER, EGRESS_PROBE_SERVICE)
-        return _outcome(self._compose(plan, arguments, EGRESS_PROBE_LIMIT_S))
+        return self._one_off(plan, arguments, EGRESS_PROBE_LIMIT_S)
 
     def install(
         self, plan: InstallPlan, timeout_s: float, on_output: Callable[[str], None] | None
@@ -635,7 +652,7 @@ class DockerSandbox:
         _write_file(run / STACK_FILE, render_compose(install_document(plan)))
         _write_passwd(run, plan.user)
         arguments = ("run", "--rm", "-T", *_PULL_NEVER, INSTALL_SERVICE)
-        return _outcome(self._compose(plan, arguments, timeout_s, on_output))
+        return self._one_off(plan, arguments, timeout_s, on_output)
 
 
 class _ServiceState:

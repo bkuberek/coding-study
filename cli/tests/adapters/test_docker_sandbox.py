@@ -14,6 +14,7 @@ from coding_study.adapters.docker_sandbox import (
     DockerSandbox,
     _remove_run_folder,
 )
+from coding_study.adapters.stack_guard import one_off_filters
 from coding_study.application.ports import ContainerCommand, ProbeResult
 from coding_study.domain.docker_engine import EngineState, EngineStatus
 from coding_study.domain.errors import SandboxError
@@ -550,8 +551,8 @@ def test_stop_downs_a_test_stack_with_its_volumes(tmp_path, paths):
 
     assert sandbox(docker, tmp_path).stop(plan_of(paths)) is None
 
-    assert docker.commands[0][-4:] == ("-p", NAME, "down", "-v")
-    assert docker.timeouts[0] == STOP_TIMEOUT_S
+    assert docker.commands[-1][-4:] == ("-p", NAME, "down", "-v")
+    assert docker.timeouts[-1] == STOP_TIMEOUT_S
 
 
 def test_stop_keeps_a_dev_stacks_volume(tmp_path, paths):
@@ -560,7 +561,7 @@ def test_stop_keeps_a_dev_stacks_volume(tmp_path, paths):
 
     sandbox(docker, tmp_path).stop(plan)
 
-    assert docker.commands[0][-1] == "down"
+    assert docker.commands[-1][-1] == "down"
 
 
 def test_stop_removes_the_run_folder(tmp_path, paths):
@@ -671,7 +672,7 @@ def test_stop_install_keeps_the_cache(tmp_path, paths):
 
     sandbox(docker, tmp_path).stop_install(install_plan_of(paths))
 
-    assert docker.commands[0][-1] == "down"
+    assert docker.commands[-1][-1] == "down"
 
 
 def test_the_inventory_asks_for_labelled_things_only(tmp_path):
@@ -718,9 +719,7 @@ def test_removing_a_leftover_stack_goes_by_project_with_no_file(tmp_path):
     removed = sandbox(docker, tmp_path).remove_stack(LeftoverStack(NAME, "d", removes_volumes=True))
 
     assert removed
-    assert docker.commands == [
-        ("docker", "compose", "--ansi", "never", "-p", NAME, "down", "-v"),
-    ]
+    assert docker.commands[-1] == ("docker", "compose", "--ansi", "never", "-p", NAME, "down", "-v")
 
 
 def test_removing_a_dev_leftover_keeps_its_volume(tmp_path):
@@ -730,7 +729,82 @@ def test_removing_a_dev_leftover_keeps_its_volume(tmp_path):
         LeftoverStack("cstudy-d-r-x", "d", removes_volumes=False)
     )
 
-    assert docker.commands[0][-1] == "down"
+    assert docker.commands[-1][-1] == "down"
+
+
+def test_a_down_removes_the_stacks_one_offs_first(tmp_path, paths):
+    """`down` leaves a one-off whose client died, running, with its network still in use, and exits
+    0: a killed client would otherwise leave them for good."""
+    docker = ScriptedDocker()
+    docker.answer(("docker", "ps"), ProbeResult(0, "abc123\ndef456\n"))
+
+    sandbox(docker, tmp_path).stop(plan_of(paths))
+
+    assert docker.commands[:2] == [
+        ("docker", "ps", "-aq", *one_off_filters(NAME)),
+        ("docker", "rm", "-f", "-v", "abc123", "def456"),
+    ]
+    assert docker.commands[2][-2:] == ("down", "-v")
+
+
+def test_a_stack_with_no_one_off_removes_none(tmp_path, paths):
+    docker = ScriptedDocker()
+
+    sandbox(docker, tmp_path).stop(plan_of(paths))
+
+    assert not docker.ran("docker", "rm")
+
+
+def test_a_one_off_past_its_limit_is_removed_at_once(tmp_path, paths):
+    """The client is gone and the container is not: it would go on writing to the data of the case
+    after it."""
+    docker = ScriptedDocker()
+    docker.answer(("run",), ProbeResult(124, "hung"))
+    docker.answer(("docker", "ps"), ProbeResult(0, "abc123\n"))
+
+    outcome = sandbox(docker, tmp_path).run_one_off(
+        plan_of(paths), ContainerCommand(("sleep", "600"), {}, 5)
+    )
+
+    assert outcome.timed_out
+    assert docker.ran("docker", "rm", "-f", "-v", "abc123")
+
+
+def test_a_one_off_that_ended_by_itself_removes_nothing(tmp_path, paths):
+    docker = ScriptedDocker()
+
+    sandbox(docker, tmp_path).run_one_off(plan_of(paths), ContainerCommand(("true",), {}, 5))
+
+    assert not docker.ran("docker", "ps")
+
+
+def test_an_install_past_its_limit_is_removed_at_once(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("run",), ProbeResult(124, "hung"))
+    docker.answer(("docker", "ps"), ProbeResult(0, "abc123\n"))
+
+    sandbox(docker, tmp_path).install(install_plan_of(paths), 600, None)
+
+    assert docker.ran("docker", "rm", "-f", "-v", "abc123")
+
+
+def test_an_egress_probe_past_its_limit_is_removed_at_once(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("run",), ProbeResult(124, "hung"))
+    docker.answer(("docker", "ps"), ProbeResult(0, "abc123\n"))
+
+    sandbox(docker, tmp_path).probe_egress(plan_of(paths))
+
+    assert docker.ran("docker", "rm", "-f", "-v", "abc123")
+
+
+def test_a_command_in_the_running_app_past_its_limit_stays_for_the_stacks_down(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("exec",), ProbeResult(124, "hung"))
+
+    sandbox(docker, tmp_path).exec_app(plan_of(paths), ContainerCommand(("sleep", "600"), {}, 5))
+
+    assert not docker.ran("docker", "ps")
 
 
 def test_removing_a_leftover_removes_its_run_folder(tmp_path):
@@ -759,7 +833,9 @@ def test_strays_are_removed_by_name(tmp_path):
 def test_a_stack_name_cstudy_did_not_generate_reaches_no_command(tmp_path, label):
     docker = ScriptedDocker()
 
-    removed = sandbox(docker, tmp_path).remove_stack(LeftoverStack(label, "d", removes_volumes=True))
+    removed = sandbox(docker, tmp_path).remove_stack(
+        LeftoverStack(label, "d", removes_volumes=True)
+    )
 
     assert not removed
     assert docker.commands == []
@@ -986,5 +1062,5 @@ def test_a_signal_during_a_stop_is_held_off_and_restored(tmp_path, paths):
 
     sandbox(Noting(), tmp_path).stop(plan_of(paths))
 
-    assert held == [signal.SIG_IGN]
+    assert set(held) == {signal.SIG_IGN}
     assert signal.getsignal(signal.SIGINT) == before

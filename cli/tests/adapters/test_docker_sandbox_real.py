@@ -424,14 +424,16 @@ OWNER_PROGRAM = textwrap.dedent(
 )
 
 
-def owner_process(tmp_path: Path, name: str) -> tuple[subprocess.Popen[str], int]:
+def owner_process(
+    tmp_path: Path, name: str, program: str = OWNER_PROGRAM
+) -> tuple[subprocess.Popen[str], int]:
     project = project_in(tmp_path)
     source = Path(__file__).parents[2] / "src"
     owner = subprocess.Popen(
         [
             sys.executable,
             "-c",
-            OWNER_PROGRAM,
+            program,
             name,
             PYTHON_IMAGE,
             str(project),
@@ -457,6 +459,191 @@ def test_a_killed_owner_leaves_nothing_behind(tmp_path):
 
     wait_until_nothing_left(name)
     wait_until_gone(tmp_path.resolve() / "runs" / name)
+
+
+HANGS = ("python", "-I", "-c", "import time;print('hung',flush=True);time.sleep(600)")
+ONE_OFF_LIMIT_S = 20
+"""The limit under test, long enough for the one-off to be running when it ends."""
+ONE_OFF_OWNER = textwrap.dedent(
+    """\
+    import os, signal, sys
+    from pathlib import Path
+
+    from coding_study.adapters.docker_sandbox import DockerSandbox, SubprocessDockerRunner
+    from coding_study.application.ports import ContainerCommand
+    from coding_study.application.sandbox import running_stack
+    from coding_study.domain.sandbox import (
+        AppContainer, SandboxPaths, SandboxUser, StackIdentity, StackKind, StackPlan, StartupBudget,
+    )
+
+    signal.signal(signal.SIGINT, signal.default_int_handler)
+    name, image, project, run = sys.argv[1:5]
+    engine = DockerSandbox(SubprocessDockerRunner(), runs_directory=Path(run).parent)
+    plan = StackPlan(
+        identity=StackIdentity(name, StackKind.TEST, "testworkspace", "sample", os.getpid()),
+        user=SandboxUser(os.getuid(), os.getgid()),
+        paths=SandboxPaths(project, run),
+        app=AppContainer(image, ("python", "-I", "server.py"), 8000, {"PORT": "8000"}),
+    )
+    hangs = ("python", "-I", "-c", "import time;time.sleep(600)")
+    with running_stack(engine, plan, StartupBudget(300, 300), print):
+        print("ready", flush=True)
+        engine.run_one_off(plan, ContainerCommand(hangs, {}, 600))
+    """
+)
+INSTALL_OWNER = textwrap.dedent(
+    """\
+    import os, signal, sys
+    from pathlib import Path
+
+    from coding_study.adapters.docker_sandbox import DockerSandbox, SubprocessDockerRunner
+    from coding_study.domain.sandbox import (
+        InstallPlan, SandboxPaths, SandboxUser, StackIdentity, StackKind,
+    )
+
+    signal.signal(signal.SIGINT, signal.default_int_handler)
+    name, image, project, run = sys.argv[1:5]
+    engine = DockerSandbox(SubprocessDockerRunner(), runs_directory=Path(run).parent)
+    plan = InstallPlan(
+        identity=StackIdentity(name, StackKind.INSTALL, "testworkspace", "sample", os.getpid()),
+        user=SandboxUser(os.getuid(), os.getgid()),
+        paths=SandboxPaths(project, run),
+        image=image,
+        command=("python", "-I", "-c", "import time;time.sleep(600)"),
+        environment={},
+    )
+    with engine.guard(plan.identity):
+        print("ready", flush=True)
+        try:
+            engine.install(plan, 600, None)
+        finally:
+            engine.stop_install(plan)
+    """
+)
+
+
+def running_one_offs(name: str) -> list[str]:
+    return docker(
+        "ps",
+        "-q",
+        "--filter",
+        f"label=com.docker.compose.project={name}",
+        "--filter",
+        "label=com.docker.compose.oneoff=True",
+    ).stdout.split()
+
+
+def wait_for_a_one_off(name: str) -> None:
+    deadline = time.monotonic() + GENEROUS_WAIT_S
+    while not running_one_offs(name):
+        assert time.monotonic() < deadline, f"no one-off of {name} is running"
+        time.sleep(POLL_S * 25)
+
+
+def wait_until_no_container_or_network(name: str) -> None:
+    deadline = time.monotonic() + GENEROUS_WAIT_S
+    while time.monotonic() < deadline:
+        left = resources_of(name)
+        if not left["containers"] and not left["networks"]:
+            return
+        time.sleep(POLL_S * 25)
+    raise AssertionError(f"{name} is still there: {resources_of(name)}")
+
+
+def remove_everything_of(name: str) -> None:
+    """What a failing test would otherwise leave on the engine; nothing when it passed."""
+    left = resources_of(name)
+    if left["containers"]:
+        docker("rm", "-f", "-v", *left["containers"])
+    for network in left["networks"]:
+        docker("network", "rm", network)
+    for volume in left["volumes"]:
+        docker("volume", "rm", volume)
+
+
+def test_a_one_off_past_its_limit_is_gone_when_the_call_returns(stack):
+    engine, plan, _ = stack
+
+    outcome = engine.run_one_off(plan, ContainerCommand(HANGS, {}, ONE_OFF_LIMIT_S))
+
+    assert outcome.timed_out
+    assert "hung" in outcome.output
+    assert not running_one_offs(plan.identity.name)
+
+
+def test_an_install_past_its_limit_leaves_nothing_running_and_keeps_its_cache(engine, tmp_path):
+    name = f"cstudy-i-hung-{os.getpid()}"
+    plan = install_plan_of(tmp_path, name, HANGS)
+    try:
+        with engine.guard(plan.identity):
+            outcome = engine.install(plan, ONE_OFF_LIMIT_S, None)
+            problem = engine.stop_install(plan)
+
+        assert outcome.timed_out
+        assert "hung" in outcome.output
+        assert problem is None
+        left = resources_of(name)
+        assert not left["containers"]
+        assert not left["networks"]
+        assert left["volumes"]
+    finally:
+        remove_everything_of(name)
+
+
+@pytest.mark.parametrize("ending", [signal.SIGINT, signal.SIGKILL], ids=["ctrl-c", "killed"])
+def test_an_owner_that_ends_during_a_one_off_leaves_nothing_behind(tmp_path, ending):
+    """A `reset`, a second `bootstrap` or a probe: Ctrl-C reaches `stop`, a SIGKILL the guard."""
+    name = stack_name(f"oneoff-{ending.name.lower()}")
+    try:
+        owner, pid = owner_process(tmp_path, name, ONE_OFF_OWNER)
+        wait_for_a_one_off(name)
+
+        os.kill(pid, ending)
+        owner.wait(GENEROUS_WAIT_S)
+
+        wait_until_nothing_left(name)
+        wait_until_gone(tmp_path.resolve() / "runs" / name)
+    finally:
+        remove_everything_of(name)
+
+
+@pytest.mark.parametrize("ending", [signal.SIGINT, signal.SIGKILL], ids=["ctrl-c", "killed"])
+def test_an_owner_that_ends_during_an_install_leaves_only_the_cache(tmp_path, ending):
+    name = f"cstudy-i-hung-{ending.name.lower()}-{os.getpid()}"
+    try:
+        owner, pid = owner_process(tmp_path, name, INSTALL_OWNER)
+        wait_for_a_one_off(name)
+
+        os.kill(pid, ending)
+        owner.wait(GENEROUS_WAIT_S)
+
+        wait_until_no_container_or_network(name)
+        wait_until_gone(tmp_path.resolve() / "runs" / name)
+    finally:
+        remove_everything_of(name)
+
+
+def test_the_sweep_removes_a_one_off_with_a_dead_owner(engine, tmp_path):
+    """The guard died too, and the one-off's client with it."""
+    name = stack_name("sweptoneoff")
+    plan = plan_of(tmp_path, name)
+    dead = plan_with_identity(
+        plan, StackIdentity(name, StackKind.TEST, "testworkspace", "sample", _dead_pid())
+    )
+    try:
+        engine.start(dead, BUDGET)
+        started = docker(
+            *("compose", "--ansi", "never", "-p", name, "-f", plan.paths.in_run("stack.yaml")),
+            *("run", "-d", "--no-deps", "--pull", "never", "app", *HANGS),
+        )
+        assert started.returncode == 0, started.stderr
+        assert running_one_offs(name)
+
+        sweep_leftovers(engine, "testworkspace", lambda _line: None)
+
+        assert nothing_left(name)
+    finally:
+        remove_everything_of(name)
 
 
 def wait_until_gone(path: Path) -> None:
