@@ -6,6 +6,7 @@ import typer
 
 from coding_study.entrypoints.commands import (
     abort,
+    about,
     bench,
     config,
     doctor,
@@ -60,4 +61,5 @@ COMMAND_REGISTRATIONS: tuple[Callable[[typer.Typer], None], ...] = (
     mock.register,
     config.register,
     reset.register,
+    about.register,
 )

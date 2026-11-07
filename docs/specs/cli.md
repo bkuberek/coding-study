@@ -32,6 +32,7 @@
 | [`cstudy import`](#cstudy-import) | Restore an export into an empty `progress.db` | 7 |
 | [`cstudy config edit`, `cstudy config path`](#cstudy-config) | Open your `config.toml` in your editor; print its path | 9 |
 | [`cstudy reset`](#cstudy-reset) | Delete progress and state, after a preview and a typed word | 9 |
+| [`cstudy about`](#cstudy-about) | Show the version, license, links and credits | 9 |
 
 `<file>` is a [solution file path](#solution-file-targets). Commands that take an optional `<slug>` default to the active attempt: the most recent attempt with status `in_progress`. If none exists, they exit 3. Every command but `cstudy init`, `cstudy doctor`, `cstudy list` and `cstudy show` needs a workspace and exits 3 without one, pointing at `cstudy init`; `cstudy list --set` needs one too. The [IDE files](installation-and-workspaces.md#ide-files) run these commands on the file in the editor or on the active attempt.
 
@@ -1367,6 +1368,22 @@ Deletes what you have practised in this workspace, as if you had just run `cstud
 | Done | `deleted attempts 6 · test runs 4 · …`, exit 0 |
 
 `progress.db` stays valid and at its schema: its rows go in one transaction, so a reset interrupted there changes nothing, and one interrupted later leaves files the next reset finds. A later attempt's id stays above every id deleted ([schema](progress-and-scheduling.md#schema)).
+
+## cstudy about
+
+```text
+cstudy about [--credits | --licenses]
+```
+
+Needs no workspace and reads no configuration. The [About view](web-ui.md#about-view) shows the same data from the same use case (`application/about.py`).
+
+| Form | Prints |
+|------|--------|
+| `about` | `cstudy <version>`, then the license (`MIT`), the website (`https://coding-study.com`), the source and issues pages, the two sponsor links of `.github/FUNDING.yml` (GitHub Sponsors and Ko-fi) on `sponsor` lines, and the two commands below. It asks for nothing and opens nothing |
+| `about --credits` | The software cstudy uses, in sections: the Python packages it needs to run, with each one's installed version and declared license, read from the installed metadata; the packages the web page bundles, read from `THIRD_PARTY_LICENSES.txt`; the language servers it pins; and the toolchains it runs from your machine |
+| `about --licenses` | The full license text: cstudy's own, then each Python package's, then `THIRD_PARTY_LICENSES.txt` whole. A package that ships no text says so |
+
+`--credits` and `--licenses` together exit 3 with `choose one of --credits and --licenses`. `THIRD_PARTY_LICENSES.txt` is written by the web build into `entrypoints/web/static/`, which the wheel ships, so it is on every install.
 
 ## cstudy serve
 
