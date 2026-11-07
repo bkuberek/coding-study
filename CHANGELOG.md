@@ -2,6 +2,33 @@
 
 <!-- version list -->
 
+## v0.24.0 (2026-11-07)
+
+### Bug Fixes
+
+- **web**: Let the Sets view fill the page
+  ([`a495e14`](https://github.com/bkuberek/coding-study/commit/a495e1480e17b897b6d9d9c12db515994655954e))
+
+### Features
+
+- **web**: Give every config key a friendly label and a section
+  ([`930f5a3`](https://github.com/bkuberek/coding-study/commit/930f5a317a668da7cbaeb4dd5adef3922f9aaa69))
+
+- **web**: Lay Settings out in two columns, with the path and a red reset
+  ([`bc5b1bc`](https://github.com/bkuberek/coding-study/commit/bc5b1bcb909ccf8d457ebcf53216039bb2c0e41f))
+
+- **web**: Stage every Settings change until one Save
+  ([`a1e293c`](https://github.com/bkuberek/coding-study/commit/a1e293c2fc04c5dd28c84359082a56e473bf531e))
+
+### Testing
+
+- Keep a served cstudy off the config file the shell names
+  ([`19e79b2`](https://github.com/bkuberek/coding-study/commit/19e79b2ab2f20fa82b9e2b74d4b9657d61a91486))
+
+- Tell the TypeScript starters that run from the bare ones
+  ([`86b7b2c`](https://github.com/bkuberek/coding-study/commit/86b7b2c8b79c39a4847057e50d4d1b4fa51f9451))
+
+
 ## v0.23.0 (2026-11-07)
 
 ### Continuous Integration
