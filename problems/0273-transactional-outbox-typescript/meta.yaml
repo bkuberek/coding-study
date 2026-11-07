@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0273"
+slug: transactional-outbox-typescript
+title: Transactional Outbox (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [backend]
+job_roles: [backend, platform]
+scope: project
+languages: [typescript]
+levels:
+  - {level: 1, title: One transaction}
+  - {level: 2, title: The outbox row}
+  - {level: 3, title: The relay}
+  - {level: 4, title: Order per rental}
+  - {level: 5, title: The consumer and the cleanup}
+signature:
+  class:
+    name: RentalDesk
+    constructor: {params: []}
+    methods:
+      - {name: act, level: 1, params: [{name: rentalId, type: string}, {name: action, type: string}, {name: actor, type: string}], returns: {type: string}}
+      - {name: rental, level: 1, params: [{name: rentalId, type: string}], returns: {type: string}}
+      - {name: audit, level: 1, params: [], returns: {type: "string[]"}}
+      - {name: failNextWrite, level: 1, params: [{name: table, type: string}], returns: {type: void}}
+      - {name: outbox, level: 2, params: [], returns: {type: "string[]"}}
+      - {name: relay, level: 3, params: [{name: limit, type: int}], returns: {type: int}}
+      - {name: published, level: 3, params: [], returns: {type: "string[]"}}
+      - {name: failNextPublish, level: 3, params: [{name: rentalId, type: string}, {name: times, type: int}], returns: {type: void}}
+      - {name: loseNextAck, level: 3, params: [{name: rentalId, type: string}], returns: {type: void}}
+      - {name: rentalsOut, level: 5, params: [], returns: {type: int}}
+      - {name: eventsApplied, level: 5, params: [], returns: {type: int}}
+      - {name: prune, level: 5, params: [], returns: {type: int}}
+comparator: {type: ops}
+project:
+  entry: src/desk.ts
+  tests: tests
+approaches:
+  - {id: reference, name: The outbox row in the state's transaction and a relay that holds back a failed rental, role: optimal, time: "O(t) per action; O(p + t l) per relay pass", space: "O(r + a + p)", time_class: "n", space_class: "n"}
+related: [idempotent-document-consumer-typescript, warehouse-work-orders-typescript]
+estimate_minutes: 100
