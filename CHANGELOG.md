@@ -2,6 +2,52 @@
 
 <!-- version list -->
 
+## v0.28.0 (2026-11-07)
+
+### Bug Fixes
+
+- **cli**: Name cstudy dev and cstudy test as a service project's next step
+  ([`3e63cc6`](https://github.com/bkuberek/coding-study/commit/3e63cc63edcddf3d28767b9aaa4049668a53feac))
+
+- **grader**: Run D9's test command with the control interface
+  ([`79de5d2`](https://github.com/bkuberek/coding-study/commit/79de5d2295c4162db9c16bda3759153ae69a443b))
+
+- **sandbox**: Count the helper image at the 43 MB it measures
+  ([`67df405`](https://github.com/bkuberek/coding-study/commit/67df40550d16ceba1a6b253a6d78ebd9e30d4f99))
+
+- **verify**: Refuse a .env in any project starter
+  ([`a33f92b`](https://github.com/bkuberek/coding-study/commit/a33f92b39c6e25d908d650614479fc5b86977a5f))
+
+- **web**: Say code intelligence for a service project comes later
+  ([`3b2f296`](https://github.com/bkuberek/coding-study/commit/3b2f29631bd41f5dac26b766e50f233fda1673ba))
+
+### Code Style
+
+- **grader**: Sort the imports of verify_service
+  ([`3deafb1`](https://github.com/bkuberek/coding-study/commit/3deafb1895410d6fd21e9917665528aa7d9850b3))
+
+### Documentation
+
+- List the browser and sandbox CI jobs and where .env comes from
+  ([`91b7a88`](https://github.com/bkuberek/coding-study/commit/91b7a88edc24497f0c873913ac03b9e5bbb704ee))
+
+- **versioning**: List the browser and sandbox jobs of the CI workflow
+  ([`aaf6503`](https://github.com/bkuberek/coding-study/commit/aaf650312b589814275ac97069f7c32546d665b3))
+
+### Features
+
+- **problems**: Add coworking availability, the first catalog service project
+  ([`d7984d4`](https://github.com/bkuberek/coding-study/commit/d7984d4bf5a3c459113ed04e296a4e3e2233c534))
+
+- **project**: Write a service project's .env from its manifest
+  ([`154aa33`](https://github.com/bkuberek/coding-study/commit/154aa33eebe5df6f97a8c569d52ad0ffff3b65b0))
+
+### Refactoring
+
+- **sandbox**: Drop the unused stack kind letters
+  ([`b9f9302`](https://github.com/bkuberek/coding-study/commit/b9f9302fc877716309ef98bb42399ab6ff55a7ca))
+
+
 ## v0.27.0 (2026-11-07)
 
 ### Features
