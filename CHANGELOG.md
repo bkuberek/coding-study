@@ -2,6 +2,49 @@
 
 <!-- version list -->
 
+## v0.19.0 (2026-11-07)
+
+### Documentation
+
+- Describe the starter's new header and what cstudy next resumes
+  ([`81e296b`](https://github.com/bkuberek/coding-study/commit/81e296bc341f3573e35d5a61a874e53fa9fc8586))
+
+- State the starter header's real wrapping in the runners spec
+  ([`6b1b62b`](https://github.com/bkuberek/coding-study/commit/6b1b62b2c44a8d23ea322a4079a9b97a5e453cf3))
+
+### Features
+
+- **catalog**: Give 151 problems a hand-written starter summary
+  ([`32a2bab`](https://github.com/bkuberek/coding-study/commit/32a2babac3e30f3330d086753849c7156ff0056b))
+
+- **cli**: Add cstudy abort, which ends an attempt as abandoned
+  ([`9a34036`](https://github.com/bkuberek/coding-study/commit/9a340362d5f285f05d3fc53478e54cc312c32704))
+
+- **cli**: Resume the attempt in progress first in cstudy next
+  ([`05e9400`](https://github.com/bkuberek/coding-study/commit/05e9400e2ebb488823c6c8442dccaacad9c07a85))
+
+- **cli**: Wrap the starter header and add a short summary of the problem
+  ([`78e6d64`](https://github.com/bkuberek/coding-study/commit/78e6d64aeca029404240fb365b6f2161e1d0ed2b))
+
+- **cli**: Write in progress in words and accept in-progress as a status
+  ([`5cc9fcd`](https://github.com/bkuberek/coding-study/commit/5cc9fcdac234084961dec19b76e0aa7fa883c67d))
+
+- **web**: Add Abort to the Attempt view
+  ([`dd04fa2`](https://github.com/bkuberek/coding-study/commit/dd04fa2317ecf8fcc320a65006b38f7de138f9f9))
+
+- **web**: Resume the attempt in progress first in the Next card
+  ([`203d873`](https://github.com/bkuberek/coding-study/commit/203d873a66de2d06fad07d910f257c40ac28da87))
+
+- **web**: Show commands as code text, not as buttons
+  ([`0354696`](https://github.com/bkuberek/coding-study/commit/035469663cef7e286290fe7632355409236f5ec8))
+
+- **web**: Turn Run tests and Submit into Cancel while their run is active
+  ([`2038b11`](https://github.com/bkuberek/coding-study/commit/2038b116826ee1186165e4cdb2593517934b6819))
+
+- **web**: Write in progress in words in the Problems view
+  ([`7db2f8c`](https://github.com/bkuberek/coding-study/commit/7db2f8c4d03c5b74cbdd5ba881206e4f27fac480))
+
+
 ## v0.18.0 (2026-11-06)
 
 ### Documentation
