@@ -23,6 +23,7 @@ from coding_study.entrypoints.shared import ExitCode, add_command
 
 runner = CliRunner()
 ANSI_ESCAPES = re.compile(r"\x1b\[[0-9;]*m")
+SERVICE_PROJECT_COMMANDS = ("dev",)
 PHASE_0_COMMANDS = ("doctor", "start", "test", "list", "show", "solution", "done", "verify")
 PHASE_1_COMMANDS = ("next", "hint", "new")
 PHASE_2_COMMANDS = ("bench",)
@@ -49,6 +50,7 @@ def test_every_command_so_far_is_registered():
         *PHASE_8_COMMANDS,
         *PHASE_9_COMMANDS,
         *WORKSPACE_COMMANDS,
+        *SERVICE_PROJECT_COMMANDS,
     }
 
 

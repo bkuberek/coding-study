@@ -22,6 +22,7 @@ TODO: the first endpoint, and one small change, so the starter does not pass unt
 
 ### Example 1
 
+<!-- case: ex1 -->
 TODO: a request and the response it gets.
 
 ## Level 2: Answer on a second endpoint
@@ -30,6 +31,7 @@ TODO: what the second level adds.
 
 ### Example 1
 
+<!-- case: ex2 -->
 TODO: a request and the response it gets.
 
 ## Constraints

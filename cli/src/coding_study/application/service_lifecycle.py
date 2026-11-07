@@ -304,9 +304,7 @@ def run_service_tests(
         )
 
 
-def prepare_service_run(
-    environment: Environment, problem: Problem, notify: ProgressNotice
-) -> None:
+def prepare_service_run(environment: Environment, problem: Problem, notify: ProgressNotice) -> None:
     """What a stack needs before it starts: the engine and its images, and the dependencies
     installed for the lock file as it stands."""
     prepare_engine(environment, problem, notify)
