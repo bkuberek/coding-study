@@ -60,6 +60,7 @@ coding-study is a local, IDE-first study tool for software engineers: original p
 | [0020](decisions/0020-catalog-labels.md) | Problems and items have three independent labels, domain, role and scope, with filters in `cstudy list`, `cstudy next` and the Problems view; the first seven security and AI/LLM problems, in Python and TypeScript |
 | [0021](decisions/0021-ai-reviewed-problems.md) | Planned, not built: an opt-in class of problems reviewed by a live LLM with your own key; "works on your own machine" replaces "works offline" |
 | [0022](decisions/0022-settings-and-reset.md) | The Settings view edits the whole `config.toml` with tomlkit, keeping the user's comments, from a description of each key held by the parser; `cstudy reset` and a Danger section delete progress after a preview and a typed word |
+| [0023](decisions/0023-problem-sets.md) | Problem sets are a file in the workspace, `sets.yaml`, changed by the lines a change needs; `cstudy set`, `--set` on `cstudy list` and `cstudy next`, which goes in the set's order, and a Sets view; the whole-bundle budget rises |
 
 ## Conventions
 

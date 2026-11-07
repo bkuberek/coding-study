@@ -226,3 +226,16 @@ The pilots are written with the next project problems.
 - [ ] Step 2: written answers on existing items.
 - [ ] Step 3: simulated interview.
 - [ ] Step 4: whiteboard, after its spike.
+
+## Phase 15: Problem sets
+
+**Status.** Built; it does not wait for Phases 12 and 14.
+
+**Scope.** [ADR 0023](decisions/0023-problem-sets.md): named, ordered lists of problems and items in `sets.yaml`, with `cstudy set`, `--set` on `cstudy list` and `cstudy next`, a Set filter, an add-to-set control and a Sets view on the page. Sets shipped in the catalog, a language per set and due dates are later options.
+
+**Exit criteria.** A problem can be in two sets, a set's rows and order match between the CLI and the page, `cstudy reset` keeps sets with or without `--files`, and a hand-edited invalid file gives a clear error and is never overwritten.
+
+- [ ] `sets.yaml`, its store and its validation.
+- [ ] `cstudy set`, and `--set` on `cstudy list` and `cstudy next`.
+- [ ] The web API under the page's write rules.
+- [ ] The Set filter, the add-to-set control and the Sets view.

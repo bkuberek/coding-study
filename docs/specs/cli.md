@@ -18,6 +18,7 @@
 | [`cstudy solution`](#cstudy-solution) | Show reference code with its explanation | 0 |
 | [`cstudy verify`](#cstudy-verify) | Content quality gate | 0 |
 | [`cstudy list`](#cstudy-list) | Browse problems with filters | 0 (status columns in 1) |
+| [`cstudy set`](#cstudy-set) | Make named lists of problems to study from | 15 |
 | [`cstudy show`](#cstudy-show) | Print the rendered statement | 0 |
 | [`cstudy done`](#cstudy-done) | Finish an attempt and schedule review | 1 |
 | [`cstudy abort`](#cstudy-abort) | Stop working on a problem: the attempt ends as abandoned | 9 |
@@ -32,7 +33,7 @@
 | [`cstudy config edit`, `cstudy config path`](#cstudy-config) | Open your `config.toml` in your editor; print its path | 9 |
 | [`cstudy reset`](#cstudy-reset) | Delete progress and state, after a preview and a typed word | 9 |
 
-`<file>` is a [solution file path](#solution-file-targets). Commands that take an optional `<slug>` default to the active attempt: the most recent attempt with status `in_progress`. If none exists, they exit 3. Every command but `cstudy init`, `cstudy doctor`, `cstudy list` and `cstudy show` needs a workspace and exits 3 without one, pointing at `cstudy init`. The [IDE files](installation-and-workspaces.md#ide-files) run these commands on the file in the editor or on the active attempt.
+`<file>` is a [solution file path](#solution-file-targets). Commands that take an optional `<slug>` default to the active attempt: the most recent attempt with status `in_progress`. If none exists, they exit 3. Every command but `cstudy init`, `cstudy doctor`, `cstudy list` and `cstudy show` needs a workspace and exits 3 without one, pointing at `cstudy init`; `cstudy list --set` needs one too. The [IDE files](installation-and-workspaces.md#ide-files) run these commands on the file in the editor or on the active attempt.
 
 ## Solution file targets
 
@@ -65,7 +66,7 @@
 
 | Flag | Effect |
 |------|--------|
-| `--json` | Machine-readable output, as an option of the command (`cstudy stats --json`, not `cstudy --json stats`): `stats`, [`test`](#json-output), [`submit`](#cstudy-submit), [`status`](#cstudy-status), [`history`](#cstudy-history), [`list`](#cstudy-list), [`next`](#cstudy-next) and [`doctor`](#cstudy-doctor) have it; `bench` and `verify` do not yet |
+| `--json` | Machine-readable output, as an option of the command (`cstudy stats --json`, not `cstudy --json stats`): `stats`, [`test`](#json-output), [`submit`](#cstudy-submit), [`status`](#cstudy-status), [`history`](#cstudy-history), [`list`](#cstudy-list), [`next`](#cstudy-next), [`set list` and `set show`](#cstudy-set) and [`doctor`](#cstudy-doctor) have it; `bench` and `verify` do not yet |
 | `--events` | The run as a stream of JSON events instead of the report, as an option of the command: [`test`](#cstudy-test) on every autograded problem and [`submit`](#cstudy-submit) have it ([Event stream](#event-stream)) |
 | `--version` | Print `cstudy <version>` (for example `cstudy 0.1.0`), read from the installed package metadata, and exit 0 ([versioning](versioning.md)) |
 | `--no-color` | Plain output (also when `NO_COLOR` is set or stdout is not a TTY) |
@@ -975,10 +976,20 @@ next    cstudy start two-sum
 ## cstudy next
 
 ```text
-cstudy next [--track T]... [--pattern P] [--difficulty D] [--lang L] [--domain D] [--role R] [--scope S] [--new | --review] [--start | --json]
+cstudy next [--set NAME] [--track T]... [--pattern P] [--difficulty D] [--lang L] [--domain D] [--role R] [--scope S] [--new | --review] [--start | --json]
 ```
 
 Applies the selection algorithm in [progress-and-scheduling](progress-and-scheduling.md#cstudy-next-selection), which resumes first: an attempt in progress comes before a due review and a new problem, so it picks up what is open before it suggests more, and `--new` or `--review` force their kind, as they skip reviews or new problems. Without one open, the pick is a review or a new problem. `--track` is repeatable and reaches non-autograded items, for example `cstudy next --track system-design`; their `start` line has no `--lang`. `--start` runs `cstudy start` on the result, in the `--lang` language (default `default_lang`) for a problem, and in its own language for a project problem, and prints its report instead of the `start` line; it opens the editor when `open_on_start` is on. `--domain`, `--role` and `--scope` filter as in [`cstudy list`](#cstudy-list), by the [labels](content.md#labels) of problems and items alike. `--new` together with `--review`, a `--pattern` outside the [taxonomy](content.md#pattern-taxonomy), or a `--domain` or `--role` outside its list, is a usage error (exit 3). A label filter with no `--track` searches every track, because the default scope, the config's `next.tracks` (`dsa`, by default), would leave out what a domain, role or scope names; `--track` narrows it again. A problem outside `dsa` falls in its track's weakness group, so a domain has no weakness of its own. It never picks a problem that the [selected JDK](#the-selected-jdk) cannot run in the language `--start` would use (`--lang`, else `default_lang`); when that leaves nothing, the message says why (`nothing to pick: JDK 27 (JAVA_HOME) cannot run java problems; cstudy supports JDK 21 to 26`; with no JDK, `nothing to pick: no JDK was found, so java problems cannot run; cstudy supports JDK 21 to 26`), also as the `message` of `--json`. A project problem counts in its own language, since `--start` starts it there. When the scope holds nothing to pick for another reason, the message stays `nothing due and no new problems in scope`.
+
+`--set` picks from a [set](#cstudy-set), in the set's order: an attempt in progress there first, then the first entry that isn't passed, then a due review from the set ([selection](progress-and-scheduling.md#cstudy-next-selection)). It searches every track unless `--track` narrows it, and the other filters still apply. An unknown set exits 3.
+
+```text
+new     url-shortener  (medium · system-design)  next in backend-loop, 2 of 3
+start   cstudy start url-shortener
+set     backend-loop  1 of 3 passed
+```
+
+With nothing left it says why: `backend-loop is finished: 3 of 3 passed and no review is due`; `backend-loop is empty: add problems with cstudy set add backend-loop <slug>`; `nothing in backend-loop is in the catalog: see cstudy set show backend-loop`. A review picked after every entry passed reads `set     backend-loop  finished: 3 of 3 passed`. When a filter or the selected JDK is what left nothing, the messages above apply instead.
 
 ```text
 review  merge-intervals  (medium · intervals)  overdue 3d, interval 7d
@@ -1002,17 +1013,17 @@ also    two-sum (python) · url-shortener
 
 The scope's filters apply to the open attempts as to the other picks: an attempt on a problem outside them, or that the [selected JDK](#the-selected-jdk) cannot run, is not offered. `--start` resumes the attempt.
 
-`--json` prints the pick as one document instead: `{"pick": "resume", "review" or "new", "slug", "title", "kind", "difficulty", "group", "reason", "language", "start"}`, and for a resume also `attempt_id` and `also_open` (the other attempts in progress, each `{"attempt_id", "slug", "language"}`, empty when there is none), where `kind` is as in [`cstudy list --json`](#cstudy-list) (`item` for an item), `group` the pick's [weakness group](progress-and-scheduling.md#weakness-score) (the primary pattern of a `dsa` problem, else the track), `reason` the text after the parentheses (`overdue 3d, interval 7d`), `language` the language `--start` would use (null for an item) and `start` the command of the `start` line; with nothing to pick, `{"pick": null, "message": ...}` with the text the report prints. `--json` with `--start` is a usage error (exit 3).
+`--json` prints the pick as one document instead: `{"pick": "resume", "review" or "new", "slug", "title", "kind", "difficulty", "group", "reason", "language", "start"}`, and for a resume also `attempt_id` and `also_open` (the other attempts in progress, each `{"attempt_id", "slug", "language"}`, empty when there is none), where `kind` is as in [`cstudy list --json`](#cstudy-list) (`item` for an item), `group` the pick's [weakness group](progress-and-scheduling.md#weakness-score) (the primary pattern of a `dsa` problem, else the track), `reason` the text after the parentheses (`overdue 3d, interval 7d`), `language` the language `--start` would use (null for an item) and `start` the command of the `start` line; with nothing to pick, `{"pick": null, "message": ...}` with the text the report prints. Under `--set` the document also holds `set`, `{"name", "passed", "total", "finished"}`, `finished` true once every entry is passed, and the entry the set's order chose has `pick` `new`, with a `reason` of `next in backend-loop, 2 of 3`. `--json` with `--start` is a usage error (exit 3).
 
 ## cstudy list
 
 ```text
-cstudy list [--track T] [--kind K] [--pattern P] [--difficulty D] [--status S] [--content draft|ready] [--lang L] [--domain D] [--role R] [--scope S] [--json]
+cstudy list [--set NAME] [--track T] [--kind K] [--pattern P] [--difficulty D] [--status S] [--content draft|ready] [--lang L] [--domain D] [--role R] [--scope S] [--json]
 ```
 
-`--status`: `new`, `in_progress` (an attempt is open, which comes ahead of every other status; `in-progress` works too), `attempted`, `passed`, `due`, `mastered` (definitions in [progress-and-scheduling](progress-and-scheduling.md#problem-status)). The table writes the status in words, `in progress` for `in_progress`, as `cstudy history` does in its first line; `--json`, the API and the web route keep the value `in_progress`. `--kind`: `function`, `design`, `progressive`, `concurrent`, `project`, or `item` for the non-autograded items. `--lang` filters to problems whose references cover that language. `--domain` and `--role` list the entries that list that [domain or job role](content.md#labels), as `--pattern` does for a pattern: each is one value that matches any listed value, and a value no entry lists finds nothing. `--scope` is `function`, `project` or `system`. The three combine with each other and with the other filters by AND, and keep the items, which carry the labels; a problem of your own that leaves its labels out matches none that is set. Non-autograded items follow the problems, ordered by track, `order` and slug, with `-` for the id and the references and their track in the pattern column; `--pattern` and `--lang` leave them out, and `--kind` other than `item` leaves them out. The list shows every problem whatever the [selected JDK](#the-selected-jdk): in the `REFS` column `java!` and `kt!` mark a language that the JDK cannot run for that problem, and one footer line names the marked languages, the JDK and the reason (`! java, kt: not run on JDK 27 (JAVA_HOME): cstudy supports JDK 21 to 26`; a JDK of the supported range that only some problems' own `jdk` ranges exclude, `! java, kt: not run on JDK 23 (JAVA_HOME): outside the JDK range the problem declares`; with no JDK, `! java, kt: no JDK was found`; with a `JAVA_HOME` that holds none, `! java, kt: JAVA_HOME (/opt/jdk) holds no JDK`). Without a mark there is no footer.
+`--status`: `new`, `in_progress` (an attempt is open, which comes ahead of every other status; `in-progress` works too), `attempted`, `passed`, `due`, `mastered` (definitions in [progress-and-scheduling](progress-and-scheduling.md#problem-status)). The table writes the status in words, `in progress` for `in_progress`, as `cstudy history` does in its first line; `--json`, the API and the web route keep the value `in_progress`. `--kind`: `function`, `design`, `progressive`, `concurrent`, `project`, or `item` for the non-autograded items. `--lang` filters to problems whose references cover that language. `--domain` and `--role` list the entries that list that [domain or job role](content.md#labels), as `--pattern` does for a pattern: each is one value that matches any listed value, and a value no entry lists finds nothing. `--scope` is `function`, `project` or `system`. The three combine with each other and with the other filters by AND, and keep the items, which carry the labels; a problem of your own that leaves its labels out matches none that is set. Non-autograded items follow the problems, ordered by track, `order` and slug, with `-` for the id and the references and their track in the pattern column; `--pattern` and `--lang` leave them out, and `--kind` other than `item` leaves them out. The list shows every problem whatever the [selected JDK](#the-selected-jdk): in the `REFS` column `java!` and `kt!` mark a language that the JDK cannot run for that problem, and one footer line names the marked languages, the JDK and the reason (`! java, kt: not run on JDK 27 (JAVA_HOME): cstudy supports JDK 21 to 26`; a JDK of the supported range that only some problems' own `jdk` ranges exclude, `! java, kt: not run on JDK 23 (JAVA_HOME): outside the JDK range the problem declares`; with no JDK, `! java, kt: no JDK was found`; with a `JAVA_HOME` that holds none, `! java, kt: JAVA_HOME (/opt/jdk) holds no JDK`). Without a mark there is no footer. `--set` lists the rows of a [set](#cstudy-set), problems and items together in the set's order, and combines with the other filters by AND; it needs a workspace, an unknown set exits 3, and one footer line names the slugs the catalog no longer has (`missing from the catalog: old-problem`).
 
-`--json` prints the same rows as one document, problems then items: `{"today": "2026-10-24", "entries": [...]}`, each entry with `id` (null for an item), `slug`, `title`, `track`, `kind` (`item` for an item), `difficulty`, `patterns`, `domains` and `job_roles` (lists, empty for a problem of your own that leaves them out), `scope` (null likewise), `languages` (the reference languages, empty for an item), `content` (`draft` or `ready`), `source` (`catalog`, or `workspace` for [your own problems](installation-and-workspaces.md#your-own-problems)), `status` (one of the `--status` values, `in_progress` included), `due_on` (null without a schedule row) and `in_progress` (each attempt in progress of the slug: `attempt_id`, `language`, `mode`) and `jdk`: the problem's effective range, `{"min": 21, "max": 26}`, or null for an item and for a problem that lists neither Java nor Kotlin. The document also holds `selected_jdk`, the [selected JDK](#the-selected-jdk) as `{"version": "26.0.1", "feature": 26, "source": "JAVA_HOME", "supported": true}` (`source`: `JAVA_HOME` or `PATH`; `supported`: the feature release lies in the supported range), or null when no JDK is found. A consumer decides from these fields whether Java and Kotlin can run. Exit 0.
+`--json` prints the same rows as one document, problems then items: `{"today": "2026-10-24", "entries": [...]}`, each entry with `id` (null for an item), `slug`, `title`, `track`, `kind` (`item` for an item), `difficulty`, `patterns`, `domains` and `job_roles` (lists, empty for a problem of your own that leaves them out), `scope` (null likewise), `languages` (the reference languages, empty for an item), `content` (`draft` or `ready`), `source` (`catalog`, or `workspace` for [your own problems](installation-and-workspaces.md#your-own-problems)), `status` (one of the `--status` values, `in_progress` included), `due_on` (null without a schedule row) and `in_progress` (each attempt in progress of the slug: `attempt_id`, `language`, `mode`) and `jdk`: the problem's effective range, `{"min": 21, "max": 26}`, or null for an item and for a problem that lists neither Java nor Kotlin. The document also holds `selected_jdk`, the [selected JDK](#the-selected-jdk) as `{"version": "26.0.1", "feature": 26, "source": "JAVA_HOME", "supported": true}` (`source`: `JAVA_HOME` or `PATH`; `supported`: the feature release lies in the supported range), or null when no JDK is found. A consumer decides from these fields whether Java and Kotlin can run. Under `--set` the document also holds `set`, `{"name", "missing"}`, `missing` the slugs the catalog no longer has. Exit 0.
 
 ```text
 ID    SLUG              DIFF    PATTERN          STATUS       DUE         REFS
@@ -1028,6 +1039,56 @@ On JDK 27, the same list marks the languages and adds its footer:
 0014  koko-eating-...   medium  binary-search    due          2026-10-21  py java!
 ! java, kt: not run on JDK 27 (JAVA_HOME): cstudy supports JDK 21 to 26
 ```
+
+## cstudy set
+
+```text
+cstudy set list [--json]
+cstudy set show <name> [--json]
+cstudy set create <name> [--description TEXT]
+cstudy set add <name> <slug>...
+cstudy set remove <name> <slug>...
+cstudy set move <name> <slug> <position>
+cstudy set rename <name> <new-name>
+cstudy set delete <name> [--yes]
+```
+
+Your own named lists of problems and items, in the order you put them, so you study from a list without searching for it ([ADR 0023](../decisions/0023-problem-sets.md)). They live in [`sets.yaml`](installation-and-workspaces.md#layout) at the workspace root, which `cstudy` makes at the first write; you may edit it by hand and commit it. A problem can be in several sets. [`cstudy list --set`](#cstudy-list) and [`cstudy next --set`](#cstudy-next) use one, and the [Sets view](web-ui.md#sets-view) of the page shows the same rows in the same order. Every subcommand needs a workspace.
+
+| Subcommand | Does | Says |
+|------------|------|------|
+| `list` | Each set in the file's order, with passed of total | `backend-loop  1 of 3 passed · 1 missing  The backend loop on the 12th`; with none, `no sets yet: create one with cstudy set create <name>` |
+| `show <name>` | The set's rows, in its order, with what `cstudy list` shows of each and a `missing` row for a slug the catalog no longer has | The heading, the counts, the rows and `next    cstudy next --set <name>` |
+| `create <name>` | A new, empty set | `created backend-loop` and `next    cstudy set add backend-loop <slug>` |
+| `add <name> <slug>...` | Appends the slugs, in the order given | `added two-sum to backend-loop`, and for a slug already there `two-sum is already in backend-loop`, which changes nothing and exits 0 |
+| `remove <name> <slug>...` | Takes the slugs out; a missing slug can be removed | `removed two-sum from backend-loop`, and for a slug not there `two-sum is not in backend-loop`, which changes nothing and exits 0 |
+| `move <name> <slug> <position>` | Puts the slug at the position, from 1 | `moved two-sum to 2 of 3 in backend-loop` |
+| `rename <name> <new-name>` | Changes the name, keeping the rows | `renamed backend-loop to platform-loop` |
+| `delete <name>` | Deletes the set, after a question; progress stays | `deleted backend-loop`; `--yes` does not ask |
+
+```text
+$ cstudy set show backend-loop
+backend-loop  The backend loop on the 12th
+1 of 2 passed · 1 missing
+#   ID    SLUG              DIFF    PATTERN          STATUS       DUE         REFS
+1   0001  two-sum           easy    arrays-hashing   passed       2026-11-09  py ts java kt go rs
+2   -     url-shortener     medium  system-design    new          -           -
+3   -     old-problem       -       -                missing      -           -
+next    cstudy next --set backend-loop
+```
+
+| Case | Result |
+|------|--------|
+| A name that is not a kebab-case slug | `invalid set name "Backend Loop": use lowercase letters, digits and hyphens, starting with a letter, such as backend-loop`, exit 3 |
+| `create` or `rename` to a name that exists | `set backend-loop already exists`, exit 3; nothing merges |
+| A set that does not exist | `unknown set "backend-lop"; your sets: backend-loop`, or `unknown set "backend-loop"; create it with cstudy set create backend-loop`, exit 3 |
+| `add` of a slug that is in no catalog | `unknown problem "two-summ"; did you mean two-sum?`, exit 3, and none of the slugs is added |
+| `move` outside the list, or of a slug not in it | `position 9 is outside backend-loop, which holds 3`, or `two-sum is not in backend-loop`, exit 3 |
+| `sets.yaml` does not parse or is invalid | `sets.yaml: <what is wrong>`, exit 4, in every command that reads it. It is never overwritten; `cstudy list` and `cstudy next` without `--set` do not read it |
+| A change the writer can't make and keep the file as written | `sets.yaml: cstudy can't make this change and keep the file as you wrote it, so it wrote nothing; edit the file by hand`, exit 4 |
+| `sets.yaml` is a symbolic link | Read through it; a change is refused with `sets.yaml: it is a symbolic link, so cstudy won't write through it`, exit 4 |
+
+`--json` of `list` prints `{"sets": [{"name", "description", "slugs", "passed", "total", "missing"}]}`: `slugs` every slug in the set's order, `missing` those the catalog does not have, `total` the others, and `passed` those of them with a passed attempt, whatever the review schedule says now. `--json` of `show` prints `{"name", "description", "today", "passed", "total", "missing", "rows": [{"position", "slug", "passed", "missing", "entry"}]}`, each `entry` an entry of [`cstudy list --json`](#cstudy-list), or null for a missing slug.
 
 ## cstudy show
 
@@ -1284,7 +1345,7 @@ Neither needs a workspace, and both find the file as every command does ([Config
 cstudy reset [--files] [--archive] [--yes]
 ```
 
-Deletes what you have practised in this workspace, as if you had just run `cstudy init`, so you can start again ([ADR 0022](../decisions/0022-settings-and-reset.md)). It prints what will go, with counts, then what stays, then `This can't be undone.` and asks you to type `reset`. [What each part covers](installation-and-workspaces.md#what-cstudy-reset-deletes).
+Deletes what you have practised in this workspace, as if you had just run `cstudy init`, so you can start again ([ADR 0022](../decisions/0022-settings-and-reset.md)). It prints what will go, with counts, then what stays, your [sets](#cstudy-set) among it, then `This can't be undone.` and asks you to type `reset`. [What each part covers](installation-and-workspaces.md#what-cstudy-reset-deletes).
 
 | Option | Deletes as well |
 |--------|-----------------|

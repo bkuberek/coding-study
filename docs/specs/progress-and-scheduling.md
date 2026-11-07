@@ -243,6 +243,23 @@ Deterministic: the same database, content, date and flags give the same answer.
 
 The printed reason names the step, the overdue days or the weakness value.
 
+### With `--set`
+
+[`cstudy next --set`](cli.md#cstudy-next) picks from a [set](cli.md#cstudy-set), in the set's order, since a hand-picked list is a plan ([ADR 0023](../decisions/0023-problem-sets.md)).
+
+| Step | Pick |
+|------|------|
+| 0: resume (skipped with `--new` or `--review`) | As above, among the attempts in progress on the set's entries; the others in progress there are listed after it |
+| 1: the set's order (skipped with `--review`) | The first entry in the set's order that is in scope, has no attempt in progress and has no passed attempt. An entry with only failed attempts isn't passed, so it stays the pick until it passes or moves |
+| 2: reviews (skipped with `--new`) | The due entries of the set, ranked as in step 1 above |
+| 3 | The set is finished, or empty, or the scope holds nothing to pick: see [the messages](cli.md#cstudy-next) |
+
+| Rule | Detail |
+|------|--------|
+| Scope | As above, but for two things: the tracks are every track unless `--track` is given, and an entry of the set counts as `ready` whatever its `status`, as a problem of your own you marked `draft` and chose stays chosen. A slug the catalog no longer has is left out |
+| Weakness | Unchanged: the score of a group is over the same problems as without `--set`, so a set changes no score and the priority of a review reads the same |
+| Passed | The attempts decide, not the status: an entry with a passed attempt counts as passed while it is `due` or has a review open |
+
 ## Statistics
 
 What `cstudy stats` reports ([cli](cli.md#cstudy-stats)). The content is every `ready` problem and item of every track, the content `cstudy next` can pick, so a group's weakness under `--by pattern` equals the score `cstudy next` uses for it with the default filters. Attempts on other slugs (draft or removed content) count only in the totals. Dates are local calendar dates from the injected `Clock`; "finished" means status `passed` or `failed`.

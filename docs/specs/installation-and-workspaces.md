@@ -82,6 +82,7 @@ created_with = "0.1.0"
   projects/               # one folder per started project problem: projects/<slug>/ (tracked)
   notes/                  # answers to non-autograded items
   problems/               # your own problems, overlaid on the catalog
+  sets.yaml               # your problem sets, written by cstudy set or by hand (tracked; made at the first write)
   .archive/               # previous attempts (tracked)
   .statements/            # rendered statements (ignored)
   progress.db             # SQLite, created on first use (ignored; cstudy export backs it up)
@@ -111,6 +112,7 @@ Every path `cstudy` prints for a workspace file is relative to the workspace roo
 | `.cs/runtime/`, `.cs/lsp/`, `python/.venv`, `node_modules/`, the Gradle wrapper | Toolchains and language servers | Keeps: `cstudy doctor --fix` would have to install them again |
 | `.cs/build/`, `.cs/cases/`, `.cs/calibration/`, the index | Caches of the content | Keeps: they hold nothing of yours and cost time to build |
 | `problems/` | Your own problems | Keeps: you wrote them; they are not practice |
+| `sets.yaml` | Your [problem sets](cli.md#cstudy-set) | Keeps, with `--files` and with `--archive`: a set is what you plan to do, not what you did |
 | `progress-export.json` | Your backup | Keeps |
 
 A project folder that stays keeps its manifest, so a later `cstudy start` copies only the starter files it lacks. Kept practice files stay as they are, too: `cstudy start` reopens them.
@@ -136,7 +138,7 @@ Creates a workspace in `PATH` (default: `--workspace`, then `CSTUDY_WORKSPACE`, 
 
 `rust/Cargo.toml` is for the editor: each problem file is an `[[example]]` with `crate-type = ["lib"]`, a crate of its own that rust-analyzer checks, with `autoexamples = false` so only listed files count and `cs_support`, `rust_decimal` and `chrono` as dev-dependencies; `rust/.cargo/config.toml` resolves crates.io from the runtime's vendored crates, so rust-analyzer needs no network. `cstudy start --lang rust` appends the problem's entry when the manifest has none for its name or file, and leaves a manifest that does not parse alone. `lib.rs` is empty: a package needs one target before the first problem starts. `cstudy` builds solutions elsewhere ([runners](runners.md#rust-build-details)), so an edit to the manifest never affects a run.
 
-The workspace `.gitignore` ignores `/.cs/*` except `/.cs/workspace.toml` and `/.cs/ide.json`, `/.statements/`, `progress.db*`, `node_modules/`, `.venv/`, `build/`, `.gradle/`, `.kotlin/`, `target/`, `__pycache__/`, `.ruff_cache/`, `projects/*/.venv` and `projects/*/uv.lock` ([project folders](#project-folders): the `.venv` of a project is a symbolic link, which the pattern `.venv/` with its trailing slash does not match), `projects/*/go.work` and `projects/*/go.work.sum`, `projects/*/Cargo.lock`, which the native `cargo test` writes, and IntelliJ's per-user files (`.idea/workspace.xml`, `tasks.xml`, `usage.statistics.xml`, `dictionaries/`, `shelf/`, `libraries/`, `modules.xml`, `dataSources*`, `contentModel.xml`, `*.iml`). Practice files, project folders, notes, `.archive/`, your problems and the IDE files stay tracked, and you commit them when you choose ([PRD Q3](../prd.md#8-open-questions)).
+The workspace `.gitignore` ignores `/.cs/*` except `/.cs/workspace.toml` and `/.cs/ide.json`, `/.statements/`, `progress.db*`, `node_modules/`, `.venv/`, `build/`, `.gradle/`, `.kotlin/`, `target/`, `__pycache__/`, `.ruff_cache/`, `projects/*/.venv` and `projects/*/uv.lock` ([project folders](#project-folders): the `.venv` of a project is a symbolic link, which the pattern `.venv/` with its trailing slash does not match), `projects/*/go.work` and `projects/*/go.work.sum`, `projects/*/Cargo.lock`, which the native `cargo test` writes, and IntelliJ's per-user files (`.idea/workspace.xml`, `tasks.xml`, `usage.statistics.xml`, `dictionaries/`, `shelf/`, `libraries/`, `modules.xml`, `dataSources*`, `contentModel.xml`, `*.iml`). Practice files, project folders, notes, `.archive/`, your problems, `sets.yaml` and the IDE files stay tracked, and you commit them when you choose ([PRD Q3](../prd.md#8-open-questions)).
 
 ## Runner runtime
 
