@@ -87,8 +87,12 @@ sets:
   data-loop:
     problems: []
 """
+FILTERED_PROBLEMS = "#/?lang=typescript&domain=backend&scope=project&search=bank"
 VIEWS = (
     "problems",
+    "problems with active filters",
+    "problems with more open",
+    "problems with the columns menu open",
     "problem",
     "attempt",
     "file menu",
@@ -448,6 +452,9 @@ def _refused_start(page: Any) -> None:
 def _tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
     """Each view, and how to show it from the one before."""
     yield "problems", lambda: None
+    yield "problems with active filters", lambda: _open(page, FILTERED_PROBLEMS, ".filter-chip")
+    yield "problems with more open", lambda: _problems_menu(page, ".filter-more")
+    yield "problems with the columns menu open", lambda: _problems_menu(page, ".columns-menu")
     yield "problem", lambda: _open(page, f"#/problems/{PROJECT}", ".statement-pane .prose")
     yield "attempt", lambda: _attempt_with_results(page)
     yield "file menu", lambda: _file_menu(page)
@@ -470,10 +477,18 @@ def _tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
     yield "mock running", lambda: _mock_running(page)
 
 
+def _problems_menu(page: Any, menu: str) -> None:
+    _open(page, FILTERED_PROBLEMS, ".filter-chip")
+    page.click(f"{menu} > summary")
+    page.wait_for_selector(f"{menu} .filter-panel")
+
+
 def _set_dialog(page: Any) -> None:
     _open(page, "#/", "table.problems tbody tr")
     page.click(".columns-menu > summary")
     page.check("#column-sets")
+    page.wait_for_selector("table.problems .set-control")
+    page.keyboard.press("Escape")
     page.click("table.problems .set-control")
     page.wait_for_selector(f"{SHEET} input[type=checkbox]")
 

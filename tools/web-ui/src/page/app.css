@@ -1181,8 +1181,10 @@ input[type="radio"] {
 
 @media (max-width: 1100px) {
   /* A table wider than the window scrolls in its own box, not the page, and the box is no taller
-     than the window: its header sticks to the top of the box. */
+     than the window: its header sticks to the top of the box. The box is positioned, so text for
+     assistive technology far along a row stays inside it and does not widen the page. */
   .table-scroll {
+    position: relative;
     max-height: calc(100vh - var(--bar) - var(--status) - 40px);
     overflow: auto;
     scroll-padding-top: var(--bar);

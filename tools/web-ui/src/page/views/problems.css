@@ -262,6 +262,7 @@
 }
 
 .filter-chip {
+  min-height: 24px;
   padding: 1px 8px;
   border-color: var(--accent);
   border-radius: 2px;
@@ -339,6 +340,7 @@ tr:hover > td > .problem-link {
 /* More columns than the table starts with can outgrow a wide window too, so the table scrolls in a
    box of its own, as it does in every narrower window (app.css). */
 .has-more-columns {
+  position: relative;
   max-height: calc(100vh - var(--bar) - var(--status) - 40px);
   overflow: auto;
   scroll-padding-top: var(--bar);

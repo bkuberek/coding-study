@@ -278,7 +278,7 @@ export function setView(context: PageContext, name: string): Cleanup {
       field,
       h("button", { type: "submit", class: "button", title: `cstudy set add ${found.name} <slug>` }, "Add"),
       issue,
-      h("p", { class: "quiet" }, "Or add from the sets column of ", h("a", { href: "#/" }, "the Problems view"), ", which its columns menu turns on."),
+      h("p", { class: "quiet" }, "Or use ", h("a", { href: "#/" }, "the Problems view"), "'s sets column."),
     );
     form.addEventListener("submit", (event) => {
       event.preventDefault();
