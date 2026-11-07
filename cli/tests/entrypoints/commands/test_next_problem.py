@@ -257,3 +257,94 @@ def test_start_never_starts_a_problem_the_jdk_cannot_run(environment, monkeypatc
     result = invoke("--lang", "java", "--start")
     assert result.exit_code == ExitCode.SUCCESS
     assert environment.progress.active_attempt() is None
+
+
+def open_attempt(environment, slug: str, hours_ago: int = 0, language=Language.PYTHON):
+    started = NOW - timedelta(hours=hours_ago)
+    return environment.progress.add_attempt(NewAttempt(slug, language, AttemptMode.NEW, started))
+
+
+def test_an_attempt_in_progress_is_resumed_before_a_new_problem(environment):
+    open_attempt(environment, "lru-cache")
+    assert invoke().output.splitlines() == [
+        "resume  lru-cache  (medium · linked-list)  attempt 1 in python, last used 2026-10-24",
+        "start   cstudy start lru-cache --lang python",
+    ]
+
+
+def test_an_attempt_in_progress_is_resumed_before_a_due_review(environment):
+    schedule_review(environment, "lru-cache", overdue_days=3)
+    open_attempt(environment, "two-sum")
+    assert invoke().output.splitlines()[0].startswith("resume  two-sum")
+
+
+def test_the_attempt_used_most_recently_is_the_one_resumed(environment):
+    open_attempt(environment, "two-sum", hours_ago=5)
+    open_attempt(environment, "lru-cache", hours_ago=1)
+    assert invoke().output.splitlines()[0].startswith("resume  lru-cache")
+
+
+def test_the_other_attempts_in_progress_are_named_on_a_line_of_their_own(environment):
+    open_attempt(environment, "two-sum", hours_ago=5)
+    open_attempt(environment, "lru-cache", hours_ago=1)
+    assert invoke().output.splitlines()[2] == "also    two-sum (python)"
+
+
+def test_one_attempt_in_progress_names_no_others(environment):
+    open_attempt(environment, "two-sum")
+    assert len(invoke().output.splitlines()) == 2
+
+
+def test_the_start_line_of_a_resume_names_the_language_of_the_attempt(environment):
+    open_attempt(environment, "two-sum", language=Language.KOTLIN)
+    assert invoke().output.splitlines()[1] == "start   cstudy start two-sum --lang kotlin"
+
+
+def test_new_forces_a_new_problem_with_an_attempt_in_progress(environment):
+    open_attempt(environment, "two-sum")
+    assert invoke("--new").output.splitlines()[0].startswith("new     lru-cache")
+
+
+def test_review_forces_a_review_with_an_attempt_in_progress(environment):
+    schedule_review(environment, "lru-cache", overdue_days=3)
+    open_attempt(environment, "two-sum")
+    assert invoke("--review").output.splitlines()[0].startswith("review  lru-cache")
+
+
+def test_start_resumes_the_attempt_instead_of_beginning_another(environment):
+    first = open_attempt(environment, "two-sum")
+    invoke("--start")
+    assert [attempt.id for attempt in environment.progress.attempts_in_progress()] == [first.id]
+
+
+def test_json_describes_a_resume_with_its_attempt_and_the_others(environment):
+    open_attempt(environment, "two-sum", hours_ago=5)
+    newest = open_attempt(environment, "lru-cache", hours_ago=1)
+    assert document() == {
+        "pick": "resume",
+        "slug": "lru-cache",
+        "title": "LRU Cache",
+        "kind": "design",
+        "difficulty": "medium",
+        "group": "linked-list",
+        "reason": "attempt 2 in python, last used 2026-10-24",
+        "language": "python",
+        "start": "cstudy start lru-cache --lang python",
+        "attempt_id": newest.id,
+        "also_open": [{"attempt_id": 1, "slug": "two-sum", "language": "python"}],
+    }
+
+
+def test_json_of_a_new_pick_gains_no_field_with_an_attempt_forced_aside(environment):
+    open_attempt(environment, "two-sum")
+    assert set(document("--new")) == {
+        "pick",
+        "slug",
+        "title",
+        "kind",
+        "difficulty",
+        "group",
+        "reason",
+        "language",
+        "start",
+    }

@@ -19,7 +19,13 @@ from coding_study.application.start_attempt import StartRequest
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import UsageError
 from coding_study.domain.labels import LabelFilter
-from coding_study.domain.next_selection import NewPick, NextPick, ReviewPick
+from coding_study.domain.next_selection import (
+    NewPick,
+    NextPick,
+    OpenAttempt,
+    ResumePick,
+    ReviewPick,
+)
 from coding_study.domain.problem import Difficulty, Language, Track
 from coding_study.domain.taxonomy import Scope
 from coding_study.entrypoints.commands.start import open_in_editor, start_and_report
@@ -32,6 +38,7 @@ NOTHING_FOR_THE_JDK = "nothing to pick: "
 """Before the reason the selected JDK gives, when it left nothing to pick."""
 REVIEW_PICK = "review"
 NEW_PICK = "new"
+RESUME_PICK = "resume"
 
 
 def register(app: typer.Typer) -> None:
@@ -98,6 +105,8 @@ def next_command(
     slug = recommendation.pick.candidate.slug
     if not start:
         output.print(_line("start", _start_command(slug, recommendation.language)))
+        if isinstance(recommendation.pick, ResumePick) and recommendation.pick.others:
+            output.print(_line("also", _also_open(recommendation.pick.others)))
         return
     files = start_and_report(output, environment, StartRequest(slug, recommendation.language))
     if environment.config.open_on_start:
@@ -118,7 +127,7 @@ def next_document(recommendation: Recommendation | NothingToPick) -> dict[str, J
     picked = recommendation.pick
     candidate = picked.candidate
     language = recommendation.language
-    return {
+    document: dict[str, JsonValue] = {
         "pick": _pick_label(picked),
         "slug": candidate.slug,
         "title": recommendation.title,
@@ -129,6 +138,26 @@ def next_document(recommendation: Recommendation | NothingToPick) -> dict[str, J
         "language": language.value if language else None,
         "start": _start_command(candidate.slug, language),
     }
+    if isinstance(picked, ResumePick):
+        also_open: list[JsonValue] = [_open_value(other) for other in picked.others]
+        document |= {"attempt_id": picked.attempt.attempt_id, "also_open": also_open}
+    return document
+
+
+def _open_value(attempt: OpenAttempt) -> JsonValue:
+    return {
+        "attempt_id": attempt.attempt_id,
+        "slug": attempt.candidate.slug,
+        "language": attempt.language.value if attempt.language else None,
+    }
+
+
+def _also_open(others: tuple[OpenAttempt, ...]) -> str:
+    """`two-sum (python) · url-shortener`: the other attempts in progress."""
+    return " · ".join(
+        f"{other.candidate.slug} ({other.language})" if other.language else other.candidate.slug
+        for other in others
+    )
 
 
 def _start_command(slug: str, language: Language | None) -> str:
@@ -137,24 +166,33 @@ def _start_command(slug: str, language: Language | None) -> str:
     return command if language is None else f"{command} --lang {language}"
 
 
-def _pick_line(picked: NextPick) -> Text:
+def _pick_line(picked: NextPick | ResumePick) -> Text:
     return _line(_pick_label(picked), pick_summary(picked))
 
 
-def _pick_label(picked: NextPick) -> str:
-    return REVIEW_PICK if isinstance(picked, ReviewPick) else NEW_PICK
+def _pick_label(picked: NextPick | ResumePick) -> str:
+    match picked:
+        case ResumePick():
+            return RESUME_PICK
+        case ReviewPick():
+            return REVIEW_PICK
+        case NewPick():
+            return NEW_PICK
 
 
-def pick_summary(picked: NextPick) -> str:
+def pick_summary(picked: NextPick | ResumePick) -> str:
     """`koko-eating-bananas  (medium · binary-search)  weakest pattern: binary-search (0.75)`."""
     candidate = picked.candidate
     topic = candidate.patterns[0] if candidate.patterns else candidate.track
     return f"{candidate.slug}  ({candidate.difficulty} · {topic})  {pick_reason(picked)}"
 
 
-def pick_reason(picked: NextPick) -> str:
+def pick_reason(picked: NextPick | ResumePick) -> str:
     """The text after the parentheses: `overdue 3d, interval 7d`."""
     match picked:
+        case ResumePick(attempt=OpenAttempt(attempt_id=number, language=language, used_on=used_on)):
+            where = f" in {language}" if language else ""
+            return f"attempt {number}{where}, last used {used_on.isoformat()}"
         case ReviewPick(overdue_days=0, interval_days=interval):
             return f"due today, interval {interval}d"
         case ReviewPick(overdue_days=overdue, interval_days=interval):

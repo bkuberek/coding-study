@@ -12,12 +12,13 @@ from coding_study.application.next_problem import (
     next_source,
     recommend,
 )
-from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt
+from coding_study.domain.attempts import AttemptMode, AttemptStatus, Grade, NewAttempt, RunRecord
 from coding_study.domain.config import Config, NextSettings
 from coding_study.domain.errors import UsageError
 from coding_study.domain.items import EntryKind
+from coding_study.domain.judging import Tally
 from coding_study.domain.labels import LabelFilter
-from coding_study.domain.next_selection import NewPick, NextSource, ReviewPick
+from coding_study.domain.next_selection import NewPick, NextSource, ResumePick, ReviewPick
 from coding_study.domain.problem import Language, Track
 from coding_study.domain.scheduling import ReviewState, ScheduleEntry
 from tests.fakes import NOW, make_environment
@@ -180,3 +181,95 @@ def test_new_and_review_choose_the_source(new, review, source):
 def test_new_and_review_together_are_a_usage_error():
     with pytest.raises(UsageError, match="--new and --review exclude each other"):
         next_source(True, True)
+
+
+def open_attempt(environment, slug: str, language: Language = Language.PYTHON, started=NOW):
+    return environment.progress.add_attempt(NewAttempt(slug, language, AttemptMode.NEW, started))
+
+
+def recommended(environment, **fields) -> Recommendation:
+    found = recommend(environment, NextRequest(**fields))
+    assert isinstance(found, Recommendation)
+    return found
+
+
+def test_an_attempt_in_progress_is_recommended_before_a_new_problem(environment):
+    attempt = open_attempt(environment, "lru-cache")
+    found = recommended(environment)
+    assert isinstance(found.pick, ResumePick)
+    assert (found.pick.candidate.slug, found.pick.attempt.attempt_id) == ("lru-cache", attempt.id)
+
+
+def test_an_attempt_in_progress_is_recommended_before_a_due_review(environment):
+    finish(environment, "invert-binary-tree", Grade.OK, due_in_days=-2)
+    open_attempt(environment, "lru-cache")
+    assert isinstance(recommended(environment).pick, ResumePick)
+
+
+def test_a_resume_names_its_title_kind_and_the_language_of_the_attempt(environment):
+    open_attempt(environment, "two-sum", Language.KOTLIN)
+    found = recommended(environment)
+    assert (found.title, found.kind, found.language) == (
+        "Two Sum",
+        EntryKind.FUNCTION,
+        Language.KOTLIN,
+    )
+
+
+def test_the_attempt_started_last_is_resumed(environment):
+    open_attempt(environment, "two-sum", started=NOW)
+    open_attempt(environment, "lru-cache", started=NOW + timedelta(hours=1))
+    found = recommended(environment)
+    assert isinstance(found.pick, ResumePick)
+    assert found.pick.candidate.slug == "lru-cache"
+
+
+def test_a_test_run_makes_an_attempt_the_one_used_last(environment):
+    earlier = open_attempt(environment, "two-sum", started=NOW)
+    open_attempt(environment, "lru-cache", started=NOW + timedelta(hours=1))
+    ran_at = NOW + timedelta(hours=2)
+    environment.progress.add_test_run(RunRecord(earlier.id, ran_at, "hash", Tally(1, 4), 10))
+    found = recommended(environment)
+    assert isinstance(found.pick, ResumePick)
+    assert (found.pick.candidate.slug, found.pick.attempt.used_at) == ("two-sum", ran_at)
+
+
+def test_the_other_attempts_in_progress_are_offered(environment):
+    open_attempt(environment, "two-sum", started=NOW)
+    open_attempt(environment, "lru-cache", started=NOW + timedelta(hours=1))
+    found = recommended(environment)
+    assert isinstance(found.pick, ResumePick)
+    assert [other.candidate.slug for other in found.pick.others] == ["two-sum"]
+
+
+def test_new_still_picks_a_new_problem_with_an_attempt_in_progress(environment):
+    open_attempt(environment, "two-sum")
+    found = recommended(environment, source=NextSource.NEW_ONLY)
+    assert isinstance(found.pick, NewPick)
+
+
+def test_review_still_picks_a_review_with_an_attempt_in_progress(environment):
+    finish(environment, "invert-binary-tree", Grade.OK, due_in_days=-2)
+    open_attempt(environment, "lru-cache")
+    found = recommended(environment, source=NextSource.REVIEWS_ONLY)
+    assert isinstance(found.pick, ReviewPick)
+
+
+def test_an_attempt_in_a_track_out_of_scope_is_not_recommended(environment):
+    open_attempt(environment, "lru-cache")
+    found = recommend(environment, NextRequest(tracks=(Track.PRACTICAL,)))
+    assert found == NothingToPick()
+
+
+def test_an_attempt_aborted_is_no_longer_recommended(environment):
+    attempt = open_attempt(environment, "lru-cache")
+    environment.progress.update_attempt(attempt.abandoned(NOW))
+    assert isinstance(recommended(environment).pick, NewPick)
+
+
+def test_an_item_in_progress_is_resumed_without_a_language(tmp_path, problems):
+    environment = make_environment(copy_repository(tmp_path, problems, FIXTURE_TRACKS))
+    environment.progress.add_attempt(NewAttempt("url-shortener", None, AttemptMode.NEW, NOW))
+    found = recommended(environment, tracks=(Track.SYSTEM_DESIGN,))
+    assert isinstance(found.pick, ResumePick)
+    assert (found.kind, found.language) == (EntryKind.ITEM, None)

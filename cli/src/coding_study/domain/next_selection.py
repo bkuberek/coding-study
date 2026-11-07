@@ -7,7 +7,7 @@ the flags, never on the order the rows arrive in. Every ordering below ends in a
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field, replace
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 from fractions import Fraction
 
@@ -211,6 +211,43 @@ class NewPick:
 
 
 type NextPick = ReviewPick | NewPick
+
+
+@dataclass(frozen=True, slots=True)
+class OpenAttempt:
+    """An attempt in progress, with the problem it works on."""
+
+    candidate: Candidate
+    attempt_id: int
+    language: Language | None
+    """None for an item."""
+    used_at: datetime
+    """The later of its start and its last test run."""
+    used_on: date
+    """`used_at` as the local date that the reason names."""
+
+
+@dataclass(frozen=True, slots=True)
+class ResumePick:
+    """Step 0, before reviews and new problems: the attempt in progress used most recently."""
+
+    attempt: OpenAttempt
+    others: tuple[OpenAttempt, ...] = ()
+    """The other attempts in progress in scope, the most recently used first."""
+
+    @property
+    def candidate(self) -> Candidate:
+        return self.attempt.candidate
+
+
+def pick_resume(attempts: Iterable[OpenAttempt], scope: NextScope) -> ResumePick | None:
+    """The attempt in progress used most recently among those in `scope`; a tie goes to the later
+    attempt. None when none is in progress there."""
+    in_scope = [attempt for attempt in attempts if scope.includes(attempt.candidate)]
+    ranked = sorted(
+        in_scope, key=lambda attempt: (attempt.used_at, attempt.attempt_id), reverse=True
+    )
+    return ResumePick(ranked[0], tuple(ranked[1:])) if ranked else None
 
 
 def pick_next(

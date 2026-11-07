@@ -22,7 +22,10 @@ from coding_study.domain.next_selection import (
     NextQuery,
     NextScope,
     NextSource,
+    OpenAttempt,
+    ResumePick,
     pick_next,
+    pick_resume,
 )
 from coding_study.domain.precedence import resolve_language
 from coding_study.domain.problem import Difficulty, Language, ProblemKind, ProblemMeta, Track
@@ -55,11 +58,12 @@ class NothingToPick:
 class Recommendation:
     """The pick with what `cstudy next --json` names beside it."""
 
-    pick: NextPick
+    pick: NextPick | ResumePick
     title: str
     kind: EntryKind
     language: Language | None
-    """The language `cstudy next --start` starts it in; None for an item."""
+    """The language `cstudy next --start` starts it in, which is the language of the attempt a
+    resume picks up; None for an item."""
 
 
 def next_source(new: bool, review: bool) -> NextSource:
@@ -143,9 +147,12 @@ def jdk_reason(
 
 
 def recommend(environment: Environment, request: NextRequest) -> Recommendation | NothingToPick:
-    """`next_problem`, with the pick's title, kind and start language, or why there is none."""
+    """What to practice: the attempt in progress used most recently, else `next_problem`'s pick
+    (`--new` and `--review` force theirs), with its title, kind and start language; or why there
+    is none."""
     selection = _selection(environment, request)
-    picked = selection.pick()
+    resumed = _resume(environment, selection) if request.source is NextSource.ANY else None
+    picked = resumed or selection.pick()
     if picked is None:
         return NothingToPick(_nothing_because_of_the_jdk(environment, selection))
     candidate = picked.candidate
@@ -154,7 +161,28 @@ def recommend(environment: Environment, request: NextRequest) -> Recommendation 
         return Recommendation(picked, item.title, EntryKind.ITEM, None)
     meta = environment.problems.load(candidate.slug).meta
     language = _problem_language(environment, meta, request.language)
+    if resumed is not None:
+        language = resumed.attempt.language or language
     return Recommendation(picked, meta.title, entry_kind(meta.kind), language)
+
+
+def _resume(environment: Environment, selection: _Selection) -> ResumePick | None:
+    """The attempt in progress used most recently, among those whose problem is in scope."""
+    by_slug = {candidate.slug: candidate for candidate in selection.candidates}
+    open_attempts = [
+        _open_attempt(environment, attempt, by_slug[attempt.slug])
+        for attempt in environment.progress.attempts_in_progress()
+        if attempt.slug in by_slug
+    ]
+    return pick_resume(open_attempts, selection.query.scope)
+
+
+def _open_attempt(environment: Environment, attempt: Attempt, candidate: Candidate) -> OpenAttempt:
+    """Used when it started, or when its last test ran if that came later."""
+    last_run = environment.progress.latest_test_run(attempt.id)
+    used_at = max(attempt.started_at, last_run.ran_at) if last_run else attempt.started_at
+    used_on = environment.clock.local_date(used_at)
+    return OpenAttempt(candidate, attempt.id, attempt.language, used_at, used_on)
 
 
 def _nothing_because_of_the_jdk(environment: Environment, selection: _Selection) -> str | None:

@@ -274,6 +274,25 @@ def test_the_next_pick_is_the_next_document(client, environment):
     assert client.get("/api/v1/next").json() == next_document(recommend(environment, NextRequest()))
 
 
+def test_the_next_pick_resumes_the_attempt_in_progress(client, environment):
+    attempt = start_attempt(environment, StartRequest("two-sum", Language.PYTHON)).attempt
+    found = client.get("/api/v1/next").json()
+    assert (found["pick"], found["slug"], found["attempt_id"], found["also_open"]) == (
+        "resume",
+        "two-sum",
+        attempt.id,
+        [],
+    )
+
+
+def test_new_on_the_next_pick_skips_the_attempt_in_progress(client, environment):
+    start_attempt(environment, StartRequest("two-sum", Language.PYTHON))
+    found = client.get("/api/v1/next?new=true").json()
+    forced = next_document(recommend(environment, NextRequest(source=NextSource.NEW_ONLY)))
+    assert found == forced
+    assert found["pick"] != "resume"
+
+
 def test_the_next_pick_takes_the_options_of_cstudy_next(client, environment):
     request = NextRequest(
         (Track.DSA, Track.SYSTEM_DESIGN),
