@@ -2,6 +2,37 @@
 
 <!-- version list -->
 
+## v0.21.0 (2026-11-07)
+
+### Documentation
+
+- Decide problem sets in ADR 0023, with their spec rows
+  ([`d0a504b`](https://github.com/bkuberek/coding-study/commit/d0a504b4720d04db14e160022c4a0b6031912155))
+
+- Tick the problem sets phase on the roadmap
+  ([`2623c4b`](https://github.com/bkuberek/coding-study/commit/2623c4b1d79b373a0d9d9b8eda5bc127a92af088))
+
+### Features
+
+- **sets**: Add cstudy set, and --set on cstudy list and cstudy next
+  ([`c8c5476`](https://github.com/bkuberek/coding-study/commit/c8c547645c244444f62a9e8b3d3300d4b4c00eee))
+
+- **sets**: Add the problem set model and the sets.yaml store that keeps hand edits
+  ([`1d8a348`](https://github.com/bkuberek/coding-study/commit/1d8a348dd353ad2e04505eac969bd40ff754d15a))
+
+- **sets**: Add the Sets view, the Set filter and the add-to-set control
+  ([`36a7a25`](https://github.com/bkuberek/coding-study/commit/36a7a25cf9db79835289420b0993ddc0032c513a))
+
+- **sets**: Refuse a sets.yaml that can't be read, and pin the new command group
+  ([`d940217`](https://github.com/bkuberek/coding-study/commit/d9402178ea0c4e6c06b0cf1dfe32f3c5cdb21b01))
+
+- **sets**: Say that cstudy reset keeps sets, and add sets to the guide and the README
+  ([`6858082`](https://github.com/bkuberek/coding-study/commit/68580829ff0f3eb3e45df17dbf178b409ab47183))
+
+- **sets**: Serve the sets on the web API under the page's write rules
+  ([`b5384ba`](https://github.com/bkuberek/coding-study/commit/b5384baa53b068d790705c3cdc17e023d635e678))
+
+
 ## v0.20.0 (2026-11-07)
 
 ### Documentation
