@@ -52,11 +52,13 @@ export class EditorFile {
     panel.replaceChildren(...nodes([this.#banner, generatedNote(document), this.host]));
   }
 
-  /** Connects the editor made in `host`. */
+  /** Connects the editor made in `host`. The editor takes keys while its language still loads,
+   * before it is connected, so an edit made by then is reported here. */
   attach(editor: Editor): void {
     this.#editor = editor;
     this.#saver = new FileSaver(this.#files, this.path, this.#sha256, editor);
     editor.onChange(() => this.#events.modified(editor.modified));
+    if (editor.modified) this.#events.modified(true);
   }
 
   get modified(): boolean {

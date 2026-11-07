@@ -1,7 +1,9 @@
 """A run tests what the editors show (docs/specs/web-ui.md#runs), in each engine of
 `tests/browsers.py`: Run tests, Submit and Bench first save every tab with unsaved edits, through
 the save the shortcut uses, and a tab with a conflict, or a file deleted on disk, stops the run and
-says why. Run on save runs once. Done, which grades the latest run, refuses unsaved edits.
+says why. The first edit is made before the file's language has loaded, as on a busy machine, and
+counts as unsaved all the same. Run on save runs once. Done, which grades the latest run, refuses
+unsaved edits.
 
 Playwright and its engines are set up as `tests/browsers.py` says; without them the test is
 skipped."""
@@ -52,7 +54,9 @@ SETTLE_MS = 800
 MARK_THE_SUMMARY_OLD = "selector => document.querySelector(selector)?.setAttribute('data-old', '')"
 """So the summary a run draws can be told from the last run's."""
 HIGHLIGHTED = f"{OPEN_EDITOR} .cm-line span"
-"""Drawn once the file's language applies, which is when the tab starts to follow its edits."""
+"""Drawn once the file's language applies."""
+LANGUAGE_CHUNK = "**/chunks/python-*.js"
+"""The Python grammar, which the page fetches the first time a tab shows a Python file."""
 RUNS_OF_THE_ATTEMPT = """async () => {
   const hash = location.hash.split("/").pop();
   const answer = await fetch(`/api/v1/runs?attempt_id=${hash}`);
@@ -137,8 +141,22 @@ def _open_the_project(page: Any, server: RunningServer) -> None:
     page.wait_for_selector("table.problems tbody tr")
     page.click(f"a.problem-link[href='#/problems/{PROJECT}']")
     page.click("a.button.primary")
-    page.click(FILE_BUTTON)
+    page.wait_for_selector(FILE_BUTTON)
+
+
+def _delete_the_colon_before_the_language_loads(page: Any) -> None:
+    """Opens the file with its language held back, as a busy machine is slow to fetch it, and
+    deletes the colon in the editor that shows before the language does."""
+    held: list[Any] = []
+    page.route(LANGUAGE_CHUNK, lambda route: held.append(route), times=1)
+    with page.expect_request(LANGUAGE_CHUNK):
+        page.click(FILE_BUTTON)
     page.wait_for_selector(OPEN_EDITOR)
+    _go_to_the_broken_line(page)
+    page.keyboard.press("Backspace")
+    for route in held:
+        route.continue_()
+    page.wait_for_selector(MODIFIED_TAB)
 
 
 def _go_to_the_broken_line(page: Any) -> None:
@@ -171,7 +189,7 @@ def _run_and_read(page: Any, button: str) -> str:
 
 
 def _a_test_saves_first(page: Any, file: Path, found: Seen) -> None:
-    _delete_the_colon(page)
+    _delete_the_colon_before_the_language_loads(page)
     found.test_summary = _run_and_read(page, RUN)
     found.test_saved_the_edit = "-> int\n" in file.read_text()
     found.test_cleared_the_mark = page.locator(SAVED_TAB).count() == 1
