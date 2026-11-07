@@ -235,7 +235,7 @@ The pilots are written with the next project problems.
 
 **Exit criteria.** A problem can be in two sets, a set's rows and order match between the CLI and the page, `cstudy reset` keeps sets with or without `--files`, and a hand-edited invalid file gives a clear error and is never overwritten.
 
-- [ ] `sets.yaml`, its store and its validation.
-- [ ] `cstudy set`, and `--set` on `cstudy list` and `cstudy next`.
-- [ ] The web API under the page's write rules.
-- [ ] The Set filter, the add-to-set control and the Sets view.
+- [x] `sets.yaml`, its store and its validation.
+- [x] `cstudy set`, and `--set` on `cstudy list` and `cstudy next`.
+- [x] The web API under the page's write rules.
+- [x] The Set filter, the add-to-set control and the Sets view.
