@@ -193,6 +193,19 @@ def test_a_compose_setting_in_the_shell_stays_out(tmp_path, monkeypatch):
     assert result.output == "[]\n"
 
 
+def test_docker_runs_outside_the_folder_you_ran_cstudy_in(tmp_path, monkeypatch):
+    """Compose reads `.env` from its current folder when `-f` is absent, as in every `down`."""
+    command = script(tmp_path, "pwd")
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+
+    result = SubprocessDockerRunner().run((command,), GENEROUS_WAIT_S)
+
+    assert result is not None
+    assert Path(result.output.strip()).resolve() != elsewhere.resolve()
+
+
 DRIP_S = 0.02
 """Often enough that a limit on each read never runs out."""
 

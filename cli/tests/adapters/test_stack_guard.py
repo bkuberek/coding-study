@@ -114,6 +114,24 @@ def test_a_guard_with_no_one_off_to_remove_removes_none(docker_log):
     assert not [line for line in docker_log.read_text().splitlines() if line.startswith("rm")]
 
 
+def test_a_guard_runs_docker_outside_the_folder_you_ran_cstudy_in(
+    docker_log, tmp_path, monkeypatch
+):
+    """Compose reads `.env` from its current folder when `-f` is absent, as in a guard's `down`."""
+    answer = tmp_path / "where"
+    script = docker_log.parent / "bin" / "docker"
+    script.write_text(f'#!/bin/sh\npwd > "{answer}"\necho "$@" >> "{docker_log}"\n')
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    guard = StackGuard("s", removes_volumes=True, environment=environment_for(docker_log))
+
+    guard._pipe.close()
+    guard._process.wait(GENEROUS_WAIT_S)
+
+    assert Path(answer.read_text().strip()).resolve() != elsewhere.resolve()
+
+
 def test_one_offs_are_found_by_cstudys_labels():
     filters = one_off_filters("s")
 

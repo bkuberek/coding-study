@@ -25,6 +25,9 @@ from typing import IO, Self
 DOCKER = "docker"
 REMOVE_VOLUMES = "-v"
 NO_RUN_FOLDER = "-"
+DOCKER_FOLDER = Path(__file__).parent
+"""Where the Docker client runs, and a folder of cstudy's own: without `-f`, as in every `down`,
+compose reads `.env` from its current folder, which could be anything of yours."""
 _GUARD_READ_BYTES = 4096
 _DOWN_TIMEOUT_S = 300.0
 
@@ -65,6 +68,7 @@ class StackGuard:
             stderr=subprocess.DEVNULL,
             start_new_session=True,
             env=dict(environment),
+            cwd=DOCKER_FOLDER,
         )
         assert self._process.stdin is not None
         self._pipe: IO[bytes] = self._process.stdin

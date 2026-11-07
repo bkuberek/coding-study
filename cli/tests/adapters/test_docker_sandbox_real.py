@@ -336,6 +336,25 @@ def test_a_stopped_stack_leaves_nothing(engine, tmp_path):
     assert not Path(plan.paths.run).exists()
 
 
+def test_a_compose_setting_in_the_folder_you_ran_cstudy_in_changes_nothing(
+    engine, tmp_path, monkeypatch
+):
+    """Without `-f`, as in every `down`, compose reads `.env` from its current folder."""
+    name = stack_name("dotenv")
+    plan = plan_of(tmp_path, name)
+    yours = tmp_path / "yours"
+    yours.mkdir()
+    (yours / ".env").write_text("COMPOSE_PARALLEL_LIMIT=not-a-number\n")
+    monkeypatch.chdir(yours)
+    try:
+        with running_stack(engine, plan, BUDGET, lambda _line: None):
+            assert resources_of(name)["containers"]
+
+        assert nothing_left(name)
+    finally:
+        remove_everything_of(name)
+
+
 def test_a_stop_of_a_stack_takes_seconds_not_the_default_grace(engine, tmp_path):
     """`init: true` and the short grace: without them each `down` costs 10 s."""
     plan = plan_of(tmp_path, stack_name("grace"))

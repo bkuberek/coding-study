@@ -47,7 +47,7 @@ cstudy generates the compose file, `.cs/runs/<run>/stack.yaml`, and merges the p
 
 | Network | Who | Egress |
 |---------|-----|--------|
-| `sandbox` (`internal: true`) | Everything in the stack | None: `bootstrap`, `run`, `test`, `reset` and `grade_setup` cannot reach the internet, your LAN or a metadata address |
+| `sandbox` (`internal: true`) | Everything in the stack | None: `bootstrap`, `run`, `test`, `reset` and `grade_setup` cannot reach the internet, your LAN or a metadata address. |
 | `edge` (an ordinary bridge) | `cstudy-forward` only | Holds no user code |
 | An ordinary bridge, `egress` | `install` containers (and `cstudy dev --exec --network`, planned) only, with no mock server or service attached | Yes, and P1 measured that it reaches your LAN and this machine's loopback services too |
 
@@ -98,6 +98,7 @@ docker compose -p cstudy-g-<owner pid>-<run id> down -v
 | Dev | Project name `cstudy-d-<slug>-<workspace digest>`, a persistent named volume, `down` without `-v` at the end |
 | Graded and test | A fresh project name per run, no reused volume, `down -v` at the end. The name holds the owner's process id, since a network or a volume carries no owner label. Dev and graded stacks stay separate, so they cannot collide |
 | Standard input | Every compose call runs at end of file, and never with `-y`: a label that changes on a volume makes compose ask whether to recreate it, which hangs on a pipe and loses the data under `-y` |
+| Current folder | The Docker client and the guard run in a folder of cstudy's own, not the one you ran `cstudy` in: without `-f`, as in every `down`, compose reads `.env` from its current folder, and a `COMPOSE_PARALLEL_LIMIT=abc` there makes it refuse (measured) |
 | [Two clocks](#two-clocks) | `up --wait` within the startup budget, 300 s unless `project.timeouts_s.startup` says, else [Service failed](#failure-reporting). It says it is the budget, and that nothing about your code changes |
 
 ### Leftovers

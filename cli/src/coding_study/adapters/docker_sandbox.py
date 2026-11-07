@@ -27,7 +27,7 @@ from coding_study.adapters.http_grader.clients import DeadlineConnection
 from coding_study.adapters.process_environment import docker_environment
 from coding_study.adapters.process_liveness import is_alive
 from coding_study.adapters.project_folders import clear_setuid_bits
-from coding_study.adapters.stack_guard import DOCKER, StackGuard, one_off_filters
+from coding_study.adapters.stack_guard import DOCKER, DOCKER_FOLDER, StackGuard, one_off_filters
 from coding_study.application.ports import ContainerCommand, ProbeResult, ProgressNotice
 from coding_study.domain.docker_engine import (
     DID_NOT_START,
@@ -168,6 +168,7 @@ class SubprocessDockerRunner:
                 stderr=subprocess.STDOUT,
                 env=docker_environment(),
                 start_new_session=True,
+                cwd=DOCKER_FOLDER,
             )
         except FileNotFoundError:
             return None
