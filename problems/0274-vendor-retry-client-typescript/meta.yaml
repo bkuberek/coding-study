@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0274"
+slug: vendor-retry-client-typescript
+title: Vendor Retry Client (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [backend]
+job_roles: [backend, platform]
+scope: project
+languages: [typescript]
+levels:
+  - {level: 1, title: Exponential backoff}
+  - {level: 2, title: Jitter you can test}
+  - {level: 3, title: Only what is retryable}
+  - {level: 4, title: Retry-After}
+  - {level: 5, title: A deadline budget}
+  - {level: 6, title: A circuit breaker}
+signature:
+  class:
+    name: RatesClient
+    constructor: {params: []}
+    methods:
+      - {name: scriptVendor, level: 1, params: [{name: steps, type: "string[]"}], returns: {type: void}}
+      - {name: call, level: 1, async: true, params: [{name: method, type: string}, {name: path, type: string}, {name: idempotencyKey, type: string}], returns: {type: string}}
+      - {name: attempts, level: 1, params: [], returns: {type: "string[]"}}
+      - {name: scriptJitter, level: 2, params: [{name: fractions, type: "double[]"}], returns: {type: void}}
+      - {name: setDeadline, level: 5, params: [{name: budgetMs, type: long}], returns: {type: void}}
+      - {name: setBreaker, level: 6, params: [{name: failures, type: int}, {name: cooldownMs, type: long}], returns: {type: void}}
+comparator: {type: ops}
+limits: {hang_guard_ms: 3000}
+project:
+  entry: src/ratesClient.ts
+  tests: tests
+  clock: virtual
+approaches:
+  - {id: reference, name: One retry loop over a table of verdicts with a client-wide hold and a breaker, role: optimal, time: "O(a) per call", space: "O(a)", time_class: "n", space_class: "n"}
+related: [debug-async-batch-typescript, idempotent-document-consumer-typescript]
+estimate_minutes: 100
