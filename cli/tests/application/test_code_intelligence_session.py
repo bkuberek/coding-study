@@ -30,6 +30,9 @@ from tests.fakes import (
 )
 from tests.helpers import FIXTURE_TRACKS
 from tests.project_fakes import PROJECT_SLUG, ScriptedProjectProcess, project_environment
+from tests.sandbox_fakes import FakeSandbox
+from tests.service_problems import SLUG as SERVICE_SLUG
+from tests.service_problems import make_content, write_problem
 
 PRACTICE = Path(__file__).resolve().parents[1] / "fixtures" / "practice" / "problems"
 ON = Preferences(code_intelligence=True)
@@ -129,6 +132,32 @@ def test_the_language_is_checked_before_the_server_is_looked_for(tmp_path):
     attempt = started(environment, Language.GO)
     with pytest.raises(UsageError, match="no code intelligence for go yet"):
         target(environment, attempt)
+
+
+@pytest.fixture
+def service_project(tmp_path) -> Environment:
+    root = make_content(tmp_path)
+    write_problem(root)
+    return make_environment(
+        root, sandbox=FakeSandbox(), language_servers=FakeLanguageServers(INSTALLED_SERVERS)
+    )
+
+
+def test_a_service_project_gets_no_server_on_this_machine(service_project):
+    """Sandboxed code writes that folder, and a server here would read it: P9 brings a sidecar."""
+    attempt = start_attempt(service_project, StartRequest(SERVICE_SLUG)).attempt
+
+    with pytest.raises(UsageError, match="no code intelligence for typescript yet"):
+        target(service_project, attempt)
+
+
+def test_a_service_project_probes_no_server(service_project):
+    attempt = start_attempt(service_project, StartRequest(SERVICE_SLUG)).attempt
+
+    with pytest.raises(UsageError):
+        target(service_project, attempt)
+
+    assert service_project.language_servers.probed == []  # type: ignore[attr-defined]
 
 
 def test_an_item_has_no_code(practice):

@@ -33,6 +33,7 @@ from coding_study.domain.errors import LanguageServerNotInstalledError, UsageErr
 from coding_study.domain.layout import BUILD_DIRECTORY, CASES_DIRECTORY, RUNS_DIRECTORY
 from coding_study.domain.preferences import Preferences
 from coding_study.domain.problem import Language, ProblemKind
+from coding_study.domain.service_project import service_of
 from coding_study.domain.workspace_projects import project_folder
 
 FIX_COMMAND = "cstudy doctor --fix"
@@ -110,12 +111,13 @@ def session_target(
     refusals come.
 
     Raises UnknownAttemptError, AttemptEndedError, UsageError (the preference is off, the attempt
-    has no code, its language has no server yet) and LanguageServerNotInstalledError.
+    has no code, its language has no server yet, it is a service project) and
+    LanguageServerNotInstalledError.
     """
     attempt = attempt_in_progress(environment.progress, attempt_id)
     if not preferences.code_intelligence:
         raise UsageError(OFF)
-    server = _server_of(attempt)
+    server = _server_of(environment, attempt)
     problem = _located(server, environment.language_servers.probe(server)).problem
     if problem is not None:
         raise LanguageServerNotInstalledError(problem, FIX_COMMAND)
@@ -129,11 +131,14 @@ def install_language_servers(installer: LanguageServerInstaller) -> ProbeResult 
     return installer.install()
 
 
-def _server_of(attempt: Attempt) -> LanguageServer:
+def _server_of(environment: Environment, attempt: Attempt) -> LanguageServer:
+    """A service project's folder is written by sandboxed code, and a server on this machine would
+    read and run what is there, so it has none until P9 runs one in a sidecar
+    (docs/specs/service-projects.md#language-servers)."""
     if attempt.language is None:
         raise UsageError(f"{attempt.slug} has no code")
     server = server_for(attempt.language)
-    if server is None:
+    if server is None or service_of(environment.problems.load(attempt.slug).meta) is not None:
         raise UsageError(f"no code intelligence for {attempt.language.value} yet")
     return server
 
