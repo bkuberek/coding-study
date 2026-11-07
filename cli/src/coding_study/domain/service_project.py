@@ -16,7 +16,7 @@ from coding_study.domain.sandbox import DEFAULT_READY_S, STARTUP_UP_S, StartupBu
 ENV_FILE = ".env"
 """Written into a project folder from `project.env`: no starter holds one."""
 INSTALL_LIMIT_S = 600
-HELPER_IMAGE_MB = 41
+HELPER_IMAGE_MB = 43
 """The pinned Python image of the forwarder, in every stack; a mock server shares it."""
 DOCKER_NEED = "docker"
 NEEDS_NOTHING = "none"
