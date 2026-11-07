@@ -50,6 +50,7 @@ class Seen:
     name_issue: str = ""
     after_create: str = ""
     open_command: str = ""
+    controls_while_the_column_is_off: int = -1
     control_alone: str = ""
     control_words: str = ""
     control_in_two: str = ""
@@ -166,7 +167,12 @@ def _row_control(slug: str) -> str:
 
 def _control(page: Any, found: Seen) -> None:
     _open(page, "#/", ROWS)
+    found.controls_while_the_column_is_off = page.locator(".set-control").count()
+    page.click(".columns-menu > summary")
+    page.check("#column-sets")
     control = _row_control(FIRST)
+    page.wait_for_selector(control)
+    page.keyboard.press("Escape")
     found.control_alone = page.locator(control).inner_text()
     found.control_words = page.locator(control).get_attribute("aria-label") or ""
     page.click(control)
@@ -344,6 +350,10 @@ def test_the_dialog_names_the_command(seen):
 
 def test_a_problem_can_be_in_two_sets_and_the_row_says_so(seen):
     assert seen.control_in_two == f"{LOOP} +1"
+
+
+def test_the_control_is_a_column_the_problems_view_starts_without(seen):
+    assert seen.controls_while_the_column_is_off == 0
 
 
 def test_escape_gives_the_focus_back_to_the_control(seen):

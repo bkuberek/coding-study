@@ -471,7 +471,9 @@ def _tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
 
 
 def _set_dialog(page: Any) -> None:
-    _open(page, "#/", "table.problems .set-control")
+    _open(page, "#/", "table.problems tbody tr")
+    page.click(".columns-menu > summary")
+    page.check("#column-sets")
     page.click("table.problems .set-control")
     page.wait_for_selector(f"{SHEET} input[type=checkbox]")
 

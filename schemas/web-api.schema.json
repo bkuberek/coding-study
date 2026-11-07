@@ -229,7 +229,7 @@
       "description": "GET and PUT /api/v1/preferences",
       "type": "object",
       "additionalProperties": false,
-      "required": ["format", "vim", "run_on_save", "typecheck", "theme", "code_intelligence", "autocomplete"],
+      "required": ["format", "vim", "run_on_save", "typecheck", "theme", "code_intelligence", "autocomplete", "problem_columns"],
       "properties": {
         "format": { "const": 1 },
         "vim": { "type": "boolean" },
@@ -237,7 +237,8 @@
         "typecheck": { "type": "boolean" },
         "theme": { "enum": ["system", "light", "dark"] },
         "code_intelligence": { "type": "boolean" },
-        "autocomplete": { "type": "boolean" }
+        "autocomplete": { "type": "boolean" },
+        "problem_columns": { "description": "What the Problems view's table shows", "type": "array", "items": { "enum": ["id", "problem", "difficulty", "pattern", "kind", "scope", "domain", "role", "status", "due", "languages", "sets"] }, "uniqueItems": true }
       }
     },
     "code_intelligence_languages": {

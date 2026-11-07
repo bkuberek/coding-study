@@ -1,8 +1,9 @@
 """The Problems view's label filters in a real browser (docs/specs/web-ui.md#problems-view), in
 each engine of `tests/browsers.py`: choose a Domain, and a Role and a Scope under More, and see
-the table show the rows that `cstudy list --domain X --role Y --scope Z` lists, a Scope column
-that names each row's scope, the filters in the route's query and in the command above the view,
-the `cstudy next` pick of the same filters on the next card, and the filters again after a reload.
+the table show the rows that `cstudy list --domain X --role Y --scope Z` lists, a Scope column,
+once the columns menu turns it on, that names each row's scope, the filters in the route's query
+and in the command above the view, the `cstudy next` pick of the same filters on the next card, and
+the filters again after a reload.
 
 The workspace is a bare one over the catalog of the checkout, and nothing is run. Playwright and
 its engines are set up as `tests/browsers.py` says; without them the test is skipped.
@@ -34,7 +35,7 @@ FILTERED_NEXT = f"cstudy next {' '.join(FLAGS)}"
 FILTERED_QUERY = f"#/?domain={DOMAIN}&role={ROLE}&scope={SCOPE}"
 LISTED = ".listing:not([aria-busy]) table.problems"
 SLUGS = "table.problems tbody tr a.slug"
-SCOPE_CELLS = "table.problems tbody tr td:nth-child(6)"
+SCOPE_CELLS = "table.problems tbody tr td[data-column=scope]"
 COMMAND = ".command-text"
 MORE = ".filter-more > summary"
 NEXT_SLUG = ".next-card a.next-slug"
@@ -113,6 +114,10 @@ def _read_the_cli(workspace: Path, seen: Visit) -> None:
 
 def _read_the_unfiltered_list(page: Any, seen: Visit) -> None:
     seen.unfiltered_rows = page.locator(SLUGS).count()
+    page.click(".columns-menu > summary")
+    page.check("#column-scope")
+    page.wait_for_selector("table.problems thead th:has-text('scope')")
+    page.keyboard.press("Escape")
     seen.headers = page.locator("table.problems thead th").all_text_contents()
     for key, choices in (
         ("domain", seen.domain_choices),
@@ -171,7 +176,7 @@ def test_the_filters_leave_some_of_the_rows_out(visit):
 
 
 def test_the_table_has_a_scope_column(visit):
-    assert visit.headers[5] == "scope"
+    assert "scope" in visit.headers
 
 
 def test_the_scope_column_names_the_scope_of_each_row(visit):

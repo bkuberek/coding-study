@@ -33,3 +33,22 @@ export function activeFilters(filters: Filters): readonly ActiveFilter[] {
 export function countWords(shown: number, whole: number | null): string {
   return whole === null ? String(shown) : `${shown} of ${whole}`;
 }
+
+/** The columns the table can show, in its order (`domain/preferences.py` holds the same). */
+export const PROBLEM_COLUMNS = ["id", "problem", "difficulty", "pattern", "kind", "scope", "domain", "role", "status", "due", "languages", "sets"] as const;
+export type ProblemColumn = (typeof PROBLEM_COLUMNS)[number];
+export const DEFAULT_COLUMNS: readonly ProblemColumn[] = ["id", "problem", "difficulty", "pattern", "status", "due", "languages"];
+const REQUIRED_COLUMNS: readonly ProblemColumn[] = ["problem", "status"];
+
+export function canHide(column: ProblemColumn): boolean {
+  return !REQUIRED_COLUMNS.includes(column);
+}
+
+/** What the table shows of the stored columns: in its order, and always the required ones. */
+export function shownColumns(stored: readonly string[]): readonly ProblemColumn[] {
+  return PROBLEM_COLUMNS.filter((column) => !canHide(column) || stored.includes(column));
+}
+
+export function withColumn(stored: readonly string[], column: ProblemColumn, shown: boolean): readonly ProblemColumn[] {
+  return shownColumns(shown ? [...stored, column] : stored.filter((found) => found !== column));
+}

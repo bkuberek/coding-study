@@ -9,6 +9,24 @@ from coding_study.domain.errors import UsageError
 PREFERENCES_FORMAT = 1
 FORMAT_KEY = "format"
 THEME_KEY = "theme"
+COLUMNS_KEY = "problem_columns"
+PROBLEM_COLUMNS = (
+    "id",
+    "problem",
+    "difficulty",
+    "pattern",
+    "kind",
+    "scope",
+    "domain",
+    "role",
+    "status",
+    "due",
+    "languages",
+    "sets",
+)
+"""The columns the Problems view's table can show, in its order."""
+DEFAULT_PROBLEM_COLUMNS = ("id", "problem", "difficulty", "pattern", "status", "due", "languages")
+REQUIRED_PROBLEM_COLUMNS = ("problem", "status")
 
 
 class Theme(StrEnum):
@@ -32,6 +50,8 @@ class Preferences:
     autocomplete: bool = False
     """Completion and signature help, all of it: applies only while `code_intelligence` is on, but
     is stored as set, so turning code intelligence off keeps it."""
+    problem_columns: tuple[str, ...] = DEFAULT_PROBLEM_COLUMNS
+    """What the Problems view's table shows; `problem` and `status` always among them."""
 
 
 PREFERENCE_KEYS = tuple(field.name for field in fields(Preferences))
@@ -40,23 +60,30 @@ THEMES = ", ".join(Theme).rpartition(", ")
 
 def preferences_document(preferences: Preferences) -> dict[str, object]:
     """`{"format": 1, "vim": false, "run_on_save": false, "typecheck": true, "theme": "system",
-    "code_intelligence": false, "autocomplete": false}`."""
+    "code_intelligence": false, "autocomplete": false, "problem_columns": [...]}`."""
     document = asdict(preferences)
-    return {FORMAT_KEY: PREFERENCES_FORMAT, **document, THEME_KEY: preferences.theme.value}
+    return {
+        FORMAT_KEY: PREFERENCES_FORMAT,
+        **document,
+        THEME_KEY: preferences.theme.value,
+        COLUMNS_KEY: list(preferences.problem_columns),
+    }
 
 
 def parse_preferences(document: object) -> Preferences:
     """A document as `preferences_document` writes it; a key it leaves out keeps its default.
 
     Raises UsageError for anything else: not an object, an unknown key, another format, a theme
-    other than `system`, `light` and `dark`, or another preference that is not a boolean."""
+    other than `system`, `light` and `dark`, columns `_columns` refuses, or another preference that
+    is not a boolean."""
     if not isinstance(document, dict):
         raise UsageError("preferences must be a JSON object")
     values = dict(cast(dict[str, object], document))
     _check_format(values.pop(FORMAT_KEY, PREFERENCES_FORMAT))
     theme = _theme(values.pop(THEME_KEY, Theme.SYSTEM.value))
+    columns = _columns(values.pop(COLUMNS_KEY, list(DEFAULT_PROBLEM_COLUMNS)))
     switches = {key: _switch(key, value) for key, value in values.items()}
-    return Preferences(**switches, theme=theme)
+    return Preferences(**switches, theme=theme, problem_columns=columns)
 
 
 def _switch(key: str, value: object) -> bool:
@@ -72,6 +99,28 @@ def _theme(value: object) -> Theme:
         return Theme(value)
     first, _, last = THEMES
     raise UsageError(f'preference "{THEME_KEY}" must be {first} or {last}')
+
+
+def _columns(value: object) -> tuple[str, ...]:
+    """A list of known columns, each once, that holds the ones that cannot be hidden."""
+    if not isinstance(value, list):
+        raise UsageError(f'preference "{COLUMNS_KEY}" must be a list of columns')
+    columns: list[object] = cast(list[object], value)
+    for column in columns:
+        _check_column(column, columns)
+    for required in REQUIRED_PROBLEM_COLUMNS:
+        if required not in columns:
+            raise UsageError(f'column "{required}" cannot be hidden')
+    return tuple(cast(list[str], columns))
+
+
+def _check_column(column: object, columns: list[object]) -> None:
+    if not isinstance(column, str):
+        raise UsageError(f'preference "{COLUMNS_KEY}" must be a list of columns')
+    if column not in PROBLEM_COLUMNS:
+        raise UsageError(f'unknown column "{column}"')
+    if columns.count(column) > 1:
+        raise UsageError(f'column "{column}" is named twice')
 
 
 def _check_format(value: object) -> None:

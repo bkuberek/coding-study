@@ -1,12 +1,14 @@
 """The Problems view names each filter by its key and writes the flag of `cstudy list` as `--` and
 the key (`tools/web-ui/src/page/commands.ts`), so every key must be a flag of the command it
-mirrors (docs/specs/web-ui.md#problems-view)."""
+mirrors, and its columns are the ones the preferences accept
+(docs/specs/web-ui.md#problems-view)."""
 
 import re
 
 import pytest
 import typer.main
 
+from coding_study.domain.preferences import DEFAULT_PROBLEM_COLUMNS, PROBLEM_COLUMNS
 from coding_study.entrypoints import cli
 from tests.helpers import REPOSITORY_ROOT
 
@@ -39,3 +41,11 @@ def test_every_filter_key_is_a_flag_of_cstudy_list(key):
 @pytest.mark.parametrize("key", keys_declared("commands.ts", "NEXT_FILTERS"))
 def test_every_filter_the_next_card_passes_is_a_flag_of_cstudy_next(key):
     assert f"--{key}" in flags_of("next")
+
+
+def test_the_page_offers_the_columns_the_preferences_accept():
+    assert keys_declared("problems-model.ts", "PROBLEM_COLUMNS") == list(PROBLEM_COLUMNS)
+
+
+def test_the_page_resets_to_the_columns_the_preferences_default_to():
+    assert keys_declared("problems-model.ts", "DEFAULT_COLUMNS") == list(DEFAULT_PROBLEM_COLUMNS)

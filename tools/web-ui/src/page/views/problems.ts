@@ -10,10 +10,21 @@ import type { Cleanup, PageContext } from "../context.ts";
 import { badge, type Child, command, h, isTyping } from "../dom.ts";
 import { problemBadge } from "../format.ts";
 import { jdkRefusals, type SelectedJdk } from "../jdk.ts";
-import { activeFilters, choiceWords, countWords, matchesSearch } from "../problems-model.ts";
+import {
+  activeFilters,
+  canHide,
+  choiceWords,
+  countWords,
+  DEFAULT_COLUMNS,
+  matchesSearch,
+  PROBLEM_COLUMNS,
+  type ProblemColumn,
+  shownColumns,
+  withColumn,
+} from "../problems-model.ts";
 import { attemptHash, FILTER_KEYS, type FilterKey, type Filters, problemHash, problemsHash } from "../routes.ts";
 import { setControl, setsHolding } from "../setControl.ts";
-import { empty, failure, loading, showFailure } from "../states.ts";
+import { empty, failure, loading, messageOf, showFailure } from "../states.ts";
 import type { ListEntry, NextPick, ProblemList, SetList, SetSummary } from "../types.ts";
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
@@ -64,6 +75,7 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
   const count = h("span", { class: "filter-count" });
   const summary = filterSummary(route, count);
   let narrow: () => void = () => {};
+  let drawRows: () => void = () => {};
   const showRoute = () => {
     summary.hidden = activeFilters(route()).length === 0 && !route().search;
     shell.setCommand(listCommand(route()));
@@ -78,7 +90,7 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
   shell.main.replaceChildren(
     h("h1", { class: "sr-only" }, "Problems"),
     next,
-    h("div", { class: "filter-bar" }, form),
+    h("div", { class: "filter-bar" }, form, columnsMenu(context, () => drawRows())),
     summary,
     table,
   );
@@ -108,31 +120,39 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
       }
       const { entries, today, selected_jdk: selectedJdk, set: inSet } = list.value;
       table.removeAttribute("aria-busy");
-      // Unticking the set a row is listed under takes the row out, once its dialog closes.
-      const drawControl = (slug: string) =>
-        setControl(context, slug, {
-          held: setsHolding(known, slug),
-          closed: (names) => {
-            if (filters.set && !names.includes(filters.set)) {
-              load();
-              table.focus({ preventScroll: true });
-            }
-          },
-        });
-      const rows = listing(entries, selectedJdk, drawControl);
-      table.replaceChildren(
-        ...brokenSets,
-        ...(inSet?.missing.length ? [h("p", { class: "quiet" }, `missing from the catalog: ${inSet.missing.join(", ")}`)] : []),
-        ...rows.nodes,
-      );
-      narrow = () => {
-        const found = rows.narrow(searched);
-        const items = found.filter((entry) => entry.kind === "item").length;
-        shell.setStatus({ mode: "LIST", where: `${found.length - items} problems · ${items} items · ${today}` });
-        count.textContent = countWords(found.length, everything?.entries.length ?? null);
-        if (!summary.hidden) shell.announce(`${count.textContent} problems`);
+      const changedSets = new Map<string, readonly string[]>();
+      const drawing: RowDrawing = {
+        selectedJdk,
+        // Unticking the set a row is listed under takes the row out, once its dialog closes.
+        setsOf: (slug) =>
+          setControl(context, slug, {
+            held: changedSets.get(slug) ?? setsHolding(known, slug),
+            closed: (names) => {
+              changedSets.set(slug, names);
+              if (filters.set && !names.includes(filters.set)) {
+                load();
+                table.focus({ preventScroll: true });
+              }
+            },
+          }),
       };
-      narrow();
+      drawRows = () => {
+        const rows = listing(entries, shownColumns(context.preferences().problem_columns), drawing);
+        table.replaceChildren(
+          ...brokenSets,
+          ...(inSet?.missing.length ? [h("p", { class: "quiet" }, `missing from the catalog: ${inSet.missing.join(", ")}`)] : []),
+          ...rows.nodes,
+        );
+        narrow = () => {
+          const found = rows.narrow(searched);
+          const items = found.filter((entry) => entry.kind === "item").length;
+          shell.setStatus({ mode: "LIST", where: `${found.length - items} problems · ${items} items · ${today}` });
+          count.textContent = countWords(found.length, everything?.entries.length ?? null);
+          if (!summary.hidden) shell.announce(`${count.textContent} problems`);
+        };
+        narrow();
+      };
+      drawRows();
     });
   load();
   const focusSearch = (event: KeyboardEvent) => {
@@ -298,20 +318,54 @@ function takeTheFocus(root: HTMLElement): void {
   target?.focus({ preventScroll: true });
 }
 
+/** A menu of the table's columns, each change stored in the preferences at once. */
+function columnsMenu(context: PageContext, changed: () => void): HTMLDetailsElement {
+  const boxes = PROBLEM_COLUMNS.map((column) => {
+    const box = h("input", { type: "checkbox", id: `column-${column}`, value: column, disabled: !canHide(column), title: canHide(column) ? null : "always shown" });
+    box.addEventListener("change", () => save(withColumn(context.preferences().problem_columns, column, box.checked)));
+    return box;
+  });
+  const tick = () => {
+    const shown = shownColumns(context.preferences().problem_columns);
+    for (const box of boxes) box.checked = shown.includes(box.value as ProblemColumn);
+  };
+  const save = (columns: readonly string[]) => {
+    context
+      .savePreferences({ problem_columns: columns })
+      .then(changed)
+      .catch((error: unknown) => context.shell.announce(`could not save the columns: ${messageOf(error)}`))
+      .finally(tick);
+  };
+  const reset = h("button", { type: "button", class: "ghost column-reset", title: "Back to the columns the table starts with" }, "Reset to defaults");
+  reset.addEventListener("click", () => save(DEFAULT_COLUMNS));
+  tick();
+  return filterMenu(
+    "columns-menu",
+    ["columns"],
+    h("div", { role: "group", "aria-label": "The columns of the table" }, ...boxes.map((box) => h("label", { class: "column-choice", for: box.id }, box, " ", box.value))),
+    reset,
+  );
+}
+
+/** What a row needs beyond its entry. */
+interface RowDrawing {
+  readonly selectedJdk: SelectedJdk | null;
+  readonly setsOf: (slug: string) => HTMLElement;
+}
+
 /** The table and what it says with no row to show; `narrow` keeps the rows a search finds. */
 function listing(
   entries: readonly ListEntry[],
-  selectedJdk: SelectedJdk | null,
-  setsOf: (slug: string) => HTMLElement,
+  columns: readonly ProblemColumn[],
+  drawing: RowDrawing,
 ): { readonly nodes: readonly HTMLElement[]; narrow(text: string): readonly ListEntry[] } {
-  const header = ["id", "problem", "diff", "pattern", "kind", "scope", "status", "due", "refs", "in progress", "sets"];
-  const rows = entries.map((entry) => ({ entry, element: row(entry, selectedJdk, setsOf) }));
+  const rows = entries.map((entry) => ({ entry, element: row(entry, columns, drawing) }));
   const body = h("tbody");
   const table = h(
     "table",
     { class: "problems" },
     h("caption", { class: "sr-only" }, "Problems, then items, matching the filters"),
-    h("thead", {}, h("tr", {}, ...header.map((name) => h("th", { scope: "col" }, name)))),
+    h("thead", {}, h("tr", {}, ...columns.map((name) => h("th", { scope: "col" }, name)))),
     body,
   );
   const none = empty("no problems match", h("a", { href: "#/" }, "clear the filters"));
@@ -351,13 +405,14 @@ function languageRefs(entry: ListEntry, selectedJdk: SelectedJdk | null): Node[]
   });
 }
 
-function row(entry: ListEntry, selectedJdk: SelectedJdk | null, setsOf: (slug: string) => HTMLElement): HTMLTableRowElement {
-  const status = problemBadge(entry.status);
-  const topic = entry.patterns[0] ?? entry.track;
-  return h(
-    "tr",
-    { class: entry.kind === "item" ? "is-item" : null },
-    h("td", { class: "num" }, entry.id ?? "–"),
+function labelsOf(labels: readonly string[]): string {
+  return labels.length ? labels.join(", ") : "–";
+}
+
+/** Each column's cell of a row. */
+const CELLS: Readonly<Record<ProblemColumn, (entry: ListEntry, drawing: RowDrawing) => HTMLTableCellElement>> = {
+  id: (entry) => h("td", { class: "num" }, entry.id ?? "–"),
+  problem: (entry) =>
     h(
       "td",
       { class: "title-cell" },
@@ -366,16 +421,18 @@ function row(entry: ListEntry, selectedJdk: SelectedJdk | null, setsOf: (slug: s
       entry.content === "draft" ? h("span", { class: "tag" }, "draft") : null,
       entry.source === "workspace" ? h("span", { class: "tag" }, "yours") : null,
     ),
-    h("td", { class: `diff diff-${entry.difficulty}` }, entry.difficulty),
-    h("td", {}, topic),
-    h("td", { class: "quiet" }, entry.kind),
-    h("td", { class: "quiet" }, entry.scope ?? "–"),
-    h("td", {}, badge(status.glyph, status.text, status.tone)),
-    h("td", { class: "num quiet" }, entry.due_on ?? "–"),
-    h("td", { class: "refs quiet" }, ...languageRefs(entry, selectedJdk)),
-    h(
+  difficulty: (entry) => h("td", { class: `diff diff-${entry.difficulty}` }, entry.difficulty),
+  pattern: (entry) => h("td", {}, entry.patterns[0] ?? entry.track),
+  kind: (entry) => h("td", { class: "quiet" }, entry.kind),
+  scope: (entry) => h("td", { class: "quiet" }, entry.scope ?? "–"),
+  domain: (entry) => h("td", { class: "quiet" }, labelsOf(entry.domains)),
+  role: (entry) => h("td", { class: "quiet" }, labelsOf(entry.job_roles)),
+  status: (entry) => {
+    const status = problemBadge(entry.status);
+    return h(
       "td",
-      { class: "resume" },
+      {},
+      badge(status.glyph, status.text, status.tone),
       ...entry.in_progress.map((attempt) =>
         h(
           "a",
@@ -384,7 +441,21 @@ function row(entry: ListEntry, selectedJdk: SelectedJdk | null, setsOf: (slug: s
           attempt.language ?? "notes",
         ),
       ),
-    ),
-    h("td", {}, setsOf(entry.slug)),
+    );
+  },
+  due: (entry) => h("td", { class: "num quiet" }, entry.due_on ?? "–"),
+  languages: (entry, { selectedJdk }) => h("td", { class: "refs quiet" }, ...languageRefs(entry, selectedJdk)),
+  sets: (entry, { setsOf }) => h("td", {}, setsOf(entry.slug)),
+};
+
+function row(entry: ListEntry, columns: readonly ProblemColumn[], drawing: RowDrawing): HTMLTableRowElement {
+  return h(
+    "tr",
+    { class: entry.kind === "item" ? "is-item" : null },
+    ...columns.map((column) => {
+      const cell = CELLS[column](entry, drawing);
+      cell.dataset["column"] = column;
+      return cell;
+    }),
   );
 }

@@ -2,6 +2,7 @@ import pytest
 
 from coding_study.domain.errors import UsageError
 from coding_study.domain.preferences import (
+    DEFAULT_PROBLEM_COLUMNS,
     Preferences,
     Theme,
     parse_preferences,
@@ -16,6 +17,7 @@ DEFAULT_DOCUMENT = {
     "theme": "system",
     "code_intelligence": False,
     "autocomplete": False,
+    "problem_columns": ["id", "problem", "difficulty", "pattern", "status", "due", "languages"],
 }
 
 
@@ -83,3 +85,40 @@ def test_another_format_is_refused(value):
 def test_a_document_that_is_not_an_object_is_refused(document):
     with pytest.raises(UsageError, match="preferences must be a JSON object"):
         parse_preferences(document)
+
+
+def test_a_document_without_columns_has_the_default_columns():
+    assert parse_preferences({}).problem_columns == DEFAULT_PROBLEM_COLUMNS
+
+
+def test_chosen_columns_parse():
+    document = {"problem_columns": ["problem", "status", "sets"]}
+    assert parse_preferences(document).problem_columns == ("problem", "status", "sets")
+
+
+def test_chosen_columns_round_trip():
+    preferences = Preferences(problem_columns=("problem", "status", "domain"))
+    assert parse_preferences(preferences_document(preferences)) == preferences
+
+
+@pytest.mark.parametrize("value", ["id", None, 3, [3], [True]])
+def test_columns_that_are_not_a_list_of_names_are_refused(value):
+    with pytest.raises(UsageError, match='preference "problem_columns" must be a list'):
+        parse_preferences({"problem_columns": value})
+
+
+def test_an_unknown_column_is_refused():
+    with pytest.raises(UsageError, match='unknown column "price"'):
+        parse_preferences({"problem_columns": ["problem", "status", "price"]})
+
+
+@pytest.mark.parametrize("hidden", ["problem", "status"])
+def test_problem_and_status_cannot_be_left_out(hidden):
+    columns = [column for column in ("problem", "status", "id") if column != hidden]
+    with pytest.raises(UsageError, match=f'column "{hidden}" cannot be hidden'):
+        parse_preferences({"problem_columns": columns})
+
+
+def test_a_column_named_twice_is_refused():
+    with pytest.raises(UsageError, match='column "id" is named twice'):
+        parse_preferences({"problem_columns": ["problem", "status", "id", "id"]})

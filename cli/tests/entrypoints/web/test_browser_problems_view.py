@@ -258,8 +258,9 @@ FILTERED_ROUTE = f"#/?lang={LANGUAGE}&domain={DOMAIN}"
 FILTERED_COMMAND = f"cstudy list --lang {LANGUAGE} --domain {DOMAIN}"
 FOCUSED = "document.activeElement?.id"
 COMMAND_IS = "expected => document.querySelector('.command-text')?.textContent === expected"
-SUBPIXEL = 1.0
 ROW_HEIGHT_PX = 40
+REMOVE_MARK = "\N{MULTIPLICATION SIGN}"
+NO_VALUE = "\N{EN DASH}"
 
 
 @dataclass
@@ -333,8 +334,12 @@ def filter_row(engine: str, tmp_path_factory: pytest.TempPathFactory) -> FilterR
 
 def _read_the_row_at_rest(page: Any, seen: FilterRow) -> None:
     seen.row_height = page.locator(FILTER_ROW).evaluate("e => e.getBoundingClientRect().height")
-    seen.first_rank_visible = [page.locator(f"#filter-{key}").is_visible() for key in FIRST_RANK_KEYS]
-    seen.more_visible_when_closed = [page.locator(f"#filter-{key}").is_visible() for key in MORE_KEYS]
+    seen.first_rank_visible = [
+        page.locator(f"#filter-{key}").is_visible() for key in FIRST_RANK_KEYS
+    ]
+    seen.more_visible_when_closed = [
+        page.locator(f"#filter-{key}").is_visible() for key in MORE_KEYS
+    ]
     seen.summary_at_rest = page.locator(SUMMARY).is_visible()
     seen.summary_height_at_rest = page.locator(SUMMARY).evaluate(
         "e => e.getBoundingClientRect().height"
@@ -484,8 +489,8 @@ def test_with_nothing_active_there_is_no_clear(filter_row):
 
 def test_each_active_filter_shows_as_a_chip(filter_row):
     assert [" ".join(chip.split()) for chip in filter_row.chips] == [
-        f"lang: {LANGUAGE} ×",
-        f"domain: {DOMAIN} ×",
+        f"lang: {LANGUAGE} {REMOVE_MARK}",
+        f"domain: {DOMAIN} {REMOVE_MARK}",
     ]
 
 
@@ -598,8 +603,250 @@ def test_a_pattern_the_list_does_not_hold_stays_chosen(filter_row):
 
 
 def test_a_pattern_the_list_does_not_hold_shows_as_a_chip(filter_row):
-    assert [" ".join(chip.split()) for chip in filter_row.unknown_chip] == ["pattern: not-a-pattern ×"]
+    assert [" ".join(chip.split()) for chip in filter_row.unknown_chip] == [
+        f"pattern: not-a-pattern {REMOVE_MARK}"
+    ]
 
 
 def test_filtering_logs_no_problem(filter_row):
     assert filter_row.problems_before_a_refusal == []
+
+
+# P3: the columns menu
+
+
+COLUMNS_MENU = ".columns-menu"
+COLUMNS_SUMMARY = f"{COLUMNS_MENU} > summary"
+HEADERS = "table.problems thead th"
+DEFAULT_HEADERS = ["id", "problem", "difficulty", "pattern", "status", "due", "languages"]
+OPTIONAL_COLUMNS = ["kind", "scope", "domain", "role", "sets"]
+PREFERENCES_FILE = ".cs/serve/preferences.json"
+NARROW = {"width": 390, "height": 844}
+PAGE_FITS = "document.documentElement.scrollWidth <= window.innerWidth"
+
+
+@dataclass
+class Columns:
+    defaults: list[str] = field(default_factory=list[str])
+    offered: list[str] = field(default_factory=list[str])
+    locked: list[str] = field(default_factory=list[str])
+    added: list[str] = field(default_factory=list[str])
+    domain_cell: str = ""
+    role_cell: str = ""
+    kind_cell: str = ""
+    menu_open_after_a_choice: bool = False
+    focus_after_a_choice: str = ""
+    stored_after_adding: list[str] = field(default_factory=list[str])
+    reloaded: list[str] = field(default_factory=list[str])
+    reloaded_ticks: dict[str, bool] = field(default_factory=dict[str, bool])
+    without_a_column: list[str] = field(default_factory=list[str])
+    controls_by_default: int = -1
+    controls_with_sets: int = 0
+    after_reset: list[str] = field(default_factory=list[str])
+    stored_after_reset: list[str] = field(default_factory=list[str])
+    narrow_headers: list[str] = field(default_factory=list[str])
+    narrow_page_fits: bool = False
+    narrow_box_scrolls: bool = False
+    narrow_last_column_reachable: bool = False
+    narrow_menu_fits: bool = False
+    problems: list[str] = field(default_factory=list[str])
+
+
+@pytest.fixture(scope="module")
+def columns(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Columns:
+    seen = Columns()
+    workspace = bare_workspace(tmp_path_factory, f"columns-{engine}")
+    with opened_page(engine, workspace, seen.problems) as page:
+        seen.defaults = _headers(page)
+        seen.controls_by_default = page.locator(".set-control").count()
+        _read_the_menu(page, seen)
+        _add_columns(page, workspace, seen)
+        _reload_the_columns(page, seen)
+        _hide_a_column(page, seen)
+        _narrow_window(page, seen)
+        _reset_the_columns(page, workspace, seen)
+    return seen
+
+
+def _headers(page: Any) -> list[str]:
+    return page.locator(HEADERS).all_text_contents()
+
+
+def _stored_columns(workspace: Path) -> list[str]:
+    return json.loads((workspace / PREFERENCES_FILE).read_text())["problem_columns"]
+
+
+def _read_the_menu(page: Any, seen: Columns) -> None:
+    page.click(COLUMNS_SUMMARY)
+    boxes = page.locator(f"{COLUMNS_MENU} input[type=checkbox]")
+    seen.offered = boxes.evaluate_all("found => found.map(box => box.value)")
+    seen.locked = boxes.evaluate_all(
+        "found => found.filter(box => box.disabled).map(box => box.value)"
+    )
+
+
+def _cell(page: Any, column: str) -> str:
+    return page.locator(
+        f"{ROWS}:has(a[href='#/problems/{TWO_SUM}']) td[data-column={column}]"
+    ).inner_text()
+
+
+def _tick(page: Any, column: str) -> None:
+    page.check(f"#column-{column}")
+    page.wait_for_selector(f"{HEADERS}:has-text('{column}')")
+
+
+def _add_columns(page: Any, workspace: Path, seen: Columns) -> None:
+    for column in ("kind", "domain", "role", "sets"):
+        _tick(page, column)
+    seen.added = _headers(page)
+    seen.domain_cell = _cell(page, "domain")
+    seen.role_cell = _cell(page, "role")
+    seen.kind_cell = _cell(page, "kind")
+    seen.controls_with_sets = page.locator(".set-control").count()
+    seen.menu_open_after_a_choice = page.locator("#column-kind").is_visible()
+    seen.focus_after_a_choice = page.evaluate(FOCUSED)
+    seen.stored_after_adding = _stored_columns(workspace)
+
+
+def _reload_the_columns(page: Any, seen: Columns) -> None:
+    page.reload()
+    page.wait_for_selector(ROWS)
+    seen.reloaded = _headers(page)
+    seen.reloaded_ticks = {
+        column: page.locator(f"#column-{column}").is_checked()
+        for column in ("kind", "domain", "scope", "id")
+    }
+
+
+def _hide_a_column(page: Any, seen: Columns) -> None:
+    page.click(COLUMNS_SUMMARY)
+    page.uncheck("#column-id")
+    page.wait_for_function(
+        "() => ![...document.querySelectorAll('table.problems thead th')]"
+        ".some((cell) => cell.textContent === 'id')"
+    )
+    seen.without_a_column = _headers(page)
+    page.keyboard.press("Escape")
+
+
+def _narrow_window(page: Any, seen: Columns) -> None:
+    page.set_viewport_size(NARROW)
+    page.wait_for_selector(ROWS)
+    seen.narrow_headers = _headers(page)
+    seen.narrow_page_fits = page.evaluate(PAGE_FITS)
+    box = page.locator(".listing")
+    seen.narrow_box_scrolls = box.evaluate("e => e.scrollWidth > e.clientWidth")
+    page.locator(f"{ROWS} .set-control").first.scroll_into_view_if_needed()
+    seen.narrow_last_column_reachable = page.locator(f"{ROWS} .set-control").first.is_visible()
+    page.click(COLUMNS_SUMMARY)
+    seen.narrow_menu_fits = page.evaluate(PAGE_FITS)
+    page.keyboard.press("Escape")
+    page.set_viewport_size(WINDOW)
+
+
+def _reset_the_columns(page: Any, workspace: Path, seen: Columns) -> None:
+    page.click(COLUMNS_SUMMARY)
+    page.click(f"{COLUMNS_MENU} button:has-text('Reset to defaults')")
+    page.wait_for_function(
+        "count => document.querySelectorAll('table.problems thead th').length === count",
+        arg=len(DEFAULT_HEADERS),
+    )
+    seen.after_reset = _headers(page)
+    seen.stored_after_reset = _stored_columns(workspace)
+
+
+def test_the_table_shows_the_default_columns(columns):
+    assert columns.defaults == DEFAULT_HEADERS
+
+
+def test_the_menu_offers_every_column(columns):
+    assert set(columns.offered) == {*DEFAULT_HEADERS, *OPTIONAL_COLUMNS}
+
+
+def test_problem_and_status_cannot_be_hidden(columns):
+    assert set(columns.locked) == {"problem", "status"}
+
+
+def test_a_ticked_column_shows_in_the_table(columns):
+    assert {"kind", "domain", "role", "sets"} <= set(columns.added)
+
+
+def test_the_columns_keep_their_order_whatever_was_ticked_first(columns):
+    assert columns.added.index("kind") < columns.added.index("domain") < columns.added.index("role")
+
+
+def test_the_domain_column_names_the_domains(columns):
+    assert "algorithms" in columns.domain_cell
+
+
+def test_the_role_column_names_the_roles(columns):
+    assert columns.role_cell not in ("", NO_VALUE)
+
+
+def test_the_kind_column_names_the_kind(columns):
+    assert columns.kind_cell == "function"
+
+
+def test_the_add_to_set_control_is_a_column_that_is_off_by_default(columns):
+    assert columns.controls_by_default == 0
+
+
+def test_the_add_to_set_control_stays_reachable_through_the_menu(columns):
+    assert columns.controls_with_sets > 0
+
+
+def test_the_menu_stays_open_while_columns_are_ticked(columns):
+    assert columns.menu_open_after_a_choice
+
+
+def test_a_tick_keeps_the_focus(columns):
+    assert columns.focus_after_a_choice == "column-sets"
+
+
+def test_the_choice_is_stored_in_the_preferences_file(columns):
+    assert {"kind", "domain", "role", "sets"} <= set(columns.stored_after_adding)
+
+
+def test_the_columns_survive_a_reload(columns):
+    assert columns.reloaded == columns.added
+
+
+def test_the_menu_reads_the_stored_columns_after_a_reload(columns):
+    assert columns.reloaded_ticks == {"kind": True, "domain": True, "scope": False, "id": True}
+
+
+def test_an_unticked_column_leaves_the_table(columns):
+    assert "id" not in columns.without_a_column
+
+
+def test_reset_shows_the_default_columns(columns):
+    assert columns.after_reset == DEFAULT_HEADERS
+
+
+def test_reset_stores_the_default_columns(columns):
+    assert columns.stored_after_reset == DEFAULT_HEADERS
+
+
+def test_a_narrow_window_keeps_every_chosen_column(columns):
+    assert columns.narrow_headers == columns.without_a_column
+
+
+def test_a_narrow_window_does_not_scroll_sideways(columns):
+    assert columns.narrow_page_fits
+
+
+def test_a_narrow_window_scrolls_the_table_in_its_box(columns):
+    assert columns.narrow_box_scrolls
+
+
+def test_a_narrow_window_reaches_the_last_column(columns):
+    assert columns.narrow_last_column_reachable
+
+
+def test_a_narrow_window_fits_the_open_menu(columns):
+    assert columns.narrow_menu_fits
+
+
+def test_choosing_columns_logs_no_problem(columns):
+    assert columns.problems == []

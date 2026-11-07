@@ -175,6 +175,18 @@
   width: 400px;
 }
 
+.column-choice {
+  display: block;
+  padding: 2px 0;
+  white-space: nowrap;
+}
+
+.column-reset {
+  margin-top: 8px;
+  padding-inline: 0;
+  white-space: nowrap;
+}
+
 .filter-field {
   display: grid;
   gap: 3px;

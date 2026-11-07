@@ -30,7 +30,7 @@ function recording(status: number, body: string): { api: ReturnType<typeof creat
   return { api: createApi("the-token", fetcher), sent };
 }
 
-const PREFERENCES: Preferences = { format: 1, vim: true, run_on_save: true, typecheck: true, theme: "dark", code_intelligence: false, autocomplete: false };
+const PREFERENCES: Preferences = { format: 1, vim: true, run_on_save: true, typecheck: true, theme: "dark", code_intelligence: false, autocomplete: false, problem_columns: [] };
 const FILE = { path: "two_sum.py", source: "archive", size: 21, text: "def two_sum(): ...\n" } as const;
 
 test("the listing is the attempt's past-files URL", () => {

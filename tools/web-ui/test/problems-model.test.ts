@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { activeFilters, countWords, matchesSearch } from "../src/page/problems-model.ts";
+import { activeFilters, canHide, countWords, DEFAULT_COLUMNS, matchesSearch, shownColumns, withColumn } from "../src/page/problems-model.ts";
 
 const TWO_SUM = { slug: "two-sum", title: "Two Sum" };
 const LRU = { slug: "lru-cache", title: "LRU Cache" };
@@ -47,4 +47,28 @@ test("the count says how many of the whole list show", () => {
 
 test("without the whole list the count says only what shows", () => {
   assert.equal(countWords(8, null), "8");
+});
+
+test("the columns show in the table's order, whatever order they were chosen in", () => {
+  assert.deepEqual(shownColumns(["status", "domain", "problem", "id"]), ["id", "problem", "domain", "status"]);
+});
+
+test("problem and status always show", () => {
+  assert.deepEqual(shownColumns(["id"]), ["id", "problem", "status"]);
+});
+
+test("a column the page does not know is left out", () => {
+  assert.deepEqual(shownColumns(["problem", "status", "price"]), ["problem", "status"]);
+});
+
+test("ticking a column adds it in the table's order", () => {
+  assert.deepEqual(withColumn(DEFAULT_COLUMNS, "kind", true), ["id", "problem", "difficulty", "pattern", "kind", "status", "due", "languages"]);
+});
+
+test("unticking a column takes it out", () => {
+  assert.deepEqual(withColumn(["problem", "status", "id"], "id", false), ["problem", "status"]);
+});
+
+test("problem and status cannot be hidden, and the others can", () => {
+  assert.deepEqual([canHide("problem"), canHide("status"), canHide("id"), canHide("sets")], [false, false, true, true]);
 });

@@ -32,6 +32,8 @@ export interface Preferences {
   readonly code_intelligence: boolean;
   /** Stored as set; it applies only while `code_intelligence` is on (`autocompleteApplies`). */
   readonly autocomplete: boolean;
+  /** What the Problems view's table shows (`shownColumns`). */
+  readonly problem_columns: readonly string[];
 }
 
 /** One language of `GET /api/v1/code-intelligence/languages`. */

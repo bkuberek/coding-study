@@ -6,6 +6,7 @@ import pytest
 
 from coding_study.domain.config import Config
 from coding_study.domain.jdk import JdkSource
+from coding_study.domain.preferences import DEFAULT_PROBLEM_COLUMNS
 from coding_study.domain.problem import Language
 from coding_study.domain.taxonomy import PATTERNS
 from tests.fakes import FakeJdk, jdk_of
@@ -28,6 +29,7 @@ DEFAULTS = {
     "theme": "system",
     "code_intelligence": False,
     "autocomplete": False,
+    "problem_columns": list(DEFAULT_PROBLEM_COLUMNS),
 }
 
 

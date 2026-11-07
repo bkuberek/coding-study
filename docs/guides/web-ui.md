@@ -43,7 +43,7 @@ The top bar holds the views, the attempts in progress, and the mock banner while
 
 | View | Opens with | Shows |
 |------|------------|-------|
-| Problems | <kbd>Alt</kbd>+<kbd>1</kbd> | The `cstudy next` pick (an attempt you have open first, with links to the others, then a due review or a new problem), a search by title or slug that narrows as you type (<kbd>/</kbd> focuses it), the filters of `cstudy list` (set, track, kind, language, difficulty, status, content status, domain, role, scope and pattern), and every problem with its scope, status (`in progress` while you have an attempt open) and due date |
+| Problems | <kbd>Alt</kbd>+<kbd>1</kbd> | The `cstudy next` pick (an attempt you have open first, with links to the others, then a due review or a new problem), a search by title or slug that narrows as you type (<kbd>/</kbd> focuses it), the filters of `cstudy list` (set, track, kind, language, difficulty, status, content status, domain, role, scope and pattern), and every problem with its status (`in progress` while you have an attempt open) and due date. The `columns` menu chooses what the table shows, and adds its kind, scope, domain, role and sets |
 | Problem | A row of the list | The statement, Start or Resume, Solution, and the problem's history: its review schedule, attempts, runs and submissions, and the code of each attempt that is over |
 | Attempt | Start, Resume, or the in-progress menu | The file tree, the editor, the results of the latest run, and the statement with its levels and hints |
 | Sets | <kbd>Alt</kbd>+<kbd>2</kbd> | [Your own lists of problems](#problem-sets), with passed of total; one open shows its pick and its rows, to start, resume or reorder |
@@ -196,7 +196,7 @@ An attempt still in progress links to its Attempt view instead, where its files 
 
 A set is a list you choose, in the order you want to study it: make one for an upcoming interview, add problems and items to it, and study from it without searching. A problem can be in several sets.
 
-Open **Sets** (<kbd>Alt</kbd>+<kbd>2</kbd>) and choose **New set…**, or start from a problem: each row of the Problems view, and the Problem view, has a button that shows the sets the problem is in and opens a dialog to tick others or name a new one.
+Open **Sets** (<kbd>Alt</kbd>+<kbd>2</kbd>) and choose **New set…**, or start from a problem: the Problem view, and the `sets` column of the Problems view once its `columns` menu turns it on, have a button that shows the sets the problem is in and opens a dialog to tick others or name a new one.
 
 An open set lists its rows in order with their status and a **Start…** or **Resume** on each, and **Up**, **Down** and **Remove** to change it. It shows passed of total, and the pick `cstudy next --set` makes: an attempt you have open in the set, then the first entry you have not passed, then a due review. The Set filter of the Problems view shows the same rows in the same order, and its Next card follows the filter.
 
