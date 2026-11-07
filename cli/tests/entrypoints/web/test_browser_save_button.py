@@ -88,7 +88,7 @@ def seen(engine: str, server: RunningServer, workspace: Path) -> Seen:
         page.set_default_timeout(WAIT_MS)
         page.goto(server.login_url)
         page.wait_for_selector("table.problems tbody tr")
-        page.click(f"a.slug[href='#/problems/{PROJECT}']")
+        page.click(f"a.problem-link[href='#/problems/{PROJECT}']")
         page.click("a.button.primary")
         page.wait_for_selector(FILE_BUTTON)
         found.disabled_with_no_file = page.is_disabled(SAVE)

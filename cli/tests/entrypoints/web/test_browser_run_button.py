@@ -108,7 +108,7 @@ def visit(engine: str, server: RunningServer, workspace: Path) -> Visit:
             watched(page, seen.errors, expected=_is_the_question_of_an_ended_run)
             page.set_default_timeout(WAIT_MS)
             page.goto(server.login_url)
-            page.click(f"a.slug[href='#/problems/{PROJECT}']")
+            page.click(f"a.problem-link[href='#/problems/{PROJECT}']")
             page.click("a.button.primary")
             page.wait_for_selector(RUN)
             seen.run = _pass(page, RUN)

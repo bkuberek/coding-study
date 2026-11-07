@@ -133,7 +133,7 @@ def seen(engine: str, server: RunningServer, workspace: Path) -> Seen:
 def _open_the_project(page: Any, server: RunningServer) -> None:
     page.goto(server.login_url)
     page.wait_for_selector("table.problems tbody tr")
-    page.click(f"a.slug[href='#/problems/{PROJECT}']")
+    page.click(f"a.problem-link[href='#/problems/{PROJECT}']")
     page.click("a.button.primary")
     page.click(FILE_BUTTON)
     page.wait_for_selector(OPEN_EDITOR)
@@ -293,7 +293,7 @@ def _bench_saves_first(page: Any, server: RunningServer, workspace: Path, found:
     )
     page.goto(server.login_url)
     page.wait_for_selector("table.problems tbody tr")
-    page.click(f"a.slug[href='#/problems/{SINGLE_FILE}']")
+    page.click(f"a.problem-link[href='#/problems/{SINGLE_FILE}']")
     page.click("a.button.primary")
     page.wait_for_selector(OPEN_EDITOR)
     page.click(OPEN_EDITOR)

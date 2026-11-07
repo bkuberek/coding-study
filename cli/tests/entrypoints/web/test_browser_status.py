@@ -35,9 +35,9 @@ WAIT_MS = 60_000
 SLUG = "two-sum"
 STATUS_FILTER = "#filter-status"
 ROWS = ".listing:not([aria-busy]) table.problems tbody tr"
-SLUGS = "table.problems tbody tr a.slug"
-STATUS_CELL = f"{ROWS}:has(a.slug[href='#/problems/{SLUG}']) td[data-column=status]"
-RESUME_CELL = f"{ROWS}:has(a.slug[href='#/problems/{SLUG}']) td[data-column=status] a"
+SLUGS = "table.problems tbody tr .slug"
+STATUS_CELL = f"{ROWS}:has(a.problem-link[href='#/problems/{SLUG}']) td[data-column=status]"
+RESUME_CELL = f"{ROWS}:has(a.problem-link[href='#/problems/{SLUG}']) td[data-column=status] a"
 IN_PROGRESS = "in_progress"
 IN_WORDS = "in progress"
 

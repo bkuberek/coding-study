@@ -201,8 +201,8 @@ def _wide_problems(page: Any, seen: Visit) -> None:
 def _focus_a_link_far_down(page: Any, seen: Visit) -> None:
     """Moves the focus to a row's link, as Tab does, and reads how far under the header it lies."""
     _scroll_page(page, 0)
-    page.focus(f"{ROWS}:nth-child(80) a.slug")
-    link = page.locator(f"{ROWS}:nth-child(80) a.slug").evaluate(
+    page.focus(f"{ROWS}:nth-child(80) a.problem-link")
+    link = page.locator(f"{ROWS}:nth-child(80) a.problem-link").evaluate(
         "e => e.getBoundingClientRect().top"
     )
     seen.focused_link_top = link
@@ -275,8 +275,8 @@ def _middle_window(page: Any, seen: Visit) -> None:
 def _focus_a_link_in_the_box(page: Any, seen: Visit) -> None:
     """Moves the focus to a row's link in the table's own box, scrolled to its end."""
     page.locator(LISTING).evaluate("e => { e.scrollTop = e.scrollHeight; }")
-    page.focus(f"{ROWS}:nth-child(20) a.slug")
-    seen.narrow_link_top = page.locator(f"{ROWS}:nth-child(20) a.slug").evaluate(
+    page.focus(f"{ROWS}:nth-child(20) a.problem-link")
+    seen.narrow_link_top = page.locator(f"{ROWS}:nth-child(20) a.problem-link").evaluate(
         "e => e.getBoundingClientRect().top"
     )
     seen.narrow_header_bottom = page.locator(HEADER_CELL).first.evaluate(

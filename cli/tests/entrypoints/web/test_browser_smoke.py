@@ -43,7 +43,7 @@ WAIT_MS = 60_000
 SETTLED_MS = 1_000
 """How long after the editor opened the list and the tree are looked at again: the reads a view
 makes after its first draw land well within it."""
-PROBLEM_LINK = f"a.slug[href='#/problems/{PROJECT}']"
+PROBLEM_LINK = f"a.problem-link[href='#/problems/{PROJECT}']"
 FILE_BUTTON = f"button.tree-file[data-path='{FILE}']"
 OPEN_EDITOR = ".panel:not([hidden]) .cm-content"
 RUN_WAIT_MS = 240_000

@@ -850,3 +850,279 @@ def test_a_narrow_window_fits_the_open_menu(columns):
 
 def test_choosing_columns_logs_no_problem(columns):
     assert columns.problems == []
+
+
+# P4: the rows
+
+
+LINK = "a.problem-link"
+PROBLEM_HASH = f"#/problems/{TWO_SUM}"
+ROW = f"{ROWS}:has({LINK}[href='{PROBLEM_HASH}'])"
+TITLE = "Two Sum"
+OTHER_SLUG = "valid-anagram"
+BACK_HOME = "location.hash = '#/'"
+LINK_STYLE = """link => {
+  const style = getComputedStyle(link);
+  return { color: style.color, underline: style.textDecorationLine };
+}"""
+ACCENT = "getComputedStyle(document.documentElement).getPropertyValue('--accent')"
+AS_RGB = """value => {
+  const probe = document.createElement("span");
+  probe.style.color = value;
+  document.body.append(probe);
+  const color = getComputedStyle(probe).color;
+  probe.remove();
+  return color;
+}"""
+CELL_BOTTOMS = (
+    """row => [...row.querySelectorAll("td")].map((cell) => cell.getBoundingClientRect().bottom)"""
+)
+BACKGROUND = "row => getComputedStyle(row).backgroundColor"
+
+
+@dataclass
+class Rows:
+    headers: list[str] = field(default_factory=list[str])
+    title_text: str = ""
+    link_href: str = ""
+    slug_text: str = ""
+    slug_is_quieter: bool = False
+    slug_is_smaller: bool = False
+    accent: str = ""
+    link_style: dict[str, str] = field(default_factory=dict[str, str])
+    underlined_links_at_rest: int = -1
+    cell_bottoms: list[float] = field(default_factory=list[float])
+    title_cell_display: str = ""
+    after_a_click_on_the_row: str = ""
+    after_enter_on_the_link: str = ""
+    focused_row_stands_out: bool = False
+    tab_of_a_middle_click: str = ""
+    tab_of_a_modified_click: str = ""
+    hash_after_a_modified_click: str = ""
+    hash_after_selecting_text: str = ""
+    hash_after_the_set_control: str = ""
+    dialog_after_the_set_control: bool = False
+    status_link: str = ""
+    status_link_target: str = ""
+    status_link_name: str = ""
+    other_link: list[str] = field(default_factory=list[str])
+    other_link_target: list[str] = field(default_factory=list[str])
+    after_the_status_link: str = ""
+    attempts: dict[str, int] = field(default_factory=dict[str, int])
+    problems: list[str] = field(default_factory=list[str])
+
+
+@pytest.fixture(scope="module")
+def rows(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Rows:
+    seen = Rows()
+    workspace = bare_workspace(tmp_path_factory, f"rows-{engine}")
+    seen.attempts = {
+        "python": start_an_attempt(workspace, OTHER_SLUG),
+        "typescript": start_an_attempt(workspace, OTHER_SLUG, Language.TYPESCRIPT),
+    }
+    with opened_page(engine, workspace, seen.problems) as page:
+        _read_a_row(page, seen)
+        _click_the_row(page, seen)
+        _keyboard(page, seen)
+        _other_clicks(page, seen)
+        _inner_controls(page, seen)
+        _status_links(page, seen)
+    return seen
+
+
+def _read_a_row(page: Any, seen: Rows) -> None:
+    seen.headers = page.locator(HEADERS).all_text_contents()
+    link = page.locator(f"{ROW} {LINK}")
+    seen.title_text = link.inner_text()
+    seen.link_href = link.get_attribute("href") or ""
+    slug = page.locator(f"{ROW} .slug")
+    seen.slug_text = slug.inner_text()
+    seen.slug_is_quieter = slug.evaluate("e => getComputedStyle(e).color") != link.evaluate(
+        "e => getComputedStyle(e).color"
+    )
+    seen.slug_is_smaller = float(
+        slug.evaluate("e => parseFloat(getComputedStyle(e).fontSize)")
+    ) < float(link.evaluate("e => parseFloat(getComputedStyle(e).fontSize)"))
+    seen.link_style = link.evaluate(LINK_STYLE)
+    seen.accent = page.evaluate(AS_RGB, page.evaluate(ACCENT).strip())
+    seen.underlined_links_at_rest = page.locator(LINK).evaluate_all(
+        "found => found.filter((link) => "
+        "getComputedStyle(link).textDecorationLine.includes('underline')).length"
+    )
+    seen.cell_bottoms = page.locator(ROW).evaluate(CELL_BOTTOMS)
+    seen.title_cell_display = page.locator(f"{ROW} td[data-column=problem]").evaluate(
+        "e => getComputedStyle(e).display"
+    )
+
+
+def _home(page: Any) -> None:
+    page.evaluate(BACK_HOME)
+    page.wait_for_selector(ROW)
+
+
+def _click_the_row(page: Any, seen: Rows) -> None:
+    page.click(f"{ROW} td[data-column=difficulty]")
+    page.wait_for_function("expected => location.hash === expected", arg=PROBLEM_HASH)
+    seen.after_a_click_on_the_row = page.evaluate("location.hash")
+    _home(page)
+
+
+def _keyboard(page: Any, seen: Rows) -> None:
+    page.mouse.move(0, 0)
+    resting = page.locator(ROW).evaluate(BACKGROUND)
+    page.focus(f"{ROW} {LINK}")
+    seen.focused_row_stands_out = page.locator(ROW).evaluate(BACKGROUND) != resting
+    page.keyboard.press("Enter")
+    page.wait_for_function("expected => location.hash === expected", arg=PROBLEM_HASH)
+    seen.after_enter_on_the_link = page.evaluate("location.hash")
+    _home(page)
+
+
+def _other_clicks(page: Any, seen: Rows) -> None:
+    with page.context.expect_page() as middle:
+        page.click(f"{ROW} {LINK}", button="middle")
+    seen.tab_of_a_middle_click = middle.value.url.split("#")[-1]
+    middle.value.close()
+    with page.context.expect_page() as modified:
+        page.click(f"{ROW} td[data-column=difficulty]", modifiers=["ControlOrMeta"])
+    seen.tab_of_a_modified_click = modified.value.url.split("#")[-1]
+    modified.value.close()
+    seen.hash_after_a_modified_click = page.evaluate("location.hash")
+    slug = page.locator(f"{ROW} .slug").bounding_box()
+    assert slug is not None
+    middle_of_slug = slug["y"] + slug["height"] / 2
+    page.mouse.move(slug["x"] + 1, middle_of_slug)
+    page.mouse.down()
+    page.mouse.move(slug["x"] + slug["width"] - 1, middle_of_slug, steps=4)
+    page.mouse.up()
+    seen.hash_after_selecting_text = page.evaluate("location.hash")
+
+
+def _inner_controls(page: Any, seen: Rows) -> None:
+    page.click(COLUMNS_SUMMARY)
+    page.check("#column-sets")
+    page.keyboard.press("Escape")
+    page.click(f"{ROW} .set-control")
+    page.wait_for_selector("dialog.sheet[open]")
+    seen.dialog_after_the_set_control = True
+    seen.hash_after_the_set_control = page.evaluate("location.hash")
+    page.keyboard.press("Escape")
+    page.wait_for_selector("dialog.sheet[open]", state="detached")
+
+
+def _status_links(page: Any, seen: Rows) -> None:
+    links = page.locator(f"{ROWS}:has(a[href='#/problems/{OTHER_SLUG}']) td[data-column=status] a")
+    first = links.first
+    seen.status_link = first.text_content() or ""
+    seen.status_link_target = first.get_attribute("href") or ""
+    seen.status_link_name = first.get_attribute("aria-label") or ""
+    others = links.all()[1:]
+    seen.other_link = [link.text_content() or "" for link in others]
+    seen.other_link_target = [link.get_attribute("href") or "" for link in others]
+    first.click()
+    page.wait_for_function("expected => location.hash === expected", arg=seen.status_link_target)
+    seen.after_the_status_link = page.evaluate("location.hash")
+
+
+def test_in_progress_is_not_a_column(rows):
+    assert "in progress" not in rows.headers
+
+
+def test_a_row_leads_with_the_title(rows):
+    assert rows.title_text == TITLE
+
+
+def test_the_title_is_the_link_to_the_problem(rows):
+    assert rows.link_href == PROBLEM_HASH
+
+
+def test_the_slug_follows_it(rows):
+    assert rows.slug_text == TWO_SUM
+
+
+def test_the_slug_is_quieter_in_colour(rows):
+    assert rows.slug_is_quieter
+
+
+def test_the_slug_is_quieter_in_size(rows):
+    assert rows.slug_is_smaller
+
+
+def test_the_link_is_not_the_accent_colour_at_rest(rows):
+    assert rows.link_style["color"] != rows.accent
+
+
+def test_no_title_is_underlined_at_rest(rows):
+    assert rows.underlined_links_at_rest == 0
+
+
+def test_the_title_cell_stays_a_table_cell(rows):
+    assert rows.title_cell_display == "table-cell"
+
+
+def test_the_rule_under_a_row_is_one_line(rows):
+    assert len(set(rows.cell_bottoms)) == 1
+
+
+def test_a_click_on_the_row_opens_the_problem(rows):
+    assert rows.after_a_click_on_the_row == PROBLEM_HASH
+
+
+def test_enter_on_the_link_opens_the_problem(rows):
+    assert rows.after_enter_on_the_link == PROBLEM_HASH
+
+
+def test_a_row_stands_out_while_its_link_has_the_focus(rows):
+    assert rows.focused_row_stands_out
+
+
+def test_a_middle_click_on_the_link_opens_a_tab(rows):
+    assert rows.tab_of_a_middle_click == f"/problems/{TWO_SUM}"
+
+
+def test_a_modified_click_on_the_row_opens_a_tab(rows):
+    assert rows.tab_of_a_modified_click == f"/problems/{TWO_SUM}"
+
+
+def test_a_modified_click_on_the_row_stays_on_the_list(rows):
+    assert rows.hash_after_a_modified_click == "#/"
+
+
+def test_selecting_text_in_a_row_does_not_open_the_problem(rows):
+    assert rows.hash_after_selecting_text == "#/"
+
+
+def test_a_control_in_a_row_does_what_it_does(rows):
+    assert rows.dialog_after_the_set_control
+
+
+def test_a_control_in_a_row_does_not_open_the_problem(rows):
+    assert rows.hash_after_the_set_control == "#/"
+
+
+def test_in_progress_is_a_link_to_the_attempt(rows):
+    assert rows.status_link_target == f"#/attempts/{rows.attempts['python']}"
+
+
+def test_in_progress_reads_as_the_status_does(rows):
+    assert "in progress" in rows.status_link
+
+
+def test_in_progress_tells_a_screen_reader_it_resumes(rows):
+    assert rows.status_link_name == f"in progress: resume {OTHER_SLUG} in python"
+
+
+def test_another_attempt_of_the_problem_gets_a_link_of_its_own(rows):
+    assert rows.other_link_target == [f"#/attempts/{rows.attempts['typescript']}"]
+
+
+def test_another_attempt_names_its_language(rows):
+    assert ["typescript" in link for link in rows.other_link] == [True]
+
+
+def test_in_progress_opens_the_attempt(rows):
+    assert rows.after_the_status_link == f"#/attempts/{rows.attempts['python']}"
+
+
+def test_the_rows_log_no_problem(rows):
+    assert rows.problems == []

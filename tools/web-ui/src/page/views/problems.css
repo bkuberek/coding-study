@@ -227,18 +227,42 @@
   white-space: nowrap;
 }
 
-.title-cell {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
+.title-cell > * + * {
+  margin-left: 10px;
+}
+
+/* The rows of the list read as text and open as a whole; the row's link stays the real one. */
+
+.problem-rows tbody tr {
+  cursor: pointer;
+}
+
+.problem-rows tbody tr:focus-within {
+  background: var(--paper-raised);
+}
+
+.problem-link {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.problem-link:hover,
+tr:hover > td > .problem-link {
+  text-decoration: underline;
+}
+
+.problem-rows .slug {
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  font-weight: 400;
 }
 
 .title {
   color: var(--ink-soft);
 }
 
-.is-item .slug {
+.is-item .slug,
+.is-item .problem-link {
   font-style: italic;
 }
 

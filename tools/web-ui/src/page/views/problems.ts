@@ -25,7 +25,7 @@ import {
 import { attemptHash, FILTER_KEYS, type FilterKey, type Filters, problemHash, problemsHash } from "../routes.ts";
 import { setControl, setsHolding } from "../setControl.ts";
 import { empty, failure, loading, messageOf, showFailure } from "../states.ts";
-import type { ListEntry, NextPick, ProblemList, SetList, SetSummary } from "../types.ts";
+import type { AttemptRef, ListEntry, NextPick, ProblemList, SetList, SetSummary } from "../types.ts";
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
 const STATUSES = ["new", "in_progress", "attempted", "passed", "due", "mastered"];
@@ -353,6 +353,14 @@ interface RowDrawing {
   readonly setsOf: (slug: string) => HTMLElement;
 }
 
+/** A click anywhere on a row but on a control, or a drag that selected text, is a click on its
+ * link, with its modifier keys, so Ctrl or Cmd opens a tab there too. */
+function openRow(event: MouseEvent): void {
+  const target = event.target as Element;
+  if (target.closest("a, button, input, select, label, summary") || !document.getSelection()?.isCollapsed) return;
+  target.closest("tr")?.querySelector(".problem-link")?.dispatchEvent(new MouseEvent("click", event));
+}
+
 /** The table and what it says with no row to show; `narrow` keeps the rows a search finds. */
 function listing(
   entries: readonly ListEntry[],
@@ -361,9 +369,10 @@ function listing(
 ): { readonly nodes: readonly HTMLElement[]; narrow(text: string): readonly ListEntry[] } {
   const rows = entries.map((entry) => ({ entry, element: row(entry, columns, drawing) }));
   const body = h("tbody");
+  body.addEventListener("click", openRow);
   const table = h(
     "table",
-    { class: "problems" },
+    { class: "problems problem-rows" },
     h("caption", { class: "sr-only" }, "Problems, then items, matching the filters"),
     h("thead", {}, h("tr", {}, ...columns.map((name) => h("th", { scope: "col" }, name)))),
     body,
@@ -405,6 +414,16 @@ function languageRefs(entry: ListEntry, selectedJdk: SelectedJdk | null): Node[]
   });
 }
 
+/** A link that resumes an attempt. It keeps the word it shows, `said`, in what a screen reader hears. */
+function resumeLink(slug: string, attempt: AttemptRef, said: string | null, shown: Child): HTMLElement {
+  const resume = `resume ${slug} in ${attempt.language ?? "notes"}`;
+  return h(
+    "a",
+    { href: attemptHash(attempt.attempt_id), class: "resume-link", title: `Resume attempt ${attempt.attempt_id}`, "aria-label": said === null ? resume : `${said}: ${resume}` },
+    shown,
+  );
+}
+
 function labelsOf(labels: readonly string[]): string {
   return labels.length ? labels.join(", ") : "–";
 }
@@ -416,8 +435,8 @@ const CELLS: Readonly<Record<ProblemColumn, (entry: ListEntry, drawing: RowDrawi
     h(
       "td",
       { class: "title-cell" },
-      h("a", { href: problemHash(entry.slug), class: "slug" }, entry.slug),
-      h("span", { class: "title" }, entry.title),
+      h("a", { href: problemHash(entry.slug), class: "problem-link" }, entry.title),
+      h("span", { class: "slug" }, entry.slug),
       entry.content === "draft" ? h("span", { class: "tag" }, "draft") : null,
       entry.source === "workspace" ? h("span", { class: "tag" }, "yours") : null,
     ),
@@ -429,19 +448,10 @@ const CELLS: Readonly<Record<ProblemColumn, (entry: ListEntry, drawing: RowDrawi
   role: (entry) => h("td", { class: "quiet" }, labelsOf(entry.job_roles)),
   status: (entry) => {
     const status = problemBadge(entry.status);
-    return h(
-      "td",
-      {},
-      badge(status.glyph, status.text, status.tone),
-      ...entry.in_progress.map((attempt) =>
-        h(
-          "a",
-          { href: attemptHash(attempt.attempt_id), class: "resume-link", title: `Resume attempt ${attempt.attempt_id}` },
-          "↻ ",
-          attempt.language ?? "notes",
-        ),
-      ),
-    );
+    const word = badge(status.glyph, status.text, status.tone);
+    const [first, ...others] = entry.in_progress;
+    if (first === undefined) return h("td", {}, word);
+    return h("td", {}, resumeLink(entry.slug, first, status.text, word), ...others.map((attempt) => resumeLink(entry.slug, attempt, null, `↻ ${attempt.language ?? "notes"}`)));
   },
   due: (entry) => h("td", { class: "num quiet" }, entry.due_on ?? "–"),
   languages: (entry, { selectedJdk }) => h("td", { class: "refs quiet" }, ...languageRefs(entry, selectedJdk)),

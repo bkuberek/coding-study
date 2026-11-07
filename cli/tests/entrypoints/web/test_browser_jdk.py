@@ -28,7 +28,7 @@ sync_api = pytest.importorskip("playwright.sync_api", reason="Playwright is not 
 WAIT_MS = 60_000
 SINGLE_FILE = "two-sum"
 PROJECT = "bank-project-java"
-ROW = f"tr:has(a.slug[href='#/problems/{SINGLE_FILE}'])"
+ROW = f"tr:has(a.problem-link[href='#/problems/{SINGLE_FILE}'])"
 SHEET = "dialog.sheet[open]"
 START = f"{SHEET} button[type=submit]"
 NOTE = f"{SHEET} #start-jdk-note"
