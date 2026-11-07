@@ -93,7 +93,9 @@ def _require_visible(problem: Problem, scenarios: Mapping[str, str]) -> None:
             raise UsageError(f"no mock server named {mock}; this problem has: {_names(mocks)}")
         visible = visible_scenario_names(mocks[mock])
         if scenario not in visible:
-            raise UsageError(f"{mock} has no visible scenario {scenario}; it has: {_names(visible)}")
+            raise UsageError(
+                f"{mock} has no visible scenario {scenario}; it has: {_names(visible)}"
+            )
 
 
 def _names(names: Iterable[str]) -> str:

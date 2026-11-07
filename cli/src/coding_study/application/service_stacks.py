@@ -68,9 +68,7 @@ def dev_stack_plan(environment: Environment, problem: Problem) -> StackPlan:
     return _plan(environment, problem, identity, project_folder(slug))
 
 
-def test_stack_plan(
-    environment: Environment, problem: Problem, folder: str | None = None
-) -> StackPlan:
+def practice_stack_plan(environment: Environment, problem: Problem, folder: str = "") -> StackPlan:
     """The stack of one `cstudy test`: a fresh name, and data that goes with it."""
     identity = _run_identity(environment, problem, StackKind.TEST)
     plan = _plan(environment, problem, identity, folder or project_folder(problem.meta.slug))
@@ -78,7 +76,7 @@ def test_stack_plan(
 
 
 def graded_stack_plan(
-    environment: Environment, problem: Problem, level: int, folder: str | None = None
+    environment: Environment, problem: Problem, level: int, folder: str = ""
 ) -> StackPlan:
     """The stack of one graded run, holding every scenario and, for this stack alone,
     `grade_setup`. Its control token is given to no command."""
@@ -152,7 +150,7 @@ def _plan(
 
 
 def _with_reset_prepared(plan: StackPlan, service: ServiceProject) -> StackPlan:
-    """`commands.reset` runs once with `prepare` in a stack whose cases may ask for a fresh start."""
+    """`commands.reset` runs once with `prepare` in a stack whose cases may ask for a fresh run."""
     reset = service.commands.reset
     return plan if reset is None else replace(plan, reset_prepare=OneShot(reset))
 

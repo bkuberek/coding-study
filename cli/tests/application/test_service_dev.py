@@ -3,6 +3,7 @@
 import fcntl
 import json
 import os
+from typing import Any
 
 import pytest
 
@@ -69,7 +70,7 @@ def environment(tmp_path, engine, journal):
     return built
 
 
-def run(environment, **fields: object) -> tuple[CommandOutcome, Listener]:
+def run(environment, **fields: Any) -> tuple[CommandOutcome, Listener]:
     listener = Listener()
     ended = run_dev_stack(environment, DevRequest(SLUG, **fields), listener, lambda _line: None)
     return ended, listener

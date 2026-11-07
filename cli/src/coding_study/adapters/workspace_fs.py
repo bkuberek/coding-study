@@ -108,6 +108,13 @@ class WorkspaceFs:
         link.symlink_to(target, target_is_directory=True)
         return True
 
+    def folder_bytes(self, path: str) -> int:
+        total = 0
+        for folder, _directories, names in os.walk(self.absolute(path)):
+            for name in names:
+                total += os.lstat(Path(folder, name)).st_size
+        return total
+
     def content_hash(self, path: str) -> str:
         target = self.absolute(path)
         digest = hashlib.sha256()

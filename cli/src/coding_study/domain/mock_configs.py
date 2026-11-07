@@ -101,7 +101,9 @@ def rendered_mock_config(
 def _rendered(files: MockFiles, name: str, reach: ScenarioReach) -> dict[str, object]:
     kept = _reachable(files, reach)
     document = {**files.document, "scenarios": kept}
-    return {key: _inlined(document[key], files, name) for key in _RENDERED_FIELDS if key in document}
+    return {
+        key: _inlined(document[key], files, name) for key in _RENDERED_FIELDS if key in document
+    }
 
 
 def _reachable(files: MockFiles, reach: ScenarioReach) -> dict[str, _Document]:
@@ -144,5 +146,10 @@ def _entry_wait_ms(entry: _Document) -> int:
 
 
 def _retry_after_ms(headers: Mapping[str, str]) -> int:
-    value = next((found for name, found in headers.items() if name.lower() == RETRY_AFTER), "")
+    value = retry_after_text(headers) or ""
     return int(value) * MILLISECONDS_PER_SECOND if value.isdigit() else 0
+
+
+def retry_after_text(headers: Mapping[str, str]) -> str | None:
+    """The `Retry-After` of these headers, its name in any case."""
+    return next((found for name, found in headers.items() if name.lower() == RETRY_AFTER), None)

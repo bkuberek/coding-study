@@ -8,7 +8,7 @@ result. The limit on `commands.test`, and the run time this reports, start at th
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 
 from coding_study.application.active_attempt import find_attempt
 from coding_study.application.environment import Environment
@@ -25,8 +25,8 @@ from coding_study.application.sandbox import (
 from coding_study.application.service_stacks import (
     images,
     install_plan,
+    practice_stack_plan,
     service_project,
-    test_stack_plan,
     workspace_id,
 )
 from coding_study.domain.attempts import Attempt
@@ -248,14 +248,18 @@ class ServiceTestResult:
     test_seconds: float = 0.0
     """The second clock: `commands.test`, from that moment."""
     limit_s: int = 0
-    cases: Judgement = Judgement(0)
+    cases: Judgement = field(default_factory=lambda: Judgement(0))
     """The visible HTTP cases of the unlocked levels, as feedback; nothing keeps it."""
     cases_seconds: float = 0.0
     """The second clock: those cases."""
 
     @property
+    def command_passed(self) -> bool:
+        return self.outcome is not None and self.outcome.exit_code == 0
+
+    @property
     def passed(self) -> bool:
-        return self.outcome is not None and self.outcome.exit_code == 0 and self.cases.passed
+        return self.command_passed and self.cases.passed
 
     @property
     def total_seconds(self) -> float:
@@ -289,7 +293,7 @@ def run_service_tests(
         raise UsageError(f"{problem.meta.slug} is not a service project")
     service = service_project(problem)
     prepare_service_run(environment, problem, notify)
-    plan = test_stack_plan(environment, problem)
+    plan = practice_stack_plan(environment, problem)
     try:
         return _tests_in(environment, attempt, problem, plan, request, notify)
     except StackStartError as failure:
@@ -300,9 +304,7 @@ def run_service_tests(
         )
 
 
-def prepare_service_run(
-    environment: Environment, problem: Problem, notify: ProgressNotice
-) -> None:
+def prepare_service_run(environment: Environment, problem: Problem, notify: ProgressNotice) -> None:
     """What a stack needs before it starts: the engine up, no leftovers of this workspace, its
     images here and its dependencies installed for the lock file as it stands."""
     engine = environment.sandbox

@@ -1,0 +1,37 @@
+id: "5901"
+slug: fixture-rooms-typescript
+title: Rooms in TypeScript
+status: ready
+difficulty: medium
+track: practical
+kind: project
+languages: [typescript]
+levels:
+  - {level: 1, title: Count the desk passes}
+  - {level: 2, title: Serve the rooms}
+comparator: {type: exact}
+project:
+  grading: http
+  image: node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+  commands:
+    install: [corepack, pnpm, install, --frozen-lockfile, --ignore-scripts]
+    bootstrap: [node, scripts/seed.ts]
+    run: [node, src/server.ts]
+    test: [node, --test]
+    reset: [node, scripts/reset.ts]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    ROOM_VENDOR_URL: http://room-vendor:8080
+  install_env:
+    COREPACK_HOME: /cache/corepack
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    npm_config_store_dir: /cache/pnpm-store
+    CI: "true"
+  mocks:
+    - {name: room-vendor, config: mocks/room-vendor.yaml}
+  requires:
+    lock: pnpm-lock.yaml
+    sizes: {install_mb: 60, images_mb: {app: 77, mocks: 41}, memory_mb: 300}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "per request", space: "per request"}

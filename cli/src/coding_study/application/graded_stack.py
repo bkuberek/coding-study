@@ -25,9 +25,7 @@ class RunningStack:
 
 
 class SandboxGradedStack:
-    def __init__(
-        self, engine: SandboxEngine, stack: RunningStack, service: ServiceProject
-    ) -> None:
+    def __init__(self, engine: SandboxEngine, stack: RunningStack, service: ServiceProject) -> None:
         self._engine = engine
         self._plan = stack.plan
         self._ready = stack.ready

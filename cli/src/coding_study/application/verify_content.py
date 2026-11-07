@@ -31,6 +31,7 @@ from coding_study.application.reference_runs import (
     per_language,
     shown,
 )
+from coding_study.application.sandbox import ensure_engine
 from coding_study.application.stress_judging import without_stress
 from coding_study.application.verify_concurrency import ConcurrentVerifier
 from coding_study.application.verify_items import (
@@ -41,10 +42,16 @@ from coding_study.application.verify_items import (
 )
 from coding_study.application.verify_ladder import LadderResult, verify_ladder
 from coding_study.application.verify_projects import SuiteCheck, verify_project
+from coding_study.application.verify_service import verify_service_project
 from coding_study.domain.cases import Expected, GeneratedInput, JsonValue
 from coding_study.domain.clock_determinism import DeterminismVerdict
 from coding_study.domain.comparators import Comparator
-from coding_study.domain.errors import ContentError, ContentIssue, UnknownProblemError
+from coding_study.domain.errors import (
+    ContentError,
+    ContentIssue,
+    SandboxError,
+    UnknownProblemError,
+)
 from coding_study.domain.generated_cases import (
     generated_run_input,
     oracle_approach,
@@ -83,7 +90,7 @@ from coding_study.domain.service_project import service_of
 from coding_study.domain.static_checks import ProblemContent, static_checks
 
 DETERMINISM_SAMPLES = 3
-SERVICE_NOT_VERIFIED = "a service project's dynamic checks come with its HTTP grader"
+D11 = "D11"
 """Generator inputs checked for determinism when no --oracle inputs are requested."""
 
 
@@ -430,13 +437,36 @@ class _DynamicChecks:
     def _service_project(
         self, verification: ProblemVerification, split: JdkSplit
     ) -> ProblemVerification:
-        """D1, D3, D9 and D11 run a service project over HTTP, with the grader (P6); until then
-        its language says it was skipped and why."""
-        results = tuple(
-            LanguageResult(language, skipped=SERVICE_NOT_VERIFIED)
-            for language in (*split.runnable, *split.skipped)
+        """D1, D3, D9 and D11 over real stacks, or a skip that says why, as a JDK's does: no Docker
+        says nothing about the problem, and the ready gate counts it as not passed."""
+        languages = (*split.runnable, *split.skipped)
+        try:
+            ensure_engine(self._environment.sandbox, self._notify)
+        except SandboxError as error:
+            results = tuple(LanguageResult(language, skipped=str(error)) for language in languages)
+            needed = (f"skipped: {error}",) if self._request.require_ready else ()
+            return replace(
+                verification,
+                languages=results,
+                ready_errors=verification.ready_errors + needed,
+            )
+        try:
+            verified = [
+                verify_service_project(self._environment, self._problem, language, self._notify)
+                for language in split.runnable
+            ]
+        except SandboxError as error:
+            return replace(verification, dynamic_errors=(*self._errors, str(error)))
+        problems = tuple(
+            f"{D11}: {problem}" for project in verified for problem in project.d11_problems
         )
-        return replace(verification, languages=results)
+        return replace(
+            verification,
+            languages=tuple(project.language for project in verified),
+            suite=next((project.suite for project in verified), None),
+            dynamic_errors=(*self._errors, *problems),
+            skipped=self._generator_checks_requested(),
+        )
 
     def _project(self, verification: ProblemVerification, split: JdkSplit) -> ProblemVerification:
         """D1, D3, D9, and D6, D7 and D10 where they apply, in the project's one language; D2, D4

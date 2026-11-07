@@ -16,8 +16,8 @@ from coding_study.domain.sandbox import (
     INSTALL_SERVICE,
     LABEL_OWNER,
     MOCK_SERVICE,
-    RESET_PREPARE_SERVICE,
     PYTHON_IMAGE,
+    RESET_PREPARE_SERVICE,
     AppContainer,
     GradeSetup,
     InstallPlan,
@@ -59,8 +59,16 @@ def plan(**changes: Any) -> StackPlan:
     return StackPlan(**{"identity": IDENTITY, "user": USER, "paths": PATHS, "app": APP, **changes})
 
 
+def document_of(**changes: Any) -> dict[str, Any]:
+    return stack_document(plan(**changes))
+
+
 def services(**changes: Any) -> dict[str, Any]:
-    return stack_document(plan(**changes))["services"]
+    return document_of(**changes)["services"]
+
+
+def install_of() -> dict[str, Any]:
+    return install_document(install_plan())
 
 
 def install_plan() -> InstallPlan:
@@ -75,7 +83,7 @@ def install_plan() -> InstallPlan:
 
 
 def test_the_file_names_its_project_at_the_top():
-    assert stack_document(plan())["name"] == "cstudy-t-41-abc"
+    assert document_of()["name"] == "cstudy-t-41-abc"
 
 
 @pytest.mark.parametrize(
@@ -173,7 +181,7 @@ def test_the_app_is_on_the_sandbox_network_only():
 
 
 def test_the_sandbox_network_is_internal_and_the_edge_is_not():
-    networks = stack_document(plan())["networks"]
+    networks = document_of()["networks"]
 
     assert networks["sandbox"]["internal"] is True
     assert "internal" not in networks["edge"]
@@ -331,7 +339,7 @@ def test_the_owner_pid_is_on_every_container():
 
 
 def test_networks_carry_stable_labels_without_the_owner():
-    networks = stack_document(plan())["networks"]
+    networks = document_of()["networks"]
 
     assert all(
         network["labels"]
@@ -341,7 +349,7 @@ def test_networks_carry_stable_labels_without_the_owner():
 
 
 def test_volumes_carry_stable_labels_without_the_owner():
-    assert stack_document(plan())["volumes"]["data"]["labels"] == {
+    assert document_of()["volumes"]["data"]["labels"] == {
         "cstudy.kind": "test",
         "cstudy.workspace": "d1g3st",
         "cstudy.slug": "rooms",
@@ -359,7 +367,7 @@ def test_the_rendered_file_has_no_interpolation():
 
 
 def test_the_rendered_file_is_json_which_compose_reads_as_yaml():
-    assert json.loads(render_compose(stack_document(plan())))["name"] == "cstudy-t-41-abc"
+    assert json.loads(render_compose(document_of()))["name"] == "cstudy-t-41-abc"
 
 
 def test_the_helpers_use_the_pinned_python_image():
@@ -372,21 +380,21 @@ def test_the_helpers_use_the_pinned_python_image():
 
 
 def test_install_runs_on_its_own_ordinary_network():
-    document = install_document(install_plan())
+    document = install_of()
 
     assert document["services"][INSTALL_SERVICE]["networks"] == ["egress"]
     assert "internal" not in document["networks"]["egress"]
 
 
 def test_install_holds_no_mock_server_app_or_service():
-    assert set(install_document(install_plan())["services"]) == {
+    assert set(install_of()["services"]) == {
         "cache-owner",
         INSTALL_SERVICE,
     }
 
 
 def test_install_runs_hardened_as_the_host_user():
-    install = install_document(install_plan())["services"][INSTALL_SERVICE]
+    install = install_of()["services"][INSTALL_SERVICE]
 
     assert install["user"] == "501:20"
     assert install["cap_drop"] == ["ALL"]
@@ -394,7 +402,7 @@ def test_install_runs_hardened_as_the_host_user():
 
 
 def test_install_mounts_the_project_and_its_cache_and_nothing_else():
-    install = install_document(install_plan())["services"][INSTALL_SERVICE]
+    install = install_of()["services"][INSTALL_SERVICE]
 
     assert {"type": "bind", "source": PROJECT, "target": PROJECT} in install["volumes"]
     assert "cache:/cache" in install["volumes"]
@@ -403,7 +411,7 @@ def test_install_mounts_the_project_and_its_cache_and_nothing_else():
 
 
 def test_install_cannot_rewrite_the_devcontainer_folder():
-    install = install_document(install_plan())["services"][INSTALL_SERVICE]
+    install = install_of()["services"][INSTALL_SERVICE]
 
     assert {
         "type": "bind",
@@ -414,15 +422,13 @@ def test_install_cannot_rewrite_the_devcontainer_folder():
 
 
 def test_install_waits_for_its_cache_to_be_owned():
-    install = install_document(install_plan())["services"][INSTALL_SERVICE]
+    install = install_of()["services"][INSTALL_SERVICE]
 
     assert install["depends_on"] == {"cache-owner": {"condition": "service_completed_successfully"}}
 
 
 def test_the_install_cache_carries_stable_labels():
-    assert install_document(install_plan())["volumes"]["cache"]["labels"]["cstudy.kind"] == (
-        "install"
-    )
+    assert install_of()["volumes"]["cache"]["labels"]["cstudy.kind"] == ("install")
 
 
 def test_a_run_name_holds_its_kind_and_its_owner():

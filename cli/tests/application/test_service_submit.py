@@ -1,7 +1,8 @@
-"""`cstudy submit` and the visible cases of `cstudy test` on a service project, through a fake engine
-and fake HTTP clients: what a run stores, what it opens, and its two clocks."""
+"""`cstudy submit` and the visible cases of `cstudy test` on a service project, through a fake
+engine and fake HTTP clients: what a run stores, what it opens, and its two clocks."""
 
 import json
+from typing import Any
 
 import pytest
 
@@ -84,7 +85,7 @@ def environment(tmp_path, engine, app, control):
     return built
 
 
-def submit(environment, **fields: object):
+def submit(environment, **fields: Any):
     return submit_project(environment, SubmitRequest(SLUG, **fields), lambda _line: None)
 
 
@@ -215,7 +216,7 @@ def test_cstudy_test_passes_only_when_the_visible_cases_pass(environment, app):
 
     result = run_service_tests(environment, ServiceTestRequest(SLUG), lambda _line: None)
 
-    assert result.outcome is not None and result.outcome.exit_code == 0
+    assert result.command_passed
     assert not result.passed
 
 

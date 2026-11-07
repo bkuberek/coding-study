@@ -699,6 +699,10 @@ class Workspace(Protocol):
         is there or a link there dangles; True when it did. Anything else is left alone."""
         ...
 
+    def folder_bytes(self, path: str) -> int:
+        """What the files under `path` take, its links not followed; 0 when it is not there."""
+        ...
+
     def content_hash(self, path: str) -> str:
         """sha256 of a file, or of every tracked file under a directory (relative path and bytes,
         in path order; `workspace_projects.is_untracked` entries aside); stable for missing

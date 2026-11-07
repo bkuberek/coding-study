@@ -9,6 +9,7 @@ import pytest
 from coding_study.application.project_workspace import seed_project
 from coding_study.application.service_lifecycle import (
     ServiceTestRequest,
+    ServiceTestResult,
     finish_service_start,
     install_dependencies,
     needs_install,
@@ -19,9 +20,7 @@ from coding_study.application.service_lifecycle import (
 from coding_study.application.service_stacks import (
     dev_stack_plan,
     graded_stack_plan,
-)
-from coding_study.application.service_stacks import (
-    test_stack_plan as stack_plan_for_test,
+    practice_stack_plan,
 )
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.docker_engine import EngineState, EngineStatus
@@ -346,7 +345,7 @@ def test_a_problem_with_no_install_needs_none(tmp_path, engine):
 def test_the_test_stack_is_a_test_stack_of_this_owner(environment, engine):
     started(environment)
 
-    plan = stack_plan_for_test(environment, problem_of(environment))
+    plan = practice_stack_plan(environment, problem_of(environment))
 
     assert plan.identity.kind is StackKind.TEST
     assert plan.identity.slug == SLUG
@@ -359,15 +358,15 @@ def test_two_test_stacks_have_different_names(environment):
     problem = problem_of(environment)
 
     assert (
-        stack_plan_for_test(environment, problem).identity.name
-        != stack_plan_for_test(environment, problem).identity.name
+        practice_stack_plan(environment, problem).identity.name
+        != practice_stack_plan(environment, problem).identity.name
     )
 
 
 def test_the_test_stack_mounts_the_resolved_project_folder(environment):
     started(environment)
 
-    plan = stack_plan_for_test(environment, problem_of(environment))
+    plan = practice_stack_plan(environment, problem_of(environment))
 
     assert plan.paths.project == str((environment.root / FOLDER).resolve())
     assert plan.paths.run.endswith(f".cs/runs/{plan.identity.name}")
@@ -376,7 +375,7 @@ def test_the_test_stack_mounts_the_resolved_project_folder(environment):
 def test_the_test_stack_runs_the_manifests_commands(environment):
     started(environment)
 
-    plan = stack_plan_for_test(environment, problem_of(environment))
+    plan = practice_stack_plan(environment, problem_of(environment))
 
     assert plan.app.command == ("node", "src/server.ts")
     assert plan.app.image == IMAGE
@@ -390,7 +389,7 @@ def test_the_budget_comes_from_the_manifest(environment):
     assert problem_of(environment).meta.project.service.startup_budget == StartupBudget(300, 45)  # type: ignore[union-attr]
 
 
-def run_tests(environment, **changes) -> object:
+def run_tests(environment, **changes) -> ServiceTestResult:
     request = replace(ServiceTestRequest(SLUG), **changes)
     return run_service_tests(environment, request, notes().append)
 
@@ -440,6 +439,7 @@ def test_a_failing_test_command_is_a_failed_result_not_an_error(environment, eng
     result = run_tests(environment)
 
     assert not result.passed
+    assert result.outcome is not None
     assert result.outcome.exit_code == 1
 
 
@@ -533,7 +533,7 @@ def with_vendor(tmp_path, engine):
 def test_a_test_stack_renders_visible_scenarios_only(tmp_path, engine):
     environment = with_vendor(tmp_path, engine)
 
-    plan = stack_plan_for_test(environment, problem_of(environment))
+    plan = practice_stack_plan(environment, problem_of(environment))
 
     assert plan.mocks is not None
     scenarios = json.loads(plan.mocks.rendered_config)["mocks"]["room-vendor"]["scenarios"]
@@ -554,16 +554,17 @@ def test_each_stack_has_a_control_token_of_its_own(tmp_path, engine):
     environment = with_vendor(tmp_path, engine)
     problem = problem_of(environment)
 
-    first, second = (stack_plan_for_test(environment, problem) for _ in range(2))
+    first, second = (practice_stack_plan(environment, problem) for _ in range(2))
 
-    assert first.mocks is not None and second.mocks is not None
+    assert first.mocks is not None
+    assert second.mocks is not None
     assert first.mocks.control_token != second.mocks.control_token
 
 
 def test_each_mock_server_is_an_alias_of_the_container(tmp_path, engine):
     environment = with_vendor(tmp_path, engine)
 
-    plan = stack_plan_for_test(environment, problem_of(environment))
+    plan = practice_stack_plan(environment, problem_of(environment))
 
     assert plan.mocks is not None
     assert plan.mocks.aliases == ("room-vendor",)

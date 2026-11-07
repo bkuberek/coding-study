@@ -25,6 +25,7 @@ from coding_study.domain.cases import (
     joined_task,
     spawned_call,
 )
+from coding_study.domain.http_case import HttpCaseInput
 from coding_study.domain.signature import (
     ClassSignature,
     FunctionSignature,
@@ -323,6 +324,8 @@ def _returns_issues(value: JsonValue, member: FunctionSignature | Method, path: 
 
 
 def _class_case(signature: ClassSignature, case: Case) -> list[str]:
+    if isinstance(case.input, HttpCaseInput):
+        return []
     if isinstance(case.input, FunctionInput):
         return ["a class problem's cases need ops and args, not input"]
     if not isinstance(case.input, OperationSequence):

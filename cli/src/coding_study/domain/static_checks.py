@@ -428,7 +428,7 @@ def _python_approaches(content: ProblemContent) -> set[str]:
 
 def _levels(issues: _Issues, problem: Problem) -> None:
     """S10: progressive and project levels are contiguous and cases use only unlocked methods. A
-    service project's HTTP cases, and S23 on them, come with its grader (P6)."""
+    service project's cases name no method, and S23 holds them to its levels."""
     meta = problem.meta
     signature = meta.signature
     if not has_levels(meta.kind) or not isinstance(signature, ClassSignature):
@@ -615,7 +615,7 @@ class _ProblemMarkdown:
 
     def _example(self, example: MarkdownSection, cases: dict[str, Case]) -> None:
         markers = [case_id for line in example.body if (case_id := example_marker(line))]
-        if len(markers) != 1 and not self._awaits_http_cases():
+        if len(markers) != 1:
             self._error(f"{example.title} needs exactly one <!-- case: <id> --> marker")
         for case_id in markers:
             case = cases.get(case_id)
@@ -626,10 +626,6 @@ class _ProblemMarkdown:
         explained = any(line.strip() and example_marker(line) is None for line in example.body)
         if markers and not explained:
             self._error(f"{example.title} needs at least one line of explanation")
-
-    def _awaits_http_cases(self) -> bool:
-        """A service project's examples render HTTP cases, which come with its grader (P6)."""
-        return service_of(self._problem.meta) is not None
 
     def _hints(self) -> None:
         hints = self._document.section(HINTS_SECTION)

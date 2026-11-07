@@ -83,7 +83,7 @@ def _test_text(result: ServiceTestResult) -> str:
     assert outcome is not None
     if outcome.timed_out:
         return f"commands.test did not finish within {result.limit_s} s"
-    verdict = "passed" if result.passed else f"failed, exit {outcome.exit_code}"
+    verdict = "passed" if result.command_passed else f"failed, exit {outcome.exit_code}"
     return f"commands.test {verdict} in {result.test_seconds:.1f} s"
 
 

@@ -15,7 +15,6 @@ import yaml
 from coding_study.adapters.document_index import DocumentIndex, file_stamp, index_key
 from coding_study.adapters.problem_documents import cases_from_document, meta_from_document
 from coding_study.adapters.problem_project_files import read_project_files
-from coding_study.adapters.service_files import mock_files
 from coding_study.adapters.schema_validation import (
     META_SCHEMA_FILE,
     MOCK_SCHEMA_FILE,
@@ -23,8 +22,10 @@ from coding_study.adapters.schema_validation import (
     TESTS_SCHEMA_FILE,
     SchemaValidator,
 )
+from coding_study.adapters.service_files import mock_files
 from coding_study.domain.errors import ContentError, ContentIssue, UnknownProblemError
 from coding_study.domain.layout import language_of_extension
+from coding_study.domain.mock_configs import MockFiles
 from coding_study.domain.problem import (
     Language,
     Problem,
@@ -32,7 +33,6 @@ from coding_study.domain.problem import (
     ProblemMeta,
     ProblemSummary,
 )
-from coding_study.domain.mock_configs import MockFiles
 from coding_study.domain.project import ProjectFiles, relative_path_issue
 from coding_study.domain.service_project import ServiceProject, service_of
 
@@ -166,7 +166,9 @@ class FsProblemRepository:
         """A YAML file of the problem's own, named from its meta.yaml."""
         path = directory / name
         if (issue := relative_path_issue(name)) is not None:
-            return None, [ContentIssue(self._source(directory / META_FILE), "project", f"{name} {issue}")]
+            return None, [
+                ContentIssue(self._source(directory / META_FILE), "project", f"{name} {issue}")
+            ]
         if schema is not None:
             return self._validated(path, parse_yaml, schema)
         source = self._source(path)

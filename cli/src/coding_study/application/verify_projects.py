@@ -61,6 +61,7 @@ from coding_study.domain.project import (
 )
 from coding_study.domain.project_tests import level_tests
 from coding_study.domain.runs import Crashed, NotRun, Raised, TimedOut, UserError
+from coding_study.domain.service_project import service_of
 from coding_study.domain.stress import StressScenario
 from coding_study.domain.stress_runs import PlannedRun, StressSelection
 from coding_study.domain.stub_check import STUB_DIRECTORY
@@ -134,8 +135,13 @@ def reference_build(environment: Environment, problem: Problem, approach_id: str
         STARTER_DIRECTORY: files.starter or _NO_FILES,
         f"{SOLUTIONS_DIRECTORY}/{approach_id}": files.overlays.get(approach_id, _NO_FILES),
     }
-    folder = f"{PROJECT_BUILDS}/{problem.meta.slug}/{approach_id}"
+    folder = reference_folder(problem, approach_id)
     return _ProjectBuild(environment, problem).write(folder, trees, last_level(problem))
+
+
+def reference_folder(problem: Problem, approach_id: str) -> str:
+    """Where `reference_build` writes, relative to the workspace."""
+    return f"{PROJECT_BUILDS}/{problem.meta.slug}/{approach_id}"
 
 
 def broken_build(environment: Environment, problem: Problem, broken_id: str) -> Path:
@@ -202,14 +208,21 @@ class _ProjectBuild:
         a file removed from a tree since the last build cannot linger in it, while unchanged files
         and the build tools' output stay, so the next build is incremental."""
         texts = self._texts(trees)
-        language = project_language(self._problem.meta)
-        generator = self._environment.toolchains.project_test_generator(language)
-        for level in range(FIRST_LEVEL, levels + 1):
-            tests = level_tests(self._problem, level)
-            texts[tests.path] = generator.generate(tests)
+        if service_of(self._problem.meta) is None:
+            texts.update(self._generated_tests(levels))
         workspace = self._environment.workspace
         workspace.sync_folder(folder, texts)
         return workspace.absolute(folder)
+
+    def _generated_tests(self, levels: int) -> dict[str, str]:
+        """A service project has none: its cases run over HTTP."""
+        language = project_language(self._problem.meta)
+        generator = self._environment.toolchains.project_test_generator(language)
+        texts: dict[str, str] = {}
+        for level in range(FIRST_LEVEL, levels + 1):
+            tests = level_tests(self._problem, level)
+            texts[tests.path] = generator.generate(tests)
+        return texts
 
     def _texts(self, trees: Mapping[str, ProjectTree]) -> dict[str, str]:
         texts: dict[str, str] = {}

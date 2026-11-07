@@ -22,6 +22,7 @@ from coding_study.domain.cases import GeneratedInput
 from coding_study.domain.clock_checks import clock_issues
 from coding_study.domain.errors import ContentIssue
 from coding_study.domain.explanation import Explanation
+from coding_study.domain.http_case import HttpCaseInput
 from coding_study.domain.layout import JVM_LANGUAGES
 from coding_study.domain.markdown import MarkdownDocument, MarkdownSection
 from coding_study.domain.problem import ComparatorType, Language, Problem, ProblemKind, Track
@@ -55,6 +56,11 @@ from coding_study.domain.project import (
     relative_path_issue,
 )
 from coding_study.domain.service_checks import service_issues, service_settings_issues
+from coding_study.domain.service_content_checks import (
+    compose_issues,
+    http_case_issues,
+    mock_config_issues,
+)
 from coding_study.domain.service_project import service_of
 from coding_study.domain.signature import ClassSignature, declared_types
 from coding_study.domain.starter_files import LOCK_FILES, cache_path
@@ -88,6 +94,7 @@ MAX_STARTER_FILES = 50
 MAX_STARTER_KIB = 256
 MAX_STARTER_BYTES = MAX_STARTER_KIB * 1024
 README_FILE = "README.md"
+REQUEST_NEEDS_A_SERVICE = "a request belongs to a service project: project.grading is http"
 PYPROJECT_FILE = "pyproject.toml"
 TYPESCRIPT_CLOCK_HELPER = "tests/virtual-clock.ts"
 """A TypeScript virtual-clock starter's copy of the runner's clock helper, which the generated
@@ -302,9 +309,14 @@ class ProjectContent:
 
 def project_issues(content: ProjectContent) -> tuple[ContentIssue, ...]:
     """S14 to S16 and S18; for any other kind, that it has no `project` block (S14) and no
-    `async` method or harness operation (S18)."""
+    `async` method or harness operation (S18). A request is a service project's alone."""
     issues = _Issues(content.directory)
     meta = content.problem.meta
+    if service_of(meta) is None:
+        for index, case in enumerate(content.problem.cases):
+            if isinstance(case.input, HttpCaseInput):
+                location = f"cases[{index}] {case.id}"
+                issues.error(TESTS_FILE, REQUEST_NEEDS_A_SERVICE, location)
     if meta.kind is not ProblemKind.PROJECT:
         if meta.project is not None:
             issues.error(META_FILE, "only project problems have one", "project")
@@ -328,7 +340,7 @@ class _Issues:
 
 
 def _service_issues(issues: _Issues, content: ProjectContent) -> None:
-    """S14, S15, S19 and S22 as they stand for a service project, then S16's documents: the entry
+    """S14, S15, S19 to S23 as they stand for a service project, then S16's documents: the entry
     class, the generated tests and the virtual clock do not apply."""
     meta = content.problem.meta
     service = service_of(meta)
@@ -341,6 +353,21 @@ def _service_issues(issues: _Issues, content: ProjectContent) -> None:
     trees = _Trees(issues, content)
     for name, overlay in files.overlays.items():
         trees.text_only(f"{SOLUTIONS_DIRECTORY}/{name}", overlay.files)
+    for path, message in mock_config_issues(service, files):
+        issues.error(path, message)
+    if service.services is not None:
+        for where, message in compose_issues(service, files.backing_services):
+            issues.error(service.services, message, where)
+    found = http_case_issues(
+        content.problem.cases,
+        files,
+        service,
+        levels=meta.levels,
+        comparator=meta.comparator,
+        hang_guard_ms=meta.hang_guard_ms,
+    )
+    for where, message in found:
+        issues.error(TESTS_FILE, message, where)
     _Documents(issues, content).check()
 
 

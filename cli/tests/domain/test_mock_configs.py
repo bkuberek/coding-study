@@ -97,7 +97,7 @@ def test_the_body_of_a_hidden_scenario_stays_out_of_a_practice_stack():
 def test_a_body_file_that_is_not_there_is_a_content_error():
     mocks = {"a": vendor(broken={"visible": True, "body_file": "bodies/gone.json"})}
 
-    with pytest.raises(ContentError, match="gone.json"):
+    with pytest.raises(ContentError, match=r"gone\.json"):
         rendered_mock_config(mocks, "t", ScenarioReach.VISIBLE)
 
 

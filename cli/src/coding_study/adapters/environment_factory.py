@@ -14,7 +14,6 @@ from coding_study.adapters.conformance_fixtures import (
 )
 from coding_study.adapters.content_code_loader import ContentCodeLoader
 from coding_study.adapters.docker_sandbox import DockerSandbox
-from coding_study.adapters.http_grader.clients import open_stack_clients
 from coding_study.adapters.document_index import INDEX_FILE, DocumentIndex
 from coding_study.adapters.env_editor import EnvEditorOpener
 from coding_study.adapters.fs_calibration_cache import FsCalibrationCache, local_machine_id
@@ -23,6 +22,7 @@ from coding_study.adapters.fs_item_repository import FsItemRepository
 from coding_study.adapters.fs_problem_files import FsProblemFiles
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.adapters.fs_study_guides import FsStudyGuides
+from coding_study.adapters.http_grader.clients import open_stack_clients
 from coding_study.adapters.jdk_locator import EnvJdkSelector, JdkHome
 from coding_study.adapters.language_servers.lsp_directory import LspDirectory
 from coding_study.adapters.languages.context import LanguageContext
