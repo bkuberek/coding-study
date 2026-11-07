@@ -57,24 +57,25 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 83.3 | 30.3 |
-| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 983.5 | 355.6 |
-| The editor before any language: the page, the editor and the core | 490.2 | 166.8 |
-| A Python file | 560.6 | 193.7 |
-| A TypeScript or JavaScript file, the largest grammar | 599.1 | 207.3 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 74.6 | 26.9 |
+| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 993.7 | 359.9 |
+| The editor before any language: the page, the editor and the core | 481.4 | 163.4 |
+| A Python file | 551.9 | 190.3 |
+| A TypeScript or JavaScript file, the largest grammar | 590.4 | 203.9 |
 | Vim keybindings, added on top | 120.5 | 38.4 |
 | The link between the editors and the sessions, fetched when `code_intelligence` is on (it counts in the whole bundle) | 9.1 | 4.1 |
 | The code-intelligence chunk, fetched when a file of a language with an installed server opens (its own budget: 64 KB raw, 24 KB gzip; `@codemirror/lsp-client` with `marked` aliased to a stand-in) | 35.4 | 12.9 |
-| The Problem view, fetched when it first opens | 4.8 | 2.0 |
-| The Sets view, fetched when it first opens (with the dialogs, for its questions and Start) | 35.0 | 13.6 |
-| The Mock and Progress views together, each fetched when it first opens (Progress with the dialogs, for Start and Import) | 38.6 | 15.4 |
+| The Problems view, the landing view, fetched when it first opens | 18.1 | 7.3 |
+| The Problem view, fetched when it first opens | 6.8 | 3.3 |
+| The Sets view, fetched when it first opens (with the Problems view, for its pick, and the dialogs, for its questions and Start) | 52.7 | 20.5 |
+| The Mock and Progress views together, each fetched when it first opens (Progress with the dialogs, for Start and Import) | 40.1 | 16.3 |
 | The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 19.2 | 8.9 |
 | The run session, fetched when a run first starts or shows: streaming and drawing it, Cancel, diagnostics | 22.7 | 8.4 |
 | The Run options form, fetched when it first opens | 4.5 | 2.1 |
 | The job panel for Bench, fetched when Bench first starts (Health fetches it with its view) | 5.0 | 2.4 |
-| Every dialog, fetched when a control first opens one: sheets, confirmations, questions that ask for names, the Start, Done, Solution, Abort and add-to-set dialogs, the code of a past attempt (the editor comes once a file shows), and the file tree's menu and actions | 26.7 | 10.2 |
+| Every dialog, fetched when a control first opens one: sheets, confirmations, questions that ask for names, the Start, Done, Solution, Abort and add-to-set dialogs, the code of a past attempt (the editor comes once a file shows), and the file tree's menu and actions | 28.2 | 11.1 |
 
-The budget (NFR-12) is 1,200 KB raw and 400 KB gzip for the whole bundle without Vim and the code-intelligence chunk, the page's code included, and 600 KB raw loaded before a file of one language is editable. What a view or a control needs only when it is used is a chunk of its own (the rows above), so the page, the largest grammar and the editor stay under the 600 KB; `cli/tests/entrypoints/web/test_bundle_budget.py` holds the committed files to both limits. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
+The budget (NFR-12) is 1,200 KB raw and 400 KB gzip for the whole bundle without Vim and the code-intelligence chunk, the page's code included, and 600 KB raw loaded before a file of one language is editable. What a view or a control needs only when it is used is a chunk of its own (the rows above), so the page, the largest grammar and the editor stay under the 600 KB; that holds the Problems view too: the landing view loads the same bytes in one more request, and a reload on an attempt skips them; `cli/tests/entrypoints/web/test_bundle_budget.py` holds the committed files to both limits. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
 
 ## Editor module
 

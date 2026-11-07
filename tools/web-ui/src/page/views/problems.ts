@@ -1,6 +1,7 @@
 /**
- * The Problems view (docs/specs/web-ui.md#problems-view): the `cstudy next` pick, the `cstudy list`
- * filters, kept in the fragment's query, and the table, items after problems.
+ * The Problems view (docs/specs/web-ui.md#problems-view): the `cstudy next` pick with its action, the
+ * search and the filters of `cstudy list`, kept in the fragment's query, the chips of what is active,
+ * and the table in the columns the preferences hold, items after problems.
  */
 
 import "./problems.css";
@@ -14,6 +15,7 @@ import {
   activeFilters,
   canHide,
   choiceWords,
+  counted,
   countWords,
   DEFAULT_COLUMNS,
   matchesSearch,
@@ -29,6 +31,7 @@ import type { AttemptRef, ListEntry, NextPick, ProblemDocument, ProblemList, Set
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
 const STATUSES = ["new", "in_progress", "attempted", "passed", "due", "mastered"];
+const CONTENT = ["draft", "ready"];
 /** The filters the server answers; the search narrows the rows already here. */
 const LIST_FILTERS = FILTER_KEYS.filter((key) => key !== "search");
 const ROW_FILTERS = ["status", "difficulty", "domain", "lang"] as const;
@@ -36,10 +39,6 @@ const MORE_FILTERS = ["track", "kind", "role", "scope", "pattern", "content", "s
 const SEARCH_FIELD = "filter-search";
 type ChoiceKey = Exclude<FilterKey, "search">;
 type Picked = Exclude<NextPick, { readonly pick: null }>;
-
-/** The field to focus once a change of the filters has drawn the view again. */
-let focusAfterDraw: string | null = null;
-const CONTENT = ["draft", "ready"];
 const LANGUAGE_LABELS: Readonly<Record<string, string>> = {
   python: "py",
   typescript: "ts",
@@ -48,6 +47,9 @@ const LANGUAGE_LABELS: Readonly<Record<string, string>> = {
   go: "go",
   rust: "rs",
 };
+
+/** The field to focus once a change of the filters has drawn the view again. */
+let focusAfterDraw: string | null = null;
 
 export function problemsView(context: PageContext, filters: Filters): Cleanup {
   const { api, shell, session } = context;
@@ -139,7 +141,9 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
           }),
       };
       drawRows = () => {
-        const rows = listing(entries, shownColumns(context.preferences().problem_columns), drawing);
+        const columns = shownColumns(context.preferences().problem_columns);
+        const rows = listing(entries, columns, drawing);
+        table.classList.toggle("has-more-columns", columns.length > DEFAULT_COLUMNS.length);
         table.replaceChildren(
           ...brokenSets,
           ...(inSet?.missing.length ? [h("p", { class: "quiet" }, `missing from the catalog: ${inSet.missing.join(", ")}`)] : []),
@@ -148,9 +152,9 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
         narrow = () => {
           const found = rows.narrow(searched);
           const items = found.filter((entry) => entry.kind === "item").length;
-          shell.setStatus({ mode: "LIST", where: `${found.length - items} problems · ${items} items · ${today}` });
+          shell.setStatus({ mode: "LIST", where: `${counted(found.length - items, "problem")} · ${counted(items, "item")} · ${today}` });
           count.textContent = countWords(found.length, everything?.entries.length ?? null);
-          if (!summary.hidden) shell.announce(`${count.textContent} problems`);
+          if (!summary.hidden) shell.announce(`showing ${count.textContent}`);
         };
         narrow();
       };
@@ -234,7 +238,7 @@ export function nextPick(context: PageContext, pick: NextPick, filters: Filters)
       h(
         "div",
         { class: "next-foot" },
-        h("p", { class: "next-start" }, command(startCommand(pick.slug, pick.language)), h("span", { class: "quiet" }, ` · same as ${nextCommand(filters)}`)),
+        h("p", { class: "next-start" }, command(startCommand(pick.slug, pick.language)), h("span", { class: "quiet next-same" }, ` · same as ${nextCommand(filters)}`)),
         pick.also_open?.length
           ? h(
               "p",
@@ -264,18 +268,20 @@ function filterSelect(key: ChoiceKey, chosen: string | undefined, choices: reado
   return select;
 }
 
-/** A menu that a click elsewhere, Escape and the focus leaving it close. */
+/** A menu that a click elsewhere (`closeMenus`), Escape and tabbing out of it close. */
 function filterMenu(name: string, label: readonly Child[], ...content: Child[]): HTMLDetailsElement {
   const summary = h("summary", {}, ...label);
   const menu = h("details", { class: `filter-menu ${name}` }, summary, h("div", { class: "filter-panel" }, ...content));
   menu.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || !menu.open) return;
-    event.preventDefault();
-    menu.open = false;
-    summary.focus();
-  });
-  menu.addEventListener("focusout", (event) => {
-    if (event.relatedTarget instanceof Node && !menu.contains(event.relatedTarget)) menu.open = false;
+    if (event.key === "Tab") {
+      window.setTimeout(() => {
+        if (!menu.contains(document.activeElement)) menu.open = false;
+      });
+    } else if (event.key === "Escape" && menu.open) {
+      event.preventDefault();
+      menu.open = false;
+      summary.focus();
+    }
   });
   return menu;
 }
@@ -379,11 +385,12 @@ interface RowDrawing {
   readonly setsOf: (slug: string) => HTMLElement;
 }
 
-/** A click anywhere on a row but on a control, or a drag that selected text, is a click on its
- * link, with its modifier keys, so Ctrl or Cmd opens a tab there too. */
+/** A click anywhere on a row is a click on its link, with its modifier keys, so Ctrl or Cmd opens a
+ * tab there too. A control does what it does, a drag selects text, and a click that closes an open
+ * menu does only that. */
 function openRow(event: MouseEvent): void {
   const target = event.target as Element;
-  if (target.closest("a, button, input, select, label, summary") || !document.getSelection()?.isCollapsed) return;
+  if (target.closest("a, button, input, select, label, summary") || !document.getSelection()?.isCollapsed || document.querySelector(".filter-menu[open]")) return;
   target.closest("tr")?.querySelector(".problem-link")?.dispatchEvent(new MouseEvent("click", event));
 }
 

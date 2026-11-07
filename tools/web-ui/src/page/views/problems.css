@@ -115,43 +115,66 @@
   padding-left: 24px;
 }
 
+/* What focuses the field, shown until it holds a search. */
+.filter-search:has(input:placeholder-shown)::after {
+  content: "/";
+  position: absolute;
+  right: 9px;
+  padding: 0 5px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  pointer-events: none;
+}
+
 .filter-search input::placeholder {
   color: var(--ink-soft);
   opacity: 1;
 }
 
-.filter {
+.filter,
+.filter-field {
   position: relative;
+}
+
+.filter {
   display: inline-flex;
 }
 
-.filter::after {
+.filter::after,
+.filter-field::after {
   content: "▾";
   position: absolute;
-  top: 50%;
   right: 8px;
+  bottom: 6px;
   color: var(--ink-soft);
   pointer-events: none;
-  transform: translateY(-50%);
+}
+
+.filter select,
+.filter-field select {
+  padding-right: 22px;
+  appearance: none;
+  text-overflow: ellipsis;
+  cursor: pointer;
 }
 
 .filter select {
   width: auto;
   max-width: 20ch;
-  padding-right: 22px;
-  appearance: none;
   field-sizing: content;
-  text-overflow: ellipsis;
-  cursor: pointer;
 }
 
 .filter select:hover,
+.filter-field select:hover,
 .filter-menu summary:hover {
   border-color: var(--ink-soft);
 }
 
-.filter select.is-set {
-  border-color: var(--accent);
+.filter select.is-set,
+.filter-field select.is-set {
+  border-color: var(--ink-soft);
 }
 
 .filter-menu {
@@ -286,6 +309,49 @@ tr:hover > td > .problem-link {
   font-weight: 400;
 }
 
+/* The title takes what the other columns leave, so they keep one line and a row its height. */
+.problem-rows .title-cell {
+  width: 100%;
+  min-width: 24ch;
+}
+
+.problem-rows td:not(.title-cell) {
+  white-space: nowrap;
+}
+
+.problem-rows td[data-column="domain"],
+.problem-rows td[data-column="role"] {
+  white-space: normal;
+}
+
+/* The words of a resume are the only link in the column, and only they are underlined. */
+.problem-rows .resume-link .badge {
+  display: inline;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.problem-rows .resume-link .glyph {
+  display: inline-block;
+  margin-right: 5px;
+}
+
+/* More columns than the table starts with can outgrow a wide window too, so the table scrolls in a
+   box of its own, as it does in every narrower window (app.css). */
+.has-more-columns {
+  max-height: calc(100vh - var(--bar) - var(--status) - 40px);
+  overflow: auto;
+  scroll-padding-top: var(--bar);
+}
+
+.has-more-columns thead th {
+  top: 0;
+}
+
+.has-more-columns .title-cell {
+  width: auto;
+}
+
 .title {
   color: var(--ink-soft);
 }
@@ -323,8 +389,43 @@ tr:hover > td > .problem-link {
     justify-items: start;
   }
 
+  .next-same {
+    display: none;
+  }
+
   .filter-search {
     flex-basis: 100%;
     max-width: none;
+  }
+
+  /* What the form holds wraps with the columns menu, so the last of them share a line. */
+  .filters {
+    display: contents;
+  }
+
+  .filter-bar {
+    gap: 6px;
+  }
+
+  .filter select,
+  .filter-menu summary {
+    padding-block: 3px;
+    padding-left: 6px;
+    font-size: var(--text-s);
+  }
+
+  .filter select {
+    padding-right: 18px;
+  }
+
+  .filter::after {
+    right: 6px;
+    bottom: 3px;
+  }
+
+  /* The table scrolls sideways here anyway, so the title and the slug take a line each. */
+  .problem-rows .slug {
+    display: block;
+    margin-left: 0;
   }
 }

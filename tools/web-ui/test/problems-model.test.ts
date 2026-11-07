@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { activeFilters, canHide, countWords, DEFAULT_COLUMNS, matchesSearch, shownColumns, withColumn } from "../src/page/problems-model.ts";
+import { activeFilters, canHide, counted, countWords, DEFAULT_COLUMNS, matchesSearch, shownColumns, withColumn } from "../src/page/problems-model.ts";
 
 const TWO_SUM = { slug: "two-sum", title: "Two Sum" };
 const LRU = { slug: "lru-cache", title: "LRU Cache" };
@@ -71,4 +71,8 @@ test("unticking a column takes it out", () => {
 
 test("problem and status cannot be hidden, and the others can", () => {
   assert.deepEqual([canHide("problem"), canHide("status"), canHide("id"), canHide("sets")], [false, false, true, true]);
+});
+
+test("a count of one has no plural", () => {
+  assert.deepEqual([counted(1, "problem"), counted(0, "item"), counted(8, "problem")], ["1 problem", "0 items", "8 problems"]);
 });

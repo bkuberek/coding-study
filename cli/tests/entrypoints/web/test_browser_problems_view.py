@@ -292,6 +292,7 @@ class FilterRow:
     closed_by_escape: bool = False
     focus_after_escape: str = ""
     closed_by_a_click_outside: bool = False
+    closed_by_tabbing_out: bool = False
     chips_after_removing: list[str] = field(default_factory=list[str])
     fragment_after_removing: str = ""
     focus_after_removing: str = ""
@@ -401,6 +402,11 @@ def _close_more(page: Any, seen: FilterRow) -> None:
     page.click(MORE_SUMMARY)
     page.locator(COMMAND).click()
     seen.closed_by_a_click_outside = not page.locator("#filter-scope").is_visible()
+    page.click(MORE_SUMMARY)
+    page.focus("#filter-set")
+    page.keyboard.press("Tab")
+    page.wait_for_selector("#filter-set", state="hidden")
+    seen.closed_by_tabbing_out = not page.locator("#filter-set").is_visible()
 
 
 def _remove_chips(page: Any, seen: FilterRow) -> None:
@@ -550,6 +556,10 @@ def test_a_click_outside_closes_more(filter_row):
     assert filter_row.closed_by_a_click_outside
 
 
+def test_tabbing_out_closes_more(filter_row):
+    assert filter_row.closed_by_tabbing_out
+
+
 def test_a_chip_removes_its_filter_from_the_route(filter_row):
     assert filter_row.fragment_after_removing == f"#/?lang={LANGUAGE}&scope={SCOPE}"
 
@@ -622,6 +632,7 @@ DEFAULT_HEADERS = ["id", "problem", "difficulty", "pattern", "status", "due", "l
 OPTIONAL_COLUMNS = ["kind", "scope", "domain", "role", "sets"]
 PREFERENCES_FILE = ".cs/serve/preferences.json"
 NARROW = {"width": 390, "height": 844}
+JUST_WIDER_THAN_THE_BOX_RULE = {"width": 1110, "height": 800}
 PAGE_FITS = "document.documentElement.scrollWidth <= window.innerWidth"
 
 
@@ -644,6 +655,8 @@ class Columns:
     controls_with_sets: int = 0
     after_reset: list[str] = field(default_factory=list[str])
     stored_after_reset: list[str] = field(default_factory=list[str])
+    page_fits_by_default: bool = False
+    page_fits_with_more_columns: bool = False
     narrow_headers: list[str] = field(default_factory=list[str])
     narrow_page_fits: bool = False
     narrow_box_scrolls: bool = False
@@ -659,6 +672,9 @@ def columns(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Columns:
     with opened_page(engine, workspace, seen.problems) as page:
         seen.defaults = _headers(page)
         seen.controls_by_default = page.locator(".set-control").count()
+        page.set_viewport_size(JUST_WIDER_THAN_THE_BOX_RULE)
+        seen.page_fits_by_default = page.evaluate(PAGE_FITS)
+        page.set_viewport_size(WINDOW)
         _read_the_menu(page, seen)
         _add_columns(page, workspace, seen)
         _reload_the_columns(page, seen)
@@ -731,6 +747,9 @@ def _hide_a_column(page: Any, seen: Columns) -> None:
 
 
 def _narrow_window(page: Any, seen: Columns) -> None:
+    page.set_viewport_size(JUST_WIDER_THAN_THE_BOX_RULE)
+    page.wait_for_selector(ROWS)
+    seen.page_fits_with_more_columns = page.evaluate(PAGE_FITS)
     page.set_viewport_size(NARROW)
     page.wait_for_selector(ROWS)
     seen.narrow_headers = _headers(page)
@@ -828,6 +847,14 @@ def test_reset_stores_the_default_columns(columns):
     assert columns.stored_after_reset == DEFAULT_HEADERS
 
 
+def test_the_default_columns_fit_a_window_too_wide_for_the_tables_box(columns):
+    assert columns.page_fits_by_default
+
+
+def test_more_columns_than_a_wide_window_holds_scroll_in_the_tables_box(columns):
+    assert columns.page_fits_with_more_columns
+
+
 def test_a_narrow_window_keeps_every_chosen_column(columns):
     assert columns.narrow_headers == columns.without_a_column
 
@@ -892,6 +919,7 @@ class Rows:
     link_style: dict[str, str] = field(default_factory=dict[str, str])
     underlined_links_at_rest: int = -1
     cell_bottoms: list[float] = field(default_factory=list[float])
+    row_heights: list[float] = field(default_factory=list[float])
     title_cell_display: str = ""
     after_a_click_on_the_row: str = ""
     after_enter_on_the_link: str = ""
@@ -900,6 +928,8 @@ class Rows:
     tab_of_a_modified_click: str = ""
     hash_after_a_modified_click: str = ""
     hash_after_selecting_text: str = ""
+    menu_after_a_click_on_a_row: bool = True
+    hash_after_closing_a_menu: str = ""
     hash_after_the_set_control: str = ""
     dialog_after_the_set_control: bool = False
     status_link: str = ""
@@ -925,6 +955,7 @@ def rows(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Rows:
         _click_the_row(page, seen)
         _keyboard(page, seen)
         _other_clicks(page, seen)
+        _click_that_closes_a_menu(page, seen)
         _inner_controls(page, seen)
         _status_links(page, seen)
     return seen
@@ -932,6 +963,9 @@ def rows(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Rows:
 
 def _read_a_row(page: Any, seen: Rows) -> None:
     seen.headers = page.locator(HEADERS).all_text_contents()
+    seen.row_heights = page.locator(ROWS).evaluate_all(
+        "rows => [...new Set(rows.slice(0, 7).map((row) => row.getBoundingClientRect().height))]"
+    )
     link = page.locator(f"{ROW} {LINK}")
     seen.title_text = link.inner_text()
     seen.link_href = link.get_attribute("href") or ""
@@ -996,6 +1030,13 @@ def _other_clicks(page: Any, seen: Rows) -> None:
     page.mouse.move(slug["x"] + slug["width"] - 1, middle_of_slug, steps=4)
     page.mouse.up()
     seen.hash_after_selecting_text = page.evaluate("location.hash")
+
+
+def _click_that_closes_a_menu(page: Any, seen: Rows) -> None:
+    page.click(COLUMNS_SUMMARY)
+    page.click(f"{ROW} td[data-column=difficulty]")
+    seen.menu_after_a_click_on_a_row = page.locator("#column-kind").is_visible()
+    seen.hash_after_closing_a_menu = page.evaluate("location.hash")
 
 
 def _inner_controls(page: Any, seen: Rows) -> None:
@@ -1064,6 +1105,10 @@ def test_the_rule_under_a_row_is_one_line(rows):
     assert len(set(rows.cell_bottoms)) == 1
 
 
+def test_the_rows_take_one_height_whatever_the_status_column_holds(rows):
+    assert max(rows.row_heights) - min(rows.row_heights) < 1
+
+
 def test_a_click_on_the_row_opens_the_problem(rows):
     assert rows.after_a_click_on_the_row == PROBLEM_HASH
 
@@ -1090,6 +1135,14 @@ def test_a_modified_click_on_the_row_stays_on_the_list(rows):
 
 def test_selecting_text_in_a_row_does_not_open_the_problem(rows):
     assert rows.hash_after_selecting_text == "#/"
+
+
+def test_a_click_on_a_row_closes_an_open_menu(rows):
+    assert not rows.menu_after_a_click_on_a_row
+
+
+def test_a_click_that_closes_a_menu_does_not_open_the_problem(rows):
+    assert rows.hash_after_closing_a_menu == "#/"
 
 
 def test_a_control_in_a_row_does_what_it_does(rows):

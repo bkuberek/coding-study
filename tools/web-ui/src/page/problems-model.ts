@@ -29,6 +29,11 @@ export function activeFilters(filters: Filters): readonly ActiveFilter[] {
   });
 }
 
+/** `1 problem`, `8 problems`. */
+export function counted(number: number, word: string): string {
+  return `${number} ${word}${number === 1 ? "" : "s"}`;
+}
+
 /** `8 of 292`; just what shows, when the whole list could not be read. */
 export function countWords(shown: number, whole: number | null): string {
   return whole === null ? String(shown) : `${shown} of ${whole}`;
