@@ -5,8 +5,10 @@ Prettier 3 runs with its defaults on the level files of the TypeScript project p
 fixture's, the catalog's and the conformance suite's on the virtual clock) and on seeded random
 corpora, on the real clock and on the virtual one, that reach the long-line layouts. The
 level files of each project then run with `node --test`, which strips their types, on its
-reference (every one passes) and on its bare starter (level 1 fails only with "Not implemented"),
-and type-check with the workspace's `tsc`, with the reference, in a project folder of a workspace.
+reference (every one passes) and on its starter (level 1 fails: a bare starter only with "Not
+implemented", a starter that already runs by what it does, never with a level file that cannot
+load or call it), and type-check with the workspace's `tsc`, with the reference, in a project
+folder of a workspace.
 
 Prettier is not a dependency of coding-study: these checks find it through the `PRETTIER`
 environment variable (its `bin/prettier.cjs`, or any executable) or on `PATH`, and skip without
@@ -54,6 +56,7 @@ CORPUS_FILES = 150
 CORPUS_SEED = 250
 NOT_IMPLEMENTED = "Not implemented"
 TAP_FAILURE = "not ok "
+BROKEN_LEVEL_FILE = re.compile(r"ERR_MODULE_NOT_FOUND|SyntaxError|ReferenceError|TypeError")
 CONFORMANCE = REPOSITORY_ROOT / "runners" / "conformance"
 
 
@@ -84,7 +87,17 @@ def is_typescript_project(meta_file: Path, *, on_the_clock: bool = False) -> boo
     return project and (clock == "virtual" or not on_the_clock)
 
 
+def has_a_bare_starter(directory: Path) -> bool:
+    """Whether the starter's methods only throw `Not implemented`. The starters of the service and
+    debugging problems hold none: they run, and get their cases wrong on purpose."""
+    return any(
+        NOT_IMPLEMENTED in file.read_text() for file in (directory / "starter").rglob("*.ts")
+    )
+
+
 PROJECTS = typescript_projects()
+BARE_STARTERS = [directory for directory in PROJECTS if has_a_bare_starter(directory)]
+WORKING_STARTERS = [directory for directory in PROJECTS if directory not in BARE_STARTERS]
 
 
 def load(directory: Path, root: Path) -> Problem:
@@ -339,13 +352,36 @@ def test_every_level_file_passes_on_the_reference(project, tmp_path):
     assert result.returncode == 0, result.stdout[-4000:]
 
 
-def test_level_1_fails_on_the_starter_only_because_nothing_is_implemented(project, tmp_path):
-    root = build(tmp_path, project, None)
-    level_1 = next(iter(level_files(project)))
-    output = node_test(root, level_1).stdout
+def level_1_on_the_starter(directory: Path, tmp_path: Path) -> str:
+    """What `node --test` prints for level 1 of the problem in `directory`, on its starter."""
+    project = load(directory, tmp_path / "repository")
+    root = build(tmp_path / "project", project, None)
+    return node_test(root, next(iter(level_files(project)))).stdout
+
+
+def test_the_starters_are_told_apart_by_what_they_hold():
+    bare = {directory.name for directory in BARE_STARTERS}
+    working = {directory.name for directory in WORKING_STARTERS}
+    assert (FIXTURE in bare, "0262-loan-pipeline-service-typescript" in working) == (True, True)
+
+
+@pytest.mark.parametrize("directory", BARE_STARTERS, ids=lambda directory: directory.name)
+def test_level_1_fails_on_a_bare_starter_only_because_nothing_is_implemented(directory, tmp_path):
+    output = level_1_on_the_starter(directory, tmp_path)
     failures = output.count(f"\n{TAP_FAILURE}")
     assert failures, output[-4000:]
     assert output.count(f"error: '{NOT_IMPLEMENTED}'") == failures, output[-4000:]
+
+
+@pytest.mark.parametrize("directory", WORKING_STARTERS, ids=lambda directory: directory.name)
+def test_level_1_fails_on_a_working_starter(directory, tmp_path):
+    assert f"\n{TAP_FAILURE}" in level_1_on_the_starter(directory, tmp_path)
+
+
+@pytest.mark.parametrize("directory", WORKING_STARTERS, ids=lambda directory: directory.name)
+def test_level_1_can_load_and_call_a_working_starter(directory, tmp_path):
+    output = level_1_on_the_starter(directory, tmp_path)
+    assert not BROKEN_LEVEL_FILE.search(output), output[-4000:]
 
 
 @pytest.fixture(scope="module")
