@@ -14,6 +14,7 @@ from typing import cast
 
 from coding_study.application.environment import Environment
 from coding_study.application.ports import ProjectTestGenerator, Workspace
+from coding_study.application.project_starter import provided_starter
 from coding_study.domain.file_states import FolderFile, folder_files
 from coding_study.domain.levels import FIRST_LEVEL
 from coding_study.domain.problem import Problem
@@ -70,8 +71,7 @@ class ProjectManifests:
 
 def starter_files(problem: Problem) -> ProjectManifest:
     """The problem's starter as `cstudy start` copies it; nothing for a problem without one."""
-    files = problem.project_files
-    starter = files.starter if files else None
+    starter = provided_starter(problem)
     return ProjectManifest() if starter is None else starter_manifest(starter)
 
 

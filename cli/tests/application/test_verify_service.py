@@ -8,6 +8,7 @@ import pytest
 
 from coding_study.application.http_grading_ports import StackClients, StackEndpoints
 from coding_study.application.verify_content import VerifyRequest, verify_content
+from coding_study.application.verify_projects import PROJECT_BUILDS, STARTER_BUILDS
 from coding_study.application.verify_service import ServiceVerification, verify_service_project
 from coding_study.domain.docker_engine import EngineState, EngineStatus
 from coding_study.domain.errors import SandboxError
@@ -104,6 +105,14 @@ def test_it_writes_the_starter_and_the_reference_without_generated_tests(environ
     verified(environment)
 
     assert environment.workspace.exists(f".cs/build/projects/{SLUG}/reference/src/server.ts")
+
+
+def test_the_starters_and_the_references_builds_hold_the_env_file(environment):
+    verified(environment)
+
+    workspace = environment.workspace
+    assert workspace.read_text(f"{PROJECT_BUILDS}/{SLUG}/reference/.env") == "PORT=8000\n"
+    assert workspace.read_text(f"{STARTER_BUILDS}/{SLUG}/.env") == "PORT=8000\n"
 
 
 def test_it_installs_for_the_starter_and_for_the_reference(environment, engine):

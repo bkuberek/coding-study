@@ -98,7 +98,6 @@ def write_problem(root: Path, document: dict[str, object] | None = None) -> None
     (directory / "solutions" / "reference" / "src" / "server.ts").write_text("// reference\n")
     starter = directory / "starter"
     (starter / "README.md").write_text("# Rooms\n")
-    (starter / ".env").write_text("PORT=8000\n")
     (starter / "package.json").write_text('{"type": "module", "packageManager": "pnpm@10.0.0"}\n')
     (starter / LOCK).write_text("lockfileVersion: '9.0'\n")
     (starter / "src" / "server.ts").write_text("// server\n")

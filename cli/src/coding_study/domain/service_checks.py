@@ -17,11 +17,11 @@ from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.project import PATH_SEPARATOR, ProjectFile, ProjectTree
 from coding_study.domain.sandbox import CONTROL_PORT, MOCK_PORT, RESERVED_SERVICES
 from coding_study.domain.service_project import (
+    ENV_FILE,
     FROZEN_INSTALL_FLAGS,
     PROBLEM_PLACEHOLDER,
     ServiceCommands,
     ServiceProject,
-    parse_env_file,
 )
 from coding_study.domain.starter_files import LOCK_FILES, cache_path
 
@@ -30,7 +30,6 @@ MAX_STARTER_FILES = 50
 MAX_STARTER_KIB = 256
 MAX_STARTER_BYTES = MAX_STARTER_KIB * 1024
 README_FILE = "README.md"
-ENV_FILE = ".env"
 ENV_LOCAL_FILE = ".env.local"
 PACKAGE_FILE = "package.json"
 PNPM_LOCK = "pnpm-lock.yaml"
@@ -190,7 +189,7 @@ def _starter(meta: ProblemMeta, service: ServiceProject, starter: ProjectTree) -
         yield lock, "a lock file lies at the starter's root"
     yield from _limits(starter, lock)
     yield from _contents(starter, lock)
-    yield from _env_file(service, starter)
+    yield from _env_files(starter)
     if lock == PNPM_LOCK:
         yield from _node_package(starter)
     if lock == UV_LOCK:
@@ -224,14 +223,11 @@ def _contents(starter: ProjectTree, lock: str | None) -> _Found:
             yield file.path, "is not UTF-8 text"
 
 
-def _env_file(service: ServiceProject, starter: ProjectTree) -> _Found:
+def _env_files(starter: ProjectTree) -> _Found:
+    if ENV_FILE in starter.paths:
+        yield ENV_FILE, "a starter holds no .env: cstudy writes it from project.env"
     if ENV_LOCAL_FILE in starter.paths:
         yield ENV_LOCAL_FILE, "there is no .env.local: with fixed values, you edit .env itself"
-    file = starter.file(ENV_FILE)
-    if file is None:
-        yield ENV_FILE, "missing: it holds exactly project.env"
-    elif file.text is None or parse_env_file(file.text) != dict(service.env):
-        yield ENV_FILE, "must hold exactly project.env"
 
 
 def _node_package(starter: ProjectTree) -> _Found:

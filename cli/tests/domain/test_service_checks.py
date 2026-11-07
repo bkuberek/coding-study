@@ -24,6 +24,7 @@ from coding_study.domain.service_project import (
     ServiceProject,
     ServiceRequires,
     ServiceSizes,
+    env_file_text,
 )
 from coding_study.domain.signature import NO_SIGNATURE
 
@@ -82,7 +83,6 @@ PACKAGE = (
 def starter(**changes: str) -> ProjectTree:
     files = {
         "README__md": "# Rooms",
-        "__env": "PORT=8000\n",
         "package__json": PACKAGE,
         "pnpm-lock__yaml": "lockfileVersion: '9.0'\n",
         **changes,
@@ -388,20 +388,18 @@ def test_a_file_that_is_not_text_is_refused():
     assert any("UTF-8" in text for text in tree_issues(service(), files))
 
 
-def test_the_env_file_is_required():
-    files = tree(README__md="x", package__json=PACKAGE, **{"pnpm-lock__yaml": "x"})
+def test_a_starter_holds_no_env_file():
+    issues = tree_issues(service(), starter(__env="PORT=8000\n"))
 
-    assert any(".env" in text and "missing" in text for text in tree_issues(service(), files))
-
-
-def test_the_env_file_holds_exactly_project_env():
-    assert any(
-        ".env" in text for text in tree_issues(service(), starter(__env="PORT=8000\nEXTRA=1\n"))
-    )
+    assert any(".env" in text and "project.env" in text for text in issues)
 
 
-def test_the_env_file_reads_comments_and_blank_lines():
-    assert tree_issues(service(), starter(__env="# the port\n\nPORT=8000\n")) == []
+def test_the_env_file_keeps_the_manifests_order():
+    assert env_file_text({"Z": "1", "A": "2"}) == "Z=1\nA=2\n"
+
+
+def test_a_starter_without_an_env_file_is_complete():
+    assert tree_issues(service(), starter()) == []
 
 
 def test_there_is_no_env_local():
@@ -448,7 +446,6 @@ def python_service() -> ServiceProject:
 def python_starter(**changes: str) -> ProjectTree:
     files = {
         "README__md": "x",
-        "__env": "PORT=8000\n",
         "pyproject__toml": PYPROJECT,
         "uv__lock": "version = 1\n",
         "__gitignore": ".venv/\n!uv.lock\n",

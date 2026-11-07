@@ -194,7 +194,7 @@ The app container's environment is explicit. **Nothing from your machine is pass
 
 | Variable | Set by | Value |
 |----------|--------|-------|
-| Everything in `project.env` | The manifest, which [`.env`](#env) repeats | The app's port, stable URLs such as `http://room-vendor:8080`, fake keys |
+| Everything in `project.env` | The manifest, which [`.env`](#env) is written from | The app's port, stable URLs such as `http://room-vendor:8080`, fake keys |
 | `CSTUDY_DATA_DIR` | cstudy | `/data` |
 | `HOME`, `TMPDIR` | cstudy | Paths on tmpfs |
 | `CSTUDY_MOCK_CONTROL_URL`, `CSTUDY_MOCK_CONTROL_TOKEN` | cstudy, for `test` only | The control interface of a test stack, which holds only visible scenarios. Never set for `run`, and never in a graded stack |
@@ -266,7 +266,7 @@ project:
     reset: [node, scripts/reset-data.ts]
     grade_setup: [node, "{problem}/grading/grade_setup.ts"]
   app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 30}
-  env:                          # the app's environment; the starter's .env holds the same lines
+  env:                          # the app's environment; cstudy writes .env from it
     PORT: "8000"
     ROOM_VENDOR_URL: http://room-vendor:8080
     DATABASE_URL: postgres://app:app@db:5432/app
@@ -286,7 +286,7 @@ project:
 | `commands` | The [lifecycle commands](#lifecycle-commands). No other key |
 | `app.port_env`, `app.port` | The variable your app reads for its port, and the port, which never varies inside the stack. Your app must read it from the environment and listen on all interfaces inside the container (`0.0.0.0`) |
 | `app.health` | A path that answers 2xx when the app is ready |
-| `env` | The whole app environment: `port_env`, one URL for each mock server and service your app calls, and fake keys. No real secret, and S19 compares it with the starter's `.env` |
+| `env` | The whole app environment: `port_env`, one URL for each mock server and service your app calls, and fake keys. No real secret. It is the only source of the folder's [`.env`](#env) |
 | `mocks` | At most 4, each with a unique `name` (lowercase letters, digits, `-`) that is no service name and none of `app`, `cstudy-mocks` or `cstudy-forward`. Every path is relative to the problem's directory, not the starter |
 | `services` | A compose file, relative to the problem's directory ([Backing services](#backing-services)), planned for P10: S21 and S22 check it today, and a stack refuses it |
 | `install_env` | What the package manager needs in its install container, such as where its cache is. `/cache` is a volume there |
@@ -310,7 +310,7 @@ problems/<id>-coworking-availability-typescript/
   services/compose.yaml     # a data-driven problem only
   grading/                  # a data-driven problem only: grade_setup and hidden data
   starter/
-    README.md, .env, package.json, pnpm-lock.yaml, tsconfig.json, .gitignore
+    README.md, package.json, pnpm-lock.yaml, tsconfig.json, .gitignore
     src/server.ts
     tests/                  # visible tests, and the helper for the control interface
     vendors/room-vendor/API.md    # a copy of mocks/room-vendor.API.md
@@ -323,7 +323,7 @@ problems/<id>-coworking-availability-typescript/
 
 ## `.env`
 
-`.env` ships ready-made in the starter, an ordinary visible file with no secrets. Mock servers and services have stable names on the stack's network, so nothing in it ever varies.
+No starter holds a `.env`. `cstudy` writes it into your project folder from `project.env` as it copies the starter, an ordinary visible file with no secrets. Mock servers and services have stable names on the stack's network, so nothing in it ever varies, and the manifest stays the only source, so nothing is repeated.
 
 ```text
 PORT=8000
@@ -333,11 +333,12 @@ DATABASE_URL=postgres://app:app@db:5432/app
 
 | Rule | Detail |
 |------|--------|
-| What it is | A starter file like any other: tracked, in `code_hash`, in the manifest and in archives, restored by `cstudy start --restore` |
+| When it is written | Wherever a starter lands: a new attempt, a resumed attempt whose folder is gone, `--fresh` and review attempts, and `cstudy verify`'s builds of the starter and the reference. A resumed attempt with a folder keeps what is there, as for any file |
+| What it is | From then on, a file like any other: tracked, in `code_hash`, in the folder's manifest and in archives, and restored by `cstudy start --restore .env` from what `project.env` says now. A new attempt's `.env` counts as unchanged, so `cstudy status` and a submission never call it your edit |
 | Why it exists | Your app's own loader finds what its environment already holds, and you can read how the stack is wired |
-| Static check | S19 requires it to hold exactly `project.env`. S15 today refuses a `.env` in a starter, and that flips for service projects |
+| Static check | S15 refuses a `.env` in a service project's starter |
 | What it is not | A place for real keys. No problem needs one: a key in `project.env` is a fake, since nothing can reach a real provider from `sandbox` |
-| Editing it | It is your file. A URL you change sends your app elsewhere, and the case fails on the request log |
+| Editing it | It is your file. Nothing reads it to start your app, whose environment is `project.env`, so an edit changes only what your own loader finds. A URL you change that way sends your app elsewhere, and the case fails on the request log |
 
 There is no `.env.local`: with fixed values and no secrets you edit `.env` itself.
 
@@ -889,8 +890,8 @@ If a terminal holds the dev stack, the page shows that and does not start a seco
 | Check | Rule |
 |-------|------|
 | S5 (changed) | An example marks a visible case with `<!-- case: <id> -->`, in the `## Level` it belongs to |
-| S14, S15, S16 (changed) | With `grading: http`: no `entry`, `tests`, `clock`, `signature` or generated-test rules, and no `ops` comparator rule. A track other than `practical` is allowed ([ADR 0020](../decisions/0020-catalog-labels.md#rule-changes)). The starter holds `README.md`, its lock file and `.env`, and no `.env.local`. S15's rules on `package.json`, `pyproject.toml` and lock files [flip](#lock-files-and-static-checks). A `request` in a case belongs to a service project |
-| S19 (new) | `commands` holds only the standard names; `run` and `test` are declared, `install` with `requires.lock`, `bootstrap` with `services`; each is a non-empty list of strings; `{problem}` only in `grade_setup`, whose script lies outside the starter; `image` pinned by digest; `app` complete; `env` holds `port_env` with `app.port`, and the starter's `.env` holds exactly `env`; a URL in `env` names a declared mock server on 8080 or a declared service; at most 4 mock servers with unique names, none reserved |
+| S14, S15, S16 (changed) | With `grading: http`: no `entry`, `tests`, `clock`, `signature` or generated-test rules, and no `ops` comparator rule. A track other than `practical` is allowed ([ADR 0020](../decisions/0020-catalog-labels.md#rule-changes)). The starter holds `README.md` and its lock file, and no `.env` or `.env.local`, since `cstudy` writes `.env` from `project.env`. S15's rules on `package.json`, `pyproject.toml` and lock files [flip](#lock-files-and-static-checks). A `request` in a case belongs to a service project |
+| S19 (new) | `commands` holds only the standard names; `run` and `test` are declared, `install` with `requires.lock`, `bootstrap` with `services`; each is a non-empty list of strings; `{problem}` only in `grade_setup`, whose script lies outside the starter; `image` pinned by digest; `app` complete; `env` holds `port_env` with `app.port`; a URL in `env` names a declared mock server on 8080 or a declared service; at most 4 mock servers with unique names, none reserved |
 | S20 (new) | Every mock config valid against `schemas/mock.schema.json`, as the problem loads; a config lies in `mocks/`; `body_file` stays inside `mocks/`, exists and is text; every scenario's `delay_ms` and `Retry-After` are at most 3 s, and `Retry-After` is whole seconds; `room-vendor.API.md` and its starter copy at `vendors/room-vendor/API.md` are byte-identical and list every visible scenario and no hidden one |
 | S21 (new) | The compose file holds only `services` and their `volumes`, with images pinned by digest and no `build`; no `ports`, `networks`, `network_mode`, `restart`, `container_name`, top-level `name`, `privileged`, `cap_add`, external volume, Docker socket, anonymous volume or bind mount outside the problem; `mem_limit`, `pids_limit` and `healthcheck` on every service; no service takes a reserved name or a mock server's |
 | S22 (new) | `requires` agrees with the compose file, the lock file and `commands`: `services` names the images' repositories, `lock` exists and `images_mb` has a row per image |
@@ -923,7 +924,7 @@ The [ready rules](authoring.md#ready-criteria) can be met with these changes:
 
 ## A small example
 
-`cli/tests/fixtures/service_projects/` holds two working problems, one in TypeScript and one in Python, for the tests on a real engine. They are the smallest that use everything built: a mock server, `bootstrap`, `reset`, levels, hidden cases with the 429 scenario, a reference and a naive solution that a hidden case catches. They are no catalog problems. A real `.env` is written from the manifest as a test copies them, since no file of that name is committed.
+`cli/tests/fixtures/service_projects/` holds two working problems, one in TypeScript and one in Python, for the tests on a real engine. They are the smallest that use everything built: a mock server, `bootstrap`, `reset`, levels, hidden cases with the 429 scenario, a reference and a naive solution that a hidden case catches. They are no catalog problems.
 
 ## Unproven on Linux
 

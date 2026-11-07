@@ -29,6 +29,7 @@ from coding_study.application.project_runs import (
     run_grading,
     run_suite,
 )
+from coding_study.application.project_starter import provided_starter
 from coding_study.application.reference_runs import (
     ApproachResult,
     LanguageResult,
@@ -132,7 +133,7 @@ def reference_build(environment: Environment, problem: Problem, approach_id: str
     every level, in a folder synced to exactly those files; returns the absolute root."""
     files = problem.project_files or NO_PROJECT_FILES
     trees = {
-        STARTER_DIRECTORY: files.starter or _NO_FILES,
+        STARTER_DIRECTORY: provided_starter(problem) or _NO_FILES,
         f"{SOLUTIONS_DIRECTORY}/{approach_id}": files.overlays.get(approach_id, _NO_FILES),
     }
     folder = reference_folder(problem, approach_id)
@@ -152,7 +153,7 @@ def broken_build(environment: Environment, problem: Problem, broken_id: str) -> 
     files = problem.project_files or NO_PROJECT_FILES
     reference = problem.meta.approaches[0].id if problem.meta.approaches else ""
     trees = {
-        STARTER_DIRECTORY: files.starter or _NO_FILES,
+        STARTER_DIRECTORY: provided_starter(problem) or _NO_FILES,
         f"{SOLUTIONS_DIRECTORY}/{reference}": files.overlays.get(reference, _NO_FILES),
         f"{BROKEN_DIRECTORY}/{broken_id}": files.broken.get(broken_id, _NO_FILES),
     }
@@ -172,9 +173,8 @@ def project_brokens(problem: Problem) -> tuple[BrokenReference, ...]:
 def starter_build(environment: Environment, problem: Problem) -> Path:
     """The starter with level 1's generated test file, as `cstudy start` seeds a project folder,
     in a folder synced to exactly those files; returns the absolute root."""
-    starter = (problem.project_files or NO_PROJECT_FILES).starter or _NO_FILES
     folder = f"{STARTER_BUILDS}/{problem.meta.slug}"
-    trees = {STARTER_DIRECTORY: starter}
+    trees = {STARTER_DIRECTORY: provided_starter(problem) or _NO_FILES}
     return _ProjectBuild(environment, problem).write(folder, trees, FIRST_LEVEL)
 
 
