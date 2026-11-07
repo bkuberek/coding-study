@@ -47,6 +47,8 @@ SCROLL = """table => {
 OVER_THE_HEADER = """table => [...table.querySelectorAll("thead th")]
   .filter((cell) => cell.getBoundingClientRect().width > 0)
   .map((cell) => {
+    const box = table.closest(".table-scroll");
+    box.scrollLeft = Math.max(0, cell.offsetLeft - box.clientWidth / 2);
     const { left, top, width, height } = cell.getBoundingClientRect();
     const found = document.elementFromPoint(left + width / 2, top + height / 2);
     return found === cell || cell.contains(found) ? "" : `${cell.textContent}: ${found?.tagName}`;
