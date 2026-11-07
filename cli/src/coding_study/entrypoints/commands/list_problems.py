@@ -7,7 +7,7 @@ from typing import Annotated
 import typer
 from rich.text import Text
 
-from coding_study.adapters.environment_factory import load_catalog_environment
+from coding_study.adapters.environment_factory import load_catalog_environment, load_environment
 from coding_study.application.environment import Environment
 from coding_study.application.list_items import ListedItem, list_items
 from coding_study.application.list_problems import (
@@ -19,6 +19,7 @@ from coding_study.application.list_problems import (
     list_problems,
     listing_context,
 )
+from coding_study.application.problem_sets import in_named_set, missing_slugs
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.errors import UsageError
@@ -42,6 +43,7 @@ STATUS_WIDTH = max(len(status.label) for status in ProblemStatus)
 DUE_WIDTH = 10
 NO_VALUE = "-"
 NO_MATCH = "no problems match"
+MISSING_NOTE = "missing from the catalog"
 MARK = "!"
 """After the label of a language the selected JDK cannot run, and before the footer's list."""
 CATALOG_SOURCE = "catalog"
@@ -55,7 +57,7 @@ REFERENCE_LABELS = {
     Language.RUST: "rs",
 }
 _WIDTHS = (ID_WIDTH, SLUG_WIDTH, DIFFICULTY_WIDTH, PATTERN_WIDTH, STATUS_WIDTH, DUE_WIDTH)
-_HEADER = ("ID", "SLUG", "DIFF", "PATTERN", "STATUS", "DUE", "REFS")
+TABLE_HEADER = ("ID", "SLUG", "DIFF", "PATTERN", "STATUS", "DUE", "REFS")
 
 
 def register(app: typer.Typer) -> None:
@@ -64,6 +66,9 @@ def register(app: typer.Typer) -> None:
 
 def list_command(
     context: typer.Context,
+    set_name: Annotated[
+        str | None, typer.Option("--set", help="Only this set of yours, in its order.")
+    ] = None,
     track: Annotated[Track | None, typer.Option("--track", help="Only this track.")] = None,
     pattern: Annotated[
         str | None, typer.Option("--pattern", help="Problems that list this pattern.")
@@ -107,22 +112,32 @@ def list_command(
     problem_filter = ProblemFilter(
         track, pattern, difficulty, problem_status(status), content, language, kind, labels
     )
-    environment = load_catalog_environment(Path.cwd(), command_environ(context), Path.home())
+    load = load_catalog_environment if set_name is None else load_environment
+    environment = load(Path.cwd(), command_environ(context), Path.home())
+    problem_filter = in_named_set(environment, problem_filter, set_name)
     if as_json:
         typer.echo(json.dumps(list_document(environment, problem_filter), indent=2))
         return
     problems, items = _entries(environment, problem_filter)
-    rows = [_cells(item) for item in problems] + [_item_cells(item) for item in items]
+    rows = _in_order(
+        problem_filter,
+        [(item.summary.meta.slug, problem_cells(item)) for item in problems]
+        + [(item.meta.slug, item_cells(item)) for item in items],
+    )
     output = console(context)
-    if not rows:
+    if rows:
+        output.print(Text(table_row(TABLE_HEADER), style="bold"))
+    else:
         output.print(NO_MATCH)
-        return
-    output.print(Text(_row(_HEADER), style="bold"))
     for cells in rows:
-        output.print(Text(_row(cells)))
+        output.print(Text(table_row(cells)))
     note = jdk_note(environment, problems)
     if note is not None:
         output.print(Text(_footer(note)))
+    if problem_filter.in_set is not None:
+        missing = missing_slugs(environment, problem_filter.in_set)
+        if missing:
+            output.print(Text(f"{MISSING_NOTE}: {', '.join(missing)}"))
 
 
 def problem_status(text: str | None) -> ProblemStatus | None:
@@ -139,13 +154,20 @@ def list_document(environment: Environment, problem_filter: ProblemFilter) -> di
     """`cstudy list --json`: the rows, problems then items."""
     problems, items = _entries(environment, problem_filter)
     listing = listing_context(environment)
-    entries: list[JsonValue] = [_problem_entry(problem, listing) for problem in problems]
-    entries += [_item_entry(item, listing) for item in items]
-    return {
+    rows: list[tuple[str, JsonValue]] = [
+        (problem.summary.meta.slug, problem_entry(problem, listing)) for problem in problems
+    ]
+    rows += [(item.meta.slug, item_entry(item, listing)) for item in items]
+    document: dict[str, JsonValue] = {
         "today": listing.today.isoformat(),
-        "entries": entries,
+        "entries": _in_order(problem_filter, rows),
         "selected_jdk": selected_jdk_value(environment.jdk.selected()),
     }
+    chosen = problem_filter.in_set
+    if chosen is not None:
+        missing: list[JsonValue] = list(missing_slugs(environment, chosen))
+        document["set"] = {"name": chosen.name, "missing": missing}
+    return document
 
 
 def selected_jdk_value(selected: SelectedJdk | None) -> JsonValue:
@@ -166,7 +188,15 @@ def _entries(
     return list_problems(environment, problem_filter), list_items(environment, problem_filter)
 
 
-def _problem_entry(problem: ListedProblem, listing: ListingContext) -> dict[str, JsonValue]:
+def _in_order[Row](problem_filter: ProblemFilter, rows: list[tuple[str, Row]]) -> list[Row]:
+    """Each row of `(slug, row)`: problems then items, or the set's order under `--set`."""
+    chosen = problem_filter.in_set
+    if chosen is not None:
+        rows = sorted(rows, key=lambda row: chosen.position_of(row[0]))
+    return [row for _, row in rows]
+
+
+def problem_entry(problem: ListedProblem, listing: ListingContext) -> dict[str, JsonValue]:
     meta = problem.summary.meta
     return {
         "id": meta.id,
@@ -201,7 +231,7 @@ def _jdk_range_value(meta: ProblemMeta) -> JsonValue:
     return None if wanted is None else {"min": wanted.minimum, "max": wanted.maximum}
 
 
-def _item_entry(item: ListedItem, listing: ListingContext) -> dict[str, JsonValue]:
+def item_entry(item: ListedItem, listing: ListingContext) -> dict[str, JsonValue]:
     meta = item.meta
     return {
         "id": None,
@@ -234,7 +264,7 @@ def _attempt_value(attempt: Attempt) -> JsonValue:
     }
 
 
-def _cells(item: ListedProblem) -> tuple[str, ...]:
+def problem_cells(item: ListedProblem) -> tuple[str, ...]:
     meta = item.summary.meta
     references = " ".join(
         _reference_label(language, item) for language in item.summary.reference_languages
@@ -261,14 +291,14 @@ def _footer(note: JdkNote) -> str:
     return f"{MARK} {labels}: {note.reason}"
 
 
-def _item_cells(item: ListedItem) -> tuple[str, ...]:
+def item_cells(item: ListedItem) -> tuple[str, ...]:
     """Items have no id, pattern or references; their track takes the pattern column."""
     meta = item.meta
     due = item.due_on.isoformat() if item.due_on else NO_VALUE
     return (NO_VALUE, meta.slug, meta.difficulty, meta.track, item.status.label, due, NO_VALUE)
 
 
-def _row(cells: tuple[str, ...]) -> str:
+def table_row(cells: tuple[str, ...]) -> str:
     padded = (
         _fit(cell, width).ljust(width + COLUMN_GAP)
         for cell, width in zip(cells, _WIDTHS, strict=False)

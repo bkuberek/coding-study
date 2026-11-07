@@ -32,6 +32,10 @@ class ProblemSet:
     def holds(self, slug: str) -> bool:
         return slug in self.slugs
 
+    def position_of(self, slug: str) -> int:
+        """Where a slug it holds stands, from 1."""
+        return self.slugs.index(slug) + 1
+
     def with_slugs(self, slugs: Iterable[str]) -> "ProblemSet":
         """`slugs` appended, in the order given."""
         return replace(self, slugs=(*self.slugs, *slugs))
@@ -50,6 +54,32 @@ class ProblemSet:
         others = [other for other in self.slugs if other != slug]
         others.insert(position - 1, slug)
         return replace(self, slugs=tuple(others))
+
+
+@dataclass(frozen=True, slots=True)
+class SetStanding:
+    """How far a set has come, read from the progress each time: a set stores none of it."""
+
+    name: str
+    passed: int
+    total: int
+    """The entries the catalog has; a set can finish after the catalog dropped a slug."""
+    missing: tuple[str, ...]
+    """The slugs the catalog does not have."""
+
+    @property
+    def finished(self) -> bool:
+        return self.total > 0 and self.passed == self.total
+
+
+def standing_of(
+    problem_set: ProblemSet, catalog: Collection[str], passed: Collection[str]
+) -> SetStanding:
+    present = [slug for slug in problem_set.slugs if slug in catalog]
+    missing = tuple(slug for slug in problem_set.slugs if slug not in catalog)
+    return SetStanding(
+        problem_set.name, sum(slug in passed for slug in present), len(present), missing
+    )
 
 
 def set_name_issue(name: str) -> str | None:

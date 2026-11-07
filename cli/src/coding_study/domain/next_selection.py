@@ -5,7 +5,7 @@ the flags, never on the order the rows arrive in. Every ordering below ends in a
 """
 
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
+from collections.abc import Collection, Iterable, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from enum import StrEnum
@@ -26,6 +26,7 @@ from coding_study.domain.problem import (
     ProblemMeta,
     Track,
 )
+from coding_study.domain.problem_sets import ProblemSet
 from coding_study.domain.scheduling import ProblemProgress
 from coding_study.domain.weakness import GradedAttempt, Group, GroupHistory, group_of
 
@@ -210,6 +211,17 @@ class NewPick:
     weakness: Fraction
 
 
+@dataclass(frozen=True, slots=True)
+class SetPick:
+    """`cstudy next --set`: the first entry in the set's order that isn't passed."""
+
+    candidate: Candidate
+    set_name: str
+    position: int
+    """From 1, among the set's entries that are candidates."""
+    total: int
+
+
 type NextPick = ReviewPick | NewPick
 
 
@@ -261,6 +273,23 @@ def pick_next(
     return selection.new_problem()
 
 
+def pick_in_set(
+    candidates: Sequence[Candidate],
+    attempts: Sequence[GradedAttempt],
+    query: NextQuery,
+    problem_set: ProblemSet,
+) -> SetPick | ReviewPick | None:
+    """The first entry in the set's order that isn't passed, then a due review of the set, ranked
+    as ever: `query` and `candidates` are those of a query without the set, so no weakness score
+    changes (docs/specs/progress-and-scheduling.md#with---set)."""
+    selection = _Selection(candidates, attempts, query)
+    if query.source is not NextSource.REVIEWS_ONLY:
+        pick = selection.first_not_passed(candidates, problem_set)
+        if pick is not None or query.source is NextSource.NEW_ONLY:
+            return pick
+    return selection.review(problem_set.slugs)
+
+
 class _Selection:
     def __init__(
         self,
@@ -282,8 +311,26 @@ class _Selection:
             if attempt.slug in group_by_slug:
                 self._attempts[group_by_slug[attempt.slug]].append(attempt)
 
-    def review(self) -> ReviewPick | None:
-        due = [candidate for candidate in self._idle if candidate.progress.is_due(self._today)]
+    def first_not_passed(
+        self, candidates: Sequence[Candidate], problem_set: ProblemSet
+    ) -> SetPick | None:
+        idle = {candidate.slug: candidate for candidate in self._idle}
+        known = {candidate.slug for candidate in candidates}
+        entries = [slug for slug in problem_set.slugs if slug in known]
+        for position, slug in enumerate(entries, start=1):
+            candidate = idle.get(slug)
+            if candidate is not None and not candidate.progress.has_passed:
+                return SetPick(candidate, problem_set.name, position, len(entries))
+        return None
+
+    def review(self, within: Collection[str] | None = None) -> ReviewPick | None:
+        """The due review with the highest priority, of the slugs `within` when given."""
+        due = [
+            candidate
+            for candidate in self._idle
+            if candidate.progress.is_due(self._today)
+            and (within is None or candidate.slug in within)
+        ]
         if not due:
             return None
         chosen = min(due, key=self._review_rank)

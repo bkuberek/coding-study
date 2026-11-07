@@ -989,7 +989,7 @@ start   cstudy start url-shortener
 set     backend-loop  1 of 3 passed
 ```
 
-With nothing left it says why: `backend-loop is finished: 3 of 3 passed and no review is due`; `backend-loop is empty: add problems with cstudy set add backend-loop <slug>`; `nothing in backend-loop is in the catalog: see cstudy set show backend-loop`. A review picked after every entry passed reads `set     backend-loop  finished: 3 of 3 passed`. When a filter or the selected JDK is what left nothing, the messages above apply instead.
+With nothing left it says why: `backend-loop is finished: 3 of 3 passed`; `backend-loop is empty: add problems with cstudy set add backend-loop <slug>`; `nothing in backend-loop is in the catalog: see cstudy set show backend-loop`. A review picked after every entry passed reads `set     backend-loop  finished: 3 of 3 passed`. When a filter or the selected JDK is what left nothing, the messages above apply instead.
 
 ```text
 review  merge-intervals  (medium · intervals)  overdue 3d, interval 7d

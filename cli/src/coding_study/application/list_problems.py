@@ -18,6 +18,7 @@ from coding_study.domain.problem import (
     ProblemSummary,
     Track,
 )
+from coding_study.domain.problem_sets import ProblemSet
 from coding_study.domain.scheduling import ProblemProgress, ProblemStatus
 
 
@@ -37,6 +38,8 @@ class ProblemFilter:
     """`item` keeps the non-autograded items only; a kind of problem leaves them out."""
     labels: LabelFilter = field(default_factory=LabelFilter)
     """`--domain`, `--role` and `--scope`; an entry without labels matches none that is set."""
+    in_set: ProblemSet | None = None
+    """`--set`: only its entries, which the callers then put in its order."""
 
     @property
     def lists_items(self) -> bool:
@@ -54,8 +57,12 @@ class ProblemFilter:
             self.language is None or self.language in summary.reference_languages,
             self.kind in (None, entry_kind(meta.kind)),
             self.labels.matches(meta.labels),
+            self.holds(meta.slug),
         )
         return all(checks)
+
+    def holds(self, slug: str) -> bool:
+        return self.in_set is None or self.in_set.holds(slug)
 
 
 @dataclass(frozen=True, slots=True)

@@ -20,6 +20,11 @@ def is_item(environment: Environment, slug: str) -> bool:
     return slug in environment.items.slugs() and slug not in environment.files.slugs()
 
 
+def catalog_slugs(environment: Environment) -> frozenset[str]:
+    """Every slug `cstudy start` knows: the catalog's problems and items and your own problems."""
+    return frozenset((*environment.files.slugs(), *environment.items.slugs()))
+
+
 def practice_candidates(
     environment: Environment, tracks: Collection[Track]
 ) -> tuple[Candidate, ...]:

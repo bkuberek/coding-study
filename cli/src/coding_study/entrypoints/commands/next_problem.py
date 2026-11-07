@@ -25,8 +25,10 @@ from coding_study.domain.next_selection import (
     OpenAttempt,
     ResumePick,
     ReviewPick,
+    SetPick,
 )
 from coding_study.domain.problem import Difficulty, Language, Track
+from coding_study.domain.problem_sets import SetStanding
 from coding_study.domain.taxonomy import Scope
 from coding_study.entrypoints.commands.start import open_in_editor, start_and_report
 from coding_study.entrypoints.shared import add_command, command_environ, console
@@ -47,12 +49,15 @@ def register(app: typer.Typer) -> None:
 
 def next_command(
     context: typer.Context,
+    set_name: Annotated[
+        str | None, typer.Option("--set", help="From this set of yours, in its order.")
+    ] = None,
     tracks: Annotated[
         list[Track] | None,
         typer.Option(
             "--track",
             help="Only this track (repeatable); default: config next.tracks, or every track "
-            "with --domain, --role or --scope.",
+            "with --set, --domain, --role or --scope.",
         ),
     ] = None,
     pattern: Annotated[
@@ -91,6 +96,7 @@ def next_command(
         language,
         next_source(new, review),
         LabelFilter(domain, role, scope),
+        set_name,
     )
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     recommendation = recommend(environment, request)
@@ -107,6 +113,9 @@ def next_command(
         output.print(_line("start", _start_command(slug, recommendation.language)))
         if isinstance(recommendation.pick, ResumePick) and recommendation.pick.others:
             output.print(_line("also", _also_open(recommendation.pick.others)))
+    if recommendation.set_standing is not None:
+        output.print(_line("set", _standing_text(recommendation.set_standing)))
+    if not start:
         return
     files = start_and_report(output, environment, StartRequest(slug, recommendation.language))
     if environment.config.open_on_start:
@@ -114,16 +123,41 @@ def next_command(
 
 
 def nothing_message(nothing: NothingToPick) -> str:
-    """Why there is no pick: the selected JDK's reason, else the scope's."""
-    if nothing.jdk_reason is None:
+    """Why there is no pick: the selected JDK's reason, how a set stands, else the scope's."""
+    if nothing.jdk_reason is not None:
+        return f"{NOTHING_FOR_THE_JDK}{nothing.jdk_reason}"
+    standing = nothing.set_standing
+    if standing is None or (standing.total > 0 and not standing.finished):
         return NOTHING_TO_PICK
-    return f"{NOTHING_FOR_THE_JDK}{nothing.jdk_reason}"
+    name = standing.name
+    if standing.finished:
+        return f"{name} is finished: {standing.passed} of {standing.total} passed"
+    if standing.missing:
+        return f"nothing in {name} is in the catalog: see cstudy set show {name}"
+    return f"{name} is empty: add problems with cstudy set add {name} <slug>"
+
+
+def _standing_text(standing: SetStanding) -> str:
+    """`backend-loop  1 of 3 passed`, which `finished` heads once every entry is passed."""
+    counts = f"{standing.passed} of {standing.total} passed"
+    return f"{standing.name}  {'finished: ' if standing.finished else ''}{counts}"
+
+
+def _standing_value(standing: SetStanding) -> dict[str, JsonValue]:
+    return {
+        "name": standing.name,
+        "passed": standing.passed,
+        "total": standing.total,
+        "finished": standing.finished,
+    }
 
 
 def next_document(recommendation: Recommendation | NothingToPick) -> dict[str, JsonValue]:
     """`cstudy next --json`."""
+    standing = recommendation.set_standing
+    in_set: dict[str, JsonValue] = {} if standing is None else {"set": _standing_value(standing)}
     if isinstance(recommendation, NothingToPick):
-        return {"pick": None, "message": nothing_message(recommendation)}
+        return {"pick": None, "message": nothing_message(recommendation), **in_set}
     picked = recommendation.pick
     candidate = picked.candidate
     language = recommendation.language
@@ -141,7 +175,7 @@ def next_document(recommendation: Recommendation | NothingToPick) -> dict[str, J
     if isinstance(picked, ResumePick):
         also_open: list[JsonValue] = [_open_value(other) for other in picked.others]
         document |= {"attempt_id": picked.attempt.attempt_id, "also_open": also_open}
-    return document
+    return document | in_set
 
 
 def _open_value(attempt: OpenAttempt) -> JsonValue:
@@ -166,28 +200,28 @@ def _start_command(slug: str, language: Language | None) -> str:
     return command if language is None else f"{command} --lang {language}"
 
 
-def _pick_line(picked: NextPick | ResumePick) -> Text:
+def _pick_line(picked: NextPick | SetPick | ResumePick) -> Text:
     return _line(_pick_label(picked), pick_summary(picked))
 
 
-def _pick_label(picked: NextPick | ResumePick) -> str:
+def _pick_label(picked: NextPick | SetPick | ResumePick) -> str:
     match picked:
         case ResumePick():
             return RESUME_PICK
         case ReviewPick():
             return REVIEW_PICK
-        case NewPick():
+        case NewPick() | SetPick():
             return NEW_PICK
 
 
-def pick_summary(picked: NextPick | ResumePick) -> str:
+def pick_summary(picked: NextPick | SetPick | ResumePick) -> str:
     """`koko-eating-bananas  (medium · binary-search)  weakest pattern: binary-search (0.75)`."""
     candidate = picked.candidate
     topic = candidate.patterns[0] if candidate.patterns else candidate.track
     return f"{candidate.slug}  ({candidate.difficulty} · {topic})  {pick_reason(picked)}"
 
 
-def pick_reason(picked: NextPick | ResumePick) -> str:
+def pick_reason(picked: NextPick | SetPick | ResumePick) -> str:
     """The text after the parentheses: `overdue 3d, interval 7d`."""
     match picked:
         case ResumePick(attempt=OpenAttempt(attempt_id=number, language=language, used_on=used_on)):
@@ -200,6 +234,8 @@ def pick_reason(picked: NextPick | ResumePick) -> str:
         case NewPick(group=group, weakness=weakness):
             kind = "pattern" if group.pattern else "track"
             return f"weakest {kind}: {group.name} ({float(weakness):.2f})"
+        case SetPick(set_name=name, position=position, total=total):
+            return f"next in {name}, {position} of {total}"
 
 
 def _line(label: str, value: str) -> Text:

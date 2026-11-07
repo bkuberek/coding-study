@@ -10,6 +10,7 @@ from dataclasses import dataclass, field, replace
 
 from coding_study.application.environment import Environment
 from coding_study.application.practice_catalog import practice_candidates
+from coding_study.application.problem_sets import find_set, set_standing
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.errors import UsageError
 from coding_study.domain.items import EntryKind, entry_kind
@@ -24,11 +25,21 @@ from coding_study.domain.next_selection import (
     NextSource,
     OpenAttempt,
     ResumePick,
+    SetPick,
+    pick_in_set,
     pick_next,
     pick_resume,
 )
 from coding_study.domain.precedence import resolve_language
-from coding_study.domain.problem import Difficulty, Language, ProblemKind, ProblemMeta, Track
+from coding_study.domain.problem import (
+    ContentStatus,
+    Difficulty,
+    Language,
+    ProblemKind,
+    ProblemMeta,
+    Track,
+)
+from coding_study.domain.problem_sets import ProblemSet, SetStanding
 from coding_study.domain.project import project_language
 from coding_study.domain.taxonomy import DOMAINS, JOB_ROLES, PATTERNS
 from coding_study.domain.weakness import GradedAttempt
@@ -43,6 +54,8 @@ class NextRequest:
     language: Language | None = None
     source: NextSource = NextSource.ANY
     labels: LabelFilter = field(default_factory=LabelFilter)
+    set_name: str | None = None
+    """`--set`: pick from this set, in its order."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,18 +65,22 @@ class NothingToPick:
     jdk_reason: str | None = None
     """Why, when the selected JDK took out the problems that would have been picked; None when
     the scope itself holds nothing to pick."""
+    set_standing: SetStanding | None = None
+    """How the set stands, under `--set`."""
 
 
 @dataclass(frozen=True, slots=True)
 class Recommendation:
     """The pick with what `cstudy next --json` names beside it."""
 
-    pick: NextPick | ResumePick
+    pick: NextPick | SetPick | ResumePick
     title: str
     kind: EntryKind
     language: Language | None
     """The language `cstudy next --start` starts it in, which is the language of the attempt a
     resume picks up; None for an item."""
+    set_standing: SetStanding | None = None
+    """How the set stands, under `--set`."""
 
 
 def next_source(new: bool, review: bool) -> NextSource:
@@ -82,12 +99,22 @@ class _Selection:
     candidates: tuple[Candidate, ...]
     attempts: tuple[GradedAttempt, ...]
     query: NextQuery
+    in_set: ProblemSet | None = None
 
-    def pick(self) -> NextPick | None:
-        return pick_next(self.candidates, self.attempts, self.query)
+    def pick(self) -> NextPick | SetPick | None:
+        return self.pick_in(self.query.scope)
+
+    def pick_in(self, scope: NextScope) -> NextPick | SetPick | None:
+        query = replace(self.query, scope=scope)
+        if self.in_set is None:
+            return pick_next(self.candidates, self.attempts, query)
+        return pick_in_set(self.candidates, self.attempts, query, self.in_set)
+
+    def holds(self, slug: str) -> bool:
+        return self.in_set is None or self.in_set.holds(slug)
 
 
-def next_problem(environment: Environment, request: NextRequest) -> NextPick | None:
+def next_problem(environment: Environment, request: NextRequest) -> NextPick | SetPick | None:
     """Raises UsageError for a pattern, domain or job role outside its list."""
     return _selection(environment, request).pick()
 
@@ -105,7 +132,25 @@ def _selection(environment: Environment, request: NextRequest) -> _Selection:
     )
     query = NextQuery(scope, clock.local_date(clock.now()), request.source)
     candidates = practice_candidates(environment, scope.tracks)
-    return _Selection(candidates, graded_attempts(environment), query)
+    in_set = None if request.set_name is None else find_set(environment, request.set_name)
+    return _Selection(
+        _with_chosen_ready(candidates, in_set), graded_attempts(environment), query, in_set
+    )
+
+
+def _with_chosen_ready(
+    candidates: tuple[Candidate, ...], in_set: ProblemSet | None
+) -> tuple[Candidate, ...]:
+    """A draft of your own that you put in a set stays in it: `cstudy start` takes a draft, and a
+    hand-picked list means what it says."""
+    if in_set is None:
+        return candidates
+    return tuple(
+        replace(candidate, content=ContentStatus.READY)
+        if in_set.holds(candidate.slug)
+        else candidate
+        for candidate in candidates
+    )
 
 
 def _reject_unknown_values(request: NextRequest) -> None:
@@ -119,11 +164,14 @@ def _reject_unknown_values(request: NextRequest) -> None:
 
 
 def _tracks_in_scope(environment: Environment, request: NextRequest) -> Sequence[Track]:
-    """`--track` as given; else every track for a label filter, since the configured tracks
-    (`dsa`, by default) would leave out what a domain, role or scope names; else the config's."""
+    """`--track` as given; else every track for a label filter or a set, since the configured
+    tracks (`dsa`, by default) would leave out what a domain, role, scope or set names; else the
+    config's."""
     if request.tracks:
         return request.tracks
-    return tuple(Track) if request.labels.is_set else environment.config.next.tracks
+    if request.labels.is_set or request.set_name is not None:
+        return tuple(Track)
+    return environment.config.next.tracks
 
 
 def jdk_scope(environment: Environment, requested: Language | None) -> JdkScope:
@@ -151,19 +199,21 @@ def recommend(environment: Environment, request: NextRequest) -> Recommendation 
     (`--new` and `--review` force theirs), with its title, kind and start language; or why there
     is none."""
     selection = _selection(environment, request)
+    in_set = selection.in_set
+    standing = None if in_set is None else set_standing(environment, in_set)
     resumed = _resume(environment, selection) if request.source is NextSource.ANY else None
     picked = resumed or selection.pick()
     if picked is None:
-        return NothingToPick(_nothing_because_of_the_jdk(environment, selection))
+        return NothingToPick(_nothing_because_of_the_jdk(environment, selection), standing)
     candidate = picked.candidate
     if not candidate.autograded:
         item = environment.items.load(candidate.slug)
-        return Recommendation(picked, item.title, EntryKind.ITEM, None)
+        return Recommendation(picked, item.title, EntryKind.ITEM, None, standing)
     meta = environment.problems.load(candidate.slug).meta
     language = _problem_language(environment, meta, request.language)
     if resumed is not None:
         language = resumed.attempt.language or language
-    return Recommendation(picked, meta.title, entry_kind(meta.kind), language)
+    return Recommendation(picked, meta.title, entry_kind(meta.kind), language, standing)
 
 
 def _resume(environment: Environment, selection: _Selection) -> ResumePick | None:
@@ -172,7 +222,7 @@ def _resume(environment: Environment, selection: _Selection) -> ResumePick | Non
     open_attempts = [
         _open_attempt(environment, attempt, by_slug[attempt.slug])
         for attempt in environment.progress.attempts_in_progress()
-        if attempt.slug in by_slug
+        if attempt.slug in by_slug and selection.holds(attempt.slug)
     ]
     return pick_resume(open_attempts, selection.query.scope)
 
@@ -186,15 +236,13 @@ def _open_attempt(environment: Environment, attempt: Attempt, candidate: Candida
 
 
 def _nothing_because_of_the_jdk(environment: Environment, selection: _Selection) -> str | None:
-    query = selection.query
-
     def picks(scope: NextScope) -> bool:
-        return (
-            pick_next(selection.candidates, selection.attempts, replace(query, scope=scope))
-            is not None
-        )
+        return selection.pick_in(scope) is not None
 
-    return jdk_reason(environment, query.scope, selection.candidates, picks)
+    candidates = [
+        candidate for candidate in selection.candidates if selection.holds(candidate.slug)
+    ]
+    return jdk_reason(environment, selection.query.scope, candidates, picks)
 
 
 def graded_attempts(environment: Environment) -> tuple[GradedAttempt, ...]:
