@@ -11,6 +11,7 @@ from coding_study.domain.http_case import (
 )
 from coding_study.domain.http_grading import (
     MAX_DIFFERENCES,
+    OVERFLOWED,
     Answer,
     HttpResponse,
     LoggedRequest,
@@ -326,11 +327,46 @@ def test_without_a_route_a_count_covers_the_whole_mock_server():
     )
 
 
-def test_requests_the_log_dropped_still_count():
+def test_requests_the_log_dropped_still_count_for_the_whole_mock_server():
     log = MockLog((logged(0, 1),), dropped=4)
-    assert log_failures(LogAssertion(ROOM_VENDOR, AVAILABILITY, max_count=3), log) == (
-        "room-vendor availability: expected at most 3 requests, saw 5",
+    assert log_failures(LogAssertion(ROOM_VENDOR, max_count=3), log) == (
+        "room-vendor: expected at most 3 requests, saw 5",
     )
+
+
+def test_a_dropped_request_is_no_request_of_a_route():
+    """`dropped` counts every route, so adding it to one route's count made zero calls pass."""
+    failures = log_failures(LogAssertion(ROOM_VENDOR, AVAILABILITY, count=1), MockLog(dropped=1))
+
+    assert failures == (f"room-vendor availability: {OVERFLOWED}",)
+
+
+def test_a_route_cannot_be_counted_on_an_overflowed_log():
+    log = MockLog((logged(0, 1),), dropped=4)
+    failures = log_failures(LogAssertion(ROOM_VENDOR, AVAILABILITY, min_count=1), log)
+
+    assert failures == (f"room-vendor availability: {OVERFLOWED}",)
+
+
+def test_a_gap_cannot_be_judged_on_an_overflowed_log():
+    """What overflowed is what came last: a retry too soon may be just what the log did not keep."""
+    log = MockLog((logged(0, 1), logged(1000, 1001)), dropped=1)
+    failures = log_failures(LogAssertion(ROOM_VENDOR, min_gap_ms=950), log)
+
+    assert failures == (f"room-vendor: {OVERFLOWED}",)
+
+
+def test_a_route_with_a_gap_on_an_overflowed_log_says_so_once():
+    log = MockLog((logged(0, 1),), dropped=1)
+    failures = log_failures(LogAssertion(ROOM_VENDOR, AVAILABILITY, count=1, min_gap_ms=950), log)
+
+    assert failures == (f"room-vendor availability: {OVERFLOWED}",)
+
+
+def test_a_count_of_the_whole_mock_server_can_pass_on_an_overflowed_log():
+    log = MockLog((logged(0, 1),), dropped=4)
+
+    assert log_failures(LogAssertion(ROOM_VENDOR, count=5), log) == ()
 
 
 def test_too_few_for_a_minimum_fails():

@@ -30,6 +30,10 @@ TEXT_CONTEXT = 40
 BODY = "body"
 CONTENT_TYPE_HEADER = "content-type"
 SUCCESS_STATUSES = range(200, 300)
+OVERFLOWED = (
+    "the mock server's log overflowed, so this cannot be judged: "
+    "send fewer or smaller requests in one case"
+)
 
 _MULTISET_COMPARATORS = frozenset({ComparatorType.UNORDERED, ComparatorType.UNORDERED_NESTED})
 HTTP_COMPARATORS = frozenset({ComparatorType.EXACT, ComparatorType.FLOAT, *_MULTISET_COMPARATORS})
@@ -146,7 +150,12 @@ def before_failure(index: int, request: HttpRequest, response: HttpResponse) -> 
 
 
 def log_failures(assertion: LogAssertion, log: MockLog) -> tuple[str, ...]:
+    """Why the log breaks `assertion`. What a full log dropped is counted but not kept: it says how
+    many came and nothing of which route they took or when, so only a count of the whole mock
+    server can be judged then."""
     label = f"{assertion.mock} {assertion.route}" if assertion.route else assertion.mock
+    if log.dropped > 0 and (assertion.route is not None or assertion.min_gap_ms is not None):
+        return (f"{label}: {OVERFLOWED}",)
     matching = tuple(
         entry for entry in log.entries if assertion.route is None or entry.route == assertion.route
     )
