@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0275"
+slug: supplier-records-locking-typescript
+title: Supplier Records with Optimistic Locking (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [backend]
+job_roles: [backend]
+scope: project
+languages: [typescript]
+levels:
+  - {level: 1, title: Stale writes get a 409}
+  - {level: 2, title: Merging where it is safe}
+  - {level: 3, title: Retrying a write that succeeded}
+  - {level: 4, title: A counter that loses nothing}
+  - {level: 5, title: Deletes and comebacks}
+signature:
+  class:
+    name: SupplierApi
+    constructor: {params: []}
+    methods:
+      - {name: request, level: 1, params: [{name: method, type: string}, {name: path, type: string}, {name: body, type: string}], returns: {type: "string[]"}}
+comparator: {type: ops}
+project:
+  entry: src/api.ts
+  tests: tests
+approaches:
+  - {id: reference, name: Versions that never go back with field history and a replay layer in front of every write, role: optimal, time: "O(s log s) per list request; O(1) per other request", space: "O(s + c + q)", time_class: "n log n", space_class: "n"}
+related: [warehouse-work-orders-typescript, idempotent-document-consumer-typescript]
+estimate_minutes: 110
