@@ -31,7 +31,7 @@ from coding_study.domain.attempts import Attempt, AttemptMode, NewAttempt
 from coding_study.domain.errors import UsageError
 from coding_study.domain.levels import FIRST_LEVEL
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
-from coding_study.domain.project import entry_files, project_language
+from coding_study.domain.project import NO_ENTRY, entry_files, project_language
 from coding_study.domain.project_manifest import (
     FileOrigin,
     ProvidedFile,
@@ -40,6 +40,7 @@ from coding_study.domain.project_manifest import (
     project_lock,
 )
 from coding_study.domain.project_tests import level_tests
+from coding_study.domain.service_project import service_of
 from coding_study.domain.signature import ClassSignature
 from coding_study.domain.submissions import LevelUnlock
 from coding_study.domain.workspace_projects import project_folder
@@ -56,10 +57,11 @@ class StartedProject:
     files: int
     """The files the folder holds, untracked ones aside (`Workspace.tracked_files`)."""
     entry_file: str
-    """Relative to the folder: the file that defines the entry class."""
+    """Relative to the folder: the file that defines the entry class; empty for a service project,
+    which has none."""
     entry_class: str
-    tests: LevelTestFile
-    """The test file of the unlocked level."""
+    tests: LevelTestFile | None
+    """The test file of the unlocked level; None for a service project, which has none generated."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,9 +137,13 @@ class _ProjectStarter:
         self._problem = problem
         self._language = language
         self._folder = project_folder(problem.meta.slug)
-        generator = environment.toolchains.project_test_generator(language)
-        self._tests = LevelTestWriter(environment.workspace, generator)
+        self._service = service_of(problem.meta) is not None
+        self._tests = None if self._service else self._level_tests()
         self._manifests = ProjectManifests(environment.workspace)
+
+    def _level_tests(self) -> LevelTestWriter:
+        generator = self._environment.toolchains.project_test_generator(self._language)
+        return LevelTestWriter(self._environment.workspace, generator)
 
     def resume(self, attempt: Attempt) -> ProjectStart:
         """Keeps the folder's manifest, but writes it again from the starter when the folder was
@@ -150,9 +156,14 @@ class _ProjectStarter:
         seeded = resume_project(workspace, self._problem)
         if not kept:
             self._manifests.save(slug, starter_files(self._problem))
-        written = self._tests.write_levels(self._problem, self._folder, unlocked)
+        written = (
+            ()
+            if self._tests is None
+            else self._tests.write_levels(self._problem, self._folder, unlocked)
+        )
         write_statement(self._environment, self._problem, unlocked)
-        return ProjectStart(attempt, self._started(written[-1]), True, bool(seeded.copied))
+        tests = written[-1] if written else None
+        return ProjectStart(attempt, self._started(tests), True, bool(seeded.copied))
 
     def begin(self, in_progress: Attempt | None, request: ProjectStartRequest) -> ProjectStart:
         progress = self._environment.progress
@@ -171,7 +182,11 @@ class _ProjectStarter:
         progress.add_level_unlock(LevelUnlock(attempt.id, FIRST_LEVEL, now))
         seeded = seed_project(self._environment.workspace, self._problem)
         self._manifests.save(slug, starter_files(self._problem))
-        written = self._tests.write_level(self._problem, self._folder, FIRST_LEVEL)
+        written = (
+            None
+            if self._tests is None
+            else self._tests.write_level(self._problem, self._folder, FIRST_LEVEL)
+        )
         write_statement(self._environment, self._problem, FIRST_LEVEL)
         project = self._started(written)
         return ProjectStart(attempt, project, False, bool(seeded.copied), archived_to)
@@ -201,13 +216,13 @@ class _ProjectStarter:
     def _abandon(self, attempt: Attempt) -> None:
         self._environment.progress.update_attempt(attempt.abandoned(self._environment.clock.now()))
 
-    def _started(self, tests: LevelTestFile) -> StartedProject:
+    def _started(self, tests: LevelTestFile | None) -> StartedProject:
         signature = self._problem.meta.signature
         assert isinstance(signature, ClassSignature)
         return StartedProject(
             folder=self._folder,
             files=len(self._environment.workspace.tracked_files(self._folder)),
-            entry_file=self._entry_file(),
+            entry_file=NO_ENTRY if self._service else self._entry_file(),
             entry_class=signature.name,
             tests=tests,
         )

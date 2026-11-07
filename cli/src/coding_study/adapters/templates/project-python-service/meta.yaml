@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "{{id}}"
+slug: {{slug}}
+title: {{title_yaml}}
+status: draft
+difficulty: {{difficulty}}
+track: {{track}}
+kind: project
+{{patterns}}
+{{labels}}
+languages: [python]
+levels:
+  - {level: 1, title: Answer on one endpoint}
+  - {level: 2, title: Answer on a second endpoint}
+comparator: {type: exact}
+project:
+  grading: http
+  image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim@sha256:531f855bda2c73cd6ef67d56b733b357cea384185b3022bd09f05e002cd144ca
+  commands:
+    install: [uv, sync, --frozen, --no-build]
+    run: [.venv/bin/python, src/server.py]
+    test: [.venv/bin/python, -P, -m, pytest]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+  install_env:
+    UV_CACHE_DIR: /cache/uv
+    UV_PYTHON_DOWNLOADS: never
+    UV_LINK_MODE: copy
+  requires:
+    lock: uv.lock
+    sizes: {install_mb: 15, images_mb: {app: 62}, memory_mb: 200}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "per request", space: "per request"}

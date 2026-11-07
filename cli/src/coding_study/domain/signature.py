@@ -59,6 +59,10 @@ class ClassSignature:
 
 type Signature = FunctionSignature | ClassSignature
 
+NO_SIGNATURE = ClassSignature("", (), ())
+"""What a service project has for a signature: it is judged over HTTP, so no method is declared,
+and every check over a signature finds nothing to say."""
+
 
 def declared_types(signature: Signature) -> Iterator[ReturnType]:
     """Every parameter and return type, in declaration order (constructor first for a class)."""

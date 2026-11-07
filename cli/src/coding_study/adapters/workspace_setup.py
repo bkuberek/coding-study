@@ -11,6 +11,7 @@ from importlib.resources.abc import Traversable
 from pathlib import Path
 
 from coding_study.adapters.locations import enclosing_content_checkout, enclosing_workspace
+from coding_study.adapters.project_folders import declares_its_project
 from coding_study.adapters.runner_runtime import RunnerRuntime
 from coding_study.adapters.workspace_marker import (
     MARKER_FILE,
@@ -147,13 +148,15 @@ class FsProjectLinks:
 
 
 def _python_folders(root: Path) -> list[str]:
+    """A service project's `.venv` is a real directory its install makes, so it is not one of
+    these: S15 keeps a `[project]` table out of every other starter."""
     projects = root / PROJECTS_DIRECTORY
     if not projects.is_dir():
         return []
     return [
         f"{PROJECTS_DIRECTORY}/{folder.name}"
         for folder in sorted(projects.iterdir())
-        if (folder / PYPROJECT_FILE).is_file()
+        if (folder / PYPROJECT_FILE).is_file() and not declares_its_project(folder)
     ]
 
 

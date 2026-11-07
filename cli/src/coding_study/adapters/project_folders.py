@@ -29,6 +29,9 @@ from coding_study.domain.workspace_projects import (
 _LOCAL_REPLACEMENT_PREFIXES = ("./", "../", "/")
 """A `replace` target that is a directory, not another module."""
 _SETUID_BITS = stat.S_ISUID | stat.S_ISGID
+PYPROJECT_FILE = "pyproject.toml"
+SERVICE_TRACKED_LOCK = "uv.lock"
+_PROJECT_TABLE = "[project]"
 
 
 def tracked_files(folder: Path) -> list[Path]:
@@ -129,7 +132,21 @@ def _entries(folder: Path, directory: Path) -> Iterator[Path]:
 
 
 def _untracked(folder: Path, entry: Path) -> bool:
-    return is_untracked(entry.relative_to(folder).as_posix())
+    """A service project's `uv.lock` is a file grading trusts, not tool output."""
+    relative = entry.relative_to(folder).as_posix()
+    if relative == SERVICE_TRACKED_LOCK and declares_its_project(folder):
+        return False
+    return is_untracked(relative)
+
+
+def declares_its_project(folder: Path) -> bool:
+    """Whether the folder's `pyproject.toml` has a `[project]` table: only a service project's does,
+    since S15 refuses one in any other starter, for the sake of the `.venv` link."""
+    try:
+        text = (folder / PYPROJECT_FILE).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    return _PROJECT_TABLE in text.splitlines()
 
 
 def clear_setuid_bits(folder: Path) -> None:

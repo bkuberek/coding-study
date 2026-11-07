@@ -27,6 +27,7 @@ from coding_study.domain.project_manifest import (
     starter_manifest,
 )
 from coding_study.domain.project_tests import level_tests
+from coding_study.domain.service_project import service_of
 from coding_study.domain.workspace_projects import project_folder
 
 MANIFEST_FORMAT = 1
@@ -92,6 +93,8 @@ def folder_manifest(environment: Environment, problem: Problem, unlocked: int) -
     manifest = ProjectManifests(environment.workspace).load(problem.meta.slug)
     if manifest is not None:
         return manifest
+    if service_of(problem.meta) is not None:
+        return starter_files(problem)
     generator = environment.toolchains.project_test_generator(project_language(problem.meta))
     return provided_now(problem, generator, unlocked)
 

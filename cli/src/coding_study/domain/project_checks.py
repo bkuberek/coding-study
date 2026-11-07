@@ -54,7 +54,10 @@ from coding_study.domain.project import (
     level_tests_directory_issue,
     relative_path_issue,
 )
+from coding_study.domain.service_checks import service_issues, service_settings_issues
+from coding_study.domain.service_project import service_of
 from coding_study.domain.signature import ClassSignature, declared_types
+from coding_study.domain.starter_files import LOCK_FILES, cache_path
 from coding_study.domain.stress import StressScenario
 from coding_study.domain.type_dsl import (
     ArrayType,
@@ -111,22 +114,6 @@ GENERATED_TEST_COMPARATORS = (ComparatorType.EXACT, ComparatorType.UNORDERED, Co
 FORBIDDEN_FILES = (GENERATOR_FILE, CHECKER_FILE)
 """`stress_checker.py` is S12's: a project has one exactly when a stress case has a `checker`
 invariant."""
-CACHE_DIRECTORIES = frozenset(
-    {
-        *("__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache", ".venv", "node_modules"),
-        *("build", ".gradle", ".kotlin"),
-        "target",
-    }
-)
-BUILD_OUTPUT_SUFFIXES = (".pyc", ".tsbuildinfo", ".class", ".jar")
-LOCK_FILES = frozenset(
-    {
-        *("uv.lock", "poetry.lock", "pdm.lock", "Pipfile.lock"),
-        *("package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock"),
-        *("bun.lock", "bun.lockb", "Cargo.lock"),
-        "go.sum",
-    }
-)
 SHADOWED_PYTHON_MODULES = frozenset({"pytest"})
 """Besides the standard library: what a starter module would hide from the native tests."""
 REQUIRES_PYTHON = "requires-python"
@@ -322,6 +309,9 @@ def project_issues(content: ProjectContent) -> tuple[ContentIssue, ...]:
         if meta.project is not None:
             issues.error(META_FILE, "only project problems have one", "project")
         return (*issues.errors, *clock_issues(content.directory, content.problem))
+    if service_of(meta) is not None:
+        _service_issues(issues, content)
+        return tuple(issues.errors)
     _Settings(issues, content).check()
     _Trees(issues, content).check()
     _Documents(issues, content).check()
@@ -335,6 +325,23 @@ class _Issues:
 
     def error(self, name: str, message: str, location: str = "") -> None:
         self.errors.append(ContentIssue(f"{self._directory}/{name}", location, message))
+
+
+def _service_issues(issues: _Issues, content: ProjectContent) -> None:
+    """S14, S15, S19 and S22 as they stand for a service project, then S16's documents: the entry
+    class, the generated tests and the virtual clock do not apply."""
+    meta = content.problem.meta
+    service = service_of(meta)
+    assert service is not None
+    files = content.problem.project_files or NO_PROJECT_FILES
+    for where, message in service_settings_issues(meta, service):
+        issues.error(META_FILE, message, where)
+    for path, message in service_issues(meta, service, files.starter):
+        issues.error(f"{STARTER_DIRECTORY}/{path}" if path else STARTER_DIRECTORY, message)
+    trees = _Trees(issues, content)
+    for name, overlay in files.overlays.items():
+        trees.text_only(f"{SOLUTIONS_DIRECTORY}/{name}", overlay.files)
+    _Documents(issues, content).check()
 
 
 def _language(content: ProjectContent) -> Language | None:
@@ -530,9 +537,9 @@ class _Trees:
 
     def check(self) -> None:
         for name, overlay in self._overlays.items():
-            self._text_only(f"{SOLUTIONS_DIRECTORY}/{name}", overlay.files)
+            self.text_only(f"{SOLUTIONS_DIRECTORY}/{name}", overlay.files)
         for name, overlay in self._broken.items():
-            self._text_only(f"{BROKEN_DIRECTORY}/{name}", overlay.files)
+            self.text_only(f"{BROKEN_DIRECTORY}/{name}", overlay.files)
         starter = self._starter
         if starter is None:
             self._error("", "missing (kind: project)")
@@ -590,17 +597,17 @@ class _Trees:
 
     def _contents(self, starter: ProjectTree) -> None:
         """Caches and build output, lock files, and files that are not text."""
-        caches = dict.fromkeys(_cache_path(file.path) for file in starter.files)
+        caches = dict.fromkeys(cache_path(file.path) for file in starter.files)
         for cache in caches:
             if cache is not None:
                 self._error(cache, "is build output or a cache")
-        plain = [file for file in starter.files if _cache_path(file.path) is None]
+        plain = [file for file in starter.files if cache_path(file.path) is None]
         for file in plain:
             if file.path.rpartition(PATH_SEPARATOR)[2] in LOCK_FILES:
                 self._error(file.path, "is a lock file")
-        self._text_only(STARTER_DIRECTORY, plain)
+        self.text_only(STARTER_DIRECTORY, plain)
 
-    def _text_only(self, folder: str, files: Iterable[ProjectFile]) -> None:
+    def text_only(self, folder: str, files: Iterable[ProjectFile]) -> None:
         for file in files:
             if file.text is None:
                 self._issues.error(f"{folder}/{file.path}", "is not UTF-8 text")
@@ -616,15 +623,6 @@ class _Trees:
             name = path.rpartition(PATH_SEPARATOR)[2]
             if path.startswith(under) and pattern.fullmatch(name):
                 self._error(path, "has the name of a generated test file")
-
-
-def _cache_path(path: str) -> str | None:
-    """The cache directory `path` lies in, or `path` itself when it is build output."""
-    segments = path.split(PATH_SEPARATOR)
-    for index, segment in enumerate(segments[:-1]):
-        if segment in CACHE_DIRECTORIES:
-            return PATH_SEPARATOR.join(segments[: index + 1])
-    return path if path.endswith(BUILD_OUTPUT_SUFFIXES) else None
 
 
 class _PythonStarter:

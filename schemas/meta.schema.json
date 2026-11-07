@@ -4,7 +4,7 @@
   "description": "Metadata, signature, comparator, approaches and performance settings of one autograded problem. Spec: docs/specs/problem-format.md#metayaml",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "slug", "title", "status", "difficulty", "track", "kind", "signature", "comparator", "approaches"],
+  "required": ["id", "slug", "title", "status", "difficulty", "track", "kind", "comparator", "approaches"],
   "properties": {
     "id": {
       "description": "4-digit zero-padded id; must match the directory prefix",
@@ -145,6 +145,15 @@
       "else": { "not": { "required": ["project"] } }
     },
     {
+      "description": "A service project (project.grading: http) is judged over HTTP, so it has no signature, no concurrency block and no complexity classes; every other problem has a signature (docs/specs/service-projects.md#manifest-sketch)",
+      "if": { "required": ["project"], "properties": { "project": { "required": ["grading"] } } },
+      "then": {
+        "not": { "anyOf": [{ "required": ["signature"] }, { "required": ["concurrency"] }] },
+        "properties": { "kind": { "const": "project" } }
+      },
+      "else": { "required": ["signature"] }
+    },
+    {
       "if": { "required": ["kind"], "properties": { "kind": { "const": "function" } } },
       "then": { "properties": { "signature": { "required": ["function"] } } },
       "else": { "properties": { "signature": { "required": ["class"] } } }
@@ -166,7 +175,10 @@
         }
       },
       "else": {
-        "properties": { "approaches": { "items": { "required": ["time_class", "space_class"] } } }
+        "if": { "required": ["project"], "properties": { "project": { "required": ["grading"] } } },
+        "else": {
+          "properties": { "approaches": { "items": { "required": ["time_class", "space_class"] } } }
+        }
       }
     },
     {
@@ -417,10 +429,24 @@
       }
     },
     "project": {
-      "description": "Project problems only (docs/specs/problem-format.md#project-problems)",
+      "description": "Project problems only (docs/specs/problem-format.md#project-problems); with grading: http, a service project (docs/specs/service-projects.md#manifest-sketch)",
       "type": "object",
       "additionalProperties": false,
-      "required": ["entry"],
+      "if": { "required": ["grading"] },
+      "then": {
+        "required": ["image", "commands", "app", "env", "requires"],
+        "not": { "anyOf": [{ "required": ["entry"] }, { "required": ["tests"] }, { "required": ["clock"] }] }
+      },
+      "else": {
+        "required": ["entry"],
+        "not": {
+          "anyOf": [
+            { "required": ["image"] }, { "required": ["commands"] }, { "required": ["app"] }, { "required": ["env"] },
+            { "required": ["install_env"] }, { "required": ["mocks"] }, { "required": ["services"] },
+            { "required": ["requires"] }, { "required": ["timeouts_s"] }
+          ]
+        }
+      },
       "properties": {
         "entry": {
           "description": "Where the entry class lives: a dotted module in Python (bank.bank), a .ts file relative to the project root in TypeScript (src/bank.ts), the fully qualified class in Java and Kotlin (bank.Bank), the .go file that declares the entry type and its constructor in Go (bank.go)",
@@ -435,8 +461,97 @@
         "clock": {
           "description": "virtual puts every case of every level on the virtual clock, in grading and in the generated tests; without it the real clock (check S18, docs/specs/problem-format.md#asynchronous-code-and-the-virtual-clock)",
           "const": "virtual"
+        },
+        "grading": { "description": "http: a service project, run in a Docker sandbox and judged over HTTP", "const": "http" },
+        "image": {
+          "description": "The toolchain image, pinned by the digest of its multi-architecture index",
+          "type": "string",
+          "pattern": "^[^@\\s]+@sha256:[0-9a-f]+$"
+        },
+        "commands": {
+          "description": "The lifecycle commands: names fixed, contents free (docs/specs/service-projects.md#lifecycle-commands)",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["run", "test"],
+          "properties": {
+            "install": { "$ref": "#/$defs/argumentList" },
+            "bootstrap": { "$ref": "#/$defs/argumentList" },
+            "run": { "$ref": "#/$defs/argumentList" },
+            "test": { "$ref": "#/$defs/argumentList" },
+            "reset": { "$ref": "#/$defs/argumentList" },
+            "grade_setup": { "$ref": "#/$defs/argumentList" }
+          }
+        },
+        "app": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["port_env", "port", "health"],
+          "properties": {
+            "port_env": { "description": "The variable your app reads for its port", "$ref": "#/$defs/environmentName" },
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "health": { "description": "A path that answers 2xx when the app is ready", "type": "string", "pattern": "^/" },
+            "ready_timeout_s": { "description": "How long the app may take to answer health, on the startup clock", "$ref": "#/$defs/positiveInteger" },
+            "mem_limit": { "description": "The app container's memory limit, such as 512m", "type": "string", "pattern": "^[0-9]+[mg]$" }
+          }
+        },
+        "env": { "description": "The whole environment of the app; the starter's .env holds the same lines", "$ref": "#/$defs/environment" },
+        "install_env": { "description": "What the package manager needs in its install container, such as where its cache is", "$ref": "#/$defs/environment" },
+        "mocks": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "config"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+              "config": { "description": "Relative to the problem's directory", "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "services": { "description": "The problem's compose file of backing services, relative to its directory", "type": "string", "minLength": 1 },
+        "requires": {
+          "description": "What the problem depends on, checked against its files by S22 (docs/specs/service-projects.md#what-a-problem-depends-on)",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "lock": { "description": "The lock file at the starter's root", "type": "string", "minLength": 1 },
+            "services": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+            "sizes": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "install_mb": { "$ref": "#/$defs/positiveInteger" },
+                "images_mb": { "type": "object", "additionalProperties": { "$ref": "#/$defs/positiveInteger" } },
+                "memory_mb": { "$ref": "#/$defs/positiveInteger" }
+              }
+            }
+          }
+        },
+        "timeouts_s": {
+          "description": "startup is the budget up to ready, whatever it holds; the others are one command's limit, and test starts only once the stack is ready (docs/specs/service-projects.md#two-clocks)",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "startup": { "$ref": "#/$defs/positiveInteger" },
+            "install": { "$ref": "#/$defs/positiveInteger" },
+            "test": { "$ref": "#/$defs/positiveInteger" },
+            "reset": { "$ref": "#/$defs/positiveInteger" }
+          }
         }
       }
+    },
+    "argumentList": {
+      "description": "An argument list, run with no shell; a script for anything longer",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "environmentName": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+    "environment": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/environmentName" },
+      "additionalProperties": { "type": "string" }
     },
     "perf": {
       "type": "object",

@@ -29,6 +29,7 @@ from coding_study.domain.levels import cases_up_to, level_heading
 from coding_study.domain.markdown import MarkdownDocument
 from coding_study.domain.naming import RESERVED_WORDS, NameRole, is_reserved, member_name
 from coding_study.domain.problem import Language, Problem, ProblemMeta
+from coding_study.domain.service_project import ServiceProject
 from coding_study.domain.signature import ClassSignature, Method, Param, Signature
 from coding_study.domain.statement import render_statement
 from coding_study.domain.stress import StressScenario
@@ -45,6 +46,8 @@ from coding_study.domain.type_dsl import (
 from coding_study.domain.virtual_clock import ProjectClock
 
 DEFAULT_TESTS_DIRECTORY = "tests"
+NO_ENTRY = ""
+"""What a service project has for an entry: it is judged over HTTP."""
 METHODS_TO_ADD = "Methods to add:"
 """Opens each level of a project problem's statement, before the methods the level adds."""
 PROJECT_SECTION = "Project"
@@ -115,6 +118,9 @@ class Project:
     clock: ProjectClock | None = None
     """`virtual` puts every case on the virtual clock; None is the real clock
     (docs/specs/problem-format.md#asynchronous-code-and-the-virtual-clock)."""
+    service: ServiceProject | None = None
+    """`grading: http`: a service project, which has no entry and no generated tests
+    (docs/specs/service-projects.md)."""
 
 
 @dataclass(frozen=True, slots=True)

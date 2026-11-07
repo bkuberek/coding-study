@@ -15,10 +15,11 @@ from coding_study.application.active_attempt import autograded_language
 from coding_study.application.ports import Workspace
 from coding_study.domain import layout
 from coding_study.domain.attempts import Attempt
-from coding_study.domain.errors import ContentError, ContentIssue, UsageError
+from coding_study.domain.errors import ContentError, ContentIssue, SandboxError, UsageError
 from coding_study.domain.problem import Language, Problem
 from coding_study.domain.problem_files import STARTER_DIRECTORY
 from coding_study.domain.project import ProjectTree
+from coding_study.domain.service_project import service_of
 from coding_study.domain.workspace_projects import (
     GO_MODULE_FILE,
     folder_language,
@@ -94,8 +95,23 @@ def _copy_starter(workspace: Workspace, problem: Problem, folder: str) -> tuple[
         raise ContentError([ContentIssue(f"{source}/{path}", "", NOT_TEXT) for path in unreadable])
     texts = {file.path: file.text for file in missing if file.text is not None}
     for path, text in texts.items():
-        workspace.write_text(f"{folder}/{path}", text)
+        _write_starter_file(workspace, problem, folder, (path, text))
     return tuple(texts)
+
+
+def _write_starter_file(
+    workspace: Workspace, problem: Problem, folder: str, file: tuple[str, str]
+) -> None:
+    """A service project's folder is written by sandboxed code, which can leave a link where a
+    starter file goes, so that write refuses to go through one."""
+    path, text = file
+    if service_of(problem.meta) is None or not workspace.exists(folder):
+        workspace.write_text(f"{folder}/{path}", text)
+        return
+    try:
+        workspace.write_within(folder, path, text)
+    except ValueError as error:
+        raise SandboxError(f"cannot write {path} in {folder}: {error}") from None
 
 
 def _starter(problem: Problem) -> ProjectTree:
@@ -120,8 +136,9 @@ def _go_module(workspace: Workspace, folder: str, language: Language) -> str | N
 
 
 def _link(workspace: Workspace, problem: Problem, folder: str) -> bool:
+    """A service project's image is its toolchain, so its folder has no link and no such file."""
     language = folder_language(problem.meta)
-    if language is None:
+    if language is None or service_of(problem.meta) is not None:
         return False
     files = toolchain_files(language, _go_module(workspace, folder, language))
     missing = [file for file in files if not workspace.exists(f"{folder}/{file.path}")]

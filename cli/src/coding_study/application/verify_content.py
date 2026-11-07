@@ -79,9 +79,11 @@ from coding_study.domain.problem_files import (
 )
 from coding_study.domain.ready_criteria import MAX_SLOWEST_SHARE, has_reference, ready_problems
 from coding_study.domain.runs import Returned, RunReport
+from coding_study.domain.service_project import service_of
 from coding_study.domain.static_checks import ProblemContent, static_checks
 
 DETERMINISM_SAMPLES = 3
+SERVICE_NOT_VERIFIED = "a service project's dynamic checks come with its HTTP grader"
 """Generator inputs checked for determinism when no --oracle inputs are requested."""
 
 
@@ -392,6 +394,8 @@ class _DynamicChecks:
             if self._request.language in (None, language)
         ]
         split = split_by_jdk(self._environment, self._meta, languages)
+        if service_of(self._meta) is not None:
+            return self._service_project(verification, split)
         if self._meta.kind is ProblemKind.PROJECT:
             return self._project(verification, split)
         runs = per_language(
@@ -422,6 +426,17 @@ class _DynamicChecks:
             warnings=verification.warnings + self._busy_machine_notes(results, margin_errors),
             skipped=() if generated else self._generator_checks_requested(),
         )
+
+    def _service_project(
+        self, verification: ProblemVerification, split: JdkSplit
+    ) -> ProblemVerification:
+        """D1, D3, D9 and D11 run a service project over HTTP, with the grader (P6); until then
+        its language says it was skipped and why."""
+        results = tuple(
+            LanguageResult(language, skipped=SERVICE_NOT_VERIFIED)
+            for language in (*split.runnable, *split.skipped)
+        )
+        return replace(verification, languages=results)
 
     def _project(self, verification: ProblemVerification, split: JdkSplit) -> ProblemVerification:
         """D1, D3, D9, and D6, D7 and D10 where they apply, in the project's one language; D2, D4

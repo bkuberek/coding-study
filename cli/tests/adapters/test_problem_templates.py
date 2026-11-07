@@ -33,6 +33,8 @@ TEMPLATE_FILES = {
             "project-kotlin",
             "project-go",
             "project-rust",
+            "project-typescript-service",
+            "project-python-service",
         )
     ],
 )
@@ -301,3 +303,17 @@ def test_a_clock_stress_overlay_keeps_the_clock_declaration(overlay):
 def test_a_stress_overlay_on_the_real_clock_declares_no_clock(overlay):
     meta = PackagedProblemTemplates().files(overlay)["meta.yaml"]
     assert "clock" not in meta
+
+
+@pytest.mark.parametrize(
+    ("template", "lock"),
+    [
+        (TemplateName.PROJECT_TYPESCRIPT_SERVICE, "starter/pnpm-lock.yaml"),
+        (TemplateName.PROJECT_PYTHON_SERVICE, "starter/uv.lock"),
+    ],
+)
+def test_a_service_template_ships_its_lock_and_its_env(template, lock):
+    files = PackagedProblemTemplates().files(template)
+
+    assert lock in files
+    assert files["starter/.env"] == "PORT=8000\n"

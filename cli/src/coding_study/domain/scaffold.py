@@ -50,6 +50,10 @@ class TemplateName(StrEnum):
     """A project problem in Go: a starter module and the reference's overlay on it."""
     PROJECT_RUST = "project-rust"
     """A project problem in Rust: a starter crate and the reference's overlay on it."""
+    PROJECT_TYPESCRIPT_SERVICE = "project-typescript-service"
+    """A service project in TypeScript: a running app in the sandbox, with a lock file."""
+    PROJECT_PYTHON_SERVICE = "project-python-service"
+    """A service project in Python: a running app in the sandbox, with a lock file."""
 
 
 PROJECT_TEMPLATE_LANGUAGES: Mapping[TemplateName, Language] = {
@@ -59,8 +63,14 @@ PROJECT_TEMPLATE_LANGUAGES: Mapping[TemplateName, Language] = {
     TemplateName.PROJECT_KOTLIN: Language.KOTLIN,
     TemplateName.PROJECT_GO: Language.GO,
     TemplateName.PROJECT_RUST: Language.RUST,
+    TemplateName.PROJECT_TYPESCRIPT_SERVICE: Language.TYPESCRIPT,
+    TemplateName.PROJECT_PYTHON_SERVICE: Language.PYTHON,
 }
 """The one language of each project template."""
+SERVICE_TEMPLATES = frozenset(
+    {TemplateName.PROJECT_TYPESCRIPT_SERVICE, TemplateName.PROJECT_PYTHON_SERVICE}
+)
+"""Judged over HTTP on the real clock, so `--virtual-clock` and `--stress` do not apply."""
 CLOCK_TEMPLATE_SUFFIX = "-clock"
 """A project template's virtual-clock variant is a template directory of its own, named after the
 template with this suffix; `--from-template` never names it."""
@@ -188,6 +198,11 @@ def template_directories(request: ScaffoldRequest) -> tuple[str, ...]:
     yet: the variant's examples hold harness operations. And for `--stress` on a template of
     another kind, or in TypeScript without the virtual clock.
     """
+    if request.template in SERVICE_TEMPLATES and (request.virtual_clock or request.stress):
+        raise UsageError(
+            f"--virtual-clock and --stress do not apply to {request.template}: a service project "
+            "runs on the real clock and is judged over HTTP"
+        )
     directory = _variant_directory(request)
     if not request.stress:
         return (directory,)

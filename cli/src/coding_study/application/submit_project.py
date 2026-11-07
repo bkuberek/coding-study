@@ -38,6 +38,7 @@ from coding_study.domain.levels import LevelRun, cases_up_to
 from coding_study.domain.problem import Language, Problem, ProblemKind, ProblemMeta
 from coding_study.domain.project import level_methods, method_text, shares_the_entry_class
 from coding_study.domain.project_manifest import project_lock
+from coding_study.domain.service_project import service_of
 from coding_study.domain.signature import ClassSignature
 from coding_study.domain.stress_runs import StressSelection, stress_verdict_slots
 from coding_study.domain.submissions import (
@@ -175,9 +176,15 @@ def submit_project(
 
 
 def require_project(meta: ProblemMeta) -> None:
-    """Raises UsageError for a problem of another kind, which `cstudy test` grades."""
+    """Raises UsageError for a problem of another kind, which `cstudy test` grades, and for a
+    service project, which needs the HTTP grader (P6): its seam is `service_lifecycle`'s stack."""
     if meta.kind is not ProblemKind.PROJECT:
         raise UsageError(f"cstudy submit is for project problems; cstudy test grades {meta.slug}")
+    if service_of(meta) is not None:
+        raise UsageError(
+            f"{meta.slug} is a service project, whose HTTP grader is not built yet; "
+            "cstudy test runs its commands.test"
+        )
 
 
 class _Opener:

@@ -1,7 +1,7 @@
 """A `SandboxEngine` that records what the application asks of it, and a Docker runner that answers
 as scripted, so nothing but the slow tests reaches a real engine."""
 
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
@@ -17,6 +17,7 @@ from coding_study.domain.sandbox import (
     LeftoverStack,
     ReadyStack,
     SandboxInventory,
+    SandboxUser,
     StackIdentity,
     StackPlan,
     StackStartError,
@@ -57,6 +58,12 @@ class FakeSandbox:
     def platform(self) -> str:
         return self.platform_name
 
+    def host_user(self) -> SandboxUser:
+        return SandboxUser(501, 20)
+
+    def owner_pid(self) -> int:
+        return 41
+
     def start_engine(self, notify: ProgressNotice) -> None:
         self.calls.append(("start_engine", None))
         notify("starting Docker ...")
@@ -92,7 +99,7 @@ class FakeSandbox:
         return True
 
     @contextmanager
-    def guard(self, identity: StackIdentity) -> Iterator[None]:
+    def guard(self, identity: StackIdentity) -> Generator[None]:
         self.calls.append(("guard", identity.name))
         try:
             yield

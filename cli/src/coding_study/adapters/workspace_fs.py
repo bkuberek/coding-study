@@ -112,14 +112,14 @@ class WorkspaceFs:
         target = self.absolute(path)
         digest = hashlib.sha256()
         if target.is_symlink():
-            digest.update(os.readlink(target).encode())
+            digest.update(target.readlink().as_posix().encode())
         elif target.is_dir():
             for file in tracked_files(target):
                 digest.update(file.relative_to(target).as_posix().encode())
                 digest.update(file.read_bytes())
             for link in tracked_links(target):
                 digest.update(link.relative_to(target).as_posix().encode())
-                digest.update(os.readlink(link).encode())
+                digest.update(link.readlink().as_posix().encode())
         else:
             digest.update(target.read_bytes() if target.is_file() else _MISSING)
         return digest.hexdigest()

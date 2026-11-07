@@ -8,6 +8,7 @@ import pytest
 
 from coding_study.adapters.project_folders import tracked_files
 from coding_study.adapters.workspace_fs import WorkspaceFs
+from coding_study.adapters.workspace_setup import FsProjectLinks
 
 
 @pytest.fixture
@@ -103,3 +104,37 @@ def test_a_folder_link_left_behind_is_never_descended_into(workspace, folder, tm
     (folder / "away").symlink_to(outside, target_is_directory=True)
 
     assert workspace.tracked_files(FOLDER) == ("main.py",)
+
+
+def test_a_service_projects_lock_is_a_tracked_file(folder):
+    (folder / "pyproject.toml").write_text('[project]\nname = "rooms"\n')
+    (folder / "uv.lock").write_text("version = 1\n")
+
+    assert "uv.lock" in [path.name for path in tracked_files(folder)]
+
+
+def test_any_other_projects_uv_lock_is_tool_output(folder):
+    (folder / "pyproject.toml").write_text("[tool.ruff]\n")
+    (folder / "uv.lock").write_text("version = 1\n")
+
+    assert "uv.lock" not in [path.name for path in tracked_files(folder)]
+
+
+def test_an_archive_of_a_service_project_keeps_its_lock(workspace, folder, tmp_path):
+    (folder / "pyproject.toml").write_text('[project]\nname = "rooms"\n')
+    (folder / "uv.lock").write_text("version = 1\n")
+
+    workspace.archive_folder(FOLDER, ".archive/rooms/1-python")
+
+    assert (tmp_path / "workspace" / ".archive" / "rooms" / "1-python" / "uv.lock").exists()
+
+
+def test_a_service_projects_venv_is_never_linked(tmp_path):
+    root = tmp_path
+    folder = root / "projects" / "rooms"
+    folder.mkdir(parents=True)
+    (folder / "pyproject.toml").write_text('[project]\nname = "rooms"\n')
+
+    assert FsProjectLinks().unlinked(root) == ()
+    assert FsProjectLinks().relink(root) == ()
+    assert not (folder / ".venv").exists()

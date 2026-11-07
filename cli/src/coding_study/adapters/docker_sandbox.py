@@ -242,6 +242,12 @@ class DockerSandbox:
     def platform(self) -> str:
         return self._platform
 
+    def host_user(self) -> SandboxUser:
+        return SandboxUser(os.getuid(), os.getgid())
+
+    def owner_pid(self) -> int:
+        return os.getpid()
+
     def start_engine(self, notify: ProgressNotice) -> None:
         notify("starting Docker ...")
         for command in _start_commands(self._platform):

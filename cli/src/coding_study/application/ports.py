@@ -40,6 +40,7 @@ from coding_study.domain.sandbox import (
     LeftoverStack,
     ReadyStack,
     SandboxInventory,
+    SandboxUser,
     StackIdentity,
     StackPlan,
     StartupBudget,
@@ -1177,6 +1178,14 @@ class SandboxEngine(Protocol):
 
     def platform(self) -> str:
         """`sys.platform`, for the messages that differ per platform."""
+        ...
+
+    def host_user(self) -> SandboxUser:
+        """Who the containers run as, so files in the project folder stay yours."""
+        ...
+
+    def owner_pid(self) -> int:
+        """The process that answers for the stacks it starts."""
         ...
 
     def start_engine(self, notify: ProgressNotice) -> None:

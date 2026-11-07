@@ -37,6 +37,7 @@ from coding_study.application.project_testing import (
 from coding_study.application.resolve_target import Target, resolve_target
 from coding_study.application.run_bench import BenchResult
 from coding_study.application.run_events import EventSink
+from coding_study.application.service_lifecycle import ServiceTestRequest, service_attempt
 from coding_study.application.single_file_events import stream_perf, stream_tests
 from coding_study.application.time_limits import TimeLimitFlags
 from coding_study.domain import layout
@@ -81,6 +82,10 @@ from coding_study.entrypoints.commands.report_text import (
     trace_lines,
 )
 from coding_study.entrypoints.commands.run_document import run_document
+from coding_study.entrypoints.commands.service_test import (
+    require_service_options,
+    run_service_test_command,
+)
 from coding_study.entrypoints.shared import (
     ERROR_EXIT_CODES,
     OPTIONAL_TARGET_HELP,
@@ -235,6 +240,31 @@ def run_tests(
         require_events_alone(_given({"--json": as_json, "--watch": watch, "--debug": debug}))
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
     target = resolve_target(environment, Target(slug, language), Path.cwd())
+    if service_attempt(environment, target.slug, target.language) is not None:
+        require_service_options(
+            _given(
+                {
+                    "--watch": watch,
+                    "--case": bool(case),
+                    "--all": show_all,
+                    "--typecheck": typecheck,
+                    "--time-limit": time_limit is not None,
+                    "--no-time-limit": no_time_limit,
+                    "--level": level is not None,
+                    "--perf": perf,
+                    "--stress": stress is not None,
+                    "--seed": seed is not None,
+                    "--json": as_json,
+                    "--events": events,
+                    "--debug": debug,
+                }
+            )
+        )
+        raise typer.Exit(
+            run_service_test_command(
+                environment, ServiceTestRequest(target.slug, target.language), console(context)
+            )
+        )
     if is_project_attempt(environment, target.slug, target.language):
         require_project_options(
             _given(

@@ -1,5 +1,6 @@
 """`cstudy start` (docs/specs/cli.md#cstudy-start)."""
 
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Annotated
@@ -21,15 +22,21 @@ from coding_study.application.project_start import (
     restore_project_file,
 )
 from coding_study.application.resolve_target import ProblemTarget, resolve_problem
+from coding_study.application.service_lifecycle import (
+    finish_service_start,
+    preview_service_start,
+)
 from coding_study.application.start_attempt import StartedAttempt, StartRequest, start_attempt
 from coding_study.application.start_item import ItemStartRequest, start_item_attempt
 from coding_study.domain.attempts import parse_timer
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.project import project_language
+from coding_study.domain.service_project import NeedRow, service_of
 from coding_study.entrypoints.commands.ide import RENDERERS, report_lines
 from coding_study.entrypoints.shared import (
     PROBLEM_TARGET_HELP,
+    ExitCode,
     add_command,
     command_environ,
     console,
@@ -39,6 +46,8 @@ NAME = "start"
 LABEL_WIDTH = 11
 NEXT_STEP = "cstudy test --watch"
 PROJECT_NEXT_STEP = "cstudy test --watch, then cstudy submit"
+SERVICE_NEXT_STEP = "cstudy test"
+"""It will be `cstudy dev` once that exists (P5), and the spec says so."""
 PROJECT_KIND = "project"
 RESTORE_EXCLUDES = "--restore excludes --fresh and --timer"
 
@@ -73,6 +82,13 @@ def start(
             "provides it; PATH is relative to the project folder.",
         ),
     ] = None,
+    yes: Annotated[
+        bool,
+        typer.Option(
+            "--yes",
+            help="Service projects: go ahead when something will download, without asking.",
+        ),
+    ] = False,
 ) -> None:
     """Create or reopen a stub, open the statement, begin an attempt."""
     environment = load_environment(Path.cwd(), command_environ(context), Path.home())
@@ -86,15 +102,20 @@ def start(
         )
         return
     request = StartRequest(target.slug, target.language, fresh, _timer_seconds(timer))
-    files = start_and_report(output, environment, request)
+    files = start_and_report(output, environment, request, yes)
     if not no_open and environment.config.open_on_start:
         open_in_editor(output, environment, files)
 
 
-def start_and_report(output: Console, environment: Environment, request: StartRequest) -> OpenFiles:
-    """Starts the problem or item `request` names and prints the report; returns its two files."""
+def start_and_report(
+    output: Console, environment: Environment, request: StartRequest, yes: bool = False
+) -> OpenFiles:
+    """Starts the problem or item `request` names and prints the report; returns its two files.
+    `yes` is `--yes`, for a service project that would download something."""
     if is_item(environment, request.slug):
         lines, files = _start_item(environment, request)
+    elif service_of(environment.problems.load(request.slug).meta) is not None:
+        return _start_service(output, environment, request, yes)
     else:
         started = start_attempt(environment, request)
         linked = tuple(_linked(environment.root)) if _seeded_rust_folder(started) else ()
@@ -102,6 +123,48 @@ def start_and_report(output: Console, environment: Environment, request: StartRe
     for line in lines:
         output.print(line)
     return files
+
+
+def _start_service(
+    output: Console, environment: Environment, request: StartRequest, yes: bool
+) -> OpenFiles:
+    """A service project: Docker first, then what it needs, shown before any download; the attempt
+    and its folder, then the pull and the install. A requirement that is missing exits 4 before
+    anything is written; a failed pull or install keeps the attempt, and running this again
+    retries it."""
+    problem = environment.problems.load(request.slug)
+
+    def notice(line: str) -> None:
+        output.print(Text(line, style="dim"))
+
+    preview = preview_service_start(environment, problem, notice)
+    for line in need_lines(preview.needs):
+        output.print(line)
+    if preview.downloads and not yes:
+        _confirm_download(request.slug)
+    started = start_attempt(environment, request)
+    finish_service_start(environment, problem, notice)
+    for line in _report(started):
+        output.print(line)
+    return started.stub_path, started.statement_path
+
+
+def _confirm_download(slug: str) -> None:
+    if not sys.stdin.isatty():
+        raise UsageError(f"cstudy start {slug} would download what is listed: pass --yes to go on")
+    if not typer.confirm("Download these and go on?", default=True):
+        raise typer.Exit(ExitCode.SUCCESS)
+
+
+def need_lines(needs: tuple[NeedRow, ...]) -> Iterator[Text]:
+    """What a problem depends on (docs/specs/service-projects.md#where-it-shows)."""
+    yield Text("needs", style="dim")
+    for need in needs:
+        line = Text(f"  {need.label.ljust(LABEL_WIDTH)}", style="dim")
+        line.append(need.text)
+        if need.problem is not None:
+            line.append(f"  WARN  {need.problem}", style="yellow")
+        yield line
 
 
 def _seeded_rust_folder(started: StartedAttempt) -> bool:
@@ -162,7 +225,13 @@ def _report(started: StartedAttempt, linked: tuple[Text, ...] = ()) -> Iterator[
     if started.archived_to:
         yield _line("archived", started.archived_to)
     yield from linked
-    yield _line("next", NEXT_STEP if project is None else PROJECT_NEXT_STEP)
+    yield _line("next", _next_step(started))
+
+
+def _next_step(started: StartedAttempt) -> str:
+    if started.project is None:
+        return NEXT_STEP
+    return SERVICE_NEXT_STEP if service_of(started.problem.meta) else PROJECT_NEXT_STEP
 
 
 def _header(meta: ProblemMeta, language: str) -> list[str]:
@@ -182,8 +251,10 @@ def _project_lines(project: StartedProject) -> Iterator[Text]:
     """`project`, `entry` and `tests` lines in place of the stub."""
     files = f"{project.files} {'file' if project.files == 1 else 'files'}"
     yield _line("project", f"{project.folder} ({files})")
-    yield _line("entry", f"{project.entry_file}: {project.entry_class}")
     tests = project.tests
+    if tests is None:
+        return
+    yield _line("entry", f"{project.entry_file}: {project.entry_class}")
     count = f"{tests.tests} {'test' if tests.tests == 1 else 'tests'}"
     yield _line("tests", f"{tests.path} ({count})")
 

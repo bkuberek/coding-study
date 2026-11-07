@@ -47,8 +47,19 @@ from coding_study.domain.problem import (
     StubSource,
     Track,
 )
-from coding_study.domain.project import DEFAULT_TESTS_DIRECTORY, Project
+from coding_study.domain.project import DEFAULT_TESTS_DIRECTORY, NO_ENTRY, Project
+from coding_study.domain.sandbox import DEFAULT_READY_S
+from coding_study.domain.service_project import (
+    ServiceApp,
+    ServiceCommands,
+    ServiceMock,
+    ServiceProject,
+    ServiceRequires,
+    ServiceSizes,
+    ServiceTimeouts,
+)
 from coding_study.domain.signature import (
+    NO_SIGNATURE,
     ClassSignature,
     FunctionSignature,
     Method,
@@ -128,7 +139,7 @@ def _meta(document: Document, workspace: bool) -> ProblemMeta:
         difficulty=Difficulty(document["difficulty"]),
         track=Track(document["track"]),
         kind=ProblemKind(document["kind"]),
-        signature=_signature(document["signature"]),
+        signature=_signature(document["signature"]) if "signature" in document else NO_SIGNATURE,
         comparator=_comparator(document["comparator"]),
         approaches=_approaches(document["approaches"]),
         patterns=tuple(document.get("patterns", ())),
@@ -163,9 +174,62 @@ def _project(project: Document | None) -> Project | None:
         return None
     clock = project.get("clock")
     return Project(
-        entry=project["entry"],
+        entry=project.get("entry", NO_ENTRY),
         tests=project.get("tests", DEFAULT_TESTS_DIRECTORY),
         clock=ProjectClock(clock) if clock is not None else None,
+        service=_service(project) if "grading" in project else None,
+    )
+
+
+def _service(project: Document) -> ServiceProject:
+    app = project["app"]
+    requires = project.get("requires", {})
+    sizes = requires.get("sizes", {})
+    timeouts = project.get("timeouts_s", {})
+    defaults = ServiceTimeouts()
+    return ServiceProject(
+        image=project["image"],
+        commands=_service_commands(project["commands"]),
+        app=ServiceApp(
+            port_env=app["port_env"],
+            port=app["port"],
+            health=app["health"],
+            ready_timeout_s=app.get("ready_timeout_s", DEFAULT_READY_S),
+            mem_limit=app.get("mem_limit"),
+        ),
+        env=dict(project.get("env", {})),
+        requires=ServiceRequires(
+            lock=requires.get("lock"),
+            services=tuple(requires.get("services", ())),
+            sizes=ServiceSizes(
+                install_mb=sizes.get("install_mb"),
+                images_mb=dict(sizes.get("images_mb", {})),
+                memory_mb=sizes.get("memory_mb"),
+            ),
+        ),
+        mocks=tuple(ServiceMock(mock["name"], mock["config"]) for mock in project.get("mocks", ())),
+        services=project.get("services"),
+        install_env=dict(project.get("install_env", {})),
+        timeouts=ServiceTimeouts(
+            startup=timeouts.get("startup", defaults.startup),
+            install=timeouts.get("install", defaults.install),
+            test=timeouts.get("test", defaults.test),
+            reset=timeouts.get("reset", defaults.reset),
+        ),
+    )
+
+
+def _service_commands(commands: Document) -> ServiceCommands:
+    def optional(name: str) -> tuple[str, ...] | None:
+        return tuple(commands[name]) if name in commands else None
+
+    return ServiceCommands(
+        run=tuple(commands["run"]),
+        test=tuple(commands["test"]),
+        install=optional("install"),
+        bootstrap=optional("bootstrap"),
+        reset=optional("reset"),
+        grade_setup=optional("grade_setup"),
     )
 
 
