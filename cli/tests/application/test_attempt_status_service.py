@@ -1,0 +1,52 @@
+"""`cstudy status` of a service project (docs/specs/cli.md#cstudy-status): its next step names the
+commands a service project takes."""
+
+from datetime import timedelta
+
+import pytest
+
+from coding_study.application.attempt_status import SERVICE_NEXT, attempt_status
+from coding_study.application.environment import Environment
+from coding_study.application.start_attempt import StartRequest, start_attempt
+from coding_study.domain.judging import Tally
+from coding_study.domain.problem import Language
+from coding_study.domain.submissions import LevelTally, SubmissionRecord
+from tests.fakes import NOW, make_environment
+from tests.sandbox_fakes import FakeSandbox
+from tests.service_problems import SLUG, make_content, write_problem
+
+
+@pytest.fixture
+def service(tmp_path) -> Environment:
+    root = make_content(tmp_path)
+    write_problem(root)
+    environment = make_environment(root, sandbox=FakeSandbox())
+    start_attempt(environment, StartRequest(SLUG, Language.TYPESCRIPT))
+    return environment
+
+
+def test_before_any_submission_a_service_project_names_dev_then_its_tests(service):
+    assert attempt_status(service, None, None).next_step == SERVICE_NEXT
+
+
+def test_the_service_next_step_takes_no_flag_of_a_native_run():
+    assert "--" not in SERVICE_NEXT
+
+
+def test_after_a_submission_a_service_project_names_its_unlocked_level(service):
+    attempt = service.progress.active_attempt()
+    assert attempt is not None
+    level = LevelTally(level=1, visible_total=4, visible_passed=2, hidden_total=0, hidden_passed=0)
+    service.progress.add_submission(
+        SubmissionRecord(
+            attempt_id=attempt.id,
+            submitted_at=NOW + timedelta(minutes=5),
+            code_hash="abc",
+            graded_up_to=1,
+            every_level=True,
+            levels=(level,),
+            tally=Tally(total=level.total, passed=level.passed),
+            duration_ms=300,
+        )
+    )
+    assert attempt_status(service, None, None).next_step == "cstudy submit once level 1 passes"

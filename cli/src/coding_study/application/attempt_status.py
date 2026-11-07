@@ -21,9 +21,12 @@ from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.levels import FIRST_LEVEL, LevelProgress, level_progress
 from coding_study.domain.problem import Language, ProblemKind, Track
 from coding_study.domain.problem_files import PROBLEM_FILE
+from coding_study.domain.service_project import service_of
 from coding_study.domain.submissions import LevelTally, SubmissionRecord, best_per_level
 
 TEST_NEXT = "cstudy test --watch"
+SERVICE_NEXT = "cstudy dev, then cstudy test and cstudy submit"
+"""A service project's `cstudy test` takes no flag of a native run."""
 DONE_NEXT = "cstudy done --rating easy|ok|hard"
 NO_HINTS = 0
 
@@ -186,7 +189,7 @@ class _ProblemStatus:
         if self._attempt.first_pass_at is not None:
             return DONE_NEXT
         if project.latest_submission is None or self._levels is None:
-            return TEST_NEXT
+            return SERVICE_NEXT if service_of(self._problem.meta) else TEST_NEXT
         return f"cstudy submit once level {self._levels.unlocked} passes"
 
     def _single_file_next_step(self, last_run: RunRecord | None) -> str:

@@ -11,6 +11,7 @@ from rich.text import Text
 
 from coding_study.adapters.environment_factory import load_environment
 from coding_study.adapters.ide.generated_files import FsGeneratedFiles
+from coding_study.application.attempt_status import SERVICE_NEXT
 from coding_study.application.environment import Environment
 from coding_study.application.ide_files import link_rust_projects
 from coding_study.application.practice_catalog import is_item
@@ -46,7 +47,6 @@ NAME = "start"
 LABEL_WIDTH = 11
 NEXT_STEP = "cstudy test --watch"
 PROJECT_NEXT_STEP = "cstudy test --watch, then cstudy submit"
-SERVICE_NEXT_STEP = "cstudy dev, then cstudy test and cstudy submit"
 PROJECT_KIND = "project"
 RESTORE_EXCLUDES = "--restore excludes --fresh and --timer"
 
@@ -230,7 +230,7 @@ def _report(started: StartedAttempt, linked: tuple[Text, ...] = ()) -> Iterator[
 def _next_step(started: StartedAttempt) -> str:
     if started.project is None:
         return NEXT_STEP
-    return SERVICE_NEXT_STEP if service_of(started.problem.meta) else PROJECT_NEXT_STEP
+    return SERVICE_NEXT if service_of(started.problem.meta) else PROJECT_NEXT_STEP
 
 
 def _header(meta: ProblemMeta, language: str) -> list[str]:

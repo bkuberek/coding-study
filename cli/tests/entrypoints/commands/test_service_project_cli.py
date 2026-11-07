@@ -13,7 +13,7 @@ from coding_study.domain.sandbox import (
     StartupFailure,
 )
 from coding_study.entrypoints import cli
-from coding_study.entrypoints.commands import dev, list_problems, show, start, submit
+from coding_study.entrypoints.commands import dev, list_problems, show, start, status, submit
 from coding_study.entrypoints.commands import test as test_command
 from coding_study.entrypoints.shared import ExitCode
 from tests.fakes import make_environment
@@ -38,6 +38,7 @@ def environment(tmp_path, monkeypatch, engine):
     monkeypatch.setattr(test_command, "load_environment", lambda *_: built)
     monkeypatch.setattr(submit, "load_environment", lambda *_: built)
     monkeypatch.setattr(dev, "load_environment", lambda *_: built)
+    monkeypatch.setattr(status, "load_environment", lambda *_: built)
     return built
 
 
@@ -132,6 +133,11 @@ def test_a_failed_install_exits_4_keeps_the_attempt_and_names_the_retry(environm
     assert result.exit_code == ExitCode.ENVIRONMENT_ERROR
     assert f"cstudy start {SLUG}" in result.stderr
     assert environment.progress.active_attempt(SLUG) is not None
+
+
+def test_status_names_dev_and_the_tests_as_the_next_step(environment):
+    start_it()
+    assert "next       cstudy dev, then cstudy test and cstudy submit" in invoke("status").output
 
 
 def test_show_lists_the_needs_above_the_statement(environment):
