@@ -130,7 +130,6 @@ EGRESS_PROBE = "\n".join(
 """Standard library only, run from the pinned Python image, on `sandbox` alone. A connection that
 fails or times out proves what D11 asks; one that succeeds is named."""
 
-_KIND_LETTERS: Mapping["StackKind", str] = {}
 _DIGEST_LENGTH = 8
 _STACK_NAME = re.compile(r"cstudy-[dtgi]-[a-z0-9][a-z0-9_-]*")
 
