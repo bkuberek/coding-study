@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Accepted. [P1](#the-p1-spike) passed with changes, on macOS only. P2 to P6 are built (2026-11-07): the environment allowlist, the sandbox, the lifecycle commands, the mock server and the HTTP grader, so a service project works from `cstudy start` to `cstudy submit`. P7 onward is planned. Each recommendation's state is in [its table](#open-to-confirm) |
+| Status | Accepted. [P1](#the-p1-spike) passed with changes, on macOS only. P2 to P7 are built (2026-11-07): the environment allowlist, the sandbox, the lifecycle commands, the mock server, the HTTP grader and the first catalog problem, so a service project works from `cstudy start` to `cstudy submit`. P8 onward is planned. Each recommendation's state is in [its table](#open-to-confirm) |
 | Date | 2026-11-05, revised the same day by [O15](#decided-by-the-owner): service projects always run in Docker |
 | Spec | [service-projects](../specs/service-projects.md). The bank projects' behavior stays in [problem-format](../specs/problem-format.md#project-problems), [runners](../specs/runners.md#project-jobs), [authoring](../specs/authoring.md#project-problems), [cli](../specs/cli.md#cstudy-submit), [installation-and-workspaces](../specs/installation-and-workspaces.md#project-folders) and [web-ui](../specs/web-ui.md#file-api-rules), each of which points to it |
 | Supersedes in part | [ADR 0014](0014-project-problems.md): for service projects only, the rejection of a venv or `node_modules` per project and of test tools that need a network install. Existing problems do not change |
@@ -147,7 +147,7 @@ At implementation, for `grading: http`. Until then `schemas/meta.schema.json` st
 | P4 | **Built.** The lifecycle commands and their contract; dependency install and lock rules; the TypeScript and Python service templates; the `.env` written from `project.env`; `project.requires` with its static check and the dependency list in `cstudy show`, `cstudy list` and `cstudy start` |
 | P5 | **Built.** The Python mock server, `schemas/mock.schema.json`, its container, the YAML-to-JSON rendering and `cstudy dev` with `--scenario`. The other flags of `cstudy dev` are planned, with P9 |
 | P6 | **Built.** The HTTP grader, with `submit`, `test` and `verify` wired in, S14 to S23, and D11 apart from the measured image sizes and memory. Installs in CI are small, 27 MB and 9 MB for the two fixtures, so nothing is cached yet; a catalog problem may change that |
-| P7 | The first problem in TypeScript |
+| P7 | **Built.** The first problem in TypeScript, `0277-coworking-availability-typescript`, and the `.env` written from `project.env` in place of a committed one |
 | P8 | The Python version of the first problem |
 | P9 | Code intelligence in the container, generated IDE files, and Web UI: stack status, the scenario picker, and the dependency list in the Problems view, the Problem view and the Start dialog |
 | P10 | Data-driven problems, TypeScript then Python, each choosing its own database and migration tool: `project.services` and S21, which proves the flow of R8, with parallel cases and any contract table. SQLite needs Docker here as well, like every service project |

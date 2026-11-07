@@ -1,0 +1,104 @@
+# The vendor of the main building's rooms, and how it can fail. Hidden scenarios are what a graded
+# run adds: a dev or test stack holds only those marked visible.
+routes:
+  - id: march-1
+    method: GET
+    path: /v1/rooms/availability
+    query: {date: "2027-03-01"}
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/room-vendor-march-1.json
+  - id: march-7
+    method: GET
+    path: /v1/rooms/availability
+    query: {date: "2027-03-07"}
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/room-vendor-march-7.json
+  - id: march-8
+    method: GET
+    path: /v1/rooms/availability
+    query: {date: "2027-03-08"}
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/room-vendor-march-8.json
+  - id: march-15
+    method: GET
+    path: /v1/rooms/availability
+    query: {date: "2027-03-15"}
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/room-vendor-march-15.json
+  - id: other-days
+    method: GET
+    path: /v1/rooms/availability
+    response:
+      status: 200
+      body: {rooms: []}
+scenarios:
+  outage:
+    visible: true
+    status: 500
+    headers: {Content-Type: application/json}
+    body: {error: internal error}
+  rate_limited:
+    visible: true
+    status: 429
+    headers: {Content-Type: application/json, Retry-After: "1"}
+    body: {error: too many requests}
+  slow:
+    visible: true
+    delay_ms: 3000
+  fails_once:
+    route: march-1
+    sequence:
+      - {status: 500, headers: {Content-Type: application/json}, body: {error: internal error}}
+      - {status: 200, headers: {Content-Type: application/json}, body_file: bodies/room-vendor-march-1.json}
+  fails_twice:
+    route: march-1
+    sequence:
+      - {status: 503, headers: {Content-Type: application/json}, body: {error: unavailable}}
+      - {status: 500, headers: {Content-Type: application/json}, body: {error: internal error}}
+      - {status: 200, headers: {Content-Type: application/json}, body_file: bodies/room-vendor-march-1.json}
+  limited_once:
+    route: march-1
+    sequence:
+      - {status: 429, headers: {Content-Type: application/json, Retry-After: "1"}, body: {error: too many requests}}
+      - {status: 200, headers: {Content-Type: application/json}, body_file: bodies/room-vendor-march-1.json}
+  limited_on_march_8:
+    route: march-8
+    sequence:
+      - {status: 429, headers: {Content-Type: application/json, Retry-After: "1"}, body: {error: too many requests}}
+      - {status: 200, headers: {Content-Type: application/json}, body_file: bodies/room-vendor-march-8.json}
+  limited_long:
+    route: march-1
+    sequence:
+      - {status: 429, headers: {Content-Type: application/json, Retry-After: "2"}, body: {error: too many requests}}
+      - {status: 200, headers: {Content-Type: application/json}, body_file: bodies/room-vendor-march-1.json}
+  limited_no_header:
+    route: march-1
+    sequence:
+      - {status: 429, headers: {Content-Type: application/json}, body: {error: too many requests}}
+      - {status: 200, headers: {Content-Type: application/json}, body_file: bodies/room-vendor-march-1.json}
+  mixed_failures:
+    route: march-1
+    sequence:
+      - {status: 500, headers: {Content-Type: application/json}, body: {error: internal error}}
+      - {status: 429, headers: {Content-Type: application/json, Retry-After: "1"}, body: {error: too many requests}}
+      - {status: 200, headers: {Content-Type: application/json}, body_file: bodies/room-vendor-march-1.json}
+  refused:
+    status: 403
+    headers: {Content-Type: application/json}
+    body: {error: not allowed}
+  garbled:
+    status: 200
+    headers: {Content-Type: application/json}
+    body: '{"rooms": ['
+  wrong_shape:
+    status: 200
+    headers: {Content-Type: application/json}
+    body: {status: ok}

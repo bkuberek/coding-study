@@ -1,6 +1,6 @@
 # Spec: Service projects
 
-**Status: built through P6: the sandbox, the lifecycle commands, the mock server, the HTTP grader and `cstudy dev`, so a service project works from `cstudy start` to `cstudy submit`, on macOS with Docker Desktop. No problem in the catalog uses it yet (P7). What is still planned says so where it stands: backing services (P10), code intelligence and the Web UI (P9), and parallel and multi-step cases (P10, P11).** A service project is a [project problem](problem-format.md#project-problems) where you build a small running service: `cstudy` runs your app in a Docker sandbox, with mock servers for third-party APIs and, where the problem declares them, backing services, and judges it by what it answers over HTTP. Decision record: [ADR 0019](../decisions/0019-service-projects.md), which tags each decision by who made it. Items marked R*n* there are recommendations confirmed when their phase starts. Phases P*n* are the ADR's. Existing problems, the bank projects included, stay native, need no Docker and do not change.
+**Status: built through P7: the sandbox, the lifecycle commands, the mock server, the HTTP grader and `cstudy dev`, so a service project works from `cstudy start` to `cstudy submit`, on macOS with Docker Desktop, and the first catalog problem, [`coworking-availability-typescript`](#the-first-problem), uses them. What is still planned says so where it stands: the Python version (P8), backing services (P10), code intelligence and the Web UI (P9), and parallel and multi-step cases (P10, P11).** A service project is a [project problem](problem-format.md#project-problems) where you build a small running service: `cstudy` runs your app in a Docker sandbox, with mock servers for third-party APIs and, where the problem declares them, backing services, and judges it by what it answers over HTTP. Decision record: [ADR 0019](../decisions/0019-service-projects.md), which tags each decision by who made it. Items marked R*n* there are recommendations confirmed when their phase starts. Phases P*n* are the ADR's. Existing problems, the bank projects included, stay native, need no Docker and do not change.
 
 ## Names
 
@@ -820,7 +820,7 @@ Connect to the network, then run: cstudy start coworking-availability-typescript
 |----------|-------------|
 | Graded runs | One stack per run |
 | Mock server memory | The container is limited to 64 MiB. P1 measured a stand-in at 15 MiB, and the program alone held about 29 MB after starting, on macOS on arm64 with two mock servers |
-| Disk per project | `node_modules` or `.venv`, to be measured at P7 and P8, plus images and the install cache, shared across projects |
+| Disk per project | `node_modules` or `.venv`: 27 MB for the TypeScript problem, measured at P7, and P8 for Python; plus images and the install cache, shared across projects |
 | Docker | [Resources and CI](#resources-and-ci) |
 | Language servers | Each project still counts toward `cstudy serve`'s limit of four language servers |
 
@@ -940,16 +940,16 @@ Nothing here has run on Linux. The `sandbox` CI job is what will show it, on its
 
 ## The first problem
 
-Original to cstudy ([ADR 0004](../decisions/0004-original-problem-wording.md)). A coworking space sells desk passes, counted per day, and meeting rooms, booked in time slots from a room vendor. One API serves both. Slugs: `coworking-availability-typescript`, then `coworking-availability-python`, each a separate problem as [ADR 0014](../decisions/0014-project-problems.md) requires.
+Original to cstudy ([ADR 0004](../decisions/0004-original-problem-wording.md)). A coworking space sells hot desks, counted per day in its own data, and meeting rooms, in time slots from outside vendors. One API serves both. It is built in TypeScript as `problems/0277-coworking-availability-typescript/`, with `coworking-availability-python` to follow, each a separate problem as [ADR 0014](../decisions/0014-project-problems.md) requires.
 
 | Level | What it asks |
 |-------|--------------|
-| 1 | The existing daily-count endpoint works, and you get oriented in the codebase. One small change as well, such as refusing a date out of range with a 400, so the starter does not pass untouched and `cstudy done` keeps its meaning |
-| 2 | Integrate the room vendor and serve both product kinds from one endpoint |
-| 3 | Vendor failure handling: outage (503), slow, malformed and rate limited (429) |
-| 4 | A second vendor with a different response shape, on a second mock server |
+| 1 | `GET /desks` already answers the count for a day on sale. Give it the right answers to a wrong request, so the starter passes 4 of its 14 cases and `cstudy done` keeps its meaning |
+| 2 | `GET /availability`: one answer with the desks and `room-vendor`'s open slots, flattened and sorted |
+| 3 | Vendor failure handling: a 5xx, a 429 with and without `Retry-After`, a slow answer and a broken body. Desks are still answered and the vendor is named in `unavailable`, with retries bounded and the request log checking the count and the gaps |
+| 4 | `annex-vendor`, a second mock server with another shape and its own failures, among them an error in the body of a 200. One vendor failing touches nothing of the other's |
 
-The stack per language is chosen at authoring time, with Express or an equivalent now allowed. A level's cases check a response that degrades as the statement says when the vendor fails, for example desk passes served and rooms marked unavailable. A slow-vendor case needs no upper time bound on a loaded machine: an app with no timeout returns the full answer late, and the body differs.
+The stack is `node:http` and `fetch`, with no runtime dependency, so the install is the same 27 MB as the fixtures'. There is no database: the seeded counts are a file in the starter, so the problem declares neither `bootstrap` nor `reset`. Every level is graded again on each submit, so `/desks` stays a separate endpoint, a slot names its vendor from level 2, and `unavailable` is a list from level 2, which lets an earlier level's cases hold once the annex is asked too. The annex has no spaces on the days those cases use. A slow-vendor case needs no upper time bound on a loaded machine: an app with no timeout returns the full answer late, and the body differs.
 
 **What cannot be auto-graded.** Open-ended design discussion, such as caching vendor data and for how long, a circuit breaker, adding a third vendor, or how the API would change under load, goes in `solutions/explanation.md`, under `### Design`.
 
