@@ -8,10 +8,12 @@ Commands take the absolute directory they run from, so no path type is needed he
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.layout import PYTHON_PROJECT, TYPESCRIPT_PROJECT
-from coding_study.domain.problem import Language
+from coding_study.domain.problem import Language, ProblemMeta
+from coding_study.domain.service_project import service_of
 
 LSP_DIRECTORY = ".cs/lsp"
 """The pnpm project that cstudy owns in the workspace, ignored by git."""
@@ -167,3 +169,15 @@ table keyed by `Language`, since a table must have a row for every language."""
 
 def server_for(language: Language) -> LanguageServer | None:
     return next((server for server in LANGUAGE_SERVERS if server.language is language), None)
+
+
+class NoCodeIntelligence(StrEnum):
+    """Why an attempt has no code intelligence whatever its language's server."""
+
+    SERVICE_PROJECT = "service_project"
+    """Sandboxed code writes the folder, and a server on this machine would read it, until one runs
+    in a container (docs/specs/service-projects.md#language-servers)."""
+
+
+def no_code_intelligence(meta: ProblemMeta) -> NoCodeIntelligence | None:
+    return NoCodeIntelligence.SERVICE_PROJECT if service_of(meta) is not None else None

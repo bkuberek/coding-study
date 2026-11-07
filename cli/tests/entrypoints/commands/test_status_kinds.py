@@ -132,6 +132,7 @@ def test_json_describes_a_function_attempt(function):
         "latest_submission": None,
         "best_per_level": [],
         "files": None,
+        "no_code_intelligence": None,
         "next": "cstudy test --watch",
     }
 
@@ -204,5 +205,6 @@ def test_json_describes_an_item_attempt(item):
         "latest_submission": None,
         "best_per_level": [],
         "files": None,
+        "no_code_intelligence": None,
         "next": "answer in the notes, then cstudy solution url-shortener",
     }

@@ -1,5 +1,5 @@
 """`cstudy status` of a service project (docs/specs/cli.md#cstudy-status): its next step names the
-commands a service project takes."""
+commands a service project takes, and it has no code intelligence whatever its language."""
 
 from datetime import timedelta
 
@@ -8,6 +8,7 @@ import pytest
 from coding_study.application.attempt_status import SERVICE_NEXT, attempt_status
 from coding_study.application.environment import Environment
 from coding_study.application.start_attempt import StartRequest, start_attempt
+from coding_study.domain.code_intelligence import NoCodeIntelligence
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
 from coding_study.domain.submissions import LevelTally, SubmissionRecord
@@ -23,6 +24,12 @@ def service(tmp_path) -> Environment:
     environment = make_environment(root, sandbox=FakeSandbox())
     start_attempt(environment, StartRequest(SLUG, Language.TYPESCRIPT))
     return environment
+
+
+def test_a_service_project_has_no_code_intelligence_whatever_its_language(service):
+    assert attempt_status(service, None, None).no_code_intelligence is (
+        NoCodeIntelligence.SERVICE_PROJECT
+    )
 
 
 def test_before_any_submission_a_service_project_names_dev_then_its_tests(service):

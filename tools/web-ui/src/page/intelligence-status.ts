@@ -10,7 +10,9 @@ import type { LanguageState } from "./types.ts";
 export type FileIntelligence =
   | { readonly kind: "session"; readonly language: string; readonly server: string; readonly state: SessionState }
   | { readonly kind: "not-installed"; readonly language: string; readonly server: string }
-  | { readonly kind: "no-server"; readonly language: string };
+  | { readonly kind: "no-server"; readonly language: string }
+  /** The attempt has none whatever its language's server: `no_code_intelligence` of its status. */
+  | { readonly kind: "withheld"; readonly reason: string };
 
 export interface Segment {
   readonly text: string;
@@ -18,7 +20,7 @@ export interface Segment {
   readonly action: "restart" | "health" | null;
   /** The whole reason of a stopped session, for the tooltip. */
   readonly title: string;
-  /** `starting`, `ready`, `reconnecting`, `stopped`, `not-installed` or `no-server`. */
+  /** `starting`, `ready`, `reconnecting`, `stopped`, `not-installed`, `no-server` or `withheld`. */
   readonly state: string;
 }
 
@@ -30,6 +32,12 @@ const NAMES: Readonly<Record<string, string>> = {
   go: "Go",
   rust: "Rust",
 };
+
+/** Why an attempt has no code intelligence, by the reason its status gives. */
+const WITHHELD: Readonly<Record<string, string>> = {
+  service_project: "code intelligence for service projects comes later",
+};
+const WITHHELD_UNKNOWN = "no code intelligence for this attempt";
 
 export function languageName(language: string): string {
   return NAMES[language] ?? language;
@@ -62,6 +70,8 @@ export function segmentOf(found: FileIntelligence, counts?: DiagnosticCounts): S
         title: "",
         state: "not-installed",
       };
+    case "withheld":
+      return { text: WITHHELD[found.reason] ?? WITHHELD_UNKNOWN, action: null, title: "", state: "withheld" };
     case "session":
       return sessionSegment(found, counts);
   }

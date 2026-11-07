@@ -27,13 +27,13 @@ from coding_study.domain.code_intelligence import (
     LSP_DIRECTORY,
     NOT_AVAILABLE_YET,
     LanguageServer,
+    no_code_intelligence,
     server_for,
 )
 from coding_study.domain.errors import LanguageServerNotInstalledError, UsageError
 from coding_study.domain.layout import BUILD_DIRECTORY, CASES_DIRECTORY, RUNS_DIRECTORY
 from coding_study.domain.preferences import Preferences
 from coding_study.domain.problem import Language, ProblemKind
-from coding_study.domain.service_project import service_of
 from coding_study.domain.workspace_projects import project_folder
 
 FIX_COMMAND = "cstudy doctor --fix"
@@ -138,7 +138,7 @@ def _server_of(environment: Environment, attempt: Attempt) -> LanguageServer:
     if attempt.language is None:
         raise UsageError(f"{attempt.slug} has no code")
     server = server_for(attempt.language)
-    if server is None or service_of(environment.problems.load(attempt.slug).meta) is not None:
+    if server is None or no_code_intelligence(environment.problems.load(attempt.slug).meta):
         raise UsageError(f"no code intelligence for {attempt.language.value} yet")
     return server
 

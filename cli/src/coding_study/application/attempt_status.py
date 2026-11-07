@@ -15,6 +15,7 @@ from coding_study.application.environment import Environment
 from coding_study.application.project_manifest import folder_states
 from coding_study.domain import layout
 from coding_study.domain.attempts import Attempt, RunRecord, passed_every_case
+from coding_study.domain.code_intelligence import NoCodeIntelligence, no_code_intelligence
 from coding_study.domain.file_states import FolderFile, StarterChanges, starter_changes
 from coding_study.domain.hints import hint_level, problem_hints
 from coding_study.domain.items import EntryKind, entry_kind
@@ -79,6 +80,8 @@ class AttemptStanding:
     """Levels 1 to the unlocked one."""
     last_test_run: RunRecord | None = None
     project: ProjectStanding | None = None
+    no_code_intelligence: NoCodeIntelligence | None = None
+    """None when the language's server decides, as for every attempt but a service project's."""
 
     @property
     def file(self) -> str | None:
@@ -146,6 +149,7 @@ class _ProblemStatus:
             opened=self._opened(),
             last_test_run=last_run,
             project=project,
+            no_code_intelligence=no_code_intelligence(meta),
         )
 
     @property

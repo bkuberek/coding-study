@@ -95,7 +95,7 @@ export function attemptView(context: PageContext, id: number): Cleanup {
       shown = { head: head(status, clock, flows, runs.toolbar), brief: brief(status, text, flows.hints), flows, files, status, statement: text };
       page.removeAttribute("aria-busy");
       page.replaceChildren(shown.head, files.element, tabs.element, shown.brief, runs.panel);
-      intelligence.configure(status.language, tree.root);
+      intelligence.configure({ language: status.language, noCodeIntelligence: status.no_code_intelligence }, tree.root);
       shell.setCommand(`cstudy status ${status.slug}`);
       document.title = `${status.slug} · cstudy`;
       const first = tree.entries.find((entry) => entry.origin === "stub" || entry.origin === "notes");

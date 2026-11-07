@@ -115,6 +115,7 @@ def status_document(found: AttemptStanding) -> dict[str, JsonValue]:
             for tally in (project.best_per_level if project else ())
         ],
         "files": _files_value(project) if project else None,
+        "no_code_intelligence": found.no_code_intelligence,
         "next": found.next_step,
     }
 

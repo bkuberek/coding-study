@@ -830,7 +830,7 @@ Connect to the network, then run: cstudy start coworking-availability-typescript
 | Disk per project | `node_modules` or `.venv`: 27 MB for the TypeScript problem, measured at P7, and P8 for Python; plus images and the install cache, shared across projects |
 | Container output in memory | What a container prints is as long as it likes, and `cstudy dev` follows an app with no time limit. So `cstudy` holds the last MiB of a command's output, each line goes by as it comes, and a line with no newline comes in pieces of 64 KiB |
 | Docker | [Resources and CI](#resources-and-ci) |
-| Language servers | Each project still counts toward `cstudy serve`'s limit of four language servers |
+| Language servers | None until P9; then each project counts toward `cstudy serve`'s limit of four language servers |
 
 ### Cleanup
 
@@ -851,7 +851,7 @@ There is no `cstudy reset` and no command that removes a problem; verified again
 
 ### Language servers
 
-Planned, for P9 (R28). Until then a service project has no language server at all: sandboxed code writes its folder, and basedpyright or tsserver on your machine would read it. A session is refused as for a language with no server, 422 `usage` with `no code intelligence for python yet`. The page still tries one, since `installed` is per language, and shows `reconnecting…`, then `stopped · Restart`, until P9 tells it. With P9, a language server runs in a small `lsp` sidecar through `docker exec -i`, the same Node image for both languages, `network_mode: none`, with the project and `.cs/lsp/` mounted, and paths matching because of the same-path mount. A language server must not read a mock config or a hidden case, and inside the container there is nothing to hide: none of them are mounted. ADR 0018's four [hidden directories](web-ui.md#hidden-directories), `.cs/build/`, `.cs/cases/`, `.cs/runs/` and the content root, do not exist there.
+Planned, for P9 (R28). Until then a service project has no language server at all: sandboxed code writes its folder, and basedpyright or tsserver on your machine would read it. The attempt's status says so, `no_code_intelligence`: `service_project` ([`cstudy status --json`](cli.md#cstudy-status)), so the page reads no list of languages, opens no session and shows `code intelligence for service projects comes later` ([Status bar](web-ui.md#status-bar)). A session asked for anyway is refused as for a language with no server, 422 `usage` with `no code intelligence for python yet`. With P9, a language server runs in a small `lsp` sidecar through `docker exec -i`, the same Node image for both languages, `network_mode: none`, with the project and `.cs/lsp/` mounted, and paths matching because of the same-path mount. A language server must not read a mock config or a hidden case, and inside the container there is nothing to hide: none of them are mounted. ADR 0018's four [hidden directories](web-ui.md#hidden-directories), `.cs/build/`, `.cs/cases/`, `.cs/runs/` and the content root, do not exist there.
 
 | Item | Where it is | Covered by |
 |------|-------------|------------|

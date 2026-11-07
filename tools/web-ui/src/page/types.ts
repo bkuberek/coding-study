@@ -227,6 +227,8 @@ export interface AttemptStatus {
   } | null;
   readonly timer: { readonly elapsed_s: number; readonly limit_s: number } | null;
   readonly last_test_run: { readonly total: number; readonly passed: number; readonly ran_at: string } | null;
+  /** Why the attempt has no code intelligence whatever its language's server: `service_project`. */
+  readonly no_code_intelligence: string | null;
   readonly next: string;
 }
 

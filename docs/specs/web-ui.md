@@ -818,7 +818,7 @@ The status bar's mode reads `ABOUT`, as the other views' do, with `credits and l
 
 ### Code intelligence in the editor
 
-Code intelligence applies to a tab while `code_intelligence` is on, the tab shows a file of an attempt, and the file's language has an installed server ([Language servers](#language-servers)); every other tab behaves as it does without it. With `code_intelligence` off, nothing below loads, and the page opens no session.
+Code intelligence applies to a tab while `code_intelligence` is on, the tab shows a file of an attempt whose status does not withhold it (`no_code_intelligence` is null; a [service project](service-projects.md#language-servers) has none), and the file's language has an installed server ([Language servers](#language-servers)); every other tab behaves as it does without it. With `code_intelligence` off, nothing below loads, and the page opens no session.
 
 | Item | Rule |
 |------|------|
@@ -899,6 +899,7 @@ The status bar shows the active file's code intelligence while `code_intelligenc
 | Stopped | `python · basedpyright · stopped: exit 1 · Restart`, or another reason from the close codes of [Sessions](#sessions) |
 | Not installed | `no code intelligence for Python: basedpyright is not installed · Health`, linking to the Health view |
 | No server yet | `no code intelligence for Go yet` |
+| Service project | `code intelligence for service projects comes later`, for each file in the attempt's language, from the attempt's `no_code_intelligence`: the page reads no list of languages and opens no session, so the segment does not change and has no Restart |
 | No definition | `no definition found`, for 3 s after a jump that found none |
 
 The segment is text in the status bar, not a live region. Restart is a button after the text, and `Health` a link to the Health view; a stopped session's tooltip carries the whole close reason (`exit 1: Error: Cannot find module …`). A file in a language without a server works as it does without code intelligence.

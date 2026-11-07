@@ -37,6 +37,16 @@ test("a language with no server yet says so", () => {
   assert.deepEqual([segment.text, segment.action], ["no code intelligence for Go yet", null]);
 });
 
+test("a service project says its code intelligence comes later, with no action", () => {
+  const segment = segmentOf({ kind: "withheld", reason: "service_project" });
+  assert.deepEqual([segment.text, segment.action, segment.state], ["code intelligence for service projects comes later", null, "withheld"]);
+});
+
+test("a reason the page does not know still says there is none", () => {
+  const segment = segmentOf({ kind: "withheld", reason: "something_new" });
+  assert.deepEqual([segment.text, segment.action], ["no code intelligence for this attempt", null]);
+});
+
 test("the other states have no action", () => {
   for (const kind of ["starting", "ready", "reconnecting"] as const) {
     assert.equal(segmentOf({ kind: "session", ...PYTHON, state: { kind } }).action, null);

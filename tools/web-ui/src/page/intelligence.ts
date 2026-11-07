@@ -33,11 +33,22 @@ export type Decision =
   | { readonly kind: "show"; readonly found: FileIntelligence }
   | { readonly kind: "attach"; readonly language: string; readonly server: string; readonly idleS: number };
 
+/** The attempt as code intelligence sees it, from its status. */
+export interface AttemptLanguage {
+  readonly language: string | null;
+  /** Why the attempt has none whatever its language's server (`service_project`), or null. */
+  readonly noCodeIntelligence: string | null;
+}
+
+const NO_ATTEMPT: AttemptLanguage = { language: null, noCodeIntelligence: null };
+
 /** What a file gets: a session of its language's server when the attempt is in that language and
- * the server is installed, else the status bar's reason, else nothing. */
-export function decide(path: string, attemptLanguage: string | null, states: readonly LanguageState[] | null): Decision {
+ * the server is installed, else the status bar's reason, else nothing. An attempt whose status
+ * withholds code intelligence never reads the list nor opens a session. */
+export function decide(path: string, attempt: AttemptLanguage, states: readonly LanguageState[] | null): Decision {
   const language = serverLanguageFor(path);
-  if (language === null || language !== attemptLanguage) return { kind: "none" };
+  if (language === null || language !== attempt.language) return { kind: "none" };
+  if (attempt.noCodeIntelligence !== null) return { kind: "show", found: { kind: "withheld", reason: attempt.noCodeIntelligence } };
   if (states === null) return { kind: "waiting" };
   const state = states.find((candidate) => candidate.language === language);
   if (state === undefined) return { kind: "none" };
@@ -64,7 +75,7 @@ export class IntelligenceLink {
   readonly #libraries: LibraryTabs;
   readonly #tracked = new Map<string, Tracked>();
   readonly #undo: (() => void)[] = [];
-  #language: string | null = null;
+  #attempt: AttemptLanguage = NO_ATTEMPT;
   #root: string | null = null;
   #states: readonly LanguageState[] | null = null;
   #reading: Promise<void> | null = null;
@@ -103,9 +114,10 @@ export class IntelligenceLink {
   }
 
   /** The attempt's language and its tree's root, which the files' URIs and servers follow from. */
-  configure(language: string | null, root: string): void {
-    if (language === this.#language && root === this.#root) return;
-    this.#language = language;
+  configure(attempt: AttemptLanguage, root: string): void {
+    const same = attempt.language === this.#attempt.language && attempt.noCodeIntelligence === this.#attempt.noCodeIntelligence;
+    if (same && root === this.#root) return;
+    this.#attempt = attempt;
     this.#root = root;
     this.#considerAll();
   }
@@ -174,9 +186,9 @@ export class IntelligenceLink {
       this.#render();
       return;
     }
-    if (decide(path, this.#language, this.#states).kind === "waiting") await this.#read();
+    if (decide(path, this.#attempt, this.#states).kind === "waiting") await this.#read();
     if (this.#stale(tracked, turn)) return;
-    const decision = decide(path, this.#language, this.#states);
+    const decision = decide(path, this.#attempt, this.#states);
     if (decision.kind === "attach") {
       await this.#attach(path, tracked, turn, decision);
       return;

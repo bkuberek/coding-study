@@ -7,17 +7,17 @@
 
 import type { PageContext } from "./context.ts";
 import { fetchChunk } from "./lazy.ts";
-import type { IntelligenceLink } from "./intelligence.ts";
+import type { AttemptLanguage, IntelligenceLink } from "./intelligence.ts";
 import type { EditorTabs } from "./workbench.ts";
 
 export interface Intelligence {
-  /** The attempt's language and its tree's root. */
-  configure(language: string | null, root: string): void;
+  /** The attempt's language, with why it has no code intelligence if so, and its tree's root. */
+  configure(attempt: AttemptLanguage, root: string): void;
   destroy(): void;
 }
 
 export function startIntelligence(context: PageContext, tabs: EditorTabs, attemptId: number): Intelligence {
-  let configured: { language: string | null; root: string } | null = null;
+  let configured: { attempt: AttemptLanguage; root: string } | null = null;
   let link: IntelligenceLink | null = null;
   let loading = false;
   let destroyed = false;
@@ -31,15 +31,15 @@ export function startIntelligence(context: PageContext, tabs: EditorTabs, attemp
       loading = false;
       if (module === null || destroyed) return;
       link = new module.IntelligenceLink(context, tabs, attemptId);
-      if (configured !== null) link.configure(configured.language, configured.root);
+      if (configured !== null) link.configure(configured.attempt, configured.root);
     });
   };
   const unsubscribe = context.onPreferences(load);
   load();
   return {
-    configure(language, root) {
-      configured = { language, root };
-      link?.configure(language, root);
+    configure(attempt, root) {
+      configured = { attempt, root };
+      link?.configure(attempt, root);
       load();
     },
     destroy() {
