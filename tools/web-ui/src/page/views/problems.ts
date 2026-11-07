@@ -3,6 +3,8 @@
  * filters, kept in the fragment's query, and the table, items after problems.
  */
 
+import "./problems.css";
+
 import { listCommand, nextCommand, NEXT_FILTERS, startCommand } from "../commands.ts";
 import type { Cleanup, PageContext } from "../context.ts";
 import { badge, command, h } from "../dom.ts";

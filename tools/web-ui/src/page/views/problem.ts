@@ -4,6 +4,8 @@
  * with a way to read its code (`pastFiles.ts`).
  */
 
+import "./problem.css";
+
 import { defaultLanguage, REVIEW_PRACTISE_NOTE } from "../attempts.ts";
 import { startCommand } from "../commands.ts";
 import type { Cleanup, PageContext } from "../context.ts";

@@ -1,0 +1,70 @@
+/* The Problem view. */
+
+.problem-head {
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.problem-head h1 {
+  font: 600 38px / 1.1 var(--font-prose);
+  letter-spacing: -0.01em;
+}
+
+.problem-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 10px 0 0;
+}
+
+.problem-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: 40px;
+  align-items: start;
+}
+
+/* the header above already shows the title the `cstudy show` text starts with */
+.statement-pane .prose > h1:first-child {
+  display: none;
+}
+
+.problem-side {
+  position: sticky;
+  top: calc(var(--bar) + 16px);
+  display: grid;
+  gap: 18px;
+}
+
+.role {
+  display: inline-block;
+  min-width: 7.5em;
+  color: var(--ink-soft);
+}
+
+.role-optimal {
+  color: var(--ok);
+}
+
+.attempts summary {
+  cursor: pointer;
+}
+
+.runs {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  background: var(--paper-sunken);
+  font-size: var(--text-s);
+}
+
+@media (max-width: 1100px) {
+  .problem-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .problem-side {
+    position: static;
+  }
+}

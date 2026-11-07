@@ -22,7 +22,6 @@ import { failure, loading } from "./page/states.ts";
 import type { Preferences, Session } from "./page/types.ts";
 import { attemptView } from "./page/views/attempt.ts";
 import { missingView } from "./page/views/elsewhere.ts";
-import { problemsView } from "./page/views/problems.ts";
 
 /** How long the attempts menu waits after a change, so a burst of them reads it once. */
 const MENU_SETTLE_MS = 250;
@@ -42,7 +41,7 @@ function show(context: PageContext, route: Route): Cleanup {
   document.title = "cstudy";
   switch (route.view) {
     case "problems":
-      return problemsView(context, route.filters);
+      return lazyView(context, () => import("./page/views/problems.ts").then((module) => (opened) => module.problemsView(opened, route.filters)));
     case "problem":
       return lazyView(context, () => import("./page/views/problem.ts").then((module) => (opened) => module.problemView(opened, route.slug)));
     case "sets":

@@ -680,84 +680,6 @@ input[type="search"] {
   text-align: center;
 }
 
-/* the Problems view */
-
-.next-card {
-  display: grid;
-  gap: 4px;
-  max-width: 1100px;
-  margin-bottom: 20px;
-  padding: 14px 18px;
-  background: var(--paper-raised);
-  border: 1px solid var(--rule);
-  border-left: 4px solid var(--accent);
-  border-radius: var(--radius);
-}
-
-.next-card p {
-  margin: 0;
-}
-
-.next-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 12px;
-  font-size: var(--text-l);
-}
-
-.next-card .cmd {
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-.pick {
-  padding: 0 8px;
-  background: var(--ink);
-  color: var(--paper);
-  font-size: var(--text-s);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.pick-review {
-  background: var(--fail);
-  color: var(--paper-raised);
-}
-
-.next-slug {
-  font-weight: 700;
-}
-
-.filters {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(110px, 1fr));
-  gap: 10px;
-  align-items: end;
-  margin-bottom: 18px;
-}
-
-.filter {
-  display: grid;
-  gap: 3px;
-}
-
-.filter-wide {
-  grid-column: span 2;
-}
-
-.filter-name {
-  color: var(--ink-soft);
-  font-size: var(--text-xs);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.clear {
-  align-self: center;
-  white-space: nowrap;
-}
-
 table {
   width: 100%;
   border-collapse: collapse;
@@ -799,28 +721,8 @@ tbody tr:hover {
   white-space: nowrap;
 }
 
-.title-cell {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
-}
-
 .slug {
   font-weight: 600;
-}
-
-.title {
-  color: var(--ink-soft);
-}
-
-.is-item .slug {
-  font-style: italic;
-}
-
-.resume-link {
-  margin-right: 8px;
-  white-space: nowrap;
 }
 
 .set-control {
@@ -828,45 +730,6 @@ tbody tr:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* the Problem view */
-
-.problem-head {
-  margin-bottom: 24px;
-  padding-bottom: 18px;
-  border-bottom: 2px solid var(--ink);
-}
-
-.problem-head h1 {
-  font: 600 38px / 1.1 var(--font-prose);
-  letter-spacing: -0.01em;
-}
-
-.problem-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin: 10px 0 0;
-}
-
-.problem-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
-  gap: 40px;
-  align-items: start;
-}
-
-/* the header above already shows the title the `cstudy show` text starts with */
-.statement-pane .prose > h1:first-child {
-  display: none;
-}
-
-.problem-side {
-  position: sticky;
-  top: calc(var(--bar) + 16px);
-  display: grid;
-  gap: 18px;
 }
 
 .side-block {
@@ -888,28 +751,6 @@ tbody tr:hover {
 
 .plain li + li {
   margin-top: 6px;
-}
-
-.role {
-  display: inline-block;
-  min-width: 7.5em;
-  color: var(--ink-soft);
-}
-
-.role-optimal {
-  color: var(--ok);
-}
-
-.attempts summary {
-  cursor: pointer;
-}
-
-.runs {
-  margin: 6px 0 0;
-  padding: 8px 10px;
-  overflow-x: auto;
-  background: var(--paper-sunken);
-  font-size: var(--text-s);
 }
 
 /* prose: statements read as a printed sheet */
@@ -1356,18 +1197,6 @@ input[type="radio"] {
     top: 0;
   }
 
-  .filters {
-    grid-template-columns: repeat(4, minmax(110px, 1fr));
-  }
-
-  .problem-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .problem-side {
-    position: static;
-  }
-
   .workbench {
     grid-template-columns: 220px minmax(0, 1fr);
     grid-template-areas:
@@ -1386,10 +1215,6 @@ input[type="radio"] {
 @media (max-width: 720px) {
   main {
     padding: 16px;
-  }
-
-  .filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .topbar,
