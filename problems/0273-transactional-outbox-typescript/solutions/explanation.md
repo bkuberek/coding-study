@@ -57,7 +57,7 @@ The order is the subtle part. Retrying a failed row after the others have gone i
 | `src/core/relay.ts` | One pass of the relay. It knows the outbox and the publisher, and nothing about rentals |
 | `src/core/ports.ts` | What the core needs: tables, `UnitOfWork`, `EventPublisher`, and the two failures. The core imports no adapter |
 | `src/adapters/memoryDatabase.ts` | The tables, the counter, the fault switch and `transaction`, with the table classes reading through `database.tables`, so a restore reaches them |
-| `src/adapters/fakeBroker.ts` | The broker: refuses, delivers, and loses confirmations on cue. Unchanged except that it meets `EventPublisher` as it was |
+| `src/adapters/fakeBroker.ts` | The broker: refuses, delivers, and loses confirmations on cue. Unchanged: its `publish` already fits `EventPublisher` |
 | `src/downstream/availabilityBoard.ts` | The consumer. In production this is another team's service, and its only contract with us is the event |
 | `tests/relay.test.ts` | The relay on its own: overtaking, and rows held back taking no attempts |
 

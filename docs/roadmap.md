@@ -212,7 +212,8 @@ The pilots are written with the next project problems.
 
 - [x] Step 1: labels, backfill and filters: the vocabularies and schemas, S24, the backfill of the 270 entries, `--domain`, `--role` and `--scope` in `cstudy list` and `cstudy next`, and the web API parameters, with the Problems view's filters and Scope column.
 - [x] Step 2: the first wave of function-size problems: seven in Python and TypeScript, `0255` to `0261`, with the language rule that lets the security, identity and AI/LLM domains list a subset. The catalog then had 277 entries.
-- [x] TypeScript backend problems on today's engine: `0262` and `0263`, two small services to extend, then `0264` to `0271`, seven JavaScript traps on the debugging track and one asynchronous bug as a project on the virtual clock. The catalog now has 287 entries. A third set, on backend reliability patterns, is planned.
+- [x] TypeScript backend problems on today's engine: `0262` and `0263`, two small services to extend, then `0264` to `0271`, seven JavaScript traps on the debugging track and one asynchronous bug as a project on the virtual clock. The catalog then had 287 entries.
+- [x] Backend reliability on the same engine: `0272` to `0276`, five TypeScript projects on an idempotent at-least-once consumer, a transactional outbox, retries on the virtual clock, optimistic locking, and reviewing an AI extraction, where the model proposes, code validates and a person decides. The catalog now has 292 entries.
 - [ ] Step 3: later waves: project-size problems need Phase 12, and system-size ones need later design.
 
 ## Phase 14: AI-reviewed problems

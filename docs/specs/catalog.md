@@ -1,17 +1,17 @@
 # Spec: Catalog
 
-The binding manifest of every catalog item: 196 DSA problems and 81 non-DSA items (65 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
+The binding manifest of every catalog item: 196 DSA problems and 96 non-DSA items (80 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
 
 | Track | Problems or items | Where |
 |-------|-------------------|-------|
 | `dsa` | 196 (185 planned, 11 added) | `problems/` |
-| `practical` | 38 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 3 backend TypeScript projects added) | `problems/` |
+| `practical` | 43 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added) | `problems/` |
 | `lld` | 8 | `problems/` |
 | `concurrency` | 6 | `problems/` |
 | `debugging` | 23 (8 planned, 8 in Go and Rust, 7 JavaScript traps in TypeScript) | `problems/` |
 | `system-design` | 10 | `tracks/system-design/` |
 | `code-review` | 6 | `tracks/code-review/` |
-| **Total** | **287** (271 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
+| **Total** | **292** (276 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
 
 Every row has three [labels](content.md#labels): `domains`, `job_roles` and `scope` ([S24](authoring.md#static), [ADR 0020](../decisions/0020-catalog-labels.md)). Their values repeat across hundreds of rows, so each section below states them once, with its exceptions, instead of in three columns; a table added later carries them as columns, which are binding as `kind` is. The prose column that says what a row covers is `covers`, since `scope` is a label.
 
@@ -297,7 +297,7 @@ Each stream owns whole patterns, so one stream holds all problems of a pattern a
 
 ## Non-DSA catalog
 
-### practical (38, `problems/`)
+### practical (43, `problems/`)
 
 Labels: `0186` to `0191` and `0248` (the 7 `progressive` rows, `domains: [backend]`, `job_roles: [backend]`, `scope: function`); `0214` to `0228` (the 15 insurance rows, `domains: [fintech]`, `job_roles: [backend]`, `scope: function`); `0249` to `0254` (the 6 project problems, `domains: [backend, fintech]`, `job_roles: [backend]`, `scope: project`). Exceptions: `banking-system` and `scheduled-transfers-bank` also have `fintech`, and `api-gateway` also has the role `platform`. `0255` to `0261` carry their labels as columns.
 
@@ -369,6 +369,16 @@ Three more TypeScript project problems train work on code you did not write, on 
 | 0263 | `warehouse-work-orders-typescript` | Warehouse Work Orders (TypeScript) | project | hard | `typescript` | `backend` | `backend` | project |
 | 0267 | `debug-async-batch-typescript` | Debug: Async Batch (TypeScript) | project | medium | `typescript` | `backend` | `backend` | project |
 
+Five more TypeScript projects go deep on backend reliability, on the engine as it is. Each is laid out differently, each level removes one assumption, and each explanation says what to say out loud and what to do next in production. Their wrong approaches are not stored as broken overlays, since these logic bugs fail sequential cases ([authoring](authoring.md#practical-and-low-level-design-problems)): each explanation names them under its pitfalls with the cases that catch them. `0274` runs on the virtual clock, and `0276` has no model in it: the model's output arrives as data.
+
+| id | slug | title | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|------|------------|-----------|---------|-----------|-------|
+| 0272 | `idempotent-document-consumer-typescript` | Idempotent Document Consumer (TypeScript) | project | hard | `typescript` | `backend` | `backend`, `platform` | project |
+| 0273 | `transactional-outbox-typescript` | Transactional Outbox (TypeScript) | project | hard | `typescript` | `backend` | `backend`, `platform` | project |
+| 0274 | `vendor-retry-client-typescript` | Vendor Retry Client (TypeScript) | project | hard | `typescript` | `backend` | `backend`, `platform` | project |
+| 0275 | `supplier-records-locking-typescript` | Supplier Records with Optimistic Locking (TypeScript) | project | hard | `typescript` | `backend` | `backend` | project |
+| 0276 | `loan-extraction-review-typescript` | Loan Extraction Review (TypeScript) | project | hard | `typescript` | `ai-llm`, `fintech` | `ai-engineer`, `backend` | project |
+
 ### lld (8, owner L1, kind `design` plus `rubric.md`, `problems/`)
 
 Labels: `domains: [backend]`, `job_roles: [backend]` and `scope: function` on all 8 rows, with no exceptions.
@@ -422,7 +432,7 @@ The eight planned rows (owner B1) port one bug to the languages it exists in; 02
 | 0246 | `debug-char-boundary` | Debug: Char Boundary | Truncation by byte index, which panics inside a multi-byte character | medium | rust |
 | 0247 | `debug-clone-mutation` | Debug: Clone Mutation | A clone added to satisfy the borrow checker takes the credit, so transfers credit nobody | medium | rust |
 
-`0264` to `0271`, without `0267`, which is a project under [practical](#practical-38-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
+`0264` to `0271`, without `0267`, which is a project under [practical](#practical-43-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
 
 | id | slug | title | covers | difficulty | languages | domains | job_roles | scope |
 |----|------|-------|-------|------------|-----------|---------|-----------|-------|
