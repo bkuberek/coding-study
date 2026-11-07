@@ -28,8 +28,6 @@
 }
 
 .job-head .cmd {
-  border-color: var(--chrome-raised);
-  background: var(--chrome-raised);
   color: var(--chrome-ink);
 }
 

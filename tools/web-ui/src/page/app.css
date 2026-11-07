@@ -553,11 +553,8 @@ input[type="search"] {
   font: inherit;
 }
 
+/* A command reads as code text, never as a button: no border, no fill, only the prompt. */
 .cmd {
-  padding: 1px 6px;
-  border-radius: 2px;
-  background: var(--paper-sunken);
-  border: 1px solid var(--rule);
   color: var(--ink);
   font-size: 0.95em;
   white-space: nowrap;
