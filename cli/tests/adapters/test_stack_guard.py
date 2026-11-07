@@ -67,6 +67,33 @@ def test_a_guard_keeps_a_dev_stacks_volume(docker_log):
     guard._process.wait()
 
 
+def test_a_guard_removes_the_runs_folder_after_the_down(docker_log, tmp_path):
+    run = tmp_path / "run"
+    run.mkdir()
+    (run / "stack.yaml").write_text("{}")
+    guard = StackGuard(
+        "s", removes_volumes=True, environment=environment_for(docker_log), run_directory=run
+    )
+
+    guard._pipe.close()
+    guard._process.wait(GENEROUS_WAIT_S)
+
+    assert not run.exists()
+    assert docker_log.read_text() == "compose -p s down -v\n"
+
+
+def test_a_guard_released_leaves_the_runs_folder(docker_log, tmp_path):
+    run = tmp_path / "run"
+    run.mkdir()
+    guard = StackGuard(
+        "s", removes_volumes=True, environment=environment_for(docker_log), run_directory=run
+    )
+
+    guard.release()
+
+    assert run.exists()
+
+
 def test_a_killed_owner_sets_the_guard_off(docker_log):
     """The whole point: SIGKILL gives `cstudy` no chance to clean up."""
     source = Path(__file__).parents[2] / "src"

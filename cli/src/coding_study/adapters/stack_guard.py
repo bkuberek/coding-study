@@ -4,7 +4,8 @@
 Containers outlive their owner: a SIGKILL leaves them running and holding memory, and `OrphanGuard`
 kills processes, not containers. This guard reads its standard input, a pipe whose writing end only
 `cstudy` holds, until the pipe ends, which the kernel does when `cstudy` exits; it then runs
-`docker compose -p <stack> down`, with `-v` for a test or a graded stack. Nothing polls.
+`docker compose -p <stack> down`, with `-v` for a test or a graded stack, and removes the run's
+folder. Nothing polls.
 
 Run as a script, this file is the process of a guard. It imports only the standard library, so
 that process starts in a few milliseconds without `site` and needs nothing installed. The sweep
@@ -17,11 +18,13 @@ import subprocess
 import sys
 from collections.abc import Mapping, Sequence
 from contextlib import suppress
+from pathlib import Path
 from types import TracebackType
 from typing import IO, Self
 
 DOCKER = "docker"
 REMOVE_VOLUMES = "-v"
+NO_RUN_FOLDER = "-"
 _GUARD_READ_BYTES = 4096
 _DOWN_TIMEOUT_S = 300.0
 
@@ -67,7 +70,7 @@ class StackGuard:
 
 def _guard(arguments: Sequence[str]) -> None:
     """The guard's process: once standard input ends, the stack comes down."""
-    docker, stack, *flags = arguments
+    docker, stack, run, *flags = arguments
     with suppress(OSError):
         while os.read(sys.stdin.fileno(), _GUARD_READ_BYTES):
             pass
@@ -80,6 +83,8 @@ def _guard(arguments: Sequence[str]) -> None:
             timeout=_DOWN_TIMEOUT_S,
             check=False,
         )
+    if run != NO_RUN_FOLDER:
+        shutil.rmtree(run, ignore_errors=True)
 
 
 if __name__ == "__main__":

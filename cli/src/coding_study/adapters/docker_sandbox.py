@@ -327,10 +327,12 @@ class DockerSandbox:
 
     @contextmanager
     def guard(self, identity: StackIdentity) -> Generator[None]:
+        runs = self._runs_directory
         with StackGuard(
             identity.name,
             removes_volumes=identity.kind.removes_volumes,
             environment=docker_environment(),
+            run_directory=None if runs is None else runs / identity.name,
         ):
             yield
 
