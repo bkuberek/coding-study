@@ -23,7 +23,7 @@ export function configForm(context: PageContext): HTMLElement {
     const form = h(
       "form",
       { class: "settings-form" },
-      ...sectionsOf(document.keys).map(([section, keys]) => h("fieldset", {}, h("legend", {}, section), ...keys.map((key) => row(key, fields)))),
+      ...sectionsOf(document.keys).map(([section, keys]) => h("fieldset", { class: "config-section" }, h("legend", {}, section), ...keys.map((key) => row(key, fields)))),
       save,
       status,
     );

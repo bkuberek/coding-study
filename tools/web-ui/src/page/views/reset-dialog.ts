@@ -23,20 +23,22 @@ interface ResetPreview {
   readonly groups: readonly { readonly option: string | null; readonly title: string; readonly entries: readonly ResetEntry[] }[];
 }
 
-export function dangerSection(context: PageContext): readonly HTMLElement[] {
+export function dangerSection(context: PageContext): HTMLElement {
   const status = h("p", { class: "quiet", role: "status" });
-  const open = h("button", { type: "button", class: "button" }, "Reset progress…");
+  const open = h("button", { type: "button", class: "button danger" }, "Reset progress…");
   open.addEventListener("click", () => {
     void askReset(context, status).catch((error: unknown) => {
       status.textContent = `error: ${messageOf(error)}`;
     });
   });
-  return [
-    h("h2", { class: "eyebrow" }, "danger"),
+  return h(
+    "section",
+    { class: "danger-zone", "aria-labelledby": "danger-heading" },
+    h("h3", { id: "danger-heading", class: "eyebrow" }, "danger"),
     h("p", { class: "quiet" }, "Delete your progress in this workspace, as ", command("cstudy reset"), " does. You see what goes before anything does."),
     open,
     status,
-  ];
+  );
 }
 
 function entries(found: readonly ResetEntry[]): HTMLElement {

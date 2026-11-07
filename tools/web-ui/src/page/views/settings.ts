@@ -39,6 +39,7 @@ const AUTOCOMPLETE: SwitchSpec = {
 const AUTOCOMPLETE_NOTE = "Turn on code intelligence first";
 const LANGUAGES = "/api/v1/code-intelligence/languages";
 const DOCTOR_FIX = "doctor_fix";
+const COPIED_MS = 1500;
 
 export function settingsView(context: PageContext): Cleanup {
   const { shell } = context;
@@ -95,23 +96,45 @@ export function settingsView(context: PageContext): Cleanup {
       "section",
       { class: "settings", "aria-labelledby": "settings-heading" },
       h("header", { class: "view-head" }, h("h1", { id: "settings-heading" }, "settings")),
-      h("h2", { class: "eyebrow" }, "this workspace"),
-      h("p", { class: "quiet" }, "Stored in .cs/serve/preferences.json, and applied at once."),
       h(
-        "form",
-        { class: "settings-form" },
-        h("fieldset", {}, h("legend", {}, "editor and runs"), ...switches),
-        h("fieldset", {}, h("legend", {}, "code intelligence"), codeIntelligence.row, languages.element, autocomplete.row),
-        h("fieldset", {}, h("legend", {}, "theme"), h("div", { class: "radios" }, ...themes)),
+        "div",
+        { class: "settings-columns" },
+        h(
+          "div",
+          { class: "settings-column" },
+          h("h2", { class: "eyebrow" }, "this workspace"),
+          workspacePath(context),
+          h("p", { class: "quiet" }, "Stored in .cs/serve/preferences.json, and applied at once."),
+          h(
+            "form",
+            { class: "settings-form" },
+            h("fieldset", {}, h("legend", {}, "editor and runs"), ...switches),
+            h("fieldset", {}, h("legend", {}, "code intelligence"), codeIntelligence.row, languages.element, autocomplete.row),
+            h("fieldset", {}, h("legend", {}, "theme"), h("div", { class: "radios" }, ...themes)),
+          ),
+          saved,
+          dangerSection(context),
+        ),
+        h("div", { class: "settings-column" }, h("h2", { class: "eyebrow" }, "all your workspaces"), configForm(context)),
       ),
-      saved,
-      h("dl", { class: "facts" }, h("dt", {}, "workspace"), h("dd", {}, h("code", {}, context.session.workspace))),
-      h("h2", { class: "eyebrow" }, "all your workspaces"),
-      configForm(context),
-      ...dangerSection(context),
     ),
   );
   return languages.stop;
+}
+
+/** Where this workspace is, with a way to take the path to a terminal. */
+function workspacePath({ session, shell }: PageContext): HTMLElement {
+  const copy = h("button", { type: "button", class: "button", "aria-label": "Copy the workspace path" }, "copy");
+  copy.addEventListener("click", () => {
+    void navigator.clipboard?.writeText(session.workspace).then(() => {
+      shell.announce("path copied");
+      copy.textContent = "copied";
+      window.setTimeout(() => {
+        copy.textContent = "copy";
+      }, COPIED_MS);
+    });
+  });
+  return h("p", { class: "workspace-path" }, h("code", {}, session.workspace), copy);
 }
 
 /**
