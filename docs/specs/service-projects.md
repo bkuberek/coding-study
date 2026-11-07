@@ -47,7 +47,7 @@ cstudy generates the compose file, `.cs/runs/<run>/stack.yaml`, and merges the p
 
 | Network | Who | Egress |
 |---------|-----|--------|
-| `sandbox` (`internal: true`) | Everything in the stack | None: `bootstrap`, `run`, `test`, `reset` and `grade_setup` cannot reach the internet, your LAN or a metadata address. |
+| `sandbox` (`internal: true`) | Everything in the stack | None: `bootstrap`, `run`, `test`, `reset` and `grade_setup` cannot reach the internet, your LAN or a metadata address. DNS is no way out either, as measured on Engine 29: the engine's name server answers an outside name with `SERVFAIL` in under 0.2 ms, where an ordinary bridge takes about 30 ms to ask upstream, and `host.docker.internal` resolves to nothing and the addresses behind it are unreachable, so D11 probes addresses alone |
 | `edge` (an ordinary bridge) | `cstudy-forward` only | Holds no user code |
 | An ordinary bridge, `egress` | `install` containers (and `cstudy dev --exec --network`, planned) only, with no mock server or service attached | Yes, and P1 measured that it reaches your LAN and this machine's loopback services too |
 
@@ -850,7 +850,7 @@ There is no `cstudy reset` and no command that removes a problem; verified again
 
 ### Language servers
 
-Planned, for P9 (R28). Until then a service project has no language server at all: sandboxed code writes its folder, and basedpyright or tsserver on your machine would read it and run what it names. A session is refused as for a language with no server, 422 `usage` with `no code intelligence for python yet`. The page still tries one, since `installed` is per language, and shows `reconnecting…`, then `stopped · Restart`, until P9 tells it. With P9, a language server runs in a small `lsp` sidecar through `docker exec -i`, the same Node image for both languages, `network_mode: none`, with the project and `.cs/lsp/` mounted, and paths matching because of the same-path mount. A language server must not read a mock config or a hidden case, and inside the container there is nothing to hide: none of them are mounted. ADR 0018's four [hidden directories](web-ui.md#hidden-directories), `.cs/build/`, `.cs/cases/`, `.cs/runs/` and the content root, do not exist there.
+Planned, for P9 (R28). Until then a service project has no language server at all: sandboxed code writes its folder, and basedpyright or tsserver on your machine would read it. A session is refused as for a language with no server, 422 `usage` with `no code intelligence for python yet`. The page still tries one, since `installed` is per language, and shows `reconnecting…`, then `stopped · Restart`, until P9 tells it. With P9, a language server runs in a small `lsp` sidecar through `docker exec -i`, the same Node image for both languages, `network_mode: none`, with the project and `.cs/lsp/` mounted, and paths matching because of the same-path mount. A language server must not read a mock config or a hidden case, and inside the container there is nothing to hide: none of them are mounted. ADR 0018's four [hidden directories](web-ui.md#hidden-directories), `.cs/build/`, `.cs/cases/`, `.cs/runs/` and the content root, do not exist there.
 
 | Item | Where it is | Covered by |
 |------|-------------|------------|

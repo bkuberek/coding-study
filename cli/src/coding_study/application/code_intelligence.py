@@ -133,7 +133,7 @@ def install_language_servers(installer: LanguageServerInstaller) -> ProbeResult 
 
 def _server_of(environment: Environment, attempt: Attempt) -> LanguageServer:
     """A service project's folder is written by sandboxed code, and a server on this machine would
-    read and run what is there, so it has none until P9 runs one in a sidecar
+    read it, so it has none until P9 runs one in a sidecar
     (docs/specs/service-projects.md#language-servers)."""
     if attempt.language is None:
         raise UsageError(f"{attempt.slug} has no code")
