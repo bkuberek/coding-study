@@ -1,4 +1,5 @@
 import base64
+from typing import Any
 
 from coding_study.adapters.mock_server.matching import MockRequest
 from coding_study.adapters.mock_server.request_log import (
@@ -32,10 +33,14 @@ def new_log(clock: FakeClock | None = None) -> RequestLog:
     return RequestLog("room-vendor", clock or FakeClock())
 
 
-def only_entry(log: RequestLog) -> dict[str, object]:
+def entries_of(log: RequestLog) -> list[dict[str, Any]]:
     entries = log.document()["entries"]
     assert isinstance(entries, list)
-    return entries[0]
+    return entries
+
+
+def only_entry(log: RequestLog) -> dict[str, Any]:
+    return entries_of(log)[0]
 
 
 def test_an_entry_records_the_request_and_its_outcome():
@@ -87,7 +92,7 @@ def test_sequence_numbers_count_requests_from_one():
     log = new_log()
     log.record(request(), SERVED)
     log.record(request(), SERVED)
-    assert [entry["seq"] for entry in log.document()["entries"]] == [1, 2]
+    assert [entry["seq"] for entry in entries_of(log)] == [1, 2]
 
 
 def test_arrival_is_monotonic_milliseconds_since_the_log_began():
@@ -155,8 +160,7 @@ def test_a_log_at_its_entry_limit_keeps_the_first_entries_and_says_so():
     for _ in range(MAX_LOG_ENTRIES + 2):
         log.record(request(), SERVED)
     document = log.document()
-    entries = document["entries"]
-    assert isinstance(entries, list)
+    entries = entries_of(log)
     assert (len(entries), entries[-1]["seq"], document["truncated"], document["dropped"]) == (
         MAX_LOG_ENTRIES,
         MAX_LOG_ENTRIES,
