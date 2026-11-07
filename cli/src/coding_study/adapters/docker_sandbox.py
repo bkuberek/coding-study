@@ -23,6 +23,7 @@ from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import IO, Protocol, cast
 
+from coding_study.adapters.http_grader.clients import DeadlineConnection
 from coding_study.adapters.process_environment import docker_environment
 from coding_study.adapters.process_liveness import is_alive
 from coding_study.adapters.project_folders import clear_setuid_bits
@@ -267,8 +268,10 @@ def default_docker_runner() -> DockerRunner:
 
 
 def http_health(port: int, path: str) -> bool:
-    """Asks `127.0.0.1` directly: no proxy from the environment, and no redirect followed."""
-    connection = http.client.HTTPConnection(LOOPBACK, port, timeout=HEALTH_PROBE_TIMEOUT_S)
+    """Asks `127.0.0.1` directly: no proxy from the environment, and no redirect followed. The
+    limit is on the whole exchange: this is your app talking, and it can send a byte now and then,
+    or `100 Continue` for ever, and `start` must still get to read the app's state."""
+    connection = DeadlineConnection((LOOPBACK, port), HEALTH_PROBE_TIMEOUT_S)
     try:
         connection.request("GET", path)
         return HTTP_OK_FIRST <= connection.getresponse().status <= HTTP_OK_LAST

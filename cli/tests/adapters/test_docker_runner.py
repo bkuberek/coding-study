@@ -1,10 +1,14 @@
 """`SubprocessDockerRunner`, with stand-in commands: standard input at end of file always, the
 environment reduced, output streamed, and a command past its limit killed."""
 
+import socket
+import threading
+from contextlib import suppress
 from pathlib import Path
 
 import pytest
 
+from coding_study.adapters import docker_sandbox
 from coding_study.adapters.docker_sandbox import (
     MAX_LINE_CHARACTERS,
     MAX_OUTPUT_BYTES,
@@ -12,6 +16,7 @@ from coding_study.adapters.docker_sandbox import (
     SubprocessDockerRunner,
     http_health,
 )
+from tests.adapters.http_grader.raw_server import RawServer, raw_server
 from tests.waits import GENEROUS_WAIT_S
 
 SHORT_LIMIT_S = 0.5
@@ -186,6 +191,48 @@ def test_a_compose_setting_in_the_shell_stays_out(tmp_path, monkeypatch):
 
     assert result is not None
     assert result.output == "[]\n"
+
+
+DRIP_S = 0.02
+"""Often enough that a limit on each read never runs out."""
+
+
+def sending_without_end(what: bytes):
+    def handler(server: RawServer, connection: socket.socket) -> None:
+        server.read_request(connection)
+        with suppress(OSError):
+            while not server.stopping.wait(DRIP_S):
+                connection.sendall(what)
+
+    return handler
+
+
+@pytest.mark.parametrize(
+    "what",
+    [b"HTTP/1.1 100 Continue\r\n\r\n", b"x"],
+    ids=["endless-100-continue", "dripped-status-line"],
+)
+def test_a_health_endpoint_that_never_finishes_its_answer_is_not_healthy(monkeypatch, what):
+    """A limit on each read would never run out here, and `start` would wait for ever."""
+    monkeypatch.setattr(docker_sandbox, "HEALTH_PROBE_TIMEOUT_S", SHORT_LIMIT_S)
+    answers: list[bool] = []
+    with raw_server(sending_without_end(what)) as server:
+        asking = threading.Thread(
+            target=lambda: answers.append(http_health(server.port, "/health")), daemon=True
+        )
+        asking.start()
+        asking.join(GENEROUS_WAIT_S)
+
+    assert answers == [False]
+
+
+def test_a_health_endpoint_that_answers_2xx_is_healthy():
+    def handler(server: RawServer, connection: socket.socket) -> None:
+        server.read_request(connection)
+        connection.sendall(b"HTTP/1.1 204 No Content\r\n\r\n")
+
+    with raw_server(handler) as server:
+        assert http_health(server.port, "/health")
 
 
 @pytest.mark.parametrize("value", ["ok"])

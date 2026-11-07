@@ -56,7 +56,7 @@ class HttpAppClient:
         said = f"{request.method} {self._base_url}{request.target}"
         if limit_ms <= 0:
             return failed(ExchangeFailure.TIMED_OUT, f"{said}: no time left in the case's limit")
-        connection = _DeadlineConnection(self._address, limit_ms / MILLISECONDS_PER_SECOND)
+        connection = DeadlineConnection(self._address, limit_ms / MILLISECONDS_PER_SECOND)
         try:
             status, headers, body = _exchange(connection, request)
         except TimeoutError:
@@ -116,7 +116,7 @@ def _time_left(deadline: float) -> float:
     return left
 
 
-class _DeadlineConnection(http.client.HTTPConnection):
+class DeadlineConnection(http.client.HTTPConnection):
     """A socket timeout bounds one read, so an app that sends a byte now and then would never
     reach it. This limits the whole exchange, with no thread to watch it."""
 
