@@ -50,6 +50,7 @@ def test_about_names_the_author_and_links_to_the_authors_site(app):
     author = read(app, ABOUT).json()["author"]
     assert author == {
         "name": "Bastian Kuberek",
+        "credit": "Created by Bastian Kuberek",
         "link": {"label": "bkuberek.com", "url": AUTHOR_LINK.url},
     }
 

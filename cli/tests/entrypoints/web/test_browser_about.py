@@ -296,7 +296,7 @@ def test_the_author_comes_first_then_the_sponsor_line_then_the_rest(seen):
 
 
 def test_the_author_is_named(seen):
-    assert seen.author_text.startswith("Bastian Kuberek")
+    assert seen.author_text == "Created by Bastian Kuberek · bkuberek.com"
 
 
 def test_the_author_link_reads_bkuberek_com(seen):

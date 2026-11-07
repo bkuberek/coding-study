@@ -48,7 +48,7 @@ def about(
 
 def _summary_lines(found: About) -> list[Text]:
     return [
-        Text(found.author.name),
+        Text(found.author.credit),
         Text(found.author.link.url),
         *(
             labelled("sponsor" if index == 0 else "", link.url)

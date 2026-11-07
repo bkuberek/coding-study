@@ -69,6 +69,10 @@ def test_about_names_the_author():
     assert read_about("1.2.3", FakePackages()).author.name == AUTHOR_NAME == "Bastian Kuberek"
 
 
+def test_the_author_is_credited_as_the_creator():
+    assert read_about("1.2.3", FakePackages()).author.credit == "Created by Bastian Kuberek"
+
+
 def test_the_author_link_reads_bkuberek_com():
     assert read_about("1.2.3", FakePackages()).author.link.label == "bkuberek.com"
 

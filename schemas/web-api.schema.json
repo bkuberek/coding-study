@@ -120,8 +120,8 @@
           "description": "Who made cstudy, with a link to their site; the address carries fixed utm tags only",
           "type": "object",
           "additionalProperties": false,
-          "required": ["name", "link"],
-          "properties": { "name": { "type": "string", "minLength": 1 }, "link": { "$ref": "#/$defs/about_link" } }
+          "required": ["name", "credit", "link"],
+          "properties": { "name": { "type": "string", "minLength": 1 }, "credit": { "description": "The line that credits them: Created by, then the name", "type": "string", "minLength": 1 }, "link": { "$ref": "#/$defs/about_link" } }
         },
         "version": { "type": "string", "minLength": 1 },
         "license": { "type": "string", "minLength": 1 },

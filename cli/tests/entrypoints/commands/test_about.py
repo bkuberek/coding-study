@@ -23,7 +23,7 @@ def test_about_exits_with_success():
 
 
 def test_about_names_the_author_first():
-    assert about().stdout.splitlines()[0] == "Bastian Kuberek"
+    assert about().stdout.splitlines()[0] == "Created by Bastian Kuberek"
 
 
 def test_about_links_to_the_authors_site_with_its_tags():

@@ -51,10 +51,18 @@ class CreditSection:
     credits: tuple[Credit, ...]
 
 
+CREDIT_PREFIX = "Created by"
+
+
 @dataclass(frozen=True, slots=True)
 class Author:
     name: str
     link: Link
+
+    @property
+    def credit(self) -> str:
+        """The line that credits the author, which the page and the command both print."""
+        return f"{CREDIT_PREFIX} {self.name}"
 
 
 @dataclass(frozen=True, slots=True)

@@ -19,8 +19,8 @@ function outside(link: AboutLink): HTMLAnchorElement {
 
 /** The author, first: the name and a plain link to their site, whose text is the label, not the address. */
 function author(about: About): HTMLElement {
-  const { name, link } = about.author;
-  return h("p", { class: "about-author" }, name, " · ", h("a", { href: link.url, target: "_blank", rel: "noopener noreferrer" }, link.label));
+  const { credit, link } = about.author;
+  return h("p", { class: "about-author" }, credit, " · ", h("a", { href: link.url, target: "_blank", rel: "noopener noreferrer" }, link.label));
 }
 
 function facts(about: About): HTMLElement {
