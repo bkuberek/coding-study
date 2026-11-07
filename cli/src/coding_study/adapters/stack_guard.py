@@ -1,4 +1,5 @@
-"""Takes a stack down once `cstudy` dies, however it dies (docs/specs/service-projects.md#leftovers).
+"""Takes a stack down once `cstudy` dies, however it dies
+(docs/specs/service-projects.md#leftovers).
 
 Containers outlive their owner: a SIGKILL leaves them running and holding memory, and `OrphanGuard`
 kills processes, not containers. This guard reads its standard input, a pipe whose writing end only

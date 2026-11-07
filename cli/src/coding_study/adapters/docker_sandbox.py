@@ -130,7 +130,7 @@ class DockerRunner(Protocol):
 
 
 class SubprocessDockerRunner:
-    """Runs the Docker client in a process group of its own, so the plugin it starts goes with it."""
+    """Runs the Docker client in a process group of its own, so its plugin goes with it."""
 
     def run(
         self,

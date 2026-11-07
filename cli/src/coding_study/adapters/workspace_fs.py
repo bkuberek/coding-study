@@ -16,6 +16,7 @@ from coding_study.adapters.project_folders import (
     remove_untracked,
     sync_tracked_files,
     tracked_files,
+    tracked_links,
 )
 from coding_study.domain.errors import LockBusyError
 from coding_study.domain.project import PATH_SEPARATOR, relative_path_issue
@@ -110,10 +111,15 @@ class WorkspaceFs:
     def content_hash(self, path: str) -> str:
         target = self.absolute(path)
         digest = hashlib.sha256()
-        if target.is_dir():
+        if target.is_symlink():
+            digest.update(os.readlink(target).encode())
+        elif target.is_dir():
             for file in tracked_files(target):
                 digest.update(file.relative_to(target).as_posix().encode())
                 digest.update(file.read_bytes())
+            for link in tracked_links(target):
+                digest.update(link.relative_to(target).as_posix().encode())
+                digest.update(os.readlink(link).encode())
         else:
             digest.update(target.read_bytes() if target.is_file() else _MISSING)
         return digest.hexdigest()

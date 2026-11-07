@@ -32,13 +32,27 @@ _SETUID_BITS = stat.S_ISUID | stat.S_ISGID
 
 
 def tracked_files(folder: Path) -> list[Path]:
-    """Every tracked file under `folder`, in path order; none when it is not a directory."""
+    """Every tracked file under `folder`, in path order; none when it is not a directory. A link
+    is no file here: sandboxed code can leave one that names anything on your machine, and what it
+    names is never read."""
     if not folder.is_dir():
         return []
     return sorted(
         entry
         for entry in _entries(folder, folder)
-        if entry.is_file() and not _untracked(folder, entry)
+        if entry.is_file() and not entry.is_symlink() and not _untracked(folder, entry)
+    )
+
+
+def tracked_links(folder: Path) -> list[Path]:
+    """Every link under `folder` outside the untracked entries, in path order: what `code_hash`
+    takes the target of, as text."""
+    if not folder.is_dir():
+        return []
+    return sorted(
+        entry
+        for entry in _entries(folder, folder)
+        if entry.is_symlink() and not _untracked(folder, entry)
     )
 
 

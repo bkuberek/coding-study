@@ -701,7 +701,7 @@ class Workspace(Protocol):
     def content_hash(self, path: str) -> str:
         """sha256 of a file, or of every tracked file under a directory (relative path and bytes,
         in path order; `workspace_projects.is_untracked` entries aside); stable for missing
-        paths."""
+        paths. A link counts as the text of its target: what it names is never read."""
         ...
 
     def write_within(self, folder: str, path: str, text: str) -> None:
@@ -724,7 +724,7 @@ class Workspace(Protocol):
 
     def tracked_files(self, path: str) -> tuple[str, ...]:
         """Every file under the directory `path`, relative to it, in path order, without the
-        untracked entries (`workspace_projects.is_untracked`); a link to a directory is never
+        untracked entries (`workspace_projects.is_untracked`); a link is no file, and is never
         followed. Nothing when `path` is not a directory."""
         ...
 
