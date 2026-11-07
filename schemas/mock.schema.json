@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study mock server configuration",
+  "description": "One mock server's routes and scenarios, in a service project's mocks/ folder. Spec: docs/specs/service-projects.md#config-format",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["routes"],
+  "properties": {
+    "routes": {
+      "description": "In order; the first match wins",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/route" }
+    },
+    "scenarios": {
+      "description": "Named overrides of a matched route's response; the default is no scenario",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/identifier" },
+      "additionalProperties": { "$ref": "#/$defs/scenario" }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "method", "path", "response"],
+      "properties": {
+        "id": { "description": "Named by a scenario's route and by the request log", "$ref": "#/$defs/identifier" },
+        "method": { "enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] },
+        "path": {
+          "description": "Literal segments match exactly; a {name} segment matches any one non-empty segment",
+          "type": "string",
+          "pattern": "^(/([^/{}?#\\s]*|\\{[A-Za-z_][A-Za-z0-9_]*\\}))+$"
+        },
+        "query": {
+          "description": "Listed keys must match; others are ignored",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "response": {
+          "$ref": "#/$defs/responseFields",
+          "required": ["status"],
+          "unevaluatedProperties": false
+        }
+      }
+    },
+    "scenario": {
+      "description": "A field left out comes from the matched route, and a field given replaces the route's whole. A plain scenario is a sequence of one",
+      "type": "object",
+      "$ref": "#/$defs/responseFields",
+      "unevaluatedProperties": false,
+      "anyOf": [
+        { "required": ["status"] },
+        { "required": ["headers"] },
+        { "required": ["body"] },
+        { "required": ["body_file"] },
+        { "required": ["delay_ms"] },
+        { "required": ["sequence"] }
+      ],
+      "if": { "required": ["sequence"] },
+      "then": {
+        "properties": {
+          "status": false,
+          "headers": false,
+          "body": false,
+          "body_file": false,
+          "delay_ms": false
+        }
+      },
+      "properties": {
+        "visible": {
+          "description": "A scenario is hidden unless true; a dev or test stack's rendering leaves hidden ones out",
+          "type": "boolean"
+        },
+        "route": {
+          "description": "The id of the one route this scenario applies to; without it, every route",
+          "$ref": "#/$defs/identifier"
+        },
+        "sequence": {
+          "description": "One entry per request, in order; the last entry repeats",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/responseFields",
+            "minProperties": 1,
+            "unevaluatedProperties": false
+          }
+        }
+      }
+    },
+    "responseFields": {
+      "type": "object",
+      "not": { "required": ["body", "body_file"] },
+      "properties": {
+        "status": { "type": "integer", "minimum": 200, "maximum": 599 },
+        "headers": {
+          "description": "Values are strings, so Retry-After is written \"2\"",
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Za-z0-9-]+$" },
+          "additionalProperties": {
+            "type": "string",
+            "not": { "pattern": "[\\r\\n]" }
+          }
+        },
+        "body": {
+          "description": "A mapping or list is sent as JSON; a string is sent as it is, so a broken body is allowed by design",
+          "type": ["object", "array", "string"]
+        },
+        "body_file": {
+          "description": "Relative to the configuration's own folder, and sent byte for byte",
+          "type": "string",
+          "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$"
+        },
+        "delay_ms": {
+          "description": "How long to wait before answering",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

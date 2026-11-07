@@ -1,6 +1,6 @@
 # Spec: Service projects (planned)
 
-**Status: planned. Nothing in this spec is built, and implementation has not started.** A service project is a [project problem](problem-format.md#project-problems) where you build a small running service: `cstudy` runs your app in a Docker sandbox, with mock servers for third-party APIs and, where the problem declares them, backing services, and judges it by what it answers over HTTP. Decision record: [ADR 0019](../decisions/0019-service-projects.md), which tags each decision by who made it. Items marked R*n* there are recommendations confirmed when their phase starts. Phases P*n* are the ADR's. Existing problems, the bank projects included, stay native, need no Docker and do not change.
+**Status: planned. Only the mock server's [program](#the-program) and its schema, and the [HTTP grader's core](#what-is-built) with the HTTP case in `schemas/tests.schema.json`, are built, and no stack runs them yet; everything else here is unbuilt.** A service project is a [project problem](problem-format.md#project-problems) where you build a small running service: `cstudy` runs your app in a Docker sandbox, with mock servers for third-party APIs and, where the problem declares them, backing services, and judges it by what it answers over HTTP. Decision record: [ADR 0019](../decisions/0019-service-projects.md), which tags each decision by who made it. Items marked R*n* there are recommendations confirmed when their phase starts. Phases P*n* are the ADR's. Existing problems, the bank projects included, stay native, need no Docker and do not change.
 
 ## Names
 
@@ -332,9 +332,27 @@ One Python program serves every problem and language. For a stack, `cstudy` pars
 
 **Names.** Each mock server's `name` is a network alias of the container. The process listens on port 8080 and picks the mock server from the request's `Host`, so `http://room-vendor:8080` needs no port of its own. An unknown `Host` gets a 404 that lists the known names. Nothing is published to your machine.
 
+### The program
+
+Built, in `cli/src/coding_study/adapters/mock_server/`. The rendering, the container and `cstudy dev` above are not.
+
+```text
+python -I <folder> <config.json> [--bind 0.0.0.0] [--api-port 8080] [--control-port 9000]
+```
+
+| Item | Rule |
+|------|------|
+| The folder | Runs alone: its modules import each other relatively and otherwise only the standard library. It may have any name and be read-only, so a stack copies it under `.cs/runs/<run>/` and mounts it |
+| Rendered config | One JSON file, `{"control_token": "<token>", "mocks": {"room-vendor": <config>, "second-vendor": <config>}}`, each `<config>` in the [format below](#config-format). A `body_file` is relative to this file's folder, may not leave it, and is read at start. The program serves every scenario the file holds: leaving hidden ones out is the rendering's work |
+| Start | Binds both ports, then prints one line of JSON and serves: `{"api_port": 8080, "control_port": 9000, "mocks": ["room-vendor", "second-vendor"]}`. A bad config exits 2 and a port it cannot bind exits 1, each with its reason on standard error |
+| Health | `GET /health` on the control port, with no token, answers `{"status": "ok"}` once both ports are bound. It is not on the API port, where the path belongs to the mocked API. A compose healthcheck: `[CMD, python, -I, -c, "import urllib.request as r; r.urlopen('http://127.0.0.1:9000/health', timeout=1)"]` |
+| Stop | SIGTERM and SIGINT exit 0 at once, without waiting for a request in a delay |
+| Connections | One thread each, so a delay holds only its own request. At most 24 on the API port, past which a connection waits its turn, because the container's limit is 32 processes; 4 on the control port. Every answer closes its connection (HTTP/1.0), so no idle client keeps a thread. A client that stops sending or reading is dropped after 10 s |
+| Request limits | A body up to 1 MiB, past which it is 413 and logged without its body. A chunked body is 411 and a bad `Content-Length` 400. The control port takes 64 KiB |
+
 ### Config format
 
-A planned `schemas/mock.schema.json` validates this format.
+`schemas/mock.schema.json` validates this format.
 
 ```yaml
 routes:
@@ -352,6 +370,12 @@ routes:
     response:
       status: 200
       body: {rooms: []}              # a mapping or list is sent as JSON; a string as it is
+  - id: room-slots
+    method: GET
+    path: /v1/rooms/{room_id}/slots  # a parameter is a whole segment
+    response:
+      status: 200
+      body: {slots: []}
 scenarios:
   outage:
     visible: true
@@ -376,11 +400,12 @@ scenarios:
 
 | Rule | Detail |
 |------|--------|
-| Matching | Method and path exact; first match wins. No path templates and no state beyond sequence counters |
+| Matching | Method exact, and path exact except that a `{name}` segment matches any one non-empty segment, whose value is not kept. A repeated query key matches on any of its values. First match wins. No state beyond sequence counters |
 | Unmatched | A clear 404 that names the mock server: `{"error": "no route", "mock": "room-vendor", "method": "GET", "path": "/v1/other"}`, and a log entry with `matched: false` |
-| Scenarios | The default is no scenario. A scenario overrides the matched response; a field it leaves out comes from the route. It never applies to an unmatched request |
+| Scenarios | The default is no scenario. A scenario overrides the matched response; a field it leaves out comes from the route, and a field it gives replaces the route's whole, `headers` included. So a 429 keeps the route's body unless it says `body: ""`. It never applies to an unmatched request |
+| Responses | A mapping or list gets `Content-Type: application/json` unless the headers name one. `Content-Length` is computed unless the headers name one, so a config can lie about it on purpose. 204, 304 and `HEAD` send no body. No `Date` or `Server` header is added |
 | Visibility | A scenario is hidden unless `visible: true`, so a forgotten flag cannot leak one. A dev or test stack loads only visible ones |
-| `sequence` | One entry per request, in order; the last entry repeats. A counter per scenario |
+| `sequence` | One entry per request, in order; the last entry repeats. It stands alone: an entry carries its own fields, `delay_ms` included. Setting a scenario restarts its counter, and a request it does not apply to does not advance it |
 | Reset | Sequence counters and the log reset between cases |
 | Determinism | Bodies are fixed, with no randomness and no clock, except the [run-time values](#extensions) a config asks for |
 | Delays | Hidden cases keep `Retry-After` and `delay_ms` at 1 to 3 s, so they stay under the 10 s [hang guard](runners.md#hang-guard-and-restarts); a case that needs more sets `hang_guard_ms`. `Retry-After` is given in whole seconds |
@@ -392,10 +417,11 @@ A token-protected interface that the grader uses. It listens on a port of its ow
 | Request | Effect |
 |---------|--------|
 | `POST /reset` | Clears the log and counters, and sets every mock server to no scenario |
-| `PUT /mocks/<name>/scenario` with `{"scenario": "outage"}` | Sets a scenario, or `null` for none; unknown is 404 |
-| `GET /mocks/<name>/log` | The request log |
+| `PUT /mocks/<name>/scenario` with `{"scenario": "outage"}` | Sets a scenario, or `null` for none, and answers what is set. An unknown scenario or mock server is 404 with the known names, and any other body 400 |
+| `GET /mocks/<name>/log` | The [request log](#request-log) |
+| `GET /health` | [Health](#the-program), the one request that needs no token |
 
-Every request needs `Authorization: Bearer <token>`. No response carries CORS headers, so a page cannot send one. The token is random per stack. The token of a graded stack is never passed to your app, its `test` or any command.
+Every other request needs `Authorization: Bearer <token>`, and without it is 401, whatever its path. A known path with the wrong method is 405. No response carries CORS headers, so a page cannot send one. The token is random per stack. The token of a graded stack is never passed to your app, its `test` or any command.
 
 **Inside a graded stack your app can reach this port but has no token.** That is a correctness aid: it keeps an honest app from changing a scenario by accident. It does not stop someone determined to cheat themselves from their own shell.
 
@@ -410,7 +436,9 @@ Each entry records what the app sent and what it got.
  "status": 200, "received_ms": 1042, "responded_ms": 1043}
 ```
 
-Times are monotonic milliseconds since the last reset. Header names are lowercase. Bodies keep 64 KiB, with `truncated: true` beyond that, and the log keeps 1,000 entries per reset.
+An entry appears when its request arrives, with `responded_ms` null until it is answered, so a request still in a delay already counts. `seq` counts requests from 1 after a reset. Times are monotonic milliseconds since the last reset. Header names are lowercase, and a repeated query key's value is a list. Bodies keep 64 KiB, with `truncated: true` beyond that, and one that is not UTF-8 goes in `body_base64` instead, with `body` null.
+
+Reading a log answers `{"mock": "room-vendor", "entries": [...], "truncated": false, "dropped": 0}`. A log keeps 1,000 entries per reset and 8 MiB of bodies, headers and paths per mock server, since 1,000 full bodies would not fit the container's 64 MiB. Past a limit it keeps its first entries, and `truncated: true` and `dropped` say how many it did not. The requests themselves are still answered.
 
 ### Extensions
 
@@ -522,7 +550,24 @@ A case type for N requests against limited capacity. It gives language-neutral c
 
 ## HTTP grading
 
-Planned. One piece of core code covers every language, with no per-language runner work. No runner job is involved. Existing entry-class problems keep their path. The grader runs on your machine, outside every container, and reaches your app and the control interface through the forwarder's published ports, so hidden cases never enter a container.
+One piece of core code covers every language, with no per-language runner work. No runner job is involved. Existing entry-class problems keep their path. The grader runs on your machine, outside every container, and reaches your app and the control interface through the forwarder's published ports, so hidden cases never enter a container.
+
+### What is built
+
+Step 6 of the [graded run](#graded-run), as a use case that is handed a ready stack: `run_http_grading` in `application/http_grading.py`, with `domain/http_case.py`, `domain/http_grading.py` and `adapters/http_grader/`. It returns a `Judgement`, so levels, submissions and events are today's. The rest of this section is planned: nothing calls it yet, because the commands and the stack come first.
+
+The grader asks a stack for little, through `GradedStack` in `application/http_grading_ports.py`:
+
+| Member | What it is |
+|--------|------------|
+| `endpoints` | `app_url` and `control_url` on `127.0.0.1`, `control_token`, and the names in `mocks`. `control_url` is `None` without mock servers |
+| `restart_app()` | Stops your app and starts it again, for a case that hung it |
+| `restart_app_with_fresh_data()` | For `fresh`: stops your app, runs `commands.reset` with `CSTUDY_RESET_PHASE=apply` if declared, starts your app |
+| `app_exit(within_ms)` | Your app's exit code and stderr tail, or `None` if it still runs after waiting that long, since a container's exit shows a moment after its connections drop |
+
+Both restarts return once the health path answers again, and raise `StackStepError` otherwise.
+
+**Two clocks.** Every time limit and hang guard starts only once the stack is ready. Starting it, and each restart above, runs on the sandbox's clock and counts toward no case. A case's limit runs from its first request to the last byte of its last answer, `before` requests included. It holds for the whole exchange, so an app that sends a byte now and then cannot outlast it.
 
 ### Graded run
 
@@ -533,10 +578,10 @@ Planned. One piece of core code covers every language, with no per-language runn
 3. With `grade_setup`, the from-empty check: bring up the mock and service containers, run `bootstrap` on empty data, then discard the data (`down -v`). Without `grade_setup`, the `bootstrap` of the next step is itself this check.
 4. Bring up a fresh stack without `app` (`up --wait`), run `grade_setup` if declared, run `bootstrap` if declared, run `reset` with `prepare` if declared.
 5. Start `app` with `commands.run`. Poll the health path through the published port until 2xx or `ready_timeout_s`.
-6. For each case of the graded levels, in `tests.json` order: `POST /reset`, restart and reset if `fresh`, set scenarios, send `before` requests or `steps`, send the request, compare, assert on the log.
+6. For each case of the graded levels, in `tests.json` order: `POST /reset`; if `fresh`, restart with fresh data and `POST /reset` again, so your app's startup meets no scenario left by the last case and the log holds this case's requests alone; set scenarios, send `before` requests or `steps`, send the request, compare, assert on the log.
 7. `down -v`.
 
-At most one graded stack runs per attempt, and `.cs/runs/` holds the run's generated files. An app that exits during a case, or a case past its limit, restarts as a runner does: the case is `error` or `timeout`, and after 3 restarts the remaining cases are `not_run` ([hang guard](runners.md#hang-guard-and-restarts)). The limit per case uses the same order: config `hang_guard.ms`, the case's `hang_guard_ms`, `limits.hang_guard_ms`, else 10 s.
+At most one graded stack runs per attempt, and `.cs/runs/` holds the run's generated files. A case past its limit is `timeout` and restarts your app, as a runner restarts ([hang guard](runners.md#hang-guard-and-restarts)); after 3 such cases the remaining cases are `not_run`. An app that exits during a case does not restart: the case is `error`, it says so with the exit code and the stderr tail, and the remaining cases are `not_run`, since a crash usually repeats and each case would pay for it. A connection that fails while your app runs is `error` for that case alone. The limit per case uses the same order as a runner's: config `hang_guard.ms`, the case's `hang_guard_ms`, `limits.hang_guard_ms`, else 10 s.
 
 ### Hidden HTTP case
 
@@ -557,16 +602,18 @@ Language-neutral, in `tests.json`, with `id`, `visible`, `level`, `note` and `ha
 | Field | Rule |
 |-------|------|
 | `mocks` | The scenario per mock server; a mock server it leaves out has none. A visible case names visible scenarios only (S23) |
-| `before` | Requests sent first, each of which must answer 2xx, for a case that needs state. Optional |
-| `request` | `method`, `path`, optional `query`, `headers`, and `json` or `body` |
+| `before` | Requests sent first, each of which must answer 2xx, for a case that needs state. They share the case's limit, and the one that fails names itself in the reason. Optional |
+| `request` | `method`, `path`, optional `query`, `headers`, and `json` or `body`. A `query` value is a string, or a list sent once per value. `json` is encoded and sends `Content-Type: application/json` unless `headers` name one. `body` goes out byte for byte, so it can be malformed |
 | `expected.status` | Required |
-| `expected.body` | Optional. JSON is compared by `comparator`, anything else as exact text |
-| `expected.headers` | Optional. Each listed header must match |
-| `comparator` | Overrides the problem's. `exact`, `unordered`, `unordered-nested` or `float` ([Comparators](problem-format.md#comparators)). `checker` is not allowed |
-| `log` | Assertions per mock server and route: `count`, `min_count`, `max_count`, and `min_gap_ms`, measured from each response's `responded_ms` to the next request's `received_ms`. A value a little below the wait, here 950 for 1 s, tolerates timers |
+| `expected.body` | Optional; left out, any body passes. A string is the body's exact text. Anything else is compared parsed, by `comparator`, so key order and whitespace cannot fail a correct answer, and `null` asks for a JSON null. An object must hold exactly the fields expected: an extra one fails and is named. `NaN` and `Infinity` are not JSON |
+| `expected.headers` | Optional. Each listed header must match, its name in any case. A `Content-Type` that names no parameter ignores the answer's, so a framework's `; charset=utf-8` cannot fail it |
+| `comparator` | Overrides the problem's: `{"type": ...}`, with `tolerance` for `float`. `exact`, `unordered`, `unordered-nested` or `float` ([Comparators](problem-format.md#comparators)). `checker` is not allowed |
+| `log` | Assertions per mock server and route: `count`, `min_count`, `max_count`, and `min_gap_ms`, measured from each response's `responded_ms` to the next request's `received_ms`. Without `route`, they cover every request the mock server logged, matched or not, and requests past the log's limit still count. A value a little below the wait, here 950 for 1 s, tolerates timers |
 | `fresh` | Restart the app and run `commands.reset` first |
 
-`project.clock: virtual` is refused with `grading: http`: these cases run on the real clock. The bound on waits and D11 keep them stable.
+A case has a `level`, or no graded run would reach it. `project.clock: virtual` is refused with `grading: http`: these cases run on the real clock. The bound on waits and D11 keep them stable.
+
+A case that names a mock server the stack lacks, or a scenario a mock server lacks, or a problem whose comparator is `checker` or `ops` with no override, is a content error rather than a verdict. S23 catches these first once it is built.
 
 ### Multi-step cases
 
@@ -598,10 +645,24 @@ Recommended, to confirm (R34), for P11. A later request can use values captured 
 |-------|----------------------|
 | `output` | Progress: image pull, install, Docker start, `bootstrap` |
 | `test_start`, `test_result` | `cstudy test`: one result for `commands.test`, with id `commands.test`; its output streams through `output`, since cstudy does not parse a framework |
-| `case_start`, `case_result` | `cstudy submit`, and now also `cstudy test` for the visible cases. `input` holds the request, and `reason` the log assertion that failed (`room-vendor availability: expected 2 requests, saw 5`) |
+| `case_start`, `case_result` | `cstudy submit`, and now also `cstudy test` for the visible cases. `input` holds the request and the scenarios it set, `expected` and `actual` the status and body, and `reason` every difference and log assertion that failed (`room-vendor availability: expected 2 requests, saw 5`) |
 | `level_result`, `level_unlocked` | As today, with `methods` empty |
 
 A hidden case in a mock attempt writes no event, as today.
+
+A report cuts `expected` and `actual` at 200 characters, so `reason` names what differs by its path in the body, showing only those values (`body.rooms[0].slots[1]: expected "10:00", got "11:00"`), up to 5 differences. Two long texts show the part around where they first differ. An `unordered` body names the elements missing and unexpected. A wrong status says only that, since an error's body differs anyway, and `actual` shows it.
+
+| What happened | `status` | The case's entry says |
+|---------------|----------|-----------------------|
+| A wrong status, header or body, or a failed log assertion | `fail` | `reason`, with each one found |
+| No whole answer within the limit | `timeout` | `hang_guard_ms` |
+| Nothing listening on your app's port, while your app runs | `error` | `error.type` `ConnectionRefused` |
+| The connection dropped before a whole answer, while your app runs | `error` | `error.type` `ConnectionDropped` |
+| Your app exited | `error` | `error.type` `AppExited`, the exit code, and the stderr tail in `error.trace`. The remaining cases are `not_run` |
+| `commands.reset` or the restart around it failed | `error` | `error.type` `ResetFailed`, with its output in `error.trace`. The remaining cases are `not_run` |
+| An answer that is not HTTP, or a body over 8 MiB | `invalid` | `reason` |
+
+A `not_run` case's reason names no earlier case, so a mock attempt's hidden cases stay hidden.
 
 ## Dependencies
 
@@ -725,14 +786,14 @@ Connect to the network, then run: cstudy start coworking-availability-typescript
 | App did not start: it exited | The exit code and the tail of its standard error, at most 4 KiB | 2, `load_failed` |
 | Health timeout | The URL, the time limit, the stderr tail, and a reminder to read `port_env` and listen on all interfaces inside the container (`0.0.0.0`), not `127.0.0.1` | 2, `load_failed` |
 | App ran out of memory | That the container hit its `mem_limit`, and the limit | Case `error`, or 2 at start |
-| App died during a case | Case `error`, with the stderr tail; a restart | 1, `failed` |
+| App died during a case | Case `error`, with the exit code and the stderr tail; the remaining cases `not_run`, with no restart | 1, `failed` |
 
 ## Resources
 
 | Resource | Expectation |
 |----------|-------------|
 | Graded runs | At most one graded stack per attempt |
-| Mock server memory | At most 30 MB resident per stack, an expectation P5 measures |
+| Mock server memory | At most 30 MB resident per stack, an expectation P5's container measures. The program alone held about 29 MB after starting, on macOS on arm64 with two mock servers |
 | Disk per project | `node_modules` or `.venv`, to be measured at P7 and P8, plus images and the install cache, shared across projects |
 | Docker | [Resources and CI](#resources-and-ci) |
 | Language servers | Each project still counts toward `cstudy serve`'s limit of four language servers |
