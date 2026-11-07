@@ -5,6 +5,9 @@ status: ready
 difficulty: medium
 track: practical
 kind: project
+domains: [backend]
+job_roles: [backend]
+scope: project
 languages: [typescript]
 levels:
   - {level: 1, title: Count the desk passes}
@@ -32,6 +35,6 @@ project:
     - {name: room-vendor, config: mocks/room-vendor.yaml}
   requires:
     lock: pnpm-lock.yaml
-    sizes: {install_mb: 60, images_mb: {app: 77, mocks: 41}, memory_mb: 300}
+    sizes: {install_mb: 27, images_mb: {app: 77, mocks: 41}, memory_mb: 300}
 approaches:
   - {id: reference, name: Reference, role: optimal, time: "per request", space: "per request"}

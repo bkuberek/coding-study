@@ -29,6 +29,7 @@ from coding_study.domain.jdk_fit import jdk_range_of
 from coding_study.domain.labels import LabelFilter, Labels
 from coding_study.domain.problem import ContentStatus, Difficulty, Language, ProblemMeta, Track
 from coding_study.domain.scheduling import ProblemStatus
+from coding_study.domain.service_project import need_markers, service_of
 from coding_study.domain.taxonomy import Scope
 from coding_study.domain.value_text import truncate
 from coding_study.entrypoints.shared import add_command, command_environ, console
@@ -56,8 +57,11 @@ REFERENCE_LABELS = {
     Language.GO: "go",
     Language.RUST: "rs",
 }
+REFS_WIDTH = len(" ".join(REFERENCE_LABELS.values()))
 _WIDTHS = (ID_WIDTH, SLUG_WIDTH, DIFFICULTY_WIDTH, PATTERN_WIDTH, STATUS_WIDTH, DUE_WIDTH)
+_WIDTHS_WITH_NEEDS = (*_WIDTHS, REFS_WIDTH)
 TABLE_HEADER = ("ID", "SLUG", "DIFF", "PATTERN", "STATUS", "DUE", "REFS")
+NEEDS_HEADER = "NEEDS"
 
 
 def register(app: typer.Typer) -> None:
@@ -106,6 +110,15 @@ def list_command(
     search: Annotated[
         str | None, typer.Option("--search", help="Problems whose slug or title holds this text.")
     ] = None,
+    needs: Annotated[
+        str | None,
+        typer.Option(
+            "--needs",
+            metavar="WHAT",
+            help="none keeps problems that need nothing beyond the language's toolchain; "
+            "docker or a service's name keeps those that need it.",
+        ),
+    ] = None,
     as_json: Annotated[
         bool, typer.Option("--json", help="One JSON document instead of the table.")
     ] = False,
@@ -122,6 +135,7 @@ def list_command(
         kind,
         labels,
         search=search,
+        needs=needs,
     )
     load = load_catalog_environment if set_name is None else load_environment
     environment = load(Path.cwd(), command_environ(context), Path.home())
@@ -135,9 +149,14 @@ def list_command(
         [(item.summary.meta.slug, problem_cells(item)) for item in problems]
         + [(item.meta.slug, item_cells(item)) for item in items],
     )
+    needs_column = any(need_markers(item.summary.meta) for item in problems)
+    if needs_column:
+        needed = {item.summary.meta.slug: _needs_cell(item) for item in problems}
+        rows = [(*cells, needed.get(cells[1], NO_VALUE)) for cells in rows]
     output = console(context)
     if rows:
-        output.print(Text(table_row(TABLE_HEADER), style="bold"))
+        header = (*TABLE_HEADER, NEEDS_HEADER) if needs_column else TABLE_HEADER
+        output.print(Text(table_row(header), style="bold"))
     else:
         output.print(NO_MATCH)
     for cells in rows:
@@ -225,6 +244,25 @@ def problem_entry(problem: ListedProblem, listing: ListingContext) -> dict[str, 
         "due_on": problem.due_on.isoformat() if problem.due_on else None,
         "in_progress": _in_progress(listing, meta.slug),
         "jdk": _jdk_range_value(meta),
+        "requires": _requires_value(meta),
+    }
+
+
+def _requires_value(meta: ProblemMeta) -> JsonValue:
+    """What a service project depends on, as its manifest declares it; null for other problems."""
+    service = service_of(meta)
+    if service is None:
+        return None
+    requires = service.requires
+    sizes = requires.sizes
+    return {
+        "docker": True,
+        "services": list(requires.services),
+        "mocks": [mock.name for mock in service.mocks],
+        "lock": requires.lock,
+        "install_mb": sizes.install_mb,
+        "images_mb": dict(sizes.images_mb),
+        "memory_mb": sizes.memory_mb,
     }
 
 
@@ -260,6 +298,7 @@ def item_entry(item: ListedItem, listing: ListingContext) -> dict[str, JsonValue
         "due_on": item.due_on.isoformat() if item.due_on else None,
         "in_progress": _in_progress(listing, meta.slug),
         "jdk": None,
+        "requires": None,
     }
 
 
@@ -291,6 +330,10 @@ def problem_cells(item: ListedProblem) -> tuple[str, ...]:
     )
 
 
+def _needs_cell(item: ListedProblem) -> str:
+    return " ".join(need_markers(item.summary.meta)) or NO_VALUE
+
+
 def _reference_label(language: Language, item: ListedProblem) -> str:
     label = REFERENCE_LABELS[language]
     return f"{label}{MARK}" if language in item.blocked else label
@@ -310,9 +353,10 @@ def item_cells(item: ListedItem) -> tuple[str, ...]:
 
 
 def table_row(cells: tuple[str, ...]) -> str:
+    widths = _WIDTHS_WITH_NEEDS if len(cells) == len(_WIDTHS_WITH_NEEDS) + 1 else _WIDTHS
     padded = (
         _fit(cell, width).ljust(width + COLUMN_GAP)
-        for cell, width in zip(cells, _WIDTHS, strict=False)
+        for cell, width in zip(cells, widths, strict=False)
     )
     return "".join(padded) + cells[-1]
 

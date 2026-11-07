@@ -118,6 +118,12 @@ _FORWARDER_SOURCE = Path(__file__).with_name("sandbox_forward.py")
 _MOCK_CODE_SOURCE = Path(__file__).with_name(MOCK_CODE_DIRECTORY)
 _PERMISSION_REFUSED = "permission denied"
 _ENDING_SIGNALS = (signal.SIGINT, signal.SIGTERM)
+_START_THE_APP_ALONE = (
+    *("up", "--detach", "--no-deps", "--no-recreate", "--no-build", *_PULL_NEVER),
+    APP_SERVICE,
+)
+"""`docker compose start app` runs the one-shots it depends on again, `bootstrap` among them, on
+data a case has already changed."""
 
 type HealthProbe = Callable[[int, str], bool]
 
@@ -422,9 +428,12 @@ class DockerSandbox:
             return logs
         return f"the container hit its memory limit of {plan.app.mem_limit}\n{logs}"
 
-    def _ran_out_of_memory(self, plan: StackPlan) -> bool:
+    def _app_container(self, plan: StackPlan) -> str:
         listed = self._compose(plan, ("ps", "-a", "-q", APP_SERVICE), ENGINE_QUERY_S)
-        container = listed.output.strip() if listed is not None else ""
+        return listed.output.strip() if listed is not None else ""
+
+    def _ran_out_of_memory(self, plan: StackPlan) -> bool:
+        container = self._app_container(plan)
         if not container:
             return False
         state = self._runner.run(
@@ -529,7 +538,7 @@ class DockerSandbox:
             )
 
     def start_app(self, plan: StackPlan, ready: ReadyStack, budget: StartupBudget) -> None:
-        started = self._compose(plan, ("start", APP_SERVICE), budget.up_s)
+        started = self._compose(plan, _START_THE_APP_ALONE, budget.up_s)
         if started is None or started.exit_code != 0:
             output = started.output.strip() if started is not None else "docker is not installed"
             raise StackStartError(
@@ -548,12 +557,11 @@ class DockerSandbox:
             self._sleep(HEALTH_POLL_S)
 
     def follow_app(self, plan: StackPlan, on_line: Callable[[str], None]) -> None:
-        self._compose(
-            plan,
-            ("logs", "--follow", "--no-color", "--no-log-prefix", APP_SERVICE),
-            None,
-            on_line,
-        )
+        """`docker logs`, since `docker compose logs --follow` keeps waiting after its container
+        ended."""
+        container = self._app_container(plan)
+        if container:
+            self._runner.run((DOCKER, "logs", "--follow", container), None, on_line)
 
     def probe_egress(self, plan: StackPlan) -> CommandOutcome:
         arguments = ("run", "--rm", "-T", "--no-deps", *_PULL_NEVER, EGRESS_PROBE_SERVICE)

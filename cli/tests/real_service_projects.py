@@ -123,8 +123,13 @@ def fixture_project(directory: str, scratch: Path) -> FixtureProject:
         env=project.environment(),
         timeout=GENEROUS_WAIT_S,
     )
-    shutil.copytree(FIXTURES / directory, project.problem, ignore=_LEFT_OUT)
-    env = yaml.safe_load((project.problem / "meta.yaml").read_text())["project"]["env"]
-    lines = "".join(f"{name}={value}\n" for name, value in env.items())
-    (project.problem / "starter" / ENV_FILE).write_text(lines)
+    copy_fixture(directory, project.problem)
     return project
+
+
+def copy_fixture(directory: str, problem: Path) -> None:
+    """The fixture's files at `problem`, with its `.env`."""
+    shutil.copytree(FIXTURES / directory, problem, ignore=_LEFT_OUT)
+    env = yaml.safe_load((problem / "meta.yaml").read_text())["project"]["env"]
+    lines = "".join(f"{name}={value}\n" for name, value in env.items())
+    (problem / "starter" / ENV_FILE).write_text(lines)

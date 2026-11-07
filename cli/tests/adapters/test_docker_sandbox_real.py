@@ -9,19 +9,26 @@ import signal
 import subprocess
 import sys
 import textwrap
+import threading
 import time
 from collections.abc import Generator
+from contextlib import suppress
 from pathlib import Path
 
 import pytest
 
 from coding_study.adapters.docker_sandbox import DockerSandbox, SubprocessDockerRunner
+from coding_study.adapters.http_grader.clients import open_stack_clients
+from coding_study.application.http_grading_ports import StackEndpoints
 from coding_study.application.ports import ContainerCommand
 from coding_study.application.sandbox import running_stack, sweep_leftovers
+from coding_study.domain.mock_configs import MockFiles, ScenarioReach, rendered_mock_config
 from coding_study.domain.sandbox import (
     PYTHON_IMAGE,
     AppContainer,
     InstallPlan,
+    MockServerInput,
+    OneShot,
     ReadyStack,
     SandboxPaths,
     SandboxUser,
@@ -394,6 +401,7 @@ def wait_until_nothing_left(name: str) -> None:
 OWNER_PROGRAM = textwrap.dedent(
     """\
     import json, os, sys, time
+    from pathlib import Path
 
     from coding_study.adapters.docker_sandbox import DockerSandbox, SubprocessDockerRunner
     from coding_study.application.sandbox import running_stack
@@ -402,7 +410,7 @@ OWNER_PROGRAM = textwrap.dedent(
     )
 
     name, image, project, run = sys.argv[1:5]
-    engine = DockerSandbox(SubprocessDockerRunner())
+    engine = DockerSandbox(SubprocessDockerRunner(), runs_directory=Path(run).parent)
     plan = StackPlan(
         identity=StackIdentity(name, StackKind.TEST, "testworkspace", "sample", os.getpid()),
         user=SandboxUser(os.getuid(), os.getgid()),
@@ -448,6 +456,14 @@ def test_a_killed_owner_leaves_nothing_behind(tmp_path):
     owner.wait()
 
     wait_until_nothing_left(name)
+    wait_until_gone(tmp_path.resolve() / "runs" / name)
+
+
+def wait_until_gone(path: Path) -> None:
+    deadline = time.monotonic() + GENEROUS_WAIT_S
+    while path.exists() and time.monotonic() < deadline:
+        time.sleep(POLL_S)
+    assert not path.exists()
 
 
 def test_the_sweep_removes_a_dead_owners_stack_and_nothing_unlabelled(engine, tmp_path):
@@ -531,5 +547,237 @@ def test_install_writes_into_the_project_and_its_cache_survives_its_down(engine,
         assert (Path(plan.paths.project) / "installed.txt").read_text() == "y"
         assert docker("volume", "inspect", volume).returncode == 0
         assert not resources_of(name)["containers"]
+    finally:
+        docker("volume", "rm", volume)
+
+
+VENDOR: dict[str, object] = {
+    "routes": [
+        {
+            "id": "rooms",
+            "method": "GET",
+            "path": "/v1/rooms",
+            "response": {"status": 200, "body_file": "bodies/rooms.json"},
+        }
+    ],
+    "scenarios": {
+        "open": {"visible": True, "status": 503},
+        "secret_scenario": {"status": 429, "headers": {"Retry-After": "1"}},
+    },
+}
+BODY = '{"rooms": ["oak"]}'
+TOKEN = "a-token-only-the-mock-container-holds"
+
+
+def plan_with_mocks(tmp_path: Path, name: str, reach: ScenarioReach) -> StackPlan:
+    files = {"room-vendor": MockFiles(VENDOR, {"bodies/rooms.json": BODY})}
+    mocks = MockServerInput(("room-vendor",), TOKEN, rendered_mock_config(files, TOKEN, reach))
+    return plan_of(tmp_path, name, mocks=mocks)
+
+
+@pytest.fixture
+def mock_stack(
+    engine: DockerSandbox, tmp_path: Path
+) -> Generator[tuple[DockerSandbox, StackPlan, ReadyStack]]:
+    plan = plan_with_mocks(tmp_path, stack_name("mocks"), ScenarioReach.EVERY)
+    with running_stack(engine, plan, BUDGET, lambda _line: None) as ready:
+        yield engine, plan, ready
+
+
+def endpoints_of(ready: ReadyStack) -> StackEndpoints:
+    return StackEndpoints(ready.app_url, ready.control_url, TOKEN, ("room-vendor",))
+
+
+FETCH_VENDOR = textwrap.dedent(
+    """\
+    import urllib.error, urllib.request
+    try:
+        with urllib.request.urlopen("http://room-vendor:8080/v1/rooms", timeout=30) as answer:
+            print(json.dumps({"status": answer.status, "body": answer.read().decode()}))
+    except urllib.error.HTTPError as error:
+        print(json.dumps({"status": error.code, "body": ""}))
+    """
+)
+
+
+def test_the_app_reaches_a_mock_server_at_its_stable_name(mock_stack):
+    assert probe(mock_stack, FETCH_VENDOR) == {"status": 200, "body": BODY}
+
+
+def test_a_scenario_set_from_here_reaches_what_the_app_gets(mock_stack):
+    _, _, ready = mock_stack
+
+    control = open_stack_clients(endpoints_of(ready)).mocks
+
+    assert control.set_scenario("room-vendor", "open")
+    assert probe(mock_stack, FETCH_VENDOR)["status"] == 503
+
+
+def test_the_control_interface_keeps_a_log_and_refuses_no_token(mock_stack):
+    _, _, ready = mock_stack
+    probe(mock_stack, FETCH_VENDOR)
+
+    log = open_stack_clients(endpoints_of(ready)).mocks.log("room-vendor")
+
+    assert [entry.route for entry in log.entries] == ["rooms"]
+    assert get(ready.control_port, "/mocks/room-vendor/log")[0] == 401
+
+
+def test_nothing_of_the_mock_servers_is_in_the_app_container(mock_stack):
+    found = probe(
+        mock_stack,
+        textwrap.dedent(
+            f"""\
+            print(json.dumps({{
+                "cstudy": os.path.exists("/cstudy"),
+                "mounts": "mocks.json" in open("/proc/self/mounts").read(),
+                "token": any("{TOKEN}" in value for value in os.environ.values()),
+            }}))
+            """
+        ),
+    )
+
+    assert found == {"cstudy": False, "mounts": False, "token": False}
+
+
+def test_the_rendering_of_a_practice_stack_holds_no_hidden_scenario(engine, tmp_path):
+    plan = plan_with_mocks(tmp_path, stack_name("visible"), ScenarioReach.VISIBLE)
+    with running_stack(engine, plan, BUDGET, lambda _line: None) as ready:
+        control = open_stack_clients(endpoints_of(ready)).mocks
+
+        assert control.set_scenario("room-vendor", "open")
+        assert not control.set_scenario("room-vendor", "secret_scenario")
+
+
+def test_no_egress_reaches_anything_from_the_sandbox_network(stack):
+    engine, plan, _ = stack
+
+    outcome = engine.probe_egress(plan)
+
+    assert outcome.exit_code == 0, outcome.output
+    assert "reached []" in outcome.output
+
+
+DYING_SERVER = textwrap.dedent(
+    """\
+    import http.server, os
+
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/die":
+                print("about to die", flush=True)
+                os._exit(7)
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def log_message(self, *arguments):
+            pass
+
+
+    print("listening", flush=True)
+    http.server.ThreadingHTTPServer(("0.0.0.0", int(os.environ["PORT"])), Handler).serve_forever()
+    """
+)
+COUNTING_BOOTSTRAP = (
+    "python",
+    "-I",
+    "-c",
+    "open(__import__('os').environ['CSTUDY_DATA_DIR'] + '/ran', 'a').write('x')",
+)
+
+
+def dying_plan(tmp_path: Path, name: str) -> StackPlan:
+    plan = plan_of(tmp_path, name, bootstrap=OneShot(COUNTING_BOOTSTRAP))
+    (Path(plan.paths.project) / "server.py").write_text(DYING_SERVER)
+    return plan
+
+
+def kill_the_app(ready: ReadyStack) -> None:
+    with suppress(OSError, http.client.HTTPException):
+        get(ready.app_port, "/die")
+
+
+def test_a_restart_keeps_the_port_and_does_not_run_bootstrap_again(engine, tmp_path):
+    plan = dying_plan(tmp_path, stack_name("restart"))
+    with running_stack(engine, plan, BUDGET, lambda _line: None) as ready:
+        engine.restart_app(plan, ready, BUDGET)
+
+        assert get(ready.app_port)[0] == 200
+        read = ContainerCommand(("python", "-I", "-c", READ_RAN), {}, GENEROUS_WAIT_S)
+        assert engine.exec_app(plan, read).output.strip() == "x"
+
+
+READ_RAN = "print(open(__import__('os').environ['CSTUDY_DATA_DIR'] + '/ran').read())"
+
+
+def test_a_stopped_app_lets_a_one_off_run_then_comes_back_on_its_port(engine, tmp_path):
+    plan = dying_plan(tmp_path, stack_name("oneoff"))
+    with running_stack(engine, plan, BUDGET, lambda _line: None) as ready:
+        engine.stop_app(plan)
+
+        one_off = ContainerCommand(("python", "-I", "-c", "print('ran')"), {}, GENEROUS_WAIT_S)
+        assert engine.run_one_off(plan, one_off).exit_code == 0
+
+        engine.start_app(plan, ready, BUDGET)
+        assert get(ready.app_port)[0] == 200
+
+
+def test_an_app_that_dies_shows_its_exit_code_and_output(engine, tmp_path):
+    plan = dying_plan(tmp_path, stack_name("dies"))
+    with running_stack(engine, plan, BUDGET, lambda _line: None) as ready:
+        assert engine.app_exit(plan, 0) is None
+
+        kill_the_app(ready)
+        ended = engine.app_exit(plan, int(GENEROUS_WAIT_S * 1000))
+
+        assert ended is not None
+        assert ended.exit_code == 7
+        assert "about to die" in ended.output
+
+
+def test_following_the_app_hears_it_and_ends_when_it_ends(engine, tmp_path):
+    plan = dying_plan(tmp_path, stack_name("follow"))
+    lines: list[str] = []
+    with running_stack(engine, plan, BUDGET, lambda _line: None) as ready:
+        follower = threading.Thread(
+            target=engine.follow_app, args=(plan, lines.append), daemon=True
+        )
+        follower.start()
+        kill_the_app(ready)
+        follower.join(GENEROUS_WAIT_S)
+
+        assert not follower.is_alive()
+        assert "listening" in lines
+
+
+def test_a_dev_stack_keeps_its_data_after_a_stop_and_a_new_owner_reads_it(engine, tmp_path):
+    name = f"cstudy-d-sample-{os.getpid()}"
+    identity = StackIdentity(name, StackKind.DEV, "testworkspace", "sample", os.getpid())
+    write = (
+        "python",
+        "-I",
+        "-c",
+        "open(__import__('os').environ['CSTUDY_DATA_DIR'] + '/kept', 'w').write('still here')",
+    )
+    read = (
+        "python",
+        "-I",
+        "-c",
+        "print(open(__import__('os').environ['CSTUDY_DATA_DIR'] + '/kept').read())",
+    )
+    plan = plan_of(tmp_path, name, identity=identity)
+    volume = f"{name}_data"
+    try:
+        with running_stack(engine, plan, BUDGET, lambda _line: None):
+            engine.exec_app(plan, ContainerCommand(write, {}, GENEROUS_WAIT_S))
+
+        assert docker("volume", "inspect", volume).returncode == 0
+        assert not resources_of(name)["containers"]
+        with running_stack(engine, plan, BUDGET, lambda _line: None):
+            kept = engine.exec_app(plan, ContainerCommand(read, {}, GENEROUS_WAIT_S))
+
+        assert kept.output.strip() == "still here"
     finally:
         docker("volume", "rm", volume)

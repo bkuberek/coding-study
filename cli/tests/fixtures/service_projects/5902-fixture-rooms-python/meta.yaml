@@ -5,6 +5,9 @@ status: ready
 difficulty: medium
 track: practical
 kind: project
+domains: [backend]
+job_roles: [backend]
+scope: project
 languages: [python]
 levels:
   - {level: 1, title: Count the desk passes}
@@ -31,6 +34,6 @@ project:
     - {name: room-vendor, config: mocks/room-vendor.yaml}
   requires:
     lock: uv.lock
-    sizes: {install_mb: 15, images_mb: {app: 62, mocks: 41}, memory_mb: 300}
+    sizes: {install_mb: 9, images_mb: {app: 62, mocks: 41}, memory_mb: 300}
 approaches:
   - {id: reference, name: Reference, role: optimal, time: "per request", space: "per request"}

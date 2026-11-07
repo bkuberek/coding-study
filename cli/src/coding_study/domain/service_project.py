@@ -16,6 +16,9 @@ from coding_study.domain.sandbox import DEFAULT_READY_S, STARTUP_UP_S, StartupBu
 INSTALL_LIMIT_S = 600
 HELPER_IMAGE_MB = 41
 """The pinned Python image of the forwarder, in every stack; a mock server shares it."""
+DOCKER_NEED = "docker"
+NEEDS_NOTHING = "none"
+"""`cstudy list --needs none`: problems that need nothing beyond the language's toolchain."""
 _APP_ROW = "app"
 _MOCK_ROW = "mocks"
 TEST_LIMIT_S = 120
@@ -174,6 +177,12 @@ def _total_need(service: ServiceProject) -> NeedRow:
     helper = 0 if _MOCK_ROW in sizes.images_mb else HELPER_IMAGE_MB
     download = sum(sizes.images_mb.values()) + helper + (sizes.install_mb or 0)
     return NeedRow("total", f"about {download} MB download, about {sizes.memory_mb} MB memory")
+
+
+def need_markers(meta: ProblemMeta) -> tuple[str, ...]:
+    """What `cstudy list` marks a problem with: read from its manifest, so listing runs nothing."""
+    service = service_of(meta)
+    return () if service is None else (DOCKER_NEED, *service.requires.services)
 
 
 def parse_env_file(text: str) -> dict[str, str]:

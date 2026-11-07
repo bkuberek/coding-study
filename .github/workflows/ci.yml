@@ -1,13 +1,15 @@
 name: CI
 
-# Three kinds of checks, on Linux. "Fast checks" is the fast part of CONTRIBUTING.md#checks: lint,
+# Four kinds of checks, on Linux. "Fast checks" is the fast part of CONTRIBUTING.md#checks: lint,
 # format, types, layer contracts, the tests not marked slow, and the static content checks against a
 # workspace made by the job. "JVM tests" runs the tests marked jvm (the slow tests that drive Gradle,
 # javac, kotlinc or a JVM runner) and the Java and Kotlin conformance suites on the two ends of the
 # supported JDK range, 21 and 26 (ADR 0016). "Browser tests" runs the Playwright tests of the web UI
 # on Chromium, and only for a push or pull request that touches the page, its tests or this
-# workflow: the small "Web UI changes" job decides, and no other job waits for it. The other slow
-# tests (Node, Go, Cargo, the debuggers; Firefox and WebKit in the browser tests) stay a local gate.
+# workflow: the small "Changes" job decides, and no other job waits for it. "Sandbox tests" runs the
+# tests marked docker on a real engine, the same way: only for a change that can affect the sandbox,
+# as the same job decides. The other slow tests (Node, Go, Cargo, the debuggers; Firefox and WebKit
+# in the browser tests) stay a local gate.
 # The fast tests need no toolchain but uv and Python 3.13, which uv installs from .python-version:
 # each toolchain is replaced by a fake, and the few tests that call `gofmt`, `rustfmt` or `git`
 # skip without one. Pyright runs on Node, the major version the TypeScript runner needs; without
@@ -144,19 +146,22 @@ jobs:
           uv run cstudy verify --conformance --lang java
           uv run cstudy verify --conformance --lang kotlin
 
-  # Whether a change can affect the web UI's page, for the browser job: the run is of a push or a
-  # pull request, and a push or pull request of problems or docs alone leaves the page as it was.
-  # The paths are the page itself, the browser tests and the modules they use (a test guards
-  # this list against the imports of the browser tests), and this workflow. The diff is of what
-  # the run brings: a pull request's merge commit against its first parent, a push against the
-  # commit the branch had before, or against the default branch for a new branch or a commit
-  # that is gone (a force push). When no diff can be made the browser job runs.
+  # Whether a change can affect the web UI's page, for the browser job, or the sandbox of a service
+  # project, for the sandbox job: the run is of a push or a pull request, and a push or pull request
+  # of problems or docs alone leaves both as they were. The web paths are the page itself, the
+  # browser tests and the modules they use (a test guards this list against the imports of the
+  # browser tests), and this workflow; the sandbox paths are the code a stack runs on, its fixtures,
+  # its tests and this workflow. The diff is of what the run brings: a pull request's merge commit
+  # against its first parent, a push against the commit the branch had before, or against the default
+  # branch for a new branch or a commit that is gone (a force push). When no diff can be made both
+  # jobs run.
   changes:
-    name: Web UI changes
+    name: Changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       web: ${{ steps.diff.outputs.web }}
+      sandbox: ${{ steps.diff.outputs.sandbox }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -187,12 +192,35 @@ jobs:
             cli/tests/serve_process.py
             cli/tests/workspaces.py
             .github/workflows/ci.yml
+          SANDBOX_PATHS: |
+            cli/src/coding_study/adapters/docker_sandbox.py
+            cli/src/coding_study/adapters/sandbox_forward.py
+            cli/src/coding_study/adapters/stack_guard.py
+            cli/src/coding_study/adapters/service_files.py
+            cli/src/coding_study/adapters/mock_server
+            cli/src/coding_study/adapters/http_grader
+            cli/src/coding_study/adapters/process_environment.py
+            cli/src/coding_study/application/sandbox.py
+            cli/src/coding_study/application/graded_stack.py
+            cli/src/coding_study/application/http_grading.py
+            cli/src/coding_study/application/http_grading_ports.py
+            cli/src/coding_study/application/service_*.py
+            cli/src/coding_study/application/verify_service.py
+            cli/src/coding_study/domain/sandbox.py
+            cli/src/coding_study/domain/docker_engine.py
+            cli/src/coding_study/domain/mock_configs.py
+            cli/src/coding_study/domain/service_*.py
+            cli/src/coding_study/domain/http_*.py
+            cli/src/coding_study/entrypoints/commands/dev.py
+            cli/src/coding_study/entrypoints/commands/service_test.py
+            cli/tests/adapters/test_docker_sandbox_real.py
+            cli/tests/real_service_projects.py
+            cli/tests/test_service_projects_real.py
+            cli/tests/fixtures/service_projects
+            schemas/mock.schema.json
+            .github/workflows/ci.yml
         run: |
           set -euo pipefail
-          paths=()
-          while read -r path; do
-            if [ -n "$path" ]; then paths+=("$path"); fi
-          done <<< "$WEB_PATHS"
           base=""
           if [ "$EVENT" = pull_request ]; then
             base=HEAD^1
@@ -202,17 +230,24 @@ jobs:
           elif git fetch --quiet --no-tags --depth=1 origin "$DEFAULT_BRANCH"; then
             base=FETCH_HEAD
           fi
-          if [ -z "$base" ]; then
-            echo "No base to compare with: the browser job runs."
-            web=true
-          elif [ -n "$(git diff --name-only "$base" HEAD -- "${paths[@]}")" ]; then
-            git diff --name-only "$base" HEAD -- "${paths[@]}"
-            web=true
-          else
-            echo "Nothing the page depends on changed: the browser job is skipped."
-            web=false
-          fi
-          echo "web=$web" >> "$GITHUB_OUTPUT"
+          decide() {
+            local output=$1 paths=()
+            while read -r path; do
+              if [ -n "$path" ]; then paths+=("$path"); fi
+            done <<< "$2"
+            local changed=true
+            if [ -z "$base" ]; then
+              echo "No base to compare with: the $output job runs."
+            elif [ -n "$(git diff --name-only "$base" HEAD -- "${paths[@]}")" ]; then
+              git diff --name-only "$base" HEAD -- "${paths[@]}"
+            else
+              echo "Nothing the $output job depends on changed: it is skipped."
+              changed=false
+            fi
+            echo "$output=$changed" >> "$GITHUB_OUTPUT"
+          }
+          decide web "$WEB_PATHS"
+          decide sandbox "$SANDBOX_PATHS"
 
   # Chromium only, one job, no matrix and no schedule: the web UI supports three engines
   # (docs/specs/web-ui.md#browser-support) and the tests run on each of them locally, but a failure
@@ -286,3 +321,44 @@ jobs:
 
       - name: Browser tests
         run: uv run --group browser pytest -q -rs -k chromium tests/entrypoints/web/test_browser_*.py
+
+  # A real engine, for what no fake can show: compose's behavior, the network that has no way out and
+  # the leftovers a killed owner leaves. One job, no matrix and no schedule, on a free account's
+  # minutes: it takes a few minutes and runs only when the sandbox can have changed. It is also the
+  # only Linux evidence: file ownership, the firewall and the bridge address differ from Docker
+  # Desktop's. Images come from the registry here: the mock server's before the tests that pull
+  # nothing, and the others through `cstudy start`. Installs are small and go through a volume on
+  # the engine, so nothing is worth caching. Nothing waits for this job.
+  sandbox:
+    name: Sandbox tests (real Docker, Linux)
+    needs: changes
+    if: needs.changes.outputs.sandbox == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-python: true
+
+      - name: Install the development environment
+        run: uv sync --locked
+
+      - name: Docker
+        run: |
+          docker info --format '{{.ServerVersion}}'
+          docker compose version
+
+      - name: Pull the mock server's image
+        run: docker pull "$(uv run python -c 'from coding_study.domain.sandbox import PYTHON_IMAGE; print(PYTHON_IMAGE)')"
+
+      - name: Sandbox tests
+        run: uv run pytest -q -rs -m docker

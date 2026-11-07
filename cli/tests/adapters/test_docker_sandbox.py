@@ -4,6 +4,7 @@ answers. The slow tests in `test_docker_sandbox_real.py` drive a real engine."""
 import json
 import os
 import stat
+import signal
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,7 @@ from coding_study.domain.sandbox import (
     InstallPlan,
     LeftoverStack,
     MockServerInput,
+    ReadyStack,
     OneShot,
     SandboxPaths,
     SandboxUser,
@@ -764,3 +766,144 @@ def test_a_live_owner_is_alive():
 
 def test_the_platform_is_the_given_one(tmp_path):
     assert sandbox(ScriptedDocker(), tmp_path, platform="linux").platform() == "linux"
+
+
+def running_ready() -> ReadyStack:
+    return ReadyStack(NAME, 56223, None, 10.0, 12.0)
+
+
+def test_restarting_the_app_stops_and_starts_only_the_app(tmp_path, paths):
+    docker = ScriptedDocker()
+
+    sandbox(docker, tmp_path).restart_app(plan_of(paths), running_ready(), BUDGET)
+
+    assert docker.ran("stop", "app")
+    assert docker.ran("up", "--detach", "--no-deps", "--no-recreate")
+    assert not docker.ran("start", "app")
+
+
+def test_a_restart_waits_for_the_health_path_again(tmp_path, paths):
+    answers = iter([False, True])
+
+    sandbox(ScriptedDocker(), tmp_path, healthy=lambda _port, _path: next(answers)).restart_app(
+        plan_of(paths), running_ready(), BUDGET
+    )
+
+    assert next(answers, "spent") == "spent"
+
+
+def test_a_start_that_fails_is_a_startup_failure_not_your_code(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("up", "--detach"), ProbeResult(1, "no such service"))
+
+    with pytest.raises(StackStartError, match="no such service") as raised:
+        sandbox(docker, tmp_path).start_app(plan_of(paths), running_ready(), BUDGET)
+
+    assert not raised.value.failure.is_your_code
+
+
+def test_an_app_that_runs_has_no_exit(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("ps", "-a", "--format", "json"), ProbeResult(0, PS_RUNNING))
+
+    assert sandbox(docker, tmp_path).app_exit(plan_of(paths), 0) is None
+
+
+def test_an_app_that_ended_gives_its_code_and_its_last_lines(tmp_path, paths):
+    docker = ScriptedDocker()
+    exited = '{"Service":"app","State":"exited","ExitCode":3}\n'
+    docker.answer(("ps", "-a", "--format", "json"), ProbeResult(0, exited))
+    docker.answer(("logs",), ProbeResult(0, "boom\n"))
+
+    ended = sandbox(docker, tmp_path).app_exit(plan_of(paths), 0)
+
+    assert ended is not None
+    assert ended.exit_code == 3
+    assert ended.output == "boom\n"
+
+
+def test_an_app_that_ran_out_of_memory_says_the_limit(tmp_path, paths):
+    docker = ScriptedDocker()
+    exited = '{"Service":"app","State":"exited","ExitCode":137}\n'
+    docker.answer(("ps", "-a", "--format", "json"), ProbeResult(0, exited))
+    docker.answer(("ps", "-a", "-q", "app"), ProbeResult(0, "abc123\n"))
+    docker.answer(("inspect",), ProbeResult(0, "true\n"))
+
+    ended = sandbox(docker, tmp_path).app_exit(plan_of(paths), 0)
+
+    assert ended is not None
+    assert "memory limit of 512m" in ended.output
+
+
+def test_waiting_for_an_exit_asks_again_until_it_shows(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("ps", "-a", "--format", "json"), ProbeResult(0, PS_RUNNING))
+    exited = '{"Service":"app","State":"exited","ExitCode":1}\n'
+    docker.answer(("ps", "-a", "--format", "json"), ProbeResult(0, exited))
+
+    ended = sandbox(docker, tmp_path).app_exit(plan_of(paths), 5_000)
+
+    assert ended is not None
+    assert ended.exit_code == 1
+
+
+def test_following_the_app_hears_each_line(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("ps", "-a", "-q", "app"), ProbeResult(0, "abc123\n"))
+    docker.answer(("docker", "logs", "--follow", "abc123"), ProbeResult(0, "one\ntwo\n"))
+    lines: list[str] = []
+
+    sandbox(docker, tmp_path).follow_app(plan_of(paths), lines.append)
+
+    assert lines == ["one", "two"]
+
+
+def test_the_egress_probe_runs_alone_with_no_pull(tmp_path, paths):
+    docker = ScriptedDocker()
+
+    sandbox(docker, tmp_path).probe_egress(plan_of(paths))
+
+    assert docker.ran("run", "--rm", "-T", "--no-deps", "--pull", "never", "cstudy-egress-probe")
+
+
+def test_a_failing_reset_prepare_is_your_code(tmp_path, paths):
+    docker = ScriptedDocker()
+    failed = '{"Service":"reset-prepare","State":"exited","ExitCode":2}\n'
+    docker.answer(("up",), ProbeResult(1, "dependency failed"))
+    docker.answer(("ps", "-a", "--format", "json"), ProbeResult(0, failed))
+    docker.answer(("logs",), ProbeResult(0, "no such table\n"))
+
+    with pytest.raises(StackStartError) as raised:
+        sandbox(docker, tmp_path).start(plan_of(paths), BUDGET)
+
+    assert raised.value.failure.is_your_code
+    assert "reset exited with code 2" in str(raised.value)
+    assert raised.value.output == "no such table\n"
+
+
+def test_the_copied_mock_code_is_readable_by_the_containers_user(tmp_path, paths):
+    docker = ScriptedDocker()
+    published(docker)
+    published(docker, 9000, "127.0.0.1:56224")
+    mocks = MockServerInput(("room-vendor",), "secret", "{}")
+
+    sandbox(docker, tmp_path).start(plan_of(paths, mocks=mocks), BUDGET)
+
+    copied = Path(paths.in_run("mock_server")) / "program.py"
+    assert copied.stat().st_mode & 0o444 == 0o444
+
+
+def test_a_signal_during_a_stop_is_held_off_and_restored(tmp_path, paths):
+    held: list[object] = []
+
+    class Noting(ScriptedDocker):
+        def run(self, command, timeout_s=None, on_line=None):
+            held.append(signal.getsignal(signal.SIGINT))
+            return super().run(command, timeout_s, on_line)
+
+    before = signal.getsignal(signal.SIGINT)
+
+    sandbox(Noting(), tmp_path).stop(plan_of(paths))
+
+    assert held == [signal.SIG_IGN]
+    assert signal.getsignal(signal.SIGINT) == before

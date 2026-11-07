@@ -30,6 +30,6 @@ project:
     CI: "true"
   requires:
     lock: pnpm-lock.yaml
-    sizes: {install_mb: 60, images_mb: {app: 77}, memory_mb: 300}
+    sizes: {install_mb: 27, images_mb: {app: 77}, memory_mb: 300}
 approaches:
   - {id: reference, name: Reference, role: optimal, time: "per request", space: "per request"}

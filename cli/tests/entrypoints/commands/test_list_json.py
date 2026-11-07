@@ -130,6 +130,7 @@ def test_json_describes_a_problem(environment):
         "due_on": None,
         "in_progress": [],
         "jdk": {"min": 21, "max": 26},
+        "requires": None,
     }
 
 
@@ -152,6 +153,7 @@ def test_json_describes_an_item(environment):
         "due_on": None,
         "in_progress": [],
         "jdk": None,
+        "requires": None,
     }
 
 

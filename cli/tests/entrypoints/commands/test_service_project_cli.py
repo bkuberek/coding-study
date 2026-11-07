@@ -13,7 +13,7 @@ from coding_study.domain.sandbox import (
     StartupFailure,
 )
 from coding_study.entrypoints import cli
-from coding_study.entrypoints.commands import show, start, submit
+from coding_study.entrypoints.commands import dev, list_problems, show, start, submit
 from coding_study.entrypoints.commands import test as test_command
 from coding_study.entrypoints.shared import ExitCode
 from tests.fakes import make_environment
@@ -37,6 +37,7 @@ def environment(tmp_path, monkeypatch, engine):
     monkeypatch.setattr(show, "load_catalog_environment", lambda *_: built)
     monkeypatch.setattr(test_command, "load_environment", lambda *_: built)
     monkeypatch.setattr(submit, "load_environment", lambda *_: built)
+    monkeypatch.setattr(dev, "load_environment", lambda *_: built)
     return built
 
 
@@ -242,6 +243,118 @@ def test_submit_json_says_startup_apart_from_the_duration(environment):
 
     assert document["startup_s"] == 2.5
     assert document["duration_s"] < 2.5
+
+
+def stop_with_ctrl_c() -> None:
+    raise KeyboardInterrupt
+
+
+def test_dev_prints_the_app_url_then_exits_0_on_ctrl_c(environment, engine):
+    start_it()
+    engine.on_follow = stop_with_ctrl_c
+
+    result = invoke("dev", SLUG)
+
+    assert result.exit_code == ExitCode.SUCCESS, result.stderr
+    assert "http://127.0.0.1:56223" in result.stdout
+    assert "Ctrl-C" in result.stdout
+    assert "its data is kept" in result.stdout
+
+
+def test_dev_passes_on_what_the_app_prints(environment, engine):
+    start_it()
+    engine.app_lines = ("listening on 8000",)
+    engine.on_follow = stop_with_ctrl_c
+
+    assert "listening on 8000" in invoke("dev", SLUG).stdout
+
+
+def test_dev_exits_2_when_the_app_ends(environment, engine):
+    start_it()
+    engine.app_ended = CommandOutcome(3, "boom\n")
+
+    result = invoke("dev", SLUG)
+
+    assert result.exit_code == ExitCode.USER_CODE_ERROR
+    assert "exited with code 3" in result.stdout
+
+
+def test_dev_exits_2_with_the_output_when_the_app_will_not_start(environment, engine):
+    start_it()
+    engine.start_error = StackStartError(StartupFailure.APP_EXITED, "your app exited", "boom")
+
+    result = invoke("dev", SLUG)
+
+    assert result.exit_code == ExitCode.USER_CODE_ERROR
+    assert "boom" in result.stdout
+
+
+def test_dev_exits_4_when_the_stack_fails_for_another_reason(environment, engine):
+    start_it()
+    engine.start_error = StackStartError(StartupFailure.SERVICE, "not your code")
+
+    assert invoke("dev", SLUG).exit_code == ExitCode.ENVIRONMENT_ERROR
+
+
+@pytest.mark.parametrize("given", ["room-vendor", "=outage", "room-vendor="])
+def test_dev_refuses_a_scenario_it_cannot_read(environment, given):
+    start_it()
+
+    result = invoke("dev", SLUG, "--scenario", given)
+
+    assert result.exit_code == ExitCode.USAGE_ERROR
+    assert "MOCK=SCENARIO" in result.stderr
+
+
+def test_dev_refuses_a_mock_server_the_problem_does_not_have(environment):
+    start_it()
+
+    result = invoke("dev", SLUG, "--scenario", "nobody=outage")
+
+    assert result.exit_code == ExitCode.USAGE_ERROR
+    assert "nobody" in result.stderr
+
+
+def listing(environment, monkeypatch, *arguments: str):
+    monkeypatch.setattr(list_problems, "load_catalog_environment", lambda *_: environment)
+    return invoke("list", *arguments)
+
+
+def test_list_marks_a_service_project_with_docker(environment, monkeypatch):
+    lines = listing(environment, monkeypatch).stdout.splitlines()
+
+    assert "NEEDS" in lines[0]
+    row = next(line for line in lines if SLUG in line)
+    assert row.endswith("docker")
+
+
+def test_list_needs_docker_keeps_only_service_projects(environment, monkeypatch):
+    output = listing(environment, monkeypatch, "--needs", "docker").stdout
+
+    assert SLUG in output
+    assert "two-sum" not in output
+
+
+def test_list_needs_none_leaves_out_every_service_project(environment, monkeypatch):
+    output = listing(environment, monkeypatch, "--needs", "none").stdout
+
+    assert SLUG not in output
+    assert "two-sum" in output
+    assert "NEEDS" not in output
+
+
+def test_list_asks_the_engine_nothing(environment, monkeypatch, engine):
+    listing(environment, monkeypatch)
+
+    assert engine.calls == []
+
+
+def test_list_json_says_what_a_service_project_requires(environment, monkeypatch):
+    document = json.loads(listing(environment, monkeypatch, "--json").stdout)
+
+    entry = next(found for found in document["entries"] if found["slug"] == SLUG)
+    assert entry["requires"]["docker"] is True
+    assert entry["requires"]["lock"] == "pnpm-lock.yaml"
 
 
 def test_a_bank_problem_never_asks_the_engine_anything(tmp_path, monkeypatch, engine):

@@ -1,6 +1,7 @@
-"""The browser job of the CI workflow (docs/specs/versioning.md#what-the-workflow-does): it runs
-the Playwright tests of the web UI on Chromium, only when something that can affect the page
-changed, it is light, nothing waits for it, and it is not allowed to fail."""
+"""The browser and sandbox jobs of the CI workflow (docs/specs/versioning.md#what-the-workflow-does):
+one runs the Playwright tests of the web UI on Chromium, the other the tests on a real Docker
+engine, each only when something that can affect it changed. They are light, nothing waits for
+them, and they are not allowed to fail."""
 
 import ast
 import fnmatch
@@ -21,6 +22,7 @@ WORKFLOWS = REPOSITORY_ROOT / ".github" / "workflows"
 TESTS = REPOSITORY_ROOT / "cli" / "tests"
 BROWSER_TESTS = "tests/entrypoints/web/test_browser_*.py"
 MAXIMUM_TIMEOUT_MINUTES = 15
+GATED_JOBS = ("browser", "sandbox")
 NO_COMMIT = "0" * 40
 Job = dict[str, Any]
 needs_git_and_bash = pytest.mark.skipif(
@@ -111,8 +113,91 @@ def test_the_browser_job_runs_only_when_the_web_ui_changed(browser: Job):
 
 
 def test_no_other_job_waits_for_anything(jobs: dict[str, Job]):
-    waiting = [name for name, job in jobs.items() if name != "browser" and "needs" in job]
+    waiting = [name for name, job in jobs.items() if name not in GATED_JOBS and "needs" in job]
     assert waiting == []
+
+
+@pytest.fixture(scope="module")
+def sandbox(jobs: dict[str, Job]) -> Job:
+    assert "sandbox" in jobs, f"ci.yml has only the jobs {sorted(jobs)}"
+    return jobs["sandbox"]
+
+
+def test_the_sandbox_job_is_light_enough_for_a_free_account(sandbox: Job):
+    assert sandbox["timeout-minutes"] <= MAXIMUM_TIMEOUT_MINUTES
+
+
+def test_the_sandbox_job_is_one_job_without_a_matrix(sandbox: Job):
+    assert "strategy" not in sandbox
+
+
+def test_the_sandbox_job_runs_on_linux(sandbox: Job):
+    assert sandbox["runs-on"] == "ubuntu-latest"
+
+
+def test_the_sandbox_job_may_not_fail_without_failing_the_run(sandbox: Job):
+    allowed_to_fail = [sandbox, *sandbox["steps"]]
+    assert not any(part.get("continue-on-error") for part in allowed_to_fail)
+
+
+def test_the_sandbox_job_runs_only_when_the_sandbox_changed(sandbox: Job):
+    assert (sandbox["needs"], sandbox["if"]) == (
+        "changes",
+        "needs.changes.outputs.sandbox == 'true'",
+    )
+
+
+def test_the_sandbox_job_runs_every_test_marked_docker_and_says_why_one_skipped(sandbox: Job):
+    assert any("pytest -q -rs -m docker" in command for command in _commands(sandbox))
+
+
+def test_the_sandbox_job_pulls_the_image_the_tests_will_not(sandbox: Job):
+    assert any("docker pull" in command for command in _commands(sandbox))
+
+
+def _sandbox_paths(changes: Job) -> list[str]:
+    return _diff_step(changes)["env"]["SANDBOX_PATHS"].split()
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "cli/src/coding_study/adapters/docker_sandbox.py",
+        "cli/src/coding_study/adapters/stack_guard.py",
+        "cli/src/coding_study/adapters/mock_server/program.py",
+        "cli/src/coding_study/application/service_grading.py",
+        "cli/src/coding_study/domain/sandbox.py",
+        "cli/src/coding_study/entrypoints/commands/dev.py",
+        "cli/tests/fixtures/service_projects/naive/fixture-rooms-python/src/server.py",
+        "schemas/mock.schema.json",
+        ".github/workflows/ci.yml",
+    ],
+)
+def test_what_can_affect_the_sandbox_runs_the_job(changes: Job, path: str):
+    assert _covers(_sandbox_paths(changes), path)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "docs/specs/service-projects.md",
+        "problems/0001-two-sum/problem.md",
+        "tools/web-ui/src/main.ts",
+        "cli/src/coding_study/adapters/languages/python/runner.py",
+    ],
+)
+def test_what_cannot_affect_the_sandbox_does_not_run_the_job(changes: Job, path: str):
+    assert not _covers(_sandbox_paths(changes), path)
+
+
+def test_every_real_docker_test_file_is_on_the_sandbox_paths(changes: Job):
+    marked = [
+        path.relative_to(REPOSITORY_ROOT).as_posix()
+        for path in TESTS.rglob("test_*.py")
+        if path != Path(__file__) and "pytest.mark.docker" in path.read_text(encoding="utf-8")
+    ]
+    assert marked
+    assert all(_covers(_sandbox_paths(changes), path) for path in marked)
 
 
 def test_ci_runs_on_pushes_and_pull_requests_only():
@@ -251,8 +336,9 @@ class Origin:
         return clone
 
 
-def _decision(changes: Job, clone: Path, event: str, before: str) -> str:
-    """What the changes step writes for the run in `clone`."""
+def _decision(changes: Job, clone: Path, event: str, before: str, decided: int = 0) -> str:
+    """What the changes step writes for the run in `clone`: its line for the web job first, then
+    with `decided` 1 its line for the sandbox job."""
     output = clone.parent / f"{clone.name}.output"
     environment = {
         "PATH": os.environ["PATH"],
@@ -262,6 +348,7 @@ def _decision(changes: Job, clone: Path, event: str, before: str) -> str:
         "DEFAULT_BRANCH": "main",
         "GITHUB_OUTPUT": str(output),
         "WEB_PATHS": _diff_step(changes)["env"]["WEB_PATHS"],
+        "SANDBOX_PATHS": _diff_step(changes)["env"]["SANDBOX_PATHS"],
     }
     subprocess.run(
         ["bash", "-e", "-c", _diff_step(changes)["run"]],
@@ -270,7 +357,7 @@ def _decision(changes: Job, clone: Path, event: str, before: str) -> str:
         check=True,
         capture_output=True,
     )
-    return output.read_text(encoding="utf-8").strip()
+    return output.read_text(encoding="utf-8").splitlines()[decided]
 
 
 @pytest.fixture
@@ -353,3 +440,22 @@ def test_a_pull_request_that_changed_the_page_runs_the_job(changes: Job, origin:
     _merged_pull_request(origin, ".github/workflows/ci.yml")
     clone = origin.clone("merged", depth=2)
     assert _decision(changes, clone, "pull_request", NO_COMMIT) == "web=true"
+
+
+@needs_git_and_bash
+def test_a_push_of_docs_only_does_not_run_the_sandbox_job(changes: Job, origin: Origin):
+    before = origin.commit("docs/guide.md")
+    origin.commit("problems/0001/problem.md")
+    clone = origin.clone("main", depth=2)
+    assert _decision(changes, clone, "push", before, decided=1) == "sandbox=false"
+
+
+@needs_git_and_bash
+def test_a_push_that_changed_the_sandbox_runs_its_job_and_not_the_browsers(
+    changes: Job, origin: Origin
+):
+    before = origin.commit("docs/guide.md")
+    origin.commit("cli/src/coding_study/domain/sandbox.py")
+    clone = origin.clone("main", depth=2)
+    assert _decision(changes, clone, "push", before) == "web=false"
+    assert (clone.parent / f"{clone.name}.output").read_text().splitlines()[1] == "sandbox=true"

@@ -15,11 +15,13 @@ from coding_study.domain.problem import (
     ContentStatus,
     Difficulty,
     Language,
+    ProblemMeta,
     ProblemSummary,
     Track,
 )
 from coding_study.domain.problem_sets import ProblemSet
 from coding_study.domain.scheduling import ProblemProgress, ProblemStatus
+from coding_study.domain.service_project import NEEDS_NOTHING, need_markers
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,11 +44,14 @@ class ProblemFilter:
     """`--set`: only its entries, which the callers then put in its order."""
     search: str | None = None
     """`--search`: a text the slug or the title holds, in any case."""
+    needs: str | None = None
+    """`--needs`: `none`, or `docker` or a service a problem needs."""
 
     @property
     def lists_items(self) -> bool:
-        """Whether the kind leaves room for items, which `list_items` filters further."""
-        return self.kind in (None, EntryKind.ITEM)
+        """Whether the kind leaves room for items, which `list_items` filters further. An item
+        needs nothing."""
+        return self.kind in (None, EntryKind.ITEM) and self.needs in (None, NEEDS_NOTHING)
 
     def matches(self, summary: ProblemSummary, status: ProblemStatus) -> bool:
         meta = summary.meta
@@ -61,8 +66,15 @@ class ProblemFilter:
             self.labels.matches(meta.labels),
             self.holds(meta.slug),
             self.finds(meta.slug, meta.title),
+            self._needed(meta),
         )
         return all(checks)
+
+    def _needed(self, meta: ProblemMeta) -> bool:
+        markers = need_markers(meta)
+        if self.needs is None:
+            return True
+        return not markers if self.needs == NEEDS_NOTHING else self.needs in markers
 
     def holds(self, slug: str) -> bool:
         return self.in_set is None or self.in_set.holds(slug)
