@@ -84,6 +84,7 @@ function queryOf(filters: Filters, keys: readonly FilterKey[]): string {
   return text ? `?${text}` : "";
 }
 
+/** The pick; a resume links to its attempt, and the others in progress follow it, to pick another. */
 function nextPick(pick: NextPick, filters: Filters): Node[] {
   if (pick.pick === null) return [h("p", { class: "next-line" }, pick.message)];
   return [
@@ -91,7 +92,7 @@ function nextPick(pick: NextPick, filters: Filters): Node[] {
       "p",
       { class: "next-line" },
       h("span", { class: `pick pick-${pick.pick}` }, pick.pick),
-      h("a", { href: problemHash(pick.slug), class: "next-slug" }, pick.slug),
+      h("a", { href: pick.attempt_id === undefined ? problemHash(pick.slug) : attemptHash(pick.attempt_id), class: "next-slug" }, pick.slug),
       h("span", { class: "quiet" }, `(${pick.difficulty} · ${pick.group})`),
       h("span", { class: "next-reason" }, pick.reason),
     ),
@@ -102,6 +103,16 @@ function nextPick(pick: NextPick, filters: Filters): Node[] {
       command(startCommand(pick.slug, pick.language)),
       h("span", { class: "quiet" }, ` · same as ${nextCommand(filters)}`),
     ),
+    ...(pick.also_open?.length
+      ? [
+          h(
+            "p",
+            { class: "next-also" },
+            h("span", { class: "quiet" }, "or pick up "),
+            ...pick.also_open.map((other) => h("a", { href: attemptHash(other.attempt_id), class: "resume-link" }, `↻ ${other.slug}${other.language ? ` (${other.language})` : ""}`)),
+          ),
+        ]
+      : []),
   ];
 }
 

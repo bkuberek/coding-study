@@ -85,11 +85,11 @@ export interface ProblemList {
   readonly selected_jdk: SelectedJdk | null;
 }
 
-/** `cstudy next --json`. */
+/** `cstudy next --json`; a resume also names its attempt and the other attempts in progress. */
 export type NextPick =
   | { readonly pick: null; readonly message: string }
   | {
-      readonly pick: "review" | "new";
+      readonly pick: "resume" | "review" | "new";
       readonly slug: string;
       readonly title: string;
       readonly kind: string;
@@ -98,6 +98,8 @@ export type NextPick =
       readonly reason: string;
       readonly language: string | null;
       readonly start: string;
+      readonly attempt_id?: number;
+      readonly also_open?: readonly { readonly attempt_id: number; readonly slug: string; readonly language: string | null }[];
     };
 
 export interface Approach {
