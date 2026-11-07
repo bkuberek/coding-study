@@ -2,6 +2,31 @@
 
 <!-- version list -->
 
+## v0.20.0 (2026-11-07)
+
+### Documentation
+
+- Add the backend depth problems to the catalog, counts and roadmap
+  ([`21d5827`](https://github.com/bkuberek/coding-study/commit/21d58278df767b69f0d3a432a4bc4454f708a801))
+
+### Features
+
+- **catalog**: Add Idempotent Document Consumer (TypeScript)
+  ([`a017ca2`](https://github.com/bkuberek/coding-study/commit/a017ca2446d71b6a0666f39c0e48713f7e4c1373))
+
+- **catalog**: Add Loan Extraction Review (TypeScript)
+  ([`a88f3b3`](https://github.com/bkuberek/coding-study/commit/a88f3b3bb55be1ac097968b153289236150f9b72))
+
+- **catalog**: Add Supplier Records with Optimistic Locking (TypeScript)
+  ([`d6caedc`](https://github.com/bkuberek/coding-study/commit/d6caedcec2f01045462fa83beb20b0e0f816866d))
+
+- **catalog**: Add Transactional Outbox (TypeScript)
+  ([`ba86d37`](https://github.com/bkuberek/coding-study/commit/ba86d37c05c5b29b0fff2fdf2b47e544d447401a))
+
+- **catalog**: Add Vendor Retry Client (TypeScript)
+  ([`6e1f683`](https://github.com/bkuberek/coding-study/commit/6e1f6836b826445c76d2a0d35756eb8816996e7c))
+
+
 ## v0.19.0 (2026-11-07)
 
 ### Documentation
