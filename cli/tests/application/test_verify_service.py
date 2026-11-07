@@ -112,6 +112,15 @@ def test_it_installs_for_the_starter_and_for_the_reference(environment, engine):
     assert len(engine.called("install")) == 2
 
 
+def test_it_pulls_what_is_missing_before_any_stack(environment, engine):
+    engine.every_image_present = False
+
+    verified(environment)
+
+    names = [name for name, _ in engine.calls]
+    assert names.index("pull") < names.index("install") < names.index("start")
+
+
 def test_every_stack_comes_down(environment, engine):
     verified(environment)
 

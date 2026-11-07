@@ -304,15 +304,22 @@ def run_service_tests(
         )
 
 
-def prepare_service_run(environment: Environment, problem: Problem, notify: ProgressNotice) -> None:
-    """What a stack needs before it starts: the engine up, no leftovers of this workspace, its
-    images here and its dependencies installed for the lock file as it stands."""
+def prepare_service_run(
+    environment: Environment, problem: Problem, notify: ProgressNotice
+) -> None:
+    """What a stack needs before it starts: the engine and its images, and the dependencies
+    installed for the lock file as it stands."""
+    prepare_engine(environment, problem, notify)
+    if needs_install(environment, problem):
+        install_dependencies(environment, problem, notify)
+
+
+def prepare_engine(environment: Environment, problem: Problem, notify: ProgressNotice) -> None:
+    """The engine up, no leftovers of this workspace, and the problem's images here."""
     engine = environment.sandbox
     ensure_engine(engine, notify)
     sweep_leftovers(engine, workspace_id(environment), notify)
     pull_images(engine, images(service_project(problem)), notify)
-    if needs_install(environment, problem):
-        install_dependencies(environment, problem, notify)
 
 
 def _tests_in(

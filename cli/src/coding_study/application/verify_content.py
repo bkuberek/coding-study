@@ -49,6 +49,7 @@ from coding_study.domain.comparators import Comparator
 from coding_study.domain.errors import (
     ContentError,
     ContentIssue,
+    RunnerStartError,
     SandboxError,
     UnknownProblemError,
 )
@@ -455,7 +456,7 @@ class _DynamicChecks:
                 verify_service_project(self._environment, self._problem, language, self._notify)
                 for language in split.runnable
             ]
-        except SandboxError as error:
+        except (SandboxError, ContentError, RunnerStartError) as error:
             return replace(verification, dynamic_errors=(*self._errors, str(error)))
         problems = tuple(
             f"{D11}: {problem}" for project in verified for problem in project.d11_problems

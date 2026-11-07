@@ -17,7 +17,7 @@ from coding_study.application.ports import ContainerCommand, ProgressNotice
 from coding_study.application.reference_runs import ApproachResult, LanguageResult, shown
 from coding_study.application.sandbox import running_stack
 from coding_study.application.service_grading import ServiceGrading, grade_on_stack
-from coding_study.application.service_lifecycle import install_in_folder
+from coding_study.application.service_lifecycle import install_in_folder, prepare_engine
 from coding_study.application.service_stacks import (
     graded_stack_plan,
     practice_stack_plan,
@@ -87,6 +87,7 @@ class _ServiceChecks:
         self._service = service_project(problem)
 
     def verify(self) -> ServiceVerification:
+        prepare_engine(self._environment, self._problem, self._notify)
         approach_id = self._problem.meta.approaches[0].id
         reference = self._reference_folder(approach_id)
         starter = list(self._starter())

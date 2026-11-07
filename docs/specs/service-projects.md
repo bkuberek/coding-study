@@ -139,7 +139,7 @@ One short message per platform, with a link to Docker's official install page, s
 
 | Row | Status |
 |-----|--------|
-| `docker` | `ok` with versions when running; `WARN` with the reason and the fix in any other state, never `FAIL`, as the [Go and Rust rows](cli.md#cstudy-doctor) do, since Docker is optional for cstudy overall. `cstudy doctor` exits 0 either way. Any engine that provides a running daemon and compose v2 works; Docker Desktop is verified at minimum, and no other is claimed until tested |
+| `docker` | Engine 25 or newer, since the healthchecks use `start_interval`. `ok` with versions when running; `WARN` with the reason and the fix in any other state, never `FAIL`, as the [Go and Rust rows](cli.md#cstudy-doctor) do, since Docker is optional for cstudy overall. `cstudy doctor` exits 0 either way. Any engine that provides a running daemon and compose v2 works; Docker Desktop is verified at minimum, and no other is claimed until tested |
 | `docker leftovers` | [Above](#leftovers) |
 
 Plain `cstudy doctor` only asks, with `docker info` and `docker compose version`; it starts nothing. A stopped engine shows `WARN  docker installed, not running    fix: cstudy doctor --fix`.
