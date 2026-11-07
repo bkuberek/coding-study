@@ -6,6 +6,7 @@ import yaml
 
 from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.domain.errors import ContentError
+from coding_study.domain.project import ProjectFiles
 from tests.service_problems import (
     CONFIG,
     SLUG,
@@ -28,8 +29,10 @@ def problem_directory(root):
     return root / "problems" / f"0901-{SLUG}"
 
 
-def loaded(root):
-    return FsProblemRepository(root).load(SLUG).project_files
+def loaded(root) -> ProjectFiles:
+    files = FsProblemRepository(root).load(SLUG).project_files
+    assert files is not None
+    return files
 
 
 def test_a_mock_config_comes_with_the_problem(root):
@@ -60,7 +63,7 @@ def test_a_config_that_leaves_the_problem_is_a_content_error(tmp_path):
 
 
 def with_body(root, body: bytes | None):
-    config = {
+    config: dict[str, object] = {
         "routes": [
             {
                 "id": "rooms",

@@ -3,8 +3,8 @@ answers. The slow tests in `test_docker_sandbox_real.py` drive a real engine."""
 
 import json
 import os
-import stat
 import signal
+import stat
 from pathlib import Path
 
 import pytest
@@ -18,8 +18,8 @@ from coding_study.domain.sandbox import (
     InstallPlan,
     LeftoverStack,
     MockServerInput,
-    ReadyStack,
     OneShot,
+    ReadyStack,
     SandboxPaths,
     SandboxUser,
     StackIdentity,

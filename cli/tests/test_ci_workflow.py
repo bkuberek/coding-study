@@ -1,7 +1,7 @@
-"""The browser and sandbox jobs of the CI workflow (docs/specs/versioning.md#what-the-workflow-does):
-one runs the Playwright tests of the web UI on Chromium, the other the tests on a real Docker
-engine, each only when something that can affect it changed. They are light, nothing waits for
-them, and they are not allowed to fail."""
+"""The browser and sandbox jobs of the CI workflow (docs/specs/versioning.md): one runs the
+Playwright tests of the web UI on Chromium, the other the tests on a real Docker engine, each only
+when something that can affect it changed. They are light, nothing waits for them, and they are not
+allowed to fail."""
 
 import ast
 import fnmatch

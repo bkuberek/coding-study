@@ -1,5 +1,5 @@
-"""A service project from `cstudy start` to the last `cstudy submit`, in TypeScript and in Python, on
-a real Docker engine. Run with `uv run pytest -q -m docker`. The waits are generous for a busy
+"""A service project from `cstudy start` to the last `cstudy submit`, in TypeScript and in Python,
+on a real Docker engine. Run with `uv run pytest -q -m docker`. The waits are generous for a busy
 machine: what these tests assert is what happened, not how fast."""
 
 from collections.abc import Generator
