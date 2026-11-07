@@ -186,15 +186,15 @@ The pilots are written with the next project problems.
 
 ## Phase 12: Service projects
 
-**Status.** Planned, not started. It runs after or around the releases of Phase 11, unless the owner reorders it.
+**Status.** In progress: the tooling is built through P6, on macOS, and no problem uses it yet. It runs after or around the releases of Phase 11, unless the owner reorders it.
 
 **Scope.** [ADR 0019](decisions/0019-service-projects.md) and [its spec](specs/service-projects.md): project problems that always run in a Docker sandbox, with their own dependencies, standard lifecycle commands, one Python mock server, optional backing services, grading over HTTP, and a list of what each problem depends on. Existing problems stay native and need no Docker. One step per ADR phase, each with its docs and a website message at release: P1 the spike; P2 the environment allowlist, for all problems; P3 the sandbox runtime; P4 lifecycle commands, TypeScript and Python templates, install and lock rules; P5 the mock server and `cstudy dev`; P6 the HTTP grader with `verify` and CI; P7 the first problem in TypeScript; P8 its Python version; P9 code intelligence in the container and the Web UI; P10 data-driven problems; P11 mock server extensions and multi-step cases, with project-size security and AI problems; P12 Kotlin and Java; P13 Go; P14 Rust (maybe, decided when reached).
 
 **Exit criteria.** A step ends when its [checks](specs/service-projects.md#checks) pass and, for a problem, `cstudy verify <slug> --require-ready` exits 0 and a manual run through all its levels works, from `cstudy start` to `cstudy done`.
 
-- [ ] P1: the spike on macOS and Linux; if it fails, the owner decides before anything is built.
+- [x] P1: the spike, passed with changes on macOS; [Linux stays unproven](specs/service-projects.md#unproven-on-linux) until the `sandbox` CI job runs.
 - [x] P2: the environment allowlist, for every problem ([Process environment](specs/runners.md#process-environment)).
-- [ ] P3 to P6: tooling.
+- [x] P3 to P6: tooling: the sandbox, the lifecycle commands, the mock server, `cstudy dev` and the HTTP grader, with `verify` and a CI job on a real engine. Planned with P9: the other flags of `cstudy dev`, and `cstudy test --events`.
 - [ ] P7: the first problem in TypeScript.
 - [ ] P8: the first problem in Python.
 - [ ] P9: code intelligence and Web UI.

@@ -1,6 +1,6 @@
-# Spec: Service projects (planned)
+# Spec: Service projects
 
-**Status: planned. Only the mock server's [program](#the-program) and its schema, and the [HTTP grader's core](#what-is-built) with the HTTP case in `schemas/tests.schema.json`, are built, and no stack runs them yet; everything else here is unbuilt.** A service project is a [project problem](problem-format.md#project-problems) where you build a small running service: `cstudy` runs your app in a Docker sandbox, with mock servers for third-party APIs and, where the problem declares them, backing services, and judges it by what it answers over HTTP. Decision record: [ADR 0019](../decisions/0019-service-projects.md), which tags each decision by who made it. Items marked R*n* there are recommendations confirmed when their phase starts. Phases P*n* are the ADR's. Existing problems, the bank projects included, stay native, need no Docker and do not change.
+**Status: built through P6: the sandbox, the lifecycle commands, the mock server, the HTTP grader and `cstudy dev`, so a service project works from `cstudy start` to `cstudy submit`, on macOS with Docker Desktop. No problem in the catalog uses it yet (P7). What is still planned says so where it stands: backing services (P10), code intelligence and the Web UI (P9), and parallel and multi-step cases (P10, P11).** A service project is a [project problem](problem-format.md#project-problems) where you build a small running service: `cstudy` runs your app in a Docker sandbox, with mock servers for third-party APIs and, where the problem declares them, backing services, and judges it by what it answers over HTTP. Decision record: [ADR 0019](../decisions/0019-service-projects.md), which tags each decision by who made it. Items marked R*n* there are recommendations confirmed when their phase starts. Phases P*n* are the ADR's. Existing problems, the bank projects included, stay native, need no Docker and do not change.
 
 ## Names
 
@@ -14,7 +14,9 @@ A service project is `kind: project` with `project.grading: http`. The name is n
 
 ## Sandbox
 
-Service projects always run in Docker, as their sandbox (owner, O15). Per-project dependencies mean running third-party code and install scripts, and security catalog starters contain deliberate flaws, so an unfixed SSRF starter could otherwise reach your LAN or a cloud metadata endpoint. Docker gives a boundary at the project folder: nothing above it is visible. Everything in this section is verified by the [P1 spike](../decisions/0019-service-projects.md#the-p1-spike) before anything is built.
+Service projects always run in Docker, as their sandbox (owner, O15). Per-project dependencies mean running third-party code and install scripts, and security catalog starters contain deliberate flaws, so an unfixed SSRF starter could otherwise reach your LAN or a cloud metadata endpoint. Docker gives a boundary at the project folder: nothing above it is visible. The [P1 spike](../decisions/0019-service-projects.md#the-p1-spike) measured this section on macOS with Docker Desktop, and what it could not measure on Linux stays [unproven](#unproven-on-linux).
+
+It runs on your own Docker, which you use for other things. cstudy never changes, requires changing, or recommends changing an engine setting; its limits are per container, on its own stacks only; and it never stops the engine (owner, O16).
 
 ### What a stack holds
 
@@ -36,8 +38,8 @@ cstudy generates the compose file, `.cs/runs/<run>/stack.yaml`, and merges the p
 | Toolchain links | The links and relative paths of [existing project folders](installation-and-workspaces.md#project-folders) (`.venv` to the shared venv, `go.work`, `.cargo/config.toml`, the workspace's `node_modules`) do not apply: the image is the toolchain, and dependencies are installed into the folder |
 | Docker socket | Never mounted |
 | Data | `CSTUDY_DATA_DIR` is `/data`: a persistent named volume in `dev`, a fresh one per `test` or `graded` stack. A SQLite problem keeps its file here |
-| Dependencies | `node_modules` and `.venv` stay in the project folder on the bind mount at first. That is slower on macOS, and a volume is faster but invisible to your editor. P1 measures the trade-off (R30) |
-| Install cache | A named volume per language for the pnpm store or uv cache, mounted only in `install` containers. Whether to share it across projects, which saves disk but lets one install poison another's cache, is a P1 question |
+| Dependencies | `node_modules` and `.venv` stay in the project folder on the bind mount, so your editor can read them. P1 measured it about as fast as a volume for an install (R30) |
+| Install cache | A named volume per project for the pnpm store or uv cache, mounted only in `install` containers, in a compose project of its own, `cstudy-i-<slug>-<workspace digest>`. It outlives each install, and sharing it across projects, which would save about 1 s, is not done, since one install could poison another's cache |
 
 ### Networks
 
@@ -45,29 +47,30 @@ cstudy generates the compose file, `.cs/runs/<run>/stack.yaml`, and merges the p
 |---------|-----|--------|
 | `sandbox` (`internal: true`) | Everything in the stack | None: `bootstrap`, `run`, `test`, `reset` and `grade_setup` cannot reach the internet, your LAN or a metadata address |
 | `edge` (an ordinary bridge) | `cstudy-forward` only | Holds no user code |
-| The default bridge | `install` containers and `cstudy dev --exec --network` only, with no mock server or service attached | Yes |
+| An ordinary bridge, `egress` | `install` containers (and `cstudy dev --exec --network`, planned) only, with no mock server or service attached | Yes, and P1 measured that it reaches your LAN and this machine's loopback services too |
 
-**Known catch, for the spike.** A Docker `internal: true` network probably cannot publish ports (unverified). So the likely design is the forwarder above, a small TCP relay joined to both networks. It publishes on `127.0.0.1` with a dynamic host port, read back with `docker compose port`:
+**The catch.** A service only on an `internal: true` network publishes nothing, and `docker compose port` prints `:0` and exits 0 (measured), which `cstudy` treats as a failure. So the forwarder above, a small TCP relay, joins both networks. It publishes on `127.0.0.1` with a dynamic host port, read back with `docker compose port`:
 
 | Published | When | Why |
 |-----------|------|-----|
 | Your app's port | Every stack | The grader, your browser and `curl` |
 | The mock control port | Every stack, token-protected | The grader and the Web UI only. It is the one exception to "only the app's port is published". A grader inside the network, the alternative in R24, would remove it |
-| A debug port | `cstudy dev --debug` only, never in a graded stack | Your [debugger](#your-own-ide) |
+| A debug port | `cstudy dev --debug` only (planned), never in a graded stack | Your [debugger](#your-own-ide) |
 
 Mock servers and services have stable names and publish nothing. Nothing is ever published beyond `127.0.0.1`. Inside the containers your app listens on all interfaces, because the forwarder is another container.
 
 ### Hardening
 
-Recommended, to confirm (R23). On every container cstudy generates, the app first:
+On every container cstudy generates, the app first (R23):
 
 | Setting | Value |
 |---------|-------|
-| User | Non-root: your UID and GID on Linux, so files in the project folder stay yours; on macOS, P1 confirms how Docker Desktop maps ownership |
+| User | Non-root: your UID and GID, so files in the project folder stay yours. A one-line `/etc/passwd`, read-only, names them. A one-off with `CAP_CHOWN` alone hands a fresh named volume to you |
 | Capabilities | `cap_drop: [ALL]` |
 | Privileges | `security_opt: [no-new-privileges:true]` |
 | Filesystem | `read_only: true`, with tmpfs for `/tmp` and the home directory |
-| Limits | `mem_limit` and `pids_limit`, which also protect against runaway memory on small machines. P1 sets the defaults, and a problem may declare `app.mem_limit` |
+| Limits | `mem_limit` and `pids_limit`, per container: app 512m and 256 pids, a helper 64m and 32, an install 1g and 512. A problem may declare `app.mem_limit` |
+| Stopping | `init: true` and a 2 s grace, or each `down` costs 10 s with Node as PID 1 |
 | Environment | [Explicit only](#environment). Nothing from your machine leaks in, especially real API keys |
 
 A problem-owned service gets `no-new-privileges` and the limits, since an engine such as Postgres needs its own user and writable paths.
@@ -76,22 +79,23 @@ A problem-owned service gets `no-new-privileges` and the limits, since an engine
 
 - The project folder stays writable by the code. It holds no secrets, and it is versioned practice work.
 - On Linux, access to Docker is effectively root. cstudy cannot reduce it, and the install message says so.
-- `install` has the internet, so an install script can send out what it can read: the project folder, nothing above it.
+- `install` has the internet, so whatever it runs can send out what it can read, the project folder and nothing above it, and it can reach your LAN and a service bound to `127.0.0.1` on your machine. Install scripts are off, so that is the package manager and nothing a package brings; a package that needs a build fails its install. `cstudy` says this at every install.
 - This protects your machine from your code. It does not stop you cheating yourself: you can read the problem's files from your own shell.
 
 ### Lifecycle
 
 ```text
-docker compose -p cstudy-g-<run id> -f .cs/runs/<run>/stack.yaml [-f <problem>/services/compose.yaml] up --wait
-docker compose -p cstudy-g-<run id> port cstudy-forward 8000
-docker compose -p cstudy-g-<run id> down -v
+docker compose -p cstudy-g-<owner pid>-<run id> -f .cs/runs/<stack>/stack.yaml up --wait --wait-timeout <s> --pull never
+docker compose -p cstudy-g-<owner pid>-<run id> port cstudy-forward 8000
+docker compose -p cstudy-g-<owner pid>-<run id> down -v
 ```
 
 | Item | Rule |
 |------|------|
 | Dev | Project name `cstudy-d-<slug>-<workspace digest>`, a persistent named volume, `down` without `-v` at the end |
-| Graded and test | A fresh project name per run, no reused volume, `down -v` at the end. Dev and graded stacks stay separate, so they cannot collide |
-| A time limit | `up --wait` within 120 s, else [Service failed](#failure-reporting) |
+| Graded and test | A fresh project name per run, no reused volume, `down -v` at the end. The name holds the owner's process id, since a network or a volume carries no owner label. Dev and graded stacks stay separate, so they cannot collide |
+| Standard input | Every compose call runs at end of file, and never with `-y`: a label that changes on a volume makes compose ask whether to recreate it, which hangs on a pipe and loses the data under `-y` |
+| [Two clocks](#two-clocks) | `up --wait` within the startup budget, 300 s unless `project.timeouts_s.startup` says, else [Service failed](#failure-reporting). It says it is the budget, and that nothing about your code changes |
 
 ### Leftovers
 
@@ -99,15 +103,15 @@ Containers outlive a crashed `cstudy`, so the orphan guard and group-kill preced
 
 | Rule | Detail |
 |------|--------|
-| Labels | Everything cstudy starts carries `cstudy.kind` (`dev`, `test` or `graded`), `cstudy.workspace`, `cstudy.slug` and `cstudy.owner_pid`. Whether an override labels networks and volumes as well as containers is a spike question |
-| Sweep | The next `cstudy start`, `test`, `submit`, `dev` or `serve` of the workspace removes `graded` and `test` stacks whose owner is gone (`is_alive` in `process_liveness.py`), stops `dev` stacks whose owner is gone and keeps their volumes |
+| Labels | Everything cstudy starts carries `cstudy.kind` (`dev`, `test`, `graded` or `install`), `cstudy.workspace` and `cstudy.slug`, and its containers `cstudy.owner_pid` too |
+| Guard | A process of its own holds a pipe `cstudy` alone writes to, and when the pipe ends, however `cstudy` ended, runs `docker compose -p <stack> down`, with `-v` for `test` and `graded`, and removes the run's folder. P1 measured 0.5 s from SIGKILL to nothing left |
+| Sweep | For a guard that died too, the next `cstudy start`, `test`, `submit` or `dev` of the workspace removes `graded` and `test` stacks whose owner is gone (`is_alive` in `process_liveness.py`), stops `dev` stacks whose owner is gone and keeps their volumes. It groups containers by compose project, then takes strays by label |
 | Doctor | A `docker leftovers` row `WARN`s with a count and `fix: cstudy doctor --fix`, which removes by label only, never another container or volume |
 | Restart | S21 refuses a `restart` policy, so a reboot brings nothing back |
-| A gap | Between a crash and the next command, leftovers keep their memory. The spike decides whether the guard also runs `down` |
 
 ### Docker states
 
-Every service project needs Docker. If Docker is installed but not running, cstudy starts it. If it is not installed, cstudy asks you to install it and gives instructions. cstudy does not install Docker itself. The details are R22 in the ADR, confirmed at implementation.
+Every service project needs Docker. If Docker is installed but not running, cstudy starts it. If it is not installed, cstudy asks you to install it and gives instructions. cstudy does not install Docker itself. The check is `docker info`, which starts nothing and wakes no idle VM, and never `docker desktop status`, which P1 saw say `stopped` while the engine answered. An idle VM wakes by itself when a stack starts, in about 1.4 s, so `docker info` answering means no start is needed.
 
 | State | How it is seen | What happens |
 |-------|----------------|--------------|
@@ -119,9 +123,9 @@ Every service project needs Docker. If Docker is installed but not running, cstu
 
 **When cstudy starts the engine.** Only at the moment it is needed: when you start or run a service project (`cstudy start`, `test`, `submit`, `dev`, and the Web UI's equivalents), and from `cstudy doctor --fix`. Never from `cstudy list`, `cstudy show`, the Problems or Problem view, or plain `cstudy doctor`, because starting Docker's VM costs real memory on your machine. It prints `starting Docker ...` as an `output` event, shows progress, waits up to 120 s for the engine, then reports clearly if it did not come up.
 
-| Platform | Mechanism (to verify at implementation) |
+| Platform | Mechanism (starting from fully quit is not measured) |
 |----------|------------------------------------------|
-| macOS | `open -a Docker`, or Docker Desktop's `docker desktop start` where available |
+| macOS | Docker Desktop's `docker desktop start --detach`, then `open -a Docker` |
 | Linux, Docker Desktop | `systemctl --user start docker-desktop` |
 | Linux, system engine | Needs root. cstudy never runs `sudo` for you: it prints the command and exits 4 |
 
@@ -138,21 +142,21 @@ One short message per platform, with a link to Docker's official install page, s
 | `docker` | `ok` with versions when running; `WARN` with the reason and the fix in any other state, never `FAIL`, as the [Go and Rust rows](cli.md#cstudy-doctor) do, since Docker is optional for cstudy overall. `cstudy doctor` exits 0 either way. Any engine that provides a running daemon and compose v2 works; Docker Desktop is verified at minimum, and no other is claimed until tested |
 | `docker leftovers` | [Above](#leftovers) |
 
-Plain `cstudy doctor` only asks; it starts nothing. A stopped engine shows `WARN  docker installed, not running    fix: cstudy doctor --fix`.
+Plain `cstudy doctor` only asks, with `docker info` and `docker compose version`; it starts nothing. A stopped engine shows `WARN  docker installed, not running    fix: cstudy doctor --fix`.
 
 ### Images
 
 | Image | Pinned where | Note |
 |-------|--------------|------|
-| Toolchain, per language | `project.image`, from the template | By digest of the multi-architecture index, so macOS on arm64 and Linux on amd64 share one pin. Official images may not hold the package manager (a Python image has no uv), which P1 settles |
-| Mock server and forwarder | cstudy's own code | One pinned Python image; standard library only, so nothing is built |
+| Toolchain, per language | `project.image`, from the template | By digest of the multi-architecture index, so macOS on arm64 and Linux on amd64 share one pin. `node:24-slim` with `corepack pnpm`, and the uv image for Python, which holds uv and Python 3.13 |
+| Mock server and forwarder | cstudy's own code | One pinned Python image; standard library only, so nothing is built. The code is always copied under `.cs/runs/<stack>/`: Docker Desktop refuses a Homebrew prefix, and silently mounts its own VM's folder for `/usr/local/bin` |
 | Backing services | The problem's compose file | S21 refuses an image without a digest |
 
 All are pulled on demand at problem start with visible progress, the same as dependency installs, and they run with no internet afterwards, which fits [NFR-6](../prd.md#non-functional-requirements). The problem records image sizes in `requires.sizes`, and the download size shows in the requirements list before pulling.
 
 ### Resources and CI
 
-One stack per attempt, stopped when the run or the attempt page ends, with `mem_limit` on every container and a total limit that the spike sets. A dev stack and a graded stack can overlap for the length of a run. The spike measures `up --wait` time and memory with Postgres, Redis and LocalStack on macOS and Linux. Linux CI runners have Docker and macOS runners may not by default (verify), so this is a separate CI job from P3 on.
+One stack per run, stopped when the run ends, with `mem_limit` on every container. A dev stack and a graded stack can overlap for the length of a run. P1 measured the stacks at 71 to 667 MiB in use, and most of what Docker costs on your machine is its VM, not the containers. The tests on a real engine run in CI in a job of their own, `sandbox`, on Linux: path-gated to what can affect the sandbox, one job with no matrix and no schedule, within 15 minutes.
 
 ## Lifecycle commands
 
@@ -176,13 +180,13 @@ Every command runs with the project root as its working directory.
 | Command | When cstudy calls it | Where it runs | Added environment | Time limit | Network | Failure |
 |---------|----------------------|---------------|-------------------|------------|---------|---------|
 | `install` | `cstudy start`, and any command that needs the project when the lock digest differs from the [install record](#install-rules) | A one-off app container | Fixed variables only | 600 s | Internet | [Install failed](#failure-reporting), exit 4 |
-| `bootstrap` | After services are up: at the start of `cstudy dev`, `cstudy test` and `cstudy submit`, and after `grade_setup` in a graded run | A one-off app container | [Environment](#environment) | 120 s | `sandbox` | [Migration failed](#failure-reporting) |
-| `run` | After `bootstrap`, in every run that needs the app, and by `cstudy dev` unless `--no-run` | The `app` container | Environment | `ready_timeout_s` until the health path answers, then none until cstudy stops it | `sandbox` | [App did not start](#failure-reporting) |
+| `bootstrap` | After services are up: at the start of `cstudy dev`, `cstudy test` and `cstudy submit`, and after `grade_setup` in a graded run | A one-shot of the stack that `app` depends on, so one failure path and a failed one stops the start | [Environment](#environment) | Within the startup budget | `sandbox` | [Migration failed](#failure-reporting) |
+| `run` | As the `app` container's own command, so a crash ends the container and `up --wait` catches it, after `bootstrap`, in every run that needs the app (`--no-run` is planned) | The `app` container | Environment | `ready_timeout_s` from `up` until the health path answers, on the first clock, then none until cstudy stops it | `sandbox` | [App did not start](#failure-reporting) |
 | `test` | `cstudy test`, with the app running | `docker compose exec` in `app` | Environment, plus the visible-only control variables | 120 s | `sandbox` | Its exit code is a test failure; it never grades |
-| `reset` | Once with `CSTUDY_RESET_PHASE=prepare` after `bootstrap`, then with `CSTUDY_RESET_PHASE=apply` before each case with `fresh: true`, with the app stopped | A one-off app container | Environment | 30 s | `sandbox` | Case `error`, and the remaining cases `not_run` |
-| `grade_setup` | Graded runs and `cstudy verify` only: after services are up and before `bootstrap` | A short-lived container of the same image, with the project folder and `{problem}/grading/` read-only, gone before `app` starts | Environment, plus `CSTUDY_PROBLEM_DIR` and `CSTUDY_GRADED_LEVEL` | 120 s | `sandbox` | A content error, exit 4, whose output is never shown as a hidden case |
+| `reset` | Once with `CSTUDY_RESET_PHASE=prepare` after `bootstrap`, as a one-shot before `app` (in a test or graded stack), then with `CSTUDY_RESET_PHASE=apply` before each case with `fresh: true`, with the app stopped | A one-off app container | Environment | 30 s | `sandbox` | `prepare`: [Migration failed](#failure-reporting). `apply`: case `error`, and the remaining cases `not_run` |
+| `grade_setup` | Graded runs and `cstudy verify` only: after services are up and before `bootstrap`. It waits for backing services, so it is proven with them, at P10 | A short-lived container of the same image, with the project folder and `{problem}/grading/` read-only, gone before `app` starts | Environment, plus `CSTUDY_PROBLEM_DIR` and `CSTUDY_GRADED_LEVEL` | Within the startup budget | `sandbox` | A content error, exit 4, whose output is never shown as a hidden case |
 
-`project.timeouts_s` overrides a limit per command.
+`project.timeouts_s` overrides a limit per command: `startup`, `install`, `test` and `reset`.
 
 ### Environment
 
@@ -195,7 +199,7 @@ The app container's environment is explicit. **Nothing from your machine is pass
 | `HOME`, `TMPDIR` | cstudy | Paths on tmpfs |
 | `CSTUDY_MOCK_CONTROL_URL`, `CSTUDY_MOCK_CONTROL_TOKEN` | cstudy, for `test` only | The control interface of a test stack, which holds only visible scenarios. Never set for `run`, and never in a graded stack |
 
-Native problems are a separate matter: **today** a runner inherits your whole environment (`{**os.environ, ...}` in `adapters/subprocess_runner.py`), and P2 replaces that with an allowlist for all problems (R32).
+Native problems are a separate matter: their environment is the allowlist of [Process environment](runners.md#process-environment).
 
 ### Three boundaries
 
@@ -207,32 +211,43 @@ Native problems are a separate matter: **today** a runner inherits your whole en
 
 | You run | On a service project |
 |---------|----------------------|
-| `cstudy start <slug>` | Copies the starter, pulls images, runs `install`, and starts nothing else. It prints `cstudy dev` as the next step |
+| `cstudy start <slug>` | Shows what it needs, copies the starter, pulls images, runs `install`, and starts nothing else. It prints `cstudy dev` as the next step |
 | `cstudy test` | Starts a test stack, runs `bootstrap` and `run`, runs `commands.test`, then the visible HTTP cases of the unlocked levels as feedback. Nothing is stored and nothing opens |
 | `cstudy submit` | The [graded run](#graded-run) |
 | `cstudy dev <slug>` (new) | The dev stack, in the foreground, until Ctrl-C |
 | `cstudy verify` | Exercises the commands on the reference ([checks](#checks)) |
 
-`cstudy dev` is the only new verb. `install`, `bootstrap`, `run` and `reset` have no verbs of their own. `cstudy test --debug`, `--case` and `--level` exit 3 on a service project: debug through your own IDE against `cstudy dev`.
+`cstudy dev` is the only new verb. `install`, `bootstrap`, `run` and `reset` have no verbs of their own. `cstudy test` takes none of the flags of a native run, and exits 3 for one: debug through your own IDE against `cstudy dev`.
 
 ```text
-cstudy dev [<slug|file>] [--scenario <mock>=<scenario>]... [--no-run] [--debug] [--reset-data]
+cstudy dev [<slug|file>] [--scenario <mock>=<scenario>]...
+```
+
+| Flag | Effect |
+|------|--------|
+| `--scenario` | Sets a mock server's visible scenario at start. A hidden or unknown name exits 3 with the visible names, before anything starts |
+
+It runs in the foreground: it brings the stack up, prints your app's published URL and the mock server names, then what your app prints. Ctrl-C, or SIGTERM, brings the stack down and keeps its data, exit 0, and a second Ctrl-C during that cannot leave half a stack. Your app ending brings the stack down too, exit 2, and so does an app that never starts, with its output. One dev stack runs per project: a second `cstudy dev` exits 3 and names the holder's process id. The lock is `.cs/projects/<slug>.dev.lock`.
+
+Planned, with P9:
+
+```text
+cstudy dev [<slug|file>] [--no-run] [--debug] [--reset-data]
 cstudy dev [<slug|file>] --exec [--network] -- <command> [<argument>]...
 ```
 
 | Flag | Effect |
 |------|--------|
-| `--scenario` | Sets a mock server's visible scenario at start. A hidden or unknown name exits 3 with the visible names |
 | `--no-run` | Keeps the `app` container idle instead of running `commands.run`, for an IDE or a debugger. Your app cannot run outside the stack and still reach the mock servers, so running is the default |
 | `--debug` | Publishes the template's debug port on `127.0.0.1` |
 | `--reset-data` | Removes the dev volume before starting |
 | `--exec` | Runs one command in a one-off app container, then exits. `--network` gives it the internet and no stack, which is how you add a dependency: `cstudy dev --exec --network -- pnpm add <package>` |
 
-It prints your app's published URL, the mock server names, and one line per request a mock server receives. One dev stack runs per project: a second `cstudy dev` exits 3 and names the holder's process id. The lock is `.cs/projects/<slug>.dev.lock`.
+And one line per request a mock server receives.
 
 ## Manifest sketch
 
-Planned, under `project` in `meta.yaml`. The real schema, `schemas/meta.schema.json`, allows `entry`, `tests` and `clock` today with `additionalProperties: false` and requires `entry`; it also requires `signature` for every problem. Those change at implementation ([schema rules](../decisions/0019-service-projects.md#schema-rules-to-relax)).
+Under `project` in `meta.yaml`, in `schemas/meta.schema.json`. `reset`, `grade_setup` and `services` below are what a data-driven problem adds; [the fixtures](#a-small-example) are the smallest that works.
 
 ```yaml
 kind: project
@@ -261,7 +276,7 @@ project:
   requires:
     lock: pnpm-lock.yaml
     services: [postgres]
-    sizes: {install_mb: 40, images_mb: {app: 80, mocks: 50, db: 160}, memory_mb: 700}
+    sizes: {install_mb: 40, images_mb: {app: 80, mocks: 50, postgres: 160}, memory_mb: 700}
 ```
 
 | Field | Rule |
@@ -273,13 +288,15 @@ project:
 | `app.health` | A path that answers 2xx when the app is ready |
 | `env` | The whole app environment: `port_env`, one URL for each mock server and service your app calls, and fake keys. No real secret, and S19 compares it with the starter's `.env` |
 | `mocks` | At most 4, each with a unique `name` (lowercase letters, digits, `-`) that is no service name and none of `app`, `cstudy-mocks` or `cstudy-forward`. Every path is relative to the problem's directory, not the starter |
-| `services` | A compose file, relative to the problem's directory ([Backing services](#backing-services)) |
+| `services` | A compose file, relative to the problem's directory ([Backing services](#backing-services)), planned for P10: S21 and S22 check it today, and a stack refuses it |
+| `install_env` | What the package manager needs in its install container, such as where its cache is. `/cache` is a volume there |
 | `requires` | [What a problem depends on](#what-a-problem-depends-on) |
+| `timeouts_s` | `startup`, `install`, `test` and `reset`, in seconds |
 | `comparator` | The default for cases: `exact`, `unordered`, `unordered-nested` or `float`, applied to the response body |
 
 ## Where the files live
 
-Everything grading trusts lives in the problem's own files, not the starter, so you cannot edit it.
+Everything grading trusts lives in the problem's own files, not the starter, so you cannot edit it. `cli/tests/fixtures/service_projects/` holds two small working problems ([A small example](#a-small-example)).
 
 ```text
 problems/<id>-coworking-availability-typescript/
@@ -302,7 +319,7 @@ problems/<id>-coworking-availability-typescript/
     reference/
 ```
 
-**Vendor documentation.** The starter holds an `API.md` per mock server, a byte-for-byte copy of the problem's file (S20): base-URL variable, routes, response shapes and a table of visible scenario names. It is a copy for reading, so nothing depends on it and `cstudy start --restore` writes it back. Hidden scenarios appear in neither. A failing hidden case in a practice attempt names its scenario, as a failing hidden case already shows its input ([cstudy submit](cli.md#cstudy-submit)); a mock attempt shows only the count.
+**Vendor documentation.** S20 holds this. The starter holds an `API.md` per mock server, a byte-for-byte copy of the problem's file (S20): base-URL variable, routes, response shapes and a table of visible scenario names. It is a copy for reading, so nothing depends on it and `cstudy start --restore` writes it back. Hidden scenarios appear in neither. A failing hidden case in a practice attempt names its scenario, as a failing hidden case already shows its input ([cstudy submit](cli.md#cstudy-submit)); a mock attempt shows only the count.
 
 ## `.env`
 
@@ -326,15 +343,15 @@ There is no `.env.local`: with fixed values and no secrets you edit `.env` itsel
 
 ## Mock server
 
-One Python program serves every problem and language. For a stack, `cstudy` parses and validates the YAML on your machine, renders it to JSON with the control token under `.cs/runs/<run>/`, and mounts that read-only into `cstudy-mocks`, a pinned Python image with the program's code mounted read-only from cstudy. The program uses the standard library only, as `adapters/process_liveness.py` does, which has no YAML parser, hence the rendering.
+One Python program serves every problem and language. For a stack, `cstudy` parses the YAML with the problem and checks it against `schemas/mock.schema.json`, renders it to one JSON document with the stack's control token at `.cs/runs/<stack>/mocks.json`, and mounts that read-only into `cstudy-mocks`, a pinned Python image, with the program's code copied beside it and mounted read-only. The program uses the standard library only, as `adapters/process_liveness.py` does, which has no YAML parser, hence the rendering. The code is `domain/mock_configs.py`.
 
-**Hidden material.** Mock configs mount into the mock container only. A dev or test stack's rendering holds visible scenarios only, and a graded one holds them all. Neither the configs nor the token are ever in the app container in a graded stack.
+**Hidden material.** Mock configs reach the mock container only, and only rendered. A dev or test stack's rendering holds visible scenarios only, and a graded one holds them all. A `body_file` is inlined, so no other file of the problem reaches the container, and the body of a hidden scenario goes wherever that scenario goes. Neither the configs nor the token are ever in the app container: a real test looks.
 
 **Names.** Each mock server's `name` is a network alias of the container. The process listens on port 8080 and picks the mock server from the request's `Host`, so `http://room-vendor:8080` needs no port of its own. An unknown `Host` gets a 404 that lists the known names. Nothing is published to your machine.
 
 ### The program
 
-Built, in `cli/src/coding_study/adapters/mock_server/`. The rendering, the container and `cstudy dev` above are not.
+In `cli/src/coding_study/adapters/mock_server/`.
 
 ```text
 python -I <folder> <config.json> [--bind 0.0.0.0] [--api-port 8080] [--control-port 9000]
@@ -343,7 +360,7 @@ python -I <folder> <config.json> [--bind 0.0.0.0] [--api-port 8080] [--control-p
 | Item | Rule |
 |------|------|
 | The folder | Runs alone: its modules import each other relatively and otherwise only the standard library. It may have any name and be read-only, so a stack copies it under `.cs/runs/<run>/` and mounts it |
-| Rendered config | One JSON file, `{"control_token": "<token>", "mocks": {"room-vendor": <config>, "second-vendor": <config>}}`, each `<config>` in the [format below](#config-format). A `body_file` is relative to this file's folder, may not leave it, and is read at start. The program serves every scenario the file holds: leaving hidden ones out is the rendering's work |
+| Rendered config | One JSON file, `{"control_token": "<token>", "mocks": {"room-vendor": <config>, "second-vendor": <config>}}`, each `<config>` in the [format below](#config-format). The program serves every scenario the file holds: leaving hidden ones out is the rendering's work. It also takes a `body_file`, relative to this file's folder, which it may not leave, and reads it at start; a stack's rendering has inlined each one, so it never meets one there |
 | Start | Binds both ports, then prints one line of JSON and serves: `{"api_port": 8080, "control_port": 9000, "mocks": ["room-vendor", "second-vendor"]}`. A bad config exits 2 and a port it cannot bind exits 1, each with its reason on standard error |
 | Health | `GET /health` on the control port, with no token, answers `{"status": "ok"}` once both ports are bound. It is not on the API port, where the path belongs to the mocked API. A compose healthcheck: `[CMD, python, -I, -c, "import urllib.request as r; r.urlopen('http://127.0.0.1:9000/health', timeout=1)"]` |
 | Stop | SIGTERM and SIGINT exit 0 at once, without waiting for a request in a delay |
@@ -477,6 +494,8 @@ scenarios:
 
 ## Backing services
 
+Planned, for P10. S21 and S22 check a compose file today, and a stack refuses a problem that declares one.
+
 Docker is how service projects get backing services such as Postgres, Redis and LocalStack. A problem with none still runs in Docker, and a problem may keep SQLite in `CSTUDY_DATA_DIR`.
 
 The compose file belongs to the problem, so you cannot edit what grading trusts, and it is tool-neutral, so any image can be used. It holds only services. cstudy adds the networks, labels and limits it requires.
@@ -497,6 +516,8 @@ services:
 Your code reads `DATABASE_URL`, `REDIS_URL`, `AWS_ENDPOINT_URL` or whatever the problem names, from `project.env`, reaching the service at its stable name such as `db:5432`. A service publishes no port. To look inside it, use `docker compose exec` on the printed project name.
 
 ## Databases
+
+Planned, for P10.
 
 The database and the migration tool are both defined per project, as part of problem design, and cstudy requires neither. A problem picks SQLite or Postgres according to what it teaches, and whichever migration tool suits it. The core has no knowledge of any tool: there is no tool-specific field, only `bootstrap`. Seed data arrives through migrations, and your service reads the database live.
 
@@ -533,7 +554,7 @@ Data resets per run. A problem that needs a reset between cases declares `comman
 
 ### Parallel cases
 
-A case type for N requests against limited capacity. It gives language-neutral concurrency grading, which is what SQLite cannot show, since a row lock and a lost update need a database that serves writers at once.
+Planned, for P10. A case type for N requests against limited capacity. It gives language-neutral concurrency grading, which is what SQLite cannot show, since a row lock and a lost update need a database that serves writers at once.
 
 ```json
 {"id": "h21", "level": 3, "fresh": true, "repeat": 3,
@@ -552,9 +573,9 @@ A case type for N requests against limited capacity. It gives language-neutral c
 
 One piece of core code covers every language, with no per-language runner work. No runner job is involved. Existing entry-class problems keep their path. The grader runs on your machine, outside every container, and reaches your app and the control interface through the forwarder's published ports, so hidden cases never enter a container.
 
-### What is built
+### The code
 
-Step 6 of the [graded run](#graded-run), as a use case that is handed a ready stack: `run_http_grading` in `application/http_grading.py`, with `domain/http_case.py`, `domain/http_grading.py` and `adapters/http_grader/`. It returns a `Judgement`, so levels, submissions and events are today's. The rest of this section is planned: nothing calls it yet, because the commands and the stack come first.
+Step 6 of the [graded run](#graded-run), as a use case that is handed a ready stack: `run_http_grading` in `application/http_grading.py`, with `domain/http_case.py`, `domain/http_grading.py` and `adapters/http_grader/`. It returns a `Judgement`, so levels, submissions and events are today's. `application/service_grading.py` brings its stack up and `application/graded_stack.py` adapts that stack.
 
 The grader asks a stack for little, through `GradedStack` in `application/http_grading_ports.py`:
 
@@ -567,7 +588,11 @@ The grader asks a stack for little, through `GradedStack` in `application/http_g
 
 Both restarts return once the health path answers again, and raise `StackStepError` otherwise.
 
-**Two clocks.** Every time limit and hang guard starts only once the stack is ready. Starting it, and each restart above, runs on the sandbox's clock and counts toward no case. A case's limit runs from its first request to the last byte of its last answer, `before` requests included. It holds for the whole exchange, so an app that sends a byte now and then cannot outlast it.
+### Two clocks
+
+Every time limit and hang guard starts only once the stack is ready (owner, O17). Starting it, and each restart above, runs on the first clock and counts toward no case. Its budget is generous, 300 s for `up --wait` unless `project.timeouts_s.startup` says otherwise and `app.ready_timeout_s`, 60 s by default, for the health path after that, and running out of it says so with its own message and changes no result.
+
+A case's limit runs from its first request to the last byte of its last answer, `before` requests included. It holds for the whole exchange, so an app that sends a byte now and then cannot outlast it. The limit on `commands.test` starts at ready as well, and the times `cstudy test` and `cstudy submit` report leave startup out, showing it apart as `not counted`.
 
 ### Graded run
 
@@ -575,13 +600,13 @@ Both restarts return once the health path answers again, and raise `StackStepErr
 
 1. Check `requires` and the install record; pull images and install if needed.
 2. Render the configs, with every scenario, and generate the compose file.
-3. With `grade_setup`, the from-empty check: bring up the mock and service containers, run `bootstrap` on empty data, then discard the data (`down -v`). Without `grade_setup`, the `bootstrap` of the next step is itself this check.
-4. Bring up a fresh stack without `app` (`up --wait`), run `grade_setup` if declared, run `bootstrap` if declared, run `reset` with `prepare` if declared.
-5. Start `app` with `commands.run`. Poll the health path through the published port until 2xx or `ready_timeout_s`.
+3. With `grade_setup`, planned with it at P10, the from-empty check: bring up the mock and service containers, run `bootstrap` on empty data, then discard the data (`down -v`). Without `grade_setup`, the `bootstrap` of the next step is itself this check.
+4. Bring up a fresh stack (`up --wait`), with its one-shots in order before `app`: `grade_setup` if declared, `bootstrap` if declared, `reset` with `prepare` if declared. The app's start depends on them and on the mock container being healthy, which P1 measured faster than separate steps, with one failure path.
+5. `app` runs `commands.run`. Poll the health path through the published port until 2xx or `ready_timeout_s`. The second clock starts here.
 6. For each case of the graded levels, in `tests.json` order: `POST /reset`; if `fresh`, restart with fresh data and `POST /reset` again, so your app's startup meets no scenario left by the last case and the log holds this case's requests alone; set scenarios, send `before` requests or `steps`, send the request, compare, assert on the log.
 7. `down -v`.
 
-At most one graded stack runs per attempt, and `.cs/runs/` holds the run's generated files. A case past its limit is `timeout` and restarts your app, as a runner restarts ([hang guard](runners.md#hang-guard-and-restarts)); after 3 such cases the remaining cases are `not_run`. An app that exits during a case does not restart: the case is `error`, it says so with the exit code and the stderr tail, and the remaining cases are `not_run`, since a crash usually repeats and each case would pay for it. A connection that fails while your app runs is `error` for that case alone. The limit per case uses the same order as a runner's: config `hang_guard.ms`, the case's `hang_guard_ms`, `limits.hang_guard_ms`, else 10 s.
+Each `cstudy submit` has a stack of its own, under a fresh name, so two at once cannot collide, and `.cs/runs/` holds the run's generated files until it ends. A case past its limit is `timeout` and restarts your app, as a runner restarts ([hang guard](runners.md#hang-guard-and-restarts)); after 3 such cases the remaining cases are `not_run`. An app that exits during a case does not restart: the case is `error`, it says so with the exit code and the stderr tail, and the remaining cases are `not_run`, since a crash usually repeats and each case would pay for it. A connection that fails while your app runs is `error` for that case alone. The limit per case uses the same order as a runner's: config `hang_guard.ms`, the case's `hang_guard_ms`, `limits.hang_guard_ms`, else 10 s.
 
 ### Hidden HTTP case
 
@@ -613,7 +638,7 @@ Language-neutral, in `tests.json`, with `id`, `visible`, `level`, `note` and `ha
 
 A case has a `level`, or no graded run would reach it. `project.clock: virtual` is refused with `grading: http`: these cases run on the real clock. The bound on waits and D11 keep them stable.
 
-A case that names a mock server the stack lacks, or a scenario a mock server lacks, or a problem whose comparator is `checker` or `ops` with no override, is a content error rather than a verdict. S23 catches these first once it is built.
+A case that names a mock server the stack lacks, or a scenario a mock server lacks, or a problem whose comparator is `checker` or `ops` with no override, is a content error rather than a verdict. S23 catches these first.
 
 ### Multi-step cases
 
@@ -644,8 +669,8 @@ Recommended, to confirm (R34), for P11. A later request can use values captured 
 | Event | On a service project |
 |-------|----------------------|
 | `output` | Progress: image pull, install, Docker start, `bootstrap` |
-| `test_start`, `test_result` | `cstudy test`: one result for `commands.test`, with id `commands.test`; its output streams through `output`, since cstudy does not parse a framework |
-| `case_start`, `case_result` | `cstudy submit`, and now also `cstudy test` for the visible cases. `input` holds the request and the scenarios it set, `expected` and `actual` the status and body, and `reason` every difference and log assertion that failed (`room-vendor availability: expected 2 requests, saw 5`) |
+| `test_start`, `test_result` | Planned, with P9's Web UI: `cstudy test --events` and `--json` exit 3 on a service project for now. One result for `commands.test`, with id `commands.test`; its output streams through `output`, since cstudy does not parse a framework |
+| `case_start`, `case_result` | `cstudy submit`, and with `--events` above also `cstudy test` for the visible cases. `input` holds the request and the scenarios it set, `expected` and `actual` the status and body, and `reason` every difference and log assertion that failed (`room-vendor availability: expected 2 requests, saw 5`) |
 | `level_result`, `level_unlocked` | As today, with `methods` empty |
 
 A hidden case in a mock attempt writes no event, as today.
@@ -666,18 +691,18 @@ A `not_run` case's reason names no earlier case, so a mock attempt's hidden case
 
 ## Dependencies
 
-A project problem may have its own dependencies. Either you run the install or cstudy runs it automatically (owner). The recommendation is automatic.
+A project problem may have its own dependencies, and cstudy installs them automatically (owner, R1).
 
 ### Install rules
 
 | Rule | Detail |
 |------|--------|
-| When | At `cstudy start`, with progress. A resumed attempt, `cstudy test`, `cstudy submit` and `cstudy dev` install again when the lock file's digest differs from the record |
-| Where | A one-off app container on the default bridge, hardened as every container is, with the project folder and the install cache mounted and nothing else |
+| When | At `cstudy start`, with progress. A resumed attempt, `cstudy test`, `cstudy submit` and `cstudy dev` install again when the lock file's digest differs from the record, or what it installed is gone |
+| Where | A one-off app container in a compose project of its own, on an ordinary bridge, hardened as every container is, with the project folder and the install cache mounted and nothing else |
 | Record | `.cs/projects/<slug>.install.json`, with the lock's SHA-256, written after success |
 | Lock | The project's exclusive [lock](installation-and-workspaces.md#project-folders) is held during an install |
 | Retry | A failed install keeps the attempt. It prints the retry, `cstudy start <slug>`, and the Web UI offers a Retry button |
-| You add a dependency | `cstudy dev --exec --network -- <your package manager's add command>`, while you have network. The digest differs, so the next command installs. The lock file is your file, hashed in `code_hash` |
+| You add a dependency | From a shell of your own for now, and `cstudy dev --exec --network -- <your package manager's add command>` once it is built. The digest differs, so the next command installs. The lock file is your file, hashed in `code_hash` |
 
 ### Templates per language
 
@@ -685,8 +710,8 @@ The per-language table lives in project templates under `cli/src/coding_study/ad
 
 | Language | `install` | `run`, `test` | State |
 |----------|-----------|---------------|-------|
-| TypeScript | `pnpm install --frozen-lockfile --ignore-scripts`, as ADR 0018 installs `.cs/lsp/` | `node src/server.ts`, `node --test` | Settled, with the image at P1 |
-| Python | `uv sync --frozen`, with a real `.venv`, not the link to the shared venv | `.venv/bin/python -P -m <module>`, `.venv/bin/python -P -m pytest` | Settled, with the image at P1: a Python image holds no uv |
+| TypeScript | `corepack pnpm install --frozen-lockfile --ignore-scripts`, with `packageManager` pinning pnpm in `package.json` and `COREPACK_HOME` and `npm_config_store_dir` in the cache volume | `node src/server.ts`, `node --test` | Settled: `node:24-slim`. `typescript` stays below 7 until it is checked, since the broker needs `tsserver.js` |
+| Python | `uv sync --frozen --no-build`, with a real `.venv`, not the link to the shared venv, `UV_CACHE_DIR` in the cache volume and `UV_PYTHON_DOWNLOADS=never` | `.venv/bin/python src/server.py`, `.venv/bin/python -P -m pytest` | Settled: the uv image, `python3.13-bookworm-slim` |
 | Kotlin, Java | To settle at P12 | To settle | Conflict: Gradle runs `--offline` in [project builds](runners.md#jvm-project-builds) |
 | Go | To settle at P13 | To settle | Conflict: `GOPROXY=off` and vendored modules ([ADR 0012](../decisions/0012-go-and-rust.md)) |
 | Rust | To settle at P14, if reached | To settle | Conflict: vendored crates and `cargo --offline` ([ADR 0012](../decisions/0012-go-and-rust.md)) |
@@ -702,7 +727,7 @@ S15 today rejects dependencies in a starter and rejects lock files ([starter](pr
 - `is_untracked` names `uv.lock` and `Cargo.lock`, the workspace `.gitignore` ignores `projects/*/uv.lock` and `projects/*/Cargo.lock`, and an archive deletes them. For a service project the lock is tracked, hashed and archived, and the starter's own `.gitignore` re-includes it.
 - A Python starter has a `[project]` table and `requires-python`, which S15 refuses today because of the `.venv` link. A service project has no link, so `cstudy start` writes none and `cstudy doctor --fix` restores none.
 
-**Install scripts.** pnpm blocks dependency install scripts by default as of v10. That is unverified here and is verified at implementation, along with the `pnpm` version the image holds. Prefer dependencies with no native build, because a native package is built for the container, not for your machine. A native package needs an explicit allow list per problem, which the template expresses in `package.json`.
+**Install scripts.** Off, in every install: `--ignore-scripts` for pnpm, and `--no-build` for uv, which S19 holds a problem to. A problem's dependencies are ones with no native build, because a native package is built for the container, not for your machine, and a package that needs a build fails its install.
 
 ### Authoring guidance: migration tools
 
@@ -735,7 +760,7 @@ The CLI and the Web UI list what a problem depends on, so you know before starti
 
 ### Where it comes from
 
-Recommended, to confirm. The list is a small declared `project.requires` block plus what cstudy derives from the compose file and lock file. A static check (S22) fails when the declared list disagrees with those files, so it cannot drift. `cstudy verify` measures sizes and D11 fails when a declared size is more than 25% away. It does not write them, since cstudy never writes to the content root except through `cstudy new`: it prints the measured values for the author to copy.
+The list is a small declared `project.requires` block plus what cstudy derives from the compose file and lock file. A static check (S22) fails when the declared list disagrees with those files, so it cannot drift. `cstudy verify` measures the install's size and D11 fails when it is more than 25% from `requires.sizes.install_mb`. It does not write it, since cstudy never writes to the content root except through `cstudy new`: it prints the measured value for the author to copy. Image sizes and memory are declared and shown, and measuring them is planned: what `docker image inspect` knows is the unpacked size, and memory depends on what else the engine holds.
 
 ### Where it shows
 
@@ -745,8 +770,8 @@ Recommended, to confirm. The list is a small declared `project.requires` block p
 | `cstudy list --needs` | `--needs none` keeps problems that need nothing beyond the language's toolchain, which leaves out every service project; `--needs docker` or a service name keeps those that do |
 | `cstudy list --json` | Each entry gains `requires`, next to `jdk`, null for other problems |
 | [`cstudy show`](cli.md#cstudy-show) | The full list above the statement, with each requirement's state. It reads state and starts nothing |
-| [Problems view](web-ui.md#problems-view) | The marker in the table and a filter of the same values |
-| [Problem view](web-ui.md#problem-view) | The full list |
+| [Problems view](web-ui.md#problems-view) | Planned, P9: the marker in the table and a filter of the same values |
+| [Problem view](web-ui.md#problem-view) | Planned, P9: the full list |
 
 An example, with illustrative figures:
 
@@ -792,8 +817,8 @@ Connect to the network, then run: cstudy start coworking-availability-typescript
 
 | Resource | Expectation |
 |----------|-------------|
-| Graded runs | At most one graded stack per attempt |
-| Mock server memory | At most 30 MB resident per stack, an expectation P5's container measures. The program alone held about 29 MB after starting, on macOS on arm64 with two mock servers |
+| Graded runs | One stack per run |
+| Mock server memory | The container is limited to 64 MiB. P1 measured a stand-in at 15 MiB, and the program alone held about 29 MB after starting, on macOS on arm64 with two mock servers |
 | Disk per project | `node_modules` or `.venv`, to be measured at P7 and P8, plus images and the install cache, shared across projects |
 | Docker | [Resources and CI](#resources-and-ci) |
 | Language servers | Each project still counts toward `cstudy serve`'s limit of four language servers |
@@ -813,11 +838,11 @@ There is no `cstudy reset` and no command that removes a problem; verified again
 
 ## Code intelligence and editors
 
-**The riskiest part of the design**, and the first thing the spike measures. If it does not work well, the owner hears before anything is built.
+**The riskiest part of the design.** The spike measured that it works, close to the host's speed. It is planned for P9.
 
 ### Language servers
 
-Planned, for P9 (R28). A language server probably runs inside the container through `docker exec -i`, with paths matching because of the same-path mount. A language server must not read a mock config or a hidden case, and inside the container there is nothing to hide: none of them are mounted. ADR 0018's four [hidden directories](web-ui.md#hidden-directories), `.cs/build/`, `.cs/cases/`, `.cs/runs/` and the content root, do not exist there.
+Planned, for P9 (R28). A language server runs in a small `lsp` sidecar through `docker exec -i`, the same Node image for both languages, `network_mode: none`, with the project and `.cs/lsp/` mounted, and paths matching because of the same-path mount. A language server must not read a mock config or a hidden case, and inside the container there is nothing to hide: none of them are mounted. ADR 0018's four [hidden directories](web-ui.md#hidden-directories), `.cs/build/`, `.cs/cases/`, `.cs/runs/` and the content root, do not exist there.
 
 | Item | Where it is | Covered by |
 |------|-------------|------------|
@@ -825,12 +850,12 @@ Planned, for P9 (R28). A language server probably runs inside the container thro
 | A graded run's generated files and rendered configs | `.cs/runs/<run>/` | Not mounted in `app`; rendered configs in `cstudy-mocks` only |
 | A reference's copy and install | `.cs/build/projects/<slug>/` | Not mounted, unless it is the folder under `cstudy verify` |
 
-Open questions for the spike:
+What the spike answered:
 
-- **Where the server comes from.** `.cs/lsp/` mounted read-only, or a toolchain in the image. basedpyright needs Node, and a Python image has none, so a Python project needs Node in its image or a language-server container with the same mount.
-- **Which container.** A session needs a container running, and a stack starts only on request. A small container with only the mount may serve better than the app's, since a server's memory would otherwise count against the app's limit.
-- **Stopping it.** Whether killing the `docker exec` client stops the server, or only closing its standard input does. ADR 0018 observed pyright exiting when its standard input closed.
-- **Definitions outside the folder.** A definition in `node_modules` is on the mount. A standard library's definition lands on an image path that your machine cannot read, and the page's read-only library tabs need an answer.
+- **Where the server comes from.** `.cs/lsp/` mounted read-only in the sidecar. basedpyright needs no Node in a Python image then.
+- **Which container.** The sidecar, not the app's, since TypeScript alone took 468 MiB of anonymous memory.
+- **Stopping it.** Killing the `docker exec` client stops both servers, because they exit on end of input.
+- **Definitions outside the folder.** None in the sidecar design, for these two servers.
 
 Otherwise service projects use existing roots: the session's root is the project folder, basedpyright resolves imports through the folder's `.venv`, and tsserver through its `node_modules`. Non-Node servers come with their languages' phases.
 
@@ -850,7 +875,7 @@ Planned, for P9 (R29).
 |------|-------|
 | A stack starts only on request from the attempt page, because of its memory, and stops with the page, with the same idle rule as [language servers](web-ui.md#lifecycle-and-limits) | P9 |
 | Stack and mock server status, and a scenario picker over the control interface | P9 |
-| `.env` is an ordinary file in the tree | P4 |
+| `.env` is an ordinary file in the tree | P4, built |
 | The dependency list, and Start's summary and confirmation | P9 |
 | The Docker messages in Start and the [Health view](web-ui.md#health-view) | P9 |
 | Code intelligence through the [container](#language-servers) | P9 |
@@ -863,22 +888,25 @@ If a terminal holds the dev stack, the page shows that and does not start a seco
 
 | Check | Rule |
 |-------|------|
-| S14, S15, S16 (changed) | With `grading: http`: no `entry`, `tests`, `clock`, `signature` or generated-test rules, and no `ops` comparator rule. A track other than `practical` is allowed ([ADR 0020](../decisions/0020-catalog-labels.md#rule-changes)). The starter holds `README.md`, its lock file and `.env`, and no `.env.local`. S15's rules on `package.json`, `pyproject.toml` and lock files [flip](#lock-files-and-static-checks) |
+| S5 (changed) | An example marks a visible case with `<!-- case: <id> -->`, in the `## Level` it belongs to |
+| S14, S15, S16 (changed) | With `grading: http`: no `entry`, `tests`, `clock`, `signature` or generated-test rules, and no `ops` comparator rule. A track other than `practical` is allowed ([ADR 0020](../decisions/0020-catalog-labels.md#rule-changes)). The starter holds `README.md`, its lock file and `.env`, and no `.env.local`. S15's rules on `package.json`, `pyproject.toml` and lock files [flip](#lock-files-and-static-checks). A `request` in a case belongs to a service project |
 | S19 (new) | `commands` holds only the standard names; `run` and `test` are declared, `install` with `requires.lock`, `bootstrap` with `services`; each is a non-empty list of strings; `{problem}` only in `grade_setup`, whose script lies outside the starter; `image` pinned by digest; `app` complete; `env` holds `port_env` with `app.port`, and the starter's `.env` holds exactly `env`; a URL in `env` names a declared mock server on 8080 or a declared service; at most 4 mock servers with unique names, none reserved |
-| S20 (new) | Every mock config valid against `schemas/mock.schema.json`; `body_file` stays inside `mocks/` and exists; every scenario's `delay_ms` and `Retry-After` are at most 3 s; `room-vendor.API.md` and its starter copy are byte-identical and list exactly the visible scenarios |
-| S21 (new) | The compose file holds only `services`, with images pinned by digest and no `build`; no `ports`, `networks`, `network_mode`, `restart`, `container_name`, top-level `name`, `privileged`, `cap_add`, external volume, Docker socket or bind mount outside the problem; `mem_limit`, `pids_limit` and `healthcheck` on every service |
+| S20 (new) | Every mock config valid against `schemas/mock.schema.json`, as the problem loads; a config lies in `mocks/`; `body_file` stays inside `mocks/`, exists and is text; every scenario's `delay_ms` and `Retry-After` are at most 3 s, and `Retry-After` is whole seconds; `room-vendor.API.md` and its starter copy at `vendors/room-vendor/API.md` are byte-identical and list every visible scenario and no hidden one |
+| S21 (new) | The compose file holds only `services` and their `volumes`, with images pinned by digest and no `build`; no `ports`, `networks`, `network_mode`, `restart`, `container_name`, top-level `name`, `privileged`, `cap_add`, external volume, Docker socket, anonymous volume or bind mount outside the problem; `mem_limit`, `pids_limit` and `healthcheck` on every service; no service takes a reserved name or a mock server's |
 | S22 (new) | `requires` agrees with the compose file, the lock file and `commands`: `services` names the images' repositories, `lock` exists and `images_mb` has a row per image |
-| S23 (new) | Every HTTP case: `mocks` names known scenarios, visible ones only in a visible case; `log` names known routes; `fresh` with data needs `commands.reset`; `count` from 2 to 64; waits within the case's hang guard; a step's `{{name}}` was captured by an earlier step |
+| S23 (new) | Every HTTP case: levels numbered from 1, a level of its own, and every level with a case; `mocks` names known scenarios, visible ones only in a visible case; `log` names known routes; `fresh` with data needs `commands.reset`; a comparator that can judge a body; waits within the case's hang guard. Planned with their cases: `count` from 2 to 64, and a step's `{{name}}` was captured by an earlier step |
 
 ### Dynamic
 
 | Check | Rule |
 |-------|------|
-| D1 (changed) | The starter: `install` and `bootstrap` succeed, `run` answers the health path, a graded run of level 1 reports a result for every case (cases may fail), `test` runs without crashing |
+| D1 (changed) | The starter: `install` and `bootstrap` succeed, `run` answers the health path, a graded run of level 1 reports a result for every case (cases may fail), `test` runs without crashing: it may fail, and it may not time out or fail to start |
 | D3 (changed) | The reference passes every HTTP case through the [graded run](#graded-run), as the starter with its overlay |
 | D9 (changed) | The reference: `commands.test` exits 0, and the visible cases pass. No generated test files exist |
-| D7 (extended) | A broken overlay passes every sequential case and fails each parallel case in its `caught_by` |
-| D11 (new) | `install` leaves the lock's digest unchanged; `bootstrap` succeeds from empty and twice in a row; three runs of the reference give the same verdicts; the slowest case stays within 50% of its hang guard; measured sizes are within 25% of `requires.sizes`; a probe on `sandbox` reaches no public, LAN or metadata address. Outside NFR-3's 30 s per problem, as D6, D7 and D10 are |
+| D7 (extended) | Planned with parallel cases, P10: a broken overlay passes every sequential case and fails each parallel case in its `caught_by` |
+| D11 (new) | `install` leaves the lock's digest unchanged; `bootstrap` succeeds from empty and twice in a row; three runs of the reference give the same verdicts; the slowest case stays within 50% of its hang guard; the install is within 25% of `requires.sizes.install_mb`; a probe on `sandbox` reaches no public, LAN or metadata address. Outside NFR-3's 30 s per problem, as D6, D7 and D10 are |
+
+Without a usable engine, `cstudy verify` skips a service project with the reason, as a JDK out of range does, and `--require-ready` counts that as not passed. `--static` asks the engine nothing.
 
 ### Ready rules
 
@@ -892,6 +920,22 @@ The [ready rules](authoring.md#ready-criteria) can be met with these changes:
 | D9 passes | Its meaning changes, as above |
 | S5: examples per level, generated `Methods to add` | Examples render a request and a response. A level names the endpoints to add |
 | New | D11 passes. A data-driven problem also has a baseline, its `grade_setup` runs, and a from-empty `bootstrap` passes. A problem with parallel cases has a broken overlay caught |
+
+## A small example
+
+`cli/tests/fixtures/service_projects/` holds two working problems, one in TypeScript and one in Python, for the tests on a real engine. They are the smallest that use everything built: a mock server, `bootstrap`, `reset`, levels, hidden cases with the 429 scenario, a reference and a naive solution that a hidden case catches. They are no catalog problems. A real `.env` is written from the manifest as a test copies them, since no file of that name is committed.
+
+## Unproven on Linux
+
+Nothing here has run on Linux. The `sandbox` CI job is what will show it, on its first push. What may differ:
+
+| Item | Why |
+|------|-----|
+| `internal: true`, the forwarder, the egress probe | A real firewall on the host in place of Docker Desktop's proxy. Whether a sandbox container reaches the host at its bridge address needs its own probe |
+| `host.docker.internal` | Not defined by default on Linux, so what `install` reaches there differs |
+| File ownership | **The biggest gap**, because Docker Desktop hides it: UIDs are real on Linux, for the tmpfs options, the one-off `chown`, setuid bits, and whatever a root one-off leaves in the project |
+| SELinux labels, rootless Docker | Not exercised |
+| Starting the engine, and the "no permission" state | `systemctl` and a printed `sudo` command are untested |
 
 ## The first problem
 

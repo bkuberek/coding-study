@@ -597,7 +597,7 @@ Added to `runners/conformance/` before any concurrent problem merges. `expectati
 
 A [project problem](problem-format.md#project-problems) is a folder, not one file, and its native tests run inside the runner. Two kinds of job serve it: a **grading job** (`cstudy submit`, and `cstudy verify` D1 and D3), an ordinary class job whose target is the project, and a **suite job** (`cstudy test`, and D1 and D9), which runs the project's native test framework in-process. The Python, TypeScript and JVM (Java and Kotlin) runners support both. The Go runner supports both too, running the tests as a child process ([Go project jobs](#go-project-jobs)). The Rust runner runs grading jobs, and `cstudy` runs a Rust project's suite itself, one process per test ([Rust projects](#rust-projects)).
 
-Planned: a service project runs in Docker and is graded over HTTP by the core, with no runner job. See [service projects](service-projects.md#http-grading).
+A service project runs in Docker and is graded over HTTP by the core, with no runner job. See [service projects](service-projects.md#http-grading).
 
 ### Capability
 

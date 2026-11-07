@@ -62,6 +62,8 @@ Dependencies point inward. Ports are Python `Protocol` classes in `cli/src/codin
 | `MachineProbe` | `SystemMachine` | CPU model, power source, load average and core count for a bench run's environment record |
 | `StubGenerator` | one per language | `generate(meta) -> text`; mapping table in [problem-format](specs/problem-format.md#type-dsl) |
 | `Workspace` | `WorkspaceFs` | Stub paths, archive, statement rendering |
+| `SandboxEngine` | `DockerSandbox` (`adapters/docker_sandbox.py`) | The container engine of [service projects](specs/service-projects.md#sandbox): its state, images, stacks that a guard takes down however `cstudy` ends, and leftovers by label. Only a service project reaches it |
+| `GradedStack`, `OpenStackClients` | `SandboxGradedStack` (`application/graded_stack.py`), `open_stack_clients` (`adapters/http_grader/clients.py`) | What the [HTTP grader](specs/service-projects.md#http-grading) asks of a ready stack and of the network |
 | `ContentCode` | `ContentCodeLoader` | Imports `generator.py`, `checker.py` and `stress_checker.py` in-process (stdlib-only content code) |
 | `EditorOpener` | `EnvEditorOpener` | Runs `$VISUAL` or `$EDITOR` |
 | `LanguageServerLocator` | `LspDirectory` (`adapters/language_servers/`) | For each server of the code-intelligence catalog (`domain/code_intelligence.py`), whether `.cs/lsp/` holds it and the version its version command prints ([web-ui](specs/web-ui.md#language-servers)) |

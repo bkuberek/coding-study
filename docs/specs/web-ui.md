@@ -639,7 +639,7 @@ The top bar on every view: the navigation (Problems, Sets, Mock, Progress, Healt
 
 ### Problem view
 
-Planned: this view, the Problems view and the Start dialog list [what a problem depends on](service-projects.md#what-a-problem-depends-on). See also the [Web UI plan for service projects](service-projects.md#web-ui).
+Planned, for P9: this view, the Problems view and the Start dialog list [what a problem depends on](service-projects.md#what-a-problem-depends-on). See also the [Web UI plan for service projects](service-projects.md#web-ui).
 
 | Area | Behaviour |
 |------|-----------|
@@ -751,7 +751,7 @@ A mock started in the terminal shows the same way, since the state comes from th
 
 ### Health view
 
-Planned: the Docker rows and their install message. See [Docker states](service-projects.md#docker-states).
+Planned, for P9: the Docker rows and their install message. `cstudy doctor` has them. See [Docker states](service-projects.md#docker-states).
 
 | Area | Content |
 |------|---------|
