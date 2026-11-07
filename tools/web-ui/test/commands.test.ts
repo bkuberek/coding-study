@@ -62,3 +62,11 @@ test("a quote inside a quoted value is escaped", () => {
 test("a plain value is not quoted", () => {
   assert.equal(quoted("arrays-hashing"), "arrays-hashing");
 });
+
+test("the list command names the search last, quoted when a shell needs it", () => {
+  assert.equal(listCommand({ search: "two sum", track: "dsa" }), "cstudy list --track dsa --search 'two sum'");
+});
+
+test("the next command has no search", () => {
+  assert.equal(nextCommand({ search: "two", track: "dsa" }), "cstudy next --track dsa");
+});

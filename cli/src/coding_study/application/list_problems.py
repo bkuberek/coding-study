@@ -40,6 +40,8 @@ class ProblemFilter:
     """`--domain`, `--role` and `--scope`; an entry without labels matches none that is set."""
     in_set: ProblemSet | None = None
     """`--set`: only its entries, which the callers then put in its order."""
+    search: str | None = None
+    """`--search`: a text the slug or the title holds, in any case."""
 
     @property
     def lists_items(self) -> bool:
@@ -58,11 +60,18 @@ class ProblemFilter:
             self.kind in (None, entry_kind(meta.kind)),
             self.labels.matches(meta.labels),
             self.holds(meta.slug),
+            self.finds(meta.slug, meta.title),
         )
         return all(checks)
 
     def holds(self, slug: str) -> bool:
         return self.in_set is None or self.in_set.holds(slug)
+
+    def finds(self, slug: str, title: str) -> bool:
+        if self.search is None:
+            return True
+        wanted = self.search.strip().lower()
+        return wanted in slug.lower() or wanted in title.lower()
 
 
 @dataclass(frozen=True, slots=True)

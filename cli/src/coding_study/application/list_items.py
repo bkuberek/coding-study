@@ -54,6 +54,7 @@ def _matches(problem_filter: ProblemFilter, item: ListedItem) -> bool:
         problem_filter.content in (None, meta.status),
         problem_filter.labels.matches(meta.labels),
         problem_filter.holds(meta.slug),
+        problem_filter.finds(meta.slug, meta.title),
     )
     return all(checks)
 

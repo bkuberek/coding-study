@@ -35,6 +35,11 @@ export function nodes(children: readonly Child[]): (Node | string)[] {
   );
 }
 
+/** Whether a key pressed at `target` types into a field, an editor or a list, so it is not a shortcut. */
+export function isTyping(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(target.tagName));
+}
+
 /** A `<code>` that a screen reader reads as a command. */
 export function command(text: string): HTMLElement {
   return h("code", { class: "cmd" }, text);

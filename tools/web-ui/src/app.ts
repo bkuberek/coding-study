@@ -12,7 +12,7 @@ import "./page/files.css";
 import { createApi } from "./page/api.ts";
 import { refreshAttemptsMenu } from "./page/attempts.ts";
 import type { Cleanup, PageContext, PreferencesListener } from "./page/context.ts";
-import { h } from "./page/dom.ts";
+import { h, isTyping } from "./page/dom.ts";
 import { mockBanner, MockWatch } from "./page/mock.ts";
 import { NotificationStream } from "./page/notifications.ts";
 import { parseRoute, type Route } from "./page/routes.ts";
@@ -78,10 +78,6 @@ function lazyView(context: PageContext, load: () => Promise<(context: PageContex
     left = true;
     cleanup?.();
   };
-}
-
-function isTyping(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(target.tagName));
 }
 
 async function start(root: HTMLElement): Promise<void> {

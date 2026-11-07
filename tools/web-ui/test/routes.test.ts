@@ -89,3 +89,8 @@ test("the Set filter is kept in the fragment's query, first", () => {
   assert.equal(problemsHash({ track: "dsa", set: "backend-loop" }), "#/?set=backend-loop&track=dsa");
   assert.deepEqual(parseRoute("#/?set=backend-loop"), { view: "problems", filters: { set: "backend-loop" } });
 });
+
+test("the search is kept in the fragment's query", () => {
+  assert.deepEqual(parseRoute("#/?search=two%20sum"), { view: "problems", filters: { search: "two sum" } });
+  assert.equal(problemsHash({ search: "two sum" }), "#/?search=two+sum");
+});

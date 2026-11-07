@@ -214,3 +214,31 @@ def test_json_applies_the_filters(environment):
 
 def test_json_with_no_match_has_no_entries(environment):
     assert document("--lang", "kotlin")["entries"] == []
+
+
+def test_search_finds_a_word_of_the_slug(environment):
+    assert listed_slugs("--search", "lru") == ["lru-cache"]
+
+
+def test_search_finds_a_word_of_the_title_the_slug_does_not_hold(environment):
+    assert listed_slugs("--search", "Two Sum") == ["two-sum"]
+
+
+def test_search_ignores_case(environment):
+    assert listed_slugs("--search", "LRU cache") == ["lru-cache"]
+
+
+def test_search_ignores_the_spaces_around_it(environment):
+    assert listed_slugs("--search", "  lru ") == ["lru-cache"]
+
+
+def test_search_reads_the_items_too(environment):
+    assert listed_slugs("--search", "news") == ["news-feed"]
+
+
+def test_search_narrows_what_the_other_filters_leave(environment):
+    assert listed_slugs("--search", "two", "--kind", "item") == []
+
+
+def test_a_search_nothing_holds_says_so(environment):
+    assert "no problems match" in invoke("--search", "zebra").output

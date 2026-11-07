@@ -103,6 +103,9 @@ def list_command(
     scope: Annotated[
         Scope | None, typer.Option("--scope", help="Only this scope: function, project or system.")
     ] = None,
+    search: Annotated[
+        str | None, typer.Option("--search", help="Problems whose slug or title holds this text.")
+    ] = None,
     as_json: Annotated[
         bool, typer.Option("--json", help="One JSON document instead of the table.")
     ] = False,
@@ -110,7 +113,15 @@ def list_command(
     """Browse problems with filters."""
     labels = LabelFilter(domain, role, scope)
     problem_filter = ProblemFilter(
-        track, pattern, difficulty, problem_status(status), content, language, kind, labels
+        track,
+        pattern,
+        difficulty,
+        problem_status(status),
+        content,
+        language,
+        kind,
+        labels,
+        search=search,
     )
     load = load_catalog_environment if set_name is None else load_environment
     environment = load(Path.cwd(), command_environ(context), Path.home())

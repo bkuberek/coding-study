@@ -7,16 +7,19 @@ import "./problems.css";
 
 import { listCommand, nextCommand, NEXT_FILTERS, startCommand } from "../commands.ts";
 import type { Cleanup, PageContext } from "../context.ts";
-import { badge, command, h } from "../dom.ts";
+import { badge, command, h, isTyping } from "../dom.ts";
 import { problemBadge, statusWords } from "../format.ts";
 import { jdkRefusals, type SelectedJdk } from "../jdk.ts";
-import { attemptHash, type FilterKey, type Filters, problemHash, problemsHash } from "../routes.ts";
+import { matchesSearch } from "../problems-model.ts";
+import { attemptHash, FILTER_KEYS, type FilterKey, type Filters, problemHash, problemsHash } from "../routes.ts";
 import { setControl, setsHolding } from "../setControl.ts";
 import { empty, failure, loading, showFailure } from "../states.ts";
 import type { ListEntry, NextPick, ProblemList, SetList, SetSummary } from "../types.ts";
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
 const STATUSES = ["new", "in_progress", "attempted", "passed", "due", "mastered"];
+/** The filters the server answers; the search narrows the rows already here. */
+const LIST_FILTERS = FILTER_KEYS.filter((key) => key !== "search");
 const CONTENT = ["draft", "ready"];
 const LANGUAGE_LABELS: Readonly<Record<string, string>> = {
   python: "py",
@@ -36,7 +39,7 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
   const next = h("section", { class: "next-card", "aria-labelledby": "next-heading" });
   // Focusable, so the keyboard scrolls the table where a narrow window gives it a box of its own.
   const table = h("section", { class: "listing table-scroll", "aria-label": "Problems", "aria-busy": "true", tabindex: "0" }, loading());
-  const choices: Readonly<Record<Exclude<FilterKey, "pattern">, readonly string[]>> = {
+  const choices: Readonly<Record<Exclude<FilterKey, "pattern" | "search">, readonly string[]>> = {
     set: filters.set ? [filters.set] : [],
     track: session.tracks,
     kind: session.kinds,
@@ -48,7 +51,15 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
     role: session.job_roles,
     scope: session.scopes,
   };
-  const form = filterForm(filters, choices);
+  let searched = filters.search ?? "";
+  const route = (): Filters => ({ ...filters, search: searched.trim() });
+  let narrow: (text: string) => void = () => {};
+  const form = filterForm(route, choices, (text) => {
+    searched = text;
+    history.replaceState(null, "", problemsHash(route()));
+    shell.setCommand(listCommand(route()));
+    narrow(text);
+  });
   shell.main.replaceChildren(
     h("h1", { class: "sr-only" }, "Problems"),
     next,
@@ -61,7 +72,7 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
   // table, so a table drawn first would move under a pointer about to click a row.
   const load = () =>
     void Promise.allSettled([
-      api.get<ProblemList>(`/api/v1/problems${queryOf(filters, Object.keys(choices).concat("pattern") as FilterKey[])}`),
+      api.get<ProblemList>(`/api/v1/problems${queryOf(filters, LIST_FILTERS)}`),
       api.get<NextPick>(`/api/v1/next${queryOf(filters, NEXT_FILTERS)}`),
       api.get<SetList>("/api/v1/sets"),
     ]).then(([list, pick, sets]) => {
@@ -88,16 +99,27 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
             }
           },
         });
+      const rows = listing(entries, selectedJdk, drawControl);
       table.replaceChildren(
         ...brokenSets,
         ...(inSet?.missing.length ? [h("p", { class: "quiet" }, `missing from the catalog: ${inSet.missing.join(", ")}`)] : []),
-        listing(entries, selectedJdk, drawControl),
+        ...rows.nodes,
       );
-      const items = entries.filter((entry) => entry.kind === "item").length;
-      shell.setStatus({ mode: "LIST", where: `${entries.length - items} problems · ${items} items · ${today}` });
+      narrow = (text) => {
+        const found = rows.narrow(text);
+        const items = found.filter((entry) => entry.kind === "item").length;
+        shell.setStatus({ mode: "LIST", where: `${found.length - items} problems · ${items} items · ${today}` });
+      };
+      narrow(searched);
     });
   load();
-  return () => {};
+  const focusSearch = (event: KeyboardEvent) => {
+    if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey || isTyping(event.target) || document.querySelector("dialog[open]")) return;
+    event.preventDefault();
+    form.querySelector<HTMLInputElement>("#filter-search")?.focus();
+  };
+  document.addEventListener("keydown", focusSearch);
+  return () => document.removeEventListener("keydown", focusSearch);
 }
 
 /** The sets arrive after the form is drawn; the filter keeps what the route names. */
@@ -150,13 +172,26 @@ export function nextPick(pick: NextPick, filters: Filters): Node[] {
 }
 
 function filterForm(
-  filters: Filters,
-  choices: Readonly<Record<Exclude<FilterKey, "pattern">, readonly string[]>>,
+  route: () => Filters,
+  choices: Readonly<Record<Exclude<FilterKey, "pattern" | "search">, readonly string[]>>,
+  searched: (text: string) => void,
 ): HTMLFormElement {
+  const filters = route();
   const apply = (key: FilterKey, value: string) => {
-    location.hash = problemsHash({ ...filters, [key]: value });
+    location.hash = problemsHash({ ...route(), [key]: value });
   };
-  const selects = (Object.keys(choices) as Exclude<FilterKey, "pattern">[]).map((key) => {
+  const search = h("input", {
+    id: "filter-search",
+    name: "search",
+    type: "search",
+    value: filters.search ?? "",
+    placeholder: "search problems…",
+    spellcheck: "false",
+    autocomplete: "off",
+    "aria-keyshortcuts": "/",
+  });
+  search.addEventListener("input", () => searched(search.value));
+  const selects = (Object.keys(choices) as Exclude<FilterKey, "pattern" | "search">[]).map((key) => {
     const select = h(
       "select",
       { id: `filter-${key}`, name: key },
@@ -178,6 +213,7 @@ function filterForm(
   const form = h(
     "form",
     { class: "filters", role: "search", "aria-label": "Filter problems" },
+    h("label", { class: "filter filter-wide", for: "filter-search" }, h("span", { class: "filter-name" }, "search"), search),
     ...selects,
     h("label", { class: "filter filter-wide", for: "filter-pattern" }, h("span", { class: "filter-name" }, "pattern"), pattern),
     Object.keys(filters).length ? h("a", { href: "#/", class: "clear" }, "clear filters") : null,
@@ -190,16 +226,33 @@ function filterForm(
   return form;
 }
 
-function listing(entries: readonly ListEntry[], selectedJdk: SelectedJdk | null, setsOf: (slug: string) => HTMLElement): HTMLElement {
-  if (entries.length === 0) return empty("no problems match", h("a", { href: "#/" }, "clear the filters"));
+/** The table and what it says with no row to show; `narrow` keeps the rows a search finds. */
+function listing(
+  entries: readonly ListEntry[],
+  selectedJdk: SelectedJdk | null,
+  setsOf: (slug: string) => HTMLElement,
+): { readonly nodes: readonly HTMLElement[]; narrow(text: string): readonly ListEntry[] } {
   const header = ["id", "problem", "diff", "pattern", "kind", "scope", "status", "due", "refs", "in progress", "sets"];
-  return h(
+  const rows = entries.map((entry) => ({ entry, element: row(entry, selectedJdk, setsOf) }));
+  const body = h("tbody");
+  const table = h(
     "table",
     { class: "problems" },
     h("caption", { class: "sr-only" }, "Problems, then items, matching the filters"),
     h("thead", {}, h("tr", {}, ...header.map((name) => h("th", { scope: "col" }, name)))),
-    h("tbody", {}, ...entries.map((entry) => row(entry, selectedJdk, setsOf))),
+    body,
   );
+  const none = empty("no problems match", h("a", { href: "#/" }, "clear the filters"));
+  return {
+    nodes: [table, none],
+    narrow(text) {
+      const found = rows.filter(({ entry }) => matchesSearch(entry, text));
+      body.replaceChildren(...found.map(({ element }) => element));
+      table.hidden = found.length === 0;
+      none.hidden = found.length > 0;
+      return found.map(({ entry }) => entry);
+    },
+  };
 }
 
 /**
