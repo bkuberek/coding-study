@@ -35,7 +35,7 @@ from tests.mock_server_support import (
 AVAILABILITY = "/v1/rooms/availability?date=2027-03-01"
 AVAILABILITY_BODY = (SAMPLE_FOLDER / "bodies" / "availability.json").read_bytes()
 FAST_POLL_S = 0.01
-SAMPLE_SLOW_DELAY_S = 0.06
+SAMPLE_SLOW_DELAY_MS = 60
 
 
 @pytest.fixture
@@ -155,7 +155,7 @@ def test_the_slow_scenario_answers_no_sooner_than_its_delay(client: StackClient)
     client.set_scenario("room-vendor", "slow")
     started = time.monotonic()
     client.api(AVAILABILITY)
-    assert time.monotonic() - started >= SAMPLE_SLOW_DELAY_S
+    assert time.monotonic() - started >= SAMPLE_SLOW_DELAY_MS / 1000
 
 
 def test_a_slow_request_does_not_block_another_mock_server(client: StackClient):
@@ -321,7 +321,7 @@ def test_a_delay_shows_between_arrival_and_response_in_the_log(client: StackClie
     wait_until(lambda: client.entries()[0]["responded_ms"] is not None)
     entry = client.entries()[0]
     rounding_ms = 1
-    assert entry["responded_ms"] - entry["received_ms"] >= 60 - rounding_ms
+    assert entry["responded_ms"] - entry["received_ms"] >= SAMPLE_SLOW_DELAY_MS - rounding_ms
 
 
 def test_a_body_at_the_cap_is_served_and_its_log_entry_truncated(client: StackClient):
