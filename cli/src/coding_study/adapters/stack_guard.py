@@ -35,12 +35,18 @@ class StackGuard:
     `cstudy` that dies during that cleanup still leaves nothing behind."""
 
     def __init__(
-        self, stack: str, *, removes_volumes: bool, environment: Mapping[str, str]
+        self,
+        stack: str,
+        *,
+        removes_volumes: bool,
+        environment: Mapping[str, str],
+        run_directory: Path | None = None,
     ) -> None:
         docker = shutil.which(DOCKER, path=environment.get("PATH")) or DOCKER
+        run = NO_RUN_FOLDER if run_directory is None else str(run_directory)
         flags = (REMOVE_VOLUMES,) if removes_volumes else ()
         self._process = subprocess.Popen(
-            [sys.executable, "-I", "-S", __file__, docker, stack, *flags],
+            [sys.executable, "-I", "-S", __file__, docker, stack, run, *flags],
             bufsize=0,
             stdin=subprocess.PIPE,
             stdout=subprocess.DEVNULL,
