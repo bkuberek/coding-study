@@ -21,6 +21,7 @@ STOP_SECONDS = 30
 LISTEN_POLL_SECONDS = 0.05
 LOOPBACK = "127.0.0.1"
 URL_LABEL = "open"
+CONFIG_VARIABLE = "CSTUDY_CONFIG"
 
 
 @dataclass
@@ -61,9 +62,12 @@ class RunningServer:
 
 
 def served_environment(workspace: Path) -> dict[str, str]:
-    """The environment of a `cstudy` working on `workspace` with a config directory of its own."""
+    """The environment of a `cstudy` working on `workspace` with a config directory of its own.
+    A `CSTUDY_CONFIG` from the shell stays out: it outranks that directory, so the server would
+    read another file than the test wrote, and Settings would write to it."""
+    inherited = {name: value for name, value in os.environ.items() if name != CONFIG_VARIABLE}
     return {
-        **os.environ,
+        **inherited,
         "CSTUDY_WORKSPACE": str(workspace),
         "XDG_CONFIG_HOME": str(workspace.parent / "config"),
         "NO_COLOR": "1",
