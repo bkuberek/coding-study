@@ -184,6 +184,15 @@ def test_a_failing_test_command_fails_d9(environment, engine):
     assert "1 failing" in result.suite.failures[0]
 
 
+def test_the_test_command_can_set_a_scenario_as_it_can_in_cstudy_test(environment, engine):
+    verified(environment)
+
+    commands = [command for name, command in engine.calls if name == "exec_app"]
+    assert commands
+    for command in commands:
+        assert set(command.environment) == {"CSTUDY_MOCK_CONTROL_URL", "CSTUDY_MOCK_CONTROL_TOKEN"}
+
+
 def test_a_starters_test_command_that_fails_passes_d1(environment, engine):
     engine.exec_outcome = CommandOutcome(1, "1 failing\n")
 
