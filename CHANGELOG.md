@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v0.27.0 (2026-11-07)
+
+### Features
+
+- **web**: Say who created cstudy on the About view
+  ([`9796df7`](https://github.com/bkuberek/coding-study/commit/9796df78250e83db18f0462dbbc8105171846551))
+
+- **web**: Widen the About text so the sponsor line stays on one line
+  ([`e1a96f6`](https://github.com/bkuberek/coding-study/commit/e1a96f6b40aeb2ba6531b618758c3b137b32493e))
+
+
 ## v0.26.0 (2026-11-07)
 
 ### Features
