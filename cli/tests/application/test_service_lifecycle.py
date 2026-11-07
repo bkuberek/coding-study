@@ -2,10 +2,13 @@
 two clocks."""
 
 import json
+import shutil
 from dataclasses import replace
 
 import pytest
 
+from coding_study.application.project_manifest import folder_states
+from coding_study.application.project_start import RestoreRequest, restore_project_file
 from coding_study.application.project_workspace import seed_project
 from coding_study.application.service_lifecycle import (
     ServiceTestRequest,
@@ -25,6 +28,8 @@ from coding_study.application.service_stacks import (
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.docker_engine import EngineState, EngineStatus
 from coding_study.domain.errors import SandboxError
+from coding_study.domain.file_states import FileState
+from coding_study.domain.levels import FIRST_LEVEL
 from coding_study.domain.sandbox import (
     PYTHON_IMAGE,
     CommandOutcome,
@@ -50,6 +55,9 @@ from tests.service_problems import (
     write_mock,
     write_problem,
 )
+
+ENV_FILE = ".env"
+ENV_PATH = f"{FOLDER}/{ENV_FILE}"
 
 
 @pytest.fixture
@@ -109,6 +117,88 @@ def test_a_resumed_attempt_keeps_the_folder(environment):
 
     assert again.resumed
     assert (environment.root / FOLDER / "src" / "server.ts").read_text() == "// mine\n"
+
+
+def env_state(environment) -> FileState:
+    files = folder_states(environment, problem_of(environment), FIRST_LEVEL)
+    return next(file.state for file in files if file.path == ENV_FILE)
+
+
+def test_a_new_attempt_writes_the_env_file_from_the_manifest(environment):
+    started(environment)
+
+    assert environment.workspace.read_text(ENV_PATH) == "PORT=8000\n"
+
+
+def test_the_env_file_holds_every_variable_of_the_manifest(tmp_path, engine):
+    root = make_content(tmp_path)
+    variables = {"PORT": "8000", "ROOM_VENDOR_URL": "http://room-vendor:8080"}
+    write_problem(root, meta_document(env=variables))
+    environment = make_environment(root, sandbox=engine)
+
+    started(environment)
+
+    assert environment.workspace.read_text(ENV_PATH) == (
+        "PORT=8000\nROOM_VENDOR_URL=http://room-vendor:8080\n"
+    )
+
+
+def test_a_resumed_attempt_writes_the_env_file_when_the_folder_is_gone(environment):
+    started(environment)
+    shutil.rmtree(environment.root / FOLDER)
+
+    start_attempt(environment, StartRequest(SLUG))
+
+    assert environment.workspace.read_text(ENV_PATH) == "PORT=8000\n"
+
+
+def test_a_resumed_attempt_keeps_the_env_file_you_changed(environment):
+    started(environment)
+    (environment.root / ENV_PATH).write_text("PORT=9000\n")
+
+    start_attempt(environment, StartRequest(SLUG))
+
+    assert environment.workspace.read_text(ENV_PATH) == "PORT=9000\n"
+
+
+def test_fresh_archives_the_env_file_you_changed_and_writes_it_anew(environment):
+    started(environment)
+    (environment.root / ENV_PATH).write_text("PORT=9000\n")
+
+    again = start_attempt(environment, StartRequest(SLUG, fresh=True))
+
+    archived = again.archived_to
+    assert environment.workspace.read_text(f"{archived}/{ENV_FILE}") == "PORT=9000\n"
+    assert environment.workspace.read_text(ENV_PATH) == "PORT=8000\n"
+
+
+def test_a_new_attempts_env_file_counts_as_no_edit(environment):
+    started(environment)
+
+    assert env_state(environment) is FileState.UNCHANGED
+
+
+def test_a_changed_env_file_counts_as_an_edit(environment):
+    started(environment)
+    (environment.root / ENV_PATH).write_text("PORT=9000\n")
+
+    assert env_state(environment) is FileState.MODIFIED
+
+
+def test_the_env_file_is_tracked_like_any_file(environment):
+    started(environment)
+
+    assert ENV_FILE in environment.workspace.tracked_files(FOLDER)
+
+
+def test_restore_writes_the_env_file_back_from_the_manifest(environment):
+    started(environment)
+    (environment.root / ENV_PATH).write_text("PORT=9000\n")
+
+    restore_project_file(environment, RestoreRequest(SLUG, None, ENV_FILE))
+
+    assert environment.workspace.read_text(ENV_PATH) == "PORT=8000\n"
+    assert env_state(environment) is FileState.UNCHANGED
 
 
 def test_a_link_left_in_the_folder_is_never_written_through(environment, tmp_path):

@@ -20,6 +20,7 @@ from coding_study.application.project_manifest import (
     folder_manifest,
     starter_files,
 )
+from coding_study.application.project_starter import provided_starter
 from coding_study.application.project_tests import LevelTestFile, LevelTestWriter
 from coding_study.application.project_workspace import (
     archive_project,
@@ -302,8 +303,7 @@ class _Restorer:
             language = project_language(self._problem.meta)
             generator = self._environment.toolchains.project_test_generator(language)
             return generator.generate(level_tests(self._problem, provided.level))
-        files = self._problem.project_files
-        starter = files.starter if files else None
+        starter = provided_starter(self._problem)
         found = None if starter is None else starter.file(provided.path)
         if found is None or found.text is None:
             raise UsageError(

@@ -214,7 +214,7 @@ def _recorded_lock(environment: Environment, slug: str) -> str | None:
     return None
 
 
-def _test_environment(plan: StackPlan) -> dict[str, str]:
+def environment_of_test_command(plan: StackPlan) -> dict[str, str]:
     """Only a test stack hands its control interface to `commands.test`; it holds visible scenarios
     only, and a graded stack never does this."""
     if plan.mocks is None:
@@ -337,7 +337,7 @@ def _tests_in(
         outcome = engine.exec_app(
             plan,
             ContainerCommand(
-                service.commands.test, _test_environment(plan), limit, request.on_output
+                service.commands.test, environment_of_test_command(plan), limit, request.on_output
             ),
         )
         test_seconds = clock.monotonic() - run_began

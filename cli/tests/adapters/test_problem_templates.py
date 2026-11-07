@@ -312,8 +312,8 @@ def test_a_stress_overlay_on_the_real_clock_declares_no_clock(overlay):
         (TemplateName.PROJECT_PYTHON_SERVICE, "starter/uv.lock"),
     ],
 )
-def test_a_service_template_ships_its_lock_and_its_env(template, lock):
+def test_a_service_template_ships_its_lock_and_no_env_file(template, lock):
     files = PackagedProblemTemplates().files(template)
 
     assert lock in files
-    assert files["starter/.env"] == "PORT=8000\n"
+    assert "starter/.env" not in files

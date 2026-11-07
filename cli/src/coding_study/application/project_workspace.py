@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 from coding_study.application.active_attempt import autograded_language
 from coding_study.application.ports import Workspace
+from coding_study.application.project_starter import provided_starter
 from coding_study.domain import layout
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.errors import ContentError, ContentIssue, SandboxError, UsageError
@@ -117,7 +118,7 @@ def _write_starter_file(
 def _starter(problem: Problem) -> ProjectTree:
     if problem.project_files is None:
         raise ValueError(f"{problem.meta.slug} is not a project problem")
-    starter = problem.project_files.starter
+    starter = provided_starter(problem)
     if starter is None:
         raise ContentError([ContentIssue(_starter_source(problem), "", NO_STARTER)])
     return starter

@@ -17,7 +17,11 @@ from coding_study.application.ports import ContainerCommand, ProgressNotice
 from coding_study.application.reference_runs import ApproachResult, LanguageResult, shown
 from coding_study.application.sandbox import running_stack
 from coding_study.application.service_grading import ServiceGrading, grade_on_stack
-from coding_study.application.service_lifecycle import install_in_folder, prepare_engine
+from coding_study.application.service_lifecycle import (
+    environment_of_test_command,
+    install_in_folder,
+    prepare_engine,
+)
 from coding_study.application.service_stacks import (
     graded_stack_plan,
     practice_stack_plan,
@@ -156,7 +160,11 @@ class _ServiceChecks:
         return running_stack(engine, plan, self._service.startup_budget, self._notify)
 
     def _run_test(self, plan: StackPlan) -> CommandOutcome:
-        command = ContainerCommand(self._service.commands.test, {}, self._service.timeouts.test)
+        command = ContainerCommand(
+            self._service.commands.test,
+            environment_of_test_command(plan),
+            self._service.timeouts.test,
+        )
         return self._environment.sandbox.exec_app(plan, command)
 
     def _suite_and_stack_checks(self, reference: str) -> tuple[SuiteCheck, tuple[str, ...]]:

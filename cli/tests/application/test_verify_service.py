@@ -8,6 +8,7 @@ import pytest
 
 from coding_study.application.http_grading_ports import StackClients, StackEndpoints
 from coding_study.application.verify_content import VerifyRequest, verify_content
+from coding_study.application.verify_projects import PROJECT_BUILDS, STARTER_BUILDS
 from coding_study.application.verify_service import ServiceVerification, verify_service_project
 from coding_study.domain.docker_engine import EngineState, EngineStatus
 from coding_study.domain.errors import SandboxError
@@ -106,6 +107,14 @@ def test_it_writes_the_starter_and_the_reference_without_generated_tests(environ
     assert environment.workspace.exists(f".cs/build/projects/{SLUG}/reference/src/server.ts")
 
 
+def test_the_starters_and_the_references_builds_hold_the_env_file(environment):
+    verified(environment)
+
+    workspace = environment.workspace
+    assert workspace.read_text(f"{PROJECT_BUILDS}/{SLUG}/reference/.env") == "PORT=8000\n"
+    assert workspace.read_text(f"{STARTER_BUILDS}/{SLUG}/.env") == "PORT=8000\n"
+
+
 def test_it_installs_for_the_starter_and_for_the_reference(environment, engine):
     verified(environment)
 
@@ -173,6 +182,15 @@ def test_a_failing_test_command_fails_d9(environment, engine):
 
     assert not result.suite.passed
     assert "1 failing" in result.suite.failures[0]
+
+
+def test_the_test_command_can_set_a_scenario_as_it_can_in_cstudy_test(environment, engine):
+    verified(environment)
+
+    commands = [command for name, command in engine.calls if name == "exec_app"]
+    assert commands
+    for command in commands:
+        assert set(command.environment) == {"CSTUDY_MOCK_CONTROL_URL", "CSTUDY_MOCK_CONTROL_TOKEN"}
 
 
 def test_a_starters_test_command_that_fails_passes_d1(environment, engine):

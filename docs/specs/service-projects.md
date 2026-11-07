@@ -1,6 +1,6 @@
 # Spec: Service projects
 
-**Status: built through P6: the sandbox, the lifecycle commands, the mock server, the HTTP grader and `cstudy dev`, so a service project works from `cstudy start` to `cstudy submit`, on macOS with Docker Desktop. No problem in the catalog uses it yet (P7). What is still planned says so where it stands: backing services (P10), code intelligence and the Web UI (P9), and parallel and multi-step cases (P10, P11).** A service project is a [project problem](problem-format.md#project-problems) where you build a small running service: `cstudy` runs your app in a Docker sandbox, with mock servers for third-party APIs and, where the problem declares them, backing services, and judges it by what it answers over HTTP. Decision record: [ADR 0019](../decisions/0019-service-projects.md), which tags each decision by who made it. Items marked R*n* there are recommendations confirmed when their phase starts. Phases P*n* are the ADR's. Existing problems, the bank projects included, stay native, need no Docker and do not change.
+**Status: built through P7: the sandbox, the lifecycle commands, the mock server, the HTTP grader and `cstudy dev`, so a service project works from `cstudy start` to `cstudy submit`, on macOS with Docker Desktop, and the first catalog problem, [`coworking-availability-typescript`](#the-first-problem), uses them. What is still planned says so where it stands: the Python version (P8), backing services (P10), code intelligence and the Web UI (P9), and parallel and multi-step cases (P10, P11).** A service project is a [project problem](problem-format.md#project-problems) where you build a small running service: `cstudy` runs your app in a Docker sandbox, with mock servers for third-party APIs and, where the problem declares them, backing services, and judges it by what it answers over HTTP. Decision record: [ADR 0019](../decisions/0019-service-projects.md), which tags each decision by who made it. Items marked R*n* there are recommendations confirmed when their phase starts. Phases P*n* are the ADR's. Existing problems, the bank projects included, stay native, need no Docker and do not change.
 
 ## Names
 
@@ -201,7 +201,7 @@ The app container's environment is explicit. **Nothing from your machine is pass
 
 | Variable | Set by | Value |
 |----------|--------|-------|
-| Everything in `project.env` | The manifest, which [`.env`](#env) repeats | The app's port, stable URLs such as `http://room-vendor:8080`, fake keys |
+| Everything in `project.env` | The manifest, which [`.env`](#env) is written from | The app's port, stable URLs such as `http://room-vendor:8080`, fake keys |
 | `CSTUDY_DATA_DIR` | cstudy | `/data` |
 | `HOME`, `TMPDIR` | cstudy | Paths on tmpfs |
 | `CSTUDY_MOCK_CONTROL_URL`, `CSTUDY_MOCK_CONTROL_TOKEN` | cstudy, for `test` only | The control interface of a test stack, which holds only visible scenarios. Never set for `run`, and never in a graded stack |
@@ -273,7 +273,7 @@ project:
     reset: [node, scripts/reset-data.ts]
     grade_setup: [node, "{problem}/grading/grade_setup.ts"]
   app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 30}
-  env:                          # the app's environment; the starter's .env holds the same lines
+  env:                          # the app's environment; cstudy writes .env from it
     PORT: "8000"
     ROOM_VENDOR_URL: http://room-vendor:8080
     DATABASE_URL: postgres://app:app@db:5432/app
@@ -293,7 +293,7 @@ project:
 | `commands` | The [lifecycle commands](#lifecycle-commands). No other key |
 | `app.port_env`, `app.port` | The variable your app reads for its port, and the port, which never varies inside the stack. Your app must read it from the environment and listen on all interfaces inside the container (`0.0.0.0`) |
 | `app.health` | A path that answers 2xx when the app is ready |
-| `env` | The whole app environment: `port_env`, one URL for each mock server and service your app calls, and fake keys. No real secret, and S19 compares it with the starter's `.env` |
+| `env` | The whole app environment: `port_env`, one URL for each mock server and service your app calls, and fake keys. No real secret. It is the only source of the folder's [`.env`](#env) |
 | `mocks` | At most 4, each with a unique `name` (lowercase letters, digits, `-`) that is no service name and none of `app`, `cstudy-mocks` or `cstudy-forward`. Every path is relative to the problem's directory, not the starter |
 | `services` | A compose file, relative to the problem's directory ([Backing services](#backing-services)), planned for P10: S21 and S22 check it today, and a stack refuses it |
 | `install_env` | What the package manager needs in its install container, such as where its cache is. `/cache` is a volume there |
@@ -317,7 +317,7 @@ problems/<id>-coworking-availability-typescript/
   services/compose.yaml     # a data-driven problem only
   grading/                  # a data-driven problem only: grade_setup and hidden data
   starter/
-    README.md, .env, package.json, pnpm-lock.yaml, tsconfig.json, .gitignore
+    README.md, package.json, pnpm-lock.yaml, tsconfig.json, .gitignore
     src/server.ts
     tests/                  # visible tests, and the helper for the control interface
     vendors/room-vendor/API.md    # a copy of mocks/room-vendor.API.md
@@ -330,7 +330,7 @@ problems/<id>-coworking-availability-typescript/
 
 ## `.env`
 
-`.env` ships ready-made in the starter, an ordinary visible file with no secrets. Mock servers and services have stable names on the stack's network, so nothing in it ever varies.
+No starter holds a `.env`. `cstudy` writes it into your project folder from `project.env` as it copies the starter, an ordinary visible file with no secrets. Mock servers and services have stable names on the stack's network, so nothing in it ever varies, and the manifest stays the only source, so nothing is repeated.
 
 ```text
 PORT=8000
@@ -340,11 +340,12 @@ DATABASE_URL=postgres://app:app@db:5432/app
 
 | Rule | Detail |
 |------|--------|
-| What it is | A starter file like any other: tracked, in `code_hash`, in the manifest and in archives, restored by `cstudy start --restore` |
+| When it is written | Wherever a starter lands: a new attempt, a resumed attempt whose folder is gone, `--fresh` and review attempts, and `cstudy verify`'s builds of the starter and the reference. A resumed attempt with a folder keeps what is there, as for any file |
+| What it is | From then on, a file like any other: tracked, in `code_hash`, in the folder's manifest and in archives, and restored by `cstudy start --restore .env` from what `project.env` says now. A new attempt's `.env` counts as unchanged, so `cstudy status` and a submission never call it your edit |
 | Why it exists | Your app's own loader finds what its environment already holds, and you can read how the stack is wired |
-| Static check | S19 requires it to hold exactly `project.env`. S15 today refuses a `.env` in a starter, and that flips for service projects |
+| Static check | S15 refuses a `.env` in a service project's starter |
 | What it is not | A place for real keys. No problem needs one: a key in `project.env` is a fake, since nothing can reach a real provider from `sandbox` |
-| Editing it | It is your file. A URL you change sends your app elsewhere, and the case fails on the request log |
+| Editing it | It is your file. Nothing reads it to start your app, whose environment is `project.env`, so an edit changes only what your own loader finds. A URL you change that way sends your app elsewhere, and the case fails on the request log |
 
 There is no `.env.local`: with fixed values and no secrets you edit `.env` itself.
 
@@ -826,7 +827,7 @@ Connect to the network, then run: cstudy start coworking-availability-typescript
 |----------|-------------|
 | Graded runs | One stack per run |
 | Mock server memory | The container is limited to 64 MiB. P1 measured a stand-in at 15 MiB, and the program alone held about 29 MB after starting, on macOS on arm64 with two mock servers |
-| Disk per project | `node_modules` or `.venv`, to be measured at P7 and P8, plus images and the install cache, shared across projects |
+| Disk per project | `node_modules` or `.venv`: 27 MB for the TypeScript problem, measured at P7, and P8 for Python; plus images and the install cache, shared across projects |
 | Container output in memory | What a container prints is as long as it likes, and `cstudy dev` follows an app with no time limit. So `cstudy` holds the last MiB of a command's output, each line goes by as it comes, and a line with no newline comes in pieces of 64 KiB |
 | Docker | [Resources and CI](#resources-and-ci) |
 | Language servers | Each project still counts toward `cstudy serve`'s limit of four language servers |
@@ -897,8 +898,8 @@ If a terminal holds the dev stack, the page shows that and does not start a seco
 | Check | Rule |
 |-------|------|
 | S5 (changed) | An example marks a visible case with `<!-- case: <id> -->`, in the `## Level` it belongs to |
-| S14, S15, S16 (changed) | With `grading: http`: no `entry`, `tests`, `clock`, `signature` or generated-test rules, and no `ops` comparator rule. A track other than `practical` is allowed ([ADR 0020](../decisions/0020-catalog-labels.md#rule-changes)). The starter holds `README.md`, its lock file and `.env`, and no `.env.local`. S15's rules on `package.json`, `pyproject.toml` and lock files [flip](#lock-files-and-static-checks). A `request` in a case belongs to a service project |
-| S19 (new) | `commands` holds only the standard names; `run` and `test` are declared, `install` with `requires.lock`, `bootstrap` with `services`; each is a non-empty list of strings; `{problem}` only in `grade_setup`, whose script lies outside the starter; `image` pinned by digest; `app` complete; `env` holds `port_env` with `app.port`, and the starter's `.env` holds exactly `env`; a URL in `env` names a declared mock server on 8080 or a declared service; at most 4 mock servers with unique names, none reserved |
+| S14, S15, S16 (changed) | With `grading: http`: no `entry`, `tests`, `clock`, `signature` or generated-test rules, and no `ops` comparator rule. A track other than `practical` is allowed ([ADR 0020](../decisions/0020-catalog-labels.md#rule-changes)). The starter holds `README.md` and its lock file, and no `.env` or `.env.local`, since `cstudy` writes `.env` from `project.env`. S15's rules on `package.json`, `pyproject.toml` and lock files [flip](#lock-files-and-static-checks). A `request` in a case belongs to a service project |
+| S19 (new) | `commands` holds only the standard names; `run` and `test` are declared, `install` with `requires.lock`, `bootstrap` with `services`; each is a non-empty list of strings; `{problem}` only in `grade_setup`, whose script lies outside the starter; `image` pinned by digest; `app` complete; `env` holds `port_env` with `app.port`; a URL in `env` names a declared mock server on 8080 or a declared service; at most 4 mock servers with unique names, none reserved |
 | S20 (new) | Every mock config valid against `schemas/mock.schema.json`, as the problem loads; a config lies in `mocks/`; `body_file` stays inside `mocks/`, exists and is text; every scenario's `delay_ms` and `Retry-After` are at most 3 s, and `Retry-After` is whole seconds; `room-vendor.API.md` and its starter copy at `vendors/room-vendor/API.md` are byte-identical and list every visible scenario and no hidden one |
 | S21 (new) | The compose file holds only `services` and their `volumes`, with images pinned by digest and no `build`; no `ports`, `networks`, `network_mode`, `restart`, `container_name`, top-level `name`, `privileged`, `cap_add`, external volume, Docker socket, anonymous volume or bind mount outside the problem; `mem_limit`, `pids_limit` and `healthcheck` on every service; no service takes a reserved name or a mock server's |
 | S22 (new) | `requires` agrees with the compose file, the lock file and `commands`: `services` names the images' repositories, `lock` exists and `images_mb` has a row per image |
@@ -931,7 +932,7 @@ The [ready rules](authoring.md#ready-criteria) can be met with these changes:
 
 ## A small example
 
-`cli/tests/fixtures/service_projects/` holds two working problems, one in TypeScript and one in Python, for the tests on a real engine. They are the smallest that use everything built: a mock server, `bootstrap`, `reset`, levels, hidden cases with the 429 scenario, a reference and a naive solution that a hidden case catches. They are no catalog problems. A real `.env` is written from the manifest as a test copies them, since no file of that name is committed.
+`cli/tests/fixtures/service_projects/` holds two working problems, one in TypeScript and one in Python, for the tests on a real engine. They are the smallest that use everything built: a mock server, `bootstrap`, `reset`, levels, hidden cases with the 429 scenario, a reference and a naive solution that a hidden case catches. They are no catalog problems.
 
 ## Unproven on Linux
 
@@ -947,16 +948,16 @@ Nothing here has run on Linux. The `sandbox` CI job is what will show it, on its
 
 ## The first problem
 
-Original to cstudy ([ADR 0004](../decisions/0004-original-problem-wording.md)). A coworking space sells desk passes, counted per day, and meeting rooms, booked in time slots from a room vendor. One API serves both. Slugs: `coworking-availability-typescript`, then `coworking-availability-python`, each a separate problem as [ADR 0014](../decisions/0014-project-problems.md) requires.
+Original to cstudy ([ADR 0004](../decisions/0004-original-problem-wording.md)). A coworking space sells hot desks, counted per day in its own data, and meeting rooms, in time slots from outside vendors. One API serves both. It is built in TypeScript as `problems/0277-coworking-availability-typescript/`, with `coworking-availability-python` to follow, each a separate problem as [ADR 0014](../decisions/0014-project-problems.md) requires.
 
 | Level | What it asks |
 |-------|--------------|
-| 1 | The existing daily-count endpoint works, and you get oriented in the codebase. One small change as well, such as refusing a date out of range with a 400, so the starter does not pass untouched and `cstudy done` keeps its meaning |
-| 2 | Integrate the room vendor and serve both product kinds from one endpoint |
-| 3 | Vendor failure handling: outage (503), slow, malformed and rate limited (429) |
-| 4 | A second vendor with a different response shape, on a second mock server |
+| 1 | `GET /desks` already answers the count for a day on sale. Give it the right answers to a wrong request, so the starter passes 4 of its 14 cases and `cstudy done` keeps its meaning |
+| 2 | `GET /availability`: one answer with the desks and `room-vendor`'s open slots, flattened and sorted |
+| 3 | Vendor failure handling: a 5xx, a 429 with and without `Retry-After`, a slow answer and a broken body. Desks are still answered and the vendor is named in `unavailable`, with retries bounded and the request log checking the count and the gaps |
+| 4 | `annex-vendor`, a second mock server with another shape and its own failures, among them an error in the body of a 200. One vendor failing touches nothing of the other's |
 
-The stack per language is chosen at authoring time, with Express or an equivalent now allowed. A level's cases check a response that degrades as the statement says when the vendor fails, for example desk passes served and rooms marked unavailable. A slow-vendor case needs no upper time bound on a loaded machine: an app with no timeout returns the full answer late, and the body differs.
+The stack is `node:http` and `fetch`, with no runtime dependency, so the install is the same 27 MB as the fixtures'. There is no database: the seeded counts are a file in the starter, so the problem declares neither `bootstrap` nor `reset`. Every level is graded again on each submit, so `/desks` stays a separate endpoint, a slot names its vendor from level 2, and `unavailable` is a list from level 2, which lets an earlier level's cases hold once the annex is asked too. The annex has no spaces on the days those cases use. A slow-vendor case needs no upper time bound on a loaded machine: an app with no timeout returns the full answer late, and the body differs.
 
 **What cannot be auto-graded.** Open-ended design discussion, such as caching vendor data and for how long, a circuit breaker, adding a third vendor, or how the API would change under load, goes in `solutions/explanation.md`, under `### Design`.
 

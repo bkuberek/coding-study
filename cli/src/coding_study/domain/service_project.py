@@ -13,6 +13,8 @@ from coding_study.domain.docker_engine import EngineState, EngineStatus, engine_
 from coding_study.domain.problem import ProblemMeta
 from coding_study.domain.sandbox import DEFAULT_READY_S, STARTUP_UP_S, StartupBudget
 
+ENV_FILE = ".env"
+"""Written into a project folder from `project.env`: no starter holds one."""
 INSTALL_LIMIT_S = 600
 HELPER_IMAGE_MB = 41
 """The pinned Python image of the forwarder, in every stack; a mock server shares it."""
@@ -109,7 +111,7 @@ class ServiceProject:
     commands: ServiceCommands
     app: ServiceApp
     env: Mapping[str, str]
-    """The whole environment of the app; the starter's `.env` repeats it."""
+    """The whole environment of the app, and all that the folder's `.env` is written from."""
     requires: ServiceRequires
     mocks: tuple[ServiceMock, ...] = ()
     services: str | None = None
@@ -185,13 +187,7 @@ def need_markers(meta: ProblemMeta) -> tuple[str, ...]:
     return () if service is None else (DOCKER_NEED, *service.requires.services)
 
 
-def parse_env_file(text: str) -> dict[str, str]:
-    """The variables of a `.env`: `NAME=value` lines, without blank lines and `#` comments. No
-    quoting: it holds fixed values, and cstudy does not read it to start anything."""
-    variables: dict[str, str] = {}
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped and not stripped.startswith("#"):
-            name, _, value = stripped.partition("=")
-            variables[name.strip()] = value.strip()
-    return variables
+def env_file_text(env: Mapping[str, str]) -> str:
+    """`project.env` as `NAME=value` lines, in the manifest's order. No quoting: it holds fixed
+    values, and cstudy does not read it to start anything."""
+    return "".join(f"{name}={value}\n" for name, value in env.items())

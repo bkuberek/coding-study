@@ -8,8 +8,6 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-import yaml
-
 from tests.waits import GENEROUS_WAIT_S
 
 FIXTURES = Path(__file__).parent / "fixtures" / "service_projects"
@@ -19,10 +17,8 @@ PYTHON = "5902-fixture-rooms-python"
 CSTUDY = str(Path(sys.executable).with_name("cstudy"))
 COMMAND_WAIT_S = 3 * GENEROUS_WAIT_S
 """A command brings a stack up more than once, and may install."""
-ENV_FILE = ".env"
-_LEFT_OUT = shutil.ignore_patterns(ENV_FILE, ".ruff_cache", "__pycache__")
-"""A fixture holds no `.env`, since nothing of that name is committed: it is written from the
-manifest, which S19 holds it to anyway. Caches a local lint leaves are no part of a starter."""
+_LEFT_OUT = shutil.ignore_patterns(".ruff_cache", "__pycache__")
+"""Caches a local lint leaves are no part of a starter."""
 LABEL_WORKSPACE = "cstudy.workspace"
 LABEL_SLUG = "cstudy.slug"
 
@@ -128,8 +124,5 @@ def fixture_project(directory: str, scratch: Path) -> FixtureProject:
 
 
 def copy_fixture(directory: str, problem: Path) -> None:
-    """The fixture's files at `problem`, with its `.env`."""
+    """The fixture's files at `problem`."""
     shutil.copytree(FIXTURES / directory, problem, ignore=_LEFT_OUT)
-    env = yaml.safe_load((problem / "meta.yaml").read_text())["project"]["env"]
-    lines = "".join(f"{name}={value}\n" for name, value in env.items())
-    (problem / "starter" / ENV_FILE).write_text(lines)
