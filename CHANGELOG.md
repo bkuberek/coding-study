@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v0.23.0 (2026-11-07)
+
+### Continuous Integration
+
+- Run the Chromium browser tests in a path-gated job
+  ([`80cd8bb`](https://github.com/bkuberek/coding-study/commit/80cd8bb939ed9ebb2ca13fcc9ff2090ecc0a1d85))
+
+### Features
+
+- **runners**: Give user code an allowlisted environment
+  ([`27ffdc2`](https://github.com/bkuberek/coding-study/commit/27ffdc2d7625a9e12ec832b7ac54e0f9a13ad348))
+
+
 ## v0.22.0 (2026-11-07)
 
 ### Bug Fixes
