@@ -494,7 +494,7 @@
             "mem_limit": { "description": "The app container's memory limit, such as 512m", "type": "string", "pattern": "^[0-9]+[mg]$" }
           }
         },
-        "env": { "description": "The whole environment of the app; the starter's .env holds the same lines", "$ref": "#/$defs/environment" },
+        "env": { "description": "The whole environment of the app; cstudy writes it into the project folder's .env", "$ref": "#/$defs/environment" },
         "install_env": { "description": "What the package manager needs in its install container, such as where its cache is", "$ref": "#/$defs/environment" },
         "mocks": {
           "type": "array",
