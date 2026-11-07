@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0276"
+slug: loan-extraction-review-typescript
+title: Loan Extraction Review (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [ai-llm, fintech]
+job_roles: [ai-engineer, backend]
+scope: project
+languages: [typescript]
+levels:
+  - {level: 1, title: Validate what the model said}
+  - {level: 2, title: Every value cites its source}
+  - {level: 3, title: Recompute what can be computed}
+  - {level: 4, title: Who decides}
+  - {level: 5, title: A person decides and it is written down}
+  - {level: 6, title: Corrections}
+signature:
+  class:
+    name: ReviewDesk
+    constructor: {params: []}
+    methods:
+      - {name: submit, level: 1, params: [{name: document, type: string}, {name: modelOutput, type: string}], returns: {type: string}}
+      - {name: values, level: 1, params: [{name: caseId, type: string}], returns: {type: string}}
+      - {name: citations, level: 2, params: [{name: caseId, type: string}], returns: {type: "string[]"}}
+      - {name: derived, level: 3, params: [{name: caseId, type: string}], returns: {type: string}}
+      - {name: route, level: 4, params: [{name: caseId, type: string}], returns: {type: string}}
+      - {name: decide, level: 5, params: [{name: caseId, type: string}, {name: reviewer, type: string}, {name: decision, type: string}, {name: note, type: string}], returns: {type: string}}
+      - {name: status, level: 5, params: [{name: caseId, type: string}], returns: {type: string}}
+      - {name: queue, level: 5, params: [], returns: {type: "string[]"}}
+      - {name: audit, level: 5, params: [{name: caseId, type: string}], returns: {type: "string[]"}}
+      - {name: correct, level: 6, params: [{name: caseId, type: string}, {name: reviewer, type: string}, {name: field, type: string}, {name: value, type: string}, {name: sourceField, type: string}], returns: {type: string}}
+comparator: {type: ops}
+project:
+  entry: src/reviewDesk.ts
+  tests: tests
+approaches:
+  - {id: reference, name: A pure assessment of each extraction with the decision kept for a person, role: optimal, time: "O(c) per queue read; O(f) per other call", space: "O(c f + a)", time_class: "n", space_class: "n"}
+related: [stream-reassembler, loan-pipeline-service-typescript]
+estimate_minutes: 110
