@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.26.0 (2026-11-07)
+
+### Features
+
+- **web**: Credit the author at the top of About
+  ([`b6bfd8a`](https://github.com/bkuberek/coding-study/commit/b6bfd8af0f6e360e460707b00a82104da3716a93))
+
+
 ## v0.25.0 (2026-11-07)
 
 ### Features
