@@ -1,20 +1,25 @@
 name: CI
 
-# Two jobs, on Linux. "Fast checks" is the fast part of CONTRIBUTING.md#checks: lint, format, types,
-# layer contracts, the tests not marked slow, and the static content checks against a workspace made
-# by the job. "JVM tests" runs the tests marked jvm (the slow tests that drive Gradle, javac, kotlinc
-# or a JVM runner) and the Java and Kotlin conformance suites on the two ends of the supported JDK
-# range, 21 and 26 (ADR 0016). The other slow tests (Node, Go, Cargo, the debuggers, the browsers)
-# stay a local gate.
+# Three kinds of checks, on Linux. "Fast checks" is the fast part of CONTRIBUTING.md#checks: lint,
+# format, types, layer contracts, the tests not marked slow, and the static content checks against a
+# workspace made by the job. "JVM tests" runs the tests marked jvm (the slow tests that drive Gradle,
+# javac, kotlinc or a JVM runner) and the Java and Kotlin conformance suites on the two ends of the
+# supported JDK range, 21 and 26 (ADR 0016). "Browser tests" runs the Playwright tests of the web UI
+# on Chromium, and only for a push or pull request that touches the page, its tests or this
+# workflow: the small "Web UI changes" job decides, and no other job waits for it. The other slow
+# tests (Node, Go, Cargo, the debuggers; Firefox and WebKit in the browser tests) stay a local gate.
 # The fast tests need no toolchain but uv and Python 3.13, which uv installs from .python-version:
 # each toolchain is replaced by a fake, and the few tests that call `gofmt`, `rustfmt` or `git`
 # skip without one. Pyright runs on Node, the major version the TypeScript runner needs; without
 # a Node on PATH, pyright's own download of one fails. The JVM job needs that Node, and pnpm, too:
 # the slow tests set up a workspace the way `cstudy doctor --fix` does, TypeScript project included.
+# The browser job sets up the same workspace, so it has the same Node, pnpm and a JDK (21, the
+# bottom of the range); it has no Go or Rust, which no browser test runs.
 #
 # CI publishes nothing: it can only read the repository and holds no secret. Versioning and
-# publishing belong to version.yml, which this workflow neither triggers nor waits for. Its
-# release commit says [skip ci], and the tag it pushes uses GITHUB_TOKEN, which starts no run.
+# publishing belong to version.yml, which this workflow neither triggers nor waits for, and which
+# does not wait for it: no job here gates a release. Its release commit says [skip ci], and the tag
+# it pushes uses GITHUB_TOKEN, which starts no run.
 
 on:
   push:
@@ -138,3 +143,146 @@ jobs:
           uv run cstudy doctor --fix
           uv run cstudy verify --conformance --lang java
           uv run cstudy verify --conformance --lang kotlin
+
+  # Whether a change can affect the web UI's page, for the browser job: the run is of a push or a
+  # pull request, and a push or pull request of problems or docs alone leaves the page as it was.
+  # The paths are the page itself, the browser tests and the modules they use (a test guards
+  # this list against the imports of the browser tests), and this workflow. The diff is of what
+  # the run brings: a pull request's merge commit against its first parent, a push against the
+  # commit the branch had before, or against the default branch for a new branch or a commit
+  # that is gone (a force push). When no diff can be made the browser job runs.
+  changes:
+    name: Web UI changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      web: ${{ steps.diff.outputs.web }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Diff against what the run builds on
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          WEB_PATHS: |
+            tools/web-ui
+            cli/src/coding_study/entrypoints/web
+            cli/tests/entrypoints/web/test_browser_*.py
+            cli/tests/entrypoints/web/conftest.py
+            cli/tests/entrypoints/web/hide_paths_probe.cjs
+            cli/tests/conftest.py
+            cli/tests/browsers.py
+            cli/tests/fake_language_server.py
+            cli/tests/helpers.py
+            cli/tests/intelligence_lab.py
+            cli/tests/language_server_scripts.py
+            cli/tests/scripted_child.py
+            cli/tests/scripted_runs.py
+            cli/tests/serve_page.py
+            cli/tests/serve_process.py
+            cli/tests/workspaces.py
+            .github/workflows/ci.yml
+        run: |
+          set -euo pipefail
+          paths=()
+          while read -r path; do
+            if [ -n "$path" ]; then paths+=("$path"); fi
+          done <<< "$WEB_PATHS"
+          base=""
+          if [ "$EVENT" = pull_request ]; then
+            base=HEAD^1
+          elif [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
+              && git fetch --quiet --no-tags --depth=1 origin "$BEFORE"; then
+            base=FETCH_HEAD
+          elif git fetch --quiet --no-tags --depth=1 origin "$DEFAULT_BRANCH"; then
+            base=FETCH_HEAD
+          fi
+          if [ -z "$base" ]; then
+            echo "No base to compare with: the browser job runs."
+            web=true
+          elif [ -n "$(git diff --name-only "$base" HEAD -- "${paths[@]}")" ]; then
+            git diff --name-only "$base" HEAD -- "${paths[@]}"
+            web=true
+          else
+            echo "Nothing the page depends on changed: the browser job is skipped."
+            web=false
+          fi
+          echo "web=$web" >> "$GITHUB_OUTPUT"
+
+  # Chromium only, one job, no matrix and no schedule: the web UI supports three engines
+  # (docs/specs/web-ui.md#browser-support) and the tests run on each of them locally, but a failure
+  # on one of the other two says little the run on Chromium does not, and Firefox and WebKit
+  # double the download and the time. `-k chromium` selects the tests whose parameters name it (the
+  # `engine` fixture, and the axe checks' views), a third of the collected tests. The browsers are
+  # cached by the version of Playwright that decides their revision, and the pnpm store by the
+  # lock files of the packages the workspace and the language servers install; the system
+  # libraries the browsers link are installed every run.
+  browser:
+    name: Browser tests (Chromium, Linux)
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-python: true
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      # The workspace the tests share is set up with `cstudy doctor --fix`'s steps, the JVM ones
+      # included, so the runner has a JDK of the supported range and Gradle's downloads cached.
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+          cache-dependency-path: |
+            runners/jvm/gradle/libs.versions.toml
+            runners/jvm/**/*.gradle.kts
+            cli/src/coding_study/adapters/workspace_template/jvm/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Enable pnpm
+        run: corepack enable pnpm
+
+      - name: Cache the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('cli/src/coding_study/adapters/workspace_template/typescript/pnpm-lock.yaml', 'cli/src/coding_study/adapters/language_servers/pnpm-lock.yaml') }}
+
+      - name: Install the development environment
+        run: uv sync --locked --group browser
+
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(uv run --group browser playwright --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium
+        run: uv run --group browser playwright install --with-deps chromium
+
+      - name: Browser tests
+        run: uv run --group browser pytest -q -rs -k chromium tests/entrypoints/web/test_browser_*.py
