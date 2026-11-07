@@ -122,11 +122,15 @@ INVALID: dict[str, Mutation] = {
         body_file="../secret.json"
     ),
     "negative delay": lambda config: config["scenarios"]["slow"].update(delay_ms=-1),
-    "scenario overriding nothing": lambda config: config["scenarios"].update(idle={"visible": True}),
+    "scenario overriding nothing": lambda config: config["scenarios"].update(
+        idle={"visible": True}
+    ),
     "sequence next to status": lambda config: config["scenarios"]["rate_limited_then_ok"].update(
         status=503
     ),
-    "empty sequence": lambda config: config["scenarios"]["rate_limited_then_ok"].update(sequence=[]),
+    "empty sequence": lambda config: config["scenarios"]["rate_limited_then_ok"].update(
+        sequence=[]
+    ),
     "empty sequence entry": lambda config: config["scenarios"]["rate_limited_then_ok"].update(
         sequence=[{}]
     ),
