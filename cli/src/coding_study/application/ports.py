@@ -28,6 +28,7 @@ from coding_study.domain.invariants import StressChecker
 from coding_study.domain.items import ItemMeta
 from coding_study.domain.jdk import SelectedJdk
 from coding_study.domain.problem import Language, Problem, ProblemMeta, ProblemSummary
+from coding_study.domain.problem_sets import ProblemSet
 from coding_study.domain.progress_export import ProgressSnapshot
 from coding_study.domain.progress_stats import LatestBench
 from coding_study.domain.project_tests import LevelTests
@@ -80,6 +81,28 @@ class ItemRepository(Protocol):
     def file_names(self, slug: str, directory: str = "") -> tuple[str, ...]:
         """Sorted names of the files (not directories) in an item subdirectory."""
         ...
+
+
+class ProblemSetStore(Protocol):
+    """The workspace's `sets.yaml` (docs/decisions/0023-problem-sets.md). Every method raises
+    ConfigError, leaving the file as it is, for a file that does not parse or is invalid. A change
+    keeps the lines of the file it does not touch, and is atomic."""
+
+    def read(self) -> tuple[ProblemSet, ...]:
+        """The sets, in the file's order; none when there is no file."""
+        ...
+
+    def add(self, problem_set: ProblemSet) -> None:
+        """Adds a set after the others, making the file when missing."""
+        ...
+
+    def set_problems(self, name: str, slugs: tuple[str, ...]) -> None:
+        """Gives the set named `name`, which must exist, these slugs in this order."""
+        ...
+
+    def rename(self, name: str, new_name: str) -> None: ...
+
+    def delete(self, name: str) -> None: ...
 
 
 class StudyGuides(Protocol):

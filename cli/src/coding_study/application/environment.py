@@ -16,6 +16,7 @@ from coding_study.application.ports import (
     MachineProbe,
     ProblemFiles,
     ProblemRepository,
+    ProblemSetStore,
     ProgressStore,
     RunnerProcess,
     StudyGuides,
@@ -67,3 +68,5 @@ class Environment:
     study_guides: StudyGuides
     language_servers: LanguageServerLocator
     """The code-intelligence servers in the workspace's `.cs/lsp/`."""
+    problem_sets: ProblemSetStore
+    """The workspace's `sets.yaml`."""

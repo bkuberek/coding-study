@@ -15,6 +15,7 @@ from coding_study.adapters.fs_problem_repository import FsProblemRepository
 from coding_study.adapters.fs_study_guides import FsStudyGuides
 from coding_study.adapters.sqlite.progress_store import SqliteProgressStore
 from coding_study.adapters.workspace_fs import WorkspaceFs
+from coding_study.adapters.yaml_problem_sets import YamlProblemSets
 from coding_study.application.environment import Environment, ProblemDestination
 from coding_study.application.ports import (
     BuildScope,
@@ -302,6 +303,7 @@ def make_environment(root: Path, **overrides: object) -> Environment:
         "new_problems": ProblemDestination(FsProblemFiles(root), WorkspaceFs(root)),
         "study_guides": FsStudyGuides(None),
         "language_servers": FakeLanguageServers(),
+        "problem_sets": YamlProblemSets(WorkspaceFs(root)),
     }
     parts.update(overrides)
     return Environment(**parts)  # type: ignore[arg-type]

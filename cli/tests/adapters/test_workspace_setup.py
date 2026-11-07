@@ -1,6 +1,7 @@
 """The workspace template on disk (docs/specs/installation-and-workspaces.md#cstudy-init)."""
 
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -77,3 +78,36 @@ def test_writing_the_missing_files_restores_go_and_rust(tmp_path):
     setup.write_missing(workspace)
     assert setup.missing_files(workspace) == ()
     assert (workspace / "rust" / "Cargo.toml").is_file()
+
+
+SHIPPED_SETS = "sets:\n  backend-loop:\n    problems:\n      - two-sum  # mine\n"
+
+
+@pytest.fixture
+def shipped_workspace(tmp_path: Path) -> tuple[FsWorkspaceSetup, Path]:
+    """The template this package ships, written with a `sets.yaml` of the user's already there."""
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    (workspace / "sets.yaml").write_text(SHIPPED_SETS)
+    setup = FsWorkspaceSetup(tmp_path / "runners", "0.1.0")
+    setup.write_missing(workspace)
+    return setup, workspace
+
+
+def test_the_template_does_not_ship_sets(shipped_workspace):
+    setup, workspace = shipped_workspace
+    (workspace / "sets.yaml").unlink()
+    assert "sets.yaml" not in setup.missing_files(workspace)
+
+
+def test_writing_what_is_missing_leaves_sets_as_they_are(shipped_workspace):
+    _, workspace = shipped_workspace
+    assert (workspace / "sets.yaml").read_text() == SHIPPED_SETS
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="git is not installed")
+def test_the_workspace_gitignore_keeps_sets_tracked(shipped_workspace):
+    _, workspace = shipped_workspace
+    subprocess.run(["git", "init", "-q"], cwd=workspace, check=True)
+    ignored = subprocess.run(["git", "check-ignore", "-q", "sets.yaml"], cwd=workspace, check=False)
+    assert ignored.returncode == 1

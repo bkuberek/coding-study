@@ -47,6 +47,7 @@ from coding_study.adapters.toolchains import RegistryToolchains, RuntimeToolchai
 from coding_study.adapters.watchfiles_watcher import WatchfilesWatcher
 from coding_study.adapters.workspace_fs import WorkspaceFs
 from coding_study.adapters.workspace_marker import has_marker
+from coding_study.adapters.yaml_problem_sets import YamlProblemSets
 from coding_study.application.environment import Environment, ProblemDestination
 from coding_study.application.ports import Toolchains
 from coding_study.domain.config import Config
@@ -134,6 +135,7 @@ def _environment(content: ContentRoot, workspace: Path, user: _User) -> Environm
         new_problems=_new_problems(content, workspace),
         study_guides=FsStudyGuides.from_setting(config.study_guides.root, user.home),
         language_servers=LspDirectory(workspace, SubprocessToolProbe(), SubprocessCommandRunner()),
+        problem_sets=YamlProblemSets(WorkspaceFs(workspace)),
     )
 
 

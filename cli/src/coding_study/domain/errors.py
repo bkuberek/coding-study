@@ -89,6 +89,19 @@ class VersionControlError(Exception):
     """git is missing, or cannot compare the repository with a branch (exit code 4)."""
 
 
+class UnknownSetError(LookupError):
+    """No problem set has the name a command or the web UI asked for (exit code 3)."""
+
+    def __init__(self, name: str, known: Sequence[str]) -> None:
+        hint = (
+            f"your sets: {', '.join(known)}"
+            if known
+            else f"create it with cstudy set create {name}"
+        )
+        super().__init__(f'unknown set "{name}"; {hint}')
+        self.name = name
+
+
 class UnknownAttemptError(LookupError):
     """No attempt has the id the web UI asked for."""
 

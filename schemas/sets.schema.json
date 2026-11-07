@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "coding-study sets.yaml",
+  "description": "A workspace's problem sets: named, ordered lists of problems and items. Spec: docs/specs/cli.md#cstudy-set. coding_study.domain.problem_sets reads the same shape.",
+  "type": ["object", "null"],
+  "additionalProperties": false,
+  "properties": {
+    "sets": {
+      "description": "Each set by its name, in the order the views list them",
+      "type": ["object", "null"],
+      "propertyNames": {
+        "type": "string",
+        "maxLength": 64,
+        "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+      },
+      "additionalProperties": {
+        "type": ["object", "null"],
+        "additionalProperties": false,
+        "properties": {
+          "description": { "type": ["string", "null"] },
+          "problems": {
+            "description": "Slugs of problems and items, in study order. A slug the catalog no longer has is allowed and shows as missing",
+            "type": ["array", "null"],
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}
