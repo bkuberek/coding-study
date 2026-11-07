@@ -52,6 +52,7 @@ class _JsonHandler(BaseHTTPRequestHandler):
     """Writes replies byte for byte, with no `Date` or `Server` header, since a mocked API's
     answers hold no clock; errors of `http.server` itself are JSON too."""
 
+    protocol_version = "HTTP/1.0"
     timeout = SOCKET_TIMEOUT_S
     disable_nagle_algorithm = True
 
