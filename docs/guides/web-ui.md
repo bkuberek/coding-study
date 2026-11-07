@@ -43,13 +43,14 @@ The top bar holds the views, the attempts in progress, and the mock banner while
 
 | View | Opens with | Shows |
 |------|------------|-------|
-| Problems | <kbd>Alt</kbd>+<kbd>1</kbd> | The `cstudy next` pick (an attempt you have open first, with links to the others, then a due review or a new problem), the filters of `cstudy list` (track, kind, language, difficulty, status, content status, domain, role, scope and pattern), and every problem with its scope, status (`in progress` while you have an attempt open) and due date |
+| Problems | <kbd>Alt</kbd>+<kbd>1</kbd> | The `cstudy next` pick (an attempt you have open first, with links to the others, then a due review or a new problem), the filters of `cstudy list` (set, track, kind, language, difficulty, status, content status, domain, role, scope and pattern), and every problem with its scope, status (`in progress` while you have an attempt open) and due date |
 | Problem | A row of the list | The statement, Start or Resume, Solution, and the problem's history: its review schedule, attempts, runs and submissions, and the code of each attempt that is over |
 | Attempt | Start, Resume, or the in-progress menu | The file tree, the editor, the results of the latest run, and the statement with its levels and hints |
-| Mock | <kbd>Alt</kbd>+<kbd>2</kbd> | The start form, or the running mock's countdown and problems |
-| Progress | <kbd>Alt</kbd>+<kbd>3</kbd> | `cstudy stats`, the reviews due, export and import |
-| Health | <kbd>Alt</kbd>+<kbd>4</kbd> | The `cstudy doctor` checks, a **Fix** button on each row that `cstudy doctor --fix` repairs, and Verify for your own problems |
-| Settings | <kbd>Alt</kbd>+<kbd>5</kbd> | This workspace's preferences, and your `config.toml`, which every workspace reads |
+| Sets | <kbd>Alt</kbd>+<kbd>2</kbd> | [Your own lists of problems](#problem-sets), with passed of total; one open shows its pick and its rows, to start, resume or reorder |
+| Mock | <kbd>Alt</kbd>+<kbd>3</kbd> | The start form, or the running mock's countdown and problems |
+| Progress | <kbd>Alt</kbd>+<kbd>4</kbd> | `cstudy stats`, the reviews due, export and import |
+| Health | <kbd>Alt</kbd>+<kbd>5</kbd> | The `cstudy doctor` checks, a **Fix** button on each row that `cstudy doctor --fix` repairs, and Verify for your own problems |
+| Settings | <kbd>Alt</kbd>+<kbd>6</kbd> | This workspace's preferences, and your `config.toml`, which every workspace reads |
 
 ![The problem list in the light theme](../images/web-ui-problems-light.png)
 
@@ -191,6 +192,25 @@ An attempt still in progress links to its Attempt view instead, where its files 
 | Done… | Finishes the attempt with a rating (`easy`, `ok`, `hard`) or as given up, and optional notes; it shows the lines `cstudy done` prints, with the next review date. It grades the latest run, so it refuses while a tab has unsaved edits: save and run first |
 | Abort… | Stops working on the problem, as `cstudy abort` does, after a question: the attempt ends as abandoned, leaves the menu of attempts in progress, and the page opens the problem. Your files stay, and your progress and review schedule do not change; a new Start begins a fresh attempt in the same file (for a problem with a review due, the file first moves to `.archive/`). It refuses while a run is active and while a tab has unsaved edits |
 
+## Problem sets
+
+A set is a list you choose, in the order you want to study it: make one for an upcoming interview, add problems and items to it, and study from it without searching. A problem can be in several sets.
+
+Open **Sets** (<kbd>Alt</kbd>+<kbd>2</kbd>) and choose **New set…**, or start from a problem: each row of the Problems view, and the Problem view, has a button that shows the sets the problem is in and opens a dialog to tick others or name a new one.
+
+An open set lists its rows in order with their status and a **Start…** or **Resume** on each, and **Up**, **Down** and **Remove** to change it. It shows passed of total, and the pick `cstudy next --set` makes: an attempt you have open in the set, then the first entry you have not passed, then a due review. The Set filter of the Problems view shows the same rows in the same order, and its Next card follows the filter.
+
+The terminal does the same:
+
+```bash
+cstudy set create backend-loop --description "The backend loop on the 12th"
+cstudy set add backend-loop two-sum lru-cache url-shortener
+cstudy next --set backend-loop
+cstudy list --set backend-loop
+```
+
+Sets live in `sets.yaml` at the root of your workspace, so you can read it, edit it by hand and commit it. A change from `cstudy` or the page touches only the lines it must, so your comments stay. `cstudy reset` keeps your sets, with `--files` and `--archive` too. A problem the catalog no longer has shows as `missing` and stops nothing, and a file that does not parse shows as an error and is never overwritten. Every command: [`cstudy set`](../specs/cli.md#cstudy-set).
+
 ## Mock interviews
 
 The Mock view starts a mock as `cstudy mock` does: new medium and hard problems, a shared timer, and hints and solutions locked until the timer ends or every problem is done. Each problem opens as an ordinary attempt. A mock started in the terminal shows in the page too.
@@ -222,7 +242,7 @@ The review intervals are here too, under `schedule`. A new interval applies to r
 
 The **danger** section of Settings, or `cstudy reset` in the terminal, deletes your progress in this workspace: attempts, scheduled reviews, bench runs, run folders and rendered statements. You see what goes, with counts, before anything does. It can't be undone, so you type `reset` to confirm. It refuses while a run or a job is active. Run `cstudy export` first if you may want your progress back.
 
-Your practice files, project folders and notes stay unless you tick that box, or pass `--files`. `.archive/` stays unless you tick its own, or pass `--archive`. Your settings, toolchains, language servers and your own problems always stay. A reset ends an open attempt along with the rest: the attempts menu empties at once, and a tab that was showing that attempt says it ended and turns read-only.
+Your practice files, project folders and notes stay unless you tick that box, or pass `--files`. `.archive/` stays unless you tick its own, or pass `--archive`. Your settings, toolchains, language servers, your own problems and your [sets](#problem-sets) always stay. A reset ends an open attempt along with the rest: the attempts menu empties at once, and a tab that was showing that attempt says it ended and turns read-only.
 
 ## Keyboard
 
@@ -230,7 +250,7 @@ Every view works with the keyboard alone. On Linux, read <kbd>Ctrl</kbd> for <kb
 
 | Keys | Do |
 |------|----|
-| <kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>5</kbd> | Problems, Mock, Progress, Health, Settings |
+| <kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>6</kbd> | Problems, Sets, Mock, Progress, Health, Settings |
 | <kbd>Cmd</kbd>+<kbd>S</kbd> | Save the active tab |
 | <kbd>Cmd</kbd>+<kbd>Enter</kbd> | Run the tests |
 | <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> | Submit a project level |

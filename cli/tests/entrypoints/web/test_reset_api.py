@@ -159,3 +159,24 @@ def test_a_running_child_refuses_it_and_names_the_run(tmp_path):
         attempts(environment),
         busy is not None,
     ) == (201, 409, started.json()["id"], 1, True)
+
+
+SETS_FILE = "sets:\n  backend-loop:\n    problems:\n      - two-sum\n"
+
+
+def test_the_preview_says_sets_stay(app):
+    with session_client(app) as client:
+        assert any("sets.yaml" in kept for kept in client.get(RESET).json()["kept"])
+
+
+@pytest.mark.parametrize(
+    "options",
+    [{}, {"files": True}, {"archive": True}, {"files": True, "archive": True}],
+    ids=["plain", "files", "archive", "files and archive"],
+)
+def test_sets_survive_every_reset(app, tmp_path, options):
+    file = tmp_path / "sets.yaml"
+    file.write_text(SETS_FILE)
+    with session_client(app) as client:
+        response = post(client, confirm="reset", **options)
+    assert (response.status_code, file.read_text()) == (200, SETS_FILE)

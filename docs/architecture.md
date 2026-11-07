@@ -67,6 +67,7 @@ Dependencies point inward. Ports are Python `Protocol` classes in `cli/src/codin
 | `LanguageServerLocator` | `LspDirectory` (`adapters/language_servers/`) | For each server of the code-intelligence catalog (`domain/code_intelligence.py`), whether `.cs/lsp/` holds it and the version its version command prints ([web-ui](specs/web-ui.md#language-servers)) |
 | `LanguageServerInstaller` | `LspDirectory` | Copies the shipped `package.json` and `pnpm-lock.yaml` into `.cs/lsp/` and runs `pnpm install --frozen-lockfile --ignore-scripts` there ([layout](specs/installation-and-workspaces.md#layout)) |
 | `PreferencesStore` | `FsPreferencesStore` (`adapters/preferences_fs.py`) | The web UI's `.cs/serve/preferences.json`; `cstudy doctor` reads `code_intelligence` from it |
+| `ProblemSetStore` | `YamlProblemSets` (`adapters/yaml_problem_sets.py`) | The workspace's `sets.yaml`: read and validated, and changed by the lines a change needs, keeping the user's comments ([ADR 0023](decisions/0023-problem-sets.md)) |
 | `WorkspaceSetup` | `FsWorkspaceSetup` | The workspace template, the marker, the runner runtime (`RunnerRuntime`) and `git init`, for `cstudy init` and `cstudy doctor` |
 | `Clock`, `Random` | system implementations | Injected for deterministic tests |
 

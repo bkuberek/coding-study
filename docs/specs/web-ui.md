@@ -20,7 +20,7 @@ Each practice command maps to one page area, one endpoint and the use case the c
 |---------|------|----------|----------|
 | `cstudy list` | Problems view | `GET /api/v1/problems` | `list_problems`, `list_items` |
 | `cstudy next` | Next card | `GET /api/v1/next` | `next_problem` |
-| `cstudy set list`, `cstudy set show` | Sets view | `GET /api/v1/sets`, `GET /api/v1/sets/{name}` | `read_sets`, `set_view` |
+| `cstudy set list`, `cstudy set show` | Sets view | `GET /api/v1/sets`, `GET /api/v1/sets/{name}` | `sets_with_standing`, `set_view` |
 | `cstudy set create`, `rename`, `delete` | Sets view | `POST /api/v1/sets`, `POST /api/v1/sets/{name}/rename`, `DELETE /api/v1/sets/{name}` | `create_set`, `rename_set`, `delete_set` |
 | `cstudy set add`, `remove`, `move` | Sets view; the add-to-set control of the Problems and Problem views | `POST /api/v1/sets/{name}/add`, `/remove`, `/move` | `add_to_set`, `remove_from_set`, `move_in_set` |
 | `cstudy show` | Statement pane | `GET /api/v1/problems/{slug}/statement` | `show_statement` |
@@ -712,13 +712,13 @@ The sets of [`cstudy set`](cli.md#cstudy-set), each a list you chose, so you stu
 |------|-----------|
 | The sets | One row per set, in the file's order: the name, a link that opens it, its description, a progress bar with `1 of 3 passed`, and `1 missing` when the catalog no longer has a slug. Empty, the view says so and offers New set |
 | New set | A dialog naming `cstudy set create`, with the name and the description, that checks the name as it is typed and shows the server's refusal in place |
-| An open set | `#/sets/<name>`: the heading with its description and counts, the `cstudy next --set` pick with the Next card's words, a link to the Problems view with the Set filter on, and a table of the rows in the set's order: the position, the problem or item, its difficulty, its status and a Start link, or a Resume link per attempt in progress. A slug the catalog no longer has reads `missing` and offers only Remove |
+| An open set | `#/sets/<name>`: the heading with its description and counts, the `cstudy next --set` pick with the Next card's words, a link to the Problems view with the Set filter on, and a table of the rows in the set's order: the position, the problem or item, its difficulty, its status and a Start link, or a Resume link per attempt in progress. A slug the catalog no longer has reads `missing`, with no Start |
 | Reorder and remove | Up and Down on each row, naming `cstudy set move`, and Remove, naming `cstudy set remove`. The focus stays on the row's control, and a polite live region says what happened |
 | Add | A field in the open set that takes a slug, with the server's refusal and suggestion in place, and a link to the Problems view, whose rows each add to a set |
 | Rename and delete | Buttons in the open set, each a dialog naming `cstudy set rename` or `cstudy set delete`. Delete says that progress stays |
 | A file that does not parse | The view shows what is wrong, with no way to change it: `cstudy` never overwrites the file |
 
-The control that adds a problem to a set is on each row of the [Problems view](#problems-view) and in the [Problem view](#problem-view): a button that reads the sets the problem is in (`+ set` when none, the name when one, `backend-loop +1` when more) and says them all to assistive technology. It opens a dialog with one checkbox per set, ticked for the sets the problem is in, each change applied at once and named (`cstudy set add backend-loop two-sum`), and a field that creates a set and adds the problem to it.
+The control that adds a problem to a set is on each row of the [Problems view](#problems-view) and in the [Problem view](#problem-view): a button that reads the sets the problem is in (`+ set` when none, the name when one, `backend-loop +1` when more) and says them all to assistive technology. It opens a dialog with one checkbox per set, ticked for the sets the problem is in, each change applied at once and named (`cstudy set add backend-loop two-sum`), and a field that creates a set and adds the problem to it. Below 720 pixels the Problems view's last columns hide, this one among them, and the Problem view keeps the control. The Problem view lists the sets beside the button, so there it reads `Add to a set…`.
 
 ### Mock view
 

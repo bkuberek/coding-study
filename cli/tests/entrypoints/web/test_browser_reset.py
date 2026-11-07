@@ -37,6 +37,7 @@ ATTEMPTS_MENU = ".attempts-menu"
 EDITOR = ".panel:not([hidden]) .cm-content"
 ENDED_NOTE = ".attempt-ended"
 PRACTICE_FILE = Path("python") / "practice" / "two_sum.py"
+SETS_FILE = "sets:\n  backend-loop:\n    problems:\n      - two-sum\n"
 PLAIN_POST = """async (csrf) => {
   const answer = await fetch("/api/v1/reset", {
     method: "POST",
@@ -70,6 +71,8 @@ class Seen:
     preferences_kept: bool = False
     runs_left: list[str] = field(default_factory=list[str])
     practice_file_after_files: bool = True
+    sets_after_reset: str = ""
+    sets_after_files: str = ""
     other_tab_says: str = ""
     logged: list[str] = field(default_factory=list[str])
     errors_before_the_refusal: list[str] = field(default_factory=list[str])
@@ -89,6 +92,7 @@ def workspace(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Path:
     run_folder = root / ".cs" / "runs" / "20261106-1"
     run_folder.mkdir(parents=True)
     (run_folder / "out.json").write_text("{}")
+    (root / "sets.yaml").write_text(SETS_FILE)
     return root
 
 
@@ -180,6 +184,7 @@ def _reset(page: Any, workspace: Path, found: Seen) -> None:
         f"table.problems tr:has(a[href='#/problems/{PROBLEM}']) .badge"
     ).inner_text()
     found.practice_file_kept = (workspace / PRACTICE_FILE).exists()
+    found.sets_after_reset = (workspace / "sets.yaml").read_text()
     found.marker_kept = (workspace / ".cs" / "workspace.toml").exists()
     found.preferences_kept = (workspace / ".cs" / "serve" / "preferences.json").exists()
     runs = workspace / ".cs" / "runs"
@@ -195,6 +200,7 @@ def _reset_the_files_too(page: Any, workspace: Path, found: Seen) -> None:
     page.click(SUBMIT)
     page.wait_for_selector(SHEET, state="detached")
     found.practice_file_after_files = (workspace / PRACTICE_FILE).exists()
+    found.sets_after_files = (workspace / "sets.yaml").read_text()
 
 
 def test_the_dialog_says_it_cannot_be_undone(seen):
@@ -279,3 +285,15 @@ def test_a_tab_showing_the_attempt_says_it_ended(seen):
 
 def test_the_page_logs_no_error_under_its_content_security_policy(seen):
     assert seen.errors_before_the_refusal == []
+
+
+def test_the_dialog_says_sets_stay(seen):
+    assert "sets.yaml" in seen.kept
+
+
+def test_a_reset_keeps_sets(seen):
+    assert seen.sets_after_reset == SETS_FILE
+
+
+def test_a_reset_of_the_files_keeps_sets(seen):
+    assert seen.sets_after_files == SETS_FILE

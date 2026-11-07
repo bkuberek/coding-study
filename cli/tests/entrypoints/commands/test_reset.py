@@ -163,3 +163,20 @@ def test_a_real_process_that_names_the_text_is_found():
     finally:
         child.kill()
         child.wait()
+
+
+SETS_FILE = "sets:\n  backend-loop:\n    problems:\n      - two-sum\n"
+
+
+def test_the_preview_says_sets_stay(environment):
+    assert "sets.yaml" in run().stdout
+
+
+@pytest.mark.parametrize(
+    "flags", [(), ("--files",), ("--archive",), ("--files", "--archive")], ids=str
+)
+def test_sets_survive_every_reset(environment, flags):
+    file = environment.root / "sets.yaml"
+    file.write_text(SETS_FILE)
+    result = run("--yes", *flags)
+    assert (result.exit_code, file.read_text()) == (ExitCode.SUCCESS, SETS_FILE)

@@ -6,7 +6,7 @@ The sources of the front end that `cstudy serve` serves: the page's own code and
 |------|-------|
 | `package.json`, `pnpm-lock.yaml` | Exact versions and integrity hashes of every package |
 | `src/app.ts`, `src/page/` | The page: its entry point, views, stylesheets and the pure parts its tests cover. `app.ts` imports the stylesheets of what the page draws at start (`page/app.css`; `page/flows.css` for the attempt flows and the mock banner; `page/files.css` for saving and the file tree; `page/runs.css` for the run controls and the results panel), which make `app.css`. A module fetched on first use imports its own, named after it (`page/results-draw.css`, `page/views/health.css`, …), which it links as it loads; every dialog shares `page/dialogs.css` |
-| `src/page/sheets.ts` | Every dialog as one chunk (the dialog module, the Start, Done, Solution and Abort dialogs, the code of a past attempt, the file tree's menu and actions): they share most of their code and words, so together they weigh less than apart |
+| `src/page/sheets.ts` | Every dialog as one chunk (the dialog module, the Start, Done, Solution, Abort and add-to-set dialogs, the code of a past attempt, the file tree's menu and actions): they share most of their code and words, so together they weigh less than apart |
 | `src/page/stylesheets.ts` | Links a chunk's stylesheet with the page's CSP nonce; the chunk resolves once the stylesheet applies, so nothing it draws shows unstyled |
 | `src/page/notifications.ts` | The tab's notification stream (`/api/v1/events`), closed while the tab is hidden; the views follow what changed elsewhere through it |
 | `src/editor.ts` | The editor module, a chunk the page fetches the first time a file opens |
@@ -57,23 +57,24 @@ Sizes as of the current lockfile, gzip at level 9; a row fetched on first use co
 
 | Load | Raw KB | Gzip KB |
 |------|-------:|--------:|
-| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 81.3 | 28.9 |
-| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 969.4 | 349.5 |
-| The editor before any language: the page, the editor and the core | 488.1 | 165.4 |
-| A Python file | 558.6 | 192.3 |
-| A TypeScript or JavaScript file, the largest grammar | 597.1 | 205.9 |
+| The page, before any file opens: `app.js`, the chunks it imports, and `app.css` | 83.3 | 30.3 |
+| Every JavaScript and CSS file but Vim and the code-intelligence chunk | 983.5 | 355.6 |
+| The editor before any language: the page, the editor and the core | 490.2 | 166.8 |
+| A Python file | 560.6 | 193.7 |
+| A TypeScript or JavaScript file, the largest grammar | 599.1 | 207.3 |
 | Vim keybindings, added on top | 120.5 | 38.4 |
-| The link between the editors and the sessions, fetched when `code_intelligence` is on (it counts in the whole bundle) | 8.6 | 3.9 |
+| The link between the editors and the sessions, fetched when `code_intelligence` is on (it counts in the whole bundle) | 9.1 | 4.1 |
 | The code-intelligence chunk, fetched when a file of a language with an installed server opens (its own budget: 64 KB raw, 24 KB gzip; `@codemirror/lsp-client` with `marked` aliased to a stand-in) | 35.4 | 12.9 |
-| The Problem view, fetched when it first opens | 4.3 | 1.8 |
-| The Mock and Progress views together, each fetched when it first opens (Progress with the dialogs, for Start and Import) | 35.3 | 14.3 |
+| The Problem view, fetched when it first opens | 4.8 | 2.0 |
+| The Sets view, fetched when it first opens (with the dialogs, for its questions and Start) | 35.0 | 13.6 |
+| The Mock and Progress views together, each fetched when it first opens (Progress with the dialogs, for Start and Import) | 38.6 | 15.4 |
 | The Health and Settings views together, each fetched when it first opens (with the chunks they share) | 19.2 | 8.9 |
 | The run session, fetched when a run first starts or shows: streaming and drawing it, Cancel, diagnostics | 22.7 | 8.4 |
 | The Run options form, fetched when it first opens | 4.5 | 2.1 |
 | The job panel for Bench, fetched when Bench first starts (Health fetches it with its view) | 5.0 | 2.4 |
-| Every dialog, fetched when a control first opens one: sheets, confirmations, questions that ask for names, the Start, Done, Solution and Abort dialogs, the code of a past attempt (the editor comes once a file shows), and the file tree's menu and actions | 23.9 | 9.3 |
+| Every dialog, fetched when a control first opens one: sheets, confirmations, questions that ask for names, the Start, Done, Solution, Abort and add-to-set dialogs, the code of a past attempt (the editor comes once a file shows), and the file tree's menu and actions | 26.7 | 10.2 |
 
-The budget (NFR-12) is 1 MB raw and 350 KB gzip for the whole bundle without Vim and the code-intelligence chunk, the page's code included, and 600 KB raw loaded before a file of one language is editable. What a view or a control needs only when it is used is a chunk of its own (the rows above), so the page, the largest grammar and the editor stay under the 600 KB; `cli/tests/entrypoints/web/test_bundle_budget.py` holds the committed files to both limits. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
+The budget (NFR-12) is 1,200 KB raw and 400 KB gzip for the whole bundle without Vim and the code-intelligence chunk, the page's code included, and 600 KB raw loaded before a file of one language is editable. What a view or a control needs only when it is used is a chunk of its own (the rows above), so the page, the largest grammar and the editor stay under the 600 KB; `cli/tests/entrypoints/web/test_bundle_budget.py` holds the committed files to both limits. Markdown uses `markdownLanguage` instead of `markdown()`, which would add the HTML, CSS and JavaScript grammars for embedded HTML and take a Markdown file to 619 KB.
 
 ## Editor module
 

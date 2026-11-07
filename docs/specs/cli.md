@@ -1079,7 +1079,7 @@ next    cstudy next --set backend-loop
 
 | Case | Result |
 |------|--------|
-| A name that is not a kebab-case slug | `invalid set name "Backend Loop": use lowercase letters, digits and hyphens, starting with a letter, such as backend-loop`, exit 3 |
+| A name that is not a kebab-case slug | `invalid set name "Backend Loop": use lowercase letters, digits and hyphens, starting with a letter, at most 64 characters, such as backend-loop`, exit 3 |
 | `create` or `rename` to a name that exists | `set backend-loop already exists`, exit 3; nothing merges |
 | A set that does not exist | `unknown set "backend-lop"; your sets: backend-loop`, or `unknown set "backend-loop"; create it with cstudy set create backend-loop`, exit 3 |
 | `add` of a slug that is in no catalog | `unknown problem "two-summ"; did you mean two-sum?`, exit 3, and none of the slugs is added |

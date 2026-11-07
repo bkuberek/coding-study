@@ -307,3 +307,22 @@ def test_a_link_that_stays_in_the_workspace_is_removed_and_its_target_kept(envir
         True,
         True,
     )
+
+
+SETS_FILE = "sets:\n  backend-loop:  # mine\n    problems:\n      - two-sum\n"
+
+
+def test_the_preview_says_sets_are_kept(environment):
+    kept = " ".join(reset_preview(environment, Quiet()).kept)
+    assert "sets.yaml" in kept
+
+
+@pytest.mark.parametrize(
+    "options",
+    [{}, {"files": True}, {"archive": True}, {"files": True, "archive": True}],
+    ids=["plain", "files", "archive", "files and archive"],
+)
+def test_a_reset_keeps_sets_whatever_its_options(environment, root, options):
+    (root / "sets.yaml").write_text(SETS_FILE)
+    reset_workspace(environment, ResetRequest(RESET_WORD, **options), Quiet())
+    assert (root / "sets.yaml").read_text() == SETS_FILE

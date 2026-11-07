@@ -98,7 +98,7 @@ The editor can also show errors as you type, documentation on hover, go to defin
 
 ## Your workspace is your repository
 
-The workspace holds your practice files, notes, previous attempts (`.archive/`) and your own problems. Version it in a git repository of your own, separately from this one: its `.gitignore` already excludes per-machine state such as `progress.db` and build output. Back up progress with `cstudy export`, which writes a JSON file you can commit. On another machine, clone your workspace and run `cstudy doctor --fix`.
+The workspace holds your practice files, notes, previous attempts (`.archive/`), your own problems and your problem sets (`sets.yaml`). Version it in a git repository of your own, separately from this one: its `.gitignore` already excludes per-machine state such as `progress.db` and build output. Back up progress with `cstudy export`, which writes a JSON file you can commit. On another machine, clone your workspace and run `cstudy doctor --fix`.
 
 Run `cstudy` anywhere inside the workspace, or point at it with `cstudy --workspace PATH` or `CSTUDY_WORKSPACE=PATH`. Details: [installation and workspaces](docs/specs/installation-and-workspaces.md).
 
@@ -116,6 +116,7 @@ Run `cstudy` anywhere inside the workspace, or point at it with `cstudy --worksp
 | `cstudy done --rating easy\|ok\|hard` | Finishes the attempt and schedules the review |
 | `cstudy bench` | Measures how your solution scales and compares it with the reference approaches |
 | `cstudy list`, `cstudy show <slug>` | Browses the catalog; prints a statement |
+| `cstudy set create <name>`, `cstudy set add <name> <slug>...` | Makes your own named lists of problems, a problem may be in several; `cstudy next --set <name>` then picks from one in its order ([sets](docs/guides/web-ui.md#problem-sets)) |
 | `cstudy stats`, `cstudy mock` | Shows your progress; runs a timed mock interview |
 | `cstudy serve [--open]` | Serves the practice page on your computer, at `127.0.0.1` ([guide](docs/guides/web-ui.md)) |
 | `cstudy new <slug>`, `cstudy verify <slug>` | Scaffolds a problem of your own; checks it |

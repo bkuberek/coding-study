@@ -88,7 +88,7 @@ The owner approved it on 2026-11-06: "just raise the budget". NFR-12's whole bun
 - A set's progress is computed each time from `progress.db` and is never stored, so `sets.yaml` stays a plain list and a reset leaves it true.
 - A problem that fails stays the next pick until it passes or the user moves it, since the order is the user's. `cstudy set move` is the way past one.
 - The writer knows more about YAML's layout than a dump would. Its failure is a refusal, not a damaged file, because it checks what it would write first.
-- The Problems view reads one more document, and a `sets.yaml` that does not parse shows as an error beside its filter, without stopping the view.
+- The Problems view reads one more document, and a `sets.yaml` that does not parse shows as an error above its table, without stopping the view.
 
 ## Later options
 

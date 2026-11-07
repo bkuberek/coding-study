@@ -11,6 +11,7 @@ KEPT = (
     "toolchains and language servers: .venv, node_modules, .cs/runtime, .cs/lsp",
     "the marker .cs/workspace.toml and your IDE files",
     "your own problems in problems/",
+    "your problem sets: sets.yaml",
     "backups: progress-export.json",
     "caches that hold no progress: .cs/build, .cs/cases, .cs/calibration, the index",
 )
