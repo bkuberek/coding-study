@@ -27,6 +27,8 @@ pytestmark = pytest.mark.slow
 sync_api = pytest.importorskip("playwright.sync_api", reason="Playwright is not installed")
 
 WAIT_MS = 60_000
+WIDE = {"width": 1440, "height": 900}
+NARROW = {"width": 390, "height": 844}
 READY = "table.problems tbody tr"
 VERSION_LINK = ".statusbar a.segment.version"
 TOP_BAR_LINKS = "header.topbar nav a"
@@ -72,6 +74,8 @@ class Seen:
     license_requests_before_open: int = -1
     license_requests_after_open: int = -1
     license_text: str = ""
+    wide: dict[str, Any] = field(default_factory=dict[str, Any])
+    narrow: dict[str, Any] = field(default_factory=dict[str, Any])
     uppercase: list[str] = field(default_factory=list[str])
     all_caps: list[str] = field(default_factory=list[str])
     brand_hash: str = ""
@@ -108,6 +112,7 @@ def seen(engine: str, server: RunningServer) -> Seen:
         page.wait_for_selector(FACTS)
         _read_the_view(page, found, server)
         found.requests_before_open = list(requests)
+        _read_the_widths(page, found)
         _read_the_licenses(page, found, requests)
         found.requests_to_other_sites = [
             url for url in requests if not url.startswith(server.address)
@@ -172,6 +177,38 @@ def _read_the_view(page: Any, found: Seen, server: RunningServer) -> None:
 
 def _licenses_requested(requests: list[str]) -> int:
     return sum(url.endswith(LICENSES_PATH) for url in requests)
+
+
+WIDTHS_PROBE = """() => {
+  const lines = (element) => {
+    const style = getComputedStyle(element);
+    return Math.round(element.getBoundingClientRect().height / parseFloat(style.lineHeight));
+  };
+  const wraps = (element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    return new Set([...range.getClientRects()].map((box) => Math.round(box.top))).size > 1;
+  };
+  const names = [...document.querySelectorAll(".credit-name")];
+  return {
+    author: lines(document.querySelector(".about-author")),
+    sponsor: lines(document.querySelector(".about-sponsor")),
+    intro: lines(document.querySelector(".about-credits > p")),
+    wrapped_names: names.filter(wraps).map((name) => name.textContent),
+    page_overflows: document.documentElement.scrollWidth > window.innerWidth,
+    table_overflows: [...document.querySelectorAll(".credits-scroll")].some(
+      (box) => box.getBoundingClientRect().right > window.innerWidth
+    ),
+  };
+}"""
+
+
+def _read_the_widths(page: Any, found: Seen) -> None:
+    page.set_viewport_size(WIDE)
+    found.wide = page.evaluate(WIDTHS_PROBE)
+    page.set_viewport_size(NARROW)
+    found.narrow = page.evaluate(WIDTHS_PROBE)
+    page.set_viewport_size(WIDE)
 
 
 def _read_the_licenses(page: Any, found: Seen, requests: list[str]) -> None:
@@ -309,6 +346,30 @@ def test_the_author_link_has_the_static_utm_tags_and_opens_safely(seen):
         "target": "_blank",
         "rel": "noopener noreferrer",
     }
+
+
+def test_the_sponsor_sentence_and_the_credits_introduction_stay_on_one_line_on_a_wide_window(seen):
+    assert (seen.wide["author"], seen.wide["sponsor"], seen.wide["intro"]) == (1, 1, 1)
+
+
+def test_no_package_name_wraps_on_a_wide_window(seen):
+    assert seen.wide["wrapped_names"] == []
+
+
+def test_no_package_name_wraps_on_a_narrow_window(seen):
+    assert seen.narrow["wrapped_names"] == []
+
+
+def test_the_page_never_scrolls_sideways_on_a_narrow_window(seen):
+    assert seen.narrow["page_overflows"] is False
+
+
+def test_a_credits_table_stays_inside_a_narrow_window(seen):
+    assert seen.narrow["table_overflows"] is False
+
+
+def test_the_text_wraps_on_a_narrow_window(seen):
+    assert seen.narrow["sponsor"] > 1
 
 
 def test_nothing_is_requested_from_another_site(seen):

@@ -49,10 +49,14 @@ function credits(about: About): HTMLElement {
         { class: "credit-section" },
         h("h3", { id: `credits-${index}` }, section.title),
         h(
-          "table",
-          { class: "credits", "aria-labelledby": `credits-${index}` },
-          h("thead", { class: "sr-only" }, h("tr", {}, ...["name", "version", "license"].map((name) => h("th", { scope: "col" }, name)))),
-          h("tbody", {}, ...section.credits.map(creditRow)),
+          "div",
+          { class: "credits-scroll", role: "region", tabindex: "0", "aria-labelledby": `credits-${index}` },
+          h(
+            "table",
+            { class: "credits", "aria-labelledby": `credits-${index}` },
+            h("thead", { class: "sr-only" }, h("tr", {}, ...["name", "version", "license"].map((name) => h("th", { scope: "col" }, name)))),
+            h("tbody", {}, ...section.credits.map(creditRow)),
+          ),
         ),
       ),
     ),
