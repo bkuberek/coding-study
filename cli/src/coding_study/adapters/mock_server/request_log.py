@@ -13,8 +13,9 @@ from .matching import MockRequest
 MAX_LOG_ENTRIES = 1000
 MAX_LOGGED_BODY_BYTES = 64 * 1024
 MAX_LOG_BYTES = 8 * 1024 * 1024
-"""Of bodies, headers and targets, per mock server: 1,000 full bodies would pass the 64 MiB limit of
-the mock server's container, and a run resets its logs between cases, long before this."""
+"""Of bodies, headers, paths and queries, per mock server: 1,000 full bodies or request lines would
+pass the 64 MiB limit of the mock server's container, and a run resets its logs between cases, long
+before this."""
 MILLISECONDS_PER_SECOND = 1000
 
 type LogEntry = dict[str, object]
@@ -106,4 +107,7 @@ def _body_fields(body: bytes) -> dict[str, object]:
 
 def _size_of(request: MockRequest) -> int:
     headers = sum(len(name) + len(value) for name, value in request.headers.items())
-    return len(request.path) + headers + min(len(request.body), MAX_LOGGED_BODY_BYTES)
+    query = sum(
+        len(name) + sum(len(value) for value in values) for name, values in request.query.items()
+    )
+    return len(request.path) + query + headers + min(len(request.body), MAX_LOGGED_BODY_BYTES)

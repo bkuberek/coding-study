@@ -5,9 +5,12 @@ log. Each connection has its own thread, so a delay holds only its own request. 
 every connection after its answer, so no idle client keeps a thread.
 """
 
+import io
+import socket
 import threading
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Buffer, Callable, Mapping
+from contextlib import suppress
 from dataclasses import dataclass
 from email.message import Message
 from functools import partial
@@ -36,7 +39,8 @@ thread it could not start would fail the request."""
 MAX_CONTROL_CONNECTIONS = 4
 LISTEN_QUEUE_SIZE = 128
 SOCKET_TIMEOUT_S = 10.0
-"""How long a client that stopped sending or reading can hold a thread."""
+"""How long a client that stopped sending or reading can hold a thread, and how long the control
+port gives a whole request."""
 STATUSES_WITHOUT_A_BODY = frozenset({204, 304})
 CONTENT_LENGTH = "content-length"
 
@@ -142,21 +146,58 @@ class _ApiHandler(_JsonHandler):
         return MockRequest(self.command, path, query, _lowercase_headers(self.headers), body)
 
 
+class _ReadUntil(io.RawIOBase):
+    """A socket's timeout bounds one read, so a client that sends a byte now and then would keep its
+    thread for as long as it likes. This limits all the reads of a request together."""
+
+    def __init__(self, connection: socket.socket, limit_s: float) -> None:
+        self._connection = connection
+        self._deadline = time.monotonic() + limit_s
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer: Buffer, /) -> int:
+        left = self._deadline - time.monotonic()
+        if left <= 0:
+            raise TimeoutError
+        self._connection.settimeout(left)
+        return self._connection.recv_into(buffer)
+
+
 class _ControlHandler(_JsonHandler):
+    """The app can reach this port, which has few slots for a grader that must get one. So a request
+    without the token gets no further than its head, and a whole request has a limit."""
+
     def __init__(self, control: ControlInterface, *args: Any) -> None:
         self._control = control
         super().__init__(*args)
 
+    def setup(self) -> None:
+        super().setup()
+        self.rfile.close()
+        self.rfile = io.BufferedReader(_ReadUntil(self.connection, SOCKET_TIMEOUT_S))
+
     def serve(self) -> None:
+        authorization = self.headers.get("Authorization")
+        if self._control.authorized(authorization):
+            self._serve_authorized(authorization)
+            return
+        self.write_reply(self._answer_to(authorization, b""))
+        with suppress(_BodyRefusedError):
+            self.read_body(MAX_CONTROL_BODY_BYTES)
+
+    def _serve_authorized(self, authorization: str | None) -> None:
         try:
             body = self.read_body(MAX_CONTROL_BODY_BYTES)
         except _BodyRefusedError as refused:
             self.write_reply(refused.reply)
             self.discard(refused.unread_bytes)
             return
-        authorization = self.headers.get("Authorization")
-        request = ControlRequest(self.command, self.path, authorization, body)
-        self.write_reply(self._control.handle(request))
+        self.write_reply(self._answer_to(authorization, body))
+
+    def _answer_to(self, authorization: str | None, body: bytes) -> Reply:
+        return self._control.handle(ControlRequest(self.command, self.path, authorization, body))
 
 
 class BoundedServer(ThreadingMixIn, TCPServer):

@@ -10,6 +10,7 @@ from typing import Any
 
 import pytest
 
+from coding_study.adapters.mock_server import http_server
 from coding_study.adapters.mock_server.config import load_stack_config
 from coding_study.adapters.mock_server.http_server import (
     MAX_CONTROL_BODY_BYTES,
@@ -35,6 +36,9 @@ from tests.mock_server_support import (
 AVAILABILITY = "/v1/rooms/availability?date=2027-03-01"
 AVAILABILITY_BODY = (SAMPLE_FOLDER / "bodies" / "availability.json").read_bytes()
 FAST_POLL_S = 0.01
+DRIP_S = 0.05
+SHORT_REQUEST_LIMIT_S = 0.5
+"""The limit under test."""
 SAMPLE_SLOW_DELAY_MS = 60
 
 
@@ -200,6 +204,70 @@ def test_a_wrong_token_changes_no_scenario(client: StackClient):
     body = json.dumps({"scenario": "outage"}).encode()
     client.control("/mocks/room-vendor/scenario", method="PUT", token="wrong", body=body)
     assert client.api(AVAILABILITY).status == 200
+
+
+def test_no_token_gets_its_401_before_any_body_comes(client: StackClient):
+    """A body read first would let anyone hold one of the control port's few slots with it."""
+    head = b"PUT /mocks/room-vendor/scenario HTTP/1.0\r\nContent-Length: 1000\r\n\r\n"
+    with socket.create_connection(
+        ("127.0.0.1", client.control_port), timeout=GENEROUS_WAIT_S
+    ) as connection:
+        connection.sendall(head)
+
+        assert connection.recv(65536).startswith(b"HTTP/1.0 401")
+
+
+def test_a_wrong_token_gets_its_401_before_any_body_comes(client: StackClient):
+    head = (
+        b"PUT /mocks/room-vendor/scenario HTTP/1.0\r\n"
+        b"Authorization: Bearer wrong\r\nContent-Length: 1000\r\n\r\n"
+    )
+    with socket.create_connection(
+        ("127.0.0.1", client.control_port), timeout=GENEROUS_WAIT_S
+    ) as connection:
+        connection.sendall(head)
+
+        assert connection.recv(65536).startswith(b"HTTP/1.0 401")
+
+
+def is_dropped_while_dripping(port: int, start: bytes) -> bool:
+    """Sends `start`, then a byte at a time, more often than any limit on one read."""
+    with socket.create_connection(("127.0.0.1", port), timeout=DRIP_S) as connection:
+        connection.sendall(start)
+        deadline = time.monotonic() + GENEROUS_WAIT_S
+        while time.monotonic() < deadline:
+            try:
+                connection.sendall(b"a")
+                if connection.recv(1) == b"":
+                    return True
+            except TimeoutError:
+                continue
+            except OSError:
+                return True
+    return False
+
+
+@pytest.mark.parametrize(
+    "start",
+    [
+        b"",
+        b"GET /health HTTP/1.0\r\nX-Slow: ",
+        (
+            b"PUT /mocks/room-vendor/scenario HTTP/1.0\r\n"
+            b"Authorization: Bearer sample-token\r\nContent-Length: 100000\r\n\r\n"
+        ),
+    ],
+    ids=["request-line", "headers", "authorized-body"],
+)
+def test_a_control_request_that_drips_is_dropped_at_its_limit(tmp_path, monkeypatch, start):
+    """A limit on each read would never run out here, and 4 such clients hold every slot."""
+    monkeypatch.setattr(http_server, "SOCKET_TIMEOUT_S", SHORT_REQUEST_LIMIT_S)
+    config = load_stack_config(write_config(tmp_path, sample_document()))
+    servers = start_servers(config, ListenOn("127.0.0.1", 0, 0), FAST_POLL_S)
+    try:
+        assert is_dropped_while_dripping(servers.control_port, start)
+    finally:
+        servers.close()
 
 
 def test_health_answers_on_the_control_port_without_a_token(client: StackClient):

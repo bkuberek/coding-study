@@ -36,14 +36,14 @@ class ControlInterface:
         path = request.target.partition("?")[0]
         if request.method == "GET" and path == HEALTH_PATH:
             return json_reply(200, {"status": "ok"})
-        if not self._authorized(request.authorization):
+        if not self.authorized(request.authorization):
             return _with_header(
                 json_reply(401, {"error": "a valid bearer token is required"}),
                 ("WWW-Authenticate", "Bearer"),
             )
         return self._dispatch(request, path)
 
-    def _authorized(self, authorization: str | None) -> bool:
+    def authorized(self, authorization: str | None) -> bool:
         if authorization is None or not authorization.startswith(BEARER_PREFIX):
             return False
         return hmac.compare_digest(authorization.removeprefix(BEARER_PREFIX).encode(), self._token)

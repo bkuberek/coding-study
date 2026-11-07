@@ -254,3 +254,24 @@ def test_an_answer_after_clearing_leaves_the_new_log_alone():
     log.record(request(), SERVED)
     log.mark_responded(earlier)
     assert only_entry(log)["responded_ms"] is None
+
+
+def test_a_query_counts_toward_the_byte_limit():
+    """A request line holds up to 64 KiB, so 1,000 of them pass the container's limit alone."""
+    log = new_log()
+    query = {"q": ("a" * MAX_LOGGED_BODY_BYTES,)}
+
+    for _ in range(MAX_LOG_ENTRIES):
+        log.record(request(query=query), SERVED)
+
+    assert len(entries_of(log)) <= ENTRIES_TO_FILL_THE_BYTE_LIMIT
+
+
+def test_a_repeated_query_key_counts_each_value():
+    log = new_log()
+    query = {"q": ("a" * MAX_LOGGED_BODY_BYTES, "b" * MAX_LOGGED_BODY_BYTES)}
+
+    for _ in range(MAX_LOG_ENTRIES):
+        log.record(request(query=query), SERVED)
+
+    assert len(entries_of(log)) <= ENTRIES_TO_FILL_THE_BYTE_LIMIT // 2
