@@ -48,6 +48,7 @@ from coding_study.application.ports import (
     ProjectLinks,
     RepositoryFiles,
     RunnerProcess,
+    SandboxEngine,
     ScaffoldOutcome,
     Toolchains,
     ToolProbe,
@@ -58,17 +59,25 @@ from coding_study.application.ports import (
     WorkspaceSetup,
 )
 from coding_study.application.preferences import read_preferences
+from coding_study.application.sandbox import current_leftovers, ensure_engine, sweep_leftovers
 from coding_study.domain.code_intelligence import LSP_DIRECTORY, LSP_INSTALL_COMMAND
 from coding_study.domain.debugging import (
     DEBUGPY_INSTALL_COMMAND,
     DELVE_VERSION,
     delve_minimum_go,
 )
+from coding_study.domain.docker_engine import (
+    EngineState,
+    EngineStatus,
+    install_message,
+    no_permission_message,
+)
 from coding_study.domain.errors import (
     ConfigError,
     LanguageNotSetUpError,
     RunnerProtocolError,
     RunnerStartError,
+    SandboxError,
     UsageError,
 )
 from coding_study.domain.guides import TOOLCHAINS_GUIDE
@@ -195,6 +204,8 @@ class DoctorEnvironment:
     """What `cstudy serve` needs, for the `web ui assets` and `web server` rows."""
     installs: CstudyInstalls
     """The `cstudy` installs on PATH, for the `installs` row and the reinstall hint."""
+    sandbox: SandboxEngine
+    """The container engine of service projects, for the `docker` and `docker leftovers` rows."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -225,6 +236,8 @@ WORKSPACE_ARTIFACTS = (
 DEBUGPY_CHECK = "python debugpy"
 PYTEST_CHECK = "python pytest"
 PROJECTS_CHECK = "projects"
+DOCKER_CHECK = "docker"
+DOCKER_LEFTOVERS_CHECK = "docker leftovers"
 PROJECT_LINKS_CHECK = "project links"
 PROGRESS_CHECK = "progress database"
 UPGRADE_CSTUDY = "upgrade cstudy"
@@ -517,12 +530,66 @@ def run_doctor(environment: DoctorEnvironment, notify: ProgressNotice) -> Doctor
         _cargo(tools),
         _delve(tools, environment.debug_servers.delve()),
         _lldb_server(environment.debug_servers.lldb_server()),
+        *_docker_rows(environment.sandbox),
         _config(environment.config),
         _content(environment.content),
         _installs(installs),
         *_workspace(environment, installs, notify),
     ]
     return DoctorReport(tuple(results))
+
+
+def _docker_rows(engine: SandboxEngine) -> list[CheckResult]:
+    """Only service projects need Docker, so neither row is ever `fail`. Asking starts nothing."""
+    state = engine.state()
+    return [_docker(state, engine.platform()), _docker_leftovers(engine, state)]
+
+
+def _docker(state: EngineState, platform: str) -> CheckResult:
+    match state.status:
+        case EngineStatus.RUNNING:
+            detail = f"engine {state.engine_version}, compose {state.compose_version}"
+            return CheckResult(DOCKER_CHECK, CheckStatus.OK, detail)
+        case EngineStatus.STOPPED:
+            return CheckResult(
+                DOCKER_CHECK, CheckStatus.WARN, "installed, not running", fix=FIX_COMMAND
+            )
+        case EngineStatus.NO_PERMISSION:
+            return CheckResult(
+                DOCKER_CHECK, CheckStatus.WARN, "no permission", fix=no_permission_message()
+            )
+        case EngineStatus.NOT_INSTALLED | EngineStatus.NO_COMPOSE:
+            detail = f"{state.status}: only service projects need it"
+            return CheckResult(
+                DOCKER_CHECK, CheckStatus.WARN, detail, fix=install_message(platform)
+            )
+
+
+def _docker_leftovers(engine: SandboxEngine, state: EngineState) -> CheckResult:
+    if not state.running:
+        return CheckResult(DOCKER_LEFTOVERS_CHECK, CheckStatus.OK, "not checked: no running engine")
+    try:
+        count = current_leftovers(engine, None).count
+    except SandboxError as error:
+        return CheckResult(DOCKER_LEFTOVERS_CHECK, CheckStatus.WARN, str(error))
+    if count == 0:
+        return CheckResult(DOCKER_LEFTOVERS_CHECK, CheckStatus.OK, "none")
+    detail = f"{count} left by a run that ended without cleaning up"
+    return CheckResult(DOCKER_LEFTOVERS_CHECK, CheckStatus.WARN, detail, fix=FIX_COMMAND)
+
+
+def fix_sandbox(engine: SandboxEngine, notify: ProgressNotice) -> None:
+    """`cstudy doctor --fix`: starts a stopped engine and removes leftovers, by label only. What it
+    cannot do it says, and the `docker` row says again: only service projects need Docker, so none
+    of this fails the command, and a machine without Docker hears nothing."""
+    if engine.state().status is EngineStatus.NOT_INSTALLED:
+        return
+    try:
+        ensure_engine(engine, notify)
+    except SandboxError as error:
+        notify(str(error))
+        return
+    sweep_leftovers(engine, None, notify)
 
 
 @dataclass(frozen=True, slots=True)

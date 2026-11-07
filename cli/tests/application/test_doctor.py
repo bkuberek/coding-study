@@ -16,6 +16,7 @@ from coding_study.application.doctor import (
     FixStep,
     NotFound,
     PracticeWorkspace,
+    fix_sandbox,
     fix_workspace,
     repair_workspace,
     run_doctor,
@@ -43,6 +44,7 @@ from coding_study.application.ports import (
 )
 from coding_study.domain.bench_runs import BenchReport, BenchRequest
 from coding_study.domain.config import Config
+from coding_study.domain.docker_engine import EngineState, EngineStatus
 from coding_study.domain.errors import (
     ConfigError,
     RunnerProtocolError,
@@ -52,6 +54,7 @@ from coding_study.domain.errors import (
 from coding_study.domain.jdk import JDK_FIX, JdkSource, SelectedJdk
 from coding_study.domain.problem import Language
 from coding_study.domain.runs import RunnerInfo, RunReport, RunRequest
+from coding_study.domain.sandbox import SandboxInventory, StackContainer, StackResource
 from coding_study.domain.suite_runs import SuiteJob, SuiteReport
 from coding_study.domain.workspace_projects import PYTEST_REQUIREMENT
 from tests.fakes import (
@@ -63,6 +66,7 @@ from tests.fakes import (
     FakeToolchains,
     MemoryPreferences,
 )
+from tests.sandbox_fakes import FakeSandbox
 
 OK, WARN, FAIL = CheckStatus.OK, CheckStatus.WARN, CheckStatus.FAIL
 PYTHON_PATH = "/py/bin/python3.13"
@@ -340,6 +344,7 @@ def doctor(
     web: WebUiInstall | None = None,
     jdk: FakeJdk | None = None,
     installs: FakeInstalls | None = None,
+    sandbox: FakeSandbox | None = None,
 ) -> DoctorReport:
     return run_doctor(
         DoctorEnvironment(
@@ -352,6 +357,7 @@ def doctor(
             version=RUNNING_VERSION,
             web=web or FakeWebUi(),
             installs=installs or FakeInstalls(),
+            sandbox=sandbox or FakeSandbox(),
         ),
         lambda _line: None,
     )
@@ -1716,3 +1722,111 @@ def test_the_reinstall_hint_does_not_send_the_user_to_a_shadowed_copy():
     assert fix == (
         "uv tool install --reinstall coding-study (several cstudy installs: see the installs row)"
     )
+
+
+def test_the_docker_row_shows_the_versions_of_a_running_engine():
+    assert summary(doctor(sandbox=FakeSandbox()), "docker") == (
+        CheckStatus.OK,
+        "engine 29.9.2, compose 5.6.1",
+    )
+
+
+def test_the_docker_row_warns_of_a_stopped_engine_and_names_the_fix():
+    result = check(doctor(sandbox=FakeSandbox(engine=EngineState(EngineStatus.STOPPED))), "docker")
+
+    assert (result.status, result.detail, result.fix) == (
+        CheckStatus.WARN,
+        "installed, not running",
+        "cstudy doctor --fix",
+    )
+
+
+def test_a_missing_engine_is_a_warning_with_the_install_message_not_a_failure():
+    report = doctor(sandbox=FakeSandbox(engine=EngineState(EngineStatus.NOT_INSTALLED)))
+    result = check(report, "docker")
+
+    assert result.status is CheckStatus.WARN
+    assert "docs.docker.com" in (result.fix or "")
+    assert report.passed
+
+
+def test_no_permission_has_its_own_message():
+    report = doctor(sandbox=FakeSandbox(engine=EngineState(EngineStatus.NO_PERMISSION)))
+
+    assert "docker group" in (check(report, "docker").fix or "")
+
+
+def test_plain_doctor_never_starts_the_engine():
+    engine = FakeSandbox(engine=EngineState(EngineStatus.STOPPED))
+
+    doctor(sandbox=engine)
+
+    assert not engine.called("start_engine")
+
+
+def test_the_leftovers_row_has_nothing_to_say_without_leftovers():
+    assert summary(doctor(sandbox=FakeSandbox()), "docker leftovers") == (CheckStatus.OK, "none")
+
+
+def test_the_leftovers_row_counts_and_names_the_fix():
+    engine = FakeSandbox(
+        inventory_found=SandboxInventory(
+            containers=(StackContainer("cstudy-t-1-a", "test", "w", 1),),
+            networks=(StackResource("n", "cstudy-t-2-a", "test", "w"),),
+        )
+    )
+
+    result = check(doctor(sandbox=engine), "docker leftovers")
+
+    assert result.status is CheckStatus.WARN
+    assert result.detail.startswith("2 left")
+    assert result.fix == "cstudy doctor --fix"
+
+
+def test_the_leftovers_row_asks_nothing_of_a_stopped_engine():
+    engine = FakeSandbox(engine=EngineState(EngineStatus.STOPPED))
+
+    result = check(doctor(sandbox=engine), "docker leftovers")
+
+    assert result.status is CheckStatus.OK
+    assert not engine.called("inventory")
+
+
+def test_doctor_fix_starts_a_stopped_engine():
+    engine = FakeSandbox(engine=EngineState(EngineStatus.STOPPED))
+
+    fix_sandbox(engine, lambda _line: None)
+
+    assert engine.called("start_engine")
+
+
+def test_doctor_fix_removes_leftovers_of_every_workspace():
+    engine = FakeSandbox(
+        inventory_found=SandboxInventory(
+            containers=(StackContainer("cstudy-t-1-a", "test", "any", 1),)
+        )
+    )
+
+    fix_sandbox(engine, lambda _line: None)
+
+    assert [stack.name for stack in engine.called("remove_stack")] == ["cstudy-t-1-a"]  # type: ignore[attr-defined]
+
+
+def test_doctor_fix_leaves_a_machine_without_docker_alone():
+    engine = FakeSandbox(engine=EngineState(EngineStatus.NOT_INSTALLED))
+    lines: list[str] = []
+
+    fix_sandbox(engine, lines.append)
+
+    assert lines == []
+    assert not engine.called("start_engine")
+
+
+def test_doctor_fix_says_when_the_engine_will_not_start_and_goes_on():
+    stopped = EngineState(EngineStatus.STOPPED)
+    engine = FakeSandbox(engine=stopped, started_engine_state=stopped)
+    lines: list[str] = []
+
+    fix_sandbox(engine, lines.append)
+
+    assert any("did not start" in line for line in lines)

@@ -4,7 +4,9 @@ from pathlib import Path
 
 import pytest
 
+from coding_study.adapters import docker_sandbox
 from tests.helpers import FIXTURE_PROBLEMS, SCHEMAS_DIRECTORY
+from tests.sandbox_fakes import DockerMissing
 from tests.workspaces import set_up_workspace
 
 GRADLE_DAEMON_IDLE_MS = 600_000
@@ -15,6 +17,21 @@ makes `cstudy` print its first-run warm-up notice in the middle of a test."""
 os.environ["GRADLE_OPTS"] = (
     f"{os.environ.get('GRADLE_OPTS', '')} -Dorg.gradle.daemon.idletimeout={GRADLE_DAEMON_IDLE_MS}"
 ).strip()
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line(
+        "markers",
+        "docker: drives a real Docker engine, and is also slow; CI runs these in a job of its own "
+        "(-m docker)",
+    )
+
+
+@pytest.fixture(autouse=True)
+def no_real_docker(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Only a test marked `docker` reaches a real engine; to any other, Docker is not installed."""
+    if "docker" not in request.keywords:
+        monkeypatch.setattr(docker_sandbox, "default_docker_runner", DockerMissing)
 
 
 @pytest.fixture

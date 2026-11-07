@@ -100,6 +100,21 @@ CREDENTIAL_MARKERS = (
 name is passed whatever it holds, and none of them has one of these in it."""
 
 
+DOCKER_CLIENT = (
+    *("DOCKER_HOST", "DOCKER_CONTEXT", "DOCKER_CONFIG"),
+    *("DOCKER_CERT_PATH", "DOCKER_TLS_VERIFY"),
+)
+"""Which engine the Docker client talks to. Only the Docker client gets them, never a container:
+the environment of a container is what its compose file says. `COMPOSE_*` stays out, so a setting
+in your shell cannot change a stack `cstudy` generates."""
+
+
+def docker_client_environment(raw: Mapping[str, str]) -> dict[str, str]:
+    """What the Docker client starts with: what any tool may inherit, and how to find the engine."""
+    chosen = {name: raw[name] for name in DOCKER_CLIENT if name in raw}
+    return {**allowed_environment(raw), **chosen, "DOCKER_CLI_HINTS": "false"}
+
+
 def allowed_environment(raw: Mapping[str, str]) -> dict[str, str]:
     """`raw` without the variables a process running user code may not inherit."""
     return {name: value for name, value in raw.items() if _is_allowed(name)}

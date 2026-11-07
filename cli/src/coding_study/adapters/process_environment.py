@@ -8,10 +8,15 @@ variables; none passes `os.environ` on. What is let through is decided in
 
 import os
 
-from coding_study.domain.process_environment import allowed_environment
+from coding_study.domain.process_environment import allowed_environment, docker_client_environment
 
 
 def inherited_environment() -> dict[str, str]:
     """The environment of this process, reduced to what user code and the tooling on it may
     inherit."""
     return allowed_environment(os.environ)
+
+
+def docker_environment() -> dict[str, str]:
+    """The environment of the Docker client itself, which no container inherits."""
+    return docker_client_environment(os.environ)

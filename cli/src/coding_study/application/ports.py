@@ -23,6 +23,7 @@ from coding_study.domain.comparators import Checker
 from coding_study.domain.config import Config
 from coding_study.domain.config_keys import ConfigView
 from coding_study.domain.debugging import DebugSession
+from coding_study.domain.docker_engine import EngineState
 from coding_study.domain.generated_cases import GeneratedCase
 from coding_study.domain.invariants import StressChecker
 from coding_study.domain.items import ItemMeta
@@ -33,6 +34,16 @@ from coding_study.domain.progress_export import ProgressSnapshot
 from coding_study.domain.progress_stats import LatestBench
 from coding_study.domain.project_tests import LevelTests
 from coding_study.domain.runs import CaseReport, RunReport, RunRequest
+from coding_study.domain.sandbox import (
+    CommandOutcome,
+    InstallPlan,
+    LeftoverStack,
+    ReadyStack,
+    SandboxInventory,
+    StackIdentity,
+    StackPlan,
+    StartupBudget,
+)
 from coding_study.domain.scheduling import ProblemProgress, ScheduleEntry
 from coding_study.domain.submissions import LevelUnlock, SubmissionRecord
 from coding_study.domain.suite_runs import SuiteJob, SuiteReport, SuiteTest
@@ -1139,3 +1150,101 @@ class CstudyInstalls(Protocol):
     (docs/specs/cli.md#cstudy-doctor)."""
 
     def scan(self) -> InstallScan: ...
+
+
+@dataclass(frozen=True, slots=True)
+class ContainerCommand:
+    """A command in a running stack's image: `commands.test`, `commands.reset`."""
+
+    command: tuple[str, ...]
+    environment: Mapping[str, str]
+    """Variables added for this command alone."""
+    timeout_s: float
+    """A limit of the second clock: the caller starts it once the stack is ready."""
+    on_output: Callable[[str], None] | None = None
+    """Hears each line as the command prints it."""
+
+
+class SandboxEngine(Protocol):
+    """The container engine that service projects run in (docs/specs/service-projects.md#sandbox).
+    Only a service project reaches this: nothing else ever asks the engine anything. Nothing here
+    stops the engine, or changes a setting of it, and only what carries `cstudy`'s labels is ever
+    removed."""
+
+    def state(self) -> EngineState:
+        """Asks and starts nothing: an idle VM stays asleep."""
+        ...
+
+    def platform(self) -> str:
+        """`sys.platform`, for the messages that differ per platform."""
+        ...
+
+    def start_engine(self, notify: ProgressNotice) -> None:
+        """Starts a stopped engine and waits until it answers.
+
+        Raises SandboxError when it cannot, or may not: `cstudy` never runs `sudo`, and says
+        what to run instead.
+        """
+        ...
+
+    def image_present(self, image: str) -> bool: ...
+
+    def pull(self, image: str, notify: ProgressNotice) -> None:
+        """Raises SandboxError when it fails; `notify` hears the progress."""
+        ...
+
+    def inventory(self) -> SandboxInventory:
+        """Everything that carries `cstudy`'s labels; raises SandboxError when it cannot list."""
+        ...
+
+    def is_alive(self, pid: int) -> bool:
+        """Whether the process that answers for a stack still runs."""
+        ...
+
+    def remove_stack(self, stack: LeftoverStack) -> bool:
+        """Takes the whole compose project down, by its name, with no file; False when it could
+        not."""
+        ...
+
+    def remove_network(self, name: str) -> bool: ...
+
+    def remove_volume(self, name: str) -> bool: ...
+
+    def guard(self, identity: StackIdentity) -> AbstractContextManager[None]:
+        """For the `with` block, a process of its own takes the stack down if `cstudy` dies,
+        however it dies. Enter it before `start`, and leave it after `stop`."""
+        ...
+
+    def start(self, plan: StackPlan, budget: StartupBudget) -> ReadyStack:
+        """Writes the stack's files, brings it up and waits for the app's health path. The result
+        says when it became ready: the second clock, every limit on a test or a case, starts
+        there.
+
+        Raises StackStartError, with the logs read, when it does not become ready within `budget`,
+        and SandboxError when the project cannot be mounted. Either way the caller still calls
+        `stop`.
+        """
+        ...
+
+    def stop(self, plan: StackPlan) -> str | None:
+        """`down`, with `-v` for a test or a graded stack, and removes the run's folder. What went
+        wrong, or None; a stack it could not take down is the next sweep's."""
+        ...
+
+    def exec_app(self, plan: StackPlan, command: ContainerCommand) -> CommandOutcome:
+        """Runs `command` in the running `app` container."""
+        ...
+
+    def run_one_off(self, plan: StackPlan, command: ContainerCommand) -> CommandOutcome:
+        """Runs `command` in a new container of the app's image, on the stack's network."""
+        ...
+
+    def install(
+        self, plan: InstallPlan, timeout_s: float, on_output: Callable[[str], None] | None
+    ) -> CommandOutcome:
+        """Runs the plan's one-off to its end; the caller then calls `stop_install`."""
+        ...
+
+    def stop_install(self, plan: InstallPlan) -> str | None:
+        """`down`, keeping the install cache; what went wrong, or None."""
+        ...

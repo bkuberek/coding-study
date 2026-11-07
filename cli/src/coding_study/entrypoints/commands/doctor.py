@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.text import Text
 
 from coding_study.adapters.cstudy_installs import PathCstudyInstalls
+from coding_study.adapters.docker_sandbox import DockerSandbox
 from coding_study.adapters.environment_factory import RUNNERS_DIRECTORY
 from coding_study.adapters.jdk_locator import EnvJdkSelector
 from coding_study.adapters.language_servers.lsp_directory import LspDirectory
@@ -47,6 +48,7 @@ from coding_study.application.doctor import (
     FixOutcome,
     NotFound,
     PracticeWorkspace,
+    fix_sandbox,
     fix_workspace,
     repair_workspace,
     run_doctor,
@@ -84,7 +86,8 @@ def doctor(
                 "First run uv sync (and add pytest when the venv lacks it), pnpm install and the "
                 "Gradle build in the workspace projects, and migrate progress.db. While the "
                 "code_intelligence preference is on, also install the language servers for code "
-                "intelligence into .cs/lsp/."
+                "intelligence into .cs/lsp/. Start a stopped Docker engine, and remove what a "
+                "service project left behind, by label only."
             ),
         ),
     ] = False,
@@ -140,17 +143,23 @@ def doctor_environment(cwd: Path, environ: Mapping[str, str], home: Path) -> Doc
     content = _content(environ)
     config = TomlConfigSource(config_path(environ, home))
     version = tool_version()
+    workspace = _workspace(cwd, environ, content, config)
     return DoctorEnvironment(
         tools=SubprocessToolProbe(),
         jdk=EnvJdkSelector(environ),
         debug_servers=InstalledDebugServers(Machine(environ, home)),
         config=config,
         content=content,
-        workspace=_workspace(cwd, environ, content, config),
+        workspace=workspace,
         version=version,
         web=InstalledWebUi(STATIC_DIRECTORY),
         installs=PathCstudyInstalls(environ, home, Path(sys.prefix), version),
+        sandbox=DockerSandbox(runs_directory=_runs_directory(workspace)),
     )
+
+
+def _runs_directory(workspace: PracticeWorkspace | NotFound) -> Path | None:
+    return None if isinstance(workspace, NotFound) else workspace.files.root / RUNS_DIRECTORY
 
 
 def _content(environ: Mapping[str, str]) -> ContentLocation | NotFound:
@@ -206,6 +215,7 @@ def _fix(environment: DoctorEnvironment, output: Console) -> bool:
     for outcome in outcomes:
         for line in _fix_lines(outcome):
             output.print(line)
+    fix_sandbox(environment.sandbox, _notice(output))
     return all(outcome.succeeded for outcome in outcomes)
 
 

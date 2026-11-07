@@ -10,7 +10,9 @@ and removing that link never deletes the shared venv it points to.
 
 import os
 import shutil
+import stat
 from collections.abc import Iterator, Mapping
+from contextlib import suppress
 from pathlib import Path, PurePosixPath
 
 from coding_study.domain.problem import Language
@@ -26,6 +28,7 @@ from coding_study.domain.workspace_projects import (
 
 _LOCAL_REPLACEMENT_PREFIXES = ("./", "../", "/")
 """A `replace` target that is a directory, not another module."""
+_SETUID_BITS = stat.S_ISUID | stat.S_ISGID
 
 
 def tracked_files(folder: Path) -> list[Path]:
@@ -113,6 +116,26 @@ def _entries(folder: Path, directory: Path) -> Iterator[Path]:
 
 def _untracked(folder: Path, entry: Path) -> bool:
     return is_untracked(entry.relative_to(folder).as_posix())
+
+
+def clear_setuid_bits(folder: Path) -> None:
+    """Takes the setuid and setgid bits off every regular file under `folder`, which sandboxed code
+    can set and a host tool would obey; a link is never followed."""
+    for directory, _directories, names in os.walk(folder, followlinks=False):
+        for name in names:
+            with suppress(OSError):
+                _clear_setuid_bit(Path(directory) / name)
+
+
+def _clear_setuid_bit(path: Path) -> None:
+    mode = os.lstat(path).st_mode
+    if not stat.S_ISREG(mode) or not mode & _SETUID_BITS:
+        return
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        os.fchmod(descriptor, stat.S_IMODE(mode) & ~_SETUID_BITS)
+    finally:
+        os.close(descriptor)
 
 
 def go_project_folders(root: Path) -> tuple[GoProjectFolder, ...]:

@@ -29,12 +29,14 @@ from coding_study.domain.errors import (
     ResetNotConfirmedError,
     RunnerProtocolError,
     RunnerStartError,
+    SandboxError,
     UnknownProblemError,
     UnknownSetError,
     UsageError,
     VersionControlError,
     WorkspaceBusyError,
 )
+from coding_study.domain.sandbox import StackStartError
 
 
 class ExitCode(IntEnum):
@@ -58,6 +60,8 @@ ERROR_EXIT_CODES: Mapping[type[Exception], ExitCode] = {
     LanguageNotSetUpError: ExitCode.ENVIRONMENT_ERROR,
     LanguageServerNotInstalledError: ExitCode.ENVIRONMENT_ERROR,
     RunnerStartError: ExitCode.ENVIRONMENT_ERROR,
+    SandboxError: ExitCode.ENVIRONMENT_ERROR,
+    StackStartError: ExitCode.ENVIRONMENT_ERROR,
     RunnerProtocolError: ExitCode.INTERNAL_ERROR,
     UsageError: ExitCode.USAGE_ERROR,
     ContentRootError: ExitCode.USAGE_ERROR,

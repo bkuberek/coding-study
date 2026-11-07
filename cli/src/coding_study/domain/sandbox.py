@@ -12,9 +12,10 @@ says so and changes no result. A limit on a test or a case starts at `ReadyStack
 
 import hashlib
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import cast
 
 from coding_study.domain.errors import SandboxError
 
@@ -212,6 +213,10 @@ class AppContainer:
     environment: Mapping[str, str]
     """`project.env`; the fixed variables come on top."""
     mem_limit: str = APP_MEMORY
+    health: str = "/health"
+    """The path `cstudy` asks through the published port until it answers 2xx."""
+    port_env: str = "PORT"
+    """The variable the app reads for its port, for the message when it does not answer."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -330,15 +335,14 @@ def render_compose(document: Mapping[str, object]) -> str:
 
 
 def _without_interpolation(value: object) -> object:
-    match value:
-        case str():
-            return value.replace("$", "$$")
-        case Mapping():
-            return {key: _without_interpolation(found) for key, found in value.items()}  # pyright: ignore[reportUnknownVariableType]
-        case list() | tuple():
-            return [_without_interpolation(found) for found in value]  # pyright: ignore[reportUnknownVariableType]
-        case _:
-            return value
+    if isinstance(value, str):
+        return value.replace("$", "$$")
+    if isinstance(value, Mapping):
+        entries = cast(Mapping[str, object], value)
+        return {key: _without_interpolation(found) for key, found in entries.items()}
+    if isinstance(value, list | tuple):
+        return [_without_interpolation(found) for found in cast(Iterable[object], value)]
+    return value
 
 
 def _hardened(identity: StackIdentity) -> dict[str, object]:

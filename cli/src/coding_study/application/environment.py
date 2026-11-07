@@ -19,6 +19,7 @@ from coding_study.application.ports import (
     ProblemSetStore,
     ProgressStore,
     RunnerProcess,
+    SandboxEngine,
     StudyGuides,
     Toolchains,
     Workspace,
@@ -68,5 +69,7 @@ class Environment:
     study_guides: StudyGuides
     language_servers: LanguageServerLocator
     """The code-intelligence servers in the workspace's `.cs/lsp/`."""
+    sandbox: SandboxEngine
+    """The container engine of service projects; nothing else ever reaches it."""
     problem_sets: ProblemSetStore
     """The workspace's `sets.yaml`."""

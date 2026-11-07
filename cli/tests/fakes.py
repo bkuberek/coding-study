@@ -53,6 +53,7 @@ from coding_study.domain.runs import (
     UserError,
 )
 from tests.helpers import SCHEMAS_DIRECTORY
+from tests.sandbox_fakes import FakeSandbox
 
 NOW = datetime(2026, 10, 24, 10, 0, tzinfo=UTC)
 FAKE_LAUNCH = RunnerLaunch(("fake-runner",), Path("/"), 1000)
@@ -303,6 +304,7 @@ def make_environment(root: Path, **overrides: object) -> Environment:
         "new_problems": ProblemDestination(FsProblemFiles(root), WorkspaceFs(root)),
         "study_guides": FsStudyGuides(None),
         "language_servers": FakeLanguageServers(),
+        "sandbox": FakeSandbox(),
         "problem_sets": YamlProblemSets(WorkspaceFs(root)),
     }
     parts.update(overrides)
