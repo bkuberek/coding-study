@@ -18,9 +18,9 @@ from coding_study.application.reference_runs import ApproachResult, LanguageResu
 from coding_study.application.sandbox import running_stack
 from coding_study.application.service_grading import ServiceGrading, grade_on_stack
 from coding_study.application.service_lifecycle import (
+    environment_of_test_command,
     install_in_folder,
     prepare_engine,
-    environment_of_test_command,
 )
 from coding_study.application.service_stacks import (
     graded_stack_plan,
