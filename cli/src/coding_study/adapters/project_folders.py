@@ -33,7 +33,7 @@ PYPROJECT_FILE = "pyproject.toml"
 SERVICE_TRACKED_LOCK = "uv.lock"
 _PROJECT_TABLE = "[project]"
 PLAIN_FILE_LIMIT_BYTES = 1024 * 1024
-"""Past any `pyproject.toml` or `go.mod`, and a bound on what sandboxed code can make cstudy hold."""
+"""Past any `pyproject.toml` or `go.mod`, and a bound on what sandboxed code can make it hold."""
 _PLAIN_FILE_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
 """Non-blocking, so opening a named pipe returns at once and is then refused."""
 

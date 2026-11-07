@@ -6,6 +6,8 @@ from pathlib import Path
 import pytest
 
 from coding_study.adapters.docker_sandbox import (
+    MAX_LINE_CHARACTERS,
+    MAX_OUTPUT_BYTES,
     TIMED_OUT_EXIT_CODE,
     SubprocessDockerRunner,
     http_health,
@@ -53,6 +55,90 @@ def test_each_line_is_heard_as_it_comes(tmp_path):
     SubprocessDockerRunner().run((command,), GENEROUS_WAIT_S, lines.append)
 
     assert lines == ["one", "two"]
+
+
+def test_output_past_the_limit_keeps_its_end(tmp_path):
+    lines = MAX_OUTPUT_BYTES // 8
+    command = script(tmp_path, f'seq 1 {lines} | sed "s/^/line /"; echo last line')
+
+    result = SubprocessDockerRunner().run((command,), GENEROUS_WAIT_S)
+
+    assert result is not None
+    assert len(result.output) <= MAX_OUTPUT_BYTES
+    assert result.output.endswith("last line\n")
+
+
+def test_output_heard_line_by_line_is_still_held_to_the_limit(tmp_path):
+    """`cstudy dev` follows an app with no limit on time, so what it hears must not pile up."""
+    lines = MAX_OUTPUT_BYTES // 8
+    command = script(tmp_path, f'seq 1 {lines} | sed "s/^/line /"')
+    heard: list[str] = []
+
+    result = SubprocessDockerRunner().run((command,), GENEROUS_WAIT_S, heard.append)
+
+    assert result is not None
+    assert len(heard) == lines
+    assert len(result.output) <= MAX_OUTPUT_BYTES
+
+
+def test_a_line_with_no_newline_is_held_to_its_limit(tmp_path):
+    size = MAX_LINE_CHARACTERS * 3
+    command = script(tmp_path, f"head -c {size} /dev/zero | tr '\\0' x")
+    heard: list[str] = []
+
+    SubprocessDockerRunner().run((command,), GENEROUS_WAIT_S, heard.append)
+
+    assert max(len(line) for line in heard) <= MAX_LINE_CHARACTERS
+
+
+def test_a_long_line_loses_nothing_on_the_way(tmp_path):
+    size = MAX_LINE_CHARACTERS * 3
+    command = script(tmp_path, f"head -c {size} /dev/zero | tr '\\0' x")
+    heard: list[str] = []
+
+    SubprocessDockerRunner().run((command,), GENEROUS_WAIT_S, heard.append)
+
+    assert sum(len(line) for line in heard) == size
+
+
+def test_a_last_line_with_no_newline_is_heard(tmp_path):
+    heard: list[str] = []
+
+    SubprocessDockerRunner().run(
+        (script(tmp_path, "printf partial"),), GENEROUS_WAIT_S, heard.append
+    )
+
+    assert heard == ["partial"]
+
+
+def test_a_carriage_return_ends_a_line_as_a_newline_does(tmp_path):
+    heard: list[str] = []
+
+    SubprocessDockerRunner().run(
+        (script(tmp_path, r"printf 'one\rtwo\r\nthree\n'"),), GENEROUS_WAIT_S, heard.append
+    )
+
+    assert heard == ["one", "two", "three"]
+
+
+def test_output_that_is_not_utf8_is_replaced_not_refused(tmp_path):
+    result = SubprocessDockerRunner().run(
+        (script(tmp_path, r"printf 'a\377b\n'"),), GENEROUS_WAIT_S
+    )
+
+    assert result is not None
+    assert result.output == "a\ufffdb\n"
+
+
+def test_a_character_split_across_two_writes_stays_whole(tmp_path):
+    command = script(tmp_path, r"printf '\303'; sleep 0.2; printf '\251\n'")
+    heard: list[str] = []
+
+    result = SubprocessDockerRunner().run((command,), GENEROUS_WAIT_S, heard.append)
+
+    assert result is not None
+    assert heard == ["\u00e9"]
+    assert result.output == "\u00e9\n"
 
 
 def test_the_exit_code_comes_back(tmp_path):

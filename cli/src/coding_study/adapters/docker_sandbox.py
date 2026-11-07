@@ -7,7 +7,9 @@ desktop status`, which said `stopped` while the engine answered, and never `dock
 which wakes the VM.
 """
 
+import codecs
 import http.client
+import io
 import json
 import os
 import shutil
@@ -16,7 +18,7 @@ import subprocess
 import sys
 import threading
 import time
-from collections.abc import Callable, Generator, Sequence
+from collections.abc import Callable, Generator, Iterable, Sequence
 from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import IO, Protocol, cast
@@ -88,6 +90,12 @@ TAIL_BYTES = 4096
 TIMED_OUT_EXIT_CODE = 124
 NOT_EXECUTABLE_EXIT_CODE = 126
 READ_GRACE_S = 5.0
+MAX_OUTPUT_BYTES = 1024 * 1024
+"""How much of a command's output a result holds: its end, far past what any report shows."""
+MAX_LINE_CHARACTERS = 64 * 1024
+"""The most a listener hears at once: a longer line comes in pieces, or one with no newline at all
+would grow without limit."""
+_READ_CHUNK_BYTES = 64 * 1024
 LOOPBACK = "127.0.0.1"
 HTTP_OK_FIRST = 200
 HTTP_OK_LAST = 299
@@ -137,7 +145,8 @@ class DockerRunner(Protocol):
         on_line: Callable[[str], None] | None = None,
     ) -> ProbeResult | None:
         """Runs a command to its end with standard input at end of file; None when the executable
-        is missing, and `TIMED_OUT_EXIT_CODE` when `timeout_s` ran out, with the process killed."""
+        is missing, and `TIMED_OUT_EXIT_CODE` when `timeout_s` ran out, with the process killed.
+        The result holds the end of the output, up to `MAX_OUTPUT_BYTES`, however much went by."""
         ...
 
 
@@ -156,8 +165,6 @@ class SubprocessDockerRunner:
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                text=True,
-                errors="replace",
                 env=docker_environment(),
                 start_new_session=True,
             )
@@ -169,35 +176,85 @@ class SubprocessDockerRunner:
 
 
 def _finished(
-    process: subprocess.Popen[str],
+    process: subprocess.Popen[bytes],
     timeout_s: float | None,
     on_line: Callable[[str], None] | None,
 ) -> ProbeResult:
-    lines: list[str] = []
+    output = _BoundedOutput(on_line)
     assert process.stdout is not None
-    reader = threading.Thread(target=_collect, args=(process.stdout, lines, on_line), daemon=True)
+    reader = threading.Thread(target=_collect, args=(process.stdout, output), daemon=True)
     reader.start()
     try:
         process.wait(timeout=timeout_s)
     except subprocess.TimeoutExpired:
         _kill_group(process)
         reader.join(READ_GRACE_S)
-        return ProbeResult(TIMED_OUT_EXIT_CODE, "".join(lines))
+        return ProbeResult(TIMED_OUT_EXIT_CODE, output.text())
     except BaseException:
         _kill_group(process)
         raise
     reader.join(READ_GRACE_S)
-    return ProbeResult(process.returncode, "".join(lines))
+    return ProbeResult(process.returncode, output.text())
 
 
-def _collect(stream: IO[str], lines: list[str], on_line: Callable[[str], None] | None) -> None:
-    for line in stream:
-        lines.append(line)
-        if on_line is not None:
-            on_line(line.rstrip("\n"))
+def _collect(stream: IO[bytes], output: "_BoundedOutput") -> None:
+    while chunk := os.read(stream.fileno(), _READ_CHUNK_BYTES):
+        output.take(chunk)
+    output.finish()
 
 
-def _kill_group(process: subprocess.Popen[str]) -> None:
+class _BoundedOutput:
+    """What a container prints is as long as it likes, and `cstudy dev` follows an app with no limit
+    on time. So this holds the output's end and one unfinished line, and each line goes by."""
+
+    def __init__(self, on_line: Callable[[str], None] | None) -> None:
+        self._end = bytearray()
+        self._on_line = on_line
+        self._unfinished = ""
+        self._decoder = _text_decoder()
+
+    def take(self, chunk: bytes) -> None:
+        self._end += chunk
+        del self._end[:-MAX_OUTPUT_BYTES]
+        if self._on_line is not None:
+            self._hear(self._decoder.decode(chunk))
+
+    def finish(self) -> None:
+        if self._on_line is not None:
+            self._hear(self._decoder.decode(b"", final=True))
+            self._say(_pieces(self._unfinished) if self._unfinished else ())
+            self._unfinished = ""
+
+    def text(self) -> str:
+        return _text_decoder().decode(bytes(self._end), final=True)
+
+    def _hear(self, text: str) -> None:
+        *lines, unfinished = (self._unfinished + text).split("\n")
+        for line in lines:
+            self._say(_pieces(line))
+        *whole, self._unfinished = _pieces(unfinished)
+        self._say(whole)
+
+    def _say(self, pieces: Iterable[str]) -> None:
+        assert self._on_line is not None
+        for piece in pieces:
+            self._on_line(piece)
+
+
+def _text_decoder() -> io.IncrementalNewlineDecoder:
+    """UTF-8 whatever comes, and every line ending as `\\n`, across any split between two reads."""
+    return io.IncrementalNewlineDecoder(
+        codecs.getincrementaldecoder("utf-8")("replace"), translate=True
+    )
+
+
+def _pieces(line: str) -> list[str]:
+    """`line` cut to `MAX_LINE_CHARACTERS`; an empty line is one empty piece."""
+    size = MAX_LINE_CHARACTERS
+    return [line[start : start + size] for start in range(0, len(line), size)] or [""]
+
+
+def _kill_group(process: subprocess.Popen[bytes]) -> None:
     with suppress(ProcessLookupError, PermissionError):
         os.killpg(process.pid, signal.SIGKILL)
     process.wait()

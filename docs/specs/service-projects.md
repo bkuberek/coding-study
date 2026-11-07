@@ -822,6 +822,7 @@ Connect to the network, then run: cstudy start coworking-availability-typescript
 | Graded runs | One stack per run |
 | Mock server memory | The container is limited to 64 MiB. P1 measured a stand-in at 15 MiB, and the program alone held about 29 MB after starting, on macOS on arm64 with two mock servers |
 | Disk per project | `node_modules` or `.venv`, to be measured at P7 and P8, plus images and the install cache, shared across projects |
+| Container output in memory | What a container prints is as long as it likes, and `cstudy dev` follows an app with no time limit. So `cstudy` holds the last MiB of a command's output, each line goes by as it comes, and a line with no newline comes in pieces of 64 KiB |
 | Docker | [Resources and CI](#resources-and-ci) |
 | Language servers | Each project still counts toward `cstudy serve`'s limit of four language servers |
 
