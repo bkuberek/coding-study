@@ -237,6 +237,9 @@ LIVE_SCRIPT = (
 VIM_SCRIPT = (SERVES, OPENED, publication(FIRST_THREE))
 CURSOR_LINE_NUMBER = f"{EDITOR.rsplit(' ', 1)[0]} .cm-lineNumbers .cm-activeLineGutter"
 PANEL_ITEMS = ".cm-panel-lint li"
+LIST_THEM_ALL = "ControlOrMeta+Shift+M"
+"""Cmd or Ctrl-Shift-M with the `M` a keyboard sends while Shift is held. Playwright's `Shift+m`
+sends `m`, which CodeMirror reads as Ctrl-M on Linux, the key of its tab focus mode."""
 SELECTED_TEXT = "() => window.getSelection()?.toString() ?? ''"
 LINT_RANGE_STYLE = """selector => {
   const style = getComputedStyle(document.querySelector(selector));
@@ -326,7 +329,7 @@ def _keys(page: Any, found: LiveSeen) -> None:
     page.keyboard.press("ControlOrMeta+Home")
     found.visits = _visits(page, "F8", 4)
     found.visits_back = _visits(page, "Shift+F8", 4)
-    page.keyboard.press("ControlOrMeta+Shift+m")
+    page.keyboard.press(LIST_THEM_ALL)
     page.wait_for_selector(PANEL_ITEMS)
     found.panel_items = page.locator(PANEL_ITEMS).count()
     page.keyboard.press("Escape")
