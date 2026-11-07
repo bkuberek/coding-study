@@ -35,6 +35,14 @@ test("the next command takes the label filters", () => {
   );
 });
 
+test("the list command names the set first", () => {
+  assert.equal(listCommand({ track: "dsa", set: "backend-loop" }), "cstudy list --set backend-loop --track dsa");
+});
+
+test("the next command takes the set", () => {
+  assert.equal(nextCommand({ set: "backend-loop", status: "due" }), "cstudy next --set backend-loop");
+});
+
 test("a start command names the language", () => {
   assert.equal(startCommand("two-sum", "kotlin"), "cstudy start two-sum --lang kotlin");
 });

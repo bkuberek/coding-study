@@ -9,8 +9,9 @@ import { badge, command, h } from "../dom.ts";
 import { problemBadge, statusWords } from "../format.ts";
 import { jdkRefusals, type SelectedJdk } from "../jdk.ts";
 import { attemptHash, type FilterKey, type Filters, problemHash, problemsHash } from "../routes.ts";
-import { empty, loading, showFailure } from "../states.ts";
-import type { ListEntry, NextPick, ProblemList } from "../types.ts";
+import { setControl, setsHolding } from "../setControl.ts";
+import { empty, failure, loading, showFailure } from "../states.ts";
+import type { ListEntry, NextPick, ProblemList, SetList, SetSummary } from "../types.ts";
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
 const STATUSES = ["new", "in_progress", "attempted", "passed", "due", "mastered"];
@@ -34,6 +35,7 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
   // Focusable, so the keyboard scrolls the table where a narrow window gives it a box of its own.
   const table = h("section", { class: "listing table-scroll", "aria-label": "Problems", "aria-busy": "true", tabindex: "0" }, loading());
   const choices: Readonly<Record<Exclude<FilterKey, "pattern">, readonly string[]>> = {
+    set: filters.set ? [filters.set] : [],
     track: session.tracks,
     kind: session.kinds,
     lang: session.languages,
@@ -44,34 +46,63 @@ export function problemsView(context: PageContext, filters: Filters): Cleanup {
     role: session.job_roles,
     scope: session.scopes,
   };
+  const form = filterForm(filters, choices);
   shell.main.replaceChildren(
     h("h1", { class: "sr-only" }, "Problems"),
     next,
-    filterForm(filters, choices),
+    form,
     table,
   );
   next.replaceChildren(h("h2", { id: "next-heading", class: "eyebrow" }, "next"), loading("picking…"));
 
   // The pick and the table show together: the pick changes the height of the card above the
   // table, so a table drawn first would move under a pointer about to click a row.
-  void Promise.allSettled([
-    api.get<ProblemList>(`/api/v1/problems${queryOf(filters, Object.keys(choices).concat("pattern") as FilterKey[])}`),
-    api.get<NextPick>(`/api/v1/next${queryOf(filters, NEXT_FILTERS)}`),
-  ]).then(([list, pick]) => {
-    if (pick.status === "fulfilled") next.replaceChildren(h("h2", { id: "next-heading", class: "eyebrow" }, "next"), ...nextPick(pick.value, filters));
-    else showFailure(next, pick.reason);
-    if (list.status === "rejected") {
-      showFailure(table, list.reason);
-      return;
-    }
-    const { entries, today, selected_jdk: selectedJdk } = list.value;
-    shell.setAttempts(entries);
-    table.removeAttribute("aria-busy");
-    table.replaceChildren(listing(entries, selectedJdk));
-    const items = entries.filter((entry) => entry.kind === "item").length;
-    shell.setStatus({ mode: "LIST", where: `${entries.length - items} problems · ${items} items · ${today}` });
-  });
+  const load = () =>
+    void Promise.allSettled([
+      api.get<ProblemList>(`/api/v1/problems${queryOf(filters, Object.keys(choices).concat("pattern") as FilterKey[])}`),
+      api.get<NextPick>(`/api/v1/next${queryOf(filters, NEXT_FILTERS)}`),
+      api.get<SetList>("/api/v1/sets"),
+    ]).then(([list, pick, sets]) => {
+      if (pick.status === "fulfilled") next.replaceChildren(h("h2", { id: "next-heading", class: "eyebrow" }, "next"), ...nextPick(pick.value, filters));
+      else showFailure(next, pick.reason);
+      const known = sets.status === "fulfilled" ? sets.value.sets : [];
+      fillSetChoices(form, known, filters.set);
+      const brokenSets = sets.status === "rejected" ? [failure(sets.reason)] : [];
+      if (list.status === "rejected") {
+        showFailure(table, list.reason);
+        return;
+      }
+      const { entries, today, selected_jdk: selectedJdk, set: inSet } = list.value;
+      shell.setAttempts(entries);
+      table.removeAttribute("aria-busy");
+      // Unticking the set a row is listed under takes the row out, once its dialog closes.
+      const drawControl = (slug: string) =>
+        setControl(context, slug, {
+          held: setsHolding(known, slug),
+          closed: (names) => {
+            if (filters.set && !names.includes(filters.set)) {
+              load();
+              table.focus({ preventScroll: true });
+            }
+          },
+        });
+      table.replaceChildren(
+        ...brokenSets,
+        ...(inSet?.missing.length ? [h("p", { class: "quiet" }, `missing from the catalog: ${inSet.missing.join(", ")}`)] : []),
+        listing(entries, selectedJdk, drawControl),
+      );
+      const items = entries.filter((entry) => entry.kind === "item").length;
+      shell.setStatus({ mode: "LIST", where: `${entries.length - items} problems · ${items} items · ${today}` });
+    });
+  load();
   return () => {};
+}
+
+/** The sets arrive after the form is drawn; the filter keeps what the route names. */
+function fillSetChoices(form: HTMLFormElement, sets: readonly SetSummary[], chosen: string | undefined): void {
+  const select = form.querySelector("#filter-set");
+  const names = sets.map((found) => found.name).filter((name) => name !== chosen);
+  select?.append(...names.map((value) => h("option", { value }, value)));
 }
 
 function queryOf(filters: Filters, keys: readonly FilterKey[]): string {
@@ -85,7 +116,7 @@ function queryOf(filters: Filters, keys: readonly FilterKey[]): string {
 }
 
 /** The pick; a resume links to its attempt, and the others in progress follow it, to pick another. */
-function nextPick(pick: NextPick, filters: Filters): Node[] {
+export function nextPick(pick: NextPick, filters: Filters): Node[] {
   if (pick.pick === null) return [h("p", { class: "next-line" }, pick.message)];
   return [
     h(
@@ -157,15 +188,15 @@ function filterForm(
   return form;
 }
 
-function listing(entries: readonly ListEntry[], selectedJdk: SelectedJdk | null): HTMLElement {
+function listing(entries: readonly ListEntry[], selectedJdk: SelectedJdk | null, setsOf: (slug: string) => HTMLElement): HTMLElement {
   if (entries.length === 0) return empty("no problems match", h("a", { href: "#/" }, "clear the filters"));
-  const header = ["id", "problem", "diff", "pattern", "kind", "scope", "status", "due", "refs", "in progress"];
+  const header = ["id", "problem", "diff", "pattern", "kind", "scope", "status", "due", "refs", "in progress", "sets"];
   return h(
     "table",
     { class: "problems" },
     h("caption", { class: "sr-only" }, "Problems, then items, matching the filters"),
     h("thead", {}, h("tr", {}, ...header.map((name) => h("th", { scope: "col" }, name)))),
-    h("tbody", {}, ...entries.map((entry) => row(entry, selectedJdk))),
+    h("tbody", {}, ...entries.map((entry) => row(entry, selectedJdk, setsOf))),
   );
 }
 
@@ -193,7 +224,7 @@ function languageRefs(entry: ListEntry, selectedJdk: SelectedJdk | null): Node[]
   });
 }
 
-function row(entry: ListEntry, selectedJdk: SelectedJdk | null): HTMLTableRowElement {
+function row(entry: ListEntry, selectedJdk: SelectedJdk | null, setsOf: (slug: string) => HTMLElement): HTMLTableRowElement {
   const status = problemBadge(entry.status);
   const topic = entry.patterns[0] ?? entry.track;
   return h(
@@ -227,5 +258,6 @@ function row(entry: ListEntry, selectedJdk: SelectedJdk | null): HTMLTableRowEle
         ),
       ),
     ),
+    h("td", {}, setsOf(entry.slug)),
   );
 }

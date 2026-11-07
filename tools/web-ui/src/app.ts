@@ -45,6 +45,10 @@ function show(context: PageContext, route: Route): Cleanup {
       return problemsView(context, route.filters);
     case "problem":
       return lazyView(context, () => import("./page/views/problem.ts").then((module) => (opened) => module.problemView(opened, route.slug)));
+    case "sets":
+      return lazyView(context, () => import("./page/views/sets.ts").then((module) => module.setsView));
+    case "set":
+      return lazyView(context, () => import("./page/views/sets.ts").then((module) => (opened) => module.setView(opened, route.name)));
     case "attempt":
       return attemptView(context, route.id);
     case "mock":

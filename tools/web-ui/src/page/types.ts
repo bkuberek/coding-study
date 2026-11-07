@@ -83,6 +83,42 @@ export interface ProblemList {
   readonly today: string;
   readonly entries: readonly ListEntry[];
   readonly selected_jdk: SelectedJdk | null;
+  /** Under the Set filter: the set, and the slugs the catalog no longer has. */
+  readonly set?: { readonly name: string; readonly missing: readonly string[] };
+}
+
+/** How far a set has come, in `cstudy set list --json` and `cstudy set show --json`. */
+export interface SetStanding {
+  readonly passed: number;
+  /** The entries the catalog has. */
+  readonly total: number;
+  readonly missing: readonly string[];
+}
+
+export interface SetSummary extends SetStanding {
+  readonly name: string;
+  readonly description: string | null;
+  readonly slugs: readonly string[];
+}
+
+export interface SetList {
+  readonly sets: readonly SetSummary[];
+}
+
+export interface SetRow {
+  readonly position: number;
+  readonly slug: string;
+  readonly passed: boolean;
+  readonly missing: boolean;
+  /** The entry of `cstudy list --json`; null for a slug the catalog no longer has. */
+  readonly entry: ListEntry | null;
+}
+
+export interface SetDocument extends SetStanding {
+  readonly name: string;
+  readonly description: string | null;
+  readonly today: string;
+  readonly rows: readonly SetRow[];
 }
 
 /** `cstudy next --json`; a resume also names its attempt and the other attempts in progress. */

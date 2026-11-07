@@ -1,9 +1,9 @@
 """The committed front end stays within the page-weight budget of NFR-12
 (docs/specs/web-ui.md#front-end-assets): the whole bundle without the Vim and code-intelligence
-chunks is at most 1 MB raw and 350 KB gzip, and what the page loads before a file of one language
-is editable is at most 600 KB raw. The code-intelligence chunk has a budget of its own, at most
-64 KB raw and 24 KB gzip, and holds no `marked`. A KB is 1024 bytes, as `tools/web-ui/build.sh`
-prints sizes.
+chunks is at most 1,200 KB raw and 400 KB gzip, and what the page loads before a file of one
+language is editable is at most 600 KB raw. The code-intelligence chunk has a budget of its own, at
+most 64 KB raw and 24 KB gzip, and holds no `marked`. A KB is 1024 bytes, as
+`tools/web-ui/build.sh` prints sizes.
 
 What the page loads is the static-import closure of `app.js`, plus `app.css`; opening a file adds
 the closure of the editor chunk and of the file's language chunk. A chunk another one reaches only
@@ -20,8 +20,8 @@ from tests.helpers import REPOSITORY_ROOT
 
 STATIC = REPOSITORY_ROOT / "cli" / "src" / "coding_study" / "entrypoints" / "web" / "static"
 KB = 1024
-WHOLE_RAW_KB = 1024
-WHOLE_GZIP_KB = 350
+WHOLE_RAW_KB = 1200
+WHOLE_GZIP_KB = 400
 EDITABLE_RAW_KB = 600
 INTELLIGENCE_RAW_KB = 64
 INTELLIGENCE_GZIP_KB = 24

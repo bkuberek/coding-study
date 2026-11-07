@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { attemptHash, parseRoute, problemHash, problemsHash } from "../src/page/routes.ts";
+import { attemptHash, parseRoute, problemHash, problemsHash, setHash, SETS_HASH } from "../src/page/routes.ts";
 
 test("an empty fragment is the problems view without filters", () => {
   assert.deepEqual(parseRoute(""), { view: "problems", filters: {} });
@@ -67,4 +67,25 @@ test("problem and attempt fragments read back as their views", () => {
     { view: "problem", slug: "lru-cache" },
     { view: "attempt", id: 7 },
   ]);
+});
+
+test("the sets have a view of their own", () => {
+  assert.deepEqual(parseRoute(SETS_HASH), { view: "sets" });
+});
+
+test("one set is addressed by its name", () => {
+  assert.deepEqual(parseRoute(setHash("backend-loop")), { view: "set", name: "backend-loop" });
+});
+
+test("a set's name in the fragment is decoded", () => {
+  assert.deepEqual(parseRoute("#/sets/a%20b"), { view: "set", name: "a b" });
+});
+
+test("anything below a set is no view", () => {
+  assert.equal(parseRoute("#/sets/a/b").view, "missing");
+});
+
+test("the Set filter is kept in the fragment's query, first", () => {
+  assert.equal(problemsHash({ track: "dsa", set: "backend-loop" }), "#/?set=backend-loop&track=dsa");
+  assert.deepEqual(parseRoute("#/?set=backend-loop"), { view: "problems", filters: { set: "backend-loop" } });
 });

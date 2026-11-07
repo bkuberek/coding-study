@@ -75,6 +75,18 @@ AT_REST = """() => Promise.race([
 ])"""
 """Waits, at most 2 s, for the animations that end, such as a dialog's entrance, and pauses the
 endless ones, such as a blinking cursor, so colours are measured at rest."""
+SETS_FILE = f"""\
+sets:
+  backend-loop:
+    description: The backend loop on the 12th
+    problems:
+      - {SINGLE_FILE}
+      - url-shortener
+      - {PROJECT}
+      - an-old-problem
+  data-loop:
+    problems: []
+"""
 VIEWS = (
     "problems",
     "problem",
@@ -87,6 +99,10 @@ VIEWS = (
     "solution dialog",
     "history",
     "past code dialog",
+    "sets",
+    "new set dialog",
+    "open set",
+    "add to set dialog",
     "mock",
     "mock running",
     "progress",
@@ -219,6 +235,7 @@ def workspace(
             capture_output=True,
             check=True,
         )
+    (root / "sets.yaml").write_text(SETS_FILE)
     return root
 
 
@@ -441,12 +458,22 @@ def _tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
     yield "start dialog", lambda: _start_dialog(page)
     yield "history", lambda: _history(page)
     yield "past code dialog", lambda: _past_code_dialog(page)
+    yield "sets", lambda: _open(page, "#/sets", ".set-list")
+    yield "new set dialog", lambda: _sheet(page, ".view-head button:has-text('New set')")
+    yield "open set", lambda: _open(page, "#/sets/backend-loop", "#set-add-slug")
+    yield "add to set dialog", lambda: _set_dialog(page)
     yield "mock", lambda: _open(page, "#/mock", ".mock-form")
     yield "progress", lambda: _open(page, "#/progress", ".stats-summary")
     yield "health", lambda: _open(page, "#/health", "table.checks", RUN_WAIT_MS)
     yield "settings", lambda: _open(page, "#/settings", "ul.languages .language-name")
     yield "reset dialog", lambda: _reset_dialog(page)
     yield "mock running", lambda: _mock_running(page)
+
+
+def _set_dialog(page: Any) -> None:
+    _open(page, "#/", "table.problems .set-control")
+    page.click("table.problems .set-control")
+    page.wait_for_selector(f"{SHEET} input[type=checkbox]")
 
 
 def _reset_dialog(page: Any) -> None:

@@ -8,6 +8,7 @@ export { abortAttempt } from "./abortDialog.ts";
 export { askNames, confirmAction, openSheet } from "./dialogs.ts";
 export { openDoneDialog } from "./doneDialog.ts";
 export { showPastFiles } from "./pastFiles.ts";
+export { openSetMembership } from "./setMembership.ts";
 export { openSolution } from "./solutionPane.ts";
 export { openStartDialog } from "./startDialog.ts";
 export { TreeActions } from "./treeActions.ts";

@@ -823,6 +823,13 @@ tbody tr:hover {
   white-space: nowrap;
 }
 
+.set-control {
+  max-width: 13em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* the Problem view */
 
 .problem-head {

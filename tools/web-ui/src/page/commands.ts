@@ -5,8 +5,8 @@
 
 import { FILTER_KEYS, type FilterKey, type Filters } from "./routes.ts";
 
-/** The filters `cstudy next` takes from the list's: track, pattern, difficulty, language and the labels. */
-export const NEXT_FILTERS: readonly FilterKey[] = ["track", "pattern", "difficulty", "lang", "domain", "role", "scope"];
+/** The filters `cstudy next` takes from the list's: set, track, pattern, difficulty, language and the labels. */
+export const NEXT_FILTERS: readonly FilterKey[] = ["set", "track", "pattern", "difficulty", "lang", "domain", "role", "scope"];
 
 export function listCommand(filters: Filters): string {
   return withFlags("cstudy list", filters, FILTER_KEYS);

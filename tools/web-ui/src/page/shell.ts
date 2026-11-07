@@ -15,7 +15,7 @@ const CONNECTION_TEXTS: Readonly<Partial<Record<StreamState, readonly [string, s
   lost: ["disconnected", "cstudy serve refused the page's notifications, as after a restart: open the URL it printed again"],
 };
 
-export type ViewName = "problems" | "mock" | "progress" | "health" | "settings" | null;
+export type ViewName = "problems" | "sets" | "mock" | "progress" | "health" | "settings" | null;
 
 export interface StatusLine {
   /** The leftmost segment: the attempt's mode, or the view. */
@@ -49,10 +49,11 @@ export interface ShellActions {
 
 export const VIEWS: readonly { readonly name: Exclude<ViewName, null>; readonly hash: string; readonly key: string }[] = [
   { name: "problems", hash: "#/", key: "1" },
-  { name: "mock", hash: "#/mock", key: "2" },
-  { name: "progress", hash: "#/progress", key: "3" },
-  { name: "health", hash: "#/health", key: "4" },
-  { name: "settings", hash: "#/settings", key: "5" },
+  { name: "sets", hash: "#/sets", key: "2" },
+  { name: "mock", hash: "#/mock", key: "3" },
+  { name: "progress", hash: "#/progress", key: "4" },
+  { name: "health", hash: "#/health", key: "5" },
+  { name: "settings", hash: "#/settings", key: "6" },
 ];
 
 export const THEMES: readonly Theme[] = ["system", "light", "dark"];

@@ -134,7 +134,7 @@ def _skip_and_shortcut(page: Any, tab: str, found: Keys) -> None:
     found.first_stop = _focus(page)["name"]
     page.keyboard.press("Enter")
     found.after_skip = _focus(page)["id"]
-    page.keyboard.press("Alt+3")
+    page.keyboard.press("Alt+4")
     page.wait_for_function("() => location.hash === '#/progress'")
     found.view_by_shortcut = page.evaluate("location.hash")
 

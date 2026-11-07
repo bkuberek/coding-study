@@ -4,13 +4,15 @@
  */
 
 /** The filters of the Problems view, as `cstudy list` names them. */
-export const FILTER_KEYS = ["track", "kind", "lang", "difficulty", "status", "content", "domain", "role", "scope", "pattern"] as const;
+export const FILTER_KEYS = ["set", "track", "kind", "lang", "difficulty", "status", "content", "domain", "role", "scope", "pattern"] as const;
 export type FilterKey = (typeof FILTER_KEYS)[number];
 export type Filters = Partial<Record<FilterKey, string>>;
 
 export type Route =
   | { readonly view: "problems"; readonly filters: Filters }
   | { readonly view: "problem"; readonly slug: string }
+  | { readonly view: "sets" }
+  | { readonly view: "set"; readonly name: string }
   | { readonly view: "attempt"; readonly id: number }
   | { readonly view: "mock" }
   | { readonly view: "progress" }
@@ -19,7 +21,7 @@ export type Route =
   | { readonly view: "missing"; readonly fragment: string };
 
 /** The views addressed by one segment, such as `#/health`. */
-const SINGLE_VIEWS = ["mock", "progress", "health", "settings"] as const;
+const SINGLE_VIEWS = ["sets", "mock", "progress", "health", "settings"] as const;
 type SingleView = (typeof SINGLE_VIEWS)[number];
 
 function isSingleView(segment: string): segment is SingleView {
@@ -35,6 +37,7 @@ export function parseRoute(fragment: string): Route {
   if (first === "problems" && second !== undefined && rest.length === 0) {
     return { view: "problem", slug: decodeURIComponent(second) };
   }
+  if (first === "sets" && second !== undefined && rest.length === 0) return { view: "set", name: decodeURIComponent(second) };
   if (first === "attempts" && second !== undefined && rest.length === 0 && /^[1-9]\d*$/.test(second)) {
     return { view: "attempt", id: Number(second) };
   }
@@ -55,6 +58,8 @@ export function problemsHash(filters: Filters): string {
 export const problemHash = (slug: string): string => `#/problems/${encodeURIComponent(slug)}`;
 export const attemptHash = (id: number): string => `#/attempts/${id}`;
 export const MOCK_HASH = "#/mock";
+export const SETS_HASH = "#/sets";
+export const setHash = (name: string): string => `${SETS_HASH}/${encodeURIComponent(name)}`;
 
 function filtersOf(query: URLSearchParams): Filters {
   const filters: Filters = {};

@@ -11,9 +11,10 @@ import { solutionButton } from "../solution.ts";
 import { badge, command, h, rendered } from "../dom.ts";
 import { localMinute, problemBadge, solveTime } from "../format.ts";
 import { openLazily } from "../lazy.ts";
-import { attemptHash } from "../routes.ts";
-import { empty, loading, showFailure } from "../states.ts";
-import type { History, PastAttempt, ProblemDocument, Rendered } from "../types.ts";
+import { attemptHash, setHash } from "../routes.ts";
+import { setControl, setsHolding } from "../setControl.ts";
+import { empty, failure, loading, showFailure } from "../states.ts";
+import type { History, PastAttempt, ProblemDocument, Rendered, SetList } from "../types.ts";
 
 const IN_PROGRESS = "in_progress";
 
@@ -30,10 +31,12 @@ export function problemView(context: PageContext, slug: string): Cleanup {
     api.get<ProblemDocument>(base),
     api.get<Rendered>(`${base}/statement`),
     api.get<History>(`${base}/history`),
+    // A sets.yaml that does not parse stops nothing but the sets.
+    api.get<SetList>("/api/v1/sets").catch((error: unknown) => failure(error)),
   ])
-    .then(([problem, statement, history]) => {
+    .then(([problem, statement, history, sets]) => {
       page.removeAttribute("aria-busy");
-      page.replaceChildren(header(problem), h("div", { class: "problem-grid" }, statementPane(statement), side(context, problem, history)));
+      page.replaceChildren(header(problem), h("div", { class: "problem-grid" }, statementPane(statement), side(context, problem, history, sets)));
       shell.setStatus({ mode: "PROBLEM", where: `${problem.slug} · ${problem.kind} · ${problem.difficulty}` });
       document.title = `${problem.title} · cstudy`;
     })
@@ -64,11 +67,26 @@ function statementPane(statement: Rendered): HTMLElement {
   return h("section", { class: "statement-pane", "aria-label": "Statement" }, rendered(statement.html, "prose"));
 }
 
-function side(context: PageContext, problem: ProblemDocument, history: History): HTMLElement {
+function setsSection(context: PageContext, slug: string, sets: SetList | HTMLElement): HTMLElement {
+  const section = h("section", { class: "side-block", "aria-labelledby": "sets-heading" }, h("h2", { id: "sets-heading", class: "eyebrow" }, "sets"));
+  if (sets instanceof HTMLElement) {
+    section.append(sets);
+    return section;
+  }
+  const links = h("ul", { class: "plain" });
+  const show = (names: readonly string[]) => links.replaceChildren(...names.map((name) => h("li", {}, h("a", { href: setHash(name) }, name))));
+  const held = setsHolding(sets.sets, slug);
+  show(held);
+  section.append(links, h("p", {}, setControl(context, slug, { held, closed: show, label: "Add to a set…" })));
+  return section;
+}
+
+function side(context: PageContext, problem: ProblemDocument, history: History, sets: SetList | HTMLElement): HTMLElement {
   return h(
     "aside",
     { class: "problem-side", "aria-label": "Practice" },
     practice(context, problem, history.schedule !== null),
+    setsSection(context, problem.slug, sets),
     problem.approaches.length ? approaches(problem) : null,
     historySection(context, problem.slug, history),
   );
