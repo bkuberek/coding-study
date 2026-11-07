@@ -180,17 +180,19 @@ def test_the_page_logs_no_error_under_its_content_security_policy(seen):
 
 
 TYPED = "total = 1\nlegacy = 2\nplain = 3\n"
-"""Lines 6 to 8 of the starter file, which has five lines and a last empty one (6 lines)."""
+"""The lines after the starter file's own 13, counted from 0: 13 `total`, 14 `legacy`, 15 `plain`.
+The ranges below name the starter's words by these numbers: `Two` in the docstring's first line,
+`two_sum` in the `def` line and `raise` in the body, so a longer starter header moves them."""
 PUBLISHED = [
     {
-        "range": {"start": {"line": 3, "character": 4}, "end": {"line": 3, "character": 11}},
+        "range": {"start": {"line": 11, "character": 4}, "end": {"line": 11, "character": 11}},
         "severity": 1,
         "source": "basedpyright",
         "code": "reportUndefinedVariable",
         "message": '"two_sum" is not defined',
     },
     {
-        "range": {"start": {"line": 4, "character": 4}, "end": {"line": 4, "character": 9}},
+        "range": {"start": {"line": 12, "character": 4}, "end": {"line": 12, "character": 9}},
         "severity": 2,
         "source": "basedpyright",
         "code": "reportUnreachable",
@@ -203,14 +205,14 @@ PUBLISHED = [
         "message": "Docstring starts with a capital",
     },
     {
-        "range": {"start": {"line": 5, "character": 0}, "end": {"line": 5, "character": 5}},
+        "range": {"start": {"line": 13, "character": 0}, "end": {"line": 13, "character": 5}},
         "severity": 4,
         "tags": [1],
         "source": "basedpyright",
         "message": '"total" is not accessed',
     },
     {
-        "range": {"start": {"line": 6, "character": 0}, "end": {"line": 6, "character": 6}},
+        "range": {"start": {"line": 14, "character": 0}, "end": {"line": 14, "character": 6}},
         "severity": 4,
         "tags": [2],
         "source": "basedpyright",
@@ -359,7 +361,12 @@ def _vim_keys(browser: Any, lab: Lab, found: LiveSeen) -> None:
     page.keyboard.press("Escape")
     page.keyboard.press("g")
     page.keyboard.press("g")
-    for keys, line in ((("]", "d"), "1"), (("]", "d"), "4"), (("]", "d"), "5"), (("[", "d"), "4")):
+    for keys, line in (
+        (("]", "d"), "1"),
+        (("]", "d"), "12"),
+        (("]", "d"), "13"),
+        (("[", "d"), "12"),
+    ):
         for key in keys:
             page.keyboard.press(key)
         page.wait_for_function(
@@ -422,7 +429,7 @@ def test_the_lint_panel_lists_every_diagnostic_hints_too(live):
 
 
 def test_under_vim_the_diagnostic_keys_move_the_cursor(live):
-    assert live.vim_lines == ["1", "4", "5", "4"]
+    assert live.vim_lines == ["1", "12", "13", "12"]
 
 
 def test_the_page_logs_no_error_for_live_diagnostics(live):
