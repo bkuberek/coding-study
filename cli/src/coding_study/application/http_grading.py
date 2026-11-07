@@ -74,8 +74,9 @@ class HttpGradingRun:
 def run_http_grading(
     run: HttpGradingRun, stack: GradedStack, open_clients: OpenStackClients
 ) -> Judgement:
-    """Raises ContentError, before any request for what a case says on its own, for a case the
-    stack cannot run; RunnerStartError when the mock control interface stops answering."""
+    """Raises ContentError for a case the stack cannot run, before any request unless only a mock
+    server can tell, as of an unknown scenario; RunnerStartError when the mock control interface
+    stops answering."""
     endpoints = stack.endpoints
     cases = _checked_cases(run, endpoints.mocks)
     grader = _Grader(stack, open_clients(endpoints), run.listener)
@@ -188,7 +189,8 @@ class _Grader:
         sent = self._send(http.request, checked.limit_ms, spent_ns)
         if isinstance(sent, ExchangeFailed):
             return self._failed(checked, sent)
-        logs = {assertion.mock: self._mocks.log(assertion.mock) for assertion in http.log}
+        asserted = dict.fromkeys(assertion.mock for assertion in http.log)
+        logs = {mock: self._mocks.log(mock) for mock in asserted}
         return answered_verdict(checked.case, http, Answer(sent, checked.comparator, logs))
 
     def _send(

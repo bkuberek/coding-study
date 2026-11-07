@@ -89,6 +89,13 @@ def test_each_case_starts_from_a_mock_reset():
     assert rig.journal.count("mocks reset") == 2
 
 
+def test_two_assertions_on_one_mock_server_read_its_log_once():
+    rig = Rig()
+    log = (LogAssertion(ROOM_VENDOR, count=0), LogAssertion(ROOM_VENDOR, max_count=1))
+    grade(rig, http_case(log=log))
+    assert rig.journal.count(f"log {ROOM_VENDOR}") == 1
+
+
 def test_a_log_is_read_only_for_a_case_that_asserts_on_it():
     rig = Rig()
     grade(rig, http_case())

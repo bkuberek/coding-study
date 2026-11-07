@@ -225,6 +225,12 @@ def test_a_slow_drip_of_body_cannot_outlast_the_limit():
     assert failure_of(sent) is ExchangeFailure.TIMED_OUT
 
 
+def test_the_shortest_limit_still_answers_with_a_verdict():
+    with raw_server(holding) as server:
+        sent = app_at(server).send(GET_A, 1)
+    assert failure_of(sent) is ExchangeFailure.TIMED_OUT
+
+
 def test_no_time_left_times_out_without_connecting():
     client = HttpAppClient(f"http://127.0.0.1:{closed_port()}")
     assert failure_of(client.send(GET_A, 0)) is ExchangeFailure.TIMED_OUT
