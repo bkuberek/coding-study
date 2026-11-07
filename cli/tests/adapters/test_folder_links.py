@@ -2,11 +2,19 @@
 machine as a real link. `cstudy`'s hash, archive and file code read the link, never what it names
 (docs/specs/service-projects.md#mounts)."""
 
+import os
+import threading
 from pathlib import Path
 
 import pytest
 
-from coding_study.adapters.project_folders import tracked_files
+from coding_study.adapters.project_folders import (
+    PLAIN_FILE_LIMIT_BYTES,
+    declares_its_project,
+    go_project_folders,
+    tracked_files,
+    write_missing_go_work_files,
+)
 from coding_study.adapters.workspace_fs import WorkspaceFs
 from coding_study.adapters.workspace_setup import FsProjectLinks
 
@@ -138,3 +146,90 @@ def test_a_service_projects_venv_is_never_linked(tmp_path):
     assert FsProjectLinks().unlinked(root) == ()
     assert FsProjectLinks().relink(root) == ()
     assert not (folder / ".venv").exists()
+
+
+PROJECT_TABLE = "[project]\nname = 'rooms'\n"
+ANSWER_WAIT_S = 30.0
+"""A read of a pipe with nobody writing never returns at all: this only bounds the test's wait."""
+
+
+def answered_in_time(folder: Path) -> bool | None:
+    """`declares_its_project`, on a thread: a read that hangs must fail the test, not hang it."""
+    answers: list[bool] = []
+    thread = threading.Thread(
+        target=lambda: answers.append(declares_its_project(folder)), daemon=True
+    )
+    thread.start()
+    thread.join(ANSWER_WAIT_S)
+    return answers[0] if answers else None
+
+
+def test_a_project_file_that_declares_its_project_is_read(folder):
+    (folder / "pyproject.toml").write_text(PROJECT_TABLE)
+
+    assert declares_its_project(folder)
+
+
+def test_a_project_file_that_is_a_link_is_not_read(folder, secret):
+    secret.write_text(PROJECT_TABLE)
+    (folder / "pyproject.toml").symlink_to(secret)
+
+    assert not declares_its_project(folder)
+
+
+def test_a_project_file_that_is_a_named_pipe_does_not_hang(folder):
+    os.mkfifo(folder / "pyproject.toml")
+
+    assert answered_in_time(folder) is False
+
+
+def test_a_project_file_that_links_to_an_endless_device_is_not_read(folder):
+    (folder / "pyproject.toml").symlink_to("/dev/zero")
+
+    assert answered_in_time(folder) is False
+
+
+def test_a_project_file_that_is_a_directory_declares_nothing(folder):
+    (folder / "pyproject.toml").mkdir()
+
+    assert not declares_its_project(folder)
+
+
+def test_a_project_file_past_the_limit_is_read_no_further(folder):
+    filler = "#" * PLAIN_FILE_LIMIT_BYTES + "\n"
+    (folder / "pyproject.toml").write_text(filler + PROJECT_TABLE)
+
+    assert not declares_its_project(folder)
+
+
+def test_a_uv_lock_stays_untracked_behind_a_project_file_that_is_a_link(folder, secret):
+    secret.write_text(PROJECT_TABLE)
+    (folder / "pyproject.toml").symlink_to(secret)
+    (folder / "uv.lock").write_text("locked\n")
+
+    assert "uv.lock" not in [path.name for path in tracked_files(folder)]
+
+
+GO_MODULE = "module rooms\n\ngo 1.24\n"
+
+
+def test_a_go_module_file_that_is_a_link_is_not_read(tmp_path, folder, secret):
+    secret.write_text(GO_MODULE)
+    (folder / "go.mod").symlink_to(secret)
+
+    assert go_project_folders(tmp_path / "workspace") == ()
+
+
+def test_a_go_module_file_that_is_a_named_pipe_is_no_go_folder(tmp_path, folder):
+    os.mkfifo(folder / "go.mod")
+
+    assert go_project_folders(tmp_path / "workspace") == ()
+
+
+def test_a_go_work_that_is_a_dangling_link_is_not_written_through(tmp_path, folder):
+    (folder / "go.mod").write_text(GO_MODULE)
+    target = tmp_path / "written-through-the-link"
+    (folder / "go.work").symlink_to(target)
+
+    assert write_missing_go_work_files(tmp_path / "workspace") == ()
+    assert not target.exists()

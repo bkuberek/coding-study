@@ -32,6 +32,10 @@ _SETUID_BITS = stat.S_ISUID | stat.S_ISGID
 PYPROJECT_FILE = "pyproject.toml"
 SERVICE_TRACKED_LOCK = "uv.lock"
 _PROJECT_TABLE = "[project]"
+PLAIN_FILE_LIMIT_BYTES = 1024 * 1024
+"""Past any `pyproject.toml` or `go.mod`, and a bound on what sandboxed code can make cstudy hold."""
+_PLAIN_FILE_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
+"""Non-blocking, so opening a named pipe returns at once and is then refused."""
 
 
 def tracked_files(folder: Path) -> list[Path]:
@@ -142,11 +146,26 @@ def _untracked(folder: Path, entry: Path) -> bool:
 def declares_its_project(folder: Path) -> bool:
     """Whether the folder's `pyproject.toml` has a `[project]` table: only a service project's does,
     since S15 refuses one in any other starter, for the sake of the `.venv` link."""
+    text = _plain_text(folder / PYPROJECT_FILE)
+    return text is not None and _PROJECT_TABLE in text.splitlines()
+
+
+def _plain_text(path: Path) -> str | None:
+    """The start of the regular file at `path`. A file in a project folder can be anything sandboxed
+    code left there, so a link, a named pipe, a device or a directory is no such file: None, and
+    what it names is never read."""
     try:
-        text = (folder / PYPROJECT_FILE).read_text(encoding="utf-8", errors="replace")
+        descriptor = os.open(path, _PLAIN_FILE_FLAGS)
     except OSError:
-        return False
-    return _PROJECT_TABLE in text.splitlines()
+        return None
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            return None
+        return os.read(descriptor, PLAIN_FILE_LIMIT_BYTES).decode("utf-8", errors="replace")
+    except OSError:
+        return None
+    finally:
+        os.close(descriptor)
 
 
 def clear_setuid_bits(folder: Path) -> None:
@@ -174,29 +193,34 @@ def go_project_folders(root: Path) -> tuple[GoProjectFolder, ...]:
     projects = root / PROJECTS_DIRECTORY
     if not projects.is_dir():
         return ()
-    folders = sorted(folder for folder in projects.iterdir() if (folder / GO_MODULE_FILE).is_file())
-    return tuple(_go_folder(folder) for folder in folders)
+    modules = (
+        (folder, _plain_text(folder / GO_MODULE_FILE)) for folder in sorted(projects.iterdir())
+    )
+    return tuple(_go_folder(folder, text) for folder, text in modules if text is not None)
 
 
 def write_missing_go_work_files(root: Path) -> tuple[str, ...]:
-    """Writes the `go.work` of each Go folder that lacks one; returns those folders."""
+    """Writes the `go.work` of each Go folder that lacks one; returns those folders. A link there,
+    dangling or not, is sandboxed code's or yours, and no write goes through it."""
     written: list[str] = []
     for found in go_project_folders(root):
         if found.has_work_file:
             continue
-        module = (root / found.folder / GO_MODULE_FILE).read_text(
-            encoding="utf-8", errors="replace"
-        )
-        for file in toolchain_files(Language.GO, module):
-            path = root / found.folder / file.path
-            if not path.exists():
-                path.write_text(file.text, encoding="utf-8")
-        written.append(found.folder)
+        module = _plain_text(root / found.folder / GO_MODULE_FILE)
+        paths = {
+            root / found.folder / file.path: file.text
+            for file in toolchain_files(Language.GO, module)
+        }
+        missing = {path: text for path, text in paths.items() if not os.path.lexists(path)}
+        for path, text in missing.items():
+            path.write_text(text, encoding="utf-8")
+        if missing:
+            written.append(found.folder)
     return tuple(written)
 
 
-def _go_folder(folder: Path) -> GoProjectFolder:
-    module = go_module_file((folder / GO_MODULE_FILE).read_text(encoding="utf-8", errors="replace"))
+def _go_folder(folder: Path, text: str) -> GoProjectFolder:
+    module = go_module_file(text)
     unresolved = tuple(
         target
         for target in module.replaces.values()

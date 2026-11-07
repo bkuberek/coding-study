@@ -34,6 +34,7 @@ cstudy generates the compose file, `.cs/runs/<run>/stack.yaml`, and merges the p
 | Item | Rule |
 |------|------|
 | Project folder | Bind-mounted read-write at the **same absolute path** as on your machine, so a path in an error message, a diagnostic or a debugger means the same thing on both sides. It is the working directory |
+| What sandboxed code leaves there | The folder shows on your machine as your code left it, so a file `cstudy` reads there can be a link to anything, a named pipe, a device or a huge file. `cstudy` reads `pyproject.toml` and `go.mod` with no link followed, only as a regular file, and only their first MiB, and writes a missing `go.work` through no link |
 | Parent folders, `.cs/`, your home | Not visible |
 | Toolchain links | The links and relative paths of [existing project folders](installation-and-workspaces.md#project-folders) (`.venv` to the shared venv, `go.work`, `.cargo/config.toml`, the workspace's `node_modules`) do not apply: the image is the toolchain, and dependencies are installed into the folder |
 | Docker socket | Never mounted |
