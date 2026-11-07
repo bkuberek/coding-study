@@ -47,6 +47,8 @@ class Seen:
     view_by_shortcut: str = ""
     empty_says: str = ""
     list_command: str = ""
+    list_fills_the_page: bool = False
+    open_set_fills_the_page: bool = False
     name_issue: str = ""
     after_create: str = ""
     open_command: str = ""
@@ -137,6 +139,19 @@ def _open(page: Any, route: str, shown: str) -> None:
     page.wait_for_selector(shown)
 
 
+def _fills_the_page(page: Any, view: str) -> bool:
+    """Whether the view is as wide as `main` inside its padding, as Problems and Progress are."""
+    return page.evaluate(
+        """view => {
+            const main = document.querySelector("main");
+            const { paddingLeft, paddingRight } = getComputedStyle(main);
+            const room = main.clientWidth - parseFloat(paddingLeft) - parseFloat(paddingRight);
+            return document.querySelector(view).getBoundingClientRect().width === room;
+        }""",
+        view,
+    )
+
+
 def _navigation(page: Any, found: Seen) -> None:
     found.tab_names = page.locator(".topbar nav a").all_inner_texts()
     page.keyboard.press("Alt+2")
@@ -145,6 +160,7 @@ def _navigation(page: Any, found: Seen) -> None:
     page.wait_for_selector(".sets .state-empty")
     found.empty_says = page.locator(".sets .state-empty").inner_text()
     found.list_command = page.locator(COMMAND).inner_text()
+    found.list_fills_the_page = _fills_the_page(page, ".sets")
 
 
 def _create(page: Any, found: Seen) -> None:
@@ -158,6 +174,7 @@ def _create(page: Any, found: Seen) -> None:
     page.wait_for_selector(f".set-open h1:has-text('{LOOP}')")
     found.after_create = page.evaluate("location.hash")
     found.open_command = page.locator(COMMAND).inner_text()
+    found.open_set_fills_the_page = _fills_the_page(page, ".set-open")
 
 
 def _row_control(slug: str) -> str:
@@ -305,6 +322,14 @@ def test_the_views_are_numbered_with_sets_second(seen):
 
 def test_the_view_after_problems_is_sets(seen):
     assert "sets" in seen.tab_names[1]
+
+
+def test_the_list_of_sets_fills_the_page(seen):
+    assert seen.list_fills_the_page
+
+
+def test_an_open_set_fills_the_page(seen):
+    assert seen.open_set_fills_the_page
 
 
 def test_alt_2_opens_the_sets(seen):

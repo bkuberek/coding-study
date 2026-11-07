@@ -709,7 +709,7 @@ A run's diagnostics replace the previous run's markers at the next `run_start` o
 
 ### Sets view
 
-The sets of [`cstudy set`](cli.md#cstudy-set), each a list you chose, so you study from one without searching. The command line above the view is `cstudy set list`, and `cstudy set show <name>` once a set is open. Its code and its styles are a chunk fetched when the view first opens ([Front-end assets](#front-end-assets)).
+The sets of [`cstudy set`](cli.md#cstudy-set), each a list you chose, so you study from one without searching. The list and an open set fill the page, as Problems and Progress do. The command line above the view is `cstudy set list`, and `cstudy set show <name>` once a set is open. Its code and its styles are a chunk fetched when the view first opens ([Front-end assets](#front-end-assets)).
 
 | Area | Behaviour |
 |------|-----------|

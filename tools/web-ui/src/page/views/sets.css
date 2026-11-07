@@ -1,10 +1,5 @@
 /* The Sets view (sets.ts): the sets with their progress, and one open set's rows. */
 
-.sets,
-.set-open {
-  max-width: 1100px;
-}
-
 .set-list {
   margin: 0;
   padding: 0;
