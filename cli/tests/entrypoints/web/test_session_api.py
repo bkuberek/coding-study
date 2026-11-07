@@ -170,6 +170,25 @@ def test_an_unknown_preference_gets_422_usage(app):
     )
 
 
+def test_columns_that_hide_the_status_get_422_usage(app):
+    with session_client(app) as client:
+        response = client.put(
+            PREFERENCES, json={"problem_columns": ["problem"]}, headers=WRITE_HEADERS
+        )
+    assert (response.status_code, response.json()) == (
+        422,
+        {"error": {"code": "usage", "message": 'column "status" cannot be hidden', "fix": None}},
+    )
+
+
+def test_chosen_columns_are_read_back(app):
+    columns = ["problem", "status", "sets"]
+    with session_client(app) as client:
+        client.put(PREFERENCES, json={"problem_columns": columns}, headers=WRITE_HEADERS)
+        document = client.get(PREFERENCES).json()
+    assert document["problem_columns"] == columns
+
+
 def test_a_body_that_is_not_json_gets_422_usage(app):
     with session_client(app) as client:
         response = client.put(PREFERENCES, content=b"{vim", headers=WRITE_HEADERS)
