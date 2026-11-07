@@ -42,7 +42,7 @@ export function countWords(shown: number, whole: number | null): string {
 /** The columns the table can show, in its order (`domain/preferences.py` holds the same). */
 export const PROBLEM_COLUMNS = ["id", "problem", "difficulty", "pattern", "kind", "scope", "domain", "role", "status", "due", "languages", "sets"] as const;
 export type ProblemColumn = (typeof PROBLEM_COLUMNS)[number];
-export const DEFAULT_COLUMNS: readonly ProblemColumn[] = ["id", "problem", "difficulty", "pattern", "status", "due", "languages"];
+export const DEFAULT_COLUMNS: readonly ProblemColumn[] = ["id", "problem", "difficulty", "pattern", "status", "due", "languages", "sets"];
 const REQUIRED_COLUMNS: readonly ProblemColumn[] = ["problem", "status"];
 
 export function canHide(column: ProblemColumn): boolean {

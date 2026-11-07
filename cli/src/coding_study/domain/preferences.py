@@ -25,7 +25,16 @@ PROBLEM_COLUMNS = (
     "sets",
 )
 """The columns the Problems view's table can show, in its order."""
-DEFAULT_PROBLEM_COLUMNS = ("id", "problem", "difficulty", "pattern", "status", "due", "languages")
+DEFAULT_PROBLEM_COLUMNS = (
+    "id",
+    "problem",
+    "difficulty",
+    "pattern",
+    "status",
+    "due",
+    "languages",
+    "sets",
+)
 REQUIRED_PROBLEM_COLUMNS = ("problem", "status")
 
 

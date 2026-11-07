@@ -313,7 +313,7 @@ tr:hover > td > .problem-link {
 /* The title takes what the other columns leave, so they keep one line and a row its height. */
 .problem-rows .title-cell {
   width: 100%;
-  min-width: 24ch;
+  min-width: 18ch;
 }
 
 .problem-rows td:not(.title-cell) {
@@ -323,6 +323,14 @@ tr:hover > td > .problem-link {
 .problem-rows td[data-column="domain"],
 .problem-rows td[data-column="role"] {
   white-space: normal;
+}
+
+/* A long name yields to the ellipsis here; the control says every set to a screen reader. */
+.problem-rows .set-control {
+  display: inline-block;
+  min-height: 24px;
+  max-width: 9em;
+  padding-block: 0;
 }
 
 /* The words of a resume are the only link in the column, and only they are underlined. */
@@ -366,6 +374,17 @@ tr:hover > td > .problem-link {
 .resume-link {
   margin-right: 8px;
   white-space: nowrap;
+}
+
+/* Two attempts of a problem take a line each once a row has no room for both on one. */
+@media (max-width: 1250px) {
+  .problem-rows td[data-column="status"] {
+    white-space: normal;
+  }
+
+  .problem-rows .resume-link {
+    display: inline-block;
+  }
 }
 
 /* Below this the row wraps, so an open menu takes a line of its own instead of covering the next. */

@@ -63,10 +63,10 @@ def bare_workspace(factory: pytest.TempPathFactory, name: str) -> Path:
     return Path(mark_workspace(factory.mktemp(name) / "workspace"))
 
 
-def listed_slugs(workspace: Path, *flags: str) -> list[str]:
-    """What `cstudy list --json` lists with these flags."""
+def cstudy(workspace: Path, *arguments: str) -> str:
+    """What the command prints, run as the server runs."""
     done = subprocess.run(
-        [sys.executable, "-m", "coding_study", "list", *flags, "--json"],
+        [sys.executable, "-m", "coding_study", *arguments],
         env=served_environment(workspace),
         cwd=workspace,
         stdin=subprocess.DEVNULL,
@@ -74,7 +74,13 @@ def listed_slugs(workspace: Path, *flags: str) -> list[str]:
         text=True,
         check=True,
     )
-    return [entry["slug"] for entry in json.loads(done.stdout)["entries"]]
+    return done.stdout
+
+
+def listed_slugs(workspace: Path, *flags: str) -> list[str]:
+    """What `cstudy list --json` lists with these flags."""
+    document = json.loads(cstudy(workspace, "list", *flags, "--json"))
+    return [entry["slug"] for entry in document["entries"]]
 
 
 def start_an_attempt(workspace: Path, slug: str, language: Language = Language.PYTHON) -> int:
@@ -641,8 +647,8 @@ def test_filtering_logs_no_problem(filter_row):
 COLUMNS_MENU = ".columns-menu"
 COLUMNS_SUMMARY = f"{COLUMNS_MENU} > summary"
 HEADERS = "table.problems thead th"
-DEFAULT_HEADERS = ["id", "problem", "difficulty", "pattern", "status", "due", "languages"]
-OPTIONAL_COLUMNS = ["kind", "scope", "domain", "role", "sets"]
+DEFAULT_HEADERS = ["id", "problem", "difficulty", "pattern", "status", "due", "languages", "sets"]
+OPTIONAL_COLUMNS = ["kind", "scope", "domain", "role"]
 PREFERENCES_FILE = ".cs/serve/preferences.json"
 NARROW = {"width": 390, "height": 844}
 JUST_WIDER_THAN_THE_BOX_RULE = {"width": 1110, "height": 800}
@@ -664,8 +670,10 @@ class Columns:
     reloaded: list[str] = field(default_factory=list[str])
     reloaded_ticks: dict[str, bool] = field(default_factory=dict[str, bool])
     without_a_column: list[str] = field(default_factory=list[str])
-    controls_by_default: int = -1
-    controls_with_sets: int = 0
+    rows_by_default: int = 0
+    controls_by_default: int = 0
+    controls_without_the_column: int = -1
+    controls_after_reset: int = 0
     after_reset: list[str] = field(default_factory=list[str])
     stored_after_reset: list[str] = field(default_factory=list[str])
     page_fits_by_default: bool = False
@@ -684,7 +692,8 @@ def columns(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Columns:
     workspace = bare_workspace(tmp_path_factory, f"columns-{engine}")
     with opened_page(engine, workspace, seen.problems) as page:
         seen.defaults = _headers(page)
-        seen.controls_by_default = page.locator(".set-control").count()
+        seen.rows_by_default = page.locator(ROWS).count()
+        seen.controls_by_default = page.locator(f"{ROWS} .set-control").count()
         page.set_viewport_size(JUST_WIDER_THAN_THE_BOX_RULE)
         seen.page_fits_by_default = page.evaluate(PAGE_FITS)
         page.set_viewport_size(WINDOW)
@@ -726,13 +735,12 @@ def _tick(page: Any, column: str) -> None:
 
 
 def _add_columns(page: Any, workspace: Path, seen: Columns) -> None:
-    for column in ("kind", "domain", "role", "sets"):
+    for column in ("kind", "domain", "role"):
         _tick(page, column)
     seen.added = _headers(page)
     seen.domain_cell = _cell(page, "domain")
     seen.role_cell = _cell(page, "role")
     seen.kind_cell = _cell(page, "kind")
-    seen.controls_with_sets = page.locator(".set-control").count()
     seen.menu_open_after_a_choice = page.locator("#column-kind").is_visible()
     seen.focus_after_a_choice = page.evaluate(FOCUSED)
     seen.stored_after_adding = _stored_columns(workspace)
@@ -779,12 +787,16 @@ def _narrow_window(page: Any, seen: Columns) -> None:
 
 def _reset_the_columns(page: Any, workspace: Path, seen: Columns) -> None:
     page.click(COLUMNS_SUMMARY)
+    page.uncheck("#column-sets")
+    page.wait_for_selector(f"{ROWS} .set-control", state="detached")
+    seen.controls_without_the_column = page.locator(".set-control").count()
     page.click(f"{COLUMNS_MENU} button:has-text('Reset to defaults')")
     page.wait_for_function(
         "count => document.querySelectorAll('table.problems thead th').length === count",
         arg=len(DEFAULT_HEADERS),
     )
     seen.after_reset = _headers(page)
+    seen.controls_after_reset = page.locator(f"{ROWS} .set-control").count()
     seen.stored_after_reset = _stored_columns(workspace)
 
 
@@ -801,7 +813,7 @@ def test_problem_and_status_cannot_be_hidden(columns):
 
 
 def test_a_ticked_column_shows_in_the_table(columns):
-    assert {"kind", "domain", "role", "sets"} <= set(columns.added)
+    assert {"kind", "domain", "role"} <= set(columns.added)
 
 
 def test_the_columns_keep_their_order_whatever_was_ticked_first(columns):
@@ -820,12 +832,16 @@ def test_the_kind_column_names_the_kind(columns):
     assert columns.kind_cell == "function"
 
 
-def test_the_add_to_set_control_is_a_column_that_is_off_by_default(columns):
-    assert columns.controls_by_default == 0
+def test_every_row_offers_the_add_to_set_control_by_default(columns):
+    assert columns.controls_by_default == columns.rows_by_default
 
 
-def test_the_add_to_set_control_stays_reachable_through_the_menu(columns):
-    assert columns.controls_with_sets > 0
+def test_the_menu_can_hide_the_add_to_set_control(columns):
+    assert columns.controls_without_the_column == 0
+
+
+def test_reset_brings_the_add_to_set_control_back(columns):
+    assert columns.controls_after_reset == columns.rows_by_default
 
 
 def test_the_menu_stays_open_while_columns_are_ticked(columns):
@@ -833,11 +849,11 @@ def test_the_menu_stays_open_while_columns_are_ticked(columns):
 
 
 def test_a_tick_keeps_the_focus(columns):
-    assert columns.focus_after_a_choice == "column-sets"
+    assert columns.focus_after_a_choice == "column-role"
 
 
 def test_the_choice_is_stored_in_the_preferences_file(columns):
-    assert {"kind", "domain", "role", "sets"} <= set(columns.stored_after_adding)
+    assert {"kind", "domain", "role"} <= set(columns.stored_after_adding)
 
 
 def test_the_columns_survive_a_reload(columns):
@@ -900,6 +916,7 @@ PROBLEM_HASH = f"#/problems/{TWO_SUM}"
 ROW = f"{ROWS}:has({LINK}[href='{PROBLEM_HASH}'])"
 TITLE = "Two Sum"
 OTHER_SLUG = "valid-anagram"
+LONG_SET_NAME = "the-backend-loop-of-the-twelfth-of-november"
 BACK_HOME = "location.hash = '#/'"
 LINK_STYLE = """link => {
   const style = getComputedStyle(link);
@@ -933,6 +950,7 @@ class Rows:
     underlined_links_at_rest: int = -1
     cell_bottoms: list[float] = field(default_factory=list[float])
     row_heights: list[float] = field(default_factory=list[float])
+    page_fits_with_a_long_row: bool = False
     title_cell_display: str = ""
     after_a_click_on_the_row: str = ""
     after_enter_on_the_link: str = ""
@@ -963,8 +981,13 @@ def rows(engine: str, tmp_path_factory: pytest.TempPathFactory) -> Rows:
         "python": start_an_attempt(workspace, OTHER_SLUG),
         "typescript": start_an_attempt(workspace, OTHER_SLUG, Language.TYPESCRIPT),
     }
+    cstudy(workspace, "set", "create", LONG_SET_NAME)
+    cstudy(workspace, "set", "add", LONG_SET_NAME, OTHER_SLUG)
     with opened_page(engine, workspace, seen.problems) as page:
         _read_a_row(page, seen)
+        page.set_viewport_size(JUST_WIDER_THAN_THE_BOX_RULE)
+        seen.page_fits_with_a_long_row = page.evaluate(PAGE_FITS)
+        page.set_viewport_size(WINDOW)
         _click_the_row(page, seen)
         _keyboard(page, seen)
         _other_clicks(page, seen)
@@ -1053,9 +1076,6 @@ def _click_that_closes_a_menu(page: Any, seen: Rows) -> None:
 
 
 def _inner_controls(page: Any, seen: Rows) -> None:
-    page.click(COLUMNS_SUMMARY)
-    page.check("#column-sets")
-    page.keyboard.press("Escape")
     page.click(f"{ROW} .set-control")
     page.wait_for_selector("dialog.sheet[open]")
     seen.dialog_after_the_set_control = True
@@ -1120,6 +1140,10 @@ def test_the_rule_under_a_row_is_one_line(rows):
 
 def test_the_rows_take_one_height_whatever_the_status_column_holds(rows):
     assert max(rows.row_heights) - min(rows.row_heights) < 1
+
+
+def test_a_row_with_two_attempts_and_a_long_set_name_fits_the_window(rows):
+    assert rows.page_fits_with_a_long_row
 
 
 def test_a_click_on_the_row_opens_the_problem(rows):
@@ -1437,15 +1461,7 @@ def _filter_it_out(page: Any, seen: TopBar) -> None:
 
 
 def _end_it_elsewhere(page: Any, workspace: Path, seen: TopBar) -> None:
-    subprocess.run(
-        [sys.executable, "-m", "coding_study", "abort", TWO_SUM, "--yes"],
-        env=served_environment(workspace),
-        cwd=workspace,
-        stdin=subprocess.DEVNULL,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    cstudy(workspace, "abort", TWO_SUM, "--yes")
     page.wait_for_selector(ATTEMPTS_MENU, state="hidden")
     seen.after_ending_it = page.locator(ATTEMPTS_MENU).is_visible()
 

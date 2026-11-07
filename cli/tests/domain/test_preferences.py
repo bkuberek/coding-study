@@ -17,7 +17,16 @@ DEFAULT_DOCUMENT = {
     "theme": "system",
     "code_intelligence": False,
     "autocomplete": False,
-    "problem_columns": ["id", "problem", "difficulty", "pattern", "status", "due", "languages"],
+    "problem_columns": [
+        "id",
+        "problem",
+        "difficulty",
+        "pattern",
+        "status",
+        "due",
+        "languages",
+        "sets",
+    ],
 }
 
 

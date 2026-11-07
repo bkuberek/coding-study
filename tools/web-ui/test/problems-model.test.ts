@@ -62,7 +62,7 @@ test("a column the page does not know is left out", () => {
 });
 
 test("ticking a column adds it in the table's order", () => {
-  assert.deepEqual(withColumn(DEFAULT_COLUMNS, "kind", true), ["id", "problem", "difficulty", "pattern", "kind", "status", "due", "languages"]);
+  assert.deepEqual(withColumn(DEFAULT_COLUMNS, "kind", true), ["id", "problem", "difficulty", "pattern", "kind", "status", "due", "languages", "sets"]);
 });
 
 test("unticking a column takes it out", () => {

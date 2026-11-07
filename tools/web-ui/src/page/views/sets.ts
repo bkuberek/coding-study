@@ -149,7 +149,7 @@ export function setView(context: PageContext, name: string): Cleanup {
   const opened = (found: SetDocument, pick: PromiseSettledResult<NextPick>): Node[] => [
     head(found),
     pickSection(found, pick),
-    found.rows.length ? rowsTable(found) : empty("nothing in this set yet", h("p", { class: "quiet" }, "Add a problem below, or from the sets column of the Problems view.")),
+    found.rows.length ? rowsTable(found) : empty("nothing in this set yet", h("p", { class: "quiet" }, "Add a problem below, or from a row of the Problems view.")),
     addForm(found),
   ];
 
@@ -278,7 +278,7 @@ export function setView(context: PageContext, name: string): Cleanup {
       field,
       h("button", { type: "submit", class: "button", title: `cstudy set add ${found.name} <slug>` }, "Add"),
       issue,
-      h("p", { class: "quiet" }, "Or use ", h("a", { href: "#/" }, "the Problems view"), "'s sets column."),
+      h("p", { class: "quiet" }, "Or add from a row of ", h("a", { href: "#/" }, "the Problems view"), "."),
     );
     form.addEventListener("submit", (event) => {
       event.preventDefault();

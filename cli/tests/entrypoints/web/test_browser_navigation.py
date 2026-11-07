@@ -276,9 +276,9 @@ def _middle_window(page: Any, seen: Visit) -> None:
 def _turn_on_every_column(page: Any) -> None:
     """The table starts with few enough columns to fit this window; with all of them it does not."""
     page.click(".columns-menu > summary")
-    for column in ("kind", "scope", "domain", "role", "sets"):
+    for column in ("kind", "scope", "domain", "role"):
         page.check(f"#column-{column}")
-    page.wait_for_selector(f"{ROWS} .set-control")
+    page.wait_for_selector("table.problems thead th:has-text('role')")
     page.keyboard.press("Escape")
 
 
