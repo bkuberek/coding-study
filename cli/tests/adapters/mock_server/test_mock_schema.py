@@ -8,6 +8,7 @@ from jsonschema import Draft202012Validator
 
 from coding_study.adapters.schema_validation import SchemaValidator
 from tests.helpers import SCHEMAS_DIRECTORY
+from tests.mock_server_support import sample_document
 
 MOCK_SCHEMA = SCHEMAS_DIRECTORY / "mock.schema.json"
 SOURCE = "problems/x/mocks/room-vendor.yaml"
@@ -72,6 +73,11 @@ def test_schema_is_valid_draft_2020_12():
 
 def test_the_spec_shaped_example_is_valid():
     assert violations(valid_config()) == []
+
+
+@pytest.mark.parametrize("name", sample_document()["mocks"])
+def test_the_sample_mock_servers_are_valid(name: str):
+    assert violations(sample_document()["mocks"][name]) == []
 
 
 def test_scenarios_are_optional():

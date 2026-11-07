@@ -1,0 +1,73 @@
+{
+  "control_token": "sample-token",
+  "mocks": {
+    "room-vendor": {
+      "routes": [
+        {
+          "id": "availability",
+          "method": "GET",
+          "path": "/v1/rooms/availability",
+          "query": { "date": "2027-03-01" },
+          "response": {
+            "status": 200,
+            "headers": { "Content-Type": "application/json" },
+            "body_file": "bodies/availability.json"
+          }
+        },
+        {
+          "id": "availability-empty",
+          "method": "GET",
+          "path": "/v1/rooms/availability",
+          "response": { "status": 200, "body": { "rooms": [] } }
+        },
+        {
+          "id": "room",
+          "method": "GET",
+          "path": "/v1/rooms/{room_id}/slots",
+          "response": { "status": 200, "body": { "slots": ["09:00", "10:00"] } }
+        },
+        {
+          "id": "booking",
+          "method": "POST",
+          "path": "/v1/bookings",
+          "response": { "status": 201, "body": { "booked": true } }
+        }
+      ],
+      "scenarios": {
+        "outage": { "visible": true, "status": 503, "body": { "error": "unavailable" } },
+        "slow": { "visible": true, "delay_ms": 60 },
+        "malformed": {
+          "route": "availability",
+          "status": 200,
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"rooms\": ["
+        },
+        "rate_limited": {
+          "visible": true,
+          "status": 429,
+          "headers": { "Retry-After": "2" },
+          "body": ""
+        },
+        "rate_limited_then_ok": {
+          "sequence": [
+            { "status": 429, "headers": { "Retry-After": "1" }, "body": "" },
+            { "status": 200, "body_file": "bodies/availability.json" }
+          ]
+        }
+      }
+    },
+    "second-vendor": {
+      "routes": [
+        {
+          "id": "stock",
+          "method": "GET",
+          "path": "/stock",
+          "response": { "status": 200, "body": { "items": [] } }
+        }
+      ],
+      "scenarios": {
+        "outage": { "visible": true, "status": 503 }
+      }
+    }
+  }
+}
