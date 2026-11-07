@@ -53,6 +53,7 @@ from typing import IO, Protocol, TypeGuard
 
 from coding_study.adapters.bench_progress import BenchProgress
 from coding_study.adapters.debug_process import DebugOutput, terminated_like_interrupt
+from coding_study.adapters.process_environment import inherited_environment
 from coding_study.adapters.process_liveness import OrphanGuard, kill_processes_started_from
 from coding_study.adapters.runner_protocol import (
     Bye,
@@ -874,11 +875,9 @@ class _Attempt:
         self._progress.interrupt(TimedOut(limit_ms))
 
 
-def _environment(launch: RunnerLaunch) -> dict[str, str] | None:
-    """The CLI's environment with the launch's variables; None leaves it as it is."""
-    if not launch.environment:
-        return None
-    return {**os.environ, **launch.environment}
+def _environment(launch: RunnerLaunch) -> dict[str, str]:
+    """What the CLI lets user code inherit (the allowlist), with the launch's variables."""
+    return {**inherited_environment(), **launch.environment}
 
 
 def _no_debugger_message(session: DebugSession) -> str:

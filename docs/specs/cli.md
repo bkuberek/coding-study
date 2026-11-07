@@ -202,6 +202,8 @@ ok    runner kotlin answers hello: jvm 21.0.2, protocol 1
 
 Exit 0 when no check reports `FAIL` (and, with `--fix`, every setup command succeeded), else 4.
 
+The setup commands of `--fix` and the version checks run with the same allowlisted environment as your code ([Process environment](runners.md#process-environment)): your proxy and CA-certificate variables reach them, so an install behind a corporate network works, and a token in your shell does not.
+
 The `java` row reports the [selected JDK](#the-selected-jdk): its version and where it came from. A problem's own range is compared where the problem runs, not here.
 
 | Selected JDK | Row |

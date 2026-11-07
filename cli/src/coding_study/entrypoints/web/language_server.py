@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
+from coding_study.adapters.process_environment import inherited_environment
 from coding_study.domain.code_intelligence import LanguageServer
 from coding_study.entrypoints.web.children import StreamedChild, start_process
 from coding_study.entrypoints.web.runs import SIGNAL_EXIT_BASE
@@ -110,13 +111,13 @@ class ServerProcess:
         environment: Mapping[str, str] | None = None,
     ) -> "ServerProcess":
         """Raises ServerStartError, naming what is missing. The server runs in `environment`, by
-        default that of `cstudy serve`, as a language server finds its tools as the user's shell
-        does."""
+        default what `cstudy serve` lets user code inherit, which holds what a language server
+        needs to find its tools as the user's shell does."""
         try:
             child = await start_process(
                 arguments,
                 directory,
-                os.environ if environment is None else environment,
+                inherited_environment() if environment is None else environment,
                 asyncio.subprocess.PIPE,
             )
         except OSError as error:

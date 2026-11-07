@@ -13,6 +13,7 @@ from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from pathlib import Path
 
+from coding_study.adapters.process_environment import inherited_environment
 from coding_study.domain.errors import RunnerStartError
 
 DEFAULT_BUILD_TIMEOUT_SECONDS = 300.0
@@ -34,7 +35,8 @@ class BoundedProcess:
     def run(
         self, command: Sequence[str], cwd: Path, environment: Mapping[str, str] | None
     ) -> "subprocess.CompletedProcess[bytes]":
-        """Standard output and standard error captured apart.
+        """Standard output and standard error captured apart, in `environment`, or in what the
+        CLI lets user code inherit when that is None.
 
         Raises RunnerStartError when the step outlives its limit, and OSError when the program
         cannot be started."""
@@ -57,7 +59,7 @@ class BoundedProcess:
         with subprocess.Popen(
             command,
             cwd=cwd,
-            env=None if environment is None else dict(environment),
+            env=inherited_environment() if environment is None else dict(environment),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=stderr,

@@ -193,7 +193,7 @@ The pilots are written with the next project problems.
 **Exit criteria.** A step ends when its [checks](specs/service-projects.md#checks) pass and, for a problem, `cstudy verify <slug> --require-ready` exits 0 and a manual run through all its levels works, from `cstudy start` to `cstudy done`.
 
 - [ ] P1: the spike on macOS and Linux; if it fails, the owner decides before anything is built.
-- [ ] P2: the environment allowlist.
+- [x] P2: the environment allowlist, for every problem ([Process environment](specs/runners.md#process-environment)).
 - [ ] P3 to P6: tooling.
 - [ ] P7: the first problem in TypeScript.
 - [ ] P8: the first problem in Python.
@@ -220,7 +220,7 @@ The pilots are written with the next project problems.
 
 **Status.** Planned for the future, not started, with no commitment beyond this order. It sits after Phases 12 and 13, unless the owner reorders it.
 
-**Scope.** [ADR 0021](decisions/0021-ai-reviewed-problems.md): an opt-in class of problems reviewed by a live LLM with your own key. It needs the environment allowlist of Phase 12's P2.
+**Scope.** [ADR 0021](decisions/0021-ai-reviewed-problems.md): an opt-in class of problems reviewed by a live LLM with your own key. It needs the environment allowlist of Phase 12's P2, which is built.
 
 - [ ] Step 1: provider port and keys.
 - [ ] Step 2: written answers on existing items.

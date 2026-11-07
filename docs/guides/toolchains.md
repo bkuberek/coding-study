@@ -195,6 +195,14 @@ Nothing else is needed: the runner crates' only dependencies, `rust_decimal` and
 
 git is optional: `cstudy init --git` runs `git init` in the new workspace, and `cstudy` never commits. macOS provides git with the Xcode Command Line Tools (`xcode-select --install`) or `brew install git`; on Linux, install your distribution's `git` package.
 
+## Your environment
+
+`cstudy` runs your code, its tests and the tools beside them (the builds, `uv sync`, `pnpm install`, the language servers of the web page) with part of your shell's environment, not all of it. A token, key or password you exported (`GITHUB_TOKEN`, `AWS_SECRET_ACCESS_KEY`, `OPENAI_API_KEY` and the like) does not reach them, so a solution or a dependency cannot read it from the environment. It can still read your files, so keep credentials out of the workspace: `cstudy` runs your code as you and has no sandbox.
+
+What passes is what the toolchains need to find themselves and the network: `PATH`, `HOME`, your locale, terminal and temporary-directory variables, `JAVA_HOME` and `SDKMAN_*`, `GRADLE_USER_HOME` and `GRADLE_OPTS`, `GOPATH`, `GOCACHE`, `GOMODCACHE` and `GOROOT`, `CARGO_HOME` and `RUSTUP_*`, `VIRTUAL_ENV`, `NODE_OPTIONS`, `PNPM_HOME`, uv's cache, interpreter and offline settings, and your proxy and CA-certificate variables (`HTTPS_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS` and the like), so `cstudy doctor --fix` keeps working behind a corporate network. A proxy URL passes as you wrote it, credentials included. The full list is in the [runners spec](../specs/runners.md#process-environment).
+
+Two things to expect. A variable you set only for your own commands, such as `PYTHONPATH`, `NODE_ENV` or `RUST_BACKTRACE`, does not reach the ones `cstudy` runs, and neither do a private registry's credentials, so an install that needs one fails with the tool's own message; run that install yourself in the project folder. Tools that a version manager (pyenv, asdf, mise) selects are found through `PATH`, so keep its shims or the selected version's directory there.
+
 ## Check everything
 
 Run `cstudy doctor` to check the toolchains. In a workspace, `cstudy doctor --fix` then sets up each project: `uv sync` in `python/`, `pnpm install` in `typescript/`, and a first Gradle build in `jvm/`. It also writes the template files a workspace from an older `cstudy` lacks, such as the `go/` and `rust/` projects, which `cstudy doctor` reports as a `WARN` until then. Go and Rust need no setup command.

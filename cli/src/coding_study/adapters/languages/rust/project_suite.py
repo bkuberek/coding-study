@@ -33,6 +33,7 @@ from coding_study.adapters.languages.rust.libtest import (
     logged_outcome,
 )
 from coding_study.adapters.languages.rust.project_build import BuiltTests, SuiteTarget
+from coding_study.adapters.process_environment import inherited_environment
 from coding_study.adapters.process_liveness import OrphanGuard, kill_processes_started_from
 from coding_study.application.ports import SuiteListener
 from coding_study.domain.debugging import LLDB_SERVER, DebugSession
@@ -298,7 +299,7 @@ def _start(
         return subprocess.Popen(
             list(command),
             cwd=cwd,
-            env=_test_environment(os.environ),
+            env=_test_environment(inherited_environment()),
             stdin=subprocess.DEVNULL,
             stdout=stdout,  # type: ignore[arg-type]
             stderr=stderr,  # type: ignore[arg-type]

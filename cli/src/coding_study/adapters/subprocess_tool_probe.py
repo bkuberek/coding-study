@@ -1,8 +1,8 @@
-import os
 import subprocess
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from coding_study.adapters.process_environment import inherited_environment
 from coding_study.application.ports import ProbeResult
 
 DEFAULT_TIMEOUT_SECONDS = 30.0
@@ -21,7 +21,8 @@ class SubprocessToolProbe:
 
 
 class SubprocessCommandRunner:
-    """Runs setup commands (`uv sync`, `pnpm install`, Gradle) to completion."""
+    """Runs setup commands (`uv sync`, `pnpm install`, Gradle) to completion, with what the CLI
+    lets user code inherit, since they run code of the project and of its packages."""
 
     def run(
         self, command: Sequence[str], cwd: Path, environment: Mapping[str, str] | None = None
@@ -39,7 +40,7 @@ def _run(
         completed = subprocess.run(
             list(command),
             cwd=cwd,
-            env=None if environment is None else {**os.environ, **environment},
+            env={**inherited_environment(), **(environment or {})},
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,

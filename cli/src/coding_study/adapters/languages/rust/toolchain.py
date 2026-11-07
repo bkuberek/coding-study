@@ -6,7 +6,6 @@ directory, the target triple, the compiler, the linker, the release profile's se
 without rustflags or a `rustc` wrapper, whatever the environment or a `config.toml` says.
 """
 
-import os
 import subprocess
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -17,6 +16,7 @@ from coding_study.adapters.languages.bounded_process import (
     DEFAULT_BUILD_TIMEOUT_SECONDS,
     BoundedProcess,
 )
+from coding_study.adapters.process_environment import inherited_environment
 from coding_study.domain.errors import RunnerStartError
 
 CARGO = "cargo"
@@ -62,7 +62,8 @@ class CargoToolchain(Protocol):
     def build(
         self, arguments: Sequence[str], cwd: Path, environment: Mapping[str, str]
     ) -> CargoOutcome:
-        """`cargo build <arguments>` in `cwd` with `environment` added to the pinned settings.
+        """`cargo build <arguments>` in `cwd` with `environment` added to the pinned settings and
+        to what the CLI lets user code inherit.
 
         Raises RunnerStartError when `cargo` cannot be started at all.
         """
@@ -90,7 +91,8 @@ class SubprocessCargo:
         self, arguments: Sequence[str], cwd: Path, environment: Mapping[str, str]
     ) -> CargoOutcome:
         command = [CARGO, "build", *arguments]
-        completed = self._run(BUILD_STEP, command, cwd, build_environment(os.environ, environment))
+        inherited = inherited_environment()
+        completed = self._run(BUILD_STEP, command, cwd, build_environment(inherited, environment))
         return CargoOutcome(
             completed.returncode,
             completed.stdout.decode("utf-8", errors="replace"),
@@ -106,7 +108,8 @@ class SubprocessCargo:
     def _rustc_field(self, cwd: Path, prefix: str, what: str) -> str:
         """A line of `rustc -vV`, such as `host: aarch64-apple-darwin`, without its name."""
         command = [RUSTC, "-vV"]
-        completed = self._run(VERSION_STEP, command, cwd, build_environment(os.environ, {}))
+        inherited = inherited_environment()
+        completed = self._run(VERSION_STEP, command, cwd, build_environment(inherited, {}))
         return _field(completed, prefix, what)
 
     def _run(

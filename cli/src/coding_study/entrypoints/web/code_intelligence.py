@@ -13,7 +13,6 @@ that reads none of the server's messages, ends the session.
 
 import asyncio
 import json
-import os
 import sys
 from collections.abc import Callable
 from contextlib import suppress
@@ -23,6 +22,7 @@ from typing import Any, cast
 
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
+from coding_study.adapters.process_environment import inherited_environment
 from coding_study.application.attempt_changes import FileChanged
 from coding_study.application.code_intelligence import SessionTarget
 from coding_study.entrypoints.web.language_broker import Delivery, LanguageBroker
@@ -273,7 +273,7 @@ class LanguageSessions:
             if refusal is None:
                 arguments = self.command.arguments(target.server, target.lsp_directory)
                 needed = (target.directory, target.lsp_directory)
-                environment = environment_hiding(os.environ, target.hidden, needed)
+                environment = environment_hiding(inherited_environment(), target.hidden, needed)
                 try:
                     process = await ServerProcess.start(
                         arguments, target.directory, self.timing, environment

@@ -1,6 +1,5 @@
 """Running the `go` command for the Go runner's build (docs/specs/runners.md#go-build-details)."""
 
-import os
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,6 +9,7 @@ from coding_study.adapters.languages.bounded_process import (
     DEFAULT_BUILD_TIMEOUT_SECONDS,
     BoundedProcess,
 )
+from coding_study.adapters.process_environment import inherited_environment
 from coding_study.domain.errors import RunnerStartError
 
 GO = "go"
@@ -58,7 +58,8 @@ class GoToolchain(Protocol):
     def build(
         self, arguments: Sequence[str], cwd: Path, environment: Mapping[str, str]
     ) -> GoOutcome:
-        """`go build <arguments>` in `cwd` with `environment` added to the process's own.
+        """`go build <arguments>` in `cwd` with `environment` added to what the CLI lets user
+        code inherit.
 
         Raises RunnerStartError when `go` cannot be started at all.
         """
@@ -95,7 +96,9 @@ def _go(
 ) -> GoOutcome:
     """Raises RunnerStartError when `go` cannot be started at all."""
     try:
-        completed = process.run([GO, *arguments], cwd, build_environment(os.environ, environment))
+        completed = process.run(
+            [GO, *arguments], cwd, build_environment(inherited_environment(), environment)
+        )
     except FileNotFoundError:
         raise RunnerStartError(MISSING_GO) from None
     except OSError as error:

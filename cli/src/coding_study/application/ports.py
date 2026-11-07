@@ -310,8 +310,9 @@ class RunnerLaunch:
     """A directory only this launch uses, such as a private copy of the build output;
     `RunnerProcess` removes it when the run ends, however it ends."""
     environment: Mapping[str, str] = field(default_factory=dict[str, str], hash=False)
-    """Variables set for the runner on top of the CLI's own environment; left out of the hash,
-    since a mapping has none."""
+    """Variables set for the runner on top of the part of the CLI's own environment that user
+    code may inherit (`domain/process_environment.py`); left out of the hash, since a mapping has
+    none."""
 
 
 @dataclass(frozen=True, slots=True)

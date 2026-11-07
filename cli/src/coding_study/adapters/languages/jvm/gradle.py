@@ -13,6 +13,7 @@ from coding_study.adapters.languages.bounded_process import (
     DEFAULT_BUILD_TIMEOUT_SECONDS,
     BoundedProcess,
 )
+from coding_study.adapters.process_environment import inherited_environment
 from coding_study.adapters.process_liveness import is_alive
 from coding_study.domain.errors import RunnerStartError
 from coding_study.domain.jdk import GRADLE_JAVA_HOME_ARGUMENT, JAVA_HOME_VARIABLE
@@ -93,7 +94,7 @@ class WrapperGradle:
             )
         home = str(self._jdk.home())
         command = [str(wrapper), f"{GRADLE_JAVA_HOME_ARGUMENT}{home}", *arguments]
-        environment = {**os.environ, JAVA_HOME_VARIABLE: home}
+        environment = {**inherited_environment(), JAVA_HOME_VARIABLE: home}
         try:
             completed = self._process.run_interleaved(command, self._workspace, environment)
         except OSError as error:
