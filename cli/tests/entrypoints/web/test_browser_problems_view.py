@@ -38,6 +38,9 @@ SEARCH = "#filter-search"
 COMMAND = ".command-text"
 TWO_SUM = "two-sum"
 TEXT = "two"
+SLASH_IS_TAKEN = """() => !document.body.dispatchEvent(
+  new KeyboardEvent("keydown", { key: "/", bubbles: true, cancelable: true })
+)"""
 
 
 @contextmanager
@@ -104,6 +107,7 @@ class Search:
     slash_typed_in_search: str = ""
     slash_elsewhere: str = ""
     focus_from_a_select: str = ""
+    slash_taken_on_another_view: bool = True
     with_a_filter_fragment: str = ""
     nothing_found: str = ""
     after_clearing: int = 0
@@ -155,6 +159,11 @@ def _slash(page: Any, seen: Search) -> None:
     page.focus("#filter-status")
     page.keyboard.press("/")
     seen.focus_from_a_select = page.evaluate("document.activeElement?.id")
+    page.evaluate("location.hash = '#/settings'")
+    page.wait_for_selector(".settings")
+    seen.slash_taken_on_another_view = page.evaluate(SLASH_IS_TAKEN)
+    page.evaluate("location.hash = '#/'")
+    page.wait_for_selector(ROWS)
 
 
 def _with_another_filter(page: Any, seen: Search) -> None:
@@ -222,6 +231,10 @@ def test_the_slash_key_types_a_slash_in_the_search_itself(search):
 
 def test_the_slash_key_leaves_a_select_alone(search):
     assert search.focus_from_a_select == "filter-status"
+
+
+def test_the_slash_key_is_left_alone_on_another_view(search):
+    assert not search.slash_taken_on_another_view
 
 
 def test_another_filter_keeps_the_search(search):
