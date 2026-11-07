@@ -1,0 +1,101 @@
+/* The About view (about.ts): the facts as name and value lines, the credits, the full texts and a
+   quiet line at the foot. A line of text stays readable. */
+
+.about-body {
+  max-width: 880px;
+}
+
+.about h2 {
+  margin: 28px 0 8px;
+  font: 600 20px / 1.25 var(--font-prose);
+}
+
+.about h3 {
+  margin: 18px 0 6px;
+  font-size: var(--text-m);
+  color: var(--ink-soft);
+}
+
+.about p {
+  max-width: 72ch;
+}
+
+.about-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 20px;
+  margin: 0;
+  font-family: var(--font-mono);
+}
+
+.about-facts dt {
+  color: var(--ink-soft);
+}
+
+.about-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.credits {
+  max-width: 640px;
+  table-layout: fixed;
+}
+
+.credits th:nth-child(2),
+.credits td:nth-child(2) {
+  width: 9em;
+}
+
+.credits th:nth-child(3),
+.credits td:nth-child(3) {
+  width: 11em;
+}
+
+.credits thead th {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.credits th,
+.credits td {
+  padding: 3px 10px;
+  border-bottom: 1px solid var(--rule);
+  font-weight: 400;
+  text-align: left;
+  vertical-align: baseline;
+}
+
+.credits .credit-name {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.about-licenses {
+  margin-top: 28px;
+}
+
+.about-licenses summary {
+  cursor: pointer;
+}
+
+.license-text pre {
+  max-height: 60vh;
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  overflow: auto;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  font-size: var(--text-s);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.about-sponsor {
+  margin-top: 36px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+  font-size: var(--text-s);
+}

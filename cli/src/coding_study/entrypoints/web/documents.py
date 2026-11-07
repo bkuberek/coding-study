@@ -12,6 +12,7 @@ from coding_study.application.mock_interview import (
 from coding_study.application.past_attempt_files import PastFile, PastFiles
 from coding_study.application.problem_details import ProblemDetails
 from coding_study.application.reveal_hint import HintsLocked, RevealedHint
+from coding_study.domain.about import About, Credit, Link
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.items import entry_kind
@@ -50,6 +51,29 @@ def session_document(environment: Environment, port: int, version: str) -> dict[
         "patterns": list(PATTERNS),
         "selected_jdk": selected_jdk_value(environment.jdk.selected()),
     }
+
+
+def about_document(about: About) -> dict[str, JsonValue]:
+    """`GET /api/v1/about`: what `cstudy about` and `cstudy about --credits` print."""
+    return {
+        "version": about.version,
+        "license": about.license,
+        "website": _link_value(about.website),
+        "links": [_link_value(link) for link in about.links],
+        "sponsor": [_link_value(link) for link in about.sponsor],
+        "credits": [
+            {"title": section.title, "credits": [_credit_value(c) for c in section.credits]}
+            for section in about.credits
+        ],
+    }
+
+
+def _link_value(link: Link) -> dict[str, JsonValue]:
+    return {"label": link.label, "url": link.url}
+
+
+def _credit_value(credit: Credit) -> dict[str, JsonValue]:
+    return {"name": credit.name, "version": credit.version, "license": credit.license}
 
 
 def problem_document(entry: dict[str, JsonValue], details: ProblemDetails) -> dict[str, JsonValue]:

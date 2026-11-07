@@ -9,6 +9,7 @@ from starlette.applications import Starlette
 from starlette.types import ASGIApp
 
 from coding_study.application.attempt_changes import WorkspaceSnapshot, workspace_snapshot
+from coding_study.entrypoints.web.api_about import about_routes
 from coding_study.entrypoints.web.api_attempts import attempt_routes
 from coding_study.entrypoints.web.api_browsing import browsing_routes
 from coding_study.entrypoints.web.api_code_intelligence import code_intelligence_routes
@@ -50,6 +51,7 @@ def create_app(
     routes = [
         *front_end_routes(settings.static_directory, settings.secrets.csrf),
         *session_routes(),
+        *about_routes(),
         *config_routes(),
         *browsing_routes(),
         *set_routes(),

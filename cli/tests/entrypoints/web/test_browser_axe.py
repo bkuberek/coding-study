@@ -113,6 +113,7 @@ VIEWS = (
     "health",
     "settings",
     "reset dialog",
+    "about",
 )
 JDK_VIEWS = (
     "problems on a JDK that cannot run Java",
@@ -476,6 +477,7 @@ def _tour(page: Any) -> Iterator[tuple[str, Callable[[], None]]]:
     yield "settings with unsaved changes", lambda: _settings_with_changes(page)
     yield "reset dialog", lambda: _reset_dialog(page)
     yield "mock running", lambda: _mock_running(page)
+    yield "about", lambda: _open(page, "#/about", ".about-facts")
 
 
 def _problems_menu(page: Any, menu: str) -> None:

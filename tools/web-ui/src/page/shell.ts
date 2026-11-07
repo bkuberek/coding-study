@@ -4,7 +4,7 @@
  * status bar in the manner of an editor's, which holds the theme and Vim switches.
  */
 
-import { attemptHash } from "./routes.ts";
+import { ABOUT_HASH, attemptHash } from "./routes.ts";
 import { h } from "./dom.ts";
 import type { StreamState } from "./notifications.ts";
 import type { ListEntry, Preferences, Theme } from "./types.ts";
@@ -15,7 +15,8 @@ const CONNECTION_TEXTS: Readonly<Partial<Record<StreamState, readonly [string, s
   lost: ["disconnected", "cstudy serve refused the page's notifications, as after a restart: open the URL it printed again"],
 };
 
-export type ViewName = "problems" | "sets" | "mock" | "progress" | "health" | "settings" | null;
+/** The view the top bar marks, or the About view, which the status bar's version marks; null for none. */
+export type ViewName = "problems" | "sets" | "mock" | "progress" | "health" | "settings" | "about" | null;
 
 export interface StatusLine {
   /** The leftmost segment: the attempt's mode, or the view. */
@@ -86,6 +87,7 @@ export function mountShell(root: HTMLElement, version: string, actions: ShellAct
   const main = h("main", { id: "main", tabindex: "-1" });
   const bannerSlot = h("span", { class: "banner-slot" });
   const connection = h("span", { class: "connection", role: "status", hidden: true });
+  const about = h("a", { class: "segment version", href: ABOUT_HASH, title: "About cstudy: license, links and credits" }, `cstudy ${version}`);
 
   copy.addEventListener("click", () => {
     void navigator.clipboard?.writeText(commandText.textContent ?? "").then(() => shell.announce("command copied"));
@@ -126,7 +128,7 @@ export function mountShell(root: HTMLElement, version: string, actions: ShellAct
       h("span", { class: "spacer" }),
       vim,
       theme,
-      h("span", { class: "segment version" }, `cstudy ${version}`),
+      about,
     ),
     announcer,
   );
@@ -137,6 +139,8 @@ export function mountShell(root: HTMLElement, version: string, actions: ShellAct
       commandText.textContent = text;
     },
     setView(name) {
+      if (name === "about") about.setAttribute("aria-current", "page");
+      else about.removeAttribute("aria-current");
       for (const link of links) {
         if (link.dataset["view"] === name) link.setAttribute("aria-current", "page");
         else link.removeAttribute("aria-current");

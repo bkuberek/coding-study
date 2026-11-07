@@ -452,6 +452,18 @@ main:focus {
   border-left: 1px solid var(--chrome-raised);
 }
 
+/* The version opens the About view: a link that reads as the bar's text until it is pointed at. */
+a.segment.version {
+  text-decoration: none;
+}
+
+a.segment.version:hover,
+a.segment.version[aria-current="page"] {
+  color: var(--chrome-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .toggle {
   border: 0;
   border-left: 1px solid var(--chrome-raised);

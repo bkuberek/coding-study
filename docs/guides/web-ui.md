@@ -39,7 +39,7 @@ The page is made for current Chrome, Edge, Firefox and Safari. Its tests run in 
 
 ## The views
 
-The top bar holds the views, the attempts in progress while one is open, and the mock banner while a mock runs; it stays at the top of the window when you scroll, and so do the header rows of the tables. Under it, a command line shows the `cstudy` command that the view mirrors, with a button that copies it. The status bar at the bottom switches Vim keybindings and the theme.
+The top bar holds the views, the attempts in progress while one is open, and the mock banner while a mock runs; it stays at the top of the window when you scroll, and so do the header rows of the tables. Under it, a command line shows the `cstudy` command that the view mirrors, with a button that copies it. The status bar at the bottom switches Vim keybindings and the theme, and its version, `cstudy 0.24.0`, opens the About view.
 
 | View | Opens with | Shows |
 |------|------------|-------|
@@ -51,6 +51,7 @@ The top bar holds the views, the attempts in progress while one is open, and the
 | Progress | <kbd>Alt</kbd>+<kbd>4</kbd> | `cstudy stats`, the reviews due, export and import |
 | Health | <kbd>Alt</kbd>+<kbd>5</kbd> | The `cstudy doctor` checks, a **Fix** button on each row that `cstudy doctor --fix` repairs, and Verify for your own problems |
 | Settings | <kbd>Alt</kbd>+<kbd>6</kbd> | This workspace's preferences, and your `config.toml`, which every workspace reads |
+| About | The version in the status bar | The version, the license, the website and project links, and the credits, with the full license texts one click away; `cstudy about` prints the same. At the foot, two plain links say where to sponsor cstudy if you want to. It is not in the top bar, and has no number key |
 
 ![The problem list in the light theme](../images/web-ui-problems-light.png)
 

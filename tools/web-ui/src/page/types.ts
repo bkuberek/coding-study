@@ -375,3 +375,29 @@ export interface Doctor {
   readonly passed: boolean;
   readonly checks: readonly Check[];
 }
+
+export interface AboutLink {
+  readonly label: string;
+  readonly url: string;
+}
+
+export interface AboutCredit {
+  readonly name: string;
+  readonly version: string;
+  readonly license: string;
+}
+
+/** `GET /api/v1/about`: what `cstudy about` prints, and its credits. */
+export interface About {
+  readonly version: string;
+  readonly license: string;
+  readonly website: AboutLink;
+  readonly links: readonly AboutLink[];
+  readonly sponsor: readonly AboutLink[];
+  readonly credits: readonly { readonly title: string; readonly credits: readonly AboutCredit[] }[];
+}
+
+/** `GET /api/v1/about/licenses`. */
+export interface AboutLicenses {
+  readonly text: string;
+}

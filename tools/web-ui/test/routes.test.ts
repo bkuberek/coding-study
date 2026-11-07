@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { attemptHash, parseRoute, problemHash, problemsHash, setHash, SETS_HASH } from "../src/page/routes.ts";
+import { ABOUT_HASH, attemptHash, parseRoute, problemHash, problemsHash, setHash, SETS_HASH } from "../src/page/routes.ts";
 
 test("an empty fragment is the problems view without filters", () => {
   assert.deepEqual(parseRoute(""), { view: "problems", filters: {} });
@@ -48,6 +48,15 @@ test("health and settings are views of their own", () => {
 
 test("mock and progress are views of their own", () => {
   assert.deepEqual([parseRoute("#/mock").view, parseRoute("#/progress").view], ["mock", "progress"]);
+});
+
+test("about is a view of its own, with a fragment that can be linked", () => {
+  assert.deepEqual(parseRoute(ABOUT_HASH), { view: "about" });
+  assert.equal(ABOUT_HASH, "#/about");
+});
+
+test("about names no more than its own fragment", () => {
+  assert.equal(parseRoute("#/about/credits").view, "missing");
 });
 
 test("an unknown fragment is missing", () => {
