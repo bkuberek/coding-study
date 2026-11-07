@@ -70,6 +70,7 @@ On every container cstudy generates, the app first (R23):
 | Capabilities | `cap_drop: [ALL]` |
 | Privileges | `security_opt: [no-new-privileges:true]` |
 | Filesystem | `read_only: true`, with tmpfs for `/tmp` and the home directory |
+| Setuid bits | Your code can set them on files that show as yours on your machine, so `cstudy` takes them off every regular file in the project folder before and after a stack: no link is followed, a file nobody can read or a folder nobody can enter hides none, and such a folder gets its mode back |
 | Limits | `mem_limit` and `pids_limit`, per container: app 512m and 256 pids, a helper 64m and 32, an install 1g and 512. A problem may declare `app.mem_limit` |
 | Stopping | `init: true` and a 2 s grace, or each `down` costs 10 s with Node as PID 1 |
 | Environment | [Explicit only](#environment). Nothing from your machine leaks in, especially real API keys |
@@ -937,7 +938,7 @@ Nothing here has run on Linux. The `sandbox` CI job is what will show it, on its
 |------|-----|
 | `internal: true`, the forwarder, the egress probe | A real firewall on the host in place of Docker Desktop's proxy. Whether a sandbox container reaches the host at its bridge address needs its own probe |
 | `host.docker.internal` | Not defined by default on Linux, so what `install` reaches there differs |
-| File ownership | **The biggest gap**, because Docker Desktop hides it: UIDs are real on Linux, for the tmpfs options, the one-off `chown`, setuid bits, and whatever a root one-off leaves in the project |
+| File ownership | **The biggest gap**, because Docker Desktop hides it: UIDs are real on Linux, for the tmpfs options, the one-off `chown`, setuid bits, and whatever a root one-off leaves in the project. Clearing a setuid bit changes a mode without following a link, which an older glibc cannot do: the bit then stays |
 | SELinux labels, rootless Docker | Not exercised |
 | Starting the engine, and the "no permission" state | `systemctl` and a printed `sudo` command are untested |
 

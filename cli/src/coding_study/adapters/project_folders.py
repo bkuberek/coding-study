@@ -29,6 +29,8 @@ from coding_study.domain.workspace_projects import (
 _LOCAL_REPLACEMENT_PREFIXES = ("./", "../", "/")
 """A `replace` target that is a directory, not another module."""
 _SETUID_BITS = stat.S_ISUID | stat.S_ISGID
+_OWNER_ENTERS = stat.S_IRUSR | stat.S_IXUSR
+_FOLDER_WALK_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
 PYPROJECT_FILE = "pyproject.toml"
 SERVICE_TRACKED_LOCK = "uv.lock"
 _PROJECT_TABLE = "[project]"
@@ -170,22 +172,49 @@ def _plain_text(path: Path) -> str | None:
 
 def clear_setuid_bits(folder: Path) -> None:
     """Takes the setuid and setgid bits off every regular file under `folder`, which sandboxed code
-    can set and a host tool would obey; a link is never followed."""
-    for directory, _directories, names in os.walk(folder, followlinks=False):
-        for name in names:
-            with suppress(OSError):
-                _clear_setuid_bit(Path(directory) / name)
+    can set and a host tool would obey. A link is never followed, and neither a file nobody can read
+    nor a folder nobody can enter hides one. Each step goes from the open folder before it, so no
+    link swapped in on the way can lead outside."""
+    with suppress(OSError, NotImplementedError):
+        descriptor = os.open(folder, _FOLDER_WALK_FLAGS)
+        try:
+            _clear_in(descriptor)
+        finally:
+            os.close(descriptor)
 
 
-def _clear_setuid_bit(path: Path) -> None:
-    mode = os.lstat(path).st_mode
-    if not stat.S_ISREG(mode) or not mode & _SETUID_BITS:
-        return
-    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+def _clear_in(directory: int) -> None:
+    """A step that fails leaves the others to run. A folder too deep to walk ends at the limit on
+    open files or on recursion, and what is below it keeps its bits."""
+    with os.scandir(directory) as entries:
+        for entry in entries:
+            with suppress(OSError, NotImplementedError, RecursionError):
+                _clear_entry(directory, entry)
+
+
+def _clear_entry(directory: int, entry: os.DirEntry[str]) -> None:
+    mode = entry.stat(follow_symlinks=False).st_mode
+    kept = stat.S_IMODE(mode)
+    if stat.S_ISREG(mode) and mode & _SETUID_BITS:
+        os.chmod(entry.name, kept & ~_SETUID_BITS, dir_fd=directory, follow_symlinks=False)
+    elif stat.S_ISDIR(mode):
+        _clear_in_folder(directory, entry.name, kept)
+
+
+def _clear_in_folder(parent: int, name: str, mode: int) -> None:
+    """A folder its owner cannot enter is opened for the walk, and gets its mode back after it."""
+    locked = mode & _OWNER_ENTERS != _OWNER_ENTERS
+    if locked:
+        os.chmod(name, mode | _OWNER_ENTERS, dir_fd=parent, follow_symlinks=False)
     try:
-        os.fchmod(descriptor, stat.S_IMODE(mode) & ~_SETUID_BITS)
+        descriptor = os.open(name, _FOLDER_WALK_FLAGS, dir_fd=parent)
+        try:
+            _clear_in(descriptor)
+        finally:
+            os.close(descriptor)
     finally:
-        os.close(descriptor)
+        if locked:
+            os.chmod(name, mode, dir_fd=parent, follow_symlinks=False)
 
 
 def go_project_folders(root: Path) -> tuple[GoProjectFolder, ...]:
