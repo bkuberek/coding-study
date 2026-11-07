@@ -335,14 +335,11 @@ def test_an_idle_app_has_no_command_of_its_own():
 
 def test_every_container_caps_its_log_on_your_disk():
     """Per container: the engine's own settings are yours."""
-    services = {
-        **stack_document(plan(mocks=MOCKS))["services"],
-        **install_document(install_plan())["services"],
-    }
+    every = {**services(mocks=MOCKS), **install_of()["services"]}
 
-    assert {name: service["logging"] for name, service in services.items()} == {
+    assert {name: service["logging"] for name, service in every.items()} == {
         name: {"driver": "json-file", "options": {"max-size": "10m", "max-file": "3"}}
-        for name in services
+        for name in every
     }
 
 

@@ -254,6 +254,28 @@ def test_a_locked_folder_inside_a_locked_folder_is_opened_too(tmp_path, locked_f
     assert mode_of(file) == 0o755
 
 
+def test_a_project_folder_that_locked_itself_hides_nothing(locked_folder):
+    """Code in the sandbox owns the folder it is mounted on, so it can lock that one too."""
+    file = file_with_mode(locked_folder / "tool", 0o4755)
+    locked_folder.chmod(0o000)
+
+    clear_setuid_bits(locked_folder)
+
+    assert mode_of(locked_folder) == 0o000
+    locked_folder.chmod(0o755)
+    assert mode_of(file) == 0o755
+
+
+def test_a_link_given_as_the_project_folder_is_not_walked(tmp_path):
+    outside = file_with_mode(tmp_path / "elsewhere" / "tool", 0o4755)
+    link = tmp_path / "project"
+    link.symlink_to(outside.parent, target_is_directory=True)
+
+    clear_setuid_bits(link)
+
+    assert mode_of(outside) == 0o4755
+
+
 def test_a_locked_folder_gets_its_mode_back(tmp_path, locked_folder):
     locked_folder.chmod(0o000)
 

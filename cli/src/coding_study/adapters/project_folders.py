@@ -176,11 +176,13 @@ def clear_setuid_bits(folder: Path) -> None:
     nor a folder nobody can enter hides one. Each step goes from the open folder before it, so no
     link swapped in on the way can lead outside."""
     with suppress(OSError, NotImplementedError):
-        descriptor = os.open(folder, _FOLDER_WALK_FLAGS)
+        parent = os.open(folder.parent, os.O_RDONLY | os.O_DIRECTORY)
         try:
-            _clear_in(descriptor)
+            mode = os.stat(folder.name, dir_fd=parent, follow_symlinks=False).st_mode
+            if stat.S_ISDIR(mode):
+                _clear_in_folder(parent, folder.name, stat.S_IMODE(mode))
         finally:
-            os.close(descriptor)
+            os.close(parent)
 
 
 def _clear_in(directory: int) -> None:
