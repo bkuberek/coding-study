@@ -13,6 +13,7 @@ import io
 import ipaddress
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -134,6 +135,9 @@ _NOT_YOUR_CODE = "This says nothing about your code, and no result changes."
 _FORWARDER_SOURCE = Path(__file__).with_name("sandbox_forward.py")
 _MOCK_CODE_SOURCE = Path(__file__).with_name(MOCK_CODE_DIRECTORY)
 _PERMISSION_REFUSED = "permission denied"
+_ENGINE_VERSION = re.compile(r"\d+\.\d+(\.\d+)?([-+~][0-9A-Za-z.+~-]*)?")
+"""What `docker info` prints for an engine that answers, such as `29.8.1` or `20.10.24+dfsg1`. The
+Docker 28.0 client exits 0 when no engine answers, with its error as the only output."""
 _ENDING_SIGNALS = (signal.SIGINT, signal.SIGTERM)
 _START_THE_APP_ALONE = (
     *("up", "--detach", "--no-deps", "--no-recreate", "--no-build", *_PULL_NEVER),
@@ -314,7 +318,7 @@ class DockerSandbox:
         if info is None:
             return EngineState(EngineStatus.NOT_INSTALLED)
         version = info.output.strip()
-        if info.exit_code != 0 or not version:
+        if info.exit_code != 0 or not _ENGINE_VERSION.fullmatch(version):
             status = _refused_or_stopped(info.output)
             if status is EngineStatus.NO_PERMISSION:
                 return EngineState(status, docker_group=self._docker_group())

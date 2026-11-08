@@ -154,6 +154,23 @@ def test_a_refused_socket_says_where_you_stand_with_the_docker_group(tmp_path, g
     assert state == EngineState(EngineStatus.NO_PERMISSION, docker_group=group)
 
 
+def test_a_refused_socket_on_a_client_that_exits_0_is_no_permission(tmp_path):
+    """Docker 28.0 prints nothing on standard output, the error on standard error, and exits 0."""
+    docker = ScriptedDocker()
+    refused = (
+        "permission denied while trying to connect to the Docker daemon socket at "
+        'unix:///tmp/r.sock: Get "http://%2Ftmp%2Fr.sock/v1.48/info": '
+        "dial unix /tmp/r.sock: connect: permission denied\n"
+    )
+    docker.answer(("docker", "info"), ProbeResult(0, refused))
+    docker.answer(("docker", "compose", "version"), ProbeResult(0, "2.38.2\n"))
+    in_session = DockerGroup.IN_SESSION
+
+    state = sandbox(docker, tmp_path, platform="linux", docker_group=lambda: in_session).state()
+
+    assert state == EngineState(EngineStatus.NO_PERMISSION, docker_group=in_session)
+
+
 def test_an_engine_that_answers_or_is_stopped_looks_up_no_group(tmp_path):
     docker = ScriptedDocker()
     docker.answer(("docker", "info"), ProbeResult(1, "Cannot connect to the Docker daemon"))
