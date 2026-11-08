@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v0.29.0 (2026-11-08)
+
+### Chores
+
+- **showcase**: Retake the media of cstudy 0.28, with dark animations
+  ([`6809b6a`](https://github.com/bkuberek/coding-study/commit/6809b6a05bb3b1c19edcedb85c4281268a064047))
+
+### Documentation
+
+- **adr**: Record the phase 2 spikes of JDT LS and Kotlin LSP
+  ([`42f5e07`](https://github.com/bkuberek/coding-study/commit/42f5e07fd2f2e6164b34896f7952399d6ca28c9b))
+
+### Features
+
+- **code-intelligence**: Java through Eclipse JDT LS on JDK 25 and 26
+  ([`c8863cb`](https://github.com/bkuberek/coding-study/commit/c8863cb19902446d533fecde7194aac8c193b153))
+
+
 ## v0.28.1 (2026-11-08)
 
 ### Bug Fixes
