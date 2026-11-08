@@ -2,6 +2,41 @@
 
 <!-- version list -->
 
+## v0.30.0 (2026-11-08)
+
+### Bug Fixes
+
+- **code-intelligence**: Ask again for pulls rust-analyzer cancels while it loads
+  ([`aa92b2a`](https://github.com/bkuberek/coding-study/commit/aa92b2a0fe8a5e4d020d6d8fd9f9dce5d54e7fb2))
+
+- **code-intelligence**: Give rust-analyzer the standard library through links
+  ([`adeed7f`](https://github.com/bkuberek/coding-study/commit/adeed7f6111f7448927cb86abc72c6261b815c20))
+
+### Documentation
+
+- **adr**: Close the standard-library gap of rust-analyzer in ADR 0018
+  ([`942bdd1`](https://github.com/bkuberek/coding-study/commit/942bdd1fc87b268e94ff13051fcdbf7723d22deb))
+
+- **adr**: Record phase 3 of ADR 0018 as built, with gopls measured
+  ([`d2b2968`](https://github.com/bkuberek/coding-study/commit/d2b2968c3c9b865abbfdfd8e250aaff8198ba8cd))
+
+- **adr**: Record rust-analyzer 1.92.0 as measured in phase 3
+  ([`ba4d94d`](https://github.com/bkuberek/coding-study/commit/ba4d94d79f6f525d6ba3494fcea287c53e3c3bee))
+
+### Features
+
+- **code-intelligence**: Go through gopls and Rust through rust-analyzer
+  ([`7121e8c`](https://github.com/bkuberek/coding-study/commit/7121e8c580e8d9f4e09369b1348d43781d8b6542))
+
+- **code-intelligence**: Pull diagnostics and documentation links that open library sources
+  ([`9d72e70`](https://github.com/bkuberek/coding-study/commit/9d72e7087dbb16ecf6da43f4cd9dda7aee6cd218))
+
+### Testing
+
+- Drive the real rust-analyzer as the page does
+  ([`e4cf60e`](https://github.com/bkuberek/coding-study/commit/e4cf60effe5b471123790619261f96a1e442ccc0))
+
+
 ## v0.29.2 (2026-11-08)
 
 ### Bug Fixes
