@@ -1,5 +1,10 @@
 [![cstudy: practise coding interviews in your own editor](docs/images/readme-header.png)](https://coding-study.com/?utm_source=github&utm_medium=readme&utm_campaign=coding-study&utm_content=header)
 
+[![CI](https://github.com/bkuberek/coding-study/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bkuberek/coding-study/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/bkuberek/coding-study)](https://github.com/bkuberek/coding-study/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/bkuberek/coding-study)](LICENSE)
+[![Homebrew](https://img.shields.io/badge/homebrew-bkuberek%2Ftap%2Fcstudy-orange)](https://github.com/bkuberek/homebrew-tap)
+
 # coding-study
 
 coding-study is a local, IDE-first study tool for software engineers, from algorithms and backend design for senior and staff interviews to security and AI problems. You solve original problems in your own editor in Python, TypeScript, Java, Kotlin, Go, or Rust, and the `cstudy` command line tests your code, checks whether it is optimal, shows reference solutions, and schedules reviews with spaced repetition. Everything runs on your machine; there is no account and no service.
