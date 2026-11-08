@@ -47,7 +47,7 @@ cstudy generates the compose file, `.cs/runs/<run>/stack.yaml`, and merges the p
 
 | Network | Who | Egress |
 |---------|-----|--------|
-| `sandbox` (`internal: true`) | Everything in the stack | None: `bootstrap`, `run`, `test`, `reset` and `grade_setup` cannot reach the internet, your LAN, a metadata address or your machine. DNS is no way out either, as measured on Engine 29: the engine's name server answers an outside name with `SERVFAIL` in under 0.2 ms, where an ordinary bridge takes about 30 ms to ask upstream, and `host.docker.internal` resolves to nothing and the addresses behind it are unreachable, so D11 probes addresses alone. Its bridge holds no address (`com.docker.network.bridge.inhibit_ipv4`): an internal network's bridge otherwise holds its gateway address, and on Linux a container reaches every service listening on all of your machine's addresses through it, `sshd` among them. Its containers still reach each other |
+| `sandbox` (`internal: true`) | Everything in the stack | None: `bootstrap`, `run`, `test`, `reset` and `grade_setup` cannot reach the internet, your LAN, a metadata address or your machine. DNS is no way out either, as measured on Engine 29: the engine's name server answers an outside name with `SERVFAIL` in under 0.2 ms, where an ordinary bridge takes about 30 ms to ask upstream, and `host.docker.internal` resolves to nothing and the addresses behind it are unreachable, so D11 probes addresses alone. Its bridge holds no address (`com.docker.network.bridge.inhibit_ipv4`): an internal network's bridge otherwise holds its gateway address, and on Linux a container reaches every service listening on all of your machine's addresses through it, `sshd` among them. It sets `enable_ipv6: false` too, since an engine set to give new networks IPv6 would give that bridge an IPv6 address, which `inhibit_ipv4` does not take away, and D11 reads `/proc/net/if_inet6` in a container on `sandbox`: only `::1` and `fe80::/10` may be there, and a missing file counts as none. Its containers still reach each other |
 | `edge` (an ordinary bridge) | `cstudy-forward` only | Holds no user code |
 | An ordinary bridge, `egress` | `install` containers (and `cstudy dev --exec --network`, planned) only, with no mock server or service attached | Yes, and P1 measured that it reaches your LAN and this machine's loopback services too |
 
@@ -71,6 +71,7 @@ On every container cstudy generates, the app first (R23):
 | Capabilities | `cap_drop: [ALL]` |
 | Privileges | `security_opt: [no-new-privileges:true]` |
 | Filesystem | `read_only: true`, with tmpfs for `/tmp` and the home directory |
+| An engine whose default gives new networks IPv6 | `sandbox` sets `enable_ipv6: false` outright and the probe measures a user network with IPv6 on, but the tests run on an engine with IPv6 off, which is yours to set: a `sandbox` made under the other default is not exercised |
 | Setuid bits | Your code can set them on files that show as yours on your machine, so `cstudy` takes them off every regular file in the project folder before and after a stack: no link is followed, a file nobody can read or a folder nobody can enter hides none, and such a folder gets its mode back |
 | Limits | `mem_limit` and `pids_limit`, per container: app 512m and 256 pids, a helper 64m and 32, an install 1g and 512. A problem may declare `app.mem_limit` |
 | Stopping | `init: true` and a 2 s grace, or each `down` costs 10 s with Node as PID 1 |
@@ -914,7 +915,7 @@ If a terminal holds the dev stack, the page shows that and does not start a seco
 | D3 (changed) | The reference passes every HTTP case through the [graded run](#graded-run), as the starter with its overlay |
 | D9 (changed) | The reference: `commands.test` exits 0, and the visible cases pass. No generated test files exist |
 | D7 (extended) | Planned with parallel cases, P10: a broken overlay passes every sequential case and fails each parallel case in its `caught_by` |
-| D11 (new) | `install` leaves the lock's digest unchanged; `bootstrap` succeeds from empty and twice in a row; three runs of the reference give the same verdicts; the slowest case stays within 50% of its hang guard; the install is within 25% of `requires.sizes.install_mb`; a probe on `sandbox` reaches no public, LAN or metadata address, and not your machine at the gateway of any of the stack's networks, on ports 22, 80 and 443, where a refusal counts as reaching it. Outside NFR-3's 30 s per problem, as D6, D7 and D10 are |
+| D11 (new) | `install` leaves the lock's digest unchanged; `bootstrap` succeeds from empty and twice in a row; three runs of the reference give the same verdicts; the slowest case stays within 50% of its hang guard; the install is within 25% of `requires.sizes.install_mb`; a probe on `sandbox` reaches no public, LAN or metadata address, and not your machine at the gateway of any of the stack's networks, on ports 22, 80 and 443, where a refusal counts as reaching it, and holds no IPv6 address but `::1` and `fe80::/10`. Outside NFR-3's 30 s per problem, as D6, D7 and D10 are |
 
 Without a usable engine, `cstudy verify` skips a service project with the reason, as a JDK out of range does, and `--require-ready` counts that as not passed. `--static` asks the engine nothing.
 
@@ -941,7 +942,7 @@ Measured on Linux Mint 22.3, kernel 7.0.0-34-generic, Docker Engine 29.8.1 with 
 
 | Item | Measured |
 |------|----------|
-| `internal: true`, the forwarder, the egress probe | From the app and the mock server on `sandbox`, in a dev, a test and a graded stack: no public, LAN, VPN or metadata address, no other bridge's gateway, no outside name, no `host.docker.internal`, and, with the bridge holding no address, no service of your machine's ([Networks](#networks)). The forwarder publishes on `127.0.0.1` only |
+| `internal: true`, the forwarder, the egress probe | From the app and the mock server on `sandbox`, in a dev, a test and a graded stack: no public, LAN, VPN or metadata address, no other bridge's gateway, no outside name, no `host.docker.internal`, and, with the bridge holding no address, no service of your machine's ([Networks](#networks)). The probe finds the address of a user network made with `--ipv6` and a `fd00:c5d::/64` subnet, and `sandbox` holds none. The forwarder publishes on `127.0.0.1` only |
 | Hardening | Your UID, every capability set empty with `NoNewPrivs`, AppArmor's `docker-default` profile enforced, a read-only root, and the pids limit refusing a fork past it |
 | File ownership | What `install` and the app write in the project folder, a named pipe and a link included, and the data volume belong to your UID and group, never root. `cstudy submit` hashes the folder, `--fresh` archives it, and you can remove it |
 
@@ -951,7 +952,6 @@ What stays unproven on Linux:
 |------|-----|
 | SELinux labels, rootless Docker | Not exercised |
 | `host.docker.internal` | Not defined by default on Linux, so what `install` reaches there differs |
-| IPv6 on new networks | An engine set to give new networks IPv6 gives `sandbox`'s bridge an IPv6 address, which `inhibit_ipv4` does not take away. Not exercised |
 | Setuid bits | Clearing one changes a mode without following a link, which an older glibc cannot do: the bit then stays. Not exercised |
 | Starting the engine, and the "no permission" state | `systemctl` and a printed `sudo` command are untested |
 
