@@ -49,7 +49,8 @@ ACTIVE_PARAMETER = f"{SIGNATURE} .cs-active-parameter"
 LAST_LINE = f"{EDITOR} .cm-line:last-child"
 INTERACTION_MS = 100
 """How long a key waits after the list shows: CodeMirror's `interactionDelay`, 75 ms, keeps a key
-pressed as the list appears from accepting by accident, for Enter and Tab alike."""
+pressed as the list appears from accepting or moving the selection by accident, for Enter, Tab and
+the arrows alike. An arrow it ignores moves the cursor instead, and the selection stays."""
 SETTLE_MS = 700
 """What a list that is not coming is given to show up in."""
 ITEMS = [
@@ -224,6 +225,7 @@ def _list_and_panel(page: Any, lab: Lab, found: Seen) -> None:
     found.on_options = page.locator(OPTIONS).all_inner_texts()
     found.on_info = page.locator(INFO).inner_text()
     found.on_request_context = _requests(lab, "textDocument/completion")[-1]["params"]["context"]
+    page.wait_for_timeout(INTERACTION_MS)
     page.keyboard.press("ArrowDown")
     page.wait_for_function(
         "text => document.querySelector('.cm-completionInfo')?.textContent.includes(text)",
