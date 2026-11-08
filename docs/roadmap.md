@@ -192,7 +192,7 @@ The pilots are written with the next project problems.
 
 **Exit criteria.** A step ends when its [checks](specs/service-projects.md#checks) pass and, for a problem, `cstudy verify <slug> --require-ready` exits 0 and a manual run through all its levels works, from `cstudy start` to `cstudy done`.
 
-- [x] P1: the spike, passed with changes on macOS; [Linux stays unproven](specs/service-projects.md#unproven-on-linux) until the `sandbox` CI job runs.
+- [x] P1: the spike, passed with changes on macOS; the sandbox is [measured on Linux](specs/service-projects.md#on-linux), with SELinux and rootless Docker unproven.
 - [x] P2: the environment allowlist, for every problem ([Process environment](specs/runners.md#process-environment)).
 - [x] P3 to P6: tooling: the sandbox, the lifecycle commands, the mock server, `cstudy dev` and the HTTP grader, with `verify` and a CI job on a real engine. Planned with P9: the other flags of `cstudy dev`, and `cstudy test --events`.
 - [ ] P7: the first problem in TypeScript.
