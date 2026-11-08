@@ -109,10 +109,24 @@ def slice_source(base: Path) -> Path:
     return base / "sysroot" / "lib/rustlib/src/rust/library/core/src/slice/mod.rs"
 
 
+LOADING = {"kind": "full", "resultId": "rust-analyzer", "items": []}
+"""What rust-analyzer answers a pull with before its workspace is loaded."""
+CANCELLED = {
+    "code": -32802,
+    "message": "server cancelled the request",
+    "data": {"retriggerRequest": True},
+}
+"""What it answers a pull with while a step of the load runs, as the real one does."""
+CANCELLATIONS = 4
+"""Pulls cancelled in a row while the workspace loads: the crate graph, the build scripts and the
+procedural macros each cancel what runs."""
+
+
 def script(base: Path) -> Steps:
-    """rust-analyzer's answers in its own shapes: its diagnostics answered on request, `cargo
-    check`'s published after a save, then, once the test lets it, a refresh with the error fixed.
-    Items carry no documentation until they are resolved."""
+    """rust-analyzer's answers in its own shapes: while it loads, an empty report, a refresh and
+    cancelled pulls; then its diagnostics answered on request, `cargo check`'s published after a
+    save, then, once the test lets it, a refresh with the error fixed. Items carry no
+    documentation until they are resolved."""
     mod_rs = slice_source(base).resolve().as_uri()
     native = {
         "range": _range(SQRT_LINE, 14, 18),
@@ -150,13 +164,16 @@ def script(base: Path) -> Steps:
         {"reply": "initialize", "result": {"capabilities": CAPABILITIES}},
         {
             "answer": {
-                "textDocument/diagnostic": {"kind": "full", "items": [native]},
                 "textDocument/hover": hover,
                 "textDocument/definition": definition,
                 "textDocument/completion": {"isIncomplete": True, "items": items},
                 "completionItem/resolve": resolved,
             }
         },
+        {"reply": "textDocument/diagnostic", "result": LOADING},
+        {"send": request("ra-loaded", "workspace/diagnostic/refresh")},
+        *({"reply": "textDocument/diagnostic", "error": CANCELLED} for _ in range(CANCELLATIONS)),
+        {"answer": {"textDocument/diagnostic": {"kind": "full", "items": [native]}}},
         {"await": "textDocument/didSave"},
         {"send": notification("textDocument/publishDiagnostics", published)},
         {"wait_for": str(base / REFRESH_GATE)},
@@ -172,6 +189,7 @@ class Seen:
     session_command: str = ""
     session_directory: str = ""
     pulls: list[dict[str, Any]] = field(default_factory=list[dict[str, Any]])
+    pulls_until_answered: int = 0
     pulled: str = ""
     pulled_error: str = ""
     pulled_and_published: str = ""
@@ -246,6 +264,7 @@ def _pulled_and_published(page: Any, lab: Lab, found: Seen) -> None:
         for message in lab.script.received()
         if message.get("method") == "textDocument/diagnostic"
     ]
+    found.pulls_until_answered = len(found.pulls)
     point = point_at(page, LAST_LINE, len(LINES[LAST_LINE]) - 1)
     page.mouse.click(point["x"], point["y"])
     page.keyboard.press("End")
@@ -320,6 +339,11 @@ def test_rust_analyzer_runs_in_the_rust_project(seen, lab):
 def test_the_page_pulls_the_diagnostics_of_the_file_it_opened_naming_the_provider(seen, lab):
     uri = (lab.workspace / SOURCE_FILE).resolve().as_uri()
     assert seen.pulls[0] == {"textDocument": {"uri": uri}, "identifier": "rust-analyzer"}
+
+
+def test_pulls_cancelled_while_the_workspace_loads_are_asked_again_until_answered(seen):
+    """One empty report, then every cancelled pull again, then the one that is answered."""
+    assert seen.pulls_until_answered >= CANCELLATIONS + 2
 
 
 def test_a_pulled_error_is_underlined_and_counted(seen):
