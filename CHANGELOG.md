@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v0.30.2 (2026-11-08)
+
+### Bug Fixes
+
+- **sandbox**: Read the engine as running only when docker info prints a version
+  ([`dbcbf97`](https://github.com/bkuberek/coding-study/commit/dbcbf97d01fdb8ff0ed1e909dacd11f765ee9eda))
+
+- **sandbox**: Wait for a version, not exit 0, after starting the engine
+  ([`6a9467e`](https://github.com/bkuberek/coding-study/commit/6a9467ecf28d9625af1dfcbfa1355fd874730e8b))
+
+### Documentation
+
+- Add CI, release, license and Homebrew badges to the README
+  ([`df66256`](https://github.com/bkuberek/coding-study/commit/df6625694c5ae89dcb5f265f1f1ec259b48a0176))
+
+
 ## v0.30.1 (2026-11-08)
 
 ### Bug Fixes
