@@ -181,12 +181,13 @@ The pilots are written with the next project problems.
 - [x] Step 1, Python and TypeScript, tooling: the `code_intelligence` and `autocomplete` preferences and their Settings checkboxes; Alt-Shift-click for a second cursor; the server catalog, the `code intelligence` doctor rows and `cstudy doctor --fix` installing basedpyright and typescript-language-server into `.cs/lsp/`; the WebSocket session route on wsproto and its broker, with `.cs/build/`, `.cs/cases/`, `.cs/runs/` and the content root hidden from the servers; in the page, live diagnostics, hover, go to definition with read-only library tabs, and completion and signature help behind `autocomplete`, which also governs the editor's own completion.
 - [x] Step 1, Python and TypeScript, guide: [Code intelligence and autocomplete](guides/web-ui.md#code-intelligence-and-autocomplete) and the README feature list.
 - [ ] Step 1, Python and TypeScript, release: the screenshots and animated GIFs, made from the released build, and the website message.
-- [ ] Step 2, Java and Kotlin: Java first on JDK 25 or 26 after a spike on `jvm/` and a project folder; Kotlin from a spike of the Kotlin LSP, and Java alone if it fails.
-- [ ] Step 3, Go and Rust.
+- [x] Step 2, Java: Eclipse JDT LS on JDK 25 or 26, after a spike on `jvm/` and a project folder (v0.29.0).
+- [ ] Step 2, Kotlin: the open-source servers failed on Kotlin 2.4, so JetBrains' Kotlin LSP, behind a license you accept in `cstudy doctor --fix` (owner, 2026-11-08). In progress.
+- [x] Step 3, Go and Rust, with pull diagnostics and documentation links that open library sources (v0.30.0).
 
 ## Phase 12: Service projects
 
-**Status.** In progress: the tooling is built through P6, on macOS, and no problem uses it yet. It runs after or around the releases of Phase 11, unless the owner reorders it.
+**Status.** In progress: the tooling is built through P7, measured on macOS with Docker Desktop and on Linux with Docker Engine, and `0277` is its first problem. It runs after or around the releases of Phase 11, unless the owner reorders it.
 
 **Scope.** [ADR 0019](decisions/0019-service-projects.md) and [its spec](specs/service-projects.md): project problems that always run in a Docker sandbox, with their own dependencies, standard lifecycle commands, one Python mock server, optional backing services, grading over HTTP, and a list of what each problem depends on. Existing problems stay native and need no Docker. One step per ADR phase, each with its docs and a website message at release: P1 the spike; P2 the environment allowlist, for all problems; P3 the sandbox runtime; P4 lifecycle commands, TypeScript and Python templates, install and lock rules; P5 the mock server and `cstudy dev`; P6 the HTTP grader with `verify` and CI; P7 the first problem in TypeScript; P8 its Python version; P9 code intelligence in the container and the Web UI; P10 data-driven problems; P11 mock server extensions and multi-step cases, with project-size security and AI problems; P12 Kotlin and Java; P13 Go; P14 Rust (maybe, decided when reached).
 
@@ -195,7 +196,7 @@ The pilots are written with the next project problems.
 - [x] P1: the spike, passed with changes on macOS; the sandbox is [measured on Linux](specs/service-projects.md#on-linux), with SELinux and rootless Docker unproven.
 - [x] P2: the environment allowlist, for every problem ([Process environment](specs/runners.md#process-environment)).
 - [x] P3 to P6: tooling: the sandbox, the lifecycle commands, the mock server, `cstudy dev` and the HTTP grader, with `verify` and a CI job on a real engine. Planned with P9: the other flags of `cstudy dev`, and `cstudy test --events`.
-- [ ] P7: the first problem in TypeScript.
+- [x] P7: the first problem in TypeScript, `0277-coworking-availability-typescript`.
 - [ ] P8: the first problem in Python.
 - [ ] P9: code intelligence and Web UI.
 - [ ] P10: data-driven problems.
@@ -215,6 +216,46 @@ The pilots are written with the next project problems.
 - [x] TypeScript backend problems on today's engine: `0262` and `0263`, two small services to extend, then `0264` to `0271`, seven JavaScript traps on the debugging track and one asynchronous bug as a project on the virtual clock. The catalog then had 287 entries.
 - [x] Backend reliability on the same engine: `0272` to `0276`, five TypeScript projects on an idempotent at-least-once consumer, a transactional outbox, retries on the virtual clock, optimistic locking, and reviewing an AI extraction, where the model proposes, code validates and a person decides. The catalog now has 292 entries.
 - [ ] Step 3: later waves: project-size problems need Phase 12, and system-size ones need later design.
+
+### Planned project problems
+
+The owner accepted this list on 2026-11-08. Each is original and new; none replaces a problem in the catalog. Each starts in TypeScript, with a Python version after it, and Java, Kotlin and Go versions follow for the strongest. They are grouped by the Phase 12 step that makes them possible. Domains and roles use the closed lists of [ADR 0020](decisions/0020-catalog-labels.md); PP10, PP12 and PP13 are the hardest of the hard.
+
+**With mock servers only (built):**
+
+| ID | Project | Domains · roles | What it teaches | Difficulty |
+|----|---------|-----------------|-----------------|------------|
+| PP1 | Coworking availability in Python (P8) | backend · backend | `0277` in a second language | hard |
+| PP2 | Payment webhook receiver | fintech, security · backend, security-engineer | HMAC signatures, replay windows, idempotency, events out of order, a provider's retries | medium |
+| PP3 | OAuth client with PKCE against a mock identity provider | identity, security · backend, security-engineer | The code flow with PKCE, token refresh, rotated signing keys, clock skew, revoked tokens; the whole flow that `0255` and `0256` cover in parts | hard |
+| PP4 | SSRF-safe webhook dispatcher | security · security-engineer, backend | User-supplied URLs: blocking internal addresses, following redirects safely, timeouts, signing | hard |
+
+**With backing services (P10: Postgres, Redis, AWS services through Moto):**
+
+| ID | Project | Domains · roles | What it teaches | Difficulty |
+|----|---------|-----------------|-----------------|------------|
+| PP5 | Inventory reservations | backend · backend | What a real database adds to `0275`: `SELECT … FOR UPDATE`, isolation levels, constraints, and migrations you design | hard |
+| PP6 | A job queue on Postgres | backend · backend, platform | Building the queue itself, where `0272` consumes one: claiming with `SKIP LOCKED`, timeouts for stuck work, retries with backoff, a dead-letter table | hard |
+| PP7 | File ingestion through S3 and SQS | backend · backend, platform | Uploads to S3, events on SQS, validating large CSV files into Postgres, poison messages | hard |
+| PP8 | Multi-tenant API | backend, security · backend, security-engineer | Tenant isolation with row-level security, graded by IDOR attack requests | hard |
+| PP9 | Rate limiter and cache on Redis | backend · backend, platform | Sliding-window limits, cache-aside with invalidation, hot keys, Redis going down | medium |
+| PP10 | Event-sourced ledger | fintech, backend · backend | Append-only events, projections, rebuilding them, snapshots | hard |
+
+**With mock server extensions (P11: streaming, LLM provider mocks):**
+
+| ID | Project | Domains · roles | What it teaches | Difficulty |
+|----|---------|-----------------|-----------------|------------|
+| PP11 | LLM gateway | ai-llm, backend · backend, ai-engineer | Streaming over SSE, 429 and backoff, falling back to a second provider, token budgets and cost, building on `0259` | hard |
+| PP12 | RAG service with citations | ai-llm · ai-engineer | Chunking, a mock embeddings API, vector search in Postgres, answers graded on retrieval and grounding | hard |
+| PP13 | Tool-calling agent loop | ai-llm, security · ai-engineer, security-engineer | A tool allowlist, prompt injection hidden in tool output, step and cost budgets, failing safely | hard |
+| PP14 | Fix the vulnerable service | security · security-engineer | A working app with broken authentication, IDOR, mass assignment and path traversal, graded by attack cases that must fail and normal cases that must keep passing | hard |
+| PP15 | Secure file upload | security, backend · backend, security-engineer | Size limits, content sniffing, path traversal, a mock malware-scan vendor that fails | medium |
+
+Suggested order: PP1, then PP2 and PP3, then P10 with PP5, then P11 with PP11.
+
+- [ ] PP1 to PP4, on the mock servers.
+- [ ] PP5 to PP10, after P10.
+- [ ] PP11 to PP15, after P11.
 
 ## Phase 14: AI-reviewed problems
 
