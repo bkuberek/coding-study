@@ -505,7 +505,9 @@ scenarios:
 
 Planned, for P10. S21 and S22 check a compose file today, and a stack refuses a problem that declares one.
 
-Docker is how service projects get backing services such as Postgres, Redis and LocalStack. A problem with none still runs in Docker, and a problem may keep SQLite in `CSTUDY_DATA_DIR`.
+Docker is how service projects get backing services such as Postgres, Redis and AWS services emulated locally. A problem with none still runs in Docker, and a problem may keep SQLite in `CSTUDY_DATA_DIR`.
+
+AWS services come from Moto server, which is open source (Apache 2.0) and needs no account. For a service Moto cannot serve well, a problem may use `localstack/localstack:4.14.0`, the last LocalStack image that runs without an account, pinned by digest. The current LocalStack images stop at start without an auth token, which would need an account and internet access from the sandbox, so no problem uses them. P10 measures Moto first: the services a problem teaches, its memory and start time, and that it works with no egress.
 
 The compose file belongs to the problem, so you cannot edit what grading trusts, and it is tool-neutral, so any image can be used. It holds only services. cstudy adds the networks, labels and limits it requires.
 
