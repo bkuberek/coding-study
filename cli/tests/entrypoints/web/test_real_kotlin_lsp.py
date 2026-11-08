@@ -4,18 +4,23 @@ doctor --fix` downloads it once its license is accepted, answers a page that ope
 practice file. The page pulls its diagnostics, as the Kotlin LSP answers no others: an unresolved
 name and a type mismatch are errors. `add` has documentation, a function of the file is its own
 definition, a function of the standard library is a source in a jar that the broker refuses to
-read as a file, naming it, and completion after `seen.ad` lists `add`. Nothing is written into the
-root: the Kotlin LSP keeps its index, configuration and logs in the session's data directory.
+read as a file, naming it, and completion after `seen.ad` lists `add`. Nothing but Gradle's own
+files is written into the build: the Kotlin LSP keeps its index, configuration and logs in the
+session's data directory.
 
-The root here holds no Gradle build, so the Kotlin LSP imports nothing and needs no network.
-Running it means accepting JetBrains' license for the Kotlin LSP: the tests are skipped unless
-`CSTUDY_ACCEPT_LICENSE=kotlin-lsp` says you accept it, without a selected JDK cstudy supports, and
-when the build cannot be downloaded the first time; it stays in pytest's cache."""
+The root holds the practice workspace's `jvm/` build, warmed up by Gradle: the Kotlin LSP
+imports it, with the network for the sources of its libraries the first time, as the warm-up of
+`cstudy doctor --fix` does. Running it means accepting JetBrains' license for the Kotlin LSP: the
+tests are skipped unless `CSTUDY_ACCEPT_LICENSE=kotlin-lsp` says you accept it, without a selected
+JDK cstudy supports, once the pinned build has expired, and when the build cannot be downloaded
+the first time; it stays in pytest's cache."""
 
 import os
+import shutil
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +30,7 @@ from starlette.testclient import WebSocketTestSession
 from coding_study.adapters.jdk_locator import EnvJdkSelector
 from coding_study.adapters.language_servers.lsp_directory import LspDirectory
 from coding_study.adapters.preferences_fs import FsPreferencesStore
+from coding_study.adapters.runner_runtime import RUNTIME_DIRECTORY
 from coding_study.adapters.subprocess_tool_probe import (
     SubprocessCommandRunner,
     SubprocessToolProbe,
@@ -42,10 +48,11 @@ from coding_study.domain.preferences import Preferences, preferences_document
 from coding_study.domain.problem import Language
 from coding_study.entrypoints.web.code_intelligence import LanguageSessions
 from tests.fakes import FakeToolchains, make_environment, repository_root
-from tests.helpers import FIXTURE_TRACKS
+from tests.helpers import FIXTURE_TRACKS, mark_workspace
 from tests.language_server_scripts import notification, request
 from tests.language_sessions import PRACTICE, STUBS, received, session
 from tests.web_server import session_client, web_app
+from tests.workspaces import JVM_COPY_IGNORED
 
 pytestmark = pytest.mark.slow
 
@@ -100,6 +107,8 @@ def jdk_home() -> Path:
 def unpacked(pytestconfig: pytest.Config, license_accepted: None, jdk_home: Path) -> Path:
     """The Kotlin LSP unpacked in pytest's cache, downloaded the first time as `cstudy doctor
     --fix` downloads it."""
+    if KOTLIN_LSP.expires is not None and date.today() >= KOTLIN_LSP.expires:
+        pytest.skip(f"the pinned Kotlin LSP expired on {KOTLIN_LSP.expires}: pin a newer build")
     assert pytestconfig.cache is not None
     cache = pytestconfig.cache.mkdir("kotlin-lsp-workspace")
     directory = LspDirectory(cache, SubprocessToolProbe(), SubprocessCommandRunner())
@@ -116,6 +125,8 @@ def unpacked(pytestconfig: pytest.Config, license_accepted: None, jdk_home: Path
 @dataclass
 class Played:
     root: Path
+    started: float
+    """When the test wrote the practice file, from which nothing but it is new in the build."""
     document: str
     error_messages: list[str]
     hover: dict[str, Any]
@@ -154,12 +165,18 @@ def pulled_errors(websocket: WebSocketTestSession, document: str) -> list[str]:
 
 
 @pytest.fixture(scope="module")
-def played(unpacked: Path, jdk_home: Path, tmp_path_factory: pytest.TempPathFactory) -> Played:
+def played(
+    unpacked: Path,
+    jdk_home: Path,
+    practice_workspace: Path,
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Played:
     root = repository_root(tmp_path_factory.mktemp("real-kotlin-lsp"), PRACTICE, FIXTURE_TRACKS)
+    with_the_jvm_build(practice_workspace, root)
     (root / LSP_DIRECTORY).mkdir(parents=True)
     (root / LSP_DIRECTORY / KOTLIN_LSP_DIRECTORY).symlink_to(unpacked, target_is_directory=True)
     license_ = KOTLIN_LSP_LICENSE
-    record_license(root, license_.key, license_.name, license_.url)
+    record_license(mark_workspace(root), license_.key, license_.name, license_.url)
     environment = make_environment(
         root,
         toolchains=FakeToolchains(stub_generators=STUBS),
@@ -169,6 +186,7 @@ def played(unpacked: Path, jdk_home: Path, tmp_path_factory: pytest.TempPathFact
     )
     FsPreferencesStore(root).write(preferences_document(Preferences(code_intelligence=True)))
     attempt = start_attempt(environment, StartRequest("two-sum", Language.KOTLIN)).attempt
+    started = time.time()
     practice = root / PRACTICE_FILE
     practice.parent.mkdir(parents=True, exist_ok=True)
     practice.write_text(SOURCE)
@@ -193,7 +211,24 @@ def played(unpacked: Path, jdk_home: Path, tmp_path_factory: pytest.TempPathFact
         completion = ask(websocket, request(6, "textDocument/completion", at(AFTER_SEEN_AD)))
     items = completion["result"]
     labels = [item["label"] for item in (items["items"] if isinstance(items, dict) else items)]
-    return Played(root, document, errors, hover, own["result"], library["result"], refused, labels)
+    return Played(
+        root, started, document, errors, hover, own["result"], library["result"], refused, labels
+    )
+
+
+def with_the_jvm_build(practice_workspace: Path, root: Path) -> None:
+    """The practice workspace's `jvm/` build and runner runtime, warmed up by Gradle, in `root`:
+    the Kotlin LSP reads the standard library from the build's libraries. The runtime is a copy,
+    not a link: the import refuses an included build whose real path lies elsewhere."""
+    shutil.copytree(
+        practice_workspace / "jvm", root / "jvm", ignore=JVM_COPY_IGNORED, symlinks=True
+    )
+    shutil.copytree(
+        practice_workspace / RUNTIME_DIRECTORY,
+        root / RUNTIME_DIRECTORY,
+        ignore=shutil.ignore_patterns(".gradle"),
+        symlinks=True,
+    )
 
 
 def _target(result: Any) -> str:
@@ -235,19 +270,26 @@ def test_a_function_of_the_standard_library_is_a_source_in_a_jar(played):
 
 def test_a_source_in_a_jar_is_refused_as_a_file_naming_the_jar_and_the_source(played):
     data = played.library["error"]["data"]
-    assert (data["reason"], ".jar!/kotlin/" in data["path"]) == ("not_a_file_uri", True)
+    jar, _, inside = data["path"].partition("!/")
+    assert (data["reason"], jar, inside.endswith(".kt")) == (
+        "not_a_file_uri",
+        "kotlin-stdlib-2.4.21-sources.jar",
+        True,
+    )
 
 
 def test_completion_after_seen_ad_lists_add(played):
     assert "add" in played.completion_labels
 
 
-def test_nothing_is_written_into_the_root(played):
-    """No `.idea/`, `.kotlin/` or build output beside the practice file."""
+def test_nothing_but_gradles_own_files_is_written_into_the_build(played):
+    """No `.idea/`, `.kotlin/` or build output: the source tree holds the practice file alone,
+    and only Gradle writes its `.gradle/`, as it does for `cstudy test`."""
+    jvm = played.root / "jvm"
     written = sorted(
-        path.relative_to(played.root / "jvm").as_posix()
-        for path in (played.root / "jvm").rglob("*")
-        if path.is_file()
+        path.relative_to(jvm).as_posix()
+        for path in jvm.rglob("*")
+        if path.is_file() and path.stat().st_mtime > played.started and ".gradle" not in path.parts
     )
     assert written == ["kotlin/src/main/kotlin/practice/two_sum/Solution.kt"]
 
