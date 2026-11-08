@@ -2,6 +2,27 @@
 
 <!-- version list -->
 
+## v0.29.1 (2026-11-08)
+
+### Bug Fixes
+
+- **sandbox**: Give the sandbox network's bridge no address of this machine
+  ([`47a9df1`](https://github.com/bkuberek/coding-study/commit/47a9df1949a8c8e995b6182e06ac54b1109cd5c4))
+
+- **sandbox**: Send a status line with every mock server error
+  ([`a0ee196`](https://github.com/bkuberek/coding-study/commit/a0ee1964e330bc99123c75fa9680703cb642785d))
+
+### Chores
+
+- **showcase**: Take a Java hover shot and Settings with Java ready, for cstudy 0.29
+  ([`826715f`](https://github.com/bkuberek/coding-study/commit/826715f0114308e7bce66ead0f9f0a83ff2b48e5))
+
+### Documentation
+
+- Say what the sandbox is measured to do on Linux and what stays unproven
+  ([`05458ff`](https://github.com/bkuberek/coding-study/commit/05458ff11ef1d63b809bb39a4d77665c075ab277))
+
+
 ## v0.29.0 (2026-11-08)
 
 ### Chores
