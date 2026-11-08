@@ -23,6 +23,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import threading
 import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
@@ -42,6 +43,8 @@ SHOTS = (
     "code-intelligence-error",
     "autocomplete-list",
     "code-intelligence-java-hover",
+    "code-intelligence-go-hover",
+    "code-intelligence-rust-hover",
     "web-ui-problems",
     "web-ui-attempt",
     "web-ui-project",
@@ -103,6 +106,43 @@ TOP_K_JAVA = """public class Solution {
 }
 """
 JAVA_SLUG = "top-k-frequent-elements"
+GROUP_ANAGRAMS_GO = """import (
+	"slices"
+	"strings"
+)
+
+func groupAnagrams(strs []string) [][]string {
+	groups := map[string][]string{}
+	for _, word := range strs {
+		letters := strings.Split(word, "")
+		slices.Sort(letters)
+		key := strings.Join(letters, "")
+		groups[key] = append(groups[key], word)
+	}
+	answer := make([][]string, 0, len(groups))
+	for _, group := range groups {
+		answer = append(answer, group)
+	}
+	return answer
+}
+"""
+GO_SLUG = "group-anagrams"
+PRODUCT_RUST = """pub fn product_except_self(nums: Vec<i32>) -> Vec<i32> {
+    let mut answer = vec![1; nums.len()];
+    let mut prefix = 1;
+    for i in 0..nums.len() {
+        answer[i] = prefix;
+        prefix *= nums[i];
+    }
+    let mut suffix = 1;
+    for i in (0..nums.len()).rev() {
+        answer[i] *= suffix;
+        suffix *= nums[i];
+    }
+    answer
+}
+"""
+RUST_SLUG = "product-except-self"
 TWO_SUM_WITH_TYPO = TWO_SUM.replace("high = 0, len(nums) - 1", "high = 0, len(num) - 1")
 TWO_SUM_WITH_ROOM = TWO_SUM + "\n\n"
 MOVE_ZEROES = (
@@ -208,11 +248,70 @@ def run(command: list[str | Path], cwd: Path | None = None, env: dict[str, str] 
     return done
 
 
-def gradle_daemons() -> set[int]:
-    listing = run(["ps", "-Ao", "pid,command"], check=False).stdout
-    return {
-        int(line.split()[0]) for line in listing.splitlines() if "GradleDaemon" in line
-    }
+DAEMONS = ("GradleDaemon", "KotlinCompileDaemon")
+"""What a Gradle build may leave running after it ends: its daemon, and Kotlin's compile daemon."""
+
+
+def processes() -> dict[int, tuple[int, str]]:
+    """Every process, as its parent's PID and its command."""
+    listing = run(["ps", "-Aww", "-o", "pid=,ppid=,command="], check=False).stdout
+    table: dict[int, tuple[int, str]] = {}
+    for line in listing.splitlines():
+        parts = line.split(None, 2)
+        if len(parts) == 3:
+            table[int(parts[0])] = (int(parts[1]), parts[2])
+    return table
+
+
+def descendants(root: int, table: dict[int, tuple[int, str]]) -> dict[int, str]:
+    """The processes below `root`, by PID, with their commands."""
+    children: dict[int, list[int]] = {}
+    for pid, (parent, _command) in table.items():
+        children.setdefault(parent, []).append(pid)
+    found: dict[int, str] = {}
+    waiting = [root]
+    while waiting:
+        for child in children.get(waiting.pop(), []):
+            found[child] = table[child][1]
+            waiting.append(child)
+    return found
+
+
+class DaemonWatch:
+    """Notes the Gradle and Kotlin daemons that this script's own processes start, so that only
+    those are stopped. A daemon runs below the build that started it until that build ends, then
+    belongs to no one, so a look every half second while the script runs finds it. A daemon that
+    was running before, or that other work starts meanwhile, is never below this script, and
+    stays."""
+
+    def __init__(self) -> None:
+        self.started: dict[int, str] = {}
+        self.done = threading.Event()
+        self.thread = threading.Thread(target=self.watch, daemon=True)
+        self.thread.start()
+
+    def watch(self) -> None:
+        while not self.done.wait(0.5):
+            self.look()
+
+    def look(self) -> None:
+        for pid, command in descendants(os.getpid(), processes()).items():
+            if any(name in command for name in DAEMONS):
+                self.started[pid] = command
+
+    def stop(self) -> None:
+        """Stops the noted daemons by PID, each only while it still runs the command it ran when
+        it was noted, so a PID reused since is left alone."""
+        self.done.set()
+        self.thread.join()
+        self.look()
+        table = processes()
+        for pid, command in self.started.items():
+            if pid in table and table[pid][1] == command:
+                with contextlib.suppress(ProcessLookupError):
+                    os.kill(pid, signal.SIGTERM)
+                name = next(name for name in DAEMONS if name in command)
+                say(f"stopped {name} {pid}, started by this run")
 
 
 class Showcase:
@@ -227,7 +326,8 @@ class Showcase:
         self.toolbin = self.work / "toolbin"
         self.clips = self.work / "clips"
         self.cstudy = self.venv / "bin" / "cstudy"
-        self.daemons_before = gradle_daemons()
+        self.daemons = DaemonWatch()
+        self.server_pid = 0
         self.base = ""
         self.token_url = ""
         self.attempts: dict[str, str] = {}
@@ -295,6 +395,10 @@ class Showcase:
         self.cs("start", "move-zeroes", "--lang", "python", "--no-open")
         self.cs("start", JAVA_SLUG, "--lang", "java", "--no-open")
         self.write_java_stub(JAVA_SLUG, TOP_K_JAVA)
+        self.cs("start", GO_SLUG, "--lang", "go", "--no-open")
+        self.write_code_after(self.go_stub(GO_SLUG), "\nfunc ", GROUP_ANAGRAMS_GO)
+        self.cs("start", RUST_SLUG, "--lang", "rust", "--no-open")
+        self.write_code_after(self.rust_stub(RUST_SLUG), "\npub fn ", PRODUCT_RUST)
         self.cs("start", "bank-project-python", "--no-open")
         project = self.workspace / "projects" / "bank-project-python"
         (project / "bank" / "ledger.py").write_text(LEDGER)
@@ -323,6 +427,20 @@ class Showcase:
         text = self.java_stub(slug).read_text()
         self.java_stub(slug).write_text(text[: text.index("\npublic class ") + 1] + code)
 
+    def go_stub(self, slug: str) -> Path:
+        name = slug.replace("-", "_")
+        return self.workspace / "go" / "practice" / name / f"{name}.go"
+
+    def rust_stub(self, slug: str) -> Path:
+        return self.workspace / "rust" / "practice" / f"{slug.replace('-', '_')}.rs"
+
+    @staticmethod
+    def write_code_after(path: Path, start: str, code: str) -> None:
+        """Replaces the stub's code from the line that begins with `start`, and keeps the header
+        and the package line `cstudy start` wrote above it."""
+        text = path.read_text()
+        path.write_text(text[: text.index(start) + 1] + code)
+
     def wants(self, name: str) -> bool:
         return name in self.shots
 
@@ -338,6 +456,7 @@ class Showcase:
             [self.cstudy, "serve", "--port", "0"], cwd=self.workspace, env=self.environment(),
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
         )
+        self.server_pid = server.pid
         try:
             assert server.stdout is not None
             for line in server.stdout:
@@ -357,21 +476,20 @@ class Showcase:
                 server.kill()
                 server.wait()
 
-    def wait_for_jdtls_to_stop(self) -> None:
-        """Waits, up to 30 s, until no JDT LS of this workspace runs, so that the next session
-        reuses its data directory and two never run at once."""
-        marker = str(self.workspace / ".cs" / "lsp" / "jdtls")
+    def wait_for_server_to_stop(self, name: str) -> None:
+        """Waits, up to 30 s, until no process of the server's runs `name` (a language server, or
+        what it started, such as rust-analyzer's `cargo check`), so that two servers never run at
+        once and JDT LS's next session reuses its data directory."""
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
-            if marker not in run(["ps", "-Aww", "-o", "command"], check=False).stdout:
+            below = descendants(self.server_pid, processes()).values()
+            if not any(name in command for command in below):
                 return
             time.sleep(0.5)
 
     def stop_gradle(self) -> None:
-        """Stops the Gradle daemons that appeared while this script ran, by PID."""
-        for pid in gradle_daemons() - self.daemons_before:
-            with contextlib.suppress(ProcessLookupError):
-                os.kill(pid, signal.SIGTERM)
+        """Stops the Gradle and Kotlin daemons that this script's processes started, by PID."""
+        self.daemons.stop()
 
     # Browser helpers -----------------------------------------------------------------------
 
@@ -670,7 +788,29 @@ def feature_shots(app: Showcase, context: BrowserContext, variant: Variant) -> N
         page.wait_for_timeout(400)
         app.screenshot(page, "code-intelligence-java-hover", variant)
         page.close()
-        app.wait_for_jdtls_to_stop()
+        app.wait_for_server_to_stop("jdtls")
+
+    if app.wants("code-intelligence-go-hover"):
+        page = app.attempt(context, GO_SLUG)
+        open_file(page, "group_anagrams.go")
+        wait_ready(page, "gopls")
+        pointer = Pointer(page)
+        hover_until(page, pointer, "strings.Split", "Split", "Split slices s into all substrings")
+        page.wait_for_timeout(400)
+        app.screenshot(page, "code-intelligence-go-hover", variant)
+        page.close()
+        app.wait_for_server_to_stop("gopls")
+
+    if app.wants("code-intelligence-rust-hover"):
+        page = app.attempt(context, RUST_SLUG)
+        open_file(page, "product_except_self.rs")
+        wait_ready(page, "rust-analyzer")
+        pointer = Pointer(page)
+        hover_until(page, pointer, "nums: Vec<i32>", "Vec", "A contiguous growable array type")
+        page.wait_for_timeout(400)
+        app.screenshot(page, "code-intelligence-rust-hover", variant)
+        page.close()
+        app.wait_for_server_to_stop("rust-analyzer")
 
 
 def app_shots(app: Showcase, context: BrowserContext, variant: Variant) -> None:
@@ -737,6 +877,8 @@ def app_shots(app: Showcase, context: BrowserContext, variant: Variant) -> None:
         page.wait_for_selector("text=basedpyright 1.")
         page.wait_for_selector("text=typescript-language-server")
         page.wait_for_selector("text=jdtls 1.")
+        page.wait_for_selector("text=gopls 0.")
+        page.wait_for_selector("text=rust-analyzer 1.")
         page.wait_for_timeout(300)
         app.screenshot(page, "web-ui-settings", variant, redact=True)
         page.close()

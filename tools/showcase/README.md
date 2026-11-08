@@ -30,7 +30,7 @@ A run takes several minutes and runs one Chromium, `cstudy serve` and the langua
 
 `--shots` takes some of the screenshots of the `shots` stage, by name, such as `--shots web-ui-attempt,web-ui-settings`; a shot left out does not open its view, so leaving out `web-ui-health` starts no Gradle. `--variants` takes the screenshots in some themes and widths only, such as `--variants light-phone`: on a machine short of memory, one variant per run starts one Chromium and one Java language server at a time, and frees them in between. `--video-theme dark` records the animations in the dark theme.
 
-When it ends, stop what it may have left: `ps -Ao pid,ppid,etime,command | rg -i "basedpyright|typescript-language-server|jdtls|uvicorn|cstudy serve|ms-playwright|GradleDaemon"`. The script stops the server and the browser, and the Gradle daemons that started while it ran (`cstudy doctor --fix` and the Health view start them). A daemon that was already running stays, and so may be shared with other work: check its builds before you kill it, by PID.
+When it ends, stop what it may have left: `ps -Ao pid,ppid,etime,command | rg -i "basedpyright|typescript-language-server|jdtls|gopls|rust-analyzer|uvicorn|cstudy serve|ms-playwright|GradleDaemon|KotlinCompileDaemon"`. The script stops the server and the browser, and the Gradle and Kotlin daemons that its own processes started (`cstudy doctor --fix`, the Health view and JDT LS start them): it looks at the processes below it every half second while it runs, notes the daemons it finds there, and stops those by PID at the end. A daemon that was running before, or that other work on this machine starts meanwhile, is never below the script, so it stays.
 
 ## What it makes
 
@@ -42,6 +42,8 @@ Desktop images are 1440 by 900, the phone ones 390 wide at 2x. A name is `<name>
 | `code-intelligence-error` | An undefined name underlined, with its message |
 | `autocomplete-list` | The completion list with its documentation panel |
 | `code-intelligence-java-hover` | The Javadoc tooltip on `getOrDefault` in top-k-frequent-elements (Java), from Eclipse JDT LS; the seed stage starts that attempt |
+| `code-intelligence-go-hover` | The documentation of `strings.Split` in group-anagrams (Go), from gopls, with its links to `SplitN` and `Cut`; the seed stage starts that attempt |
+| `code-intelligence-rust-hover` | The documentation of `Vec` in product-except-self (Rust), from rust-analyzer and the toolchain's standard library; the seed stage starts that attempt |
 | `web-ui-problems` | The problem list |
 | `web-ui-attempt` | A project attempt with the file tree, the editor, a run's results and the statement |
 | `web-ui-project` | The same attempt with several file tabs open |
@@ -68,4 +70,5 @@ Recording uses Playwright's `record_video_dir` with a small injected pointer, si
 - The script writes files only into `--work` and `--out`. Nothing it makes is committed for you.
 - It needs the language servers, so it runs `cstudy doctor --fix` with the network. After that it works offline.
 - A new language server needs a new feature shot, as Java's has, and a scene in `code_intelligence_scene` if the animation should show it. The health shot picks up new rows by itself; the settings shot also waits for each server's line, so a JDK outside 25 and 26 stops it instead of showing Java's `needs JDK 25 or 26`.
-- JDT LS says ready before its first Gradle import ends, so the Java shot hovers again until the Javadoc shows, for up to three minutes, and waits for the server to stop before the next variant, so that two never run at once.
+- JDT LS says ready before its first Gradle import ends, so the Java shot hovers again until the Javadoc shows, for up to three minutes. The Go and Rust shots hover the same way. Each of the three waits for its server to stop before the next shot, so that two never run at once.
+- The Go and Rust shots need gopls, which `cstudy doctor --fix` builds with the selected Go, and rust-analyzer on `PATH` (`rustup component add rust-analyzer`), which the script never installs. The settings shot waits for both lines.
