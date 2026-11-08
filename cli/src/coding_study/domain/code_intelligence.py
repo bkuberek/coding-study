@@ -6,12 +6,13 @@ Commands take the absolute directories they run with (`Launch`), so no path type
 """
 
 import re
+import shlex
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 
 from coding_study.domain.cases import JsonValue
-from coding_study.domain.jdk import JdkRange
+from coding_study.domain.jdk import SUPPORTED_JDKS, JdkRange
 from coding_study.domain.layout import (
     GO_PROJECT,
     JVM_PROJECT,
@@ -55,6 +56,52 @@ class Archive:
     sha256: str
     directory: str
     """Where it is unpacked, relative to `.cs/lsp/`."""
+    into: str = ""
+    """A directory of `directory` its members go into, for an archive whose members have no top
+    directory of their own while the other platforms' archives have this one."""
+
+
+@dataclass(frozen=True, slots=True)
+class License:
+    """Terms the vendor of a server asks you to accept: `cstudy doctor --fix` downloads the server
+    only after you accept them, when it asks or with `--accept-license <key>`."""
+
+    key: str
+    """What `--accept-license` takes and the workspace's marker records."""
+    name: str
+    url: str
+    summary: str
+    """What the server is, as `--fix` says it before it asks: `partly closed source, from
+    JetBrains`."""
+
+
+@dataclass(frozen=True, slots=True)
+class Warmup:
+    """A run of the server that `cstudy doctor --fix` makes on each of `roots`, online, after the
+    JVM warm-up: its import fills Gradle's cache with what the server reads later, offline, such
+    as the sources of the build's libraries."""
+
+    script: str
+    """The vendor's script that runs the server until its index is built, relative to
+    `.cs/lsp/`; it takes the root, an index directory and the server's launcher."""
+    roots: tuple[str, ...]
+    """Relative to the workspace root."""
+    timeout_s: int = 900
+
+
+_PROCESSORS: Mapping[str, str] = {
+    "arm64": "arm64",
+    "aarch64": "arm64",
+    "x86_64": "x64",
+    "amd64": "x64",
+}
+
+
+def machine_of(platform: str, processor: str) -> str:
+    """`darwin-arm64`, `linux-x64`, `win32-x64`: the platform as `sys.platform` spells it and the
+    processor as `platform.machine()` does, which says `aarch64` on Linux and `AMD64` on
+    Windows."""
+    return f"{platform}-{_PROCESSORS.get(processor.lower(), processor.lower())}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +115,8 @@ class Launch:
     """The `java` of the selected JDK, for a server that runs on a JDK (`jdks`)."""
     platform: str = ""
     """As Python's `sys.platform` spells it: `darwin`, `linux`, `win32`."""
+    java_home: str | None = None
+    """The selected JDK's home, for a server that builds with a JDK (`jdks`)."""
 
 
 LSP_BIN = "bin"
@@ -193,7 +242,8 @@ class LanguageServer:
     archive: Archive | None = None
     """Set for a server downloaded as an archive rather than installed with pnpm."""
     jdks: JdkRange | None = None
-    """The JDKs it runs on, for a server that is a Java program: it runs on the selected one."""
+    """The JDKs it needs, for a server that is a Java program or imports a Gradle build: JDT LS
+    runs on the selected one, the Kotlin LSP imports with it."""
     data: str | None = None
     """The directory under `.cs/lsp/` that keeps a data directory per root and session."""
     data_files: Mapping[str, str] = field(default_factory=dict[str, str])
@@ -212,9 +262,41 @@ class LanguageServer:
     the rustup proxy of a component that is not installed."""
     standard_library: StandardLibrary | None = None
     """Set for a server that reads the standard library from links cstudy makes."""
+    archives: Mapping[str, Archive] = field(default_factory=dict[str, Archive])
+    """For a server downloaded as an archive of its own per machine, such as the Kotlin LSP with
+    its bundled runtime: the archive of each machine (`machine_of`)."""
+    license: License | None = None
+    """Set for a server whose vendor asks you to accept a license before it is downloaded."""
+    warmup: Warmup | None = None
+    """Set for a server whose sessions read what an online import fetches."""
 
     def command(self, launch: Launch) -> tuple[str, ...]:
         return self.launcher(self, launch)
+
+    def warm_up_command(self, launch: Launch, python: str, root: str) -> tuple[str, ...]:
+        """The command that warms the server up on the absolute `root`, with its index in
+        `launch`'s data directory, under the Python at `python`; empty without a warm-up."""
+        warmup = self.warmup
+        if warmup is None:
+            return ()
+        return (
+            python,
+            "-I",
+            f"{launch.lsp_directory}/{warmup.script}",
+            root,
+            f"{launch.data_directory}/system",
+            "--server",
+            self.command(launch)[0],
+            "--build-tool",
+            "gradle",
+            "--timeout",
+            str(warmup.timeout_s),
+        )
+
+    def archive_on(self, machine: str) -> Archive | None:
+        """The archive `cstudy doctor --fix` downloads on `machine`; None for a server that is no
+        archive, or that its vendor builds nothing for on `machine`."""
+        return self.archive or self.archives.get(machine)
 
     def version_command(self, lsp_directory: str) -> tuple[str, ...]:
         return self.versioner(self, lsp_directory)
@@ -451,6 +533,117 @@ JDTLS = LanguageServer(
 """Eclipse JDT LS, a milestone (ADR 0018, phase 2). An empty list of Gradle versions leaves JDT LS
 the checksums it ships and the one the settings trust, so it downloads none."""
 
+KOTLIN_LSP_VERSION = "263.7084.0"
+KOTLIN_LSP_DIRECTORY = "kotlin-lsp"
+KOTLIN_LSP_BUILD = f"kotlin-server-{KOTLIN_LSP_VERSION}"
+"""The top directory of the archives, which holds the build's launcher, runtime and libraries."""
+KOTLIN_LSP_HOME = f"{KOTLIN_LSP_DIRECTORY}/{KOTLIN_LSP_BUILD}"
+_KOTLIN_LSP_DOWNLOADS = (
+    f"https://download.jetbrains.com/language-server/kotlin-server/{KOTLIN_LSP_VERSION}"
+)
+KOTLIN_LSP_LICENSE = License(
+    key="kotlin-lsp",
+    name="JetBrains Free Plugin License Agreement",
+    url="https://github.com/Kotlin/kotlin-lsp/blob/main/kotlin-vscode/LICENSE.txt",
+    summary="partly closed source, from JetBrains",
+)
+"""The Kotlin LSP is partly closed source: JetBrains ships it with VS Code under this agreement,
+and its standalone archive carries no license of its own (ADR 0018, Kotlin revisited)."""
+KOTLIN_LSP_JVM_OPTIONS = ("-Xmx1g", "-XX:+UseSerialGC", "-XX:ReservedCodeCacheSize=240m")
+"""Its launcher reads `bin/intellij-server.vmoptions` (2 GB of heap, 512 MB of code cache) and then
+`IJ_JAVA_OPTIONS`, so these win: the spike measured MaxHeapSize at 1 GB with them."""
+
+
+def _kotlin_lsp_archive(file: str, sha256: str, into: str = "") -> Archive:
+    return Archive(f"{_KOTLIN_LSP_DOWNLOADS}/{file}", sha256, KOTLIN_LSP_DIRECTORY, into)
+
+
+KOTLIN_LSP_ARCHIVES: Mapping[str, Archive] = {
+    "darwin-arm64": _kotlin_lsp_archive(
+        f"{KOTLIN_LSP_BUILD}-aarch64.sit",
+        "b403bf8a54bd458e3ba6731cf8abb3340be08b439c03576dfc02b13faf3694b8",
+    ),
+    "darwin-x64": _kotlin_lsp_archive(
+        f"{KOTLIN_LSP_BUILD}.sit",
+        "b29c393a5e541153d03d626e7946268437e358a667a5f914a126dbb4007664b1",
+    ),
+    "linux-x64": _kotlin_lsp_archive(
+        f"{KOTLIN_LSP_BUILD}.tar.gz",
+        "ae0c4b01e17ab73a4a5227a78ea99e6dcbe3e499600315b22759a4e4cddd11df",
+    ),
+    "linux-arm64": _kotlin_lsp_archive(
+        f"{KOTLIN_LSP_BUILD}-aarch64.tar.gz",
+        "450ab7c1d80e48106aa429b48cb4226d82ca12a8a2400447ae02386794780cac",
+    ),
+    "win32-x64": _kotlin_lsp_archive(
+        f"{KOTLIN_LSP_BUILD}.win.zip",
+        "be3bc4ef430cde315e6a83900ffb5d9cc454a36aabe9dd3ba7d4141b2d628164",
+        KOTLIN_LSP_BUILD,
+    ),
+    "win32-arm64": _kotlin_lsp_archive(
+        f"{KOTLIN_LSP_BUILD}-aarch64.win.zip",
+        "1fdf633252c098973613b69cc2e4c8ab8fe6c3e6d07241e3d424f3579745db5d",
+        KOTLIN_LSP_BUILD,
+    ),
+}
+"""The standalone archives of the release, with the SHA-256 each `.sha256` file names. The macOS
+ones are zips despite their `.sit` name; the Windows ones have no top directory."""
+
+
+def _kotlin_lsp_launcher(platform: str) -> str:
+    executable = "intellij-server.exe" if platform == "win32" else "intellij-server"
+    return f"{KOTLIN_LSP_HOME}/bin/{executable}"
+
+
+def _kotlin_lsp_command(server: LanguageServer, launch: Launch) -> tuple[str, ...]:
+    return (
+        f"{launch.lsp_directory}/{_kotlin_lsp_launcher(launch.platform)}",
+        "--stdio",
+        f"--system-path={launch.data_directory}/system",
+    )
+
+
+def _kotlin_lsp_environment(launch: Launch) -> dict[str, str]:
+    """Its configuration, logs and plugins in the session's data directory beside its index, no
+    update check (which would reach JetBrains), and the Gradle import on the selected JDK, as every
+    Gradle call of cstudy runs. The launcher splits the variable as a shell does."""
+    data = launch.data_directory
+    options = [
+        *KOTLIN_LSP_JVM_OPTIONS,
+        f"-Didea.config.path={data}/config",
+        f"-Didea.log.path={data}/log",
+        f"-Didea.plugins.path={data}/plugins",
+        "-Dintellij.updates.enabled=false",
+    ]
+    if launch.java_home is not None:
+        options.append(f"-Dcom.jetbrains.ls.imports.gradle.java.home={launch.java_home}")
+    return {"IJ_JAVA_OPTIONS": shlex.join(options)}
+
+
+KOTLIN_LSP = LanguageServer(
+    language=Language.KOTLIN,
+    name="kotlin-lsp",
+    version=KOTLIN_LSP_VERSION,
+    script=f"{KOTLIN_LSP_HOME}/build.txt",
+    version_script=None,
+    root_project=JVM_PROJECT,
+    initialization_options=_no_options,
+    settings={},
+    capabilities=CLIENT_CAPABILITIES,
+    idle_s=300,
+    launcher=_kotlin_lsp_command,
+    environment=_kotlin_lsp_environment,
+    jdks=SUPPORTED_JDKS,
+    data="kotlin-lsp-data",
+    archives=KOTLIN_LSP_ARCHIVES,
+    license=KOTLIN_LSP_LICENSE,
+    warmup=Warmup(script=f"{KOTLIN_LSP_HOME}/bin/warmup.py", roots=(JVM_PROJECT,)),
+)
+"""JetBrains' Kotlin LSP (ADR 0018, Kotlin revisited): IntelliJ IDEA's analysis behind LSP, with
+its own runtime. It answers diagnostics only when asked (`textDocument/diagnostic`) and asks for
+a refresh as its import and index progress. It reads the sources of the build's libraries from
+Gradle's cache, which `cstudy doctor --fix` fills by warming it up once online."""
+
 GOPLS_SETTINGS: dict[str, JsonValue] = {"linksInHover": False, "completeUnimported": False}
 """No web links on hover, and no completion of a package that is not imported, which adds its
 import: a quick fix, out of scope. The links inside the documentation are `file:` links into
@@ -552,9 +745,16 @@ runs. cstudy never changes the Rust toolchain. While the component is missing, r
 PATH answers `error: Unknown binary 'rust-analyzer' in official toolchain …`, which counts as not
 installed. It runs build scripts and procedural macros, as `cargo test` does."""
 
-LANGUAGE_SERVERS = (BASEDPYRIGHT, TYPESCRIPT_LANGUAGE_SERVER, JDTLS, GOPLS, RUST_ANALYZER)
-"""The languages with a server in phase 3; Kotlin has none. A tuple, not a table keyed by
-`Language`, since a table must have a row for every language."""
+LANGUAGE_SERVERS = (
+    BASEDPYRIGHT,
+    TYPESCRIPT_LANGUAGE_SERVER,
+    JDTLS,
+    KOTLIN_LSP,
+    GOPLS,
+    RUST_ANALYZER,
+)
+"""Every language has a server since Kotlin's. A tuple, not a table keyed by `Language`, since a
+table must have a row for every language."""
 
 
 def server_for(language: Language) -> LanguageServer | None:

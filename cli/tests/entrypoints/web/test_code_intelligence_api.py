@@ -5,13 +5,6 @@ from tests.fakes import INSTALLED_SERVERS, FakeJdk, FakeLanguageServers, jdk_of
 from tests.web_server import anonymous_client, session_client, web_app, web_workspace
 
 LANGUAGES = "/api/v1/code-intelligence/languages"
-NOT_AVAILABLE = {
-    "server": None,
-    "version": None,
-    "state": "not_available",
-    "detail": "not available yet",
-    "idle_s": None,
-}
 
 
 def languages(tmp_path, servers: FakeLanguageServers, jdk: FakeJdk | None = None):
@@ -83,15 +76,28 @@ def test_jdtls_on_another_jdk_needs_jdk_25_or_26(tmp_path):
     assert (entry["state"], entry["detail"]) == ("needs_jdk", "needs JDK 25 or 26")
 
 
-def test_kotlin_is_not_available_yet(tmp_path):
-    entries = languages(tmp_path, FakeLanguageServers(INSTALLED_SERVERS)).json()["languages"]
-    entry = next(entry for entry in entries if entry["language"] == "kotlin")
-    assert entry == {"language": "kotlin", **NOT_AVAILABLE}
-
-
 def entry_of(tmp_path, servers: FakeLanguageServers, language: str) -> dict[str, object]:
     entries = languages(tmp_path, servers).json()["languages"]
     return next(entry for entry in entries if entry["language"] == language)
+
+
+def test_an_installed_kotlin_lsp_whose_license_you_accepted_is_installed(tmp_path):
+    entry = entry_of(tmp_path, FakeLanguageServers(INSTALLED_SERVERS), "kotlin")
+    assert (entry["server"], entry["state"], entry["detail"], entry["idle_s"]) == (
+        "kotlin-lsp",
+        "installed",
+        "kotlin-lsp 263.7084.0",
+        300,
+    )
+
+
+def test_a_kotlin_lsp_whose_license_is_not_accepted_says_so_with_the_command(tmp_path):
+    servers = FakeLanguageServers(INSTALLED_SERVERS, accepted=frozenset())
+    entry = entry_of(tmp_path, servers, "kotlin")
+    assert (entry["state"], entry["detail"]) == (
+        "license_not_accepted",
+        "license not accepted: run cstudy doctor --fix --accept-license kotlin-lsp",
+    )
 
 
 def test_an_installed_gopls_names_the_version_the_selected_go_pins(tmp_path):

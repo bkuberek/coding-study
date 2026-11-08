@@ -39,6 +39,7 @@ from coding_study.adapters.toml_config import TomlConfigSource, config_path
 from coding_study.adapters.toolchains import RegistryToolchains
 from coding_study.adapters.workspace_marker import has_marker, read_marker, tool_version
 from coding_study.adapters.workspace_setup import FsProjectLinks, FsWorkspaceSetup
+from coding_study.application.code_intelligence import ACCEPT_LICENSE_OPTION
 from coding_study.application.doctor import (
     CheckResult,
     CheckStatus,
@@ -46,6 +47,7 @@ from coding_study.application.doctor import (
     DoctorEnvironment,
     DoctorReport,
     FixOutcome,
+    LicenseConsent,
     NotFound,
     PracticeWorkspace,
     fix_sandbox,
@@ -55,6 +57,7 @@ from coding_study.application.doctor import (
 )
 from coding_study.application.ports import ProgressNotice
 from coding_study.domain.cases import JsonValue
+from coding_study.domain.code_intelligence import LANGUAGE_SERVERS, LanguageServer
 from coding_study.domain.config import Config
 from coding_study.domain.errors import ConfigError, UsageError
 from coding_study.domain.layout import RUNS_DIRECTORY
@@ -65,6 +68,7 @@ NAME = "doctor"
 STATUS_LABEL_WIDTH = 6
 FIX_SEPARATOR = "    fix: "
 FIX_OUTPUT_LINES = 10
+YES = ("y", "yes")
 _STATUS_STYLES = {
     CheckStatus.OK: ("ok", "green"),
     CheckStatus.WARN: ("WARN", "yellow"),
@@ -94,16 +98,29 @@ def doctor(
     as_json: Annotated[
         bool, typer.Option("--json", help="One JSON document instead of the rows.")
     ] = False,
+    accept_license: Annotated[
+        list[str] | None,
+        typer.Option(
+            ACCEPT_LICENSE_OPTION,
+            metavar="<server>",
+            help=(
+                "With --fix: accept the license of this server, kotlin-lsp, so that --fix "
+                "downloads it. Without it, --fix shows the license and asks at a terminal, and "
+                "downloads nothing elsewhere."
+            ),
+        ),
+    ] = None,
 ) -> None:
     """Check toolchains, the config file and the workspace setup."""
     if as_json and fix:
         raise UsageError("--json excludes --fix")
+    accepted = _accepted_licenses(accept_license or [], fix)
     environment = doctor_environment(Path.cwd(), command_environ(context), Path.home())
     if as_json:
         _print_document(environment)
         return
     output = console(context)
-    fixes_failed = fix and not _fix(environment, output)
+    fixes_failed = fix and not _fix(environment, output, _consent(accepted, output))
     report = run_doctor(environment, _notice(output))
     for result in report.results:
         output.print(_check_line(result))
@@ -205,13 +222,60 @@ def _progress_db(config: TomlConfigSource) -> str:
         return Config().progress_db
 
 
-def _fix(environment: DoctorEnvironment, output: Console) -> bool:
+def _accepted_licenses(keys: list[str], fix: bool) -> frozenset[str]:
+    """The keys of the licenses `--accept-license` names, each a server's that has one."""
+    known = sorted(server.license.key for server in LANGUAGE_SERVERS if server.license)
+    if keys and not fix:
+        raise UsageError(f"{ACCEPT_LICENSE_OPTION} needs --fix")
+    for key in keys:
+        if key not in known:
+            raise UsageError(f'no license to accept for "{key}": {", ".join(known)} has one')
+    return frozenset(keys)
+
+
+def _consent(accepted: frozenset[str], output: Console) -> LicenseConsent:
+    """Whether you accept the license of a server: yes when `--accept-license` names it; else, at
+    a terminal, what you answer once its name and link are shown; else no, as in the Health
+    view's Fix, which runs with no terminal."""
+
+    def consent(server: LanguageServer) -> bool:
+        license = server.license
+        if license is None or license.key in accepted:
+            return True
+        if not _is_interactive():
+            return False
+        output.print(
+            f"{server.name} {server.version} is {license.summary}, under the {license.name}: "
+            f"{license.url}"
+        )
+        return _says_yes(f"Accept it and download {server.name}? [y/N]: ")
+
+    return consent
+
+
+def _says_yes(question: str) -> bool:
+    """Whether you answer `y` or `yes`; the end of the input says no and the fix goes on, while
+    Ctrl-C stops it as it stops any command."""
+    try:
+        answer = input(question)
+    except EOFError:
+        return False
+    return answer.strip().lower() in YES
+
+
+def _is_interactive() -> bool:
+    return sys.stdin.isatty()
+
+
+def _fix(environment: DoctorEnvironment, output: Console, consent: LicenseConsent) -> bool:
     """Run every setup command; True when all of them succeeded."""
     workspace = environment.workspace
     if isinstance(workspace, NotFound):
         raise WorkspaceError(workspace.reason)
     repair_workspace(workspace, _notice(output))
-    outcomes = fix_workspace(workspace, environment.content, environment.jdk, _notice(output))
+    outcomes = fix_workspace(
+        workspace, environment.content, environment.jdk, _notice(output), consent
+    )
     for outcome in outcomes:
         for line in _fix_lines(outcome):
             output.print(line)

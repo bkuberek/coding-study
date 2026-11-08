@@ -19,7 +19,7 @@ from coding_study.domain.bench_records import (
 from coding_study.domain.bench_runs import BenchReport, BenchRequest
 from coding_study.domain.bench_verdict import PastRun
 from coding_study.domain.cases import JsonValue
-from coding_study.domain.code_intelligence import Archive, GoInstall, LanguageServer
+from coding_study.domain.code_intelligence import Archive, GoInstall, LanguageServer, License
 from coding_study.domain.comparators import Checker
 from coding_study.domain.config import Config
 from coding_study.domain.config_keys import ConfigView
@@ -1126,8 +1126,27 @@ class LanguageServerLocator(Protocol):
         without a Go that runs."""
         ...
 
+    def license_accepted(self, license: License) -> bool:
+        """Whether the workspace's marker records that you accepted `license`, as it is now."""
+        ...
+
 
 class LanguageServerInstaller(Protocol):
+    @property
+    def machine(self) -> str:
+        """This machine as the catalog names it (`machine_of`): `darwin-arm64`, `linux-x64`."""
+        ...
+
+    def accept_license(self, license: License) -> None:
+        """Record in the workspace's marker that you accepted `license`."""
+        ...
+
+    def warm_up(self, server: LanguageServer, root: str, java_home: Path) -> ProbeResult | None:
+        """Run `server`'s warm-up on `root` (relative to the workspace) with the JDK at
+        `java_home`, its index in a scratch directory of `.cs/lsp/` that is gone afterwards;
+        None for a server without one."""
+        ...
+
     def install(self) -> ProbeResult | None:
         """Copy the shipped `package.json` and `pnpm-lock.yaml` into `.cs/lsp/` when they differ,
         then run `pnpm install --frozen-lockfile --ignore-scripts` there; None when `pnpm` is

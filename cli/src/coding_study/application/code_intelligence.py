@@ -29,6 +29,7 @@ from coding_study.domain.code_intelligence import (
     LSP_DIRECTORY,
     NOT_AVAILABLE_YET,
     LanguageServer,
+    License,
     no_code_intelligence,
     server_for,
 )
@@ -40,6 +41,7 @@ from coding_study.domain.problem import Language, ProblemKind
 from coding_study.domain.workspace_projects import project_folder
 
 FIX_COMMAND = "cstudy doctor --fix"
+ACCEPT_LICENSE_OPTION = "--accept-license"
 OFF = "code intelligence is off: turn it on in Settings"
 
 
@@ -48,6 +50,9 @@ class ServerStatus(StrEnum):
     NOT_INSTALLED = "not_installed"
     NEEDS_JDK = "needs_jdk"
     """Installed, but the selected JDK is not one the server runs on."""
+    LICENSE_NOT_ACCEPTED = "license_not_accepted"
+    """Its vendor's license is not accepted, so `--fix` has not downloaded it and no session runs
+    it, whatever `.cs/lsp/` holds."""
     NOT_AVAILABLE = "not_available"
 
 
@@ -159,13 +164,20 @@ def is_unpacked(locator: LanguageServerLocator, server: LanguageServer) -> bool:
     return isinstance(locator.probe(server), Unpacked)
 
 
+def is_usable(locator: LanguageServerLocator, server: LanguageServer, jdk: JdkSelector) -> bool:
+    """Whether a session could run `server` now: installed, its license accepted, and on a JDK
+    it can use."""
+    return _located(server, locator, jdk).status is ServerStatus.INSTALLED
+
+
 def download_language_server(
     installer: LanguageServerInstaller, server: LanguageServer
 ) -> ProbeResult | None:
-    """Download the archive of `server` into `.cs/lsp/`, checked by its SHA-256; None for a server
-    that is no archive. The caller decides, from the `code_intelligence` preference and
-    `is_unpacked`, whether to."""
-    return None if server.archive is None else installer.download(server.archive)
+    """Download the archive of `server` for this machine into `.cs/lsp/`, checked by its SHA-256;
+    None for a server that is no archive, or has none for this machine. The caller decides, from
+    the `code_intelligence` preference, `is_unpacked` and the server's license, whether to."""
+    archive = server.archive_on(installer.machine)
+    return None if archive is None else installer.download(archive)
 
 
 def go_install_version(locator: LanguageServerLocator, server: LanguageServer) -> str | None:
@@ -221,7 +233,11 @@ def _located(
 ) -> LanguageServerState:
     wanted = _pinned(server, locator)
     probe = locator.probe(server)
-    problem = _problem(server, wanted, probe) or _jdk_problem(server, jdk)
+    problem = (
+        _license_problem(server, locator)
+        or _problem(server, wanted, probe)
+        or _jdk_problem(server, jdk)
+    )
     version = wanted or _printed(server, probe)
     if problem is None:
         return _state_of(server, version, f"{server.name} {version}", None)
@@ -288,6 +304,26 @@ def _problem(server: LanguageServer, wanted: str | None, probe: ServerProbe) -> 
             return _version_problem(server, wanted, server.printed_version(output))
         case Unpacked():
             return None
+
+
+def accept_license_command(license: License) -> str:
+    """`cstudy doctor --fix --accept-license kotlin-lsp`."""
+    return f"{FIX_COMMAND} {ACCEPT_LICENSE_OPTION} {license.key}"
+
+
+def _license_problem(server: LanguageServer, locator: LanguageServerLocator) -> _Problem | None:
+    """None unless the server's vendor asks you to accept a license that the workspace's marker
+    does not record as accepted."""
+    license = server.license
+    if license is None or locator.license_accepted(license):
+        return None
+    row = f"{server.name} needs you to accept the {license.name}"
+    return _Problem(
+        row,
+        "license not accepted",
+        status=ServerStatus.LICENSE_NOT_ACCEPTED,
+        fix=accept_license_command(license),
+    )
 
 
 def _jdk_problem(server: LanguageServer, jdk: JdkSelector) -> _Problem | None:

@@ -16,7 +16,6 @@ from coding_study.domain.code_intelligence import (
     TYPESCRIPT_LANGUAGE_SERVER,
     Launch,
     go_release,
-    server_for,
 )
 from coding_study.domain.jdk import JdkRange
 from coding_study.domain.problem import Language
@@ -33,18 +32,12 @@ TEMPLATE_WRAPPER = (
 )
 
 
-def test_phase_three_adds_go_and_rust_to_python_typescript_and_java():
-    assert [server.language for server in LANGUAGE_SERVERS] == [
-        Language.PYTHON,
-        Language.TYPESCRIPT,
-        Language.JAVA,
-        Language.GO,
-        Language.RUST,
-    ]
+def test_every_language_has_a_server_in_cstudys_order():
+    assert [server.language for server in LANGUAGE_SERVERS] == list(Language)
 
 
-def test_kotlin_has_no_server_yet():
-    assert (server_for(Language.KOTLIN), NOT_AVAILABLE_YET) == (None, "not available yet")
+def test_a_language_without_a_server_would_be_not_available_yet():
+    assert NOT_AVAILABLE_YET == "not available yet"
 
 
 def test_the_servers_are_pinned_to_the_versions_of_the_spec():
@@ -53,6 +46,7 @@ def test_the_servers_are_pinned_to_the_versions_of_the_spec():
         ("basedpyright", "1.40.2"),
         ("typescript-language-server", "6.0.3"),
         ("jdtls", "1.63.0"),
+        ("kotlin-lsp", "263.7084.0"),
         ("gopls", "0.24.0"),
         ("rust-analyzer", None),
     ]
@@ -117,9 +111,10 @@ def test_python_needs_no_initialization_options():
     assert BASEDPYRIGHT.initialization_options(WORKSPACE) == {}
 
 
-def test_the_servers_idle_for_sixty_seconds_and_java_for_five_minutes():
-    """JDT LS takes seconds to import the Gradle build again, so a closed tab keeps it longer."""
-    assert [server.idle_s for server in LANGUAGE_SERVERS] == [60, 60, 300, 60, 60]
+def test_the_servers_idle_for_sixty_seconds_and_java_and_kotlin_for_five_minutes():
+    """JDT LS and the Kotlin LSP take seconds to import the Gradle build again, so a closed tab
+    keeps them longer."""
+    assert [server.idle_s for server in LANGUAGE_SERVERS] == [60, 60, 300, 300, 60, 60]
 
 
 def test_a_root_is_the_practice_project_of_the_language():
@@ -127,18 +122,20 @@ def test_a_root_is_the_practice_project_of_the_language():
         "python",
         "typescript",
         "jvm",
+        "jvm",
         "go",
         "rust",
     ]
 
 
-def test_the_servers_but_jdtls_need_no_jdk_and_no_data_of_their_own():
+def test_the_servers_but_the_jvm_ones_need_no_jdk_and_no_data_of_their_own():
     others = (BASEDPYRIGHT, TYPESCRIPT, GOPLS, RUST_ANALYZER)
     assert {(server.jdks, server.data) for server in others} == {(None, None)}
 
 
 def test_cstudy_installs_every_server_but_rust_analyzer():
     assert [server.fix for server in LANGUAGE_SERVERS] == [
+        None,
         None,
         None,
         None,

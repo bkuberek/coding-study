@@ -155,10 +155,13 @@ def test_the_preference_off_is_refused_with_the_way_to_turn_it_on(practice):
         target(practice, attempt, Preferences())
 
 
-def test_a_language_without_a_server_in_this_phase_is_refused(practice):
-    attempt = started(practice, Language.KOTLIN)
-    with pytest.raises(UsageError, match="no code intelligence for kotlin yet"):
-        target(practice, attempt)
+def test_a_kotlin_attempt_gets_the_kotlin_lsp_rooted_in_the_jvm_project(practice):
+    found = target(practice, started(practice, Language.KOTLIN))
+    assert (found.server.name, found.root) == ("kotlin-lsp", "jvm")
+
+
+def test_a_kotlin_session_imports_with_the_selected_jdk(practice):
+    assert target(practice, started(practice, Language.KOTLIN)).java_home == JDK_HOME
 
 
 def test_a_go_attempt_gets_gopls_rooted_in_the_go_project(practice):
@@ -209,14 +212,20 @@ def test_a_go_attempt_whose_gopls_was_built_for_another_go_is_refused_with_the_f
     ]
 
 
-def test_the_language_is_checked_before_the_server_is_looked_for(tmp_path):
+def test_a_kotlin_attempt_whose_license_is_not_accepted_is_refused_with_the_accept_command(
+    tmp_path,
+):
     environment = make_environment(
         repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),
         toolchains=FakeToolchains(stub_generators=STUBS),
+        language_servers=FakeLanguageServers(INSTALLED_SERVERS, accepted=frozenset()),
     )
-    attempt = started(environment, Language.KOTLIN)
-    with pytest.raises(UsageError, match="no code intelligence for kotlin yet"):
-        target(environment, attempt)
+    with pytest.raises(LanguageServerNotInstalledError) as refused:
+        target(environment, started(environment, Language.KOTLIN))
+    assert str(refused.value).splitlines() == [
+        "kotlin-lsp needs you to accept the JetBrains Free Plugin License Agreement",
+        "fix: cstudy doctor --fix --accept-license kotlin-lsp",
+    ]
 
 
 @pytest.fixture

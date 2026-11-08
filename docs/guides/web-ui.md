@@ -89,13 +89,14 @@ Two settings give the editor what an IDE gives: errors as you type, documentatio
    cstudy doctor --fix
    ```
 
-   (or choose **Fix** in the Health view, on the row of each language or at the top). This installs about 46 MB into `.cs/lsp/` in your workspace, a download of about 7 MB, plus Eclipse JDT LS for Java, a 51 MB download checked by its SHA-256, and gopls for Go, built with your Go, and needs the network that one time. rust-analyzer comes with your Rust toolchain instead ([Rust](#rust)). After that practice needs no internet: nothing else is downloaded and no server reaches the network. Deleting `.cs/lsp/` is safe; `--fix` installs it again. With **Code intelligence** off, `--fix` installs nothing for the editor and says so (`skipped the language servers: code intelligence is off; turn it on in Settings…`), unless the servers are installed already.
+   (or choose **Fix** in the Health view, on the row of each language or at the top). This installs about 46 MB into `.cs/lsp/` in your workspace, a download of about 7 MB, plus Eclipse JDT LS for Java, a 51 MB download checked by its SHA-256, and gopls for Go, built with your Go, and needs the network that one time. Kotlin's server comes from JetBrains under a license you accept first ([Kotlin](#kotlin)). rust-analyzer comes with your Rust toolchain instead ([Rust](#rust)). After that practice needs no internet: nothing else is downloaded and no server reaches the network. Deleting `.cs/lsp/` is safe; `--fix` installs it again. With **Code intelligence** off, `--fix` installs nothing for the editor and says so (`skipped the language servers: code intelligence is off; turn it on in Settings…`), unless the servers are installed already.
 3. Check the result. `cstudy doctor` shows a row per language while code intelligence is on, and the Settings view lists each language's state:
 
    ```text
    ok    code intelligence python basedpyright 1.40.2
    ok    code intelligence typescript typescript-language-server 6.0.3
    ok    code intelligence java jdtls 1.63.0
+   ok    code intelligence kotlin kotlin-lsp 263.7084.0
    ok    code intelligence go gopls 0.24.0
    ok    code intelligence rust rust-analyzer 1.91.0
    ```
@@ -144,7 +145,7 @@ Read <kbd>Ctrl</kbd> for <kbd>Cmd</kbd> on Linux and Windows. These work while c
 | Python | basedpyright | Available |
 | TypeScript | typescript-language-server | Available |
 | Java | Eclipse JDT LS | Available, on JDK 25 or 26 |
-| Kotlin | | Not yet: its server, still in alpha, needs the network, is 360 MB and partly closed source. Kotlin files keep the errors of your last run |
+| Kotlin | JetBrains' Kotlin LSP | Available once you accept its license, with a JDK from 21 to 26 |
 | Go | gopls | Available, built by `cstudy doctor --fix` with your Go |
 | Rust | rust-analyzer | Available, once you run `rustup component add rust-analyzer` |
 
@@ -166,6 +167,29 @@ WARN  code intelligence java jdtls needs JDK 25 or 26, not 21.0.5
 - **It leaves your folders as they were.** No `.project`, `.classpath`, `.settings/` or `bin/` appears in `jvm/` or a project folder: JDT LS checks your files as you type without building them, and keeps its index in `.cs/lsp/jdtls-data/` (50 to 150 MB per folder).
 - **Memory.** A Java session takes 0.5 to 1.2 GB, under a 1 GB heap, and its first import may start a Gradle daemon (about 400 MB) that stays idle afterwards, as the one `cstudy test` starts does.
 - **Definitions into the JDK.** A class of the JDK or of a library, such as `ArrayList`, has no file of its own: a Cmd-click on it shows a note, `java.base/java.util/ArrayList.java:169 · not a file: URI`, and hover still shows its documentation. Your project's files and the runner's support code open in tabs, as in Python.
+
+### Kotlin
+
+Kotlin's server is JetBrains' Kotlin LSP, IntelliJ IDEA's Kotlin analysis behind the same protocol. It is partly closed source, and JetBrains ships it under the [JetBrains Free Plugin License Agreement](https://github.com/Kotlin/kotlin-lsp/blob/main/kotlin-vscode/LICENSE.txt), so `cstudy doctor --fix` downloads it only once you accept that license. Read it, then either answer `y` when `--fix` asks at a terminal, or say so up front:
+
+```bash
+cstudy doctor --fix --accept-license kotlin-lsp
+```
+
+Your acceptance is recorded in the workspace's `.cs/workspace.toml`, so `--fix` never asks again in this workspace. Until you accept, `--fix` downloads nothing for Kotlin and says how to accept (the Health view's **Fix** never accepts for you), the status bar says `no code intelligence for Kotlin: kotlin-lsp's license is not accepted · Health`, and `cstudy doctor` shows:
+
+```text
+WARN  code intelligence kotlin kotlin-lsp needs you to accept the JetBrains Free Plugin License Agreement
+      fix: cstudy doctor --fix --accept-license kotlin-lsp
+```
+
+- **The download is large.** The archive for your machine is 360 MB, with its own Java runtime, and takes 1.1 GB in `.cs/lsp/kotlin-lsp/`. Its index takes about 575 MB more per folder in `.cs/lsp/kotlin-lsp-data/`.
+- **`--fix` warms it up once, online.** After the Gradle warm-up, `--fix` runs the server on `jvm/` until its index is built, about a minute: the import fetches the sources of the Kotlin standard library and the other libraries into Gradle's cache, which hover documentation and definitions read later. After that it works offline: no update check, no data shared with JetBrains.
+- **The first start takes a while.** It imports the `jvm/` Gradle build, or your project folder's, and indexes it before it reports: up to a minute and a half on a busy machine. The status bar says `kotlin · kotlin-lsp · ready` meanwhile; errors show once it is done. A tab you close keeps its server 5 minutes.
+- **It needs a JDK.** The server runs on its own runtime, but imports your build with the JDK that `cstudy` selects, which must be one cstudy supports, 21 to 26.
+- **Memory.** A Kotlin session takes about 1.9 GB, under a 1 GB heap, the most of any language, plus the Gradle daemon its import may start.
+- **Definitions into the standard library.** A function such as `mutableListOf` lives in a sources jar: a Cmd-click on it shows a note naming the jar and the file, and hover shows its documentation. Your project's files open in tabs.
+- **It leaves your folders as they were,** apart from Gradle's own `.gradle/`, as `cstudy test` leaves it.
 
 ### Go
 

@@ -14,12 +14,12 @@ import stat
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
 LIMIT = 4 * 1024 * 1024
 LOCAL_HOSTS = ("", "localhost")
-JDT_SCHEME = "jdt"
+JAR_SEPARATOR = "!/"
 
 
 class Reason(StrEnum):
@@ -113,10 +113,17 @@ def local_path(uri: str) -> str:
 def _named(uri: str, scheme: str, path: str) -> str:
     """How the note at the click names what a URI that is no file holds: a class of JDT LS
     (`jdt://contents/java.base/java.util/ArrayList.java?=…`) by its module, package and file,
-    without the query that spells out the JDK's path; any other URI as it is."""
-    if scheme.lower() == JDT_SCHEME:
-        return path.lstrip("/")
-    return uri
+    without the query that spells out the JDK's path; a source in a jar, as the Kotlin LSP names
+    the standard library's (`jar:///…/kotlin-stdlib-2.4.21-sources.jar!/kotlin/…`), by the jar's
+    name and its path inside, without the cache's path; any other URI as it is."""
+    match scheme.lower():
+        case "jdt":
+            return path.lstrip("/")
+        case "jar":
+            jar, separator, inside = path.partition(JAR_SEPARATOR)
+            return f"{PurePosixPath(jar).name}{separator}{inside}"
+        case _:
+            return uri
 
 
 def file_path(uri: str) -> Path:

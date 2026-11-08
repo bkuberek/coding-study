@@ -12,6 +12,8 @@ export type FileIntelligence =
   | { readonly kind: "not-installed"; readonly language: string; readonly server: string }
   /** Installed, but the selected JDK is not one the server runs on: `detail` says which it needs. */
   | { readonly kind: "needs-jdk"; readonly language: string; readonly detail: string }
+  /** Its vendor's license is not accepted, so it is not downloaded: `detail` names the command that accepts it. */
+  | { readonly kind: "license"; readonly language: string; readonly server: string; readonly detail: string }
   | { readonly kind: "no-server"; readonly language: string }
   /** The attempt has none whatever its language's server: `no_code_intelligence` of its status. */
   | { readonly kind: "withheld"; readonly reason: string };
@@ -74,6 +76,13 @@ export function segmentOf(found: FileIntelligence, counts?: DiagnosticCounts): S
       };
     case "needs-jdk":
       return { text: `no code intelligence for ${languageName(found.language)}: ${found.detail}`, action: "health", title: "", state: "needs-jdk" };
+    case "license":
+      return {
+        text: `no code intelligence for ${languageName(found.language)}: ${found.server}'s license is not accepted`,
+        action: "health",
+        title: found.detail,
+        state: "license",
+      };
     case "withheld":
       return { text: WITHHELD[found.reason] ?? WITHHELD_UNKNOWN, action: null, title: "", state: "withheld" };
     case "session":
@@ -110,6 +119,6 @@ export interface LanguageRow {
 
 /** One line of the Settings view's list of languages (docs/specs/web-ui.md#settings-view). */
 export function languageRow(state: LanguageState): LanguageRow {
-  const health = state.state === "not_installed" || state.state === "needs_jdk";
+  const health = state.state === "not_installed" || state.state === "needs_jdk" || state.state === "license_not_accepted";
   return { name: languageName(state.language), detail: state.detail, health };
 }

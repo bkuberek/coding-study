@@ -14,6 +14,17 @@ const JAVA_ON_JDK_21: readonly LanguageState[] = [
   { language: "java", server: "jdtls", version: "1.63.0", state: "needs_jdk", detail: "needs JDK 25 or 26", idle_s: 300 },
 ];
 
+const KOTLIN_LICENSE_NOT_ACCEPTED: readonly LanguageState[] = [
+  {
+    language: "kotlin",
+    server: "kotlin-lsp",
+    version: "263.7084.0",
+    state: "license_not_accepted",
+    detail: "license not accepted: run cstudy doctor --fix --accept-license kotlin-lsp",
+    idle_s: 300,
+  },
+];
+
 const JAVA_INSTALLED: readonly LanguageState[] = [
   { language: "java", server: "jdtls", version: "1.63.0", state: "installed", detail: "jdtls 1.63.0", idle_s: 300 },
 ];
@@ -82,6 +93,18 @@ test("a file of a service project that no server reads is left alone", () => {
 
 test("a Java file attaches to JDT LS once it is installed on a JDK it runs on", () => {
   assert.deepEqual(decide("Solution.java", attempt("java"), JAVA_INSTALLED), { kind: "attach", language: "java", server: "jdtls", idleS: 300 });
+});
+
+test("a Kotlin file whose server's license is not accepted says so, with no session", () => {
+  assert.deepEqual(decide("Solution.kt", attempt("kotlin"), KOTLIN_LICENSE_NOT_ACCEPTED), {
+    kind: "show",
+    found: {
+      kind: "license",
+      language: "kotlin",
+      server: "kotlin-lsp",
+      detail: "license not accepted: run cstudy doctor --fix --accept-license kotlin-lsp",
+    },
+  });
 });
 
 test("a Java file on a JDK JDT LS cannot run on shows why, with no session", () => {

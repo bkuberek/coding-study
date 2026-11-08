@@ -37,7 +37,13 @@ from coding_study.application.ports import (
 )
 from coding_study.domain.bench_records import MachineState, PowerSource
 from coding_study.domain.cases import FunctionInput
-from coding_study.domain.code_intelligence import Archive, GoInstall, LanguageServer
+from coding_study.domain.code_intelligence import (
+    KOTLIN_LSP_LICENSE,
+    Archive,
+    GoInstall,
+    LanguageServer,
+    License,
+)
 from coding_study.domain.config import Config
 from coding_study.domain.errors import LanguageNotSetUpError
 from coding_study.domain.jdk import JdkSource, SelectedJdk
@@ -337,6 +343,7 @@ CODE_INTELLIGENCE_ON = MemoryPreferences({"format": 1, "code_intelligence": True
 PNPM_SUCCEEDED = ProbeResult(0, "")
 DOWNLOADED = ProbeResult(0, "")
 GO_INSTALLED = ProbeResult(0, "")
+WARMED_UP = ProbeResult(0, "")
 
 
 class FakeLanguageServers:
@@ -350,8 +357,17 @@ class FakeLanguageServers:
         download: ProbeResult = DOWNLOADED,
         go: str | None = "1.27.3",
         go_install: ProbeResult | None = GO_INSTALLED,
+        accepted: frozenset[str] = frozenset({KOTLIN_LSP_LICENSE.key}),
+        machine: str = "darwin-arm64",
+        warm_up: ProbeResult | None = WARMED_UP,
     ) -> None:
         self.probes = dict(probes or {})
+        self.accepted = set(accepted)
+        """The keys of the licenses the workspace's marker records as accepted."""
+        self.machine = machine
+        self.warm_up_result = warm_up
+        self.warm_ups: list[tuple[str, str, Path]] = []
+        """The name of each server warmed up, its root and the JDK home it imported with."""
         self.installation = installation
         self.download_result = download
         self.go = go
@@ -380,11 +396,22 @@ class FakeLanguageServers:
         self.go_installs.append((install, version))
         return self.go_install_result
 
+    def license_accepted(self, license: License) -> bool:
+        return license.key in self.accepted
+
+    def accept_license(self, license: License) -> None:
+        self.accepted.add(license.key)
+
+    def warm_up(self, server: LanguageServer, root: str, java_home: Path) -> ProbeResult | None:
+        self.warm_ups.append((server.name, root, java_home))
+        return self.warm_up_result
+
 
 INSTALLED_SERVERS: Mapping[str, ServerProbe] = {
     "basedpyright": VersionPrinted("basedpyright 1.40.2\nbased on pyright 1.40.2\n"),
     "typescript-language-server": VersionPrinted("6.0.3\n"),
     "jdtls": Unpacked(),
+    "kotlin-lsp": Unpacked(),
     "gopls": VersionPrinted("golang.org/x/tools/gopls v0.24.0\n"),
     "rust-analyzer": VersionPrinted("rust-analyzer 1.91.0 (f8297e35 2025-10-28)\n"),
 }

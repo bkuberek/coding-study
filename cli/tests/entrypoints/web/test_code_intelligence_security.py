@@ -189,12 +189,15 @@ def test_the_preference_off_is_refused_with_422_and_the_way_to_turn_it_on(lab, c
     )
 
 
-def test_a_language_without_a_server_in_this_phase_is_refused_with_422(lab, client):
-    kotlin = lab.start(Language.KOTLIN)
-    denial = refused(client, f"?attempt_id={kotlin.id}")
-    assert (error_of(denial), denial.json()["error"]["message"]) == (
-        (422, "usage"),
-        "no code intelligence for kotlin yet",
+def test_a_kotlin_lsp_whose_license_is_not_accepted_is_refused_with_503_and_the_command(
+    tmp_path,
+):
+    lab = rig(tmp_path, language=Language.KOTLIN, licenses_accepted=False)
+    with session_client(lab.app) as page:
+        denial = refused(page, lab.query)
+    assert (error_of(denial), denial.json()["error"]["fix"]) == (
+        (503, "environment"),
+        "cstudy doctor --fix --accept-license kotlin-lsp",
     )
 
 

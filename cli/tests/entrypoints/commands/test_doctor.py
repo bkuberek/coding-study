@@ -29,7 +29,7 @@ from coding_study.application.ports import (
     ScaffoldOutcome,
 )
 from coding_study.application.preferences import read_preferences
-from coding_study.domain.code_intelligence import BASEDPYRIGHT
+from coding_study.domain.code_intelligence import BASEDPYRIGHT, LanguageServer
 from coding_study.domain.jdk import JdkSource, SelectedJdk
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import doctor
@@ -58,6 +58,7 @@ def stub_fixes(monkeypatch: pytest.MonkeyPatch, *outcomes: FixOutcome) -> list[s
         _content: ContentLocation | NotFound,
         _jdk: JdkSelector,
         _notify: Callable[[str], None],
+        _consent: Callable[[LanguageServer], bool],
     ) -> tuple[FixOutcome, ...]:
         asked.append(str(workspace.files.root))
         return outcomes
@@ -128,7 +129,7 @@ def test_a_notice_of_the_fix_goes_to_standard_output_where_a_job_relays_it(monke
     stub_report(monkeypatch)
     note = "skipped the language servers: code intelligence is off"
     monkeypatch.setattr(doctor, "repair_workspace", lambda *_: ScaffoldOutcome((), ()))
-    monkeypatch.setattr(doctor, "fix_workspace", lambda _w, _c, _j, notify: notify(note) or ())
+    monkeypatch.setattr(doctor, "fix_workspace", lambda _w, _c, _j, notify, _a: notify(note) or ())
     result = runner.invoke(cli.app, ["doctor", "--fix"])
     assert (note in result.stdout, note in result.stderr) == (True, False)
 

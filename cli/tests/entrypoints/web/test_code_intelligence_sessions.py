@@ -4,6 +4,7 @@ limit of four servers, and the end of a session: no server is left behind when t
 when the server exits or when `cstudy serve` stops."""
 
 import os
+import shlex
 import shutil
 import signal
 from collections.abc import Iterator
@@ -18,6 +19,7 @@ from coding_study.domain.attempts import AttemptStatus
 from coding_study.domain.problem import Language
 from coding_study.entrypoints.web.code_intelligence import MESSAGE_LIMIT, LanguageSessions
 from coding_study.entrypoints.web.language_server import LanguageServerCommand
+from tests.fakes import JDK_HOME
 from tests.language_server_scripts import QUICK, answer, notification, request
 from tests.language_sessions import Rig, closed_with, received, rig, session, stopped
 from tests.project_fakes import PROJECT_SLUG
@@ -361,6 +363,30 @@ def test_a_java_session_takes_the_data_directory_a_stopped_server_left(tmp_path)
                 wait_for_servers(lab, count)
             assert all_gone(lab)
     assert caches(lab) == [f"{data_directory(lab, 1)}/cache"] * 2
+
+
+# Kotlin: the Kotlin LSP keeps its index, configuration and logs in a data directory of its own
+
+
+def kotlin_options(tmp_path) -> tuple[Rig, list[str]]:
+    """The rig of a Kotlin session and the JVM options its server started with."""
+    lab = rig(tmp_path, language=Language.KOTLIN)
+    lab.server.play()
+    with session_client(lab.app) as page, session(page, lab.query):
+        wait_for_servers(lab, 1)
+    options = lab.server.calls()[0]["environment"]["IJ_JAVA_OPTIONS"]
+    return lab, shlex.split(options)
+
+
+def test_a_kotlin_session_keeps_its_logs_in_a_data_directory_of_its_root(tmp_path):
+    lab, options = kotlin_options(tmp_path)
+    data = lab.root / ".cs" / "lsp" / "kotlin-lsp-data" / "jvm" / "1"
+    assert f"-Didea.log.path={data}/log" in options
+
+
+def test_a_kotlin_session_imports_with_the_selected_jdk(tmp_path):
+    _lab, options = kotlin_options(tmp_path)
+    assert f"-Dcom.jetbrains.ls.imports.gradle.java.home={JDK_HOME}" in options
 
 
 def test_a_python_session_gets_no_data_directory(lab, client):

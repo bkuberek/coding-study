@@ -143,6 +143,24 @@ def test_a_class_of_jdt_ls_is_refused_by_its_module_package_and_file(workspace, 
     )
 
 
+def test_a_source_in_a_jar_of_the_kotlin_lsp_is_refused_by_its_jar_and_its_path_inside(
+    workspace, content
+):
+    uri = (
+        "jar:///home/me/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/"
+        "2.4.21/3167/kotlin-stdlib-2.4.21-sources.jar!/kotlin/collections/Collections.kt"
+    )
+    assert refusal(uri, workspace, content) == (
+        Reason.NOT_A_FILE_URI,
+        "kotlin-stdlib-2.4.21-sources.jar!/kotlin/collections/Collections.kt",
+    )
+
+
+def test_a_jar_uri_without_a_path_inside_is_named_by_its_jar(workspace, content):
+    uri = "jar:///home/me/lib/annotations-13.0.jar"
+    assert refusal(uri, workspace, content) == (Reason.NOT_A_FILE_URI, "annotations-13.0.jar")
+
+
 # the build area and the content root
 
 

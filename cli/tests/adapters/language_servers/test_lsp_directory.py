@@ -2,9 +2,14 @@ import hashlib
 import io
 import json
 import os
+import platform
 import re
+import sys
 import tarfile
+import tomllib
+import zipfile
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from importlib import resources
 from pathlib import Path
 
@@ -15,6 +20,7 @@ from coding_study.adapters.language_servers.lsp_directory import (
     MANIFEST_PACKAGE,
     LspDirectory,
 )
+from coding_study.adapters.workspace_marker import read_marker
 from coding_study.application.ports import (
     FileMissing,
     NotInstalled,
@@ -27,12 +33,15 @@ from coding_study.domain.code_intelligence import (
     BASEDPYRIGHT,
     GOPLS,
     JDTLS,
+    KOTLIN_LSP,
+    KOTLIN_LSP_LICENSE,
     LANGUAGE_SERVERS,
     LSP_INSTALL_COMMAND,
     RUST_ANALYZER,
     TYPESCRIPT_LANGUAGE_SERVER,
     Archive,
     LanguageServer,
+    machine_of,
 )
 
 TYPESCRIPT = TYPESCRIPT_LANGUAGE_SERVER
@@ -160,6 +169,17 @@ def test_jdtls_without_the_core_plugin_of_its_milestone_is_not_installed(tmp_pat
 def test_jdtls_with_the_core_plugin_of_its_milestone_is_unpacked(tmp_path):
     install_server(tmp_path, JDTLS.script)
     assert directory(tmp_path).probe(JDTLS) == Unpacked()
+
+
+def test_a_kotlin_lsp_without_the_build_file_of_its_release_is_not_installed(tmp_path):
+    install_server(tmp_path, "kotlin-lsp/kotlin-server-263.6379.0/build.txt")
+    assert directory(tmp_path).probe(KOTLIN_LSP) == NotInstalled()
+
+
+def test_a_kotlin_lsp_with_the_build_file_of_its_release_is_unpacked_and_runs_nothing(tmp_path):
+    install_server(tmp_path, str(KOTLIN_LSP.script))
+    tools = RecordingTools()
+    assert (directory(tmp_path, tools).probe(KOTLIN_LSP), tools.ran) == (Unpacked(), [])
 
 
 def test_probing_jdtls_starts_no_jvm(tmp_path):
@@ -331,6 +351,86 @@ def test_an_archive_member_that_leaves_its_directory_is_refused(tmp_path):
     assert (result.exit_code, (workspace / ".cs" / "escaped").exists()) == (1, False)
 
 
+EXECUTABLE = 0o755
+LINK_MODE = 0o120777
+
+
+def zip_of(tmp_path: Path, members: Sequence[tuple[str, bytes, int]]) -> Archive:
+    """A zip of `(name, content, Unix mode)` members, as a `file:` URL with its SHA-256: a mode
+    with the symbolic link bits makes the content the link's target, as `zip --symlinks` does."""
+    path = tmp_path / "served" / "server.zip"
+    path.parent.mkdir(exist_ok=True)
+    with zipfile.ZipFile(path, "w") as archive:
+        for name, content, mode in members:
+            info = zipfile.ZipInfo(name)
+            info.external_attr = mode << 16
+            archive.writestr(info, content)
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    return Archive(path.as_uri(), digest, "kotlin-lsp")
+
+
+SERVER_ZIP = [
+    ("server/bin/launcher", b"#!/bin/sh\n", EXECUTABLE),
+    ("server/lib/server.jar", b"jar", 0o644),
+]
+
+
+def test_a_zip_archive_is_unpacked_into_its_directory(tmp_path):
+    workspace = tmp_path / "ws"
+    result = directory(workspace).download(zip_of(tmp_path, SERVER_ZIP))
+    unpacked = workspace / ".cs" / "lsp" / "kotlin-lsp" / "server" / "lib" / "server.jar"
+    assert (result.exit_code, unpacked.read_bytes()) == (0, b"jar")
+
+
+def test_an_archive_with_a_directory_to_go_into_is_unpacked_into_it(tmp_path):
+    workspace = tmp_path / "ws"
+    flat = zip_of(tmp_path, [("bin/launcher", b"#!/bin/sh\n", EXECUTABLE)])
+    directory(workspace).download(Archive(flat.url, flat.sha256, "kotlin-lsp", "build-1"))
+    launcher = workspace / ".cs" / "lsp" / "kotlin-lsp" / "build-1" / "bin" / "launcher"
+    assert os.access(launcher, os.X_OK)
+
+
+def test_a_zip_member_keeps_its_executable_mode(tmp_path):
+    workspace = tmp_path / "ws"
+    directory(workspace).download(zip_of(tmp_path, SERVER_ZIP))
+    launcher = workspace / ".cs" / "lsp" / "kotlin-lsp" / "server" / "bin" / "launcher"
+    assert os.access(launcher, os.X_OK)
+
+
+def test_a_zip_member_without_a_mode_is_a_plain_file(tmp_path):
+    workspace = tmp_path / "ws"
+    directory(workspace).download(zip_of(tmp_path, [("server/notes.txt", b"n", 0)]))
+    notes = workspace / ".cs" / "lsp" / "kotlin-lsp" / "server" / "notes.txt"
+    assert (notes.read_bytes(), os.access(notes, os.X_OK)) == (b"n", False)
+
+
+def test_a_zip_symbolic_link_inside_its_directory_is_kept_as_a_link(tmp_path):
+    workspace = tmp_path / "ws"
+    members = [*SERVER_ZIP, ("server/lib/current.jar", b"server.jar", LINK_MODE)]
+    directory(workspace).download(zip_of(tmp_path, members))
+    link = workspace / ".cs" / "lsp" / "kotlin-lsp" / "server" / "lib" / "current.jar"
+    assert (link.is_symlink(), link.read_bytes()) == (True, b"jar")
+
+
+def test_a_zip_symbolic_link_that_leaves_its_directory_is_refused(tmp_path):
+    workspace = tmp_path / "ws"
+    members = [*SERVER_ZIP, ("server/escape", b"../../../../outside", LINK_MODE)]
+    result = directory(workspace).download(zip_of(tmp_path, members))
+    assert (result.exit_code, (workspace / ".cs" / "lsp" / "kotlin-lsp").exists()) == (1, False)
+
+
+def test_a_zip_member_that_leaves_its_directory_is_refused(tmp_path):
+    workspace = tmp_path / "ws"
+    result = directory(workspace).download(zip_of(tmp_path, [("../escaped", b"x", 0o644)]))
+    assert (result.exit_code, (workspace / ".cs" / "escaped").exists()) == (1, False)
+
+
+def test_an_absolute_zip_member_is_refused(tmp_path):
+    workspace = tmp_path / "ws"
+    result = directory(workspace).download(zip_of(tmp_path, [("/tmp/escaped", b"x", 0o644)]))
+    assert result.exit_code == 1
+
+
 def test_the_install_copies_the_shipped_manifest_into_the_lsp_directory(tmp_path):
     directory(tmp_path).install()
     lsp = tmp_path / ".cs" / "lsp"
@@ -418,3 +518,128 @@ class TestShippedManifest:
 
     def test_it_names_the_node_it_needs(self):
         assert json.loads(shipped(PACKAGE_JSON))["engines"] == {"node": ">=24"}
+
+
+MARKER = '# the marker\nschema = 1\ncreated_with = "0.30.0"\n'
+OTHER_TERMS = replace(KOTLIN_LSP_LICENSE, name="Another Agreement")
+
+
+def with_marker(workspace: Path, text: str = MARKER) -> Path:
+    marker = workspace / ".cs" / "workspace.toml"
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(text)
+    return marker
+
+
+class TestLicenses:
+    """The workspace's marker records the licenses you accepted (ADR 0018, Kotlin revisited)."""
+
+    def test_a_license_is_not_accepted_until_you_accept_it(self, tmp_path):
+        with_marker(tmp_path)
+        assert directory(tmp_path).license_accepted(KOTLIN_LSP_LICENSE) is False
+
+    def test_a_license_you_accept_is_accepted(self, tmp_path):
+        with_marker(tmp_path)
+        lsp = directory(tmp_path)
+        lsp.accept_license(KOTLIN_LSP_LICENSE)
+        assert lsp.license_accepted(KOTLIN_LSP_LICENSE) is True
+
+    def test_the_marker_records_the_license_by_its_key_with_its_name_and_link(self, tmp_path):
+        marker = with_marker(tmp_path)
+        directory(tmp_path).accept_license(KOTLIN_LSP_LICENSE)
+        assert tomllib.loads(marker.read_text())["licenses"]["kotlin-lsp"] == {
+            "name": KOTLIN_LSP_LICENSE.name,
+            "url": KOTLIN_LSP_LICENSE.url,
+        }
+
+    def test_the_marker_keeps_what_it_held(self, tmp_path):
+        marker = with_marker(tmp_path)
+        directory(tmp_path).accept_license(KOTLIN_LSP_LICENSE)
+        assert (marker.read_text().startswith(MARKER), read_marker(tmp_path).schema) == (True, 1)
+
+    def test_accepting_twice_records_the_license_once(self, tmp_path):
+        marker = with_marker(tmp_path)
+        lsp = directory(tmp_path)
+        lsp.accept_license(KOTLIN_LSP_LICENSE)
+        lsp.accept_license(KOTLIN_LSP_LICENSE)
+        assert marker.read_text().count("[licenses.kotlin-lsp]") == 1
+
+    def test_a_license_whose_terms_changed_is_not_accepted(self, tmp_path):
+        with_marker(tmp_path)
+        lsp = directory(tmp_path)
+        lsp.accept_license(KOTLIN_LSP_LICENSE)
+        assert lsp.license_accepted(OTHER_TERMS) is False
+
+    def test_accepting_changed_terms_records_them_in_place_of_the_old_ones(self, tmp_path):
+        marker = with_marker(tmp_path)
+        lsp = directory(tmp_path)
+        lsp.accept_license(KOTLIN_LSP_LICENSE)
+        lsp.accept_license(OTHER_TERMS)
+        recorded = tomllib.loads(marker.read_text())["licenses"]["kotlin-lsp"]["name"]
+        assert (recorded, lsp.license_accepted(KOTLIN_LSP_LICENSE)) == ("Another Agreement", False)
+
+    def test_without_a_marker_no_license_is_accepted(self, tmp_path):
+        assert directory(tmp_path).license_accepted(KOTLIN_LSP_LICENSE) is False
+
+    def test_an_unreadable_marker_accepts_no_license(self, tmp_path):
+        with_marker(tmp_path, "schema = [\n")
+        assert directory(tmp_path).license_accepted(KOTLIN_LSP_LICENSE) is False
+
+
+def test_the_machine_is_the_platform_and_the_processor_of_this_one():
+    assert directory(Path("/ws")).machine == machine_of(sys.platform, platform.machine())
+
+
+class RecordingEnvironments(RecordingCommands):
+    """Also records the environment each command ran with."""
+
+    def __init__(self, result: ProbeResult | None = PNPM_SUCCEEDED) -> None:
+        super().__init__(result)
+        self.environments: list[Mapping[str, str] | None] = []
+
+    def run(
+        self, command: Sequence[str], cwd: Path, environment: Mapping[str, str] | None = None
+    ) -> ProbeResult | None:
+        self.environments.append(environment)
+        return super().run(command, cwd, environment)
+
+
+class TestWarmUp:
+    """A warm-up runs the server's own script under cstudy's Python, with a scratch index."""
+
+    def warmed(self, tmp_path: Path, result: ProbeResult = PNPM_SUCCEEDED) -> RecordingEnvironments:
+        commands = RecordingEnvironments(result)
+        directory(tmp_path, commands=commands).warm_up(KOTLIN_LSP, "jvm", Path("/jdk"))
+        return commands
+
+    def test_it_runs_the_vendor_script_isolated_under_cstudys_python_in_the_root(self, tmp_path):
+        command, cwd = self.warmed(tmp_path).ran[0]
+        script = f"{tmp_path}/.cs/lsp/kotlin-lsp/kotlin-server-263.7084.0/bin/warmup.py"
+        assert (command[:3], cwd) == ((sys.executable, "-I", script), tmp_path / "jvm")
+
+    def test_it_names_the_root_and_the_launcher(self, tmp_path):
+        command, _cwd = self.warmed(tmp_path).ran[0]
+        launcher = command[command.index("--server") + 1]
+        assert (command[3], launcher.endswith("/bin/intellij-server")) == (f"{tmp_path}/jvm", True)
+
+    def test_its_index_is_in_a_scratch_directory_of_the_lsp_directory(self, tmp_path):
+        command, _cwd = self.warmed(tmp_path).ran[0]
+        assert Path(command[4]).parent.parent == tmp_path / ".cs" / "lsp"
+
+    def test_the_scratch_directory_is_gone_afterwards(self, tmp_path):
+        command, _cwd = self.warmed(tmp_path).ran[0]
+        assert Path(command[4]).parent.exists() is False
+
+    def test_it_imports_with_the_jdk_it_is_given(self, tmp_path):
+        environment = self.warmed(tmp_path).environments[0] or {}
+        assert "-Dcom.jetbrains.ls.imports.gradle.java.home=/jdk" in environment["IJ_JAVA_OPTIONS"]
+
+    def test_it_returns_what_the_script_did(self, tmp_path):
+        commands = RecordingEnvironments(ProbeResult(1, "stopped\n"))
+        result = directory(tmp_path, commands=commands).warm_up(KOTLIN_LSP, "jvm", Path("/jdk"))
+        assert result == ProbeResult(1, "stopped\n")
+
+    def test_a_server_without_a_warm_up_runs_nothing(self, tmp_path):
+        commands = RecordingEnvironments()
+        result = directory(tmp_path, commands=commands).warm_up(JDTLS, "jvm", Path("/jdk"))
+        assert (result, commands.ran) == (None, [])

@@ -5,7 +5,7 @@ streams and plays a script, as `tests/scripted_child.py` plays one for a child `
 
 It appends its pid, arguments, current directory, the two environment variables that hide
 directories from a Node server (`NODE_OPTIONS`, `CSTUDY_HIDDEN_DIRECTORIES`), JDT LS's cache and
-the variables the Go and Rust servers start with (`RECORDED_VARIABLES`) as one JSON line to
+the variables the Go, Rust and Kotlin servers start with (`RECORDED_VARIABLES`) as one JSON line to
 `<script>.calls` and every message it reads as one JSON line to `<script>.received`, then plays the
 script's steps in order, each an object with one key:
 
@@ -65,8 +65,15 @@ VERSIONS = {
 }
 VERSION_ARGUMENTS = ("--version", "version")
 """`--version`, and gopls's `version` subcommand."""
-RECORDED_VARIABLES = ("GOTOOLCHAIN", "GOPROXY", "GOFLAGS", "CGO_ENABLED", "CARGO_NET_OFFLINE")
-"""The variables of the Go and Rust servers' environments, recorded with each call."""
+RECORDED_VARIABLES = (
+    "GOTOOLCHAIN",
+    "GOPROXY",
+    "GOFLAGS",
+    "CGO_ENABLED",
+    "CARGO_NET_OFFLINE",
+    "IJ_JAVA_OPTIONS",
+)
+"""The variables of the Go, Rust and Kotlin servers' environments, recorded with each call."""
 POLL_S = 0.01
 METHOD_NOT_FOUND = -32601
 

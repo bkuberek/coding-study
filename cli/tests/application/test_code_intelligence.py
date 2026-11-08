@@ -18,12 +18,13 @@ from coding_study.application.ports import (
     VersionPrinted,
 )
 from coding_study.domain.code_intelligence import BASEDPYRIGHT as BASEDPYRIGHT_SERVER
-from coding_study.domain.code_intelligence import GOPLS, JDTLS, RUST_ANALYZER
+from coding_study.domain.code_intelligence import GOPLS, JDTLS, KOTLIN_LSP, RUST_ANALYZER
 from coding_study.domain.problem import Language
 from tests.fakes import INSTALLED_SERVERS, FakeJdk, FakeLanguageServers, jdk_of
 
 BASEDPYRIGHT = "basedpyright"
 TYPESCRIPT = "typescript-language-server"
+KOTLIN_LSP_NAME = "kotlin-lsp"
 JDK_FIX = (
     "select a JDK 25 to 26 with JAVA_HOME, or install JDK 25: "
     "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#jdk"
@@ -119,25 +120,76 @@ def test_typescript_without_the_workspaces_tsserver_names_the_missing_modules():
     )
 
 
-def test_a_language_without_a_server_is_not_available_yet():
+def test_an_installed_kotlin_lsp_whose_license_you_accepted_names_its_build():
     state = states(FakeLanguageServers(INSTALLED_SERVERS))[Language.KOTLIN]
-    assert (state.server, state.version, state.status, state.detail) == (
-        None,
-        None,
-        ServerStatus.NOT_AVAILABLE,
-        "not available yet",
+    assert (state.server, state.version, state.status, state.detail, state.idle_s) == (
+        KOTLIN_LSP_NAME,
+        "263.7084.0",
+        ServerStatus.INSTALLED,
+        "kotlin-lsp 263.7084.0",
+        300,
     )
 
 
-def test_a_language_without_a_server_has_no_idle_time_and_no_problem():
+def test_a_kotlin_lsp_whose_license_is_not_accepted_says_so_with_the_command_to_accept_it():
+    servers = FakeLanguageServers(INSTALLED_SERVERS, accepted=frozenset())
+    state = states(servers)[Language.KOTLIN]
+    assert (state.status, state.detail) == (
+        ServerStatus.LICENSE_NOT_ACCEPTED,
+        "license not accepted: run cstudy doctor --fix --accept-license kotlin-lsp",
+    )
+
+
+def test_the_row_of_a_license_not_accepted_names_the_license_and_the_command():
+    state = states(FakeLanguageServers(accepted=frozenset()))[Language.KOTLIN]
+    assert (state.problem, state.fix) == (
+        "kotlin-lsp needs you to accept the JetBrains Free Plugin License Agreement",
+        "cstudy doctor --fix --accept-license kotlin-lsp",
+    )
+
+
+def test_a_license_not_accepted_comes_before_a_missing_server():
+    """`--fix` downloads nothing before you accept, so accepting is the first thing to do."""
+    state = states(FakeLanguageServers(accepted=frozenset()))[Language.KOTLIN]
+    assert state.status is ServerStatus.LICENSE_NOT_ACCEPTED
+
+
+def test_a_kotlin_lsp_you_accepted_but_did_not_download_is_not_installed():
     state = states(FakeLanguageServers())[Language.KOTLIN]
-    assert (state.idle_s, state.problem) == (None, None)
+    assert (state.status, state.detail, state.fix) == (
+        ServerStatus.NOT_INSTALLED,
+        "not installed: run cstudy doctor --fix",
+        "cstudy doctor --fix",
+    )
+
+
+def test_without_a_jdk_the_kotlin_lsp_needs_one_cstudy_supports_for_its_gradle_import():
+    state = states(FakeLanguageServers(INSTALLED_SERVERS), FakeJdk(None))[Language.KOTLIN]
+    assert (state.status, state.detail) == (ServerStatus.NEEDS_JDK, "needs JDK 21 to 26")
+
+
+def test_on_jdk_21_the_kotlin_lsp_is_ready():
+    state = states(FakeLanguageServers(INSTALLED_SERVERS), FakeJdk())[Language.KOTLIN]
+    assert state.status is ServerStatus.INSTALLED
+
+
+def test_the_other_servers_need_no_license():
+    servers = FakeLanguageServers(INSTALLED_SERVERS, accepted=frozenset())
+    found = [state for state in states(servers).values() if state.language is not Language.KOTLIN]
+    assert ServerStatus.LICENSE_NOT_ACCEPTED not in {state.status for state in found}
 
 
 def test_only_languages_with_a_server_are_probed():
     servers = FakeLanguageServers(INSTALLED_SERVERS)
     language_server_states(servers, jdk_of(25))
-    assert servers.probed == [BASEDPYRIGHT, TYPESCRIPT, "jdtls", "gopls", "rust-analyzer"]
+    assert servers.probed == [
+        BASEDPYRIGHT,
+        TYPESCRIPT,
+        "jdtls",
+        KOTLIN_LSP_NAME,
+        "gopls",
+        "rust-analyzer",
+    ]
 
 
 # Java: JDT LS runs on the selected JDK, only when it is 25 or 26
@@ -211,6 +263,17 @@ def test_downloading_jdtls_fetches_its_pinned_archive():
 def test_downloading_returns_what_the_download_did():
     servers = FakeLanguageServers(download=ProbeResult(1, "SHA-256 mismatch"))
     assert download_language_server(servers, JDTLS) == ProbeResult(1, "SHA-256 mismatch")
+
+
+def test_downloading_the_kotlin_lsp_fetches_the_archive_of_this_machine():
+    servers = FakeLanguageServers(machine="linux-arm64")
+    download_language_server(servers, KOTLIN_LSP)
+    assert servers.downloads == [KOTLIN_LSP.archives["linux-arm64"]]
+
+
+def test_a_machine_jetbrains_builds_nothing_for_downloads_nothing():
+    servers = FakeLanguageServers(machine="freebsd14-x64")
+    assert (download_language_server(servers, KOTLIN_LSP), servers.downloads) == (None, [])
 
 
 def test_a_server_that_is_no_archive_is_never_downloaded():

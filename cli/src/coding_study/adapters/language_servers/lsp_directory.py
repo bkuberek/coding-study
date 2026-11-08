@@ -3,12 +3,18 @@ archives beside it (docs/specs/installation-and-workspaces.md#layout,
 docs/specs/web-ui.md#language-servers)."""
 
 import hashlib
+import platform
+import shutil
+import stat
+import sys
 import tarfile
 import tempfile
 import urllib.request
+import zipfile
 from importlib import resources
 from pathlib import Path
 
+from coding_study.adapters.workspace_marker import accepted_license, record_license
 from coding_study.application.ports import (
     CommandRunner,
     FileMissing,
@@ -27,7 +33,10 @@ from coding_study.domain.code_intelligence import (
     Archive,
     GoInstall,
     LanguageServer,
+    Launch,
+    License,
     go_release,
+    machine_of,
 )
 
 MANIFEST_PACKAGE = "coding_study.adapters.language_servers"
@@ -36,6 +45,10 @@ LOCAL_TOOLCHAIN = {"GOTOOLCHAIN": "local"}
 DOWNLOAD_TIMEOUT_S = 60
 """How long the download may wait for the server to answer or send more."""
 CHUNK_BYTES = 1024 * 1024
+UNIX_MODE_SHIFT = 16
+"""A zip member made on Unix keeps its mode in the high half of its external attributes."""
+EXECUTE_BITS = 0o111
+EXECUTABLE_MODE = 0o755
 
 
 class LspDirectory:
@@ -58,9 +71,34 @@ class LspDirectory:
         requirement = server.requirement
         if requirement is not None and not (self._workspace / requirement.path).is_file():
             return FileMissing(requirement.path)
-        if server.archive is not None:
+        if server.archive is not None or server.archives:
             return Unpacked()
         return self._version(server)
+
+    @property
+    def machine(self) -> str:
+        return machine_of(sys.platform, platform.machine())
+
+    def license_accepted(self, license: License) -> bool:
+        return accepted_license(self._workspace, license.key) == (license.name, license.url)
+
+    def accept_license(self, license: License) -> None:
+        record_license(self._workspace, license.key, license.name, license.url)
+
+    def warm_up(self, server: LanguageServer, root: str, java_home: Path) -> ProbeResult | None:
+        """Runs the server's warm-up in `root` under this Python, isolated from the directory it
+        reads, with an index, configuration and logs in a scratch directory of `.cs/lsp/` that is
+        gone afterwards; None for a server without one."""
+        if server.warmup is None:
+            return None
+        self._directory.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix=".warm-up-", dir=self._directory) as scratch:
+            launch = Launch(
+                str(self._directory), scratch, platform=sys.platform, java_home=str(java_home)
+            )
+            directory = self._workspace / root
+            command = server.warm_up_command(launch, sys.executable, str(directory))
+            return self._commands.run(command, directory, server.environment(launch))
 
     def go_release(self) -> str | None:
         """What `go env GOVERSION` prints with the local toolchain, which never downloads
@@ -77,14 +115,15 @@ class LspDirectory:
         return self._commands.run(install.command(version), self._directory, environment)
 
     def download(self, archive: Archive) -> ProbeResult:
-        """Fetch the archive into a scratch directory of `.cs/lsp/`, check its SHA-256, unpack it
-        there refusing any member that would land outside, and only then put it in place of its
+        """Fetch the archive, a gzipped tar or a zip, into a scratch directory of `.cs/lsp/`,
+        check its SHA-256, unpack it there refusing any member that would land outside, and only
+        then put it in place of its
         directory; whatever fails leaves the earlier build as it was and no scratch behind."""
         self._directory.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix=".download-", dir=self._directory) as scratch:
             try:
                 return _unpacked(archive, Path(scratch), self._directory / archive.directory)
-            except (OSError, tarfile.TarError) as error:
+            except (OSError, tarfile.TarError, zipfile.BadZipFile) as error:
                 return ProbeResult(1, f"{error}\n")
 
     def install(self) -> ProbeResult | None:
@@ -116,12 +155,52 @@ def _unpacked(archive: Archive, scratch: Path, target: Path) -> ProbeResult:
     if digest != archive.sha256:
         return ProbeResult(1, f"SHA-256 mismatch: expected {archive.sha256}, got {digest}\n")
     unpacked = scratch / "unpacked"
-    with tarfile.open(downloaded) as tar:
-        tar.extractall(unpacked, filter="data")
+    members = unpacked / archive.into if archive.into else unpacked
+    if zipfile.is_zipfile(downloaded):
+        _unzip(downloaded, members)
+    else:
+        with tarfile.open(downloaded) as tar:
+            tar.extractall(members, filter="data")
     if target.exists():
         target.rename(scratch / "earlier")
     unpacked.rename(target)
     return ProbeResult(0, f"unpacked into {LSP_DIRECTORY}/{archive.directory}\n")
+
+
+def _unzip(archive: Path, directory: Path) -> None:
+    """Unpacks a zip as `tarfile`'s `data` filter unpacks a tar: every member and every symbolic
+    link's target stays inside `directory`. Unlike `ZipFile.extractall`, it keeps the Unix modes
+    the archive records, so a launcher stays executable, and its symbolic links, which a bundled
+    JDK holds. Raises OSError for a member that would leave."""
+    directory.mkdir(parents=True)
+    with zipfile.ZipFile(archive) as opened:
+        for member in opened.infolist():
+            _unzip_member(opened, member, directory)
+
+
+def _unzip_member(archive: zipfile.ZipFile, member: zipfile.ZipInfo, directory: Path) -> None:
+    path = _inside(directory, directory / member.filename)
+    mode = member.external_attr >> UNIX_MODE_SHIFT
+    if member.is_dir():
+        path.mkdir(parents=True, exist_ok=True)
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if stat.S_ISLNK(mode):
+        target = archive.read(member).decode()
+        _inside(directory, path.parent / target)
+        path.symlink_to(target)
+        return
+    with archive.open(member) as source, path.open("wb") as out:
+        shutil.copyfileobj(source, out, CHUNK_BYTES)
+    if mode & EXECUTE_BITS:
+        path.chmod(EXECUTABLE_MODE)
+
+
+def _inside(directory: Path, path: Path) -> Path:
+    """`path`, unless it resolves outside `directory`; raises OSError then."""
+    if not path.resolve().is_relative_to(directory.resolve()):
+        raise OSError(f"archive member leaves its directory: {path}")
+    return path
 
 
 def _fetched(url: str, path: Path) -> str:

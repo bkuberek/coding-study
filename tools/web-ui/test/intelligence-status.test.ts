@@ -37,6 +37,15 @@ test("a language whose server needs another JDK says which and links to Health",
   assert.deepEqual([segment.text, segment.action, segment.state], ["no code intelligence for Java: needs JDK 25 or 26", "health", "needs-jdk"]);
 });
 
+test("a language whose server's license is not accepted says so, links to Health and names the command", () => {
+  const detail = "license not accepted: run cstudy doctor --fix --accept-license kotlin-lsp";
+  const segment = segmentOf({ kind: "license", language: "kotlin", server: "kotlin-lsp", detail });
+  assert.deepEqual(
+    [segment.text, segment.action, segment.title, segment.state],
+    ["no code intelligence for Kotlin: kotlin-lsp's license is not accepted", "health", detail, "license"],
+  );
+});
+
 test("a Java file whose server is missing names JDT LS", () => {
   const segment = segmentOf({ kind: "not-installed", language: "java", server: "jdtls" });
   assert.equal(segment.text, "no code intelligence for Java: jdtls is not installed");
@@ -115,6 +124,12 @@ test("a language that is not installed links to the Health view", () => {
 test("a language whose server needs another JDK links to the Health view", () => {
   const row = languageRow({ language: "java", server: "jdtls", version: "1.63.0", state: "needs_jdk", detail: "needs JDK 25 or 26", idle_s: 300 });
   assert.deepEqual(row, { name: "Java", detail: "needs JDK 25 or 26", health: true });
+});
+
+test("a language whose server's license is not accepted links to the Health view", () => {
+  const detail = "license not accepted: run cstudy doctor --fix --accept-license kotlin-lsp";
+  const row = languageRow({ language: "kotlin", server: "kotlin-lsp", version: "263.7084.0", state: "license_not_accepted", detail, idle_s: 300 });
+  assert.deepEqual(row, { name: "Kotlin", detail, health: true });
 });
 
 test("a language with no server yet does not link", () => {

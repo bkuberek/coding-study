@@ -31,6 +31,7 @@ from tests.fakes import (
 PYTHON_ROW = "code intelligence python"
 TYPESCRIPT_ROW = "code intelligence typescript"
 JAVA_ROW = "code intelligence java"
+KOTLIN_ROW = "code intelligence kotlin"
 GO_ROW = "code intelligence go"
 RUST_ROW = "code intelligence rust"
 RUSTUP_FIX = "rustup component add rust-analyzer"
@@ -71,6 +72,7 @@ def test_the_installed_servers_report_their_pinned_versions():
         CheckResult(PYTHON_ROW, OK, "basedpyright 1.40.2"),
         CheckResult(TYPESCRIPT_ROW, OK, "typescript-language-server 6.0.3"),
         CheckResult(JAVA_ROW, OK, "jdtls 1.63.0"),
+        CheckResult(KOTLIN_ROW, OK, "kotlin-lsp 263.7084.0"),
         CheckResult(GO_ROW, OK, "gopls 0.24.0"),
         CheckResult(RUST_ROW, OK, "rust-analyzer 1.91.0"),
     ]
@@ -82,6 +84,7 @@ def test_servers_that_are_not_installed_only_warn_and_name_the_fix():
         CheckResult(PYTHON_ROW, WARN, "basedpyright is not installed", FIX),
         CheckResult(TYPESCRIPT_ROW, WARN, "typescript-language-server is not installed", FIX),
         CheckResult(JAVA_ROW, WARN, "jdtls is not installed", FIX),
+        CheckResult(KOTLIN_ROW, WARN, "kotlin-lsp is not installed", FIX),
         CheckResult(GO_ROW, WARN, "gopls is not installed", FIX),
         CheckResult(RUST_ROW, WARN, "rust-analyzer is not installed", RUSTUP_FIX),
     ]
@@ -178,7 +181,7 @@ def fix_with(
 def test_fix_downloads_jdtls_while_the_preference_is_on():
     servers = FakeLanguageServers()
     fix_with(servers)
-    assert servers.downloads == [JDTLS.archive]
+    assert JDTLS.archive in servers.downloads
 
 
 def test_fix_reports_the_download_as_a_step_in_its_directory():
@@ -221,7 +224,7 @@ def test_a_failed_download_names_the_manual_fix_and_keeps_its_reason():
 def test_fix_downloads_jdtls_whatever_the_jdk_so_a_jdk_25_installed_later_needs_no_network():
     servers = FakeLanguageServers()
     fix_with(servers, jdk=FakeJdk(None))
-    assert servers.downloads == [JDTLS.archive]
+    assert JDTLS.archive in servers.downloads
 
 
 def test_fix_downloads_after_the_install_and_before_gradle():

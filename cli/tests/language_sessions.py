@@ -97,11 +97,15 @@ def rig(
     limit: int = MAX_SESSIONS,
     project: bool = False,
     language: Language = Language.PYTHON,
+    licenses_accepted: bool = True,
 ) -> Rig:
     """`project`: attempt 1 is the fixture project, rooted in its folder; otherwise the practice
-    file of `language`, on JDK 25."""
+    file of `language`, on JDK 25. Without `licenses_accepted`, the workspace's marker records no
+    license, so the Kotlin LSP is not usable."""
     probes = INSTALLED_SERVERS if installed else {}
     servers = FakeLanguageServers(probes)
+    if not licenses_accepted:
+        servers.accepted.clear()
     if project:
         environment = project_environment(
             tmp_path, ScriptedProjectProcess(), language_servers=servers

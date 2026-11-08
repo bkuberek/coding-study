@@ -8,7 +8,7 @@ project's setup command first.
 """
 
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from enum import StrEnum
 from pathlib import Path
@@ -17,11 +17,13 @@ from typing import TypeGuard
 from coding_study.application.code_intelligence import (
     LanguageServerState,
     ServerStatus,
+    accept_license_command,
     download_language_server,
     go_install_version,
     install_language_server_with_go,
     install_language_servers,
     is_unpacked,
+    is_usable,
     language_server_states,
 )
 from coding_study.application.installs import (
@@ -71,6 +73,7 @@ from coding_study.domain.code_intelligence import (
     LSP_INSTALL_COMMAND,
     Archive,
     GoInstall,
+    LanguageServer,
 )
 from coding_study.domain.debugging import (
     DEBUGPY_INSTALL_COMMAND,
@@ -347,6 +350,46 @@ GO_INSTALL_STEPS = {
 """Builds the servers that Go builds, such as gopls, with `go install` while the
 `code_intelligence` preference is on, at the version the selected Go pins, unless it is installed
 already. Each step stands for its server in the plan; the step that runs names the version."""
+
+
+def _machine_download_step(server: LanguageServer) -> FixStep:
+    directory = next(iter(server.archives.values())).directory
+    return FixStep(
+        f"{LSP_DIRECTORY}/{directory}",
+        ("download", f"{server.name} {server.version}"),
+        manual=f"once online, run: {FIX_COMMAND}",
+    )
+
+
+MACHINE_DOWNLOAD_STEPS = {
+    _machine_download_step(server): server for server in LANGUAGE_SERVERS if server.archives
+}
+"""Downloads the servers whose archive differs by machine, such as the Kotlin LSP with the runtime
+it bundles, while the `code_intelligence` preference is on, unless their pinned build is unpacked
+already. A server with a license is downloaded only once you have accepted it. Each step stands
+for its server in the plan; the step that runs names the archive of this machine."""
+
+
+def _warm_up_step(server: LanguageServer, root: str) -> FixStep:
+    return FixStep(root, ("warm up", server.name), manual=f"once online, run: {FIX_COMMAND}")
+
+
+WARM_UP_STEPS = {
+    _warm_up_step(server, root): server
+    for server in LANGUAGE_SERVERS
+    if server.warmup is not None
+    for root in server.warmup.roots
+}
+"""Runs the servers that read what a Gradle import fetches, such as the Kotlin LSP, once on each of
+their roots after the JVM warm-up, online, so that their sessions find it in Gradle's cache."""
+type LicenseConsent = Callable[[LanguageServer], bool]
+"""Asks you whether you accept the license of a server that `--fix` is about to download."""
+
+
+def _no_consent(_server: LanguageServer) -> bool:
+    return False
+
+
 SERVERS_SKIPPED_NOTE = (
     "skipped the language servers: code intelligence is off; "
     "turn it on in Settings of cstudy serve, then run cstudy doctor --fix again"
@@ -451,10 +494,12 @@ def fix_workspace(
     content: ContentLocation | NotFound,
     jdk: JdkSelector,
     notify: ProgressNotice,
+    consent: LicenseConsent = _no_consent,
 ) -> tuple[FixOutcome, ...]:
     """Run the setup command of every workspace project that exists, and in a content checkout
     the TypeScript runner's install, before the JVM warm-up. The Python project then gets
-    pytest when its venv lacks it."""
+    pytest when its venv lacks it. A server with a license is downloaded only if you accepted it
+    earlier or `consent` says you accept it now."""
     outcomes: list[FixOutcome] = []
     jvm_blocker = _jvm_warm_up_blocker(workspace, jdk)
     home = jdk.selected_home()
@@ -465,6 +510,10 @@ def fix_workspace(
             outcome = _download_language_server(workspace, step, notify)
         elif step in GO_INSTALL_STEPS:
             outcome = _install_language_server_with_go(workspace, step, notify)
+        elif step in MACHINE_DOWNLOAD_STEPS:
+            outcome = _download_for_this_machine(workspace, step, consent, notify)
+        elif step in WARM_UP_STEPS:
+            outcome = _warm_up_language_server(workspace, step, jdk, notify)
         else:
             outcome = _run_step(workspace.commands, step, directory, notify, home)
         if outcome is not None:
@@ -549,6 +598,61 @@ def _download_language_server(
     return FixOutcome(step, download_language_server(workspace.language_server_installer, server))
 
 
+def _download_for_this_machine(
+    workspace: PracticeWorkspace, step: FixStep, consent: LicenseConsent, notify: ProgressNotice
+) -> FixOutcome | None:
+    """None when its license is not accepted, which a note says, or its pinned build is unpacked
+    already: the step is not run, nor reported."""
+    server = MACHINE_DOWNLOAD_STEPS[step]
+    if not _license_accepted(workspace, server, consent, notify):
+        return None
+    if is_unpacked(workspace.language_servers, server):
+        return None
+    installer = workspace.language_server_installer
+    archive = server.archive_on(installer.machine)
+    if archive is None:
+        return FixOutcome(step, None, skipped=f"{server.name} has no build for {installer.machine}")
+    downloading = _download_step(archive)
+    notify(f"running {downloading}")
+    return FixOutcome(downloading, download_language_server(installer, server))
+
+
+def _license_accepted(
+    workspace: PracticeWorkspace,
+    server: LanguageServer,
+    consent: LicenseConsent,
+    notify: ProgressNotice,
+) -> bool:
+    """Whether the server's license, if it has one, is accepted: earlier, as the workspace's
+    marker records, or now, which the marker then records. Never silently."""
+    license = server.license
+    if license is None or workspace.language_servers.license_accepted(license):
+        return True
+    if not consent(server):
+        notify(
+            f"skipped {server.name}: its license is not accepted; read the {license.name} "
+            f"({license.url}), then run {accept_license_command(license)}"
+        )
+        return False
+    workspace.language_server_installer.accept_license(license)
+    notify(f"accepted the {license.name} for {server.name}")
+    return True
+
+
+def _warm_up_language_server(
+    workspace: PracticeWorkspace, step: FixStep, jdk: JdkSelector, notify: ProgressNotice
+) -> FixOutcome | None:
+    """None while the server cannot run: its license not accepted, its build not there, or no
+    JDK its import can use, which the other steps and rows already report."""
+    server = WARM_UP_STEPS[step]
+    home = jdk.selected_home()
+    if home is None or not is_usable(workspace.language_servers, server, jdk):
+        return None
+    notify(f"running {step}")
+    installer = workspace.language_server_installer
+    return FixOutcome(step, installer.warm_up(server, step.project, home))
+
+
 def _run_step(
     commands: CommandRunner,
     step: FixStep,
@@ -600,8 +704,11 @@ def _fix_plan(
         plan.append((LANGUAGE_SERVERS_FIX, files.root / LSP_DIRECTORY))
         plan += [(step, files.root / step.project) for step in DOWNLOAD_STEPS]
         plan += [(step, files.root / step.project) for step in GO_INSTALL_STEPS]
+        plan += [(step, files.root / step.project) for step in MACHINE_DOWNLOAD_STEPS]
     if jvm and files.exists(JVM_FIX.project):
         plan += [(step, files.root / step.project) for step in (JVM_FIX, *JVM_PROJECT_WARMUPS)]
+        if _code_intelligence_on(workspace):
+            plan += [(step, files.root / step.project) for step in WARM_UP_STEPS]
     return plan
 
 

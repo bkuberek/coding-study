@@ -32,6 +32,7 @@ const LANGUAGE_IDS: Readonly<Record<string, string>> = {
   cjs: "javascript",
   jsx: "javascriptreact",
   java: "java",
+  kt: "kotlin",
   go: "go",
   rs: "rust",
 };
@@ -44,7 +45,7 @@ export function serverLanguageFor(path: string): string | null {
   return language === null ? null : (SERVER_LANGUAGES[language] ?? null);
 }
 
-/** The LSP language id of a file the Python, TypeScript, Java, Go or Rust server opens, else null. */
+/** The LSP language id of a file the Python, TypeScript, Java, Kotlin, Go or Rust server opens, else null. */
 export function languageIdFor(path: string): string | null {
   const name = path.slice(path.lastIndexOf("/") + 1);
   return LANGUAGE_IDS[name.slice(name.lastIndexOf(".") + 1).toLowerCase()] ?? null;

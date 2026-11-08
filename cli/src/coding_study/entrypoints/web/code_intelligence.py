@@ -303,11 +303,12 @@ class LanguageSessions:
         directory of its root that no running server of this `cstudy serve` holds, since two
         servers cannot share one."""
         lsp = target.lsp_directory
+        home = None if target.java_home is None else str(target.java_home)
         java = None if target.java_home is None else str(target.java_home / "bin" / "java")
         data = None
         if target.server.data is not None:
             data = self._free_data_directory(lsp / target.server.data / target.root)
-        return Launch(str(lsp), data, java, sys.platform)
+        return Launch(str(lsp), data, java, sys.platform, home)
 
     def _free_data_directory(self, base: Path) -> str:
         places = (str(base / str(slot)) for slot in itertools.count(1))

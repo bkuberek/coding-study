@@ -42,8 +42,8 @@ test("Rust files are rust, the id rust-analyzer knows", () => {
   assert.equal(languageIdFor("practice/two_sum.rs"), "rust");
 });
 
-test("a Kotlin file has no id while Kotlin has no server", () => {
-  assert.equal(languageIdFor("Solution.kt"), null);
+test("Kotlin files are kotlin, the id the Kotlin LSP knows", () => {
+  assert.equal(languageIdFor("Solution.kt"), "kotlin");
 });
 
 test("a file with no language server id has none", () => {
