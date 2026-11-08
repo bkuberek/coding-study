@@ -30,12 +30,26 @@ from pathlib import Path
 from typing import Any
 
 from playwright.sync_api import Browser, BrowserContext, Page, sync_playwright
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 STAGES = ("prepare", "seed", "videos", "shots", "mock")
 DESKTOP = (1440, 900)
 PHONE = (390, 844)
 PHONE_SCALE = 2
 THEMES = ("light", "dark")
+SHOTS = (
+    "code-intelligence-hover",
+    "code-intelligence-error",
+    "autocomplete-list",
+    "web-ui-problems",
+    "web-ui-attempt",
+    "web-ui-project",
+    "web-ui-results",
+    "web-ui-history",
+    "web-ui-health",
+    "web-ui-settings",
+)
+"""The screenshots of the `shots` stage, in the order they are taken; `--shots` picks some."""
 WAIT_MS = 60_000
 TYPING_MS = 75
 FFMPEG = shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"
@@ -53,10 +67,7 @@ PREFERENCES = {
     "autocomplete": True,
 }
 
-TWO_SUM = '''"""Two Sum. Statement: .statements/two-sum.md. Run: cstudy test two-sum"""
-
-
-def two_sum(nums: list[int], target: int) -> list[int]:
+TWO_SUM = '''def two_sum(nums: list[int], target: int) -> list[int]:
     by_value = sorted(range(len(nums)), key=lambda i: nums[i])
     low, high = 0, len(nums) - 1
     while low < high:
@@ -72,8 +83,6 @@ def two_sum(nums: list[int], target: int) -> list[int]:
 TWO_SUM_WITH_TYPO = TWO_SUM.replace("high = 0, len(nums) - 1", "high = 0, len(num) - 1")
 TWO_SUM_WITH_ROOM = TWO_SUM + "\n\n"
 MOVE_ZEROES = (
-    '"""Move Zeroes. Statement: .statements/move-zeroes.md. '
-    'Run: cstudy test move-zeroes"""\n\n\n'
     "def move_zeroes(nums: list[int]) -> None:\n"
     "    write = 0\n"
     "    for read in range(len(nums)):\n"
@@ -186,9 +195,10 @@ def gradle_daemons() -> set[int]:
 class Showcase:
     """The throwaway install, workspace and server that every stage works with."""
 
-    def __init__(self, work: Path, out: Path) -> None:
+    def __init__(self, work: Path, out: Path, shots: tuple[str, ...] = SHOTS) -> None:
         self.work = work.resolve()
         self.out = out.resolve()
+        self.shots = shots
         self.venv = self.work / "venv"
         self.workspace = self.work / "ws"
         self.toolbin = self.work / "toolbin"
@@ -258,7 +268,7 @@ class Showcase:
             edit(slug, body)
             self.finish(slug, rating)
         self.cs("start", "two-sum", "--lang", "python", "--no-open")
-        self.stub("two-sum").write_text(TWO_SUM)
+        self.write_stub("two-sum", TWO_SUM)
         self.cs("start", "move-zeroes", "--lang", "python", "--no-open")
         self.cs("start", "bank-project-python", "--no-open")
         project = self.workspace / "projects" / "bank-project-python"
@@ -272,6 +282,15 @@ class Showcase:
 
     def stub(self, slug: str) -> Path:
         return self.workspace / "python" / "practice" / f"{slug.replace('-', '_')}.py"
+
+    def write_stub(self, slug: str, code: str) -> None:
+        """Replaces the stub's code and keeps the header `cstudy start` wrote above it, so the
+        media show the header of the release they come from."""
+        text = self.stub(slug).read_text()
+        self.stub(slug).write_text(text[: text.index("\ndef ") + 1] + code)
+
+    def wants(self, name: str) -> bool:
+        return name in self.shots
 
     def edit_stub(self, slug: str, body: str) -> None:
         """Replaces the stub's `raise NotImplementedError` line with `body`."""
@@ -370,6 +389,10 @@ class Showcase:
             [str(self.workspace), "~/cstudy-workspace"],
             [home, "~"],
         ]
+        config_home = os.environ.get("XDG_CONFIG_HOME")
+        if config_home:
+            pairs.insert(0, [str(Path(config_home).resolve()), "~/.config"])
+            pairs.insert(0, [config_home, "~/.config"])
         page.evaluate(REDACT_SCRIPT, pairs)
 
 
@@ -496,13 +519,12 @@ def wait_ready(page: Page, server: str = "basedpyright") -> None:
 
 
 def run_tests(page: Page) -> None:
-    """Runs the tests and waits until the run has ended, not just until old results show."""
+    """Runs the tests and waits until the run has ended, not just until old results show. While a
+    run is active the toolbar is `is-running` and Run tests itself reads Cancel."""
     page.get_by_role("button", name=re.compile("Run tests")).click()
-    page.wait_for_timeout(1200)
-    page.wait_for_function(
-        "() => [...document.querySelectorAll('button')]"
-        ".find(b => /Cancel/.test(b.textContent))?.disabled === true"
-    )
+    with contextlib.suppress(PlaywrightTimeoutError):
+        page.wait_for_selector(".run-toolbar.is-running", timeout=5_000)
+    page.wait_for_selector(".run-toolbar:not(.is-running)")
     page.wait_for_timeout(500)
 
 
@@ -518,105 +540,115 @@ def click_end_of_file(page: Page, pointer: Pointer) -> None:
 
 def feature_shots(app: Showcase, context: BrowserContext, variant: Variant) -> None:
     say(f"feature shots {variant.suffix}")
-    attempt_file = app.stub("two-sum")
 
-    attempt_file.write_text(TWO_SUM)
-    page = app.attempt(context, "two-sum")
-    open_file(page, "two_sum.py")
-    wait_ready(page)
-    pointer = Pointer(page)
-    pointer.to_token("return sorted", "sorted")
-    page.wait_for_selector(".cm-tooltip:has-text('Return a new list')")
-    page.wait_for_timeout(400)
-    app.screenshot(page, "code-intelligence-hover", variant)
-    page.close()
+    if app.wants("code-intelligence-hover"):
+        app.write_stub("two-sum", TWO_SUM)
+        page = app.attempt(context, "two-sum")
+        open_file(page, "two_sum.py")
+        wait_ready(page)
+        pointer = Pointer(page)
+        pointer.to_token("return sorted", "sorted")
+        page.wait_for_selector(".cm-tooltip:has-text('Return a new list')")
+        page.wait_for_timeout(400)
+        app.screenshot(page, "code-intelligence-hover", variant)
+        page.close()
 
-    attempt_file.write_text(TWO_SUM_WITH_TYPO)
-    page = app.attempt(context, "two-sum")
-    open_file(page, "two_sum.py")
-    wait_ready(page)
-    page.wait_for_selector(".cm-lintRange-error")
-    pointer = Pointer(page)
-    pointer.to_token("len(num)", "num")
-    page.wait_for_selector(".cm-tooltip:has-text('is not defined')")
-    page.wait_for_timeout(400)
-    app.screenshot(page, "code-intelligence-error", variant)
-    page.close()
+    if app.wants("code-intelligence-error"):
+        app.write_stub("two-sum", TWO_SUM_WITH_TYPO)
+        page = app.attempt(context, "two-sum")
+        open_file(page, "two_sum.py")
+        wait_ready(page)
+        page.wait_for_selector(".cm-lintRange-error")
+        pointer = Pointer(page)
+        pointer.to_token("len(num)", "num")
+        page.wait_for_selector(".cm-tooltip:has-text('is not defined')")
+        page.wait_for_timeout(400)
+        app.screenshot(page, "code-intelligence-error", variant)
+        page.close()
 
-    attempt_file.write_text(TWO_SUM_WITH_ROOM)
-    page = app.attempt(context, "two-sum")
-    open_file(page, "two_sum.py")
-    wait_ready(page)
-    pointer = Pointer(page)
-    click_end_of_file(page, pointer)
-    page.keyboard.type("answer = sor", delay=60)
-    page.wait_for_selector(".cm-tooltip-autocomplete")
-    page.wait_for_selector(".cm-completionInfo")
-    page.wait_for_timeout(600)
-    pointer.to(5, 5, steps=1)
-    app.screenshot(page, "autocomplete-list", variant)
-    page.close()
-    attempt_file.write_text(TWO_SUM)
+    if app.wants("autocomplete-list"):
+        app.write_stub("two-sum", TWO_SUM_WITH_ROOM)
+        page = app.attempt(context, "two-sum")
+        open_file(page, "two_sum.py")
+        wait_ready(page)
+        pointer = Pointer(page)
+        click_end_of_file(page, pointer)
+        page.keyboard.type("answer = sor", delay=60)
+        page.wait_for_selector(".cm-tooltip-autocomplete")
+        page.wait_for_selector(".cm-completionInfo")
+        page.wait_for_timeout(600)
+        pointer.to(5, 5, steps=1)
+        app.screenshot(page, "autocomplete-list", variant)
+        page.close()
+    app.write_stub("two-sum", TWO_SUM)
 
 
 def app_shots(app: Showcase, context: BrowserContext, variant: Variant) -> None:
     say(f"app shots {variant.suffix}")
 
-    page = app.page(context, "/")
-    page.wait_for_selector("tbody tr")
-    page.wait_for_timeout(400)
-    app.screenshot(page, "web-ui-problems", variant)
-    page.close()
+    if app.wants("web-ui-problems"):
+        page = app.page(context, "/")
+        page.wait_for_selector("tbody tr")
+        page.wait_for_timeout(400)
+        app.screenshot(page, "web-ui-problems", variant)
+        page.close()
 
-    page = app.attempt(context, "bank-project-python")
-    open_file(page, "bank.py")
-    wait_ready(page)
-    run_tests(page)
-    page.evaluate("document.activeElement && document.activeElement.blur()")
-    page.wait_for_timeout(300)
-    app.screenshot(page, "web-ui-attempt", variant)
-    for name in ("models.py", "ledger.py", "test_level_1.py"):
-        page.get_by_text(name, exact=False).first.click()
-        page.wait_for_timeout(500)
-    page.get_by_text("ledger.py", exact=True).first.click()
-    page.wait_for_timeout(600)
-    app.screenshot(page, "web-ui-project", variant)
-    page.close()
+    if app.wants("web-ui-attempt") or app.wants("web-ui-project"):
+        page = app.attempt(context, "bank-project-python")
+        open_file(page, "bank.py")
+        wait_ready(page)
+        run_tests(page)
+        page.evaluate("document.activeElement && document.activeElement.blur()")
+        page.wait_for_timeout(300)
+        if app.wants("web-ui-attempt"):
+            app.screenshot(page, "web-ui-attempt", variant)
+        if app.wants("web-ui-project"):
+            for name in ("models.py", "ledger.py", "test_level_1.py"):
+                page.get_by_text(name, exact=False).first.click()
+                page.wait_for_timeout(500)
+            page.get_by_text("ledger.py", exact=True).first.click()
+            page.wait_for_timeout(600)
+            app.screenshot(page, "web-ui-project", variant)
+        page.close()
 
-    app.stub("move-zeroes").write_text(MOVE_ZEROES)
-    page = app.attempt(context, "move-zeroes")
-    open_file(page, "move_zeroes.py")
-    wait_ready(page)
-    run_tests(page)
-    if variant.phone:
-        page.locator("text=RESULTS").first.evaluate(
-            "e => { e.scrollIntoView({block: 'start'}); window.scrollBy(0, -70); }"
-        )
-    page.evaluate("document.activeElement && document.activeElement.blur()")
-    page.wait_for_timeout(400)
-    app.screenshot(page, "web-ui-results", variant)
-    page.close()
+    if app.wants("web-ui-results"):
+        app.write_stub("move-zeroes", MOVE_ZEROES)
+        page = app.attempt(context, "move-zeroes")
+        open_file(page, "move_zeroes.py")
+        wait_ready(page)
+        run_tests(page)
+        if variant.phone:
+            page.locator("text=RESULTS").first.evaluate(
+                "e => { e.scrollIntoView({block: 'start'}); window.scrollBy(0, -70); }"
+            )
+        page.evaluate("document.activeElement && document.activeElement.blur()")
+        page.wait_for_timeout(400)
+        app.screenshot(page, "web-ui-results", variant)
+        page.close()
 
-    page = app.page(context, "/problems/valid-anagram")
-    page.locator("summary", has_text="failed").click()
-    page.get_by_role("button", name=re.compile("View valid_anagram")).last.click()
-    page.wait_for_selector(".cm-content[aria-readonly='true']")
-    page.wait_for_timeout(600)
-    app.screenshot(page, "web-ui-history", variant)
-    page.close()
+    if app.wants("web-ui-history"):
+        page = app.page(context, "/problems/valid-anagram")
+        page.locator("summary", has_text="failed").click()
+        page.get_by_role("button", name=re.compile("View valid_anagram")).last.click()
+        page.wait_for_selector(".cm-content[aria-readonly='true']")
+        page.wait_for_timeout(600)
+        app.screenshot(page, "web-ui-history", variant)
+        page.close()
 
-    page = app.page(context, "/health")
-    page.wait_for_selector("text=code intelligence typescript")
-    tall(page, variant)
-    app.screenshot(page, "web-ui-health", variant, redact=True)
-    page.close()
+    if app.wants("web-ui-health"):
+        page = app.page(context, "/health")
+        page.wait_for_selector("text=code intelligence typescript")
+        tall(page, variant)
+        app.screenshot(page, "web-ui-health", variant, redact=True)
+        page.close()
 
-    page = app.page(context, "/settings")
-    page.wait_for_selector("text=basedpyright 1.")
-    page.wait_for_selector("text=typescript-language-server")
-    page.wait_for_timeout(300)
-    app.screenshot(page, "web-ui-settings", variant, redact=True)
-    page.close()
+    if app.wants("web-ui-settings"):
+        page = app.page(context, "/settings")
+        page.wait_for_selector("text=basedpyright 1.")
+        page.wait_for_selector("text=typescript-language-server")
+        page.wait_for_timeout(300)
+        app.screenshot(page, "web-ui-settings", variant, redact=True)
+        page.close()
 
 
 def tall(page: Page, variant: Variant) -> None:
@@ -719,11 +751,11 @@ ANIMATIONS = (
 )
 
 
-def record(app: Showcase, browser: Browser, animation: Animation) -> None:
-    say(f"video {animation.name}")
-    variant = Variant("light", False)
+def record(app: Showcase, browser: Browser, animation: Animation, theme: str) -> None:
+    say(f"video {animation.name} ({theme})")
+    variant = Variant(theme, False)
     app.write_preferences(autocomplete=animation.autocomplete)
-    app.stub("two-sum").write_text(TWO_SUM_WITH_ROOM)
+    app.write_stub("two-sum", TWO_SUM_WITH_ROOM)
     context = app.context(browser, variant, video=True)
     started = time.monotonic()
     page = app.attempt(context, "two-sum")
@@ -743,7 +775,7 @@ def record(app: Showcase, browser: Browser, animation: Animation) -> None:
     assert video is not None
     raw = app.work / f"{animation.name}.webm"
     video.save_as(raw)
-    app.stub("two-sum").write_text(TWO_SUM)
+    app.write_stub("two-sum", TWO_SUM)
     app.write_preferences()
     encode(raw, app.out, animation.name, trim_from, length)
 
@@ -794,12 +826,22 @@ def main() -> None:
     parser.add_argument(
         "--stages", default=",".join(STAGES), help=f"comma list of {', '.join(STAGES)}"
     )
+    parser.add_argument(
+        "--shots", default=",".join(SHOTS), help="comma list of the screenshots to take"
+    )
+    parser.add_argument(
+        "--video-theme", choices=THEMES, default="light", help="the theme the animations show"
+    )
     args = parser.parse_args()
     stages = [stage for stage in args.stages.split(",") if stage]
     unknown = set(stages) - set(STAGES)
     if unknown:
         sys.exit(f"unknown stages: {', '.join(sorted(unknown))}")
-    app = Showcase(args.work, args.out)
+    shots = tuple(shot for shot in args.shots.split(",") if shot)
+    unknown = set(shots) - set(SHOTS)
+    if unknown:
+        sys.exit(f"unknown shots: {', '.join(sorted(unknown))}")
+    app = Showcase(args.work, args.out, shots)
     app.out.mkdir(parents=True, exist_ok=True)
     try:
         if "prepare" in stages:
@@ -814,7 +856,7 @@ def main() -> None:
                 try:
                     if "videos" in stages:
                         for animation in ANIMATIONS:
-                            record(app, browser, animation)
+                            record(app, browser, animation, args.video_theme)
                     if "shots" in stages:
                         for variant in VARIANTS:
                             context = app.context(browser, variant)

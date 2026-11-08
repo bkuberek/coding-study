@@ -28,6 +28,8 @@ A run takes several minutes and runs one Chromium, `cstudy serve` and the langua
 
 `--stages` runs part of it, in this order: `prepare` (virtual environment, `cstudy init --no-ide`, preferences, `cstudy doctor --fix`), `seed` (practice history), `videos`, `shots`, `mock`. A later stage needs the earlier ones, so rerun a single stage only against the same `--work` folder, and without `prepare`, which wants the folder empty. Run `videos` before `shots`, and `mock` last: a mock in progress adds a banner to every view.
 
+`--shots` takes some of the screenshots of the `shots` stage, by name, such as `--shots web-ui-attempt,web-ui-settings`; a shot left out does not open its view, so leaving out `web-ui-health` starts no Gradle. `--video-theme dark` records the animations in the dark theme.
+
 When it ends, stop what it may have left: `ps -Ao pid,ppid,etime,command | rg -i "basedpyright|typescript-language-server|uvicorn|cstudy serve|ms-playwright|GradleDaemon"`. The script stops the server and the browser, and the Gradle daemons that started while it ran (`cstudy doctor --fix` and the Health view start them). A daemon that was already running stays, and so may be shared with other work: check its builds before you kill it, by PID.
 
 ## What it makes
@@ -48,7 +50,7 @@ Desktop images are 1440 by 900, the phone ones 390 wide at 2x. A name is `<name>
 | `web-ui-settings` | Settings, with both toggles and the state of each language |
 | `web-ui-mock` | A mock in progress |
 
-Two animations, in the light theme at desktop width, each as `<name>.gif`, `<name>.mp4` and `<name>-poster.png` (the first frame):
+Two animations, in the light theme at desktop width unless `--video-theme` says otherwise, each as `<name>.gif`, `<name>.mp4` and `<name>-poster.png` (the first frame):
 
 | Name | Shows |
 |------|-------|
@@ -59,7 +61,8 @@ Recording uses Playwright's `record_video_dir` with a small injected pointer, si
 
 ## Notes
 
-- The screenshots replace this machine's paths with `~` in the page text before they are taken, so no temporary folder or user name shows.
+- The screenshots replace this machine's paths with `~` in the page text before they are taken, so no temporary folder or user name shows. A `XDG_CONFIG_HOME` in the environment shows as `~/.config`, so a run can keep its `config.toml` apart from yours.
+- The practice files keep the header `cstudy start` wrote, and the script replaces only the code below it, so the media show the header of the release they come from.
 - Statements credit the problem each one rewords, by the name of the site it comes from. The media must not name any assessment vendor, so the script hides those credit lines in the page while it records and photographs. Nothing else in a statement changes.
 - The script writes files only into `--work` and `--out`. Nothing it makes is committed for you.
 - It needs the language servers, so it runs `cstudy doctor --fix` with the network. After that it works offline.
