@@ -12,6 +12,7 @@ from coding_study.adapters.subprocess_tool_probe import (
 )
 from coding_study.application.code_intelligence import ServerStatus, language_server_states
 from coding_study.domain.code_intelligence import LANGUAGE_SERVERS, LSP_DIRECTORY
+from tests.fakes import FakeJdk
 
 pytestmark = [
     pytest.mark.slow,
@@ -20,6 +21,8 @@ pytestmark = [
         reason="node and pnpm are not installed",
     ),
 ]
+NPM_SERVERS = [server for server in LANGUAGE_SERVERS if server.archive is None]
+"""What pnpm installs; JDT LS is an archive, which `cstudy doctor --fix` downloads."""
 
 
 @pytest.fixture(scope="module")
@@ -34,13 +37,13 @@ def installed(practice_workspace):
 
 def test_the_install_puts_both_servers_in_the_lsp_directory(practice_workspace, installed):
     lsp = practice_workspace / LSP_DIRECTORY
-    scripts = [lsp / server.script for server in LANGUAGE_SERVERS]
+    scripts = [lsp / server.script for server in NPM_SERVERS]
     assert all(script.is_file() for script in scripts)
 
 
-@pytest.mark.parametrize("server", LANGUAGE_SERVERS, ids=lambda server: server.name)
+@pytest.mark.parametrize("server", NPM_SERVERS, ids=lambda server: server.name)
 def test_each_servers_version_command_prints_the_pinned_version(installed, server):
-    states = {state.language: state for state in language_server_states(installed)}
+    states = {state.language: state for state in language_server_states(installed, FakeJdk())}
     assert (states[server.language].status, states[server.language].version) == (
         ServerStatus.INSTALLED,
         server.version,

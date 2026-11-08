@@ -15,6 +15,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from coding_study.domain.attempts import AttemptStatus
+from coding_study.domain.problem import Language
 from coding_study.entrypoints.web.code_intelligence import MESSAGE_LIMIT, LanguageSessions
 from coding_study.entrypoints.web.language_server import LanguageServerCommand
 from tests.language_server_scripts import QUICK, answer, notification, request
@@ -308,6 +309,65 @@ def test_a_session_that_ended_frees_its_slot(tmp_path):
                 assert closed_with(websocket) == (4002, "exit 0")
             assert all_gone(lab)
     assert started_servers(lab) == 2
+
+
+# Java: a data directory of its own per session
+
+
+def java_rig(tmp_path) -> Rig:
+    return rig(tmp_path, language=Language.JAVA)
+
+
+def data_directory(lab: Rig, slot: int) -> Path:
+    return lab.root / ".cs" / "lsp" / "jdtls-data" / "jvm" / str(slot)
+
+
+def caches(lab: Rig) -> list[str]:
+    """Where each server the rig started keeps its caches (`XDG_CACHE_HOME`)."""
+    return [str(call["xdg_cache_home"]) for call in lab.server.calls()]
+
+
+def test_a_java_session_keeps_jdtls_cache_in_a_data_directory_of_its_root(tmp_path):
+    lab = java_rig(tmp_path)
+    lab.server.play()
+    with session_client(lab.app) as page, session(page, lab.query):
+        wait_for_servers(lab, 1)
+    assert caches(lab) == [f"{data_directory(lab, 1)}/cache"]
+
+
+def test_a_java_session_finds_an_empty_list_of_gradle_versions_before_jdtls_starts(tmp_path):
+    lab = java_rig(tmp_path)
+    lab.server.play()
+    with session_client(lab.app) as page, session(page, lab.query):
+        wait_for_servers(lab, 1)
+    versions = data_directory(lab, 1) / "cache" / "tooling" / "gradle" / "versions.json"
+    assert versions.read_text() == "[]"
+
+
+def test_two_java_sessions_of_one_root_get_data_directories_of_their_own(tmp_path):
+    lab = java_rig(tmp_path)
+    lab.server.play()
+    with session_client(lab.app) as page, session(page, lab.query), session(page, lab.query):
+        wait_for_servers(lab, 2)
+    assert sorted(caches(lab)) == [f"{data_directory(lab, slot)}/cache" for slot in (1, 2)]
+
+
+def test_a_java_session_takes_the_data_directory_a_stopped_server_left(tmp_path):
+    lab = java_rig(tmp_path)
+    lab.server.play()
+    with session_client(lab.app) as page:
+        for count in (1, 2):
+            with session(page, lab.query):
+                wait_for_servers(lab, count)
+            assert all_gone(lab)
+    assert caches(lab) == [f"{data_directory(lab, 1)}/cache"] * 2
+
+
+def test_a_python_session_gets_no_data_directory(lab, client):
+    lab.server.play()
+    with session(client, lab.query):
+        wait_for_servers(lab, 1)
+    assert (lab.root / ".cs" / "lsp" / "jdtls-data").exists() is False
 
 
 # the server stops

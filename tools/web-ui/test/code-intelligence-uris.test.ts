@@ -30,6 +30,14 @@ test("TypeScript's files have the ids tsserver knows", () => {
   );
 });
 
+test("Java files are java, the id JDT LS knows", () => {
+  assert.equal(languageIdFor("Solution.java"), "java");
+});
+
+test("a Kotlin file has no id while Kotlin has no server", () => {
+  assert.equal(languageIdFor("Solution.kt"), null);
+});
+
 test("a file with no language server id has none", () => {
   assert.equal(languageIdFor("notes.md"), null);
 });

@@ -19,6 +19,7 @@ from urllib.parse import unquote, urlsplit
 
 LIMIT = 4 * 1024 * 1024
 LOCAL_HOSTS = ("", "localhost")
+JDT_SCHEME = "jdt"
 
 
 class Reason(StrEnum):
@@ -105,8 +106,17 @@ def local_path(uri: str) -> str:
     local = parts.scheme.lower() == "file" and parts.netloc.lower() in LOCAL_HOSTS
     path = unquote(parts.path)
     if not local or parts.query or parts.fragment or not path.startswith("/"):
-        raise LibraryRefusalError(Reason.NOT_A_FILE_URI, uri)
+        raise LibraryRefusalError(Reason.NOT_A_FILE_URI, _named(uri, parts.scheme, path))
     return path
+
+
+def _named(uri: str, scheme: str, path: str) -> str:
+    """How the note at the click names what a URI that is no file holds: a class of JDT LS
+    (`jdt://contents/java.base/java.util/ArrayList.java?=…`) by its module, package and file,
+    without the query that spells out the JDK's path; any other URI as it is."""
+    if scheme.lower() == JDT_SCHEME:
+        return path.lstrip("/")
+    return uri
 
 
 def file_path(uri: str) -> Path:

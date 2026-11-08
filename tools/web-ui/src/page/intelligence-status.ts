@@ -10,6 +10,8 @@ import type { LanguageState } from "./types.ts";
 export type FileIntelligence =
   | { readonly kind: "session"; readonly language: string; readonly server: string; readonly state: SessionState }
   | { readonly kind: "not-installed"; readonly language: string; readonly server: string }
+  /** Installed, but the selected JDK is not one the server runs on: `detail` says which it needs. */
+  | { readonly kind: "needs-jdk"; readonly language: string; readonly detail: string }
   | { readonly kind: "no-server"; readonly language: string }
   /** The attempt has none whatever its language's server: `no_code_intelligence` of its status. */
   | { readonly kind: "withheld"; readonly reason: string };
@@ -20,7 +22,7 @@ export interface Segment {
   readonly action: "restart" | "health" | null;
   /** The whole reason of a stopped session, for the tooltip. */
   readonly title: string;
-  /** `starting`, `ready`, `reconnecting`, `stopped`, `not-installed`, `no-server` or `withheld`. */
+  /** `starting`, `ready`, `reconnecting`, `stopped`, `not-installed`, `needs-jdk`, `no-server` or `withheld`. */
   readonly state: string;
 }
 
@@ -70,6 +72,8 @@ export function segmentOf(found: FileIntelligence, counts?: DiagnosticCounts): S
         title: "",
         state: "not-installed",
       };
+    case "needs-jdk":
+      return { text: `no code intelligence for ${languageName(found.language)}: ${found.detail}`, action: "health", title: "", state: "needs-jdk" };
     case "withheld":
       return { text: WITHHELD[found.reason] ?? WITHHELD_UNKNOWN, action: null, title: "", state: "withheld" };
     case "session":
@@ -106,5 +110,6 @@ export interface LanguageRow {
 
 /** One line of the Settings view's list of languages (docs/specs/web-ui.md#settings-view). */
 export function languageRow(state: LanguageState): LanguageRow {
-  return { name: languageName(state.language), detail: state.detail, health: state.state === "not_installed" };
+  const health = state.state === "not_installed" || state.state === "needs_jdk";
+  return { name: languageName(state.language), detail: state.detail, health };
 }

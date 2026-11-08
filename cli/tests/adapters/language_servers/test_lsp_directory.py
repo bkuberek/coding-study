@@ -1,6 +1,9 @@
+import hashlib
+import io
 import json
 import os
 import re
+import tarfile
 from collections.abc import Mapping, Sequence
 from importlib import resources
 from pathlib import Path
@@ -16,17 +19,23 @@ from coding_study.application.ports import (
     FileMissing,
     NotInstalled,
     ProbeResult,
+    Unpacked,
     VersionFailed,
     VersionPrinted,
 )
 from coding_study.domain.code_intelligence import (
     BASEDPYRIGHT,
+    JDTLS,
     LANGUAGE_SERVERS,
     LSP_INSTALL_COMMAND,
     TYPESCRIPT_LANGUAGE_SERVER,
+    Archive,
+    LanguageServer,
 )
 
 TYPESCRIPT = TYPESCRIPT_LANGUAGE_SERVER
+NPM_SERVERS = [server for server in LANGUAGE_SERVERS if server.archive is None]
+CORE_PLUGIN = "plugins/org.eclipse.jdt.ls.core_1.63.0.202610191322.jar"
 PACKAGE_JSON, LOCK_FILE = MANIFEST_FILES
 PNPM_SUCCEEDED = ProbeResult(0, "")
 
@@ -63,6 +72,12 @@ def directory(workspace: Path, tools=None, commands=None) -> LspDirectory:
     return LspDirectory(workspace, tools or RecordingTools(), commands or RecordingCommands())
 
 
+def version_script(server: LanguageServer) -> str:
+    """The script of a Node server whose `--version` prints its version."""
+    assert server.version_script is not None
+    return server.version_script
+
+
 def install_server(workspace: Path, script: str) -> Path:
     path = workspace / ".cs" / "lsp" / script
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -81,7 +96,7 @@ def test_a_missing_server_runs_nothing(tmp_path):
 
 
 def test_an_installed_server_prints_its_version_through_node(tmp_path):
-    script = install_server(tmp_path, BASEDPYRIGHT.version_script)
+    script = install_server(tmp_path, version_script(BASEDPYRIGHT))
     install_server(tmp_path, BASEDPYRIGHT.script)
     tools = RecordingTools({str(script): ProbeResult(0, "basedpyright 1.40.2\n")})
     found = directory(tmp_path, tools).probe(BASEDPYRIGHT)
@@ -92,7 +107,7 @@ def test_an_installed_server_prints_its_version_through_node(tmp_path):
 
 
 def test_a_version_command_that_exits_nonzero_gives_its_first_line(tmp_path):
-    script = install_server(tmp_path, BASEDPYRIGHT.version_script)
+    script = install_server(tmp_path, version_script(BASEDPYRIGHT))
     install_server(tmp_path, BASEDPYRIGHT.script)
     output = "\nError: Cannot find module 'x'\n    at Module._resolve\n"
     tools = RecordingTools({str(script): ProbeResult(1, output)})
@@ -101,32 +116,131 @@ def test_a_version_command_that_exits_nonzero_gives_its_first_line(tmp_path):
 
 
 def test_a_silent_failure_names_the_exit_code(tmp_path):
-    script = install_server(tmp_path, BASEDPYRIGHT.version_script)
+    script = install_server(tmp_path, version_script(BASEDPYRIGHT))
     install_server(tmp_path, BASEDPYRIGHT.script)
     tools = RecordingTools({str(script): ProbeResult(3, "")})
     assert directory(tmp_path, tools).probe(BASEDPYRIGHT) == VersionFailed("exited with 3")
 
 
 def test_a_missing_node_fails_the_version_command(tmp_path):
-    script = install_server(tmp_path, BASEDPYRIGHT.version_script)
+    script = install_server(tmp_path, version_script(BASEDPYRIGHT))
     install_server(tmp_path, BASEDPYRIGHT.script)
     tools = RecordingTools({str(script): None})
     assert directory(tmp_path, tools).probe(BASEDPYRIGHT) == VersionFailed("node not found on PATH")
 
 
 def test_typescript_without_the_workspaces_tsserver_is_missing_a_file(tmp_path):
-    install_server(tmp_path, TYPESCRIPT.version_script)
+    install_server(tmp_path, version_script(TYPESCRIPT))
     found = directory(tmp_path).probe(TYPESCRIPT)
     assert found == FileMissing("typescript/node_modules/typescript/lib/tsserver.js")
 
 
 def test_typescript_with_the_workspaces_tsserver_prints_its_version(tmp_path):
-    script = install_server(tmp_path, TYPESCRIPT.version_script)
+    script = install_server(tmp_path, version_script(TYPESCRIPT))
     tsserver = tmp_path / "typescript/node_modules/typescript/lib/tsserver.js"
     tsserver.parent.mkdir(parents=True)
     tsserver.write_text("")
     tools = RecordingTools({str(script): ProbeResult(0, "6.0.3\n")})
     assert directory(tmp_path, tools).probe(TYPESCRIPT) == VersionPrinted("6.0.3\n")
+
+
+# JDT LS: an archive, with no version command
+
+
+def test_jdtls_without_the_core_plugin_of_its_milestone_is_not_installed(tmp_path):
+    install_server(tmp_path, "jdtls/plugins/org.eclipse.jdt.ls.core_1.62.0.202609011200.jar")
+    assert directory(tmp_path).probe(JDTLS) == NotInstalled()
+
+
+def test_jdtls_with_the_core_plugin_of_its_milestone_is_unpacked(tmp_path):
+    install_server(tmp_path, JDTLS.script)
+    assert directory(tmp_path).probe(JDTLS) == Unpacked()
+
+
+def test_probing_jdtls_starts_no_jvm(tmp_path):
+    install_server(tmp_path, JDTLS.script)
+    tools = RecordingTools()
+    directory(tmp_path, tools).probe(JDTLS)
+    assert tools.ran == []
+
+
+def archive_of(tmp_path: Path, files: Mapping[str, bytes], name: str = "server.tar.gz") -> Archive:
+    """A gzipped tar of `files` in `tmp_path`, as a `file:` URL with its SHA-256."""
+    path = tmp_path / "served" / name
+    path.parent.mkdir(exist_ok=True)
+    with tarfile.open(path, "w:gz") as tar:
+        for member, content in files.items():
+            info = tarfile.TarInfo(member)
+            info.size = len(content)
+            tar.addfile(info, io.BytesIO(content))
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    return Archive(path.as_uri(), digest, "jdtls")
+
+
+JDTLS_FILES = {CORE_PLUGIN: b"core", "bin/jdtls": b"#!/bin/sh\n"}
+
+
+def test_a_download_unpacks_the_archive_into_its_directory(tmp_path):
+    workspace = tmp_path / "ws"
+    result = directory(workspace).download(archive_of(tmp_path, JDTLS_FILES))
+    unpacked = workspace / ".cs" / "lsp" / "jdtls"
+    assert (result.exit_code, (unpacked / CORE_PLUGIN).read_bytes()) == (0, b"core")
+
+
+def test_a_downloaded_jdtls_is_then_unpacked(tmp_path):
+    workspace = tmp_path / "ws"
+    lsp = directory(workspace)
+    lsp.download(archive_of(tmp_path, JDTLS_FILES))
+    assert lsp.probe(JDTLS) == Unpacked()
+
+
+def test_a_download_whose_sha256_differs_unpacks_nothing(tmp_path):
+    workspace = tmp_path / "ws"
+    archive = archive_of(tmp_path, JDTLS_FILES)
+    tampered = Archive(archive.url, "0" * 64, archive.directory)
+    result = directory(workspace).download(tampered)
+    assert (result.exit_code, (workspace / ".cs" / "lsp" / "jdtls").exists()) == (1, False)
+
+
+def test_a_sha256_mismatch_names_both_digests(tmp_path):
+    archive = archive_of(tmp_path, JDTLS_FILES)
+    result = directory(tmp_path / "ws").download(Archive(archive.url, "0" * 64, "jdtls"))
+    assert result.output == f"SHA-256 mismatch: expected {'0' * 64}, got {archive.sha256}\n"
+
+
+def test_a_download_that_fails_keeps_the_earlier_build(tmp_path):
+    workspace = tmp_path / "ws"
+    kept = install_server(workspace, "jdtls/plugins/kept.jar")
+    missing = Archive((tmp_path / "nowhere.tar.gz").as_uri(), "0" * 64, "jdtls")
+    result = directory(workspace).download(missing)
+    assert (result.exit_code, kept.read_text()) == (1, "// the server\n")
+
+
+def test_a_download_replaces_an_earlier_build_whole(tmp_path):
+    workspace = tmp_path / "ws"
+    stale = install_server(workspace, "jdtls/plugins/org.eclipse.jdt.ls.core_1.62.0.jar")
+    directory(workspace).download(archive_of(tmp_path, JDTLS_FILES))
+    assert stale.exists() is False
+
+
+def test_a_download_leaves_nothing_else_in_the_lsp_directory(tmp_path):
+    workspace = tmp_path / "ws"
+    directory(workspace).download(archive_of(tmp_path, JDTLS_FILES))
+    assert sorted(path.name for path in (workspace / ".cs" / "lsp").iterdir()) == ["jdtls"]
+
+
+def test_a_failed_download_leaves_nothing_in_the_lsp_directory(tmp_path):
+    workspace = tmp_path / "ws"
+    archive = archive_of(tmp_path, JDTLS_FILES)
+    directory(workspace).download(Archive(archive.url, "0" * 64, "jdtls"))
+    assert list((workspace / ".cs" / "lsp").iterdir()) == []
+
+
+def test_an_archive_member_that_leaves_its_directory_is_refused(tmp_path):
+    workspace = tmp_path / "ws"
+    archive = archive_of(tmp_path, {"../escaped": b"x"})
+    result = directory(workspace).download(archive)
+    assert (result.exit_code, (workspace / ".cs" / "escaped").exists()) == (1, False)
 
 
 def test_the_install_copies_the_shipped_manifest_into_the_lsp_directory(tmp_path):
@@ -195,9 +309,9 @@ class TestShippedManifest:
 
     def test_it_pins_exactly_the_versions_of_the_catalog(self):
         dependencies = json.loads(shipped(PACKAGE_JSON))["dependencies"]
-        assert dependencies == {server.name: server.version for server in LANGUAGE_SERVERS}
+        assert dependencies == {server.name: server.version for server in NPM_SERVERS}
 
-    @pytest.mark.parametrize("server", list(LANGUAGE_SERVERS), ids=lambda s: s.name)
+    @pytest.mark.parametrize("server", NPM_SERVERS, ids=lambda s: s.name)
     def test_the_lock_names_each_server_with_an_integrity_hash(self, server):
         lock = shipped(LOCK_FILE).decode()
         package = re.escape(f"{server.name}@{server.version}")

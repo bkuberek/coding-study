@@ -89,12 +89,13 @@ Two settings give the editor what an IDE gives: errors as you type, documentatio
    cstudy doctor --fix
    ```
 
-   (or choose **Fix** in the Health view, on the row of each language or at the top). This installs about 46 MB into `.cs/lsp/` in your workspace, a download of about 7 MB, and needs the network that one time. After that practice needs no internet: nothing else is downloaded and no server reaches the network. Deleting `.cs/lsp/` is safe; `--fix` installs it again. With **Code intelligence** off, `--fix` installs nothing for the editor and says so (`skipped the language servers: code intelligence is off; turn it on in Settings…`), unless the servers are installed already.
+   (or choose **Fix** in the Health view, on the row of each language or at the top). This installs about 46 MB into `.cs/lsp/` in your workspace, a download of about 7 MB, plus Eclipse JDT LS for Java, a 51 MB download checked by its SHA-256, and needs the network that one time. After that practice needs no internet: nothing else is downloaded and no server reaches the network. Deleting `.cs/lsp/` is safe; `--fix` installs it again. With **Code intelligence** off, `--fix` installs nothing for the editor and says so (`skipped the language servers: code intelligence is off; turn it on in Settings…`), unless the servers are installed already.
 3. Check the result. `cstudy doctor` shows a row per language while code intelligence is on, and the Settings view lists each language's state:
 
    ```text
    ok    code intelligence python basedpyright 1.40.2
    ok    code intelligence typescript typescript-language-server 6.0.3
+   ok    code intelligence java jdtls 1.63.0
    ```
 
 4. Open a file. The status bar under the editor shows `python · basedpyright · ready` when its server is up, and **Restart** if it stopped.
@@ -140,10 +141,28 @@ Read <kbd>Ctrl</kbd> for <kbd>Cmd</kbd> on Linux and Windows. These work while c
 |----------|--------|-------|
 | Python | basedpyright | Available |
 | TypeScript | typescript-language-server | Available |
-| Java and Kotlin | | Next. Kotlin starts from a check of its server; if that falls short, Java comes alone |
-| Go and Rust | | After that |
+| Java | Eclipse JDT LS | Available, on JDK 25 or 26 |
+| Kotlin | | Not yet: its server, still in alpha, needs the network, is 360 MB and partly closed source. Kotlin files keep the errors of your last run |
+| Go and Rust | | Next |
 
 A file in a language without a server shows a one-line notice in the status bar and works as it does without code intelligence. A language's state also shows in Settings.
+
+### Java
+
+Java's server, Eclipse JDT LS, is a Java program: it runs on the JDK that `cstudy` selects (`JAVA_HOME`, or the `java` on your `PATH`), and only when that JDK is 25 or 26. JDK 25 is the one to install. With another JDK, the status bar says `no code intelligence for Java: needs JDK 25 or 26 · Health`, Settings says `needs JDK 25 or 26`, and `cstudy doctor` names the JDK it found and how to select another:
+
+```text
+WARN  code intelligence java jdtls needs JDK 25 or 26, not 21.0.5
+      fix: select a JDK 25 to 26 with JAVA_HOME, or install JDK 25: …
+```
+
+`cstudy doctor --fix` downloads JDT LS whatever JDK you have, so installing JDK 25 later needs no network.
+
+- **The first start takes a while.** JDT LS imports the `jvm/` Gradle build, or your project folder's, before it reports: about 6 seconds when a Gradle daemon is running, and up to half a minute when it has to start one. The status bar says `java · jdtls · ready` meanwhile, and errors show once the import is done, then about a second after you stop typing. A tab you close keeps its server 5 minutes, so coming back is quick.
+- **It works offline,** over what `cstudy doctor --fix` warmed up: the Gradle import runs offline and nothing is downloaded, not even the checksums of the Gradle wrapper, which JDT LS would otherwise fetch.
+- **It leaves your folders as they were.** No `.project`, `.classpath`, `.settings/` or `bin/` appears in `jvm/` or a project folder: JDT LS checks your files as you type without building them, and keeps its index in `.cs/lsp/jdtls-data/` (50 to 150 MB per folder).
+- **Memory.** A Java session takes 0.5 to 1.2 GB, under a 1 GB heap, and its first import may start a Gradle daemon (about 400 MB) that stays idle afterwards, as the one `cstudy test` starts does.
+- **Definitions into the JDK.** A class of the JDK or of a library, such as `ArrayList`, has no file of its own: a Cmd-click on it shows a note, `java.base/java.util/ArrayList.java:169 · not a file: URI`, and hover still shows its documentation. Your project's files and the runner's support code open in tabs, as in Python.
 
 ## Run the tests and submit
 

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from coding_study.domain.code_intelligence import JDTLS, LSP_DIRECTORY
 from coding_study.entrypoints.web.language_server import LanguageServerCommand, LanguageTiming
 
 FAKE_LANGUAGE_SERVER = Path(__file__).with_name("fake_language_server.py")
@@ -102,3 +103,23 @@ def install_fake_basedpyright(workspace: Path) -> None:
     package.mkdir(parents=True)
     for name in ("index.js", "langserver.index.js"):
         (package / name).write_text("")
+
+
+def install_fake_jdtls(workspace: Path) -> None:
+    """The file `cstudy` looks for in `.cs/lsp/`, so that Java counts as installed."""
+    core = workspace / LSP_DIRECTORY / JDTLS.script
+    core.parent.mkdir(parents=True)
+    core.write_text("")
+
+
+def fake_jdk(home: Path, script: ScriptedServer, feature: int = 25) -> str:
+    """A JDK home of release `feature`, as its `release` file says, whose `java` runs the fake
+    language server on the script; the home, for `JAVA_HOME`. JDT LS runs on the selected JDK."""
+    java = home / "bin" / "java"
+    java.parent.mkdir(parents=True)
+    java.write_text(
+        f'#!/bin/sh\nexec "{sys.executable}" "{FAKE_LANGUAGE_SERVER}" "{script.path}" "$@"\n'
+    )
+    java.chmod(0o755)
+    (home / "release").write_text(f'JAVA_VERSION="{feature}.0.1"\n')
+    return str(home)

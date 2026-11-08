@@ -22,9 +22,11 @@ from coding_study.domain.preferences import Preferences
 from coding_study.domain.problem import Language
 from tests.fakes import (
     INSTALLED_SERVERS,
+    JDK_HOME,
     FakeLanguageServers,
     FakeStubGenerator,
     FakeToolchains,
+    jdk_of,
     make_environment,
     repository_root,
 )
@@ -69,6 +71,42 @@ def test_a_python_attempt_gets_basedpyright_rooted_in_the_practice_project(pract
 def test_a_typescript_attempt_gets_its_language_server_rooted_in_the_practice_project(practice):
     found = target(practice, started(practice, Language.TYPESCRIPT))
     assert (found.server.name, found.root) == ("typescript-language-server", "typescript")
+
+
+def java_practice(tmp_path, feature: int) -> Environment:
+    return make_environment(
+        repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),
+        toolchains=FakeToolchains(stub_generators=STUBS),
+        language_servers=FakeLanguageServers(INSTALLED_SERVERS),
+        jdk=jdk_of(feature),
+    )
+
+
+def test_a_java_attempt_gets_jdtls_rooted_in_the_jvm_project(tmp_path):
+    environment = java_practice(tmp_path, 25)
+    found = target(environment, started(environment, Language.JAVA))
+    assert (found.server.name, found.root) == ("jdtls", "jvm")
+
+
+def test_a_java_session_runs_on_the_selected_jdk(tmp_path):
+    environment = java_practice(tmp_path, 26)
+    assert target(environment, started(environment, Language.JAVA)).java_home == JDK_HOME
+
+
+def test_a_java_attempt_on_a_jdk_jdtls_cannot_run_on_is_refused_with_the_jdk_fix(tmp_path):
+    environment = java_practice(tmp_path, 21)
+    attempt = started(environment, Language.JAVA)
+    with pytest.raises(LanguageServerNotInstalledError) as refused:
+        target(environment, attempt)
+    assert str(refused.value).splitlines() == [
+        "jdtls needs JDK 25 or 26, not 21.0.1",
+        "fix: select a JDK 25 to 26 with JAVA_HOME, or install JDK 25: "
+        "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#jdk",
+    ]
+
+
+def test_a_server_that_runs_on_no_jdk_gets_no_java_home(practice):
+    assert target(practice, started(practice, Language.PYTHON)).java_home is None
 
 
 def test_a_project_attempt_is_rooted_in_its_folder(tmp_path):
@@ -117,7 +155,7 @@ def test_the_preference_off_is_refused_with_the_way_to_turn_it_on(practice):
         target(practice, attempt, Preferences())
 
 
-@pytest.mark.parametrize("language", [Language.GO, Language.RUST, Language.JAVA, Language.KOTLIN])
+@pytest.mark.parametrize("language", [Language.GO, Language.RUST, Language.KOTLIN])
 def test_a_language_without_a_server_in_this_phase_is_refused(practice, language):
     attempt = started(practice, language)
     with pytest.raises(UsageError, match=f"no code intelligence for {language.value} yet"):

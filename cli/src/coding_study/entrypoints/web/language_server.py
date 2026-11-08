@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import cast
 
 from coding_study.adapters.process_environment import inherited_environment
-from coding_study.domain.code_intelligence import LanguageServer
+from coding_study.domain.code_intelligence import LanguageServer, Launch
 from coding_study.entrypoints.web.children import StreamedChild, start_process
 from coding_study.entrypoints.web.runs import SIGNAL_EXIT_BASE
 
@@ -68,8 +68,19 @@ class LanguageServerCommand:
     replacement: tuple[str, ...] | None = None
     """Runs in place of the catalog's command: a test's fake server."""
 
-    def arguments(self, server: LanguageServer, lsp_directory: Path) -> tuple[str, ...]:
-        return self.replacement or server.command(str(lsp_directory))
+    def arguments(self, server: LanguageServer, launch: Launch) -> tuple[str, ...]:
+        return self.replacement or server.command(launch)
+
+
+def prepare_data_directory(server: LanguageServer, launch: Launch) -> None:
+    """Writes the files the server finds in its data directory before it starts, such as the
+    empty list of Gradle versions that keeps JDT LS from downloading checksums."""
+    if launch.data_directory is None:
+        return
+    for relative, content in server.data_files.items():
+        path = Path(launch.data_directory) / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
 
 
 class ServerStartError(Exception):

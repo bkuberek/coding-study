@@ -31,6 +31,7 @@ from tests.fakes import (
     FakeLanguageServers,
     FakeStubGenerator,
     FakeToolchains,
+    jdk_of,
     make_environment,
     repository_root,
 )
@@ -95,8 +96,10 @@ def rig(
     installed: bool = True,
     limit: int = MAX_SESSIONS,
     project: bool = False,
+    language: Language = Language.PYTHON,
 ) -> Rig:
-    """`project`: attempt 1 is the fixture project, rooted in its folder."""
+    """`project`: attempt 1 is the fixture project, rooted in its folder; otherwise the practice
+    file of `language`, on JDK 25."""
     probes = INSTALLED_SERVERS if installed else {}
     servers = FakeLanguageServers(probes)
     if project:
@@ -105,14 +108,16 @@ def rig(
         )
         attempt = start_attempt(environment, StartRequest(PROJECT_SLUG)).attempt
     else:
-        (tmp_path / "python").mkdir(parents=True, exist_ok=True)
+        for project_directory in ("python", "jvm"):
+            (tmp_path / project_directory).mkdir(parents=True, exist_ok=True)
         environment = make_environment(
             repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),
             toolchains=FakeToolchains(stub_generators=STUBS),
             language_servers=servers,
             content_root=tmp_path / "reference-content",
+            jdk=jdk_of(25),
         )
-        attempt = start_attempt(environment, StartRequest("two-sum", Language.PYTHON)).attempt
+        attempt = start_attempt(environment, StartRequest("two-sum", language)).attempt
     FsPreferencesStore(tmp_path).write(preferences_document(CODE_INTELLIGENCE_ON))
     scripted = ScriptedServer(tmp_path / "server.json")
     sessions = LanguageSessions(scripted.command, timing, limit)

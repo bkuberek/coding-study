@@ -4,15 +4,19 @@
 from coding_study.application.doctor import CheckResult, NotFound
 from coding_study.application.ports import (
     FileMissing,
+    NotInstalled,
     ProbeResult,
     VersionFailed,
     VersionPrinted,
 )
+from coding_study.domain.code_intelligence import JDTLS
+from coding_study.domain.jdk import JdkSource, SelectedJdk
 from tests.application.test_doctor import (
     COMPLETE_WORKSPACE,
     OK,
     WARN,
     FakeCommands,
+    FakeJdk,
     doctor,
     fix,
     workspace_with,
@@ -26,6 +30,15 @@ from tests.fakes import (
 
 PYTHON_ROW = "code intelligence python"
 TYPESCRIPT_ROW = "code intelligence typescript"
+JAVA_ROW = "code intelligence java"
+JDK_25_TO_26 = (
+    "select a JDK 25 to 26 with JAVA_HOME, or install JDK 25: "
+    "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#jdk"
+)
+DOWNLOAD_STEP = (
+    "download https://download.eclipse.org/jdtls/milestones/1.63.0/"
+    "jdt-language-server-1.63.0-202610191322.tar.gz (in .cs/lsp/jdtls)"
+)
 BASEDPYRIGHT = "basedpyright"
 TYPESCRIPT = "typescript-language-server"
 FIX = "cstudy doctor --fix"
@@ -37,16 +50,23 @@ SKIPPED_NOTE = (
 OFF = MemoryPreferences({"format": 1, "code_intelligence": False})
 
 
-def code_intelligence_rows(servers: FakeLanguageServers, preferences=CODE_INTELLIGENCE_ON):
+def code_intelligence_rows(
+    servers: FakeLanguageServers, preferences=CODE_INTELLIGENCE_ON, jdk: FakeJdk | None = None
+):
     workspace = workspace_with(preferences=preferences, language_servers=servers)
-    report = doctor(workspace=workspace)
+    report = doctor(workspace=workspace, jdk=jdk)
     return [result for result in report.results if result.name.startswith("code intelligence")]
 
 
-def test_both_servers_installed_report_their_pinned_versions():
+def java_row(servers: FakeLanguageServers, jdk: FakeJdk | None = None) -> CheckResult:
+    return next(row for row in code_intelligence_rows(servers, jdk=jdk) if row.name == JAVA_ROW)
+
+
+def test_the_installed_servers_report_their_pinned_versions():
     assert code_intelligence_rows(FakeLanguageServers(INSTALLED_SERVERS)) == [
         CheckResult(PYTHON_ROW, OK, "basedpyright 1.40.2"),
         CheckResult(TYPESCRIPT_ROW, OK, "typescript-language-server 6.0.3"),
+        CheckResult(JAVA_ROW, OK, "jdtls 1.63.0"),
     ]
 
 
@@ -55,7 +75,25 @@ def test_servers_that_are_not_installed_only_warn_and_name_the_fix():
     assert rows == [
         CheckResult(PYTHON_ROW, WARN, "basedpyright is not installed", FIX),
         CheckResult(TYPESCRIPT_ROW, WARN, "typescript-language-server is not installed", FIX),
+        CheckResult(JAVA_ROW, WARN, "jdtls is not installed", FIX),
     ]
+
+
+def test_jdtls_on_a_jdk_below_25_warns_naming_the_jdk():
+    jdk = FakeJdk(SelectedJdk("21.0.13", 21, JdkSource.JAVA_HOME))
+    assert java_row(FakeLanguageServers(INSTALLED_SERVERS), jdk) == CheckResult(
+        JAVA_ROW, WARN, "jdtls needs JDK 25 or 26, not 21.0.13", JDK_25_TO_26
+    )
+
+
+def test_jdtls_without_a_jdk_warns_that_none_was_found():
+    row = java_row(FakeLanguageServers(INSTALLED_SERVERS), FakeJdk(None))
+    assert (row.status, row.detail) == (WARN, "jdtls needs JDK 25 or 26; no JDK was found")
+
+
+def test_jdtls_on_jdk_26_is_ok():
+    jdk = FakeJdk(SelectedJdk("26.0.1", 26, JdkSource.JAVA_HOME))
+    assert java_row(FakeLanguageServers(INSTALLED_SERVERS), jdk).status == OK
 
 
 def test_warnings_for_servers_never_fail_the_report():
@@ -113,9 +151,74 @@ def test_there_are_no_rows_outside_a_workspace():
     assert [r for r in report.results if r.name.startswith("code intelligence")] == []
 
 
-def fix_with(servers: FakeLanguageServers, preferences=CODE_INTELLIGENCE_ON, **kwargs):
+def fix_with(
+    servers: FakeLanguageServers,
+    preferences=CODE_INTELLIGENCE_ON,
+    jdk: FakeJdk | None = None,
+    **kwargs,
+):
     workspace = workspace_with(preferences=preferences, language_servers=servers, **kwargs)
-    return fix(workspace)
+    return fix(workspace, jdk=jdk)
+
+
+def test_fix_downloads_jdtls_while_the_preference_is_on():
+    servers = FakeLanguageServers()
+    fix_with(servers)
+    assert servers.downloads == [JDTLS.archive]
+
+
+def test_fix_reports_the_download_as_a_step_in_its_directory():
+    outcomes = fix_with(FakeLanguageServers())
+    download = [outcome for outcome in outcomes if outcome.step.project == ".cs/lsp/jdtls"]
+    assert [(str(outcome.step), outcome.succeeded) for outcome in download] == [
+        (DOWNLOAD_STEP, True)
+    ]
+
+
+def test_fix_does_not_download_jdtls_again_once_its_build_is_unpacked():
+    servers = FakeLanguageServers(INSTALLED_SERVERS)
+    outcomes = fix_with(servers)
+    reported = [outcome for outcome in outcomes if outcome.step.project == ".cs/lsp/jdtls"]
+    assert (servers.downloads, reported) == ([], [])
+
+
+def test_fix_downloads_jdtls_again_when_another_build_is_there():
+    servers = FakeLanguageServers({**INSTALLED_SERVERS, "jdtls": NotInstalled()})
+    fix_with(servers)
+    assert servers.downloads == [JDTLS.archive]
+
+
+def test_fix_downloads_nothing_while_the_preference_is_off():
+    servers = FakeLanguageServers()
+    fix_with(servers, MemoryPreferences({"code_intelligence": False}))
+    assert servers.downloads == []
+
+
+def test_a_failed_download_names_the_manual_fix_and_keeps_its_reason():
+    servers = FakeLanguageServers(download=ProbeResult(1, "SHA-256 mismatch\n"))
+    outcome = next(o for o in fix_with(servers) if o.step.project == ".cs/lsp/jdtls")
+    assert (outcome.succeeded, outcome.step.manual, outcome.result) == (
+        False,
+        "once online, run: cstudy doctor --fix",
+        ProbeResult(1, "SHA-256 mismatch\n"),
+    )
+
+
+def test_fix_downloads_jdtls_whatever_the_jdk_so_a_jdk_25_installed_later_needs_no_network():
+    servers = FakeLanguageServers()
+    fix_with(servers, jdk=FakeJdk(None))
+    assert servers.downloads == [JDTLS.archive]
+
+
+def test_fix_downloads_after_the_install_and_before_gradle():
+    lines: list[str] = []
+    workspace = workspace_with(
+        preferences=CODE_INTELLIGENCE_ON, language_servers=FakeLanguageServers()
+    )
+    fix(workspace, notify=lines.append)
+    download = lines.index(f"running {DOWNLOAD_STEP}")
+    gradle = next(index for index, line in enumerate(lines) if "./gradlew" in line)
+    assert lines.index(f"running {INSTALL_STEP}") < download < gradle
 
 
 def test_fix_installs_the_servers_while_the_preference_is_on():
@@ -148,7 +251,7 @@ def test_fix_runs_the_install_after_the_typescript_install_and_before_gradle():
         preferences=CODE_INTELLIGENCE_ON, language_servers=FakeLanguageServers()
     )
     fix(workspace, notify=lines.append)
-    steps = [line for line in lines if "(in typescript)" in line or ".cs/lsp" in line]
+    steps = [line for line in lines if "(in typescript)" in line or "(in .cs/lsp)" in line]
     gradle = next(index for index, line in enumerate(lines) if "./gradlew" in line)
     assert (steps, lines.index(f"running {INSTALL_STEP}") < gradle) == (
         ["running pnpm install (in typescript)", f"running {INSTALL_STEP}"],

@@ -3,7 +3,7 @@
 import pytest
 
 from coding_study.application.ports import VersionFailed
-from tests.fakes import INSTALLED_SERVERS, FakeLanguageServers
+from tests.fakes import INSTALLED_SERVERS, FakeJdk, FakeLanguageServers, jdk_of
 from tests.web_server import anonymous_client, session_client, web_app, web_workspace
 
 LANGUAGES = "/api/v1/code-intelligence/languages"
@@ -16,10 +16,15 @@ NOT_AVAILABLE = {
 }
 
 
-def languages(tmp_path, servers: FakeLanguageServers):
-    app = web_app(tmp_path, web_workspace(tmp_path, language_servers=servers))
-    with session_client(app) as client:
+def languages(tmp_path, servers: FakeLanguageServers, jdk: FakeJdk | None = None):
+    environment = web_workspace(tmp_path, language_servers=servers, jdk=jdk or jdk_of(25))
+    with session_client(web_app(tmp_path, environment)) as client:
         return client.get(LANGUAGES)
+
+
+def java_entry(tmp_path, jdk: FakeJdk) -> dict[str, object]:
+    entries = languages(tmp_path, FakeLanguageServers(INSTALLED_SERVERS), jdk).json()["languages"]
+    return next(entry for entry in entries if entry["language"] == "java")
 
 
 def test_installed_servers_are_listed_in_the_order_of_cstudy_list(tmp_path):
@@ -64,7 +69,23 @@ def test_a_version_command_that_fails_gives_its_own_line(tmp_path):
     assert (entry["state"], entry["detail"]) == ("not_installed", "Error: no module")
 
 
-@pytest.mark.parametrize("language", ["java", "kotlin", "go", "rust"])
+def test_an_installed_jdtls_on_jdk_25_is_installed(tmp_path):
+    assert java_entry(tmp_path, jdk_of(25)) == {
+        "language": "java",
+        "server": "jdtls",
+        "version": "1.63.0",
+        "state": "installed",
+        "detail": "jdtls 1.63.0",
+        "idle_s": 300,
+    }
+
+
+def test_jdtls_on_another_jdk_needs_jdk_25_or_26(tmp_path):
+    entry = java_entry(tmp_path, jdk_of(21))
+    assert (entry["state"], entry["detail"]) == ("needs_jdk", "needs JDK 25 or 26")
+
+
+@pytest.mark.parametrize("language", ["kotlin", "go", "rust"])
 def test_the_other_languages_are_not_available_yet(tmp_path, language):
     entries = languages(tmp_path, FakeLanguageServers(INSTALLED_SERVERS)).json()["languages"]
     entry = next(entry for entry in entries if entry["language"] == language)

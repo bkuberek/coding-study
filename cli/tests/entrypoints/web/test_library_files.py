@@ -120,7 +120,6 @@ def test_text_beyond_ascii_is_read(workspace, content):
 @pytest.mark.parametrize(
     "uri",
     [
-        "jdt://contents/java.base/java.lang/String.class",
         "https://example.com/x.py",
         "untitled:Untitled-1",
         "file://other-host/etc/passwd",
@@ -134,6 +133,14 @@ def test_text_beyond_ascii_is_read(workspace, content):
 )
 def test_a_uri_that_is_not_a_local_file_is_refused(workspace, content, uri):
     assert refusal(uri, workspace, content) == (Reason.NOT_A_FILE_URI, uri)
+
+
+def test_a_class_of_jdt_ls_is_refused_by_its_module_package_and_file(workspace, content):
+    uri = "jdt://contents/java.base/java.lang/String.java?=java/%5C/jdk%5C/lib%5C/jrt-fs.jar"
+    assert refusal(uri, workspace, content) == (
+        Reason.NOT_A_FILE_URI,
+        "java.base/java.lang/String.java",
+    )
 
 
 # the build area and the content root

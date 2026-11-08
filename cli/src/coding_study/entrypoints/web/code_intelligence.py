@@ -4,7 +4,9 @@ docs/specs/web-ui.md#lifecycle-and-limits).
 A session is one WebSocket and the language server behind it, started once the page's CSRF message
 arrived. Each text message of the socket carries one JSON-RPC message, which this module frames for
 the server's standard input and unframes from its standard output; what each becomes is the
-session's broker's to say (`language_broker.py`). At most four servers run at once. A session ends
+session's broker's to say (`language_broker.py`). At most four servers run at once. A server that
+keeps data, JDT LS, gets a data directory of its root under `.cs/lsp/` that no running server
+holds, since two cannot share one. A session ends
 when the socket closes, the server exits or the server stops; the stop sequence of the server runs
 as a task of its own, so a socket that goes away mid-request never leaves a process behind. What
 waits for a side that stopped reading is bounded: a server that reads none of its input, or a page
@@ -12,12 +14,14 @@ that reads none of the server's messages, ends the session.
 """
 
 import asyncio
+import itertools
 import json
 import sys
 from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass
 from enum import IntEnum
+from pathlib import Path
 from typing import Any, cast
 
 from starlette.websockets import WebSocket, WebSocketDisconnect
@@ -25,6 +29,7 @@ from starlette.websockets import WebSocket, WebSocketDisconnect
 from coding_study.adapters.process_environment import inherited_environment
 from coding_study.application.attempt_changes import FileChanged
 from coding_study.application.code_intelligence import SessionTarget
+from coding_study.domain.code_intelligence import Launch
 from coding_study.entrypoints.web.language_broker import Delivery, LanguageBroker
 from coding_study.entrypoints.web.language_server import (
     LanguageServerCommand,
@@ -32,6 +37,7 @@ from coding_study.entrypoints.web.language_server import (
     ServerProcess,
     ServerStartError,
     environment_hiding,
+    prepare_data_directory,
 )
 from coding_study.entrypoints.web.notifications import Notifications
 
@@ -82,10 +88,17 @@ class LanguageSession:
     """A socket and its server, relayed until one of them ends, through the broker."""
 
     def __init__(
-        self, websocket: WebSocket, process: ServerProcess, broker: LanguageBroker
+        self,
+        websocket: WebSocket,
+        process: ServerProcess,
+        broker: LanguageBroker,
+        data_directory: str | None = None,
     ) -> None:
         self.websocket = websocket
         self.process = process
+        self.data_directory = data_directory
+        """The data directory the server holds until it has exited, for a server that keeps
+        data."""
         self.finished = asyncio.Event()
         """Set once the session is over: its socket closed and its relays cancelled."""
         self.relays: list[asyncio.Task[Any]] = []
@@ -229,6 +242,8 @@ class LanguageSessions:
         self._stopping = False
         self._servers: set[ServerProcess] = set()
         self._sessions: set[LanguageSession] = set()
+        self._held_data: dict[str, ServerProcess] = {}
+        """The server that last held each data directory, which holds it until it has exited."""
         self._stoppers: set[asyncio.Task[None]] = set()
         self._notifications: Notifications | None = None
 
@@ -271,19 +286,48 @@ class LanguageSessions:
         async with self._starting:
             refusal = self._refusal()
             if refusal is None:
-                arguments = self.command.arguments(target.server, target.lsp_directory)
-                needed = (target.directory, target.lsp_directory)
-                environment = environment_hiding(inherited_environment(), target.hidden, needed)
+                launch = self._launch(target)
                 try:
-                    process = await ServerProcess.start(
-                        arguments, target.directory, self.timing, environment
-                    )
+                    process = await self._start(target, launch)
                 except ServerStartError as error:
                     refusal = Closing(CloseCode.SERVER_EXITED, f"cannot start: {error}")
                 else:
-                    return self._admit(LanguageSession(websocket, process, broker))
+                    session = LanguageSession(websocket, process, broker, launch.data_directory)
+                    return self._admit(session)
         await refusal.close(websocket)
         return None
+
+    def _launch(self, target: SessionTarget) -> Launch:
+        """The places the target's command names; a server that keeps data gets the first data
+        directory of its root that no running server of this `cstudy serve` holds, since two
+        servers cannot share one."""
+        lsp = target.lsp_directory
+        java = None if target.java_home is None else str(target.java_home / "bin" / "java")
+        data = None
+        if target.server.data is not None:
+            data = self._free_data_directory(lsp / target.server.data / target.root)
+        return Launch(str(lsp), data, java, sys.platform)
+
+    def _free_data_directory(self, base: Path) -> str:
+        places = (str(base / str(slot)) for slot in itertools.count(1))
+        return next(place for place in places if not self._is_held(place))
+
+    def _is_held(self, data_directory: str) -> bool:
+        holder = self._held_data.get(data_directory)
+        return holder is not None and holder.running
+
+    async def _start(self, target: SessionTarget, launch: Launch) -> ServerProcess:
+        """Raises ServerStartError."""
+        server = target.server
+        needed = (target.directory, target.lsp_directory)
+        hiding = environment_hiding(inherited_environment(), target.hidden, needed)
+        environment = {**hiding, **server.environment(launch)}
+        try:
+            await asyncio.to_thread(prepare_data_directory, server, launch)
+        except OSError as error:
+            raise ServerStartError(f"cannot write {launch.data_directory}: {error}") from None
+        arguments = self.command.arguments(server, launch)
+        return await ServerProcess.start(arguments, target.directory, self.timing, environment)
 
     def _refusal(self) -> Closing | None:
         if self._stopping:
@@ -296,6 +340,8 @@ class LanguageSessions:
     def _admit(self, session: LanguageSession) -> LanguageSession:
         self._servers.add(session.process)
         self._sessions.add(session)
+        if session.data_directory is not None:
+            self._held_data[session.data_directory] = session.process
         if self._notifications is not None:
             session.stop_listening = self._notifications.on_file_changed(session.file_changed)
         return session

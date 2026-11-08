@@ -372,6 +372,7 @@ def test_the_health_view_shows_the_code_intelligence_rows(seen):
     assert [name for name in seen.health_checks if name.startswith("code intelligence")] == [
         "code intelligence python",
         "code intelligence typescript",
+        "code intelligence java",
     ]
 
 

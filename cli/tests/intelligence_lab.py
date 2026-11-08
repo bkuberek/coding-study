@@ -13,7 +13,13 @@ from typing import Any
 
 from coding_study.adapters.preferences_fs import FsPreferencesStore
 from coding_study.domain.preferences import Preferences, preferences_document
-from tests.language_server_scripts import ScriptedServer, fake_node, install_fake_basedpyright
+from tests.language_server_scripts import (
+    ScriptedServer,
+    fake_jdk,
+    fake_node,
+    install_fake_basedpyright,
+    install_fake_jdtls,
+)
 from tests.serve_page import opened_page
 from tests.serve_process import RunningServer, running_server, served_environment
 from tests.workspaces import workspace_like
@@ -62,18 +68,26 @@ def intelligence_lab(
     files: Mapping[str, str | bytes] | None = None,
     preferences: Preferences | None = None,
     problems: Sequence[tuple[str, str | None]] = (PYTHON,),
+    jdk: int | None = None,
 ) -> Iterator[Lab]:
     """A server over a copy of the practice workspace with the Python practice problem started,
     a basedpyright that is the fake playing `steps` (or what `steps` makes of the workspace's
     path, for a script that names files by URI), `files` written (paths from the workspace,
     which may replace the starter file) and `preferences` stored (code intelligence on, unless
-    told otherwise). `problems` are started, each as a slug and a language (None for a project)."""
+    told otherwise). `problems` are started, each as a slug and a language (None for a project).
+    With `jdk`, JDT LS is installed too and the server selects a JDK of that release whose `java`
+    is the same fake."""
     workspace = workspace_like(practice_workspace, base / "workspace")
+    script = ScriptedServer(base / "server.json")
+    java: dict[str, str] = {}
+    if jdk is not None:
+        install_fake_jdtls(workspace)
+        java["JAVA_HOME"] = fake_jdk(base / f"jdk-{jdk}", script, jdk)
     for slug, language in problems:
         language_option = ["--lang", language] if language is not None else []
         subprocess.run(
             [sys.executable, "-m", "coding_study", "start", slug, *language_option, "--no-open"],
-            env=served_environment(workspace),
+            env={**served_environment(workspace), **java},
             cwd=workspace,
             stdin=subprocess.DEVNULL,
             capture_output=True,
@@ -87,9 +101,9 @@ def intelligence_lab(
     FsPreferencesStore(workspace).write(
         preferences_document(preferences or Preferences(code_intelligence=True))
     )
-    script = ScriptedServer(base / "server.json")
     script.play(*(steps(workspace.resolve()) if callable(steps) else steps))
-    with running_server(workspace, variables={"PATH": fake_node(base / "bin", script)}) as running:
+    variables = {"PATH": fake_node(base / "bin", script), **java}
+    with running_server(workspace, variables=variables) as running:
         yield Lab(workspace, script, running, opened_page(running).attempts)
 
 

@@ -19,7 +19,7 @@ from coding_study.domain.bench_records import (
 from coding_study.domain.bench_runs import BenchReport, BenchRequest
 from coding_study.domain.bench_verdict import PastRun
 from coding_study.domain.cases import JsonValue
-from coding_study.domain.code_intelligence import LanguageServer
+from coding_study.domain.code_intelligence import Archive, LanguageServer
 from coding_study.domain.comparators import Checker
 from coding_study.domain.config import Config
 from coding_study.domain.config_keys import ConfigView
@@ -1104,7 +1104,13 @@ class VersionFailed:
     """The first line of its standard error, or why it did not start."""
 
 
-type ServerProbe = NotInstalled | FileMissing | VersionPrinted | VersionFailed
+@dataclass(frozen=True, slots=True)
+class Unpacked:
+    """The pinned build of an archive server is unpacked: it has no version command, and the file
+    that names its build stands for one."""
+
+
+type ServerProbe = NotInstalled | FileMissing | VersionPrinted | VersionFailed | Unpacked
 
 
 class LanguageServerLocator(Protocol):
@@ -1120,6 +1126,11 @@ class LanguageServerInstaller(Protocol):
         """Copy the shipped `package.json` and `pnpm-lock.yaml` into `.cs/lsp/` when they differ,
         then run `pnpm install --frozen-lockfile --ignore-scripts` there; None when `pnpm` is
         missing."""
+        ...
+
+    def download(self, archive: Archive) -> ProbeResult:
+        """Download `archive`, check its SHA-256 and unpack it into `.cs/lsp/`, in place of what
+        its directory held; exit code 0 once it is there, 1 with the reason otherwise."""
         ...
 
 

@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from coding_study.domain.code_intelligence import BASEDPYRIGHT
+from coding_study.domain.code_intelligence import BASEDPYRIGHT, JDTLS, Launch
 from coding_study.entrypoints.web import language_server
 from coding_study.entrypoints.web.language_server import (
     HIDDEN_VARIABLE,
@@ -283,13 +283,30 @@ def test_a_directory_that_is_not_there_cannot_start(server, tmp_path):
 
 
 def test_the_catalog_command_runs_node_on_the_servers_script(tmp_path):
-    arguments = LanguageServerCommand().arguments(BASEDPYRIGHT, tmp_path / ".cs" / "lsp")
+    arguments = LanguageServerCommand().arguments(BASEDPYRIGHT, Launch(f"{tmp_path}/.cs/lsp"))
     assert arguments == ("node", f"{tmp_path}/.cs/lsp/{BASEDPYRIGHT.script}", "--stdio")
+
+
+def test_the_catalog_command_runs_jdtls_on_the_selected_jdk(tmp_path):
+    launch = Launch(f"{tmp_path}/.cs/lsp", f"{tmp_path}/data", "/jdk/bin/java", "linux")
+    assert LanguageServerCommand().arguments(JDTLS, launch)[0] == "/jdk/bin/java"
 
 
 def test_a_replacement_command_runs_in_place_of_the_catalogs(tmp_path):
     command = LanguageServerCommand(("fake", "--stdio"))
-    assert command.arguments(BASEDPYRIGHT, tmp_path) == ("fake", "--stdio")
+    assert command.arguments(BASEDPYRIGHT, Launch(str(tmp_path))) == ("fake", "--stdio")
+
+
+def test_jdtls_finds_its_empty_list_of_gradle_versions_in_its_data_directory(tmp_path):
+    launch = Launch(f"{tmp_path}/.cs/lsp", f"{tmp_path}/data", "/jdk/bin/java", "linux")
+    language_server.prepare_data_directory(JDTLS, launch)
+    versions = tmp_path / "data" / "cache" / "tooling" / "gradle" / "versions.json"
+    assert versions.read_text() == "[]"
+
+
+def test_a_server_without_data_gets_no_data_directory(tmp_path):
+    language_server.prepare_data_directory(BASEDPYRIGHT, Launch(f"{tmp_path}/.cs/lsp"))
+    assert list(tmp_path.iterdir()) == []
 
 
 # the stop sequence

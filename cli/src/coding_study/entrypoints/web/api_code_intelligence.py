@@ -110,7 +110,7 @@ def _is_token(text: str | None, csrf: str) -> bool:
 
 
 def _states(environment: Environment) -> tuple[LanguageServerState, ...]:
-    return language_server_states(environment.language_servers)
+    return language_server_states(environment.language_servers, environment.jdk)
 
 
 def _entry(state: LanguageServerState) -> dict[str, object]:

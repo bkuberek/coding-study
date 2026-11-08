@@ -32,6 +32,16 @@ test("a language whose server is not installed links to Health", () => {
   assert.deepEqual([segment.text, segment.action], ["no code intelligence for Python: basedpyright is not installed", "health"]);
 });
 
+test("a language whose server needs another JDK says which and links to Health", () => {
+  const segment = segmentOf({ kind: "needs-jdk", language: "java", detail: "needs JDK 25 or 26" });
+  assert.deepEqual([segment.text, segment.action, segment.state], ["no code intelligence for Java: needs JDK 25 or 26", "health", "needs-jdk"]);
+});
+
+test("a Java file whose server is missing names JDT LS", () => {
+  const segment = segmentOf({ kind: "not-installed", language: "java", server: "jdtls" });
+  assert.equal(segment.text, "no code intelligence for Java: jdtls is not installed");
+});
+
 test("a language with no server yet says so", () => {
   const segment = segmentOf({ kind: "no-server", language: "go" });
   assert.deepEqual([segment.text, segment.action], ["no code intelligence for Go yet", null]);
@@ -84,6 +94,11 @@ test("an installed language's row names its server and version", () => {
 test("a language that is not installed links to the Health view", () => {
   const row = languageRow({ ...STATE, language: "typescript", state: "not_installed", detail: "not installed: run cstudy doctor --fix" });
   assert.deepEqual(row, { name: "TypeScript", detail: "not installed: run cstudy doctor --fix", health: true });
+});
+
+test("a language whose server needs another JDK links to the Health view", () => {
+  const row = languageRow({ language: "java", server: "jdtls", version: "1.63.0", state: "needs_jdk", detail: "needs JDK 25 or 26", idle_s: 300 });
+  assert.deepEqual(row, { name: "Java", detail: "needs JDK 25 or 26", health: true });
 });
 
 test("a language with no server yet does not link", () => {

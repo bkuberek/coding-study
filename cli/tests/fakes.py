@@ -32,11 +32,12 @@ from coding_study.application.ports import (
     RunnerLaunch,
     ServerProbe,
     StubGenerator,
+    Unpacked,
     VersionPrinted,
 )
 from coding_study.domain.bench_records import MachineState, PowerSource
 from coding_study.domain.cases import FunctionInput
-from coding_study.domain.code_intelligence import LanguageServer
+from coding_study.domain.code_intelligence import Archive, LanguageServer
 from coding_study.domain.config import Config
 from coding_study.domain.errors import LanguageNotSetUpError
 from coding_study.domain.jdk import JdkSource, SelectedJdk
@@ -334,6 +335,7 @@ CODE_INTELLIGENCE_ON = MemoryPreferences({"format": 1, "code_intelligence": True
 
 
 PNPM_SUCCEEDED = ProbeResult(0, "")
+DOWNLOADED = ProbeResult(0, "")
 
 
 class FakeLanguageServers:
@@ -344,11 +346,14 @@ class FakeLanguageServers:
         self,
         probes: Mapping[str, ServerProbe] | None = None,
         installation: ProbeResult | None = PNPM_SUCCEEDED,
+        download: ProbeResult = DOWNLOADED,
     ) -> None:
         self.probes = dict(probes or {})
         self.installation = installation
+        self.download_result = download
         self.probed: list[str] = []
         self.installs = 0
+        self.downloads: list[Archive] = []
 
     def probe(self, server: LanguageServer) -> ServerProbe:
         self.probed.append(server.name)
@@ -358,8 +363,13 @@ class FakeLanguageServers:
         self.installs += 1
         return self.installation
 
+    def download(self, archive: Archive) -> ProbeResult:
+        self.downloads.append(archive)
+        return self.download_result
+
 
 INSTALLED_SERVERS: Mapping[str, ServerProbe] = {
     "basedpyright": VersionPrinted("basedpyright 1.40.2\nbased on pyright 1.40.2\n"),
     "typescript-language-server": VersionPrinted("6.0.3\n"),
+    "jdtls": Unpacked(),
 }

@@ -17,7 +17,9 @@ from typing import TypeGuard
 from coding_study.application.code_intelligence import (
     LanguageServerState,
     ServerStatus,
+    download_language_server,
     install_language_servers,
+    is_unpacked,
     language_server_states,
 )
 from coding_study.application.installs import (
@@ -60,7 +62,12 @@ from coding_study.application.ports import (
 )
 from coding_study.application.preferences import read_preferences
 from coding_study.application.sandbox import current_leftovers, ensure_engine, sweep_leftovers
-from coding_study.domain.code_intelligence import LSP_DIRECTORY, LSP_INSTALL_COMMAND
+from coding_study.domain.code_intelligence import (
+    LANGUAGE_SERVERS,
+    LSP_DIRECTORY,
+    LSP_INSTALL_COMMAND,
+    Archive,
+)
 from coding_study.domain.debugging import (
     DEBUGPY_INSTALL_COMMAND,
     DELVE_VERSION,
@@ -300,6 +307,24 @@ LANGUAGE_SERVERS_FIX = FixStep(
 """Installs the language servers of the web UI's code intelligence from the shipped manifest,
 while the `code_intelligence` preference is on. The installer copies the manifest first, so this
 step is never run as a plain command."""
+
+
+def _download_step(archive: Archive) -> FixStep:
+    return FixStep(
+        f"{LSP_DIRECTORY}/{archive.directory}",
+        ("download", archive.url),
+        manual=f"once online, run: {FIX_COMMAND}",
+    )
+
+
+DOWNLOAD_STEPS = {
+    _download_step(server.archive): server
+    for server in LANGUAGE_SERVERS
+    if server.archive is not None
+}
+"""Downloads the servers that are archives, such as JDT LS, while the `code_intelligence`
+preference is on, unless their pinned build is unpacked already; each is checked by its SHA-256
+before it is unpacked."""
 SERVERS_SKIPPED_NOTE = (
     "skipped the language servers: code intelligence is off; "
     "turn it on in Settings of cstudy serve, then run cstudy doctor --fix again"
@@ -414,6 +439,8 @@ def fix_workspace(
     for step, directory in _fix_plan(workspace, content, jvm_blocker is None):
         if step is LANGUAGE_SERVERS_FIX:
             outcome = _install_language_servers(workspace, notify)
+        elif step in DOWNLOAD_STEPS:
+            outcome = _download_language_server(workspace, step, notify)
         else:
             outcome = _run_step(workspace.commands, step, directory, notify, home)
         if outcome is not None:
@@ -421,15 +448,17 @@ def fix_workspace(
     if jvm_blocker is not None:
         outcomes.append(FixOutcome(NO_JAVA_FIX, None, skipped=jvm_blocker))
     if not _code_intelligence_on(workspace):
-        _note_skipped_servers(workspace, notify)
+        _note_skipped_servers(workspace, jdk, notify)
     return tuple(outcomes)
 
 
-def _note_skipped_servers(workspace: PracticeWorkspace, notify: ProgressNotice) -> None:
+def _note_skipped_servers(
+    workspace: PracticeWorkspace, jdk: JdkSelector, notify: ProgressNotice
+) -> None:
     """One line saying the servers were left out and how to turn them on, unless they are all
     installed already, when there is nothing to miss."""
-    states = language_server_states(workspace.language_servers)
-    if any(state.status is not ServerStatus.INSTALLED for state in states if state.server):
+    states = language_server_states(workspace.language_servers, jdk)
+    if any(state.status is ServerStatus.NOT_INSTALLED for state in states):
         notify(SERVERS_SKIPPED_NOTE)
 
 
@@ -451,6 +480,18 @@ def _install_language_servers(workspace: PracticeWorkspace, notify: ProgressNoti
     notify(f"running {LANGUAGE_SERVERS_FIX}")
     result = install_language_servers(workspace.language_server_installer)
     return FixOutcome(LANGUAGE_SERVERS_FIX, result)
+
+
+def _download_language_server(
+    workspace: PracticeWorkspace, step: FixStep, notify: ProgressNotice
+) -> FixOutcome | None:
+    """None when the pinned build is unpacked already: the step is not run, nor reported, so a
+    workspace that has it needs no network."""
+    server = DOWNLOAD_STEPS[step]
+    if is_unpacked(workspace.language_servers, server):
+        return None
+    notify(f"running {step}")
+    return FixOutcome(step, download_language_server(workspace.language_server_installer, server))
 
 
 def _run_step(
@@ -502,6 +543,7 @@ def _fix_plan(
         plan.append((RUNNER_TYPESCRIPT_FIX, content.files.root / RUNNER_TYPESCRIPT))
     if _code_intelligence_on(workspace):
         plan.append((LANGUAGE_SERVERS_FIX, files.root / LSP_DIRECTORY))
+        plan += [(step, files.root / step.project) for step in DOWNLOAD_STEPS]
     if jvm and files.exists(JVM_FIX.project):
         plan += [(step, files.root / step.project) for step in (JVM_FIX, *JVM_PROJECT_WARMUPS)]
     return plan
@@ -826,7 +868,7 @@ def _workspace(
         *(_runner(workspace, language, notify) for language in CORE_LANGUAGES),
         *_project_libraries(workspace),
         *_web_ui(environment.web, reinstall_command(installs)),
-        *_language_servers(workspace),
+        *_language_servers(workspace, environment.jdk),
     ]
 
 
@@ -1075,12 +1117,13 @@ def _hello(
         return _Unavailable(str(error).splitlines()[0])
 
 
-def _language_servers(workspace: PracticeWorkspace) -> list[CheckResult]:
+def _language_servers(workspace: PracticeWorkspace, jdk: JdkSelector) -> list[CheckResult]:
     """One row per language with a server, only while the `code_intelligence` preference is on;
-    only the page's code intelligence needs them, so a missing or wrong one warns."""
+    only the page's code intelligence needs them, so a missing or wrong one, or a JDK the server
+    cannot run on, warns."""
     if not _code_intelligence_on(workspace):
         return []
-    states = language_server_states(workspace.language_servers)
+    states = language_server_states(workspace.language_servers, jdk)
     return [_language_server_row(state) for state in states if state.server is not None]
 
 
@@ -1088,4 +1131,5 @@ def _language_server_row(state: LanguageServerState) -> CheckResult:
     name = f"code intelligence {state.language}"
     if state.status is ServerStatus.INSTALLED:
         return CheckResult(name, CheckStatus.OK, state.detail)
-    return CheckResult(name, CheckStatus.WARN, state.problem or state.detail, fix=FIX_COMMAND)
+    fix = state.fix or FIX_COMMAND
+    return CheckResult(name, CheckStatus.WARN, state.problem or state.detail, fix=fix)

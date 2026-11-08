@@ -11,7 +11,7 @@ import pytest
 
 from coding_study.application.attempt_changes import FileChanged
 from coding_study.application.code_intelligence import SessionTarget
-from coding_study.domain.code_intelligence import BASEDPYRIGHT, TYPESCRIPT_LANGUAGE_SERVER
+from coding_study.domain.code_intelligence import BASEDPYRIGHT, JDTLS, TYPESCRIPT_LANGUAGE_SERVER
 from coding_study.entrypoints.web.completion_items import ANSWERS_KEPT
 from coding_study.entrypoints.web.language_broker import Delivery, LanguageBroker
 from tests.language_server_scripts import answer, notification, request
@@ -1061,8 +1061,48 @@ def test_a_target_that_is_no_file_is_refused_as_such(broker):
     reply = library_request(broker, "jdt://contents/java.base/String.class")
     assert reply["error"]["data"] == {
         "reason": "not_a_file_uri",
-        "path": "jdt://contents/java.base/String.class",
+        "path": "java.base/String.class",
     }
+
+
+JDT_CLASS = (
+    "jdt://contents/java.base/java.util/ArrayList.java?=java/%5C/jdk%5C/lib%5C/jrt-fs.jar"
+    "%60java.base=/javadoc_location=/https:%5C/%5C/docs.oracle.com%5C/=/%3Cjava.util%28ArrayList.class"
+)
+"""A class of the JDK as JDT LS names it: its source is inside the JDK, not a file of its own."""
+
+
+def test_a_class_of_the_jdk_is_named_by_its_module_package_and_file_without_the_query(tmp_path):
+    workspace = tmp_path / "ws"
+    broker = broker_for(JDTLS, "jvm", workspace)
+    definition(broker, [{"uri": JDT_CLASS, "range": {}}], f"{workspace.as_uri()}/jvm/java/A.java")
+    assert library_request(broker, JDT_CLASS)["error"]["data"] == {
+        "reason": "not_a_file_uri",
+        "path": "java.base/java.util/ArrayList.java",
+    }
+
+
+def test_a_java_reference_in_the_build_area_is_left_out_of_a_definition_answer(tmp_path):
+    """JDT LS runs no `hide_paths.cjs`: its root's Gradle build never includes `.cs/build/`, and
+    the broker leaves a location there out of every answer (docs/specs/web-ui.md#hidden-
+    directories)."""
+    workspace, content = tmp_path / "ws", tmp_path / "content"
+    reference = workspace / ".cs/build/jvm/java/src/main/java/practice/two_sum/Solution.java"
+    reference.parent.mkdir(parents=True)
+    reference.write_text("class Solution {}\n")
+    broker = LanguageBroker(SessionTarget(JDTLS, workspace, "jvm", content), VERSION, PID)
+    found = [{"uri": reference.as_uri(), "range": {}}]
+    assert definition(broker, found, f"{workspace.as_uri()}/jvm/java/A.java") == []
+
+
+def test_jdtls_is_initialized_with_its_settings_and_jdt_uris(tmp_path):
+    broker = broker_for(JDTLS, "jvm", tmp_path)
+    (sent,) = from_page(broker, request(1, "initialize", {})).to_server
+    options = sent["params"]["initializationOptions"]
+    assert (options["settings"], options["extendedClientCapabilities"]) == (
+        JDTLS.settings,
+        {"classFileContentsSupport": True},
+    )
 
 
 def test_a_definition_answer_is_still_forwarded_unchanged(broker):

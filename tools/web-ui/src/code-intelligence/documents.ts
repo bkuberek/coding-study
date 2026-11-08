@@ -31,6 +31,7 @@ const LANGUAGE_IDS: Readonly<Record<string, string>> = {
   mjs: "javascript",
   cjs: "javascript",
   jsx: "javascriptreact",
+  java: "java",
 };
 
 const DRIVE_LETTER = /^[A-Za-z]:/;
@@ -41,7 +42,7 @@ export function serverLanguageFor(path: string): string | null {
   return language === null ? null : (SERVER_LANGUAGES[language] ?? null);
 }
 
-/** The LSP language id of a file the Python or TypeScript server opens, else null. */
+/** The LSP language id of a file the Python, TypeScript or Java server opens, else null. */
 export function languageIdFor(path: string): string | null {
   const name = path.slice(path.lastIndexOf("/") + 1);
   return LANGUAGE_IDS[name.slice(name.lastIndexOf(".") + 1).toLowerCase()] ?? null;

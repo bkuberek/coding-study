@@ -291,6 +291,7 @@ def main(script_path: str, arguments: list[str]) -> None:
             "cwd": str(Path.cwd()),
             "node_options": os.environ.get("NODE_OPTIONS"),
             "hidden": os.environ.get("CSTUDY_HIDDEN_DIRECTORIES"),
+            "xdg_cache_home": os.environ.get("XDG_CACHE_HOME"),
         }
         calls.write(json.dumps(record) + "\n")
     server = Server(script)

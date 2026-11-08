@@ -53,6 +53,7 @@ export function decide(path: string, attempt: AttemptLanguage, states: readonly 
   const state = states.find((candidate) => candidate.language === language);
   if (state === undefined) return { kind: "none" };
   if (state.server === null) return { kind: "show", found: { kind: "no-server", language } };
+  if (state.state === "needs_jdk") return { kind: "show", found: { kind: "needs-jdk", language, detail: state.detail } };
   if (state.state !== "installed") return { kind: "show", found: { kind: "not-installed", language, server: state.server } };
   return { kind: "attach", language, server: state.server, idleS: state.idle_s ?? 0 };
 }
