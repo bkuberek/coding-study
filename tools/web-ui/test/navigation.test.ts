@@ -6,6 +6,7 @@ import {
   definitionTarget,
   isDefinitionClick,
   JumpStack,
+  linkTarget,
   type Origin,
   refusalNote,
 } from "../src/code-intelligence/navigation.ts";
@@ -165,4 +166,26 @@ test("the oldest origins are the ones dropped", () => {
   let last: Origin | null = null;
   for (let next = stack.pop(() => true); next !== null; next = stack.pop(() => true)) last = next;
   assert.equal(last?.head, 1);
+});
+
+const GOROOT_FILE = "file:///go/src/strings/strings.go";
+
+test("a documentation link names its file and gopls's 1-based line and column", () => {
+  assert.deepEqual(linkTarget(`${GOROOT_FILE}#314,6`), { uri: GOROOT_FILE, line: 313, character: 5 });
+});
+
+test("a link to a line without a column is the start of the line", () => {
+  assert.deepEqual(linkTarget(`${GOROOT_FILE}#L12`), { uri: GOROOT_FILE, line: 11, character: 0 });
+});
+
+test("a link with an L before the line and a column after it", () => {
+  assert.deepEqual(linkTarget(`${GOROOT_FILE}#L12,5`), { uri: GOROOT_FILE, line: 11, character: 4 });
+});
+
+test("a link without a fragment is the start of the file", () => {
+  assert.deepEqual(linkTarget(GOROOT_FILE), { uri: GOROOT_FILE, line: 0, character: 0 });
+});
+
+test("a fragment that names no line is the start of the file", () => {
+  assert.deepEqual(linkTarget(`${GOROOT_FILE}#Split`), { uri: GOROOT_FILE, line: 0, character: 0 });
 });

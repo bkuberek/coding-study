@@ -86,6 +86,29 @@
   color: var(--info);
 }
 
+/* A link to a library file: a button that reads as the links beside it and opens a library tab. */
+.cs-hover .cs-library-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--info);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.cs-hover .cs-library-link:hover {
+  text-decoration-style: solid;
+}
+
+.cs-hover .cs-library-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
 .cs-hover .doc-plain {
   white-space: pre-wrap;
 }

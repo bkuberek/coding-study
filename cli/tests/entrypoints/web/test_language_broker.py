@@ -511,7 +511,6 @@ def test_workspace_folders_answers_the_root(broker):
     [
         "window/workDoneProgress/create",
         "window/showMessageRequest",
-        "workspace/diagnostic/refresh",
         "workspace/semanticTokens/refresh",
         "workspace/inlayHint/refresh",
         "workspace/codeLens/refresh",
@@ -541,6 +540,55 @@ def test_any_other_request_of_the_server_gets_32601_and_never_reaches_the_page(b
 def test_the_servers_requests_never_reach_the_page(broker):
     for method in ("workspace/configuration", "window/showMessageRequest", "custom/x"):
         assert from_server(broker, request(1, method, {})).to_page == ()
+
+
+def test_a_diagnostic_refresh_is_answered_and_the_page_is_told_to_pull_again(broker):
+    """The page cannot be asked, so the broker answers; its notification has no id to answer."""
+    delivery = from_server(broker, request("s1", "workspace/diagnostic/refresh"))
+    assert delivery == Delivery(
+        to_server=(answer("s1", None),),
+        to_page=(notification("cstudy/diagnosticRefresh"),),
+    )
+
+
+# pull diagnostics
+
+
+def test_a_pull_for_a_file_of_the_root_reaches_the_server(broker):
+    initialized(broker)
+    message = request(6, "textDocument/diagnostic", {"textDocument": {"uri": INSIDE}})
+    assert from_page(broker, message) == Delivery(to_server=(message,))
+
+
+def test_a_pull_for_a_document_outside_the_root_gets_32602(broker):
+    initialized(broker)
+    outside = request(6, "textDocument/diagnostic", {"textDocument": {"uri": "file:///etc/x"}})
+    assert error_of(from_page(broker, outside))["code"] == -32602
+
+
+def test_a_pulled_report_reaches_the_page_without_related_information_or_documents(broker):
+    """The client declares neither, and their locations could name any file."""
+    page_asks(broker, 6, "textDocument/diagnostic")
+    related = [{"location": {"uri": "file:///ws/.cs/build/x.rs", "range": {}}, "message": "m"}]
+    report = {
+        "kind": "full",
+        "resultId": "r1",
+        "items": [{"message": "a", "relatedInformation": related}, {"message": "b"}],
+        "relatedDocuments": {"file:///ws/.cs/build/x.rs": {"kind": "full", "items": []}},
+    }
+    assert answered(broker, 6, report) == {
+        "kind": "full",
+        "resultId": "r1",
+        "items": [{"message": "a"}, {"message": "b"}],
+    }
+
+
+@pytest.mark.parametrize(
+    "report", [None, {"kind": "unchanged", "resultId": "r1"}, {"kind": "full", "items": "x"}]
+)
+def test_a_pulled_report_without_items_passes_through_as_it_is(broker, report):
+    page_asks(broker, 6, "textDocument/diagnostic")
+    assert answered(broker, 6, report) == report
 
 
 # the server's notifications
@@ -1019,6 +1067,64 @@ def test_a_file_a_hover_or_a_diagnostic_named_is_not_a_definition_target(broker)
         library_request(broker, "file:///lib/x.pyi")["error"]["data"]["reason"]
         == "not_a_definition"
     )
+
+
+# documentation links
+
+GOROOT_LINK = "file:///go/src/strings/strings.go#1271,6"
+"""A link of gopls's hover documentation: a file of GOROOT, at a 1-based line and column."""
+
+
+def hovered(broker: LanguageBroker, markdown: str, uri: str = INSIDE) -> str:
+    """The HTML the page receives for a hover whose contents are `markdown`."""
+    page_asks(broker, 4, "textDocument/hover", uri=uri)
+    contents = {"kind": "markdown", "value": markdown}
+    return answered(broker, 4, {"contents": contents})["contents"]["value"]
+
+
+def test_a_file_link_in_hover_documentation_is_a_button_that_names_its_target(broker):
+    assert hovered(broker, f"see [Cut]({GOROOT_LINK}).") == (
+        '<p>see <button type="button" class="cs-library-link" '
+        f'data-uri="{GOROOT_LINK}">Cut</button>.</p>\n'
+    )
+
+
+def test_a_file_linked_from_hover_documentation_may_be_read_as_a_library_file(tmp_path):
+    workspace = tmp_path / "ws"
+    library = tmp_path / "go" / "strings.go"
+    library.parent.mkdir(parents=True)
+    library.write_text("package strings\n")
+    broker = broker_for(workspace=workspace)
+    hovered(broker, f"[Cut]({library.as_uri()}#1,9)", inside(workspace))
+    assert library_request(broker, library.as_uri())["result"]["text"] == "package strings\n"
+
+
+def test_a_file_link_into_a_hidden_directory_stays_text_and_may_not_be_read(tmp_path):
+    workspace = tmp_path / "ws"
+    reference = workspace / ".cs/build/go/practice/two_sum/two_sum.go"
+    reference.parent.mkdir(parents=True)
+    reference.write_text("package two_sum\n")
+    broker = broker_for(workspace=workspace)
+    shown = hovered(broker, f"[TwoSum]({reference.as_uri()}#1,1)", inside(workspace))
+    refused = library_request(broker, reference.as_uri())["error"]["data"]["reason"]
+    assert (shown, refused) == ("<p>TwoSum</p>\n", "not_a_definition")
+
+
+def test_a_link_to_no_file_of_this_machine_stays_text(broker):
+    assert hovered(broker, "[x](file://host/x.go) [y](jdt://contents/A.java)") == "<p>x y</p>\n"
+
+
+def test_a_web_link_in_hover_documentation_stays_a_link_that_opens_elsewhere(broker):
+    assert hovered(broker, "[Cut](https://pkg.go.dev/strings#Cut)") == (
+        '<p><a href="https://pkg.go.dev/strings#Cut" rel="noopener noreferrer" '
+        'target="_blank">Cut</a></p>\n'
+    )
+
+
+def test_a_file_link_in_completion_documentation_stays_text(broker):
+    documentation = {"kind": "markdown", "value": f"see [Cut]({GOROOT_LINK})"}
+    (item,) = completed(broker, [{"label": "Cut", "documentation": documentation}])
+    assert item["documentation"]["value"] == "<p>see Cut</p>\n"
 
 
 @pytest.mark.parametrize(

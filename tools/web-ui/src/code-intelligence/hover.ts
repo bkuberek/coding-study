@@ -3,7 +3,9 @@
  * `@codemirror/lsp-client`'s, which renders Markdown in the browser. It shows the `cstudy-html`
  * the broker rendered, in the same box as a diagnostic under the pointer (the lint extension's
  * hover tooltip comes first in the box). It opens with the pointer at rest, and from the keyboard
- * with Cmd or Ctrl-K, Cmd or Ctrl-I, and then a screen reader hears its first paragraph.
+ * with Cmd or Ctrl-K, Cmd or Ctrl-I, and then a screen reader hears its first paragraph. A link of
+ * the documentation to a library file is a button, which closes the hover and opens the file's
+ * library tab at the line it names.
  */
 
 import { LSPPlugin } from "@codemirror/lsp-client";
@@ -59,17 +61,34 @@ export function documentation(content: HoverContent): HTMLElement {
   return content.kind === "html" ? rendered(content.html, "cs-doc") : h("pre", { class: "doc-plain" }, content.text);
 }
 
-function element(content: HoverContent): HTMLElement {
+/** Follows a documentation link of the hover in `view` to the place its `data-uri` names. */
+export type FollowLink = (view: EditorView, href: string) => void;
+
+const LIBRARY_LINK = "button.cs-library-link[data-uri]";
+
+function element(view: EditorView, content: HoverContent, follow: FollowLink): HTMLElement {
   // Focusable, so the keyboard scrolls documentation too long for the box (WCAG 2.1.1).
-  return h("div", { class: "cs-hover", tabindex: 0, role: "region", "aria-label": "Documentation" }, documentation(content));
+  const box = h("div", { class: "cs-hover", tabindex: 0, role: "region", "aria-label": "Documentation" }, documentation(content));
+  box.addEventListener("click", (event) => {
+    const link = event.target instanceof Element ? event.target.closest(LIBRARY_LINK) : null;
+    const href = link?.getAttribute("data-uri");
+    if (href === null || href === undefined) return;
+    event.preventDefault();
+    closeHover(view);
+    follow(view, href);
+  });
+  return box;
 }
 
 function spoken(content: HoverContent): string {
   return content.kind === "html" ? firstParagraph(content.html) : (content.text.split(/\n\s*\n/)[0] ?? "").replace(/\s+/g, " ").trim();
 }
 
-/** The hover tooltip and the keys that open and close it. `announce` is the page's polite live region. */
-export function hover(announce: (message: string) => void): Extension {
+/**
+ * The hover tooltip and the keys that open and close it. `announce` is the page's polite live
+ * region; `follow` opens what a documentation link names, after the hover closes.
+ */
+export function hover(announce: (message: string) => void, follow: FollowLink): Extension {
   const source = async (view: EditorView, pos: number): Promise<Tooltip | null> => {
     const plugin = LSPPlugin.get(view);
     const keyboard = fromKeyboard.delete(view);
@@ -77,7 +96,7 @@ export function hover(announce: (message: string) => void): Extension {
     const found = await ask(plugin, pos).catch(() => null);
     if (keyboard) announce(found === null ? NOTHING_TO_SHOW : spoken(found.content) || NOTHING_TO_SHOW);
     if (found === null) return null;
-    return { pos: found.from, end: found.to, above: true, create: () => ({ dom: element(found.content) }) };
+    return { pos: found.from, end: found.to, above: true, create: (tooltipView) => ({ dom: element(tooltipView, found.content, follow) }) };
   };
   return [
     // After the lint extension's own hover, so a diagnostic is above the documentation in the box.

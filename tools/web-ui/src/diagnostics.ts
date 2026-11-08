@@ -1,6 +1,7 @@
 /**
  * The editor's diagnostics (docs/specs/web-ui.md#live-diagnostics): two sources, the last run's
- * and the language server's, that together are the file's one lint set. `@codemirror/lsp-client`'s
+ * and the language server's (those it published and those the page pulled from it), that together
+ * are the file's one lint set. `@codemirror/lsp-client`'s
  * `serverDiagnostics()` is not used because it replaces the whole set.
  */
 import { type Diagnostic, openLintPanel, setDiagnostics } from "@codemirror/lint";
@@ -72,38 +73,58 @@ function repeatKey(doc: Text, diagnostic: Diagnostic): string {
   return `${doc.lineAt(Math.min(diagnostic.from, doc.length)).number}\n${diagnostic.message}`;
 }
 
+/** Where the server's diagnostics of a file came from: published by the server, or pulled by the page. */
+export type LiveSource = "pushed" | "pulled";
+
+/**
+ * The server's diagnostics of a file: those it published and those the page pulled, as a server
+ * such as rust-analyzer gives both. One that both sources hold, with the same range, severity and
+ * message, shows once.
+ */
+export function liveSet(pushed: readonly Diagnostic[], pulled: readonly Diagnostic[]): Diagnostic[] {
+  const seen = new Set(pushed.map(exactKey));
+  return [...pushed, ...pulled.filter((diagnostic) => !seen.has(exactKey(diagnostic)))];
+}
+
+function exactKey(diagnostic: Diagnostic): string {
+  return `${diagnostic.from}\n${diagnostic.to}\n${diagnostic.severity}\n${diagnostic.message}`;
+}
+
 export function countDiagnostics(diagnostics: readonly Diagnostic[]): DiagnosticCounts {
   const count = (severity: Diagnostic["severity"]): number => diagnostics.filter((found) => found.severity === severity).length;
   return { errors: count("error"), warnings: count("warning"), infos: count("info") };
 }
 
 const setRun = StateEffect.define<readonly Diagnostic[]>();
-const setLive = StateEffect.define<readonly Diagnostic[]>();
+const setLive = StateEffect.define<{ readonly source: LiveSource; readonly diagnostics: readonly Diagnostic[] }>();
 
 interface Sources {
   readonly run: readonly Diagnostic[];
-  readonly live: readonly Diagnostic[];
+  readonly pushed: readonly Diagnostic[];
+  readonly pulled: readonly Diagnostic[];
   readonly counts: DiagnosticCounts;
 }
 
-const NONE: Sources = { run: [], live: [], counts: { errors: 0, warnings: 0, infos: 0 } };
+const NONE: Sources = { run: [], pushed: [], pulled: [], counts: { errors: 0, warnings: 0, infos: 0 } };
 
 /** Each source's diagnostics, kept in step with the text, and the counts of the merged set. */
 const sources = StateField.define<Sources>({
   create: () => NONE,
   update(value, transaction) {
-    let { run, live, counts } = value;
+    let { run, pushed, pulled, counts } = value;
     if (transaction.docChanged) {
       run = mapped(run, transaction.changes);
-      live = mapped(live, transaction.changes);
+      pushed = mapped(pushed, transaction.changes);
+      pulled = mapped(pulled, transaction.changes);
     }
     for (const effect of transaction.effects) {
       if (effect.is(setRun)) run = effect.value;
-      else if (effect.is(setLive)) live = effect.value;
+      else if (effect.is(setLive) && effect.value.source === "pushed") pushed = effect.value.diagnostics;
+      else if (effect.is(setLive)) pulled = effect.value.diagnostics;
       else continue;
-      counts = countDiagnostics(mergeDiagnostics(transaction.newDoc, run, live));
+      counts = countDiagnostics(mergeDiagnostics(transaction.newDoc, run, liveSet(pushed, pulled)));
     }
-    return { run, live, counts };
+    return { run, pushed, pulled, counts };
   },
 });
 
@@ -119,20 +140,25 @@ export const diagnosticSources: Extension = sources;
 
 /** The change that makes `diagnostics` the last run's, keeping the server's. */
 export function runDiagnosticsSpec(state: EditorState, diagnostics: readonly FileDiagnostic[]): TransactionSpec {
-  return replacing(state, setRun, lintDiagnostics(state.doc, diagnostics));
+  const run = lintDiagnostics(state.doc, diagnostics);
+  const { pushed, pulled } = state.field(sources);
+  return replacing(state, setRun.of(run), mergeDiagnostics(state.doc, run, liveSet(pushed, pulled)));
 }
 
-/** The change that makes `diagnostics` the server's, keeping the last run's. */
-export function liveDiagnosticsSpec(state: EditorState, diagnostics: readonly Diagnostic[]): TransactionSpec {
-  return replacing(state, setLive, diagnostics);
-}
-
-function replacing(state: EditorState, effect: typeof setRun, diagnostics: readonly Diagnostic[]): TransactionSpec {
+/**
+ * The change that makes `diagnostics` the server's published ones, or those the page pulled from
+ * it (`source`), keeping the other source and the last run's.
+ */
+export function liveDiagnosticsSpec(state: EditorState, diagnostics: readonly Diagnostic[], source: LiveSource = "pushed"): TransactionSpec {
   const current = state.field(sources);
-  const run = effect === setRun ? diagnostics : current.run;
-  const live = effect === setLive ? diagnostics : current.live;
-  const merged = mergeDiagnostics(state.doc, run, live);
-  return { effects: [effect.of(diagnostics), ...(setDiagnostics(state, merged).effects as StateEffect<unknown>[])] };
+  const pushed = source === "pushed" ? diagnostics : current.pushed;
+  const pulled = source === "pulled" ? diagnostics : current.pulled;
+  const merged = mergeDiagnostics(state.doc, current.run, liveSet(pushed, pulled));
+  return replacing(state, setLive.of({ source, diagnostics }), merged);
+}
+
+function replacing(state: EditorState, effect: StateEffect<unknown>, merged: readonly Diagnostic[]): TransactionSpec {
+  return { effects: [effect, ...(setDiagnostics(state, merged).effects as StateEffect<unknown>[])] };
 }
 
 /** What the file shows now, errors, warnings and information after the merge. */

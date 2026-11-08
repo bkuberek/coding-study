@@ -1,12 +1,21 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { Text } from "@codemirror/state";
+import { EditorState, Text } from "@codemirror/state";
 
 import type { Diagnostic } from "@codemirror/lint";
 
 import { neighbouringRange } from "../src/diagnostic-navigation.ts";
-import { countDiagnostics, type FileDiagnostic, lintDiagnostics, mergeDiagnostics } from "../src/diagnostics.ts";
+import {
+  countDiagnostics,
+  diagnosticCounts,
+  diagnosticSources,
+  type FileDiagnostic,
+  liveDiagnosticsSpec,
+  liveSet,
+  lintDiagnostics,
+  mergeDiagnostics,
+} from "../src/diagnostics.ts";
 
 // Line 1 spans 0-14, line 2 spans 15-33, line 3 is empty at 34.
 const DOC = Text.of(["def deposit():", "    return balance", ""]);
@@ -110,6 +119,36 @@ test("a live diagnostic stays when the run has none", () => {
 test("two live diagnostics with one message on one line both show", () => {
   const twice = [live({}), live({ from: 20, to: 25 })];
   assert.equal(mergeDiagnostics(DOC, [], twice).length, 2);
+});
+
+test("the diagnostics a server published and those the page pulled both show", () => {
+  assert.equal(liveSet([live({})], [live({ message: "balance is possibly unbound" })]).length, 2);
+});
+
+test("a diagnostic both published and pulled shows once", () => {
+  assert.deepEqual(liveSet([live({})], [live({})]), [live({})]);
+});
+
+test("the same message pulled for another range shows twice", () => {
+  assert.equal(liveSet([live({})], [live({ from: 20, to: 25 })]).length, 2);
+});
+
+function withLive(state: EditorState, diagnostics: readonly Diagnostic[], source: "pushed" | "pulled"): EditorState {
+  return state.update(liveDiagnosticsSpec(state, diagnostics, source)).state;
+}
+
+test("pulled diagnostics replace the pulled ones and keep the published ones", () => {
+  const empty = EditorState.create({ doc: DOC, extensions: diagnosticSources });
+  const pushed = withLive(empty, [live({}), live({ severity: "warning" })], "pushed");
+  const pulledTwice = withLive(withLive(pushed, [live({ message: "a" })], "pulled"), [live({ message: "b", severity: "info" })], "pulled");
+  assert.deepEqual(diagnosticCounts(pulledTwice), { errors: 1, warnings: 1, infos: 1 });
+});
+
+test("a publication replaces the published diagnostics and keeps the pulled ones", () => {
+  const empty = EditorState.create({ doc: DOC, extensions: diagnosticSources });
+  const pulled = withLive(empty, [live({ message: "a", severity: "info" })], "pulled");
+  const published = withLive(pulled, [], "pushed");
+  assert.deepEqual(diagnosticCounts(published), { errors: 0, warnings: 0, infos: 1 });
 });
 
 test("the counts are the errors, warnings and information, and leave hints out", () => {

@@ -150,17 +150,23 @@ CLIENT_CAPABILITIES: dict[str, JsonValue] = {
                 "activeParameterSupport": True,
             },
         },
+        "diagnostic": {"dynamicRegistration": False, "relatedDocumentSupport": False},
     },
     "workspace": {
         "configuration": True,
         "workspaceFolders": True,
         "didChangeWatchedFiles": {"dynamicRegistration": True},
+        "diagnostics": {"refreshSupport": True},
     },
     "window": {"workDoneProgress": False},
 }
 """What the broker implements (docs/specs/web-ui.md#the-broker): the same for every server. Every
 session declares completion and signature help, whatever the `autocomplete` preference says, and
-no snippet support, so an item never leaves placeholders to step through."""
+no snippet support, so an item never leaves placeholders to step through. Pull diagnostics are
+declared without dynamic registration: basedpyright pulls only for a client that registers them
+dynamically, so it keeps publishing, while a server that answers `textDocument/diagnostic`
+(rust-analyzer for its own diagnostics) is asked, and tells the page to ask again through
+`workspace/diagnostic/refresh`."""
 
 
 def _no_options(_workspace: str) -> dict[str, JsonValue]:

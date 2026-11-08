@@ -11,7 +11,7 @@ import { Compartment, type Extension, type StateEffect } from "@codemirror/state
 
 import { namedCommands } from "../editor-commands.ts";
 import { completionMode } from "./completion.ts";
-import { backCommand, backKeys, definition, type Navigator } from "./definition.ts";
+import { backCommand, backKeys, definition, followLink, type JumpContext, type Navigator } from "./definition.ts";
 import { closeHover, hover, showHover } from "./hover.ts";
 import { closeList, serverAutocomplete } from "./server-completion.ts";
 import type { Session } from "./session.ts";
@@ -40,12 +40,13 @@ const dismiss = (view: Parameters<typeof closeHover>[0]): boolean => {
 
 export function intelligenceExtension(session: Session, uri: string, languageId: string, hooks: EditorHooks): Intelligence {
   const slot = new Compartment();
+  const jumps: JumpContext = { tab: { kind: "attempt", path: hooks.path }, rootUri: session.rootUri, navigator: hooks.navigator };
   return {
     extension: [
       session.plugin(uri, languageId),
-      hover(hooks.announce),
+      hover(hooks.announce, (view, href) => followLink(view, jumps, href)),
       namedCommands.of({ hover: showHover, dismiss }),
-      definition({ tab: { kind: "attempt", path: hooks.path }, rootUri: session.rootUri, navigator: hooks.navigator }),
+      definition(jumps),
       slot.of([]),
     ],
     completion: (applies, ready) => slot.reconfigure(completionMode(applies, ready) === "server" ? serverAutocomplete() : []),

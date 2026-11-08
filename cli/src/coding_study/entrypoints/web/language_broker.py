@@ -4,11 +4,12 @@
 The page's messages are checked: only a short list of methods reaches the server, `initialize` is
 rebuilt from the catalog, every document must lie in the session's root, a request cannot reuse
 the id of one that waits for its answer, and a completion item is resolved only if the server
-wrote it. The server's requests are answered here and never reach the page; its documentation is
-rendered to HTML the page may insert; the places its definitions name are remembered so the page
-can read them as library files, once those in a hidden directory are left out; the workspace's
-file changes reach it as watched-file events. The broker holds no socket and no process: it is
-given a message and says what to send where.
+wrote it. The server's requests are answered here and never reach the page, which only hears that
+pulled diagnostics should be pulled again; its documentation is rendered to HTML the page may
+insert; the places its definitions name, and the files its hover documentation links to, are
+remembered so the page can read them as library files, once those in a hidden directory are left
+out; the workspace's file changes reach it as watched-file events. The broker holds no socket and
+no process: it is given a message and says what to send where.
 """
 
 import asyncio
@@ -48,12 +49,19 @@ WATCHED_FILES = "workspace/didChangeWatchedFiles"
 CLIENT_NAME = "cstudy"
 NO_EDITS = "cstudy applies no edits from a language server"
 
+PULL_DIAGNOSTICS = "textDocument/diagnostic"
+DIAGNOSTIC_REFRESH = "workspace/diagnostic/refresh"
+PULL_AGAIN = "cstudy/diagnosticRefresh"
+"""What the page is told when the server asks for a refresh of pulled diagnostics: a
+notification, since the broker has answered the server's request."""
+
 DOCUMENT_REQUESTS = frozenset(
     {
         "textDocument/hover",
         "textDocument/definition",
         "textDocument/completion",
         "textDocument/signatureHelp",
+        PULL_DIAGNOSTICS,
     }
 )
 REQUESTS = DOCUMENT_REQUESTS | {RESOLVE}
@@ -109,7 +117,9 @@ class LanguageBroker:
         """The requests the page sent that the server has not answered, by id: the broker's own
         record of what was sent, which decides what an answer is."""
         self._items = CompletionItems()
-        self._definitions: set[str] = set()
+        self._library_files: set[str] = set()
+        """The files the page may read: those the server named as definitions or linked to from
+        hover documentation, outside the hidden directories."""
         self._watching: set[str] = set()
         """The ids of the server's `workspace/didChangeWatchedFiles` registrations."""
 
@@ -216,7 +226,7 @@ class LanguageBroker:
             return _error(request_id, INVALID_PARAMS, f"{LIBRARY_FILE} needs a uri")
         workspace = self._target.workspace
         try:
-            if uri not in self._definitions:
+            if uri not in self._library_files:
                 raise LibraryRefusalError(Reason.NOT_A_DEFINITION, _shown(uri, workspace))
             found = await asyncio.to_thread(read_library_file, uri, workspace, self._hidden)
         except LibraryRefusalError as refusal:
@@ -273,6 +283,11 @@ class LanguageBroker:
         elif method in ("client/registerCapability", "client/unregisterCapability"):
             self._track_registrations(method, params)
             result = None
+        elif method == DIAGNOSTIC_REFRESH:
+            return Delivery(
+                to_server=(_response(request_id, None),),
+                to_page=(_notification(PULL_AGAIN, None),),
+            )
         elif method in QUIET_REQUESTS or _REFRESH.fullmatch(method):
             result = None
         else:
@@ -328,7 +343,9 @@ class LanguageBroker:
     def _rendered(self, sent: _Sent, result: Any) -> Any:
         match sent.method:
             case "textDocument/hover":
-                return _hover(result)
+                return self._hover(result)
+            case "textDocument/diagnostic":
+                return _pulled_report(result)
             case "textDocument/completion":
                 return _completion(self._items.issued(result))
             case "completionItem/resolve":
@@ -337,7 +354,7 @@ class LanguageBroker:
                 return _signature_help(result)
             case "textDocument/definition":
                 shown = self._visible(result)
-                self._definitions.update(_targets(shown))
+                self._library_files.update(_targets(shown))
                 return shown
             case _:
                 return result
@@ -351,6 +368,23 @@ class LanguageBroker:
 
     def _is_hidden(self, location: object) -> bool:
         return any(is_hidden(uri, self._hidden) for uri in _targets(location))
+
+    def _hover(self, result: Any) -> Any:
+        fields = _fields(result)
+        if "contents" not in fields:
+            return result
+        html = hover_html(fields["contents"], self._opens_library)
+        return None if html is None else {**fields, "contents": _html(html)}
+
+    def _opens_library(self, href: str) -> bool:
+        """Whether a link of hover documentation opens a library tab: a file of this machine, at
+        the line its fragment names (gopls's `#314,6`), outside the hidden directories. The page
+        may then read the file, as it may read a definition's."""
+        uri = href.partition("#")[0]
+        if _plain_path(uri) is None or is_hidden(uri, self._hidden):
+            return False
+        self._library_files.add(uri)
+        return True
 
 
 def _plain_path(uri: str) -> str | None:
@@ -380,12 +414,16 @@ def _without_related(diagnostic: object) -> object:
     return {name: value for name, value in fields.items() if name != "relatedInformation"}
 
 
-def _hover(result: Any) -> Any:
+def _pulled_report(result: Any) -> Any:
+    """A `textDocument/diagnostic` report without the `relatedInformation` of its items and
+    without `relatedDocuments`: the client declares neither, and their locations could name any
+    file. A report without a list of items, such as an `unchanged` one, is left as it is."""
     fields = _fields(result)
-    if "contents" not in fields:
+    if not isinstance(fields.get("items"), list):
         return result
-    html = hover_html(fields["contents"])
-    return None if html is None else {**fields, "contents": _html(html)}
+    items = [_without_related(found) for found in _list(fields["items"])]
+    kept = {name: value for name, value in fields.items() if name != "relatedDocuments"}
+    return {**kept, "items": items}
 
 
 def _completion(result: Any) -> Any:

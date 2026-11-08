@@ -9,34 +9,41 @@ nothing is None. Nothing else a server sends is HTML.
 import html
 from typing import cast
 
-from coding_study.entrypoints.web.markdown import render_code_block, render_documentation_markdown
+from coding_study.entrypoints.web.markdown import (
+    LibraryLinks,
+    no_library,
+    render_code_block,
+    render_documentation_markdown,
+)
 
 CSTUDY_HTML = "cstudy-html"
 SEPARATOR = "<hr>\n"
 MARKDOWN = "markdown"
 
 
-def hover_html(contents: object) -> str | None:
+def hover_html(contents: object, opens_library: LibraryLinks = no_library) -> str | None:
     """A hover's `contents`: a `MarkupContent`, a `MarkedString` (a string, which is markdown, or
     a language and a value, which is code), or a list of them, each rendered in order and
-    separated by a rule; None when nothing is left."""
+    separated by a rule; None when nothing is left. A markdown link that `opens_library` accepts
+    becomes a button that opens the library file (docs/specs/web-ui.md#hover)."""
     parts = cast(list[object], contents) if isinstance(contents, list) else [contents]
-    rendered = [found for part in parts if (found := _marked(part)) is not None]
+    rendered = [found for part in parts if (found := _marked(part, opens_library)) is not None]
     return SEPARATOR.join(rendered) or None
 
 
 def documentation_html(value: object) -> str | None:
-    """A `documentation` field: a string, which is plain text, or a `MarkupContent`."""
+    """A `documentation` field: a string, which is plain text, or a `MarkupContent`, whose links
+    to files are their text."""
     if isinstance(value, str):
         return _plain(value)
     fields = _fields(value)
     text = fields.get("value")
-    return _markup(fields.get("kind"), text) if isinstance(text, str) else None
+    return _markup(fields.get("kind"), text, no_library) if isinstance(text, str) else None
 
 
-def _marked(part: object) -> str | None:
+def _marked(part: object, opens_library: LibraryLinks) -> str | None:
     if isinstance(part, str):
-        return _markdown(part)
+        return _markdown(part, opens_library)
     fields = _fields(part)
     text = fields.get("value")
     if not isinstance(text, str):
@@ -44,16 +51,16 @@ def _marked(part: object) -> str | None:
     language = fields.get("language")
     if isinstance(language, str):
         return render_code_block(text, language) if text.strip() else None
-    return _markup(fields.get("kind"), text)
+    return _markup(fields.get("kind"), text, opens_library)
 
 
-def _markup(kind: object, text: str) -> str | None:
+def _markup(kind: object, text: str, opens_library: LibraryLinks) -> str | None:
     """A kind other than markdown is plain text, which cannot do harm."""
-    return _markdown(text) if kind == MARKDOWN else _plain(text)
+    return _markdown(text, opens_library) if kind == MARKDOWN else _plain(text)
 
 
-def _markdown(text: str) -> str | None:
-    rendered = render_documentation_markdown(text)
+def _markdown(text: str, opens_library: LibraryLinks) -> str | None:
+    rendered = render_documentation_markdown(text, opens_library)
     return rendered if rendered.strip() else None
 
 

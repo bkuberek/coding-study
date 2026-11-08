@@ -283,14 +283,23 @@ def test_the_client_capabilities_are_the_ones_the_broker_implements():
                     "activeParameterSupport": True,
                 },
             },
+            "diagnostic": {"dynamicRegistration": False, "relatedDocumentSupport": False},
         },
         "workspace": {
             "configuration": True,
             "workspaceFolders": True,
             "didChangeWatchedFiles": {"dynamicRegistration": True},
+            "diagnostics": {"refreshSupport": True},
         },
         "window": {"workDoneProgress": False},
     }
+
+
+def test_pull_diagnostics_are_declared_without_dynamic_registration():
+    """basedpyright pulls only for a client that registers the capability dynamically, so it keeps
+    publishing; a server that answers requests, such as rust-analyzer, is asked."""
+    diagnostic = BASEDPYRIGHT.capabilities["textDocument"]["diagnostic"]  # type: ignore[index]
+    assert diagnostic["dynamicRegistration"] is False  # type: ignore[index]
 
 
 def test_completion_declares_no_snippet_support_so_an_item_never_leaves_placeholders():

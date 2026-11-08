@@ -55,6 +55,22 @@ export function definitionTarget(answer: unknown): DefinitionTarget | null {
   return { uri, line: start.line, character: start.character };
 }
 
+/** `#314,6` (gopls), `#L12` or `#L12,5`: a 1-based line, and a 1-based column after it. */
+const LINE_FRAGMENT = /^L?(\d+)(?:,(\d+))?$/;
+
+/**
+ * Where a link of hover documentation points (docs/specs/web-ui.md#hover): the file without the
+ * fragment, at the line and column the fragment names, or at its start when it names none.
+ */
+export function linkTarget(href: string): DefinitionTarget {
+  const hash = href.indexOf("#");
+  if (hash < 0) return { uri: href, line: 0, character: 0 };
+  const place = LINE_FRAGMENT.exec(href.slice(hash + 1));
+  const line = place === null ? 0 : Number(place[1]) - 1;
+  const character = place?.[2] === undefined ? 0 : Number(place[2]) - 1;
+  return { uri: href.slice(0, hash), line: Math.max(line, 0), character: Math.max(character, 0) };
+}
+
 /**
  * What the target is, given the file the cursor is in, the session's root and the paths of the
  * attempt's tree: a file inside the root that the tree lists is the attempt's, every other URI is

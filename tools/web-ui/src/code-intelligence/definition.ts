@@ -12,7 +12,8 @@ import { type Command, EditorView, keymap } from "@codemirror/view";
 import type { Editor } from "../editor.ts";
 import { namedCommands } from "../editor-commands.ts";
 import { definitionLink } from "./definition-link.ts";
-import { classifyTarget, definitionTarget, type DefinitionTarget, isDefinitionClick, JumpStack, type Origin, refusalNote, type TabRef } from "./navigation.ts";
+import { lspOffset } from "./live-diagnostics.ts";
+import { classifyTarget, definitionTarget, type DefinitionTarget, isDefinitionClick, JumpStack, linkTarget, type Origin, refusalNote, type TabRef } from "./navigation.ts";
 import { closeNote, noteExtension, showNote } from "./note.ts";
 
 /** A file of a library that the broker read for the page. */
@@ -123,21 +124,38 @@ async function goToDefinition(view: EditorView, context: JumpContext): Promise<v
       context.navigator.say(NO_DEFINITION);
       return;
     }
-    const where = classifyTarget(target.uri, uri, context.rootUri, await context.navigator.paths());
-    const origin: Origin = { tab: context.tab, head };
-    if (where.kind === "same") {
-      const pos = mapping.mapPosition(uri, target);
-      jumps.push(origin);
-      moveInside(view, head, pos);
-    } else if (where.kind === "attempt") {
-      const editor = await context.navigator.openFile(where.path);
-      if (editor === null) return;
-      jumps.push(origin);
-      editor.jumpTo(target.line + 1, target.character + 1);
-    } else {
-      await openLibrary(view, context.navigator, origin, target);
-    }
+    await jumpTo(view, context, { tab: context.tab, head }, target, (place) => mapping.mapPosition(uri, place));
   });
+}
+
+/**
+ * Follows a link of hover documentation (docs/specs/web-ui.md#hover), as a definition is followed:
+ * within the file, into the attempt's tab, or into a library tab, at the line the link names.
+ */
+export function followLink(view: EditorView, context: JumpContext, href: string): void {
+  const plugin = LSPPlugin.get(view);
+  if (plugin === null) return;
+  const origin: Origin = { tab: context.tab, head: view.state.selection.main.head };
+  const offsetOf = (place: DefinitionTarget): number => lspOffset(view.state.doc, place);
+  void jumpTo(view, context, origin, linkTarget(href), offsetOf).catch((error: unknown) => showNote(view, refusalNote(error, 0)));
+}
+
+/** Goes to `target` from `origin`; `offsetOf` places a target in the file itself. */
+async function jumpTo(view: EditorView, context: JumpContext, origin: Origin, target: DefinitionTarget, offsetOf: (target: DefinitionTarget) => number): Promise<void> {
+  const plugin = LSPPlugin.get(view);
+  if (plugin === null) return;
+  const where = classifyTarget(target.uri, plugin.uri, context.rootUri, await context.navigator.paths());
+  if (where.kind === "same") {
+    jumps.push(origin);
+    moveInside(view, origin.head, offsetOf(target));
+  } else if (where.kind === "attempt") {
+    const editor = await context.navigator.openFile(where.path);
+    if (editor === null) return;
+    jumps.push(origin);
+    editor.jumpTo(target.line + 1, target.character + 1);
+  } else {
+    await openLibrary(view, context.navigator, origin, target);
+  }
 }
 
 async function openLibrary(view: EditorView, navigator: Navigator, origin: Origin, target: DefinitionTarget): Promise<void> {

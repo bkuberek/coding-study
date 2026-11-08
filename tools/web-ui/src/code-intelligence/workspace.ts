@@ -9,6 +9,8 @@ import { type LSPClient, LSPPlugin, Workspace, type WorkspaceFile } from "@codem
 import type { Text } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 
+import { pullAgain, pullDiagnostics } from "./pull.ts";
+
 class SessionFile implements WorkspaceFile {
   readonly uri: string;
   readonly languageId: string;
@@ -57,6 +59,7 @@ export class SessionWorkspace extends Workspace {
     const file = new SessionFile(uri, languageId, this.#nextVersion(uri), view.state.doc, view);
     this.files.push(file);
     this.client.didOpen(file);
+    pullDiagnostics(this.client, uri);
     this.#filesChanged(this.files.length);
   }
 
@@ -68,7 +71,7 @@ export class SessionWorkspace extends Workspace {
     this.#filesChanged(this.files.length);
   }
 
-  /** Opens every file again with its text now, as each new connection must. */
+  /** Opens every file again with its text now, as each new connection must, and pulls its diagnostics. */
   override connected(): void {
     for (const file of this.files) {
       file.doc = file.view.state.doc;
@@ -76,6 +79,7 @@ export class SessionWorkspace extends Workspace {
       LSPPlugin.get(file.view)?.clear();
     }
     super.connected();
+    pullAgain(this.client);
   }
 
   /** The number of the files open. */
