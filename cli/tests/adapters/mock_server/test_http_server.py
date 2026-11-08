@@ -445,7 +445,10 @@ def test_a_control_body_past_its_cap_gets_413(client: StackClient):
 
 def test_a_request_line_that_is_not_http_gets_a_json_error(client: StackClient):
     raw = send_raw(client.api_port, b"nonsense\r\n\r\n")
-    assert "Bad request" in json.loads(raw)["error"]
+    head, _, body = raw.partition(b"\r\n\r\n")
+    assert head.startswith(b"HTTP/1.0 400")
+    assert b"application/json" in head
+    assert "Bad request" in json.loads(body)["error"]
 
 
 def test_a_request_line_past_the_limit_gets_a_json_414(client: StackClient):

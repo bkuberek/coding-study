@@ -71,6 +71,9 @@ class _JsonHandler(BaseHTTPRequestHandler):
         raise NotImplementedError
 
     def send_error(self, code: int, message: str | None = None, explain: str | None = None) -> None:
+        # A malformed request line can leave request_version at HTTP/0.9, which suppresses the
+        # status line and headers. Every error goes out as a full HTTP/1.0 response.
+        self.request_version = ""
         self.write_reply(json_reply(code, {"error": message or self.responses[code][0]}))
 
     def write_reply(self, reply: Reply) -> None:
