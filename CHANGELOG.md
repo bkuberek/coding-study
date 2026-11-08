@@ -2,6 +2,30 @@
 
 <!-- version list -->
 
+## v0.30.1 (2026-11-08)
+
+### Bug Fixes
+
+- **sandbox**: Start rootless Docker, and say sudo only for an engine that needs it
+  ([`0d41369`](https://github.com/bkuberek/coding-study/commit/0d41369d36a4ce2605b30968b0711a7a883559c3))
+
+- **sandbox**: Tell a docker group member to log in again, not to join with sudo
+  ([`c04a300`](https://github.com/bkuberek/coding-study/commit/c04a300ddc84595ab0084c11ed6b137a056499d0))
+
+### Chores
+
+- **showcase**: Take Go and Rust hover shots, and stop only the daemons this run started
+  ([`9b92f07`](https://github.com/bkuberek/coding-study/commit/9b92f07ea7a936f39062ff39d2cbc461f9ef822c))
+
+### Documentation
+
+- Plan fifteen project problems on the roadmap, and tick what has shipped
+  ([`38ef478`](https://github.com/bkuberek/coding-study/commit/38ef478394eee63cf0333575c23e6752757ca07b))
+
+- Use Moto for AWS services in service projects, with LocalStack 4.14.0 as the fallback
+  ([`ff6a240`](https://github.com/bkuberek/coding-study/commit/ff6a2409f43a49747496f274a376d2d437e47a92))
+
+
 ## v0.30.0 (2026-11-08)
 
 ### Bug Fixes
