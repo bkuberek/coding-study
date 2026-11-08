@@ -6,7 +6,7 @@ It drives one headless Chromium with Playwright against a throwaway workspace, a
 
 ## Run it
 
-You need `uv`, `ffmpeg`, `gh` (to fetch the wheel), the language toolchains that `cstudy doctor` checks, and Playwright's Chromium (`uv run playwright install chromium` in `cli/` if the browser tests never ran on this machine). `pngquant` is optional and shrinks the PNGs.
+You need `uv`, `ffmpeg`, `gh` (to fetch the wheel), the language toolchains that `cstudy doctor` checks, with JDK 25 or 26 selected (`JAVA_HOME`) so that Java's language server runs, and Playwright's Chromium (`uv run playwright install chromium` in `cli/` if the browser tests never ran on this machine). `pngquant` is optional and shrinks the PNGs.
 
 ```bash
 # 1. The released wheel
@@ -28,9 +28,9 @@ A run takes several minutes and runs one Chromium, `cstudy serve` and the langua
 
 `--stages` runs part of it, in this order: `prepare` (virtual environment, `cstudy init --no-ide`, preferences, `cstudy doctor --fix`), `seed` (practice history), `videos`, `shots`, `mock`. A later stage needs the earlier ones, so rerun a single stage only against the same `--work` folder, and without `prepare`, which wants the folder empty. Run `videos` before `shots`, and `mock` last: a mock in progress adds a banner to every view.
 
-`--shots` takes some of the screenshots of the `shots` stage, by name, such as `--shots web-ui-attempt,web-ui-settings`; a shot left out does not open its view, so leaving out `web-ui-health` starts no Gradle. `--video-theme dark` records the animations in the dark theme.
+`--shots` takes some of the screenshots of the `shots` stage, by name, such as `--shots web-ui-attempt,web-ui-settings`; a shot left out does not open its view, so leaving out `web-ui-health` starts no Gradle. `--variants` takes the screenshots in some themes and widths only, such as `--variants light-phone`: on a machine short of memory, one variant per run starts one Chromium and one Java language server at a time, and frees them in between. `--video-theme dark` records the animations in the dark theme.
 
-When it ends, stop what it may have left: `ps -Ao pid,ppid,etime,command | rg -i "basedpyright|typescript-language-server|uvicorn|cstudy serve|ms-playwright|GradleDaemon"`. The script stops the server and the browser, and the Gradle daemons that started while it ran (`cstudy doctor --fix` and the Health view start them). A daemon that was already running stays, and so may be shared with other work: check its builds before you kill it, by PID.
+When it ends, stop what it may have left: `ps -Ao pid,ppid,etime,command | rg -i "basedpyright|typescript-language-server|jdtls|uvicorn|cstudy serve|ms-playwright|GradleDaemon"`. The script stops the server and the browser, and the Gradle daemons that started while it ran (`cstudy doctor --fix` and the Health view start them). A daemon that was already running stays, and so may be shared with other work: check its builds before you kill it, by PID.
 
 ## What it makes
 
@@ -41,6 +41,7 @@ Desktop images are 1440 by 900, the phone ones 390 wide at 2x. A name is `<name>
 | `code-intelligence-hover` | The documentation tooltip on `sorted` in two-sum (Python) |
 | `code-intelligence-error` | An undefined name underlined, with its message |
 | `autocomplete-list` | The completion list with its documentation panel |
+| `code-intelligence-java-hover` | The Javadoc tooltip on `getOrDefault` in top-k-frequent-elements (Java), from Eclipse JDT LS; the seed stage starts that attempt |
 | `web-ui-problems` | The problem list |
 | `web-ui-attempt` | A project attempt with the file tree, the editor, a run's results and the statement |
 | `web-ui-project` | The same attempt with several file tabs open |
@@ -66,4 +67,5 @@ Recording uses Playwright's `record_video_dir` with a small injected pointer, si
 - Statements credit the problem each one rewords, by the name of the site it comes from. The media must not name any assessment vendor, so the script hides those credit lines in the page while it records and photographs. Nothing else in a statement changes.
 - The script writes files only into `--work` and `--out`. Nothing it makes is committed for you.
 - It needs the language servers, so it runs `cstudy doctor --fix` with the network. After that it works offline.
-- A new language server, such as the Java and Kotlin or the Go and Rust releases bring, needs a new feature shot, and a scene in `code_intelligence_scene` if the animation should show it. The settings and health shots pick up new rows by themselves.
+- A new language server needs a new feature shot, as Java's has, and a scene in `code_intelligence_scene` if the animation should show it. The health shot picks up new rows by itself; the settings shot also waits for each server's line, so a JDK outside 25 and 26 stops it instead of showing Java's `needs JDK 25 or 26`.
+- JDT LS says ready before its first Gradle import ends, so the Java shot hovers again until the Javadoc shows, for up to three minutes, and waits for the server to stop before the next variant, so that two never run at once.

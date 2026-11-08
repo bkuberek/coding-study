@@ -41,6 +41,7 @@ SHOTS = (
     "code-intelligence-hover",
     "code-intelligence-error",
     "autocomplete-list",
+    "code-intelligence-java-hover",
     "web-ui-problems",
     "web-ui-attempt",
     "web-ui-project",
@@ -80,6 +81,28 @@ TWO_SUM = '''def two_sum(nums: list[int], target: int) -> list[int]:
             high -= 1
     return []
 '''
+TOP_K_JAVA = """public class Solution {
+    public int[] topKFrequent(int[] nums, int k) {
+        Map<Integer, Integer> counts = new HashMap<>();
+        for (int num : nums) {
+            counts.put(num, counts.getOrDefault(num, 0) + 1);
+        }
+        PriorityQueue<Integer> heap = new PriorityQueue<>(Comparator.comparingInt(counts::get));
+        for (int value : counts.keySet()) {
+            heap.offer(value);
+            if (heap.size() > k) {
+                heap.poll();
+            }
+        }
+        int[] answer = new int[k];
+        for (int i = k - 1; i >= 0; i--) {
+            answer[i] = heap.poll();
+        }
+        return answer;
+    }
+}
+"""
+JAVA_SLUG = "top-k-frequent-elements"
 TWO_SUM_WITH_TYPO = TWO_SUM.replace("high = 0, len(nums) - 1", "high = 0, len(num) - 1")
 TWO_SUM_WITH_ROOM = TWO_SUM + "\n\n"
 MOVE_ZEROES = (
@@ -270,6 +293,8 @@ class Showcase:
         self.cs("start", "two-sum", "--lang", "python", "--no-open")
         self.write_stub("two-sum", TWO_SUM)
         self.cs("start", "move-zeroes", "--lang", "python", "--no-open")
+        self.cs("start", JAVA_SLUG, "--lang", "java", "--no-open")
+        self.write_java_stub(JAVA_SLUG, TOP_K_JAVA)
         self.cs("start", "bank-project-python", "--no-open")
         project = self.workspace / "projects" / "bank-project-python"
         (project / "bank" / "ledger.py").write_text(LEDGER)
@@ -288,6 +313,15 @@ class Showcase:
         media show the header of the release they come from."""
         text = self.stub(slug).read_text()
         self.stub(slug).write_text(text[: text.index("\ndef ") + 1] + code)
+
+    def java_stub(self, slug: str) -> Path:
+        practice = self.workspace / "jvm" / "java" / "src" / "main" / "java" / "practice"
+        return practice / slug.replace("-", "_") / "Solution.java"
+
+    def write_java_stub(self, slug: str, code: str) -> None:
+        """Replaces the class and keeps the header, package and imports `cstudy start` wrote."""
+        text = self.java_stub(slug).read_text()
+        self.java_stub(slug).write_text(text[: text.index("\npublic class ") + 1] + code)
 
     def wants(self, name: str) -> bool:
         return name in self.shots
@@ -322,6 +356,16 @@ class Showcase:
             except subprocess.TimeoutExpired:
                 server.kill()
                 server.wait()
+
+    def wait_for_jdtls_to_stop(self) -> None:
+        """Waits, up to 30 s, until no JDT LS of this workspace runs, so that the next session
+        reuses its data directory and two never run at once."""
+        marker = str(self.workspace / ".cs" / "lsp" / "jdtls")
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            if marker not in run(["ps", "-Aww", "-o", "command"], check=False).stdout:
+                return
+            time.sleep(0.5)
 
     def stop_gradle(self) -> None:
         """Stops the Gradle daemons that appeared while this script ran, by PID."""
@@ -474,6 +518,19 @@ TOKEN_SCRIPT = """
 }
 """
 
+SHOW_LINE_SCRIPT = """
+(text) => {
+  const line = [...document.querySelectorAll('.cm-line')].find(l => l.textContent.includes(text));
+  if (!line) return;
+  const box = line.getBoundingClientRect();
+  const shown = document.elementFromPoint(box.left + 8, box.top + box.height / 2);
+  if (!line.contains(shown)) line.scrollIntoView({block: 'center'});
+  document.querySelectorAll('.cm-scroller').forEach(scroller => { scroller.scrollLeft = 0; });
+}
+"""
+"""Scrolls an editor line to the middle only when it is out of sight, in the window or in the
+editor, and never leaves the editor scrolled sideways."""
+
 
 def shrink(path: Path) -> None:
     """Quantises a PNG to 256 colours, as the first screenshots in docs/images are."""
@@ -516,6 +573,27 @@ def open_file(page: Page, name: str) -> None:
 
 def wait_ready(page: Page, server: str = "basedpyright") -> None:
     page.wait_for_function(f"document.body.innerText.includes('{server} · ready')")
+
+
+def hover_until(page: Page, pointer: Pointer, line_text: str, token: str, text: str,
+                limit_s: float = 180) -> None:
+    """Hovers `token` again until its tooltip shows `text`. JDT LS says ready before its first
+    Gradle import ends, and answers hover with nothing until then. A line out of sight is scrolled
+    to the middle first, and the pointer rests near the start of `token`, since on a phone its
+    middle can lie past the window's edge."""
+    page.evaluate(SHOW_LINE_SCRIPT, line_text)
+    page.wait_for_timeout(300)
+    deadline = time.monotonic() + limit_s
+    while True:
+        pointer.to(5, 5, steps=4)
+        box = pointer.token(line_text, token)
+        pointer.to(box["left"] + 8, box["y"])
+        try:
+            page.wait_for_selector(f".cm-tooltip:has-text('{text}')", timeout=5_000)
+            return
+        except PlaywrightTimeoutError:
+            if time.monotonic() > deadline:
+                raise
 
 
 def run_tests(page: Page) -> None:
@@ -582,6 +660,18 @@ def feature_shots(app: Showcase, context: BrowserContext, variant: Variant) -> N
         page.close()
     app.write_stub("two-sum", TWO_SUM)
 
+    if app.wants("code-intelligence-java-hover"):
+        page = app.attempt(context, JAVA_SLUG)
+        open_file(page, "Solution.java")
+        wait_ready(page, "jdtls")
+        pointer = Pointer(page)
+        hover_until(page, pointer, "counts.getOrDefault", "getOrDefault",
+                    "Returns the value to which")
+        page.wait_for_timeout(400)
+        app.screenshot(page, "code-intelligence-java-hover", variant)
+        page.close()
+        app.wait_for_jdtls_to_stop()
+
 
 def app_shots(app: Showcase, context: BrowserContext, variant: Variant) -> None:
     say(f"app shots {variant.suffix}")
@@ -646,6 +736,7 @@ def app_shots(app: Showcase, context: BrowserContext, variant: Variant) -> None:
         page = app.page(context, "/settings")
         page.wait_for_selector("text=basedpyright 1.")
         page.wait_for_selector("text=typescript-language-server")
+        page.wait_for_selector("text=jdtls 1.")
         page.wait_for_timeout(300)
         app.screenshot(page, "web-ui-settings", variant, redact=True)
         page.close()
@@ -832,6 +923,10 @@ def main() -> None:
     parser.add_argument(
         "--video-theme", choices=THEMES, default="light", help="the theme the animations show"
     )
+    parser.add_argument(
+        "--variants", default=",".join(v.suffix for v in VARIANTS),
+        help="comma list of the screenshots' theme and width: light, dark, light-phone, dark-phone",
+    )
     args = parser.parse_args()
     stages = [stage for stage in args.stages.split(",") if stage]
     unknown = set(stages) - set(STAGES)
@@ -841,6 +936,11 @@ def main() -> None:
     unknown = set(shots) - set(SHOTS)
     if unknown:
         sys.exit(f"unknown shots: {', '.join(sorted(unknown))}")
+    wanted = {name for name in args.variants.split(",") if name}
+    unknown = wanted - {v.suffix for v in VARIANTS}
+    if unknown:
+        sys.exit(f"unknown variants: {', '.join(sorted(unknown))}")
+    variants = [v for v in VARIANTS if v.suffix in wanted]
     app = Showcase(args.work, args.out, shots)
     app.out.mkdir(parents=True, exist_ok=True)
     try:
@@ -858,7 +958,7 @@ def main() -> None:
                         for animation in ANIMATIONS:
                             record(app, browser, animation, args.video_theme)
                     if "shots" in stages:
-                        for variant in VARIANTS:
+                        for variant in variants:
                             context = app.context(browser, variant)
                             try:
                                 feature_shots(app, context, variant)
