@@ -318,7 +318,7 @@ class DockerSandbox:
         if info is None:
             return EngineState(EngineStatus.NOT_INSTALLED)
         version = info.output.strip()
-        if info.exit_code != 0 or not _ENGINE_VERSION.fullmatch(version):
+        if not _answers(info):
             status = _refused_or_stopped(info.output)
             if status is EngineStatus.NO_PERMISSION:
                 return EngineState(status, docker_group=self._docker_group())
@@ -358,7 +358,7 @@ class DockerSandbox:
             info = self._runner.run(
                 (DOCKER, "info", "--format", "{{.ServerVersion}}"), ENGINE_QUERY_S
             )
-            if info is not None and info.exit_code == 0:
+            if info is not None and _answers(info):
                 return
             self._sleep(ENGINE_POLL_S)
         raise SandboxError(f"Docker did not answer within {ENGINE_START_S} s of starting it")
@@ -758,6 +758,12 @@ def _service_failure(up: ProbeResult, budget: StartupBudget) -> str:
             f"{_NOT_YOUR_CODE} A busy machine can take this long; run the command again."
         )
     return f"the stack did not start: {_tail(up.output).strip()}\n{_NOT_YOUR_CODE}"
+
+
+def _answers(info: ProbeResult) -> bool:
+    """Whether an engine answered `docker info`: the Docker 28.0 client exits 0 with only its error
+    when none does, so the exit code alone does not say."""
+    return info.exit_code == 0 and _ENGINE_VERSION.fullmatch(info.output.strip()) is not None
 
 
 def _refused_or_stopped(output: str) -> EngineStatus:

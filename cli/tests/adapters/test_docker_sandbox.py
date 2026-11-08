@@ -225,6 +225,14 @@ def test_start_engine_tries_the_user_service_on_linux(tmp_path):
     assert docker.ran("systemctl", "--user", "start", "docker-desktop")
 
 
+def test_start_engine_keeps_waiting_while_an_older_client_exits_0_with_no_engine(tmp_path):
+    docker = ScriptedDocker()
+    docker.answer(("docker", "info"), ProbeResult(0, "Cannot connect to the Docker daemon\n"))
+
+    with pytest.raises(SandboxError, match="did not answer"):
+        sandbox(docker, tmp_path).start_engine(lambda _line: None)
+
+
 def desktop_absent(docker: ScriptedDocker) -> None:
     docker.answer(("docker", "desktop", "start"), ProbeResult(1, "unknown command"))
     docker.answer(("--user", "start", "docker-desktop"), ProbeResult(5, "Unit not found."))
