@@ -3,9 +3,11 @@ removes. Run with `uv run pytest -q -m docker`. Waits are generous, for a busy m
 tests measure is whether things happen, not how fast."""
 
 import http.client
+import ipaddress
 import json
 import os
 import signal
+import socket
 import subprocess
 import sys
 import textwrap
@@ -64,6 +66,7 @@ SERVER = textwrap.dedent(
 )
 PROBE = "import json,os,socket,sys\n"
 SECRET_NAME = "above-the-project.txt"
+IPV4 = 4
 
 
 def docker(*arguments: str) -> subprocess.CompletedProcess[str]:
@@ -207,6 +210,49 @@ def test_the_app_container_has_no_way_out(stack):
     )
 
     assert "connected" not in found.values()
+
+
+def this_machine_on(stack: str) -> list[str]:
+    """Where a bridge of the stack's networks would hold an address of this machine's: the gateway
+    and the first address of each IPv4 subnet."""
+    networks = resources_of(stack)["networks"]
+    found = docker("network", "inspect", "--format", "{{json .IPAM.Config}}", *networks)
+    addresses: set[str] = set()
+    for line in found.stdout.splitlines():
+        for config in json.loads(line) or []:
+            subnet = ipaddress.ip_network(config["Subnet"])
+            if subnet.version == IPV4:
+                addresses.add(str(next(subnet.hosts())))
+                with suppress(ValueError):
+                    addresses.add(str(ipaddress.IPv4Address(config.get("Gateway") or "")))
+    return sorted(addresses)
+
+
+def test_the_app_container_cannot_reach_this_machine(stack):
+    _, plan, _ = stack
+    addresses = this_machine_on(plan.identity.name)
+
+    with socket.create_server(("0.0.0.0", 0)) as listener:
+        port = listener.getsockname()[1]
+        found = probe(
+            stack,
+            textwrap.dedent(
+                f"""\
+                def reached(host):
+                    try:
+                        socket.create_connection((host, {port}), 3).close()
+                        return True
+                    except OSError:
+                        return False
+
+
+                print(json.dumps([host for host in {addresses!r} if reached(host)]))
+                """
+            ),
+        )
+
+    assert addresses
+    assert found == []
 
 
 def test_a_file_above_the_project_folder_cannot_be_seen(stack):

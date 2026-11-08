@@ -113,22 +113,38 @@ HEALTH_TIMINGS: Mapping[str, str | int] = {
 }
 """Fast while waiting, nothing while idle, and patient on a loaded machine: a check that succeeds
 ends the start period, so a long one costs nothing when all is well."""
+NO_ADDRESS_ON_THIS_MACHINE: Mapping[str, str] = {"com.docker.network.bridge.inhibit_ipv4": "true"}
+"""For `sandbox`. An internal network's bridge holds an address of this machine's, and through it a
+container reaches every service listening on all of this machine's addresses (measured on Linux,
+Engine 29). With no address there, the network holds nothing of this machine's, and its containers
+still reach each other."""
 COMPLETED = {"condition": "service_completed_successfully"}
 HEALTHY = {"condition": "service_healthy"}
 EGRESS_TARGETS = (("1.1.1.1", 443), ("192.168.1.1", 80), ("10.0.0.1", 80), ("169.254.169.254", 80))
 """A public address, two LAN addresses and the cloud metadata address, which D11 must not reach."""
+EGRESS_HOSTS_VARIABLE = "CSTUDY_EGRESS_HOSTS"
+"""The IPv4 gateway of each of the stack's networks, comma-separated: known only once the stack
+runs, so the probe reads them from its environment."""
+EGRESS_HOST_PORTS = (22, 80, 443)
+"""Where the probe tries each gateway. A refusal is this machine answering, so it reaches the
+machine as much as a connection does."""
 EGRESS_PROBE_TIMEOUT_S = 2
 EGRESS_PROBE = "\n".join(
     (
-        "import socket, sys",
+        "import errno, os, socket, sys",
         f"socket.setdefaulttimeout({EGRESS_PROBE_TIMEOUT_S})",
-        f"reached = [to for to in {EGRESS_TARGETS!r} if socket.socket().connect_ex(to) == 0]",
+        f"hosts = [h for h in os.environ.get({EGRESS_HOSTS_VARIABLE!r}, '').split(',') if h]",
+        "answers = lambda to, codes: socket.socket().connect_ex(to) in codes",
+        f"reached = [to for to in {EGRESS_TARGETS!r} if answers(to, (0,))]",
+        f"machine = [(h, port) for h in hosts for port in {EGRESS_HOST_PORTS!r}]",
+        "reached += [to for to in machine if answers(to, (0, errno.ECONNREFUSED))]",
         "print('reached', reached)",
         "sys.exit(1 if reached else 0)",
     )
 )
 """Standard library only, run from the pinned Python image, on `sandbox` alone. A connection that
-fails or times out proves what D11 asks; one that succeeds is named."""
+fails or times out proves what D11 asks; one that succeeds is named, and so is a refusal from this
+machine."""
 
 _DIGEST_LENGTH = 8
 _STACK_NAME = re.compile(r"cstudy-[dtgi]-[a-z0-9][a-z0-9_-]*")
@@ -330,10 +346,11 @@ def stack_document(plan: StackPlan) -> dict[str, object]:
     if plan.mocks is not None:
         services[MOCK_SERVICE] = _mock_server(plan, plan.mocks)
     labels = plan.identity.stable_labels
+    sandbox = {"internal": True, "driver_opts": NO_ADDRESS_ON_THIS_MACHINE, "labels": labels}
     return {
         "name": plan.identity.name,
         "services": services,
-        "networks": {"sandbox": {"internal": True, "labels": labels}, "edge": {"labels": labels}},
+        "networks": {"sandbox": sandbox, "edge": {"labels": labels}},
         "volumes": {"data": {"labels": labels}},
     }
 

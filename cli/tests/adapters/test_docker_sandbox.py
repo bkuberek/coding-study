@@ -1048,7 +1048,34 @@ def test_the_egress_probe_runs_alone_with_no_pull(tmp_path, paths):
 
     sandbox(docker, tmp_path).probe_egress(plan_of(paths))
 
-    assert docker.ran("run", "--rm", "-T", "--no-deps", "--pull", "never", "cstudy-egress-probe")
+    assert docker.ran("run", "--rm", "-T", "--no-deps", "--pull", "never")
+    assert docker.ran("-e", "CSTUDY_EGRESS_HOSTS=", "cstudy-egress-probe")
+
+
+def test_the_egress_probe_tries_the_gateway_of_each_of_the_stacks_networks(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("network", "ls"), ProbeResult(0, "n1\nn2\nn3\n"))
+    docker.answer(
+        ("network", "inspect"), ProbeResult(0, "172.26.0.1 \ninvalid IP fd00::1 \n172.25.0.1 \n")
+    )
+
+    sandbox(docker, tmp_path).probe_egress(plan_of(paths))
+
+    assert docker.ran(
+        "docker", "network", "ls", "-q", "--filter", f"label=com.docker.compose.project={NAME}"
+    )
+    assert docker.ran("docker", "network", "inspect")[0][-3:] == ("n1", "n2", "n3")
+    assert docker.ran("-e", "CSTUDY_EGRESS_HOSTS=172.25.0.1,172.26.0.1", "cstudy-egress-probe")
+
+
+def test_the_egress_probe_runs_when_the_networks_cannot_be_listed(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("network", "ls"), ProbeResult(1, "cannot connect"))
+
+    sandbox(docker, tmp_path).probe_egress(plan_of(paths))
+
+    assert not docker.ran("network", "inspect")
+    assert docker.ran("-e", "CSTUDY_EGRESS_HOSTS=", "cstudy-egress-probe")
 
 
 def test_a_failing_reset_prepare_is_your_code(tmp_path, paths):

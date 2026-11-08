@@ -10,6 +10,7 @@ which wakes the VM.
 import codecs
 import http.client
 import io
+import ipaddress
 import json
 import os
 import shutil
@@ -41,6 +42,7 @@ from coding_study.domain.sandbox import (
     APP_SERVICE,
     BOOTSTRAP_SERVICE,
     CONTROL_PORT,
+    EGRESS_HOSTS_VARIABLE,
     EGRESS_PROBE_SERVICE,
     FORWARD_SERVICE,
     FORWARDER_FILE,
@@ -104,6 +106,8 @@ READABLE_FILE = 0o644
 READABLE_DIRECTORY = 0o755
 MILLISECONDS_PER_SECOND = 1000
 EGRESS_PROBE_LIMIT_S = 60.0
+IPV4 = 4
+_GATEWAY_FORMAT = "{{range .IPAM.Config}}{{.Gateway}} {{end}}"
 _COMPOSE = (DOCKER, "compose", "--ansi", "never")
 _PULL_NEVER = ("--pull", "never")
 _LABEL_FILTER = ("--filter", f"label={LABEL_KIND}")
@@ -647,8 +651,30 @@ class DockerSandbox:
             self._runner.run((DOCKER, "logs", "--follow", container), None, on_line)
 
     def probe_egress(self, plan: StackPlan) -> CommandOutcome:
-        arguments = ("run", "--rm", "-T", "--no-deps", *_PULL_NEVER, EGRESS_PROBE_SERVICE)
+        hosts = ",".join(sorted(self._gateways(plan), key=ipaddress.IPv4Address))
+        arguments = (
+            *("run", "--rm", "-T", "--no-deps", *_PULL_NEVER),
+            *("-e", f"{EGRESS_HOSTS_VARIABLE}={hosts}"),
+            EGRESS_PROBE_SERVICE,
+        )
         return self._one_off(plan, arguments, EGRESS_PROBE_LIMIT_S)
+
+    def _gateways(self, plan: StackPlan) -> set[str]:
+        """The IPv4 gateway of each of the stack's networks: where a bridge holds one, it is an
+        address of this machine's."""
+        project = f"label={LABEL_PROJECT}={plan.identity.name}"
+        listed = self._runner.run(
+            (DOCKER, "network", "ls", "-q", "--filter", project), INVENTORY_TIMEOUT_S
+        )
+        networks = listed.output.split() if listed is not None and listed.exit_code == 0 else []
+        if not networks:
+            return set()
+        found = self._runner.run(
+            (DOCKER, "network", "inspect", "--format", _GATEWAY_FORMAT, *networks),
+            INVENTORY_TIMEOUT_S,
+        )
+        words = found.output.split() if found is not None and found.exit_code == 0 else []
+        return {word for word in words if _is_ipv4(word)}
 
     def install(
         self, plan: InstallPlan, timeout_s: float, on_output: Callable[[str], None] | None
@@ -729,6 +755,14 @@ def _start_commands(platform: str) -> tuple[tuple[str, ...], ...]:
     if platform == MACOS_PLATFORM:
         return (desktop, ("open", "-a", "Docker"))
     return (desktop, ("systemctl", "--user", "start", "docker-desktop"))
+
+
+def _is_ipv4(text: str) -> bool:
+    """A bridge with no address shows its gateway as `invalid IP`."""
+    try:
+        return ipaddress.ip_address(text).version == IPV4
+    except ValueError:
+        return False
 
 
 def _loopback_port(output: str) -> int | None:

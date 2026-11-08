@@ -188,6 +188,21 @@ def test_the_sandbox_network_is_internal_and_the_edge_is_not():
     assert "internal" not in networks["edge"]
 
 
+def test_the_sandbox_network_gives_this_machine_no_address_and_the_edge_keeps_its_own():
+    networks = document_of()["networks"]
+
+    assert networks["sandbox"]["driver_opts"] == {"com.docker.network.bridge.inhibit_ipv4": "true"}
+    assert "driver_opts" not in networks["edge"]
+
+
+def test_the_egress_probe_tries_the_gateways_from_its_environment():
+    command = services()[EGRESS_PROBE_SERVICE]["command"]
+
+    assert "CSTUDY_EGRESS_HOSTS" in command[-1]
+    assert "errno.ECONNREFUSED" in command[-1]
+    compile(command[-1], "egress-probe", "exec")
+
+
 def test_the_forwarder_joins_both_networks():
     assert services()[FORWARD_SERVICE]["networks"] == ["sandbox", "edge"]
 
