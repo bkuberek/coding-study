@@ -1,17 +1,20 @@
 """The real rust-analyzer behind a session (docs/specs/web-ui.md#testing, ADR 0018 phase 3): the
 one on PATH, from rustup or not, answers a page that opens a Rust practice file. Its own
-diagnostics are pulled: an unknown function is an error before any save. After `didSave`, `cargo
-check` publishes rustc's unused variable, tagged Unnecessary, into a target directory of its own.
-`len` has documentation, and its definition is the standard library's source, read through the
-broker; completion after `nums.` lists `len`.
+diagnostics are pulled as the page pulls them: while it loads its workspace it answers an empty
+report, asks for a refresh and cancels pulls (`ServerCancelled`, `retriggerRequest` true), which
+are asked again; then a syntax error is a pulled error before any save. Once the error is fixed,
+`didSave` makes `cargo check` publish rustc's unused variable, tagged Unnecessary, from a target
+directory of its own. `len` has documentation, and its definition is the standard library's
+source, read through the broker; completion after `nums.` lists `len`.
 
 Needs a `rust-analyzer` whose `--version` runs (`rustup component add rust-analyzer`) and cargo;
 the tests are skipped otherwise, and when only rustup's proxy of a missing component is there."""
 
 import os
 import shutil
+import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +44,12 @@ pytestmark = pytest.mark.slow
 
 SERVER_SECONDS = 240
 """Generous: rust-analyzer loads the sysroot, and `cargo check` builds once."""
+PULLS = 120
+"""How many pulls the test makes before it gives up on a pulled error: two minutes of a load."""
+RETRY_S = 0.5
+"""What the page waits before it asks again for a pull the server cancelled, the first time."""
+EMPTY_REPORT_WAIT_S = 1.0
+SERVER_CANCELLED = -32802
 CARGO_TOML = """[package]
 name = "practice"
 version = "0.0.0"
@@ -53,11 +62,14 @@ path = "lib.rs"
 LIB_RS = '#[path = "practice/two_sum.rs"]\npub mod two_sum;\n'
 SOURCE = """pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {
     let seen = nums.len();
-    let top = sqrt(target);
-    vec![top]
+    let top = ;
+    vec![target]
 }
 """
-LINES = SOURCE.splitlines()
+"""A syntax error, which rust-analyzer reports itself; the rest, such as an unknown function, is
+`cargo check`'s, published, not pulled."""
+FIXED = SOURCE.replace("    let top = ;\n", "")
+LINES = FIXED.splitlines()
 LEN = {"line": 1, "character": LINES[1].index("len") + 1}
 AFTER_NUMS_DOT = {"line": 1, "character": LINES[1].index("nums.") + len("nums.")}
 PRACTICE_FILE = "rust/practice/two_sum.rs"
@@ -77,9 +89,43 @@ def on_path() -> VersionPrinted:
 
 
 @dataclass
+class Exchange:
+    """The page's side of a session: what it asks, and every diagnostic the server publishes
+    meanwhile, which waiting for an answer must not lose."""
+
+    websocket: WebSocketTestSession
+    published: list[dict[str, Any]] = field(default_factory=list[dict[str, Any]])
+
+    def receive(self) -> dict[str, Any]:
+        message = received(self.websocket, SERVER_SECONDS)
+        if message.get("method") == "textDocument/publishDiagnostics":
+            self.published.append(message["params"])
+        return message
+
+    def ask(self, message: dict[str, Any]) -> dict[str, Any]:
+        self.websocket.send_json(message)
+        return self.until(lambda found: found.get("id") == message["id"])
+
+    def until(self, matches: Callable[[dict[str, Any]], bool]) -> dict[str, Any]:
+        while not matches(message := self.receive()):
+            pass
+        return message
+
+    def tell(self, method: str, params: object) -> None:
+        self.websocket.send_json(notification(method, params))
+
+
+@dataclass
+class Pulled:
+    errors: list[str]
+    failures: list[dict[str, Any]]
+    """Every error a pull was answered with: a cancellation to ask again, or anything else."""
+
+
+@dataclass
 class Played:
     root: Path
-    pulled_errors: list[str]
+    pulled: Pulled
     published_unnecessary: list[str]
     hover: dict[str, Any]
     definition: Any
@@ -87,38 +133,34 @@ class Played:
     completion: list[dict[str, Any]]
 
 
-def ask(websocket: WebSocketTestSession, message: dict[str, Any]) -> dict[str, Any]:
-    websocket.send_json(message)
-    return until(websocket, lambda found: found.get("id") == message["id"])
-
-
-def until(
-    websocket: WebSocketTestSession, matches: Callable[[dict[str, Any]], bool]
-) -> dict[str, Any]:
-    while True:
-        message = received(websocket, SERVER_SECONDS)
-        if matches(message):
-            return message
-
-
-def _pulled_errors(websocket: WebSocketTestSession, document: str) -> list[str]:
-    """Pulls the file's diagnostics, again after each refresh, until one is an error."""
-    for request_id in range(100, 160):
-        report = ask(websocket, request(request_id, "textDocument/diagnostic", _of(document)))
-        errors = [d["message"] for d in report["result"].get("items", []) if d["severity"] == 1]
+def pulled(exchange: Exchange, document: str) -> Pulled:
+    """Pulls the file's diagnostics as the page does: a cancelled pull again after a short wait,
+    an empty report again a little later, as after the server's refresh, until one is an error."""
+    failures: list[dict[str, Any]] = []
+    for request_id in range(100, 100 + PULLS):
+        answer = exchange.ask(request(request_id, "textDocument/diagnostic", _of(document)))
+        if "error" in answer:
+            failures.append(answer["error"])
+            time.sleep(RETRY_S)
+            continue
+        items = answer["result"].get("items", [])
+        errors = [found["message"] for found in items if found.get("severity") == 1]
         if errors:
-            return errors
-        until(websocket, lambda message: message.get("method") == "cstudy/diagnosticRefresh")
-    return []
+            return Pulled(errors, failures)
+        time.sleep(EMPTY_REPORT_WAIT_S)
+    return Pulled([], failures)
 
 
-def _published_unnecessary(message: dict[str, Any], document: str) -> list[str]:
-    if message.get("method") != "textDocument/publishDiagnostics":
-        return []
-    params = message["params"]
-    if params["uri"] != document:
-        return []
-    return [d["message"] for d in params["diagnostics"] if 1 in d.get("tags", [])]
+def published_unnecessary(exchange: Exchange, document: str) -> list[str]:
+    """The diagnostics tagged Unnecessary of the first publication for the file that has one,
+    from those already received or the next ones."""
+    while True:
+        for params in exchange.published:
+            tagged = [d["message"] for d in params["diagnostics"] if 1 in d.get("tags", [])]
+            if params["uri"] == document and tagged:
+                return tagged
+        exchange.published.clear()
+        exchange.receive()
 
 
 def _of(document: str) -> dict[str, Any]:
@@ -149,26 +191,31 @@ def played(on_path: VersionPrinted, tmp_path_factory: pytest.TempPathFactory) ->
 
     app = web_app(root, environment, sessions=LanguageSessions())
     with session_client(app) as client, session(client, f"?attempt_id={attempt.id}") as websocket:
-        ask(websocket, request(1, "initialize", {"capabilities": {}}))
-        websocket.send_json(notification("initialized", {}))
+        exchange = Exchange(websocket)
+        exchange.ask(request(1, "initialize", {"capabilities": {}}))
+        exchange.tell("initialized", {})
         opened = {"uri": document, "languageId": "rust", "version": 1, "text": SOURCE}
-        websocket.send_json(notification("textDocument/didOpen", {"textDocument": opened}))
-        pulled = _pulled_errors(websocket, document)
-        websocket.send_json(notification("textDocument/didSave", _of(document)))
-        published = []
-        while not published:
-            published = _published_unnecessary(received(websocket, SERVER_SECONDS), document)
-        hover = ask(websocket, request(2, "textDocument/hover", at(LEN)))
-        definition = ask(websocket, request(3, "textDocument/definition", at(LEN)))
-        library = ask(
-            websocket, request(4, "cstudy/libraryFile", {"uri": _target(definition["result"])})
-        )
-        completion = ask(websocket, request(5, "textDocument/completion", at(AFTER_NUMS_DOT)))
+        exchange.tell("textDocument/didOpen", {"textDocument": opened})
+        pulls = pulled(exchange, document)
+        practice.write_text(FIXED)
+        change = {
+            "textDocument": {"uri": document, "version": 2},
+            "contentChanges": [{"text": FIXED}],
+        }
+        exchange.tell("textDocument/didChange", change)
+        exchange.published.clear()
+        exchange.tell("textDocument/didSave", _of(document))
+        unnecessary = published_unnecessary(exchange, document)
+        hover = exchange.ask(request(2, "textDocument/hover", at(LEN)))
+        definition = exchange.ask(request(3, "textDocument/definition", at(LEN)))
+        target = {"uri": _target(definition["result"])}
+        library = exchange.ask(request(4, "cstudy/libraryFile", target))
+        completion = exchange.ask(request(5, "textDocument/completion", at(AFTER_NUMS_DOT)))
     items = completion["result"]
     return Played(
         root,
-        pulled,
-        published,
+        pulls,
+        unnecessary,
         hover,
         definition["result"],
         library,
@@ -185,8 +232,17 @@ def test_rust_analyzer_on_path_prints_a_version(on_path):
     assert RUST_ANALYZER.printed_version(on_path.output) is not None
 
 
-def test_an_unknown_function_is_a_pulled_error_before_any_save(played):
-    assert any("sqrt" in message for message in played.pulled_errors)
+def test_a_syntax_error_is_pulled_before_any_save_once_cancelled_pulls_are_asked_again(played):
+    """Every pull the server did not answer, it cancelled for the page to ask again."""
+    retriggers = [
+        failure["code"] == SERVER_CANCELLED
+        and failure.get("data", {}).get("retriggerRequest") is True
+        for failure in played.pulled.failures
+    ]
+    assert (any("expected expression" in m for m in played.pulled.errors), all(retriggers)) == (
+        True,
+        True,
+    )
 
 
 def test_cargo_checks_unused_variable_is_published_tagged_unnecessary(played):
@@ -201,8 +257,8 @@ def test_len_has_documentation_the_page_may_insert(played):
     assert played.hover["result"]["contents"]["kind"] == "cstudy-html"
 
 
-def test_the_definition_of_len_is_the_standard_librarys_source(played):
-    assert _target(played.definition).endswith("/core/src/slice/mod.rs")
+def test_the_definition_of_vecs_len_is_the_standard_librarys_source(played):
+    assert _target(played.definition).endswith("/library/alloc/src/vec/mod.rs")
 
 
 def test_the_standard_librarys_source_is_read_through_the_broker(played):
