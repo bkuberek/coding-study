@@ -50,10 +50,21 @@ _IN_SESSION = (
     f"it. {_GROUP_IS_ROOT}"
 )
 DID_NOT_START = "Docker did not start. Start it yourself, then run the command again."
+ROOTLESS_ENGINE_START = "systemctl --user start docker"
+"""Rootless Docker's user service, which `cstudy` starts itself: it needs no root."""
+_ROOTLESS_STOPPED = (
+    f"Docker did not start. It runs as your own user and needs no root: run "
+    f"{ROOTLESS_ENGINE_START}, then run the command again."
+)
+_SOCKET_STOPPED = (
+    "Docker did not start. Its socket is listening, so connecting starts the engine, and the "
+    "engine did not come up: systemctl status docker says why. Once that is fixed, run the "
+    "command again, which starts it."
+)
 SYSTEM_ENGINE_START = "sudo systemctl start docker"
 SYSTEM_ENGINE_STOPPED = (
-    f"Docker is not running, and starting a system engine needs root. cstudy never runs sudo: "
-    f"run {SYSTEM_ENGINE_START}, then run the command again."
+    f"Docker is not running. It is a system service, and starting a system service needs root; "
+    f"cstudy never runs sudo. Run {SYSTEM_ENGINE_START}, then run the command again."
 )
 
 
@@ -64,6 +75,19 @@ class DockerGroup(StrEnum):
     NOT_YET_IN_SESSION = "a member, not yet in this session"
     """The group database lists you, and this process does not have the group."""
     IN_SESSION = "a member, in this session"
+
+
+class EngineSetup(StrEnum):
+    """What can start a stopped engine on Linux, which decides what `cstudy` tries and says."""
+
+    OTHER = "other"
+    """Docker Desktop, or an engine at an address `cstudy` does not know."""
+    ROOTLESS = "rootless"
+    """Rootless Docker, a service of your own user."""
+    SOCKET_ACTIVATED = "system, socket-activated"
+    """The system engine, whose `docker.socket` listens and starts it on a connection."""
+    SYSTEM = "system"
+    """The system engine, with no socket listening for it: only root starts it."""
 
 
 class EngineStatus(StrEnum):
@@ -101,6 +125,19 @@ def no_permission_message(group: DockerGroup | None) -> str:
             return _IN_SESSION
         case DockerGroup.NOT_A_MEMBER | None:
             return _NOT_A_MEMBER
+
+
+def did_not_start_message(setup: EngineSetup) -> str:
+    """What to do once `cstudy` could not start the engine; `sudo` only where root is needed."""
+    match setup:
+        case EngineSetup.OTHER:
+            return DID_NOT_START
+        case EngineSetup.ROOTLESS:
+            return _ROOTLESS_STOPPED
+        case EngineSetup.SOCKET_ACTIVATED:
+            return _SOCKET_STOPPED
+        case EngineSetup.SYSTEM:
+            return SYSTEM_ENGINE_STOPPED
 
 
 def engine_problem(state: EngineState, platform: str) -> str | None:

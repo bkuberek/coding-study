@@ -131,11 +131,21 @@ Every service project needs Docker. If Docker is installed but not running, cstu
 
 **When cstudy starts the engine.** Only at the moment it is needed: when you start or run a service project (`cstudy start`, `test`, `submit`, `dev`, and the Web UI's equivalents), and from `cstudy doctor --fix`. Never from `cstudy list`, `cstudy show`, the Problems or Problem view, or plain `cstudy doctor`, because starting Docker's VM costs real memory on your machine. It prints `starting Docker ...` as an `output` event, shows progress, waits up to 120 s for the engine, then reports clearly if it did not come up.
 
-| Platform | Mechanism (starting from fully quit is not measured) |
-|----------|------------------------------------------|
-| macOS | Docker Desktop's `docker desktop start --detach`, then `open -a Docker` |
-| Linux, Docker Desktop | `systemctl --user start docker-desktop` |
-| Linux, system engine | Needs root. cstudy never runs `sudo` for you: it prints the command and exits 4 |
+| Platform | Mechanism (starting from fully quit is not measured) | When the engine still does not answer |
+|----------|------------------------------------------|----------------------------------------|
+| macOS | Docker Desktop's `docker desktop start --detach`, then `open -a Docker` | `Docker did not start. Start it yourself, then run the command again.` |
+| Linux, rootless Docker | `systemctl --user start docker`, which needs no root | `Docker did not start. It runs as your own user and needs no root: run systemctl --user start docker, then run the command again.` |
+| Linux, system engine with `docker.socket` listening | `docker desktop start --detach`, then `systemctl --user start docker-desktop`. The socket starts the engine on the first connection, so the `docker info` that found it stopped has already tried | `Docker did not start. Its socket is listening, so connecting starts the engine, and the engine did not come up: systemctl status docker says why. Once that is fixed, run the command again, which starts it.` |
+| Linux, system engine otherwise | `docker desktop start --detach`, then `systemctl --user start docker-desktop`. Starting a system service needs root, and cstudy never runs `sudo` | `Docker is not running. It is a system service, and starting a system service needs root; cstudy never runs sudo. Run sudo systemctl start docker, then run the command again.` |
+| Linux, Docker Desktop or any other address | `docker desktop start --detach`, then `systemctl --user start docker-desktop` | As on macOS |
+
+cstudy prints the message and exits 4. It tells the setups apart (`adapters/docker_setup.py`) without `sudo` and without changing anything, only once the engine does not answer:
+
+| Setup | How it is found |
+|-------|-----------------|
+| Rootless Docker | The client's address, from `docker context inspect`, which `DOCKER_HOST` and the current context set, is `docker.sock` in `$XDG_RUNTIME_DIR` or in `/run/user/<uid>` |
+| System engine | The address is `unix:///var/run/docker.sock` or `unix:///run/docker.sock`. `systemctl is-active docker.socket` printing `active` means the socket is listening |
+| Anything else | Any other address, or a context that cannot be read |
 
 cstudy never stops the engine, since other work may be using it. It only stops its own labeled stacks.
 
@@ -959,7 +969,7 @@ Measured on Linux Mint 22.3, kernel 7.0.0-34-generic, Docker Engine 29.8.1 with 
 | `internal: true`, the forwarder, the egress probe | From the app and the mock server on `sandbox`, in a dev, a test and a graded stack: no public, LAN, VPN or metadata address, no other bridge's gateway, no outside name, no `host.docker.internal`, and, with the bridge holding no address, no service of your machine's ([Networks](#networks)). The probe finds the address of a user network made with `--ipv6` and a `fd00:c5d::/64` subnet, and `sandbox` holds none. The forwarder publishes on `127.0.0.1` only |
 | Hardening | Your UID, every capability set empty with `NoNewPrivs`, AppArmor's `docker-default` profile enforced, a read-only root, and the pids limit refusing a fork past it |
 | File ownership | What `install` and the app write in the project folder, a named pipe and a link included, and the data volume belong to your UID and group, never root. `cstudy submit` hashes the folder, `--fresh` archives it, and you can remove it |
-| Engine advice | A socket of mode 000 at `DOCKER_HOST` gives the message for a session in the docker group |
+| Engine advice | The system engine is found with `docker.socket` listening. A socket of mode 000 at `DOCKER_HOST` gives the message for a session in the docker group. A missing socket at `DOCKER_HOST` runs Desktop's two commands, which fail, and gives `Start it yourself`. A missing socket at `/run/user/<uid>/docker.sock` runs `systemctl --user start docker`, which fails with no such unit, and gives the rootless message |
 
 What stays unproven on Linux:
 
@@ -968,7 +978,7 @@ What stays unproven on Linux:
 | SELinux labels, rootless Docker | Not exercised |
 | `host.docker.internal` | Not defined by default on Linux, so what `install` reaches there differs |
 | Setuid bits | Clearing one changes a mode without following a link, which an older glibc cannot do: the bit then stays. Not exercised |
-| Starting the engine | `systemctl` and a printed `sudo` command are untested |
+| Starting a stopped engine | Starting rootless Docker, and the messages for a socket-activated and a system engine, are shown only by tests with a scripted Docker |
 | The message for a session without the docker group | Dropping a group from a process needs root, so only tests with a scripted group database show it |
 
 ## The first problem

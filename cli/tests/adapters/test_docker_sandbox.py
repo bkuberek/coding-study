@@ -16,7 +16,14 @@ from coding_study.adapters.docker_sandbox import (
 )
 from coding_study.adapters.stack_guard import one_off_filters
 from coding_study.application.ports import ContainerCommand, ProbeResult
-from coding_study.domain.docker_engine import DockerGroup, EngineState, EngineStatus
+from coding_study.domain.docker_engine import (
+    DID_NOT_START,
+    DockerGroup,
+    EngineSetup,
+    EngineState,
+    EngineStatus,
+    did_not_start_message,
+)
 from coding_study.domain.errors import SandboxError
 from coding_study.domain.sandbox import (
     AppContainer,
@@ -38,6 +45,7 @@ from coding_study.domain.sandbox import (
 from tests.sandbox_fakes import ScriptedDocker
 
 BUDGET = StartupBudget(up_s=300, app_ready_s=5)
+SYSTEM_SOCKET = "unix:///var/run/docker.sock\n"
 NAME = "cstudy-t-41-abc"
 PS_RUNNING = '{"Service":"app","State":"running","ExitCode":0}\n'
 
@@ -87,6 +95,10 @@ def sandbox(
         platform=platform,
         docker_group=docker_group,
     )
+
+
+def endpoint(docker: ScriptedDocker, host: str) -> None:
+    docker.answer(("docker", "context", "inspect"), ProbeResult(0, host))
 
 
 def never_asked() -> DockerGroup:
@@ -193,18 +205,134 @@ def test_start_engine_tries_the_user_service_on_linux(tmp_path):
 
     sandbox(docker, tmp_path, platform="linux").start_engine(lambda _line: None)
 
-    assert docker.commands[1] == ("systemctl", "--user", "start", "docker-desktop")
+    assert docker.ran("systemctl", "--user", "start", "docker-desktop")
+
+
+def desktop_absent(docker: ScriptedDocker) -> None:
+    docker.answer(("docker", "desktop", "start"), ProbeResult(1, "unknown command"))
+    docker.answer(("--user", "start", "docker-desktop"), ProbeResult(5, "Unit not found."))
+
+
+def socket_unit(docker: ScriptedDocker, state: str) -> None:
+    exit_code = 0 if state == "active" else 3
+    answer = ProbeResult(exit_code, f"{state}\n")
+    docker.answer(("systemctl", "is-active", "docker.socket"), answer)
+
+
+def starts(docker: ScriptedDocker, tmp_path: Path) -> SandboxError:
+    with pytest.raises(SandboxError) as raised:
+        sandbox(docker, tmp_path, platform="linux").start_engine(lambda _line: None)
+    return raised.value
+
+
+def system_commands(docker: ScriptedDocker) -> list[tuple[str, ...]]:
+    return [command for command in docker.commands if command[0] == "systemctl"]
 
 
 def test_start_engine_on_a_system_engine_prints_the_sudo_command_and_never_runs_it(tmp_path):
     docker = ScriptedDocker()
-    docker.answer(("docker", "desktop", "start"), ProbeResult(1, "unknown command"))
-    docker.answer(("systemctl",), ProbeResult(1, "Unit docker-desktop.service not found"))
+    endpoint(docker, SYSTEM_SOCKET)
+    socket_unit(docker, "inactive")
+    desktop_absent(docker)
 
-    with pytest.raises(SandboxError, match="sudo systemctl start docker"):
-        sandbox(docker, tmp_path, platform="linux").start_engine(lambda _line: None)
+    error = starts(docker, tmp_path)
 
+    assert str(error) == did_not_start_message(EngineSetup.SYSTEM)
+    assert "sudo systemctl start docker" in str(error)
     assert not docker.ran("sudo")
+
+
+def test_a_listening_docker_socket_gets_its_own_advice_without_sudo(tmp_path):
+    docker = ScriptedDocker()
+    endpoint(docker, "unix:///run/docker.sock\n")
+    socket_unit(docker, "active")
+    desktop_absent(docker)
+
+    error = starts(docker, tmp_path)
+
+    assert str(error) == did_not_start_message(EngineSetup.SOCKET_ACTIVATED)
+    assert "sudo" not in str(error)
+
+
+def test_finding_the_setup_only_asks_systemd_and_starts_no_system_unit(tmp_path):
+    docker = ScriptedDocker()
+    endpoint(docker, SYSTEM_SOCKET)
+    socket_unit(docker, "active")
+    desktop_absent(docker)
+
+    starts(docker, tmp_path)
+
+    assert system_commands(docker) == [
+        ("systemctl", "is-active", "docker.socket"),
+        ("systemctl", "--user", "start", "docker-desktop"),
+    ]
+
+
+def test_an_engine_at_an_address_cstudy_does_not_know_is_yours_to_start(tmp_path):
+    docker = ScriptedDocker()
+    endpoint(docker, "unix:///home/me/.docker/desktop/docker.sock\n")
+    desktop_absent(docker)
+
+    error = starts(docker, tmp_path)
+
+    assert str(error) == DID_NOT_START
+    assert not docker.ran("is-active")
+
+
+def test_a_client_without_a_context_is_an_engine_cstudy_does_not_know(tmp_path):
+    docker = ScriptedDocker()
+    docker.answer(("docker", "context", "inspect"), ProbeResult(1, 'context "x": not found'))
+    desktop_absent(docker)
+
+    assert str(starts(docker, tmp_path)) == DID_NOT_START
+
+
+def rootless_socket() -> str:
+    return f"unix:///run/user/{os.getuid()}/docker.sock\n"
+
+
+def test_start_engine_starts_rootless_docker_with_its_user_service(tmp_path):
+    docker = ScriptedDocker()
+    endpoint(docker, rootless_socket())
+    docker.answer(("docker", "info"), ProbeResult(0, "29.9.2\n"))
+
+    sandbox(docker, tmp_path, platform="linux").start_engine(lambda _line: None)
+
+    assert system_commands(docker) == [("systemctl", "--user", "start", "docker")]
+    assert not docker.ran("desktop", "start")
+
+
+def test_rootless_docker_is_found_in_the_runtime_directory_of_the_session(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "runtime"))
+    docker = ScriptedDocker()
+    endpoint(docker, f"unix://{tmp_path / 'runtime'}/docker.sock\n")
+    docker.answer(("docker", "info"), ProbeResult(0, "29.9.2\n"))
+
+    sandbox(docker, tmp_path, platform="linux").start_engine(lambda _line: None)
+
+    assert docker.ran("systemctl", "--user", "start", "docker")
+
+
+def test_rootless_docker_that_does_not_start_names_the_same_command_without_sudo(tmp_path):
+    docker = ScriptedDocker()
+    endpoint(docker, rootless_socket())
+    docker.answer(("systemctl", "--user", "start", "docker"), ProbeResult(5, "Unit not found."))
+
+    error = starts(docker, tmp_path)
+
+    assert str(error) == did_not_start_message(EngineSetup.ROOTLESS)
+    assert "systemctl --user start docker" in str(error)
+    assert "sudo" not in str(error)
+
+
+def test_start_engine_on_a_mac_asks_neither_the_context_nor_systemd(tmp_path):
+    docker = ScriptedDocker()
+    docker.answer(("docker", "info"), ProbeResult(0, "29.9.2\n"))
+
+    sandbox(docker, tmp_path).start_engine(lambda _line: None)
+
+    assert not docker.ran("context")
+    assert not docker.ran("systemctl")
 
 
 def test_start_engine_says_it_is_starting(tmp_path):

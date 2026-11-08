@@ -24,7 +24,7 @@ from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import IO, Protocol, cast
 
-from coding_study.adapters.docker_setup import docker_group_of_this_process
+from coding_study.adapters.docker_setup import docker_group_of_this_process, engine_setup
 from coding_study.adapters.http_grader.clients import DeadlineConnection
 from coding_study.adapters.process_environment import docker_environment
 from coding_study.adapters.process_liveness import is_alive
@@ -32,12 +32,13 @@ from coding_study.adapters.project_folders import clear_setuid_bits
 from coding_study.adapters.stack_guard import DOCKER, DOCKER_FOLDER, StackGuard, one_off_filters
 from coding_study.application.ports import ContainerCommand, ProbeResult, ProgressNotice
 from coding_study.domain.docker_engine import (
-    DID_NOT_START,
     MACOS_PLATFORM,
-    SYSTEM_ENGINE_STOPPED,
+    ROOTLESS_ENGINE_START,
     DockerGroup,
+    EngineSetup,
     EngineState,
     EngineStatus,
+    did_not_start_message,
 )
 from coding_study.domain.errors import SandboxError
 from coding_study.domain.sandbox import (
@@ -334,14 +335,18 @@ class DockerSandbox:
 
     def start_engine(self, notify: ProgressNotice) -> None:
         notify("starting Docker ...")
-        for command in _start_commands(self._platform):
+        setup = self._setup()
+        for command in _start_commands(self._platform, setup):
             started = self._runner.run(command, ENGINE_QUERY_S)
             if started is not None and started.exit_code == 0:
                 self._wait_for_engine()
                 return
-        raise SandboxError(
-            DID_NOT_START if self._platform == MACOS_PLATFORM else SYSTEM_ENGINE_STOPPED
-        )
+        raise SandboxError(did_not_start_message(setup))
+
+    def _setup(self) -> EngineSetup:
+        if self._platform == MACOS_PLATFORM:
+            return EngineSetup.OTHER
+        return engine_setup(self._runner, os.getuid(), os.environ.get("XDG_RUNTIME_DIR"))
 
     def _wait_for_engine(self) -> None:
         deadline = self._monotonic() + ENGINE_START_S
@@ -757,10 +762,14 @@ def _refused_or_stopped(output: str) -> EngineStatus:
     return EngineStatus.STOPPED
 
 
-def _start_commands(platform: str) -> tuple[tuple[str, ...], ...]:
+def _start_commands(platform: str, setup: EngineSetup) -> tuple[tuple[str, ...], ...]:
+    """Only what needs no root: Docker Desktop, and the user services of Desktop and rootless
+    Docker. Rootless Docker answers at its own address, so Desktop is never started for it."""
     desktop = (DOCKER, "desktop", "start", "--detach")
     if platform == MACOS_PLATFORM:
         return (desktop, ("open", "-a", "Docker"))
+    if setup is EngineSetup.ROOTLESS:
+        return (tuple(ROOTLESS_ENGINE_START.split()),)
     return (desktop, ("systemctl", "--user", "start", "docker-desktop"))
 
 

@@ -3,10 +3,14 @@
 import pytest
 
 from coding_study.domain.docker_engine import (
+    DID_NOT_START,
     INSTALL_REACHES,
+    ROOTLESS_ENGINE_START,
     DockerGroup,
+    EngineSetup,
     EngineState,
     EngineStatus,
+    did_not_start_message,
     engine_problem,
     install_message,
     no_permission_message,
@@ -66,6 +70,35 @@ def test_a_member_refused_in_a_session_that_has_the_group_is_not_told_to_join_it
     assert "sudo" not in message
     assert "usermod" not in message
     assert "docker context ls" in message
+
+
+def test_an_engine_cstudy_cannot_place_is_yours_to_start():
+    assert did_not_start_message(EngineSetup.OTHER) == DID_NOT_START
+    assert "sudo" not in DID_NOT_START
+
+
+def test_rootless_docker_is_started_by_its_user_service_without_sudo():
+    message = did_not_start_message(EngineSetup.ROOTLESS)
+
+    assert ROOTLESS_ENGINE_START == "systemctl --user start docker"
+    assert ROOTLESS_ENGINE_START in message
+    assert "sudo" not in message
+
+
+def test_a_listening_socket_starts_the_engine_on_the_next_connection_without_sudo():
+    message = did_not_start_message(EngineSetup.SOCKET_ACTIVATED)
+
+    assert "systemctl status docker" in message
+    assert "run the command again" in message
+    assert "sudo" not in message
+
+
+def test_a_system_engine_needs_root_to_start_and_cstudy_never_runs_sudo():
+    message = did_not_start_message(EngineSetup.SYSTEM)
+
+    assert "sudo systemctl start docker" in message
+    assert "needs root" in message
+    assert "cstudy never runs sudo" in message
 
 
 @pytest.mark.parametrize("platform", [MACOS, LINUX])

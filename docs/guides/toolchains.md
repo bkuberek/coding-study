@@ -196,10 +196,13 @@ Nothing else is needed: the runner crates' only dependencies, `rust_decimal` and
 
 Only [service projects](../specs/service-projects.md) need it. `cstudy` runs each one in a sandbox on your own Docker, which you may use for other things: it never changes a setting of the engine and never stops it, and it limits only its own containers. If Docker is installed and stopped, `cstudy` starts it when you start or run a service project. If it is missing, `cstudy` says how to install it, before anything downloads, and `cstudy doctor` shows it as a `WARN`, not a `FAIL`. Docker Desktop is what has been measured. On Linux, being in the `docker` group is effectively root.
 
-On Linux, `cstudy` never runs `sudo`, and says what to run when Docker refuses you ([The docker group](../specs/service-projects.md#the-docker-group)):
+On Linux, `cstudy` never runs `sudo`, and says what to run when it cannot start or reach Docker ([Docker states](../specs/service-projects.md#docker-states)):
 
-| Your setup | What `cstudy` says |
-|------------|--------------------|
+| Your setup | What `cstudy` does or says |
+|------------|----------------------------|
+| Rootless Docker | Starts it with `systemctl --user start docker`, and names that command if it fails |
+| Docker Engine with `docker.socket` listening, as Docker's packages install it | Connecting starts the engine. If it still does not answer, `systemctl status docker` says why; once fixed, run the command again |
+| Docker Engine with no socket listening | Prints `sudo systemctl start docker` for you to run: starting a system service needs root |
 | Not in the `docker` group | Prints `sudo usermod -aG docker $USER`; then log in again |
 | In the `docker` group, joined after this session started | Log out and back in, or run `newgrp docker`; no `sudo` |
 
