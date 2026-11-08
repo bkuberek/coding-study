@@ -5,10 +5,10 @@ against a real `cstudy serve` whose language server is the scripted fake
 becomes ready; the server hears `initialize`, `didOpen` with the tab's text, `didChange` after
 typing, `didSave` after a save and `didClose` after the tab closes; a second visible tab holds a
 session of its own and still saves; a TypeScript file whose server is not installed and a Kotlin
-file say so in the status bar; a server that exits stops the session with Restart, which opens it
-again; the Settings view lists each language; the Health view shows the `code intelligence` rows;
-and turning the preference off closes the session. No console error and no Content Security
-Policy violation.
+file whose server's license is not accepted say so in the status bar; a server that exits stops
+the session with Restart, which opens it again; the Settings view lists each language; the Health
+view shows the `code intelligence` rows; and turning the preference off closes the session. No
+console error and no Content Security Policy violation.
 
 Playwright and its engines are set up as `tests/browsers.py` says; without them the test is
 skipped.
@@ -57,7 +57,7 @@ STOPPED = "python · basedpyright · stopped: exit 3 · Restart"
 NOT_INSTALLED = (
     "no code intelligence for TypeScript: typescript-language-server is not installed · Health"
 )
-NO_SERVER = "no code intelligence for Kotlin yet"
+NOT_ACCEPTED = "no code intelligence for Kotlin: kotlin-lsp's license is not accepted · Health"
 TEXT_OF = "selector => document.querySelector(selector)?.textContent ?? null"
 PREFERENCE = "#pref-code_intelligence"
 
@@ -86,7 +86,7 @@ class Seen:
     health_link: str = ""
     health_checks: list[str] = field(default_factory=list[str])
     health_python: str = ""
-    no_server: str = ""
+    not_accepted: str = ""
     languages: list[str] = field(default_factory=list[str])
     languages_link: str = ""
     stopped: str = ""
@@ -150,7 +150,7 @@ def seen(engine: str, lab: Lab, server: RunningServer) -> Seen:
         _one_file(first, lab, found)
         _two_tabs(context, first, server, lab, found)
         _file_closes(first, lab, found)
-        _languages_without_a_server(first, lab, found)
+        _languages_whose_server_is_unusable(first, lab, found)
         _settings_and_health(first, found)
         _stopped_and_restarted(first, lab, found)
         _turned_off(first, lab, found)
@@ -241,12 +241,12 @@ def _file_closes(page: Any, lab: Lab, found: Seen) -> None:
     found.segment_after_close = page.locator(SEGMENT).count()
 
 
-def _languages_without_a_server(page: Any, lab: Lab, found: Seen) -> None:
+def _languages_whose_server_is_unusable(page: Any, lab: Lab, found: Seen) -> None:
     _open_attempt(page, lab, TYPESCRIPT[0])
     found.not_installed = _status(page, NOT_INSTALLED)
     found.health_link = page.get_attribute(f"{SEGMENT} a", "href")
     _open_attempt(page, lab, KOTLIN[0])
-    found.no_server = _status(page, NO_SERVER)
+    found.not_accepted = _status(page, NOT_ACCEPTED)
 
 
 def _settings_and_health(page: Any, found: Seen) -> None:
@@ -349,8 +349,8 @@ def test_a_server_that_is_not_installed_says_so_with_a_link_to_health(seen):
     assert (seen.not_installed, seen.health_link) == (NOT_INSTALLED, "#/health")
 
 
-def test_a_language_with_no_server_yet_says_so(seen):
-    assert seen.no_server == NO_SERVER
+def test_a_language_whose_servers_license_is_not_accepted_says_so(seen):
+    assert seen.not_accepted == NOT_ACCEPTED
 
 
 def test_the_settings_view_lists_each_language(seen):
@@ -360,8 +360,9 @@ def test_the_settings_view_lists_each_language(seen):
     ]
 
 
-def test_the_settings_view_lists_the_languages_without_a_server_yet(seen):
-    assert "Kotlin not available yet" in seen.languages
+def test_the_settings_view_says_a_license_is_not_accepted_with_the_command(seen):
+    expected = "Kotlin license not accepted: run cstudy doctor --fix --accept-license kotlin-lsp"
+    assert expected in seen.languages
 
 
 def test_an_uninstalled_language_in_settings_links_to_health(seen):
@@ -373,6 +374,7 @@ def test_the_health_view_shows_the_code_intelligence_rows(seen):
         "code intelligence python",
         "code intelligence typescript",
         "code intelligence java",
+        "code intelligence kotlin",
         "code intelligence go",
         "code intelligence rust",
     ]

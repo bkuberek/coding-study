@@ -310,7 +310,10 @@ def test_an_unused_variable_is_faded(seen):
 
 
 def test_hover_shows_the_declaration_as_code_and_the_kdoc_as_text(seen):
-    assert (seen.hover_code, seen.hover_text) == ("fun add(element: E): Boolean", ADD_DOCUMENTATION)
+    assert (seen.hover_code.strip(), seen.hover_text.strip()) == (
+        "fun add(element: E): Boolean",
+        ADD_DOCUMENTATION,
+    )
 
 
 def test_a_click_with_the_key_goes_to_a_definition_in_the_file(seen):
@@ -323,8 +326,11 @@ def test_a_source_of_the_standard_library_gets_a_note_naming_its_jar_and_path(se
     )
 
 
-def test_completion_after_a_dot_lists_the_servers_items(seen):
-    assert [option.split("\n")[0] for option in seen.completion_options][:2] == ["add", "addAll"]
+def test_completion_after_a_dot_lists_the_servers_items_with_their_parameters(seen):
+    assert [option.split("\n")[0] for option in seen.completion_options][:2] == [
+        "add(element: Int)",
+        "addAll(elements: Collection<Int>)",
+    ]
 
 
 def test_the_selected_items_documentation_shows_beside_the_list(seen):
