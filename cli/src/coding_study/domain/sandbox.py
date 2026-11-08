@@ -118,6 +118,10 @@ NO_ADDRESS_ON_THIS_MACHINE: Mapping[str, str] = {"com.docker.network.bridge.inhi
 container reaches every service listening on all of this machine's addresses (measured on Linux,
 Engine 29). With no address there, the network holds nothing of this machine's, and its containers
 still reach each other."""
+NO_IPV6 = False
+"""`enable_ipv6` for `sandbox`, said outright: an engine set to give new networks IPv6 would
+otherwise give the bridge an IPv6 address of this machine's, which `inhibit_ipv4` does not take
+away."""
 COMPLETED = {"condition": "service_completed_successfully"}
 HEALTHY = {"condition": "service_healthy"}
 EGRESS_TARGETS = (("1.1.1.1", 443), ("192.168.1.1", 80), ("10.0.0.1", 80), ("169.254.169.254", 80))
@@ -129,8 +133,28 @@ EGRESS_HOST_PORTS = (22, 80, 443)
 """Where the probe tries each gateway. A refusal is this machine answering, so it reaches the
 machine as much as a connection does."""
 EGRESS_PROBE_TIMEOUT_S = 2
+IPV6_LIST = "/proc/net/if_inet6"
+IPV6_ADDRESS_CHECK = "\n".join(
+    (
+        "import ipaddress",
+        "def foreign_ipv6(text):",
+        "    found = []",
+        "    for line in text.splitlines():",
+        "        fields = line.split()",
+        "        try:",
+        "            address = ipaddress.IPv6Address(bytes.fromhex(fields[0]))",
+        "        except (IndexError, ValueError):",
+        "            continue",
+        "        if not (address.is_loopback or address.is_link_local):",
+        "            found.append(str(address))",
+        "    return found",
+    )
+)
+"""Every IPv6 address the kernel lists for the container but `::1` and `fe80::/10`: a global one
+(`2000::/3`) or a unique local one (`fc00::/7`) is a route to this machine's bridge."""
 EGRESS_PROBE = "\n".join(
     (
+        IPV6_ADDRESS_CHECK,
         "import errno, os, socket, sys",
         f"socket.setdefaulttimeout({EGRESS_PROBE_TIMEOUT_S})",
         f"hosts = [h for h in os.environ.get({EGRESS_HOSTS_VARIABLE!r}, '').split(',') if h]",
@@ -138,8 +162,13 @@ EGRESS_PROBE = "\n".join(
         f"reached = [to for to in {EGRESS_TARGETS!r} if answers(to, (0,))]",
         f"machine = [(h, port) for h in hosts for port in {EGRESS_HOST_PORTS!r}]",
         "reached += [to for to in machine if answers(to, (0, errno.ECONNREFUSED))]",
-        "print('reached', reached)",
-        "sys.exit(1 if reached else 0)",
+        "try:",
+        f"    text = open({IPV6_LIST!r}).read()",
+        "except OSError:",
+        "    text = ''",
+        "addresses = foreign_ipv6(text)",
+        "print('reached', reached, 'ipv6', addresses)",
+        "sys.exit(1 if reached or addresses else 0)",
     )
 )
 """Standard library only, run from the pinned Python image, on `sandbox` alone. A connection that
@@ -346,7 +375,12 @@ def stack_document(plan: StackPlan) -> dict[str, object]:
     if plan.mocks is not None:
         services[MOCK_SERVICE] = _mock_server(plan, plan.mocks)
     labels = plan.identity.stable_labels
-    sandbox = {"internal": True, "driver_opts": NO_ADDRESS_ON_THIS_MACHINE, "labels": labels}
+    sandbox = {
+        "internal": True,
+        "enable_ipv6": NO_IPV6,
+        "driver_opts": NO_ADDRESS_ON_THIS_MACHINE,
+        "labels": labels,
+    }
     return {
         "name": plan.identity.name,
         "services": services,

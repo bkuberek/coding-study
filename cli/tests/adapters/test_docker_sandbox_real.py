@@ -26,6 +26,7 @@ from coding_study.application.ports import ContainerCommand
 from coding_study.application.sandbox import running_stack, sweep_leftovers
 from coding_study.domain.mock_configs import MockFiles, ScenarioReach, rendered_mock_config
 from coding_study.domain.sandbox import (
+    EGRESS_PROBE,
     PYTHON_IMAGE,
     AppContainer,
     InstallPlan,
@@ -67,6 +68,8 @@ SERVER = textwrap.dedent(
 PROBE = "import json,os,socket,sys\n"
 SECRET_NAME = "above-the-project.txt"
 IPV4 = 4
+IPV6_SUBNET = "fd00:c5d::/64"
+IPV6_KIND_LABEL = "cstudy.kind=test-ipv6"
 
 
 def docker(*arguments: str) -> subprocess.CompletedProcess[str]:
@@ -985,6 +988,50 @@ def test_no_egress_reaches_anything_from_the_sandbox_network(stack):
 
     assert outcome.exit_code == 0, outcome.output
     assert "reached []" in outcome.output
+    assert "ipv6 []" in outcome.output
+
+
+def test_the_sandbox_network_has_ipv6_off_and_no_ipv6_subnet(stack):
+    _, plan, _ = stack
+
+    shown = docker(
+        "network",
+        "inspect",
+        "--format",
+        "{{.EnableIPv6}} {{range .IPAM.Config}}{{.Subnet}} {{end}}",
+        f"{plan.identity.name}_sandbox",
+    )
+
+    assert shown.returncode == 0, shown.stderr
+    enabled, *subnets = shown.stdout.split()
+    assert enabled == "false"
+    assert not any(":" in subnet for subnet in subnets)
+
+
+@pytest.fixture
+def ipv6_network() -> Generator[str]:
+    """Our own network with IPv6 on, whatever the engine's default: made, used and removed here."""
+    name = f"cstudy-t-{os.getpid()}-ipv6"
+    created = docker(
+        *("network", "create", "--internal", "--ipv6", "--subnet", IPV6_SUBNET),
+        *("--label", IPV6_KIND_LABEL, name),
+    )
+    if created.returncode != 0:
+        pytest.skip(f"the engine refuses an IPv6 user network: {created.stderr.strip()}")
+    try:
+        yield name
+    finally:
+        docker("network", "rm", name)
+
+
+def test_the_probe_finds_the_address_a_network_with_ipv6_on_gives(ipv6_network):
+    ran = docker(
+        *("run", "--rm", "--pull", "never", "--network", ipv6_network),
+        *("--label", IPV6_KIND_LABEL, PYTHON_IMAGE, "python", "-I", "-c", EGRESS_PROBE),
+    )
+
+    assert ran.returncode == 1, ran.stdout + ran.stderr
+    assert "ipv6 ['fd00:c5d::" in ran.stdout
 
 
 DYING_SERVER = textwrap.dedent(

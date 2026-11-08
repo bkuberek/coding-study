@@ -195,6 +195,18 @@ def test_the_sandbox_network_gives_this_machine_no_address_and_the_edge_keeps_it
     assert "driver_opts" not in networks["edge"]
 
 
+def test_every_network_the_app_or_the_mock_server_joins_has_ipv6_off_explicitly():
+    found = document_of(mocks=MOCKS)
+    joined = {
+        name
+        for service in (APP_SERVICE, MOCK_SERVICE)
+        for name in found["services"][service]["networks"]
+    }
+
+    assert joined == {"sandbox"}
+    assert all(found["networks"][name]["enable_ipv6"] is False for name in joined)
+
+
 def test_the_egress_probe_tries_the_gateways_from_its_environment():
     command = services()[EGRESS_PROBE_SERVICE]["command"]
 

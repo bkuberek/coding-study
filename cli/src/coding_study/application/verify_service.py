@@ -193,7 +193,7 @@ class _ServiceChecks:
     def _egress(self, plan: StackPlan) -> Iterator[str]:
         probed = self._environment.sandbox.probe_egress(plan)
         if probed.exit_code != 0:
-            yield f"a container on sandbox reached out: {_last_line(probed)}"
+            yield f"a container on sandbox reached out or has an IPv6 address: {_last_line(probed)}"
 
     def _repeated_runs(self, reference: str, first: Judgement) -> Iterator[str]:
         runs = [first]
