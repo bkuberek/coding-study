@@ -25,16 +25,18 @@ from coding_study.application.ports import (
 )
 from coding_study.domain.code_intelligence import (
     BASEDPYRIGHT,
+    GOPLS,
     JDTLS,
     LANGUAGE_SERVERS,
     LSP_INSTALL_COMMAND,
+    RUST_ANALYZER,
     TYPESCRIPT_LANGUAGE_SERVER,
     Archive,
     LanguageServer,
 )
 
 TYPESCRIPT = TYPESCRIPT_LANGUAGE_SERVER
-NPM_SERVERS = [server for server in LANGUAGE_SERVERS if server.archive is None]
+NPM_SERVERS = [server for server in LANGUAGE_SERVERS if server.version_script is not None]
 CORE_PLUGIN = "plugins/org.eclipse.jdt.ls.core_1.63.0.202610191322.jar"
 PACKAGE_JSON, LOCK_FILE = MANIFEST_FILES
 PNPM_SUCCEEDED = ProbeResult(0, "")
@@ -56,11 +58,13 @@ class RecordingCommands:
     def __init__(self, result: ProbeResult | None = PNPM_SUCCEEDED) -> None:
         self.result = result
         self.ran: list[tuple[tuple[str, ...], Path]] = []
+        self.environments: list[Mapping[str, str] | None] = []
 
     def run(
         self, command: Sequence[str], cwd: Path, environment: Mapping[str, str] | None = None
     ) -> ProbeResult | None:
         self.ran.append((tuple(command), cwd))
+        self.environments.append(environment)
         return self.result
 
 
@@ -78,7 +82,8 @@ def version_script(server: LanguageServer) -> str:
     return server.version_script
 
 
-def install_server(workspace: Path, script: str) -> Path:
+def install_server(workspace: Path, script: str | None) -> Path:
+    assert script is not None
     path = workspace / ".cs" / "lsp" / script
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("// the server\n")
@@ -162,6 +167,89 @@ def test_probing_jdtls_starts_no_jvm(tmp_path):
     tools = RecordingTools()
     directory(tmp_path, tools).probe(JDTLS)
     assert tools.ran == []
+
+
+# gopls: a binary that `go install` builds into `.cs/lsp/bin/`
+
+
+def test_gopls_without_its_binary_is_not_installed(tmp_path):
+    assert directory(tmp_path).probe(GOPLS) == NotInstalled()
+
+
+def test_gopls_prints_its_version_with_its_own_binary(tmp_path):
+    binary = install_server(tmp_path, GOPLS.script)
+    tools = RecordingTools({"version": ProbeResult(0, "golang.org/x/tools/gopls v0.24.0\n")})
+    found = directory(tmp_path, tools).probe(GOPLS)
+    assert (found, tools.ran) == (
+        VersionPrinted("golang.org/x/tools/gopls v0.24.0\n"),
+        [(str(binary), "version")],
+    )
+
+
+def test_the_selected_go_is_what_go_env_prints_with_the_local_toolchain(tmp_path):
+    """`GOTOOLCHAIN=local`: asking which Go is selected never downloads another."""
+    commands = RecordingCommands(ProbeResult(0, "go1.27.3\n"))
+    found = directory(tmp_path, commands=commands).go_release()
+    assert (found, commands.ran, commands.environments) == (
+        "1.27.3",
+        [(("go", "env", "GOVERSION"), tmp_path)],
+        [{"GOTOOLCHAIN": "local"}],
+    )
+
+
+@pytest.mark.parametrize("result", [None, ProbeResult(1, "go: unknown\n"), ProbeResult(0, "\n")])
+def test_without_a_go_that_runs_no_go_is_selected(tmp_path, result):
+    assert directory(tmp_path, commands=RecordingCommands(result)).go_release() is None
+
+
+def test_go_install_builds_the_version_into_the_lsp_bin_directory(tmp_path):
+    commands = RecordingCommands()
+    assert GOPLS.go_install is not None
+    directory(tmp_path, commands=commands).go_install(GOPLS.go_install, "0.24.0")
+    lsp = tmp_path / ".cs" / "lsp"
+    assert (commands.ran, commands.environments) == (
+        [(("go", "install", "golang.org/x/tools/gopls@v0.24.0"), lsp)],
+        [{"GOBIN": f"{lsp}/bin", "GOTOOLCHAIN": "local", "GOWORK": "off"}],
+    )
+
+
+def test_go_install_returns_what_go_did(tmp_path):
+    failed = ProbeResult(1, "go: golang.org/x/tools/gopls@v0.24.0: requires go >= 1.27\n")
+    assert GOPLS.go_install is not None
+    found = directory(tmp_path, commands=RecordingCommands(failed)).go_install(
+        GOPLS.go_install, "0.24.0"
+    )
+    assert found == failed
+
+
+# rust-analyzer: on PATH, from rustup or not
+
+
+def test_rust_analyzer_on_path_prints_its_version(tmp_path):
+    printed = "rust-analyzer 1.91.0 (f8297e35 2025-10-28)\n"
+    tools = RecordingTools({"--version": ProbeResult(0, printed)})
+    found = directory(tmp_path, tools).probe(RUST_ANALYZER)
+    assert (found, tools.ran) == (VersionPrinted(printed), [("rust-analyzer", "--version")])
+
+
+def test_rust_analyzer_not_on_path_is_not_installed(tmp_path):
+    tools = RecordingTools({"--version": None})
+    assert directory(tmp_path, tools).probe(RUST_ANALYZER) == NotInstalled()
+
+
+def test_the_rustup_proxy_without_the_component_is_not_installed(tmp_path):
+    proxy = (
+        "error: Unknown binary 'rust-analyzer' in official toolchain "
+        "'stable-aarch64-apple-darwin'.\n"
+    )
+    tools = RecordingTools({"--version": ProbeResult(1, proxy)})
+    assert directory(tmp_path, tools).probe(RUST_ANALYZER) == NotInstalled()
+
+
+def test_a_rust_analyzer_that_fails_otherwise_gives_its_first_line(tmp_path):
+    tools = RecordingTools({"--version": ProbeResult(134, "dyld: Library not loaded\n")})
+    found = directory(tmp_path, tools).probe(RUST_ANALYZER)
+    assert found == VersionFailed("dyld: Library not loaded")
 
 
 def archive_of(tmp_path: Path, files: Mapping[str, bytes], name: str = "server.tar.gz") -> Archive:

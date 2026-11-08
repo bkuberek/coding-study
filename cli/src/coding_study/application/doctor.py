@@ -18,6 +18,8 @@ from coding_study.application.code_intelligence import (
     LanguageServerState,
     ServerStatus,
     download_language_server,
+    go_install_version,
+    install_language_server_with_go,
     install_language_servers,
     is_unpacked,
     language_server_states,
@@ -64,9 +66,11 @@ from coding_study.application.preferences import read_preferences
 from coding_study.application.sandbox import current_leftovers, ensure_engine, sweep_leftovers
 from coding_study.domain.code_intelligence import (
     LANGUAGE_SERVERS,
+    LSP_BIN,
     LSP_DIRECTORY,
     LSP_INSTALL_COMMAND,
     Archive,
+    GoInstall,
 )
 from coding_study.domain.debugging import (
     DEBUGPY_INSTALL_COMMAND,
@@ -325,6 +329,24 @@ DOWNLOAD_STEPS = {
 """Downloads the servers that are archives, such as JDT LS, while the `code_intelligence`
 preference is on, unless their pinned build is unpacked already; each is checked by its SHA-256
 before it is unpacked."""
+
+
+def _go_install_step(install: GoInstall, version: str) -> FixStep:
+    return FixStep(
+        f"{LSP_DIRECTORY}/{LSP_BIN}",
+        install.command(version),
+        manual=f"once online, run: {FIX_COMMAND}",
+    )
+
+
+GO_INSTALL_STEPS = {
+    _go_install_step(server.go_install, server.go_install.version_for(None)): server
+    for server in LANGUAGE_SERVERS
+    if server.go_install is not None
+}
+"""Builds the servers that Go builds, such as gopls, with `go install` while the
+`code_intelligence` preference is on, at the version the selected Go pins, unless it is installed
+already. Each step stands for its server in the plan; the step that runs names the version."""
 SERVERS_SKIPPED_NOTE = (
     "skipped the language servers: code intelligence is off; "
     "turn it on in Settings of cstudy serve, then run cstudy doctor --fix again"
@@ -441,13 +463,17 @@ def fix_workspace(
             outcome = _install_language_servers(workspace, notify)
         elif step in DOWNLOAD_STEPS:
             outcome = _download_language_server(workspace, step, notify)
+        elif step in GO_INSTALL_STEPS:
+            outcome = _install_language_server_with_go(workspace, step, notify)
         else:
             outcome = _run_step(workspace.commands, step, directory, notify, home)
         if outcome is not None:
             outcomes.append(outcome)
     if jvm_blocker is not None:
         outcomes.append(FixOutcome(NO_JAVA_FIX, None, skipped=jvm_blocker))
-    if not _code_intelligence_on(workspace):
+    if _code_intelligence_on(workspace):
+        _note_servers_you_install(workspace, jdk, notify)
+    else:
         _note_skipped_servers(workspace, jdk, notify)
     return tuple(outcomes)
 
@@ -455,11 +481,25 @@ def fix_workspace(
 def _note_skipped_servers(
     workspace: PracticeWorkspace, jdk: JdkSelector, notify: ProgressNotice
 ) -> None:
-    """One line saying the servers were left out and how to turn them on, unless they are all
-    installed already, when there is nothing to miss."""
+    """One line saying the servers were left out and how to turn them on, unless every server
+    `--fix` installs is installed already, when there is nothing to miss."""
     states = language_server_states(workspace.language_servers, jdk)
-    if any(state.status is ServerStatus.NOT_INSTALLED for state in states):
+    if any(_is_missing(state) and state.fix == FIX_COMMAND for state in states):
         notify(SERVERS_SKIPPED_NOTE)
+
+
+def _note_servers_you_install(
+    workspace: PracticeWorkspace, jdk: JdkSelector, notify: ProgressNotice
+) -> None:
+    """A line for each missing server that `--fix` does not install, such as rust-analyzer,
+    which comes with the Rust toolchain that cstudy never changes, naming its own fix."""
+    for state in language_server_states(workspace.language_servers, jdk):
+        if _is_missing(state) and state.fix not in (None, FIX_COMMAND):
+            notify(f"{state.problem}: {FIX_COMMAND} does not install it; run {state.fix}")
+
+
+def _is_missing(state: LanguageServerState) -> bool:
+    return state.status is ServerStatus.NOT_INSTALLED
 
 
 def _jvm_warm_up_blocker(workspace: PracticeWorkspace, jdk: JdkSelector) -> str | None:
@@ -480,6 +520,21 @@ def _install_language_servers(workspace: PracticeWorkspace, notify: ProgressNoti
     notify(f"running {LANGUAGE_SERVERS_FIX}")
     result = install_language_servers(workspace.language_server_installer)
     return FixOutcome(LANGUAGE_SERVERS_FIX, result)
+
+
+def _install_language_server_with_go(
+    workspace: PracticeWorkspace, step: FixStep, notify: ProgressNotice
+) -> FixOutcome | None:
+    """None when the version the selected Go pins is installed already: the step is not run,
+    nor reported, so a workspace that has it needs no network."""
+    server = GO_INSTALL_STEPS[step]
+    version = go_install_version(workspace.language_servers, server)
+    if version is None or server.go_install is None:
+        return None
+    built = _go_install_step(server.go_install, version)
+    notify(f"running {built}")
+    installer = workspace.language_server_installer
+    return FixOutcome(built, install_language_server_with_go(installer, server, version))
 
 
 def _download_language_server(
@@ -544,6 +599,7 @@ def _fix_plan(
     if _code_intelligence_on(workspace):
         plan.append((LANGUAGE_SERVERS_FIX, files.root / LSP_DIRECTORY))
         plan += [(step, files.root / step.project) for step in DOWNLOAD_STEPS]
+        plan += [(step, files.root / step.project) for step in GO_INSTALL_STEPS]
     if jvm and files.exists(JVM_FIX.project):
         plan += [(step, files.root / step.project) for step in (JVM_FIX, *JVM_PROJECT_WARMUPS)]
     return plan

@@ -370,6 +370,38 @@ def test_a_python_session_gets_no_data_directory(lab, client):
     assert (lab.root / ".cs" / "lsp" / "jdtls-data").exists() is False
 
 
+# Go and Rust: what their servers start with
+
+GO_VARIABLES = ("GOTOOLCHAIN", "GOPROXY", "GOFLAGS", "CGO_ENABLED")
+
+
+def first_call(tmp_path, language: Language) -> dict[str, object]:
+    """What the first server of a session of the practice file of `language` started with."""
+    lab = rig(tmp_path, language=language)
+    lab.server.play()
+    with session_client(lab.app) as page, session(page, lab.query):
+        wait_for_servers(lab, 1)
+    return lab.server.calls()[0]
+
+
+def test_a_go_session_runs_gopls_in_the_go_project_without_downloads_or_cgo(tmp_path):
+    call = first_call(tmp_path, Language.GO)
+    environment = call["environment"]
+    assert isinstance(environment, dict)
+    go_variables = {name: environment[name] for name in GO_VARIABLES}
+    assert (call["cwd"], go_variables) == (
+        str(tmp_path / "go"),
+        {"GOTOOLCHAIN": "local", "GOPROXY": "off", "GOFLAGS": "-mod=readonly", "CGO_ENABLED": "0"},
+    )
+
+
+def test_a_rust_session_runs_rust_analyzer_in_the_rust_project_with_cargo_offline(tmp_path):
+    call = first_call(tmp_path, Language.RUST)
+    environment = call["environment"]
+    assert isinstance(environment, dict)
+    assert (call["cwd"], environment["CARGO_NET_OFFLINE"]) == (str(tmp_path / "rust"), "true")
+
+
 # the server stops
 
 

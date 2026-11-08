@@ -145,7 +145,7 @@ def test_a_missing_bundle_notice_leaves_the_web_page_out():
 
 def test_the_language_servers_are_named_with_the_versions_cstudy_pins():
     named = [(credit.name, credit.version) for credit in sections()["Language servers"].credits]
-    assert named == [(server.name, server.version) for server in LANGUAGE_SERVERS]
+    assert named == [(server.name, server.version or "") for server in LANGUAGE_SERVERS]
 
 
 def test_the_toolchains_are_named():

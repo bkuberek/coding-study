@@ -12,7 +12,13 @@ from enum import StrEnum
 
 from coding_study.domain.cases import JsonValue
 from coding_study.domain.jdk import JdkRange
-from coding_study.domain.layout import JVM_PROJECT, PYTHON_PROJECT, TYPESCRIPT_PROJECT
+from coding_study.domain.layout import (
+    GO_PROJECT,
+    JVM_PROJECT,
+    PYTHON_PROJECT,
+    RUST_PROJECT,
+    TYPESCRIPT_PROJECT,
+)
 from coding_study.domain.problem import Language, ProblemMeta
 from coding_study.domain.service_project import service_of
 
@@ -64,8 +70,58 @@ class Launch:
     """As Python's `sys.platform` spells it: `darwin`, `linux`, `win32`."""
 
 
+LSP_BIN = "bin"
+"""Where `go install` puts the servers that Go builds, relative to `.cs/lsp/`."""
+_GO_RELEASE = re.compile(r"go(\d+\.\d+(?:\.\d+)?)")
+
+
+@dataclass(frozen=True, slots=True)
+class GoInstall:
+    """A server that `cstudy doctor --fix` builds with `go install` into `.cs/lsp/bin/`, at the
+    version the selected Go pins: each release of it builds only with Go from some release on."""
+
+    module: str
+    versions: Mapping[int, str]
+    """The version for each minor release of Go 1."""
+
+    def version_for(self, go: str | None) -> str:
+        """The version pinned for the Go whose release is `go` (`1.27.3`): its minor release's;
+        the newest for a Go newer than the table, or for none; the oldest for an older one."""
+        newest = max(self.versions)
+        minor = None if go is None else int(go.split(".")[1])
+        if minor is None or minor > newest:
+            return self.versions[newest]
+        return self.versions[max(minor, min(self.versions))]
+
+    def command(self, version: str) -> tuple[str, ...]:
+        return ("go", "install", f"{self.module}@v{version}")
+
+    def environment(self, lsp_directory: str) -> dict[str, str]:
+        """The binary goes to `.cs/lsp/bin/`; the selected Go builds it and never downloads
+        another (`GOTOOLCHAIN=local`), and the workspace's `go.work` stays out of the build."""
+        return {
+            "GOBIN": f"{lsp_directory}/{LSP_BIN}",
+            "GOTOOLCHAIN": "local",
+            "GOWORK": "off",
+        }
+
+
+GO_RELEASE_COMMAND = ("go", "env", "GOVERSION")
+"""Prints the selected Go's release, `go1.27.3`."""
+
+
+def go_release(printed: str) -> str | None:
+    """The release of Go in what `go env GOVERSION` or `go version` printed; None if none."""
+    found = _GO_RELEASE.search(printed)
+    return found[1] if found else None
+
+
 def node_command(server: "LanguageServer", launch: Launch) -> tuple[str, ...]:
     return (NODE, f"{launch.lsp_directory}/{server.script}", "--stdio")
+
+
+def node_version_command(server: "LanguageServer", lsp_directory: str) -> tuple[str, ...]:
+    return (NODE, f"{lsp_directory}/{server.version_script}", "--version")
 
 
 def _no_environment(_launch: Launch) -> dict[str, str]:
@@ -76,15 +132,18 @@ def _no_environment(_launch: Launch) -> dict[str, str]:
 class LanguageServer:
     language: Language
     name: str
-    version: str
-    """The pinned version: `package.json` and `pnpm-lock.yaml` name the same one, or the archive."""
-    script: str
+    version: str | None
+    """The pinned version: `package.json` and `pnpm-lock.yaml` name the same one, or the archive;
+    for a server that Go builds, the newest its table pins. None for a server cstudy does not
+    install, which is whichever version runs."""
+    script: str | None
     """What counts as the server being installed, relative to `.cs/lsp/`: the `bin` script the
     package's `package.json` names for the server, never a `.bin/` shim; for an archive, a file
-    whose name holds the pinned build."""
+    whose name holds the pinned build; for a server that Go builds, its binary. None for a server
+    found on PATH, which its version command alone finds."""
     version_script: str | None
-    """The script whose `--version` prints the version, relative to `.cs/lsp/`; None for an
-    archive, whose `script` already pins the version."""
+    """The script whose `--version` prints the version, relative to `.cs/lsp/`, for a Node
+    server; None otherwise."""
     root_project: str
     """The practice project that roots a single-file attempt; an attempt in a project folder is
     rooted in that folder."""
@@ -110,12 +169,27 @@ class LanguageServer:
     data_files: Mapping[str, str] = field(default_factory=dict[str, str])
     """Files written into a session's data directory before the server starts, by their path in
     it."""
+    versioner: Callable[["LanguageServer", str], tuple[str, ...]] = node_version_command
+    """The command that prints the version, given the absolute `.cs/lsp/`; not run for an
+    archive, whose `script` already pins the version."""
+    go_install: GoInstall | None = None
+    """Set for a server that `go install` builds at the version the selected Go pins."""
+    fix: str | None = None
+    """What installs a server that cstudy does not install, as the doctor row names it; None for
+    one that `cstudy doctor --fix` installs."""
+    missing_words: str | None = None
+    """Words a failing version command prints when only a proxy of the server is there, such as
+    the rustup proxy of a component that is not installed."""
 
     def command(self, launch: Launch) -> tuple[str, ...]:
         return self.launcher(self, launch)
 
     def version_command(self, lsp_directory: str) -> tuple[str, ...]:
-        return (NODE, f"{lsp_directory}/{self.version_script}", "--version")
+        return self.versioner(self, lsp_directory)
+
+    def says_missing(self, output: str) -> bool:
+        """Whether a failing version command's output means the server is not installed."""
+        return self.missing_words is not None and self.missing_words in output
 
     def printed_version(self, output: str) -> str | None:
         """The version on the first line the version command printed; None if it has none."""
@@ -345,9 +419,109 @@ JDTLS = LanguageServer(
 """Eclipse JDT LS, a milestone (ADR 0018, phase 2). An empty list of Gradle versions leaves JDT LS
 the checksums it ships and the one the settings trust, so it downloads none."""
 
-LANGUAGE_SERVERS = (BASEDPYRIGHT, TYPESCRIPT_LANGUAGE_SERVER, JDTLS)
-"""The languages with a server in phase 2; Go, Rust and Kotlin have none yet. A tuple, not a table
-keyed by `Language`, since a table must have a row for every language."""
+GOPLS_SETTINGS: dict[str, JsonValue] = {"linksInHover": False, "completeUnimported": False}
+"""No web links on hover, and no completion of a package that is not imported, which adds its
+import: a quick fix, out of scope. The links inside the documentation are `file:` links into
+GOROOT, which the page opens as library files."""
+
+
+def _gopls_command(server: LanguageServer, launch: Launch) -> tuple[str, ...]:
+    return (f"{launch.lsp_directory}/{server.script}",)
+
+
+def _gopls_version_command(server: LanguageServer, lsp_directory: str) -> tuple[str, ...]:
+    return (f"{lsp_directory}/{server.script}", "version")
+
+
+def _gopls_options(_workspace: str) -> dict[str, JsonValue]:
+    return dict(GOPLS_SETTINGS)
+
+
+def _gopls_environment(_launch: Launch) -> dict[str, str]:
+    """The `go` commands gopls runs load packages as cstudy's builds do: with the selected Go,
+    no module or toolchain downloaded, the module files left as they are and no cgo."""
+    return {
+        "GOTOOLCHAIN": "local",
+        "GOPROXY": "off",
+        "GOFLAGS": "-mod=readonly",
+        "CGO_ENABLED": "0",
+    }
+
+
+GOPLS = LanguageServer(
+    language=Language.GO,
+    name="gopls",
+    version="0.24.0",
+    script=f"{LSP_BIN}/gopls",
+    version_script=None,
+    root_project=GO_PROJECT,
+    initialization_options=_gopls_options,
+    settings={"gopls": GOPLS_SETTINGS},
+    capabilities=CLIENT_CAPABILITIES,
+    launcher=_gopls_command,
+    environment=_gopls_environment,
+    versioner=_gopls_version_command,
+    go_install=GoInstall(
+        module="golang.org/x/tools/gopls",
+        versions={25: "0.21.1", 26: "0.23.0", 27: "0.24.0"},
+    ),
+)
+"""gopls (ADR 0018, phase 3): `go install` builds the version the selected Go pins into
+`.cs/lsp/bin/`, online once. Its root is `go/`, which it finds through the workspace's `go.work`,
+or a project folder, through the folder's own."""
+
+RUST_ANALYZER_SETTINGS: dict[str, JsonValue] = {
+    "cargo": {"targetDir": True},
+    "check": {"allTargets": True},
+    "completion": {"autoimport": {"enable": False}},
+}
+"""`cargo check` over every target into `target/rust-analyzer/`, a target directory of its own,
+so it never waits for an IDE's `cargo check`; no `--keep-going` of cstudy's, since rust-analyzer
+passes it itself; and no completion that adds an import, a quick fix, out of scope."""
+
+
+def _rust_analyzer_command(_server: LanguageServer, _launch: Launch) -> tuple[str, ...]:
+    return (RUST_ANALYZER_NAME,)
+
+
+def _rust_analyzer_version_command(_server: LanguageServer, _lsp: str) -> tuple[str, ...]:
+    return (RUST_ANALYZER_NAME, "--version")
+
+
+def _rust_analyzer_options(_workspace: str) -> dict[str, JsonValue]:
+    return dict(RUST_ANALYZER_SETTINGS)
+
+
+def _rust_analyzer_environment(_launch: Launch) -> dict[str, str]:
+    """`cargo metadata` and `cargo check` run offline, over the vendored crates."""
+    return {"CARGO_NET_OFFLINE": "true"}
+
+
+RUST_ANALYZER_NAME = "rust-analyzer"
+RUST_ANALYZER = LanguageServer(
+    language=Language.RUST,
+    name=RUST_ANALYZER_NAME,
+    version=None,
+    script=None,
+    version_script=None,
+    root_project=RUST_PROJECT,
+    initialization_options=_rust_analyzer_options,
+    settings={RUST_ANALYZER_NAME: RUST_ANALYZER_SETTINGS},
+    capabilities=CLIENT_CAPABILITIES,
+    launcher=_rust_analyzer_command,
+    environment=_rust_analyzer_environment,
+    versioner=_rust_analyzer_version_command,
+    fix=f"rustup component add {RUST_ANALYZER_NAME}",
+    missing_words="Unknown binary",
+)
+"""rust-analyzer (ADR 0018, phase 3): the one rustup installs, or any on PATH whose `--version`
+runs. cstudy never changes the Rust toolchain. While the component is missing, rustup's proxy on
+PATH answers `error: Unknown binary 'rust-analyzer' in official toolchain …`, which counts as not
+installed. It runs build scripts and procedural macros, as `cargo test` does."""
+
+LANGUAGE_SERVERS = (BASEDPYRIGHT, TYPESCRIPT_LANGUAGE_SERVER, JDTLS, GOPLS, RUST_ANALYZER)
+"""The languages with a server in phase 3; Kotlin has none. A tuple, not a table keyed by
+`Language`, since a table must have a row for every language."""
 
 
 def server_for(language: Language) -> LanguageServer | None:

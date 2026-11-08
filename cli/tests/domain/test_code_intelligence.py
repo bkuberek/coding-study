@@ -5,14 +5,17 @@ import pytest
 
 from coding_study.domain.code_intelligence import (
     BASEDPYRIGHT,
+    GOPLS,
     JDTLS,
     JVM_WRAPPER_SHA256,
     LANGUAGE_SERVERS,
     LSP_DIRECTORY,
     LSP_INSTALL_COMMAND,
     NOT_AVAILABLE_YET,
+    RUST_ANALYZER,
     TYPESCRIPT_LANGUAGE_SERVER,
     Launch,
+    go_release,
     server_for,
 )
 from coding_study.domain.jdk import JdkRange
@@ -30,24 +33,28 @@ TEMPLATE_WRAPPER = (
 )
 
 
-def test_phase_two_adds_java_to_python_and_typescript():
-    assert {server.language for server in LANGUAGE_SERVERS} == {
+def test_phase_three_adds_go_and_rust_to_python_typescript_and_java():
+    assert [server.language for server in LANGUAGE_SERVERS] == [
         Language.PYTHON,
         Language.TYPESCRIPT,
         Language.JAVA,
-    }
+        Language.GO,
+        Language.RUST,
+    ]
 
 
-@pytest.mark.parametrize("language", [Language.KOTLIN, Language.GO, Language.RUST])
-def test_the_other_languages_have_no_server_yet(language):
-    assert (server_for(language), NOT_AVAILABLE_YET) == (None, "not available yet")
+def test_kotlin_has_no_server_yet():
+    assert (server_for(Language.KOTLIN), NOT_AVAILABLE_YET) == (None, "not available yet")
 
 
 def test_the_servers_are_pinned_to_the_versions_of_the_spec():
+    """gopls's is the newest the table pins; rust-analyzer is whichever runs."""
     assert [(server.name, server.version) for server in LANGUAGE_SERVERS] == [
         ("basedpyright", "1.40.2"),
         ("typescript-language-server", "6.0.3"),
         ("jdtls", "1.63.0"),
+        ("gopls", "0.24.0"),
+        ("rust-analyzer", None),
     ]
 
 
@@ -110,19 +117,33 @@ def test_python_needs_no_initialization_options():
     assert BASEDPYRIGHT.initialization_options(WORKSPACE) == {}
 
 
-def test_the_node_servers_idle_for_sixty_seconds_and_java_for_five_minutes():
+def test_the_servers_idle_for_sixty_seconds_and_java_for_five_minutes():
     """JDT LS takes seconds to import the Gradle build again, so a closed tab keeps it longer."""
-    assert [server.idle_s for server in LANGUAGE_SERVERS] == [60, 60, 300]
+    assert [server.idle_s for server in LANGUAGE_SERVERS] == [60, 60, 300, 60, 60]
 
 
 def test_a_root_is_the_practice_project_of_the_language():
-    assert [server.root_project for server in LANGUAGE_SERVERS] == ["python", "typescript", "jvm"]
+    assert [server.root_project for server in LANGUAGE_SERVERS] == [
+        "python",
+        "typescript",
+        "jvm",
+        "go",
+        "rust",
+    ]
 
 
-def test_the_node_servers_need_no_jdk_and_no_data_of_their_own():
-    assert [(server.jdks, server.data) for server in (BASEDPYRIGHT, TYPESCRIPT)] == [
-        (None, None),
-        (None, None),
+def test_the_servers_but_jdtls_need_no_jdk_and_no_data_of_their_own():
+    others = (BASEDPYRIGHT, TYPESCRIPT, GOPLS, RUST_ANALYZER)
+    assert {(server.jdks, server.data) for server in others} == {(None, None)}
+
+
+def test_cstudy_installs_every_server_but_rust_analyzer():
+    assert [server.fix for server in LANGUAGE_SERVERS] == [
+        None,
+        None,
+        None,
+        None,
+        "rustup component add rust-analyzer",
     ]
 
 
@@ -305,3 +326,148 @@ def test_pull_diagnostics_are_declared_without_dynamic_registration():
 def test_completion_declares_no_snippet_support_so_an_item_never_leaves_placeholders():
     completion = BASEDPYRIGHT.capabilities["textDocument"]["completion"]  # type: ignore[index]
     assert completion["completionItem"]["snippetSupport"] is False  # type: ignore[index]
+
+
+# Go: gopls, built by `go install` at the version the selected Go pins (ADR 0018, phase 3)
+
+GO_INSTALL = GOPLS.go_install
+
+
+@pytest.mark.parametrize(
+    ("go", "version"),
+    [
+        ("1.25.4", "0.21.1"),
+        ("1.26.0", "0.23.0"),
+        ("1.27.3", "0.24.0"),
+        ("1.28.1", "0.24.0"),
+        ("1.24.9", "0.21.1"),
+        (None, "0.24.0"),
+    ],
+    ids=["go 1.25", "go 1.26", "go 1.27", "a newer go", "an older go", "no go"],
+)
+def test_gopls_is_pinned_by_the_selected_go(go, version):
+    """gopls v0.24.0 builds only with Go 1.27, v0.23.0 with 1.26 and v0.21.1 with 1.25."""
+    assert GO_INSTALL is not None
+    assert GO_INSTALL.version_for(go) == version
+
+
+def test_gopls_is_built_by_go_install_at_the_pinned_version():
+    assert GO_INSTALL is not None
+    assert GO_INSTALL.command("0.24.0") == ("go", "install", "golang.org/x/tools/gopls@v0.24.0")
+
+
+def test_go_install_puts_gopls_in_the_lsp_bin_directory_with_the_selected_go_only():
+    """GOTOOLCHAIN=local never downloads another Go, and GOWORK=off keeps the workspace's
+    `go.work` out of the build."""
+    assert GO_INSTALL is not None
+    assert GO_INSTALL.environment(LSP) == {
+        "GOBIN": "/ws/.cs/lsp/bin",
+        "GOTOOLCHAIN": "local",
+        "GOWORK": "off",
+    }
+
+
+def test_only_gopls_is_built_by_go_install():
+    assert [server.name for server in LANGUAGE_SERVERS if server.go_install] == ["gopls"]
+
+
+def test_gopls_counts_as_installed_by_its_binary_in_the_lsp_bin_directory():
+    assert GOPLS.script == "bin/gopls"
+
+
+def test_gopls_prints_its_version_with_its_version_command():
+    assert GOPLS.version_command(LSP) == ("/ws/.cs/lsp/bin/gopls", "version")
+
+
+def test_gopls_reads_its_version_from_what_its_version_command_prints():
+    assert GOPLS.printed_version("golang.org/x/tools/gopls v0.24.0\n") == "0.24.0"
+
+
+def test_gopls_runs_from_the_lsp_bin_directory():
+    assert GOPLS.command(NODE_LAUNCH) == ("/ws/.cs/lsp/bin/gopls",)
+
+
+def test_gopls_shows_no_web_links_on_hover_and_completes_no_unimported_package():
+    """Completing a package that is not imported adds its import, a quick fix out of scope."""
+    settings = {"linksInHover": False, "completeUnimported": False}
+    assert (GOPLS.settings, GOPLS.initialization_options(WORKSPACE)) == (
+        {"gopls": settings},
+        settings,
+    )
+
+
+def test_gopls_never_downloads_a_toolchain_or_a_module_and_builds_as_cstudy_does():
+    assert GOPLS.environment(NODE_LAUNCH) == {
+        "GOTOOLCHAIN": "local",
+        "GOPROXY": "off",
+        "GOFLAGS": "-mod=readonly",
+        "CGO_ENABLED": "0",
+    }
+
+
+@pytest.mark.parametrize(
+    ("printed", "release"),
+    [
+        ("go1.27.3\n", "1.27.3"),
+        ("go1.26rc1\n", "1.26"),
+        ("go version go1.25.4 darwin/arm64\n", "1.25.4"),
+        ("", None),
+        ("devel +abc\n", None),
+    ],
+)
+def test_the_selected_go_is_read_from_what_go_prints(printed, release):
+    assert go_release(printed) == release
+
+
+# Rust: rust-analyzer from rustup or PATH (ADR 0018, phase 3)
+
+
+def test_rust_analyzer_is_whichever_is_on_path_and_runs():
+    assert (RUST_ANALYZER.script, RUST_ANALYZER.version) == (None, None)
+
+
+def test_rust_analyzer_prints_its_version_with_its_version_option():
+    assert RUST_ANALYZER.version_command(LSP) == ("rust-analyzer", "--version")
+
+
+def test_rust_analyzer_runs_from_path():
+    assert RUST_ANALYZER.command(NODE_LAUNCH) == ("rust-analyzer",)
+
+
+def test_the_rustup_proxy_without_the_component_counts_as_missing():
+    proxy = (
+        "error: Unknown binary 'rust-analyzer' in official toolchain 'stable-aarch64-apple-darwin'."
+    )
+    assert RUST_ANALYZER.says_missing(proxy) is True
+
+
+def test_any_other_failure_of_the_version_command_is_not_missing():
+    assert RUST_ANALYZER.says_missing("dyld: Library not loaded") is False
+
+
+def test_only_rust_analyzer_can_be_missing_behind_a_proxy():
+    assert GOPLS.says_missing("error: Unknown binary 'gopls'") is False
+
+
+def test_rust_analyzer_checks_all_targets_in_a_target_directory_of_its_own_without_imports():
+    """No `--keep-going` of cstudy's: rust-analyzer passes it itself."""
+    settings = {
+        "cargo": {"targetDir": True},
+        "check": {"allTargets": True},
+        "completion": {"autoimport": {"enable": False}},
+    }
+    assert (RUST_ANALYZER.settings, RUST_ANALYZER.initialization_options(WORKSPACE)) == (
+        {"rust-analyzer": settings},
+        settings,
+    )
+
+
+def test_cargo_runs_offline_under_rust_analyzer():
+    assert RUST_ANALYZER.environment(NODE_LAUNCH) == {"CARGO_NET_OFFLINE": "true"}
+
+
+def test_go_and_rust_get_the_same_client_capabilities_as_the_other_servers():
+    assert (GOPLS.capabilities, RUST_ANALYZER.capabilities) == (
+        BASEDPYRIGHT.capabilities,
+        BASEDPYRIGHT.capabilities,
+    )

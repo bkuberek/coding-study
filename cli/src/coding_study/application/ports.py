@@ -19,7 +19,7 @@ from coding_study.domain.bench_records import (
 from coding_study.domain.bench_runs import BenchReport, BenchRequest
 from coding_study.domain.bench_verdict import PastRun
 from coding_study.domain.cases import JsonValue
-from coding_study.domain.code_intelligence import Archive, LanguageServer
+from coding_study.domain.code_intelligence import Archive, GoInstall, LanguageServer
 from coding_study.domain.comparators import Checker
 from coding_study.domain.config import Config
 from coding_study.domain.config_keys import ConfigView
@@ -1117,7 +1117,13 @@ class LanguageServerLocator(Protocol):
     """The servers in the workspace's `.cs/lsp/` (docs/specs/web-ui.md#language-servers)."""
 
     def probe(self, server: LanguageServer) -> ServerProbe:
-        """Whether `.cs/lsp/` holds `server` and what its version command prints."""
+        """Whether `.cs/lsp/` holds `server`, or PATH for a server cstudy does not install, and
+        what its version command prints."""
+        ...
+
+    def go_release(self) -> str | None:
+        """The release of the selected Go, `1.27.3`, which pins the gopls it builds; None
+        without a Go that runs."""
         ...
 
 
@@ -1131,6 +1137,11 @@ class LanguageServerInstaller(Protocol):
     def download(self, archive: Archive) -> ProbeResult:
         """Download `archive`, check its SHA-256 and unpack it into `.cs/lsp/`, in place of what
         its directory held; exit code 0 once it is there, 1 with the reason otherwise."""
+        ...
+
+    def go_install(self, install: GoInstall, version: str) -> ProbeResult | None:
+        """Build `version` of `install`'s module into `.cs/lsp/bin/` with `go install`, with the
+        selected Go only; None when `go` is missing."""
         ...
 
 

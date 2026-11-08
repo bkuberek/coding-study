@@ -40,7 +40,6 @@ from coding_study.domain.problem import Language, ProblemKind
 from coding_study.domain.workspace_projects import project_folder
 
 FIX_COMMAND = "cstudy doctor --fix"
-FIX_HINT = f"run {FIX_COMMAND}"
 OFF = "code intelligence is off: turn it on in Settings"
 
 
@@ -58,11 +57,13 @@ class LanguageServerState:
     server: str | None
     """None where the language has no server yet."""
     version: str | None
-    """The pinned version, whether or not it is installed."""
+    """The pinned version, whether or not it is installed: for gopls, the one the selected Go
+    pins; for a server cstudy does not pin (rust-analyzer), the installed one, else None."""
     status: ServerStatus
     detail: str
     """What the Settings view shows: the installed version, or why the server is not usable,
-    ending in the fix unless the reason is the version command's own words."""
+    ending in the fix (`run cstudy doctor --fix`, `run rustup component add rust-analyzer`)
+    unless the reason is the version command's own words."""
     idle_s: int | None
     problem: str | None
     """Why an unusable server is not usable, as the doctor row says it, without the fix; None
@@ -75,7 +76,8 @@ def language_server_states(
     locator: LanguageServerLocator, jdk: JdkSelector
 ) -> tuple[LanguageServerState, ...]:
     """One state per language, in `cstudy list`'s order, whatever the preference says; a server
-    that runs on a JDK is judged against the selected one."""
+    that runs on a JDK is judged against the selected one, and one that Go builds against the
+    version the selected Go pins."""
     return tuple(_state(language, locator, jdk) for language in Language)
 
 
@@ -131,7 +133,7 @@ def session_target(
         raise UsageError(OFF)
     server = _server_of(environment, attempt)
     jdk = environment.jdk
-    state = _located(server, environment.language_servers.probe(server), jdk)
+    state = _located(server, environment.language_servers, jdk)
     if state.problem is not None:
         raise LanguageServerNotInstalledError(state.problem, state.fix or FIX_COMMAND)
     root = _root(environment, attempt, server)
@@ -157,6 +159,25 @@ def download_language_server(
     that is no archive. The caller decides, from the `code_intelligence` preference and
     `is_unpacked`, whether to."""
     return None if server.archive is None else installer.download(server.archive)
+
+
+def go_install_version(locator: LanguageServerLocator, server: LanguageServer) -> str | None:
+    """The version `go install` builds of a server that Go builds: the one the selected Go pins,
+    unless it is installed and runs already. None for a server Go does not build. The caller
+    decides, from the `code_intelligence` preference, whether to."""
+    if server.go_install is None:
+        return None
+    wanted = server.go_install.version_for(locator.go_release())
+    return None if _problem(server, wanted, locator.probe(server)) is None else wanted
+
+
+def install_language_server_with_go(
+    installer: LanguageServerInstaller, server: LanguageServer, version: str
+) -> ProbeResult | None:
+    """`go install` of `version` of `server` into `.cs/lsp/bin/`; None when `go` is missing or
+    Go does not build the server."""
+    install = server.go_install
+    return None if install is None else installer.go_install(install, version)
 
 
 def _server_of(environment: Environment, attempt: Attempt) -> LanguageServer:
@@ -185,24 +206,41 @@ def _state(
         return LanguageServerState(
             language, None, None, ServerStatus.NOT_AVAILABLE, NOT_AVAILABLE_YET, None, None, None
         )
-    return _located(server, locator.probe(server), jdk)
+    return _located(server, locator, jdk)
 
 
-def _located(server: LanguageServer, probe: ServerProbe, jdk: JdkSelector) -> LanguageServerState:
-    problem = _problem(server, probe) or _jdk_problem(server, jdk)
+def _located(
+    server: LanguageServer, locator: LanguageServerLocator, jdk: JdkSelector
+) -> LanguageServerState:
+    wanted = _pinned(server, locator)
+    probe = locator.probe(server)
+    problem = _problem(server, wanted, probe) or _jdk_problem(server, jdk)
+    version = wanted or _printed(server, probe)
     if problem is None:
-        return _state_of(server, f"{server.name} {server.version}", None)
-    detail = problem.reason if problem.own_words else f"{problem.reason}: {FIX_HINT}"
-    return _state_of(server, detail, problem)
+        return _state_of(server, version, f"{server.name} {version}", None)
+    detail = problem.reason if problem.own_words else f"{problem.reason}: run {problem.fix}"
+    return _state_of(server, version, detail, problem)
+
+
+def _pinned(server: LanguageServer, locator: LanguageServerLocator) -> str | None:
+    """The version cstudy needs: the catalog's, or for a server that Go builds the one the
+    selected Go pins; None for a server cstudy does not pin."""
+    if server.go_install is None:
+        return server.version
+    return server.go_install.version_for(locator.go_release())
+
+
+def _printed(server: LanguageServer, probe: ServerProbe) -> str | None:
+    return server.printed_version(probe.output) if isinstance(probe, VersionPrinted) else None
 
 
 def _state_of(
-    server: LanguageServer, detail: str, problem: "_Problem | None"
+    server: LanguageServer, version: str | None, detail: str, problem: "_Problem | None"
 ) -> LanguageServerState:
     return LanguageServerState(
         server.language,
         server.name,
-        server.version,
+        version,
         ServerStatus.INSTALLED if problem is None else problem.status,
         detail,
         server.idle_s,
@@ -218,7 +256,7 @@ class _Problem:
     reason: str = ""
     """As the Settings view says it; the row's words unless given."""
     own_words: bool = False
-    """A reason that takes no `run cstudy doctor --fix` after it: the version command's own line,
+    """A reason that takes no `run <fix>` after it: the version command's own line,
     or a JDK, which the fix does not change."""
     status: ServerStatus = ServerStatus.NOT_INSTALLED
     fix: str = FIX_COMMAND
@@ -228,17 +266,19 @@ class _Problem:
             object.__setattr__(self, "reason", self.row)
 
 
-def _problem(server: LanguageServer, probe: ServerProbe) -> _Problem | None:
-    """None when the pinned version is installed and usable."""
+def _problem(server: LanguageServer, wanted: str | None, probe: ServerProbe) -> _Problem | None:
+    """None when the `wanted` version is installed and usable, or any version for a server
+    cstudy does not pin. The fix is the catalog's for a server cstudy does not install."""
+    fix = server.fix or FIX_COMMAND
     match probe:
         case NotInstalled():
-            return _Problem(f"{server.name} is not installed", "not installed")
+            return _Problem(f"{server.name} is not installed", "not installed", fix=fix)
         case FileMissing():
-            return _Problem(_missing(server))
+            return _Problem(_missing(server), fix=fix)
         case VersionFailed(reason):
-            return _Problem(reason, own_words=True)
+            return _Problem(reason, own_words=True, fix=fix)
         case VersionPrinted(output):
-            return _version_problem(server, server.printed_version(output))
+            return _version_problem(server, wanted, server.printed_version(output))
         case Unpacked():
             return None
 
@@ -271,9 +311,12 @@ def _missing(server: LanguageServer) -> str:
     return requirement.missing if requirement else f"{server.name} is incomplete"
 
 
-def _version_problem(server: LanguageServer, printed: str | None) -> _Problem | None:
+def _version_problem(
+    server: LanguageServer, wanted: str | None, printed: str | None
+) -> _Problem | None:
+    fix = server.fix or FIX_COMMAND
     if printed is None:
-        return _Problem(f"{server.name} printed no version")
-    if printed != server.version:
-        return _Problem(f"{server.name} {printed} installed; cstudy needs {server.version}")
+        return _Problem(f"{server.name} printed no version", fix=fix)
+    if wanted is not None and printed != wanted:
+        return _Problem(f"{server.name} {printed} installed; cstudy needs {wanted}", fix=fix)
     return None

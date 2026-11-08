@@ -80,7 +80,7 @@ def lab(engine: str, practice_workspace: Path, tmp_path_factory: pytest.TempPath
 def _install_fake_typescript_server(workspace: Path) -> None:
     """The file `cstudy` looks for in `.cs/lsp/`; the workspace's `typescript/node_modules`
     holds the `tsserver` it also needs."""
-    script = workspace / LSP_DIRECTORY / TYPESCRIPT_LANGUAGE_SERVER.script
+    script = workspace / LSP_DIRECTORY / str(TYPESCRIPT_LANGUAGE_SERVER.script)
     script.parent.mkdir(parents=True)
     script.write_text("")
 

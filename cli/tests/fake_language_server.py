@@ -1,10 +1,11 @@
 """A stand-in for a language server (docs/specs/web-ui.md#testing): it speaks LSP over its standard
 streams and plays a script, as `tests/scripted_child.py` plays one for a child `cstudy`.
 
-    python fake_language_server.py <script.json> [<server script>] [--stdio | --version]
+    python fake_language_server.py <script.json> [<server script>] [--stdio | --version | version]
 
-It appends its pid, arguments, current directory and the two environment variables that hide
-directories from a Node server (`NODE_OPTIONS`, `CSTUDY_HIDDEN_DIRECTORIES`) as one JSON line to
+It appends its pid, arguments, current directory, the two environment variables that hide
+directories from a Node server (`NODE_OPTIONS`, `CSTUDY_HIDDEN_DIRECTORIES`), JDT LS's cache and
+the variables the Go and Rust servers start with (`RECORDED_VARIABLES`) as one JSON line to
 `<script>.calls` and every message it reads as one JSON line to `<script>.received`, then plays the
 script's steps in order, each an object with one key:
 
@@ -36,9 +37,9 @@ in, so a script can point at the tab's file before the test knows where the work
 
 After the last step it creates `<script>.ready`, answers `shutdown` with null, exits on `exit`
 and at the end of its standard input, answers any other request with -32601 and ignores
-notifications, unless it was told to ignore one of them. `--version` prints what the pinned
-server's version command prints and exits. It imports the standard library only, so it starts
-fast.
+notifications, unless it was told to ignore one of them. `--version`, or gopls's `version`,
+prints what the pinned server's version command prints and exits. It imports the standard
+library only, so it starts fast.
 """
 
 import json
@@ -56,7 +57,16 @@ SLEEPER = (
     "import signal, time; signal.signal(signal.SIGINT, signal.SIG_IGN); "
     "signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(120)"
 )
-VERSIONS = {"basedpyright": "basedpyright 1.40.2", "typescript-language-server": "6.0.3"}
+VERSIONS = {
+    "basedpyright": "basedpyright 1.40.2",
+    "typescript-language-server": "6.0.3",
+    "gopls": "golang.org/x/tools/gopls v0.24.0",
+    "rust-analyzer": "rust-analyzer 1.91.0 (f8297e35 2025-10-28)",
+}
+VERSION_ARGUMENTS = ("--version", "version")
+"""`--version`, and gopls's `version` subcommand."""
+RECORDED_VARIABLES = ("GOTOOLCHAIN", "GOPROXY", "GOFLAGS", "CGO_ENABLED", "CARGO_NET_OFFLINE")
+"""The variables of the Go and Rust servers' environments, recorded with each call."""
 POLL_S = 0.01
 METHOD_NOT_FOUND = -32601
 
@@ -281,7 +291,7 @@ STEPS = {
 def main(script_path: str, arguments: list[str]) -> None:
     script = Path(script_path)
     pinned = next((name for name in VERSIONS if name in " ".join(arguments)), None)
-    if "--version" in arguments and pinned is not None:
+    if arguments[-1:] and arguments[-1] in VERSION_ARGUMENTS and pinned is not None:
         print(VERSIONS[pinned])
         return
     with script.with_suffix(".calls").open("a", encoding="utf-8") as calls:
@@ -292,6 +302,7 @@ def main(script_path: str, arguments: list[str]) -> None:
             "node_options": os.environ.get("NODE_OPTIONS"),
             "hidden": os.environ.get("CSTUDY_HIDDEN_DIRECTORIES"),
             "xdg_cache_home": os.environ.get("XDG_CACHE_HOME"),
+            "environment": {name: os.environ.get(name) for name in RECORDED_VARIABLES},
         }
         calls.write(json.dumps(record) + "\n")
     server = Server(script)

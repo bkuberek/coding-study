@@ -37,7 +37,7 @@ from coding_study.application.ports import (
 )
 from coding_study.domain.bench_records import MachineState, PowerSource
 from coding_study.domain.cases import FunctionInput
-from coding_study.domain.code_intelligence import Archive, LanguageServer
+from coding_study.domain.code_intelligence import Archive, GoInstall, LanguageServer
 from coding_study.domain.config import Config
 from coding_study.domain.errors import LanguageNotSetUpError
 from coding_study.domain.jdk import JdkSource, SelectedJdk
@@ -336,24 +336,30 @@ CODE_INTELLIGENCE_ON = MemoryPreferences({"format": 1, "code_intelligence": True
 
 PNPM_SUCCEEDED = ProbeResult(0, "")
 DOWNLOADED = ProbeResult(0, "")
+GO_INSTALLED = ProbeResult(0, "")
 
 
 class FakeLanguageServers:
     """Locates and installs the servers of the catalog from a table of probes, one per name;
-    a server without an entry is not installed."""
+    a server without an entry is not installed. `go` is the selected Go's release."""
 
     def __init__(
         self,
         probes: Mapping[str, ServerProbe] | None = None,
         installation: ProbeResult | None = PNPM_SUCCEEDED,
         download: ProbeResult = DOWNLOADED,
+        go: str | None = "1.27.3",
+        go_install: ProbeResult | None = GO_INSTALLED,
     ) -> None:
         self.probes = dict(probes or {})
         self.installation = installation
         self.download_result = download
+        self.go = go
+        self.go_install_result = go_install
         self.probed: list[str] = []
         self.installs = 0
         self.downloads: list[Archive] = []
+        self.go_installs: list[tuple[GoInstall, str]] = []
 
     def probe(self, server: LanguageServer) -> ServerProbe:
         self.probed.append(server.name)
@@ -367,9 +373,18 @@ class FakeLanguageServers:
         self.downloads.append(archive)
         return self.download_result
 
+    def go_release(self) -> str | None:
+        return self.go
+
+    def go_install(self, install: GoInstall, version: str) -> ProbeResult | None:
+        self.go_installs.append((install, version))
+        return self.go_install_result
+
 
 INSTALLED_SERVERS: Mapping[str, ServerProbe] = {
     "basedpyright": VersionPrinted("basedpyright 1.40.2\nbased on pyright 1.40.2\n"),
     "typescript-language-server": VersionPrinted("6.0.3\n"),
     "jdtls": Unpacked(),
+    "gopls": VersionPrinted("golang.org/x/tools/gopls v0.24.0\n"),
+    "rust-analyzer": VersionPrinted("rust-analyzer 1.91.0 (f8297e35 2025-10-28)\n"),
 }

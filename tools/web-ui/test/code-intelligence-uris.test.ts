@@ -34,6 +34,14 @@ test("Java files are java, the id JDT LS knows", () => {
   assert.equal(languageIdFor("Solution.java"), "java");
 });
 
+test("Go files are go, the id gopls knows", () => {
+  assert.equal(languageIdFor("practice/two_sum/two_sum.go"), "go");
+});
+
+test("Rust files are rust, the id rust-analyzer knows", () => {
+  assert.equal(languageIdFor("practice/two_sum.rs"), "rust");
+});
+
 test("a Kotlin file has no id while Kotlin has no server", () => {
   assert.equal(languageIdFor("Solution.kt"), null);
 });

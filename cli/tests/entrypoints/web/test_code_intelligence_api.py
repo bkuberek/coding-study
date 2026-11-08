@@ -1,7 +1,5 @@
 """`GET /api/v1/code-intelligence/languages` (docs/specs/web-ui.md#code-intelligence)."""
 
-import pytest
-
 from coding_study.application.ports import VersionFailed
 from tests.fakes import INSTALLED_SERVERS, FakeJdk, FakeLanguageServers, jdk_of
 from tests.web_server import anonymous_client, session_client, web_app, web_workspace
@@ -85,11 +83,48 @@ def test_jdtls_on_another_jdk_needs_jdk_25_or_26(tmp_path):
     assert (entry["state"], entry["detail"]) == ("needs_jdk", "needs JDK 25 or 26")
 
 
-@pytest.mark.parametrize("language", ["kotlin", "go", "rust"])
-def test_the_other_languages_are_not_available_yet(tmp_path, language):
+def test_kotlin_is_not_available_yet(tmp_path):
     entries = languages(tmp_path, FakeLanguageServers(INSTALLED_SERVERS)).json()["languages"]
-    entry = next(entry for entry in entries if entry["language"] == language)
-    assert entry == {"language": language, **NOT_AVAILABLE}
+    entry = next(entry for entry in entries if entry["language"] == "kotlin")
+    assert entry == {"language": "kotlin", **NOT_AVAILABLE}
+
+
+def entry_of(tmp_path, servers: FakeLanguageServers, language: str) -> dict[str, object]:
+    entries = languages(tmp_path, servers).json()["languages"]
+    return next(entry for entry in entries if entry["language"] == language)
+
+
+def test_an_installed_gopls_names_the_version_the_selected_go_pins(tmp_path):
+    assert entry_of(tmp_path, FakeLanguageServers(INSTALLED_SERVERS), "go") == {
+        "language": "go",
+        "server": "gopls",
+        "version": "0.24.0",
+        "state": "installed",
+        "detail": "gopls 0.24.0",
+        "idle_s": 60,
+    }
+
+
+def test_a_rust_analyzer_on_path_names_the_version_it_prints(tmp_path):
+    assert entry_of(tmp_path, FakeLanguageServers(INSTALLED_SERVERS), "rust") == {
+        "language": "rust",
+        "server": "rust-analyzer",
+        "version": "1.91.0",
+        "state": "installed",
+        "detail": "rust-analyzer 1.91.0",
+        "idle_s": 60,
+    }
+
+
+def test_a_missing_rust_analyzer_says_how_to_add_it_with_no_version(tmp_path):
+    assert entry_of(tmp_path, FakeLanguageServers(), "rust") == {
+        "language": "rust",
+        "server": "rust-analyzer",
+        "version": None,
+        "state": "not_installed",
+        "detail": "not installed: run rustup component add rust-analyzer",
+        "idle_s": 60,
+    }
 
 
 def test_the_list_does_not_depend_on_the_preference(tmp_path):

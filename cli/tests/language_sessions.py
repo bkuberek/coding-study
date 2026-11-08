@@ -108,7 +108,7 @@ def rig(
         )
         attempt = start_attempt(environment, StartRequest(PROJECT_SLUG)).attempt
     else:
-        for project_directory in ("python", "jvm"):
+        for project_directory in ("python", "jvm", "go", "rust"):
             (tmp_path / project_directory).mkdir(parents=True, exist_ok=True)
         environment = make_environment(
             repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),

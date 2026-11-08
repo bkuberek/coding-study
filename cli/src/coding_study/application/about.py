@@ -57,7 +57,7 @@ def _credits(packages: InstalledPackages) -> tuple[CreditSection, ...]:
         CreditSection("Web page", web_ui_credits(notice) if notice is not None else ()),
         CreditSection(
             "Language servers",
-            tuple(Credit(server.name, server.version, "") for server in LANGUAGE_SERVERS),
+            tuple(Credit(server.name, server.version or "", "") for server in LANGUAGE_SERVERS),
         ),
         CreditSection("Toolchains", tuple(Credit(name, "", "") for name in TOOLCHAINS)),
     ]

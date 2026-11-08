@@ -190,11 +190,21 @@ def test_the_preference_off_is_refused_with_422_and_the_way_to_turn_it_on(lab, c
 
 
 def test_a_language_without_a_server_in_this_phase_is_refused_with_422(lab, client):
-    go = lab.start(Language.GO)
-    denial = refused(client, f"?attempt_id={go.id}")
+    kotlin = lab.start(Language.KOTLIN)
+    denial = refused(client, f"?attempt_id={kotlin.id}")
     assert (error_of(denial), denial.json()["error"]["message"]) == (
         (422, "usage"),
-        "no code intelligence for go yet",
+        "no code intelligence for kotlin yet",
+    )
+
+
+def test_a_rust_server_that_is_not_installed_is_refused_with_503_and_the_rustup_fix(tmp_path):
+    lab = rig(tmp_path, installed=False, language=Language.RUST)
+    with session_client(lab.app) as page:
+        denial = refused(page, lab.query)
+    assert (error_of(denial), denial.json()["error"]["fix"]) == (
+        (503, "environment"),
+        "rustup component add rust-analyzer",
     )
 
 

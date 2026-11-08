@@ -42,9 +42,25 @@ test("a Java file whose server is missing names JDT LS", () => {
   assert.equal(segment.text, "no code intelligence for Java: jdtls is not installed");
 });
 
+test("a Go file whose gopls is missing names gopls", () => {
+  const segment = segmentOf({ kind: "not-installed", language: "go", server: "gopls" });
+  assert.deepEqual([segment.text, segment.action], ["no code intelligence for Go: gopls is not installed", "health"]);
+});
+
+test("a Rust file whose rust-analyzer is missing names rust-analyzer", () => {
+  const segment = segmentOf({ kind: "not-installed", language: "rust", server: "rust-analyzer" });
+  assert.deepEqual([segment.text, segment.action], ["no code intelligence for Rust: rust-analyzer is not installed", "health"]);
+});
+
+test("a missing rust-analyzer in Settings says how to add it and links to the Health view", () => {
+  const detail = "not installed: run rustup component add rust-analyzer";
+  const row = languageRow({ language: "rust", server: "rust-analyzer", version: null, state: "not_installed", detail, idle_s: 60 });
+  assert.deepEqual(row, { name: "Rust", detail, health: true });
+});
+
 test("a language with no server yet says so", () => {
-  const segment = segmentOf({ kind: "no-server", language: "go" });
-  assert.deepEqual([segment.text, segment.action], ["no code intelligence for Go yet", null]);
+  const segment = segmentOf({ kind: "no-server", language: "kotlin" });
+  assert.deepEqual([segment.text, segment.action], ["no code intelligence for Kotlin yet", null]);
 });
 
 test("a service project says its code intelligence comes later, with no action", () => {

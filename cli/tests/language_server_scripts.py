@@ -4,13 +4,14 @@ page and a server exchange, and the clocks of a session cut to a fraction of a s
 
 import json
 import os
+import shutil
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from coding_study.domain.code_intelligence import JDTLS, LSP_DIRECTORY
+from coding_study.domain.code_intelligence import GOPLS, JDTLS, LSP_DIRECTORY
 from coding_study.entrypoints.web.language_server import LanguageServerCommand, LanguageTiming
 
 FAKE_LANGUAGE_SERVER = Path(__file__).with_name("fake_language_server.py")
@@ -107,7 +108,7 @@ def install_fake_basedpyright(workspace: Path) -> None:
 
 def install_fake_jdtls(workspace: Path) -> None:
     """The file `cstudy` looks for in `.cs/lsp/`, so that Java counts as installed."""
-    core = workspace / LSP_DIRECTORY / JDTLS.script
+    core = workspace / LSP_DIRECTORY / str(JDTLS.script)
     core.parent.mkdir(parents=True)
     core.write_text("")
 
@@ -123,3 +124,51 @@ def fake_jdk(home: Path, script: ScriptedServer, feature: int = 25) -> str:
     java.chmod(0o755)
     (home / "release").write_text(f'JAVA_VERSION="{feature}.0.1"\n')
     return str(home)
+
+
+FAKE_GO_RELEASE = "go1.27.3"
+"""What the fake `go` says the selected Go is, so gopls is pinned at 0.24.0 on any machine."""
+RUSTUP_PROXY_ERROR = (
+    "error: Unknown binary 'rust-analyzer' in official toolchain 'stable-aarch64-apple-darwin'."
+)
+
+
+def _runs_the_fake(path: Path, script: ScriptedServer) -> None:
+    """An executable at `path` that runs the fake language server on the script, with its own
+    path as the server script, so the fake prints the version of the server it is named after."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        f'#!/bin/sh\nexec "{sys.executable}" "{FAKE_LANGUAGE_SERVER}" "{script.path}" "$0" "$@"\n'
+    )
+    path.chmod(0o755)
+
+
+def install_fake_gopls(workspace: Path, script: ScriptedServer) -> None:
+    """`.cs/lsp/bin/gopls`, where `go install` puts it, running the fake language server."""
+    _runs_the_fake(workspace / LSP_DIRECTORY / str(GOPLS.script), script)
+
+
+def fake_go(directory: Path) -> None:
+    """A `go` in `directory`, which is on the served PATH, whose `go env GOVERSION` says
+    `FAKE_GO_RELEASE`; anything else goes to the real `go`, if there is one."""
+    real = shutil.which("go")
+    otherwise = f'exec "{real}" "$@"' if real else "exit 127"
+    go = directory / "go"
+    go.write_text(
+        "#!/bin/sh\n"
+        f'if [ "$1 $2" = "env GOVERSION" ]; then echo {FAKE_GO_RELEASE}; exit 0; fi\n'
+        f"{otherwise}\n"
+    )
+    go.chmod(0o755)
+
+
+def fake_rust_analyzer(directory: Path, script: ScriptedServer) -> None:
+    """A `rust-analyzer` in `directory`, which is on the served PATH, running the fake."""
+    _runs_the_fake(directory / "rust-analyzer", script)
+
+
+def fake_rustup_proxy(directory: Path) -> None:
+    """The rustup proxy of a `rust-analyzer` component that is not installed, in `directory`."""
+    proxy = directory / "rust-analyzer"
+    proxy.write_text(f'#!/bin/sh\necho "{RUSTUP_PROXY_ERROR}" >&2\nexit 1\n')
+    proxy.chmod(0o755)

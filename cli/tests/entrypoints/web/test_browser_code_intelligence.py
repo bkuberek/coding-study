@@ -4,8 +4,8 @@ against a real `cstudy serve` whose language server is the scripted fake
 (`tests/fake_language_server.py`) behind a `node` on `PATH`: a Python file opens a session that
 becomes ready; the server hears `initialize`, `didOpen` with the tab's text, `didChange` after
 typing, `didSave` after a save and `didClose` after the tab closes; a second visible tab holds a
-session of its own and still saves; a TypeScript file whose server is not installed and a Go file
-say so in the status bar; a server that exits stops the session with Restart, which opens it
+session of its own and still saves; a TypeScript file whose server is not installed and a Kotlin
+file say so in the status bar; a server that exits stops the session with Restart, which opens it
 again; the Settings view lists each language; the Health view shows the `code intelligence` rows;
 and turning the preference off closes the session. No console error and no Content Security
 Policy violation.
@@ -42,7 +42,7 @@ EDITOR = ".panel:not([hidden]) .cm-content"
 SAVED_TAB = f"{ACTIVE_TAB}:not(.is-modified)"
 PYTHON = ("two-sum", "python")
 TYPESCRIPT = ("lru-cache", "typescript")
-GO = ("invert-binary-tree", "go")
+KOTLIN = ("invert-binary-tree", "kotlin")
 ROOT = Path("python") / "practice"
 """The tree's root for a single-file Python attempt; the server's own root is `python/`."""
 CAPABILITIES = {"capabilities": {"textDocumentSync": 2}}
@@ -57,7 +57,7 @@ STOPPED = "python · basedpyright · stopped: exit 3 · Restart"
 NOT_INSTALLED = (
     "no code intelligence for TypeScript: typescript-language-server is not installed · Health"
 )
-NO_SERVER = "no code intelligence for Go yet"
+NO_SERVER = "no code intelligence for Kotlin yet"
 TEXT_OF = "selector => document.querySelector(selector)?.textContent ?? null"
 PREFERENCE = "#pref-code_intelligence"
 
@@ -110,7 +110,7 @@ class Lab:
 def lab(engine: str, practice_workspace: Path, tmp_path_factory: pytest.TempPathFactory) -> Lab:
     base = tmp_path_factory.mktemp(f"intelligence-{engine}")
     workspace = workspace_like(practice_workspace, base / "workspace")
-    for slug, language in (PYTHON, TYPESCRIPT, GO):
+    for slug, language in (PYTHON, TYPESCRIPT, KOTLIN):
         _cstudy(workspace, "start", slug, "--lang", language, "--no-open")
     install_fake_basedpyright(workspace)
     FsPreferencesStore(workspace).write(preferences_document(Preferences(code_intelligence=True)))
@@ -245,7 +245,7 @@ def _languages_without_a_server(page: Any, lab: Lab, found: Seen) -> None:
     _open_attempt(page, lab, TYPESCRIPT[0])
     found.not_installed = _status(page, NOT_INSTALLED)
     found.health_link = page.get_attribute(f"{SEGMENT} a", "href")
-    _open_attempt(page, lab, GO[0])
+    _open_attempt(page, lab, KOTLIN[0])
     found.no_server = _status(page, NO_SERVER)
 
 
@@ -361,7 +361,7 @@ def test_the_settings_view_lists_each_language(seen):
 
 
 def test_the_settings_view_lists_the_languages_without_a_server_yet(seen):
-    assert "Go not available yet" in seen.languages
+    assert "Kotlin not available yet" in seen.languages
 
 
 def test_an_uninstalled_language_in_settings_links_to_health(seen):
@@ -373,6 +373,8 @@ def test_the_health_view_shows_the_code_intelligence_rows(seen):
         "code intelligence python",
         "code intelligence typescript",
         "code intelligence java",
+        "code intelligence go",
+        "code intelligence rust",
     ]
 
 

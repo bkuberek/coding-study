@@ -89,13 +89,15 @@ Two settings give the editor what an IDE gives: errors as you type, documentatio
    cstudy doctor --fix
    ```
 
-   (or choose **Fix** in the Health view, on the row of each language or at the top). This installs about 46 MB into `.cs/lsp/` in your workspace, a download of about 7 MB, plus Eclipse JDT LS for Java, a 51 MB download checked by its SHA-256, and needs the network that one time. After that practice needs no internet: nothing else is downloaded and no server reaches the network. Deleting `.cs/lsp/` is safe; `--fix` installs it again. With **Code intelligence** off, `--fix` installs nothing for the editor and says so (`skipped the language servers: code intelligence is off; turn it on in Settings…`), unless the servers are installed already.
+   (or choose **Fix** in the Health view, on the row of each language or at the top). This installs about 46 MB into `.cs/lsp/` in your workspace, a download of about 7 MB, plus Eclipse JDT LS for Java, a 51 MB download checked by its SHA-256, and gopls for Go, built with your Go, and needs the network that one time. rust-analyzer comes with your Rust toolchain instead ([Rust](#rust)). After that practice needs no internet: nothing else is downloaded and no server reaches the network. Deleting `.cs/lsp/` is safe; `--fix` installs it again. With **Code intelligence** off, `--fix` installs nothing for the editor and says so (`skipped the language servers: code intelligence is off; turn it on in Settings…`), unless the servers are installed already.
 3. Check the result. `cstudy doctor` shows a row per language while code intelligence is on, and the Settings view lists each language's state:
 
    ```text
    ok    code intelligence python basedpyright 1.40.2
    ok    code intelligence typescript typescript-language-server 6.0.3
    ok    code intelligence java jdtls 1.63.0
+   ok    code intelligence go gopls 0.24.0
+   ok    code intelligence rust rust-analyzer 1.91.0
    ```
 
 4. Open a file. The status bar under the editor shows `python · basedpyright · ready` when its server is up, and **Restart** if it stopped.
@@ -104,8 +106,8 @@ If a server is not installed, or starts slowly, the editor works as it does with
 
 ### What you see
 
-- **Errors and warnings.** They are underlined about half a second after you stop typing in Python and about a second in TypeScript, with a marker in the gutter and counts in the status bar. Unused code fades, deprecated code is struck through, and hints get no underline. The errors of your last run stay, marked `last run`, and a run error that the server repeats shows once.
-- **Hover documentation.** Rest the pointer on a name, or press the keys below, to read its type and documentation. An error on that name shows above the documentation.
+- **Errors and warnings.** They are underlined about half a second after you stop typing in Python and Go and about a second in TypeScript (Rust's compiler errors after each save), with a marker in the gutter and counts in the status bar. Unused code fades, deprecated code is struck through, and hints get no underline. The errors of your last run stay, marked `last run`, and a run error that the server repeats shows once.
+- **Hover documentation.** Rest the pointer on a name, or press the keys below, to read its type and documentation. An error on that name shows above the documentation. A link in the documentation to a library file, as Go's documentation has, opens that file in a library tab at the line it names.
 - **Go to definition.** A name in your own file jumps within it; a name from another file of the attempt opens that file's tab; a name from the standard library or a package opens a **library** tab, read-only, with the file's path beside the code. A library tab cannot be saved, and closing it loses nothing. <kbd>Ctrl</kbd>+<kbd>-</kbd> goes back to where the jump started.
 - **Reference solutions stay hidden.** A definition never opens a reference solution, and the servers cannot read the folders that hold them: an import of one fails as an import of a missing file. You see a solution only through **Solution…**, and its question.
 
@@ -143,7 +145,8 @@ Read <kbd>Ctrl</kbd> for <kbd>Cmd</kbd> on Linux and Windows. These work while c
 | TypeScript | typescript-language-server | Available |
 | Java | Eclipse JDT LS | Available, on JDK 25 or 26 |
 | Kotlin | | Not yet: its server, still in alpha, needs the network, is 360 MB and partly closed source. Kotlin files keep the errors of your last run |
-| Go and Rust | | Next |
+| Go | gopls | Available, built by `cstudy doctor --fix` with your Go |
+| Rust | rust-analyzer | Available, once you run `rustup component add rust-analyzer` |
 
 A file in a language without a server shows a one-line notice in the status bar and works as it does without code intelligence. A language's state also shows in Settings.
 
@@ -163,6 +166,32 @@ WARN  code intelligence java jdtls needs JDK 25 or 26, not 21.0.5
 - **It leaves your folders as they were.** No `.project`, `.classpath`, `.settings/` or `bin/` appears in `jvm/` or a project folder: JDT LS checks your files as you type without building them, and keeps its index in `.cs/lsp/jdtls-data/` (50 to 150 MB per folder).
 - **Memory.** A Java session takes 0.5 to 1.2 GB, under a 1 GB heap, and its first import may start a Gradle daemon (about 400 MB) that stays idle afterwards, as the one `cstudy test` starts does.
 - **Definitions into the JDK.** A class of the JDK or of a library, such as `ArrayList`, has no file of its own: a Cmd-click on it shows a note, `java.base/java.util/ArrayList.java:169 · not a file: URI`, and hover still shows its documentation. Your project's files and the runner's support code open in tabs, as in Python.
+
+### Go
+
+Go's server is gopls. `cstudy doctor --fix` builds it once with `go install` into `.cs/lsp/bin/` (about 40 MB, built in 10 to 20 seconds with the network), with the Go you selected and no other: the gopls version follows your Go, v0.21.1 on Go 1.25, v0.23.0 on 1.26 and v0.24.0 on 1.27. After you upgrade Go, `cstudy doctor` says so and `--fix` builds the matching gopls:
+
+```text
+WARN  code intelligence go gopls 0.23.0 installed; cstudy needs 0.24.0
+      fix: cstudy doctor --fix
+```
+
+- **Errors show about half a second after you stop typing,** with unused imports and variables faded: Go refuses to build them, so gopls marks them as errors too.
+- **It works offline.** gopls loads your packages with `GOTOOLCHAIN=local` and `GOPROXY=off`, as `cstudy test` builds them, and shows no links to pkg.go.dev.
+- **Links in the documentation open the standard library.** Hovering `strings.Split` shows its documentation, and a name in it, such as `Cut`, is a link: choose it to open GOROOT's source in a library tab at that function.
+
+### Rust
+
+Rust's server is rust-analyzer, which comes with your Rust toolchain. `cstudy doctor --fix` never changes the toolchain, so add it yourself once:
+
+```bash
+rustup component add rust-analyzer
+```
+
+Until you do, the status bar says `no code intelligence for Rust: rust-analyzer is not installed · Health`, and `cstudy doctor` names the command. Any `rust-analyzer` on your `PATH` whose `--version` runs is used, whichever version it is.
+
+- **Two kinds of errors.** rust-analyzer's own, such as an unknown name, show as you type. The compiler's, from `cargo check`, show after each save, with unused variables faded. `cargo check` runs offline, into `target/rust-analyzer/`, so it never waits for your IDE's.
+- **It runs your build scripts.** Like `cargo test`, rust-analyzer runs build scripts and procedural macros of the code you open.
 
 ## Run the tests and submit
 

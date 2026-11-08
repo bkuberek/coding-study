@@ -3,6 +3,8 @@ import pytest
 from coding_study.application.code_intelligence import (
     ServerStatus,
     download_language_server,
+    go_install_version,
+    install_language_server_with_go,
     install_language_servers,
     is_unpacked,
     language_server_states,
@@ -16,7 +18,7 @@ from coding_study.application.ports import (
     VersionPrinted,
 )
 from coding_study.domain.code_intelligence import BASEDPYRIGHT as BASEDPYRIGHT_SERVER
-from coding_study.domain.code_intelligence import JDTLS
+from coding_study.domain.code_intelligence import GOPLS, JDTLS, RUST_ANALYZER
 from coding_study.domain.problem import Language
 from tests.fakes import INSTALLED_SERVERS, FakeJdk, FakeLanguageServers, jdk_of
 
@@ -117,9 +119,8 @@ def test_typescript_without_the_workspaces_tsserver_names_the_missing_modules():
     )
 
 
-@pytest.mark.parametrize("language", [Language.KOTLIN, Language.GO, Language.RUST])
-def test_a_language_without_a_server_is_not_available_yet(language):
-    state = states(FakeLanguageServers(INSTALLED_SERVERS))[language]
+def test_a_language_without_a_server_is_not_available_yet():
+    state = states(FakeLanguageServers(INSTALLED_SERVERS))[Language.KOTLIN]
     assert (state.server, state.version, state.status, state.detail) == (
         None,
         None,
@@ -129,14 +130,14 @@ def test_a_language_without_a_server_is_not_available_yet(language):
 
 
 def test_a_language_without_a_server_has_no_idle_time_and_no_problem():
-    state = states(FakeLanguageServers())[Language.GO]
+    state = states(FakeLanguageServers())[Language.KOTLIN]
     assert (state.idle_s, state.problem) == (None, None)
 
 
 def test_only_languages_with_a_server_are_probed():
     servers = FakeLanguageServers(INSTALLED_SERVERS)
     language_server_states(servers, jdk_of(25))
-    assert servers.probed == [BASEDPYRIGHT, TYPESCRIPT, "jdtls"]
+    assert servers.probed == [BASEDPYRIGHT, TYPESCRIPT, "jdtls", "gopls", "rust-analyzer"]
 
 
 # Java: JDT LS runs on the selected JDK, only when it is 25 or 26
@@ -232,3 +233,106 @@ def test_installing_returns_what_the_installer_ran():
 
 def test_installing_without_pnpm_returns_none():
     assert install_language_servers(FakeLanguageServers(installation=None)) is None
+
+
+# Go: gopls, at the version the selected Go pins
+
+
+def test_an_installed_gopls_of_the_version_the_selected_go_pins_is_installed():
+    state = states(FakeLanguageServers(INSTALLED_SERVERS))[Language.GO]
+    assert (state.server, state.version, state.status, state.detail, state.idle_s) == (
+        "gopls",
+        "0.24.0",
+        ServerStatus.INSTALLED,
+        "gopls 0.24.0",
+        60,
+    )
+
+
+def test_a_gopls_built_for_another_go_names_the_version_the_selected_go_pins():
+    state = states(FakeLanguageServers(INSTALLED_SERVERS, go="1.26.2"))[Language.GO]
+    assert (state.status, state.version, state.problem, state.fix) == (
+        ServerStatus.NOT_INSTALLED,
+        "0.23.0",
+        "gopls 0.24.0 installed; cstudy needs 0.23.0",
+        "cstudy doctor --fix",
+    )
+
+
+def test_a_gopls_that_is_not_installed_names_the_version_the_selected_go_pins():
+    state = states(FakeLanguageServers(go="1.25.4"))[Language.GO]
+    assert (state.status, state.version, state.detail, state.problem) == (
+        ServerStatus.NOT_INSTALLED,
+        "0.21.1",
+        "not installed: run cstudy doctor --fix",
+        "gopls is not installed",
+    )
+
+
+def test_go_install_builds_the_version_the_selected_go_pins_while_gopls_is_missing():
+    assert go_install_version(FakeLanguageServers(go="1.26.0"), GOPLS) == "0.23.0"
+
+
+def test_go_install_builds_again_when_another_version_is_installed():
+    servers = FakeLanguageServers(INSTALLED_SERVERS, go="1.26.0")
+    assert go_install_version(servers, GOPLS) == "0.23.0"
+
+
+def test_go_install_has_nothing_to_build_when_the_pinned_version_is_installed():
+    assert go_install_version(FakeLanguageServers(INSTALLED_SERVERS), GOPLS) is None
+
+
+def test_go_install_builds_no_server_that_go_does_not_build():
+    assert go_install_version(FakeLanguageServers(), RUST_ANALYZER) is None
+
+
+def test_installing_with_go_runs_go_install_of_the_version():
+    servers = FakeLanguageServers(go_install=ProbeResult(1, "go: requires go >= 1.27\n"))
+    found = install_language_server_with_go(servers, GOPLS, "0.24.0")
+    assert (found, servers.go_installs) == (
+        ProbeResult(1, "go: requires go >= 1.27\n"),
+        [(GOPLS.go_install, "0.24.0")],
+    )
+
+
+# Rust: rust-analyzer, from rustup or PATH, which cstudy never installs
+
+
+def test_a_rust_analyzer_on_path_is_installed_whatever_its_version():
+    state = states(FakeLanguageServers(INSTALLED_SERVERS))[Language.RUST]
+    assert (state.server, state.version, state.status, state.detail) == (
+        "rust-analyzer",
+        "1.91.0",
+        ServerStatus.INSTALLED,
+        "rust-analyzer 1.91.0",
+    )
+
+
+def test_a_missing_rust_analyzer_is_added_with_rustup():
+    state = states(FakeLanguageServers())[Language.RUST]
+    assert (state.status, state.version, state.detail, state.problem, state.fix) == (
+        ServerStatus.NOT_INSTALLED,
+        None,
+        "not installed: run rustup component add rust-analyzer",
+        "rust-analyzer is not installed",
+        "rustup component add rust-analyzer",
+    )
+
+
+def test_a_rust_analyzer_that_fails_says_why_and_how_to_add_it():
+    probes = {"rust-analyzer": VersionFailed("dyld: Library not loaded")}
+    state = states(FakeLanguageServers(probes))[Language.RUST]
+    assert (state.status, state.detail, state.fix) == (
+        ServerStatus.NOT_INSTALLED,
+        "dyld: Library not loaded",
+        "rustup component add rust-analyzer",
+    )
+
+
+def test_a_rust_analyzer_that_prints_no_version_is_not_installed():
+    probes = {"rust-analyzer": VersionPrinted("rust-analyzer\n")}
+    state = states(FakeLanguageServers(probes))[Language.RUST]
+    assert (state.status, state.problem) == (
+        ServerStatus.NOT_INSTALLED,
+        "rust-analyzer printed no version",
+    )

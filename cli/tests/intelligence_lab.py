@@ -15,9 +15,12 @@ from coding_study.adapters.preferences_fs import FsPreferencesStore
 from coding_study.domain.preferences import Preferences, preferences_document
 from tests.language_server_scripts import (
     ScriptedServer,
+    fake_go,
     fake_jdk,
     fake_node,
+    fake_rust_analyzer,
     install_fake_basedpyright,
+    install_fake_gopls,
     install_fake_jdtls,
 )
 from tests.serve_page import opened_page
@@ -50,6 +53,8 @@ class Lab:
     script: ScriptedServer
     server: RunningServer
     attempts: dict[str, int]
+    path: Path
+    """The directory of the fake `node`, first on the served PATH."""
 
     def uri_of(self, path: str) -> str:
         """The `file:` URI of a file of the single-file Python attempt's tree."""
@@ -69,6 +74,7 @@ def intelligence_lab(
     preferences: Preferences | None = None,
     problems: Sequence[tuple[str, str | None]] = (PYTHON,),
     jdk: int | None = None,
+    go_and_rust: bool = False,
 ) -> Iterator[Lab]:
     """A server over a copy of the practice workspace with the Python practice problem started,
     a basedpyright that is the fake playing `steps` (or what `steps` makes of the workspace's
@@ -76,7 +82,8 @@ def intelligence_lab(
     which may replace the starter file) and `preferences` stored (code intelligence on, unless
     told otherwise). `problems` are started, each as a slug and a language (None for a project).
     With `jdk`, JDT LS is installed too and the server selects a JDK of that release whose `java`
-    is the same fake."""
+    is the same fake. With `go_and_rust`, gopls is installed too, a `go` on PATH says Go 1.27 is
+    selected, and a `rust-analyzer` on PATH is the same fake."""
     workspace = workspace_like(practice_workspace, base / "workspace")
     script = ScriptedServer(base / "server.json")
     java: dict[str, str] = {}
@@ -103,8 +110,12 @@ def intelligence_lab(
     )
     script.play(*(steps(workspace.resolve()) if callable(steps) else steps))
     variables = {"PATH": fake_node(base / "bin", script), **java}
+    if go_and_rust:
+        install_fake_gopls(workspace, script)
+        fake_go(base / "bin")
+        fake_rust_analyzer(base / "bin", script)
     with running_server(workspace, variables=variables) as running:
-        yield Lab(workspace, script, running, opened_page(running).attempts)
+        yield Lab(workspace, script, running, opened_page(running).attempts, base / "bin")
 
 
 def store(lab: Lab, preferences: Preferences) -> None:

@@ -155,11 +155,49 @@ def test_the_preference_off_is_refused_with_the_way_to_turn_it_on(practice):
         target(practice, attempt, Preferences())
 
 
-@pytest.mark.parametrize("language", [Language.GO, Language.RUST, Language.KOTLIN])
-def test_a_language_without_a_server_in_this_phase_is_refused(practice, language):
-    attempt = started(practice, language)
-    with pytest.raises(UsageError, match=f"no code intelligence for {language.value} yet"):
+def test_a_language_without_a_server_in_this_phase_is_refused(practice):
+    attempt = started(practice, Language.KOTLIN)
+    with pytest.raises(UsageError, match="no code intelligence for kotlin yet"):
         target(practice, attempt)
+
+
+def test_a_go_attempt_gets_gopls_rooted_in_the_go_project(practice):
+    found = target(practice, started(practice, Language.GO))
+    assert (found.server.name, found.root) == ("gopls", "go")
+
+
+def test_a_rust_attempt_gets_rust_analyzer_rooted_in_the_rust_project(practice):
+    found = target(practice, started(practice, Language.RUST))
+    assert (found.server.name, found.root) == ("rust-analyzer", "rust")
+
+
+def test_a_rust_attempt_without_rust_analyzer_is_refused_with_the_rustup_fix(tmp_path):
+    probes = {name: probe for name, probe in INSTALLED_SERVERS.items() if name != "rust-analyzer"}
+    environment = make_environment(
+        repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),
+        toolchains=FakeToolchains(stub_generators=STUBS),
+        language_servers=FakeLanguageServers(probes),
+    )
+    with pytest.raises(LanguageServerNotInstalledError) as refused:
+        target(environment, started(environment, Language.RUST))
+    assert str(refused.value).splitlines() == [
+        "rust-analyzer is not installed",
+        "fix: rustup component add rust-analyzer",
+    ]
+
+
+def test_a_go_attempt_whose_gopls_was_built_for_another_go_is_refused_with_the_fix(tmp_path):
+    environment = make_environment(
+        repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),
+        toolchains=FakeToolchains(stub_generators=STUBS),
+        language_servers=FakeLanguageServers(INSTALLED_SERVERS, go="1.26.1"),
+    )
+    with pytest.raises(LanguageServerNotInstalledError) as refused:
+        target(environment, started(environment, Language.GO))
+    assert str(refused.value).splitlines() == [
+        "gopls 0.24.0 installed; cstudy needs 0.23.0",
+        "fix: cstudy doctor --fix",
+    ]
 
 
 def test_the_language_is_checked_before_the_server_is_looked_for(tmp_path):
@@ -167,8 +205,8 @@ def test_the_language_is_checked_before_the_server_is_looked_for(tmp_path):
         repository_root(tmp_path, PRACTICE, FIXTURE_TRACKS),
         toolchains=FakeToolchains(stub_generators=STUBS),
     )
-    attempt = started(environment, Language.GO)
-    with pytest.raises(UsageError, match="no code intelligence for go yet"):
+    attempt = started(environment, Language.KOTLIN)
+    with pytest.raises(UsageError, match="no code intelligence for kotlin yet"):
         target(environment, attempt)
 
 

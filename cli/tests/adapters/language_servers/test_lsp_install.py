@@ -21,8 +21,9 @@ pytestmark = [
         reason="node and pnpm are not installed",
     ),
 ]
-NPM_SERVERS = [server for server in LANGUAGE_SERVERS if server.archive is None]
-"""What pnpm installs; JDT LS is an archive, which `cstudy doctor --fix` downloads."""
+NPM_SERVERS = [server for server in LANGUAGE_SERVERS if server.version_script is not None]
+"""What pnpm installs; JDT LS is an archive, which `cstudy doctor --fix` downloads, gopls a
+binary it builds with `go install`, and rust-analyzer the Rust toolchain's."""
 
 
 @pytest.fixture(scope="module")
@@ -37,7 +38,7 @@ def installed(practice_workspace):
 
 def test_the_install_puts_both_servers_in_the_lsp_directory(practice_workspace, installed):
     lsp = practice_workspace / LSP_DIRECTORY
-    scripts = [lsp / server.script for server in NPM_SERVERS]
+    scripts = [lsp / str(server.script) for server in NPM_SERVERS]
     assert all(script.is_file() for script in scripts)
 
 

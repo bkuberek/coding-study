@@ -11,7 +11,13 @@ import pytest
 
 from coding_study.application.attempt_changes import FileChanged
 from coding_study.application.code_intelligence import SessionTarget
-from coding_study.domain.code_intelligence import BASEDPYRIGHT, JDTLS, TYPESCRIPT_LANGUAGE_SERVER
+from coding_study.domain.code_intelligence import (
+    BASEDPYRIGHT,
+    GOPLS,
+    JDTLS,
+    RUST_ANALYZER,
+    TYPESCRIPT_LANGUAGE_SERVER,
+)
 from coding_study.entrypoints.web.completion_items import ANSWERS_KEPT
 from coding_study.entrypoints.web.language_broker import Delivery, LanguageBroker
 from tests.language_server_scripts import answer, notification, request
@@ -1209,6 +1215,63 @@ def test_jdtls_is_initialized_with_its_settings_and_jdt_uris(tmp_path):
         JDTLS.settings,
         {"classFileContentsSupport": True},
     )
+
+
+# Go and Rust: no `hide_paths.cjs`, so the broker's filtering is what hides the build area
+
+
+def build_area_reference(workspace: Path, relative: str) -> Path:
+    reference = workspace / ".cs/build" / relative
+    reference.parent.mkdir(parents=True)
+    reference.write_text("// the reference\n")
+    return reference
+
+
+def test_a_go_reference_in_the_build_area_is_left_out_of_a_definition_answer(tmp_path):
+    """gopls reaches a file only through a module of the root's `go.work`, which never names
+    `.cs/build/`; a location there is left out all the same."""
+    workspace = tmp_path / "ws"
+    reference = build_area_reference(workspace, "go/practice/two_sum/two_sum.go")
+    broker = broker_for(GOPLS, "go", workspace)
+    found = [{"uri": reference.as_uri(), "range": {}}]
+    assert definition(broker, found, f"{workspace.as_uri()}/go/practice/two_sum/a.go") == []
+
+
+def test_a_rust_reference_in_the_build_area_is_left_out_of_a_definition_answer(tmp_path):
+    """rust-analyzer resolves `#[path]` and `include!` only inside the Cargo workspace of the
+    root; a location in `.cs/build/` is left out all the same."""
+    workspace = tmp_path / "ws"
+    reference = build_area_reference(workspace, "rust/src/two_sum.rs")
+    broker = broker_for(RUST_ANALYZER, "rust", workspace)
+    found = [{"uri": reference.as_uri(), "range": {}}]
+    assert definition(broker, found, f"{workspace.as_uri()}/rust/practice/two_sum.rs") == []
+
+
+def test_cargo_checks_diagnostics_of_a_reference_in_the_build_area_never_reach_the_page(tmp_path):
+    workspace = tmp_path / "ws"
+    reference = build_area_reference(workspace, "rust/src/two_sum.rs")
+    broker = broker_for(RUST_ANALYZER, "rust", workspace)
+    assert from_server(broker, diagnostics(reference.as_uri())) == NOTHING
+
+
+@pytest.mark.parametrize(
+    ("server", "root"), [(GOPLS, "go"), (RUST_ANALYZER, "rust")], ids=["gopls", "rust-analyzer"]
+)
+def test_go_and_rust_servers_are_initialized_with_their_settings(tmp_path, server, root):
+    broker = broker_for(server, root, tmp_path)
+    (sent,) = from_page(broker, request(1, "initialize", {})).to_server
+    (section,) = server.settings
+    assert sent["params"]["initializationOptions"] == server.settings[section]
+
+
+@pytest.mark.parametrize(
+    ("server", "section"), [(GOPLS, "gopls"), (RUST_ANALYZER, "rust-analyzer")]
+)
+def test_go_and_rust_servers_get_their_settings_on_request(server, section):
+    broker = broker_for(server, "go")
+    items = {"items": [{"section": section}]}
+    (reply,) = from_server(broker, request("s1", "workspace/configuration", items)).to_server
+    assert reply["result"] == [server.settings[section]]
 
 
 def test_a_definition_answer_is_still_forwarded_unchanged(broker):
