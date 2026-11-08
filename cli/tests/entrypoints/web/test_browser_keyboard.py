@@ -1,6 +1,7 @@
 """The page with the keyboard alone (docs/specs/web-ui.md#keyboard-and-accessibility), in each
 engine of `tests/browsers.py`: the skip link, a view's shortcut, a visible focus on every stop,
-a dialog that keeps the focus, closes on Escape and gives the focus back, the file tree's menu,
+a stop the status bar covers coming out from under it once it has the focus, a dialog that keeps
+the focus, closes on Escape and gives the focus back, the file tree's menu,
 the editor's name and the way out of it, Alt-Shift-click adding a cursor while Cmd-click and
 Ctrl-click do not and Alt-drag still selects a rectangle, the live region that announces a run's
 start and summary, and Escape in the results panel cancelling a run after its question.
@@ -35,6 +36,21 @@ WAIT_MS = 60_000
 RUN_WAIT_MS = 240_000
 """Generous for a run: the machine running the slow tests is often loaded."""
 TAB_STOPS = 20
+SHORT_WINDOW = 600
+"""Short enough that the problem list runs on under the status bar, however few problems it has."""
+FIRST_STOP_UNDER_THE_BAR = """() => {
+    const bar = document.querySelector(".statusbar").getBoundingClientRect().top;
+    const stops = [...document.querySelectorAll("table.problems tbody :is(a, button)")];
+    const covered = stops.findIndex((stop) => stop.getBoundingClientRect().bottom > bar);
+    if (covered < 1) return false;
+    stops[covered - 1].focus();
+    return true;
+}"""
+"""Focuses the stop before the first one the status bar covers; false when the bar covers none."""
+UNDER_THE_BAR = """() => Math.max(0,
+    Math.floor(document.activeElement.getBoundingClientRect().bottom)
+    - document.querySelector(".statusbar").getBoundingClientRect().top)"""
+"""How many pixels of the focused element the status bar covers, to the pixel a scroll rounds to."""
 CLICK_INDENT = 40
 """Pixels from a line's left edge: inside the text of a starter file's first lines."""
 DIALOG_TABS = 12
@@ -67,6 +83,7 @@ class Keys:
     after_skip: str = ""
     view_by_shortcut: str = ""
     stops_without_focus_ring: list[str] = field(default_factory=list[str])
+    focus_under_the_status_bar: int | None = None
     dialog_focus: dict[str, Any] = field(default_factory=dict[str, Any])
     focus_outside_dialog: list[str] = field(default_factory=list[str])
     dialogs_after_escape: int = -1
@@ -120,6 +137,7 @@ def keys(engine: str, server: RunningServer, workspace: Path) -> Keys:
         page.wait_for_selector("table.problems tbody tr")
         _skip_and_shortcut(page, tab, found)
         _focus_rings(page, tab, found)
+        _focus_under_the_status_bar(page, tab, found)
         _dialog(page, tab, found)
         _tree_and_editor(page, tab, found)
         _clicks(page, found)
@@ -148,6 +166,16 @@ def _focus_rings(page: Any, tab: str, found: Keys) -> None:
         focus = page.evaluate(FOCUS)
         if focus is not None and not focus["visible"]:
             found.stops_without_focus_ring.append(f"{focus['role']} {focus['name'][:30]}")
+
+
+def _focus_under_the_status_bar(page: Any, tab: str, found: Keys) -> None:
+    """Tabs from the stop above the status bar to the first stop it covers."""
+    page.set_viewport_size({"width": 1440, "height": SHORT_WINDOW})
+    page.evaluate("window.scrollTo(0, 0)")
+    if page.evaluate(FIRST_STOP_UNDER_THE_BAR):
+        page.keyboard.press(tab)
+        found.focus_under_the_status_bar = page.evaluate(UNDER_THE_BAR)
+    page.set_viewport_size({"width": 1440, "height": 900})
 
 
 def _dialog(page: Any, tab: str, found: Keys) -> None:
@@ -270,6 +298,10 @@ def test_alt_and_a_digit_open_a_view(keys):
 
 def test_every_stop_shows_the_focus(keys):
     assert keys.stops_without_focus_ring == []
+
+
+def test_a_stop_the_status_bar_covers_comes_out_from_under_it_with_the_focus(keys):
+    assert keys.focus_under_the_status_bar == 0
 
 
 def test_a_dialog_opened_by_the_keyboard_takes_the_focus(keys):

@@ -104,8 +104,10 @@ html,
 body {
   margin: 0;
   height: 100%;
-  /* The top bar and a table's header, one bar high each, stay over whatever is scrolled to. */
+  /* The top bar and a table's header, one bar high each, stay over whatever is scrolled to, and so
+     does the status bar at the bottom: what takes the focus scrolls clear of all three. */
   scroll-padding-top: calc(var(--bar) * 2);
+  scroll-padding-bottom: var(--status);
 }
 
 body {
