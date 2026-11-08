@@ -2,6 +2,39 @@
 
 <!-- version list -->
 
+## v0.28.1 (2026-11-08)
+
+### Bug Fixes
+
+- **web**: Give the run shortcuts 4.5:1 contrast on the Run tests button
+  ([`6f5bb5e`](https://github.com/bkuberek/coding-study/commit/6f5bb5e27d2c3eb467aa508807eeda73cb66c783))
+
+- **web**: Mark an edit made while the file's language still loads
+  ([`f6e9461`](https://github.com/bkuberek/coding-study/commit/f6e9461b176794f36426a30896c5130e1d1d9ef2))
+
+- **web**: Name the terminal commands of a service project instead of runs
+  ([`b6e8946`](https://github.com/bkuberek/coding-study/commit/b6e8946169f1a28437f165bf8d499785cf58170a))
+
+- **web**: Scroll the focus clear of the status bar
+  ([`3e2f82a`](https://github.com/bkuberek/coding-study/commit/3e2f82a3c949345673441e846212078a96194d25))
+
+### Documentation
+
+- Say the run-saves browser test edits before the language loads
+  ([`82beaba`](https://github.com/bkuberek/coding-study/commit/82beaba576ab90fe9f354bd0b7015757f49e6b6e))
+
+### Testing
+
+- Leave out of axe a target only the top bar covers as the view rests
+  ([`f7626bb`](https://github.com/bkuberek/coding-study/commit/f7626bbbd80394ef612c3b58b6a81d1b4808280b))
+
+- Let the completion list take arrows before pressing ArrowDown
+  ([`402b64f`](https://github.com/bkuberek/coding-study/commit/402b64f9969898f86ea980c890aecaa2dfecf494))
+
+- Open the lint panel with the M a keyboard sends under Shift
+  ([`6a0e7cc`](https://github.com/bkuberek/coding-study/commit/6a0e7cc3e1c5915296d6241ea45d4114aff50d20))
+
+
 ## v0.28.0 (2026-11-07)
 
 ### Bug Fixes
