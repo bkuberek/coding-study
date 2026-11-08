@@ -1,3 +1,5 @@
+from datetime import date
+
 import pytest
 
 from coding_study.application.code_intelligence import (
@@ -10,6 +12,7 @@ from coding_study.application.code_intelligence import (
     language_server_states,
 )
 from coding_study.application.ports import (
+    Expired,
     FileMissing,
     JdkSelector,
     NotInstalled,
@@ -25,6 +28,7 @@ from tests.fakes import INSTALLED_SERVERS, FakeJdk, FakeLanguageServers, jdk_of
 BASEDPYRIGHT = "basedpyright"
 TYPESCRIPT = "typescript-language-server"
 KOTLIN_LSP_NAME = "kotlin-lsp"
+EXPIRY = date(2026, 11, 13)
 JDK_FIX = (
     "select a JDK 25 to 26 with JAVA_HOME, or install JDK 25: "
     "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#jdk"
@@ -171,6 +175,35 @@ def test_without_a_jdk_the_kotlin_lsp_needs_one_cstudy_supports_for_its_gradle_i
 def test_on_jdk_21_the_kotlin_lsp_is_ready():
     state = states(FakeLanguageServers(INSTALLED_SERVERS), FakeJdk())[Language.KOTLIN]
     assert state.status is ServerStatus.INSTALLED
+
+
+def test_an_expired_kotlin_lsp_says_so_and_that_a_newer_cstudy_pins_a_newer_build():
+    servers = FakeLanguageServers({**INSTALLED_SERVERS, KOTLIN_LSP_NAME: Expired(EXPIRY)})
+    state = states(servers)[Language.KOTLIN]
+    assert (state.status, state.detail) == (
+        ServerStatus.EXPIRED,
+        "expired on 2026-11-13: upgrade cstudy, whose next release pins a newer build",
+    )
+
+
+def test_the_row_of_an_expired_kotlin_lsp_says_jetbrains_stops_its_early_builds():
+    servers = FakeLanguageServers({**INSTALLED_SERVERS, KOTLIN_LSP_NAME: Expired(EXPIRY)})
+    state = states(servers)[Language.KOTLIN]
+    assert (state.problem, state.fix) == (
+        "kotlin-lsp 263.7084.0 expired on 2026-11-13, as JetBrains' early-access builds do",
+        "upgrade cstudy, whose next release pins a newer build",
+    )
+
+
+def test_an_expired_build_comes_before_a_license_not_accepted():
+    """Accepting the license of a build that no longer runs would help nothing."""
+    servers = FakeLanguageServers({KOTLIN_LSP_NAME: Expired(EXPIRY)}, accepted=frozenset())
+    assert states(servers)[Language.KOTLIN].status is ServerStatus.EXPIRED
+
+
+def test_an_expired_build_counts_as_unpacked_so_it_is_not_downloaded_again():
+    servers = FakeLanguageServers({KOTLIN_LSP_NAME: Expired(EXPIRY)})
+    assert is_unpacked(servers, KOTLIN_LSP) is True
 
 
 def test_the_other_servers_need_no_license():

@@ -46,6 +46,12 @@ test("a language whose server's license is not accepted says so, links to Health
   );
 });
 
+test("a language whose server's build expired says so plainly and links to Health", () => {
+  const detail = "expired on 2026-11-13: upgrade cstudy, whose next release pins a newer build";
+  const segment = segmentOf({ kind: "unusable", language: "kotlin", detail });
+  assert.deepEqual([segment.text, segment.action, segment.state], [`no code intelligence for Kotlin: ${detail}`, "health", "unusable"]);
+});
+
 test("a Java file whose server is missing names JDT LS", () => {
   const segment = segmentOf({ kind: "not-installed", language: "java", server: "jdtls" });
   assert.equal(segment.text, "no code intelligence for Java: jdtls is not installed");
@@ -129,6 +135,12 @@ test("a language whose server needs another JDK links to the Health view", () =>
 test("a language whose server's license is not accepted links to the Health view", () => {
   const detail = "license not accepted: run cstudy doctor --fix --accept-license kotlin-lsp";
   const row = languageRow({ language: "kotlin", server: "kotlin-lsp", version: "263.7084.0", state: "license_not_accepted", detail, idle_s: 300 });
+  assert.deepEqual(row, { name: "Kotlin", detail, health: true });
+});
+
+test("a language whose server's build expired links to the Health view", () => {
+  const detail = "expired on 2026-11-13: upgrade cstudy, whose next release pins a newer build";
+  const row = languageRow({ language: "kotlin", server: "kotlin-lsp", version: "263.7084.0", state: "expired", detail, idle_s: 300 });
   assert.deepEqual(row, { name: "Kotlin", detail, health: true });
 });
 

@@ -42,7 +42,7 @@ export interface LanguageState {
   /** Null for a language with no server yet. */
   readonly server: string | null;
   readonly version: string | null;
-  readonly state: "installed" | "not_installed" | "needs_jdk" | "license_not_accepted" | "not_available";
+  readonly state: "installed" | "not_installed" | "needs_jdk" | "license_not_accepted" | "expired" | "not_available";
   /** `basedpyright 1.40.2`, `not installed: run cstudy doctor --fix` or `not available yet`. */
   readonly detail: string;
   readonly idle_s: number | null;

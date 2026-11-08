@@ -1110,7 +1110,15 @@ class Unpacked:
     that names its build stands for one."""
 
 
-type ServerProbe = NotInstalled | FileMissing | VersionPrinted | VersionFailed | Unpacked
+@dataclass(frozen=True, slots=True)
+class Expired:
+    """The pinned build stops working from `on`, whether or not it is unpacked: an early-access
+    build of the Kotlin LSP exits at start once its built-in license ends."""
+
+    on: date
+
+
+type ServerProbe = NotInstalled | FileMissing | VersionPrinted | VersionFailed | Unpacked | Expired
 
 
 class LanguageServerLocator(Protocol):

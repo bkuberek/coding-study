@@ -190,6 +190,7 @@ WARN  code intelligence kotlin kotlin-lsp needs you to accept the JetBrains Free
 - **Memory.** A Kotlin session takes about 1.9 GB, under a 1 GB heap, the most of any language, plus the Gradle daemon its import may start.
 - **Definitions into the standard library.** A function such as `mutableListOf` lives in a sources jar: a Cmd-click on it shows a note naming the jar and the file, and hover shows its documentation. Your project's files open in tabs.
 - **It leaves your folders as they were,** apart from Gradle's own `.gradle/`, as `cstudy test` leaves it.
+- **Each build stops after about a month.** JetBrains ships the Kotlin LSP as early-access builds that stop working once their built-in license ends: the one this cstudy pins, 263.7084.0, stops on 2026-11-13. From then on `cstudy doctor`, Settings and the status bar say `expired on 2026-11-13: upgrade cstudy, whose next release pins a newer build`, and Kotlin files work as without code intelligence until you upgrade.
 
 ### Go
 

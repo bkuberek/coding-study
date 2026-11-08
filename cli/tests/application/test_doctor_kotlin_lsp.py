@@ -3,9 +3,10 @@ Kotlin revisited): its row, its license, the download of this machine's archive 
 that fills Gradle's cache with what it reads offline."""
 
 from collections.abc import Callable
+from datetime import date
 
 from coding_study.application.doctor import CheckResult, fix_workspace
-from coding_study.application.ports import NotInstalled, ProbeResult
+from coding_study.application.ports import Expired, NotInstalled, ProbeResult
 from coding_study.domain.code_intelligence import KOTLIN_LSP, LanguageServer
 from tests.application.test_doctor import BUNDLED, JDK_HOME, OK, WARN, FakeJdk, workspace_with
 from tests.application.test_doctor_code_intelligence import OFF, code_intelligence_rows
@@ -20,6 +21,7 @@ DOWNLOAD_STEP = (
     "kotlin-server-263.7084.0-aarch64.sit (in .cs/lsp/kotlin-lsp)"
 )
 WARM_UP_STEP = "warm up kotlin-lsp (in jvm)"
+EXPIRY = date(2026, 11, 13)
 WITHOUT_KOTLIN = {name: probe for name, probe in INSTALLED_SERVERS.items() if name != "kotlin-lsp"}
 """Every other server installed, so only the Kotlin LSP is downloaded."""
 
@@ -211,6 +213,29 @@ def test_no_warm_up_without_a_jdk_the_gradle_import_can_run_on():
     servers = FakeLanguageServers(INSTALLED_SERVERS)
     fixed(servers, jdk=FakeJdk(None))
     assert servers.warm_ups == []
+
+
+def test_an_expired_build_is_neither_downloaded_again_nor_warmed_up():
+    servers = FakeLanguageServers({**INSTALLED_SERVERS, "kotlin-lsp": Expired(EXPIRY)})
+    fixed(servers)
+    assert (servers.downloads, servers.warm_ups) == ([], [])
+
+
+def test_an_expired_build_never_asks_for_its_license():
+    consent = Consent(answer=True)
+    servers = FakeLanguageServers({"kotlin-lsp": Expired(EXPIRY)}, accepted=frozenset())
+    fixed(servers, consent)
+    assert (consent.asked, servers.accepted) == ([], set())
+
+
+def test_an_expired_build_warns_with_the_upgrade():
+    servers = FakeLanguageServers({**INSTALLED_SERVERS, "kotlin-lsp": Expired(EXPIRY)})
+    assert kotlin_row(servers) == CheckResult(
+        KOTLIN_ROW,
+        WARN,
+        "kotlin-lsp 263.7084.0 expired on 2026-11-13, as JetBrains' early-access builds do",
+        "upgrade cstudy, whose next release pins a newer build",
+    )
 
 
 def test_no_warm_up_while_the_preference_is_off():

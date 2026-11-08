@@ -11,12 +11,15 @@ import tarfile
 import tempfile
 import urllib.request
 import zipfile
+from collections.abc import Callable
+from datetime import date
 from importlib import resources
 from pathlib import Path
 
 from coding_study.adapters.workspace_marker import accepted_license, record_license
 from coding_study.application.ports import (
     CommandRunner,
+    Expired,
     FileMissing,
     NotInstalled,
     ProbeResult,
@@ -54,18 +57,28 @@ EXECUTABLE_MODE = 0o755
 class LspDirectory:
     """Locates the servers in a workspace's `.cs/lsp/` and installs them there."""
 
-    def __init__(self, workspace: Path, tools: ToolProbe, commands: CommandRunner) -> None:
+    def __init__(
+        self,
+        workspace: Path,
+        tools: ToolProbe,
+        commands: CommandRunner,
+        today: Callable[[], date] = date.today,
+    ) -> None:
         self._workspace = workspace
         self._directory = workspace / LSP_DIRECTORY
         self._tools = tools
         self._commands = commands
+        self._today = today
 
     def probe(self, server: LanguageServer) -> ServerProbe:
         """Not installed without the server's script or binary in `.cs/lsp/`, or, for a server
         on PATH, without one whose version command runs or with only a proxy of it; a file
         missing when its package is there but the workspace's TypeScript is not; unpacked for an
         archive whose pinned build is there, which has no version command; otherwise what its
-        version command printed."""
+        version command printed. Before all of that, expired for a pinned build whose day to stop
+        has come, unpacked or not."""
+        if server.expires is not None and self._today() >= server.expires:
+            return Expired(server.expires)
         if server.script is not None and not (self._directory / server.script).is_file():
             return NotInstalled()
         requirement = server.requirement

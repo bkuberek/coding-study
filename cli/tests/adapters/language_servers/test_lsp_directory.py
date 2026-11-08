@@ -10,6 +10,7 @@ import tomllib
 import zipfile
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
+from datetime import date
 from importlib import resources
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from coding_study.adapters.language_servers.lsp_directory import (
 )
 from coding_study.adapters.workspace_marker import read_marker
 from coding_study.application.ports import (
+    Expired,
     FileMissing,
     NotInstalled,
     ProbeResult,
@@ -49,6 +51,8 @@ NPM_SERVERS = [server for server in LANGUAGE_SERVERS if server.version_script is
 CORE_PLUGIN = "plugins/org.eclipse.jdt.ls.core_1.63.0.202610191322.jar"
 PACKAGE_JSON, LOCK_FILE = MANIFEST_FILES
 PNPM_SUCCEEDED = ProbeResult(0, "")
+EXPIRY = date(2026, 11, 13)
+EVE = date(2026, 11, 12)
 
 
 class RecordingTools:
@@ -82,7 +86,10 @@ def shipped(name: str) -> bytes:
 
 
 def directory(workspace: Path, tools=None, commands=None) -> LspDirectory:
-    return LspDirectory(workspace, tools or RecordingTools(), commands or RecordingCommands())
+    """On the day before the Kotlin LSP's build expires, so no test depends on today's date."""
+    return LspDirectory(
+        workspace, tools or RecordingTools(), commands or RecordingCommands(), today=lambda: EVE
+    )
 
 
 def version_script(server: LanguageServer) -> str:
@@ -180,6 +187,23 @@ def test_a_kotlin_lsp_with_the_build_file_of_its_release_is_unpacked_and_runs_no
     install_server(tmp_path, str(KOTLIN_LSP.script))
     tools = RecordingTools()
     assert (directory(tmp_path, tools).probe(KOTLIN_LSP), tools.ran) == (Unpacked(), [])
+
+
+def test_a_kotlin_lsp_whose_build_expired_says_so(tmp_path):
+    install_server(tmp_path, str(KOTLIN_LSP.script))
+    lsp = LspDirectory(tmp_path, RecordingTools(), RecordingCommands(), today=lambda: EXPIRY)
+    assert lsp.probe(KOTLIN_LSP) == Expired(EXPIRY)
+
+
+def test_an_expired_build_says_so_before_it_is_downloaded(tmp_path):
+    lsp = LspDirectory(tmp_path, RecordingTools(), RecordingCommands(), today=lambda: EXPIRY)
+    assert lsp.probe(KOTLIN_LSP) == Expired(EXPIRY)
+
+
+def test_the_day_before_its_expiry_the_build_is_unpacked(tmp_path):
+    install_server(tmp_path, str(KOTLIN_LSP.script))
+    lsp = LspDirectory(tmp_path, RecordingTools(), RecordingCommands(), today=lambda: EVE)
+    assert lsp.probe(KOTLIN_LSP) == Unpacked()
 
 
 def test_probing_jdtls_starts_no_jvm(tmp_path):

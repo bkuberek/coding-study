@@ -25,6 +25,17 @@ const KOTLIN_LICENSE_NOT_ACCEPTED: readonly LanguageState[] = [
   },
 ];
 
+const KOTLIN_EXPIRED: readonly LanguageState[] = [
+  {
+    language: "kotlin",
+    server: "kotlin-lsp",
+    version: "263.7084.0",
+    state: "expired",
+    detail: "expired on 2026-11-13: upgrade cstudy, whose next release pins a newer build",
+    idle_s: 300,
+  },
+];
+
 const JAVA_INSTALLED: readonly LanguageState[] = [
   { language: "java", server: "jdtls", version: "1.63.0", state: "installed", detail: "jdtls 1.63.0", idle_s: 300 },
 ];
@@ -104,6 +115,13 @@ test("a Kotlin file whose server's license is not accepted says so, with no sess
       server: "kotlin-lsp",
       detail: "license not accepted: run cstudy doctor --fix --accept-license kotlin-lsp",
     },
+  });
+});
+
+test("a Kotlin file whose server's build expired says so, with no session", () => {
+  assert.deepEqual(decide("Solution.kt", attempt("kotlin"), KOTLIN_EXPIRED), {
+    kind: "show",
+    found: { kind: "unusable", language: "kotlin", detail: "expired on 2026-11-13: upgrade cstudy, whose next release pins a newer build" },
   });
 });
 

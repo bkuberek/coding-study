@@ -2,6 +2,7 @@
 per machine and checked by SHA-256, behind a license you accept."""
 
 import shlex
+from datetime import date
 
 import pytest
 
@@ -214,3 +215,14 @@ def test_it_gets_the_same_client_capabilities_as_the_other_servers():
 
 def test_cstudy_installs_it():
     assert KOTLIN_LSP.fix is None
+
+
+def test_its_early_access_build_stops_working_on_the_day_its_license_ends():
+    """`license status` named 2026-11-12 as its last day, and the build before it exits at start
+    since its own day passed (`This build of kotlin-server has expired`)."""
+    assert KOTLIN_LSP.expires == date(2026, 11, 13)
+
+
+def test_the_other_servers_never_expire():
+    others = [server for server in LANGUAGE_SERVERS if server is not KOTLIN_LSP]
+    assert {server.expires for server in others} == {None}

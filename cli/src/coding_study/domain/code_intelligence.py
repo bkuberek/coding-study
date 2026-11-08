@@ -9,6 +9,7 @@ import re
 import shlex
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from datetime import date
 from enum import StrEnum
 
 from coding_study.domain.cases import JsonValue
@@ -269,6 +270,9 @@ class LanguageServer:
     """Set for a server whose vendor asks you to accept a license before it is downloaded."""
     warmup: Warmup | None = None
     """Set for a server whose sessions read what an online import fetches."""
+    expires: date | None = None
+    """The day the pinned build stops working, for an early-access build that exits at start
+    once its built-in license ends."""
 
     def command(self, launch: Launch) -> tuple[str, ...]:
         return self.launcher(self, launch)
@@ -549,6 +553,10 @@ KOTLIN_LSP_LICENSE = License(
 )
 """The Kotlin LSP is partly closed source: JetBrains ships it with VS Code under this agreement,
 and its standalone archive carries no license of its own (ADR 0018, Kotlin revisited)."""
+KOTLIN_LSP_EXPIRES = date(2026, 11, 13)
+"""The build is an early access one: `license status` says its built-in license is "valid through
+2026-11-12", and the build before it, 263.6379.0, exits at start with `This build of kotlin-server
+has expired` once its own day passed. A cstudy release must pin a newer build before then."""
 KOTLIN_LSP_JVM_OPTIONS = ("-Xmx1g", "-XX:+UseSerialGC", "-XX:ReservedCodeCacheSize=240m")
 """Its launcher reads `bin/intellij-server.vmoptions` (2 GB of heap, 512 MB of code cache) and then
 `IJ_JAVA_OPTIONS`, so these win: the spike measured MaxHeapSize at 1 GB with them."""
@@ -638,6 +646,7 @@ KOTLIN_LSP = LanguageServer(
     archives=KOTLIN_LSP_ARCHIVES,
     license=KOTLIN_LSP_LICENSE,
     warmup=Warmup(script=f"{KOTLIN_LSP_HOME}/bin/warmup.py", roots=(JVM_PROJECT,)),
+    expires=KOTLIN_LSP_EXPIRES,
 )
 """JetBrains' Kotlin LSP (ADR 0018, Kotlin revisited): IntelliJ IDEA's analysis behind LSP, with
 its own runtime. It answers diagnostics only when asked (`textDocument/diagnostic`) and asks for

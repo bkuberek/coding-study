@@ -13,6 +13,7 @@ from pathlib import Path
 from coding_study.application.active_attempt import attempt_in_progress
 from coding_study.application.environment import Environment
 from coding_study.application.ports import (
+    Expired,
     FileMissing,
     JdkSelector,
     LanguageServerInstaller,
@@ -42,6 +43,7 @@ from coding_study.domain.workspace_projects import project_folder
 
 FIX_COMMAND = "cstudy doctor --fix"
 ACCEPT_LICENSE_OPTION = "--accept-license"
+UPGRADE_FIX = "upgrade cstudy, whose next release pins a newer build"
 OFF = "code intelligence is off: turn it on in Settings"
 
 
@@ -50,6 +52,8 @@ class ServerStatus(StrEnum):
     NOT_INSTALLED = "not_installed"
     NEEDS_JDK = "needs_jdk"
     """Installed, but the selected JDK is not one the server runs on."""
+    EXPIRED = "expired"
+    """The pinned build stops working from a day that has come; a newer cstudy pins a newer one."""
     LICENSE_NOT_ACCEPTED = "license_not_accepted"
     """Its vendor's license is not accepted, so `--fix` has not downloaded it and no session runs
     it, whatever `.cs/lsp/` holds."""
@@ -160,8 +164,14 @@ def install_language_servers(installer: LanguageServerInstaller) -> ProbeResult 
 
 
 def is_unpacked(locator: LanguageServerLocator, server: LanguageServer) -> bool:
-    """Whether the pinned build of an archive server is in `.cs/lsp/` already."""
-    return isinstance(locator.probe(server), Unpacked)
+    """Whether the pinned build of an archive server is in `.cs/lsp/` already, or has expired,
+    when downloading it again would help nothing."""
+    return isinstance(locator.probe(server), Unpacked | Expired)
+
+
+def has_expired(locator: LanguageServerLocator, server: LanguageServer) -> bool:
+    """Whether the pinned build of `server` has stopped working, as an early-access build does."""
+    return isinstance(locator.probe(server), Expired)
 
 
 def is_usable(locator: LanguageServerLocator, server: LanguageServer, jdk: JdkSelector) -> bool:
@@ -234,7 +244,8 @@ def _located(
     wanted = _pinned(server, locator)
     probe = locator.probe(server)
     problem = (
-        _license_problem(server, locator)
+        _expiry_problem(server, probe)
+        or _license_problem(server, locator)
         or _problem(server, wanted, probe)
         or _jdk_problem(server, jdk)
     )
@@ -302,8 +313,18 @@ def _problem(server: LanguageServer, wanted: str | None, probe: ServerProbe) -> 
             return _Problem(reason, own_words=True, fix=fix)
         case VersionPrinted(output):
             return _version_problem(server, wanted, server.printed_version(output))
-        case Unpacked():
+        case Unpacked() | Expired():
             return None
+
+
+def _expiry_problem(server: LanguageServer, probe: ServerProbe) -> _Problem | None:
+    """None unless the pinned build has expired, which no `--fix` mends."""
+    if not isinstance(probe, Expired):
+        return None
+    on = probe.on.isoformat()
+    row = f"{server.name} {server.version} expired on {on}, as JetBrains' early-access builds do"
+    reason = f"expired on {on}: {UPGRADE_FIX}"
+    return _Problem(row, reason, own_words=True, status=ServerStatus.EXPIRED, fix=UPGRADE_FIX)
 
 
 def accept_license_command(license: License) -> str:

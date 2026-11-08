@@ -20,6 +20,7 @@ from coding_study.application.code_intelligence import (
     accept_license_command,
     download_language_server,
     go_install_version,
+    has_expired,
     install_language_server_with_go,
     install_language_servers,
     is_unpacked,
@@ -601,9 +602,12 @@ def _download_language_server(
 def _download_for_this_machine(
     workspace: PracticeWorkspace, step: FixStep, consent: LicenseConsent, notify: ProgressNotice
 ) -> FixOutcome | None:
-    """None when its license is not accepted, which a note says, or its pinned build is unpacked
-    already: the step is not run, nor reported."""
+    """None when its pinned build has expired, which its row says, when its license is not
+    accepted, which a note says, or when the build is unpacked already: the step is not run, nor
+    reported."""
     server = MACHINE_DOWNLOAD_STEPS[step]
+    if has_expired(workspace.language_servers, server):
+        return None
     if not _license_accepted(workspace, server, consent, notify):
         return None
     if is_unpacked(workspace.language_servers, server):

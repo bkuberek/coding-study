@@ -12,6 +12,8 @@ export type FileIntelligence =
   | { readonly kind: "not-installed"; readonly language: string; readonly server: string }
   /** Installed, but the selected JDK is not one the server runs on: `detail` says which it needs. */
   | { readonly kind: "needs-jdk"; readonly language: string; readonly detail: string }
+  /** Its pinned build no longer runs, as an early-access build stops: `detail` says since when and what to do. */
+  | { readonly kind: "unusable"; readonly language: string; readonly detail: string }
   /** Its vendor's license is not accepted, so it is not downloaded: `detail` names the command that accepts it. */
   | { readonly kind: "license"; readonly language: string; readonly server: string; readonly detail: string }
   | { readonly kind: "no-server"; readonly language: string }
@@ -76,6 +78,8 @@ export function segmentOf(found: FileIntelligence, counts?: DiagnosticCounts): S
       };
     case "needs-jdk":
       return { text: `no code intelligence for ${languageName(found.language)}: ${found.detail}`, action: "health", title: "", state: "needs-jdk" };
+    case "unusable":
+      return { text: `no code intelligence for ${languageName(found.language)}: ${found.detail}`, action: "health", title: "", state: "unusable" };
     case "license":
       return {
         text: `no code intelligence for ${languageName(found.language)}: ${found.server}'s license is not accepted`,
@@ -119,6 +123,6 @@ export interface LanguageRow {
 
 /** One line of the Settings view's list of languages (docs/specs/web-ui.md#settings-view). */
 export function languageRow(state: LanguageState): LanguageRow {
-  const health = state.state === "not_installed" || state.state === "needs_jdk" || state.state === "license_not_accepted";
+  const health = state.state !== "installed" && state.state !== "not_available";
   return { name: languageName(state.language), detail: state.detail, health };
 }
