@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v0.29.2 (2026-11-08)
+
+### Bug Fixes
+
+- **sandbox**: Turn IPv6 off on the sandbox network and probe for an IPv6 address
+  ([`b61af09`](https://github.com/bkuberek/coding-study/commit/b61af09bdb706b8dbb19fea9896add64dd59f22b))
+
+### Documentation
+
+- Describe the IPv6 enforcement and measurement on the sandbox network
+  ([`57d0c58`](https://github.com/bkuberek/coding-study/commit/57d0c5855c9f568a0aff1b0056155f9be56c91b3))
+
+
 ## v0.29.1 (2026-11-08)
 
 ### Bug Fixes
