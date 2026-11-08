@@ -11,7 +11,8 @@ its Restart and for a language whose server is not installed, the hover tooltip 
 and its documentation, a library file open in its read-only tab, the completion list with its
 panel, a signature help, and the Health view with the `code intelligence` rows. Each view must
 have no violation of WCAG 2.2 A and AA, nor of axe's best practices, but for a target that only
-the sticky status bar covers as the view rests, which the focus scrolls clear of the bar.
+a sticky bar, the top bar or the status bar, covers as the view rests, which the focus scrolls
+clear of the bar.
 
 axe-core comes with `axe-playwright-python`, in the optional `browser` dependency group; Playwright
 and its engines are set up as `tests/browsers.py` says. Without them the test is skipped.
@@ -611,8 +612,8 @@ def _squeezed_segments(page: Any, where: str) -> list[str]:
 
 
 PARTIALLY_OBSCURED = "partiallyObscured"
-IN_THE_STATUS_BAR = """targets => targets.length > 0
-  && targets.every((target) => document.querySelector(target)?.closest(".statusbar") != null)"""
+IN_A_STICKY_BAR = """targets => targets.length > 0
+  && targets.every((target) => document.querySelector(target)?.closest(".topbar, .statusbar"))"""
 
 
 def _described(page: Any, violations: list[dict[str, Any]], where: str) -> list[str]:
@@ -620,21 +621,23 @@ def _described(page: Any, violations: list[dict[str, Any]], where: str) -> list[
         f"{violation['id']} ({violation['impact']}): {node['target']}, {where}"
         for violation in violations
         for node in violation["nodes"]
-        if not _covered_by_the_status_bar(page, violation["id"], node)
+        if not _covered_by_a_sticky_bar(page, violation["id"], node)
     ]
 
 
-def _covered_by_the_status_bar(page: Any, rule: str, node: dict[str, Any]) -> bool:
-    """A target that only the sticky status bar covers, where the view rests: the page scrolls on
-    under the bar, a scroll uncovers it, and once it has the focus it comes out from under the bar
-    on its own (test_browser_keyboard.py). A target too small anywhere is still a violation."""
+def _covered_by_a_sticky_bar(page: Any, rule: str, node: dict[str, Any]) -> bool:
+    """A target that only the top bar or the status bar covers, where the view rests: the page
+    scrolls on under both, a scroll uncovers it, and once it has the focus it comes out from under
+    the bar on its own (test_browser_navigation.py, test_browser_keyboard.py). A click scrolls a
+    view too, as a History row's does to clear the status bar. A target too small anywhere is still
+    a violation."""
     if rule != "target-size":
         return False
     size = next((check for check in node["any"] if check["id"] == "target-size"), None)
     if size is None or size["data"].get("messageKey") != PARTIALLY_OBSCURED:
         return False
     covering = [related["target"][0] for related in size["relatedNodes"]]
-    return page.evaluate(IN_THE_STATUS_BAR, covering)
+    return page.evaluate(IN_A_STICKY_BAR, covering)
 
 
 @pytest.mark.parametrize("view", VIEWS)
