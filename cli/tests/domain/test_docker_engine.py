@@ -4,6 +4,7 @@ import pytest
 
 from coding_study.domain.docker_engine import (
     INSTALL_REACHES,
+    DockerGroup,
     EngineState,
     EngineStatus,
     engine_problem,
@@ -31,16 +32,40 @@ def test_a_missing_engine_or_compose_gives_the_install_message(status):
     assert engine_problem(EngineState(status), MACOS) == install_message(MACOS)
 
 
-def test_no_permission_has_a_message_of_its_own():
-    assert engine_problem(EngineState(EngineStatus.NO_PERMISSION), LINUX) == no_permission_message()
+@pytest.mark.parametrize("group", [None, *DockerGroup])
+def test_no_permission_has_a_message_of_its_own_for_where_you_stand_with_the_group(group):
+    state = EngineState(EngineStatus.NO_PERMISSION, docker_group=group)
+
+    assert engine_problem(state, LINUX) == no_permission_message(group)
 
 
-def test_no_permission_names_the_group_and_what_it_means():
-    message = no_permission_message()
+@pytest.mark.parametrize("group", [None, *DockerGroup])
+def test_no_permission_names_the_group_and_what_it_means(group):
+    message = no_permission_message(group)
 
     assert "docker group" in message
     assert "effectively root" in message
-    assert "sudo usermod" in message
+
+
+@pytest.mark.parametrize("group", [None, DockerGroup.NOT_A_MEMBER])
+def test_someone_outside_the_group_is_told_how_to_join_it(group):
+    assert "sudo usermod -aG docker $USER" in no_permission_message(group)
+
+
+def test_a_member_whose_session_lacks_the_group_logs_in_again_or_runs_newgrp_without_sudo():
+    message = no_permission_message(DockerGroup.NOT_YET_IN_SESSION)
+
+    assert "Log out and back in" in message
+    assert "newgrp docker" in message
+    assert "sudo" not in message
+
+
+def test_a_member_refused_in_a_session_that_has_the_group_is_not_told_to_join_it():
+    message = no_permission_message(DockerGroup.IN_SESSION)
+
+    assert "sudo" not in message
+    assert "usermod" not in message
+    assert "docker context ls" in message
 
 
 @pytest.mark.parametrize("platform", [MACOS, LINUX])

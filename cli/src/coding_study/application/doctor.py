@@ -653,9 +653,8 @@ def _docker(state: EngineState, platform: str) -> CheckResult:
                 DOCKER_CHECK, CheckStatus.WARN, "installed, not running", fix=FIX_COMMAND
             )
         case EngineStatus.NO_PERMISSION:
-            return CheckResult(
-                DOCKER_CHECK, CheckStatus.WARN, "no permission", fix=no_permission_message()
-            )
+            fix = no_permission_message(state.docker_group)
+            return CheckResult(DOCKER_CHECK, CheckStatus.WARN, "no permission", fix=fix)
         case EngineStatus.NOT_INSTALLED | EngineStatus.NO_COMPOSE:
             detail = f"{state.status}: only service projects need it"
             return CheckResult(

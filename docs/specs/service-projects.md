@@ -124,7 +124,7 @@ Every service project needs Docker. If Docker is installed but not running, cstu
 | State | How it is seen | What happens |
 |-------|----------------|--------------|
 | Not installed | No `docker` on `PATH` | The [install message](#install-instructions) |
-| Installed, no permission (Linux) | The engine refuses the socket | A message of its own that names the group or the command to run, and that the group is effectively root |
+| Installed, no permission (Linux) | The engine refuses the socket | A message of its own, by [where you stand with the docker group](#the-docker-group), that says the group is effectively root |
 | Installed, stopped | `docker` exists, the engine does not answer | Started, where cstudy may start it |
 | Running, no compose v2 | `docker compose version` fails | The install message |
 | Running | Both answer | Nothing to do |
@@ -138,6 +138,18 @@ Every service project needs Docker. If Docker is installed but not running, cstu
 | Linux, system engine | Needs root. cstudy never runs `sudo` for you: it prints the command and exits 4 |
 
 cstudy never stops the engine, since other work may be using it. It only stops its own labeled stacks.
+
+#### The docker group
+
+When the engine refuses you, cstudy reads the group database and this process's groups, and the message says what to do:
+
+| Where you stand | Message |
+|-----------------|---------|
+| Not in the group, or no `docker` group | `Docker refuses this user. Join the docker group: sudo usermod -aG docker $USER, then log in again.` |
+| In the group database, as a member or by your primary group, and not in this process's groups | `Docker refuses this session: you are in the docker group, but this session does not have it yet. Log out and back in, or run newgrp docker in this terminal, then run the command again.` |
+| In this process's groups | `Docker refuses this user, though this session is in the docker group: the socket's own permissions refuse it. docker context ls names the socket, and ls -l on it shows who may use it.` |
+
+Each ends with `Being in the docker group is effectively root; cstudy cannot reduce that, and never mounts the socket into a container.`
 
 ### Install instructions
 
@@ -947,6 +959,7 @@ Measured on Linux Mint 22.3, kernel 7.0.0-34-generic, Docker Engine 29.8.1 with 
 | `internal: true`, the forwarder, the egress probe | From the app and the mock server on `sandbox`, in a dev, a test and a graded stack: no public, LAN, VPN or metadata address, no other bridge's gateway, no outside name, no `host.docker.internal`, and, with the bridge holding no address, no service of your machine's ([Networks](#networks)). The probe finds the address of a user network made with `--ipv6` and a `fd00:c5d::/64` subnet, and `sandbox` holds none. The forwarder publishes on `127.0.0.1` only |
 | Hardening | Your UID, every capability set empty with `NoNewPrivs`, AppArmor's `docker-default` profile enforced, a read-only root, and the pids limit refusing a fork past it |
 | File ownership | What `install` and the app write in the project folder, a named pipe and a link included, and the data volume belong to your UID and group, never root. `cstudy submit` hashes the folder, `--fresh` archives it, and you can remove it |
+| Engine advice | A socket of mode 000 at `DOCKER_HOST` gives the message for a session in the docker group |
 
 What stays unproven on Linux:
 
@@ -955,7 +968,8 @@ What stays unproven on Linux:
 | SELinux labels, rootless Docker | Not exercised |
 | `host.docker.internal` | Not defined by default on Linux, so what `install` reaches there differs |
 | Setuid bits | Clearing one changes a mode without following a link, which an older glibc cannot do: the bit then stays. Not exercised |
-| Starting the engine, and the "no permission" state | `systemctl` and a printed `sudo` command are untested |
+| Starting the engine | `systemctl` and a printed `sudo` command are untested |
+| The message for a session without the docker group | Dropping a group from a process needs root, so only tests with a scripted group database show it |
 
 ## The first problem
 

@@ -16,7 +16,7 @@ from coding_study.adapters.docker_sandbox import (
 )
 from coding_study.adapters.stack_guard import one_off_filters
 from coding_study.application.ports import ContainerCommand, ProbeResult
-from coding_study.domain.docker_engine import EngineState, EngineStatus
+from coding_study.domain.docker_engine import DockerGroup, EngineState, EngineStatus
 from coding_study.domain.errors import SandboxError
 from coding_study.domain.sandbox import (
     AppContainer,
@@ -76,6 +76,7 @@ def sandbox(
     tmp_path: Path,
     healthy=lambda _port, _path: True,
     platform: str = "darwin",
+    docker_group=lambda: DockerGroup.NOT_A_MEMBER,
 ) -> DockerSandbox:
     return DockerSandbox(
         docker,
@@ -84,7 +85,12 @@ def sandbox(
         monotonic=Ticking(),
         sleep=lambda _seconds: None,
         platform=platform,
+        docker_group=docker_group,
     )
+
+
+def never_asked() -> DockerGroup:
+    raise AssertionError("the docker group was looked up")
 
 
 def published(docker: ScriptedDocker, port: int = 8000, at: str = "127.0.0.1:56223") -> None:
@@ -124,6 +130,26 @@ def test_a_refused_socket_is_no_permission(tmp_path):
     )
 
     assert sandbox(docker, tmp_path).state().status is EngineStatus.NO_PERMISSION
+
+
+@pytest.mark.parametrize("group", list(DockerGroup))
+def test_a_refused_socket_says_where_you_stand_with_the_docker_group(tmp_path, group):
+    docker = ScriptedDocker()
+    docker.answer(("docker", "info"), ProbeResult(1, "permission denied while trying to connect"))
+
+    state = sandbox(docker, tmp_path, platform="linux", docker_group=lambda: group).state()
+
+    assert state == EngineState(EngineStatus.NO_PERMISSION, docker_group=group)
+
+
+def test_an_engine_that_answers_or_is_stopped_looks_up_no_group(tmp_path):
+    docker = ScriptedDocker()
+    docker.answer(("docker", "info"), ProbeResult(1, "Cannot connect to the Docker daemon"))
+    docker.answer(("docker", "info"), ProbeResult(0, "29.9.2\n"))
+    engine = sandbox(docker, tmp_path, platform="linux", docker_group=never_asked)
+
+    assert engine.state() == EngineState(EngineStatus.STOPPED)
+    assert engine.state().running
 
 
 def test_an_engine_that_does_not_answer_is_stopped(tmp_path):

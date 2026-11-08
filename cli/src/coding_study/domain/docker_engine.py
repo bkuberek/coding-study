@@ -31,10 +31,23 @@ _LINUX_INSTALL = (
     "https://docs.docker.com/subscription-billing/desktop-license/). "
     "cstudy does not install Docker itself, and being in the docker group is effectively root."
 )
-_NO_PERMISSION = (
+_GROUP_IS_ROOT = (
+    "Being in the docker group is effectively root; cstudy cannot reduce that, and never mounts "
+    "the socket into a container."
+)
+_NOT_A_MEMBER = (
     "Docker refuses this user. Join the docker group: sudo usermod -aG docker $USER, then log in "
-    "again. Being in the docker group is effectively root; cstudy cannot reduce that, and never "
-    "mounts the socket into a container."
+    f"again. {_GROUP_IS_ROOT}"
+)
+_NOT_YET_IN_SESSION = (
+    "Docker refuses this session: you are in the docker group, but this session does not have it "
+    "yet. Log out and back in, or run newgrp docker in this terminal, then run the command again. "
+    f"{_GROUP_IS_ROOT}"
+)
+_IN_SESSION = (
+    "Docker refuses this user, though this session is in the docker group: the socket's own "
+    "permissions refuse it. docker context ls names the socket, and ls -l on it shows who may use "
+    f"it. {_GROUP_IS_ROOT}"
 )
 DID_NOT_START = "Docker did not start. Start it yourself, then run the command again."
 SYSTEM_ENGINE_START = "sudo systemctl start docker"
@@ -42,6 +55,15 @@ SYSTEM_ENGINE_STOPPED = (
     f"Docker is not running, and starting a system engine needs root. cstudy never runs sudo: "
     f"run {SYSTEM_ENGINE_START}, then run the command again."
 )
+
+
+class DockerGroup(StrEnum):
+    """Where you stand with the docker group, asked only when the engine refuses you."""
+
+    NOT_A_MEMBER = "not a member"
+    NOT_YET_IN_SESSION = "a member, not yet in this session"
+    """The group database lists you, and this process does not have the group."""
+    IN_SESSION = "a member, in this session"
 
 
 class EngineStatus(StrEnum):
@@ -57,6 +79,8 @@ class EngineState:
     status: EngineStatus
     engine_version: str | None = None
     compose_version: str | None = None
+    docker_group: DockerGroup | None = None
+    """Set only when the engine refuses you."""
 
     @property
     def running(self) -> bool:
@@ -68,8 +92,15 @@ def install_message(platform: str) -> str:
     return f"{instructions} {INSTALL_REACHES}"
 
 
-def no_permission_message() -> str:
-    return _NO_PERMISSION
+def no_permission_message(group: DockerGroup | None) -> str:
+    """Only someone outside the group, or of unknown standing, is told to join it."""
+    match group:
+        case DockerGroup.NOT_YET_IN_SESSION:
+            return _NOT_YET_IN_SESSION
+        case DockerGroup.IN_SESSION:
+            return _IN_SESSION
+        case DockerGroup.NOT_A_MEMBER | None:
+            return _NOT_A_MEMBER
 
 
 def engine_problem(state: EngineState, platform: str) -> str | None:
@@ -80,6 +111,6 @@ def engine_problem(state: EngineState, platform: str) -> str | None:
         case EngineStatus.STOPPED:
             return DID_NOT_START
         case EngineStatus.NO_PERMISSION:
-            return no_permission_message()
+            return no_permission_message(state.docker_group)
         case EngineStatus.NOT_INSTALLED | EngineStatus.NO_COMPOSE:
             return install_message(platform)

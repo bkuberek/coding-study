@@ -20,10 +20,12 @@ from pathlib import Path
 import pytest
 
 from coding_study.adapters.docker_sandbox import DockerSandbox, SubprocessDockerRunner
+from coding_study.adapters.docker_setup import docker_group_of_this_process
 from coding_study.adapters.http_grader.clients import open_stack_clients
 from coding_study.application.http_grading_ports import StackEndpoints
 from coding_study.application.ports import ContainerCommand
 from coding_study.application.sandbox import running_stack, sweep_leftovers
+from coding_study.domain.docker_engine import EngineState, EngineStatus
 from coding_study.domain.mock_configs import MockFiles, ScenarioReach, rendered_mock_config
 from coding_study.domain.sandbox import (
     EGRESS_PROBE,
@@ -163,6 +165,23 @@ def probe(stack: tuple[DockerSandbox, StackPlan, ReadyStack], code: str) -> dict
     )
     assert outcome.exit_code == 0, outcome.output
     return json.loads(outcome.output)
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root passes any file mode")
+def test_a_socket_that_refuses_you_is_no_permission_with_your_docker_group(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+):
+    refusing = tmp_path_factory.mktemp("s") / "r.sock"
+    with socket.socket(socket.AF_UNIX) as bound:
+        bound.bind(str(refusing))
+    refusing.chmod(0)
+    monkeypatch.setenv("DOCKER_HOST", f"unix://{refusing}")
+
+    state = DockerSandbox(SubprocessDockerRunner()).state()
+
+    assert state == EngineState(
+        EngineStatus.NO_PERMISSION, docker_group=docker_group_of_this_process()
+    )
 
 
 def test_the_app_answers_on_its_dynamic_loopback_port(stack):

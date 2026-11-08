@@ -44,7 +44,7 @@ from coding_study.application.ports import (
 )
 from coding_study.domain.bench_runs import BenchReport, BenchRequest
 from coding_study.domain.config import Config
-from coding_study.domain.docker_engine import EngineState, EngineStatus
+from coding_study.domain.docker_engine import DockerGroup, EngineState, EngineStatus
 from coding_study.domain.errors import (
     ConfigError,
     RunnerProtocolError,
@@ -1754,6 +1754,15 @@ def test_no_permission_has_its_own_message():
     report = doctor(sandbox=FakeSandbox(engine=EngineState(EngineStatus.NO_PERMISSION)))
 
     assert "docker group" in (check(report, "docker").fix or "")
+
+
+def test_no_permission_for_a_member_whose_session_lacks_the_group_says_newgrp_not_sudo():
+    refused = EngineState(EngineStatus.NO_PERMISSION, docker_group=DockerGroup.NOT_YET_IN_SESSION)
+
+    fix = check(doctor(sandbox=FakeSandbox(engine=refused)), "docker").fix or ""
+
+    assert "newgrp docker" in fix
+    assert "sudo" not in fix
 
 
 def test_plain_doctor_never_starts_the_engine():

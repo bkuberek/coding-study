@@ -24,6 +24,7 @@ from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import IO, Protocol, cast
 
+from coding_study.adapters.docker_setup import docker_group_of_this_process
 from coding_study.adapters.http_grader.clients import DeadlineConnection
 from coding_study.adapters.process_environment import docker_environment
 from coding_study.adapters.process_liveness import is_alive
@@ -34,6 +35,7 @@ from coding_study.domain.docker_engine import (
     DID_NOT_START,
     MACOS_PLATFORM,
     SYSTEM_ENGINE_STOPPED,
+    DockerGroup,
     EngineState,
     EngineStatus,
 )
@@ -296,6 +298,7 @@ class DockerSandbox:
         monotonic: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
         platform: str = sys.platform,
+        docker_group: Callable[[], DockerGroup] = docker_group_of_this_process,
     ) -> None:
         self._runner = runner or default_docker_runner()
         self._runs_directory = runs_directory
@@ -303,6 +306,7 @@ class DockerSandbox:
         self._monotonic = monotonic
         self._sleep = sleep
         self._platform = platform
+        self._docker_group = docker_group
 
     def state(self) -> EngineState:
         info = self._runner.run((DOCKER, "info", "--format", "{{.ServerVersion}}"), ENGINE_QUERY_S)
@@ -310,7 +314,10 @@ class DockerSandbox:
             return EngineState(EngineStatus.NOT_INSTALLED)
         version = info.output.strip()
         if info.exit_code != 0 or not version:
-            return EngineState(_refused_or_stopped(info.output))
+            status = _refused_or_stopped(info.output)
+            if status is EngineStatus.NO_PERMISSION:
+                return EngineState(status, docker_group=self._docker_group())
+            return EngineState(status)
         compose = self._runner.run((DOCKER, "compose", "version", "--short"), ENGINE_QUERY_S)
         if compose is None or compose.exit_code != 0:
             return EngineState(EngineStatus.NO_COMPOSE, version)
