@@ -19,8 +19,8 @@ from coding_study.application.code_intelligence import (
     ServerStatus,
     accept_license_command,
     download_language_server,
+    fetched_version,
     go_install_version,
-    has_expired,
     install_language_server_with_go,
     install_language_servers,
     is_unpacked,
@@ -45,6 +45,7 @@ from coding_study.application.ports import (
     LanguageRunner,
     LanguageServerInstaller,
     LanguageServerLocator,
+    NoBuild,
     PreferencesStore,
     ProbeResult,
     ProgressDatabase,
@@ -75,6 +76,7 @@ from coding_study.domain.code_intelligence import (
     Archive,
     GoInstall,
     LanguageServer,
+    License,
 )
 from coding_study.domain.debugging import (
     DEBUGPY_INSTALL_COMMAND,
@@ -353,22 +355,18 @@ GO_INSTALL_STEPS = {
 already. Each step stands for its server in the plan; the step that runs names the version."""
 
 
-def _machine_download_step(server: LanguageServer) -> FixStep:
-    directory = next(iter(server.archives.values())).directory
+def _fetch_step(server: LanguageServer) -> FixStep:
     return FixStep(
-        f"{LSP_DIRECTORY}/{directory}",
-        ("download", f"{server.name} {server.version}"),
+        f"{LSP_DIRECTORY}/{server.name}",
+        ("fetch the newest", server.name),
         manual=f"once online, run: {FIX_COMMAND}",
     )
 
 
-MACHINE_DOWNLOAD_STEPS = {
-    _machine_download_step(server): server for server in LANGUAGE_SERVERS if server.archives
-}
-"""Downloads the servers whose archive differs by machine, such as the Kotlin LSP with the runtime
-it bundles, while the `code_intelligence` preference is on, unless their pinned build is unpacked
-already. A server with a license is downloaded only once you have accepted it. Each step stands
-for its server in the plan; the step that runs names the archive of this machine."""
+FETCH_STEPS = {_fetch_step(server): server for server in LANGUAGE_SERVERS if server.releases}
+"""Fetch the newest build of the servers whose vendor publishes early-access builds that stop,
+such as the Kotlin LSP, while the `code_intelligence` preference is on: the releases list, the
+SHA-256 published beside the build, its license, and the build unless it is the one there."""
 
 
 def _warm_up_step(server: LanguageServer, root: str) -> FixStep:
@@ -383,11 +381,11 @@ WARM_UP_STEPS = {
 }
 """Runs the servers that read what a Gradle import fetches, such as the Kotlin LSP, once on each of
 their roots after the JVM warm-up, online, so that their sessions find it in Gradle's cache."""
-type LicenseConsent = Callable[[LanguageServer], bool]
-"""Asks you whether you accept the license of a server that `--fix` is about to download."""
+type LicenseConsent = Callable[[LanguageServer, License], bool]
+"""Asks you whether you accept the license under which `--fix` is about to download a server."""
 
 
-def _no_consent(_server: LanguageServer) -> bool:
+def _no_consent(_server: LanguageServer, _license: License) -> bool:
     return False
 
 
@@ -511,8 +509,8 @@ def fix_workspace(
             outcome = _download_language_server(workspace, step, notify)
         elif step in GO_INSTALL_STEPS:
             outcome = _install_language_server_with_go(workspace, step, notify)
-        elif step in MACHINE_DOWNLOAD_STEPS:
-            outcome = _download_for_this_machine(workspace, step, consent, notify)
+        elif step in FETCH_STEPS:
+            outcome = _fetch_newest_build(workspace, step, consent, notify)
         elif step in WARM_UP_STEPS:
             outcome = _warm_up_language_server(workspace, step, jdk, notify)
         else:
@@ -599,40 +597,41 @@ def _download_language_server(
     return FixOutcome(step, download_language_server(workspace.language_server_installer, server))
 
 
-def _download_for_this_machine(
+def _fetch_newest_build(
     workspace: PracticeWorkspace, step: FixStep, consent: LicenseConsent, notify: ProgressNotice
 ) -> FixOutcome | None:
-    """None when its pinned build has expired, which its row says, when its license is not
-    accepted, which a note says, or when the build is unpacked already: the step is not run, nor
-    reported."""
-    server = MACHINE_DOWNLOAD_STEPS[step]
-    if has_expired(workspace.language_servers, server):
-        return None
-    if not _license_accepted(workspace, server, consent, notify):
-        return None
-    if is_unpacked(workspace.language_servers, server):
-        return None
+    """A failed step when no newest build can be found or checked; None when its license is not
+    accepted, which a note says, or the newest build is the one there already, which a note says
+    too; otherwise the download of the newest build, checked and recorded."""
+    server = FETCH_STEPS[step]
     installer = workspace.language_server_installer
-    archive = server.archive_on(installer.machine)
-    if archive is None:
-        return FixOutcome(step, None, skipped=f"{server.name} has no build for {installer.machine}")
-    downloading = _download_step(archive)
+    notify(f"running {step}")
+    newest = installer.newest_build(server)
+    if isinstance(newest, NoBuild):
+        return FixOutcome(step, ProbeResult(1, f"{newest.reason}\n"))
+    if not _license_accepted(workspace, server, newest.license, consent, notify):
+        return None
+    version = newest.build.version
+    if fetched_version(workspace.language_servers, server) == version:
+        notify(f"{server.name} {version} is JetBrains' newest build, and it is in place")
+        return None
+    downloading = _download_step(newest.archive)
     notify(f"running {downloading}")
-    return FixOutcome(downloading, download_language_server(installer, server))
+    return FixOutcome(downloading, installer.install_build(server, newest))
 
 
 def _license_accepted(
     workspace: PracticeWorkspace,
     server: LanguageServer,
+    license: License,
     consent: LicenseConsent,
     notify: ProgressNotice,
 ) -> bool:
-    """Whether the server's license, if it has one, is accepted: earlier, as the workspace's
-    marker records, or now, which the marker then records. Never silently."""
-    license = server.license
-    if license is None or workspace.language_servers.license_accepted(license):
+    """Whether `license`, the one a server's newest build comes under, is accepted: earlier, as
+    the workspace's marker records, or now, which the marker then records. Never silently."""
+    if workspace.language_servers.license_accepted(license):
         return True
-    if not consent(server):
+    if not consent(server, license):
         notify(
             f"skipped {server.name}: its license is not accepted; read the {license.name} "
             f"({license.url}), then run {accept_license_command(license)}"
@@ -708,7 +707,7 @@ def _fix_plan(
         plan.append((LANGUAGE_SERVERS_FIX, files.root / LSP_DIRECTORY))
         plan += [(step, files.root / step.project) for step in DOWNLOAD_STEPS]
         plan += [(step, files.root / step.project) for step in GO_INSTALL_STEPS]
-        plan += [(step, files.root / step.project) for step in MACHINE_DOWNLOAD_STEPS]
+        plan += [(step, files.root / step.project) for step in FETCH_STEPS]
     if jvm and files.exists(JVM_FIX.project):
         plan += [(step, files.root / step.project) for step in (JVM_FIX, *JVM_PROJECT_WARMUPS)]
         if _code_intelligence_on(workspace):
@@ -1295,6 +1294,8 @@ def _language_servers(workspace: PracticeWorkspace, jdk: JdkSelector) -> list[Ch
 
 def _language_server_row(state: LanguageServerState) -> CheckResult:
     name = f"code intelligence {state.language}"
+    if state.status is ServerStatus.INSTALLED and state.warning is not None:
+        return CheckResult(name, CheckStatus.WARN, state.warning, fix=FIX_COMMAND)
     if state.status is ServerStatus.INSTALLED:
         return CheckResult(name, CheckStatus.OK, state.detail)
     fix = state.fix or FIX_COMMAND

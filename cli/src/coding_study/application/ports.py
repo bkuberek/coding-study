@@ -47,6 +47,7 @@ from coding_study.domain.sandbox import (
     StartupBudget,
 )
 from coding_study.domain.scheduling import ProblemProgress, ScheduleEntry
+from coding_study.domain.server_builds import Build
 from coding_study.domain.submissions import LevelUnlock, SubmissionRecord
 from coding_study.domain.suite_runs import SuiteJob, SuiteReport, SuiteTest
 from coding_study.domain.time_limits import Calibration
@@ -1111,14 +1112,34 @@ class Unpacked:
 
 
 @dataclass(frozen=True, slots=True)
-class Expired:
-    """The pinned build stops working from `on`, whether or not it is unpacked: an early-access
-    build of the Kotlin LSP exits at start once its built-in license ends."""
+class Fetched:
+    """The build of a server that `cstudy doctor --fix` fetched at its newest, as it recorded it."""
 
-    on: date
+    version: str
+    last_day: date | None
+    """The last day the build runs, as the build said once in place; None when it named none."""
+    license: License
+    """The license its release came under, which you accepted."""
 
 
-type ServerProbe = NotInstalled | FileMissing | VersionPrinted | VersionFailed | Unpacked | Expired
+type ServerProbe = NotInstalled | FileMissing | VersionPrinted | VersionFailed | Unpacked | Fetched
+
+
+@dataclass(frozen=True, slots=True)
+class NewestBuild:
+    """The newest build of a server for this machine, its SHA-256 as its vendor publishes it, and
+    the license of its release."""
+
+    build: Build
+    archive: Archive
+    license: License
+
+
+@dataclass(frozen=True, slots=True)
+class NoBuild:
+    """Why no newest build can be fetched: no release lists one, no checksum, no network."""
+
+    reason: str
 
 
 class LanguageServerLocator(Protocol):
@@ -1127,6 +1148,10 @@ class LanguageServerLocator(Protocol):
     def probe(self, server: LanguageServer) -> ServerProbe:
         """Whether `.cs/lsp/` holds `server`, or PATH for a server cstudy does not install, and
         what its version command prints."""
+        ...
+
+    def today(self) -> date:
+        """Today, by which a fetched build's last day has passed or not."""
         ...
 
     def go_release(self) -> str | None:
@@ -1147,6 +1172,18 @@ class LanguageServerInstaller(Protocol):
 
     def accept_license(self, license: License) -> None:
         """Record in the workspace's marker that you accepted `license`."""
+        ...
+
+    def newest_build(self, server: LanguageServer) -> NewestBuild | NoBuild:
+        """The newest build of a server whose builds its vendor publishes (`releases`), from its
+        releases list, with the SHA-256 published beside it and the license at its release's tag:
+        the network, while `cstudy doctor --fix` runs."""
+        ...
+
+    def install_build(self, server: LanguageServer, newest: NewestBuild) -> ProbeResult:
+        """Download the build, check its SHA-256, unpack it in place of the one there, ask it the
+        last day it runs and record that with its version and license; exit code 0 once it is in
+        place and runs, 1 with the reason otherwise."""
         ...
 
     def warm_up(self, server: LanguageServer, root: str, java_home: Path) -> ProbeResult | None:

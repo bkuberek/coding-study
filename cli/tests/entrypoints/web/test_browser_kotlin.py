@@ -16,13 +16,11 @@ skipped.
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import date
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from coding_study.domain.code_intelligence import KOTLIN_LSP
 from coding_study.domain.preferences import Preferences
 from tests.browsers import launched, watched
 from tests.intelligence_lab import (
@@ -153,12 +151,6 @@ def _location(uri: str, line: int) -> dict[str, object]:
     return {"uri": uri, "range": _range(line, 0, 1)}
 
 
-def skip_once_expired() -> None:
-    """After the pinned build's day to stop, the page says it expired instead."""
-    if KOTLIN_LSP.expires is not None and date.today() >= KOTLIN_LSP.expires:
-        pytest.skip(f"the pinned Kotlin LSP expired on {KOTLIN_LSP.expires}: pin a newer build")
-
-
 @dataclass
 class Seen:
     ready: str = ""
@@ -181,7 +173,6 @@ class Seen:
 def lab(
     engine: str, practice_workspace: Path, tmp_path_factory: pytest.TempPathFactory
 ) -> Iterator[Lab]:
-    skip_once_expired()
     base = tmp_path_factory.mktemp(f"kotlin-{engine}")
     on = Preferences(code_intelligence=True, autocomplete=True)
     with intelligence_lab(
@@ -288,10 +279,7 @@ def test_the_kotlin_lsp_opens_the_file_as_kotlin(seen):
 
 def test_the_kotlin_lsp_runs_from_its_build_with_its_index_in_a_data_directory_of_the_root(seen):
     launcher, *options = seen.session_command.split(" ")
-    assert (
-        launcher.endswith("/kotlin-lsp/kotlin-server-263.7084.0/bin/intellij-server"),
-        options[0],
-    ) == (
+    assert (launcher.endswith("/kotlin-lsp/server/bin/intellij-server"), options[0]) == (
         True,
         "--stdio",
     )
@@ -358,7 +346,6 @@ class Refused:
 def without_the_license(
     engine: str, practice_workspace: Path, tmp_path_factory: pytest.TempPathFactory
 ) -> Refused:
-    skip_once_expired()
     base = tmp_path_factory.mktemp(f"kotlin-unaccepted-{engine}")
     with (
         intelligence_lab(

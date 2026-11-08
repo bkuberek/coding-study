@@ -22,7 +22,10 @@ from coding_study.application.ports import (
     BuildScope,
     CaseListener,
     DebugServer,
+    Fetched,
     LanguageRunner,
+    NewestBuild,
+    NoBuild,
     NotInstalled,
     Prepared,
     PrepareResult,
@@ -43,6 +46,7 @@ from coding_study.domain.code_intelligence import (
     GoInstall,
     LanguageServer,
     License,
+    build_archive,
 )
 from coding_study.domain.config import Config
 from coding_study.domain.errors import LanguageNotSetUpError
@@ -60,6 +64,7 @@ from coding_study.domain.runs import (
     RunRequest,
     UserError,
 )
+from coding_study.domain.server_builds import Build
 from tests.helpers import SCHEMAS_DIRECTORY
 from tests.sandbox_fakes import FakeSandbox
 
@@ -344,6 +349,22 @@ PNPM_SUCCEEDED = ProbeResult(0, "")
 DOWNLOADED = ProbeResult(0, "")
 GO_INSTALLED = ProbeResult(0, "")
 WARMED_UP = ProbeResult(0, "")
+INSTALLED_BUILD = ProbeResult(0, "")
+FAKE_TODAY = date(2026, 11, 1)
+"""The day the fake servers live on: eleven days before the fake Kotlin build stops."""
+KOTLIN_LAST_DAY = date(2026, 11, 12)
+KOTLIN_DOWNLOADS = "https://download.jetbrains.com/language-server/kotlin-server"
+KOTLIN_BUILD = Build(
+    "263.7084.0",
+    "kotlin-lsp/v263.7084.0",
+    f"{KOTLIN_DOWNLOADS}/263.7084.0/kotlin-server-263.7084.0-aarch64.sit",
+    f"{KOTLIN_DOWNLOADS}/263.7084.0/kotlin-server-263.7084.0-aarch64.sit.sha256",
+)
+KOTLIN_SHA256 = "b403bf8a54bd458e3ba6731cf8abb3340be08b439c03576dfc02b13faf3694b8"
+NEWEST_KOTLIN = NewestBuild(
+    KOTLIN_BUILD, build_archive(KOTLIN_BUILD, KOTLIN_SHA256, "darwin-arm64"), KOTLIN_LSP_LICENSE
+)
+FETCHED_KOTLIN = Fetched("263.7084.0", KOTLIN_LAST_DAY, KOTLIN_LSP_LICENSE)
 
 
 class FakeLanguageServers:
@@ -357,14 +378,21 @@ class FakeLanguageServers:
         download: ProbeResult = DOWNLOADED,
         go: str | None = "1.27.3",
         go_install: ProbeResult | None = GO_INSTALLED,
-        accepted: frozenset[str] = frozenset({KOTLIN_LSP_LICENSE.key}),
+        accepted: frozenset[str] = frozenset({KOTLIN_LSP_LICENSE.name}),
         machine: str = "darwin-arm64",
         warm_up: ProbeResult | None = WARMED_UP,
+        newest: NewestBuild | NoBuild = NEWEST_KOTLIN,
+        today: date = FAKE_TODAY,
     ) -> None:
         self.probes = dict(probes or {})
         self.accepted = set(accepted)
-        """The keys of the licenses the workspace's marker records as accepted."""
+        """The names of the licenses the workspace's marker records as accepted."""
         self.machine = machine
+        self.newest = newest
+        self.installed_builds: list[str] = []
+        """The versions of the builds `install_build` put in place."""
+        self.install_build_result = INSTALLED_BUILD
+        self.day = today
         self.warm_up_result = warm_up
         self.warm_ups: list[tuple[str, str, Path]] = []
         """The name of each server warmed up, its root and the JDK home it imported with."""
@@ -397,10 +425,24 @@ class FakeLanguageServers:
         return self.go_install_result
 
     def license_accepted(self, license: License) -> bool:
-        return license.key in self.accepted
+        return license.name in self.accepted
 
     def accept_license(self, license: License) -> None:
-        self.accepted.add(license.key)
+        self.accepted.add(license.name)
+
+    def today(self) -> date:
+        return self.day
+
+    def newest_build(self, server: LanguageServer) -> NewestBuild | NoBuild:
+        return self.newest
+
+    def install_build(self, server: LanguageServer, newest: NewestBuild) -> ProbeResult:
+        """Puts the build in place, as its probe then says, unless the result is a failure."""
+        self.installed_builds.append(newest.build.version)
+        if self.install_build_result.exit_code == 0:
+            fetched = Fetched(newest.build.version, KOTLIN_LAST_DAY, newest.license)
+            self.probes[server.name] = fetched
+        return self.install_build_result
 
     def warm_up(self, server: LanguageServer, root: str, java_home: Path) -> ProbeResult | None:
         self.warm_ups.append((server.name, root, java_home))
@@ -411,7 +453,7 @@ INSTALLED_SERVERS: Mapping[str, ServerProbe] = {
     "basedpyright": VersionPrinted("basedpyright 1.40.2\nbased on pyright 1.40.2\n"),
     "typescript-language-server": VersionPrinted("6.0.3\n"),
     "jdtls": Unpacked(),
-    "kotlin-lsp": Unpacked(),
+    "kotlin-lsp": FETCHED_KOTLIN,
     "gopls": VersionPrinted("golang.org/x/tools/gopls v0.24.0\n"),
     "rust-analyzer": VersionPrinted("rust-analyzer 1.91.0 (f8297e35 2025-10-28)\n"),
 }

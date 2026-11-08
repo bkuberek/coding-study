@@ -23,8 +23,10 @@ from coding_study.adapters.language_servers.lsp_directory import (
 )
 from coding_study.adapters.workspace_marker import read_marker
 from coding_study.application.ports import (
-    Expired,
+    Fetched,
     FileMissing,
+    NewestBuild,
+    NoBuild,
     NotInstalled,
     ProbeResult,
     Unpacked,
@@ -51,8 +53,7 @@ NPM_SERVERS = [server for server in LANGUAGE_SERVERS if server.version_script is
 CORE_PLUGIN = "plugins/org.eclipse.jdt.ls.core_1.63.0.202610191322.jar"
 PACKAGE_JSON, LOCK_FILE = MANIFEST_FILES
 PNPM_SUCCEEDED = ProbeResult(0, "")
-EXPIRY = date(2026, 11, 13)
-EVE = date(2026, 11, 12)
+TODAY = date(2026, 11, 8)
 
 
 class RecordingTools:
@@ -86,9 +87,9 @@ def shipped(name: str) -> bytes:
 
 
 def directory(workspace: Path, tools=None, commands=None) -> LspDirectory:
-    """On the day before the Kotlin LSP's build expires, so no test depends on today's date."""
+    """On a day of its own, so no test depends on today's date."""
     return LspDirectory(
-        workspace, tools or RecordingTools(), commands or RecordingCommands(), today=lambda: EVE
+        workspace, tools or RecordingTools(), commands or RecordingCommands(), today=lambda: TODAY
     )
 
 
@@ -176,34 +177,6 @@ def test_jdtls_without_the_core_plugin_of_its_milestone_is_not_installed(tmp_pat
 def test_jdtls_with_the_core_plugin_of_its_milestone_is_unpacked(tmp_path):
     install_server(tmp_path, JDTLS.script)
     assert directory(tmp_path).probe(JDTLS) == Unpacked()
-
-
-def test_a_kotlin_lsp_without_the_build_file_of_its_release_is_not_installed(tmp_path):
-    install_server(tmp_path, "kotlin-lsp/kotlin-server-263.6379.0/build.txt")
-    assert directory(tmp_path).probe(KOTLIN_LSP) == NotInstalled()
-
-
-def test_a_kotlin_lsp_with_the_build_file_of_its_release_is_unpacked_and_runs_nothing(tmp_path):
-    install_server(tmp_path, str(KOTLIN_LSP.script))
-    tools = RecordingTools()
-    assert (directory(tmp_path, tools).probe(KOTLIN_LSP), tools.ran) == (Unpacked(), [])
-
-
-def test_a_kotlin_lsp_whose_build_expired_says_so(tmp_path):
-    install_server(tmp_path, str(KOTLIN_LSP.script))
-    lsp = LspDirectory(tmp_path, RecordingTools(), RecordingCommands(), today=lambda: EXPIRY)
-    assert lsp.probe(KOTLIN_LSP) == Expired(EXPIRY)
-
-
-def test_an_expired_build_says_so_before_it_is_downloaded(tmp_path):
-    lsp = LspDirectory(tmp_path, RecordingTools(), RecordingCommands(), today=lambda: EXPIRY)
-    assert lsp.probe(KOTLIN_LSP) == Expired(EXPIRY)
-
-
-def test_the_day_before_its_expiry_the_build_is_unpacked(tmp_path):
-    install_server(tmp_path, str(KOTLIN_LSP.script))
-    lsp = LspDirectory(tmp_path, RecordingTools(), RecordingCommands(), today=lambda: EVE)
-    assert lsp.probe(KOTLIN_LSP) == Unpacked()
 
 
 def test_probing_jdtls_starts_no_jvm(tmp_path):
@@ -404,6 +377,23 @@ def test_a_zip_archive_is_unpacked_into_its_directory(tmp_path):
     result = directory(workspace).download(zip_of(tmp_path, SERVER_ZIP))
     unpacked = workspace / ".cs" / "lsp" / "kotlin-lsp" / "server" / "lib" / "server.jar"
     assert (result.exit_code, unpacked.read_bytes()) == (0, b"jar")
+
+
+def test_an_archive_whose_top_directory_is_stripped_puts_the_build_where_it_goes(tmp_path):
+    workspace = tmp_path / "ws"
+    nested = zip_of(tmp_path, [("kotlin-server-1.0/bin/launcher", b"#!/bin/sh\n", EXECUTABLE)])
+    archive = Archive(nested.url, nested.sha256, "kotlin-lsp", "server", "kotlin-server-1.0")
+    directory(workspace).download(archive)
+    launcher = workspace / ".cs" / "lsp" / "kotlin-lsp" / "server" / "bin" / "launcher"
+    assert os.access(launcher, os.X_OK)
+
+
+def test_an_archive_without_the_top_directory_to_strip_is_refused(tmp_path):
+    workspace = tmp_path / "ws"
+    flat = zip_of(tmp_path, [("bin/launcher", b"#!/bin/sh\n", EXECUTABLE)])
+    archive = Archive(flat.url, flat.sha256, "kotlin-lsp", "server", "kotlin-server-1.0")
+    result = directory(workspace).download(archive)
+    assert (result.exit_code, (workspace / ".cs" / "lsp" / "kotlin-lsp").exists()) == (1, False)
 
 
 def test_an_archive_with_a_directory_to_go_into_is_unpacked_into_it(tmp_path):
@@ -638,7 +628,7 @@ class TestWarmUp:
 
     def test_it_runs_the_vendor_script_isolated_under_cstudys_python_in_the_root(self, tmp_path):
         command, cwd = self.warmed(tmp_path).ran[0]
-        script = f"{tmp_path}/.cs/lsp/kotlin-lsp/kotlin-server-263.7084.0/bin/warmup.py"
+        script = f"{tmp_path}/.cs/lsp/kotlin-lsp/server/bin/warmup.py"
         assert (command[:3], cwd) == ((sys.executable, "-I", script), tmp_path / "jvm")
 
     def test_it_names_the_root_and_the_launcher(self, tmp_path):
@@ -667,3 +657,216 @@ class TestWarmUp:
         commands = RecordingEnvironments()
         result = directory(tmp_path, commands=commands).warm_up(JDTLS, "jvm", Path("/jdk"))
         assert (result, commands.ran) == (None, [])
+
+
+class FakeHttps:
+    """Answers HTTPS reads from a table of URLs; an absent URL fails as a 404 does."""
+
+    def __init__(self, answers: Mapping[str, bytes]) -> None:
+        self.answers = dict(answers)
+        self.read: list[str] = []
+
+    def __call__(self, url: str) -> bytes:
+        self.read.append(url)
+        if url not in self.answers:
+            raise OSError(f"HTTP Error 404: Not Found: {url}")
+        return self.answers[url]
+
+
+RELEASES_URL = "https://api.github.com/repos/Kotlin/kotlin-lsp/releases"
+KOTLIN_DOWNLOADS = "https://download.jetbrains.com/language-server/kotlin-server"
+LICENSE_TEXT = (
+    b"JETBRAINS FREE PLUGIN LICENSE AGREEMENT\n\nVersion 1.0, effective as of September 15, 2025\n"
+)
+LICENSE_AT_TAG = (
+    "https://raw.githubusercontent.com/Kotlin/kotlin-lsp/kotlin-lsp/v263.9000.0/"
+    "kotlin-vscode/LICENSE.txt"
+)
+
+
+def releases_answers(machine_file: str, sha256: str, url: str | None = None) -> dict[str, bytes]:
+    """JetBrains' release of 263.9000.0 for this machine, its checksum and its license; `url`
+    serves the archive from elsewhere while the notes name the download server."""
+    named = f"{KOTLIN_DOWNLOADS}/263.9000.0/{machine_file}"
+    notes = f"* [Download]({named}) | [SHA-256 checksum]({named}.sha256)"
+    listed = [{"tag_name": "kotlin-lsp/v263.9000.0", "draft": False, "body": notes}]
+    answers = {
+        RELEASES_URL: json.dumps(listed).encode(),
+        f"{named}.sha256": f"{sha256} *{machine_file}\n".encode(),
+        LICENSE_AT_TAG: LICENSE_TEXT,
+    }
+    if url is not None:
+        answers["served"] = url.encode()
+    return answers
+
+
+def this_machines_file() -> str:
+    releases = KOTLIN_LSP.releases
+    assert releases is not None
+    suffix = releases.suffixes[machine_of(sys.platform, platform.machine())]
+    return f"kotlin-server-263.9000.0{suffix}"
+
+
+def fetching(workspace: Path, https: FakeHttps, commands=None) -> LspDirectory:
+    return LspDirectory(
+        workspace,
+        RecordingTools(),
+        commands or RecordingCommands(),
+        today=lambda: TODAY,
+        fetch=https,
+    )
+
+
+class TestNewestBuild:
+    """The newest build of the Kotlin LSP: the releases list, the checksum published beside the
+    archive of this machine, and the license at the release's tag; nothing is downloaded."""
+
+    def newest(self, tmp_path: Path, answers: dict[str, bytes]) -> NewestBuild | NoBuild:
+        return fetching(tmp_path, FakeHttps(answers)).newest_build(KOTLIN_LSP)
+
+    def test_it_names_the_newest_release_and_its_archive_for_this_machine(self, tmp_path):
+        found = self.newest(tmp_path, releases_answers(this_machines_file(), "a" * 64))
+        assert isinstance(found, NewestBuild)
+        assert (found.build.version, found.archive.url.endswith(this_machines_file())) == (
+            "263.9000.0",
+            True,
+        )
+
+    def test_it_checks_the_archive_against_the_published_sha256(self, tmp_path):
+        found = self.newest(tmp_path, releases_answers(this_machines_file(), "A" * 64))
+        assert isinstance(found, NewestBuild)
+        assert found.archive.sha256 == "a" * 64
+
+    def test_it_comes_under_the_license_of_its_release(self, tmp_path):
+        found = self.newest(tmp_path, releases_answers(this_machines_file(), "a" * 64))
+        assert isinstance(found, NewestBuild)
+        assert found.license is KOTLIN_LSP_LICENSE
+
+    def test_without_a_published_checksum_there_is_no_build(self, tmp_path):
+        answers = releases_answers(this_machines_file(), "a" * 64)
+        del answers[next(url for url in answers if url.endswith(".sha256"))]
+        assert isinstance(self.newest(tmp_path, answers), NoBuild)
+
+    def test_a_checksum_file_that_names_another_archive_gives_no_build(self, tmp_path):
+        answers = releases_answers(this_machines_file(), "a" * 64)
+        checksum = next(url for url in answers if url.endswith(".sha256"))
+        answers[checksum] = f"{'a' * 64} *another.sit".encode()
+        found = self.newest(tmp_path, answers)
+        assert isinstance(found, NoBuild)
+        assert "holds no SHA-256" in found.reason
+
+    def test_without_the_license_of_the_release_there_is_no_build(self, tmp_path):
+        answers = releases_answers(this_machines_file(), "a" * 64)
+        del answers[LICENSE_AT_TAG]
+        assert isinstance(self.newest(tmp_path, answers), NoBuild)
+
+    def test_without_the_network_there_is_no_build_and_it_says_why(self, tmp_path):
+        found = self.newest(tmp_path, {})
+        assert isinstance(found, NoBuild)
+        assert found.reason.startswith("cannot read the releases of kotlin-lsp: HTTP Error 404")
+
+    def test_a_release_without_an_archive_for_this_machine_gives_no_build(self, tmp_path):
+        found = self.newest(tmp_path, releases_answers("kotlin-server-263.9000.0.vsix", "a" * 64))
+        assert isinstance(found, NoBuild)
+
+    def test_nothing_is_downloaded_yet(self, tmp_path):
+        https = FakeHttps(releases_answers(this_machines_file(), "a" * 64))
+        fetching(tmp_path, https).newest_build(KOTLIN_LSP)
+        assert not any(url.endswith(this_machines_file()) for url in https.read)
+
+
+STATUS = (
+    "License: licensed\nSource: eap (Valid), licensed to kotlin-server EAP User, valid through "
+    "2026-11-12 (4 days left)\nThis build does not require a license.\n"
+)
+
+
+class TestInstallBuild:
+    """The newest build put in place, checked, asked its last day and recorded."""
+
+    def installed(self, tmp_path: Path, status: str = STATUS):
+        workspace = tmp_path / "ws"
+        top = "" if sys.platform == "win32" else "kotlin-server-263.9000.0/"
+        launcher = "bin/intellij-server.exe" if sys.platform == "win32" else "bin/intellij-server"
+        served = zip_of(tmp_path, [(f"{top}{launcher}", b"#!/bin/sh\n", EXECUTABLE)])
+        https = FakeHttps(releases_answers(this_machines_file(), served.sha256))
+        commands = RecordingEnvironments(ProbeResult(0, status))
+        lsp = fetching(workspace, https, commands)
+        newest = lsp.newest_build(KOTLIN_LSP)
+        assert isinstance(newest, NewestBuild)
+        local = replace(newest, archive=replace(newest.archive, url=served.url))
+        return lsp, lsp.install_build(KOTLIN_LSP, local), commands, workspace
+
+    def test_the_build_is_in_place_and_says_until_when_it_runs(self, tmp_path):
+        _lsp, result, _commands, _workspace = self.installed(tmp_path)
+        expected = "kotlin-lsp 263.9000.0 in .cs/lsp/kotlin-lsp, runs until 2026-11-12\n"
+        assert result.output == expected
+
+    def test_its_probe_names_the_version_the_last_day_and_the_license(self, tmp_path):
+        lsp, _result, _commands, _workspace = self.installed(tmp_path)
+        expected = Fetched("263.9000.0", date(2026, 11, 12), KOTLIN_LSP_LICENSE)
+        assert lsp.probe(KOTLIN_LSP) == expected
+
+    def test_it_asks_the_build_its_last_day_without_starting_a_server(self, tmp_path):
+        _lsp, _result, commands, _workspace = self.installed(tmp_path)
+        command, _cwd = commands.ran[0]
+        assert command[1:] == ("license", "status")
+
+    def test_the_record_beside_the_build_holds_where_it_came_from(self, tmp_path):
+        _lsp, _result, _commands, workspace = self.installed(tmp_path)
+        written = workspace / ".cs" / "lsp" / "kotlin-lsp" / "installed.json"
+        record = json.loads(written.read_text())
+        assert (record["version"], record["last_day"], record["license"]["name"]) == (
+            "263.9000.0",
+            "2026-11-12",
+            KOTLIN_LSP_LICENSE.name,
+        )
+
+    def test_a_build_that_has_expired_already_is_a_failure(self, tmp_path):
+        expired = "This build of kotlin-server has expired.\nThe IDE will now close.\n"
+        _lsp, result, _commands, _workspace = self.installed(tmp_path, expired)
+        assert (result.exit_code, result.output) == (
+            1,
+            "kotlin-lsp 263.9000.0, JetBrains' newest, has expired\n",
+        )
+
+    def test_a_status_without_a_last_day_records_none(self, tmp_path):
+        lsp, _result, _commands, _workspace = self.installed(tmp_path, "License: licensed\n")
+        assert lsp.probe(KOTLIN_LSP) == Fetched("263.9000.0", None, KOTLIN_LSP_LICENSE)
+
+    def test_a_download_that_fails_its_check_records_nothing(self, tmp_path):
+        workspace = tmp_path / "ws"
+        https = FakeHttps(releases_answers(this_machines_file(), "0" * 64))
+        lsp = fetching(workspace, https)
+        newest = lsp.newest_build(KOTLIN_LSP)
+        assert isinstance(newest, NewestBuild)
+        served = zip_of(tmp_path, [("x", b"x", 0o644)])
+        result = lsp.install_build(
+            KOTLIN_LSP, replace(newest, archive=replace(newest.archive, url=served.url))
+        )
+        assert (result.exit_code, lsp.probe(KOTLIN_LSP)) == (1, NotInstalled())
+
+
+def kotlin_record(workspace: Path, content: str) -> None:
+    record = workspace / ".cs" / "lsp" / "kotlin-lsp" / "installed.json"
+    record.parent.mkdir(parents=True)
+    record.write_text(content)
+
+
+def test_a_kotlin_lsp_without_its_record_is_not_installed(tmp_path):
+    assert directory(tmp_path).probe(KOTLIN_LSP) == NotInstalled()
+
+
+def test_a_record_whose_build_is_gone_is_not_installed(tmp_path):
+    named = {"version": "1", "last_day": None, "license": {"name": "n", "url": "u"}}
+    kotlin_record(tmp_path, json.dumps(named))
+    assert directory(tmp_path).probe(KOTLIN_LSP) == NotInstalled()
+
+
+def test_an_unreadable_record_is_not_installed(tmp_path):
+    kotlin_record(tmp_path, "{")
+    assert directory(tmp_path).probe(KOTLIN_LSP) == NotInstalled()
+
+
+def test_today_is_the_clock_it_was_given(tmp_path):
+    assert directory(tmp_path).today() == TODAY

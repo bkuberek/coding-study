@@ -5,6 +5,7 @@ import pytest
 from coding_study.application.code_intelligence import (
     ServerStatus,
     download_language_server,
+    fetched_version,
     go_install_version,
     install_language_server_with_go,
     install_language_servers,
@@ -12,7 +13,7 @@ from coding_study.application.code_intelligence import (
     language_server_states,
 )
 from coding_study.application.ports import (
-    Expired,
+    Fetched,
     FileMissing,
     JdkSelector,
     NotInstalled,
@@ -21,14 +22,24 @@ from coding_study.application.ports import (
     VersionPrinted,
 )
 from coding_study.domain.code_intelligence import BASEDPYRIGHT as BASEDPYRIGHT_SERVER
-from coding_study.domain.code_intelligence import GOPLS, JDTLS, KOTLIN_LSP, RUST_ANALYZER
+from coding_study.domain.code_intelligence import (
+    GOPLS,
+    JDTLS,
+    KOTLIN_LSP,
+    KOTLIN_LSP_LICENSE,
+    RUST_ANALYZER,
+    License,
+)
 from coding_study.domain.problem import Language
 from tests.fakes import INSTALLED_SERVERS, FakeJdk, FakeLanguageServers, jdk_of
 
 BASEDPYRIGHT = "basedpyright"
 TYPESCRIPT = "typescript-language-server"
 KOTLIN_LSP_NAME = "kotlin-lsp"
-EXPIRY = date(2026, 11, 13)
+LAST_DAY = date(2026, 11, 12)
+OTHER_TERMS = License(
+    "kotlin-lsp", "JetBrains Free Plugin License Agreement 2.0", "https://x/LICENSE.txt", ""
+)
 JDK_FIX = (
     "select a JDK 25 to 26 with JAVA_HOME, or install JDK 25: "
     "https://github.com/bkuberek/coding-study/blob/main/docs/guides/toolchains.md#jdk"
@@ -130,7 +141,7 @@ def test_an_installed_kotlin_lsp_whose_license_you_accepted_names_its_build():
         KOTLIN_LSP_NAME,
         "263.7084.0",
         ServerStatus.INSTALLED,
-        "kotlin-lsp 263.7084.0",
+        "kotlin-lsp 263.7084.0, runs until 2026-11-12",
         300,
     )
 
@@ -147,7 +158,7 @@ def test_a_kotlin_lsp_whose_license_is_not_accepted_says_so_with_the_command_to_
 def test_the_row_of_a_license_not_accepted_names_the_license_and_the_command():
     state = states(FakeLanguageServers(accepted=frozenset()))[Language.KOTLIN]
     assert (state.problem, state.fix) == (
-        "kotlin-lsp needs you to accept the JetBrains Free Plugin License Agreement",
+        "kotlin-lsp needs you to accept the JetBrains Free Plugin License Agreement 1.0",
         "cstudy doctor --fix --accept-license kotlin-lsp",
     )
 
@@ -177,33 +188,92 @@ def test_on_jdk_21_the_kotlin_lsp_is_ready():
     assert state.status is ServerStatus.INSTALLED
 
 
-def test_an_expired_kotlin_lsp_says_so_and_that_a_newer_cstudy_pins_a_newer_build():
-    servers = FakeLanguageServers({**INSTALLED_SERVERS, KOTLIN_LSP_NAME: Expired(EXPIRY)})
-    state = states(servers)[Language.KOTLIN]
-    assert (state.status, state.detail) == (
+def expired(today: date = date(2026, 11, 13)) -> FakeLanguageServers:
+    return FakeLanguageServers(INSTALLED_SERVERS, today=today)
+
+
+def test_a_build_past_its_last_day_has_expired_and_fix_fetches_the_newest():
+    state = states(expired())[Language.KOTLIN]
+    assert (state.status, state.detail, state.fix) == (
         ServerStatus.EXPIRED,
-        "expired on 2026-11-13: upgrade cstudy, whose next release pins a newer build",
+        "expired on 2026-11-13: run cstudy doctor --fix",
+        "cstudy doctor --fix",
     )
 
 
-def test_the_row_of_an_expired_kotlin_lsp_says_jetbrains_stops_its_early_builds():
-    servers = FakeLanguageServers({**INSTALLED_SERVERS, KOTLIN_LSP_NAME: Expired(EXPIRY)})
-    state = states(servers)[Language.KOTLIN]
-    assert (state.problem, state.fix) == (
-        "kotlin-lsp 263.7084.0 expired on 2026-11-13, as JetBrains' early-access builds do",
-        "upgrade cstudy, whose next release pins a newer build",
+def test_the_row_of_an_expired_build_names_it_and_why():
+    state = states(expired())[Language.KOTLIN]
+    assert state.problem == (
+        "kotlin-lsp 263.7084.0 expired on 2026-11-13, as JetBrains' early-access builds do"
     )
+
+
+def test_on_its_last_day_a_build_still_runs():
+    assert states(expired(LAST_DAY))[Language.KOTLIN].status is ServerStatus.INSTALLED
 
 
 def test_an_expired_build_comes_before_a_license_not_accepted():
     """Accepting the license of a build that no longer runs would help nothing."""
-    servers = FakeLanguageServers({KOTLIN_LSP_NAME: Expired(EXPIRY)}, accepted=frozenset())
+    servers = FakeLanguageServers(INSTALLED_SERVERS, accepted=frozenset(), today=date(2027, 1, 1))
     assert states(servers)[Language.KOTLIN].status is ServerStatus.EXPIRED
 
 
-def test_an_expired_build_counts_as_unpacked_so_it_is_not_downloaded_again():
-    servers = FakeLanguageServers({KOTLIN_LSP_NAME: Expired(EXPIRY)})
-    assert is_unpacked(servers, KOTLIN_LSP) is True
+def warning_on(today: date) -> str | None:
+    return states(FakeLanguageServers(INSTALLED_SERVERS, today=today))[Language.KOTLIN].warning
+
+
+def test_a_build_with_seven_days_left_does_not_warn_yet():
+    assert warning_on(date(2026, 11, 6)) is None
+
+
+def test_a_build_with_fewer_than_seven_days_left_warns_ahead():
+    assert warning_on(date(2026, 11, 7)) == (
+        "kotlin-lsp 263.7084.0 runs until 2026-11-12 (6 days left), as JetBrains' "
+        "early-access builds stop; cstudy doctor --fix fetches a newer one once there is"
+    )
+
+
+def test_on_its_last_day_the_warning_says_so():
+    assert warning_on(LAST_DAY) == (
+        "kotlin-lsp 263.7084.0 runs until 2026-11-12 (its last day is today), as JetBrains' "
+        "early-access builds stop; cstudy doctor --fix fetches a newer one once there is"
+    )
+
+
+def test_a_build_that_warns_still_runs():
+    state = states(FakeLanguageServers(INSTALLED_SERVERS, today=LAST_DAY))[Language.KOTLIN]
+    assert state.status is ServerStatus.INSTALLED
+
+
+def test_a_build_without_a_last_day_never_warns():
+    undated = Fetched("263.7084.0", None, KOTLIN_LSP_LICENSE)
+    servers = FakeLanguageServers({**INSTALLED_SERVERS, KOTLIN_LSP_NAME: undated})
+    state = states(servers)[Language.KOTLIN]
+    assert (state.detail, state.warning) == ("kotlin-lsp 263.7084.0", None)
+
+
+def test_the_other_servers_never_warn():
+    found = states(FakeLanguageServers(INSTALLED_SERVERS, today=LAST_DAY)).values()
+    assert {state.warning for state in found if state.language is not Language.KOTLIN} == {None}
+
+
+def test_a_build_under_another_license_needs_that_license_accepted():
+    """The license is the one the fetched build's release came under."""
+    build = Fetched("263.9000.0", date(2027, 1, 1), OTHER_TERMS)
+    servers = FakeLanguageServers({**INSTALLED_SERVERS, KOTLIN_LSP_NAME: build})
+    state = states(servers)[Language.KOTLIN]
+    assert (state.status, state.problem) == (
+        ServerStatus.LICENSE_NOT_ACCEPTED,
+        "kotlin-lsp needs you to accept the JetBrains Free Plugin License Agreement 2.0",
+    )
+
+
+def test_the_fetched_version_is_the_one_in_place():
+    assert fetched_version(FakeLanguageServers(INSTALLED_SERVERS), KOTLIN_LSP) == "263.7084.0"
+
+
+def test_an_expired_build_has_no_fetched_version_so_fix_fetches_again():
+    assert fetched_version(expired(), KOTLIN_LSP) is None
 
 
 def test_the_other_servers_need_no_license():
@@ -296,17 +366,6 @@ def test_downloading_jdtls_fetches_its_pinned_archive():
 def test_downloading_returns_what_the_download_did():
     servers = FakeLanguageServers(download=ProbeResult(1, "SHA-256 mismatch"))
     assert download_language_server(servers, JDTLS) == ProbeResult(1, "SHA-256 mismatch")
-
-
-def test_downloading_the_kotlin_lsp_fetches_the_archive_of_this_machine():
-    servers = FakeLanguageServers(machine="linux-arm64")
-    download_language_server(servers, KOTLIN_LSP)
-    assert servers.downloads == [KOTLIN_LSP.archives["linux-arm64"]]
-
-
-def test_a_machine_jetbrains_builds_nothing_for_downloads_nothing():
-    servers = FakeLanguageServers(machine="freebsd14-x64")
-    assert (download_language_server(servers, KOTLIN_LSP), servers.downloads) == (None, [])
 
 
 def test_a_server_that_is_no_archive_is_never_downloaded():

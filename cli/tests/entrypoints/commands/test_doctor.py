@@ -29,7 +29,7 @@ from coding_study.application.ports import (
     ScaffoldOutcome,
 )
 from coding_study.application.preferences import read_preferences
-from coding_study.domain.code_intelligence import BASEDPYRIGHT, LanguageServer
+from coding_study.domain.code_intelligence import BASEDPYRIGHT, LanguageServer, License
 from coding_study.domain.jdk import JdkSource, SelectedJdk
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import doctor
@@ -58,7 +58,7 @@ def stub_fixes(monkeypatch: pytest.MonkeyPatch, *outcomes: FixOutcome) -> list[s
         _content: ContentLocation | NotFound,
         _jdk: JdkSelector,
         _notify: Callable[[str], None],
-        _consent: Callable[[LanguageServer], bool],
+        _consent: Callable[[LanguageServer, License], bool],
     ) -> tuple[FixOutcome, ...]:
         asked.append(str(workspace.files.root))
         return outcomes

@@ -96,7 +96,7 @@ Two settings give the editor what an IDE gives: errors as you type, documentatio
    ok    code intelligence python basedpyright 1.40.2
    ok    code intelligence typescript typescript-language-server 6.0.3
    ok    code intelligence java jdtls 1.63.0
-   ok    code intelligence kotlin kotlin-lsp 263.7084.0
+   ok    code intelligence kotlin kotlin-lsp 263.7084.0, runs until 2026-11-12
    ok    code intelligence go gopls 0.24.0
    ok    code intelligence rust rust-analyzer 1.91.0
    ```
@@ -170,16 +170,16 @@ WARN  code intelligence java jdtls needs JDK 25 or 26, not 21.0.5
 
 ### Kotlin
 
-Kotlin's server is JetBrains' Kotlin LSP, IntelliJ IDEA's Kotlin analysis behind the same protocol. It is partly closed source, and JetBrains ships it under the [JetBrains Free Plugin License Agreement](https://github.com/Kotlin/kotlin-lsp/blob/main/kotlin-vscode/LICENSE.txt), so `cstudy doctor --fix` downloads it only once you accept that license. Read it, then either answer `y` when `--fix` asks at a terminal, or say so up front:
+Kotlin's server is JetBrains' Kotlin LSP, IntelliJ IDEA's Kotlin analysis behind the same protocol. It is partly closed source, and JetBrains ships it under the [JetBrains Free Plugin License Agreement](https://github.com/Kotlin/kotlin-lsp/blob/main/kotlin-vscode/LICENSE.txt), so `cstudy doctor --fix` downloads it only once you accept that license. It fetches JetBrains' newest build each time it runs, checked against the SHA-256 JetBrains publishes beside it, and downloads nothing when the newest is the one you have. Read it, then either answer `y` when `--fix` asks at a terminal, or say so up front:
 
 ```bash
 cstudy doctor --fix --accept-license kotlin-lsp
 ```
 
-Your acceptance is recorded in the workspace's `.cs/workspace.toml`, so `--fix` never asks again in this workspace. Until you accept, `--fix` downloads nothing for Kotlin and says how to accept (the Health view's **Fix** never accepts for you), the status bar says `no code intelligence for Kotlin: kotlin-lsp's license is not accepted · Health`, and `cstudy doctor` shows:
+Your acceptance is recorded in the workspace's `.cs/workspace.toml`, so `--fix` asks again in this workspace only if a newer build comes under a new version of the agreement. Until you accept, `--fix` downloads nothing for Kotlin and says how to accept (the Health view's **Fix** never accepts for you), the status bar says `no code intelligence for Kotlin: kotlin-lsp's license is not accepted · Health`, and `cstudy doctor` shows:
 
 ```text
-WARN  code intelligence kotlin kotlin-lsp needs you to accept the JetBrains Free Plugin License Agreement
+WARN  code intelligence kotlin kotlin-lsp needs you to accept the JetBrains Free Plugin License Agreement 1.0
       fix: cstudy doctor --fix --accept-license kotlin-lsp
 ```
 
@@ -190,7 +190,14 @@ WARN  code intelligence kotlin kotlin-lsp needs you to accept the JetBrains Free
 - **Memory.** A Kotlin session takes about 1.9 GB, under a 1 GB heap, the most of any language, plus the Gradle daemon its import may start.
 - **Definitions into the standard library.** A function such as `mutableListOf` lives in a sources jar: a Cmd-click on it shows a note naming the jar and the file, and hover shows its documentation. Your project's files open in tabs.
 - **It leaves your folders as they were,** apart from Gradle's own `.gradle/`, as `cstudy test` leaves it.
-- **Each build stops after about a month.** JetBrains ships the Kotlin LSP as early-access builds that stop working once their built-in license ends: the one this cstudy pins, 263.7084.0, stops on 2026-11-13. From then on `cstudy doctor`, Settings and the status bar say `expired on 2026-11-13: upgrade cstudy, whose next release pins a newer build`, and Kotlin files work as without code intelligence until you upgrade.
+- **Each build stops after about a month.** JetBrains ships the Kotlin LSP as early-access builds that stop working once their built-in license ends, and publishes a new one every few weeks. `cstudy doctor` shows the last day of yours, and warns in its last week:
+
+  ```text
+  WARN  code intelligence kotlin kotlin-lsp 263.7084.0 runs until 2026-11-12 (4 days left), as JetBrains' early-access builds stop; cstudy doctor --fix fetches a newer one once there is
+        fix: cstudy doctor --fix
+  ```
+
+  Run `cstudy doctor --fix` with the network then: it fetches the newest build if JetBrains has published one, and says the one you have is the newest otherwise. Once a build has stopped, `cstudy doctor`, Settings and the status bar say `expired on 2026-11-13: run cstudy doctor --fix`, and Kotlin files work as without code intelligence until `--fix` fetches a newer one.
 
 ### Go
 

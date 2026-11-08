@@ -86,7 +86,7 @@ def test_an_installed_kotlin_lsp_whose_license_you_accepted_is_installed(tmp_pat
     assert (entry["server"], entry["state"], entry["detail"], entry["idle_s"]) == (
         "kotlin-lsp",
         "installed",
-        "kotlin-lsp 263.7084.0",
+        "kotlin-lsp 263.7084.0, runs until 2026-11-12",
         300,
     )
 

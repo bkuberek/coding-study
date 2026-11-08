@@ -2,7 +2,6 @@
 per machine and checked by SHA-256, behind a license you accept."""
 
 import shlex
-from datetime import date
 
 import pytest
 
@@ -14,17 +13,27 @@ from coding_study.domain.code_intelligence import (
     LSP_DIRECTORY,
     Archive,
     Launch,
+    build_archive,
     machine_of,
     server_for,
 )
 from coding_study.domain.jdk import SUPPORTED_JDKS
 from coding_study.domain.problem import Language
+from coding_study.domain.server_builds import Build
 
 LSP = f"/ws/{LSP_DIRECTORY}"
 DATA = f"{LSP}/kotlin-lsp-data/jvm/1"
-HOME = f"{LSP}/kotlin-lsp/kotlin-server-263.7084.0"
+HOME = f"{LSP}/kotlin-lsp/server"
 LAUNCH = Launch(LSP, DATA, java="/jdk/bin/java", platform="darwin", java_home="/jdk")
 DOWNLOADS = "https://download.jetbrains.com/language-server/kotlin-server/263.7084.0"
+SHA = "b403bf8a54bd458e3ba6731cf8abb3340be08b439c03576dfc02b13faf3694b8"
+BUILD = Build(
+    "263.7084.0",
+    "kotlin-lsp/v263.7084.0",
+    f"{DOWNLOADS}/kotlin-server-263.7084.0-aarch64.sit",
+    f"{DOWNLOADS}/kotlin-server-263.7084.0-aarch64.sit.sha256",
+)
+TOP = "kotlin-server-263.7084.0"
 
 
 def options(launch: Launch = LAUNCH) -> list[str]:
@@ -41,76 +50,38 @@ def test_the_kotlin_lsp_comes_after_java_in_the_catalog():
     assert languages.index(Language.KOTLIN) == languages.index(Language.JAVA) + 1
 
 
-def test_it_is_pinned_to_the_measured_build():
-    assert (KOTLIN_LSP.name, KOTLIN_LSP.version) == ("kotlin-lsp", "263.7084.0")
+def test_cstudy_pins_no_build_of_it():
+    """`cstudy doctor --fix` fetches JetBrains' newest, since each stops after about a month."""
+    assert (KOTLIN_LSP.version, KOTLIN_LSP.archive) == (None, None)
 
 
-def test_it_counts_as_installed_by_a_file_whose_path_names_the_build():
-    assert (KOTLIN_LSP.script, KOTLIN_LSP.version_script) == (
-        "kotlin-lsp/kotlin-server-263.7084.0/build.txt",
-        None,
+def test_it_counts_as_installed_by_the_record_fix_writes_beside_the_build():
+    assert (KOTLIN_LSP.script, KOTLIN_LSP.version_script) == ("kotlin-lsp/installed.json", None)
+
+
+def test_its_builds_are_the_releases_jetbrains_lists_on_github():
+    releases = KOTLIN_LSP.releases
+    assert releases is not None
+    assert (releases.api_url, releases.license_url) == (
+        "https://api.github.com/repos/Kotlin/kotlin-lsp/releases",
+        "https://raw.githubusercontent.com/Kotlin/kotlin-lsp/{tag}/kotlin-vscode/LICENSE.txt",
     )
 
 
-@pytest.mark.parametrize(
-    ("machine", "file", "sha256"),
-    [
-        (
-            "darwin-arm64",
-            "kotlin-server-263.7084.0-aarch64.sit",
-            "b403bf8a54bd458e3ba6731cf8abb3340be08b439c03576dfc02b13faf3694b8",
-        ),
-        (
-            "darwin-x64",
-            "kotlin-server-263.7084.0.sit",
-            "b29c393a5e541153d03d626e7946268437e358a667a5f914a126dbb4007664b1",
-        ),
-        (
-            "linux-x64",
-            "kotlin-server-263.7084.0.tar.gz",
-            "ae0c4b01e17ab73a4a5227a78ea99e6dcbe3e499600315b22759a4e4cddd11df",
-        ),
-        (
-            "linux-arm64",
-            "kotlin-server-263.7084.0-aarch64.tar.gz",
-            "450ab7c1d80e48106aa429b48cb4226d82ca12a8a2400447ae02386794780cac",
-        ),
-    ],
-)
-def test_each_machine_downloads_its_own_archive_checked_by_sha256(machine, file, sha256):
-    assert KOTLIN_LSP.archive_on(machine) == Archive(f"{DOWNLOADS}/{file}", sha256, "kotlin-lsp")
+def test_a_build_is_checked_by_the_sha256_file_jetbrains_publishes_beside_it():
+    releases = KOTLIN_LSP.releases
+    assert releases is not None
+    assert releases.checksum_suffix == ".sha256"
 
 
-@pytest.mark.parametrize(
-    ("machine", "file", "sha256"),
-    [
-        (
-            "win32-x64",
-            "kotlin-server-263.7084.0.win.zip",
-            "be3bc4ef430cde315e6a83900ffb5d9cc454a36aabe9dd3ba7d4141b2d628164",
-        ),
-        (
-            "win32-arm64",
-            "kotlin-server-263.7084.0-aarch64.win.zip",
-            "1fdf633252c098973613b69cc2e4c8ab8fe6c3e6d07241e3d424f3579745db5d",
-        ),
-    ],
-)
-def test_a_windows_archive_without_a_top_directory_is_unpacked_into_the_builds(
-    machine, file, sha256
-):
-    expected = Archive(f"{DOWNLOADS}/{file}", sha256, "kotlin-lsp", "kotlin-server-263.7084.0")
-    assert KOTLIN_LSP.archive_on(machine) == expected
+def test_a_build_unpacks_into_the_server_directory_from_its_top_directory():
+    archive = build_archive(BUILD, SHA, "darwin-arm64")
+    assert archive == Archive(BUILD.url, SHA, "kotlin-lsp", into="server", strip=TOP)
 
 
-def test_a_machine_jetbrains_builds_nothing_for_has_no_archive():
-    assert KOTLIN_LSP.archive_on("freebsd14-x64") is None
-
-
-def test_a_server_with_one_archive_has_it_on_every_machine():
-    jdtls = server_for(Language.JAVA)
-    assert jdtls is not None
-    assert jdtls.archive_on("linux-arm64") is jdtls.archive
+def test_a_windows_build_holds_no_top_directory_to_strip():
+    archive = build_archive(BUILD, SHA, "win32-x64")
+    assert (archive.into, archive.strip) == ("server", "")
 
 
 @pytest.mark.parametrize(
@@ -140,7 +111,7 @@ def test_the_license_is_jetbrains_free_plugin_license_agreement_with_its_link():
     license_ = KOTLIN_LSP_LICENSE
     assert (license_.key, license_.name, license_.url) == (
         "kotlin-lsp",
-        "JetBrains Free Plugin License Agreement",
+        "JetBrains Free Plugin License Agreement 1.0",
         "https://github.com/Kotlin/kotlin-lsp/blob/main/kotlin-vscode/LICENSE.txt",
     )
 
@@ -217,12 +188,5 @@ def test_cstudy_installs_it():
     assert KOTLIN_LSP.fix is None
 
 
-def test_its_early_access_build_stops_working_on_the_day_its_license_ends():
-    """`license status` named 2026-11-12 as its last day, and the build before it exits at start
-    since its own day passed (`This build of kotlin-server has expired`)."""
-    assert KOTLIN_LSP.expires == date(2026, 11, 13)
-
-
-def test_the_other_servers_never_expire():
-    others = [server for server in LANGUAGE_SERVERS if server is not KOTLIN_LSP]
-    assert {server.expires for server in others} == {None}
+def test_only_the_kotlin_lsp_is_fetched_at_its_newest():
+    assert [server.name for server in LANGUAGE_SERVERS if server.releases] == ["kotlin-lsp"]

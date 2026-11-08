@@ -15,14 +15,15 @@ from coding_study.adapters.workspace_marker import record_license
 from coding_study.domain.code_intelligence import (
     GOPLS,
     JDTLS,
-    KOTLIN_LSP,
     KOTLIN_LSP_HOME,
     KOTLIN_LSP_LICENSE,
+    KOTLIN_LSP_RECORD,
     LSP_DIRECTORY,
 )
 from coding_study.entrypoints.web.language_server import LanguageServerCommand, LanguageTiming
 
 FAKE_LANGUAGE_SERVER = Path(__file__).with_name("fake_language_server.py")
+FAKE_KOTLIN_VERSION = "263.7084.0"
 QUICK = LanguageTiming(
     first_message_s=0.5,
     shutdown_wait_s=0.3,
@@ -157,14 +158,19 @@ def install_fake_gopls(workspace: Path, script: ScriptedServer) -> None:
 
 
 def install_fake_kotlin_lsp(workspace: Path, script: ScriptedServer, *, accepted: bool) -> None:
-    """The build file `cstudy` looks for in `.cs/lsp/`, so that Kotlin counts as installed, and
-    the launcher of the build running the fake language server; with `accepted`, the workspace's
+    """A build of the Kotlin LSP as `cstudy doctor --fix` leaves it, its launcher running the fake
+    language server and its record naming a last day far ahead; with `accepted`, the workspace's
     marker records its license as accepted."""
-    home = workspace / LSP_DIRECTORY / KOTLIN_LSP_HOME
-    _runs_the_fake(home / "bin" / "intellij-server", script)
-    (home / "build.txt").write_text(f"ILS-{KOTLIN_LSP.version}\n")
+    lsp = workspace / LSP_DIRECTORY
+    _runs_the_fake(lsp / KOTLIN_LSP_HOME / "bin" / "intellij-server", script)
+    license_ = KOTLIN_LSP_LICENSE
+    record = {
+        "version": FAKE_KOTLIN_VERSION,
+        "last_day": "2099-12-31",
+        "license": {"name": license_.name, "url": license_.url},
+    }
+    (lsp / KOTLIN_LSP_RECORD).write_text(json.dumps(record))
     if accepted:
-        license_ = KOTLIN_LSP_LICENSE
         record_license(workspace, license_.key, license_.name, license_.url)
 
 

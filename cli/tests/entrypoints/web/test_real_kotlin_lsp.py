@@ -1,10 +1,11 @@
 """The real Kotlin LSP behind a session (docs/specs/web-ui.md#testing, ADR 0018, Kotlin
-revisited): the pinned build of this machine, downloaded and checked by its SHA-256 as `cstudy
-doctor --fix` downloads it once its license is accepted, answers a page that opens a Kotlin
-practice file. The page pulls its diagnostics, as the Kotlin LSP answers no others: an unresolved
-name and a type mismatch are errors. `add` has documentation, a function of the file is its own
-definition, a function of the standard library is a source in a jar that the broker refuses to
-read as a file, naming it, and completion after `seen.ad` lists `add`. Nothing but Gradle's own
+revisited): JetBrains' newest build for this machine, fetched and checked by the SHA-256
+JetBrains publishes beside it as `cstudy doctor --fix` fetches it once its license is accepted,
+answers a page that opens a Kotlin practice file. The page pulls its diagnostics, as the Kotlin
+LSP answers no others: an unresolved name and a type mismatch are errors. `add` has
+documentation, a function of the file is its own definition, a function of the standard library
+is a source in a jar that the broker refuses to read as a file, naming it, and completion after
+`seen.ad` lists `add`. Nothing but Gradle's own
 files is written into the build: the Kotlin LSP keeps its index, configuration and logs in the
 session's data directory.
 
@@ -12,15 +13,14 @@ The root holds the practice workspace's `jvm/` build, warmed up by Gradle: the K
 imports it, with the network for the sources of its libraries the first time, as the warm-up of
 `cstudy doctor --fix` does. Running it means accepting JetBrains' license for the Kotlin LSP: the
 tests are skipped unless `CSTUDY_ACCEPT_LICENSE=kotlin-lsp` says you accept it, without a selected
-JDK cstudy supports, once the pinned build has expired, and when the build cannot be downloaded
-the first time; it stays in pytest's cache."""
+JDK cstudy supports, and when no build can be fetched; the build stays in pytest's cache until
+JetBrains publishes a newer one."""
 
 import os
 import shutil
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -36,7 +36,7 @@ from coding_study.adapters.subprocess_tool_probe import (
     SubprocessToolProbe,
 )
 from coding_study.adapters.workspace_marker import record_license
-from coding_study.application.ports import Unpacked
+from coding_study.application.ports import Fetched, NoBuild
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.code_intelligence import (
     KOTLIN_LSP,
@@ -105,20 +105,19 @@ def jdk_home() -> Path:
 
 @pytest.fixture(scope="module")
 def unpacked(pytestconfig: pytest.Config, license_accepted: None, jdk_home: Path) -> Path:
-    """The Kotlin LSP unpacked in pytest's cache, downloaded the first time as `cstudy doctor
-    --fix` downloads it."""
-    if KOTLIN_LSP.expires is not None and date.today() >= KOTLIN_LSP.expires:
-        pytest.skip(f"the pinned Kotlin LSP expired on {KOTLIN_LSP.expires}: pin a newer build")
+    """JetBrains' newest Kotlin LSP in pytest's cache, fetched and checked by its published
+    SHA-256 as `cstudy doctor --fix` fetches it, again whenever a newer one is out."""
     assert pytestconfig.cache is not None
     cache = pytestconfig.cache.mkdir("kotlin-lsp-workspace")
     directory = LspDirectory(cache, SubprocessToolProbe(), SubprocessCommandRunner())
-    if not isinstance(directory.probe(KOTLIN_LSP), Unpacked):
-        archive = KOTLIN_LSP.archive_on(directory.machine)
-        if archive is None:
-            pytest.skip(f"the Kotlin LSP has no build for {directory.machine}")
-        result = directory.download(archive)
+    newest = directory.newest_build(KOTLIN_LSP)
+    if isinstance(newest, NoBuild):
+        pytest.skip(f"no Kotlin LSP build to fetch: {newest.reason}")
+    probe = directory.probe(KOTLIN_LSP)
+    if not isinstance(probe, Fetched) or probe.version != newest.build.version:
+        result = directory.install_build(KOTLIN_LSP, newest)
         if result.exit_code != 0:
-            pytest.skip(f"the Kotlin LSP could not be downloaded: {result.output}")
+            pytest.skip(f"the newest Kotlin LSP could not be put in place: {result.output}")
     return cache / LSP_DIRECTORY / KOTLIN_LSP_DIRECTORY
 
 
@@ -299,5 +298,6 @@ def test_the_kotlin_lsp_keeps_its_index_and_logs_in_the_sessions_data_directory(
     assert {"system", "log"} <= {path.name for path in data.iterdir()}
 
 
-def test_the_build_was_checked_and_unpacked_where_the_doctor_puts_it(unpacked):
-    assert (unpacked / "kotlin-server-263.7084.0" / "build.txt").is_file()
+def test_the_build_was_checked_and_put_where_the_doctor_puts_it(unpacked):
+    placed = [unpacked / "server" / "build.txt", unpacked / "installed.json"]
+    assert [path.is_file() for path in placed] == [True, True]

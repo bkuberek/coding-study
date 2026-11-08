@@ -72,7 +72,7 @@ def test_the_installed_servers_report_their_pinned_versions():
         CheckResult(PYTHON_ROW, OK, "basedpyright 1.40.2"),
         CheckResult(TYPESCRIPT_ROW, OK, "typescript-language-server 6.0.3"),
         CheckResult(JAVA_ROW, OK, "jdtls 1.63.0"),
-        CheckResult(KOTLIN_ROW, OK, "kotlin-lsp 263.7084.0"),
+        CheckResult(KOTLIN_ROW, OK, "kotlin-lsp 263.7084.0, runs until 2026-11-12"),
         CheckResult(GO_ROW, OK, "gopls 0.24.0"),
         CheckResult(RUST_ROW, OK, "rust-analyzer 1.91.0"),
     ]

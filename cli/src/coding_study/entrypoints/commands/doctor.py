@@ -57,7 +57,7 @@ from coding_study.application.doctor import (
 )
 from coding_study.application.ports import ProgressNotice
 from coding_study.domain.cases import JsonValue
-from coding_study.domain.code_intelligence import LANGUAGE_SERVERS, LanguageServer
+from coding_study.domain.code_intelligence import LANGUAGE_SERVERS, LanguageServer, License
 from coding_study.domain.config import Config
 from coding_study.domain.errors import ConfigError, UsageError
 from coding_study.domain.layout import RUNS_DIRECTORY
@@ -238,16 +238,12 @@ def _consent(accepted: frozenset[str], output: Console) -> LicenseConsent:
     a terminal, what you answer once its name and link are shown; else no, as in the Health
     view's Fix, which runs with no terminal."""
 
-    def consent(server: LanguageServer) -> bool:
-        license = server.license
-        if license is None or license.key in accepted:
+    def consent(server: LanguageServer, license: License) -> bool:
+        if license.key in accepted:
             return True
         if not _is_interactive():
             return False
-        output.print(
-            f"{server.name} {server.version} is {license.summary}, under the {license.name}: "
-            f"{license.url}"
-        )
+        output.print(f"{server.name} is {license.summary}, under the {license.name}: {license.url}")
         return _says_yes(f"Accept it and download {server.name}? [y/N]: ")
 
     return consent

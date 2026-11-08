@@ -9,7 +9,6 @@ import re
 import shlex
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from datetime import date
 from enum import StrEnum
 
 from coding_study.domain.cases import JsonValue
@@ -22,6 +21,7 @@ from coding_study.domain.layout import (
     TYPESCRIPT_PROJECT,
 )
 from coding_study.domain.problem import Language, ProblemMeta
+from coding_study.domain.server_builds import Build, License, Releases
 from coding_study.domain.service_project import service_of
 
 LSP_DIRECTORY = ".cs/lsp"
@@ -58,22 +58,10 @@ class Archive:
     directory: str
     """Where it is unpacked, relative to `.cs/lsp/`."""
     into: str = ""
-    """A directory of `directory` its members go into, for an archive whose members have no top
-    directory of their own while the other platforms' archives have this one."""
-
-
-@dataclass(frozen=True, slots=True)
-class License:
-    """Terms the vendor of a server asks you to accept: `cstudy doctor --fix` downloads the server
-    only after you accept them, when it asks or with `--accept-license <key>`."""
-
-    key: str
-    """What `--accept-license` takes and the workspace's marker records."""
-    name: str
-    url: str
-    summary: str
-    """What the server is, as `--fix` says it before it asks: `partly closed source, from
-    JetBrains`."""
+    """A directory of `directory` the build goes into."""
+    strip: str = ""
+    """The archive's top directory, which holds the build; empty for one that holds it at its
+    top."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -263,16 +251,12 @@ class LanguageServer:
     the rustup proxy of a component that is not installed."""
     standard_library: StandardLibrary | None = None
     """Set for a server that reads the standard library from links cstudy makes."""
-    archives: Mapping[str, Archive] = field(default_factory=dict[str, Archive])
-    """For a server downloaded as an archive of its own per machine, such as the Kotlin LSP with
-    its bundled runtime: the archive of each machine (`machine_of`)."""
     license: License | None = None
     """Set for a server whose vendor asks you to accept a license before it is downloaded."""
     warmup: Warmup | None = None
     """Set for a server whose sessions read what an online import fetches."""
-    expires: date | None = None
-    """The day the pinned build stops working, for an early-access build that exits at start
-    once its built-in license ends."""
+    releases: Releases | None = None
+    """Set for a server whose newest build `cstudy doctor --fix` fetches rather than pins."""
 
     def command(self, launch: Launch) -> tuple[str, ...]:
         return self.launcher(self, launch)
@@ -296,11 +280,6 @@ class LanguageServer:
             "--timeout",
             str(warmup.timeout_s),
         )
-
-    def archive_on(self, machine: str) -> Archive | None:
-        """The archive `cstudy doctor --fix` downloads on `machine`; None for a server that is no
-        archive, or that its vendor builds nothing for on `machine`."""
-        return self.archive or self.archives.get(machine)
 
     def version_command(self, lsp_directory: str) -> tuple[str, ...]:
         return self.versioner(self, lsp_directory)
@@ -537,65 +516,57 @@ JDTLS = LanguageServer(
 """Eclipse JDT LS, a milestone (ADR 0018, phase 2). An empty list of Gradle versions leaves JDT LS
 the checksums it ships and the one the settings trust, so it downloads none."""
 
-KOTLIN_LSP_VERSION = "263.7084.0"
 KOTLIN_LSP_DIRECTORY = "kotlin-lsp"
-KOTLIN_LSP_BUILD = f"kotlin-server-{KOTLIN_LSP_VERSION}"
-"""The top directory of the archives, which holds the build's launcher, runtime and libraries."""
-KOTLIN_LSP_HOME = f"{KOTLIN_LSP_DIRECTORY}/{KOTLIN_LSP_BUILD}"
-_KOTLIN_LSP_DOWNLOADS = (
-    f"https://download.jetbrains.com/language-server/kotlin-server/{KOTLIN_LSP_VERSION}"
-)
+KOTLIN_LSP_HOME = f"{KOTLIN_LSP_DIRECTORY}/server"
+"""Where the build `cstudy doctor --fix` fetched lives, whatever its version, so a newer one takes
+its place."""
+KOTLIN_LSP_RECORD = f"{KOTLIN_LSP_DIRECTORY}/installed.json"
+"""What `--fix` writes once the build is in place: its version, the last day it runs, the license
+it came under and where it came from (`InstalledBuild`)."""
 KOTLIN_LSP_LICENSE = License(
     key="kotlin-lsp",
-    name="JetBrains Free Plugin License Agreement",
+    name="JetBrains Free Plugin License Agreement 1.0",
     url="https://github.com/Kotlin/kotlin-lsp/blob/main/kotlin-vscode/LICENSE.txt",
     summary="partly closed source, from JetBrains",
 )
 """The Kotlin LSP is partly closed source: JetBrains ships it with VS Code under this agreement,
-and its standalone archive carries no license of its own (ADR 0018, Kotlin revisited)."""
-KOTLIN_LSP_EXPIRES = date(2026, 11, 13)
-"""The build is an early access one: `license status` says its built-in license is "valid through
-2026-11-12", and the build before it, 263.6379.0, exits at start with `This build of kotlin-server
-has expired` once its own day passed. A cstudy release must pin a newer build before then."""
+and its standalone archive carries no license of its own (ADR 0018, Kotlin revisited). `--fix`
+reads the agreement at each release's tag: another title or version is another license, which
+you accept again."""
+KOTLIN_LSP_RELEASES = Releases(
+    api_url="https://api.github.com/repos/Kotlin/kotlin-lsp/releases",
+    asset=(
+        r"https://download\.jetbrains\.com/language-server/kotlin-server/"
+        r"(?P<version>\d+(?:\.\d+)+)/kotlin-server-(?P=version){suffix}"
+    ),
+    suffixes={
+        "darwin-arm64": "-aarch64.sit",
+        "darwin-x64": ".sit",
+        "linux-x64": ".tar.gz",
+        "linux-arm64": "-aarch64.tar.gz",
+        "win32-x64": ".win.zip",
+        "win32-arm64": "-aarch64.win.zip",
+    },
+    license_url="https://raw.githubusercontent.com/Kotlin/kotlin-lsp/{tag}/kotlin-vscode/LICENSE.txt",
+    top_directory="kotlin-server-{version}",
+)
+"""JetBrains' releases of the Kotlin LSP on GitHub, whose notes link a standalone archive per
+machine on `download.jetbrains.com` and its `.sha256` file beside it. The macOS archives are zips
+despite their `.sit` name; the Windows ones hold no top directory."""
 KOTLIN_LSP_JVM_OPTIONS = ("-Xmx1g", "-XX:+UseSerialGC", "-XX:ReservedCodeCacheSize=240m")
 """Its launcher reads `bin/intellij-server.vmoptions` (2 GB of heap, 512 MB of code cache) and then
 `IJ_JAVA_OPTIONS`, so these win: the spike measured MaxHeapSize at 1 GB with them."""
+EXPIRY_WARNING_DAYS = 7
+"""How many days before an early-access build stops the doctor row warns."""
 
 
-def _kotlin_lsp_archive(file: str, sha256: str, into: str = "") -> Archive:
-    return Archive(f"{_KOTLIN_LSP_DOWNLOADS}/{file}", sha256, KOTLIN_LSP_DIRECTORY, into)
-
-
-KOTLIN_LSP_ARCHIVES: Mapping[str, Archive] = {
-    "darwin-arm64": _kotlin_lsp_archive(
-        f"{KOTLIN_LSP_BUILD}-aarch64.sit",
-        "b403bf8a54bd458e3ba6731cf8abb3340be08b439c03576dfc02b13faf3694b8",
-    ),
-    "darwin-x64": _kotlin_lsp_archive(
-        f"{KOTLIN_LSP_BUILD}.sit",
-        "b29c393a5e541153d03d626e7946268437e358a667a5f914a126dbb4007664b1",
-    ),
-    "linux-x64": _kotlin_lsp_archive(
-        f"{KOTLIN_LSP_BUILD}.tar.gz",
-        "ae0c4b01e17ab73a4a5227a78ea99e6dcbe3e499600315b22759a4e4cddd11df",
-    ),
-    "linux-arm64": _kotlin_lsp_archive(
-        f"{KOTLIN_LSP_BUILD}-aarch64.tar.gz",
-        "450ab7c1d80e48106aa429b48cb4226d82ca12a8a2400447ae02386794780cac",
-    ),
-    "win32-x64": _kotlin_lsp_archive(
-        f"{KOTLIN_LSP_BUILD}.win.zip",
-        "be3bc4ef430cde315e6a83900ffb5d9cc454a36aabe9dd3ba7d4141b2d628164",
-        KOTLIN_LSP_BUILD,
-    ),
-    "win32-arm64": _kotlin_lsp_archive(
-        f"{KOTLIN_LSP_BUILD}-aarch64.win.zip",
-        "1fdf633252c098973613b69cc2e4c8ab8fe6c3e6d07241e3d424f3579745db5d",
-        KOTLIN_LSP_BUILD,
-    ),
-}
-"""The standalone archives of the release, with the SHA-256 each `.sha256` file names. The macOS
-ones are zips despite their `.sit` name; the Windows ones have no top directory."""
+def build_archive(build: Build, sha256: str, machine: str) -> Archive:
+    """The archive of a fetched build, unpacked into `kotlin-lsp/server/`: the Windows archives
+    hold the build at their top, the others in `kotlin-server-<version>/`."""
+    releases = KOTLIN_LSP_RELEASES
+    flat = machine.startswith("win32")
+    top = "" if flat else releases.top_directory.format(version=build.version)
+    return Archive(build.url, sha256, KOTLIN_LSP_DIRECTORY, into="server", strip=top)
 
 
 def _kotlin_lsp_launcher(platform: str) -> str:
@@ -631,8 +602,8 @@ def _kotlin_lsp_environment(launch: Launch) -> dict[str, str]:
 KOTLIN_LSP = LanguageServer(
     language=Language.KOTLIN,
     name="kotlin-lsp",
-    version=KOTLIN_LSP_VERSION,
-    script=f"{KOTLIN_LSP_HOME}/build.txt",
+    version=None,
+    script=KOTLIN_LSP_RECORD,
     version_script=None,
     root_project=JVM_PROJECT,
     initialization_options=_no_options,
@@ -643,15 +614,16 @@ KOTLIN_LSP = LanguageServer(
     environment=_kotlin_lsp_environment,
     jdks=SUPPORTED_JDKS,
     data="kotlin-lsp-data",
-    archives=KOTLIN_LSP_ARCHIVES,
     license=KOTLIN_LSP_LICENSE,
     warmup=Warmup(script=f"{KOTLIN_LSP_HOME}/bin/warmup.py", roots=(JVM_PROJECT,)),
-    expires=KOTLIN_LSP_EXPIRES,
+    releases=KOTLIN_LSP_RELEASES,
 )
 """JetBrains' Kotlin LSP (ADR 0018, Kotlin revisited): IntelliJ IDEA's analysis behind LSP, with
 its own runtime. It answers diagnostics only when asked (`textDocument/diagnostic`) and asks for
 a refresh as its import and index progress. It reads the sources of the build's libraries from
-Gradle's cache, which `cstudy doctor --fix` fills by warming it up once online."""
+Gradle's cache, which `cstudy doctor --fix` fills by warming it up once online. cstudy pins no
+build: `--fix` fetches JetBrains' newest, checked by the SHA-256 JetBrains publishes beside it,
+since each early-access build stops about a month after its release."""
 
 GOPLS_SETTINGS: dict[str, JsonValue] = {"linksInHover": False, "completeUnimported": False}
 """No web links on hover, and no completion of a package that is not imported, which adds its

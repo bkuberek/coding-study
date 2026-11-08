@@ -223,7 +223,7 @@ def test_a_kotlin_attempt_whose_license_is_not_accepted_is_refused_with_the_acce
     with pytest.raises(LanguageServerNotInstalledError) as refused:
         target(environment, started(environment, Language.KOTLIN))
     assert str(refused.value).splitlines() == [
-        "kotlin-lsp needs you to accept the JetBrains Free Plugin License Agreement",
+        "kotlin-lsp needs you to accept the JetBrains Free Plugin License Agreement 1.0",
         "fix: cstudy doctor --fix --accept-license kotlin-lsp",
     ]
 

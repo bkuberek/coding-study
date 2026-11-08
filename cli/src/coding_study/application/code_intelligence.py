@@ -6,14 +6,15 @@ attempt (docs/specs/web-ui.md#sessions).
 Like highlighting, code intelligence grades nothing and records nothing.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from datetime import date, timedelta
 from enum import StrEnum
 from pathlib import Path
 
 from coding_study.application.active_attempt import attempt_in_progress
 from coding_study.application.environment import Environment
 from coding_study.application.ports import (
-    Expired,
+    Fetched,
     FileMissing,
     JdkSelector,
     LanguageServerInstaller,
@@ -27,6 +28,7 @@ from coding_study.application.ports import (
 )
 from coding_study.domain.attempts import Attempt
 from coding_study.domain.code_intelligence import (
+    EXPIRY_WARNING_DAYS,
     LSP_DIRECTORY,
     NOT_AVAILABLE_YET,
     LanguageServer,
@@ -43,7 +45,6 @@ from coding_study.domain.workspace_projects import project_folder
 
 FIX_COMMAND = "cstudy doctor --fix"
 ACCEPT_LICENSE_OPTION = "--accept-license"
-UPGRADE_FIX = "upgrade cstudy, whose next release pins a newer build"
 OFF = "code intelligence is off: turn it on in Settings"
 
 
@@ -53,7 +54,7 @@ class ServerStatus(StrEnum):
     NEEDS_JDK = "needs_jdk"
     """Installed, but the selected JDK is not one the server runs on."""
     EXPIRED = "expired"
-    """The pinned build stops working from a day that has come; a newer cstudy pins a newer one."""
+    """The fetched build's last day has passed; `cstudy doctor --fix` fetches the newest."""
     LICENSE_NOT_ACCEPTED = "license_not_accepted"
     """Its vendor's license is not accepted, so `--fix` has not downloaded it and no session runs
     it, whatever `.cs/lsp/` holds."""
@@ -79,6 +80,8 @@ class LanguageServerState:
     unless the status is `not_installed` or `needs_jdk`."""
     fix: str | None
     """What makes an unusable server usable, as the doctor row names it."""
+    warning: str | None = None
+    """Set for a usable build that stops soon, as the doctor row warns of it; `fix` is None."""
 
 
 def language_server_states(
@@ -164,14 +167,18 @@ def install_language_servers(installer: LanguageServerInstaller) -> ProbeResult 
 
 
 def is_unpacked(locator: LanguageServerLocator, server: LanguageServer) -> bool:
-    """Whether the pinned build of an archive server is in `.cs/lsp/` already, or has expired,
-    when downloading it again would help nothing."""
-    return isinstance(locator.probe(server), Unpacked | Expired)
+    """Whether the pinned build of an archive server is in `.cs/lsp/` already, when downloading
+    it again would help nothing."""
+    return isinstance(locator.probe(server), Unpacked)
 
 
-def has_expired(locator: LanguageServerLocator, server: LanguageServer) -> bool:
-    """Whether the pinned build of `server` has stopped working, as an early-access build does."""
-    return isinstance(locator.probe(server), Expired)
+def fetched_version(locator: LanguageServerLocator, server: LanguageServer) -> str | None:
+    """The version of the build `cstudy doctor --fix` fetched for `server`, unless it has stopped:
+    a newest build of that version needs no download."""
+    probe = locator.probe(server)
+    if not isinstance(probe, Fetched) or _has_stopped(probe, locator.today()):
+        return None
+    return probe.version
 
 
 def is_usable(locator: LanguageServerLocator, server: LanguageServer, jdk: JdkSelector) -> bool:
@@ -186,8 +193,7 @@ def download_language_server(
     """Download the archive of `server` for this machine into `.cs/lsp/`, checked by its SHA-256;
     None for a server that is no archive, or has none for this machine. The caller decides, from
     the `code_intelligence` preference, `is_unpacked` and the server's license, whether to."""
-    archive = server.archive_on(installer.machine)
-    return None if archive is None else installer.download(archive)
+    return None if server.archive is None else installer.download(server.archive)
 
 
 def go_install_version(locator: LanguageServerLocator, server: LanguageServer) -> str | None:
@@ -243,15 +249,17 @@ def _located(
 ) -> LanguageServerState:
     wanted = _pinned(server, locator)
     probe = locator.probe(server)
+    today = locator.today()
     problem = (
-        _expiry_problem(server, probe)
-        or _license_problem(server, locator)
+        _expiry_problem(server, probe, today)
+        or _license_problem(server, locator, probe)
         or _problem(server, wanted, probe)
         or _jdk_problem(server, jdk)
     )
     version = wanted or _printed(server, probe)
     if problem is None:
-        return _state_of(server, version, f"{server.name} {version}", None)
+        state = _state_of(server, version, _installed(server, version, probe), None)
+        return replace(state, warning=_expiry_warning(server, probe, today))
     detail = problem.reason if problem.own_words else f"{problem.reason}: run {problem.fix}"
     return _state_of(server, version, detail, problem)
 
@@ -265,7 +273,35 @@ def _pinned(server: LanguageServer, locator: LanguageServerLocator) -> str | Non
 
 
 def _printed(server: LanguageServer, probe: ServerProbe) -> str | None:
+    if isinstance(probe, Fetched):
+        return probe.version
     return server.printed_version(probe.output) if isinstance(probe, VersionPrinted) else None
+
+
+def _installed(server: LanguageServer, version: str | None, probe: ServerProbe) -> str:
+    """`kotlin-lsp 263.7084.0, runs until 2026-11-12` for a fetched build that names its last
+    day; the name and the version otherwise."""
+    if isinstance(probe, Fetched) and probe.last_day is not None:
+        return f"{server.name} {version}, runs until {probe.last_day.isoformat()}"
+    return f"{server.name} {version}"
+
+
+def _has_stopped(probe: Fetched, today: date) -> bool:
+    return probe.last_day is not None and today > probe.last_day
+
+
+def _expiry_warning(server: LanguageServer, probe: ServerProbe, today: date) -> str | None:
+    """Set while a fetched build has fewer than `EXPIRY_WARNING_DAYS` days left to run."""
+    if not isinstance(probe, Fetched) or probe.last_day is None:
+        return None
+    days = (probe.last_day - today).days + 1
+    if days >= EXPIRY_WARNING_DAYS:
+        return None
+    left = "its last day is today" if days == 1 else f"{days} days left"
+    return (
+        f"{server.name} {probe.version} runs until {probe.last_day.isoformat()} ({left}), as "
+        f"JetBrains' early-access builds stop; {FIX_COMMAND} fetches a newer one once there is"
+    )
 
 
 def _state_of(
@@ -313,18 +349,19 @@ def _problem(server: LanguageServer, wanted: str | None, probe: ServerProbe) -> 
             return _Problem(reason, own_words=True, fix=fix)
         case VersionPrinted(output):
             return _version_problem(server, wanted, server.printed_version(output))
-        case Unpacked() | Expired():
+        case Unpacked() | Fetched():
             return None
 
 
-def _expiry_problem(server: LanguageServer, probe: ServerProbe) -> _Problem | None:
-    """None unless the pinned build has expired, which no `--fix` mends."""
-    if not isinstance(probe, Expired):
+def _expiry_problem(server: LanguageServer, probe: ServerProbe, today: date) -> _Problem | None:
+    """None unless the fetched build's last day has passed; `--fix` fetches the newest."""
+    last_day = probe.last_day if isinstance(probe, Fetched) else None
+    if last_day is None or today <= last_day or not isinstance(probe, Fetched):
         return None
-    on = probe.on.isoformat()
-    row = f"{server.name} {server.version} expired on {on}, as JetBrains' early-access builds do"
-    reason = f"expired on {on}: {UPGRADE_FIX}"
-    return _Problem(row, reason, own_words=True, status=ServerStatus.EXPIRED, fix=UPGRADE_FIX)
+    stopped = (last_day + timedelta(days=1)).isoformat()
+    build = f"{server.name} {probe.version}"
+    row = f"{build} expired on {stopped}, as JetBrains' early-access builds do"
+    return _Problem(row, f"expired on {stopped}", status=ServerStatus.EXPIRED)
 
 
 def accept_license_command(license: License) -> str:
@@ -332,10 +369,12 @@ def accept_license_command(license: License) -> str:
     return f"{FIX_COMMAND} {ACCEPT_LICENSE_OPTION} {license.key}"
 
 
-def _license_problem(server: LanguageServer, locator: LanguageServerLocator) -> _Problem | None:
+def _license_problem(
+    server: LanguageServer, locator: LanguageServerLocator, probe: ServerProbe
+) -> _Problem | None:
     """None unless the server's vendor asks you to accept a license that the workspace's marker
-    does not record as accepted."""
-    license = server.license
+    does not record as accepted: the one the fetched build came under, else the catalog's."""
+    license = probe.license if isinstance(probe, Fetched) else server.license
     if license is None or locator.license_accepted(license):
         return None
     row = f"{server.name} needs you to accept the {license.name}"

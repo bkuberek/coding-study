@@ -1,40 +1,61 @@
 """The Kotlin LSP in `cstudy doctor` and `--fix` (docs/specs/cli.md#cstudy-doctor, ADR 0018,
-Kotlin revisited): its row, its license, the download of this machine's archive and the warm-up
-that fills Gradle's cache with what it reads offline."""
+Kotlin revisited): its row with the build's last day, the warning ahead of it and the expiry
+after it; the fetch of JetBrains' newest build, checked by its published SHA-256, under the
+license of its release, which you accept once; and the warm-up that fills Gradle's cache with
+what it reads offline."""
 
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import date
 
 from coding_study.application.doctor import CheckResult, fix_workspace
-from coding_study.application.ports import Expired, NotInstalled, ProbeResult
-from coding_study.domain.code_intelligence import KOTLIN_LSP, LanguageServer
+from coding_study.application.ports import NoBuild, NotInstalled, ProbeResult
+from coding_study.domain.code_intelligence import KOTLIN_LSP_LICENSE, LanguageServer, License
+from coding_study.domain.server_builds import Build
 from tests.application.test_doctor import BUNDLED, JDK_HOME, OK, WARN, FakeJdk, workspace_with
 from tests.application.test_doctor_code_intelligence import OFF, code_intelligence_rows
-from tests.fakes import CODE_INTELLIGENCE_ON, INSTALLED_SERVERS, FakeLanguageServers
+from tests.fakes import (
+    CODE_INTELLIGENCE_ON,
+    INSTALLED_SERVERS,
+    KOTLIN_DOWNLOADS,
+    NEWEST_KOTLIN,
+    FakeLanguageServers,
+)
 
 KOTLIN_ROW = "code intelligence kotlin"
+FIX = "cstudy doctor --fix"
 ACCEPT = "cstudy doctor --fix --accept-license kotlin-lsp"
-LICENSE = "JetBrains Free Plugin License Agreement"
+LICENSE = "JetBrains Free Plugin License Agreement 1.0"
 LICENSE_URL = "https://github.com/Kotlin/kotlin-lsp/blob/main/kotlin-vscode/LICENSE.txt"
+FETCH_STEP = "fetch the newest kotlin-lsp (in .cs/lsp/kotlin-lsp)"
 DOWNLOAD_STEP = (
-    "download https://download.jetbrains.com/language-server/kotlin-server/263.7084.0/"
-    "kotlin-server-263.7084.0-aarch64.sit (in .cs/lsp/kotlin-lsp)"
+    f"download {KOTLIN_DOWNLOADS}/263.7084.0/kotlin-server-263.7084.0-aarch64.sit "
+    "(in .cs/lsp/kotlin-lsp)"
 )
 WARM_UP_STEP = "warm up kotlin-lsp (in jvm)"
-EXPIRY = date(2026, 11, 13)
 WITHOUT_KOTLIN = {name: probe for name, probe in INSTALLED_SERVERS.items() if name != "kotlin-lsp"}
-"""Every other server installed, so only the Kotlin LSP is downloaded."""
+"""Every other server installed, so only the Kotlin LSP is fetched."""
+NEWER = replace(
+    NEWEST_KOTLIN,
+    build=Build(
+        "263.9000.0",
+        "kotlin-lsp/v263.9000.0",
+        f"{KOTLIN_DOWNLOADS}/263.9000.0/kotlin-server-263.9000.0-aarch64.sit",
+        f"{KOTLIN_DOWNLOADS}/263.9000.0/kotlin-server-263.9000.0-aarch64.sit.sha256",
+    ),
+)
+OTHER_TERMS = License("kotlin-lsp", "JetBrains Free Plugin License Agreement 2.0", LICENSE_URL, "")
 
 
 class Consent:
-    """Answers the question `--fix` asks before it downloads a server with a license."""
+    """Answers the question `--fix` asks before it downloads a server under a license."""
 
     def __init__(self, answer: bool) -> None:
         self.answer = answer
         self.asked: list[str] = []
 
-    def __call__(self, server: LanguageServer) -> bool:
-        self.asked.append(server.name)
+    def __call__(self, server: LanguageServer, license: License) -> bool:
+        self.asked.append(license.name)
         return self.answer
 
 
@@ -44,7 +65,7 @@ def kotlin_row(servers: FakeLanguageServers) -> CheckResult:
 
 def fixed(
     servers: FakeLanguageServers,
-    consent: Callable[[LanguageServer], bool] | None = None,
+    consent: Callable[[LanguageServer, License], bool] | None = None,
     preferences=CODE_INTELLIGENCE_ON,
     jdk: FakeJdk | None = None,
     notes: list[str] | None = None,
@@ -56,16 +77,42 @@ def fixed(
     )
 
 
-def kotlin_outcomes(outcomes):
-    """The download and the warm-up of the Kotlin LSP."""
+def kotlin_steps(outcomes) -> list[tuple[str, bool]]:
+    """The fetch, the download and the warm-up of the Kotlin LSP, as `--fix` reports them."""
     return [
-        o for o in outcomes if o.step.project == ".cs/lsp/kotlin-lsp" or str(o.step) == WARM_UP_STEP
+        (str(o.step), o.succeeded)
+        for o in outcomes
+        if o.step.project == ".cs/lsp/kotlin-lsp" or str(o.step) == WARM_UP_STEP
     ]
 
 
-def test_an_installed_kotlin_lsp_whose_license_you_accepted_is_ok():
+# The row
+
+
+def test_the_row_names_the_fetched_build_and_its_last_day():
     assert kotlin_row(FakeLanguageServers(INSTALLED_SERVERS)) == CheckResult(
-        KOTLIN_ROW, OK, "kotlin-lsp 263.7084.0"
+        KOTLIN_ROW, OK, "kotlin-lsp 263.7084.0, runs until 2026-11-12"
+    )
+
+
+def test_the_row_warns_ahead_when_fewer_than_seven_days_are_left():
+    servers = FakeLanguageServers(INSTALLED_SERVERS, today=date(2026, 11, 10))
+    assert kotlin_row(servers) == CheckResult(
+        KOTLIN_ROW,
+        WARN,
+        "kotlin-lsp 263.7084.0 runs until 2026-11-12 (3 days left), as JetBrains' early-access "
+        "builds stop; cstudy doctor --fix fetches a newer one once there is",
+        FIX,
+    )
+
+
+def test_the_row_of_an_expired_build_says_so_and_that_fix_fetches_the_newest():
+    servers = FakeLanguageServers(INSTALLED_SERVERS, today=date(2026, 11, 13))
+    assert kotlin_row(servers) == CheckResult(
+        KOTLIN_ROW,
+        WARN,
+        "kotlin-lsp 263.7084.0 expired on 2026-11-13, as JetBrains' early-access builds do",
+        FIX,
     )
 
 
@@ -76,19 +123,97 @@ def test_a_license_not_accepted_warns_naming_it_and_the_command_that_accepts_it(
     )
 
 
-def test_fix_asks_before_it_downloads_a_server_whose_license_is_not_accepted():
+def test_a_build_not_fetched_yet_is_not_installed():
+    assert kotlin_row(FakeLanguageServers()) == CheckResult(
+        KOTLIN_ROW, WARN, "kotlin-lsp is not installed", FIX
+    )
+
+
+# The fetch
+
+
+def test_fix_fetches_the_newest_build_and_puts_it_in_place():
+    servers = FakeLanguageServers(WITHOUT_KOTLIN)
+    fixed(servers)
+    assert servers.installed_builds == ["263.7084.0"]
+
+
+def test_fix_reports_the_fetch_then_the_download_of_the_newest_archive():
+    notes: list[str] = []
+    outcomes = fixed(FakeLanguageServers(WITHOUT_KOTLIN), notes=notes)
+    assert (
+        f"running {FETCH_STEP}" in notes,
+        kotlin_steps(outcomes)[:1],
+    ) == (True, [(DOWNLOAD_STEP, True)])
+
+
+def test_fix_downloads_nothing_when_the_newest_build_is_in_place():
+    notes: list[str] = []
+    servers = FakeLanguageServers(INSTALLED_SERVERS)
+    fixed(servers, notes=notes)
+    assert (servers.installed_builds, notes.count(f"running {DOWNLOAD_STEP}")) == ([], 0)
+
+
+def test_fix_says_the_newest_build_is_in_place():
+    notes: list[str] = []
+    fixed(FakeLanguageServers(INSTALLED_SERVERS), notes=notes)
+    assert "kotlin-lsp 263.7084.0 is JetBrains' newest build, and it is in place" in notes
+
+
+def test_fix_fetches_a_newer_build_in_place_of_the_one_there():
+    servers = FakeLanguageServers(INSTALLED_SERVERS, newest=NEWER)
+    fixed(servers)
+    assert servers.installed_builds == ["263.9000.0"]
+
+
+def test_fix_fetches_the_newest_again_for_an_expired_build():
+    servers = FakeLanguageServers(INSTALLED_SERVERS, today=date(2026, 11, 13))
+    fixed(servers)
+    assert servers.installed_builds == ["263.7084.0"]
+
+
+def test_without_a_build_to_fetch_the_fetch_fails_with_why_and_the_manual_fix():
+    servers = FakeLanguageServers(WITHOUT_KOTLIN, newest=NoBuild("no release has a checksum"))
+    outcome = next(o for o in fixed(servers) if str(o.step) == FETCH_STEP)
+    assert (outcome.succeeded, outcome.result, outcome.step.manual, servers.installed_builds) == (
+        False,
+        ProbeResult(1, "no release has a checksum\n"),
+        "once online, run: cstudy doctor --fix",
+        [],
+    )
+
+
+def test_a_failed_install_names_the_manual_fix_and_keeps_its_reason():
+    servers = FakeLanguageServers(WITHOUT_KOTLIN)
+    servers.install_build_result = ProbeResult(1, "SHA-256 mismatch\n")
+    outcome = next(o for o in fixed(servers) if str(o.step) == DOWNLOAD_STEP)
+    assert (outcome.succeeded, outcome.step.manual, outcome.result) == (
+        False,
+        "once online, run: cstudy doctor --fix",
+        ProbeResult(1, "SHA-256 mismatch\n"),
+    )
+
+
+def test_fix_fetches_nothing_while_the_preference_is_off():
+    notes: list[str] = []
+    servers = FakeLanguageServers(WITHOUT_KOTLIN)
+    fixed(servers, preferences=OFF, notes=notes)
+    assert (servers.installed_builds, f"running {FETCH_STEP}" in notes) == ([], False)
+
+
+# The license
+
+
+def test_fix_asks_before_it_downloads_under_a_license_not_accepted():
     consent = Consent(answer=True)
     fixed(FakeLanguageServers(WITHOUT_KOTLIN, accepted=frozenset()), consent)
-    assert consent.asked == ["kotlin-lsp"]
+    assert consent.asked == [LICENSE]
 
 
-def test_fix_records_the_license_you_accept_and_downloads_the_archive_of_this_machine():
+def test_fix_records_the_license_you_accept_and_then_downloads():
     servers = FakeLanguageServers(WITHOUT_KOTLIN, accepted=frozenset())
     fixed(servers, Consent(answer=True))
-    assert (servers.accepted, servers.downloads) == (
-        {"kotlin-lsp"},
-        [KOTLIN_LSP.archives["darwin-arm64"]],
-    )
+    assert (servers.accepted, servers.installed_builds) == ({LICENSE}, ["263.7084.0"])
 
 
 def test_fix_says_it_accepted_the_license():
@@ -100,7 +225,7 @@ def test_fix_says_it_accepted_the_license():
 def test_fix_downloads_nothing_and_records_nothing_when_you_do_not_accept():
     servers = FakeLanguageServers(WITHOUT_KOTLIN, accepted=frozenset())
     fixed(servers, Consent(answer=False))
-    assert (servers.accepted, servers.downloads, servers.warm_ups) == (set(), [], [])
+    assert (servers.accepted, servers.installed_builds, servers.warm_ups) == (set(), [], [])
 
 
 def test_without_your_consent_fix_says_how_to_accept_the_license_later():
@@ -114,52 +239,35 @@ def test_without_your_consent_fix_says_how_to_accept_the_license_later():
 
 def test_a_license_you_do_not_accept_is_no_failed_step():
     outcomes = fixed(FakeLanguageServers(WITHOUT_KOTLIN, accepted=frozenset()))
-    assert kotlin_outcomes(outcomes) == []
+    assert kotlin_steps(outcomes) == []
 
 
-def test_fix_never_asks_again_for_a_license_you_accepted():
+def test_a_newer_build_under_the_same_license_never_asks_again():
     consent = Consent(answer=False)
-    servers = FakeLanguageServers(WITHOUT_KOTLIN)
+    servers = FakeLanguageServers(INSTALLED_SERVERS, newest=NEWER)
     fixed(servers, consent)
-    assert (consent.asked, servers.downloads) == ([], [KOTLIN_LSP.archives["darwin-arm64"]])
+    assert (consent.asked, servers.installed_builds) == ([], ["263.9000.0"])
 
 
-def test_fix_reports_the_download_as_a_step_naming_the_archive_of_this_machine():
-    outcomes = fixed(FakeLanguageServers(WITHOUT_KOTLIN))
-    download = [o for o in outcomes if o.step.project == ".cs/lsp/kotlin-lsp"]
-    assert [(str(o.step), o.succeeded) for o in download] == [(DOWNLOAD_STEP, True)]
+def test_a_newer_build_under_another_license_asks_again_naming_it():
+    consent = Consent(answer=False)
+    servers = FakeLanguageServers(INSTALLED_SERVERS, newest=replace(NEWER, license=OTHER_TERMS))
+    fixed(servers, consent)
+    assert (consent.asked, servers.installed_builds) == ([OTHER_TERMS.name], [])
 
 
-def test_fix_does_not_download_the_kotlin_lsp_again_once_its_build_is_unpacked():
-    servers = FakeLanguageServers(INSTALLED_SERVERS)
-    fixed(servers)
-    assert servers.downloads == []
-
-
-def test_a_failed_download_names_the_manual_fix_and_keeps_its_reason():
-    servers = FakeLanguageServers(WITHOUT_KOTLIN, download=ProbeResult(1, "SHA-256 mismatch\n"))
-    outcome = next(o for o in fixed(servers) if o.step.project == ".cs/lsp/kotlin-lsp")
-    assert (outcome.succeeded, outcome.step.manual, outcome.result) == (
-        False,
-        "once online, run: cstudy doctor --fix",
-        ProbeResult(1, "SHA-256 mismatch\n"),
-    )
-
-
-def test_a_machine_without_a_build_is_a_skipped_step():
-    servers = FakeLanguageServers(WITHOUT_KOTLIN, machine="freebsd14-x64")
-    outcome = next(o for o in fixed(servers) if o.step.project == ".cs/lsp/kotlin-lsp")
-    assert (servers.downloads, outcome.detail) == (
-        [],
-        "skipped: kotlin-lsp has no build for freebsd14-x64",
-    )
-
-
-def test_fix_neither_asks_nor_downloads_while_the_preference_is_off():
+def test_fix_neither_asks_nor_fetches_while_the_preference_is_off():
     consent = Consent(answer=True)
     servers = FakeLanguageServers(WITHOUT_KOTLIN, accepted=frozenset())
     fixed(servers, consent, preferences=OFF)
-    assert (consent.asked, servers.downloads) == ([], [])
+    assert (consent.asked, servers.installed_builds) == ([], [])
+
+
+def test_the_catalog_license_is_the_one_the_fake_release_comes_under():
+    assert NEWEST_KOTLIN.license is KOTLIN_LSP_LICENSE
+
+
+# The warm-up
 
 
 def test_fix_warms_the_kotlin_lsp_up_on_the_jvm_project_with_the_selected_jdk():
@@ -168,9 +276,9 @@ def test_fix_warms_the_kotlin_lsp_up_on_the_jvm_project_with_the_selected_jdk():
     assert servers.warm_ups == [("kotlin-lsp", "jvm", JDK_HOME)]
 
 
-def test_fix_warms_the_kotlin_lsp_up_once_you_accept_its_license():
-    servers = FakeLanguageServers(INSTALLED_SERVERS, accepted=frozenset())
-    fixed(servers, Consent(answer=True))
+def test_fix_warms_up_the_build_it_just_fetched():
+    servers = FakeLanguageServers(WITHOUT_KOTLIN)
+    fixed(servers)
     assert [name for name, _root, _home in servers.warm_ups] == ["kotlin-lsp"]
 
 
@@ -179,12 +287,6 @@ def test_the_warm_up_comes_after_gradle_has_warmed_the_jvm_project_up():
     fixed(FakeLanguageServers(INSTALLED_SERVERS), notes=notes)
     gradle = max(index for index, line in enumerate(notes) if "./gradlew" in line)
     assert notes.index(f"running {WARM_UP_STEP}") > gradle
-
-
-def test_fix_reports_the_warm_up_as_a_step_in_the_jvm_project():
-    outcomes = fixed(FakeLanguageServers(INSTALLED_SERVERS))
-    warm_up = [o for o in outcomes if str(o.step) == WARM_UP_STEP]
-    assert [o.succeeded for o in warm_up] == [True]
 
 
 def test_a_failed_warm_up_names_the_manual_fix_and_keeps_its_output():
@@ -204,7 +306,7 @@ def test_no_warm_up_for_a_license_you_did_not_accept():
 
 
 def test_no_warm_up_while_the_kotlin_lsp_is_not_there():
-    servers = FakeLanguageServers({"kotlin-lsp": NotInstalled()}, download=ProbeResult(1, "x"))
+    servers = FakeLanguageServers({"kotlin-lsp": NotInstalled()}, newest=NoBuild("offline"))
     fixed(servers)
     assert servers.warm_ups == []
 
@@ -213,29 +315,6 @@ def test_no_warm_up_without_a_jdk_the_gradle_import_can_run_on():
     servers = FakeLanguageServers(INSTALLED_SERVERS)
     fixed(servers, jdk=FakeJdk(None))
     assert servers.warm_ups == []
-
-
-def test_an_expired_build_is_neither_downloaded_again_nor_warmed_up():
-    servers = FakeLanguageServers({**INSTALLED_SERVERS, "kotlin-lsp": Expired(EXPIRY)})
-    fixed(servers)
-    assert (servers.downloads, servers.warm_ups) == ([], [])
-
-
-def test_an_expired_build_never_asks_for_its_license():
-    consent = Consent(answer=True)
-    servers = FakeLanguageServers({"kotlin-lsp": Expired(EXPIRY)}, accepted=frozenset())
-    fixed(servers, consent)
-    assert (consent.asked, servers.accepted) == ([], set())
-
-
-def test_an_expired_build_warns_with_the_upgrade():
-    servers = FakeLanguageServers({**INSTALLED_SERVERS, "kotlin-lsp": Expired(EXPIRY)})
-    assert kotlin_row(servers) == CheckResult(
-        KOTLIN_ROW,
-        WARN,
-        "kotlin-lsp 263.7084.0 expired on 2026-11-13, as JetBrains' early-access builds do",
-        "upgrade cstudy, whose next release pins a newer build",
-    )
 
 
 def test_no_warm_up_while_the_preference_is_off():

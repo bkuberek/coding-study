@@ -3,6 +3,7 @@ archives beside it (docs/specs/installation-and-workspaces.md#layout,
 docs/specs/web-ui.md#language-servers)."""
 
 import hashlib
+import json
 import platform
 import shutil
 import stat
@@ -19,8 +20,10 @@ from pathlib import Path
 from coding_study.adapters.workspace_marker import accepted_license, record_license
 from coding_study.application.ports import (
     CommandRunner,
-    Expired,
+    Fetched,
     FileMissing,
+    NewestBuild,
+    NoBuild,
     NotInstalled,
     ProbeResult,
     ServerProbe,
@@ -38,8 +41,16 @@ from coding_study.domain.code_intelligence import (
     LanguageServer,
     Launch,
     License,
+    build_archive,
     go_release,
     machine_of,
+)
+from coding_study.domain.server_builds import (
+    checksum_in,
+    expired_already,
+    last_day,
+    license_of,
+    newest_build,
 )
 
 MANIFEST_PACKAGE = "coding_study.adapters.language_servers"
@@ -63,30 +74,116 @@ class LspDirectory:
         tools: ToolProbe,
         commands: CommandRunner,
         today: Callable[[], date] = date.today,
+        fetch: Callable[[str], bytes] | None = None,
     ) -> None:
+        """`fetch` reads what an HTTPS URL holds, for the releases of a server whose newest build
+        `--fix` fetches; urllib's by default."""
         self._workspace = workspace
         self._directory = workspace / LSP_DIRECTORY
         self._tools = tools
         self._commands = commands
         self._today = today
+        self._fetch = fetch or _https
 
     def probe(self, server: LanguageServer) -> ServerProbe:
         """Not installed without the server's script or binary in `.cs/lsp/`, or, for a server
         on PATH, without one whose version command runs or with only a proxy of it; a file
         missing when its package is there but the workspace's TypeScript is not; unpacked for an
-        archive whose pinned build is there, which has no version command; otherwise what its
-        version command printed. Before all of that, expired for a pinned build whose day to stop
-        has come, unpacked or not."""
-        if server.expires is not None and self._today() >= server.expires:
-            return Expired(server.expires)
+        archive whose pinned build is there, which has no version command; fetched, as its record
+        says, for a server whose newest build `--fix` fetched; otherwise what its version command
+        printed."""
+        if server.releases is not None:
+            return self._fetched(server)
         if server.script is not None and not (self._directory / server.script).is_file():
             return NotInstalled()
         requirement = server.requirement
         if requirement is not None and not (self._workspace / requirement.path).is_file():
             return FileMissing(requirement.path)
-        if server.archive is not None or server.archives:
+        if server.archive is not None:
             return Unpacked()
         return self._version(server)
+
+    def today(self) -> date:
+        return self._today()
+
+    def newest_build(self, server: LanguageServer) -> NewestBuild | NoBuild:
+        """Reads the server's releases list, the `.sha256` file of the newest build for this
+        machine and the license at its release's tag; nothing is downloaded yet."""
+        releases, known = server.releases, server.license
+        if releases is None or known is None:
+            return NoBuild(f"{server.name} publishes no builds of its own")
+        try:
+            listed = json.loads(self._fetch(releases.api_url))
+            build = newest_build(listed, releases, self.machine)
+            if build is None:
+                reason = f"no release of {server.name} at {releases.api_url} has a build for"
+                return NoBuild(f"{reason} {self.machine} with a published SHA-256")
+            sha256 = checksum_in(self._fetch(build.checksum_url).decode(), build.file_name)
+            if sha256 is None:
+                return NoBuild(f"{build.checksum_url} holds no SHA-256 of {build.file_name}")
+            license_url = releases.license_url.format(tag=build.tag)
+            license = license_of(self._fetch(license_url).decode(), known)
+        except (OSError, ValueError) as error:
+            return NoBuild(f"cannot read the releases of {server.name}: {error}")
+        if license is None:
+            return NoBuild(f"cannot read the license of {build.tag} at {license_url}")
+        return NewestBuild(build, build_archive(build, sha256, self.machine), license)
+
+    def install_build(self, server: LanguageServer, newest: NewestBuild) -> ProbeResult:
+        """Downloads and checks the build as `download` does, then asks it the last day it runs
+        (`license status`, with its configuration in a scratch directory that is gone afterwards)
+        and records it beside the build."""
+        downloaded = self.download(newest.archive)
+        if downloaded.exit_code != 0:
+            return downloaded
+        status = self._status(server)
+        version = newest.build.version
+        if expired_already(status):
+            return ProbeResult(1, f"{server.name} {version}, JetBrains' newest, has expired\n")
+        last = last_day(status)
+        self._record(server, newest, last)
+        until = "" if last is None else f", runs until {last.isoformat()}"
+        return ProbeResult(
+            0, f"{server.name} {version} in {LSP_DIRECTORY}/{newest.archive.directory}{until}\n"
+        )
+
+    def _status(self, server: LanguageServer) -> str:
+        releases = server.releases
+        with tempfile.TemporaryDirectory(prefix=".status-", dir=self._directory) as scratch:
+            launch = Launch(str(self._directory), scratch, platform=sys.platform)
+            command = (server.command(launch)[0], *(releases.status_arguments if releases else ()))
+            result = self._commands.run(command, self._directory, server.environment(launch))
+        return "" if result is None else result.output
+
+    def _record(self, server: LanguageServer, newest: NewestBuild, last: date | None) -> None:
+        record = {
+            "version": newest.build.version,
+            "last_day": None if last is None else last.isoformat(),
+            "license": {"name": newest.license.name, "url": newest.license.url},
+            "url": newest.archive.url,
+            "sha256": newest.archive.sha256,
+        }
+        (self._directory / str(server.script)).write_text(json.dumps(record, indent=2) + "\n")
+
+    def _fetched(self, server: LanguageServer) -> ServerProbe:
+        """Not installed without a readable record or the build it names."""
+        known = server.license
+        try:
+            record = json.loads((self._directory / str(server.script)).read_text())
+            version, last = record["version"], record["last_day"]
+            license = License(
+                known.key if known else "",
+                record["license"]["name"],
+                record["license"]["url"],
+                known.summary if known else "",
+            )
+            ends = None if last is None else date.fromisoformat(last)
+        except (OSError, ValueError, KeyError, TypeError):
+            return NotInstalled()
+        launcher = server.command(Launch(str(self._directory), platform=sys.platform))[0]
+        if not isinstance(version, str) or not Path(launcher).is_file():
+            return NotInstalled()
+        return Fetched(version, ends, license)
 
     @property
     def machine(self) -> str:
@@ -167,13 +264,19 @@ def _unpacked(archive: Archive, scratch: Path, target: Path) -> ProbeResult:
     digest = _fetched(archive.url, downloaded)
     if digest != archive.sha256:
         return ProbeResult(1, f"SHA-256 mismatch: expected {archive.sha256}, got {digest}\n")
-    unpacked = scratch / "unpacked"
-    members = unpacked / archive.into if archive.into else unpacked
+    extracted = scratch / "extracted"
     if zipfile.is_zipfile(downloaded):
-        _unzip(downloaded, members)
+        _unzip(downloaded, extracted)
     else:
         with tarfile.open(downloaded) as tar:
-            tar.extractall(members, filter="data")
+            tar.extractall(extracted, filter="data")
+    build = extracted / archive.strip if archive.strip else extracted
+    if not build.is_dir():
+        return ProbeResult(1, f"the archive holds no {archive.strip}/\n")
+    unpacked = scratch / "unpacked"
+    place = unpacked / archive.into if archive.into else unpacked
+    place.parent.mkdir(parents=True, exist_ok=True)
+    build.rename(place)
     if target.exists():
         target.rename(scratch / "earlier")
     unpacked.rename(target)
@@ -214,6 +317,15 @@ def _inside(directory: Path, path: Path) -> Path:
     if not path.resolve().is_relative_to(directory.resolve()):
         raise OSError(f"archive member leaves its directory: {path}")
     return path
+
+
+def _https(url: str) -> bytes:
+    """What `url` holds, as GitHub's API asks a client to fetch it."""
+    request = urllib.request.Request(
+        url, headers={"User-Agent": "cstudy", "Accept": "application/vnd.github+json"}
+    )
+    with urllib.request.urlopen(request, timeout=DOWNLOAD_TIMEOUT_S) as response:
+        return response.read()
 
 
 def _fetched(url: str, path: Path) -> str:

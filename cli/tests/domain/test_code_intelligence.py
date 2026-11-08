@@ -41,12 +41,13 @@ def test_a_language_without_a_server_would_be_not_available_yet():
 
 
 def test_the_servers_are_pinned_to_the_versions_of_the_spec():
-    """gopls's is the newest the table pins; rust-analyzer is whichever runs."""
+    """gopls's is the newest the table pins; rust-analyzer is whichever runs, and the Kotlin LSP
+    whichever JetBrains' newest is when `--fix` fetched it."""
     assert [(server.name, server.version) for server in LANGUAGE_SERVERS] == [
         ("basedpyright", "1.40.2"),
         ("typescript-language-server", "6.0.3"),
         ("jdtls", "1.63.0"),
-        ("kotlin-lsp", "263.7084.0"),
+        ("kotlin-lsp", None),
         ("gopls", "0.24.0"),
         ("rust-analyzer", None),
     ]

@@ -10,14 +10,19 @@ from typer.testing import CliRunner
 
 from coding_study.application.doctor import DoctorReport
 from coding_study.application.ports import ScaffoldOutcome
-from coding_study.domain.code_intelligence import KOTLIN_LSP, LanguageServer
+from coding_study.domain.code_intelligence import (
+    KOTLIN_LSP,
+    KOTLIN_LSP_LICENSE,
+    LanguageServer,
+    License,
+)
 from coding_study.entrypoints import cli
 from coding_study.entrypoints.commands import doctor
 from coding_study.entrypoints.shared import ExitCode
 from tests.helpers import mark_workspace
 
 runner = CliRunner()
-LICENSE = "JetBrains Free Plugin License Agreement"
+LICENSE = "JetBrains Free Plugin License Agreement 1.0"
 LICENSE_URL = "https://github.com/Kotlin/kotlin-lsp/blob/main/kotlin-vscode/LICENSE.txt"
 
 
@@ -34,8 +39,10 @@ def answers(monkeypatch, tmp_path) -> Answers:
     monkeypatch.setenv("CSTUDY_WORKSPACE", str(mark_workspace(tmp_path)))
     found = Answers()
 
-    def fix(_workspace, _content, _jdk, _notify, consent: Callable[[LanguageServer], bool]):
-        found.answers.append(consent(KOTLIN_LSP))
+    def fix(
+        _workspace, _content, _jdk, _notify, consent: Callable[[LanguageServer, License], bool]
+    ):
+        found.answers.append(consent(KOTLIN_LSP, KOTLIN_LSP_LICENSE))
         return ()
 
     monkeypatch.setattr(doctor, "fix_workspace", fix)
@@ -85,7 +92,7 @@ def test_at_a_terminal_the_end_of_input_declines_and_the_fix_goes_on(answers, mo
 def test_the_question_names_the_server_the_license_and_its_link(answers, monkeypatch):
     at_a_terminal(monkeypatch)
     output = runner.invoke(cli.app, ["doctor", "--fix"], input="n\n").output
-    assert all(part in output for part in ("kotlin-lsp 263.7084.0", LICENSE, LICENSE_URL))
+    assert all(part in output for part in ("kotlin-lsp", LICENSE, LICENSE_URL))
 
 
 def test_the_question_says_the_server_is_partly_closed_source(answers, monkeypatch):
