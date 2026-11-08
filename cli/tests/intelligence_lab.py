@@ -22,6 +22,7 @@ from tests.language_server_scripts import (
     install_fake_basedpyright,
     install_fake_gopls,
     install_fake_jdtls,
+    install_fake_kotlin_lsp,
 )
 from tests.serve_page import opened_page
 from tests.serve_process import RunningServer, running_server, served_environment
@@ -75,6 +76,7 @@ def intelligence_lab(
     problems: Sequence[tuple[str, str | None]] = (PYTHON,),
     jdk: int | None = None,
     go_and_rust: bool = False,
+    kotlin_license: bool | None = None,
 ) -> Iterator[Lab]:
     """A server over a copy of the practice workspace with the Python practice problem started,
     a basedpyright that is the fake playing `steps` (or what `steps` makes of the workspace's
@@ -83,7 +85,8 @@ def intelligence_lab(
     told otherwise). `problems` are started, each as a slug and a language (None for a project).
     With `jdk`, JDT LS is installed too and the server selects a JDK of that release whose `java`
     is the same fake. With `go_and_rust`, gopls is installed too, a `go` on PATH says Go 1.27 is
-    selected, and a `rust-analyzer` on PATH is the same fake."""
+    selected, and a `rust-analyzer` on PATH is the same fake. With `kotlin_license`, the Kotlin
+    LSP is installed too, its launcher the same fake, and its license accepted when it is true."""
     workspace = workspace_like(practice_workspace, base / "workspace")
     script = ScriptedServer(base / "server.json")
     java: dict[str, str] = {}
@@ -114,6 +117,8 @@ def intelligence_lab(
         install_fake_gopls(workspace, script)
         fake_go(base / "bin")
         fake_rust_analyzer(base / "bin", script)
+    if kotlin_license is not None:
+        install_fake_kotlin_lsp(workspace, script, accepted=kotlin_license)
     with running_server(workspace, variables=variables) as running:
         yield Lab(workspace, script, running, opened_page(running).attempts, base / "bin")
 

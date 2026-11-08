@@ -11,7 +11,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from coding_study.domain.code_intelligence import GOPLS, JDTLS, LSP_DIRECTORY
+from coding_study.adapters.workspace_marker import record_license
+from coding_study.domain.code_intelligence import (
+    GOPLS,
+    JDTLS,
+    KOTLIN_LSP,
+    KOTLIN_LSP_HOME,
+    KOTLIN_LSP_LICENSE,
+    LSP_DIRECTORY,
+)
 from coding_study.entrypoints.web.language_server import LanguageServerCommand, LanguageTiming
 
 FAKE_LANGUAGE_SERVER = Path(__file__).with_name("fake_language_server.py")
@@ -146,6 +154,18 @@ def _runs_the_fake(path: Path, script: ScriptedServer) -> None:
 def install_fake_gopls(workspace: Path, script: ScriptedServer) -> None:
     """`.cs/lsp/bin/gopls`, where `go install` puts it, running the fake language server."""
     _runs_the_fake(workspace / LSP_DIRECTORY / str(GOPLS.script), script)
+
+
+def install_fake_kotlin_lsp(workspace: Path, script: ScriptedServer, *, accepted: bool) -> None:
+    """The build file `cstudy` looks for in `.cs/lsp/`, so that Kotlin counts as installed, and
+    the launcher of the build running the fake language server; with `accepted`, the workspace's
+    marker records its license as accepted."""
+    home = workspace / LSP_DIRECTORY / KOTLIN_LSP_HOME
+    _runs_the_fake(home / "bin" / "intellij-server", script)
+    (home / "build.txt").write_text(f"ILS-{KOTLIN_LSP.version}\n")
+    if accepted:
+        license_ = KOTLIN_LSP_LICENSE
+        record_license(workspace, license_.key, license_.name, license_.url)
 
 
 def fake_go(directory: Path) -> None:
