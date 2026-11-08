@@ -150,6 +150,10 @@ def test_a_native_project_leaves_code_intelligence_to_its_language(environment):
     assert attempt_status(environment, None, None).no_code_intelligence is None
 
 
+def test_the_web_ui_runs_a_native_attempts_tests(environment):
+    assert attempt_status(environment, None, None).no_web_runs is None
+
+
 def test_before_any_submission_the_next_step_is_testing(environment):
     assert attempt_status(environment, None, None).next_step == "cstudy test --watch"
 

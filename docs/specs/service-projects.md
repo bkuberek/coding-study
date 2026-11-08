@@ -882,6 +882,7 @@ Planned, for P9 (R29).
 
 | Item | Phase |
 |------|-------|
+| Run tests and Submit from the attempt page, with `cstudy test --events`. Until then the page starts no run and names `cstudy dev`, `cstudy test` and `cstudy submit` to run in a terminal, from the status's `no_web_runs` ([Attempt view](web-ui.md#attempt-view)) | P9 |
 | A stack starts only on request from the attempt page, because of its memory, and stops with the page, with the same idle rule as [language servers](web-ui.md#lifecycle-and-limits) | P9 |
 | Stack and mock server status, and a scenario picker over the control interface | P9 |
 | `.env` is an ordinary file in the tree | P4, built |

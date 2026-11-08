@@ -22,7 +22,7 @@ from coding_study.domain.items import EntryKind, entry_kind
 from coding_study.domain.levels import FIRST_LEVEL, LevelProgress, level_progress
 from coding_study.domain.problem import Language, ProblemKind, Track
 from coding_study.domain.problem_files import PROBLEM_FILE
-from coding_study.domain.service_project import service_of
+from coding_study.domain.service_project import NoWebRuns, no_web_runs, service_of
 from coding_study.domain.submissions import LevelTally, SubmissionRecord, best_per_level
 
 TEST_NEXT = "cstudy test --watch"
@@ -82,6 +82,8 @@ class AttemptStanding:
     project: ProjectStanding | None = None
     no_code_intelligence: NoCodeIntelligence | None = None
     """None when the language's server decides, as for every attempt but a service project's."""
+    no_web_runs: NoWebRuns | None = None
+    """None when the Web UI runs the attempt, as it does every attempt but a service project's."""
 
     @property
     def file(self) -> str | None:
@@ -150,6 +152,7 @@ class _ProblemStatus:
             last_test_run=last_run,
             project=project,
             no_code_intelligence=no_code_intelligence(meta),
+            no_web_runs=no_web_runs(meta),
         )
 
     @property

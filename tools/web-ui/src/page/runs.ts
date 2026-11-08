@@ -17,7 +17,7 @@ import { FILE_SAVED_EVENT, type FileSaved } from "./api.ts";
 import type { PageContext } from "./context.ts";
 import { h } from "./dom.ts";
 import { fetchChunk } from "./lazy.ts";
-import { noRunYet, ResultsPanel } from "./results.ts";
+import { noRunYet, ResultsPanel, terminalRuns } from "./results.ts";
 import { DEFAULT_OPTIONS, type RunCommandName, type RunContext, runCommand, type RunOptionsState } from "./run-options.ts";
 import type { RunSession } from "./run-session.ts";
 import type { AttemptStatus, ProblemDocument } from "./types.ts";
@@ -132,6 +132,10 @@ export class AttemptRuns implements RunShell {
       this.results.show(null, [h("p", { class: "quiet" }, "Items have no runs: answer in the notes.")]);
       return;
     }
+    if (status.no_web_runs !== null) {
+      this.results.show(null, terminalRuns(status.slug));
+      return;
+    }
     await this.showToolbar(status);
     this.showCommands();
     if (first) await this.#showLatestRun(status);
@@ -143,7 +147,7 @@ export class AttemptRuns implements RunShell {
    * view waits for it before its first draw: the toolbar shown later would make the header taller
    * and move the file tree under a pointer about to click it, which then clicks nothing. */
   async showToolbar(status: AttemptStatus): Promise<void> {
-    if (status.kind === "item") return;
+    if (status.kind === "item" || status.no_web_runs !== null) return;
     this.#problemRead ??= this.host.context.api
       .get<ProblemDocument>(`/api/v1/problems/${encodeURIComponent(status.slug)}`)
       .then(
@@ -232,9 +236,14 @@ export class AttemptRuns implements RunShell {
     this.#showsRecorded = true;
   }
 
+  /** Whether the attempt's runs go through a terminal, so no shortcut or save here starts one. */
+  get #inATerminal(): boolean {
+    return (this.#status?.no_web_runs ?? null) !== null;
+  }
+
   /** Does `act` with the run session, which is fetched the first time; false when it could not be. */
   async #use(act: (session: RunSession) => unknown): Promise<boolean> {
-    if (this.#frozen) return false;
+    if (this.#frozen || this.#inATerminal) return false;
     this.#session ??= this.#openSession();
     const session = await this.#session;
     if (session === null || this.#destroyed) return false;

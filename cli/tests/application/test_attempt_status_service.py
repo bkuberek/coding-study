@@ -1,5 +1,6 @@
 """`cstudy status` of a service project (docs/specs/cli.md#cstudy-status): its next step names the
-commands a service project takes, and it has no code intelligence whatever its language."""
+commands a service project takes, it has no code intelligence whatever its language, and the Web UI
+runs none of its tests."""
 
 from datetime import timedelta
 
@@ -11,6 +12,7 @@ from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.code_intelligence import NoCodeIntelligence
 from coding_study.domain.judging import Tally
 from coding_study.domain.problem import Language
+from coding_study.domain.service_project import NoWebRuns
 from coding_study.domain.submissions import LevelTally, SubmissionRecord
 from tests.fakes import NOW, make_environment
 from tests.sandbox_fakes import FakeSandbox
@@ -30,6 +32,10 @@ def test_a_service_project_has_no_code_intelligence_whatever_its_language(servic
     assert attempt_status(service, None, None).no_code_intelligence is (
         NoCodeIntelligence.SERVICE_PROJECT
     )
+
+
+def test_the_web_ui_runs_none_of_a_service_projects_tests(service):
+    assert attempt_status(service, None, None).no_web_runs is NoWebRuns.SERVICE_PROJECT
 
 
 def test_before_any_submission_a_service_project_names_dev_then_its_tests(service):

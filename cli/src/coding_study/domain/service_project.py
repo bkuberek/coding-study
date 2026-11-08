@@ -8,6 +8,7 @@ language's decisions, the image and the install command, live in the problem's t
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from enum import StrEnum
 
 from coding_study.domain.docker_engine import EngineState, EngineStatus, engine_problem
 from coding_study.domain.problem import ProblemMeta
@@ -128,6 +129,18 @@ class ServiceProject:
 def service_of(meta: ProblemMeta) -> ServiceProject | None:
     """The problem's service block; None for any other problem, which never needs Docker."""
     return meta.project.service if meta.project is not None else None
+
+
+class NoWebRuns(StrEnum):
+    """Why the Web UI starts no run of an attempt, whose runs go through a terminal instead."""
+
+    SERVICE_PROJECT = "service_project"
+    """`cstudy test --events` exits 3 on a service project until the Web UI runs its stack
+    (docs/specs/service-projects.md#web-ui)."""
+
+
+def no_web_runs(meta: ProblemMeta) -> NoWebRuns | None:
+    return NoWebRuns.SERVICE_PROJECT if service_of(meta) is not None else None
 
 
 @dataclass(frozen=True, slots=True)

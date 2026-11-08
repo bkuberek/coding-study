@@ -116,6 +116,7 @@ def status_document(found: AttemptStanding) -> dict[str, JsonValue]:
         ],
         "files": _files_value(project) if project else None,
         "no_code_intelligence": found.no_code_intelligence,
+        "no_web_runs": found.no_web_runs,
         "next": found.next_step,
     }
 

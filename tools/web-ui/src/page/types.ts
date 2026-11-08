@@ -229,6 +229,8 @@ export interface AttemptStatus {
   readonly last_test_run: { readonly total: number; readonly passed: number; readonly ran_at: string } | null;
   /** Why the attempt has no code intelligence whatever its language's server: `service_project`. */
   readonly no_code_intelligence: string | null;
+  /** Why the page starts no run of the attempt, which runs from a terminal: `service_project`. */
+  readonly no_web_runs: string | null;
   readonly next: string;
 }
 

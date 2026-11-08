@@ -147,6 +147,11 @@ def test_status_json_says_the_project_has_no_code_intelligence(environment):
     )
 
 
+def test_status_json_says_the_web_ui_runs_none_of_its_tests(environment):
+    start_it()
+    assert json.loads(invoke("status", "--json").output)["no_web_runs"] == "service_project"
+
+
 def test_show_lists_the_needs_above_the_statement(environment):
     output = invoke("show", SLUG).output
 
