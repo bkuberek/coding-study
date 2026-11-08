@@ -466,6 +466,57 @@ def test_cargo_runs_offline_under_rust_analyzer():
     assert RUST_ANALYZER.environment(NODE_LAUNCH) == {"CARGO_NET_OFFLINE": "true"}
 
 
+STANDARD_LIBRARY = RUST_ANALYZER.standard_library
+LINKS = "/ws/.cs/lsp/rust-library/rust"
+
+
+def test_rust_analyzer_reads_the_standard_library_from_links_in_the_lsp_directory():
+    """The workspace's vendored crates.io reaches `cargo metadata` of the toolchain's library, so
+    rust-analyzer reads the library's crates from links, without the library's manifest."""
+    assert STANDARD_LIBRARY is not None
+    assert (STANDARD_LIBRARY.links, STANDARD_LIBRARY.left_out) == (
+        "rust-library",
+        frozenset({"Cargo.toml", "Cargo.lock"}),
+    )
+
+
+def test_the_standard_library_is_the_rust_src_of_the_sysroot_rustc_prints():
+    assert STANDARD_LIBRARY is not None
+    assert (STANDARD_LIBRARY.sysroot_command, STANDARD_LIBRARY.library) == (
+        ("rustc", "--print", "sysroot"),
+        "lib/rustlib/src/rust/library",
+    )
+
+
+def test_the_links_are_rust_analyzers_sysroot_source_beside_its_other_settings():
+    assert STANDARD_LIBRARY is not None
+    assert STANDARD_LIBRARY.settings(RUST_ANALYZER.settings, LINKS) == {
+        "rust-analyzer": {
+            "cargo": {"targetDir": True, "sysrootSrc": LINKS},
+            "check": {"allTargets": True},
+            "completion": {"autoimport": {"enable": False}},
+        }
+    }
+
+
+def test_the_links_leave_the_catalogs_settings_as_they_were():
+    assert STANDARD_LIBRARY is not None
+    STANDARD_LIBRARY.settings(RUST_ANALYZER.settings, LINKS)
+    assert RUST_ANALYZER.settings == {
+        "rust-analyzer": {
+            "cargo": {"targetDir": True},
+            "check": {"allTargets": True},
+            "completion": {"autoimport": {"enable": False}},
+        }
+    }
+
+
+def test_only_rust_analyzer_reads_the_standard_library_from_links():
+    assert [server.name for server in LANGUAGE_SERVERS if server.standard_library] == [
+        "rust-analyzer"
+    ]
+
+
 def test_go_and_rust_get_the_same_client_capabilities_as_the_other_servers():
     assert (GOPLS.capabilities, RUST_ANALYZER.capabilities) == (
         BASEDPYRIGHT.capabilities,

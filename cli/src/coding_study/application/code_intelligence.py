@@ -106,6 +106,13 @@ class SessionTarget:
         return self.workspace / LSP_DIRECTORY
 
     @property
+    def standard_library_links(self) -> Path | None:
+        """Where the links to the standard library the server reads are, for the root; None for
+        a server that finds the library itself."""
+        library = self.server.standard_library
+        return None if library is None else self.lsp_directory / library.links / self.root
+
+    @property
     def hidden(self) -> tuple[Path, ...]:
         """Where the reference solutions, the generated cases with their expected values, the run
         data and the content root are: no library file is read from them, no answer names a place

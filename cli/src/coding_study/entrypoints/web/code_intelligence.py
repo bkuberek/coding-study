@@ -38,6 +38,7 @@ from coding_study.entrypoints.web.language_server import (
     ServerStartError,
     environment_hiding,
     prepare_data_directory,
+    prepare_standard_library,
 )
 from coding_study.entrypoints.web.notifications import Notifications
 
@@ -326,6 +327,13 @@ class LanguageSessions:
             await asyncio.to_thread(prepare_data_directory, server, launch)
         except OSError as error:
             raise ServerStartError(f"cannot write {launch.data_directory}: {error}") from None
+        try:
+            await asyncio.to_thread(prepare_standard_library, target, environment)
+        except OSError as error:
+            links = target.standard_library_links
+            raise ServerStartError(
+                f"cannot link the standard library in {links}: {error}"
+            ) from None
         arguments = self.command.arguments(server, launch)
         return await ServerProcess.start(arguments, target.directory, self.timing, environment)
 

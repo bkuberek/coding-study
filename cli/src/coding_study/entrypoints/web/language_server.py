@@ -7,13 +7,15 @@ messages go without) and its standard error kept. Stopping it is `shutdown`, `ex
 input closed, then SIGTERM and SIGKILL to the group, as a cancelled run escalates; whatever the
 server does not read, the stop reaches SIGTERM and SIGKILL on time. A Node server also starts with
 `hide_paths.cjs` preloaded, which keeps the hidden directories from it
-(docs/specs/web-ui.md#hidden-directories).
+(docs/specs/web-ui.md#hidden-directories), and rust-analyzer finds the standard library in links
+cstudy makes (docs/specs/web-ui.md#language-servers).
 """
 
 import asyncio
 import json
 import os
 import signal
+import subprocess
 from collections import deque
 from collections.abc import Mapping, Sequence
 from contextlib import suppress
@@ -22,7 +24,8 @@ from pathlib import Path
 from typing import cast
 
 from coding_study.adapters.process_environment import inherited_environment
-from coding_study.domain.code_intelligence import LanguageServer, Launch
+from coding_study.application.code_intelligence import SessionTarget
+from coding_study.domain.code_intelligence import LanguageServer, Launch, StandardLibrary
 from coding_study.entrypoints.web.children import StreamedChild, start_process
 from coding_study.entrypoints.web.runs import SIGNAL_EXIT_BASE
 
@@ -42,6 +45,8 @@ STDERR_LINES = 20
 GROUP_POLL_S = 0.02
 KILL_WAIT_S = 2.0
 """How long a group that got SIGKILL has to disappear before the stop gives up on it."""
+SYSROOT_TIMEOUT_S = 30.0
+"""How long `rustc --print sysroot` may take: rustup may first read the toolchain files."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +86,59 @@ def prepare_data_directory(server: LanguageServer, launch: Launch) -> None:
         path = Path(launch.data_directory) / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
+
+
+def prepare_standard_library(target: SessionTarget, environment: Mapping[str, str]) -> None:
+    """Links the standard library of the toolchain the session's root selects (`rustc --print
+    sysroot`, run in the root, in `environment`) for a server that reads it from links. Nothing
+    is linked without `rustc` or the toolchain's library sources: the server then looks for the
+    library itself."""
+    library = target.server.standard_library
+    links = target.standard_library_links
+    if library is None or links is None:
+        return
+    sysroot = _sysroot(library, target.directory, environment)
+    source = None if sysroot is None else sysroot / library.library
+    if source is not None and source.is_dir():
+        link_standard_library(library, source, links)
+
+
+def link_standard_library(library: StandardLibrary, source: Path, links: Path) -> None:
+    """`links` holds a link to each entry of `source` but those `library` leaves out, its Cargo
+    manifest and lock. A link to another toolchain's entry is replaced, each in one rename, so a
+    session already running on the links never finds one missing; a link to an entry `source`
+    no longer has is removed."""
+    links.mkdir(parents=True, exist_ok=True)
+    wanted = {entry.name: entry for entry in source.iterdir() if entry.name not in library.left_out}
+    for name, entry in wanted.items():
+        link = links / name
+        if link.is_symlink() and link.readlink() == entry:
+            continue
+        fresh = links / f".{name}.{os.getpid()}"
+        fresh.unlink(missing_ok=True)
+        fresh.symlink_to(entry, target_is_directory=entry.is_dir())
+        fresh.replace(link)
+    for link in links.iterdir():
+        if link.is_symlink() and link.name not in wanted:
+            link.unlink()
+
+
+def _sysroot(
+    library: StandardLibrary, directory: Path, environment: Mapping[str, str]
+) -> Path | None:
+    try:
+        printed = subprocess.run(
+            library.sysroot_command,
+            cwd=directory,
+            env=dict(environment),
+            capture_output=True,
+            text=True,
+            timeout=SYSROOT_TIMEOUT_S,
+            check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return Path(printed) if printed else None
 
 
 class ServerStartError(Exception):

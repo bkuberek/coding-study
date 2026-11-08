@@ -14,7 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from coding_study.domain.code_intelligence import BASEDPYRIGHT, JDTLS, Launch
+from coding_study.application.code_intelligence import SessionTarget
+from coding_study.domain.code_intelligence import BASEDPYRIGHT, JDTLS, RUST_ANALYZER, Launch
 from coding_study.entrypoints.web import language_server
 from coding_study.entrypoints.web.language_server import (
     HIDDEN_VARIABLE,
@@ -307,6 +308,102 @@ def test_jdtls_finds_its_empty_list_of_gradle_versions_in_its_data_directory(tmp
 def test_a_server_without_data_gets_no_data_directory(tmp_path):
     language_server.prepare_data_directory(BASEDPYRIGHT, Launch(f"{tmp_path}/.cs/lsp"))
     assert list(tmp_path.iterdir()) == []
+
+
+# rust-analyzer: the standard library through links, without its Cargo manifest
+
+STANDARD_LIBRARY = RUST_ANALYZER.standard_library
+
+
+def library_sources(sysroot: Path, entries: tuple[str, ...] = ("core", "alloc", "std")) -> Path:
+    """A toolchain's `rust-src`: crate directories, and the manifest and lock of its workspace."""
+    library = sysroot / "lib/rustlib/src/rust/library"
+    for entry in entries:
+        (library / entry / "src").mkdir(parents=True)
+    for manifest in ("Cargo.toml", "Cargo.lock"):
+        (library / manifest).write_text("")
+    return library
+
+
+def links_of(links: Path) -> dict[str, str]:
+    return {link.name: str(link.readlink()) for link in sorted(links.iterdir())}
+
+
+def link(source: Path, links: Path) -> None:
+    assert STANDARD_LIBRARY is not None
+    language_server.link_standard_library(STANDARD_LIBRARY, source, links)
+
+
+def test_each_crate_of_the_standard_library_is_linked_but_its_manifest_and_lock(tmp_path):
+    library = library_sources(tmp_path / "sysroot")
+    link(library, tmp_path / "links")
+    assert links_of(tmp_path / "links") == {
+        name: str(library / name) for name in ("alloc", "core", "std")
+    }
+
+
+def test_links_to_another_toolchains_library_are_replaced(tmp_path):
+    link(library_sources(tmp_path / "old"), tmp_path / "links")
+    newer = library_sources(tmp_path / "new")
+    link(newer, tmp_path / "links")
+    assert links_of(tmp_path / "links") == {
+        name: str(newer / name) for name in ("alloc", "core", "std")
+    }
+
+
+def test_links_to_entries_the_library_no_longer_has_are_removed(tmp_path):
+    link(library_sources(tmp_path / "old", ("core", "alloc", "std", "gone")), tmp_path / "links")
+    newer = library_sources(tmp_path / "new")
+    link(newer, tmp_path / "links")
+    assert sorted(links_of(tmp_path / "links")) == ["alloc", "core", "std"]
+
+
+def fake_rustc(directory: Path, sysroot: Path) -> dict[str, str]:
+    """An environment whose `rustc --print sysroot` prints `sysroot` and records where it ran."""
+    directory.mkdir()
+    rustc = directory / "rustc"
+    rustc.write_text(f'#!/bin/sh\npwd > "{directory}/cwd"\necho "{sysroot}"\n')
+    rustc.chmod(0o755)
+    return {**os.environ, "PATH": f"{directory}{os.pathsep}{os.environ['PATH']}"}
+
+
+def rust_target(workspace: Path) -> SessionTarget:
+    (workspace / "rust").mkdir(parents=True)
+    return SessionTarget(RUST_ANALYZER, workspace, "rust", workspace / "content")
+
+
+def test_a_rust_session_links_the_library_of_the_toolchain_its_root_selects(tmp_path):
+    library = library_sources(tmp_path / "sysroot")
+    target = rust_target(tmp_path / "ws")
+    environment = fake_rustc(tmp_path / "bin", tmp_path / "sysroot")
+    language_server.prepare_standard_library(target, environment)
+    links = tmp_path / "ws/.cs/lsp/rust-library/rust"
+    assert (links_of(links)["core"], (tmp_path / "bin/cwd").read_text().strip()) == (
+        str(library / "core"),
+        os.path.realpath(tmp_path / "ws/rust"),
+    )
+
+
+def test_without_rustc_the_session_links_nothing(tmp_path):
+    target = rust_target(tmp_path / "ws")
+    language_server.prepare_standard_library(target, {"PATH": str(tmp_path / "nowhere")})
+    assert (tmp_path / "ws/.cs/lsp/rust-library").exists() is False
+
+
+def test_without_the_library_sources_the_session_links_nothing(tmp_path):
+    """No `rust-src` component: rust-analyzer then looks for the library itself."""
+    target = rust_target(tmp_path / "ws")
+    language_server.prepare_standard_library(
+        target, fake_rustc(tmp_path / "bin", tmp_path / "sysroot")
+    )
+    assert (tmp_path / "ws/.cs/lsp/rust-library").exists() is False
+
+
+def test_a_server_that_reads_no_standard_library_from_links_links_nothing(tmp_path):
+    (tmp_path / "ws/python").mkdir(parents=True)
+    target = SessionTarget(BASEDPYRIGHT, tmp_path / "ws", "python", tmp_path / "content")
+    language_server.prepare_standard_library(target, os.environ)
+    assert (tmp_path / "ws/.cs").exists() is False
 
 
 # the stop sequence

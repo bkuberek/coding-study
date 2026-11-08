@@ -106,6 +106,36 @@ class GoInstall:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class StandardLibrary:
+    """A standard library a server reads from links cstudy makes, in `.cs/lsp/<links>/<root>/`:
+    one to each entry of the toolchain's library sources but its Cargo manifest and lock.
+    rust-analyzer runs `cargo metadata` on the library's own Cargo workspace when it has a
+    manifest, and cargo applies the workspace's `.cargo/config.toml` to that query too: the
+    vendored crates.io holds none of `std`'s dependencies, so the query fails and `Vec` or `len`
+    resolve to nothing. Without a manifest, rust-analyzer reads the library's crates directly."""
+
+    section: str
+    """The settings section where the links go, as `cargo.sysrootSrc`."""
+    links: str = "rust-library"
+    """Under `.cs/lsp/`, then the session's root."""
+    sysroot_command: tuple[str, ...] = ("rustc", "--print", "sysroot")
+    """Prints the sysroot of the toolchain the root selects, run in the root."""
+    library: str = "lib/rustlib/src/rust/library"
+    """The library sources, relative to the sysroot: rustup's `rust-src` component."""
+    left_out: frozenset[str] = frozenset({"Cargo.toml", "Cargo.lock"})
+
+    def settings(self, settings: Mapping[str, JsonValue], directory: str) -> dict[str, JsonValue]:
+        """`settings` with the links in `directory` as `cargo.sysrootSrc` of the section."""
+        section = _fields(settings.get(self.section))
+        cargo = {**_fields(section.get("cargo")), "sysrootSrc": directory}
+        return {**settings, self.section: {**section, "cargo": cargo}}
+
+
+def _fields(value: JsonValue | None) -> dict[str, JsonValue]:
+    return dict(value) if isinstance(value, dict) else {}
+
+
 GO_RELEASE_COMMAND = ("go", "env", "GOVERSION")
 """Prints the selected Go's release, `go1.27.3`."""
 
@@ -180,6 +210,8 @@ class LanguageServer:
     missing_words: str | None = None
     """Words a failing version command prints when only a proxy of the server is there, such as
     the rustup proxy of a component that is not installed."""
+    standard_library: StandardLibrary | None = None
+    """Set for a server that reads the standard library from links cstudy makes."""
 
     def command(self, launch: Launch) -> tuple[str, ...]:
         return self.launcher(self, launch)
@@ -513,6 +545,7 @@ RUST_ANALYZER = LanguageServer(
     versioner=_rust_analyzer_version_command,
     fix=f"rustup component add {RUST_ANALYZER_NAME}",
     missing_words="Unknown binary",
+    standard_library=StandardLibrary(section=RUST_ANALYZER_NAME),
 )
 """rust-analyzer (ADR 0018, phase 3): the one rustup installs, or any on PATH whose `--version`
 runs. cstudy never changes the Rust toolchain. While the component is missing, rustup's proxy on

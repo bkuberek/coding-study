@@ -15,6 +15,7 @@ no process: it is given a message and says what to send where.
 import asyncio
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, cast
@@ -215,7 +216,7 @@ class LanguageBroker:
             "rootUri": self._root_uri,
             "workspaceFolders": [self._folder()],
             "clientInfo": {"name": CLIENT_NAME, "version": self._version},
-            "initializationOptions": server.initialization_options(str(self._target.workspace)),
+            "initializationOptions": self._initialization_options(),
             "capabilities": server.capabilities,
         }
         return Delivery(to_server=(_request(request_id, INITIALIZE, params),))
@@ -298,9 +299,30 @@ class LanguageBroker:
             )
         return Delivery(to_server=(_response(request_id, result),))
 
+    def _initialization_options(self) -> dict[str, Any]:
+        """The catalog's, with the standard library the session linked for a server that reads
+        it from links."""
+        server = self._target.server
+        options = server.initialization_options(str(self._target.workspace))
+        library, links = server.standard_library, self._linked_library()
+        if library is None or links is None:
+            return options
+        return _fields(library.settings({library.section: options}, links)[library.section])
+
     def _setting(self, item: object) -> object:
         section = _fields(item).get("section")
-        return self._target.server.settings.get(section) if isinstance(section, str) else None
+        return self._settings().get(section) if isinstance(section, str) else None
+
+    def _settings(self) -> Mapping[str, Any]:
+        settings = self._target.server.settings
+        library, links = self._target.server.standard_library, self._linked_library()
+        return settings if library is None or links is None else library.settings(settings, links)
+
+    def _linked_library(self) -> str | None:
+        """The links to the standard library once the session made them; None before, or for
+        a server that finds the library itself."""
+        links = self._target.standard_library_links
+        return str(links) if links is not None and links.is_dir() else None
 
     def _track_registrations(self, method: str, params: Fields) -> None:
         registering = method == "client/registerCapability"

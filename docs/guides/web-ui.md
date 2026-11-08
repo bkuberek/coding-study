@@ -192,6 +192,7 @@ Until you do, the status bar says `no code intelligence for Rust: rust-analyzer 
 
 - **Two kinds of errors.** rust-analyzer's own, such as a syntax error, show as you type. The compiler's, from `cargo check`, such as an unknown name or a type error, show once the project is loaded and after each save, with unused variables faded. `cargo check` runs offline, into `target/rust-analyzer/`, so it never waits for your IDE's.
 - **The first seconds.** rust-analyzer loads your project first, about a second for practice, longer the first time; the page asks for its errors again until it is ready.
+- **The standard library opens from `.cs/lsp/rust-library/`.** A Cmd-click on `Vec` or `len` opens the toolchain's source through links cstudy makes there, so rust-analyzer reads it offline whatever the workspace's vendored crates say.
 - **It runs your build scripts.** Like `cargo test`, rust-analyzer runs build scripts and procedural macros of the code you open.
 
 ## Run the tests and submit

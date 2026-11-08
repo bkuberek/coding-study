@@ -1274,6 +1274,37 @@ def test_go_and_rust_servers_get_their_settings_on_request(server, section):
     assert reply["result"] == [server.settings[section]]
 
 
+def rust_analyzer_with_links(workspace: Path) -> tuple[LanguageBroker, str]:
+    """A rust-analyzer broker whose session linked the standard library; the links."""
+    links = workspace / ".cs/lsp/rust-library/rust"
+    links.mkdir(parents=True)
+    return broker_for(RUST_ANALYZER, "rust", workspace), str(links)
+
+
+def test_rust_analyzer_is_initialized_with_the_standard_library_its_session_linked(tmp_path):
+    broker, links = rust_analyzer_with_links(tmp_path)
+    (sent,) = from_page(broker, request(1, "initialize", {})).to_server
+    assert sent["params"]["initializationOptions"]["cargo"] == {
+        "targetDir": True,
+        "sysrootSrc": links,
+    }
+
+
+def test_rust_analyzer_gets_the_linked_standard_library_on_request_too(tmp_path):
+    """Its answer to `workspace/configuration` replaces the initialization options."""
+    broker, links = rust_analyzer_with_links(tmp_path)
+    items = {"items": [{"section": "rust-analyzer"}]}
+    (reply,) = from_server(broker, request("s1", "workspace/configuration", items)).to_server
+    assert reply["result"][0]["cargo"]["sysrootSrc"] == links
+
+
+def test_another_section_gets_no_standard_library(tmp_path):
+    broker, _links = rust_analyzer_with_links(tmp_path)
+    items = {"items": [{"section": "files"}]}
+    (reply,) = from_server(broker, request("s1", "workspace/configuration", items)).to_server
+    assert reply["result"] == [None]
+
+
 def test_a_definition_answer_is_still_forwarded_unchanged(broker):
     page_asks(broker, 20, "textDocument/definition")
     result = [{"uri": "file:///lib/x.pyi", "range": {"start": {"line": 3, "character": 0}}}]

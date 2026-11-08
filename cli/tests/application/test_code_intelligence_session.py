@@ -171,6 +171,15 @@ def test_a_rust_attempt_gets_rust_analyzer_rooted_in_the_rust_project(practice):
     assert (found.server.name, found.root) == ("rust-analyzer", "rust")
 
 
+def test_a_rust_session_reads_the_standard_library_from_links_of_its_root(practice):
+    found = target(practice, started(practice, Language.RUST))
+    assert found.standard_library_links == practice.root / ".cs/lsp/rust-library/rust"
+
+
+def test_a_session_of_another_server_has_no_links_to_a_standard_library(practice):
+    assert target(practice, started(practice, Language.GO)).standard_library_links is None
+
+
 def test_a_rust_attempt_without_rust_analyzer_is_refused_with_the_rustup_fix(tmp_path):
     probes = {name: probe for name, probe in INSTALLED_SERVERS.items() if name != "rust-analyzer"}
     environment = make_environment(

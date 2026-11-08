@@ -1,11 +1,15 @@
 """The real rust-analyzer behind a session (docs/specs/web-ui.md#testing, ADR 0018 phase 3): the
-one on PATH, from rustup or not, answers a page that opens a Rust practice file. Its own
+one on PATH, from rustup or not, answers a page that opens a Rust practice file in a crate shaped
+like the workspace's `rust/`, whose `.cargo/config.toml` replaces crates.io with the runtime's
+vendored crates, as the workspace template's does. Its own
 diagnostics are pulled as the page pulls them: while it loads its workspace it answers an empty
 report, asks for a refresh and cancels pulls (`ServerCancelled`, `retriggerRequest` true), which
 are asked again; then a syntax error is a pulled error before any save. Once the error is fixed,
 `didSave` makes `cargo check` publish rustc's unused variable, tagged Unnecessary, from a target
-directory of its own. `len` has documentation, and its definition is the standard library's
-source, read through the broker; completion after `nums.` lists `len`.
+directory of its own. `Vec` and `len` have the standard library's documentation, the
+definition of `len` is the standard library's source, read through the broker, and completion
+after `nums.` lists `len`: the vendored crates.io does not reach the standard library, which
+rust-analyzer reads from the links cstudy makes in `.cs/lsp/rust-library/`.
 
 Needs a `rust-analyzer` whose `--version` runs (`rustup component add rust-analyzer`) and cargo;
 the tests are skipped otherwise, and when only rustup's proxy of a missing component is there."""
@@ -60,6 +64,12 @@ publish = false
 path = "lib.rs"
 """
 LIB_RS = '#[path = "practice/two_sum.rs"]\npub mod two_sum;\n'
+CARGO_CONFIG = (
+    Path(__file__).parents[3]
+    / "src/coding_study/adapters/workspace_template/rust/.cargo/config.toml"
+)
+"""The workspace template's: crates.io replaced by the runtime's vendored crates."""
+VENDORED = ".cs/runtime/runners/rust/vendor"
 SOURCE = """pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {
     let seen = nums.len();
     let top = ;
@@ -71,6 +81,7 @@ SOURCE = """pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {
 FIXED = SOURCE.replace("    let top = ;\n", "")
 LINES = FIXED.splitlines()
 LEN = {"line": 1, "character": LINES[1].index("len") + 1}
+VEC = {"line": 0, "character": LINES[0].index("Vec") + 1}
 AFTER_NUMS_DOT = {"line": 1, "character": LINES[1].index("nums.") + len("nums.")}
 PRACTICE_FILE = "rust/practice/two_sum.rs"
 
@@ -127,6 +138,7 @@ class Played:
     root: Path
     pulled: Pulled
     published_unnecessary: list[str]
+    vec_hover: dict[str, Any]
     hover: dict[str, Any]
     definition: Any
     library: dict[str, Any]
@@ -173,6 +185,9 @@ def played(on_path: VersionPrinted, tmp_path_factory: pytest.TempPathFactory) ->
     (root / "rust").mkdir()
     (root / "rust" / "Cargo.toml").write_text(CARGO_TOML)
     (root / "rust" / "lib.rs").write_text(LIB_RS)
+    (root / "rust" / ".cargo").mkdir()
+    (root / "rust" / ".cargo" / "config.toml").write_text(CARGO_CONFIG.read_text())
+    (root / VENDORED).mkdir(parents=True)
     environment = make_environment(
         root,
         toolchains=FakeToolchains(stub_generators=STUBS),
@@ -206,9 +221,10 @@ def played(on_path: VersionPrinted, tmp_path_factory: pytest.TempPathFactory) ->
         exchange.published.clear()
         exchange.tell("textDocument/didSave", _of(document))
         unnecessary = published_unnecessary(exchange, document)
+        vec_hover = exchange.ask(request(6, "textDocument/hover", at(VEC)))
         hover = exchange.ask(request(2, "textDocument/hover", at(LEN)))
         definition = exchange.ask(request(3, "textDocument/definition", at(LEN)))
-        target = {"uri": _target(definition["result"])}
+        target = {"uri": _target(definition["result"]) or "file:///missing"}
         library = exchange.ask(request(4, "cstudy/libraryFile", target))
         completion = exchange.ask(request(5, "textDocument/completion", at(AFTER_NUMS_DOT)))
     items = completion["result"]
@@ -216,6 +232,7 @@ def played(on_path: VersionPrinted, tmp_path_factory: pytest.TempPathFactory) ->
         root,
         pulls,
         unnecessary,
+        vec_hover,
         hover,
         definition["result"],
         library,
@@ -224,8 +241,9 @@ def played(on_path: VersionPrinted, tmp_path_factory: pytest.TempPathFactory) ->
 
 
 def _target(result: Any) -> str:
-    first = result[0] if isinstance(result, list) else result
-    return first.get("uri") or first["targetUri"]
+    """The URI of the first location; empty for none, as an answer whose `Vec` did not resolve."""
+    first = (result[0] if result else {}) if isinstance(result, list) else (result or {})
+    return first.get("uri") or first.get("targetUri", "")
 
 
 def test_rust_analyzer_on_path_prints_a_version(on_path):
@@ -253,16 +271,28 @@ def test_cargo_check_builds_into_a_target_directory_of_its_own(played):
     assert (played.root / "rust" / "target" / "rust-analyzer").is_dir()
 
 
-def test_len_has_documentation_the_page_may_insert(played):
-    assert played.hover["result"]["contents"]["kind"] == "cstudy-html"
+def test_vec_has_the_standard_librarys_documentation(played):
+    contents = (played.vec_hover["result"] or {}).get("contents", {})
+    assert "A contiguous growable array type" in contents.get("value", "")
+
+
+def test_len_has_the_standard_librarys_documentation_the_page_may_insert(played):
+    contents = (played.hover["result"] or {}).get("contents", {})
+    assert (
+        contents.get("kind"),
+        "Returns the number of elements in the vector" in contents.get("value", ""),
+    ) == (
+        "cstudy-html",
+        True,
+    )
 
 
 def test_the_definition_of_vecs_len_is_the_standard_librarys_source(played):
-    assert _target(played.definition).endswith("/library/alloc/src/vec/mod.rs")
+    assert _target(played.definition).endswith("/alloc/src/vec/mod.rs")
 
 
 def test_the_standard_librarys_source_is_read_through_the_broker(played):
-    assert "pub const fn len(&self)" in played.library["result"]["text"]
+    assert "pub const fn len(&self)" in played.library.get("result", {}).get("text", "")
 
 
 def test_completion_after_nums_dot_lists_len(played):
