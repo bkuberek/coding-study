@@ -95,16 +95,22 @@ def _steps_case(case: Document, flows: Flows) -> HttpCaseInput:
 
 
 def _parallel_case(case: Document) -> HttpCaseInput:
-    """Each request of the burst with its index, from 0, in place of each `{i}`."""
+    """Each request of the burst with its index, from 0, in place of each `{i}`; with several
+    requests written, the burst takes them in turn."""
     parallel: Document = case[_PARALLEL_FIELD]
     mocks: Mapping[str, str] = case.get(_MOCKS_FIELD, {})
     arguments: dict[str, Any] = {_PARALLEL_FIELD: dict(parallel)}
     if mocks:
         arguments[_MOCKS_FIELD] = dict(mocks)
-    template: Document = parallel["request"]
+    templates: Sequence[Document] = (
+        (parallel["request"],) if "request" in parallel else parallel["requests"]
+    )
     statuses: Mapping[str, int] = case["expected_statuses"]
     burst = ParallelBurst(
-        requests=tuple(_request(_indexed(template, index)) for index in range(parallel["count"])),
+        requests=tuple(
+            _request(_indexed(templates[index % len(templates)], index))
+            for index in range(parallel["count"])
+        ),
         statuses={_status(written): count for written, count in statuses.items()},
         after=_after(case["after"]) if "after" in case else None,
         repeat=case.get("repeat", 1),

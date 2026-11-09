@@ -92,11 +92,19 @@
           "description": "A parallel case: count requests sent at once, behind a barrier; {i} in the request's strings is each request's index, from 0 (docs/specs/service-projects.md#parallel-cases)",
           "type": "object",
           "additionalProperties": false,
-          "required": ["count", "request"],
+          "required": ["count"],
           "properties": {
             "count": { "type": "integer", "minimum": 2, "maximum": 64 },
-            "request": { "$ref": "#/$defs/httpRequest" }
-          }
+            "request": { "$ref": "#/$defs/httpRequest" },
+            "requests": {
+              "description": "Requests the burst takes in turn: request i is requests[i % length]",
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 8,
+              "items": { "$ref": "#/$defs/httpRequest" }
+            }
+          },
+          "oneOf": [{ "required": ["request"] }, { "required": ["requests"] }]
         },
         "expected_statuses": {
           "description": "How many answers of a parallel case come back with each status, or class of them such as \"4xx\"; the verdict counts statuses, never their order",

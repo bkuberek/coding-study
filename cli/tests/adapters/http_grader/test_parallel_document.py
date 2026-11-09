@@ -51,6 +51,20 @@ def test_the_index_fills_the_path_query_and_headers_too():
     )
 
 
+def test_several_requests_take_turns_in_the_burst():
+    first = {"method": "POST", "path": "/a", "json": {"order": "a{i}"}}
+    second = {"method": "POST", "path": "/b", "json": {"order": "b{i}"}}
+    case = document(parallel={"count": 3, "requests": [first, second]})
+
+    sent = [(request.path, request.body) for request in burst_of(case).requests]
+
+    assert sent == [
+        ("/a", b'{"order": "a0"}'),
+        ("/b", b'{"order": "b1"}'),
+        ("/a", b'{"order": "a2"}'),
+    ]
+
+
 def test_a_status_is_a_number_and_a_class_stays_a_class():
     case = document(expected_statuses={"201": 1, "4xx": 2})
 

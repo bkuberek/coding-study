@@ -52,6 +52,12 @@ def test_a_parallel_case_with_every_field_is_valid(validator: SchemaValidator):
     assert violations(validator, full_case()) == []
 
 
+def test_a_burst_may_take_several_requests_in_turn(validator: SchemaValidator):
+    parallel = {"count": 4, "requests": [RESERVE, RESERVE | {"path": "/other"}]}
+
+    assert violations(validator, with_fields(parallel=parallel)) == []
+
+
 def test_the_smallest_parallel_case_is_valid(validator: SchemaValidator):
     case = {
         "id": "h1",
@@ -74,6 +80,15 @@ def test_the_smallest_parallel_case_is_valid(validator: SchemaValidator):
         ("more than 64 requests", with_fields(parallel={"count": 65, "request": RESERVE})),
         ("no count", with_fields(parallel={"request": RESERVE})),
         ("no request", with_fields(parallel={"count": 2})),
+        (
+            "a request and requests",
+            with_fields(parallel={"count": 2, "request": RESERVE, "requests": [RESERVE, RESERVE]}),
+        ),
+        ("one request to take turns", with_fields(parallel={"count": 2, "requests": [RESERVE]})),
+        (
+            "more than 8 requests to take turns",
+            with_fields(parallel={"count": 9, "requests": [RESERVE] * 9}),
+        ),
         (
             "an origin's url",
             with_fields(

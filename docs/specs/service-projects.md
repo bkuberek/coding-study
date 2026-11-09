@@ -733,7 +733,7 @@ Built after P10 and P11 (R11), in the grader's code: `ParallelBurst` in `domain/
 
 | Field | Rule |
 |-------|------|
-| `parallel` | `count`, 2 to 64 as for stress workers, and a `request` shaped as a single request's, sent to your app. Each of its strings has `{i}` replaced by the request's index, from 0, in the path, query values, header values and `json` strings |
+| `parallel` | `count`, 2 to 64 as for stress workers, and a `request` shaped as a single request's, sent to your app, or `requests`, 2 to 8 of them that the burst takes in turn: request `i` is `requests[i % length]`, which is how two orders take the same rows in opposite orders. Each string has `{i}` replaced by the request's index, from 0, in the path, query values, header values and `json` strings |
 | `expected_statuses` | How many answers come back with each status, or class such as `"4xx"`; a status counts toward itself before its class. The counts add up to `count` (S23). The verdict counts statuses, never their order |
 | `after` | Optional: one request with its `expected`, sent once every answer is in, to judge the state they left. It is sent even when the counts are wrong, since that state explains them |
 | `before` | Optional, as a single request's: sent in order first, each must answer 2xx |
