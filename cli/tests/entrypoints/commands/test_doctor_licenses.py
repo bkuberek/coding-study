@@ -3,6 +3,7 @@ Kotlin revisited): it never accepts one for you. `--accept-license <key>` accept
 at a terminal, `--fix` shows the license's name and link and asks, and elsewhere, as in the Health
 view's Fix, it declines."""
 
+import re
 from collections.abc import Callable
 
 import pytest
@@ -22,6 +23,8 @@ from coding_study.entrypoints.shared import ExitCode
 from tests.helpers import mark_workspace
 
 runner = CliRunner()
+ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
+"""Rich styles the help, its option names included, when the environment forces a terminal."""
 LICENSE = "JetBrains Free Plugin License Agreement 1.0"
 LICENSE_URL = "https://github.com/Kotlin/kotlin-lsp/blob/main/kotlin-vscode/LICENSE.txt"
 
@@ -113,4 +116,4 @@ def test_accepting_a_license_without_fix_is_a_usage_error(answers):
 
 def test_the_help_names_the_option():
     output = runner.invoke(cli.app, ["doctor", "--help"]).output
-    assert "--accept-license" in output
+    assert "--accept-license" in ANSI_ESCAPE.sub("", output)
