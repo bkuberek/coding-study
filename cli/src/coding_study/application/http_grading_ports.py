@@ -6,7 +6,7 @@ Startup runs on the sandbox's clock, so no time limit or hang guard of a case co
 holds for each restart here too: a restart returns once the app answers its health path again.
 """
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -97,6 +97,14 @@ class AppClient(Protocol):
     def send(self, request: HttpRequest, limit_ms: int) -> HttpResponse | ExchangeFailed:
         """The whole exchange, connecting through the last byte of the body, within `limit_ms`,
         redirects followed included."""
+        ...
+
+    def send_together(
+        self, requests: Sequence[HttpRequest], limit_ms: int
+    ) -> tuple[HttpResponse | ExchangeFailed, ...]:
+        """Every request at once, each on a connection of its own and within `limit_ms`, released
+        together so that they reach the app as close together as this machine allows. The answers
+        come back in the order of `requests`."""
         ...
 
     def clear_cookies(self) -> None:

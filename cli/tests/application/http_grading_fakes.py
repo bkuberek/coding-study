@@ -1,6 +1,7 @@
 """A ready stack and its clients, in memory, for the HTTP grader's flow. Each step is written to one
 journal, so a test can say in what order they came."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -72,6 +73,9 @@ class FakeApp:
     limits: list[int] = field(default_factory=list[int])
     sent: list[HttpRequest] = field(default_factory=list[HttpRequest])
     cookie_clears: int = 0
+    bursts: list[tuple[Sent, ...]] = field(default_factory=list[tuple[Sent, ...]])
+    """The answers to each burst of requests sent at once, in turn; once they run out, each
+    request is answered by its target."""
 
     def send(self, request: HttpRequest, limit_ms: int) -> Sent:
         where = f"{request.origin or ''}{request.target}"
@@ -79,6 +83,14 @@ class FakeApp:
         self.limits.append(limit_ms)
         self.sent.append(request)
         return self.answers.get(where, ANSWERED)
+
+    def send_together(self, requests: Sequence[HttpRequest], limit_ms: int) -> tuple[Sent, ...]:
+        self.journal.append(f"send {len(requests)} at once")
+        self.limits.append(limit_ms)
+        self.sent.extend(requests)
+        if self.bursts:
+            return self.bursts.pop(0)
+        return tuple(self.answers.get(request.target, ANSWERED) for request in requests)
 
     def clear_cookies(self) -> None:
         self.cookie_clears += 1

@@ -18,7 +18,7 @@
   },
   "$defs": {
     "case": {
-      "description": "Exactly one of input (function kind), ops with args (class kinds), generate or stress (concurrent problems), or request or steps (service projects)",
+      "description": "Exactly one of input (function kind), ops with args (class kinds), generate or stress (concurrent problems), or request, steps or parallel (service projects)",
       "type": "object",
       "additionalProperties": false,
       "required": ["id"],
@@ -88,6 +88,39 @@
           "minItems": 1,
           "items": { "$ref": "#/$defs/httpStep" }
         },
+        "parallel": {
+          "description": "A parallel case: count requests sent at once, behind a barrier; {i} in the request's strings is each request's index, from 0 (docs/specs/service-projects.md#parallel-cases)",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["count", "request"],
+          "properties": {
+            "count": { "type": "integer", "minimum": 2, "maximum": 64 },
+            "request": { "$ref": "#/$defs/httpRequest" }
+          }
+        },
+        "expected_statuses": {
+          "description": "How many answers of a parallel case come back with each status, or class of them such as \"4xx\"; the verdict counts statuses, never their order",
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "pattern": "^[1-5]([0-9][0-9]|xx)$" },
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        },
+        "after": {
+          "description": "Sent once every answer of a parallel case is in, to judge the state they left",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["request", "expected"],
+          "properties": {
+            "request": { "$ref": "#/$defs/httpRequest" },
+            "expected": { "$ref": "#/$defs/httpExpected" }
+          }
+        },
+        "repeat": {
+          "description": "How many times a parallel case runs, each time from a reset (default 1)",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
         "comparator": {
           "description": "Overrides the problem's comparator for the response body",
           "type": "object",
@@ -141,13 +174,16 @@
         { "required": ["generate"] },
         { "required": ["stress"] },
         { "required": ["request"] },
-        { "required": ["steps"] }
+        { "required": ["steps"] },
+        { "required": ["parallel"] }
       ],
       "dependentRequired": {
         "ops": ["args"],
         "args": ["ops"],
-        "before": ["request"],
-        "cleanup": ["steps"]
+        "cleanup": ["steps"],
+        "expected_statuses": ["parallel"],
+        "after": ["parallel"],
+        "repeat": ["parallel"]
       },
       "if": { "anyOf": [{ "required": ["generate"] }, { "required": ["stress"] }] },
       "then": {
@@ -163,6 +199,13 @@
           "required": ["level"],
           "not": { "required": ["expected"] }
         },
+        "parallel": {
+          "required": ["expected_statuses", "level"],
+          "not": { "required": ["expected"] }
+        },
+        "before": {
+          "anyOf": [{ "required": ["request"] }, { "required": ["parallel"] }]
+        },
         "mocks": { "$ref": "#/$defs/anHttpCase" },
         "comparator": { "$ref": "#/$defs/anHttpCase" },
         "log": { "$ref": "#/$defs/anHttpCase" },
@@ -171,7 +214,7 @@
       }
     },
     "anHttpCase": {
-      "anyOf": [{ "required": ["request"] }, { "required": ["steps"] }]
+      "anyOf": [{ "required": ["request"] }, { "required": ["steps"] }, { "required": ["parallel"] }]
     },
     "valueName": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
     "httpStep": {

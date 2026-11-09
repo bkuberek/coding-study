@@ -681,7 +681,7 @@ The contract between the stack and the grader's multi-step cases (P11). Some ser
 
 ## Databases
 
-Built at P10, except [parallel cases](#parallel-cases) and [contract tables](#contract-tables).
+Built at P10, and [parallel cases](#parallel-cases) after it, except their D7. [Contract tables](#contract-tables) are not built.
 
 The database and the migration tool are both defined per project, as part of problem design, and cstudy requires neither. A problem picks SQLite or Postgres according to what it teaches, and whichever migration tool suits it. The core has no knowledge of any tool: there is no tool-specific field, only `bootstrap`. Seed data arrives through migrations, and your service reads the database live.
 
@@ -718,7 +718,7 @@ Data resets per run. A problem that needs a reset between cases declares `comman
 
 ### Parallel cases
 
-Planned. P10 built the backing services a parallel case needs, and not the case type: it lives in the grader's code, `domain/http_case.py`, `domain/http_grading.py` and `adapters/http_grader/`, which P11 changed for multi-step cases, so it builds on them. A case type for N requests against limited capacity. It gives language-neutral concurrency grading, which is what SQLite cannot show, since a row lock and a lost update need a database that serves writers at once.
+Built after P10 and P11 (R11), in the grader's code: `ParallelBurst` in `domain/http_case.py`, the count in `domain/http_parallel.py`, the sending in `application/http_grading_parallel.py`, and `HttpAppClient.send_together` in `adapters/http_grader/clients.py`. Its D7 and the summary line are planned. A case type for N requests against limited capacity. It gives language-neutral concurrency grading, which is what SQLite cannot show, since a row lock and a lost update need a database that serves writers at once.
 
 ```json
 {"id": "h21", "level": 3, "fresh": true, "repeat": 3,
@@ -731,7 +731,18 @@ Planned. P10 built the backing services a parallel case needs, and not the case 
            "expected": {"status": 200, "body": [{"product": "desk_pass", "available": 0}]}}}
 ```
 
-`count` is 2 to 64, as for stress workers. The requests start together behind a barrier, `{i}` is the request's index, and `repeat` runs the whole case again, each time from a reset. The verdict counts statuses, never order. A pass finds no race and proves none, so the summary adds a line as for stress cases ([cli](cli.md#cstudy-submit)). A problem with parallel cases has at least one broken overlay that they catch (D7).
+| Field | Rule |
+|-------|------|
+| `parallel` | `count`, 2 to 64 as for stress workers, and a `request` shaped as a single request's, sent to your app. Each of its strings has `{i}` replaced by the request's index, from 0, in the path, query values, header values and `json` strings |
+| `expected_statuses` | How many answers come back with each status, or class such as `"4xx"`; a status counts toward itself before its class. The counts add up to `count` (S23). The verdict counts statuses, never their order |
+| `after` | Optional: one request with its `expected`, sent once every answer is in, to judge the state they left. It is sent even when the counts are wrong, since that state explains them |
+| `before` | Optional, as a single request's: sent in order first, each must answer 2xx |
+| `repeat` | 1 to 10, default 1: the whole case runs again after each run that passed, each from a reset, so it needs `fresh` (S23). The first run that fails is the verdict and names itself: `run 2 of 3: ...` |
+| Sending | A thread and a connection per request, held at a barrier until every thread is ready, so no request waits for another to be sent |
+| Limit | The case's limit covers `before`, the burst and `after`. The burst spends what its slowest request took, since they run side by side, and a request with no whole answer ends the case as a single request's would |
+| Report | `actual` holds how many answered each status, `{"statuses": {"201": 5, "409": 15}}`, and the `after` answer. A failure gives both counts in full: `20 requests at once: expected 5 to answer 201 and 15 to answer 409; 8 answered 201 and 12 answered 409` |
+
+`mocks`, `log`, `comparator` and `app_output` work as for a single request, judged after the last answer. A pass finds no race and proves none: planned, the summary adds a line as for stress cases ([cli](cli.md#cstudy-submit)), and a problem with parallel cases has at least one broken overlay that they catch (D7). Until D7 is built, a problem names the check-then-update solution its parallel cases fail under `### Pitfalls and edge cases`. Measured on loopback with a stand-in app that waits 50 ms between reading a stock and writing it back: 10 requests behind the barrier oversold on every run, and the same app holding a lock passed every run.
 
 ## HTTP grading
 
@@ -739,7 +750,7 @@ One piece of core code covers every language, with no per-language runner work. 
 
 ### The code
 
-Step 6 of the [graded run](#graded-run), as a use case that is handed a ready stack: `run_http_grading` in `application/http_grading.py`, with `domain/http_case.py`, `domain/http_grading.py`, `domain/http_steps.py` and `adapters/http_grader/`; `application/http_grading_steps.py` sends a case's steps. It returns a `Judgement`, so levels, submissions and events are today's. `application/service_grading.py` brings its stack up and `application/graded_stack.py` adapts that stack.
+Step 6 of the [graded run](#graded-run), as a use case that is handed a ready stack: `run_http_grading` in `application/http_grading.py`, with `domain/http_case.py`, `domain/http_grading.py`, `domain/http_steps.py`, `domain/http_parallel.py` and `adapters/http_grader/`; `application/http_grading_steps.py` sends a case's steps and `application/http_grading_parallel.py` a parallel case's burst. It returns a `Judgement`, so levels, submissions and events are today's. `application/service_grading.py` brings its stack up and `application/graded_stack.py` adapts that stack.
 
 The grader asks a stack for little, through `GradedStack` in `application/http_grading_ports.py`:
 
@@ -1116,7 +1127,7 @@ If a terminal holds the dev stack, the page shows that and does not start a seco
 | S20 (new) | Every mock config valid against `schemas/mock.schema.json`, as the problem loads; a config lies in `mocks/`; `body_file` stays inside `mocks/`, exists and is text; every scenario's `delay_ms` and `Retry-After` are at most 3 s, and `Retry-After` is whole seconds; an `upstream` names a service of the compose file; `room-vendor.API.md` and its starter copy at `vendors/room-vendor/API.md` are byte-identical and list every visible scenario and no hidden one |
 | S21 (new) | Nothing in the compose file reaches past the sandbox, and a stack holds the file to it before it starts. The file holds only `services`, at least one, and their `volumes`. A service sets only `image`, `command`, `entrypoint`, `environment`, `healthcheck`, `mem_limit`, `pids_limit`, `volumes`, `tmpfs`, `user`, `working_dir`, `read_only`, `depends_on`, `stop_grace_period`, `stop_signal`, `shm_size` and `init`, so `privileged`, `cap_add`, `network_mode`, `pid`, `ipc`, `devices`, `ports`, `networks`, `env_file`, `extends`, hooks, `build` and anything else are refused, including what compose adds later. Its image is pinned by digest; `mem_limit` is a size and `pids_limit` a positive number, both required; its `healthcheck` has a test and is not disabled; it waits only for the file's own services; its name is lowercase letters, digits and `-`, neither reserved nor a mock server's. A mount is a bind inside the problem, never the Docker socket, a named volume the file declares, or a tmpfs; no anonymous volume. A volume takes no settings, no `external`, driver, options, name or labels, and is not named `data` or `cache` |
 | S22 (new) | `requires` agrees with the compose file, the lock file and `commands`: `services` names the images' repositories, `lock` exists and `images_mb` has a row per image. Static only: a stack does not refuse a list that disagrees |
-| S23 (new) | Every HTTP case: levels numbered from 1, a level of its own, and every level with a case; `mocks` names known scenarios, visible ones only in a visible case; `log` names known routes; `fresh` with data needs `commands.reset`; a comparator that can judge a body; waits within the case's hang guard. In a [multi-step case](#multi-step-cases), each `{{name}}` was captured before it is used, each `{{` opens a name, and each `url` written out names your app's origin or a `grader_reach` entry's. Planned with their cases: `count` from 2 to 64 |
+| S23 (new) | Every HTTP case: levels numbered from 1, a level of its own, and every level with a case; `mocks` names known scenarios, visible ones only in a visible case; `log` names known routes; `fresh` with data needs `commands.reset`; a comparator that can judge a body; waits within the case's hang guard. In a [multi-step case](#multi-step-cases), each `{{name}}` was captured before it is used, each `{{` opens a name, and each `url` written out names your app's origin or a `grader_reach` entry's. In a [parallel case](#parallel-cases), `expected_statuses` adds up to `count`, and `repeat` comes with `fresh`; the schema holds `count` from 2 to 64 |
 
 ### Dynamic
 
@@ -1125,7 +1136,7 @@ If a terminal holds the dev stack, the page shows that and does not start a seco
 | D1 (changed) | The starter: `install` and `bootstrap` succeed, `run` answers the health path, a graded run of level 1 reports a result for every case (cases may fail), `test` runs without crashing: it may fail, and it may not time out or fail to start |
 | D3 (changed) | The reference passes every HTTP case through the [graded run](#graded-run), as the starter with its overlay |
 | D9 (changed) | The reference: `commands.test` exits 0, and the visible cases pass. No generated test files exist |
-| D7 (extended) | Planned with [parallel cases](#parallel-cases): a broken overlay passes every sequential case and fails each parallel case in its `caught_by` |
+| D7 (extended) | Planned; [parallel cases](#parallel-cases) are built without it: a broken overlay passes every sequential case and fails each parallel case in its `caught_by` |
 | D11 (new) | `install` leaves the lock's digest unchanged; `bootstrap` succeeds from empty and twice in a row; three runs of the reference give the same verdicts; the slowest case stays within 50% of its hang guard; the install is within 25% of `requires.sizes.install_mb`; a probe on `sandbox` reaches no public, LAN or metadata address, and not your machine at the gateway of any of the stack's networks, on ports 22, 80 and 443, where a refusal counts as reaching it, and holds no IPv6 address but `::1` and `fe80::/10`. Outside NFR-3's 30 s per problem, as D6, D7 and D10 are |
 
 Without a usable engine, `cstudy verify` skips a service project with the reason, as a JDK out of range does, and `--require-ready` counts that as not passed. `--static` asks the engine nothing.
@@ -1141,7 +1152,7 @@ The [ready rules](authoring.md#ready-criteria) can be met with these changes:
 | A starter with `README.md` | Kept, and it also names how to run the app and which variables it reads |
 | D9 passes | Its meaning changes, as above |
 | S5: examples per level, generated `Methods to add` | Examples render a request and a response. A level names the endpoints to add |
-| New | D11 passes. A data-driven problem also has a baseline, its `grade_setup` runs, and a from-empty `bootstrap` passes. A problem with parallel cases has a broken overlay caught |
+| New | D11 passes. A data-driven problem also has a baseline, its `grade_setup` runs, and a from-empty `bootstrap` passes. A problem with parallel cases has a broken overlay caught, once D7 is built |
 
 ## A small example
 
