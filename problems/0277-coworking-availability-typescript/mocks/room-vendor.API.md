@@ -48,4 +48,4 @@ These are what you can try for yourself. They are not all it can do.
 | `rate_limited` | Every request answers 429 with `Retry-After: 1` |
 | `slow` | Every request answers as usual, after 3 s |
 
-Run your app against one: `cstudy dev --scenario room-vendor=outage`. In a test, `setScenario` in `tests/vendorScenario.ts` does the same.
+Run your app against one: `cstudy dev --scenario room-vendor=outage`. In a test, the helper in your project's `tests/` does the same.

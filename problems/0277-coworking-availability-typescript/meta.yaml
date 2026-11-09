@@ -42,5 +42,5 @@ project:
     sizes: {install_mb: 27, images_mb: {app: 81, mocks: 43}, memory_mb: 150}
 approaches:
   - {id: reference, name: One client per vendor behind one shape of answer, role: optimal, time: "per request", space: "per request"}
-related: [vendor-retry-client-typescript]
+related: [coworking-availability-python, vendor-retry-client-typescript]
 estimate_minutes: 150

@@ -187,7 +187,7 @@ The pilots are written with the next project problems.
 
 ## Phase 12: Service projects
 
-**Status.** In progress: the tooling is built through P7, measured on macOS with Docker Desktop and on Linux with Docker Engine, and `0277` is its first problem. It runs after or around the releases of Phase 11, unless the owner reorders it.
+**Status.** In progress: the tooling is built through P8, measured on macOS with Docker Desktop and on Linux with Docker Engine, and `0277` is its first problem, with `0278` its Python version. It runs after or around the releases of Phase 11, unless the owner reorders it.
 
 **Scope.** [ADR 0019](decisions/0019-service-projects.md) and [its spec](specs/service-projects.md): project problems that always run in a Docker sandbox, with their own dependencies, standard lifecycle commands, one Python mock server, optional backing services, grading over HTTP, and a list of what each problem depends on. Existing problems stay native and need no Docker. One step per ADR phase, each with its docs and a website message at release: P1 the spike; P2 the environment allowlist, for all problems; P3 the sandbox runtime; P4 lifecycle commands, TypeScript and Python templates, install and lock rules; P5 the mock server and `cstudy dev`; P6 the HTTP grader with `verify` and CI; P7 the first problem in TypeScript; P8 its Python version; P9 code intelligence in the container and the Web UI; P10 data-driven problems; P11 mock server extensions and multi-step cases, with project-size security and AI problems; P12 Kotlin and Java; P13 Go; P14 Rust (maybe, decided when reached).
 
@@ -197,7 +197,7 @@ The pilots are written with the next project problems.
 - [x] P2: the environment allowlist, for every problem ([Process environment](specs/runners.md#process-environment)).
 - [x] P3 to P6: tooling: the sandbox, the lifecycle commands, the mock server, `cstudy dev` and the HTTP grader, with `verify` and a CI job on a real engine. Planned with P9: the other flags of `cstudy dev`, and `cstudy test --events`.
 - [x] P7: the first problem in TypeScript, `0277-coworking-availability-typescript`.
-- [ ] P8: the first problem in Python.
+- [x] P8: the first problem in Python, `0278-coworking-availability-python`, graded by the same cases and mock servers as `0277`. The catalog now has 294 entries.
 - [ ] P9: code intelligence and Web UI.
 - [ ] P10: data-driven problems.
 - [ ] P11: mock server extensions, multi-step cases, project-size security and AI problems.
@@ -214,7 +214,7 @@ The pilots are written with the next project problems.
 - [x] Step 1: labels, backfill and filters: the vocabularies and schemas, S24, the backfill of the 270 entries, `--domain`, `--role` and `--scope` in `cstudy list` and `cstudy next`, and the web API parameters, with the Problems view's filters and Scope column.
 - [x] Step 2: the first wave of function-size problems: seven in Python and TypeScript, `0255` to `0261`, with the language rule that lets the security, identity and AI/LLM domains list a subset. The catalog then had 277 entries.
 - [x] TypeScript backend problems on today's engine: `0262` and `0263`, two small services to extend, then `0264` to `0271`, seven JavaScript traps on the debugging track and one asynchronous bug as a project on the virtual clock. The catalog then had 287 entries.
-- [x] Backend reliability on the same engine: `0272` to `0276`, five TypeScript projects on an idempotent at-least-once consumer, a transactional outbox, retries on the virtual clock, optimistic locking, and reviewing an AI extraction, where the model proposes, code validates and a person decides. The catalog now has 292 entries.
+- [x] Backend reliability on the same engine: `0272` to `0276`, five TypeScript projects on an idempotent at-least-once consumer, a transactional outbox, retries on the virtual clock, optimistic locking, and reviewing an AI extraction, where the model proposes, code validates and a person decides. The catalog then had 292 entries.
 - [ ] Step 3: later waves: project-size problems need Phase 12, and system-size ones need later design.
 
 ### Planned project problems
@@ -253,7 +253,8 @@ The owner accepted this list on 2026-11-08. Each is original and new; none repla
 
 Suggested order: PP1, then PP2 and PP3, then P10 with PP5, then P11 with PP11.
 
-- [ ] PP1 to PP4, on the mock servers.
+- [x] PP1: `0278-coworking-availability-python` (P8).
+- [ ] PP2 to PP4, on the mock servers.
 - [ ] PP5 to PP10, after P10.
 - [ ] PP11 to PP15, after P11.
 

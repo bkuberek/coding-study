@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0278"
+slug: coworking-availability-python
+title: Coworking Availability (Python)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [backend]
+job_roles: [backend, platform]
+scope: project
+languages: [python]
+summary: A coworking space sells hot desks it counts itself and meeting rooms from outside vendors. Build the one API that says what can be booked on a day, and that keeps answering when a vendor fails.
+levels:
+  - {level: 1, title: Desks by day}
+  - {level: 2, title: Rooms from the vendor}
+  - {level: 3, title: When the vendor fails}
+  - {level: 4, title: A second vendor}
+comparator: {type: exact}
+project:
+  grading: http
+  image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim@sha256:531f855bda2c73cd6ef67d56b733b357cea384185b3022bd09f05e002cd144ca
+  commands:
+    install: [uv, sync, --frozen, --no-build]
+    run: [.venv/bin/python, src/server.py]
+    test: [.venv/bin/python, -P, -m, pytest]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    ROOM_VENDOR_URL: http://room-vendor:8080
+    ANNEX_VENDOR_URL: http://annex-vendor:8080
+  install_env:
+    UV_CACHE_DIR: /cache/uv
+    UV_PYTHON_DOWNLOADS: never
+    UV_LINK_MODE: copy
+  mocks:
+    - {name: room-vendor, config: mocks/room-vendor.yaml}
+    - {name: annex-vendor, config: mocks/annex-vendor.yaml}
+  requires:
+    lock: uv.lock
+    sizes: {install_mb: 9, images_mb: {app: 67, mocks: 43}, memory_mb: 100}
+approaches:
+  - {id: reference, name: One client per vendor behind one shape of answer, role: optimal, time: "per request", space: "per request"}
+related: [coworking-availability-typescript, vendor-retry-client-typescript]
+estimate_minutes: 150

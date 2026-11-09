@@ -47,4 +47,4 @@ These are what you can try for yourself. They are not all it can do.
 | `maintenance` | Every request answers 503 |
 | `busy` | Every request answers 200 with the `BUSY` error, and `retry_after_ms` of 1000 |
 
-Run your app against one: `cstudy dev --scenario annex-vendor=maintenance`. In a test, `setScenario` in `tests/vendorScenario.ts` does the same.
+Run your app against one: `cstudy dev --scenario annex-vendor=maintenance`. In a test, the helper in your project's `tests/` does the same.
