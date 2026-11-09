@@ -5,4 +5,10 @@
 from coding_study.entrypoints.launcher import main
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        # CPython 3.12 and 3.13 exit by SIGINT under `-m` once a KeyboardInterrupt has passed
+        # through an `exec()`, as dataclasses use while modules import, even when it was caught.
+        # An `exec()` that ends normally clears that, so a cancelled child exits 130.
+        exec("", {})
