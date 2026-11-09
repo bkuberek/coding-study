@@ -1,13 +1,15 @@
 """`cstudy verify --static` on what a service project trusts beside its manifest: S20 on its mock
-configs, S21 and S22 on its compose file, and S23 on its HTTP cases
-(docs/specs/service-projects.md#static). Each issue comes back as where it is and what is wrong.
+configs, S21 and S22 on its compose file, the names in its manifest that only that file settles, and
+S23 on its HTTP cases (docs/specs/service-projects.md#static). Each issue comes back as where it is
+and what is wrong.
 
-A compose file belongs to a format `cstudy` does not own, so S21 lists what the core keeps for
-itself instead of describing the whole file.
+A compose file belongs to a format `cstudy` does not own, so S21 allows a short list of what a
+backing service may set, `BACKING_SERVICE_FIELDS`, and refuses the rest: a field that compose adds
+later is refused until someone looks at it. A stack holds a file to S21 before it starts.
 """
 
 import re
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import cast
 
@@ -30,7 +32,15 @@ from coding_study.domain.mock_configs import (
 from coding_study.domain.precedence import DEFAULT_HANG_GUARD_MS
 from coding_study.domain.problem import ComparatorSpec, Level
 from coding_study.domain.project import ProjectFiles, relative_path_issue
-from coding_study.domain.sandbox import RESERVED_SERVICES
+from coding_study.domain.sandbox import (
+    BACKING_SERVICE_FIELDS,
+    MOCK_PORT,
+    RESERVED_SERVICES,
+    RESERVED_VOLUMES,
+    backing_services_of,
+    volume_source,
+)
+from coding_study.domain.service_checks import THIS_MACHINE, url_host
 from coding_study.domain.service_project import ServiceMock, ServiceProject
 
 MOCKS_DIRECTORY = "mocks/"
@@ -39,20 +49,31 @@ MAX_WAIT_S = 3
 VENDOR_DOCUMENT = "vendors/{name}/API.md"
 _PINNED_IMAGE = re.compile(r"[^@\s]+@sha256:[0-9a-f]+")
 _REPOSITORY = re.compile(r"(?:.*/)?(?P<name>[^/:@]+)(?::[^@/]*)?(?:@.*)?$")
-_THE_CORES_FIELDS = (
-    "ports",
-    "networks",
-    "network_mode",
-    "restart",
-    "container_name",
-    "privileged",
-    "cap_add",
+_SERVICE_NAME = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+"""What the app reaches a service by, as a host name: lowercase letters, digits and `-`."""
+_MEMORY_LIMIT = re.compile(r"[1-9][0-9]*[bkmg]?")
+_THE_CORES_FIELDS = frozenset(
+    {
+        "ports",
+        "networks",
+        "network_mode",
+        "container_name",
+        "labels",
+        "logging",
+        "cap_drop",
+        "security_opt",
+    }
 )
+_ALLOWED_FIELDS = ", ".join(sorted(BACKING_SERVICE_FIELDS))
 _REQUIRED_FIELDS = ("mem_limit", "pids_limit", "healthcheck")
 _TOP_LEVEL_FIELDS = frozenset({"services", "volumes"})
+_MOUNT_TYPES = frozenset({"bind", "volume", "tmpfs"})
+_TMPFS = "tmpfs"
+_NO_CHECK = "NONE"
 _DOCKER_SOCKET = "docker.sock"
 _CURRENT_FOLDER = "./"
-_VOLUME_SEPARATOR = ":"
+_GRADER_REACH = "project.grader_reach"
+_NO_COMPOSE: Mapping[str, object] = {}
 
 type _Found = Iterator[tuple[str, str]]
 type _Document = Mapping[str, object]
@@ -125,83 +146,168 @@ def _names(text: str, name: str) -> bool:
     return re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", text) is not None
 
 
+@dataclass(frozen=True, slots=True)
+class _ComposeNames:
+    """What a service of the file may name: none of the mock servers, and only the file's own
+    services and volumes."""
+
+    mocks: frozenset[str]
+    services: frozenset[str]
+    volumes: frozenset[str]
+
+
 def compose_issues(service: ServiceProject, document: object) -> _Found:
-    """S21, and S22's part on the compose file. `document` is the parsed `project.services`."""
+    """S21: nothing in the problem's compose file reaches past the sandbox. `document` is the
+    parsed `project.services`."""
     if not isinstance(document, Mapping):
         yield "", "a compose file is a mapping with services"
         return
     compose = cast(_Document, document)
     for field in compose:
         if field not in _TOP_LEVEL_FIELDS:
-            yield str(field), "a compose file holds only services and their volumes"
-    yield from _external_volumes(compose)
-    services = cast(_Document, compose.get("services") or {})
-    mock_names = {mock.name for mock in service.mocks}
+            yield str(field), f"{field} is refused: a compose file holds services and volumes"
+    volumes = cast(_Document, compose.get("volumes") or {})
+    yield from _volumes(volumes)
+    services = backing_services_of(compose)
+    if not services:
+        yield "services", "a compose file names at least one service"
+    names = _ComposeNames(
+        frozenset(mock.name for mock in service.mocks), frozenset(services), frozenset(volumes)
+    )
     for name, found in services.items():
-        yield from _compose_service(name, cast(_Document, found), mock_names)
-    yield from _repositories(service, services)
+        yield from _compose_service(name, found, names)
 
 
-def _external_volumes(compose: _Document) -> _Found:
-    for name, volume in cast(_Document, compose.get("volumes") or {}).items():
+def _volumes(volumes: _Document) -> _Found:
+    """A problem's volume carries `cstudy`'s labels and nothing of its own: a driver or its options
+    can mount a path of this machine, a name can take another stack's, and an external volume
+    outlives what cstudy can remove."""
+    for name, volume in volumes.items():
+        where = f"volumes.{name}"
+        if name in RESERVED_VOLUMES:
+            yield where, f'"{name}" is reserved: it is a volume of the stack\'s own'
         if isinstance(volume, Mapping) and cast(_Document, volume).get("external"):
-            yield f"volumes.{name}", "an external volume outlives what cstudy can remove"
+            yield where, "an external volume outlives what cstudy can remove"
+        elif volume:
+            yield where, "a volume takes no settings: cstudy names and labels it"
 
 
-def _compose_service(name: str, service: _Document, mock_names: set[str]) -> _Found:
+def _compose_service(name: str, service: _Document, names: _ComposeNames) -> _Found:
     where = f"services.{name}"
     if name in RESERVED_SERVICES:
         yield where, f'"{name}" is a reserved name'
-    if name in mock_names:
+    elif not _SERVICE_NAME.fullmatch(name):
+        yield where, f'"{name}" is no name the app can reach: lowercase letters, digits and -'
+    if name in names.mocks:
         yield where, f'"{name}" is the name of a mock server'
-    if "build" in service:
-        yield f"{where}.build", "a build is refused: nothing is built, so name an image"
+    yield from _fields(where, service)
     if not _PINNED_IMAGE.fullmatch(str(service.get("image", ""))):
         yield f"{where}.image", f'"{service.get("image")}" is not pinned by digest'
-    for field in _THE_CORES_FIELDS:
-        if field in service:
-            yield f"{where}.{field}", f"{field} is cstudy's to set"
     for field in _REQUIRED_FIELDS:
         if field not in service:
             yield f"{where}.{field}", f"{field} is required"
+    yield from _limits(where, service)
     for volume in cast(Sequence[object], service.get("volumes") or ()):
-        yield from _volume(where, volume)
+        yield from _volume(where, volume, names.volumes)
+    for other in _waits_for(service):
+        if other not in names.services:
+            yield f"{where}.depends_on", f"{other} is not a backing service of this file"
 
 
-def _volume(where: str, volume: object) -> _Found:
+def _fields(where: str, service: _Document) -> _Found:
+    for field in service:
+        if field in _THE_CORES_FIELDS:
+            yield f"{where}.{field}", f"{field} is cstudy's to set"
+        elif field == "build":
+            yield f"{where}.build", "a build is refused: nothing is built, so name an image"
+        elif field not in BACKING_SERVICE_FIELDS:
+            yield f"{where}.{field}", f"{field} is not allowed: a service sets {_ALLOWED_FIELDS}"
+
+
+def _limits(where: str, service: _Document) -> _Found:
+    pids = service.get("pids_limit")
+    if "pids_limit" in service and not (type(pids) is int and pids > 0):
+        yield f"{where}.pids_limit", f"pids_limit is a positive number, not {pids}"
+    memory = service.get("mem_limit")
+    if "mem_limit" in service and not _MEMORY_LIMIT.fullmatch(str(memory)):
+        yield f"{where}.mem_limit", f'mem_limit is a size such as "256m", not {memory}'
+    check = service.get("healthcheck")
+    if "healthcheck" in service and not _checks_something(check):
+        yield f"{where}.healthcheck", "a healthcheck with a test is what says the service is ready"
+
+
+def _checks_something(check: object) -> bool:
+    if not isinstance(check, Mapping):
+        return False
+    found = cast(_Document, check)
+    test = found.get("test")
+    words: list[object] = cast(list[object], test) if isinstance(test, list) else [test]
+    return bool(words) and words[0] not in (None, "", _NO_CHECK) and not found.get("disable")
+
+
+def _volume(where: str, volume: object, declared: frozenset[str]) -> _Found:
     location = f"{where}.volumes"
-    source, is_bind = _volume_source(volume)
+    long_form = cast(_Document, volume) if isinstance(volume, Mapping) else None
+    kind = long_form.get("type") if long_form is not None else None
+    if long_form is not None and kind not in _MOUNT_TYPES:
+        yield location, f"a mount of type {kind} is refused: bind, volume or tmpfs"
+        return
+    if kind == _TMPFS:
+        return
+    source, is_bind = volume_source(cast(object, volume))
     if source is None:
         yield location, "an anonymous volume carries no label, so use a named one"
     elif _DOCKER_SOCKET in source:
         yield location, "the Docker socket is never mounted"
     elif is_bind and relative_path_issue(source.removeprefix(_CURRENT_FOLDER)) is not None:
         yield location, f"the bind mount {source} is outside the problem"
+    elif not is_bind and source not in declared:
+        yield location, f"the volume {source} is not one the file declares under volumes"
 
 
-def _volume_source(volume: object) -> tuple[str | None, bool]:
-    """What a volume entry mounts, and whether that is a path on this machine."""
-    if isinstance(volume, Mapping):
-        entry = cast(_Document, volume)
-        source = entry.get("source")
-        return (str(source) if source is not None else None), entry.get("type") == "bind"
-    source, separator, _target = str(volume).partition(_VOLUME_SEPARATOR)
-    if not separator:
-        return None, False
-    return source, source.startswith((".", "/", "~"))
+def _waits_for(service: _Document) -> tuple[str, ...]:
+    found = service.get("depends_on")
+    if isinstance(found, Mapping | list):
+        return tuple(str(name) for name in cast(Iterable[object], found))
+    return () if found is None else (str(found),)
 
 
-def _repositories(service: ServiceProject, services: _Document) -> _Found:
+def compose_requires_issues(service: ServiceProject, document: object) -> _Found:
+    """S22's part on the compose file: `requires.services` names the images' repositories."""
+    if not isinstance(document, Mapping):
+        return
     named = {
         found["name"]
-        for entry in services.values()
-        if (found := _REPOSITORY.match(str(cast(_Document, entry).get("image", ""))))
+        for entry in backing_services_of(cast(_Document, document)).values()
+        if (found := _REPOSITORY.match(str(entry.get("image", ""))))
     }
     declared = set(service.requires.services)
     for name in sorted(named - declared):
         yield "project.requires.services", f"must name {name}, an image of the compose file"
     for name in sorted(declared - named):
         yield "project.requires.services", f"names {name}, which no image of the compose file is"
+
+
+def manifest_name_issues(service: ServiceProject, document: object) -> _Found:
+    """S19's rules on what `meta.yaml` names that only the compose file settles: a URL in `env`
+    names a mock server or a service of the file, and the grader reaches only those. `document` is
+    the parsed `project.services`, or None without one."""
+    compose = cast(_Document, document) if isinstance(document, Mapping) else _NO_COMPOSE
+    services = backing_services_of(compose)
+    mocks = {mock.name for mock in service.mocks}
+    if service.services is not None:
+        for name, value in service.env.items():
+            host = url_host(value)
+            if host is not None and host not in (*mocks, *services, *THIS_MACHINE):
+                yield f"project.env.{name}", f"{host} is neither a mock server nor a service"
+    for origin in service.grader_reach:
+        name, _, port = origin.rpartition(":")
+        if name in RESERVED_SERVICES:
+            yield _GRADER_REACH, f'"{name}" is reserved: the grader reaches your app at its URL'
+        elif name in mocks and port != str(MOCK_PORT):
+            yield _GRADER_REACH, f"the mock server {name} answers on port {MOCK_PORT}"
+        elif name not in mocks and name not in services:
+            yield _GRADER_REACH, f"{name} is neither a backing service nor a mock server"
 
 
 @dataclass(frozen=True, slots=True)

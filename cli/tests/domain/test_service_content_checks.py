@@ -9,7 +9,9 @@ from coding_study.domain.problem import ComparatorSpec, ComparatorType, Level
 from coding_study.domain.project import ProjectFile, ProjectFiles, ProjectTree
 from coding_study.domain.service_content_checks import (
     compose_issues,
+    compose_requires_issues,
     http_case_issues,
+    manifest_name_issues,
     mock_config_issues,
 )
 from coding_study.domain.service_project import (
@@ -247,9 +249,9 @@ def test_a_long_form_bind_mount_outside_the_problem_is_refused():
 
 
 def test_a_named_volume_and_a_bind_inside_the_problem_are_allowed():
-    document = compose(volumes=["data:/var/lib/data", "./seed:/seed:ro"])
+    document = compose(volumes=["pgdata:/var/lib/data", "./seed:/seed:ro"])
 
-    assert s21({**document, "volumes": {"data": None}}, PROJECT_WITH_POSTGRES) == []
+    assert s21({**document, "volumes": {"pgdata": None}}, PROJECT_WITH_POSTGRES) == []
 
 
 def test_an_anonymous_volume_is_refused():
@@ -266,21 +268,179 @@ def test_a_service_named_after_a_mock_server_is_refused():
     assert any("mock server" in message for message in found)
 
 
+def s22(document: object, project: ServiceProject) -> list[str]:
+    return messages(compose_requires_issues(project, document))
+
+
 def test_requires_services_must_name_the_images_repositories():
     project = service(services="c.yaml", requires=ServiceRequires(services=("redis",)))
 
-    assert any("postgres" in message for message in s21(compose(), project))
+    assert any("postgres" in message for message in s22(compose(), project))
 
 
 def test_a_repository_is_its_last_path_segment():
     project = service(services="c.yaml", requires=ServiceRequires(services=("localstack",)))
     document = compose(image=f"localstack/localstack:4.14.0{DIGEST}")
 
-    assert s21(document, project) == []
+    assert s22(document, project) == []
+
+
+def test_s21_alone_does_not_hold_the_requires_block_to_the_file():
+    project = service(services="c.yaml", requires=ServiceRequires(services=("redis",)))
+
+    assert s21(compose(), project) == []
 
 
 def test_a_compose_file_that_is_no_mapping_is_refused():
     assert any("mapping" in message for message in s21(["services"]))
+
+
+def test_a_compose_file_with_no_service_is_refused():
+    assert any("at least one service" in message for message in s21({"services": {}}))
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "pid",
+        "ipc",
+        "devices",
+        "volumes_from",
+        "userns_mode",
+        "env_file",
+        "extends",
+        "post_start",
+        "deploy",
+        "security_opt",
+        "labels",
+        "logging",
+        "cap_drop",
+        "profiles",
+        "extra_hosts",
+        "sysctls",
+    ],
+)
+def test_a_field_outside_what_a_backing_service_may_set_is_refused(field):
+    assert any(field in message for message in s21(compose(**{field: "x"})))
+
+
+@pytest.mark.parametrize("limit", [-1, 0, "many"])
+def test_a_pids_limit_that_is_no_limit_is_refused(limit):
+    assert any("pids_limit" in message for message in s21(compose(pids_limit=limit)))
+
+
+@pytest.mark.parametrize("limit", ["0", "lots", 0, "-1m"])
+def test_a_mem_limit_that_is_no_limit_is_refused(limit):
+    assert any("mem_limit" in message for message in s21(compose(mem_limit=limit)))
+
+
+@pytest.mark.parametrize("check", [{"disable": True}, {"test": ["NONE"]}, {"interval": "1s"}])
+def test_a_healthcheck_that_checks_nothing_is_refused(check):
+    assert any("healthcheck" in message for message in s21(compose(healthcheck=check)))
+
+
+@pytest.mark.parametrize("name", ["data", "cache"])
+def test_a_volume_named_after_the_stacks_own_is_refused(name):
+    document = {**compose(volumes=[f"{name}:/var/lib/data"]), "volumes": {name: None}}
+
+    assert any("reserved" in message for message in s21(document))
+
+
+@pytest.mark.parametrize(
+    "settings",
+    [
+        {"driver": "local"},
+        {"driver_opts": {"type": "none", "o": "bind", "device": "/"}},
+        {"name": "someone-elses"},
+        {"labels": {"cstudy.kind": "dev"}},
+    ],
+)
+def test_a_volume_with_settings_of_its_own_is_refused(settings):
+    document = {**compose(volumes=["pgdata:/var/lib/data"]), "volumes": {"pgdata": settings}}
+
+    assert any("pgdata" in where for where, _message in compose_issues(service(), document))
+
+
+def test_a_named_volume_the_file_does_not_declare_is_refused():
+    found = s21(compose(volumes=["elsewhere:/var/lib/data"]))
+
+    assert any("elsewhere" in message and "declare" in message for message in found)
+
+
+def test_a_long_form_named_volume_the_file_does_not_declare_is_refused():
+    volume = {"type": "volume", "source": "data", "target": "/var/lib/data"}
+
+    assert any("declare" in message for message in s21(compose(volumes=[volume])))
+
+
+@pytest.mark.parametrize("kind", ["npipe", "image", "cluster"])
+def test_a_mount_of_another_type_is_refused(kind):
+    volume = {"type": kind, "source": "x", "target": "/x"}
+
+    assert any(kind in message for message in s21(compose(volumes=[volume])))
+
+
+def test_a_tmpfs_mount_is_allowed():
+    volume = {"type": "tmpfs", "target": "/run/postgresql"}
+
+    assert s21(compose(volumes=[volume]), PROJECT_WITH_POSTGRES) == []
+
+
+def test_waiting_for_a_service_of_the_stacks_own_is_refused():
+    assert any("app" in message for message in s21(compose(depends_on=["app"])))
+
+
+def test_waiting_for_another_backing_service_is_allowed():
+    document = {"services": {"db": compose_service(), "cache": compose_service(depends_on=["db"])}}
+
+    assert s21(document) == []
+
+
+@pytest.mark.parametrize("name", ["Db", "my_db", "db.1", "-db"])
+def test_a_service_name_the_app_cannot_reach_by_is_refused(name):
+    assert any("name" in message for message in s21({"services": {name: compose_service()}}))
+
+
+def names_in(project: ServiceProject, document: object = None) -> list[str]:
+    return messages(manifest_name_issues(project, document))
+
+
+def test_a_url_in_env_must_name_a_service_of_the_file():
+    project = service(services="c.yaml", env={"PORT": "8000", "DATABASE_URL": "postgres://x@db2/a"})
+
+    assert any("db2" in message for message in names_in(project, compose()))
+
+
+def test_a_url_in_env_that_names_a_service_of_the_file_is_fine():
+    project = service(services="c.yaml", env={"PORT": "8000", "DATABASE_URL": "postgres://db/a"})
+
+    assert names_in(project, compose()) == []
+
+
+def reach(*origins: str, document: object = None) -> list[str]:
+    project = service(services="c.yaml" if document else None, grader_reach=origins)
+    return names_in(project, document)
+
+
+def test_the_grader_may_reach_a_service_of_the_file():
+    assert reach("db:5432", document=compose()) == []
+
+
+def test_the_grader_may_reach_a_mock_server_on_its_port():
+    assert reach("room-vendor:8080") == []
+
+
+def test_the_grader_reaches_a_mock_server_on_its_port_only():
+    assert any("8080" in message for message in reach("room-vendor:9000"))
+
+
+def test_the_grader_may_not_reach_what_is_neither_a_service_nor_a_mock_server():
+    assert any("idp" in message for message in reach("idp:8080", document=compose()))
+
+
+@pytest.mark.parametrize("origin", ["app:8000", "cstudy-mocks:9000", "cstudy-forward:8000"])
+def test_the_grader_reaches_none_of_the_stacks_own_containers_this_way(origin):
+    assert any("reserved" in message for message in reach(origin, document=compose()))
 
 
 def http_case(

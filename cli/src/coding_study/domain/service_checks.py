@@ -42,7 +42,8 @@ TYPESCRIPT_BELOW = 7
 """The broker needs `tsserver.js`, which a 7 may lack: unchecked, so held back."""
 _DIGEST = re.compile(r"[^@\s]+@sha256:[0-9a-f]+")
 _URL = re.compile(r"^[a-z][a-z0-9+.-]*://(?:[^@/]*@)?(?P<host>[^:/]+)(?::(?P<port>\d+))?")
-_THIS_MACHINE = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "::1", "host.docker.internal"})
+THIS_MACHINE = frozenset({"localhost", "127.0.0.1", "0.0.0.0", "::1", "host.docker.internal"})
+"""Hosts that name your machine, which the sandbox cannot reach."""
 _VERSION_NUMBER = re.compile(r"\d+")
 _PYTHON_SUFFIX = ".py"
 
@@ -133,13 +134,19 @@ def _environment(service: ServiceProject) -> _Found:
         yield from _url(name, value, mocks, service.services is not None)
 
 
+def url_host(value: str) -> str | None:
+    """The host a URL in `project.env` names; None for a value that is no URL."""
+    found = _URL.match(value)
+    return found["host"] if found is not None else None
+
+
 def _url(name: str, value: str, mocks: set[str], has_services: bool) -> _Found:
     found = _URL.match(value)
     if found is None:
         return
     host, port = found["host"], found["port"]
     where = f"project.env.{name}"
-    if host in _THIS_MACHINE:
+    if host in THIS_MACHINE:
         yield where, f"{host} is not reachable from the sandbox, which has no way out"
     elif host in mocks:
         if port != str(MOCK_PORT):

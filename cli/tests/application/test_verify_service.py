@@ -272,6 +272,16 @@ def test_the_fixtures_pass_every_static_check(fixture_problem):
     assert report.problems[0].ready_errors == ()
 
 
+def test_a_grader_reach_that_names_nothing_is_a_static_error_of_meta_yaml(tmp_path, engine):
+    root = make_content(tmp_path)
+    write_problem(root, meta_document(grader_reach=["idp:8080"]))
+    environment = make_environment(root, sandbox=engine)
+
+    errors = report_of(environment, SLUG, static_only=True).problems[0].static_errors
+
+    assert any("meta.yaml" in str(error) and "idp" in str(error) for error in errors)
+
+
 def test_static_checks_ask_the_engine_nothing(fixture_problem, engine):
     environment, slug = fixture_problem
 
