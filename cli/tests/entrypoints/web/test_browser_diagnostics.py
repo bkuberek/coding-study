@@ -50,6 +50,7 @@ FILE_BUTTON = f"button.tree-file[data-path='{FILE}']"
 OPEN_EDITOR = ".panel:not([hidden]) .cm-content"
 SAVED_TAB = "[role=tab][aria-selected=true]:not(.is-modified)"
 JUMP = ".result-diagnostics .diagnostic-jump"
+IDLE_TOOLBAR = ".run-toolbar:not(.is-running)"
 WAIT_MS = 60_000
 RUN_WAIT_MS = 240_000
 """Generous for a run: the machine running the slow tests is often loaded."""
@@ -150,9 +151,12 @@ def _save(page: Any) -> None:
 
 
 def _run_until(page: Any, summary: str) -> None:
-    """Runs the tests from the page and waits for the run's summary to say `summary`."""
+    """Runs the tests from the page and waits for the run's summary to say `summary`, then for the
+    toolbar to be idle: the summary shows at `run_end`, the button stays Cancel until the child
+    exits, and a click on Run meanwhile would land on Cancel."""
     page.click(".run-button.primary")
     page.wait_for_selector(f".result-summary-text:has-text('{summary}')", timeout=RUN_WAIT_MS)
+    page.wait_for_selector(IDLE_TOOLBAR, timeout=RUN_WAIT_MS)
 
 
 def test_a_syntax_error_marks_its_line_in_the_editor(seen):
