@@ -2,6 +2,47 @@
 
 <!-- version list -->
 
+## v0.31.0 (2026-11-09)
+
+### Documentation
+
+- Measure doctor --fix fetching the newest Kotlin LSP build
+  ([`e29ba71`](https://github.com/bkuberek/coding-study/commit/e29ba71296929c420481701d3fe0218b67251e72))
+
+- Measure the Kotlin LSP offline, in a project folder and past its expiry
+  ([`1955407`](https://github.com/bkuberek/coding-study/commit/1955407ebe102ff65a54168cc8c3745f913af28f))
+
+- Record the Kotlin servers spiked for ADR 0018 and the choice of the Kotlin LSP
+  ([`f796c05`](https://github.com/bkuberek/coding-study/commit/f796c05e24f4857458095f1ad76cb37724147ce6))
+
+### Features
+
+- **code-intelligence**: Fetch JetBrains' newest Kotlin LSP build, checked by its published SHA-256
+  ([`f322e12`](https://github.com/bkuberek/coding-study/commit/f322e12aaae044bb37e5885dc6227887477a1d61))
+
+- **code-intelligence**: Kotlin through JetBrains' Kotlin LSP, behind a license you accept
+  ([`6ddab5c`](https://github.com/bkuberek/coding-study/commit/6ddab5cf7a78779f500cd2d3fd1a05691985e54b))
+
+- **code-intelligence**: Say plainly when the pinned Kotlin LSP build has expired
+  ([`51361d3`](https://github.com/bkuberek/coding-study/commit/51361d3de9de891f834c2dcffff01ae999b8c506))
+
+### Refactoring
+
+- **code-intelligence**: Word the expired Kotlin state for fetched builds
+  ([`dd696a6`](https://github.com/bkuberek/coding-study/commit/dd696a63fc132f8ba3e59b38c764f85b949aefd5))
+
+### Testing
+
+- Drive Kotlin code intelligence in Chromium and against the real Kotlin LSP
+  ([`2b7aa1d`](https://github.com/bkuberek/coding-study/commit/2b7aa1dccc9ba2714616d784eed72cb35538791f))
+
+- Expect Kotlin's license state in the browser tests
+  ([`662589e`](https://github.com/bkuberek/coding-study/commit/662589ec57b2fa23bc12fcbcacdc00d9614f1b9d))
+
+- Import the practice workspace's Gradle build in the real Kotlin LSP test
+  ([`7e4f1cf`](https://github.com/bkuberek/coding-study/commit/7e4f1cfd6e56594b2ea6bc2854f323c813059256))
+
+
 ## v0.30.2 (2026-11-08)
 
 ### Bug Fixes
