@@ -199,8 +199,8 @@ The pilots are written with the next project problems.
 - [x] P7: the first problem in TypeScript, `0277-coworking-availability-typescript`.
 - [x] P8: the first problem in Python, `0278-coworking-availability-python`, graded by the same cases and mock servers as `0277`. The catalog then had 294 entries.
 - [ ] P9: code intelligence and Web UI.
-- [ ] P10: data-driven problems. Built: [backing services](specs/service-projects.md#backing-services), with a Postgres and Redis fixture, `grade_setup` on them, Moto measured, and [grader reach](specs/service-projects.md#grader-reach) for PP3's identity provider. Not built: parallel cases, contract tables and the data-driven problems themselves.
-- [ ] P11: mock server extensions, multi-step cases, project-size security and AI problems.
+- [x] P10: data-driven problems. Built: [backing services](specs/service-projects.md#backing-services), with a Postgres and Redis fixture, `grade_setup` on them, Moto measured, and [grader reach](specs/service-projects.md#grader-reach) for PP3's identity provider. Not built yet: parallel cases and contract tables. The data-driven problems are PP5 to PP10 below.
+- [ ] P11: mock server extensions, multi-step cases, project-size security and AI problems. Grader part built: [multi-step cases](specs/service-projects.md#multi-step-cases) with flows, cookie jars and captures, the app output check, log assertions on form fields and headers, and the mock server's [pass-through](specs/service-projects.md#pass-through) with token tampering, which reach P10's services through `grader_reach`. Still open: SSE streaming and the rest of R33, and the AI problems.
 - [ ] P12 to P14: Kotlin and Java, Go, Rust (maybe).
 
 ## Phase 13: Catalog labels and new catalogs
