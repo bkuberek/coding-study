@@ -1,11 +1,20 @@
 """S23 for a multi-step case (docs/specs/service-projects.md#multi-step-cases): each `{{name}}` is
-captured by an earlier step, each `{{` opens a name, and each absolute URL written out names an
-origin the problem declares. A URL that is itself a capture is checked when it is sent. A flow its
-case uses is already written out into the case's steps, and one tests.json lacks fails loading."""
+captured by an earlier step, each `{{` opens a name, each absolute URL written out names an origin
+the problem declares, and each output pattern compiles. A URL that is itself a capture is checked
+when it is sent. A flow its case uses is already written out into the case's steps, and one
+tests.json lacks fails loading."""
 
+import re
 from collections.abc import Iterable, Iterator
 
-from coding_study.domain.http_case import HttpCaseInput, HttpStep, LogAssertion, RequestTemplate
+from coding_study.domain.http_case import (
+    HttpCaseInput,
+    HttpStep,
+    LogAssertion,
+    OutputCheck,
+    OutputPattern,
+    RequestTemplate,
+)
 from coding_study.domain.http_origins import is_absolute, split_url
 from coding_study.domain.http_templates import (
     OPENING,
@@ -24,6 +33,8 @@ def step_issues(http: HttpCaseInput, origins: frozenset[str]) -> Iterator[str]:
         captured |= set(step.captures)
     for assertion in http.log:
         yield from _log_issues(assertion, captured)
+    if http.app_output is not None:
+        yield from _output_issues(http.app_output, captured)
 
 
 def _issues_of(step: HttpStep, captured: set[str], origins: frozenset[str]) -> Iterator[str]:
@@ -42,6 +53,18 @@ def _log_issues(assertion: LogAssertion, captured: set[str]) -> Iterator[str]:
     texts = (*assertion.headers.values(), *assertion.form.values())
     for problem in _text_issues(texts, captured, "is captured by no step"):
         yield f"log {assertion.mock}: {problem}"
+
+
+def _output_issues(check: OutputCheck, captured: set[str]) -> Iterator[str]:
+    texts = [absent for absent in check.absent if isinstance(absent, str)]
+    for problem in _text_issues(texts, captured, "is captured by no step"):
+        yield f"app_output: {problem}"
+    for absent in check.absent:
+        if isinstance(absent, OutputPattern):
+            try:
+                re.compile(absent.regex)
+            except re.error as error:
+                yield f"app_output: {absent.regex} is no regular expression: {error}"
 
 
 def _text_issues(texts: Iterable[str], captured: set[str], unknown: str) -> Iterator[str]:

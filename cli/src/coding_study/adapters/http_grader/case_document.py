@@ -21,6 +21,8 @@ from coding_study.domain.http_case import (
     HttpStep,
     JsonBody,
     LogAssertion,
+    OutputCheck,
+    OutputPattern,
     QueryValue,
     RequestTemplate,
     TemplateBody,
@@ -61,6 +63,7 @@ def http_case_input(case: Document, flows: Flows | None = None) -> HttpCaseInput
         comparator=_optional_comparator(case),
         log=tuple(_log_assertion(entry) for entry in case.get("log", ())),
         fresh=case.get("fresh", False),
+        app_output=_output_check(case),
     )
 
 
@@ -79,6 +82,7 @@ def _steps_case(case: Document, flows: Flows) -> HttpCaseInput:
         fresh=case.get("fresh", False),
         steps=expander.steps(steps, _Place("step")),
         cleanup=expander.steps(case.get("cleanup", ()), _Place("cleanup")),
+        app_output=_output_check(case),
     )
 
 
@@ -231,4 +235,16 @@ def _log_assertion(entry: Document) -> LogAssertion:
         min_gap_ms=entry.get("min_gap_ms"),
         headers=dict(entry.get("headers", {})),
         form=dict(entry.get("form", {})),
+    )
+
+
+def _output_check(case: Document) -> OutputCheck | None:
+    check: Document | None = case.get("app_output")
+    if check is None:
+        return None
+    return OutputCheck(
+        tuple(
+            text if isinstance(text, str) else OutputPattern(text["regex"])
+            for text in check["absent"]
+        )
     )

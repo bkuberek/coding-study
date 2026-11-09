@@ -169,3 +169,41 @@ def test_a_flow_needs_steps(validator: SchemaValidator):
 
 def test_a_flow_name_is_a_name(validator: SchemaValidator):
     assert violations(validator, steps_case(), flows={"two words": authorize_flow()}) != []
+
+
+APP_OUTPUT = {"absent": ["{{code}}", {"regex": "eyJ[A-Za-z0-9_-]+\\.eyJ"}]}
+
+
+def test_a_case_may_forbid_what_the_app_prints(validator: SchemaValidator):
+    assert violations(validator, steps_case() | {"app_output": APP_OUTPUT}) == []
+
+
+def test_a_single_request_case_may_forbid_what_the_app_prints(validator: SchemaValidator):
+    case = {
+        "id": "h1",
+        "level": 1,
+        "request": {"method": "GET", "path": "/a"},
+        "expected": {"status": 200},
+        "app_output": {"absent": ["secret"]},
+    }
+    assert violations(validator, case) == []
+
+
+@pytest.mark.parametrize(
+    ("label", "app_output"),
+    [
+        ("nothing absent", {"absent": []}),
+        ("an unknown field", {"absent": ["a"], "present": ["b"]}),
+        ("a pattern with another field", {"absent": [{"regex": "a", "flags": "i"}]}),
+        ("an empty text", {"absent": [""]}),
+    ],
+)
+def test_an_output_check_is_refused_for(
+    validator: SchemaValidator, label: str, app_output: dict[str, Any]
+):
+    assert violations(validator, steps_case() | {"app_output": app_output}) != [], label
+
+
+def test_an_output_check_needs_an_http_case(validator: SchemaValidator):
+    case = {"id": "h1", "input": {"a": 1}, "expected": 1, "app_output": {"absent": ["a"]}}
+    assert violations(validator, case) != []

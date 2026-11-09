@@ -82,6 +82,12 @@ class GradedStack(Protocol):
         container's exit shows a moment after its connections drop."""
         ...
 
+    def app_output(self, since_s: float) -> str:
+        """What the app printed, standard output and error together, since `since_s`, in seconds
+        since the epoch. Raises RunnerStartError when it cannot be read: a stack that stopped
+        working is no verdict on your code."""
+        ...
+
 
 class AppClient(Protocol):
     """Sends a case's requests to the app, or to another origin the stack publishes, as a browser

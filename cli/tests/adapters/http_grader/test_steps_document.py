@@ -16,6 +16,8 @@ from coding_study.domain.http_case import (
     HttpStep,
     JsonBody,
     LogAssertion,
+    OutputCheck,
+    OutputPattern,
     RequestTemplate,
 )
 from coding_study.domain.problem import ComparatorSpec, ComparatorType
@@ -153,3 +155,18 @@ def test_the_loader_names_the_case_of_a_flow_it_lacks():
         cases_from_document(document, ComparatorSpec(ComparatorType.EXACT), "tests.json")
     (issue,) = raised.value.issues
     assert (issue.location, issue.message) == ("cases[0]", "step 1: no flow named login")
+
+
+def test_an_output_check_is_read_with_its_texts_and_patterns():
+    document = case_with(me_step(), app_output={"absent": ["{{code}}", {"regex": "eyJ"}]})
+    assert http_case_input(document).app_output == OutputCheck(("{{code}}", OutputPattern("eyJ")))
+
+
+def test_a_single_request_case_reads_its_output_check_too():
+    document = {
+        "id": "h1",
+        "request": {"method": "GET", "path": "/a"},
+        "expected": {"status": 200},
+        "app_output": {"absent": ["secret"]},
+    }
+    assert http_case_input(document).app_output == OutputCheck(("secret",))

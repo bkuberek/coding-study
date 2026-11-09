@@ -31,7 +31,10 @@ class FakeStack:
     exit: AppExit | None = None
     restart_problem: str | None = None
     exit_waits: list[int] = field(default_factory=list[int])
+    output_since: list[float] = field(default_factory=list[float])
     origins: dict[str, str] = field(default_factory=dict[str, str])
+    output: str = ""
+    """What the app printed, for each case that asks."""
 
     @property
     def endpoints(self) -> StackEndpoints:
@@ -50,6 +53,11 @@ class FakeStack:
     def app_exit(self, within_ms: int) -> AppExit | None:
         self.exit_waits.append(within_ms)
         return self.exit
+
+    def app_output(self, since_s: float) -> str:
+        self.journal.append("read app output")
+        self.output_since.append(since_s)
+        return self.output
 
     def _maybe_fail(self) -> None:
         if self.restart_problem is not None:

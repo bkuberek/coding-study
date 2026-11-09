@@ -11,6 +11,7 @@ from coding_study.application.ports import (
     ProgressNotice,
 )
 from coding_study.domain.docker_engine import EngineState, EngineStatus
+from coding_study.domain.errors import SandboxError
 from coding_study.domain.sandbox import (
     CommandOutcome,
     InstallPlan,
@@ -57,6 +58,8 @@ class FakeSandbox:
     probe_outcome: CommandOutcome = field(default_factory=lambda: CommandOutcome(0, "reached []\n"))
     on_follow: Callable[[], None] | None = None
     """What happens while `follow_app` would block: a test raises KeyboardInterrupt here."""
+    app_output: str = ""
+    app_output_error: SandboxError | None = None
 
     def state(self) -> EngineState:
         self.calls.append(("state", None))
@@ -150,6 +153,12 @@ class FakeSandbox:
     def app_exit(self, plan: StackPlan, within_ms: int) -> CommandOutcome | None:
         self.calls.append(("app_exit", within_ms))
         return self.app_ended
+
+    def app_output_since(self, plan: StackPlan, since_s: float) -> str:
+        self.calls.append(("app_output_since", since_s))
+        if self.app_output_error is not None:
+            raise self.app_output_error
+        return self.app_output
 
     def follow_app(self, plan: StackPlan, on_line: Callable[[str], None]) -> None:
         self.calls.append(("follow_app", plan.identity.name))

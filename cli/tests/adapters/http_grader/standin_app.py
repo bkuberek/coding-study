@@ -40,12 +40,21 @@ class StandInApp:
         self.exit: AppExit | None = None
         self.stopping = threading.Event()
         self.requests: list[str] = []
+        self.printed: list[tuple[float, str]] = []
+        """Each line the app printed, with the wall clock it printed it at, as an engine stamps
+        a container's output."""
         self._server = ThreadingHTTPServer(("127.0.0.1", 0), _handler_for(self, routes))
         self._server.daemon_threads = True
         self.port = self._server.server_address[1]
         threading.Thread(
             target=self._server.serve_forever, args=(FAST_POLL_S,), daemon=True
         ).start()
+
+    def print_line(self, line: str) -> None:
+        self.printed.append((time.time(), line))
+
+    def output_since(self, since_s: float) -> str:
+        return "".join(f"{line}\n" for at, line in self.printed if at >= since_s)
 
     def die(self, exit_code: int, stderr_tail: str) -> None:
         """Stops listening, as a process that ended would."""
@@ -113,3 +122,6 @@ class StandInStack:
 
     def app_exit(self, within_ms: int) -> AppExit | None:
         return self.app.exit
+
+    def app_output(self, since_s: float) -> str:
+        return self.app.output_since(since_s)

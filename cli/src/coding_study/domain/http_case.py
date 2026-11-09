@@ -150,6 +150,23 @@ class HttpStep:
 
 
 @dataclass(frozen=True, slots=True)
+class OutputPattern:
+    regex: str
+    """Python's regular expression syntax, searched for anywhere in the output."""
+
+
+type AbsentOutput = str | OutputPattern
+"""A text, which may name a `{{capture}}`, or a pattern."""
+
+
+@dataclass(frozen=True, slots=True)
+class OutputCheck:
+    """What the app may not print, on standard output or error, while a case runs."""
+
+    absent: tuple[AbsentOutput, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class HttpCaseInput(FunctionInput):
     """What an HTTP case does. It is a `FunctionInput` whose `arguments` hold the request, or the
     steps, as tests.json wrote them, with the scenarios it set, so that every report and event that
@@ -171,6 +188,7 @@ class HttpCaseInput(FunctionInput):
     """A multi-step case's steps, with every flow it uses written out."""
     cleanup: tuple[HttpStep, ...] = ()
     """Steps that run after the case whatever happened, to undo what it changed."""
+    app_output: OutputCheck | None = None
 
     def exchange_steps(self) -> tuple[HttpStep, ...]:
         """Every step the case sends, in order: a single-request case's `before` requests, each of

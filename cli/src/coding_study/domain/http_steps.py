@@ -1,12 +1,20 @@
-"""Judging one step of a case (docs/specs/service-projects.md#multi-step-cases)."""
+"""Judging one step of a case, and what the app printed while the case ran
+(docs/specs/service-projects.md#multi-step-cases)."""
 
-from collections.abc import Mapping
+import re
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 
 from coding_study.domain.http_captures import captured
-from coding_study.domain.http_case import HttpExpected, HttpStep
+from coding_study.domain.http_case import HttpExpected, HttpStep, OutputCheck, OutputPattern
 from coding_study.domain.http_grading import HttpResponse, response_failures
+from coding_study.domain.http_templates import MissingValueError, filled
 from coding_study.domain.problem import ComparatorSpec
+from coding_study.domain.value_text import value_text
+
+OUTPUT = "app output"
+SHOWN_OUTPUT_LIMIT = 60
+"""How much of what the app printed a reason shows: enough to recognize it, not a whole token."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,3 +62,25 @@ def _named(step: HttpStep, failures: tuple[str, ...]) -> tuple[str, ...]:
     if not step.label:
         return failures
     return tuple(f"{step.label}: {failure}" for failure in failures)
+
+
+def output_failures(check: OutputCheck, output: str, values: Mapping[str, str]) -> tuple[str, ...]:
+    """What the app printed that the case forbids. A text that names a value no step captured
+    is passed over: what was never captured cannot have been printed."""
+    return tuple(_printed(check, output, values))
+
+
+def _printed(check: OutputCheck, output: str, values: Mapping[str, str]) -> Iterator[str]:
+    for absent in check.absent:
+        if isinstance(absent, OutputPattern):
+            found = re.search(absent.regex, output)
+            if found is not None:
+                shown = value_text(found[0], SHOWN_OUTPUT_LIMIT)
+                yield f"{OUTPUT}: printed {shown}, which matches {absent.regex}"
+            continue
+        try:
+            text = filled(absent, values)
+        except MissingValueError:
+            continue
+        if text and text in output:
+            yield f"{OUTPUT}: printed {value_text(text, SHOWN_OUTPUT_LIMIT)}, which it must not"

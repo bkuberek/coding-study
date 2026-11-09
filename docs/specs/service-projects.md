@@ -658,6 +658,7 @@ The grader asks a stack for little, through `GradedStack` in `application/http_g
 | `restart_app()` | Stops your app and starts it again, for a case that hung it |
 | `restart_app_with_fresh_data()` | For `fresh`: stops your app, runs `commands.reset` with `CSTUDY_RESET_PHASE=apply` if declared, starts your app |
 | `app_exit(within_ms)` | Your app's exit code and stderr tail, or `None` if it still runs after waiting that long, since a container's exit shows a moment after its connections drop |
+| `app_output(since_s)` | What your app printed, standard output and error together, since a moment in seconds since the epoch, for an [output check](#output-check). One `docker compose logs --since` call, through `SandboxEngine.app_output_since`; a read that fails is a stack failure, not a verdict |
 
 Both restarts return once the health path answers again, and raise `StackStepError` otherwise.
 
@@ -708,6 +709,7 @@ Language-neutral, in `tests.json`, with `id`, `visible`, `level`, `note` and `ha
 | `comparator` | Overrides the problem's: `{"type": ...}`, with `tolerance` for `float`. `exact`, `unordered`, `unordered-nested` or `float` ([Comparators](problem-format.md#comparators)). `checker` is not allowed |
 | `log` | Assertions per mock server and route: `count`, `min_count`, `max_count`, and `min_gap_ms`, measured from each response's `responded_ms` to the next request's `received_ms`. Without `route`, they cover every request the mock server logged, matched or not, and requests past the log's limit still count. A log that overflowed fails an assertion with a `route` or a `min_gap_ms`, saying so: `dropped` says how many came and not which route they took or when, and the retry too soon may be the very one it did not keep. A value a little below the wait, here 950 for 1 s, tolerates timers. `headers` and `form` narrow what counts to the requests that carried each header, by its name in any case, or each field of a form-encoded body, such as `{"form": {"refresh_token": "{{rt2}}"}}` with `count: 1`. Their values may name [captures](#multi-step-cases). A log that overflowed fails them too, and so does a body cut at the log's 64 KiB, whose form cannot be read |
 | `fresh` | Restart the app and run `commands.reset` first |
+| `app_output` | What your app may not print while the case runs: `{"absent": [...]}` ([Output check](#output-check)) |
 
 A case has a `level`, or no graded run would reach it. `project.clock: virtual` is refused with `grading: http`: these cases run on the real clock. The bound on waits and D11 keep them stable.
 
@@ -761,6 +763,21 @@ Built at P11 (R34). A case has either `request` or `steps`. The grader acts as a
 Provider state persists across the cases of a run, since restarting a service such as Keycloak per case would cost seconds. A case that changes it undoes the change in `cleanup`.
 
 S23 checks a multi-step case before any run: each `{{name}}` is captured by an earlier step, or by a step at all for a cleanup step and `log`; each `{{` opens a name; each `url` written out names a declared origin, while a `url` that is itself a capture is checked when it is sent. A step that uses a flow tests.json lacks, or a flow that uses itself, fails loading, naming the case and the step.
+
+#### Output check
+
+Built at P11. A case, single-request or multi-step, can forbid what your app prints, for a problem that teaches you to keep secrets out of logs:
+
+```json
+"app_output": {"absent": ["{{code}}", {"regex": "eyJ[A-Za-z0-9_-]+\\.eyJ[A-Za-z0-9_-]+\\."}]}
+```
+
+| Rule | Detail |
+|------|--------|
+| What is read | Your app's standard output and error together, from the moment the case began, before any fresh start, to the end of its cleanup, as the engine stamped each line. A line printed after the last answer of one case may fall into the next case's window, which an absent check tolerates |
+| `absent` | Each item is a text, which may name a `{{capture}}`, or `{"regex": ...}` in Python's syntax, searched anywhere. A text that names a value no step captured is passed over, since what was never captured cannot have been printed |
+| Verdict | Each match fails a case that was judged, `pass` or `fail`, and the reason shows the start of what was printed and the rule it broke: `app output: printed "eyJhbGciOiJSUzI1NiJ9.eyJ…", which matches eyJ…`. A case that timed out or errored reads no output |
+| S23 | Each pattern compiles, and each `{{name}}` is captured by a step |
 
 #### Reaching an origin
 

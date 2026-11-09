@@ -7,6 +7,8 @@ from coding_study.domain.http_case import (
     HttpExpected,
     HttpStep,
     LogAssertion,
+    OutputCheck,
+    OutputPattern,
     RequestTemplate,
 )
 from coding_study.domain.http_case_checks import step_issues
@@ -111,3 +113,21 @@ def test_a_url_over_https_is_refused():
 
 def test_a_brace_pair_that_opens_no_name_is_refused():
     assert issues(step("step 1", "/a/{{ code }}")) == ["step 1: {{ opens no {{name}} at {{ code }}"]
+
+
+def checked_output(*absent: str | OutputPattern, steps: tuple[HttpStep, ...] = ()) -> list[str]:
+    http = HttpCaseInput({}, steps=steps, app_output=OutputCheck(absent))
+    return list(step_issues(http, ORIGINS))
+
+
+def test_an_output_check_may_use_a_captured_value():
+    assert checked_output("{{code}}", steps=(step("step 1", captures={"code": "status"}),)) == []
+
+
+def test_an_output_check_naming_an_uncaptured_value_is_refused():
+    assert checked_output("{{code}}") == ["app_output: {{code}} is captured by no step"]
+
+
+def test_an_output_pattern_that_does_not_compile_is_refused():
+    (issue,) = checked_output(OutputPattern("eyJ[("))
+    assert issue.startswith("app_output: eyJ[( is no regular expression:")

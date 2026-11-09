@@ -1,5 +1,7 @@
 """The grader's run of a multi-step case, against a stack and clients in memory."""
 
+import time
+
 from coding_study.application.http_grading import HttpGradingRun, run_http_grading
 from coding_study.application.http_grading_ports import AppExit
 from coding_study.domain.case_status import CaseStatus
@@ -12,6 +14,8 @@ from coding_study.domain.http_case import (
     HttpRequest,
     HttpStep,
     LogAssertion,
+    OutputCheck,
+    OutputPattern,
     RequestTemplate,
 )
 from coding_study.domain.http_grading import (
@@ -226,3 +230,72 @@ def test_a_single_request_case_is_one_step_with_no_name():
     http = HttpCaseInput({}, request=HttpRequest("GET", "/a"), expected=HttpExpected(201))
     verdict = verdict_of(rig, Case("h1", http, Expected({"status": 201}), level=1))
     assert reason(verdict) == "status: expected 201, got 200"
+
+
+JWT = OutputPattern(r"eyJ[A-Za-z0-9_-]+\.eyJ")
+
+
+def output_case(*absent: str | OutputPattern, last: HttpExpected | None = None) -> Case:
+    http = HttpCaseInput(
+        {},
+        steps=(
+            step(
+                "step 1 GET /login", "/login", HttpExpected(302), code="header.location.query.code"
+            ),
+            step("step 2 GET /me", "/me", last),
+        ),
+        cleanup=(step("cleanup 1", "/undo"),),
+        app_output=OutputCheck(absent),
+    )
+    return Case("h1", http, None, level=1)
+
+
+def output_rig(printed: str) -> Rig:
+    rig = Rig()
+    rig.app.answers["/login"] = HttpResponse(302, {"location": "/callback?code=c-9"}, b"")
+    rig.stack.output = printed
+    return rig
+
+
+def test_output_holding_nothing_forbidden_leaves_the_case_passing():
+    rig = output_rig("GET /me 200\n")
+    assert verdict_of(rig, output_case(JWT, "{{code}}")).status is CaseStatus.PASS
+
+
+def test_output_holding_a_captured_value_fails_the_case():
+    rig = output_rig("exchanging c-9\n")
+    verdict = verdict_of(rig, output_case("{{code}}"))
+    assert (verdict.status, reason(verdict)) == (
+        CaseStatus.FAIL,
+        'app output: printed "c-9", which it must not',
+    )
+
+
+def test_the_output_is_read_after_the_cleanup_from_before_the_case_began():
+    rig = output_rig("")
+    before = time.time()
+    grade(rig, output_case(JWT))
+    assert (rig.journal[-1], rig.stack.output_since[0] >= before - 1) == ("read app output", True)
+    assert rig.stack.output_since[0] <= time.time()
+
+
+def test_output_is_reported_with_a_wrong_answer():
+    rig = output_rig("eyJhbGc.eyJzdWI.sig")
+    verdict = verdict_of(rig, output_case(JWT, last=HttpExpected(201)))
+    assert reason(verdict) == (
+        "step 2 GET /me: status: expected 201, got 200; "
+        'app output: printed "eyJhbGc.eyJ", which matches eyJ[A-Za-z0-9_-]+\\.eyJ'
+    )
+
+
+def test_a_case_with_no_output_check_reads_no_output():
+    rig = output_rig("anything")
+    grade(rig, login_case())
+    assert rig.stack.output_since == []
+
+
+def test_a_case_that_timed_out_reads_no_output():
+    rig = output_rig("eyJa.eyJb.c")
+    rig.app.answers["/me"] = ExchangeFailed(ExchangeFailure.TIMED_OUT, "no answer")
+    assert verdict_of(rig, output_case(JWT)).status is CaseStatus.TIMEOUT
+    assert rig.stack.output_since == []

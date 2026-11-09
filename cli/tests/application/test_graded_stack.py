@@ -4,6 +4,7 @@ import pytest
 
 from coding_study.application.graded_stack import RunningStack, SandboxGradedStack
 from coding_study.application.http_grading_ports import AppExit, StackStepError
+from coding_study.domain.errors import RunnerStartError, SandboxError
 from coding_study.domain.sandbox import (
     AppContainer,
     CommandOutcome,
@@ -146,3 +147,15 @@ def test_an_app_that_ended_gives_its_code_and_output():
     engine = FakeSandbox(app_ended=CommandOutcome(137, "killed"))
 
     assert stack_of(engine).app_exit(0) == AppExit(137, "killed")
+
+
+def test_the_apps_output_is_read_from_the_engine_since_the_time_given():
+    engine = FakeSandbox(app_output="printed\n")
+    assert stack_of(engine).app_output(1700000000.5) == "printed\n"
+    assert engine.calls[-1] == ("app_output_since", 1700000000.5)
+
+
+def test_output_the_engine_cannot_read_is_a_stack_failure_not_a_verdict():
+    engine = FakeSandbox(app_output_error=SandboxError("docker logs failed"))
+    with pytest.raises(RunnerStartError, match="docker logs failed"):
+        stack_of(engine).app_output(1.0)

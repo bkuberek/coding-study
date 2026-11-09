@@ -1222,6 +1222,26 @@ def test_following_the_app_hears_each_line(tmp_path, paths):
     assert lines == ["one", "two"]
 
 
+def test_the_apps_output_is_read_since_a_time_with_its_fractions(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("--no-log-prefix", "--since"), ProbeResult(0, "printed\n"))
+
+    printed = sandbox(docker, tmp_path).app_output_since(plan_of(paths), 1700000000.25)
+
+    assert printed == "printed\n"
+    assert docker.ran(
+        "logs", "--no-color", "--no-log-prefix", "--since", "1700000000.250000", "app"
+    )
+
+
+def test_output_docker_cannot_read_is_a_sandbox_error(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("--no-log-prefix", "--since"), ProbeResult(1, "no such service: app"))
+
+    with pytest.raises(SandboxError, match="no such service"):
+        sandbox(docker, tmp_path).app_output_since(plan_of(paths), 1.0)
+
+
 def test_the_egress_probe_runs_alone_with_no_pull(tmp_path, paths):
     docker = ScriptedDocker()
 

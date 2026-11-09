@@ -8,6 +8,7 @@ the remaining cases not run, as does one that hangs too often. The result is a `
 runner's, so levels, tallies, submissions and events need no code of their own.
 """
 
+import time
 from collections.abc import Iterator
 from dataclasses import dataclass, replace
 from typing import Protocol
@@ -42,6 +43,7 @@ from coding_study.domain.http_grading import (
     answered_verdict,
     log_failures,
 )
+from coding_study.domain.http_steps import output_failures
 from coding_study.domain.http_templates import MissingValueError, rendered_assertion
 from coding_study.domain.judging import CaseVerdict, Judgement, RunnableCase, concrete_case
 from coding_study.domain.levels import cases_up_to
@@ -54,8 +56,8 @@ MAX_HUNG_CASES = 3
 APP_EXIT_GRACE_MS = 2_000
 """How long a failed connection waits for a dying app's exit to show."""
 JUDGED_STATUSES = frozenset({CaseStatus.PASS, CaseStatus.FAIL})
-"""The verdicts a failed cleanup step turns into a failure; any other already says what went
-wrong."""
+"""The verdicts a failed cleanup step or a forbidden output turns into a failure; any other
+already says what went wrong."""
 TESTS_FILE = "tests.json"
 APP_EXITED = "AppExited"
 RESET_FAILED = "ResetFailed"
@@ -173,13 +175,16 @@ class _Grader:
         return verdict
 
     def _graded(self, checked: _CheckedCase) -> CaseVerdict:
+        # The clock the engine stamps the app's output with, read before a fresh start, so that
+        # the output check also covers what the app prints while it starts.
+        started_s = time.time()
         try:
             self._prepare(checked)
         except StackStepError as failed:
             self._stopped = "the app's data could not be reset for an earlier case"
             error = UserError(RESET_FAILED, str(failed), failed.output_tail)
             return CaseVerdict(checked.case, CaseStatus.ERROR, Raised(error, 0))
-        return self._exchanged(checked)
+        return self._exchanged(checked, started_s)
 
     def _prepare(self, checked: _CheckedCase) -> None:
         """A fresh start comes between two resets: the first so that the app's startup meets no
@@ -194,15 +199,22 @@ class _Grader:
                 message = f"the mock server {mock} has no scenario this case names"
                 raise _content_error(checked.source, checked.case.id, message)
 
-    def _exchanged(self, checked: _CheckedCase) -> CaseVerdict:
+    def _exchanged(self, checked: _CheckedCase, started_s: float) -> CaseVerdict:
+        """The steps, then the cleanup, then what the app printed meanwhile."""
         http = checked.http
         self._app.clear_cookies()
         rules = StepRules(checked.comparator, checked.limit_ms)
         runner = StepRunner(self._app, self._endpoints, rules)
         verdict = self._judged(checked, runner.run(http.exchange_steps()), runner)
-        if not http.cleanup or self._stopped is not None:
+        if self._stopped is not None:
             return verdict
-        return _with_cleanup(verdict, runner.cleaned_up(http.cleanup))
+        if http.cleanup:
+            verdict = _with_failures(verdict, runner.cleaned_up(http.cleanup))
+        if http.app_output is not None and verdict.status in JUDGED_STATUSES:
+            printed = self._stack.app_output(started_s)
+            found = output_failures(http.app_output, printed, runner.values)
+            verdict = _with_failures(verdict, found)
+        return verdict
 
     def _judged(self, checked: _CheckedCase, ended: StepsEnd, runner: StepRunner) -> CaseVerdict:
         if isinstance(ended, ExchangeFailed):
@@ -284,9 +296,9 @@ def _stopped(case: RunnableCase, stopped: StepsStopped) -> CaseVerdict:
     )
 
 
-def _with_cleanup(verdict: CaseVerdict, failures: tuple[str, ...]) -> CaseVerdict:
-    """A cleanup step that went wrong fails a case that was judged, since the cases after it may
-    meet what it should have undone."""
+def _with_failures(verdict: CaseVerdict, failures: tuple[str, ...]) -> CaseVerdict:
+    """A judged case with these failures too: a cleanup step that went wrong, since the cases
+    after it may meet what it should have undone, or output the case forbids."""
     if not failures or verdict.status not in JUDGED_STATUSES:
         return verdict
     mismatch = verdict.mismatch
