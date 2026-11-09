@@ -14,6 +14,7 @@ from coding_study.application.http_grading_ports import AppExit, StackEndpoints
 from tests.mock_server_support import SAMPLE_TOKEN
 
 ROOM_VENDOR = "room-vendor"
+APP_ORIGIN = "http://app:8000"
 SECOND_VENDOR = "second-vendor"
 FAST_POLL_S = 0.01
 
@@ -23,12 +24,15 @@ class AppRequest:
     app: "StandInApp"
     query: Mapping[str, str]
     body: bytes
+    headers: Mapping[str, str] = field(default_factory=dict[str, str])
+    """By lowercase name."""
 
 
 @dataclass(frozen=True)
 class AppAnswer:
     status: int
     document: Any = None
+    headers: Mapping[str, str] = field(default_factory=dict[str, str])
 
 
 type Route = Callable[[AppRequest], AppAnswer | None]
@@ -75,12 +79,16 @@ def _handler_for(
             target = urlsplit(self.path)
             app.requests.append(f"{self.command} {target.path}")
             length = int(self.headers.get("Content-Length", 0))
-            request = AppRequest(app, dict(parse_qsl(target.query)), self.rfile.read(length))
+            headers = {name.lower(): value for name, value in self.headers.items()}
+            body = self.rfile.read(length)
+            request = AppRequest(app, dict(parse_qsl(target.query)), body, headers)
             answer = routes[self.command, target.path](request)
             if answer is None:
                 return
             body = json.dumps(answer.document).encode()
             self.send_response(answer.status)
+            for name, value in answer.headers.items():
+                self.send_header(name, value)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
@@ -103,6 +111,9 @@ class StandInStack:
     control_port: int
     restart_takes_s: float = 0.0
     restarts: list[str] = field(default_factory=list[str])
+    mocks: tuple[str, ...] = (ROOM_VENDOR, SECOND_VENDOR)
+    origins: Mapping[str, str] = field(default_factory=dict[str, str])
+    """What P10's forwarder would publish: each origin a case names, by its name in the stack."""
 
     @property
     def endpoints(self) -> StackEndpoints:
@@ -110,7 +121,9 @@ class StandInStack:
             app_url=f"http://127.0.0.1:{self.app.port}",
             control_url=f"http://127.0.0.1:{self.control_port}",
             control_token=SAMPLE_TOKEN,
-            mocks=(ROOM_VENDOR, SECOND_VENDOR),
+            mocks=self.mocks,
+            app_origin=APP_ORIGIN,
+            origins=self.origins,
         )
 
     def restart_app(self) -> None:
