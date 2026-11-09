@@ -9,12 +9,15 @@ import json
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import cast
 
 MOCK_NAME = re.compile(r"[a-z0-9][a-z0-9-]*")
 PATH = re.compile(r"(/([^/{}?#\s]*|\{[A-Za-z_][A-Za-z0-9_]*\}))+")
 HEADER_NAME = re.compile(r"[A-Za-z0-9-]+")
+UPSTREAM = re.compile(r"http://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?")
+"""An origin on the stack's network: a scheme, a name and a port, with no path."""
 HTTP_METHODS = frozenset({"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"})
 LOWEST_STATUS = 200
 HIGHEST_STATUS = 599
@@ -22,10 +25,13 @@ HEADER_ENCODING = "latin-1"
 """What `http.server` encodes a header with; another character would fail during a request."""
 
 STACK_FIELDS = frozenset({"control_token", "mocks"})
-MOCK_FIELDS = frozenset({"routes", "scenarios"})
+MOCK_FIELDS = frozenset({"upstream", "routes", "scenarios"})
 ROUTE_FIELDS = frozenset({"id", "method", "path", "query", "response"})
 RESPONSE_FIELDS = frozenset({"status", "headers", "body", "body_file", "delay_ms"})
-SCENARIO_FIELDS = RESPONSE_FIELDS | {"visible", "route", "sequence"}
+ENTRY_FIELDS = RESPONSE_FIELDS | {"jwt"}
+"""A scenario entry's fields: a route's response, plus a JWT to tamper with."""
+SCENARIO_FIELDS = ENTRY_FIELDS | {"visible", "route", "sequence"}
+JWT_FIELDS = frozenset({"field", "tamper"})
 
 
 class ConfigError(Exception):
@@ -39,6 +45,23 @@ class Body:
     """What a body built from a mapping or list is sent as, unless the headers say otherwise."""
 
 
+class TamperKind(StrEnum):
+    """How a scenario spoils a JWT in an answer. Neither signs anything: the mock server holds no
+    key."""
+
+    ALG_NONE = "alg_none"
+    """The header becomes `{"alg":"none"}` and the signature is dropped; the payload stays."""
+    BAD_SIGNATURE = "bad_signature"
+    """One character of the signature changes; the header and the payload stay."""
+
+
+@dataclass(frozen=True)
+class JwtTamper:
+    field: tuple[str, ...]
+    """The dotted path, split, of the JSON field of the answer that holds the token."""
+    kind: TamperKind
+
+
 @dataclass(frozen=True)
 class ResponseFields:
     """A route's response or a scenario's override; `None` is a field left out."""
@@ -47,6 +70,8 @@ class ResponseFields:
     headers: Mapping[str, str] | None = None
     body: Body | None = None
     delay_ms: int | None = None
+    jwt: JwtTamper | None = None
+    """A scenario's only: the JWT of the answer it spoils."""
 
 
 @dataclass(frozen=True)
@@ -55,7 +80,8 @@ class Route:
     method: str
     path: str
     query: Mapping[str, str]
-    response: ResponseFields
+    response: ResponseFields | None
+    """None passes the request through to the mock server's upstream."""
 
 
 @dataclass(frozen=True)
@@ -71,6 +97,9 @@ class MockDefinition:
     name: str
     routes: tuple[Route, ...]
     scenarios: Mapping[str, Scenario]
+    upstream: str | None = None
+    """`http://<name>:<port>`, which a route without a response, and a request no route matches,
+    pass through to."""
 
 
 @dataclass(frozen=True)
@@ -136,10 +165,13 @@ class _Reader:
         if not MOCK_NAME.fullmatch(name):
             raise ConfigError(f"{where}: a name is lowercase letters, digits and hyphens")
         fields = _Fields(raw, MOCK_FIELDS, where)
+        upstream = fields.optional("upstream", _upstream)
         routes = fields.required("routes", self._routes)
         scenarios = fields.optional("scenarios", self._scenarios) or {}
         _refuse_unknown_routes(scenarios, routes, where)
-        return MockDefinition(name, routes, scenarios)
+        if upstream is None:
+            _refuse_routes_without_a_response(routes, where)
+        return MockDefinition(name, routes, scenarios, upstream)
 
     def _routes(self, raw: object, where: str) -> tuple[Route, ...]:
         items = _list(raw, where)
@@ -151,8 +183,8 @@ class _Reader:
 
     def _route(self, raw: object, where: str) -> Route:
         fields = _Fields(raw, ROUTE_FIELDS, where)
-        response = fields.required("response", self._response_fields)
-        if response.status is None:
+        response = fields.optional("response", self._response_fields)
+        if response is not None and response.status is None:
             raise ConfigError(f"{where}.response.status: required")
         return Route(
             id=fields.required("id", _string),
@@ -173,7 +205,7 @@ class _Reader:
         return Scenario(name, fields.optional("route", _string), self._scenario_entries(fields))
 
     def _scenario_entries(self, fields: _Fields) -> tuple[ResponseFields, ...]:
-        overrides = fields.among(RESPONSE_FIELDS)
+        overrides = fields.among(ENTRY_FIELDS)
         if not fields.has("sequence"):
             return (self._entry(overrides, fields.where),)
         if overrides:
@@ -187,18 +219,21 @@ class _Reader:
         return tuple(self._entry(item, f"{where}[{i}]") for i, item in enumerate(items))
 
     def _entry(self, raw: object, where: str) -> ResponseFields:
-        entry = self._response_fields(raw, where)
+        entry = self._fields_of(_Fields(raw, ENTRY_FIELDS, where))
         if entry == ResponseFields():
             raise ConfigError(f"{where}: overrides nothing")
         return entry
 
     def _response_fields(self, raw: object, where: str) -> ResponseFields:
-        fields = _Fields(raw, RESPONSE_FIELDS, where)
+        return self._fields_of(_Fields(raw, RESPONSE_FIELDS, where))
+
+    def _fields_of(self, fields: _Fields) -> ResponseFields:
         return ResponseFields(
             status=fields.optional("status", _status),
             headers=fields.optional("headers", _headers),
             body=self._body(fields),
             delay_ms=fields.optional("delay_ms", _delay),
+            jwt=fields.optional("jwt", _jwt),
         )
 
     def _body(self, fields: _Fields) -> Body | None:
@@ -237,6 +272,32 @@ def _refuse_unknown_routes(
                 f"{where}.scenarios.{scenario.name}.route: "
                 f"no route has the id {scenario.route_id!r}"
             )
+
+
+def _refuse_routes_without_a_response(routes: tuple[Route, ...], where: str) -> None:
+    for index, route in enumerate(routes):
+        if route.response is None:
+            place = f"{where}.routes[{index}].response"
+            raise ConfigError(f"{place}: required, unless the mock server has an upstream")
+
+
+def _upstream(raw: object, where: str) -> str:
+    upstream = _string(raw, where)
+    if not UPSTREAM.fullmatch(upstream):
+        raise ConfigError(f"{where}: {upstream!r} must be http://<name>:<port>, with no path")
+    return upstream
+
+
+def _jwt(raw: object, where: str) -> JwtTamper:
+    fields = _Fields(raw, JWT_FIELDS, where)
+    path = fields.required("field", _string)
+    kind = fields.required("tamper", _string)
+    if not path or "" in path.split("."):
+        raise ConfigError(f"{where}.field: a dotted path of JSON field names, got {path!r}")
+    if kind not in set(TamperKind):
+        known = sorted(TamperKind)
+        raise ConfigError(f"{where}.tamper: expected one of {known}, got {kind!r}")
+    return JwtTamper(tuple(path.split(".")), TamperKind(kind))
 
 
 def _mapping(raw: object, where: str) -> dict[str, object]:

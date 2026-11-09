@@ -10,6 +10,7 @@ from coding_study.domain.mock_configs import (
     MockFiles,
     ScenarioReach,
     rendered_mock_config,
+    response_fields,
     route_ids,
     scenario_names,
     scenario_waits_ms,
@@ -140,3 +141,31 @@ def test_the_waits_of_a_scenario_are_each_entrys_delay_and_retry_after(scenario,
 
 def test_a_retry_after_that_is_no_number_is_no_wait():
     assert scenario_waits_ms({"headers": {"Retry-After": "Wed, 21 Oct"}}) == [0]
+
+
+def pass_through() -> MockFiles:
+    return MockFiles(
+        {
+            "upstream": "http://keycloak:8080",
+            "routes": [{"id": "token", "method": "POST", "path": "/token"}],
+            "scenarios": {"alg_none": {"jwt": {"field": "id_token", "tamper": "alg_none"}}},
+        }
+    )
+
+
+def test_the_rendering_keeps_a_mock_servers_upstream():
+    assert rendered({"idp": pass_through()}, ScenarioReach.EVERY)["mocks"]["idp"]["upstream"] == (
+        "http://keycloak:8080"
+    )
+
+
+def test_a_hidden_jwt_scenario_stays_out_of_a_practice_stack():
+    assert (
+        rendered({"idp": pass_through()}, ScenarioReach.VISIBLE)["mocks"]["idp"]["scenarios"] == {}
+    )
+
+
+def test_a_route_that_passes_through_holds_no_response_fields():
+    assert [where for where, _fields in response_fields(pass_through())] == [
+        "scenarios.alg_none[0]"
+    ]

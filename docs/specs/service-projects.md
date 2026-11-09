@@ -523,6 +523,46 @@ scenarios:
 | Shape drift | Provider response shapes drift, so a config modeling a real API records `shape_version`, an authoring rule that no check can detect. It is a record for authors, and cstudy never checks it against a live API |
 | Out of scope | Per-request token signing for a mock identity provider. Use a service container, decided at the first identity problem (R34) |
 
+### Pass-through
+
+Built at P11. A mock server can stand in front of a [backing service](#backing-services), such as an identity provider, and pass its requests through. Each request is logged as a route's is, so a case can count the app's calls to the provider and read what they carried, and a scenario can spoil a token on its way back. The mock server never signs anything: the provider signs, and a scenario only breaks what it signed (R34).
+
+```yaml
+upstream: http://keycloak:8080        # a service on the stack's network: http://<name>:<port>
+routes:
+  - id: token
+    method: POST
+    path: /realms/pp3/protocol/openid-connect/token   # no response: passed through
+  - id: certs
+    method: GET
+    path: /realms/pp3/protocol/openid-connect/certs
+scenarios:
+  alg_none:
+    route: token
+    jwt: {field: id_token, tamper: alg_none}
+  bad_signature:
+    route: token
+    jwt: {field: id_token, tamper: bad_signature}
+  token_outage:
+    visible: true
+    route: token
+    status: 503                       # answers alone: the provider is not called
+```
+
+Here the mock server's name, say `idp`, is the name the app and the grader use, and `keycloak` is the service's own name, which only the mock server needs.
+
+| Rule | Detail |
+|------|--------|
+| `upstream` | One per mock server, `http://<name>:<port>` with no path. A route without `response` passes through to it, and so does a request no route matches, which is logged with `route: null` and `matched: false` instead of the 404. Without `upstream`, every route needs its `response` |
+| The request | Goes out as it came: method, path, query, headers and body, the `Host` included, so the provider hears the name the app used. Headers about one connection (RFC 9110, 7.6.1) are dropped, and `Accept-Encoding` becomes `identity`, so a JWT in the answer can be read |
+| The answer | Comes back whole, with every `Set-Cookie` line apart, and the mock server writes its own `Content-Length`. An upstream that does not answer within 10 s, or answers more than 8 MiB, is a 502 whose JSON names the mock server and the upstream |
+| Scenarios | On a pass-through route, a scenario entry with a `status` answers alone and calls no upstream, so an outage on a token route spends no code at the provider. Any other entry overrides the upstream's answer field by field, as it would a route's own response: `headers` replaces all of them, `body` the body, `delay_ms` delays it |
+| `jwt` | In a scenario or a sequence entry only. `field` is a dotted path to the token in the JSON answer, passed through or the route's own. `alg_none` gives the token the header `{"alg":"none"}` and an empty signature, and keeps its payload, so the per-login `nonce`, `aud` and `exp` stay right and only the algorithm is wrong. `bad_signature` changes the first character of the signature. Neither needs a key. A body with no JWT at that field goes out unchanged, so the reference fails the case in `verify`, which shows the mistake |
+| Log | An entry of a pass-through has `status: null` until the upstream answers. Bodies and headers are kept within the [log's limits](#request-log) |
+| Visibility | Unchanged: a `jwt` scenario is hidden unless `visible: true`, and a dev or test stack never holds a hidden one |
+
+The stack must put the upstream's service on the mock container's network, which [backing services](#backing-services) do (P10).
+
 ## Backing services
 
 Planned, for P10. S21 and S22 check a compose file today, and a stack refuses a problem that declares one.

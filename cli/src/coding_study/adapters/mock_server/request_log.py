@@ -25,7 +25,8 @@ type LogEntry = dict[str, object]
 class Outcome:
     route: str | None
     scenario: str | None
-    status: int
+    status: int | None
+    """None until an upstream has answered."""
 
 
 class RequestLog:
@@ -68,10 +69,14 @@ class RequestLog:
         self._entries.append(entry)
         return entry
 
-    def mark_responded(self, entry: LogEntry | None) -> None:
-        """Harmless for a dropped entry, or for one a reset has already cleared."""
-        if entry is not None:
-            entry["responded_ms"] = self._elapsed_ms()
+    def mark_responded(self, entry: LogEntry | None, status: int | None = None) -> None:
+        """Harmless for a dropped entry, or for one a reset has already cleared. `status` is what
+        an upstream answered, known only now."""
+        if entry is None:
+            return
+        entry["responded_ms"] = self._elapsed_ms()
+        if status is not None:
+            entry["status"] = status
 
     def document(self) -> dict[str, object]:
         dropped = self._received - len(self._entries)
