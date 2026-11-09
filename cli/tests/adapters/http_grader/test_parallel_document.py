@@ -4,8 +4,10 @@ import json
 from typing import Any
 
 from coding_study.adapters.http_grader.case_document import http_case_input
+from coding_study.adapters.problem_documents import cases_from_document
 from coding_study.domain.cases import Expected
 from coding_study.domain.http_case import HttpExpected, HttpRequest, HttpStep, ParallelBurst
+from coding_study.domain.problem import ComparatorSpec, ComparatorType
 
 
 def document(**fields: Any) -> dict[str, Any]:
@@ -94,6 +96,23 @@ def test_before_requests_and_a_fresh_start_are_read_as_for_a_single_request():
     parsed = http_case_input(document(before=[seed], fresh=True))
 
     assert (parsed.before, parsed.fresh) == ((HttpRequest("POST", "/seed"),), True)
+
+
+def test_a_parallel_case_expects_its_counts_and_its_after_answer_as_a_report_shows_them():
+    after = {"request": {"method": "GET", "path": "/stock"}, "expected": {"status": 200}}
+    document_ = {"version": 1, "cases": [document(after=after)]}
+
+    case = cases_from_document(document_, ComparatorSpec(ComparatorType.EXACT), "tests.json")[0]
+
+    assert case.expected == Expected({"statuses": {"201": 1, "409": 2}, "after": {"status": 200}})
+
+
+def test_a_parallel_case_with_no_after_request_expects_its_counts():
+    document_ = {"version": 1, "cases": [document()]}
+
+    case = cases_from_document(document_, ComparatorSpec(ComparatorType.EXACT), "tests.json")[0]
+
+    assert case.expected == Expected({"statuses": {"201": 1, "409": 2}})
 
 
 def test_a_report_shows_the_burst_as_written():

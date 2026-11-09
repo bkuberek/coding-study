@@ -386,7 +386,7 @@ def _case(case: Document, rules: _CaseRules, location: str) -> Case:
         case_input = _case_input(case, rules.flows)
     except CaseDocumentError as error:
         raise _DocumentError(location, str(error)) from None
-    expected = Expected(case["expected"]) if "expected" in case else None
+    expected = Expected(case["expected"]) if "expected" in case else _burst_expected(case)
     if expected is None and _requires_expected(case_input, rules.comparator):
         raise _DocumentError(
             location, "missing expected (required unless generated or the comparator is checker)"
@@ -400,6 +400,17 @@ def _case(case: Document, rules: _CaseRules, location: str) -> Case:
         hang_guard_ms=case.get("hang_guard_ms"),
         note=case.get("note"),
     )
+
+
+def _burst_expected(case: Document) -> Expected | None:
+    """A parallel case expects its counts, and its `after` answer, in the shape a report shows
+    what came back, so an example and a failure read the same way."""
+    if "parallel" not in case:
+        return None
+    expected: dict[str, Any] = {"statuses": case["expected_statuses"]}
+    if "after" in case:
+        expected["after"] = case["after"]["expected"]
+    return Expected(expected)
 
 
 def _case_input(case: Document, flows: Flows) -> CaseInput:
