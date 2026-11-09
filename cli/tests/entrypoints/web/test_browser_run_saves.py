@@ -180,11 +180,14 @@ def _put_the_colon_back(page: Any) -> None:
 
 
 def _run_and_read(page: Any, button: str) -> str:
-    """Clicks `button` and reads the summary of the run it starts, once that run ended."""
+    """Clicks `button` and reads the summary of the run it starts, once that run ended: the
+    summary shows at `run_end`, and the toolbar is idle once the child exits, so that a click that
+    follows starts a run instead of landing on Cancel."""
     page.evaluate(MARK_THE_SUMMARY_OLD, SUMMARY)
     page.click(button)
     fresh = f"{SUMMARY}:not([data-old])"
     page.wait_for_selector(fresh, timeout=RUN_WAIT_MS)
+    page.wait_for_selector(IDLE, timeout=RUN_WAIT_MS)
     return page.locator(fresh).inner_text()
 
 

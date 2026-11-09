@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 import tomllib
@@ -12,6 +13,17 @@ from coding_study.entrypoints.shared import ExitCode
 
 PYPROJECT = Path(__file__).resolve().parents[3] / "pyproject.toml"
 """The installable project at the repository root defines the `cstudy` script."""
+INTERRUPTED_INSIDE_AN_EXEC = """from coding_study.entrypoints import launcher
+
+
+def interrupted(_name):
+    exec("raise KeyboardInterrupt", {})
+
+
+launcher.import_module = interrupted
+"""
+"""A `sitecustomize` whose Ctrl-C leaves an `exec` while the CLI imports, as one does when it lands
+while a dataclass makes its methods."""
 
 
 def test_the_cs_script_starts_through_the_launcher():
@@ -58,3 +70,16 @@ def test_python_dash_m_coding_study_runs_the_cli():
         check=False,
     )
     assert finished.stdout == f"cstudy {version('coding-study')}\n"
+
+
+def test_ctrl_c_inside_an_exec_exits_130_under_python_dash_m(tmp_path):
+    """A run of `cstudy serve` that Cancel stops while it starts ends 130, not by SIGINT."""
+    (tmp_path / "sitecustomize.py").write_text(INTERRUPTED_INSIDE_AN_EXEC)
+    search_path = os.pathsep.join(filter(None, (str(tmp_path), os.environ.get("PYTHONPATH"))))
+    finished = subprocess.run(
+        [sys.executable, "-m", "coding_study", "--version"],
+        env={**os.environ, "PYTHONPATH": search_path},
+        capture_output=True,
+        check=False,
+    )
+    assert finished.returncode == ExitCode.INTERRUPTED

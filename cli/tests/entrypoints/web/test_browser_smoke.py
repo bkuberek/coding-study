@@ -224,7 +224,9 @@ def _runs_of(page: Any, attempt_id: str, known: list[str]) -> list[str]:
 
 
 def _run_and_cancel(page: Any, slow_test: Path, seen: Visit) -> None:
-    """Runs the tests with one that sleeps, reads the rows shown while it runs, then cancels."""
+    """Runs the tests with one that sleeps, reads the rows shown while it runs, then cancels, and
+    waits until the button reads Run tests again: the summary shows at `run_end`, while the button
+    stays Cancel until the child exits, and a click on it then starts nothing."""
     slow_test.write_text(SLOW_TEST_TEXT)
     try:
         page.click(".run-button.primary")
@@ -236,7 +238,7 @@ def _run_and_cancel(page: Any, slow_test: Path, seen: Visit) -> None:
         seen.cancelled = page.locator(".result-summary-text").inner_text()
     finally:
         slow_test.unlink(missing_ok=True)
-    page.wait_for_selector(".run-button.primary:not([disabled])")
+    page.wait_for_selector(".run-button.primary:not(.is-cancel)", timeout=RUN_WAIT_MS)
 
 
 def test_the_problem_list_shows_the_catalog(visit):
