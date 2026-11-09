@@ -123,7 +123,9 @@ class StepRunner:
             return _Prepared(template, step.expected)
         try:
             request = rendered_request(template, self.values)
-            expected = step.expected and rendered_expected(step.expected, self.values)
+            expected = (
+                rendered_expected(step.expected, self.values) if step.expected is not None else None
+            )
         except MissingValueError as missing:
             failure = step_failure(step, f"{{{{{missing.name}}}}} was never captured")
             return _Unsendable(failure, missing_value=True)
