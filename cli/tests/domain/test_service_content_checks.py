@@ -3,7 +3,14 @@
 import pytest
 
 from coding_study.domain.cases import Case, Expected, OperationSequence
-from coding_study.domain.http_case import HttpCaseInput, HttpExpected, HttpRequest, LogAssertion
+from coding_study.domain.http_case import (
+    HttpCaseInput,
+    HttpExpected,
+    HttpRequest,
+    HttpStep,
+    LogAssertion,
+    RequestTemplate,
+)
 from coding_study.domain.mock_configs import MockFiles
 from coding_study.domain.problem import ComparatorSpec, ComparatorType, Level
 from coding_study.domain.project import ProjectFile, ProjectFiles, ProjectTree
@@ -429,3 +436,18 @@ def test_fresh_with_data_needs_a_reset_command():
 
 def test_fresh_with_no_data_only_restarts_and_needs_no_reset():
     assert s23(http_case(fresh=True), http_case("h2", 2)) == []
+
+
+def steps_case(target: str) -> Case:
+    step = HttpStep("step 1 GET", RequestTemplate("GET", target), HttpExpected(200))
+    return Case("h1", HttpCaseInput({}, steps=(step,)), None, level=1)
+
+
+def test_a_step_may_name_the_app_and_a_mock_server_by_their_origins():
+    cases = (steps_case("http://app:8000/me"), steps_case("http://room-vendor:8080/r"))
+    assert s23(*cases, http_case("h2", 2)) == []
+
+
+def test_a_step_naming_an_undeclared_origin_is_refused():
+    found = s23(steps_case("http://keycloak:8080/realms"), http_case("h2", 2))
+    assert any("http://keycloak:8080 is no origin the problem declares" in item for item in found)

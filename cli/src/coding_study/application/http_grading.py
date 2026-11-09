@@ -2,13 +2,14 @@
 
 Given a stack that is ready, runs each case of the graded levels in tests.json order: resets the
 mock servers, restarts the app with fresh data if the case asks, sets its scenarios, sends its
-requests within its limit, then judges the answer and the mock servers' logs. Nothing before the
-first request counts toward the limit. An app that dies leaves the remaining cases not run, as
-does one that hangs too often. The result is a `Judgement` like a runner's, so levels, tallies,
-submissions and events need no code of their own.
+requests or steps within its limit, then judges the answer and the mock servers' logs, and runs its
+cleanup steps. Nothing before the first request counts toward the limit. An app that dies leaves
+the remaining cases not run, as does one that hangs too often. The result is a `Judgement` like a
+runner's, so levels, tallies, submissions and events need no code of their own.
 """
 
-from dataclasses import dataclass
+from collections.abc import Iterator
+from dataclasses import dataclass, replace
 from typing import Protocol
 
 from coding_study.application.http_grading_ports import (
@@ -16,35 +17,45 @@ from coding_study.application.http_grading_ports import (
     GradedStack,
     OpenStackClients,
     StackClients,
+    StackEndpoints,
     StackStepError,
+)
+from coding_study.application.http_grading_steps import (
+    StepRules,
+    StepRunner,
+    StepsEnd,
+    StepsStopped,
 )
 from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.cases import Case
 from coding_study.domain.comparators import Mismatch
 from coding_study.domain.config import Config
 from coding_study.domain.errors import ContentError, ContentIssue
-from coding_study.domain.http_case import HttpCaseInput, HttpRequest
+from coding_study.domain.http_case import HttpCaseInput, LogAssertion
 from coding_study.domain.http_grading import (
+    FAILURE_SEPARATOR,
     HTTP_COMPARATORS,
-    Answer,
     ExchangeFailed,
     ExchangeFailure,
-    HttpResponse,
+    MockLog,
     answer_outcome,
     answered_verdict,
-    before_failure,
+    log_failures,
 )
+from coding_study.domain.http_templates import MissingValueError, rendered_assertion
 from coding_study.domain.judging import CaseVerdict, Judgement, RunnableCase, concrete_case
 from coding_study.domain.levels import cases_up_to
 from coding_study.domain.precedence import resolve_hang_guard_ms
 from coding_study.domain.problem import ComparatorSpec, Problem
-from coding_study.domain.runs import InvalidOutput, NotRun, Raised, TimedOut, UserError
+from coding_study.domain.runs import InvalidOutput, NotRun, Raised, Returned, TimedOut, UserError
 
 MAX_HUNG_CASES = 3
 """After this many cases past their limit, the rest are not run, as after a runner's restarts."""
 APP_EXIT_GRACE_MS = 2_000
 """How long a failed connection waits for a dying app's exit to show."""
-NANOSECONDS_PER_MILLISECOND = 1_000_000
+JUDGED_STATUSES = frozenset({CaseStatus.PASS, CaseStatus.FAIL})
+"""The verdicts a failed cleanup step turns into a failure; any other already says what went
+wrong."""
 TESTS_FILE = "tests.json"
 APP_EXITED = "AppExited"
 RESET_FAILED = "ResetFailed"
@@ -79,8 +90,14 @@ def run_http_grading(
     stops answering."""
     endpoints = stack.endpoints
     cases = _checked_cases(run, endpoints.mocks)
-    grader = _Grader(stack, open_clients(endpoints), run.listener)
+    grader = _Grader(_Stack(stack, endpoints), open_clients(endpoints), run.listener)
     return Judgement(len(cases), tuple(grader.judged(case) for case in cases))
+
+
+@dataclass(frozen=True, slots=True)
+class _Stack:
+    graded: GradedStack
+    endpoints: StackEndpoints
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,6 +135,8 @@ class _CaseChecker:
     def _problem_with(self, http: HttpCaseInput, comparator: ComparatorSpec) -> str | None:
         if comparator.type not in HTTP_COMPARATORS:
             return f"the comparator {comparator.type} cannot judge a response body"
+        if not http.exchange_steps():
+            return "a service project's case needs a request or steps"
         named = (*http.mocks, *(assertion.mock for assertion in http.log))
         unknown = [mock for mock in named if mock not in self.known_mocks]
         return f"no mock server named {unknown[0]}" if unknown else None
@@ -131,9 +150,10 @@ class _Grader:
     """The run so far: whether it has stopped, and how many cases have hung the app."""
 
     def __init__(
-        self, stack: GradedStack, clients: StackClients, listener: HttpCaseListener | None
+        self, stack: _Stack, clients: StackClients, listener: HttpCaseListener | None
     ) -> None:
-        self._stack = stack
+        self._stack = stack.graded
+        self._endpoints = stack.endpoints
         self._app = clients.app
         self._mocks = clients.mocks
         self._listener = listener
@@ -176,27 +196,27 @@ class _Grader:
 
     def _exchanged(self, checked: _CheckedCase) -> CaseVerdict:
         http = checked.http
-        spent_ns = 0
-        for index, request in enumerate(http.before):
-            sent = self._send(request, checked.limit_ms, spent_ns)
-            if isinstance(sent, ExchangeFailed):
-                return self._failed(checked, sent)
-            failure = before_failure(index, request, sent)
-            if failure is not None:
-                outcome = answer_outcome(sent, http.expected)
-                return CaseVerdict(checked.case, CaseStatus.FAIL, outcome, Mismatch(failure))
-            spent_ns += sent.duration_ns
-        sent = self._send(http.request, checked.limit_ms, spent_ns)
-        if isinstance(sent, ExchangeFailed):
-            return self._failed(checked, sent)
-        asserted = dict.fromkeys(assertion.mock for assertion in http.log)
-        logs = {mock: self._mocks.log(mock) for mock in asserted}
-        return answered_verdict(checked.case, http, Answer(sent, checked.comparator, logs))
+        self._app.clear_cookies()
+        rules = StepRules(checked.comparator, checked.limit_ms)
+        runner = StepRunner(self._app, self._endpoints, rules)
+        verdict = self._judged(checked, runner.run(http.exchange_steps()), runner)
+        if not http.cleanup or self._stopped is not None:
+            return verdict
+        return _with_cleanup(verdict, runner.cleaned_up(http.cleanup))
 
-    def _send(
-        self, request: HttpRequest, limit_ms: int, spent_ns: int
-    ) -> HttpResponse | ExchangeFailed:
-        return self._app.send(request, max(limit_ms - spent_ns // NANOSECONDS_PER_MILLISECOND, 0))
+    def _judged(self, checked: _CheckedCase, ended: StepsEnd, runner: StepRunner) -> CaseVerdict:
+        if isinstance(ended, ExchangeFailed):
+            return self._failed(checked, ended)
+        if isinstance(ended, StepsStopped):
+            return _stopped(checked.case, ended)
+        logs = self._logs(checked.http.log)
+        log_problems = tuple(_log_problems(checked.http.log, logs, runner.values))
+        return answered_verdict(checked.case, ended.answer, (*ended.failures, *log_problems))
+
+    def _logs(self, assertions: tuple[LogAssertion, ...]) -> dict[str, MockLog]:
+        """Each mock server's log once, read after the last answer."""
+        asserted = dict.fromkeys(assertion.mock for assertion in assertions)
+        return {mock: self._mocks.log(mock) for mock in asserted}
 
     def _failed(self, checked: _CheckedCase, failed: ExchangeFailed) -> CaseVerdict:
         match failed.failure:
@@ -237,3 +257,39 @@ class _Grader:
         message = f"the app exited with code {ended.exit_code} during this case"
         error = UserError(APP_EXITED, message, ended.stderr_tail)
         return CaseVerdict(checked.case, CaseStatus.ERROR, Raised(error, failed.duration_ns))
+
+
+def _log_problems(
+    assertions: tuple[LogAssertion, ...], logs: dict[str, MockLog], values: dict[str, str]
+) -> Iterator[str]:
+    """An assertion that names a value the case never captured is passed over: the step that
+    should have captured it has already failed the case."""
+    for assertion in assertions:
+        try:
+            filled = rendered_assertion(assertion, values)
+        except MissingValueError:
+            continue
+        yield from log_failures(filled, logs[assertion.mock])
+
+
+def _stopped(case: RunnableCase, stopped: StepsStopped) -> CaseVerdict:
+    answer = stopped.answer
+    outcome = (
+        answer_outcome(answer.response, answer.expected)
+        if answer is not None
+        else Returned(None, 0)
+    )
+    return CaseVerdict(
+        case, CaseStatus.FAIL, outcome, Mismatch(FAILURE_SEPARATOR.join(stopped.failures))
+    )
+
+
+def _with_cleanup(verdict: CaseVerdict, failures: tuple[str, ...]) -> CaseVerdict:
+    """A cleanup step that went wrong fails a case that was judged, since the cases after it may
+    meet what it should have undone."""
+    if not failures or verdict.status not in JUDGED_STATUSES:
+        return verdict
+    mismatch = verdict.mismatch
+    found = [mismatch.detail] if mismatch is not None and mismatch.detail else []
+    reasons = FAILURE_SEPARATOR.join([*found, *failures])
+    return replace(verdict, status=CaseStatus.FAIL, mismatch=Mismatch(reasons))

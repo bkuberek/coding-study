@@ -66,6 +66,16 @@ def test_the_endpoints_are_the_published_ports_and_the_stacks_token():
     assert endpoints.mocks == ("room-vendor",)
 
 
+def test_the_app_is_reachable_by_its_own_origin_inside_the_stack():
+    endpoints = stack_of(FakeSandbox()).endpoints
+
+    assert endpoints.address_of("http://app:8000") == "http://127.0.0.1:5000"
+
+
+def test_until_p10_no_other_origin_is_published():
+    assert stack_of(FakeSandbox()).endpoints.origins == {}
+
+
 def test_a_restart_waits_on_the_startup_budget_not_on_a_cases_limit():
     engine = FakeSandbox()
 

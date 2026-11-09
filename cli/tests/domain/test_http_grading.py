@@ -4,6 +4,7 @@ from typing import Any
 from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.cases import Expected
 from coding_study.domain.http_case import (
+    BEFORE_EXPECTED,
     HttpCaseInput,
     HttpExpected,
     HttpRequest,
@@ -17,7 +18,6 @@ from coding_study.domain.http_grading import (
     LoggedRequest,
     MockLog,
     answered_verdict,
-    before_failure,
     log_failures,
     response_failures,
 )
@@ -56,12 +56,9 @@ def logged(received_ms: int, responded_ms: int | None, route: str = AVAILABILITY
     return LoggedRequest(route, received_ms, responded_ms)
 
 
-def http_input(expected: HttpExpected, log: tuple[LogAssertion, ...] = ()) -> HttpCaseInput:
-    return HttpCaseInput({}, request=HttpRequest("GET", "/a"), expected=expected, log=log)
-
-
-def runnable(http: HttpCaseInput) -> RunnableCase:
-    return RunnableCase("h1", http, Expected({"status": http.expected.status}))
+def runnable() -> RunnableCase:
+    http = HttpCaseInput({}, request=HttpRequest("GET", "/a"), expected=HttpExpected(200))
+    return RunnableCase("h1", http, Expected({"status": 200}))
 
 
 def test_a_matching_status_with_no_expected_body_passes():
@@ -428,75 +425,121 @@ def test_one_assertion_reports_each_thing_it_found():
     assert len(log_failures(LogAssertion(ROOM_VENDOR, count=2, min_gap_ms=950), log)) == 2
 
 
-def test_an_answer_that_matches_passes():
-    http = http_input(HttpExpected(200, Expected({"a": 1})))
-    verdict = answered_verdict(runnable(http), http, Answer(response({"a": 1}), EXACT, {}))
+def test_an_answer_with_no_failures_passes():
+    verdict = answered_verdict(runnable(), Answer(response({"a": 1})), ())
     assert verdict.status is CaseStatus.PASS
 
 
 def test_an_answer_shows_the_status_and_the_parsed_body():
-    http = http_input(HttpExpected(200))
     answer = HttpResponse(200, {}, b'{"b": 1}', duration_ns=7)
-    verdict = answered_verdict(runnable(http), http, Answer(answer, EXACT, {}))
+    verdict = answered_verdict(runnable(), Answer(answer, HttpExpected(200)), ())
     assert verdict.outcome == Returned({"status": 200, "body": {"b": 1}}, 7)
 
 
 def test_an_answer_that_is_not_json_shows_its_text():
-    http = http_input(HttpExpected(200))
-    verdict = answered_verdict(runnable(http), http, Answer(text_response("hi"), EXACT, {}))
+    verdict = answered_verdict(runnable(), Answer(text_response("hi"), HttpExpected(200)), ())
     assert verdict.outcome == Returned({"status": 200, "body": "hi"}, 0)
 
 
 def test_a_string_expectation_shows_the_text_even_if_it_parses():
-    http = http_input(HttpExpected(200, Expected("1")))
-    verdict = answered_verdict(runnable(http), http, Answer(text_response("1"), EXACT, {}))
+    answer = Answer(text_response("1"), HttpExpected(200, Expected("1")))
+    verdict = answered_verdict(runnable(), answer, ())
     assert verdict.outcome == Returned({"status": 200, "body": "1"}, 0)
 
 
 def test_an_answer_shows_only_the_headers_the_case_lists():
-    http = http_input(HttpExpected(200, headers={"X-Trace": "1"}))
-    answer = HttpResponse(200, {"x-trace": "1", "x-other": "2"}, b"")
-    verdict = answered_verdict(runnable(http), http, Answer(answer, EXACT, {}))
+    response_with = HttpResponse(200, {"x-trace": "1", "x-other": "2"}, b"")
+    answer = Answer(response_with, HttpExpected(200, headers={"X-Trace": "1"}))
+    verdict = answered_verdict(runnable(), answer, ())
     assert verdict.outcome == Returned(
         {"status": 200, "body": "", "headers": {"X-Trace": "1"}},
         0,
     )
 
 
-def test_a_wrong_answer_fails_with_its_difference():
-    http = http_input(HttpExpected(200, Expected({"a": 1})))
-    verdict = answered_verdict(runnable(http), http, Answer(response({"a": 2}), EXACT, {}))
+def test_an_answer_with_no_expectation_shows_its_status_and_body():
+    verdict = answered_verdict(runnable(), Answer(text_response("hi", 302)), ())
+    assert verdict.outcome == Returned({"status": 302, "body": "hi"}, 0)
+
+
+def test_an_answer_with_failures_fails_with_every_one_of_them():
+    failures = ("status: expected 200, got 500", "room-vendor: expected 1 request, saw 0")
+    verdict = answered_verdict(runnable(), Answer(response(status=500)), failures)
     assert (verdict.status, verdict.mismatch and verdict.mismatch.detail) == (
         CaseStatus.FAIL,
-        "body.a: expected 1, got 2",
+        "status: expected 200, got 500; room-vendor: expected 1 request, saw 0",
     )
 
 
-def test_a_right_body_with_a_wrong_log_fails_on_the_log():
-    assertion = LogAssertion(ROOM_VENDOR, AVAILABILITY, count=2)
-    http = http_input(HttpExpected(200), (assertion,))
-    answer = Answer(response(), EXACT, {ROOM_VENDOR: MockLog()})
-    verdict = answered_verdict(runnable(http), http, answer)
-    assert (verdict.status, verdict.mismatch and verdict.mismatch.detail) == (
-        CaseStatus.FAIL,
-        "room-vendor availability: expected 2 requests, saw 0",
+def test_a_status_class_holds_every_status_of_its_hundred():
+    assert response_failures(response(status=404), HttpExpected("4xx"), EXACT) == ()
+
+
+def test_a_status_outside_the_class_names_the_class():
+    assert response_failures(response(status=302), HttpExpected("4xx"), EXACT) == (
+        "expected a 4xx status, got 302",
     )
-
-
-def test_a_wrong_status_and_a_wrong_log_are_both_reported():
-    http = http_input(HttpExpected(200), (LogAssertion(ROOM_VENDOR, count=1),))
-    answer = Answer(response(status=500), EXACT, {ROOM_VENDOR: MockLog()})
-    verdict = answered_verdict(runnable(http), http, answer)
-    assert verdict.mismatch is not None
-    assert verdict.mismatch.detail == (
-        "status: expected 200, got 500; room-vendor: expected 1 request, saw 0"
-    )
-
-
-def test_a_before_request_answering_2xx_is_no_failure():
-    assert before_failure(0, HttpRequest("POST", "/seed"), response(status=201)) is None
 
 
 def test_a_before_request_answering_otherwise_names_itself():
-    failure = before_failure(1, HttpRequest("POST", "/seed"), response(status=500))
-    assert failure == "before[1] POST /seed: expected a 2xx status, got 500"
+    http = HttpCaseInput(
+        {},
+        request=HttpRequest("GET", "/a"),
+        expected=HttpExpected(200),
+        before=(HttpRequest("POST", "/a"), HttpRequest("POST", "/seed")),
+    )
+    before = http.exchange_steps()[1]
+    failure = response_failures(response(status=500), BEFORE_EXPECTED, EXACT)[0]
+    assert f"{before.label}: {failure}" == "before[1] POST /seed: expected a 2xx status, got 500"
+
+
+def refresh(token: str, *, truncated: bool = False) -> LoggedRequest:
+    body = f"grant_type=refresh_token&refresh_token={token}"
+    headers = {"content-type": "application/x-www-form-urlencoded"}
+    return LoggedRequest("token", 0, 1, headers, body, truncated)
+
+
+def test_a_form_filter_counts_only_requests_that_carried_the_field():
+    assertion = LogAssertion("idp", "token", count=1, form={"refresh_token": "rt2"})
+    assert log_failures(assertion, MockLog((refresh("rt1"), refresh("rt2")))) == ()
+
+
+def test_a_form_filter_that_matches_no_request_names_what_it_looked_for():
+    assertion = LogAssertion("idp", "token", count=1, form={"refresh_token": "rt3"})
+    assert log_failures(assertion, MockLog((refresh("rt1"),))) == (
+        'idp token with form refresh_token="rt3": expected 1 request, saw 0',
+    )
+
+
+def test_a_header_filter_matches_by_name_in_any_case():
+    assertion = LogAssertion(
+        "idp", min_count=2, headers={"Content-Type": "application/x-www-form-urlencoded"}
+    )
+    assert log_failures(assertion, MockLog((refresh("a"), refresh("b")))) == ()
+
+
+def test_a_header_filter_counts_no_request_without_that_header():
+    assertion = LogAssertion("idp", count=0, headers={"Authorization": "Basic Z3JhZGVy"})
+    assert log_failures(assertion, MockLog((refresh("a"),))) == ()
+
+
+def test_a_form_filter_over_a_body_cut_at_the_logs_limit_cannot_be_judged():
+    assertion = LogAssertion("idp", "token", min_count=1, form={"refresh_token": "a"})
+    assert log_failures(assertion, MockLog((refresh("a", truncated=True),))) == (
+        'idp token with form refresh_token="a": a logged body was cut at the log\'s limit, '
+        "so its form cannot be judged",
+    )
+
+
+def test_a_filter_over_an_overflowed_log_cannot_be_judged():
+    assertion = LogAssertion("idp", count=1, headers={"X": "1"})
+    assert log_failures(assertion, MockLog((), dropped=3)) == (
+        f'idp with header X="1": {OVERFLOWED}',
+    )
+
+
+def test_a_long_filter_value_is_cut_in_the_label():
+    token = "eyJ" + "a" * 100
+    assertion = LogAssertion("idp", count=1, form={"refresh_token": token})
+    (failure,) = log_failures(assertion, MockLog())
+    assert token not in failure

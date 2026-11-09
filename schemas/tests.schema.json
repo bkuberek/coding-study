@@ -8,11 +8,17 @@
   "properties": {
     "$schema": { "type": "string" },
     "version": { "const": 1 },
+    "flows": {
+      "description": "Named step lists a multi-step case uses with {\"use\": name}, such as a login (docs/specs/service-projects.md#multi-step-cases)",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/valueName" },
+      "additionalProperties": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/httpStep" } }
+    },
     "cases": { "type": "array", "items": { "$ref": "#/$defs/case" } }
   },
   "$defs": {
     "case": {
-      "description": "Exactly one of input (function kind), ops with args (class kinds), generate or stress (concurrent problems), or request (service projects)",
+      "description": "Exactly one of input (function kind), ops with args (class kinds), generate or stress (concurrent problems), or request or steps (service projects)",
       "type": "object",
       "additionalProperties": false,
       "required": ["id"],
@@ -70,6 +76,18 @@
           "minItems": 1,
           "items": { "$ref": "#/$defs/httpRequest" }
         },
+        "steps": {
+          "description": "A multi-step case: requests in order, which may carry values captured from earlier answers (docs/specs/service-projects.md#multi-step-cases)",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/httpStep" }
+        },
+        "cleanup": {
+          "description": "Steps that run after the case whatever happened, to undo what it changed",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/httpStep" }
+        },
         "comparator": {
           "description": "Overrides the problem's comparator for the response body",
           "type": "object",
@@ -98,16 +116,14 @@
         { "required": ["ops", "args"] },
         { "required": ["generate"] },
         { "required": ["stress"] },
-        { "required": ["request"] }
+        { "required": ["request"] },
+        { "required": ["steps"] }
       ],
       "dependentRequired": {
         "ops": ["args"],
         "args": ["ops"],
-        "mocks": ["request"],
         "before": ["request"],
-        "comparator": ["request"],
-        "log": ["request"],
-        "fresh": ["request"]
+        "cleanup": ["steps"]
       },
       "if": { "anyOf": [{ "required": ["generate"] }, { "required": ["stress"] }] },
       "then": {
@@ -118,7 +134,93 @@
         "request": {
           "required": ["expected", "level"],
           "properties": { "expected": { "$ref": "#/$defs/httpExpected" } }
+        },
+        "steps": {
+          "required": ["level"],
+          "not": { "required": ["expected"] }
+        },
+        "mocks": { "$ref": "#/$defs/anHttpCase" },
+        "comparator": { "$ref": "#/$defs/anHttpCase" },
+        "log": { "$ref": "#/$defs/anHttpCase" },
+        "fresh": { "$ref": "#/$defs/anHttpCase" }
+      }
+    },
+    "anHttpCase": {
+      "anyOf": [{ "required": ["request"] }, { "required": ["steps"] }]
+    },
+    "valueName": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+    "httpStep": {
+      "description": "A request with what it must answer and the values it captures, or a flow used with {\"use\": name, \"with\": {name: text}}",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["request"],
+          "properties": {
+            "request": { "$ref": "#/$defs/httpStepRequest" },
+            "expected": { "$ref": "#/$defs/httpExpected" },
+            "capture": {
+              "description": "A value per name, read from the answer: status, header.<name>, header.<name>.query.<parameter>, body.<dotted path>, form.<id>.<attribute> or input.<name>.<attribute>",
+              "type": "object",
+              "propertyNames": { "$ref": "#/$defs/valueName" },
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^(status|header\\.[^.]+(\\.query\\.[^.]+)?|body(\\.[^.]+)+|form\\.[^.]+\\.[^.]+|input\\.[^.]+\\.[^.]+)$"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["use"],
+          "properties": {
+            "use": { "$ref": "#/$defs/valueName" },
+            "with": {
+              "description": "Fills each {{name}} of the flow's steps with this text, which may name a capture itself",
+              "type": "object",
+              "propertyNames": { "$ref": "#/$defs/valueName" },
+              "additionalProperties": { "type": "string" }
+            }
+          }
         }
+      ]
+    },
+    "httpStepRequest": {
+      "description": "Its texts may name {{captures}}. A path goes to the app; an absolute url to an origin the problem declares, sent with that origin's name as Host",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method"],
+      "properties": {
+        "method": { "type": "string", "pattern": "^[A-Z]+$" },
+        "path": { "description": "Starts with /; the query goes in query", "type": "string", "pattern": "^/[!\"$->@-~]*$" },
+        "url": {
+          "description": "http://<name>:<port>/<path>, or a {{capture}} that holds such a URL",
+          "type": "string",
+          "pattern": "^(http://[^\\s]+|\\{\\{[^\\s]*)$"
+        },
+        "query": { "$ref": "#/$defs/httpRequest/properties/query" },
+        "headers": { "$ref": "#/$defs/httpHeaders" },
+        "json": { "description": "Sent as JSON, with Content-Type: application/json unless headers name one" },
+        "form": {
+          "description": "Sent as application/x-www-form-urlencoded unless headers name a Content-Type",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "body": { "description": "Sent as it is", "type": "string" },
+        "jar": {
+          "description": "The cookie jar this request sends and keeps cookies in (default main): another jar is another browser",
+          "$ref": "#/$defs/valueName"
+        },
+        "follow_redirects": { "description": "Follow redirects as a browser would (default false)", "type": "boolean" }
+      },
+      "oneOf": [{ "required": ["path"] }, { "required": ["url"] }],
+      "not": {
+        "anyOf": [
+          { "required": ["json", "form"] },
+          { "required": ["json", "body"] },
+          { "required": ["form", "body"] }
+        ]
       }
     },
     "mockName": { "type": "string", "pattern": "^[a-z0-9-]+$" },
@@ -152,7 +254,13 @@
       "additionalProperties": false,
       "required": ["status"],
       "properties": {
-        "status": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "status": {
+          "description": "A status, or a class of them such as \"4xx\"",
+          "oneOf": [
+            { "type": "integer", "minimum": 100, "maximum": 599 },
+            { "type": "string", "pattern": "^[1-5]xx$" }
+          ]
+        },
         "body": { "description": "A string is the body's exact text; any other JSON is compared parsed, by the comparator. Left out, any body passes" },
         "headers": { "description": "Each listed header must match", "$ref": "#/$defs/httpHeaders" }
       }
@@ -167,7 +275,16 @@
         "count": { "type": "integer", "minimum": 0 },
         "min_count": { "type": "integer", "minimum": 0 },
         "max_count": { "type": "integer", "minimum": 0 },
-        "min_gap_ms": { "description": "From each response to the next request", "type": "integer", "minimum": 0 }
+        "min_gap_ms": { "description": "From each response to the next request", "type": "integer", "minimum": 0 },
+        "headers": {
+          "description": "Only requests that carried each of these headers count; a value may name a {{capture}}",
+          "$ref": "#/$defs/httpHeaders"
+        },
+        "form": {
+          "description": "Only requests whose form-encoded body held each of these fields count; a value may name a {{capture}}",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
       },
       "anyOf": [
         { "required": ["count"] },

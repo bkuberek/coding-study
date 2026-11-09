@@ -648,7 +648,7 @@ One piece of core code covers every language, with no per-language runner work. 
 
 ### The code
 
-Step 6 of the [graded run](#graded-run), as a use case that is handed a ready stack: `run_http_grading` in `application/http_grading.py`, with `domain/http_case.py`, `domain/http_grading.py` and `adapters/http_grader/`. It returns a `Judgement`, so levels, submissions and events are today's. `application/service_grading.py` brings its stack up and `application/graded_stack.py` adapts that stack.
+Step 6 of the [graded run](#graded-run), as a use case that is handed a ready stack: `run_http_grading` in `application/http_grading.py`, with `domain/http_case.py`, `domain/http_grading.py`, `domain/http_steps.py` and `adapters/http_grader/`; `application/http_grading_steps.py` sends a case's steps. It returns a `Judgement`, so levels, submissions and events are today's. `application/service_grading.py` brings its stack up and `application/graded_stack.py` adapts that stack.
 
 The grader asks a stack for little, through `GradedStack` in `application/http_grading_ports.py`:
 
@@ -676,7 +676,7 @@ A case's limit runs from its first request to the last byte of its last answer, 
 3. With `grade_setup`, planned with it at P10, the from-empty check: bring up the mock and service containers, run `bootstrap` on empty data, then discard the data (`down -v`). Without `grade_setup`, the `bootstrap` of the next step is itself this check.
 4. Bring up a fresh stack (`up --wait`), with its one-shots in order before `app`: `grade_setup` if declared, `bootstrap` if declared, `reset` with `prepare` if declared. The app's start depends on them and on the mock container being healthy, which P1 measured faster than separate steps, with one failure path.
 5. `app` runs `commands.run`. Poll the health path through the published port until 2xx or `ready_timeout_s`, each try limited to 5 s as a whole, so an answer that never ends still counts as no answer. The second clock starts here.
-6. For each case of the graded levels, in `tests.json` order: `POST /reset`; if `fresh`, restart with fresh data and `POST /reset` again, so your app's startup meets no scenario left by the last case and the log holds this case's requests alone; set scenarios, send `before` requests or `steps`, send the request, compare, assert on the log.
+6. For each case of the graded levels, in `tests.json` order: `POST /reset`; if `fresh`, restart with fresh data and `POST /reset` again, so your app's startup meets no scenario left by the last case and the log holds this case's requests alone; set scenarios, send `before` requests and the request, or the `steps`, compare, assert on the log, then run any [cleanup](#multi-step-cases) steps.
 7. `down -v`.
 
 Each `cstudy submit` has a stack of its own, under a fresh name, so two at once cannot collide, and `.cs/runs/` holds the run's generated files until it ends. A case past its limit is `timeout` and restarts your app, as a runner restarts ([hang guard](runners.md#hang-guard-and-restarts)); after 3 such cases the remaining cases are `not_run`. An app that exits during a case does not restart: the case is `error`, it says so with the exit code and the stderr tail, and the remaining cases are `not_run`, since a crash usually repeats and each case would pay for it. A connection that fails while your app runs is `error` for that case alone. The limit per case uses the same order as a runner's: config `hang_guard.ms`, the case's `hang_guard_ms`, `limits.hang_guard_ms`, else 10 s.
@@ -702,11 +702,11 @@ Language-neutral, in `tests.json`, with `id`, `visible`, `level`, `note` and `ha
 | `mocks` | The scenario per mock server; a mock server it leaves out has none. A visible case names visible scenarios only (S23) |
 | `before` | Requests sent first, each of which must answer 2xx, for a case that needs state. They share the case's limit, and the one that fails names itself in the reason. Optional |
 | `request` | `method`, `path`, optional `query`, `headers`, and `json` or `body`. A `query` value is a string, or a list sent once per value. `json` is encoded and sends `Content-Type: application/json` unless `headers` name one. `body` goes out byte for byte, so it can be malformed |
-| `expected.status` | Required |
+| `expected.status` | Required: a status, or a class of them such as `"4xx"`, which holds every status of its hundred |
 | `expected.body` | Optional; left out, any body passes. A string is the body's exact text. Anything else is compared parsed, by `comparator`, so key order and whitespace cannot fail a correct answer, and `null` asks for a JSON null. An object must hold exactly the fields expected: an extra one fails and is named. `NaN` and `Infinity` are not JSON |
 | `expected.headers` | Optional. Each listed header must match, its name in any case. A `Content-Type` that names no parameter ignores the answer's, so a framework's `; charset=utf-8` cannot fail it |
 | `comparator` | Overrides the problem's: `{"type": ...}`, with `tolerance` for `float`. `exact`, `unordered`, `unordered-nested` or `float` ([Comparators](problem-format.md#comparators)). `checker` is not allowed |
-| `log` | Assertions per mock server and route: `count`, `min_count`, `max_count`, and `min_gap_ms`, measured from each response's `responded_ms` to the next request's `received_ms`. Without `route`, they cover every request the mock server logged, matched or not, and requests past the log's limit still count. A log that overflowed fails an assertion with a `route` or a `min_gap_ms`, saying so: `dropped` says how many came and not which route they took or when, and the retry too soon may be the very one it did not keep. A value a little below the wait, here 950 for 1 s, tolerates timers |
+| `log` | Assertions per mock server and route: `count`, `min_count`, `max_count`, and `min_gap_ms`, measured from each response's `responded_ms` to the next request's `received_ms`. Without `route`, they cover every request the mock server logged, matched or not, and requests past the log's limit still count. A log that overflowed fails an assertion with a `route` or a `min_gap_ms`, saying so: `dropped` says how many came and not which route they took or when, and the retry too soon may be the very one it did not keep. A value a little below the wait, here 950 for 1 s, tolerates timers. `headers` and `form` narrow what counts to the requests that carried each header, by its name in any case, or each field of a form-encoded body, such as `{"form": {"refresh_token": "{{rt2}}"}}` with `count: 1`. Their values may name [captures](#multi-step-cases). A log that overflowed fails them too, and so does a body cut at the log's 64 KiB, whose form cannot be read |
 | `fresh` | Restart the app and run `commands.reset` first |
 
 A case has a `level`, or no graded run would reach it. `project.clock: virtual` is refused with `grading: http`: these cases run on the real clock. The bound on waits and D11 keep them stable.
@@ -715,25 +715,63 @@ A case that names a mock server the stack lacks, or a scenario a mock server lac
 
 ### Multi-step cases
 
-Recommended, to confirm (R34), for P11. A later request can use values captured from earlier responses, for login and OIDC flows. A case has either `request` or `steps`.
+Built at P11 (R34). A case has either `request` or `steps`. The grader acts as a browser: a later step can carry values captured from earlier answers, cookies stay in named jars, and a step can follow redirects. That is what a login, a CSRF form or an OIDC flow needs, with no browser and nothing specific to one provider. Cases stay data: one template syntax, and no scripting.
 
 ```json
-{"id": "h30", "level": 2, "note": "a session token works only after login",
- "steps": [
-   {"request": {"method": "POST", "path": "/login", "json": {"member": "m1"}},
-    "expected": {"status": 200},
-    "capture": {"token": "body.token", "next": "header.location"}},
-   {"request": {"method": "GET", "path": "/me",
-                "headers": {"Authorization": "Bearer {{token}}"}},
-    "expected": {"status": 200, "body": {"member": "m1"}}}]}
+{"version": 1,
+ "flows": {
+   "login": [
+     {"request": {"method": "GET", "path": "/login"},
+      "expected": {"status": 302},
+      "capture": {"auth": "header.location"}},
+     {"request": {"method": "GET", "url": "{{auth}}"},
+      "expected": {"status": 200},
+      "capture": {"form": "form.kc-form-login.action"}},
+     {"request": {"method": "POST", "url": "{{form}}",
+                  "form": {"username": "{{user}}", "password": "learner-pass"}},
+      "expected": {"status": 302},
+      "capture": {"callback": "header.location", "code": "header.location.query.code"}}]},
+ "cases": [
+   {"id": "h3", "level": 2, "note": "a callback with a forged state is refused",
+    "steps": [
+      {"use": "login", "with": {"user": "learner"}},
+      {"request": {"method": "GET", "path": "/callback",
+                   "query": {"code": "{{code}}", "state": "forged"}},
+       "expected": {"status": "4xx"}},
+      {"request": {"method": "GET", "path": "/me"}, "expected": {"status": 401}}],
+    "cleanup": [{"request": {"method": "POST", "path": "/logout"}}],
+    "log": [{"mock": "idp", "route": "token", "count": 0}]}]}
 ```
 
 | Rule | Detail |
 |------|--------|
-| `capture` | A name per value: `body.<dotted path>` or `header.<name>`. A missing value fails the step, and the reason names it |
-| Use | `{{name}}` in a later step's `path`, `query`, `headers`, `json` or `body`. `{i}` stays the parallel case's index, and `{problem}` the command placeholder |
-| Client | No redirect is followed, so a flow asserts each one. Cookies are kept across the steps of a case |
-| Verdict | A case passes when every step does. A failing case in a practice attempt names its step |
+| `steps` | In place of `request`, `expected` and `before`; at least one. A step is a `request` with an optional `expected` and `capture`, or a `use` of a flow. A case passes when every step does. The first step that fails ends the case, and the reason names it: `step 2 GET /callback: expected a 4xx status, got 302`. When every step was sent, the last step's answer is judged together with `log`, as a single request's is |
+| `request` | As a single request's, plus: `url` in place of `path`, `form`, `jar` and `follow_redirects`. `form` is sent as `application/x-www-form-urlencoded` unless `headers` name a `Content-Type`; one of `json`, `form` and `body` at most |
+| `path` and `url` | A `path` goes to your app, as every single request does. A `url` is `http://<name>:<port>/<path>`, an origin as the stack's network names it, or a capture that holds one. The grader dials the address the stack publishes for that origin and sends its name as `Host`, so the app and a provider see the same names a container would. The origins a case may name are your app's own, `http://app:<app.port>`, each mock server's, `http://<mock>:8080`, and with P10 each backing service a problem publishes to the grader ([below](#reaching-an-origin)). `https` is not sent: nothing in a stack has a certificate |
+| `expected` | A single request's fields, with a status class such as `"4xx"`, and the case's comparator. Left out, any answer passes, which a step that only captures or a cleanup step may want |
+| `capture` | A name per value read from the answer: `status`; `header.<name>`; `header.<name>.query.<parameter>`, a query parameter of a header that holds a URL, such as `Location`; `body.<dotted path>`, where a number names a list element and a value that is not a string is kept as its JSON text; `form.<id>.<attribute>`, an attribute of the HTML `<form>` with that `id`; `input.<name>.<attribute>`, of the `<input>` with that `name`. HTML entities are unescaped, as a browser would. A value missing from a right answer fails the step and names where it looked. A wrong answer captures nothing |
+| `{{name}}` | The one template syntax. It fills a captured value in as it is, in a later step's `path`, `url`, `query` values, `headers` values, `json` strings, `form` values, `body`, and `expected` header values and body strings, and in `log` `headers` and `form` values. A name is letters, digits and `_`. No expression, filter or escape: anything else in braces is sent as written, and S23 refuses a `{{` that opens no name. `{i}` stays the parallel case's index, and `{problem}` the command placeholder |
+| Cookies | Each case starts with no cookies. A step's request uses the jar `main` unless `jar` names another, which is another browser: a second login, or a callback that arrives with no login cookie. A jar sends and keeps cookies as a browser would, by origin and path, with `Expires` and `Secure` honored, so `/login` and `http://app:8000/callback` share your app's. A single-request case keeps no cookies, as before |
+| Redirects | Not followed unless `follow_redirects: true`, so a flow can capture each `Location`. A followed 301, 302 or 303 becomes a GET with no body and none of the step's headers; a 307 or 308 repeats the request. Up to 10 hops, within the case's limit. A redirect to an origin the stack does not publish is not followed: it is the step's answer |
+| `flows` | Named step lists at the top of tests.json, such as `login`, written once and used by any case with `{"use": "login"}`. `with` fills each `{{name}}` of the flow's steps with its text, which may name a capture itself; a name it leaves out is a capture. A flow may use another flow, not itself. Captures in a flow are the case's, as if its steps were written in place: a flow's step is named `step 1, login step 3` |
+| `cleanup` | Steps after the case whatever happened, even after a failure or a timeout, to undo what it changed in a provider: a mapper, a key, a lifespan. They get the case's limit afresh, and each runs whatever the others did. One that names a value no step captured is passed over, since what it would undo never happened. One that fails, or gets no answer, fails a case that passed, with the step named, since later cases would meet what it left. No cleanup runs once your app has exited or hung too often |
+| Limits | The case's limit covers every step, as it covers `before` requests |
+| Verdict | `fail`, `timeout`, `error` and `invalid` as for a single request, from the step where it happened. A step that cannot be sent, for a URL no stack publishes, fails the case with the step named |
+
+Provider state persists across the cases of a run, since restarting a service such as Keycloak per case would cost seconds. A case that changes it undoes the change in `cleanup`.
+
+S23 checks a multi-step case before any run: each `{{name}}` is captured by an earlier step, or by a step at all for a cleanup step and `log`; each `{{` opens a name; each `url` written out names a declared origin, while a `url` that is itself a capture is checked when it is sent. A step that uses a flow tests.json lacks, or a flow that uses itself, fails loading, naming the case and the step.
+
+#### Reaching an origin
+
+This is the contract P10's backing services plug into. The grader asks the stack for one thing per origin, through `StackEndpoints` in `application/http_grading_ports.py`:
+
+| Field | What it is |
+|-------|------------|
+| `app_origin` | Your app's origin inside the stack, `http://app:<app.port>`. `SandboxGradedStack` sets it; the grader reaches it at `app_url` |
+| `origins` | For each other origin a case may name, by its name inside the stack, `http://idp:8080`, where the grader reaches it on your machine, `http://127.0.0.1:<port>`. Empty until P10 |
+
+P10 fills `origins` for each service the problem publishes to the grader through the forwarder, and for each mock server it publishes, since a mock server that stands in front of a provider, `idp` in the [pass-through](#pass-through) example, is what a login reaches. `address_of(origin)` reads the two fields, and a test fakes them with any mapping. S23 accepts the origins `declared_origins` in `domain/http_origins.py` returns: today your app and each mock server, and P10 adds each published service there too.
 
 ### What you see
 
@@ -969,7 +1007,7 @@ If a terminal holds the dev stack, the page shows that and does not start a seco
 | S20 (new) | Every mock config valid against `schemas/mock.schema.json`, as the problem loads; a config lies in `mocks/`; `body_file` stays inside `mocks/`, exists and is text; every scenario's `delay_ms` and `Retry-After` are at most 3 s, and `Retry-After` is whole seconds; `room-vendor.API.md` and its starter copy at `vendors/room-vendor/API.md` are byte-identical and list every visible scenario and no hidden one |
 | S21 (new) | The compose file holds only `services` and their `volumes`, with images pinned by digest and no `build`; no `ports`, `networks`, `network_mode`, `restart`, `container_name`, top-level `name`, `privileged`, `cap_add`, external volume, Docker socket, anonymous volume or bind mount outside the problem; `mem_limit`, `pids_limit` and `healthcheck` on every service; no service takes a reserved name or a mock server's |
 | S22 (new) | `requires` agrees with the compose file, the lock file and `commands`: `services` names the images' repositories, `lock` exists and `images_mb` has a row per image |
-| S23 (new) | Every HTTP case: levels numbered from 1, a level of its own, and every level with a case; `mocks` names known scenarios, visible ones only in a visible case; `log` names known routes; `fresh` with data needs `commands.reset`; a comparator that can judge a body; waits within the case's hang guard. Planned with their cases: `count` from 2 to 64, and a step's `{{name}}` was captured by an earlier step |
+| S23 (new) | Every HTTP case: levels numbered from 1, a level of its own, and every level with a case; `mocks` names known scenarios, visible ones only in a visible case; `log` names known routes; `fresh` with data needs `commands.reset`; a comparator that can judge a body; waits within the case's hang guard. In a [multi-step case](#multi-step-cases), each `{{name}}` was captured before it is used, each `{{` opens a name, and each `url` written out names a declared origin. Planned with their cases: `count` from 2 to 64 |
 
 ### Dynamic
 

@@ -17,8 +17,15 @@ def document(**fields: Any) -> dict[str, Any]:
 
 
 def request_of(**fields: Any) -> HttpRequest:
-    request = {"method": "POST", "path": "/bookings"} | fields
-    return http_case_input(document(request=request)).request
+    request = http_case_input(document(request={"method": "POST", "path": "/bookings"} | fields))
+    assert request.request is not None
+    return request.request
+
+
+def expected_of(case: dict[str, Any]) -> HttpExpected:
+    expected = http_case_input(case).expected
+    assert expected is not None
+    return expected
 
 
 def test_the_smallest_case_has_a_request_and_a_status():
@@ -65,17 +72,16 @@ def test_a_body_with_no_content_type_stays_without_one():
 
 
 def test_an_expected_body_may_be_null():
-    parsed = http_case_input(document(expected={"status": 200, "body": None}))
-    assert parsed.expected.body == Expected(None)
+    assert expected_of(document(expected={"status": 200, "body": None})).body == Expected(None)
 
 
 def test_no_expected_body_means_any_body():
-    assert http_case_input(document()).expected.body is None
+    assert expected_of(document()).body is None
 
 
 def test_expected_headers_are_kept():
-    parsed = http_case_input(document(expected={"status": 200, "headers": {"X-Trace": "1"}}))
-    assert parsed.expected.headers == {"X-Trace": "1"}
+    expected = expected_of(document(expected={"status": 200, "headers": {"X-Trace": "1"}}))
+    assert expected.headers == {"X-Trace": "1"}
 
 
 def test_mocks_name_a_scenario_each():

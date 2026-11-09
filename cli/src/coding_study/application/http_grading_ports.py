@@ -6,12 +6,13 @@ Startup runs on the sandbox's clock, so no time limit or hang guard of a case co
 holds for each restart here too: a restart returns once the app answers its health path again.
 """
 
-from collections.abc import Callable
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from coding_study.domain.http_case import HttpRequest
 from coding_study.domain.http_grading import ExchangeFailed, HttpResponse, MockLog
+from coding_study.domain.http_origins import split_url
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,6 +26,21 @@ class StackEndpoints:
     control_token: str
     mocks: tuple[str, ...]
     """The names of the problem's mock servers."""
+    app_origin: str | None = None
+    """The app's own origin inside the stack, `http://app:<port>`, which a case's absolute URL
+    names and which a path alone shares its cookies with. None reaches the app at `app_url`
+    alone."""
+    origins: Mapping[str, str] = field(default_factory=dict[str, str])
+    """The contract P10's services plug into (docs/specs/service-projects.md#reaching-an-origin):
+    for each other origin a case may name, by its name inside the stack, `http://idp:8080`, where
+    the grader reaches it on this machine, `http://127.0.0.1:<port>`, through the forwarder."""
+
+    def address_of(self, origin: str | None) -> str | None:
+        """Where the grader dials a request for `origin`; None is the app. None back when the
+        stack publishes nothing for it."""
+        if origin is None or origin in (self.app_origin, _origin_of(self.app_url)):
+            return self.app_url
+        return self.origins.get(origin)
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,10 +84,16 @@ class GradedStack(Protocol):
 
 
 class AppClient(Protocol):
-    """Sends a case's requests to the app."""
+    """Sends a case's requests to the app, or to another origin the stack publishes, as a browser
+    would: with the cookies of the request's jar, and following redirects when it asks."""
 
     def send(self, request: HttpRequest, limit_ms: int) -> HttpResponse | ExchangeFailed:
-        """The whole exchange, connecting through the last byte of the body, within `limit_ms`."""
+        """The whole exchange, connecting through the last byte of the body, within `limit_ms`,
+        redirects followed included."""
+        ...
+
+    def clear_cookies(self) -> None:
+        """Empties every jar: each case starts with no cookies."""
         ...
 
 
@@ -98,3 +120,8 @@ class StackClients:
 
 type OpenStackClients = Callable[[StackEndpoints], StackClients]
 """`open_stack_clients` in `adapters/http_grader/clients.py`, or a fake in a test."""
+
+
+def _origin_of(url: str) -> str | None:
+    split = split_url(url)
+    return split[0] if split is not None else None
