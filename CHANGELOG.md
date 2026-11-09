@@ -2,6 +2,29 @@
 
 <!-- version list -->
 
+## v0.32.0 (2026-11-09)
+
+### Chores
+
+- **showcase**: Take a Kotlin hover shot and Settings with Kotlin ready, for cstudy 0.31
+  ([`1aef8bd`](https://github.com/bkuberek/coding-study/commit/1aef8bd87e9ed3b117d20926856962a6a9b40f4e))
+
+### Documentation
+
+- Say doctor --fix renews an expired Kotlin LSP build in the web UI spec
+  ([`680293d`](https://github.com/bkuberek/coding-study/commit/680293d29097074ba5cae6826d884506523c347d))
+
+### Features
+
+- **problems**: Add coworking availability in Python, completing P8
+  ([`db588b1`](https://github.com/bkuberek/coding-study/commit/db588b170f1e14db219cbdcfa3640efc7e70694a))
+
+### Testing
+
+- Read doctor's help without the styles a forced terminal adds
+  ([`6dec3ff`](https://github.com/bkuberek/coding-study/commit/6dec3ffcc9d0ad0d88f922f4321ac8d0bdb8e379))
+
+
 ## v0.31.0 (2026-11-09)
 
 ### Documentation
