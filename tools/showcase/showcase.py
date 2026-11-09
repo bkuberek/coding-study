@@ -43,6 +43,7 @@ SHOTS = (
     "code-intelligence-error",
     "autocomplete-list",
     "code-intelligence-java-hover",
+    "code-intelligence-kotlin-hover",
     "code-intelligence-go-hover",
     "code-intelligence-rust-hover",
     "web-ui-problems",
@@ -106,6 +107,15 @@ TOP_K_JAVA = """public class Solution {
 }
 """
 JAVA_SLUG = "top-k-frequent-elements"
+MAJORITY_KOTLIN = """class Solution {
+    fun majorityElement(nums: IntArray): Int {
+        val counts = nums.asList().groupingBy { it }.eachCount()
+        val half = nums.size / 2
+        return counts.entries.first { (_, count) -> count > half }.key
+    }
+}
+"""
+KOTLIN_SLUG = "majority-element"
 GROUP_ANAGRAMS_GO = """import (
 	"slices"
 	"strings"
@@ -356,7 +366,10 @@ class Showcase:
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "preferences.json").write_text(json.dumps({**PREFERENCES, **changes}) + "\n")
 
-    def prepare(self, wheel: Path) -> None:
+    def prepare(self, wheel: Path, licenses: tuple[str, ...] = ()) -> None:
+        """`licenses` are the keys of the server licenses that you have read and accept for this
+        throwaway workspace, such as `kotlin-lsp`; `cstudy doctor --fix` skips such a server
+        without them."""
         say("prepare: virtual environment, workspace, language servers")
         if self.work.exists() and any(self.work.iterdir()):
             sys.exit(f"{self.work} is not empty; give --work an empty or new folder")
@@ -366,7 +379,8 @@ class Showcase:
         self.workspace.mkdir()
         self.cs("init", "--no-ide")
         self.write_preferences()
-        self.cs("doctor", "--fix")
+        accepted = [part for key in licenses for part in ("--accept-license", key)]
+        say(self.cs("doctor", "--fix", *accepted).stdout.rstrip())
         self.cs("--version")
 
     def seed(self) -> None:
@@ -395,6 +409,8 @@ class Showcase:
         self.cs("start", "move-zeroes", "--lang", "python", "--no-open")
         self.cs("start", JAVA_SLUG, "--lang", "java", "--no-open")
         self.write_java_stub(JAVA_SLUG, TOP_K_JAVA)
+        self.cs("start", KOTLIN_SLUG, "--lang", "kotlin", "--no-open")
+        self.write_code_after(self.kotlin_stub(KOTLIN_SLUG), "\nclass ", MAJORITY_KOTLIN)
         self.cs("start", GO_SLUG, "--lang", "go", "--no-open")
         self.write_code_after(self.go_stub(GO_SLUG), "\nfunc ", GROUP_ANAGRAMS_GO)
         self.cs("start", RUST_SLUG, "--lang", "rust", "--no-open")
@@ -426,6 +442,10 @@ class Showcase:
         """Replaces the class and keeps the header, package and imports `cstudy start` wrote."""
         text = self.java_stub(slug).read_text()
         self.java_stub(slug).write_text(text[: text.index("\npublic class ") + 1] + code)
+
+    def kotlin_stub(self, slug: str) -> Path:
+        practice = self.workspace / "jvm" / "kotlin" / "src" / "main" / "kotlin" / "practice"
+        return practice / slug.replace("-", "_") / "Solution.kt"
 
     def go_stub(self, slug: str) -> Path:
         name = slug.replace("-", "_")
@@ -689,8 +709,10 @@ def open_file(page: Page, name: str) -> None:
     page.wait_for_selector(".cm-content")
 
 
-def wait_ready(page: Page, server: str = "basedpyright") -> None:
-    page.wait_for_function(f"document.body.innerText.includes('{server} · ready')")
+def wait_ready(page: Page, server: str = "basedpyright", timeout_ms: float = WAIT_MS) -> None:
+    page.wait_for_function(
+        f"document.body.innerText.includes('{server} · ready')", timeout=timeout_ms
+    )
 
 
 def hover_until(page: Page, pointer: Pointer, line_text: str, token: str, text: str,
@@ -790,6 +812,18 @@ def feature_shots(app: Showcase, context: BrowserContext, variant: Variant) -> N
         page.close()
         app.wait_for_server_to_stop("jdtls")
 
+    if app.wants("code-intelligence-kotlin-hover"):
+        page = app.attempt(context, KOTLIN_SLUG)
+        open_file(page, "Solution.kt")
+        wait_ready(page, "kotlin-lsp", timeout_ms=180_000)
+        pointer = Pointer(page)
+        hover_until(page, pointer, "groupingBy { it }", "groupingBy", "group-and-fold",
+                    limit_s=300)
+        page.wait_for_timeout(400)
+        app.screenshot(page, "code-intelligence-kotlin-hover", variant)
+        page.close()
+        app.wait_for_server_to_stop("kotlin-lsp")
+
     if app.wants("code-intelligence-go-hover"):
         page = app.attempt(context, GO_SLUG)
         open_file(page, "group_anagrams.go")
@@ -877,6 +911,7 @@ def app_shots(app: Showcase, context: BrowserContext, variant: Variant) -> None:
         page.wait_for_selector("text=basedpyright 1.")
         page.wait_for_selector("text=typescript-language-server")
         page.wait_for_selector("text=jdtls 1.")
+        page.wait_for_selector("text=/kotlin-lsp \\d/")
         page.wait_for_selector("text=gopls 0.")
         page.wait_for_selector("text=rust-analyzer 1.")
         page.wait_for_timeout(300)
@@ -1069,6 +1104,11 @@ def main() -> None:
         "--variants", default=",".join(v.suffix for v in VARIANTS),
         help="comma list of the screenshots' theme and width: light, dark, light-phone, dark-phone",
     )
+    parser.add_argument(
+        "--accept-license", action="append", default=[], metavar="KEY",
+        help="with prepare: accept this server's license in the throwaway workspace, such as "
+        "kotlin-lsp, once you have read it; repeat for more",
+    )
     args = parser.parse_args()
     stages = [stage for stage in args.stages.split(",") if stage]
     unknown = set(stages) - set(STAGES)
@@ -1089,7 +1129,7 @@ def main() -> None:
         if "prepare" in stages:
             if not args.wheel:
                 sys.exit("--wheel is needed to prepare")
-            app.prepare(args.wheel.resolve())
+            app.prepare(args.wheel.resolve(), tuple(args.accept_license))
         if "seed" in stages:
             app.seed()
         if {"videos", "shots", "mock"} & set(stages):
