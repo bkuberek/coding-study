@@ -16,13 +16,13 @@ from coding_study.application.graded_stack import RunningStack, SandboxGradedSta
 from coding_study.application.ports import ProgressNotice
 from coding_study.application.sandbox import running_stack
 from coding_study.application.service_lifecycle import prepare_service_run
-from coding_study.application.service_stacks import dev_stack_plan
+from coding_study.application.service_stacks import dev_stack_plan, workspace_id
 from coding_study.domain.errors import LockBusyError, RunnerStartError, UsageError
 from coding_study.domain.mock_configs import visible_scenario_names
 from coding_study.domain.problem import Language, Problem
 from coding_study.domain.project import NO_PROJECT_FILES
 from coding_study.domain.project_manifest import MANIFESTS_DIRECTORY
-from coding_study.domain.sandbox import CommandOutcome, StackPlan
+from coding_study.domain.sandbox import CommandOutcome, LeftoverStack, StackPlan, dev_stack_name
 from coding_study.domain.service_project import service_of
 
 DEV_LOCK_SUFFIX = ".dev.lock"
@@ -80,6 +80,20 @@ def run_dev_stack(
             return _in_stack(environment, (problem, plan), request, listener, notify)
     except LockBusyError:
         raise UsageError(_held_by(environment, problem, plan)) from None
+
+
+def forget_dev_data(environment: Environment, problem: Problem, notify: ProgressNotice) -> None:
+    """For `cstudy start --fresh` and a review attempt: the dev stack's data goes with the folder
+    it belonged to, each backing service's volume with it, so the next `cstudy dev` migrates from
+    empty. A running `cstudy dev` keeps it, and this says so."""
+    workspace = workspace_id(environment)
+    stack = LeftoverStack(dev_stack_name(problem.meta.slug, workspace), workspace, True)
+    try:
+        with environment.workspace.locked_with_deadline(_dev_lock(problem), NO_WAIT_S):
+            if not environment.sandbox.remove_stack(stack):
+                notify(f"could not remove the data of {stack.name}; the next --fresh will")
+    except LockBusyError:
+        notify("cstudy dev runs on this project, so its data stays until a later --fresh")
 
 
 def _dev_lock(problem: Problem) -> str:

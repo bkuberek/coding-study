@@ -5,6 +5,7 @@ import json
 import pytest
 from typer.testing import CliRunner
 
+from coding_study.application.service_stacks import workspace_id
 from coding_study.domain.docker_engine import EngineState, EngineStatus
 from coding_study.domain.sandbox import (
     PYTHON_IMAGE,
@@ -70,6 +71,25 @@ def test_start_starts_nothing_else(environment, engine):
     start_it()
 
     assert not engine.called("start")
+
+
+def test_a_fresh_start_removes_the_dev_stacks_data_with_the_old_folder(environment, engine):
+    start_it()
+
+    result = invoke("start", SLUG, "--no-open", "--yes", "--fresh")
+
+    assert result.exit_code == ExitCode.SUCCESS
+    assert [stack.name for stack in engine.called("remove_stack")] == [
+        f"cstudy-d-{SLUG}-{workspace_id(environment)}"
+    ]
+
+
+def test_a_resumed_start_keeps_the_dev_stacks_data(environment, engine):
+    start_it()
+
+    start_it()
+
+    assert not engine.called("remove_stack")
 
 
 def test_start_names_its_next_step(environment):

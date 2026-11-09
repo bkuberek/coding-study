@@ -23,6 +23,7 @@ from coding_study.application.project_start import (
     restore_project_file,
 )
 from coding_study.application.resolve_target import ProblemTarget, resolve_problem
+from coding_study.application.service_dev import forget_dev_data
 from coding_study.application.service_lifecycle import (
     finish_service_start,
     preview_service_start,
@@ -142,6 +143,8 @@ def _start_service(
     if preview.downloads and not yes:
         _confirm_download(request.slug)
     started = start_attempt(environment, request)
+    if started.archived_to:
+        forget_dev_data(environment, problem, notice)
     finish_service_start(environment, problem, notice)
     for line in _report(started):
         output.print(line)

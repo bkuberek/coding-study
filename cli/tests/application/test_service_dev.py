@@ -8,13 +8,19 @@ from typing import Any
 import pytest
 
 from coding_study.application.http_grading_ports import StackClients, StackEndpoints
-from coding_study.application.service_dev import DevRequest, DevStack, run_dev_stack
+from coding_study.application.service_dev import (
+    DevRequest,
+    DevStack,
+    forget_dev_data,
+    run_dev_stack,
+)
 from coding_study.application.service_stacks import workspace_id
 from coding_study.application.start_attempt import StartRequest, start_attempt
 from coding_study.domain.errors import UsageError
 from coding_study.domain.problem import Language
 from coding_study.domain.sandbox import (
     CommandOutcome,
+    LeftoverStack,
     SandboxInventory,
     StackContainer,
     StackKind,
@@ -165,3 +171,30 @@ def test_a_second_dev_stack_names_the_holder_and_starts_nothing(environment, eng
     finally:
         os.close(descriptor)
     assert engine.plans == []
+
+
+def forget(environment) -> list[str]:
+    lines: list[str] = []
+    forget_dev_data(environment, environment.problems.load(SLUG), lines.append)
+    return lines
+
+
+def test_forgetting_the_dev_data_removes_the_dev_stack_with_its_volumes(environment, engine):
+    forget(environment)
+
+    name = f"cstudy-d-{SLUG}-{workspace_id(environment)}"
+    assert engine.called("remove_stack") == [LeftoverStack(name, workspace_id(environment), True)]
+
+
+def test_a_running_dev_stack_keeps_its_data_and_says_so(environment, engine):
+    held = environment.root / ".cs" / "projects" / f"{SLUG}.dev.lock"
+    held.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(held, os.O_RDWR | os.O_CREAT, 0o600)
+    fcntl.flock(descriptor, fcntl.LOCK_EX)
+    try:
+        lines = forget(environment)
+    finally:
+        os.close(descriptor)
+
+    assert engine.called("remove_stack") == []
+    assert any("cstudy dev" in line for line in lines)
