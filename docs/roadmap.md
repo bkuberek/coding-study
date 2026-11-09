@@ -187,7 +187,7 @@ The pilots are written with the next project problems.
 
 ## Phase 12: Service projects
 
-**Status.** In progress: the tooling is built through P8, measured on macOS with Docker Desktop and on Linux with Docker Engine, and `0277` is its first problem, with `0278` its Python version. It runs after or around the releases of Phase 11, unless the owner reorders it.
+**Status.** In progress: the tooling is built through P8, measured on macOS with Docker Desktop and on Linux with Docker Engine, and `0277` is its first problem, with `0278` its Python version, and `0279` and `0281` follow on mock servers alone. It runs after or around the releases of Phase 11, unless the owner reorders it.
 
 **Scope.** [ADR 0019](decisions/0019-service-projects.md) and [its spec](specs/service-projects.md): project problems that always run in a Docker sandbox, with their own dependencies, standard lifecycle commands, one Python mock server, optional backing services, grading over HTTP, and a list of what each problem depends on. Existing problems stay native and need no Docker. One step per ADR phase, each with its docs and a website message at release: P1 the spike; P2 the environment allowlist, for all problems; P3 the sandbox runtime; P4 lifecycle commands, TypeScript and Python templates, install and lock rules; P5 the mock server and `cstudy dev`; P6 the HTTP grader with `verify` and CI; P7 the first problem in TypeScript; P8 its Python version; P9 code intelligence in the container and the Web UI; P10 data-driven problems; P11 mock server extensions and multi-step cases, with project-size security and AI problems; P12 Kotlin and Java; P13 Go; P14 Rust (maybe, decided when reached).
 
@@ -197,7 +197,7 @@ The pilots are written with the next project problems.
 - [x] P2: the environment allowlist, for every problem ([Process environment](specs/runners.md#process-environment)).
 - [x] P3 to P6: tooling: the sandbox, the lifecycle commands, the mock server, `cstudy dev` and the HTTP grader, with `verify` and a CI job on a real engine. Planned with P9: the other flags of `cstudy dev`, and `cstudy test --events`.
 - [x] P7: the first problem in TypeScript, `0277-coworking-availability-typescript`.
-- [x] P8: the first problem in Python, `0278-coworking-availability-python`, graded by the same cases and mock servers as `0277`. The catalog now has 294 entries.
+- [x] P8: the first problem in Python, `0278-coworking-availability-python`, graded by the same cases and mock servers as `0277`. The catalog then had 294 entries.
 - [ ] P9: code intelligence and Web UI.
 - [ ] P10: data-driven problems.
 - [ ] P11: mock server extensions, multi-step cases, project-size security and AI problems.
@@ -221,14 +221,16 @@ The pilots are written with the next project problems.
 
 The owner accepted this list on 2026-11-08. Each is original and new; none replaces a problem in the catalog. Each starts in TypeScript, with a Python version after it, and Java, Kotlin and Go versions follow for the strongest. They are grouped by the Phase 12 step that makes them possible. Domains and roles use the closed lists of [ADR 0020](decisions/0020-catalog-labels.md); PP10, PP12 and PP13 are the hardest of the hard.
 
-**With mock servers only (built):**
+**With mock servers only (PP1, PP2 and PP4 built; PP3 moved):**
 
 | ID | Project | Domains · roles | What it teaches | Difficulty |
 |----|---------|-----------------|-----------------|------------|
 | PP1 | Coworking availability in Python (P8) | backend · backend | `0277` in a second language | hard |
 | PP2 | Payment webhook receiver | fintech, security · backend, security-engineer | HMAC signatures, replay windows, idempotency, events out of order, a provider's retries | medium |
-| PP3 | OAuth client with PKCE against a mock identity provider | identity, security · backend, security-engineer | The code flow with PKCE, token refresh, rotated signing keys, clock skew, revoked tokens; the whole flow that `0255` and `0256` cover in parts | hard |
+| PP3 | OAuth client with PKCE against an identity provider (moved to P10 and P11, not built) | identity, security · backend, security-engineer | The code flow with PKCE, token refresh, rotated signing keys, clock skew, revoked tokens; the whole flow that `0255` and `0256` cover in parts | hard |
 | PP4 | SSRF-safe webhook dispatcher | security · security-engineer, backend | User-supplied URLs: blocking internal addresses, following redirects safely, timeouts, signing | hard |
+
+PP3 moved: it needs P10's backing services and P11's multi-step cases, because a mock server does not sign tokens per request ([ADR 0019](decisions/0019-service-projects.md), R34). Keycloak is being spiked as the identity provider; this is not built yet.
 
 **With backing services (P10: Postgres, Redis, AWS services through Moto):**
 
@@ -251,10 +253,12 @@ The owner accepted this list on 2026-11-08. Each is original and new; none repla
 | PP14 | Fix the vulnerable service | security · security-engineer | A working app with broken authentication, IDOR, mass assignment and path traversal, graded by attack cases that must fail and normal cases that must keep passing | hard |
 | PP15 | Secure file upload | security, backend · backend, security-engineer | Size limits, content sniffing, path traversal, a mock malware-scan vendor that fails | medium |
 
-Suggested order: PP1, then PP2 and PP3, then P10 with PP5, then P11 with PP11.
+Suggested order: PP1, then PP2 and PP4, then P10 with PP5, then P11 with PP11 and PP3.
 
 - [x] PP1: `0278-coworking-availability-python` (P8).
-- [ ] PP2 to PP4, on the mock servers.
+- [x] PP2: `0279-payment-webhook-receiver-typescript`.
+- [x] PP4: `0281-ssrf-safe-webhook-dispatcher-typescript`. The catalog now has 296 entries.
+- [ ] PP3: moved to P10 and P11, with Keycloak as the identity provider, not built.
 - [ ] PP5 to PP10, after P10.
 - [ ] PP11 to PP15, after P11.
 
