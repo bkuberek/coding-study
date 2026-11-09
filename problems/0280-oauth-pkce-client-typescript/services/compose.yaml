@@ -1,0 +1,41 @@
+# The identity provider: Keycloak, which signs every token your app sees. cstudy adds the network,
+# labels, log limits, capabilities and privileges. Your app and the grader never reach it by this
+# name: they reach it as idp:8080, the mock server that passes each request through and logs it.
+#
+# --hostname fixes the issuer and every URL Keycloak writes to http://idp:8080, whatever socket a
+# request came in on. The realm is imported from realm/ at each start, into an embedded database
+# that lives as long as the container. Its first start builds the server into lib/quarkus, so the
+# root filesystem stays writable.
+#
+# The healthcheck asks for the realm's discovery document, which Keycloak serves only once the
+# import is done: its readiness endpoint says UP a few seconds earlier, while every request still
+# answers 503. The image has no curl, so bash's /dev/tcp sends the request.
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2@sha256:3879c623248408de29a5303178b5816c77e8dfef3890c361f8c0bbeaa979ba3b
+    command:
+      - start
+      - --http-enabled=true
+      - --hostname=http://idp:8080
+      - --import-realm
+      - --cache=local
+      - --db=dev-file
+    read_only: false
+    volumes:
+      - ./realm:/opt/keycloak/data/import
+    mem_limit: 512m
+    pids_limit: 128
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/8080
+          && printf 'GET /realms/campus/.well-known/openid-configuration HTTP/1.0\r\nHost: idp:8080\r\n\r\n' >&3
+          && timeout 2 grep -q '"issuer"' <&3
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 180s
+      start_interval: 500ms

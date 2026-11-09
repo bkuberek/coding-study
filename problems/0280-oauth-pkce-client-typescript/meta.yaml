@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0280"
+slug: oauth-pkce-client-typescript
+title: OAuth Client with PKCE (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [identity, security]
+job_roles: [backend, security-engineer]
+scope: project
+languages: [typescript]
+summary: A web app signs its users in with OpenID Connect against a real identity provider. Build its side of the login, with PKCE, state and nonce, ID tokens checked against rotating keys, rotating refresh tokens, and a logout that ends it all.
+levels:
+  - {level: 1, title: Sign in with the code flow and PKCE}
+  - {level: 2, title: Trust the ID token}
+  - {level: 3, title: Refresh and revoke}
+  - {level: 4, title: Sign out and keep tokens secret}
+comparator: {type: exact}
+project:
+  grading: http
+  image: node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+  commands:
+    install: [corepack, pnpm, install, --frozen-lockfile, --ignore-scripts]
+    bootstrap: [node, scripts/check-provider.ts]
+    run: [node, src/server.ts]
+    test: [node, --test, --test-concurrency=1]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    OIDC_ISSUER: http://idp:8080/realms/campus
+    OIDC_CLIENT_ID: portal
+  install_env:
+    COREPACK_HOME: /cache/corepack
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    npm_config_store_dir: /cache/pnpm-store
+    CI: "true"
+  mocks:
+    - {name: idp, config: mocks/idp.yaml}
+  services: services/compose.yaml
+  grader_reach: [idp:8080]
+  requires:
+    lock: pnpm-lock.yaml
+    services: [keycloak]
+    sizes: {install_mb: 27, images_mb: {app: 81, mocks: 43, keycloak: 265}, memory_mb: 650}
+approaches:
+  - {id: reference, name: "Check the state before the code, the signature before the claims, and keep only the newest refresh token", role: optimal, time: "per request", space: "per session"}
+related: [token-claim-validator, refresh-token-rotation]
+estimate_minutes: 240

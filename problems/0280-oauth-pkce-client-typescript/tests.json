@@ -1,0 +1,1295 @@
+{
+  "version": 1,
+  "flows": {
+    "admin": [
+      {
+        "request": {
+          "method": "POST",
+          "url": "http://idp:8080/realms/campus/protocol/openid-connect/token",
+          "form": {
+            "grant_type": "client_credentials",
+            "client_id": "grader",
+            "client_secret": "grader-secret-only-for-this-sandbox"
+          }
+        },
+        "expected": {
+          "status": 200
+        },
+        "capture": {
+          "admin": "body.access_token"
+        }
+      }
+    ],
+    "provider_login": [
+      {
+        "request": {
+          "method": "GET",
+          "url": "{{auth}}"
+        },
+        "expected": {
+          "status": 200
+        },
+        "capture": {
+          "form": "form.kc-form-login.action"
+        }
+      },
+      {
+        "request": {
+          "method": "POST",
+          "url": "{{form}}",
+          "form": {
+            "username": "learner",
+            "password": "learner-pass"
+          }
+        },
+        "expected": {
+          "status": 302
+        },
+        "capture": {
+          "callback": "header.location",
+          "code": "header.location.query.code"
+        }
+      }
+    ],
+    "authorize": [
+      {
+        "request": {
+          "method": "GET",
+          "path": "/login"
+        },
+        "expected": {
+          "status": 302
+        },
+        "capture": {
+          "auth": "header.location"
+        }
+      },
+      {
+        "use": "provider_login"
+      }
+    ],
+    "login": [
+      {
+        "use": "authorize"
+      },
+      {
+        "request": {
+          "method": "GET",
+          "url": "{{callback}}"
+        },
+        "expected": {
+          "status": 302,
+          "headers": {
+            "Location": "/"
+          }
+        }
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "v1",
+      "level": 1,
+      "visible": true,
+      "note": "a whole login: GET /login redirects to the provider, the provider's form signs learner in and redirects to /callback, and /callback redirects to / with a session, so GET /me answers who signed in",
+      "steps": [
+        {
+          "use": "login"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sub": "93b7b2cd-9b05-4904-8716-3ca8ffb65e55",
+              "username": "learner",
+              "email": "learner@campus.example"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "v2",
+      "level": 1,
+      "visible": true,
+      "note": "GET /login redirects to the provider's authorization_endpoint with client_id, response_type=code, redirect_uri, scope=openid, state, nonce, and an S256 code_challenge; the provider shows its login form only for a request it accepts, and refuses one without PKCE or with code_challenge_method=plain",
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/login"
+          },
+          "expected": {
+            "status": 302
+          },
+          "capture": {
+            "auth": "header.location",
+            "state": "header.location.query.state",
+            "nonce": "header.location.query.nonce",
+            "challenge": "header.location.query.code_challenge",
+            "method": "header.location.query.code_challenge_method"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "{{auth}}"
+          },
+          "expected": {
+            "status": 200
+          }
+        }
+      ]
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "note": "a callback whose state is not this login's is refused before the code is spent",
+      "steps": [
+        {
+          "use": "authorize"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/callback",
+            "query": {
+              "code": "{{code}}",
+              "state": "forged-state"
+            }
+          },
+          "expected": {
+            "status": "4xx"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 401
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "idp",
+          "route": "token",
+          "form": {
+            "grant_type": "authorization_code"
+          },
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "note": "a callback that arrives in a browser that never started the login is refused: someone else's code, sent to you, must not sign you in as them",
+      "steps": [
+        {
+          "use": "authorize"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "{{callback}}",
+            "jar": "victim"
+          },
+          "expected": {
+            "status": "4xx"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me",
+            "jar": "victim"
+          },
+          "expected": {
+            "status": 401
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "idp",
+          "route": "token",
+          "form": {
+            "grant_type": "authorization_code"
+          },
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "note": "a login attempt is used once: the same callback again, in the same browser, is refused without a second exchange, and the session it made stays",
+      "steps": [
+        {
+          "use": "login"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "{{callback}}"
+          },
+          "expected": {
+            "status": "4xx"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sub": "93b7b2cd-9b05-4904-8716-3ca8ffb65e55",
+              "username": "learner",
+              "email": "learner@campus.example"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "idp",
+          "route": "token",
+          "form": {
+            "grant_type": "authorization_code"
+          },
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "note": "an ID token whose nonce is not the one this login sent is refused: here the authorization request carried the app's state and code_challenge with another nonce",
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/login"
+          },
+          "expected": {
+            "status": 302
+          },
+          "capture": {
+            "state": "header.location.query.state",
+            "challenge": "header.location.query.code_challenge"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "http://idp:8080/realms/campus/protocol/openid-connect/auth",
+            "query": {
+              "client_id": "portal",
+              "response_type": "code",
+              "redirect_uri": "http://app:8000/callback",
+              "scope": "openid",
+              "state": "{{state}}",
+              "nonce": "a-nonce-this-app-never-sent",
+              "code_challenge": "{{challenge}}",
+              "code_challenge_method": "S256"
+            }
+          },
+          "expected": {
+            "status": 200
+          },
+          "capture": {
+            "form": "form.kc-form-login.action"
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "url": "{{form}}",
+            "form": {
+              "username": "learner",
+              "password": "learner-pass"
+            }
+          },
+          "expected": {
+            "status": 302
+          },
+          "capture": {
+            "callback": "header.location"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "{{callback}}"
+          },
+          "expected": {
+            "status": "4xx"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 401
+          }
+        }
+      ]
+    },
+    {
+      "id": "v3",
+      "level": 2,
+      "visible": true,
+      "note": "the provider's keys are fetched once and kept: two logins, from two browsers, fetch jwks_uri at most once between them",
+      "steps": [
+        {
+          "use": "login"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sub": "93b7b2cd-9b05-4904-8716-3ca8ffb65e55",
+              "username": "learner",
+              "email": "learner@campus.example"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/login",
+            "jar": "second"
+          },
+          "expected": {
+            "status": 302
+          },
+          "capture": {
+            "auth_second": "header.location"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "{{auth_second}}",
+            "jar": "second"
+          },
+          "expected": {
+            "status": 200
+          },
+          "capture": {
+            "form_second": "form.kc-form-login.action"
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "url": "{{form_second}}",
+            "jar": "second",
+            "form": {
+              "username": "learner",
+              "password": "learner-pass"
+            }
+          },
+          "expected": {
+            "status": 302
+          },
+          "capture": {
+            "callback_second": "header.location"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "{{callback_second}}",
+            "jar": "second"
+          },
+          "expected": {
+            "status": 302,
+            "headers": {
+              "Location": "/"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me",
+            "jar": "second"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sub": "93b7b2cd-9b05-4904-8716-3ca8ffb65e55",
+              "username": "learner",
+              "email": "learner@campus.example"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "idp",
+          "route": "certs",
+          "max_count": 1
+        }
+      ]
+    },
+    {
+      "id": "v4",
+      "level": 2,
+      "visible": true,
+      "note": "an ID token the provider signed, but that expired ten minutes before it was issued, is refused, even within the 60 s of clock skew allowed",
+      "steps": [
+        {
+          "use": "admin"
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "url": "http://idp:8080/admin/realms/campus/clients/da76d235-21bc-44f4-8547-bee9d255ca23",
+            "headers": {
+              "Authorization": "Bearer {{admin}}"
+            },
+            "json": {
+              "attributes": {
+                "access.token.lifespan": "-600"
+              }
+            }
+          },
+          "expected": {
+            "status": 204
+          }
+        },
+        {
+          "use": "authorize"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "{{callback}}"
+          },
+          "expected": {
+            "status": "4xx"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 401
+          }
+        }
+      ],
+      "cleanup": [
+        {
+          "request": {
+            "method": "PUT",
+            "url": "http://idp:8080/admin/realms/campus/clients/da76d235-21bc-44f4-8547-bee9d255ca23",
+            "headers": {
+              "Authorization": "Bearer {{admin}}"
+            },
+            "json": {
+              "attributes": {
+                "access.token.lifespan": "300"
+              }
+            }
+          },
+          "expected": {
+            "status": 204
+          }
+        }
+      ]
+    },
+    {
+      "id": "h5",
+      "level": 2,
+      "note": "an ID token whose signature was changed on its way from the provider is refused",
+      "steps": [
+        {
+          "use": "authorize"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "{{callback}}"
+          },
+          "expected": {
+            "status": "4xx"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 401
+          }
+        }
+      ],
+      "mocks": {
+        "idp": "bad_signature"
+      }
+    },
+    {
+      "id": "h6",
+      "level": 2,
+      "note": "an ID token rewritten with the header alg none and no signature is refused: the app, not the token, says which algorithm it accepts",
+      "steps": [
+        {
+          "use": "authorize"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "{{callback}}"
+          },
+          "expected": {
+            "status": "4xx"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 401
+          }
+        }
+      ],
+      "mocks": {
+        "idp": "alg_none"
+      }
+    },
+    {
+      "id": "h7",
+      "level": 2,
+      "note": "an ID token the provider signed with another client as its audience is refused",
+      "steps": [
+        {
+          "use": "admin"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "url": "http://idp:8080/admin/realms/campus/clients/da76d235-21bc-44f4-8547-bee9d255ca23/protocol-mappers/models",
+            "headers": {
+              "Authorization": "Bearer {{admin}}"
+            },
+            "json": {
+              "name": "another-audience",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-hardcoded-claim-mapper",
+              "config": {
+                "claim.name": "aud",
+                "claim.value": "another-app",
+                "jsonType.label": "String",
+                "id.token.claim": "true",
+                "access.token.claim": "false",
+                "userinfo.token.claim": "false"
+              }
+            }
+          },
+          "expected": {
+            "status": 201
+          },
+          "capture": {
+            "mapper": "header.location"
+          }
+        },
+        {
+          "use": "authorize"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "{{callback}}"
+          },
+          "expected": {
+            "status": "4xx"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 401
+          }
+        }
+      ],
+      "cleanup": [
+        {
+          "request": {
+            "method": "DELETE",
+            "url": "{{mapper}}",
+            "headers": {
+              "Authorization": "Bearer {{admin}}"
+            }
+          },
+          "expected": {
+            "status": 204
+          }
+        }
+      ]
+    },
+    {
+      "id": "h8",
+      "level": 2,
+      "note": "an ID token that expired 30 s before it was issued is accepted: the two clocks may differ by up to 60 s",
+      "steps": [
+        {
+          "use": "admin"
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "url": "http://idp:8080/admin/realms/campus/clients/da76d235-21bc-44f4-8547-bee9d255ca23",
+            "headers": {
+              "Authorization": "Bearer {{admin}}"
+            },
+            "json": {
+              "attributes": {
+                "access.token.lifespan": "-30"
+              }
+            }
+          },
+          "expected": {
+            "status": 204
+          }
+        },
+        {
+          "use": "login"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sub": "93b7b2cd-9b05-4904-8716-3ca8ffb65e55",
+              "username": "learner",
+              "email": "learner@campus.example"
+            }
+          }
+        }
+      ],
+      "cleanup": [
+        {
+          "request": {
+            "method": "PUT",
+            "url": "http://idp:8080/admin/realms/campus/clients/da76d235-21bc-44f4-8547-bee9d255ca23",
+            "headers": {
+              "Authorization": "Bearer {{admin}}"
+            },
+            "json": {
+              "attributes": {
+                "access.token.lifespan": "300"
+              }
+            }
+          },
+          "expected": {
+            "status": 204
+          }
+        }
+      ]
+    },
+    {
+      "id": "h9",
+      "level": 2,
+      "note": "the provider rotates its signing key between two logins: a token whose kid the app has not seen makes it fetch jwks_uri again, and the second login works",
+      "steps": [
+        {
+          "use": "admin"
+        },
+        {
+          "use": "login"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sub": "93b7b2cd-9b05-4904-8716-3ca8ffb65e55",
+              "username": "learner",
+              "email": "learner@campus.example"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "url": "http://idp:8080/admin/realms/campus/components",
+            "headers": {
+              "Authorization": "Bearer {{admin}}"
+            },
+            "json": {
+              "name": "rotated-key",
+              "providerId": "rsa-generated",
+              "providerType": "org.keycloak.keys.KeyProvider",
+              "config": {
+                "priority": [
+                  "200"
+                ]
+              }
+            }
+          },
+          "expected": {
+            "status": 201
+          },
+          "capture": {
+            "key": "header.location"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/login",
+            "jar": "second"
+          },
+          "expected": {
+            "status": 302
+          },
+          "capture": {
+            "auth_second": "header.location"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "{{auth_second}}",
+            "jar": "second"
+          },
+          "expected": {
+            "status": 200
+          },
+          "capture": {
+            "form_second": "form.kc-form-login.action"
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "url": "{{form_second}}",
+            "jar": "second",
+            "form": {
+              "username": "learner",
+              "password": "learner-pass"
+            }
+          },
+          "expected": {
+            "status": 302
+          },
+          "capture": {
+            "callback_second": "header.location"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "{{callback_second}}",
+            "jar": "second"
+          },
+          "expected": {
+            "status": 302,
+            "headers": {
+              "Location": "/"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me",
+            "jar": "second"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sub": "93b7b2cd-9b05-4904-8716-3ca8ffb65e55",
+              "username": "learner",
+              "email": "learner@campus.example"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "idp",
+          "route": "certs",
+          "max_count": 2
+        }
+      ],
+      "cleanup": [
+        {
+          "request": {
+            "method": "DELETE",
+            "url": "{{key}}",
+            "headers": {
+              "Authorization": "Bearer {{admin}}"
+            }
+          },
+          "expected": {
+            "status": 204
+          }
+        }
+      ]
+    },
+    {
+      "id": "v5",
+      "level": 3,
+      "visible": true,
+      "note": "POST /refresh trades the session's refresh token for new tokens, and the session goes on",
+      "steps": [
+        {
+          "use": "login"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/refresh"
+          },
+          "expected": {
+            "status": 204
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sub": "93b7b2cd-9b05-4904-8716-3ca8ffb65e55",
+              "username": "learner",
+              "email": "learner@campus.example"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "idp",
+          "route": "token",
+          "form": {
+            "grant_type": "refresh_token"
+          },
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v6",
+      "level": 3,
+      "visible": true,
+      "note": "POST /logout revokes the refresh token at the provider, which ends the login there too, and ends the session here",
+      "steps": [
+        {
+          "use": "admin"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "url": "http://idp:8080/admin/realms/campus/users/93b7b2cd-9b05-4904-8716-3ca8ffb65e55/logout",
+            "headers": {
+              "Authorization": "Bearer {{admin}}"
+            }
+          },
+          "expected": {
+            "status": 204
+          }
+        },
+        {
+          "use": "login"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/logout"
+          },
+          "expected": {
+            "status": 302
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 401
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "http://idp:8080/admin/realms/campus/users/93b7b2cd-9b05-4904-8716-3ca8ffb65e55/sessions",
+            "headers": {
+              "Authorization": "Bearer {{admin}}"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": []
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "idp",
+          "route": "revoke",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h10",
+      "level": 3,
+      "note": "refresh tokens rotate: the second refresh must send the token the first one returned, since the provider takes a spent one as stolen and ends the login",
+      "steps": [
+        {
+          "use": "login"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/refresh"
+          },
+          "expected": {
+            "status": 204
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/refresh"
+          },
+          "expected": {
+            "status": 204
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sub": "93b7b2cd-9b05-4904-8716-3ca8ffb65e55",
+              "username": "learner",
+              "email": "learner@campus.example"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "idp",
+          "route": "token",
+          "form": {
+            "grant_type": "refresh_token"
+          },
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "h11",
+      "level": 3,
+      "note": "the provider ended the login: the refresh it refuses ends the session here too",
+      "steps": [
+        {
+          "use": "admin"
+        },
+        {
+          "use": "login"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "url": "http://idp:8080/admin/realms/campus/users/93b7b2cd-9b05-4904-8716-3ca8ffb65e55/logout",
+            "headers": {
+              "Authorization": "Bearer {{admin}}"
+            }
+          },
+          "expected": {
+            "status": 204
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/refresh"
+          },
+          "expected": {
+            "status": 401
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 401
+          }
+        }
+      ]
+    },
+    {
+      "id": "h12",
+      "level": 3,
+      "note": "with no session, /refresh and /logout answer 401 and call the provider not at all",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/refresh"
+          },
+          "expected": {
+            "status": 401
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/logout"
+          },
+          "expected": {
+            "status": 401
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 401
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "idp",
+          "route": "token",
+          "count": 0
+        },
+        {
+          "mock": "idp",
+          "route": "revoke",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "v7",
+      "level": 4,
+      "visible": true,
+      "note": "the browser follows POST /logout's redirect to the provider's end_session_endpoint, which ends the provider's session and redirects straight back to http://app:8000/, with no page to confirm; the next login shows the provider's form again",
+      "steps": [
+        {
+          "use": "login"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/logout"
+          },
+          "expected": {
+            "status": 302
+          },
+          "capture": {
+            "logout": "header.location"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "{{logout}}"
+          },
+          "expected": {
+            "status": 302,
+            "headers": {
+              "Location": "http://app:8000/"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 401
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/login"
+          },
+          "expected": {
+            "status": 302
+          },
+          "capture": {
+            "auth": "header.location"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "{{auth}}"
+          },
+          "expected": {
+            "status": 200
+          }
+        }
+      ]
+    },
+    {
+      "id": "v8",
+      "level": 4,
+      "visible": true,
+      "note": "nothing your app prints holds a token or a code: a login, a refresh and a logout",
+      "steps": [
+        {
+          "use": "login"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/refresh"
+          },
+          "expected": {
+            "status": 204
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/logout"
+          },
+          "expected": {
+            "status": 302
+          }
+        }
+      ],
+      "app_output": {
+        "absent": [
+          {
+            "regex": "eyJ[A-Za-z0-9_-]+\\.eyJ[A-Za-z0-9_-]+"
+          },
+          "{{code}}"
+        ]
+      }
+    },
+    {
+      "id": "h13",
+      "level": 4,
+      "note": "a refused login prints no token either: the reason is enough",
+      "steps": [
+        {
+          "use": "authorize"
+        },
+        {
+          "request": {
+            "method": "GET",
+            "url": "{{callback}}"
+          },
+          "expected": {
+            "status": "4xx"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/me"
+          },
+          "expected": {
+            "status": 401
+          }
+        }
+      ],
+      "mocks": {
+        "idp": "bad_signature"
+      },
+      "app_output": {
+        "absent": [
+          {
+            "regex": "eyJ[A-Za-z0-9_-]+\\.eyJ[A-Za-z0-9_-]+"
+          },
+          "{{code}}"
+        ]
+      }
+    },
+    {
+      "id": "h14",
+      "level": 4,
+      "note": "a refresh the provider refuses prints no token either",
+      "steps": [
+        {
+          "use": "admin"
+        },
+        {
+          "use": "login"
+        },
+        {
+          "request": {
+            "method": "POST",
+            "url": "http://idp:8080/admin/realms/campus/users/93b7b2cd-9b05-4904-8716-3ca8ffb65e55/logout",
+            "headers": {
+              "Authorization": "Bearer {{admin}}"
+            }
+          },
+          "expected": {
+            "status": 204
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/refresh"
+          },
+          "expected": {
+            "status": 401
+          }
+        }
+      ],
+      "app_output": {
+        "absent": [
+          {
+            "regex": "eyJ[A-Za-z0-9_-]+\\.eyJ[A-Za-z0-9_-]+"
+          },
+          "{{code}}"
+        ]
+      }
+    }
+  ]
+}
