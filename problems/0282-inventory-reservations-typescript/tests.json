@@ -1,0 +1,1939 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "v1",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "a product shows what is available",
+      "request": {
+        "method": "GET",
+        "path": "/products/lamp"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "lamp",
+          "name": "Desk lamp",
+          "available": 3
+        }
+      }
+    },
+    {
+      "id": "v2",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "a reservation that fits is held",
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "v2",
+          "items": [
+            {
+              "sku": "lamp",
+              "quantity": 2
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "order": "v2",
+          "status": "active",
+          "items": [
+            {
+              "sku": "lamp",
+              "quantity": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "v3",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "a held lamp is no longer available",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "v3",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 2
+              }
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/products/lamp"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "lamp",
+          "name": "Desk lamp",
+          "available": 1
+        }
+      }
+    },
+    {
+      "id": "v4",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "a release gives the stock back",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "v4",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 2
+              }
+            ]
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/reservations/v4"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/products/lamp"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "lamp",
+          "name": "Desk lamp",
+          "available": 3
+        }
+      }
+    },
+    {
+      "id": "v5",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "more than is left is refused",
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "v5",
+          "items": [
+            {
+              "sku": "lamp",
+              "quantity": 4
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "insufficient_stock"
+        }
+      }
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "note": "a product nobody sells",
+      "request": {
+        "method": "GET",
+        "path": "/products/sofa"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_sku"
+        }
+      }
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "fresh": true,
+      "note": "a product the hidden data added reads live from the database",
+      "request": {
+        "method": "GET",
+        "path": "/products/x-heater"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "x-heater",
+          "name": "Space heater",
+          "available": 7
+        }
+      }
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "fresh": true,
+      "note": "an order reserves once, whatever it asks the second time",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h3",
+            "items": [
+              {
+                "sku": "desk",
+                "quantity": 1
+              }
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "h3",
+          "items": [
+            {
+              "sku": "mug",
+              "quantity": 1
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "order_exists"
+        }
+      }
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "note": "a quantity of 0",
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "h4",
+          "items": [
+            {
+              "sku": "lamp",
+              "quantity": 0
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "note": "no items",
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "h5",
+          "items": []
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h6",
+      "level": 1,
+      "note": "a body that is not JSON",
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "body": "lamp please"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h7",
+      "level": 1,
+      "fresh": true,
+      "note": "an unknown product reserves nothing",
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "h7",
+          "items": [
+            {
+              "sku": "sofa",
+              "quantity": 1
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_sku"
+        }
+      }
+    },
+    {
+      "id": "h8",
+      "level": 1,
+      "note": "the same product twice in one order",
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "h8",
+          "items": [
+            {
+              "sku": "lamp",
+              "quantity": 1
+            },
+            {
+              "sku": "lamp",
+              "quantity": 1
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h9",
+      "level": 1,
+      "note": "an order id with a space",
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "bad order",
+          "items": [
+            {
+              "sku": "lamp",
+              "quantity": 1
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h10",
+      "level": 1,
+      "fresh": true,
+      "note": "a reservation lists its items by SKU",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h10",
+            "items": [
+              {
+                "sku": "mug",
+                "quantity": 2
+              },
+              {
+                "sku": "desk",
+                "quantity": 1
+              }
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/reservations/h10"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "order": "h10",
+          "status": "active",
+          "items": [
+            {
+              "sku": "desk",
+              "quantity": 1
+            },
+            {
+              "sku": "mug",
+              "quantity": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h11",
+      "level": 1,
+      "note": "an order never reserved",
+      "request": {
+        "method": "GET",
+        "path": "/reservations/nope"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_order"
+        }
+      }
+    },
+    {
+      "id": "h12",
+      "level": 1,
+      "note": "releasing an order never reserved",
+      "request": {
+        "method": "DELETE",
+        "path": "/reservations/nope"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_order"
+        }
+      }
+    },
+    {
+      "id": "h13",
+      "level": 1,
+      "fresh": true,
+      "note": "a release happens once",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h13",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 1
+              }
+            ]
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/reservations/h13"
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "path": "/reservations/h13"
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "not_active"
+        }
+      }
+    },
+    {
+      "id": "h14",
+      "level": 1,
+      "fresh": true,
+      "note": "a released reservation says so",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h14",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 1
+              }
+            ]
+          }
+        },
+        {
+          "method": "DELETE",
+          "path": "/reservations/h14"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/reservations/h14"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "order": "h14",
+          "status": "released",
+          "items": [
+            {
+              "sku": "lamp",
+              "quantity": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h15",
+      "level": 1,
+      "fresh": true,
+      "note": "what another order holds is not available",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h15a",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 1
+              }
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "h15b",
+          "items": [
+            {
+              "sku": "lamp",
+              "quantity": 3
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "insufficient_stock"
+        }
+      }
+    },
+    {
+      "id": "h16",
+      "level": 1,
+      "fresh": true,
+      "note": "a release answers with the reservation",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h16",
+            "items": [
+              {
+                "sku": "desk",
+                "quantity": 2
+              }
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "path": "/reservations/h16"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "order": "h16",
+          "status": "released",
+          "items": [
+            {
+              "sku": "desk",
+              "quantity": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h17",
+      "level": 1,
+      "note": "a quantity that is not whole",
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "h17",
+          "items": [
+            {
+              "sku": "lamp",
+              "quantity": 1.5
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h18",
+      "level": 1,
+      "fresh": true,
+      "note": "a product with none in stock",
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "h18",
+          "items": [
+            {
+              "sku": "x-fan",
+              "quantity": 1
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "insufficient_stock"
+        }
+      }
+    },
+    {
+      "id": "v6",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "5 checkouts at once for the last 3 lamps",
+      "parallel": {
+        "count": 5,
+        "request": {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "v6-{i}",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 1
+              }
+            ]
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 3,
+        "409": 2
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/products/lamp"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "sku": "lamp",
+            "name": "Desk lamp",
+            "available": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "v7",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "the same order sent 5 times at once is reserved once",
+      "parallel": {
+        "count": 5,
+        "request": {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "v7",
+            "items": [
+              {
+                "sku": "mug",
+                "quantity": 1
+              }
+            ]
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 1,
+        "409": 4
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/products/mug"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "sku": "mug",
+            "name": "Coffee mug",
+            "available": 39
+          }
+        }
+      }
+    },
+    {
+      "id": "h20",
+      "level": 2,
+      "fresh": true,
+      "repeat": 3,
+      "note": "20 checkouts at once for the last 3 lamps",
+      "parallel": {
+        "count": 20,
+        "request": {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h20-{i}",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 1
+              }
+            ]
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 3,
+        "409": 17
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/products/lamp"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "sku": "lamp",
+            "name": "Desk lamp",
+            "available": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "h21",
+      "level": 2,
+      "fresh": true,
+      "repeat": 3,
+      "note": "8 checkouts of 2 lamps at once, with 3 left",
+      "parallel": {
+        "count": 8,
+        "request": {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h21-{i}",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 2
+              }
+            ]
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 1,
+        "409": 7
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/products/lamp"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "sku": "lamp",
+            "name": "Desk lamp",
+            "available": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "h22",
+      "level": 2,
+      "fresh": true,
+      "repeat": 3,
+      "note": "10 releases of one reservation at once give its stock back once",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h22",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 3
+              }
+            ]
+          }
+        }
+      ],
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "DELETE",
+          "path": "/reservations/h22"
+        }
+      },
+      "expected_statuses": {
+        "200": 1,
+        "409": 9
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/products/lamp"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "sku": "lamp",
+            "name": "Desk lamp",
+            "available": 3
+          }
+        }
+      }
+    },
+    {
+      "id": "h23",
+      "level": 2,
+      "fresh": true,
+      "repeat": 3,
+      "note": "the same order sent 10 times at once is reserved once",
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h23",
+            "items": [
+              {
+                "sku": "desk",
+                "quantity": 1
+              }
+            ]
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 1,
+        "409": 9
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/products/desk"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "sku": "desk",
+            "name": "Standing desk",
+            "available": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "v8",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "a hold of 0 seconds has run out by the next request",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "v8",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 3
+              }
+            ],
+            "hold_seconds": 0
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/products/lamp"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "lamp",
+          "name": "Desk lamp",
+          "available": 3
+        }
+      }
+    },
+    {
+      "id": "v9",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "an order that cannot have every item holds none of them",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reservations",
+            "json": {
+              "order": "v9",
+              "items": [
+                {
+                  "sku": "desk",
+                  "quantity": 1
+                },
+                {
+                  "sku": "lamp",
+                  "quantity": 4
+                }
+              ]
+            }
+          },
+          "expected": {
+            "status": 409,
+            "body": {
+              "error": "insufficient_stock"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/desk"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "desk",
+              "name": "Standing desk",
+              "available": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "v10",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "10 orders at once, half taking chairs then mugs and half mugs then chairs",
+      "parallel": {
+        "count": 10,
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/reservations",
+            "json": {
+              "order": "v10-{i}",
+              "items": [
+                {
+                  "sku": "chair",
+                  "quantity": 1
+                },
+                {
+                  "sku": "mug",
+                  "quantity": 1
+                }
+              ]
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/reservations",
+            "json": {
+              "order": "v10-{i}",
+              "items": [
+                {
+                  "sku": "mug",
+                  "quantity": 1
+                },
+                {
+                  "sku": "chair",
+                  "quantity": 1
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "expected_statuses": {
+        "201": 10
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/products/chair"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "sku": "chair",
+            "name": "Office chair",
+            "available": 30
+          }
+        }
+      }
+    },
+    {
+      "id": "h30",
+      "level": 3,
+      "fresh": true,
+      "note": "a hold that ran out reads as expired",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h30",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 1
+              }
+            ],
+            "hold_seconds": 0
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/reservations/h30"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "order": "h30",
+          "status": "expired",
+          "items": [
+            {
+              "sku": "lamp",
+              "quantity": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h31",
+      "level": 3,
+      "fresh": true,
+      "note": "an expired reservation cannot be released",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h31",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 1
+              }
+            ],
+            "hold_seconds": 0
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "path": "/reservations/h31"
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "not_active"
+        }
+      }
+    },
+    {
+      "id": "h32",
+      "level": 3,
+      "note": "a hold over an hour",
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "h32",
+          "items": [
+            {
+              "sku": "lamp",
+              "quantity": 1
+            }
+          ],
+          "hold_seconds": 3601
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h33",
+      "level": 3,
+      "note": "a hold given as text",
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "h33",
+          "items": [
+            {
+              "sku": "lamp",
+              "quantity": 1
+            }
+          ],
+          "hold_seconds": "60"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h34",
+      "level": 3,
+      "fresh": true,
+      "note": "a hold left out lasts 15 minutes",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h34",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 2
+              }
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/products/lamp"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "lamp",
+          "name": "Desk lamp",
+          "available": 1
+        }
+      }
+    },
+    {
+      "id": "h35",
+      "level": 3,
+      "fresh": true,
+      "note": "an order of several items holds them all",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h35",
+            "items": [
+              {
+                "sku": "desk",
+                "quantity": 2
+              },
+              {
+                "sku": "lamp",
+                "quantity": 1
+              }
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/products/desk"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "desk",
+          "name": "Standing desk",
+          "available": 0
+        }
+      }
+    },
+    {
+      "id": "h36",
+      "level": 3,
+      "fresh": true,
+      "repeat": 3,
+      "note": "10 orders at once for the same two products in opposite orders, 3 runs",
+      "parallel": {
+        "count": 10,
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/reservations",
+            "json": {
+              "order": "h36-{i}",
+              "items": [
+                {
+                  "sku": "chair",
+                  "quantity": 1
+                },
+                {
+                  "sku": "mug",
+                  "quantity": 1
+                }
+              ]
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/reservations",
+            "json": {
+              "order": "h36-{i}",
+              "items": [
+                {
+                  "sku": "mug",
+                  "quantity": 1
+                },
+                {
+                  "sku": "chair",
+                  "quantity": 1
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "expected_statuses": {
+        "201": 10
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/products/chair"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "sku": "chair",
+            "name": "Office chair",
+            "available": 30
+          }
+        }
+      }
+    },
+    {
+      "id": "h37",
+      "level": 3,
+      "fresh": true,
+      "repeat": 3,
+      "note": "10 orders of a desk and a lamp at once, with 2 desks left",
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h37-{i}",
+            "items": [
+              {
+                "sku": "desk",
+                "quantity": 1
+              },
+              {
+                "sku": "lamp",
+                "quantity": 1
+              }
+            ]
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 2,
+        "409": 8
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/products/lamp"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "sku": "lamp",
+            "name": "Desk lamp",
+            "available": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "h38",
+      "level": 3,
+      "fresh": true,
+      "repeat": 3,
+      "note": "10 checkouts at once for 3 lamps an expired hold gave back",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h38",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 3
+              }
+            ],
+            "hold_seconds": 0
+          }
+        }
+      ],
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h38-{i}",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 1
+              }
+            ]
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 3,
+        "409": 7
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/products/lamp"
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "sku": "lamp",
+            "name": "Desk lamp",
+            "available": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "h39",
+      "level": 3,
+      "fresh": true,
+      "note": "an expired order's id stays taken",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h39",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 3
+              }
+            ],
+            "hold_seconds": 0
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "h39",
+          "items": [
+            {
+              "sku": "mug",
+              "quantity": 1
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "order_exists"
+        }
+      }
+    },
+    {
+      "id": "h40",
+      "level": 3,
+      "fresh": true,
+      "note": "an order with an unknown product holds nothing",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reservations",
+            "json": {
+              "order": "h40",
+              "items": [
+                {
+                  "sku": "lamp",
+                  "quantity": 1
+                },
+                {
+                  "sku": "sofa",
+                  "quantity": 1
+                }
+              ]
+            }
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "unknown_sku"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/lamp"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "lamp",
+              "name": "Desk lamp",
+              "available": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "v11",
+      "level": 4,
+      "visible": true,
+      "fresh": true,
+      "note": "every warehouse, with what each has available",
+      "request": {
+        "method": "GET",
+        "path": "/products/lamp/warehouses"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "warehouse": "main",
+            "available": 3
+          },
+          {
+            "warehouse": "north",
+            "available": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "v12",
+      "level": 4,
+      "visible": true,
+      "fresh": true,
+      "note": "a receipt adds to one warehouse and to the product's total",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/warehouses/north/receipts",
+            "json": {
+              "sku": "lamp",
+              "quantity": 4
+            }
+          },
+          "expected": {
+            "status": 201,
+            "body": {
+              "warehouse": "north",
+              "sku": "lamp",
+              "available": 4
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/lamp"
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "lamp",
+              "name": "Desk lamp",
+              "available": 7
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h50",
+      "level": 4,
+      "fresh": true,
+      "note": "your migration keeps the stock of products it never saw",
+      "request": {
+        "method": "GET",
+        "path": "/products/x-heater/warehouses"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "warehouse": "main",
+            "available": 7
+          },
+          {
+            "warehouse": "north",
+            "available": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "h51",
+      "level": 4,
+      "fresh": true,
+      "note": "an order can take stock from north",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/warehouses/north/receipts",
+            "json": {
+              "sku": "desk",
+              "quantity": 1
+            }
+          },
+          "expected": {
+            "status": 201,
+            "body": {
+              "warehouse": "north",
+              "sku": "desk",
+              "available": 1
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/reservations",
+            "json": {
+              "order": "h51",
+              "items": [
+                {
+                  "sku": "desk",
+                  "quantity": 1,
+                  "warehouse": "north"
+                }
+              ]
+            }
+          },
+          "expected": {
+            "status": 201,
+            "body": {
+              "order": "h51",
+              "status": "active",
+              "items": [
+                {
+                  "sku": "desk",
+                  "quantity": 1
+                }
+              ]
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/products/desk/warehouses"
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "warehouse": "main",
+                "available": 2
+              },
+              {
+                "warehouse": "north",
+                "available": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h52",
+      "level": 4,
+      "fresh": true,
+      "note": "a warehouse nobody runs",
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "h52",
+          "items": [
+            {
+              "sku": "lamp",
+              "quantity": 1,
+              "warehouse": "south"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_warehouse"
+        }
+      }
+    },
+    {
+      "id": "h53",
+      "level": 4,
+      "note": "a receipt for a warehouse nobody runs",
+      "request": {
+        "method": "POST",
+        "path": "/warehouses/south/receipts",
+        "json": {
+          "sku": "lamp",
+          "quantity": 1
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_warehouse"
+        }
+      }
+    },
+    {
+      "id": "h54",
+      "level": 4,
+      "note": "a receipt of nothing",
+      "request": {
+        "method": "POST",
+        "path": "/warehouses/north/receipts",
+        "json": {
+          "sku": "lamp",
+          "quantity": 0
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h55",
+      "level": 4,
+      "note": "a receipt of a product nobody sells",
+      "request": {
+        "method": "POST",
+        "path": "/warehouses/north/receipts",
+        "json": {
+          "sku": "sofa",
+          "quantity": 1
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_sku"
+        }
+      }
+    },
+    {
+      "id": "h56",
+      "level": 4,
+      "fresh": true,
+      "note": "an item that names no warehouse is taken from main",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h56",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 1
+              }
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/products/lamp/warehouses"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "warehouse": "main",
+            "available": 2
+          },
+          {
+            "warehouse": "north",
+            "available": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "h57",
+      "level": 4,
+      "fresh": true,
+      "note": "a product the hidden data added can still be reserved whole",
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "h57",
+          "items": [
+            {
+              "sku": "x-heater",
+              "quantity": 7
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "order": "h57",
+          "status": "active",
+          "items": [
+            {
+              "sku": "x-heater",
+              "quantity": 7
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h58",
+      "level": 4,
+      "fresh": true,
+      "note": "north holds nothing until stock arrives there",
+      "request": {
+        "method": "POST",
+        "path": "/reservations",
+        "json": {
+          "order": "h58",
+          "items": [
+            {
+              "sku": "lamp",
+              "quantity": 1,
+              "warehouse": "north"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "insufficient_stock"
+        }
+      }
+    },
+    {
+      "id": "h59",
+      "level": 4,
+      "fresh": true,
+      "repeat": 3,
+      "note": "6 checkouts at once for the 2 lamps in north",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/warehouses/north/receipts",
+          "json": {
+            "sku": "lamp",
+            "quantity": 2
+          }
+        }
+      ],
+      "parallel": {
+        "count": 6,
+        "request": {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h59-{i}",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 1,
+                "warehouse": "north"
+              }
+            ]
+          }
+        }
+      },
+      "expected_statuses": {
+        "201": 2,
+        "409": 4
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/products/lamp/warehouses"
+        },
+        "expected": {
+          "status": 200,
+          "body": [
+            {
+              "warehouse": "main",
+              "available": 3
+            },
+            {
+              "warehouse": "north",
+              "available": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h60",
+      "level": 4,
+      "fresh": true,
+      "note": "a hold that ran out keeps nothing in its warehouse",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/reservations",
+          "json": {
+            "order": "h60",
+            "items": [
+              {
+                "sku": "lamp",
+                "quantity": 3
+              }
+            ],
+            "hold_seconds": 0
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/products/lamp/warehouses"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "warehouse": "main",
+            "available": 3
+          },
+          {
+            "warehouse": "north",
+            "available": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "h61",
+      "level": 4,
+      "note": "the warehouses of a product nobody sells",
+      "request": {
+        "method": "GET",
+        "path": "/products/sofa/warehouses"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_sku"
+        }
+      }
+    }
+  ]
+}
