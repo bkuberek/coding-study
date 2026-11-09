@@ -1,0 +1,41 @@
+id: "5903"
+slug: fixture-members-python
+title: Members in Python
+status: ready
+difficulty: medium
+track: practical
+kind: project
+domains: [backend]
+job_roles: [backend]
+scope: project
+languages: [python]
+levels:
+  - {level: 1, title: Find a member}
+  - {level: 2, title: Plans}
+comparator: {type: exact}
+project:
+  grading: http
+  image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim@sha256:531f855bda2c73cd6ef67d56b733b357cea384185b3022bd09f05e002cd144ca
+  commands:
+    install: [uv, sync, --frozen, --no-build]
+    bootstrap: [.venv/bin/python, scripts/migrate.py]
+    run: [.venv/bin/python, src/server.py]
+    test: [.venv/bin/python, -P, -m, pytest]
+    reset: [.venv/bin/python, scripts/reset.py]
+    grade_setup: [.venv/bin/python, "{problem}/grading/grade_setup.py"]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    DATABASE_URL: postgres://app:app@db:5432/app
+    REDIS_URL: redis://cache:6379
+  install_env:
+    UV_CACHE_DIR: /cache/uv
+    UV_PYTHON_DOWNLOADS: never
+    UV_LINK_MODE: copy
+  services: services/compose.yaml
+  requires:
+    lock: uv.lock
+    services: [postgres, redis]
+    sizes: {install_mb: 10, images_mb: {app: 62, postgres: 117, redis: 17}, memory_mb: 150}
+approaches:
+  - {id: reference, name: Reference, role: optimal, time: "per request", space: "per request"}
