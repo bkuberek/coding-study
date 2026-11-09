@@ -1176,3 +1176,52 @@ def test_a_dev_stack_keeps_its_data_after_a_stop_and_a_new_owner_reads_it(engine
         assert kept.output.strip() == "still here"
     finally:
         docker("volume", "rm", volume)
+
+
+PRINTING_SERVER = textwrap.dedent(
+    """\
+    import http.server, os, sys
+
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            print(f"out {self.path}", flush=True)
+            print(f"err {self.path}", file=sys.stderr, flush=True)
+            self.send_response(200)
+            self.end_headers()
+
+        def log_message(self, *arguments):
+            pass
+
+
+    http.server.ThreadingHTTPServer(("0.0.0.0", int(os.environ["PORT"])), Handler).serve_forever()
+    """
+)
+CLOCK_STEP_S = 1.1
+"""Longer than the engine's timestamps could round across, so the two requests fall apart."""
+
+
+@pytest.fixture
+def printing_stack(
+    engine: DockerSandbox, tmp_path: Path
+) -> Generator[tuple[DockerSandbox, StackPlan, ReadyStack]]:
+    plan = plan_of(tmp_path, stack_name("output"))
+    (Path(plan.paths.project) / "server.py").write_text(PRINTING_SERVER)
+    with running_stack(engine, plan, BUDGET, lambda _line: None) as ready:
+        yield engine, plan, ready
+
+
+def test_the_output_since_a_moment_holds_what_came_after_it_on_both_streams(printing_stack):
+    engine, plan, ready = printing_stack
+    get(ready.app_port, "/before")
+    time.sleep(CLOCK_STEP_S)
+    since = time.time()
+    get(ready.app_port, "/during")
+
+    printed = engine.app_output_since(plan, since)
+
+    assert ("out /during" in printed, "err /during" in printed, "/before" in printed) == (
+        True,
+        True,
+        False,
+    )
