@@ -12,7 +12,7 @@ export type FileIntelligence =
   | { readonly kind: "not-installed"; readonly language: string; readonly server: string }
   /** Installed, but the selected JDK is not one the server runs on: `detail` says which it needs. */
   | { readonly kind: "needs-jdk"; readonly language: string; readonly detail: string }
-  /** Its pinned build no longer runs, as an early-access build stops: `detail` says since when and what to do. */
+  /** Its build's last day has passed, as an early-access build stops: `detail` says since when and what to do. */
   | { readonly kind: "unusable"; readonly language: string; readonly detail: string }
   /** Its vendor's license is not accepted, so it is not downloaded: `detail` names the command that accepts it. */
   | { readonly kind: "license"; readonly language: string; readonly server: string; readonly detail: string }
