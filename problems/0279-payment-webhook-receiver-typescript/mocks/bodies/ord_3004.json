@@ -1,0 +1,23 @@
+{
+  "order": "ord_3004",
+  "events": [
+    {
+      "id": "evt_84f5c3706d54",
+      "type": "payment.succeeded",
+      "order": "ord_3004",
+      "sequence": 1,
+      "amount": 3850,
+      "currency": "EUR",
+      "created": 1803901830
+    },
+    {
+      "id": "evt_a1aebdddf042",
+      "type": "payment.disputed",
+      "order": "ord_3004",
+      "sequence": 2,
+      "amount": 3850,
+      "currency": "EUR",
+      "created": 1803901860
+    }
+  ]
+}

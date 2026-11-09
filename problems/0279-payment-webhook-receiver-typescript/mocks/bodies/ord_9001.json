@@ -1,0 +1,23 @@
+{
+  "order": "ord_9001",
+  "events": [
+    {
+      "id": "evt_7034478ccc34",
+      "type": "payment.succeeded",
+      "order": "ord_9001",
+      "sequence": 1,
+      "amount": 3425,
+      "currency": "EUR",
+      "created": 1803901830
+    },
+    {
+      "id": "evt_bfbb71d9b658",
+      "type": "payment.refunded",
+      "order": "ord_9001",
+      "sequence": 2,
+      "amount": 3425,
+      "currency": "EUR",
+      "created": 1803901860
+    }
+  ]
+}
