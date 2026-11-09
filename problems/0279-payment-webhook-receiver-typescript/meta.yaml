@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0279"
+slug: payment-webhook-receiver-typescript
+title: Payment Webhook Receiver (TypeScript)
+status: ready
+difficulty: medium
+track: practical
+kind: project
+domains: [fintech, security]
+job_roles: [backend, security-engineer]
+scope: project
+languages: [typescript]
+summary: A payment provider tells a shop what happened to each order's payment by signed webhooks, late, twice and out of order. Build the receiver that trusts only what the provider signed and keeps every order's state right.
+levels:
+  - {level: 1, title: Verify the signature}
+  - {level: 2, title: Duplicates and replays}
+  - {level: 3, title: Events out of order}
+  - {level: 4, title: Answer the provider and reconcile}
+comparator: {type: exact}
+project:
+  grading: http
+  image: node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+  commands:
+    install: [corepack, pnpm, install, --frozen-lockfile, --ignore-scripts]
+    run: [node, src/server.ts]
+    test: [node, --test, --test-concurrency=1]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    PAYMENT_PROVIDER_URL: http://payment-provider:8080
+    WEBHOOK_SECRET: whk-test-5e1f0b7c3a9d4862
+    CLOCK_NOW: "1803902400"
+  install_env:
+    COREPACK_HOME: /cache/corepack
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    npm_config_store_dir: /cache/pnpm-store
+    CI: "true"
+  mocks:
+    - {name: payment-provider, config: mocks/payment-provider.yaml}
+  requires:
+    lock: pnpm-lock.yaml
+    sizes: {install_mb: 27, images_mb: {app: 81, mocks: 43}, memory_mb: 150}
+approaches:
+  - {id: reference, name: "Verify the bytes, then apply each order's events in sequence", role: optimal, time: "per request", space: "per event"}
+related: [idempotent-document-consumer-typescript, vendor-retry-client-typescript]
+estimate_minutes: 120

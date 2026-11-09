@@ -1,0 +1,14 @@
+{
+  "order": "ord_4009",
+  "events": [
+    {
+      "id": "evt_9106240bcffc",
+      "type": "payment.succeeded",
+      "order": "ord_4009",
+      "sequence": 1,
+      "amount": 2300,
+      "currency": "EUR",
+      "created": 1803901830
+    }
+  ]
+}

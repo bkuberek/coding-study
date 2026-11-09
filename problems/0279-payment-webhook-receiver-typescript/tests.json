@@ -1,0 +1,1597 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "v1",
+      "level": 1,
+      "visible": true,
+      "note": "a signed delivery inside the window: the signature covers the timestamp, a dot and the body's bytes exactly as they came",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902370",
+          "Provider-Signature": "9fd1305582e0595155ac4f90a26fb71021a5c346f2e64634689eb6967ef4bf1b"
+        },
+        "body": "{\"id\": \"evt_9c0d9cf58c6a\", \"type\": \"payment.succeeded\", \"order\": \"ord_1001\", \"sequence\": 1, \"amount\": 2275, \"currency\": \"EUR\", \"created\": 1803901830}"
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "outcome": "applied"
+        }
+      }
+    },
+    {
+      "id": "v2",
+      "level": 1,
+      "visible": true,
+      "note": "the order's state after a signed delivery",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902360",
+            "Provider-Signature": "8639c6c7bb657575ccf59c0a3119cb50fc05a4ee71678438d355728f891adf70"
+          },
+          "body": "{\"id\": \"evt_0eaa30540229\", \"type\": \"payment.succeeded\", \"order\": \"ord_1002\", \"sequence\": 1, \"amount\": 2300, \"currency\": \"EUR\", \"created\": 1803901830}"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/orders/ord_1002"
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "order": "ord_1002",
+          "state": "succeeded",
+          "sequence": 1
+        }
+      }
+    },
+    {
+      "id": "v3",
+      "level": 1,
+      "visible": true,
+      "note": "signed with a secret that is not the shop's",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902370",
+          "Provider-Signature": "93f7e60a34003b5bc332b2c7a4240ca4f8b07ff9a854118208c4f960e5cb552c"
+        },
+        "body": "{\"id\": \"evt_3dff2c7c785f\", \"type\": \"payment.succeeded\", \"order\": \"ord_1003\", \"sequence\": 1, \"amount\": 2325, \"currency\": \"EUR\", \"created\": 1803901830}"
+      },
+      "expected": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "invalid signature"
+        }
+      }
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "note": "no Provider-Signature header",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902370"
+        },
+        "body": "{\"id\": \"evt_ef787390a69b\", \"type\": \"payment.succeeded\", \"order\": \"ord_1004\", \"sequence\": 1, \"amount\": 2350, \"currency\": \"EUR\", \"created\": 1803901830}"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "invalid signature"
+        }
+      }
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "note": "no Provider-Timestamp header, so there is nothing the signature can cover",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Signature": "1c28f6b850adb2deb57eaa6691f7f2705df66bb6a02a26561449fcd1a1884e79"
+        },
+        "body": "{\"id\": \"evt_011af5f74a21\", \"type\": \"payment.succeeded\", \"order\": \"ord_1005\", \"sequence\": 1, \"amount\": 2375, \"currency\": \"EUR\", \"created\": 1803901830}"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "invalid signature"
+        }
+      }
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "note": "the amount changed after the provider signed the body",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902370",
+          "Provider-Signature": "0bbfd95848ab2a59aaac6ed9db9ca39d6966375e40633eeb7d86fbe80763080f"
+        },
+        "body": "{\"id\": \"evt_f717c29187df\", \"type\": \"payment.succeeded\", \"order\": \"ord_1006\", \"sequence\": 1, \"amount\": 11400, \"currency\": \"EUR\", \"created\": 1803901830}"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "invalid signature"
+        }
+      }
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "note": "a signature far too short: comparing it must refuse it, not crash",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902370",
+          "Provider-Signature": "3f9a"
+        },
+        "body": "{\"id\": \"evt_585d9f31dbae\", \"type\": \"payment.succeeded\", \"order\": \"ord_1007\", \"sequence\": 1, \"amount\": 2425, \"currency\": \"EUR\", \"created\": 1803901830}"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "invalid signature"
+        }
+      }
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "note": "a delivery captured 15 minutes ago, its timestamp brought up to date: the signature still covers the old one",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902370",
+          "Provider-Signature": "d51103586c2a4e581de7f03aa1bced23464ff416f4404c529cb0093f10c0b9bb"
+        },
+        "body": "{\"id\": \"evt_07822b98cba6\", \"type\": \"payment.succeeded\", \"order\": \"ord_1008\", \"sequence\": 1, \"amount\": 2450, \"currency\": \"EUR\", \"created\": 1803901440}"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "invalid signature"
+        }
+      }
+    },
+    {
+      "id": "h6",
+      "level": 1,
+      "note": "signed 301 s ago, one second outside the window",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902099",
+          "Provider-Signature": "475b2526d55544c50a82bb0df079006a6b32a3e8f354a5ef769aa25a8c42f7b3"
+        },
+        "body": "{\"id\": \"evt_d1105600bc56\", \"type\": \"payment.succeeded\", \"order\": \"ord_1009\", \"sequence\": 1, \"amount\": 2475, \"currency\": \"EUR\", \"created\": 1803902040}"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "timestamp outside tolerance"
+        }
+      }
+    },
+    {
+      "id": "h7",
+      "level": 1,
+      "note": "signed exactly 300 s ago, still inside the window",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902100",
+          "Provider-Signature": "03d8e69e70c6b2f0011d0c1e6c5adc44c6fb71614610c00d38f756fbb260893e"
+        },
+        "body": "{\"id\": \"evt_d15dfaee0222\", \"type\": \"payment.succeeded\", \"order\": \"ord_1010\", \"sequence\": 1, \"amount\": 2500, \"currency\": \"EUR\", \"created\": 1803902040}"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "outcome": "applied"
+        }
+      }
+    },
+    {
+      "id": "h8",
+      "level": 1,
+      "note": "signed 400 s in the future",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902800",
+          "Provider-Signature": "0d4210ab6a183c0ccf6b7cd7e82bab0cada252120458d6fcf85d27ea43d58524"
+        },
+        "body": "{\"id\": \"evt_026cd3504ee1\", \"type\": \"payment.succeeded\", \"order\": \"ord_1011\", \"sequence\": 1, \"amount\": 2525, \"currency\": \"EUR\", \"created\": 1803901830}"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "timestamp outside tolerance"
+        }
+      }
+    },
+    {
+      "id": "h9",
+      "level": 1,
+      "note": "a correctly signed timestamp that is not whole seconds",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902370abc",
+          "Provider-Signature": "0462955b488c97af6842492f6dbabfcab25a3eba7b88e18a2ae0162f25aad736"
+        },
+        "body": "{\"id\": \"evt_a6a1ad6f3a03\", \"type\": \"payment.succeeded\", \"order\": \"ord_1012\", \"sequence\": 1, \"amount\": 2550, \"currency\": \"EUR\", \"created\": 1803901830}"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "timestamp outside tolerance"
+        }
+      }
+    },
+    {
+      "id": "h10",
+      "level": 1,
+      "note": "a body that is not JSON, with a wrong signature: the signature is checked before anything is parsed",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902370",
+          "Provider-Signature": "ea914782c033767f82e9c62809e5cbdc3f01d128e31d89698d22ed8a94e21c65"
+        },
+        "body": "{\"id\": \"evt_0b5c\", \"type\": \"payment.succeeded\", \"order\": "
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "invalid signature"
+        }
+      }
+    },
+    {
+      "id": "h11",
+      "level": 1,
+      "note": "a correctly signed body that is not JSON",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902370",
+          "Provider-Signature": "31d1c7769ed3a83f1c87a71c1fac1ae0a0b484038eba94fa4982fd4a9a87ae72"
+        },
+        "body": "{\"id\": \"evt_0b5c\", \"type\": \"payment.succeeded\", \"order\": "
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid event"
+        }
+      }
+    },
+    {
+      "id": "h12",
+      "level": 1,
+      "note": "a correctly signed event with no order",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902370",
+          "Provider-Signature": "58544192aebc48ad179778d9a5b3dda0fe3c3b2608ab702b1a3e16b878705178"
+        },
+        "body": "{\"id\": \"evt_3c3755b5fb7d\", \"type\": \"payment.succeeded\", \"sequence\": 1, \"amount\": 2625, \"currency\": \"EUR\", \"created\": 1803901830}"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid event"
+        }
+      }
+    },
+    {
+      "id": "h13",
+      "level": 1,
+      "note": "an event written over several lines: the signature covers these bytes, not a re-encoding of them",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902370",
+          "Provider-Signature": "2f03748c4a753c0680d9d05f3225fbe96aaa5c532a2bc8427435937b09c935fc"
+        },
+        "body": "{\n    \"id\": \"evt_8476c90ac4a8\",\n    \"type\": \"payment.succeeded\",\n    \"order\": \"ord_1016\",\n    \"sequence\": 1,\n    \"amount\": 2650,\n    \"currency\": \"EUR\",\n    \"created\": 1803901830\n}\n"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "outcome": "applied"
+        }
+      }
+    },
+    {
+      "id": "h14",
+      "level": 1,
+      "note": "an order no event has mentioned",
+      "request": {
+        "method": "GET",
+        "path": "/orders/ord_1017"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown order"
+        }
+      }
+    },
+    {
+      "id": "h15",
+      "level": 1,
+      "note": "a payment that failed",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902360",
+            "Provider-Signature": "ab969544ffa01c362277464f2b12eac671aa1918b1a31577a310620341f34eff"
+          },
+          "body": "{\"id\": \"evt_add39db3c097\", \"type\": \"payment.failed\", \"order\": \"ord_1018\", \"sequence\": 1, \"amount\": 2700, \"currency\": \"EUR\", \"created\": 1803901830}"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/orders/ord_1018"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "order": "ord_1018",
+          "state": "failed",
+          "sequence": 1
+        }
+      }
+    },
+    {
+      "id": "v4",
+      "level": 2,
+      "visible": true,
+      "note": "the provider's retry: the same event, signed again with a new timestamp",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902310",
+            "Provider-Signature": "cd3832fc3cc350deb5221c8d1b403fd2e56b415400a80894c4acb5d03acb082a"
+          },
+          "body": "{\"id\": \"evt_a7c54ddbc14b\", \"type\": \"payment.succeeded\", \"order\": \"ord_2001\", \"sequence\": 1, \"amount\": 3025, \"currency\": \"EUR\", \"created\": 1803901830}"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "185bc27d94f2d8dcb2b3a81b9109b799859b39b75d53298875890dd82d689716"
+        },
+        "body": "{\"id\": \"evt_a7c54ddbc14b\", \"type\": \"payment.succeeded\", \"order\": \"ord_2001\", \"sequence\": 1, \"amount\": 3025, \"currency\": \"EUR\", \"created\": 1803901830}"
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "outcome": "duplicate"
+        }
+      }
+    },
+    {
+      "id": "v5",
+      "level": 2,
+      "visible": true,
+      "note": "an id already processed, carrying another event",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902310",
+            "Provider-Signature": "9ec57bb740e37cad663d7345286bac46b0891ae2defb017e1d1f5448c1683e3e"
+          },
+          "body": "{\"id\": \"evt_8797cd358a5f\", \"type\": \"payment.succeeded\", \"order\": \"ord_2002\", \"sequence\": 1, \"amount\": 3050, \"currency\": \"EUR\", \"created\": 1803901830}"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "564bd8d99770ea26ad9dae30449e05d1088527ea103cefb71f6c53acbc125ba8"
+        },
+        "body": "{\"id\": \"evt_8797cd358a5f\", \"type\": \"payment.refunded\", \"order\": \"ord_2002\", \"sequence\": 2, \"amount\": 3050, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 409,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "event id reused"
+        }
+      }
+    },
+    {
+      "id": "h16",
+      "level": 2,
+      "note": "a late retry of the first event changes nothing",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902310",
+            "Provider-Signature": "86293e4e887e6e7ddb938cc5106175d0ed9f5b78a7f29d358265e7e7feec0d73"
+          },
+          "body": "{\"id\": \"evt_79958dbc77fe\", \"type\": \"payment.succeeded\", \"order\": \"ord_2003\", \"sequence\": 1, \"amount\": 3075, \"currency\": \"EUR\", \"created\": 1803901830}"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902320",
+            "Provider-Signature": "ab31c3f6c8bcbdbc4bbd45c9a987d323cb7c4a298ddd36d7dc5eb5abebe3b979"
+          },
+          "body": "{\"id\": \"evt_4cff9c6cddd8\", \"type\": \"payment.refunded\", \"order\": \"ord_2003\", \"sequence\": 2, \"amount\": 3075, \"currency\": \"EUR\", \"created\": 1803901860}"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902380",
+            "Provider-Signature": "652f52a4b36e469265af59d4b0850b1d376461967bddded9298eb5e5aff0ba00"
+          },
+          "body": "{\"id\": \"evt_79958dbc77fe\", \"type\": \"payment.succeeded\", \"order\": \"ord_2003\", \"sequence\": 1, \"amount\": 3075, \"currency\": \"EUR\", \"created\": 1803901830}"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/orders/ord_2003"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "order": "ord_2003",
+          "state": "refunded",
+          "sequence": 2
+        }
+      }
+    },
+    {
+      "id": "h17",
+      "level": 2,
+      "note": "a delivery of an event already processed, replayed from 700 s ago: the window refuses it before any id is looked up",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902340",
+            "Provider-Signature": "fadf05198831b48523d9b48b89e10597f9f47d9945b5d22b9dd925d3558ef9dd"
+          },
+          "body": "{\"id\": \"evt_34eedebe4314\", \"type\": \"payment.succeeded\", \"order\": \"ord_2004\", \"sequence\": 1, \"amount\": 3100, \"currency\": \"EUR\", \"created\": 1803901640}"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803901700",
+          "Provider-Signature": "c11a06eec1ae256ac298ecd2278e6a158a544d2bde0e943aa2e0f707c2aee8e3"
+        },
+        "body": "{\"id\": \"evt_34eedebe4314\", \"type\": \"payment.succeeded\", \"order\": \"ord_2004\", \"sequence\": 1, \"amount\": 3100, \"currency\": \"EUR\", \"created\": 1803901640}"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "timestamp outside tolerance"
+        }
+      }
+    },
+    {
+      "id": "h18",
+      "level": 2,
+      "note": "a retry that writes the same event with its keys in another order and no spaces",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902310",
+            "Provider-Signature": "fcc154460351ea13965ab4ca64617d7d189e059a640b074bd5046b191840c856"
+          },
+          "body": "{\"id\": \"evt_9adec69c740e\", \"type\": \"payment.succeeded\", \"order\": \"ord_2005\", \"sequence\": 1, \"amount\": 3125, \"currency\": \"EUR\", \"created\": 1803901830}"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "82b858dcb5beeb6f78571ba1e50c6fc40c4134016278ea498980d772553b01d9"
+        },
+        "body": "{\"amount\":3125,\"created\":1803901830,\"currency\":\"EUR\",\"id\":\"evt_9adec69c740e\",\"order\":\"ord_2005\",\"sequence\":1,\"type\":\"payment.succeeded\"}"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "outcome": "duplicate"
+        }
+      }
+    },
+    {
+      "id": "h19",
+      "level": 2,
+      "note": "an id already processed, with another amount",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902310",
+            "Provider-Signature": "d2e9a9f1b88a7b9243442487b58be539807b99b22fcf5365d554bd78a2ab9b6d"
+          },
+          "body": "{\"id\": \"evt_4ed621c3ce0a\", \"type\": \"payment.succeeded\", \"order\": \"ord_2006\", \"sequence\": 1, \"amount\": 3150, \"currency\": \"EUR\", \"created\": 1803901830}"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "47ec812fd98428b8490cf47c54d5c0beaff9218df657593d8e1f592072682287"
+        },
+        "body": "{\"id\": \"evt_4ed621c3ce0a\", \"type\": \"payment.succeeded\", \"order\": \"ord_2006\", \"sequence\": 1, \"amount\": 3250, \"currency\": \"EUR\", \"created\": 1803901830}"
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "event id reused"
+        }
+      }
+    },
+    {
+      "id": "h20",
+      "level": 2,
+      "note": "the same delivery twice, byte for byte, inside the window: a duplicate, which changes nothing",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902350",
+            "Provider-Signature": "e64bdc606578ae60e8b0e6ebbef059ef6fcd636100544748ed7fd53089bea9b6"
+          },
+          "body": "{\"id\": \"evt_04ba93c3800a\", \"type\": \"payment.succeeded\", \"order\": \"ord_2007\", \"sequence\": 1, \"amount\": 3175, \"currency\": \"EUR\", \"created\": 1803901830}"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902350",
+          "Provider-Signature": "e64bdc606578ae60e8b0e6ebbef059ef6fcd636100544748ed7fd53089bea9b6"
+        },
+        "body": "{\"id\": \"evt_04ba93c3800a\", \"type\": \"payment.succeeded\", \"order\": \"ord_2007\", \"sequence\": 1, \"amount\": 3175, \"currency\": \"EUR\", \"created\": 1803901830}"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "outcome": "duplicate"
+        }
+      }
+    },
+    {
+      "id": "h21",
+      "level": 2,
+      "note": "a second event of the same order, under its own id, is new",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902310",
+            "Provider-Signature": "0f3094bcd1f0ae422804e7962f8c70ccc63eb117ca065ebc25c8dbfdfaf49a80"
+          },
+          "body": "{\"id\": \"evt_8202007313cb\", \"type\": \"payment.succeeded\", \"order\": \"ord_2008\", \"sequence\": 1, \"amount\": 3200, \"currency\": \"EUR\", \"created\": 1803901830}"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "d4c9c0dba107b946800d28e1d79404ab8b7530bbfa1dafb8a453a55bef1f962f"
+        },
+        "body": "{\"id\": \"evt_32fb1d61d45e\", \"type\": \"payment.refunded\", \"order\": \"ord_2008\", \"sequence\": 2, \"amount\": 3200, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "outcome": "applied"
+        }
+      }
+    },
+    {
+      "id": "v6",
+      "level": 3,
+      "visible": true,
+      "note": "a refund that arrived before the payment it refunds",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902340",
+            "Provider-Signature": "e5ec3538a21900a728b4d6ec2e519ec1d04a136f42efe282736938b92d0ab2d9"
+          },
+          "body": "{\"id\": \"evt_aa2cfedcd4fe\", \"type\": \"payment.refunded\", \"order\": \"ord_3001\", \"sequence\": 2, \"amount\": 3775, \"currency\": \"EUR\", \"created\": 1803901860}"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902350",
+            "Provider-Signature": "af4d11820052d3f8fb534effa152b037eb5dbeb8d3b9178da1b4783c0d8cbaa1"
+          },
+          "body": "{\"id\": \"evt_930fd49cfe07\", \"type\": \"payment.succeeded\", \"order\": \"ord_3001\", \"sequence\": 1, \"amount\": 3775, \"currency\": \"EUR\", \"created\": 1803901830}"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/orders/ord_3001"
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "order": "ord_3001",
+          "state": "refunded",
+          "sequence": 2
+        }
+      }
+    },
+    {
+      "id": "v7",
+      "level": 3,
+      "visible": true,
+      "note": "a refund of a payment that failed",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902350",
+            "Provider-Signature": "7de5b46e06174ca3c518e32ef3a69142fb233fdf41d276b15f96db8096175d2c"
+          },
+          "body": "{\"id\": \"evt_1f9383e0019a\", \"type\": \"payment.failed\", \"order\": \"ord_3002\", \"sequence\": 1, \"amount\": 3800, \"currency\": \"EUR\", \"created\": 1803901830}"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "7425ae28390cf9940ead97f609aae63beca37fd69dcec3cac8c0aa121f1acdcb"
+        },
+        "body": "{\"id\": \"evt_d790b060e0ca\", \"type\": \"payment.refunded\", \"order\": \"ord_3002\", \"sequence\": 2, \"amount\": 3800, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 409,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "illegal transition"
+        }
+      }
+    },
+    {
+      "id": "h22",
+      "level": 3,
+      "note": "three events of one order, arriving as 3, 1, 2",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902330",
+            "Provider-Signature": "1a97ab631be2375b48994949ba52f7c7e7bbc742a3048a6b6a829ba83b215aa4"
+          },
+          "body": "{\"id\": \"evt_5403015045f8\", \"type\": \"payment.refunded\", \"order\": \"ord_3003\", \"sequence\": 3, \"amount\": 3825, \"currency\": \"EUR\", \"created\": 1803901890}"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902340",
+            "Provider-Signature": "c51a96254f82205ec484ead75ceac2ec675c09c2241bd1d7d130be12819527f2"
+          },
+          "body": "{\"id\": \"evt_82e1f1f8f5fb\", \"type\": \"payment.failed\", \"order\": \"ord_3003\", \"sequence\": 1, \"amount\": 3825, \"currency\": \"EUR\", \"created\": 1803901830}"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902350",
+            "Provider-Signature": "cd685b9f59ca41f80d0c1c8c2ba97e8db820fac0c0252395820a1d00dce182d3"
+          },
+          "body": "{\"id\": \"evt_11739403a7c6\", \"type\": \"payment.succeeded\", \"order\": \"ord_3003\", \"sequence\": 2, \"amount\": 3825, \"currency\": \"EUR\", \"created\": 1803901860}"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/orders/ord_3003"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "order": "ord_3003",
+          "state": "refunded",
+          "sequence": 3
+        }
+      }
+    },
+    {
+      "id": "h23",
+      "level": 3,
+      "note": "a dispute that arrived before the payment",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902340",
+            "Provider-Signature": "add2db8f9e4e6f57e7ab7c8fcaf25d253af91d75b756a6695983a93037d09457"
+          },
+          "body": "{\"id\": \"evt_a1aebdddf042\", \"type\": \"payment.disputed\", \"order\": \"ord_3004\", \"sequence\": 2, \"amount\": 3850, \"currency\": \"EUR\", \"created\": 1803901860}"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902350",
+            "Provider-Signature": "3750ffa1b869b25a33f8296544b4177108f7e251ceb1686e62820295c2493b5d"
+          },
+          "body": "{\"id\": \"evt_84f5c3706d54\", \"type\": \"payment.succeeded\", \"order\": \"ord_3004\", \"sequence\": 1, \"amount\": 3850, \"currency\": \"EUR\", \"created\": 1803901830}"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/orders/ord_3004"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "order": "ord_3004",
+          "state": "disputed",
+          "sequence": 2
+        }
+      }
+    },
+    {
+      "id": "h24",
+      "level": 3,
+      "note": "a refunded payment cannot succeed again",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902340",
+            "Provider-Signature": "9832250c36546df7a6b96fb850348ab0b6f4ce5e3cb6430694c4842a3e11b1a0"
+          },
+          "body": "{\"id\": \"evt_d0e8c4fe6a3d\", \"type\": \"payment.succeeded\", \"order\": \"ord_3005\", \"sequence\": 1, \"amount\": 3875, \"currency\": \"EUR\", \"created\": 1803901830}"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902350",
+            "Provider-Signature": "9e5b75679617ce70b97c91ee55a22402398dc2776bf0ab5c6b6ad59b669ca80d"
+          },
+          "body": "{\"id\": \"evt_61562707396e\", \"type\": \"payment.refunded\", \"order\": \"ord_3005\", \"sequence\": 2, \"amount\": 3875, \"currency\": \"EUR\", \"created\": 1803901860}"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "09ca1a9829ec7e5bcdfddec16e4c9a68759f88eb676631c3f1828ce0777045d6"
+        },
+        "body": "{\"id\": \"evt_e5fcb1b15ca1\", \"type\": \"payment.succeeded\", \"order\": \"ord_3005\", \"sequence\": 3, \"amount\": 3875, \"currency\": \"EUR\", \"created\": 1803901890}"
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "illegal transition"
+        }
+      }
+    },
+    {
+      "id": "h25",
+      "level": 3,
+      "note": "a payment can succeed after an attempt that failed",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902350",
+            "Provider-Signature": "7e2fc1c3fcc2e327ec75595e13afdef7c3dc5eff7a28bde8628e85946bb3de39"
+          },
+          "body": "{\"id\": \"evt_2270f111dc8f\", \"type\": \"payment.failed\", \"order\": \"ord_3006\", \"sequence\": 1, \"amount\": 3900, \"currency\": \"EUR\", \"created\": 1803901830}"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "6b2d0cabe2c5a12c141af1710b473ccc5ad0670b2e347c0632ce5d4fd709275e"
+        },
+        "body": "{\"id\": \"evt_73f0813d704f\", \"type\": \"payment.succeeded\", \"order\": \"ord_3006\", \"sequence\": 2, \"amount\": 3900, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "outcome": "applied"
+        }
+      }
+    },
+    {
+      "id": "h26",
+      "level": 3,
+      "note": "two failed attempts, then one that succeeds",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902330",
+            "Provider-Signature": "cef628e59e8e8a3bddd857c12796ee163728e179045246db53e249c677d2f276"
+          },
+          "body": "{\"id\": \"evt_2732be0a8f2e\", \"type\": \"payment.failed\", \"order\": \"ord_3007\", \"sequence\": 1, \"amount\": 1500, \"currency\": \"EUR\", \"created\": 1803901830}"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902340",
+            "Provider-Signature": "38f2c9424cbc4e669bdc9ba9f480130e1caa6f010955089e3749a73c3bd0dba8"
+          },
+          "body": "{\"id\": \"evt_1f6d42c69418\", \"type\": \"payment.failed\", \"order\": \"ord_3007\", \"sequence\": 2, \"amount\": 1500, \"currency\": \"EUR\", \"created\": 1803901860}"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902350",
+            "Provider-Signature": "316b0236d769a94463ea6d4f230b3fa9d8d6cdd738cbe8080c34b1ae8cd6b2a7"
+          },
+          "body": "{\"id\": \"evt_e7f3a7756f99\", \"type\": \"payment.succeeded\", \"order\": \"ord_3007\", \"sequence\": 3, \"amount\": 1500, \"currency\": \"EUR\", \"created\": 1803901890}"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/orders/ord_3007"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "order": "ord_3007",
+          "state": "succeeded",
+          "sequence": 3
+        }
+      }
+    },
+    {
+      "id": "h27",
+      "level": 3,
+      "note": "another event under a new id, for a sequence number the order has already passed",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902340",
+            "Provider-Signature": "d5e8e36acbd6ad8f89c25060b8990d3c33efb0cdb0bfd08b8107e7fa4ee1f50f"
+          },
+          "body": "{\"id\": \"evt_f2b1bf709047\", \"type\": \"payment.succeeded\", \"order\": \"ord_3008\", \"sequence\": 1, \"amount\": 1525, \"currency\": \"EUR\", \"created\": 1803901830}"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902350",
+            "Provider-Signature": "613e0dbefa49855eaea386b50de671373970a983f544ddef7477d5fa0fa45b95"
+          },
+          "body": "{\"id\": \"evt_0b7e33637734\", \"type\": \"payment.refunded\", \"order\": \"ord_3008\", \"sequence\": 2, \"amount\": 1525, \"currency\": \"EUR\", \"created\": 1803901860}"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "51db92ed109ea45994a98804089a493d12d45c95ca9cdda7e36db539a63ccc0f"
+        },
+        "body": "{\"id\": \"evt_b7dbb92c2feb\", \"type\": \"payment.refunded\", \"order\": \"ord_3008\", \"sequence\": 2, \"amount\": 500, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "illegal transition"
+        }
+      }
+    },
+    {
+      "id": "h28",
+      "level": 3,
+      "note": "a retry of an event that waited for the one before it, then was applied",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902340",
+            "Provider-Signature": "c91d620578b9580c9205324dd5a71d9a95663fa67d94485609cbb10441b09762"
+          },
+          "body": "{\"id\": \"evt_8b3c1a5d505c\", \"type\": \"payment.refunded\", \"order\": \"ord_3009\", \"sequence\": 2, \"amount\": 1550, \"currency\": \"EUR\", \"created\": 1803901860}"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902350",
+            "Provider-Signature": "4267a15c0b23a51011276e444fae072d25841bc3b57014d3d93ff6027635c167"
+          },
+          "body": "{\"id\": \"evt_c64339b8bd7c\", \"type\": \"payment.succeeded\", \"order\": \"ord_3009\", \"sequence\": 1, \"amount\": 1550, \"currency\": \"EUR\", \"created\": 1803901830}"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902390",
+          "Provider-Signature": "2ec93a6aab7868ab43d7ea39896e1850c32d7a3205d223d05f383aea645c18d4"
+        },
+        "body": "{\"id\": \"evt_8b3c1a5d505c\", \"type\": \"payment.refunded\", \"order\": \"ord_3009\", \"sequence\": 2, \"amount\": 1550, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "outcome": "duplicate"
+        }
+      }
+    },
+    {
+      "id": "v8",
+      "level": 4,
+      "visible": true,
+      "note": "an event ahead of a gap: the missing one comes from the events API, in one request",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "b7fd15f9de9cc5c8974ea812df6a4f9b0e6a8a6458797c2a6bba25e2791befe5"
+        },
+        "body": "{\"id\": \"evt_cd675074c04f\", \"type\": \"payment.refunded\", \"order\": \"ord_4001\", \"sequence\": 2, \"amount\": 2100, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "outcome": "applied"
+        }
+      },
+      "log": [
+        {
+          "mock": "payment-provider",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v9",
+      "level": 4,
+      "visible": true,
+      "note": "the events API is down, so the gap cannot be filled: answer 503, and the provider will deliver again",
+      "mocks": {
+        "payment-provider": "outage"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "e4b35074eb34e23eb1cc67917c8e4d2c115af15b3c54c47626b1e05e69cca88e"
+        },
+        "body": "{\"id\": \"evt_bf68f8301fc1\", \"type\": \"payment.refunded\", \"order\": \"ord_4002\", \"sequence\": 2, \"amount\": 2125, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 503,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "provider unavailable"
+        }
+      },
+      "log": [
+        {
+          "mock": "payment-provider",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h29",
+      "level": 4,
+      "note": "two missing events, fetched in one request and applied in order",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902350",
+            "Provider-Signature": "2508ea359ddf502431293262cbab3a981352dba03063440597a4fc0fab12aeea"
+          },
+          "body": "{\"id\": \"evt_b9f05ea68095\", \"type\": \"payment.disputed\", \"order\": \"ord_4003\", \"sequence\": 3, \"amount\": 2150, \"currency\": \"EUR\", \"created\": 1803901890}"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/orders/ord_4003"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "order": "ord_4003",
+          "state": "disputed",
+          "sequence": 3
+        }
+      },
+      "log": [
+        {
+          "mock": "payment-provider",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h30",
+      "level": 4,
+      "note": "no gap, so no request to the events API",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902350",
+            "Provider-Signature": "83d829ab960dcaa45814cbd19a89c7a087efd01a5afaa7f9bd1b27a648b92817"
+          },
+          "body": "{\"id\": \"evt_d7946501142a\", \"type\": \"payment.succeeded\", \"order\": \"ord_4004\", \"sequence\": 1, \"amount\": 2175, \"currency\": \"EUR\", \"created\": 1803901830}"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "a721c1423f2bf467cd5c7639eaaff7fe8d3fdad2fab1f798e411cd2390aa4f52"
+        },
+        "body": "{\"id\": \"evt_8803f2973b8f\", \"type\": \"payment.refunded\", \"order\": \"ord_4004\", \"sequence\": 2, \"amount\": 2175, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "outcome": "applied"
+        }
+      },
+      "log": [
+        {
+          "mock": "payment-provider",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h31",
+      "level": 4,
+      "note": "the events API takes 3 s and the provider waits 2 s: give up on it and answer 503",
+      "mocks": {
+        "payment-provider": "slow"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "b05cffb1d4b57c41cdbe728cee821ff9e1a2b8d8074fa6f779b2361c0fc3270b"
+        },
+        "body": "{\"id\": \"evt_18fd57dc54c8\", \"type\": \"payment.refunded\", \"order\": \"ord_4005\", \"sequence\": 2, \"amount\": 2200, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 503,
+        "body": {
+          "error": "provider unavailable"
+        }
+      },
+      "log": [
+        {
+          "mock": "payment-provider",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h32",
+      "level": 4,
+      "note": "the events API answers 429: answer 503 at once, and let the provider's next attempt be the retry",
+      "mocks": {
+        "payment-provider": "rate_limited"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "aca06893861e43a305df7cee73f47852470b5c9c835c483eb2f54e84559445b8"
+        },
+        "body": "{\"id\": \"evt_ebc0226ae97a\", \"type\": \"payment.refunded\", \"order\": \"ord_4006\", \"sequence\": 2, \"amount\": 2225, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 503,
+        "body": {
+          "error": "provider unavailable"
+        }
+      },
+      "log": [
+        {
+          "mock": "payment-provider",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h33",
+      "level": 4,
+      "note": "the events API answers a broken body",
+      "mocks": {
+        "payment-provider": "garbled"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "1faea37b8467b5c5381f20d120bf54cd44de080acd9028946fa477be69b1ca0d"
+        },
+        "body": "{\"id\": \"evt_236936065566\", \"type\": \"payment.refunded\", \"order\": \"ord_4007\", \"sequence\": 2, \"amount\": 2250, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 503,
+        "body": {
+          "error": "provider unavailable"
+        }
+      },
+      "log": [
+        {
+          "mock": "payment-provider",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h34",
+      "level": 4,
+      "note": "the events API answers JSON of another shape",
+      "mocks": {
+        "payment-provider": "wrong_shape"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "533bed3eae112d21782d6c9b1c42c54555a5adf996893727be9e3928b182af12"
+        },
+        "body": "{\"id\": \"evt_7d11e60ac90a\", \"type\": \"payment.refunded\", \"order\": \"ord_4008\", \"sequence\": 2, \"amount\": 2275, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 503,
+        "body": {
+          "error": "provider unavailable"
+        }
+      },
+      "log": [
+        {
+          "mock": "payment-provider",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h35",
+      "level": 4,
+      "note": "the events API has not caught up: event 2 is not in its list yet",
+      "mocks": {
+        "payment-provider": "lagging"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "1f74e8a05a735c33082fe16521e6eb06c67b8b0704e6cec88de82c0359f1dc97"
+        },
+        "body": "{\"id\": \"evt_ff971d8190ef\", \"type\": \"payment.disputed\", \"order\": \"ord_4009\", \"sequence\": 3, \"amount\": 2300, \"currency\": \"EUR\", \"created\": 1803901890}"
+      },
+      "expected": {
+        "status": 503,
+        "body": {
+          "error": "provider unavailable"
+        }
+      },
+      "log": [
+        {
+          "mock": "payment-provider",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h36",
+      "level": 4,
+      "note": "the events API does not know the order yet",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "daaccd17fb9bf8252b0f99099f9a221d9577eb5cb55b712a0707e20fd231b006"
+        },
+        "body": "{\"id\": \"evt_3f13072eb0c7\", \"type\": \"payment.refunded\", \"order\": \"ord_4010\", \"sequence\": 2, \"amount\": 2325, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 503,
+        "body": {
+          "error": "provider unavailable"
+        }
+      },
+      "log": [
+        {
+          "mock": "payment-provider",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h37",
+      "level": 4,
+      "note": "a first attempt, answered 503 while the events API is down",
+      "mocks": {
+        "payment-provider": "outage"
+      },
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902340",
+          "Provider-Signature": "4cf69c36a7f535d7640c8ce8d4d53c727c441654b215490177eb30685988893d"
+        },
+        "body": "{\"id\": \"evt_330d33d1c353\", \"type\": \"payment.refunded\", \"order\": \"ord_4011\", \"sequence\": 2, \"amount\": 2350, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 503,
+        "body": {
+          "error": "provider unavailable"
+        }
+      },
+      "log": [
+        {
+          "mock": "payment-provider",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h38",
+      "level": 4,
+      "note": "follows h37: the provider's next attempt must be applied, not taken for a duplicate of the one your app refused",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "a4629c41a980c9c8042083222cfe96bcfa90fef5a2c4a49ea87a17d3b00d02c8"
+        },
+        "body": "{\"id\": \"evt_330d33d1c353\", \"type\": \"payment.refunded\", \"order\": \"ord_4011\", \"sequence\": 2, \"amount\": 2350, \"currency\": \"EUR\", \"created\": 1803901860}"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "outcome": "applied"
+        }
+      },
+      "log": [
+        {
+          "mock": "payment-provider",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h39",
+      "level": 4,
+      "note": "the missing event arrives after the events API supplied it",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902350",
+            "Provider-Signature": "a9aeef1879982280afe654a081c937e5fd729dae740b269ac053104ed5ab7920"
+          },
+          "body": "{\"id\": \"evt_5fac395d4165\", \"type\": \"payment.refunded\", \"order\": \"ord_4012\", \"sequence\": 2, \"amount\": 2375, \"currency\": \"EUR\", \"created\": 1803901860}"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "536b848dce8169bd16c8fcf92c551f4aeb46bde7a530dab6938e87794e990c78"
+        },
+        "body": "{\"id\": \"evt_f1dc5137454c\", \"type\": \"payment.succeeded\", \"order\": \"ord_4012\", \"sequence\": 1, \"amount\": 2375, \"currency\": \"EUR\", \"created\": 1803901830}"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "outcome": "duplicate"
+        }
+      },
+      "log": [
+        {
+          "mock": "payment-provider",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h40",
+      "level": 4,
+      "note": "an event type this service does not handle",
+      "request": {
+        "method": "POST",
+        "path": "/webhooks/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Provider-Timestamp": "1803902380",
+          "Provider-Signature": "e9b466173d3b63227b0ddbbc5b1923f66a9f625771f2396f2783a3b91a76fb3f"
+        },
+        "body": "{\"id\": \"evt_80f3d3845059\", \"type\": \"payment.receipt_sent\", \"order\": \"ord_4013\", \"sequence\": 1, \"amount\": 2400, \"currency\": \"EUR\", \"created\": 1803901830}"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "outcome": "ignored"
+        }
+      }
+    },
+    {
+      "id": "h41",
+      "level": 4,
+      "note": "an ignored event leaves the state alone and still takes its place in the sequence",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902340",
+            "Provider-Signature": "f654838c8122758c3d1c6ed8cc90711ee09451aef65e0b6465ff18a120e58123"
+          },
+          "body": "{\"id\": \"evt_fcc92f901dfc\", \"type\": \"payment.succeeded\", \"order\": \"ord_4014\", \"sequence\": 1, \"amount\": 2425, \"currency\": \"EUR\", \"created\": 1803901830}"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902350",
+            "Provider-Signature": "aea419b521dfb2eef10b58fc2b959546aa9c514f08e436890d7c9a8a0e10c3a2"
+          },
+          "body": "{\"id\": \"evt_59d7f8f26f11\", \"type\": \"payment.receipt_sent\", \"order\": \"ord_4014\", \"sequence\": 2, \"amount\": 2425, \"currency\": \"EUR\", \"created\": 1803901860}"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/orders/ord_4014"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "order": "ord_4014",
+          "state": "succeeded",
+          "sequence": 2
+        }
+      }
+    },
+    {
+      "id": "h42",
+      "level": 4,
+      "note": "the event after an ignored one follows it directly, with no gap to fill",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902330",
+            "Provider-Signature": "1a748a57040861fe7689b4899cc6fc8ee460041f7017f037d8cfcc37fc977eae"
+          },
+          "body": "{\"id\": \"evt_bb36939ff767\", \"type\": \"payment.succeeded\", \"order\": \"ord_4015\", \"sequence\": 1, \"amount\": 2450, \"currency\": \"EUR\", \"created\": 1803901830}"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902340",
+            "Provider-Signature": "c23f22fdbf09c3cbfd834cac5b3a01966efb604977626b9819ed4dc64bb944d0"
+          },
+          "body": "{\"id\": \"evt_29e742f07540\", \"type\": \"payment.receipt_sent\", \"order\": \"ord_4015\", \"sequence\": 2, \"amount\": 2450, \"currency\": \"EUR\", \"created\": 1803901860}"
+        },
+        {
+          "method": "POST",
+          "path": "/webhooks/payments",
+          "headers": {
+            "Content-Type": "application/json",
+            "Provider-Timestamp": "1803902350",
+            "Provider-Signature": "59497a0ba695a7e503a09ff0693a4616628fc7ef3c4934a6c07ceae48db28dae"
+          },
+          "body": "{\"id\": \"evt_b67c2d0e3021\", \"type\": \"payment.refunded\", \"order\": \"ord_4015\", \"sequence\": 3, \"amount\": 2450, \"currency\": \"EUR\", \"created\": 1803901890}"
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/orders/ord_4015"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "order": "ord_4015",
+          "state": "refunded",
+          "sequence": 3
+        }
+      },
+      "log": [
+        {
+          "mock": "payment-provider",
+          "count": 0
+        }
+      ]
+    }
+  ]
+}

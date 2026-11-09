@@ -1,0 +1,23 @@
+{
+  "order": "ord_4001",
+  "events": [
+    {
+      "id": "evt_ee5649d28675",
+      "type": "payment.succeeded",
+      "order": "ord_4001",
+      "sequence": 1,
+      "amount": 2100,
+      "currency": "EUR",
+      "created": 1803901830
+    },
+    {
+      "id": "evt_cd675074c04f",
+      "type": "payment.refunded",
+      "order": "ord_4001",
+      "sequence": 2,
+      "amount": 2100,
+      "currency": "EUR",
+      "created": 1803901860
+    }
+  ]
+}

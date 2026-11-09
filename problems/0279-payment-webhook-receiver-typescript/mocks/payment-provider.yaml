@@ -1,0 +1,140 @@
+# The payment provider's events API, and how it can fail. The graded webhooks come from the
+# cases, not from here. Hidden scenarios are what a graded run adds: a dev or test stack holds
+# only those marked visible.
+routes:
+  - id: events-ord_3001
+    method: GET
+    path: /v1/orders/ord_3001/events
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/ord_3001.json
+  - id: events-ord_3003
+    method: GET
+    path: /v1/orders/ord_3003/events
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/ord_3003.json
+  - id: events-ord_3004
+    method: GET
+    path: /v1/orders/ord_3004/events
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/ord_3004.json
+  - id: events-ord_3009
+    method: GET
+    path: /v1/orders/ord_3009/events
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/ord_3009.json
+  - id: events-ord_4001
+    method: GET
+    path: /v1/orders/ord_4001/events
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/ord_4001.json
+  - id: events-ord_4002
+    method: GET
+    path: /v1/orders/ord_4002/events
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/ord_4002.json
+  - id: events-ord_4003
+    method: GET
+    path: /v1/orders/ord_4003/events
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/ord_4003.json
+  - id: events-ord_4005
+    method: GET
+    path: /v1/orders/ord_4005/events
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/ord_4005.json
+  - id: events-ord_4006
+    method: GET
+    path: /v1/orders/ord_4006/events
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/ord_4006.json
+  - id: events-ord_4007
+    method: GET
+    path: /v1/orders/ord_4007/events
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/ord_4007.json
+  - id: events-ord_4008
+    method: GET
+    path: /v1/orders/ord_4008/events
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/ord_4008.json
+  - id: events-ord_4009
+    method: GET
+    path: /v1/orders/ord_4009/events
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/ord_4009.json
+  - id: events-ord_4011
+    method: GET
+    path: /v1/orders/ord_4011/events
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/ord_4011.json
+  - id: events-ord_4012
+    method: GET
+    path: /v1/orders/ord_4012/events
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/ord_4012.json
+  - id: events-ord_9001
+    method: GET
+    path: /v1/orders/ord_9001/events
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body_file: bodies/ord_9001.json
+  - id: unknown-order
+    method: GET
+    path: /v1/orders/{order}/events
+    response:
+      status: 404
+      body: {error: no such order}
+scenarios:
+  outage:
+    visible: true
+    status: 503
+    headers: {Content-Type: application/json}
+    body: {error: service unavailable}
+  slow:
+    visible: true
+    delay_ms: 3000
+  rate_limited:
+    visible: true
+    status: 429
+    headers: {Content-Type: application/json, Retry-After: "1"}
+    body: {error: too many requests}
+  garbled:
+    status: 200
+    headers: {Content-Type: application/json}
+    body: '{"order": "ord_'
+  wrong_shape:
+    status: 200
+    headers: {Content-Type: application/json}
+    body: {status: ok}
+  lagging:
+    route: events-ord_4009
+    body_file: bodies/ord_4009-lagging.json

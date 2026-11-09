@@ -1,0 +1,32 @@
+{
+  "order": "ord_4003",
+  "events": [
+    {
+      "id": "evt_0622fa75b6a8",
+      "type": "payment.failed",
+      "order": "ord_4003",
+      "sequence": 1,
+      "amount": 2150,
+      "currency": "EUR",
+      "created": 1803901830
+    },
+    {
+      "id": "evt_eb65a6b4886b",
+      "type": "payment.succeeded",
+      "order": "ord_4003",
+      "sequence": 2,
+      "amount": 2150,
+      "currency": "EUR",
+      "created": 1803901860
+    },
+    {
+      "id": "evt_b9f05ea68095",
+      "type": "payment.disputed",
+      "order": "ord_4003",
+      "sequence": 3,
+      "amount": 2150,
+      "currency": "EUR",
+      "created": 1803901890
+    }
+  ]
+}
