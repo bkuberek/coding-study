@@ -6,6 +6,7 @@ from coding_study.domain.http_origins import (
     app_origin,
     declared_origins,
     host_header,
+    reach_origin,
     split_url,
 )
 from coding_study.domain.http_redirects import redirected
@@ -81,9 +82,17 @@ def test_the_host_header_is_the_name_and_port():
     assert host_header("http://idp:8080") == "idp:8080"
 
 
-def test_the_problem_declares_the_app_and_each_mock_server():
-    assert declared_origins(8000, ("idp", "room-vendor")) == {
+def test_the_problem_declares_the_app_and_each_origin_the_grader_reaches():
+    assert declared_origins(8000, ("idp:8080", "db:5432")) == {
         app_origin(8000),
         "http://idp:8080",
-        "http://room-vendor:8080",
+        "http://db:5432",
     }
+
+
+def test_with_nothing_to_reach_the_app_is_the_only_declared_origin():
+    assert declared_origins(8000, ()) == {app_origin(8000)}
+
+
+def test_a_reached_origin_is_the_grader_reach_entry_over_http():
+    assert reach_origin("idp:8080") == "http://idp:8080"

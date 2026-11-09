@@ -31,14 +31,10 @@ class StackEndpoints:
     names and which a path alone shares its cookies with. None reaches the app at `app_url`
     alone."""
     origins: Mapping[str, str] = field(default_factory=dict[str, str])
-    """The contract P10's services plug into (docs/specs/service-projects.md#reaching-an-origin):
-    for each other origin a case may name, by its name inside the stack, `http://idp:8080`, where
-    the grader reaches it on this machine, `http://127.0.0.1:<port>`, through the forwarder."""
-    reach: Mapping[str, str] = field(default_factory=dict[str, str])
-    """`http://127.0.0.1:<port>` by each `<name>:<port>` in `project.grader_reach`, the origin the
-    app's network knows it by, such as `idp:8080`. A client dials the URL and sends that origin as
-    `Host`, which the forwarder passes on untouched (docs/specs/service-projects.md#grader-reach).
-    The app's own origin, `app:<app.port>`, is `app_url`."""
+    """For each `project.grader_reach` entry, by its origin inside the stack, `http://idp:8080`,
+    where the grader reaches it on this machine, `http://127.0.0.1:<port>`, through the forwarder.
+    A client dials that address and sends the name as `Host`, which the forwarder passes on
+    untouched (docs/specs/service-projects.md#reaching-an-origin)."""
 
     def address_of(self, origin: str | None) -> str | None:
         """Where the grader dials a request for `origin`; None is the app. None back when the

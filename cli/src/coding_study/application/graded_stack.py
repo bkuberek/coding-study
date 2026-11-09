@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from coding_study.application.http_grading_ports import AppExit, StackEndpoints, StackStepError
 from coding_study.application.ports import ContainerCommand, SandboxEngine
 from coding_study.domain.errors import RunnerStartError, SandboxError
-from coding_study.domain.http_origins import app_origin
+from coding_study.domain.http_origins import app_origin, reach_origin
 from coding_study.domain.sandbox import (
     RESET_PHASE_APPLY,
     RESET_PHASE_VARIABLE,
@@ -42,7 +42,7 @@ class SandboxGradedStack:
             control_token=mocks.control_token if mocks is not None else "",
             mocks=mocks.aliases if mocks is not None else (),
             app_origin=app_origin(self._service.app.port),
-            reach=self._ready.reach_urls,
+            origins={reach_origin(reach): url for reach, url in self._ready.reach_urls.items()},
         )
 
     def restart_app(self) -> None:

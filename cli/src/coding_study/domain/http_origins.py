@@ -8,7 +8,7 @@ through the forwarder, and sends the name as the request's `Host`.
 from collections.abc import Iterable
 from urllib.parse import urlsplit
 
-from coding_study.domain.sandbox import APP_SERVICE, MOCK_PORT
+from coding_study.domain.sandbox import APP_SERVICE
 
 HTTP = "http"
 DEFAULT_HTTP_PORT = 80
@@ -50,7 +50,13 @@ def app_origin(app_port: int) -> str:
     return origin_of(APP_SERVICE, app_port)
 
 
-def declared_origins(app_port: int, mocks: Iterable[str]) -> frozenset[str]:
-    """What S23 lets a case's absolute URL name: the app and each mock server. P10 adds each
-    backing service a problem publishes to the grader."""
-    return frozenset({app_origin(app_port), *(origin_of(mock, MOCK_PORT) for mock in mocks)})
+def reach_origin(reach: str) -> str:
+    """The origin of a `project.grader_reach` entry, `idp:8080`: the service or mock server the
+    forwarder publishes to the grader under that name."""
+    return f"{HTTP}://{reach.lower()}"
+
+
+def declared_origins(app_port: int, reach: Iterable[str]) -> frozenset[str]:
+    """What S23 lets a case's absolute URL name: the app and each `project.grader_reach` entry,
+    which are exactly what a test or graded stack publishes to the grader."""
+    return frozenset({app_origin(app_port), *(reach_origin(entry) for entry in reach)})

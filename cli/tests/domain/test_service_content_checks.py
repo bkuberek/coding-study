@@ -603,9 +603,21 @@ def steps_case(target: str) -> Case:
     return Case("h1", HttpCaseInput({}, steps=(step,)), None, level=1)
 
 
-def test_a_step_may_name_the_app_and_a_mock_server_by_their_origins():
-    cases = (steps_case("http://app:8000/me"), steps_case("http://room-vendor:8080/r"))
-    assert s23(*cases, http_case("h2", 2)) == []
+def test_a_step_may_name_the_app_by_its_origin():
+    assert s23(steps_case("http://app:8000/me"), http_case("h2", 2)) == []
+
+
+def test_a_step_may_name_what_the_grader_reaches():
+    project = service(services="c.yaml", grader_reach=("idp:8080", "room-vendor:8080"))
+    cases = (steps_case("http://idp:8080/realms"), steps_case("http://room-vendor:8080/r"))
+
+    assert s23(*cases, http_case("h2", 2), project=project) == []
+
+
+def test_a_step_naming_a_mock_server_the_grader_does_not_reach_is_refused():
+    found = s23(steps_case("http://room-vendor:8080/r"), http_case("h2", 2))
+
+    assert any("http://room-vendor:8080 is no origin" in message for message in found)
 
 
 def test_a_step_naming_an_undeclared_origin_is_refused():

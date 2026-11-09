@@ -355,7 +355,7 @@ def _case(where: str, case: Case, rules: _CaseRules) -> _Found:
         yield where, f"the comparator {used.type} cannot judge a response body"
     yield from _scenarios(where, case, http, rules)
     yield from _logs(where, http, rules)
-    origins = declared_origins(rules.service.app.port, rules.files.mocks)
+    origins = declared_origins(rules.service.app.port, rules.service.grader_reach)
     for message in step_issues(http, origins):
         yield where, message
     if http.fresh and rules.service.services is not None and rules.service.commands.reset is None:

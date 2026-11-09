@@ -67,7 +67,7 @@ def test_the_endpoints_are_the_published_ports_and_the_stacks_token():
     assert endpoints.mocks == ("room-vendor",)
 
 
-def test_the_endpoints_name_where_each_reached_service_answers_on_this_machine():
+def test_each_reached_service_is_an_origin_a_case_may_name():
     ready = ReadyStack("cstudy-g-1-a", 5000, 5001, 10.0, 12.0, {"idp:8080": 5002})
     plan = StackPlan(
         IDENTITY, SandboxUser(1, 1), SandboxPaths("/p", "/r"), AppContainer("i", ("r",), 8000, {})
@@ -75,13 +75,7 @@ def test_the_endpoints_name_where_each_reached_service_answers_on_this_machine()
 
     stack = SandboxGradedStack(FakeSandbox(), RunningStack(plan, ready), service_with())
 
-    endpoints = stack.endpoints
-
-    assert endpoints.reach == {"idp:8080": "http://127.0.0.1:5002"}
-
-
-def test_a_stack_with_nothing_to_reach_names_nothing():
-    assert stack_of(FakeSandbox()).endpoints.reach == {}
+    assert stack.endpoints.origins == {"http://idp:8080": "http://127.0.0.1:5002"}
 
 
 def test_the_app_is_reachable_by_its_own_origin_inside_the_stack():
@@ -90,7 +84,7 @@ def test_the_app_is_reachable_by_its_own_origin_inside_the_stack():
     assert endpoints.address_of("http://app:8000") == "http://127.0.0.1:5000"
 
 
-def test_until_p10_no_other_origin_is_published():
+def test_a_stack_with_nothing_to_reach_publishes_no_other_origin():
     assert stack_of(FakeSandbox()).endpoints.origins == {}
 
 
