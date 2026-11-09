@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0281"
+slug: ssrf-safe-webhook-dispatcher-typescript
+title: SSRF-Safe Webhook Dispatcher (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [security]
+job_roles: [security-engineer, backend]
+scope: project
+languages: [typescript]
+summary: Customers register webhook URLs and your service sends them events. Build the dispatcher that delivers them, signed and on time, without ever letting a customer's URL point it at your own network.
+levels:
+  - {level: 1, title: Register and deliver}
+  - {level: 2, title: Block internal destinations}
+  - {level: 3, title: Redirects and retries}
+  - {level: 4, title: Abuse limits}
+comparator: {type: exact}
+project:
+  grading: http
+  image: node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+  commands:
+    install: [corepack, pnpm, install, --frozen-lockfile, --ignore-scripts]
+    run: [node, src/server.ts]
+    test: [node, --test, --test-concurrency=1]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    RESOLVER_URL: http://resolver:8080
+  install_env:
+    COREPACK_HOME: /cache/corepack
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    npm_config_store_dir: /cache/pnpm-store
+    CI: "true"
+  mocks:
+    - {name: resolver, config: mocks/resolver.yaml}
+    - {name: customer-hooks, config: mocks/customer-hooks.yaml}
+    - {name: partner-hooks, config: mocks/partner-hooks.yaml}
+    - {name: internal-admin, config: mocks/internal-admin.yaml}
+  requires:
+    lock: pnpm-lock.yaml
+    sizes: {install_mb: 27, images_mb: {app: 81, mocks: 43}, memory_mb: 150}
+approaches:
+  - {id: reference, name: "Resolve once, check every address, connect to what was checked", role: optimal, time: "per request", space: "per request"}
+related: [vendor-retry-client-typescript, coworking-availability-typescript]
+estimate_minutes: 180

@@ -1,0 +1,111 @@
+# A customer's webhook server on the internet, at 203.0.113.10, and how it can misbehave. Every name
+# the resolver does not list leads here. Hidden scenarios are what a graded run adds: a dev or test
+# stack holds only those marked visible.
+routes:
+  - id: events
+    method: POST
+    path: /events
+    response:
+      status: 200
+      body: {received: true}
+  - id: v2-events
+    method: POST
+    path: /v2/events
+    response:
+      status: 200
+      body: {received: true}
+scenarios:
+  outage:
+    visible: true
+    status: 500
+    body: {error: internal error}
+  slow:
+    visible: true
+    delay_ms: 1500
+  gone:
+    visible: true
+    status: 410
+    body: {error: this endpoint was removed}
+  flaky:
+    visible: true
+    sequence:
+      - {status: 503, body: {error: try again}}
+      - {status: 503, body: {error: try again}}
+      - {status: 200, body: {received: true}}
+  huge_response:
+    visible: true
+    route: events
+    status: 200
+    headers: {Content-Type: application/json}
+    body_file: bodies/large-response.json
+  redirect_to_metadata:
+    visible: true
+    route: events
+    status: 302
+    headers: {Location: "http://169.254.169.254/metadata/credentials"}
+    body: ""
+  response_at_limit:
+    route: events
+    status: 200
+    headers: {Content-Type: application/json}
+    body_file: bodies/limit-response.json
+  bad_request:
+    status: 400
+    body: {error: unexpected payload}
+  fails_once_slowly:
+    sequence:
+      - {delay_ms: 1500}
+      - {status: 200, body: {received: true}}
+  gone_twice_then_ok:
+    sequence:
+      - {status: 410, body: {error: this endpoint was removed}}
+      - {status: 410, body: {error: this endpoint was removed}}
+      - {status: 200, body: {received: true}}
+      - {status: 410, body: {error: this endpoint was removed}}
+  lagging:
+    delay_ms: 500
+  redirect_to_partner:
+    route: events
+    status: 307
+    headers: {Location: "https://inbox.partner.test/inbox"}
+    body: ""
+  redirect_relative:
+    route: events
+    status: 308
+    headers: {Location: /v2/events}
+    body: ""
+  redirect_loop:
+    route: events
+    status: 307
+    headers: {Location: /events}
+    body: ""
+  redirect_to_intranet:
+    route: events
+    status: 302
+    headers: {Location: "https://intranet.attacker.test/admin"}
+    body: ""
+  redirect_to_decimal_loopback:
+    route: events
+    status: 307
+    headers: {Location: "http://2130706433:8080/admin"}
+    body: ""
+  redirect_to_ftp:
+    route: events
+    status: 302
+    headers: {Location: "ftp://files.partner.test/drop"}
+    body: ""
+  redirect_without_location:
+    route: events
+    status: 302
+    headers: {}
+    body: ""
+  redirect_to_ssh_port:
+    route: events
+    status: 302
+    headers: {Location: "https://inbox.partner.test:22/inbox"}
+    body: ""
+  redirect_to_nowhere:
+    route: events
+    status: 302
+    headers: {Location: "https://nowhere.test/events"}
+    body: ""

@@ -1,0 +1,16 @@
+# The company's own network: every address that is not a public host of this sandbox leads here,
+# loopback, private ranges and the cloud metadata address alike. A request that reaches it is what
+# SSRF means, so the cases expect none.
+routes:
+  - id: admin
+    method: POST
+    path: /admin
+    response:
+      status: 200
+      body: {users: [{name: root, role: owner}]}
+  - id: credentials
+    method: POST
+    path: /metadata/credentials
+    response:
+      status: 200
+      body: {access_key: internal-only, secret_key: internal-only}
