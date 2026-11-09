@@ -196,6 +196,15 @@ def test_the_mock_server_does_not_wait_for_a_backing_service():
     assert "depends_on" not in service(MOCK_SERVICE, mocks=mocks)
 
 
+def test_the_mock_server_shares_sandbox_with_every_backing_service_it_may_pass_through_to():
+    mocks = MockServerInput(("idp",), "secret", "{}")
+    services = document(mocks=mocks)["services"]
+
+    shared = set(services[MOCK_SERVICE]["networks"]) & set(services["db"]["networks"])
+
+    assert shared == set(services["cache"]["networks"]) == {"sandbox"}
+
+
 def test_a_stack_without_backing_services_has_only_its_own():
     found = document(backing=None)
 

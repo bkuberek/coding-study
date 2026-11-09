@@ -91,6 +91,19 @@ def mock_config_issues(service: ServiceProject, files: ProjectFiles) -> _Found:
             yield from _bodies(mock, found)
             yield from _waits(mock, found)
             yield from _documentation(mock, found, files)
+            yield from _upstream(mock, found, files)
+
+
+def _upstream(mock: ServiceMock, found: MockFiles, files: ProjectFiles) -> _Found:
+    """A pass-through reaches its upstream over `sandbox`, the network the mock server shares with
+    every backing service and with nothing else, so the upstream is a service of the compose
+    file."""
+    upstream = found.document.get("upstream")
+    if upstream is None:
+        return
+    host = url_host(str(upstream))
+    if host not in backing_services_of(files.backing_services or _NO_COMPOSE):
+        yield mock.config, f"upstream: {host} is no service of the compose file"
 
 
 def _bodies(mock: ServiceMock, files: MockFiles) -> _Found:

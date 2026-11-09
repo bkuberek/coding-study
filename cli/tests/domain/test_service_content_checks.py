@@ -1,5 +1,7 @@
 """S20, S21, S22 and S23: a service project's mock configs, compose file and HTTP cases."""
 
+from dataclasses import replace
+
 import pytest
 
 from coding_study.domain.cases import Case, Expected, OperationSequence
@@ -173,6 +175,27 @@ def test_the_documentation_must_not_name_a_hidden_scenario():
     found = s20(files_of(document, api=text, starter_api=text))
 
     assert any("hidden" in message and "secret_one" in message for message in found)
+
+
+def passing_through(upstream: str, compose_file: object = None) -> ProjectFiles:
+    files = files_of({**config(), "upstream": upstream})
+    return replace(files, backing_services=compose_file)
+
+
+def test_a_pass_through_may_reach_a_service_of_the_compose_file():
+    assert s20(passing_through("http://db:5432", compose())) == []
+
+
+def test_a_pass_through_to_what_is_no_service_of_the_compose_file_is_refused():
+    found = s20(passing_through("http://keycloak:8080", compose()))
+
+    assert any("keycloak is no service of the compose file" in message for message in found)
+
+
+def test_a_pass_through_without_a_compose_file_is_refused():
+    found = s20(passing_through("http://keycloak:8080"))
+
+    assert any("keycloak is no service of the compose file" in message for message in found)
 
 
 def s21(document: object, project: ServiceProject | None = None) -> list[str]:
