@@ -1,7 +1,8 @@
 """A problem's backing service merged into a stack, on a real Docker engine, with resources this
 test labels and removes. Run with `uv run pytest -q -m docker`. The service is a small HTTP server
 on the pinned Python image, so nothing is pulled; the Postgres and Redis fixture exercises real
-engines in `tests/test_service_projects_real.py`."""
+engines in `tests/test_service_projects_real.py`. The last test grades a multi-step case that
+reaches the service through a mock server the grader reaches by `grader_reach`."""
 
 import http.client
 import json
@@ -9,18 +10,28 @@ import os
 import subprocess
 import textwrap
 from collections.abc import Generator
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from coding_study.adapters.docker_sandbox import DockerSandbox, SubprocessDockerRunner
+from coding_study.adapters.http_grader.clients import open_stack_clients
+from coding_study.adapters.problem_documents import cases_from_document
+from coding_study.application.graded_stack import RunningStack, SandboxGradedStack
+from coding_study.application.http_grading import HttpGradingRun, run_http_grading
 from coding_study.application.ports import ContainerCommand
 from coding_study.application.sandbox import running_stack
+from coding_study.domain.case_status import CaseStatus
+from coding_study.domain.config import Config
+from coding_study.domain.mock_configs import MockFiles, ScenarioReach, rendered_mock_config
+from coding_study.domain.problem import ComparatorSpec, ComparatorType, Problem
 from coding_study.domain.sandbox import (
     LABEL_KIND,
     PYTHON_IMAGE,
     AppContainer,
     BackingServices,
+    MockServerInput,
     ReadyStack,
     SandboxPaths,
     SandboxUser,
@@ -29,6 +40,14 @@ from coding_study.domain.sandbox import (
     StackPlan,
     StartupBudget,
 )
+from coding_study.domain.service_project import (
+    ServiceApp,
+    ServiceCommands,
+    ServiceMock,
+    ServiceProject,
+    ServiceRequires,
+)
+from tests.project_builders import project_meta
 from tests.waits import GENEROUS_WAIT_S
 
 pytestmark = [pytest.mark.slow, pytest.mark.docker]
@@ -310,3 +329,110 @@ def test_a_dev_stack_keeps_a_backing_services_data_and_publishes_no_reach(engine
 
 def _command(code: str) -> ContainerCommand:
     return ContainerCommand(("python", "-I", "-c", code), {}, GENEROUS_WAIT_S)
+
+
+IDP = "idp"
+IDP_REACH = "idp:8080"
+TOKEN = "a-token-only-the-mock-container-holds"
+PASS_THROUGH: dict[str, object] = {
+    "upstream": "http://echo:8080",
+    "routes": [{"id": "whoami", "method": "GET", "path": "/whoami"}],
+}
+PRINTING_APP = textwrap.dedent(
+    """\
+    import http.server, os
+
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            print(f"served {self.path}", flush=True)
+            self.send_response(200)
+            self.end_headers()
+
+        def log_message(self, *arguments):
+            pass
+
+
+    http.server.ThreadingHTTPServer(("0.0.0.0", int(os.environ["PORT"])), Handler).serve_forever()
+    """
+)
+NOTHING_SECRET_PRINTED = {"absent": ["served /secret"]}
+CHAIN_TESTS = {
+    "version": 1,
+    "cases": [
+        {
+            "id": "through-the-mock",
+            "level": 1,
+            "steps": [
+                {
+                    "request": {"method": "GET", "url": f"http://{IDP_REACH}/whoami"},
+                    "expected": {
+                        "status": 200,
+                        "body": {"host": IDP_REACH, "hits": 1, "seed": "from the problem"},
+                    },
+                },
+                {"request": {"method": "GET", "path": "/quiet"}, "expected": {"status": 200}},
+            ],
+            "log": [{"mock": IDP, "route": "whoami", "count": 1}],
+            "app_output": NOTHING_SECRET_PRINTED,
+        },
+        {
+            "id": "printed",
+            "level": 1,
+            "steps": [
+                {"request": {"method": "GET", "path": "/secret"}, "expected": {"status": 200}}
+            ],
+            "app_output": NOTHING_SECRET_PRINTED,
+        },
+    ],
+}
+
+
+def chain_service() -> ServiceProject:
+    return ServiceProject(
+        image=PYTHON_IMAGE,
+        commands=ServiceCommands(run=("python", "-I", "server.py"), test=("true",)),
+        app=ServiceApp("PORT", 8000, "/health"),
+        env={"PORT": "8000"},
+        requires=ServiceRequires(),
+        mocks=(ServiceMock(IDP, f"mocks/{IDP}.yaml"),),
+        services="services/compose.yaml",
+        grader_reach=(IDP_REACH,),
+    )
+
+
+@pytest.fixture
+def graded_chain(engine: DockerSandbox, tmp_path: Path) -> Generator[SandboxGradedStack]:
+    """The echo service behind a mock server that passes through to it, the mock server published
+    to the grader by `grader_reach`, and an app that prints each path it serves."""
+    name = f"cstudy-t-{os.getpid()}-chain"
+    rendered = rendered_mock_config({IDP: MockFiles(PASS_THROUGH)}, TOKEN, ScenarioReach.EVERY)
+    mocks = MockServerInput((IDP,), TOKEN, rendered)
+    plan = replace(plan_in(tmp_path, StackKind.TEST, name), mocks=mocks, reach=(IDP_REACH,))
+    (Path(plan.paths.project) / "server.py").write_text(PRINTING_APP)
+    try:
+        with running_stack(engine, plan, BUDGET, lambda _line: None) as ready:
+            yield SandboxGradedStack(engine, RunningStack(plan, ready), chain_service())
+    finally:
+        remove_everything_of(name)
+
+
+def graded_outcomes(stack: SandboxGradedStack) -> dict[str, str | None]:
+    """Each case's status, or why it failed."""
+    comparator = ComparatorSpec(ComparatorType.EXACT)
+    cases = cases_from_document(CHAIN_TESTS, comparator, "tests.json")
+    run = HttpGradingRun(Problem(project_meta(comparator=comparator), cases), 1, Config())
+    judgement = run_http_grading(run, stack, open_stack_clients)
+    return {
+        verdict.case.id: verdict.mismatch.detail if verdict.mismatch else verdict.status.value
+        for verdict in judgement.verdicts
+    }
+
+
+def test_a_case_reaches_a_service_through_its_mock_server_and_reads_the_apps_output(graded_chain):
+    found = graded_outcomes(graded_chain)
+
+    assert (found["through-the-mock"], "app output: printed" in (found["printed"] or "")) == (
+        CaseStatus.PASS.value,
+        True,
+    )
