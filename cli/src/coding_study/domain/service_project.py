@@ -117,6 +117,9 @@ class ServiceProject:
     mocks: tuple[ServiceMock, ...] = ()
     services: str | None = None
     """The problem's compose file of backing services, relative to its directory."""
+    grader_reach: tuple[str, ...] = ()
+    """Each `<name>:<port>` of a backing service or a mock server the grader may reach, published
+    on `127.0.0.1` through the forwarder in a test or graded stack."""
     install_env: Mapping[str, str] = field(default_factory=dict[str, str])
     """What the package manager needs in its install container: where its cache is."""
     timeouts: ServiceTimeouts = field(default_factory=ServiceTimeouts)

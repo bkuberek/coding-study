@@ -6,8 +6,8 @@ Startup runs on the sandbox's clock, so no time limit or hang guard of a case co
 holds for each restart here too: a restart returns once the app answers its health path again.
 """
 
-from collections.abc import Callable
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from coding_study.domain.http_case import HttpRequest
@@ -25,6 +25,11 @@ class StackEndpoints:
     control_token: str
     mocks: tuple[str, ...]
     """The names of the problem's mock servers."""
+    reach: Mapping[str, str] = field(default_factory=dict[str, str])
+    """`http://127.0.0.1:<port>` by each `<name>:<port>` in `project.grader_reach`, the origin the
+    app's network knows it by, such as `idp:8080`. A client dials the URL and sends that origin as
+    `Host`, which the forwarder passes on untouched (docs/specs/service-projects.md#grader-reach).
+    The app's own origin, `app:<app.port>`, is `app_url`."""
 
 
 @dataclass(frozen=True, slots=True)

@@ -39,6 +39,7 @@ class SandboxGradedStack:
             control_url=self._ready.control_url,
             control_token=mocks.control_token if mocks is not None else "",
             mocks=mocks.aliases if mocks is not None else (),
+            reach=self._ready.reach_urls,
         )
 
     def restart_app(self) -> None:

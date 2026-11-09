@@ -443,7 +443,7 @@
           "anyOf": [
             { "required": ["image"] }, { "required": ["commands"] }, { "required": ["app"] }, { "required": ["env"] },
             { "required": ["install_env"] }, { "required": ["mocks"] }, { "required": ["services"] },
-            { "required": ["requires"] }, { "required": ["timeouts_s"] }
+            { "required": ["grader_reach"] }, { "required": ["requires"] }, { "required": ["timeouts_s"] }
           ]
         }
       },
@@ -510,6 +510,13 @@
           }
         },
         "services": { "description": "The problem's compose file of backing services, relative to its directory", "type": "string", "minLength": 1 },
+        "grader_reach": {
+          "description": "Each <name>:<port> of a backing service or a mock server that the grader may reach, published on 127.0.0.1 through the forwarder in a test or graded stack, with the original Host kept (docs/specs/service-projects.md#grader-reach)",
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*:[1-9][0-9]{0,4}$" }
+        },
         "requires": {
           "description": "What the problem depends on, checked against its files by S22 (docs/specs/service-projects.md#what-a-problem-depends-on)",
           "type": "object",

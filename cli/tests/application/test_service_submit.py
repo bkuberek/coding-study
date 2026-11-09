@@ -193,6 +193,66 @@ def test_a_migration_in_a_mock_attempt_hides_its_output(environment, engine):
     assert "hidden row" not in error.message
 
 
+@pytest.fixture
+def with_grade_setup(tmp_path, engine, app, control):
+    root = make_content(tmp_path)
+    document = meta_document(mocks=[{"name": "room-vendor", "config": CONFIG}])
+    document["levels"] = LEVELS
+    commands = document["project"]["commands"]  # type: ignore[index]
+    commands["grade_setup"] = ["node", "{problem}/grading/setup.ts"]  # type: ignore[index]
+    write_problem(root, document)
+    write_mock(root)
+    write_cases(root, CASES)
+
+    def clients(_endpoints: StackEndpoints) -> StackClients:
+        return StackClients(app, control)
+
+    built = make_environment(root, sandbox=engine, stack_clients=clients)
+    start_attempt(built, StartRequest(SLUG))
+    return built
+
+
+def test_with_grade_setup_bootstrap_first_runs_from_empty_data(with_grade_setup, engine):
+    submit(with_grade_setup)
+
+    empty, graded = engine.plans
+    assert empty.grade_setup is None
+    assert empty.bootstrap is not None
+    assert graded.grade_setup is not None
+
+
+def test_the_from_empty_stack_starts_no_app_and_is_gone_before_the_graded_one(
+    with_grade_setup, engine
+):
+    submit(with_grade_setup)
+
+    empty, graded = engine.plans
+    assert empty.app.command is None
+    assert empty.identity.name != graded.identity.name
+    steps = [(name, value) for name, value in engine.calls if name in ("start", "stop")]
+    assert [name for name, _ in steps] == ["start", "stop", "start", "stop"]
+    assert steps[1][1] == empty.identity.name
+
+
+def test_a_bootstrap_that_fails_from_empty_is_a_stored_load_error_that_says_so(
+    with_grade_setup, engine
+):
+    engine.start_error = StackStartError(StartupFailure.BOOTSTRAP, "exited with 1", "no table")
+
+    result = submit(with_grade_setup)
+
+    assert result.judgement.load_error is not None
+    assert result.judgement.load_error.type == "MigrationFailed"
+    assert "from empty" in result.judgement.load_error.message
+    assert len(engine.plans) == 1
+
+
+def test_without_grade_setup_the_graded_stack_is_the_only_one(environment, engine):
+    submit(environment)
+
+    assert len(engine.plans) == 1
+
+
 @pytest.mark.parametrize("failure", [StartupFailure.SERVICE, StartupFailure.GRADE_SETUP])
 def test_a_sandbox_failure_raises_and_stores_nothing(environment, engine, failure):
     engine.start_error = StackStartError(failure, "not your code")
