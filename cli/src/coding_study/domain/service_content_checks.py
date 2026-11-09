@@ -95,9 +95,8 @@ def mock_config_issues(service: ServiceProject, files: ProjectFiles) -> _Found:
 
 
 def _upstream(mock: ServiceMock, found: MockFiles, files: ProjectFiles) -> _Found:
-    """A pass-through reaches its upstream over `sandbox`, the network the mock server shares with
-    every backing service and with nothing else, so the upstream is a service of the compose
-    file."""
+    """A pass-through reaches its upstream over `sandbox`, which has no way out, so the upstream is
+    one of the backing services that share it with the mock server."""
     upstream = found.document.get("upstream")
     if upstream is None:
         return
