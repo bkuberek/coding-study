@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from tests.real_service_projects import (
+    MEMBERS,
     PYTHON,
     TYPESCRIPT,
     FixtureProject,
@@ -121,3 +122,67 @@ def test_verify_require_ready_passes_on_the_reference(project: FixtureProject):
 
     assert result.returncode == EXIT_OK, said(result)
     nothing_running(project)
+
+
+@pytest.fixture
+def members(tmp_path: Path) -> Generator[FixtureProject]:
+    """Postgres and Redis as backing services, migrations, `grade_setup` and `reset`."""
+    found = fixture_project(MEMBERS, tmp_path)
+    try:
+        yield found
+    finally:
+        found.remove_all_it_left()
+
+
+def no_data_of_a_run_left(project: FixtureProject) -> None:
+    """A test or graded stack's volumes, its backing services' among them, go with it; the install
+    cache stays by design."""
+    left = [
+        volume
+        for kind in ("test", "graded")
+        for volume in docker(
+            "volume",
+            "ls",
+            "-q",
+            "--filter",
+            f"label=cstudy.slug={project.slug}",
+            "--filter",
+            f"label=cstudy.kind={kind}",
+        ).stdout.split()
+    ]
+    assert left == []
+
+
+def test_a_project_with_postgres_and_redis_from_start_to_the_last_level(members: FixtureProject):
+    assert_passes_its_static_checks(members)
+    assert_start_installs_and_starts_nothing(members)
+    assert_the_starter_fails_its_visible_cases(members)
+    members.use_naive()
+    assert_the_naive_solution_passes_what_is_visible(members)
+    assert_a_member_loaded_before_the_migration_catches_the_naive_one(members)
+    members.use_reference()
+    assert_the_first_level_opens_the_next(members)
+    assert_the_reference_finishes_every_level(members)
+    no_data_of_a_run_left(members)
+
+
+def assert_a_member_loaded_before_the_migration_catches_the_naive_one(
+    project: FixtureProject,
+) -> None:
+    """`grade_setup` loads member 900 into the baseline, and the naive migration drops the table."""
+    result = project.cstudy("submit")
+
+    assert result.returncode == EXIT_FAILURES, said(result)
+    assert "h3" in result.stdout
+    nothing_running(project)
+    no_data_of_a_run_left(project)
+
+
+def test_verify_require_ready_passes_on_the_reference_with_backing_services(
+    members: FixtureProject,
+):
+    result = members.cstudy("verify", members.slug, "--require-ready")
+
+    assert result.returncode == EXIT_OK, said(result)
+    nothing_running(members)
+    no_data_of_a_run_left(members)

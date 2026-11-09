@@ -711,17 +711,87 @@ def test_grade_setup_expands_the_problems_folder(tmp_path, engine):
     assert plan.grade_setup.grading_directory.endswith("/grading")
 
 
-def test_backing_services_wait_for_their_phase(tmp_path, engine):
+POSTGRES = "postgres:17.11-alpine@sha256:3540c0362c809df084ffac0ae69fe794515f9de92692f02178bcdce0"
+COMPOSE_TEXT = f"""\
+services:
+  db:
+    image: {POSTGRES}
+    user: postgres
+    mem_limit: 256m
+    pids_limit: 128
+    healthcheck: {{test: [CMD, pg_isready]}}
+    volumes: [pgdata:/var/lib/postgresql/data]
+volumes:
+  pgdata:
+"""
+
+
+def with_services(tmp_path, engine, compose_text: str = COMPOSE_TEXT, **project: object):
     root = make_content(tmp_path)
-    write_problem(root, meta_document(services="services/compose.yaml"))
+    document = meta_document(services="services/compose.yaml", **project)
+    document["project"]["requires"]["services"] = ["postgres"]  # type: ignore[index]
+    document["project"]["requires"]["sizes"]["images_mb"]["postgres"] = 117  # type: ignore[index]
+    write_problem(root, document)
     compose = root / "problems" / f"0901-{SLUG}" / "services" / "compose.yaml"
     compose.parent.mkdir()
-    compose.write_text("services: {}\n")
+    compose.write_text(compose_text)
     environment = make_environment(root, sandbox=engine)
     started(environment)
+    return environment
 
-    with pytest.raises(SandboxError, match="backing services"):
+
+def test_a_stack_holds_the_problems_backing_services(tmp_path, engine):
+    environment = with_services(tmp_path, engine)
+
+    plan = practice_stack_plan(environment, problem_of(environment))
+
+    assert plan.backing is not None
+    assert set(plan.backing.document["services"]) == {"db"}  # type: ignore[arg-type]
+
+
+def test_a_stack_copies_bind_mounts_from_the_compose_files_own_folder(tmp_path, engine):
+    environment = with_services(tmp_path, engine)
+
+    plan = dev_stack_plan(environment, problem_of(environment))
+
+    assert plan.backing is not None
+    assert plan.backing.folder.endswith(f"0901-{SLUG}/services")
+
+
+def test_finish_pulls_each_backing_services_image_too(tmp_path, engine):
+    environment = with_services(tmp_path, engine)
+    engine.every_image_present = False
+
+    finish_service_start(environment, problem_of(environment), notes().append)
+
+    assert set(engine.called("pull")) == {IMAGE, PYTHON_IMAGE, POSTGRES}
+
+
+def test_a_compose_file_that_breaks_s21_starts_no_stack(tmp_path, engine):
+    escaping = COMPOSE_TEXT.replace("user: postgres", "privileged: true")
+    environment = with_services(tmp_path, engine, escaping)
+
+    with pytest.raises(SandboxError, match="privileged"):
         run_tests(environment)
+    assert not engine.called("start")
+
+
+def test_a_practice_and_a_graded_stack_let_the_grader_reach_what_the_problem_names(
+    tmp_path, engine
+):
+    environment = with_services(tmp_path, engine, grader_reach=["db:5432"])
+    problem = problem_of(environment)
+
+    practice = practice_stack_plan(environment, problem)
+    graded = graded_stack_plan(environment, problem, FIRST_LEVEL)
+
+    assert practice.reach == graded.reach == ("db:5432",)
+
+
+def test_a_dev_stack_publishes_nothing_for_the_grader(tmp_path, engine):
+    environment = with_services(tmp_path, engine, grader_reach=["db:5432"])
+
+    assert dev_stack_plan(environment, problem_of(environment)).reach == ()
 
 
 def test_the_needs_of_a_service_project_list_what_it_depends_on(environment):

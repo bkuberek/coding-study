@@ -27,6 +27,7 @@ from coding_study.domain.docker_engine import (
 from coding_study.domain.errors import SandboxError
 from coding_study.domain.sandbox import (
     AppContainer,
+    BackingServices,
     GradeSetup,
     InstallPlan,
     LeftoverStack,
@@ -41,6 +42,7 @@ from coding_study.domain.sandbox import (
     StackStartError,
     StartupBudget,
     StartupFailure,
+    reach_listen_ports,
 )
 from tests.sandbox_fakes import ScriptedDocker
 
@@ -480,6 +482,91 @@ def test_start_writes_the_rendered_mock_config_with_mock_servers(tmp_path, paths
     sandbox(docker, tmp_path).start(plan_of(paths, mocks=mocks), BUDGET)
 
     assert Path(paths.in_run("mocks.json")).read_text(encoding="utf-8") == '{"a": 1}'
+
+
+def services_folder(tmp_path: Path) -> Path:
+    folder = tmp_path / "problem" / "services"
+    (folder / "initdb").mkdir(parents=True)
+    (folder / "initdb" / "01.sql").write_text("CREATE TABLE t (id int);\n")
+    (folder / "realm.json").write_text("{}\n")
+    return folder
+
+
+def backing_in(folder: Path, *volumes: object) -> BackingServices:
+    entry = {"image": "postgres@sha256:1", "volumes": list(volumes)}
+    return BackingServices({"services": {"db": entry}}, str(folder))
+
+
+def test_start_copies_what_a_bind_mount_names_under_the_run_folder(tmp_path, paths):
+    folder = services_folder(tmp_path)
+    backing = backing_in(folder, "./initdb:/docker-entrypoint-initdb.d", "./realm.json:/r.json")
+    docker = ScriptedDocker()
+    published(docker)
+
+    sandbox(docker, tmp_path).start(plan_of(paths, backing=backing), BUDGET)
+
+    copied = Path(paths.in_run("services"))
+    assert (copied / "initdb" / "01.sql").read_text() == "CREATE TABLE t (id int);\n"
+    assert (copied / "realm.json").read_text() == "{}\n"
+
+
+def test_a_copy_for_a_backing_service_is_readable_by_its_own_user(tmp_path, paths):
+    folder = services_folder(tmp_path)
+    (folder / "initdb" / "01.sql").chmod(0o600)
+    docker = ScriptedDocker()
+    published(docker)
+
+    backing = backing_in(folder, "./initdb:/docker-entrypoint-initdb.d")
+    sandbox(docker, tmp_path).start(plan_of(paths, backing=backing), BUDGET)
+
+    copied = Path(paths.in_run("services")) / "initdb"
+    assert stat.S_IMODE((copied / "01.sql").stat().st_mode) == 0o644
+    assert stat.S_IMODE(copied.stat().st_mode) == 0o755
+
+
+@pytest.mark.parametrize("linked", ["realm.json", "initdb/01.sql"])
+def test_start_refuses_a_link_in_what_a_bind_mount_names(tmp_path, paths, linked):
+    folder = services_folder(tmp_path)
+    (folder / linked).unlink()
+    (folder / linked).symlink_to(tmp_path / "secret")
+    backing = backing_in(folder, "./initdb:/i", "./realm.json:/r.json")
+    docker = ScriptedDocker()
+
+    with pytest.raises(SandboxError, match="symbolic link"):
+        sandbox(docker, tmp_path).start(plan_of(paths, backing=backing), BUDGET)
+
+    assert not docker.ran("up")
+
+
+def test_start_refuses_a_bind_mount_of_what_is_not_there(tmp_path, paths):
+    backing = backing_in(services_folder(tmp_path), "./missing.sql:/m.sql")
+    docker = ScriptedDocker()
+
+    with pytest.raises(SandboxError, match=r"missing\.sql"):
+        sandbox(docker, tmp_path).start(plan_of(paths, backing=backing), BUDGET)
+
+    assert not docker.ran("up")
+
+
+def test_start_reads_where_each_reached_service_is_published(tmp_path, paths):
+    plan = plan_of(paths, reach=("idp:8080",))
+    docker = ScriptedDocker()
+    published(docker)
+    published(docker, reach_listen_ports(plan)["idp:8080"], "127.0.0.1:56300")
+
+    ready = sandbox(docker, tmp_path).start(plan, BUDGET)
+
+    assert ready.reach_urls == {"idp:8080": "http://127.0.0.1:56300"}
+
+
+def test_a_stack_with_no_reach_reads_no_more_ports(tmp_path, paths):
+    docker = ScriptedDocker()
+    published(docker)
+
+    ready = sandbox(docker, tmp_path).start(plan_of(paths), BUDGET)
+
+    assert ready.reach_urls == {}
+    assert len([command for command in docker.commands if "port" in command]) == 1
 
 
 def test_start_makes_the_devcontainer_folder_for_its_read_only_mount(tmp_path, paths):

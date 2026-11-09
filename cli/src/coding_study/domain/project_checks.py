@@ -58,7 +58,9 @@ from coding_study.domain.project import (
 from coding_study.domain.service_checks import service_issues, service_settings_issues
 from coding_study.domain.service_content_checks import (
     compose_issues,
+    compose_requires_issues,
     http_case_issues,
+    manifest_name_issues,
     mock_config_issues,
 )
 from coding_study.domain.service_project import ENV_FILE, service_of
@@ -356,8 +358,14 @@ def _service_issues(issues: _Issues, content: ProjectContent) -> None:
     for path, message in mock_config_issues(service, files):
         issues.error(path, message)
     if service.services is not None:
-        for where, message in compose_issues(service, files.backing_services):
+        compose = files.backing_services
+        for where, message in (
+            *compose_issues(service, compose),
+            *compose_requires_issues(service, compose),
+        ):
             issues.error(service.services, message, where)
+    for where, message in manifest_name_issues(service, files.backing_services):
+        issues.error(META_FILE, message, where)
     found = http_case_issues(
         content.problem.cases,
         files,

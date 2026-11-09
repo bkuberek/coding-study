@@ -210,6 +210,7 @@ def _service(project: Document) -> ServiceProject:
         ),
         mocks=tuple(ServiceMock(mock["name"], mock["config"]) for mock in project.get("mocks", ())),
         services=project.get("services"),
+        grader_reach=tuple(project.get("grader_reach", ())),
         install_env=dict(project.get("install_env", {})),
         timeouts=ServiceTimeouts(
             startup=timeouts.get("startup", defaults.startup),

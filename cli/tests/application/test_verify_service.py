@@ -17,7 +17,7 @@ from coding_study.domain.problem import Language
 from coding_study.domain.sandbox import CommandOutcome, StackKind, StackStartError, StartupFailure
 from tests.application.http_grading_fakes import FakeApp, FakeMockControl
 from tests.fakes import make_environment
-from tests.real_service_projects import PYTHON, TYPESCRIPT, copy_fixture
+from tests.real_service_projects import FIXTURES, MEMBERS, PYTHON, TYPESCRIPT, copy_fixture
 from tests.sandbox_fakes import FakeSandbox
 from tests.service_problems import (
     CONFIG,
@@ -251,7 +251,7 @@ def test_a_sandbox_that_fails_raises_since_it_says_nothing_about_the_problem(env
         verified(environment)
 
 
-@pytest.fixture(params=[TYPESCRIPT, PYTHON], ids=["typescript", "python"])
+@pytest.fixture(params=[TYPESCRIPT, PYTHON, MEMBERS], ids=["typescript", "python", "services"])
 def fixture_problem(request, tmp_path, engine):
     root = make_content(tmp_path)
     copy_fixture(request.param, root / "problems" / request.param)
@@ -270,6 +270,25 @@ def test_the_fixtures_pass_every_static_check(fixture_problem):
 
     assert report.problems[0].static_errors == ()
     assert report.problems[0].ready_errors == ()
+
+
+def test_the_members_fixtures_grading_baseline_is_the_starters_own():
+    baseline = "0001_baseline.sql"
+    problem = FIXTURES / MEMBERS
+
+    graded = (problem / "grading" / "baseline" / baseline).read_bytes()
+
+    assert graded == (problem / "starter" / "migrations" / baseline).read_bytes()
+
+
+def test_a_grader_reach_that_names_nothing_is_a_static_error_of_meta_yaml(tmp_path, engine):
+    root = make_content(tmp_path)
+    write_problem(root, meta_document(grader_reach=["idp:8080"]))
+    environment = make_environment(root, sandbox=engine)
+
+    errors = report_of(environment, SLUG, static_only=True).problems[0].static_errors
+
+    assert any("meta.yaml" in str(error) and "idp" in str(error) for error in errors)
 
 
 def test_static_checks_ask_the_engine_nothing(fixture_problem, engine):

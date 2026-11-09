@@ -81,7 +81,7 @@ def preview_service_start(
     service = service_project(problem)
     return ServiceStartPreview(
         needs=service_needs(problem.meta, service, engine.state(), engine.platform()),
-        missing_images=missing_images(engine, images(service)),
+        missing_images=missing_images(engine, images(problem)),
         installs=needs_install(environment, problem),
     )
 
@@ -91,7 +91,7 @@ def finish_service_start(
 ) -> None:
     """Pulls what is missing and installs what the lock file names; nothing else starts. Raises
     SandboxError when either fails, and keeps the attempt: `cstudy start` retries."""
-    pull_images(environment.sandbox, images(service_project(problem)), notify)
+    pull_images(environment.sandbox, images(problem), notify)
     if needs_install(environment, problem):
         install_dependencies(environment, problem, notify)
 
@@ -317,7 +317,7 @@ def prepare_engine(environment: Environment, problem: Problem, notify: ProgressN
     engine = environment.sandbox
     ensure_engine(engine, notify)
     sweep_leftovers(engine, workspace_id(environment), notify)
-    pull_images(engine, images(service_project(problem)), notify)
+    pull_images(engine, images(problem), notify)
 
 
 def _tests_in(

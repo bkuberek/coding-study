@@ -13,7 +13,11 @@ from coding_study.application.http_grading import HttpCaseListener, HttpGradingR
 from coding_study.application.ports import ProgressNotice
 from coding_study.application.sandbox import running_stack
 from coding_study.application.service_lifecycle import prepare_service_run
-from coding_study.application.service_stacks import graded_stack_plan, service_project
+from coding_study.application.service_stacks import (
+    from_empty_stack_plan,
+    graded_stack_plan,
+    service_project,
+)
 from coding_study.domain.attempts import AttemptMode
 from coding_study.domain.judging import Judgement
 from coding_study.domain.levels import cases_up_to
@@ -71,6 +75,11 @@ def grade_on_stack(
     engine = environment.sandbox
     clock = environment.clock
     run = HttpGradingRun(problem, grading.level, environment.config, grading.listener)
+    if plan.grade_setup is not None:
+        from_empty = _bootstrap_from_empty(environment, grading, plan, notify)
+        if from_empty is not None:
+            count = len(cases_up_to(problem.cases, grading.level))
+            return GradedRun(Judgement(count, load_error=from_empty))
     try:
         with running_stack(engine, plan, service.startup_budget, notify) as ready:
             stack = SandboxGradedStack(engine, RunningStack(plan, ready), service)
@@ -82,6 +91,24 @@ def grade_on_stack(
             raise
         count = len(cases_up_to(problem.cases, grading.level))
         return GradedRun(Judgement(count, load_error=_load_error(failure, grading.mode)))
+
+
+def _bootstrap_from_empty(
+    environment: Environment, grading: ServiceGrading, graded: StackPlan, notify: ProgressNotice
+) -> UserError | None:
+    """`grade_setup` loads the baseline before `bootstrap`, so a graded run with it first proves
+    that your migrations also run from empty data, on a stack of their own whose data goes with it.
+    No hidden data is there, so a failure shows its output even in a mock attempt."""
+    plan = from_empty_stack_plan(environment, grading.problem, graded)
+    budget = service_project(grading.problem).startup_budget
+    notify("bootstrap from empty data")
+    try:
+        with running_stack(environment.sandbox, plan, budget, notify):
+            return None
+    except StackStartError as failure:
+        if failure.failure is not StartupFailure.BOOTSTRAP:
+            raise
+        return UserError(MIGRATION_FAILED, f"bootstrap from empty data: {failure}", failure.output)
 
 
 def _load_error(failure: StackStartError, mode: AttemptMode) -> UserError:

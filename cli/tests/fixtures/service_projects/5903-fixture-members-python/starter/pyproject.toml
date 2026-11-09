@@ -1,0 +1,21 @@
+[project]
+name = "fixture-members-python"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = ["pg8000>=1.31"]
+
+[dependency-groups]
+dev = ["pytest>=9.1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "--import-mode=importlib -p no:cacheprovider"
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.13"
+
+[tool.ruff]
+target-version = "py313"

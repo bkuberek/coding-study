@@ -60,7 +60,9 @@ from coding_study.domain.sandbox import (
     MOCK_CONFIG_FILE,
     PASSWD_FILE,
     RESET_PREPARE_SERVICE,
+    SERVICE_FILES_DIRECTORY,
     STACK_FILE,
+    BackingServices,
     CommandOutcome,
     InstallPlan,
     LeftoverStack,
@@ -75,8 +77,10 @@ from coding_study.domain.sandbox import (
     StackStartError,
     StartupBudget,
     StartupFailure,
+    backing_bind_sources,
     install_document,
     is_stack_name,
+    reach_listen_ports,
     render_compose,
     stack_document,
 )
@@ -448,9 +452,15 @@ class DockerSandbox:
             raise self._failed_up(plan, up, budget)
         app_port = self._published(plan, plan.app.port)
         control_port = self._published(plan, CONTROL_PORT) if plan.mocks is not None else None
+        reach_ports = {
+            origin: self._published(plan, listen)
+            for origin, listen in reach_listen_ports(plan).items()
+        }
         if plan.app.command is not None:
             self._wait_for_health(plan, app_port, budget)
-        return ReadyStack(plan.identity.name, app_port, control_port, started_at, self._monotonic())
+        return ReadyStack(
+            plan.identity.name, app_port, control_port, started_at, self._monotonic(), reach_ports
+        )
 
     def _compose(
         self,
@@ -866,6 +876,8 @@ def _write_stack_files(plan: StackPlan) -> None:
     if plan.mocks is not None:
         _write_file(run / MOCK_CONFIG_FILE, plan.mocks.rendered_config)
         _copy_mock_code(run / MOCK_CODE_DIRECTORY)
+    if plan.backing is not None:
+        _copy_service_files(plan.backing, run / SERVICE_FILES_DIRECTORY)
 
 
 def _write_passwd(run: Path, user: SandboxUser) -> None:
@@ -892,6 +904,45 @@ def _copy_mock_code(target: Path) -> None:
         )
         for found in target.rglob("*"):
             found.chmod(READABLE_DIRECTORY if found.is_dir() else READABLE_FILE)
+
+
+def _copy_service_files(backing: BackingServices, target: Path) -> None:
+    """What the problem's bind mounts name, copied as the mock code is, and readable by a backing
+    service's own user. Nothing is copied through a link, since a bind mount follows one to
+    wherever it points on your machine."""
+    folder = Path(backing.folder)
+    for source in backing_bind_sources(backing.document):
+        found = _without_links(folder, source)
+        copy = target / source
+        _readable_folders(target, copy.parent)
+        if found.is_dir():
+            shutil.copytree(found, copy, copy_function=shutil.copyfile, dirs_exist_ok=True)
+            for each in (copy, *copy.rglob("*")):
+                each.chmod(READABLE_DIRECTORY if each.is_dir() else READABLE_FILE)
+        else:
+            shutil.copyfile(found, copy)
+            copy.chmod(READABLE_FILE)
+
+
+def _without_links(folder: Path, source: str) -> Path:
+    """`source` under `folder`, refused when it is missing or a link lies on the way or inside."""
+    found = folder
+    for segment in source.split("/"):
+        found /= segment
+        _refuse_link(found)
+    if not found.exists():
+        raise SandboxError(f"{source}, which a backing service mounts, is not in {folder}")
+    for each in found.rglob("*") if found.is_dir() else ():
+        _refuse_link(each)
+    return found
+
+
+def _readable_folders(top: Path, folder: Path) -> None:
+    folder.mkdir(parents=True, exist_ok=True)
+    for each in (folder, *folder.parents):
+        if not each.is_relative_to(top):
+            return
+        each.chmod(READABLE_DIRECTORY)
 
 
 def _remove_run_folder(runs: Path, name: str) -> None:

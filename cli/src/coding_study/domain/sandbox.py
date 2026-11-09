@@ -11,9 +11,10 @@ says so and changes no result. A limit on a test or a case starts at `ReadyStack
 """
 
 import hashlib
+import itertools
 import json
 import re
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import cast
@@ -51,8 +52,15 @@ RESERVED_SERVICES = frozenset(
     }
 )
 """Names no mock server or backing service may take."""
+DATA_VOLUME = "data"
+CACHE_VOLUME = "cache"
+RESERVED_VOLUMES = frozenset({DATA_VOLUME, CACHE_VOLUME})
+"""The stack's own volumes, which no problem volume may name."""
 CONTROL_PORT = 9000
 MOCK_PORT = 8080
+REACH_FIRST_PORT = 10000
+"""Where the forwarder listens for the first service the grader may reach; each next one takes the
+next free port."""
 
 LABEL_KIND = "cstudy.kind"
 LABEL_WORKSPACE = "cstudy.workspace"
@@ -80,6 +88,34 @@ RESET_PHASE_PREPARE = "prepare"
 RESET_PHASE_APPLY = "apply"
 PASSWD_FILE = "passwd"
 STACK_FILE = "stack.yaml"
+SERVICE_FILES_DIRECTORY = "services"
+"""Under `.cs/runs/<stack>/`: a copy of each file a backing service's bind mount names, since the
+problem's own folder may lie where Docker Desktop shares nothing."""
+SANDBOX_NETWORK = "sandbox"
+NO_NEW_PRIVILEGES = "no-new-privileges:true"
+BACKING_SERVICE_FIELDS = frozenset(
+    {
+        "image",
+        "command",
+        "entrypoint",
+        "environment",
+        "healthcheck",
+        "mem_limit",
+        "pids_limit",
+        "volumes",
+        "tmpfs",
+        "user",
+        "working_dir",
+        "read_only",
+        "depends_on",
+        "stop_grace_period",
+        "stop_signal",
+        "shm_size",
+        "init",
+    }
+)
+"""What a problem's compose file may set on a backing service. Anything else is S21's to refuse and
+never reaches a stack: the networks, labels, logs, capabilities and privileges are `cstudy`'s."""
 DEVCONTAINER_DIRECTORY = ".devcontainer"
 """A file in the project that a host tool obeys, so sandboxed code may read it and not write it."""
 
@@ -188,6 +224,12 @@ class StackKind(StrEnum):
     @property
     def removes_volumes(self) -> bool:
         """A dev stack keeps its data, and an install stack its cache."""
+        return self in (StackKind.TEST, StackKind.GRADED)
+
+    @property
+    def serves_the_grader(self) -> bool:
+        """A test stack runs the visible cases and a graded stack all of them; a dev stack is
+        yours, and publishes nothing for the grader."""
         return self in (StackKind.TEST, StackKind.GRADED)
 
 
@@ -332,6 +374,21 @@ class MockServerInput:
     """The JSON written to `.cs/runs/<run>/mocks.json` and mounted read-only."""
 
 
+_NO_BACKING_SERVICES: Mapping[str, object] = {}
+
+
+@dataclass(frozen=True, slots=True)
+class BackingServices:
+    """The problem's compose file (`project.services`), as a stack merges it
+    (docs/specs/service-projects.md#backing-services)."""
+
+    document: Mapping[str, object]
+    """Parsed, and held to S21 before any stack is planned."""
+    folder: str
+    """The compose file's folder on this machine. What a bind mount names there reaches its service
+    as a read-only copy under `.cs/runs/<stack>/services/`."""
+
+
 @dataclass(frozen=True, slots=True)
 class StackPlan:
     identity: StackIdentity
@@ -343,6 +400,15 @@ class StackPlan:
     grade_setup: GradeSetup | None = None
     reset_prepare: OneShot | None = None
     """`commands.reset` with its `prepare` phase: once, after `bootstrap`, before `app`."""
+    backing: BackingServices | None = None
+    reach: tuple[str, ...] = ()
+    """`project.grader_reach`: each `<name>:<port>` the grader may reach, as the app's network
+    names it, published on `127.0.0.1` through the forwarder. A dev stack publishes none."""
+
+    @property
+    def backing_document(self) -> Mapping[str, object]:
+        """The problem's compose file; an empty one without backing services."""
+        return self.backing.document if self.backing is not None else _NO_BACKING_SERVICES
 
 
 @dataclass(frozen=True, slots=True)
@@ -359,9 +425,9 @@ class InstallPlan:
 
 
 def stack_document(plan: StackPlan) -> dict[str, object]:
-    """The compose file of a stack, without the problem's own backing services (P10)."""
+    """The compose file of a stack, with the problem's backing services merged into it."""
     services: dict[str, object] = {
-        DATA_OWNER_SERVICE: _volume_owner(plan.identity, plan.user, "data", DATA_DIRECTORY),
+        DATA_OWNER_SERVICE: _volume_owner(plan.identity, plan.user, DATA_VOLUME, DATA_DIRECTORY),
         APP_SERVICE: _app(plan),
         FORWARD_SERVICE: _forwarder(plan),
         EGRESS_PROBE_SERVICE: _egress_probe(plan),
@@ -374,6 +440,9 @@ def stack_document(plan: StackPlan) -> dict[str, object]:
         services[RESET_PREPARE_SERVICE] = _reset_prepare(plan, plan.reset_prepare)
     if plan.mocks is not None:
         services[MOCK_SERVICE] = _mock_server(plan, plan.mocks)
+    document = plan.backing_document
+    for name, entry in backing_services_of(document).items():
+        services[name] = _backing_service(plan, entry)
     labels = plan.identity.stable_labels
     sandbox = {
         "internal": True,
@@ -381,12 +450,69 @@ def stack_document(plan: StackPlan) -> dict[str, object]:
         "driver_opts": NO_ADDRESS_ON_THIS_MACHINE,
         "labels": labels,
     }
+    volumes = [DATA_VOLUME, *_backing_volumes_of(document)]
     return {
         "name": plan.identity.name,
         "services": services,
-        "networks": {"sandbox": sandbox, "edge": {"labels": labels}},
-        "volumes": {"data": {"labels": labels}},
+        "networks": {SANDBOX_NETWORK: sandbox, "edge": {"labels": labels}},
+        "volumes": {volume: {"labels": labels} for volume in volumes},
     }
+
+
+def backing_services_of(document: Mapping[str, object]) -> Mapping[str, Mapping[str, object]]:
+    """The services of a problem's compose file, by name; none for a file that holds no mapping."""
+    found = document.get("services")
+    return cast(Mapping[str, Mapping[str, object]], found) if isinstance(found, Mapping) else {}
+
+
+def _backing_volumes_of(document: Mapping[str, object]) -> tuple[str, ...]:
+    found = document.get("volumes")
+    return tuple(cast(Mapping[str, object], found)) if isinstance(found, Mapping) else ()
+
+
+def backing_images(document: Mapping[str, object]) -> tuple[str, ...]:
+    """What a stack pulls for the problem's backing services, in the file's order."""
+    return tuple(str(entry.get("image")) for entry in backing_services_of(document).values())
+
+
+def backing_bind_sources(document: Mapping[str, object]) -> tuple[str, ...]:
+    """Every path a bind mount names, relative to the compose file's folder and without a leading
+    `./`: what a stack copies under `.cs/runs/<stack>/services/`."""
+    sources = (
+        volume_source(volume)
+        for entry in backing_services_of(document).values()
+        for volume in _mounts_of(entry)
+    )
+    return tuple(_relative(source) for source, is_bind in sources if source and is_bind)
+
+
+def volume_source(volume: object) -> tuple[str | None, bool]:
+    """What a compose volume entry mounts, and whether that is a path on this machine; None for an
+    anonymous volume."""
+    if isinstance(volume, Mapping):
+        entry = cast(Mapping[str, object], volume)
+        source = entry.get("source")
+        return (str(source) if source is not None else None), entry.get("type") == "bind"
+    source, separator, _target = str(volume).partition(":")
+    if not separator:
+        return None, False
+    return source, source.startswith((".", "/", "~"))
+
+
+def _mounts_of(entry: Mapping[str, object]) -> Sequence[object]:
+    return cast(Sequence[object], entry.get("volumes") or ())
+
+
+def _relative(source: str) -> str:
+    return source.removeprefix("./")
+
+
+def reach_listen_ports(plan: StackPlan) -> dict[str, int]:
+    """Where the forwarder listens for each service the grader may reach: ports of its own, clear
+    of the app's and the control port."""
+    taken = {plan.app.port, CONTROL_PORT}
+    free = (port for port in itertools.count(REACH_FIRST_PORT) if port not in taken)
+    return {origin: next(free) for origin in plan.reach}
 
 
 def install_document(plan: InstallPlan) -> dict[str, object]:
@@ -443,7 +569,7 @@ def _hardened(identity: StackIdentity) -> dict[str, object]:
         "init": True,
         "read_only": True,
         "cap_drop": ["ALL"],
-        "security_opt": ["no-new-privileges:true"],
+        "security_opt": [NO_NEW_PRIVILEGES],
         "stop_grace_period": STOP_GRACE,
         "logging": LOG_LIMITS,
         "labels": identity.container_labels,
@@ -502,18 +628,21 @@ def _app_like(plan: StackPlan) -> dict[str, object]:
         "environment": _app_environment(plan.app.environment),
         "tmpfs": [_tmpfs(APP_TMPFS_MB, plan.user)],
         "volumes": [*_project_mounts(plan.paths), f"data:{DATA_DIRECTORY}"],
-        "networks": ["sandbox"],
+        "networks": [SANDBOX_NETWORK],
         "mem_limit": plan.app.mem_limit,
         "pids_limit": APP_PIDS,
     }
 
 
 def _ready_for_commands(plan: StackPlan) -> dict[str, object]:
-    """What every command of the app's image waits for: its data, and the mock servers, which it
-    may call as it starts."""
+    """What every command of the app's image waits for: its data, the mock servers, which it may
+    call as it starts, and each backing service's healthcheck."""
     needs: dict[str, object] = {DATA_OWNER_SERVICE: COMPLETED}
     if plan.mocks is not None:
         needs[MOCK_SERVICE] = HEALTHY
+    document = plan.backing_document
+    for name in backing_services_of(document):
+        needs[name] = HEALTHY
     return needs
 
 
@@ -606,9 +735,43 @@ def _mock_server(plan: StackPlan, mocks: MockServerInput) -> dict[str, object]:
             _bind(paths.in_run(MOCK_CODE_DIRECTORY), MOCK_CODE_PATH, read_only=True),
             _bind(paths.in_run(MOCK_CONFIG_FILE), MOCK_CONFIG_PATH, read_only=True),
         ],
-        "networks": {"sandbox": {"aliases": list(mocks.aliases)}},
+        "networks": {SANDBOX_NETWORK: {"aliases": list(mocks.aliases)}},
         "healthcheck": _listens(CONTROL_PORT),
     }
+
+
+def _backing_service(plan: StackPlan, entry: Mapping[str, object]) -> dict[str, object]:
+    """The problem's settings that `BACKING_SERVICE_FIELDS` allows, inside the stack's own: an
+    engine such as Postgres keeps its own user and writable paths, and holds no capability, gains
+    no privilege and reaches nothing beyond `sandbox`. A read-only root is the default, which the
+    problem may turn off for an image that writes outside its volumes and tmpfs."""
+    allowed = {field: value for field, value in entry.items() if field in BACKING_SERVICE_FIELDS}
+    service: dict[str, object] = {
+        "read_only": True,
+        **allowed,
+        "cap_drop": ["ALL"],
+        "security_opt": [NO_NEW_PRIVILEGES],
+        "logging": LOG_LIMITS,
+        "labels": plan.identity.container_labels,
+        "networks": [SANDBOX_NETWORK],
+    }
+    if "volumes" in allowed:
+        service["volumes"] = [_backing_mount(plan.paths, mount) for mount in _mounts_of(entry)]
+    return service
+
+
+def _backing_mount(paths: SandboxPaths, mount: object) -> object:
+    """A bind mount becomes a read-only mount of its copy under the run's folder; a named volume
+    and a tmpfs stay as written."""
+    source, is_bind = volume_source(mount)
+    if source is None or not is_bind:
+        return mount
+    if isinstance(mount, Mapping):
+        target = str(cast(Mapping[str, object], mount).get("target"))
+    else:
+        target = str(mount).split(":")[1]
+    copy = paths.in_run(f"{SERVICE_FILES_DIRECTORY}/{_relative(source)}")
+    return _bind(copy, target, read_only=True)
 
 
 def _egress_probe(plan: StackPlan) -> dict[str, object]:
@@ -618,7 +781,7 @@ def _egress_probe(plan: StackPlan) -> dict[str, object]:
         "profiles": [EGRESS_PROBE_SERVICE],
         "command": ["python", "-I", "-c", EGRESS_PROBE],
         "environment": {"HOME": TEMPORARY_DIRECTORY},
-        "networks": ["sandbox"],
+        "networks": [SANDBOX_NETWORK],
     }
 
 
@@ -631,12 +794,15 @@ def _forwarder(plan: StackPlan) -> dict[str, object]:
     if plan.mocks is not None:
         relays.append(f"{CONTROL_PORT}={MOCK_SERVICE}:{CONTROL_PORT}")
         published.append(f"127.0.0.1::{CONTROL_PORT}")
+    for origin, listen in reach_listen_ports(plan).items():
+        relays.append(f"{listen}={origin}")
+        published.append(f"127.0.0.1::{listen}")
     return {
         **_helper(plan.identity),
         "command": ["python", "-I", FORWARDER_PATH, *relays],
         "environment": {"HOME": TEMPORARY_DIRECTORY},
         "volumes": [_bind(plan.paths.in_run(FORWARDER_FILE), FORWARDER_PATH, read_only=True)],
-        "networks": ["sandbox", "edge"],
+        "networks": [SANDBOX_NETWORK, "edge"],
         "ports": published,
         "healthcheck": _listens(port),
     }
@@ -812,10 +978,18 @@ class ReadyStack:
     started_at: float
     ready_at: float
     """In the seconds of `Clock.monotonic`."""
+    reach_ports: Mapping[str, int] = field(default_factory=dict[str, int])
+    """The port on `127.0.0.1` of each `<name>:<port>` the grader may reach."""
 
     @property
     def startup_seconds(self) -> float:
         return self.ready_at - self.started_at
+
+    @property
+    def reach_urls(self) -> dict[str, str]:
+        """`http://127.0.0.1:<port>` by the `<name>:<port>` the app's network knows it by: a
+        client dials the URL and keeps that name as its `Host`."""
+        return {origin: f"http://127.0.0.1:{port}" for origin, port in self.reach_ports.items()}
 
     @property
     def app_url(self) -> str:

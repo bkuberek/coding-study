@@ -1,9 +1,12 @@
 """What each stack of a service project holds (docs/specs/service-projects.md#lifecycle-commands):
 a dev stack and a test stack see visible scenarios only, a graded stack sees them all, and only a
-graded stack runs `grade_setup`.
+graded stack runs `grade_setup`. Every stack holds the problem's backing services, and only a test
+or a graded stack publishes what the grader may reach.
 """
 
+import posixpath
 import secrets
+from collections.abc import Mapping
 from dataclasses import replace
 
 from coding_study.application.environment import Environment
@@ -17,6 +20,7 @@ from coding_study.domain.sandbox import (
     PROBLEM_DIRECTORY,
     PYTHON_IMAGE,
     AppContainer,
+    BackingServices,
     GradeSetup,
     InstallPlan,
     MockServerInput,
@@ -25,11 +29,13 @@ from coding_study.domain.sandbox import (
     StackIdentity,
     StackKind,
     StackPlan,
+    backing_images,
     dev_stack_name,
     install_stack_name,
     run_stack_name,
     workspace_digest,
 )
+from coding_study.domain.service_content_checks import compose_issues
 from coding_study.domain.service_project import (
     PROBLEM_PLACEHOLDER,
     ServiceProject,
@@ -53,9 +59,10 @@ def workspace_id(environment: Environment) -> str:
     return workspace_digest(str(environment.root.resolve()))
 
 
-def images(service: ServiceProject) -> tuple[str, ...]:
-    """Backing services' images come with project.services, in P10."""
-    return (service.image, PYTHON_IMAGE)
+def images(problem: Problem) -> tuple[str, ...]:
+    """The toolchain, the image of `cstudy`'s own helpers, and each backing service's."""
+    service = service_project(problem)
+    return (service.image, PYTHON_IMAGE, *backing_images(_compose_document(problem)))
 
 
 def dev_stack_plan(environment: Environment, problem: Problem) -> StackPlan:
@@ -87,6 +94,24 @@ def graded_stack_plan(
     return _with_reset_prepared(graded, service_project(problem))
 
 
+def from_empty_stack_plan(
+    environment: Environment, problem: Problem, graded: StackPlan
+) -> StackPlan:
+    """What a graded run with `grade_setup` checks first: the graded stack's services and
+    `bootstrap` alone, on empty data, with the app idle and no `grade_setup`, under a fresh name
+    whose data goes with it (docs/specs/service-projects.md#graded-run)."""
+    identity = _run_identity(environment, problem, StackKind.GRADED)
+    return replace(
+        graded,
+        identity=identity,
+        paths=replace(graded.paths, run=_run_path(environment, identity.name)),
+        app=replace(graded.app, command=None),
+        grade_setup=None,
+        reset_prepare=None,
+        reach=(),
+    )
+
+
 def install_plan(environment: Environment, problem: Problem, folder: str) -> InstallPlan:
     """`commands.install`, in a stack of its own whose cache outlives it. Raises ValueError for a
     problem with no install."""
@@ -115,11 +140,12 @@ def _run_identity(environment: Environment, problem: Problem, kind: StackKind) -
 
 
 def _paths(environment: Environment, folder: str, stack: str) -> SandboxPaths:
-    workspace = environment.workspace
-    return SandboxPaths(
-        project=str(workspace.absolute(folder).resolve()),
-        run=str(workspace.absolute(f"{RUNS_DIRECTORY}/{stack}").resolve()),
-    )
+    project = str(environment.workspace.absolute(folder).resolve())
+    return SandboxPaths(project=project, run=_run_path(environment, stack))
+
+
+def _run_path(environment: Environment, stack: str) -> str:
+    return str(environment.workspace.absolute(f"{RUNS_DIRECTORY}/{stack}").resolve())
 
 
 def _plan(
@@ -146,7 +172,31 @@ def _plan(
         ),
         mocks=_mock_server(problem, service, reach),
         bootstrap=OneShot(commands.bootstrap) if commands.bootstrap is not None else None,
+        backing=_backing(environment, problem, service),
+        reach=service.grader_reach if identity.kind.serves_the_grader else (),
     )
+
+
+def _backing(
+    environment: Environment, problem: Problem, service: ServiceProject
+) -> BackingServices | None:
+    """The problem's compose file, held to S21 first: a problem among your own may never have been
+    verified, and nothing that file asks for may leave the sandbox."""
+    if service.services is None:
+        return None
+    document = _compose_document(problem)
+    issues = [
+        f"{where}: {message}" if where else message
+        for where, message in compose_issues(service, document)
+    ]
+    if issues:
+        raise SandboxError(f"{service.services} cannot run: {'; '.join(issues)}")
+    folder = environment.files.path(problem.meta.slug, posixpath.dirname(service.services))
+    return BackingServices(document, str(folder))
+
+
+def _compose_document(problem: Problem) -> Mapping[str, object]:
+    return (problem.project_files or NO_PROJECT_FILES).backing_services or {}
 
 
 def _with_reset_prepared(plan: StackPlan, service: ServiceProject) -> StackPlan:
@@ -169,10 +219,7 @@ def _grade_setup(environment: Environment, problem: Problem, level: int) -> Grad
 def _mock_server(
     problem: Problem, service: ServiceProject, reach: ScenarioReach
 ) -> MockServerInput | None:
-    """The configs rendered to one document for this stack alone, with a token of its own. A
-    problem's backing services come with project.services (P10)."""
-    if service.services is not None:
-        raise SandboxError("this problem's backing services arrive with project.services (P10)")
+    """The configs rendered to one document for this stack alone, with a token of its own."""
     if not service.mocks:
         return None
     files = (problem.project_files or NO_PROJECT_FILES).mocks

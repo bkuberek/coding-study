@@ -1,0 +1,223 @@
+{
+ "version": 1,
+ "cases": [
+  {
+   "id": "v1",
+   "level": 1,
+   "visible": true,
+   "note": "a member by id",
+   "request": {
+    "method": "GET",
+    "path": "/members/1"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "id": 1,
+     "name": "Ada"
+    }
+   }
+  },
+  {
+   "id": "v2",
+   "level": 1,
+   "visible": true,
+   "fresh": true,
+   "note": "a first visit",
+   "request": {
+    "method": "POST",
+    "path": "/visits/1"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "member": 1,
+     "visits": 1
+    }
+   }
+  },
+  {
+   "id": "h1",
+   "level": 1,
+   "note": "another member",
+   "request": {
+    "method": "GET",
+    "path": "/members/2"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "id": 2,
+     "name": "Grace"
+    }
+   }
+  },
+  {
+   "id": "h2",
+   "level": 1,
+   "note": "no such member",
+   "request": {
+    "method": "GET",
+    "path": "/members/99"
+   },
+   "expected": {
+    "status": 404,
+    "body": {
+     "error": "no such member"
+    }
+   }
+  },
+  {
+   "id": "h3",
+   "level": 1,
+   "note": "a member the app never saw seeded, read live",
+   "request": {
+    "method": "GET",
+    "path": "/members/900"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "id": 900,
+     "name": "Hidden"
+    }
+   }
+  },
+  {
+   "id": "h4",
+   "level": 1,
+   "fresh": true,
+   "note": "visits count up",
+   "before": [
+    {
+     "method": "POST",
+     "path": "/visits/2"
+    },
+    {
+     "method": "POST",
+     "path": "/visits/2"
+    }
+   ],
+   "request": {
+    "method": "POST",
+    "path": "/visits/2"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "member": 2,
+     "visits": 3
+    }
+   }
+  },
+  {
+   "id": "h5",
+   "level": 1,
+   "fresh": true,
+   "note": "a fresh start forgets the visits",
+   "request": {
+    "method": "POST",
+    "path": "/visits/2"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "member": 2,
+     "visits": 1
+    }
+   }
+  },
+  {
+   "id": "v3",
+   "level": 2,
+   "visible": true,
+   "note": "every member starts on flex",
+   "request": {
+    "method": "GET",
+    "path": "/members/1/plan"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "id": 1,
+     "plan": "flex"
+    }
+   }
+  },
+  {
+   "id": "v4",
+   "level": 2,
+   "visible": true,
+   "fresh": true,
+   "note": "a plan changes",
+   "before": [
+    {
+     "method": "PUT",
+     "path": "/members/2/plan",
+     "json": {
+      "plan": "fixed"
+     }
+    }
+   ],
+   "request": {
+    "method": "GET",
+    "path": "/members/2/plan"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "id": 2,
+     "plan": "fixed"
+    }
+   }
+  },
+  {
+   "id": "h6",
+   "level": 2,
+   "note": "a member who was there before your migration keeps a plan",
+   "request": {
+    "method": "GET",
+    "path": "/members/900/plan"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "id": 900,
+     "plan": "flex"
+    }
+   }
+  },
+  {
+   "id": "h7",
+   "level": 2,
+   "fresh": true,
+   "note": "a fresh start forgets a changed plan",
+   "request": {
+    "method": "GET",
+    "path": "/members/2/plan"
+   },
+   "expected": {
+    "status": 200,
+    "body": {
+     "id": 2,
+     "plan": "flex"
+    }
+   }
+  },
+  {
+   "id": "h8",
+   "level": 2,
+   "note": "no such member has no plan",
+   "request": {
+    "method": "GET",
+    "path": "/members/99/plan"
+   },
+   "expected": {
+    "status": 404,
+    "body": {
+     "error": "no such member"
+    }
+   }
+  }
+ ]
+}

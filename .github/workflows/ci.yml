@@ -214,6 +214,7 @@ jobs:
             cli/src/coding_study/entrypoints/commands/dev.py
             cli/src/coding_study/entrypoints/commands/service_test.py
             cli/tests/adapters/test_docker_sandbox_real.py
+            cli/tests/adapters/test_backing_services_real.py
             cli/tests/real_service_projects.py
             cli/tests/test_service_projects_real.py
             cli/tests/fixtures/service_projects
