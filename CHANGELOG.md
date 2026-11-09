@@ -2,6 +2,35 @@
 
 <!-- version list -->
 
+## v0.33.0 (2026-11-09)
+
+### Bug Fixes
+
+- **web**: Exit 130, not by SIGINT, when Cancel lands while a run starts
+  ([`a4b4c4c`](https://github.com/bkuberek/coding-study/commit/a4b4c4c19b617b913dd1756ce1f4fd5d431e8932))
+
+### Documentation
+
+- List 0279 and 0281, move PP3 and set the catalog at 296
+  ([`1084f22`](https://github.com/bkuberek/coding-study/commit/1084f22eaa9503aecb904e4abb398c4845066ae7))
+
+### Features
+
+- **problems**: Add a payment webhook receiver in TypeScript
+  ([`67b0c47`](https://github.com/bkuberek/coding-study/commit/67b0c47af8aba2578f3a19d495c57b065eff0baa))
+
+- **problems**: Add an SSRF-safe webhook dispatcher in TypeScript
+  ([`1560065`](https://github.com/bkuberek/coding-study/commit/1560065bdb35fec01cf29aa7df01e32f4b68c88e))
+
+### Testing
+
+- Wait for the idle toolbar after each run in the diagnostics browser test
+  ([`4115cc7`](https://github.com/bkuberek/coding-study/commit/4115cc7999d9d33ee701965c4c0383b155146b88))
+
+- Wait until the button reads Run again before the next run in the browser tests
+  ([`75018d4`](https://github.com/bkuberek/coding-study/commit/75018d4f9ba45c7cbeb7b22291054f73caf3bf3f))
+
+
 ## v0.32.0 (2026-11-09)
 
 ### Chores
