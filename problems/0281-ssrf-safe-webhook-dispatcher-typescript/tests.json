@@ -1,0 +1,3980 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "v1",
+      "level": 1,
+      "visible": true,
+      "note": "a valid URL is registered, and answered without its secret",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "v1",
+          "url": "https://v1.shop.test/events",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "id": "v1",
+          "url": "https://v1.shop.test/events",
+          "status": "active",
+          "consecutive_failures": 0
+        }
+      }
+    },
+    {
+      "id": "v2",
+      "level": 1,
+      "visible": true,
+      "note": "a delivery reaches the customer's server, signed with the endpoint's secret",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "v2",
+            "url": "https://v2.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "v2"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "v2",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "route": "events",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v3",
+      "level": 1,
+      "visible": true,
+      "note": "a scheme other than http or https is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "v3",
+          "url": "ftp://v3.shop.test/events",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_url"
+        }
+      }
+    },
+    {
+      "id": "v4",
+      "level": 1,
+      "visible": true,
+      "note": "the server takes 1.5 s, past the 1 s limit on a request: the delivery fails",
+      "mocks": {
+        "customer-hooks": "slow"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "v4",
+            "url": "https://v4.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "v4"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "v4",
+              "status": "failed",
+              "response_status": null,
+              "error": "timeout",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "note": "a registration without a secret is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h1",
+          "url": "https://h1.shop.test/events"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "note": "a secret of 15 characters is too short",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h2",
+          "url": "https://h2.shop.test/events",
+          "secret": "fifteen-chars-x"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "note": "a secret of exactly 16 characters is enough",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h3",
+          "url": "https://h3.shop.test/events",
+          "secret": "sixteen-chars-xx"
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "id": "h3",
+          "url": "https://h3.shop.test/events",
+          "status": "active",
+          "consecutive_failures": 0
+        }
+      }
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "note": "an id with a slash is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "a/b",
+          "url": "https://h4.shop.test/events",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "note": "a URL with a user name is refused: this one's host is 127.0.0.1, whatever its text starts with",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h5",
+          "url": "https://h5.shop.test@127.0.0.1/events",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_url"
+        }
+      }
+    },
+    {
+      "id": "h6",
+      "level": 1,
+      "note": "a URL with a user name and password is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h6",
+          "url": "https://admin:hunter2@h6.shop.test/events",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_url"
+        }
+      }
+    },
+    {
+      "id": "h7",
+      "level": 1,
+      "note": "port 22 is not a port webhooks go to",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h7",
+          "url": "https://h7.shop.test:22/events",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_url"
+        }
+      }
+    },
+    {
+      "id": "h8",
+      "level": 1,
+      "note": "port 6379 is not a port webhooks go to",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h8",
+          "url": "http://h8.shop.test:6379/events",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_url"
+        }
+      }
+    },
+    {
+      "id": "h9",
+      "level": 1,
+      "note": "port 8443 is allowed",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h9",
+          "url": "https://h9.shop.test:8443/events",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "id": "h9",
+          "url": "https://h9.shop.test:8443/events",
+          "status": "active",
+          "consecutive_failures": 0
+        }
+      }
+    },
+    {
+      "id": "h10",
+      "level": 1,
+      "note": "the default port written out is still allowed, and the URL is answered as given",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h10",
+          "url": "https://h10.shop.test:443/events",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "id": "h10",
+          "url": "https://h10.shop.test:443/events",
+          "status": "active",
+          "consecutive_failures": 0
+        }
+      }
+    },
+    {
+      "id": "h11",
+      "level": 1,
+      "note": "a URL without a scheme is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h11",
+          "url": "h11.shop.test/events",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_url"
+        }
+      }
+    },
+    {
+      "id": "h12",
+      "level": 1,
+      "note": "a file URL is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h12",
+          "url": "file:///etc/passwd",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_url"
+        }
+      }
+    },
+    {
+      "id": "h13",
+      "level": 1,
+      "note": "a gopher URL is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h13",
+          "url": "gopher://h13.shop.test:70/_payload",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_url"
+        }
+      }
+    },
+    {
+      "id": "h14",
+      "level": 1,
+      "note": "an id already taken answers 409",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h14",
+            "url": "https://h14.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h14",
+          "url": "https://h14.shop.test/v2/events",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "error": "endpoint_exists"
+        }
+      }
+    },
+    {
+      "id": "h15",
+      "level": 1,
+      "note": "an id never registered answers 404",
+      "request": {
+        "method": "GET",
+        "path": "/endpoints/h15-missing"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_endpoint"
+        }
+      }
+    },
+    {
+      "id": "h16",
+      "level": 1,
+      "note": "a registered endpoint reads back as it was registered",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h16",
+            "url": "https://h16.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/endpoints/h16"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "h16",
+          "url": "https://h16.shop.test/events",
+          "status": "active",
+          "consecutive_failures": 0
+        }
+      }
+    },
+    {
+      "id": "h17",
+      "level": 1,
+      "note": "an unknown endpoint in the list refuses the whole request, before anything is sent",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h17",
+            "url": "https://h17.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h17",
+            "h17-missing"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_endpoint"
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h18",
+      "level": 1,
+      "note": "the signature is over the exact body sent, keyed with this endpoint's own secret",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h18",
+            "url": "https://h18.shop.test/events",
+            "secret": "another-secret-for-signing"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h18"
+          ],
+          "event": {
+            "id": "evt_2002",
+            "type": "subscription.renewed",
+            "data": {
+              "plan": "team",
+              "seats": 12,
+              "tags": [
+                "annual",
+                "upgrade"
+              ],
+              "trial": false
+            },
+            "created": "2027-03-01T09:30:00Z"
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h18",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=7da800ac00f97ba5214aebdfe76aba9a42bf8368c928710b9e7072da23cc3e87"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h19",
+      "level": 1,
+      "note": "two endpoints in one request are answered in the order they were named",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h19-a",
+            "url": "https://h19.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h19-b",
+            "url": "https://inbox.partner.test/inbox",
+            "secret": "partner-secret-0123456789"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h19-b",
+            "h19-a"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h19-b",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=22b8b4a00102b4e32c4067014a6d80d6b7699ae298e4790ff227a72858d2fe62"
+            },
+            {
+              "endpoint": "h19-a",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        },
+        {
+          "mock": "partner-hooks",
+          "route": "inbox",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h20",
+      "level": 1,
+      "note": "a 410 fails the delivery, with the status it got",
+      "mocks": {
+        "customer-hooks": "gone"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h20",
+            "url": "https://h20.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h20"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h20",
+              "status": "failed",
+              "response_status": 410,
+              "error": "bad_status",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h21",
+      "level": 1,
+      "note": "a 500 fails the delivery, with the status it got",
+      "mocks": {
+        "customer-hooks": "outage"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h21",
+            "url": "https://h21.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h21"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h21",
+              "status": "failed",
+              "response_status": 500,
+              "error": "bad_status",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h22",
+      "level": 1,
+      "note": "a body over 65,536 bytes fails the delivery: stop reading at the limit",
+      "mocks": {
+        "customer-hooks": "huge_response"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h22",
+            "url": "https://h22.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h22"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h22",
+              "status": "failed",
+              "response_status": 200,
+              "error": "response_too_large",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h23",
+      "level": 1,
+      "note": "a body of exactly 65,536 bytes is within the limit",
+      "mocks": {
+        "customer-hooks": "response_at_limit"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h23",
+            "url": "https://h23.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h23"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h23",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h24",
+      "level": 1,
+      "note": "a failed delivery counts on the endpoint as one failure in a row",
+      "mocks": {
+        "customer-hooks": "gone"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h24",
+            "url": "https://h24.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "h24"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/endpoints/h24"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "h24",
+          "url": "https://h24.shop.test/events",
+          "status": "active",
+          "consecutive_failures": 1
+        }
+      }
+    },
+    {
+      "id": "h25",
+      "level": 1,
+      "note": "an event that is not a JSON object is refused",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h25",
+            "url": "https://h25.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h25"
+          ],
+          "event": "invoice.paid"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h26",
+      "level": 1,
+      "note": "an empty list of endpoints is refused",
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h27",
+      "level": 1,
+      "note": "a request body that is not JSON is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"id\": \"h27\", \"url\": "
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h28",
+      "level": 1,
+      "note": "a URL with a public IP address is delivered to that address",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h28",
+            "url": "http://203.0.113.10/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h28"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h28",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v5",
+      "level": 2,
+      "visible": true,
+      "note": "a loopback address is refused when it is registered",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "v5",
+          "url": "http://127.0.0.1/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "v6",
+      "level": 2,
+      "visible": true,
+      "note": "a name that resolves to a private address is refused: what counts is where it leads, not what it says",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "v6",
+          "url": "https://intranet.attacker.test/events",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "v7",
+      "level": 2,
+      "visible": true,
+      "note": "a name that does not resolve is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "v7",
+          "url": "https://nowhere.test/events",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "unresolvable_host"
+        }
+      }
+    },
+    {
+      "id": "v8",
+      "level": 2,
+      "visible": true,
+      "note": "the name changed its answer after it was registered: look it up again for each request, and refuse it",
+      "mocks": {
+        "resolver": "rebinding"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "v8",
+            "url": "https://rebind.attacker.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "v8"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "v8",
+              "status": "failed",
+              "response_status": null,
+              "error": "blocked_destination",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "internal-admin",
+          "count": 0
+        },
+        {
+          "mock": "resolver",
+          "route": "rebind",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "h29",
+      "level": 2,
+      "note": "127.0.0.1 written as one decimal number is still loopback",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h29",
+          "url": "http://2130706433/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h30",
+      "level": 2,
+      "note": "127.0.0.1 written in hex, with its zeros left out, is still loopback",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h30",
+          "url": "http://0x7f.1/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h31",
+      "level": 2,
+      "note": "127.1 is 127.0.0.1 with its zeros left out",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h31",
+          "url": "http://127.1:8080/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h32",
+      "level": 2,
+      "note": "127.0.0.1 written in octal is still loopback",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h32",
+          "url": "http://0177.0.0.1/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h33",
+      "level": 2,
+      "note": "0.0.0.0 reaches the host itself",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h33",
+          "url": "http://0.0.0.0:8080/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h34",
+      "level": 2,
+      "note": "the IPv6 loopback address is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h34",
+          "url": "http://[::1]/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h35",
+      "level": 2,
+      "note": "an IPv4-mapped IPv6 address is judged by its IPv4 address",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h35",
+          "url": "http://[::ffff:127.0.0.1]/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h36",
+      "level": 2,
+      "note": "the unspecified IPv6 address is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h36",
+          "url": "http://[::]/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h37",
+      "level": 2,
+      "note": "an IPv6 link-local address is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h37",
+          "url": "http://[fe80::1]/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h38",
+      "level": 2,
+      "note": "the cloud metadata address is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h38",
+          "url": "http://169.254.169.254/metadata/credentials",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h39",
+      "level": 2,
+      "note": "the cloud metadata address written as one hex number is still refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h39",
+          "url": "http://0xa9fea9fe/metadata/credentials",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h40",
+      "level": 2,
+      "note": "an address in 10.0.0.0/8 is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h40",
+          "url": "http://10.0.0.1/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h41",
+      "level": 2,
+      "note": "an address in 192.168.0.0/16 is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h41",
+          "url": "https://192.168.1.1/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h42",
+      "level": 2,
+      "note": "the last address of 172.16.0.0/12 is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h42",
+          "url": "http://172.31.255.255/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h43",
+      "level": 2,
+      "note": "localhost is a name, and it resolves to loopback",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h43",
+          "url": "http://localhost:8080/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h44",
+      "level": 2,
+      "note": "a name that resolves to the cloud metadata address is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h44",
+          "url": "https://metadata.attacker.test/metadata/credentials",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h45",
+      "level": 2,
+      "note": "a name that resolves to ::1 is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h45",
+          "url": "https://six.attacker.test/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h46",
+      "level": 2,
+      "note": "a name that resolves into fc00::/7 is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h46",
+          "url": "https://ula.attacker.test/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h47",
+      "level": 2,
+      "note": "a name that resolves to an IPv4-mapped private address is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h47",
+          "url": "https://mapped.attacker.test/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h48",
+      "level": 2,
+      "note": "a name with one public and one private address is refused: check every address",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h48",
+          "url": "https://mixed.attacker.test/events",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h49",
+      "level": 2,
+      "note": "a name that resolves into 100.64.0.0/10 is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h49",
+          "url": "https://cgnat.attacker.test/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h50",
+      "level": 2,
+      "note": "a name that resolves to 172.31.255.254, inside 172.16.0.0/12, is refused",
+      "request": {
+        "method": "POST",
+        "path": "/endpoints",
+        "json": {
+          "id": "h50",
+          "url": "https://edge-private.attacker.test/admin",
+          "secret": "whsec-0123456789abcdef"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "blocked_destination"
+        }
+      }
+    },
+    {
+      "id": "h51",
+      "level": 2,
+      "note": "172.32.0.10 is just past 172.16.0.0/12, and public: compare ranges, not text",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h51",
+            "url": "https://edge-public.partner.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h51"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h51",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "partner-hooks",
+          "route": "events",
+          "count": 1
+        },
+        {
+          "mock": "internal-admin",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h52",
+      "level": 2,
+      "note": "the name answers a public address twice, then a private one: connect to the address you checked, and do not look the name up a second time for one request",
+      "mocks": {
+        "resolver": "rebinding_on_connect"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h52",
+            "url": "https://rebind.attacker.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h52"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h52",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        },
+        {
+          "mock": "internal-admin",
+          "count": 0
+        },
+        {
+          "mock": "resolver",
+          "route": "rebind",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "v9",
+      "level": 3,
+      "visible": true,
+      "note": "503 twice, then 200: the third attempt delivers, each after a wait",
+      "mocks": {
+        "customer-hooks": "flaky"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "v9",
+            "url": "https://v9.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "v9"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "v9",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 3,
+          "min_gap_ms": 225
+        }
+      ]
+    },
+    {
+      "id": "v10",
+      "level": 3,
+      "visible": true,
+      "note": "a redirect to the metadata address is checked like any destination, and refused",
+      "mocks": {
+        "customer-hooks": "redirect_to_metadata"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "v10",
+            "url": "https://v10.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "v10"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "v10",
+              "status": "failed",
+              "response_status": 302,
+              "error": "blocked_destination",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        },
+        {
+          "mock": "internal-admin",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "v11",
+      "level": 3,
+      "visible": true,
+      "note": "a 410 will not change: no second attempt",
+      "mocks": {
+        "customer-hooks": "gone"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "v11",
+            "url": "https://v11.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "v11"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "v11",
+              "status": "failed",
+              "response_status": 410,
+              "error": "bad_status",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h53",
+      "level": 3,
+      "note": "a 500 every time: three attempts, each after a wait, then the 500 stands",
+      "mocks": {
+        "customer-hooks": "outage"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h53",
+            "url": "https://h53.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h53"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h53",
+              "status": "failed",
+              "response_status": 500,
+              "error": "bad_status",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 3,
+          "min_gap_ms": 225
+        }
+      ]
+    },
+    {
+      "id": "h54",
+      "level": 3,
+      "note": "a timeout may pass: three attempts in all",
+      "mocks": {
+        "customer-hooks": "slow"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h54",
+            "url": "https://h54.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h54"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h54",
+              "status": "failed",
+              "response_status": null,
+              "error": "timeout",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": "h55",
+      "level": 3,
+      "note": "the first attempt times out and the second delivers",
+      "mocks": {
+        "customer-hooks": "fails_once_slowly"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h55",
+            "url": "https://h55.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h55"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h55",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "h56",
+      "level": 3,
+      "note": "a 400 will not change: no second attempt",
+      "mocks": {
+        "customer-hooks": "bad_request"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h56",
+            "url": "https://h56.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h56"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h56",
+              "status": "failed",
+              "response_status": 400,
+              "error": "bad_status",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h57",
+      "level": 3,
+      "note": "a redirect to another public server is followed, with the same body",
+      "mocks": {
+        "customer-hooks": "redirect_to_partner"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h57",
+            "url": "https://h57.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h57"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h57",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        },
+        {
+          "mock": "partner-hooks",
+          "route": "inbox",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h58",
+      "level": 3,
+      "note": "a relative redirect stays on the same host",
+      "mocks": {
+        "customer-hooks": "redirect_relative"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h58",
+            "url": "https://h58.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h58"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h58",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "route": "events",
+          "count": 1
+        },
+        {
+          "mock": "customer-hooks",
+          "route": "v2-events",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h59",
+      "level": 3,
+      "note": "a redirect to itself: follow 3 redirects, then stop, and do not try again",
+      "mocks": {
+        "customer-hooks": "redirect_loop"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h59",
+            "url": "https://h59.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h59"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h59",
+              "status": "failed",
+              "response_status": 307,
+              "error": "too_many_redirects",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": "h60",
+      "level": 3,
+      "note": "a redirect to a name that resolves to a private address is refused",
+      "mocks": {
+        "customer-hooks": "redirect_to_intranet"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h60",
+            "url": "https://h60.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h60"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h60",
+              "status": "failed",
+              "response_status": 302,
+              "error": "blocked_destination",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        },
+        {
+          "mock": "internal-admin",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h61",
+      "level": 3,
+      "note": "a redirect to loopback written as one decimal number is refused",
+      "mocks": {
+        "customer-hooks": "redirect_to_decimal_loopback"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h61",
+            "url": "https://h61.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h61"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h61",
+              "status": "failed",
+              "response_status": 307,
+              "error": "blocked_destination",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        },
+        {
+          "mock": "internal-admin",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h62",
+      "level": 3,
+      "note": "a redirect to an ftp URL is not followed",
+      "mocks": {
+        "customer-hooks": "redirect_to_ftp"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h62",
+            "url": "https://h62.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h62"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h62",
+              "status": "failed",
+              "response_status": 302,
+              "error": "invalid_redirect",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h63",
+      "level": 3,
+      "note": "a redirect with no Location cannot be followed",
+      "mocks": {
+        "customer-hooks": "redirect_without_location"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h63",
+            "url": "https://h63.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h63"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h63",
+              "status": "failed",
+              "response_status": 302,
+              "error": "invalid_redirect",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h64",
+      "level": 3,
+      "note": "a redirect to port 22 is not followed",
+      "mocks": {
+        "customer-hooks": "redirect_to_ssh_port"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h64",
+            "url": "https://h64.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h64"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h64",
+              "status": "failed",
+              "response_status": 302,
+              "error": "invalid_redirect",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        },
+        {
+          "mock": "partner-hooks",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h65",
+      "level": 3,
+      "note": "a redirect to a name that does not resolve fails the delivery",
+      "mocks": {
+        "customer-hooks": "redirect_to_nowhere"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h65",
+            "url": "https://h65.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h65"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h65",
+              "status": "failed",
+              "response_status": 302,
+              "error": "unresolvable_host",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h66",
+      "level": 3,
+      "note": "public, then public, then private: every hop is checked, not only the first",
+      "mocks": {
+        "customer-hooks": "redirect_to_partner",
+        "partner-hooks": "redirect_onward_to_intranet"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h66",
+            "url": "https://h66.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h66"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h66",
+              "status": "failed",
+              "response_status": 307,
+              "error": "blocked_destination",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 1
+        },
+        {
+          "mock": "partner-hooks",
+          "count": 1
+        },
+        {
+          "mock": "internal-admin",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h67",
+      "level": 3,
+      "note": "a 500 after a redirect: each attempt starts again from the endpoint's URL",
+      "mocks": {
+        "customer-hooks": "redirect_to_partner",
+        "partner-hooks": "outage"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h67",
+            "url": "https://h67.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h67"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h67",
+              "status": "failed",
+              "response_status": 500,
+              "error": "bad_status",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 3
+        },
+        {
+          "mock": "partner-hooks",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": "v12",
+      "level": 4,
+      "visible": true,
+      "note": "six endpoints on one host in one request: five go out, the sixth waits for another time",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "v12-a",
+            "url": "https://v12.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "v12-b",
+            "url": "https://v12.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "v12-c",
+            "url": "https://v12.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "v12-d",
+            "url": "https://v12.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "v12-e",
+            "url": "https://v12.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "v12-f",
+            "url": "https://v12.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "v12-a",
+            "v12-b",
+            "v12-c",
+            "v12-d",
+            "v12-e",
+            "v12-f"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "v12-a",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "v12-b",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "v12-c",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "v12-d",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "v12-e",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "v12-f",
+              "status": "skipped",
+              "response_status": null,
+              "error": "rate_limited",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "id": "v13",
+      "level": 4,
+      "visible": true,
+      "note": "three failed deliveries in a row disable the endpoint",
+      "mocks": {
+        "customer-hooks": "gone"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "v13",
+            "url": "https://v13.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "v13"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "v13"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "v13"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/endpoints/v13"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "v13",
+          "url": "https://v13.shop.test/events",
+          "status": "disabled",
+          "consecutive_failures": 3
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": "v14",
+      "level": 4,
+      "visible": true,
+      "note": "a disabled endpoint is skipped, with nothing sent",
+      "mocks": {
+        "customer-hooks": "gone"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "v14",
+            "url": "https://v14.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "v14"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "v14"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "v14"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "v14"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "v14",
+              "status": "skipped",
+              "response_status": null,
+              "error": "endpoint_disabled",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": "h68",
+      "level": 4,
+      "note": "a success in between starts the count of failures again",
+      "mocks": {
+        "customer-hooks": "gone_twice_then_ok"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h68",
+            "url": "https://h68.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "h68"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "h68"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "h68"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "h68"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/endpoints/h68"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "h68",
+          "url": "https://h68.shop.test/events",
+          "status": "active",
+          "consecutive_failures": 1
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": "h69",
+      "level": 4,
+      "note": "the limit is per host, across endpoints and requests",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h69-a",
+            "url": "https://h69.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h69-b",
+            "url": "https://h69.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "h69-a",
+              "h69-b"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "h69-a",
+              "h69-b"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h69-a",
+            "h69-b"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h69-a",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h69-b",
+              "status": "skipped",
+              "response_status": null,
+              "error": "rate_limited",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 5
+        }
+      ]
+    },
+    {
+      "id": "h70",
+      "level": 4,
+      "note": "one host at its limit does not hold back another host",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h70-a",
+            "url": "https://h70.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h70-b",
+            "url": "https://h70.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h70-c",
+            "url": "https://h70.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h70-d",
+            "url": "https://h70.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h70-e",
+            "url": "https://h70.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h70-f",
+            "url": "https://h70.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h70-g",
+            "url": "https://h70.other-shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h70-a",
+            "h70-b",
+            "h70-c",
+            "h70-d",
+            "h70-e",
+            "h70-f",
+            "h70-g"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h70-a",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h70-b",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h70-c",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h70-d",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h70-e",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h70-f",
+              "status": "skipped",
+              "response_status": null,
+              "error": "rate_limited",
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h70-g",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 6
+        }
+      ]
+    },
+    {
+      "id": "h71",
+      "level": 4,
+      "note": "three endpoints on one slow host: one request in flight to it at a time",
+      "mocks": {
+        "customer-hooks": "lagging"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h71-a",
+            "url": "https://h71.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h71-b",
+            "url": "https://h71.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h71-c",
+            "url": "https://h71.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h71-a",
+            "h71-b",
+            "h71-c"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h71-a",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h71-b",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h71-c",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 3,
+          "min_gap_ms": 0
+        }
+      ]
+    },
+    {
+      "id": "h72",
+      "level": 4,
+      "note": "eight slow hosts in one request: different hosts go out at the same time",
+      "mocks": {
+        "customer-hooks": "lagging"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h72-1",
+            "url": "https://h72-1.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h72-2",
+            "url": "https://h72-2.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h72-3",
+            "url": "https://h72-3.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h72-4",
+            "url": "https://h72-4.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h72-5",
+            "url": "https://h72-5.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h72-6",
+            "url": "https://h72-6.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h72-7",
+            "url": "https://h72-7.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h72-8",
+            "url": "https://h72-8.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/deliveries",
+        "json": {
+          "endpoints": [
+            "h72-1",
+            "h72-2",
+            "h72-3",
+            "h72-4",
+            "h72-5",
+            "h72-6",
+            "h72-7",
+            "h72-8"
+          ],
+          "event": {
+            "id": "evt_1001",
+            "type": "invoice.paid",
+            "data": {
+              "invoice": "inv_77",
+              "amount_cents": 4200
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "endpoint": "h72-1",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h72-2",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h72-3",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h72-4",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h72-5",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h72-6",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h72-7",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            },
+            {
+              "endpoint": "h72-8",
+              "status": "delivered",
+              "response_status": 200,
+              "error": null,
+              "signature": "sha256=3629d3a128b1cc32e8b7637be3863de32bbb38fc34d5b2f4308b08afba4d1f2c"
+            }
+          ]
+        }
+      },
+      "log": [
+        {
+          "mock": "customer-hooks",
+          "count": 8
+        }
+      ],
+      "hang_guard_ms": 3000
+    },
+    {
+      "id": "h73",
+      "level": 4,
+      "note": "a name that keeps resolving to a private address fails each time, and is disabled",
+      "mocks": {
+        "resolver": "rebinding"
+      },
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h73",
+            "url": "https://rebind.attacker.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "h73"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "h73"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "h73"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/endpoints/h73"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "h73",
+          "url": "https://rebind.attacker.test/events",
+          "status": "disabled",
+          "consecutive_failures": 3
+        }
+      },
+      "log": [
+        {
+          "mock": "internal-admin",
+          "count": 0
+        },
+        {
+          "mock": "resolver",
+          "route": "rebind",
+          "count": 4
+        }
+      ]
+    },
+    {
+      "id": "h74",
+      "level": 4,
+      "note": "a delivery skipped for the rate is not a failure of its endpoint",
+      "before": [
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h74-a",
+            "url": "https://h74.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h74-b",
+            "url": "https://h74.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h74-c",
+            "url": "https://h74.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h74-d",
+            "url": "https://h74.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h74-e",
+            "url": "https://h74.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/endpoints",
+          "json": {
+            "id": "h74-f",
+            "url": "https://h74.shop.test/events",
+            "secret": "whsec-0123456789abcdef"
+          }
+        },
+        {
+          "method": "POST",
+          "path": "/deliveries",
+          "json": {
+            "endpoints": [
+              "h74-a",
+              "h74-b",
+              "h74-c",
+              "h74-d",
+              "h74-e",
+              "h74-f"
+            ],
+            "event": {
+              "id": "evt_1001",
+              "type": "invoice.paid",
+              "data": {
+                "invoice": "inv_77",
+                "amount_cents": 4200
+              }
+            }
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/endpoints/h74-f"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "h74-f",
+          "url": "https://h74.shop.test/events",
+          "status": "active",
+          "consecutive_failures": 0
+        }
+      }
+    }
+  ]
+}

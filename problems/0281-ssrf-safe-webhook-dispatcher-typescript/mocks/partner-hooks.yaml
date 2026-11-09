@@ -1,0 +1,25 @@
+# Another customer's webhook server on the internet, at 198.51.100.20 and at 172.32.0.10. Hidden
+# scenarios are what a graded run adds: a dev or test stack holds only those marked visible.
+routes:
+  - id: inbox
+    method: POST
+    path: /inbox
+    response:
+      status: 200
+      body: {received: true}
+  - id: events
+    method: POST
+    path: /events
+    response:
+      status: 200
+      body: {received: true}
+scenarios:
+  outage:
+    visible: true
+    status: 500
+    body: {error: internal error}
+  redirect_onward_to_intranet:
+    route: inbox
+    status: 307
+    headers: {Location: "https://intranet.attacker.test/admin"}
+    body: ""

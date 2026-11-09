@@ -1,0 +1,121 @@
+# The sandbox's name resolver: it plays DNS for this problem. Every name it does not list resolves to
+# 203.0.113.10, the customer server. Hidden scenarios are what a graded run adds: a dev or test stack
+# holds only those marked visible.
+routes:
+  - id: localhost
+    method: GET
+    path: /resolve
+    query: {name: localhost}
+    response:
+      status: 200
+      body: {addresses: [127.0.0.1, "::1"]}
+  - id: internal-admin
+    method: GET
+    path: /resolve
+    query: {name: internal-admin}
+    response:
+      status: 200
+      body: {addresses: [10.20.0.5]}
+  - id: partner
+    method: GET
+    path: /resolve
+    query: {name: inbox.partner.test}
+    response:
+      status: 200
+      body: {addresses: [198.51.100.20]}
+  - id: edge-public
+    method: GET
+    path: /resolve
+    query: {name: edge-public.partner.test}
+    response:
+      status: 200
+      body: {addresses: [172.32.0.10]}
+  - id: intranet
+    method: GET
+    path: /resolve
+    query: {name: intranet.attacker.test}
+    response:
+      status: 200
+      body: {addresses: [10.20.0.5]}
+  - id: metadata
+    method: GET
+    path: /resolve
+    query: {name: metadata.attacker.test}
+    response:
+      status: 200
+      body: {addresses: [169.254.169.254]}
+  - id: six
+    method: GET
+    path: /resolve
+    query: {name: six.attacker.test}
+    response:
+      status: 200
+      body: {addresses: ["::1"]}
+  - id: ula
+    method: GET
+    path: /resolve
+    query: {name: ula.attacker.test}
+    response:
+      status: 200
+      body: {addresses: ["fd12:3456::7"]}
+  - id: mapped
+    method: GET
+    path: /resolve
+    query: {name: mapped.attacker.test}
+    response:
+      status: 200
+      body: {addresses: ["::ffff:10.20.0.5"]}
+  - id: mixed
+    method: GET
+    path: /resolve
+    query: {name: mixed.attacker.test}
+    response:
+      status: 200
+      body: {addresses: [203.0.113.10, 10.20.0.5]}
+  - id: cgnat
+    method: GET
+    path: /resolve
+    query: {name: cgnat.attacker.test}
+    response:
+      status: 200
+      body: {addresses: [100.64.0.9]}
+  - id: edge-private
+    method: GET
+    path: /resolve
+    query: {name: edge-private.attacker.test}
+    response:
+      status: 200
+      body: {addresses: [172.31.255.254]}
+  - id: rebind
+    method: GET
+    path: /resolve
+    query: {name: rebind.attacker.test}
+    response:
+      status: 200
+      body: {addresses: [203.0.113.10]}
+  - id: unknown-name
+    method: GET
+    path: /resolve
+    query: {name: nowhere.test}
+    response:
+      status: 404
+      body: {error: no such host}
+  - id: any-other-name
+    method: GET
+    path: /resolve
+    response:
+      status: 200
+      body: {addresses: [203.0.113.10]}
+scenarios:
+  rebinding:
+    visible: true
+    route: rebind
+    sequence:
+      - {status: 200, body: {addresses: [203.0.113.10]}}
+      - {status: 200, body: {addresses: [10.20.0.5]}}
+  rebinding_on_connect:
+    route: rebind
+    sequence:
+      - {status: 200, body: {addresses: [203.0.113.10]}}
+      - {status: 200, body: {addresses: [203.0.113.10]}}
+      - {status: 200, body: {addresses: [10.20.0.5]}}
