@@ -6,13 +6,18 @@ that must name existing parameters).
 """
 
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any
 
 from coding_study.adapters.concurrency_documents import (
     concurrency_from_document,
     stress_from_document,
 )
-from coding_study.adapters.http_grader.case_document import http_case_input
+from coding_study.adapters.http_grader.case_document import (
+    CaseDocumentError,
+    Flows,
+    http_case_input,
+)
 from coding_study.domain.cases import (
     Case,
     CaseInput,
@@ -22,6 +27,7 @@ from coding_study.domain.cases import (
     OperationSequence,
 )
 from coding_study.domain.errors import ContentError, ContentIssue
+from coding_study.domain.http_case import HttpCaseInput
 from coding_study.domain.jdk import DeclaredJdk
 from coding_study.domain.labels import Labels
 from coding_study.domain.problem import (
@@ -123,7 +129,7 @@ def cases_from_document(
     document: Document, comparator: ComparatorSpec, source: str
 ) -> tuple[Case, ...]:
     try:
-        return _cases(document["cases"], comparator)
+        return _cases(document["cases"], _CaseRules(comparator, document.get("flows", {})))
     except _DocumentError as issue:
         raise ContentError([ContentIssue(source, issue.location, issue.message)]) from None
 
@@ -363,15 +369,25 @@ def _references(references: Document) -> References:
     )
 
 
-def _cases(cases: Sequence[Document], comparator: ComparatorSpec) -> tuple[Case, ...]:
+@dataclass(frozen=True, slots=True)
+class _CaseRules:
+    comparator: ComparatorSpec
+    flows: Flows
+    """The flows a service project's multi-step cases use."""
+
+
+def _cases(cases: Sequence[Document], rules: _CaseRules) -> tuple[Case, ...]:
     _reject_duplicate_ids(cases, "cases", "case id")
-    return tuple(_case(case, comparator, f"cases[{index}]") for index, case in enumerate(cases))
+    return tuple(_case(case, rules, f"cases[{index}]") for index, case in enumerate(cases))
 
 
-def _case(case: Document, comparator: ComparatorSpec, location: str) -> Case:
-    case_input = _case_input(case)
+def _case(case: Document, rules: _CaseRules, location: str) -> Case:
+    try:
+        case_input = _case_input(case, rules.flows)
+    except CaseDocumentError as error:
+        raise _DocumentError(location, str(error)) from None
     expected = Expected(case["expected"]) if "expected" in case else None
-    if expected is None and _requires_expected(case_input, comparator):
+    if expected is None and _requires_expected(case_input, rules.comparator):
         raise _DocumentError(
             location, "missing expected (required unless generated or the comparator is checker)"
         )
@@ -386,9 +402,9 @@ def _case(case: Document, comparator: ComparatorSpec, location: str) -> Case:
     )
 
 
-def _case_input(case: Document) -> CaseInput:
-    if "request" in case:
-        return http_case_input(case)
+def _case_input(case: Document, flows: Flows) -> CaseInput:
+    if "request" in case or "steps" in case:
+        return http_case_input(case, flows)
     if "stress" in case:
         return stress_from_document(case["stress"])
     if "generate" in case:
@@ -401,7 +417,10 @@ def _case_input(case: Document) -> CaseInput:
 
 
 def _requires_expected(case_input: CaseInput, comparator: ComparatorSpec) -> bool:
-    has_no_expected = isinstance(case_input, GeneratedInput | StressScenario)
+    """A multi-step case holds what it expects in each step."""
+    has_no_expected = isinstance(case_input, GeneratedInput | StressScenario) or (
+        isinstance(case_input, HttpCaseInput) and bool(case_input.steps)
+    )
     return not has_no_expected and comparator.type is not ComparatorType.CHECKER
 
 

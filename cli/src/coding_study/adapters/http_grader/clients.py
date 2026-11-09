@@ -1,13 +1,17 @@
-"""The HTTP grader's clients, on the standard library: one sends a case's requests to the app under
-a limit on the whole exchange, the other works the mock control interface
+"""The HTTP grader's clients, on the standard library: one sends a case's requests under a limit on
+the whole exchange, as a browser would, the other works the mock control interface
 (docs/specs/service-projects.md#control-interface)."""
 
 import http.client
 import json
 import socket
 import time
+import urllib.request
 from collections.abc import Buffer, Mapping
-from typing import Any
+from dataclasses import dataclass
+from email.message import Message
+from http.cookiejar import CookieJar
+from typing import Any, cast
 from urllib.parse import quote, urlsplit
 
 from coding_study.application.http_grading_ports import MockControl, StackClients, StackEndpoints
@@ -20,6 +24,8 @@ from coding_study.domain.http_grading import (
     LoggedRequest,
     MockLog,
 )
+from coding_study.domain.http_origins import host_header
+from coding_study.domain.http_redirects import MAX_REDIRECTS, redirected
 
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 """More than any case compares, and a bound on what an app can make the grader hold in memory."""
@@ -38,44 +44,145 @@ def open_stack_clients(endpoints: StackEndpoints) -> StackClients:
         if control_url is None
         else HttpMockControl(control_url, endpoints.control_token)
     )
-    return StackClients(HttpAppClient(endpoints.app_url), mocks)
+    return StackClients(HttpAppClient(endpoints.app_url, endpoints), mocks)
+
+
+@dataclass(frozen=True, slots=True)
+class _Answered:
+    status: int
+    lines: tuple[tuple[str, str], ...]
+    """Every header as it came, so that each `Set-Cookie` stays apart."""
+    body: bytes
+
+
+class _Received:
+    """All that `CookieJar.extract_cookies` reads of the response it is typed to take: `info()`,
+    its headers."""
+
+    def __init__(self, lines: tuple[tuple[str, str], ...]) -> None:
+        self._message = Message()
+        for name, value in lines:
+            self._message[name] = value
+
+    def info(self) -> Message:
+        return self._message
 
 
 class HttpAppClient:
-    def __init__(self, base_url: str) -> None:
-        self._base_url = base_url
-        parts = urlsplit(base_url)
-        self._address = (parts.hostname or "", parts.port)
+    """Sends a request to the address the stack publishes for its origin, with the origin's name as
+    its `Host`; a path alone goes to the app as it always has. A request with a jar sends and keeps
+    cookies as a browser would, by the name the request was written with, so that `/login` and
+    `http://app:8000/callback` share the app's."""
+
+    def __init__(self, app_url: str, endpoints: StackEndpoints | None = None) -> None:
+        self._endpoints = endpoints or StackEndpoints(app_url, None, "", ())
+        self._jars: dict[str, CookieJar] = {}
+
+    def clear_cookies(self) -> None:
+        self._jars.clear()
 
     def send(self, request: HttpRequest, limit_ms: int) -> HttpResponse | ExchangeFailed:
+        """Within `limit_ms` for every hop together."""
         started = time.perf_counter_ns()
+        clock = _Deadline(started, time.monotonic() + limit_ms / MILLISECONDS_PER_SECOND, limit_ms)
+        sent = self._sent_once(request, clock)
+        for _hop in range(MAX_REDIRECTS):
+            if not request.follow_redirects or not isinstance(sent, HttpResponse):
+                break
+            following = redirected(request, sent, self._cookie_url(request))
+            if following is None or self._endpoints.address_of(following.origin) is None:
+                break
+            request = following
+            sent = self._sent_once(request, clock)
+        return sent
 
-        def failed(failure: ExchangeFailure, detail: str) -> ExchangeFailed:
-            return ExchangeFailed(failure, detail, time.perf_counter_ns() - started)
-
-        said = f"{request.method} {self._base_url}{request.target}"
-        if limit_ms <= 0:
-            return failed(ExchangeFailure.TIMED_OUT, f"{said}: no time left in the case's limit")
-        connection = DeadlineConnection(self._address, limit_ms / MILLISECONDS_PER_SECOND)
+    def _sent_once(self, request: HttpRequest, clock: "_Deadline") -> HttpResponse | ExchangeFailed:
+        said = f"{request.method} {self._shown_url(request)}"
+        address = self._endpoints.address_of(request.origin)
+        if address is None:
+            detail = f"{said}: the stack publishes no address for this origin"
+            return clock.failed(ExchangeFailure.REFUSED, detail)
+        left_s = clock.left_s()
+        if left_s <= 0:
+            return clock.failed(
+                ExchangeFailure.TIMED_OUT, f"{said}: no time left in the case's limit"
+            )
+        parts = urlsplit(address)
+        connection = DeadlineConnection((parts.hostname or "", parts.port), left_s)
         try:
-            status, headers, body = _exchange(connection, request)
+            answered = _exchange(connection, request, self._browser_headers(request))
         except TimeoutError:
-            return failed(ExchangeFailure.TIMED_OUT, f"{said}: no whole answer in {limit_ms} ms")
+            detail = f"{said}: no whole answer in {clock.limit_ms} ms"
+            return clock.failed(ExchangeFailure.TIMED_OUT, detail)
         except ConnectionRefusedError:
-            return failed(ExchangeFailure.REFUSED, f"{said}: connection refused")
+            return clock.failed(ExchangeFailure.REFUSED, f"{said}: connection refused")
         except _BodyTooLargeError:
             detail = f"{said}: the response body is over {MAX_RESPONSE_BYTES} bytes"
-            return failed(ExchangeFailure.TOO_LARGE, detail)
+            return clock.failed(ExchangeFailure.TOO_LARGE, detail)
         except (ConnectionError, http.client.IncompleteRead, _BodyCutShortError) as error:
             detail = f"{said}: the connection was dropped before the whole answer ({error})"
-            return failed(ExchangeFailure.DROPPED, detail)
+            return clock.failed(ExchangeFailure.DROPPED, detail)
         except http.client.HTTPException as error:
-            return failed(ExchangeFailure.NOT_HTTP, f"{said}: the answer is not HTTP ({error})")
+            detail = f"{said}: the answer is not HTTP ({error})"
+            return clock.failed(ExchangeFailure.NOT_HTTP, detail)
         except OSError as error:
-            return failed(ExchangeFailure.DROPPED, f"{said}: the connection failed ({error})")
+            return clock.failed(ExchangeFailure.DROPPED, f"{said}: the connection failed ({error})")
         finally:
             connection.close()
-        return HttpResponse(status, headers, body, time.perf_counter_ns() - started)
+        self._keep_cookies(request, answered)
+        headers = _joined_headers(answered.lines)
+        return HttpResponse(answered.status, headers, answered.body, clock.spent_ns())
+
+    def _browser_headers(self, request: HttpRequest) -> dict[str, str]:
+        """`Host` for a named origin, and the jar's cookies."""
+        headers: dict[str, str] = {}
+        if request.origin is not None:
+            headers["Host"] = host_header(request.origin)
+        if request.jar is not None:
+            asked = self._cookie_request(request)
+            self._jar(request.jar).add_cookie_header(asked)
+            cookie = asked.get_header("Cookie")
+            if cookie:
+                headers["Cookie"] = cookie
+        return headers
+
+    def _keep_cookies(self, request: HttpRequest, answered: _Answered) -> None:
+        if request.jar is not None:
+            received = cast(http.client.HTTPResponse, _Received(answered.lines))
+            self._jar(request.jar).extract_cookies(received, self._cookie_request(request))
+
+    def _jar(self, name: str) -> CookieJar:
+        return self._jars.setdefault(name, CookieJar())
+
+    def _cookie_request(self, request: HttpRequest) -> urllib.request.Request:
+        return urllib.request.Request(self._cookie_url(request), method=request.method)
+
+    def _cookie_url(self, request: HttpRequest) -> str:
+        """Where the request went by the name it was written with: a path alone is the app's."""
+        origin = request.origin or self._endpoints.app_origin or self._endpoints.app_url
+        return f"{origin}{request.target}"
+
+    def _shown_url(self, request: HttpRequest) -> str:
+        origin = request.origin or self._endpoints.app_url
+        return f"{origin}{request.target}"
+
+
+@dataclass(frozen=True, slots=True)
+class _Deadline:
+    """One limit for every hop of a request."""
+
+    started_ns: int
+    deadline: float
+    limit_ms: int
+
+    def left_s(self) -> float:
+        return self.deadline - time.monotonic()
+
+    def spent_ns(self) -> int:
+        return time.perf_counter_ns() - self.started_ns
+
+    def failed(self, failure: ExchangeFailure, detail: str) -> ExchangeFailed:
+        return ExchangeFailed(failure, detail, self.spent_ns())
 
 
 class _BodyTooLargeError(Exception):
@@ -87,9 +194,9 @@ class _BodyCutShortError(Exception):
 
 
 def _exchange(
-    connection: http.client.HTTPConnection, request: HttpRequest
-) -> tuple[int, Mapping[str, str], bytes]:
-    headers = {"Connection": "close", **request.headers}
+    connection: http.client.HTTPConnection, request: HttpRequest, browser: Mapping[str, str]
+) -> _Answered:
+    headers = {"Connection": "close", **browser, **request.headers}
     connection.request(request.method, request.target, body=request.body, headers=headers)
     response = connection.getresponse()
     body = response.read(MAX_RESPONSE_BYTES + 1)
@@ -97,12 +204,12 @@ def _exchange(
         raise _BodyTooLargeError
     if response.length:
         raise _BodyCutShortError(f"{response.length} bytes of the body never came")
-    return response.status, _joined_headers(response), body
+    return _Answered(response.status, tuple(response.getheaders()), body)
 
 
-def _joined_headers(response: http.client.HTTPResponse) -> dict[str, str]:
+def _joined_headers(lines: tuple[tuple[str, str], ...]) -> dict[str, str]:
     joined: dict[str, str] = {}
-    for name, value in response.getheaders():
+    for name, value in lines:
         key = name.lower()
         joined[key] = f"{joined[key]}, {value}" if key in joined else value
     return joined
@@ -162,7 +269,14 @@ class HttpMockControl:
     def log(self, mock: str) -> MockLog:
         document: dict[str, Any] = json.loads(self._require_ok("GET", f"/mocks/{quote(mock)}/log"))
         entries = tuple(
-            LoggedRequest(entry["route"], entry["received_ms"], entry["responded_ms"])
+            LoggedRequest(
+                entry["route"],
+                entry["received_ms"],
+                entry["responded_ms"],
+                entry["headers"],
+                entry["body"],
+                entry.get("truncated", False),
+            )
             for entry in document["entries"]
         )
         return MockLog(entries, document["dropped"])

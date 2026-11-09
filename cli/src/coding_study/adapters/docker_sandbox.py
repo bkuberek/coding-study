@@ -669,6 +669,17 @@ class DockerSandbox:
                 return None
             self._sleep(HEALTH_POLL_S)
 
+    def app_output_since(self, plan: StackPlan, since_s: float) -> str:
+        """P11's output check, kept to one call here, since P10 owns this adapter: `docker compose
+        logs --since` takes seconds since the epoch, fractions included."""
+        since = f"{since_s:.6f}"
+        arguments = ("logs", "--no-color", "--no-log-prefix", "--since", since, APP_SERVICE)
+        logs = self._compose(plan, arguments, ENGINE_QUERY_S)
+        if logs is None or logs.exit_code != 0:
+            output = logs.output.strip() if logs is not None else "docker is not installed"
+            raise SandboxError(f"could not read the app's output: {output}")
+        return logs.output
+
     def follow_app(self, plan: StackPlan, on_line: Callable[[str], None]) -> None:
         """`docker logs`, since `docker compose logs --follow` keeps waiting after its container
         ended."""

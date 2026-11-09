@@ -8,7 +8,10 @@ import pytest
 from coding_study.adapters.mock_server.config import (
     Body,
     ConfigError,
+    JwtTamper,
+    ResponseFields,
     StackConfig,
+    TamperKind,
     load_stack_config,
 )
 
@@ -48,6 +51,12 @@ def load(document: dict[str, Any], folder: Path) -> StackConfig:
     path = folder / "mocks.json"
     path.write_text(json.dumps(document))
     return load_stack_config(path)
+
+
+def first_response(config: StackConfig) -> ResponseFields:
+    response = config.mocks[0].routes[0].response
+    assert response is not None
+    return response
 
 
 def mock_of(document: dict[str, Any]) -> dict[str, Any]:
@@ -90,14 +99,14 @@ def test_it_reads_a_route(tmp_path: Path):
 
 
 def test_a_mapping_body_is_compact_json_with_its_content_type(tmp_path: Path):
-    response = load(valid_document(), tmp_path).mocks[0].routes[0].response
+    response = first_response(load(valid_document(), tmp_path))
     assert response.body == Body(content=b'{"rooms":[]}', content_type="application/json")
 
 
 def test_a_list_body_is_json_too(tmp_path: Path):
     document = valid_document()
     response_of(document)["body"] = [1, 2]
-    assert load(document, tmp_path).mocks[0].routes[0].response.body == Body(
+    assert first_response(load(document, tmp_path)).body == Body(
         content=b"[1,2]", content_type="application/json"
     )
 
@@ -105,7 +114,7 @@ def test_a_list_body_is_json_too(tmp_path: Path):
 def test_a_string_body_is_sent_as_it_is(tmp_path: Path):
     document = valid_document()
     response_of(document)["body"] = '{"rooms": ['
-    assert load(document, tmp_path).mocks[0].routes[0].response.body == Body(content=b'{"rooms": [')
+    assert first_response(load(document, tmp_path)).body == Body(content=b'{"rooms": [')
 
 
 def test_a_body_file_is_read_relative_to_the_config(tmp_path: Path):
@@ -114,7 +123,7 @@ def test_a_body_file_is_read_relative_to_the_config(tmp_path: Path):
     document = valid_document()
     del response_of(document)["body"]
     response_of(document)["body_file"] = "bodies/raw.bin"
-    assert load(document, tmp_path).mocks[0].routes[0].response.body == Body(content=b"\xff\x00raw")
+    assert first_response(load(document, tmp_path)).body == Body(content=b"\xff\x00raw")
 
 
 def test_a_plain_scenario_is_a_sequence_of_one(tmp_path: Path):
@@ -136,6 +145,34 @@ def test_scenarios_are_optional(tmp_path: Path):
     document = valid_document()
     del mock_of(document)["scenarios"]
     assert load(document, tmp_path).mocks[0].scenarios == {}
+
+
+def with_upstream(document: dict[str, Any]) -> dict[str, Any]:
+    mock_of(document)["upstream"] = "http://keycloak:8080"
+    return document
+
+
+def test_a_mock_server_keeps_its_upstream(tmp_path: Path):
+    assert load(with_upstream(valid_document()), tmp_path).mocks[0].upstream == (
+        "http://keycloak:8080"
+    )
+
+
+def test_a_mock_server_has_no_upstream_unless_it_names_one(tmp_path: Path):
+    assert load(valid_document(), tmp_path).mocks[0].upstream is None
+
+
+def test_a_route_without_a_response_passes_through(tmp_path: Path):
+    document = with_upstream(valid_document())
+    del route_of(document)["response"]
+    assert load(document, tmp_path).mocks[0].routes[0].response is None
+
+
+def test_a_scenario_keeps_its_jwt_tamper(tmp_path: Path):
+    document = valid_document()
+    scenarios_of(document)["alg_none"] = {"jwt": {"field": "tokens.id", "tamper": "alg_none"}}
+    entry = load(document, tmp_path).mocks[0].scenarios["alg_none"].entries[0]
+    assert entry.jwt == JwtTamper(("tokens", "id"), TamperKind.ALG_NONE)
 
 
 REFUSED: dict[str, tuple[Mutation, str]] = {
@@ -185,6 +222,30 @@ REFUSED: dict[str, tuple[Mutation, str]] = {
     "empty sequence": (
         lambda doc: scenarios_of(doc)["rate_limited_then_ok"].update(sequence=[]),
         "sequence",
+    ),
+    "route without a response or an upstream": (
+        lambda doc: route_of(doc).pop("response"),
+        "response",
+    ),
+    "upstream with a path": (
+        lambda doc: mock_of(doc).update(upstream="http://keycloak:8080/realms"),
+        "upstream",
+    ),
+    "upstream over https": (
+        lambda doc: mock_of(doc).update(upstream="https://keycloak:8443"),
+        "upstream",
+    ),
+    "unknown tamper": (
+        lambda doc: scenarios_of(doc).update(t={"jwt": {"field": "id_token", "tamper": "re-sign"}}),
+        "tamper",
+    ),
+    "jwt without a field": (
+        lambda doc: scenarios_of(doc).update(t={"jwt": {"tamper": "alg_none"}}),
+        "field",
+    ),
+    "jwt in a route's response": (
+        lambda doc: response_of(doc).update(jwt={"field": "id_token", "tamper": "alg_none"}),
+        "jwt",
     ),
 }
 

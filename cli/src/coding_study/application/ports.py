@@ -1362,6 +1362,12 @@ class SandboxEngine(Protocol):
         """`on_line` hears each line the app prints, until the `app` container ends."""
         ...
 
+    def app_output_since(self, plan: StackPlan, since_s: float) -> str:
+        """What the `app` container printed since `since_s`, in seconds since the epoch, standard
+        output and error together, for a case's output check. Raises SandboxError when it cannot
+        be read."""
+        ...
+
     def probe_egress(self, plan: StackPlan) -> CommandOutcome:
         """From a one-off on `sandbox` alone, tries to reach what no app may: exit 0 when it
         reached none of them, and otherwise names those it did."""

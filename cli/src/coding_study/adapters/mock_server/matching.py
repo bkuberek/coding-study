@@ -45,9 +45,10 @@ def scenario_entry(scenario: Scenario, position: int) -> ResponseFields:
 
 
 def reply_for(route: Route, overrides: ResponseFields | None) -> Reply:
-    """The route's response with `overrides` applied: a field given replaces the route's whole."""
+    """The route's response with `overrides` applied: a field given replaces the route's whole. A
+    route that passes through has no response of its own, so what a scenario leaves out is empty."""
     given = overrides or ResponseFields()
-    own = route.response
+    own = route.response or ResponseFields()
     body = _first_given((given.body, own.body), NO_BODY)
     headers = _first_given((given.headers, own.headers), NO_HEADERS)
     return Reply(
@@ -55,6 +56,30 @@ def reply_for(route: Route, overrides: ResponseFields | None) -> Reply:
         headers=_with_content_type(headers, body),
         body=body.content,
         delay_ms=_first_given((given.delay_ms, own.delay_ms), 0),
+    )
+
+
+def passes_through(route: Route, overrides: ResponseFields | None) -> bool:
+    """A route without a response asks its upstream, unless a scenario gives a status, which
+    answers by itself: an outage on a token route must not spend the code at the provider."""
+    return route.response is None and (overrides is None or overrides.status is None)
+
+
+def over_upstream(answer: Reply, overrides: ResponseFields | None) -> Reply:
+    """The upstream's answer, with each field a scenario gives in place of the upstream's."""
+    if overrides is None:
+        return answer
+    body = overrides.body
+    if overrides.headers is None:
+        headers, lines = answer.headers, answer.header_lines
+    else:
+        headers, lines = _with_content_type(overrides.headers, body or NO_BODY), ()
+    return Reply(
+        status=answer.status,
+        headers=headers,
+        body=answer.body if body is None else body.content,
+        delay_ms=answer.delay_ms,
+        header_lines=lines,
     )
 
 

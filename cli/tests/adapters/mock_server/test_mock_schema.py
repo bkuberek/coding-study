@@ -92,6 +92,44 @@ def test_a_broken_json_body_is_allowed_by_design():
     assert violations(config) == []
 
 
+def pass_through_config() -> dict[str, Any]:
+    return {
+        "upstream": "http://keycloak:8080",
+        "routes": [{"id": "token", "method": "POST", "path": "/realms/pp3/token"}],
+        "scenarios": {
+            "alg_none": {"route": "token", "jwt": {"field": "id_token", "tamper": "alg_none"}},
+            "bad_signature": {
+                "route": "token",
+                "sequence": [{"jwt": {"field": "id_token", "tamper": "bad_signature"}}],
+            },
+        },
+    }
+
+
+def test_a_pass_through_mock_server_with_jwt_scenarios_is_valid():
+    assert violations(pass_through_config()) == []
+
+
+PASS_THROUGH_INVALID: dict[str, Mutation] = {
+    "upstream with a path": lambda config: config.update(upstream="http://keycloak:8080/x"),
+    "upstream over https": lambda config: config.update(upstream="https://keycloak:8443"),
+    "unknown tamper": lambda config: config["scenarios"]["alg_none"]["jwt"].update(tamper="sign"),
+    "jwt without a field": lambda config: config["scenarios"]["alg_none"]["jwt"].pop("field"),
+    "jwt with an extra field": lambda config: config["scenarios"]["alg_none"]["jwt"].update(key=1),
+    "jwt in a route's response": lambda config: first_route(config).update(
+        response={"status": 200, "jwt": {"field": "id_token", "tamper": "alg_none"}}
+    ),
+    "route without a response and no upstream": lambda config: config.pop("upstream"),
+}
+
+
+@pytest.mark.parametrize("mutate", PASS_THROUGH_INVALID.values(), ids=PASS_THROUGH_INVALID.keys())
+def test_invalid_pass_through_configs_are_refused(mutate: Mutation):
+    config = pass_through_config()
+    mutate(config)
+    assert violations(config) != []
+
+
 INVALID: dict[str, Mutation] = {
     "no routes key": lambda config: config.pop("routes"),
     "empty routes": lambda config: config.update(routes=[]),

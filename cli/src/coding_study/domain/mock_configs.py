@@ -20,7 +20,7 @@ BODY_FILE = "body_file"
 BODY = "body"
 MILLISECONDS_PER_SECOND = 1000
 RETRY_AFTER = "retry-after"
-_RENDERED_FIELDS = ("routes", "scenarios")
+_RENDERED_FIELDS = ("upstream", "routes", "scenarios")
 
 type _Document = Mapping[str, object]
 
@@ -71,9 +71,11 @@ def route_ids(files: MockFiles) -> tuple[str, ...]:
 
 
 def response_fields(files: MockFiles) -> Iterator[tuple[str, _Document]]:
-    """Every place in the config that can hold a response's fields, with where it is."""
+    """Every place in the config that can hold a response's fields, with where it is. A route that
+    passes through to an upstream holds none."""
     for route in route_documents(files):
-        yield f"routes.{route['id']}.response", cast(_Document, route["response"])
+        if "response" in route:
+            yield f"routes.{route['id']}.response", cast(_Document, route["response"])
     for name, scenario in scenario_documents(files).items():
         for index, entry in enumerate(_entries(scenario)):
             yield f"scenarios.{name}[{index}]", entry

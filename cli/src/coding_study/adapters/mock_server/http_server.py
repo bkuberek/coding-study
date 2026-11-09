@@ -11,7 +11,7 @@ import threading
 import time
 from collections.abc import Buffer, Callable, Mapping
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from email.message import Message
 from functools import partial
 from http.server import BaseHTTPRequestHandler
@@ -20,10 +20,12 @@ from typing import Any
 
 from .config import StackConfig
 from .control import ControlInterface, ControlRequest
-from .matching import MockRequest, parse_target
+from .jwt_tamper import tampered_body
+from .matching import MockRequest, over_upstream, parse_target
 from .mock_state import Exchange, MockState
 from .replies import Reply, json_reply, unknown_host_reply
 from .request_log import MILLISECONDS_PER_SECOND
+from .upstream import ForwardedRequest, fetched
 
 DEFAULT_API_PORT = 8080
 DEFAULT_CONTROL_PORT = 9000
@@ -78,10 +80,11 @@ class _JsonHandler(BaseHTTPRequestHandler):
 
     def write_reply(self, reply: Reply) -> None:
         self.send_response_only(reply.status)
-        for name, value in reply.headers.items():
+        headers = reply.every_header()
+        for name, value in headers:
             self.send_header(name, value)
         carries_a_body = reply.status not in STATUSES_WITHOUT_A_BODY
-        if carries_a_body and not _names_a_length(reply.headers):
+        if carries_a_body and not _names_a_length(headers):
             self.send_header("Content-Length", str(len(reply.body)))
         self.end_headers()
         if carries_a_body and self.command != "HEAD":
@@ -135,14 +138,30 @@ class _ApiHandler(_JsonHandler):
             self._answer(mock, mock.refuse(self._mock_request(b""), refused.reply))
             self.discard(refused.unread_bytes)
             return
-        self._answer(mock, mock.receive(self._mock_request(body)))
+        self._answer(mock, mock.receive(self._mock_request(body)), body)
 
-    def _answer(self, mock: MockState, exchange: Exchange) -> None:
+    def _answer(self, mock: MockState, exchange: Exchange, body: bytes = b"") -> None:
+        reply = exchange.reply
         try:
+            reply = self._final_reply(mock, exchange, body)
             time.sleep(exchange.reply.delay_ms / MILLISECONDS_PER_SECOND)
-            self.write_reply(exchange.reply)
+            self.write_reply(reply)
         finally:
-            mock.finish(exchange)
+            mock.finish(exchange, reply.status)
+
+    def _final_reply(self, mock: MockState, exchange: Exchange, body: bytes) -> Reply:
+        """What goes out: the upstream's answer for a pass-through, then any JWT spoiled."""
+        reply = exchange.reply
+        through = exchange.pass_through
+        if through is not None:
+            forwarded = ForwardedRequest(
+                self.command, self.path, _lowercase_headers(self.headers), body
+            )
+            answer = fetched(through.upstream, forwarded, mock.name)
+            reply = over_upstream(answer, through.overrides)
+        if exchange.jwt is not None:
+            reply = replace(reply, body=tampered_body(reply.body, exchange.jwt))
+        return reply
 
     def _mock_request(self, body: bytes) -> MockRequest:
         path, query = parse_target(self.path)
@@ -307,5 +326,5 @@ def _declared_length(headers: Message) -> int:
     return int(declared)
 
 
-def _names_a_length(headers: Mapping[str, str]) -> bool:
-    return any(name.lower() == CONTENT_LENGTH for name in headers)
+def _names_a_length(headers: tuple[tuple[str, str], ...]) -> bool:
+    return any(name.lower() == CONTENT_LENGTH for name, _value in headers)

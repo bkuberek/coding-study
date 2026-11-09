@@ -4,6 +4,7 @@ import pytest
 
 from coding_study.application.graded_stack import RunningStack, SandboxGradedStack
 from coding_study.application.http_grading_ports import AppExit, StackStepError
+from coding_study.domain.errors import RunnerStartError, SandboxError
 from coding_study.domain.sandbox import (
     AppContainer,
     CommandOutcome,
@@ -83,6 +84,16 @@ def test_a_stack_with_nothing_to_reach_names_nothing():
     assert stack_of(FakeSandbox()).endpoints.reach == {}
 
 
+def test_the_app_is_reachable_by_its_own_origin_inside_the_stack():
+    endpoints = stack_of(FakeSandbox()).endpoints
+
+    assert endpoints.address_of("http://app:8000") == "http://127.0.0.1:5000"
+
+
+def test_until_p10_no_other_origin_is_published():
+    assert stack_of(FakeSandbox()).endpoints.origins == {}
+
+
 def test_a_restart_waits_on_the_startup_budget_not_on_a_cases_limit():
     engine = FakeSandbox()
 
@@ -153,3 +164,15 @@ def test_an_app_that_ended_gives_its_code_and_output():
     engine = FakeSandbox(app_ended=CommandOutcome(137, "killed"))
 
     assert stack_of(engine).app_exit(0) == AppExit(137, "killed")
+
+
+def test_the_apps_output_is_read_from_the_engine_since_the_time_given():
+    engine = FakeSandbox(app_output="printed\n")
+    assert stack_of(engine).app_output(1700000000.5) == "printed\n"
+    assert engine.calls[-1] == ("app_output_since", 1700000000.5)
+
+
+def test_output_the_engine_cannot_read_is_a_stack_failure_not_a_verdict():
+    engine = FakeSandbox(app_output_error=SandboxError("docker logs failed"))
+    with pytest.raises(RunnerStartError, match="docker logs failed"):
+        stack_of(engine).app_output(1.0)

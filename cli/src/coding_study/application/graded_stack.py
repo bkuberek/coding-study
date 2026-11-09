@@ -8,6 +8,8 @@ from dataclasses import dataclass
 
 from coding_study.application.http_grading_ports import AppExit, StackEndpoints, StackStepError
 from coding_study.application.ports import ContainerCommand, SandboxEngine
+from coding_study.domain.errors import RunnerStartError, SandboxError
+from coding_study.domain.http_origins import app_origin
 from coding_study.domain.sandbox import (
     RESET_PHASE_APPLY,
     RESET_PHASE_VARIABLE,
@@ -39,6 +41,7 @@ class SandboxGradedStack:
             control_url=self._ready.control_url,
             control_token=mocks.control_token if mocks is not None else "",
             mocks=mocks.aliases if mocks is not None else (),
+            app_origin=app_origin(self._service.app.port),
             reach=self._ready.reach_urls,
         )
 
@@ -69,6 +72,12 @@ class SandboxGradedStack:
             raise StackStepError(f"commands.reset did not finish within {limit} s", outcome.output)
         if outcome.exit_code != 0:
             raise StackStepError(f"commands.reset exited with {outcome.exit_code}", outcome.output)
+
+    def app_output(self, since_s: float) -> str:
+        try:
+            return self._engine.app_output_since(self._plan, since_s)
+        except SandboxError as failed:
+            raise RunnerStartError(f"the app's output could not be read: {failed}") from failed
 
     def app_exit(self, within_ms: int) -> AppExit | None:
         ended = self._engine.app_exit(self._plan, within_ms)

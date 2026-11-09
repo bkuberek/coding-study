@@ -1,36 +1,58 @@
 """The hidden and visible HTTP cases of a service project
 (docs/specs/service-projects.md#hidden-http-case). Language-neutral: a case names a request and
-what must come back, and nothing about the app that answers."""
+what must come back, and nothing about the app that answers.
+
+A case is one request, with the requests `before` it, or an ordered list of steps
+(docs/specs/service-projects.md#multi-step-cases), which can carry values from one answer into a
+later request and keep cookies, as a browser would.
+"""
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from enum import StrEnum
 from urllib.parse import urlencode
 
-from coding_study.domain.cases import Expected, FunctionInput
+from coding_study.domain.cases import Expected, FunctionInput, JsonValue
 from coding_study.domain.problem import ComparatorSpec
 
 type QueryValue = str | tuple[str, ...]
+type ExpectedStatus = int | str
+"""A status, or a class of them written as `"4xx"`."""
+
+DEFAULT_JAR = "main"
+"""The cookie jar of a step that names none."""
+SUCCESS = "2xx"
 
 
 @dataclass(frozen=True, slots=True)
 class HttpRequest:
     method: str
     path: str
+    """The path, with the query an absolute URL carries as it was written."""
     query: Mapping[str, QueryValue] = field(default_factory=dict[str, QueryValue])
     """A key with several values is sent once per value."""
     headers: Mapping[str, str] = field(default_factory=dict[str, str])
     body: bytes | None = None
     """Exactly what goes out, so a case can send a malformed body."""
+    origin: str | None = None
+    """`http://<name>:<port>`, an origin as the stack's network names it; None is the app at the
+    address the stack publishes, as every single-request case sends."""
+    jar: str | None = None
+    """The cookie jar that sends and keeps this request's cookies; None keeps none."""
+    follow_redirects: bool = False
 
     @property
     def target(self) -> str:
         """The path and query, as a request line names them."""
-        return f"{self.path}?{urlencode(self.query, doseq=True)}" if self.query else self.path
+        if not self.query:
+            return self.path
+        joiner = "&" if "?" in self.path else "?"
+        return f"{self.path}{joiner}{urlencode(self.query, doseq=True)}"
 
 
 @dataclass(frozen=True, slots=True)
 class HttpExpected:
-    status: int
+    status: ExpectedStatus
     body: Expected | None = None
     """None accepts any body; `Expected(None)` asks for a JSON null."""
     headers: Mapping[str, str] = field(default_factory=dict[str, str])
@@ -49,16 +71,110 @@ class LogAssertion:
     max_count: int | None = None
     min_gap_ms: int | None = None
     """From each response to the next request (docs/specs/service-projects.md#hidden-http-case)."""
+    headers: Mapping[str, str] = field(default_factory=dict[str, str])
+    """Only requests that carried each of these headers count; values may name `{{captures}}`."""
+    form: Mapping[str, str] = field(default_factory=dict[str, str])
+    """Only requests whose form-encoded body held each of these fields count."""
+
+
+@dataclass(frozen=True, slots=True)
+class JsonBody:
+    value: JsonValue
+    """Its strings may name `{{captures}}`."""
+
+
+@dataclass(frozen=True, slots=True)
+class FormBody:
+    fields: Mapping[str, str]
+    """Sent as `application/x-www-form-urlencoded`; values may name `{{captures}}`."""
+
+
+@dataclass(frozen=True, slots=True)
+class TextBody:
+    text: str
+
+
+type TemplateBody = JsonBody | FormBody | TextBody
+
+
+@dataclass(frozen=True, slots=True)
+class RequestTemplate:
+    """A step's request as tests.json writes it. Its texts may name values by `{{name}}`, which
+    are filled in when the step runs."""
+
+    method: str
+    target: str
+    """A path, which goes to the app, or an absolute URL, `http://idp:8080/...`."""
+    query: Mapping[str, QueryValue] = field(default_factory=dict[str, QueryValue])
+    headers: Mapping[str, str] = field(default_factory=dict[str, str])
+    body: TemplateBody | None = None
+    jar: str = DEFAULT_JAR
+    follow_redirects: bool = False
+
+
+class CaptureKind(StrEnum):
+    STATUS = "status"
+    HEADER = "header"
+    BODY = "body"
+    FORM = "form"
+    """An attribute of the HTML `<form>` with this `id`."""
+    INPUT = "input"
+    """An attribute of the HTML `<input>` with this `name`."""
+
+
+@dataclass(frozen=True, slots=True)
+class CaptureSource:
+    """Where a value comes from in an answer, as `header.location.query.code` says."""
+
+    kind: CaptureKind
+    path: tuple[str, ...] = ()
+    """What follows the kind: a header's name, then `query` and a parameter; a body's dotted path;
+    a form's id or an input's name, then an attribute."""
+
+    @property
+    def written(self) -> str:
+        return ".".join((self.kind, *self.path))
+
+
+@dataclass(frozen=True, slots=True)
+class HttpStep:
+    label: str
+    """How a reason names the step: `step 2`, or `step 1, login step 3` inside a flow; empty for
+    the request of a single-request case, which needs no name."""
+    request: HttpRequest | RequestTemplate
+    """A template for a step of a multi-step case; a request, sent as it is, for a single-request
+    case, whose texts never name a capture."""
+    expected: HttpExpected | None = None
+    """None accepts any answer. A template step's expected texts may name `{{captures}}` too."""
+    captures: Mapping[str, CaptureSource] = field(default_factory=dict[str, CaptureSource])
+
+
+@dataclass(frozen=True, slots=True)
+class OutputPattern:
+    regex: str
+    """Python's regular expression syntax, searched for anywhere in the output."""
+
+
+type AbsentOutput = str | OutputPattern
+"""A text, which may name a `{{capture}}`, or a pattern."""
+
+
+@dataclass(frozen=True, slots=True)
+class OutputCheck:
+    """What the app may not print, on standard output or error, while a case runs."""
+
+    absent: tuple[AbsentOutput, ...]
 
 
 @dataclass(frozen=True, slots=True)
 class HttpCaseInput(FunctionInput):
-    """What an HTTP case does. It is a `FunctionInput` whose `arguments` hold the request as
-    tests.json wrote it, with the scenarios it set, so that every report and event that shows a
-    case's input shows this one with no code of its own."""
+    """What an HTTP case does. It is a `FunctionInput` whose `arguments` hold the request, or the
+    steps, as tests.json wrote them, with the scenarios it set, so that every report and event that
+    shows a case's input shows this one with no code of its own."""
 
-    request: HttpRequest
-    expected: HttpExpected
+    request: HttpRequest | None = None
+    """The request of a single-request case; None for a multi-step one."""
+    expected: HttpExpected | None = None
     mocks: Mapping[str, str] = field(default_factory=dict[str, str])
     """The scenario per mock server; one left out has none."""
     before: tuple[HttpRequest, ...] = ()
@@ -68,3 +184,22 @@ class HttpCaseInput(FunctionInput):
     log: tuple[LogAssertion, ...] = ()
     fresh: bool = False
     """Restart the app and reset its data first."""
+    steps: tuple[HttpStep, ...] = ()
+    """A multi-step case's steps, with every flow it uses written out."""
+    cleanup: tuple[HttpStep, ...] = ()
+    """Steps that run after the case whatever happened, to undo what it changed."""
+    app_output: OutputCheck | None = None
+
+    def exchange_steps(self) -> tuple[HttpStep, ...]:
+        """Every step the case sends, in order: a single-request case's `before` requests, each of
+        which must answer 2xx, then its request."""
+        if self.steps or self.request is None:
+            return self.steps
+        befores = tuple(
+            HttpStep(f"before[{index}] {request.method} {request.target}", request, BEFORE_EXPECTED)
+            for index, request in enumerate(self.before)
+        )
+        return (*befores, HttpStep("", self.request, self.expected))
+
+
+BEFORE_EXPECTED = HttpExpected(SUCCESS)

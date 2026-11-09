@@ -15,7 +15,9 @@ from typing import cast
 
 from coding_study.domain.cases import Case
 from coding_study.domain.http_case import HttpCaseInput
+from coding_study.domain.http_case_checks import step_issues
 from coding_study.domain.http_grading import HTTP_COMPARATORS
+from coding_study.domain.http_origins import declared_origins
 from coding_study.domain.mock_configs import (
     API_SUFFIX,
     BODY_FILE,
@@ -353,6 +355,9 @@ def _case(where: str, case: Case, rules: _CaseRules) -> _Found:
         yield where, f"the comparator {used.type} cannot judge a response body"
     yield from _scenarios(where, case, http, rules)
     yield from _logs(where, http, rules)
+    origins = declared_origins(rules.service.app.port, rules.files.mocks)
+    for message in step_issues(http, origins):
+        yield where, message
     if http.fresh and rules.service.services is not None and rules.service.commands.reset is None:
         yield where, "fresh with data needs commands.reset"
 

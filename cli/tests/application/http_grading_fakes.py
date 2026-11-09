@@ -19,6 +19,7 @@ type Sent = HttpResponse | ExchangeFailed
 APP_URL = "http://127.0.0.1:8000"
 CONTROL_URL = "http://127.0.0.1:9000"
 CONTROL_TOKEN = "fake-token"
+APP_ORIGIN = "http://app:8000"
 ROOM_VENDOR = "room-vendor"
 ANSWERED = HttpResponse(200, {}, b"")
 
@@ -30,10 +31,16 @@ class FakeStack:
     exit: AppExit | None = None
     restart_problem: str | None = None
     exit_waits: list[int] = field(default_factory=list[int])
+    output_since: list[float] = field(default_factory=list[float])
+    origins: dict[str, str] = field(default_factory=dict[str, str])
+    output: str = ""
+    """What the app printed, for each case that asks."""
 
     @property
     def endpoints(self) -> StackEndpoints:
-        return StackEndpoints(APP_URL, CONTROL_URL, CONTROL_TOKEN, self.mocks)
+        return StackEndpoints(
+            APP_URL, CONTROL_URL, CONTROL_TOKEN, self.mocks, APP_ORIGIN, self.origins
+        )
 
     def restart_app(self) -> None:
         self.journal.append("restart app")
@@ -47,6 +54,11 @@ class FakeStack:
         self.exit_waits.append(within_ms)
         return self.exit
 
+    def app_output(self, since_s: float) -> str:
+        self.journal.append("read app output")
+        self.output_since.append(since_s)
+        return self.output
+
     def _maybe_fail(self) -> None:
         if self.restart_problem is not None:
             raise StackStepError(self.restart_problem, "output of the reset")
@@ -56,12 +68,20 @@ class FakeStack:
 class FakeApp:
     journal: list[str]
     answers: dict[str, Sent] = field(default_factory=dict[str, Sent])
+    """By target, or by origin and target for a request to a named origin."""
     limits: list[int] = field(default_factory=list[int])
+    sent: list[HttpRequest] = field(default_factory=list[HttpRequest])
+    cookie_clears: int = 0
 
     def send(self, request: HttpRequest, limit_ms: int) -> Sent:
-        self.journal.append(f"send {request.method} {request.target}")
+        where = f"{request.origin or ''}{request.target}"
+        self.journal.append(f"send {request.method} {where}")
         self.limits.append(limit_ms)
-        return self.answers.get(request.target, ANSWERED)
+        self.sent.append(request)
+        return self.answers.get(where, ANSWERED)
+
+    def clear_cookies(self) -> None:
+        self.cookie_clears += 1
 
 
 @dataclass

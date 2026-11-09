@@ -13,6 +13,12 @@ class Reply:
     headers: Mapping[str, str]
     body: bytes
     delay_ms: int = 0
+    header_lines: tuple[tuple[str, str], ...] = ()
+    """Headers sent after `headers`, each on its own line, so that an upstream's `Set-Cookie` lines
+    stay apart."""
+
+    def every_header(self) -> tuple[tuple[str, str], ...]:
+        return (*self.headers.items(), *self.header_lines)
 
 
 def json_reply(status: int, document: object) -> Reply:

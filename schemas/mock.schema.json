@@ -6,6 +6,11 @@
   "additionalProperties": false,
   "required": ["routes"],
   "properties": {
+    "upstream": {
+      "description": "A service on the stack's network, http://<name>:<port>. A route without a response passes through to it, as does a request no route matches; each is logged. The mock server never signs anything",
+      "type": "string",
+      "pattern": "^http://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?$"
+    },
     "routes": {
       "description": "In order; the first match wins",
       "type": "array",
@@ -19,6 +24,8 @@
       "additionalProperties": { "$ref": "#/$defs/scenario" }
     }
   },
+  "if": { "not": { "required": ["upstream"] } },
+  "then": { "properties": { "routes": { "items": { "required": ["response"] } } } },
   "$defs": {
     "identifier": {
       "type": "string",
@@ -27,7 +34,7 @@
     "route": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "method", "path", "response"],
+      "required": ["id", "method", "path"],
       "properties": {
         "id": { "description": "Named by a scenario's route and by the request log", "$ref": "#/$defs/identifier" },
         "method": { "enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] },
@@ -42,6 +49,7 @@
           "additionalProperties": { "type": "string" }
         },
         "response": {
+          "description": "Left out, the request passes through to the mock server's upstream",
           "$ref": "#/$defs/responseFields",
           "required": ["status"],
           "unevaluatedProperties": false
@@ -51,7 +59,7 @@
     "scenario": {
       "description": "A field left out comes from the matched route, and a field given replaces the route's whole. A plain scenario is a sequence of one",
       "type": "object",
-      "$ref": "#/$defs/responseFields",
+      "$ref": "#/$defs/entryFields",
       "unevaluatedProperties": false,
       "anyOf": [
         { "required": ["status"] },
@@ -59,6 +67,7 @@
         { "required": ["body"] },
         { "required": ["body_file"] },
         { "required": ["delay_ms"] },
+        { "required": ["jwt"] },
         { "required": ["sequence"] }
       ],
       "if": { "required": ["sequence"] },
@@ -68,7 +77,8 @@
           "headers": false,
           "body": false,
           "body_file": false,
-          "delay_ms": false
+          "delay_ms": false,
+          "jwt": false
         }
       },
       "properties": {
@@ -85,9 +95,30 @@
           "type": "array",
           "minItems": 1,
           "items": {
-            "$ref": "#/$defs/responseFields",
+            "$ref": "#/$defs/entryFields",
             "minProperties": 1,
             "unevaluatedProperties": false
+          }
+        }
+      }
+    },
+    "entryFields": {
+      "description": "A scenario entry: a route's response fields, plus a JWT to spoil",
+      "type": "object",
+      "$ref": "#/$defs/responseFields",
+      "properties": {
+        "jwt": {
+          "description": "Spoils the JWT at a JSON field of the answer, passed through or the route's own: alg_none gives it the header {\"alg\":\"none\"} and no signature, bad_signature changes one character of its signature. A body with no JWT there goes out unchanged",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["field", "tamper"],
+          "properties": {
+            "field": {
+              "description": "A dotted path of JSON field names, such as id_token",
+              "type": "string",
+              "pattern": "^[^.]+(\\.[^.]+)*$"
+            },
+            "tamper": { "enum": ["alg_none", "bad_signature"] }
           }
         }
       }

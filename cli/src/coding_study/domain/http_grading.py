@@ -5,16 +5,17 @@ report cuts the expected and actual values short.
 """
 
 import json
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from itertools import islice, pairwise
 from typing import NoReturn
+from urllib.parse import parse_qs
 
 from coding_study.domain.case_status import CaseStatus
 from coding_study.domain.cases import Expected, FunctionInput, JsonValue
 from coding_study.domain.comparators import Comparator, Mismatch, comparator_for
-from coding_study.domain.http_case import HttpCaseInput, HttpExpected, HttpRequest, LogAssertion
+from coding_study.domain.http_case import ExpectedStatus, HttpExpected, LogAssertion
 from coding_study.domain.judging import CaseVerdict, RunnableCase
 from coding_study.domain.problem import ComparatorSpec, ComparatorType
 from coding_study.domain.runs import Returned
@@ -29,11 +30,13 @@ TEXT_CONTEXT = 40
 """The characters a reason shows on each side of where two long texts first differ."""
 BODY = "body"
 CONTENT_TYPE_HEADER = "content-type"
-SUCCESS_STATUSES = range(200, 300)
 OVERFLOWED = (
     "the mock server's log overflowed, so this cannot be judged: "
     "send fewer or smaller requests in one case"
 )
+CUT_BODY = "a logged body was cut at the log's limit, so its form cannot be judged"
+FILTER_VALUE_LIMIT = 40
+"""How much of a value a log assertion's label shows: a token is long, and its start names it."""
 
 _MULTISET_COMPARATORS = frozenset({ComparatorType.UNORDERED, ComparatorType.UNORDERED_NESTED})
 HTTP_COMPARATORS = frozenset({ComparatorType.EXACT, ComparatorType.FLOAT, *_MULTISET_COMPARATORS})
@@ -77,6 +80,12 @@ class LoggedRequest:
     received_ms: int
     responded_ms: int | None
     """None while the request is still being answered."""
+    headers: Mapping[str, str] = field(default_factory=dict[str, str])
+    """By lowercase name."""
+    body: str | None = None
+    """As text; None when it was empty or not UTF-8."""
+    truncated: bool = False
+    """The body was cut at the log's limit."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,24 +97,15 @@ class MockLog:
 
 @dataclass(frozen=True, slots=True)
 class Answer:
-    """What a case got back."""
+    """The last answer a case judged, with what it expected, as a report shows them."""
 
     response: HttpResponse
-    comparator: ComparatorSpec
-    logs: Mapping[str, MockLog] = field(default_factory=dict[str, MockLog])
-    """The log of each mock server the case asserts on, read after the response."""
+    expected: HttpExpected | None = None
 
 
-def answered_verdict(case: RunnableCase, http: HttpCaseInput, answer: Answer) -> CaseVerdict:
+def answered_verdict(case: RunnableCase, answer: Answer, failures: Sequence[str]) -> CaseVerdict:
     """PASS, or FAIL with every reason found."""
-    response_problems = response_failures(answer.response, http.expected, answer.comparator)
-    log_problems = (
-        failure
-        for assertion in http.log
-        for failure in log_failures(assertion, answer.logs[assertion.mock])
-    )
-    failures = (*response_problems, *log_problems)
-    outcome = answer_outcome(answer.response, http.expected)
+    outcome = answer_outcome(answer.response, answer.expected)
     if failures:
         return CaseVerdict(
             case, CaseStatus.FAIL, outcome, Mismatch(FAILURE_SEPARATOR.join(failures))
@@ -113,13 +113,13 @@ def answered_verdict(case: RunnableCase, http: HttpCaseInput, answer: Answer) ->
     return CaseVerdict(case, CaseStatus.PASS, outcome)
 
 
-def answer_outcome(response: HttpResponse, expected: HttpExpected) -> Returned:
+def answer_outcome(response: HttpResponse, expected: HttpExpected | None) -> Returned:
     """The answer as a report shows it: its status, its body, and the headers the case lists."""
     output: dict[str, JsonValue] = {
         "status": response.status,
-        BODY: _shown_body(response.body, expected.body),
+        BODY: _shown_body(response.body, expected.body if expected is not None else None),
     }
-    if expected.headers:
+    if expected is not None and expected.headers:
         output["headers"] = {
             name: response.headers[name.lower()]
             for name in expected.headers
@@ -133,37 +133,71 @@ def response_failures(
 ) -> tuple[str, ...]:
     """Why `response` is wrong. A wrong status says only that: an error's body differs from the
     expected one anyway, and the report shows it as the actual value."""
-    if response.status != expected.status:
-        return (f"status: expected {expected.status}, got {response.status}",)
+    if not status_matches(expected.status, response.status):
+        return (_status_failure(expected.status, response.status),)
     return (
         *_header_failures(response.headers, expected.headers),
         *_body_failures(response.body, expected.body, comparator),
     )
 
 
-def before_failure(index: int, request: HttpRequest, response: HttpResponse) -> str | None:
-    """Why a case's `before` request stops the case; None when it answered 2xx."""
-    if response.status in SUCCESS_STATUSES:
-        return None
-    where = f"before[{index}] {request.method} {request.target}"
-    return f"{where}: expected a 2xx status, got {response.status}"
+def status_matches(expected: ExpectedStatus, actual: int) -> bool:
+    """A class such as `"4xx"` holds every status of its hundred."""
+    if isinstance(expected, int):
+        return actual == expected
+    return str(actual)[:1] == expected[:1]
+
+
+def _status_failure(expected: ExpectedStatus, actual: int) -> str:
+    if isinstance(expected, int):
+        return f"status: expected {expected}, got {actual}"
+    return f"expected a {expected} status, got {actual}"
 
 
 def log_failures(assertion: LogAssertion, log: MockLog) -> tuple[str, ...]:
     """Why the log breaks `assertion`. What a full log dropped is counted but not kept: it says how
-    many came and nothing of which route they took or when, so only a count of the whole mock
-    server can be judged then."""
-    label = f"{assertion.mock} {assertion.route}" if assertion.route else assertion.mock
-    if log.dropped > 0 and (assertion.route is not None or assertion.min_gap_ms is not None):
+    many came and nothing of which route they took, what they carried or when, so only a count of
+    the whole mock server can be judged then."""
+    label = _log_label(assertion)
+    filtered = bool(assertion.headers or assertion.form)
+    narrowed = assertion.route is not None or assertion.min_gap_ms is not None or filtered
+    if log.dropped > 0 and narrowed:
         return (f"{label}: {OVERFLOWED}",)
-    matching = tuple(
+    on_route = tuple(
         entry for entry in log.entries if assertion.route is None or entry.route == assertion.route
     )
+    if assertion.form and any(entry.truncated for entry in on_route):
+        return (f"{label}: {CUT_BODY}",)
+    matching = tuple(entry for entry in on_route if _carries(entry, assertion))
     problems = (
         *_count_failures(assertion, len(matching) + log.dropped),
         *_gap_failure(assertion, matching),
     )
     return tuple(f"{label}: {problem}" for problem in problems)
+
+
+def _log_label(assertion: LogAssertion) -> str:
+    label = f"{assertion.mock} {assertion.route}" if assertion.route else assertion.mock
+    carried = [
+        *(f"header {name}={_short(value)}" for name, value in assertion.headers.items()),
+        *(f"form {name}={_short(value)}" for name, value in assertion.form.items()),
+    ]
+    return f"{label} with {', '.join(carried)}" if carried else label
+
+
+def _short(value: str) -> str:
+    return value_text(value, FILTER_VALUE_LIMIT)
+
+
+def _carries(entry: LoggedRequest, assertion: LogAssertion) -> bool:
+    """Whether the request carried every header and form field the assertion names."""
+    headers_match = all(
+        entry.headers.get(name.lower()) == value for name, value in assertion.headers.items()
+    )
+    if not headers_match or not assertion.form:
+        return headers_match
+    fields = parse_qs(entry.body or "", keep_blank_values=True)
+    return all(value in fields.get(name, ()) for name, value in assertion.form.items())
 
 
 def _count_failures(assertion: LogAssertion, seen: int) -> Iterator[str]:
