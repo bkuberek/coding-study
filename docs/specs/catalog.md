@@ -1,17 +1,17 @@
 # Spec: Catalog
 
-The binding manifest of every catalog item: 196 DSA problems and 111 non-DSA items (95 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
+The binding manifest of every catalog item: 196 DSA problems and 122 non-DSA items (106 problems and 16 items in `tracks/`), each with its id, slug, title, patterns, difficulty, kind and [labels](content.md#labels), and for the planned rows their batch and owner stream.
 
 | Track | Problems or items | Where |
 |-------|-------------------|-------|
 | `dsa` | 196 (185 planned, 11 added) | `problems/` |
-| `practical` | 58 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added, 15 service projects added) | `problems/` |
+| `practical` | 69 (6 planned, 16 added, 6 project problems added, 7 security and AI/LLM problems added, 8 backend TypeScript projects added, 15 service projects added, 11 memory and retrieval problems added) | `problems/` |
 | `lld` | 8 | `problems/` |
 | `concurrency` | 6 | `problems/` |
 | `debugging` | 23 (8 planned, 8 in Go and Rust, 7 JavaScript traps in TypeScript) | `problems/` |
 | `system-design` | 10 | `tracks/system-design/` |
 | `code-review` | 6 | `tracks/code-review/` |
-| **Total** | **307** (291 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
+| **Total** | **318** (302 problems, 16 items) | | Targets, batches and the copyright policy come from [content](content.md); the file layout comes from [problem-format](problem-format.md); how to write an item is in [authoring](authoring.md).
 
 Every row has three [labels](content.md#labels): `domains`, `job_roles` and `scope` ([S24](authoring.md#static), [ADR 0020](../decisions/0020-catalog-labels.md)). Their values repeat across hundreds of rows, so each section below states them once, with its exceptions, instead of in three columns; a table added later carries them as columns, which are binding as `kind` is. The prose column that says what a row covers is `covers`, since `scope` is a label.
 
@@ -297,7 +297,7 @@ Each stream owns whole patterns, so one stream holds all problems of a pattern a
 
 ## Non-DSA catalog
 
-### practical (58, `problems/`)
+### practical (69, `problems/`)
 
 Labels: `0186` to `0191` and `0248` (the 7 `progressive` rows, `domains: [backend]`, `job_roles: [backend]`, `scope: function`); `0214` to `0228` (the 15 insurance rows, `domains: [fintech]`, `job_roles: [backend]`, `scope: function`); `0249` to `0254` (the 6 project problems, `domains: [backend, fintech]`, `job_roles: [backend]`, `scope: project`). Exceptions: `banking-system` and `scheduled-transfers-bank` also have `fintech`, and `api-gateway` also has the role `platform`. `0255` to `0261` carry their labels as columns.
 
@@ -414,6 +414,22 @@ Four service projects in TypeScript on P11's mock server extensions, the first p
 | 0291 | `rag-citations-typescript` | RAG Service with Citations (TypeScript) | project | hard | `typescript` | `ai-llm` | `ai-engineer` | project |
 | 0292 | `tool-calling-agent-loop-typescript` | Tool-Calling Agent Loop (TypeScript) | project | hard | `typescript` | `ai-llm`, `security` | `ai-engineer`, `security-engineer` | project |
 
+Eleven function-size memory and retrieval problems, original and needing no service, each in Python and TypeScript under the [Languages rule](#rules). `0293` to `0296` are four-level progressive stores: memories per user, a chat history index, a context packer under a token budget, and versioned facts that two stores merge. `0297` keeps BM25 current over an index that forgets, and `0298` cleans text before it is stored as a memory. `0299` to `0303` are retrieval blocks: cosine top k with a bounded heap, chunking with overlap, recall, MRR and nDCG, a freshness reranker, and a memory store with compare-and-set writes. The labels are columns here and binding, as `kind` is:
+
+| id | slug | title | patterns | kind | difficulty | languages | domains | job_roles | scope |
+|----|------|-------|----------|------|------------|-----------|---------|-----------|-------|
+| 0293 | `memory-store` | Memory Store | - | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | function |
+| 0294 | `chat-history-index` | Chat History Index | - | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | function |
+| 0295 | `context-packer` | Context Packer | `greedy` | progressive | medium | `python`, `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | function |
+| 0296 | `memory-facts-with-merge` | Memory Facts with Merge | - | progressive | hard | `python`, `typescript` | `ai-llm`, `backend` | `backend`, `ai-engineer` | function |
+| 0297 | `forgettable-inverted-index` | Forgettable Inverted Index | - | design | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `backend` | function |
+| 0298 | `memory-write-sanitizer` | Memory Write Sanitizer | - | function | medium | `python`, `typescript` | `ai-llm`, `security` | `ai-engineer`, `security-engineer` | function |
+| 0299 | `cosine-top-k` | Cosine Top K | `heap` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `backend` | function |
+| 0300 | `chunking-with-overlap` | Chunking With Overlap | `sliding-window` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `backend` | function |
+| 0301 | `retrieval-metrics` | Retrieval Metrics | `arrays-hashing` | function | medium | `python`, `typescript` | `ai-llm` | `ai-engineer`, `backend` | function |
+| 0302 | `freshness-reranker` | Freshness Reranker | `arrays-hashing` | function | easy | `python`, `typescript` | `ai-llm` | `ai-engineer`, `backend` | function |
+| 0303 | `versioned-memory-store` | Versioned Memory Store | `arrays-hashing` | design | easy | `python`, `typescript` | `ai-llm`, `backend` | `ai-engineer`, `backend` | function |
+
 ### lld (8, owner L1, kind `design` plus `rubric.md`, `problems/`)
 
 Labels: `domains: [backend]`, `job_roles: [backend]` and `scope: function` on all 8 rows, with no exceptions.
@@ -467,7 +483,7 @@ The eight planned rows (owner B1) port one bug to the languages it exists in; 02
 | 0246 | `debug-char-boundary` | Debug: Char Boundary | Truncation by byte index, which panics inside a multi-byte character | medium | rust |
 | 0247 | `debug-clone-mutation` | Debug: Clone Mutation | A clone added to satisfy the borrow checker takes the credit, so transfers credit nobody | medium | rust |
 
-`0264` to `0271`, without `0267`, which is a project under [practical](#practical-58-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
+`0264` to `0271`, without `0267`, which is a project under [practical](#practical-69-problems), drill JavaScript traps in small backend code. Each lists TypeScript only, because the bug exists in JavaScript. The labels are columns here.
 
 | id | slug | title | covers | difficulty | languages | domains | job_roles | scope |
 |----|------|-------|-------|------------|-----------|---------|-----------|-------|

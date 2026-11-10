@@ -195,10 +195,10 @@ The pilots are written with the next project problems.
 
 - [x] P1: the spike, passed with changes on macOS; the sandbox is [measured on Linux](specs/service-projects.md#on-linux), with SELinux and rootless Docker unproven.
 - [x] P2: the environment allowlist, for every problem ([Process environment](specs/runners.md#process-environment)).
-- [x] P3 to P6: tooling: the sandbox, the lifecycle commands, the mock server, `cstudy dev` and the HTTP grader, with `verify` and a CI job on a real engine. Planned with P9: the other flags of `cstudy dev`, and `cstudy test --events`.
+- [x] P3 to P6: tooling: the sandbox, the lifecycle commands, the mock server, `cstudy dev` and the HTTP grader, with `verify` and a CI job on a real engine. P9 added `cstudy test --events` and `cstudy dev --events`; the other flags of `cstudy dev` are still planned.
 - [x] P7: the first problem in TypeScript, `0277-coworking-availability-typescript`.
 - [x] P8: the first problem in Python, `0278-coworking-availability-python`, graded by the same cases and mock servers as `0277`. The catalog then had 294 entries.
-- [ ] P9: code intelligence and Web UI.
+- [x] P9: code intelligence and Web UI. Built: TypeScript and Python [language servers](specs/service-projects.md#language-servers) in a sidecar, a calm state while Docker cannot run them, and on the page Run tests, Submit and Cancel, a dev stack panel with its scenario picker, the dependency list and Docker's states ([Web UI](specs/service-projects.md#web-ui)). Still planned: your own IDE's generated files (R29).
 - [x] P10: data-driven problems. Built: [backing services](specs/service-projects.md#backing-services), with a Postgres and Redis fixture, `grade_setup` on them, Moto measured, and [grader reach](specs/service-projects.md#grader-reach) for PP3's identity provider. [Parallel cases](specs/service-projects.md#parallel-cases) are built too. Still planned: D7 for them, and contract tables (R9). The data-driven problems are PP5 to PP10 below, and all six are built.
 - [x] P11: mock server extensions, multi-step cases, project-size security and AI problems. Built: [multi-step cases](specs/service-projects.md#multi-step-cases) with flows, cookie jars and captures, the app output check, log assertions on form fields and headers, and the mock server's [pass-through](specs/service-projects.md#pass-through) with token tampering, which reach P10's services through `grader_reach`. R33 is done: SSE streaming with drops and stalls, matching on request bodies, log assertions on JSON bodies, run-time values and an example mock LLM provider, with a [first-byte check](specs/service-projects.md#hidden-http-case), `first_byte_ms_max`, added so that a case can tell a stream from an answer held back until it is whole. PP3 is built as `0280`, and the AI and security problems as PP11, PP12, PP13 and PP15 below; PP14 is on hold.
 - [ ] P12 to P14: Kotlin and Java, Go, Rust (maybe).
@@ -215,6 +215,7 @@ The pilots are written with the next project problems.
 - [x] Step 2: the first wave of function-size problems: seven in Python and TypeScript, `0255` to `0261`, with the language rule that lets the security, identity and AI/LLM domains list a subset. The catalog then had 277 entries.
 - [x] TypeScript backend problems on today's engine: `0262` and `0263`, two small services to extend, then `0264` to `0271`, seven JavaScript traps on the debugging track and one asynchronous bug as a project on the virtual clock. The catalog then had 287 entries.
 - [x] Backend reliability on the same engine: `0272` to `0276`, five TypeScript projects on an idempotent at-least-once consumer, a transactional outbox, retries on the virtual clock, optimistic locking, and reviewing an AI extraction, where the model proposes, code validates and a person decides. The catalog then had 292 entries.
+- [x] Memory and retrieval practice: `0293` to `0303`, eleven function-size AI/LLM problems in Python and TypeScript, from memory stores and context packing to cosine top k, chunking and retrieval metrics. The catalog then had 318 entries.
 - [ ] Step 3: later waves: project-size problems need Phase 12, and system-size ones need later design.
 
 ### Planned project problems
@@ -253,7 +254,7 @@ PP3 waited for P10's backing services and grader reach and for P11's multi-step 
 | PP14 | Fix the vulnerable service | security · security-engineer | A working app with broken authentication, IDOR, mass assignment and path traversal, graded by attack cases that must fail and normal cases that must keep passing | hard |
 | PP15 | Secure file upload | security, backend · backend, security-engineer | Size limits, content sniffing, path traversal, a mock malware-scan vendor that fails | medium |
 
-Suggested order: PP1 to PP13 and PP15 are built, and PP14 is on hold. P9, code intelligence and the Web UI, is next; then P12 to P14, which bring the service problems to the JVM and Go: Kotlin and Java, Go, and Rust (maybe). D7 and contract tables (R9) come in when a problem needs them.
+Suggested order: PP1 to PP13 and PP15 are built, and PP14 is on hold. P9, code intelligence and the Web UI, is built. P12 to P14 are next, which bring the service problems to the JVM and Go: Kotlin and Java, Go, and Rust (maybe). D7 and contract tables (R9) come in when a problem needs them.
 
 - [x] PP1: `0278-coworking-availability-python` (P8).
 - [x] PP2: `0279-payment-webhook-receiver-typescript`.
