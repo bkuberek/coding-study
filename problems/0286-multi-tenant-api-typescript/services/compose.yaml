@@ -1,0 +1,29 @@
+# Backing services only: cstudy adds the network, labels, log limits, capabilities and privileges.
+# Postgres runs as the image's own user, since its entrypoint otherwise steps down from root
+# through gosu, which needs capabilities a backing service never holds. Its first role,
+# `tracker_owner`, is the superuser that migrations, `grade_setup` and `reset` connect as; the
+# baseline migration creates `tracker_app`, the role the app connects as.
+services:
+  db:
+    image: postgres:17.11-alpine@sha256:3540c0362c809df084ffac0ae69fe794515f9de92692f02178bcdce0ef0302ac
+    user: postgres
+    environment:
+      POSTGRES_USER: tracker_owner
+      POSTGRES_PASSWORD: tracker_owner
+      POSTGRES_DB: tracker
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    tmpfs:
+      - /var/run/postgresql:mode=1777
+      - /tmp:mode=1777
+    mem_limit: 256m
+    pids_limit: 128
+    healthcheck:
+      test: [CMD, pg_isready, -U, tracker_owner, -d, tracker, -h, 127.0.0.1]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+      start_interval: 250ms
+volumes:
+  pgdata:

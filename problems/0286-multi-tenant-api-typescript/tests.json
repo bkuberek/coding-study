@@ -1,0 +1,2561 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "v1",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "an organization lists its own projects and no other's",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "p-1",
+            "name": "Spring launch"
+          },
+          {
+            "id": "p-2",
+            "name": "Office move"
+          }
+        ]
+      },
+      "comparator": {
+        "type": "unordered"
+      }
+    },
+    {
+      "id": "v2",
+      "level": 1,
+      "visible": true,
+      "note": "another organization's project is not found: 404, not 403, so its existence does not leak",
+      "request": {
+        "method": "GET",
+        "path": "/projects/p-3",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "not_found"
+        }
+      }
+    },
+    {
+      "id": "v3",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "a task created in one of the caller's projects is the caller's to read",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/projects/p-1/tasks",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "title": "Send the invites"
+            }
+          },
+          "expected": {
+            "status": 201
+          },
+          "capture": {
+            "task": "body.id"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/tasks/{{task}}",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "{{task}}",
+              "project": "p-1",
+              "title": "Send the invites",
+              "done": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "v4",
+      "level": 1,
+      "visible": true,
+      "note": "a request without a key is refused",
+      "request": {
+        "method": "GET",
+        "path": "/projects"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "unauthorized"
+        }
+      }
+    },
+    {
+      "id": "v5",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "another organization cannot change a task by its id",
+      "steps": [
+        {
+          "request": {
+            "method": "PATCH",
+            "path": "/tasks/t-1",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            },
+            "json": {
+              "done": true
+            }
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "not_found"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/tasks/t-1",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "t-1",
+              "project": "p-1",
+              "title": "Write the launch email",
+              "done": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "fresh": true,
+      "note": "birch lists only its own project",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "headers": {
+          "Authorization": "Bearer key-ben"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "p-3",
+            "name": "Spring catalog"
+          }
+        ]
+      },
+      "comparator": {
+        "type": "unordered"
+      }
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "fresh": true,
+      "note": "a project of the caller's",
+      "request": {
+        "method": "GET",
+        "path": "/projects/p-1",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "p-1",
+          "name": "Spring launch"
+        }
+      }
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "fresh": true,
+      "note": "a project's tasks",
+      "request": {
+        "method": "GET",
+        "path": "/projects/p-1/tasks",
+        "headers": {
+          "Authorization": "Bearer key-ari"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "t-1",
+            "project": "p-1",
+            "title": "Write the launch email",
+            "done": false
+          },
+          {
+            "id": "t-2",
+            "project": "p-1",
+            "title": "Book the launch venue",
+            "done": true
+          }
+        ]
+      },
+      "comparator": {
+        "type": "unordered"
+      }
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "note": "the tasks of another organization's project are not found",
+      "request": {
+        "method": "GET",
+        "path": "/projects/p-3/tasks",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "not_found"
+        }
+      }
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "fresh": true,
+      "note": "a task cannot be created in another organization's project, even though its id exists",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/projects/p-3/tasks",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "title": "Borrow the photos"
+            }
+          },
+          "expected": {
+            "status": 404
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/projects/p-3/tasks",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "t-4",
+                "project": "p-3",
+                "title": "Shoot the launch photos",
+                "done": false
+              },
+              {
+                "id": "t-5",
+                "project": "p-3",
+                "title": "Price the spring range",
+                "done": false
+              }
+            ]
+          }
+        }
+      ],
+      "comparator": {
+        "type": "unordered"
+      }
+    },
+    {
+      "id": "h6",
+      "level": 1,
+      "note": "another organization's task is not found",
+      "request": {
+        "method": "GET",
+        "path": "/tasks/t-4",
+        "headers": {
+          "Authorization": "Bearer key-ari"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "not_found"
+        }
+      }
+    },
+    {
+      "id": "h7",
+      "level": 1,
+      "fresh": true,
+      "note": "another organization cannot delete a task by its id",
+      "steps": [
+        {
+          "request": {
+            "method": "DELETE",
+            "path": "/tasks/t-5",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "not_found"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/tasks/t-5",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "t-5",
+              "project": "p-3",
+              "title": "Price the spring range",
+              "done": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h8",
+      "level": 1,
+      "fresh": true,
+      "note": "another organization cannot delete a project by its id",
+      "steps": [
+        {
+          "request": {
+            "method": "DELETE",
+            "path": "/projects/p-3",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "not_found"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/projects/p-3",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "p-3",
+              "name": "Spring catalog"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h9",
+      "level": 1,
+      "note": "an id nobody has answers exactly as another organization's does",
+      "request": {
+        "method": "GET",
+        "path": "/projects/p-99",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "not_found"
+        }
+      }
+    },
+    {
+      "id": "h10",
+      "level": 1,
+      "note": "a task of the organization the grader added is not found",
+      "request": {
+        "method": "GET",
+        "path": "/tasks/x-t-1",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "not_found"
+        }
+      }
+    },
+    {
+      "id": "h11",
+      "level": 1,
+      "fresh": true,
+      "note": "the organization the grader added, with a key you never saw, lists its own project",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "headers": {
+          "Authorization": "Bearer x-key-cy"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "x-p-1",
+            "name": "Launch week"
+          }
+        ]
+      },
+      "comparator": {
+        "type": "unordered"
+      }
+    },
+    {
+      "id": "h12",
+      "level": 1,
+      "note": "a key nobody holds is refused",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "headers": {
+          "Authorization": "Bearer key-nobody"
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "unauthorized"
+        }
+      }
+    },
+    {
+      "id": "h13",
+      "level": 1,
+      "note": "a key sent without Bearer is refused",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "headers": {
+          "Authorization": "key-ada"
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "unauthorized"
+        }
+      }
+    },
+    {
+      "id": "h14",
+      "level": 1,
+      "fresh": true,
+      "note": "a new project is the caller's organization's and no other's",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/projects",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "name": "Budget review"
+            }
+          },
+          "expected": {
+            "status": 201
+          },
+          "capture": {
+            "project": "body.id"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/projects",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "p-3",
+                "name": "Spring catalog"
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/projects/{{project}}",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "{{project}}",
+              "name": "Budget review"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h15",
+      "level": 1,
+      "note": "a project with no name",
+      "request": {
+        "method": "POST",
+        "path": "/projects",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        },
+        "json": {}
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h16",
+      "level": 1,
+      "note": "a project with an empty name",
+      "request": {
+        "method": "POST",
+        "path": "/projects",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        },
+        "json": {
+          "name": ""
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h17",
+      "level": 1,
+      "note": "a body that is not JSON",
+      "request": {
+        "method": "POST",
+        "path": "/projects",
+        "headers": {
+          "Authorization": "Bearer key-ada",
+          "Content-Type": "application/json"
+        },
+        "body": "{name"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h18",
+      "level": 1,
+      "note": "a name of 101 characters",
+      "request": {
+        "method": "POST",
+        "path": "/projects",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        },
+        "json": {
+          "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h19",
+      "level": 1,
+      "fresh": true,
+      "note": "a name of 100 characters",
+      "request": {
+        "method": "POST",
+        "path": "/projects",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        },
+        "json": {
+          "name": "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+        }
+      },
+      "expected": {
+        "status": 201
+      }
+    },
+    {
+      "id": "h20",
+      "level": 1,
+      "fresh": true,
+      "note": "done given as text",
+      "request": {
+        "method": "PATCH",
+        "path": "/tasks/t-1",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        },
+        "json": {
+          "done": "yes"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h21",
+      "level": 1,
+      "fresh": true,
+      "note": "a change that changes nothing",
+      "request": {
+        "method": "PATCH",
+        "path": "/tasks/t-1",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        },
+        "json": {}
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h22",
+      "level": 1,
+      "fresh": true,
+      "note": "a task's title and done changed at once",
+      "request": {
+        "method": "PATCH",
+        "path": "/tasks/t-1",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        },
+        "json": {
+          "title": "Write the launch email twice",
+          "done": true
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "t-1",
+          "project": "p-1",
+          "title": "Write the launch email twice",
+          "done": true
+        }
+      }
+    },
+    {
+      "id": "h23",
+      "level": 1,
+      "fresh": true,
+      "note": "a task marked not done keeps its title",
+      "request": {
+        "method": "PATCH",
+        "path": "/tasks/t-2",
+        "headers": {
+          "Authorization": "Bearer key-ari"
+        },
+        "json": {
+          "done": false
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "t-2",
+          "project": "p-1",
+          "title": "Book the launch venue",
+          "done": false
+        }
+      }
+    },
+    {
+      "id": "h24",
+      "level": 1,
+      "fresh": true,
+      "note": "a deleted task is gone",
+      "steps": [
+        {
+          "request": {
+            "method": "DELETE",
+            "path": "/tasks/t-1",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "t-1",
+              "project": "p-1",
+              "title": "Write the launch email",
+              "done": false
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/tasks/t-1",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "not_found"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h25",
+      "level": 1,
+      "fresh": true,
+      "note": "a project's tasks go with it",
+      "steps": [
+        {
+          "request": {
+            "method": "DELETE",
+            "path": "/projects/p-2",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "p-2",
+              "name": "Office move"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/tasks/t-3",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "not_found"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h26",
+      "level": 1,
+      "fresh": true,
+      "note": "a member of another organization cannot change a task by its id",
+      "steps": [
+        {
+          "request": {
+            "method": "PATCH",
+            "path": "/tasks/t-5",
+            "headers": {
+              "Authorization": "Bearer key-ari"
+            },
+            "json": {
+              "done": true
+            }
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "not_found"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/tasks/t-5",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "t-5",
+              "project": "p-3",
+              "title": "Price the spring range",
+              "done": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h27",
+      "level": 1,
+      "fresh": true,
+      "note": "a task cannot be created in the project of the organization the grader added",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/projects/x-p-1/tasks",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "title": "Crash the party"
+            }
+          },
+          "expected": {
+            "status": 404
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/projects/x-p-1/tasks",
+            "headers": {
+              "Authorization": "Bearer x-key-cy"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "x-t-1",
+                "project": "x-p-1",
+                "title": "Plan the launch party",
+                "done": false
+              },
+              {
+                "id": "x-t-2",
+                "project": "x-p-1",
+                "title": "Print the badges",
+                "done": true
+              }
+            ]
+          }
+        }
+      ],
+      "comparator": {
+        "type": "unordered"
+      }
+    },
+    {
+      "id": "h28",
+      "level": 1,
+      "fresh": true,
+      "note": "another organization's id is 404 even with a broken body: the id is checked first",
+      "request": {
+        "method": "POST",
+        "path": "/projects/p-3/tasks",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        },
+        "json": {
+          "title": ""
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "not_found"
+        }
+      }
+    },
+    {
+      "id": "v6",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "a search shows only the caller's tasks, though its query names no organization",
+      "request": {
+        "method": "GET",
+        "path": "/search/tasks",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        },
+        "query": {
+          "q": "launch"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "t-1",
+            "project": "p-1",
+            "title": "Write the launch email",
+            "done": false
+          },
+          {
+            "id": "t-2",
+            "project": "p-1",
+            "title": "Book the launch venue",
+            "done": true
+          }
+        ]
+      },
+      "comparator": {
+        "type": "unordered"
+      }
+    },
+    {
+      "id": "v7",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "20 reads at once from two organizations: every answer is the caller's own task",
+      "parallel": {
+        "count": 20,
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/tasks/t-1",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          {
+            "method": "GET",
+            "path": "/tasks/t-4",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            }
+          }
+        ]
+      },
+      "expected_statuses": {
+        "200": 20
+      }
+    },
+    {
+      "id": "h30",
+      "level": 2,
+      "fresh": true,
+      "note": "a search from birch shows none of alder's tasks: the database must scope the query the app does not",
+      "request": {
+        "method": "GET",
+        "path": "/search/tasks",
+        "headers": {
+          "Authorization": "Bearer key-ben"
+        },
+        "query": {
+          "q": "launch"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "t-4",
+            "project": "p-3",
+            "title": "Shoot the launch photos",
+            "done": false
+          }
+        ]
+      },
+      "comparator": {
+        "type": "unordered"
+      }
+    },
+    {
+      "id": "h31",
+      "level": 2,
+      "fresh": true,
+      "note": "a search from the organization the grader added shows only its own task",
+      "request": {
+        "method": "GET",
+        "path": "/search/tasks",
+        "headers": {
+          "Authorization": "Bearer x-key-cy"
+        },
+        "query": {
+          "q": "launch"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "x-t-1",
+            "project": "x-p-1",
+            "title": "Plan the launch party",
+            "done": false
+          }
+        ]
+      },
+      "comparator": {
+        "type": "unordered"
+      }
+    },
+    {
+      "id": "h32",
+      "level": 2,
+      "fresh": true,
+      "note": "a search ignores case",
+      "request": {
+        "method": "GET",
+        "path": "/search/tasks",
+        "headers": {
+          "Authorization": "Bearer key-ari"
+        },
+        "query": {
+          "q": "LAUNCH"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "t-1",
+            "project": "p-1",
+            "title": "Write the launch email",
+            "done": false
+          },
+          {
+            "id": "t-2",
+            "project": "p-1",
+            "title": "Book the launch venue",
+            "done": true
+          }
+        ]
+      },
+      "comparator": {
+        "type": "unordered"
+      }
+    },
+    {
+      "id": "h33",
+      "level": 2,
+      "fresh": true,
+      "note": "a word only another organization's tasks hold finds nothing",
+      "request": {
+        "method": "GET",
+        "path": "/search/tasks",
+        "headers": {
+          "Authorization": "Bearer key-bea"
+        },
+        "query": {
+          "q": "desks"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": []
+      }
+    },
+    {
+      "id": "h34",
+      "level": 2,
+      "note": "a search with no q",
+      "request": {
+        "method": "GET",
+        "path": "/search/tasks",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h35",
+      "level": 2,
+      "note": "a search for nothing",
+      "request": {
+        "method": "GET",
+        "path": "/search/tasks",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        },
+        "query": {
+          "q": ""
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h36",
+      "level": 2,
+      "fresh": true,
+      "note": "32 reads at once from three organizations, 3 runs: a tenant setting that outlives its request, or is set on another connection, answers some as another organization",
+      "repeat": 3,
+      "parallel": {
+        "count": 32,
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/tasks/t-1",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          {
+            "method": "GET",
+            "path": "/tasks/t-4",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            }
+          },
+          {
+            "method": "GET",
+            "path": "/tasks/x-t-1",
+            "headers": {
+              "Authorization": "Bearer x-key-cy"
+            }
+          },
+          {
+            "method": "GET",
+            "path": "/projects/p-2",
+            "headers": {
+              "Authorization": "Bearer key-ari"
+            }
+          }
+        ]
+      },
+      "expected_statuses": {
+        "200": 32
+      }
+    },
+    {
+      "id": "h37",
+      "level": 2,
+      "fresh": true,
+      "note": "32 changes at once from two organizations, 3 runs: each lands in its own organization",
+      "repeat": 3,
+      "parallel": {
+        "count": 32,
+        "requests": [
+          {
+            "method": "PATCH",
+            "path": "/tasks/t-1",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "done": true
+            }
+          },
+          {
+            "method": "PATCH",
+            "path": "/tasks/t-4",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            },
+            "json": {
+              "done": true
+            }
+          }
+        ]
+      },
+      "expected_statuses": {
+        "200": 32
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/tasks/t-4",
+          "headers": {
+            "Authorization": "Bearer key-bea"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "id": "t-4",
+            "project": "p-3",
+            "title": "Shoot the launch photos",
+            "done": true
+          }
+        }
+      }
+    },
+    {
+      "id": "h38",
+      "level": 2,
+      "fresh": true,
+      "note": "32 new tasks at once from two organizations, 3 runs: each goes into its own project",
+      "repeat": 3,
+      "parallel": {
+        "count": 32,
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/projects/p-1/tasks",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "title": "burst {i}"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/projects/p-3/tasks",
+            "headers": {
+              "Authorization": "Bearer key-ben"
+            },
+            "json": {
+              "title": "burst {i}"
+            }
+          }
+        ]
+      },
+      "expected_statuses": {
+        "201": 32
+      }
+    },
+    {
+      "id": "v8",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "a member may not delete a project",
+      "steps": [
+        {
+          "request": {
+            "method": "DELETE",
+            "path": "/projects/p-1",
+            "headers": {
+              "Authorization": "Bearer key-ari"
+            }
+          },
+          "expected": {
+            "status": 403,
+            "body": {
+              "error": "forbidden"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/projects/p-1",
+            "headers": {
+              "Authorization": "Bearer key-ari"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "p-1",
+              "name": "Spring launch"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "v9",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "a project whose body names another organization stays the caller's",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/projects",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "name": "Taxes",
+              "tenant_id": "birch"
+            }
+          },
+          "expected": {
+            "status": 201
+          },
+          "capture": {
+            "project": "body.id"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/projects/{{project}}",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            }
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "not_found"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/projects/{{project}}",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "{{project}}",
+              "name": "Taxes"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "v10",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "a member renames themselves, and the role in the body changes nothing",
+      "request": {
+        "method": "PATCH",
+        "path": "/me",
+        "headers": {
+          "Authorization": "Bearer key-ari"
+        },
+        "json": {
+          "name": "Ari Kim",
+          "role": "admin"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": "u-ari",
+          "name": "Ari Kim",
+          "role": "member"
+        }
+      }
+    },
+    {
+      "id": "h40",
+      "level": 3,
+      "fresh": true,
+      "note": "an organization's members",
+      "request": {
+        "method": "GET",
+        "path": "/members",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "u-ada",
+            "name": "Ada",
+            "role": "admin"
+          },
+          {
+            "id": "u-ari",
+            "name": "Ari",
+            "role": "member"
+          }
+        ]
+      },
+      "comparator": {
+        "type": "unordered"
+      }
+    },
+    {
+      "id": "h41",
+      "level": 3,
+      "fresh": true,
+      "note": "birch's members, to a member",
+      "request": {
+        "method": "GET",
+        "path": "/members",
+        "headers": {
+          "Authorization": "Bearer key-ben"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "u-bea",
+            "name": "Bea",
+            "role": "admin"
+          },
+          {
+            "id": "u-ben",
+            "name": "Ben",
+            "role": "member"
+          }
+        ]
+      },
+      "comparator": {
+        "type": "unordered"
+      }
+    },
+    {
+      "id": "h42",
+      "level": 3,
+      "fresh": true,
+      "note": "the members of the organization the grader added",
+      "request": {
+        "method": "GET",
+        "path": "/members",
+        "headers": {
+          "Authorization": "Bearer x-key-cy"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "x-u-cy",
+            "name": "Cy",
+            "role": "admin"
+          }
+        ]
+      },
+      "comparator": {
+        "type": "unordered"
+      }
+    },
+    {
+      "id": "h43",
+      "level": 3,
+      "fresh": true,
+      "note": "an admin makes a member an admin, who may then delete a project",
+      "steps": [
+        {
+          "request": {
+            "method": "PATCH",
+            "path": "/members/u-ari",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "role": "admin"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "u-ari",
+              "name": "Ari",
+              "role": "admin"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "DELETE",
+            "path": "/projects/p-2",
+            "headers": {
+              "Authorization": "Bearer key-ari"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "p-2",
+              "name": "Office move"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h44",
+      "level": 3,
+      "fresh": true,
+      "note": "a member cannot make themselves an admin",
+      "steps": [
+        {
+          "request": {
+            "method": "PATCH",
+            "path": "/members/u-ari",
+            "headers": {
+              "Authorization": "Bearer key-ari"
+            },
+            "json": {
+              "role": "admin"
+            }
+          },
+          "expected": {
+            "status": 403,
+            "body": {
+              "error": "forbidden"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "DELETE",
+            "path": "/projects/p-2",
+            "headers": {
+              "Authorization": "Bearer key-ari"
+            }
+          },
+          "expected": {
+            "status": 403,
+            "body": {
+              "error": "forbidden"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h45",
+      "level": 3,
+      "fresh": true,
+      "note": "an admin cannot change the role of another organization's user",
+      "steps": [
+        {
+          "request": {
+            "method": "PATCH",
+            "path": "/members/u-bea",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "role": "member"
+            }
+          },
+          "expected": {
+            "status": 404
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/members",
+            "headers": {
+              "Authorization": "Bearer key-ben"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "u-bea",
+                "name": "Bea",
+                "role": "admin"
+              },
+              {
+                "id": "u-ben",
+                "name": "Ben",
+                "role": "member"
+              }
+            ]
+          }
+        }
+      ],
+      "comparator": {
+        "type": "unordered"
+      }
+    },
+    {
+      "id": "h46",
+      "level": 3,
+      "fresh": true,
+      "note": "a role nobody has",
+      "request": {
+        "method": "PATCH",
+        "path": "/members/u-ari",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        },
+        "json": {
+          "role": "owner"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h47",
+      "level": 3,
+      "fresh": true,
+      "note": "a member whose body names another organization stays in their own",
+      "steps": [
+        {
+          "request": {
+            "method": "PATCH",
+            "path": "/me",
+            "headers": {
+              "Authorization": "Bearer key-ari"
+            },
+            "json": {
+              "name": "Ari",
+              "tenant_id": "birch"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "u-ari",
+              "name": "Ari",
+              "role": "member"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/projects/p-1",
+            "headers": {
+              "Authorization": "Bearer key-ari"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "p-1",
+              "name": "Spring launch"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h48",
+      "level": 3,
+      "fresh": true,
+      "note": "a task whose body names another organization and project goes where its path says",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/projects/p-1/tasks",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "title": "Pack the boxes",
+              "tenant_id": "birch",
+              "project": "p-3"
+            }
+          },
+          "expected": {
+            "status": 201
+          },
+          "capture": {
+            "task": "body.id"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/tasks/{{task}}",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            }
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "not_found"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/tasks/{{task}}",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "{{task}}",
+              "project": "p-1",
+              "title": "Pack the boxes",
+              "done": false
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h49",
+      "level": 3,
+      "fresh": true,
+      "note": "a change whose body names another organization leaves the task where it is",
+      "steps": [
+        {
+          "request": {
+            "method": "PATCH",
+            "path": "/tasks/t-1",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "done": true,
+              "tenant_id": "birch"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "t-1",
+              "project": "p-1",
+              "title": "Write the launch email",
+              "done": true
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/tasks/t-1",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            }
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "not_found"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h50",
+      "level": 3,
+      "fresh": true,
+      "note": "a change whose body names another project leaves the task in its own",
+      "steps": [
+        {
+          "request": {
+            "method": "PATCH",
+            "path": "/tasks/t-1",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "title": "Moved?",
+              "project": "p-3"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "t-1",
+              "project": "p-1",
+              "title": "Moved?",
+              "done": false
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/tasks/t-1",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            }
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "not_found"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h51",
+      "level": 3,
+      "fresh": true,
+      "note": "an id in a new project's body is not the project's id",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/projects",
+            "headers": {
+              "Authorization": "Bearer key-ari"
+            },
+            "json": {
+              "name": "Notes",
+              "id": "p-1"
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/projects/p-1",
+            "headers": {
+              "Authorization": "Bearer key-ari"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "p-1",
+              "name": "Spring launch"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h52",
+      "level": 3,
+      "fresh": true,
+      "note": "a member deleting another organization's project hears 404, not 403",
+      "request": {
+        "method": "DELETE",
+        "path": "/projects/p-1",
+        "headers": {
+          "Authorization": "Bearer key-ben"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "not_found"
+        }
+      }
+    },
+    {
+      "id": "h53",
+      "level": 3,
+      "fresh": true,
+      "note": "a member deleting their own organization's project hears 403",
+      "steps": [
+        {
+          "request": {
+            "method": "DELETE",
+            "path": "/projects/p-3",
+            "headers": {
+              "Authorization": "Bearer key-ben"
+            }
+          },
+          "expected": {
+            "status": 403,
+            "body": {
+              "error": "forbidden"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/projects/p-3",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "p-3",
+              "name": "Spring catalog"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h54",
+      "level": 3,
+      "fresh": true,
+      "note": "a member changing another organization's user hears 404, not 403",
+      "request": {
+        "method": "PATCH",
+        "path": "/members/u-ari",
+        "headers": {
+          "Authorization": "Bearer key-ben"
+        },
+        "json": {
+          "role": "member"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "not_found"
+        }
+      }
+    },
+    {
+      "id": "h55",
+      "level": 3,
+      "note": "a change of name without a key",
+      "request": {
+        "method": "PATCH",
+        "path": "/me",
+        "json": {
+          "name": "Nobody"
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "unauthorized"
+        }
+      }
+    },
+    {
+      "id": "h56",
+      "level": 3,
+      "fresh": true,
+      "note": "an empty name",
+      "request": {
+        "method": "PATCH",
+        "path": "/me",
+        "headers": {
+          "Authorization": "Bearer key-ari"
+        },
+        "json": {
+          "name": ""
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h57",
+      "level": 3,
+      "fresh": true,
+      "note": "a body with a role and no name",
+      "request": {
+        "method": "PATCH",
+        "path": "/me",
+        "headers": {
+          "Authorization": "Bearer key-ari"
+        },
+        "json": {
+          "role": "admin"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h58",
+      "level": 3,
+      "fresh": true,
+      "note": "an admin who steps down is a member from the next request",
+      "steps": [
+        {
+          "request": {
+            "method": "PATCH",
+            "path": "/members/u-ada",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "role": "member"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "u-ada",
+              "name": "Ada",
+              "role": "member"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "DELETE",
+            "path": "/projects/p-2",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          "expected": {
+            "status": 403,
+            "body": {
+              "error": "forbidden"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "v11",
+      "level": 4,
+      "visible": true,
+      "fresh": true,
+      "note": "a comment on a task",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/tasks/t-1/comments",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "body": "Draft is in the shared folder"
+            }
+          },
+          "expected": {
+            "status": 201
+          },
+          "capture": {
+            "comment": "body.id"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/tasks/t-1/comments",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "{{comment}}",
+                "task": "t-1",
+                "author": "u-ada",
+                "body": "Draft is in the shared folder"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "v12",
+      "level": 4,
+      "visible": true,
+      "fresh": true,
+      "note": "a comment search shows only the caller's comments",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/tasks/t-1/comments",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "body": "The launch email is drafted"
+            }
+          },
+          "expected": {
+            "status": 201
+          },
+          "capture": {
+            "mine": "body.id"
+          }
+        },
+        {
+          "request": {
+            "method": "POST",
+            "path": "/tasks/t-4/comments",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            },
+            "json": {
+              "body": "Launch photos are booked"
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/search/comments",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "query": {
+              "q": "launch"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "{{mine}}",
+                "task": "t-1",
+                "author": "u-ada",
+                "body": "The launch email is drafted"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "h60",
+      "level": 4,
+      "fresh": true,
+      "note": "a comment search from other organizations finds none of alder's: a new table needs its policy from the start",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/tasks/t-1/comments",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "body": "Venue holds 80 for the launch"
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/search/comments",
+            "headers": {
+              "Authorization": "Bearer key-ben"
+            },
+            "query": {
+              "q": "launch"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": []
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/search/comments",
+            "headers": {
+              "Authorization": "Bearer x-key-cy"
+            },
+            "query": {
+              "q": "launch"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "h61",
+      "level": 4,
+      "fresh": true,
+      "note": "a comment cannot be added to another organization's task, though a plain key would allow it",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/tasks/t-4/comments",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "body": "Nice photos"
+            }
+          },
+          "expected": {
+            "status": 404,
+            "body": {
+              "error": "not_found"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/tasks/t-4/comments",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "h62",
+      "level": 4,
+      "fresh": true,
+      "note": "the comments of another organization's task are not found",
+      "request": {
+        "method": "GET",
+        "path": "/tasks/t-4/comments",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "not_found"
+        }
+      }
+    },
+    {
+      "id": "h63",
+      "level": 4,
+      "fresh": true,
+      "note": "a comment with no body",
+      "request": {
+        "method": "POST",
+        "path": "/tasks/t-1/comments",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        },
+        "json": {}
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h64",
+      "level": 4,
+      "fresh": true,
+      "note": "a comment with an empty body",
+      "request": {
+        "method": "POST",
+        "path": "/tasks/t-1/comments",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        },
+        "json": {
+          "body": ""
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h65",
+      "level": 4,
+      "fresh": true,
+      "note": "a comment's author is the caller, whatever its body names",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/tasks/t-1/comments",
+            "headers": {
+              "Authorization": "Bearer key-ari"
+            },
+            "json": {
+              "body": "On it",
+              "author": "u-ada",
+              "tenant_id": "birch"
+            }
+          },
+          "expected": {
+            "status": 201
+          },
+          "capture": {
+            "comment": "body.id"
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/tasks/t-1/comments",
+            "headers": {
+              "Authorization": "Bearer key-ari"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": [
+              {
+                "id": "{{comment}}",
+                "task": "t-1",
+                "author": "u-ari",
+                "body": "On it"
+              }
+            ]
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/search/comments",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            },
+            "query": {
+              "q": "on it"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "h66",
+      "level": 4,
+      "fresh": true,
+      "note": "a task that goes takes its comments with it",
+      "steps": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/tasks/t-1/comments",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "body": "Remember the launch list"
+            }
+          },
+          "expected": {
+            "status": 201
+          }
+        },
+        {
+          "request": {
+            "method": "DELETE",
+            "path": "/tasks/t-1",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "id": "t-1",
+              "project": "p-1",
+              "title": "Write the launch email",
+              "done": false
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/search/comments",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "query": {
+              "q": "launch list"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "h67",
+      "level": 4,
+      "note": "a comment search with no q",
+      "request": {
+        "method": "GET",
+        "path": "/search/comments",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      }
+    },
+    {
+      "id": "h68",
+      "level": 4,
+      "fresh": true,
+      "note": "a comment on a task of the organization the grader added is refused",
+      "request": {
+        "method": "POST",
+        "path": "/tasks/x-t-1/comments",
+        "headers": {
+          "Authorization": "Bearer key-ada"
+        },
+        "json": {
+          "body": "Hello"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "not_found"
+        }
+      }
+    },
+    {
+      "id": "h69",
+      "level": 4,
+      "fresh": true,
+      "note": "32 comments at once from two organizations, 3 runs: each lands on its own task",
+      "repeat": 3,
+      "parallel": {
+        "count": 32,
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/tasks/t-1/comments",
+            "headers": {
+              "Authorization": "Bearer key-ada"
+            },
+            "json": {
+              "body": "note {i}"
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/tasks/t-4/comments",
+            "headers": {
+              "Authorization": "Bearer key-bea"
+            },
+            "json": {
+              "body": "note {i}"
+            }
+          }
+        ]
+      },
+      "expected_statuses": {
+        "201": 32
+      }
+    }
+  ]
+}
