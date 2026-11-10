@@ -1,0 +1,10 @@
+{
+  "name": "secure-file-upload-typescript",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.9",
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3"
+  }
+}
