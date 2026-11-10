@@ -198,3 +198,27 @@ def fake_rustup_proxy(directory: Path) -> None:
     proxy = directory / "rust-analyzer"
     proxy.write_text(f'#!/bin/sh\necho "{RUSTUP_PROXY_ERROR}" >&2\nexit 1\n')
     proxy.chmod(0o755)
+
+
+DOCKER_STOPPED = "Cannot connect to the Docker daemon at unix:///var/run/docker.sock."
+
+
+def fake_docker(directory: Path, log: Path, *, running: bool = True) -> None:
+    """A `docker` in `directory`, which is on the served PATH, for a service project's sidecar:
+    each call's arguments go to `log` as one line; `info` names an engine, or with `running`
+    false says none answers; `exec --interactive --workdir <folder> <container>` runs the rest of
+    its command here, so a sidecar's server is the fake that `node` runs; anything else succeeds
+    and prints nothing, but `compose version`, which prints a version."""
+    info = "echo 29.0.0" if running else f'echo "{DOCKER_STOPPED}"; exit 1'
+    docker = directory / "docker"
+    docker.write_text(
+        "#!/bin/sh\n"
+        f'echo "$*" >> "{log}"\n'
+        'case "$1 $2" in\n'
+        f'  "info --format") {info} ;;\n'
+        '  "compose version") echo 2.40.0 ;;\n'
+        '  "exec --interactive") shift 5; exec "$@" ;;\n'
+        "esac\n"
+        "exit 0\n"
+    )
+    docker.chmod(0o755)

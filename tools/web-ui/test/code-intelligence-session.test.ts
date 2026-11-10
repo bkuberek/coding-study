@@ -137,6 +137,14 @@ test("a fifth session stops with the limit", () => {
   assert.equal((session.state as { why: string }).why, "4 sessions running");
 });
 
+test("a session whose server needs Docker waits calmly and does not try again", () => {
+  const session = newSession();
+  session.start();
+  last().drop(4004, "Docker is not running");
+  mock.timers.tick(60_000);
+  assert.deepEqual([session.state, sockets.length], [{ kind: "needs-docker", why: "Docker is not running", reason: "Docker is not running" }, 1]);
+});
+
 test("Restart opens the session again, from starting", async () => {
   const session = newSession();
   session.start();

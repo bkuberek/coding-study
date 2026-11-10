@@ -78,13 +78,26 @@ test("a language with no server yet says so", () => {
   assert.deepEqual([segment.text, segment.action], ["no code intelligence for Kotlin yet", null]);
 });
 
-test("a service project says its code intelligence comes later, with no action", () => {
-  const segment = segmentOf({ kind: "withheld", reason: "service_project" });
-  assert.deepEqual([segment.text, segment.action, segment.state], ["code intelligence for service projects comes later", null, "withheld"]);
+test("a service project in a language without a sidecar server says it comes later, with no action", () => {
+  const segment = segmentOf({ kind: "withheld", reason: "service_project", language: "go" });
+  assert.deepEqual([segment.text, segment.action, segment.state], ["code intelligence for Go service projects comes later", null, "withheld"]);
+});
+
+test("a session that waits for Docker says why calmly, with Restart", () => {
+  const state = { kind: "needs-docker", why: "Docker is not running", reason: "Docker is not running" } as const;
+  const segment = segmentOf({ kind: "session", language: "typescript", server: "typescript-language-server", state });
+  assert.deepEqual([segment.text, segment.action, segment.state], ["typescript · typescript-language-server · Docker is not running", "restart", "needs-docker"]);
+});
+
+test("a session that waits for an image names it, and the pull in its tooltip", () => {
+  const reason = "needs the node image: docker pull node:24-slim@sha256:01d5";
+  const state = { kind: "needs-docker", why: "needs the node image", reason } as const;
+  const segment = segmentOf({ kind: "session", language: "python", server: "basedpyright", state });
+  assert.deepEqual([segment.text, segment.title], ["python · basedpyright · needs the node image", reason]);
 });
 
 test("a reason the page does not know still says there is none", () => {
-  const segment = segmentOf({ kind: "withheld", reason: "something_new" });
+  const segment = segmentOf({ kind: "withheld", reason: "something_new", language: "go" });
   assert.deepEqual([segment.text, segment.action], ["no code intelligence for this attempt", null]);
 });
 

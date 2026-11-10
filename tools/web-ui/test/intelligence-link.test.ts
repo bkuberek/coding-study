@@ -44,11 +44,13 @@ const INSTALLED_TYPESCRIPT: readonly LanguageState[] = [
   { language: "typescript", server: "typescript-language-server", version: "6.0.3", state: "installed", detail: "typescript-language-server 6.0.3", idle_s: 60 },
 ];
 
+const INSTALLED_GO: readonly LanguageState[] = [{ language: "go", server: "gopls", version: "0.24.0", state: "installed", detail: "gopls 0.24.0", idle_s: 60 }];
+
 function attempt(language: string | null): AttemptLanguage {
   return { language, noCodeIntelligence: null };
 }
 
-const SERVICE_PROJECT: AttemptLanguage = { language: "typescript", noCodeIntelligence: "service_project" };
+const SERVICE_PROJECT: AttemptLanguage = { language: "go", noCodeIntelligence: "service_project" };
 
 test("a Python file of a Python attempt with its server installed attaches", () => {
   assert.deepEqual(decide("a.py", attempt("python"), STATES), { kind: "attach", language: "python", server: "basedpyright", idleS: 60 });
@@ -90,12 +92,16 @@ test("a file that could not have one does not wait for the list", () => {
   assert.deepEqual(decide("notes.md", attempt("python"), null), { kind: "none" });
 });
 
-test("a file of a service project says code intelligence comes later, without the list", () => {
-  assert.deepEqual(decide("src/server.ts", SERVICE_PROJECT, null), { kind: "show", found: { kind: "withheld", reason: "service_project" } });
+test("a file of a service project whose language has no sidecar server says it comes later, without the list", () => {
+  assert.deepEqual(decide("main.go", SERVICE_PROJECT, null), { kind: "show", found: { kind: "withheld", reason: "service_project", language: "go" } });
 });
 
-test("a file of a service project never attaches, even with its server installed", () => {
-  assert.deepEqual(decide("src/server.ts", SERVICE_PROJECT, INSTALLED_TYPESCRIPT), { kind: "show", found: { kind: "withheld", reason: "service_project" } });
+test("a file of such a service project never attaches, even with its server installed", () => {
+  assert.deepEqual(decide("main.go", SERVICE_PROJECT, INSTALLED_GO), { kind: "show", found: { kind: "withheld", reason: "service_project", language: "go" } });
+});
+
+test("a TypeScript service project's file attaches like any other", () => {
+  assert.deepEqual(decide("src/server.ts", attempt("typescript"), INSTALLED_TYPESCRIPT), { kind: "attach", language: "typescript", server: "typescript-language-server", idleS: 60 });
 });
 
 test("a file of a service project that no server reads is left alone", () => {

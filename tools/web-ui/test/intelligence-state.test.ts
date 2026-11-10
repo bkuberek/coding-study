@@ -50,6 +50,15 @@ test("a fifth server says how many run", () => {
   assert.deepEqual(closeOutcome(4003, reason), { kind: "stopped", why: "4 sessions running", reason });
 });
 
+test("Docker that does not answer waits for it calmly, with the reason as its cause", () => {
+  assert.deepEqual(closeOutcome(4004, "Docker is not running"), { kind: "needs-docker", why: "Docker is not running", reason: "Docker is not running" });
+});
+
+test("a sidecar image that is not here says the image is needed", () => {
+  const reason = "needs the node image: docker pull node:24-slim@sha256:01d5";
+  assert.deepEqual(closeOutcome(4004, reason), { kind: "needs-docker", why: "needs the node image", reason });
+});
+
 test("a dropped connection and a refused handshake are tried again", () => {
   assert.deepEqual(closeOutcome(1006, ""), { kind: "retry" });
 });

@@ -189,7 +189,7 @@ export class Session {
     this.#socket = null;
     this.#unlink();
     const outcome = closeOutcome(code, reason);
-    if (outcome.kind === "stopped") {
+    if (outcome.kind === "stopped" || outcome.kind === "needs-docker") {
       this.#setState(outcome);
     } else if (outcome.kind === "gone") {
       this.#setState({ kind: "stopped", why: "", reason });
@@ -231,9 +231,15 @@ export class Session {
   }
 
   #setState(state: SessionState): void {
-    const same = state.kind === this.#state.kind && (state.kind !== "stopped" || (this.#state.kind === "stopped" && state.why === this.#state.why && state.reason === this.#state.reason));
+    const same = state.kind === this.#state.kind && sameCause(state, this.#state);
     if (same) return;
     this.#state = state;
     for (const listener of this.#listeners) listener(state);
   }
+}
+
+/** Whether two states of one kind say the same: a stopped or waiting session also by its cause. */
+function sameCause(state: SessionState, previous: SessionState): boolean {
+  if (!("why" in state) || !("why" in previous)) return true;
+  return state.why === previous.why && state.reason === previous.reason;
 }

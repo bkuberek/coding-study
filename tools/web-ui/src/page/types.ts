@@ -227,7 +227,8 @@ export interface AttemptStatus {
   } | null;
   readonly timer: { readonly elapsed_s: number; readonly limit_s: number } | null;
   readonly last_test_run: { readonly total: number; readonly passed: number; readonly ran_at: string } | null;
-  /** Why the attempt has no code intelligence whatever its language's server: `service_project`. */
+  /** Why the attempt has no code intelligence whatever its language's server: `service_project`, for a service
+   * project in a language whose server runs in no sidecar yet. */
   readonly no_code_intelligence: string | null;
   /** Why the page starts no run of the attempt, which runs from a terminal: `service_project`. */
   readonly no_web_runs: string | null;
