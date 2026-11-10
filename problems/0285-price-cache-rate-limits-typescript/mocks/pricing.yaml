@@ -1,0 +1,128 @@
+# The shop's pricing engine: it works out each product's price, slowly, and says in Cache-Control how
+# long that price stays good. Hidden scenarios are what a graded run adds: a dev or test stack holds
+# only those marked visible.
+routes:
+  - id: lamp
+    method: GET
+    path: /v1/prices/lamp
+    response:
+      status: 200
+      headers: {Content-Type: application/json, Cache-Control: "public, max-age=60"}
+      body: {sku: lamp, amount_cents: 1250, currency: EUR}
+      delay_ms: 200
+  - id: desk
+    method: GET
+    path: /v1/prices/desk
+    response:
+      status: 200
+      headers: {Content-Type: application/json, Cache-Control: "public, max-age=60"}
+      body: {sku: desk, amount_cents: 18900, currency: EUR}
+      delay_ms: 200
+  - id: chair
+    method: GET
+    path: /v1/prices/chair
+    response:
+      status: 200
+      headers: {Content-Type: application/json}
+      body: {sku: chair, amount_cents: 4500, currency: EUR}
+      delay_ms: 200
+  - id: mug
+    method: GET
+    path: /v1/prices/mug
+    response:
+      status: 200
+      headers: {Content-Type: application/json, Cache-Control: no-store}
+      body: {sku: mug, amount_cents: 900, currency: EUR}
+      delay_ms: 200
+  - id: vase
+    method: GET
+    path: /v1/prices/vase
+    response:
+      status: 200
+      headers: {Content-Type: application/json, Cache-Control: max-age=0}
+      body: {sku: vase, amount_cents: 3200, currency: EUR}
+      delay_ms: 200
+  - id: kettle
+    method: GET
+    path: /v1/prices/kettle
+    response:
+      status: 200
+      headers: {Content-Type: application/json, Cache-Control: max-age=1}
+      body: {sku: kettle, amount_cents: 2900, currency: EUR}
+      delay_ms: 200
+  - id: clock
+    method: GET
+    path: /v1/prices/clock
+    response:
+      status: 200
+      headers: {Content-Type: application/json, Cache-Control: "max-age=1, stale-while-revalidate=30"}
+      body: {sku: clock, amount_cents: 3900, currency: EUR}
+      delay_ms: 200
+  - id: fan
+    method: GET
+    path: /v1/prices/fan
+    response:
+      status: 200
+      headers: {Content-Type: application/json, Cache-Control: "max-age=1, stale-while-revalidate=1"}
+      body: {sku: fan, amount_cents: 5400, currency: EUR}
+      delay_ms: 200
+  - id: anvil
+    method: GET
+    path: /v1/prices/anvil
+    response:
+      status: 200
+      headers: {Content-Type: application/json, Cache-Control: no-store}
+      body: {sku: anvil, amount_cents: 24000, currency: EUR}
+      delay_ms: 1200
+  - id: unknown
+    method: GET
+    path: /v1/prices/{sku}
+    response:
+      status: 404
+      headers: {Content-Type: application/json}
+      body: {error: unknown sku}
+      delay_ms: 200
+  - id: set-price
+    method: PUT
+    path: /v1/prices/{sku}
+    response:
+      status: 204
+      delay_ms: 200
+scenarios:
+  outage:
+    visible: true
+    status: 503
+    headers: {Content-Type: application/json}
+    body: {error: engine unavailable}
+  repriced:
+    visible: true
+    route: lamp
+    sequence:
+      - {body: {sku: lamp, amount_cents: 1250, currency: EUR}}
+      - {body: {sku: lamp, amount_cents: 1400, currency: EUR}}
+  clock_repriced:
+    visible: true
+    route: clock
+    sequence:
+      - {body: {sku: clock, amount_cents: 3900, currency: EUR}}
+      - headers: {Content-Type: application/json, Cache-Control: "max-age=60, stale-while-revalidate=30"}
+        body: {sku: clock, amount_cents: 4200, currency: EUR}
+  clock_refresh_fails:
+    route: clock
+    sequence:
+      - {body: {sku: clock, amount_cents: 3900, currency: EUR}}
+      - status: 503
+        headers: {Content-Type: application/json}
+        body: {error: engine unavailable}
+  fails_once:
+    route: lamp
+    sequence:
+      - status: 503
+        headers: {Content-Type: application/json}
+        body: {error: engine unavailable}
+      - {body: {sku: lamp, amount_cents: 1250, currency: EUR}}
+  price_refused:
+    route: set-price
+    status: 503
+    headers: {Content-Type: application/json}
+    body: {error: engine unavailable}

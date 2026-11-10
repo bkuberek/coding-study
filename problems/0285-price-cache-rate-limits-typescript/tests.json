@@ -1,0 +1,2148 @@
+{
+  "$schema": "../../schemas/tests.schema.json",
+  "version": 1,
+  "cases": [
+    {
+      "id": "v1",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "the first request for a price asks the engine",
+      "request": {
+        "method": "GET",
+        "path": "/prices/lamp",
+        "headers": {
+          "X-Api-Key": "v1"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "lamp",
+          "amount_cents": 1250,
+          "currency": "EUR"
+        },
+        "headers": {
+          "X-Cache": "miss"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "lamp",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v2",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "a second request within max-age is answered from the store",
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "v2"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/prices/lamp",
+        "headers": {
+          "X-Api-Key": "v2"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "lamp",
+          "amount_cents": 1250,
+          "currency": "EUR"
+        },
+        "headers": {
+          "X-Cache": "hit"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "lamp",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v3",
+      "level": 1,
+      "visible": true,
+      "fresh": true,
+      "note": "kettle is good for 1 s, so after anvil, which takes the engine 1.2 s, it is asked again",
+      "hang_guard_ms": 15000,
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/kettle",
+            "headers": {
+              "X-Api-Key": "v3"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "kettle",
+              "amount_cents": 2900,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "miss"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/anvil",
+            "headers": {
+              "X-Api-Key": "v3"
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/kettle",
+            "headers": {
+              "X-Api-Key": "v3"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "kettle",
+              "amount_cents": 2900,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "miss"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "kettle",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "h1",
+      "level": 1,
+      "fresh": true,
+      "note": "a SKU the engine does not know",
+      "request": {
+        "method": "GET",
+        "path": "/prices/sofa",
+        "headers": {
+          "X-Api-Key": "h1"
+        }
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "error": "unknown_sku"
+        }
+      }
+    },
+    {
+      "id": "h2",
+      "level": 1,
+      "fresh": true,
+      "note": "a price marked no-store is never kept",
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/mug",
+          "headers": {
+            "X-Api-Key": "h2"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/prices/mug",
+        "headers": {
+          "X-Api-Key": "h2"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "mug",
+          "amount_cents": 900,
+          "currency": "EUR"
+        },
+        "headers": {
+          "X-Cache": "miss"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "mug",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "h3",
+      "level": 1,
+      "fresh": true,
+      "note": "a price good for max-age=0 is never kept",
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/vase",
+          "headers": {
+            "X-Api-Key": "h3"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/prices/vase",
+        "headers": {
+          "X-Api-Key": "h3"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "vase",
+          "amount_cents": 3200,
+          "currency": "EUR"
+        },
+        "headers": {
+          "X-Cache": "miss"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "vase",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "h4",
+      "level": 1,
+      "fresh": true,
+      "note": "a price with no Cache-Control is kept for 30 s",
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/chair",
+          "headers": {
+            "X-Api-Key": "h4"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/prices/chair",
+        "headers": {
+          "X-Api-Key": "h4"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "chair",
+          "amount_cents": 4500,
+          "currency": "EUR"
+        },
+        "headers": {
+          "X-Cache": "hit"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "chair",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h5",
+      "level": 1,
+      "fresh": true,
+      "note": "each SKU is kept on its own",
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h5"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/prices/desk",
+        "headers": {
+          "X-Api-Key": "h5"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "desk",
+          "amount_cents": 18900,
+          "currency": "EUR"
+        },
+        "headers": {
+          "X-Cache": "miss"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "desk",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h6",
+      "level": 1,
+      "fresh": true,
+      "note": "an engine failure is not kept: the next request asks again",
+      "mocks": {
+        "pricing": "fails_once"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "h6"
+            }
+          },
+          "expected": {
+            "status": 502,
+            "body": {
+              "error": "pricing_unavailable"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "h6"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "lamp",
+              "amount_cents": 1250,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "miss"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "lamp",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "h7",
+      "level": 1,
+      "fresh": true,
+      "note": "an engine that is down is a bad gateway",
+      "mocks": {
+        "pricing": "outage"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/prices/desk",
+        "headers": {
+          "X-Api-Key": "h7"
+        }
+      },
+      "expected": {
+        "status": 502,
+        "body": {
+          "error": "pricing_unavailable"
+        }
+      }
+    },
+    {
+      "id": "h8",
+      "level": 1,
+      "fresh": true,
+      "note": "a kept price serves every client, not only the one that asked first",
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h8-first"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/prices/lamp",
+        "headers": {
+          "X-Api-Key": "h8-second"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "lamp",
+          "amount_cents": 1250,
+          "currency": "EUR"
+        },
+        "headers": {
+          "X-Cache": "hit"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "lamp",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h9",
+      "level": 1,
+      "fresh": true,
+      "note": "a price good for 1 s is kept for that second",
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/kettle",
+          "headers": {
+            "X-Api-Key": "h9"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/prices/kettle",
+        "headers": {
+          "X-Api-Key": "h9"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "kettle",
+          "amount_cents": 2900,
+          "currency": "EUR"
+        },
+        "headers": {
+          "X-Cache": "hit"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "kettle",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v4",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "a request with no API key",
+      "request": {
+        "method": "GET",
+        "path": "/prices/lamp"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "missing_api_key"
+        }
+      }
+    },
+    {
+      "id": "v5",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "a client's sixth request within a second is refused",
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "warm"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "v5"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "v5"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "v5"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "v5"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "v5"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/prices/lamp",
+        "headers": {
+          "X-Api-Key": "v5"
+        }
+      },
+      "expected": {
+        "status": 429,
+        "body": {
+          "error": "rate_limited"
+        },
+        "headers": {
+          "Retry-After": "1"
+        }
+      }
+    },
+    {
+      "id": "v6",
+      "level": 2,
+      "visible": true,
+      "fresh": true,
+      "note": "10 requests at once from one client: 5 go through",
+      "repeat": 3,
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "v6"
+          }
+        }
+      },
+      "expected_statuses": {
+        "200": 5,
+        "429": 5
+      }
+    },
+    {
+      "id": "h20",
+      "level": 2,
+      "fresh": true,
+      "note": "20 requests at once from one client: 5 go through",
+      "repeat": 3,
+      "parallel": {
+        "count": 20,
+        "request": {
+          "method": "GET",
+          "path": "/prices/desk",
+          "headers": {
+            "X-Api-Key": "h20"
+          }
+        }
+      },
+      "expected_statuses": {
+        "200": 5,
+        "429": 15
+      }
+    },
+    {
+      "id": "h21",
+      "level": 2,
+      "fresh": true,
+      "note": "one client's limit leaves another client alone",
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "warm"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h21-busy"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h21-busy"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h21-busy"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h21-busy"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h21-busy"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/prices/lamp",
+        "headers": {
+          "X-Api-Key": "h21-quiet"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "lamp",
+          "amount_cents": 1250,
+          "currency": "EUR"
+        },
+        "headers": {
+          "X-Cache": "hit"
+        }
+      }
+    },
+    {
+      "id": "h22",
+      "level": 2,
+      "fresh": true,
+      "note": "requests answered from the store count too, and refused ones never reach the engine",
+      "repeat": 2,
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "warm"
+          }
+        }
+      ],
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h22"
+          }
+        }
+      },
+      "expected_statuses": {
+        "200": 5,
+        "429": 5
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "lamp",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h23",
+      "level": 2,
+      "fresh": true,
+      "note": "a refused request does not ask the engine",
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "warm"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h23"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h23"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h23"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h23"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h23"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/prices/mug",
+        "headers": {
+          "X-Api-Key": "h23"
+        }
+      },
+      "expected": {
+        "status": 429,
+        "body": {
+          "error": "rate_limited"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "mug",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h24",
+      "level": 2,
+      "fresh": true,
+      "note": "two clients at once, 10 requests each: 5 of each go through",
+      "repeat": 2,
+      "parallel": {
+        "count": 20,
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "h24-a"
+            }
+          },
+          {
+            "method": "GET",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "h24-b"
+            }
+          }
+        ]
+      },
+      "expected_statuses": {
+        "200": 10,
+        "429": 10
+      }
+    },
+    {
+      "id": "h25",
+      "level": 2,
+      "fresh": true,
+      "note": "a client that spent its five gets them back a second later",
+      "hang_guard_ms": 15000,
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "warm"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "lamp",
+              "amount_cents": 1250,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "miss"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "h25"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "lamp",
+              "amount_cents": 1250,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "hit"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "h25"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "lamp",
+              "amount_cents": 1250,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "hit"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "h25"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "lamp",
+              "amount_cents": 1250,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "hit"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "h25"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "lamp",
+              "amount_cents": 1250,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "hit"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "h25"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "lamp",
+              "amount_cents": 1250,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "hit"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "h25"
+            }
+          },
+          "expected": {
+            "status": 429,
+            "body": {
+              "error": "rate_limited"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/anvil",
+            "headers": {
+              "X-Api-Key": "h25-timer"
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "h25"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "lamp",
+              "amount_cents": 1250,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "hit"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "h26",
+      "level": 2,
+      "fresh": true,
+      "note": "an API key of 65 characters is no key",
+      "request": {
+        "method": "GET",
+        "path": "/prices/lamp",
+        "headers": {
+          "X-Api-Key": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "missing_api_key"
+        }
+      }
+    },
+    {
+      "id": "h27",
+      "level": 2,
+      "fresh": true,
+      "note": "an API key with a space in it is no key",
+      "request": {
+        "method": "GET",
+        "path": "/prices/lamp",
+        "headers": {
+          "X-Api-Key": "my key"
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "missing_api_key"
+        }
+      }
+    },
+    {
+      "id": "v7",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "a price set through the API is fetched again on the next request",
+      "mocks": {
+        "pricing": "repriced"
+      },
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "v7"
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "v7"
+          },
+          "json": {
+            "amount_cents": 1400
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/prices/lamp",
+        "headers": {
+          "X-Api-Key": "v7"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "lamp",
+          "amount_cents": 1400,
+          "currency": "EUR"
+        },
+        "headers": {
+          "X-Cache": "miss"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "lamp",
+          "count": 2
+        },
+        {
+          "mock": "pricing",
+          "route": "set-price",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "v8",
+      "level": 3,
+      "visible": true,
+      "fresh": true,
+      "note": "10 requests at once for a price nobody has asked for: the engine is asked once",
+      "repeat": 3,
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "GET",
+          "path": "/prices/desk",
+          "headers": {
+            "X-Api-Key": "v8-{i}"
+          }
+        }
+      },
+      "expected_statuses": {
+        "200": 10
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "desk",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h30",
+      "level": 3,
+      "fresh": true,
+      "note": "20 requests at once for a missing price: the engine is asked once",
+      "repeat": 3,
+      "parallel": {
+        "count": 20,
+        "request": {
+          "method": "GET",
+          "path": "/prices/chair",
+          "headers": {
+            "X-Api-Key": "h30-{i}"
+          }
+        }
+      },
+      "expected_statuses": {
+        "200": 20
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "chair",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h31",
+      "level": 3,
+      "fresh": true,
+      "note": "an amount given as text",
+      "request": {
+        "method": "PUT",
+        "path": "/prices/lamp",
+        "headers": {
+          "X-Api-Key": "h31"
+        },
+        "json": {
+          "amount_cents": "14.00"
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "set-price",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h32",
+      "level": 3,
+      "fresh": true,
+      "note": "an amount of 0 cents",
+      "request": {
+        "method": "PUT",
+        "path": "/prices/lamp",
+        "headers": {
+          "X-Api-Key": "h32"
+        },
+        "json": {
+          "amount_cents": 0
+        }
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "set-price",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h33",
+      "level": 3,
+      "fresh": true,
+      "note": "a body that is not an object",
+      "request": {
+        "method": "PUT",
+        "path": "/prices/lamp",
+        "headers": {
+          "X-Api-Key": "h33"
+        },
+        "json": [
+          1400
+        ]
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "error": "invalid_request"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "set-price",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h34",
+      "level": 3,
+      "fresh": true,
+      "note": "a write the engine refuses leaves the kept price alone",
+      "mocks": {
+        "pricing": "price_refused"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "h34"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "lamp",
+              "amount_cents": 1250,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "miss"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "PUT",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "h34"
+            },
+            "json": {
+              "amount_cents": 1400
+            }
+          },
+          "expected": {
+            "status": 502,
+            "body": {
+              "error": "pricing_unavailable"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "h34"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "lamp",
+              "amount_cents": 1250,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "hit"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "lamp",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h35",
+      "level": 3,
+      "fresh": true,
+      "note": "a write for a price nobody kept",
+      "request": {
+        "method": "PUT",
+        "path": "/prices/desk",
+        "headers": {
+          "X-Api-Key": "h35"
+        },
+        "json": {
+          "amount_cents": 19900
+        }
+      },
+      "expected": {
+        "status": 204
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "set-price",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h36",
+      "level": 3,
+      "fresh": true,
+      "note": "a crowd right after a write asks the engine once",
+      "mocks": {
+        "pricing": "repriced"
+      },
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h36"
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h36"
+          },
+          "json": {
+            "amount_cents": 1400
+          }
+        }
+      ],
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h36-{i}"
+          }
+        }
+      },
+      "expected_statuses": {
+        "200": 10
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h36"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "body": {
+            "sku": "lamp",
+            "amount_cents": 1400,
+            "currency": "EUR"
+          },
+          "headers": {
+            "X-Cache": "hit"
+          }
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "lamp",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "h37",
+      "level": 3,
+      "fresh": true,
+      "note": "10 requests at once for an unknown SKU: the engine is asked once",
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "GET",
+          "path": "/prices/sofa",
+          "headers": {
+            "X-Api-Key": "h37-{i}"
+          }
+        }
+      },
+      "expected_statuses": {
+        "404": 10
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "unknown",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h38",
+      "level": 3,
+      "fresh": true,
+      "note": "10 requests at once while the engine is down: it is asked once",
+      "mocks": {
+        "pricing": "outage"
+      },
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "GET",
+          "path": "/prices/desk",
+          "headers": {
+            "X-Api-Key": "h38-{i}"
+          }
+        }
+      },
+      "expected_statuses": {
+        "502": 10
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "desk",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h39",
+      "level": 3,
+      "fresh": true,
+      "note": "two prices at once: each is asked for once",
+      "parallel": {
+        "count": 20,
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/prices/lamp",
+            "headers": {
+              "X-Api-Key": "h39-{i}"
+            }
+          },
+          {
+            "method": "GET",
+            "path": "/prices/desk",
+            "headers": {
+              "X-Api-Key": "h39-{i}"
+            }
+          }
+        ]
+      },
+      "expected_statuses": {
+        "200": 20
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "lamp",
+          "count": 1
+        },
+        {
+          "mock": "pricing",
+          "route": "desk",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h40",
+      "level": 3,
+      "fresh": true,
+      "note": "a write drops only its own price",
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h40"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/desk",
+          "headers": {
+            "X-Api-Key": "h40"
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h40"
+          },
+          "json": {
+            "amount_cents": 1400
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/prices/desk",
+        "headers": {
+          "X-Api-Key": "h40"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "desk",
+          "amount_cents": 18900,
+          "currency": "EUR"
+        },
+        "headers": {
+          "X-Cache": "hit"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "desk",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h41",
+      "level": 3,
+      "fresh": true,
+      "note": "a write counts toward the client's limit",
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "warm"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h41"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h41"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h41"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h41"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/lamp",
+          "headers": {
+            "X-Api-Key": "h41"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "path": "/prices/lamp",
+        "headers": {
+          "X-Api-Key": "h41"
+        },
+        "json": {
+          "amount_cents": 1400
+        }
+      },
+      "expected": {
+        "status": 429,
+        "body": {
+          "error": "rate_limited"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "set-price",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "h42",
+      "level": 3,
+      "fresh": true,
+      "note": "a write with no API key",
+      "request": {
+        "method": "PUT",
+        "path": "/prices/lamp",
+        "json": {
+          "amount_cents": 1400
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "error": "missing_api_key"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "set-price",
+          "count": 0
+        }
+      ]
+    },
+    {
+      "id": "v9",
+      "level": 4,
+      "visible": true,
+      "fresh": true,
+      "note": "a stale clock is shown at once while one request fetches the new price",
+      "hang_guard_ms": 15000,
+      "mocks": {
+        "pricing": "clock_repriced"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/clock",
+            "headers": {
+              "X-Api-Key": "v9"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "clock",
+              "amount_cents": 3900,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "miss"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/anvil",
+            "headers": {
+              "X-Api-Key": "v9"
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/clock",
+            "headers": {
+              "X-Api-Key": "v9"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "clock",
+              "amount_cents": 3900,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "stale"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/anvil",
+            "headers": {
+              "X-Api-Key": "v9"
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/clock",
+            "headers": {
+              "X-Api-Key": "v9"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "clock",
+              "amount_cents": 4200,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "hit"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "clock",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "v10",
+      "level": 4,
+      "visible": true,
+      "fresh": true,
+      "note": "10 requests at once for a stale clock: the engine is asked once more",
+      "hang_guard_ms": 15000,
+      "mocks": {
+        "pricing": "clock_repriced"
+      },
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/clock",
+          "headers": {
+            "X-Api-Key": "v10"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/anvil",
+          "headers": {
+            "X-Api-Key": "v10"
+          }
+        }
+      ],
+      "parallel": {
+        "count": 10,
+        "request": {
+          "method": "GET",
+          "path": "/prices/clock",
+          "headers": {
+            "X-Api-Key": "v10-{i}"
+          }
+        }
+      },
+      "expected_statuses": {
+        "200": 10
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/prices/anvil",
+          "headers": {
+            "X-Api-Key": "v10"
+          }
+        },
+        "expected": {
+          "status": 200
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "clock",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "h50",
+      "level": 4,
+      "fresh": true,
+      "note": "a refresh that fails leaves the stale price showing",
+      "hang_guard_ms": 15000,
+      "mocks": {
+        "pricing": "clock_refresh_fails"
+      },
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/clock",
+            "headers": {
+              "X-Api-Key": "h50"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "clock",
+              "amount_cents": 3900,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "miss"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/anvil",
+            "headers": {
+              "X-Api-Key": "h50"
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/clock",
+            "headers": {
+              "X-Api-Key": "h50"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "clock",
+              "amount_cents": 3900,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "stale"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/anvil",
+            "headers": {
+              "X-Api-Key": "h50"
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/clock",
+            "headers": {
+              "X-Api-Key": "h50"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "clock",
+              "amount_cents": 3900,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "stale"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "clock",
+          "min_count": 2
+        }
+      ]
+    },
+    {
+      "id": "h51",
+      "level": 4,
+      "fresh": true,
+      "note": "fan may be stale for 1 s after its 1 s: after 2.4 s it is asked again",
+      "hang_guard_ms": 15000,
+      "steps": [
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/fan",
+            "headers": {
+              "X-Api-Key": "h51"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "fan",
+              "amount_cents": 5400,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "miss"
+            }
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/anvil",
+            "headers": {
+              "X-Api-Key": "h51"
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/anvil",
+            "headers": {
+              "X-Api-Key": "h51"
+            }
+          },
+          "expected": {
+            "status": 200
+          }
+        },
+        {
+          "request": {
+            "method": "GET",
+            "path": "/prices/fan",
+            "headers": {
+              "X-Api-Key": "h51"
+            }
+          },
+          "expected": {
+            "status": 200,
+            "body": {
+              "sku": "fan",
+              "amount_cents": 5400,
+              "currency": "EUR"
+            },
+            "headers": {
+              "X-Cache": "miss"
+            }
+          }
+        }
+      ],
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "fan",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "h52",
+      "level": 4,
+      "fresh": true,
+      "note": "a hot price within its max-age is a hit, not stale",
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/clock",
+          "headers": {
+            "X-Api-Key": "h52"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/prices/clock",
+        "headers": {
+          "X-Api-Key": "h52"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "clock",
+          "amount_cents": 3900,
+          "currency": "EUR"
+        },
+        "headers": {
+          "X-Cache": "hit"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "clock",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "h53",
+      "level": 4,
+      "fresh": true,
+      "note": "a write drops a hot price too, so the next request waits for the new one",
+      "mocks": {
+        "pricing": "clock_repriced"
+      },
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/clock",
+          "headers": {
+            "X-Api-Key": "h53"
+          }
+        },
+        {
+          "method": "PUT",
+          "path": "/prices/clock",
+          "headers": {
+            "X-Api-Key": "h53"
+          },
+          "json": {
+            "amount_cents": 4200
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "path": "/prices/clock",
+        "headers": {
+          "X-Api-Key": "h53"
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "sku": "clock",
+          "amount_cents": 4200,
+          "currency": "EUR"
+        },
+        "headers": {
+          "X-Cache": "miss"
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "clock",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "h54",
+      "level": 4,
+      "fresh": true,
+      "note": "20 requests at once for a stale clock: the engine is asked once more",
+      "hang_guard_ms": 15000,
+      "repeat": 2,
+      "mocks": {
+        "pricing": "clock_repriced"
+      },
+      "before": [
+        {
+          "method": "GET",
+          "path": "/prices/clock",
+          "headers": {
+            "X-Api-Key": "h54"
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/prices/anvil",
+          "headers": {
+            "X-Api-Key": "h54"
+          }
+        }
+      ],
+      "parallel": {
+        "count": 20,
+        "request": {
+          "method": "GET",
+          "path": "/prices/clock",
+          "headers": {
+            "X-Api-Key": "h54-{i}"
+          }
+        }
+      },
+      "expected_statuses": {
+        "200": 20
+      },
+      "after": {
+        "request": {
+          "method": "GET",
+          "path": "/prices/anvil",
+          "headers": {
+            "X-Api-Key": "h54"
+          }
+        },
+        "expected": {
+          "status": 200
+        }
+      },
+      "log": [
+        {
+          "mock": "pricing",
+          "route": "clock",
+          "count": 2
+        }
+      ]
+    }
+  ]
+}
