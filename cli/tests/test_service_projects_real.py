@@ -2,11 +2,15 @@
 on a real Docker engine. Run with `uv run pytest -q -m docker`. The waits are generous for a busy
 machine: what these tests assert is what happened, not how fast."""
 
+import json
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 
 import pytest
+from jsonschema import Draft202012Validator
 
+from tests.helpers import SCHEMAS_DIRECTORY
 from tests.real_service_projects import (
     MEMBERS,
     PYTHON,
@@ -115,6 +119,40 @@ def assert_the_reference_finishes_every_level(project: FixtureProject) -> None:
     assert result.returncode == EXIT_OK, said(result)
     assert "startup" in result.stdout
     nothing_running(project)
+
+
+@pytest.fixture
+def typescript(tmp_path: Path) -> Generator[FixtureProject]:
+    found = fixture_project(TYPESCRIPT, tmp_path)
+    try:
+        yield found
+    finally:
+        found.remove_all_it_left()
+
+
+def test_test_events_stream_the_stack_the_command_and_the_visible_cases(
+    typescript: FixtureProject,
+):
+    """`cstudy test --events`, as the Web UI starts it, on the starter: the stack's stages up to
+    down, `commands.test` as one test, each visible case, and nothing left running."""
+    assert typescript.cstudy("start", typescript.slug, "--yes", "--no-open").returncode == EXIT_OK
+
+    result = typescript.cstudy("test", "--events")
+
+    events: list[dict[str, Any]] = [json.loads(line) for line in result.stdout.splitlines()]
+    validator = Draft202012Validator(
+        json.loads((SCHEMAS_DIRECTORY / "events.schema.json").read_text(encoding="utf-8"))
+    )
+    for event in events:
+        validator.validate(event)
+    stages = [event["stack"] for event in events if "stack" in event]
+    assert stages[-3:] == ["starting", "ready", "stopped"], said(result)
+    tests = [event["id"] for event in events if event["type"] == "test_result"]
+    assert tests == ["commands.test"]
+    assert [event["type"] for event in events].count("case_result") == 2
+    assert (events[-1]["type"], events[-1]["exit_code"]) == ("run_end", EXIT_FAILURES)
+    assert result.returncode == EXIT_FAILURES
+    nothing_running(typescript)
 
 
 def test_verify_require_ready_passes_on_the_reference(project: FixtureProject):
