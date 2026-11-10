@@ -681,6 +681,20 @@ The contract between the stack and the grader's multi-step cases (P11). Some ser
 | Grader | `StackEndpoints.origins` (`application/http_grading_ports.py`) maps each entry's origin, `idp:8080` as `http://idp:8080`, to `http://127.0.0.1:<port>`, and a case names it so ([Reaching an origin](#reaching-an-origin)). A client dials that URL and sends `idp:8080` as `Host`. The app's own origin, `http://app:<app.port>`, is `app_url`, and an origin in neither is refused, by S23 before a run and by the grader during one |
 | Host | The forwarder relays bytes, so the service sees the `Host` the client sent, measured with a service that echoes it. Any protocol passes, HTTP or not |
 
+### Known limits
+
+Engine gaps found while building `0283` to `0287`. None blocks a problem; each is worked around in the problem that met it.
+
+- **Backing services cannot be stopped or paused by a case.** No case can stop or pause a service, and the mock server's pass-through only proxies HTTP, so a problem cannot grade "the store went down" by taking the store away.
+- **A kept restart needs a no-op reset.** With services, S23 requires `commands.reset` for any `fresh` case. Restarting the app while keeping its data therefore needs a `reset` that does nothing, as `0284` declares.
+- **There is no sleep step.** A case waits with a long poll or a slow mock route.
+- **Parallel cases judge status counts only.** They never compare bodies.
+- **The `unordered` comparator applies to every step of a multi-step case.**
+- **Moto holds a whole S3 object in memory.** A large object needs a bigger memory limit on the Moto service and a disk-backed `/tmp` for it.
+- **Moto allows `PurgeQueue` once every 60 s.**
+
+**Valkey is the open store used.** `valkey/valkey:9.1.3-alpine`, the BSD-licensed fork of Redis that speaks its protocol, backs `0285` in place of Redis, so a Redis client reaches it unchanged and the problem carries no source-available license.
+
 ## Databases
 
 Built at P10, and [parallel cases](#parallel-cases) after it, except their D7. [Contract tables](#contract-tables) are not built.
