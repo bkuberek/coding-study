@@ -254,6 +254,21 @@ For a project problem, the tree shows every file of the project folder with its 
 
 For other problems the tree shows the files you may edit: the stub `cstudy start` wrote, and for Java, Kotlin and Go any other file in the problem's package.
 
+## Service projects in the page
+
+A [service project](../specs/service-projects.md) runs your app in a Docker sandbox, with mock servers for the APIs it calls. The page runs the same commands as the terminal, and shows the stack as it starts, runs and stops.
+
+| Item | What you see |
+|------|--------------|
+| Before you start | The Problems view, the Problem view and the Start dialog list what the project needs: Docker, its images, the size of its install and the memory it takes. Start downloads nothing: the first run, or the first dev stack, pulls the images and installs the dependencies |
+| Docker messages | A Docker that is missing or refuses you is said in the words of `cstudy start`: in the Start dialog, in the Attempt view before any run, at the end of a run that Docker stopped, and in the Health view. A stopped Docker is no problem: the first run starts it |
+| Run tests and Submit | `cstudy test` and `cstudy submit`, with progress as they go. The results panel's `stack` line follows the stack: `starting Docker`, `pulling images`, `installing dependencies`, `starting`, then `ready after 2.4 s, not counted`. The startup never counts toward a time limit or a result. `commands.test` is one test row, and the visible cases follow it. **Run options** offers only the level, for Submit |
+| Cancel | Stops the run, as for any run. `cstudy` takes the stack down before it exits, so the `stack` line ends on `down` |
+| The dev stack | The panel above the results starts `cstudy dev` only when you choose **Start dev stack**, since a stack holds memory. It shows the stack's stage, your app's address on this computer as a link (`http://127.0.0.1:<port>`), a scenario picker per mock server that switches it while the stack runs, and your app's last 200 lines. **Stop** takes the stack down and keeps its data; leaving the Attempt view or the page stops it too. If a terminal already runs `cstudy dev` for the project, the panel says so and starts no second one |
+| Code intelligence | For TypeScript and Python, the language server runs in a sandboxed container of its own, with no network, and reads the packages the install put in the project. While Docker does not answer, or the container's image is missing, the status bar says so with **Restart**, and the editor works without it |
+
+The flags of `cstudy dev` that serve your own IDE, `--no-run`, `--debug`, `--reset-data` and `--exec`, stay in the terminal ([Your own IDE](../specs/service-projects.md#your-own-ide)).
+
 ## Read an earlier attempt
 
 An attempt you finished is not lost when you start the review: its files stay in your workspace, and the Problem view's **History** opens them. Expand an attempt's row, then choose **View** to read its code in a dialog, with the same highlighting as the editor and no way to change it.
@@ -352,7 +367,7 @@ Each button names its keys and the `cstudy` command it runs when you point at it
 
 The page, the terminal and your IDE always agree, because they share the workspace and its progress. Start an attempt in the terminal and it appears in the page's in-progress menu; submit in the terminal and the page opens the new level; edit in your IDE and the open tab follows. The command line under the top bar names the `cstudy` command each view mirrors, so you can switch to the terminal at any point.
 
-A few things stay in the terminal: `cstudy init`, `cstudy ide`, `cstudy new`, `cstudy verify` on catalog problems, and `cstudy test --debug`, which needs your IDE's debugger. `cstudy test --watch` becomes the Run on save preference.
+A few things stay in the terminal: `cstudy init`, `cstudy ide`, `cstudy new`, `cstudy verify` on catalog problems, `cstudy test --debug`, which needs your IDE's debugger, and the flags of `cstudy dev` beyond its scenarios. `cstudy test --watch` becomes the Run on save preference.
 
 ## Troubleshooting
 
@@ -367,6 +382,8 @@ A few things stay in the terminal: `cstudy init`, `cstudy ide`, `cstudy new`, `c
 | The first Java or Kotlin run is slow | Gradle warms up on the first build, as in the terminal |
 | `not installed: run cstudy doctor --fix` in Settings, or `not installed` in the status bar | Run `cstudy doctor --fix` once, with the network on, then open the file again |
 | `stopped: exit 1` in the status bar | The language server ended: choose **Restart**, or run `cstudy doctor` to check the install |
+| `Docker is not running` in the status bar, on a service project | Start Docker, or run the tests once, which starts it; then choose **Restart** |
+| The dev stack panel says `cstudy dev` is already running in a process | A terminal holds the project's dev stack: stop it there with <kbd>Ctrl</kbd>+<kbd>C</kbd>, or use that one |
 | Ctrl-Space shows nothing | Autocomplete is off, or code intelligence is: turn both on in Settings. With Autocomplete off the editor offers no completion at all |
 | <kbd>Tab</kbd> skips buttons and links in Safari | Use <kbd>Option</kbd>+<kbd>Tab</kbd>, or turn on "Press Tab to highlight each item on a webpage" in Safari's Advanced settings |
 
@@ -377,5 +394,5 @@ A few things stay in the terminal: `cstudy init`, `cstudy ide`, `cstudy new`, `c
 - **Other websites cannot use it.** The page refuses requests that come from other sites, even from tabs in the same browser.
 - **It runs your code, as `cstudy test` does.** Saving a file and running it executes that code as you, which is why the page asks for the token.
 - **It touches only your attempt's files.** The page edits the files of the attempts in progress and nothing else, and never follows a link out of them.
-- **Language servers stay on your computer.** With code intelligence on, the servers run as you, one per tab and project, and read only what a definition names, as read-only text. They cannot reach the network or the folders that hold reference solutions.
+- **Language servers stay on your computer.** With code intelligence on, the servers run as you, one per tab and project, and read only what a definition names, as read-only text. They cannot reach the network or the folders that hold reference solutions. A service project's server runs in a sandboxed container on your own Docker instead, with no network.
 - **Nothing leaves your machine.** The page loads everything from the server and sends nothing elsewhere.
