@@ -1,0 +1,1225 @@
+{
+ "$schema": "../../schemas/tests.schema.json",
+ "version": 1,
+ "flows": {
+  "sign_up": [
+   {
+    "request": {
+     "method": "POST",
+     "path": "/users",
+     "json": {
+      "username": "{{user}}",
+      "password": "notes-pass-1234"
+     }
+    },
+    "expected": {
+     "status": 201
+    },
+    "capture": {
+     "user_id": "body.id"
+    }
+   },
+   {
+    "request": {
+     "method": "POST",
+     "path": "/login",
+     "json": {
+      "username": "{{user}}",
+      "password": "notes-pass-1234"
+     }
+    },
+    "expected": {
+     "status": 200
+    },
+    "capture": {
+     "token": "body.token"
+    }
+   }
+  ],
+  "sign_up_other": [
+   {
+    "request": {
+     "method": "POST",
+     "path": "/users",
+     "json": {
+      "username": "{{user}}",
+      "password": "notes-pass-1234"
+     }
+    },
+    "expected": {
+     "status": 201
+    },
+    "capture": {
+     "other_id": "body.id"
+    }
+   },
+   {
+    "request": {
+     "method": "POST",
+     "path": "/login",
+     "json": {
+      "username": "{{user}}",
+      "password": "notes-pass-1234"
+     }
+    },
+    "expected": {
+     "status": 200
+    },
+    "capture": {
+     "other_token": "body.token"
+    }
+   }
+  ]
+ },
+ "cases": [
+  {
+   "id": "v1",
+   "level": 1,
+   "visible": true,
+   "note": "the owner reads back the note they wrote",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "v1-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "title": "Groceries",
+       "body": "Milk, eggs, bread"
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/notes/{{id}}",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "id": "{{id}}",
+       "title": "Groceries",
+       "body": "Milk, eggs, bread"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "v2",
+   "level": 1,
+   "visible": true,
+   "note": "another user who asks for the note by its id gets 404, as for a note that does not exist",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "v2-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "title": "Salary review",
+       "body": "Ask for 5% more"
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "use": "sign_up_other",
+     "with": {
+      "user": "v2-ben"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/notes/{{id}}",
+      "headers": {
+       "Authorization": "Bearer {{other_token}}"
+      }
+     },
+     "expected": {
+      "status": 404
+     }
+    }
+   ]
+  },
+  {
+   "id": "h1",
+   "level": 1,
+   "visible": false,
+   "note": "another user's delete answers 404, and the note stays",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "h1-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "title": "Groceries",
+       "body": "Milk, eggs, bread"
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "use": "sign_up_other",
+     "with": {
+      "user": "h1-ben"
+     }
+    },
+    {
+     "request": {
+      "method": "DELETE",
+      "path": "/notes/{{id}}",
+      "headers": {
+       "Authorization": "Bearer {{other_token}}"
+      }
+     },
+     "expected": {
+      "status": 404
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/notes/{{id}}",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "id": "{{id}}",
+       "title": "Groceries",
+       "body": "Milk, eggs, bread"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h2",
+   "level": 1,
+   "visible": false,
+   "note": "the owner deletes their note, and then it is gone",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "h2-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "title": "Old idea",
+       "body": ""
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "DELETE",
+      "path": "/notes/{{id}}",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 204
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/notes/{{id}}",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 404
+     }
+    }
+   ]
+  },
+  {
+   "id": "h3",
+   "level": 1,
+   "visible": false,
+   "note": "a request with no session, or with a token that is no session, answers 401",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "h3-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "title": "Groceries",
+       "body": ""
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/notes/{{id}}",
+      "headers": {}
+     },
+     "expected": {
+      "status": 401
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/notes/{{id}}",
+      "headers": {
+       "Authorization": "Bearer h3-not-a-session"
+      }
+     },
+     "expected": {
+      "status": 401
+     }
+    }
+   ]
+  },
+  {
+   "id": "v3",
+   "level": 2,
+   "visible": true,
+   "note": "a signed-in user downloads a shared file by its name",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "v3-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/attachments/handbook.txt",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "Team handbook\n\nYour notes are yours alone. Shared files, like this one, are for everyone on the team.\n"
+     }
+    }
+   ]
+  },
+  {
+   "id": "v4",
+   "level": 2,
+   "visible": true,
+   "note": "a name that climbs out of attachments/ answers 404",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "v4-eve"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/attachments/../package.json",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 404
+     }
+    }
+   ]
+  },
+  {
+   "id": "v5",
+   "level": 2,
+   "visible": true,
+   "note": "a user changes their display name",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "v5-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "PATCH",
+      "path": "/me",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "display_name": "Ana Lima"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "id": "{{user_id}}",
+       "username": "v5-ana",
+       "display_name": "Ana Lima",
+       "role": "member"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/me",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "id": "{{user_id}}",
+       "username": "v5-ana",
+       "display_name": "Ana Lima",
+       "role": "member"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "v6",
+   "level": 2,
+   "visible": true,
+   "note": "a member who sends a role along with a new name is still a member",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "v6-eve"
+     }
+    },
+    {
+     "request": {
+      "method": "PATCH",
+      "path": "/me",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "display_name": "Eve",
+       "role": "admin"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "id": "{{user_id}}",
+       "username": "v6-eve",
+       "display_name": "Eve",
+       "role": "member"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/admin/users",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 403
+     }
+    }
+   ]
+  },
+  {
+   "id": "h4",
+   "level": 2,
+   "visible": false,
+   "note": "a name that climbs with an encoded slash answers 404",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "h4-eve"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/attachments/..%2Fpackage.json",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 404
+     }
+    }
+   ]
+  },
+  {
+   "id": "h5",
+   "level": 2,
+   "visible": false,
+   "note": "a name that climbs with encoded dots and slash answers 404",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "h5-eve"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/attachments/%2e%2e%2fpackage.json",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 404
+     }
+    }
+   ]
+  },
+  {
+   "id": "h6",
+   "level": 2,
+   "visible": false,
+   "note": "a name with a space, encoded as a browser sends it, still downloads",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "h6-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/attachments/onboarding%20checklist.txt",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": "Onboarding checklist\n\n1. Sign up and sign in.\n2. Write your first note.\n3. Read the team handbook.\n"
+     }
+    }
+   ]
+  },
+  {
+   "id": "h7",
+   "level": 2,
+   "visible": false,
+   "note": "the administrator still lists every account",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/login",
+      "json": {
+       "username": "admin",
+       "password": "admin-pass-sandbox-7c41"
+      }
+     },
+     "expected": {
+      "status": 200
+     },
+     "capture": {
+      "token": "body.token"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/admin/users",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 200
+     }
+    }
+   ]
+  },
+  {
+   "id": "h8",
+   "level": 2,
+   "visible": false,
+   "note": "a new account is a member, whatever role its sign-up asks for",
+   "steps": [
+    {
+     "request": {
+      "method": "POST",
+      "path": "/users",
+      "json": {
+       "username": "h8-eve",
+       "password": "notes-pass-1234",
+       "role": "admin"
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "user_id": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/login",
+      "json": {
+       "username": "h8-eve",
+       "password": "notes-pass-1234"
+      }
+     },
+     "expected": {
+      "status": 200
+     },
+     "capture": {
+      "token": "body.token"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/me",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "id": "{{user_id}}",
+       "username": "h8-eve",
+       "display_name": "h8-eve",
+       "role": "member"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/admin/users",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 403
+     }
+    }
+   ]
+  },
+  {
+   "id": "v7",
+   "level": 3,
+   "visible": true,
+   "note": "a search finds the caller's notes whose title holds the text, in any case",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "v7-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "title": "Groceries",
+       "body": ""
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "a": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "title": "Weekly grocery budget",
+       "body": ""
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "b": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "title": "Rent",
+       "body": ""
+      }
+     },
+     "expected": {
+      "status": 201
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "query": {
+       "q": "grocer"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": [
+       {
+        "id": "{{a}}",
+        "title": "Groceries"
+       },
+       {
+        "id": "{{b}}",
+        "title": "Weekly grocery budget"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "v8",
+   "level": 3,
+   "visible": true,
+   "note": "a quote in the search cannot reach another user's notes",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "v8-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "title": "Groceries",
+       "body": ""
+      }
+     },
+     "expected": {
+      "status": 201
+     }
+    },
+    {
+     "use": "sign_up_other",
+     "with": {
+      "user": "v8-ben"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{other_token}}"
+      },
+      "json": {
+       "title": "Payroll",
+       "body": ""
+      }
+     },
+     "expected": {
+      "status": 201
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "query": {
+       "q": "' OR '1'='1"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": []
+     }
+    }
+   ]
+  },
+  {
+   "id": "h9",
+   "level": 3,
+   "visible": false,
+   "note": "a name with an apostrophe is searched like any other text",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "h9-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "title": "O'Brien contract",
+       "body": ""
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "a": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "title": "Obrien draft",
+       "body": ""
+      }
+     },
+     "expected": {
+      "status": 201
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "query": {
+       "q": "O'Brien"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": [
+       {
+        "id": "{{a}}",
+        "title": "O'Brien contract"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "h10",
+   "level": 3,
+   "visible": false,
+   "note": "a quote that comments out the rest of the query reaches no other user's notes",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "h10-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "title": "Groceries",
+       "body": ""
+      }
+     },
+     "expected": {
+      "status": 201
+     }
+    },
+    {
+     "use": "sign_up_other",
+     "with": {
+      "user": "h10-ben"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{other_token}}"
+      },
+      "json": {
+       "title": "Payroll",
+       "body": ""
+      }
+     },
+     "expected": {
+      "status": 201
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "query": {
+       "q": "' OR 1=1 --"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": []
+     }
+    }
+   ]
+  },
+  {
+   "id": "h11",
+   "level": 3,
+   "visible": false,
+   "note": "with no text, the search lists all of the caller's notes, oldest first",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "h11-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "title": "Rent",
+       "body": ""
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "a": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "title": "Groceries",
+       "body": ""
+      }
+     },
+     "expected": {
+      "status": 201
+     },
+     "capture": {
+      "b": "body.id"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": [
+       {
+        "id": "{{a}}",
+        "title": "Rent"
+       },
+       {
+        "id": "{{b}}",
+        "title": "Groceries"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "v9",
+   "level": 4,
+   "visible": true,
+   "note": "signing in prints no session token",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "v9-ana"
+     }
+    }
+   ],
+   "app_output": {
+    "absent": [
+     "{{token}}"
+    ]
+   }
+  },
+  {
+   "id": "v10",
+   "level": 4,
+   "visible": true,
+   "note": "a body that is not JSON answers 400 with its code and nothing more",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "v10-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}",
+       "Content-Type": "application/json"
+      },
+      "body": "{\"title\": \"Groceries\","
+     },
+     "expected": {
+      "status": 400,
+      "body": {
+       "error": "invalid_request"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h12",
+   "level": 4,
+   "visible": false,
+   "note": "a session in use prints its token nowhere either",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "h12-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/me",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 200,
+      "body": {
+       "id": "{{user_id}}",
+       "username": "h12-ana",
+       "display_name": "h12-ana",
+       "role": "member"
+      }
+     }
+    },
+    {
+     "request": {
+      "method": "POST",
+      "path": "/notes",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      },
+      "json": {
+       "title": "Groceries",
+       "body": ""
+      }
+     },
+     "expected": {
+      "status": 201
+     }
+    }
+   ],
+   "app_output": {
+    "absent": [
+     "{{token}}"
+    ]
+   }
+  },
+  {
+   "id": "h13",
+   "level": 4,
+   "visible": false,
+   "note": "a token that is no session answers 401 with its code alone",
+   "steps": [
+    {
+     "request": {
+      "method": "GET",
+      "path": "/me",
+      "headers": {
+       "Authorization": "Bearer h13-not-a-session"
+      }
+     },
+     "expected": {
+      "status": 401,
+      "body": {
+       "error": "unauthenticated"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "h14",
+   "level": 4,
+   "visible": false,
+   "note": "a file that does not exist answers 404 with its code alone",
+   "steps": [
+    {
+     "use": "sign_up",
+     "with": {
+      "user": "h14-ana"
+     }
+    },
+    {
+     "request": {
+      "method": "GET",
+      "path": "/attachments/missing.txt",
+      "headers": {
+       "Authorization": "Bearer {{token}}"
+      }
+     },
+     "expected": {
+      "status": 404,
+      "body": {
+       "error": "not_found"
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

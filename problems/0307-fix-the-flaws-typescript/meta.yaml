@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0307"
+slug: fix-the-flaws-typescript
+title: Fix the Flaws (TypeScript)
+status: ready
+difficulty: hard
+track: practical
+kind: project
+domains: [security]
+job_roles: [security-engineer, backend]
+scope: project
+languages: [typescript]
+summary: Practice for a security-fix round. A team notes service works, and a review found holes in it. Close each finding, from notes anyone can read to tokens in the logs, without breaking what its users rely on.
+levels:
+  - {level: 1, title: Notes that are not yours}
+  - {level: 2, title: Names and fields from the request}
+  - {level: 3, title: Text that becomes a query}
+  - {level: 4, title: Logs and errors}
+comparator: {type: exact}
+project:
+  grading: http
+  image: node:24-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+  commands:
+    install: [corepack, pnpm, install, --frozen-lockfile, --ignore-scripts]
+    run: [node, src/server.ts]
+    test: [node, --test, --test-concurrency=1]
+  app: {port_env: PORT, port: 8000, health: /health, ready_timeout_s: 60}
+  env:
+    PORT: "8000"
+    ADMIN_PASSWORD: admin-pass-sandbox-7c41
+  install_env:
+    COREPACK_HOME: /cache/corepack
+    COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    npm_config_store_dir: /cache/pnpm-store
+    CI: "true"
+  requires:
+    lock: pnpm-lock.yaml
+    # Measured on arm64: the app at 124 MiB while `cstudy test` ran its tests beside it, 57 MiB
+    # while the reference was graded, and the forwarder at 21 MiB.
+    sizes: {install_mb: 27, images_mb: {app: 81}, memory_mb: 150}
+approaches:
+  - {id: reference, name: "Check the owner, keep names inside their folder, read only the fields a user may set, bind every value, and keep secrets and internals out of what the service says", role: optimal, time: "per request", space: "per request"}
+related: [multi-tenant-api-typescript, secure-file-upload-typescript]
+estimate_minutes: 180
