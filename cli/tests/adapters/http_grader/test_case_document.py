@@ -2,7 +2,15 @@ from typing import Any
 
 from coding_study.adapters.http_grader.case_document import http_case_input
 from coding_study.domain.cases import Expected
-from coding_study.domain.http_case import HttpExpected, HttpRequest, LogAssertion, SameBody
+from coding_study.domain.http_case import (
+    BytesBody,
+    HttpExpected,
+    HttpRequest,
+    HttpStep,
+    LogAssertion,
+    RequestTemplate,
+    SameBody,
+)
 from coding_study.domain.problem import ComparatorSpec, ComparatorType
 
 
@@ -69,6 +77,31 @@ def test_a_malformed_body_goes_out_byte_for_byte():
 
 def test_a_body_with_no_content_type_stays_without_one():
     assert request_of(body="plain").headers == {}
+
+
+BYTES_IN_BASE64 = "AAEC/w=="
+BYTES = b"\x00\x01\x02\xff"
+
+
+def test_a_base64_body_goes_out_as_its_bytes():
+    assert request_of(body_base64=BYTES_IN_BASE64).body == BYTES
+
+
+def test_a_steps_base64_body_goes_out_as_its_bytes():
+    step = {"request": {"method": "POST", "path": "/files", "body_base64": BYTES_IN_BASE64}}
+    case = {"id": "h1", "level": 1, "steps": [step]}
+    (parsed,) = http_case_input(case).steps
+    assert isinstance(parsed, HttpStep)
+    assert isinstance(parsed.request, RequestTemplate)
+    assert parsed.request.body == BytesBody(BYTES)
+
+
+def test_a_parallel_requests_base64_body_goes_out_as_its_bytes():
+    request = {"method": "POST", "path": "/files", "body_base64": BYTES_IN_BASE64}
+    case = {"id": "h1", "level": 1, "parallel": {"count": 2, "request": request}}
+    burst = http_case_input(case | {"expected_statuses": {"201": 2}}).parallel
+    assert burst is not None
+    assert [sent.body for sent in burst.requests] == [BYTES, BYTES]
 
 
 def test_an_expected_body_may_be_null():

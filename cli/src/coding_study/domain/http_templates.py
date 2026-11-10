@@ -14,6 +14,7 @@ from urllib.parse import urlencode
 
 from coding_study.domain.cases import Expected, JsonValue
 from coding_study.domain.http_case import (
+    BytesBody,
     FormBody,
     HttpExpected,
     HttpRequest,
@@ -116,7 +117,7 @@ def request_texts(template: RequestTemplate) -> Iterator[str]:
             yield from fields.values()
         case TextBody(text):
             yield text
-        case None:
+        case BytesBody() | None:
             return
 
 
@@ -204,6 +205,8 @@ def _body(body: TemplateBody | None, values: Mapping[str, str]) -> tuple[bytes |
             return encoded.encode(), FORM_CONTENT_TYPE
         case TextBody(text):
             return filled(text, values).encode(), None
+        case BytesBody(data):
+            return data, None
         case None:
             return None, None
 

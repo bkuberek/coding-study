@@ -284,6 +284,7 @@
           "additionalProperties": { "type": "string" }
         },
         "body": { "description": "Sent as it is", "type": "string" },
+        "body_base64": { "$ref": "#/$defs/base64Body" },
         "jar": {
           "description": "The cookie jar this request sends and keeps cookies in (default main): another jar is another browser",
           "$ref": "#/$defs/valueName"
@@ -295,7 +296,10 @@
         "anyOf": [
           { "required": ["json", "form"] },
           { "required": ["json", "body"] },
-          { "required": ["form", "body"] }
+          { "required": ["json", "body_base64"] },
+          { "required": ["form", "body"] },
+          { "required": ["form", "body_base64"] },
+          { "required": ["body", "body_base64"] }
         ]
       }
     },
@@ -316,9 +320,21 @@
         },
         "headers": { "$ref": "#/$defs/httpHeaders" },
         "json": { "description": "Sent as JSON, with Content-Type: application/json unless headers name one" },
-        "body": { "description": "Sent byte for byte, so it may be malformed", "type": "string" }
+        "body": { "description": "Sent byte for byte, so it may be malformed", "type": "string" },
+        "body_base64": { "$ref": "#/$defs/base64Body" }
       },
-      "not": { "required": ["json", "body"] }
+      "not": {
+        "anyOf": [
+          { "required": ["json", "body"] },
+          { "required": ["json", "body_base64"] },
+          { "required": ["body", "body_base64"] }
+        ]
+      }
+    },
+    "base64Body": {
+      "description": "A binary body in standard, padded base64, decoded and sent byte for byte with no Content-Type unless headers name one",
+      "type": "string",
+      "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
     },
     "httpHeaders": {
       "type": "object",

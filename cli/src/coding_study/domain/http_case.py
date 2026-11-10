@@ -119,7 +119,14 @@ class TextBody:
     text: str
 
 
-type TemplateBody = JsonBody | FormBody | TextBody
+@dataclass(frozen=True, slots=True)
+class BytesBody:
+    """Sent byte for byte, as `body_base64` wrote it; it names no `{{captures}}`."""
+
+    data: bytes
+
+
+type TemplateBody = JsonBody | FormBody | TextBody | BytesBody
 
 
 @dataclass(frozen=True, slots=True)

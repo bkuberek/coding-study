@@ -71,6 +71,11 @@ def test_a_request_may_carry_a_raw_malformed_body(validator: SchemaValidator):
     assert violations(validator, with_fields(request=request)) == []
 
 
+def test_a_request_may_carry_a_binary_body_in_base64(validator: SchemaValidator):
+    request = {"method": "POST", "path": "/files", "body_base64": "AAEC/w=="}
+    assert violations(validator, with_fields(request=request)) == []
+
+
 def test_a_request_may_carry_json_null(validator: SchemaValidator):
     request = {"method": "POST", "path": "/bookings", "json": None}
     assert violations(validator, with_fields(request=request)) == []
@@ -146,6 +151,15 @@ def test_a_body_assertion_is_refused_for(
         ("a status below 100", with_fields(expected={"status": 99})),
         ("an unknown expected field", with_fields(expected={"status": 200, "bodyy": []})),
         ("both json and body", with_fields(request=request_with(json=1, body=""))),
+        (
+            "both body and body_base64",
+            with_fields(request=request_with(body="", body_base64="AA==")),
+        ),
+        (
+            "both json and body_base64",
+            with_fields(request=request_with(json=1, body_base64="AA==")),
+        ),
+        ("a body_base64 that is no base64", with_fields(request=request_with(body_base64="A+="))),
         ("a lowercase method", with_fields(request={"method": "get", "path": "/"})),
         ("a path without a slash", with_fields(request={"method": "GET", "path": "a"})),
         ("a query inside the path", with_fields(request={"method": "GET", "path": "/a?b=1"})),

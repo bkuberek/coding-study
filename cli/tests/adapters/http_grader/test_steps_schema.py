@@ -106,6 +106,10 @@ def test_a_single_request_case_may_expect_a_class_of_statuses(validator: SchemaV
     assert violations(validator, case) == []
 
 
+def test_a_step_may_carry_a_binary_body_in_base64(validator: SchemaValidator):
+    assert violations(validator, with_request(method="PUT", body_base64="AAEC/w==")) == []
+
+
 def refused_with(**fields: Any) -> dict[str, Any]:
     return steps_case() | fields
 
@@ -143,6 +147,9 @@ def with_request(**fields: Any) -> dict[str, Any]:
         ("an https url", with_request(path=None, url="https://idp:8443/a")),
         ("a relative url", with_request(path=None, url="idp/a")),
         ("both form and json", with_request(form={"a": "b"}, json={})),
+        ("both body and body_base64", with_request(body="", body_base64="AA==")),
+        ("both form and body_base64", with_request(form={}, body_base64="AA==")),
+        ("a body_base64 that is no base64", with_request(body_base64="AAA")),
         ("a form value that is not text", with_request(form={"a": 1})),
         ("a jar that is no name", with_request(jar="two words")),
         ("an unknown capture", with_step(capture={"a": "cookie.x"})),
