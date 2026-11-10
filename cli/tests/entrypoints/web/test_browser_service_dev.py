@@ -24,6 +24,7 @@ from tests.scripted_runs import eventually
 from tests.scripted_sandbox import logged_calls, sandbox_variables
 from tests.serve_page import opened_page
 from tests.serve_process import RunningServer, running_server, served_environment
+from tests.waits import GENEROUS_WAIT_S
 from tests.workspaces import workspace_like
 
 pytestmark = pytest.mark.slow
@@ -38,7 +39,7 @@ LOG = f"{PANEL} .dev-log"
 ROOM_VENDOR = f"{PANEL} #dev-scenario-room-vendor"
 ANNEX_VENDOR = f"{PANEL} #dev-scenario-annex-vendor"
 APP_LINE = "listening on 8000"
-WAIT_MS = 60_000
+WAIT_MS = int(GENEROUS_WAIT_S * 1000)
 
 
 @dataclass
