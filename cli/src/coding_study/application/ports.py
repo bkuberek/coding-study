@@ -42,6 +42,7 @@ from coding_study.domain.sandbox import (
     ReadyStack,
     SandboxInventory,
     SandboxUser,
+    ServiceChange,
     SidecarPlan,
     StackIdentity,
     StackPlan,
@@ -1352,6 +1353,12 @@ class SandboxEngine(Protocol):
         """Starts the stopped `app` container; its ports stay, since the forwarder holds them.
         Returns once its health path answers, on the first clock: raises StackStartError when it
         does not."""
+        ...
+
+    def change_service(self, plan: StackPlan, change: ServiceChange, budget: StartupBudget) -> None:
+        """`docker compose <action> <service>` on a backing service of the stack, for a case's
+        step. `start` returns once the service is healthy again, on the first clock. Raises
+        StackStartError when it cannot."""
         ...
 
     def app_exit(self, plan: StackPlan, within_ms: int) -> CommandOutcome | None:

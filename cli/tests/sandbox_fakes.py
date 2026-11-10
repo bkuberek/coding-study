@@ -19,6 +19,7 @@ from coding_study.domain.sandbox import (
     ReadyStack,
     SandboxInventory,
     SandboxUser,
+    ServiceChange,
     SidecarPlan,
     StackIdentity,
     StackPlan,
@@ -54,6 +55,7 @@ class FakeSandbox:
     install_timeouts: list[float] = field(default_factory=list[float])
     one_off_outcome: CommandOutcome = field(default_factory=lambda: CommandOutcome(0, "ok\n"))
     start_app_error: StackStartError | None = None
+    service_error: StackStartError | None = None
     app_ended: CommandOutcome | None = None
     app_lines: tuple[str, ...] = ()
     probe_outcome: CommandOutcome = field(default_factory=lambda: CommandOutcome(0, "reached []\n"))
@@ -154,6 +156,11 @@ class FakeSandbox:
         self.calls.append(("start_app", budget))
         if self.start_app_error is not None:
             raise self.start_app_error
+
+    def change_service(self, plan: StackPlan, change: ServiceChange, budget: StartupBudget) -> None:
+        self.calls.append(("change_service", (change, budget)))
+        if self.service_error is not None:
+            raise self.service_error
 
     def app_exit(self, plan: StackPlan, within_ms: int) -> CommandOutcome | None:
         self.calls.append(("app_exit", within_ms))

@@ -1033,6 +1033,35 @@ class StartupBudget:
     app_ready_s: int = DEFAULT_READY_S
 
 
+class ServiceAction(StrEnum):
+    """What a case may do to a backing service mid-case, each the `docker compose` command of that
+    name (docs/specs/service-projects.md#steps-that-send-nothing)."""
+
+    PAUSE = "pause"
+    """Freezes its processes: a client's connection is accepted, then waits for an answer."""
+    UNPAUSE = "unpause"
+    STOP = "stop"
+    """Takes it off the network: its name no longer resolves."""
+    START = "start"
+
+
+_UNDOING = {ServiceAction.PAUSE: ServiceAction.UNPAUSE, ServiceAction.STOP: ServiceAction.START}
+
+
+@dataclass(frozen=True, slots=True)
+class ServiceChange:
+    """A backing service of a stack paused, unpaused, stopped or started."""
+
+    service: str
+    """A service of the problem's compose file."""
+    action: ServiceAction
+
+    def undoing(self) -> "ServiceChange | None":
+        """What puts the service back as its stack started it; None when this change does."""
+        action = _UNDOING.get(self.action)
+        return ServiceChange(self.service, action) if action is not None else None
+
+
 @dataclass(frozen=True, slots=True)
 class ReadyStack:
     """A stack whose app answered its health path, and the moment it did. Every limit, hang guard

@@ -36,6 +36,8 @@ from coding_study.domain.sandbox import (
     ReadyStack,
     SandboxPaths,
     SandboxUser,
+    ServiceAction,
+    ServiceChange,
     StackIdentity,
     StackKind,
     StackPlan,
@@ -1249,6 +1251,35 @@ def test_a_start_that_fails_is_a_startup_failure_not_your_code(tmp_path, paths):
 
     with pytest.raises(StackStartError, match="no such service") as raised:
         sandbox(docker, tmp_path).start_app(plan_of(paths), running_ready(), BUDGET)
+
+    assert not raised.value.failure.is_your_code
+
+
+@pytest.mark.parametrize("action", [ServiceAction.PAUSE, ServiceAction.UNPAUSE, ServiceAction.STOP])
+def test_a_service_change_is_the_compose_command_of_its_name(tmp_path, paths, action):
+    docker = ScriptedDocker()
+
+    sandbox(docker, tmp_path).change_service(plan_of(paths), ServiceChange("store", action), BUDGET)
+
+    assert docker.ran(action.value, "store")
+
+
+def test_a_started_service_is_waited_for_until_it_is_healthy(tmp_path, paths):
+    docker = ScriptedDocker()
+    change = ServiceChange("store", ServiceAction.START)
+
+    sandbox(docker, tmp_path).change_service(plan_of(paths), change, BUDGET)
+
+    assert docker.ran("start", "--wait", "--wait-timeout", "300", "store")
+
+
+def test_a_service_change_that_fails_is_a_startup_failure_not_your_code(tmp_path, paths):
+    docker = ScriptedDocker()
+    docker.answer(("pause",), ProbeResult(1, "no such service: store"))
+    change = ServiceChange("store", ServiceAction.PAUSE)
+
+    with pytest.raises(StackStartError, match="no such service") as raised:
+        sandbox(docker, tmp_path).change_service(plan_of(paths), change, BUDGET)
 
     assert not raised.value.failure.is_your_code
 

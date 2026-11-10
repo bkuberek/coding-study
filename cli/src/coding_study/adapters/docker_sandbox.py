@@ -70,6 +70,8 @@ from coding_study.domain.sandbox import (
     SandboxInventory,
     SandboxPaths,
     SandboxUser,
+    ServiceAction,
+    ServiceChange,
     SidecarPlan,
     StackContainer,
     StackIdentity,
@@ -662,6 +664,20 @@ class DockerSandbox:
                 StartupFailure.SERVICE, f"could not start the app: {output}. {_NOT_YOUR_CODE}"
             )
         self._wait_for_health(plan, ready.app_port, budget)
+
+    def change_service(self, plan: StackPlan, change: ServiceChange, budget: StartupBudget) -> None:
+        """A started service is waited for until its healthcheck passes, as `up --wait` does."""
+        action = change.action
+        waits = ("--wait", "--wait-timeout", str(budget.up_s))
+        flags = waits if action is ServiceAction.START else ()
+        arguments = (action.value, *flags, change.service)
+        changed = self._compose(plan, arguments, budget.up_s + UP_GRACE_S)
+        if changed is None or changed.exit_code != 0:
+            output = changed.output.strip() if changed is not None else "docker is not installed"
+            raise StackStartError(
+                StartupFailure.SERVICE,
+                f"could not {action} {change.service}: {output}. {_NOT_YOUR_CODE}",
+            )
 
     def app_exit(self, plan: StackPlan, within_ms: int) -> CommandOutcome | None:
         deadline = self._monotonic() + within_ms / MILLISECONDS_PER_SECOND
