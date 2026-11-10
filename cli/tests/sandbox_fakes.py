@@ -131,6 +131,9 @@ class FakeSandbox:
 
     def exec_app(self, plan: StackPlan, command: ContainerCommand) -> CommandOutcome:
         self.calls.append(("exec_app", command))
+        if command.on_output is not None:
+            for line in self.exec_outcome.output.splitlines():
+                command.on_output(line)
         return self.exec_outcome
 
     def run_one_off(self, plan: StackPlan, command: ContainerCommand) -> CommandOutcome:

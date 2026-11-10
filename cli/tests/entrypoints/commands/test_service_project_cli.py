@@ -253,7 +253,7 @@ def test_a_stack_that_failed_for_another_reason_exits_4_as_not_your_code(environ
 
 @pytest.mark.parametrize(
     "flag",
-    [("--debug",), ("--case", "x"), ("--level", "1"), ("--watch",), ("--json",), ("--events",)],
+    [("--debug",), ("--case", "x"), ("--level", "1"), ("--watch",), ("--typecheck",)],
 )
 def test_the_flags_of_a_native_run_exit_3(environment, flag):
     start_it()

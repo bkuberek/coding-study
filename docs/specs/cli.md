@@ -742,7 +742,7 @@ $ cstudy test two-sum --lang kotlin --time-limit --events
 | Lines | Every line is one JSON object whose first fields are `type` and `version`. Standard output holds nothing else; `error: ...` goes to standard error, as for any command |
 | `--json` | A final summary, where events are a stream: `run_end` carries the document `--json` prints, so the two flags exclude each other (`--events excludes --json`, exit 3) |
 | Excluded | `--watch` and `--debug` exit 3 (`--events excludes --watch`). `cstudy test` on a non-autograded item exits 3 with or without `--events` |
-| Accepted | Every other flag of the run: `--level`, `--case`, `--all` (which changes nothing: every case is an event), `--typecheck`, `--stress`, `--seed`, `--time-limit`, `--no-time-limit` and `--perf` |
+| Accepted | Every other flag of the run: `--level`, `--case`, `--all` (which changes nothing: every case is an event), `--typecheck`, `--stress`, `--seed`, `--time-limit`, `--no-time-limit` and `--perf`. On a service project `cstudy test` takes none of these, with or without `--events` |
 | Exit codes | Those of the run without `--events`; `run_end.exit_code` is the exit code of the process |
 | Signals | SIGINT ends the run as Ctrl-C does: `run_end` with outcome `interrupted` and exit 130. SIGTERM does the same with exit 143, so a program that started the run can stop it with either. Both kill the runner's process group and store nothing |
 
@@ -757,7 +757,7 @@ $ cstudy test two-sum --lang kotlin --time-limit --events
 | `type` | Command | Fields | When |
 |--------|---------|--------|------|
 | `run_start` | both | `command` (`test` or `submit`), `slug`, `language`, `attempt_id`, `mode` (`new`, `review` or `mock`), `levels`: `up_to` (the last level the run covers), `unlocked` and `last`, or null for a kind without levels; `kind` (`function`, `design`, `progressive`, `concurrent` or `project`), `track`; `timer`: `elapsed_s` at the start and `limit_s`, or null without a time box; `time_limit`: the value the run asks for (`"5x"`, `"1500ms"`), or null when time limits are off; `planned`, below | Once the options are checked, before the run's work begins |
-| `output` | both | `text`: a progress notice the report would print, such as `computing expected values ...` or `warming Gradle daemon ...` | As it happens |
+| `output` | both | `text`: a progress notice the report would print, such as `computing expected values ...` or `warming Gradle daemon ...`; on a [service project](service-projects.md#what-you-see), also a line `commands.test` printed. A notice that moves a service project's stack along adds `stack`, its stage: `docker` (the engine was not running and starts), `pulling`, `installing`, `starting`, `ready`, `failed` (it did not become ready) or `stopped` (down, after the run, a failure or a cancel), and `ready` adds `startup_s`, the first clock, which no limit or result counts | As it happens |
 | `build` | `test`, single-file | `seconds` and `note`, as `build` in [`cstudy test --json`](#json-output) (`gradle, warm`) | When the build or the type check ends, for a language or option that has one (Java, Kotlin, Go, Rust, TypeScript with `--typecheck`), whether it succeeded or not |
 | `test_start` | `test`, project | `id`: the test id, as in `test_result` | As the runner starts the test, a test file it collects included |
 | `test_result` | `test`, project | An entry of `cases` in [`cstudy test --json`](#project-problems) on a project problem: `id`, `status`, `duration_ns`, `origin`, `level`, and `message`, `expected`, `actual`, `error` and `stdout` when set | As the test ends: once per test the suite reported, a test file that failed to collect included |
@@ -785,6 +785,8 @@ $ cstudy test two-sum --lang kotlin --time-limit --events
 | Progressive | `case_start` and `case_result` per case of levels 1 to `levels.up_to`, each with its `level` | `level_unlocked` when the run opened a level; `build`, `case_revised` |
 | Concurrent | `case_start` and `case_result` per sequential case, then `stress_run_start` and `stress_run` per stress run, and `stress_result` per stress case and variant | `build`, `case_revised` for sequential cases |
 | Project, `test` | `test_start` and `test_result` per test | |
+| Service project, `test` | `test_start` and `test_result` for `commands.test`, id `commands.test`, with the lines it prints as `output` between them; then `case_start` and `case_result` per visible case of the unlocked levels, each with its `level` | `output` with `stack` |
+| Service project, `submit` | As a project's `submit` | `output` with `stack` |
 | Project, `submit` | `case_start` and `case_result` per graded case, then, for a project with stress cases, `stress_run_start`, `stress_run` and `stress_result` per stress run, each with its `level`; a mock submission writes none of the hidden cases' events, stress cases included | `level_result` per level, `level_unlocked` |
 
 Timing is in the fields, not in the order of the lines: `duration_ns` on each result (the call or the test only, as the runner measures it), `seconds` on `build`, `median_ms` on `stress_result`, `timer` on `run_start`, and `duration_s` in the `run_end` summary. Events carry no clock time: a reader sees each line as it is written.

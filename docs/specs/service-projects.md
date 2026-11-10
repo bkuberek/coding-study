@@ -1055,10 +1055,12 @@ Built: this is where P10's [grader reach](#grader-reach) and P11's cases meet, w
 
 `--json` and `--events` keep version 1 of the [event stream](cli.md#event-stream), with additive changes only, so the CLI and the Web UI render it:
 
+`cstudy test --json` on a service project prints one document: `slug`, `language`, `attempt_id`, `outcome` (`passed`, `failed`, or `load_failed` when your code kept the stack from becoming ready), `exit_code`, `levels`, `load_error`, `tests` (`commands.test`, as its `test_result`; empty without a ready stack), `cases` (the visible cases, each with its `level`), `tally` (of those cases), `startup_s` (the first clock) and `duration_s` (the second). Progress and the lines of `commands.test` go to standard error. The exit codes are those of the report.
+
 | Event | On a service project |
 |-------|----------------------|
-| `output` | Progress: image pull, install, Docker start, `bootstrap` |
-| `test_start`, `test_result` | Planned, with P9's Web UI: `cstudy test --events` and `--json` exit 3 on a service project for now. One result for `commands.test`, with id `commands.test`; its output streams through `output`, since cstudy does not parse a framework |
+| `output` | Progress: Docker start, image pull, install, the stack's start, its readiness and its end, each with `stack`, its stage (`docker`, `pulling`, `installing`, `starting`, `ready`, `failed`, `stopped`), and `startup_s` on `ready`; and every line `commands.test` prints |
+| `test_start`, `test_result` | `cstudy test --events`. One result for `commands.test`, with id `commands.test` and origin `starter`: `pass` on exit 0, `fail` with `message` (`exited with 1`) and the last 4 KiB of its output as `stdout`, or `timeout` past its limit. Its output streams through `output` before the result, since cstudy does not parse a framework |
 | `case_start`, `case_result` | `cstudy submit`, and with `--events` above also `cstudy test` for the visible cases. `input` holds the request and the scenarios it set, `expected` and `actual` the status and body, and `reason` every difference and log assertion that failed (`room-vendor availability: expected 2 requests, saw 5`) |
 | `level_result`, `level_unlocked` | As today, with `methods` empty |
 

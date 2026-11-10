@@ -11,7 +11,7 @@ from coding_study.application.environment import Environment
 from coding_study.application.graded_stack import RunningStack, SandboxGradedStack
 from coding_study.application.http_grading import HttpCaseListener, HttpGradingRun, run_http_grading
 from coding_study.application.ports import ProgressNotice
-from coding_study.application.sandbox import running_stack
+from coding_study.application.sandbox import reported_stack, running_stack
 from coding_study.application.service_lifecycle import prepare_service_run
 from coding_study.application.service_stacks import (
     from_empty_stack_plan,
@@ -81,7 +81,7 @@ def grade_on_stack(
             count = len(cases_up_to(problem.cases, grading.level))
             return GradedRun(Judgement(count, load_error=from_empty))
     try:
-        with running_stack(engine, plan, service.startup_budget, notify) as ready:
+        with reported_stack(engine, plan, service.startup_budget, notify) as ready:
             stack = SandboxGradedStack(engine, RunningStack(plan, ready), service)
             began = clock.monotonic()
             judgement = run_http_grading(run, stack, environment.stack_clients)
@@ -90,7 +90,7 @@ def grade_on_stack(
         if not failure.failure.is_your_code:
             raise
         count = len(cases_up_to(problem.cases, grading.level))
-        return GradedRun(Judgement(count, load_error=_load_error(failure, grading.mode)))
+        return GradedRun(Judgement(count, load_error=startup_load_error(failure, grading.mode)))
 
 
 def _bootstrap_from_empty(
@@ -111,7 +111,7 @@ def _bootstrap_from_empty(
         return UserError(MIGRATION_FAILED, f"bootstrap from empty data: {failure}", failure.output)
 
 
-def _load_error(failure: StackStartError, mode: AttemptMode) -> UserError:
+def startup_load_error(failure: StackStartError, mode: AttemptMode) -> UserError:
     """A migration in a mock attempt says only that it failed: its output could name hidden data."""
     if failure.failure is StartupFailure.BOOTSTRAP:
         if mode is AttemptMode.MOCK:
