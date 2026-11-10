@@ -1,0 +1,126 @@
+# The gateway's primary provider: a chat-completions-style API, named after no vendor, copied from
+# the mock server's example (cli/tests/fixtures/mock_configs/llm-provider.yaml) and owned here from
+# then on. Its embeddings routes are gone, since the gateway does not offer embeddings, and its answer
+# is the office's. Hidden scenarios are what a graded run adds: a dev or test stack holds only those
+# marked visible.
+#
+# Usage: prompt_tokens counts the words of the request's messages, their roles included, a
+# deterministic stand-in for a tokenizer, and completion_tokens is the answer's fixed 4.
+shape_version: "generic chat-completions style, public docs of 2026-11"
+routes:
+  - id: chat-stream
+    method: POST
+    path: /v1/chat/completions
+    match: {body: {stream: true}}
+    response:
+      status: 200
+      stream:
+        - data: '{"id": "chat-{{seq}}", "model": {{json(request.body.model)}}, "choices": [{"index": 0, "delta": {"role": "assistant", "content": "Badges renew "}}]}'
+          after_ms: 20
+        - data: '{"id": "chat-{{seq}}", "choices": [{"index": 0, "delta": {"content": "every June."}, "finish_reason": "stop"}]}'
+          after_ms: 20
+        - data: '{"id": "chat-{{seq}}", "choices": [], "usage": {"prompt_tokens": {{words(request.body.messages)}}, "completion_tokens": 4}}'
+        - data: "[DONE]"
+  - id: chat
+    method: POST
+    path: /v1/chat/completions
+    response:
+      status: 200
+      body:
+        id: "chat-{{seq}}"
+        object: chat.completion
+        model: "{{request.body.model}}"
+        choices:
+          - index: 0
+            message: {role: assistant, content: "Badges renew every June."}
+            finish_reason: stop
+        usage:
+          prompt_tokens: "{{words(request.body.messages)}}"
+          completion_tokens: 4
+scenarios:
+  rate_limited:
+    visible: true
+    status: 429
+    headers: {Retry-After: "1"}
+    body: {error: {type: rate_limit, message: "Too many requests: retry after 1 s."}}
+  rate_limited_then_ok:
+    visible: true
+    sequence:
+      - status: 429
+        headers: {Retry-After: "1"}
+        body: {error: {type: rate_limit, message: "Too many requests: retry after 1 s."}}
+      - {status: 200}                    # the route's own answer, its stream included
+  outage:
+    visible: true
+    status: 503
+    body: {error: {type: server_error, message: "The service is unavailable."}}
+  slow:
+    visible: true
+    delay_ms: 2500
+  dropped_mid_stream:
+    visible: true
+    route: chat-stream
+    drop_after_chunks: 1                 # one event, then the connection closes with no [DONE]
+  limited_twice_then_ok:
+    sequence:
+      - status: 429
+        headers: {Retry-After: "1"}
+        body: {error: {type: rate_limit, message: "Too many requests: retry after 1 s."}}
+      - status: 429
+        headers: {Retry-After: "1"}
+        body: {error: {type: rate_limit, message: "Too many requests: retry after 1 s."}}
+      - {status: 200}
+  limited_no_header_then_ok:
+    sequence:
+      - status: 429
+        body: {error: {type: rate_limit, message: "Too many requests."}}
+      - {status: 200}
+  limited_long:
+    sequence:
+      - status: 429
+        headers: {Retry-After: "3"}
+        body: {error: {type: rate_limit, message: "Too many requests: retry after 3 s."}}
+      - {status: 200}
+  limited_then_dropped:
+    route: chat-stream
+    sequence:
+      - status: 429
+        headers: {Retry-After: "1"}
+        body: {error: {type: rate_limit, message: "Too many requests: retry after 1 s."}}
+      - {status: 200, drop_after_chunks: 1}
+  stalled_stream:
+    route: chat-stream
+    stall_after_chunks: 1                # one event, then silence until the gateway gives up
+  stalled_before_first_event:
+    route: chat-stream
+    stall_after_chunks: 0                # the headers, then silence
+  dropped_before_first_event:
+    route: chat-stream
+    drop_after_chunks: 0                 # the headers, then the connection closes
+  malformed_chunk:
+    route: chat-stream
+    stream:
+      - data: '{"id": "chat-{{seq}}", "model": {{json(request.body.model)}}, "choices": [{"index": 0, "delta": {"role": "assistant", "content": "Badges renew "}}]}'
+        after_ms: 20
+      - data: '{"id": "chat-{{seq}}", "choices": [{"index": 0, "delta": {"content": "ev'
+        after_ms: 20
+      - data: "[DONE]"
+  malformed_first_chunk:
+    route: chat-stream
+    stream:
+      - data: '{"id": "chat-{{seq}}", "choices": [{"index": 0, "delta": {"content": "Bad'
+        after_ms: 20
+      - data: "[DONE]"
+  slow_stream:
+    route: chat-stream
+    stream:                              # healthy, with half a second between events: 2.5 s in all
+      - data: '{"id": "chat-{{seq}}", "model": {{json(request.body.model)}}, "choices": [{"index": 0, "delta": {"role": "assistant", "content": "Badges "}}]}'
+        after_ms: 500
+      - data: '{"id": "chat-{{seq}}", "choices": [{"index": 0, "delta": {"content": "renew "}}]}'
+        after_ms: 500
+      - data: '{"id": "chat-{{seq}}", "choices": [{"index": 0, "delta": {"content": "every June."}, "finish_reason": "stop"}]}'
+        after_ms: 500
+      - data: '{"id": "chat-{{seq}}", "choices": [], "usage": {"prompt_tokens": {{words(request.body.messages)}}, "completion_tokens": 4}}'
+        after_ms: 500
+      - data: "[DONE]"
+        after_ms: 500

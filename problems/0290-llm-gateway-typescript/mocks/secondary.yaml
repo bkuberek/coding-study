@@ -1,0 +1,53 @@
+# The gateway's secondary provider: another invented API, close to the primary's and different where
+# real providers tend to differ. Its path, its key header and the name of its token limit differ;
+# its stream names each event and ends with an `end` event instead of `[DONE]`; and it reports some
+# failures inside a 200 stream, as an `error` event. Hidden scenarios are what a graded run adds.
+#
+# Usage: input_tokens counts the words of the request's messages, their roles included, as the
+# primary's prompt_tokens does, and output_tokens is the answer's fixed 3.
+shape_version: "invented messages-style API, 2026-11"
+routes:
+  - id: messages-stream
+    method: POST
+    path: /v1/messages
+    match: {body: {stream: true}}
+    response:
+      status: 200
+      stream:
+        - event: delta
+          data: '{"text": "Renewals happen "}'
+          after_ms: 20
+        - event: delta
+          data: '{"text": "each June."}'
+          after_ms: 20
+        - event: usage
+          data: '{"input_tokens": {{words(request.body.messages)}}, "output_tokens": 3}'
+        - event: end
+          data: "{}"
+  - id: messages
+    method: POST
+    path: /v1/messages
+    response:
+      status: 200
+      body:
+        id: "msg-{{seq}}"
+        model: "{{request.body.model}}"
+        output: {text: "Renewals happen each June."}
+        usage:
+          input_tokens: "{{words(request.body.messages)}}"
+          output_tokens: 3
+scenarios:
+  overloaded:
+    visible: true
+    status: 503
+    body: {error: {code: overloaded, message: "Try again later."}}
+  error_event:
+    visible: true
+    route: messages-stream
+    stream:
+      - event: error
+        data: '{"code": "overloaded", "message": "Try again later."}'
+        after_ms: 20
+  dropped_mid_stream:
+    route: messages-stream
+    drop_after_chunks: 1                 # one event, then the connection closes with no end event
