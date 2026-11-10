@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/meta.schema.json
+id: "0309"
+slug: find-missing-and-duplicates
+title: Find All Missing and Duplicate Numbers
+summary: "An array of length n holds values from 1 to n, some repeated and some absent. Return the absent values and the repeated values, each as a sorted list."
+status: ready
+difficulty: medium
+track: dsa
+kind: function
+patterns: [arrays-hashing]
+domains: [algorithms]
+job_roles: [general]
+scope: function
+signature:
+  function:
+    name: findMissingAndDuplicates
+    params:
+      - {name: nums, type: "int[]"}
+    returns: {type: "list<list<int>>"}
+comparator: {type: exact}
+approaches:
+  - {id: hash-set, name: Two hash sets of the values seen and the values repeated, role: brute, time: "O(n)", space: "O(n)", time_class: "n", space_class: "n", oracle: true}
+  - {id: sort, name: Sort in place and compare neighbours, role: intermediate, time: "O(n log n)", space: "O(1)", time_class: "n log n", space_class: "1"}
+  - {id: cyclic-sort, name: Swap every value to its own index and read off the misplaced ones, role: optimal, time: "O(n)", space: "O(1)", time_class: "n", space_class: "1"}
+perf:
+  size_param: length of nums
+  size_ladder: [1000, 3000, 10000, 30000, 100000]
+  expected_from: cyclic-sort
+  time_limit: {factor: 5}
+related: [first-missing-positive, missing-number, contains-duplicate]
+estimate_minutes: 25
